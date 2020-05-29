@@ -5,11 +5,15 @@
 #include "nvse/GameObjects.h"
 #include <string>
 
-#ifdef NOGORE
-IDebugLog		gLog("nvse_plugin_example_ng.log");
-#else
-IDebugLog		gLog("nvse_plugin_example.log");
+//NoGore is unsupported in this fork
+
+#ifndef RegisterScriptCommand
+#define RegisterScriptCommand(name) 	nvse->RegisterCommand(&kCommandInfo_ ##name);
 #endif
+
+
+
+IDebugLog		gLog("nvse_plugin_example.log");
 
 PluginHandle	g_pluginHandle = kPluginHandle_Invalid;
 
@@ -18,9 +22,9 @@ NVSEInterface * SaveNVSE;
 NVSECommandTableInterface * g_cmdTable;
 const CommandInfo * g_TFC;
 NVSEScriptInterface* g_script;
-#define ExtractArgsEx(...) g_script->ExtractArgsEx(__VA_ARGS__)
-#define ExtractFormatStringArgs(...) g_script->ExtractFormatStringArgs(__VA_ARGS__)
 
+// This is a message handler for nvse events
+// With this, plugins can listen to messages such as whenever the game loads
 void MessageHandler(NVSEMessagingInterface::Message* msg)
 {
 	switch (msg->type)
@@ -64,8 +68,8 @@ void MessageHandler(NVSEMessagingInterface::Message* msg)
 	}
 }
 
-#ifdef RUNTIME
-
+//In here we define a script function
+//Script functions must always follow the Cmd_FunctionName_Execute naming convention
 bool Cmd_ExamplePlugin_PluginTest_Execute(COMMAND_ARGS)
 {
 	_MESSAGE("plugintest");
@@ -77,9 +81,42 @@ bool Cmd_ExamplePlugin_PluginTest_Execute(COMMAND_ARGS)
 	return true;
 }
 
-#endif
-
+//This defines a function without a condition, that does not take any arguments
 DEFINE_COMMAND_PLUGIN(ExamplePlugin_PluginTest, "prints a string", 0, 0, NULL)
+
+
+
+
+
+//Conditions must follow the Cmd_FunctionName_Eval naming convention
+bool Cmd_ExamplePlugin_IsNPCFemale_Eval(COMMAND_ARGS_EVAL)
+{
+
+	TESNPC* npc = (TESNPC*)arg1;
+	*result = npc->baseData.IsFemale() ? 1 : 0;
+	return true;
+
+}
+
+
+bool Cmd_ExamplePlugin_IsNPCFemale_Execute(COMMAND_ARGS)
+{
+	//Created a simple condition 
+	//thisObj is what the script extracts as parent caller
+	//EG, Ref.IsFemale would make thisObj = ref
+	//We are using actor bases though, so the function is called as such: ExamplePlugin_IsNPCFemale baseForm
+	TESNPC* npc = 0;
+	if (ExtractArgs(EXTRACT_ARGS, &npc))
+	{
+		Cmd_ExamplePlugin_IsNPCFemale_Eval(thisObj, npc, NULL, result);
+	}
+
+	return true;
+}
+
+DEFINE_COMMAND_PLUGIN(ExamplePlugin_IsNPCFemale, "Checks if npc is female", 0, 1, kParams_OneActorBase)
+
+
 
 extern "C" {
 
@@ -89,7 +126,7 @@ bool NVSEPlugin_Query(const NVSEInterface * nvse, PluginInfo * info)
 
 	// fill out the info structure
 	info->infoVersion = PluginInfo::kInfoVersion;
-	info->name = "nvse_plugin_example";
+	info->name = "MyFirstPlugin";
 	info->version = 2;
 
 	// version checks
@@ -107,20 +144,13 @@ bool NVSEPlugin_Query(const NVSEInterface * nvse, PluginInfo * info)
 			return false;
 		}
 
-#ifdef NOGORE
-		if(!nvse->isNogore)
-		{
-			_ERROR("incorrect runtime edition (got %08X need %08X (nogore))", nvse->isNogore, 1);
-			return false;
-		}
-#else
 		if(nvse->isNogore)
 		{
-			_ERROR("incorrect runtime edition (got %08X need %08X (standard))", nvse->isNogore, 0);
+			_ERROR("NoGore is not supported");
 			return false;
 		}
-#endif
 	}
+
 	else
 	{
 		if(nvse->editorVersion < CS_VERSION_1_4_0_518)
@@ -128,14 +158,10 @@ bool NVSEPlugin_Query(const NVSEInterface * nvse, PluginInfo * info)
 			_ERROR("incorrect editor version (got %08X need at least %08X)", nvse->editorVersion, CS_VERSION_1_4_0_518);
 			return false;
 		}
-#ifdef NOGORE
-		_ERROR("Editor only uses standard edition, closing.");
-		return false;
-#endif
 	}
 
 	// version checks pass
-
+	// any version compatibility checks should be done here
 	return true;
 }
 
@@ -169,8 +195,7 @@ bool NVSEPlugin_Load(const NVSEInterface * nvse)
 
 	// register commands
 	nvse->SetOpcodeBase(0x2000);
-	nvse->RegisterCommand(&kCommandInfo_ExamplePlugin_PluginTest);
-
+	RegisterScriptCommand(ExamplePlugin_PluginTest);
 	return true;
 }
 

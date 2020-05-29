@@ -296,6 +296,11 @@ static ParamInfo kParams_OneFaction[1] =
 	{	"faction",	kParamType_Faction,	0	},
 };
 
+static ParamInfo kParams_OneActorBase[1] =
+{
+	{	"base actor",	kParamType_ActorBase,	0	},
+};
+
 static ParamInfo kParams_OneOptionalActorBase[1] =
 {
 	{	"base actor",	kParamType_ActorBase,	1	},
