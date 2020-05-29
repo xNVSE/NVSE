@@ -1,10 +1,10 @@
 # New Vegas Script Extender
 
-This is a community maintained up-to-date fork for NVSE (New Vegas Script Extender). 
+This is a community maintained up-to-date fork of NVSE (New Vegas Script Extender). 
 
 ## Download
 
-Releases are provided in the [releases section.](https://github.com/NVSEx/NVSE/releases)
+Releases are provided in the [releases section](https://github.com/NVSEx/NVSE/releases).
 
 ## Installation
 
@@ -27,5 +27,10 @@ For documentation on how to write scripts utilizing NVSE, see [GECK Wiki](https:
 
 NVSE was created and maintained by *Ian Patterson*, 
 *Stephen Abel*, *Paul Connelly*, and *Hugues LE PORS*
+(ianpatt, behippo, scruggsywuggsy the ferret, and hlp)
+
+ Contributions from *Timeslip*, *Elminster AU*
 
 The home page for NVSE is http://nvse.silverlock.org/
+
+
