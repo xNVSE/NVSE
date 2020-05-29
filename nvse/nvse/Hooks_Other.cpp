@@ -1,11 +1,10 @@
 #include "Hooks_Other.h"
-
+#include "GameAPI.h"
 #include "SafeWrite.h"
+
 
 namespace OtherHooks
 {
-	UInt8* g_lastScriptData;
-
 	void __stdcall PrintCurrentThreadID()
 	{
 		_MESSAGE("Thread ID: %X", GetCurrentThreadId());

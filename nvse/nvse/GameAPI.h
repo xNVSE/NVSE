@@ -4,6 +4,8 @@
 #include "NiNodes.h"
 #include "GameScript.h"
 
+extern UInt8* g_lastScriptData;
+
 struct ParamInfo;
 class TESForm;
 class TESObjectREFR;
