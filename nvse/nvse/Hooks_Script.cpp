@@ -127,7 +127,7 @@ static __declspec(naked) void ExtractStringHook(void)
 		mov eax, [ebp + 0x020]	// arg20 = ScriptEventList
 		push eax
 		push edx				// destination buffer
-		movzx eax, [ebp - 0xE4]	// var_E4 = dataLen
+		movzx eax, word ptr [ebp - 0xE4]	// var_E4 = dataLen //fixed movzx bug where the compiler assumed a BYTE. It's a WORD
 		push eax				// dataLen
 		push ecx				// scriptData
 		call DoExtractString
@@ -180,6 +180,9 @@ void Hook_Script_Init()
 	WriteRelJump(kExpressionParserBufferOverflowHookAddr_1, (UInt32)&ExpressionParserBufferOverflowHook_1);
 	WriteRelJump(kExpressionParserBufferOverflowHookAddr_2, (UInt32)&ExpressionParserBufferOverflowHook_2);
 
+	// (jazzisparis) increase the string buffer size to 0x400
+	SafeWrite8(0x593DB6, 7);
+	SafeWrite16(0x593E5A, 0xF8B4);
 	// hook ExtractArgs() to handle commands normally compiled with Cmd_Default_Parse which were instead compiled with Cmd_Expression_Parse
 	ExtractArgsOverride::Init_Hooks();
 
