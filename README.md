@@ -16,7 +16,7 @@ Releases are provided in the [releases section](https://github.com/NVSEx/NVSE/re
 
 For support, [create a new GitHub issue](https://github.com/NVSEx/NVSE/issues).
 
-We also have a [Discord server](https://discord.gg/kt8qwE3).
+We also have a [Discord server](https://discord.gg/EebN93s).
 
 ## Description
 
