@@ -1,8 +1,5 @@
 # New Vegas Script Extender
 
-----
-
-
 This is a community maintained up-to-date fork for NVSE (New Vegas Script Extender). 
 
 ## Releases
