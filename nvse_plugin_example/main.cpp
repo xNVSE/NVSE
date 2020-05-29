@@ -196,6 +196,8 @@ bool NVSEPlugin_Load(const NVSEInterface * nvse)
 	// register commands
 	nvse->SetOpcodeBase(0x2000);
 	RegisterScriptCommand(ExamplePlugin_PluginTest);
+	RegisterScriptCommand(ExamplePlugin_IsNPCFemale);
+
 	return true;
 }
 
