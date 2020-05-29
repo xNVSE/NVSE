@@ -8,7 +8,7 @@ Downloads are provided in the [releases section.](https://github.com/NVSEx/NVSE/
 
 ## Installation
 
-1. Copy the .dll and .exe files to your Fallout NV directory. For Steam this is usually in your Program Files folder under *Steam\\steamapps\\common\\Fallout New Vegas\\ *. If you see files named FalloutNV.exe and FalloutNVLauncher.exe, this is the correct folder. **Do not copy these files to the Data folder as with a normal mod.**
+1. Copy the .dll and .exe files to your Fallout NV directory. For Steam this is usually in your Program Files folder under *Steam\\steamapps\\common\\Fallout New Vegas\\*. If you see files named FalloutNV.exe and FalloutNVLauncher.exe, this is the correct folder. **Do not copy these files to the Data folder as with a normal mod.**
 
 2. Launch NV via running *nvse_loader.exe* or, if you have patched the game using [FNV 4GB Patcher](https://www.nexusmods.com/newvegas/mods/62552/), *FalloutNV.exe*. Enabling the Steam Community option (enabled by default) will allow you to launch the game via Steam's standard UI.
 
