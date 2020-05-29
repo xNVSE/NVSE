@@ -1625,6 +1625,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\Hooks_Other.h"
+				>
+			</File>
+			<File
+				RelativePath=".\Hooks_Other.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\Hooks_CreatedObject.cpp"
 				>
 				<FileConfiguration

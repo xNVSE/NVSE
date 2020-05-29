@@ -13,6 +13,8 @@
 #include "ScriptUtils.h"
 #endif
 
+UInt8* g_lastScriptData;
+
 static NVSEStringVarInterface* s_StringVarInterface = NULL;
 bool extraTraces = false;
 bool alternateUpdate3D = false;
@@ -1415,7 +1417,7 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 	UInt8* scriptData = (UInt8*)(*scriptDataAddr);
 
 	SInt32 scriptDataOffset = (UInt32)scriptData - (UInt32)(script->data);*/
-	auto scriptData = reinterpret_cast<UInt8*>(OtherHooks::g_lastScriptData);
+	auto scriptData = reinterpret_cast<UInt8*>(g_lastScriptData);
 	SInt32 scriptDataOffset = (UInt32)scriptData - (UInt32)(script->data);
 
 	if (scriptDataOffset < 5)
