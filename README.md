@@ -2,9 +2,9 @@
 
 This is a community maintained up-to-date fork for NVSE (New Vegas Script Extender). 
 
-## Releases
+## Download
 
-Downloads are provided in the [releases section.](https://github.com/NVSEx/NVSE/releases)
+Releases are provided in the [releases section.](https://github.com/NVSEx/NVSE/releases)
 
 ## Installation
 
