@@ -27,5 +27,10 @@ For documentation on how to write scripts utilizing NVSE, see [GECK Wiki](https:
 
 NVSE was created and maintained by *Ian Patterson*, 
 *Stephen Abel*, *Paul Connelly*, and *Hugues LE PORS*
+(ianpatt, behippo, scruggsywuggsy the ferret, and hlp)
+
+ Contributions from *Timeslip*, *Elminster AU*
 
 The home page for NVSE is http://nvse.silverlock.org/
+
+
