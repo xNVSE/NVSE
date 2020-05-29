@@ -34,5 +34,5 @@ Contributions from *Timeslip*, *Elminster AU*
 
 The home page for NVSE is http://nvse.silverlock.org/
 
-This version is maintained by *korri123*, *lStewieAl*, *maletsna* (c6), and *carxt* (aka karut)
+This version is maintained by *korri123*, *lStewieAl*, *jazzisparis*, *iranrmrf*, *maletsna* (c6), and *carxt* (aka karut)
 
