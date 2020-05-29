@@ -1,6 +1,8 @@
 
 <p align="center">
-  <img height="300px" src="https://i.imgur.com/Y5EBSxl.png">
+  <a href="https://github.com/xNVSE/NVSE/releases">
+    <img height="300px" src="https://i.imgur.com/Y5EBSxl.png">
+  </a>
 </p>
 
 This is a community maintained up-to-date fork of **New Vegas Script Extender** (NVSE). 
