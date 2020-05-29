@@ -1,6 +1,9 @@
-# New Vegas Script Extender
 
-This is a community maintained up-to-date fork of NVSE (New Vegas Script Extender). 
+<p align="center">
+  <img height="300px" src="https://i.imgur.com/Y5EBSxl.png">
+</p>
+
+This is a community maintained up-to-date fork of **New Vegas Script Extender** (NVSE). 
 
 ## Download
 
