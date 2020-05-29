@@ -1,0 +1,32 @@
+#include "nvse_version.h"
+
+1 VERSIONINFO
+ FILEVERSION 0,NVSE_VERSION_INTEGER,NVSE_VERSION_INTEGER_MINOR,NVSE_VERSION_INTEGER_BETA
+ PRODUCTVERSION 0,NVSE_VERSION_INTEGER,NVSE_VERSION_INTEGER_MINOR,NVSE_VERSION_INTEGER_BETA
+ FILEFLAGSMASK 0x17L
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "FileDescription", "A component of the New Vegas Script Extender"
+			VALUE "FileVersion", NVSE_VERSION_VERSTRING
+            VALUE "InternalName", "NVSE"
+            VALUE "LegalCopyright", "Copyright (C) 2006-2011"
+            VALUE "ProductName", "NVSE"
+			VALUE "ProductVersion", NVSE_VERSION_VERSTRING
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

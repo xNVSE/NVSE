@@ -1,0 +1,432 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="internals">
+      <UniqueIdentifier>{d863018e-2a3d-435e-aee4-3b1e2cb5303a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="commands">
+      <UniqueIdentifier>{e9dc1700-d2bd-41f3-8aaf-a4a724e3a594}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="api">
+      <UniqueIdentifier>{f6017c4a-38de-4ff7-baac-096ddb717716}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="api\NetImmerse">
+      <UniqueIdentifier>{01b794f0-aaa5-4b94-9b90-e9071470bcbb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="hooks">
+      <UniqueIdentifier>{350cc942-8e78-41aa-9d79-8384e271f9b9}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Algohol\algMath.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="ArrayVar.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="CommandTable.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="Core_Serialization.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="EventManager.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="FunctionScripts.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="InventoryInfo.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="InventoryReference.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="Loops.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Algohol\paramTypes.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="PluginManager.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="SafeWrite.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="ScriptTokens.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="ScriptUtils.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="Serialization.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="StringVar.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="ThreadLocal.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="Utilities.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="commands_Algohol.cpp">
+      <Filter>commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands_Array.cpp">
+      <Filter>commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands_Console.cpp">
+      <Filter>commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands_Factions.cpp">
+      <Filter>commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands_Game.cpp">
+      <Filter>commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands_Input.cpp">
+      <Filter>commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands_Inventory.cpp">
+      <Filter>commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands_InventoryRef.cpp">
+      <Filter>commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands_List.cpp">
+      <Filter>commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands_Math.cpp">
+      <Filter>commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands_Misc.cpp">
+      <Filter>commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands_MiscRef.cpp">
+      <Filter>commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands_NetImmerse.cpp">
+      <Filter>commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands_Packages.cpp">
+      <Filter>commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands_Script.cpp">
+      <Filter>commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands_Scripting.cpp">
+      <Filter>commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands_String.cpp">
+      <Filter>commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands_UI.cpp">
+      <Filter>commands</Filter>
+    </ClCompile>
+    <ClCompile Include="GameAPI.cpp">
+      <Filter>api</Filter>
+    </ClCompile>
+    <ClCompile Include="GameBSExtraData.cpp">
+      <Filter>api</Filter>
+    </ClCompile>
+    <ClCompile Include="GameData.cpp">
+      <Filter>api</Filter>
+    </ClCompile>
+    <ClCompile Include="GameExtraData.cpp">
+      <Filter>api</Filter>
+    </ClCompile>
+    <ClCompile Include="GameForms.cpp">
+      <Filter>api</Filter>
+    </ClCompile>
+    <ClCompile Include="GameObjects.cpp">
+      <Filter>api</Filter>
+    </ClCompile>
+    <ClCompile Include="GameOSDepend.cpp">
+      <Filter>api</Filter>
+    </ClCompile>
+    <ClCompile Include="GameProcess.cpp">
+      <Filter>api</Filter>
+    </ClCompile>
+    <ClCompile Include="GameRTTI.cpp">
+      <Filter>api</Filter>
+    </ClCompile>
+    <ClCompile Include="GameScript.cpp">
+      <Filter>api</Filter>
+    </ClCompile>
+    <ClCompile Include="GameSettings.cpp">
+      <Filter>api</Filter>
+    </ClCompile>
+    <ClCompile Include="GameTasks.cpp">
+      <Filter>api</Filter>
+    </ClCompile>
+    <ClCompile Include="GameTiles.cpp">
+      <Filter>api</Filter>
+    </ClCompile>
+    <ClCompile Include="GameTypes.cpp">
+      <Filter>api</Filter>
+    </ClCompile>
+    <ClCompile Include="GameUI.cpp">
+      <Filter>api</Filter>
+    </ClCompile>
+    <ClCompile Include="NiNodes.cpp">
+      <Filter>api\NetImmerse</Filter>
+    </ClCompile>
+    <ClCompile Include="Hooks_Animation.cpp">
+      <Filter>hooks</Filter>
+    </ClCompile>
+    <ClCompile Include="Hooks_CreatedObject.cpp">
+      <Filter>hooks</Filter>
+    </ClCompile>
+    <ClCompile Include="Hooks_Dialog.cpp">
+      <Filter>hooks</Filter>
+    </ClCompile>
+    <ClCompile Include="Hooks_DirectInput8Create.cpp">
+      <Filter>hooks</Filter>
+    </ClCompile>
+    <ClCompile Include="Hooks_Editor.cpp">
+      <Filter>hooks</Filter>
+    </ClCompile>
+    <ClCompile Include="Hooks_Gameplay.cpp">
+      <Filter>hooks</Filter>
+    </ClCompile>
+    <ClCompile Include="Hooks_Logging.cpp">
+      <Filter>hooks</Filter>
+    </ClCompile>
+    <ClCompile Include="Hooks_SaveLoad.cpp">
+      <Filter>hooks</Filter>
+    </ClCompile>
+    <ClCompile Include="nvse.cpp" />
+    <ClCompile Include="Hooks_Script.cpp">
+      <Filter>hooks</Filter>
+    </ClCompile>
+    <ClCompile Include="Hooks_Other.cpp">
+      <Filter>hooks</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Algohol\algMath.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Algohol\algTypes.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="ArrayVar.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="CommandTable.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="Core_Serialization.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="EventManager.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="FunctionScripts.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="InventoryInfo.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="InventoryReference.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="Loops.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="ParamInfos.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Algohol\paramTypes.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="PluginAPI.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="PluginManager.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="SafeWrite.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="ScriptTokens.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="ScriptUtils.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="Serialization.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="StringVar.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadLocal.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="Utilities.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="VarMap.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="commands_Algohol.h">
+      <Filter>commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands_Array.h">
+      <Filter>commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands_Console.h">
+      <Filter>commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands_Factions.h">
+      <Filter>commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands_Game.h">
+      <Filter>commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands_Input.h">
+      <Filter>commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands_Inventory.h">
+      <Filter>commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands_InventoryRef.h">
+      <Filter>commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands_List.h">
+      <Filter>commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands_Math.h">
+      <Filter>commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands_Misc.h">
+      <Filter>commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands_MiscRef.h">
+      <Filter>commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands_NetImmerse.h">
+      <Filter>commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands_Packages.h">
+      <Filter>commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands_Script.h">
+      <Filter>commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands_Scripting.h">
+      <Filter>commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands_String.h">
+      <Filter>commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands_UI.h">
+      <Filter>commands</Filter>
+    </ClInclude>
+    <ClInclude Include="GameAPI.h">
+      <Filter>api</Filter>
+    </ClInclude>
+    <ClInclude Include="GameBSExtraData.h">
+      <Filter>api</Filter>
+    </ClInclude>
+    <ClInclude Include="GameData.h">
+      <Filter>api</Filter>
+    </ClInclude>
+    <ClInclude Include="GameEffects.h">
+      <Filter>api</Filter>
+    </ClInclude>
+    <ClInclude Include="GameExtraData.h">
+      <Filter>api</Filter>
+    </ClInclude>
+    <ClInclude Include="GameForms.h">
+      <Filter>api</Filter>
+    </ClInclude>
+    <ClInclude Include="GameObjects.h">
+      <Filter>api</Filter>
+    </ClInclude>
+    <ClInclude Include="GameOSDepend.h">
+      <Filter>api</Filter>
+    </ClInclude>
+    <ClInclude Include="GameProcess.h">
+      <Filter>api</Filter>
+    </ClInclude>
+    <ClInclude Include="GameRTTI.h">
+      <Filter>api</Filter>
+    </ClInclude>
+    <ClInclude Include="GameScript.h">
+      <Filter>api</Filter>
+    </ClInclude>
+    <ClInclude Include="GameSettings.h">
+      <Filter>api</Filter>
+    </ClInclude>
+    <ClInclude Include="GameTasks.h">
+      <Filter>api</Filter>
+    </ClInclude>
+    <ClInclude Include="GameTiles.h">
+      <Filter>api</Filter>
+    </ClInclude>
+    <ClInclude Include="GameTypes.h">
+      <Filter>api</Filter>
+    </ClInclude>
+    <ClInclude Include="GameUI.h">
+      <Filter>api</Filter>
+    </ClInclude>
+    <ClInclude Include="NiNodes.h">
+      <Filter>api\NetImmerse</Filter>
+    </ClInclude>
+    <ClInclude Include="NiTypes.h">
+      <Filter>api\NetImmerse</Filter>
+    </ClInclude>
+    <ClInclude Include="Hooks_Animation.h">
+      <Filter>hooks</Filter>
+    </ClInclude>
+    <ClInclude Include="Hooks_CreatedObject.h">
+      <Filter>hooks</Filter>
+    </ClInclude>
+    <ClInclude Include="Hooks_Dialog.h">
+      <Filter>hooks</Filter>
+    </ClInclude>
+    <ClInclude Include="Hooks_DirectInput8Create.h">
+      <Filter>hooks</Filter>
+    </ClInclude>
+    <ClInclude Include="Hooks_Editor.h">
+      <Filter>hooks</Filter>
+    </ClInclude>
+    <ClInclude Include="Hooks_Gameplay.h">
+      <Filter>hooks</Filter>
+    </ClInclude>
+    <ClInclude Include="Hooks_Logging.h">
+      <Filter>hooks</Filter>
+    </ClInclude>
+    <ClInclude Include="Hooks_SaveLoad.h">
+      <Filter>hooks</Filter>
+    </ClInclude>
+    <ClInclude Include="Hooks_Script.h">
+      <Filter>hooks</Filter>
+    </ClInclude>
+    <ClInclude Include="nvse_version.h" />
+    <ClInclude Include="prefix.h" />
+    <ClInclude Include="Hooks_Other.h">
+      <Filter>hooks</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="GameRTTI_1_4_0_525.inc">
+      <Filter>api</Filter>
+    </None>
+    <None Include="GameRTTI_1_4_0_525ng.inc">
+      <Filter>api</Filter>
+    </None>
+    <None Include="GameRTTI_EDITOR.inc">
+      <Filter>api</Filter>
+    </None>
+    <None Include="exports.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="nvse_version.rc" />
+  </ItemGroup>
+</Project>

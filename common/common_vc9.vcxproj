@@ -1,0 +1,156 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}</ProjectGuid>
+    <RootNamespace>common</RootNamespace>
+    <SccProjectName>
+    </SccProjectName>
+    <SccLocalPath>
+    </SccLocalPath>
+    <SccProvider>
+    </SccProvider>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>12.0.30501.0</_ProjectFileVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>Debug VC9\</OutDir>
+    <IntDir>Debug VC9\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>Release VC9\</OutDir>
+    <IntDir>Release VC9\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <PrecompiledHeader />
+      <PrecompiledHeaderFile />
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <ForcedIncludeFiles>common/IPrefix.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <PrecompiledHeader />
+      <PrecompiledHeaderFile />
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ForcedIncludeFiles>common/IPrefix.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="IArchive.cpp" />
+    <ClCompile Include="IBufferStream.cpp" />
+    <ClCompile Include="IConsole.cpp" />
+    <ClCompile Include="IDatabase.cpp" />
+    <ClCompile Include="IDataStream.cpp" />
+    <ClCompile Include="IDebugLog.cpp" />
+    <ClCompile Include="IDirectoryIterator.cpp" />
+    <ClCompile Include="IDynamicCreate.cpp" />
+    <ClCompile Include="IErrors.cpp" />
+    <ClCompile Include="IEvent.cpp" />
+    <ClCompile Include="IFIFO.cpp" />
+    <ClCompile Include="IFileStream.cpp" />
+    <ClCompile Include="IInterlockedLong.cpp" />
+    <ClCompile Include="IMemPool.cpp" />
+    <ClCompile Include="IMutex.cpp" />
+    <ClCompile Include="IObjectPool.cpp" />
+    <ClCompile Include="IPipeClient.cpp" />
+    <ClCompile Include="IPipeServer.cpp" />
+    <ClCompile Include="IPrefix.cpp" />
+    <ClCompile Include="IRangeMap.cpp" />
+    <ClCompile Include="IReadWriteLock.cpp" />
+    <ClCompile Include="ISegmentStream.cpp" />
+    <ClCompile Include="ISingleton.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="ITextParser.cpp" />
+    <ClCompile Include="IThread.cpp" />
+    <ClCompile Include="ITimer.cpp" />
+    <ClCompile Include="ITypes.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="IArchive.h" />
+    <ClInclude Include="IBufferStream.h" />
+    <ClInclude Include="IConsole.h" />
+    <ClInclude Include="ICriticalSection.h" />
+    <ClInclude Include="IDatabase.h" />
+    <ClInclude Include="IDataStream.h" />
+    <ClInclude Include="IDebugLog.h" />
+    <ClInclude Include="IDirectoryIterator.h" />
+    <ClInclude Include="IDynamicCreate.h" />
+    <ClInclude Include="IErrors.h" />
+    <ClInclude Include="IEvent.h" />
+    <ClInclude Include="IFIFO.h" />
+    <ClInclude Include="IFileStream.h" />
+    <ClInclude Include="IInterlockedLong.h" />
+    <ClInclude Include="ILinkedList.h" />
+    <ClInclude Include="IMemPool.h" />
+    <ClInclude Include="IMutex.h" />
+    <ClInclude Include="IObjectPool.h" />
+    <ClInclude Include="IPipeClient.h" />
+    <ClInclude Include="IPipeServer.h" />
+    <ClInclude Include="IPrefix.h" />
+    <ClInclude Include="IRangeMap.h" />
+    <ClInclude Include="IReadWriteLock.h" />
+    <ClInclude Include="ISegmentStream.h" />
+    <ClInclude Include="ISingleton.h" />
+    <ClInclude Include="ITextParser.h" />
+    <ClInclude Include="IThread.h" />
+    <ClInclude Include="ITimer.h" />
+    <ClInclude Include="ITypes.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="IDatabase.inc" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
