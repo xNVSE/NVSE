@@ -133,6 +133,10 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\nvse\nvse_version.rc" />
+    <ResourceCompile Include="resources.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="nvse_loader.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
