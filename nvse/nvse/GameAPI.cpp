@@ -180,19 +180,19 @@ UInt32 s_CheckInsideOnActorEquipHook = 1;
 
 void Console_Print(const char * fmt, ...)
 {
-	if (!s_CheckInsideOnActorEquipHook || !s_InsideOnActorEquipHook) {
-		ConsoleManager	* mgr = ConsoleManager::GetSingleton();
-		if(mgr)
-		{
-			va_list	args;
+	//if (!s_CheckInsideOnActorEquipHook || !s_InsideOnActorEquipHook) {
+	ConsoleManager	* mgr = ConsoleManager::GetSingleton();
+	if(mgr)
+	{
+		va_list	args;
 
-			va_start(args, fmt);
+		va_start(args, fmt);
 
-			CALL_MEMBER_FN(mgr, Print)(fmt, args);
+		CALL_MEMBER_FN(mgr, Print)(fmt, args);
 
-			va_end(args);
-		}
+		va_end(args);
 	}
+	//}
 }
 
 TESSaveLoadGame * TESSaveLoadGame::Get()
