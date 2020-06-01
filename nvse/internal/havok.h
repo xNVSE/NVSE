@@ -1,6 +1,5 @@
 #pragma once
 #include <emmintrin.h>
-#include "nvse/prefix.h"
 
 struct hkVector4
 {

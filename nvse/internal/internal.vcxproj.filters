@@ -27,6 +27,9 @@
     <ClInclude Include="containers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="dinput.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="utility.cpp">
