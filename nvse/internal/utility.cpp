@@ -1,6 +1,6 @@
 #include <ctime>
 #include "internal/utility.h"
-#include "nvse/GameAPI.h"
+
 
 bool fCompare(float lval, float rval)
 {
@@ -1127,16 +1127,6 @@ __declspec(naked) char* __fastcall CopyString(const char* key)
 	}
 }
 
-char* __fastcall CopyCString(const char* src)
-{
-	UInt32 length = StrLen(src);
-	if (!length) return NULL;
-	length++;
-	char* result = (char*)GameHeapAlloc(length);
-	MemCopy(result, src, length);
-	return result;
-}
-
 __declspec(naked) char* __fastcall IntToStr(char* str, int num)
 {
 	__asm
@@ -1579,8 +1569,8 @@ bool __fastcall FileToBuffer(const char* filePath, char* buffer)
 	if (!srcFile.Open(filePath)) return false;
 	UInt32 length = srcFile.GetLength();
 	if (!length) return false;
-	if (length > kMaxMessageLength)
-		length = kMaxMessageLength;
+	if (length > 0x4000)
+		length = 0x4000;
 	srcFile.ReadBuf(buffer, length);
 	buffer[length] = 0;
 	return true;

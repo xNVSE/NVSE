@@ -1,5 +1,5 @@
 #pragma once
-#include "nvse/prefix.h"
+#include "utility.h"
 
 enum
 {

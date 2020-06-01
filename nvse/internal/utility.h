@@ -1,5 +1,8 @@
 #pragma once
-#include "nvse/prefix.h"
+#include "common/ITypes.h"
+#include <cfloat>
+#include <cstdio>
+#include "Windows.h"
 
 const double
 kDblZero = 0,
@@ -161,8 +164,6 @@ char* __fastcall GetNextToken(char* str, char delim);
 char* __fastcall GetNextToken(char* str, const char* delims);
 
 char* __fastcall CopyString(const char* key);
-
-char* __fastcall CopyCString(const char* src);
 
 char* __fastcall IntToStr(char* str, int num);
 

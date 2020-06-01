@@ -152,6 +152,8 @@ public:
 	void vShow(const char* msg, va_list args);
 };
 
+char* __fastcall CopyCString(const char* src);
+
 // thread-safe template versions of ThisStdCall()
 
 __forceinline UInt32 ThisStdCall(UInt32 _f,void* _t)

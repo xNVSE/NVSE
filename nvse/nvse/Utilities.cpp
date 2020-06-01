@@ -563,3 +563,13 @@ void ErrOutput::vShow(const char* msg, va_list args)
 
 	vShow(tempMsg, args);
 }
+
+char* __fastcall CopyCString(const char* src)
+{
+	UInt32 length = StrLen(src);
+	if (!length) return NULL;
+	length++;
+	char* result = (char*)GameHeapAlloc(length);
+	MemCopy(result, src, length);
+	return result;
+}
