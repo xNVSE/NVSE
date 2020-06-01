@@ -172,6 +172,9 @@
       <ForcedIncludeFiles>nvse/prefix.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
     </ClCompile>
     <Link>
       <OutputFile>$(OutDir)nvse_1_4.dll</OutputFile>
