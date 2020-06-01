@@ -1379,13 +1379,9 @@ public:
 	bhkRagdollController();
 	~bhkRagdollController();
 
-	UInt32				unk004[21];		// 004
-	NiNode* bip01Node;		// 058
-	UInt32				unk05C[140];	// 05C
-	UInt8				byte28C;		// 28C
-	UInt8				byte28D;		// 28D
-	UInt8				byte28E;		// 28E
-	UInt8				byte28F;		// 28F
-	UInt32				unk290[12];		// 290
+	UInt32	unk000[(0x021C - 0x010) >> 2];	// 0010
+	UInt8	fill021C[3];					// 021C
+	bool	bool021F;						// 021F	when null assume FIK status is false
+	bool	fikStatus;						// 0220
+	UInt8	fill0221[3];					// 0221
 };
-STATIC_ASSERT(sizeof(bhkRagdollController) == 0x2C0);

@@ -17,6 +17,8 @@ public:
 	void AppendChar(char toAppend);
 	void InsertChar(char toInsert, UInt32 index);
 	void EraseAt(UInt32 index);
+	bool Replace(const char* toReplace, const char* replaceWith); // replaces instance of toReplace with replaceWith
+	double Compare(const String& compareTo, bool caseSensitive = false);
 	const char* CStr();
 };
 

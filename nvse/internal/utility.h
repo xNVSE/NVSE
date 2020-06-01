@@ -35,8 +35,6 @@ kFlt12288 = 12288.0F,
 kFlt40000 = 40000.0F,
 kFltMax = FLT_MAX;
 
-#define STATIC_ASSERT(a)	typedef static_assert_test <sizeof(StaticAssertFailure<(bool)(a)>)> static_assert_typedef_ ## __COUNTER__
-
 #define GameHeapAlloc(size) ThisStdCall(0xAA3E40, (void*)0x11F6238, size)
 #define GameHeapFree(ptr) ThisStdCall(0xAA4060, (void*)0x11F6238, ptr)
 
@@ -281,14 +279,14 @@ bool __fastcall FileToBuffer(const char* filePath, char* buffer);
 
 void ClearFolder(char* pathEndPtr);
 
-void __stdcall SafeWrite8(UInt32 addr, UInt32 data);
+/*void __stdcall SafeWrite8(UInt32 addr, UInt32 data);
 void __stdcall SafeWrite16(UInt32 addr, UInt32 data);
 void __stdcall SafeWrite32(UInt32 addr, UInt32 data);
 void __stdcall SafeWriteBuf(UInt32 addr, void* data, UInt32 len);
 
 // 5 bytes
 void __stdcall WriteRelJump(UInt32 jumpSrc, UInt32 jumpTgt);
-void __stdcall WriteRelCall(UInt32 jumpSrc, UInt32 jumpTgt);
+void __stdcall WriteRelCall(UInt32 jumpSrc, UInt32 jumpTgt);*/
 
 // 10 bytes
 void __stdcall WritePushRetRelJump(UInt32 baseAddr, UInt32 retAddr, UInt32 jumpTgt);

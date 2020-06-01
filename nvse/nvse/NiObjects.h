@@ -60,61 +60,6 @@ class NiRenderer;
 class NiGeometryData;
 
 // 0AC
-class NiAVObject : public NiObjectNET
-{
-public:
-	NiAVObject();
-	~NiAVObject();
-
-	virtual void			UpdatePropertiesAndControllers(float arg);	// calls Update on properties and controllers
-	virtual void			Unk_24(void);
-	virtual void			Unk_25(void);
-	virtual NiObjectNET *	GetObject(const char * name);
-	virtual bool			IsNameType(const char * name);	//verified
-	virtual void			Unk_28(float arg, bool updateProperties);	// if(updateProperties) UpdatePropertiesAndControllers(arg); Unk_1D(); Unk_1E();
-	virtual void			Unk_29(float arg);			// update controllers, if kFlag_SelUpdatePropControllers update properties, if(kFlag_SelUpdateTransforms) { Unk_1D(); Unk_1E(); }
-	virtual void			Unk_2A(float arg);			// update controllers, if kFlag_SelUpdatePropControllers update properties, if(kFlag_SelUpdateTransforms) { Unk_1D(); Unk_1E(); }
-	virtual void			Unk_2B(void * arg);			// empty
-	virtual void			Unk_2C(void * arg);			// empty
-	virtual void			UpdateTransform(void);		// update world transform based on local transform and parent (also update collision)
-	virtual void			Unk_2E(void);				// empty
-	virtual void			Cull(NiCullingProcess * tgt);	// accumulate for drawing? NiNode iterates children
-	virtual void			Unk_30(void * arg);			// get NiMaterialProperty, pass to arg if found
-	virtual void			Unk_31(void * arg);
-	virtual void			Unk_32(void * arg);
-	virtual void			Unk_33(void * arg);
-	virtual void			Unk_34(void * arg);
-	virtual void			Unk_35(void * arg);
-	virtual void			Unk_36(void * arg);	// last is 036 verified
-
-	enum
-	{
-		kFlag_AppCulled =					1 << 0,	// originally named m_bAppCulled but they appear to have used bitfields
-		kFlag_SelUpdate =					1 << 1,
-		kFlag_SelUpdateTransforms =			1 << 2,
-		kFlag_SelUpdatePropControllers =	1 << 3,
-		kFlag_SelUpdateRigid =				1 << 4,
-	};
-
-	struct RotAndTranslate 
-	{
-		NiMatrix33	rotate;		// Init'd to 1 0 0, 0 1 0, 0 0 1
-		NiVector3	translate;	// Init'd to 0x011F426C[3]
-	};	// 30
-
-	NiNode						* m_parent;				// 018 the implementation requires Func003A, so minimu NiNode.
-	UInt32						unk001C;				// 01C
-	UInt32						unk0020;				// 020 three members used as array, plus the following float
-	UInt32						unk0024;				// 024 -
-	UInt32						unk0028;				// 028 -
-	float						flt002C;				// 02C -
-	UInt32						unk0030;				// 030 Init'd to 10000000000000001110b
-	RotAndTranslate				dat0034;				// 034 local ?
-	RotAndTranslate				dat0064;				// 064 world ?
-
-	void Dump(UInt32 level, const char * indent);
-};
-STATIC_ASSERT(sizeof(NiAVObject) == 0x94);
 
 #if 0
 
@@ -249,30 +194,6 @@ public:
 };
 
 #endif
-
-// AC
-class NiNode : public NiAVObject
-{
-public:
-	NiNode();
-	~NiNode();
-
-	virtual void		AddObject(NiObject * obj, UInt32 arg1);							// 37 verified
-	virtual NiObject *	RemoveObject(NiObject ** out, NiObject* toRemove);				// 38 looks ok
-	virtual void		Unk_38(void);													// 39 either lookup or remove a child.
-	virtual void		Unk_39(void);													// 3A calls 39 then release returned child
-	virtual void		Unk_3A(void);													// 3B
-	virtual bool		Unk_3B(void);
-	virtual bool		Unk_3C(void);
-	virtual bool		Unk_3D(void);
-	virtual bool		Unk_3E(void);
-	virtual bool		Unk_3F(void);
-
-	UInt32						unk0094;	// 094
-	UInt32						unk0098;	// 098
-	NiTArray <NiAVObject *>		m_children;	// 09C
-
-};	// 0AC
 
 #if 0
 

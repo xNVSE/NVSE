@@ -121,8 +121,6 @@ const char * GetSeparatorChars(Script * script);
 
 #endif
 
-const char * GetDXDescription(UInt32 keycode);
-
 bool ci_equal(char ch1, char ch2);
 bool ci_less(const char* lh, const char* rh);
 void MakeUpper(std::string& str);

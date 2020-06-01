@@ -1,6 +1,5 @@
-#include "internal/utility.h"
 #include <ctime>
-
+#include "internal/utility.h"
 #include "nvse/GameAPI.h"
 
 bool fCompare(float lval, float rval)
@@ -1607,7 +1606,7 @@ void ClearFolder(char* pathEndPtr)
 	*(pathEndPtr - 1) = 0;
 	RemoveDirectory(s_strArgBuffer);
 }
-
+/*
 __declspec(naked) void __stdcall SafeWrite8(UInt32 addr, UInt32 data)
 {
 	__asm
@@ -1757,7 +1756,7 @@ __declspec(naked) void __stdcall WriteRelCall(UInt32 jumpSrc, UInt32 jumpTgt)
 		pop		ecx
 		retn	8
 	}
-}
+}*/
 
 __declspec(naked) void __stdcall WritePushRetRelJump(UInt32 baseAddr, UInt32 retAddr, UInt32 jumpTgt)
 {

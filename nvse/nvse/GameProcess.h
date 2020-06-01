@@ -17,7 +17,7 @@ public:
 
 	struct ActorList {
 		tList<Actor>			head;
-		tList<Actor>::_Node		* tail;
+		tList<Actor>::Node		* tail;
 	};
 
 	ActorList				middleHighActors;		// 00
@@ -36,7 +36,7 @@ public:
 	UInt32					unk4C[4];				// 4C
 	tList<Actor>			highActors;				// 5C
 	Actor					* actor64;				// 64
-	tList<Actor>::_Node		* unkNodes[3];			// 68 ##TODO: which lists do these belong to
+	tList<Actor>::Node		* unkNodes[3];			// 68 ##TODO: which lists do these belong to
 	UInt32					unk74;					// 74 Possibly not a member. Definitely no more members following this.
 };
 

@@ -516,7 +516,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="NiNodes.cpp" />
     <ClCompile Include="nvse.cpp" />
     <ClCompile Include="PluginManager.cpp" />
     <ClCompile Include="SafeWrite.cpp" />

@@ -171,9 +171,6 @@
     <ClCompile Include="GameUI.cpp">
       <Filter>api</Filter>
     </ClCompile>
-    <ClCompile Include="NiNodes.cpp">
-      <Filter>api\NetImmerse</Filter>
-    </ClCompile>
     <ClCompile Include="Hooks_Animation.cpp">
       <Filter>hooks</Filter>
     </ClCompile>
