@@ -5,6 +5,7 @@
 #include "GameScript.h"
 
 extern UInt8* g_lastScriptData;
+const UInt32 kMaxMessageLength = 0x4000;
 
 struct ParamInfo;
 class TESForm;
@@ -87,8 +88,6 @@ enum eEmotion {
 
 typedef bool (* _QueueUIMessage)(const char* msg, UInt32 emotion, const char* ddsPath, const char* soundName, float msgTime, bool maybeNextToDisplay);
 extern const _QueueUIMessage QueueUIMessage;
-
-const UInt32 kMaxMessageLength = 0x4000;
 
 #if NVSE_CORE
 bool ExtractArgsEx(ParamInfo * paramInfo, void * scriptData, UInt32 * scriptDataOffset, Script * scriptObj, ScriptEventList * eventList, ...);
