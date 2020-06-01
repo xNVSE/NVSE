@@ -14,26 +14,4 @@
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
   </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="utility.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="havok.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="netimmerse.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="containers.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="dinput.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="utility.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
 </Project>

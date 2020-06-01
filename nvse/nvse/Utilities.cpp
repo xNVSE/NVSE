@@ -520,22 +520,6 @@ void MakeLower(std::string& str)
 	std::transform(str.begin(), str.end(), str.begin(), tolower);
 }
 
-#if RUNTIME
-
-char* CopyCString(const char* src)
-{
-	UInt32 size = src ? strlen(src) : 0;
-	char* result = (char*)FormHeap_Allocate(size+1);
-	result[size] = 0;
-	if (size) {
-		strcpy_s(result, size+1, src);
-	}
-
-	return result;
-}
-
-#endif
-
 #pragma warning(push)
 #pragma warning(disable: 4996)	// warning about std::transform()
 

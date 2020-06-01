@@ -129,10 +129,6 @@ void MakeUpper(std::string& str);
 void MakeUpper(char* str);
 void MakeLower(std::string& str);
 
-// this copies the string onto the FormHeap - used to work around alloc/dealloc mismatch when passing
-// data between nvse and plugins
-char* CopyCString(const char* src);
-
 // Generic error/warning output
 // provides a common way to output errors and warnings
 class ErrOutput
