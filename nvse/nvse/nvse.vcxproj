@@ -131,7 +131,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;NVSE_EXPORTS;RUNTIME;RUNTIME_VERSION=0x040020D0;NVSE_CORE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
@@ -139,14 +139,14 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <PrecompiledHeader />
       <WarningLevel>Level3</WarningLevel>
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ForcedIncludeFiles>nvse/prefix.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <OmitFramePointers>true</OmitFramePointers>
-      <WholeProgramOptimization>true</WholeProgramOptimization>
-      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
+      <OmitFramePointers>false</OmitFramePointers>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
     </ClCompile>
     <Link>
       <OutputFile>$(OutDir)nvse_1_4.dll</OutputFile>
@@ -565,7 +565,9 @@
     <ClInclude Include="Commands_String.h" />
     <ClInclude Include="Commands_UI.h" />
     <ClInclude Include="CommandTable.h" />
+    <ClInclude Include="Containers.h" />
     <ClInclude Include="Core_Serialization.h" />
+    <ClInclude Include="DInput.h" />
     <ClInclude Include="EventManager.h" />
     <ClInclude Include="FunctionScripts.h" />
     <ClInclude Include="GameAPI.h" />
@@ -584,6 +586,7 @@
     <ClInclude Include="GameTiles.h" />
     <ClInclude Include="GameTypes.h" />
     <ClInclude Include="GameUI.h" />
+    <ClInclude Include="Havok.h" />
     <ClInclude Include="Hooks_Animation.h" />
     <ClInclude Include="Hooks_CreatedObject.h" />
     <ClInclude Include="Hooks_Dialog.h" />
@@ -597,6 +600,7 @@
     <ClInclude Include="InventoryInfo.h" />
     <ClInclude Include="InventoryReference.h" />
     <ClInclude Include="Loops.h" />
+    <ClInclude Include="NetImmerse.h" />
     <ClInclude Include="NiNodes.h" />
     <ClInclude Include="NiTypes.h" />
     <ClInclude Include="nvse_version.h" />

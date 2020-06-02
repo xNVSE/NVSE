@@ -1,8 +1,8 @@
 #pragma once
 
+#include "NetImmerse.h"
 #include "NiTypes.h"
 #include "GameTypes.h"
-#include "Utilities.h"
 
 /*** class hierarchy
  *

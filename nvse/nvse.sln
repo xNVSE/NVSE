@@ -13,8 +13,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "steam_loader", "steam_loade
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "loader_common", "loader_common\loader_common.vcxproj", "{40B84662-4790-4AEE-9AB8-D72DA8771EDC}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "internal", "internal\internal.vcxproj", "{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug CS|Win32 = Debug CS|Win32
@@ -133,30 +131,6 @@ Global
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Release|Win32.ActiveCfg = Release|Win32
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Release|Win32.Build.0 = Release|Win32
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Release|x64.ActiveCfg = Release|Win32
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Debug CS|Win32.ActiveCfg = Debug|Win32
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Debug CS|Win32.Build.0 = Debug|Win32
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Debug CS|x64.ActiveCfg = Debug|x64
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Debug CS|x64.Build.0 = Debug|x64
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Debug ng|Win32.ActiveCfg = Debug|Win32
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Debug ng|Win32.Build.0 = Debug|Win32
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Debug ng|x64.ActiveCfg = Debug|x64
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Debug ng|x64.Build.0 = Debug|x64
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Debug|Win32.ActiveCfg = Debug|Win32
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Debug|Win32.Build.0 = Debug|Win32
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Debug|x64.ActiveCfg = Debug|x64
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Debug|x64.Build.0 = Debug|x64
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Release CS|Win32.ActiveCfg = Release|Win32
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Release CS|Win32.Build.0 = Release|Win32
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Release CS|x64.ActiveCfg = Release|x64
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Release CS|x64.Build.0 = Release|x64
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Release ng|Win32.ActiveCfg = Release|Win32
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Release ng|Win32.Build.0 = Release|Win32
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Release ng|x64.ActiveCfg = Release|x64
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Release ng|x64.Build.0 = Release|x64
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Release|Win32.ActiveCfg = Release|Win32
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Release|Win32.Build.0 = Release|Win32
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Release|x64.ActiveCfg = Release|x64
-		{C3E66AB3-63D9-4A68-A878-8E2FE83DAFE3}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

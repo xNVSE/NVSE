@@ -482,7 +482,7 @@ static TESObjectREFR* CellScan(Script* scriptObj, TESObjectCELL* cellToScan = NU
 			bContinue = false;			//found a ref
 	}
 
-	if ((*info->prev))
+	if ((*info->prev)) // Borked
 		return info->prev.Get();
 	else
 	{

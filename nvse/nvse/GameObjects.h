@@ -3,6 +3,7 @@
 #include "GameForms.h"
 #include "GameBSExtraData.h"
 #include "GameExtraData.h"
+#include "Havok.h"
 
 class TESObjectCELL;
 struct ScriptEventList;

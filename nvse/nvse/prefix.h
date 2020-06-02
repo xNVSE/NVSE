@@ -348,17 +348,12 @@ class bhkRigidBodyT;
 class bhkRagdollController;
 class bhkRagdollPenetrationUtil;
 
-#include "internal/utility.h"
-#include "internal/containers.h"
-
 #include "nvse/NiTypes.h"
 #include "nvse/GameTypes.h"
 #include "nvse/Utilities.h"
 #include "nvse/GameRTTI.h"
 #include "nvse/CommandTable.h"
 #include "nvse/GameBSExtraData.h"
-#include "internal/netimmerse.h"
-#include "internal/havok.h"
 #include "nvse/PluginAPI.h"
 #include "nvse/GameData.h"
 #include "nvse/GameForms.h"

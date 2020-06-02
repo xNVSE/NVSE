@@ -410,6 +410,18 @@
     <ClInclude Include="Hooks_Other.h">
       <Filter>hooks</Filter>
     </ClInclude>
+    <ClInclude Include="Havok.h">
+      <Filter>api</Filter>
+    </ClInclude>
+    <ClInclude Include="NetImmerse.h">
+      <Filter>api\NetImmerse</Filter>
+    </ClInclude>
+    <ClInclude Include="Containers.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="DInput.h">
+      <Filter>api</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">
