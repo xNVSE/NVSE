@@ -164,15 +164,6 @@ public:
 	{
 		Node* m_curr;
 
-		Item* Value() const
-		{
-			if (m_curr != nullptr)
-			{
-				return m_curr->data;
-			}
-			return nullptr;
-		}
-		
 	public:
 		Iterator operator++()
 		{
@@ -180,15 +171,8 @@ public:
 			return *this;
 		}
 		bool End() const { return !m_curr || (!m_curr->data && !m_curr->next); }
-		Item* operator->() const
-		{
-			return Value();
-		}
-		Item*& operator*() const
-		{
-			auto* value = Value();
-			return value;
-		}
+		Item* operator->() const { return m_curr->data; }
+		Item*& operator*() const { return m_curr->data; }
 		const Iterator& operator=(const Iterator& rhs)
 		{
 			m_curr = rhs.m_curr;
