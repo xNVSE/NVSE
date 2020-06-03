@@ -1454,13 +1454,13 @@ UInt32 EventIDForMask(UInt32 eventMask)
 			return kEventID_SayToDone;
 		case ScriptEventList::kEvent_0x00400000:
 			return kEventID_0x00400000;
+		case ScriptEventList::kEvent_OnRelease:
+			return kEventID_OnOpen;
+		case ScriptEventList::kEvent_OnDestructionStageChange:
+			return kEventID_OnClose;
 		case ScriptEventList::kEvent_OnOpen:
 			return kEventID_OnOpen;
 		case ScriptEventList::kEvent_OnClose:
-			return kEventID_OnClose;
-		case ScriptEventList::kEvent_OnOpen2:
-			return kEventID_OnOpen;
-		case ScriptEventList::kEvent_OnClose2:
 			return kEventID_OnClose;
 		case ScriptEventList::kEvent_0x00080000:
 			return kEventID_0x00080000;

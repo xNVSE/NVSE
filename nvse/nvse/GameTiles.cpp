@@ -60,8 +60,7 @@ Tile * Tile::GetChild(const char * childName)
 	for(tList<ChildNode>::Iterator iter = childList.Begin(); !iter.End(); ++iter)
 	{
 		// Allow child name "*" to match any child
-		if(*iter && iter->child && (
-			(tileName == "*") || (!_stricmp(iter->child->name.m_data, tileName.c_str()))))
+		if(*iter && iter->child && (tileName == "*" || !_stricmp(iter->child->name.m_data, tileName.c_str())))
 		{
 			if (foundCount == childIndex) {
 				child = iter->child;

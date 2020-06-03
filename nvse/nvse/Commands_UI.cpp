@@ -302,7 +302,7 @@ bool Cmd_SortUIListBox_Execute(COMMAND_ARGS)
 	std::vector<SortItem> sortItems;
 	for(tList<Tile::ChildNode>::Iterator iter = parentTile->childList.Begin(); !iter.End(); ++iter)
 	{
-		if(!(*iter) || !(iter->child))
+		if(!*iter || !iter->child)
 		{
 			continue;
 		}

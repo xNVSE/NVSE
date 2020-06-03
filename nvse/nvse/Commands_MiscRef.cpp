@@ -473,7 +473,7 @@ static TESObjectREFR* CellScan(Script* scriptObj, TESObjectCELL* cellToScan = NU
 	while (bContinue)
 	{
 		info->prev = GetCellRefEntry(info->curCell->objectList, info->formType, info->prev, info->includeTakenRefs /*, projFinder*/, refr);
-		if (info->prev.End() || !(*info->prev))				//no ref found
+		if (info->prev.End() || !*info->prev)				//no ref found
 		{
 			if (!info->NextCell())			//check next cell if possible
 				bContinue = false;
@@ -482,14 +482,13 @@ static TESObjectREFR* CellScan(Script* scriptObj, TESObjectCELL* cellToScan = NU
 			bContinue = false;			//found a ref
 	}
 
-	if ((*info->prev)) // Borked
-		return info->prev.Get();
-	else
+	if (!info->prev.End() && *info->prev)
 	{
-		scanScripts.erase(idx);
-		return NULL;
+		return info->prev.Get();
 	}
-
+	
+	scanScripts.erase(idx);
+	return nullptr;
 }
 
 static bool GetFirstRef_Execute(COMMAND_ARGS, bool bUsePlayerCell = true, bool bUseRefr = false)

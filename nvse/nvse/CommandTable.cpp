@@ -740,7 +740,7 @@ const char* StringForParamType(UInt32 paramType)
 		case kParamType_MiscellaneousStat:	return "MiscStat";
 		case kParamType_ImageSpaceModifier:	return "ImageSpaceModifier";
 		case kParamType_ImageSpace:			return "ImageSpace";
-		case kParamType_Unhandled2C:		return "unk2C";
+		case kParamType_Double:				return "Double";
 		case kParamType_Unhandled2D:		return "unk2D";
 		case kParamType_Unhandled2E:		return "unk2E";
 		case kParamType_EncounterZone:		return "EncounterZone";
