@@ -57,7 +57,7 @@ enum ParamType
 	kParamType_MiscellaneousStat =		0x29,	// ModPCMiscStat			UInt32 *, immediate UInt16
 	kParamType_ImageSpaceModifier =		0x2A,	//							kFormType_ImageSpaceModifier
 	kParamType_ImageSpace =				0x2B,	//							kFormType_ImageSpace
-	kParamType_Unhandled2C =			0x2C,	// 
+	kParamType_Double =					0x2C,	// 
 	kParamType_Unhandled2D =			0x2D,	// 
 	kParamType_Unhandled2E =			0x2E,	// 
 	kParamType_EncounterZone =			0x2F,	//							kFormType_EncounterZone
@@ -301,7 +301,8 @@ private:
 extern CommandTable	g_consoleCommands;
 extern CommandTable	g_scriptCommands;
 
-namespace PluginAPI {
+namespace PluginAPI
+{
 	const CommandInfo* GetCmdTblStart();
 	const CommandInfo* GetCmdTblEnd();
 	const CommandInfo* GetCmdByOpcode(UInt32 opcode);
