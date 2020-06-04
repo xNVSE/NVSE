@@ -167,11 +167,11 @@ ConsoleManager * ConsoleManager::GetSingleton(void)
 
 char* ConsoleManager::GetConsoleOutputFilename(void)
 {
-	return GetSingleton()->COFileName;
+	return GetSingleton()->scofPath;
 };
 
 bool ConsoleManager::HasConsoleOutputFilename(void) {
-	return 0 != GetSingleton()->COFileName[0];
+	return 0 != GetSingleton()->scofPath[0];
 };
 
 bool s_InsideOnActorEquipHook = false;

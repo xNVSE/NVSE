@@ -353,21 +353,35 @@ public:
 		TextNode* last;
 		UInt32		count;
 	};
-	void* scriptContext;		// 000
-	TextList	printedLines;		// 004
-	TextList	inputHistory;		// 010
-	UInt32		unk01C;				// 01C
-	UInt32		unk020;				// 020
-	UInt32		unk024;				// 024
-	UInt32		unk028[506];
-	char		COFileName[260];
-	//UInt32		unk028[571];		// 028
+	struct RecordedCommand
+	{
+		char buf[100];
+	};
+	void* scriptContext;
+	TextList printedLines;
+	TextList inputHistory;
+	unsigned int historyIndex;
+	unsigned int unk020;
+	unsigned int printedCount;
+	unsigned int unk028;
+	unsigned int lineHeight;
+	int textXPos;
+	int textYPos;
+	UInt8 isConsoleOpen;
+	UInt8 unk39;
+	UInt8 isBatchRecording;
+	UInt8 unk3B;
+	unsigned int numRecordedCommands;
+	RecordedCommand recordedCommands[20];
+	char scofPath[260];
+
 	static ConsoleManager* GetSingleton();
 
-	static char* GetConsoleOutputFilename(void);
-	static bool HasConsoleOutputFilename(void);
+	static char* GetConsoleOutputFilename();
+	static bool HasConsoleOutputFilename();
+	void AppendToSentHistory(const char* src);
 };
-//STATIC_ASSERT(sizeof(ConsoleManager) == 0x914);
+STATIC_ASSERT(sizeof(ConsoleManager) == 0x914);
 
 // A plugin author requested the ability to use OBSE format specifiers to format strings with the args
 // coming from a source other than script.
@@ -543,6 +557,7 @@ union preloadData
 
 class BGSLoadGameBuffer
 {
+public:
 	BGSLoadGameBuffer();
 	~BGSLoadGameBuffer();
 
@@ -714,25 +729,25 @@ public:
 	};
 
 	BGSSaveLoadChangesMap* changesMap;			// 000
-	BGSSaveLoadChangesMap* previousChangeMap;		// 004
+	BGSSaveLoadChangesMap* previousChangeMap;	// 004
 	RefIDIndexMapping* refIDmapping;			// 008
 	RefIDIndexMapping* visitedWorldspaces;	// 00C
 	Struct010* sct010;				// 010
-	NiTMapBase<TESForm*, BGSLoadGameSubBuffer>* maps014;				// 014
-	NiTMapBase<UInt32, UInt32>* map018;				// 018
+	NiTMapBase<TESForm*, BGSLoadGameSubBuffer>* maps014[3];			// 014	0 = changed Animations, 2 = changed Havok Move
+	NiTMapBase<UInt32, UInt32>* map018;				// 018	
 	BSSimpleArray<char*>* strings;				// 01C
 	BGSReconstructFormsInAllFilesMap* rfiafMap;				// 020
-	BSSimpleArray<BGSLoadFormBuffer*>			changedForms;			// 024
-	NiTPointerMap<Actor*>						map03C;					// 034 Either dead or not dead actors
-	UInt8										saveMods[255];			// 044
-	UInt8										loadedMods[255];		// 143
-	UInt16										pad242;					// 242
-	UInt32										flg244;					// 244 bit 6 block updating player position/rotation from save, bit 2 set during save
-	UInt8										formVersion;			// 248
-	UInt8										pad249[3];				// 249
-};
-STATIC_ASSERT(sizeof(BGSSaveLoadGame) == 0x24C);
+	BSSimpleArray<BGSLoadFormBuffer*>		changedForms;			// 024
+	NiTPointerMap<Actor*>					map0034;				// 034 Either dead or not dead actors
+	UInt8									saveMods[255];			// 044
+	UInt8									loadedMods[255];		// 143
+	UInt16									pad242;					// 242
+	UInt32									flg244;					// 244 bit 6 block updating player position/rotation from save, bit 2 set during save
+	UInt8									formVersion;			// 248
+	UInt8									pad249[3];				// 249
 
+	static BGSSaveLoadGame* GetSingleton() { return *(BGSSaveLoadGame**)0x11DDF38; };
+};
 
 #if RUNTIME
 class SaveGameManager
@@ -759,23 +774,33 @@ public:
 	};
 
 	tList<SaveGameData>		* saveList;		// 00
-	UInt32					numSaves;		// 04
-	UInt32					unk08;			// 08
-	UInt8					unk0C;			// 0C	flag for either opened or writable or useSeparator (|)
-	UInt8					unk0D;
-	UInt8					unk0E;
-	UInt8					unk0F;
-/*
-	const char				* unk10;		// 10 name of most recently loaded/saved game?
-	UInt32					unk14;			// 14 init to -1
-	UInt8					unk18;			// 18
-	UInt8					pad19[3];
-	UInt8					unk20;			// 20 init to 1
-	UInt8					unk21;
-	UInt8					pad22[2];
-	UInt32					unk24;			// 24
-	UInt32					unk28;			// 28
-*/
+	UInt32 numSaves;						// 04
+	UInt32 unk08;							// 08
+	UInt8 unk0C;							// 0C
+	UInt8 unk0D;							// 0D
+	UInt8 unk0E;							// 0E
+	UInt8 autoSaveTimer;					// 0F
+	UInt8 forceSaveTimer;					// 10
+	UInt8 systemSaveTimer;					// 11
+	UInt8 unk12;							// 12
+	UInt8 unk13;							// 13
+	UInt32 list14;							// 14
+	UInt8 unk18;							// 18
+	UInt8 pad19[3];							// 19
+	UInt8 unk1C;							// 1C
+	UInt8 unk1D;							// 1D
+	UInt8 pad1E[2];							// 1E
+	UInt32 unk20;							// 20
+	UInt8 unk24;							// 24
+	UInt8 unk25;							// 25
+	UInt8 unk26;							// 26
+	UInt8 unk27;							// 27
+	void* func28;							// 28
+	void* func2C;							// 2C
+	void* str30;							// 30
+	void* unk34;							// 34
+	void ReloadCurrentSave() { ThisStdCall(0x8512F0, this); };
+	bool Save(char* name) { return ThisStdCall(0x8503B0, this, name, -1, 0); }
 };
 
 std::string GetSavegamePath();
