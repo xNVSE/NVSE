@@ -48,7 +48,7 @@ class ArrayIterLoop : public ForEachLoop
 	ArrayID					m_srcID;
 	ArrayID					m_iterID;
 	ArrayKey				m_curKey;
-	ScriptEventList::Var	* m_iterVar;
+	ScriptVar	* m_iterVar;
 
 	void UpdateIterator(const ArrayElement* elem);
 public:
@@ -80,7 +80,7 @@ class ContainerIterLoop : public ForEachLoop
 	typedef InventoryReference::Data	IRefData;
 
 	InventoryReference			* m_invRef;
-	ScriptEventList::Var		* m_refVar;
+	ScriptVar		* m_refVar;
 	UInt32						m_iterIndex;
 	std::vector<IRefData>		m_elements;
 

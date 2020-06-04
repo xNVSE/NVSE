@@ -91,7 +91,7 @@ static UInt32 __stdcall DoExtractString(char* scriptData, UInt32 dataLen, char* 
 		varInfo = eventList->m_script->GetVariableByName(dest + 1);
 		if (varInfo)
 		{
-			ScriptEventList::Var* var;
+			ScriptVar* var;
 			var = eventList->GetVariable(varInfo->idx);
 			if (var)
 			{

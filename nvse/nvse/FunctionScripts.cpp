@@ -121,7 +121,7 @@ public:
 				return false;
 			}
 
-			ScriptEventList::Var* var = eventList->GetVariable(param->varIdx);
+			ScriptVar* var = eventList->GetVariable(param->varIdx);
 			if (!var)
 			{
 				ShowRuntimeError(info->GetScript(), "Param variable not found. Function definition may be out of sync with function call. Recomplie the scripts and try again.");
@@ -398,7 +398,7 @@ bool FunctionInfo::CleanEventList(ScriptEventList* eventList)
 {
 	for (UInt32 i = 0; i < m_numDestructibles; i++)
 	{
-		ScriptEventList::Var* var = eventList->GetVariable(m_destructibles[i]);
+		ScriptVar* var = eventList->GetVariable(m_destructibles[i]);
 		if (!var)
 			return false;
 
@@ -536,7 +536,7 @@ bool InternalFunctionCaller::PopulateArgs(ScriptEventList* eventList, FunctionIn
 			return false;
 		}
 
-		ScriptEventList::Var* var = eventList->GetVariable(param->varIdx);
+		ScriptVar* var = eventList->GetVariable(param->varIdx);
 		if (!var) {
 			ShowRuntimeError(m_script, "Could not look up argument variable for function script");
 			return false;

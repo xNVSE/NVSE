@@ -660,7 +660,7 @@ ScriptToken* Eval_Subscript_Array_Slice(OperatorType op, ScriptToken* lh, Script
 
 ScriptToken* Eval_Subscript_StringVar_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	ScriptEventList::Var* var = lh->GetVar();
+	ScriptVar* var = lh->GetVar();
 	SInt32 idx = rh->GetNumber();
 	if (var) {
 		StringVar* strVar = g_StringMap.Get(var->data);
@@ -679,7 +679,7 @@ ScriptToken* Eval_Subscript_StringVar_Number(OperatorType op, ScriptToken* lh, S
 
 ScriptToken* Eval_Subscript_StringVar_Slice(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	ScriptEventList::Var* var = lh->GetVar();
+	ScriptVar* var = lh->GetVar();
 	const Slice* slice = rh->GetSlice();
 	double upper = slice->m_upper;
 	double lower = slice->m_lower;
@@ -1345,7 +1345,7 @@ ScriptToken Ref_To_Bool(ScriptToken* token, ExpressionEvaluator* context)
 
 ScriptToken Ref_To_RefVar(ScriptToken* token, ExpressionEvaluator* context)
 {
-	ScriptEventList::Var* var = context->eventList->GetVariable(token->value.refVar->varIdx);
+	ScriptVar* var = context->eventList->GetVariable(token->value.refVar->varIdx);
 	if (var)
 		return ScriptToken(var);
 	else

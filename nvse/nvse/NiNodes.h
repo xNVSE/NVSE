@@ -660,52 +660,49 @@ class NiBinaryStream
 public:
 	NiBinaryStream();
 	~NiBinaryStream();
-
 	virtual void	Destructor(bool freeMemory);		// 00
 	virtual void	Unk_01(void);						// 04
 	virtual void	SeekCur(SInt32 delta);				// 08
 	virtual void	GetBufferSize(void);				// 0C
 	virtual void	InitReadWriteProcs(bool useAlt);	// 10
-
 //	void	** m_vtbl;		// 000
 	UInt32	m_offset;		// 004
-	void	* m_readProc;	// 008 - function pointer
-	void	* m_writeProc;	// 00C - function pointer
+	void* m_readProc;	// 008 - function pointer
+	void* m_writeProc;	// 00C - function pointer
 };
 
-class NiFile: public NiBinaryStream
+class NiFile : public NiBinaryStream
 {
 public:
 	NiFile();
 	~NiFile();
-
-	virtual void	Seek(void);			// 14
+	virtual UInt32	SetOffset(UInt32 newOffset, UInt32 arg2);	// 14
 	virtual UInt32	GetFilename(void);	// 18
-	virtual void	Unk_07(void);		// 1C
-
+	virtual UInt32	GetSize();			// 1C
 	UInt32	m_bufSize;	// 010
 	UInt32	m_unk014;	// 014 - Total read in buffer
 	UInt32	m_unk018;	// 018 - Consumed from buffer
 	UInt32	m_unk01C;	// 01C
-	void*	m_buffer;	// 020
-	FILE*	m_File;		// 024
+	void* m_buffer;	// 020
+	FILE* m_File;		// 024
 };
-
 // 158
-class BSFile: NiFile
+class BSFile : public NiFile
 {
 public:
 	BSFile();
 	~BSFile();
-
-	virtual void	Reset(void);	// 20
-	virtual void	Unk_09(void);	// 24
-	virtual void	Unk_0A(void);	// 28
-	virtual void	Unk_0B(void);	// 2C
-	virtual void	Unk_0C(void);	// 30
-	virtual void	Read(void);		// 34
-	virtual void	Write(void);	// 38
-
+	virtual bool	Reset(bool arg1, bool arg2);	// 20
+	virtual bool	Unk_09(UInt32 arg1);	// 24
+	virtual UInt32	Unk_0A();	// 28
+	virtual UInt32	Unk_0B(String* string, UInt32 arg2);	// 2C
+	virtual UInt32	Unk_0C(void* ptr, UInt32 arg2);	// 30
+	virtual UInt32	ReadBufDelim(void* bufferPtr, UInt32 bufferSize, short delim);		// 34
+	virtual UInt32	Unk_0E(void* ptr, UInt8 arg2);	// 38
+	virtual UInt32	Unk_0F(void* ptr, UInt8 arg2);	// 3C
+	virtual bool	IsReadable();	// 40
+	virtual UInt32	ReadBuf(void* bufferPtr, UInt32 numBytes);	// 44
+	virtual UInt32	WriteBuf(void* bufferPtr, UInt32 numBytes);	// 48
 	UInt32		m_modeReadWriteAppend;	// 028
 	UInt8		m_good;					// 02C
 	UInt8		pad02D[3];				// 02D

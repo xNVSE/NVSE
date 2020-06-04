@@ -5,7 +5,6 @@
 #include "GameTypes.h"
 #include "CommandTable.h"
 #include "GameScript.h"
-#include "Hooks_Other.h"
 #include "StringVar.h"
 
 #if NVSE_CORE
@@ -166,7 +165,7 @@ ConsoleManager * ConsoleManager::GetSingleton(void)
 	return (ConsoleManager *)ConsoleManager_GetSingleton(true);
 }
 
-char * ConsoleManager::GetConsoleOutputFilename(void)
+char* ConsoleManager::GetConsoleOutputFilename(void)
 {
 	return GetSingleton()->COFileName;
 };
@@ -180,7 +179,7 @@ UInt32 s_CheckInsideOnActorEquipHook = 1;
 
 void Console_Print(const char * fmt, ...)
 {
-	if (!s_CheckInsideOnActorEquipHook || !s_InsideOnActorEquipHook) {
+	//if (!s_CheckInsideOnActorEquipHook || !s_InsideOnActorEquipHook) {
 		ConsoleManager	* mgr = ConsoleManager::GetSingleton();
 		if(mgr)
 		{
@@ -192,7 +191,7 @@ void Console_Print(const char * fmt, ...)
 
 			va_end(args);
 		}
-	}
+	//}
 }
 
 TESSaveLoadGame * TESSaveLoadGame::Get()
@@ -257,18 +256,19 @@ TESGlobal* ResolveGlobalVar(ScriptEventList* in_EventList, Script* in_Script, UI
 	return global;
 }
 
-void ScriptEventList::Destructor()
+void ScriptEventList::Destructor() const
 {
 // OBLIVION	ThisStdCall(0x004FB4E0, this);
-	if (m_eventList)
+	
+	if (m_eventList != nullptr)
+	{
 		m_eventList->RemoveAll();
-	while (m_vars) {
-		if (m_vars->var) {
-			FormHeap_Free(m_vars->var);
-		}
-		VarEntry* next = m_vars->next;
-		FormHeap_Free(m_vars);
-		m_vars = next;
+	}
+
+	const auto* scriptVarNode = m_vars->Head();
+	while (scriptVarNode != nullptr) {
+		FormHeap_Free(scriptVarNode->Data());
+		scriptVarNode = scriptVarNode->Next();
 	}
 }
 
@@ -308,7 +308,7 @@ static bool ExtractFloat(double& out, UInt8* &scriptData, Script* scriptObj, Scr
 	{
 		UInt16 varIdx = *((UInt16*)++scriptData);
 		scriptData += 2;
-		ScriptEventList::Var* var = eventList->GetVariable(varIdx);
+		ScriptVar* var = eventList->GetVariable(varIdx);
 		if (var)
 		{
 			out = var->data;
@@ -333,7 +333,7 @@ TESForm* ExtractFormFromFloat(UInt8* &scriptData, Script* scriptObj, ScriptEvent
 	UInt16 varIdx = *(UInt16*)++scriptData;
 	scriptData += 2;
 
-	ScriptEventList::Var* var = eventList->GetVariable(varIdx);
+	ScriptVar* var = eventList->GetVariable(varIdx);
 	if (var)
 		outForm = LookupFormByID(*((UInt64 *)&var->data));
 
@@ -389,7 +389,7 @@ static const char* ResolveStringArgument(ScriptEventList* eventList, const char*
 		VariableInfo* varInfo = eventList->m_script->GetVariableByName(stringArg + 1);
 		if (varInfo)
 		{
-			ScriptEventList::Var* var = eventList->GetVariable(varInfo->idx);
+			ScriptVar* var = eventList->GetVariable(varInfo->idx);
 			if (var)
 				result = StringFromStringVar(var->data);
 		}
@@ -874,24 +874,36 @@ void ScriptEventList::Dump(void)
 
 UInt32 ScriptEventList::ResetAllVariables()
 {
+	if (!m_vars) return 0;
+	ListNode<ScriptVar>* varIter = m_vars->Head();
+	ScriptVar* scriptVar;
 	UInt32 numVars = 0;
-	for (VarEntry * entry = m_vars; entry; entry = entry->next)
-		if (entry->var)
+	do
+	{
+		scriptVar = varIter->data;
+		if (scriptVar)
 		{
-			entry->var->data = 0.0;
+			scriptVar->data = 0;
 			numVars++;
 		}
-
+	} while (varIter = varIter->next);
 	return numVars;
 }
 
-ScriptEventList::Var * ScriptEventList::GetVariable(UInt32 id)
+ScriptVar* ScriptEventList::GetVariable(const UInt32 id) const
 {
-	for(VarEntry * entry = m_vars; entry; entry = entry->next)
-		if(entry->var && entry->var->id == id)
-			return entry->var;
-
-	return NULL;
+	if (m_vars != nullptr)
+	{
+		ListNode<ScriptVar>* varIter = m_vars->Head();
+		ScriptVar* scriptVar;
+		do
+		{
+			scriptVar = varIter->data;
+			if (scriptVar && (scriptVar->id == id))
+				return scriptVar;
+		} while (varIter = varIter->next);
+	}
+	return nullptr;
 }
 
 ScriptEventList* EventListFromForm(TESForm* form)
@@ -1417,8 +1429,8 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 	UInt8* scriptData = (UInt8*)(*scriptDataAddr);
 
 	SInt32 scriptDataOffset = (UInt32)scriptData - (UInt32)(script->data);*/
-	auto scriptData = reinterpret_cast<UInt8*>(g_lastScriptData);
-	SInt32 scriptDataOffset = (UInt32)scriptData - (UInt32)(script->data);
+	const auto* scriptData = g_lastScriptData;
+	const SInt32 scriptDataOffset = (UInt32)scriptData - (UInt32)(script->data);
 
 	if (scriptDataOffset < 5)
 		return false;
@@ -1490,7 +1502,7 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 			}
 
 			UInt16 varIdx = *(UInt16*)(scriptData + 1);
-			ScriptEventList::Var* var = eventList->GetVariable(varIdx);
+			ScriptVar* var = eventList->GetVariable(varIdx);
 			if (var)
 			{
 				*outVarData = var->data;

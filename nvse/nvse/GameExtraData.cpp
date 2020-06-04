@@ -419,10 +419,16 @@ void ExtraContainerChanges::Cleanup()
 {
 	if (data && data->objList) {
 		for (EntryDataList::Iterator iter = data->objList->Begin(); !iter.End(); ++iter) {
-			iter.Get()->Cleanup() ;
+			iter.Get()->Cleanup();
 
 			// make sure we don't have any NULL ExtraDataList's in extend data, game will choke when saving
-			for (SInt32 index = 0; index < iter->extendData->Count(); ) {
+			if (iter->extendData == nullptr)
+			{
+				continue;
+			}
+
+			const auto length = iter->extendData->Count();
+			for (SInt32 index = 0; index < length; ) {
 				ExtraDataList* xtendData = iter->extendData->GetNthItem(index);
 				if (!xtendData->m_data) {
 					iter->extendData->RemoveNth(index);

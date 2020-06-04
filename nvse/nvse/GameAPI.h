@@ -114,6 +114,13 @@ struct NVSEStringVarInterface;
 	// I'm sure there is a better way to do this but I haven't found it
 void RegisterStringVarInterface(NVSEStringVarInterface* intfc);
 
+struct ScriptVar
+{
+	UInt32				id;
+	ListNode<ScriptVar>* next;
+	double				data;
+};
+
 // only records individual objects if there's a block that matches it
 // ### how can it tell?
 struct ScriptEventList
@@ -126,79 +133,54 @@ struct ScriptEventList
 		kEvent_OnDrop = 4,
 		kEvent_OnUnequip = 8,
 		kEvent_OnActorUnequip = 8,
-
 		kEvent_OnDeath = 0x10,
 		kEvent_OnMurder = 0x20,
 		kEvent_OnCombatEnd = 0x40,			// See 0x008A083C
 		kEvent_OnHit = 0x80,			// See 0x0089AB12
-
 		kEvent_OnHitWith = 0x100,			// TESObjectWEAP*	0x0089AB2F
 		kEvent_OnPackageStart = 0x200,
 		kEvent_OnPackageDone = 0x400,
 		kEvent_OnPackageChange = 0x800,
-
 		kEvent_OnLoad = 0x1000,
 		kEvent_OnMagicEffectHit = 0x2000,			// EffectSetting* 0x0082326F
 		kEvent_OnSell = 0x4000,			// 0x0072FE29 and 0x0072FF05, linked to 'Barter Amount Traded' Misc Stat
 		kEvent_OnStartCombat = 0x8000,
-
 		kEvent_OnOpen = 0x10000,		// while opening some container, not all
 		kEvent_OnClose = 0x20000,
-		kEvent_0x00400000 = 0x00400000,		// 0x008BAFB9 (references to package use item and use weapon are close)
-
+		kEvent_0x00400000 = 0x00400000,
 		kEvent_SayToDone = 0x40000,		// in Func0050 0x005791C1 in relation to SayToTopicInfo (OnSayToDone? or OnSayStart/OnSayEnd?)
-		kEvent_0x00080000 = 0x00080000, // 0x0095FACD and 0x009604B0 (same func which is called from PlayerCharacter_func001B and 0021)
+		kEvent_0x00080000 = 0x00080000,
 		kEvent_OnGrab = 0x80000,		// 0x0095FACD and 0x009604B0 (same func which is called from PlayerCharacter_func001B and 0021)
-
 		kEvent_OnRelease = 0x100000,		// 0x0047ACCA in relation to container
 		kEvent_OnDestructionStageChange = 0x200000,		// 0x004763E7/0x0047ADEE
 		kEvent_OnFire = 0x400000,		// 0x008BAFB9 (references to package use item and use weapon are close)
-
 		kEvent_OnTrigger = 0x10000000,		// 0x005D8D6A	Cmd_EnterTrigger_Execute
 		kEvent_OnTriggerEnter = 0x20000000,		// 0x005D8D50	Cmd_EnterTrigger_Execute
 		kEvent_OnTriggerLeave = 0x40000000,		// 0x0062C946	OnTriggerLeave ?
 		kEvent_OnReset = 0x80000000		// 0x0054E5FB
 	};
-
 	struct Event
 	{
-		TESForm	* object;
-		UInt32	eventMask;
+		TESForm* object;
+		UInt32		eventMask;
 	};
-
-	struct VarEntry;
-
-	struct Var
+	struct Struct10
 	{
-		UInt32		id;
-		VarEntry	* nextEntry;
-		double		data;
+		bool	effectStart;
+		bool	effectFinish;
+		UInt8	unk03[6];
 	};
-
-	struct VarEntry
-	{
-		Var			* var;
-		VarEntry	* next;
-	};
-
-	struct Struct010
-	{
-		UInt8 unk00[8];
-	};
-
 	typedef tList<Event> EventList;
-
-	Script			* m_script;		// 00
-	UInt32			  m_unk1;			// 04
-	EventList		* m_eventList;	// 08
-	VarEntry		* m_vars;		// 0C
-	Struct010		* unk010;		// 10
-
-	void	Dump(void);
-	Var *	GetVariable(UInt32 id);
-	UInt32	ResetAllVariables();
-
-	void	Destructor();
+	typedef tList<ScriptVar> VarList;
+	Script* m_script;		// 00
+	UInt32	m_unk1;			// 04
+	EventList* m_eventList;	// 08
+	VarList* m_vars;		// 0C
+	Struct10* unk010;		// 10
+	void Dump(void);
+	ScriptVar* GetVariable(UInt32 id) const;
+	UInt32 ResetAllVariables();
+	void Destructor() const;
 };
 
 ScriptEventList* EventListFromForm(TESForm* form);
@@ -244,8 +226,8 @@ struct ExtractedParam
 		// variable
 		struct 
 		{
-			ScriptEventList::Var	* var;
-			ScriptEventList			* parent;
+			ScriptVar* var;
+			ScriptEventList* parent;
 		} var;
 	} data;
 };
@@ -359,15 +341,33 @@ public:
 	ConsoleManager();
 	~ConsoleManager();
 
-	void	* scriptContext;			// 00
-	UInt32	unk004[(0x0810-0x04) >> 2];	// 004
-	char	COFileName[260];			// 810
+	struct TextNode
+	{
+		TextNode* next;
+		TextNode* prev;
+		String		text;
+	};
+	struct TextList
+	{
+		TextNode* first;
+		TextNode* last;
+		UInt32		count;
+	};
+	void* scriptContext;		// 000
+	TextList	printedLines;		// 004
+	TextList	inputHistory;		// 010
+	UInt32		unk01C;				// 01C
+	UInt32		unk020;				// 020
+	UInt32		unk024;				// 024
+	UInt32		unk028[506];
+	char		COFileName[260];
+	//UInt32		unk028[571];		// 028
+	static ConsoleManager* GetSingleton();
 
-	static ConsoleManager * GetSingleton(void);
-	
-	static char * GetConsoleOutputFilename(void);
+	static char* GetConsoleOutputFilename(void);
 	static bool HasConsoleOutputFilename(void);
 };
+//STATIC_ASSERT(sizeof(ConsoleManager) == 0x914);
 
 // A plugin author requested the ability to use OBSE format specifiers to format strings with the args
 // coming from a source other than script.
@@ -571,6 +571,7 @@ struct	BGSSaveLoadChangesMap
 // 030
 class BGSLoadFormBuffer: public BGSLoadGameBuffer
 {
+public:
 	BGSLoadFormBuffer();
 	~BGSLoadFormBuffer();
 
@@ -672,14 +673,6 @@ const UInt32 _SaveGameManager_ConstructSavegamePath		= 0x0084F980;
 #error
 #endif
 
-template <typename T_Key, typename T_Data>
-class NiTMap : public NiTMapBase<T_Key, T_Data>
-{
-public:
-	NiTMap();
-	~NiTMap();
-};
-
 class BGSCellNumericIDArrayMap;
 class BGSLoadGameSubBuffer;
 class BGSReconstructFormsInFileMap;
@@ -695,8 +688,8 @@ public:
 	typedef UInt32	IndexRefID;
 	struct RefIDIndexMapping	// reversible map between refID and loaded form index
 	{
-		NiTMap<RefID, IndexRefID>	* map000;	// 000
-		NiTMap<IndexRefID, RefID>	* map010;	// 010
+		NiTMapBase<RefID, IndexRefID>	* map000;	// 000
+		NiTMapBase<IndexRefID, RefID>	* map010;	// 010
 		UInt32			            countRefID;	// 020
 	};
 
@@ -720,26 +713,26 @@ public:
 		NiTPointerMap<BGSCellNumericIDArrayMap*>	* map020;	// 020
 	};
 
-	BGSSaveLoadChangesMap					* changesMap;			// 000
-	BGSSaveLoadChangesMap					* previousChangeMap;	// 004
-	RefIDIndexMapping						* refIDmapping;			// 008
-	RefIDIndexMapping						* visitedWorldspaces;	// 00C
-	Struct010								* sct010;				// 010
-	NiTMap<TESForm *, BGSLoadGameSubBuffer> * maps014[3];			// 014	0 = changed Animations, 2 = changed Havok Move
-	NiTMap<UInt32, UInt32>					* map018;				// 018	
-	BSSimpleArray<char *>					* strings;				// 01C
-	BGSReconstructFormsInAllFilesMap*		rfiafMap;				// 020
-	BSSimpleArray<BGSLoadFormBuffer *>		changedForms;			// 024
-	NiTPointerMap<Actor*>					map0034;				// 034 Either dead or not dead actors
-	UInt8									saveMods[255];			// 044
-	UInt8									loadedMods[255];		// 143
-
-	UInt16									pad242;					// 242
-	UInt32									flg244;					// 244 bit 6 block updating player position/rotation from save, bit 2 set during save
-	UInt8									formVersion;			// 248
-	UInt8									pad249[3];				// 249
-
+	BGSSaveLoadChangesMap* changesMap;			// 000
+	BGSSaveLoadChangesMap* previousChangeMap;		// 004
+	RefIDIndexMapping* refIDmapping;			// 008
+	RefIDIndexMapping* visitedWorldspaces;	// 00C
+	Struct010* sct010;				// 010
+	NiTMapBase<TESForm*, BGSLoadGameSubBuffer>* maps014;				// 014
+	NiTMapBase<UInt32, UInt32>* map018;				// 018
+	BSSimpleArray<char*>* strings;				// 01C
+	BGSReconstructFormsInAllFilesMap* rfiafMap;				// 020
+	BSSimpleArray<BGSLoadFormBuffer*>			changedForms;			// 024
+	NiTPointerMap<Actor*>						map03C;					// 034 Either dead or not dead actors
+	UInt8										saveMods[255];			// 044
+	UInt8										loadedMods[255];		// 143
+	UInt16										pad242;					// 242
+	UInt32										flg244;					// 244 bit 6 block updating player position/rotation from save, bit 2 set during save
+	UInt8										formVersion;			// 248
+	UInt8										pad249[3];				// 249
 };
+STATIC_ASSERT(sizeof(BGSSaveLoadGame) == 0x24C);
+
 
 #if RUNTIME
 class SaveGameManager
@@ -936,7 +929,7 @@ struct NavMeshCloseDoorInfo
 };	// Alloc'd to 0x08
 
 struct NavMeshPOVData;
-struct ObstacleData;
+class ObstacleData;
 struct ObstacleUndoData;
 
 struct NavMeshStaticAvoidNode

@@ -73,7 +73,7 @@ void Script::RefVariable::Resolve(ScriptEventList * eventList)
 {
 	if(varIdx && eventList)
 	{
-		ScriptEventList::Var	* var = eventList->GetVariable(varIdx);
+		ScriptVar	* var = eventList->GetVariable(varIdx);
 		if(var)
 		{
 			UInt32	refID = *((UInt32 *)&var->data);

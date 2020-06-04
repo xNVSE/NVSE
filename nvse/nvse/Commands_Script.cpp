@@ -240,7 +240,7 @@ bool GetVariable_Execute(COMMAND_ARGS, UInt32 whichAction)
 			return varInfo ? true : false;
 		else if (varInfo)
 		{
-			ScriptEventList::Var* var = targetEventList->GetVariable(varInfo->idx);
+			ScriptVar* var = targetEventList->GetVariable(varInfo->idx);
 			if (var)
 			{
 				if (whichAction == eScriptVar_Get)
@@ -290,7 +290,7 @@ bool Cmd_SetVariable_Execute(COMMAND_ARGS)
 		VariableInfo* varInfo = targetScript->GetVariableByName(varName);
 		if (varInfo)
 		{
-			ScriptEventList::Var* var = targetEventList->GetVariable(varInfo->idx);
+			ScriptVar* var = targetEventList->GetVariable(varInfo->idx);
 			if (var)
 			{
 				var->data = value;
@@ -334,7 +334,7 @@ bool Cmd_SetRefVariable_Execute(COMMAND_ARGS)
 		VariableInfo* varInfo = targetScript->GetVariableByName(varName);
 		if (varInfo)
 		{
-			ScriptEventList::Var* var = targetEventList->GetVariable(varInfo->idx);
+			ScriptVar* var = targetEventList->GetVariable(varInfo->idx);
 			if (var)
 			{
 				UInt32* refResult = (UInt32*)result;

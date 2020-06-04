@@ -205,7 +205,7 @@ public:
 		UInt32 count = 1;
 		while (node = node->next) count++;
 		return count;
-	};
+	}
 
 	bool IsInList(Item* item) const
 	{

@@ -69,7 +69,7 @@ bool Cmd_sv_Destruct_Execute(COMMAND_ARGS)
 	{
 		if (eval.Arg(i)->CanConvertTo(kTokenType_StringVar))
 		{
-			ScriptEventList::Var* var = eval.Arg(i)->GetVar();
+			ScriptVar* var = eval.Arg(i)->GetVar();
 			if (var)
 			{
 				g_StringMap.Delete(var->data);
@@ -841,7 +841,7 @@ bool Cmd_GetRawFormIDString_Execute(COMMAND_ARGS)
 			formID = arg->GetFormID();
 		}
 		else if (arg->Type() == kTokenType_RefVar) {
-			ScriptEventList::Var* var = arg->GetVar();
+			ScriptVar* var = arg->GetVar();
 			if (var) {
 				formID = *((UInt32*)(&var->data));
 			}

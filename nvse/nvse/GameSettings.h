@@ -57,7 +57,7 @@ template<class M, class T> class NiTStringTemplateMap: M
 	UInt8	fil0011[3];	// 0011
 };
 
-template<class T> class NiTStringMap: NiTStringTemplateMap<NiTMap<char const *, T>, T>
+template<class T> class NiTStringMap: NiTStringTemplateMap<NiTMapBase<char const *, T>, T>
 {
 };
 

@@ -163,13 +163,13 @@ char* ScriptToken::DebugPrint(void)
 
 #if RUNTIME
 // ###TODO: Read() sets variable type; better to pass it to this constructor
-ScriptToken::ScriptToken(ScriptEventList::Var* var) : refIdx(0), type(kTokenType_Variable), variableType(Script::eVarType_Invalid)
+ScriptToken::ScriptToken(ScriptVar* var) : refIdx(0), type(kTokenType_Variable), variableType(Script::eVarType_Invalid)
 {
 	INC_TOKEN_COUNT
 	value.var = var;
 }
 
-ForEachContextToken::ForEachContextToken(UInt32 srcID, UInt32 iterID, UInt32 varType, ScriptEventList::Var* var)
+ForEachContextToken::ForEachContextToken(UInt32 srcID, UInt32 iterID, UInt32 varType, ScriptVar* var)
 : ScriptToken(kTokenType_ForEachContext, Script::eVarType_Invalid, 0), context(srcID, iterID, varType, var)
 {
 	value.formID = 0;
@@ -461,7 +461,7 @@ ArrayID ScriptToken::GetArray() const
 		return 0;
 }
 
-ScriptEventList::Var* ScriptToken::GetVar() const
+ScriptVar* ScriptToken::GetVar() const
 {
 	return IsVariable() ? value.var : NULL;
 }
