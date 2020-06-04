@@ -214,7 +214,7 @@ TESForm * SetFirstItemWithHealthAndOwnershipByRefID(TESObjectREFR* thisObj, UInt
 	}
 	else
 		if (Health != -1.0)
-			if (Health==pHealth->health)
+			if (pHealth != nullptr && Health==pHealth->health)
 				pExtraDataList->Remove(pXHealth);
 			else
 				pXHealth->health = Health;
