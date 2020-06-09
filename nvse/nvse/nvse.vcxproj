@@ -612,6 +612,7 @@
     <ClInclude Include="Loops.h" />
     <ClInclude Include="NetImmerse.h" />
     <ClInclude Include="NiNodes.h" />
+    <ClInclude Include="NiPoint.h" />
     <ClInclude Include="NiTypes.h" />
     <ClInclude Include="nvse_version.h" />
     <ClInclude Include="ParamInfos.h" />

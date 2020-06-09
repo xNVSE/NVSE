@@ -422,6 +422,9 @@
     <ClInclude Include="DInput.h">
       <Filter>api</Filter>
     </ClInclude>
+    <ClInclude Include="NiPoint.h">
+      <Filter>api\NetImmerse</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">

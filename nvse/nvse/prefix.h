@@ -348,6 +348,8 @@ class bhkRigidBodyT;
 class bhkRagdollController;
 class bhkRagdollPenetrationUtil;
 
+enum ActorValueCode;
+
 #include "nvse/NiTypes.h"
 #include "nvse/GameTypes.h"
 #include "nvse/Utilities.h"
