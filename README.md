@@ -1,7 +1,7 @@
 
 <p align="center">
   <a href="https://github.com/xNVSE/NVSE/releases">
-    <img height="300px" src="https://i.imgur.com/Y5EBSxl.png">
+    <img height="300px" src="https://i.imgur.com/A17LUFv.png">
   </a>
 </p>
 
@@ -9,7 +9,9 @@ This is a community maintained up-to-date fork of **New Vegas Script Extender** 
 
 ## Download
 
-Releases are provided in the [releases section](https://github.com/NVSEx/NVSE/releases).
+[Download the latest NVSE](https://github.com/xNVSE/NVSE/releases/latest/download/nvse_5_1_beta6.7z)
+
+Changelogs and all releases are provided in the [releases section](https://github.com/NVSEx/NVSE/releases).
 
 ## Installation
 
@@ -19,9 +21,7 @@ Releases are provided in the [releases section](https://github.com/NVSEx/NVSE/re
 
 ## Support
 
-For support, [create a new GitHub issue](https://github.com/NVSEx/NVSE/issues).
-
-We also have a [Discord server](https://discord.gg/EebN93s).
+For support, contact us in the [xNVSE Discord server](https://discord.gg/EebN93s). For bug reports and other problems, [create a new GitHub issue](https://github.com/NVSEx/NVSE/issues).
 
 ## Description
 
