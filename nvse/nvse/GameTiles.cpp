@@ -1,217 +1,265 @@
+#pragma once
+
 #include "nvse/GameTiles.h"
-#include "nvse/Utilities.h"
-#include "nvse/GameAPI.h"
-#include <string>
 
-typedef NiTMapBase <const char *, int>	TraitNameMap;
-TraitNameMap	* g_traitNameMap = (TraitNameMap *)0x011F32F4;
+typedef NiTMapBase<const char*, int> TraitNameMap;
+TraitNameMap *g_traitNameMap = (TraitNameMap*)0x11F32F4;
+const _TraitNameToID TraitNameToID = (_TraitNameToID)0xA01860;
+UInt32 (*TraitNameToIDAdd)(const char*, UInt32) = (UInt32 (*)(const char*, UInt32))0xA00940;
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
-const _TraitNameToID TraitNameToID = (_TraitNameToID)0x00A01860;
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-const _TraitNameToID TraitNameToID = (_TraitNameToID)0x00A01730;
-#elif EDITOR
-#else
-#error
-#endif
-
-UInt32 Tile::TraitNameToID(const char * traitName)
+UInt32 Tile::TraitNameToID(const char *traitName)
 {
 	return ::TraitNameToID(traitName);
 }
 
-Tile::Value * Tile::GetValue(UInt32 typeID)
+UInt32 Tile::TraitNameToIDAdd(const char *traitName)
 {
-	// values are sorted so could use binary search but these are not particularly large arrays
-	for(UInt32 i = 0; i < values.size; i++)
-	{
-		Tile::Value * val = values[i];
-		if(val && val->id == typeID)
-			return val;
-	}
+	return ::TraitNameToIDAdd(traitName, 0xFFFFFFFF);
+}
 
+__declspec(naked) Tile::Value *Tile::GetValue(UInt32 typeID)
+{
+	__asm
+	{
+		push	ebx
+		push	esi
+		push	edi
+		mov		ebx, [ecx+0x14]
+		xor		esi, esi
+		mov		edi, [ecx+0x18]
+		mov		edx, [esp+0x10]
+	iterHead:
+		cmp		esi, edi
+		jz		iterEnd
+		lea		ecx, [esi+edi]
+		shr		ecx, 1
+		mov		eax, [ebx+ecx*4]
+		cmp		[eax], edx
+		jz		done
+		jb		isLT
+		mov		edi, ecx
+		jmp		iterHead
+	isLT:
+		lea		esi, [ecx+1]
+		jmp		iterHead
+	iterEnd:
+		xor		eax, eax
+	done:
+		pop		edi
+		pop		esi
+		pop		ebx
+		retn	4
+	}
+}
+
+Tile::Value *Tile::GetValueName(const char *valueName)
+{
+	return GetValue(TraitNameToID(valueName));
+}
+
+DListNode<Tile> *Tile::GetNthChild(UInt32 index)
+{
+	return children.Tail()->Regress(index);
+}
+
+char *Tile::GetComponentFullName(char *resStr)
+{
+	if IS_TYPE(this, TileMenu)
+		return StrLenCopy(resStr, name.m_data, name.m_dataLen);
+	char *fullName = parent->GetComponentFullName(resStr);
+	*fullName++ = '/';
+	fullName = StrLenCopy(fullName, name.m_data, name.m_dataLen);
+	DListNode<Tile> *node = parent->children.Tail();
+	while (node->data != this)
+		node = node->prev;
+	int index = 0;
+	while ((node = node->prev) && StrEqualCS(name.m_data, node->data->name.m_data))
+		index++;
+	if (index)
+	{
+		*fullName++ = ':';
+		fullName = IntToStr(fullName, index);
+	}
+	return fullName;
+}
+
+Menu *Tile::GetParentMenu()
+{
+	Tile *tile = this;
+	do
+	{
+		if IS_TYPE(tile, TileMenu)
+			return ((TileMenu*)tile)->menu;
+	}
+	while (tile = tile->parent);
 	return NULL;
 }
 
-Tile::Value * Tile::GetValue(const char * valueName)
+__declspec(naked) void Tile::PokeValue(UInt32 valueID)
 {
-	UInt32 typeID = TraitNameToID(valueName);
-
-	return GetValue(typeID);
+	__asm
+	{
+		push	dword ptr [esp+4]
+		call	Tile::GetValue
+		test	eax, eax
+		jz		done
+		push	eax
+		push	1
+		push	0x3F800000
+		mov		ecx, eax
+		mov		eax, 0xA0A270
+		call	eax
+		pop		ecx
+		push	1
+		push	0
+		mov		eax, 0xA0A270
+		call	eax
+	done:
+		retn	4
+	}
 }
 
-Tile * Tile::GetChild(const char * childName)
+__declspec(naked) void Tile::FakeClick()
 {
-	Tile * child = NULL;
-	std::string tileName(childName);
+	__asm
+	{
+		push	kTileValue_clicked
+		call	Tile::GetValue
+		test	eax, eax
+		jz		done
+		push	eax
+		push	1
+		push	0x3F800000
+		mov		ecx, eax
+		mov		eax, 0xA0A270
+		call	eax
+		pop		ecx
+		push	1
+		push	0
+		mov		eax, 0xA0A270
+		call	eax
+	done:
+		retn
+	}
+}
+
+void Tile::DestroyAllChildren()
+{
+	DListNode<Tile> *node = children.Tail();
+	Tile *child;
+	while (node)
+	{
+		child = node->data;
+		node = node->prev;
+		if (child) child->Destroy(true);
+	}
+}
+
+Tile *Tile::GetChild(const char *childName)
+{
 	int childIndex = 0;
-	
-	// Allow child names like "foo:4" to select the 4th "foo" child. There 
-	// must be a non-empty string before the colon, a single colon character, 
-	// then a non-empty sequence of digits.
-	const char * colon = strchr(childName, ':');
-	if (colon && (colon != childName)) {
-		childIndex = atoi(colon + 1);
-		tileName = std::string(childName, (colon - childName));
-		//DEBUG_PRINT("tileName: %s, childIndex: %d", tileName.c_str(), childIndex);
-	}
-
-	int foundCount = 0;
-	for(tList<ChildNode>::Iterator iter = childList.Begin(); !iter.End(); ++iter)
+	char *colon = FindChr(childName, ':');
+	if (colon)
 	{
-		// Allow child name "*" to match any child
-		if(*iter && iter->child && (tileName == "*" || !_stricmp(iter->child->name.m_data, tileName.c_str())))
+		if (colon == childName) return NULL;
+		*colon = 0;
+		childIndex = StrToInt(colon + 1);
+	}
+	Tile *result = NULL;
+	for (DListNode<Tile> *node = children.Head(); node; node = node->next)
+	{
+		if (node->data && ((*childName == '*') || StrEqualCI(node->data->name.m_data, childName)) && !childIndex--)
 		{
-			if (foundCount == childIndex) {
-				child = iter->child;
-				break;
-			} else {
-				foundCount++;
-			}
+			result = node->data;
+			break;
 		}
 	}
-
-	return child;
+	if (colon) *colon = ':';
+	return result;
 }
 
-// Find a tile or tile value by component path.
-// Returns NULL if component path not found.
-// Returns Tile* and clears "trait" if component was a tile.
-// Returns Tile* and sets "trait" if component was a tile value.
-Tile * Tile::GetComponent(const char * componentPath, std::string * trait)
+Tile *Tile::GetComponent(const char *componentPath, const char **trait)
 {
-	Tokenizer tokens(componentPath, "\\/");
-	std::string curToken;
-	Tile * parentTile = this;
-
-	while(tokens.NextToken(curToken) != -1 && parentTile)
+	Tile *parentTile = this;
+	char *slashPos;
+	while (slashPos = SlashPos(componentPath))
 	{
-		// DEBUG_PRINT("childName: %s", curToken.c_str());
-
-		Tile * child = parentTile->GetChild(curToken.c_str());
-		if(!child)
-		{
-			// didn't find child; is this last token?
-			if(tokens.NextToken(curToken) == -1)
-			{
-				*trait = curToken;
-				return parentTile;
-			}
-			else	// nope, error
-				return NULL;
-		}
-		else
-			parentTile = child;
+		*slashPos = 0;
+		parentTile = parentTile->GetChild(componentPath);
+		if (!parentTile) return NULL;
+		componentPath = slashPos + 1;
 	}
-
-	trait->clear();
+	if (*componentPath)
+	{
+		Tile *result = parentTile->GetChild(componentPath);
+		if (result) return result;
+		*trait = componentPath;
+	}
 	return parentTile;
 }
 
-Tile::Value * Tile::GetComponentValue(const char * componentPath)
+Tile::Value *Tile::GetComponentValue(const char *componentPath)
 {
-	std::string trait;
-	Tile* tile = GetComponent(componentPath, &trait);
-	if (tile && trait.length())
-	{
-		return tile->GetValue(trait.c_str());
-	}
-	return NULL;
+	const char *trait = NULL;
+	Tile *tile = GetComponent(componentPath, &trait);
+	return (tile && trait) ? tile->GetValueName(trait) : NULL;
 }
 
-Tile * Tile::GetComponentTile(const char * componentPath)
+Tile *Tile::GetComponentTile(const char *componentPath)
 {
-	std::string trait;
-	Tile* tile = GetComponent(componentPath, &trait);
-	if (tile && !trait.length())
-	{
-		return tile;
-	}
-	return NULL;
+	const char *trait = NULL;
+	Tile *tile = GetComponent(componentPath, &trait);
+	return (tile && !trait) ? tile : NULL;
 }
 
-std::string Tile::GetQualifiedName(void)
+extern DebugLog s_log;
+
+void Tile::Dump()
 {
-	std::string qualifiedName;
+	PrintDebug("%08X\t%s", this, name.m_data);
+	s_debug.Indent();
 
-	//if(parent && !parent->GetFloatValue(kTileValue_class, &parentClass))	// i.e., parent is not a menu
-	if(parent)
-		qualifiedName = parent->GetQualifiedName() + "\\";
+	PrintDebug("Values:");
 
-	qualifiedName += name.m_data;
-
-	return qualifiedName;
-}
-
-void Tile::Dump(void)
-{
-	_MESSAGE("%s", name.m_data);
-	gLog.Indent();
-
-	_MESSAGE("values:");
-
-	gLog.Indent();
+	s_debug.Indent();
 	
-	for(UInt32 i = 0; i < values.size; i++)
+	Value *value;
+	const char *traitName;
+	char traitID[9];
+	for (BSSimpleArray<Value*>::Iterator iter(values); !iter.End(); ++iter)
 	{
-		Value		* val = values[i];
-		const char	* traitName = TraitIDToName(val->id);
-		char		traitNameIDBuf[16];
+		value = *iter;
+		traitName = TraitIDToName(value->id);
 
-		if(!traitName)
+		if (!traitName)
 		{
-			sprintf_s(traitNameIDBuf, "%08X", val->id);
-			traitName = traitNameIDBuf;
+			UIntToHex(traitID, value->id);
+			traitName = traitID;
 		}
-
-		if(val->str)
-			_MESSAGE("%s: %s", traitName, val->str);
-		else if(val->action)
-			_MESSAGE("%s: action %08X", traitName, val->action);
+		if (value->str)
+			PrintDebug("%d  %s: %s", value->id, traitName, value->str);
+		/*else if (value->action)
+			PrintDebug("%d  %s: Action %08X", value->id, traitName, value->action);*/
 		else
-			_MESSAGE("%s: %f", traitName, val->num);
+			PrintDebug("%d  %s: %.4f", value->id, traitName, value->num);
 	}
 
-	gLog.Outdent();
+	s_debug.Outdent();
 
-	for(tList <ChildNode>::Iterator iter = childList.Begin(); !iter.End(); ++iter)
-	{
-		ChildNode	* node = iter.Get();
-		if(node)
-		{
-			Tile	* child = node->child;
-			if(child)
-			{
-				child->Dump();
-			}
-		}
-	}
+	for (DListNode<Tile> *traverse = children.Tail(); traverse; traverse = traverse->prev)
+		if (traverse->data) traverse->data->Dump();
 
-	gLog.Outdent();
-}
-
-void Debug_DumpTraits(void)
-{
-	for(UInt32 i = 0; i < g_traitNameMap->numBuckets; i++)
-	{
-		for(TraitNameMap::Entry * bucket = g_traitNameMap->buckets[i]; bucket; bucket = bucket->next)
-		{
-			_MESSAGE("%s,%08X,%d", bucket->key, bucket->data, bucket->data);
-		}
-	}
+	s_debug.Outdent();
 }
 
 // not a one-way mapping, so we just return the first
 // also this is slow and sucks
-const char * TraitIDToName(int id)
+const char *TraitIDToName(int id)
 {
-	for(UInt32 i = 0; i < g_traitNameMap->numBuckets; i++)
-		for(TraitNameMap::Entry * bucket = g_traitNameMap->buckets[i]; bucket; bucket = bucket->next)
+	for (UInt32 i = 0; i < g_traitNameMap->numBuckets; i++)
+		for (TraitNameMap::Entry * bucket = g_traitNameMap->buckets[i]; bucket; bucket = bucket->next)
 			if(bucket->data == id)
 				return bucket->key;
 
 	return NULL;
 }
-
-void Debug_DumpTileImages(void) {};
-

@@ -1,13 +1,7 @@
 #pragma once
 
-#include <vector>
-
-class TESObjectREFR;
-class Script;
-struct ScriptEventList;
 struct ScriptLineBuffer;
 struct ScriptBuffer;
-struct PluginInfo;
 
 // for IsInventoryObjectType list, see GameForms.h
 
@@ -93,6 +87,7 @@ enum ParamType
 	kParamType_Array =				0x100,	// only usable with compiler override; StandardCompile() will report unrecognized param type
 };
 
+
 enum CommandReturnType : UInt8
 {
 	kRetnType_Default,
@@ -112,13 +107,13 @@ struct ParamInfo
 	UInt32		isOptional;	// do other bits do things?
 };
 
-#define COMMAND_ARGS		ParamInfo * paramInfo, void * scriptData, TESObjectREFR * thisObj, TESObjectREFR * containingObj, Script * scriptObj, ScriptEventList * eventList, double * result, UInt32 * opcodeOffsetPtr
+#define COMMAND_ARGS		ParamInfo *paramInfo, void *scriptData, TESObjectREFR *thisObj, TESObjectREFR *containingObj, Script *scriptObj, ScriptEventList *eventList, double *result, UInt32 *opcodeOffsetPtr
 #define PASS_COMMAND_ARGS	paramInfo, scriptData, thisObj, containingObj, scriptObj, eventList, result, opcodeOffsetPtr
 #define EXTRACT_ARGS		paramInfo, scriptData, opcodeOffsetPtr, thisObj, containingObj, scriptObj, eventList
-#define COMMAND_ARGS_EVAL	TESObjectREFR * thisObj, void * arg1, void * arg2, double * result
+#define COMMAND_ARGS_EVAL	TESObjectREFR *thisObj, void *arg1, void *arg2, double *result
 #define PASS_CMD_ARGS_EVAL	thisObj, arg1, arg2, result
+#define COMMAND_ARGS_EX		ParamInfo *paramInfo, void *scriptData, UInt32 *opcodeOffsetPtr, Script *scriptObj, ScriptEventList *eventList
 #define EXTRACT_ARGS_EX		paramInfo, scriptData, opcodeOffsetPtr, scriptObj, eventList
-#define PASS_FMTSTR_ARGS	paramInfo, scriptData, opcodeOffsetPtr, scriptObj, eventList
 
 //Macro to make CommandInfo definitions a bit less tedious
 
@@ -228,6 +223,7 @@ struct CommandInfo
 const UInt32 kNVSEOpcodeStart	= 0x1400;
 const UInt32 kNVSEOpcodeTest	= 0x2000;
 
+/*
 struct CommandMetadata
 {
 	CommandMetadata() :parentPlugin(kNVSEOpcodeStart), returnType(kRetnType_Default) { }
@@ -251,7 +247,7 @@ public:
 
 	CommandInfo *	GetStart(void)	{ return &m_commands[0]; }
 	CommandInfo *	GetEnd(void)	{ return GetStart() + m_commands.size(); }
-	CommandInfo *	GetByName(const char * name);
+	CommandInfo *	CommandTable::GetByName(const char * name);
 	CommandInfo *	GetByOpcode(UInt32 opcode);
 
 	void	SetBaseID(UInt32 id)	{ m_baseID = id; m_curID = id; }
@@ -274,7 +270,6 @@ private:
 	void AddCommandsV1();
 	void AddCommandsV3s();
 	void AddCommandsV4();
-	void AddCommandsV5();
 	void AddDebugCommands();
 
 	typedef std::vector <CommandInfo>				CommandList;
@@ -289,8 +284,8 @@ private:
 	UInt32		m_curID;
 
 	// todo: combine these in to a single struct
-	//OpcodeReturnTypeMap	m_returnTypes;		// maps opcode to return type, only string/array-returning cmds included
-	//OpcodeToPluginMap	m_opcodesByPlugin;	// maps opcode to owning plugin opcode base
+	OpcodeReturnTypeMap	m_returnTypes;		// maps opcode to return type, only string/array-returning cmds included
+	OpcodeToPluginMap	m_opcodesByPlugin;	// maps opcode to owning plugin opcode base
 
 	std::vector<UInt32>	m_opcodesByRelease;	// maps an NVSE major version # to opcode of first command added to that release, beginning with v0008
 
@@ -299,7 +294,8 @@ private:
 };
 
 extern CommandTable	g_consoleCommands;
-extern CommandTable	g_scriptCommands;
+extern CommandTable g_scriptCommands;
+*/
 
 namespace PluginAPI
 {

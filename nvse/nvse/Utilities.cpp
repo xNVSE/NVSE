@@ -2,7 +2,6 @@
 #include "SafeWrite.h"
 #include <string>
 #include <algorithm>
-#include <ctime>
 
 #if RUNTIME
 #include "GameAPI.h"
@@ -10,10 +9,7 @@
 #include "GameScript.h"
 #endif
 
-char* s_strArgBuffer;
-
-
-void DumpClass(void * theClassPtr, UInt32 nIntsToDump)
+void DumpClass(void* theClassPtr, UInt32 nIntsToDump)
 {
 	_MESSAGE("DumpClass:");
 	UInt32* basePtr = (UInt32*)theClassPtr;
@@ -21,8 +17,8 @@ void DumpClass(void * theClassPtr, UInt32 nIntsToDump)
 	gLog.Indent();
 
 	if (!theClassPtr) return;
-	for (UInt32 ix = 0; ix < nIntsToDump; ix++ ) {
-		UInt32* curPtr = basePtr+ix;
+	for (UInt32 ix = 0; ix < nIntsToDump; ix++) {
+		UInt32* curPtr = basePtr + ix;
 		const char* curPtrName = NULL;
 		UInt32 otherPtr = 0;
 		float otherFloat = 0.0;
@@ -35,7 +31,7 @@ void DumpClass(void * theClassPtr, UInt32 nIntsToDump)
 				otherPtr = *curPtr;
 				otherFloat = *(float*)(curPtr);
 			}
-			__except(EXCEPTION_EXECUTE_HANDLER)
+			__except (EXCEPTION_EXECUTE_HANDLER)
 			{
 				//
 			}
@@ -45,7 +41,7 @@ void DumpClass(void * theClassPtr, UInt32 nIntsToDump)
 			}
 		}
 
-		_MESSAGE("%3d +%03X ptr: 0x%08X: %32s *ptr: 0x%08x | %f: %32s", ix, ix*4, curPtr, curPtrName, otherPtr, otherFloat, otherPtrName);
+		_MESSAGE("%3d +%03X ptr: 0x%08X: %32s *ptr: 0x%08x | %f: %32s", ix, ix * 4, curPtr, curPtrName, otherPtr, otherFloat, otherPtrName);
 	}
 
 	gLog.Outdent();
@@ -55,7 +51,7 @@ void DumpClass(void * theClassPtr, UInt32 nIntsToDump)
 #pragma warning (disable : 4200)
 struct RTTIType
 {
-	void	* typeInfo;
+	void* typeInfo;
 	UInt32	pad;
 	char	name[0];
 };
@@ -63,29 +59,29 @@ struct RTTIType
 struct RTTILocator
 {
 	UInt32		sig, offset, cdOffset;
-	RTTIType	* type;
+	RTTIType* type;
 };
 #pragma warning (pop)
 
 // use the RTTI information to return an object's class name
-const char * GetObjectClassName(void * objBase)
+const char* GetObjectClassName(void* objBase)
 {
-	const char	* result = "<no rtti>";
+	const char* result = "<no rtti>";
 
 	__try
 	{
-		void		** obj = (void **)objBase;
-		RTTILocator	** vtbl = (RTTILocator **)obj[0];
-		RTTILocator	* rtti = vtbl[-1];
-		RTTIType	* type = rtti->type;
+		void** obj = (void**)objBase;
+		RTTILocator** vtbl = (RTTILocator**)obj[0];
+		RTTILocator* rtti = vtbl[-1];
+		RTTIType* type = rtti->type;
 
 		// starts with ,?
-		if((type->name[0] == '.') && (type->name[1] == '?'))
+		if ((type->name[0] == '.') && (type->name[1] == '?'))
 		{
 			// is at most 100 chars long
-			for(UInt32 i = 0; i < 100; i++)
+			for (UInt32 i = 0; i < 100; i++)
 			{
-				if(type->name[i] == 0)
+				if (type->name[i] == 0)
 				{
 					// remove the .?AV
 					result = type->name + 4;
@@ -94,7 +90,7 @@ const char * GetObjectClassName(void * objBase)
 			}
 		}
 	}
-	__except(EXCEPTION_EXECUTE_HANDLER)
+	__except (EXCEPTION_EXECUTE_HANDLER)
 	{
 		// return the default
 	}
@@ -102,23 +98,23 @@ const char * GetObjectClassName(void * objBase)
 	return result;
 }
 
-const std::string & GetFalloutDirectory(void)
+const std::string& GetFalloutDirectory(void)
 {
 	static std::string s_falloutDirectory;
 
-	if(s_falloutDirectory.empty())
+	if (s_falloutDirectory.empty())
 	{
 		// can't determine how many bytes we'll need, hope it's not more than MAX_PATH
 		char	falloutPathBuf[MAX_PATH];
 		UInt32	falloutPathLength = GetModuleFileName(GetModuleHandle(NULL), falloutPathBuf, sizeof(falloutPathBuf));
 
-		if(falloutPathLength && (falloutPathLength < sizeof(falloutPathBuf)))
+		if (falloutPathLength && (falloutPathLength < sizeof(falloutPathBuf)))
 		{
 			std::string	falloutPath(falloutPathBuf, falloutPathLength);
 
 			// truncate at last slash
 			std::string::size_type	lastSlash = falloutPath.rfind('\\');
-			if(lastSlash != std::string::npos)	// if we don't find a slash something is VERY WRONG
+			if (lastSlash != std::string::npos)	// if we don't find a slash something is VERY WRONG
 			{
 				s_falloutDirectory = falloutPath.substr(0, lastSlash + 1);
 
@@ -138,14 +134,14 @@ const std::string & GetFalloutDirectory(void)
 	return s_falloutDirectory;
 }
 
-static const std::string & GetNVSEConfigPath(void)
+static const std::string& GetNVSEConfigPath(void)
 {
 	static std::string s_configPath;
 
-	if(s_configPath.empty())
+	if (s_configPath.empty())
 	{
 		std::string	falloutPath = GetFalloutDirectory();
-		if(!falloutPath.empty())
+		if (!falloutPath.empty())
 		{
 			s_configPath = falloutPath + "Data\\NVSE\\nvse_config.ini";
 
@@ -156,12 +152,12 @@ static const std::string & GetNVSEConfigPath(void)
 	return s_configPath;
 }
 
-std::string GetNVSEConfigOption(const char * section, const char * key)
+std::string GetNVSEConfigOption(const char* section, const char* key)
 {
 	std::string	result;
 
-	const std::string & configPath = GetNVSEConfigPath();
-	if(!configPath.empty())
+	const std::string& configPath = GetNVSEConfigPath();
+	if (!configPath.empty())
 	{
 		char	resultBuf[256];
 		resultBuf[0] = 0;
@@ -174,10 +170,10 @@ std::string GetNVSEConfigOption(const char * section, const char * key)
 	return result;
 }
 
-bool GetNVSEConfigOption_UInt32(const char * section, const char * key, UInt32 * dataOut)
+bool GetNVSEConfigOption_UInt32(const char* section, const char* key, UInt32* dataOut)
 {
 	std::string	data = GetNVSEConfigOption(section, key);
-	if(data.empty())
+	if (data.empty())
 		return false;
 
 	return (sscanf(data.c_str(), "%lu", dataOut) == 1);
@@ -186,176 +182,176 @@ bool GetNVSEConfigOption_UInt32(const char * section, const char * key, UInt32 *
 namespace MersenneTwister
 {
 
-/* 
-   A C-program for MT19937, with initialization improved 2002/1/26.
-   Coded by Takuji Nishimura and Makoto Matsumoto.
+	/*
+	   A C-program for MT19937, with initialization improved 2002/1/26.
+	   Coded by Takuji Nishimura and Makoto Matsumoto.
 
-   Before using, initialize the state by using init_genrand(seed)  
-   or init_by_array(init_key, key_length).
+	   Before using, initialize the state by using init_genrand(seed)
+	   or init_by_array(init_key, key_length).
 
-   Copyright (C) 1997 - 2002, Makoto Matsumoto and Takuji Nishimura,
-   All rights reserved.                          
+	   Copyright (C) 1997 - 2002, Makoto Matsumoto and Takuji Nishimura,
+	   All rights reserved.
 
-   Redistribution and use in source and binary forms, with or without
-   modification, are permitted provided that the following conditions
-   are met:
+	   Redistribution and use in source and binary forms, with or without
+	   modification, are permitted provided that the following conditions
+	   are met:
 
-     1. Redistributions of source code must retain the above copyright
-        notice, this list of conditions and the following disclaimer.
+		 1. Redistributions of source code must retain the above copyright
+			notice, this list of conditions and the following disclaimer.
 
-     2. Redistributions in binary form must reproduce the above copyright
-        notice, this list of conditions and the following disclaimer in the
-        documentation and/or other materials provided with the distribution.
+		 2. Redistributions in binary form must reproduce the above copyright
+			notice, this list of conditions and the following disclaimer in the
+			documentation and/or other materials provided with the distribution.
 
-     3. The names of its contributors may not be used to endorse or promote 
-        products derived from this software without specific prior written 
-        permission.
+		 3. The names of its contributors may not be used to endorse or promote
+			products derived from this software without specific prior written
+			permission.
 
-   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-   A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-   CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-   EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-   PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-   PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-   NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+	   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+	   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+	   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+	   A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+	   CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+	   EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+	   PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+	   PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+	   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+	   NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+	   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-   Any feedback is very welcome.
-   http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/emt.html
-   email: m-mat @ math.sci.hiroshima-u.ac.jp (remove space)
-*/
+	   Any feedback is very welcome.
+	   http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/emt.html
+	   email: m-mat @ math.sci.hiroshima-u.ac.jp (remove space)
+	*/
 
-/* Period parameters */  
+	/* Period parameters */
 #define N 624
 #define M 397
 #define MATRIX_A 0x9908b0dfUL   /* constant vector a */
 #define UPPER_MASK 0x80000000UL /* most significant w-r bits */
 #define LOWER_MASK 0x7fffffffUL /* least significant r bits */
 
-static unsigned long mt[N]; /* the array for the state vector  */
-static int mti=N+1; /* mti==N+1 means mt[N] is not initialized */
+	static unsigned long mt[N]; /* the array for the state vector  */
+	static int mti = N + 1; /* mti==N+1 means mt[N] is not initialized */
 
-/* initializes mt[N] with a seed */
-void init_genrand(unsigned long s)
-{
-    mt[0]= s & 0xffffffffUL;
-    for (mti=1; mti<N; mti++) {
-        mt[mti] = 
-	    (1812433253UL * (mt[mti-1] ^ (mt[mti-1] >> 30)) + mti); 
-        /* See Knuth TAOCP Vol2. 3rd Ed. P.106 for multiplier. */
-        /* In the previous versions, MSBs of the seed affect   */
-        /* only MSBs of the array mt[].                        */
-        /* 2002/01/09 modified by Makoto Matsumoto             */
-        mt[mti] &= 0xffffffffUL;
-        /* for >32 bit machines */
-    }
-}
+	/* initializes mt[N] with a seed */
+	void init_genrand(unsigned long s)
+	{
+		mt[0] = s & 0xffffffffUL;
+		for (mti = 1; mti < N; mti++) {
+			mt[mti] =
+				(1812433253UL * (mt[mti - 1] ^ (mt[mti - 1] >> 30)) + mti);
+			/* See Knuth TAOCP Vol2. 3rd Ed. P.106 for multiplier. */
+			/* In the previous versions, MSBs of the seed affect   */
+			/* only MSBs of the array mt[].                        */
+			/* 2002/01/09 modified by Makoto Matsumoto             */
+			mt[mti] &= 0xffffffffUL;
+			/* for >32 bit machines */
+		}
+	}
 
-/* initialize by an array with array-length */
-/* init_key is the array for initializing keys */
-/* key_length is its length */
-/* slight change for C++, 2004/2/26 */
-void init_by_array(unsigned long init_key[], int key_length)
-{
-    int i, j, k;
-    init_genrand(19650218UL);
-    i=1; j=0;
-    k = (N>key_length ? N : key_length);
-    for (; k; k--) {
-        mt[i] = (mt[i] ^ ((mt[i-1] ^ (mt[i-1] >> 30)) * 1664525UL))
-          + init_key[j] + j; /* non linear */
-        mt[i] &= 0xffffffffUL; /* for WORDSIZE > 32 machines */
-        i++; j++;
-        if (i>=N) { mt[0] = mt[N-1]; i=1; }
-        if (j>=key_length) j=0;
-    }
-    for (k=N-1; k; k--) {
-        mt[i] = (mt[i] ^ ((mt[i-1] ^ (mt[i-1] >> 30)) * 1566083941UL))
-          - i; /* non linear */
-        mt[i] &= 0xffffffffUL; /* for WORDSIZE > 32 machines */
-        i++;
-        if (i>=N) { mt[0] = mt[N-1]; i=1; }
-    }
+	/* initialize by an array with array-length */
+	/* init_key is the array for initializing keys */
+	/* key_length is its length */
+	/* slight change for C++, 2004/2/26 */
+	void init_by_array(unsigned long init_key[], int key_length)
+	{
+		int i, j, k;
+		init_genrand(19650218UL);
+		i = 1; j = 0;
+		k = (N > key_length ? N : key_length);
+		for (; k; k--) {
+			mt[i] = (mt[i] ^ ((mt[i - 1] ^ (mt[i - 1] >> 30)) * 1664525UL))
+				+ init_key[j] + j; /* non linear */
+			mt[i] &= 0xffffffffUL; /* for WORDSIZE > 32 machines */
+			i++; j++;
+			if (i >= N) { mt[0] = mt[N - 1]; i = 1; }
+			if (j >= key_length) j = 0;
+		}
+		for (k = N - 1; k; k--) {
+			mt[i] = (mt[i] ^ ((mt[i - 1] ^ (mt[i - 1] >> 30)) * 1566083941UL))
+				- i; /* non linear */
+			mt[i] &= 0xffffffffUL; /* for WORDSIZE > 32 machines */
+			i++;
+			if (i >= N) { mt[0] = mt[N - 1]; i = 1; }
+		}
 
-    mt[0] = 0x80000000UL; /* MSB is 1; assuring non-zero initial array */ 
-}
+		mt[0] = 0x80000000UL; /* MSB is 1; assuring non-zero initial array */
+	}
 
-/* generates a random number on [0,0xffffffff]-interval */
-unsigned long genrand_int32(void)
-{
-    unsigned long y;
-    static unsigned long mag01[2]={0x0UL, MATRIX_A};
-    /* mag01[x] = x * MATRIX_A  for x=0,1 */
+	/* generates a random number on [0,0xffffffff]-interval */
+	unsigned long genrand_int32(void)
+	{
+		unsigned long y;
+		static unsigned long mag01[2] = { 0x0UL, MATRIX_A };
+		/* mag01[x] = x * MATRIX_A  for x=0,1 */
 
-    if (mti >= N) { /* generate N words at one time */
-        int kk;
+		if (mti >= N) { /* generate N words at one time */
+			int kk;
 
-        if (mti == N+1)   /* if init_genrand() has not been called, */
-            init_genrand(5489UL); /* a default initial seed is used */
+			if (mti == N + 1)   /* if init_genrand() has not been called, */
+				init_genrand(5489UL); /* a default initial seed is used */
 
-        for (kk=0;kk<N-M;kk++) {
-            y = (mt[kk]&UPPER_MASK)|(mt[kk+1]&LOWER_MASK);
-            mt[kk] = mt[kk+M] ^ (y >> 1) ^ mag01[y & 0x1UL];
-        }
-        for (;kk<N-1;kk++) {
-            y = (mt[kk]&UPPER_MASK)|(mt[kk+1]&LOWER_MASK);
-            mt[kk] = mt[kk+(M-N)] ^ (y >> 1) ^ mag01[y & 0x1UL];
-        }
-        y = (mt[N-1]&UPPER_MASK)|(mt[0]&LOWER_MASK);
-        mt[N-1] = mt[M-1] ^ (y >> 1) ^ mag01[y & 0x1UL];
+			for (kk = 0; kk < N - M; kk++) {
+				y = (mt[kk] & UPPER_MASK) | (mt[kk + 1] & LOWER_MASK);
+				mt[kk] = mt[kk + M] ^ (y >> 1) ^ mag01[y & 0x1UL];
+			}
+			for (; kk < N - 1; kk++) {
+				y = (mt[kk] & UPPER_MASK) | (mt[kk + 1] & LOWER_MASK);
+				mt[kk] = mt[kk + (M - N)] ^ (y >> 1) ^ mag01[y & 0x1UL];
+			}
+			y = (mt[N - 1] & UPPER_MASK) | (mt[0] & LOWER_MASK);
+			mt[N - 1] = mt[M - 1] ^ (y >> 1) ^ mag01[y & 0x1UL];
 
-        mti = 0;
-    }
-  
-    y = mt[mti++];
+			mti = 0;
+		}
 
-    /* Tempering */
-    y ^= (y >> 11);
-    y ^= (y << 7) & 0x9d2c5680UL;
-    y ^= (y << 15) & 0xefc60000UL;
-    y ^= (y >> 18);
+		y = mt[mti++];
 
-    return y;
-}
+		/* Tempering */
+		y ^= (y >> 11);
+		y ^= (y << 7) & 0x9d2c5680UL;
+		y ^= (y << 15) & 0xefc60000UL;
+		y ^= (y >> 18);
 
-/* generates a random number on [0,0x7fffffff]-interval */
-long genrand_int31(void)
-{
-    return (long)(genrand_int32()>>1);
-}
+		return y;
+	}
 
-/* generates a random number on [0,1]-real-interval */
-double genrand_real1(void)
-{
-    return genrand_int32()*(1.0/4294967295.0); 
-    /* divided by 2^32-1 */ 
-}
+	/* generates a random number on [0,0x7fffffff]-interval */
+	long genrand_int31(void)
+	{
+		return (long)(genrand_int32() >> 1);
+	}
 
-/* generates a random number on [0,1)-real-interval */
-double genrand_real2(void)
-{
-    return genrand_int32()*(1.0/4294967296.0); 
-    /* divided by 2^32 */
-}
+	/* generates a random number on [0,1]-real-interval */
+	double genrand_real1(void)
+	{
+		return genrand_int32() * (1.0 / 4294967295.0);
+		/* divided by 2^32-1 */
+	}
 
-/* generates a random number on (0,1)-real-interval */
-double genrand_real3(void)
-{
-    return (((double)genrand_int32()) + 0.5)*(1.0/4294967296.0); 
-    /* divided by 2^32 */
-}
+	/* generates a random number on [0,1)-real-interval */
+	double genrand_real2(void)
+	{
+		return genrand_int32() * (1.0 / 4294967296.0);
+		/* divided by 2^32 */
+	}
 
-/* generates a random number on [0,1) with 53-bit resolution*/
-double genrand_res53(void) 
-{ 
-    unsigned long a=genrand_int32()>>5, b=genrand_int32()>>6; 
-    return(a*67108864.0+b)*(1.0/9007199254740992.0); 
-} 
-/* These real versions are due to Isaku Wada, 2002/01/09 added */
+	/* generates a random number on (0,1)-real-interval */
+	double genrand_real3(void)
+	{
+		return (((double)genrand_int32()) + 0.5) * (1.0 / 4294967296.0);
+		/* divided by 2^32 */
+	}
+
+	/* generates a random number on [0,1) with 53-bit resolution*/
+	double genrand_res53(void)
+	{
+		unsigned long a = genrand_int32() >> 5, b = genrand_int32() >> 6;
+		return(a * 67108864.0 + b) * (1.0 / 9007199254740992.0);
+	}
+	/* These real versions are due to Isaku Wada, 2002/01/09 added */
 
 #undef N
 #undef M
@@ -366,7 +362,7 @@ double genrand_res53(void)
 };
 
 Tokenizer::Tokenizer(const char* src, const char* delims)
-: m_offset(0), m_delims(delims), m_data(src)
+	: m_offset(0), m_delims(delims), m_data(src)
 {
 	//
 }
@@ -418,11 +414,11 @@ UInt32 Tokenizer::PrevToken(std::string& outStr)
 
 #if RUNTIME
 
-const char GetSeparatorChar(Script * script)
+const char GetSeparatorChar(Script* script)
 {
-	if(IsConsoleMode())
+	if (IsConsoleMode())
 	{
-		if(script && script->GetModIndex() != 0xFF)
+		if (script && script->GetModIndex() != 0xFF)
 			return '|';
 		else
 			return '@';
@@ -431,11 +427,11 @@ const char GetSeparatorChar(Script * script)
 		return '|';
 }
 
-const char * GetSeparatorChars(Script * script)
+const char* GetSeparatorChars(Script* script)
 {
-	if(IsConsoleMode())
+	if (IsConsoleMode())
 	{
-		if(script && script->GetModIndex() != 0xFF)
+		if (script && script->GetModIndex() != 0xFF)
 			return "|";
 		else
 			return "@";
@@ -448,9 +444,9 @@ void Console_Print_Long(const std::string& str)
 {
 	UInt32 numLines = str.length() / 500;
 	for (UInt32 i = 0; i < numLines; i++)
-		Console_Print("%s ...", str.substr(i*500, 500).c_str());
+		Console_Print("%s ...", str.substr(i * 500, 500).c_str());
 
-	Console_Print("%s", str.substr(numLines*500, str.length() - numLines*500).c_str());
+	Console_Print("%s", str.substr(numLines * 500, str.length() - numLines * 500).c_str());
 }
 
 #endif
@@ -531,7 +527,7 @@ void ErrOutput::vShow(ErrOutput::Message& msg, va_list args)
 		ShowError(msgText);
 }
 
-void ErrOutput::Show(ErrOutput::Message msg, ...)
+void ErrOutput::Show(ErrOutput::Message& msg, ...)
 {
 	va_list args;
 	va_start(args, msg);
@@ -557,15 +553,9 @@ void ErrOutput::vShow(const char* msg, va_list args)
 	vShow(tempMsg, args);
 }
 
-char* __fastcall CopyCString(const char* src)
-{
-	UInt32 length = StrLen(src);
-	if (!length) return NULL;
-	length++;
-	char* result = (char*)GameHeapAlloc(length);
-	MemCopy(result, src, length);
-	return result;
-}
+#include "internal/utility.h"
+#include "nvse/GameAPI.h"
+//#include "internal/md5/md5.h"
 
 bool fCompare(float lval, float rval)
 {
@@ -576,15 +566,15 @@ __declspec(naked) int __stdcall lfloor(float value)
 {
 	__asm
 	{
-		fld		dword ptr[esp + 4]
-		fstcw[esp + 4]
-		mov		dx, [esp + 4]
-		or word ptr[esp + 4], 0x400
-		fldcw[esp + 4]
-		fistp	dword ptr[esp + 4]
-		mov		eax, [esp + 4]
-		mov[esp + 4], dx
-		fldcw[esp + 4]
+		fld		dword ptr [esp+4]
+		fstcw	[esp+4]
+		mov		dx, [esp+4]
+		or		word ptr [esp+4], 0x400
+		fldcw	[esp+4]
+		fistp	dword ptr [esp+4]
+		mov		eax, [esp+4]
+		mov		[esp+4], dx
+		fldcw	[esp+4]
 		retn	4
 	}
 }
@@ -593,15 +583,15 @@ __declspec(naked) int __stdcall lceil(float value)
 {
 	__asm
 	{
-		fld		dword ptr[esp + 4]
-		fstcw[esp + 4]
-		mov		dx, [esp + 4]
-		or word ptr[esp + 4], 0x800
-		fldcw[esp + 4]
-		fistp	dword ptr[esp + 4]
-		mov		eax, [esp + 4]
-		mov[esp + 4], dx
-		fldcw[esp + 4]
+		fld		dword ptr [esp+4]
+		fstcw	[esp+4]
+		mov		dx, [esp+4]
+		or		word ptr [esp+4], 0x800
+		fldcw	[esp+4]
+		fistp	dword ptr [esp+4]
+		mov		eax, [esp+4]
+		mov		[esp+4], dx
+		fldcw	[esp+4]
 		retn	4
 	}
 }
@@ -610,7 +600,7 @@ __declspec(naked) float __stdcall fSqrt(float value)
 {
 	__asm
 	{
-		fld		dword ptr[esp + 4]
+		fld		dword ptr [esp+4]
 		fsqrt
 		retn	4
 	}
@@ -620,7 +610,7 @@ __declspec(naked) double __stdcall dSqrt(double value)
 {
 	__asm
 	{
-		fld		qword ptr[esp + 4]
+		fld		qword ptr [esp+4]
 		fsqrt
 		retn	8
 	}
@@ -641,14 +631,14 @@ double dCos(double angle)
 	int quad = int(angle * kDbl2dPI);
 	switch (quad)
 	{
-	case 0:
-		return cos_p(angle);
-	case 1:
-		return -cos_p(kDblPI - angle);
-	case 2:
-		return -cos_p(angle - kDblPI);
-	default:
-		return cos_p(kDblPIx2 - angle);
+		case 0:
+			return cos_p(angle);
+		case 1:
+			return -cos_p(kDblPI - angle);
+		case 2:
+			return -cos_p(angle - kDblPI);
+		default:
+			return cos_p(kDblPIx2 - angle);
 	}
 }
 
@@ -673,22 +663,22 @@ double dTan(double angle)
 	int octant = int(angle * kDbl4dPI);
 	switch (octant)
 	{
-	case 0:
-		return tan_p(angle);
-	case 1:
-		return 1.0 / tan_p(kDblPId2 - angle);
-	case 2:
-		return -1.0 / tan_p(angle - kDblPId2);
-	case 3:
-		return -tan_p(kDblPI - angle);
-	case 4:
-		return tan_p(angle - kDblPI);
-	case 5:
-		return 1.0 / tan_p(kDblPIx3d2 - angle);
-	case 6:
-		return -1.0 / tan_p(angle - kDblPIx3d2);
-	default:
-		return -tan_p(kDblPIx2 - angle);
+		case 0:
+			return tan_p(angle);
+		case 1:
+			return 1.0 / tan_p(kDblPId2 - angle);
+		case 2:
+			return -1.0 / tan_p(angle - kDblPId2);
+		case 3:
+			return -tan_p(kDblPI - angle);
+		case 4:
+			return tan_p(angle - kDblPI);
+		case 5:
+			return 1.0 / tan_p(kDblPIx3d2 - angle);
+		case 6:
+			return -1.0 / tan_p(angle - kDblPIx3d2);
+		default:
+			return -tan_p(kDblPIx2 - angle);
 	}
 }
 
@@ -813,7 +803,7 @@ __declspec(naked) UInt32 __fastcall RGBDecToHex(UInt32 rgb)
 	}
 }
 
-__declspec(naked) void* __fastcall MemCopy(void* dest, const void* src, UInt32 length)
+__declspec(naked) void* __fastcall MemCopy(void *dest, const void *src, UInt32 length)
 {
 	__asm
 	{
@@ -823,7 +813,7 @@ __declspec(naked) void* __fastcall MemCopy(void* dest, const void* src, UInt32 l
 		jz		done
 		test	edx, edx
 		jz		done
-		mov		ebx, [esp + 0xC]
+		mov		ebx, [esp+0xC]
 		test	ebx, ebx
 		jz		done
 		mov		eax, ecx
@@ -832,133 +822,133 @@ __declspec(naked) void* __fastcall MemCopy(void* dest, const void* src, UInt32 l
 		jz		done
 		cmp		eax, ebx
 		jb		revCopy
-		copy10F :
+	copy10F:
 		cmp		ebx, 0x10
-			jb		copy8F
-			movdqu	xmm0, xmmword ptr[edx]
-			movdqu	xmmword ptr[ecx], xmm0
-			sub		ebx, 0x10
-			jz		done
-			add		ecx, 0x10
-			add		edx, 0x10
-			jmp		copy10F
-			copy8F :
+		jb		copy8F
+		movdqu	xmm0, xmmword ptr [edx]
+		movdqu	xmmword ptr [ecx], xmm0
+		sub		ebx, 0x10
+		jz		done
+		add		ecx, 0x10
+		add		edx, 0x10
+		jmp		copy10F
+	copy8F:
 		test	bl, 8
-			jz		copy4F
-			movq	xmm0, qword ptr[edx]
-			movq	qword ptr[ecx], xmm0
-			and bl, 7
-			jz		done
-			add		ecx, 8
-			add		edx, 8
-			copy4F:
+		jz		copy4F
+		movq	xmm0, qword ptr [edx]
+		movq	qword ptr [ecx], xmm0
+		and		bl, 7
+		jz		done
+		add		ecx, 8
+		add		edx, 8
+	copy4F:
 		test	bl, 4
-			jz		copy2F
-			mov		eax, [edx]
-			mov[ecx], eax
-			and bl, 3
-			jz		done
-			add		ecx, 4
-			add		edx, 4
-			copy2F:
+		jz		copy2F
+		mov		eax, [edx]
+		mov		[ecx], eax
+		and		bl, 3
+		jz		done
+		add		ecx, 4
+		add		edx, 4
+	copy2F:
 		test	bl, 2
-			jz		copy1F
-			mov		ax, [edx]
-			mov[ecx], ax
-			and bl, 1
-			jz		done
-			add		ecx, 2
-			add		edx, 2
-			copy1F:
+		jz		copy1F
+		mov		ax, [edx]
+		mov		[ecx], ax
+		and		bl, 1
+		jz		done
+		add		ecx, 2
+		add		edx, 2
+	copy1F:
 		mov		al, [edx]
-			mov[ecx], al
-			done :
+		mov		[ecx], al
+	done:
 		pop		ebx
-			pop		eax
-			retn	4
-			revCopy :
-			add		ecx, ebx
-			add		edx, ebx
-			copy10B :
+		pop		eax
+		retn	4
+	revCopy:
+		add		ecx, ebx
+		add		edx, ebx
+	copy10B:
 		cmp		ebx, 0x10
-			jb		copy8B
-			sub		ecx, 0x10
-			sub		edx, 0x10
-			movdqu	xmm0, xmmword ptr[edx]
-			movdqu	xmmword ptr[ecx], xmm0
-			sub		ebx, 0x10
-			jz		done
-			jmp		copy10B
-			copy8B :
+		jb		copy8B
+		sub		ecx, 0x10
+		sub		edx, 0x10
+		movdqu	xmm0, xmmword ptr [edx]
+		movdqu	xmmword ptr [ecx], xmm0
+		sub		ebx, 0x10
+		jz		done
+		jmp		copy10B
+	copy8B:
 		test	bl, 8
-			jz		copy4B
-			sub		ecx, 8
-			sub		edx, 8
-			movq	xmm0, qword ptr[edx]
-			movq	qword ptr[ecx], xmm0
-			and bl, 7
-			jz		done
-			copy4B :
+		jz		copy4B
+		sub		ecx, 8
+		sub		edx, 8
+		movq	xmm0, qword ptr [edx]
+		movq	qword ptr [ecx], xmm0
+		and		bl, 7
+		jz		done
+	copy4B:
 		test	bl, 4
-			jz		copy2B
-			sub		ecx, 4
-			sub		edx, 4
-			mov		eax, [edx]
-			mov[ecx], eax
-			and bl, 3
-			jz		done
-			copy2B :
+		jz		copy2B
+		sub		ecx, 4
+		sub		edx, 4
+		mov		eax, [edx]
+		mov		[ecx], eax
+		and		bl, 3
+		jz		done
+	copy2B:
 		test	bl, 2
-			jz		copy1B
-			sub		ecx, 2
-			sub		edx, 2
-			mov		ax, [edx]
-			mov[ecx], ax
-			and bl, 1
-			jz		done
-			copy1B :
-		mov		al, [edx - 1]
-			mov[ecx - 1], al
-			jmp		done
+		jz		copy1B
+		sub		ecx, 2
+		sub		edx, 2
+		mov		ax, [edx]
+		mov		[ecx], ax
+		and		bl, 1
+		jz		done
+	copy1B:
+		mov		al, [edx-1]
+		mov		[ecx-1], al
+		jmp		done
 	}
 }
 
-__declspec(naked) UInt32 __fastcall StrLen(const char* str)
+__declspec(naked) UInt32 __fastcall StrLen(const char *str)
 {
 	__asm
 	{
 		mov		eax, ecx
 		test	ecx, ecx
 		jz		done
-		iterHead :
-		cmp[eax], 0
-			jz		done
-			inc		eax
-			jmp		iterHead
-			done :
+	iterHead:
+		cmp		[eax], 0
+		jz		done
+		inc		eax
+		jmp		iterHead
+	done:
 		sub		eax, ecx
-			retn
-	}
-}
-
-__declspec(naked) char* __fastcall StrEnd(const char* str)
-{
-	__asm
-	{
-		mov		eax, ecx
-		test	ecx, ecx
-		jz		done
-		iterHead :
-		cmp[eax], 0
-			jz		done
-			inc		eax
-			jmp		iterHead
-			done :
 		retn
 	}
 }
 
-__declspec(naked) bool __fastcall MemCmp(const void* ptr1, const void* ptr2, UInt32 bsize)
+__declspec(naked) char* __fastcall StrEnd(const char *str)
+{
+	__asm
+	{
+		mov		eax, ecx
+		test	ecx, ecx
+		jz		done
+	iterHead:
+		cmp		[eax], 0
+		jz		done
+		inc		eax
+		jmp		iterHead
+	done:
+		retn
+	}
+}
+
+__declspec(naked) bool __fastcall MemCmp(const void *ptr1, const void *ptr2, UInt32 bsize)
 {
 	__asm
 	{
@@ -966,26 +956,26 @@ __declspec(naked) bool __fastcall MemCmp(const void* ptr1, const void* ptr2, UIn
 		push	edi
 		mov		esi, ecx
 		mov		edi, edx
-		mov		eax, [esp + 0xC]
+		mov		eax, [esp+0xC]
 		mov		ecx, eax
 		shr		ecx, 2
 		jz		comp1
 		repe cmpsd
 		jnz		done
-		comp1 :
-		and eax, 3
-			jz		done
-			mov		ecx, eax
-			repe cmpsb
-			done :
+	comp1:
+		and		eax, 3
+		jz		done
+		mov		ecx, eax
+		repe cmpsb
+	done:
 		setz	al
-			pop		edi
-			pop		esi
-			retn	4
+		pop		edi
+		pop		esi
+		retn	4
 	}
 }
 
-__declspec(naked) void __fastcall MemZero(void* dest, UInt32 bsize)
+__declspec(naked) void __fastcall MemZero(void *dest, UInt32 bsize)
 {
 	__asm
 	{
@@ -993,23 +983,23 @@ __declspec(naked) void __fastcall MemZero(void* dest, UInt32 bsize)
 		test	ecx, ecx
 		jz		done
 		mov		edi, ecx
-		xor eax, eax
+		xor		eax, eax
 		mov		ecx, edx
 		shr		ecx, 2
 		jz		write1
 		rep stosd
-		write1 :
-		and edx, 3
-			jz		done
-			mov		ecx, edx
-			rep stosb
-			done :
+	write1:
+		and		edx, 3
+		jz		done
+		mov		ecx, edx
+		rep stosb
+	done:
 		pop		edi
-			retn
+		retn
 	}
 }
 
-__declspec(naked) char* __fastcall StrCopy(char* dest, const char* src)
+__declspec(naked) char* __fastcall StrCopy(char *dest, const char *src)
 {
 	__asm
 	{
@@ -1018,27 +1008,27 @@ __declspec(naked) char* __fastcall StrCopy(char* dest, const char* src)
 		test	edx, edx
 		jz		nullTerm
 		mov		eax, edx
-		getSize :
-		cmp[eax], 0
-			jz		doCopy
-			inc		eax
-			jmp		getSize
-			doCopy :
+	getSize:
+		cmp		[eax], 0
+		jz		doCopy
+		inc		eax
+		jmp		getSize
+	doCopy:
 		sub		eax, edx
-			push	eax
-			push	eax
-			call	MemCopy
-			pop		ecx
-			add		ecx, eax
-			nullTerm :
-		mov[ecx], 0
-			done :
-			mov		eax, ecx
-			retn
+		push	eax
+		push	eax
+		call	MemCopy
+		pop		ecx
+		add		ecx, eax
+	nullTerm:
+		mov		[ecx], 0
+	done:
+		mov		eax, ecx
+		retn
 	}
 }
 
-__declspec(naked) char* __fastcall StrNCopy(char* dest, const char* src, UInt32 length)
+__declspec(naked) char* __fastcall StrNCopy(char *dest, const char *src, UInt32 length)
 {
 	__asm
 	{
@@ -1047,32 +1037,32 @@ __declspec(naked) char* __fastcall StrNCopy(char* dest, const char* src, UInt32 
 		jz		done
 		test	edx, edx
 		jz		nullTerm
-		mov		esi, [esp + 8]
+		mov		esi, [esp+8]
 		test	esi, esi
 		jz		nullTerm
 		mov		eax, edx
-		getSize :
-		cmp[eax], 0
-			jz		doCopy
-			inc		eax
-			dec		esi
-			jnz		getSize
-			doCopy :
+	getSize:
+		cmp		[eax], 0
+		jz		doCopy
+		inc		eax
+		dec		esi
+		jnz		getSize
+	doCopy:
 		sub		eax, edx
-			lea		esi, [ecx + eax]
-			push	eax
-			call	MemCopy
-			mov		ecx, esi
-			nullTerm :
-		mov[ecx], 0
-			done :
-			mov		eax, ecx
-			pop		esi
-			retn	4
+		lea		esi, [ecx+eax]
+		push	eax
+		call	MemCopy
+		mov		ecx, esi
+	nullTerm:
+		mov		[ecx], 0
+	done:
+		mov		eax, ecx
+		pop		esi
+		retn	4
 	}
 }
 
-__declspec(naked) char* __fastcall StrLenCopy(char* dest, const char* src, UInt32 length)
+__declspec(naked) char* __fastcall StrLenCopy(char *dest, const char *src, UInt32 length)
 {
 	__asm
 	{
@@ -1080,22 +1070,22 @@ __declspec(naked) char* __fastcall StrLenCopy(char* dest, const char* src, UInt3
 		jz		done
 		test	edx, edx
 		jz		nullTerm
-		mov		eax, [esp + 4]
+		mov		eax, [esp+4]
 		test	eax, eax
 		jz		nullTerm
 		push	eax
 		call	MemCopy
 		mov		ecx, eax
-		add		ecx, [esp + 4]
-		nullTerm:
-		mov[ecx], 0
-			done :
-			mov		eax, ecx
-			retn	4
+		add		ecx, [esp+4]
+	nullTerm:
+		mov		[ecx], 0
+	done:
+		mov		eax, ecx
+		retn	4
 	}
 }
 
-__declspec(naked) char* __fastcall StrCat(char* dest, const char* src)
+__declspec(naked) char* __fastcall StrCat(char *dest, const char *src)
 {
 	__asm
 	{
@@ -1103,49 +1093,49 @@ __declspec(naked) char* __fastcall StrCat(char* dest, const char* src)
 		jnz		iterHead
 		mov		eax, ecx
 		retn
-		iterHead :
-		cmp[ecx], 0
-			jz		done
-			inc		ecx
-			jmp		iterHead
-			done :
+	iterHead:
+		cmp		[ecx], 0
+		jz		done
+		inc		ecx
+		jmp		iterHead
+	done:
 		jmp		StrCopy
 	}
 }
 
-__declspec(naked) UInt32 __fastcall StrHash(const char* inKey)
+__declspec(naked) UInt32 __fastcall StrHash(const char *inKey)
 {
 	__asm
 	{
-		xor eax, eax
+		xor		eax, eax
 		test	ecx, ecx
 		jz		done
-		xor edx, edx
-		iterHead :
+		xor		edx, edx
+	iterHead:
 		mov		dl, [ecx]
-			cmp		dl, 'Z'
-			jg		notCap
-			test	dl, dl
-			jz		done
-			cmp		dl, 'A'
-			jl		notCap
-			or dl, 0x20
-			notCap:
+		cmp		dl, 'Z'
+		jg		notCap
+		test	dl, dl
+		jz		done
+		cmp		dl, 'A'
+		jl		notCap
+		or		dl, 0x20
+	notCap:
 		imul	eax, 0x65
-			add		eax, edx
-			inc		ecx
-			jmp		iterHead
-			done :
+		add		eax, edx
+		inc		ecx
+		jmp		iterHead
+	done:
 		retn
 	}
 }
 
-__declspec(naked) bool __fastcall CmprLetters(const char* lstr, const char* rstr)
+__declspec(naked) bool __fastcall CmprLetters(const char *lstr, const char *rstr)
 {
 	__asm
 	{
 		mov		al, [ecx]
-		cmp[edx], al
+		cmp		[edx], al
 		jz		retnTrue
 		cmp		al, 'A'
 		jl		retnFalse
@@ -1155,20 +1145,20 @@ __declspec(naked) bool __fastcall CmprLetters(const char* lstr, const char* rstr
 		jle		isCap
 		cmp		al, 'a'
 		jl		retnFalse
-		isCap :
-		xor al, 0x20
-			cmp[edx], al
-			jz		retnTrue
-			retnFalse :
-		xor al, al
-			retn
-			retnTrue :
+	isCap:
+		xor		al, 0x20
+		cmp		[edx], al
+		jz		retnTrue
+	retnFalse:
+		xor		al, al
+		retn
+	retnTrue:
 		mov		al, 1
-			retn
+		retn
 	}
 }
 
-__declspec(naked) bool __fastcall StrEqualCS(const char* lstr, const char* rstr)
+__declspec(naked) bool __fastcall StrEqualCS(const char *lstr, const char *rstr)
 {
 	__asm
 	{
@@ -1191,26 +1181,26 @@ __declspec(naked) bool __fastcall StrEqualCS(const char* lstr, const char* rstr)
 		jz		comp1
 		repe cmpsd
 		jnz		retn0
-		comp1 :
-		and edx, 3
-			jz		retn1
-			mov		ecx, edx
-			repe cmpsb
-			jnz		retn0
-			retn1 :
+	comp1:
+		and		edx, 3
+		jz		retn1
+		mov		ecx, edx
+		repe cmpsb
+		jnz		retn0
+	retn1:
 		mov		al, 1
-			pop		edi
-			pop		esi
-			retn
-			retn0 :
-		xor al, al
-			pop		edi
-			pop		esi
-			retn
+		pop		edi
+		pop		esi
+		retn
+	retn0:
+		xor		al, al
+		pop		edi
+		pop		esi
+		retn
 	}
 }
 
-__declspec(naked) bool __fastcall StrEqualCI(const char* lstr, const char* rstr)
+__declspec(naked) bool __fastcall StrEqualCI(const char *lstr, const char *rstr)
 {
 	__asm
 	{
@@ -1228,29 +1218,29 @@ __declspec(naked) bool __fastcall StrEqualCI(const char* lstr, const char* rstr)
 		cmp		eax, edi
 		jnz		retnFalse
 		mov		edx, esi
-		iterHead :
-		cmp[ecx], 0
-			jz		retnTrue
-			call	CmprLetters
-			test	al, al
-			jz		retnFalse
-			inc		ecx
-			inc		edx
-			jmp		iterHead
-			retnTrue :
+	iterHead:
+		cmp		[ecx], 0
+		jz		retnTrue
+		call	CmprLetters
+		test	al, al
+		jz		retnFalse
+		inc		ecx
+		inc		edx
+		jmp		iterHead
+	retnTrue:
 		mov		al, 1
-			pop		edi
-			pop		esi
-			retn
-			retnFalse :
-		xor al, al
-			pop		edi
-			pop		esi
-			retn
+		pop		edi
+		pop		esi
+		retn
+	retnFalse:
+		xor		al, al
+		pop		edi
+		pop		esi
+		retn
 	}
 }
 
-__declspec(naked) char __fastcall StrCompare(const char* lstr, const char* rstr)
+__declspec(naked) char __fastcall StrCompare(const char *lstr, const char *rstr)
 {
 	__asm
 	{
@@ -1260,54 +1250,54 @@ __declspec(naked) char __fastcall StrCompare(const char* lstr, const char* rstr)
 		test	edx, edx
 		jz		retnEQ
 		jmp		retnLT
-		proceed :
+	proceed:
 		test	edx, edx
-			jz		retnGT
-			iterHead :
+		jz		retnGT
+	iterHead:
 		mov		al, [ecx]
-			mov		bl, [edx]
-			test	al, al
-			jz		iterEnd
-			cmp		al, bl
-			jz		iterNext
-			cmp		al, 'Z'
-			jg		lNotCap
-			cmp		al, 'A'
-			jl		lNotCap
-			or al, 0x20
-			lNotCap:
+		mov		bl, [edx]
+		test	al, al
+		jz		iterEnd
+		cmp		al, bl
+		jz		iterNext
+		cmp		al, 'Z'
+		jg		lNotCap
+		cmp		al, 'A'
+		jl		lNotCap
+		or		al, 0x20
+	lNotCap:
 		cmp		bl, 'Z'
-			jg		rNotCap
-			cmp		bl, 'A'
-			jl		rNotCap
-			or bl, 0x20
-			rNotCap :
-			cmp		al, bl
-			jl		retnLT
-			jg		retnGT
-			iterNext :
+		jg		rNotCap
+		cmp		bl, 'A'
+		jl		rNotCap
+		or		bl, 0x20
+	rNotCap:
+		cmp		al, bl
+		jl		retnLT
+		jg		retnGT
+	iterNext:
 		inc		ecx
-			inc		edx
-			jmp		iterHead
-			iterEnd :
+		inc		edx
+		jmp		iterHead
+	iterEnd:
 		test	bl, bl
-			jz		retnEQ
-			retnLT :
+		jz		retnEQ
+	retnLT:
 		mov		al, -1
-			pop		ebx
-			retn
-			retnGT :
+		pop		ebx
+		retn
+	retnGT:
 		mov		al, 1
-			pop		ebx
-			retn
-			retnEQ :
-		xor al, al
-			pop		ebx
-			retn
+		pop		ebx
+		retn
+	retnEQ:
+		xor		al, al
+		pop		ebx
+		retn
 	}
 }
 
-__declspec(naked) char __fastcall StrBeginsCS(const char* lstr, const char* rstr)
+__declspec(naked) char __fastcall StrBeginsCS(const char *lstr, const char *rstr)
 {
 	__asm
 	{
@@ -1330,28 +1320,28 @@ __declspec(naked) char __fastcall StrBeginsCS(const char* lstr, const char* rstr
 		jz		comp1
 		repe cmpsd
 		jnz		retn0
-		comp1 :
-		and eax, 3
-			jz		retn1
-			mov		ecx, eax
-			repe cmpsb
-			jnz		retn0
-			retn1 :
-		cmp[esi], 0
-			setz	al
-			inc		al
-			pop		edi
-			pop		esi
-			retn
-			retn0 :
-		xor al, al
-			pop		edi
-			pop		esi
-			retn
+	comp1:
+		and		eax, 3
+		jz		retn1
+		mov		ecx, eax
+		repe cmpsb
+		jnz		retn0
+	retn1:
+		cmp		[esi], 0
+		setz	al
+		inc		al
+		pop		edi
+		pop		esi
+		retn
+	retn0:
+		xor		al, al
+		pop		edi
+		pop		esi
+		retn
 	}
 }
 
-__declspec(naked) char __fastcall StrBeginsCI(const char* lstr, const char* rstr)
+__declspec(naked) char __fastcall StrBeginsCI(const char *lstr, const char *rstr)
 {
 	__asm
 	{
@@ -1369,146 +1359,146 @@ __declspec(naked) char __fastcall StrBeginsCI(const char* lstr, const char* rstr
 		cmp		eax, edi
 		jg		retn0
 		mov		edx, esi
-		iterHead :
-		cmp[ecx], 0
-			jz		iterEnd
-			call	CmprLetters
-			test	al, al
-			jz		retn0
-			inc		ecx
-			inc		edx
-			jmp		iterHead
-			iterEnd :
-		cmp[edx], 0
-			setz	al
-			inc		al
-			pop		edi
-			pop		esi
-			retn
-			retn0 :
-		xor al, al
-			pop		edi
-			pop		esi
-			retn
+	iterHead:
+		cmp		[ecx], 0
+		jz		iterEnd
+		call	CmprLetters
+		test	al, al
+		jz		retn0
+		inc		ecx
+		inc		edx
+		jmp		iterHead
+	iterEnd:
+		cmp		[edx], 0
+		setz	al
+		inc		al
+		pop		edi
+		pop		esi
+		retn
+	retn0:
+		xor		al, al
+		pop		edi
+		pop		esi
+		retn
 	}
 }
 
-__declspec(naked) void __fastcall FixPath(char* str)
+__declspec(naked) void __fastcall FixPath(char *str)
 {
 	__asm
 	{
 		test	ecx, ecx
 		jz		done
-		iterHead :
+	iterHead:
 		mov		al, [ecx]
-			test	al, al
-			jz		done
-			cmp		al, 'Z'
-			jg		checkSlash
-			cmp		al, 'A'
-			jl		iterNext
-			or byte ptr[ecx], 0x20
-			jmp		iterNext
-			checkSlash :
+		test	al, al
+		jz		done
+		cmp		al, 'Z'
+		jg		checkSlash
+		cmp		al, 'A'
+		jl		iterNext
+		or		byte ptr [ecx], 0x20
+		jmp		iterNext
+	checkSlash:
 		cmp		al, '\\'
-			jnz		iterNext
-			mov		byte ptr[ecx], '/'
-			iterNext :
-			inc		ecx
-			jmp		iterHead
-			done :
+		jnz		iterNext
+		mov		byte ptr [ecx], '/'
+	iterNext:
+		inc		ecx
+		jmp		iterHead
+	done:
 		retn
 	}
 }
 
-__declspec(naked) void __fastcall StrToLower(char* str)
+__declspec(naked) void __fastcall StrToLower(char *str)
 {
 	__asm
 	{
 		test	ecx, ecx
 		jz		done
-		iterHead :
+	iterHead:
 		mov		al, [ecx]
-			cmp		al, 'Z'
-			jg		iterNext
-			test	al, al
-			jz		done
-			cmp		al, 'A'
-			jl		iterNext
-			or byte ptr[ecx], 0x20
-			iterNext:
+		cmp		al, 'Z'
+		jg		iterNext
+		test	al, al
+		jz		done
+		cmp		al, 'A'
+		jl		iterNext
+		or		byte ptr [ecx], 0x20
+	iterNext:
 		inc		ecx
-			jmp		iterHead
-			done :
+		jmp		iterHead
+	done:
 		retn
 	}
 }
 
-__declspec(naked) void __fastcall ReplaceChr(char* str, char from, char to)
+__declspec(naked) void __fastcall ReplaceChr(char *str, char from, char to)
 {
 	__asm
 	{
 		test	ecx, ecx
 		jz		done
-		mov		al, [esp + 4]
-		iterHead:
-		cmp[ecx], 0
-			jz		done
-			cmp[ecx], dl
-			jnz		iterNext
-			mov[ecx], al
-			iterNext :
+		mov		al, [esp+4]
+	iterHead:
+		cmp		[ecx], 0
+		jz		done
+		cmp		[ecx], dl
+		jnz		iterNext
+		mov		[ecx], al
+	iterNext:
 		inc		ecx
-			jmp		iterHead
-			done :
+		jmp		iterHead
+	done:
 		retn	4
 	}
 }
 
-__declspec(naked) char* __fastcall FindChr(const char* str, char chr)
+__declspec(naked) char* __fastcall FindChr(const char *str, char chr)
 {
 	__asm
 	{
 		mov		eax, ecx
 		test	ecx, ecx
 		jz		done
-		iterHead :
-		cmp[eax], 0
-			jz		retnNULL
-			cmp[eax], dl
-			jz		done
-			inc		eax
-			jmp		iterHead
-			retnNULL :
-		xor eax, eax
-			done :
+	iterHead:
+		cmp		[eax], 0
+		jz		retnNULL
+		cmp		[eax], dl
+		jz		done
+		inc		eax
+		jmp		iterHead
+	retnNULL:
+		xor		eax, eax
+	done:
 		retn
 	}
 }
 
-__declspec(naked) char* __fastcall FindChrR(const char* str, UInt32 length, char chr)
+__declspec(naked) char* __fastcall FindChrR(const char *str, UInt32 length, char chr)
 {
 	__asm
 	{
 		test	ecx, ecx
 		jz		retnNULL
-		lea		eax, [ecx + edx]
-		mov		dl, [esp + 4]
-		iterHead:
+		lea		eax, [ecx+edx]
+		mov		dl, [esp+4]
+	iterHead:
 		cmp		eax, ecx
-			jz		retnNULL
-			dec		eax
-			cmp[eax], dl
-			jz		done
-			jmp		iterHead
-			retnNULL :
-		xor eax, eax
-			done :
+		jz		retnNULL
+		dec		eax
+		cmp		[eax], dl
+		jz		done
+		jmp		iterHead
+	retnNULL:
+		xor		eax, eax
+	done:
 		retn	4
 	}
 }
 
-__declspec(naked) char* __fastcall SubStr(const char* srcStr, const char* subStr)
+__declspec(naked) char* __fastcall SubStr(const char *srcStr, const char *subStr)
 {
 	__asm
 	{
@@ -1526,116 +1516,116 @@ __declspec(naked) char* __fastcall SubStr(const char* srcStr, const char* subStr
 		call	StrLen
 		sub		eax, ebx
 		mov		ebx, eax
-		mainHead :
+	mainHead:
 		cmp		ebx, 0
-			jl		retnNULL
-			subHead :
-		cmp[edx], 0
-			jnz		proceed
-			mov		eax, esi
-			jmp		done
-			proceed :
+		jl		retnNULL
+	subHead:
+		cmp		[edx], 0
+		jnz		proceed
+		mov		eax, esi
+		jmp		done
+	proceed:
 		call	CmprLetters
-			test	al, al
-			jz		mainNext
-			inc		ecx
-			inc		edx
-			jmp		subHead
-			mainNext :
+		test	al, al
+		jz		mainNext
+		inc		ecx
+		inc		edx
+		jmp		subHead
+	mainNext:
 		dec		ebx
-			inc		esi
-			mov		ecx, esi
-			mov		edx, edi
-			jmp		mainHead
-			retnNULL :
-		xor eax, eax
-			done :
+		inc		esi
+		mov		ecx, esi
+		mov		edx, edi
+		jmp		mainHead
+	retnNULL:
+		xor		eax, eax
+	done:
 		pop		edi
-			pop		esi
-			pop		ebx
-			retn
+		pop		esi
+		pop		ebx
+		retn
 	}
 }
 
-__declspec(naked) char* __fastcall SlashPos(const char* str)
+__declspec(naked) char* __fastcall SlashPos(const char *str)
 {
 	__asm
 	{
 		mov		eax, ecx
 		test	ecx, ecx
 		jz		done
-		iterHead :
+	iterHead:
 		mov		cl, [eax]
-			test	cl, cl
-			jz		retnNULL
-			cmp		cl, '/'
-			jz		done
-			cmp		cl, '\\'
-			jz		done
-			inc		eax
-			jmp		iterHead
-			retnNULL :
-		xor eax, eax
-			done :
+		test	cl, cl
+		jz		retnNULL
+		cmp		cl, '/'
+		jz		done
+		cmp		cl, '\\'
+		jz		done
+		inc		eax
+		jmp		iterHead
+	retnNULL:
+		xor		eax, eax
+	done:
 		retn
 	}
 }
 
-__declspec(naked) char* __fastcall SlashPosR(const char* str)
+__declspec(naked) char* __fastcall SlashPosR(const char *str)
 {
 	__asm
 	{
 		call	StrEnd
 		test	eax, eax
 		jz		done
-		iterHead :
+	iterHead:
 		cmp		eax, ecx
-			jz		retnNULL
-			dec		eax
-			mov		dl, [eax]
-			cmp		dl, '/'
-			jz		done
-			cmp		dl, '\\'
-			jz		done
-			jmp		iterHead
-			retnNULL :
-		xor eax, eax
-			done :
+		jz		retnNULL
+		dec		eax
+		mov		dl, [eax]
+		cmp		dl, '/'
+		jz		done
+		cmp		dl, '\\'
+		jz		done
+		jmp		iterHead
+	retnNULL:
+		xor		eax, eax
+	done:
 		retn
 	}
 }
 
-__declspec(naked) char* __fastcall GetNextToken(char* str, char delim)
+__declspec(naked) char* __fastcall GetNextToken(char *str, char delim)
 {
 	__asm
 	{
 		push	ebx
 		mov		eax, ecx
-		xor bl, bl
-		iterHead :
+		xor		bl, bl
+	iterHead:
 		mov		cl, [eax]
-			test	cl, cl
-			jz		done
-			cmp		cl, dl
-			jz		chrEQ
-			test	bl, bl
-			jnz		done
-			jmp		iterNext
-			chrEQ :
+		test	cl, cl
+		jz		done
+		cmp		cl, dl
+		jz		chrEQ
 		test	bl, bl
-			jnz		iterNext
-			mov		bl, 1
-			mov[eax], 0
-			iterNext :
-			inc		eax
-			jmp		iterHead
-			done :
+		jnz		done
+		jmp		iterNext
+	chrEQ:
+		test	bl, bl
+		jnz		iterNext
+		mov		bl, 1
+		mov		[eax], 0
+	iterNext:
+		inc		eax
+		jmp		iterHead
+	done:
 		pop		ebx
-			retn
+		retn
 	}
 }
 
-__declspec(naked) char* __fastcall GetNextToken(char* str, const char* delims)
+__declspec(naked) char* __fastcall GetNextToken(char *str, const char *delims)
 {
 	__asm
 	{
@@ -1643,38 +1633,38 @@ __declspec(naked) char* __fastcall GetNextToken(char* str, const char* delims)
 		push	esi
 		mov		eax, ecx
 		mov		esi, edx
-		xor bl, bl
-		mainHead :
+		xor		bl, bl
+	mainHead:
 		mov		cl, [eax]
-			test	cl, cl
-			jz		done
-			subHead :
-		cmp[edx], 0
-			jz		wasFound
-			cmp		cl, [edx]
-			jz		chrEQ
-			inc		edx
-			jmp		subHead
-			chrEQ :
+		test	cl, cl
+		jz		done
+	subHead:
+		cmp		[edx], 0
+		jz		wasFound
+		cmp		cl, [edx]
+		jz		chrEQ
+		inc		edx
+		jmp		subHead
+	chrEQ:
 		test	bl, bl
-			jnz		mainNext
-			mov		bl, 1
-			mov[eax], 0
-			mainNext :
-			inc		eax
-			mov		edx, esi
-			jmp		mainHead
-			wasFound :
+		jnz		mainNext
+		mov		bl, 1
+		mov		[eax], 0
+	mainNext:
+		inc		eax
+		mov		edx, esi
+		jmp		mainHead
+	wasFound:
 		test	bl, bl
-			jz		mainNext
-			done :
+		jz		mainNext
+	done:
 		pop		esi
-			pop		ebx
-			retn
+		pop		ebx
+		retn
 	}
 }
 
-__declspec(naked) char* __fastcall CopyString(const char* key)
+__declspec(naked) char* __fastcall CopyString(const char *key)
 {
 	__asm
 	{
@@ -1692,7 +1682,17 @@ __declspec(naked) char* __fastcall CopyString(const char* key)
 	}
 }
 
-__declspec(naked) char* __fastcall IntToStr(char* str, int num)
+char* __fastcall CopyCString(const char *src)
+{
+	UInt32 length = StrLen(src);
+	if (!length) return NULL;
+	length++;
+	char *result = (char*)GameHeapAlloc(length);
+	MemCopy(result, src, length);
+	return result;
+}
+
+__declspec(naked) char* __fastcall IntToStr(char *str, int num)
 {
 	__asm
 	{
@@ -1701,44 +1701,44 @@ __declspec(naked) char* __fastcall IntToStr(char* str, int num)
 		test	edx, edx
 		jns		skipNeg
 		neg		edx
-		mov[ecx], '-'
+		mov		[ecx], '-'
 		inc		ecx
-		skipNeg :
+	skipNeg:
 		mov		esi, ecx
-			mov		edi, ecx
-			mov		eax, edx
-			mov		ecx, 0xA
-			workIter :
-			cdq
-			div		ecx
-			add		dl, '0'
-			mov[esi], dl
-			inc		esi
-			test	eax, eax
-			jnz		workIter
-			mov[esi], 0
-			mov		eax, esi
-			swapIter :
+		mov		edi, ecx
+		mov		eax, edx
+		mov		ecx, 0xA
+	workIter:
+		cdq
+		div		ecx
+		add		dl, '0'
+		mov		[esi], dl
+		inc		esi
+		test	eax, eax
+		jnz		workIter
+		mov		[esi], 0
+		mov		eax, esi
+	swapIter:
 		dec		esi
-			cmp		esi, edi
-			jbe		done
-			mov		dl, [esi]
-			mov		cl, [edi]
-			mov[esi], cl
-			mov[edi], dl
-			inc		edi
-			jmp		swapIter
-			done :
+		cmp		esi, edi
+		jbe		done
+		mov		dl, [esi]
+		mov		cl, [edi]
+		mov		[esi], cl
+		mov		[edi], dl
+		inc		edi
+		jmp		swapIter
+	done:
 		pop		edi
-			pop		esi
-			retn
+		pop		esi
+		retn
 	}
 }
 
-int FltToStr(char* str, double num)
+int FltToStr(char *str, double num)
 {
 	int printed = sprintf_s(str, 0x20, "%.6f", num);
-	char* endPtr = str + printed;
+	char *endPtr = str + printed;
 	while (*--endPtr == '0')
 		printed--;
 	if (*endPtr == '.')
@@ -1747,112 +1747,164 @@ int FltToStr(char* str, double num)
 	return printed;
 }
 
-__declspec(naked) int __fastcall StrToInt(const char* str)
+const double kDblDigits[] = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0}, kDbl10d0 = 10.0;
+
+__declspec(naked) double __fastcall StrToDbl(const char *str)
 {
 	__asm
 	{
-		xor eax, eax
-		test	ecx, ecx
-		jnz		proceed
-		retn
-		proceed :
-		push	esi
-			mov		esi, ecx
-			mov		ecx, eax
-			cmp[esi], '-'
-			setz	dl
-			jnz		charIter
-			inc		esi
-			charIter :
-		mov		cl, [esi]
-			sub		cl, '0'
-			cmp		cl, 9
-			ja		iterEnd
-			imul	eax, 0xA
-			add		eax, ecx
-			inc		esi
-			jmp		charIter
-			iterEnd :
+		pxor	xmm0, xmm0
+		movq	xmm1, xmm0
+		movq	xmm2, kDbl10d0
+		movq	xmm3, xmm2
+		xor		eax, eax
+		xor		dl, dl
+		cmp		[ecx], '-'
+		setz	dh
+		jnz		chrIter
+		inc		ecx
+	chrIter:
+		mov		al, [ecx]
+		inc		ecx
+		cmp		al, '.'
+		jz		isPoint
+		sub		al, '0'
+		cmp		al, 9
+		ja		done
+		movq	xmm1, kDblDigits[eax*8]
 		test	dl, dl
-			jz		done
-			neg		eax
-			done :
-		pop		esi
-			retn
+		jnz		fracPart
+		mulsd	xmm0, xmm3
+		jmp		iterNext
+	fracPart:
+		divsd	xmm1, xmm2
+		mulsd	xmm2, xmm3
+	iterNext:
+		addsd	xmm0, xmm1
+		jmp		chrIter
+	isPoint:
+		xor		dl, 1
+		jnz		chrIter
+	done:
+		sub		esp, 8
+		movq	qword ptr [esp], xmm0
+		fld		qword ptr [esp]
+		add		esp, 8
+		test	dh, dh
+		jz		keepSign
+		fchs
+	keepSign:
+		retn
 	}
 }
 
-__declspec(naked) float __fastcall StrToFlt(const char* str)
+
+__declspec(naked) int __fastcall StrToInt(const char *str)
 {
-	static const UInt32 kFactor10Div[] = { 0x41200000, 0x42C80000, 0x447A0000, 0x461C4000, 0x47C35000, 0x49742400, 0x4B189680 };
+	__asm
+	{
+		xor		eax, eax
+		test	ecx, ecx
+		jnz		proceed
+		retn
+	proceed:
+		push	esi
+		mov		esi, ecx
+		mov		ecx, eax
+		cmp		[esi], '-'
+		setz	dl
+		jnz		charIter
+		inc		esi
+	charIter:
+		mov		cl, [esi]
+		sub		cl, '0'
+		cmp		cl, 9
+		ja		iterEnd
+		imul	eax, 0xA
+		add		eax, ecx
+		inc		esi
+		jmp		charIter
+	iterEnd:
+		test	dl, dl
+		jz		done
+		neg		eax
+	done:
+		pop		esi
+		retn
+	}
+}
+
+__declspec(naked) float __fastcall StrToFlt(const char *str)
+{
+	static const UInt32 kFactor10Div[] = {0x41200000, 0x42C80000, 0x447A0000, 0x461C4000, 0x47C35000, 0x49742400, 0x4B189680};
 	__asm
 	{
 		test	ecx, ecx
 		jnz		proceed
 		fldz
 		retn
-		proceed :
+	proceed:
 		push	ebx
-			xor eax, eax
-			xor ebx, ebx
-			xorps	xmm0, xmm0
-			cmp[ecx], '-'
-			setz	dl
-			jnz		intIter
-			inc		ecx
-			intIter :
+		xor		eax, eax
+		xor		ebx, ebx
+		xorps	xmm0, xmm0
+		cmp		[ecx], '-'
+		setz	dl
+		jnz		intIter
+		inc		ecx
+	intIter:
 		mov		bl, [ecx]
-			sub		bl, '0'
-			cmp		bl, 9
-			ja		intEnd
-			imul	eax, 0xA
-			add		eax, ebx
-			inc		ecx
-			jmp		intIter
-			intEnd :
+		sub		bl, '0'
+		cmp		bl, 9
+		ja		intEnd
+		imul	eax, 0xA
+		add		eax, ebx
+		inc		ecx
+		jmp		intIter
+	intEnd:
 		test	eax, eax
-			jz		noInt
-			cvtsi2ss	xmm0, eax
-			xor eax, eax
-			noInt :
+		jz		noInt
+		cvtsi2ss	xmm0, eax
+		xor		eax, eax
+	noInt:
 		cmp		bl, 0xFE
-			jnz		done
-			mov		dh, 0xFF
-			fracIter :
-			inc		ecx
-			mov		bl, [ecx]
-			sub		bl, '0'
-			cmp		bl, 9
-			ja		fracEnd
-			imul	eax, 0xA
-			add		eax, ebx
-			inc		dh
-			cmp		dh, 6
-			jb		fracIter
-			fracEnd :
+		jnz		done
+		mov		dh, 0xFF
+	fracIter:
+		inc		ecx
+		mov		bl, [ecx]
+		sub		bl, '0'
+		cmp		bl, 9
+		ja		fracEnd
+		imul	eax, 0xA
+		add		eax, ebx
+		inc		dh
+		cmp		dh, 6
+		jb		fracIter
+	fracEnd:
 		test	eax, eax
-			jz		done
-			cvtsi2ss	xmm1, eax
-			mov		bl, dh
-			divss	xmm1, kFactor10Div[ebx * 4]
-			addss	xmm0, xmm1
-			done :
+		jz		done
+		cvtsi2ss	xmm1, eax
+		mov		bl, dh
+		divss	xmm1, kFactor10Div[ebx*4]
+		addss	xmm0, xmm1
+	done:
 		movd	eax, xmm0
-			push	eax
-			fld		dword ptr[esp]
-			pop		eax
-			test	dl, dl
-			jz		noSign
-			test	eax, eax
-			jz		noSign
-			fchs
-			noSign :
+		push	eax
+		fld		dword ptr [esp]
+		pop		eax
+		test	dl, dl
+		jz		noSign
+		test	eax, eax
+		jz		noSign
+		fchs
+	noSign:
 		pop		ebx
-			retn
+		retn
 	}
 }
 
-__declspec(naked) char* __fastcall UIntToHex(char* str, UInt32 num)
+__declspec(naked) char* __fastcall UIntToHex(char *str, UInt32 num)
 {
 	static const char kCharAtlas[] = "0123456789ABCDEF";
 	__asm
@@ -1861,35 +1913,35 @@ __declspec(naked) char* __fastcall UIntToHex(char* str, UInt32 num)
 		push	edi
 		mov		esi, ecx
 		mov		edi, ecx
-		xor eax, eax
-		workIter :
+		xor		eax, eax
+	workIter:
 		mov		al, dl
-			and al, 0xF
-			mov		cl, kCharAtlas[eax]
-			mov[esi], cl
-			inc		esi
-			shr		edx, 4
-			jnz		workIter
-			mov[esi], 0
-			mov		eax, esi
-			swapIter :
+		and		al, 0xF
+		mov		cl, kCharAtlas[eax]
+		mov		[esi], cl
+		inc		esi
+		shr		edx, 4
+		jnz		workIter
+		mov		[esi], 0
+		mov		eax, esi
+	swapIter:
 		dec		esi
-			cmp		esi, edi
-			jbe		done
-			mov		dl, [esi]
-			mov		cl, [edi]
-			mov[esi], cl
-			mov[edi], dl
-			inc		edi
-			jmp		swapIter
-			done :
+		cmp		esi, edi
+		jbe		done
+		mov		dl, [esi]
+		mov		cl, [edi]
+		mov		[esi], cl
+		mov		[edi], dl
+		inc		edi
+		jmp		swapIter
+	done:
 		pop		edi
-			pop		esi
-			retn
+		pop		esi
+		retn
 	}
 }
 
-__declspec(naked) UInt32 __fastcall HexToUInt(const char* str)
+__declspec(naked) UInt32 __fastcall HexToUInt(const char *str)
 {
 	__asm
 	{
@@ -1897,32 +1949,32 @@ __declspec(naked) UInt32 __fastcall HexToUInt(const char* str)
 		call	StrLen
 		test	eax, eax
 		jz		done
-		lea		esi, [ecx + eax]
+		lea		esi, [ecx+eax]
 		mov		ch, al
-		xor eax, eax
-		xor cl, cl
-		hexToInt :
+		xor		eax, eax
+		xor		cl, cl
+	hexToInt:
 		dec		esi
-			movsx	edx, byte ptr[esi]
-			sub		dl, '0'
-			js		done
-			cmp		dl, 9
-			jle		doAdd
-			or dl, 0x20
-			cmp		dl, '1'
-			jl		done
-			cmp		dl, '6'
-			jg		done
-			sub		dl, 0x27
-			doAdd:
+		movsx	edx, byte ptr [esi]
+		sub		dl, '0'
+		js		done
+		cmp		dl, 9
+		jle		doAdd
+		or		dl, 0x20
+		cmp		dl, '1'
+		jl		done
+		cmp		dl, '6'
+		jg		done
+		sub		dl, 0x27
+	doAdd:
 		shl		edx, cl
-			add		eax, edx
-			add		cl, 4
-			dec		ch
-			jnz		hexToInt
-			done :
+		add		eax, edx
+		add		cl, 4
+		dec		ch
+		jnz		hexToInt
+	done:
 		pop		esi
-			retn
+		retn
 	}
 }
 
@@ -1930,33 +1982,33 @@ __declspec(naked) int __stdcall GetRandomIntInRange(int from, int to)
 {
 	__asm
 	{
-		mov		eax, [esp + 8]
-		sub		eax, [esp + 4]
+		mov		eax, [esp+8]
+		sub		eax, [esp+4]
 		push	eax
 		mov		eax, 0x476C00
 		call	eax
 		mov		ecx, eax
 		mov		eax, 0xAA5230
 		call	eax
-		add		eax, [esp + 4]
+		add		eax, [esp+4]
 		retn	8
 	}
 }
 
-bool __fastcall FileExists(const char* path)
+bool __fastcall FileExists(const char *path)
 {
 	UInt32 attr = GetFileAttributes(path);
 	return (attr != INVALID_FILE_ATTRIBUTES) && !(attr & FILE_ATTRIBUTE_DIRECTORY);
 }
 
-bool FileStream::Open(const char* filePath)
+bool FileStream::Open(const char *filePath)
 {
 	if (theFile) fclose(theFile);
 	theFile = _fsopen(filePath, "rb", 0x20);
 	return theFile ? true : false;
 }
 
-bool FileStream::OpenAt(const char* filePath, UInt32 inOffset)
+bool FileStream::OpenAt(const char *filePath, UInt32 inOffset)
 {
 	if (theFile) fclose(theFile);
 	theFile = _fsopen(filePath, "rb", 0x20);
@@ -1971,7 +2023,7 @@ bool FileStream::OpenAt(const char* filePath, UInt32 inOffset)
 	return true;
 }
 
-bool FileStream::OpenWrite(char* filePath, bool append)
+bool FileStream::OpenWrite(char *filePath, bool append)
 {
 	if (theFile) fclose(theFile);
 	if (FileExists(filePath))
@@ -1990,7 +2042,7 @@ bool FileStream::OpenWrite(char* filePath, bool append)
 	return theFile ? true : false;
 }
 
-bool FileStream::Create(const char* filePath)
+bool FileStream::Create(const char *filePath)
 {
 	if (theFile) fclose(theFile);
 	theFile = _fsopen(filePath, "wb", 0x20);
@@ -2017,7 +2069,7 @@ char FileStream::ReadChar()
 	return (char)fgetc(theFile);
 }
 
-void FileStream::ReadBuf(void* outData, UInt32 inLength)
+void FileStream::ReadBuf(void *outData, UInt32 inLength)
 {
 	fread(outData, inLength, 1, theFile);
 }
@@ -2028,21 +2080,21 @@ void FileStream::WriteChar(char chr)
 	fflush(theFile);
 }
 
-void FileStream::WriteStr(const char* inStr)
+void FileStream::WriteStr(const char *inStr)
 {
 	fputs(inStr, theFile);
 	fflush(theFile);
 }
 
-void FileStream::WriteBuf(const void* inData, UInt32 inLength)
+void FileStream::WriteBuf(const void *inData, UInt32 inLength)
 {
 	fwrite(inData, inLength, 1, theFile);
 	fflush(theFile);
 }
 
-void FileStream::MakeAllDirs(char* fullPath)
+void FileStream::MakeAllDirs(char *fullPath)
 {
-	char* traverse = fullPath, curr;
+	char *traverse = fullPath, curr;
 	while (curr = *traverse)
 	{
 		if ((curr == '\\') || (curr == '/'))
@@ -2055,13 +2107,13 @@ void FileStream::MakeAllDirs(char* fullPath)
 	}
 }
 
-bool DebugLog::Create(const char* filePath)
+bool DebugLog::Create(const char *filePath)
 {
 	theFile = _fsopen(filePath, "wb", 0x20);
 	return theFile ? true : false;
 }
 
-void DebugLog::Message(const char* msgStr)
+void DebugLog::Message(const char *msgStr)
 {
 	if (!theFile) return;
 	if (indent < 40)
@@ -2071,7 +2123,7 @@ void DebugLog::Message(const char* msgStr)
 	fflush(theFile);
 }
 
-void DebugLog::FmtMessage(const char* fmt, va_list args)
+void DebugLog::FmtMessage(const char *fmt, va_list args)
 {
 	if (!theFile) return;
 	if (indent < 40)
@@ -2081,24 +2133,23 @@ void DebugLog::FmtMessage(const char* fmt, va_list args)
 	fflush(theFile);
 }
 
-/*
-void PrintLog(const char* fmt, ...)
+void PrintLog(const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	gLog.FmtMessage(fmt, args);
+	s_log.FmtMessage(fmt, args);
 	va_end(args);
 }
 
-void PrintDebug(const char* fmt, ...)
+void PrintDebug(const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
 	s_debug.FmtMessage(fmt, args);
 	va_end(args);
 }
-*/
-LineIterator::LineIterator(const char* filePath, char* buffer)
+
+LineIterator::LineIterator(const char *filePath, char *buffer)
 {
 	dataPtr = buffer;
 	FileStream sourceFile;
@@ -2129,20 +2180,22 @@ void LineIterator::Next()
 		dataPtr++;
 }
 
-bool __fastcall FileToBuffer(const char* filePath, char* buffer)
+bool __fastcall FileToBuffer(const char *filePath, char *buffer)
 {
 	FileStream srcFile;
 	if (!srcFile.Open(filePath)) return false;
 	UInt32 length = srcFile.GetLength();
 	if (!length) return false;
-	if (length > 0x4000)
-		length = 0x4000;
+	if (length > kMaxMessageLength)
+		length = kMaxMessageLength;
 	srcFile.ReadBuf(buffer, length);
 	buffer[length] = 0;
 	return true;
 }
 
-void ClearFolder(char* pathEndPtr)
+extern char *s_strArgBuffer;
+
+void ClearFolder(char *pathEndPtr)
 {
 	DirectoryIterator dirIter(s_strArgBuffer);
 	while (!dirIter.End())
@@ -2160,7 +2213,7 @@ void ClearFolder(char* pathEndPtr)
 	*(pathEndPtr - 1) = 0;
 	RemoveDirectory(s_strArgBuffer);
 }
-/*
+
 __declspec(naked) void __stdcall SafeWrite8(UInt32 addr, UInt32 data)
 {
 	__asm
@@ -2169,11 +2222,11 @@ __declspec(naked) void __stdcall SafeWrite8(UInt32 addr, UInt32 data)
 		push	esp
 		push	PAGE_EXECUTE_READWRITE
 		push	4
-		push	dword ptr[esp + 0x14]
+		push	dword ptr [esp+0x14]
 		call	VirtualProtect
-		mov		eax, [esp + 8]
-		mov		edx, [esp + 0xC]
-		mov[eax], dl
+		mov		eax, [esp+8]
+		mov		edx, [esp+0xC]
+		mov		[eax], dl
 		mov		edx, [esp]
 		push	esp
 		push	edx
@@ -2193,11 +2246,11 @@ __declspec(naked) void __stdcall SafeWrite16(UInt32 addr, UInt32 data)
 		push	esp
 		push	PAGE_EXECUTE_READWRITE
 		push	4
-		push	dword ptr[esp + 0x14]
+		push	dword ptr [esp+0x14]
 		call	VirtualProtect
-		mov		eax, [esp + 8]
-		mov		edx, [esp + 0xC]
-		mov[eax], dx
+		mov		eax, [esp+8]
+		mov		edx, [esp+0xC]
+		mov		[eax], dx
 		mov		edx, [esp]
 		push	esp
 		push	edx
@@ -2217,11 +2270,11 @@ __declspec(naked) void __stdcall SafeWrite32(UInt32 addr, UInt32 data)
 		push	esp
 		push	PAGE_EXECUTE_READWRITE
 		push	4
-		push	dword ptr[esp + 0x14]
+		push	dword ptr [esp+0x14]
 		call	VirtualProtect
-		mov		eax, [esp + 8]
-		mov		edx, [esp + 0xC]
-		mov[eax], edx
+		mov		eax, [esp+8]
+		mov		edx, [esp+0xC]
+		mov		[eax], edx
 		mov		edx, [esp]
 		push	esp
 		push	edx
@@ -2233,24 +2286,24 @@ __declspec(naked) void __stdcall SafeWrite32(UInt32 addr, UInt32 data)
 	}
 }
 
-__declspec(naked) void __stdcall SafeWriteBuf(UInt32 addr, void* data, UInt32 len)
+__declspec(naked) void __stdcall SafeWriteBuf(UInt32 addr, void *data, UInt32 len)
 {
 	__asm
 	{
 		push	ecx
 		push	esp
 		push	PAGE_EXECUTE_READWRITE
-		push	dword ptr[esp + 0x18]
-		push	dword ptr[esp + 0x14]
+		push	dword ptr [esp+0x18]
+		push	dword ptr [esp+0x14]
 		call	VirtualProtect
-		push	dword ptr[esp + 0x10]
-		mov		edx, [esp + 0x10]
-		mov		ecx, [esp + 0xC]
+		push	dword ptr [esp+0x10]
+		mov		edx, [esp+0x10]
+		mov		ecx, [esp+0xC]
 		call	MemCopy
 		mov		edx, [esp]
 		push	esp
 		push	edx
-		push	dword ptr[esp + 0x18]
+		push	dword ptr [esp+0x18]
 		push	eax
 		call	VirtualProtect
 		pop		ecx
@@ -2266,14 +2319,14 @@ __declspec(naked) void __stdcall WriteRelJump(UInt32 jumpSrc, UInt32 jumpTgt)
 		push	esp
 		push	PAGE_EXECUTE_READWRITE
 		push	5
-		push	dword ptr[esp + 0x14]
+		push	dword ptr [esp+0x14]
 		call	VirtualProtect
-		mov		eax, [esp + 8]
-		mov		edx, [esp + 0xC]
+		mov		eax, [esp+8]
+		mov		edx, [esp+0xC]
 		sub		edx, eax
 		sub		edx, 5
-		mov		byte ptr[eax], 0xE9
-		mov[eax + 1], edx
+		mov		byte ptr [eax], 0xE9
+		mov		[eax+1], edx
 		mov		edx, [esp]
 		push	esp
 		push	edx
@@ -2293,14 +2346,14 @@ __declspec(naked) void __stdcall WriteRelCall(UInt32 jumpSrc, UInt32 jumpTgt)
 		push	esp
 		push	PAGE_EXECUTE_READWRITE
 		push	5
-		push	dword ptr[esp + 0x14]
+		push	dword ptr [esp+0x14]
 		call	VirtualProtect
-		mov		eax, [esp + 8]
-		mov		edx, [esp + 0xC]
+		mov		eax, [esp+8]
+		mov		edx, [esp+0xC]
 		sub		edx, eax
 		sub		edx, 5
-		mov		byte ptr[eax], 0xE8
-		mov[eax + 1], edx
+		mov		byte ptr [eax], 0xE8
+		mov		[eax+1], edx
 		mov		edx, [esp]
 		push	esp
 		push	edx
@@ -2310,7 +2363,7 @@ __declspec(naked) void __stdcall WriteRelCall(UInt32 jumpSrc, UInt32 jumpTgt)
 		pop		ecx
 		retn	8
 	}
-}*/
+}
 
 __declspec(naked) void __stdcall WritePushRetRelJump(UInt32 baseAddr, UInt32 retAddr, UInt32 jumpTgt)
 {
@@ -2320,17 +2373,17 @@ __declspec(naked) void __stdcall WritePushRetRelJump(UInt32 baseAddr, UInt32 ret
 		push	esp
 		push	PAGE_EXECUTE_READWRITE
 		push	0xA
-		push	dword ptr[esp + 0x14]
+		push	dword ptr [esp+0x14]
 		call	VirtualProtect
-		mov		eax, [esp + 8]
-		mov		edx, [esp + 0xC]
-		mov		byte ptr[eax], 0x68
-		mov[eax + 1], edx
-		mov		edx, [esp + 0x10]
+		mov		eax, [esp+8]
+		mov		edx, [esp+0xC]
+		mov		byte ptr [eax], 0x68
+		mov		[eax+1], edx
+		mov		edx, [esp+0x10]
 		sub		edx, eax
 		sub		edx, 0xA
-		mov		byte ptr[eax + 5], 0xE9
-		mov[eax + 6], edx
+		mov		byte ptr [eax+5], 0xE9
+		mov		[eax+6], edx
 		mov		edx, [esp]
 		push	esp
 		push	edx
@@ -2342,7 +2395,7 @@ __declspec(naked) void __stdcall WritePushRetRelJump(UInt32 baseAddr, UInt32 ret
 	}
 }
 
-void __fastcall GetTimeStamp(char* buffer)
+void __fastcall GetTimeStamp(char *buffer)
 {
 	time_t rawTime = time(NULL);
 	tm timeInfo;
@@ -2353,17 +2406,17 @@ void __fastcall GetTimeStamp(char* buffer)
 struct ControlName
 {
 	UInt32		unk00;
-	const char* name;
+	const char	*name;
 	UInt32		unk0C;
 };
 
-ControlName** g_keyNames = (ControlName**)0x11D52F0;
-ControlName** g_mouseButtonNames = (ControlName**)0x11D5240;
-ControlName** g_joystickNames = (ControlName**)0x11D51B0;
+ControlName **g_keyNames = (ControlName**)0x11D52F0;
+ControlName **g_mouseButtonNames = (ControlName**)0x11D5240;
+ControlName **g_joystickNames = (ControlName**)0x11D51B0;
 
 const char* __fastcall GetDXDescription(UInt32 keyID)
 {
-	const char* keyName = "<no key>";
+	const char *keyName = "<no key>";
 
 	if (keyID <= 220)
 	{
@@ -2399,17 +2452,17 @@ __declspec(naked) UInt32 __fastcall ByteSwap(UInt32 dword)
 	}
 }
 
-void DumpMemImg(void* data, UInt32 size, UInt8 extra)
+void DumpMemImg(void *data, UInt32 size, UInt8 extra)
 {
-	UInt32* ptr = (UInt32*)data;
+	UInt32 *ptr = (UInt32*)data;
 	//Console_Print("Output");
-	_MESSAGE("\nDumping  %08X\n", ptr);
+	PrintDebug("\nDumping  %08X\n", ptr);
 	for (UInt32 iter = 0; iter < size; iter += 4, ptr++)
 	{
-		if (!extra) _MESSAGE("%03X\t\t%08X\t", iter, *ptr);
-		else if (extra == 1) _MESSAGE("%03X\t\t%08X\t[%08X]\t", iter, *ptr, ByteSwap(*ptr));
-		else if (extra == 2) _MESSAGE("%03X\t\t%08X\t%f", iter, *ptr, *(float*)ptr);
-		else if (extra == 3) _MESSAGE("%03X\t\t%08X\t[%08X]\t%f", iter, *ptr, ByteSwap(*ptr), *(float*)ptr);
+		if (!extra) PrintDebug("%03X\t\t%08X\t", iter, *ptr);
+		else if (extra == 1) PrintDebug("%03X\t\t%08X\t[%08X]\t", iter, *ptr, ByteSwap(*ptr));
+		else if (extra == 2) PrintDebug("%03X\t\t%08X\t%f", iter, *ptr, *(float*)ptr);
+		else if (extra == 3) PrintDebug("%03X\t\t%08X\t[%08X]\t%f", iter, *ptr, ByteSwap(*ptr), *(float*)ptr);
 		/*else
 		{
 			UInt32 addr = *ptr;

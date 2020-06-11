@@ -577,6 +577,7 @@
     <ClInclude Include="CommandTable.h" />
     <ClInclude Include="Containers.h" />
     <ClInclude Include="Core_Serialization.h" />
+    <ClInclude Include="Decoding.h" />
     <ClInclude Include="DInput.h" />
     <ClInclude Include="EventManager.h" />
     <ClInclude Include="FunctionScripts.h" />

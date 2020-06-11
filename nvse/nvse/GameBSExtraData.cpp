@@ -1,151 +1,199 @@
-#include "GameBSExtraData.h"
-#include "GameAPI.h"
-#include "GameExtraData.h"
-
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
-static const UInt32 s_ExtraDataListVtbl							= 0x010143E8;	//	0x0100e3a8;
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-static const UInt32 s_ExtraDataListVtbl							= 0x010143D8;
-#elif EDITOR
-#else
-#error
-#endif
+#include "nvse/GameBSExtraData.h"
+#include "nvse/GameExtraData.h"
 
 bool BaseExtraList::HasType(UInt32 type) const
 {
-	UInt32 index = (type >> 3);
-	UInt8 bitMask = 1 << (type % 8);
-	return (m_presenceBitfield[index] & bitMask) != 0;
+	return (m_presenceBitfield[type >> 3] & (1 << (type & 7))) != 0;
 }
 
-BSExtraData * BaseExtraList::GetByType(UInt32 type) const
+__declspec(naked) BSExtraData *BaseExtraList::GetByType(UInt32 type) const
 {
-	if (!HasType(type)) return NULL;
-
-	for(BSExtraData * traverse = m_data; traverse; traverse = traverse->next)
-		if(traverse->type == type)
-			return traverse;
-
-#if _DEBUG
-	_MESSAGE("ExtraData HasType(%d) is true but it wasn't found!", type);
-	DebugDump();
-#endif
-	return NULL;
+	__asm
+	{
+		push	ebx
+		mov		ebx, [esp+8]
+		mov		edx, ecx
+		mov		ecx, ebx
+		and		cl, 7
+		mov		al, 1
+		shl		al, cl
+		mov		ecx, ebx
+		shr		cl, 3
+		test	[ecx+edx+8], al
+		jz		retnNULL
+		mov		eax, [edx+4]
+	iterHead:
+		test	eax, eax
+		jz		done
+		cmp		byte ptr [eax+4], bl
+		jz		done
+		mov		eax, [eax+8]
+		jmp		iterHead
+	retnNULL:
+		xor		eax, eax
+	done:
+		pop		ebx
+		retn	4
+	}
 }
 
 void BaseExtraList::MarkType(UInt32 type, bool bCleared)
 {
-	UInt32 index = (type >> 3);
-	UInt8 bitMask = 1 << (type % 8);
-	UInt8& flag = m_presenceBitfield[index];
-	if (bCleared) {
-		flag &= ~bitMask;
-	} else {
-		flag |= bitMask;
-	}
+	UInt8 bitMask = 1 << (type & 7);
+	UInt8 &flag = m_presenceBitfield[type >> 3];
+	if (bCleared) flag &= ~bitMask;
+	else flag |= bitMask;
 }
 
-bool BaseExtraList::Remove(BSExtraData* toRemove, bool free)
+__declspec(naked) void BaseExtraList::Remove(BSExtraData *toRemove, bool doFree)
 {
-	if (!toRemove) return false;
-
-	if (HasType(toRemove->type)) {
-		bool bRemoved = false;
-		if (m_data == toRemove) {
-			m_data = m_data->next;
-			bRemoved = true;
-		}
-
-		for (BSExtraData* traverse = m_data; traverse; traverse = traverse->next) {
-			if (traverse->next == toRemove) {
-				traverse->next = toRemove->next;
-				bRemoved = true;
-				break;
-			}
-		}
-		if (bRemoved) {
-			MarkType(toRemove->type, true);
-			if (free)
-				FormHeap_Free(toRemove);
-		}
-		return true;
-	}
-
-	return false;
+	static const UInt32 procAddr = 0x410020;
+	__asm	jmp		procAddr
 }
 
-bool BaseExtraList::Add(BSExtraData* toAdd)
+__declspec(naked) BSExtraData *BaseExtraList::Add(BSExtraData *xData)
 {
-	if (!toAdd || HasType(toAdd->type)) return false;
-	
-	BSExtraData* next = m_data;
-	m_data = toAdd;
-	toAdd->next = next;
-	MarkType(toAdd->type, false);
-	return true;
+	static const UInt32 procAddr = 0x40FF60;
+	__asm	jmp		procAddr
 }
 
-ExtraDataList* ExtraDataList::Create(BSExtraData* xBSData)
+ExtraDataList *ExtraDataList::Create(BSExtraData *xBSData)
 {
-	ExtraDataList* xData = (ExtraDataList*)FormHeap_Allocate(sizeof(ExtraDataList));
-	memset(xData, 0, sizeof(ExtraDataList));
-	((UInt32*)xData)[0] = s_ExtraDataListVtbl;
-	if (xBSData)
-		xData->Add(xBSData);
+	ExtraDataList *xData = (ExtraDataList*)GameHeapAlloc(sizeof(ExtraDataList));
+	MemZero(xData, sizeof(ExtraDataList));
+	*(UInt32*)xData = kVtbl_ExtraDataList;
+	if (xBSData) xData->Add(xBSData);
 	return xData;
 }
 
-bool BaseExtraList::RemoveByType(UInt32 type, bool free)
+__declspec(naked) void BaseExtraList::RemoveByType(UInt32 type)
 {
-	if (HasType(type)) {
-		return Remove(GetByType(type), free);
+	static const UInt32 procAddr = 0x410140;
+	__asm	jmp		procAddr
+}
+
+__declspec(naked) void BaseExtraList::RemoveAll(bool doFree)
+{
+	static const UInt32 procAddr = 0x411FD0;
+	__asm	jmp		procAddr
+}
+
+__declspec(naked) void BaseExtraList::Copy(BaseExtraList *sourceList)
+{
+	static const UInt32 procAddr = 0x411EC0;
+	__asm	jmp		procAddr
+}
+
+bool BaseExtraList::IsWorn() const
+{
+	return HasType(kExtraData_Worn);
+}
+
+char BaseExtraList::GetExtraFactionRank(TESFaction *faction) const
+{
+	ExtraFactionChanges *xFactionChanges = GetExtraType((*this), FactionChanges);
+	if (xFactionChanges && xFactionChanges->data)
+	{
+		ListNode<FactionListData> *traverse = xFactionChanges->data->Head();
+		FactionListData *pData;
+		do
+		{
+			pData = traverse->data;
+			if (pData && (pData->faction == faction))
+				return pData->rank;
+		}
+		while (traverse = traverse->next);
 	}
-	return false;
+	return -1;
 }
 
-void BaseExtraList::RemoveAll()
+__declspec(naked) ExtraCount *BaseExtraList::GetExtraCount() const
 {
-	while (m_data) {
-		BSExtraData* data = m_data;
-		m_data = data->next;
-		MarkType(data->type, true);
-		FormHeap_Free(data);
+	__asm
+	{
+		xor		eax, eax
+		test	byte ptr [ecx+0xC], 0x10
+		jz		done
+		mov		eax, [ecx+4]
+	iterHead:
+		cmp		byte ptr [eax+4], kExtraData_Count
+		jnz		iterNext
+		retn
+	iterNext:
+		mov		eax, [eax+8]
+		test	eax, eax
+		jnz		iterHead
+	done:
+		retn
 	}
 }
 
-void BaseExtraList::Copy(BaseExtraList* from)
+__declspec(naked) SInt32 BaseExtraList::GetCount() const
 {
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
-	ThisStdCall(0x00411EC0, this, from);	// 428920 in last Fallout3
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	ThisStdCall(0x00411F10, this, from);	// 428920 in last Fallout3
-#elif EDITOR
-#else
-#error
-#endif
+	__asm
+	{
+		test	byte ptr [ecx+0xC], 0x10
+		jz		retn1
+		mov		ecx, [ecx+4]
+	iterHead:
+		cmp		byte ptr [ecx+4], kExtraData_Count
+		jnz		iterNext
+		movsx	eax, word ptr [ecx+0xC]
+		retn
+	iterNext:
+		mov		ecx, [ecx+8]
+		test	ecx, ecx
+		jnz		iterHead
+	retn1:
+		mov		eax, 1
+		retn
+	}
 }
 
-bool BaseExtraList::IsWorn()
+void __fastcall ExtraValueStr(BSExtraData *xData, char *buffer)
 {
-	return (HasType(kExtraData_Worn) || HasType(kExtraData_WornLeft));
+	switch (xData->type)
+	{
+		case kExtraData_Ownership:
+		{
+			ExtraOwnership *xOwnership = (ExtraOwnership*)xData;
+			sprintf_s(buffer, 0x20, "%08X", xOwnership->owner ? xOwnership->owner->refID : 0);
+			break;
+		}
+		case kExtraData_Count:
+		{
+			ExtraCount *xCount = (ExtraCount*)xData;
+			sprintf_s(buffer, 0x20, "%d", xCount->count);
+			break;
+		}
+		default:
+			sprintf_s(buffer, 0x20, "%08X", ((UInt32*)xData)[3]);
+			break;
+	}
 }
 
 void BaseExtraList::DebugDump() const
 {
-	_MESSAGE("BaseExtraList Dump:");
-	gLog.Indent();
-
+	PrintDebug("\nBaseExtraList Dump:");
+	Console_Print("BaseExtraList Dump:");
+	s_debug.Indent();
 	if (m_data)
 	{
-		for(BSExtraData * traverse = m_data; traverse; traverse = traverse->next) {
-			_MESSAGE("%s", GetObjectClassName(traverse));
-			_MESSAGE("Extra types %4x (%s) %s", traverse->type, GetExtraDataName(traverse->type), GetExtraDataValue(traverse));
+		char dataStr[0x20];
+		for (BSExtraData *traverse = m_data; traverse; traverse = traverse->next)
+		{
+			ExtraValueStr(traverse, dataStr);
+			PrintDebug("%08X\t%02X\t%s\t%s", traverse, traverse->type, GetExtraDataName(traverse->type), dataStr);
+			Console_Print("%08X  %02X  %s  %s", traverse, traverse->type, GetExtraDataName(traverse->type), dataStr);
 		}
+		Console_Print(" ");
 	}
 	else
-		_MESSAGE("No data in list");
-
-	gLog.Outdent();
+	{
+		PrintDebug("No data in list");
+		Console_Print("No data in list");
+	}
+	s_debug.Outdent();
 }
 
 bool BaseExtraList::MarkScriptEvent(UInt32 eventMask, TESForm* eventTarget)

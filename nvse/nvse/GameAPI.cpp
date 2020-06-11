@@ -1,27 +1,10 @@
-#include "GameAPI.h"
-#include "GameRTTI.h"
-#include "GameForms.h"
-#include "GameObjects.h"
-#include "GameTypes.h"
-#include "CommandTable.h"
-#include "GameScript.h"
-#include "StringVar.h"
+#include "nvse/GameAPI.h"
 
-#if NVSE_CORE
-#include "Hooks_Script.h"
-#include "ScriptUtils.h"
-#endif
-
-UInt8* g_lastScriptData;
-
-static NVSEStringVarInterface* s_StringVarInterface = NULL;
+//static NVSEStringVarInterface* s_StringVarInterface = NULL;
 bool extraTraces = false;
-bool alternateUpdate3D = false;
 
 // arg1 = 1, ignored if canCreateNew is false, passed to 'init' function if a new object is created
 typedef void * (* _GetSingleton)(bool canCreateNew);
-
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 
 const _ExtractArgs ExtractArgs = (_ExtractArgs)0x005ACCB0;
 
@@ -34,7 +17,7 @@ const _CreateFormInstance CreateFormInstance = (_CreateFormInstance)0x00465110;
 const _GetSingleton ConsoleManager_GetSingleton = (_GetSingleton)0x0071B160;
 bool * bEchoConsole = (bool*)0x011F158C;
 
-const _QueueUIMessage QueueUIMessage = (_QueueUIMessage)0x007052F0;	// Called from Cmd_AddSpell_Execute
+const _QueueUIMessage QueueUIMessage = (_QueueUIMessage)0x007052F0;
 
 const _ShowMessageBox ShowMessageBox = (_ShowMessageBox)0x00703E80;
 const _ShowMessageBox_Callback ShowMessageBox_Callback = (_ShowMessageBox_Callback)0x005B4A70;
@@ -43,54 +26,9 @@ const _ShowMessageBox_button ShowMessageBox_button = (_ShowMessageBox_button)0x0
 
 const _GetActorValueName GetActorValueName = (_GetActorValueName)0x00066EAC0;	// See Cmd_GetActorValue_Eval
 const UInt32 * g_TlsIndexPtr = (UInt32 *)0x0126FD98;
-const _MarkBaseExtraListScriptEvent MarkBaseExtraListScriptEvent = (_MarkBaseExtraListScriptEvent)0x005AC750;
-const _DoCheckScriptRunnerAndRun DoCheckScriptRunnerAndRun = (_DoCheckScriptRunnerAndRun)0x005AC190;
+const _MarkBaseExtraListScriptEvent MarkBaseExtraListScriptEvent = (_MarkBaseExtraListScriptEvent)0x005AC790;
 
 SaveGameManager ** g_saveGameManager = (SaveGameManager**)0x011DE134;
-
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-
-const _ExtractArgs ExtractArgs = (_ExtractArgs)0x005ACE60;
-
-const _FormHeap_Allocate FormHeap_Allocate = (_FormHeap_Allocate)0x00401000;
-const _FormHeap_Free FormHeap_Free = (_FormHeap_Free)0x0042F4D0;
-
-const _LookupFormByID LookupFormByID = (_LookupFormByID)0x004849B0;
-const _CreateFormInstance CreateFormInstance = (_CreateFormInstance)0x00465F10;
-
-const _GetSingleton ConsoleManager_GetSingleton = (_GetSingleton)0x0071B110;
-bool * bEchoConsole = (bool*)0x011F158C;
-
-const _QueueUIMessage QueueUIMessage = (_QueueUIMessage)0x00705220;	// Called from Cmd_AddSpell_Execute
-
-const _ShowMessageBox ShowMessageBox = (_ShowMessageBox)0x00703DB0;
-const _ShowMessageBox_Callback ShowMessageBox_Callback = (_ShowMessageBox_Callback)0x005B4B10;
-const _ShowMessageBox_pScriptRefID ShowMessageBox_pScriptRefID = (_ShowMessageBox_pScriptRefID)0x011CAC64;
-const _ShowMessageBox_button ShowMessageBox_button = (_ShowMessageBox_button)0x0118C684;
-
-const _GetActorValueName GetActorValueName = (_GetActorValueName)0x0066E620;	// See Cmd_GetActorValue_Eval
-const UInt32 * g_TlsIndexPtr = (UInt32 *)0x0126FD98;
-const _MarkBaseExtraListScriptEvent MarkBaseExtraListScriptEvent = (_MarkBaseExtraListScriptEvent)0x005AC900;
-const _DoCheckScriptRunnerAndRun DoCheckScriptRunnerAndRun = (_DoCheckScriptRunnerAndRun)0x005AC340;
-
-SaveGameManager ** g_saveGameManager = (SaveGameManager**)0x011DE134;
-
-#elif EDITOR
-
-//	FormMap* g_FormMap = (FormMap *)0x009EE18C;		// currently unused
-//	DataHandler ** g_dataHandler = (DataHandler **)0x00A0E064;
-//	TES** g_TES = (TES**)0x00A0ABB0;
-	const _LookupFormByID LookupFormByID = (_LookupFormByID)0x004F9620;	// Call between third reference to RTTI_TESWorldspace and RuntimeDynamicCast
-	const _GetFormByID GetFormByID = (_GetFormByID)(0x004F9650); // Search for aNonPersistentR and aPlayer (third call below aPlayer, second is LookupFomrByID)
-	const _FormHeap_Allocate FormHeap_Allocate = (_FormHeap_Allocate)0x00401000;
-	const _FormHeap_Free FormHeap_Free = (_FormHeap_Free)0x0000401180;
-	const _ShowCompilerError ShowCompilerError = (_ShowCompilerError)0x005C5730;	// Called with aNonPersistentR (still same sub as the other one)
-
-#else
-
-#error RUNTIME_VERSION unknown
-
-#endif
 
 #if RUNTIME
 
@@ -99,16 +37,12 @@ struct TLSData
 	// thread local storage
 
 	UInt32	pad000[(0x260 - 0x000) >> 2];	// 000
-	NiNode			* lastNiNode;			// 260	248 in FOSE
-	TESObjectREFR	* lastNiNodeREFR;		// 264	24C in FOSE
+	NiNode			* lastNiNode;			// 260
+	TESObjectREFR	* lastNiNodeREFR;		// 264
 	UInt8			consoleMode;			// 268
 	UInt8			pad269[3];				// 269
-	// 25C is used as do not head track the player , 
-	// 2B8 is used to init QueudFile::unk0018, 
-	// 28C might count the recursive calls to Activate, limited to 5.
+	// 25C is used as do not head track the player , 2B8 is used to init QueudFile::unk0018
 };
-
-STATIC_ASSERT(offsetof(TLSData, consoleMode) == 0x268);
 
 static TLSData * GetTLSData()
 {
@@ -165,33 +99,19 @@ ConsoleManager * ConsoleManager::GetSingleton(void)
 	return (ConsoleManager *)ConsoleManager_GetSingleton(true);
 }
 
-char* ConsoleManager::GetConsoleOutputFilename(void)
-{
-	return GetSingleton()->scofPath;
-};
-
-bool ConsoleManager::HasConsoleOutputFilename(void) {
-	return 0 != GetSingleton()->scofPath[0];
-};
-
-bool s_InsideOnActorEquipHook = false;
-UInt32 s_CheckInsideOnActorEquipHook = 1;
-
 void Console_Print(const char * fmt, ...)
 {
-	//if (!s_CheckInsideOnActorEquipHook || !s_InsideOnActorEquipHook) {
-		ConsoleManager	* mgr = ConsoleManager::GetSingleton();
-		if(mgr)
-		{
-			va_list	args;
+	ConsoleManager	* mgr = ConsoleManager::GetSingleton();
+	if(mgr)
+	{
+		va_list	args;
 
-			va_start(args, fmt);
+		va_start(args, fmt);
 
-			CALL_MEMBER_FN(mgr, Print)(fmt, args);
+		CALL_MEMBER_FN(mgr, Print)(fmt, args);
 
-			va_end(args);
-		}
-	//}
+		va_end(args);
+	}
 }
 
 TESSaveLoadGame * TESSaveLoadGame::Get()
@@ -225,13 +145,13 @@ ScriptEventList* ResolveExternalVar(ScriptEventList* in_EventList, Script* in_Sc
 		TESForm* refObj = refVar->form;
 		if (refObj)
 		{
-			if (refObj->typeID == kFormType_Reference)
+			if (refObj->typeID == kFormType_TESObjectREFR)
 			{
 				TESObjectREFR* refr = DYNAMIC_CAST(refObj, TESForm, TESObjectREFR);
 				if (refr)
 					refEventList = refr->GetEventList();
 			}
-			else if (refObj->typeID == kFormType_Quest)
+			else if (refObj->typeID == kFormType_TESQuest)
 			{
 				TESQuest* quest = DYNAMIC_CAST(refObj, TESForm, TESQuest);
 				if (quest)
@@ -254,22 +174,6 @@ TESGlobal* ResolveGlobalVar(ScriptEventList* in_EventList, Script* in_Script, UI
 		global = (TESGlobal*)DYNAMIC_CAST(globalRef->form, TESForm, TESGlobal);
 
 	return global;
-}
-
-void ScriptEventList::Destructor() const
-{
-// OBLIVION	ThisStdCall(0x004FB4E0, this);
-	
-	if (m_eventList != nullptr)
-	{
-		m_eventList->RemoveAll();
-	}
-
-	const auto* scriptVarNode = m_vars->Head();
-	while (scriptVarNode != nullptr) {
-		FormHeap_Free(scriptVarNode->Data());
-		scriptVarNode = scriptVarNode->Next();
-	}
 }
 
 static bool ExtractFloat(double& out, UInt8* &scriptData, Script* scriptObj, ScriptEventList* eventList)
@@ -308,7 +212,7 @@ static bool ExtractFloat(double& out, UInt8* &scriptData, Script* scriptObj, Scr
 	{
 		UInt16 varIdx = *((UInt16*)++scriptData);
 		scriptData += 2;
-		ScriptVar* var = eventList->GetVariable(varIdx);
+		ScriptVar *var = eventList->GetVariable(varIdx);
 		if (var)
 		{
 			out = var->data;
@@ -333,7 +237,7 @@ TESForm* ExtractFormFromFloat(UInt8* &scriptData, Script* scriptObj, ScriptEvent
 	UInt16 varIdx = *(UInt16*)++scriptData;
 	scriptData += 2;
 
-	ScriptVar* var = eventList->GetVariable(varIdx);
+	ScriptVar *var = eventList->GetVariable(varIdx);
 	if (var)
 		outForm = LookupFormByID(*((UInt64 *)&var->data));
 
@@ -373,9 +277,9 @@ static const char* StringFromStringVar(UInt32 strID)
 	StringVar* strVar = g_StringMap.Get(strID);
 	return strVar ? strVar->GetCString() : "";
 #else
-	if (s_StringVarInterface)
+	/*if (s_StringVarInterface)
 		return s_StringVarInterface->GetString(strID);
-	else
+	else*/
 		return "";
 #endif
 }
@@ -389,7 +293,7 @@ static const char* ResolveStringArgument(ScriptEventList* eventList, const char*
 		VariableInfo* varInfo = eventList->m_script->GetVariableByName(stringArg + 1);
 		if (varInfo)
 		{
-			ScriptVar* var = eventList->GetVariable(varInfo->idx);
+			ScriptVar *var = eventList->GetVariable(varInfo->idx);
 			if (var)
 				result = StringFromStringVar(var->data);
 		}
@@ -429,7 +333,7 @@ static bool v_ExtractArgsEx(SInt16 numArgs, ParamInfo * paramInfo, UInt8* &scrip
 				UInt16	len = *((UInt16 *)scriptData);
 				scriptData += 2;
 
-				memcpy(out, scriptData, len);
+				MemCopy(out, scriptData, len);
 				scriptData += len;
 
 				out[len] = 0;
@@ -438,7 +342,7 @@ static bool v_ExtractArgsEx(SInt16 numArgs, ParamInfo * paramInfo, UInt8* &scrip
 				if (resolved != out)
 				{
 					UInt32 resolvedLen = strlen(resolved);
-					memcpy(out, resolved, resolvedLen);
+					MemCopy(out, resolved, resolvedLen);
 					out[resolvedLen] = 0;
 				}
 			}
@@ -474,7 +378,7 @@ static bool v_ExtractArgsEx(SInt16 numArgs, ParamInfo * paramInfo, UInt8* &scrip
 					}
 
 					default:
-						_ERROR("ExtractArgsEx: unknown integer type (%02X)", type);
+						//_ERROR("ExtractArgsEx: unknown integer type (%02X)", type);
 						return false;
 				}
 			}
@@ -506,7 +410,7 @@ static bool v_ExtractArgsEx(SInt16 numArgs, ParamInfo * paramInfo, UInt8* &scrip
 					}
 
 					default:
-						_ERROR("ExtractArgsEx: unknown float type (%02X)", type);
+						//_ERROR("ExtractArgsEx: unknown float type (%02X)", type);
 						return false;
 				}
 			}
@@ -604,8 +508,7 @@ static bool v_ExtractArgsEx(SInt16 numArgs, ParamInfo * paramInfo, UInt8* &scrip
 				// fall through to error reporter
 
 			default:
-				_ERROR("Unhandled type encountered. Arg #%d numArgs = %d paramType = %d paramStr = %s",
-					i, numArgs, info->typeID, info->typeStr);
+				//_ERROR("Unhandled type encountered. Arg #%d numArgs = %d paramType = %d paramStr = %s",	i, numArgs, info->typeID, info->typeStr);
 				HALT("unhandled type");
 				break;
 		}
@@ -702,22 +605,22 @@ bool ExtractArgsRaw(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptD
 								TESForm	* eventListSrc = var->form;
 								switch(eventListSrc->typeID)
 								{
-									case kFormType_Reference:
+									case kFormType_TESObjectREFR:
 										srcEventList = ((TESObjectREFR *)eventListSrc)->GetEventList();
 										break;
 
-									case kFormType_Quest:
+									case kFormType_TESQuest:
 										srcEventList = ((TESQuest *)eventListSrc)->scriptEventList;
 										break;
 
 									default:
-										_ERROR("ExtractArgsRaw: unknown remote reference in number var (%02X)", eventListSrc->typeID);
+										//_ERROR("ExtractArgsRaw: unknown remote reference in number var (%02X)", eventListSrc->typeID);
 										return false;
 								}
 							}
 							else
 							{
-								_ERROR("ExtractArgsRaw: couldn't find remote reference in number var");
+								//_ERROR("ExtractArgsRaw: couldn't find remote reference in number var");
 								return false;
 							}
 						}
@@ -727,14 +630,14 @@ bool ExtractArgsRaw(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptD
 							// ###
 
 							//default:
-								_ERROR("ExtractArgsRaw: unknown number var type (%02X)", type);
+								//_ERROR("ExtractArgsRaw: unknown number var type (%02X)", type);
 								return false;
 						}
 					}
 					break;
 
 					default:
-						_ERROR("ExtractArgsRaw: unknown number type (%02X)", type);
+						//_ERROR("ExtractArgsRaw: unknown number type (%02X)", type);
 						return false;
 				}
 			}
@@ -800,8 +703,9 @@ bool ExtractArgsRaw(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptD
 						UInt16	varIdx = *((UInt16 *)scriptData);
 						scriptData += 2;
 
-						Script::RefVariable	* var = scriptObj->GetVariable(varIdx);
-						ASSERT(var);
+						Script::RefVariable	*var = scriptObj->GetVariable(varIdx);
+						if (!var)
+							return false;
 
 						var->Resolve(eventList);
 
@@ -823,7 +727,7 @@ bool ExtractArgsRaw(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptD
 					break;
 
 					default:
-						_ERROR("ExtractArgsRaw: unknown form type (%02X)", type);
+						//_ERROR("ExtractArgsRaw: unknown form type (%02X)", type);
 						return false;
 				}
 			}
@@ -833,7 +737,7 @@ bool ExtractArgsRaw(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptD
 				// unhandled, fall through
 
 			default:
-				_ERROR("ExtractArgsRaw: unhandled type encountered, arg %d type %02X", i, info->typeID);
+				//_ERROR("ExtractArgsRaw: unhandled type encountered, arg %d type %02X", i, info->typeID);
 				HALT("unhandled type");
 				break;
 		}
@@ -858,7 +762,7 @@ bool ExtractArgsEx(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptDa
 	return bExtracted;
 }
 
-void ScriptEventList::Dump(void)
+/*void ScriptEventList::Dump(void)
 {
 	UInt32 nEvents = m_eventList->Count();
 
@@ -870,13 +774,13 @@ void ScriptEventList::Dump(void)
 			Console_Print("%08X (%s) %08X", pEvent->object, GetObjectClassName(pEvent->object), pEvent->eventMask);
 		}
 	}
-}
+}*/
 
 UInt32 ScriptEventList::ResetAllVariables()
 {
 	if (!m_vars) return 0;
-	ListNode<ScriptVar>* varIter = m_vars->Head();
-	ScriptVar* scriptVar;
+	ListNode<ScriptVar> *varIter = m_vars->Head();
+	ScriptVar *scriptVar;
 	UInt32 numVars = 0;
 	do
 	{
@@ -886,24 +790,26 @@ UInt32 ScriptEventList::ResetAllVariables()
 			scriptVar->data = 0;
 			numVars++;
 		}
-	} while (varIter = varIter->next);
+	}
+	while (varIter = varIter->next);
 	return numVars;
 }
 
-ScriptVar* ScriptEventList::GetVariable(const UInt32 id) const
+ScriptVar *ScriptEventList::GetVariable(UInt32 id)
 {
-	if (m_vars != nullptr)
+	if (m_vars)
 	{
-		ListNode<ScriptVar>* varIter = m_vars->Head();
-		ScriptVar* scriptVar;
+		ListNode<ScriptVar> *varIter = m_vars->Head();
+		ScriptVar *scriptVar;
 		do
 		{
 			scriptVar = varIter->data;
 			if (scriptVar && (scriptVar->id == id))
 				return scriptVar;
-		} while (varIter = varIter->next);
+		}
+		while (varIter = varIter->next);
 	}
-	return nullptr;
+	return NULL;
 }
 
 ScriptEventList* EventListFromForm(TESForm* form)
@@ -1092,9 +998,9 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 						switch(form->typeID)
 						{
 #if 0
-							case kFormType_Spell:
-							case kFormType_Enchantment:
-							case kFormType_Ingredient:
+							case kFormType_SpellItem:
+							case kFormType_EnchantmentItem:
+							case kFormType_IngredientItem:
 							case kFormType_AlchemyItem:
 							{
 								MagicItem* magItm = DYNAMIC_CAST(form, TESForm, MagicItem);
@@ -1118,7 +1024,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 							break;
 #endif
 
-							case kFormType_Ammo:
+							case kFormType_TESAmmo:
 							{
 								TESAmmo	* ammo = DYNAMIC_CAST(form, TESForm, TESAmmo);
 
@@ -1143,7 +1049,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 							break;
 
 #if 1	// to be tested
-							case kFormType_Faction:
+							case kFormType_TESFaction:
 							{
 								TESFaction* fact = DYNAMIC_CAST(form, TESForm, TESFaction);
 								if (!fact)
@@ -1222,7 +1128,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 						form = refr->baseForm;
 
 					short objType = 0;
-					if (form->typeID == kFormType_NPC)
+					if (form->typeID == kFormType_TESNPC)
 					{
 						TESActorBaseData* actorBase = DYNAMIC_CAST(form, TESForm, TESActorBaseData);
 						objType = (actorBase->IsFemale()) ? 2 : 1;
@@ -1345,7 +1251,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 
 void RegisterStringVarInterface(NVSEStringVarInterface* intfc)
 {
-	s_StringVarInterface = intfc;
+	//s_StringVarInterface = intfc;
 }
 
 #if NVSE_CORE
@@ -1413,9 +1319,9 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 	}
 
 	// Calculate frame pointer for 4 calls above:
-	/*void* callerFramePointer;
+	void* callerFramePointer;
 	_asm {
-		mov callerFramePointer, ebp
+		mov callerFramePointer , ebp
 	}
 	for (int i = 0; i < 3; i++)
 		callerFramePointer = (void*)(*(UInt32*)callerFramePointer);
@@ -1428,10 +1334,7 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 	UInt32* scriptDataAddr = (UInt32*)scriptDataPtrAddr;
 	UInt8* scriptData = (UInt8*)(*scriptDataAddr);
 
-	SInt32 scriptDataOffset = (UInt32)scriptData - (UInt32)(script->data);*/
-	const auto* scriptData = g_lastScriptData;
-	const SInt32 scriptDataOffset = (UInt32)scriptData - (UInt32)(script->data);
-
+	SInt32 scriptDataOffset = (UInt32)scriptData - (UInt32)(script->data);
 	if (scriptDataOffset < 5)
 		return false;
 
@@ -1473,7 +1376,7 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 				if (!refForm)
 					break;
 
-				if (refForm->typeID == kFormType_Reference)
+				if (refForm->typeID == kFormType_TESObjectREFR)
 				{
 					TESObjectREFR* refr = DYNAMIC_CAST(refForm, TESForm, TESObjectREFR);
 					TESScriptableForm* scriptable = DYNAMIC_CAST(refr->baseForm, TESForm, TESScriptableForm);
@@ -1485,7 +1388,7 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 					else
 						break;
 				}
-				else if (refForm->typeID == kFormType_Quest)
+				else if (refForm->typeID == kFormType_TESQuest)
 				{
 					TESScriptableForm* scriptable = DYNAMIC_CAST(refForm, TESForm, TESScriptableForm);
 					if (scriptable)
@@ -1502,7 +1405,7 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 			}
 
 			UInt16 varIdx = *(UInt16*)(scriptData + 1);
-			ScriptVar* var = eventList->GetVariable(varIdx);
+			ScriptVar *var = eventList->GetVariable(varIdx);
 			if (var)
 			{
 				*outVarData = var->data;
@@ -1562,7 +1465,7 @@ ScriptFormatStringArgs::ScriptFormatStringArgs(UInt32 _numArgs, UInt8* _scriptDa
 	UInt16 len = *((UInt16*)scriptData);
 	char* szFmt = new char[len+1];
 	scriptData += 2;
-	memcpy(szFmt, scriptData, len);
+	MemCopy(szFmt, scriptData, len);
 	szFmt[len] = '\0';
 
 	scriptData += len;
@@ -1701,7 +1604,7 @@ void ShowCompilerError(ScriptLineBuffer* lineBuf, const char * fmt, ...)
 
 	strcat_s(errorHeader, 0x400, errorMsg);
 	Console_Print(errorHeader);
-	_MESSAGE(errorHeader);
+	//_MESSAGE(errorHeader);
 
 	va_end(args);
 }
@@ -1794,52 +1697,6 @@ UInt32 GetActorValueMax(UInt32 actorValueCode) {
 		case eActorVal_Damagethreshold:		return   1; break;
 		default: return 1;
 	}
-}
-
-typedef FontManager* (* _FontManager_GetSingleton)(void);
-const _FontManager_GetSingleton FontManager_GetSingleton = (_FontManager_GetSingleton)0x011F33F8;
-
-FontManager* FontManager::GetSingleton()
-{
-	return FontManager_GetSingleton();
-}
-
-FontManager::FontInfo* FontManager::FontInfo::Load(const char* path, UInt32 ID)
-{
-	FontInfo* info = (FontInfo*)FormHeap_Allocate(sizeof(FontInfo));
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
-	return (FontManager::FontInfo*)ThisStdCall(0x00A12020, info, ID, path, 1);
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	return (FontManager::FontInfo*)ThisStdCall(0x00A11BE0, info, ID, path, 1);
-#else
-#error unsupported Runtime version
-#endif
-}
-
-bool FontManager::FontInfo::GetName(char* out)
-{
-	UInt32 len = strlen(path);
-	len -= 4;					// '.fnt'
-	UInt32 start = len;
-	while (path[start-1] != '\\') {
-		start--;
-	}
-
-	len -= start;
-
-	memcpy(out, path+start, len);
-	out[len] = 0;
-
-	return true;
-}
-
-void Debug_DumpFontNames(void)
-{
-	FontManager::FontInfo** fonts = FontManager::GetSingleton()->fontInfos;
-
-	for(UInt32 i = 0; i < FontArraySize; i++)
-		_MESSAGE("Font %d is named %s", i+1, fonts[i]->path);
-
 }
 
 #endif

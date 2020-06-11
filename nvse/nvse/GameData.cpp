@@ -1,10 +1,6 @@
-#include "GameData.h"
+#include "nvse/GameData.h"
 
-
-DataHandler* DataHandler::Get() {
-	DataHandler** g_dataHandler = (DataHandler**)0x011C3F2C;
-	return *g_dataHandler;
-}
+DataHandler* DataHandler::GetSingleton() { return *(DataHandler**)0x011C3F2C; }
 
 class LoadedModFinder
 {
@@ -31,9 +27,9 @@ const ModInfo ** DataHandler::GetActiveModList()
 	if (!(*activeModList))
 	{
 		UInt16 index = 0;
-		for (index = 0  ; index < DataHandler::Get()->modList.modInfoList.Count() ; index++)
+		for (index = 0  ; index < DataHandler::GetSingleton()->modList.modInfoList.Count() ; index++)
 		{
-			ModInfo* entry = DataHandler::Get()->modList.modInfoList.GetNthItem(index);
+			ModInfo* entry = DataHandler::GetSingleton()->modList.modInfoList.GetNthItem(index);
 			if (entry->IsLoaded())
 				activeModList[index] = entry;
 		}
@@ -42,9 +38,18 @@ const ModInfo ** DataHandler::GetActiveModList()
 	return activeModList;
 }
 
-UInt8 DataHandler::GetModIndex(const char* modName)
+UInt8 DataHandler::GetModIndex(const char *modName)
 {
-	return modList.modInfoList.GetIndexOf(LoadedModFinder(modName));
+	ListNode<ModInfo> *iter = modList.modInfoList.Head();
+	ModInfo *modInfo;
+	do
+	{
+		modInfo = iter->data;
+		if (modInfo && StrEqualCI(modInfo->name, modName))
+			return modInfo->modIndex;
+	}
+	while (iter = iter->next);
+	return 0xFF;
 }
 
 const char* DataHandler::GetNthModName(UInt32 modIndex)
@@ -65,8 +70,7 @@ struct IsModLoaded
 
 UInt8 DataHandler::GetActiveModCount() const
 {
-	UInt32 count = modList.modInfoList.CountIf(IsModLoaded());
-	return count;
+	return modList.modInfoList.Count();
 }
 
 ModInfo::ModInfo() {

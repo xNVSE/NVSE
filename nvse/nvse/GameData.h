@@ -1,25 +1,6 @@
 #pragma once
 
-#include "GameForms.h"
-#include "Utilities.h"
-
-class TESReputation;
-class TESChallenge;
-class TESRecipe;
-class TESRecipeCategory;
-class TESAmmoEffect;
-class TESCasino;
-class TESCaravanDeck;
-class TESTopicInfo;
-class BGSDehydrationStage;
-class BGSHungerStage;
-class BGSSleepDeprivationStage;
-class TESLoadScreenType;
-class MediaSet;
-class MediaLocationController;
-class TESRegionList;
 class TESRegionManager;
-class BSFile;
 
 struct ChunkAndFormType {
 	UInt32		chunkType;	// ie 
@@ -27,7 +8,6 @@ struct ChunkAndFormType {
 	const char	* formName;	// ie 'NPC_'
 };
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 static const UInt32 _ModInfo_GetNextChunk = 0x004726B0; // args: none retn: UInt32 subrecordType (third call in TESObjectARMO_LoadForm)
 static const UInt32 _ModInfo_GetChunkData = 0x00472890;	// args: void* buf, UInt32 bufSize retn: bool readSucceeded (fifth call in TESObjectARMO_LoadForm)
 static const UInt32 _ModInfo_Read32		  =	0x004727F0;	// args: void* buf retn: void (find 'LPER', then next call, still in TESObjectARMO_LoadForm)
@@ -47,30 +27,6 @@ static UInt32* g_CreatedObjectSize = (UInt32*)0x011C54D0;
 		// in first call (Form_startSaveForm) in TESObjectARMO__SaveForm:
 		//		g_CreatedObjectSize is set to 18h
 		//		g_CreatedObjectData is set to the eax result of the next call
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-static const UInt32 _ModInfo_GetNextChunk = 0x004735D0; // args: none retn: UInt32 subrecordType (third call in TESObjectARMO_LoadForm)
-static const UInt32 _ModInfo_GetChunkData = 0x00473790;	// args: void* buf, UInt32 bufSize retn: bool readSucceeded (fifth call in TESObjectARMO_LoadForm)
-static const UInt32 _ModInfo_Read32		  =	0x004736F0;	// args: void* buf retn: void (find 'LPER', then next call, still in TESObjectARMO_LoadForm)
-static const UInt32 _ModInfo_HasMoreSubrecords = 0x00473610;	// Last call before "looping" to GetNextChunk in TESObjectARMO_LoadForm.
-static const UInt32 _ModInfo_InitializeForm = 0x00486100;	// args: TESForm* retn: void (second call in TESObjectARMO_LoadForm)
-
-// addresses of static ModInfo members holding type info about currently loading form
-static UInt32* s_ModInfo_CurrentChunkTypeCode = (UInt32*)0x011C54F4;
-static UInt32* s_ModInfo_CurrentFormTypeEnum = (UInt32*)0x011C54F0;
-// in last call (SetStaticFieldsAndGetFormTypeEnum) of first call (ModInfo__GetFormInfoTypeID) from _ModInfo_InitializeForm
-		//		s_ModInfo_CurrentChunkTypeCode is first cmp
-		//		s_ModInfo_CurrentChunkTypeEnum is next mov
-static const ChunkAndFormType* s_ModInfo_ChunkAndFormTypes = (const ChunkAndFormType*)0x01187008;	// Array used in the loop in SetStaticFieldsAndGetFormTypeEnum, starts under dd offset aNone
-
-static UInt8** g_CreatedObjectData = (UInt8**)0x011C54CC;	// pointer to FormInfo + form data, filled out by TESForm::SaveForm()
-static UInt32* g_CreatedObjectSize = (UInt32*)0x011C54D0;
-		// in first call in TESObjectARMO__SaveForm:
-		//		g_CreatedObjectSize is set to 18h
-		//		g_CreatedObjectData is set to the eax result of the next call
-#elif EDITOR
-#else
-#error
-#endif
 
 // 10
 class BoundObjectListHead
@@ -140,7 +96,7 @@ struct ModInfo		// referred to by game as TESFile
 		UInt32	high;
 	};
 
-	tList<ModInfo>						unkList;			// 000 treated as ModInfo during InitializeForm, looks to be a linked list of modInfo. Also during Save in GECK.
+	tList<UInt32>						unkList;			// 000 treated as ModInfo during InitializeForm, looks to be a linked list of modInfo
 	UInt32 /*NiTPointerMap<TESFile*>*/	* pointerMap;		// 008
 	UInt32								unk00C;				// 00C
 	BSFile*								unkFile;			// 010
@@ -157,7 +113,7 @@ struct ModInfo		// referred to by game as TESFile
 	UInt32								unk23C;				// 23C
 	FormInfo							formInfo;			// 240
 	ChunkHeader							subRecordHeader;	// 258
-	UInt32								unk260;				// 260 could be file size, as it is compared with fileOffset during load module. But filesize would be an Int64 !
+	UInt32								unk260;				// 260 could be file size, has it is compared with fileOffset during load module. But filesize would be an Int64 !
 	UInt32								fileOffset;			// 264
 	UInt32								dataOffset;			// 268 index into dataBuf
 	UInt32								subrecordBytesRead;	// 26C generates error on Read if != expected length
@@ -173,8 +129,10 @@ struct ModInfo		// referred to by game as TESFile
 	FileHeader							header;				// 3DC
 	UInt8								flags;				// 3E8	Bit 0 is ESM . Runtime: Bit 2 is Valid, Bit 3 is Unselected Editor: 2 is selected, 3 is active, 4 may be invalid, 6 is endian, 14 controls VCI.
 	UInt8								pad3E9[3];
-	tList<char*>						refModNames;		// 3EC
-	tList<MasterSize*>					refModData;			// 3F4 most likely full of 0
+	tList<char*>						* refModNames;		// 3EC	paired with 3F0
+	UInt32								unk3F0;				// 3F0
+	tList<MasterSize*>					* refModData;		// 3F4 most likely full of 0
+	UInt32								unk3F8;				// 3F8
 	UInt32								numRefMods;			// 3FC related to modindex; see 4472D0
 																// formIDs in mod are as saved in GECK, must fix up at runtime
 	ModInfo								** refModInfo;		// 400 used to look up modInfo based on fixed mod index, double-check
@@ -193,23 +151,15 @@ struct ModInfo		// referred to by game as TESFile
 	
 	bool IsLoaded() const { return true; }
 
-#if !EDITOR
 	/*** used by TESForm::LoadForm() among others ***/
 	MEMBER_FN_PREFIX(ModInfo);
 	DEFINE_MEMBER_FN(GetNextChunk, UInt32, _ModInfo_GetNextChunk);	// returns chunk type
 	DEFINE_MEMBER_FN(GetChunkData, bool, _ModInfo_GetChunkData, UInt8* buf, UInt32 bufSize); // max size, not num to read
 	DEFINE_MEMBER_FN(Read32, void, _ModInfo_Read32, void* out);
 	DEFINE_MEMBER_FN(HasMoreSubrecords, bool, _ModInfo_HasMoreSubrecords);
-#endif
 };
-
 STATIC_ASSERT(sizeof(WIN32_FIND_DATA) == 0x140);
-STATIC_ASSERT(offsetof(ModInfo, name) == 0x20);
-STATIC_ASSERT(offsetof(ModInfo, subRecordHeader) == 0x258);
-STATIC_ASSERT(offsetof(ModInfo, unk260) == 0x260);
 STATIC_ASSERT(sizeof(ModInfo) == 0x42C);
-
-
 
 struct ModList
 {
@@ -227,10 +177,10 @@ public:
 	~DataHandler();
 
 	UInt32							unk00;					// 000
-	BoundObjectListHead				* boundObjectList;		// 004
+	BoundObjectListHead				*boundObjectList;		// 004
 	tList<TESPackage>				packageList;			// 008
 	tList<TESWorldSpace>			worldSpaceList;			// 010
-	tList<TESClimate>				climateList;			// 019
+	tList<TESClimate>				climateList;			// 018
 	tList<TESImageSpace>			imageSpaceList;			// 020
 	tList<TESImageSpaceModifier>	imageSpaceModList;		// 028
 	tList<TESWeather>				weatherList;			// 030
@@ -272,7 +222,7 @@ public:
 	tList<BGSRadiationStage>		radiationStageList;		// 150
 	tList<BGSDehydrationStage>		dehydrationStageList;	// 158
 	tList<BGSHungerStage>			hungerStageList;		// 160
-	tList<BGSSleepDeprivationStage>	sleepDepriveStageList;	// 168
+	tList<BGSSleepDeprevationStage>	sleepDepriveStageList;	// 168
 	tList<BGSDebris>				debrisList;				// 170
 	tList<BGSPerk>					perkList;				// 178
 	tList<BGSBodyPartData>			bodyPartDataList;		// 180
@@ -281,39 +231,36 @@ public:
 	tList<BGSMenuIcon>				menuIconList;			// 198
 	tList<TESObjectANIO>			anioList;				// 1A0
 	tList<BGSMessage>				messageList;			// 1A8
-	tList<BGSLightingTemplate>		lightningTemplateList;	// 1B0
+	tList<BGSLightingTemplate>		lightingTemplateList;	// 1B0
 	tList<BGSMusicType>				musicTypeList;			// 1B8
 	tList<TESLoadScreenType>		loadScreenTypeList;		// 1C0
 	tList<MediaSet>					mediaSetList;			// 1C8
 	tList<MediaLocationController>	mediaLocControllerList;	// 1D0
-	TESRegionList					* regionList;			// 1D8
+	TESRegionList					*regionList;			// 1D8
 	NiTArray<TESObjectCELL*>		cellArray;				// 1DC
 	NiTArray<BGSAddonNode*>			addonArray;				// 1EC
 
-	UInt32							unk1FC[0x3];			// 1FC	208 looks like next created refID
-	UInt32							nextCreatedRefID;		// 208	Init'd to FF000800 (in GECK init'd to nn000800)
+	UInt32							unk1FC[3];				// 1FC	208 looks like next created refID
+	UInt32							nextCreatedRefID;		// 208	Init'd to FF000800
 	UInt32							unk20C;					// 20C	last unselected mod in modList. GECK: active ESM
 	ModList							modList;				// 210
-	UInt8							unk618;					// 618	5A4
+	UInt8							unk618;					// 618
 	UInt8							unk619;					// 619
 	UInt8							unk61A;					// 61A	referenced during LoadForm (ie TESSpellList). bit 1 might mean refID to pointer conversion not done. For GECK means save in progress
 	UInt8							unk61B;					// 61B
-	UInt8							unk61C;					// 61C	5A8
-	UInt8							unk61D;					// 61D
-	UInt8							unk61E;					// 61E
-	UInt8							unk61F;					// 61F
-	UInt8							unk620;					// 620	5AC
+	UInt32							unk61C;					// 61C
+	UInt8							unk620;					// 620
 	UInt8							loading;				// 621	Init'd to 0 after loadForms
-	UInt8							unk622;					// 622	referenced during loading of modules. Compared with type = GameSetting but seems to always end up equal to 1.
+	UInt8							unk622;					// 622	referenced during loading of modules
 	UInt8							unk623;					// 623
-	TESRegionManager				* regionManager;		// 624	5B0
-	UInt32							unk628;					// 628	5B4
+	TESRegionManager				*regionManager;			// 624
+	void							*vendorContainer;		// 628	ExtraContainerChanges::Data
 	UInt32							unk62C;					// 62C	
 	UInt32							unk630;					// 630
 	UInt32							unk634;					// 634
 	UInt32							unk638;					// 638
 
-	static DataHandler* Get();
+	static DataHandler* GetSingleton();
 	const ModInfo ** GetActiveModList();		// returns array of modEntry* corresponding to loaded mods sorted by mod index
 	const ModInfo* LookupModByName(const char* modName);
 	UInt8 GetModIndex(const char* modName);
@@ -321,18 +268,8 @@ public:
 	const char* GetNthModName(UInt32 modIndex);
 
 	MEMBER_FN_PREFIX(DataHandler);
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 	DEFINE_MEMBER_FN(DoAddForm, UInt32, 0x004603B0, TESForm * pForm);	// stupid name is because AddForm is redefined in windows header files
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	DEFINE_MEMBER_FN(DoAddForm, UInt32, 0x00461160, TESForm * pForm);	// stupid name is because AddForm is redefined in windows header files
-#elif EDITOR
-#else
-#error
-#endif
 
 	TESQuest* GetQuestByName(const char* questName);
 };
-
-STATIC_ASSERT(offsetof(DataHandler, modList) == 0x210);
-STATIC_ASSERT(offsetof(DataHandler, unk618) == 0x618);
 STATIC_ASSERT(sizeof(DataHandler) == 0x63C);

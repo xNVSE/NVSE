@@ -1,7 +1,5 @@
 #pragma once
 
-#include "GameAPI.h"
-
 // 0C
 class Setting
 {
@@ -11,7 +9,8 @@ public:
 
 	virtual void Unk_01(void);
 
-	enum EType	{
+	enum EType
+	{
 		kSetting_Bool = 0,
 		kSetting_c,
 		kSetting_h,
@@ -23,23 +22,23 @@ public:
 		kSetting_a,
 		kSetting_Other
 	};
-	union Info {
+
+	union Info
+	{
 		UInt32		uint;
 		int			i;
 		float		f;
-		char		* str;
+		char		*str;
 	};
 
-	// void		** vtbl				// 00
-	Info		data;				// 04
-	char		* name;				// 08
+	Info		data;	// 04
+	const char	*name;	// 08
 
 	UInt32 GetType();
-	bool Get(double& out);
-	bool Get(const char* str);
-	const char* Get();
-	bool Set(double newVal);
-	bool Set(const char* str);
+	bool ValidType();
+	void Get(double *out);
+	void Set(float newVal);
+	void Set(const char *str, bool doFree);
 };
 
 template<class T> class SettingCollection 
@@ -57,7 +56,7 @@ template<class M, class T> class NiTStringTemplateMap: M
 	UInt8	fil0011[3];	// 0011
 };
 
-template<class T> class NiTStringMap: NiTStringTemplateMap<NiTMapBase<char const *, T>, T>
+template<class T> class NiTStringMap : NiTStringTemplateMap<NiTMapBase<char const *, T>, T>
 {
 };
 
@@ -104,7 +103,7 @@ public:
 	UInt8		unk11C;							// 11C
 	UInt8		pad11D[3];
 
-	bool GetGameSetting(char* settingName, Setting** out);
+	bool GetGameSetting(const char* settingName, Setting** out);
 	static GameSettingCollection * GetSingleton();
 };
 
@@ -116,20 +115,19 @@ class IniSettingCollection
 {
 public:
 	IniSettingCollection();
-	virtual ~IniSettingCollection();
+	~IniSettingCollection();
 
-	virtual void	Unk_01(void);
-	virtual void	Unk_02(void);
-	virtual void	Unk_03(void);
-	virtual void	Unk_04(void);
-	virtual void	Unk_05(void);
-	virtual void	Unk_06(void);
+	virtual IniSettingCollection	*Destroy(bool doFree);
+	virtual void	Unk_01(UInt32 arg);
+	virtual void	Unk_02(UInt32 arg);
+	virtual void	Unk_03(UInt32 arg);
+	virtual void	Unk_04(UInt32 arg);
+	virtual void	Unk_05(Setting *setting);
+	virtual void	Unk_06(UInt32 arg);
 	virtual void	Unk_07(void);
 	virtual void	Unk_08(void);
 	virtual void	Unk_09(void);
-	virtual void	Unk_0A(void);
 
-	// void				** vtbl				// 000
 	char				iniPath[0x100];		// 004
 	UInt32				unk104;				// 104
 	UInt32				unk108;				// 108
@@ -141,6 +139,6 @@ public:
 
 STATIC_ASSERT(sizeof(IniSettingCollection) == 0x114);
 
-bool GetNumericGameSetting(char * settingName, double * result);
-bool GetNumericIniSetting(char * settingName, double * result);
-bool GetIniSetting(const char* settingName, Setting** out);
+bool GetNumericGameSetting(char *settingName, double *result);
+bool GetINISetting(const char *settingName, Setting **out);
+bool GetNumericINISetting(char *settingName, double *result);

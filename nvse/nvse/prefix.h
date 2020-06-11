@@ -351,6 +351,8 @@ class bhkRagdollPenetrationUtil;
 enum ActorValueCode;
 
 #include "nvse/NiTypes.h"
+#include "nvse/NetImmerse.h"
+#include "nvse/NiPoint.h"
 #include "nvse/GameTypes.h"
 #include "nvse/Utilities.h"
 #include "nvse/GameRTTI.h"

@@ -1,33 +1,11 @@
 #pragma once
 
-#include "GameTypes.h"
-#include "NiNodes.h"
-#include "GameScript.h"
-
-extern UInt8* g_lastScriptData;
-const UInt32 kMaxMessageLength = 0x4000;
-
-struct ParamInfo;
-class TESForm;
-class TESObjectREFR;
-struct BaseExtraList;
-
 #define playerID	0x7
 #define playerRefID 0x14
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
-	static const UInt32 s_Console__Print = 0x0071D0A0;
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	static const UInt32 s_Console__Print = 0x0071D070;
-#elif EDITOR
-#else
-#error
-#endif
+static const UInt32 s_Console__Print = 0x0071D0A0;
 
 extern bool extraTraces;
-extern bool alternateUpdate3D;
-extern bool s_InsideOnActorEquipHook;
-extern UInt32 s_CheckInsideOnActorEquipHook;
 
 void Console_Print(const char * fmt, ...);
 
@@ -78,16 +56,17 @@ extern const _ShowMessageBox_pScriptRefID ShowMessageBox_pScriptRefID;
 typedef UInt8 * _ShowMessageBox_button;
 extern const _ShowMessageBox_button ShowMessageBox_button;
 
-// can be passed to QueueUIMessage to determine Vaultboy icon displayed
-enum eEmotion {
-	happy	= 0,
-	sad		= 1,
-	neutral = 2,
-	pain	= 3
-};
-
-typedef bool (* _QueueUIMessage)(const char* msg, UInt32 emotion, const char* ddsPath, const char* soundName, float msgTime, bool maybeNextToDisplay);
+// unk1 = 0
+// unk3 = 0, "UIVATSInsufficientAP" (sound?)
+// duration = 2
+// unk5 = 0
+typedef bool (*_QueueUIMessage)(const char *msgText, UInt32 iconType, const char *iconPath, const char *soundPath, float displayTime, UInt8 unk5);
 extern const _QueueUIMessage QueueUIMessage;
+
+enum
+{
+	kMaxMessageLength = 0x4000
+};
 
 #if NVSE_CORE
 bool ExtractArgsEx(ParamInfo * paramInfo, void * scriptData, UInt32 * scriptDataOffset, Script * scriptObj, ScriptEventList * eventList, ...);
@@ -106,6 +85,14 @@ extern const _ShowCompilerError		ShowCompilerError;
 
 #endif
 
+// can be passed to QueueUIMessage to determine Vaultboy icon displayed
+enum eEmotion {
+	neutral = 0,
+	happy = 1,
+	sad = 2,
+	pain = 3
+};
+
 struct NVSEStringVarInterface;
 	// Problem: plugins may want to use %z specifier in format strings, but don't have access to StringVarMap
 	// Could change params to ExtractFormatStringArgs to include an NVSEStringVarInterface* but
@@ -117,7 +104,7 @@ void RegisterStringVarInterface(NVSEStringVarInterface* intfc);
 struct ScriptVar
 {
 	UInt32				id;
-	ListNode<ScriptVar>* next;
+	ListNode<ScriptVar>	*next;
 	double				data;
 };
 
@@ -127,69 +114,74 @@ struct ScriptEventList
 {
 	enum
 	{
-		kEvent_OnAdd = 1,
-		kEvent_OnEquip = 2,
-		kEvent_OnActorEquip = 2,
-		kEvent_OnDrop = 4,
-		kEvent_OnUnequip = 8,
-		kEvent_OnActorUnequip = 8,
-		kEvent_OnDeath = 0x10,
-		kEvent_OnMurder = 0x20,
-		kEvent_OnCombatEnd = 0x40,			// See 0x008A083C
-		kEvent_OnHit = 0x80,			// See 0x0089AB12
-		kEvent_OnHitWith = 0x100,			// TESObjectWEAP*	0x0089AB2F
-		kEvent_OnPackageStart = 0x200,
-		kEvent_OnPackageDone = 0x400,
-		kEvent_OnPackageChange = 0x800,
-		kEvent_OnLoad = 0x1000,
-		kEvent_OnMagicEffectHit = 0x2000,			// EffectSetting* 0x0082326F
-		kEvent_OnSell = 0x4000,			// 0x0072FE29 and 0x0072FF05, linked to 'Barter Amount Traded' Misc Stat
-		kEvent_OnStartCombat = 0x8000,
-		kEvent_OnOpen = 0x10000,		// while opening some container, not all
-		kEvent_OnClose = 0x20000,
-		kEvent_0x00400000 = 0x00400000,
-		kEvent_SayToDone = 0x40000,		// in Func0050 0x005791C1 in relation to SayToTopicInfo (OnSayToDone? or OnSayStart/OnSayEnd?)
-		kEvent_0x00080000 = 0x00080000,
-		kEvent_OnGrab = 0x80000,		// 0x0095FACD and 0x009604B0 (same func which is called from PlayerCharacter_func001B and 0021)
-		kEvent_OnRelease = 0x100000,		// 0x0047ACCA in relation to container
-		kEvent_OnDestructionStageChange = 0x200000,		// 0x004763E7/0x0047ADEE
-		kEvent_OnFire = 0x400000,		// 0x008BAFB9 (references to package use item and use weapon are close)
-		kEvent_OnTrigger = 0x10000000,		// 0x005D8D6A	Cmd_EnterTrigger_Execute
-		kEvent_OnTriggerEnter = 0x20000000,		// 0x005D8D50	Cmd_EnterTrigger_Execute
-		kEvent_OnTriggerLeave = 0x40000000,		// 0x0062C946	OnTriggerLeave ?
-		kEvent_OnReset = 0x80000000		// 0x0054E5FB
+		kEvent_OnAdd =						1,
+		kEvent_OnEquip =					2,
+		kEvent_OnActorEquip =				2,
+		kEvent_OnDrop =						4,
+		kEvent_OnUnequip =					8,
+		kEvent_OnActorUnequip =				8,
+
+		kEvent_OnDeath =					0x10,
+		kEvent_OnMurder =					0x20,
+		kEvent_OnCombatEnd =				0x40,			// See 0x008A083C
+		kEvent_OnHit =						0x80,			// See 0x0089AB12
+
+		kEvent_OnHitWith =					0x100,			// TESObjectWEAP*	0x0089AB2F
+		kEvent_OnPackageStart =				0x200,
+		kEvent_OnPackageDone =				0x400,
+		kEvent_OnPackageChange =			0x800,
+
+		kEvent_OnLoad =						0x1000,
+		kEvent_OnMagicEffectHit =			0x2000,			// EffectSetting* 0x0082326F
+		kEvent_OnSell =						0x4000,			// 0x0072FE29 and 0x0072FF05, linked to 'Barter Amount Traded' Misc Stat
+		kEvent_OnStartCombat =				0x8000,
+
+		kEvent_OnOpen =						0x10000,		// while opening some container, not all
+		kEvent_OnClose =					0x20000,
+		kEvent_SayToDone =					0x40000,		// in Func0050 0x005791C1 in relation to SayToTopicInfo (OnSayToDone? or OnSayStart/OnSayEnd?)
+		kEvent_OnGrab =						0x80000,		// 0x0095FACD and 0x009604B0 (same func which is called from PlayerCharacter_func001B and 0021)
+
+		kEvent_OnRelease =					0x100000,		// 0x0047ACCA in relation to container
+		kEvent_OnDestructionStageChange =	0x200000,		// 0x004763E7/0x0047ADEE
+		kEvent_OnFire =						0x400000,		// 0x008BAFB9 (references to package use item and use weapon are close)
+
+		kEvent_OnTrigger =					0x10000000,		// 0x005D8D6A	Cmd_EnterTrigger_Execute
+		kEvent_OnTriggerEnter =				0x20000000,		// 0x005D8D50	Cmd_EnterTrigger_Execute
+		kEvent_OnTriggerLeave =				0x40000000,		// 0x0062C946	OnTriggerLeave ?
+		kEvent_OnReset =					0x80000000		// 0x0054E5FB
 	};
+
 	struct Event
 	{
-		TESForm* object;
+		TESForm		*object;
 		UInt32		eventMask;
 	};
+
 	struct Struct10
 	{
 		bool	effectStart;
 		bool	effectFinish;
 		UInt8	unk03[6];
 	};
+
 	typedef tList<Event> EventList;
 	typedef tList<ScriptVar> VarList;
-	Script* m_script;		// 00
-	UInt32	m_unk1;			// 04
-	EventList* m_eventList;	// 08
-	VarList* m_vars;		// 0C
-	Struct10* unk010;		// 10
+
+	Script			*m_script;		// 00
+	UInt32			m_unk1;			// 04
+	EventList		*m_eventList;	// 08
+	VarList			*m_vars;		// 0C
+	Struct10		*unk010;		// 10
+
 	void Dump(void);
-	ScriptVar* GetVariable(UInt32 id) const;
+	ScriptVar *GetVariable(UInt32 id);
 	UInt32 ResetAllVariables();
-	void Destructor() const;
 };
 
 ScriptEventList* EventListFromForm(TESForm* form);
 
 typedef bool (* _MarkBaseExtraListScriptEvent)(TESForm* target, BaseExtraList* extraList, UInt32 eventMask);
 extern const _MarkBaseExtraListScriptEvent MarkBaseExtraListScriptEvent;
-
-typedef void (_cdecl * _DoCheckScriptRunnerAndRun)(TESObjectREFR* refr, BaseExtraList* extraList);
-extern const _DoCheckScriptRunnerAndRun DoCheckScriptRunnerAndRun;
 
 struct ExtractedParam
 {
@@ -226,8 +218,8 @@ struct ExtractedParam
 		// variable
 		struct 
 		{
-			ScriptVar* var;
-			ScriptEventList* parent;
+			ScriptVar			*var;
+			ScriptEventList		*parent;
 		} var;
 	} data;
 };
@@ -330,6 +322,7 @@ enum EActorVals {
 	eActorVal_NoActorValue = 256,
 };
 
+// 914
 class ConsoleManager
 {
 public:
@@ -343,20 +336,25 @@ public:
 
 	struct TextNode
 	{
-		TextNode* next;
-		TextNode* prev;
+		TextNode	*next;
+		TextNode	*prev;
 		String		text;
 	};
+
 	struct TextList
 	{
-		TextNode* first;
-		TextNode* last;
+		TextNode	*first;
+		TextNode	*last;
 		UInt32		count;
+
+		TextList* Append(TextNode* newList);
 	};
+
 	struct RecordedCommand
 	{
 		char buf[100];
 	};
+
 	void* scriptContext;
 	TextList printedLines;
 	TextList inputHistory;
@@ -375,10 +373,7 @@ public:
 	RecordedCommand recordedCommands[20];
 	char scofPath[260];
 
-	static ConsoleManager* GetSingleton();
-
-	static char* GetConsoleOutputFilename();
-	static bool HasConsoleOutputFilename();
+	static ConsoleManager * GetSingleton(void);
 	void AppendToSentHistory(const char* src);
 };
 STATIC_ASSERT(sizeof(ConsoleManager) == 0x914);
@@ -430,6 +425,77 @@ class ChangesMap;
 class InteriorCellNewReferencesMap;
 class ExteriorCellNewReferencesMap;
 class NumericIDBufferMap;
+
+class NiBinaryStream
+{
+public:
+	NiBinaryStream();
+	~NiBinaryStream();
+
+	virtual void	Destructor(bool freeMemory);		// 00
+	virtual void	Unk_01(void);						// 04
+	virtual void	SeekCur(SInt32 delta);				// 08
+	virtual void	GetBufferSize(void);				// 0C
+	virtual void	InitReadWriteProcs(bool useAlt);	// 10
+
+//	void	** m_vtbl;		// 000
+	UInt32	m_offset;		// 004
+	void	* m_readProc;	// 008 - function pointer
+	void	* m_writeProc;	// 00C - function pointer
+};
+
+class NiFile: public NiBinaryStream
+{
+public:
+	NiFile();
+	~NiFile();
+
+	virtual UInt32	SetOffset(UInt32 newOffset, UInt32 arg2);	// 14
+	virtual UInt32	GetFilename(void);	// 18
+	virtual UInt32	GetSize();			// 1C
+
+	UInt32	m_bufSize;	// 010
+	UInt32	m_unk014;	// 014 - Total read in buffer
+	UInt32	m_unk018;	// 018 - Consumed from buffer
+	UInt32	m_unk01C;	// 01C
+	void*	m_buffer;	// 020
+	FILE*	m_File;		// 024
+};
+
+// 158
+class BSFile : public NiFile
+{
+public:
+	BSFile();
+	~BSFile();
+
+	virtual bool	Reset(bool arg1, bool arg2);	// 20
+	virtual bool	Unk_09(UInt32 arg1);	// 24
+	virtual UInt32	Unk_0A();	// 28
+	virtual UInt32	Unk_0B(String *string, UInt32 arg2);	// 2C
+	virtual UInt32	Unk_0C(void *ptr, UInt32 arg2);	// 30
+	virtual UInt32	ReadBufDelim(void *bufferPtr, UInt32 bufferSize, short delim);		// 34
+	virtual UInt32	Unk_0E(void *ptr, UInt8 arg2);	// 38
+	virtual UInt32	Unk_0F(void *ptr, UInt8 arg2);	// 3C
+	virtual bool	IsReadable();	// 40
+	virtual UInt32	ReadBuf(void *bufferPtr, UInt32 numBytes);	// 44
+	virtual UInt32	WriteBuf(void *bufferPtr, UInt32 numBytes);	// 48
+
+	UInt32		m_modeReadWriteAppend;	// 028
+	UInt8		m_good;					// 02C
+	UInt8		pad02D[3];				// 02D
+	UInt8		m_unk030;				// 030
+	UInt8		pad031[3];				// 031
+	UInt32		m_unk034;				// 034
+	UInt32		m_unk038;				// 038 - init'd to FFFFFFFF
+	UInt32		m_unk03C;				// 038
+	UInt32		m_unk040;				// 038
+	char		m_path[0x104];			// 044
+	UInt32		m_unk148;				// 148
+	UInt32		m_unk14C;				// 14C
+	UInt32		m_fileSize;				// 150
+	UInt32		m_unk154;				// 154
+};
 
 //
 struct ToBeNamed
@@ -728,26 +794,28 @@ public:
 		NiTPointerMap<BGSCellNumericIDArrayMap*>	* map020;	// 020
 	};
 
-	BGSSaveLoadChangesMap* changesMap;			// 000
-	BGSSaveLoadChangesMap* previousChangeMap;	// 004
-	RefIDIndexMapping* refIDmapping;			// 008
-	RefIDIndexMapping* visitedWorldspaces;	// 00C
-	Struct010* sct010;				// 010
-	NiTMapBase<TESForm*, BGSLoadGameSubBuffer>* maps014[3];			// 014	0 = changed Animations, 2 = changed Havok Move
-	NiTMapBase<UInt32, UInt32>* map018;				// 018	
-	BSSimpleArray<char*>* strings;				// 01C
-	BGSReconstructFormsInAllFilesMap* rfiafMap;				// 020
-	BSSimpleArray<BGSLoadFormBuffer*>		changedForms;			// 024
+	BGSSaveLoadChangesMap					* changesMap;			// 000
+	BGSSaveLoadChangesMap					* previousChangeMap;	// 004
+	RefIDIndexMapping						* refIDmapping;			// 008
+	RefIDIndexMapping						* visitedWorldspaces;	// 00C
+	Struct010								* sct010;				// 010
+	NiTMapBase<TESForm *, BGSLoadGameSubBuffer> * maps014[3];			// 014	0 = changed Animations, 2 = changed Havok Move
+	NiTMapBase<UInt32, UInt32>					* map018;				// 018	
+	BSSimpleArray<char *>					* strings;				// 01C
+	BGSReconstructFormsInAllFilesMap*		rfiafMap;				// 020
+	BSSimpleArray<BGSLoadFormBuffer *>		changedForms;			// 024
 	NiTPointerMap<Actor*>					map0034;				// 034 Either dead or not dead actors
 	UInt8									saveMods[255];			// 044
 	UInt8									loadedMods[255];		// 143
+
 	UInt16									pad242;					// 242
 	UInt32									flg244;					// 244 bit 6 block updating player position/rotation from save, bit 2 set during save
 	UInt8									formVersion;			// 248
 	UInt8									pad249[3];				// 249
-
-	static BGSSaveLoadGame* GetSingleton() { return *(BGSSaveLoadGame**)0x11DDF38; };
+	
+	static BGSSaveLoadGame* GetSingleton() { return *(BGSSaveLoadGame * *)0x11DDF38; };
 };
+STATIC_ASSERT(sizeof(BGSSaveLoadGame) == 0x24C);
 
 #if RUNTIME
 class SaveGameManager
@@ -800,95 +868,12 @@ public:
 	void* str30;							// 30
 	void* unk34;							// 34
 	void ReloadCurrentSave() { ThisStdCall(0x8512F0, this); };
-	bool Save(char* name) { return ThisStdCall(0x8503B0, this, name, -1, 0); }
+	bool Save(char* name) { return ThisStdCall(0x8503B0, this, name, -1, 0); };
 };
 
 std::string GetSavegamePath();
 
 #endif
-
-class ButtonIcon;
-
-const UInt32 FontArraySize = 8;
-
-class FontManager
-{
-public:
-	FontManager();
-	~FontManager();
-
-	// 3C
-	struct FontInfo {
-		FontInfo();
-		~FontInfo();
-
-		struct Data03C {
-			UInt32	unk000;	// 000
-			UInt16	wrd004;	// 004	Init'd to 0
-			UInt16	wrd006;	// 006	Init'd to 0x0FFFF
-		};	// 0008
-
-		struct FontData {
-			float	flt000;				// 000
-			UInt32	fontTextureCount;	// 004
-			UInt32	unk008;
-			char	unk00C[8][0x024];	// array of 8 Font Texture Name (expected in Textures\Fonts\*.tex)
-		};
-
-		struct TextReplaced {
-			String	str000;	// 000	Init'd to ""
-			UInt32	unk008;	// 008	Init'd to arg1
-			UInt32	unk00C;	// 00C	Init'd to arg2
-			UInt32	unk010;	// 010	Init'd to arg3
-			UInt32	unk014;	// 014	Init'd to arg4
-			UInt32	unk018;	// 018	Init'd to 0
-			UInt8	byt01C;	// 01C	Init'd to arg5
-			UInt8	fill[3];	
-		};	// 020
-
-		UInt16						unk000;			// 000	Init'd to 0, loaded successfully in OBSE (word bool ?)
-		UInt16						pad002;			// 002
-		char						* path;			// 004	Init'd to arg2, passed to OpenBSFile
-		UInt32						id;				// 008	1 based, up to 8 apparently
-		NiObject					* unk00C[8];	// 00C	in OBSE: NiTexturingProperty			* textureProperty
-		float						unk02C;			// 02C	Those two values seem to be computed by looping through the characters in the font (max height/weight ?)
-		float						unk030;			// 030
-		UInt32						unk034;			// 038	in OBSE: NiD3DShaderConstantMapEntry	* unk34;
-		FontData					* fontData;		// 038	Init'd to 0, might be the font content, at Unk004 we have the count of font texture
-		Data03C						dat03C;			// 03C
-		BSSimpleArray<ButtonIcon>	unk044;			// 044
-
-		static FontInfo * Load(const char* path, UInt32 ID);
-		bool GetName(char* out);	// filename stripped of path and extension
-	};	// 054
-
-	FontInfo	* fontInfos[FontArraySize];		// 00 indexed by FontInfo::ID - 1; access inlined at each point in code where font requested
-	UInt8		unk20;				// 20
-	UInt8		pad15[3];
-
-	static FontManager * GetSingleton();
-};
-
-void Debug_DumpFontNames(void);
-
-//class NiMemObject
-//{
-//	NiMemObject();
-//	~NiMemObject();
-//
-//};
-
-//class NiRefObject: public NiMemObject
-//{
-//	NiRefObject();
-//	~NiRefObject();
-//
-//	virtual void		Destructor(bool freeThis);	// 00
-//	virtual void		Free(void);					// 01 calls Destructor(true);
-//
-////	void		** _vtbl;		// 000
-//	UInt32		m_uiRefCount;	// 004 - name known (in OBSE)
-//};
 
 enum Coords
 {

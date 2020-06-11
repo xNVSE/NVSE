@@ -2,56 +2,53 @@
 
 // Added to remove a cyclic dependency between GameForms.h and GameExtraData.h
 
-class TESForm;
-
-// C+?
+// 0C
 class BSExtraData
 {
 public:
 	BSExtraData();
-	virtual ~BSExtraData();
+	~BSExtraData();
 
-	virtual bool Differs(BSExtraData* extra);	// 001
+	virtual void	Destroy(bool doFree);
+	virtual bool	IsDifferentType(BSExtraData *compareTo);
 
 	static BSExtraData* Create(UInt8 xType, UInt32 size, UInt32 vtbl);
 
-//	void		** _vtbl;	// 000
-	UInt8		type;		// 004
-	UInt8		pad[3];		// 005
-	BSExtraData	* next;		// 008
+	UInt8			type;		// 04
+	UInt8			pad05[3];	// 05
+	BSExtraData		*next;		// 08
 };
 
 // 020
 struct BaseExtraList
 {
-	bool			HasType(UInt32 type) const;
-	BSExtraData *	GetByType(UInt32 type) const;
+	virtual void	Destroy(bool doFree);
+	void* vtable;
 
-	void			MarkType(UInt32 type, bool bCleared);
-	bool			Remove(BSExtraData* toRemove, bool free = false);
-	bool			RemoveByType(UInt32 type, bool free = false);
-	bool			Add(BSExtraData* toAdd);
-	void			RemoveAll();
+	BSExtraData		*m_data;					// 004
+	UInt8			m_presenceBitfield[0x15];	// 008 - if a bit is set, then the extralist should contain that extradata
+	UInt8			pad1D[3];					// 01D
 
-	bool			MarkScriptEvent(UInt32 eventMask, TESForm* eventTarget);
-
-	void			Copy(BaseExtraList* from);
-
-	void			DebugDump() const;
-
-	bool			IsWorn();
-
-	void		** m_vtbl;					// 000
-	BSExtraData	* m_data;					// 004
-	UInt8		m_presenceBitfield[0x15];	// 008 - if a bit is set, then the extralist should contain that extradata
-											// bits are numbered starting from the lsb
-	UInt8		pad1D[3];					// 01D
+	bool HasType(UInt32 type) const;
+	BSExtraData *GetByType(UInt32 type) const;
+	void MarkType(UInt32 type, bool bCleared);
+	void Remove(BSExtraData *toRemove, bool doFree = false);
+	void RemoveByType(UInt32 type);
+	BSExtraData *Add(BSExtraData *xData);
+	void RemoveAll(bool doFree = true);
+	bool MarkScriptEvent(UInt32 eventMask, TESForm *eventTarget);
+	void Copy(BaseExtraList *sourceList);
+	void DebugDump() const;
+	bool GetCannotWear() { return ((bool (__thiscall*)(BaseExtraList*))(0x418B10))(this); };
+	bool IsWorn() const;
+	char GetExtraFactionRank(TESFaction *faction) const;
+	ExtraCount *GetExtraCount() const;
+	SInt32 GetCount() const;
 };
 
 struct ExtraDataList : public BaseExtraList
 {
-	static ExtraDataList * Create(BSExtraData* xBSData = NULL);
+	ExtraDataList *CreateCopy();
+	static ExtraDataList* __stdcall Create(BSExtraData *xBSData = NULL);
 };
-
-STATIC_ASSERT(offsetof(BaseExtraList, m_presenceBitfield) == 0x008);
 STATIC_ASSERT(sizeof(ExtraDataList) == 0x020);

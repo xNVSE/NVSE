@@ -1,83 +1,53 @@
-#include "GameForms.h"
+#include "nvse/GameForms.h"
 
-#include "GameAPI.h"
-#include "GameRTTI.h"
-#include "GameObjects.h"
-#include "GameData.h"
-
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 static const ActorValueInfo** ActorValueInfoPointerArray = (const ActorValueInfo**)0x0011D61C8;		// See GetActorValueInfo
 static const _GetActorValueInfo GetActorValueInfo = (_GetActorValueInfo)0x00066E920;	// See GetActorValueName
 BGSDefaultObjectManager ** g_defaultObjectManager = (BGSDefaultObjectManager**)0x011CA80C;
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-static const ActorValueInfo** ActorValueInfoPointerArray = (const ActorValueInfo**)0x0011D61C8;		// See GetActorValueInfo (same as gore)
-static const _GetActorValueInfo GetActorValueInfo = (_GetActorValueInfo)0x0066E480;	// See GetActorValueName
-BGSDefaultObjectManager ** g_defaultObjectManager = (BGSDefaultObjectManager**)0x011CA80C;
-#else
-static const ActorValueInfo** ActorValueInfoPointerArray = (const ActorValueInfo**)0;
-static const _GetActorValueInfo GetActorValueInfo = (_GetActorValueInfo)0;
-BGSDefaultObjectManager ** g_defaultObjectManager = (BGSDefaultObjectManager**)0x0;
-#endif
 
-TESForm * TESForm::TryGetREFRParent(void)
+TESForm *TESForm::TryGetREFRParent()
 {
-	TESForm			* result = this;
-	if(result) {
-		TESObjectREFR	* refr = DYNAMIC_CAST(this, TESForm, TESObjectREFR);
-		if(refr && refr->baseForm)
-			result = refr->baseForm;
+	if (!this) return NULL;
+	if (GetIsReference())
+	{
+		TESObjectREFR *refr = (TESObjectREFR*)this;
+		if (refr->baseForm) return refr->baseForm;
 	}
-	return result;
+	return this;
 }
 
 UInt8 TESForm::GetModIndex() const
 {
-	return (refID >> 24);
+	return modIndex;
 }
 
-TESFullName* TESForm::GetFullName()
+TESFullName *TESForm::GetFullName()
 {
-	TESForm* baseForm = this;
-	TESFullName* fullName = NULL;
+	TESForm *baseForm = this;
+	TESFullName *fullName = NULL;
 
-	if (typeID >= kFormType_Reference && typeID <= kFormType_ACRE)	//handle MapMarkers and references
+	if (GetIsReference())
+		baseForm = ((TESObjectREFR*)this)->baseForm;
+	else if IS_TYPE(this, TESObjectCELL)
 	{
-		TESObjectREFR* refr = DYNAMIC_CAST(this, TESForm, TESObjectREFR);
-		//if (refr->baseForm->typeID == kFormType_Static)
-		//{
-		//	ExtraMapMarker* mapMarker = (ExtraMapMarker*)refr->extraDataList.GetByType(kExtraData_MapMarker);
-		//	if (mapMarker && mapMarker->data)
-		//		fullName = &mapMarker->data->fullName;
-		//}
-
-		if (!fullName)		//if not a mapmarker, use the base form instead
-			baseForm = refr->baseForm;
+		TESObjectCELL *cell = (TESObjectCELL*)this;
+		fullName = &cell->fullName;
+		if ((!fullName->name.m_data || !fullName->name.m_dataLen) && cell->worldSpace)
+			fullName = &cell->worldSpace->fullName;
 	}
-	else if (typeID == kFormType_Cell)		// some exterior cells inherit name of parent worldspace
-	{
-		TESObjectCELL* cell = DYNAMIC_CAST(this, TESForm, TESObjectCELL);
-		if (cell && cell->worldSpace)
-			if (!cell->fullName.name.m_data || !cell->fullName.name.m_dataLen)
-					baseForm = cell->worldSpace;
-	}
-
-	if(!fullName)
+	if (!fullName)
 		fullName = DYNAMIC_CAST(baseForm, TESForm, TESFullName);
 	return fullName;
 }
 
-const char* TESForm::GetTheName()
+const char *TESForm::GetTheName()
 {
-	TESForm* baseForm = this;
-	TESFullName* fullName = GetFullName();
-	if (fullName)
-		return fullName->name.CStr();
-	return "";
+	TESFullName *fullName = GetFullName();
+	return fullName ? fullName->name.CStr() : "";
 }
 
 void TESForm::DoAddForm(TESForm* newForm, bool persist, bool record) const
 {
-	CALL_MEMBER_FN(DataHandler::Get(), DoAddForm)(newForm);
+	CALL_MEMBER_FN(DataHandler::GetSingleton(), DoAddForm)(newForm);
 
 	if(persist)
 	{
@@ -159,7 +129,7 @@ void TESBipedModelForm::SetSlotsMask(UInt32 mask)
 }
 
 UInt32 TESBipedModelForm::GetBipedMask() const {
-	return bipedFlags & 0xFF;
+	return bipedFlags;
 }
 
 void TESBipedModelForm::SetBipedMask(UInt32 mask)
@@ -211,15 +181,17 @@ const char* TESBipedModelForm::GetPath(UInt32 whichPath, bool bFemalePath)
 		return "";
 }
 
-SInt8 TESActorBaseData::GetFactionRank(TESFaction* faction)
+char TESActorBaseData::GetFactionRank(TESFaction *faction)
 {
-	for(tList<FactionListData>::Iterator iter = factionList.Begin(); !iter.End(); ++iter)
+	ListNode<FactionListData> *facIter = factionList.Head();
+	FactionListData	*data;
+	do
 	{
-		FactionListData	* data = iter.Get();
-		if(data && (data->faction == faction))
+		data = facIter->data;
+		if (data && (data->faction == faction))
 			return data->rank;
 	}
-
+	while (facIter = facIter->next);
 	return -1;
 }
 
@@ -251,7 +223,8 @@ void TESObjectWEAP::SetHandGrip(UInt8 _handGrip)
 
 UInt8 TESObjectWEAP::AttackAnimation() const
 {
-	switch(attackAnim) {
+	switch(attackAnim)
+	{
 		case eAttackAnim_Default:		return 0;
 		case eAttackAnim_Attack3:		return 1;
 		case eAttackAnim_Attack4:		return 2;
@@ -271,108 +244,34 @@ UInt8 TESObjectWEAP::AttackAnimation() const
 		case eAttackAnim_AttackThrow5:	return 16;
 		case eAttackAnim_PlaceMine:		return 17;
 		case eAttackAnim_PlaceMine2:	return 18;
-
-		default:
-			return -1;
+		case eAttackAnim_Attack9:		return 19;
+		case eAttackAnim_AttackThrow6:	return 20;
+		case eAttackAnim_AttackThrow7:	return 21;
+		case eAttackAnim_AttackThrow8:	return 22;
+		default:						return 255;
 	}
 }
 
-void TESObjectWEAP::SetAttackAnimation(UInt8 _attackAnim)
+const UInt8 kAttackAnims[] = {255, 38, 44, 50, 56, 62, 68, 26, 74, 32, 80, 86, 114, 120, 126, 132, 138, 102, 108, 144, 150, 156, 162};
+
+void TESObjectWEAP::SetAttackAnimation(UInt32 _attackAnim)
 {
-	switch(_attackAnim) {
-		case 0: {
-			attackAnim = eAttackAnim_Default; 
-			break;
-		}
-		case 1: {
-			attackAnim = eAttackAnim_Attack3; 
-			break;
-		}
-		case 2: {
-			attackAnim = eAttackAnim_Attack4;
-			break;
-		}
-		case 3: {
-			attackAnim = eAttackAnim_Attack5;
-			break;
-		}
-		case 4: {
-			attackAnim = eAttackAnim_Attack6;
-			break;
-		}
-		case 5: {
-			attackAnim = eAttackAnim_Attack7;
-			break;
-		}
-		case 6: {
-			attackAnim = eAttackAnim_Attack8;
-			break;
-		}
-		
-		case 7: {
-			attackAnim = eAttackAnim_AttackLeft;
-			break;
-		}
-		case 8: {
-			attackAnim = eAttackAnim_AttackLoop;
-			break;
-		}
-		case 9: {
-			attackAnim = eAttackAnim_AttackRight;
-			break;
-		}
-		case 10: {
-			attackAnim = eAttackAnim_AttackSpin;
-			break;
-		}
-		case 11: {
-			attackAnim = eAttackAnim_AttackSpin2;
-			break;
-		}
-		case 12: {
-			attackAnim = eAttackAnim_AttackThrow;
-			break;
-		}
-		case 13: {
-			eAttackAnim_AttackThrow2;
-			break;
-		}
-		case 14: {
-			attackAnim = eAttackAnim_AttackThrow3;
-			break;
-		}
-		case 15: {
-			attackAnim = eAttackAnim_AttackThrow4;
-			break;
-		}
-		case 16: {
-			attackAnim = eAttackAnim_AttackThrow5;
-			break;
-		}
-		case 17: {
-			attackAnim = eAttackAnim_PlaceMine;
-			break;
-		}
-		case 18: {
-			attackAnim = eAttackAnim_PlaceMine2;
-			break;
-		}
-		default:
-			break;
-	}
+	attackAnim = kAttackAnims[_attackAnim];
 }
 
 TESObjectIMOD* TESObjectWEAP::GetItemMod(UInt8 which)
 {
-	TESObjectIMOD* pMod = NULL;
-	switch(which) {
-		case 1: pMod = itemMod1; break;
-		case 2: pMod = itemMod2; break;
-		case 3: pMod = itemMod3; break;
-	}
-	return pMod;
+	if ((which < 1) || (which > 3)) return NULL;
+	return itemMod[which - 1];
 }
 
+TESAmmo *TESObjectWEAP::GetAmmo()
+{
+	if (!ammo.ammo) return NULL;
+	if IS_ID(ammo.ammo, BGSListForm)
+		return (TESAmmo*)((BGSListForm*)ammo.ammo)->list.GetFirstItem();
+	return (TESAmmo*)ammo.ammo;
+}
 
 class FindByForm {
 	TESForm* m_pForm;
@@ -408,16 +307,8 @@ SInt32 BGSListForm::ReplaceForm(TESForm* pForm, TESForm* pReplaceWith)
 
 bool TESForm::IsInventoryObject() const
 {
-	typedef bool (* _IsInventoryObjectType)(UInt32 formType);
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
-	static _IsInventoryObjectType IsInventoryObjectType = (_IsInventoryObjectType)0x00481F30;	// first call from first case of main switch in _ExtractArg
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	static _IsInventoryObjectType IsInventoryObjectType = (_IsInventoryObjectType)0x00482F50;	// first call from first case of main switch in _ExtractArg
-#elif EDITOR
-	static _IsInventoryObjectType IsInventoryObjectType = (_IsInventoryObjectType)0x004F4100;	// first call from first case of main switch in Cmd_DefaultParse
-#else
-#error
-#endif
+	typedef bool (*_IsInventoryObjectType)(UInt32 formType);
+	static _IsInventoryObjectType IsInventoryObjectType = (_IsInventoryObjectType)0x481F30;
 	return IsInventoryObjectType(typeID);
 }
 
@@ -449,7 +340,7 @@ UInt8 TESPackage::TargetData::TargetCodeForString(const char* targetStr)
 
 TESPackage::TargetData* TESPackage::TargetData::Create()
 {
-	TargetData* data = (TargetData*)FormHeap_Allocate(sizeof(TargetData));
+	TargetData* data = (TargetData*)GameHeapAlloc(sizeof(TargetData));
 
 	// fill out with same defaults as editor uses
 	data->count = 0;
@@ -504,7 +395,7 @@ void TESPackage::SetTarget(UInt8 typeCode, UInt32 count)
 
 TESPackage::LocationData* TESPackage::LocationData::Create()
 {
-	LocationData* data = (LocationData*)FormHeap_Allocate(sizeof(LocationData));
+	LocationData* data = (LocationData*)GameHeapAlloc(sizeof(LocationData));
 
 	data->locationType = kPackLocation_CurrentLocation;
 	data->object.form = NULL;
@@ -586,8 +477,11 @@ static const char* TESPackage_LocationStrings[] = {
 };
 
 static const char* TESPackage_TypeStrings[] = {
-	"Find", "Follow", "Escort", "Eat", "Sleep", "Wander", "Travel", "Accompany", "UseItemAt", "Ambush",
-	"FleeNotCombat", "Sandbox", "Patrol", "Guard", "Dialogue", "UseWeapon"
+	"Explore", "Follow", "Escort", "Eat", "Sleep", "Wander", "Travel", "Accompany", "UseItemAt", "Ambush",
+	"FleeNotCombat", "CastMagic", "Sandbox", "Patrol", "Guard", "Dialogue", "UseWeapon", "Find", "Combat", "CombatLow",
+	"Activate", "Alarm", "Flee", "Trespass", "Spectator", "ReactToDead", "GetUp", "DoNothing", "InGameDialogue",
+	"Surface", "SearchForAttacker", "AvoidRadiation", "ReactToDestroyedObject", "ReactToGrenadeOrMine", "StealWarning",
+	"PickpocketWarning", "MovementBlocked", "Sandman", "Cannibal"
 };
 
 static const char* TESPackage_ProcedureStrings[] = {
@@ -628,12 +522,7 @@ UInt8 TESPackage::ObjectCodeForString(const char* objString)
 	return kObjectType_Max;
 }
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525 || RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	static const char** s_procNames = (const char**)0x011A3CC0;
-#elif EDITOR
-#else
-#error unsupported Fallout version
-#endif
+static const char** s_procNames = (const char**)0x011A3CC0;
 
 const char* TESPackage::StringForProcedureCode(eProcedure proc)
 {
@@ -797,6 +686,7 @@ void TESFaction::SetNthRankName(const char* newName, UInt32 whichRank, bool bFem
 	}
 }
 
+#if 0
 UInt32 EffectItemList::CountItems() const
 {
 	return list.Count();
@@ -815,25 +705,9 @@ const char* EffectItemList::GetNthEIName(UInt32 whichEffect) const
 	else
 		return "<no name>";
 }
+#endif
 
 BGSDefaultObjectManager* BGSDefaultObjectManager::GetSingleton()
 {
 	return *g_defaultObjectManager;
 }
-
-Script* EffectSetting::	SetScript(Script* newScript)
-{
-	Script* oldScript = NULL;
-	if (1 == archtype )
-	{
-		oldScript = (Script*)associatedItem;
-		associatedItem = (TESForm*)newScript;
-	};
-	return oldScript;
-};
-
-Script* EffectSetting::	RemoveScript()
-{
-	return SetScript(NULL);
-};
-

@@ -7,32 +7,30 @@ public:
 	String();
 	~String();
 
-	char* m_data;
+	char		*m_data;
 	UInt16		m_dataLen;
 	UInt16		m_bufLen;
 
 	void Init(UInt32 bufSize);
-	bool Set(const char* src);
-	bool Append(const char* toAppend);
+	bool Set(const char *src);
+	bool Append(const char *toAppend);
 	void AppendChar(char toAppend);
 	void InsertChar(char toInsert, UInt32 index);
 	void EraseAt(UInt32 index);
-	bool Replace(const char* toReplace, const char* replaceWith); // replaces instance of toReplace with replaceWith
-	double Compare(const String& compareTo, bool caseSensitive = false);
-	const char* CStr();
+	const char *CStr();
 };
 
 enum
 {
-	eListInvalid = -1,
-	eListEnd = -2,
-	eListCount = -3,
+	eListInvalid =	-1,
+	eListEnd =		-2,
+	eListCount =	-3,
 };
 
 typedef void* (*_FormHeap_Allocate)(UInt32 size);
 extern const _FormHeap_Allocate FormHeap_Allocate;
 
-typedef void (*_FormHeap_Free)(void* ptr);
+typedef void (*_FormHeap_Free)(void *ptr);
 extern const _FormHeap_Free FormHeap_Free;
 
 typedef TESForm* (*_LookupFormByID)(UInt32 id);
@@ -40,20 +38,20 @@ extern const _LookupFormByID LookupFormByID;
 
 template <typename T_Data> struct ListNode
 {
-	T_Data* data;
-	ListNode* next;
+	T_Data		*data;
+	ListNode	*next;
 
 	ListNode() : data(NULL), next(NULL) {}
-	ListNode(T_Data* _data) : data(_data), next(NULL) {}
+	ListNode(T_Data *_data) : data(_data), next(NULL) {}
 
-	T_Data* Data() const { return data; }
-	ListNode* Next() const { return next; }
+	T_Data *Data() const {return data;}
+	ListNode *Next() const {return next;}
 
-	ListNode* RemoveMe()
+	ListNode *RemoveMe()
 	{
 		if (next)
 		{
-			ListNode* pNext = next;
+			ListNode *pNext = next;
 			data = next->data;
 			next = next->next;
 			GameHeapFree(pNext);
@@ -63,26 +61,26 @@ template <typename T_Data> struct ListNode
 		return NULL;
 	}
 
-	ListNode* RemoveNext()
+	ListNode *RemoveNext()
 	{
-		ListNode* pNext = next;
+		ListNode *pNext = next;
 		next = next->next;
 		GameHeapFree(pNext);
 		return next;
 	}
 
-	ListNode* Append(T_Data* _data)
+	ListNode *Append(T_Data *_data)
 	{
-		ListNode* newNode = (ListNode*)GameHeapAlloc(sizeof(ListNode));
+		ListNode *newNode = (ListNode*)GameHeapAlloc(sizeof(ListNode));
 		newNode->data = _data;
 		newNode->next = next;
 		next = newNode;
 		return newNode;
 	}
 
-	ListNode* Insert(T_Data* _data)
+	ListNode *Insert(T_Data *_data)
 	{
-		ListNode* newNode = (ListNode*)GameHeapAlloc(sizeof(ListNode));
+		ListNode *newNode = (ListNode*)GameHeapAlloc(sizeof(ListNode));
 		newNode->data = data;
 		data = _data;
 		newNode->next = next;
@@ -96,11 +94,10 @@ template <class Item> class tList
 public:
 	typedef ListNode<Item> Node;
 
-private:
 	Node	m_listHead;
 
 	template <class Op>
-	UInt32 FreeNodes(Node* node, Op& compareOp) const
+	UInt32 FreeNodes(Node *node, Op &compareOp) const
 	{
 		static UInt32 nodeCount = 0, numFreed = 0, lastNumFreed = 0;
 		if (node->next)
@@ -122,10 +119,10 @@ private:
 		return lastNumFreed;
 	}
 
-	Node* GetLastNode(SInt32* outIdx = NULL) const
+	Node *GetLastNode(SInt32 *outIdx = NULL) const
 	{
 		SInt32 index = 0;
-		Node* node = Head();
+		Node *node = Head();
 		while (node->next)
 		{
 			node = node->next;
@@ -135,34 +132,34 @@ private:
 		return node;
 	}
 
-	Node* GetNthNode(SInt32 index) const
+	Node *GetNthNode(SInt32 index) const
 	{
 		if (index >= 0)
 		{
-			Node* node = Head();
+			Node *node = Head();
 			do
 			{
 				if (!index) return node;
 				index--;
-			} while (node = node->next);
+			}
+			while (node = node->next);
 		}
 		return NULL;
 	}
 
-public:
-	void Init(Item* item = NULL)
+	void Init(Item *item = NULL)
 	{
 		m_listHead.data = item;
 		m_listHead.next = NULL;
 	}
 
-	Node* Head() const { return const_cast<Node*>(&m_listHead); }
+	Node *Head() const {return const_cast<Node*>(&m_listHead);}
 
-	bool Empty() const { return !m_listHead.data; }
+	bool Empty() const {return !m_listHead.data;}
 
 	class Iterator
 	{
-		Node* m_curr;
+		Node	*m_curr;
 
 	public:
 		Iterator operator++()
@@ -170,17 +167,17 @@ public:
 			if (m_curr) m_curr = m_curr->next;
 			return *this;
 		}
-		bool End() const { return !m_curr || (!m_curr->data && !m_curr->next); }
-		Item* operator->() const { return m_curr->data; }
-		Item*& operator*() const { return m_curr->data; }
-		const Iterator& operator=(const Iterator& rhs)
+		bool End() const {return !m_curr || (!m_curr->data && !m_curr->next);}
+		Item* operator->() const {return m_curr->data;}
+		Item*& operator*() const {return m_curr->data;}
+		const Iterator& operator=(const Iterator &rhs)
 		{
 			m_curr = rhs.m_curr;
 			return *this;
 		}
-		Item* Get() const { return m_curr->data; }
-		void Next() { if (m_curr) m_curr = m_curr->next; }
-		void Find(Item* _item)
+		Item *Get() const {return m_curr->data;}
+		void Next() {if (m_curr) m_curr = m_curr->next;}
+		void Find(Item *_item)
 		{
 			while (m_curr)
 			{
@@ -189,57 +186,58 @@ public:
 			}
 		}
 
-		Iterator(Node* node = NULL) : m_curr(node) {}
-		Iterator(tList& _list) : m_curr(&_list.m_listHead) {}
-		Iterator(tList* _list) : m_curr(&_list->m_listHead) {}
-		Iterator(tList& _list, Item* _item) : m_curr(&_list.m_listHead) { Find(_item); }
-		Iterator(tList* _list, Item* _item) : m_curr(&_list->m_listHead) { Find(_item); }
+		Iterator(Node *node = NULL) : m_curr(node) {}
+		Iterator(tList &_list) : m_curr(&_list.m_listHead) {}
+		Iterator(tList *_list) : m_curr(&_list->m_listHead) {}
+		Iterator(tList &_list, Item *_item) : m_curr(&_list.m_listHead) {Find(_item);}
+		Iterator(tList *_list, Item *_item) : m_curr(&_list->m_listHead) {Find(_item);}
 	};
-
-	const Iterator Begin() const { return Iterator(Head()); }
+	
+	const Iterator Begin() const {return Iterator(Head());}
 
 	UInt32 Count() const
 	{
 		if (!m_listHead.data) return 0;
-		Node* node = Head();
+		Node *node = Head();
 		UInt32 count = 1;
 		while (node = node->next) count++;
 		return count;
-	}
+	};
 
-	bool IsInList(Item* item) const
+	bool IsInList(Item *item) const
 	{
-		Node* node = Head();
+		Node *node = Head();
 		do
 		{
 			if (node->data == item) return true;
 			node = node->next;
-		} while (node);
+		}
+		while (node);
 		return false;
 	}
 
-	Item* GetFirstItem() const
+	Item *GetFirstItem() const
 	{
 		return m_listHead.data;
 	}
 
-	Item* GetLastItem() const
+	Item *GetLastItem() const
 	{
 		return GetLastNode()->data;
 	}
 
-	Item* GetNthItem(SInt32 index) const
+	Item *GetNthItem(SInt32 index) const
 	{
 		if (eListEnd == index)
 			return GetLastNode()->data;
-		Node* node = GetNthNode(index);
+		Node *node = GetNthNode(index);
 		return node ? node->data : NULL;
 	}
 
-	SInt32 AddAt(Item* item, SInt32 index)
+	SInt32 AddAt(Item *item, SInt32 index)
 	{
 		if (!item) return eListInvalid;
-		Node* node;
+		Node *node;
 		if (!index)
 		{
 			if (m_listHead.data) m_listHead.Insert(item);
@@ -260,19 +258,19 @@ public:
 		return index;
 	}
 
-	SInt32 Append(Item* item)
+	SInt32 Append(Item *item)
 	{
 		SInt32 index = eListInvalid;
 		if (item)
 		{
-			Node* node = GetLastNode(&index);
+			Node *node = GetLastNode(&index);
 			if (node->data) node->Append(item);
 			else node->data = item;
 		}
 		return index;
 	}
 
-	void Insert(Item* item)
+	void Insert(Item *item)
 	{
 		if (item)
 		{
@@ -281,9 +279,9 @@ public:
 		}
 	}
 
-	void CopyFrom(tList& sourceList)
+	void CopyFrom(tList &sourceList)
 	{
-		Node* target = Head(), * source = sourceList.Head();
+		Node *target = Head(), *source = sourceList.Head();
 		RemoveAll();
 		if (!source->data) return;
 		target->data = source->data;
@@ -292,9 +290,9 @@ public:
 	}
 
 	template <class Op>
-	void Visit(Op& op, Node* prev = NULL) const
+	void Visit(Op &op, Node *prev = NULL) const
 	{
-		Node* curr = prev ? prev->next : Head();
+		Node *curr = prev ? prev->next : Head();
 		while (curr)
 		{
 			if (!curr->data || !op.Accept(curr->data)) break;
@@ -303,21 +301,22 @@ public:
 	}
 
 	template <class Op>
-	Item* Find(Op& op) const
+	Item *Find(Op &op) const
 	{
-		Node* curr = Head();
-		Item* pItem;
+		Node *curr = Head();
+		Item *pItem;
 		do
 		{
 			pItem = curr->data;
 			if (pItem && op.Accept(pItem)) return pItem;
 			curr = curr->next;
-		} while (curr);
+		}
+		while (curr);
 		return NULL;
 	}
 
 	template <class Op>
-	Iterator Find(Op& op, Iterator& prev) const
+	Iterator Find(Op &op, Iterator &prev) const
 	{
 		Iterator curIt = prev.End() ? Begin() : ++prev;
 		while (!curIt.End())
@@ -328,33 +327,34 @@ public:
 		return curIt;
 	}
 
-	const Node* FindString(char* str, Iterator prev) const
+	const Node *FindString(char *str, Iterator prev) const
 	{
 		return Find(StringFinder_CI(str), prev);
 	}
 
 	template <class Op>
-	UInt32 CountIf(Op& op) const
+	UInt32 CountIf(Op &op) const
 	{
 		UInt32 count = 0;
-		Node* curr = Head();
+		Node *curr = Head();
 		do
 		{
 			if (curr->data && op.Accept(curr->data)) count++;
 			curr = curr->next;
-		} while (curr);
+		}
+		while (curr);
 		return count;
 	}
 
 	class AcceptAll
 	{
 	public:
-		bool Accept(Item* item) { return true; }
+		bool Accept(Item *item) {return true;}
 	};
 
 	void RemoveAll() const
 	{
-		Node* nextNode = Head(), * currNode = nextNode->next;
+		Node *nextNode = Head(), *currNode = nextNode->next;
 		nextNode->data = NULL;
 		nextNode->next = NULL;
 		while (currNode)
@@ -367,7 +367,7 @@ public:
 
 	void DeleteAll() const
 	{
-		Node* nextNode = Head(), * currNode = nextNode->next;
+		Node *nextNode = Head(), *currNode = nextNode->next;
 		GameHeapFree(nextNode->data);
 		nextNode->data = NULL;
 		nextNode->next = NULL;
@@ -380,9 +380,9 @@ public:
 		}
 	}
 
-	Item* RemoveNth(SInt32 idx)
+	Item *RemoveNth(SInt32 idx)
 	{
-		Item* removed = NULL;
+		Item *removed = NULL;
 		if (idx <= 0)
 		{
 			removed = m_listHead.data;
@@ -390,7 +390,7 @@ public:
 		}
 		else
 		{
-			Node* node = Head();
+			Node *node = Head();
 			while (node->next && --idx)
 				node = node->next;
 			if (!idx)
@@ -402,10 +402,10 @@ public:
 		return removed;
 	};
 
-	UInt32 Remove(Item* item)
+	UInt32 Remove(Item *item)
 	{
 		UInt32 removed = 0;
-		Node* curr = Head(), * prev = NULL;
+		Node *curr = Head(), *prev = NULL;
 		do
 		{
 			if (curr->data == item)
@@ -418,16 +418,17 @@ public:
 				prev = curr;
 				curr = curr->next;
 			}
-		} while (curr);
+		}
+		while (curr);
 		return removed;
 	}
 
-	Item* ReplaceNth(SInt32 index, Item* item)
+	Item *ReplaceNth(SInt32 index, Item *item)
 	{
-		Item* replaced = NULL;
+		Item *replaced = NULL;
 		if (item)
 		{
-			Node* node;
+			Node *node;
 			if (eListEnd == index)
 				node = GetLastNode();
 			else
@@ -441,10 +442,10 @@ public:
 		return replaced;
 	}
 
-	UInt32 Replace(Item* item, Item* replace)
+	UInt32 Replace(Item *item, Item *replace)
 	{
 		UInt32 replaced = 0;
-		Node* curr = Head();
+		Node *curr = Head();
 		do
 		{
 			if (curr->data == item)
@@ -453,54 +454,57 @@ public:
 				replaced++;
 			}
 			curr = curr->next;
-		} while (curr);
+		}
+		while (curr);
 		return replaced;
 	}
 
 	template <class Op>
-	UInt32 RemoveIf(Op& op)
+	UInt32 RemoveIf(Op &op)
 	{
 		return FreeNodes(Head(), op);
 	}
 
-	SInt32 GetIndexOf(Item* item)
+	SInt32 GetIndexOf(Item *item)
 	{
 		SInt32 idx = 0;
-		Node* curr = Head();
+		Node *curr = Head();
 		do
 		{
 			if (curr->data == item) return idx;
 			idx++;
 			curr = curr->next;
-		} while (curr);
+		}
+		while (curr);
 		return -1;
 	}
 
 	template <class Op>
-	SInt32 GetIndexOf(Op& op)
+	SInt32 GetIndexOf(Op &op)
 	{
 		SInt32 idx = 0;
-		Node* curr = Head();
+		Node *curr = Head();
 		do
 		{
 			if (curr->data && op.Accept(curr->data)) return idx;
 			idx++;
 			curr = curr->next;
-		} while (curr);
+		}
+		while (curr);
 		return -1;
 	}
 };
-STATIC_ASSERT(sizeof(tList<void*>) == 0x8);
+STATIC_ASSERT(sizeof(tList<void *>) == 0x8);
 
 template <typename T_Data> struct DListNode
 {
-	DListNode* next;
-	DListNode* prev;
-	T_Data* data;
+	DListNode	*next;
+	DListNode	*prev;
+	T_Data		*data;
 
-	DListNode* Advance(UInt32 times)
+	DListNode *Advance(UInt32 times)
 	{
-		DListNode* result = this;
+		DListNode *result = this;
 		while (result && times)
 		{
 			times--;
@@ -509,9 +513,9 @@ template <typename T_Data> struct DListNode
 		return result;
 	}
 
-	DListNode* Regress(UInt32 times)
+	DListNode *Regress(UInt32 times)
 	{
-		DListNode* result = this;
+		DListNode *result = this;
 		while (result && times)
 		{
 			times--;
@@ -527,16 +531,20 @@ public:
 	typedef DListNode<Item> Node;
 
 private:
-	Node* first;
-	Node* last;
+	Node		*first;
+	Node		*last;
 	UInt32		count;
 
 public:
-	bool Empty() const { return !first; }
-	Node* Head() { return first; }
-	Node* Tail() { return last; }
-	UInt32 Size() const { return count; }
+	bool Empty() const {return !first;}
+	Node *Head() {return first;}
+	Node *Tail() {return last;}
+	UInt32 Size() const {return count;}
 };
+
+enum KeyboardMenuInputCode;
+class Tile;
+class Menu;
 
 // 010
 template <class T>
@@ -546,19 +554,20 @@ public:
 	BSSimpleList<T>();
 	~BSSimpleList<T>();
 
-	virtual void	Unk_00(UInt32 arg);
-	virtual void	Unk_01(void);
-	virtual void	Unk_02(UInt32 arg);
-	virtual void	Unk_03(UInt32 arg);
-	virtual void	Unk_04(void);
-	virtual UInt32	Unk_05(UInt32 arg1, UInt32 arg2);
-	virtual void	Unk_06(UInt32 arg);
-	virtual void	Unk_07(void);
-	virtual void	Unk_08(UInt32 arg);
+	virtual bool	SetSelectedTile(Tile* tile);
+	virtual Tile*	GetSelectedTile(void);
+	virtual Tile*	HandleKeyboardInput(KeyboardMenuInputCode code);
+	virtual bool	IsMenuEqual(Menu* that);
+	virtual void	ScrollToHighlight(void);
+	virtual Tile*	GetTileByIndex(int index, char isNotTileListIndex);
+	virtual void	Destructor(bool doFree);
+	virtual void	FreeAllTiles(void);
+	virtual void	Sort(signed int(__cdecl*)(void*, void*));
+//	virtual void	Sort(signed int(__cdecl* comparator)(ListBoxItem<T>*, ListBoxItem<T>*));
 
 	tList<T>	list;
 };
-STATIC_ASSERT(sizeof(BSSimpleList<void*>) == 0xC);
+STATIC_ASSERT(sizeof(BSSimpleList<void *>) == 0xC);
 
 //#if RUNTIME
 //
@@ -627,8 +636,9 @@ template <typename T_Data>
 struct BSSimpleArray
 {
 	virtual void	Destroy(bool doFree);
+	virtual T_Data* Allocate(UInt32 size);  
 
-	T_Data* data;			// 04
+	T_Data		*data;			// 04
 	UInt32		size;			// 08
 	UInt32		alloc;			// 0C
 
@@ -642,24 +652,30 @@ struct BSSimpleArray
 	protected:
 		friend BSSimpleArray;
 
-		T_Data* pData;
+		T_Data		*pData;
 		UInt32		count;
 
 	public:
-		bool End() const { return !count; }
+		bool End() const {return !count;}
 		void operator++()
 		{
 			count--;
 			pData++;
 		}
 
-		T_Data& operator*() const { return *pData; }
-		T_Data& operator->() const { return *pData; }
-		T_Data& Get() const { return *pData; }
+		T_Data& operator*() const {return *pData;}
+		T_Data& operator->() const {return *pData;}
+		T_Data& Get() const {return *pData;}
 
 		Iterator() {}
-		Iterator(BSSimpleArray& source) : pData(source.data), count(source.size) {}
+		Iterator(BSSimpleArray &source) : pData(source.data), count(source.size) {}
 	};
+
+
+	void Append(T_Data* item)
+	{
+		ThisStdCall(0x7CB2E0, this, item);
+	}
 };
 
 //// this is a NiTPointerMap <UInt32, T_Data>
@@ -789,13 +805,13 @@ class Visitor
 	const Node* m_pHead;
 
 	template <class Op>
-	UInt32 FreeNodes(Node* node, Op& compareOp) const
+	UInt32 FreeNodes(Node* node, Op &compareOp) const
 	{
 		static UInt32 nodeCount = 0;
 		static UInt32 numFreed = 0;
 		static Node* lastNode = NULL;
 		static bool bRemovedNext = false;
-
+		
 		UInt32 returnCount;
 
 		if (node->Next())
@@ -842,7 +858,7 @@ class Visitor
 	};
 
 	class AcceptEqual {
-		const Info* m_toMatch;
+		const Info	* m_toMatch;
 	public:
 		AcceptEqual(const Info* info) : m_toMatch(info) { }
 		bool Accept(const Info* info) {
@@ -851,7 +867,7 @@ class Visitor
 	};
 
 	class AcceptStriCmp {
-		const char* m_toMatch;
+		const char * m_toMatch;
 	public:
 		AcceptStriCmp(const char* info) : m_toMatch(info) { }
 		bool Accept(const char* info) {
@@ -862,7 +878,7 @@ class Visitor
 	};
 public:
 	Visitor(const Node* pHead) : m_pHead(pHead) { }
-
+	
 	UInt32 Count() const {
 		UInt32 count = 0;
 		const Node* pCur = m_pHead;
@@ -896,7 +912,7 @@ public:
 	}
 
 	template <class Op>
-	const Node* Find(Op& op, const Node* prev = NULL) const
+	const Node* Find(Op& op, const Node* prev = NULL) const 
 	{
 		const Node* pCur;
 		if (!prev)
@@ -1006,7 +1022,7 @@ struct CoordXY
 	CoordXY() {}
 	CoordXY(float _x, float _y) : x(_x), y(_y) {}
 
-	inline CoordXY& operator =(const CoordXY& rhs)
+	inline CoordXY& operator =(const CoordXY &rhs)
 	{
 		*(double*)this = *(double*)&rhs;
 		return *this;

@@ -1,10 +1,5 @@
 #pragma once
 
-#include "Utilities.h"
-#include "GameBSExtraData.h"
-#include "GameForms.h"
-#include <vector>
-
 /*    Class							     vtbl	  Type  Size
  *   ----------------------------		------		--  --
  *	ExtraAction                        ????????		0E	14
@@ -112,7 +107,7 @@
  *	ExtraScale                         ????????		30	10
  *	ExtraScript                        ????????		0D	14
  *	ExtraSeed                          ????????		31	10
- *	ExtraSeenData                      ????????		5	24	: ExtraIntSeenData is also 5 but 2C
+ *	ExtraSeenData                      ????????		5	10
  *	ExtraSound                         ????????		4F	18
  *	ExtraStartingPosition              ????????		0F	24
  *	ExtraStartingWorldOrCell           ????????		49	10
@@ -143,252 +138,254 @@
 	DuplicateExtraListForContainer	0x0041B090
 */
 
-enum {
-	kExtraData_Havok                    	= 0x01,
-	kExtraData_Cell3D                   	= 0x02,
-	kExtraData_CellWaterType            	= 0x03,
-	kExtraData_RegionList               	= 0x04,
-	kExtraData_SeenData                 	= 0x05,
-	kExtraData_CellMusicType            	= 0x07,
-	kExtraData_CellClimate              	= 0x08,
-	kExtraData_ProcessMiddleLow         	= 0x09,
-	kExtraData_CellCanopyShadowMask     	= 0x0A,
-	kExtraData_DetachTime               	= 0x0B,
-	kExtraData_PersistentCell           	= 0x0C,
-	kExtraData_Script                   	= 0x0D,
-	kExtraData_Action                   	= 0x0E,
-	kExtraData_StartingPosition         	= 0x0F,
-	kExtraData_Anim                     	= 0x10,
-	kExtraData_UsedMarkers              	= 0x12,
-	kExtraData_DistantData              	= 0x13,
-	kExtraData_RagdollData              	= 0x14,
-	kExtraData_ContainerChanges         	= 0x15,
-	kExtraData_Worn                     	= 0x16,
-	kExtraData_WornLeft                 	= 0x17,
-	kExtraData_PackageStartLocation     	= 0x18,
-	kExtraData_Package                  	= 0x19,
-	kExtraData_TrespassPackage          	= 0x1A,
-	kExtraData_RunOncePacks             	= 0x1B,
-	kExtraData_ReferencePointer         	= 0x1C,
-	kExtraData_Follower                 	= 0x1D,
-	kExtraData_LevCreaModifier          	= 0x1E,
-	kExtraData_Ghost                    	= 0x1F,
-	kExtraData_OriginalReference        	= 0x20,
-	kExtraData_Ownership                	= 0x21,
-	kExtraData_Global                   	= 0x22,
-	kExtraData_Rank                     	= 0x23,
-	kExtraData_Count                    	= 0x24,
-	kExtraData_Health                   	= 0x25,
-	kExtraData_Uses                     	= 0x26,
-	kExtraData_TimeLeft                 	= 0x27,
-	kExtraData_Charge                   	= 0x28,
-	kExtraData_Light                    	= 0x29,
-	kExtraData_Lock                     	= 0x2A,
-	kExtraData_Teleport                 	= 0x2B,
-	kExtraData_MapMarker                	= 0x2C,
-	kExtraData_LeveledCreature          	= 0x2E,
-	kExtraData_LeveledItem              	= 0x2F,
-	kExtraData_Scale                    	= 0x30,
-	kExtraData_Seed                     	= 0x31,
-	kExtraData_NonActorMagicCaster          = 0x32,
-	kExtraData_NonActorMagicTarget			= 0x33,
-	kExtraData_PlayerCrimeList          	= 0x35,
-	kExtraData_EnableStateParent        	= 0x37,
-	kExtraData_EnableStateChildren      	= 0x38,
-	kExtraData_ItemDropper              	= 0x39,
-	kExtraData_DroppedItemList          	= 0x3A,
-	kExtraData_RandomTeleportMarker     	= 0x3B,
-	kExtraData_MerchantContainer        	= 0x3C,
-	kExtraData_SavedHavokData           	= 0x3D,
-	kExtraData_CannotWear               	= 0x3E,
-	kExtraData_Poison                   	= 0x3F,
-	kExtraData_Unk040                   	= 0x40,	// referenced during LoadFormInModule (in oposition to kExtraData_Light)
-	kExtraData_LastFinishedSequence     	= 0x41,
-	kExtraData_SavedAnimation           	= 0x42,
-	kExtraData_NorthRotation            	= 0x43,
-	kExtraData_XTarget                  	= 0x44,
-	kExtraData_FriendHits               	= 0x45,
-	kExtraData_HeadingTarget            	= 0x46,
-	kExtraData_RefractionProperty       	= 0x48,
-	kExtraData_StartingWorldOrCell      	= 0x49,
-	kExtraData_Hotkey                   	= 0x4A,
-	kExtraData_EditorRefMovedData       	= 0x4C,
-	kExtraData_InfoGeneralTopic         	= 0x4D,
-	kExtraData_HasNoRumors              	= 0x4E,
-	kExtraData_Sound                    	= 0x4F,
-	kExtraData_TerminalState            	= 0x50,
-	kExtraData_LinkedRef                	= 0x51,
-	kExtraData_LinkedRefChildren        	= 0x52,
-	kExtraData_ActivateRef              	= 0x53,
-	kExtraData_ActivateRefChildren      	= 0x54,
-	kExtraData_TalkingActor             	= 0x55,
-	kExtraData_ObjectHealth             	= 0x56,
-	kExtraData_DecalRefs                	= 0x57,
-	kExtraData_CellImageSpace           	= 0x59,
-	kExtraData_NavMeshPortal            	= 0x5A,
-	kExtraData_ModelSwap                	= 0x5B,
-	kExtraData_Radius                   	= 0x5C,
-	kExtraData_Radiation                	= 0x5D,
-	kExtraData_FactionChanges           	= 0x5E,
-	kExtraData_DismemberedLimbs         	= 0x5F,
-	kExtraData_MultiBound               	= 0x61,
-	kExtraData_MultiBoundData           	= 0x62,
-	kExtraData_MultiBoundRef            	= 0x63,
-	kExtraData_ReflectedRefs            	= 0x65,
-	kExtraData_ReflectorRefs            	= 0x66,
-	kExtraData_EmittanceSource          	= 0x67,
-	kExtraData_RadioData                	= 0x68,
-	kExtraData_CombatStyle              	= 0x69,
-	kExtraData_Primitive                	= 0x6B,
-	kExtraData_OpenCloseActivateRef     	= 0x6C,
-	kExtraData_AnimNoteReciever				= 0x6D,
-	kExtraData_Ammo                     	= 0x6E,
-	kExtraData_PatrolRefData            	= 0x6F,
-	kExtraData_PackageData              	= 0x70,
-	kExtraData_OcclusionPlane           	= 0x71,
-	kExtraData_CollisionData            	= 0x72,
-	kExtraData_SayTopicInfoOnceADay     	= 0x73,
-	kExtraData_EncounterZone            	= 0x74,
-	kExtraData_SayToTopicInfo           	= 0x75,
-	kExtraData_OcclusionPlaneRefData    	= 0x76,
-	kExtraData_PortalRefData            	= 0x77,
-	kExtraData_Portal                   	= 0x78,
-	kExtraData_Room                     	= 0x79,
-	kExtraData_HealthPerc               	= 0x7A,
-	kExtraData_RoomRefData              	= 0x7B,
-	kExtraData_GuardedRefData           	= 0x7C,
-	kExtraData_CreatureAwakeSound       	= 0x7D,
-	kExtraData_WaterZoneMap             	= 0x7E,
-	kExtraData_IgnoredBySandbox         	= 0x80,
-	kExtraData_CellAcousticSpace        	= 0x81,
-	kExtraData_ReservedMarkers          	= 0x82,
-	kExtraData_WeaponIdleSound          	= 0x83,
-	kExtraData_WaterLightRefs           	= 0x84,
-	kExtraData_LitWaterRefs             	= 0x85,
-	kExtraData_WeaponAttackSound        	= 0x86,
-	kExtraData_ActivateLoopSound        	= 0x87,
-	kExtraData_PatrolRefInUseData       	= 0x88,
-	kExtraData_AshPileRef               	= 0x89,
-	kExtraData_CreatureMovementSound    	= 0x8A,
-	kExtraData_FollowerSwimBreadcrumbs  	= 0x8B,
-	//										= 0x8C,
-	kExtraData_WeaponModFlags			 	= 0x8D,
-    //
-	kExtraData_0x90                         = 0x90,	// referenced in LoadGame but no data
-	kExtraData_0x91                         = 0x91,	// referenced in LoadGame but no data
-	kExtraData_SpecialRenderFlags           = 0x92
+enum
+{
+	kExtraData_Unknown00,
+	kExtraData_Havok,
+	kExtraData_Cell3D,
+	kExtraData_CellWaterType,
+	kExtraData_RegionList,
+	kExtraData_SeenData,
+	kExtraData_EditorID,
+	kExtraData_CellMusicType,
+	kExtraData_CellClimate,
+	kExtraData_ProcessMiddleLow,
+	kExtraData_CellCanopyShadowMask,
+	kExtraData_DetachTime,
+	kExtraData_PersistentCell,
+	kExtraData_Script,
+	kExtraData_Action,
+	kExtraData_StartingPosition,
+	kExtraData_Anim,
+	kExtraData_Unknown11,
+	kExtraData_UsedMarkers,
+	kExtraData_DistantData,
+	kExtraData_RagdollData,
+	kExtraData_ContainerChanges,
+	kExtraData_Worn,
+	kExtraData_WornLeft,
+	kExtraData_PackageStartLocation,
+	kExtraData_Package,
+	kExtraData_TrespassPackage,
+	kExtraData_RunOncePacks,
+	kExtraData_ReferencePointer,
+	kExtraData_Follower,
+	kExtraData_LevCreaModifier,
+	kExtraData_Ghost,
+	kExtraData_OriginalReference,
+	kExtraData_Ownership,
+	kExtraData_Global,
+	kExtraData_Rank,
+	kExtraData_Count,
+	kExtraData_Health,
+	kExtraData_Uses,
+	kExtraData_TimeLeft,
+	kExtraData_Charge,
+	kExtraData_Light,
+	kExtraData_Lock,
+	kExtraData_Teleport,
+	kExtraData_MapMarker,
+	kExtraData_Unknown2D,
+	kExtraData_LeveledCreature,
+	kExtraData_LeveledItem,
+	kExtraData_Scale,
+	kExtraData_Seed,
+	kExtraData_NonActorMagicCaster,
+	kExtraData_NonActorMagicTarget,
+	kExtraData_Unknown34,
+	kExtraData_PlayerCrimeList,
+	kExtraData_Unknown36,
+	kExtraData_EnableStateParent,
+	kExtraData_EnableStateChildren,
+	kExtraData_ItemDropper,
+	kExtraData_DroppedItemList,
+	kExtraData_RandomTeleportMarker,
+	kExtraData_MerchantContainer,
+	kExtraData_SavedHavokData,
+	kExtraData_CannotWear,
+	kExtraData_Poison,
+	kExtraData_Unknown40,
+	kExtraData_LastFinishedSequence,
+	kExtraData_SavedAnimation,
+	kExtraData_NorthRotation,
+	kExtraData_XTarget,
+	kExtraData_FriendHits,
+	kExtraData_HeadingTarget,
+	kExtraData_Unknown47,
+	kExtraData_RefractionProperty,
+	kExtraData_StartingWorldOrCell,
+	kExtraData_Hotkey,
+	kExtraData_Unknown4B,
+	kExtraData_EditorRefMovedData,
+	kExtraData_InfoGeneralTopic,
+	kExtraData_HasNoRumors,
+	kExtraData_Sound,
+	kExtraData_TerminalState,
+	kExtraData_LinkedRef,
+	kExtraData_LinkedRefChildren,
+	kExtraData_ActivateRef,
+	kExtraData_ActivateRefChildren,
+	kExtraData_TalkingActor,
+	kExtraData_ObjectHealth,
+	kExtraData_DecalRefs,
+	kExtraData_Unknown58,
+	kExtraData_CellImageSpace,
+	kExtraData_NavMeshPortal,
+	kExtraData_ModelSwap,
+	kExtraData_Radius,
+	kExtraData_Radiation,
+	kExtraData_FactionChanges,
+	kExtraData_DismemberedLimbs,
+	kExtraData_ActorCause,
+	kExtraData_MultiBound,
+	kExtraData_MultiBoundData,
+	kExtraData_MultiBoundRef,
+	kExtraData_Unknown64,
+	kExtraData_ReflectedRefs,
+	kExtraData_ReflectorRefs,
+	kExtraData_EmittanceSource,
+	kExtraData_RadioData,
+	kExtraData_CombatStyle,
+	kExtraData_Unknown6A,
+	kExtraData_Primitive,
+	kExtraData_OpenCloseActivateRef,
+	kExtraData_AnimNoteReciever,
+	kExtraData_Ammo,
+	kExtraData_PatrolRefData,
+	kExtraData_PackageData,
+	kExtraData_OcclusionPlane,
+	kExtraData_CollisionData,
+	kExtraData_SayTopicInfoOnceADay,
+	kExtraData_EncounterZone,
+	kExtraData_SayToTopicInfo,
+	kExtraData_OcclusionPlaneRefData,
+	kExtraData_PortalRefData,
+	kExtraData_Portal,
+	kExtraData_Room,
+	kExtraData_HealthPerc,
+	kExtraData_RoomRefData,
+	kExtraData_GuardedRefData,
+	kExtraData_CreatureAwakeSound,
+	kExtraData_WaterZoneMap,
+	kExtraData_Unknown7F,
+	kExtraData_IgnoredBySandbox,
+	kExtraData_CellAcousticSpace,
+	kExtraData_ReservedMarkers,
+	kExtraData_WeaponIdleSound,
+	kExtraData_WaterLightRefs,
+	kExtraData_LitWaterRefs,
+	kExtraData_WeaponAttackSound,
+	kExtraData_ActivateLoopSound,
+	kExtraData_PatrolRefInUseData,
+	kExtraData_AshPileRef,
+	kExtraData_CreatureMovementSound,
+	kExtraData_FollowerSwimBreadcrumbs,
+	kExtraData_CellImpactSwap,
+	kExtraData_WeaponModFlags,
+	kExtraData_ModdingItem,
+	kExtraData_SecuritronFace,
+	kExtraData_AudioMarker,
+	kExtraData_AudioBuoyMarker,
+	kExtraData_SpecialRenderFlags,
+	kExtraData_Max
 };
 
-#define GetByTypeCast(xDataList, Type) DYNAMIC_CAST(xDataList.GetByType(kExtraData_ ## Type), BSExtraData, Extra ## Type)
-extern char * GetExtraDataValue(BSExtraData* traverse);
-extern char * GetExtraDataName(UInt8 ExtraDataType);
+#define GetExtraType(xDataList, Type) (Extra ## Type*)xDataList.GetByType(kExtraData_ ## Type)
+extern char *GetExtraDataValue(BSExtraData *traverse);
+extern const char *GetExtraDataName(UInt8 extraDataType);
 
-// 014
+// 14
 class ExtraAction : public BSExtraData
 {
 public:
 	ExtraAction();
-	virtual ~ExtraAction();
+	~ExtraAction();
 
-	UInt8			flags0C;	// 00C	some kind of status or flags: 
-								//		if not RunOnActivateBlock: bit0 and bit1 are set before TESObjectREF::Activate, bit0 is preserved, bit1 is cleared after returning.
-	UInt8			fill0D[3];	// 00D
-	TESForm		*	actionRef;	// 010
+	UInt8			byte0C;		// 0C	some kind of status or flags
+	UInt8			pad0D[3];	// 0D
+	TESObjectREFR	*actionRef;	// 10
 
-	static ExtraAction* Create();
+	static ExtraAction* __stdcall Create(TESObjectREFR *_actionRef = NULL);
 };
 
-// 014
+// 14
 class ExtraScript : public BSExtraData
 {
 public:
 	ExtraScript();
-	virtual ~ExtraScript();
+	~ExtraScript();
 
-	Script			* script;		// 00C
-	ScriptEventList	* eventList;	// 010
+	Script			*script;	// 0C
+	ScriptEventList	*eventList;	// 10
 
-	static ExtraScript* Create(TESForm* baseForm = NULL, bool create = true, TESObjectREFR* container = NULL);
-	void EventCreate(UInt32 eventCode, TESObjectREFR* container);
+	static ExtraScript* __stdcall Create(TESForm* baseForm = NULL, bool create = true, TESObjectREFR* container = NULL);
 };
 
-UInt32 GetCountForExtraDataList(ExtraDataList* list);
-
-// 010
+// 10
 class ExtraContainerChanges : public BSExtraData
 {
 public:
 	ExtraContainerChanges();
-	virtual ~ExtraContainerChanges();
+	~ExtraContainerChanges();
 
-	class ExtendDataList: public tList<ExtraDataList>
+	class ExtendDataList : public tList<ExtraDataList>
 	{
 	public:
-		SInt32 AddAt(ExtraDataList* item, SInt32 index);
-		void RemoveAll() const;
-		ExtraDataList* RemoveNth(SInt32 n);
+		void Clear();
+		ExtraDataList *RemoveByType(ExtraDataList *xDataList, UInt32 type);
+		void CleanEmpty();
 	};
 
+	// 0C
 	struct EntryData
 	{
-		ExtendDataList	* extendData;	// 00
+		ExtendDataList	*extendData;	// 00
 		SInt32			countDelta;		// 04
-		TESForm			* type;			// 08
+		TESForm			*type;			// 08
+
+		EntryData(ListNode<ExtraDataList> *extend, SInt32 count, TESForm *item) :
+			extendData((ExtendDataList*)extend), countDelta(count), type(item) {}
 
 		void Cleanup();
-		static EntryData* Create(UInt32 refID = 0, UInt32 count = 1, ExtraContainerChanges::ExtendDataList* pExtendDataList = NULL);
-		static EntryData* Create(TESForm* pForm, UInt32 count = 1, ExtraContainerChanges::ExtendDataList* pExtendDataList = NULL);
-		ExtendDataList * Add(ExtraDataList* newList);
-		bool Remove(ExtraDataList* toRemove, bool bFree = false);
+		bool HasExtraType(UInt8 xType);
+		bool HasExtraLeveledItem();
+		void RemoveCannotWear();
+		float GetItemHealthPerc(bool arg1 = true);
+		ExtraDataList *GetEquippedExtra();
+		float CalculateWeaponDamage(float condition, TESForm *ammo);
 	};
 
-	typedef tList<EntryData> EntryDataList;
-	typedef std::vector<EntryData*> DataArray;
-	typedef std::vector<ExtendDataList*> ExtendDataArray;
+	struct EntryDataList : tList<EntryData>
+	{
+		EntryData *FindForItem(TESForm *item);
+	};
 
+	// 14
 	struct Data
 	{
-		EntryDataList	* objList;	// 000
-		TESObjectREFR	* owner;	// 004
-		float			unk2;		// 008	OnEquip: at the begining, stored into unk3 and forced to -1.0 before checking owner
-		float			unk3;		// 00C
-		UInt8			byte10;		// 010	referenced in relation to scripts in container
-		UInt8			pad[3];
+		EntryDataList	*objList;		// 00
+		TESObjectREFR	*owner;			// 04
+		float			totalWgCurrent;	// 08
+		float			totalWgLast;	// 0C
+		UInt8			byte10;			// 10	referenced in relation to scripts in container
+		UInt8			pad11[3];		// 11
 
-		static Data* Create(TESObjectREFR* owner);
+		static Data *Create(TESObjectREFR *owner);
+		float GetInventoryWeight();
 	};
 
-	Data	* data;	// 00C
+	Data	*data;	// 0C
 
-	EntryData *	GetByType(TESForm * type);
+	EntryData *GetByType(TESForm * type);
 
 	void DebugDump();
 	void Cleanup();	// clean up unneeded extra data from each EntryData
-	ExtendDataList * Add(TESForm* form, ExtraDataList* dataList = NULL);
-	bool Remove(TESForm* form, ExtraDataList* dataList = NULL, bool bFree = false);
-	ExtraDataList* SetEquipped(TESForm* obj, bool bEquipped, bool bForce = false);
-
-	// get EntryData and ExtendData for all equipped objects, return num objects equipped
-	UInt32 GetAllEquipped(DataArray& outEntryData, ExtendDataArray& outExtendData);
 
 	static ExtraContainerChanges* Create();
-	static ExtraContainerChanges* Create(TESObjectREFR* thisObj, UInt32 refID = 0, UInt32 count = 1,
-		ExtraContainerChanges::ExtendDataList* pExtendDataList = NULL);
-	static ExtraContainerChanges* GetForRef(TESObjectREFR* refr);
 
-	// find the equipped item whose form matches the passed matcher
-	struct FoundEquipData{
-		TESForm* pForm;
-		ExtraDataList* pExtraData;
-	};
-	FoundEquipData FindEquipped(FormMatcher& matcher) const;
-
-	EntryDataList* GetEntryDataList() const {
-		return data ? data->objList : NULL;
-	}
+	EntryDataList *GetEntryDataList() const {return data ? data->objList : NULL;}
 };
-typedef ExtraContainerChanges::DataArray ExtraContainerDataArray;
-typedef ExtraContainerChanges::ExtendDataArray ExtraContainerExtendDataArray;
+typedef ExtraContainerChanges::EntryData ContChangesEntry;
 
 // Finds an ExtraDataList in an ExtendDataList
 class ExtraDataListInExtendDataListMatcher
@@ -500,121 +497,98 @@ public:
 	}
 };
 
-typedef ExtraContainerChanges::FoundEquipData EquipData;
-
 extern ExtraContainerChanges::ExtendDataList* ExtraContainerChangesExtendDataListCreate(ExtraDataList* pExtraDataList = NULL);
 extern void ExtraContainerChangesExtendDataListFree(ExtraContainerChanges::ExtendDataList* xData, bool bFreeList = false);
-extern bool ExtraContainerChangesExtendDataListAdd(ExtraContainerChanges::ExtendDataList* xData, ExtraDataList* xList);
-extern bool ExtraContainerChangesExtendDataListRemove(ExtraContainerChanges::ExtendDataList* xData, ExtraDataList* xList, bool bFreeList = false);
 
-extern void ExtraContainerChangesEntryDataFree(ExtraContainerChanges::EntryData* xData, bool bFreeList = false);
-
-extern ExtraContainerChanges::EntryDataList* ExtraContainerChangesEntryDataListCreate(UInt32 refID = 0, UInt32 count = 1, ExtraContainerChanges::ExtendDataList* pExtendDataList = NULL);
-extern void ExtraContainerChangesEntryDataListFree(ExtraContainerChanges::EntryDataList* xData, bool bFreeList = false);
-
-extern void ExtraContainerChangesFree(ExtraContainerChanges* xData, bool bFreeList = false);
-
-// 010
+// 10
 class ExtraHealth : public BSExtraData
 {
 public:
 	ExtraHealth();
-	virtual ~ExtraHealth();
-	float health;
+	~ExtraHealth();
 
-	static ExtraHealth* Create();
+	float		health;		// 0C
+
+	static ExtraHealth* __stdcall Create(float _health = 0);
 };
 
-// 00C
+// 0C
 class ExtraWorn : public BSExtraData	// Item is equipped
 {
 public:
 	ExtraWorn();
-	virtual ~ExtraWorn();
+	~ExtraWorn();
 
 	static ExtraWorn* Create();
 };
 
-// 00C
+// 0C
 class ExtraWornLeft : public BSExtraData	// haven't seen used yet
 {
 public:
 	ExtraWornLeft();
-	virtual ~ExtraWornLeft();
-
-	//static ExtraWornLeft* Create();
+	~ExtraWornLeft();
 };
 
-// 00C
+// 0C
 class ExtraCannotWear : public BSExtraData	//	Seen used as ForceEquip ! Unused as forceUnequip (bug?)
 {
 public:
 	ExtraCannotWear();
-	virtual ~ExtraCannotWear();
+	~ExtraCannotWear();
 
 	static ExtraCannotWear* Create();
 };
 
-// 010
+// 10
 class ExtraHotkey : public BSExtraData
 {
 public:
 	ExtraHotkey();
-	virtual ~ExtraHotkey();
+	~ExtraHotkey();
 
-	UInt8	index;		// 00C (is 0-7)
+	UInt8		index;		// 0C (is 0-7)
+	UInt8		pad0D[3];	// 0D
 
-	static ExtraHotkey* Create();
+	static ExtraHotkey* __stdcall Create(UInt8 _index = 0);
 };
 
-// 010
+// 10
 class ExtraCount : public BSExtraData
 {
 public:
 	ExtraCount();
-	virtual ~ExtraCount();
+	~ExtraCount();
 
-	SInt16	count;	// 00C
-	UInt8	pad[2];	// 00E
+	SInt16		count;		// 0C
+	UInt8		pad0E[2];	// 0E
 
-	static ExtraCount* Create(UInt32 count = 0);	
+	static ExtraCount* __stdcall Create(UInt32 count = 0);
 };
 
-// 010
+// 10
 class ExtraLock : public BSExtraData
 {
 public:
 	ExtraLock();
-	virtual ~ExtraLock();
+	~ExtraLock();
 
 	struct Data
 	{
 		UInt32	lockLevel;	// 00
-		TESKey	* key;		// 04
+		TESKey	*key;		// 04
 		UInt8	flags;		// 08
-		UInt8	pad[3];
+		UInt8	pad09[3];	// 09
 		UInt32  unk0C;		// 0C introduced since form version 0x10
 		UInt32	unk10;		// 10
 	};
 
-	Data*	data;		// 00C
+	Data	*data;	// 0C
 
 	static ExtraLock* Create();
 };
 
-// 010
-class ExtraUses : public BSExtraData
-{
-public:
-	ExtraUses();
-	~ExtraUses();
-
-	UInt32 unk0;
-
-	static ExtraUses* Create();
-};
-
-// 010
+// 10
 class ExtraTeleport : public BSExtraData
 {
 public:
@@ -623,111 +597,104 @@ public:
 
 	struct Data
 	{
-		TESObjectREFR*	linkedDoor;	// 00
-		float			x;			// 04 x, y, z, zRot refer to teleport marker's position and rotation
-		float			y; 
-		float			z;
-		float			xRot;		// 10 angles in radians. x generally 0
-		float			yRot;		// 14 y generally -0.0, no reason to modify
-		float			zRot;		// 18
-		UInt8			unk01C;		// 1C
-		UInt8			pad01D[3];	// 1D
+		TESObjectREFR	*linkedDoor;	// 00
+		float			x;				// 04 x, y, z, zRot refer to teleport marker's position and rotation
+		float			y;				// 08
+		float			z;				// 0C
+		float			xRot;			// 10 angles in radians. x generally 0
+		float			yRot;			// 14 y generally -0.0, no reason to modify
+		float			zRot;			// 18
+		UInt8			unk1C;			// 1C
+		UInt8			pad1D[3];		// 1D
 	};
 
-	Data *	data;
+	Data		*data;	// 0C
 
 	static ExtraTeleport* Create();
 };
 
-// 010
+// 10
 class ExtraRandomTeleportMarker : public BSExtraData
 {
 public:
 	ExtraRandomTeleportMarker();
 	~ExtraRandomTeleportMarker();
 
-	TESObjectREFR *	teleportRef;
+	TESObjectREFR	*teleportRef;	// 0C
 };
 
-// 014
+// 14
 class ExtraAmmo : public BSExtraData
 {
 public:
 	ExtraAmmo();
 	~ExtraAmmo();
 
-	TESAmmo* ammo;
-	UInt32 unk4;
+	TESAmmo		*ammo;	// 0C
+	UInt32		count;	// 10
 };
 
-// 010
+// 10
 class ExtraOwnership : public BSExtraData
 {
 public:
 	ExtraOwnership();
-	virtual ~ExtraOwnership();
+	~ExtraOwnership();
 
-	TESForm	* owner;	// maybe this should be a union {TESFaction*; TESNPC*} but it would be more unwieldy to access and modify
+	TESForm		*owner;	// maybe this should be a union {TESFaction*; TESNPC*} but it would be more unwieldy to access and modify
 
-	static ExtraOwnership* Create();
+	static ExtraOwnership* __stdcall Create(TESForm *_owner);
 };
 
-// 010
+// 10
 class ExtraRank : public BSExtraData
 {
 public:
 	ExtraRank();
-	virtual ~ExtraRank();
+	~ExtraRank();
 
-	UInt32	rank; // 00C
+	SInt32		rank; // 0C
 
-	static ExtraRank* Create();
+	static ExtraRank* __stdcall Create(UInt32 _rank);
 };
 
-// 010
+// 10
 class ExtraGlobal : public BSExtraData
 {								//ownership data, stored separately from ExtraOwnership
 public:
 	ExtraGlobal();
-	virtual ~ExtraGlobal();
+	~ExtraGlobal();
 
-	TESGlobal*	globalVar;	// 00C
+	TESGlobal	*globalVar;	// 0C
 };
 
-// 010
+// 10
 class ExtraWeaponModFlags : public BSExtraData
 {
 public:
 	ExtraWeaponModFlags();
 	~ExtraWeaponModFlags();
 
-	UInt8	flags; // 00C
+	UInt8		flags;		// 0C
+	UInt8		pad0D[3];	// 0D
 
-	static ExtraWeaponModFlags* Create();
+	static ExtraWeaponModFlags* __stdcall Create(UInt8 _flags = 0);
 };
 
+// 10
 class ExtraFactionChanges : public BSExtraData
 {
 public:
 	ExtraFactionChanges();
-	virtual ~ExtraFactionChanges();
-
-	struct FactionListData
-	{
-		TESFaction	* faction;
-		UInt8		rank;
-		UInt8		pad[3];
-	};
+	~ExtraFactionChanges();
 
 	typedef tList<FactionListData> FactionListEntry;
-	FactionListEntry* data;
+	FactionListEntry	*data;		// 0C
 
-	void		DebugDump();
+	void DebugDump();
 
 	static ExtraFactionChanges* Create();
 };
-
-STATIC_ASSERT(sizeof(ExtraFactionChanges) == 0x10);
 
 class ExtraFactionChangesMatcher
 {
@@ -735,166 +702,104 @@ class ExtraFactionChangesMatcher
 	ExtraFactionChanges* xFactionChanges;
 public:
 	ExtraFactionChangesMatcher(TESFaction* faction, ExtraFactionChanges* FactionChanges) : pFaction(faction), xFactionChanges(FactionChanges) {}
-	bool Accept(ExtraFactionChanges::FactionListData* data) {
+	bool Accept(FactionListData *data) {
 		return (data->faction == pFaction) ? true : false;
 	}
 };
 
 ExtraFactionChanges::FactionListEntry* GetExtraFactionList(BaseExtraList& xDataList);
-SInt8 GetExtraFactionRank(BaseExtraList& xDataList, TESFaction * faction);
-void SetExtraFactionRank(BaseExtraList& xDataList, TESFaction * faction, SInt8 rank);
+void SetExtraFactionRank(BaseExtraList& xDataList, TESFaction * faction, char rank);
 
+// 14
 class ExtraLeveledCreature : public BSExtraData
 {
 public:
 	ExtraLeveledCreature();
-	virtual ~ExtraLeveledCreature();
+	~ExtraLeveledCreature();
 
-	TESForm	* baseForm;	// 00C
-	TESForm	* form;		// 010
+	TESForm		*baseForm;	// 0C
+	TESForm		*form;		// 10
 };
-
-STATIC_ASSERT(sizeof(ExtraLeveledCreature) == 0x14);
 
 // PackageStartLocation = Worldspace or Cell / PosX / PosY / PosZ / and 4 bytes
 
+// 10
 class ExtraCombatStyle : public BSExtraData
 {
 public:
 	ExtraCombatStyle();
-	virtual ~ExtraCombatStyle();
+	~ExtraCombatStyle();
 
-	TESCombatStyle*	combatStyle;		// 00C
+	TESCombatStyle	*combatStyle;	// 0C
 };
 
+// 10
 class ExtraReferencePointer : public BSExtraData
 {
 public:
 	ExtraReferencePointer();
-	virtual ~ExtraReferencePointer();
+	~ExtraReferencePointer();
 
-	TESObjectREFR* refr;		// 00C
+	TESObjectREFR	*refr;	// 0C
 };
-
-// Provided by "Luthien Anarion"
-class ExtraMapMarker : BSExtraData
-{
-public:
-    ExtraMapMarker();
-    ~ExtraMapMarker();
-
-    enum
-    {
-        kFlag_Visible	= 1 << 0,        // shown on the world map
-        kFlag_CanTravel	= 1 << 1,        // visited, can fast-travel to it
-        kFlag_Hidden    = 1 << 2,        // does not appear with Explorer perk
-    };
-    enum
-    {
-        kType_None    = 0,                // this determines the icon on the world map
-        kType_City,
-        kType_Settlement,
-        kType_Encampment,
-        kType_NaturalLandmark,
-        kType_Cave,
-        kType_Factory,
-        kType_Memorial,
-        kType_Military,
-        kType_Office,
-        kType_TownRuins,
-        kType_UrbanRuins,
-        kType_SewerRuins,
-        kType_Metro,
-        kType_Vault,
-    };
-
-    struct MarkerData
-    {
-        TESFullName fullName;            // not all markers have this
-        UInt16 flags;
-        UInt16 type;
-        TESForm* reputation;            // not all markers have this
-    };
-    MarkerData    *data;
-
-    // flag member functions
-    bool IsVisible() {return (data->flags & kFlag_Visible) == kFlag_Visible;}
-    bool CanTravel() {return (data->flags & kFlag_CanTravel) == kFlag_CanTravel;}
-    bool IsHidden() {return (data->flags & kFlag_Hidden) == kFlag_Hidden;}
-    void SetVisible(bool visible) {data->flags = (visible) ? (data->flags | kFlag_Visible) : (data->flags & ~kFlag_Visible);}
-    void SetCanTravel(bool travel) {data->flags = (travel) ? (data->flags | kFlag_CanTravel) : (data->flags & ~kFlag_CanTravel);}
-    void SetHidden(bool hidden) {data->flags = (hidden) ? (data->flags | kFlag_Hidden) : (data->flags & ~kFlag_Hidden);}
-};
-
-class ExtraNorthRotation : public BSExtraData
-{
-public:
-	ExtraNorthRotation();
-	virtual ~ExtraNorthRotation();
-
-	UInt32 angle;		// 00C
-};
-
-class ExtraSeenData : public BSExtraData
-{
-public:
-	ExtraSeenData();
-	virtual ~ExtraSeenData();
-
-	UInt8 unk[0x24 - 0x0C];		// 00C
-};
-
-class ExtraIntSeenData : public ExtraSeenData
-{
-public:
-	ExtraIntSeenData();
-	virtual ~ExtraIntSeenData();
-
-	UInt8				coordX;		// 024
-	UInt8				coordY;		// 025
-	UInt8				filler[2];	// 026
-	ExtraIntSeenData*	next;		// 028
-};
-
-// ExtraUsedMarkers is a bitmask of 30 bits.
 
 // 10
-class ExtraPersistentCell : public BSExtraData
+class ExtraMapMarker : public BSExtraData
 {
 public:
-	ExtraPersistentCell();
-	virtual ~ExtraPersistentCell();
+	ExtraMapMarker();
+	~ExtraMapMarker();
 
-	TESObjectCELL	*persistentCell;	// 0C
-};
-
-STATIC_ASSERT(sizeof(ExtraPersistentCell) == 0x10);
-
-class ExtraTerminalState : public BSExtraData
-{
-public:
-	ExtraTerminalState();
-	virtual ~ExtraTerminalState();
-
+	enum
+	{
+		kFlag_Visible =		1,        // shown on the world map
+		kFlag_CanTravel =	2,        // visited, can fast-travel to it
+		kFlag_Hidden =		4,        // does not appear with Explorer perk
+	};
     enum
     {
-        kFlag_Locked	= 1 << 7,        // terminal is locked
+		kType_None,                // this determines the icon on the world map
+		kType_City,
+		kType_Settlement,
+		kType_Encampment,
+		kType_NaturalLandmark,
+		kType_Cave,
+		kType_Factory,
+		kType_Memorial,
+		kType_Military,
+		kType_Office,
+		kType_TownRuins,
+		kType_UrbanRuins,
+		kType_SewerRuins,
+		kType_Metro,
+		kType_Vault
 	};
 
-	UInt8	flags;
-	UInt8	lockLevel;
-	UInt8	filler[2];
-};
-
-class ExtraAnim : public BSExtraData
-{
-public:
-	ExtraAnim();
-	virtual ~ExtraAnim();
-
-	struct Animation
+	struct MarkerData
 	{
-	};	// 013C
+		TESFullName		fullName;		// 00
+		UInt16			flags;			// 0C
+		UInt16			type;			// 0E
+		TESForm			*reputation;	// 10
+	};
+	MarkerData		*data;	// 0C
 
-	Animation* data;	// 0C
-};	// 10
+	bool IsVisible() {return (data->flags & kFlag_Visible) != 0;}
+	bool CanTravel() {return (data->flags & kFlag_CanTravel) != 0;}
+	bool IsHidden() {return (data->flags & kFlag_Hidden) != 0;}
+	void SetVisible(bool visible)
+	{
+		if (visible) data->flags |= kFlag_Visible;
+		else data->flags &= ~kFlag_Visible;
+	}
+	void SetCanTravel(bool travel)
+	{
+		if (travel) data->flags |= kFlag_CanTravel;
+		else data->flags &= ~kFlag_CanTravel;
+	}
+	void SetHidden(bool hidden)
+	{
+		if (hidden) data->flags |= kFlag_Hidden;
+		else data->flags &= ~kFlag_Hidden;
+	}
+};

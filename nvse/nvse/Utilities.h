@@ -1,15 +1,12 @@
 #pragma once
-#include <string>
-
-extern char* s_strArgBuffer;
 
 class Script;
 
-void DumpClass(void * theClassPtr, UInt32 nIntsToDump = 512);
-const char * GetObjectClassName(void * obj);
-const std::string & GetFalloutDirectory(void);
-std::string GetNVSEConfigOption(const char * section, const char * key);
-bool GetNVSEConfigOption_UInt32(const char * section, const char * key, UInt32 * dataOut);
+void DumpClass(void* theClassPtr, UInt32 nIntsToDump = 512);
+const char* GetObjectClassName(void* obj);
+const std::string& GetFalloutDirectory(void);
+std::string GetNVSEConfigOption(const char* section, const char* key);
+bool GetNVSEConfigOption_UInt32(const char* section, const char* key, UInt32* dataOut);
 
 // this has been tested to work for non-varargs functions
 // varargs functions end up with 'this' passed as the last parameter (ie. probably broken)
@@ -118,10 +115,11 @@ private:
 
 #if RUNTIME
 
-const char GetSeparatorChar(Script * script);
-const char * GetSeparatorChars(Script * script);
+const char GetSeparatorChar(Script* script);
+const char* GetSeparatorChars(Script* script);
 
 #endif
+
 
 bool ci_equal(char ch1, char ch2);
 bool ci_less(const char* lh, const char* rh);
@@ -133,8 +131,8 @@ void MakeLower(std::string& str);
 // provides a common way to output errors and warnings
 class ErrOutput
 {
-	typedef void (* _ShowError)(const char* msg);
-	typedef bool (* _ShowWarning)(const char* msg);		// returns true if user requests to disable warning
+	typedef void (*_ShowError)(const char* msg);
+	typedef bool (*_ShowWarning)(const char* msg);		// returns true if user requests to disable warning
 
 	_ShowError		ShowError;
 	_ShowWarning	ShowWarning;
@@ -143,69 +141,66 @@ public:
 
 	struct Message
 	{
-		const char*		fmt;
+		const char* fmt;
 		bool			bCanDisable;
 		bool			bDisabled;
 	};
 
-	void Show(Message msg, ...);
+	void Show(Message& msg, ...);
 	void Show(const char* msg, ...);
 	void vShow(Message& msg, va_list args);
 	void vShow(const char* msg, va_list args);
 };
 
-char* __fastcall CopyCString(const char* src);
-
 // thread-safe template versions of ThisStdCall()
 
-__forceinline UInt32 ThisStdCall(UInt32 _f,void* _t)
+__forceinline UInt32 ThisStdCall(UInt32 _f, void* _t)
 {
-    class T {}; union { UInt32 x; UInt32 (T::*m)(); } u = { _f };
-    return ((T*)_t->*u.m)();
+	class T {}; union { UInt32 x; UInt32(T::* m)(); } u = { _f };
+	return ((T*)_t->*u.m)();
 }
 
 template <typename T1>
-__forceinline UInt32 ThisStdCall(UInt32 _f,void* _t,T1 a1)
+__forceinline UInt32 ThisStdCall(UInt32 _f, void* _t, T1 a1)
 {
-    class T {}; union { UInt32 x; UInt32 (T::*m)(T1); } u = { _f };
-    return ((T*)_t->*u.m)(a1);
+	class T {}; union { UInt32 x; UInt32(T::* m)(T1); } u = { _f };
+	return ((T*)_t->*u.m)(a1);
 }
 
-template <typename T1,typename T2>
-__forceinline UInt32 ThisStdCall(UInt32 _f,void* _t,T1 a1,T2 a2)
+template <typename T1, typename T2>
+__forceinline UInt32 ThisStdCall(UInt32 _f, void* _t, T1 a1, T2 a2)
 {
-    class T {}; union { UInt32 x; UInt32 (T::*m)(T1,T2); } u = { _f };
-    return ((T*)_t->*u.m)(a1,a2);
+	class T {}; union { UInt32 x; UInt32(T::* m)(T1, T2); } u = { _f };
+	return ((T*)_t->*u.m)(a1, a2);
 }
 
-template <typename T1,typename T2,typename T3>
-__forceinline UInt32 ThisStdCall(UInt32 _f,void* _t,T1 a1,T2 a2,T3 a3)
+template <typename T1, typename T2, typename T3>
+__forceinline UInt32 ThisStdCall(UInt32 _f, void* _t, T1 a1, T2 a2, T3 a3)
 {
-    class T {}; union { UInt32 x; UInt32 (T::*m)(T1,T2,T3); } u = { _f };
-    return ((T*)_t->*u.m)(a1,a2,a3);
+	class T {}; union { UInt32 x; UInt32(T::* m)(T1, T2, T3); } u = { _f };
+	return ((T*)_t->*u.m)(a1, a2, a3);
 }
 
-template <typename T1,typename T2,typename T3,typename T4>
-__forceinline UInt32 ThisStdCall(UInt32 _f,void* _t,T1 a1,T2 a2,T3 a3,T4 a4)
+template <typename T1, typename T2, typename T3, typename T4>
+__forceinline UInt32 ThisStdCall(UInt32 _f, void* _t, T1 a1, T2 a2, T3 a3, T4 a4)
 {
-    class T {}; union { UInt32 x; UInt32 (T::*m)(T1,T2,T3,T4); } u = { _f };
-    return ((T*)_t->*u.m)(a1,a2,a3,a4);
+	class T {}; union { UInt32 x; UInt32(T::* m)(T1, T2, T3, T4); } u = { _f };
+	return ((T*)_t->*u.m)(a1, a2, a3, a4);
 }
 
-template <typename T1,typename T2,typename T3,typename T4,typename T5>
-__forceinline UInt32 ThisStdCall(UInt32 _f,void* _t,T1 a1,T2 a2,T3 a3,T4 a4,T5 a5)
+template <typename T1, typename T2, typename T3, typename T4, typename T5>
+__forceinline UInt32 ThisStdCall(UInt32 _f, void* _t, T1 a1, T2 a2, T3 a3, T4 a4, T5 a5)
 {
-    class T {}; union { UInt32 x; UInt32 (T::*m)(T1,T2,T3,T4,T5); } u = { _f };
-    return ((T*)_t->*u.m)(a1,a2,a3,a4,a5);
+	class T {}; union { UInt32 x; UInt32(T::* m)(T1, T2, T3, T4, T5); } u = { _f };
+	return ((T*)_t->*u.m)(a1, a2, a3, a4, a5);
 }
 
-template <typename T1,typename T2,typename T3,typename T4,typename T5,typename T6>
-__forceinline UInt32 ThisStdCall(UInt32 _f,void* _t,T1 a1,T2 a2,T3 a3,T4 a4,T5 a5, T6 a6)
+template <typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>
+__forceinline UInt32 ThisStdCall(UInt32 _f, void* _t, T1 a1, T2 a2, T3 a3, T4 a4, T5 a5, T6 a6)
 {
-    class T {}; union { UInt32 x; UInt32 (T::*m)(T1,T2,T3,T4,T5,T6); } u = { _f };
-    return ((T*)_t->*u.m)(a1,a2,a3,a4,a5,a6);
+	class T {}; union { UInt32 x; UInt32(T::* m)(T1, T2, T3, T4, T5, T6); } u = { _f };
+	return ((T*)_t->*u.m)(a1, a2, a3, a4, a5, a6);
 }
-
 
 const double
 kDblZero = 0,
@@ -221,7 +216,9 @@ kDbl2dPI = 0.6366197723675814,
 kDbl4dPI = 1.2732395447351628,
 kDblTanPId6 = 0.5773502691896257,
 kDblTanPId12 = 0.2679491924311227,
-kDblPId180 = 0.017453292519943295;
+kDblPId180 = 0.017453292519943295,
+kDbl1200 = 1200.0,
+kDblMinus1200 = -1200.0;
 
 const float
 kFltZero = 0.0F,
@@ -368,6 +365,10 @@ char* __fastcall GetNextToken(char* str, const char* delims);
 
 char* __fastcall CopyString(const char* key);
 
+// this copies the string onto the FormHeap - used to work around alloc/dealloc mismatch when passing
+// data between nvse and plugins
+char* __fastcall CopyCString(const char* src);
+
 char* __fastcall IntToStr(char* str, int num);
 
 int FltToStr(char* str, double num);
@@ -432,8 +433,10 @@ public:
 	void Outdent() { if (indent < 40) indent++; }
 };
 
-//void PrintLog(const char* fmt, ...);
-//void PrintDebug(const char* fmt, ...);
+extern DebugLog s_log, s_debug;
+
+void PrintLog(const char* fmt, ...);
+void PrintDebug(const char* fmt, ...);
 
 class LineIterator
 {
@@ -481,17 +484,10 @@ bool __fastcall FileToBuffer(const char* filePath, char* buffer);
 
 void ClearFolder(char* pathEndPtr);
 
-/*void __stdcall SafeWrite8(UInt32 addr, UInt32 data);
-void __stdcall SafeWrite16(UInt32 addr, UInt32 data);
-void __stdcall SafeWrite32(UInt32 addr, UInt32 data);
-void __stdcall SafeWriteBuf(UInt32 addr, void* data, UInt32 len);
-
-// 5 bytes
-void __stdcall WriteRelJump(UInt32 jumpSrc, UInt32 jumpTgt);
-void __stdcall WriteRelCall(UInt32 jumpSrc, UInt32 jumpTgt);*/
-
 // 10 bytes
 void __stdcall WritePushRetRelJump(UInt32 baseAddr, UInt32 retAddr, UInt32 jumpTgt);
+
+void ClearFolder(char* pathEndPtr);
 
 void __fastcall GetTimeStamp(char* buffer);
 
