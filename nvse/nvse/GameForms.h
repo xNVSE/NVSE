@@ -833,35 +833,7 @@ public:
 	float				cost;				// 18 on autocalc items this seems to be the cost
 	ConditionList		conditions;			// 1C
 
-	//bool HasActorValue() const;
-	//UInt32 GetActorValue() const;
-	//bool IsValidActorValue(UInt32 actorValue) const;
-	//void SetActorValue(UInt32 actorValue);
-
-	//bool IsScriptedEffect() const;
-	//UInt32 ScriptEffectRefId() const;
-	//UInt32 ScriptEffectSchool() const;
-	//UInt32 ScriptEffectVisualEffectCode() const;
-	//bool IsScriptEffectHostile() const;
-
-	//EffectItem* Clone() const;
-	//void CopyFrom(const EffectItem* from);
-	//static EffectItem* Create();
-	//static EffectItem* ProxyEffectItemFor(UInt32 effectCode);
-	//
-	//bool operator<(EffectItem*rhs) const;
-	//// return the magicka cost of this effect item
-	//// adjust for skill level if actorCasting is used
-	//float MagickaCost(TESForm* actorCasting = NULL) const;
-
-	//void SetMagnitude(UInt32 magnitude);
-	//void ModMagnitude(float modBy);
-	//void SetArea(UInt32 area);
-	//void ModArea(float modBy);
-	//void SetDuration(UInt32 duration);
-	//void ModDuration(float modBy);
-	//void SetRange(UInt32 range);
-	//bool IsHostile() const;
+	int GetSkillCode();
 };
 
 // 10
@@ -1236,6 +1208,7 @@ public:
 			bipedFlags &= ~eBipedFlag_NonPlayable;
 		}
 	}
+	bool IsHelmet() const { return partMask & (TESBipedModelForm::ePart_Hat | TESBipedModelForm::ePart_Head | TESBipedModelForm::ePart_Hair); }
 	void  SetPath(const char* newPath, UInt32 whichPath, bool bfemalePath);
 	const char* GetPath(UInt32 whichPath, bool bFemalePath);
 
@@ -2357,6 +2330,7 @@ public:
 STATIC_ASSERT(sizeof(TESSound) == 0x68);
 
 // 54
+class TESRegion;
 class BGSAcousticSpace : public TESBoundObject
 {
 public:
@@ -3312,7 +3286,18 @@ public:
 	TESModel			targetNIF;			// 1E8 - target NIF
 	TESModel			model200;			// 200 - could be a texture swap
 	UInt32				unk218;				// 218
-	TESSound			*sounds[12];		// 21C
+	TESSound			*openSound;			// 21C
+	TESSound			*openSound2;		// 220
+	TESSound			*openSound3;		// 224
+	TESSound			*soundShoot3DLooping; //228
+	TESSound			*noAmmoSound;		// 22C
+	TESSound			*blockSound;		// 230
+	TESSound			*idleSound;			// 234
+	TESSound			*equipSound;		// 238
+	TESSound			*unequipSound;		// 23C
+	TESSound			*unequipSound2;		// 240
+	TESSound			*unequipSound3;		// 244
+	TESSound			*unequipSound4;		// 248
 	BGSImpactDataSet	*impactDataSet;		// 24C
 	TESObjectSTAT		*worldStatic;		// 250
 	TESObjectSTAT		*modStatics[7];		// 254
@@ -3530,6 +3515,18 @@ class TESCreature : public TESActorBase
 public:
 	TESCreature();
 	~TESCreature();
+
+	enum Types
+	{
+		kAnimal = 0,
+		kMutatedAnimal,
+		kMutatedInsect,
+		kAbomination,
+		kSupermutant,
+		kFeralGhoul,
+		kRobot,
+		kGiant
+	};
 
 	TESAttackDamageForm			attackDmg;			// 10C
 	TESModelList				modelList;			// 114
@@ -6398,69 +6395,6 @@ const char kDefaultObjectNames[34][28] = {	// 0x0118C360 is an array of struct: 
       "Item Detected Effect",
       "Cateye Mobile Effect (NYI)"
 };
-
-// BGSDefaultObjectManager (A0)
-class BGSDefaultObjectManager : public TESForm
-{
-public:
-	BGSDefaultObjectManager();
-	~BGSDefaultObjectManager();
-
-	static BGSDefaultObjectManager* GetSingleton();
-
-	enum {
-		kDefaultObject_Max = 34,
-	};
-
-	typedef TESForm *	FormArray[kDefaultObject_Max];
-
-	struct FormStruct {
-		TESForm*    Stimpak;
-		TESForm*    SuperStimpak;
-		TESForm*    RadX;
-		TESForm*    RadAway;
-		TESForm*    Morphine;
-		TESForm*    PerkParalysis;
-		TESForm*    PlayerFaction;
-		TESForm*    MysteriousStranger;
-		TESForm*    MysteriousStrangerFaction;
-		TESForm*    DefaultMusic;
-		TESForm*    BattleMusic;
-		TESForm*    DefaultDeath;
-		TESForm*    SuccessMusic;
-		TESForm*    LevelUpMusic;
-		TESForm*    PlayerVoiceMale;
-		TESForm*    PlayerVoiceMaleChild;
-		TESForm*    PlayerVoiceFemale;
-		TESForm*    PlayerVoiceFemaleChild;
-		TESForm*    EatPackageDefaultFood;
-		TESForm*    EveryActorAbility;
-		TESForm*    DrugWearOffImageSpace;
-		// FNV
-		TESForm*    DoctorsBag;
-		TESForm*    MissFortuneNPC;
-		TESForm*    MissFortuneFaction;
-		TESForm*    MeltdownExplosion;
-		TESForm*    UnarmedForwardPA;
-		TESForm*    UnarmedBackwardPA;
-		TESForm*    UnarmedLeftPA;
-		TESForm*    UnarmedRightPA;
-		TESForm*    UnarmedCrouchPA;
-		TESForm*    UnarmedCounterPA;
-		TESForm*    SpotterEffect;
-		TESForm*    ItemDetectedEffect;
-		TESForm*    CateyeMobileEffectNYI;
-	};
-
-	union DefaultObjects {
-		FormStruct	asStruct;
-		FormArray	asArray;
-	};
-
-	DefaultObjects	defaultObjects;	// 018
-};
-
-STATIC_ASSERT(sizeof(BGSDefaultObjectManager) == 0xA0);
 
 enum EActionListForm
 {

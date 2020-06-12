@@ -853,8 +853,7 @@ public:
 	UInt8 unk12;							// 12
 	UInt8 unk13;							// 13
 	UInt32 list14;							// 14
-	UInt8 unk18;							// 18
-	UInt8 pad19[3];							// 19
+	SInt32 unk18;							// 18
 	UInt8 unk1C;							// 1C
 	UInt8 unk1D;							// 1D
 	UInt8 pad1E[2];							// 1E
@@ -867,6 +866,7 @@ public:
 	void* func2C;							// 2C
 	void* str30;							// 30
 	void* unk34;							// 34
+	
 	void ReloadCurrentSave() { ThisStdCall(0x8512F0, this); };
 	bool Save(char* name) { return ThisStdCall(0x8503B0, this, name, -1, 0); };
 };

@@ -19,6 +19,15 @@ public:
 	BSExtraData		*next;		// 08
 };
 
+struct EmptyStruct
+{
+	UInt32 a;
+	char b;
+	char c;
+};
+
+constexpr size_t sizeOfTe = sizeof(EmptyStruct);
+
 // 020
 struct BaseExtraList
 {
@@ -45,6 +54,9 @@ struct BaseExtraList
 	ExtraCount *GetExtraCount() const;
 	SInt32 GetCount() const;
 };
+
+constexpr size_t sizeOfT = sizeof(BaseExtraList);
+
 
 struct ExtraDataList : public BaseExtraList
 {

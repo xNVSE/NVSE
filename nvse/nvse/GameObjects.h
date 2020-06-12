@@ -1,5 +1,10 @@
 #pragma once
 
+struct ScriptEventList;
+class ActiveEffect;
+struct AnimData;
+struct LockData;
+
 static const UInt32 s_TESObject_REFR_init = 0x55A2F0;			// TESObject_REFR initialization routine (first reference to s_TESObject_REFR_vtbl)
 static const UInt32	s_Actor_EquipItem = 0x88C650;				// maybe, also, would be: 007198E0 for FOSE	4th call from the end of TESObjectREFR::RemoveItem (func5F)
 static const UInt32	s_Actor_UnequipItem = 0x88C790;				// maybe, also, would be: 007133E0 for FOSE next sub after EquipItem
@@ -182,6 +187,9 @@ public:
 	DEFINE_MEMBER_FN(Activate, bool, 0x00573170, TESObjectREFR*, UInt32, UInt32, UInt32);	// Usage Activate(actionRef, 0, 0, 1); found inside Cmd_Activate_Execute as the last call (190 bytes)
 };
 STATIC_ASSERT(sizeof(TESObjectREFR) == 0x068);
+
+//constexpr size_t sizeOfT = sizeof(TESObjectREFR);
+
 
 class BaseProcess;
 struct NiPoint3;
@@ -403,6 +411,13 @@ public:
 };
 STATIC_ASSERT(sizeof(PlayerMover) == 0xA0);
 
+class CombatController;
+struct PackageInfo;
+struct CombatActors;
+struct ItemEntryData;
+class BSAnimGroupSequence;
+class BackUpPackage;
+
 typedef ActiveEffect *(*ActiveEffectCreate)(MagicCaster *magCaster, MagicItem *magItem, EffectItem *effItem);
 
 class Actor : public MobileObject
@@ -410,6 +425,16 @@ class Actor : public MobileObject
 public:
 	Actor();
 	~Actor();
+
+	enum LifeStates
+	{
+		kLifeState_Alive = 0x0,
+		kLifeState_Dying = 0x1,
+		kLifeState_Dead = 0x2,
+		kLifeState_Unconscious = 0x3,
+		kLifeState_Reanimate = 0x4,
+		kLifeState_Restrained = 0x5,
+	};
 
 	virtual void		Unk_C1(void);
 	virtual void		Unk_C2(void);
@@ -512,9 +537,9 @@ public:
 	virtual void		Unk_123(void);
 	virtual void		Unk_124(void);
 	virtual void		Unk_125(void);
-	virtual void		SetPerkRank(BGSPerk *perk, UInt8 rank, bool alt);
-	virtual void		RemovePerk(BGSPerk *perk, bool alt);
-	virtual UInt8		GetPerkRank(BGSPerk *perk, bool alt);
+	virtual void		SetPerkRank(BGSPerk *perk, UInt8 rank, bool isTeammate);
+	virtual void		RemovePerk(BGSPerk *perk, bool isTeammate);
+	virtual UInt8		GetPerkRank(BGSPerk *perk, bool isTeammate);
 	virtual void		Unk_129(void);
 	virtual void		Unk_12A(void);
 	virtual void		Unk_12B(void);
@@ -656,8 +681,8 @@ public:
 	//ExtraContainerDataArray GetEquippedEntryDataList();
 	//ExtraContainerExtendDataArray GetEquippedExtendDataList();
 
-	bool GetDead() {return (lifeState == 1) || (lifeState == 2);}
-	bool GetRestrained() {return lifeState == 5;}
+	bool GetDead() {return (lifeState == kLifeState_Dead) || (lifeState == kLifeState_Dying);}
+	bool GetRestrained() {return lifeState == kLifeState_Restrained;}
 
 	TESActorBase *GetActorBase();
 	bool GetLOS(Actor *target);
@@ -694,9 +719,14 @@ public:
 	double GetHealthPercent();
 	void StopFiringAnim();
 	UInt16 GetLevel();
-	bool IsWearingPowerArmor();
+	bool IsWearingPowerArmorTorso();
+	bool IsWearingPowerArmorHelmet();
 	bool IsDoingAttackAnimation();
 	UInt32 GetBuySellServices();
+	bool IsRobot();
+	bool HasCrippledLimb();
+	bool IsEssential();
+	bool IsInReloadAnim() const;
 };
 
 // 1C0
@@ -876,11 +906,19 @@ public:
 	TESObjectREFR*						placedMarker;			// 6F4
 	BSSimpleArray<ParentSpaceNode>		parentSpaceNodes;		// 6F8
 	BSSimpleArray<TeleportLink>			teleportLinks;			// 708
-	UInt32								unk718[9];				// 718
-	TESForm								*form73C;				// 73C	TESTING
-	UInt32								unk740[6];				// 740
-	TESForm								*tempWeaponPoisonRef;	// 758 TESTING
-	bool								inCharGen;				// 75C
+	UInt32								unk718;					// 718
+	UInt32								unk71C;					// 71C
+	UInt32								unk720;					// 720
+	UInt32 								unk724;					// 724
+	UInt32 								unk728;					// 728
+	UInt32 								unk72C;					// 72C
+	float 								timeGrenadeHeld;		// 730
+	UInt32 								unk734;					// 734
+	UInt32 								unk738;					// 738
+	UInt32 								unk73C;					// 73C
+	UInt32 								unk740;					// 740
+	UInt32 								increasedOnMurder744[6];// 744
+	bool 								inCharGen;				// 75C
 	UInt8								byte75D;				// 75D
 	UInt8								byte75E;				// 75E
 	UInt8								byte75F;				// 75F
@@ -976,5 +1014,6 @@ public:
 	bool ToggleFirstPerson(bool toggleON);
 	char GetDetectionState();
 	void UpdatePlayer3D();
+	void SetActiveQuest(TESQuest* quest) { ThisStdCall(0x9529D0, this, quest); };
 };
 STATIC_ASSERT(sizeof(PlayerCharacter) == 0xE50);

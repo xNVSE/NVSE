@@ -706,8 +706,3 @@ const char* EffectItemList::GetNthEIName(UInt32 whichEffect) const
 		return "<no name>";
 }
 #endif
-
-BGSDefaultObjectManager* BGSDefaultObjectManager::GetSingleton()
-{
-	return *g_defaultObjectManager;
-}

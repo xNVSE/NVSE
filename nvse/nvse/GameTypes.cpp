@@ -114,6 +114,12 @@ void String::EraseAt(UInt32 index)
 	else *m_data = 0;
 }
 
+void String::RemoveLastChar()
+{
+	if (!m_data || !m_dataLen) return;
+	m_data[--m_dataLen] = '\0';
+}
+
 const char *String::CStr()
 {
 	return (m_data && m_dataLen) ? m_data : "";

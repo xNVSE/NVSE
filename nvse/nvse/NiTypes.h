@@ -50,6 +50,13 @@ struct NiVector3
 		z -= rhs.z;
 	}
 
+	void Lerp(NiVector3& to, NiVector3& from, double by)
+	{
+		x = to.x * (1 - by) + from.x * by;
+		y = to.y * (1 - by) + from.y * by;
+		z = to.z * (1 - by) + from.z * by;
+	}
+	
 	void ToQuaternion(NiQuaternion &quaternion);
 	void MultiplyMatrixVector(NiMatrix33 &mat, NiVector3 &vec);
 	void Normalize();

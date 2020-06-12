@@ -1,9 +1,13 @@
 #pragma once
 
+#include <dinput.h>
+
 // keeping this in a separate file so we don't need to include dinput/dsound everywhere
 
 #define DIRECTINPUT_VERSION 0x0800
 #define DIRECTSOUND_VERSION 0x0800
+
+class NiCamera;
 
 enum
 {
@@ -34,7 +38,6 @@ enum XboxControlCode
 	kXboxCtrl_LS_LEFT,
 };
 
-struct _IDirectInput8;
 enum KeyState;
 enum ControlCode;
 
@@ -109,13 +112,21 @@ public:
 	};
 #endif
 
+	enum Device
+	{
+		kKeyboard = 0x0,
+		kMouse = 0x1,
+		kJoystick = 0x2,
+		kController = 0x3,
+	};
+
 	UInt8			isControllerDisabled;	// 0000
 	UInt8			byte0001;				// 0001
 	UInt8			byte0002;				// 0002
 	UInt8			byte0003;				// 0003
 	UInt32			flags;					// 0004
-	_IDirectInput8	*directInput;			// 0008
-	UInt32			unk000C;				// 000C
+	IDirectInput8	*directInput;			// 0008
+	UInt32			unk000C;				// 000C 0xA230F3
 	UInt32			unk0010;				// 0010
 	UInt32			unk0014;				// 0014
 	UInt32			unk0018;				// 0018
@@ -171,7 +182,7 @@ public:
 	bool GetControlState(ControlCode code, KeyState state) { return ((bool (__thiscall*)(OSInputGlobals*, ControlCode, KeyState))(0xA24660))(this, code, state); }
 	void SetControlHeld(ControlCode code) { ((void(__thiscall*)(OSInputGlobals*, ControlCode))(0xA24280))(this, code); };
 	bool GetMouseState(int buttonID, KeyState state) { return ((bool(__thiscall*)(OSInputGlobals*, int, KeyState))(0xA23A50))(this, buttonID, state); };
-
+	bool SetKeybindIfValid(ControlCode whichBind, OSInputGlobals::Device device, UInt8 scancode) { return ((bool(__thiscall*)(OSInputGlobals*, ControlCode whichBind, OSInputGlobals::Device device, UInt8 scancode))(0xA23A50))(this, whichBind, device, scancode); };
 	bool GetKeyState(int key, KeyState state) { return 	((bool(__thiscall*)(OSInputGlobals*, int, KeyState))(0xA24180))(this, key, state);};
 	static OSInputGlobals* GetSingleton() { return *(OSInputGlobals * *)(0x11F35CC); }
 };
@@ -289,10 +300,40 @@ public:
 	OSInputGlobals	*input;				// 20
 	OSSoundGlobals	*sound;				// 24
 	UInt32			unk28;				// 28	relates to unk18
-	//...
-	UInt32			*unk50;				// 50	same object as unk18
-	//..
-	UInt32			unk60;				// 60	relates to unk50
-};
+	UInt32 unk2C;
+	UInt32 unk30;
+	UInt32 unk34;
+	UInt32 unk38;
+	UInt32 unk3C;
+	UInt32 unk40;
+	UInt32 unk44;
+	UInt32 unk48;
+	UInt32 unk4C;
+	UInt32 unk50;
+	UInt32 unk54;
+	UInt32 unk58;
+	UInt32 unk5C;
+	UInt32 unk60;
+	UInt32 unk64;
+	UInt32 unk68;
+	UInt32 unk6C;
+	UInt32 unk70;
+	UInt32 unk74;
+	UInt32 unk78;
+	UInt32 unk7C;
+	UInt32 unk80;
+	UInt32 unk84;
+	UInt32 unk88;
+	UInt32 ptr8C;
+	UInt32 unk90;
+	UInt32 unk94;
+	UInt32 unk98;
+	UInt8 byte9C;
+	UInt8 gap9D[3];
+	NiCamera* cameraA0;
 
-//STATIC_ASSERT(sizeof(OSGlobals) == 0x0A4);	// found in oldWinMain 0x0086AF4B
+	static OSGlobals* GetSingleton() { return *(OSGlobals * *)0x011DEA0C; };
+};
+STATIC_ASSERT(sizeof(OSGlobals) == 0x0A4);	// found in oldWinMain 0x0086AF4B
+
+extern OSGlobals ** g_osGlobals;

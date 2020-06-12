@@ -18,6 +18,7 @@ public:
 	void InsertChar(char toInsert, UInt32 index);
 	void EraseAt(UInt32 index);
 	const char *CStr();
+	void RemoveLastChar();
 };
 
 enum

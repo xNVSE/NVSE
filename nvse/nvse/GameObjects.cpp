@@ -45,10 +45,6 @@ bool TESObjectREFR::IsMapMarker()
 
 extern ModelLoader *g_modelLoader;
 
-extern ModelLoader *g_modelLoader;
-
-extern ModelLoader *g_modelLoader;
-
 void TESObjectREFR::Update3D()
 {
 	if (this == *g_thePlayer)

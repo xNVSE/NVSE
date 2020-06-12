@@ -1,5 +1,6 @@
 #pragma once
 #include "Containers.h"
+#include "GameTypes.h"
 
 class NiMultiTargetTransformController;
 class NiTextKeyExtraData;

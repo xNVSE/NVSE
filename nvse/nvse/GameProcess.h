@@ -859,7 +859,11 @@ public:
 	MagicTarget							*magicTarget1BC;	// 1BC
 	AnimData							*animData;			// 1C0
 	BSAnimGroupSequence					*animSequence[3];	// 1C4
-	UInt32								unk1D0[3];			// 1D0
+	float								unk1D0;				// 1D0
+	float								unk1D4;				// 1D4
+	UInt8								byte1D8;			// 1D8
+	UInt8								byte1D9;			// 1D9
+	UInt8								gap1DA[2];			// 1DA
 	NiNode								*limbNodes[15];		// 1DC
 	NiNode								*unk218;			// 218
 	NiNode								*unk21C;			// 21C
