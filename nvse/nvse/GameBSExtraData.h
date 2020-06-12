@@ -19,22 +19,12 @@ public:
 	BSExtraData		*next;		// 08
 };
 
-struct EmptyStruct
-{
-	UInt32 a;
-	char b;
-	char c;
-};
-
-constexpr size_t sizeOfTe = sizeof(EmptyStruct);
-
 // 020
 struct BaseExtraList
 {
 	virtual void	Destroy(bool doFree);
-	void* vtable;
 
-	BSExtraData		*m_data;					// 004
+	BSExtraData* m_data;					// 004
 	UInt8			m_presenceBitfield[0x15];	// 008 - if a bit is set, then the extralist should contain that extradata
 	UInt8			pad1D[3];					// 01D
 
@@ -54,9 +44,6 @@ struct BaseExtraList
 	ExtraCount *GetExtraCount() const;
 	SInt32 GetCount() const;
 };
-
-constexpr size_t sizeOfT = sizeof(BaseExtraList);
-
 
 struct ExtraDataList : public BaseExtraList
 {

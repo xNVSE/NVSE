@@ -1,4 +1,5 @@
 #pragma once
+#include "GameAPI.h"
 
 enum FormType
 {

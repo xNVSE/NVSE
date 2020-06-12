@@ -815,7 +815,7 @@ public:
 	
 	static BGSSaveLoadGame* GetSingleton() { return *(BGSSaveLoadGame * *)0x11DDF38; };
 };
-STATIC_ASSERT(sizeof(BGSSaveLoadGame) == 0x24C);
+STATIC_ASSERT(sizeof(BGSSaveLoadGame) == 0x254);
 
 #if RUNTIME
 class SaveGameManager

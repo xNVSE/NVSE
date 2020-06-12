@@ -325,3 +325,48 @@ static ParamInfo kParams_OneIntOneForm[2] =
 	{	"form",		kParamType_AnyForm,	0	},
 };
 
+// static ParamInfo kParams_OneSpellItem[1] =
+// {
+// 	{	"spell", kParamType_SpellItem, 0 }, 
+// };
+// 
+// static ParamInfo kParams_OneMagicItem[1] =
+// {
+// 	{	"spell", kParamType_MagicItem, 0 }, 
+// };
+// 
+// static ParamInfo kParams_OneMagicEffect[1] =
+// {
+// 	{	"magic effect", kParamType_MagicEffect, 0 }, 
+// };
+
+static ParamInfo kParams_OneForm_OneOptionalForm[2] =
+{
+	{	"form",	kParamType_AnyForm,	0	},
+	{	"form",	kParamType_AnyForm,	1	},
+};
+
+static ParamInfo kParams_GenericCheckForm[3] =
+{
+	{	"which",			kParamType_Integer,	0	},
+	{	"containingForm",	kParamType_AnyForm,	0	},
+	{	"form",				kParamType_AnyForm,	0	},
+};
+
+static ParamInfo kParams_OneIntOneOptionalForm[2] =
+{
+	{	"index",	kParamType_Integer, 0	},
+	{	"form",		kParamType_AnyForm,	1	},
+};
+
+static ParamInfo kParams_OneStringOneOptionalForm[2] =
+{
+	{	"index",	kParamType_String,	0	},
+	{	"form",		kParamType_AnyForm,	1	},
+};
+
+static ParamInfo kParams_OneSpellItem[1] =
+{
+	{	"spell", kParamType_SpellItem, 0 },
+};
+
