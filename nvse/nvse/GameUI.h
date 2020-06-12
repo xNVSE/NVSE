@@ -78,88 +78,7 @@ public:
 			if (node) ThisStdCall(0x66B0D0, &node, 0);
 		}
 	};
-
-	struct Struct0178
-	{
-		UInt32 unk00;
-		UInt32 NiTPrimitiveArray[9];
-		UInt8 byte28;
-		UInt8 byte29;
-		UInt8 byte2A;
-		UInt8 byte2B;
-		UInt32 startTime;
-		float durationX;
-		float durationY;
-		float intensityX;
-		float intensityY;
-		float frequencyX;
-		float frequencyY;
-		float unk48;
-		float unk4C;
-		UInt32 imageSpaceEffectParam;
-		UInt8 isFlycamEnabled;
-		UInt8 byte55;
-		UInt8 byte56;
-		UInt8 byte57;
-		float fBlurRadiusHUD;
-		float fScanlineFrequencyHUD;
-		float fBlurIntensityHUD;
-	};
-
-	struct RefAndNiNode
-	{
-		TESObjectREFR* ref;
-		NiNode* node;
-	};
-
-	struct VATSHighlightData
-	{
-		UInt32 mode;						// 000
-		RefAndNiNode target;				// 004
-		UInt32 numHighlightedRefs;			// 00C
-		UInt32 flashingRefIndex;			// 010
-		RefAndNiNode highlightedRefs[32];	// 014
-		UInt32 unk114;						// 114
-		UInt8 isOcclusionEnabled;			// 118
-		UInt8 byte119[16];					// 119
-		UInt8 byte12B;						// 12B
-		UInt32 unk12C[16];					// 12C
-		UInt32 unk16C[16];					// 16C
-		UInt8 byte1AC[16];					// 1AC
-		UInt32 unk1BC[16];					// 1BC
-		UInt32 unk1FC[16];					// 1FC
-		UInt32 selectedLimbID;				// 23C
-		UInt32 count240;					// 240 indexes into unk244 when it is appended to
-		UInt32 unk244[16];					// 244
-		UInt8 byte284;						// 284
-		UInt8 pad285[3];					// 285
-		UInt32 unk288;						// 288
-		float unk28C;						// 28C
-		UInt32 unk290;						// 290
-		float vatsDistortTime;				// 294
-		UInt8 byte298;						// 298
-		UInt8 pad299[3];					// 299
-		float time29C;						// 29C
-		float unk2A0;						// 2A0
-		float unk2A4;						// 2A4
-		float unk2A8;						// 2A8
-		float unk2AC;						// 2AC
-		float unk2B0;						// 2B0
-		UInt8 byte2B4;						// 2B4
-		UInt8 byte2B5;						// 2B5
-		UInt8 pad2B6[2];					// 2B6
-		float unk2B8;						// 2B8
-		float unk2BC;						// 2BC
-		float fVATSTargetPulseRate;			// 2C0
-		NiRefObject* unk2C4;				// 2C4
-		UInt32 unk2C8;						// 2C8
-		NiRefObject* unk2CC;				// 2CC
-
-		void AddRef(TESObjectREFR* ref);
-		void AddRefAndSetFlashing(TESObjectREFR* ref);
-		void ResetRefs();
-	};
-
+	
 	struct Tutorials
 	{
 		SInt32 tutorialFlags[41];
@@ -267,33 +186,6 @@ public:
 		void AddRef(TESObjectREFR* ref);
 		void AddRefAndSetFlashing(TESObjectREFR* ref);
 		void ResetRefs();
-	};
-
-	struct Tutorials
-	{
-		SInt32 tutorialFlags[41];
-		UInt32 currentShownHelpID;
-		UInt32 timeA8;
-	};
-
-	enum PipboyTabs
-	{
-		kStats = 1,
-		kItems,
-		kData
-	};
-
-	enum KeyModifier
-	{
-		kAltHeld = 0x1,
-		kControlHeld = 0x2,
-		kShiftHeld = 0x4,
-	};
-
-	enum Mode
-	{
-		kGameMode = 1,
-		kMenuMode
 	};
 
 	UInt32					flags;				// 000
@@ -464,23 +356,6 @@ enum
 	kMenuType_Max =				kMenuType_Trait,
 };
 
-enum MenuSpecialKeyboardInputCode
-{
-	kEnter =		-2,
-	kUpArrow =		1,
-	kDownArrow,
-	kRightArrow,
-	kLeftArrow,
-	kSpace =		9,
-	kTab,
-	kShiftEnter,
-	kAltEnter,
-	kShiftLeft,
-	kShiftRight,
-	kPageUp,
-	kPageDown
-};
-
 class Menu
 {
 public:
@@ -520,26 +395,6 @@ public:
 	{
 		const char				*templateName;	// 00
 		TileExtra				*tileExtra;		// 04
-		DList<TemplateInstance>	instances;		// 08
-	};
-
-	TileMenu			*tile;			// 04
-	tList<TemplateData>	menuTemplates;	// 08
-	UInt32				unk10;			// 10
-	UInt32				unk14;			// 14	Same as id (20)
-	UInt32				unk18;			// 18
-	UInt8				byte1C;			// 1C
-	UInt8				byte1D;			// 1D
-	UInt8				byte1E;			// 1E
-	UInt8				byte1F;			// 1F
-	UInt32				id;				// 20
-	UInt32				unk24;			// 24
-
-	// 14
-	struct TemplateData
-	{
-		const char* templateName;	// 00
-		TileExtra* tileExtra;		// 04
 		DList<TemplateInstance>	instances;		// 08
 	};
 

@@ -9,10 +9,7 @@
 
 class NiCamera;
 
-enum
-{
-	kMaxControlBinds =	0x1C,
-};
+static constexpr auto kMaxControlBinds = 0x1C;
 
 enum XboxControlCode
 {
@@ -337,3 +334,4 @@ public:
 STATIC_ASSERT(sizeof(OSGlobals) == 0x0A4);	// found in oldWinMain 0x0086AF4B
 
 extern OSGlobals ** g_osGlobals;
+extern OSInputGlobals** g_OSInputGlobals;

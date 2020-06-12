@@ -426,16 +426,6 @@ public:
 	Actor();
 	~Actor();
 
-	enum LifeStates
-	{
-		kLifeState_Alive = 0x0,
-		kLifeState_Dying = 0x1,
-		kLifeState_Dead = 0x2,
-		kLifeState_Unconscious = 0x3,
-		kLifeState_Reanimate = 0x4,
-		kLifeState_Restrained = 0x5,
-	};
-
 	virtual void		Unk_C1(void);
 	virtual void		Unk_C2(void);
 	virtual void		Unk_C3(void);
@@ -557,12 +547,12 @@ public:
 
 	enum LifeStates
 	{
-		kLifeState_Alive =			0,
-		kLifeState_Dying =			1,
-		kLifeState_Dead =			2,
-		kLifeState_Unconscious =	3,
-		kLifeState_Reanimate =		4,
-		kLifeState_Restrained =		5
+		kLifeState_Alive = 0x0,
+		kLifeState_Dying = 0x1,
+		kLifeState_Dead = 0x2,
+		kLifeState_Unconscious = 0x3,
+		kLifeState_Reanimate = 0x4,
+		kLifeState_Restrained = 0x5
 	};
 	
 	MagicCaster			magicCaster;			// 088

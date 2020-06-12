@@ -5,6 +5,7 @@
 
 #include <Windows.h>
 #include <regex>
+#include <string>
 
 class BaseFormComponent;
 class TESFullName;

@@ -21,7 +21,7 @@ UInt32 GetControl(UInt32 whichControl, UInt32 type)
 {
 	OSInputGlobals	* globs = *g_OSInputGlobals;
 
-	if(whichControl >= globs->kMaxControlBinds)
+	if(whichControl >= kMaxControlBinds)
 		return 0xFF;
 
 	UInt32	result;
@@ -54,14 +54,14 @@ void SetControl(UInt32 whichControl, UInt32 type, UInt32 keycode)
 {
 	OSInputGlobals	* globs = *g_OSInputGlobals;
 
-	if(whichControl >= globs->kMaxControlBinds)
+	if(whichControl >= kMaxControlBinds)
 		return;
 
 	UInt8	* binds = (type == kControlType_Mouse) ? globs->mouseBinds : globs->keyBinds;
 	keycode = (keycode >= 0x100) ? keycode - 0x100 : keycode;
 
 	// if specified key already used by another control, swap with the new one
-	for(UInt32 i = 0; i < OSInputGlobals::kMaxControlBinds; i++)
+	for(UInt32 i = 0; i < kMaxControlBinds; i++)
 	{
 		if(binds[i] == keycode)
 		{
@@ -80,7 +80,7 @@ bool IsControl(UInt32 key)
 
 	key = (key >= 0x100) ? key - 0x100 : key;
 
-	for(UInt32 i = 0; i < OSInputGlobals::kMaxControlBinds; i++)
+	for(UInt32 i = 0; i < kMaxControlBinds; i++)
 		if(binds[i] == key)
 			return true;
 
@@ -288,7 +288,7 @@ bool Cmd_MenuReleaseKey_Execute(COMMAND_ARGS)
 // Controls
 /////////////////////////
 
-static Bitfield8 s_disabledControls[OSInputGlobals::kMaxControlBinds];
+static Bitfield8 s_disabledControls[kMaxControlBinds];
 
 bool SetControlDisableState_Execute(COMMAND_ARGS, bool bDisable)
 {
@@ -298,7 +298,7 @@ bool SetControlDisableState_Execute(COMMAND_ARGS, bool bDisable)
 
 	if(ExtractArgs(EXTRACT_ARGS, &ctrl, &mask))
 	{
-		if(ctrl < OSInputGlobals::kMaxControlBinds)
+		if(ctrl < kMaxControlBinds)
 		{
 			s_disabledControls[ctrl].Write(mask, bDisable);
 			DIHookControl::GetSingleton().SetKeyDisableState(GetControl(ctrl, kControlType_Keyboard), bDisable, mask);
@@ -324,7 +324,7 @@ bool Cmd_IsControlDisabled_Execute(COMMAND_ARGS)
 	*result = 0;
 	UInt32 ctrl = 0;
 
-	if(ExtractArgs(EXTRACT_ARGS, &ctrl) && ctrl < OSInputGlobals::kMaxControlBinds)
+	if(ExtractArgs(EXTRACT_ARGS, &ctrl) && ctrl < kMaxControlBinds)
 		*result = s_disabledControls[ctrl].Get() ? 1 : 0;
 
 	return true;
@@ -490,7 +490,7 @@ bool Cmd_IsControl_Execute(COMMAND_ARGS)
 
 void Commands_Input_Init(void)
 {
-	for(UInt32 i = 0; i < OSInputGlobals::kMaxControlBinds; i++)
+	for(UInt32 i = 0; i < kMaxControlBinds; i++)
 		s_disabledControls[i].Clear();
 }
 
