@@ -422,6 +422,11 @@ void ExtraContainerChanges::Cleanup()
 			iter.Get()->Cleanup() ;
 
 			// make sure we don't have any NULL ExtraDataList's in extend data, game will choke when saving
+			if (iter->extendData == nullptr)
+			{
+				continue;
+			}
+
 			for (SInt32 index = 0; index < iter->extendData->Count(); ) {
 				ExtraDataList* xtendData = iter->extendData->GetNthItem(index);
 				if (!xtendData->m_data) {
