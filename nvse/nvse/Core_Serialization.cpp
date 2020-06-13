@@ -29,7 +29,7 @@ bool BuildFixedModIndexTable();
 void Core_SaveCallback(void * reserved)
 {
 	NVSESerializationInterface* intfc = &g_NVSESerializationInterface;
-	DataHandler* dhand = DataHandler::Get();
+	DataHandler* dhand = DataHandler::GetSingleton();
 	ModInfo** mods = dhand->modList.loadedMods;
 	UInt8 modCount = dhand->modList.loadedModCount;
 
@@ -86,7 +86,7 @@ void Core_NewGameCallback(void * reserved)
 		s_ModFixupTable = NULL;
 	}
 
-	DataHandler* dhand = DataHandler::Get();
+	DataHandler* dhand = DataHandler::GetSingleton();
 	UInt8 modCount = dhand->modList.loadedModCount;
 	ModInfo** mods = dhand->modList.loadedMods;
 
@@ -169,7 +169,7 @@ bool ReadModListFromCoSave(NVSESerializationInterface * intfc)
 		intfc->ReadRecordData(&name, nameLen);
 		name[nameLen] = 0;
 
-		s_preloadModRefIDs[i] = DataHandler::Get()->GetModIndex(name);
+		s_preloadModRefIDs[i] = DataHandler::GetSingleton()->GetModIndex(name);
 	}
 	return true;
 }

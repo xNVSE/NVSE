@@ -567,9 +567,9 @@ bool Cmd_GetBaseFactions_Execute(COMMAND_ARGS)
 	TESActorBase* actorBase = ExtractActorBase(PASS_COMMAND_ARGS);
 	if (actorBase)
 	{
-		for (tList<TESActorBaseData::FactionListData>::Iterator iter = actorBase->baseData.factionList.Begin(); !iter.End(); ++iter)
+		for (tList<FactionListData>::Iterator iter = actorBase->baseData.factionList.Begin(); !iter.End(); ++iter)
 		{
-			TESActorBaseData::FactionListData * data = iter.Get();
+			FactionListData * data = iter.Get();
 			if (data && data->faction)
 			{
 				g_ArrayMap.SetElementFormID(arrID, arrIndex, data->faction->refID);
@@ -591,9 +591,9 @@ bool Cmd_GetBaseRanks_Execute(COMMAND_ARGS)
 	TESActorBase* actorBase = ExtractActorBase(PASS_COMMAND_ARGS);
 	if (actorBase)
 	{
-		for (tList<TESActorBaseData::FactionListData>::Iterator iter = actorBase->baseData.factionList.Begin(); !iter.End(); ++iter)
+		for (tList<FactionListData>::Iterator iter = actorBase->baseData.factionList.Begin(); !iter.End(); ++iter)
 		{
-			TESActorBaseData::FactionListData * data = iter.Get();
+			FactionListData * data = iter.Get();
 			if (data && data->faction)
 			{
 				g_ArrayMap.SetElementNumber(arrID, arrIndex, data->rank);
@@ -696,9 +696,9 @@ bool Cmd_GetLevCreatureRefs_Execute(COMMAND_ARGS)
 	TESLevCreature* form = ExtractLevCreature(PASS_COMMAND_ARGS);
 	if (form) {
 		double idx = 0.0;
-		for (tList<TESLeveledList::BaseData>::Iterator iter = form->list.datas.Begin(); !iter.End(); ++iter) {
+		for (tList<TESLeveledList::ListData>::Iterator iter = form->list.list.Begin(); !iter.End(); ++iter) {
 			if (iter.Get()) {
-				g_ArrayMap.SetElementFormID(arr, idx, iter.Get()->refr->refID);
+				g_ArrayMap.SetElementFormID(arr, idx, iter.Get()->form->refID);
 				idx += 1.0;
 			}
 		}
@@ -715,9 +715,9 @@ bool Cmd_GetLevCharacterRefs_Execute(COMMAND_ARGS)
 	TESLevCharacter* form = ExtractLevCharacter(PASS_COMMAND_ARGS);
 	if (form) {
 		double idx = 0.0;
-		for (tList<TESLeveledList::BaseData>::Iterator iter = form->list.datas.Begin(); !iter.End(); ++iter) {
+		for (tList<TESLeveledList::ListData>::Iterator iter = form->list.list.Begin(); !iter.End(); ++iter) {
 			if (iter.Get()) {
-				g_ArrayMap.SetElementFormID(arr, idx, iter.Get()->refr->refID);
+				g_ArrayMap.SetElementFormID(arr, idx, iter.Get()->form->refID);
 				idx += 1.0;
 			}
 		}
@@ -759,15 +759,15 @@ bool Cmd_GetActiveFactions_Execute(COMMAND_ARGS)
 	if (actorBase && actor)
 	{
 		ExtraFactionChanges::FactionListEntry* entry = GetExtraFactionList(actor->extraDataList);
-		for (tList<TESActorBaseData::FactionListData>::Iterator iter = actorBase->baseData.factionList.Begin(); !iter.End(); ++iter)
+		for (tList<FactionListData>::Iterator iter = actorBase->baseData.factionList.Begin(); !iter.End(); ++iter)
 		{
-			TESActorBaseData::FactionListData * data = iter.Get();
+			FactionListData * data = iter.Get();
 			if (data && data->faction)
 			{
 				bool changed = false;
 				for (ExtraFactionChanges::FactionListEntry::Iterator iter = entry->Begin(); !iter.End(); ++iter)
 				{
-					ExtraFactionChanges::FactionListData* xdata = iter.Get();
+					FactionListData* xdata = iter.Get();
 					if (xdata && xdata->faction && (data->faction->refID == xdata->faction->refID))
 						changed = true;
 				}
@@ -782,7 +782,7 @@ bool Cmd_GetActiveFactions_Execute(COMMAND_ARGS)
 
 		for (ExtraFactionChanges::FactionListEntry::Iterator iter = entry->Begin(); !iter.End(); ++iter)
 		{
-			ExtraFactionChanges::FactionListData* data = iter.Get();
+			FactionListData* data = iter.Get();
 			if (data && data->faction && (0 <= data->rank))	// negative rank means removed from faction
 			{
 				g_ArrayMap.SetElementFormID(arrID, arrIndex, data->faction->refID);
@@ -806,15 +806,15 @@ bool Cmd_GetActiveRanks_Execute(COMMAND_ARGS)
 	if (actorBase && actor)
 	{
 		ExtraFactionChanges::FactionListEntry* entry = GetExtraFactionList(actor->extraDataList);
-		for (tList<TESActorBaseData::FactionListData>::Iterator iter = actorBase->baseData.factionList.Begin(); !iter.End(); ++iter)
+		for (tList<FactionListData>::Iterator iter = actorBase->baseData.factionList.Begin(); !iter.End(); ++iter)
 		{
-			TESActorBaseData::FactionListData * data = iter.Get();
+			FactionListData * data = iter.Get();
 			if (data && data->faction)
 			{
 				bool changed = false;
 				for (ExtraFactionChanges::FactionListEntry::Iterator iter = entry->Begin(); !iter.End(); ++iter)
 				{
-					ExtraFactionChanges::FactionListData* xdata = iter.Get();
+					FactionListData* xdata = iter.Get();
 					if (xdata && xdata->faction && (data->faction->refID == xdata->faction->refID))
 						changed = true;
 				}
@@ -829,7 +829,7 @@ bool Cmd_GetActiveRanks_Execute(COMMAND_ARGS)
 
 		for (ExtraFactionChanges::FactionListEntry::Iterator iter = entry->Begin(); !iter.End(); ++iter)
 		{
-			ExtraFactionChanges::FactionListData* data = iter.Get();
+			FactionListData* data = iter.Get();
 			if (data && data->faction && (0 <= data->rank))	// negative rank means removed from faction
 			{
 				g_ArrayMap.SetElementNumber(arrID, arrIndex, data->rank);
@@ -851,7 +851,7 @@ bool GenericForm_Execute(COMMAND_ARGS, UInt32 action)
 	tList<TESForm>* pListForm = NULL;
 	bool bExtract;
 	bool noForm = (action == eActionListForm_DelAt) || (action == eActionListForm_GetAt);
-	bool noindex = (action == 	eActionListForm_Check);
+	bool noindex = (action == 	eActionListForm_Max);
 	UInt32 index = eListInvalid;
 	UInt32 lCount;
 
@@ -969,7 +969,7 @@ bool GenericForm_Execute(COMMAND_ARGS, UInt32 action)
 			//{
 			//	case eWhichListForm_LevCreatureRef:
 			//	case eWhichListForm_LevCharacterRef:
-			//		TESLeveledList::BaseData* pBaseData = (TESLeveledList::BaseData*)(pListForm->GetNthItem(n));
+			//		TESLeveledList::ListData* pBaseData = (TESLeveledList::ListData*)(pListForm->GetNthItem(n));
 			//		pBaseData->refr->baseForm = pForm;
 			//		break;
 			//}
@@ -999,7 +999,7 @@ bool GenericForm_Execute(COMMAND_ARGS, UInt32 action)
 				}
 			}
 			break;
-		case eActionListForm_Check:
+		case eActionListForm_Max:
 			lCount = pListForm->Count();
 			for (n = 0; n < lCount; n++ )
 			{
@@ -1056,7 +1056,7 @@ bool Cmd_GenericGetForm_Execute(COMMAND_ARGS)
 
 bool Cmd_GenericCheckForm_Execute(COMMAND_ARGS)
 {
-	return GenericForm_Execute(PASS_COMMAND_ARGS, eActionListForm_Check);
+	return GenericForm_Execute(PASS_COMMAND_ARGS, eActionListForm_Max);
 }
 
 bool Cmd_GetNthDefaultForm_Execute(COMMAND_ARGS)

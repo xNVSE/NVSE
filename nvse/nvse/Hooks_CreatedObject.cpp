@@ -34,7 +34,7 @@ FakeModInfo::FakeModInfo(NVSESerializationInterface* _intfc)
 	intfc = _intfc;
 	modIndex = 0xFF;
 
-	DataHandler* dataHand = DataHandler::Get();
+	DataHandler* dataHand = DataHandler::GetSingleton();
 
 	// refModInfo is normally used to fix up formIDs as saved in GECK when referencing forms from other mods
 	// for created objects, formIDs represent run-time formIDs, must be fixed up if load order changes
@@ -146,7 +146,7 @@ bool LoadCreatedObject(NVSESerializationInterface* nvse)
 {
 	//stub
 	FakeModInfo* fakeModInfo = FakeModInfo::Get();
-	DataHandler* dataHandler =DataHandler::Get();
+	DataHandler* dataHandler =DataHandler::GetSingleton();
 
 	nvse->PeekRecordData(&(fakeModInfo->formInfo), sizeof(fakeModInfo->formInfo));
 	if (IsBigEndian()) {

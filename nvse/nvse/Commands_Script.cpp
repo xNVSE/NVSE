@@ -145,7 +145,7 @@ bool Cmd_SetScript_Execute(COMMAND_ARGS)
 		*refResult = oldScript->refID;
 	}
 
-	if ((script->IsQuestScript() && form->typeID == kFormType_Quest) || script->IsObjectScript()) {
+	if ((script->IsQuestScript() && form->typeID == kFormType_TESQuest) || script->IsObjectScript()) {
 		scriptForm->script = script;
 		// clean up event list here?
 		// This is necessary in order to make sure the script uses the correct questDelayTime.
@@ -453,7 +453,19 @@ bool Cmd_GetNumExplicitRefs_Execute(COMMAND_ARGS)
 	{
 		targetScript = GetScriptArg(thisObj, form);
 		if (targetScript)
-			*result = (Script::RefListVisitor(&targetScript->refList).CountIf(ExplicitRefFinder()));
+		{
+			auto count = 0;
+			for (auto* ref : targetScript->refList)
+			{
+				if (ref && ref->varIdx == 0)
+				{
+					count++;
+				}
+			}
+			*result = count;
+			//*result = (Script::RefListVisitor(&targetScript->refList).CountIf(ExplicitRefFinder()));
+			
+		}
 	}
 
 	if (IsConsoleMode())
@@ -474,23 +486,25 @@ bool Cmd_GetNthExplicitRef_Execute(COMMAND_ARGS)
 		Script* targetScript = GetScriptArg(thisObj, form);
 		if (targetScript)
 		{
-			Script::RefListVisitor visitor(&targetScript->refList);
+			//Script::RefListVisitor visitor(&targetScript->refList);
 			UInt32 count = 0;
-			const Script::RefListEntry* entry = NULL;
+			Script::RefVariable* entry = nullptr;
 			while (count <= refIdx)
 			{
-				entry = visitor.Find(ExplicitRefFinder(), entry);
-				if (!entry)
+				auto filter = [](Script::RefVariable* refItem) {return refItem->varIdx == 0; };
+				entry = targetScript->refList.FindWhere(filter);
+				if (entry == nullptr)
+				{
 					break;
-
+				}
 				count++;
 			}
-
-			if (count == refIdx + 1 && entry && entry->var && entry->var->form)
+			
+			if (count == refIdx + 1 && entry && entry->form)
 			{
-				*refResult = entry->var->form->refID;
+				*refResult = entry->form->refID;
 				if (IsConsoleMode())
-					Console_Print("GetNthExplicitRef >> %s (%08x)", GetFullName(entry->var->form), *refResult);
+					Console_Print("GetNthExplicitRef >> %s (%08x)", GetFullName(entry->form), *refResult);
 			}
 		}
 	}

@@ -104,7 +104,7 @@ bool Cmd_GetBaseNthFaction_Execute(COMMAND_ARGS)
 	TESActorBase* actorBase = ExtractSetActorBase(PASS_COMMAND_ARGS, &factionIdx);
 	if (actorBase)
 	{
-		TESActorBaseData::FactionListData * data = actorBase->baseData.factionList.GetNthItem(factionIdx);
+		FactionListData * data = actorBase->baseData.factionList.GetNthItem(factionIdx);
 		if (data && data->faction)
 			*refResult = data->faction->refID;
 	}
@@ -121,7 +121,7 @@ bool Cmd_GetBaseNthRank_Execute(COMMAND_ARGS)
 	TESActorBase* actorBase = ExtractSetActorBase(PASS_COMMAND_ARGS, &factionIdx);
 	if (actorBase)
 	{
-		TESActorBaseData::FactionListData * data = actorBase->baseData.factionList.GetNthItem(factionIdx);
+		FactionListData * data = actorBase->baseData.factionList.GetNthItem(factionIdx);
 		if (data && data->faction)
 			*result = data->rank;
 	}

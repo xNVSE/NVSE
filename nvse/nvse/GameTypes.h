@@ -20,6 +20,10 @@ public:
 	void EraseAt(UInt32 index);
 	const char *CStr();
 	void RemoveLastChar();
+
+	bool Includes(const char* toFind) const;
+	double Compare(const String& compareTo, bool caseSensitive = false);
+	
 };
 
 enum
@@ -169,14 +173,24 @@ public:
 			if (m_curr) m_curr = m_curr->next;
 			return *this;
 		}
-		bool End() const {return !m_curr || (!m_curr->data && !m_curr->next);}
-		Item* operator->() const {return m_curr->data;}
-		Item*& operator*() const {return m_curr->data;}
-		const Iterator& operator=(const Iterator &rhs)
+		bool End() const
 		{
-			m_curr = rhs.m_curr;
-			return *this;
+			return !m_curr || (!m_curr->data && !m_curr->next);
 		}
+		Item* operator->() const
+		{
+			return m_curr->data;
+		}
+		Item*& operator*() const
+		{
+			return m_curr->data;
+		}
+		bool operator!=(Iterator& other) const
+		{
+			return m_curr != other.m_curr;
+		}
+
+		const Iterator& operator=(const Iterator& rhs);
 		Item *Get() const {return m_curr->data;}
 		void Next() {if (m_curr) m_curr = m_curr->next;}
 		void Find(Item *_item)
@@ -194,9 +208,23 @@ public:
 		Iterator(tList &_list, Item *_item) : m_curr(&_list.m_listHead) {Find(_item);}
 		Iterator(tList *_list, Item *_item) : m_curr(&_list->m_listHead) {Find(_item);}
 	};
-	
-	const Iterator Begin() const {return Iterator(Head());}
 
+
+	Iterator Begin() const {return Iterator(Head());}
+
+	// for use with C++11 range based loops only.
+	Iterator begin() const
+	{
+		return Begin();
+	}
+
+	// for use with C++11 range based loops only.
+	Iterator end() const
+	{
+		const static Iterator iterator;
+		return iterator;
+	}
+	
 	UInt32 Count() const
 	{
 		if (!m_listHead.data) return 0;
@@ -204,7 +232,7 @@ public:
 		UInt32 count = 1;
 		while (node = node->next) count++;
 		return count;
-	};
+	}
 
 	bool IsInList(Item *item) const
 	{
@@ -354,7 +382,7 @@ public:
 		auto* item = Head();
 		do
 		{
-			const auto* data = item->Data();
+			auto* data = item->Data();
 			if (data && filter(data))
 			{
 				return data;
@@ -511,6 +539,14 @@ public:
 		return -1;
 	}
 };
+
+template <class Item>
+const typename tList<Item>::Iterator& tList<Item>::Iterator::operator=(const Iterator& rhs)
+{
+	m_curr = rhs.m_curr;
+	return *this;
+}
+
 STATIC_ASSERT(sizeof(tList<void *>) == 0x8);
 
 template <typename T_Data> struct DListNode

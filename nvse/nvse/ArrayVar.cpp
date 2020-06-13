@@ -367,7 +367,7 @@ UInt32 ArrayVar::GetUnusedIndex()
 
 void ArrayVar::Dump()
 {
-	const char* owningModName = DataHandler::Get()->GetNthModName(m_owningModIndex);
+	const char* owningModName = DataHandler::GetSingleton()->GetNthModName(m_owningModIndex);
 
 	Console_Print("Refs: %d Owner %02X: %s", m_refs.size(), m_owningModIndex, owningModName);
 	_MESSAGE("Refs: %d Owner %02X: %s", m_refs.size(), m_owningModIndex, owningModName);

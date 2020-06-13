@@ -35,6 +35,52 @@ static const UInt32 s_ExtraSemaphore	= 0x011C3920;
 static const UInt32 s_SemaphoreWait		= 0x0040FBF0;
 static const UInt32 s_SemaphoreLeave	= 0x0040FBA0;
 
+struct GetMatchingEquipped {
+	FormMatcher& m_matcher;
+	EquipData m_found;
+
+	GetMatchingEquipped(FormMatcher& matcher) : m_matcher(matcher) {
+		m_found.pForm = NULL;
+		m_found.pExtraData = NULL;
+	}
+
+	bool Accept(ExtraContainerChanges::EntryData* pEntryData) {
+		if (pEntryData) {
+			// quick check - needs an extendData or can't be equipped
+			ExtraContainerChanges::ExtendDataList* pExtendList = pEntryData->extendData;
+			if (pExtendList && m_matcher.Matches(pEntryData->type)) {
+				SInt32 n = 0;
+				ExtraDataList* pExtraDataList = pExtendList->GetNthItem(n);
+				while (pExtraDataList) {
+					if (pExtraDataList->HasType(kExtraData_Worn) || pExtraDataList->HasType(kExtraData_WornLeft)) {
+						m_found.pForm = pEntryData->type;
+						m_found.pExtraData = pExtraDataList;
+						return false;
+					}
+					n++;
+					pExtraDataList = pExtendList->GetNthItem(n);
+				}
+			}
+		}
+		return true;
+	}
+
+	EquipData Found() {
+		return m_found;
+	}
+};
+
+EquipData ExtraContainerChanges::FindEquipped(FormMatcher& matcher) const
+{
+	FoundEquipData equipData;
+	if (data && data->objList) {
+		GetMatchingEquipped getEquipped(matcher);
+		data->objList->Visit(getEquipped);
+		equipData = getEquipped.Found();
+	}
+	return equipData;
+};
+
 static void** g_ExtraSemaphore = (void **)s_ExtraSemaphore;
 
 void* GetExtraSemaphore()
@@ -137,6 +183,76 @@ void ExtraContainerChanges::Cleanup()
 		while (entryIter = entryIter->next);
 	}
 }
+
+#ifdef RUNTIME
+ExtraContainerChanges::EntryData* ExtraContainerChanges::EntryData::Create(UInt32 refID, UInt32 count, ExtraContainerChanges::ExtendDataList* pExtendDataList)
+{
+	ExtraContainerChanges::EntryData* xData = (ExtraContainerChanges::EntryData*)FormHeap_Allocate(sizeof(ExtraContainerChanges::EntryData));
+	if (xData) {
+		memset(xData, 0, sizeof(ExtraContainerChanges::EntryData));
+		if (refID) {
+			TESForm * pForm = LookupFormByID(refID);
+			if (pForm) {
+				xData->type = pForm;
+				xData->countDelta = count;
+				xData->extendData = pExtendDataList;
+			}
+			else {
+				FormHeap_Free(xData);
+				xData = NULL;
+			}
+		}
+	}
+	return xData;
+}
+#endif
+
+ExtraContainerChanges::EntryData* ExtraContainerChanges::EntryData::Create(TESForm* pForm, UInt32 count, ExtraContainerChanges::ExtendDataList* pExtendDataList)
+{
+	ExtraContainerChanges::EntryData* xData = (ExtraContainerChanges::EntryData*)FormHeap_Allocate(sizeof(ExtraContainerChanges::EntryData));
+	if (xData) {
+		memset(xData, 0, sizeof(ExtraContainerChanges::EntryData));
+		if (pForm) {
+			xData->type = pForm;
+			xData->countDelta = count;
+			xData->extendData = pExtendDataList;
+		}
+	}
+	return xData;
+}
+
+ExtraContainerChanges::ExtendDataList* ExtraContainerChanges::EntryData::Add(ExtraDataList* newList)
+{
+	if (extendData)
+		extendData->AddAt(newList, eListEnd);
+	else
+		/* ExtendDataList* */ extendData = ExtraContainerChangesExtendDataListCreate(newList);
+	ExtraCount* xCount = (ExtraCount*)newList->GetByType(kExtraData_Count);
+	countDelta += xCount ? xCount->count : 1;
+	return extendData;
+}
+
+bool ExtraContainerChanges::EntryData::Remove(ExtraDataList* toRemove, bool bFree)
+{
+	if (extendData && toRemove) {
+		SInt32 index = extendData->GetIndexOf(ExtraDataListInExtendDataListMatcher(toRemove));
+		if (index >= 0) {
+			ExtraCount* xCount = (ExtraCount*)toRemove->GetByType(kExtraData_Count);
+			SInt16 count = xCount ? xCount->count : 1;
+
+			extendData->RemoveNth(index);
+			countDelta -= count;
+			if (bFree) {
+				toRemove->RemoveAll();
+				FormHeap_Free(toRemove);
+			}
+			return true;
+		}
+
+	}
+	return false;
+}
+
 
 #ifdef RUNTIME
 

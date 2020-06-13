@@ -27,7 +27,7 @@ enum FormType
 	kFormType_TESObjectACTI,
 	kFormType_BGSTalkingActivator,
 	kFormType_BGSTerminal,
-	kFormType_TESObjectARMO,					// Inventory object
+	kFormType_TESObjectARMOR,					// Inventory object
 	kFormType_TESObjectBOOK,					// Inventory object
 	kFormType_TESObjectCLOT,					// Inventory object
 	kFormType_TESObjectCONT,
@@ -542,6 +542,9 @@ public:
 	TESFullName *GetFullName();
 	const char *GetTheName();
 	bool IsCloned() const;
+
+	bool IsWeapon() { return typeID == kFormType_TESObjectWEAP; }
+	bool IsArmor() { return typeID == kFormType_TESObjectARMOR; }
 
 	// adds a new form to the game (from CloneForm or LoadForm)
 	void DoAddForm(TESForm* newForm, bool bPersist = true, bool record = true) const;
@@ -2486,6 +2489,25 @@ public:
 	UInt32			unkA4;			// A4
 	UInt32			unkA8;			// A8
 	UInt32			unkAC;			// AC
+
+	Script* GetScript() { return 1 == archtype ? (Script*)associatedItem : NULL; }
+	bool HasScript() { return 1 == archtype ? true : false; }
+	Script* SetScript(Script* newScript)
+	{
+		Script* oldScript = NULL;
+		if (1 == archtype)
+		{
+			oldScript = (Script*)associatedItem;
+			associatedItem = (TESForm*)newScript;
+		}
+		return oldScript;
+	}
+
+	Script* RemoveScript()
+	{
+		return SetScript(NULL);
+	}
+
 };
 
 STATIC_ASSERT(sizeof(EffectSetting) == 0xB0);
@@ -3263,7 +3285,8 @@ public:
 	float				limbDamageMult;		// 168
 	SInt32				resistType;			// 16c - actor value
 	float				sightUsage;			// 170
-	float				semiAutoFireDelay[2];	// 174
+	float				semiAutoFireDelayMin;	// 174
+	float				semiAutoFireDelayMax;	// 178
 	UInt32				unk17C;				// 17C - 0-0x10: 0x8:str req 0x10: - skill req  - 0xb:kill impulse B158 - mod 1 val B15C - Mod 2 val Effects: 0x1: e(zoom) 0x2: a 0x3:0 0x4-6: Values c-e Mod Effects Val2:1-3 
 	UInt32				effectMods[3];		// 180
 	float				value1Mod[3];		// 18C

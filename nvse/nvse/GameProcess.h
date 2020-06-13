@@ -61,6 +61,7 @@ public:
 	BaseProcess();
 	~BaseProcess();
 
+	
 	struct Data2C
 	{
 		enum

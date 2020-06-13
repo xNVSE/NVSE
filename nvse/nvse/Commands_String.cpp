@@ -365,7 +365,7 @@ bool Cmd_GetNthModName_Execute(COMMAND_ARGS)
 	const char* modName = "";
 
 	if (ExtractArgs(EXTRACT_ARGS, &modIdx))
-		modName = DataHandler::Get()->GetNthModName(modIdx);
+		modName = DataHandler::GetSingleton()->GetNthModName(modIdx);
 
 	AssignToStringVar(PASS_COMMAND_ARGS, modName);
 

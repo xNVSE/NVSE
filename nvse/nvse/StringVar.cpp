@@ -289,7 +289,7 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 			if (exceededMods.size()) {
 				_MESSAGE("  WARNING: substantial numbers of string variables exist for the following files (may indicate savegame bloat):");
 				for (std::set<UInt8>::iterator iter = exceededMods.begin(); iter != exceededMods.end(); ++iter) {
-					_MESSAGE("    %s (%d strings)", DataHandler::Get()->GetNthModName(*iter), modVarCounts[*iter]);
+					_MESSAGE("    %s (%d strings)", DataHandler::GetSingleton()->GetNthModName(*iter), modVarCounts[*iter]);
 				}
 			}
 

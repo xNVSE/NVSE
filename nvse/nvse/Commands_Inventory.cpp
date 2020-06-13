@@ -1245,7 +1245,6 @@ public:
 	}
 };
 
-
 static EquipData FindEquipped(TESObjectREFR* thisObj, FormMatcher& matcher) {
 	ExtraContainerChanges* pContainerChanges = static_cast<ExtraContainerChanges*>(thisObj->extraDataList.GetByType(kExtraData_ContainerChanges));
 	return (pContainerChanges) ? pContainerChanges->FindEquipped(matcher) : EquipData();
@@ -1327,8 +1326,10 @@ bool Cmd_CompareNames_Execute(COMMAND_ARGS)
 
 	TESFullName* first = DYNAMIC_CAST(base, TESForm, TESFullName);
 	TESFullName* second = DYNAMIC_CAST(form, TESForm, TESFullName);
-	if (first && second) 
-		*result = first->name.Compare(second->name); 
+	if (first && second)
+	{
+		*result = first->name.Compare(second->name);
+	}
 
 	return true;
 }
@@ -1367,7 +1368,7 @@ bool Cmd_GetHotkeyItem_Execute(COMMAND_ARGS)
 		ExtraContainerChanges* xChanges = (ExtraContainerChanges *)xData;
 		if (xChanges)
 		{
-			for (ExtraContainerChanges::EntryDataList::Iterator itemIter = xChanges->data->objList->Begin();
+			for (auto itemIter = xChanges->data->objList->Begin();
 				!itemIter.End();
 				++itemIter)
 			{
@@ -1618,7 +1619,7 @@ bool Cmd_SetHotkeyItem_Execute(COMMAND_ARGS)
         if(xChanges)
         {
 			// Remove the hotkey if it exists on another object.
-			for(ExtraContainerChanges::EntryDataList::Iterator itemIter = xChanges->data->objList->Begin(); !itemIter.End(); ++itemIter)
+			for(auto itemIter = xChanges->data->objList->Begin(); !itemIter.End(); ++itemIter)
 			{
 				if(itemIter->type->refID != itemform->refID)
 				{
@@ -1636,13 +1637,13 @@ bool Cmd_SetHotkeyItem_Execute(COMMAND_ARGS)
 				};
 			}
 			if(found) {
-				found->RemoveByType(kExtraData_Hotkey, true);
+				found->RemoveByType(kExtraData_Hotkey);
 				xHotkey = NULL;
 				found = NULL;
 			}
 
 			xHotkey = NULL;
-			for(ExtraContainerChanges::EntryDataList::Iterator itemIter = xChanges->data->objList->Begin(); !itemIter.End(); ++itemIter)
+			for(auto itemIter = xChanges->data->objList->Begin(); !itemIter.End(); ++itemIter)
 			{
 				if(itemIter->type->refID == itemform->refID)
 				{
@@ -1661,7 +1662,10 @@ bool Cmd_SetHotkeyItem_Execute(COMMAND_ARGS)
 						{
 							zHotkey->index = hotkeynum;
 							if (!itemIter->extendData)
+							{
 								itemIter.Get()->Add(new ExtraDataList());
+							}
+							
 							if (itemIter->extendData)
 							{
 								if (!itemIter->extendData->Count())
@@ -1693,7 +1697,7 @@ bool Cmd_ClearHotkey_Execute(COMMAND_ARGS)
         ExtraContainerChanges* xChanges = (ExtraContainerChanges*)xData;
         if(xChanges)
         {
-            for(ExtraContainerChanges::EntryDataList::Iterator itemIter = xChanges->data->objList->Begin(); !itemIter.End(); ++itemIter)
+            for(auto itemIter = xChanges->data->objList->Begin(); !itemIter.End(); ++itemIter)
             {
                 for (ExtraContainerChanges::ExtendDataList::Iterator iter = itemIter->extendData->Begin(); !iter.End(); ++iter)
                 {
@@ -1708,7 +1712,7 @@ bool Cmd_ClearHotkey_Execute(COMMAND_ARGS)
 					break;
             }
             if(found)
-				found->RemoveByType(kExtraData_Hotkey, true);
+				found->RemoveByType(kExtraData_Hotkey);
         }
     }
     return true;
@@ -2079,9 +2083,9 @@ bool Cmd_GetPlayerCurrentAmmoRounds_Execute(COMMAND_ARGS)
 	PlayerCharacter* pPC = PlayerCharacter::GetSingleton();
 	if (pPC) {
 		BaseProcess* pBaseProc = pPC->baseProcess;
-		BaseProcess::AmmoInfo* pAmmoInfo = pBaseProc->GetAmmoInfo();
+		const auto* pAmmoInfo = pBaseProc->GetAmmoInfo();
 		if (pAmmoInfo) {
-			*result = pAmmoInfo->count;
+			*result = pAmmoInfo->countDelta;
 		}
 	}
 	return true;
@@ -2095,9 +2099,9 @@ bool Cmd_SetPlayerCurrentAmmoRounds_Execute(COMMAND_ARGS)
 		PlayerCharacter* pPC = PlayerCharacter::GetSingleton();
 		if (pPC) {
 			BaseProcess* pBaseProc = pPC->baseProcess;
-			BaseProcess::AmmoInfo* pAmmoInfo = pBaseProc->GetAmmoInfo();
+			auto* pAmmoInfo = pBaseProc->GetAmmoInfo();
 			if (pAmmoInfo) {
-				pAmmoInfo->count = nuCount;
+				pAmmoInfo->countDelta = nuCount;
 			}
 		}
 	}
@@ -2111,9 +2115,9 @@ bool Cmd_GetPlayerCurrentAmmo_Execute(COMMAND_ARGS)
 	PlayerCharacter* pPC = PlayerCharacter::GetSingleton();
 	if (pPC) {
 		BaseProcess* pBaseProc = pPC->baseProcess;
-		BaseProcess::AmmoInfo* pAmmoInfo = pBaseProc->GetAmmoInfo();
+		const auto* pAmmoInfo = pBaseProc->GetAmmoInfo();
 		if (pAmmoInfo) {
-			*refResult = pAmmoInfo->ammo->refID;
+			*refResult = pAmmoInfo->type->refID;
 		}
 	}
 	return true;
@@ -2758,7 +2762,7 @@ bool Cmd_SetEquipmentBipedMask_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool Cmd_EquipItem2_Execute_OBSE(COMMAND_ARGS)
+/*bool Cmd_EquipItem2_Execute_OBSE(COMMAND_ARGS)
 {
 	// forces onEquip block to run
 
@@ -2788,7 +2792,7 @@ bool Cmd_EquipItem2_Execute_OBSE(COMMAND_ARGS)
 	}
 
 	return true;
-}
+}*/
 
 bool Cmd_EquipItem2_Execute(COMMAND_ARGS)
 {
@@ -2802,8 +2806,8 @@ bool Cmd_EquipItem2_Execute(COMMAND_ARGS)
 
 	UInt8 itemType = item->typeID;
 	// Those following are the only equip-able types.
-	if ((itemType != kFormType_Armor) && (itemType != kFormType_Book) && (itemType != kFormType_Weapon) && 
-		(itemType != kFormType_Ammo) && (itemType != kFormType_AlchemyItem)) return true;
+	if ((itemType != kFormType_TESObjectARMOR) && (itemType != kFormType_TESObjectBOOK) && (itemType != kFormType_TESObjectWEAP) &&
+		(itemType != kFormType_TESAmmo) && (itemType != kFormType_AlchemyItem)) return true;
 
 	ExtraContainerChanges *xChanges = (ExtraContainerChanges*)actor->extraDataList.GetByType(kExtraData_ContainerChanges);
 	if (!xChanges || !xChanges->data || !xChanges->data->objList) return true;
@@ -2812,13 +2816,13 @@ bool Cmd_EquipItem2_Execute(COMMAND_ARGS)
 	if (!entry) return true;
 
 	UInt32 eqpCount = 1;
-	if (itemType == kFormType_Weapon)
+	if (itemType == kFormType_TESObjectWEAP)
 	{
 		TESObjectWEAP *weapon = DYNAMIC_CAST(item, TESForm, TESObjectWEAP);
 		// If the weapon is stack-able, equip whole stack.
 		if (weapon && (weapon->eWeaponType > 9)) eqpCount = entry->countDelta;
 	}
-	else if (itemType == kFormType_Ammo) eqpCount = entry->countDelta;
+	else if (itemType == kFormType_TESAmmo) eqpCount = entry->countDelta;
 
 	ExtraDataList *xData = entry->extendData ? entry->extendData->GetNthItem(0) : NULL;
 

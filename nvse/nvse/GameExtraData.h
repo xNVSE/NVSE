@@ -353,6 +353,12 @@ public:
 		float GetItemHealthPerc(bool arg1 = true);
 		ExtraDataList *GetEquippedExtra();
 		float CalculateWeaponDamage(float condition, TESForm *ammo);
+
+		static EntryData* Create(UInt32 refID = 0, UInt32 count = 1, ExtraContainerChanges::ExtendDataList* pExtendDataList = NULL);
+		static EntryData* Create(TESForm* pForm, UInt32 count = 1, ExtraContainerChanges::ExtendDataList* pExtendDataList = NULL);
+		ExtendDataList* Add(ExtraDataList* newList);
+		bool Remove(ExtraDataList* toRemove, bool bFree = false);
+
 	};
 
 	struct EntryDataList : tList<EntryData>
@@ -382,8 +388,16 @@ public:
 	void Cleanup();	// clean up unneeded extra data from each EntryData
 
 	static ExtraContainerChanges* Create();
+	
 
 	EntryDataList *GetEntryDataList() const {return data ? data->objList : NULL;}
+
+	// find the equipped item whose form matches the passed matcher
+	struct FoundEquipData {
+		TESForm* pForm;
+		ExtraDataList* pExtraData;
+	};
+	FoundEquipData FindEquipped(FormMatcher& matcher) const;
 };
 typedef ExtraContainerChanges::EntryData ContChangesEntry;
 
@@ -497,6 +511,7 @@ public:
 	}
 };
 
+typedef ExtraContainerChanges::FoundEquipData EquipData;
 extern ExtraContainerChanges::ExtendDataList* ExtraContainerChangesExtendDataListCreate(ExtraDataList* pExtraDataList = NULL);
 extern void ExtraContainerChangesExtendDataListFree(ExtraContainerChanges::ExtendDataList* xData, bool bFreeList = false);
 

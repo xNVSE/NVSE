@@ -1973,7 +1973,7 @@ bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 arg
 	g_ArrayMap.SetElementString (argsArrayId, "eventName", eventName);
 	if (NULL == senderName)
 		if (sender)
-			senderName = DataHandler::Get()->GetNthModName (sender->GetModIndex ());
+			senderName = DataHandler::GetSingleton()->GetNthModName (sender->GetModIndex ());
 		else
 			senderName = "NVSE";
 

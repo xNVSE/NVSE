@@ -1523,7 +1523,7 @@ void ExpressionEvaluator::Error(const char* fmt, ...)
 	const char* modName = "Savegame";
 	if (script->GetModIndex() != 0xFF)
 	{
-		modName = DataHandler::Get()->GetNthModName(script->GetModIndex());
+		modName = DataHandler::GetSingleton()->GetNthModName(script->GetModIndex());
 		if (!modName || !modName[0])
 			modName = "Unknown";
 	}
