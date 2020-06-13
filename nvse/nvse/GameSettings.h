@@ -37,8 +37,8 @@ public:
 	UInt32 GetType();
 	bool ValidType();
 	void Get(double *out);
-	void Set(float newVal);
-	void Set(const char *str, bool doFree);
+	bool Set(float newVal);
+	bool Set(const char* str, bool doFree);
 };
 
 template<class T> class SettingCollection 

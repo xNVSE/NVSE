@@ -1,5 +1,10 @@
 #include "nvse/GameAPI.h"
 
+#if NVSE_CORE
+#include "Hooks_Script.h"
+#include "ScriptUtils.h"
+#endif
+
 //static NVSEStringVarInterface* s_StringVarInterface = NULL;
 bool extraTraces = false;
 
@@ -98,6 +103,16 @@ ConsoleManager * ConsoleManager::GetSingleton(void)
 {
 	return (ConsoleManager *)ConsoleManager_GetSingleton(true);
 }
+
+char* ConsoleManager::GetConsoleOutputFilename(void)
+{
+	return this.scofPath;
+};
+
+bool ConsoleManager::HasConsoleOutputFilename(void) {
+	return this.scofPath != nullptr;
+};
+
 
 void Console_Print(const char * fmt, ...)
 {

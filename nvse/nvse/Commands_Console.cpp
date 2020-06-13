@@ -125,15 +125,14 @@ bool Cmd_SetConsoleEcho_Execute(COMMAND_ARGS)
 
 bool Cmd_HasConsoleOutputFilename_Execute(COMMAND_ARGS)
 {
-	*result = ConsoleManager::HasConsoleOutputFilename();
-
+	*result = ConsoleManager::GetSingleton()->HasConsoleOutputFilename();
 	return true;
 }
 
 bool Cmd_GetConsoleOutputFilename_Execute(COMMAND_ARGS)
 {
 	*result = 0;
-	AssignToStringVar(PASS_COMMAND_ARGS, ConsoleManager::GetConsoleOutputFilename());
+	AssignToStringVar(PASS_COMMAND_ARGS, ConsoleManager::GetSingleton()->GetConsoleOutputFilename());
 	
 	return true;
 }

@@ -302,7 +302,7 @@ struct NVSEArrayVarInterface
 
 	struct Array;
 
-	enum
+	enum ArrayVarType
 	{
 		kType_Invalid,
 		kType_Numeric,
@@ -321,13 +321,12 @@ struct NVSEArrayVarInterface
 			TESForm		*form;
 			double		num;
 		};
-		UInt8			dataType;
+		ArrayVarType dataType;
 
 		friend class PluginAPI::ArrayAPI;
 
 		bool IsValid() const {return dataType != kType_Invalid;}
-		UInt8 GetType() const {return dataType;}
-
+		ArrayVarType GetType() const {return dataType;}
 		UInt32 Raw() {return raw;}
 		double Number() {return dataType == kType_Numeric ? num : 0;}
 		TESForm *Form() {return dataType == kType_Form ? form : NULL;}

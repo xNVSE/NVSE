@@ -375,6 +375,9 @@ public:
 
 	static ConsoleManager * GetSingleton(void);
 	void AppendToSentHistory(const char* src);
+
+	char* GetConsoleOutputFilename();
+	bool HasConsoleOutputFilename();
 };
 STATIC_ASSERT(sizeof(ConsoleManager) == 0x914);
 

@@ -81,7 +81,6 @@ public:
 #endif
 
 	RefVariable*	GetRefVariable(UInt32 reqIdx) const;
-	RefVariable*	GetRefVariable(const char* name) const;
 	VariableInfo*	GetVariableInfo(UInt32 idx) const;
 	VariableInfo*	GetVariableInfo(const char* name) const;
 
@@ -94,10 +93,9 @@ public:
 	bool			IsMagicScript() const {return info.type == eType_Magic;}
 	bool			IsUnkScript() const {return info.type == eType_Unk;}
 
-	VariableInfo	*GetVariableInfo(const char *varName) const;
 	//UInt32			GetVariableType(VariableInfo *var);
-	ScriptVar		*AddVariable(ScriptEventList *eventList, UInt32 ownerID, UInt8 modIdx);
-	UInt32			GetDataLength();
+	//ScriptVar		*AddVariable(ScriptEventList *eventList, UInt32 ownerID, UInt8 modIdx);
+	//UInt32			GetDataLength();
 
 	static bool	RunScriptLine(const char *text, TESObjectREFR *object = NULL);
 	static bool	RunScriptLine2(const char *text, TESObjectREFR *object = NULL, bool bSuppressOutput = true);

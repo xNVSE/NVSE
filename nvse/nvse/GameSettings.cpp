@@ -69,7 +69,7 @@ void Setting::Get(double *out)
 	}
 }
 
-void Setting::Set(float newVal)
+bool Setting::Set(float newVal)
 {
 	switch (*name | 0x20)
 	{
@@ -86,16 +86,22 @@ void Setting::Set(float newVal)
 			data.uint = (UInt32)newVal;
 			break;
 		default:
-			break;
+			return false;
 	}
+	return true;
 }
 
-void Setting::Set(const char *strVal, bool doFree)
+bool Setting::Set(const char* strVal, bool doFree)
 {
+	if (GetType() != kSetting_String)
+	{
+		return false;
+	}
 	if (doFree) GameHeapFree(data.str);
 	UInt32 length = StrLen(strVal) + 1;
 	data.str = (char*)GameHeapAlloc(length);
 	MemCopy(data.str, strVal, length);
+	return true;
 }
 
 __declspec(naked) bool GameSettingCollection::GetGameSetting(const char *settingName, Setting **out)

@@ -1542,15 +1542,15 @@ namespace PluginAPI
 {
 	bool ArrayAPI::SetElementFromAPI(UInt32 id, ArrayKey& key, const NVSEArrayVarInterface::Element& elem)
 	{
-		switch (elem.type)
+		switch (elem.GetType())
 		{
-		case elem.kType_Array:
+		case NVSEArrayVarInterface::kType_Array:
 			return g_ArrayMap.SetElementArray(id, key, (ArrayID)elem.arr);
-		case elem.kType_Numeric:
+		case NVSEArrayVarInterface::kType_Numeric:
 			return g_ArrayMap.SetElementNumber(id, key, elem.num);
-		case elem.kType_String:
+		case NVSEArrayVarInterface::kType_String:
 			return g_ArrayMap.SetElementString(id, key, elem.str);
-		case elem.kType_Form:
+		case NVSEArrayVarInterface::kType_Form:
 			return g_ArrayMap.SetElementFormID(id, key, elem.form ? elem.form->refID : 0);
 		default:
 			return false;
@@ -1616,12 +1616,12 @@ namespace PluginAPI
 	{
 		ArrayID arrID = (ArrayID)arr;
 
-		switch (key.type)
+		switch (key.GetType())
 		{
-		case NVSEArrayVarInterface::Element::kType_Numeric:
+		case NVSEArrayVarInterface::kType_Numeric:
 			SetElementFromAPI(arrID, ArrayKey(key.num), value);
 			break;
-		case NVSEArrayVarInterface::Element::kType_String:
+		case NVSEArrayVarInterface::kType_String:
 			SetElementFromAPI(arrID, ArrayKey(key.str), value);
 			break;
 		default:
@@ -1663,13 +1663,13 @@ namespace PluginAPI
 		 ArrayVar* var = g_ArrayMap.Get((ArrayID)arr);
 		 ArrayElement* data = NULL;
 		 if (var) {
-			 switch (key.type) {
-				 case key.kType_String:
+			 switch (key.GetType()) {
+				 case NVSEArrayVarInterface::kType_String:
 					 if (var->KeyType() == kDataType_String) {
 						 data = var->Get(key.str, false);
 					 }
 					 break;
-				 case key.kType_Numeric:
+				 case NVSEArrayVarInterface::kType_Numeric:
 					 if (var->KeyType() == kDataType_Numeric) {
 						 data = var->Get(key.num, false);
 					 }

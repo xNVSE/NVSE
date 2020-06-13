@@ -67,7 +67,7 @@ bool Cmd_GetNumericIniSetting_Execute(COMMAND_ARGS)
 
 	if (ExtractArgs(EXTRACT_ARGS, &settingName))
 	{
-		if (GetNumericIniSetting(settingName, result))
+		if (GetNumericINISetting(settingName, result))
 		{
 			if (IsConsoleMode())
 				Console_Print("GetNumericIniSetting >> %g", *result);
@@ -88,7 +88,7 @@ bool Cmd_SetNumericIniSetting_Execute(COMMAND_ARGS)
 	if (ExtractArgs(EXTRACT_ARGS, &settingName, &newVal))
 	{
 		Setting* setting;
-		if (GetIniSetting(settingName, &setting))
+		if (GetINISetting(settingName, &setting))
 		{
 			if (setting->Set(newVal))
 				*result = 1;
@@ -170,7 +170,7 @@ bool Cmd_IsModLoaded_Execute(COMMAND_ARGS)
 	if (!ExtractArgs(EXTRACT_ARGS, &modName))
 		return true;
 
-	const ModInfo* pModInfo = DataHandler::Get()->LookupModByName(modName);
+	const ModInfo* pModInfo = DataHandler::GetSingleton()->LookupModByName(modName);
 	if (pModInfo && pModInfo->IsLoaded()) {
 		*result = 1;
 	}
@@ -191,7 +191,7 @@ bool Cmd_GetModIndex_Execute(COMMAND_ARGS)
 	if (!ExtractArgs(EXTRACT_ARGS, &modName))
 		return true;
 
-	UInt32 modIndex = DataHandler::Get()->GetModIndex(modName);
+	UInt32 modIndex = DataHandler::GetSingleton()->GetModIndex(modName);
 	*result = modIndex;
 	if (IsConsoleMode())
 		Console_Print("Mod Index: %02X", modIndex);
@@ -201,7 +201,7 @@ bool Cmd_GetModIndex_Execute(COMMAND_ARGS)
 
 bool Cmd_GetNumLoadedMods_Execute(COMMAND_ARGS)
 {
-	*result = DataHandler::Get()->GetActiveModCount();
+	*result = DataHandler::GetSingleton()->GetActiveModCount();
 	if (IsConsoleMode()) {
 		Console_Print("Mods Loaded: %.0f", *result);
 	}
