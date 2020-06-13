@@ -23,7 +23,7 @@ public:
 
 	struct RefVarList : tList<RefVariable>
 	{
-		RefVariable *GetRefVariableByName(const char *name);
+		RefVariable *GetRefVariableByName(const char *name) const;
 		UInt32 GetIndex(RefVariable *refVar);
 	};
 
@@ -80,8 +80,10 @@ public:
 	UInt8			pad055[3];
 #endif
 
-	RefVariable		*GetVariable(UInt32 reqIdx);
-	VariableInfo	*GetVariableInfo(UInt32 idx);
+	RefVariable*	GetVariable(UInt32 reqIdx) const;
+	RefVariable*	GetVariable(const char* name) const;
+	VariableInfo*	GetVariableInfo(UInt32 idx) const;
+	VariableInfo*	GetVariableInfo(const char* name) const;
 
 	UInt32			AddVariable(TESForm *form);
 	void			CleanupVariables(void);
@@ -92,7 +94,7 @@ public:
 	bool			IsMagicScript() const {return info.type == eType_Magic;}
 	bool			IsUnkScript() const {return info.type == eType_Unk;}
 
-	VariableInfo	*GetVariableByName(const char *varName);
+	VariableInfo	*GetVariableByName(const char *varName) const;
 	//UInt32			GetVariableType(VariableInfo *var);
 	ScriptVar		*AddVariable(ScriptEventList *eventList, UInt32 ownerID, UInt8 modIdx);
 	UInt32			GetDataLength();

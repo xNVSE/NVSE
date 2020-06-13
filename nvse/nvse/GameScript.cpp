@@ -129,7 +129,7 @@ Script::RefVariable* ScriptBuffer::ResolveRef(const char* refName)
 	// not in list
 
 	// is it a local ref variable?
-	VariableInfo* varInfo = vars.GetVariableByName(refName);
+	VariableInfo* varInfo = vars.GetVariableInfo(refName);
 	if (varInfo && GetVariableType(varInfo, NULL) == Script::eVarType_Ref)
 	{
 		newRef = (Script::RefVariable*)FormHeap_Allocate(sizeof(Script::RefVariable));
@@ -230,21 +230,9 @@ public:
 	}
 };
 
-VariableInfo *Script::GetVariableByName(const char *varName)
-{
-	ListNode<VariableInfo> *varIter = varList.Head();
-	VariableInfo *varInfo;
-	do
-	{
-		varInfo = varIter->data;
-		if (varInfo && StrEqualCI(varName, varInfo->name.m_data))
-			return varInfo;
-	}
-	while (varIter = varIter->next);
-	return NULL;
-}
 
-Script::RefVariable	*Script::GetVariable(UInt32 reqIdx)
+
+Script::RefVariable	*Script::GetVariable(UInt32 reqIdx) const
 {
 	UInt32 idx = 1;	// yes, really starts at 1
 	if (reqIdx)
@@ -258,21 +246,25 @@ Script::RefVariable	*Script::GetVariable(UInt32 reqIdx)
 		}
 		while (varIter = varIter->next);
 	}
-	return NULL;
+	return nullptr;
 }
 
-VariableInfo *Script::GetVariableInfo(UInt32 idx)
+VariableInfo *Script::GetVariableInfo(UInt32 idx) const
 {
-	ListNode<VariableInfo> *varIter = varList.Head();
-	VariableInfo *varInfo;
-	do
+	auto filter = [idx](auto* varInfo)
 	{
-		varInfo = varIter->data;
-		if (varInfo && (varInfo->idx == idx))
-			return varInfo;
-	}
-	while (varIter = varIter->next);
-	return NULL;
+		return varInfo->idx == idx;
+	};	
+	return varList.FindWhere(filter);
+}
+
+VariableInfo* Script::GetVariableInfo(const char* varName) const
+{
+	const auto filter = [varName](VariableInfo* varInfo)
+	{
+		return _stricmp(varInfo->name.CStr(), varName) == 0;
+	};
+	return varList.FindWhere(filter);
 }
 
 UInt32 Script::AddVariable(TESForm *form)

@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 
 // 8
 class String
@@ -316,6 +317,7 @@ public:
 		return NULL;
 	}
 
+
 	template <class Op>
 	Iterator Find(Op &op, Iterator &prev) const
 	{
@@ -345,6 +347,20 @@ public:
 		}
 		while (curr);
 		return count;
+	}
+	
+	Item* FindWhere(std::function<bool(Item*)> const& filter) const
+	{
+		auto* item = Head();
+		do
+		{
+			const auto* data = item->Data();
+			if (data && filter(data))
+			{
+				return data;
+			}
+		} while (item = item->Next());
+		return nullptr;
 	}
 
 	class AcceptAll

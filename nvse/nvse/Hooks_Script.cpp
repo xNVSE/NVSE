@@ -88,7 +88,7 @@ static UInt32 __stdcall DoExtractString(char* scriptData, UInt32 dataLen, char* 
 		VariableInfo* varInfo = NULL;
 		if ((newDataLen < 0x100) && (dest[newDataLen]))
 			dest[newDataLen] = 0;
-		varInfo = eventList->m_script->GetVariableByName(dest + 1);
+		varInfo = eventList->m_script->GetVariableInfo(dest + 1);
 		if (varInfo)
 		{
 			ScriptVar* var;

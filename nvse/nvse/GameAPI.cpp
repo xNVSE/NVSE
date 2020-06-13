@@ -290,7 +290,7 @@ static const char* ResolveStringArgument(ScriptEventList* eventList, const char*
 
 	if (stringArg && stringArg[0] == '$')
 	{
-		VariableInfo* varInfo = eventList->m_script->GetVariableByName(stringArg + 1);
+		VariableInfo* varInfo = eventList->m_script->GetVariableInfo(stringArg + 1);
 		if (varInfo)
 		{
 			ScriptVar *var = eventList->GetVariable(varInfo->idx);
@@ -795,21 +795,17 @@ UInt32 ScriptEventList::ResetAllVariables()
 	return numVars;
 }
 
-ScriptVar *ScriptEventList::GetVariable(UInt32 id)
+ScriptVar *ScriptEventList::GetVariable(UInt32 id) const
 {
 	if (m_vars)
 	{
-		ListNode<ScriptVar> *varIter = m_vars->Head();
-		ScriptVar *scriptVar;
-		do
+		auto filter = [id](ScriptVar* scriptVar)
 		{
-			scriptVar = varIter->data;
-			if (scriptVar && (scriptVar->id == id))
-				return scriptVar;
-		}
-		while (varIter = varIter->next);
+			return scriptVar->id == id;
+		};
+		return m_vars->FindWhere(filter);
 	}
-	return NULL;
+	return nullptr;
 }
 
 ScriptEventList* EventListFromForm(TESForm* form)

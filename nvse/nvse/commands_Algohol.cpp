@@ -11,16 +11,16 @@
 
 #define VBUFSIZ 64	//	buffer size for variable names
 
-void setVarByName( Script *scriptObj, ScriptEventList *eventList, const char *var_name, float value )
+void SetVarByName( Script *scriptObj, ScriptEventList *eventList, const char *varName, float value)
 {
-	for ( Script::VarInfoEntry *entry = &( scriptObj->varList ); entry; entry = entry->next )
+	const auto* variable = scriptObj->GetVariableByName(varName);
+
+	if (variable == nullptr)
 	{
-		if ( !strcmp( ( (char*)entry->data->name.CStr() ), var_name ) )
-		{
-			eventList->GetVariable( entry->data->idx )->data = value;
-			break;
-		}
+		return;
 	}
+
+	eventList->GetVariable(variable->idx)->data = value;
 }
 
 ///////////////////////////////////////////
@@ -51,9 +51,9 @@ bool Cmd_V3Normalize_Execute( COMMAND_ARGS )
 
 	V3Normalize( v );
 
-	setVarByName( scriptObj, eventList, vector_x_name, v.x );
-	setVarByName( scriptObj, eventList, vector_y_name, v.y );
-	setVarByName( scriptObj, eventList, vector_z_name, v.z );
+	SetVarByName( scriptObj, eventList, vector_x_name, v.x );
+	SetVarByName( scriptObj, eventList, vector_y_name, v.y );
+	SetVarByName( scriptObj, eventList, vector_z_name, v.z );
 	return true;
 }
 
@@ -83,9 +83,9 @@ bool Cmd_V3Crossproduct_Execute( COMMAND_ARGS )
 
 	Vector3 out = V3Crossproduct( v1, v2 );
 
-	setVarByName( scriptObj, eventList, vector_x_name, out.x );
-	setVarByName( scriptObj, eventList, vector_y_name, out.y );
-	setVarByName( scriptObj, eventList, vector_z_name, out.z );
+	SetVarByName( scriptObj, eventList, vector_x_name, out.x );
+	SetVarByName( scriptObj, eventList, vector_y_name, out.y );
+	SetVarByName( scriptObj, eventList, vector_z_name, out.z );
 	return true;
 }
 
@@ -107,10 +107,10 @@ bool Cmd_QFromEuler_Execute( COMMAND_ARGS )
 
 	Quat out = fromEuler( e, actorFlag );
 
-	setVarByName( scriptObj, eventList, quat_w_name, out.w );
-	setVarByName( scriptObj, eventList, quat_x_name, out.x );
-	setVarByName( scriptObj, eventList, quat_y_name, out.y );
-	setVarByName( scriptObj, eventList, quat_z_name, out.z );
+	SetVarByName( scriptObj, eventList, quat_w_name, out.w );
+	SetVarByName( scriptObj, eventList, quat_x_name, out.x );
+	SetVarByName( scriptObj, eventList, quat_y_name, out.y );
+	SetVarByName( scriptObj, eventList, quat_z_name, out.z );
 	return true;
 }
 
@@ -127,10 +127,10 @@ bool Cmd_QFromAxisAngle_Execute( COMMAND_ARGS )
 
 	Quat out = fromAxisAngle( axis, angle );
 
-	setVarByName( scriptObj, eventList, quat_w_name, out.w );
-	setVarByName( scriptObj, eventList, quat_x_name, out.x );
-	setVarByName( scriptObj, eventList, quat_y_name, out.y );
-	setVarByName( scriptObj, eventList, quat_z_name, out.z );
+	SetVarByName( scriptObj, eventList, quat_w_name, out.w );
+	SetVarByName( scriptObj, eventList, quat_x_name, out.x );
+	SetVarByName( scriptObj, eventList, quat_y_name, out.y );
+	SetVarByName( scriptObj, eventList, quat_z_name, out.z );
 	return true;
 }
 
@@ -146,10 +146,10 @@ bool Cmd_QNormalize_Execute( COMMAND_ARGS )
 
 	q.normalize();
 
-	setVarByName( scriptObj, eventList, quat_w_name, q.w );
-	setVarByName( scriptObj, eventList, quat_x_name, q.x );
-	setVarByName( scriptObj, eventList, quat_y_name, q.y );
-	setVarByName( scriptObj, eventList, quat_z_name, q.z );
+	SetVarByName( scriptObj, eventList, quat_w_name, q.w );
+	SetVarByName( scriptObj, eventList, quat_x_name, q.x );
+	SetVarByName( scriptObj, eventList, quat_y_name, q.y );
+	SetVarByName( scriptObj, eventList, quat_z_name, q.z );
 	return true;
 }
 
@@ -166,10 +166,10 @@ bool Cmd_QMultQuatQuat_Execute( COMMAND_ARGS )
 
 	Quat out = q1 * q2;
 
-	setVarByName( scriptObj, eventList, quat_w_name, out.w );
-	setVarByName( scriptObj, eventList, quat_x_name, out.x );
-	setVarByName( scriptObj, eventList, quat_y_name, out.y );
-	setVarByName( scriptObj, eventList, quat_z_name, out.z );
+	SetVarByName( scriptObj, eventList, quat_w_name, out.w );
+	SetVarByName( scriptObj, eventList, quat_x_name, out.x );
+	SetVarByName( scriptObj, eventList, quat_y_name, out.y );
+	SetVarByName( scriptObj, eventList, quat_z_name, out.z );
 	return true;
 }
 
@@ -187,9 +187,9 @@ bool Cmd_QMultQuatVector3_Execute( COMMAND_ARGS )
 
 	Vector3 out = q * v;
 
-	setVarByName( scriptObj, eventList, vector_x_name, out.x );
-	setVarByName( scriptObj, eventList, vector_y_name, out.y );
-	setVarByName( scriptObj, eventList, vector_z_name, out.z );
+	SetVarByName( scriptObj, eventList, vector_x_name, out.x );
+	SetVarByName( scriptObj, eventList, vector_y_name, out.y );
+	SetVarByName( scriptObj, eventList, vector_z_name, out.z );
 	return true;
 }
 
@@ -213,10 +213,10 @@ bool Cmd_QInterpolate_Execute( COMMAND_ARGS )
 	else
 		out = slerp( q1, q2, t );
 
-	setVarByName( scriptObj, eventList, quat_w_name, out.w );
-	setVarByName( scriptObj, eventList, quat_x_name, out.x );
-	setVarByName( scriptObj, eventList, quat_y_name, out.y );
-	setVarByName( scriptObj, eventList, quat_z_name, out.z );
+	SetVarByName( scriptObj, eventList, quat_w_name, out.w );
+	SetVarByName( scriptObj, eventList, quat_x_name, out.x );
+	SetVarByName( scriptObj, eventList, quat_y_name, out.y );
+	SetVarByName( scriptObj, eventList, quat_z_name, out.z );
 	return true;
 }
 
@@ -234,9 +234,9 @@ bool Cmd_QToEuler_Execute( COMMAND_ARGS )
 
 	Euler out = fromQuat( q, actorFlag );
 
-	setVarByName( scriptObj, eventList, attitude_name, out.elevation );
-	setVarByName( scriptObj, eventList, bank_name, out.bank );
-	setVarByName( scriptObj, eventList, heading_name, out.heading );
+	SetVarByName( scriptObj, eventList, attitude_name, out.elevation );
+	SetVarByName( scriptObj, eventList, bank_name, out.bank );
+	SetVarByName( scriptObj, eventList, heading_name, out.heading );
 	return true;
 }
 

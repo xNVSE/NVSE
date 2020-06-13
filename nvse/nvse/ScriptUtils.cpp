@@ -2037,10 +2037,10 @@ bool ExpressionParser::ParseUserFunctionDefinition()
 				}
 
 				tokens.NextToken(token);	// variable name
-				VariableInfo* varInfo = m_scriptBuf->vars.GetVariableByName(token.c_str());
+				VariableInfo* varInfo = m_scriptBuf->vars.GetVariableInfo(token.c_str());
 				if (!varInfo)		// how did this happen?
 				{
-					_MESSAGE("GetVariableByName() returned NULL in ExpressionParser::ParseUserFunctionDefinition()");
+					_MESSAGE("GetVariableInfo() returned NULL in ExpressionParser::ParseUserFunctionDefinition()");
 					return false;
 				}
 
@@ -2577,7 +2577,7 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 		if (dotPos == -1)
 		{
 			if (refVar->varIdx)			// it's a variable
-				return ScriptToken::Create(m_scriptBuf->vars.GetVariableByName(refVar->name.m_data), 0, Script::eVarType_Ref);
+				return ScriptToken::Create(m_scriptBuf->vars.GetVariableInfo(refVar->name.m_data), 0, Script::eVarType_Ref);
 			else if (refVar->form && refVar->form->typeID == kFormType_Global)
 				return ScriptToken::Create((TESGlobal*)refVar->form, refIdx);
 			else						// literal reference to a form
