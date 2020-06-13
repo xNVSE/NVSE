@@ -3476,7 +3476,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			}
 
 			TESObjectREFR* callingObj = m_thisObj;
-			Script::RefVariable* callingRef = script->GetVariable(curToken->GetRefIndex());
+			Script::RefVariable* callingRef = script->GetRefVariable(curToken->GetRefIndex());
 			if (callingRef)
 			{
 				callingRef->Resolve(eventList);

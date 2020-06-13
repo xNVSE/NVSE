@@ -174,7 +174,7 @@ struct ScriptEventList
 	Struct10		*unk010;		// 10
 
 	void Dump(void);
-	ScriptVar *GetVariable(UInt32 id);
+	ScriptVar *GetVariable(UInt32 id) const;
 	UInt32 ResetAllVariables();
 };
 

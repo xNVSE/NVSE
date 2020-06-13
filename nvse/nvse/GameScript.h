@@ -80,8 +80,8 @@ public:
 	UInt8			pad055[3];
 #endif
 
-	RefVariable*	GetVariable(UInt32 reqIdx) const;
-	RefVariable*	GetVariable(const char* name) const;
+	RefVariable*	GetRefVariable(UInt32 reqIdx) const;
+	RefVariable*	GetRefVariable(const char* name) const;
 	VariableInfo*	GetVariableInfo(UInt32 idx) const;
 	VariableInfo*	GetVariableInfo(const char* name) const;
 
@@ -94,7 +94,7 @@ public:
 	bool			IsMagicScript() const {return info.type == eType_Magic;}
 	bool			IsUnkScript() const {return info.type == eType_Unk;}
 
-	VariableInfo	*GetVariableByName(const char *varName) const;
+	VariableInfo	*GetVariableInfo(const char *varName) const;
 	//UInt32			GetVariableType(VariableInfo *var);
 	ScriptVar		*AddVariable(ScriptEventList *eventList, UInt32 ownerID, UInt8 modIdx);
 	UInt32			GetDataLength();

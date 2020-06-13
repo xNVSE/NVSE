@@ -13,7 +13,7 @@
 
 void SetVarByName( Script *scriptObj, ScriptEventList *eventList, const char *varName, float value)
 {
-	const auto* variable = scriptObj->GetVariableByName(varName);
+	const auto* variable = scriptObj->GetVariableInfo(varName);
 
 	if (variable == nullptr)
 	{

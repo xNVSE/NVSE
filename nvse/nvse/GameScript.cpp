@@ -232,7 +232,7 @@ public:
 
 
 
-Script::RefVariable	*Script::GetVariable(UInt32 reqIdx) const
+Script::RefVariable	*Script::GetRefVariable(UInt32 reqIdx) const
 {
 	UInt32 idx = 1;	// yes, really starts at 1
 	if (reqIdx)

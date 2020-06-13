@@ -646,7 +646,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 	case 'R':
 		type = kTokenType_Ref;
 		refIdx = context->Read16();
-		value.refVar = context->script->GetVariable(refIdx);
+		value.refVar = context->script->GetRefVariable(refIdx);
 		if (!value.refVar)
 			type = kTokenType_Invalid;
 		else
@@ -660,7 +660,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		{
 			type = kTokenType_Global;
 			refIdx = context->Read16();
-			Script::RefVariable* refVar = context->script->GetVariable(refIdx);
+			Script::RefVariable* refVar = context->script->GetRefVariable(refIdx);
 			if (!refVar)
 			{
 				type = kTokenType_Invalid;
@@ -709,7 +709,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 			ScriptEventList* eventList = context->eventList;
 			if (refIdx)
 			{
-				Script::RefVariable* refVar = context->script->GetVariable(refIdx);
+				Script::RefVariable* refVar = context->script->GetRefVariable(refIdx);
 				if (refVar)
 				{
 					refVar->Resolve(context->eventList);
