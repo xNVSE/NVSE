@@ -111,14 +111,14 @@ public:
 STATIC_ASSERT(sizeof(GameSettingCollection) == 0x120);
 
 // 114
-// actually 2 classes used: IniSettingCollection and IniPrefSettingCollection. Layouts are the same
-class IniSettingCollection
+// actually 2 classes used: INISettingCollection and IniPrefSettingCollection. Layouts are the same
+class INISettingCollection
 {
 public:
-	IniSettingCollection();
-	~IniSettingCollection();
+	INISettingCollection();
+	~INISettingCollection();
 
-	virtual IniSettingCollection	*Destroy(bool doFree);
+	virtual INISettingCollection	*Destroy(bool doFree);
 	virtual void	Unk_01(UInt32 arg);
 	virtual void	Unk_02(UInt32 arg);
 	virtual void	Unk_03(UInt32 arg);
@@ -134,11 +134,11 @@ public:
 	UInt32				unk108;				// 108
 	tList<Setting>		settings;			// 10C;
 
-	static IniSettingCollection * GetIniSettings();
-	static IniSettingCollection * GetIniPrefs();
+	static INISettingCollection * GetINISettings();
+	static INISettingCollection * GetIniPrefs();
 };
 
-STATIC_ASSERT(sizeof(IniSettingCollection) == 0x114);
+STATIC_ASSERT(sizeof(INISettingCollection) == 0x114);
 
 bool GetNumericGameSetting(char *settingName, double *result);
 bool GetINISetting(const char *settingName, Setting **out);

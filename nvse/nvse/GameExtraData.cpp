@@ -827,3 +827,33 @@ ExtraOwnership* ExtraOwnership::Create()
 	ExtraOwnership* xOwner = (ExtraOwnership*)BSExtraData::Create(kExtraData_Ownership, sizeof(ExtraOwnership), s_ExtraOwnershipVtbl);
 	return xOwner;
 }
+
+ExtraContainerChanges::EntryDataList* ExtraContainerChangesEntryDataListCreate(UInt32 refID, UInt32 count, ExtraContainerChanges::ExtendDataList* pExtendDataList)
+{
+#ifdef RUNTIME
+	ExtraContainerChanges::EntryDataList* xData = (ExtraContainerChanges::EntryDataList*)FormHeap_Allocate(sizeof(ExtraContainerChanges::EntryDataList));
+	if (xData) {
+		memset(xData, 0, sizeof(ExtraContainerChanges::EntryDataList));
+		xData->AddAt(ExtraContainerChanges::EntryData::Create(refID, count, pExtendDataList), eListEnd);
+	}
+	return xData;
+#else
+	return NULL;
+#endif
+}
+
+void ExtraContainerChanges::ExtendDataList::Clear() const
+{
+	ListNode<ExtraDataList>* xdlIter = Head();
+	ExtraDataList* xData;
+	do
+	{
+		xData = xdlIter->data;
+		if (xData)
+		{
+			xData->RemoveAll();
+			GameHeapFree(xData);
+		}
+	} while (xdlIter = xdlIter->next);
+	RemoveAll();
+}

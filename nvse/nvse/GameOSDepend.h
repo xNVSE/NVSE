@@ -4,7 +4,6 @@
 
 // keeping this in a separate file so we don't need to include dinput/dsound everywhere
 
-#define DIRECTINPUT_VERSION 0x0800
 #define DIRECTSOUND_VERSION 0x0800
 
 class NiCamera;

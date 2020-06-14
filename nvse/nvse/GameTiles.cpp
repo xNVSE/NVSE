@@ -212,16 +212,14 @@ Tile *Tile::GetComponentTile(const char *componentPath)
 	return (tile && !trait) ? tile : NULL;
 }
 
-extern DebugLog s_log;
-
 void Tile::Dump()
 {
-	PrintDebug("%08X\t%s", this, name.m_data);
-	s_debug.Indent();
+	_MESSAGE("%08X\t%s", this, name.m_data);
+	IDebugLog::Indent();
+	
+	_MESSAGE("Values:");
 
-	PrintDebug("Values:");
-
-	s_debug.Indent();
+	IDebugLog::Indent();
 	
 	Value *value;
 	const char *traitName;
@@ -237,19 +235,19 @@ void Tile::Dump()
 			traitName = traitID;
 		}
 		if (value->str)
-			PrintDebug("%d  %s: %s", value->id, traitName, value->str);
+			_MESSAGE("%d  %s: %s", value->id, traitName, value->str);
 		/*else if (value->action)
-			PrintDebug("%d  %s: Action %08X", value->id, traitName, value->action);*/
+			_MESSAGE("%d  %s: Action %08X", value->id, traitName, value->action);*/
 		else
-			PrintDebug("%d  %s: %.4f", value->id, traitName, value->num);
+			_MESSAGE("%d  %s: %.4f", value->id, traitName, value->num);
 	}
 
-	s_debug.Outdent();
+	IDebugLog::Outdent();
 
 	for (DListNode<Tile> *traverse = children.Tail(); traverse; traverse = traverse->prev)
 		if (traverse->data) traverse->data->Dump();
 
-	s_debug.Outdent();
+	IDebugLog::Outdent();
 }
 
 // not a one-way mapping, so we just return the first

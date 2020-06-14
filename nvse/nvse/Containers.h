@@ -724,8 +724,8 @@ public:
 				maxLoad = bucket->numEntries;
 			loadArray[bucket->numEntries]++;
 		}
-		PrintDebug("Buckets = %d  Items = %d  Max Load = %d", numBuckets, numItems, maxLoad);
-		PrintDebug("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d",
+		_MESSAGE("Buckets = %d  Items = %d  Max Load = %d", numBuckets, numItems, maxLoad);
+		_MESSAGE("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d",
 			loadArray[0], loadArray[1], loadArray[2], loadArray[3], loadArray[4], loadArray[5], loadArray[6], loadArray[7],
 			loadArray[8], loadArray[9], loadArray[10], loadArray[11], loadArray[12], loadArray[13], loadArray[14], loadArray[15]);
 	}*/

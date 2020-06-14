@@ -1,10 +1,10 @@
 #include "nvse/GameSettings.h"
 
 GameSettingCollection **g_GameSettingCollection = (GameSettingCollection**)0x11C8048;
-IniSettingCollection **g_INISettingCollection = (IniSettingCollection**)0x11F96A0;
-IniSettingCollection **g_INIPrefCollection = (IniSettingCollection**)0x11F35A0;
-IniSettingCollection **g_INIBlendSettingCollection = (IniSettingCollection**)0x11CC694;
-IniSettingCollection **g_INIRendererSettingCollection = (IniSettingCollection**)0x11F35A4;
+INISettingCollection **g_INISettingCollection = (INISettingCollection**)0x11F96A0;
+INISettingCollection **g_INIPrefCollection = (INISettingCollection**)0x11F35A0;
+INISettingCollection **g_INIBlendSettingCollection = (INISettingCollection**)0x11CC694;
+INISettingCollection **g_INIRendererSettingCollection = (INISettingCollection**)0x11F35A4;
 
 UInt32 Setting::GetType()
 {
@@ -130,16 +130,55 @@ GameSettingCollection *GameSettingCollection::GetSingleton()
 	return *g_GameSettingCollection;
 }
 
-IniSettingCollection *IniSettingCollection::GetIniSettings()
+INISettingCollection *INISettingCollection::GetINISettings()
 {
 	return *g_INISettingCollection;
 }
 
-IniSettingCollection *IniSettingCollection::GetIniPrefs()
+INISettingCollection *INISettingCollection::GetIniPrefs()
 {
 	return *g_INIPrefCollection;
 }
 
+class IniSettingFinder
+{
+public:
+	const char* m_settingName;
+	IniSettingFinder(const char* name) : m_settingName(name)
+	{	}
+	bool Accept(Setting* info)
+	{
+		if (!_stricmp(m_settingName, info->name))
+			return true;
+		else
+			return false;
+	}
+};
+
+bool GetINISetting(const char* settingName, Setting** out)
+{
+	Setting* setting = NULL;
+	IniSettingFinder finder(settingName);
+
+	// check prefs first
+	INISettingCollection* coll = INISettingCollection::GetIniPrefs();
+	if (coll)
+		setting = coll->settings.Find(finder);
+
+	if (!setting)
+	{
+		coll = INISettingCollection::GetINISettings();
+		setting = coll->settings.Find(finder);
+	}
+
+	if (setting)
+	{
+		*out = setting;
+		return true;
+	}
+
+	return false;
+}
 
 bool GetNumericGameSetting(char* settingName, double* result)
 {
@@ -164,7 +203,7 @@ bool GetNumericGameSetting(char* settingName, double* result)
 	return bResult;
 }
 
-bool GetNumericIniSetting(char* settingName, double* result)
+bool GetNumericINISetting(char* settingName, double* result)
 {
 	*result = -1;
 

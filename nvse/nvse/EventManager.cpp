@@ -1004,7 +1004,7 @@ static void InstallOnSoulTrapHook()
 	WriteRelJump(s_createExtraSoulPatchAddr2, (UInt32)&CreateExtraSoulHook2);
 }
 	
-// hook overwrites IniSettingCollection::Write() virtual function
+// hook overwrites INISettingCollection::Write() virtual function
 static UInt32 s_IniSettingCollection_Write = 0;
 static void SaveIniHook()
 {
@@ -1014,7 +1014,7 @@ static void SaveIniHook()
 		return;
 
 	// check if ini can be written at this time; if so dispatch pre-save event
-	IniSettingCollection* settings = IniSettingCollection::GetSingleton();	// aka 'this', since this is a virtual method
+	INISettingCollection* settings = INISettingCollection::GetSingleton();	// aka 'this', since this is a virtual method
 	if (NULL != settings->writeInProgressCollection)
 		HandleEvent(kEventID_SaveIni, 0, NULL);
 
@@ -1028,7 +1028,7 @@ static void SaveIniHook()
 
 static void InstallIniHook()
 {
-	IniSettingCollection* settings = IniSettingCollection::GetSingleton();
+	INISettingCollection* settings = INISettingCollection::GetSingleton();
 	UInt32* vtbl = *((UInt32**)settings);
 	s_IniSettingCollection_Write = vtbl[7];
 	SafeWrite32((UInt32)(vtbl+7), (UInt32)(&SaveIniHook));

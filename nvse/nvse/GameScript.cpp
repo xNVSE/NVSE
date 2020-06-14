@@ -178,40 +178,40 @@ UInt32 ScriptBuffer::GetRefIdx(Script::RefVariable *refVar)
 	return refVars.GetIndex(refVar);
 }
 
-//UInt32 ScriptBuffer::GetVariableType(VariableInfo* varInfo, Script::RefVariable* refVar)
-//{
-//	const char* scrText = scriptText;
-//	if (refVar)
-//	{
-//		if (refVar->form)
-//		{
-//			TESScriptableForm* scriptable = NULL;
-//			switch (refVar->form->typeID)
-//			{
-//			case kFormType_TESObjectREFR:
-//				{
-//					TESObjectREFR* refr = DYNAMIC_CAST(refVar->form, TESForm, TESObjectREFR);
-//					scriptable = DYNAMIC_CAST(refr->baseForm, TESForm, TESScriptableForm);
-//					break;
-//				}
-//			case kFormType_TESQuest:
-//				scriptable = DYNAMIC_CAST(refVar->form, TESForm, TESScriptableForm);
-//			}
-//
-//			if (scriptable && scriptable->script)
-//			{
-//				if (scriptable->script->text)
-//					scrText = scriptable->script->text;
-//				else
-//					return scriptable->script->GetVariableType(varInfo);
-//			}
-//		}
-//		else			// this is a ref variable, not a literal form - can't look up script vars
-//			return Script::eVarType_Invalid;
-//	}
-//
-//	return GetDeclaredVariableType(varInfo->name.m_data, scrText);
-//}
+UInt32 ScriptBuffer::GetVariableType(VariableInfo* varInfo, Script::RefVariable* refVar) const
+{
+	const char* scrText = scriptText;
+	if (refVar)
+	{
+		if (refVar->form)
+		{
+			TESScriptableForm* scriptable = NULL;
+			switch (refVar->form->typeID)
+			{
+			case kFormType_TESObjectREFR:
+				{
+					TESObjectREFR* refr = DYNAMIC_CAST(refVar->form, TESForm, TESObjectREFR);
+					scriptable = DYNAMIC_CAST(refr->baseForm, TESForm, TESScriptableForm);
+					break;
+				}
+			case kFormType_TESQuest:
+				scriptable = DYNAMIC_CAST(refVar->form, TESForm, TESScriptableForm);
+			}
+
+			if (scriptable && scriptable->script)
+			{
+				if (scriptable->script->text)
+					scrText = scriptable->script->text;
+				else
+					return scriptable->script->GetVariableType(varInfo);
+			}
+		}
+		else			// this is a ref variable, not a literal form - can't look up script vars
+			return Script::eVarType_Invalid;
+	}
+
+	return GetDeclaredVariableType(varInfo->name.m_data, scrText);
+}
 
 /******************************
  Script

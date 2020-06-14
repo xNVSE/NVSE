@@ -556,6 +556,8 @@ public:
 	virtual void		Unk_134(void);
 	virtual void		Unk_135(void);
 	virtual void		Unk_136(void);
+	//void UnequipItem(TESForm* objType, UInt32 unk1, ExtraDataList* itemExtraList, UInt32 unk3, bool lockUnequip,
+	//                 UInt32 unk5);
 
 	enum LifeStates
 	{

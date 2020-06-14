@@ -361,7 +361,7 @@ class BSFileEntry;
 class LoadedFile;
 
 // 30
-struct ModelLoader
+class ModelLoader
 {
 	LockFreeMap<const char*, Model*>					*modelMap;			// 00
 	LockFreeMap<const char*, KFModel*>					*kfMap;				// 04

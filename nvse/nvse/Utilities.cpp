@@ -2102,48 +2102,6 @@ void FileStream::MakeAllDirs(char *fullPath)
 	}
 }
 
-bool DebugLog::Create(const char *filePath)
-{
-	theFile = _fsopen(filePath, "wb", 0x20);
-	return theFile ? true : false;
-}
-
-void DebugLog::Message(const char *msgStr)
-{
-	if (!theFile) return;
-	if (indent < 40)
-		fputs(kIndentLevelStr + indent, theFile);
-	fputs(msgStr, theFile);
-	fputc('\n', theFile);
-	fflush(theFile);
-}
-
-void DebugLog::FmtMessage(const char *fmt, va_list args)
-{
-	if (!theFile) return;
-	if (indent < 40)
-		fputs(kIndentLevelStr + indent, theFile);
-	vfprintf(theFile, fmt, args);
-	fputc('\n', theFile);
-	fflush(theFile);
-}
-
-void PrintLog(const char *fmt, ...)
-{
-	va_list args;
-	va_start(args, fmt);
-	s_log.FmtMessage(fmt, args);
-	va_end(args);
-}
-
-void PrintDebug(const char *fmt, ...)
-{
-	va_list args;
-	va_start(args, fmt);
-	s_debug.FmtMessage(fmt, args);
-	va_end(args);
-}
-
 LineIterator::LineIterator(const char *filePath, char *buffer)
 {
 	dataPtr = buffer;
@@ -2186,27 +2144,6 @@ bool __fastcall FileToBuffer(const char *filePath, char *buffer)
 	srcFile.ReadBuf(buffer, length);
 	buffer[length] = 0;
 	return true;
-}
-
-extern char *s_strArgBuffer;
-
-void ClearFolder(char *pathEndPtr)
-{
-	DirectoryIterator dirIter(s_strArgBuffer);
-	while (!dirIter.End())
-	{
-		if (dirIter.IsFolder())
-			ClearFolder(StrCopy(StrCopy(pathEndPtr - 1, dirIter.Get()), "\\*"));
-		else
-		{
-			StrCopy(pathEndPtr - 1, dirIter.Get());
-			remove(s_strArgBuffer);
-		}
-		dirIter.Next();
-	}
-	dirIter.Close();
-	*(pathEndPtr - 1) = 0;
-	RemoveDirectory(s_strArgBuffer);
 }
 
 void __fastcall GetTimeStamp(char *buffer)
@@ -2270,19 +2207,19 @@ void DumpMemImg(void *data, UInt32 size, UInt8 extra)
 {
 	UInt32 *ptr = (UInt32*)data;
 	//Console_Print("Output");
-	PrintDebug("\nDumping  %08X\n", ptr);
+	_MESSAGE("\nDumping  %08X\n", ptr);
 	for (UInt32 iter = 0; iter < size; iter += 4, ptr++)
 	{
-		if (!extra) PrintDebug("%03X\t\t%08X\t", iter, *ptr);
-		else if (extra == 1) PrintDebug("%03X\t\t%08X\t[%08X]\t", iter, *ptr, ByteSwap(*ptr));
-		else if (extra == 2) PrintDebug("%03X\t\t%08X\t%f", iter, *ptr, *(float*)ptr);
-		else if (extra == 3) PrintDebug("%03X\t\t%08X\t[%08X]\t%f", iter, *ptr, ByteSwap(*ptr), *(float*)ptr);
+		if (!extra) _MESSAGE("%03X\t\t%08X\t", iter, *ptr);
+		else if (extra == 1) _MESSAGE("%03X\t\t%08X\t[%08X]\t", iter, *ptr, ByteSwap(*ptr));
+		else if (extra == 2) _MESSAGE("%03X\t\t%08X\t%f", iter, *ptr, *(float*)ptr);
+		else if (extra == 3) _MESSAGE("%03X\t\t%08X\t[%08X]\t%f", iter, *ptr, ByteSwap(*ptr), *(float*)ptr);
 		/*else
 		{
 			UInt32 addr = *ptr;
 			if (!(addr & 3) && (addr > 0x08000000) && (addr < 0x34000000))
-				PrintDebug("%03X\t\t%08X\t%08X\t", iter, *ptr, *(UInt32*)addr);
-			else PrintDebug("%03X\t\t%08X\t", iter, *ptr);
+				_MESSAGE("%03X\t\t%08X\t%08X\t", iter, *ptr, *(UInt32*)addr);
+			else _MESSAGE("%03X\t\t%08X\t", iter, *ptr);
 		}*/
 	}
 }

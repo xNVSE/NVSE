@@ -45,6 +45,75 @@ void BaseExtraList::MarkType(UInt32 type, bool bCleared)
 	else flag |= bitMask;
 }
 
+
+ExtraDataList *ExtraDataList::Create(BSExtraData *xBSData)
+{
+	ExtraDataList *xData = (ExtraDataList*)GameHeapAlloc(sizeof(ExtraDataList));
+	MemZero(xData, sizeof(ExtraDataList));
+	*(UInt32*)xData = kVtbl_ExtraDataList;
+	if (xBSData) xData->Add(xBSData);
+	return xData;
+}
+
+bool BaseExtraList::Remove(BSExtraData* toRemove, bool free)
+{
+	if (!toRemove) return false;
+
+	if (HasType(toRemove->type)) {
+		bool bRemoved = false;
+		if (m_data == toRemove) {
+			m_data = m_data->next;
+			bRemoved = true;
+		}
+
+		for (BSExtraData* traverse = m_data; traverse; traverse = traverse->next) {
+			if (traverse->next == toRemove) {
+				traverse->next = toRemove->next;
+				bRemoved = true;
+				break;
+			}
+		}
+		if (bRemoved) {
+			MarkType(toRemove->type, true);
+			if (free)
+				FormHeap_Free(toRemove);
+		}
+		return true;
+	}
+
+	return false;
+}
+
+bool BaseExtraList::RemoveByType(UInt32 type, bool free)
+{
+	if (HasType(type)) {
+		return Remove(GetByType(type), free);
+	}
+	return false;
+}
+
+void BaseExtraList::RemoveAll()
+{
+	while (m_data) {
+		BSExtraData* data = m_data;
+		m_data = data->next;
+		MarkType(data->type, true);
+		FormHeap_Free(data);
+	}
+}
+
+bool BaseExtraList::Add(BSExtraData* toAdd)
+{
+	if (!toAdd || HasType(toAdd->type)) return false;
+
+	BSExtraData* next = m_data;
+	m_data = toAdd;
+	toAdd->next = next;
+	MarkType(toAdd->type, false);
+	return true;
+}
+
+/* Kormakur - Have no idea how to integrate this with existing NVSE code so I'm placing back the old NVSE code.
 __declspec(naked) void BaseExtraList::Remove(BSExtraData *toRemove, bool doFree)
 {
 	static const UInt32 procAddr = 0x410020;
@@ -55,15 +124,6 @@ __declspec(naked) BSExtraData *BaseExtraList::Add(BSExtraData *xData)
 {
 	static const UInt32 procAddr = 0x40FF60;
 	__asm	jmp		procAddr
-}
-
-ExtraDataList *ExtraDataList::Create(BSExtraData *xBSData)
-{
-	ExtraDataList *xData = (ExtraDataList*)GameHeapAlloc(sizeof(ExtraDataList));
-	MemZero(xData, sizeof(ExtraDataList));
-	*(UInt32*)xData = kVtbl_ExtraDataList;
-	if (xBSData) xData->Add(xBSData);
-	return xData;
 }
 
 __declspec(naked) void BaseExtraList::RemoveByType(UInt32 type)
@@ -78,7 +138,9 @@ __declspec(naked) void BaseExtraList::RemoveAll(bool doFree)
 	__asm	jmp		procAddr
 }
 
-__declspec(naked) void BaseExtraList::Copy(BaseExtraList *sourceList)
+*/
+
+__declspec(naked) void BaseExtraList::Copy(BaseExtraList* sourceList)
 {
 	static const UInt32 procAddr = 0x411EC0;
 	__asm	jmp		procAddr
@@ -174,26 +236,26 @@ void __fastcall ExtraValueStr(BSExtraData *xData, char *buffer)
 
 void BaseExtraList::DebugDump() const
 {
-	PrintDebug("\nBaseExtraList Dump:");
+	_MESSAGE("\nBaseExtraList Dump:");
 	Console_Print("BaseExtraList Dump:");
-	s_debug.Indent();
+	IDebugLog::Indent();
 	if (m_data)
 	{
 		char dataStr[0x20];
 		for (BSExtraData *traverse = m_data; traverse; traverse = traverse->next)
 		{
 			ExtraValueStr(traverse, dataStr);
-			PrintDebug("%08X\t%02X\t%s\t%s", traverse, traverse->type, GetExtraDataName(traverse->type), dataStr);
+			_MESSAGE("%08X\t%02X\t%s\t%s", traverse, traverse->type, GetExtraDataName(traverse->type), dataStr);
 			Console_Print("%08X  %02X  %s  %s", traverse, traverse->type, GetExtraDataName(traverse->type), dataStr);
 		}
 		Console_Print(" ");
 	}
 	else
 	{
-		PrintDebug("No data in list");
+		_MESSAGE("No data in list");
 		Console_Print("No data in list");
 	}
-	s_debug.Outdent();
+	IDebugLog::Outdent();
 }
 
 bool BaseExtraList::MarkScriptEvent(UInt32 eventMask, TESForm* eventTarget)

@@ -85,3 +85,13 @@ TESObjectREFR *TESObjectREFR::Create(bool bTemp)
 	if (bTemp) ThisStdCall(0x484490, refr);
 	return refr;
 }
+
+void Actor::EquipItem(TESForm* objType, UInt32 unequipCount, ExtraDataList* itemExtraList, bool arg4, bool lockUnequip, bool noMessage)
+{
+	ThisStdCall(s_Actor_EquipItem, this, objType, unequipCount, itemExtraList, arg4, lockUnequip, noMessage);
+}
+
+void Actor::UnequipItem(TESForm* objType, UInt32 unequipCount, ExtraDataList* itemExtraList, bool arg4, bool lockUnequip, bool noMessage)
+{
+	ThisStdCall(s_Actor_UnequipItem, this, objType, unequipCount, itemExtraList, arg4, lockUnequip, noMessage);
+}

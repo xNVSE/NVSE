@@ -417,27 +417,6 @@ public:
 
 const char kIndentLevelStr[] = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
 
-class DebugLog
-{
-	FILE* theFile;
-	UInt32			indent;
-
-public:
-	DebugLog() : theFile(NULL), indent(40) {}
-	~DebugLog() { if (theFile) fclose(theFile); }
-
-	bool Create(const char* filePath);
-	void Message(const char* msgStr);
-	void FmtMessage(const char* fmt, va_list args);
-	void Indent() { if (indent) indent--; }
-	void Outdent() { if (indent < 40) indent++; }
-};
-
-extern DebugLog s_log, s_debug;
-
-void PrintLog(const char* fmt, ...);
-void PrintDebug(const char* fmt, ...);
-
 class LineIterator
 {
 	char* dataPtr;

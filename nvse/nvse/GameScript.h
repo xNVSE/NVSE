@@ -241,7 +241,7 @@ struct ScriptBuffer
 	// convert a variable or form to a RefVar, add to refList if necessary
 	Script::RefVariable* ResolveRef(const char* refName);
 	UInt32 GetRefIdx(Script::RefVariable *refVar);
-	UInt32 GetVariableType(VariableInfo *varInfo, Script::RefVariable *refVar);
+	UInt32 GetVariableType(VariableInfo *varInfo, Script::RefVariable *refVar) const;
 };
 
 UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText);	// parses scriptText to determine var type

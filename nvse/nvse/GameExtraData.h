@@ -345,7 +345,7 @@ public:
 	class ExtendDataList : public tList<ExtraDataList>
 	{
 	public:
-		void Clear();
+		void Clear() const;
 		ExtraDataList *RemoveByType(ExtraDataList *xDataList, UInt32 type);
 		void CleanEmpty();
 	};

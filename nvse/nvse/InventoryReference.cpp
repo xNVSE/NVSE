@@ -310,3 +310,21 @@ void InventoryReference::Data::CreateForUnextendedEntry(ExtraContainerChanges::E
 		//	entry->extendData = ExtraContainerChangesExtendDataListCreate(xDL);
 	}
 }
+
+bool InventoryReference::CopyToContainer(TESObjectREFR* dest)
+{
+	ExtraContainerChanges* xChanges = ExtraContainerChanges::GetForRef(dest);
+	if (xChanges && Validate() && m_tempRef) {
+		ExtraDataList* newDataList = ExtraDataList::Create();
+		newDataList->Copy(&m_tempRef->extraDataList);
+
+		// if worn, mark as unequipped
+		if (!newDataList->RemoveByType(kExtraData_Worn)) {
+			newDataList->RemoveByType(kExtraData_WornLeft);
+		}
+
+		return xChanges->Add(m_tempRef->baseForm, newDataList) ? true : false;
+	}
+
+	return false;
+}
