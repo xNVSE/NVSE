@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GameSound.h"
 #include "GameTiles.h"
 #include "GameTypes.h"
 
@@ -50,9 +51,9 @@ public:
 	static bool					IsMenuVisible(UInt32 menuType);
 	static Menu *				GetMenuByType(UInt32 menuType);
 	static Menu *				TempMenuByType(UInt32 menuType);
-	//static TileMenu *			GetMenuByPath(const char * componentPath, const char ** slashPos);
-	//static Tile::Value *		GetMenuComponentValue(const char * componentPath);
-	//static Tile *				GetMenuComponentTile(const char * componentPath);
+	static TileMenu *			GetMenuByPath(const char * componentPath, const char ** slashPos);
+	static Tile::Value *		GetMenuComponentValue(const char * componentPath);
+	static Tile *				GetMenuComponentTile(const char * componentPath);
 
 	// JIP LN
 	UInt32 GetTopVisibleMenuID();
@@ -417,6 +418,137 @@ public:
 	Menu *HandleMenuInput(int tileID, Tile *clickedTile);
 	Tile *AddTileFromTemplate(Tile *destTile, const char *templateName, UInt32 arg3);
 };
+
+class RaceSexMenu : public Menu
+{
+	~RaceSexMenu();
+	RaceSexMenu();
+	void UpdatePlayerHead(void);
+
+	enum
+	{
+		kFlagHasRandomizePopupBeenShown = 1 << 7,
+	};
+
+	enum
+	{
+		kSex = 0,
+		kRace,
+		kFace,
+		kHair,
+		kCustomize,
+		kHairStyle,
+		kHairColor,
+		kFacialHair,
+		kEyeColor,
+		kShape,
+		kGeneral,
+		kForehead,
+		kBrow,
+		kEyes,
+		kNose,
+		kMouth,
+		kCheeks,
+		kJaw,
+		kChin,
+		kTone,
+		kMale = 0x15,
+		kFemale,
+		kRace2 = 0x17,
+		kPreset = 0x18,
+		kRandomize = 0x19,
+		kAge = 0x1A,
+		kHairColor2 = 0x1D,
+	};
+
+	struct Struct20
+	{
+		Tile* tile00;
+		UInt32 id;
+		UInt32 unk08;
+	};
+
+	struct RaceSexMenuTileTemplate
+	{
+		UInt32 unk00;
+		UInt32 unk04;
+		UInt32 unk08;
+		UInt32 unk0C;
+		UInt32 unk10;
+		Tile* listItemTemplate;
+		float height;
+		UInt32 onClickCallback;
+		Struct20* unk20;
+	};
+
+public:
+	RaceSexMenuTileTemplate* sex;
+	RaceSexMenuTileTemplate* race;
+	RaceSexMenuTileTemplate* face;
+	RaceSexMenuTileTemplate* hair;
+	RaceSexMenuTileTemplate* customize;
+	RaceSexMenuTileTemplate* hairStyle;
+	RaceSexMenuTileTemplate* hairColor;
+	RaceSexMenuTileTemplate* facialHair;
+	RaceSexMenuTileTemplate* eyeColor;
+	RaceSexMenuTileTemplate* shape;
+	RaceSexMenuTileTemplate* general;
+	RaceSexMenuTileTemplate* forehead;
+	RaceSexMenuTileTemplate* brow;
+	RaceSexMenuTileTemplate* eyes;
+	RaceSexMenuTileTemplate* nose;
+	RaceSexMenuTileTemplate* mouth;
+	RaceSexMenuTileTemplate* cheeks;
+	RaceSexMenuTileTemplate* jaw;
+	RaceSexMenuTileTemplate* chin;
+	RaceSexMenuTileTemplate* tone;
+	TileImage* rsmBackground;
+	TileImage* rsmFaceGrab;
+	TileImage* rsmScrollUpTarget;
+	TileImage* rsmScrollDownTarget;
+	TileImage* rsmBackButton;
+	TileImage* rsmNextButton;
+	String nifPath;
+	String confirmDone;
+	NiPoint3 point0A0;
+	NiPoint3 point0AC;
+	float unk0B8;
+	UInt32 unk0BC;
+	Tile* someClickedTile;
+	Struct20* currentSubMenu;
+	float currentZoom;
+	float somethingZoom;
+	float startingZoom;
+	UInt32 unk0D4;
+	TESNPC* npc;
+	BSSimpleArray<void> array0DC;
+	UInt32 flags;
+	Sound OBJComputerTerminal01LP;
+	Sound QSTBirthRoomLP;
+	Sound UIFaceGenZoomLP;
+	Sound UIFaceGenRotateLP;
+	UInt32 finalPageIndex;
+	UInt32 unk0124;
+	UInt32 unk0128;
+	UInt32 unk012C;
+	UInt32 unk0130;
+	UInt32 unk0134;
+	UInt32 unk0138;
+	UInt32 unk013C;
+	UInt32 unk0140;
+	UInt32 unk0144;
+	UInt32 unk0148;
+	UInt32 unk014C;
+	UInt32 unk0150;
+	UInt32 unk0154;
+	UInt32 unk0158;
+	UInt32 unk015C;
+	UInt32 unk0160;
+	UInt32 unk0164;
+	UInt32 unk0168;
+	UInt32 unk016C;
+};
+STATIC_ASSERT(sizeof(RaceSexMenu) == 0x170);
 /*
 // 170
 class RaceSexMenu : public Menu		// 1036

@@ -300,13 +300,16 @@ bool Cmd_SortUIListBox_Execute(COMMAND_ARGS)
 
 	// Find child tiles to sort
 	std::vector<SortItem> sortItems;
-	for(tList<Tile::ChildNode>::Iterator iter = parentTile->childList.Begin(); !iter.End(); ++iter)
+
+	auto nodes = parentTile->children;
+	auto* node = nodes.Head();
+	while (node != nullptr)
 	{
-		if(!*iter || !iter->child)
+		auto* tile = node->data;
+		if (tile == nullptr)
 		{
 			continue;
 		}
-		Tile * tile = iter->child;
 
 		// Hidden?
 		Tile::Value* listindexVal = tile->GetComponentValue("listindex");
@@ -318,8 +321,8 @@ bool Cmd_SortUIListBox_Execute(COMMAND_ARGS)
 		// Fetch tile values
 		bool skip = false;
 		std::vector<SortValue> values;
-		for (std::vector<SortKey>::iterator it=sortSpec.keys.begin(); 
-			 it != sortSpec.keys.end(); ++it)
+		for (std::vector<SortKey>::iterator it = sortSpec.keys.begin();
+			it != sortSpec.keys.end(); ++it)
 		{
 			Tile::Value* val = tile->GetComponentValue(it->first.c_str());
 			int flags = it->second;
@@ -358,8 +361,9 @@ bool Cmd_SortUIListBox_Execute(COMMAND_ARGS)
 		{
 			sortItems.push_back(std::make_pair(tile, values));
 		}
+		node = node->next;
 	}
-
+	
 	// Sort the tiles by pointer so we don't spend all day copying strings around
 	std::vector<SortItem*> sortPointers;
 	for (std::vector<SortItem>::iterator it=sortItems.begin(); it != sortItems.end(); ++it)

@@ -428,6 +428,9 @@
     <ClInclude Include="Decoding.h">
       <Filter>api</Filter>
     </ClInclude>
+    <ClInclude Include="GameSound.h">
+      <Filter>api</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">

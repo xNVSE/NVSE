@@ -15,7 +15,8 @@ bool Cmd_GetFactionRank_Eval(COMMAND_ARGS_EVAL)
 	if (faction)
 	{
 		bool bFoundRank = false;
-		foundRank = GetExtraFactionRank(thisObj->extraDataList, faction);
+		foundRank = thisObj->extraDataList.GetExtraFactionRank(faction);
+		//foundRank = GetExtraFactionRank(thisObj->extraDataList, faction);
 		bFoundRank = ( -1 != foundRank );
 		if (!bFoundRank) {
 			TESActorBaseData* actorBase = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESActorBaseData);
@@ -55,7 +56,7 @@ bool Cmd_ModFactionRank_Execute(COMMAND_ARGS)
 		if (faction)
 		{
 			bool bFoundRank = false;
-			foundRank = GetExtraFactionRank(thisObj->extraDataList, faction);
+			foundRank = thisObj->extraDataList.GetExtraFactionRank(faction);
 			bFoundRank = ( -1 != foundRank );
 			if (!bFoundRank) {
 				TESActorBaseData* actorBase = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESActorBaseData);

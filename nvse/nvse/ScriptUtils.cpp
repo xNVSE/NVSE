@@ -1797,7 +1797,7 @@ static ParamInfo kParams_DefaultUserFunctionParams[] =
 // records version of bytecode representation to avoid problems if representation changes later
 static const UInt8 kUserFunction_Version = 1;
 
-bool GetUserFunctionParams(const std::string& scriptText, std::vector<UserFunctionParam> &outParams, Script::VarInfoEntry* varList)
+bool GetUserFunctionParams(const std::string& scriptText, std::vector<UserFunctionParam> &outParams, Script::VarInfoList* varList)
 {
 	std::string lineText;
 	Tokenizer lines(scriptText.c_str(), "\r\n");
@@ -1938,7 +1938,7 @@ bool ExpressionParser::ParseUserFunctionCall()
 	if (funcScript)
 	{
 		char* funcScriptText = funcScript->text;
-		Script::VarInfoEntry* funcScriptVars = &funcScript->varList;
+		Script::VarInfoList* funcScriptVars = &funcScript->varList;
 
 		if (!_stricmp(GetEditorID(funcScript), m_scriptBuf->scriptName.m_data))
 		{
@@ -2037,7 +2037,7 @@ bool ExpressionParser::ParseUserFunctionDefinition()
 				}
 
 				tokens.NextToken(token);	// variable name
-				VariableInfo* varInfo = m_scriptBuf->vars.GetVariableInfo(token.c_str());
+				VariableInfo* varInfo = m_scriptBuf->vars.GetVariableByName(token.c_str());
 				if (!varInfo)		// how did this happen?
 				{
 					_MESSAGE("GetVariableInfo() returned NULL in ExpressionParser::ParseUserFunctionDefinition()");
@@ -2577,13 +2577,13 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 		if (dotPos == -1)
 		{
 			if (refVar->varIdx)			// it's a variable
-				return ScriptToken::Create(m_scriptBuf->vars.GetVariableInfo(refVar->name.m_data), 0, Script::eVarType_Ref);
-			else if (refVar->form && refVar->form->typeID == kFormType_Global)
+				return ScriptToken::Create(m_scriptBuf->vars.GetVariableByName(refVar->name.m_data), 0, Script::eVarType_Ref);
+			else if (refVar->form && refVar->form->typeID == kFormType_TESGlobal)
 				return ScriptToken::Create((TESGlobal*)refVar->form, refIdx);
 			else						// literal reference to a form
 				return ScriptToken::Create(refVar, refIdx);
 		}
-		else if (refVar->form && refVar->form->typeID != kFormType_Reference && refVar->form->typeID != kFormType_Quest)
+		else if (refVar->form && refVar->form->typeID != kFormType_TESObjectREFR && refVar->form->typeID != kFormType_TESQuest)
 		{
 			Message(kError_InvalidDotSyntax);
 			return NULL;
@@ -2602,7 +2602,7 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 				Message(kError_RefRequired, cmdInfo->longName);
 				return NULL;
 			}
-			if (refVar && refVar->form && refVar->form->typeID != kFormType_Reference)	// make sure we're calling it on a reference
+			if (refVar && refVar->form && refVar->form->typeID != kFormType_TESObjectREFR)	// make sure we're calling it on a reference
 				return NULL;
 
 			return ScriptToken::Create(cmdInfo, refIdx);
@@ -2690,7 +2690,7 @@ bool ExpressionParser::ParseFunctionCall(CommandInfo* cmdInfo)
 
 VariableInfo* ExpressionParser::LookupVariable(const char* varName, Script::RefVariable* refVar)
 {
-	Script::VarInfoEntry* vars = &m_scriptBuf->vars;
+	auto* vars = &m_scriptBuf->vars;
 
 	if (refVar)
 	{
@@ -3188,7 +3188,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 							case kParamType_SpellItem:
 								{
 									SpellItem* spell = DYNAMIC_CAST(form, TESForm, SpellItem);
-									if (spell || form->typeID == kFormType_Book) {
+									if (spell || form->typeID == kFormType_TESObjectBOOK) {
 										TESForm** out = va_arg(varArgs, TESForm**);
 										*out = form;
 									}
@@ -3340,7 +3340,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 								break;
 							case kParamType_InvObjOrFormList:
 								{
-									if (form->IsInventoryObject() || (form->typeID == kFormType_ListForm)) {
+									if (form->IsInventoryObject() || (form->typeID == kFormType_BGSListForm)) {
 										TESForm** out = va_arg(varArgs, TESForm**);
 										*out = form;
 									}
@@ -3351,7 +3351,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 								break;
 							case kParamType_NonFormList:
 								{
-									if (form->Unk_3A() && (form->typeID != kFormType_ListForm)) {
+									if (form->IsBoundObject() && (form->typeID != kFormType_BGSListForm)) {
 										TESForm** out = va_arg(varArgs, TESForm**);
 										*out = form;
 									}
@@ -3365,70 +3365,70 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 								{
 									UInt32 typeToMatch = -1;
 									switch (info->typeID) {
-										case kParamType_Sound:
-											typeToMatch = kFormType_Sound; break;
-										case kParamType_Topic:
-											typeToMatch = kFormType_DIAL; break;
-										case kParamType_Quest:
-											typeToMatch = kFormType_Quest; break;
-										case kParamType_Race:
-											typeToMatch = kFormType_Race; break;
-										case kParamType_Faction:
-											typeToMatch = kFormType_Faction; break;
-										case kParamType_Class:
-											typeToMatch = kFormType_Class; break;
-										case kParamType_Global:
-											typeToMatch = kFormType_Global; break;
-										case kParamType_Furniture:
-											typeToMatch = kFormType_Furniture; break;
-										case kParamType_FormList:
-											typeToMatch = kFormType_ListForm; break;
+									case kParamType_Sound:
+										typeToMatch = kFormType_TESSound; break;
+									case kParamType_Topic:
+										typeToMatch = kFormType_TESTopic; break;
+									case kParamType_Quest:
+										typeToMatch = kFormType_TESQuest; break;
+									case kParamType_Race:
+										typeToMatch = kFormType_TESRace; break;
+									case kParamType_Faction:
+										typeToMatch = kFormType_TESFaction; break;
+									case kParamType_Class:
+										typeToMatch = kFormType_TESClass; break;
+									case kParamType_Global:
+										typeToMatch = kFormType_TESGlobal; break;
+									case kParamType_Furniture:
+										typeToMatch = kFormType_TESFurniture; break;
+									case kParamType_FormList:
+										typeToMatch = kFormType_BGSListForm; break;
 										//case kParamType_Birthsign:
 										//	typeToMatch = kFormType_BirthSign; break;
-										case kParamType_WeatherID:
-											typeToMatch = kFormType_Weather; break;
-										case kParamType_NPC:
-											typeToMatch = kFormType_NPC; break;
-										case kParamType_EffectShader:
-											typeToMatch = kFormType_EffectShader; break;
-										case kParamType_MenuIcon:
-											typeToMatch = kFormType_MenuIcon; break;
-										case kParamType_Perk:
-											typeToMatch = kFormType_Perk; break;
-										case kParamType_Note:
-											typeToMatch = kFormType_Note; break;
-										case kParamType_ImageSpaceModifier:
-											typeToMatch = kFormType_ImageSpaceModifier; break;
-										case kParamType_ImageSpace:
-											typeToMatch = kFormType_ImageSpace; break;
-										case kParamType_EncounterZone:
-											typeToMatch = kFormType_EncounterZone; break;
-										case kParamType_Message:
-											typeToMatch = kFormType_Message; break;
-										case kParamType_SoundFile:
-											typeToMatch = kFormType_SoundFile; break;
-										case kParamType_LeveledChar:
-											typeToMatch = kFormType_LeveledCharacter; break;
-										case kParamType_LeveledCreature:
-											typeToMatch = kFormType_LeveledCreature; break;
-										case kParamType_LeveledItem:
-											typeToMatch = kFormType_LeveledItem; break;
-										case kParamType_Reputation:
-											typeToMatch = kFormType_Reputation; break;
-										case kParamType_Casino:
-											typeToMatch = kFormType_Casino; break;
-										case kParamType_CasinoChip:
-											typeToMatch = kFormType_CasinoChip; break;
-										case kParamType_Challenge:
-											typeToMatch = kFormType_Challenge; break;
-										case kParamType_CaravanMoney:
-											typeToMatch = kFormType_CaravanMoney; break;
-										case kParamType_CaravanCard:
-											typeToMatch = kFormType_CaravanCard; break;
-										case kParamType_CaravanDeck:
-											typeToMatch = kFormType_CaravanDeck; break;
-										case kParamType_Region:
-											typeToMatch = kFormType_Region; break;
+									case kParamType_WeatherID:
+										typeToMatch = kFormType_TESWeather; break;
+									case kParamType_NPC:
+										typeToMatch = kFormType_TESNPC; break;
+									case kParamType_EffectShader:
+										typeToMatch = kFormType_TESEffectShader; break;
+									case kParamType_MenuIcon:
+										typeToMatch = kFormType_BGSMenuIcon; break;
+									case kParamType_Perk:
+										typeToMatch = kFormType_BGSPerk; break;
+									case kParamType_Note:
+										typeToMatch = kFormType_BGSNote; break;
+									case kParamType_ImageSpaceModifier:
+										typeToMatch = kFormType_TESImageSpaceModifier; break;
+									case kParamType_ImageSpace:
+										typeToMatch = kFormType_TESImageSpace; break;
+									case kParamType_EncounterZone:
+										typeToMatch = kFormType_BGSEncounterZone; break;
+									case kParamType_Message:
+										typeToMatch = kFormType_BGSMessage; break;
+									case kParamType_SoundFile:
+										typeToMatch = kFormType_BGSMusicType; break;
+									case kParamType_LeveledChar:
+										typeToMatch = kFormType_TESLevCharacter; break;
+									case kParamType_LeveledCreature:
+										typeToMatch = kFormType_TESLevCreature; break;
+									case kParamType_LeveledItem:
+										typeToMatch = kFormType_TESLevItem; break;
+									case kParamType_Reputation:
+										typeToMatch = kFormType_TESReputation; break;
+									case kParamType_Casino:
+										typeToMatch = kFormType_TESCasino; break;
+									case kParamType_CasinoChip:
+										typeToMatch = kFormType_TESCasinoChips; break;
+									case kParamType_Challenge:
+										typeToMatch = kFormType_TESChallenge; break;
+									case kParamType_CaravanMoney:
+										typeToMatch = kFormType_TESCaravanMoney; break;
+									case kParamType_CaravanCard:
+										typeToMatch = kFormType_TESCaravanCard; break;
+									case kParamType_CaravanDeck:
+										typeToMatch = kFormType_TESCaravanDeck; break;
+									case kParamType_Region:
+										typeToMatch = kFormType_TESRegion; break;
 									}
 
 									if (form->typeID == typeToMatch) {

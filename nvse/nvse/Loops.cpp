@@ -140,7 +140,7 @@ ContainerIterLoop::ContainerIterLoop(const ForEachContext* context)
 	TESContainer* cont = DYNAMIC_CAST(contRef->baseForm, TESForm, TESContainer);
 	if (cont) {
 		for (TESContainer::FormCountList::Iterator cur = cont->formCountList.Begin(); !cur.End(); ++cur) {
-			if (cur.Get() && cur.Get()->form && cur.Get()->form->typeID != kFormType_LeveledItem) {
+			if (cur.Get() && cur.Get()->form && cur.Get()->form->typeID != kFormType_TESLevItem) {
 				DEBUG_PRINT("Base container has %d %s", cur.Get()->count, GetFullName(cur.Get()->form));
 				baseObjectCounts[cur.Get()->form] = cur.Get()->count;
 			}

@@ -12,7 +12,7 @@
 #include "ArrayVar.h"
 #include "Hooks_DirectInput8Create.h"
 #include "FunctionScripts.h"
-#include "GameForms.h"
+
 #include "GameScript.h"
 #include "EventManager.h"
 #include "InventoryReference.h"

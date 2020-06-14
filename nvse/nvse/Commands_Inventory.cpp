@@ -2806,7 +2806,7 @@ bool Cmd_EquipItem2_Execute(COMMAND_ARGS)
 
 	UInt8 itemType = item->typeID;
 	// Those following are the only equip-able types.
-	if ((itemType != kFormType_TESObjectARMOR) && (itemType != kFormType_TESObjectBOOK) && (itemType != kFormType_TESObjectWEAP) &&
+	if ((itemType != kFormType_TESObjectARMO) && (itemType != kFormType_TESObjectBOOK) && (itemType != kFormType_TESObjectWEAP) &&
 		(itemType != kFormType_TESAmmo) && (itemType != kFormType_AlchemyItem)) return true;
 
 	ExtraContainerChanges *xChanges = (ExtraContainerChanges*)actor->extraDataList.GetByType(kExtraData_ContainerChanges);

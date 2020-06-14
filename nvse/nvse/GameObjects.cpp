@@ -2,14 +2,34 @@
 #include "nvse/GameExtraData.h"
 #include "nvse/GameTasks.h"
 
-extern PlayerCharacter *g_thePlayer;
+TESForm* GetPermanentBaseForm(TESObjectREFR* thisObj)	// For LevelledForm, find real baseForm, not temporary one.
+{
+	ExtraLeveledCreature * pXCreatureData = NULL;
+
+	if (thisObj) {
+		pXCreatureData = GetByTypeCast(thisObj->extraDataList, LeveledCreature);
+		if (pXCreatureData && pXCreatureData->baseForm) {
+			return pXCreatureData->baseForm;
+		}
+	}
+	if (thisObj && thisObj->baseForm) {
+		return thisObj->baseForm;
+	}
+	return NULL;
+}
+
+QuestObjectiveTargets* PlayerCharacter::GetCurrentQuestObjectiveTargets()
+{
+	return (QuestObjectiveTargets *)ThisStdCall(s_PlayerCharacter_GetCurrentQuestTargets, this);
+}
 
 ScriptEventList *TESObjectREFR::GetEventList() const
 {
 	ExtraScript *xScript = GetExtraType(extraDataList, Script);
 	return xScript ? xScript->eventList : NULL;
 }
-PlayerCharacter** g_thePlayer = (PlayerCharacter **)(0x11DEA3C);
+
+PlayerCharacter** g_thePlayer = (PlayerCharacter**)(0x11DEA3C);
 PlayerCharacter *PlayerCharacter::GetSingleton()
 {
 	return *g_thePlayer;
@@ -47,13 +67,14 @@ extern ModelLoader *g_modelLoader;
 
 void TESObjectREFR::Update3D()
 {
-	if (this == *g_thePlayer)
+	if (this == PlayerCharacter::GetSingleton())
+	{
 		ThisStdCall(kUpdateAppearanceAddr, this);
 	}
 	else
 	{
 		Set3D(NULL, true);
-		g_modelLoader->QueueReference(this, 1, 0);
+		ModelLoader::GetSingleton()->QueueReference(this, 1, 0);
 	}
 }
 

@@ -818,11 +818,20 @@ public:
 	MagicHitEffect();
 	~MagicHitEffect();
 
-	ActiveEffect	* activeEffect;	// 18	
-	TESObjectREFR	* target;		// 1C
-	float			unk20;			// 20	Init'd from ActiveEffect.timeElapsed
-	UInt8			unk24;			// 24	from ActiveEffect.EffectFlag
-	UInt8			pad25[3];
+	virtual void	Unk_31(void);
+	virtual void	Unk_32(void);
+	virtual void	Unk_33(void);
+	virtual void	Unk_34(void);
+	virtual void	Unk_35(void);
+	virtual void	Unk_36(void);
+	virtual void	Unk_37(void);
+	virtual void	Unk_38(void);
+
+	ActiveEffect* activeEffect;	// 18
+	TESObjectREFR* target;		// 1C
+	float			unk20;			// 20
+	UInt8			flags;			// 24	1 - Stop
+	UInt8			pad25[3];		// 25
 };
 
 // 6C
@@ -832,13 +841,15 @@ public:
 	MagicShaderHitEffect();
 	~MagicShaderHitEffect();
 
-	UInt8					unk28;						// 28	Init'd to byte, OK for first offset.
-	UInt8					pad29[3];
-	UInt32					unk2C;						// 2C	Init'd to DWord
-	TESEffectShader			* effectShader;				// 30	Init'd to *effectShader
-	float					unk34;						// 34	Init'd to float
-	BSSimpleArray<NiPointer<ParticleShaderProperty>>	unk38;	// 38	Init'd to BSSimpleArray<NiPointer<ParticleShaderProperty>>
-	// the remainder is not validated..
-	void					* textureEffectData;		// 48 seen TextureEffectData< BSSahderLightingProperty >, init'd to RefNiObject
-};	// Alloc'd to 6C, 68 is RefNiObject, 60 is Init'd to 1.0, 64 also
-	// 4C is byte, Init'd to 0 for non player, otherwize = Player.1stPersonSkeleton.Flags0030.Bit0 is null
+	UInt32									unk28[2];		// 28
+	TESEffectShader* effectShader;	// 30
+	float									flt34;			// 34
+	BSSimpleArray<ParticleShaderProperty>	shaderProps;	// 38
+	NiNode* shaderNode;	// 48
+	UInt32									unk4C;			// 4C
+	BSSimpleArray<NiAVObject>				objects;		// 50	Seen BSFadeNode
+	float									flt60;			// 60
+	float									flt64;			// 64
+	NiProperty* prop68;		// 68	Seen 0x10AE0C8
+};
+STATIC_ASSERT(sizeof(MagicShaderHitEffect) == 0x6C);

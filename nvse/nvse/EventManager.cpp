@@ -333,9 +333,9 @@ static __declspec(naked) void OnActorEquipHook(void)
 		push [ebp+0x08]
 		push [ebp+0x10]
 		push [kEventMask]
-		mov [s_InsideOnActorEquipHook], 0x0FFFFFFFF
+		//mov [s_InsideOnActorEquipHook], 0x0FFFFFFFF
 		call HandleGameEvent
-		mov [s_InsideOnActorEquipHook], 0x0
+		//mov [s_InsideOnActorEquipHook], 0x0
 		popad
 
 		jmp	[s_callAddr]
@@ -1452,8 +1452,8 @@ UInt32 EventIDForMask(UInt32 eventMask)
 			return kEventID_OnStartCombat;
 		case ScriptEventList::kEvent_SayToDone:
 			return kEventID_SayToDone;
-		case ScriptEventList::kEvent_0x00400000:
-			return kEventID_0x00400000;
+		case ScriptEventList::kEvent_OnFire:
+			return kEventID_OnFire;
 		case ScriptEventList::kEvent_OnRelease:
 			return kEventID_OnOpen;
 		case ScriptEventList::kEvent_OnDestructionStageChange:
@@ -1462,8 +1462,8 @@ UInt32 EventIDForMask(UInt32 eventMask)
 			return kEventID_OnOpen;
 		case ScriptEventList::kEvent_OnClose:
 			return kEventID_OnClose;
-		case ScriptEventList::kEvent_0x00080000:
-			return kEventID_0x00080000;
+		case ScriptEventList::kEvent_OnGrab:
+			return kEventID_OnGrab;
 		case ScriptEventList::kEvent_OnTrigger:
 			return kEventID_OnTrigger;
 		case ScriptEventList::kEvent_OnTriggerEnter:

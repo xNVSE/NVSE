@@ -589,6 +589,7 @@ private:
 	UInt32		count;
 
 public:
+	
 	bool Empty() const {return !first;}
 	Node *Head() {return first;}
 	Node *Tail() {return last;}

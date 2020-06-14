@@ -418,19 +418,22 @@ bool Cmd_GetStringIniSetting_Execute(COMMAND_ARGS)
 	if (ExtractArgs(EXTRACT_ARGS, &settingName))
 	{
 		Setting* setting;
-		if (GetIniSetting(settingName, &setting))
+		if (GetINISetting(settingName, &setting) && setting->GetType() == Setting::kSetting_String)
 		{
 			char val[kMaxMessageLength] = { 0 };
-			if (const char * pVal = setting->Get())
+			const char* pVal = setting->data.str;
+
+			strcpy_s(val, kMaxMessageLength, pVal);
+			AssignToStringVar(PASS_COMMAND_ARGS, val);
+			if (IsConsoleMode())
 			{
-				strcpy_s(val, kMaxMessageLength, pVal);
-				AssignToStringVar(PASS_COMMAND_ARGS, val);
-				if (IsConsoleMode())
-					Console_Print("GetStringIniSetting >> %s", val);
+				Console_Print("GetStringIniSetting >> %s", val);
 			}
 		}
 		else if (IsConsoleMode())
+		{
 			Console_Print("GetStringIniSetting >> SETTING NOT FOUND");
+		}
 	}
 
 	return true;
@@ -448,12 +451,12 @@ bool Cmd_SetStringGameSettingEX_Execute(COMMAND_ARGS)
 		if (pipePos != -1)
 		{
 			fmtString[pipePos] = 0;
-			char* newValue = fmtString + pipePos + 1;
+			const char* newValue = fmtString + pipePos + 1;
 
 			Setting* setting = NULL;
-			if (GetIniSetting(fmtString, &setting))
+			if (GetINISetting(fmtString, &setting))
 			{
-				setting->Set(newValue);;
+				setting->Set(newValue, true);
 				*result = 1;
 			}
 		}

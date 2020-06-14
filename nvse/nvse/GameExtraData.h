@@ -290,6 +290,8 @@ enum
 	kExtraData_Max
 };
 
+
+#define GetByTypeCast(xDataList, Type) DYNAMIC_CAST(xDataList.GetByType(kExtraData_ ## Type), BSExtraData, Extra ## Type)
 #define GetExtraType(xDataList, Type) (Extra ## Type*)xDataList.GetByType(kExtraData_ ## Type)
 extern char *GetExtraDataValue(BSExtraData *traverse);
 extern const char *GetExtraDataName(UInt8 extraDataType);
@@ -308,6 +310,16 @@ public:
 	static ExtraAction* __stdcall Create(TESObjectREFR *_actionRef = NULL);
 };
 
+// 10
+class ExtraPersistentCell : public BSExtraData
+{
+public:
+	ExtraPersistentCell();
+	~ExtraPersistentCell();
+
+	TESObjectCELL* persistentCell;	// 0C
+};
+
 // 14
 class ExtraScript : public BSExtraData
 {
@@ -320,6 +332,8 @@ public:
 
 	static ExtraScript* __stdcall Create(TESForm* baseForm = NULL, bool create = true, TESObjectREFR* container = NULL);
 };
+
+UInt32 GetCountForExtraDataList(ExtraDataList* list);
 
 // 10
 class ExtraContainerChanges : public BSExtraData
@@ -357,6 +371,7 @@ public:
 		static EntryData* Create(UInt32 refID = 0, UInt32 count = 1, ExtraContainerChanges::ExtendDataList* pExtendDataList = NULL);
 		static EntryData* Create(TESForm* pForm, UInt32 count = 1, ExtraContainerChanges::ExtendDataList* pExtendDataList = NULL);
 		ExtendDataList* Add(ExtraDataList* newList);
+
 		bool Remove(ExtraDataList* toRemove, bool bFree = false);
 
 	};
@@ -388,6 +403,10 @@ public:
 	void Cleanup();	// clean up unneeded extra data from each EntryData
 
 	static ExtraContainerChanges* Create();
+
+	static ExtraContainerChanges* GetForRef(TESObjectREFR* refr);
+	ExtendDataList* Add(TESForm* form, ExtraDataList* dataList = NULL);
+	bool Remove(TESForm* form, ExtraDataList* dataList = NULL, bool bFree = false);
 	
 
 	EntryDataList *GetEntryDataList() const {return data ? data->objList : NULL;}
@@ -424,7 +443,7 @@ public:
 	bool Accept(ExtraContainerChanges::EntryData* match)
 	{
 		if (match && match->extendData)
-			return match->extendData->GetIndexOf(ExtraDataListInExtendDataListMatcher(m_toMatch))>=0;
+			return match->extendData->GetIndexOf(ExtraDataListInExtendDataListMatcher(m_toMatch)) >= 0;
 		else
 			return false;
 	}
@@ -512,8 +531,17 @@ public:
 };
 
 typedef ExtraContainerChanges::FoundEquipData EquipData;
-extern ExtraContainerChanges::ExtendDataList* ExtraContainerChangesExtendDataListCreate(ExtraDataList* pExtraDataList = NULL);
-extern void ExtraContainerChangesExtendDataListFree(ExtraContainerChanges::ExtendDataList* xData, bool bFreeList = false);
+void ExtraContainerChangesExtendDataListFree(ExtraContainerChanges::ExtendDataList* xData, bool bFreeList = false);
+ExtraContainerChanges::ExtendDataList* ExtraContainerChangesExtendDataListCreate(ExtraDataList* pExtraDataList = NULL);
+
+void ExtraContainerChangesEntryDataFree(ExtraContainerChanges::EntryData* xData, bool bFreeList = false);
+
+ExtraContainerChanges::EntryDataList* ExtraContainerChangesEntryDataListCreate(UInt32 refID = 0, UInt32 count = 1, ExtraContainerChanges::ExtendDataList* pExtendDataList = NULL);
+void ExtraContainerChangesEntryDataListFree(ExtraContainerChanges::EntryDataList* xData, bool bFreeList = false);
+
+void ExtraContainerChangesFree(ExtraContainerChanges* xData, bool bFreeList = false);
+
+
 
 // 10
 class ExtraHealth : public BSExtraData
@@ -659,6 +687,7 @@ public:
 	TESForm		*owner;	// maybe this should be a union {TESFaction*; TESNPC*} but it would be more unwieldy to access and modify
 
 	static ExtraOwnership* __stdcall Create(TESForm *_owner);
+	static ExtraOwnership* Create();
 };
 
 // 10
@@ -669,7 +698,7 @@ public:
 	~ExtraRank();
 
 	SInt32		rank; // 0C
-
+	static ExtraRank* ExtraRank::Create();
 	static ExtraRank* __stdcall Create(UInt32 _rank);
 };
 

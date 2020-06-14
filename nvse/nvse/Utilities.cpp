@@ -1,5 +1,4 @@
 #include "Utilities.h"
-#include "SafeWrite.h"
 #include <string>
 #include <algorithm>
 
@@ -527,7 +526,7 @@ void ErrOutput::vShow(ErrOutput::Message& msg, va_list args)
 		ShowError(msgText);
 }
 
-void ErrOutput::Show(ErrOutput::Message& msg, ...)
+void ErrOutput::Show(ErrOutput::Message msg, ...)
 {
 	va_list args;
 	va_start(args, msg);
@@ -552,10 +551,6 @@ void ErrOutput::vShow(const char* msg, va_list args)
 
 	vShow(tempMsg, args);
 }
-
-#include "internal/utility.h"
-#include "nvse/GameAPI.h"
-//#include "internal/md5/md5.h"
 
 bool fCompare(float lval, float rval)
 {
@@ -2212,187 +2207,6 @@ void ClearFolder(char *pathEndPtr)
 	dirIter.Close();
 	*(pathEndPtr - 1) = 0;
 	RemoveDirectory(s_strArgBuffer);
-}
-
-__declspec(naked) void __stdcall SafeWrite8(UInt32 addr, UInt32 data)
-{
-	__asm
-	{
-		push	ecx
-		push	esp
-		push	PAGE_EXECUTE_READWRITE
-		push	4
-		push	dword ptr [esp+0x14]
-		call	VirtualProtect
-		mov		eax, [esp+8]
-		mov		edx, [esp+0xC]
-		mov		[eax], dl
-		mov		edx, [esp]
-		push	esp
-		push	edx
-		push	4
-		push	eax
-		call	VirtualProtect
-		pop		ecx
-		retn	8
-	}
-}
-
-__declspec(naked) void __stdcall SafeWrite16(UInt32 addr, UInt32 data)
-{
-	__asm
-	{
-		push	ecx
-		push	esp
-		push	PAGE_EXECUTE_READWRITE
-		push	4
-		push	dword ptr [esp+0x14]
-		call	VirtualProtect
-		mov		eax, [esp+8]
-		mov		edx, [esp+0xC]
-		mov		[eax], dx
-		mov		edx, [esp]
-		push	esp
-		push	edx
-		push	4
-		push	eax
-		call	VirtualProtect
-		pop		ecx
-		retn	8
-	}
-}
-
-__declspec(naked) void __stdcall SafeWrite32(UInt32 addr, UInt32 data)
-{
-	__asm
-	{
-		push	ecx
-		push	esp
-		push	PAGE_EXECUTE_READWRITE
-		push	4
-		push	dword ptr [esp+0x14]
-		call	VirtualProtect
-		mov		eax, [esp+8]
-		mov		edx, [esp+0xC]
-		mov		[eax], edx
-		mov		edx, [esp]
-		push	esp
-		push	edx
-		push	4
-		push	eax
-		call	VirtualProtect
-		pop		ecx
-		retn	8
-	}
-}
-
-__declspec(naked) void __stdcall SafeWriteBuf(UInt32 addr, void *data, UInt32 len)
-{
-	__asm
-	{
-		push	ecx
-		push	esp
-		push	PAGE_EXECUTE_READWRITE
-		push	dword ptr [esp+0x18]
-		push	dword ptr [esp+0x14]
-		call	VirtualProtect
-		push	dword ptr [esp+0x10]
-		mov		edx, [esp+0x10]
-		mov		ecx, [esp+0xC]
-		call	MemCopy
-		mov		edx, [esp]
-		push	esp
-		push	edx
-		push	dword ptr [esp+0x18]
-		push	eax
-		call	VirtualProtect
-		pop		ecx
-		retn	0xC
-	}
-}
-
-__declspec(naked) void __stdcall WriteRelJump(UInt32 jumpSrc, UInt32 jumpTgt)
-{
-	__asm
-	{
-		push	ecx
-		push	esp
-		push	PAGE_EXECUTE_READWRITE
-		push	5
-		push	dword ptr [esp+0x14]
-		call	VirtualProtect
-		mov		eax, [esp+8]
-		mov		edx, [esp+0xC]
-		sub		edx, eax
-		sub		edx, 5
-		mov		byte ptr [eax], 0xE9
-		mov		[eax+1], edx
-		mov		edx, [esp]
-		push	esp
-		push	edx
-		push	5
-		push	eax
-		call	VirtualProtect
-		pop		ecx
-		retn	8
-	}
-}
-
-__declspec(naked) void __stdcall WriteRelCall(UInt32 jumpSrc, UInt32 jumpTgt)
-{
-	__asm
-	{
-		push	ecx
-		push	esp
-		push	PAGE_EXECUTE_READWRITE
-		push	5
-		push	dword ptr [esp+0x14]
-		call	VirtualProtect
-		mov		eax, [esp+8]
-		mov		edx, [esp+0xC]
-		sub		edx, eax
-		sub		edx, 5
-		mov		byte ptr [eax], 0xE8
-		mov		[eax+1], edx
-		mov		edx, [esp]
-		push	esp
-		push	edx
-		push	5
-		push	eax
-		call	VirtualProtect
-		pop		ecx
-		retn	8
-	}
-}
-
-__declspec(naked) void __stdcall WritePushRetRelJump(UInt32 baseAddr, UInt32 retAddr, UInt32 jumpTgt)
-{
-	__asm
-	{
-		push	ecx
-		push	esp
-		push	PAGE_EXECUTE_READWRITE
-		push	0xA
-		push	dword ptr [esp+0x14]
-		call	VirtualProtect
-		mov		eax, [esp+8]
-		mov		edx, [esp+0xC]
-		mov		byte ptr [eax], 0x68
-		mov		[eax+1], edx
-		mov		edx, [esp+0x10]
-		sub		edx, eax
-		sub		edx, 0xA
-		mov		byte ptr [eax+5], 0xE9
-		mov		[eax+6], edx
-		mov		edx, [esp]
-		push	esp
-		push	edx
-		push	0xA
-		push	eax
-		call	VirtualProtect
-		pop		ecx
-		retn	0xC
-	}
 }
 
 void __fastcall GetTimeStamp(char *buffer)

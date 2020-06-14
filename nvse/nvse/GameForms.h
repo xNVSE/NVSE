@@ -27,9 +27,9 @@ enum FormType
 	kFormType_TESObjectACTI,
 	kFormType_BGSTalkingActivator,
 	kFormType_BGSTerminal,
-	kFormType_TESObjectARMOR,					// Inventory object
+	kFormType_TESObjectARMO,					// Inventory object
 	kFormType_TESObjectBOOK,					// Inventory object
-	kFormType_TESObjectCLOT,					// Inventory object
+	kFormType_TESObjectCLOTH,					// Inventory object
 	kFormType_TESObjectCONT,
 	kFormType_TESObjectDOOR,
 	kFormType_IngredientItem,					// Inventory object
@@ -544,7 +544,7 @@ public:
 	bool IsCloned() const;
 
 	bool IsWeapon() { return typeID == kFormType_TESObjectWEAP; }
-	bool IsArmor() { return typeID == kFormType_TESObjectARMOR; }
+	bool IsArmor() { return typeID == kFormType_TESObjectARMO; }
 
 	// adds a new form to the game (from CloneForm or LoadForm)
 	void DoAddForm(TESForm* newForm, bool bPersist = true, bool record = true) const;
@@ -1522,9 +1522,11 @@ public:
 	TESAnimation();
 	~TESAnimation();
 
+	typedef tList<char> AnimNames;
+
 	//UInt32	unk004;	// constructor and Fn_01 sugest this is a tList of char string.
 	//UInt32	unk008;
-	tList<char>	animNames;
+	AnimNames	animNames;
 	// 00C
 };
 
@@ -6419,6 +6421,69 @@ const char kDefaultObjectNames[34][28] = {	// 0x0118C360 is an array of struct: 
       "Item Detected Effect",
       "Cateye Mobile Effect (NYI)"
 };
+
+// BGSDefaultObjectManager (A0)
+class BGSDefaultObjectManager : public TESForm
+{
+public:
+	BGSDefaultObjectManager();
+	~BGSDefaultObjectManager();
+
+	static BGSDefaultObjectManager* GetSingleton();
+
+	enum {
+		kDefaultObject_Max = 34,
+	};
+
+	typedef TESForm* FormArray[kDefaultObject_Max];
+
+	struct FormStruct {
+		TESForm* Stimpak;
+		TESForm* SuperStimpak;
+		TESForm* RadX;
+		TESForm* RadAway;
+		TESForm* Morphine;
+		TESForm* PerkParalysis;
+		TESForm* PlayerFaction;
+		TESForm* MysteriousStranger;
+		TESForm* MysteriousStrangerFaction;
+		TESForm* DefaultMusic;
+		TESForm* BattleMusic;
+		TESForm* DefaultDeath;
+		TESForm* SuccessMusic;
+		TESForm* LevelUpMusic;
+		TESForm* PlayerVoiceMale;
+		TESForm* PlayerVoiceMaleChild;
+		TESForm* PlayerVoiceFemale;
+		TESForm* PlayerVoiceFemaleChild;
+		TESForm* EatPackageDefaultFood;
+		TESForm* EveryActorAbility;
+		TESForm* DrugWearOffImageSpace;
+		// FNV
+		TESForm* DoctorsBag;
+		TESForm* MissFortuneNPC;
+		TESForm* MissFortuneFaction;
+		TESForm* MeltdownExplosion;
+		TESForm* UnarmedForwardPA;
+		TESForm* UnarmedBackwardPA;
+		TESForm* UnarmedLeftPA;
+		TESForm* UnarmedRightPA;
+		TESForm* UnarmedCrouchPA;
+		TESForm* UnarmedCounterPA;
+		TESForm* SpotterEffect;
+		TESForm* ItemDetectedEffect;
+		TESForm* CateyeMobileEffectNYI;
+	};
+
+	union DefaultObjects {
+		FormStruct	asStruct;
+		FormArray	asArray;
+	};
+
+	DefaultObjects	defaultObjects;	// 018
+};
+
+STATIC_ASSERT(sizeof(BGSDefaultObjectManager) == 0xA0);
 
 enum EActionListForm
 {

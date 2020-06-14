@@ -594,6 +594,7 @@
     <ClInclude Include="GameRTTI.h" />
     <ClInclude Include="GameScript.h" />
     <ClInclude Include="GameSettings.h" />
+    <ClInclude Include="GameSound.h" />
     <ClInclude Include="GameTasks.h" />
     <ClInclude Include="GameTiles.h" />
     <ClInclude Include="GameTypes.h" />

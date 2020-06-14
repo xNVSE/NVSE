@@ -11,7 +11,19 @@ static const UInt32	s_Actor_UnequipItem = 0x88C790;				// maybe, also, would be:
 static const UInt32 s_TESObjectREFR__GetContainer = 0x55D310;	// First call in REFR::RemoveItem
 static const UInt32 s_TESObjectREFR_Set3D = 0x5702E0;			// void : (const char*)
 
+static const UInt32 s_PlayerCharacter_GetCurrentQuestTargets	= 0x00952BA0;	// BuildedQuestObjectiveTargets* : (void)
+static const UInt32 s_PlayerCharacter_GenerateNiNode	= 0x0094E1D0; // Func0072
+static const UInt32 kPlayerUpdate3Dpatch = 0x0094EB7A;
+static const UInt32 TESObjectREFR_Set3D = 0x0094EB40;
+static const UInt32 ValidBip01Names_Destroy = 0x00418E00;
+static const UInt32 ExtraAnimAnimation_Destroy = 0x00418D20;
+static const UInt32 RefNiRefObject_ReplaceNiRefObject = 0x0066B0D0;
+
 const UInt32 kUpdateAppearanceAddr = 0x8D3FA0;
+
+typedef tList<BGSQuestObjective::Target> QuestObjectiveTargets;
+
+TESForm* GetPermanentBaseForm(TESObjectREFR* thisObj);	// For LevelledForm, find real baseForm, not temporary one.
 
 // 68
 class TESObjectREFR : public TESForm
@@ -999,6 +1011,8 @@ public:
 
 	static PlayerCharacter*	GetSingleton();
 	bool SetSkeletonPath(const char* newPath);
+	QuestObjectiveTargets* GetCurrentQuestObjectiveTargets();
+
 	static void UpdateHead(void);
 
 	bool ToggleFirstPerson(bool toggleON);

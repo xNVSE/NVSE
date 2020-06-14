@@ -50,7 +50,7 @@ bool Setting::ValidType()
 	}
 }
 
-void Setting::Get(double *out)
+bool Setting::Get(double* out) const
 {
 	switch (*name | 0x20)
 	{
@@ -65,8 +65,19 @@ void Setting::Get(double *out)
 			*out = data.i;
 			break;
 		default:
-			break;
+			return false;
 	}
+	return true;
+}
+
+bool Setting::Get(const char* str)
+{
+	if (GetType() == kSetting_String)
+	{
+		str = data.str;
+		return true;
+	}
+	return false;
 }
 
 bool Setting::Set(float newVal)
@@ -90,6 +101,7 @@ bool Setting::Set(float newVal)
 	}
 	return true;
 }
+
 
 bool Setting::Set(const char* strVal, bool doFree)
 {
@@ -126,4 +138,49 @@ IniSettingCollection *IniSettingCollection::GetIniSettings()
 IniSettingCollection *IniSettingCollection::GetIniPrefs()
 {
 	return *g_INIPrefCollection;
+}
+
+
+bool GetNumericGameSetting(char* settingName, double* result)
+{
+	bool bResult = false;
+	*result = -1;
+
+	if (strlen(settingName))
+	{
+		Setting* setting;
+		GameSettingCollection* gmsts = GameSettingCollection::GetSingleton();
+		if (gmsts && gmsts->GetGameSetting(settingName, &setting))
+		{
+			double val = 0;
+			if (setting->Get(&val))
+			{
+				*result = val;
+				bResult = true;
+			}
+		};
+	}
+
+	return bResult;
+}
+
+bool GetNumericIniSetting(char* settingName, double* result)
+{
+	*result = -1;
+
+	if (strlen(settingName))
+	{
+		Setting* setting;
+		if (GetINISetting(settingName, &setting))
+		{
+			double val = 0;
+			if (setting->Get(&val))
+			{
+				*result = val;
+				return true;
+			}
+		};
+	}
+
+	return false;
 }

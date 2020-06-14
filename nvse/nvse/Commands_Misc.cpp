@@ -1129,11 +1129,11 @@ bool Cmd_GetCurrentQuestObjectiveTeleportLinks_Execute(COMMAND_ARGS)
 				g_ArrayMap.SetElementArray(arrID, arrIndex, subArrID);
 				arrIndex += 1.0;
 				BGSQuestObjective::Target * data = iter.Get();
-				if (data && data->teleportLinks.size)
+				if (data && data->data.teleportLinks.size)
 				{
-					for (UInt32 i = 0; i<data->teleportLinks.size; i++)
+					for (UInt32 i = 0; i< data->data.teleportLinks.size; i++)
 					{
-						BGSQuestObjective::TeleportLink teleportLink = data->teleportLinks.data[i];
+						BGSQuestObjective::TeleportLink teleportLink = data->data.teleportLinks.data[i];
 						if (teleportLink.door && teleportLink.door->refID)
 						{
 							g_ArrayMap.SetElementFormID(subArrID, subArrIndex, teleportLink.door->refID);

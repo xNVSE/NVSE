@@ -1,19 +1,10 @@
 #include "CommandTable.h"
 #include "SafeWrite.h"
 #include "GameAPI.h"
-#include "GameData.h"
 #include "GameObjects.h"
-#include "GameEffects.h"
-#include "GameExtraData.h"
-#include "GameForms.h"
-#include "GameProcess.h"
-#include "GameRTTI.h"
-#include "GameSettings.h"
-#include "GameUI.h"
 #include <string>
 #include "Utilities.h"
 #include "PluginManager.h"
-#include "NiNodes.h"
 
 #include "Commands_Console.h"
 #include "Commands_Game.h"
@@ -31,7 +22,7 @@
 #include "Commands_Factions.h"
 #include "Commands_Array.h"
 #include "Commands_String.h"
-#include "Commands_Algohol.h"
+#include "commands_Algohol.h"
 
 CommandTable g_consoleCommands;
 CommandTable g_scriptCommands;
@@ -1705,7 +1696,8 @@ void CommandTable::AddCommandsV5()
 
 }
 
-namespace PluginAPI {
+namespace PluginAPI
+{
 	const CommandInfo* GetCmdTblStart() { return g_scriptCommands.GetStart(); }
 	const CommandInfo* GetCmdTblEnd() { return g_scriptCommands.GetEnd(); }
 	const CommandInfo* GetCmdByOpcode(UInt32 opcode) { return g_scriptCommands.GetByOpcode(opcode); }

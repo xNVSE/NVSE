@@ -176,6 +176,7 @@ bool InventoryReference::RemoveFromContainer()
 		else
 		{
 			ExtraContainerChanges* xcc = (ExtraContainerChanges*)m_containerRef->extraDataList.GetByType(0x015);
+			
 			return xcc->Remove(m_data.type);
 		}
 	}
@@ -205,24 +206,6 @@ bool InventoryReference::MoveToContainer(TESObjectREFR* dest)
 		//	return xChanges->Add(m_tempRef->baseForm, newDataList) ? true : false;
 		//}
 	}
-	return false;
-}
-
-bool InventoryReference::CopyToContainer(TESObjectREFR* dest)
-{
-	ExtraContainerChanges* xChanges = ExtraContainerChanges::GetForRef(dest);
-	if (xChanges && Validate() && m_tempRef) {
-		ExtraDataList* newDataList = ExtraDataList::Create();
-		newDataList->Copy(&m_tempRef->extraDataList);
-
-		// if worn, mark as unequipped
-		if (!newDataList->RemoveByType(kExtraData_Worn)) {
-			newDataList->RemoveByType(kExtraData_WornLeft);
-		}
-
-		return xChanges->Add(m_tempRef->baseForm, newDataList) ? true : false;
-	}
-
 	return false;
 }
 
@@ -272,7 +255,7 @@ bool InventoryReference::DeferredEquipAction::Execute(InventoryReference* iref)
 		}
 		else {
 			UInt16 count = 1;
-			if (data.type->typeID == kFormType_Ammo) {
+			if (data.type->typeID == kFormType_TESAmmo) {
 				// equip a *stack* of arrows
 				count = iref->GetCount();
 			}

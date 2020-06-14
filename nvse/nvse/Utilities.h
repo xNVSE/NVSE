@@ -146,7 +146,7 @@ public:
 		bool			bDisabled;
 	};
 
-	void Show(Message& msg, ...);
+	void Show(Message msg, ...);
 	void Show(const char* msg, ...);
 	void vShow(Message& msg, va_list args);
 	void vShow(const char* msg, va_list args);

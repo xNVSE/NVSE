@@ -5,8 +5,11 @@
 #include "ScriptUtils.h"
 #endif
 
+UInt8* g_lastScriptData;
+
 //static NVSEStringVarInterface* s_StringVarInterface = NULL;
 bool extraTraces = false;
+bool alternateUpdate3D = false;
 
 // arg1 = 1, ignored if canCreateNew is false, passed to 'init' function if a new object is created
 typedef void * (* _GetSingleton)(bool canCreateNew);
@@ -106,11 +109,11 @@ ConsoleManager * ConsoleManager::GetSingleton(void)
 
 char* ConsoleManager::GetConsoleOutputFilename(void)
 {
-	return this.scofPath;
+	return this->scofPath;
 };
 
 bool ConsoleManager::HasConsoleOutputFilename(void) {
-	return this.scofPath != nullptr;
+	return this->scofPath != nullptr;
 };
 
 
@@ -1711,3 +1714,17 @@ UInt32 GetActorValueMax(UInt32 actorValueCode) {
 }
 
 #endif
+
+void ScriptEventList::Destructor() const
+{
+	// OBLIVION	ThisStdCall(0x004FB4E0, this);
+	if (m_eventList)
+		m_eventList->RemoveAll();
+	auto* node = m_vars->Head();
+	while (node != nullptr) {
+		if (node->Data()) {
+			FormHeap_Free(node->Data());
+		}
+		node = node->Next();
+	}
+}

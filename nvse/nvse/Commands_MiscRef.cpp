@@ -9,8 +9,9 @@
 #include "GameScript.h"
 #include "GameOSDepend.h"
 #include "GameSettings.h"
-#include "GameProcess.h"
 #include "ArrayVar.h"
+#include "Havok.h"
+#include "NiNodes.h"
 
 bool Cmd_GetBaseObject_Execute(COMMAND_ARGS)
 {
@@ -108,7 +109,7 @@ bool GetTeleportInfo(COMMAND_ARGS, UInt32 which)
 {
 	*result = 0;
 
-	if (!thisObj || thisObj->baseForm->typeID != kFormType_Door)
+	if (!thisObj || thisObj->baseForm->typeID != kFormType_TESObjectDOOR)
 		return true;
 
 	ExtraTeleport* tele = GetByTypeCast(thisObj->extraDataList, Teleport);
@@ -159,7 +160,7 @@ bool Cmd_SetDoorTeleport_Execute(COMMAND_ARGS)
 	// linkedDoor x y z (rot). if omitted, coords/rot taken from linked ref
 
 	*result = 0;
-	if (!thisObj || thisObj->baseForm->typeID != kFormType_Door)
+	if (!thisObj || thisObj->baseForm->typeID != kFormType_TESObjectDOOR)
 		return true;
 
 	TESObjectREFR* linkedDoor = NULL;
@@ -257,8 +258,8 @@ struct CellScanInfo
 
 		if (world && cellDepth)		//exterior, cell depth > 0
 		{
-			curX = cell->coords->x - cellDepth;
-			curY = cell->coords->y - cellDepth;
+			curX = cell->coords.exterior->x - cellDepth;
+			curY = cell->coords.exterior->y - cellDepth;
 			UInt32 key = (curX << 16) + ((curY << 16) >> 16);
 			curCell = world->cellMap->Lookup(key);
 		}
@@ -266,8 +267,8 @@ struct CellScanInfo
 		{
 			cellDepth = 0;
 			curCell = cell;
-			curX = cell->coords->x;
-			curY = cell->coords->y;
+			curX = cell->coords.exterior->x;
+			curY = cell->coords.exterior->y;
 		}
 	}
 
@@ -281,9 +282,9 @@ struct CellScanInfo
 
 		do
 		{
-			if (curX - cell->coords->x == cellDepth)
+			if (curX - cell->coords.exterior->x == cellDepth)
 			{
-				if (curY - cell->coords->y == cellDepth)
+				if (curY - cell->coords.exterior->y == cellDepth)
 				{
 					curCell = NULL;
 					return false;
@@ -379,7 +380,7 @@ public:
 	{
 		if (refr->baseForm->typeID == kFormType_Creature)
 			return true;
-		else if (refr->baseForm->typeID == kFormType_NPC && refr->baseForm->refID != 7) //exclude the player
+		else if (refr->baseForm->typeID == kFormType_TESNPC && refr->baseForm->refID != 7) //exclude the player
 			return true;
 		else
 			return false;
@@ -400,19 +401,19 @@ public:
 
 		switch (refr->baseForm->typeID)
 		{
-			case kFormType_Armor:
-			case kFormType_Book:
-			case kFormType_Clothing:
-			case kFormType_Ingredient:
-			case kFormType_Misc:
-			case kFormType_Weapon:
-			case kFormType_Ammo:
-			case kFormType_Key:
+			case kFormType_TESObjectARMO:
+			case kFormType_TESObjectBOOK:
+			case kFormType_TESObjectCLOTH:
+			case kFormType_IngredientItem:
+			case kFormType_TESObjectMISC:
+			case kFormType_TESObjectWEAP:
+			case kFormType_TESAmmo:
+			case kFormType_TESKey:
 			case kFormType_AlchemyItem:
-			case kFormType_ARMA:
+			case kFormType_TESObjectARMA:
 				return true;
 
-			case kFormType_Light:
+			case kFormType_TESObjectLIGH:
 				TESObjectLIGH* light = DYNAMIC_CAST(refr->baseForm, TESForm, TESObjectLIGH);
 				if (light)
 					if (light->icon.ddsPath.m_dataLen)	//temp hack until I find canCarry flag on TESObjectLIGH
@@ -539,7 +540,7 @@ static bool GetFirstRef_Execute(COMMAND_ARGS, bool bUsePlayerCell = true, bool b
 	if (cellDepth == -127)
 		cellDepth = 0;
 	else if (cellDepth == -1)
-		if (GetNumericIniSetting("uGridsToLoad:General", &uGrid))
+		if (GetNumericINISetting("uGridsToLoad:General", &uGrid))
 			cellDepth = uGrid;
 		else
 			cellDepth = 0;
@@ -626,7 +627,7 @@ static bool GetNumRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	if (cellDepth == -127)
 		cellDepth = 0;
 	else if (cellDepth == -1)
-		if (GetNumericIniSetting("uGridsToLoad:General", &uGrid))
+		if (GetNumericINISetting("uGridsToLoad:General", &uGrid))
 			cellDepth = uGrid;
 		else
 			cellDepth = 0;
@@ -699,7 +700,7 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	if (cellDepth == -127)
 		cellDepth = 0;
 	else if (cellDepth == -1)
-		if (GetNumericIniSetting("uGridsToLoad:General", &uGrid))
+		if (GetNumericINISetting("uGridsToLoad:General", &uGrid))
 			cellDepth = uGrid;
 		else
 			cellDepth = 0;
@@ -861,13 +862,10 @@ bool Cmd_ClearOpenKey_Execute(COMMAND_ARGS)
 
 	ExtraLock* xLock = GetByTypeCast(thisObj->extraDataList, Lock);
 	if (xLock) {
-		if (thisObj->extraDataList.Remove(xLock))
-		{
-			FormHeap_Free(xLock->data);
-			FormHeap_Free(xLock);
-			*result = 1;
-			return true;
-		}
+		thisObj->extraDataList.Remove(xLock);
+		FormHeap_Free(xLock->data);
+		FormHeap_Free(xLock);
+		*result = 1;
 	}
 
 	return true;
@@ -1118,7 +1116,7 @@ SInt8 GetFactionRank(TESObjectREFR * thisObj, TESFaction * faction)
 	if (thisObj && faction)
 	{
 		bool bFoundRank = false;
-		foundRank = GetExtraFactionRank(thisObj->extraDataList, faction);
+		foundRank = thisObj->extraDataList.GetExtraFactionRank(faction);
 		bFoundRank = ( -1 != foundRank );
 		if (!bFoundRank) {
 			TESActorBaseData* actorBase = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESActorBaseData);
@@ -1682,14 +1680,10 @@ bool Cmd_Update3D_Execute(COMMAND_ARGS)
 {
 	*result = 0.0;
 	if (thisObj)
-		if (alternateUpdate3D)
-		{
-			if (thisObj->Update3D_v1c())
-				*result = 1.0;
-		}
-		else
-			if (thisObj->Update3D()) 
-				*result = 1.0;
+	{
+		thisObj->Update3D();
+		*result = 1.0;
+	}
 
 	return true;
 }
@@ -1709,7 +1703,8 @@ bool Cmd_IsPlayerSwimming_Execute(COMMAND_ARGS)
 
 bool Cmd_GetTFC_Eval(COMMAND_ARGS_EVAL)
 {
-	*result = (*g_osGlobals)->unk06;
+	*result = (*g_osGlobals)->isFlyCam;
+	
 	if(IsConsoleMode())
 		Console_Print("GetTFC: %f", *result);
 	return true;

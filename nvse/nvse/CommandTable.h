@@ -114,6 +114,7 @@ struct ParamInfo
 #define PASS_CMD_ARGS_EVAL	thisObj, arg1, arg2, result
 #define COMMAND_ARGS_EX		ParamInfo *paramInfo, void *scriptData, UInt32 *opcodeOffsetPtr, Script *scriptObj, ScriptEventList *eventList
 #define EXTRACT_ARGS_EX		paramInfo, scriptData, opcodeOffsetPtr, scriptObj, eventList
+#define PASS_FMTSTR_ARGS	paramInfo, scriptData, opcodeOffsetPtr, scriptObj, eventList
 
 //Macro to make CommandInfo definitions a bit less tedious
 
@@ -223,7 +224,7 @@ struct CommandInfo
 const UInt32 kNVSEOpcodeStart	= 0x1400;
 const UInt32 kNVSEOpcodeTest	= 0x2000;
 
-/*
+
 struct CommandMetadata
 {
 	CommandMetadata() :parentPlugin(kNVSEOpcodeStart), returnType(kRetnType_Default) { }
@@ -270,6 +271,8 @@ private:
 	void AddCommandsV1();
 	void AddCommandsV3s();
 	void AddCommandsV4();
+	void AddCommandsV5();
+
 	void AddDebugCommands();
 
 	typedef std::vector <CommandInfo>				CommandList;
@@ -295,7 +298,7 @@ private:
 
 extern CommandTable	g_consoleCommands;
 extern CommandTable g_scriptCommands;
-*/
+
 
 namespace PluginAPI
 {

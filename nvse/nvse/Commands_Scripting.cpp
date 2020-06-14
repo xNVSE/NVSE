@@ -12,7 +12,6 @@
 
 #if RUNTIME
 
-#include "GameAPI.h"
 #include "GameObjects.h"
 #include "InventoryReference.h"
 #include "FunctionScripts.h"

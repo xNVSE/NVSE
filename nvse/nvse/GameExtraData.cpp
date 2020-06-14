@@ -113,6 +113,104 @@ ExtraContainerChanges::ExtendDataList *ExtraContainerChangesExtendDataListCreate
 	return xData;
 }
 
+void ExtraContainerChangesEntryDataFree(ExtraContainerChanges::EntryData* xData, bool bFreeList) {
+	if (xData) {
+		if (xData->extendData) {
+			ExtraContainerChangesExtendDataListFree(xData->extendData, bFreeList);
+		}
+		FormHeap_Free(xData);
+	}
+}
+
+
+void ExtraContainerChangesEntryDataListFree(ExtraContainerChanges::EntryDataList* xData, bool bFreeList) {
+	if (xData) {
+		UInt32 i = 0;
+		ExtraContainerChanges::EntryData* pX = xData->GetNthItem(i);
+		if (pX) {
+			ExtraContainerChangesEntryDataFree(pX, bFreeList);
+			i++;
+			pX = xData->GetNthItem(i);
+		}
+		FormHeap_Free(xData);
+	}
+}
+
+void ExtraContainerChangesFree(ExtraContainerChanges* xData, bool bFreeList) {
+	if (xData) {
+		if (xData->data) {
+			if (xData->data->objList && bFreeList) {
+				ExtraContainerChangesEntryDataListFree(xData->data->objList, true);
+			}
+			FormHeap_Free(xData->data);
+		}
+		FormHeap_Free(xData);
+	}
+}
+
+ExtraContainerChanges* ExtraContainerChanges::GetForRef(TESObjectREFR* refr)
+{
+	ExtraContainerChanges* xChanges = (ExtraContainerChanges*)refr->extraDataList.GetByType(kExtraData_ContainerChanges);
+	if (!xChanges) {
+		xChanges = ExtraContainerChanges::Create();
+		if (xChanges)
+			if (!refr->extraDataList.Add(xChanges)) {
+				ExtraContainerChangesFree(xChanges, false);
+				return NULL;
+			}
+	}
+	return xChanges;
+}
+
+ExtraContainerChanges::ExtendDataList* ExtraContainerChanges::Add(TESForm* form, ExtraDataList* dataList)
+{
+	if (!data) {
+		// wtf
+		_WARNING("ExtraContainerChanges::Add() encountered ExtraContainerChanges with NULL data");
+		return NULL;
+	}
+
+	if (!data->objList) {
+		data->objList = ExtraContainerChangesEntryDataListCreate();
+	}
+
+	// try to locate the form
+	EntryData* found = data->objList->Find(ItemInEntryDataListMatcher(form));
+	if (!found) {
+		// add it to the list with a count delta of 0
+		found = EntryData::Create(form, 0);
+		data->objList->AddAt(found, eListEnd);
+	}
+
+	return found->Add(dataList);
+}
+
+bool ExtraContainerChanges::Remove(TESForm* form, ExtraDataList* dataList, bool bFree)
+{
+	for (UInt32 i = 0; i < data->objList->Count(); i++)
+		if (data->objList->GetNthItem(i)->type == form) {
+			ExtraContainerChanges::EntryData* found = data->objList->GetNthItem(i);
+			if (dataList && found->extendData) {
+				for (UInt32 j = 0; j < found->extendData->Count(); j++)
+					if (found->extendData->GetNthItem(j) == dataList)
+						found->extendData->RemoveNth(j);
+			}
+			else if (!dataList && !found->extendData)
+				data->objList->RemoveNth(i);
+		}
+	return false;
+}
+
+
+UInt32 GetCountForExtraDataList(ExtraDataList* list)
+{
+	if (!list)
+		return 1;
+
+	ExtraCount* xCount = (ExtraCount*)list->GetByType(kExtraData_Count);
+	return xCount ? xCount->count : 1;
+}
+
 static void ExtraContainerChangesExtendDataListFree(ExtraContainerChanges::ExtendDataList *xData, bool bFreeList)
 {
 	if (xData)
@@ -206,6 +304,8 @@ ExtraContainerChanges::EntryData* ExtraContainerChanges::EntryData::Create(UInt3
 	return xData;
 }
 #endif
+
+UInt32 GetCountForExtraDataList(ExtraDataList* list);
 
 ExtraContainerChanges::EntryData* ExtraContainerChanges::EntryData::Create(TESForm* pForm, UInt32 count, ExtraContainerChanges::ExtendDataList* pExtendDataList)
 {
@@ -394,6 +494,12 @@ ExtraRank *ExtraRank::Create(UInt32 _rank)
 	dataPtr[2] = 0;
 	dataPtr[3] = _rank;
 	return (ExtraRank*)dataPtr;
+}
+
+ExtraRank* ExtraRank::Create()
+{
+	ExtraRank* xRank = (ExtraRank*)BSExtraData::Create(kExtraData_Rank, sizeof(ExtraRank), s_ExtraRankVtbl);
+	return xRank;
 }
 
 ExtraAction *ExtraAction::Create(TESObjectREFR *_actionRef)
@@ -714,4 +820,10 @@ ExtraHotkey *ExtraHotkey::Create(UInt8 _index)
 	dataPtr[2] = 0;
 	dataPtr[3] = _index;
 	return (ExtraHotkey*)dataPtr;
+}
+
+ExtraOwnership* ExtraOwnership::Create()
+{
+	ExtraOwnership* xOwner = (ExtraOwnership*)BSExtraData::Create(kExtraData_Ownership, sizeof(ExtraOwnership), s_ExtraOwnershipVtbl);
+	return xOwner;
 }

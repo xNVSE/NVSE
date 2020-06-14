@@ -1,69 +1,69 @@
 #include "nvse/GameScript.h"
 
-//UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText)
-//{
-//	Tokenizer scriptLines(scriptText, "\n\r");
-//	std::string curLine;
-//	while (scriptLines.NextToken(curLine) != -1)
-//	{
-//		Tokenizer tokens(curLine.c_str(), " \t\n\r");
-//		std::string curToken;
-//
-//		if (tokens.NextToken(curToken) != -1)
-//		{
-//			UInt32 varType = -1;
-//
-//			// variable declaration?
-//			if (!_stricmp(curToken.c_str(), "string_var"))
-//				varType = Script::eVarType_String;
-//			else if (!_stricmp(curToken.c_str(), "array_var"))
-//				varType = Script::eVarType_Array;
-//			else if (!_stricmp(curToken.c_str(), "float"))
-//				varType = Script::eVarType_Float;
-//			else if (!_stricmp(curToken.c_str(), "long") || !_stricmp(curToken.c_str(), "int") || !_stricmp(curToken.c_str(), "short"))
-//				varType = Script::eVarType_Integer;
-//			else if (!_stricmp(curToken.c_str(), "ref") || !_stricmp(curToken.c_str(), "reference"))
-//				varType = Script::eVarType_Ref;
-//
-//			if (varType != -1 && tokens.NextToken(curToken) != -1 && !_stricmp(curToken.c_str(), varName))
-//			{
-//				return varType;
-//			}
-//		}
-//	}
-//
-//	return Script::eVarType_Invalid;
-//}
+CRITICAL_SECTION	csGameScript;				// trying to avoid what looks like concurrency issues
 
-//Script* GetScriptFromForm(TESForm* form)
-//{
-//	TESObjectREFR* refr =  DYNAMIC_CAST(form, TESForm, TESObjectREFR);
-//	if (refr)
-//		form = refr->baseForm;
-//
-//	TESScriptableForm* scriptable = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
-//	return scriptable ? scriptable->script : NULL;
-//}
+UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText)
+{
+	Tokenizer scriptLines(scriptText, "\n\r");
+	std::string curLine;
+	while (scriptLines.NextToken(curLine) != -1)
+	{
+		Tokenizer tokens(curLine.c_str(), " \t\n\r");
+		std::string curToken;
 
-//UInt32 Script::GetVariableType(VariableInfo *varInfo)
-//{
-//	if (text)
-//		return GetDeclaredVariableType(varInfo->name.m_data, text);
-//	else
-//	{
-//		// if it's a ref var a matching varIdx will appear in RefList
-//		ListNode<RefVariable> *varIter = refList.Head();
-//		RefVariable	*refVar;
-//		do
-//		{
-//			refVar = varIter->data;
-//			if (refVar && (refVar->varIdx == varInfo->idx))
-//				return eVarType_Ref;
-//		}
-//		while (varIter = varIter->next);
-//		return varInfo->type;
-//	}
-//}
+		if (tokens.NextToken(curToken) != -1)
+		{
+			UInt32 varType = -1;
+
+			// variable declaration?
+			if (!_stricmp(curToken.c_str(), "string_var"))
+				varType = Script::eVarType_String;
+			else if (!_stricmp(curToken.c_str(), "array_var"))
+				varType = Script::eVarType_Array;
+			else if (!_stricmp(curToken.c_str(), "float"))
+				varType = Script::eVarType_Float;
+			else if (!_stricmp(curToken.c_str(), "long") || !_stricmp(curToken.c_str(), "int") || !_stricmp(curToken.c_str(), "short"))
+				varType = Script::eVarType_Integer;
+			else if (!_stricmp(curToken.c_str(), "ref") || !_stricmp(curToken.c_str(), "reference"))
+				varType = Script::eVarType_Ref;
+
+			if (varType != -1 && tokens.NextToken(curToken) != -1 && !_stricmp(curToken.c_str(), varName))
+			{
+				return varType;
+			}
+		}
+	}
+
+	return Script::eVarType_Invalid;
+}
+Script* GetScriptFromForm(TESForm* form)
+{
+	TESObjectREFR* refr =  DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+	if (refr)
+		form = refr->baseForm;
+
+	TESScriptableForm* scriptable = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
+	return scriptable ? scriptable->script : NULL;
+}
+
+UInt32 Script::GetVariableType(VariableInfo* varInfo)
+{
+	if (text)
+		return GetDeclaredVariableType(varInfo->name.m_data, text);
+	else
+	{
+		// if it's a ref var a matching varIdx will appear in RefList
+		ListNode<RefVariable>* varIter = refList.Head();
+		RefVariable* refVar;
+		do
+		{
+			refVar = varIter->data;
+			if (refVar && (refVar->varIdx == varInfo->idx))
+				return eVarType_Ref;
+		} while (varIter = varIter->next);
+		return varInfo->type;
+	}
+}
 
 #if RUNTIME
 
@@ -298,6 +298,11 @@ UInt32 Script::RefVarList::GetIndex(RefVariable *refVar)
 	return 0;
 }
 
+VariableInfo* Script::VarInfoList::GetVariableByName(const char* name) const
+{
+	return FindWhere([name](VariableInfo* info) {return _stricmp(info->name.CStr(), name) == 0;});
+}
+
 /***********************************
  ScriptLineBuffer
 ***********************************/
@@ -355,6 +360,4 @@ bool ScriptLineBuffer::WriteFloat(double buf)
 	dataOffset += 8;
 	return true;
 }
-
-
 

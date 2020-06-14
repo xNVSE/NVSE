@@ -3,6 +3,9 @@
 #define SCRIPT_SIZE 0x54
 static const UInt32 kScript_ExecuteFnAddr = 0x005AC1E0;
 
+extern CRITICAL_SECTION	csGameScript;				// trying to avoid what looks like concurrency issues
+
+
 // 54 / 48
 class Script : public TESForm
 {
@@ -40,7 +43,10 @@ public:
 		eVarType_Invalid
 	};
 
-	typedef tList<VariableInfo> VarInfoList;
+	struct VarInfoList : tList<VariableInfo>
+	{
+		VariableInfo* GetVariableByName(const char* name) const;
+	};
 
 	// 14
 	struct ScriptInfo
@@ -93,9 +99,9 @@ public:
 	bool			IsMagicScript() const {return info.type == eType_Magic;}
 	bool			IsUnkScript() const {return info.type == eType_Unk;}
 
-	//UInt32			GetVariableType(VariableInfo *var);
-	//ScriptVar		*AddVariable(ScriptEventList *eventList, UInt32 ownerID, UInt8 modIdx);
-	//UInt32			GetDataLength();
+	UInt32			GetVariableType(VariableInfo *var);
+	ScriptVar		*AddVariable(ScriptEventList *eventList, UInt32 ownerID, UInt8 modIdx);
+	UInt32			GetDataLength();
 
 	static bool	RunScriptLine(const char *text, TESObjectREFR *object = NULL);
 	static bool	RunScriptLine2(const char *text, TESObjectREFR *object = NULL, bool bSuppressOutput = true);
@@ -235,9 +241,9 @@ struct ScriptBuffer
 	// convert a variable or form to a RefVar, add to refList if necessary
 	Script::RefVariable* ResolveRef(const char* refName);
 	UInt32 GetRefIdx(Script::RefVariable *refVar);
-	//UInt32 GetVariableType(VariableInfo *varInfo, Script::RefVariable *refVar);
+	UInt32 GetVariableType(VariableInfo *varInfo, Script::RefVariable *refVar);
 };
 
-//UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText);	// parses scriptText to determine var type
-//Script* GetScriptFromForm(TESForm* form);
+UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText);	// parses scriptText to determine var type
+Script* GetScriptFromForm(TESForm* form);
 

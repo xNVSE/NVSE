@@ -3,9 +3,12 @@
 #define playerID	0x7
 #define playerRefID 0x14
 
+extern UInt8* g_lastScriptData;
+
 static const UInt32 s_Console__Print = 0x0071D0A0;
 
 extern bool extraTraces;
+extern bool alternateUpdate3D;
 
 void Console_Print(const char * fmt, ...);
 
@@ -175,6 +178,7 @@ struct ScriptEventList
 
 	void Dump(void);
 	ScriptVar *GetVariable(UInt32 id) const;
+	void Destructor() const;
 	UInt32 ResetAllVariables();
 };
 
@@ -428,77 +432,6 @@ class ChangesMap;
 class InteriorCellNewReferencesMap;
 class ExteriorCellNewReferencesMap;
 class NumericIDBufferMap;
-
-class NiBinaryStream
-{
-public:
-	NiBinaryStream();
-	~NiBinaryStream();
-
-	virtual void	Destructor(bool freeMemory);		// 00
-	virtual void	Unk_01(void);						// 04
-	virtual void	SeekCur(SInt32 delta);				// 08
-	virtual void	GetBufferSize(void);				// 0C
-	virtual void	InitReadWriteProcs(bool useAlt);	// 10
-
-//	void	** m_vtbl;		// 000
-	UInt32	m_offset;		// 004
-	void	* m_readProc;	// 008 - function pointer
-	void	* m_writeProc;	// 00C - function pointer
-};
-
-class NiFile: public NiBinaryStream
-{
-public:
-	NiFile();
-	~NiFile();
-
-	virtual UInt32	SetOffset(UInt32 newOffset, UInt32 arg2);	// 14
-	virtual UInt32	GetFilename(void);	// 18
-	virtual UInt32	GetSize();			// 1C
-
-	UInt32	m_bufSize;	// 010
-	UInt32	m_unk014;	// 014 - Total read in buffer
-	UInt32	m_unk018;	// 018 - Consumed from buffer
-	UInt32	m_unk01C;	// 01C
-	void*	m_buffer;	// 020
-	FILE*	m_File;		// 024
-};
-
-// 158
-class BSFile : public NiFile
-{
-public:
-	BSFile();
-	~BSFile();
-
-	virtual bool	Reset(bool arg1, bool arg2);	// 20
-	virtual bool	Unk_09(UInt32 arg1);	// 24
-	virtual UInt32	Unk_0A();	// 28
-	virtual UInt32	Unk_0B(String *string, UInt32 arg2);	// 2C
-	virtual UInt32	Unk_0C(void *ptr, UInt32 arg2);	// 30
-	virtual UInt32	ReadBufDelim(void *bufferPtr, UInt32 bufferSize, short delim);		// 34
-	virtual UInt32	Unk_0E(void *ptr, UInt8 arg2);	// 38
-	virtual UInt32	Unk_0F(void *ptr, UInt8 arg2);	// 3C
-	virtual bool	IsReadable();	// 40
-	virtual UInt32	ReadBuf(void *bufferPtr, UInt32 numBytes);	// 44
-	virtual UInt32	WriteBuf(void *bufferPtr, UInt32 numBytes);	// 48
-
-	UInt32		m_modeReadWriteAppend;	// 028
-	UInt8		m_good;					// 02C
-	UInt8		pad02D[3];				// 02D
-	UInt8		m_unk030;				// 030
-	UInt8		pad031[3];				// 031
-	UInt32		m_unk034;				// 034
-	UInt32		m_unk038;				// 038 - init'd to FFFFFFFF
-	UInt32		m_unk03C;				// 038
-	UInt32		m_unk040;				// 038
-	char		m_path[0x104];			// 044
-	UInt32		m_unk148;				// 148
-	UInt32		m_unk14C;				// 14C
-	UInt32		m_fileSize;				// 150
-	UInt32		m_unk154;				// 154
-};
 
 //
 struct ToBeNamed
@@ -959,55 +892,56 @@ struct NavMeshStaticAvoidNode
 	UInt32	unk024;	// 24
 };	// Alloc'd to 0x28
 
-/* I need to port NiTypes 
-
-class NavMesh: public TESForm
+struct FontHeightData
 {
-	NavMesh();
-	~NavMesh();
+	float		heightBase;
+	float		heightwGap;
+};
+// s_fontHeightDatas[90];
 
-	struct NavMeshGridCells
+// 54
+struct FontInfo
+{
+	struct BufferData
 	{
-		UInt32					cellCount;	// 00
-		BSSimpleArray<UInt16>	cells[1];	// 04
-	};	// 4 + cellCount*0x10
-
-	struct NavMeshGrid
-	{
-		UInt32	size;					// 000 = 0
-		float	unk004;					// 004
-		float	unk008;					// 008
-		float	flt00C;					// 00C Init'd to MAXFLOAT
-		float	unk010;					// 010
-		float	unk014;					// 014
-		float	unk018;					// 018
-		float	unk01C;					// 01C
-		float	unk020;					// 020
-		NavMeshGridCells	* cells;	// 024 = 0, array of size size*size
+		float			lineHeight;		// 0000
+		UInt32			unk0004[73];	// 0004
+		UInt32			unk0128[458];	// 0128
+		float			baseHeight;		// 0850
+		float			flt0854;		// 0854
+		float			flt0858;		// 0858
 	};
 
-	TESChildCell								childCell;				// 018
-	NiRefObject									niro;					// 01C
-	TESObjectCELL								* cell;					// 024
-	BSSimpleArray<NavMeshVertex>				vertices;				// 028
-	BSSimpleArray<NavMeshTriangle>				triangles;				// 038
-	BSSimpleArray<EdgeExtraInfo>				edgesExtraInfo;			// 048
-	BSSimpleArray<NavMeshTriangleDoorPortal>	trianglesDoorPortal;	// 058
-	BSSimpleArray<NavMeshClosedDoorInfo>		closedDoorsInfo;		// 068
-	BSSimpleArray<UInt16>						arr07NVCA;				// 078
-	NiTMap<ushort,NavMeshPOVData>				povDataMap;				// 088
-	BSSimpleArray<UInt8>						arr098;					// 098
-	NavMeshGrid									grid;					// 0A8
-	BSSimpleArray<NiTPointer<ObstacleUndoData>>	obstaclesUndoData;		// 0D0
-	NiTMap<ushort,NiPointer<ObstacleData>>		* obstaclesData;		// 0E0
-	BSSimpleArray<UInt8>						arr0E4;					// 0E4
-	BSSimpleArray<NavMeshStaticAvoidNode>		staticAvoidNodes;		// 0F4
-};
+	struct ButtonIcon;
 
-class NavMeshInfoMap: public TESForm
+	UInt8						isLoaded;	// 00
+	UInt8						pad01[3];	// 01
+	char*						filePath;	// 04
+	UInt8						fontID;		// 08
+	UInt8						pad09[3];	// 09
+	NiTexturingProperty*		texProp;	// 0C
+	UInt32						unk10[7];	// 10
+	float						flt2C;		// 2C
+	float						flt30;		// 30
+	UInt32						unk34;		// 34
+	BufferData* bufferData;// 38
+	UInt32						unk3C[2];	// 3C
+	BSSimpleArray<ButtonIcon>	arr44;		// 44
+};
+STATIC_ASSERT(sizeof(FontInfo) == 0x54);
+// 164 (24)
+class FontManager
 {
-	// 1C is NiTPointerMap indexed by NavMesh refID
-	// 2C is a map of map indexed by Worldspace/Cell refID
-};
+public:
+	FontManager();
+	~FontManager();
 
-*/
+	FontInfo* fontInfos[8];		// 00
+	UInt8			byte20;				// 20
+	UInt8			pad21[3];			// 21
+	FontInfo* extraFonts[80];	// 24
+
+	//	outDims.x := width (pxl); outDims.y := height (pxl); outDims.z := numLines
+	NiVector3* GetStringDimensions(NiVector3* outDims, const char* srcString, UInt32 fontID, UInt32 maxFlt = 0x7F7FFFFF, UInt32 startIdx = 0);
+	static FontManager* GetSingleton() { return *(FontManager**)0x11F33F8; };
+};

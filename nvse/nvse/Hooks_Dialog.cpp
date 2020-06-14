@@ -59,11 +59,11 @@ static __declspec(naked) int DialogResponseHook()
 	}
 }
 
-static char* __stdcall doTextHook(char* text, FontManager::FontInfo* font)
+static char* __stdcall doTextHook(char* text, FontInfo* font)
 {
 	// we can use an event to call before a text is output
-	UInt32 fontID = font ? font->id : 0;
-	char* fontName = font ? font->path : 0;
+	UInt32 fontID = font ? font->fontID : 0;
+	char* fontName = font ? font->filePath : 0;
 	gLog.Indent();
 	_MESSAGE("doTextHook: '%s' for [%08x] (fontCode=%d) '%s'", text, font, fontID, fontName);
 	gLog.Outdent();
@@ -110,6 +110,20 @@ char * doTileTextEvent(ArrayID argsArrayId, const char * eventName, char * text,
 	return result;
 }
 
+// Kormakur: Copy pasted from old NVSE, could maybe be replaced with GetComponentFullName?
+std::string TileGetQualifiedName(Tile* tile)
+{
+	std::string qualifiedName;
+
+	//if(parent && !parent->GetFloatValue(kTileValue_class, &parentClass))	// i.e., parent is not a menu
+	if (tile->parent)
+		qualifiedName = TileGetQualifiedName(tile->parent) + "\\";
+
+	qualifiedName += tile->name.m_data;
+
+	return qualifiedName;
+}
+
 static char* __stdcall doTileTextHook(char* text, TileText* tile)
 {
 	::EnterCriticalSection(&csTileText);
@@ -118,8 +132,9 @@ static char* __stdcall doTileTextHook(char* text, TileText* tile)
 	char tileName[4096] = "";
 	ArrayID argsArrayId = 0;
 
+
 	if (tile)
-		strcpy_s(tileName, 4095, tile->GetQualifiedName().c_str());
+		strcpy_s(tileName, 4095, TileGetQualifiedName(tile).c_str());
 	if (strstr(tileName, "\\DM_SpeakerText")) // This a NPC speaking
 	{
 		argsArrayId = g_ArrayMap.Create(kDataType_String, false, 255);
