@@ -299,7 +299,7 @@ struct CommandInfo;
 struct PluginInfo;
 class BSFile;
 class QueuedFile;
-class ModelLoader;
+struct ModelLoader;
 struct InventoryRef;
 class AuxVariableValue;
 
