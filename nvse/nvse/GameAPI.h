@@ -66,11 +66,6 @@ extern const _ShowMessageBox_button ShowMessageBox_button;
 typedef bool (*_QueueUIMessage)(const char *msgText, UInt32 iconType, const char *iconPath, const char *soundPath, float displayTime, UInt8 unk5);
 extern const _QueueUIMessage QueueUIMessage;
 
-enum
-{
-	kMaxMessageLength = 0x4000
-};
-
 #if NVSE_CORE
 bool ExtractArgsEx(ParamInfo * paramInfo, void * scriptData, UInt32 * scriptDataOffset, Script * scriptObj, ScriptEventList * eventList, ...);
 extern bool ExtractFormatStringArgs(UInt32 fmtStringPos, char* buffer, ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptDataOffset, Script * scriptObj, ScriptEventList * eventList, UInt32 maxParams, ...);

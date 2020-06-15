@@ -1,5 +1,7 @@
 #pragma once
 
+constexpr static auto kMaxMessageLength = 0x4000;
+
 class Script;
 
 void DumpClass(void* theClassPtr, UInt32 nIntsToDump = 512);

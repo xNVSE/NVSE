@@ -1,6 +1,7 @@
 #include "Utilities.h"
 #include <string>
 #include <algorithm>
+#include <ctime>
 
 #if RUNTIME
 #include "GameAPI.h"
