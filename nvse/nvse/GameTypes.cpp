@@ -36,7 +36,7 @@ bool String::Set(const char *src)
 		if (m_data) GameHeapFree(m_data);
 		m_data = (char*)GameHeapAlloc(m_dataLen + 1);
 	}
-	MemCopy(m_data, src, m_dataLen + 1);
+	memcpy(m_data, src, m_dataLen + 1);
 	return true;
 }
 
@@ -51,12 +51,12 @@ bool String::Append(const char *toAppend)
 		char *newStr = (char*)GameHeapAlloc(m_bufLen + 1);
 		if (m_data)
 		{
-			MemCopy(newStr, m_data, m_dataLen);
+			memcpy(newStr, m_data, m_dataLen);
 			GameHeapFree(m_data);
 		}
 		m_data = newStr;
 	}
-	MemCopy(m_data + m_dataLen, toAppend, length + 1);
+	memcpy(m_data + m_dataLen, toAppend, length + 1);
 	m_dataLen = newLen;
 	return true;
 }
@@ -69,7 +69,7 @@ void String::AppendChar(char toAppend)
 		char *newStr = (char*)GameHeapAlloc(m_bufLen + 1);
 		if (m_data)
 		{
-			MemCopy(newStr, m_data, m_dataLen);
+			memcpy(newStr, m_data, m_dataLen);
 			GameHeapFree(m_data);
 		}
 		m_data = newStr;
@@ -87,13 +87,13 @@ void String::InsertChar(char toInsert, UInt32 index)
 		char *newStr = (char*)GameHeapAlloc(m_bufLen + 1);
 		if (m_data)
 		{
-			MemCopy(newStr, m_data, m_dataLen);
+			memcpy(newStr, m_data, m_dataLen);
 			GameHeapFree(m_data);
 		}
 		m_data = newStr;
 	}
 	if (index < m_dataLen)
-		MemCopy(m_data + index + 1, m_data + index, m_dataLen - index);
+		memcpy(m_data + index + 1, m_data + index, m_dataLen - index);
 	m_dataLen++;
 	m_data[index] = toInsert;
 	m_data[m_dataLen] = 0;
@@ -109,7 +109,7 @@ void String::EraseAt(UInt32 index)
 		if (!length)
 			m_data[m_dataLen] = 0;
 		else
-			MemCopy(m_data + index, m_data + index + 1, length + 1);
+			memcpy(m_data + index, m_data + index + 1, length + 1);
 	}
 	else *m_data = 0;
 }

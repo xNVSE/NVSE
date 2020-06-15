@@ -491,7 +491,7 @@ bool Cmd_GetNthExplicitRef_Execute(COMMAND_ARGS)
 			Script::RefVariable* entry = nullptr;
 			while (count <= refIdx)
 			{
-				auto filter = [](Script::RefVariable* refItem) {return refItem->varIdx == 0; };
+				auto filter = [](Script::RefVariable* refItem) {return refItem->varIdx == 0;};
 				entry = targetScript->refList.FindWhere(filter);
 				if (entry == nullptr)
 				{

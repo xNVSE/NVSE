@@ -6,35 +6,19 @@ bool BaseExtraList::HasType(UInt32 type) const
 	return (m_presenceBitfield[type >> 3] & (1 << (type & 7))) != 0;
 }
 
-__declspec(naked) BSExtraData *BaseExtraList::GetByType(UInt32 type) const
+BSExtraData* BaseExtraList::GetByType(UInt32 type) const
 {
-	__asm
-	{
-		push	ebx
-		mov		ebx, [esp+8]
-		mov		edx, ecx
-		mov		ecx, ebx
-		and		cl, 7
-		mov		al, 1
-		shl		al, cl
-		mov		ecx, ebx
-		shr		cl, 3
-		test	[ecx+edx+8], al
-		jz		retnNULL
-		mov		eax, [edx+4]
-	iterHead:
-		test	eax, eax
-		jz		done
-		cmp		byte ptr [eax+4], bl
-		jz		done
-		mov		eax, [eax+8]
-		jmp		iterHead
-	retnNULL:
-		xor		eax, eax
-	done:
-		pop		ebx
-		retn	4
-	}
+	if (!HasType(type)) return NULL;
+
+	for (BSExtraData* traverse = m_data; traverse; traverse = traverse->next)
+		if (traverse->type == type)
+			return traverse;
+
+#if _DEBUG
+	_MESSAGE("ExtraData HasType(%d) is true but it wasn't found!", type);
+	DebugDump();
+#endif
+	return NULL;
 }
 
 void BaseExtraList::MarkType(UInt32 type, bool bCleared)

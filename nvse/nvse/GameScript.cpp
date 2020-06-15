@@ -313,7 +313,7 @@ VariableInfo* Script::VarInfoList::GetVariableByName(const char* name) const
 bool ScriptLineBuffer::Write(const void *buf, UInt32 bufsize)
 {
 	if ((dataOffset + bufsize) >= kBufferSize) return false;
-	MemCopy(dataBuf + dataOffset, buf, bufsize);
+	memcpy(dataBuf + dataOffset, buf, bufsize);
 	dataOffset += bufsize;
 	return true;
 }
@@ -332,7 +332,7 @@ bool ScriptLineBuffer::WriteString(const char *buf)
 	if ((dataOffset + 2 + len) >= kBufferSize) return false;
 	UInt8 *dataPtr = dataBuf + dataOffset;
 	*(UInt16*)dataPtr = len;
-	MemCopy(dataPtr + 2, buf, len);
+	memcpy(dataPtr + 2, buf, len);
 	dataOffset += 2 + len;
 	return true;
 }
@@ -356,7 +356,7 @@ bool ScriptLineBuffer::WriteByte(UInt8 buf)
 bool ScriptLineBuffer::WriteFloat(double buf)
 {
 	if ((dataOffset + 8) >= kBufferSize) return false;
-	MemCopy(dataBuf + dataOffset, &buf, 8);
+	memcpy(dataBuf + dataOffset, &buf, 8);
 	dataOffset += 8;
 	return true;
 }

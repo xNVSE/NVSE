@@ -3,6 +3,14 @@
 #define playerID	0x7
 #define playerRefID 0x14
 
+// can be passed to QueueUIMessage to determine Vaultboy icon displayed
+enum eEmotion {
+	neutral = 0,
+	happy = 1,
+	sad = 2,
+	pain = 3
+};
+
 extern UInt8* g_lastScriptData;
 
 static const UInt32 s_Console__Print = 0x0071D0A0;
@@ -82,14 +90,6 @@ typedef void (__cdecl *_ShowCompilerError)(ScriptBuffer* Buffer, const char* for
 extern const _ShowCompilerError		ShowCompilerError;
 
 #endif
-
-// can be passed to QueueUIMessage to determine Vaultboy icon displayed
-enum eEmotion {
-	neutral = 0,
-	happy = 1,
-	sad = 2,
-	pain = 3
-};
 
 struct NVSEStringVarInterface;
 	// Problem: plugins may want to use %z specifier in format strings, but don't have access to StringVarMap

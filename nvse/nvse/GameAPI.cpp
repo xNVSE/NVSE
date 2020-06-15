@@ -7,7 +7,7 @@
 
 UInt8* g_lastScriptData;
 
-//static NVSEStringVarInterface* s_StringVarInterface = NULL;
+static NVSEStringVarInterface* s_StringVarInterface = NULL;
 bool extraTraces = false;
 bool alternateUpdate3D = false;
 
@@ -295,9 +295,9 @@ static const char* StringFromStringVar(UInt32 strID)
 	StringVar* strVar = g_StringMap.Get(strID);
 	return strVar ? strVar->GetCString() : "";
 #else
-	/*if (s_StringVarInterface)
+	if (s_StringVarInterface)
 		return s_StringVarInterface->GetString(strID);
-	else*/
+	else
 		return "";
 #endif
 }
@@ -351,7 +351,7 @@ static bool v_ExtractArgsEx(SInt16 numArgs, ParamInfo * paramInfo, UInt8* &scrip
 				UInt16	len = *((UInt16 *)scriptData);
 				scriptData += 2;
 
-				MemCopy(out, scriptData, len);
+				memcpy(out, scriptData, len);
 				scriptData += len;
 
 				out[len] = 0;
@@ -360,7 +360,7 @@ static bool v_ExtractArgsEx(SInt16 numArgs, ParamInfo * paramInfo, UInt8* &scrip
 				if (resolved != out)
 				{
 					UInt32 resolvedLen = strlen(resolved);
-					MemCopy(out, resolved, resolvedLen);
+					memcpy(out, resolved, resolvedLen);
 					out[resolvedLen] = 0;
 				}
 			}
@@ -396,7 +396,7 @@ static bool v_ExtractArgsEx(SInt16 numArgs, ParamInfo * paramInfo, UInt8* &scrip
 					}
 
 					default:
-						//_ERROR("ExtractArgsEx: unknown integer type (%02X)", type);
+						_ERROR("ExtractArgsEx: unknown integer type (%02X)", type);
 						return false;
 				}
 			}
@@ -428,7 +428,7 @@ static bool v_ExtractArgsEx(SInt16 numArgs, ParamInfo * paramInfo, UInt8* &scrip
 					}
 
 					default:
-						//_ERROR("ExtractArgsEx: unknown float type (%02X)", type);
+						_ERROR("ExtractArgsEx: unknown float type (%02X)", type);
 						return false;
 				}
 			}
@@ -526,7 +526,7 @@ static bool v_ExtractArgsEx(SInt16 numArgs, ParamInfo * paramInfo, UInt8* &scrip
 				// fall through to error reporter
 
 			default:
-				//_ERROR("Unhandled type encountered. Arg #%d numArgs = %d paramType = %d paramStr = %s",	i, numArgs, info->typeID, info->typeStr);
+				_ERROR("Unhandled type encountered. Arg #%d numArgs = %d paramType = %d paramStr = %s",	i, numArgs, info->typeID, info->typeStr);
 				HALT("unhandled type");
 				break;
 		}
@@ -632,13 +632,13 @@ bool ExtractArgsRaw(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptD
 										break;
 
 									default:
-										//_ERROR("ExtractArgsRaw: unknown remote reference in number var (%02X)", eventListSrc->typeID);
+										_ERROR("ExtractArgsRaw: unknown remote reference in number var (%02X)", eventListSrc->typeID);
 										return false;
 								}
 							}
 							else
 							{
-								//_ERROR("ExtractArgsRaw: couldn't find remote reference in number var");
+								_ERROR("ExtractArgsRaw: couldn't find remote reference in number var");
 								return false;
 							}
 						}
@@ -648,14 +648,14 @@ bool ExtractArgsRaw(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptD
 							// ###
 
 							//default:
-								//_ERROR("ExtractArgsRaw: unknown number var type (%02X)", type);
+								_ERROR("ExtractArgsRaw: unknown number var type (%02X)", type);
 								return false;
 						}
 					}
 					break;
 
 					default:
-						//_ERROR("ExtractArgsRaw: unknown number type (%02X)", type);
+						_ERROR("ExtractArgsRaw: unknown number type (%02X)", type);
 						return false;
 				}
 			}
@@ -745,7 +745,7 @@ bool ExtractArgsRaw(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptD
 					break;
 
 					default:
-						//_ERROR("ExtractArgsRaw: unknown form type (%02X)", type);
+						_ERROR("ExtractArgsRaw: unknown form type (%02X)", type);
 						return false;
 				}
 			}
@@ -755,7 +755,7 @@ bool ExtractArgsRaw(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptD
 				// unhandled, fall through
 
 			default:
-				//_ERROR("ExtractArgsRaw: unhandled type encountered, arg %d type %02X", i, info->typeID);
+				_ERROR("ExtractArgsRaw: unhandled type encountered, arg %d type %02X", i, info->typeID);
 				HALT("unhandled type");
 				break;
 		}
@@ -1265,7 +1265,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 
 void RegisterStringVarInterface(NVSEStringVarInterface* intfc)
 {
-	//s_StringVarInterface = intfc;
+	s_StringVarInterface = intfc;
 }
 
 #if NVSE_CORE
@@ -1333,9 +1333,9 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 	}
 
 	// Calculate frame pointer for 4 calls above:
-	void* callerFramePointer;
+	/*void* callerFramePointer;
 	_asm {
-		mov callerFramePointer , ebp
+		mov callerFramePointer, ebp
 	}
 	for (int i = 0; i < 3; i++)
 		callerFramePointer = (void*)(*(UInt32*)callerFramePointer);
@@ -1343,12 +1343,13 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 		callerFramePointer = (void*)(*(UInt32*)callerFramePointer);	// sv_Destruct calls us directly, others goes through AssignToStringVar
 		callerFramePointer = (void*)(*(UInt32*)callerFramePointer);	// one more added for when multiple commands are grouped (like GetBipedModelPath)
 	}
-
 	UInt32 scriptDataPtrAddr = (UInt32)(callerFramePointer) + 0x08;
 	UInt32* scriptDataAddr = (UInt32*)scriptDataPtrAddr;
 	UInt8* scriptData = (UInt8*)(*scriptDataAddr);
-
+	SInt32 scriptDataOffset = (UInt32)scriptData - (UInt32)(script->data);*/
+	auto* scriptData = g_lastScriptData;
 	SInt32 scriptDataOffset = (UInt32)scriptData - (UInt32)(script->data);
+
 	if (scriptDataOffset < 5)
 		return false;
 
@@ -1479,7 +1480,7 @@ ScriptFormatStringArgs::ScriptFormatStringArgs(UInt32 _numArgs, UInt8* _scriptDa
 	UInt16 len = *((UInt16*)scriptData);
 	char* szFmt = new char[len+1];
 	scriptData += 2;
-	MemCopy(szFmt, scriptData, len);
+	memcpy(szFmt, scriptData, len);
 	szFmt[len] = '\0';
 
 	scriptData += len;

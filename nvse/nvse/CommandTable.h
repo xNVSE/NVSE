@@ -248,7 +248,7 @@ public:
 
 	CommandInfo *	GetStart(void)	{ return &m_commands[0]; }
 	CommandInfo *	GetEnd(void)	{ return GetStart() + m_commands.size(); }
-	CommandInfo *	CommandTable::GetByName(const char * name);
+	CommandInfo *	GetByName(const char * name);
 	CommandInfo *	GetByOpcode(UInt32 opcode);
 
 	void	SetBaseID(UInt32 id)	{ m_baseID = id; m_curID = id; }

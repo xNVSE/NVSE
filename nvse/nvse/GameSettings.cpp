@@ -112,7 +112,7 @@ bool Setting::Set(const char* strVal, bool doFree)
 	if (doFree) GameHeapFree(data.str);
 	UInt32 length = StrLen(strVal) + 1;
 	data.str = (char*)GameHeapAlloc(length);
-	MemCopy(data.str, strVal, length);
+	memcpy(data.str, strVal, length);
 	return true;
 }
 

@@ -1534,7 +1534,7 @@ void CommandTable::AddCommandsV4()
 	ADD_CMD_RET(GetScopeModelPath, kRetnType_String);
 	ADD_CMD(SetScopeModelPath);
 
-	// 4.3 and 4.4 sk�pped
+	// 4.3 and 4.4 skipped
 
 	// 4.5 beta 01 none added
 

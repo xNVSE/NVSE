@@ -377,14 +377,15 @@ FodyWeavers.xsd
 *.a
 
 # Visual Studio Files
-**/Debug
-**/Release
-**/Debug\ CS
-**/Debug\ VC9
-**/Release\ VC9
+**/Debug/
+**/Release/
+**/Debug\ CS/
+**/Debug\ VC9/
+**/Release\ VC9/
 *.suo
 *.csproj.user
 *.vbproj.user
 ipch
 *sdf
 
+**/*FileListAbsolute*
