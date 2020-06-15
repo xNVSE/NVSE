@@ -351,10 +351,6 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 		strVar = g_StringMap.Get(strID);
 		bTemp = false;
 	}
-	else if (!bTemp) {
-		_WARNING("Function must be used within a Set statement or NVSE expression");
-		return false;
-	}
 
 	if (!modIndex)
 		modIndex = scriptObj->GetModIndex();
@@ -365,19 +361,11 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 		g_StringMap.MarkTemporary(strID, false);
 	}
 	else
+	{
 		strID = g_StringMap.Add(modIndex, newValue, bTemp);
+	}
 
 	*result = strID;
-
-#if _DEBUG	// console feedback disabled in release by request (annoying when called from batch scripts)
-	if (IsConsoleMode() && !bTemp)
-	{
-		if (len < 480)
-			Console_Print("Assigned string >> \"%s\"", newValue);
-		else
-			Console_Print("Assigned string (too long to print)");
-	}
-#endif
 
 	return true;
 }

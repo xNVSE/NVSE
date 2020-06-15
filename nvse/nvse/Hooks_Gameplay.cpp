@@ -842,36 +842,6 @@ void __stdcall SendQuitGameMessage(QuitGameMessage msg)
 //	handled by Dispatch_Message EventManager::HandleNVSEMessage(msgToSend, NULL);
 }
 
-//static __declspec(naked) void ExitGameFromIngameMenuHook(void)
-//{
-//	__asm {
-//		pushad
-//
-//		push	kQuit_ToWindows
-//		call	SendQuitGameMessage
-//
-//		popad
-//		mov		edx,	[g_osGlobals]
-//		mov		edx,	[edx]
-//		jmp		[kExitGameFromIngameMenuRetnAddr]
-//	}
-//}
-//
-//static __declspec(naked) void ExitGameFromMainMenuHook(void)
-//{
-//	__asm {
-//		pushad
-//
-//		push	kQuit_ToWindows
-//		call	SendQuitGameMessage
-//
-//		popad
-//		mov		eax,	[g_osGlobals]
-//		mov		eax,	[eax]
-//		jmp		[kExitGameFromMainMenuRetnAddr]
-//	}
-//}
-
 static __declspec(naked) void ExitGameFromMenuHook(void)
 {
 	__asm {

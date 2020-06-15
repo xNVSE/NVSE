@@ -55,10 +55,6 @@ SInt32 * GetCalculatedOpLength(UInt32 * opcodeOffsetPtr)
 
 bool Cmd_Label_Execute(COMMAND_ARGS)
 {
-	// make sure this is only called from the main execution loop
-	ASSERT_STR(scriptData == scriptObj->data, "Label may not be called inside a set or if statement");
-	ASSERT(_ReturnAddress() == kOpHandlerRetnAddr);
-
 	UInt32	idx = 0;
 
 	if(!ExtractArgs(EXTRACT_ARGS, &idx)) return true;
@@ -97,10 +93,6 @@ bool Cmd_Label_Execute(COMMAND_ARGS)
 
 bool Cmd_Goto_Execute(COMMAND_ARGS)
 {
-	// make sure this is only called from the main execution loop
-	ASSERT_STR(scriptData == scriptObj->data, "Goto may not be called inside a set or if statement");
-	ASSERT(_ReturnAddress() == kOpHandlerRetnAddr);
-
 	UInt32	idx = 0;
 
 	if(!ExtractArgs(EXTRACT_ARGS, &idx)) return true;

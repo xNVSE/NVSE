@@ -2049,37 +2049,5 @@ void DumpMemImg(void *data, UInt32 size, UInt8 extra)
 		else if (extra == 1) _MESSAGE("%03X\t\t%08X\t[%08X]\t", iter, *ptr, ByteSwap(*ptr));
 		else if (extra == 2) _MESSAGE("%03X\t\t%08X\t%f", iter, *ptr, *(float*)ptr);
 		else if (extra == 3) _MESSAGE("%03X\t\t%08X\t[%08X]\t%f", iter, *ptr, ByteSwap(*ptr), *(float*)ptr);
-		/*else
-		{
-			UInt32 addr = *ptr;
-			if (!(addr & 3) && (addr > 0x08000000) && (addr < 0x34000000))
-				_MESSAGE("%03X\t\t%08X\t%08X\t", iter, *ptr, *(UInt32*)addr);
-			else _MESSAGE("%03X\t\t%08X\t", iter, *ptr);
-		}*/
 	}
 }
-
-/*void GetMD5File(const char *filePath, char *outHash)
-{
-	FileStream sourceFile;
-	if (!sourceFile.Open(filePath)) return;
-
-	MD5 md5;
-
-	HANDLE handle = sourceFile.GetHandle();
-
-	UInt8 buffer[0x400], digest[0x10];
-	UInt32 offset = 0, length;
-
-	while (!sourceFile.HitEOF())
-	{
-		ReadFile(handle, buffer, 0x400, &length, NULL);
-		offset += length;
-		sourceFile.SetOffset(offset);
-		md5.MD5Update(buffer, length);
-	}
-	md5.MD5Final(digest);
-
-	for (UInt8 idx = 0; idx < 0x10; idx++, outHash += 2)
-		sprintf_s(outHash, 3, "%02X", digest[idx]);
-}*/
