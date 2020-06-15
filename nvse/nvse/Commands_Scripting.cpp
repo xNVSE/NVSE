@@ -131,10 +131,10 @@ bool Cmd_Let_Execute(COMMAND_ARGS)
 	ExpressionEvaluator evaluator(PASS_COMMAND_ARGS);
 
 	if (extraTraces)
+	{
 		gLog.Indent();
-
-	if (extraTraces)
 		_MESSAGE("Extracting args for Let at %08X", *opcodeOffsetPtr - 4);
+	}
 
 	evaluator.ExtractArgs();
 

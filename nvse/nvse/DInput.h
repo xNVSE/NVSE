@@ -76,27 +76,27 @@ __declspec(naked) bool DIHookControl::IsKeyPressed(UInt32 keycode, UInt8 flags)
 {
 	__asm
 	{
-		mov		eax, [esp + 4]
+		mov		eax, [esp+4]
 		cmp		eax, kMaxMacros
 		jb		proceed
-		xor al, al
+		xor		al, al
 		retn	8
-		proceed:
-		mov		dl, [esp + 8]
-			test	dl, dl
-			jnz		doneFlag
-			mov		dl, 1
-			doneFlag :
-			lea		ecx, [ecx + eax * 8 + 4]
-			sub		ecx, eax
-			mov		al, [ecx + 2]
-			shl		al, 1
-			or al, [ecx]
-			shl		al, 1
-			or al, [ecx + 1]
-			test	al, dl
-			setnz	al
-			retn	8
+	proceed:
+		mov		dl, [esp+8]
+		test	dl, dl
+		jnz		doneFlag
+		mov		dl, 1
+	doneFlag:
+		lea		ecx, [ecx+eax*8+4]
+		sub		ecx, eax
+		mov		al, [ecx+2]
+		shl		al, 1
+		or		al, [ecx]
+		shl		al, 1
+		or		al, [ecx+1]
+		test	al, dl
+		setnz	al
+		retn	8
 	}
 }
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#define DIRECTINPUT_VERSION 0x0800
+
 #include <dinput.h>
 
 // keeping this in a separate file so we don't need to include dinput/dsound everywhere

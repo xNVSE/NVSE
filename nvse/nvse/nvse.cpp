@@ -150,8 +150,6 @@ void NVSE_Initialize(void)
 		gLog.SetLogLevel((IDebugLog::LogLevel)logLevel);
 
 //		PatchRenderPath();
-
-		MersenneTwister::init_genrand(GetTickCount());
 		CommandTable::Init();
 
 #if RUNTIME

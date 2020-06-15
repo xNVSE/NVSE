@@ -2607,7 +2607,7 @@ bool Cmd_PickOneOf_Execute(COMMAND_ARGS) {
 				*refResult = present.GetNthItem(0)->refID;
 				break;
 			default:
-				random = MersenneTwister::genrand_real2() * (present.Count());
+				random = GetRandomNumber(0, present.Count());
 				*refResult = present.GetNthItem(random)->refID;
 		}
 	}

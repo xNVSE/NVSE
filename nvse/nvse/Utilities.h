@@ -9,7 +9,8 @@ const char* GetObjectClassName(void* obj);
 const std::string& GetFalloutDirectory(void);
 std::string GetNVSEConfigOption(const char* section, const char* key);
 bool GetNVSEConfigOption_UInt32(const char* section, const char* key, UInt32* dataOut);
-
+double GetRandomNumber(double rangeMin, double rangeMax);
+int GetRandomNumber(int rangeMin, int rangeMax);
 // this has been tested to work for non-varargs functions
 // varargs functions end up with 'this' passed as the last parameter (ie. probably broken)
 // do NOT use with classes that have multiple inheritance
@@ -67,35 +68,6 @@ class FormMatcher
 {
 public:
 	virtual bool Matches(TESForm* pForm) const = 0;
-};
-
-namespace MersenneTwister
-{
-
-	/* initializes mt[N] with a seed */
-	void init_genrand(unsigned long s);
-
-	/* initialize by an array with array-length */
-	void init_by_array(unsigned long init_key[], int key_length);
-
-	/* generates a random number on [0,0xffffffff]-interval */
-	unsigned long genrand_int32(void);
-
-	/* generates a random number on [0,0x7fffffff]-interval */
-	long genrand_int31(void);
-
-	/* generates a random number on [0,1]-real-interval */
-	double genrand_real1(void);
-
-	/* generates a random number on [0,1)-real-interval */
-	double genrand_real2(void);
-
-	/* generates a random number on (0,1)-real-interval */
-	double genrand_real3(void);
-
-	/* generates a random number on [0,1) with 53-bit resolution*/
-	double genrand_res53(void);
-
 };
 
 // alternative to strtok; doesn't modify src string, supports forward/backward iteration

@@ -823,7 +823,7 @@ TESForm* GetPCLastDroppedItem()
 #error
 #endif
 
-static enum QuitGameMessage
+enum QuitGameMessage
 {
 	kQuit_ToMainMenu,
 	kQuit_ToWindows,

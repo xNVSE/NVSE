@@ -1,5 +1,7 @@
 #include "Commands_Math.h"
 
+#include <ostream>
+#include <random>
 #include "GameAPI.h"
 
 bool Cmd_Exp_Execute(COMMAND_ARGS)
@@ -188,18 +190,12 @@ bool Cmd_Rand_Execute(COMMAND_ARGS)
 
 	if(rangeMax < rangeMin)
 	{
-		float	temp = rangeMin;
+		const auto temp = rangeMin;
 		rangeMin = rangeMax;
 		rangeMax = temp;
 	}
 
-	float	range = rangeMax - rangeMin;
-
-	double	value = MersenneTwister::genrand_real2() * range;
-	value += rangeMin;
-
-	*result = value;
-
+	*result = GetRandomNumber(rangeMin, rangeMax);
 	return true;
 }
 
