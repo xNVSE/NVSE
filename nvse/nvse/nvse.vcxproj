@@ -170,7 +170,7 @@
     </Link>
     <PostBuildEvent>
       <Message>Installing DLL...</Message>
-      <Command>copy "$(TargetPath)" C:\Steam\steamapps\common\Fallout New Vegas\nvse_1_4.dll</Command>
+      <Command>copy "$(TargetPath)" "C:\Steam\steamapps\common\Fallout New Vegas\nvse_1_4.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
