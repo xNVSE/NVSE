@@ -405,46 +405,6 @@ bool Cmd_DumpDocs_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool Cmd_tcmd_Execute(COMMAND_ARGS)
-{
-	_MESSAGE("tcmd");
-
-	Console_Print("hello world");
-
-	_MESSAGE("tcmd Menus");
-	Debug_DumpMenus();
-	_MESSAGE("tcmd Tiles Traits");
-	Debug_DumpTraits();
-	_MESSAGE("tcmd Anim Groups");
-	DumpAnimGroups();
-	//_MESSAGE("tcmd Tile Image");
-	//Debug_DumpTileImages();
-
-	*result = 0;
-
-	return true;
-}
-
-bool Cmd_tcmd2_Execute(COMMAND_ARGS)
-{
-	UInt32	arg;
-
-	_MESSAGE("tcmd2");
-
-	if(ExtractArgs(EXTRACT_ARGS, &arg))
-	{
-		Console_Print("hello args: %d", arg);
-	}
-	else
-	{
-		Console_Print("hello args: failed");
-	}
-
-	*result = 0;
-
-	return true;
-}
-
 class Dumper {
 	UInt32 m_sizeToDump;
 public:
@@ -456,69 +416,6 @@ public:
 		return true;
 	}
 };
-
-bool Cmd_tcmd3_Execute(COMMAND_ARGS)
-{
-	TESForm* pForm = NULL;
-	_MESSAGE("tcmd3");
-
-	if (ExtractArgs(EXTRACT_ARGS, &pForm)) {
-		// we have a pForm
-	} 
-		
-	if (!pForm && thisObj && thisObj->baseForm) {
-		pForm = thisObj->baseForm;
-	}
-
-//	DataHandler* pDH = DataHandler::Get();
-//	int x = 4;
-
-//	GameSettingCollection* pGC = GameSettingCollection::GetSingleton();
-//	IniSettingCollection* pISC = IniSettingCollection::GetIniSettings();
-//	IniSettingCollection* pIPC = IniSettingCollection::GetIniPrefs();
-
-	InterfaceManager* pIM = InterfaceManager::GetSingleton();
-//	DumpClass(pIM);
-
-//	UInt32 formID = 0x105228;
-//	TESForm* pLookedUp = LookupFormByID(formID);
-//	if(pLookedUp) {
-//		UInt32 addr = 0x011B9C2C;
-//		DumpClass((void*)pForm);
-//	}
-
-//	TESObjectWEAP* pWeap = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);
-
-	PlayerCharacter* pPC = PlayerCharacter::GetSingleton();
-	if (pPC) {
-		BaseProcess* pBaseProc = pPC->baseProcess;
-		BaseProcess::AmmoInfo* pAmmoInfo = pBaseProc->GetAmmoInfo();
-		DumpClass(pAmmoInfo);
-		DumpClass(pAmmoInfo->unk00);
-//		ExtraAmmo* pAmmo = GetByTypeCast(pPC->extraDataList, Ammo);
-		int x = 4;
-	}
-
-
-
-//	MagicTarget* pTarget = DYNAMIC_CAST(pPC, PlayerCharacter, MagicTarget);
-//	if(pTarget) {
-//		EffectNode* pEffects = pTarget->GetEffectList();
-//		UInt32 cnt = pEffects->Count();
-//		ActiveEffect* pEffect = pEffects->GetNthItem(1);
-//		UInt32 formID = 0x5C6C1;
-//		TESForm* pForm = LookupFormByID(formID);
-//		EffectSetting* pSetting = DYNAMIC_CAST(pForm, TESForm, EffectSetting);
-//
-//		int c = 0;
-//
-//		//pEffects->Visit(Dumper(32));
-//
-//	}
-
-
-	return true;
-}
 
 #endif
 
@@ -536,9 +433,6 @@ DEFINE_CMD_COND(GetNVSEVersion, returns the installed version of NVSE, 0, NULL);
 DEFINE_CMD_COND(GetNVSERevision, returns the numbered revision of the installed version of NVSE, 0, NULL);
 DEFINE_CMD_COND(GetNVSEBeta, returns the numbered beta of the installed version of NVSE, 0, NULL);
 DEFINE_COMMAND(DumpDocs, , 0, 0, NULL);
-DEFINE_COMMAND(tcmd, test, 0, 0, NULL);
-DEFINE_CMD_ALT(tcmd2, testargcmd ,test, 0, 1, kTestArgCommand_Params);
-DEFINE_CMD_ALT(tcmd3, testdump, dump info, 0, 1, kTestDumpCommand_Params);
 
 #define ADD_CMD(command) Add(&kCommandInfo_ ## command )
 #define ADD_CMD_RET(command, rtnType) Add(&kCommandInfo_ ## command, rtnType )
@@ -1080,9 +974,6 @@ void CommandTable::AddDebugCommands()
 	ADD_CMD_RET(PlaceAtMeAndKeep, kRetnType_Form);
 	ADD_CMD_RET(GetMe, kRetnType_Form);							// Tested, not suitable for publishing
 
-	ADD_CMD(tcmd);
-	ADD_CMD(tcmd2);
-	ADD_CMD(tcmd3);
 	ADD_CMD(DumpDocs);
 }
 
@@ -1651,7 +1542,7 @@ void CommandTable::AddCommandsV4()
 	ADD_CMD_RET(GetScopeModelPath, kRetnType_String);
 	ADD_CMD(SetScopeModelPath);
 
-	// 4.3 and 4.4 skîpped
+	// 4.3 and 4.4 skï¿½pped
 
 	// 4.5 beta 01 none added
 
