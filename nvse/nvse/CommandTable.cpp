@@ -967,12 +967,36 @@ void ImportConsoleCommand(const char * name)
 	}
 }
 
+bool Cmd_tcmd_Execute(COMMAND_ARGS)
+{
+	return true;
+}
+
+bool Cmd_tcmd2_Execute(COMMAND_ARGS)
+{
+	return true;
+}
+
+bool Cmd_tcmd3_Execute(COMMAND_ARGS)
+{
+	return true;
+}
+
+DEFINE_COMMAND(tcmd, test, 0, 0, NULL);
+DEFINE_CMD_ALT(tcmd2, testargcmd ,test, 0, 1, kTestArgCommand_Params);
+DEFINE_CMD_ALT(tcmd3, testdump, dump info, 0, 1, kTestDumpCommand_Params);
+
+
 // internal commands added at the end
 void CommandTable::AddDebugCommands()
 {
 	ADD_CMD_RET(CloneForm, kRetnType_Form);
 	ADD_CMD_RET(PlaceAtMeAndKeep, kRetnType_Form);
 	ADD_CMD_RET(GetMe, kRetnType_Form);							// Tested, not suitable for publishing
+
+	ADD_CMD(tcmd);
+	ADD_CMD(tcmd2);
+	ADD_CMD(tcmd3);
 
 	ADD_CMD(DumpDocs);
 }
