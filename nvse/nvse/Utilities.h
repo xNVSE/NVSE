@@ -207,3 +207,13 @@ __forceinline UInt32 ThisStdCall(UInt32 _f,void* _t,T1 a1,T2 a2,T3 a3,T4 a4,T5 a
     class T {}; union { UInt32 x; UInt32 (T::*m)(T1,T2,T3,T4,T5,T6); } u = { _f };
     return ((T*)_t->*u.m)(a1,a2,a3,a4,a5,a6);
 }
+
+inline void* GameHeapAlloc(UInt32 size)
+{
+	return reinterpret_cast<void*>(ThisStdCall(0xAA3E40, (void*)0x11F6238, size));
+}
+
+inline void GameHeapFree(void* ptr)
+{
+	ThisStdCall(0xAA4060, (void*)0x11F6238, ptr);
+}

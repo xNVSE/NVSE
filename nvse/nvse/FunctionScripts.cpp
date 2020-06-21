@@ -27,6 +27,18 @@ UserFunctionManager::~UserFunctionManager()
 	}
 }
 
+static SmallObjectsAllocator::Allocator<FunctionContext, 5> g_functionContextAllocator;
+
+void* FunctionContext::operator new(size_t size)
+{
+	return g_functionContextAllocator.Allocate();
+}
+
+void FunctionContext::operator delete(void* p)
+{
+	g_functionContextAllocator.Free(p);
+}
+
 UserFunctionManager* UserFunctionManager::GetSingleton()
 {
 	ThreadLocalData& data = ThreadLocalData::Get();
@@ -241,7 +253,7 @@ bool UserFunctionManager::Return(ExpressionEvaluator* eval)
 FunctionInfo* UserFunctionManager::GetFunctionInfo(Script* funcScript)
 {
 	FunctionInfo* funcInfo = NULL;
-	std::map<Script*, FunctionInfo*>::iterator iter = m_functionInfos.find(funcScript);
+	const auto iter = m_functionInfos.find(funcScript);
 	if (iter != m_functionInfos.end())
 		funcInfo = iter->second;
 	else	// doesn't exist yet, create and cache

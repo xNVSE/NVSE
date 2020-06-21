@@ -16,6 +16,9 @@
     <Filter Include="hooks">
       <UniqueIdentifier>{350cc942-8e78-41aa-9d79-8384e271f9b9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="lib">
+      <UniqueIdentifier>{ba5866ee-4344-4334-93b0-2b00583a06e2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Algohol\algMath.cpp">
@@ -204,6 +207,9 @@
     </ClCompile>
     <ClCompile Include="Hooks_Other.cpp">
       <Filter>hooks</Filter>
+    </ClCompile>
+    <ClCompile Include="OverloadsGlobal.cpp">
+      <Filter>internals</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -412,6 +418,12 @@
     <ClInclude Include="prefix.h" />
     <ClInclude Include="Hooks_Other.h">
       <Filter>hooks</Filter>
+    </ClInclude>
+    <ClInclude Include="SmallObjectsAllocator.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="robin_hood.h">
+      <Filter>lib</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

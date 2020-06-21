@@ -11,6 +11,7 @@ extern SInt32 FUNCTION_CONTEXT_COUNT;
 #include "CommandTable.h"
 #include "GameForms.h"
 #include "ArrayVar.h"
+#include "SmallObjectsAllocator.h"
 
 #if RUNTIME
 #include "StringVar.h"
@@ -261,7 +262,13 @@ public:
 	static ScriptToken* Create(UInt32 varID, UInt32 lbound, UInt32 ubound);
 	static ScriptToken* Create(ArrayElementToken* elem, UInt32 lbound, UInt32 ubound);
 	static ScriptToken* Create(UInt32 bogus);	// unimplemented, to block implicit conversion to double
+
+	void* operator new(size_t size);
+
+	void operator delete(void* p);
 };
+
+
 
 struct SliceToken : public ScriptToken
 {
@@ -269,6 +276,16 @@ struct SliceToken : public ScriptToken
 
 	SliceToken(Slice* _slice);
 	virtual const Slice* GetSlice() const { return type == kTokenType_Slice ? &slice : NULL; }
+
+	void* operator new(size_t size)
+	{
+		return ::operator new(size);
+	}
+
+	void operator delete(void* p)
+	{
+		::operator delete(p);
+	}
 };
 
 struct PairToken : public ScriptToken
@@ -277,6 +294,15 @@ struct PairToken : public ScriptToken
 
 	PairToken(ScriptToken* l, ScriptToken* r);
 	virtual const TokenPair* GetPair() const { return type == kTokenType_Pair ? &pair : NULL; }
+	void* operator new(size_t size)
+	{
+		return ::operator new(size);
+	}
+
+	void operator delete(void* p)
+	{
+		::operator delete(p);
+	}
 };
 
 #if RUNTIME
@@ -296,6 +322,15 @@ struct ArrayElementToken : public ScriptToken
 	virtual bool			CanConvertTo(Token_Type to) const;
 	virtual ArrayID			GetOwningArrayID() const {
 		return type == kTokenType_ArrayElement ? value.arrID : 0; }
+	void* operator new(size_t size)
+	{
+		return ::operator new(size);
+	}
+
+	void operator delete(void* p)
+	{
+		::operator delete(p);
+	}
 };
 
 struct ForEachContextToken : public ScriptToken
@@ -304,6 +339,15 @@ struct ForEachContextToken : public ScriptToken
 
 	ForEachContextToken(UInt32 srcID, UInt32 iterID, UInt32 varType, ScriptEventList::Var* var);
 	virtual const ForEachContext* GetForEachContext() const { return Type() == kTokenType_ForEachContext ? &context : NULL; }
+	void* operator new(size_t size)
+	{
+		return ::operator new(size);
+	}
+
+	void operator delete(void* p)
+	{
+		::operator delete(p);
+	}
 };
 
 struct AssignableStringToken : public ScriptToken
@@ -315,12 +359,32 @@ struct AssignableStringToken : public ScriptToken
 	AssignableStringToken(UInt32 _id, UInt32 lbound, UInt32 ubound);
 	virtual const char* GetString() const { return substring.c_str(); }
 	virtual bool Assign(const char* str) = 0;
+
+	void* operator new(size_t size)
+	{
+		return ::operator new(size);
+	}
+
+	void operator delete(void* p)
+	{
+		::operator delete(p);
+	}
 };
 
 struct AssignableStringVarToken : public AssignableStringToken
 {
 	AssignableStringVarToken(UInt32 _id, UInt32 lbound, UInt32 ubound);
 	virtual bool Assign(const char* str);
+
+	void* operator new(size_t size)
+	{
+		return ::operator new(size);
+	}
+
+	void operator delete(void* p)
+	{
+		::operator delete(p);
+	}
 };
 
 struct AssignableStringArrayElementToken : public AssignableStringToken
@@ -330,6 +394,16 @@ struct AssignableStringArrayElementToken : public AssignableStringToken
 	AssignableStringArrayElementToken(UInt32 _id, const ArrayKey& _key, UInt32 lbound, UInt32 ubound);
 	virtual ArrayID		GetArray() const { return value.arrID; }
 	virtual bool Assign(const char* str);
+
+	void* operator new(size_t size)
+	{
+		return ::operator new(size);
+	}
+
+	void operator delete(void* p)
+	{
+		::operator delete(p);
+	}
 };
 
 #endif

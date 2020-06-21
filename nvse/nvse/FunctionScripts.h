@@ -1,5 +1,6 @@
 #pragma once
 
+#include "robin_hood.h"
 #include "ScriptUtils.h"
 
 struct UserFunctionParam
@@ -82,6 +83,8 @@ public:
 	ScriptToken*  Result() { return m_result; }
 	FunctionInfo* Info() { return m_info; }
 	Script* InvokingScript() { return m_invokingScript; }
+	void* operator new(size_t size);
+	void operator delete(void* p);
 };
 
 // controls user function calls.
@@ -97,7 +100,7 @@ class UserFunctionManager
 	
 	UInt32								m_nestDepth;
 	std::stack<FunctionContext*>		m_functionStack;
-	std::map<Script*, FunctionInfo*>	m_functionInfos;
+	robin_hood::unordered_flat_map<Script*, FunctionInfo*>	m_functionInfos;
 
 	// these take a ptr to the function script to check that it matches executing script
 	FunctionContext* Top(Script* funcScript);

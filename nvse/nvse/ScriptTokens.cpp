@@ -231,6 +231,18 @@ ScriptToken* ScriptToken::Create(ArrayElementToken* elem, UInt32 lbound, UInt32 
 	return NULL;
 }
 
+static SmallObjectsAllocator::Allocator<ScriptToken, 20> g_scriptTokenAllocator;
+
+void* ScriptToken::operator new(size_t size)
+{
+	return g_scriptTokenAllocator.Allocate();
+}
+
+void ScriptToken::operator delete(void* p)
+{
+	g_scriptTokenAllocator.Free(p);
+}
+
 ArrayElementToken::ArrayElementToken(ArrayID arr, ArrayKey* _key)
 : ScriptToken(kTokenType_ArrayElement, Script::eVarType_Invalid, 0)
 {
