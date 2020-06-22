@@ -351,11 +351,7 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 		strVar = g_StringMap.Get(strID);
 		bTemp = false;
 	}
-	else if (!bTemp) {
-		_WARNING("Function must be used within a Set statement or NVSE expression");
-		return false;
-	}
-
+	
 	if (!modIndex)
 		modIndex = scriptObj->GetModIndex();
 

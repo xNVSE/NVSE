@@ -3973,11 +3973,6 @@ bool PrecompileScript(ScriptBuffer* buf)
 
 bool Cmd_Expression_Parse(UInt32 numParams, ParamInfo* paramInfo, ScriptLineBuffer* lineBuf, ScriptBuffer* scriptBuf)
 {
-#if RUNTIME
-	Console_Print("This command cannot be called from the console.");
-	return false;
-#endif
-
 	ExpressionParser parser(scriptBuf, lineBuf);
 	return (parser.ParseArgs(paramInfo, numParams));
 }

@@ -347,12 +347,6 @@ bool Cmd_ar_SortAlpha_Execute(COMMAND_ARGS)
 bool Cmd_ar_Find_Execute(COMMAND_ARGS)
 {
 	*result = 0;
-	if (!ExpressionEvaluator::Active())
-	{
-		ShowRuntimeError(scriptObj, "ar_Find must be called within an OBSE expression.");
-		return true;
-	}
-
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() >= 2 && eval.Arg(1)->CanConvertTo(kTokenType_Array))
 	{
@@ -408,12 +402,6 @@ enum eIterMode {
 bool ArrayIterCommand(COMMAND_ARGS, eIterMode iterMode)
 {
 	*result = 0;
-	if (!ExpressionEvaluator::Active())
-	{
-		ShowRuntimeError(scriptObj, "ar_First/Last must be called within an OBSE expression.");
-		return true;
-	}
-
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() && eval.Arg(0)->CanConvertTo(kTokenType_Array))
 	{
@@ -562,11 +550,6 @@ bool Cmd_ar_BadNumericIndex_Execute(COMMAND_ARGS)
 bool ArrayCopyCommand(COMMAND_ARGS, bool bDeepCopy)
 {
 	*result = 0;
-	if (!ExpressionEvaluator::Active())
-	{
-		ShowRuntimeError(scriptObj, "Array copy command must be called within an OBSE expression.");
-		return true;
-	}
 
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() == 1 && eval.Arg(0)->CanConvertTo(kTokenType_Array))

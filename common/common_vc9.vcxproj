@@ -110,7 +110,6 @@
     <ClCompile Include="IObjectPool.cpp" />
     <ClCompile Include="IPipeClient.cpp" />
     <ClCompile Include="IPipeServer.cpp" />
-    <ClCompile Include="IPrefix.cpp" />
     <ClCompile Include="IRangeMap.cpp" />
     <ClCompile Include="IReadWriteLock.cpp" />
     <ClCompile Include="ISegmentStream.cpp" />
