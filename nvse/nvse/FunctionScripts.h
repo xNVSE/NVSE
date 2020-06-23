@@ -1,7 +1,6 @@
 #pragma once
-
-#include "robin_hood.h"
 #include "ScriptUtils.h"
+#include <unordered_map>
 
 struct UserFunctionParam
 {
@@ -100,7 +99,7 @@ class UserFunctionManager
 	
 	UInt32								m_nestDepth;
 	std::stack<FunctionContext*>		m_functionStack;
-	robin_hood::unordered_flat_map<Script*, FunctionInfo*>	m_functionInfos;
+	std::unordered_map<Script*, FunctionInfo*>	m_functionInfos;
 
 	// these take a ptr to the function script to check that it matches executing script
 	FunctionContext* Top(Script* funcScript);

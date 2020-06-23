@@ -629,7 +629,6 @@
     <ClInclude Include="PluginAPI.h" />
     <ClInclude Include="PluginManager.h" />
     <ClInclude Include="prefix.h" />
-    <ClInclude Include="robin_hood.h" />
     <ClInclude Include="SafeWrite.h" />
     <ClInclude Include="SmallObjectsAllocator.h" />
     <ClInclude Include="ScriptTokens.h" />
