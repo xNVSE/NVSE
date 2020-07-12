@@ -402,7 +402,7 @@ bool Cmd_GetStringGameSetting_Execute(COMMAND_ARGS)
 		Setting* setting = NULL;
 		GameSettingCollection* gmsts = GameSettingCollection::GetSingleton();
 		if (gmsts && gmsts->GetGameSetting(settingName, &setting) && setting && setting->GetType() == Setting::kSetting_String)
-			setting->Get(settingString);
+			settingString = setting->Get();
 	}
 
 	AssignToStringVar(PASS_COMMAND_ARGS, settingString);
