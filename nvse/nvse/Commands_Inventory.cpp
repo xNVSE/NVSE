@@ -2067,7 +2067,7 @@ bool Cmd_GetAmmoCasing_Execute(COMMAND_ARGS)
 	}
 
 	TESAmmo* pAmmo = DYNAMIC_CAST(form, TESForm, TESAmmo);
-	if (pAmmo) {
+	if (pAmmo && pAmmo->casing) {
 		*refResult = pAmmo->casing->refID;
 	}
 	return true;
