@@ -726,11 +726,6 @@ bool Cmd_Internal_PopExecutionContext_Execute(COMMAND_ARGS)
 
 bool Cmd_Let_Parse(UInt32 numParams, ParamInfo* paramInfo, ScriptLineBuffer* lineBuf, ScriptBuffer* scriptBuf)
 {
-#if RUNTIME
-	Console_Print("Let cannot be called from the console.");
-	return false;
-#endif
-
 	ExpressionParser parser(scriptBuf, lineBuf);
 	if (!parser.ParseArgs(paramInfo, numParams))
 		return false;
