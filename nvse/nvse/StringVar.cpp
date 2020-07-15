@@ -328,7 +328,9 @@ UInt32	StringVarMap::Add(UInt8 varModIndex, const char* data, bool bTemp)
 {
 	UInt32 varID = GetUnusedID();
 	Insert(varID, new StringVar(data, varModIndex << 24));
-	if (bTemp)
+
+	// UDFs are instanced once so all strings should be temporary - Kormakur
+	if (bTemp || g_insideUserDefinedFunction)
 		MarkTemporary(varID, true);
 
 	return varID;

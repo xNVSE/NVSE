@@ -503,8 +503,13 @@ bool FunctionContext::Execute(FunctionCaller & caller)
 	if (!caller.PopulateArgs(m_eventList, m_info))
 		return false;
 
+	// destroy strings if true - Kormakur
+	g_insideUserDefinedFunction = true;
+	
 	// run the script
 	CALL_MEMBER_FN(m_info->GetScript(), Execute)(caller.ThisObj(), m_eventList, caller.ContainingObj(), false);
+
+	g_insideUserDefinedFunction = false;
 
 	// clean up
 	if (m_info->CleanEventList(m_eventList))
