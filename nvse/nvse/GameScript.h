@@ -128,6 +128,8 @@ public:
 	VariableInfo*	GetVariableByName(const char* varName);
 	UInt32			GetVariableType(VariableInfo* var);
 
+	bool			IsUserDefinedFunction() const;
+
 	static bool	RunScriptLine(const char * text, TESObjectREFR * object = NULL);
 	static bool	RunScriptLine2(const char * text, TESObjectREFR * object = NULL, bool bSuppressOutput = true);
 

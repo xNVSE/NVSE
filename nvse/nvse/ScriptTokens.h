@@ -157,6 +157,7 @@ protected:
 	Token_Type	type;
 	UInt8		variableType;
 	UInt16		refIdx;
+	Script*		owningScript = nullptr;
 
 	struct Value {
 		std::string					str;
@@ -225,6 +226,7 @@ public:
 	Script::RefVariable*	GetRefVariable() const;
 	UInt16					GetRefIndex() const { return IsGood() ? refIdx : 0; }
 	UInt8					GetVariableType() const { return IsVariable() ? variableType : Script::eVarType_Invalid; }
+	Script*					GetOwningScript() const { return this->owningScript; }
 
 	UInt32					GetActorValue() const;		// kActorVal_XXX or kActorVal_NoActorValue if none
 	char					GetAxis() const;			// 'X', 'Y', 'Z', or otherwise -1

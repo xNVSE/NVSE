@@ -298,9 +298,17 @@ ScriptToken* Eval_Assign_String(OperatorType op, ScriptToken* lh, ScriptToken* r
 {
 	UInt32 strID = lh->GetVar()->data;
 	StringVar* strVar = g_StringMap.Get(strID);
+
+	// if left hand side owning script is UDF, make string temp
+	bool makeTemporary = false;
+	if (lh->GetOwningScript() != nullptr)
+	{
+		makeTemporary = lh->GetOwningScript()->IsUserDefinedFunction();
+	}
+	
 	if (!strVar)
 	{
-		strID = g_StringMap.Add(context->script->GetModIndex(), rh->GetString());
+		strID = g_StringMap.Add(context->script->GetModIndex(), rh->GetString(), makeTemporary);
 		lh->GetVar()->data = strID;
 	}
 	else

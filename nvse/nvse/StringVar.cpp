@@ -330,7 +330,7 @@ UInt32	StringVarMap::Add(UInt8 varModIndex, const char* data, bool bTemp)
 	Insert(varID, new StringVar(data, varModIndex << 24));
 
 	// UDFs are instanced once so all strings should be temporary - Kormakur
-	if (bTemp || g_insideUserDefinedFunction)
+	if (bTemp)
 		MarkTemporary(varID, true);
 
 	return varID;

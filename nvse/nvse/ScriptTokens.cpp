@@ -617,6 +617,7 @@ bool ScriptToken::CanConvertTo(Token_Type to) const
 ScriptToken* ScriptToken::Read(ExpressionEvaluator* context)
 {
 	ScriptToken* newToken = new ScriptToken();
+	newToken->owningScript = context->script;
 	if (newToken->ReadFrom(context) != kTokenType_Invalid)
 		return newToken;
 
@@ -729,6 +730,8 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 						eventList = EventListFromForm(refVar->form);
 				}
 			}
+
+			this->owningScript = eventList->m_script;
 
 			UInt16 varIdx = context->Read16();
 			value.var = NULL;

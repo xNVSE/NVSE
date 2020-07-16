@@ -14,7 +14,6 @@
 #endif
 
 UInt8* g_lastScriptData;
-bool g_insideUserDefinedFunction = false;
 
 static NVSEStringVarInterface* s_StringVarInterface = NULL;
 bool extraTraces = false;
