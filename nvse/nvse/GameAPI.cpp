@@ -1388,7 +1388,7 @@ bool ExtractFormatStringArgs(UInt32 fmtStringPos, char* buffer, ParamInfo * para
 
 #endif
 
-bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* scriptDataIn, double * outVarData, UInt8* outModIndex, bool shortPath)
+bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* scriptDataIn, double * outVarData, bool* makeTemporary, UInt8* outModIndex, bool shortPath)
 {
 	/*	DOES NOT WORK WITH FalloutNV, we are going to abuse the stack instead:
 	//when script command called as righthand side of a set statement, the script data containing the variable
@@ -1399,6 +1399,8 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 	if (!((*dataStart == 0x58 || *dataStart == 0x72))) {
 		return false;
 	}
+
+	*makeTemporary = false;
 
 	// Calculate frame pointer for 4 calls above:
 	/*void* callerFramePointer;
@@ -1487,6 +1489,10 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 				}
 				else
 					break;
+			}
+			else if(script->IsUserDefinedFunction())
+			{
+				*makeTemporary = true;
 			}
 
 			UInt16 varIdx = *(UInt16*)(scriptData + 1);

@@ -349,9 +349,8 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 	if (!newValue || len >= kMaxMessageLength)		//if null pointer or too long, assign an empty string
 		newValue = "";
 
-	if (ExtractSetStatementVar(scriptObj, eventList, scriptData, &strID, &modIndex)) {
+	if (ExtractSetStatementVar(scriptObj, eventList, scriptData, &strID, &bTemp, &modIndex)) {
 		strVar = g_StringMap.Get(strID);
-		bTemp = false;
 	}
 	
 	if (!modIndex)
