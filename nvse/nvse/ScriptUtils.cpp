@@ -627,8 +627,16 @@ ScriptToken* Eval_Subscript_Array_Number(OperatorType op, ScriptToken* lh, Scrip
 
 ScriptToken* Eval_Subscript_Elem_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
+	auto* arrayElement = dynamic_cast<ArrayElementToken*>(lh);
+
+	// bugfix for `testexpr svKey := aTest["bleh"][0]` when bleh doesn't exist
+	if (!arrayElement->CanConvertTo(kTokenType_String))
+	{
+		return nullptr;
+	}
+	
 	UInt32 idx = rh->GetNumber();
-	return ScriptToken::Create(dynamic_cast<ArrayElementToken*>(lh), idx, idx);
+	return ScriptToken::Create(arrayElement, idx, idx);
 }
 
 ScriptToken* Eval_Subscript_Elem_Slice(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)

@@ -224,6 +224,7 @@ ScriptToken* ScriptToken::Create(UInt32 varID, UInt32 lbound, UInt32 ubound)
 
 ScriptToken* ScriptToken::Create(ArrayElementToken* elem, UInt32 lbound, UInt32 ubound)
 {
+	
 	if (elem && elem->GetString()) {
 		return new AssignableStringArrayElementToken(elem->GetOwningArrayID(), *elem->GetArrayKey(), lbound, ubound);
 	}
@@ -895,7 +896,7 @@ bool ArrayElementToken::CanConvertTo(Token_Type to) const
 	else if (to == kTokenType_ArrayElement)
 		return true;
 
-	UInt8 elemType = g_ArrayMap.GetElementType(GetOwningArrayID(), key);
+	DataType elemType = g_ArrayMap.GetElementType(GetOwningArrayID(), key);
 	if (elemType == kDataType_Invalid)
 		return false;
 
@@ -1112,7 +1113,8 @@ bool CanConvertOperand(Token_Type from, Token_Type to)
 	Operand* op = &s_operands[from];
 	for (UInt32 i = 0; i < op->numRules; i++)
 	{
-		if (op->rules[i] == to)
+		auto& rule = op->rules[i];
+		if (rule == to)
 			return true;
 	}
 

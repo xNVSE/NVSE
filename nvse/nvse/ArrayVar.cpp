@@ -174,7 +174,7 @@ bool ArrayElement::Set(const ArrayElement& elem)
 		SetFormID(elem.m_data.formID);
 		break;
 	default:
-		m_dataType = kTokenType_Invalid;
+		m_dataType = kDataType_Invalid;
 		return false;
 	}
 
@@ -1077,7 +1077,7 @@ bool ArrayVarMap::GetElementForm(ArrayID id, const ArrayKey& key, TESForm** out)
 	return false;
 }
 
-UInt8 ArrayVarMap::GetElementType(ArrayID id, const ArrayKey& key)
+DataType ArrayVarMap::GetElementType(ArrayID id, const ArrayKey& key)
 {
 	ArrayVar* arr = Get(id);
 	if (arr)

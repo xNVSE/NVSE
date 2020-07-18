@@ -53,7 +53,7 @@ As with string variables, array vars discarded on load if owning mod no longer p
 
 //#if RUNTIME
 
-enum
+enum DataType
 {
 	kDataType_Invalid,
 
@@ -81,13 +81,13 @@ struct ArrayElement
 	friend class ArrayVarMap;
 
 	ArrayType	m_data;
-	UInt8		m_dataType;
+	DataType	m_dataType;
 	ArrayID		m_owningArray;
 
 	void  Unset();
 	std::string ToString() const;
 public:
-	UInt8 DataType() const { return m_dataType; }
+	DataType DataType() const { return m_dataType; }
 
 	bool GetAsNumber(double* out) const;
 	bool GetAsString(std::string& out) const;
@@ -246,7 +246,7 @@ public:
 	bool GetNextElement(ArrayID id, ArrayKey* prevKey, ArrayElement* outElem, ArrayKey* outKey);
 	bool GetPrevElement(ArrayID id, ArrayKey* prevKey, ArrayElement* outElem, ArrayKey* outKey);
 
-	UInt8 GetElementType(ArrayID id, const ArrayKey& key);
+	DataType GetElementType(ArrayID id, const ArrayKey& key);
 
 	static ArrayVarMap * GetSingleton(void);
 };
