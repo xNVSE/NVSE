@@ -592,6 +592,7 @@
     <ClInclude Include="CommandTable.h" />
     <ClInclude Include="Core_Serialization.h" />
     <ClInclude Include="EventManager.h" />
+    <ClInclude Include="FastStack.h" />
     <ClInclude Include="FunctionScripts.h" />
     <ClInclude Include="GameAPI.h" />
     <ClInclude Include="GameBSExtraData.h" />

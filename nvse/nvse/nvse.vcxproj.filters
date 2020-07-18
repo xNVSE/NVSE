@@ -419,6 +419,9 @@
     <ClInclude Include="SmallObjectsAllocator.h">
       <Filter>internals</Filter>
     </ClInclude>
+    <ClInclude Include="FastStack.h">
+      <Filter>internals</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">

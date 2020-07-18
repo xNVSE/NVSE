@@ -1,4 +1,7 @@
 #include "ScriptTokens.h"
+
+#include <unordered_map>
+
 #include "ScriptUtils.h"
 #include "GameRTTI.h"
 
@@ -732,7 +735,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 				}
 			}
 
-			this->owningScript = eventList->m_script;
+			this->owningScript = eventList->m_script;			
 
 			UInt16 varIdx = context->Read16();
 			value.var = NULL;

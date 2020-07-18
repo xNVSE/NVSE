@@ -4,6 +4,8 @@
 #include "GameObjects.h"
 #include "Hooks_Script.h"
 #include <string>
+
+#include "FastStack.h"
 #include "ParamInfos.h"
 #include "FunctionScripts.h"
 #include "GameRTTI.h"
@@ -3470,10 +3472,10 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 
 ScriptToken* ExpressionEvaluator::Evaluate()
 {
-	std::stack<ScriptToken*> operands;
-	
+	//std::stack<ScriptToken*> operands;
 	UInt16 argLen = Read16();
 	UInt8* endData = Data() + argLen - sizeof(UInt16);
+	FastStack<ScriptToken*, 8> operands;
 	while (Data() < endData)
 	{
 		ScriptToken* curToken = ScriptToken::Read(this);
@@ -3577,7 +3579,6 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			delete cmdToken;
 			cmdToken = NULL;
 		}
-
 
 		if (curToken->Type() != kTokenType_Operator)
 			operands.push(curToken);
