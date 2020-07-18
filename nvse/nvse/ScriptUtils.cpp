@@ -3579,7 +3579,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 		}
 
 
-		if (!(curToken->Type() == kTokenType_Operator))
+		if (curToken->Type() != kTokenType_Operator)
 			operands.push(curToken);
 		else
 		{

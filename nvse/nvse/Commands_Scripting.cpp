@@ -29,8 +29,8 @@ static const void * kOpHandlerRetnAddr = (void *)0x005E225B;
 #endif
 
 //static SavedIPInfo s_savedIPTable[kMaxSavedIPs] = { { 0 } };
-typedef std::map<UInt32, SavedIPInfo> MapSavedIPInfo;
-static std::map<UInt32, MapSavedIPInfo> s_savedIPTable;
+typedef std::unordered_map<UInt32, SavedIPInfo> MapSavedIPInfo;
+static std::unordered_map<UInt32, MapSavedIPInfo> s_savedIPTable;
 
 // ### stack abuse! get a pointer to the parent's stack frame
 // ### valid when parent is called from kOpHandlerRetnAddr
