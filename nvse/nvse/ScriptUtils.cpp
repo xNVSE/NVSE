@@ -3475,7 +3475,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	//std::stack<ScriptToken*> operands;
 	UInt16 argLen = Read16();
 	UInt8* endData = Data() + argLen - sizeof(UInt16);
-	FastStack<ScriptToken*, 8> operands;
+	static FastStack<ScriptToken*, 8> operands;
 	while (Data() < endData)
 	{
 		ScriptToken* curToken = ScriptToken::Read(this);
@@ -3635,8 +3635,9 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 		}
 		return NULL;
 	}
-
-	return operands.top();
+	auto* result = operands.top();
+	operands.reset();
+	return result;
 }
 
 //	Pop required operand(s)

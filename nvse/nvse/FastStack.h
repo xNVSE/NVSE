@@ -44,4 +44,9 @@ public:
 	{
 		return pos_;
 	}
+
+	void reset()
+	{
+		pos_ = 0;
+	}
 };
