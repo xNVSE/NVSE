@@ -53,7 +53,7 @@ As with string variables, array vars discarded on load if owning mod no longer p
 
 //#if RUNTIME
 
-enum DataType
+enum DataType : UInt8
 {
 	kDataType_Invalid,
 
