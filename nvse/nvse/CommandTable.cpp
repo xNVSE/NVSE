@@ -14,6 +14,7 @@
 #include "Utilities.h"
 #include "PluginManager.h"
 #include "NiNodes.h"
+#include <stdexcept>
 
 #include "Commands_Console.h"
 #include "Commands_Game.h"
@@ -843,12 +844,24 @@ CommandInfo * CommandTable::GetByName(const char * name)
 
 CommandInfo* CommandTable::GetByOpcode(UInt32 opcode)
 {
-	// could do binary search here but padding command has opcode 0
-	for (CommandList::iterator iter = m_commands.begin(); iter != m_commands.end(); ++iter)
-		if (iter->opcode == opcode)
-			return &(*iter);
-
-	return NULL;
+	try
+	{
+		const auto baseOpcode = m_commands.begin()->opcode;
+		const auto arrayIndex = opcode - baseOpcode;
+		auto* const command = &m_commands.at(arrayIndex);
+		if (command->opcode != opcode)
+		{
+			g_ErrOut.Show("ERROR: mismatched command opcodes when executing CommandTable::GetByOpcode (opcode: %X base: %X index: %d index opcode: %X)",
+				opcode, baseOpcode, arrayIndex, command->opcode);
+			return nullptr;
+		}
+		return command;
+	}
+	catch (std::out_of_range&)
+	{
+		g_ErrOut.Show("ERROR: opcode %X out of range (end is %X) when executing CommandTable::GetByOpcode", opcode, m_commands.end()->opcode);
+		return nullptr;
+	}
 }
 
 CommandReturnType CommandTable::GetReturnType(const CommandInfo* cmd)
