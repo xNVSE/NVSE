@@ -10,6 +10,8 @@
 #include <stack>
 #include <vector>
 
+#include "FastStack.h"
+
 struct ScriptRunner;
 struct ForEachContext;
 
@@ -32,6 +34,9 @@ public:
 	virtual ~WhileLoop() { }
 
 	virtual bool Update(COMMAND_ARGS);
+
+	void* operator new(size_t size);
+	void operator delete(void* p);
 };
 
 // iterates over contents of some collection
@@ -105,7 +110,7 @@ class LoopManager
 		UInt32		endIP;		// ip of instruction following loop end
 	};
 
-	std::stack<LoopInfo>	m_loops;
+	FastStack<LoopInfo, 8>	m_loops;
 	
 	void RestoreStack(ScriptRunner* state, SavedIPInfo* info);
 

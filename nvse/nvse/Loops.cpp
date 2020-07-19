@@ -349,7 +349,22 @@ bool WhileLoop::Update(COMMAND_ARGS)
 	*opcodeOffsetPtr = originalOffset;
 
 	if (bResult && eval.Arg(0))
-			bResult = eval.Arg(0)->GetBool();
+	{
+		bResult = eval.Arg(0)->GetBool();
+	}
 
 	return bResult;
+}
+
+
+static SmallObjectsAllocator::Allocator<WhileLoop, 8> g_whileLoopAllocator;
+
+void* WhileLoop::operator new(size_t size)
+{
+	return g_whileLoopAllocator.Allocate();
+}
+
+void WhileLoop::operator delete(void* p)
+{
+	g_whileLoopAllocator.Free(p);
 }
