@@ -4,23 +4,23 @@
 
 namespace SmallObjectsAllocator
 {
-	template <class T, unsigned int S>
+	template <class T, std::size_t ObjectCount>
 	class Allocator
 	{
-		T* memBlock_ = static_cast<T*>(malloc(sizeof(T) * S));
-		bool allocated_[S] = { false };
-		unsigned int nextPos_ = 0;
+		T* memBlock_ = static_cast<T*>(::operator new (sizeof(T) * ObjectCount));
+		bool allocated_[ObjectCount] = { false };
+		std::size_t nextPos_ = 0;
 	public:
 		Allocator() = default;
 
 		~Allocator()
 		{
-			free(memBlock_);
+			::operator delete(memBlock_);
 		}
 
 		T* Allocate()
 		{
-			for (auto i = nextPos_; i < S; i++)
+			for (auto i = nextPos_; i < ObjectCount; i++)
 			{
 				if (!allocated_[i])
 				{
@@ -30,22 +30,25 @@ namespace SmallObjectsAllocator
 				}
 			}
 			nextPos_ = -1;
-
 			return static_cast<T*>(::operator new(sizeof(T)));
 		}
 
-		void Free(void* voidPtr)
+		void Free(T* ptr)
 		{
-			auto* ptr = static_cast<T*>(voidPtr);
 			ptrdiff_t pos = ptr - memBlock_;
 
-			if (pos >= 0 && pos < S)
+			if (pos >= 0 && pos < ObjectCount)
 			{
 				nextPos_ = std::min<unsigned int>(static_cast<unsigned int>(pos), nextPos_);
 				allocated_[pos] = false;
 				return;
 			}
-			::operator delete(static_cast<T*>(voidPtr));
+			::operator delete(ptr);
+		}
+
+		void Free(void* ptr)
+		{
+			Free(static_cast<T*>(ptr));
 		}
 	};
 }
