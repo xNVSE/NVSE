@@ -208,6 +208,9 @@
     <ClCompile Include="OverloadsGlobal.cpp">
       <Filter>internals</Filter>
     </ClCompile>
+    <ClCompile Include="ArrayVarElementContainer.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">

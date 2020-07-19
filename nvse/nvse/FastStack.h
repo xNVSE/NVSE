@@ -15,6 +15,8 @@ class FastStack
 		if (fallbackStack_ == nullptr)
 		{
 			fallbackStack_ = std::make_unique<std::stack<T>>();
+			_MESSAGE("%s has ran out stack space", typeid(T).name());
+			ShowErrorMessageBox("FastStack Warning");
 		}
 	}
 	

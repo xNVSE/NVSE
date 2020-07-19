@@ -217,3 +217,5 @@ inline void GameHeapFree(void* ptr)
 {
 	ThisStdCall(0xAA4060, (void*)0x11F6238, ptr);
 }
+
+void ShowErrorMessageBox(const char* message);

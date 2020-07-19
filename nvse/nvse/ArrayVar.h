@@ -14,6 +14,9 @@ struct ScriptToken;
 #include "Serialization.h"
 #include "GameAPI.h"
 #include <map>
+#include <memory>
+#include <vector>
+#include <map>
 
 // NVSE array datatype, represented by std::map<ArrayKey, ArrayElement>
 // Data elements can be of mixed types (string, UInt32/formID, float)
@@ -131,7 +134,61 @@ public:
 	bool operator<=(const ArrayKey& rhs) const { return !(*this > rhs); }
 };
 
-typedef std::map<ArrayKey, ArrayElement>::iterator ArrayIterator;
+class ArrayVarElementContainer
+{
+	std::shared_ptr<std::vector<ArrayElement>> array_ = nullptr;
+	std::unique_ptr<std::map<ArrayKey, ArrayElement>> map_ = nullptr;
+
+	bool isArray_ = false;
+
+public:
+	ArrayVarElementContainer(bool isArray);
+
+	ArrayVarElementContainer();
+
+	ArrayElement operator [](ArrayKey i) const;
+
+	ArrayElement& operator [](ArrayKey i);
+
+	class iterator
+	{
+	public:
+		bool isArray_ = false;
+		std::map<ArrayKey, ArrayElement>::iterator mapIter_;
+		std::vector<ArrayElement>::iterator arrIter_;
+		std::shared_ptr<std::vector<ArrayElement>> vectorRef_ = nullptr;
+
+
+		iterator();
+
+		explicit iterator(const std::map<ArrayKey, ArrayElement>::iterator iter);
+
+		iterator(std::vector<ArrayElement>::iterator iter, std::shared_ptr<std::vector<ArrayElement>> vectorRef);
+
+		void operator++();
+
+		void operator--();
+
+		bool operator!=(const iterator& other) const;
+
+		[[nodiscard]] ArrayKey first() const;
+
+		[[nodiscard]] ArrayElement second() const;
+	};
+
+	[[nodiscard]] iterator find(ArrayKey key) const;
+
+	[[nodiscard]] iterator begin() const;
+
+	[[nodiscard]] iterator end() const;
+
+	[[nodiscard]] std::size_t size() const;
+
+	iterator erase(const iterator it) const;
+};
+
+
+typedef ArrayVarElementContainer::iterator ArrayIterator;
 
 class ArrayVar
 {
@@ -139,8 +196,8 @@ class ArrayVar
 	friend class Matrix;
 	friend class PluginAPI::ArrayAPI;
 
-	typedef std::map<ArrayKey, ArrayElement> _ElementMap;
-	_ElementMap m_elements;
+	typedef ArrayVarElementContainer _ElementMap;
+	_ElementMap			m_elements;
 	ArrayID				m_ID;
 	UInt8				m_owningModIndex;
 	UInt8				m_keyType;

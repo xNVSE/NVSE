@@ -603,3 +603,13 @@ void ErrOutput::vShow(const char* msg, va_list args)
 
 	vShow(tempMsg, args);
 }
+
+void ShowErrorMessageBox(const char* message)
+{
+	int msgboxID = MessageBox(
+		NULL,
+		message,
+		"Error",
+		MB_ICONWARNING | MB_OK
+	);
+}
