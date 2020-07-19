@@ -81,8 +81,6 @@ struct PatchLocation
 
 #if RUNTIME
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
-
 static const PatchLocation kPatch_ScriptCommands_Start[] =
 {
 	{	0x005B1172, 0x00 },
@@ -136,79 +134,8 @@ static const PatchLocation kPatch_ScriptCommands_MaxIdx[] =
 	{	0x005B115B + 3, 0 },
 	{	0x005B19A0 + 3, (UInt32)(-0x1000) },
 	{	0x005BCBDD + 6, (UInt32)(-0x1000) },
-
-#if 0
-	// ### investigate this function
-	{	0x0067F0B8 + 3,	0 },
-	{	0x0067F0D5 + 3, (UInt32)(-0x1000) },
-	{	0x0067F0F4 + 3, (UInt32)(-0x1000) },
-#endif
-
 	{	0 },
 };
-
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-
-static const PatchLocation kPatch_ScriptCommands_Start[] =
-{
-	{	0x005B1212, 0x00 },
-	{	0x005B1A51, 0x00 },
-	{	0x005B1A6E, 0x04 },
-	{	0x005B1A98, 0x08 },
-	{	0x005BCC7A, 0x0C },
-	{	0x005BCC9D, 0x00 },
-	{	0x005BCCC0, 0x04 },
-	{	0x005BCCE0, 0x0C },
-	{	0x005BCCF6, 0x0C },
-	{	0x005BCD16, 0x04 },
-	{	0x005BCD28, 0x04 },
-	{	0x005BCD44, 0x0C },
-	{	0x005BCD54, 0x04 },
-	{	0x005BCD64, 0x00 },
-	{	0x005BCD83, 0x0C },
-	{	0x005BCD93, 0x00 },
-	{	0x005BCDB2, 0x04 },
-	{	0x005BCDC4, 0x04 },
-	{	0x005BCDE0, 0x04 },
-	{	0x005BCDF0, 0x00 },
-	{	0x005BCE0F, 0x00 },
-	{	0x0068128B, 0x20 },
-	{	0x006812A2, 0x10 },
-	{	0x006812D2, 0x20 },
-	{	0x0068166B, 0x20 },
-	{	0x0068185E, 0x00 },
-	{	0x00681C7F, 0x14 },
-	{	0x00681E0D, 0x12 },
-	{	0x00681E7F, 0x14 },
-	{	0x00681ED2, 0x14 },
-	{	0x00681F32, 0x14 },
-	{	0x0087A469, 0x12 },
-	{	0x0087A4A8, 0x14 },
-	{	0 },
-};
-
-static const PatchLocation kPatch_ScriptCommands_End[] =
-{
-	{	0x005AEAF9, 0x08 },
-	{	0 },
-};
-
-// 127B / 027B
-// 1280 / 0280
-static const PatchLocation kPatch_ScriptCommands_MaxIdx[] =
-{
-	{	0x00593AF9 + 1, 0 },
-	{	0x005AEAF7 + 6, 0 },
-	{	0x005B11FB + 3, 0 },
-	{	0x005B1A40 + 3, (UInt32)(-0x1000) },
-	{	0x005BCC4D + 6, (UInt32)(-0x1000) },
-
-	{	0 },
-};
-
-#else
-#error
-#endif
 
 void ApplyPatchEditorOpCodeDataList(void) {
 }
@@ -446,13 +373,7 @@ void CommandTable::Init(void)
 {
 	static CommandInfo* kCmdInfo_Unused_1;
 #if RUNTIME
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 	kCmdInfo_Unused_1 = (CommandInfo*)0x0118E4F8;
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	kCmdInfo_Unused_1 = (CommandInfo*)0x0118E4F8;
-#else
-#error
-#endif
 #else
 	kCmdInfo_Unused_1 = (CommandInfo*)0x00E9D7A0;
 #endif
@@ -591,17 +512,6 @@ void CommandTable::Dump(void)
 	for(CommandList::iterator iter = m_commands.begin(); iter != m_commands.end(); ++iter)
 	{
 		_DMESSAGE("%08X %04X %s %s", iter->opcode, iter->needsParent, iter->longName, iter->shortName);
-		gLog.Indent();
-
-#if 0
-		for(UInt32 i = 0; i < iter->numParams; i++)
-		{
-			ParamInfo	* param = &iter->params[i];
-			_DMESSAGE("%08X %08X %s", param->typeID, param->isOptional, param->typeStr);
-		}
-#endif
-
-		gLog.Outdent();
 	}
 }
 
@@ -1226,9 +1136,7 @@ void CommandTable::AddCommandsV1()
 	ADD_CMD(IsFormValid);
 	ADD_CMD(IsReference);
 
-	// beta 4 - compat with 1.1.1.280
-	// oh, sorry, compat with 1.1.1.285
-	// oh, I am bad at reading, compat with 1.2.0.285
+	// beta 4 - compat with 1.2.0.285
 
 	// beta 5
 	ADD_CMD(GetWeaponRequiredStrength);
@@ -1701,12 +1609,6 @@ void CommandTable::AddCommandsV5()
 	ADD_CMD_RET(GetCurrentQuestObjectiveTeleportLinks, kRetnType_Array);
 	
 	// Port of trig functions from OBSE
-	//ADD_CMD(rSin);
-	//ADD_CMD(rCos);
-	//ADD_CMD(rTan);
-	//ADD_CMD(ASin);
-	//ADD_CMD(ACos);
-	//ADD_CMD(ATan);
 	ADD_CMD(ATan2);
 	ADD_CMD(Sinh);
 	ADD_CMD(Cosh);
@@ -1730,15 +1632,6 @@ void CommandTable::AddCommandsV5()
 	ADD_CMD_RET(GetClass, kRetnType_Form);
 	ADD_CMD_RET(GetNameOfClass, kRetnType_String);
 	ADD_CMD(ShowLevelUpMenu);
-
-	// x.y beta 0x - String needing underlying forms implementation
-	#if 0
-
-	ADD_CMD_RET(GetNthEffectItemScriptName, kRetnType_String);
-	ADD_CMD(SetNthEffectItemScriptNameEX);
-
-	#endif
-
 }
 
 namespace PluginAPI {

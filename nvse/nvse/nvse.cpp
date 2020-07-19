@@ -16,19 +16,11 @@
 #include "EventManager.h"
 
 #if RUNTIME
-#ifdef NOGORE
-IDebugLog	gLog("nvse_ng.log");
-#else
 IDebugLog	gLog("nvse.log");
-#endif
 
-STATIC_ASSERT(
-	(RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525) ||
-	(RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng));
 #else
 IDebugLog	gLog("nvse_editor.log");
 
-STATIC_ASSERT(EDITOR_VERSION == CS_VERSION_1_4_0_518);
 #endif
 UInt32 logLevel = IDebugLog::kLevel_Message;
 
@@ -39,44 +31,9 @@ UInt32 logLevel = IDebugLog::kLevel_Message;
 // there's probably a better way to fix the bug but this is good enough
 void PatchCoopLevel(void)
 {
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 	SafeWrite8(0x00A227A1 + 1, 0x16);
 	SafeWrite8(0x00A229CB + 1, 0x06);
 	SafeWrite8(0x00A23CAD + 1, 0x06);
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	SafeWrite8(0x00A22371 + 1, 0x16);
-	SafeWrite8(0x00A2259B + 1, 0x06);
-	SafeWrite8(0x00A2387D + 1, 0x06);
-#else
-#error
-#endif
-}
-
-// fix render path selection
-void PatchRenderPath(void)
-{
-	//	0	none
-	//	1	1x
-	//	2	2
-	//	3	2a (96)
-	//	4	2b (96)
-	//	5	2a
-	//	6	2b
-	//	7	3
-
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
-	for(UInt32 i = 0; i < 6; i++)
-		SafeWrite8(0x00B4F94D + i, 0x90);	// nop
-
-	SafeWrite32(0x00B4F953 + 6, 7);	// render path goes here
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	for(UInt32 i = 0; i < 6; i++)
-		SafeWrite8(0x00B4FCBD + i, 0x90);	// nop
-
-	SafeWrite32(0x00B4FCC3 + 6, 7);	// render path goes here
-#else
-#error
-#endif
 }
 
 #endif
@@ -149,8 +106,6 @@ void NVSE_Initialize(void)
 #endif
 		gLog.SetLogLevel((IDebugLog::LogLevel)logLevel);
 
-//		PatchRenderPath();
-
 		MersenneTwister::init_genrand(GetTickCount());
 		CommandTable::Init();
 
@@ -205,32 +160,20 @@ void NVSE_Initialize(void)
 	_MESSAGE("init complete");
 }
 
-void NVSE_DeInitialize(void)
+extern "C" 
 {
-	//
-}
-
-extern "C" {
-
-void StartNVSE(void)
-{
-	NVSE_Initialize();
-}
-
-BOOL WINAPI DllMain(HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
-{
-	switch(dwReason)
+	// entrypoint
+	void StartNVSE(void)
 	{
-		case DLL_PROCESS_ATTACH:
+		NVSE_Initialize();
+	}
+
+	BOOL WINAPI DllMain(HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
+	{
+		if (dwReason == DLL_PROCESS_ATTACH)
+		{
 			NVSE_Initialize();
-			break;
-
-		case DLL_PROCESS_DETACH:
-			NVSE_DeInitialize();
-			break;
-	};
-
-	return TRUE;
-}
-
+		}
+		return TRUE;
+	}
 };

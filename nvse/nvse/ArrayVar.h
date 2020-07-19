@@ -74,9 +74,6 @@ struct ArrayType {
 
 struct ArrayElement
 {
-//	ArrayElement(const ArrayElement& copyFrom);
-//	ArrayElement& operator=(const ArrayElement& rhs);
-
 	friend class ArrayVar;
 	friend class ArrayVarMap;
 
@@ -224,7 +221,6 @@ public:
 	bool	SetSize(ArrayID id, UInt32 newSize, const ArrayElement& padWith);
 	bool	Insert(ArrayID id, UInt32 atIndex, const ArrayElement& toInsert);
 	bool	Insert(ArrayID id, UInt32 atIndex, ArrayID rangeID);
-	bool	Merge(ArrayID dest, ArrayID toMerge);
 
 	// operations on ArrayElements
 	bool SetElementNumber(ArrayID id, const ArrayKey& key, double num);
@@ -277,10 +273,8 @@ namespace PluginAPI
 		static bool GetElements(NVSEArrayVarInterface::Array* arr, NVSEArrayVarInterface::Element* elements,
 			NVSEArrayVarInterface::Element* keys);
 
-
 		// helper fns
 		static bool InternalElemToPluginElem(ArrayElement& src, NVSEArrayVarInterface::Element& out);
-		static bool ScriptTokenToPluginElem(ScriptToken* token, NVSEArrayVarInterface::Element& out);
 	};
 }
 

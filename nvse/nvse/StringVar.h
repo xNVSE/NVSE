@@ -32,7 +32,6 @@ public:
 	UInt32		Replace(char* toReplace, char* replaceWith, UInt32 startPos, UInt32 numChars, bool bCaseSensitive, UInt32 numToReplace = -1);	//returns num replaced
 	void		Erase(UInt32 startPos, UInt32 numChars);
 	std::string	SubString(UInt32 startPos, UInt32 numChars);
-	double*		ToFloat(UInt32 startPos, UInt32 numChars);
 	char		At(UInt32 charPos);
 	static UInt32	GetCharType(char ch);
 

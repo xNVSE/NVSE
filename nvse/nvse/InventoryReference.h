@@ -38,7 +38,6 @@ public:
 	bool RemoveFromContainer();			// removes and frees Data pointers
 	bool MoveToContainer(TESObjectREFR* dest);
 	bool CopyToContainer(TESObjectREFR* dest);
-	bool Drop();
 	bool SetEquipped(bool bEquipped);
 	void SetRemoved() { m_bRemoved = true; }
 	void Release();

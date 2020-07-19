@@ -15,11 +15,6 @@ void V3Normalize( Vector3 &v )
 	v.z *= len;
 }
 
-/*float V3Dotproduct( Vector3 va, Vector3 vb )
-{
-	return va.x * vb.x + va.y * vb.y + va.z * vb.z;
-}*/
-
 Vector3 V3Crossproduct( Vector3 va, Vector3 vb )
 {
 	Vector3 out;

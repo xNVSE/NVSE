@@ -223,7 +223,6 @@ public:
 	Operator *				GetOperator() const;
 	VariableInfo *			GetVarInfo() const;
 	CommandInfo *			GetCommandInfo() const;
-	Script::RefVariable*	GetRefVariable() const;
 	UInt16					GetRefIndex() const { return IsGood() ? refIdx : 0; }
 	UInt8					GetVariableType() const { return IsVariable() ? variableType : Script::eVarType_Invalid; }
 	Script*					GetOwningScript() const { return this->owningScript; }
@@ -231,8 +230,6 @@ public:
 	UInt32					GetActorValue() const;		// kActorVal_XXX or kActorVal_NoActorValue if none
 	char					GetAxis() const;			// 'X', 'Y', 'Z', or otherwise -1
 	UInt32					GetSex() const;				// 0=male, 1=female, otherwise -1
-	UInt32					GetAnimGroup() const;		// TESAnimGroup::kAnimGroup_XXX (kAnimGroup_Max if none)
-	EffectSetting *			GetEffectSetting() const;	// from string, effect code, or TESForm*
 
 	bool					Write(ScriptLineBuffer* buf);
 	Token_Type				Type() const		{ return type; }
