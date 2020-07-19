@@ -3241,7 +3241,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	//std::stack<ScriptToken*> operands;
 	UInt16 argLen = Read16();
 	UInt8* endData = Data() + argLen - sizeof(UInt16);
-	FastStack<ScriptToken*, 8> operands;
+	FastStack<ScriptToken*, 16> operands;
 	while (Data() < endData)
 	{
 		ScriptToken* curToken = ScriptToken::Read(this);

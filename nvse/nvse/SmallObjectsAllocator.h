@@ -4,11 +4,11 @@
 
 namespace SmallObjectsAllocator
 {
-	template <class T, std::size_t ObjectCount>
+	template <class T, std::size_t Count>
 	class Allocator
 	{
-		T* memBlock_ = static_cast<T*>(::operator new (sizeof(T) * ObjectCount));
-		bool allocated_[ObjectCount] = { false };
+		T* memBlock_ = static_cast<T*>(::operator new (sizeof(T) * Count));
+		bool allocated_[Count] = { false };
 		std::size_t nextPos_ = 0;
 	public:
 		Allocator() = default;
@@ -20,7 +20,7 @@ namespace SmallObjectsAllocator
 
 		T* Allocate()
 		{
-			for (auto i = nextPos_; i < ObjectCount; i++)
+			for (auto i = nextPos_; i < Count; i++)
 			{
 				if (!allocated_[i])
 				{
@@ -30,6 +30,8 @@ namespace SmallObjectsAllocator
 				}
 			}
 			nextPos_ = -1;
+			_MESSAGE("%s has ran out of small objects", typeid(T).name());
+			ShowErrorMessageBox("SmallObjectsAllocator Warning");
 			return static_cast<T*>(::operator new(sizeof(T)));
 		}
 
@@ -37,7 +39,7 @@ namespace SmallObjectsAllocator
 		{
 			ptrdiff_t pos = ptr - memBlock_;
 
-			if (pos >= 0 && pos < ObjectCount)
+			if (pos >= 0 && pos < Count)
 			{
 				nextPos_ = std::min<unsigned int>(static_cast<unsigned int>(pos), nextPos_);
 				allocated_[pos] = false;
