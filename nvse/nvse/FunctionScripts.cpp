@@ -621,7 +621,8 @@ bool InternalFunctionCaller::vSetArgs(UInt8 numArgs, va_list args)
 	return true;
 }
 
-namespace PluginAPI {
+namespace PluginAPI
+{
 	bool CallFunctionScript(Script* fnScript, TESObjectREFR* callingObj, TESObjectREFR* container, 
 		NVSEArrayVarInterface::Element* result, UInt8 numArgs, ...)
 	{
@@ -629,34 +630,36 @@ namespace PluginAPI {
 		va_list args;
 		va_start(args, numArgs);
 		bool success = caller.vSetArgs(numArgs, args);
-		if (success) {
-			*result = NVSEArrayVarInterface::Element();
+		if (success)
+		{
 			ScriptToken* ret = UserFunctionManager::Call(caller);
-			if (ret) {
-				switch (ret->Type()) {
-					case kTokenType_Number:
-						*result =  ret->GetNumber();
-						break;
-					case kTokenType_Form:
-						*result =  ret->GetTESForm();
-						break;
-					case kTokenType_Array:
-						*result = (NVSEArrayVarInterface::Array*)ret->GetArray();
-						break;
-					case kTokenType_String:
-						{
-							*result = NVSEArrayVarInterface::Element(ret->GetString());
+			if (ret)
+			{
+				if (result)
+				{
+					switch (ret->Type())
+					{
+						case kTokenType_Number:
+							*result =  ret->GetNumber();
 							break;
-						}
-					default:
-						ShowRuntimeError(fnScript, "Function script called from plugin returned unexpected type %02X", ret->Type());
-						success = false;
+						case kTokenType_Form:
+							*result =  ret->GetTESForm();
+							break;
+						case kTokenType_Array:
+							*result = ret->GetArray();
+							break;
+						case kTokenType_String:
+							*result = ret->GetString();
+							break;
+						default:
+							*result = NVSEArrayVarInterface::Element();
+							ShowRuntimeError(fnScript, "Function script called from plugin returned unexpected type %02X", ret->Type());
+							success = false;
+					}
 				}
-
 				delete ret;
 			}
 		}
-
 		return success;
 	}
 }
