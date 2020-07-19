@@ -216,7 +216,7 @@ bool GetVariable_Execute(COMMAND_ARGS, UInt32 whichAction)
 	*result = 0;
 
 	if (!ExtractArgs(EXTRACT_ARGS, &varName, &quest))
-		return false;
+		return true;
 	if (quest)
 	{
 		TESScriptableForm* scriptable = DYNAMIC_CAST(quest, TESQuest, TESScriptableForm);
@@ -236,26 +236,28 @@ bool GetVariable_Execute(COMMAND_ARGS, UInt32 whichAction)
 	if (targetScript && targetEventList)
 	{
 		VariableInfo* varInfo = targetScript->GetVariableByName(varName);
-		if (whichAction == eScriptVar_Has)
-			return varInfo ? true : false;
-		else if (varInfo)
+		if (varInfo)
 		{
-			ScriptEventList::Var* var = targetEventList->GetVariable(varInfo->idx);
-			if (var)
+			if (whichAction == eScriptVar_Has)
+				*result = 1;
+			else
 			{
-				if (whichAction == eScriptVar_Get)
-					*result = var->data;
-				else if (whichAction == eScriptVar_GetRef)
+				ScriptEventList::Var* var = targetEventList->GetVariable(varInfo->idx);
+				if (var)
 				{
-					UInt32* refResult = (UInt32*)result;
-					*refResult = (*(UInt64*)&var->data);
+					if (whichAction == eScriptVar_Get)
+						*result = var->data;
+					else if (whichAction == eScriptVar_GetRef)
+					{
+						UInt32* refResult = (UInt32*)result;
+						*refResult = (*(UInt64*)&var->data);
+					}
 				}
-				return true;
 			}
 		}
 	}
 
-	return false;
+	return true;
 }
 
 bool Cmd_SetVariable_Execute(COMMAND_ARGS)
@@ -291,15 +293,11 @@ bool Cmd_SetVariable_Execute(COMMAND_ARGS)
 		if (varInfo)
 		{
 			ScriptEventList::Var* var = targetEventList->GetVariable(varInfo->idx);
-			if (var)
-			{
-				var->data = value;
-				return true;
-			}
+			if (var) var->data = value;
 		}
 	}
 
-	return false;
+	return true;
 }
 
 bool Cmd_SetRefVariable_Execute(COMMAND_ARGS)
@@ -339,20 +337,16 @@ bool Cmd_SetRefVariable_Execute(COMMAND_ARGS)
 			{
 				UInt32* refResult = (UInt32*)result;
 				(*(UInt64*)&var->data) = value ? value->refID : 0 ;
-				return true;
 			}
 		}
 	}
 
-	return false;
+	return true;
 }
 
 bool Cmd_HasVariable_Execute(COMMAND_ARGS)
 {
-	*result = 0;
-	if (GetVariable_Execute(PASS_COMMAND_ARGS, eScriptVar_Has))
-		*result = 1;
-
+	GetVariable_Execute(PASS_COMMAND_ARGS, eScriptVar_Has);
 	return true;
 }
 
