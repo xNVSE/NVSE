@@ -12,52 +12,15 @@
 
 #if RUNTIME
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
-#define kHookDialogResponseStart 0x00A16F02
-#define kHookDialogResponseRtn 0x00A16F09
 #define kHookTextStart 0x00A1307E
 #define kHookTextRtn 0x00A1308A
 #define kHookTextStrLen 0x00EC6130
 #define kHookTileTextStart 0x00A21D48
 #define kHookTileTextRtn 0x00A21D4F
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-#define kHookDialogResponseStart 0x00A16AC2
-#define kHookDialogResponseRtn 0x00A16AC9
-#define kHookTextStart 0x00A12C3E
-#define kHookTextRtn 0x00A12C4A
-#define kHookTextStrLen 0x00EC60C0
-#define kHookTileTextStart 0x00A21918
-#define kHookTileTextRtn 0x00A2191F
-#else
-#error
-#endif
-static const UInt32 addrHookDialogResponseRtn = kHookDialogResponseRtn;
+
 static const UInt32 addrHookTextRtn = kHookTextRtn;
 static const UInt32 addrHookTextStrLen = kHookTextStrLen;
 static const UInt32 addrHookTileTextRtn = kHookTileTextRtn;
-
-static char* __stdcall doDialogHook(char* text, UInt32* offset, void* object)
-{
-	// we can use an event to call before a text is output
-	*offset = *offset;
-	return text;
-}
-
-static __declspec(naked) int DialogResponseHook()
-{
-	_asm 
-	{
-		//pusha
-		//push [ebp - 0x0A00]	// this
-		//push [ebp + 0x010]
-		//push [ebp + 0x00C]
-		//call doDialogHook
-		//mov [ebp + 0x0C], eax
-		//popa
-		mov ax, [ebp - 0x0A04]
-		jmp addrHookDialogResponseRtn
-	}
-}
 
 static char* __stdcall doTextHook(char* text, FontManager::FontInfo* font)
 {
@@ -194,11 +157,6 @@ void Hook_Dialog_Init(void)
 	UInt32	enableTextHook = 0;
 	UInt32	enableTileTextHook = 1;	// Defaults to true as of v4.6 Beta 3
 
-	if(GetNVSEConfigOption_UInt32("Text", "EnableDialogHook", &enableDialogHook) && enableDialogHook)
-	{
-		WriteRelJump(kHookDialogResponseStart, (UInt32)DialogResponseHook);
-		_MESSAGE("Dialog hooked");
-	}
 	if(GetNVSEConfigOption_UInt32("Text", "EnableTextHook", &enableTextHook) && enableTextHook)
 	{
 		// This looks to be called a lot . Every displayed text ?

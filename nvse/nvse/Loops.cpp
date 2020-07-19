@@ -193,7 +193,6 @@ ContainerIterLoop::ContainerIterLoop(const ForEachContext* context)
 					}
 				}
 				else {
-					// wtf??
 					DEBUG_PRINT("Warning: encountered NULL ExtraContainerChanges::Entry::Data pointer in ContainerIterLoop constructor.");
 				}
 			}
@@ -237,24 +236,6 @@ ContainerIterLoop::ContainerIterLoop(const ForEachContext* context)
 bool ContainerIterLoop::UnsetIterator()
 {
 	return m_invRef->WriteRefDataToContainer();
-
-	/*
-	// copy extra data back to container entry
-	ExtraContainerChanges::EntryExtendData* data = m_elements[m_iterIndex].data;
-	if (!data->data && m_tempRef->baseExtraList.m_data) {
-		data->data = ExtraDataList::Create();
-	}
-
-	if (data->data) {
-		data->data->m_data = m_tempRef->baseExtraList.m_data;
-		memcpy(&data->data->m_presenceBitfield, &m_tempRef->baseExtraList.m_presenceBitfield, sizeof(data->data->m_presenceBitfield));
-	}
-
-	m_tempRef->baseExtraList.m_data = NULL;
-	memset(&m_tempRef->baseExtraList.m_presenceBitfield, 0, 0xC);
-
-	return true;
-	*/
 }
 
 bool ContainerIterLoop::SetIterator()

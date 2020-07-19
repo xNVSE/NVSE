@@ -377,43 +377,6 @@ void FixEditorFont(void)
 	//SafeWrite8(basePatchAddr + 6,	0x90);
 }
 
-#if 0
-static void FixErrorReportBug(void)
-{
-	// bethesda passes strings containing user input to printf-like functions
-	// this causes crashes when the user input contains tokens printf is interested in
-	// so we fix it
-
-	// move the entire block of code before the call to printf down, add a new argument pointing to "%s"
-
-	const UInt32	kBlockMoveDelta =	5;
-
-#error	const UInt32	kBlockMoveSrc =		0x00500001;							// inside ShowCompilerError, one past last referebnce
-#error	const UInt32	kBlockMoveDst =		kBlockMoveSrc + kBlockMoveDelta;
-#error	const UInt32	kBlockMoveSize =	0x00500035 - kBlockMoveSrc;
-#error	const UInt32	kFormatStrPos =		0x0092BBE4;	// "%s"
-#error	const UInt32	kStackFixupPos =	0x0B + 2;
-#error	const UInt32	kPCRelFixups[] =	{ 0x00 + 1, 0x06 + 1, 0x28 + 1 };
-
-	UInt8	tempBuf[kBlockMoveSize];
-
-	memcpy(tempBuf, (void *)kBlockMoveSrc, kBlockMoveSize);
-
-	// jumps/calls are pc-relative, we're moving code so fix them up
-	*((UInt32 *)&tempBuf[kPCRelFixups[0]]) -= kBlockMoveDelta;
-	*((UInt32 *)&tempBuf[kPCRelFixups[1]]) -= kBlockMoveDelta;
-	*((UInt32 *)&tempBuf[kPCRelFixups[2]]) -= kBlockMoveDelta;
-
-	// added a new arg, so we need to clean it off the stack
-	tempBuf[kStackFixupPos] += 4;
-
-	SafeWriteBuf(kBlockMoveDst, tempBuf, kBlockMoveSize);
-
-	SafeWrite8(kBlockMoveSrc + 0, 0x68);	// push "%s"
-	SafeWrite32(kBlockMoveSrc + 1, kFormatStrPos);
-}
-#endif
-
 void CreateTokenTypedefs(void)
 {
 char** tokenAlias_Float = (char**)0x00E9BE9C;	//reserved for array variable	// Find "Unknown variable or function '%s'.", previous call, first 59h case is an array containng reserved words
@@ -422,17 +385,6 @@ char** tokenAlias_Long	= (char**)0x00E9BE74;	//string variable
 	*tokenAlias_Long = "string_var";
 	*tokenAlias_Float = "array_var";
 }
-
-#if 0 // Already done in Commands_table
-static void PatchConditionalCommands(void)
-{
-	// editor will not accept commands outside of the vanilla opcode range
-	// for use as conditionals in dialog/packages/quests/etc
-	// nop out a conditional branch to fix
-
-#error	SafeWrite16(0x00457DD0, 0x9090);
-}
-#endif
 
 static UInt32 ScriptIsAlpha_PatchAddr = 0x00C61730; // Same starting proc as tokenAlias_Float. Follow failed test for '"', enter first call. Replace call.
 static UInt32 IsAlphaCallAddr = 0x00C616B3;

@@ -5,17 +5,9 @@
 
 #if RUNTIME
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 #define kPatchSCOF 0x0071DE73
 #define kStrCRLF 0x0101F520
 #define kBufferSCOF 0x0071DE11
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-#define kPatchSCOF 0x0071DE43
-#define kStrCRLF 0x0101F510
-#define kBufferSCOF 0x0071DDE1
-#else
-#error
-#endif
 
 static FILE * s_errorLog = NULL;
 static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
@@ -63,23 +55,12 @@ void Hook_Logging_Init(void)
 		fopen_s(&s_errorLog, "falloutnv_error.log", "w");
 		fopen_s(&s_havokErrorLog, "falloutnv_havok.log", "w");
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 		WriteRelJump(0x005B5E40, (UInt32)ErrorLogHook);
 
 		WriteRelCall(0x006259D3, (UInt32)HavokErrorLogHook);
 		WriteRelCall(0x00625A23, (UInt32)HavokErrorLogHook);
 		WriteRelCall(0x00625A63, (UInt32)HavokErrorLogHook);
 		WriteRelCall(0x00625A92, (UInt32)HavokErrorLogHook);
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-		WriteRelJump(0x004F32B0, (UInt32)ErrorLogHook);
-
-		WriteRelCall(0x006259B3, (UInt32)HavokErrorLogHook);
-		WriteRelCall(0x00625A03, (UInt32)HavokErrorLogHook);
-		WriteRelCall(0x00625A43, (UInt32)HavokErrorLogHook);
-		WriteRelCall(0x00625A72, (UInt32)HavokErrorLogHook);
-#else
-#error
-#endif
 	}
 
 	if(!GetNVSEConfigOption_UInt32("FIXES", "DisableSCOFfixes", &disableSCOFfixes) || !disableSCOFfixes)

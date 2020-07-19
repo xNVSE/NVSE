@@ -569,40 +569,6 @@ UInt32 ScriptToken::GetSex() const
 	return sex;
 }
 
-EffectSetting* ScriptToken::GetEffectSetting() const
-{
-	EffectSetting* eff = NULL;
-	//if (CanConvertTo(kTokenType_Number)) {
-	//	eff = EffectSetting::EffectSettingForC(GetNumber());
-	//}
-	//else {
-	//	const char* str = GetString();
-	//	if (str) {
-	//		if (strlen(str) == 4) {
-	//			UInt32 code = *((UInt32*)str);
-	//			eff = EffectSetting::EffectSettingForC(code);
-	//		}
-	//	}
-	//	else {
-	//		eff = DYNAMIC_CAST(GetTESForm(), TESForm, EffectSetting);
-	//	}
-	//}
-
-	return eff;
-}
-
-UInt32 ScriptToken::GetAnimGroup() const
-{
-	UInt32 group = 0xFF;
-	//UInt32 group = TESAnimGroup::kAnimGroup_Max;
-	//const char* str = GetString();
-	//if (str) {
-	//	group = TESAnimGroup::AnimGroupForString(str);
-	//}
-
-	return group;
-}
-
 #endif // RUNTIME
 
 /*************************************************

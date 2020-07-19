@@ -68,7 +68,6 @@ ErrOutput g_ErrOut(ShowError, ShowWarning);
 #if RUNTIME
 
 // run-time errors
-
 enum {
 	kScriptError_UnhandledOperator,
 	kScriptError_DivisionByZero,
@@ -386,10 +385,6 @@ ScriptToken* Eval_Assign_Elem_Array(OperatorType op, ScriptToken* lh, ScriptToke
 
 	if (g_ArrayMap.SetElementArray(lh->GetOwningArrayID(), *key, rh->GetArray()))
 	{
-	//	ArrayID newID;
-	//	// this is pre-reference-counting code; no longer necessary
-	//	if (g_ArrayMap.GetElementArray(lh->GetOwningArrayID(), *key, &newID))
-	//		return ScriptToken::Create(newID, kTokenType_Array);
 		return ScriptToken::CreateArray(rh->GetArray());
 	}
 
@@ -817,12 +812,9 @@ ScriptToken* Eval_In(OperatorType op, ScriptToken* lh, ScriptToken* rh, Expressi
 	case Script::eVarType_Array:
 		{
 			UInt32 iterID = g_ArrayMap.Create(kDataType_String, false, context->script->GetModIndex());
-			//g_ArrayMap.AddReference(&lh->GetVar()->data, iterID, context->script->GetModIndex());
 
 			ForEachContext con(rh->GetArray(), iterID, Script::eVarType_Array, lh->GetVar());
 			ScriptToken* forEach = ScriptToken::Create(&con);
-			//if (!forEach)
-			//	g_ArrayMap.RemoveReference(&lh->GetVar()->data, context->script->GetModIndex());
 
 			return forEach;
 		}
@@ -1313,195 +1305,6 @@ const char* OpTypeToSymbol(OperatorType op)
 	return "<unknown>";
 }
 
-#if 0
-
-// Operand conversion routines
-ScriptToken Number_To_Bool(ScriptToken* token, ExpressionEvaluator* context)
-{
-	return ScriptToken(token->value.num ? true : false);
-}
-
-// this is unused
-ScriptToken Number_To_String(ScriptToken* token, ExpressionEvaluator* context)
-{
-	char str[0x20];
-	sprintf_s(str, sizeof(str), "%f", token->value.num);
-	return ScriptToken(std::string(str));
-}
-
-ScriptToken Bool_To_Number(ScriptToken* token, ExpressionEvaluator* context)
-{
-	return ScriptToken(token->value.num);
-}
-
-ScriptToken Cmd_To_Number(ScriptToken* token, ExpressionEvaluator* context)
-{
-	return ScriptToken(token->value.num);
-}
-
-ScriptToken Cmd_To_Form(ScriptToken* token, ExpressionEvaluator* context)
-{
-	return ScriptToken(*((UInt64*)(&token->value.num)), kTokenType_Form);
-}
-
-ScriptToken Cmd_To_Bool(ScriptToken* token, ExpressionEvaluator* context)
-{
-	return ScriptToken(token->value.num ? true : false);
-}
-
-ScriptToken Ref_To_Form(ScriptToken* token, ExpressionEvaluator* context)
-{
-	token->value.refVar->Resolve(context->eventList);
-	return ScriptToken(token->value.refVar->form ? token->value.refVar->form->refID : 0, kTokenType_Form);
-}
-
-ScriptToken Ref_To_Bool(ScriptToken* token, ExpressionEvaluator* context)
-{
-	token->value.refVar->Resolve(context->eventList);
-	return ScriptToken(token->value.refVar->form ? true : false);
-}
-
-ScriptToken Ref_To_RefVar(ScriptToken* token, ExpressionEvaluator* context)
-{
-	ScriptEventList::Var* var = context->eventList->GetVariable(token->value.refVar->varIdx);
-	if (var)
-		return ScriptToken(var);
-	else
-		return ScriptToken::Bad();
-}
-
-ScriptToken Global_To_Number(ScriptToken* token, ExpressionEvaluator* context)
-{
-	return ScriptToken(token->value.global->data);
-}
-
-ScriptToken Global_To_Bool(ScriptToken* token, ExpressionEvaluator* context)
-{
-	return ScriptToken(token->value.global->data ? true : false);
-}
-
-ScriptToken Form_To_Bool(ScriptToken* token, ExpressionEvaluator* context)
-{
-	return ScriptToken(token->value.formID ? true : false);
-}
-
-ScriptToken NumericVar_To_Number(ScriptToken* token, ExpressionEvaluator* context)
-{
-	return ScriptToken(token->value.var->data);
-}
-
-ScriptToken NumericVar_To_Bool(ScriptToken* token, ExpressionEvaluator* context)
-{
-	return ScriptToken(token->value.var->data ? true : false);
-}
-
-ScriptToken NumericVar_To_Variable(ScriptToken* token, ExpressionEvaluator* context)
-{
-	return ScriptToken(token->value.var);
-}
-
-ScriptToken StringVar_To_String(ScriptToken* token, ExpressionEvaluator* context)
-{
-	StringVar* strVar = g_StringMap.Get(token->value.var->data);
-	if (strVar)
-		return ScriptToken(strVar->String());
-	else
-		return ScriptToken("");
-}
-
-ScriptToken StringVar_To_Variable(ScriptToken* token, ExpressionEvaluator* context)
-{
-	return ScriptToken(token->value.var);
-}
-
-ScriptToken StringVar_To_Bool(ScriptToken* token, ExpressionEvaluator* context)
-{
-	return ScriptToken(token->value.var->data ? true : false);
-}
-
-ScriptToken ArrayVar_To_Array(ScriptToken* token, ExpressionEvaluator* context)
-{
-	ArrayID id = token->value.var->data;
-	return g_ArrayMap.Exists(id) ? ScriptToken(id, kTokenType_Array) : ScriptToken::Bad();
-}
-
-ScriptToken ArrayVar_To_Variable(ScriptToken* token, ExpressionEvaluator* context)
-{
-	return ScriptToken(token->value.var);
-}
-
-ScriptToken ArrayVar_To_Bool(ScriptToken* token, ExpressionEvaluator* context)
-{
-	return ScriptToken(token->value.var->data ? true : false);
-}
-
-ScriptToken Elem_To_Number(ScriptToken* token, ExpressionEvaluator* context)
-{
-	double num;
-	ArrayKey* key = token->Key();
-	if (!key || !g_ArrayMap.GetElementNumber(token->value.arrID, *key, &num))
-		return ScriptToken::Bad();
-
-	return ScriptToken(num);
-}
-
-ScriptToken Elem_To_Form(ScriptToken* token, ExpressionEvaluator* context)
-{
-	UInt32 formID;
-	ArrayKey* key = token->Key();
-	if (!key || !g_ArrayMap.GetElementFormID(token->value.arrID, *key, &formID))
-		return ScriptToken::Bad();
-
-	return ScriptToken(formID, kTokenType_Form);
-}
-
-ScriptToken Elem_To_String(ScriptToken* token, ExpressionEvaluator* context)
-{
-	std::string str;
-	ArrayKey* key = token->Key();
-	if (!key || !g_ArrayMap.GetElementString(token->value.arrID, *key, str))
-		return ScriptToken::Bad();
-
-	return ScriptToken(str);
-}
-
-ScriptToken Elem_To_Array(ScriptToken* token, ExpressionEvaluator* context)
-{
-	ArrayID arr;
-	ArrayKey* key = token->Key();
-	if (!key || !g_ArrayMap.GetElementArray(token->value.arrID, *key, &arr))
-		return ScriptToken::Bad();
-
-	return ScriptToken(arr, kTokenType_Array);
-}
-
-ScriptToken Elem_To_Bool(ScriptToken* token, ExpressionEvaluator* context)
-{
-	bool result;
-	ArrayKey* key = token->Key();
-	if (!key || !g_ArrayMap.GetElementAsBool(token->value.arrID, *key, &result))
-		return ScriptToken::Bad();
-
-	return ScriptToken(result);
-}
-
-ScriptToken RefVar_To_Form(ScriptToken* token, ExpressionEvaluator* context)
-{
-	return ScriptToken(*((UInt64*)(&token->value.var->data)), kTokenType_Form);
-}
-
-ScriptToken RefVar_To_Bool(ScriptToken* token, ExpressionEvaluator* context)
-{
-	return ScriptToken(token->value.var->data ? true : false);
-}
-
-ScriptToken RefVar_To_Variable(ScriptToken* token, ExpressionEvaluator* context)
-{
-	return ScriptToken(token->value.var);
-}
-
-#endif
-
 #if RUNTIME
 
 // ExpressionEvaluator
@@ -1572,27 +1375,6 @@ void ExpressionEvaluator::PrintStackTrace() {
 #endif
 
 // ExpressionParser
-
-void PrintCompiledCode(ScriptLineBuffer* buf)
-{
-#if _DEBUG && 0		// unused, ShowCompilerError() will break build due to shademe's updates to it
-	std::string bytes;
-	char byte[5];
-
-	for (UInt32 i = 0; i < buf->dataOffset; i++)
-	{
-		if (isprint(buf->dataBuf[i]))
-			sprintf_s(byte, 4, "%c", buf->dataBuf[i]);
-		else
-			sprintf_s(byte, 4, "%02X", buf->dataBuf[i]);
-
-		bytes.append(byte);
-		bytes.append(" ");
-	}
-
-	ShowCompilerError(buf, "COMPILER OUTPUT\n\n%s", bytes.c_str());
-#endif
-}
 
 // Not particularly fond of this but it's become necessary to distinguish between a parser which is parsing part of a larger
 // expression and one parsing an entire script line.
@@ -1726,7 +1508,6 @@ bool ExpressionParser::ParseArgs(ParamInfo* params, UInt32 numParams, bool bUses
 	}
 
 	*numArgsPtr = m_numArgsParsed;
-	//PrintCompiledCode(m_lineBuf);
 	return true;
 }
 
@@ -2084,10 +1865,6 @@ bool ExpressionParser::ParseUserFunctionDefinition()
 		m_lineBuf->Write16(arrayVarIndexes[i]);
 	}
 
-#if _DEBUG
-	//PrintCompiledCode(m_lineBuf);
-#endif
-
 	return true;
 }
 
@@ -2100,7 +1877,6 @@ Token_Type ExpressionParser::Parse()
 
 	*((UInt16*)dataStart) = (m_lineBuf->dataBuf + m_lineBuf->dataOffset) - dataStart;
 
-	//PrintCompiledCode(m_lineBuf);
 	return result;
 }
 
@@ -3115,18 +2891,6 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 				}
 			}
 			break;
-		//case kParamType_AnimationGroup:
-		//	{
-		//		UInt32 animGroup = arg->GetAnimGroup();
-		//		if (animGroup != TESAnimGroup::kAnimGroup_Max) {
-		//			UInt32* out = va_arg(varArgs, UInt32*);
-		//			*out = animGroup;
-		//		}
-		//		else {
-		//			return false;
-		//		}
-		//	}
-		//	break;
 		case kParamType_Sex:
 			{
 				UInt32 sex = arg->GetSex();
@@ -3141,14 +2905,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 			break;
 		case kParamType_MagicEffect:
 			{
-				EffectSetting* eff = arg->GetEffectSetting();
-				if (eff) {
-					EffectSetting** out = va_arg(varArgs, EffectSetting**);
-					*out = eff;
-				}
-				else {
-					return false;
-				}
+				return false;
 			}
 			break;
 		default:	// all the rest are TESForm
@@ -3401,8 +3158,6 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 											typeToMatch = kFormType_Furniture; break;
 										case kParamType_FormList:
 											typeToMatch = kFormType_ListForm; break;
-										//case kParamType_Birthsign:
-										//	typeToMatch = kFormType_BirthSign; break;
 										case kParamType_WeatherID:
 											typeToMatch = kFormType_Weather; break;
 										case kParamType_NPC:

@@ -288,10 +288,6 @@ private:
 	UInt32		m_baseID;
 	UInt32		m_curID;
 
-	// todo: combine these in to a single struct
-	//OpcodeReturnTypeMap	m_returnTypes;		// maps opcode to return type, only string/array-returning cmds included
-	//OpcodeToPluginMap	m_opcodesByPlugin;	// maps opcode to owning plugin opcode base
-
 	std::vector<UInt32>	m_opcodesByRelease;	// maps an NVSE major version # to opcode of first command added to that release, beginning with v0008
 
 	void	RecordReleaseVersion(void);

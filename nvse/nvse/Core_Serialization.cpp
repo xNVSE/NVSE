@@ -21,7 +21,6 @@ Save file format:
 
 static ModInfo** s_ModFixupTable = NULL;
 bool LoadModList(NVSESerializationInterface* nvse);	// reads saved mod order, builds table mapping changed mod indexes
-bool BuildFixedModIndexTable();
 
 /*******************************
 *	Callbacks
@@ -123,9 +122,6 @@ void Core_PreLoadCallback(void * reserved)
 			case 'MODS':
 				if (!LoadModList(intfc))
 					_MESSAGE("PRELOAD: Error occurred while loading mod list");
-				else if (!BuildFixedModIndexTable())
-					_MESSAGE("PRELOAD: Failed to build fixed mod index table");
-
 				break;
 #ifdef _DEBUG
 			case 'CROB':
@@ -176,15 +172,10 @@ bool ReadModListFromCoSave(NVSESerializationInterface * intfc)
 
 bool LoadModList(NVSESerializationInterface* intfc)
 {
-		// read the mod list
+	// read the mod list
 	return ReadModListFromCoSave(intfc);
 }
 
-bool BuildFixedModIndexTable()
-{
-	//stub
-	return true;
-}
 
 UInt8 ResolveModIndexForPreload(UInt8 modIndexIn)
 {

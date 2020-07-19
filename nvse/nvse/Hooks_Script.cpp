@@ -12,14 +12,11 @@ char s_ExpressionParserAltBuffer[0x500] = { 0 };
 
 #if RUNTIME
 
-
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
-
 const UInt32 ExtractStringPatchAddr = 0x005ADDCA;	// ExtractArgs: follow first jz inside loop then first case of following switch: last call in case.
 const UInt32 ExtractStringRetnAddr = 0x005ADDE3;
 
-static const UInt32 kResolveRefVarPatchAddr = 0x005AC530;	// Second jnz, just after reference to TlsData. In second to last call before main switch in ExtractArgs. (Last in F03: 0x0517549)
-static const UInt32 kResolveNumericVarPatchAddr = 0x005A9168;	//		From previous sub, third call before the end. ( second to last call in Fallout3:0X0051682D)
+static const UInt32 kResolveRefVarPatchAddr = 0x005AC530;	// Second jnz, just after reference to TlsData. In second to last call before main switch in ExtractArgs.
+static const UInt32 kResolveNumericVarPatchAddr = 0x005A9168;	//		From previous sub, third call before the end. 
 static const UInt32 kEndOfLineCheckPatchAddr = 0;	// not yet supported at run-time
 
 // incremented on each recursive call to Activate, limit of 5 hard-coded
@@ -31,51 +28,16 @@ static const UInt32 kExpressionParserBufferOverflowRetnAddr_1 = 0x005935D7;
 static const UInt32 kExpressionParserBufferOverflowHookAddr_2 = 0x005937DE;	// same sub, second reference to same buffer
 static const UInt32 kExpressionParserBufferOverflowRetnAddr_2 = 0x005937E5;
 
-//static const UInt32 kExtractArgsNumArgsHookAddr = 0x004FB4B2;	// Needed in F3, not in FalloutNV
-static const UInt32 kExtractArgsEndProcAddr = 0x005AE0FA;		// returns true from ExtractArgs(), F3: 0x00518014
+static const UInt32 kExtractArgsEndProcAddr = 0x005AE0FA;		// returns true from ExtractArgs()
 static const UInt32 kExtractArgsReadNumArgsPatchAddr = 0x005ACCD4;	// FalloutNV uses a different sequence, see the end of this file
 static const UInt32 kExtractArgsReadNumArgsRetnAddr = 0x005ACCE9;	// FalloutNV uses a different sequence, see the end of this file
-		// Fallout3: static const UInt32 kExtractArgsReadNumArgsPatchAddr = 0x0051796F
-static const UInt32 kExtractArgsNoArgsPatchAddr = 0x005ACD07;			// jle kExtractArgsEndProcAddr (if num args == 0)	F3: 0x0051798A
+static const UInt32 kExtractArgsNoArgsPatchAddr = 0x005ACD07;			// jle kExtractArgsEndProcAddr (if num args == 0)
 
 static const UInt32 kScriptRunner_RunHookAddr = 0x005E0D51;	// Start from Script::Execute, second call after pushing "all" arguments, take 3rd call from the end (present twice)
 static const UInt32 kScriptRunner_RunRetnAddr = kScriptRunner_RunHookAddr + 5;
 static const UInt32 kScriptRunner_RunCallAddr = 0x00702FC0;			// overwritten call
 static const UInt32 kScriptRunner_RunEndProcAddr = 0x005E113A;		// retn 0x20
 
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-
-const UInt32 ExtractStringPatchAddr = 0x005ADF7A;	// ExtractArgs: follow first jz inside loop then first case of following switch: last call in case.
-const UInt32 ExtractStringRetnAddr = 0x005ADF93;
-
-static const UInt32 kResolveRefVarPatchAddr = 0x005AC6E0; // First jnz, just after reference to TlsData. In second to last call before main switch in ExtractArgs. (Last in F03: 0x0517549)
-static const UInt32 kResolveNumericVarPatchAddr = 0x005A9298;	//	First jnz,	From previous sub, third call before the end. ( second to last call in Fallout3:0X0051682D)
-static const UInt32 kEndOfLineCheckPatchAddr = 0;	// not yet supported at run-time
-
-// incremented on each recursive call to Activate, limit of 5 hard-coded
-static UInt32* kActivationRecurseDepth = (UInt32*)0x011CA424;
-
-static const UInt32 kExpressionParserBufferOverflowHookAddr_1 = 0x005937C0;	// find ref to aInfixtopostfixError, then enter second previous call. In sub, first reference to buffer at -0X48
-static const UInt32 kExpressionParserBufferOverflowRetnAddr_1 = 0x005937C7;
-
-static const UInt32 kExpressionParserBufferOverflowHookAddr_2 = 0x005939CE;	// same sub, second reference to same buffer
-static const UInt32 kExpressionParserBufferOverflowRetnAddr_2 = 0x005939D5;
-
-//static const UInt32 kExtractArgsNumArgsHookAddr = 0x004FB4B2;	// Needed in F3, not in FalloutNV
-static const UInt32 kExtractArgsEndProcAddr = 0x005AE2AA;		// returns true from ExtractArgs(), F3: 0x00518014
-static const UInt32 kExtractArgsReadNumArgsPatchAddr = 0x005ACE84;	// FalloutNV uses a different sequence, see the end of this file
-static const UInt32 kExtractArgsReadNumArgsRetnAddr = 0x005ACE99;	// FalloutNV uses a different sequence, see the end of this file
-		// Fallout3: static const UInt32 kExtractArgsReadNumArgsPatchAddr = 0x0051796F
-static const UInt32 kExtractArgsNoArgsPatchAddr = 0x005ACEB7;			// jle kExtractArgsEndProcAddr (if num args == 0)	F3: 0x0051798A
-
-static const UInt32 kScriptRunner_RunHookAddr = 0x005E0C61;	// Start from Script::Execute, second call after pushing "all" arguments, take 3rd call from the end (present twice)
-static const UInt32 kScriptRunner_RunRetnAddr = kScriptRunner_RunHookAddr + 5;
-static const UInt32 kScriptRunner_RunCallAddr = 0x00702F10;			// overwritten call
-static const UInt32 kScriptRunner_RunEndProcAddr = 0x005E104A;		// retn 0x20
-
-#else
-#error
-#endif
 
 static UInt32 __stdcall DoExtractString(char* scriptData, UInt32 dataLen, char* dest, ScriptEventList* eventList)
 {
@@ -131,12 +93,10 @@ static __declspec(naked) void ExtractStringHook(void)
 		push eax				// dataLen
 		push ecx				// scriptData
 		call DoExtractString
-		// NEUTRALISED		lea ecx, [ebp-0xE4]
-		// NEUTRALISED		mov [ecx], ax			// update var_E4 = dataLen
-
+		
 		popad
+		
 		add esp, 0Ch			// skipped op
-
 		jmp[ExtractStringRetnAddr]
 	}
 }
@@ -183,17 +143,12 @@ void Hook_Script_Init()
 	// (jazzisparis) increase the string buffer size to 0x400
 	SafeWrite8(0x593DB6, 7);
 	SafeWrite16(0x593E5A, 0xF8B4);
+
 	// hook ExtractArgs() to handle commands normally compiled with Cmd_Default_Parse which were instead compiled with Cmd_Expression_Parse
 	ExtractArgsOverride::Init_Hooks();
 
 	// Following report of functions failing to be called, with at least one reported case of issue with threading: in case it is needed.
 	::InitializeCriticalSection(&csGameScript);
-}
-
-void ResetActivationRecurseDepth()
-{
-	// reset to circumvent the hard-coded limit
-	//not found	*kActivationRecurseDepth = 0;
 }
 
 #else	// CS-stuff
@@ -251,7 +206,7 @@ void PatchEndOfLineCheck(bool bDisableCheck)
 
 void PatchEndOfLineCheck(bool bDisableCheck)
 {
-	// ###TODO: implement for run-time
+	// TODO: implement for run-time
 }
 
 #endif
@@ -847,29 +802,8 @@ namespace ExtractArgsOverride {
 	}
 
 	/*
-		Oblivion (or Fallout3)
-	.text:004FAE90 work:                                   ; CODE XREF: ExtractArgs+8j
-	.text:004FAE90                 mov     ecx, [esp+18h+opcodeOffsetPtr]
-	.text:004FAE94                 mov     eax, [ecx]
-	.text:004FAE96                 mov     edx, [esp+18h+arg1]
-	.text:004FAE9A
-	.text:004FAE9A kExtractArgsReadNumArgsPatchAddr:
-	.text:004FAE9A                 movSx   edx, word ptr [eax+edx]
-	.text:004FAE9E                 push    ebx
-	.text:004FAE9F                 push    ebp
-	.text:004FAEA0                 push    esi
-	.text:004FAEA1                 add     eax, 2
-	.text:004FAEA4                 test    dx, dx
-	.text:004FAEA7                 push    edi
-	.text:004FAEA8                 lea     esi, [esp+28h+arg_1C]
-	.text:004FAEAC                 mov     [esp+28h+var_C], edx
-	.text:004FAEB0                 mov     [ecx], eax
-	.text:004FAEB2                 mov     [esp+28h+var_18], 0
-	.text:004FAEBA
-	.text:004FAEBA kExtractArgsNoArgsPatchAddr:
-	.text:004FAEBA                 jle     kExtractArgsNumArgsHookAddr
 
-		FalloutNV
+	FalloutNV
 	.text:005ACCC6 lea     eax, [ebp+arg_1C]               ; Load Effective Address
 	.text:005ACCC9 mov     [ebp+var_C], eax
 	.text:005ACCCC mov     ecx, [ebp+opcodeOffsetPtr]
@@ -942,16 +876,7 @@ namespace ExtractArgsOverride {
 	// these hooks don't get invoked unless they are required (no run-time penalty if compiler override is not used)
 	static void Init_Hooks()
 	{
-		//Not for F:NV	// change movzx to movsx to read # of args as a signed value
-		//Not for F:NV	// < 0 indicates compiled with Cmd_Expression_Parse rather than Cmd_Default_Parse
-		//Not for F:NV	SafeWrite16(kExtractArgsReadNumArgsPatchAddr, 0xBF0F);
-
-		//Not for F:NV	// if numArgs == 0, return true; else execute our hook
 		WriteRelJump(kExtractArgsReadNumArgsPatchAddr, (UInt32)&ExtractExtendedArgsHook);			// numArgs < 0, execute hook
-		//Not for F:NV	WriteRelJump(kExtractArgsNumArgsHookAddr+6, kExtractArgsEndProcAddr);		// numArgs == 0, return true
-
-		//Not for F:NV	// if numArgs <= 0, jump to our hook test instead of end proc
-		//Not for F:NV	WriteRelJle(kExtractArgsNoArgsPatchAddr, kExtractArgsNumArgsHookAddr);
 	}
 }	// namespace
 

@@ -2,7 +2,6 @@
 
 
 void V3Normalize( Vector3 &v );
-//float V3Dotproduct( Vector3 va, Vector3 vb );
 Vector3 V3Crossproduct( Vector3 va, Vector3 vb );
 
 Quat fromEuler( Euler e, int flag );

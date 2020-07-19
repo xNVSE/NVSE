@@ -15,45 +15,21 @@ static const char* LoadGameMessage = "---Finished loading game: %s";
 static const char* LoadingGameMessage = "***Loading game: %s (%s)";
 static const char* SaveGameMessage = "---Finished saving game: %s";
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
-	static const UInt32 kLoadGamePatchAddr =		0x00848C3C;
-	static const UInt32 kLoadGameRetnAddr =			0x00848C41;
+static const UInt32 kLoadGamePatchAddr =		0x00848C3C;
+static const UInt32 kLoadGameRetnAddr =			0x00848C41;
 
-	static const UInt32 kSaveGamePatchAddr =		0x00847C45;		// push SaveGameMessage
-	static const UInt32 kSaveGameRetnAddr =			0x00847C4A;
+static const UInt32 kSaveGamePatchAddr =		0x00847C45;		// push SaveGameMessage
+static const UInt32 kSaveGameRetnAddr =			0x00847C4A;
 
-	static const UInt32 kNewGamePatchAddr =			0x007D33CE;		// overwrite call to doesNothing 7 call above reference to aQuestsUnableTo
-	static const UInt32 kDeleteGamePatchAddr =		0x00850398;		// DeleteFile() call	// third call to DeleteFileA, like FO3
-	static const UInt32 kRenameGamePatchAddr =		0x0085762B;		// call to rename()		//
+static const UInt32 kNewGamePatchAddr =			0x007D33CE;		// overwrite call to doesNothing 7 call above reference to aQuestsUnableTo
+static const UInt32 kDeleteGamePatchAddr =		0x00850398;		// DeleteFile() call	// third call to DeleteFileA, like FO3
+static const UInt32 kRenameGamePatchAddr =		0x0085762B;		// call to rename()		//
 
-	static const UInt32 kPreLoadGamePatchAddr =		0x00847ECC;
-	static const UInt32 kPreLoadGameRetnAddr =		0x00847ED1;
-	static const UInt32 kPostLoadGamePatchAddr =	0x00848C83;
-	static const UInt32 kPostLoadGameRetnAddr =		0x00848C89;
-	static const UInt32 kPostLoadGameFinishedAddr = 0x00848C91;	// exit point for TESSaveLoadGame::LoadGame()
-
-//	static const UInt32	kScript_RunAddr =			0x005AC400;	// entry to Script::Run()
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	static const UInt32 kLoadGamePatchAddr =		0x0084883C;
-	static const UInt32 kLoadGameRetnAddr =			0x00848841;
-
-	static const UInt32 kSaveGamePatchAddr =		0x00847845;		// push SaveGameMessage
-	static const UInt32 kSaveGameRetnAddr =			0x0084784A;
-
-	static const UInt32 kNewGamePatchAddr =			0x007D352E;		// overwrite call to doesNothing 7 call above reference to aQuestsUnableTo
-	static const UInt32 kDeleteGamePatchAddr =		0x0084FDE8;		// DeleteFile() call	// third call to DeleteFileA, like FO3
-	static const UInt32 kRenameGamePatchAddr =		0x008571BB;		// call to rename()		//
-
-	static const UInt32 kPreLoadGamePatchAddr =		0x00847ACC;
-	static const UInt32 kPreLoadGameRetnAddr =		0x00847AD1;
-	static const UInt32 kPostLoadGamePatchAddr =	0x00848883;
-	static const UInt32 kPostLoadGameRetnAddr =		0x00848889;
-	static const UInt32 kPostLoadGameFinishedAddr = 0x00848891;	// exit point for TESSaveLoadGame::LoadGame()
-
-//	static const UInt32	kScript_RunAddr =			0x005AC5B0;	// entry to Script::Run()
-#else
-#error
-#endif
+static const UInt32 kPreLoadGamePatchAddr =		0x00847ECC;
+static const UInt32 kPreLoadGameRetnAddr =		0x00847ED1;
+static const UInt32 kPostLoadGamePatchAddr =	0x00848C83;
+static const UInt32 kPostLoadGameRetnAddr =		0x00848C89;
+static const UInt32 kPostLoadGameFinishedAddr = 0x00848C91;	// exit point for TESSaveLoadGame::LoadGame()
 
 /*
 	When loading a saved game, scripts attached to references are executed as soon as the refr
