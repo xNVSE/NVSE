@@ -2525,7 +2525,15 @@ std::string ExpressionParser::GetCurToken()
 void ShowRuntimeError(Script* script, const char* fmt, ...)
 {
 	char errorHeader[0x400];
-	sprintf_s(errorHeader, 0x400, "Error in script %08x", script ? script->refID : 0);
+	const auto* scriptName = script->GetName(); // JohnnyGuitarNVSE allows this
+	if (scriptName && strlen(scriptName) != 0)
+	{
+		sprintf_s(errorHeader, 0x400, "Error in script %08x (%s)", script ? script->refID : 0, scriptName);
+	}
+	else
+	{
+		sprintf_s(errorHeader, 0x400, "Error in script %08x", script ? script->refID : 0);
+	}
 
 	va_list args;
 	va_start(args, fmt);
