@@ -2525,10 +2525,13 @@ std::string ExpressionParser::GetCurToken()
 void ShowRuntimeError(Script* script, const char* fmt, ...)
 {
 	char errorHeader[0x400];
-	const auto* scriptName = script->GetName(); // JohnnyGuitarNVSE allows this
-	if (scriptName && strlen(scriptName) != 0)
+	if (script != nullptr)
 	{
-		sprintf_s(errorHeader, 0x400, "Error in script %08x (%s)", script ? script->refID : 0, scriptName);
+		const auto* scriptName = script->GetName(); // JohnnyGuitarNVSE allows this
+		if (scriptName && strlen(scriptName) != 0)
+		{
+			sprintf_s(errorHeader, 0x400, "Error in script %08x (%s)", script ? script->refID : 0, scriptName);
+		}
 	}
 	else
 	{
@@ -3238,7 +3241,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	//std::stack<ScriptToken*> operands;
 	UInt16 argLen = Read16();
 	UInt8* endData = Data() + argLen - sizeof(UInt16);
-	static FastStack<ScriptToken*, 8> operands;
+	FastStack<ScriptToken*, 8> operands;
 	while (Data() < endData)
 	{
 		ScriptToken* curToken = ScriptToken::Read(this);
@@ -3399,7 +3402,6 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 		return NULL;
 	}
 	auto* result = operands.top();
-	operands.reset();
 	return result;
 }
 
