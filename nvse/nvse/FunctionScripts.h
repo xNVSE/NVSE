@@ -2,8 +2,6 @@
 #include "ScriptUtils.h"
 #include <unordered_map>
 
-#include "FastStack.h"
-
 struct UserFunctionParam
 {
 	UInt16	varIdx;
@@ -100,7 +98,7 @@ class UserFunctionManager
 	static const UInt32	kMaxNestDepth = 30;	// arbitrarily low; have seen 180+ nested calls execute w/o problems
 	
 	UInt32								m_nestDepth;
-	FastStack<FunctionContext*, 8>		m_functionStack; // I'd put one but you just know there's someone who loves recursion enough to do it in obscript -Korma
+	std::stack<FunctionContext*>		m_functionStack;
 	std::unordered_map<Script*, FunctionInfo*>	m_functionInfos;
 
 	// these take a ptr to the function script to check that it matches executing script
