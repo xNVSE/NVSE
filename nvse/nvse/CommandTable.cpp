@@ -761,7 +761,7 @@ CommandInfo* CommandTable::GetByOpcode(UInt32 opcode)
 		auto* const command = &m_commands.at(arrayIndex);
 		if (command->opcode != opcode)
 		{
-			g_ErrOut.Show("ERROR: mismatched command opcodes when executing CommandTable::GetByOpcode (opcode: %X base: %X index: %d index opcode: %X)",
+			_MESSAGE("ERROR: mismatched command opcodes when executing CommandTable::GetByOpcode (opcode: %X base: %X index: %d index opcode: %X)",
 				opcode, baseOpcode, arrayIndex, command->opcode);
 			return nullptr;
 		}
@@ -769,7 +769,7 @@ CommandInfo* CommandTable::GetByOpcode(UInt32 opcode)
 	}
 	catch (std::out_of_range&)
 	{
-		g_ErrOut.Show("ERROR: opcode %X out of range (end is %X) when executing CommandTable::GetByOpcode", opcode, m_commands.end()->opcode);
+		_MESSAGE("ERROR: opcode %X out of range (end is %X) when executing CommandTable::GetByOpcode", opcode, m_commands.back().opcode);
 		return nullptr;
 	}
 }
