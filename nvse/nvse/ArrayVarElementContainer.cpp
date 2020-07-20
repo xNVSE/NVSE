@@ -13,7 +13,7 @@ ArrayVarElementContainer::ArrayVarElementContainer(bool isArray)
 	}
 }
 
-ArrayVarElementContainer::ArrayVarElementContainer() : ArrayVarElementContainer(false){}
+ArrayVarElementContainer::ArrayVarElementContainer() = default;
 
 ArrayElement ArrayVarElementContainer::operator[](ArrayKey i) const
 {
