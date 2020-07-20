@@ -18,15 +18,16 @@
 static void HandleMainLoopHook(void);
 
 static const UInt32 kMainLoopHookPatchAddr	= 0x0086B386;	// 7th call BEFORE first call to Sleep in oldWinMain	// 006EEC15 looks best for FO3
-static const UInt32 kMainLoopHookRetnAddr	= 0x0086B38D;
+static const UInt32 kMainLoopHookRetnAddr	= 0x0043C4B0;	// original call address								// 006EEC1B for FO3
 
-__declspec(naked) void MainLoopHook()
+static __declspec(naked) void MainLoopHook(void)
 {
 	__asm
 	{
+		pushad
 		call	HandleMainLoopHook
-		mov	ecx, ds:[0x11F4748]
-		jmp	kMainLoopHookRetnAddr
+		popad
+		jmp		[kMainLoopHookRetnAddr]
 	}
 }
 
@@ -130,28 +131,55 @@ void ToggleConsoleOutput(bool enable)
 
 static const UInt32 kCreateReferenceCallAddr		= 0x004C37D0;
 static const UInt32 kCreateDroppedReferenceHookAddr = 0x0057515A;
-static const UInt32 kCreateDroppedReferenceRetnAddr = 0x00575162;
+static const UInt32 kCreateDroppedReferenceRetnAddr = 0x0057515F;
 
-void __stdcall HandleDroppedItem(TESObjectREFR *dropperRef, TESForm *itemBase, TESObjectREFR *droppedRef)
+static TESForm* s_lastDroppedItem = NULL;
+static TESObjectREFR* s_lastDroppedItemRef = NULL;
+static TESObjectREFR* s_lastDropperRef = NULL;
+static UInt32 s_lastDroppedItemRefID = 0;
+
+static void __stdcall HandleDroppedItem(void)
 {
-	if (droppedRef)
-		EventManager::HandleEvent(EventManager::kEventID_OnDrop, dropperRef, droppedRef);
-	if (itemBase)
-		EventManager::HandleEvent(EventManager::kEventID_OnDropItem, dropperRef, itemBase);
+	TESObjectREFR* ref = s_lastDroppedItemRef;
+	if (ref)
+	{
+		s_lastDroppedItem = ref->baseForm;
+		s_lastDroppedItemRefID = ref->refID;
+	} else if (s_lastDroppedItem) {
+		s_lastDroppedItemRefID = 0;
+	}
+	if (ref)
+		EventManager::HandleEvent(EventManager::kEventID_OnDrop, (void*)s_lastDropperRef, (void*)ref);
+	if (s_lastDroppedItem)
+		EventManager::HandleEvent(EventManager::kEventID_OnDropItem, (void*)s_lastDropperRef, (void*)s_lastDroppedItem);
 }
 
-__declspec(naked) void DroppedItemHook(void)
+static __declspec(naked) void DroppedItemHook(void)
 {
 	__asm
 	{
-		call	kCreateReferenceCallAddr
-		mov	[ebp-4], eax
-		push	eax
-		push	dword ptr [ebp+8]
-		push	dword ptr [ebp-0x20]
+		mov		[s_lastDropperRef], eax				// actor who dropped the item
+		mov		[s_lastDroppedItem], edx			// last item dropped, before creating a reference on it possibly
+
+		call	[kCreateReferenceCallAddr]
+
+		pushad
+		mov		[s_lastDroppedItemRef], eax
 		call	HandleDroppedItem
-		jmp	kCreateDroppedReferenceRetnAddr
+		popad
+		mov		eax, [s_lastDroppedItemRef]
+		jmp		[kCreateDroppedReferenceRetnAddr]
 	}
+}
+
+UInt32 GetPCLastDroppedItemRef()
+{
+	return s_lastDroppedItemRefID;
+}
+
+TESForm* GetPCLastDroppedItem()
+{
+	return s_lastDroppedItem;
 }
 
 static const UInt32 kMainMenuFromIngameMenuPatchAddr = 0x007D0B17;	// 3rd call above first reference to aDataMusicSpecialMaintitle_mp3, call following mov ecx, g_osGlobals
@@ -181,40 +209,44 @@ void __stdcall SendQuitGameMessage(QuitGameMessage msg)
 //	handled by Dispatch_Message EventManager::HandleNVSEMessage(msgToSend, NULL);
 }
 
-__declspec(naked) void ExitGameFromMenuHook()
+static __declspec(naked) void ExitGameFromMenuHook(void)
 {
-	__asm
-	{
-		mov	byte ptr [ecx+1], 1
+	__asm {
+		pushad
+
 		push	kQuit_ToWindows
 		call	SendQuitGameMessage
-		mov	esp, ebp
-		pop	ebp
-		retn
+
+		popad
+		jmp		[kExitGameViaQQQRetnAddr]
 	}
 }
 
-__declspec(naked) void ExitGameViaQQQHook()
+static __declspec(naked) void ExitGameViaQQQHook(void)
 {
-	__asm
-	{
-		mov	byte ptr [ecx+1], 1
+	__asm {
+		pushad
+
 		push	kQuit_QQQ
 		call	SendQuitGameMessage
-		mov	al, 1
-		pop	ebp
-		retn
+
+		popad
+		jmp		[kExitGameViaQQQRetnAddr]
 	}
 }
 
-__declspec(naked) void MainMenuFromIngameMenuHook()
+static __declspec(naked) void MainMenuFromIngameMenuHook(void)
 {
-	__asm
-	{
-		mov	byte ptr [ecx+2], 1
+	__asm {
+		pushad
+
 		push	kQuit_ToMainMenu
 		call	SendQuitGameMessage
-		retn
+
+		popad
+		mov		ecx,	[g_osGlobals]
+		mov		ecx,	[ecx]
+		jmp		[kMainMenuFromIngameMenuRetnAddr]
 	}
 }
 
@@ -222,15 +254,15 @@ void Hook_Gameplay_Init(void)
 {
 	// game main loop
 	// this address was chosen because it is only run when new vegas is in the foreground
-	WriteRelJump(kMainLoopHookPatchAddr, (UInt32)&MainLoopHook);
+	WriteRelCall(kMainLoopHookPatchAddr, (UInt32)&MainLoopHook);
 
 	// hook code that creates a new reference to an item dropped by the player
 	WriteRelJump(kCreateDroppedReferenceHookAddr, (UInt32)&DroppedItemHook);
 
 	// hook exit to main menu or to windows
 	WriteRelCall(kMainMenuFromIngameMenuPatchAddr, (UInt32)&MainMenuFromIngameMenuHook);
-	WriteRelJump(kExitGameViaQQQPatchAddr, (UInt32)&ExitGameViaQQQHook);
-	WriteRelJump(kExitGameFromMenuPatchAddr, (UInt32)&ExitGameFromMenuHook);
+	WriteRelCall(kExitGameViaQQQPatchAddr, (UInt32)&ExitGameViaQQQHook);
+	WriteRelCall(kExitGameFromMenuPatchAddr, (UInt32)&ExitGameFromMenuHook);
 
 	// this seems stable and helps in debugging, but it makes large files during gameplay
 #if _DEBUG
