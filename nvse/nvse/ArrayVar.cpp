@@ -437,7 +437,7 @@ void ArrayVar::Dump()
 	}
 }
 
-void ArrayVar::Pack()
+/*void ArrayVar::Pack()
 {
 	if (!IsPacked() || !Size())
 		return;
@@ -463,7 +463,7 @@ void ArrayVar::Pack()
 
 		curIdx += 1;
 	}
-}
+}*/
 
 //////////////////////////
 // ArrayVarMap
@@ -695,6 +695,8 @@ UInt32 ArrayVarMap::IsPacked(ArrayID id)
 	return var ? var->IsPacked() : false;
 }
 
+
+
 ArrayID ArrayVarMap::GetKeys(ArrayID id, UInt8 modIndex)
 {
 	// returns an array of all the keys
@@ -911,32 +913,22 @@ ArrayID ArrayVarMap::Sort(ArrayID src, SortOrder order, SortType type, UInt8 mod
 	return result;
 }
 
+UInt32 ArrayVarMap::EraseElement(ArrayID id, const ArrayKey& key)
+{
+	ArrayVar* var = Get(id);
+	if (var->KeyType() != key.KeyType())
+	{
+		return -1;
+	}
+	return var->m_elements.erase(key);
+}
+
 UInt32 ArrayVarMap::EraseElements(ArrayID id, const ArrayKey& lo, const ArrayKey& hi)
 {
 	ArrayVar* var = Get(id);
 	if (!var || lo.KeyType() != hi.KeyType() || lo.KeyType() != var->KeyType())
 		return -1;
-
-	// find first elem to erase
-	ArrayIterator iter = var->m_elements.begin();
-	while (iter != var->m_elements.end() && iter.first() < lo)
-		++iter;
-
-	UInt32 numErased = 0;
-
-	// erase. if element is an arrayID, clean up that array
-	while (iter != var->m_elements.end() && iter.first() <= hi)
-	{
-		iter.second().Unset();
-		iter = var->m_elements.erase(iter);
-		numErased++;
-	}
-
-	// if array is packed we must shift elements down
-	if (var->IsPacked())
-		var->Pack();
-
-	return numErased;
+	return var->m_elements.erase(lo, hi);
 }
 
 UInt32 ArrayVarMap::EraseAllElements(ArrayID id)
@@ -947,8 +939,7 @@ UInt32 ArrayVarMap::EraseAllElements(ArrayID id)
 		while (var->m_elements.begin() != var->m_elements.end())
 		{
 			var->m_elements.begin().second().Unset();
-			var->m_elements.erase(var->m_elements.begin());
-			numErased++;
+			numErased += var->m_elements.erase(var->m_elements.begin().first());
 		}
 	}
 

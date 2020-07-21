@@ -140,18 +140,16 @@ class ArrayVarElementContainer
 	std::unique_ptr<std::map<ArrayKey, ArrayElement>> map_ = nullptr;
 
 	bool isArray_ = false;
-
+	
 public:
 	ArrayVarElementContainer(bool isArray);
 
 	ArrayVarElementContainer();
 
-	ArrayElement operator [](ArrayKey i) const;
-
-	ArrayElement& operator [](ArrayKey i);
+	ArrayElement& operator [](ArrayKey i) const;
 
 	class iterator
-	{
+	{		
 	public:
 		bool isArray_ = false;
 		std::map<ArrayKey, ArrayElement>::iterator mapIter_;
@@ -173,7 +171,7 @@ public:
 
 		[[nodiscard]] ArrayKey first() const;
 
-		[[nodiscard]] ArrayElement second() const;
+		[[nodiscard]] ArrayElement& second() const;
 	};
 
 	[[nodiscard]] iterator find(ArrayKey key) const;
@@ -184,7 +182,11 @@ public:
 
 	[[nodiscard]] std::size_t size() const;
 
-	iterator erase(const iterator it) const;
+	std::size_t erase(const ArrayKey key) const;
+
+	std::size_t erase(const ArrayKey low, const ArrayKey high) const;
+
+	
 };
 
 
@@ -212,7 +214,7 @@ class ArrayVar
 	ArrayElement* Get(ArrayKey key, bool bCanCreateNew);
 
 	UInt32 ID()		{ return m_ID;	}
-	void Pack();
+	//void Pack();
 
 	void Dump();
 
@@ -266,6 +268,7 @@ public:
 	void	DumpArray(ArrayID toDump);
 	UInt32	SizeOf(ArrayID id);
 	UInt32	IsPacked(ArrayID id);
+	UInt32  EraseElement(ArrayID id, const ArrayKey& key);
 	UInt32  EraseElements(ArrayID id, const ArrayKey& lo, const ArrayKey& hi);	// returns num erased
 	UInt32	EraseAllElements(ArrayID id);
 	ArrayID Sort(ArrayID src, SortOrder order, SortType type, UInt8 modIndex, Script* comparator=NULL);

@@ -1,3 +1,5 @@
+#include <stdexcept>
+
 #include "ArrayVar.h"
 
 ArrayVarElementContainer::ArrayVarElementContainer(bool isArray)
@@ -15,20 +17,11 @@ ArrayVarElementContainer::ArrayVarElementContainer(bool isArray)
 
 ArrayVarElementContainer::ArrayVarElementContainer() = default;
 
-ArrayElement ArrayVarElementContainer::operator[](ArrayKey i) const
+ArrayElement& ArrayVarElementContainer::operator[](ArrayKey i) const
 {
 	if (isArray_) [[likely]]
 	{
-		return (*array_)[i.Key().num];
-	}
-	return (*map_)[i];
-}
-
-ArrayElement& ArrayVarElementContainer::operator[](ArrayKey i)
-{
-	if (isArray_) [[likely]]
-	{
-		std::size_t index = i.Key().num;
+		const std::size_t index = i.Key().num;
 		if (index >= array_->size())
 		{
 			array_->push_back(ArrayElement());
@@ -101,7 +94,7 @@ ArrayKey ArrayVarElementContainer::iterator::first() const
 	return mapIter_->first;
 }
 
-ArrayElement ArrayVarElementContainer::iterator::second() const
+ArrayElement& ArrayVarElementContainer::iterator::second() const
 {
 	if (isArray_) [[likely]]
 	{
@@ -151,13 +144,26 @@ std::size_t ArrayVarElementContainer::size() const
 	return map_->size();
 }
 
-ArrayVarElementContainer::iterator ArrayVarElementContainer::erase(const iterator it) const
+std::size_t ArrayVarElementContainer::erase(const ArrayKey key) const
 {
 	if (isArray_) [[likely]]
 	{
-		auto i = array_->erase(it.arrIter_);
-		return iterator(i, array_);
+		array_->erase(array_->begin() + key.Key().num);
+		return 1;
 	}
-	auto i = map_->erase(it.mapIter_);
-	return iterator(i);
+	return map_->erase(key);
+}
+
+std::size_t ArrayVarElementContainer::erase(const ArrayKey low, const ArrayKey high) const
+{
+	if (!isArray_)
+	{
+		throw std::invalid_argument("Attempt to erase range of elements from map");
+	}
+	if (high.Key().num > array_->size() || low.Key().num > array_->size())
+	{
+		throw std::out_of_range("Attempt to erase out of range array var");
+	}
+	array_->erase(array_->begin() + low.Key().num, array_->begin() + high.Key().num);
+	return high.Key().num - low.Key().num;
 }
