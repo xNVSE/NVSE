@@ -18,14 +18,14 @@
 static void HandleMainLoopHook(void);
 
 static const UInt32 kMainLoopHookPatchAddr	= 0x0086B386;	// 7th call BEFORE first call to Sleep in oldWinMain	// 006EEC15 looks best for FO3
-static const UInt32 kMainLoopHookRetnAddr	= 0x0086B38D;
+static const UInt32 kMainLoopHookRetnAddr	= 0x0086B38B;
 
 __declspec(naked) void MainLoopHook()
 {
 	__asm
 	{
 		call	HandleMainLoopHook
-		mov	ecx, ds:[0x11F4748]
+		mov	eax, ds:[0x11F4748]
 		jmp	kMainLoopHookRetnAddr
 	}
 }
