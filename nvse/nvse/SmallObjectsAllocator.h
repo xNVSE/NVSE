@@ -31,7 +31,7 @@ namespace SmallObjectsAllocator
 			}
 			nextPos_ = -1;
 			_MESSAGE("%s has ran out of small objects", typeid(T).name());
-			ShowErrorMessageBox("SmallObjectsAllocator Warning");
+			//ShowErrorMessageBox("SmallObjectsAllocator Warning");
 			return static_cast<T*>(::operator new(sizeof(T)));
 		}
 
