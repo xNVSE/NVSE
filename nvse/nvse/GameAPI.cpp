@@ -1317,7 +1317,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 		}
 	}
 
-	if (sprintf_s(buffer, kMaxMessageLength - 2, fmtString.c_str(), f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8], f[9], f[10], f[11], f[12], f[13], f[14], f[15], f[16], f[17], f[18], f[19]) > 0)
+	if (snprintf(buffer, kMaxMessageLength - 2, fmtString.c_str(), f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8], f[9], f[10], f[11], f[12], f[13], f[14], f[15], f[16], f[17], f[18], f[19]) > 0)
 	{
 		buffer[kMaxMessageLength-1] = '\0';
 		return true;

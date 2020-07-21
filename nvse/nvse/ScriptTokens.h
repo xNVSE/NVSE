@@ -160,7 +160,7 @@ protected:
 	Script*		owningScript = nullptr;
 
 	struct Value {
-		std::string					str;
+		std::unique_ptr<std::string> str;
 		union {
 			Script::RefVariable		* refVar;
 			UInt32					formID;

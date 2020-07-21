@@ -9,7 +9,6 @@
 #include "ParamInfos.h"
 #include "FunctionScripts.h"
 #include "GameRTTI.h"
-#include "printf.h"
 
 #if RUNTIME
 
@@ -2608,13 +2607,13 @@ double ExpressionEvaluator::ReadFloat()
 	return data;
 }
 
-std::string ExpressionEvaluator::ReadString()
+std::unique_ptr<std::string> ExpressionEvaluator::ReadString()
 {
 	UInt16 len = Read16();
 	char* buf = new char[len + 1];
 	memcpy(buf, Data(), len);
 	buf[len] = 0;
-	std::string str = buf;
+	auto str = std::make_unique<std::string>(buf);
 	Data() += len;
 	delete buf;
 	return str;

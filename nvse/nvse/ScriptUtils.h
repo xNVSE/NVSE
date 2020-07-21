@@ -142,7 +142,7 @@ public:
 	UInt8		ReadByte();
 	UInt16		Read16();
 	double		ReadFloat();
-	std::string	ReadString();
+	std::unique_ptr<std::string> ReadString();
 	SInt8		ReadSignedByte();
 	SInt16		ReadSigned16();
 	UInt32		Read32();
