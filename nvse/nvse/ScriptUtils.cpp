@@ -9,6 +9,7 @@
 #include "ParamInfos.h"
 #include "FunctionScripts.h"
 #include "GameRTTI.h"
+#include "printf.h"
 
 #if RUNTIME
 
@@ -784,7 +785,7 @@ ScriptToken* Eval_ToString_String(OperatorType op, ScriptToken* lh, ScriptToken*
 ScriptToken* Eval_ToString_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
 	char buf[0x20];
-	sprintf_s(buf, sizeof(buf), "%g", lh->GetNumber());
+	snprintf(buf, sizeof(buf), "%g", lh->GetNumber());
 	return ScriptToken::Create(std::string(buf));
 }
 

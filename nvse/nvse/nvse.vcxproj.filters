@@ -16,6 +16,9 @@
     <Filter Include="hooks">
       <UniqueIdentifier>{350cc942-8e78-41aa-9d79-8384e271f9b9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="lib">
+      <UniqueIdentifier>{0960cbb4-f335-4b07-b07f-22398b95a07a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Algohol\algMath.cpp">
@@ -210,6 +213,9 @@
     </ClCompile>
     <ClCompile Include="ArrayVarElementContainer.cpp">
       <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="printf.cpp">
+      <Filter>lib</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -424,6 +430,9 @@
     </ClInclude>
     <ClInclude Include="FastStack.h">
       <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="printf.h">
+      <Filter>lib</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
