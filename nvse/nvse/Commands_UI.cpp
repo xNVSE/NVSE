@@ -35,9 +35,9 @@ static enum eUICmdAction {
 
 bool GetSetUIValue_Execute(COMMAND_ARGS, eUICmdAction action)
 {
-	char component[kMaxMessageLength] = { 0 };
+	char component[kMaxMessageLength];
 	float newFloat;
-	char newStr[kMaxMessageLength] = { 0 };
+	char newStr[kMaxMessageLength];
 	*result = 0;
 
 	bool bExtracted = false;
