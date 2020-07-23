@@ -2607,13 +2607,13 @@ double ExpressionEvaluator::ReadFloat()
 	return data;
 }
 
-std::unique_ptr<std::string> ExpressionEvaluator::ReadString()
+std::string ExpressionEvaluator::ReadString()
 {
 	UInt16 len = Read16();
 	char* buf = new char[len + 1];
 	memcpy(buf, Data(), len);
 	buf[len] = 0;
-	auto str = std::make_unique<std::string>(buf);
+	std::string str = buf;
 	Data() += len;
 	delete buf;
 	return str;

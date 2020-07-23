@@ -55,16 +55,20 @@ ScriptToken::ScriptToken(Script::RefVariable* refVar, UInt16 refIdx) : type(kTok
 	value.refVar = refVar;
 }
 
-ScriptToken::ScriptToken(const std::string& str) : type(kTokenType_String), refIdx(0), variableType(Script::eVarType_Invalid)
+StringToken::StringToken(const std::string& str)
 {
 	INC_TOKEN_COUNT
-	value.str = std::make_unique <std::string>(str);
+	this->variableType = Script::eVarType_Invalid;
+	this->type = kTokenType_String;
+	this->str = str;
 }
 
-ScriptToken::ScriptToken(const char* str) : type(kTokenType_String), refIdx(0), variableType(Script::eVarType_Invalid)
+StringToken::StringToken(const char* str)
 {
 	INC_TOKEN_COUNT
-	value.str = std::make_unique <std::string>(str);
+	this->variableType = Script::eVarType_Invalid;
+	this->type = kTokenType_String;
+	this->str = str;
 }
 
 ScriptToken::ScriptToken(TESGlobal* global, UInt16 refIdx) : type(kTokenType_Global), refIdx(refIdx), variableType(Script::eVarType_Invalid)
@@ -132,7 +136,7 @@ char debugPrint[512];
 
 char* ScriptToken::DebugPrint(void)
 {
-	switch (type) {
+	/*switch (type) {
 		case kTokenType_Number: sprintf_s(debugPrint, 512, "[Type=Number, Value=%g]", value.num); break;
 		case kTokenType_Boolean: sprintf_s(debugPrint, 512, "[Type=Boolean, Value=%s]", (value.num ? "true" : "false")); break;
 		case kTokenType_String: sprintf_s(debugPrint, 512, "[Type=String, Value=%s]", value.str->c_str()); break;
@@ -161,7 +165,8 @@ char* ScriptToken::DebugPrint(void)
 		case kTokenType_Invalid: sprintf_s(debugPrint, 512, "[Type=Invalid, no Value]"); break;
 		case kTokenType_Empty: sprintf_s(debugPrint, 512, "[Type=Empty, no Value]"); break;
 	}
-	return debugPrint;
+	return debugPrint;*/
+	return "";
 }
 
 #if RUNTIME
@@ -234,6 +239,17 @@ ScriptToken* ScriptToken::Create(ArrayElementToken* elem, UInt32 lbound, UInt32 
 
 	return NULL;
 }
+
+StringToken const* ScriptToken::ToStringToken() const
+{
+	return dynamic_cast<StringToken const*>(this);
+}
+
+const char* ScriptToken::GetString() const
+{
+	return this->ToStringToken()->GetString();
+}
+
 
 static SmallObjectsAllocator::Allocator<ScriptToken, 20> g_scriptTokenAllocator;
 
@@ -372,13 +388,13 @@ Slice::Slice(const Slice* _slice)
 
 *****************************************/
 
-const char* ScriptToken::GetString() const
+const char* StringToken::GetString() const
 {
 	static const char* empty = "";
 	const char* result = NULL;
 
 	if (type == kTokenType_String)
-		result = value.str->c_str();
+		result = str.c_str();
 #if RUNTIME
 	else if (type == kTokenType_StringVar && value.var)
 	{
@@ -518,11 +534,16 @@ UInt32 ScriptToken::GetActorValue() const
 		if (num >= 0 && num <= eActorVal_FalloutMax) {
 			actorVal = num;
 		}
+		return actorVal;
 	}
-	else {
-		const char* str = GetString();
+
+	const auto* strToken = this->ToStringToken();
+
+	if (strToken)
+	{
+		const char* str = strToken->GetString();
 		if (str) {
-			actorVal = GetActorValueForString(str, true);
+			return GetActorValueForString(str, true);
 		}
 	}
 
@@ -532,7 +553,14 @@ UInt32 ScriptToken::GetActorValue() const
 char ScriptToken::GetAxis() const
 {
 	char axis = -1;
-	const char* str = GetString();
+
+	const auto* strToken = this->ToStringToken();
+	if (!strToken)
+	{
+		return axis;
+	}
+	
+	const char* str = strToken->GetString();
 	if (str && str[0] && str[1] == '\0') {
 		switch (str[0]) {
 			case 'x':
@@ -556,7 +584,13 @@ char ScriptToken::GetAxis() const
 UInt32 ScriptToken::GetSex() const
 {
 	UInt32 sex = -1;
-	const char* str = GetString();
+
+	const auto* strToken = this->ToStringToken();
+	if (!strToken)
+	{
+		return sex;
+	}
+	const char* str = strToken->GetString();
 	if (str) {
 		if (!_stricmp(str, "male")) {
 			sex = 0;
@@ -586,16 +620,26 @@ bool ScriptToken::CanConvertTo(Token_Type to) const
 
 ScriptToken* ScriptToken::Read(ExpressionEvaluator* context)
 {
-	ScriptToken* newToken = new ScriptToken();
+	ScriptToken* newToken = EvaluateToken(context);
 	newToken->owningScript = context->script;
-	if (newToken->ReadFrom(context) != kTokenType_Invalid)
+	if (newToken->type != kTokenType_Invalid)
 		return newToken;
 
 	delete newToken;
-	return NULL;
+	return nullptr;
 }
 
-Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
+StringToken* ScriptToken::Create(const std::string& str)
+{
+	return new StringToken(str);
+}
+
+StringToken* ScriptToken::Create(const char* str)
+{
+	return new StringToken(str);
+}
+
+ScriptToken* ScriptToken::EvaluateToken(ExpressionEvaluator* context)
 {
 	UInt8 typeCode = context->ReadByte();
 
@@ -603,131 +647,130 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 	{
 	case 'B':
 	case 'b':
-		type = kTokenType_Number;
-		value.num = context->ReadByte();
-		break;
+		return Create(static_cast<double>(context->ReadByte()));
 	case 'I':
 	case 'i':
-		type = kTokenType_Number;
-		value.num = context->Read16();
-		break;
+		return Create(static_cast<double>(context->Read16()));
 	case 'L':
 	case 'l':
-		type = kTokenType_Number;
-		value.num = context->Read32();
-		break;
+		return Create(static_cast<double>(context->Read32()));
 	case 'Z':
-		type = kTokenType_Number;
-		value.num = context->ReadFloat();
-		break;
+		return Create(static_cast<double>(context->ReadFloat()));
 	case 'S':
-		{
-			type = kTokenType_String;
-			value.str = context->ReadString();
-			break;
-		}
+	{
+		return new StringToken(context->ReadString());
+	}
 	case 'R':
-		type = kTokenType_Ref;
-		refIdx = context->Read16();
-		value.refVar = context->script->GetVariable(refIdx);
-		if (!value.refVar)
-			type = kTokenType_Invalid;
+	{
+		auto* token = new ScriptToken();
+		token->type = kTokenType_Ref;
+		token->refIdx = context->Read16();
+		token->value.refVar = context->script->GetVariable(token->refIdx);
+		if (!token->value.refVar)
+			token->type = kTokenType_Invalid;
 		else
 		{
-			type = kTokenType_Form;
-			value.refVar->Resolve(context->eventList);
-			value.formID = value.refVar->form ? value.refVar->form->refID : 0;
+			token->type = kTokenType_Form;
+			token->value.refVar->Resolve(context->eventList);
+			token->value.formID = token->value.refVar->form ? token->value.refVar->form->refID : 0;
 		}
-		break;
-	case 'G':
-		{
-			type = kTokenType_Global;
-			refIdx = context->Read16();
-			Script::RefVariable* refVar = context->script->GetVariable(refIdx);
-			if (!refVar)
-			{
-				type = kTokenType_Invalid;
-				break;
-			}
-			refVar->Resolve(context->eventList);
-			value.global = DYNAMIC_CAST(refVar->form, TESForm, TESGlobal);
-			if (!value.global)
-				type = kTokenType_Invalid;
-			break;
-		}
-	case 'X':
-		{
-			type = kTokenType_Command;
-			refIdx = context->Read16();
-			UInt16 opcode = context->Read16();
-			value.cmd = g_scriptCommands.GetByOpcode(opcode);
-			if (!value.cmd)
-				type = kTokenType_Invalid;
-			break;
-		}
-	case 'V':
-		{
-			variableType = context->ReadByte();
-			switch (variableType)
-			{
-			case Script::eVarType_Array:
-				type = kTokenType_ArrayVar;
-				break;
-			case Script::eVarType_Integer:
-			case Script::eVarType_Float:
-				type = kTokenType_NumericVar;
-				break;
-			case Script::eVarType_Ref:
-				type = kTokenType_RefVar;
-				break;
-			case Script::eVarType_String:
-				type = kTokenType_StringVar;
-				break;
-			default:
-				type = kTokenType_Invalid;
-			}
-
-			refIdx = context->Read16();
-
-			ScriptEventList* eventList = context->eventList;
-			if (refIdx)
-			{
-				Script::RefVariable* refVar = context->script->GetVariable(refIdx);
-				if (refVar)
-				{
-					refVar->Resolve(context->eventList);
-					if (refVar->form)
-						eventList = EventListFromForm(refVar->form);
-				}
-			}
-
-			this->owningScript = eventList->m_script;			
-
-			UInt16 varIdx = context->Read16();
-			value.var = NULL;
-			if (eventList)
-				value.var = eventList->GetVariable(varIdx);
-
-			if (!value.var)
-				type = kTokenType_Invalid;
-			break;
-		}
-	default:
-		{
-			if (typeCode < kOpType_Max)
-			{
-				type = kTokenType_Operator;
-				value.op =  &s_operators[typeCode];
-			}
-			else
-			{
-				context->Error("Unexpected token type %d (%02x) encountered", typeCode, typeCode);
-				type = kTokenType_Invalid;
-			}
-		}
+		return token;
 	}
+	case 'G':
+	{
+		auto* token = new ScriptToken();
+		token->type = kTokenType_Global;
+		token->refIdx = context->Read16();
+		Script::RefVariable* refVar = context->script->GetVariable(token->refIdx);
+		if (!refVar)
+		{
+			token->type = kTokenType_Invalid;
+			break;
+		}
+		refVar->Resolve(context->eventList);
+		token->value.global = DYNAMIC_CAST(refVar->form, TESForm, TESGlobal);
+		if (!token->value.global)
+			token->type = kTokenType_Invalid;
+		return token;
+	}
+	case 'X':
+	{
+		auto* token = new ScriptToken();
+		token->type = kTokenType_Command;
+		token->refIdx = context->Read16();
+		UInt16 opcode = context->Read16();
+		token->value.cmd = g_scriptCommands.GetByOpcode(opcode);
+		if (!token->value.cmd)
+			token->type = kTokenType_Invalid;
+		return token;
+	}
+	case 'V':
+	{
+		auto* token = new ScriptToken();
+		token->variableType = context->ReadByte();
+		switch (token->variableType)
+		{
+		case Script::eVarType_Array:
+			token->type = kTokenType_ArrayVar;
+			break;
+		case Script::eVarType_Integer:
+		case Script::eVarType_Float:
+			token->type = kTokenType_NumericVar;
+			break;
+		case Script::eVarType_Ref:
+			token->type = kTokenType_RefVar;
+			break;
+		case Script::eVarType_String:
+			token->type = kTokenType_StringVar;
+			break;
+		default:
+			token->type = kTokenType_Invalid;
+		}
 
-	return type;
+		token->refIdx = context->Read16();
+
+		ScriptEventList* eventList = context->eventList;
+		if (token->refIdx)
+		{
+			Script::RefVariable* refVar = context->script->GetVariable(token->refIdx);
+			if (refVar)
+			{
+				refVar->Resolve(context->eventList);
+				if (refVar->form)
+					eventList = EventListFromForm(refVar->form);
+			}
+		}
+
+		token->owningScript = eventList->m_script;
+
+		UInt16 varIdx = context->Read16();
+		token->value.var = NULL;
+		if (eventList)
+			token->value.var = eventList->GetVariable(varIdx);
+
+		if (!token->value.var)
+			token->type = kTokenType_Invalid;
+		return token;
+	}
+	default:
+	{
+		auto* token = new ScriptToken();
+		if (typeCode < kOpType_Max)
+		{
+			token->type = kTokenType_Operator;
+			token->value.op = &s_operators[typeCode];
+		}
+		else
+		{
+			context->Error("Unexpected token type %d (%02x) encountered", typeCode, typeCode);
+			token->type = kTokenType_Invalid;
+		}
+		return token;
+	}
+	}
+	auto* token = new ScriptToken();
+	token->type = kTokenType_Invalid;
+	return token;
 }
 
 #endif
@@ -778,7 +821,7 @@ bool ScriptToken::Write(ScriptLineBuffer* buf)
 			}
 		}
 	case kTokenType_String:
-		return buf->WriteString(value.str->c_str());
+		return buf->WriteString(ToStringToken()->str.c_str());
 	case kTokenType_Ref:
 	case kTokenType_Global:
 		return buf->Write16(refIdx);
@@ -805,7 +848,7 @@ bool ScriptToken::Write(ScriptLineBuffer* buf)
 ScriptToken* ScriptToken::ToBasicToken() const
 {
 	if (CanConvertTo(kTokenType_String))
-		return Create(GetString());
+		return Create(ToStringToken()->GetString());
 	else if (CanConvertTo(kTokenType_Array))
 		return CreateArray(GetArray());
 	else if (CanConvertTo(kTokenType_Form))
@@ -824,7 +867,7 @@ double ScriptToken::GetNumericRepresentation(bool bFromHex)
 		result = GetNumber();
 	else if (CanConvertTo(kTokenType_String))
 	{
-		const char* str = GetString();
+		const char* str = ToStringToken()->GetString();
 
 		if (!bFromHex)
 		{

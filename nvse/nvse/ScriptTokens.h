@@ -150,6 +150,8 @@ struct ForEachContext
 
 #endif
 
+struct StringToken;
+
 // slightly less ugly but still cheap polymorphism
 struct ScriptToken
 {
@@ -160,7 +162,6 @@ protected:
 	Script*		owningScript = nullptr;
 
 	struct Value {
-		std::unique_ptr<std::string> str;
 		union {
 			Script::RefVariable		* refVar;
 			UInt32					formID;
@@ -185,8 +186,6 @@ protected:
 	ScriptToken(Script::RefVariable* refVar, UInt16 refIdx);
 	ScriptToken(VariableInfo* varInfo, UInt16 refIdx, UInt32 varType);
 	ScriptToken(CommandInfo* cmdInfo, UInt16 refIdx);
-	ScriptToken(const std::string& str);
-	ScriptToken(const char* str);
 	ScriptToken(TESGlobal* global, UInt16 refIdx);
 	ScriptToken(Operator* op);
 	ScriptToken(UInt32 data, Token_Type asType);		// ArrayID or FormID
@@ -195,12 +194,9 @@ protected:
 #if RUNTIME
 	ScriptToken(ScriptEventList::Var* var);
 #endif
-
-	Token_Type	ReadFrom(ExpressionEvaluator* context);	// reconstitute param from compiled data, return the type
 public:
 	virtual	~ScriptToken();
 
-	virtual const char	*			GetString() const;
 	virtual UInt32					GetFormID() const;
 	virtual TESForm*				GetTESForm() const;
 	virtual double					GetNumber() const;
@@ -247,8 +243,8 @@ public:
 	static ScriptToken* Create(Script::RefVariable* refVar, UInt16 refIdx)						{ return refVar ? new ScriptToken(refVar, refIdx) : NULL; }
 	static ScriptToken* Create(VariableInfo* varInfo, UInt16 refIdx, UInt32 varType)			{ return varInfo ? new ScriptToken(varInfo, refIdx, varType) : NULL; }
 	static ScriptToken* Create(CommandInfo* cmdInfo, UInt16 refIdx)								{ return cmdInfo ? new ScriptToken(cmdInfo, refIdx) : NULL;	}
-	static ScriptToken* Create(const std::string& str)											{ return new ScriptToken(str);	}
-	static ScriptToken* Create(const char* str)													{ return new ScriptToken(str);	}
+	static StringToken* Create(const std::string& str);
+	static StringToken* Create(const char* str);
 	static ScriptToken* Create(TESGlobal* global, UInt16 refIdx)								{ return global ? new ScriptToken(global, refIdx) : NULL; }
 	static ScriptToken* Create(Operator* op)													{ return op ? new ScriptToken(op) : NULL;	}
 	static ScriptToken* Create(TESForm* form)													{ return new ScriptToken(form ? form->refID : 0, kTokenType_Form); }
@@ -261,13 +257,35 @@ public:
 	static ScriptToken* Create(UInt32 varID, UInt32 lbound, UInt32 ubound);
 	static ScriptToken* Create(ArrayElementToken* elem, UInt32 lbound, UInt32 ubound);
 	static ScriptToken* Create(UInt32 bogus);	// unimplemented, to block implicit conversion to double
-
+	static ScriptToken* EvaluateToken(ExpressionEvaluator* context);
+	
+	StringToken const* ToStringToken() const;
+	const char* GetString() const;
+	
 	void* operator new(size_t size);
 
 	void operator delete(void* p);
 };
 
+struct StringToken : ScriptToken
+{
+	std::string	str;
 
+	StringToken(const std::string& str);
+	StringToken(const char* str);
+
+	const char* GetString() const;
+
+	void* operator new(size_t size)
+	{
+		return ::operator new(size);
+	}
+
+	void operator delete(void* p)
+	{
+		::operator delete(p);
+	}
+};
 
 struct SliceToken : public ScriptToken
 {
