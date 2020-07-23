@@ -1,4 +1,5 @@
 #pragma once
+#include <stdexcept>
 
 typedef UInt32 ArrayID;
 class ArrayVar;
@@ -15,6 +16,7 @@ struct ScriptToken;
 #include "GameAPI.h"
 #include <map>
 #include <memory>
+#include <utility>
 #include <vector>
 #include <map>
 
@@ -67,12 +69,17 @@ enum DataType : UInt8
 };
 
 struct ArrayType {
-	union {
+	union
+	{
 		double		num;
 		UInt32		formID;
 	};
+	std::string* str = nullptr;
 
-	std::string		str;
+	~ArrayType()
+	{
+		delete str;
+	}
 };
 
 struct ArrayElement
@@ -136,59 +143,228 @@ public:
 
 class ArrayVarElementContainer
 {
-	std::shared_ptr<std::vector<ArrayElement>> array_ = nullptr;
-	std::unique_ptr<std::map<ArrayKey, ArrayElement>> map_ = nullptr;
-
-	bool isArray_ = false;
 	
 public:
-	ArrayVarElementContainer(bool isArray);
-
-	ArrayVarElementContainer();
-
-	ArrayElement& operator [](ArrayKey i) const;
+	virtual ~ArrayVarElementContainer() = default;
+	
+	virtual ArrayElement& operator [](ArrayKey i) = 0;
 
 	class iterator
 	{		
 	public:
-		bool isArray_ = false;
-		std::map<ArrayKey, ArrayElement>::iterator mapIter_;
-		std::vector<ArrayElement>::iterator arrIter_;
-		std::shared_ptr<std::vector<ArrayElement>> vectorRef_ = nullptr;
+		virtual ~iterator() = default;
+		
+		virtual void operator++() = 0;
 
+		virtual void operator--() = 0;
 
-		iterator();
+		virtual bool operator!=(const iterator& other) const = 0;
 
-		explicit iterator(const std::map<ArrayKey, ArrayElement>::iterator iter);
+		[[nodiscard]] virtual ArrayKey first() const = 0;
 
-		iterator(std::vector<ArrayElement>::iterator iter, std::shared_ptr<std::vector<ArrayElement>> vectorRef);
+		[[nodiscard]] virtual ArrayElement& second() const = 0;
 
-		void operator++();
-
-		void operator--();
-
-		bool operator!=(const iterator& other) const;
-
-		[[nodiscard]] ArrayKey first() const;
-
-		[[nodiscard]] ArrayElement& second() const;
+		virtual std::unique_ptr<iterator> clone() const = 0;
 	};
 
-	[[nodiscard]] iterator find(ArrayKey key) const;
+	[[nodiscard]] virtual std::unique_ptr<iterator> find(ArrayKey key) = 0;
 
-	[[nodiscard]] iterator begin() const;
+	[[nodiscard]] virtual std::unique_ptr<iterator> begin() = 0;
 
-	[[nodiscard]] iterator end() const;
+	[[nodiscard]] virtual std::unique_ptr<iterator> end() = 0;
 
-	[[nodiscard]] std::size_t size() const;
+	[[nodiscard]] virtual std::size_t size() const = 0;
 
-	std::size_t erase(const ArrayKey key) const;
-
-	std::size_t erase(const ArrayKey low, const ArrayKey high) const;
-
-	
+	std::size_t virtual erase(const ArrayKey key) = 0;
 };
 
+class ArrayVarElementMap : public ArrayVarElementContainer
+{
+	std::map<ArrayKey, ArrayElement> map_;
+	
+public:
+	ArrayElement& operator [](ArrayKey i) override
+	{
+		return map_[i];
+	}
+
+	class MapIterator : public iterator
+	{
+		std::map<ArrayKey, ArrayElement>::iterator iterator_;
+	public:
+		MapIterator() = delete;
+		
+		explicit MapIterator(std::map<ArrayKey, ArrayElement>::iterator iterator) : iterator_(std::move(iterator))
+		{
+		}
+		
+		void operator++() override
+		{
+			++iterator_;
+		}
+
+		void operator--() override
+		{
+			--iterator_;
+		}
+
+		bool operator!=(const iterator& other) const override
+		{
+			const auto& otherMapIter = dynamic_cast<const MapIterator&>(other);
+			return otherMapIter.iterator_ != this->iterator_;
+		}
+
+		[[nodiscard]] ArrayKey first() const override
+		{
+			return iterator_->first;
+		}
+
+		[[nodiscard]] ArrayElement& second() const override
+		{
+			return iterator_->second;
+		}
+
+		std::unique_ptr<iterator> clone() const override
+		{
+			return std::make_unique<MapIterator>(iterator_);
+		}
+
+		void* operator new(std::size_t size);
+
+		void operator delete(void* p);
+		
+	};
+
+	[[nodiscard]] std::unique_ptr<iterator> find(ArrayKey key) override
+	{
+		return std::make_unique<MapIterator>(map_.find(key));
+	}
+
+
+	[[nodiscard]] std::unique_ptr<iterator> begin() override
+	{
+		return std::make_unique<MapIterator>(map_.begin());
+	}
+
+	[[nodiscard]] std::unique_ptr<iterator> end() override
+	{
+		return std::make_unique<MapIterator>(map_.end());
+	}
+
+	[[nodiscard]] std::size_t size() const override
+	{
+		return map_.size();
+	}
+
+	std::size_t erase(const ArrayKey key) override
+	{
+		return map_.erase(key);
+	}
+
+};
+
+class ArrayVarElementVector : public ArrayVarElementContainer
+{
+	std::vector<ArrayElement> vector_;
+	
+public:
+	ArrayElement& operator[](ArrayKey i) override
+	{
+		const std::size_t index = i.Key().num;
+		if (index >= vector_.size())
+		{
+			vector_.emplace_back();
+			return vector_.back();
+		}
+		return vector_[index];
+	}
+
+	class VectorIterator : public iterator
+	{
+		std::vector<ArrayElement>& vectorRef_;
+		std::vector<ArrayElement>::iterator iterator_;
+	public:
+		VectorIterator() = delete;
+		
+		VectorIterator(std::vector<ArrayElement>::iterator iter, std::vector<ArrayElement>& vectorRef) : vectorRef_(vectorRef), iterator_(std::move(iter))
+		{
+		}
+		
+		void operator++() override
+		{
+			++iterator_;
+		}
+		void operator--() override
+		{
+			--iterator_;
+		}
+		bool operator!=(const iterator& other) const override
+		{
+			const auto& otherMapIter = dynamic_cast<const VectorIterator&>(other);
+			return otherMapIter.iterator_ != this->iterator_;
+		}
+		[[nodiscard]] ArrayKey first() const override
+		{
+			return ArrayKey(iterator_ - vectorRef_.begin());
+		}
+		
+		[[nodiscard]] ArrayElement& second() const override
+		{
+			return *iterator_;
+		}
+
+		std::unique_ptr<iterator> clone() const override
+		{
+			return std::make_unique<VectorIterator>(iterator_, vectorRef_);
+		}
+
+		void* operator new(std::size_t size);
+
+		void operator delete(void* p);
+	};
+	
+	[[nodiscard]] std::unique_ptr<iterator> find(ArrayKey key) override
+	{
+		std::size_t index = key.Key().num;
+		if (index >= vector_.size())
+		{
+			return std::make_unique<VectorIterator>(vector_.end(), vector_);
+		}
+		return std::make_unique<VectorIterator>(vector_.begin() + key.Key().num, vector_);
+	}
+	
+	[[nodiscard]] std::unique_ptr<iterator> begin() override
+	{
+		return std::make_unique<VectorIterator>(vector_.begin(), vector_);
+
+	}
+
+	[[nodiscard]] std::unique_ptr<iterator> end() override
+	{
+		return std::make_unique<VectorIterator>(vector_.end(), vector_);
+	}
+	
+	[[nodiscard]] std::size_t size() const override
+	{
+		return vector_.size();
+	}
+	
+	std::size_t erase(const ArrayKey key) override
+	{
+		vector_.erase(vector_.begin() + key.Key().num);
+		return 1;
+	}
+
+	std::size_t erase(const ArrayKey low, const ArrayKey high)
+	{
+		if (high.Key().num > vector_.size() || low.Key().num > vector_.size())
+		{
+			throw std::out_of_range("Attempt to erase out of range array var");
+		}
+		vector_.erase(vector_.begin() + low.Key().num, vector_.begin() + high.Key().num);
+		return high.Key().num - low.Key().num;
+	}
+};
 
 typedef ArrayVarElementContainer::iterator ArrayIterator;
 
@@ -199,7 +375,7 @@ class ArrayVar
 	friend class PluginAPI::ArrayAPI;
 
 	typedef ArrayVarElementContainer _ElementMap;
-	_ElementMap			m_elements;
+	std::unique_ptr<ArrayVarElementContainer> m_elements;
 	ArrayID				m_ID;
 	UInt8				m_owningModIndex;
 	UInt8				m_keyType;
@@ -208,8 +384,8 @@ class ArrayVar
 
 	UInt32 GetUnusedIndex();
 
-	explicit ArrayVar(UInt8 modIndex);
-	ArrayVar(UInt32 keyType, bool packed, UInt8 modIndex);
+	//explicit ArrayVar(UInt8 modIndex);
+	
 
 	ArrayElement* Get(ArrayKey key, bool bCanCreateNew);
 
@@ -219,11 +395,13 @@ class ArrayVar
 	void Dump();
 
 public:
+	ArrayVar() = delete;
+	ArrayVar(UInt32 keyType, bool packed, UInt8 modIndex);
 	~ArrayVar();
 
 	UInt8 KeyType() const	{ return m_keyType; }
 	bool IsPacked() const	{ return m_bPacked; }
-	UInt32 Size() const		{ return m_elements.size(); }
+	UInt32 Size() const		{ return m_elements->size(); }
 };
 
 class ArrayVarMap : public VarMap<ArrayVar>

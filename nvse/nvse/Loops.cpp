@@ -46,7 +46,7 @@ void ArrayIterLoop::UpdateIterator(const ArrayElement* elem)
 	switch (elem->DataType())
 	{
 	case kDataType_String:
-		g_ArrayMap.SetElementString(m_iterID, val, elem->m_data.str);
+		g_ArrayMap.SetElementString(m_iterID, val, *elem->m_data.str);
 		break;
 	case kDataType_Numeric:
 		g_ArrayMap.SetElementNumber(m_iterID, val, elem->m_data.num);
@@ -70,7 +70,7 @@ void ArrayIterLoop::UpdateIterator(const ArrayElement* elem)
 	switch (m_curKey.KeyType())
 	{
 	case kDataType_String:
-		g_ArrayMap.SetElementString(m_iterID, key, m_curKey.Key().str);
+		g_ArrayMap.SetElementString(m_iterID, key, *m_curKey.Key().str);
 		break;
 	default:
 		g_ArrayMap.SetElementNumber(m_iterID, key, m_curKey.Key().num);

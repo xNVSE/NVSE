@@ -58,13 +58,13 @@ ScriptToken::ScriptToken(Script::RefVariable* refVar, UInt16 refIdx) : type(kTok
 ScriptToken::ScriptToken(const std::string& str) : type(kTokenType_String), refIdx(0), variableType(Script::eVarType_Invalid)
 {
 	INC_TOKEN_COUNT
-	value.str = std::make_unique<std::string>(str);
+	value.str = std::make_unique <std::string>(str);
 }
 
 ScriptToken::ScriptToken(const char* str) : type(kTokenType_String), refIdx(0), variableType(Script::eVarType_Invalid)
 {
 	INC_TOKEN_COUNT
-	value.str = std::make_unique<std::string>(str);
+	value.str = std::make_unique <std::string>(str);
 }
 
 ScriptToken::ScriptToken(TESGlobal* global, UInt16 refIdx) : type(kTokenType_Global), refIdx(refIdx), variableType(Script::eVarType_Invalid)
