@@ -546,6 +546,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="MemoryPool.cpp" />
     <ClCompile Include="NiNodes.cpp" />
     <ClCompile Include="nvse.cpp" />
     <ClCompile Include="OverloadsGlobal.cpp" />
@@ -624,6 +625,7 @@
     <ClInclude Include="InventoryInfo.h" />
     <ClInclude Include="InventoryReference.h" />
     <ClInclude Include="Loops.h" />
+    <ClInclude Include="MemoryPool.h" />
     <ClInclude Include="NiNodes.h" />
     <ClInclude Include="NiTypes.h" />
     <ClInclude Include="nvse_version.h" />
