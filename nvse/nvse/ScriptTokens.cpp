@@ -247,7 +247,18 @@ StringToken const* ScriptToken::ToStringToken() const
 
 const char* ScriptToken::GetString() const
 {
-	return this->ToStringToken()->GetString();
+	if (type == kTokenType_String)
+	{
+		return this->ToStringToken()->GetString();
+	}
+#if RUNTIME
+	else if (type == kTokenType_StringVar && value.var)
+	{
+		StringVar* strVar = g_StringMap.Get(value.var->data);
+		return strVar ? strVar->GetCString() : NULL;
+	}
+#endif
+	return nullptr;
 }
 
 
@@ -395,13 +406,7 @@ const char* StringToken::GetString() const
 
 	if (type == kTokenType_String)
 		result = str.c_str();
-#if RUNTIME
-	else if (type == kTokenType_StringVar && value.var)
-	{
-		StringVar* strVar = g_StringMap.Get(value.var->data);
-		result = strVar ? strVar->GetCString() : NULL;
-	}
-#endif
+
 	return result ? result : empty;
 }
 
@@ -867,7 +872,7 @@ double ScriptToken::GetNumericRepresentation(bool bFromHex)
 		result = GetNumber();
 	else if (CanConvertTo(kTokenType_String))
 	{
-		const char* str = ToStringToken()->GetString();
+		const char* str = GetString();
 
 		if (!bFromHex)
 		{
