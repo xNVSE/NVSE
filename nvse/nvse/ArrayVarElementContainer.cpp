@@ -7,7 +7,7 @@ ArrayVarElementContainer::ArrayVarElementContainer(bool isArray)
 	this->isArray_ = isArray;
 	if (isArray)
 	{
-		this->array_ = std::make_shared<std::vector<ArrayElement>>();
+		this->array_ = std::make_unique<std::vector<ArrayElement>>();
 	}
 	else
 	{
@@ -40,12 +40,11 @@ ArrayVarElementContainer::iterator::iterator(const std::map<ArrayKey, ArrayEleme
 	this->mapIter_ = iter;
 }
 
-ArrayVarElementContainer::iterator::iterator(std::vector<ArrayElement>::iterator iter,
-                                             std::shared_ptr<std::vector<ArrayElement>> vectorRef)
+ArrayVarElementContainer::iterator::iterator(std::vector<ArrayElement>::iterator iter, ArrayVarElementContainer const* containerPtr)
 {
 	this->isArray_ = true;
 	this->arrIter_ = iter;
-	this->vectorRef_ = std::move(vectorRef);
+	this->containerPtr_ = containerPtr;
 }
 
 void ArrayVarElementContainer::iterator::operator++()
@@ -89,7 +88,7 @@ ArrayKey ArrayVarElementContainer::iterator::first() const
 {
 	if (isArray_) [[likely]]
 	{
-		return ArrayKey(arrIter_ - vectorRef_->begin());
+		return ArrayKey(arrIter_ - containerPtr_->getVectorRef().begin());
 	}
 	return mapIter_->first;
 }
@@ -110,9 +109,9 @@ ArrayVarElementContainer::iterator ArrayVarElementContainer::find(ArrayKey key) 
 		std::size_t index = key.Key().num;
 		if (index >= array_->size())
 		{
-			return iterator(array_->end(), array_);
+			return iterator(array_->end(), this);
 		}
-		return iterator(array_->begin() + key.Key().num, array_);
+		return iterator(array_->begin() + key.Key().num, this);
 	}
 	return iterator(map_->find(key));
 }
@@ -121,7 +120,7 @@ ArrayVarElementContainer::iterator ArrayVarElementContainer::begin() const
 {
 	if (isArray_) [[likely]]
 	{
-		return iterator(array_->begin(), array_);
+		return iterator(array_->begin(), this);
 	}
 	return iterator(map_->begin());
 }
@@ -130,7 +129,7 @@ ArrayVarElementContainer::iterator ArrayVarElementContainer::end() const
 {
 	if (isArray_) [[likely]]
 	{
-		return iterator(array_->end(), array_);
+		return iterator(array_->end(), this);
 	}
 	return iterator(map_->end());
 }
@@ -166,4 +165,9 @@ std::size_t ArrayVarElementContainer::erase(const ArrayKey low, const ArrayKey h
 	}
 	array_->erase(array_->begin() + low.Key().num, array_->begin() + high.Key().num);
 	return high.Key().num - low.Key().num;
+}
+
+std::vector<ArrayElement>& ArrayVarElementContainer::getVectorRef() const
+{
+	return *array_;
 }

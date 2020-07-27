@@ -136,7 +136,7 @@ public:
 
 class ArrayVarElementContainer
 {
-	std::shared_ptr<std::vector<ArrayElement>> array_ = nullptr;
+	std::unique_ptr<std::vector<ArrayElement>> array_ = nullptr;
 	std::unique_ptr<std::map<ArrayKey, ArrayElement>> map_ = nullptr;
 
 	bool isArray_ = false;
@@ -154,14 +154,13 @@ public:
 		bool isArray_ = false;
 		std::map<ArrayKey, ArrayElement>::iterator mapIter_;
 		std::vector<ArrayElement>::iterator arrIter_;
-		std::shared_ptr<std::vector<ArrayElement>> vectorRef_ = nullptr;
-
+		ArrayVarElementContainer const* containerPtr_ = nullptr;
 
 		iterator();
 
 		explicit iterator(const std::map<ArrayKey, ArrayElement>::iterator iter);
 
-		iterator(std::vector<ArrayElement>::iterator iter, std::shared_ptr<std::vector<ArrayElement>> vectorRef);
+		iterator(std::vector<ArrayElement>::iterator iter, ArrayVarElementContainer const* containerRef);
 
 		void operator++();
 
@@ -185,6 +184,8 @@ public:
 	std::size_t erase(const ArrayKey key) const;
 
 	std::size_t erase(const ArrayKey low, const ArrayKey high) const;
+
+	std::vector<ArrayElement>& getVectorRef() const;
 
 	
 };
