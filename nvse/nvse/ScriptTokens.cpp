@@ -401,13 +401,7 @@ Slice::Slice(const Slice* _slice)
 
 const char* StringToken::GetString() const
 {
-	static const char* empty = "";
-	const char* result = NULL;
-
-	if (type == kTokenType_String)
-		result = str.c_str();
-
-	return result ? result : empty;
+	return str.c_str();
 }
 
 UInt32 ScriptToken::GetFormID() const
