@@ -122,7 +122,7 @@ public:
 	ArrayKey(double _key);
 	ArrayKey(const char* _key);
 
-	ArrayType	Key() const	{	return key;	}
+	ArrayType&	Key() {	return key;	}
 	UInt8		KeyType() const { return keyType; }
 	void		SetNumericKey(double newVal)	{	keyType = kDataType_Numeric; key.num = newVal;	}
 	bool		IsValid() const { return keyType != kDataType_Invalid;	}
@@ -181,9 +181,9 @@ public:
 
 	[[nodiscard]] std::size_t size() const;
 
-	std::size_t erase(const ArrayKey key) const;
+	std::size_t erase(ArrayKey key) const;
 
-	std::size_t erase(const ArrayKey low, const ArrayKey high) const;
+	std::size_t erase(ArrayKey low, ArrayKey high) const;
 
 	std::vector<ArrayElement>& getVectorRef() const;
 

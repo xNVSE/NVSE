@@ -143,7 +143,7 @@ std::size_t ArrayVarElementContainer::size() const
 	return map_->size();
 }
 
-std::size_t ArrayVarElementContainer::erase(const ArrayKey key) const
+std::size_t ArrayVarElementContainer::erase(ArrayKey key) const
 {
 	if (isArray_) [[likely]]
 	{
@@ -153,7 +153,7 @@ std::size_t ArrayVarElementContainer::erase(const ArrayKey key) const
 	return map_->erase(key);
 }
 
-std::size_t ArrayVarElementContainer::erase(const ArrayKey low, const ArrayKey high) const
+std::size_t ArrayVarElementContainer::erase(ArrayKey low, ArrayKey high) const
 {
 	if (!isArray_)
 	{
