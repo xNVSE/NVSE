@@ -15,13 +15,13 @@ class FastStack
 		if (fallbackStack_ == nullptr)
 		{
 			fallbackStack_ = std::make_unique<std::stack<T>>();
-			_MESSAGE("%s has ran out stack space", typeid(T).name());
-			ShowErrorMessageBox("FastStack Warning");
+			//_MESSAGE("%s has ran out stack space", typeid(T).name());
+			//ShowErrorMessageBox("FastStack Warning");
 		}
 	}
 	
 public:
-	void push(T t)
+	void push(T& t)
 	{
 		if (pos_ >= arraySize)
 		{
@@ -35,7 +35,12 @@ public:
 		pos_++;
 	}
 
-	T top()
+	void push(T&& t)
+	{
+		push(std::move(t));
+	}
+
+	T& top()
 	{
 		if (pos_ > arraySize)
 		{

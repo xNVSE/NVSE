@@ -2607,7 +2607,7 @@ double ExpressionEvaluator::ReadFloat()
 	return data;
 }
 
-std::string ExpressionEvaluator::ReadString()
+std::string ExpressionEvaluator::ReadString(UInt32& incrData)
 {
 	UInt16 len = Read16();
 	char* buf = new char[len + 1];
@@ -2615,7 +2615,8 @@ std::string ExpressionEvaluator::ReadString()
 	buf[len] = 0;
 	std::string str = buf;
 	Data() += len;
-	delete buf;
+	delete[] buf;
+	incrData = 2 + len;
 	return str;
 }
 
@@ -3236,31 +3237,69 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 	return true;
 }
 
+std::unordered_map<void*, std::vector<ScriptToken>> g_tokenCache;
+std::unordered_map<void*, Script*> g_temp;
+
 ScriptToken* ExpressionEvaluator::Evaluate()
 {
+	void* cacheKey = script + *m_opcodeOffsetPtr;
+	auto xxx = g_temp.find(cacheKey);
+	if (xxx != g_temp.end())
+	{
+		if (xxx->second != script)
+		{
+			_MESSAGE("allert!!!!");
+		}
+	}
+	else
+	{
+		g_temp[cacheKey] = script;
+	}
+
 	//std::stack<ScriptToken*> operands;
 	UInt16 argLen = Read16();
 	UInt8* endData = Data() + argLen - sizeof(UInt16);
-	FastStack<ScriptToken*, 16> operands;
-	while (Data() < endData)
-	{
-		ScriptToken* curToken = ScriptToken::Read(this);
-		if (!curToken)
-			break;
+	
+	FastStack<std::unique_ptr<ScriptToken>, 16> operands;
 
-		if (curToken->Type() == kTokenType_Command)
+	std::vector<ScriptToken> cachedTokens;
+	auto cacheExists = false;
+	const auto iter = g_tokenCache.find(cacheKey);
+	std::size_t tokenCount = 0;
+	if (iter != g_tokenCache.end())
+	{
+		cachedTokens = iter->second;
+		cacheExists = true;
+	}
+	
+	const auto tokenSize = cachedTokens.size();
+	while ((!cacheExists && Data() < endData) || (cacheExists && tokenCount < tokenSize))
+	{
+		std::unique_ptr<ScriptToken> curTokenUnique;
+		if (!cacheExists)
+		{
+			curTokenUnique = std::unique_ptr<ScriptToken>(ScriptToken::Read(this));
+			if (!curTokenUnique)
+				break;
+			cachedTokens.push_back(*curTokenUnique);
+		}
+		else
+		{
+			curTokenUnique = std::make_unique<ScriptToken>(cachedTokens.at(tokenCount++));
+			Data() += curTokenUnique->incrementData;
+		}
+
+		if (curTokenUnique->Type() == kTokenType_Command)
 		{
 			// execute the command
-			CommandInfo* cmdInfo = curToken->GetCommandInfo();
+			CommandInfo* cmdInfo = curTokenUnique->GetCommandInfo();
 			if (!cmdInfo)
 			{
-				delete curToken;
-				curToken = NULL;
 				break;
 			}
 
 			TESObjectREFR* callingObj = m_thisObj;
-			Script::RefVariable* callingRef = script->GetVariable(curToken->GetRefIndex());
+			Script::RefVariable* callingRef = script->GetVariable(curTokenUnique->GetRefIndex());
 			if (callingRef)
 			{
 				callingRef->Resolve(eventList);
@@ -3268,8 +3307,6 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 					callingObj = DYNAMIC_CAST(callingRef->form, TESForm, TESObjectREFR);
 				else
 				{
-					delete curToken;
-					curToken = NULL;
 					Error("Attempting to call a function on a NULL reference or base object");
 					break;
 				}
@@ -3277,7 +3314,11 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 
 			TESObjectREFR* contObj = callingRef ? NULL : m_containingObj;
 			double cmdResult = 0;
-
+			
+			if (cacheExists)
+			{
+				
+			}
 			UInt16 argsLen = Read16();
 			UInt32 numBytesRead = 0;
 			UInt8* scrData = Data();
@@ -3287,8 +3328,6 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 
 			if (!bExecuted)
 			{
-				delete curToken;
-				curToken = NULL;
 				Error("Command %s failed to execute", cmdInfo->longName);
 				break;
 			}
@@ -3296,8 +3335,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			Data() += argsLen - 2;
 
 			// create a new ScriptToken* based on result type, delete command token when done
-			ScriptToken* cmdToken = curToken;
-			curToken = ScriptToken::Create(cmdResult);
+			curTokenUnique = std::unique_ptr<ScriptToken>(ScriptToken::Create(cmdResult));
 
 			// adjust token type if we know command return type
 			CommandReturnType retnType = g_scriptCommands.GetReturnType(cmdInfo);
@@ -3309,8 +3347,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				case kRetnType_String:
 				{
 					StringVar* strVar = g_StringMap.Get(cmdResult);
-					delete curToken;
-					curToken = ScriptToken::Create(strVar ? strVar->GetCString() : "");
+					curTokenUnique = std::unique_ptr<ScriptToken>(ScriptToken::Create(strVar ? strVar->GetCString() : ""));
 					break;
 				}
 				case kRetnType_Array:
@@ -3318,8 +3355,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 					// ###TODO: cmds can return arrayID '0', not necessarily an error, does this support that?
 					if (g_ArrayMap.Exists(cmdResult) || !cmdResult)	
 					{
-						delete curToken;
-						curToken = ScriptToken::CreateArray(cmdResult);
+						curTokenUnique = std::unique_ptr<ScriptToken>(ScriptToken::CreateArray(cmdResult));
 						break;
 					}
 					else
@@ -3330,34 +3366,29 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				}
 				case kRetnType_Form:
 				{
-					delete curToken;
-					curToken = ScriptToken::CreateForm(*((UInt64*)&cmdResult));
+					curTokenUnique = std::unique_ptr<ScriptToken>(ScriptToken::CreateForm(*((UInt64*)&cmdResult)));
 					break;
 				}
 				case kRetnType_Default:
-					delete curToken;
-					curToken = ScriptToken::Create(cmdResult);
+					curTokenUnique = std::unique_ptr<ScriptToken>(ScriptToken::Create(cmdResult));
 					break;
 				default:
 					Error("Unknown command return type %d while executing command in ExpressionEvaluator::Evaluate()", retnType);
 			}
-
-			delete cmdToken;
-			cmdToken = NULL;
 		}
 
-		if (curToken->Type() != kTokenType_Operator)
-			operands.push(curToken);
+		if (curTokenUnique->Type() != kTokenType_Operator)
+		{
+			operands.push(std::move(curTokenUnique));
+		}
 		else
 		{
-			Operator* op = curToken->GetOperator();
-			ScriptToken* lhOperand = NULL;
-			ScriptToken* rhOperand = NULL;
+			Operator* op = curTokenUnique->GetOperator();
+			ScriptToken* lhOperand = nullptr;
+			ScriptToken* rhOperand = nullptr;
 
 			if (op->numOperands > operands.size())
 			{
-				delete curToken;
-				curToken = NULL;
 				Error("Too few operands for operator %s", op->symbol);
 				break;
 			}
@@ -3365,43 +3396,45 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			switch (op->numOperands)
 			{
 			case 2:
-				rhOperand = operands.top();
+				rhOperand = operands.top().get();
 				operands.pop();
 			case 1:
-				lhOperand = operands.top();
+				lhOperand = operands.top().get();
 				operands.pop();
 			}
 
-			ScriptToken* opResult = op->Evaluate(lhOperand, rhOperand, this);
-			delete lhOperand;
-			delete rhOperand;
-			delete curToken;
-			curToken = NULL;
+			std::unique_ptr<ScriptToken> opResult = std::unique_ptr<ScriptToken>(op->Evaluate(lhOperand, rhOperand, this));
 
 			if (!opResult)
 			{
 				Error("Operator %s failed to evaluate to a valid result", op->symbol);
 				break;
 			}
-
-			operands.push(opResult);
+			
+			operands.push(std::move(opResult));
 		}
 	}
 
+	
 	// adjust opcode offset ptr (important for recursive calls to Evaluate()
 	*m_opcodeOffsetPtr = m_data - m_scriptData;
+	
 
+	ScriptToken* result;
 	if (operands.size() != 1)		// should have one operand remaining - result of expression
 	{
 		Error("An expression failed to evaluate to a valid result");
-		while (operands.size())
-		{
-			delete operands.top();
-			operands.pop();
-		}
-		return NULL;
+		result = nullptr;
 	}
-	auto* result = operands.top();
+	else
+	{
+		result = operands.top().release();
+		if (!cacheExists)
+		{
+			g_tokenCache[cacheKey] = cachedTokens;
+		}
+	}
+
 	return result;
 }
 

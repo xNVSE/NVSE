@@ -190,7 +190,7 @@ protected:
 	ScriptToken(Operator* op);
 	ScriptToken(UInt32 data, Token_Type asType);		// ArrayID or FormID
 
-	ScriptToken(const ScriptToken& rhs);	// unimplemented, don't want copy constructor called
+	//ScriptToken(const ScriptToken& rhs);	// unimplemented, don't want copy constructor called
 #if RUNTIME
 	ScriptToken(ScriptEventList::Var* var);
 #endif
@@ -265,6 +265,10 @@ public:
 	void* operator new(size_t size);
 
 	void operator delete(void* p);
+
+	// TODO: fix later
+	UInt32 incrementData = 0;
+
 };
 
 struct StringToken : ScriptToken

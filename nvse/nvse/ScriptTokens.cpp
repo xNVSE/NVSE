@@ -266,11 +266,13 @@ static SmallObjectsAllocator::Allocator<ScriptToken, 20> g_scriptTokenAllocator;
 
 void* ScriptToken::operator new(size_t size)
 {
+	//return ::operator new(size);
 	return g_scriptTokenAllocator.Allocate();
 }
 
 void ScriptToken::operator delete(void* p)
 {
+	//::operator delete(p);
 	g_scriptTokenAllocator.Free(p);
 }
 
@@ -646,18 +648,38 @@ ScriptToken* ScriptToken::EvaluateToken(ExpressionEvaluator* context)
 	{
 	case 'B':
 	case 'b':
-		return Create(static_cast<double>(context->ReadByte()));
+	{
+		auto* token = Create(static_cast<double>(context->ReadByte()));
+		token->incrementData = 2;
+		return token;
+	}
+		
 	case 'I':
 	case 'i':
-		return Create(static_cast<double>(context->Read16()));
+	{
+		auto* token = Create(static_cast<double>(context->Read16()));
+		token->incrementData = 3;
+		return token;
+	}
 	case 'L':
 	case 'l':
-		return Create(static_cast<double>(context->Read32()));
+	{
+		auto* token = Create(static_cast<double>(context->Read32()));
+		token->incrementData = 5;
+		return token;
+	}
 	case 'Z':
-		return Create(static_cast<double>(context->ReadFloat()));
+	{
+		auto* token = Create(static_cast<double>(context->ReadFloat()));
+		token->incrementData = sizeof(double) + 1;
+		return token;
+	}
 	case 'S':
 	{
-		return new StringToken(context->ReadString());
+		UInt32 incData = 0;
+		auto* strToken = new StringToken(context->ReadString(incData));
+		strToken->incrementData = incData + 1;
+		return strToken;
 	}
 	case 'R':
 	{
@@ -673,6 +695,7 @@ ScriptToken* ScriptToken::EvaluateToken(ExpressionEvaluator* context)
 			token->value.refVar->Resolve(context->eventList);
 			token->value.formID = token->value.refVar->form ? token->value.refVar->form->refID : 0;
 		}
+		token->incrementData = 3;
 		return token;
 	}
 	case 'G':
@@ -690,6 +713,7 @@ ScriptToken* ScriptToken::EvaluateToken(ExpressionEvaluator* context)
 		token->value.global = DYNAMIC_CAST(refVar->form, TESForm, TESGlobal);
 		if (!token->value.global)
 			token->type = kTokenType_Invalid;
+		token->incrementData = 3;
 		return token;
 	}
 	case 'X':
@@ -701,6 +725,7 @@ ScriptToken* ScriptToken::EvaluateToken(ExpressionEvaluator* context)
 		token->value.cmd = g_scriptCommands.GetByOpcode(opcode);
 		if (!token->value.cmd)
 			token->type = kTokenType_Invalid;
+		token->incrementData = 5;
 		return token;
 	}
 	case 'V':
@@ -746,9 +771,9 @@ ScriptToken* ScriptToken::EvaluateToken(ExpressionEvaluator* context)
 		token->value.var = NULL;
 		if (eventList)
 			token->value.var = eventList->GetVariable(varIdx);
-
 		if (!token->value.var)
 			token->type = kTokenType_Invalid;
+		token->incrementData = 6;
 		return token;
 	}
 	default:
@@ -769,6 +794,7 @@ ScriptToken* ScriptToken::EvaluateToken(ExpressionEvaluator* context)
 	}
 	auto* token = new ScriptToken();
 	token->type = kTokenType_Invalid;
+	token->incrementData = 1;
 	return token;
 }
 
