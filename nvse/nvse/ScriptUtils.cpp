@@ -2607,13 +2607,13 @@ double ExpressionEvaluator::ReadFloat()
 	return data;
 }
 
-std::string ExpressionEvaluator::ReadString(UInt32& incrData)
+std::unique_ptr<std::string> ExpressionEvaluator::ReadString()
 {
 	UInt16 len = Read16();
 	char* buf = new char[len + 1];
 	memcpy(buf, Data(), len);
 	buf[len] = 0;
-	std::string str = buf;
+	auto str = std::make_unique<std::string>(buf);
 	Data() += len;
 	delete[] buf;
 	incrData = 2 + len;
