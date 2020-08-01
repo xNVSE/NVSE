@@ -270,9 +270,7 @@ public:
 
 	void operator delete(void* p);
 
-	// TODO: fix later
-	//UInt32 incrementData = 0;
-
+	bool cached = false;
 };
 
 
@@ -461,7 +459,7 @@ struct Operator
 	bool ExpectsStringLiteral() { return type == kOpType_MemberAccess; }
 
 	Token_Type GetResult(Token_Type lhs, Token_Type rhs);	// at compile-time determine type resulting from operation
-	ScriptToken* Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEvaluator* context);	// at run-time, operate on the operands and return result
+	ScriptToken* Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEvaluator* context, Op_Eval& cacheEval, bool& cacheSwapOrder);	// at run-time, operate on the operands and return result
 };
 
 bool CanConvertOperand(Token_Type from, Token_Type to);	// don't use directly at run-time, use ScriptToken::CanConvertTo() instead

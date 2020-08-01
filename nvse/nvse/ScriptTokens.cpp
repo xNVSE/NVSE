@@ -246,6 +246,10 @@ void* ScriptToken::operator new(size_t size)
 void ScriptToken::operator delete(void* p)
 {
 	//::operator delete(p);
+	if (static_cast<ScriptToken*>(p)->cached)
+	{
+		return;
+	}
 	g_scriptTokenAllocator.Free(p);
 }
 

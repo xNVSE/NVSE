@@ -3242,6 +3242,8 @@ struct TokenCacheEntry
 {
 	ScriptToken token;
 	UInt8 incrementData;
+	Op_Eval eval;
+	bool swapOrder;
 };
 
 std::unordered_map<UInt8*, std::vector<TokenCacheEntry>> g_tokenCache;
@@ -3272,7 +3274,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	UInt16 argLen = Read16();
 	UInt8* endData = Data() + argLen - sizeof(UInt16);
 	
-	FastStack<std::unique_ptr<ScriptToken>, 16> operands;
+	FastStack<ScriptToken*, 16> operands;
 
 #if !DISABLE_CACHING
 
@@ -3288,41 +3290,46 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	
 	while (Data() < endData)
 	{
-		std::unique_ptr<ScriptToken> curTokenUnique;
+		TokenCacheEntry* tokenCacheEntry;
+		ScriptToken* curToken;
 		if (!cacheExists)
 		{
 			auto* dataBefore = Data();
-			curTokenUnique = std::make_unique<ScriptToken>();
-			curTokenUnique->ReadFrom(this);
-			const auto incrData = Data() - dataBefore;
-			if (!curTokenUnique)
+			curToken = ScriptToken::Read(this);
+			if (!curToken)
 				break;
 #if !DISABLE_CACHING
-			cachedTokens.push_back(TokenCacheEntry {*curTokenUnique, static_cast<UInt8>(incrData)});
+			const auto incrData = Data() - dataBefore;
+			cachedTokens.push_back(TokenCacheEntry {*curToken, static_cast<UInt8>(incrData)});
+			tokenCacheEntry = &cachedTokens.back();
 		}
 		else
 		{
 			auto& entry = cachedTokens.at(tokenCount++);
-			curTokenUnique = std::make_unique<ScriptToken>(entry.token);
+			tokenCacheEntry = &entry;
+			curToken = &entry.token;
+			curToken->cached = true;
 			Data() += entry.incrementData;
-			if (curTokenUnique->CanConvertTo(kTokenType_Variable))
+			if (curToken->CanConvertTo(kTokenType_Variable))
 			{
-				curTokenUnique->ResolveVariable(this->eventList);
+				curToken->ResolveVariable(this->eventList);
 			}
 #endif
 		}
 
-		if (curTokenUnique->Type() == kTokenType_Command)
+		if (curToken->Type() == kTokenType_Command)
 		{
 			// execute the command
-			CommandInfo* cmdInfo = curTokenUnique->GetCommandInfo();
+			CommandInfo* cmdInfo = curToken->GetCommandInfo();
 			if (!cmdInfo)
 			{
+				delete curToken;
+				curToken = NULL;
 				break;
 			}
 
 			TESObjectREFR* callingObj = m_thisObj;
-			Script::RefVariable* callingRef = script->GetVariable(curTokenUnique->GetRefIndex());
+			Script::RefVariable* callingRef = script->GetVariable(curToken->GetRefIndex());
 			if (callingRef)
 			{
 				callingRef->Resolve(eventList);
@@ -3330,6 +3337,8 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 					callingObj = DYNAMIC_CAST(callingRef->form, TESForm, TESObjectREFR);
 				else
 				{
+					delete curToken;
+					curToken = NULL;
 					Error("Attempting to call a function on a NULL reference or base object");
 					break;
 				}
@@ -3349,6 +3358,8 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 
 			if (!bExecuted)
 			{
+				delete curToken;
+				curToken = NULL;
 				Error("Command %s failed to execute", cmdInfo->longName);
 				break;
 			}
@@ -3356,7 +3367,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			Data() += argsLen - 2;
 
 			// create a new ScriptToken* based on result type, delete command token when done
-			curTokenUnique = std::make_unique<ScriptToken>(cmdResult);
+			//curToken = ScriptToken::Create(cmdResult);
 
 			// adjust token type if we know command return type
 			CommandReturnType retnType = g_scriptCommands.GetReturnType(cmdInfo);
@@ -3365,51 +3376,57 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 
 			switch (retnType)
 			{
-				case kRetnType_String:
+			case kRetnType_String:
+			{
+				StringVar* strVar = g_StringMap.Get(cmdResult);
+				delete curToken;
+				curToken = ScriptToken::Create(strVar ? strVar->GetCString() : "");
+				break;
+			}
+			case kRetnType_Array:
+			{
+				// ###TODO: cmds can return arrayID '0', not necessarily an error, does this support that?
+				if (g_ArrayMap.Exists(cmdResult) || !cmdResult)
 				{
-					StringVar* strVar = g_StringMap.Get(cmdResult);
-					curTokenUnique = std::make_unique<ScriptToken>(strVar ? strVar->GetCString() : "");
+					delete curToken;
+					curToken = ScriptToken::CreateArray(cmdResult);
 					break;
 				}
-				case kRetnType_Array:
+				else
 				{
-					// ###TODO: cmds can return arrayID '0', not necessarily an error, does this support that?
-					if (g_ArrayMap.Exists(cmdResult) || !cmdResult)	
-					{
-						curTokenUnique = std::make_unique<ScriptToken>(cmdResult);
-						break;
-					}
-					else
-					{
-						Error("A command returned an invalid array");
-						break;
-					}
-				}
-				case kRetnType_Form:
-				{
-					curTokenUnique = std::make_unique<ScriptToken>(*reinterpret_cast<UInt64*>(&cmdResult), kTokenType_Form);
+					Error("A command returned an invalid array");
 					break;
 				}
-				case kRetnType_Default:
-					curTokenUnique = std::make_unique<ScriptToken>(cmdResult);
-					break;
-				default:
-					Error("Unknown command return type %d while executing command in ExpressionEvaluator::Evaluate()", retnType);
+			}
+			case kRetnType_Form:
+			{
+				delete curToken;
+				curToken = ScriptToken::CreateForm(*((UInt64*)&cmdResult));
+				break;
+			}
+			case kRetnType_Default:
+				delete curToken;
+				curToken = ScriptToken::Create(cmdResult);
+				break;
+			default:
+				Error("Unknown command return type %d while executing command in ExpressionEvaluator::Evaluate()", retnType);
 			}
 		}
 
-		if (curTokenUnique->Type() != kTokenType_Operator)
+		if (curToken->Type() != kTokenType_Operator)
 		{
-			operands.push(std::move(curTokenUnique));
+			operands.push(curToken);
 		}
 		else
 		{
-			Operator* op = curTokenUnique->GetOperator();
+			Operator* op = curToken->GetOperator();
 			ScriptToken* lhOperand = nullptr;
 			ScriptToken* rhOperand = nullptr;
 
 			if (op->numOperands > operands.size())
 			{
+				delete curToken;
+				curToken = NULL;
 				Error("Too few operands for operator %s", op->symbol);
 				break;
 			}
@@ -3417,42 +3434,55 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			switch (op->numOperands)
 			{
 			case 2:
-				rhOperand = operands.top().get();
+				rhOperand = operands.top();
 				operands.pop();
 			case 1:
-				lhOperand = operands.top().get();
+				lhOperand = operands.top();
 				operands.pop();
 			}
 
-			std::unique_ptr<ScriptToken> opResult = std::unique_ptr<ScriptToken>(op->Evaluate(lhOperand, rhOperand, this));
+			ScriptToken* opResult;
+			if (!cacheExists)
+			{
+				opResult = op->Evaluate(lhOperand, rhOperand, this, tokenCacheEntry->eval, tokenCacheEntry->swapOrder);
+			}
+			else
+			{
+				auto& bSwapOrder = tokenCacheEntry->swapOrder;
+				auto& eval = tokenCacheEntry->eval;
+				auto& type = op->type;
+				opResult = bSwapOrder ? eval(type, rhOperand, lhOperand, this) : eval(type, lhOperand, rhOperand, this);
+			}
 
+			delete lhOperand;
+			delete rhOperand;
+			delete curToken;
+			curToken = NULL;
+			
 			if (!opResult)
 			{
 				Error("Operator %s failed to evaluate to a valid result", op->symbol);
 				break;
 			}
 			
-			operands.push(std::move(opResult));
+			operands.push(opResult);
 		}
 	}
-
 	
 	// adjust opcode offset ptr (important for recursive calls to Evaluate()
 	*m_opcodeOffsetPtr = m_data - m_scriptData;
-	
 
-	ScriptToken* result;
 	if (operands.size() != 1)		// should have one operand remaining - result of expression
 	{
 		Error("An expression failed to evaluate to a valid result");
-		result = nullptr;
+		while (operands.size())
+		{
+			delete operands.top();
+			operands.pop();
+		}
+		return NULL;
 	}
-	else
-	{
-		result = operands.top().release();
-	}
-
-	return result;
+	return operands.top();
 }
 
 //	Pop required operand(s)
@@ -3460,7 +3490,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 //	check operand(s)->CanConvertTo() for rule types (also swap them and test if !asymmetric)
 //	if can convert --> pass to rule handler, return result :: else, continue loop
 //	if no matching rule return null
-ScriptToken* Operator::Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEvaluator* context)
+ScriptToken* Operator::Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEvaluator* context, Op_Eval& cacheEval, bool& cacheSwapOrder)
 {
 	if (numOperands == 0)	// how'd we get here?
 	{
@@ -3490,7 +3520,11 @@ ScriptToken* Operator::Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEv
 		}
 
 		if (bRuleMatches)
+		{
+			cacheEval = rule->eval;
+			cacheSwapOrder = bSwapOrder;
 			return bSwapOrder ? rule->eval(type, rhs, lhs, context) : rule->eval(type, lhs, rhs, context);
+		}
 	}
 
 	return NULL;
