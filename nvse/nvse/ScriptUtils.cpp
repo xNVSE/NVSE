@@ -2664,7 +2664,7 @@ ExpressionEvaluator::ExpressionEvaluator(COMMAND_ARGS) : m_opcodeOffsetPtr(opcod
 	m_scriptData = (UInt8*)scriptData;
 	m_data = m_scriptData + *m_opcodeOffsetPtr;
 
-	memset(m_args, 0, sizeof(m_args));
+	//memset(m_args, 0, sizeof(m_args));
 
 	m_containingObj = containingObj;	
 	m_baseOffset = *opcodeOffsetPtr - 4;
@@ -2678,7 +2678,7 @@ ExpressionEvaluator::~ExpressionEvaluator()
 {
 	PopFromStack();
 
-	for (UInt32 i = 0; i < kMaxArgs; i++)
+	for (UInt32 i = 0; i < m_numArgsExtracted; i++)
 		delete m_args[i];
 }
 
@@ -3246,11 +3246,87 @@ struct TokenCacheEntry
 	bool swapOrder;
 };
 
+ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken* token)
+{
+	// execute the command
+	CommandInfo* cmdInfo = token->GetCommandInfo();
+	if (!cmdInfo)
+	{
+		return nullptr;
+	}
+
+	TESObjectREFR* callingObj = m_thisObj;
+	Script::RefVariable* callingRef = script->GetVariable(token->GetRefIndex());
+	if (callingRef)
+	{
+		callingRef->Resolve(eventList);
+		if (callingRef->form && callingRef->form->IsReference())
+			callingObj = DYNAMIC_CAST(callingRef->form, TESForm, TESObjectREFR);
+		else
+		{
+			Error("Attempting to call a function on a NULL reference or base object");
+			return nullptr;
+		}
+	}
+
+	TESObjectREFR* contObj = callingRef ? NULL : m_containingObj;
+	double cmdResult = 0;
+
+	UInt16 argsLen = Read16();
+	//UInt32 numBytesRead = 0;
+	//UInt8* scrData = Data();
+
+	*m_opcodeOffsetPtr = m_data - m_scriptData;
+
+	ExpectReturnType(kRetnType_Default);	// expect default return type unless called command specifies otherwise
+	bool bExecuted = cmdInfo->execute(cmdInfo->params, m_scriptData, callingObj, contObj, script, eventList, &cmdResult, m_opcodeOffsetPtr);
+
+	if (!bExecuted)
+	{
+		Error("Command %s failed to execute", cmdInfo->longName);
+		return nullptr;
+	}
+
+	m_data += argsLen - 2;
+
+	// create a new ScriptToken* based on result type, delete command token when done
+	//curToken = ScriptToken::Create(cmdResult);
+
+	// adjust token type if we know command return type
+	CommandReturnType retnType = g_scriptCommands.GetReturnType(cmdInfo);
+	if (retnType == kRetnType_Ambiguous || retnType == kRetnType_ArrayIndex)	// return type ambiguous, cmd will inform us of type to expect
+		retnType = GetExpectedReturnType();
+
+	switch (retnType)
+	{
+	case kRetnType_String:
+	{
+		StringVar* strVar = g_StringMap.Get(cmdResult);
+		return ScriptToken::Create(strVar ? strVar->GetCString() : "");
+	}
+	case kRetnType_Array:
+	{
+		// ###TODO: cmds can return arrayID '0', not necessarily an error, does this support that?
+		if (g_ArrayMap.Exists(cmdResult) || !cmdResult)
+		{
+			return ScriptToken::CreateArray(cmdResult);
+		}
+		Error("A command returned an invalid array");
+		break;
+	}
+	case kRetnType_Form:
+	{
+		return ScriptToken::CreateForm(*((UInt64*)&cmdResult));
+	}
+	case kRetnType_Default:
+		return ScriptToken::Create(cmdResult);
+	default:
+		Error("Unknown command return type %d while executing command in ExpressionEvaluator::Evaluate()", retnType);
+	}
+	return nullptr;
+}
+
 std::unordered_map<UInt8*, std::vector<TokenCacheEntry>> g_tokenCache;
-
-
-//std::unordered_map<UInt8*, Script*> g_temp;
-//std::unordered_map<UInt8*, UInt8> g_temp2;
 
 #define DISABLE_CACHING 0
 
@@ -3258,7 +3334,6 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 {
 #if !DISABLE_CACHING
 	//auto opcodeOffsetAtThisTime = *m_opcodeOffsetPtr;
-
 	UInt8* cacheKey;
 	if (m_scriptData != script->data) // set ... to or if ..., script data is stored on stack and not heap
 	{
@@ -3272,7 +3347,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	
 #endif
 	UInt16 argLen = Read16();
-	UInt8* endData = Data() + argLen - sizeof(UInt16);
+	UInt8* endData = m_data + argLen - sizeof(UInt16);
 	
 	FastStack<ScriptToken*, 16> operands;
 
@@ -3281,25 +3356,26 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	auto& cachedTokens = g_tokenCache[cacheKey];
 	const auto cacheExists = !cachedTokens.empty();
 	std::size_t tokenCount = 0;
+	//auto cacheSize = g_tokenCache.size();
 
 #else
 	auto cacheExists = false;
 	auto tokenCount = 0;
 	auto tokenSize = 0;
 #endif
-	
-	while (Data() < endData)
+
+	while (m_data < endData)
 	{
 		TokenCacheEntry* tokenCacheEntry;
 		ScriptToken* curToken;
 		if (!cacheExists)
 		{
-			auto* dataBefore = Data();
+			auto* dataBefore = m_data;
 			curToken = ScriptToken::Read(this);
 			if (!curToken)
 				break;
 #if !DISABLE_CACHING
-			const auto incrData = Data() - dataBefore;
+			const auto incrData = m_data - dataBefore;
 			cachedTokens.push_back(TokenCacheEntry {*curToken, static_cast<UInt8>(incrData)});
 			tokenCacheEntry = &cachedTokens.back();
 		}
@@ -3309,8 +3385,9 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			tokenCacheEntry = &entry;
 			curToken = &entry.token;
 			curToken->cached = true;
-			Data() += entry.incrementData;
-			if (curToken->CanConvertTo(kTokenType_Variable))
+			m_data += entry.incrementData;
+			const auto type = curToken->Type();
+			if (type >= kTokenType_Variable && type <= kTokenType_ArrayVar)
 			{
 				curToken->ResolveVariable(this->eventList);
 			}
@@ -3319,97 +3396,14 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 
 		if (curToken->Type() == kTokenType_Command)
 		{
-			// execute the command
-			CommandInfo* cmdInfo = curToken->GetCommandInfo();
-			if (!cmdInfo)
+			auto* const cmdResult = ExecuteCommandToken(curToken);
+			delete curToken;
+			curToken = cmdResult;
+			if (curToken == nullptr)
 			{
 				delete curToken;
-				curToken = NULL;
+				curToken = nullptr;
 				break;
-			}
-
-			TESObjectREFR* callingObj = m_thisObj;
-			Script::RefVariable* callingRef = script->GetVariable(curToken->GetRefIndex());
-			if (callingRef)
-			{
-				callingRef->Resolve(eventList);
-				if (callingRef->form && callingRef->form->IsReference())
-					callingObj = DYNAMIC_CAST(callingRef->form, TESForm, TESObjectREFR);
-				else
-				{
-					delete curToken;
-					curToken = NULL;
-					Error("Attempting to call a function on a NULL reference or base object");
-					break;
-				}
-			}
-
-			TESObjectREFR* contObj = callingRef ? NULL : m_containingObj;
-			double cmdResult = 0;
-
-			UInt16 argsLen = Read16();
-			//UInt32 numBytesRead = 0;
-			//UInt8* scrData = Data();
-
-			*m_opcodeOffsetPtr = m_data - m_scriptData;
-
-			ExpectReturnType(kRetnType_Default);	// expect default return type unless called command specifies otherwise
-			bool bExecuted = cmdInfo->execute(cmdInfo->params, m_scriptData, callingObj, contObj, script, eventList, &cmdResult, m_opcodeOffsetPtr);
-
-			if (!bExecuted)
-			{
-				delete curToken;
-				curToken = NULL;
-				Error("Command %s failed to execute", cmdInfo->longName);
-				break;
-			}
-
-			Data() += argsLen - 2;
-
-			// create a new ScriptToken* based on result type, delete command token when done
-			//curToken = ScriptToken::Create(cmdResult);
-
-			// adjust token type if we know command return type
-			CommandReturnType retnType = g_scriptCommands.GetReturnType(cmdInfo);
-			if (retnType == kRetnType_Ambiguous || retnType == kRetnType_ArrayIndex)	// return type ambiguous, cmd will inform us of type to expect
-				retnType = GetExpectedReturnType();
-
-			switch (retnType)
-			{
-			case kRetnType_String:
-			{
-				StringVar* strVar = g_StringMap.Get(cmdResult);
-				delete curToken;
-				curToken = ScriptToken::Create(strVar ? strVar->GetCString() : "");
-				break;
-			}
-			case kRetnType_Array:
-			{
-				// ###TODO: cmds can return arrayID '0', not necessarily an error, does this support that?
-				if (g_ArrayMap.Exists(cmdResult) || !cmdResult)
-				{
-					delete curToken;
-					curToken = ScriptToken::CreateArray(cmdResult);
-					break;
-				}
-				else
-				{
-					Error("A command returned an invalid array");
-					break;
-				}
-			}
-			case kRetnType_Form:
-			{
-				delete curToken;
-				curToken = ScriptToken::CreateForm(*((UInt64*)&cmdResult));
-				break;
-			}
-			case kRetnType_Default:
-				delete curToken;
-				curToken = ScriptToken::Create(cmdResult);
-				break;
-			default:
-				Error("Unknown command return type %d while executing command in ExpressionEvaluator::Evaluate()", retnType);
 			}
 		}
 

@@ -127,9 +127,17 @@ public:
 	// extract formatted string args compiled with compiler override
 	bool ExtractFormatStringArgs(va_list varArgs, UInt32 fmtStringPos, char* fmtStringOut, UInt32 maxParams);
 
+	ScriptToken*	ExecuteCommandToken(ScriptToken* token);
 	ScriptToken*	Evaluate();			// evaluates a single argument/token
 
-	ScriptToken*	Arg(UInt32 idx) { return idx < kMaxArgs ? m_args[idx] : NULL; }
+	ScriptToken*	Arg(UInt32 idx)
+	{
+		if (idx >= m_numArgsExtracted)
+		{
+			return nullptr;
+		}
+		return m_args[idx];
+	}
 	UInt8			NumArgs() { return m_numArgsExtracted; }
 	void			SetParams(ParamInfo* newParams)	{	m_params = newParams;	}
 	void			ExpectReturnType(CommandReturnType type) { m_expectedReturnType = type; }
