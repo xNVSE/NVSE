@@ -26,6 +26,8 @@
 #include <climits>
 #include <cstddef>
 
+#pragma warning (disable : 4624)
+
 template <typename T, size_t BlockSize = 4096>
 class MemoryPool
 {
