@@ -214,7 +214,7 @@ public:
 #if RUNTIME
 	virtual ArrayID					GetArray() const;
 	ScriptEventList::Var *	GetVar() const;
-	void ResolveVariable(ScriptEventList*& scriptEventList);
+	void ResolveVariable(ExpressionEvaluator* context);
 #endif
 	virtual bool			CanConvertTo(Token_Type to) const;	// behavior varies b/w compile/run-time for ambiguous types
 	virtual ArrayID			GetOwningArrayID() const { return 0; }

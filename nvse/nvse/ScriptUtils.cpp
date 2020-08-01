@@ -3389,7 +3389,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			const auto type = curToken->Type();
 			if (type >= kTokenType_Variable && type <= kTokenType_ArrayVar)
 			{
-				curToken->ResolveVariable(this->eventList);
+				curToken->ResolveVariable(this);
 			}
 #endif
 		}

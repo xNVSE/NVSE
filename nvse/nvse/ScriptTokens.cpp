@@ -488,10 +488,21 @@ ScriptEventList::Var* ScriptToken::GetVar() const
 	return IsVariable() ? value.var : NULL;
 }
 
-void ScriptToken::ResolveVariable(ScriptEventList*& scriptEventList)
+void ScriptToken::ResolveVariable(ExpressionEvaluator* context)
 {
-	if (!value.var || varIdx != value.var->id)
+	if (value.var == nullptr || varIdx != value.var->id)
 	{
+		ScriptEventList* scriptEventList = context->eventList;
+		if (refIdx)
+		{
+			Script::RefVariable* refVar = context->script->GetVariable(refIdx);
+			if (refVar)
+			{
+				refVar->Resolve(context->eventList);
+				if (refVar->form)
+					scriptEventList = EventListFromForm(refVar->form);
+			}
+		}
 		value.var = scriptEventList->GetVariable(varIdx);
 	}
 }
