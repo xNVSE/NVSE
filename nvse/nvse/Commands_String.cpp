@@ -629,7 +629,7 @@ bool Cmd_SetTexturePath_Execute(COMMAND_ARGS)
 	return true;
 }
 
-static enum {
+enum {
 	eMode_Get,
 	eMode_Set
 };

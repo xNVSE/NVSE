@@ -3552,7 +3552,7 @@ bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem, ExpressionEvaluato
 
 #else			// CS only
 
-static enum BlockType
+enum BlockType
 {
 	kBlockType_Invalid	= 0,
 	kBlockType_ScriptBlock,

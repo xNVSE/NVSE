@@ -132,6 +132,7 @@ char debugPrint[512];
 
 char* ScriptToken::DebugPrint(void)
 {
+	/*
 	switch (type) {
 		case kTokenType_Number: sprintf_s(debugPrint, 512, "[Type=Number, Value=%g]", value.num); break;
 		case kTokenType_Boolean: sprintf_s(debugPrint, 512, "[Type=Boolean, Value=%s]", (value.num ? "true" : "false")); break;
@@ -161,7 +162,8 @@ char* ScriptToken::DebugPrint(void)
 		case kTokenType_Invalid: sprintf_s(debugPrint, 512, "[Type=Invalid, no Value]"); break;
 		case kTokenType_Empty: sprintf_s(debugPrint, 512, "[Type=Empty, no Value]"); break;
 	}
-	return debugPrint;
+	return debugPrint;*/
+	return "";
 }
 
 #if RUNTIME

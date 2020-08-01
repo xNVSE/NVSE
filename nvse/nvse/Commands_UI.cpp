@@ -26,7 +26,7 @@
 
 static const float fErrorReturnValue = -999;
 
-static enum eUICmdAction {
+enum eUICmdAction {
 	kGetFloat,
 	kSetFloat,
 	kSetString,
@@ -114,7 +114,7 @@ bool Cmd_SetUIStringEx_Execute(COMMAND_ARGS)
 	return GetSetUIValue_Execute(PASS_COMMAND_ARGS, kSetFormattedString);
 }
 
-static enum {
+enum {
 	kReverseSort = 1,
 	kNormalizeItemNames = 2,
 	kAsFloat = 4,
