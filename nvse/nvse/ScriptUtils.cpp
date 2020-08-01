@@ -3305,7 +3305,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 		}
 		else
 		{
-			auto& entry = cachedTokens.at(tokenCount++);
+			auto& entry = cachedTokens[tokenCount++];
 			tokenCacheEntry = &entry;
 			curToken = &entry.token;
 			curToken->cached = true;
