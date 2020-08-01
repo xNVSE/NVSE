@@ -2679,7 +2679,13 @@ ExpressionEvaluator::~ExpressionEvaluator()
 	PopFromStack();
 
 	for (UInt32 i = 0; i < m_numArgsExtracted; i++)
-		delete m_args[i];
+	{
+		auto& token = m_args[i];
+		if (!token->cached)
+		{
+			delete token;
+		}
+	}
 }
 
 bool ExpressionEvaluator::ExtractArgs()
@@ -3330,10 +3336,18 @@ std::unordered_map<UInt8*, std::vector<TokenCacheEntry>> g_tokenCache;
 
 #define DISABLE_CACHING 0
 
+void Delete(ScriptToken* token)
+{
+	if (token && !token->cached)
+	{
+		token->freed = true;
+		delete token;
+	}
+}
+
 ScriptToken* ExpressionEvaluator::Evaluate()
 {
 #if !DISABLE_CACHING
-	//auto opcodeOffsetAtThisTime = *m_opcodeOffsetPtr;
 	UInt8* cacheKey;
 	if (m_scriptData != script->data) // set ... to or if ..., script data is stored on stack and not heap
 	{
@@ -3397,12 +3411,10 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 		if (curToken->Type() == kTokenType_Command)
 		{
 			auto* const cmdResult = ExecuteCommandToken(curToken);
-			delete curToken;
+			Delete(curToken);
 			curToken = cmdResult;
 			if (curToken == nullptr)
 			{
-				delete curToken;
-				curToken = nullptr;
 				break;
 			}
 		}
@@ -3419,7 +3431,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 
 			if (op->numOperands > operands.size())
 			{
-				delete curToken;
+				Delete(curToken);
 				curToken = NULL;
 				Error("Too few operands for operator %s", op->symbol);
 				break;
@@ -3448,9 +3460,9 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				opResult = bSwapOrder ? eval(type, rhOperand, lhOperand, this) : eval(type, lhOperand, rhOperand, this);
 			}
 
-			delete lhOperand;
-			delete rhOperand;
-			delete curToken;
+			Delete(lhOperand);
+			Delete(rhOperand);
+			Delete(curToken);
 			curToken = NULL;
 			
 			if (!opResult)
@@ -3471,7 +3483,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 		Error("An expression failed to evaluate to a valid result");
 		while (operands.size())
 		{
-			delete operands.top();
+			Delete(operands.top());
 			operands.pop();
 		}
 		return NULL;

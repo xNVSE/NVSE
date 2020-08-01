@@ -155,11 +155,11 @@ struct ScriptToken
 {
 protected:
 	Token_Type	type;
-	UInt8		variableType;
-	
+	UInt8		variableType;	
+	Script*		owningScript;
 	UInt16		refIdx;
 	UInt16		varIdx;
-	Script*		owningScript;
+
 
 	struct Value {
 		std::string					str;
@@ -179,7 +179,6 @@ protected:
 			ScriptToken				* token;
 		};
 	} value;
-public:
 	ScriptToken();
 	ScriptToken(Token_Type _type, UInt8 _varType, UInt16 _refIdx);
 	ScriptToken(bool boolean);
@@ -199,6 +198,8 @@ public:
 #endif
 
 public:
+
+	bool freed = false;
 	Token_Type	ReadFrom(ExpressionEvaluator* context);	// reconstitute param from compiled data, return the type
 
 	virtual	~ScriptToken();

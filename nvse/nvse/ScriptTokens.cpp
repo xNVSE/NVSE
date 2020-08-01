@@ -37,6 +37,7 @@ ScriptToken::ScriptToken(Token_Type _type, UInt8 _varType, UInt16 _refIdx) : typ
 { 
 	INC_TOKEN_COUNT
 }
+
 ScriptToken::ScriptToken(bool boolean) : type(kTokenType_Boolean), refIdx(0), variableType(Script::eVarType_Invalid)
 {
 	INC_TOKEN_COUNT
@@ -248,10 +249,6 @@ void* ScriptToken::operator new(size_t size)
 void ScriptToken::operator delete(void* p)
 {
 	//::operator delete(p);
-	if (static_cast<ScriptToken*>(p)->cached)
-	{
-		return;
-	}
 	g_scriptTokenAllocator.Free(p);
 }
 
@@ -492,7 +489,7 @@ ScriptEventList::Var* ScriptToken::GetVar() const
 
 void ScriptToken::ResolveVariable(ExpressionEvaluator* context)
 {
-	if (value.var == nullptr || varIdx != value.var->id)
+	//if (value.var == nullptr || varIdx != value.var->id)
 	{
 		ScriptEventList* scriptEventList = context->eventList;
 		if (refIdx)
@@ -632,31 +629,26 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 	case 'b':
 		type = kTokenType_Number;
 		value.num = context->ReadByte();
-		//incrementData = 2;
 		break;
 	case 'I':
 	case 'i':
 		type = kTokenType_Number;
 		value.num = context->Read16();
-		//incrementData = 3;
 		break;
 	case 'L':
 	case 'l':
 		type = kTokenType_Number;
 		value.num = context->Read32();
-		//incrementData = 5;
 		break;
 	case 'Z':
 		type = kTokenType_Number;
 		value.num = context->ReadFloat();
-		//incrementData = sizeof(double) + 1;
 		break;
 	case 'S':
 	{
 		type = kTokenType_String;
 		UInt32 incData = 0;
 		value.str = context->ReadString(incData);
-		//incrementData = incData + 1;
 		break;
 	}
 	case 'R':
@@ -688,14 +680,13 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		if (!value.global)
 			type = kTokenType_Invalid;
 
-		//incrementData = 3;
 		break;
 	}
 	case 'X':
 	{
 		type = kTokenType_Command;
 		refIdx = context->Read16();
-		UInt16 opcode = context->Read16();
+		auto opcode = context->Read16();
 		value.cmd = g_scriptCommands.GetByOpcode(opcode);
 		if (!value.cmd)
 			type = kTokenType_Invalid;
