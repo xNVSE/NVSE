@@ -156,11 +156,13 @@ struct ScriptToken
 protected:
 	Token_Type	type;
 	UInt8		variableType;
+	
 	UInt16		refIdx;
-	Script*		owningScript = nullptr;
+	UInt16		varIdx;
+	Script*		owningScript;
 
 	struct Value {
-		std::unique_ptr<std::string> str;
+		std::string					str;
 		union {
 			Script::RefVariable		* refVar;
 			UInt32					formID;
@@ -177,7 +179,7 @@ protected:
 			ScriptToken				* token;
 		};
 	} value;
-
+public:
 	ScriptToken();
 	ScriptToken(Token_Type _type, UInt8 _varType, UInt16 _refIdx);
 	ScriptToken(bool boolean);
@@ -196,8 +198,9 @@ protected:
 	ScriptToken(ScriptEventList::Var* var);
 #endif
 
-	Token_Type	ReadFrom(ExpressionEvaluator* context);	// reconstitute param from compiled data, return the type
 public:
+	Token_Type	ReadFrom(ExpressionEvaluator* context);	// reconstitute param from compiled data, return the type
+
 	virtual	~ScriptToken();
 
 	virtual const char	*			GetString() const;
@@ -211,6 +214,7 @@ public:
 #if RUNTIME
 	virtual ArrayID					GetArray() const;
 	ScriptEventList::Var *	GetVar() const;
+	void ResolveVariable(ScriptEventList*& scriptEventList);
 #endif
 	virtual bool			CanConvertTo(Token_Type to) const;	// behavior varies b/w compile/run-time for ambiguous types
 	virtual ArrayID			GetOwningArrayID() const { return 0; }
@@ -267,7 +271,7 @@ public:
 	void operator delete(void* p);
 
 	// TODO: fix later
-	UInt32 incrementData = 0;
+	//UInt32 incrementData = 0;
 
 };
 

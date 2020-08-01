@@ -2607,13 +2607,13 @@ double ExpressionEvaluator::ReadFloat()
 	return data;
 }
 
-std::unique_ptr<std::string> ExpressionEvaluator::ReadString()
+std::string ExpressionEvaluator::ReadString(UInt32& incrData)
 {
 	UInt16 len = Read16();
 	char* buf = new char[len + 1];
 	memcpy(buf, Data(), len);
 	buf[len] = 0;
-	auto str = std::make_unique<std::string>(buf);
+	std::string str = buf;
 	Data() += len;
 	delete[] buf;
 	incrData = 2 + len;
@@ -3237,56 +3237,79 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 	return true;
 }
 
-std::unordered_map<void*, std::vector<ScriptToken>> g_tokenCache;
-std::unordered_map<void*, Script*> g_temp;
+
+struct TokenCacheEntry
+{
+	ScriptToken token;
+	UInt8 incrementData;
+};
+
+std::unordered_map<UInt8*, std::vector<TokenCacheEntry>> g_tokenCache;
+
+
+//std::unordered_map<UInt8*, Script*> g_temp;
+//std::unordered_map<UInt8*, UInt8> g_temp2;
+
+#define DISABLE_CACHING 0
 
 ScriptToken* ExpressionEvaluator::Evaluate()
 {
-	void* cacheKey = script + *m_opcodeOffsetPtr;
-	auto xxx = g_temp.find(cacheKey);
-	if (xxx != g_temp.end())
+#if !DISABLE_CACHING
+	//auto opcodeOffsetAtThisTime = *m_opcodeOffsetPtr;
+
+	UInt8* cacheKey;
+	if (m_scriptData != script->data) // set ... to or if ..., script data is stored on stack and not heap
 	{
-		if (xxx->second != script)
-		{
-			_MESSAGE("allert!!!!");
-		}
+		const auto offset = g_lastScriptData - static_cast<UInt8*>(script->data) + 1;
+		cacheKey = static_cast<UInt8*>(script->data) + offset + *m_opcodeOffsetPtr;
 	}
 	else
 	{
-		g_temp[cacheKey] = script;
+		cacheKey = static_cast<UInt8*>(m_scriptData) + *m_opcodeOffsetPtr;
 	}
-
-	//std::stack<ScriptToken*> operands;
+	
+#endif
 	UInt16 argLen = Read16();
 	UInt8* endData = Data() + argLen - sizeof(UInt16);
 	
 	FastStack<std::unique_ptr<ScriptToken>, 16> operands;
 
-	std::vector<ScriptToken> cachedTokens;
-	auto cacheExists = false;
-	const auto iter = g_tokenCache.find(cacheKey);
+#if !DISABLE_CACHING
+
+	auto& cachedTokens = g_tokenCache[cacheKey];
+	const auto cacheExists = !cachedTokens.empty();
 	std::size_t tokenCount = 0;
-	if (iter != g_tokenCache.end())
-	{
-		cachedTokens = iter->second;
-		cacheExists = true;
-	}
+
+#else
+	auto cacheExists = false;
+	auto tokenCount = 0;
+	auto tokenSize = 0;
+#endif
 	
-	const auto tokenSize = cachedTokens.size();
-	while ((!cacheExists && Data() < endData) || (cacheExists && tokenCount < tokenSize))
+	while (Data() < endData)
 	{
 		std::unique_ptr<ScriptToken> curTokenUnique;
 		if (!cacheExists)
 		{
-			curTokenUnique = std::unique_ptr<ScriptToken>(ScriptToken::Read(this));
+			auto* dataBefore = Data();
+			curTokenUnique = std::make_unique<ScriptToken>();
+			curTokenUnique->ReadFrom(this);
+			const auto incrData = Data() - dataBefore;
 			if (!curTokenUnique)
 				break;
-			cachedTokens.push_back(*curTokenUnique);
+#if !DISABLE_CACHING
+			cachedTokens.push_back(TokenCacheEntry {*curTokenUnique, static_cast<UInt8>(incrData)});
 		}
 		else
 		{
-			curTokenUnique = std::make_unique<ScriptToken>(cachedTokens.at(tokenCount++));
-			Data() += curTokenUnique->incrementData;
+			auto& entry = cachedTokens.at(tokenCount++);
+			curTokenUnique = std::make_unique<ScriptToken>(entry.token);
+			Data() += entry.incrementData;
+			if (curTokenUnique->CanConvertTo(kTokenType_Variable))
+			{
+				curTokenUnique->ResolveVariable(this->eventList);
+			}
+#endif
 		}
 
 		if (curTokenUnique->Type() == kTokenType_Command)
@@ -3314,17 +3337,15 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 
 			TESObjectREFR* contObj = callingRef ? NULL : m_containingObj;
 			double cmdResult = 0;
-			
-			if (cacheExists)
-			{
-				
-			}
+
 			UInt16 argsLen = Read16();
-			UInt32 numBytesRead = 0;
-			UInt8* scrData = Data();
+			//UInt32 numBytesRead = 0;
+			//UInt8* scrData = Data();
+
+			*m_opcodeOffsetPtr = m_data - m_scriptData;
 
 			ExpectReturnType(kRetnType_Default);	// expect default return type unless called command specifies otherwise
-			bool bExecuted = cmdInfo->execute(cmdInfo->params, scrData, callingObj, contObj, script, eventList, &cmdResult, &numBytesRead);
+			bool bExecuted = cmdInfo->execute(cmdInfo->params, m_scriptData, callingObj, contObj, script, eventList, &cmdResult, m_opcodeOffsetPtr);
 
 			if (!bExecuted)
 			{
@@ -3335,7 +3356,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			Data() += argsLen - 2;
 
 			// create a new ScriptToken* based on result type, delete command token when done
-			curTokenUnique = std::unique_ptr<ScriptToken>(ScriptToken::Create(cmdResult));
+			curTokenUnique = std::make_unique<ScriptToken>(cmdResult);
 
 			// adjust token type if we know command return type
 			CommandReturnType retnType = g_scriptCommands.GetReturnType(cmdInfo);
@@ -3347,7 +3368,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				case kRetnType_String:
 				{
 					StringVar* strVar = g_StringMap.Get(cmdResult);
-					curTokenUnique = std::unique_ptr<ScriptToken>(ScriptToken::Create(strVar ? strVar->GetCString() : ""));
+					curTokenUnique = std::make_unique<ScriptToken>(strVar ? strVar->GetCString() : "");
 					break;
 				}
 				case kRetnType_Array:
@@ -3355,7 +3376,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 					// ###TODO: cmds can return arrayID '0', not necessarily an error, does this support that?
 					if (g_ArrayMap.Exists(cmdResult) || !cmdResult)	
 					{
-						curTokenUnique = std::unique_ptr<ScriptToken>(ScriptToken::CreateArray(cmdResult));
+						curTokenUnique = std::make_unique<ScriptToken>(cmdResult);
 						break;
 					}
 					else
@@ -3366,11 +3387,11 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				}
 				case kRetnType_Form:
 				{
-					curTokenUnique = std::unique_ptr<ScriptToken>(ScriptToken::CreateForm(*((UInt64*)&cmdResult)));
+					curTokenUnique = std::make_unique<ScriptToken>(*reinterpret_cast<UInt64*>(&cmdResult), kTokenType_Form);
 					break;
 				}
 				case kRetnType_Default:
-					curTokenUnique = std::unique_ptr<ScriptToken>(ScriptToken::Create(cmdResult));
+					curTokenUnique = std::make_unique<ScriptToken>(cmdResult);
 					break;
 				default:
 					Error("Unknown command return type %d while executing command in ExpressionEvaluator::Evaluate()", retnType);
@@ -3429,10 +3450,6 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	else
 	{
 		result = operands.top().release();
-		if (!cacheExists)
-		{
-			g_tokenCache[cacheKey] = cachedTokens;
-		}
 	}
 
 	return result;

@@ -19,25 +19,22 @@ class FastStack
 			//ShowErrorMessageBox("FastStack Warning");
 		}
 	}
+
+
 	
 public:
-	void push(T& t)
+	void push(T t)
 	{
 		if (pos_ >= arraySize)
 		{
 			allocateStack();
-			fallbackStack_->push(t);
+			fallbackStack_->push(std::move(t));
 		}
 		else
 		{
-			items_[pos_] = t;
+			items_[pos_] = std::move(t);
 		}
 		pos_++;
-	}
-
-	void push(T&& t)
-	{
-		push(std::move(t));
 	}
 
 	T& top()
