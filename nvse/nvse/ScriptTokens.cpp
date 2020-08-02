@@ -489,7 +489,7 @@ ScriptEventList::Var* ScriptToken::GetVar() const
 
 void ScriptToken::ResolveVariable(ExpressionEvaluator* context)
 {
-	//if (value.var == nullptr || varIdx != value.var->id)
+	if (value.var == nullptr || varIdx != value.var->id)
 	{
 		ScriptEventList* scriptEventList = context->eventList;
 		if (refIdx)
