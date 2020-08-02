@@ -756,6 +756,10 @@ CommandInfo* CommandTable::GetByOpcode(UInt32 opcode)
 {
 	const auto baseOpcode = m_commands.begin()->opcode;
 	const auto arrayIndex = opcode - baseOpcode;
+	if (arrayIndex >= m_commands.size())
+	{
+		return nullptr;
+	}
 	auto* const command = &m_commands[arrayIndex];
 	if (command->opcode != opcode)
 	{

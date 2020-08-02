@@ -155,6 +155,8 @@ public:
 	SInt16		ReadSigned16();
 	UInt32		Read32();
 	SInt32		ReadSigned32();
+
+	CommandInfo* GetCommand() const;
 };
 
 bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem, ExpressionEvaluator* context);

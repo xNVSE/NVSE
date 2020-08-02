@@ -1338,7 +1338,7 @@ void ExpressionEvaluator::Error(const char* fmt, ...)
 
 	// include script data offset and command name/opcode
 	UInt16* opcodePtr = (UInt16*)((UInt8*)script->data + m_baseOffset);
-	CommandInfo* cmd = g_scriptCommands.GetByOpcode(*opcodePtr);
+	CommandInfo* cmd = GetCommand();
 
 	// include mod filename, save having to ask users to figure it out themselves
 	const char* modName = "Savegame";
@@ -1360,7 +1360,7 @@ void ExpressionEvaluator::PrintStackTrace() {
 
 	ExpressionEvaluator* eval = this;
 	while (eval) {
-		CommandInfo* cmd = g_scriptCommands.GetByOpcode(*((UInt16*)((UInt8*)eval->script->data + eval->m_baseOffset)));
+		CommandInfo* cmd = eval->GetCommand();
 		sprintf_s(output, sizeof(output), "  %s @%04X script %08X", cmd ? cmd->longName : "<unknown>", eval->m_baseOffset, eval->script->refID);
 		_MESSAGE(output);
 		Console_Print(output);
@@ -2598,6 +2598,12 @@ SInt32 ExpressionEvaluator::ReadSigned32()
 	SInt32 data = *((SInt32*)Data());
 	Data() += 4;
 	return data;
+}
+
+CommandInfo* ExpressionEvaluator::GetCommand() const
+{
+	auto* opcodePtr = reinterpret_cast<UInt16*>(static_cast<UInt8*>(m_scriptData) + m_baseOffset);
+	return g_scriptCommands.GetByOpcode(*opcodePtr);
 }
 
 double ExpressionEvaluator::ReadFloat()
