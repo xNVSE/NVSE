@@ -139,7 +139,7 @@ void BaseExtraList::DebugDump() const
 	{
 		for(BSExtraData * traverse = m_data; traverse; traverse = traverse->next) {
 			_MESSAGE("%s", GetObjectClassName(traverse));
-			_MESSAGE("Extra types %4x (%s) %s", traverse->type, GetExtraDataName(traverse->type), GetExtraDataValue(traverse));
+			//_MESSAGE("Extra types %4x (%s) %s", traverse->type, GetExtraDataName(traverse->type), GetExtraDataValue(traverse));
 		}
 	}
 	else

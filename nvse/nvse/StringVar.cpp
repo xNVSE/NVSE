@@ -7,6 +7,7 @@
 #include "ScriptUtils.h"
 #include "GameData.h"
 #include "GameApi.h"
+#include <set>
 
 StringVar::StringVar(const char* in_data, UInt32 in_refID)
 {
@@ -241,7 +242,7 @@ void StringVarMap::Save(NVSESerializationInterface* intfc)
 	intfc->OpenRecord('STVS', 0);
 
 	if (m_state) {
-		for (std::map<UInt32, StringVar*>::iterator iter = m_state->vars.begin();
+		for (_VarMap::iterator iter = m_state->vars.begin();
 				iter != m_state->vars.end();
 				iter++)
 		{

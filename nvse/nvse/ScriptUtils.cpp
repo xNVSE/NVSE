@@ -3342,7 +3342,7 @@ std::unordered_map<UInt8*, std::vector<TokenCacheEntry>> g_tokenCache;
 
 #define DISABLE_CACHING 0
 
-void Delete(ScriptToken* token)
+inline void Delete(ScriptToken* token)
 {
 	if (token && !token->cached)
 	{

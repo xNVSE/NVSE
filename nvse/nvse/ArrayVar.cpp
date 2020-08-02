@@ -1137,8 +1137,8 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 	intfc->OpenRecord('ARVS', kVersion);
 
 	if (m_state) {
-		std::map<UInt32, ArrayVar*> & vars = m_state->vars;
-		for (std::map<UInt32, ArrayVar*>::iterator iter = vars.begin(); iter != vars.end(); ++iter)
+		_VarMap& vars = m_state->vars;
+		for (_VarMap::iterator iter = vars.begin(); iter != vars.end(); ++iter)
 		{
 			if (IsTemporary(iter->first))
 				continue;
