@@ -198,8 +198,6 @@ protected:
 #endif
 
 public:
-
-	bool freed = false;
 	Token_Type	ReadFrom(ExpressionEvaluator* context);	// reconstitute param from compiled data, return the type
 
 	virtual	~ScriptToken();

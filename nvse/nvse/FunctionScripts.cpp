@@ -109,6 +109,10 @@ public:
 
 		if (scrToken) {
 			m_funcScript = DYNAMIC_CAST(scrToken->GetTESForm(), TESForm, Script);
+			if (!scrToken->cached)
+			{
+				delete scrToken;
+			}
 		}
 
 		return m_funcScript;

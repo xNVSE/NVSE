@@ -3340,7 +3340,6 @@ void Delete(ScriptToken* token)
 {
 	if (token && !token->cached)
 	{
-		token->freed = true;
 		delete token;
 	}
 }
