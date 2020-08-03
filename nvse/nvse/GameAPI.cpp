@@ -1561,8 +1561,8 @@ ScriptFormatStringArgs::ScriptFormatStringArgs(UInt32 _numArgs, UInt8* _scriptDa
 	szFmt[len] = '\0';
 
 	scriptData += len;
-	fmtString = std::string(std::string(ResolveStringArgument(eventList, szFmt)));
-	delete szFmt;
+	fmtString = std::string(ResolveStringArgument(eventList, szFmt));
+	delete[] szFmt;
 }
 
 std::string ScriptFormatStringArgs::GetFormatString()
