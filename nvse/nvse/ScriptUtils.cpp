@@ -2600,6 +2600,16 @@ SInt32 ExpressionEvaluator::ReadSigned32()
 	return data;
 }
 
+UInt8* ExpressionEvaluator::GetCommandOpcodePosition() const
+{
+	if (m_scriptData != script->data) // set ... to or if ..., script data is stored on stack and not heap
+	{
+		const auto offset = g_lastScriptData - static_cast<UInt8*>(script->data) + 1;
+		return static_cast<UInt8*>(script->data) + offset + *m_opcodeOffsetPtr;
+	}
+	return static_cast<UInt8*>(m_scriptData) + *m_opcodeOffsetPtr;
+}
+
 CommandInfo* ExpressionEvaluator::GetCommand() const
 {
 	auto* opcodePtr = reinterpret_cast<UInt16*>(static_cast<UInt8*>(m_scriptData) + m_baseOffset);
@@ -3258,7 +3268,9 @@ struct TokenCacheEntry
 	bool swapOrder;
 };
 
-ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken* token)
+//UInt8* g_lastCacheKeyDebug;
+
+ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 {
 	// execute the command
 	CommandInfo* cmdInfo = token->GetCommandInfo();
@@ -3281,33 +3293,29 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken* token)
 		}
 	}
 
+
 	TESObjectREFR* contObj = callingRef ? NULL : m_containingObj;
 	double cmdResult = 0;
 
-	UInt16 argsLen = Read16();
 	//UInt32 numBytesRead = 0;
 	//UInt8* scrData = Data();
+	//UInt16 argsLen = Read16();
 
-	*m_opcodeOffsetPtr = m_data - m_scriptData;
+	//*m_opcodeOffsetPtr = m_data - m_scriptData;
+	UInt32 opcodeOffset = token->opcodeOffset;
+	CommandReturnType retnType = token->returnType;
 
 	ExpectReturnType(kRetnType_Default);	// expect default return type unless called command specifies otherwise
-	bool bExecuted = cmdInfo->execute(cmdInfo->params, m_scriptData, callingObj, contObj, script, eventList, &cmdResult, m_opcodeOffsetPtr);
+	bool bExecuted = cmdInfo->execute(cmdInfo->params, m_scriptData, callingObj, contObj, script, eventList, &cmdResult, &opcodeOffset);
+
+	*m_opcodeOffsetPtr = opcodeOffset;
+
 
 	if (!bExecuted)
 	{
 		Error("Command %s failed to execute", cmdInfo->longName);
 		return nullptr;
 	}
-
-	m_data += argsLen - 2;
-
-	// create a new ScriptToken* based on result type, delete command token when done
-	//curToken = ScriptToken::Create(cmdResult);
-
-	// adjust token type if we know command return type
-	CommandReturnType retnType = g_scriptCommands.GetReturnType(cmdInfo);
-	if (retnType == kRetnType_Ambiguous || retnType == kRetnType_ArrayIndex)	// return type ambiguous, cmd will inform us of type to expect
-		retnType = GetExpectedReturnType();
 
 	switch (retnType)
 	{
@@ -3342,36 +3350,16 @@ std::unordered_map<UInt8*, std::vector<TokenCacheEntry>> g_tokenCache;
 
 #define DISABLE_CACHING 0
 
-inline void Delete(ScriptToken* token)
-{
-	if (token && !token->cached)
-	{
-		delete token;
-	}
-}
-
 ScriptToken* ExpressionEvaluator::Evaluate()
 {
-#if !DISABLE_CACHING
-	UInt8* cacheKey;
-	if (m_scriptData != script->data) // set ... to or if ..., script data is stored on stack and not heap
-	{
-		const auto offset = g_lastScriptData - static_cast<UInt8*>(script->data) + 1;
-		cacheKey = static_cast<UInt8*>(script->data) + offset + *m_opcodeOffsetPtr;
-	}
-	else
-	{
-		cacheKey = static_cast<UInt8*>(m_scriptData) + *m_opcodeOffsetPtr;
-	}
-	
-#endif
 	UInt16 argLen = Read16();
 	UInt8* endData = m_data + argLen - sizeof(UInt16);
 	
 	FastStack<ScriptToken*, 16> operands;
 
 #if !DISABLE_CACHING
-
+	UInt8* cacheKey = GetCommandOpcodePosition();
+	//g_lastCacheKeyDebug = cacheKey;
 	auto& cachedTokens = g_tokenCache[cacheKey];
 	const auto cacheExists = !cachedTokens.empty();
 	std::size_t tokenCount = 0;
@@ -3403,6 +3391,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			auto& entry = cachedTokens[tokenCount++];
 			tokenCacheEntry = &entry;
 			curToken = &entry.token;
+			curToken->context = this;
 			curToken->cached = true;
 			m_data += entry.incrementData;
 			const auto type = curToken->Type();
@@ -3412,18 +3401,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			}
 #endif
 		}
-
-		if (curToken->Type() == kTokenType_Command)
-		{
-			auto* const cmdResult = ExecuteCommandToken(curToken);
-			Delete(curToken);
-			curToken = cmdResult;
-			if (curToken == nullptr)
-			{
-				break;
-			}
-		}
-
+		
 		if (curToken->Type() != kTokenType_Operator)
 		{
 			operands.push(curToken);
@@ -3436,7 +3414,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 
 			if (op->numOperands > operands.size())
 			{
-				Delete(curToken);
+				curToken->Delete();
 				curToken = NULL;
 				Error("Too few operands for operator %s", op->symbol);
 				break;
@@ -3465,9 +3443,9 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				opResult = bSwapOrder ? eval(type, rhOperand, lhOperand, this) : eval(type, lhOperand, rhOperand, this);
 			}
 
-			Delete(lhOperand);
-			Delete(rhOperand);
-			Delete(curToken);
+			lhOperand->Delete();
+			rhOperand->Delete();
+			curToken->Delete();
 			curToken = NULL;
 			
 			if (!opResult)
@@ -3488,7 +3466,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 		Error("An expression failed to evaluate to a valid result");
 		while (operands.size())
 		{
-			Delete(operands.top());
+			operands.top()->Delete();
 			operands.pop();
 		}
 		return NULL;

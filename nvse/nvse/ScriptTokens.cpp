@@ -167,6 +167,14 @@ char* ScriptToken::DebugPrint(void)
 	return "";
 }
 
+void ScriptToken::Delete() const
+{
+	if (this && !cached)
+	{
+		delete this;
+	}
+}
+
 #if RUNTIME
 // ###TODO: Read() sets variable type; better to pass it to this constructor
 ScriptToken::ScriptToken(ScriptEventList::Var* var) : refIdx(0), type(kTokenType_Variable), variableType(Script::eVarType_Invalid)
@@ -238,7 +246,7 @@ ScriptToken* ScriptToken::Create(ArrayElementToken* elem, UInt32 lbound, UInt32 
 	return NULL;
 }
 
-static SmallObjectsAllocator::Allocator<ScriptToken, 20> g_scriptTokenAllocator;
+static SmallObjectsAllocator::Allocator<ScriptToken, 24> g_scriptTokenAllocator;
 
 void* ScriptToken::operator new(size_t size)
 {
@@ -377,7 +385,7 @@ Slice::Slice(const Slice* _slice)
 
 *****************************************/
 
-const char* ScriptToken::GetString() const
+const char* ScriptToken::GetString()
 {
 	static const char* empty = "";
 	const char* result = NULL;
@@ -390,6 +398,16 @@ const char* ScriptToken::GetString() const
 		StringVar* strVar = g_StringMap.Get(value.var->data);
 		result = strVar ? strVar->GetCString() : NULL;
 	}
+	else if (type == kTokenType_Command)
+	{
+		auto* token = context->ExecuteCommandToken(this);
+		if (token)
+		{
+			value.str = token->GetString();
+			delete token;
+			return value.str.c_str();
+		}
+	}
 #endif
 	return result ? result : empty;
 }
@@ -401,13 +419,23 @@ UInt32 ScriptToken::GetFormID() const
 #if RUNTIME
 	else if (type == kTokenType_RefVar && value.var)
 		return *(UInt64*)(&value.var->data);
+	else if (type == kTokenType_Command)
+	{
+		auto* token = context->ExecuteCommandToken(this);
+		if (token)
+		{
+			const auto result = token->GetFormID();
+			delete token;
+			return result;
+		}
+		
+	}
 #endif
 	else if (type == kTokenType_Number)
 		return value.formID;
 	else if (type == kTokenType_Ref && value.refVar)
 		return value.refVar->form ? value.refVar->form->refID : 0;
-	else
-		return 0;
+	return 0;
 }
 
 TESForm* ScriptToken::GetTESForm() const
@@ -418,6 +446,16 @@ TESForm* ScriptToken::GetTESForm() const
 		return LookupFormByID(value.formID);
 	else if (type == kTokenType_RefVar && value.var)
 		return LookupFormByID(*((UInt64*)(&value.var->data)));
+	else if (type == kTokenType_Command)
+	{
+		auto* token = context->ExecuteCommandToken(this);
+		if (token)
+		{
+			auto* result = token->GetTESForm();
+			delete token;
+			return result;
+		}
+	}
 #endif
 
 	if (type == kTokenType_Ref && value.refVar)
@@ -436,9 +474,18 @@ double ScriptToken::GetNumber() const
 	else if ((type == kTokenType_NumericVar && value.var) ||
 	         (type == kTokenType_StringVar && value.var))
 		return value.var->data;
+	else if (type == kTokenType_Command)
+	{
+		auto* token = context->ExecuteCommandToken(this);
+		if (token)
+		{
+			const auto result = token->GetNumber();
+			delete token;
+			return result;
+		}
+	}
 #endif
-	else
-		return 0.0;
+	return 0.0;
 }
 
 bool ScriptToken::GetBool() const
@@ -460,6 +507,16 @@ bool ScriptToken::GetBool() const
 	case kTokenType_ArrayVar:
 	case kTokenType_RefVar:
 		return value.var->data ? true : false;
+	case kTokenType_Command:
+		{
+			auto* token = context->ExecuteCommandToken(this);
+			if (token)
+			{
+				const auto result = token->GetBool();
+				delete token;
+				return result;
+			}
+		}
 #endif
 	default:
 		return false;
@@ -478,8 +535,17 @@ ArrayID ScriptToken::GetArray() const
 		return value.arrID;
 	else if (type == kTokenType_ArrayVar)
 		return value.var->data;
-	else
-		return 0;
+	else if (type == kTokenType_Command)
+	{
+		auto* token = context->ExecuteCommandToken(this);
+		if (token)
+		{
+			const auto result = token->GetArray();
+			delete token;
+			return result;
+		}
+	}
+	return 0;
 }
 
 ScriptEventList::Var* ScriptToken::GetVar() const
@@ -534,7 +600,7 @@ CommandInfo* ScriptToken::GetCommandInfo() const
 #if RUNTIME
 
 
-UInt32 ScriptToken::GetActorValue() const
+UInt32 ScriptToken::GetActorValue()
 {
 	UInt32 actorVal = eActorVal_NoActorValue;
 	if (CanConvertTo(kTokenType_Number)) {
@@ -553,7 +619,7 @@ UInt32 ScriptToken::GetActorValue() const
 	return actorVal;
 }
 
-char ScriptToken::GetAxis() const
+char ScriptToken::GetAxis()
 {
 	char axis = -1;
 	const char* str = GetString();
@@ -577,7 +643,7 @@ char ScriptToken::GetAxis() const
 	return axis;
 }
 
-UInt32 ScriptToken::GetSex() const
+UInt32 ScriptToken::GetSex()
 {
 	UInt32 sex = -1;
 	const char* str = GetString();
@@ -601,8 +667,28 @@ UInt32 ScriptToken::GetSex() const
 
 *************************************************/
 
+Token_Type ToTokenType(CommandReturnType type)
+{
+	switch (type) {
+	case kRetnType_Default:
+		return kTokenType_Number;
+	case kRetnType_Form:
+		return kTokenType_Form;
+	case kRetnType_String:
+		return kTokenType_String;
+	case kRetnType_Array:
+		return kTokenType_Array;
+	default:
+		return kTokenType_Invalid;
+	}
+}
+
 bool ScriptToken::CanConvertTo(Token_Type to) const
 {
+	if (type == kTokenType_Command)
+	{
+		return CanConvertOperand(ToTokenType(returnType), to);
+	}
 	return CanConvertOperand(type, to);
 }
 
@@ -623,6 +709,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 {
 	UInt8 typeCode = context->ReadByte();
 	this->owningScript = context->script;
+	this->context = context;
 	switch (typeCode)
 	{
 	case 'B':
@@ -686,11 +773,16 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 	{
 		type = kTokenType_Command;
 		refIdx = context->Read16();
-		auto opcode = context->Read16();
+		const auto opcode = context->Read16();
 		value.cmd = g_scriptCommands.GetByOpcode(opcode);
 		if (!value.cmd)
 			type = kTokenType_Invalid;
-		//incrementData = 5;
+		auto argsLen = context->Read16();
+		opcodeOffset = context->m_data - context->m_scriptData;
+		context->m_data += argsLen - 2;
+		returnType = g_scriptCommands.GetReturnType(value.cmd);
+		if (returnType == kRetnType_Ambiguous || returnType == kRetnType_ArrayIndex)	// return type ambiguous, cmd will inform us of type to expect
+			returnType = context->GetExpectedReturnType();
 		break;
 	}
 	case 'V':
@@ -755,7 +847,6 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		//incrementData = 1;
 	}
 	}
-
 	return type;
 }
 
@@ -831,7 +922,7 @@ bool ScriptToken::Write(ScriptLineBuffer* buf)
 }
 
 #if RUNTIME
-ScriptToken* ScriptToken::ToBasicToken() const
+ScriptToken* ScriptToken::ToBasicToken()
 {
 	if (CanConvertTo(kTokenType_String))
 		return Create(GetString());
@@ -1105,7 +1196,7 @@ bool CanConvertOperand(Token_Type from, Token_Type to)
 {
 	if (from == to)
 		return true;
-	else if (from >= kTokenType_Invalid || to >= kTokenType_Invalid)
+	if (from >= kTokenType_Invalid || to >= kTokenType_Invalid)
 		return false;
 
 	Operand* op = &s_operands[from];

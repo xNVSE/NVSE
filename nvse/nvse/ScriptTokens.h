@@ -202,7 +202,7 @@ public:
 
 	virtual	~ScriptToken();
 
-	virtual const char	*			GetString() const;
+	virtual const char	*			GetString();
 	virtual UInt32					GetFormID() const;
 	virtual TESForm*				GetTESForm() const;
 	virtual double					GetNumber() const;
@@ -220,7 +220,7 @@ public:
 	virtual const ScriptToken  *  GetToken() const { return NULL; }
 	virtual const TokenPair	* GetPair() const { return NULL; }
 
-	ScriptToken	*			ToBasicToken() const;		// return clone as one of string, number, array, form
+	ScriptToken	*			ToBasicToken();		// return clone as one of string, number, array, form
 	
 	TESGlobal *				GetGlobal() const;
 	Operator *				GetOperator() const;
@@ -230,9 +230,9 @@ public:
 	UInt8					GetVariableType() const { return IsVariable() ? variableType : Script::eVarType_Invalid; }
 	Script*					GetOwningScript() const { return this->owningScript; }
 
-	UInt32					GetActorValue() const;		// kActorVal_XXX or kActorVal_NoActorValue if none
-	char					GetAxis() const;			// 'X', 'Y', 'Z', or otherwise -1
-	UInt32					GetSex() const;				// 0=male, 1=female, otherwise -1
+	UInt32					GetActorValue();		// kActorVal_XXX or kActorVal_NoActorValue if none
+	char					GetAxis();			// 'X', 'Y', 'Z', or otherwise -1
+	UInt32					GetSex();				// 0=male, 1=female, otherwise -1
 
 	bool					Write(ScriptLineBuffer* buf);
 	Token_Type				Type() const		{ return type; }
@@ -242,6 +242,8 @@ public:
 
 	double					GetNumericRepresentation(bool bFromHex);	// attempts to convert string to number
 	char*					DebugPrint(void);
+
+	void					Delete() const;
 
 	static ScriptToken* Read(ExpressionEvaluator* context);
 
@@ -270,9 +272,10 @@ public:
 	void operator delete(void* p);
 
 	bool cached = false;
+	UInt32 opcodeOffset;
+	CommandReturnType returnType;
+	ExpressionEvaluator* context;
 };
-
-
 
 struct SliceToken : public ScriptToken
 {
