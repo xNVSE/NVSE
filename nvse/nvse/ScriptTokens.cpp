@@ -403,7 +403,7 @@ const char* ScriptToken::GetString()
 		auto* token = context->ExecuteCommandToken(this);
 		if (token)
 		{
-			value.str = token->GetString();
+			value.str = std::move(token->value.str);
 			delete token;
 			return value.str.c_str();
 		}
