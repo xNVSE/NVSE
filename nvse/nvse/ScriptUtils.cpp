@@ -3345,7 +3345,7 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 	return nullptr;
 }
 
-std::unordered_map<UInt8*, std::deque<TokenCacheEntry>> g_tokenCache;
+std::unordered_map<UInt8*, std::vector<TokenCacheEntry>> g_tokenCache;
 
 ScriptToken* ExpressionEvaluator::Evaluate()
 {
@@ -3382,6 +3382,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			const auto incrData = m_data - dataBefore;
 			cachedTokens.push_back(TokenCacheEntry {*curToken, static_cast<UInt8>(incrData)});
 			tokenCacheEntry = &cachedTokens.back();
+			tokenCacheEntry->token.cached = true;
 		}
 		else
 		{
@@ -3389,7 +3390,6 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			tokenCacheEntry = &entry;
 			curToken = &entry.token;
 			curToken->context = this;
-			curToken->cached = true;
 			m_data += entry.incrementData;
 			const auto type = curToken->Type();
 			if (type >= kTokenType_Variable && type <= kTokenType_ArrayVar)
