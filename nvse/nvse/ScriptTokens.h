@@ -154,6 +154,7 @@ struct ForEachContext
 // slightly less ugly but still cheap polymorphism
 struct ScriptToken
 {
+	friend ExpressionEvaluator;
 protected:
 	Token_Type	type;
 	UInt8		variableType;	

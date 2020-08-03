@@ -409,7 +409,9 @@ const char* ScriptToken::GetString()
 		}
 	}
 #endif
-	return result ? result : empty;
+	if (result)
+		return result;
+	return empty;
 }
 
 UInt32 ScriptToken::GetFormID() const
@@ -575,7 +577,8 @@ void ScriptToken::ResolveVariable(ExpressionEvaluator* context)
 
 TESGlobal* ScriptToken::GetGlobal() const
 {
-	return type == kTokenType_Global ? value.global : NULL;
+	if (type == kTokenType_Global) return value.global;
+	return NULL;
 }
 
 VariableInfo* ScriptToken::GetVarInfo() const
@@ -594,7 +597,8 @@ VariableInfo* ScriptToken::GetVarInfo() const
 
 CommandInfo* ScriptToken::GetCommandInfo() const
 {
-	return type == kTokenType_Command ? value.cmd : NULL;
+	if (type == kTokenType_Command) return value.cmd;
+	return NULL;
 }
 
 #if RUNTIME
@@ -645,18 +649,17 @@ char ScriptToken::GetAxis()
 
 UInt32 ScriptToken::GetSex()
 {
-	UInt32 sex = -1;
 	const char* str = GetString();
 	if (str) {
 		if (!_stricmp(str, "male")) {
-			sex = 0;
+			return 0;
 		}
 		else if (!_stricmp(str, "female")) {
-			sex = 1;
+			return 1;
 		}
 	}
 
-	return sex;
+	return -1;
 }
 
 #endif // RUNTIME
@@ -1018,7 +1021,8 @@ const char* ArrayElementToken::GetString() const
 	static const char* empty = "";
 	const char* out = NULL;
 	g_ArrayMap.GetElementCString(GetOwningArrayID(), key, &out);
-	return out ? out : empty;
+	if (out) return out;
+	return empty;
 }
 
 UInt32 ArrayElementToken::GetFormID() const
