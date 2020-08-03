@@ -212,9 +212,27 @@ ScriptToken* Eval_Logical(OperatorType op, ScriptToken* lh, ScriptToken* rh, Exp
 	switch (op)
 	{
 	case kOpType_LogicalAnd:
-		return ScriptToken::Create(lh->GetBool() && rh->GetBool());
+		{
+			// avoid calling second command if first is false - Kormakur
+			const auto shortCircuit = lh->GetBool();
+			if (!shortCircuit)
+			{
+				return ScriptToken::Create(false);
+			}
+			return ScriptToken::Create(rh->GetBool());
+
+		}
+
 	case kOpType_LogicalOr:
-		return ScriptToken::Create(lh->GetBool()|| rh->GetBool());
+		{
+			// avoid calling second command if first is true - Kormakur
+			const auto shortCircuit = lh->GetBool();
+			if (shortCircuit)
+			{
+				return ScriptToken::Create(true);
+			}
+			return ScriptToken::Create(rh->GetBool());
+		}
 	default:
 		context->Error("Unhandled operator %s", OpTypeToSymbol(op));
 		return NULL;
