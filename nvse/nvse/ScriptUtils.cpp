@@ -9,7 +9,6 @@
 #include "ParamInfos.h"
 #include "FunctionScripts.h"
 #include "GameRTTI.h"
-
 #if RUNTIME
 
 #ifdef DBG_EXPR_LEAKS
@@ -3346,9 +3345,7 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 	return nullptr;
 }
 
-std::unordered_map<UInt8*, std::vector<TokenCacheEntry>> g_tokenCache;
-
-#define DISABLE_CACHING 0
+std::unordered_map<UInt8*, std::deque<TokenCacheEntry>> g_tokenCache;
 
 ScriptToken* ExpressionEvaluator::Evaluate()
 {
@@ -3433,14 +3430,20 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			ScriptToken* opResult;
 			if (!cacheExists)
 			{
+#if !DISABLE_CACHING
 				opResult = op->Evaluate(lhOperand, rhOperand, this, tokenCacheEntry->eval, tokenCacheEntry->swapOrder);
+#else
+				opResult = op->Evaluate(lhOperand, rhOperand, this);
+#endif
 			}
 			else
 			{
+#if !DISABLE_CACHING
 				auto& bSwapOrder = tokenCacheEntry->swapOrder;
 				auto& eval = tokenCacheEntry->eval;
 				auto& type = op->type;
 				opResult = bSwapOrder ? eval(type, rhOperand, lhOperand, this) : eval(type, lhOperand, rhOperand, this);
+#endif
 			}
 
 			lhOperand->Delete();
@@ -3476,7 +3479,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	if (result->Type() == kTokenType_Command)
 	{
 		auto* temp = ExecuteCommandToken(result);
-		delete result;
+		result->Delete();
 		result = temp;
 	}
 	return result;
@@ -3487,7 +3490,11 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 //	check operand(s)->CanConvertTo() for rule types (also swap them and test if !asymmetric)
 //	if can convert --> pass to rule handler, return result :: else, continue loop
 //	if no matching rule return null
+#if !DISABLE_CACHING
 ScriptToken* Operator::Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEvaluator* context, Op_Eval& cacheEval, bool& cacheSwapOrder)
+#else
+ScriptToken* Operator::Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEvaluator* context)
+#endif
 {
 	if (numOperands == 0)	// how'd we get here?
 	{
@@ -3518,8 +3525,10 @@ ScriptToken* Operator::Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEv
 
 		if (bRuleMatches)
 		{
+#if !DISABLE_CACHING
 			cacheEval = rule->eval;
 			cacheSwapOrder = bSwapOrder;
+#endif
 			return bSwapOrder ? rule->eval(type, rhs, lhs, context) : rule->eval(type, lhs, rhs, context);
 		}
 	}

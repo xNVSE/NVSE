@@ -18,6 +18,7 @@ extern SInt32 FUNCTION_CONTEXT_COUNT;
 #include "GameAPI.h"
 
 #endif
+#define DISABLE_CACHING 0
 
 struct Operator;
 struct SliceToken;
@@ -461,7 +462,11 @@ struct Operator
 	bool ExpectsStringLiteral() { return type == kOpType_MemberAccess; }
 
 	Token_Type GetResult(Token_Type lhs, Token_Type rhs);	// at compile-time determine type resulting from operation
+#if !DISABLE_CACHING
 	ScriptToken* Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEvaluator* context, Op_Eval& cacheEval, bool& cacheSwapOrder);	// at run-time, operate on the operands and return result
+#else
+	ScriptToken* Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEvaluator* context);	// at run-time, operate on the operands and return result
+#endif
 };
 
 bool CanConvertOperand(Token_Type from, Token_Type to);	// don't use directly at run-time, use ScriptToken::CanConvertTo() instead
