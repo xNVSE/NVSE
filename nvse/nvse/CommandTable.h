@@ -1,5 +1,6 @@
 #pragma once
 
+#include <unordered_map>
 #include <vector>
 
 class TESObjectREFR;
@@ -278,7 +279,7 @@ private:
 	void AddDebugCommands();
 
 	typedef std::vector <CommandInfo>				CommandList;
-	typedef std::map <UInt32, CommandMetadata>		CmdMetadataList;
+	typedef std::unordered_map<UInt32, CommandMetadata>	CmdMetadataList;
 	typedef std::map <UInt32, CommandReturnType>	OpcodeReturnTypeMap;
 	typedef std::map <UInt32, UInt32>				OpcodeToPluginMap;
 
