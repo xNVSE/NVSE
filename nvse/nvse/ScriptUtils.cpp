@@ -3472,14 +3472,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 		return NULL;
 	}
 	
-	auto* result = operands.top();
-	if (result->Type() == kTokenType_Command)
-	{
-		auto* temp = ExecuteCommandToken(result);
-		delete result;
-		result = temp;
-	}
-	return result;
+	return operands.top();
 }
 
 //	Pop required operand(s)
