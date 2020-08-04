@@ -189,6 +189,18 @@ ForEachContextToken::ForEachContextToken(UInt32 srcID, UInt32 iterID, UInt32 var
 	value.formID = 0;
 }
 
+SmallObjectsAllocator::Allocator<ForEachContextToken, 4> g_forEachTokenAllocator;
+
+void* ForEachContextToken::operator new(size_t size)
+{
+	return g_forEachTokenAllocator.Allocate();
+}
+
+void ForEachContextToken::operator delete(void* p)
+{
+	g_forEachTokenAllocator.Free(p);
+}
+
 ScriptToken* ScriptToken::Create(ForEachContext* forEach)
 {
 	if (!forEach)
@@ -216,14 +228,16 @@ ScriptToken* ScriptToken::Create(ForEachContext* forEach)
 	return new ForEachContextToken(forEach->sourceID, forEach->iteratorID, forEach->variableType, forEach->var);
 }
 
-ScriptToken* ScriptToken::Create(ArrayID arrID, ArrayKey* key)									
-{ 
-	return key ? new ArrayElementToken(arrID, key) : NULL;
+ScriptToken* ScriptToken::Create(ArrayID arrID, ArrayKey* key)
+{
+	if (key) return new ArrayElementToken(arrID, key);
+	else return NULL;
 }
 
-ScriptToken* ScriptToken::Create(Slice* slice)													
-{ 
-	return slice ? new SliceToken(slice) : NULL;
+ScriptToken* ScriptToken::Create(Slice* slice)
+{
+	if (slice) return new SliceToken(slice);
+	else return NULL;
 }
 
 ScriptToken* ScriptToken::Create(ScriptToken* l, ScriptToken* r)
@@ -1009,6 +1023,18 @@ bool ArrayElementToken::CanConvertTo(Token_Type to) const
 	return false;
 }
 
+SmallObjectsAllocator::Allocator<ArrayElementToken, 4> g_arrayTokenAllocator;
+
+void* ArrayElementToken::operator new(size_t size)
+{
+	return g_arrayTokenAllocator.Allocate();
+}
+
+void ArrayElementToken::operator delete(void* p)
+{
+	g_arrayTokenAllocator.Free(p);
+}
+
 double ArrayElementToken::GetNumber() const
 {
 	double out = 0.0;
@@ -1016,7 +1042,7 @@ double ArrayElementToken::GetNumber() const
 	return out;
 }
 
-const char* ArrayElementToken::GetString() const
+const char* ArrayElementToken::GetString()
 {
 	static const char* empty = "";
 	const char* out = NULL;

@@ -279,7 +279,7 @@ public:
 	ExpressionEvaluator* context;
 };
 
-struct SliceToken : public ScriptToken
+struct SliceToken : ScriptToken
 {
 	Slice	slice;
 
@@ -297,7 +297,7 @@ struct SliceToken : public ScriptToken
 	}
 };
 
-struct PairToken : public ScriptToken
+struct PairToken : ScriptToken
 {
 	TokenPair	pair;
 
@@ -316,57 +316,46 @@ struct PairToken : public ScriptToken
 
 #if RUNTIME
 
-struct ArrayElementToken : public ScriptToken
+struct ArrayElementToken : ScriptToken
 {
 	ArrayKey	key;
 
 	ArrayElementToken(ArrayID arr, ArrayKey* _key);
-	virtual const ArrayKey*	GetArrayKey() const { return type == kTokenType_ArrayElement ? &key : NULL; }
-	virtual const char*		GetString() const;
-	virtual double			GetNumber() const;
-	virtual UInt32			GetFormID() const;
-	virtual ArrayID			GetArray() const;
-	virtual TESForm*		GetTESForm() const;
-	virtual bool			GetBool() const;
-	virtual bool			CanConvertTo(Token_Type to) const;
-	virtual ArrayID			GetOwningArrayID() const {
+	const ArrayKey*	GetArrayKey() const override { return type == kTokenType_ArrayElement ? &key : NULL; }
+	const char*		GetString() override;
+	double			GetNumber() const override;
+	UInt32			GetFormID() const override;
+	ArrayID			GetArray() const override;
+	TESForm*		GetTESForm() const override;
+	bool			GetBool() const override;
+	bool			CanConvertTo(Token_Type to) const override;
+	ArrayID			GetOwningArrayID() const override
+	{
 		return type == kTokenType_ArrayElement ? value.arrID : 0; }
-	void* operator new(size_t size)
-	{
-		return ::operator new(size);
-	}
+	void* operator new(size_t size);
 
-	void operator delete(void* p)
-	{
-		::operator delete(p);
-	}
+	void operator delete(void* p);
 };
 
-struct ForEachContextToken : public ScriptToken
+struct ForEachContextToken : ScriptToken
 {
 	ForEachContext		context;
 
 	ForEachContextToken(UInt32 srcID, UInt32 iterID, UInt32 varType, ScriptEventList::Var* var);
 	virtual const ForEachContext* GetForEachContext() const { return Type() == kTokenType_ForEachContext ? &context : NULL; }
-	void* operator new(size_t size)
-	{
-		return ::operator new(size);
-	}
+	void* operator new(size_t size);
 
-	void operator delete(void* p)
-	{
-		::operator delete(p);
-	}
+	void operator delete(void* p);
 };
 
-struct AssignableStringToken : public ScriptToken
+struct AssignableStringToken : ScriptToken
 {
 	UInt32		lower;
 	UInt32		upper;
 	std::string	substring;
 
 	AssignableStringToken(UInt32 _id, UInt32 lbound, UInt32 ubound);
-	virtual const char* GetString() const { return substring.c_str(); }
+	const char* GetString() override { return substring.c_str(); }
 	virtual bool Assign(const char* str) = 0;
 
 	void* operator new(size_t size)
@@ -383,7 +372,7 @@ struct AssignableStringToken : public ScriptToken
 struct AssignableStringVarToken : public AssignableStringToken
 {
 	AssignableStringVarToken(UInt32 _id, UInt32 lbound, UInt32 ubound);
-	virtual bool Assign(const char* str);
+	bool Assign(const char* str) override;
 
 	void* operator new(size_t size)
 	{
@@ -401,8 +390,8 @@ struct AssignableStringArrayElementToken : public AssignableStringToken
 	ArrayKey	key;
 
 	AssignableStringArrayElementToken(UInt32 _id, const ArrayKey& _key, UInt32 lbound, UInt32 ubound);
-	virtual ArrayID		GetArray() const { return value.arrID; }
-	virtual bool Assign(const char* str);
+	ArrayID		GetArray() const override { return value.arrID; }
+	bool Assign(const char* str) override;
 
 	void* operator new(size_t size)
 	{
