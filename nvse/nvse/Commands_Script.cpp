@@ -209,7 +209,7 @@ enum {
 
 bool GetVariable_Execute(COMMAND_ARGS, UInt32 whichAction)
 {
-	char varName[256] = { 0 };
+	char varName[256];
 	TESQuest* quest = NULL;
 	Script* targetScript = NULL;
 	ScriptEventList* targetEventList = NULL;
@@ -262,7 +262,7 @@ bool GetVariable_Execute(COMMAND_ARGS, UInt32 whichAction)
 
 bool Cmd_SetVariable_Execute(COMMAND_ARGS)
 {
-	char varName[256] = { 0 };
+	char varName[256];
 	TESQuest* quest = NULL;
 	Script* targetScript = NULL;
 	ScriptEventList* targetEventList = NULL;
@@ -302,7 +302,7 @@ bool Cmd_SetVariable_Execute(COMMAND_ARGS)
 
 bool Cmd_SetRefVariable_Execute(COMMAND_ARGS)
 {
-	char varName[256] = { 0 };
+	char varName[256];
 	TESQuest* quest = NULL;
 	Script* targetScript = NULL;
 	ScriptEventList* targetEventList = NULL;

@@ -268,7 +268,7 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 	UInt32 type, length, version, stringID, tempRefID;
 	UInt16 strLength;
 	UInt8 modIndex;
-	char buffer[kMaxMessageLength] = { 0 };
+	char buffer[kMaxMessageLength];
 
 	Clean();
 

@@ -394,7 +394,7 @@ bool Cmd_GetName_Execute(COMMAND_ARGS)
 
 bool Cmd_GetStringGameSetting_Execute(COMMAND_ARGS)
 {
-	char settingName[0x100] = { 0 };
+	char settingName[0x100];
 	const char* settingString = "";
 
 	if (ExtractArgs(EXTRACT_ARGS, &settingName))
@@ -412,7 +412,7 @@ bool Cmd_GetStringGameSetting_Execute(COMMAND_ARGS)
 
 bool Cmd_GetStringIniSetting_Execute(COMMAND_ARGS)
 {
-	char settingName[kMaxMessageLength] = { 0 };
+	char settingName[kMaxMessageLength];
 	*result = -1;
 
 	if (ExtractArgs(EXTRACT_ARGS, &settingName))
@@ -420,7 +420,7 @@ bool Cmd_GetStringIniSetting_Execute(COMMAND_ARGS)
 		Setting* setting;
 		if (GetIniSetting(settingName, &setting))
 		{
-			char val[kMaxMessageLength] = { 0 };
+			char val[kMaxMessageLength];
 			if (const char * pVal = setting->Get())
 			{
 				strcpy_s(val, kMaxMessageLength, pVal);
@@ -439,7 +439,7 @@ bool Cmd_GetStringIniSetting_Execute(COMMAND_ARGS)
 // setting name included in format string i.e. "sSomeSetting|newSettingValue"
 bool Cmd_SetStringGameSettingEX_Execute(COMMAND_ARGS)
 {
-	char fmtString[kMaxMessageLength] = { 0 };
+	char fmtString[kMaxMessageLength];
 	*result = 0;
 
 	if (ExtractFormatStringArgs(0, fmtString, PASS_FMTSTR_ARGS, kCommandInfo_SetStringGameSettingEX.numParams))
@@ -465,7 +465,7 @@ bool Cmd_SetStringGameSettingEX_Execute(COMMAND_ARGS)
 // setting name included in format string i.e. "sSomeSetting|newSettingValue"
 bool Cmd_SetStringIniSetting_Execute(COMMAND_ARGS)
 {
-	char fmtString[kMaxMessageLength] = { 0 };
+	char fmtString[kMaxMessageLength];
 	*result = 0;
 
 	if (ExtractFormatStringArgs(0, fmtString, PASS_FMTSTR_ARGS, kCommandInfo_SetStringGameSettingEX.numParams))
@@ -587,7 +587,7 @@ bool Cmd_GetTexturePath_Execute(COMMAND_ARGS)
 bool Cmd_SetIconPathEX_Execute(COMMAND_ARGS)
 {
 	TESForm* form = NULL;
-	char newPath[kMaxMessageLength] = { 0 };
+	char newPath[kMaxMessageLength];
 
 	if (ExtractFormatStringArgs(0, newPath, PASS_FMTSTR_ARGS, kCommandInfo_SetIconPathEX.numParams, &form))
 	{
@@ -639,7 +639,7 @@ bool BipedPathFunc_Execute(COMMAND_ARGS, UInt32 mode, bool bIcon)
 	UInt32 whichPath = 0;
 	TESForm* form = NULL;
 	const char* pathStr = "";
-	char newPath[kMaxMessageLength] = { 0 };
+	char newPath[kMaxMessageLength];
 
 	bool bExtracted = false;
 	if (mode == eMode_Set)
@@ -712,7 +712,7 @@ bool Cmd_SetNthFactionRankNameEX_Execute(COMMAND_ARGS)
 	TESForm* form = NULL;
 	UInt32 rank = 0;
 	UInt32 gender = 0;
-	char newName[kMaxMessageLength] = { 0 };
+	char newName[kMaxMessageLength];
 
 	if (ExtractFormatStringArgs(0, newName, PASS_FMTSTR_ARGS, kCommandInfo_SetNthFactionRankNameEX.numParams, &form, &rank, &gender))
 	{
@@ -751,7 +751,7 @@ bool Cmd_SetNthEffectItemScriptNameEX_Execute(COMMAND_ARGS)
 {
 	TESForm* form = NULL;
 	UInt32 whichEffect = 0;
-	char newName[kMaxMessageLength] = { 0 };
+	char newName[kMaxMessageLength];
 
 	if (ExtractFormatStringArgs(0, newName, PASS_FMTSTR_ARGS, kCommandInfo_SetNthEffectItemScriptNameEX.numParams, &form, &whichEffect))
 	{
@@ -823,7 +823,7 @@ bool Cmd_GetFormIDString_Execute(COMMAND_ARGS)
 		form = thisObj;
 
 	UInt32 formID = form ? form->refID : 0;
-	char str[0x20] = { 0 };
+	char str[0x20];
 	sprintf_s(str, sizeof(str), "%08X", formID);
 	AssignToStringVar(PASS_COMMAND_ARGS, str);
 	return true;
@@ -832,7 +832,7 @@ bool Cmd_GetFormIDString_Execute(COMMAND_ARGS)
 bool Cmd_GetRawFormIDString_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	char str[0x20] = { 0 };
+	char str[0x20];
 	UInt32 formID = 0;
 
 	if (eval.ExtractArgs() && eval.NumArgs() == 1) {

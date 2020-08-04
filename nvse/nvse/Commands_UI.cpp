@@ -279,8 +279,8 @@ static void NormalizeItemName(std::string & str)
 
 bool Cmd_SortUIListBox_Execute(COMMAND_ARGS)
 {
-	char tilePath[kMaxMessageLength] = { 0 };
-	char sortSpecStr[kMaxMessageLength] = { 0 };
+	char tilePath[kMaxMessageLength];
+	char sortSpecStr[kMaxMessageLength];
 	*result = 0;
 
 	if (!ExtractArgs(EXTRACT_ARGS, &tilePath, &sortSpecStr))

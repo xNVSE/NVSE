@@ -21,7 +21,7 @@ Cmd_Execute Cmd_AddSpell_Execute = (Cmd_Execute)0x005C1DB0;
 
 bool Cmd_GetNumericGameSetting_Execute(COMMAND_ARGS)
 {
-	char settingName[512] = { 0 };
+	char settingName[512];
 	*result = -1;
 
 	if (ExtractArgs(EXTRACT_ARGS, &settingName))
@@ -40,7 +40,7 @@ bool Cmd_GetNumericGameSetting_Execute(COMMAND_ARGS)
 
 bool Cmd_SetNumericGameSetting_Execute(COMMAND_ARGS)
 {
-	char settingName[512] = { 0 };
+	char settingName[512];
 	float newVal = 0;
 	*result = 0;
 
@@ -62,7 +62,7 @@ bool Cmd_SetNumericGameSetting_Execute(COMMAND_ARGS)
 
 bool Cmd_GetNumericIniSetting_Execute(COMMAND_ARGS)
 {
-	char settingName[512] = { 0 };
+	char settingName[512];
 	*result = -1;
 
 	if (ExtractArgs(EXTRACT_ARGS, &settingName))
@@ -81,7 +81,7 @@ bool Cmd_GetNumericIniSetting_Execute(COMMAND_ARGS)
 
 bool Cmd_SetNumericIniSetting_Execute(COMMAND_ARGS)
 {
-	char settingName[512] = { 0 };
+	char settingName[512];
 	float newVal = 0;
 	*result = 0;
 

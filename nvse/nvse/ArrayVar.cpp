@@ -380,7 +380,7 @@ void ArrayVar::Dump()
 
 	for (ArrayIterator iter = m_elements.begin(); iter != m_elements.end(); ++iter)
 	{
-		char numBuf[0x50] = { 0 };
+		char numBuf[0x50];
 		std::string elementInfo("[ ");
 
 		switch (KeyType())
@@ -1221,7 +1221,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 	UInt16 strLength;
 	UInt8 modIndex, keyType;
 	bool bPacked;
-	char buffer[kMaxMessageLength] = { 0 };
+	char buffer[kMaxMessageLength];
 
 	//Reset(intfc);
 	bool bContinue = true;

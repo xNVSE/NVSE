@@ -156,7 +156,7 @@ bool ReadModListFromCoSave(NVSESerializationInterface * intfc)
 {
 	_MESSAGE("Reading mod list from co-save");
 
-	char name[0x104] = { 0 };
+	char name[0x104];
 	UInt16 nameLen = 0;
 
 	intfc->ReadRecordData(&s_numPreloadMods, sizeof(s_numPreloadMods));

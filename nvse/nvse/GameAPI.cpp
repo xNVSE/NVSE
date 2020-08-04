@@ -967,7 +967,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 {
 	//extracts args based on format string, prints formatted string to buffer
 	static const int maxArgs = 20;
-	double f[maxArgs] = {0.0};
+	double f[maxArgs];
 	UInt32 argIdx = 0;
 
 	std::string fmtString = args.GetFormatString();
