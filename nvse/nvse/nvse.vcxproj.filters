@@ -217,6 +217,9 @@
     <ClCompile Include="MemoryPool.cpp">
       <Filter>lib</Filter>
     </ClCompile>
+    <ClCompile Include="printf.cpp">
+      <Filter>lib</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
@@ -432,6 +435,9 @@
       <Filter>internals</Filter>
     </ClInclude>
     <ClInclude Include="MemoryPool.h">
+      <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="printf.h">
       <Filter>lib</Filter>
     </ClInclude>
   </ItemGroup>

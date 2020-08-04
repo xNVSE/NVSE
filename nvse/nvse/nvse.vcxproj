@@ -551,6 +551,7 @@
     <ClCompile Include="nvse.cpp" />
     <ClCompile Include="OverloadsGlobal.cpp" />
     <ClCompile Include="PluginManager.cpp" />
+    <ClCompile Include="printf.cpp" />
     <ClCompile Include="SafeWrite.cpp" />
     <ClCompile Include="ScriptTokens.cpp" />
     <ClCompile Include="ScriptUtils.cpp" />
@@ -633,6 +634,7 @@
     <ClInclude Include="PluginAPI.h" />
     <ClInclude Include="PluginManager.h" />
     <ClInclude Include="prefix.h" />
+    <ClInclude Include="printf.h" />
     <ClInclude Include="SafeWrite.h" />
     <ClInclude Include="SmallObjectsAllocator.h" />
     <ClInclude Include="ScriptTokens.h" />
