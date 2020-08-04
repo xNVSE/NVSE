@@ -17,6 +17,7 @@ struct ScriptToken;
 #include <memory>
 #include <vector>
 #include <map>
+#include "ScriptTokens.h"
 
 // NVSE array datatype, represented by std::map<ArrayKey, ArrayElement>
 // Data elements can be of mixed types (string, UInt32/formID, float)
@@ -115,7 +116,7 @@ struct ArrayKey
 {
 private:
 	ArrayType	key;
-	UInt8		keyType;
+	DataType	keyType;
 public:
 	ArrayKey();
 	ArrayKey(const std::string& _key);
