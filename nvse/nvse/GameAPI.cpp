@@ -7,6 +7,7 @@
 #include "GameScript.h"
 #include "Hooks_Other.h"
 #include "StringVar.h"
+#include "printf.h"
 
 #if NVSE_CORE
 #include "Hooks_Script.h"
@@ -1052,7 +1053,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 				else
 				{			
 					char formID[9];
-					sprintf_s(formID, 9, "%08X", form->refID);
+					snprintf(formID, 9, "%08X", form->refID);
 					fmtString.insert(strIdx, formID);
 				}
 			}
@@ -1317,7 +1318,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 		}
 	}
 
-	if (sprintf_s(buffer, kMaxMessageLength - 2, fmtString.c_str(), f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8], f[9], f[10], f[11], f[12], f[13], f[14], f[15], f[16], f[17], f[18], f[19]) > 0)
+	if (snprintf(buffer, kMaxMessageLength - 2, fmtString.c_str(), f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8], f[9], f[10], f[11], f[12], f[13], f[14], f[15], f[16], f[17], f[18], f[19]) > 0)
 	{
 		buffer[kMaxMessageLength-1] = '\0';
 		return true;
@@ -1419,7 +1420,8 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 	UInt8* scriptData = (UInt8*)(*scriptDataAddr);
 
 	SInt32 scriptDataOffset = (UInt32)scriptData - (UInt32)(script->data);*/
-	auto scriptData = reinterpret_cast<UInt8*>(g_lastScriptData);
+	//auto scriptData = reinterpret_cast<UInt8*>(g_lastScriptData);
+	auto* scriptData = reinterpret_cast<UInt8*>(g_lastScriptData);
 	SInt32 scriptDataOffset = (UInt32)scriptData - (UInt32)(script->data);
 
 	if (scriptDataOffset < 5)
@@ -1560,8 +1562,8 @@ ScriptFormatStringArgs::ScriptFormatStringArgs(UInt32 _numArgs, UInt8* _scriptDa
 	szFmt[len] = '\0';
 
 	scriptData += len;
-	fmtString = std::string(std::string(ResolveStringArgument(eventList, szFmt)));
-	delete szFmt;
+	fmtString = std::string(ResolveStringArgument(eventList, szFmt));
+	delete[] szFmt;
 }
 
 std::string ScriptFormatStringArgs::GetFormatString()

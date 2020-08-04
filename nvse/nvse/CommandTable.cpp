@@ -754,24 +754,21 @@ CommandInfo * CommandTable::GetByName(const char * name)
 
 CommandInfo* CommandTable::GetByOpcode(UInt32 opcode)
 {
-	try
+	const auto baseOpcode = m_commands.begin()->opcode;
+	const auto arrayIndex = opcode - baseOpcode;
+	if (arrayIndex >= m_commands.size())
 	{
-		const auto baseOpcode = m_commands.begin()->opcode;
-		const auto arrayIndex = opcode - baseOpcode;
-		auto* const command = &m_commands.at(arrayIndex);
-		if (command->opcode != opcode)
-		{
-			g_ErrOut.Show("ERROR: mismatched command opcodes when executing CommandTable::GetByOpcode (opcode: %X base: %X index: %d index opcode: %X)",
-				opcode, baseOpcode, arrayIndex, command->opcode);
-			return nullptr;
-		}
-		return command;
-	}
-	catch (std::out_of_range&)
-	{
-		g_ErrOut.Show("ERROR: opcode %X out of range (end is %X) when executing CommandTable::GetByOpcode", opcode, m_commands.back().opcode);
 		return nullptr;
 	}
+	auto* const command = &m_commands[arrayIndex];
+	if (command->opcode != opcode)
+	{
+		//_MESSAGE("ERROR: mismatched command opcodes when executing CommandTable::GetByOpcode (opcode: %X base: %X index: %d index opcode: %X)",
+		//	opcode, baseOpcode, arrayIndex, command->opcode);
+		return nullptr;
+	}
+	return command;
+
 }
 
 CommandReturnType CommandTable::GetReturnType(const CommandInfo* cmd)

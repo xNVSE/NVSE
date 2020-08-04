@@ -17,7 +17,7 @@
 
 bool Cmd_sv_Construct_Execute(COMMAND_ARGS)
 {
-	char buffer[kMaxMessageLength] = {0};
+	char buffer[kMaxMessageLength];
 
 	//not checking the return value here 'cuz we need to assign to the string regardless
 	ExtractFormatStringArgs(0, buffer, PASS_FMTSTR_ARGS, kCommandInfo_sv_Construct.numParams);
@@ -28,7 +28,7 @@ bool Cmd_sv_Construct_Execute(COMMAND_ARGS)
 
 bool Cmd_sv_Set_Execute(COMMAND_ARGS)
 {
-	char buffer[kMaxMessageLength] = { 0 };
+	char buffer[kMaxMessageLength];
 	UInt32 stringID = 0;
 	if (ExtractFormatStringArgs(0, buffer, PASS_FMTSTR_ARGS, kCommandInfo_sv_Set.numParams, &stringID))
 	{
@@ -108,7 +108,7 @@ bool Cmd_sv_Compare_Execute(COMMAND_ARGS)
 {
 	*result = -2;			//sentinel value if comparison fails
 	UInt32 stringID = 0;
-	char buffer[kMaxMessageLength] = { 0 };
+	char buffer[kMaxMessageLength];
 	UInt32 bCaseSensitive = 0;
 
 	if (!ExtractFormatStringArgs(0, buffer, PASS_FMTSTR_ARGS, kCommandInfo_sv_Compare.numParams, &stringID, &bCaseSensitive))
@@ -173,7 +173,7 @@ bool StringVar_Find_Execute(COMMAND_ARGS, UInt32 mode, CommandInfo* commandInfo)
 	UInt32 numChars = -1;
 	UInt32 bCaseSensitive = 0;
 	UInt32 numToReplace = -1;			//replace all by default
-	char toFind[kMaxMessageLength] = { 0 };
+	char toFind[kMaxMessageLength];
 
 	UInt32 intResult = -1;
 
@@ -256,7 +256,7 @@ bool Cmd_sv_Insert_Execute(COMMAND_ARGS)
 {
 	UInt32 strID = 0;
 	UInt32 insertionPos = 0;
-	char subString[kMaxMessageLength] = { 0 };
+	char subString[kMaxMessageLength];
 	*result = 0;
 
 	if (!ExtractFormatStringArgs(0, subString, PASS_FMTSTR_ARGS, kCommandInfo_sv_Insert.numParams, &strID, &insertionPos))
@@ -515,7 +515,7 @@ bool Cmd_GetModelPath_Execute(COMMAND_ARGS)
 bool Cmd_SetModelPathEX_Execute(COMMAND_ARGS)
 {
 	TESForm* form = NULL;
-	char newPath[kMaxMessageLength] = { 0 };
+	char newPath[kMaxMessageLength];
 
 	if (ExtractFormatStringArgs(0, newPath, PASS_FMTSTR_ARGS, kCommandInfo_SetModelPathEX.numParams, &form))
 	{
@@ -629,7 +629,7 @@ bool Cmd_SetTexturePath_Execute(COMMAND_ARGS)
 	return true;
 }
 
-static enum {
+enum {
 	eMode_Get,
 	eMode_Set
 };

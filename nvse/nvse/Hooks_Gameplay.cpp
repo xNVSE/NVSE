@@ -162,7 +162,7 @@ static const UInt32 kExitGameViaQQQRetnAddr			 = 0x005B6CB0;	// original call
 
 static const UInt32 kExitGameFromMenuPatchAddr       = 0x007D0C3E;	// 2nd call to kExitGameViaQQQRetnAddr
 
-static enum QuitGameMessage
+enum QuitGameMessage
 {
 	kQuit_ToMainMenu,
 	kQuit_ToWindows,

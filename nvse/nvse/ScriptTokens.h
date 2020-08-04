@@ -18,6 +18,7 @@ extern SInt32 FUNCTION_CONTEXT_COUNT;
 #include "GameAPI.h"
 
 #endif
+#define DISABLE_CACHING 0
 
 struct Operator;
 struct SliceToken;
@@ -153,11 +154,14 @@ struct ForEachContext
 // slightly less ugly but still cheap polymorphism
 struct ScriptToken
 {
+	friend ExpressionEvaluator;
 protected:
 	Token_Type	type;
-	UInt8		variableType;
+	UInt8		variableType;	
+	Script*		owningScript;
 	UInt16		refIdx;
-	Script*		owningScript = nullptr;
+	UInt16		varIdx;
+
 
 	struct Value {
 		std::string					str;
@@ -177,7 +181,6 @@ protected:
 			ScriptToken				* token;
 		};
 	} value;
-
 	ScriptToken();
 	ScriptToken(Token_Type _type, UInt8 _varType, UInt16 _refIdx);
 	ScriptToken(bool boolean);
@@ -191,16 +194,17 @@ protected:
 	ScriptToken(Operator* op);
 	ScriptToken(UInt32 data, Token_Type asType);		// ArrayID or FormID
 
-	ScriptToken(const ScriptToken& rhs);	// unimplemented, don't want copy constructor called
+	//ScriptToken(const ScriptToken& rhs);	// unimplemented, don't want copy constructor called
 #if RUNTIME
 	ScriptToken(ScriptEventList::Var* var);
 #endif
 
-	Token_Type	ReadFrom(ExpressionEvaluator* context);	// reconstitute param from compiled data, return the type
 public:
+	Token_Type	ReadFrom(ExpressionEvaluator* context);	// reconstitute param from compiled data, return the type
+
 	virtual	~ScriptToken();
 
-	virtual const char	*			GetString() const;
+	virtual const char	*			GetString();
 	virtual UInt32					GetFormID() const;
 	virtual TESForm*				GetTESForm() const;
 	virtual double					GetNumber() const;
@@ -211,13 +215,14 @@ public:
 #if RUNTIME
 	virtual ArrayID					GetArray() const;
 	ScriptEventList::Var *	GetVar() const;
+	void ResolveVariable(ExpressionEvaluator* context);
 #endif
 	virtual bool			CanConvertTo(Token_Type to) const;	// behavior varies b/w compile/run-time for ambiguous types
 	virtual ArrayID			GetOwningArrayID() const { return 0; }
 	virtual const ScriptToken  *  GetToken() const { return NULL; }
 	virtual const TokenPair	* GetPair() const { return NULL; }
 
-	ScriptToken	*			ToBasicToken() const;		// return clone as one of string, number, array, form
+	ScriptToken	*			ToBasicToken();		// return clone as one of string, number, array, form
 	
 	TESGlobal *				GetGlobal() const;
 	Operator *				GetOperator() const;
@@ -227,9 +232,9 @@ public:
 	UInt8					GetVariableType() const { return IsVariable() ? variableType : Script::eVarType_Invalid; }
 	Script*					GetOwningScript() const { return this->owningScript; }
 
-	UInt32					GetActorValue() const;		// kActorVal_XXX or kActorVal_NoActorValue if none
-	char					GetAxis() const;			// 'X', 'Y', 'Z', or otherwise -1
-	UInt32					GetSex() const;				// 0=male, 1=female, otherwise -1
+	UInt32					GetActorValue();		// kActorVal_XXX or kActorVal_NoActorValue if none
+	char					GetAxis();			// 'X', 'Y', 'Z', or otherwise -1
+	UInt32					GetSex();				// 0=male, 1=female, otherwise -1
 
 	bool					Write(ScriptLineBuffer* buf);
 	Token_Type				Type() const		{ return type; }
@@ -239,6 +244,8 @@ public:
 
 	double					GetNumericRepresentation(bool bFromHex);	// attempts to convert string to number
 	char*					DebugPrint(void);
+
+	void					Delete() const;
 
 	static ScriptToken* Read(ExpressionEvaluator* context);
 
@@ -265,9 +272,12 @@ public:
 	void* operator new(size_t size);
 
 	void operator delete(void* p);
+
+	bool cached = false;
+	UInt32 opcodeOffset;
+	CommandReturnType returnType;
+	ExpressionEvaluator* context;
 };
-
-
 
 struct SliceToken : public ScriptToken
 {
@@ -453,7 +463,11 @@ struct Operator
 	bool ExpectsStringLiteral() { return type == kOpType_MemberAccess; }
 
 	Token_Type GetResult(Token_Type lhs, Token_Type rhs);	// at compile-time determine type resulting from operation
+#if !DISABLE_CACHING
+	ScriptToken* Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEvaluator* context, Op_Eval& cacheEval, bool& cacheSwapOrder);	// at run-time, operate on the operands and return result
+#else
 	ScriptToken* Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEvaluator* context);	// at run-time, operate on the operands and return result
+#endif
 };
 
 bool CanConvertOperand(Token_Type from, Token_Type to);	// don't use directly at run-time, use ScriptToken::CanConvertTo() instead

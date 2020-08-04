@@ -75,6 +75,7 @@ public:
 
 class ExpressionEvaluator
 {
+	friend ScriptToken;
 	enum { kMaxArgs = NVSE_EXPR_MAX_ARGS };
 
 	enum {
@@ -97,7 +98,6 @@ class ExpressionEvaluator
 	UInt16				m_baseOffset;
 	ExpressionEvaluator	* m_parent;
 
-	UInt8*			&Data()	{ return m_data;	}
 	CommandReturnType GetExpectedReturnType() { CommandReturnType type = m_expectedReturnType; m_expectedReturnType = kRetnType_Default; return type; }
 
 	void PushOnStack();
@@ -127,9 +127,17 @@ public:
 	// extract formatted string args compiled with compiler override
 	bool ExtractFormatStringArgs(va_list varArgs, UInt32 fmtStringPos, char* fmtStringOut, UInt32 maxParams);
 
+	ScriptToken* ExecuteCommandToken(ScriptToken const* token);
 	ScriptToken*	Evaluate();			// evaluates a single argument/token
 
-	ScriptToken*	Arg(UInt32 idx) { return idx < kMaxArgs ? m_args[idx] : NULL; }
+	ScriptToken*	Arg(UInt32 idx)
+	{
+		if (idx >= m_numArgsExtracted)
+		{
+			return nullptr;
+		}
+		return m_args[idx];
+	}
 	UInt8			NumArgs() { return m_numArgsExtracted; }
 	void			SetParams(ParamInfo* newParams)	{	m_params = newParams;	}
 	void			ExpectReturnType(CommandReturnType type) { m_expectedReturnType = type; }
@@ -139,14 +147,18 @@ public:
 	TESObjectREFR*	ThisObj() { return m_thisObj; }
 	TESObjectREFR*	ContainingObj() { return m_containingObj; }
 
+	UInt8*&		Data() { return m_data; }
 	UInt8		ReadByte();
 	UInt16		Read16();
 	double		ReadFloat();
-	std::string	ReadString();
+	std::string	ReadString(UInt32& incrData);
 	SInt8		ReadSignedByte();
 	SInt16		ReadSigned16();
 	UInt32		Read32();
 	SInt32		ReadSigned32();
+
+	UInt8* GetCommandOpcodePosition() const;
+	CommandInfo* GetCommand() const;
 };
 
 bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem, ExpressionEvaluator* context);

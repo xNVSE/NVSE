@@ -9,7 +9,6 @@
 #include "ParamInfos.h"
 #include "FunctionScripts.h"
 #include "GameRTTI.h"
-
 #if RUNTIME
 
 #ifdef DBG_EXPR_LEAKS
@@ -784,7 +783,7 @@ ScriptToken* Eval_ToString_String(OperatorType op, ScriptToken* lh, ScriptToken*
 ScriptToken* Eval_ToString_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
 	char buf[0x20];
-	sprintf_s(buf, sizeof(buf), "%g", lh->GetNumber());
+	snprintf(buf, sizeof(buf), "%g", lh->GetNumber());
 	return ScriptToken::Create(std::string(buf));
 }
 
@@ -1338,7 +1337,7 @@ void ExpressionEvaluator::Error(const char* fmt, ...)
 
 	// include script data offset and command name/opcode
 	UInt16* opcodePtr = (UInt16*)((UInt8*)script->data + m_baseOffset);
-	CommandInfo* cmd = g_scriptCommands.GetByOpcode(*opcodePtr);
+	CommandInfo* cmd = GetCommand();
 
 	// include mod filename, save having to ask users to figure it out themselves
 	const char* modName = "Savegame";
@@ -1360,7 +1359,7 @@ void ExpressionEvaluator::PrintStackTrace() {
 
 	ExpressionEvaluator* eval = this;
 	while (eval) {
-		CommandInfo* cmd = g_scriptCommands.GetByOpcode(*((UInt16*)((UInt8*)eval->script->data + eval->m_baseOffset)));
+		CommandInfo* cmd = eval->GetCommand();
 		sprintf_s(output, sizeof(output), "  %s @%04X script %08X", cmd ? cmd->longName : "<unknown>", eval->m_baseOffset, eval->script->refID);
 		_MESSAGE(output);
 		Console_Print(output);
@@ -2600,6 +2599,22 @@ SInt32 ExpressionEvaluator::ReadSigned32()
 	return data;
 }
 
+UInt8* ExpressionEvaluator::GetCommandOpcodePosition() const
+{
+	if (m_scriptData != script->data) // set ... to or if ..., script data is stored on stack and not heap
+	{
+		const auto offset = g_lastScriptData - static_cast<UInt8*>(script->data) + 1;
+		return static_cast<UInt8*>(script->data) + offset + *m_opcodeOffsetPtr;
+	}
+	return static_cast<UInt8*>(m_scriptData) + *m_opcodeOffsetPtr;
+}
+
+CommandInfo* ExpressionEvaluator::GetCommand() const
+{
+	auto* opcodePtr = reinterpret_cast<UInt16*>(static_cast<UInt8*>(m_scriptData) + m_baseOffset);
+	return g_scriptCommands.GetByOpcode(*opcodePtr);
+}
+
 double ExpressionEvaluator::ReadFloat()
 {
 	double data = *((double*)Data());
@@ -2607,7 +2622,7 @@ double ExpressionEvaluator::ReadFloat()
 	return data;
 }
 
-std::string ExpressionEvaluator::ReadString()
+std::string ExpressionEvaluator::ReadString(UInt32& incrData)
 {
 	UInt16 len = Read16();
 	char* buf = new char[len + 1];
@@ -2615,7 +2630,8 @@ std::string ExpressionEvaluator::ReadString()
 	buf[len] = 0;
 	std::string str = buf;
 	Data() += len;
-	delete buf;
+	delete[] buf;
+	incrData = 2 + len;
 	return str;
 }
 
@@ -2663,7 +2679,7 @@ ExpressionEvaluator::ExpressionEvaluator(COMMAND_ARGS) : m_opcodeOffsetPtr(opcod
 	m_scriptData = (UInt8*)scriptData;
 	m_data = m_scriptData + *m_opcodeOffsetPtr;
 
-	memset(m_args, 0, sizeof(m_args));
+	//memset(m_args, 0, sizeof(m_args));
 
 	m_containingObj = containingObj;	
 	m_baseOffset = *opcodeOffsetPtr - 4;
@@ -2677,8 +2693,14 @@ ExpressionEvaluator::~ExpressionEvaluator()
 {
 	PopFromStack();
 
-	for (UInt32 i = 0; i < kMaxArgs; i++)
-		delete m_args[i];
+	for (UInt32 i = 0; i < m_numArgsExtracted; i++)
+	{
+		auto& token = m_args[i];
+		if (!token->cached)
+		{
+			delete token;
+		}
+	}
 }
 
 bool ExpressionEvaluator::ExtractArgs()
@@ -3236,127 +3258,160 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 	return true;
 }
 
+
+struct TokenCacheEntry
+{
+	ScriptToken token;
+	UInt8 incrementData;
+	Op_Eval eval;
+	bool swapOrder;
+};
+
+//UInt8* g_lastCacheKeyDebug;
+
+ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
+{
+	// execute the command
+	CommandInfo* cmdInfo = token->GetCommandInfo();
+	if (!cmdInfo)
+	{
+		return nullptr;
+	}
+
+	TESObjectREFR* callingObj = m_thisObj;
+	Script::RefVariable* callingRef = script->GetVariable(token->GetRefIndex());
+	if (callingRef)
+	{
+		callingRef->Resolve(eventList);
+		if (callingRef->form && callingRef->form->IsReference())
+			callingObj = DYNAMIC_CAST(callingRef->form, TESForm, TESObjectREFR);
+		else
+		{
+			Error("Attempting to call a function on a NULL reference or base object");
+			return nullptr;
+		}
+	}
+
+
+	TESObjectREFR* contObj = callingRef ? NULL : m_containingObj;
+	double cmdResult = 0;
+
+	//UInt32 numBytesRead = 0;
+	//UInt8* scrData = Data();
+	//UInt16 argsLen = Read16();
+
+	//*m_opcodeOffsetPtr = m_data - m_scriptData;
+	UInt32 opcodeOffset = token->opcodeOffset;
+	CommandReturnType retnType = token->returnType;
+
+	ExpectReturnType(kRetnType_Default);	// expect default return type unless called command specifies otherwise
+	bool bExecuted = cmdInfo->execute(cmdInfo->params, m_scriptData, callingObj, contObj, script, eventList, &cmdResult, &opcodeOffset);
+
+	*m_opcodeOffsetPtr = opcodeOffset;
+
+
+	if (!bExecuted)
+	{
+		Error("Command %s failed to execute", cmdInfo->longName);
+		return nullptr;
+	}
+
+	switch (retnType)
+	{
+	case kRetnType_String:
+	{
+		StringVar* strVar = g_StringMap.Get(cmdResult);
+		return ScriptToken::Create(strVar ? strVar->GetCString() : "");
+	}
+	case kRetnType_Array:
+	{
+		// ###TODO: cmds can return arrayID '0', not necessarily an error, does this support that?
+		if (g_ArrayMap.Exists(cmdResult) || !cmdResult)
+		{
+			return ScriptToken::CreateArray(cmdResult);
+		}
+		Error("A command returned an invalid array");
+		break;
+	}
+	case kRetnType_Form:
+	{
+		return ScriptToken::CreateForm(*((UInt64*)&cmdResult));
+	}
+	case kRetnType_Default:
+		return ScriptToken::Create(cmdResult);
+	default:
+		Error("Unknown command return type %d while executing command in ExpressionEvaluator::Evaluate()", retnType);
+	}
+	return nullptr;
+}
+
+std::unordered_map<UInt8*, std::vector<TokenCacheEntry>> g_tokenCache;
+
 ScriptToken* ExpressionEvaluator::Evaluate()
 {
-	//std::stack<ScriptToken*> operands;
 	UInt16 argLen = Read16();
-	UInt8* endData = Data() + argLen - sizeof(UInt16);
+	UInt8* endData = m_data + argLen - sizeof(UInt16);
+	
 	FastStack<ScriptToken*, 16> operands;
-	while (Data() < endData)
+
+#if !DISABLE_CACHING
+	UInt8* cacheKey = GetCommandOpcodePosition();
+	//g_lastCacheKeyDebug = cacheKey;
+	auto& cachedTokens = g_tokenCache[cacheKey];
+	const auto cacheExists = !cachedTokens.empty();
+	std::size_t tokenCount = 0;
+	//auto cacheSize = g_tokenCache.size();
+
+#else
+	auto cacheExists = false;
+	auto tokenCount = 0;
+	auto tokenSize = 0;
+#endif
+
+	while (m_data < endData)
 	{
-		ScriptToken* curToken = ScriptToken::Read(this);
-		if (!curToken)
-			break;
-
-		if (curToken->Type() == kTokenType_Command)
+		TokenCacheEntry* tokenCacheEntry;
+		ScriptToken* curToken;
+		if (!cacheExists)
 		{
-			// execute the command
-			CommandInfo* cmdInfo = curToken->GetCommandInfo();
-			if (!cmdInfo)
-			{
-				delete curToken;
-				curToken = NULL;
+			auto* dataBefore = m_data;
+			curToken = ScriptToken::Read(this);
+			if (!curToken)
 				break;
-			}
-
-			TESObjectREFR* callingObj = m_thisObj;
-			Script::RefVariable* callingRef = script->GetVariable(curToken->GetRefIndex());
-			if (callingRef)
-			{
-				callingRef->Resolve(eventList);
-				if (callingRef->form && callingRef->form->IsReference())
-					callingObj = DYNAMIC_CAST(callingRef->form, TESForm, TESObjectREFR);
-				else
-				{
-					delete curToken;
-					curToken = NULL;
-					Error("Attempting to call a function on a NULL reference or base object");
-					break;
-				}
-			}
-
-			TESObjectREFR* contObj = callingRef ? NULL : m_containingObj;
-			double cmdResult = 0;
-
-			UInt16 argsLen = Read16();
-			UInt32 numBytesRead = 0;
-			UInt8* scrData = Data();
-
-			ExpectReturnType(kRetnType_Default);	// expect default return type unless called command specifies otherwise
-			bool bExecuted = cmdInfo->execute(cmdInfo->params, scrData, callingObj, contObj, script, eventList, &cmdResult, &numBytesRead);
-
-			if (!bExecuted)
-			{
-				delete curToken;
-				curToken = NULL;
-				Error("Command %s failed to execute", cmdInfo->longName);
-				break;
-			}
-
-			Data() += argsLen - 2;
-
-			// create a new ScriptToken* based on result type, delete command token when done
-			ScriptToken* cmdToken = curToken;
-			curToken = ScriptToken::Create(cmdResult);
-
-			// adjust token type if we know command return type
-			CommandReturnType retnType = g_scriptCommands.GetReturnType(cmdInfo);
-			if (retnType == kRetnType_Ambiguous || retnType == kRetnType_ArrayIndex)	// return type ambiguous, cmd will inform us of type to expect
-				retnType = GetExpectedReturnType();
-
-			switch (retnType)
-			{
-				case kRetnType_String:
-				{
-					StringVar* strVar = g_StringMap.Get(cmdResult);
-					delete curToken;
-					curToken = ScriptToken::Create(strVar ? strVar->GetCString() : "");
-					break;
-				}
-				case kRetnType_Array:
-				{
-					// ###TODO: cmds can return arrayID '0', not necessarily an error, does this support that?
-					if (g_ArrayMap.Exists(cmdResult) || !cmdResult)	
-					{
-						delete curToken;
-						curToken = ScriptToken::CreateArray(cmdResult);
-						break;
-					}
-					else
-					{
-						Error("A command returned an invalid array");
-						break;
-					}
-				}
-				case kRetnType_Form:
-				{
-					delete curToken;
-					curToken = ScriptToken::CreateForm(*((UInt64*)&cmdResult));
-					break;
-				}
-				case kRetnType_Default:
-					delete curToken;
-					curToken = ScriptToken::Create(cmdResult);
-					break;
-				default:
-					Error("Unknown command return type %d while executing command in ExpressionEvaluator::Evaluate()", retnType);
-			}
-
-			delete cmdToken;
-			cmdToken = NULL;
+#if !DISABLE_CACHING
+			const auto incrData = m_data - dataBefore;
+			cachedTokens.push_back(TokenCacheEntry {*curToken, static_cast<UInt8>(incrData)});
+			tokenCacheEntry = &cachedTokens.back();
+			tokenCacheEntry->token.cached = true;
 		}
-
+		else
+		{
+			auto& entry = cachedTokens[tokenCount++];
+			tokenCacheEntry = &entry;
+			curToken = &entry.token;
+			curToken->context = this;
+			m_data += entry.incrementData;
+			const auto type = curToken->Type();
+			if (type >= kTokenType_Variable && type <= kTokenType_ArrayVar)
+			{
+				curToken->ResolveVariable(this);
+			}
+#endif
+		}
+		
 		if (curToken->Type() != kTokenType_Operator)
+		{
 			operands.push(curToken);
+		}
 		else
 		{
 			Operator* op = curToken->GetOperator();
-			ScriptToken* lhOperand = NULL;
-			ScriptToken* rhOperand = NULL;
+			ScriptToken* lhOperand = nullptr;
+			ScriptToken* rhOperand = nullptr;
 
 			if (op->numOperands > operands.size())
 			{
-				delete curToken;
+				curToken->Delete();
 				curToken = NULL;
 				Error("Too few operands for operator %s", op->symbol);
 				break;
@@ -3372,22 +3427,40 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				operands.pop();
 			}
 
-			ScriptToken* opResult = op->Evaluate(lhOperand, rhOperand, this);
-			delete lhOperand;
-			delete rhOperand;
-			delete curToken;
-			curToken = NULL;
+			ScriptToken* opResult;
+			if (!cacheExists)
+			{
+#if !DISABLE_CACHING
+				opResult = op->Evaluate(lhOperand, rhOperand, this, tokenCacheEntry->eval, tokenCacheEntry->swapOrder);
+#else
+				opResult = op->Evaluate(lhOperand, rhOperand, this);
+#endif
+			}
+			else
+			{
+#if !DISABLE_CACHING
+				auto& bSwapOrder = tokenCacheEntry->swapOrder;
+				auto& eval = tokenCacheEntry->eval;
+				auto& type = op->type;
+				opResult = bSwapOrder ? eval(type, rhOperand, lhOperand, this) : eval(type, lhOperand, rhOperand, this);
+#endif
+			}
 
+			lhOperand->Delete();
+			rhOperand->Delete();
+			curToken->Delete();
+			curToken = NULL;
+			
 			if (!opResult)
 			{
 				Error("Operator %s failed to evaluate to a valid result", op->symbol);
 				break;
 			}
-
+			
 			operands.push(opResult);
 		}
 	}
-
+	
 	// adjust opcode offset ptr (important for recursive calls to Evaluate()
 	*m_opcodeOffsetPtr = m_data - m_scriptData;
 
@@ -3396,12 +3469,19 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 		Error("An expression failed to evaluate to a valid result");
 		while (operands.size())
 		{
-			delete operands.top();
+			operands.top()->Delete();
 			operands.pop();
 		}
 		return NULL;
 	}
+	
 	auto* result = operands.top();
+	if (result->Type() == kTokenType_Command)
+	{
+		auto* temp = ExecuteCommandToken(result);
+		result->Delete();
+		result = temp;
+	}
 	return result;
 }
 
@@ -3410,7 +3490,11 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 //	check operand(s)->CanConvertTo() for rule types (also swap them and test if !asymmetric)
 //	if can convert --> pass to rule handler, return result :: else, continue loop
 //	if no matching rule return null
+#if !DISABLE_CACHING
+ScriptToken* Operator::Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEvaluator* context, Op_Eval& cacheEval, bool& cacheSwapOrder)
+#else
 ScriptToken* Operator::Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEvaluator* context)
+#endif
 {
 	if (numOperands == 0)	// how'd we get here?
 	{
@@ -3440,7 +3524,13 @@ ScriptToken* Operator::Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEv
 		}
 
 		if (bRuleMatches)
+		{
+#if !DISABLE_CACHING
+			cacheEval = rule->eval;
+			cacheSwapOrder = bSwapOrder;
+#endif
 			return bSwapOrder ? rule->eval(type, rhs, lhs, context) : rule->eval(type, lhs, rhs, context);
+		}
 	}
 
 	return NULL;
@@ -3474,7 +3564,7 @@ bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem, ExpressionEvaluato
 
 #else			// CS only
 
-static enum BlockType
+enum BlockType
 {
 	kBlockType_Invalid	= 0,
 	kBlockType_ScriptBlock,

@@ -258,12 +258,12 @@ bool Cmd_ar_Erase_Execute(COMMAND_ARGS)
 					if (eval.Arg(1)->CanConvertTo(kTokenType_String))
 					{
 						ArrayKey toErase(eval.Arg(1)->GetString());
-						numErased = g_ArrayMap.EraseElements(arrID, toErase, toErase);
+						numErased = g_ArrayMap.EraseElement(arrID, toErase);
 					}
 					else if (eval.Arg(1)->CanConvertTo(kTokenType_Number))
 					{
 						ArrayKey toErase(eval.Arg(1)->GetNumber());
-						numErased = g_ArrayMap.EraseElements(arrID, toErase, toErase);
+						numErased = g_ArrayMap.EraseElement(arrID, toErase);
 					}
 				}
 			}

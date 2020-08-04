@@ -14,6 +14,9 @@ struct ScriptToken;
 #include "Serialization.h"
 #include "GameAPI.h"
 #include <map>
+#include <memory>
+#include <vector>
+#include <map>
 
 // NVSE array datatype, represented by std::map<ArrayKey, ArrayElement>
 // Data elements can be of mixed types (string, UInt32/formID, float)
@@ -119,7 +122,7 @@ public:
 	ArrayKey(double _key);
 	ArrayKey(const char* _key);
 
-	ArrayType	Key() const	{	return key;	}
+	ArrayType&	Key() {	return key;	}
 	UInt8		KeyType() const { return keyType; }
 	void		SetNumericKey(double newVal)	{	keyType = kDataType_Numeric; key.num = newVal;	}
 	bool		IsValid() const { return keyType != kDataType_Invalid;	}
@@ -131,7 +134,64 @@ public:
 	bool operator<=(const ArrayKey& rhs) const { return !(*this > rhs); }
 };
 
-typedef std::map<ArrayKey, ArrayElement>::iterator ArrayIterator;
+class ArrayVarElementContainer
+{
+	std::unique_ptr<std::vector<ArrayElement>> array_ = nullptr;
+	std::unique_ptr<std::map<ArrayKey, ArrayElement>> map_ = nullptr;
+
+	bool isArray_ = false;
+	
+public:
+	ArrayVarElementContainer(bool isArray);
+
+	ArrayVarElementContainer();
+
+	ArrayElement& operator [](ArrayKey i) const;
+
+	class iterator
+	{		
+	public:
+		bool isArray_ = false;
+		std::map<ArrayKey, ArrayElement>::iterator mapIter_;
+		std::vector<ArrayElement>::iterator arrIter_;
+		ArrayVarElementContainer const* containerPtr_ = nullptr;
+
+		iterator();
+
+		explicit iterator(const std::map<ArrayKey, ArrayElement>::iterator iter);
+
+		iterator(std::vector<ArrayElement>::iterator iter, ArrayVarElementContainer const* containerRef);
+
+		void operator++();
+
+		void operator--();
+
+		bool operator!=(const iterator& other) const;
+
+		[[nodiscard]] ArrayKey first() const;
+
+		[[nodiscard]] ArrayElement& second() const;
+	};
+
+	[[nodiscard]] iterator find(ArrayKey key) const;
+
+	[[nodiscard]] iterator begin() const;
+
+	[[nodiscard]] iterator end() const;
+
+	[[nodiscard]] std::size_t size() const;
+
+	std::size_t erase(ArrayKey key) const;
+
+	std::size_t erase(ArrayKey low, ArrayKey high) const;
+
+	std::vector<ArrayElement>& getVectorRef() const;
+
+	
+};
+
+
+typedef ArrayVarElementContainer::iterator ArrayIterator;
 
 class ArrayVar
 {
@@ -139,8 +199,8 @@ class ArrayVar
 	friend class Matrix;
 	friend class PluginAPI::ArrayAPI;
 
-	typedef std::map<ArrayKey, ArrayElement> _ElementMap;
-	_ElementMap m_elements;
+	typedef ArrayVarElementContainer _ElementMap;
+	_ElementMap			m_elements;
 	ArrayID				m_ID;
 	UInt8				m_owningModIndex;
 	UInt8				m_keyType;
@@ -155,7 +215,7 @@ class ArrayVar
 	ArrayElement* Get(ArrayKey key, bool bCanCreateNew);
 
 	UInt32 ID()		{ return m_ID;	}
-	void Pack();
+	//void Pack();
 
 	void Dump();
 
@@ -209,6 +269,7 @@ public:
 	void	DumpArray(ArrayID toDump);
 	UInt32	SizeOf(ArrayID id);
 	UInt32	IsPacked(ArrayID id);
+	UInt32  EraseElement(ArrayID id, const ArrayKey& key);
 	UInt32  EraseElements(ArrayID id, const ArrayKey& lo, const ArrayKey& hi);	// returns num erased
 	UInt32	EraseAllElements(ArrayID id);
 	ArrayID Sort(ArrayID src, SortOrder order, SortType type, UInt8 modIndex, Script* comparator=NULL);
