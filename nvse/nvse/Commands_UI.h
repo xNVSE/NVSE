@@ -3,6 +3,8 @@
 #include "CommandTable.h"
 #include "ParamInfos.h"
 
+extern bool g_tilesDestroyed;
+
 static ParamInfo kParams_SetUIStringEx[] =
 {
 	{	"component name",	kParamType_String,	0 },

@@ -28,6 +28,9 @@
 
 static const float fErrorReturnValue = -999;
 
+bool g_tilesDestroyed = false;
+
+
 enum eUICmdAction {
 	kGetFloat,
 	kSetFloat,

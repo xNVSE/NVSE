@@ -15,7 +15,6 @@
 #endif
 
 UInt8* g_lastScriptData;
-bool g_tilesDestroyed = false;
 
 static NVSEStringVarInterface* s_StringVarInterface = NULL;
 bool extraTraces = false;
