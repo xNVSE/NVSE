@@ -5,6 +5,7 @@
 #include "GameScript.h"
 
 extern UInt8* g_lastScriptData;
+extern bool g_tilesDestroyed;
 
 struct ParamInfo;
 class TESForm;

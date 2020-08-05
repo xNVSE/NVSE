@@ -4,6 +4,8 @@
 #include <sstream>
 #include <utility>
 
+
+#include "containers.h"
 #include "GameUI.h"
 #include "GameAPI.h"
 
@@ -32,6 +34,25 @@ enum eUICmdAction {
 	kSetString,
 	kSetFormattedString,
 };
+
+Tile::Value* GetCachedComponentValue(const char* component)
+{
+	static UnorderedMap<const char*, Tile::Value*> map;
+	if (g_tilesDestroyed)
+	{
+		g_tilesDestroyed = false;
+		map.Clear();
+	}
+
+	auto* val = map.Get(component);
+	if (val == nullptr)
+	{
+		val = InterfaceManager::GetMenuComponentValue(component);
+		map[component] = val;
+		return val;
+	}
+	return val;
+}
 
 bool GetSetUIValue_Execute(COMMAND_ARGS, eUICmdAction action)
 {
@@ -62,7 +83,7 @@ bool GetSetUIValue_Execute(COMMAND_ARGS, eUICmdAction action)
 
 	if (bExtracted)
 	{
-		Tile::Value* val = InterfaceManager::GetMenuComponentValue(component);
+		Tile::Value* val = GetCachedComponentValue(component);
 		if (val)
 		{
 			switch (action)
