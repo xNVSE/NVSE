@@ -49,7 +49,6 @@ Tile::Value* GetCachedComponentValue(const char* component)
 	{
 		val = InterfaceManager::GetMenuComponentValue(component);
 		map[component] = val;
-		return val;
 	}
 	return val;
 }

@@ -29,15 +29,16 @@ namespace OtherHooks
 		{
 			mov g_tilesDestroyed, 1
 			// original asm
+			pop ecx
 			mov esp, ebp
 			pop ebp
-			ret 0x4
+			ret
 		}
 	}
 
 	void Hooks_Other_Init()
 	{
 		WriteRelJump(0x593E0B, UInt32(SaveRunLineScriptHook));
-		WriteRelJump(0x7099A6, UInt32(TilesDestroyedHook));
+		WriteRelJump(0x9FF5FB, UInt32(TilesDestroyedHook));
 	}
 }
