@@ -5,6 +5,8 @@
 #include "Hooks_Script.h"
 #include <string>
 
+
+#include "containers.h"
 #include "FastStack.h"
 #include "ParamInfos.h"
 #include "FunctionScripts.h"
@@ -3345,7 +3347,7 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 	return nullptr;
 }
 
-std::unordered_map<UInt8*, std::vector<TokenCacheEntry>> g_tokenCache;
+UnorderedMap<UInt8*, std::vector<TokenCacheEntry>> g_tokenCache;
 
 ScriptToken* ExpressionEvaluator::Evaluate()
 {

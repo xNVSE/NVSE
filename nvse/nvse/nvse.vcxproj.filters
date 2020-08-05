@@ -220,6 +220,9 @@
     <ClCompile Include="printf.cpp">
       <Filter>lib</Filter>
     </ClCompile>
+    <ClCompile Include="utility.cpp">
+      <Filter>lib</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
@@ -438,6 +441,12 @@
       <Filter>lib</Filter>
     </ClInclude>
     <ClInclude Include="printf.h">
+      <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="containers.h">
+      <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="utility.h">
       <Filter>lib</Filter>
     </ClInclude>
   </ItemGroup>

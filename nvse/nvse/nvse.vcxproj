@@ -568,6 +568,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Utilities.cpp" />
+    <ClCompile Include="utility.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h" />
@@ -593,6 +594,7 @@
     <ClInclude Include="Commands_String.h" />
     <ClInclude Include="Commands_UI.h" />
     <ClInclude Include="CommandTable.h" />
+    <ClInclude Include="containers.h" />
     <ClInclude Include="Core_Serialization.h" />
     <ClInclude Include="EventManager.h" />
     <ClInclude Include="FastStack.h" />
@@ -643,6 +645,7 @@
     <ClInclude Include="StringVar.h" />
     <ClInclude Include="ThreadLocal.h" />
     <ClInclude Include="Utilities.h" />
+    <ClInclude Include="utility.h" />
     <ClInclude Include="VarMap.h" />
   </ItemGroup>
   <ItemGroup>
