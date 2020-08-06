@@ -410,7 +410,8 @@ const char* ScriptToken::GetString()
 	else if (type == kTokenType_StringVar && value.var)
 	{
 		StringVar* strVar = g_StringMap.Get(value.var->data);
-		result = strVar ? strVar->GetCString() : NULL;
+		if (strVar) result = strVar->GetCString();
+		else result = NULL;
 	}
 	else if (type == kTokenType_Command)
 	{
@@ -571,9 +572,9 @@ ScriptEventList::Var* ScriptToken::GetVar() const
 
 void ScriptToken::ResolveVariable(ExpressionEvaluator* context)
 {
-	if (value.var == nullptr || varIdx != value.var->id)
+	if (value.var == nullptr || varIdx != value.var->id || this->scriptEventList != context->eventList)
 	{
-		ScriptEventList* scriptEventList = context->eventList;
+		scriptEventList = context->eventList;
 		if (refIdx)
 		{
 			Script::RefVariable* refVar = context->script->GetVariable(refIdx);
@@ -727,6 +728,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 	UInt8 typeCode = context->ReadByte();
 	this->owningScript = context->script;
 	this->context = context;
+	this->scriptEventList = context->eventList;
 	switch (typeCode)
 	{
 	case 'B':

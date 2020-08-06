@@ -1,7 +1,7 @@
 #include "Hooks_Other.h"
 #include "GameAPI.h"
 #include "SafeWrite.h"
-
+#include "Commands_UI.h"
 
 namespace OtherHooks
 {

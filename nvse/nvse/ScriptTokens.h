@@ -159,9 +159,6 @@ protected:
 	Token_Type	type;
 	UInt8		variableType;	
 	Script*		owningScript;
-	UInt16		refIdx;
-	UInt16		varIdx;
-
 
 	struct Value {
 		std::string					str;
@@ -277,6 +274,9 @@ public:
 	UInt32 opcodeOffset;
 	CommandReturnType returnType;
 	ExpressionEvaluator* context;
+	ScriptEventList* scriptEventList;
+	UInt16		refIdx;
+	UInt16		varIdx;
 };
 
 struct SliceToken : ScriptToken
