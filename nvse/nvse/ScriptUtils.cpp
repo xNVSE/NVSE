@@ -303,9 +303,9 @@ ScriptToken* Eval_Assign_String(OperatorType op, ScriptToken* lh, ScriptToken* r
 
 	// if left hand side owning script is UDF, make string temp
 	bool makeTemporary = false;
-	if (lh->GetOwningScript() != nullptr)
+	if (lh->GetOwningScript()->IsUserDefinedFunction() && lh->refIdx == 0)
 	{
-		makeTemporary = lh->GetOwningScript()->IsUserDefinedFunction();
+		makeTemporary = true;
 	}
 	
 	if (!strVar)
