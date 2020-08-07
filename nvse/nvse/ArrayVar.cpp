@@ -305,7 +305,7 @@ ArrayVar::ArrayVar(UInt8 modIndex)
 ArrayVar::ArrayVar(UInt32 _keyType, bool _packed, UInt8 modIndex)
 	: m_ID(0), m_keyType(_keyType), m_bPacked(_packed), m_owningModIndex(modIndex)
 {
-	if (_keyType == kDataType_Numeric)
+	if (_keyType == kDataType_Numeric && _packed)
 	{
 		m_elements = ArrayVarElementContainer(true);
 	}
