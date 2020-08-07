@@ -542,6 +542,10 @@ static size_t _etoa(out_fct_type out, char* buffer, size_t idx, size_t maxlen, d
             if ((prec > 0) && (flags & FLAGS_PRECISION)) {
                 --prec;
             }
+            if (value == 0)
+            {
+                minwidth = 0U;
+            }
         }
     }
 
