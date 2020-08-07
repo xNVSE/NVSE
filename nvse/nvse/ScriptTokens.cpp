@@ -800,8 +800,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		opcodeOffset = context->m_data - context->m_scriptData;
 		context->m_data += argsLen - 2;
 		returnType = g_scriptCommands.GetReturnType(value.cmd);
-		if (returnType == kRetnType_Ambiguous || returnType == kRetnType_ArrayIndex)	// return type ambiguous, cmd will inform us of type to expect
-			returnType = context->GetExpectedReturnType();
+		
 		break;
 	}
 	case 'V':

@@ -3311,11 +3311,15 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 
 	*m_opcodeOffsetPtr = opcodeOffset;
 
-
 	if (!bExecuted)
 	{
 		Error("Command %s failed to execute", cmdInfo->longName);
 		return nullptr;
+	}
+
+	if (retnType == kRetnType_Ambiguous || retnType == kRetnType_ArrayIndex)	// return type ambiguous, cmd will inform us of type to expect
+	{
+		retnType = GetExpectedReturnType();
 	}
 
 	switch (retnType)
@@ -3400,6 +3404,18 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			}
 #endif
 		}
+
+		// no short circuit for this unfortunately
+		if (curToken->Type() == kTokenType_Command && (curToken->returnType == kRetnType_Ambiguous || curToken->returnType == kRetnType_ArrayIndex))
+		{
+			auto* temp = ExecuteCommandToken(curToken);
+			if (temp == nullptr)
+			{
+				break;
+			}
+			curToken->Delete();
+			curToken = temp;
+		}
 		
 		if (curToken->Type() != kTokenType_Operator)
 		{
@@ -3428,7 +3444,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				lhOperand = operands.top();
 				operands.pop();
 			}
-
+			
 			ScriptToken* opResult;
 			if (!cacheExists)
 			{
