@@ -66,6 +66,12 @@ static bool ShowWarning(const char* msg)
 
 ErrOutput g_ErrOut(ShowError, ShowWarning);
 
+inline UInt32 AddStringVar(const char* data, ScriptToken& lh)
+{
+	const auto makeTemporary = lh.GetOwningScript()->IsUserDefinedFunction() && lh.refIdx == 0;
+	return g_StringMap.Add(lh.GetOwningScript()->GetModIndex(), data, makeTemporary);
+}
+
 #if RUNTIME
 
 // run-time errors
@@ -301,16 +307,11 @@ ScriptToken* Eval_Assign_String(OperatorType op, ScriptToken* lh, ScriptToken* r
 	UInt32 strID = lh->GetVar()->data;
 	StringVar* strVar = g_StringMap.Get(strID);
 
-	// if left hand side owning script is UDF, make string temp
-	bool makeTemporary = false;
-	if (lh->GetOwningScript()->IsUserDefinedFunction() && lh->refIdx == 0)
-	{
-		makeTemporary = true;
-	}
 	
 	if (!strVar)
 	{
-		strID = g_StringMap.Add(context->script->GetModIndex(), rh->GetString(), makeTemporary);
+		//strID = g_StringMap.Add(context->script->GetModIndex(), rh->GetString(), makeTemporary);
+		strID = AddStringVar(rh->GetString(), *lh);
 		lh->GetVar()->data = strID;
 	}
 	else
@@ -476,7 +477,8 @@ ScriptToken* Eval_PlusEquals_String(OperatorType op, ScriptToken* lh, ScriptToke
 	StringVar* strVar = g_StringMap.Get(strID);
 	if (!strVar)
 	{
-		strID = g_StringMap.Add(context->script->GetModIndex(), "");
+		//strID = g_StringMap.Add(context->script->GetModIndex(), "");
+		strID = AddStringVar("", *lh);
 		lh->GetVar()->data = strID;
 		strVar = g_StringMap.Get(strID);
 	}
@@ -491,7 +493,8 @@ ScriptToken* Eval_TimesEquals_String(OperatorType op, ScriptToken* lh, ScriptTok
 	StringVar* strVar = g_StringMap.Get(strID);
 	if (!strVar)
 	{
-		strID = g_StringMap.Add(context->script->GetModIndex(), "");
+		//strID = g_StringMap.Add(context->script->GetModIndex(), "");
+		strID = AddStringVar("", *lh);
 		lh->GetVar()->data = strID;
 		strVar = g_StringMap.Get(strID);
 	}
@@ -825,7 +828,8 @@ ScriptToken* Eval_In(OperatorType op, ScriptToken* lh, ScriptToken* rh, Expressi
 			StringVar* sv = g_StringMap.Get(iterID);
 			if (!sv)
 			{
-				iterID = g_StringMap.Add(context->script->GetModIndex(), "");
+				//iterID = g_StringMap.Add(context->script->GetModIndex(), "");
+				iterID = AddStringVar("", *lh);
 				lh->GetVar()->data = iterID;
 			}
 

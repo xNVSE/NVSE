@@ -1397,7 +1397,13 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 	*/
 	UInt8* dataStart = (UInt8*)scriptDataIn;	// should be 0x58 (or 0x72 if called with dot syntax)
 
-	if (!((*dataStart == 0x58 || *dataStart == 0x72))) {
+	if (*dataStart != 0x58 && *dataStart != 0x72) 
+	{
+		return false;
+	}
+
+	if (*(g_lastScriptData - 5) != 0x73) // make sure `set ... to` and not `if ...`
+	{
 		return false;
 	}
 
