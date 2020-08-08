@@ -9,6 +9,9 @@
 	which perform the operations can know that the operands are of the expected type.
 */
 
+extern bool g_scriptEventListsDestroyed;
+
+
 struct Operator;
 struct ScriptEventList;
 class ExpressionEvaluator;

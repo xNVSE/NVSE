@@ -41,19 +41,20 @@ enum eUICmdAction {
 Tile::Value* GetCachedComponentValue(const char* component)
 {
 	static UnorderedMap<const char*, Tile::Value*> map;
+
 	if (g_tilesDestroyed)
 	{
 		g_tilesDestroyed = false;
 		map.Clear();
 	}
 
-	auto* val = map.Get(component);
-	if (val == nullptr)
+	Tile::Value** valPtr;
+	if (map.Insert(component, &valPtr))
 	{
-		val = InterfaceManager::GetMenuComponentValue(component);
-		map[component] = val;
+		*valPtr = InterfaceManager::GetMenuComponentValue(component);
 	}
-	return val;
+
+	return *valPtr;
 }
 
 bool GetSetUIValue_Execute(COMMAND_ARGS, eUICmdAction action)

@@ -839,7 +839,6 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 			}
 		}
 
-
 		varIdx = context->Read16();
 		value.var = NULL;
 		if (eventList)

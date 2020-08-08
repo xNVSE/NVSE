@@ -22,6 +22,8 @@
 #include "ThreadLocal.h"
 #include "PluginManager.h"
 
+bool g_scriptEventListsDestroyed = false;
+
 const char* GetEditorID(TESForm* form)
 {
 	return NULL;
@@ -3358,6 +3360,13 @@ UnorderedMap<UInt8*, std::vector<TokenCacheEntry>> g_tokenCache;
 
 ScriptToken* ExpressionEvaluator::Evaluate()
 {
+	if (g_scriptEventListsDestroyed)
+	{
+		// Variable list gets destroyed on game load, good time to clear cache and necessary for cached variable tokens
+		g_scriptEventListsDestroyed = false;
+		g_tokenCache.Clear();
+	}
+	
 	UInt16 argLen = Read16();
 	UInt8* endData = m_data + argLen - sizeof(UInt16);
 	
@@ -3365,11 +3374,9 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 
 #if !DISABLE_CACHING
 	UInt8* cacheKey = GetCommandOpcodePosition();
-	//g_lastCacheKeyDebug = cacheKey;
 	auto& cachedTokens = g_tokenCache[cacheKey];
 	const auto cacheExists = !cachedTokens.empty();
 	std::size_t tokenCount = 0;
-	//auto cacheSize = g_tokenCache.size();
 
 #else
 	auto cacheExists = false;
