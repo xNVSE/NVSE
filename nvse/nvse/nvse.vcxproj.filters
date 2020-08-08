@@ -19,6 +19,9 @@
     <Filter Include="lib">
       <UniqueIdentifier>{ef94c411-7c4e-4721-bb88-b1b6ec558640}</UniqueIdentifier>
     </Filter>
+    <Filter Include="lib\jip">
+      <UniqueIdentifier>{93d93604-5010-4ad9-9342-49286858e435}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Algohol\algMath.cpp">
@@ -220,8 +223,11 @@
     <ClCompile Include="printf.cpp">
       <Filter>lib</Filter>
     </ClCompile>
+    <ClCompile Include="containers.cpp">
+      <Filter>lib\jip</Filter>
+    </ClCompile>
     <ClCompile Include="utility.cpp">
-      <Filter>lib</Filter>
+      <Filter>lib\jip</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -444,10 +450,10 @@
       <Filter>lib</Filter>
     </ClInclude>
     <ClInclude Include="containers.h">
-      <Filter>lib</Filter>
+      <Filter>lib\jip</Filter>
     </ClInclude>
     <ClInclude Include="utility.h">
-      <Filter>lib</Filter>
+      <Filter>lib\jip</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
