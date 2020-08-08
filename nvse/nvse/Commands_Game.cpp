@@ -5,7 +5,7 @@
 #include "GameUI.h"
 #include "GameData.h"
 #include "Hooks_SaveLoad.h"
-#include <set>
+#include <unordered_set>
 #include "GameScript.h"
 #include "SafeWrite.h"
 #include "Hooks_Gameplay.h"
@@ -117,7 +117,7 @@ bool Cmd_GetCrosshairRef_Execute(COMMAND_ARGS)
 
 bool Cmd_GetGameLoaded_Execute(COMMAND_ARGS)
 {
-	static std::set<UInt32>	informedScripts;
+	static std::unordered_set<UInt32> informedScripts;
 
 	*result = 0;
 
@@ -143,13 +143,13 @@ bool Cmd_GetGameLoaded_Execute(COMMAND_ARGS)
 		if (IsConsoleMode())
 			Console_Print("GetGameLoaded >> %.0f", *result);
 	}
-
+	
 	return true;
 }
 
 bool Cmd_GetGameRestarted_Execute(COMMAND_ARGS)
 {
-	static std::set<UInt32> regScripts;
+	static std::unordered_set<UInt32> regScripts;
 
 	*result = 0;
 
