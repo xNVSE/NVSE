@@ -2609,8 +2609,7 @@ UInt8* ExpressionEvaluator::GetCommandOpcodePosition() const
 {
 	if (m_scriptData != script->data) // set ... to or if ..., script data is stored on stack and not heap
 	{
-		const auto offset = g_lastScriptData - static_cast<UInt8*>(script->data) + 1;
-		return static_cast<UInt8*>(script->data) + offset + *m_opcodeOffsetPtr;
+		return g_lastScriptData + *m_opcodeOffsetPtr + 1;
 	}
 	return static_cast<UInt8*>(m_scriptData) + *m_opcodeOffsetPtr;
 }
