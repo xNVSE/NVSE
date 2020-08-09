@@ -3360,29 +3360,41 @@ UnorderedMap<UInt8*, std::vector<TokenCacheEntry>> g_tokenCache;
 
 ScriptToken* ExpressionEvaluator::Evaluate()
 {
-	if (g_scriptEventListsDestroyed)
+/*	if (g_scriptEventListsDestroyed)
 	{
 		// Variable list gets destroyed on game load, good time to clear cache and necessary for cached variable tokens
 		g_scriptEventListsDestroyed = false;
 		g_tokenCache.Clear();
 	}
-	
+	*/
 	UInt16 argLen = Read16();
-	UInt8* endData = m_data + argLen - sizeof(UInt16);
 	
-	FastStack<ScriptToken*, 16> operands;
 
 #if !DISABLE_CACHING
 	UInt8* cacheKey = GetCommandOpcodePosition();
 	auto& cachedTokens = g_tokenCache[cacheKey];
-	const auto cacheExists = !cachedTokens.empty();
+	
+	if (cachedTokens.size() == 1)
+	{
+		auto& entry = cachedTokens[0];
+		auto* token = &entry.token;
+		token->context = this;
+		m_data += entry.incrementData;
+		*m_opcodeOffsetPtr = m_data - m_scriptData;
+		return &entry.token;
+	}
+
 	std::size_t tokenCount = 0;
+	const auto cacheExists = !cachedTokens.empty();
+
 
 #else
 	auto cacheExists = false;
 	auto tokenCount = 0;
 	auto tokenSize = 0;
 #endif
+	FastStack<ScriptToken*, 16> operands;
+	UInt8* endData = m_data + argLen - sizeof(UInt16);
 
 	while (m_data < endData)
 	{
@@ -3407,11 +3419,6 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			curToken = &entry.token;
 			curToken->context = this;
 			m_data += entry.incrementData;
-			const auto type = curToken->Type();
-			if (type >= kTokenType_Variable && type <= kTokenType_ArrayVar)
-			{
-				curToken->ResolveVariable(this);
-			}
 #endif
 		}
 
@@ -3503,14 +3510,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 		return NULL;
 	}
 	
-	auto* result = operands.top();
-	if (result->Type() == kTokenType_Command)
-	{
-		auto* temp = ExecuteCommandToken(result);
-		result->Delete();
-		result = temp;
-	}
-	return result;
+	return operands.top();
 }
 
 //	Pop required operand(s)

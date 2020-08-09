@@ -202,17 +202,17 @@ public:
 	virtual	~ScriptToken();
 
 	virtual const char	*			GetString();
-	virtual UInt32					GetFormID() const;
-	virtual TESForm*				GetTESForm() const;
-	virtual double					GetNumber() const;
+	virtual UInt32					GetFormID();
+	virtual TESForm*				GetTESForm();
+	virtual double					GetNumber();
 	virtual const ArrayKey *		GetArrayKey() const { return NULL; }
 	virtual const ForEachContext *	GetForEachContext() const { return NULL; }
 	virtual const Slice *			GetSlice() const { return NULL; }
-	virtual bool					GetBool() const;
+	virtual bool					GetBool();
 #if RUNTIME
-	virtual ArrayID					GetArray() const;
-	ScriptEventList::Var *	GetVar() const;
-	void					ResolveVariable(ExpressionEvaluator* context);
+	virtual ArrayID					GetArray();
+	ScriptEventList::Var *			GetVar();
+	void							ResolveVariable();
 #endif
 	virtual bool			CanConvertTo(Token_Type to) const;	// behavior varies b/w compile/run-time for ambiguous types
 	virtual ArrayID			GetOwningArrayID() const { return 0; }
@@ -323,11 +323,11 @@ struct ArrayElementToken : ScriptToken
 	ArrayElementToken(ArrayID arr, ArrayKey* _key);
 	const ArrayKey*	GetArrayKey() const override { return type == kTokenType_ArrayElement ? &key : NULL; }
 	const char*		GetString() override;
-	double			GetNumber() const override;
-	UInt32			GetFormID() const override;
-	ArrayID			GetArray() const override;
-	TESForm*		GetTESForm() const override;
-	bool			GetBool() const override;
+	double			GetNumber() override;
+	UInt32			GetFormID() override;
+	ArrayID			GetArray() override;
+	TESForm*		GetTESForm() override;
+	bool			GetBool()  override;
 	bool			CanConvertTo(Token_Type to) const override;
 	ArrayID			GetOwningArrayID() const override
 	{
@@ -390,7 +390,7 @@ struct AssignableStringArrayElementToken : public AssignableStringToken
 	ArrayKey	key;
 
 	AssignableStringArrayElementToken(UInt32 _id, const ArrayKey& _key, UInt32 lbound, UInt32 ubound);
-	ArrayID		GetArray() const override { return value.arrID; }
+	ArrayID		GetArray() override { return value.arrID; }
 	bool Assign(const char* str) override;
 
 	void* operator new(size_t size)

@@ -407,8 +407,13 @@ const char* ScriptToken::GetString()
 	if (type == kTokenType_String)
 		result = value.str.c_str();
 #if RUNTIME
-	else if (type == kTokenType_StringVar && value.var)
+	else if (type == kTokenType_StringVar)
 	{
+		ResolveVariable();
+		if (!value.var)
+		{
+			return "";
+		}
 		StringVar* strVar = g_StringMap.Get(value.var->data);
 		if (strVar) result = strVar->GetCString();
 		else result = NULL;
@@ -429,14 +434,21 @@ const char* ScriptToken::GetString()
 	return empty;
 }
 
-UInt32 ScriptToken::GetFormID() const
+UInt32 ScriptToken::GetFormID()
 {
 	if (type == kTokenType_Form)
 		return value.formID;
 #if RUNTIME
-	else if (type == kTokenType_RefVar && value.var)
-		return *(UInt64*)(&value.var->data);
-	else if (type == kTokenType_Command)
+	if (type == kTokenType_RefVar)
+	{
+		ResolveVariable();
+		if (!value.var)
+		{
+			return 0;
+		}
+		return *reinterpret_cast<UInt64*>(&value.var->data);
+	}
+	if (type == kTokenType_Command)
 	{
 		auto* token = context->ExecuteCommandToken(this);
 		if (token)
@@ -455,15 +467,22 @@ UInt32 ScriptToken::GetFormID() const
 	return 0;
 }
 
-TESForm* ScriptToken::GetTESForm() const
+TESForm* ScriptToken::GetTESForm()
 {
 	// ###TODO: handle Ref (RefVariable)? Read() turns RefVariable into Form so that type is compile-time only
 #if RUNTIME
 	if (type == kTokenType_Form)
 		return LookupFormByID(value.formID);
-	else if (type == kTokenType_RefVar && value.var)
-		return LookupFormByID(*((UInt64*)(&value.var->data)));
-	else if (type == kTokenType_Command)
+	if (type == kTokenType_RefVar && value.var)
+	{
+		ResolveVariable();
+		if (!value.var)
+		{
+			return nullptr;
+		}
+		return LookupFormByID(*reinterpret_cast<UInt64*>(&value.var->data));
+	}
+	if (type == kTokenType_Command)
 	{
 		auto* token = context->ExecuteCommandToken(this);
 		if (token)
@@ -481,7 +500,7 @@ TESForm* ScriptToken::GetTESForm() const
 		return NULL;
 }
 
-double ScriptToken::GetNumber() const
+double ScriptToken::GetNumber()
 {
 	if (type == kTokenType_Number || type == kTokenType_Boolean)
 		return value.num;
@@ -490,7 +509,15 @@ double ScriptToken::GetNumber() const
 #if RUNTIME
 	else if ((type == kTokenType_NumericVar && value.var) ||
 	         (type == kTokenType_StringVar && value.var))
+	{
+		ResolveVariable();
+		if (!value.var)
+		{
+			return 0.0;
+		}
 		return value.var->data;
+	}
+		
 	else if (type == kTokenType_Command)
 	{
 		auto* token = context->ExecuteCommandToken(this);
@@ -505,7 +532,7 @@ double ScriptToken::GetNumber() const
 	return 0.0;
 }
 
-bool ScriptToken::GetBool() const
+bool ScriptToken::GetBool()
 {
 	switch (type)
 	{
@@ -523,7 +550,14 @@ bool ScriptToken::GetBool() const
 	case kTokenType_StringVar:
 	case kTokenType_ArrayVar:
 	case kTokenType_RefVar:
-		return value.var->data ? true : false;
+		{
+			ResolveVariable();
+			if (!value.var)
+			{
+				return false;
+			}
+			return value.var->data ? true : false;
+		}
 	case kTokenType_Command:
 		{
 			auto* token = context->ExecuteCommandToken(this);
@@ -546,13 +580,20 @@ Operator* ScriptToken::GetOperator() const
 }
 
 #if RUNTIME
-ArrayID ScriptToken::GetArray() const
+ArrayID ScriptToken::GetArray()
 {
 	if (type == kTokenType_Array)
 		return value.arrID;
-	else if (type == kTokenType_ArrayVar)
+	if (type == kTokenType_ArrayVar)
+	{
+		ResolveVariable();
+		if (!value.var)
+		{
+			return false;
+		}
 		return value.var->data;
-	else if (type == kTokenType_Command)
+	}
+	if (type == kTokenType_Command)
 	{
 		auto* token = context->ExecuteCommandToken(this);
 		if (token)
@@ -565,12 +606,13 @@ ArrayID ScriptToken::GetArray() const
 	return 0;
 }
 
-ScriptEventList::Var* ScriptToken::GetVar() const
+ScriptEventList::Var* ScriptToken::GetVar()
 {
+	ResolveVariable();
 	return IsVariable() ? value.var : NULL;
 }
 
-void ScriptToken::ResolveVariable(ExpressionEvaluator* context)
+void ScriptToken::ResolveVariable()
 {
 	if (value.var == nullptr || varIdx != value.var->id || this->scriptEventList != context->eventList)
 	{
@@ -1035,7 +1077,7 @@ void ArrayElementToken::operator delete(void* p)
 	g_arrayTokenAllocator.Free(p);
 }
 
-double ArrayElementToken::GetNumber() const
+double ArrayElementToken::GetNumber()
 {
 	double out = 0.0;
 	g_ArrayMap.GetElementNumber(GetOwningArrayID(), key, &out);
@@ -1051,21 +1093,21 @@ const char* ArrayElementToken::GetString()
 	return empty;
 }
 
-UInt32 ArrayElementToken::GetFormID() const
+UInt32 ArrayElementToken::GetFormID()
 {
 	UInt32 out = 0;
 	g_ArrayMap.GetElementFormID(GetOwningArrayID(), key, &out);
 	return out;
 }
 
-TESForm* ArrayElementToken::GetTESForm() const
+TESForm* ArrayElementToken::GetTESForm()
 {
 	TESForm* out = NULL;
 	g_ArrayMap.GetElementForm(GetOwningArrayID(), key, &out);
 	return out;
 }
 
-bool ArrayElementToken::GetBool() const
+bool ArrayElementToken::GetBool()
 {
 	UInt8 elemType = g_ArrayMap.GetElementType(GetOwningArrayID(), key);
 	if (elemType == kDataType_Numeric)
@@ -1084,7 +1126,7 @@ bool ArrayElementToken::GetBool() const
 	return false;
 }
 
-ArrayID ArrayElementToken::GetArray() const
+ArrayID ArrayElementToken::GetArray()
 {
 	ArrayID out = 0;
 	g_ArrayMap.GetElementArray(GetOwningArrayID(), key, &out);
