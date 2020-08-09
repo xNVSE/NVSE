@@ -23,6 +23,7 @@
 #include "PluginManager.h"
 
 bool g_scriptEventListsDestroyed = false;
+UnorderedMap<UInt8*, std::vector<TokenCacheEntry>> g_tokenCache;
 
 const char* GetEditorID(TESForm* form)
 {
@@ -3256,15 +3257,6 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 	return true;
 }
 
-
-struct TokenCacheEntry
-{
-	ScriptToken token;
-	UInt8 incrementData;
-	Op_Eval eval;
-	bool swapOrder;
-};
-
 //UInt8* g_lastCacheKeyDebug;
 
 ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
@@ -3346,8 +3338,6 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 	}
 	return nullptr;
 }
-
-UnorderedMap<UInt8*, std::vector<TokenCacheEntry>> g_tokenCache;
 
 ScriptToken* ExpressionEvaluator::Evaluate()
 {

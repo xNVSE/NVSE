@@ -1,4 +1,5 @@
 #pragma once
+#include "containers.h"
 
 /*
 	Expressions are evaluated according to a set of rules stored in lookup tables. Each type of operand can 
@@ -28,6 +29,16 @@ class FunctionCaller;
 #endif
 
 extern ErrOutput g_ErrOut;
+
+struct TokenCacheEntry
+{
+	ScriptToken token;
+	UInt8 incrementData;
+	Op_Eval eval;
+	bool swapOrder;
+};
+extern UnorderedMap<UInt8*, std::vector<TokenCacheEntry>> g_tokenCache;
+
 
 // these are used in ParamInfo to specify expected Token_Type of args to commands taking NVSE expressions as args
 enum {
