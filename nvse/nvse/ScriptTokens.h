@@ -240,8 +240,6 @@ public:
 	bool					IsVariable() const	{ return type >= kTokenType_NumericVar && type <= kTokenType_ArrayVar; }
 
 	double					GetNumericRepresentation(bool bFromHex);	// attempts to convert string to number
-	char*					DebugPrint(void);
-
 	void					Delete() const;
 
 	static ScriptToken* Read(ExpressionEvaluator* context);

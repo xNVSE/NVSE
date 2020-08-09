@@ -129,44 +129,6 @@ ScriptToken::ScriptToken(CommandInfo* cmdInfo, UInt16 refIdx) : type(kTokenType_
 	value.cmd = cmdInfo;
 }
 
-char debugPrint[512];
-
-char* ScriptToken::DebugPrint(void)
-{
-	/*
-	switch (type) {
-		case kTokenType_Number: sprintf_s(debugPrint, 512, "[Type=Number, Value=%g]", value.num); break;
-		case kTokenType_Boolean: sprintf_s(debugPrint, 512, "[Type=Boolean, Value=%s]", (value.num ? "true" : "false")); break;
-		case kTokenType_String: sprintf_s(debugPrint, 512, "[Type=String, Value=%s]", value.str); break;
-		case kTokenType_Form: sprintf_s(debugPrint, 512, "[Type=Form, Value=%08X]", value.formID); break;
-		case kTokenType_Ref: sprintf_s(debugPrint, 512, "[Type=Ref, Value=%s]", value.refVar->name); break;
-		case kTokenType_Global: sprintf_s(debugPrint, 512, "[Type=Global, Value=%s]", value.global->GetName()); break;
-		case kTokenType_ArrayElement: sprintf_s(debugPrint, 512, "[Type=ArrayElement, Value=%g]", value.num); break;
-		case kTokenType_Slice: sprintf_s(debugPrint, 512, "[Type=Slice, Value=%g]", value.num); break;
-		case kTokenType_Command: sprintf_s(debugPrint, 512, "[Type=Command, Value=%g]", value.cmd->opcode); break;
-#if RUNTIME
-		case kTokenType_Array: sprintf_s(debugPrint, 512, "[Type=Array, Value=%g]", value.arrID); break;
-		case kTokenType_Variable: sprintf_s(debugPrint, 512, "[Type=Variable, Value=%g]", value.var->id); break;
-		case kTokenType_NumericVar: sprintf_s(debugPrint, 512, "[Type=NumericVar, Value=%g]", value.var->data); break;
-		case kTokenType_ArrayVar: sprintf_s(debugPrint, 512, "[Type=ArrayVar, Value=%g]", value.arrID); break;
-		case kTokenType_StringVar: sprintf_s(debugPrint, 512, "[Type=StringVar, Value=%g]", value.num); break;
-#endif
-		case kTokenType_RefVar: sprintf_s(debugPrint, 512, "[Type=RefVar, Index=%d (EDID not available)]", value.refVar->varIdx); break;
-		case kTokenType_Ambiguous: sprintf_s(debugPrint, 512, "[Type=Ambiguous, no Value]"); break;
-		case kTokenType_Operator: sprintf_s(debugPrint, 512, "[Type=Operator, Value=%g]", value.op->type); break;
-		case kTokenType_ForEachContext: sprintf_s(debugPrint, 512, "[Type=ForEachContext, Value=%g]", value.num); break;
-		case kTokenType_Byte: sprintf_s(debugPrint, 512, "[Type=Byte, Value=%g]", value.num); break;
-		case kTokenType_Short: sprintf_s(debugPrint, 512, "[Type=Short, Value=%g]", value.num); break;
-		case kTokenType_Int: sprintf_s(debugPrint, 512, "[Type=Int, Value=%g]", value.num); break;
-		case kTokenType_Pair: sprintf_s(debugPrint, 512, "[Type=Pair, Value=%g]", value.num); break;
-		case kTokenType_AssignableString: sprintf_s(debugPrint, 512, "[Type=AssignableString, Value=%s]", value.str); break;
-		case kTokenType_Invalid: sprintf_s(debugPrint, 512, "[Type=Invalid, no Value]"); break;
-		case kTokenType_Empty: sprintf_s(debugPrint, 512, "[Type=Empty, no Value]"); break;
-	}
-	return debugPrint;*/
-	return "";
-}
-
 void ScriptToken::Delete() const
 {
 	if (this && !cached)
