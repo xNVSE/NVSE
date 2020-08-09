@@ -2785,7 +2785,7 @@ public:
 			
 	virtual bool SkipArgs(UInt32 numToSkip) { m_curArgIndex += numToSkip; return m_curArgIndex <= m_eval->NumArgs(); }
 	virtual bool HasMoreArgs() { return m_curArgIndex < m_eval->NumArgs(); }
-	virtual std::string GetFormatString() { return m_fmtString; }
+	virtual char *GetFormatString() { return const_cast<char*>(m_fmtString); }
 
 	UInt32 GetCurArgIndex() const { return m_curArgIndex; }
 private:
