@@ -576,6 +576,12 @@ ScriptEventList::Var* ScriptToken::GetVar()
 
 void ScriptToken::ResolveVariable()
 {
+	if (g_scriptEventListsDestroyed)
+	{
+		// Variable list gets destroyed on game load, good time to clear cache and necessary for cached variable tokens
+		g_scriptEventListsDestroyed = false;
+		g_tokenCache.Clear();
+	}
 	if (value.var == nullptr || varIdx != value.var->id || this->scriptEventList != context->eventList)
 	{
 		scriptEventList = context->eventList;
