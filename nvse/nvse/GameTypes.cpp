@@ -6,14 +6,16 @@
 
 /*** String ***/
 
-String::String()
-{
-	//
-}
+String::String() : m_data(NULL), m_dataLen(0), m_bufLen(0) {}
 
 String::~String()
 {
-	//
+	if (m_data)
+	{
+		FormHeap_Free(m_data);
+		m_data = NULL;
+	}
+	m_bufLen = m_dataLen = 0;
 }
 
 bool String::Set(const char * src)
