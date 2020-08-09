@@ -17,7 +17,6 @@
 UInt8* g_lastScriptData;
 
 static NVSEStringVarInterface* s_StringVarInterface = NULL;
-bool extraTraces = false;
 bool alternateUpdate3D = false;
 
 // arg1 = 1, ignored if canCreateNew is false, passed to 'init' function if a new object is created

@@ -123,16 +123,7 @@ bool Cmd_Let_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator evaluator(PASS_COMMAND_ARGS);
 
-	if (extraTraces)
-		gLog.Indent();
-
-	if (extraTraces)
-		_MESSAGE("Extracting args for Let at %08X", *opcodeOffsetPtr - 4);
-
 	evaluator.ExtractArgs();
-
-	if (extraTraces)
-		gLog.Outdent();
 
 	return true;
 }
@@ -144,17 +135,8 @@ bool Cmd_eval_Execute(COMMAND_ARGS)
 	*result = 0;
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 
-	if (extraTraces)
-		gLog.Indent();
-
-	if (extraTraces)
-		_MESSAGE("Extracting args for Eval at %08X", *opcodeOffsetPtr - 4);
-
 	if (eval.ExtractArgs() && eval.Arg(0))
 		*result = eval.Arg(0)->GetBool() ? 1 : 0;
-
-	if (extraTraces)
-		gLog.Outdent();
 
 	return true;
 }
@@ -457,12 +439,6 @@ bool Cmd_Call_Execute(COMMAND_ARGS)
 
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 
-	if (extraTraces)
-		gLog.Indent();
-
-	if (extraTraces)
-		_MESSAGE("Extracting args for Call at %08X", *opcodeOffsetPtr - 4);
-
 	ScriptToken* funcResult = UserFunctionManager::Call(&eval);
 	if (funcResult)
 	{
@@ -487,9 +463,6 @@ bool Cmd_Call_Execute(COMMAND_ARGS)
 		else
 			ShowRuntimeError(scriptObj, "Function call returned unexpected token type %d", funcResult->Type());
 	}
-
-	if (extraTraces)
-		gLog.Outdent();
 
 	delete funcResult;
 	return true;

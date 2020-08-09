@@ -607,18 +607,10 @@ bool InternalFunctionCaller::vSetArgs(UInt8 numArgs, va_list args)
 		return false;
 	}
 
-	if (extraTraces)
-		gLog.Indent();
-
 	m_numArgs = numArgs;
 	for (UInt8 i = 0; i < numArgs; i++) {
 		m_args[i] = va_arg(args, void*);
-		if (extraTraces)
-			_MESSAGE("Extracting arg %d : %s", i, ((ScriptToken*)m_args[i])->DebugPrint());
 	}
-
-	if (extraTraces)
-		gLog.Outdent();
 
 	return true;
 }

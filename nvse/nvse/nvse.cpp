@@ -87,14 +87,10 @@ void NVSE_Initialize(void)
 		PatchCoopLevel();
 		if (GetNVSEConfigOption_UInt32("RUNTIME DEBUG", "WaitForDebugger", &waitForDebugger) && waitForDebugger)
 			WaitForDebugger();
-		if (GetNVSEConfigOption_UInt32("RUNTIME DEBUG", "ExtraTraces", &et) && et)
-			extraTraces = true;
 		GetNVSEConfigOption_UInt32("FIXES", "EnablePrintDuringOnEquip", &s_CheckInsideOnActorEquipHook);
 #else
 		if (GetNVSEConfigOption_UInt32("EDITOR DEBUG", "WaitForDebugger", &waitForDebugger) && waitForDebugger)
 			WaitForDebugger();
-		if (GetNVSEConfigOption_UInt32("EDITOR DEBUG", "ExtraTraces", &et) && et)
-			extraTraces = true;
 #endif
 
 #else

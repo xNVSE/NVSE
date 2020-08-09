@@ -2715,23 +2715,14 @@ bool ExpressionEvaluator::ExtractArgs()
 	UInt32 numArgs = ReadByte();
 	UInt32 curArg = 0;
 
-	if (extraTraces)
-		gLog.Indent();
-
 	while (curArg < numArgs)
 	{
 		ScriptToken* arg = Evaluate();
 		if (!arg)
 			break;
 
-		if (extraTraces)
-			_MESSAGE("Extracting arg %d : %s", curArg, arg->DebugPrint());
-
 		m_args[curArg++] = arg;
 	}
-
-	if (extraTraces)
-		gLog.Outdent();
 
 	if (numArgs == curArg)			// all args extracted
 	{
