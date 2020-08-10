@@ -26,7 +26,7 @@ struct ThreadLocalData
 		ThreadLocalData* data = TryGet();
 		if (!data) {
 			data = new ThreadLocalData();
-			int result = TlsSetValue(s_tlsIndex, data);
+			const auto result = TlsSetValue(s_tlsIndex, data);
 			ASSERT_STR(result, "TlsSetValue() failed in ThreadLocalData::Get()");
 		}
 
@@ -35,7 +35,7 @@ struct ThreadLocalData
 
 	// get for current thread if data exists
 	static ThreadLocalData* TryGet() {
-		return (ThreadLocalData*)TlsGetValue(s_tlsIndex);
+		return static_cast<ThreadLocalData*>(TlsGetValue(s_tlsIndex));
 	}
 
 	static void Init();

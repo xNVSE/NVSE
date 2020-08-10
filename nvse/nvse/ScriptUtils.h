@@ -103,13 +103,14 @@ class ExpressionEvaluator
 	CommandReturnType	m_expectedReturnType;
 	UInt16				m_baseOffset;
 	ExpressionEvaluator	* m_parent;
-	TokenCache&			tokenCache = ThreadLocalData::Get().tokenCache;
+	ThreadLocalData&	localData;
+	TokenCache&			tokenCache;
 
 	CommandReturnType GetExpectedReturnType() { CommandReturnType type = m_expectedReturnType; m_expectedReturnType = kRetnType_Default; return type; }
 	bool ParseBytecode(CachedTokens& cachedTokens);
 
 	void PushOnStack();
-	void PopFromStack();
+	void PopFromStack() const;
 public:
 	static bool	Active();
 

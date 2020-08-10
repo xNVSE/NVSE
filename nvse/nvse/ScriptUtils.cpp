@@ -1699,7 +1699,7 @@ void TokenCache::Clear()
 	cache_.Clear();
 }
 
-std::size_t TokenCache::Size()
+std::size_t TokenCache::Size() const
 {
 	return cache_.Size();
 }
@@ -2689,7 +2689,6 @@ std::string ExpressionEvaluator::ReadString(UInt32& incrData)
 
 void ExpressionEvaluator::PushOnStack()
 {
-	ThreadLocalData& localData = ThreadLocalData::Get();
 	ExpressionEvaluator* top = localData.expressionEvaluator;
 	m_parent = top;
 	localData.expressionEvaluator = this;
@@ -2698,10 +2697,10 @@ void ExpressionEvaluator::PushOnStack()
 	if (top) {
 		// figure out base offset into script data
 		if (top->script == script) {
-			m_baseOffset = top->m_data - (UInt8*)script->data - 4;
+			m_baseOffset = top->m_data - static_cast<UInt8*>(script->data) - 4;
 		}
 		else {	// non-recursive user-defined function call
-			m_baseOffset = m_data - (UInt8*)script->data - 4;
+			m_baseOffset = m_data - static_cast<UInt8*>(script->data) - 4;
 		}
 
 		// inherit flags
@@ -2710,7 +2709,7 @@ void ExpressionEvaluator::PushOnStack()
 	}
 }
 
-void ExpressionEvaluator::PopFromStack()
+void ExpressionEvaluator::PopFromStack() const
 {
 	if (m_parent) {
 		// propogate info to parent
@@ -2719,21 +2718,16 @@ void ExpressionEvaluator::PopFromStack()
 			m_parent->m_flags.Set(kFlag_ErrorOccurred);
 		}
 	}
-
-	ThreadLocalData& localData = ThreadLocalData::Get();
 	localData.expressionEvaluator = m_parent;
 }
 
 ExpressionEvaluator::ExpressionEvaluator(COMMAND_ARGS) : m_opcodeOffsetPtr(opcodeOffsetPtr), m_result(result), 
-	m_thisObj(thisObj), script(scriptObj), eventList(eventList), m_params(paramInfo), m_numArgsExtracted(0), m_baseOffset(0),
-	m_expectedReturnType(kRetnType_Default)
+	m_thisObj(thisObj), m_containingObj(containingObj), m_params(paramInfo), m_numArgsExtracted(0), m_expectedReturnType(kRetnType_Default), m_baseOffset(0),
+	localData(ThreadLocalData::Get()), tokenCache(localData.tokenCache), script(scriptObj), eventList(eventList)
 {
-	m_scriptData = (UInt8*)scriptData;
+	m_scriptData = static_cast<UInt8*>(scriptData);
 	m_data = m_scriptData + *m_opcodeOffsetPtr;
 
-	//memset(m_args, 0, sizeof(m_args));
-
-	m_containingObj = containingObj;	
 	m_baseOffset = *opcodeOffsetPtr - 4;
 
 	m_flags.Clear();
@@ -3300,8 +3294,6 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 	return true;
 }
 
-//UInt8* g_lastCacheKeyDebug;
-
 ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 {
 	// execute the command
@@ -3428,17 +3420,16 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 		auto* curToken = &entry.token;
 		curToken->context = this;
 
-		if (curToken->Type() == kTokenType_Command && (curToken->returnType == kRetnType_Ambiguous || curToken->returnType == kRetnType_ArrayIndex)) [[unlikely]]
+		if (curToken->Type() != kTokenType_Operator)
 		{
-			auto* commandToken = ExecuteCommandToken(curToken);
-			if (commandToken == nullptr)
+			if (curToken->Type() == kTokenType_Command && (curToken->returnType == kRetnType_Ambiguous || curToken->returnType == kRetnType_ArrayIndex)) [[unlikely]]
 			{
-				break;
+				curToken = ExecuteCommandToken(curToken);
+				if (curToken == nullptr)
+				{
+					break;
+				}
 			}
-			operands.push(commandToken);
-		}
-		else if (curToken->Type() != kTokenType_Operator)
-		{
 			operands.push(curToken);
 		}
 		else
