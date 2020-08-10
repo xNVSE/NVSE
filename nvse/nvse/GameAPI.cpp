@@ -1553,9 +1553,9 @@ ScriptFormatStringArgs::ScriptFormatStringArgs(UInt32 _numArgs, UInt8* _scriptDa
 	fmtString.Set(ResolveStringArgument(eventList, s_tempStrArgBuffer));
 }
 
-std::string ScriptFormatStringArgs::GetFormatString()
+char *ScriptFormatStringArgs::GetFormatString()
 {
-	return fmtString;
+	return fmtString.m_data ? fmtString.m_data : "";
 }
 
 bool ScriptFormatStringArgs::HasMoreArgs()
