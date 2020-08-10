@@ -128,14 +128,22 @@ static TLSData * GetTLSData()
 	return data;
 }
 
-bool IsConsoleMode()
+__declspec(naked) bool IsConsoleMode()
 {
-	TLSData * tlsData = GetTLSData();
-
-	if(tlsData)
-		return tlsData->consoleMode != 0;
-
-	return false;
+	__asm
+	{
+		mov		al, byte ptr ds:[0x11DEA2E]
+		test	al, al
+		jz		done
+		mov		eax, dword ptr ds:[0x126FD98]
+		mov		edx, fs:[0x2C]
+		mov		eax, [edx+eax*4]
+		test	eax, eax
+		jz		done
+		mov		al, [eax+0x268]
+	done:
+		retn
+	}
 }
 
 bool GetConsoleEcho()
