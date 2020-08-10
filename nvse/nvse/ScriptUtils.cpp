@@ -3340,8 +3340,6 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 	ExpectReturnType(kRetnType_Default);	// expect default return type unless called command specifies otherwise
 	bool bExecuted = cmdInfo->execute(cmdInfo->params, m_scriptData, callingObj, contObj, script, eventList, &cmdResult, &opcodeOffset);
 
-	*m_opcodeOffsetPtr = opcodeOffset;
-
 	if (!bExecuted)
 	{
 		Error("Command %s failed to execute", cmdInfo->longName);
@@ -3355,6 +3353,15 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 
 	switch (retnType)
 	{
+	case kRetnType_Default:
+	{
+		return ScriptToken::Create(cmdResult);
+	}
+	case kRetnType_Form:
+	{
+		return ScriptToken::CreateForm(*reinterpret_cast<UInt64*>(&cmdResult));
+	}
+
 	case kRetnType_String:
 	{
 		StringVar* strVar = g_StringMap.Get(cmdResult);
@@ -3370,12 +3377,6 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 		Error("A command returned an invalid array");
 		break;
 	}
-	case kRetnType_Form:
-	{
-		return ScriptToken::CreateForm(*((UInt64*)&cmdResult));
-	}
-	case kRetnType_Default:
-		return ScriptToken::Create(cmdResult);
 	default:
 		Error("Unknown command return type %d while executing command in ExpressionEvaluator::Evaluate()", retnType);
 	}
@@ -3426,8 +3427,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	{
 		auto* curToken = &entry.token;
 		curToken->context = this;
-		
-		// no short circuit for this unfortunately
+
 		if (curToken->Type() == kTokenType_Command && (curToken->returnType == kRetnType_Ambiguous || curToken->returnType == kRetnType_ArrayIndex)) [[unlikely]]
 		{
 			auto* commandToken = ExecuteCommandToken(curToken);
@@ -3436,10 +3436,8 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				break;
 			}
 			operands.push(commandToken);
-			continue;
 		}
-		
-		if (entry.token.Type() != kTokenType_Operator)
+		else if (curToken->Type() != kTokenType_Operator)
 		{
 			operands.push(curToken);
 		}
@@ -3468,20 +3466,14 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			ScriptToken* opResult;
 			if (!cachedBefore)
 			{
-#if !DISABLE_CACHING
 				opResult = op->Evaluate(lhOperand, rhOperand, this, entry.eval, entry.swapOrder);
-#else
-				opResult = op->Evaluate(lhOperand, rhOperand, this);
-#endif
 			}
 			else
 			{
-#if !DISABLE_CACHING
 				auto& bSwapOrder = entry.swapOrder;
 				auto& eval = entry.eval;
 				auto& type = op->type;
 				opResult = bSwapOrder ? eval(type, rhOperand, lhOperand, this) : eval(type, lhOperand, rhOperand, this);
-#endif
 			}
 
 			lhOperand->Delete();
