@@ -22,8 +22,7 @@
 #include "ThreadLocal.h"
 #include "PluginManager.h"
 
-bool g_scriptEventListsDestroyed = false;
-UnorderedMap<UInt8*, std::vector<TokenCacheEntry>> g_tokenCache;
+UInt32 g_scriptEventListsDestroyed = 0;
 
 const char* GetEditorID(TESForm* form)
 {
@@ -1660,6 +1659,51 @@ static ParamInfo kDynamicParams[] =
 	{	"object",	kNVSEParamType_Form,	0	},
 };
 
+TokenCacheEntry& CachedTokens::Get(std::size_t key)
+{
+	return this->container_[key];
+}
+
+void CachedTokens::Append(const TokenCacheEntry& entry)
+{
+	this->container_.push_back(entry);
+}
+
+std::size_t CachedTokens::Size() const
+{
+	return container_.size();
+}
+
+bool CachedTokens::Empty() const
+{
+	return container_.empty();
+}
+
+std::vector<TokenCacheEntry>::iterator CachedTokens::begin()
+{
+	return container_.begin();
+}
+
+std::vector<TokenCacheEntry>::iterator CachedTokens::end()
+{
+	return container_.end();
+}
+
+CachedTokens& TokenCache::Get(UInt8* key)
+{
+	return cache_[key];
+}
+
+void TokenCache::Clear()
+{
+	cache_.Clear();
+}
+
+std::size_t TokenCache::Size()
+{
+	return cache_.Size();
+}
+
 DynamicParamInfo::DynamicParamInfo(std::vector<UserFunctionParam> &params)
 {
 	m_numParams = params.size() > kMaxParams ? kMaxParams : params.size();
@@ -2713,9 +2757,9 @@ ExpressionEvaluator::~ExpressionEvaluator()
 
 bool ExpressionEvaluator::ExtractArgs()
 {
+	
 	UInt32 numArgs = ReadByte();
 	UInt32 curArg = 0;
-
 	while (curArg < numArgs)
 	{
 		ScriptToken* arg = Evaluate();
@@ -2724,7 +2768,6 @@ bool ExpressionEvaluator::ExtractArgs()
 
 		m_args[curArg++] = arg;
 	}
-
 	if (numArgs == curArg)			// all args extracted
 	{
 		m_numArgsExtracted = curArg;
@@ -3339,96 +3382,75 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 	return nullptr;
 }
 
-ScriptToken* ExpressionEvaluator::Evaluate()
+bool ExpressionEvaluator::ParseBytecode(CachedTokens& cachedTokens)
 {
-/*	if (g_scriptEventListsDestroyed)
-	{
-		// Variable list gets destroyed on game load, good time to clear cache and necessary for cached variable tokens
-		g_scriptEventListsDestroyed = false;
-		g_tokenCache.Clear();
-	}
-	*/
-	UInt16 argLen = Read16();
-	
-
-#if !DISABLE_CACHING
-	UInt8* cacheKey = GetCommandOpcodePosition();
-	auto& cachedTokens = g_tokenCache[cacheKey];
-	
-	if (cachedTokens.size() == 1)
-	{
-		auto& entry = cachedTokens[0];
-		auto* token = &entry.token;
-		token->context = this;
-		m_data += entry.incrementData;
-		*m_opcodeOffsetPtr = m_data - m_scriptData;
-		return &entry.token;
-	}
-
-	std::size_t tokenCount = 0;
-	const auto cacheExists = !cachedTokens.empty();
-
-
-#else
-	auto cacheExists = false;
-	auto tokenCount = 0;
-	auto tokenSize = 0;
-#endif
-	FastStack<ScriptToken*, 16> operands;
-	UInt8* endData = m_data + argLen - sizeof(UInt16);
-
+	const auto* dataBeforeParsing = m_data;
+	const auto argLen = Read16();
+	const auto* endData = m_data + argLen - sizeof(UInt16);
 	while (m_data < endData)
 	{
-		TokenCacheEntry* tokenCacheEntry;
-		ScriptToken* curToken;
-		if (!cacheExists)
+		ScriptToken token(*this);
+		if (token.IsInvalid())
 		{
-			auto* dataBefore = m_data;
-			curToken = ScriptToken::Read(this);
-			if (!curToken)
-				break;
-#if !DISABLE_CACHING
-			const auto incrData = m_data - dataBefore;
-			cachedTokens.push_back(TokenCacheEntry {*curToken, static_cast<UInt8>(incrData)});
-			tokenCacheEntry = &cachedTokens.back();
-			tokenCacheEntry->token.cached = true;
-		}
-		else
-		{
-			auto& entry = cachedTokens[tokenCount++];
-			tokenCacheEntry = &entry;
-			curToken = &entry.token;
-			curToken->context = this;
-			m_data += entry.incrementData;
-#endif
-		}
+			return false;
+		}		
+		token.cached = true;
+		cachedTokens.Append(TokenCacheEntry{ token });
+	}
+	cachedTokens.incrementData = m_data - dataBeforeParsing;
+	return true;
+}
 
-		// no short circuit for this unfortunately
-		if (curToken->Type() == kTokenType_Command && (curToken->returnType == kRetnType_Ambiguous || curToken->returnType == kRetnType_ArrayIndex))
+ScriptToken* ExpressionEvaluator::Evaluate()
+{
+	auto* cacheKey = GetCommandOpcodePosition();
+	auto& cache = tokenCache.Get(cacheKey);
+	auto cachedBefore = true;
+	if (cache.Empty())
+	{
+		const auto successParsing = ParseBytecode(cache);
+		if (!successParsing)
 		{
-			auto* temp = ExecuteCommandToken(curToken);
-			if (temp == nullptr)
+			Error("Failed to parse script data");
+			return nullptr;
+		}
+		cachedBefore = false;
+	}
+	else
+	{
+		m_data += cache.incrementData;
+	}
+
+	FastStack<ScriptToken*, 16> operands;
+	for (auto& entry : cache)
+	{
+		auto* curToken = &entry.token;
+		curToken->context = this;
+		
+		// no short circuit for this unfortunately
+		if (curToken->Type() == kTokenType_Command && (curToken->returnType == kRetnType_Ambiguous || curToken->returnType == kRetnType_ArrayIndex)) [[unlikely]]
+		{
+			auto* commandToken = ExecuteCommandToken(curToken);
+			if (commandToken == nullptr)
 			{
 				break;
 			}
-			curToken->Delete();
-			curToken = temp;
+			operands.push(commandToken);
+			continue;
 		}
 		
-		if (curToken->Type() != kTokenType_Operator)
+		if (entry.token.Type() != kTokenType_Operator)
 		{
 			operands.push(curToken);
 		}
 		else
 		{
-			Operator* op = curToken->GetOperator();
+			auto* op = curToken->GetOperator();
 			ScriptToken* lhOperand = nullptr;
 			ScriptToken* rhOperand = nullptr;
 
 			if (op->numOperands > operands.size())
 			{
-				curToken->Delete();
-				curToken = NULL;
 				Error("Too few operands for operator %s", op->symbol);
 				break;
 			}
@@ -3442,12 +3464,12 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				lhOperand = operands.top();
 				operands.pop();
 			}
-			
+
 			ScriptToken* opResult;
-			if (!cacheExists)
+			if (!cachedBefore)
 			{
 #if !DISABLE_CACHING
-				opResult = op->Evaluate(lhOperand, rhOperand, this, tokenCacheEntry->eval, tokenCacheEntry->swapOrder);
+				opResult = op->Evaluate(lhOperand, rhOperand, this, entry.eval, entry.swapOrder);
 #else
 				opResult = op->Evaluate(lhOperand, rhOperand, this);
 #endif
@@ -3455,8 +3477,8 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			else
 			{
 #if !DISABLE_CACHING
-				auto& bSwapOrder = tokenCacheEntry->swapOrder;
-				auto& eval = tokenCacheEntry->eval;
+				auto& bSwapOrder = entry.swapOrder;
+				auto& eval = entry.eval;
 				auto& type = op->type;
 				opResult = bSwapOrder ? eval(type, rhOperand, lhOperand, this) : eval(type, lhOperand, rhOperand, this);
 #endif
@@ -3464,21 +3486,19 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 
 			lhOperand->Delete();
 			rhOperand->Delete();
-			curToken->Delete();
-			curToken = NULL;
-			
+
 			if (!opResult)
 			{
 				Error("Operator %s failed to evaluate to a valid result", op->symbol);
 				break;
 			}
-			
+
 			operands.push(opResult);
 		}
 	}
-	
+
 	// adjust opcode offset ptr (important for recursive calls to Evaluate()
-	*m_opcodeOffsetPtr = m_data - m_scriptData;
+	*m_opcodeOffsetPtr += cache.incrementData;
 
 	if (operands.size() != 1)		// should have one operand remaining - result of expression
 	{
@@ -3488,9 +3508,9 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			operands.top()->Delete();
 			operands.pop();
 		}
-		return NULL;
+		return nullptr;
 	}
-	
+
 	return operands.top();
 }
 

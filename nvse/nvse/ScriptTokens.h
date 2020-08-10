@@ -189,6 +189,7 @@ protected:
 	ScriptToken(const char* str);
 	ScriptToken(TESGlobal* global, UInt16 refIdx);
 	ScriptToken(Operator* op);
+	ScriptToken(ExpressionEvaluator& evaluator);
 	ScriptToken(UInt32 data, Token_Type asType);		// ArrayID or FormID
 
 	//ScriptToken(const ScriptToken& rhs);	// unimplemented, don't want copy constructor called
@@ -241,6 +242,7 @@ public:
 
 	double					GetNumericRepresentation(bool bFromHex);	// attempts to convert string to number
 	void					Delete() const;
+	bool					IsInvalid() const;
 
 	static ScriptToken* Read(ExpressionEvaluator* context);
 
@@ -275,6 +277,7 @@ public:
 	ScriptEventList* scriptEventList;
 	UInt16		refIdx;
 	UInt16		varIdx;
+	UInt32 eventListsDestroyedCount = 0;
 };
 
 struct SliceToken : ScriptToken

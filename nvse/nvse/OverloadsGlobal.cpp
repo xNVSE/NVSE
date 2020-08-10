@@ -1,6 +1,6 @@
 #include "Utilities.h"
 
-#if !_DEBUG
+#if 0
 
 void* operator new(size_t size)
 {

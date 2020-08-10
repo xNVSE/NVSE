@@ -45,7 +45,7 @@ namespace OtherHooks
 		__asm
 		{
 			call hookedCall
-			mov g_scriptEventListsDestroyed, 1
+			inc g_scriptEventListsDestroyed
 			jmp returnAddress
 		}
 	}

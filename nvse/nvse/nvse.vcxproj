@@ -639,6 +639,7 @@
     <ClInclude Include="prefix.h" />
     <ClInclude Include="printf.h" />
     <ClInclude Include="SafeWrite.h" />
+    <ClInclude Include="ScriptTokenCache.h" />
     <ClInclude Include="SmallObjectsAllocator.h" />
     <ClInclude Include="ScriptTokens.h" />
     <ClInclude Include="ScriptUtils.h" />

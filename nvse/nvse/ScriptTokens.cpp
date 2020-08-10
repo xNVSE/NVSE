@@ -99,6 +99,11 @@ ScriptToken::ScriptToken(Operator* op) : type(kTokenType_Operator), refIdx(0), v
 	value.op = op;
 }
 
+ScriptToken::ScriptToken(ExpressionEvaluator& evaluator)
+{
+	ReadFrom(&evaluator);
+}
+
 ScriptToken::ScriptToken(VariableInfo* varInfo, UInt16 refIdx, UInt32 varType) : refIdx(refIdx), variableType(varType)
 {
 	INC_TOKEN_COUNT
@@ -135,6 +140,11 @@ void ScriptToken::Delete() const
 	{
 		delete this;
 	}
+}
+
+bool ScriptToken::IsInvalid() const
+{
+	return this->type == kTokenType_Invalid;
 }
 
 #if RUNTIME
@@ -576,13 +586,13 @@ ScriptEventList::Var* ScriptToken::GetVar()
 
 void ScriptToken::ResolveVariable()
 {
-	if (g_scriptEventListsDestroyed)
-	{
-		// Variable list gets destroyed on game load, good time to clear cache and necessary for cached variable tokens
-		g_scriptEventListsDestroyed = false;
-		g_tokenCache.Clear();
+	auto clear = false;
+	if (g_scriptEventListsDestroyed != eventListsDestroyedCount)
+	{		
+		eventListsDestroyedCount = g_scriptEventListsDestroyed;
+		clear = true;
 	}
-	if (value.var == nullptr || varIdx != value.var->id || this->scriptEventList != context->eventList)
+	if (value.var == nullptr || varIdx != value.var->id || this->scriptEventList != context->eventList || clear)
 	{
 		scriptEventList = context->eventList;
 		if (refIdx)
@@ -725,7 +735,6 @@ bool ScriptToken::CanConvertTo(Token_Type to) const
 ScriptToken* ScriptToken::Read(ExpressionEvaluator* context)
 {
 	ScriptToken* newToken = new ScriptToken();
-	newToken->owningScript = context->script;
 	if (newToken->ReadFrom(context) != kTokenType_Invalid)
 		return newToken;
 
@@ -810,7 +819,6 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		opcodeOffset = context->m_data - context->m_scriptData;
 		context->m_data += argsLen - 2;
 		returnType = g_scriptCommands.GetReturnType(value.cmd);
-		
 		break;
 	}
 	case 'V':

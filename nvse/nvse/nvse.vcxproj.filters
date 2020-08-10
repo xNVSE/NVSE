@@ -455,6 +455,9 @@
     <ClInclude Include="utility.h">
       <Filter>lib\jip</Filter>
     </ClInclude>
+    <ClInclude Include="ScriptTokenCache.h">
+      <Filter>internals</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">

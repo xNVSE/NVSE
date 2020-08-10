@@ -1,5 +1,6 @@
 #pragma once
 #include "containers.h"
+#include "ThreadLocal.h"
 
 /*
 	Expressions are evaluated according to a set of rules stored in lookup tables. Each type of operand can 
@@ -10,7 +11,7 @@
 	which perform the operations can know that the operands are of the expected type.
 */
 
-extern bool g_scriptEventListsDestroyed;
+extern UInt32 g_scriptEventListsDestroyed;
 
 
 struct Operator;
@@ -29,15 +30,6 @@ class FunctionCaller;
 #endif
 
 extern ErrOutput g_ErrOut;
-
-struct TokenCacheEntry
-{
-	ScriptToken token;
-	UInt8 incrementData;
-	Op_Eval eval;
-	bool swapOrder;
-};
-extern UnorderedMap<UInt8*, std::vector<TokenCacheEntry>> g_tokenCache;
 
 
 // these are used in ParamInfo to specify expected Token_Type of args to commands taking NVSE expressions as args
@@ -111,8 +103,10 @@ class ExpressionEvaluator
 	CommandReturnType	m_expectedReturnType;
 	UInt16				m_baseOffset;
 	ExpressionEvaluator	* m_parent;
+	TokenCache&			tokenCache = ThreadLocalData::Get().tokenCache;
 
 	CommandReturnType GetExpectedReturnType() { CommandReturnType type = m_expectedReturnType; m_expectedReturnType = kRetnType_Default; return type; }
+	bool ParseBytecode(CachedTokens& cachedTokens);
 
 	void PushOnStack();
 	void PopFromStack();
