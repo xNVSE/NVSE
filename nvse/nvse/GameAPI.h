@@ -399,7 +399,6 @@ private:
 	UInt8			* scriptData;
 	Script			* scriptObj;
 	ScriptEventList		* eventList;
-	String			fmtString;
 };
 bool SCRIPT_ASSERT(bool expr, Script* script, const char * errorMsg, ...);
 
