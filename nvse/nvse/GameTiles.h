@@ -19,7 +19,6 @@ const char * TraitIDToName(int id);	// slow
 //		HotRect	ID=38A
 //		Window	ID=38B
 
-class Action_Tile;
 class NiNode;
 class Menu;
 class NiObject;
@@ -178,6 +177,72 @@ public:
 	virtual UInt32			Unk_08(void);
 	virtual void			Unk_09(UInt32 arg0, UInt32 arg1, UInt32 arg2);
 
+	struct Value;
+
+	enum ActionType
+	{
+		kAction_copy = 0x7D0,
+		kAction_add,
+		kAction_sub,
+		kAction_mul,
+		kAction_div,
+		kAction_min,
+		kAction_max,
+		kAction_mod,
+		kAction_floor,
+		kAction_ceil,
+		kAction_abs,
+		kAction_round,
+		kAction_gt,
+		kAction_gte,
+		kAction_eq,
+		kAction_neq,
+		kAction_lt,
+		kAction_lte,
+		kAction_and,
+		kAction_or,
+		kAction_not,
+		kAction_onlyif,
+		kAction_onlyifnot,
+		kAction_ref,
+		kAction_begin,
+		kAction_end,
+	};
+
+	// 0C
+	class Action
+	{
+	public:
+		Action();
+		~Action();
+
+		virtual float	GetFloat();
+		virtual Value	*GetValue();
+
+		UInt32		type;		// 04
+		Action		*next;		// 08
+	};
+
+	// 10
+	class RefValueAction : public Action
+	{
+	public:
+		RefValueAction();
+		~RefValueAction();
+
+		Value		*tileVal;	// 0C
+	};
+
+	// 10
+	class FloatAction : public Action
+	{
+	public:
+		FloatAction();
+		~FloatAction();
+
+		float		value;		// 0C
+	};
+	
 	// 14
 	struct Value
 	{
@@ -185,7 +250,7 @@ public:
 		Tile		* parent;	// 04
 		float		num;		// 08
 		char		* str;		// 0C
-		Action_Tile	* action;	// 10
+		Action		* action;	// 10
 	};
 
 	struct ChildNode
@@ -208,12 +273,12 @@ public:
 
 	static UInt32	TraitNameToID(const char * traitName);
 	Value *			GetValue(UInt32 typeID);
-	Value *			GetValue(const char * valueName);
+	Value *			GetValueName(const char * valueName);
 	Tile *			GetChild(const char * childName);
-	Tile *			GetComponent(const char * componentTile, std::string * trait);
+	Tile *			GetComponent(const char * componentTile, const char **trait);
 	Tile *			GetComponentTile(const char * componentTile);
 	Value *			GetComponentValue(const char * componentPath);
-	std::string		GetQualifiedName(void);
+	char			*GetComponentFullName(char *resStr);
 
 	void			Dump(void);
 };
