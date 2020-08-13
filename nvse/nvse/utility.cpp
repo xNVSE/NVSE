@@ -745,6 +745,30 @@ __declspec(naked) char* __fastcall SubStr(const char *srcStr, const char *subStr
 	}
 }
 
+__declspec(naked) char* __fastcall SlashPos(const char *str)
+{
+	__asm
+	{
+		mov		eax, ecx
+		test	ecx, ecx
+		jz		done
+	iterHead:
+		mov		cl, [eax]
+		test	cl, cl
+		jz		retnNULL
+		cmp		cl, '/'
+		jz		done
+		cmp		cl, '\\'
+		jz		done
+		inc		eax
+		jmp		iterHead
+	retnNULL:
+		xor		eax, eax
+	done:
+		retn
+	}
+}
+
 __declspec(naked) char* __fastcall CopyString(const char *key)
 {
 	__asm
@@ -759,6 +783,49 @@ __declspec(naked) char* __fastcall CopyString(const char *key)
 		pop		edx
 		mov		ecx, eax
 		call	MemCopy
+		retn
+	}
+}
+
+__declspec(naked) char* __fastcall IntToStr(char *str, int num)
+{
+	__asm
+	{
+		push	esi
+		push	edi
+		test	edx, edx
+		jns		skipNeg
+		neg		edx
+		mov		[ecx], '-'
+		inc		ecx
+	skipNeg:
+		mov		esi, ecx
+		mov		edi, ecx
+		mov		eax, edx
+		mov		ecx, 0xA
+	workIter:
+		cdq
+		div		ecx
+		add		dl, '0'
+		mov		[esi], dl
+		inc		esi
+		test	eax, eax
+		jnz		workIter
+		mov		[esi], 0
+		mov		eax, esi
+	swapIter:
+		dec		esi
+		cmp		esi, edi
+		jbe		done
+		mov		dl, [esi]
+		mov		cl, [edi]
+		mov		[esi], cl
+		mov		[edi], dl
+		inc		edi
+		jmp		swapIter
+	done:
+		pop		edi
+		pop		esi
 		retn
 	}
 }
