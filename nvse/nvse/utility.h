@@ -45,7 +45,11 @@ char* __fastcall FindChrR(const char* str, UInt32 length, char chr);
 
 char* __fastcall SubStr(const char* srcStr, const char* subStr);
 
+char* __fastcall SlashPos(const char *str);
+
 char* __fastcall CopyString(const char* key);
+
+char* __fastcall IntToStr(char *str, int num);
 
 UInt32 __fastcall StrHashCS(const char* inKey);
 
