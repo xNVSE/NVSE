@@ -82,7 +82,7 @@ static char* __stdcall doTileTextHook(char* text, TileText* tile)
 	ArrayID argsArrayId = 0;
 
 	if (tile)
-		strcpy_s(tileName, 4095, tile->GetQualifiedName().c_str());
+		tile->GetComponentFullName(tileName);
 	if (strstr(tileName, "\\DM_SpeakerText")) // This a NPC speaking
 	{
 		argsArrayId = g_ArrayMap.Create(kDataType_String, false, 255);
