@@ -88,9 +88,8 @@ void Debug_DumpMenus(void);
 
 enum
 {
-	// ###
-
-	kMenuType_Min = 0x3E9,
+	kMenuType_Min =				0x3E9,
+	kMenuType_Message =			kMenuType_Min,
 	kMenuType_Inventory,
 	kMenuType_Stats,
 	kMenuType_HUDMain,
@@ -98,12 +97,13 @@ enum
 	kMenuType_Container,
 	kMenuType_Dialog,
 	kMenuType_SleepWait =		0x3F4,
-	kMenuType_Pause,
+	kMenuType_Start,
 	kMenuType_LockPick,
 	kMenuType_Quantity =		0x3F8,
-	kMenuType_PipboyData =		0x3FF,
-	kMenuType_LevelUp =			0x403,
-	kMenuType_PipboyRepair =	0x40B,
+	kMenuType_Map =				0x3FF,
+	kMenuType_Book =			0x402,
+	kMenuType_LevelUp,
+	kMenuType_Repair =			0x40B,
 	kMenuType_RaceSex,
 	kMenuType_Credits =			0x417,
 	kMenuType_CharGen,
@@ -113,18 +113,20 @@ enum
 	kMenuType_Hacking,
 	kMenuType_VATS,
 	kMenuType_Computers,
-	kMenuType_VendorRepair,
+	kMenuType_RepairServices,
 	kMenuType_Tutorial,
-	kMenuType_SPECIAL,
+	kMenuType_SpecialBook,
 	kMenuType_ItemMod,
 	kMenuType_LoveTester =		0x432,
 	kMenuType_CompanionWheel,
-	kMenuType_Recipe =			0x435,
+	kMenuType_TraitSelect,
+	kMenuType_Recipe,
 	kMenuType_SlotMachine =		0x438,
 	kMenuType_Blackjack,
 	kMenuType_Roulette,
 	kMenuType_Caravan,
-	kMenuType_Max = 0x43C,
+	kMenuType_Trait =			0x43C,
+	kMenuType_Max =				kMenuType_Trait,
 };
 
 class Menu
