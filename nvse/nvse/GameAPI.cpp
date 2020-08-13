@@ -912,16 +912,6 @@ ScriptEventList* EventListFromForm(TESForm* form)
 	return eventList;
 }
 
-static void ConvertLiteralPercents(std::string* str)
-{
-	UInt32 idx = 0;
-	while ((idx = str->find('%', idx)) != -1)
-	{
-		str->insert(idx, "%");
-		idx += 2;
-	}
-}
-
 char* ConvertLiteralPercents(char *srcPtr)
 {
 	char *endPtr = StrEnd(srcPtr);
@@ -952,56 +942,6 @@ static void SkipArgs(UInt8* &scriptData)
 	}
 }
 
-static void OmitFormatStringArgs(std::string str, FormatStringArgs& args)
-{
-	//skip any args omitted by the %{ specifier
-	UInt32 strIdx = 0;
-	while ((strIdx = str.find('%', strIdx)) != -1 && args.HasMoreArgs())
-	{
-		switch(str[++strIdx])
-		{
-		case '%':
-		case 'q':
-		case 'Q':
-		case 'r':
-		case 'R':
-			break;
-		case 'c':
-		case 'C':
-			args.SkipArgs(2);
-			break;
-		default:
-			args.SkipArgs(1);
-		}
-		strIdx++;
-	}
-}
-
-void OmitFormatStringArgs(char *srcPtr, char *endPtr, FormatStringArgs &args)
-{
-	char *fmtPos;
-	while ((fmtPos = FindChr(srcPtr, '%')) && (fmtPos < endPtr) && args.HasMoreArgs())
-	{
-		fmtPos++;
-		switch (*fmtPos)
-		{
-			case '%':
-			case 'q':
-			case 'Q':
-			case 'r':
-			case 'R':
-				break;
-			case 'c':
-			case 'C':
-				args.SkipArgs(2);
-				break;
-			default:
-				args.SkipArgs(1);
-		}
-		srcPtr = fmtPos + 1;
-	}
-}
-
 //static bool ExtractFormattedString(UInt32 &numArgs, char* buffer, UInt8* &scriptData, Script* scriptObj, ScriptEventList* eventList)
 bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 {
@@ -1012,7 +952,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 
 	static char fmtBuffer[0x4000];
 
-	char *resPtr = fmtBuffer, *srcPtr = args.GetFormatString(), *endPtr = StrEnd(srcPtr), *fmtPos, *toInsert, *omitEndPtr;
+	char *resPtr = fmtBuffer, *srcPtr = s_tempStrArgBuffer, *endPtr = StrEnd(srcPtr), *fmtPos, *strPtr, *omitEndPtr;
 	int size;
 	TESForm *form;
 
@@ -1039,14 +979,9 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 				if (!args.Arg(args.kArgType_Float, &data))
 					return false;
 			
-				toInsert = const_cast<char*>(StringFromStringVar(data));
-				if (toInsert && *toInsert)
-					resPtr = StrCopy(resPtr, toInsert);
-				else
-				{
-					*(UInt32*)resPtr = 'LLUN';
-					resPtr += 4;
-				}
+				strPtr = const_cast<char*>(StringFromStringVar(data));
+				if (strPtr && *strPtr)
+					resPtr = StrCopy(resPtr, strPtr);
 				break;
 			}
 			case 'r':										//newline
@@ -1090,12 +1025,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 				if (!args.Arg(args.kArgType_Form, &form))
 					return false;
 
-				if (!form)
-				{
-					*(UInt32*)resPtr = 'LLUN';
-					resPtr += 4;
-				}
-				else
+				if (form)
 				{
 					if (!args.Arg(args.kArgType_Float, &data))
 						return false;
@@ -1127,9 +1057,6 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 								resPtr = ConvertLiteralPercents(resPtr);
 								break;
 							}
-							default:
-								*(UInt32*)resPtr = 'LLUN';
-								resPtr += 4;
 						}
 					}
 				}
@@ -1160,12 +1087,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 				if (!args.Arg(args.kArgType_Form, &form))
 					return false;
 
-				if (!form)
-				{
-					*(UInt32*)resPtr = 'LLUN';
-					resPtr += 4;
-				}
-				else
+				if (form)
 				{			
 					if (form->Unk_3C())
 						form = ((TESObjectREFR*)form)->baseForm;
@@ -1176,67 +1098,67 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 
 					switch (*fmtPos)
 					{
-					case 'o':
-					case 'O':
-					{
-						switch (objType)
+						case 'o':
+						case 'O':
 						{
-							case 0:
-								*(UInt16*)resPtr = 'ti';
-								resPtr += 2;
-								break;
-							case 1:
-								*(UInt32*)resPtr = '\0mih';
-								resPtr += 3;
-								break;
-							case 2:
-								*(UInt32*)resPtr = '\0reh';
-								resPtr += 3;
-								break;
+							switch (objType)
+							{
+								default:
+								case 0:
+									*(UInt16*)resPtr = 'ti';
+									resPtr += 2;
+									break;
+								case 1:
+									*(UInt32*)resPtr = '\0mih';
+									resPtr += 3;
+									break;
+								case 2:
+									*(UInt32*)resPtr = '\0reh';
+									resPtr += 3;
+									break;
+							}
+							break;
 						}
-						break;
-					}
-					case 's':
-					case 'S':
-					{
-						switch (objType)
+						case 's':
+						case 'S':
 						{
-							case 0:
-								*(UInt16*)resPtr = 'ti';
-								resPtr += 2;
-								break;
-							case 1:
-								*(UInt16*)resPtr = 'eh';
-								resPtr += 2;
-								break;
-							case 2:
-								*(UInt32*)resPtr = '\0ehs';
-								resPtr += 3;
-								break;
+							switch (objType)
+							{
+								default:
+								case 0:
+									*(UInt16*)resPtr = 'ti';
+									resPtr += 2;
+									break;
+								case 1:
+									*(UInt16*)resPtr = 'eh';
+									resPtr += 2;
+									break;
+								case 2:
+									*(UInt32*)resPtr = '\0ehs';
+									resPtr += 3;
+									break;
+							}
+							break;
 						}
-						break;
-					}
-					case 'p':
-					case 'P':
-					{
-						switch (objType)
+						case 'p':
+						case 'P':
 						{
-							case 0:
-								*(UInt32*)resPtr = '\0sti';
-								break;
-							case 1:
-								*(UInt32*)resPtr = '\0sih';
-								break;
-							case 2:
-								*(UInt32*)resPtr = '\0reh';
-								break;
+							switch (objType)
+							{
+								default:
+								case 0:
+									*(UInt32*)resPtr = '\0sti';
+									break;
+								case 1:
+									*(UInt32*)resPtr = '\0sih';
+									break;
+								case 2:
+									*(UInt32*)resPtr = '\0reh';
+									break;
+							}
+							resPtr += 3;
+							break;
 						}
-						resPtr += 3;
-						break;
-					}
-					default:
-						*(UInt32*)resPtr = 'LLUN';
-						resPtr += 4;
 					}
 				}
 				break;
@@ -1257,7 +1179,27 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 						omitEndPtr[1] = 'e';
 					else
 					{
-						OmitFormatStringArgs(fmtPos + 1, omitEndPtr, args);
+						fmtPos++;
+						while ((strPtr = FindChr(fmtPos, '%')) && (strPtr < omitEndPtr) && args.HasMoreArgs())
+						{
+							strPtr++;
+							switch (*strPtr)
+							{
+								case '%':
+								case 'q':
+								case 'Q':
+								case 'r':
+								case 'R':
+									break;
+								case 'c':
+								case 'C':
+									args.SkipArgs(2);
+									break;
+								default:
+									args.SkipArgs(1);
+							}
+							fmtPos = strPtr + 1;
+						}
 						fmtPos = omitEndPtr + 1;
 					}
 				}
@@ -1554,12 +1496,24 @@ ScriptFormatStringArgs::ScriptFormatStringArgs(UInt32 _numArgs, UInt8* _scriptDa
 	MemCopy(s_tempStrArgBuffer, scriptData, len);
 	s_tempStrArgBuffer[len] = 0;
 	scriptData += len;
-	fmtString.Set(ResolveStringArgument(eventList, s_tempStrArgBuffer));
+	if (s_tempStrArgBuffer[0] == '$')
+	{
+		VariableInfo *varInfo = eventList->m_script->GetVariableByName(s_tempStrArgBuffer + 1);
+		if (varInfo)
+		{
+			ScriptEventList::Var *var = eventList->GetVariable(varInfo->idx);
+			if (var)
+			{
+				const char *strVar = StringFromStringVar(var->data);
+				if (strVar) StrCopy(s_tempStrArgBuffer, strVar);
+			}
+		}
+	}
 }
 
 char *ScriptFormatStringArgs::GetFormatString()
 {
-	return fmtString.m_data ? fmtString.m_data : "";
+	return s_tempStrArgBuffer;
 }
 
 bool ScriptFormatStringArgs::HasMoreArgs()
