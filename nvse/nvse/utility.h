@@ -43,7 +43,9 @@ char* __fastcall FindChr(const char* str, char chr);
 
 char* __fastcall FindChrR(const char* str, UInt32 length, char chr);
 
-char* __fastcall SubStr(const char* srcStr, const char* subStr);
+char* __fastcall SubStrCS(const char *srcStr, const char *subStr);
+
+char* __fastcall SubStrCI(const char *srcStr, const char *subStr);
 
 char* __fastcall SlashPos(const char *str);
 
@@ -69,3 +71,5 @@ public:
 extern AuxBuffer s_auxBuffers[3];
 
 UInt8* __fastcall GetAuxBuffer(AuxBuffer& buffer, UInt32 reqSize);
+
+#define GetRandomUInt(n) ThisStdCall<UInt32, UInt32>(0xAA5230, (void*)0x11C4180, n)
