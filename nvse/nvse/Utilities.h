@@ -160,57 +160,34 @@ public:
 
 // thread-safe template versions of ThisStdCall()
 
-__forceinline UInt32 ThisStdCall(UInt32 _f,void* _t)
+template <typename T_Ret = UInt32, typename ...Args>
+__forceinline T_Ret ThisStdCall(UInt32 _addr, void *_this, Args ...args)
 {
-    class T {}; union { UInt32 x; UInt32 (T::*m)(); } u = { _f };
-    return ((T*)_t->*u.m)();
+	class T {};
+	union
+	{
+		UInt32	addr;
+		T_Ret	(T::*func)(Args...);
+	}
+	u = {_addr};
+	return ((T*)_this->*u.func)(std::forward<Args>(args)...);
 }
 
-template <typename T1>
-__forceinline UInt32 ThisStdCall(UInt32 _f,void* _t,T1 a1)
+template <typename T_Ret = void, typename ...Args>
+__forceinline T_Ret StdCall(UInt32 _addr, Args ...args)
 {
-    class T {}; union { UInt32 x; UInt32 (T::*m)(T1); } u = { _f };
-    return ((T*)_t->*u.m)(a1);
+	return ((T_Ret (__stdcall *)(Args...))_addr)(std::forward<Args>(args)...);
 }
 
-template <typename T1,typename T2>
-__forceinline UInt32 ThisStdCall(UInt32 _f,void* _t,T1 a1,T2 a2)
+template <typename T_Ret = void, typename ...Args>
+__forceinline T_Ret CdeclCall(UInt32 _addr, Args ...args)
 {
-    class T {}; union { UInt32 x; UInt32 (T::*m)(T1,T2); } u = { _f };
-    return ((T*)_t->*u.m)(a1,a2);
-}
-
-template <typename T1,typename T2,typename T3>
-__forceinline UInt32 ThisStdCall(UInt32 _f,void* _t,T1 a1,T2 a2,T3 a3)
-{
-    class T {}; union { UInt32 x; UInt32 (T::*m)(T1,T2,T3); } u = { _f };
-    return ((T*)_t->*u.m)(a1,a2,a3);
-}
-
-template <typename T1,typename T2,typename T3,typename T4>
-__forceinline UInt32 ThisStdCall(UInt32 _f,void* _t,T1 a1,T2 a2,T3 a3,T4 a4)
-{
-    class T {}; union { UInt32 x; UInt32 (T::*m)(T1,T2,T3,T4); } u = { _f };
-    return ((T*)_t->*u.m)(a1,a2,a3,a4);
-}
-
-template <typename T1,typename T2,typename T3,typename T4,typename T5>
-__forceinline UInt32 ThisStdCall(UInt32 _f,void* _t,T1 a1,T2 a2,T3 a3,T4 a4,T5 a5)
-{
-    class T {}; union { UInt32 x; UInt32 (T::*m)(T1,T2,T3,T4,T5); } u = { _f };
-    return ((T*)_t->*u.m)(a1,a2,a3,a4,a5);
-}
-
-template <typename T1,typename T2,typename T3,typename T4,typename T5,typename T6>
-__forceinline UInt32 ThisStdCall(UInt32 _f,void* _t,T1 a1,T2 a2,T3 a3,T4 a4,T5 a5, T6 a6)
-{
-    class T {}; union { UInt32 x; UInt32 (T::*m)(T1,T2,T3,T4,T5,T6); } u = { _f };
-    return ((T*)_t->*u.m)(a1,a2,a3,a4,a5,a6);
+	return ((T_Ret (__cdecl *)(Args...))_addr)(std::forward<Args>(args)...);
 }
 
 inline void* GameHeapAlloc(UInt32 size)
 {
-	return reinterpret_cast<void*>(ThisStdCall(0xAA3E40, (void*)0x11F6238, size));
+	return ThisStdCall<void*>(0xAA3E40, (void*)0x11F6238, size);
 }
 
 inline void GameHeapFree(void* ptr)
