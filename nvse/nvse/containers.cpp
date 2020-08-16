@@ -1,5 +1,38 @@
 #include "nvse/containers.h"
 
+__declspec(naked) void __fastcall AllocDataArray(void *container, UInt32 dataSize)
+{
+	__asm
+	{
+		cmp		dword ptr [ecx], 0
+		jnz		hasData
+		push	ecx
+		imul	edx, [ecx+8]
+		push	edx
+		call	malloc
+		pop		ecx
+		pop		ecx
+		mov		[ecx], eax
+		retn
+	hasData:
+		mov		eax, [ecx+8]
+		cmp		eax, [ecx+4]
+		ja		done
+		shl		eax, 1
+		mov		[ecx+8], eax
+		push	ecx
+		imul	edx, eax
+		push	edx
+		push	dword ptr [ecx]
+		call	realloc
+		add		esp, 8
+		pop		ecx
+		mov		[ecx], eax
+	done:
+		retn
+	}
+}
+
 __declspec(naked) UInt32 __fastcall AlignBucketCount(UInt32 count)
 {
 	__asm
