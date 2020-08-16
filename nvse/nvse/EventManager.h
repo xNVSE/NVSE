@@ -67,6 +67,7 @@ namespace EventManager
 		kEventID_DeleteGameName,
 		kEventID_RenameGameName,
 		kEventID_RenameNewGameName,
+		kEventID_DeferredInit,
 
 		kEventID_InternalMAX,
 
