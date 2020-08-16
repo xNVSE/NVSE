@@ -692,7 +692,53 @@ __declspec(naked) char* __fastcall FindChrR(const char *str, UInt32 length, char
 	}
 }
 
-__declspec(naked) char* __fastcall SubStr(const char *srcStr, const char *subStr)
+__declspec(naked) char* __fastcall SubStrCS(const char *srcStr, const char *subStr)
+{
+	__asm
+	{
+		push	ebx
+		push	esi
+		push	edi
+		call	StrLen
+		test	eax, eax
+		jz		done
+		mov		esi, ecx
+		mov		edi, edx
+		mov		ebx, eax
+		mov		ecx, edx
+		call	StrLen
+		sub		ebx, eax
+		js		retnNULL
+	mainHead:
+		mov		ecx, esi
+		mov		edx, edi
+	subHead:
+		mov		al, [edx]
+		test	al, al
+		jnz		proceed
+		mov		eax, esi
+		jmp		done
+	proceed:
+		cmp		al, [ecx]
+		jnz		mainNext
+		inc		ecx
+		inc		edx
+		jmp		subHead
+	mainNext:
+		inc		esi
+		dec		ebx
+		jns		mainHead
+	retnNULL:
+		xor		eax, eax
+	done:
+		pop		edi
+		pop		esi
+		pop		ebx
+		retn
+	}
+}
+
+__declspec(naked) char* __fastcall SubStrCI(const char *srcStr, const char *subStr)
 {
 	__asm
 	{
@@ -804,7 +850,7 @@ __declspec(naked) char* __fastcall IntToStr(char *str, int num)
 		mov		eax, edx
 		mov		ecx, 0xA
 	workIter:
-		cdq
+		xor		edx, edx
 		div		ecx
 		add		dl, '0'
 		mov		[esi], dl
