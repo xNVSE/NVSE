@@ -59,9 +59,12 @@ DWORD g_mainThreadID = 0;
 static void HandleMainLoopHook(void)
 {
 	static bool s_recordedMainThreadID = false;
-	if (!s_recordedMainThreadID) {
+	if (!s_recordedMainThreadID)
+	{
 		s_recordedMainThreadID = true;
 		g_mainThreadID = GetCurrentThreadId();
+		
+		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_DeferredInit, NULL, 0, NULL);
 	}
 
 	// if any temporary references to inventory objects exist, clean them up
