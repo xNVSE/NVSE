@@ -1169,7 +1169,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 				break;
 			case '{':											//omit portion of string based on flag param
 			{
-				omitEndPtr = SubStr(fmtPos + 1, "%}");
+				omitEndPtr = SubStrCS(fmtPos + 1, "%}");
 				if (omitEndPtr)
 				{
 					if (!args.Arg(args.kArgType_Float, &data))
