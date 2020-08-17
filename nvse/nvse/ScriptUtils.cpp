@@ -1659,51 +1659,6 @@ static ParamInfo kDynamicParams[] =
 	{	"object",	kNVSEParamType_Form,	0	},
 };
 
-TokenCacheEntry& CachedTokens::Get(std::size_t key)
-{
-	return this->container_[key];
-}
-
-void CachedTokens::Append(const TokenCacheEntry& entry)
-{
-	this->container_.push_back(entry);
-}
-
-std::size_t CachedTokens::Size() const
-{
-	return container_.size();
-}
-
-bool CachedTokens::Empty() const
-{
-	return container_.empty();
-}
-
-std::vector<TokenCacheEntry>::iterator CachedTokens::begin()
-{
-	return container_.begin();
-}
-
-std::vector<TokenCacheEntry>::iterator CachedTokens::end()
-{
-	return container_.end();
-}
-
-CachedTokens& TokenCache::Get(UInt8* key)
-{
-	return cache_[key];
-}
-
-void TokenCache::Clear()
-{
-	cache_.Clear();
-}
-
-std::size_t TokenCache::Size() const
-{
-	return cache_.Size();
-}
-
 DynamicParamInfo::DynamicParamInfo(std::vector<UserFunctionParam> &params)
 {
 	m_numParams = params.size() > kMaxParams ? kMaxParams : params.size();
@@ -3375,6 +3330,76 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 	return nullptr;
 }
 
+using CachedTokenIter = std::vector<TokenCacheEntry>::iterator;
+CachedTokenIter GetOperatorParent(CachedTokenIter iter, const CachedTokenIter& iterEnd)
+{
+	const auto& op = iter->token.GetOperator();
+	++iter;
+	auto count = 0U;
+	while (iter != iterEnd)
+	{
+		const auto& token = iter->token;
+		if (token.IsOperator() && token.IsLogicalOperator())
+		{
+			if (count == 0)
+			{
+				return iter;
+			}
+			--count;
+		}
+		else
+		{
+			++count;
+		}
+		if (count == 0)
+		{
+			return iter;
+		}
+		++iter;
+	}
+	return iterEnd;
+}
+
+void PreparseShortCircuit(CachedTokens& cachedTokens)
+{
+	const auto end = cachedTokens.end();
+	for (auto iter = cachedTokens.begin(); iter != end; ++iter)
+	{
+		auto& outerToken = iter->token;
+		if (!outerToken.IsOperator())
+		{
+			continue;
+		}
+
+		auto innerIter = end;
+		auto parent = GetOperatorParent(iter, end);
+		while (parent != end && parent->token.GetOperator() == iter->token.GetOperator())
+		{
+			innerIter = parent;
+			parent = GetOperatorParent(parent, end);
+		}
+
+		if (innerIter != end)
+		{
+			outerToken.jumpDistance = innerIter - iter;
+		}
+		else
+		{
+			outerToken.jumpDistance = 0;
+		}
+
+		if (parent != end)
+		{
+			outerToken.parentDist = parent - iter - outerToken.jumpDistance;
+			outerToken.parentType = parent->token.GetOperator()->type;
+		}
+		else
+		{
+			outerToken.parentDist = 0;
+		}
+	}
+}
+
 bool ExpressionEvaluator::ParseBytecode(CachedTokens& cachedTokens)
 {
 	const auto* dataBeforeParsing = m_data;
@@ -3386,19 +3411,35 @@ bool ExpressionEvaluator::ParseBytecode(CachedTokens& cachedTokens)
 		if (token.IsInvalid())
 		{
 			return false;
-		}		
+		}
 		token.cached = true;
 		cachedTokens.Append(TokenCacheEntry{ token });
 	}
 	cachedTokens.incrementData = m_data - dataBeforeParsing;
+	PreparseShortCircuit(cachedTokens);
 	return true;
+}
+
+void ShortCircuit(CachedTokenIter& iter, ScriptToken* curToken, ScriptToken* opResult)
+{
+	if (curToken->jumpDistance && (curToken->GetOperator()->type == kOpType_LogicalAnd && !opResult->GetBool()
+		|| curToken->GetOperator()->type == kOpType_LogicalOr && opResult->GetBool()))
+	{
+		std::advance(iter, curToken->jumpDistance);
+	}
+
+	if (curToken->parentDist && (curToken->parentType == kOpType_LogicalAnd && !opResult->GetBool()
+		|| curToken->parentType == kOpType_LogicalOr && opResult->GetBool()))
+	{
+		std::advance(iter, curToken->parentDist);
+	}
+
 }
 
 ScriptToken* ExpressionEvaluator::Evaluate()
 {
 	auto* cacheKey = GetCommandOpcodePosition();
 	auto& cache = tokenCache.Get(cacheKey);
-	auto cachedBefore = true;
 	if (cache.Empty())
 	{
 		const auto successParsing = ParseBytecode(cache);
@@ -3407,7 +3448,6 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			Error("Failed to parse script data");
 			return nullptr;
 		}
-		cachedBefore = false;
 	}
 	else
 	{
@@ -3415,8 +3455,9 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	}
 
 	FastStack<ScriptToken*, 16> operands;
-	for (auto& entry : cache)
+	for (auto iter = cache.begin(); iter != cache.end(); ++iter)
 	{
+		auto& entry = *iter;
 		auto* curToken = &entry.token;
 		curToken->context = this;
 
@@ -3455,7 +3496,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			}
 
 			ScriptToken* opResult;
-			if (!cachedBefore)
+			if (entry.eval == nullptr)
 			{
 				opResult = op->Evaluate(lhOperand, rhOperand, this, entry.eval, entry.swapOrder);
 			}
@@ -3476,6 +3517,8 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				break;
 			}
 
+			ShortCircuit(iter, curToken, opResult);
+			
 			operands.push(opResult);
 		}
 	}

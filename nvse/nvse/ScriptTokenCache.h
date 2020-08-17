@@ -5,7 +5,7 @@
 struct TokenCacheEntry
 {
 	ScriptToken token;
-	Op_Eval eval;
+	Op_Eval eval = nullptr;
 	bool swapOrder;
 };
 

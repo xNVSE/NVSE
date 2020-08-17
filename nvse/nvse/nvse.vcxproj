@@ -554,6 +554,7 @@
     <ClCompile Include="PluginManager.cpp" />
     <ClCompile Include="printf.cpp" />
     <ClCompile Include="SafeWrite.cpp" />
+    <ClCompile Include="ScriptTokenCache.cpp" />
     <ClCompile Include="ScriptTokens.cpp" />
     <ClCompile Include="ScriptUtils.cpp" />
     <ClCompile Include="Serialization.cpp">

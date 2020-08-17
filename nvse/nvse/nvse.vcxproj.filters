@@ -229,6 +229,9 @@
     <ClCompile Include="utility.cpp">
       <Filter>lib\jip</Filter>
     </ClCompile>
+    <ClCompile Include="ScriptTokenCache.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
