@@ -388,8 +388,6 @@ UInt32 EventIDForMessage(UInt32 msgID)
 			return kEventID_RenameGameName;
 		case NVSEMessagingInterface::kMessage_RenameNewGameName:
 			return kEventID_RenameNewGameName;
-		case NVSEMessagingInterface::kMessage_DeferredInit:
-			return kEventID_DeferredInit;
 		default:
 			return kEventID_INVALID;
 	}
