@@ -645,7 +645,7 @@ bool Cmd_GetModLocalData_Execute(COMMAND_ARGS)
 		if (data) {
 			double num = 0;
 			UInt32 formID = 0;
-			std::string str;
+			const char *str;
 
 			if (data->GetAsNumber(&num)) {
 				*result = num;
@@ -657,8 +657,8 @@ bool Cmd_GetModLocalData_Execute(COMMAND_ARGS)
 				eval.ExpectReturnType(kRetnType_Form);
 				return true;
 			}
-			else if (data->GetAsString(str)) {
-				AssignToStringVar(PASS_COMMAND_ARGS, str.c_str());
+			else if (data->GetAsString(&str)) {
+				AssignToStringVar(PASS_COMMAND_ARGS, str);
 				eval.ExpectReturnType(kRetnType_String);
 				return true;
 			}

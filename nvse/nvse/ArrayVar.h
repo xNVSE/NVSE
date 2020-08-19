@@ -66,13 +66,18 @@ enum DataType : UInt8
 	kDataType_Array,
 };
 
-struct ArrayType {
-	union {
+struct ArrayType
+{
+	union
+	{
 		double		num;
 		UInt32		formID;
 	};
+	char		*str;
 
-	std::string		str;
+	~ArrayType();
+	const char *GetStr() const;
+	void SetStr(const char *srcStr);
 };
 
 struct ArrayElement
@@ -90,13 +95,13 @@ public:
 	DataType DataType() const { return m_dataType; }
 
 	bool GetAsNumber(double* out) const;
-	bool GetAsString(std::string& out) const;
+	bool GetAsString(const char **out) const;
 	bool GetAsFormID(UInt32* out) const;
 	bool GetAsArray(ArrayID* out) const;
 
 	bool SetForm(const TESForm* form);
 	bool SetFormID(UInt32 refID);
-	bool SetString(const std::string& str);
+	bool SetString(const char* str);
 	bool SetArray(ArrayID arr, UInt8 modIndex);	
 	bool SetNumber(double num);
 	bool Set(const ArrayElement& elem);
@@ -285,13 +290,13 @@ public:
 
 	// operations on ArrayElements
 	bool SetElementNumber(ArrayID id, const ArrayKey& key, double num);
-	bool SetElementString(ArrayID id, const ArrayKey& key, const std::string& str);
+	bool SetElementString(ArrayID id, const ArrayKey& key, const char* str);
 	bool SetElementFormID(ArrayID id, const ArrayKey& key, UInt32 refID);
 	bool SetElementArray(ArrayID id, const ArrayKey& key, ArrayID srcID);
 	bool SetElement(ArrayID id, const ArrayKey& key, const ArrayElement& val);
 
 	bool GetElementNumber(ArrayID id, const ArrayKey& key, double* out);
-	bool GetElementString(ArrayID id, const ArrayKey& key, std::string& out);
+	bool GetElementString(ArrayID id, const ArrayKey& key, const char** out);
 	bool GetElementFormID(ArrayID id, const ArrayKey& key, UInt32* out);
 	bool GetElementForm(ArrayID id, const ArrayKey& key, TESForm** out);
 	bool GetElementArray(ArrayID id, const ArrayKey& key, ArrayID* out);

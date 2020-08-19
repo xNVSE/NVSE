@@ -592,11 +592,12 @@ ScriptToken* Eval_ExponentEquals_Elem(OperatorType op, ScriptToken* lh, ScriptTo
 
 ScriptToken* Eval_PlusEquals_Elem_String(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	std::string elemStr;
+	const char* pElemStr;
 	const ArrayKey* key = lh->GetArrayKey();
-	if (!key || !g_ArrayMap.GetElementString(lh->GetOwningArrayID(), *key, elemStr))
+	if (!key || !g_ArrayMap.GetElementString(lh->GetOwningArrayID(), *key, &pElemStr))
 		return NULL;
 
+	std::string elemStr(pElemStr);
 	elemStr += rh->GetString();
 	return g_ArrayMap.SetElementString(lh->GetOwningArrayID(), *key, elemStr.c_str()) ? ScriptToken::Create(elemStr) : NULL;
 }

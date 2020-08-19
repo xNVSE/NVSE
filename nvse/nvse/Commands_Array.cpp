@@ -386,7 +386,7 @@ bool Cmd_ar_Find_Execute(COMMAND_ARGS)
 		if (keyType == kDataType_Numeric)
 			*result = idx.Key().num;
 		else
-			*result = g_StringMap.Add(scriptObj->GetModIndex(), idx.Key().str.c_str(), true);
+			*result = g_StringMap.Add(scriptObj->GetModIndex(), idx.Key().GetStr(), true);
 	}
 
 	return true;

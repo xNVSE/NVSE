@@ -58,18 +58,18 @@ static CRITICAL_SECTION	csTileText;				// trying to avoid what looks like anothe
 char * doTileTextEvent(ArrayID argsArrayId, const char * eventName, char * text, char * tileName)
 {
 	char lastText[32768];
-	std::string replacedText;
 	const char* senderName = "NVSE";
 	char * result = text;
 	g_ArrayMap.SetElementString(argsArrayId, "tileName", tileName);
 	g_ArrayMap.SetElementString(argsArrayId, "text", result);
-	if (EventManager::DispatchUserDefinedEvent(eventName, NULL, argsArrayId, senderName)) {
-		g_ArrayMap.GetElementString(argsArrayId, "text", replacedText);
-		if (_stricmp(result, replacedText.c_str()))
-			if (!strcpy_s(lastText, 32767, replacedText.c_str()))
+	if (EventManager::DispatchUserDefinedEvent(eventName, NULL, argsArrayId, senderName))
+	{
+		const char* replacedText = "";
+		g_ArrayMap.GetElementString(argsArrayId, "text", &replacedText);
+		if (_stricmp(result, replacedText))
+			if (!strcpy_s(lastText, 32767, replacedText))
 				result = lastText;
 	}
-	replacedText.clear();
 	return result;
 }
 

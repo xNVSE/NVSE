@@ -300,8 +300,10 @@ AssignableStringVarToken::AssignableStringVarToken(UInt32 _id, UInt32 lbound, UI
 AssignableStringArrayElementToken::AssignableStringArrayElementToken(UInt32 _id, const ArrayKey& _key, UInt32 lbound, UInt32 ubound)
 	: AssignableStringToken(_id, lbound, ubound), key(_key)
 {
-	std::string elemStr;
-	if (g_ArrayMap.GetElementString(value.arrID, key, elemStr)) {
+	const char* pElemStr;
+	if (g_ArrayMap.GetElementString(value.arrID, key, &pElemStr))
+	{
+		std::string elemStr(pElemStr);
 		upper = (upper > elemStr.length()) ? elemStr.length() - 1 : upper;
 		substring = elemStr.substr(lbound, ubound - lbound + 1);
 	}
@@ -327,17 +329,18 @@ bool AssignableStringVarToken::Assign(const char* str)
 
 bool AssignableStringArrayElementToken::Assign(const char* str)
 {
-	std::string elemStr;
-	if (g_ArrayMap.GetElementString(value.arrID, key, elemStr)) {
-		if (lower <= upper && upper < elemStr.length()) {
-			elemStr.erase(lower, upper - lower + 1);
-			if (str) {
-				elemStr.insert(lower, str);
-				g_ArrayMap.SetElementString(value.arrID, key, elemStr);
-				substring = elemStr;
-			}
-			return true;
+	const char* pElemStr;
+	if (g_ArrayMap.GetElementString(value.arrID, key, &pElemStr) && (lower <= upper) && (upper < StrLen(pElemStr)))
+	{
+		std::string elemStr(pElemStr);
+		elemStr.erase(lower, upper - lower + 1);
+		if (str)
+		{
+			elemStr.insert(lower, str);
+			g_ArrayMap.SetElementString(value.arrID, key, elemStr.c_str());
+			substring = elemStr;
 		}
+		return true;
 	}
 
 	return false;

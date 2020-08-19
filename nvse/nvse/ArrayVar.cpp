@@ -12,15 +12,32 @@
 
 ArrayVarMap g_ArrayMap;
 
+ArrayType::~ArrayType()
+{
+	if (str)
+	{
+		free(str);
+		str = NULL;
+	}
+}
+
+const char *ArrayType::GetStr() const
+{
+	return str ? str : "";
+}
+
+void ArrayType::SetStr(const char *srcStr)
+{
+	str = (srcStr && *srcStr) ? CopyString(srcStr) : NULL;
+}
+
 //////////////////
 // ArrayElement
 /////////////////
 
-ArrayElement::ArrayElement()
-	: m_dataType(kDataType_Invalid), m_owningArray(0)
+ArrayElement::ArrayElement() : m_dataType(kDataType_Invalid), m_owningArray(0)
 {	
-	m_data.formID = 0;
-	m_data.str = "";
+	m_data.str = NULL;
 }
 
 bool ArrayElement::operator<(const ArrayElement& rhs) const
@@ -35,7 +52,7 @@ bool ArrayElement::operator<(const ArrayElement& rhs) const
 	}
 
 	if (DataType() == kDataType_String)
-		return (_stricmp(m_data.str.c_str(), rhs.m_data.str.c_str()) < 0);
+		return StrCompare(m_data.str, rhs.m_data.str) < 0;
 	else if (DataType() == kDataType_Form)
 		return m_data.formID < rhs.m_data.formID;
 	else
@@ -50,7 +67,7 @@ bool ArrayElement::Equals(const ArrayElement& compareTo) const
 	switch (DataType())
 	{
 	case kDataType_String:
-		return (m_data.str.length() == compareTo.m_data.str.length()) ? !_stricmp(m_data.str.c_str(), compareTo.m_data.str.c_str()) : false;
+		return StrEqualCI(m_data.str, compareTo.m_data.str);
 	case kDataType_Form:
 		return m_data.formID == compareTo.m_data.formID;
 	default:
@@ -68,7 +85,7 @@ std::string ArrayElement::ToString() const
 		sprintf_s(buf, sizeof(buf), "%f", m_data.num);
 		return buf;
 	case kDataType_String:
-		return m_data.str;
+		return m_data.GetStr();
 	case kDataType_Array:
 		sprintf_s(buf, sizeof(buf), "Array ID %.0f", m_data.num);
 		return buf;
@@ -121,12 +138,12 @@ bool ArrayElement::SetFormID(UInt32 refID)
 	return true;
 }
 
-bool ArrayElement::SetString(const std::string& str)
+bool ArrayElement::SetString(const char* str)
 {
 	Unset();
 
 	m_dataType = kDataType_String;
-	m_data.str = str;
+	m_data.SetStr(str);
 	return true;
 }
 
@@ -208,21 +225,28 @@ bool ArrayElement::GetAsNumber(double* out) const
 	return true;
 }
 
-bool ArrayElement::GetAsString(std::string& out) const
+bool ArrayElement::GetAsString(const char** out) const
 {
-	if (m_dataType != kDataType_String)
+	if (!out || m_dataType != kDataType_String)
 		return false;
-	out = m_data.str;
+	*out = m_data.GetStr();
 	return true;
 }
 
 void ArrayElement::Unset()
 {
-	if (m_dataType == kDataType_Array)
+	if (m_dataType == kDataType_String)
+	{
+		if (m_data.str)
+		{
+			free(m_data.str);
+			m_data.str = NULL;
+		}
+	}
+	else if (m_dataType == kDataType_Array)
 		g_ArrayMap.RemoveReference(&m_data.num, g_ArrayMap.GetOwningModIndex(m_owningArray));
 	
 	m_dataType = kDataType_Invalid;
-	m_data.num = 0;
 }
 
 ///////////////////////
@@ -231,25 +255,26 @@ void ArrayElement::Unset()
 
 ArrayKey::ArrayKey() : keyType(kDataType_Invalid)
 {
-	key.num = 0;
+	key.str = NULL;
 }
 
 ArrayKey::ArrayKey(const std::string& _key)
 {
 	keyType = kDataType_String;
-	key.str = _key;
+	key.SetStr(_key.c_str());
 }
 
 ArrayKey::ArrayKey(const char* _key)
 {
 	keyType = kDataType_String;
-	key.str = _key;
+	key.SetStr(_key);
 }
 
 ArrayKey::ArrayKey(double _key)
 {
 	keyType = kDataType_Numeric;
 	key.num = _key;
+	key.str = NULL;
 }
 
 bool ArrayKey::operator<(const ArrayKey& rhs) const
@@ -265,7 +290,7 @@ bool ArrayKey::operator<(const ArrayKey& rhs) const
 	case kDataType_Numeric:
 		return key.num < rhs.key.num;
 	case kDataType_String:
-		return _stricmp(key.str.c_str(), rhs.key.str.c_str()) < 0;
+		return StrCompare(key.str, rhs.key.str) < 0;
 	default:
 		_MESSAGE("Error: Invalid ArrayKey type %d", rhs.keyType);
 		return true;
@@ -285,7 +310,7 @@ bool ArrayKey::operator==(const ArrayKey& rhs) const
 	case kDataType_Numeric:
 		return key.num == rhs.key.num;
 	case kDataType_String:
-		return (key.str.length() == rhs.key.str.length()) ? !(_stricmp(key.str.c_str(), rhs.key.str.c_str())) : false;
+		return StrEqualCI(key.str, rhs.key.str);
 	default:
 		_MESSAGE("Error: Invalid ArrayKey type %d", rhs.keyType);
 		return true;
@@ -390,7 +415,7 @@ void ArrayVar::Dump()
 			elementInfo += numBuf;
 			break;
 		case kDataType_String:
-			elementInfo += iter.first().Key().str;
+			elementInfo += iter.first().Key().GetStr();
 			break;
 		default:
 			elementInfo += "?Unknown Key Type?";
@@ -405,7 +430,7 @@ void ArrayVar::Dump()
 			elementInfo += numBuf;
 			break;
 		case kDataType_String:
-			elementInfo += iter.second().m_data.str;
+			elementInfo += iter.second().m_data.GetStr();
 			break;
 		case kDataType_Array:
 			elementInfo += "(Array ID #";
@@ -713,7 +738,7 @@ ArrayID ArrayVarMap::GetKeys(ArrayID id, UInt8 modIndex)
 		if (keysType == kDataType_Numeric)
 			SetElementNumber(keyArrID, curIdx, iter.first().Key().num);
 		else
-			SetElementString(keyArrID, curIdx, iter.first().Key().str);
+			SetElementString(keyArrID, curIdx, iter.first().Key().GetStr());
 		curIdx++;
 	}
 
@@ -959,7 +984,7 @@ bool ArrayVarMap::SetElementNumber(ArrayID id, const ArrayKey& key, double num)
 	return true;
 }
 
-bool ArrayVarMap::SetElementString(ArrayID id, const ArrayKey& key, const std::string& str)
+bool ArrayVarMap::SetElementString(ArrayID id, const ArrayKey& key, const char* str)
 {
 	ArrayVar* arr = Get(id);
 	if (!arr)
@@ -1021,7 +1046,7 @@ bool ArrayVarMap::GetElementNumber(ArrayID id, const ArrayKey& key, double* out)
 	return (elem && elem->GetAsNumber(out));
 }
 
-bool ArrayVarMap::GetElementString(ArrayID id, const ArrayKey& key, std::string& out)
+bool ArrayVarMap::GetElementString(ArrayID id, const ArrayKey& key, const char** out)
 {
 	ArrayVar* arr = Get(id);
 	if (!arr)
@@ -1039,7 +1064,7 @@ bool ArrayVarMap::GetElementCString(ArrayID id, const ArrayKey& key, const char*
 		ArrayElement* elem = arr->Get(key, false);
 		if (elem && elem->DataType() == kDataType_String)
 		{
-			*out = elem->m_data.str.c_str();
+			*out = elem->m_data.GetStr();
 			return true;
 		}
 	}
@@ -1169,9 +1194,9 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 					intfc->WriteRecordData(&key.num, sizeof(double));
 				else
 				{
-					UInt16 len = key.str.length();
+					UInt16 len = StrLen(key.str);
 					intfc->WriteRecordData(&len, sizeof(len));
-					intfc->WriteRecordData(key.str.c_str(), key.str.length());
+					if (len) intfc->WriteRecordData(key.str, len);
 				}
 				auto s = elems.second().m_dataType;
 				intfc->WriteRecordData(&s, sizeof(UInt8));
@@ -1185,9 +1210,9 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 					}
 				case kDataType_String:
 					{
-						UInt16 len = elems.second().m_data.str.length();
+						UInt16 len = StrLen(elems.second().m_data.str);
 						intfc->WriteRecordData(&len, sizeof(len));
-						intfc->WriteRecordData(elems.second().m_data.str.c_str(), elems.second().m_data.str.length());
+						if (len) intfc->WriteRecordData(elems.second().m_data.str, len);
 						break;
 					}
 				case kDataType_Array:
@@ -1357,7 +1382,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 							intfc->ReadRecordData(&strLength, sizeof(strLength));
 							intfc->ReadRecordData(buffer, strLength);
 							buffer[strLength] = 0;
-							SetElementString(arrayID, newKey, std::string(buffer));
+							SetElementString(arrayID, newKey, buffer);
 							break;
 						}
 					case kDataType_Array:
@@ -1694,23 +1719,26 @@ namespace PluginAPI
 			return false;
 
 		ArrayVar* var = g_ArrayMap.Get((ArrayID)arr);
-		if (var) {
+		if (var)
+		{
 			UInt32 size = var->Size();
 			UInt8 keyType = var->KeyType();
 
-			if (size != -1) {
+			if (size != -1)
+			{
 				UInt32 i = 0;
-				for (ArrayIterator iter = var->m_elements.begin(); iter != var->m_elements.end(); ++iter) {
-					if (keys) {
-						switch (keyType) {
+				for (ArrayIterator iter = var->m_elements.begin(); iter != var->m_elements.end(); ++iter)
+				{
+					if (keys)
+					{
+						switch (keyType)
+						{
 							case kDataType_Numeric:
 								keys[i] = iter.first().Key().num;
 								break;
 							case kDataType_String:
-								{
-									keys[i] = NVSEArrayVarInterface::Element(iter.first().Key().str.c_str());
-									break;
-								}
+								keys[i] = iter.first().Key().GetStr();
+								break;
 						}
 					}
 					
@@ -1728,34 +1756,23 @@ namespace PluginAPI
 	// helpers
 	bool ArrayAPI::InternalElemToPluginElem(ArrayElement& src, NVSEArrayVarInterface::Element& out)
 	{
-		switch (src.DataType()) {
+		switch (src.DataType())
+		{
 			case kDataType_Numeric:
-				{
-					double num;
-					src.GetAsNumber(&num);
-					out = num;
-				}
+				out = src.m_data.num;
 				break;
 			case kDataType_Form:
-				{
-					UInt32 formID;
-					src.GetAsFormID(&formID);
-					out = LookupFormByID(formID);
-				}
+				out = LookupFormByID(src.m_data.formID);
 				break;
 			case kDataType_Array:
-				{
-					ArrayID arrID;
-					src.GetAsArray(&arrID);
-					out = (NVSEArrayVarInterface::Array*)arrID;
-				}
+			{
+				ArrayID arrID;
+				src.GetAsArray(&arrID);
+				out = (NVSEArrayVarInterface::Array*)arrID;
 				break;
+			}
 			case kDataType_String:
-				{
-					std::string str;
-					src.GetAsString(str);
-					out = NVSEArrayVarInterface::Element(str.c_str());
-				}
+				out = src.m_data.GetStr();
 				break;
 		}
 

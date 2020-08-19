@@ -903,7 +903,7 @@ bool Cmd_sv_Split_Execute(COMMAND_ARGS)
 		double idx = 0.0;
 		while (tokens.NextToken(token) != -1)
 		{
-			g_ArrayMap.SetElementString(arrID, idx, token);
+			g_ArrayMap.SetElementString(arrID, idx, token.c_str());
 			idx += 1.0;
 		}
 	}
