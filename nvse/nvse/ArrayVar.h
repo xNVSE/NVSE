@@ -72,6 +72,7 @@ struct ArrayType
 	{
 		double		num;
 		UInt32		formID;
+		ArrayID		arrID;
 	};
 	char		*str;
 
@@ -137,6 +138,7 @@ public:
 	bool operator>=(const ArrayKey& rhs) const { return !(*this < rhs);	}
 	bool operator>(const ArrayKey& rhs) const { return !(*this < rhs || *this == rhs); }
 	bool operator<=(const ArrayKey& rhs) const { return !(*this > rhs); }
+	ArrayKey& operator=(const ArrayKey &rhs);
 };
 
 class ArrayVarElementContainer
@@ -192,7 +194,7 @@ public:
 
 	std::vector<ArrayElement>& getVectorRef() const;
 
-	
+	std::map<ArrayKey, ArrayElement>& getMapRef() const;
 };
 
 

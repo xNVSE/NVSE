@@ -46,17 +46,18 @@ bool ArrayElement::operator<(const ArrayElement& rhs) const
 	// no reason to do that
 
 	if (DataType() != rhs.DataType())
-	{
-		_MESSAGE("ArrayElement::operator< called with non-matching element types.");
 		return false;
-	}
 
-	if (DataType() == kDataType_String)
-		return StrCompare(m_data.str, rhs.m_data.str) < 0;
-	else if (DataType() == kDataType_Form)
-		return m_data.formID < rhs.m_data.formID;
-	else
-		return m_data.num < rhs.m_data.num;
+	switch (DataType())
+	{
+		case kDataType_Form:
+		case kDataType_Array:
+			return m_data.formID < rhs.m_data.formID;
+		case kDataType_String:
+			return StrCompare(m_data.str, rhs.m_data.str) < 0;
+		default:
+			return m_data.num < rhs.m_data.num;
+	}
 }
 
 bool ArrayElement::Equals(const ArrayElement& compareTo) const
@@ -66,12 +67,13 @@ bool ArrayElement::Equals(const ArrayElement& compareTo) const
 
 	switch (DataType())
 	{
-	case kDataType_String:
-		return StrEqualCI(m_data.str, compareTo.m_data.str);
-	case kDataType_Form:
-		return m_data.formID == compareTo.m_data.formID;
-	default:
-		return m_data.num == compareTo.m_data.num;
+		case kDataType_Form:
+		case kDataType_Array:
+			return m_data.formID == compareTo.m_data.formID;
+		case kDataType_String:
+			return StrEqualCI(m_data.str, compareTo.m_data.str);
+		default:
+			return m_data.num == compareTo.m_data.num;
 	}
 }
 
@@ -87,7 +89,7 @@ std::string ArrayElement::ToString() const
 	case kDataType_String:
 		return m_data.GetStr();
 	case kDataType_Array:
-		sprintf_s(buf, sizeof(buf), "Array ID %.0f", m_data.num);
+		sprintf_s(buf, sizeof(buf), "Array ID %d", m_data.arrID);
 		return buf;
 	case kDataType_Form:
 		{
@@ -153,10 +155,10 @@ bool ArrayElement::SetArray(ArrayID arr, UInt8 modIndex)
 
 	m_dataType = kDataType_Array;
 	if (m_owningArray) {
-		g_ArrayMap.AddReference(&m_data.num, arr, modIndex);
+		g_ArrayMap.AddReference(&m_data.arrID, arr, modIndex);
 	}
 	else {	// this element is not inside any array, so it's just a temporary
-		m_data.num = arr;
+		m_data.arrID = arr;
 	}
 
 	return true;
@@ -182,7 +184,7 @@ bool ArrayElement::Set(const ArrayElement& elem)
 		SetString(elem.m_data.str);
 		break;
 	case kDataType_Array:
-		SetArray(elem.m_data.num, g_ArrayMap.GetOwningModIndex(m_owningArray));
+		SetArray(elem.m_data.arrID, g_ArrayMap.GetOwningModIndex(m_owningArray));
 		break;
 	case kDataType_Numeric:
 		SetNumber(elem.m_data.num);
@@ -202,10 +204,10 @@ bool ArrayElement::GetAsArray(ArrayID* out) const
 {
 	if (!out || m_dataType != kDataType_Array)
 		return false;
-	else if (m_data.num != 0 && !g_ArrayMap.Exists(m_data.num))	// it's okay for arrayID to be 0, otherwise check if array exists
+	else if (m_data.arrID && !g_ArrayMap.Exists(m_data.arrID))	// it's okay for arrayID to be 0, otherwise check if array exists
 		return false;
 
-	*out = m_data.num;
+	*out = m_data.arrID;
 	return true;
 }
 
@@ -244,7 +246,7 @@ void ArrayElement::Unset()
 		}
 	}
 	else if (m_dataType == kDataType_Array)
-		g_ArrayMap.RemoveReference(&m_data.num, g_ArrayMap.GetOwningModIndex(m_owningArray));
+		g_ArrayMap.RemoveReference(&m_data.arrID, g_ArrayMap.GetOwningModIndex(m_owningArray));
 	
 	m_dataType = kDataType_Invalid;
 }
@@ -287,7 +289,7 @@ bool ArrayKey::operator<(const ArrayKey& rhs) const
 {
 	if (keyType != rhs.keyType)
 	{
-		_MESSAGE("Error: ArrayKey operator< mismatched keytypes");
+		//_MESSAGE("Error: ArrayKey operator< mismatched keytypes");
 		return true;
 	}
 
@@ -298,7 +300,7 @@ bool ArrayKey::operator<(const ArrayKey& rhs) const
 	case kDataType_String:
 		return StrCompare(key.str, rhs.key.str) < 0;
 	default:
-		_MESSAGE("Error: Invalid ArrayKey type %d", rhs.keyType);
+		//_MESSAGE("Error: Invalid ArrayKey type %d", rhs.keyType);
 		return true;
 	}
 }
@@ -307,7 +309,7 @@ bool ArrayKey::operator==(const ArrayKey& rhs) const
 {
 	if (keyType != rhs.keyType)
 	{
-		_MESSAGE("Error: ArrayKey operator== mismatched keytypes");
+		//_MESSAGE("Error: ArrayKey operator== mismatched keytypes");
 		return true;
 	}
 
@@ -318,9 +320,26 @@ bool ArrayKey::operator==(const ArrayKey& rhs) const
 	case kDataType_String:
 		return StrEqualCI(key.str, rhs.key.str);
 	default:
-		_MESSAGE("Error: Invalid ArrayKey type %d", rhs.keyType);
+		//_MESSAGE("Error: Invalid ArrayKey type %d", rhs.keyType);
 		return true;
 	}
+}
+
+ArrayKey& ArrayKey::operator=(const ArrayKey &rhs)
+{
+	if (this != &rhs)
+	{
+		if ((keyType == kDataType_String) && key.str)
+		{
+			free(key.str);
+			key.str = NULL;
+		}
+		keyType = rhs.keyType;
+		if (keyType == kDataType_String)
+			key.SetStr(rhs.key.str);
+		else key.num = rhs.key.num;
+	}
+	return *this;
 }
 
 ///////////////////////
@@ -360,34 +379,45 @@ ArrayVar::~ArrayVar()
 
 ArrayElement* ArrayVar::Get(ArrayKey key, bool bCanCreateNew)
 {
-	if (IsPacked() && key.KeyType() == kDataType_Numeric)
-	{
-		double idx = key.Key().num;
-		if (idx < 0)
-			idx += Size();
-		UInt32 intIdx = idx;
-		key.SetNumericKey(intIdx);
-	}
+	if (key.KeyType() != KeyType())
+		return NULL;
 
-	_ElementMap::iterator it = m_elements.find(key);
-	if (it != m_elements.end()) {
-		return &it.second();
-	}
-
-	if (bCanCreateNew)
+	if (IsPacked())
 	{
-		if (key.KeyType() == KeyType())
+		std::vector<ArrayElement> *pArray = &m_elements.getVectorRef();
+		if (pArray) 
 		{
-			if (!IsPacked() || (key.Key().num <= Size()))
+			int idx = key.Key().num;
+			if (idx < 0)
+				idx += pArray->size();
+			UInt32 intIdx = idx;
+			if (intIdx < pArray->size())
+				return &(*pArray)[intIdx];
+			if (bCanCreateNew)
 			{
-				// create a new, uninitialized element
-				ArrayElement* newElem = &m_elements[key];
+				pArray->push_back(ArrayElement());
+				ArrayElement *newElem = &pArray->back();
 				newElem->m_owningArray = m_ID;
 				return newElem;
 			}
 		}
 	}
-
+	else
+	{
+		std::map<ArrayKey, ArrayElement> *pMap = &m_elements.getMapRef();
+		if (pMap)
+		{
+			if (bCanCreateNew)
+			{
+				ArrayElement *newElem = &(*pMap)[key];
+				newElem->m_owningArray = m_ID;
+				return newElem;
+			}
+			auto findKey = pMap->find(key);
+			if (findKey != pMap->end())
+				return &findKey->second;
+		}
+	}
 	return NULL;
 }
 
@@ -440,7 +470,7 @@ void ArrayVar::Dump()
 			break;
 		case kDataType_Array:
 			elementInfo += "(Array ID #";
-			sprintf_s(numBuf, sizeof(numBuf), "%.0f", iter.second().m_data.num);
+			sprintf_s(numBuf, sizeof(numBuf), "%d", iter.second().m_data.arrID);
 			elementInfo += numBuf;
 			elementInfo += ")";
 			break;
@@ -1204,37 +1234,27 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 					intfc->WriteRecordData(&len, sizeof(len));
 					if (len) intfc->WriteRecordData(key.str, len);
 				}
-				auto s = elems.second().m_dataType;
-				intfc->WriteRecordData(&s, sizeof(UInt8));
+				intfc->WriteRecordData(&elems.second().m_dataType, sizeof(UInt8));
 				switch (elems.second().m_dataType)
 				{
-				case kDataType_Numeric:
-					{
-					auto x = elems.second().m_data.num;
-					intfc->WriteRecordData(&x, sizeof(double));
-					break;
-					}
-				case kDataType_String:
+					case kDataType_Numeric:
+						intfc->WriteRecordData(&elems.second().m_data.num, sizeof(double));
+						break;
+					case kDataType_String:
 					{
 						UInt16 len = StrLen(elems.second().m_data.str);
 						intfc->WriteRecordData(&len, sizeof(len));
 						if (len) intfc->WriteRecordData(elems.second().m_data.str, len);
 						break;
 					}
-				case kDataType_Array:
-					{
-						ArrayID id = elems.second().m_data.num;
-						intfc->WriteRecordData(&id, sizeof(id));
+					case kDataType_Array:
+						intfc->WriteRecordData(&elems.second().m_data.arrID, sizeof(ArrayID));
 						break;
-					}
-				case kDataType_Form:
-					{
-						auto y = elems.second().m_data.formID;
-						intfc->WriteRecordData(&y, sizeof(UInt32));
+					case kDataType_Form:
+						intfc->WriteRecordData(&elems.second().m_data.formID, sizeof(UInt32));
 						break;
-					}
-				default:
-					_MESSAGE("Error in ArrayVarMap::Save() - unhandled element type %d. Element not saved.", elems.second().m_dataType);
+					default:
+						_MESSAGE("Error in ArrayVarMap::Save() - unhandled element type %d. Element not saved.", elems.second().m_dataType);
 				}
 			}
 		}
@@ -1401,7 +1421,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 								if (elem)
 								{
 									elem->m_dataType = kDataType_Array;
-									elem->m_data.num = id;
+									elem->m_data.arrID = id;
 									elem->m_owningArray = arrayID;
 								}
 							}

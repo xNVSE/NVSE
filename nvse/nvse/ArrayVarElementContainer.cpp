@@ -171,3 +171,8 @@ std::vector<ArrayElement>& ArrayVarElementContainer::getVectorRef() const
 {
 	return *array_;
 }
+
+std::map<ArrayKey, ArrayElement>& ArrayVarElementContainer::getMapRef() const
+{
+	return *map_;
+}

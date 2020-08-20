@@ -39,8 +39,8 @@ ArrayIterLoop::ArrayIterLoop(const ForEachContext* context, UInt8 modIndex)
 
 void ArrayIterLoop::UpdateIterator(const ArrayElement* elem)
 {
-	ArrayKey val("value");
-	ArrayKey key("key");
+	static ArrayKey val("value");
+	static ArrayKey key("key");
 
 	// iter["value"] = element data
 	switch (elem->DataType())
@@ -52,16 +52,11 @@ void ArrayIterLoop::UpdateIterator(const ArrayElement* elem)
 		g_ArrayMap.SetElementNumber(m_iterID, val, elem->m_data.num);
 		break;
 	case kDataType_Form:
-		{
-			g_ArrayMap.SetElementFormID(m_iterID, val, elem->m_data.formID);
-			break;
-		}
+		g_ArrayMap.SetElementFormID(m_iterID, val, elem->m_data.formID);
+		break;
 	case kDataType_Array:
-		{
-			ArrayID arrID = elem->m_data.num;
-			g_ArrayMap.SetElementArray(m_iterID, val, arrID);
-			break;
-		}
+		g_ArrayMap.SetElementArray(m_iterID, val, elem->m_data.arrID);
+		break;
 	default:
 		DEBUG_PRINT("ArrayIterLoop::UpdateIterator(): unknown datatype %d found for element value", elem->DataType());
 	}
