@@ -123,9 +123,9 @@ private:
 	DataType	keyType;
 public:
 	ArrayKey();
-	ArrayKey(const std::string& _key);
 	ArrayKey(double _key);
 	ArrayKey(const char* _key);
+	ArrayKey(const ArrayKey& from);
 
 	ArrayType&	Key() {	return key;	}
 	UInt8		KeyType() const { return keyType; }

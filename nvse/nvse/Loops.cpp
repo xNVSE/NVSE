@@ -39,8 +39,8 @@ ArrayIterLoop::ArrayIterLoop(const ForEachContext* context, UInt8 modIndex)
 
 void ArrayIterLoop::UpdateIterator(const ArrayElement* elem)
 {
-	std::string val("value");
-	std::string key("key");
+	ArrayKey val("value");
+	ArrayKey key("key");
 
 	// iter["value"] = element data
 	switch (elem->DataType())

@@ -1282,8 +1282,8 @@ void Slice::GetArrayBounds(ArrayKey& lo, ArrayKey& hi) const
 {
 	if (bIsString)
 	{
-		lo = ArrayKey(m_lowerStr);
-		hi = ArrayKey(m_upperStr);
+		lo = ArrayKey(m_lowerStr.c_str());
+		hi = ArrayKey(m_upperStr.c_str());
 	}
 	else
 	{

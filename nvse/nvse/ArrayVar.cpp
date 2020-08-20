@@ -258,12 +258,6 @@ ArrayKey::ArrayKey() : keyType(kDataType_Invalid)
 	key.str = NULL;
 }
 
-ArrayKey::ArrayKey(const std::string& _key)
-{
-	keyType = kDataType_String;
-	key.SetStr(_key.c_str());
-}
-
 ArrayKey::ArrayKey(const char* _key)
 {
 	keyType = kDataType_String;
@@ -275,6 +269,18 @@ ArrayKey::ArrayKey(double _key)
 	keyType = kDataType_Numeric;
 	key.num = _key;
 	key.str = NULL;
+}
+
+ArrayKey::ArrayKey(const ArrayKey& from)
+{
+	keyType = from.keyType;
+	if (keyType == kDataType_String)
+		key.SetStr(from.key.str);
+	else
+	{
+		key.num = from.key.num;
+		key.str = NULL;
+	}
 }
 
 bool ArrayKey::operator<(const ArrayKey& rhs) const
@@ -659,8 +665,8 @@ ArrayID ArrayVarMap::MakeSlice(ArrayID src, const Slice* slice, UInt8 modIndex)
 
 	if (slice->bIsString && srcVar->KeyType() == kDataType_String)
 	{
-		lo = ArrayKey(slice->m_lowerStr);
-		hi = ArrayKey(slice->m_upperStr);
+		lo = ArrayKey(slice->m_lowerStr.c_str());
+		hi = ArrayKey(slice->m_upperStr.c_str());
 
 	}
 	else if (!slice->bIsString && srcVar->KeyType() == kDataType_Numeric)
@@ -1356,9 +1362,9 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 					else
 					{
 						intfc->ReadRecordData(&strLength, sizeof(strLength));
-						intfc->ReadRecordData(buffer, strLength);
+						if (strLength) intfc->ReadRecordData(buffer, strLength);
 						buffer[strLength] = 0;
-						newKey = std::string(buffer);
+						newKey = buffer;
 					}
 
 					UInt8 elemType;
@@ -1380,7 +1386,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 					case kDataType_String:
 						{
 							intfc->ReadRecordData(&strLength, sizeof(strLength));
-							intfc->ReadRecordData(buffer, strLength);
+							if (strLength) intfc->ReadRecordData(buffer, strLength);
 							buffer[strLength] = 0;
 							SetElementString(arrayID, newKey, buffer);
 							break;
