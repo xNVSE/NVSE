@@ -65,10 +65,10 @@ void ArrayIterLoop::UpdateIterator(const ArrayElement* elem)
 	switch (m_curKey.KeyType())
 	{
 	case kDataType_String:
-		g_ArrayMap.SetElementString(m_iterID, key, m_curKey.Key().GetStr());
+		g_ArrayMap.SetElementString(m_iterID, key, m_curKey.key.GetStr());
 		break;
 	default:
-		g_ArrayMap.SetElementNumber(m_iterID, key, m_curKey.Key().num);
+		g_ArrayMap.SetElementNumber(m_iterID, key, m_curKey.key.num);
 	}
 }
 

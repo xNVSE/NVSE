@@ -119,16 +119,14 @@ public:
 
 struct ArrayKey
 {
-private:
 	ArrayType	key;
 	DataType	keyType;
-public:
+
 	ArrayKey();
 	ArrayKey(double _key);
 	ArrayKey(const char* _key);
 	ArrayKey(const ArrayKey& from);
 
-	ArrayType&	Key() {	return key;	}
 	UInt8		KeyType() const { return keyType; }
 	void		SetNumericKey(double newVal)	{	keyType = kDataType_Numeric; key.num = newVal;	}
 	bool		IsValid() const { return keyType != kDataType_Invalid;	}
@@ -175,12 +173,12 @@ public:
 
 		bool operator!=(const iterator& other) const;
 
-		[[nodiscard]] ArrayKey first() const;
+		[[nodiscard]] const ArrayKey& first() const;
 
 		[[nodiscard]] ArrayElement& second() const;
 	};
 
-	[[nodiscard]] iterator find(ArrayKey key) const;
+	[[nodiscard]] iterator find(const ArrayKey& key) const;
 
 	[[nodiscard]] iterator begin() const;
 
@@ -188,9 +186,11 @@ public:
 
 	[[nodiscard]] std::size_t size() const;
 
-	std::size_t erase(ArrayKey key) const;
+	std::size_t count(const ArrayKey& key) const;
 
-	std::size_t erase(ArrayKey low, ArrayKey high) const;
+	std::size_t erase(const ArrayKey& key) const;
+
+	std::size_t erase(const ArrayKey& low, const ArrayKey& high) const;
 
 	std::vector<ArrayElement>& getVectorRef() const;
 
@@ -214,12 +214,10 @@ class ArrayVar
 	bool				m_bPacked;
 	std::vector<UInt8>	m_refs;		// data is modIndex of referring object; size() is number of references
 
-	UInt32 GetUnusedIndex();
-
 	explicit ArrayVar(UInt8 modIndex);
 	ArrayVar(UInt32 keyType, bool packed, UInt8 modIndex);
 
-	ArrayElement* Get(ArrayKey key, bool bCanCreateNew);
+	ArrayElement* Get(const ArrayKey& key, bool bCanCreateNew);
 
 	UInt32 ID()		{ return m_ID;	}
 	//void Pack();
@@ -237,7 +235,7 @@ public:
 class ArrayVarMap : public VarMap<ArrayVar>
 {
 	// this gets incremented whenever serialization format changes
-	static const UInt32 kVersion = 1;
+	static const UInt32 kVersion = 2;
 
 	void Add(ArrayVar* var, UInt32 varID, UInt32 numRefs, UInt8* refs);
 public:

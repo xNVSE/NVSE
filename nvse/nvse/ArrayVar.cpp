@@ -117,7 +117,7 @@ bool ArrayElement::CompareAsString(const ArrayElement& lhs, const ArrayElement& 
 	std::string lhStr = lhs.ToString();
 	std::string rhStr = rhs.ToString();
 
-	return _stricmp(lhStr.c_str(), rhStr.c_str()) < 0;
+	return StrCompare(lhStr.c_str(), rhStr.c_str()) < 0;
 }
 
 
@@ -370,14 +370,13 @@ ArrayVar::~ArrayVar()
 	// erase all elements. Important because doing so decrements refCounts of arrays stored within this array
 	for (ArrayIterator iter = m_elements.begin(); iter != m_elements.end(); ++iter)
 	{
-		ArrayKey key = iter.first();
-		ArrayElement* elem = Get(key, false);
+		ArrayElement* elem = Get(iter.first(), false);
 		if (elem)
 			elem->Unset();
 	}
 }
 
-ArrayElement* ArrayVar::Get(ArrayKey key, bool bCanCreateNew)
+ArrayElement* ArrayVar::Get(const ArrayKey& key, bool bCanCreateNew)
 {
 	if (key.KeyType() != KeyType())
 		return NULL;
@@ -387,7 +386,7 @@ ArrayElement* ArrayVar::Get(ArrayKey key, bool bCanCreateNew)
 		std::vector<ArrayElement> *pArray = &m_elements.getVectorRef();
 		if (pArray) 
 		{
-			int idx = key.Key().num;
+			int idx = key.key.num;
 			if (idx < 0)
 				idx += pArray->size();
 			UInt32 intIdx = idx;
@@ -421,17 +420,6 @@ ArrayElement* ArrayVar::Get(ArrayKey key, bool bCanCreateNew)
 	return NULL;
 }
 
-UInt32 ArrayVar::GetUnusedIndex()
-{
-	UInt32 id = 0;
-	while (m_elements.find(id) != m_elements.end())
-	{
-		id++;
-	}
-
-	return id;
-}
-
 void ArrayVar::Dump()
 {
 	const char* owningModName = DataHandler::Get()->GetNthModName(m_owningModIndex);
@@ -447,11 +435,11 @@ void ArrayVar::Dump()
 		switch (KeyType())
 		{
 		case kDataType_Numeric:
-			sprintf_s(numBuf, sizeof(numBuf), "%f", iter.first().Key().num);
+			sprintf_s(numBuf, sizeof(numBuf), "%f", iter.first().key.num);
 			elementInfo += numBuf;
 			break;
 		case kDataType_String:
-			elementInfo += iter.first().Key().GetStr();
+			elementInfo += iter.first().key.GetStr();
 			break;
 		default:
 			elementInfo += "?Unknown Key Type?";
@@ -576,8 +564,8 @@ void ArrayVarMap::Add(ArrayVar* var, UInt32 varID, UInt32 numRefs, UInt8* refs)
 		MarkTemporary(varID, true);
 	else				// record references to this array
 	{
-		for (UInt32 i = 0; i < numRefs; i++)
-			var->m_refs.push_back(refs[i]);
+		var->m_refs.resize(numRefs);
+		MemCopy(var->m_refs.data(), refs, numRefs);
 	}
 }
 
@@ -772,9 +760,9 @@ ArrayID ArrayVarMap::GetKeys(ArrayID id, UInt8 modIndex)
 	for (ArrayIterator iter = src->m_elements.begin(); iter != src->m_elements.end(); ++iter)
 	{
 		if (keysType == kDataType_Numeric)
-			SetElementNumber(keyArrID, curIdx, iter.first().Key().num);
+			SetElementNumber(keyArrID, curIdx, iter.first().key.num);
 		else
-			SetElementString(keyArrID, curIdx, iter.first().Key().GetStr());
+			SetElementString(keyArrID, curIdx, iter.first().key.GetStr());
 		curIdx++;
 	}
 
@@ -787,7 +775,7 @@ bool ArrayVarMap::HasKey(ArrayID id, const ArrayKey& key)
 	if (!arr || arr->KeyType() != key.KeyType())
 		return false;
 
-	return (arr->m_elements.find(key) != arr->m_elements.end());
+	return arr->m_elements.count(key) != 0;
 }
 
 bool ArrayVarMap::AsVector(ArrayID id, std::vector<const ArrayElement*> &vecOut)
@@ -1197,7 +1185,8 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 
 	intfc->OpenRecord('ARVS', kVersion);
 
-	if (m_state) {
+	if (m_state)
+	{
 		_VarMap& vars = m_state->vars;
 		for (_VarMap::iterator iter = vars.begin(); iter != vars.end(); ++iter)
 		{
@@ -1212,28 +1201,26 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 			
 			UInt32 numRefs = iter->second->m_refs.size();
 			intfc->WriteRecordData(&numRefs, sizeof(numRefs));
-			if (!numRefs)
-				_MESSAGE("ArrayVarMap::Save(): saving array with no references");
-
-			for (UInt32 i = 0; i < numRefs; i++)
-				intfc->WriteRecordData(&iter->second->m_refs[i], sizeof(UInt8));
+			if (numRefs)
+				intfc->WriteRecordData(iter->second->m_refs.data(), numRefs);
+			else _MESSAGE("ArrayVarMap::Save(): saving array with no references");
 
 			UInt32 numElements = iter->second->Size();
 			intfc->WriteRecordData(&numElements, sizeof(UInt32));
 
 			UInt8 keyType = iter->second->m_keyType;
-			for (ArrayIterator elems = iter->second->m_elements.begin();
-				elems != iter->second->m_elements.end(); ++elems)
+			for (ArrayIterator elems = iter->second->m_elements.begin(); elems != iter->second->m_elements.end(); ++elems)
 			{
-				ArrayType key = elems.first().Key();
-				if (keyType == kDataType_Numeric)
-					intfc->WriteRecordData(&key.num, sizeof(double));
-				else
+				if (keyType == kDataType_String)
 				{
-					UInt16 len = StrLen(key.str);
+					char *str = elems.first().key.str;
+					UInt16 len = StrLen(str);
 					intfc->WriteRecordData(&len, sizeof(len));
-					if (len) intfc->WriteRecordData(key.str, len);
+					if (len) intfc->WriteRecordData(str, len);
 				}
+				else if (!iter->second->m_bPacked)
+					intfc->WriteRecordData(&elems.first().key.num, sizeof(double));
+				
 				intfc->WriteRecordData(&elems.second().m_dataType, sizeof(UInt8));
 				switch (elems.second().m_dataType)
 				{
@@ -1272,21 +1259,24 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 	UInt16 strLength;
 	UInt8 modIndex, keyType;
 	bool bPacked;
-	char buffer[kMaxMessageLength];
+	UInt8 buffer[kMaxMessageLength];
 
 	//Reset(intfc);
 	bool bContinue = true;
-
 	UInt32 lastIndexRead = 0;
+
+	// Workaround to prevent unnecessary string copying.
+	UInt8 tempKey[sizeof(ArrayKey)];
+	ArrayKey *pNewKey = (ArrayKey*)&tempKey;
 
 	while (bContinue && intfc->GetNextRecordInfo(&type, &version, &length))
 	{
 		switch (type)
 		{
-		case 'ARVE':			//end of block
-			bContinue = false;
-			break;
-		case 'ARVR':
+			case 'ARVE':			//end of block
+				bContinue = false;
+				break;
+			case 'ARVR':
 			{
 				intfc->ReadRecordData(&modIndex, sizeof(modIndex));
 				if (!intfc->ResolveRefID(modIndex << 24, &tempRefID))
@@ -1307,7 +1297,6 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 
 				// read refs, fix up mod indexes, discard refs from unloaded mods
 				UInt32 numRefs = 0;		// # of references to this array
-				UInt8* refs = NULL;		// mod indexes of mods referring to this array
 
 				// reference-counting implemented in v1
 				if (version >= 1)
@@ -1315,7 +1304,6 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 					intfc->ReadRecordData(&numRefs, sizeof(numRefs));
 					if (numRefs)
 					{
-						refs = new UInt8[numRefs];
 						UInt32 tempRefID = 0;
 						UInt8 curModIndex = 0;
 						UInt32 refIdx = 0;
@@ -1332,7 +1320,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 							}
 
 							if (intfc->ResolveRefID(curModIndex << 24, &tempRefID))
-								refs[refIdx++] = (tempRefID >> 24);
+								buffer[refIdx++] = (tempRefID >> 24);
 						}
 
 						numRefs = refIdx;
@@ -1343,15 +1331,13 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 					if (modIndex)		// owning mod is loaded
 					{
 						numRefs = 1;
-						refs = new UInt8[1];
-						refs[0] = modIndex;
+						buffer[0] = modIndex;
 					}
 				}
 				
 				if (!modIndex)
 				{
 					_MESSAGE("Array ID %d is referred to by no loaded mods. Discarding", arrayID);
-					delete[] refs;
 					continue;
 				}
 
@@ -1365,26 +1351,26 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				
 				// create array and add to map
 				ArrayVar* newArr = new ArrayVar(keyType, bPacked, modIndex);
-				Add(newArr, arrayID, numRefs, refs);
-				delete[] refs;
+				Add(newArr, arrayID, numRefs, buffer);
+
+				pNewKey->keyType = (DataType)keyType;
+				pNewKey->key.str = (keyType == kDataType_String) ? (char*)buffer : NULL;
 
 				// read the array elements			
 				intfc->ReadRecordData(&numElements, sizeof(numElements));
 				for (UInt32 i = 0; i < numElements; i++)
 				{
-					ArrayKey newKey;
 					if (keyType == kDataType_Numeric)
 					{
-						double num;
-						intfc->ReadRecordData(&num, sizeof(double));
-						newKey = num;
+						if (bPacked && (version >= 2))
+							pNewKey->key.num = i;
+						else intfc->ReadRecordData(&pNewKey->key.num, sizeof(double));
 					}
 					else
 					{
 						intfc->ReadRecordData(&strLength, sizeof(strLength));
 						if (strLength) intfc->ReadRecordData(buffer, strLength);
 						buffer[strLength] = 0;
-						newKey = buffer;
 					}
 
 					UInt8 elemType;
@@ -1394,61 +1380,49 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 						return;
 					}
 
+					ArrayElement *elem = newArr->Get(*pNewKey, true);
+					elem->m_dataType = (DataType)elemType;
+
 					switch (elemType)
 					{
-					case kDataType_Numeric:
-						{
-							double num;
-							intfc->ReadRecordData(&num, sizeof(num));
-							SetElementNumber(arrayID, newKey, num);
+						case kDataType_Numeric:
+							intfc->ReadRecordData(&elem->m_data.num, sizeof(double));
 							break;
-						}
-					case kDataType_String:
+						case kDataType_String:
 						{
 							intfc->ReadRecordData(&strLength, sizeof(strLength));
-							if (strLength) intfc->ReadRecordData(buffer, strLength);
-							buffer[strLength] = 0;
-							SetElementString(arrayID, newKey, buffer);
-							break;
-						}
-					case kDataType_Array:
-						{
-							ArrayID id;
-							intfc->ReadRecordData(&id, sizeof(id));
-							if (newArr)
+							if (strLength)
 							{
-								ArrayElement* elem = newArr->Get(newKey, true);
-								if (elem)
-								{
-									elem->m_dataType = kDataType_Array;
-									elem->m_data.arrID = id;
-									elem->m_owningArray = arrayID;
-								}
+								char *strVal = (char*)malloc(strLength + 1);
+								intfc->ReadRecordData(strVal, strLength);
+								strVal[strLength] = 0;
+								elem->m_data.str = strVal;
 							}
-
 							break;
 						}
-					case kDataType_Form:
+						case kDataType_Array:
+							intfc->ReadRecordData(&elem->m_data.arrID, sizeof(ArrayID));
+							elem->m_owningArray = arrayID;
+							break;
+						case kDataType_Form:
 						{
 							UInt32 formID;
 							intfc->ReadRecordData(&formID, sizeof(formID));
 							if (!intfc->ResolveRefID(formID, &formID))
 								formID = 0;
-
-							SetElementFormID(arrayID, newKey, formID);
+							elem->m_data.formID = formID;
 							break;
 						}
-						break;
-					default:
-						_MESSAGE("Unknown element type %d encountered while loading array var, element discarded.", elemType);
-						break;
+						default:
+							_MESSAGE("Unknown element type %d encountered while loading array var, element discarded.", elemType);
+							break;
 					}
 				}
+				break;
 			}
-			break;
-		default:
-			_MESSAGE("Error loading array var map: unexpected chunk type %d", type);
-			break;
+			default:
+				_MESSAGE("Error loading array var map: unexpected chunk type %d", type);
+				break;
 		}
 	}
 }
@@ -1760,10 +1734,10 @@ namespace PluginAPI
 						switch (keyType)
 						{
 							case kDataType_Numeric:
-								keys[i] = iter.first().Key().num;
+								keys[i] = iter.first().key.num;
 								break;
 							case kDataType_String:
-								keys[i] = iter.first().Key().GetStr();
+								keys[i] = iter.first().key.GetStr();
 								break;
 						}
 					}

@@ -5,7 +5,7 @@
 #include "GameAPI.h"
 
 static const double s_arrayErrorCodeNum = -99999;		// sigil return values for cmds returning array keys
-static std::string s_arrayErrorCodeStr = "";		// indicating invalid/non-existent key
+static const char s_arrayErrorCodeStr[] = "";		// indicating invalid/non-existent key
 
 #if DW_NIF_SCRIPT
 
@@ -362,7 +362,7 @@ bool Cmd_ar_Find_Execute(COMMAND_ARGS)
 		if (keyType == kDataType_String)
 		{
 			eval.ExpectReturnType(kRetnType_String);
-			*result = g_StringMap.Add(scriptObj->GetModIndex(), s_arrayErrorCodeStr.c_str(), true);
+			*result = g_StringMap.Add(scriptObj->GetModIndex(), s_arrayErrorCodeStr, true);
 		}
 		else
 		{
@@ -384,9 +384,9 @@ bool Cmd_ar_Find_Execute(COMMAND_ARGS)
 			return true;
 
 		if (keyType == kDataType_Numeric)
-			*result = idx.Key().num;
+			*result = idx.key.num;
 		else
-			*result = g_StringMap.Add(scriptObj->GetModIndex(), idx.Key().GetStr(), true);
+			*result = g_StringMap.Add(scriptObj->GetModIndex(), idx.key.GetStr(), true);
 	}
 
 	return true;
@@ -434,14 +434,14 @@ bool ArrayIterCommand(COMMAND_ARGS, eIterMode iterMode)
 				}
 
 				if (foundKey.IsValid())
-					*result = foundKey.Key().num;
+					*result = foundKey.key.num;
 
 				return true;
 			}
 		case kDataType_String:
 			{
 				eval.ExpectReturnType(kRetnType_String);
-				std::string keyStr = s_arrayErrorCodeStr;
+				const char *keyStr = s_arrayErrorCodeStr;
 				if (iterMode == kIterMode_First)
 					g_ArrayMap.GetFirstElement(arrID, &foundElem, &foundKey);
 				else if (iterMode == kIterMode_Last)
@@ -461,9 +461,9 @@ bool ArrayIterCommand(COMMAND_ARGS, eIterMode iterMode)
 				}
 
 				if (foundKey.IsValid())
-					keyStr = foundKey.Key().str;
+					keyStr = foundKey.key.GetStr();
 
-				AssignToStringVar(PASS_COMMAND_ARGS, keyStr.c_str());
+				AssignToStringVar(PASS_COMMAND_ARGS, keyStr);
 				return true;
 			}
 		default:
@@ -537,7 +537,7 @@ bool Cmd_ar_HasKey_Execute(COMMAND_ARGS)
 
 bool Cmd_ar_BadStringIndex_Execute(COMMAND_ARGS)
 {
-	AssignToStringVar(PASS_COMMAND_ARGS, s_arrayErrorCodeStr.c_str());
+	AssignToStringVar(PASS_COMMAND_ARGS, s_arrayErrorCodeStr);
 	return true;
 }
 
