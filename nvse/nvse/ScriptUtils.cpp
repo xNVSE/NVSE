@@ -387,9 +387,10 @@ ScriptToken* Eval_Assign_Elem_Array(OperatorType op, ScriptToken* lh, ScriptToke
 	if (!key)
 		return NULL;
 
-	if (g_ArrayMap.SetElementArray(lh->GetOwningArrayID(), *key, rh->GetArray()))
+	const auto arrayId = rh->GetArray();
+	if (g_ArrayMap.SetElementArray(lh->GetOwningArrayID(), *key, arrayId))
 	{
-		return ScriptToken::CreateArray(rh->GetArray());
+		return ScriptToken::CreateArray(arrayId);
 	}
 
 	return NULL;
