@@ -3333,7 +3333,6 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 using CachedTokenIter = std::vector<TokenCacheEntry>::iterator;
 CachedTokenIter GetOperatorParent(CachedTokenIter iter, const CachedTokenIter& iterEnd)
 {
-	const auto& op = iter->token.GetOperator();
 	++iter;
 	auto count = 0U;
 	while (iter != iterEnd)
@@ -3360,42 +3359,31 @@ CachedTokenIter GetOperatorParent(CachedTokenIter iter, const CachedTokenIter& i
 	return iterEnd;
 }
 
-void PreparseShortCircuit(CachedTokens& cachedTokens)
+void ParseShortCircuit(CachedTokens& cachedTokens)
 {
 	const auto end = cachedTokens.end();
 	for (auto iter = cachedTokens.begin(); iter != end; ++iter)
 	{
 		auto& outerToken = iter->token;
-		if (!outerToken.IsOperator())
+		auto innerIter = CachedTokenIter();
+		auto parent = iter;
+		do
 		{
-			continue;
-		}
-
-		auto innerIter = end;
-		auto parent = GetOperatorParent(iter, end);
-		while (parent != end && parent->token.GetOperator() == iter->token.GetOperator())
-		{
+			// Find last "parent" operator of same type. E.g `0 1 && 1 && 1 &&` should jump straight to end of expression.
 			innerIter = parent;
 			parent = GetOperatorParent(parent, end);
 		}
+		while (parent != end && parent->token.IsLogicalOperator() && (!innerIter->token.IsOperator() || parent->token.GetOperator() == innerIter->token.GetOperator()));
 
-		if (innerIter != end)
+		if (innerIter != iter)
 		{
-			outerToken.jumpDistance = innerIter - iter;
+			outerToken.shortCircuitParent = &innerIter->token;
+			outerToken.shortCircuitDistance = innerIter - iter;
 		}
 		else
 		{
-			outerToken.jumpDistance = 0;
-		}
-
-		if (parent != end)
-		{
-			outerToken.parentDist = parent - iter - outerToken.jumpDistance;
-			outerToken.parentType = parent->token.GetOperator()->type;
-		}
-		else
-		{
-			outerToken.parentDist = 0;
+			outerToken.shortCircuitParent = nullptr;
+			outerToken.shortCircuitDistance = 0;
 		}
 	}
 }
@@ -3407,7 +3395,7 @@ bool ExpressionEvaluator::ParseBytecode(CachedTokens& cachedTokens)
 	const auto* endData = m_data + argLen - sizeof(UInt16);
 	while (m_data < endData)
 	{
-		ScriptToken token(*this);
+		auto token = ScriptToken(*this);
 		if (token.IsInvalid())
 		{
 			return false;
@@ -3416,24 +3404,8 @@ bool ExpressionEvaluator::ParseBytecode(CachedTokens& cachedTokens)
 		cachedTokens.Append(TokenCacheEntry{ token });
 	}
 	cachedTokens.incrementData = m_data - dataBeforeParsing;
-	PreparseShortCircuit(cachedTokens);
+	ParseShortCircuit(cachedTokens);
 	return true;
-}
-
-void ShortCircuit(CachedTokenIter& iter, ScriptToken* curToken, ScriptToken* opResult)
-{
-	if (curToken->jumpDistance && (curToken->GetOperator()->type == kOpType_LogicalAnd && !opResult->GetBool()
-		|| curToken->GetOperator()->type == kOpType_LogicalOr && opResult->GetBool()))
-	{
-		std::advance(iter, curToken->jumpDistance);
-	}
-
-	if (curToken->parentDist && (curToken->parentType == kOpType_LogicalAnd && !opResult->GetBool()
-		|| curToken->parentType == kOpType_LogicalOr && opResult->GetBool()))
-	{
-		std::advance(iter, curToken->parentDist);
-	}
-
 }
 
 ScriptToken* ExpressionEvaluator::Evaluate()
@@ -3517,10 +3489,29 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				break;
 			}
 
-			ShortCircuit(iter, curToken, opResult);
-			
+			opResult->shortCircuitParent = curToken->shortCircuitParent;
+			opResult->shortCircuitDistance = curToken->shortCircuitDistance;
 			operands.push(opResult);
 		}
+
+		
+		auto* lastToken = operands.top();
+		if (lastToken->shortCircuitParent != nullptr)
+		{
+			const auto& type = lastToken->shortCircuitParent->GetOperator()->type;
+			const auto eval = lastToken->GetBool();
+			if (type == kOpType_LogicalAnd && !eval || type == kOpType_LogicalOr && eval)
+			{
+				std::advance(iter, lastToken->shortCircuitDistance);
+			}
+			else
+			{
+				// Cache result of e.g. command tokens so that they don't get execute more than once.
+				operands.pop();
+				operands.push(new ScriptToken(eval));
+			}
+		}
+		
 	}
 
 	// adjust opcode offset ptr (important for recursive calls to Evaluate()
