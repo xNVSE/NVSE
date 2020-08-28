@@ -66,32 +66,32 @@ enum DataType : UInt8
 	kDataType_Array,
 };
 
-struct ArrayType
+struct ArrayData
 {
 	DataType	dataType;
-	char		*str;
+	ArrayID		owningArray;
 	union
 	{
 		double		num;
 		UInt32		formID;
+		char		*str;
 		ArrayID		arrID;
 	};
 
-	~ArrayType();
+	~ArrayData();
 	const char *GetStr() const;
 	void SetStr(const char *srcStr);
 
-	ArrayType& operator=(const ArrayType &rhs);
+	ArrayData& operator=(const ArrayData &rhs);
 };
-STATIC_ASSERT(sizeof(ArrayType) == 0x10);
+STATIC_ASSERT(sizeof(ArrayData) == 0x10);
 
 struct ArrayElement
 {
 	friend class ArrayVar;
 	friend class ArrayVarMap;
 
-	ArrayType	m_data;
-	ArrayID		m_owningArray;
+	ArrayData	m_data;
 
 	void  Unset();
 	std::string ToString() const;
@@ -121,11 +121,11 @@ struct ArrayElement
 
 	bool IsGood() { return m_data.dataType != kDataType_Invalid;	}
 };
-STATIC_ASSERT(sizeof(ArrayElement) == 0x18);
+STATIC_ASSERT(sizeof(ArrayElement) == 0x10);
 
 struct ArrayKey
 {
-	ArrayType	key;
+	ArrayData	key;
 
 	ArrayKey();
 	ArrayKey(double _key);
@@ -196,6 +196,8 @@ public:
 	std::size_t erase(const ArrayKey* key) const;
 
 	std::size_t erase(const ArrayKey* low, const ArrayKey* high) const;
+
+	void clear() const;
 
 	std::vector<ArrayElement>& getVectorRef() const;
 

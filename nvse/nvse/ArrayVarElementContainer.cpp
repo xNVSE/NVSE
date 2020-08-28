@@ -160,25 +160,50 @@ std::size_t ArrayVarElementContainer::erase(const ArrayKey* key) const
 {
 	if (isArray_) [[likely]]
 	{
-		array_->erase(array_->begin() + key->key.num);
-		return 1;
+		UInt32 idx = (int)key->key.num;
+		if (idx >= array_->size())
+			return 0;
+		(*array_)[idx].Unset();
+		array_->erase(array_->begin() + idx);
 	}
-	return map_->erase(*key);
+	else
+	{
+		auto findKey = map_->find(*key);
+		if (findKey == map_->end())
+			return 0;
+		findKey->second.Unset();
+		map_->erase(findKey);
+	}
+	return 1;
 }
 
 std::size_t ArrayVarElementContainer::erase(const ArrayKey* low, const ArrayKey* high) const
 {
 	if (!isArray_)
-	{
 		throw std::invalid_argument("Attempt to erase range of elements from map");
-	}
 	UInt32 iLow = (int)low->key.num, iHigh = (int)high->key.num;
-	if (iHigh > array_->size() || iLow > array_->size())
-	{
+	if ((iHigh > array_->size()) || (iLow > array_->size()))
 		throw std::out_of_range("Attempt to erase out of range array var");
-	}
+	for (UInt32 idx = iLow; idx < iHigh; idx++)
+		(*array_)[idx].Unset();
 	array_->erase(array_->begin() + iLow, array_->begin() + iHigh);
 	return iHigh - iLow;
+}
+
+void ArrayVarElementContainer::clear() const
+{
+	if (isArray_) [[likely]]
+	{
+		for (UInt32 idx = 0; idx < array_->size(); idx++)
+			(*array_)[idx].Unset();
+		array_->clear();
+	}
+	else
+	{
+		for (auto iter = map_->begin(); iter != map_->end(); ++iter)
+			iter->second.Unset();
+		map_->clear();
+	}
 }
 
 std::vector<ArrayElement>& ArrayVarElementContainer::getVectorRef() const
