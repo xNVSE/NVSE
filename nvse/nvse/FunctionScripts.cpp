@@ -576,7 +576,7 @@ bool InternalFunctionCaller::PopulateArgs(ScriptEventList* eventList, FunctionIn
 			case Script::eVarType_Array:
 				{
 					ArrayID arrID = (ArrayID)m_args[i];
-					if (g_ArrayMap.Exists (arrID))
+					if (g_ArrayMap.Get(arrID))
 						g_ArrayMap.AddReference (&var->data, arrID, info->GetScript()->GetModIndex());
 					else
 						var->data = 0;

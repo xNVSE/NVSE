@@ -807,23 +807,33 @@ bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 arg
 		return true;
 
 	// get or create args array
-	if (argsArrayId == 0)
-		argsArrayId = g_ArrayMap.Create (kDataType_String, false, sender->GetModIndex ());
-	else if (!g_ArrayMap.Exists (argsArrayId) || g_ArrayMap.GetKeyType (argsArrayId) != kDataType_String)
-		return false;
+	ArrayVar *arr;
+	if (argsArrayId)
+	{
+		arr = g_ArrayMap.Get(argsArrayId);
+		if (!arr || (arr->KeyType() != kDataType_String))
+			return false;
+	}
+	else
+	{
+		arr = g_ArrayMap.Create (kDataType_String, false, sender->GetModIndex ());
+		argsArrayId = arr->ID();
+	}
 
 	// populate args array
-	g_ArrayMap.SetElementString (argsArrayId, "eventName", eventName);
-	if (NULL == senderName)
+	arr->SetElementString("eventName", eventName);
+	if (senderName == NULL)
+	{
 		if (sender)
 			senderName = DataHandler::Get()->GetNthModName (sender->GetModIndex ());
 		else
 			senderName = "NVSE";
+	}
 
-	g_ArrayMap.SetElementString (argsArrayId, "eventSender", senderName);
+	arr->SetElementString("eventSender", senderName);
 
 	// dispatch
-	HandleEvent (eventID, (void*)argsArrayId, NULL);
+	HandleEvent(eventID, (void*)argsArrayId, NULL);
 	return true;
 }
 

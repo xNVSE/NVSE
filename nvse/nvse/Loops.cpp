@@ -27,63 +27,51 @@ ArrayIterLoop::ArrayIterLoop(const ForEachContext* context, UInt8 modIndex)
 	g_ArrayMap.RemoveReference(&m_iterVar->data, modIndex);
 	g_ArrayMap.AddReference(&m_iterVar->data, context->iteratorID, 0xFF);
 
-	ArrayElement elem;
-	ArrayKey key;
-
-	if (g_ArrayMap.GetFirstElement(m_srcID, &elem, &key))
+	ArrayVar *arr = g_ArrayMap.Get(m_srcID);
+	if (arr)
 	{
-		m_curKey = key;
-		UpdateIterator(&elem);		// initialize iterator to first element in array
+		const ArrayKey *key;
+		ArrayElement *elem;
+		if (arr->GetFirstElement(&elem, &key))
+		{
+			m_curKey = *key;
+			UpdateIterator(elem);		// initialize iterator to first element in array
+		}
 	}
 }
 
 void ArrayIterLoop::UpdateIterator(const ArrayElement* elem)
 {
-	static ArrayKey val("value");
-	static ArrayKey key("key");
-
-	// iter["value"] = element data
-	switch (elem->DataType())
-	{
-	case kDataType_String:
-		g_ArrayMap.SetElementString(m_iterID, val, elem->m_data.GetStr());
-		break;
-	case kDataType_Numeric:
-		g_ArrayMap.SetElementNumber(m_iterID, val, elem->m_data.num);
-		break;
-	case kDataType_Form:
-		g_ArrayMap.SetElementFormID(m_iterID, val, elem->m_data.formID);
-		break;
-	case kDataType_Array:
-		g_ArrayMap.SetElementArray(m_iterID, val, elem->m_data.arrID);
-		break;
-	default:
-		DEBUG_PRINT("ArrayIterLoop::UpdateIterator(): unknown datatype %d found for element value", elem->DataType());
-	}
+	ArrayVar *arr = g_ArrayMap.Get(m_iterID);
+	if (!arr) return;
 
 	// iter["key"] = element key
-	switch (m_curKey.KeyType())
+	ArrayElement *newElem = arr->Get("key", true);
+	if (newElem)
 	{
-	case kDataType_String:
-		g_ArrayMap.SetElementString(m_iterID, key, m_curKey.key.GetStr());
-		break;
-	default:
-		g_ArrayMap.SetElementNumber(m_iterID, key, m_curKey.key.num);
+		if (m_curKey.KeyType() == kDataType_String)
+			newElem->SetString(m_curKey.key.str);
+		else newElem->SetNumber(m_curKey.key.num);
 	}
+	// iter["value"] = element data
+	newElem = arr->Get("value", true);
+	if (newElem) newElem->Set(elem);
 }
 
 bool ArrayIterLoop::Update(COMMAND_ARGS)
 {
-	ArrayElement elem;
-	ArrayKey key;
-
-	if (g_ArrayMap.GetNextElement(m_srcID, &m_curKey, &elem, &key))
+	ArrayVar *arr = g_ArrayMap.Get(m_srcID);
+	if (arr)
 	{
-		m_curKey = key;
-		UpdateIterator(&elem);	
-		return true;
+		ArrayElement *elem;
+		const ArrayKey *key;
+		if (arr->GetNextElement(&m_curKey, &elem, &key))
+		{
+			m_curKey = *key;
+			UpdateIterator(elem);	
+			return true;
+		}
 	}
-
 	return false;
 }
 

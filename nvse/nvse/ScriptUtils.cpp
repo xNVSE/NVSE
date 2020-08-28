@@ -306,20 +306,20 @@ ScriptToken* Eval_Assign_Numeric(OperatorType op, ScriptToken* lh, ScriptToken* 
 
 ScriptToken* Eval_Assign_String(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	UInt32 strID = lh->GetVar()->data;
+	ScriptEventList::Var *var = lh->GetVar();
+	UInt32 strID = (int)var->data;
 	StringVar* strVar = g_StringMap.Get(strID);
 
+	const char *str = rh->GetString();
 	
 	if (!strVar)
 	{
 		//strID = g_StringMap.Add(context->script->GetModIndex(), rh->GetString(), makeTemporary);
-		strID = AddStringVar(rh->GetString(), *lh);
-		lh->GetVar()->data = strID;
+		var->data = (int)AddStringVar(str, *lh);
 	}
-	else
-		strVar->Set(rh->GetString());
+	else strVar->Set(str);
 
-	return ScriptToken::Create(rh->GetString());
+	return ScriptToken::Create(str);
 }
 
 ScriptToken* Eval_Assign_AssignableString(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
@@ -330,87 +330,133 @@ ScriptToken* Eval_Assign_AssignableString(OperatorType op, ScriptToken* lh, Scri
 
 ScriptToken* Eval_Assign_Form(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
+	UInt32 formID = rh->GetFormID();
 	UInt64* outRefID = (UInt64*)&(lh->GetVar()->data);
-	*outRefID = rh->GetFormID();
-	return ScriptToken::CreateForm(rh->GetFormID());
+	*outRefID = formID;
+	return ScriptToken::CreateForm(formID);
 }
 
 ScriptToken* Eval_Assign_Form_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
+	UInt32 formID = rh->GetFormID();
 	UInt64* outRefID = (UInt64*)&(lh->GetVar()->data);
-	*outRefID = rh->GetFormID();
-	return ScriptToken::CreateForm(rh->GetFormID());
+	*outRefID = formID;
+	return ScriptToken::CreateForm(formID);
 }
 
 ScriptToken* Eval_Assign_Global(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	lh->GetGlobal()->data = rh->GetNumber();
-	return ScriptToken::Create(rh->GetNumber());
+	double value = rh->GetNumber();
+	lh->GetGlobal()->data = value;
+	return ScriptToken::Create(value);
 }
 
 ScriptToken* Eval_Assign_Array(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	g_ArrayMap.AddReference(&lh->GetVar()->data, rh->GetArray(), context->script->GetModIndex());
-	return ScriptToken::CreateArray(lh->GetVar()->data);
+	ScriptEventList::Var *var = lh->GetVar();
+	g_ArrayMap.AddReference(&var->data, rh->GetArray(), context->script->GetModIndex());
+	return ScriptToken::CreateArray(var->data);
 }
 
 ScriptToken* Eval_Assign_Elem_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
 	const ArrayKey* key = lh->GetArrayKey();
-	if (!key)
+	if (!key) return NULL;
+
+	ArrayVar *arr = g_ArrayMap.Get(lh->GetOwningArrayID());
+	if (!arr) return NULL;
+
+	double value = rh->GetNumber();
+	if (key->KeyType() == kDataType_Numeric)
+	{
+		if (!arr->SetElementNumber(key->key.num, value))
+			return NULL;
+	}
+	else if (!arr->SetElementNumber(key->key.GetStr(), value))
 		return NULL;
 
-	return g_ArrayMap.SetElementNumber(lh->GetOwningArrayID(), *key, rh->GetNumber()) ? ScriptToken::Create(rh->GetNumber()) : NULL;
+	return ScriptToken::Create(value);
 }
 
 ScriptToken* Eval_Assign_Elem_String(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
 	const ArrayKey* key = lh->GetArrayKey();
-	if (!key)
+	if (!key) return NULL;
+
+	ArrayVar *arr = g_ArrayMap.Get(lh->GetOwningArrayID());
+	if (!arr) return NULL;
+
+	const char *str = rh->GetString();
+	if (key->KeyType() == kDataType_Numeric)
+	{
+		if (!arr->SetElementString(key->key.num, str))
+			return NULL;
+	}
+	else if (!arr->SetElementString(key->key.GetStr(), str))
 		return NULL;
 
-	return g_ArrayMap.SetElementString(lh->GetOwningArrayID(), *key, rh->GetString()) ? ScriptToken::Create(rh->GetString()) : NULL;
+	return ScriptToken::Create(str);
 }
 
 ScriptToken* Eval_Assign_Elem_Form(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
 	const ArrayKey* key = lh->GetArrayKey();
-	if (!key)
+	if (!key) return NULL;
+
+	ArrayVar *arr = g_ArrayMap.Get(lh->GetOwningArrayID());
+	if (!arr) return NULL;
+
+	UInt32 formID = rh->GetFormID();
+	if (key->KeyType() == kDataType_Numeric)
+	{
+		if (!arr->SetElementFormID(key->key.num, formID))
+			return NULL;
+	}
+	else if (!arr->SetElementFormID(key->key.GetStr(), formID))
 		return NULL;
 
-	return g_ArrayMap.SetElementFormID(lh->GetOwningArrayID(), *key, rh->GetFormID()) ? ScriptToken::CreateForm(rh->GetFormID()) : NULL;
+	return ScriptToken::CreateForm(formID);
 }
 
 ScriptToken* Eval_Assign_Elem_Array(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
 	const ArrayKey* key = lh->GetArrayKey();
-	if (!key)
+	if (!key) return NULL;
+
+	ArrayVar *arr = g_ArrayMap.Get(lh->GetOwningArrayID());
+	if (!arr) return NULL;
+
+	ArrayID rhArrID = rh->GetArray();
+	if (key->KeyType() == kDataType_Numeric)
+	{
+		if (!arr->SetElementArray(key->key.num, rhArrID))
+			return NULL;
+	}
+	else if (!arr->SetElementArray(key->key.GetStr(), rhArrID))
 		return NULL;
 
-	if (g_ArrayMap.SetElementArray(lh->GetOwningArrayID(), *key, rh->GetArray()))
-	{
-		return ScriptToken::CreateArray(rh->GetArray());
-	}
-
-	return NULL;
+	return ScriptToken::CreateArray(rhArrID);
 }
 
 ScriptToken* Eval_PlusEquals_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	lh->GetVar()->data += rh->GetNumber();
-	return ScriptToken::Create(lh->GetVar()->data);
+	ScriptEventList::Var *var = lh->GetVar();
+	var->data += rh->GetNumber();
+	return ScriptToken::Create(var->data);
 }
 
 ScriptToken* Eval_MinusEquals_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	lh->GetVar()->data -= rh->GetNumber();
-	return ScriptToken::Create(lh->GetVar()->data);
+	ScriptEventList::Var *var = lh->GetVar();
+	var->data -= rh->GetNumber();
+	return ScriptToken::Create(var->data);
 }
 
 ScriptToken* Eval_TimesEquals(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	lh->GetVar()->data *= rh->GetNumber();
-	return ScriptToken::Create(lh->GetVar()->data);
+	ScriptEventList::Var *var = lh->GetVar();
+	var->data *= rh->GetNumber();
+	return ScriptToken::Create(var->data);
 }
 
 ScriptToken* Eval_DividedEquals(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
@@ -421,16 +467,18 @@ ScriptToken* Eval_DividedEquals(OperatorType op, ScriptToken* lh, ScriptToken* r
 		context->Error("Division by zero");
 		return NULL;
 	}
-	lh->GetVar()->data /= rhNum;
-	return ScriptToken::Create(lh->GetVar()->data);
+	ScriptEventList::Var *var = lh->GetVar();
+	var->data /= rhNum;
+	return ScriptToken::Create(var->data);
 }
 
 ScriptToken* Eval_ExponentEquals(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
+	ScriptEventList::Var *var = lh->GetVar();
 	double rhNum = rh->GetNumber();
-	double lhNum = lh->GetVar()->data;
-	lh->GetVar()->data = pow(lhNum,rhNum);
-	return ScriptToken::Create(lh->GetVar()->data);
+	double lhNum = var->data;
+	var->data = pow(lhNum, rhNum);
+	return ScriptToken::Create(var->data);
 }
 
 
@@ -475,13 +523,14 @@ ScriptToken* Eval_ExponentEquals_Global(OperatorType op, ScriptToken* lh, Script
 
 ScriptToken* Eval_PlusEquals_String(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	UInt32 strID = lh->GetVar()->data;
+	ScriptEventList::Var *var = lh->GetVar();
+	UInt32 strID = (int)var->data;
 	StringVar* strVar = g_StringMap.Get(strID);
 	if (!strVar)
 	{
 		//strID = g_StringMap.Add(context->script->GetModIndex(), "");
 		strID = AddStringVar("", *lh);
-		lh->GetVar()->data = strID;
+		var->data = (int)strID;
 		strVar = g_StringMap.Get(strID);
 	}
 
@@ -491,22 +540,24 @@ ScriptToken* Eval_PlusEquals_String(OperatorType op, ScriptToken* lh, ScriptToke
 
 ScriptToken* Eval_TimesEquals_String(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	UInt32 strID = lh->GetVar()->data;
+	ScriptEventList::Var *var = lh->GetVar();
+	UInt32 strID = (int)var->data;
 	StringVar* strVar = g_StringMap.Get(strID);
 	if (!strVar)
 	{
 		//strID = g_StringMap.Add(context->script->GetModIndex(), "");
 		strID = AddStringVar("", *lh);
-		lh->GetVar()->data = strID;
+		var->data = (int)strID;
 		strVar = g_StringMap.Get(strID);
 	}
 
 	std::string str = strVar->String();
 	std::string result = "";
-	if (rh->GetNumber() > 0)
+
+	int rhNum = rh->GetNumber();
+	if (rhNum > 0)
 	{
-		UInt32 rhNum = rh->GetNumber();
-		for (UInt32 i = 0; i < rhNum; i++)
+		for (int i = 0; i < rhNum; i++)
 			result += str;
 	}
 
@@ -516,14 +567,13 @@ ScriptToken* Eval_TimesEquals_String(OperatorType op, ScriptToken* lh, ScriptTok
 
 ScriptToken* Eval_Multiply_String_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	double rhNum = rh->GetNumber();
+	int rhNum = rh->GetNumber();
 	std::string str = lh->GetString();
 	std::string result = "";
 
 	if (rhNum > 0)
 	{
-		UInt32 times = rhNum;
-		for (UInt32 i =0; i < times; i++)
+		for (int i = 0; i < rhNum; i++)
 			result += str;
 	}
 
@@ -533,73 +583,109 @@ ScriptToken* Eval_Multiply_String_Number(OperatorType op, ScriptToken* lh, Scrip
 ScriptToken* Eval_PlusEquals_Elem_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
 	const ArrayKey* key = lh->GetArrayKey();
-	double elemVal;
-	if (!key || !g_ArrayMap.GetElementNumber(lh->GetOwningArrayID(), *key, &elemVal))
-		return NULL;
-
-	return g_ArrayMap.SetElementNumber(lh->GetOwningArrayID(), *key, elemVal + rh->GetNumber()) ? ScriptToken::Create(elemVal + rh->GetNumber()) : NULL;
+	if (key)
+	{
+		ArrayElement *elem = g_ArrayMap.GetElement(lh->GetOwningArrayID(), key);
+		double elemVal;
+		if (elem && elem->GetAsNumber(&elemVal))
+		{
+			elemVal += rh->GetNumber();
+			elem->SetNumber(elemVal);
+			return ScriptToken::Create(elemVal);
+		}
+	}
+	return NULL;
 }
 
 ScriptToken* Eval_MinusEquals_Elem_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
 	const ArrayKey* key = lh->GetArrayKey();
-	double elemVal;
-	if (!key || !g_ArrayMap.GetElementNumber(lh->GetOwningArrayID(), *key, &elemVal))
-		return NULL;
-
-	return g_ArrayMap.SetElementNumber(lh->GetOwningArrayID(), *key, elemVal - rh->GetNumber()) ? ScriptToken::Create(elemVal - rh->GetNumber()) : NULL;
+	if (key)
+	{
+		ArrayElement *elem = g_ArrayMap.GetElement(lh->GetOwningArrayID(), key);
+		double elemVal;
+		if (elem && elem->GetAsNumber(&elemVal))
+		{
+			elemVal -= rh->GetNumber();
+			elem->SetNumber(elemVal);
+			return ScriptToken::Create(elemVal);
+		}
+	}
+	return NULL;
 }
 
 ScriptToken* Eval_TimesEquals_Elem(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
 	const ArrayKey* key = lh->GetArrayKey();
-	double elemVal;
-	if (!key || !g_ArrayMap.GetElementNumber(lh->GetOwningArrayID(), *key, &elemVal))
-		return NULL;
-
-	double result = elemVal * rh->GetNumber();
-	return g_ArrayMap.SetElementNumber(lh->GetOwningArrayID(), *key, result) ? ScriptToken::Create(result) : NULL;
+	if (key)
+	{
+		ArrayElement *elem = g_ArrayMap.GetElement(lh->GetOwningArrayID(), key);
+		double elemVal;
+		if (elem && elem->GetAsNumber(&elemVal))
+		{
+			elemVal *= rh->GetNumber();
+			elem->SetNumber(elemVal);
+			return ScriptToken::Create(elemVal);
+		}
+	}
+	return NULL;
 }
 
 ScriptToken* Eval_DividedEquals_Elem(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
 	const ArrayKey* key = lh->GetArrayKey();
-	double elemVal;
-	if (!key || !g_ArrayMap.GetElementNumber(lh->GetOwningArrayID(), *key, &elemVal))
-		return NULL;
-
-	double result = rh->GetNumber();
-	if (result == 0.0)
+	if (key)
 	{
-		context->Error("Division by zero");
-		return NULL;
+		ArrayElement *elem = g_ArrayMap.GetElement(lh->GetOwningArrayID(), key);
+		double elemVal;
+		if (elem && elem->GetAsNumber(&elemVal))
+		{
+			double result = rh->GetNumber();
+			if (result != 0.0)
+			{
+				elemVal /= result;
+				elem->SetNumber(elemVal);
+				return ScriptToken::Create(elemVal);
+			}
+			context->Error("Division by zero");
+		}
 	}
-
-	result = elemVal / rh->GetNumber();
-	return g_ArrayMap.SetElementNumber(lh->GetOwningArrayID(), *key, result) ? ScriptToken::Create(result) : NULL;
+	return NULL;
 }
 
 ScriptToken* Eval_ExponentEquals_Elem(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
 	const ArrayKey* key = lh->GetArrayKey();
-	double elemVal;
-	if (!key || !g_ArrayMap.GetElementNumber(lh->GetOwningArrayID(), *key, &elemVal))
-		return NULL;
-
-	double result = pow(elemVal,rh->GetNumber());
-	return g_ArrayMap.SetElementNumber(lh->GetOwningArrayID(), *key, result) ? ScriptToken::Create(result) : NULL;
+	if (key)
+	{
+		ArrayElement *elem = g_ArrayMap.GetElement(lh->GetOwningArrayID(), key);
+		double elemVal;
+		if (elem && elem->GetAsNumber(&elemVal))
+		{
+			double result = pow(elemVal, rh->GetNumber());
+			elem->SetNumber(result);
+			return ScriptToken::Create(result);
+		}
+	}
+	return NULL;
 }
 
 ScriptToken* Eval_PlusEquals_Elem_String(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	const char* pElemStr;
 	const ArrayKey* key = lh->GetArrayKey();
-	if (!key || !g_ArrayMap.GetElementString(lh->GetOwningArrayID(), *key, &pElemStr))
-		return NULL;
-
-	std::string elemStr(pElemStr);
-	elemStr += rh->GetString();
-	return g_ArrayMap.SetElementString(lh->GetOwningArrayID(), *key, elemStr.c_str()) ? ScriptToken::Create(elemStr) : NULL;
+	if (key)
+	{
+		ArrayElement *elem = g_ArrayMap.GetElement(lh->GetOwningArrayID(), key);
+		const char* pElemStr;
+		if (elem && elem->GetAsString(&pElemStr))
+		{
+			std::string elemStr(pElemStr);
+			elemStr += rh->GetString();
+			elem->SetString(elemStr.c_str());
+			return ScriptToken::Create(elemStr);
+		}
+	}
+	return NULL;
 }
 
 ScriptToken* Eval_Negation(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
@@ -614,19 +700,22 @@ ScriptToken* Eval_LogicalNot(OperatorType op, ScriptToken* lh, ScriptToken* rh, 
 
 ScriptToken* Eval_Subscript_Array_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	if (!lh->GetArray())
+	ArrayID arrID = lh->GetArray();
+	ArrayVar *arr = arrID ? g_ArrayMap.Get(arrID) : NULL;
+
+	if (!arr)
 	{
 		context->Error("Invalid array access - the array was not initialized. 0");
 		return NULL;
 	}
-	else if (g_ArrayMap.GetKeyType(lh->GetArray()) != kDataType_Numeric)
+	if (arr->KeyType() != kDataType_Numeric)
 	{
 		context->Error("Invalid array access - expected string index, received numeric.");
 		return NULL;
 	}
 
 	ArrayKey key(rh->GetNumber());
-	return ScriptToken::Create(lh->GetArray(), &key);
+	return ScriptToken::Create(arrID, &key);
 }
 
 ScriptToken* Eval_Subscript_Elem_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
@@ -651,31 +740,35 @@ ScriptToken* Eval_Subscript_Elem_Slice(OperatorType op, ScriptToken* lh, ScriptT
 
 ScriptToken* Eval_Subscript_Array_String(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	if (!lh->GetArray())
+	ArrayID arrID = lh->GetArray();
+	ArrayVar *arr = arrID ? g_ArrayMap.Get(arrID) : NULL;
+
+	if (!arr)
 	{
 		context->Error("Invalid array access - the array was not initialized. 1");
 		return NULL;
 	}
-	else if (g_ArrayMap.GetKeyType(lh->GetArray()) != kDataType_String)
+	if (arr->KeyType() != kDataType_String)
 	{
 		context->Error("Invalid array access - expected numeric index, received string");
 		return NULL;
 	}
 
 	ArrayKey key(rh->GetString());
-	return ScriptToken::Create(lh->GetArray(), &key);
+	return ScriptToken::Create(arrID, &key);
 }
 
 ScriptToken* Eval_Subscript_Array_Slice(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	UInt32 slicedID = g_ArrayMap.MakeSlice(lh->GetArray(), rh->GetSlice(), context->script->GetModIndex());
-	if (!slicedID)
+	ArrayVar *srcArr = g_ArrayMap.Get(lh->GetArray());
+	if (srcArr)
 	{
-		context->Error("Invalid array slice operation - array is uninitialized or supplied index does not match key type");
-		return NULL;
+		ArrayVar *sliceArr = srcArr->MakeSlice(rh->GetSlice(), context->script->GetModIndex());
+		if (sliceArr) return ScriptToken::CreateArray(sliceArr->ID());
 	}
 
-	return ScriptToken::CreateArray(slicedID);
+	context->Error("Invalid array slice operation - array is uninitialized or supplied index does not match key type");
+	return NULL;
 }
 
 ScriptToken* Eval_Subscript_StringVar_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
@@ -757,19 +850,22 @@ ScriptToken* Eval_Subscript_String_Slice(OperatorType op, ScriptToken* lh, Scrip
 
 ScriptToken* Eval_MemberAccess(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	if (!lh->GetArray())
+	ArrayID arrID = lh->GetArray();
+	ArrayVar *arr = arrID ? g_ArrayMap.Get(arrID) : NULL;
+
+	if (!arr)
 	{
 		context->Error("Invalid array access - the array was not initialized. 2");
 		return NULL;
 	}
-	else if (g_ArrayMap.GetKeyType(lh->GetArray()) != kDataType_String)
+	if (arr->KeyType() != kDataType_String)
 	{
 		context->Error("Invalid array access - expected numeric index, received string");
 		return NULL;
 	}
 
 	ArrayKey key(rh->GetString());
-	return ScriptToken::Create(lh->GetArray(), &key);
+	return ScriptToken::Create(arrID, &key);
 }
 ScriptToken* Eval_Slice_String(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
@@ -816,37 +912,40 @@ ScriptToken* Eval_In(OperatorType op, ScriptToken* lh, ScriptToken* rh, Expressi
 {
 	switch (lh->GetVariableType())
 	{
-	case Script::eVarType_Array:
+		case Script::eVarType_Array:
 		{
-			UInt32 iterID = g_ArrayMap.Create(kDataType_String, false, context->script->GetModIndex());
+			UInt32 iterID = g_ArrayMap.Create(kDataType_String, false, context->script->GetModIndex())->ID();
 
 			ForEachContext con(rh->GetArray(), iterID, Script::eVarType_Array, lh->GetVar());
 			ScriptToken* forEach = ScriptToken::Create(&con);
 
 			return forEach;
 		}
-	case Script::eVarType_String:
+		case Script::eVarType_String:
 		{
-			UInt32 iterID = lh->GetVar()->data;
+			ScriptEventList::Var *var = lh->GetVar();
+			UInt32 iterID = (int)var->data;
 			StringVar* sv = g_StringMap.Get(iterID);
 			if (!sv)
 			{
 				//iterID = g_StringMap.Add(context->script->GetModIndex(), "");
 				iterID = AddStringVar("", *lh);
-				lh->GetVar()->data = iterID;
+				var->data = (int)iterID;
 			}
 
 			UInt32 srcID = g_StringMap.Add(context->script->GetModIndex(), rh->GetString(), true);
-			ForEachContext con(srcID, iterID, Script::eVarType_String, lh->GetVar());
+			ForEachContext con(srcID, iterID, Script::eVarType_String, var);
 			ScriptToken* forEach = ScriptToken::Create(&con);
 			return forEach;
 		}
-	case Script::eVarType_Ref:
+		case Script::eVarType_Ref:
 		{
-			TESObjectREFR* src = DYNAMIC_CAST(rh->GetTESForm(), TESForm, TESObjectREFR);
-			if (!src && rh->GetTESForm() && (rh->GetTESForm()->refID == playerID) )
-				src = (TESObjectREFR*)LookupFormByID(playerRefID);
-			if (src) {
+			TESForm *form = rh->GetTESForm();
+			TESObjectREFR* src = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+			if (!src && form && (form->refID == playerID))
+				src = (TESObjectREFR*)PlayerCharacter::GetSingleton();
+			if (src)
+			{
 				ForEachContext con((UInt32)src, 0, Script::eVarType_Ref, lh->GetVar());
 				ScriptToken* forEach = ScriptToken::Create(&con);
 				return forEach;
@@ -876,15 +975,21 @@ ScriptToken* Eval_Dereference(OperatorType op, ScriptToken* lh, ScriptToken* rh,
 		return NULL;
 	}
 
-	UInt32 size = g_ArrayMap.SizeOf(arrID);
-	ArrayKey valueKey("value");
-	// is this a foreach iterator?
-	if (size == 2 && g_ArrayMap.HasKey(arrID, valueKey) && g_ArrayMap.HasKey(arrID, "key") && g_ArrayMap.HasKey(arrID, "value"))
-		return ScriptToken::Create(arrID, &valueKey);
+	ArrayVar *arr = g_ArrayMap.Get(arrID);
+	if (arr)
+	{
+		// is this a foreach iterator?
+		if ((arr->Size() == 2) && arr->HasKey("key") && arr->HasKey("value"))
+		{
+			ArrayKey valueKey("value");
+			return ScriptToken::Create(arrID, &valueKey);
+		}
 
-	ArrayElement elem;
-	if (g_ArrayMap.GetFirstElement(arrID, &elem, &valueKey))
-		return ScriptToken::Create(arrID, &valueKey);
+		const ArrayKey *firstKey;
+		ArrayElement *elem;
+		if (arr->GetFirstElement(&elem, &firstKey))
+			return ScriptToken::Create(arrID, const_cast<ArrayKey*>(firstKey));
+	}
 
 	return NULL;
 }
@@ -893,31 +998,31 @@ ScriptToken* Eval_Box_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, 
 {
 	// the inverse operation of dereference: given a value of any type, wraps it in a single-element array
 	// again, a convenience request
-	ArrayID arr = g_ArrayMap.Create(kDataType_Numeric, true, context->script->GetModIndex());
-	g_ArrayMap.SetElementNumber(arr, ArrayKey(0.0), lh->GetNumber());
-	return ScriptToken::CreateArray(arr);
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, context->script->GetModIndex());
+	arr->SetElementNumber(0.0, lh->GetNumber());
+	return ScriptToken::CreateArray(arr->ID());
 }
 
 ScriptToken* Eval_Box_String(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	ArrayID arr = g_ArrayMap.Create(kDataType_Numeric, true, context->script->GetModIndex());
-	g_ArrayMap.SetElementString(arr, ArrayKey(0.0), lh->GetString());
-	return ScriptToken::CreateArray(arr);
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, context->script->GetModIndex());
+	arr->SetElementString(0.0, lh->GetString());
+	return ScriptToken::CreateArray(arr->ID());
 }
 
 ScriptToken* Eval_Box_Form(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	ArrayID arr = g_ArrayMap.Create(kDataType_Numeric, true, context->script->GetModIndex());
-	TESForm* form = lh->GetTESForm();
-	g_ArrayMap.SetElementFormID(arr, ArrayKey(0.0), form ? form->refID : 0);
-	return ScriptToken::CreateArray(arr);
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, context->script->GetModIndex());
+	TESForm *form = lh->GetTESForm();
+	arr->SetElementFormID(0.0, form ? form->refID : 0);
+	return ScriptToken::CreateArray(arr->ID());
 }
 
 ScriptToken* Eval_Box_Array(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	ArrayID arr = g_ArrayMap.Create(kDataType_Numeric, true, context->script->GetModIndex());
-	g_ArrayMap.SetElementArray(arr, ArrayKey(0.0), lh->GetArray());
-	return ScriptToken::CreateArray(arr);
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, context->script->GetModIndex());
+	arr->SetElementArray(0.0, lh->GetArray());
+	return ScriptToken::CreateArray(arr->ID());
 }
 
 
@@ -2895,13 +3000,17 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 
 			break;
 		case kParamType_Integer:
+		{
+			ScriptEventList::Var *var = arg->GetVar();
 			// handle string_var passed as integer to sv_* cmds
-			if (arg->CanConvertTo(kTokenType_StringVar) && arg->GetVar()) {
+			if (var && arg->CanConvertTo(kTokenType_StringVar))
+			{
 				UInt32* out = va_arg(varArgs, UInt32*);
-				*out = arg->GetVar()->data;
+				*out = var->data;
 				break;
 			}
-			// fall-through intentional
+		}
+		// fall-through intentional
 		case kParamType_QuestStage:
 		case kParamType_CrimeType:
 		case kParamType_AnimationGroup:
@@ -3364,7 +3473,7 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 	case kRetnType_Array:
 	{
 		// ###TODO: cmds can return arrayID '0', not necessarily an error, does this support that?
-		if (g_ArrayMap.Exists(cmdResult) || !cmdResult)
+		if (g_ArrayMap.Get(cmdResult) || !cmdResult)
 		{
 			return ScriptToken::CreateArray(cmdResult);
 		}
@@ -3583,7 +3692,8 @@ bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem, ExpressionEvaluato
 	else if (basicToken->CanConvertTo(kTokenType_Array))
 	{
 		ArrayID arrID = basicToken->GetArray();
-		elem.SetArray(arrID, g_ArrayMap.GetOwningModIndex(arrID));
+		elem.m_owningArray = arrID;
+		elem.SetArray(arrID);
 	}
 	else
 		bResult = false;

@@ -60,15 +60,16 @@ char * doTileTextEvent(ArrayID argsArrayId, const char * eventName, char * text,
 	char lastText[32768];
 	const char* senderName = "NVSE";
 	char * result = text;
-	g_ArrayMap.SetElementString(argsArrayId, "tileName", tileName);
-	g_ArrayMap.SetElementString(argsArrayId, "text", result);
+
+	ArrayVar *arr = g_ArrayMap.Get(argsArrayId);
+	arr->SetElementString("tileName", tileName);
+	arr->SetElementString("text", result);
 	if (EventManager::DispatchUserDefinedEvent(eventName, NULL, argsArrayId, senderName))
 	{
-		const char* replacedText = "";
-		g_ArrayMap.GetElementString(argsArrayId, "text", &replacedText);
-		if (_stricmp(result, replacedText))
-			if (!strcpy_s(lastText, 32767, replacedText))
-				result = lastText;
+		ArrayElement *elem = arr->Get("text", false);
+		const char* replacedText;
+		if (elem && elem->GetAsString(&replacedText) && !StrEqualCI(result, replacedText) && !strcpy_s(lastText, 32767, replacedText))
+			result = lastText;
 	}
 	return result;
 }
@@ -79,15 +80,17 @@ static char* __stdcall doTileTextHook(char* text, TileText* tile)
 	char* result = text;
 
 	char tileName[4096] = "";
+	ArrayVar *arr;
 	ArrayID argsArrayId = 0;
 
 	if (tile)
 		tile->GetComponentFullName(tileName);
 	if (strstr(tileName, "\\DM_SpeakerText")) // This a NPC speaking
 	{
-		argsArrayId = g_ArrayMap.Create(kDataType_String, false, 255);
+		arr = g_ArrayMap.Create(kDataType_String, false, 255);
+		argsArrayId = arr ? arr->ID() : 0;
 		if (argsArrayId) try {
-			g_ArrayMap.SetElementString(argsArrayId, "speakerName", lastSpeaker);
+			arr->SetElementString("speakerName", lastSpeaker);
 			result = doTileTextEvent(argsArrayId, "OnSpeakerText", result, tileName);
 		} catch(...) {
 			g_ArrayMap.Erase(argsArrayId);
@@ -103,7 +106,8 @@ static char* __stdcall doTileTextHook(char* text, TileText* tile)
 		lastSpeaker = text;
 	if (strstr(tileName, "MenuRoot\\DialogMenu") && strstr(tileName, "\\ListItemText")) // This is a topic
 	{
-		argsArrayId = g_ArrayMap.Create(kDataType_String, false, 255);
+		arr = g_ArrayMap.Create(kDataType_String, false, 255);
+		argsArrayId = arr ? arr->ID() : 0;
 		if (argsArrayId) try {
 			result = doTileTextEvent(argsArrayId, "OnTopic", result, tileName);
 		} catch(...) {
@@ -116,8 +120,10 @@ static char* __stdcall doTileTextHook(char* text, TileText* tile)
 		_DMESSAGE("doTileTextHook Topic: '%s' for [%08x] '%s'", result, tile, tileName);
 		gLog.Outdent();
 	}
-	if (enableAllTileTextHook && g_gameStarted) {
-		argsArrayId = g_ArrayMap.Create(kDataType_String, false, 255);
+	if (enableAllTileTextHook && g_gameStarted)
+	{
+		arr = g_ArrayMap.Create(kDataType_String, false, 255);
+		argsArrayId = arr ? arr->ID() : 0;
 		if (argsArrayId) try {
 			result = doTileTextEvent(argsArrayId, "OnTileText", result, tileName);
 		} catch(...) {

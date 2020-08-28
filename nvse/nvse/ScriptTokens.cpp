@@ -85,7 +85,7 @@ ScriptToken::ScriptToken(UInt32 id, Token_Type asType) : refIdx(0), type(asType)
 #if RUNTIME
 	case kTokenType_Array:
 		value.arrID = id;
-		type = (g_ArrayMap.Exists(id) || id == 0) ? kTokenType_Array : kTokenType_Invalid;
+		type = (!id || g_ArrayMap.Get(id)) ? kTokenType_Array : kTokenType_Invalid;
 		break;
 #endif
 	default:
@@ -185,7 +185,7 @@ ScriptToken* ScriptToken::Create(ForEachContext* forEach)
 	}
 	else if (forEach->variableType == Script::eVarType_Array)
 	{
-		if (!g_ArrayMap.Exists(forEach->sourceID) || !g_ArrayMap.Exists(forEach->iteratorID))
+		if (!g_ArrayMap.Get(forEach->sourceID) || !g_ArrayMap.Get(forEach->iteratorID))
 			return NULL;
 	}
 	else if (forEach->variableType == Script::eVarType_Ref)
@@ -300,8 +300,11 @@ AssignableStringVarToken::AssignableStringVarToken(UInt32 _id, UInt32 lbound, UI
 AssignableStringArrayElementToken::AssignableStringArrayElementToken(UInt32 _id, const ArrayKey& _key, UInt32 lbound, UInt32 ubound)
 	: AssignableStringToken(_id, lbound, ubound), key(_key)
 {
+	ArrayVar *arr = g_ArrayMap.Get(value.arrID);
+	if (!arr) return;
+
 	const char* pElemStr;
-	if (g_ArrayMap.GetElementString(value.arrID, key, &pElemStr))
+	if (arr->GetElementString(&key, &pElemStr))
 	{
 		std::string elemStr(pElemStr);
 		upper = (upper > elemStr.length()) ? elemStr.length() - 1 : upper;
@@ -329,20 +332,20 @@ bool AssignableStringVarToken::Assign(const char* str)
 
 bool AssignableStringArrayElementToken::Assign(const char* str)
 {
+	ArrayElement *elem = g_ArrayMap.GetElement(value.arrID, &key);
 	const char* pElemStr;
-	if (g_ArrayMap.GetElementString(value.arrID, key, &pElemStr) && (lower <= upper) && (upper < StrLen(pElemStr)))
+	if (elem && elem->GetAsString(&pElemStr) && (lower <= upper) && (upper < StrLen(pElemStr)))
 	{
 		std::string elemStr(pElemStr);
 		elemStr.erase(lower, upper - lower + 1);
 		if (str)
 		{
 			elemStr.insert(lower, str);
-			g_ArrayMap.SetElementString(value.arrID, key, elemStr.c_str());
+			elem->SetString(elemStr.c_str());
 			substring = elemStr;
 		}
 		return true;
 	}
-
 	return false;
 }
 
@@ -1023,7 +1026,10 @@ bool ArrayElementToken::CanConvertTo(Token_Type to) const
 	else if (to == kTokenType_ArrayElement)
 		return true;
 
-	DataType elemType = g_ArrayMap.GetElementType(GetOwningArrayID(), key);
+	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
+	if (!arr) return false;
+
+	DataType elemType = arr->GetElementType(&key);
 	if (elemType == kDataType_Invalid)
 		return false;
 
@@ -1059,48 +1065,47 @@ void ArrayElementToken::operator delete(void* p)
 double ArrayElementToken::GetNumber()
 {
 	double out = 0.0;
-	g_ArrayMap.GetElementNumber(GetOwningArrayID(), key, &out);
+	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
+	if (arr) arr->GetElementNumber(&key, &out);
 	return out;
 }
 
 const char* ArrayElementToken::GetString()
 {
-	static const char* empty = "";
-	const char* out = NULL;
-	g_ArrayMap.GetElementCString(GetOwningArrayID(), key, &out);
-	if (out) return out;
-	return empty;
+	const char* out = "";
+	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
+	if (arr) arr->GetElementString(&key, &out);
+	return out;
 }
 
 UInt32 ArrayElementToken::GetFormID()
 {
 	UInt32 out = 0;
-	g_ArrayMap.GetElementFormID(GetOwningArrayID(), key, &out);
+	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
+	if (arr) arr->GetElementFormID(&key, &out);
 	return out;
 }
 
 TESForm* ArrayElementToken::GetTESForm()
 {
 	TESForm* out = NULL;
-	g_ArrayMap.GetElementForm(GetOwningArrayID(), key, &out);
+	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
+	if (arr) arr->GetElementForm(&key, &out);
 	return out;
 }
 
 bool ArrayElementToken::GetBool()
 {
-	UInt8 elemType = g_ArrayMap.GetElementType(GetOwningArrayID(), key);
-	if (elemType == kDataType_Numeric)
-	{
-		double out = 0.0;
-		g_ArrayMap.GetElementNumber(GetOwningArrayID(), key, &out);
-		return out ? true : false;
-	}
-	else if (elemType == kDataType_Form)
-	{
-		UInt32 out = 0;
-		g_ArrayMap.GetElementFormID(GetOwningArrayID(), key, &out);
-		return out ? true : false;
-	}
+	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
+	if (!arr) return false;
+
+	ArrayElement *elem = arr->Get(&key, false);
+	if (!elem) return false;
+
+	if (elem->DataType() == kDataType_Numeric)
+		return elem->m_data.num != 0;
+	else if (elem->DataType() == kDataType_Form)
+		return elem->m_data.formID != 0;
 
 	return false;
 }
@@ -1108,7 +1113,8 @@ bool ArrayElementToken::GetBool()
 ArrayID ArrayElementToken::GetArray()
 {
 	ArrayID out = 0;
-	g_ArrayMap.GetElementArray(GetOwningArrayID(), key, &out);
+	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
+	if (arr) arr->GetElementArray(&key, &out);
 	return out;
 }
 

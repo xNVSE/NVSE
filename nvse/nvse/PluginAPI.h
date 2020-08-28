@@ -330,6 +330,7 @@ struct NVSEArrayVarInterface
 		UInt8		type;
 
 		friend class PluginAPI::ArrayAPI;
+		friend class ArrayVar;
 		void Reset() { if (type == kType_String) { FormHeap_Free(str); type = kType_Invalid; str = NULL; } }
 	public:
 		enum

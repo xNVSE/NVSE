@@ -891,8 +891,8 @@ bool Cmd_ToNumber_Execute(COMMAND_ARGS)
 bool Cmd_sv_Split_Execute(COMMAND_ARGS)
 {
 	// args: string delims
-	ArrayID arrID = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arrID;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
 
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() == 2 && eval.Arg(0)->CanConvertTo(kTokenType_String) && eval.Arg(1)->CanConvertTo(kTokenType_String))
@@ -900,11 +900,11 @@ bool Cmd_sv_Split_Execute(COMMAND_ARGS)
 		Tokenizer tokens(eval.Arg(0)->GetString(), eval.Arg(1)->GetString());
 		std::string token;
 
-		double idx = 0.0;
+		double idx = 0;
 		while (tokens.NextToken(token) != -1)
 		{
-			g_ArrayMap.SetElementString(arrID, idx, token.c_str());
-			idx += 1.0;
+			arr->SetElementString(idx, token.c_str());
+			idx += 1;
 		}
 	}
 

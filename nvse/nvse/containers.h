@@ -55,7 +55,7 @@ template <typename T_Data> class MapValue
 
 public:
 	T_Data *Init() {return &value;}
-	T_Data Get() const {return value;}
+	T_Data& Get() const {return value;}
 	T_Data *Ptr() const {return &value;}
 	void Clear() {value.~T_Data();}
 };
@@ -70,7 +70,7 @@ public:
 		value = (T_Data*)malloc(sizeof(T_Data));
 		return value;
 	}
-	T_Data Get() const {return *value;}
+	T_Data& Get() const {return *value;}
 	T_Data *Ptr() const {return value;}
 	void Clear()
 	{
@@ -225,37 +225,36 @@ public:
 	{
 		friend Map;
 
+		Map			*table;
 		Entry		*pEntry;
-		Entry		*pEnd;
+		UInt32		index;
 
 	public:
 		T_Key Key() const {return pEntry->key.Get();}
-		T_Data& Get() const {return *(pEntry->value.Ptr());}
+		T_Data& Get() const {return pEntry->value.Get();}
 		T_Data& operator*() const {return pEntry->value.Get();}
 		T_Data operator->() const {return pEntry->value.Get();}
-		bool End() const {return pEntry == pEnd;}
+		bool End() const {return index >= table->numEntries;}
+		Map* Table() const {return table;}
 
-		void operator++() {pEntry++;}
-		void operator--() {pEntry--;}
-
-		void Find(Map *source, T_Key key)
+		void operator++()
 		{
-			pEnd = source->End();
-			UInt32 index;
-			pEntry = source->GetIndex(key, &index) ? (source->entries + index) : pEnd;
+			pEntry++;
+			index++;
+		}
+		void operator--()
+		{
+			pEntry--;
+			index--;
 		}
 
-		Iterator() {}
-		Iterator(Map &source) : pEntry(source.entries), pEnd(source.End()) {}
-		Iterator(Map &source, T_Key key) {Find(&source, key);}
-	};
-
-	class OpIterator : public Iterator
-	{
-		Map			*table;
-
-	public:
-		Map* Table() const {return table;}
+		void Find(T_Key key)
+		{
+			pEntry = table->entries;
+			if (table->GetIndex(key, &index))
+				pEntry += index;
+			else index = -1;
+		}
 
 		void Remove(bool frwrd = true)
 		{
@@ -266,61 +265,17 @@ public:
 			if (frwrd)
 			{
 				pEntry--;
-				pEnd--;
+				index--;
 			}
 		}
 
-		OpIterator(Map &source) : table(&source)
-		{
-			pEntry = table->entries;
-			pEnd = table->End();
-		}
-		OpIterator(Map &source, T_Key key) : table(&source) {Find(&source, key);}
-		OpIterator(Map &source, T_Key key, bool frwrd) : table(&source)
-		{
-			if (table->numEntries)
-			{
-				UInt32 index;
-				bool match = table->GetIndex(key, &index);
-				if (frwrd)
-				{
-					pEntry = table->entries + index;
-					pEnd = table->End();
-				}
-				else
-				{
-					if (!match) index--;
-					pEntry = table->entries + index;
-					pEnd = table->entries - 1;
-				}
-			}
-			else pEnd = pEntry = NULL;
-		}
-	};
-
-	class CpIterator : public Iterator
-	{
-	public:
-		CpIterator(Map &source)
-		{
-			if (source.numEntries)
-			{
-				UInt32 size = source.numEntries * sizeof(Entry);
-				pEntry = (Entry*)MemCopy(GetAuxBuffer(s_auxBuffers[0], size), source.entries, size);
-				pEnd = pEntry + source.numEntries;
-			}
-			else pEnd = pEntry = NULL;
-		}
+		Iterator() {}
+		Iterator(Map &source) : table(&source), pEntry(source.entries), index(0) {}
+		Iterator(Map &source, T_Key key) : table(&source) {Find(key);}
 	};
 
 	Iterator Begin() {return Iterator(*this);}
 	Iterator Find(T_Key key) {return Iterator(*this, key);}
-
-	OpIterator BeginOp() {return OpIterator(*this);}
-	OpIterator FindOp(T_Key key) {return OpIterator(*this, key);}
-	OpIterator FindOpDir(T_Key key, bool frwrd) {return OpIterator(*this, key, frwrd);}
-
-	CpIterator BeginCp() {return CpIterator(*this);}
 };
 
 template <typename T_Key> class Set
@@ -416,70 +371,55 @@ public:
 	{
 		friend Set;
 
+		Set			*table;
 		M_Key		*pKey;
-		M_Key		*pEnd;
+		UInt32		index;
 
 	public:
 		T_Key operator*() const {return pKey->Get();}
 		T_Key operator->() const {return pKey->Get();}
-		bool End() const {return pKey == pEnd;}
-
-		void operator++() {pKey++;}
-
-		Iterator() {}
-		Iterator(Set &source) : pKey(source.keys), pEnd(source.End()) {}
-		Iterator(Set &source, T_Key key) : pEnd(source.End())
-		{
-			UInt32 index;
-			pKey = source.GetIndex(key, &index) ? (source.keys + index) : pEnd;
-		}
-	};
-
-	class OpIterator : public Iterator
-	{
-		Set			*table;
-
-	public:
+		bool End() const {return index >= table->numKeys;}
 		Set* Table() const {return table;}
 
-		void Remove()
+		void operator++()
+		{
+			pKey++;
+			index++;
+		}
+		void operator--()
+		{
+			pKey--;
+			index--;
+		}
+
+		void Find(T_Key key)
+		{
+			pKey = table->keys;
+			if (table->GetIndex(key, &index))
+				pKey += index;
+			else index = -1;
+		}
+
+		void Remove(bool frwrd = true)
 		{
 			table->numKeys--;
 			pKey->Clear();
-			pEnd--;
-			UInt32 size = (UInt32)pEnd - (UInt32)pKey;
+			UInt32 size = (UInt32)table->End() - (UInt32)pKey;
 			if (size) MemCopy(pKey, pKey + 1, size);
-			pKey--;
-		}
-
-		OpIterator(Set &source) : table(&source)
-		{
-			pKey = table->keys;
-			pEnd = table->End();
-		}
-	};
-
-	class CpIterator : public Iterator
-	{
-	public:
-		CpIterator(Set &source)
-		{
-			if (source.numKeys)
+			if (frwrd)
 			{
-				UInt32 size = source.numKeys * sizeof(M_Key);
-				pKey = (M_Key*)MemCopy(GetAuxBuffer(s_auxBuffers[1], size), source.keys, size);
-				pEnd = pKey + source.numKeys;
+				pKey--;
+				index--;
 			}
-			else pEnd = pKey = NULL;
 		}
+
+		Iterator() {}
+		Iterator(Set &source) : table(&source), pKey(source.keys), index(0) {}
+		Iterator(Set &source, T_Key key) : table(&source) {Find(key);}
 	};
 
 	Iterator Begin() {return Iterator(*this);}
 	Iterator Find(T_Key key) {return Iterator(*this, key);}
-
-	OpIterator BeginOp() {return OpIterator(*this);}
-
-	CpIterator BeginCp() {return CpIterator(*this);}
 };
 
 template <typename T_Key> __forceinline UInt32 HashKey(T_Key inKey)
@@ -800,24 +740,6 @@ public:
 		return true;
 	}
 
-	void DumpLoads()
-	{
-		UInt32 loadsArray[0x20];
-		MemZero(loadsArray, sizeof(loadsArray));
-		Bucket *pBucket = buckets;
-		UInt32 maxLoad = 0, entryCount;
-		for (Bucket *pEnd = End(); pBucket != pEnd; pBucket++)
-		{
-			entryCount = pBucket->Size();
-			loadsArray[entryCount]++;
-			if (maxLoad < entryCount)
-				maxLoad = entryCount;
-		}
-		PrintDebug("Size = %d\nBuckets = %d\n----------------\n", numEntries, numBuckets);
-		for (UInt32 iter = 0; iter <= maxLoad; iter++)
-			PrintDebug("%d:\t%05d (%.4f%%)", iter, loadsArray[iter], 100.0 * (double)loadsArray[iter] / numEntries);
-	}
-
 	class Iterator
 	{
 		friend UnorderedMap;
@@ -1093,24 +1015,6 @@ public:
 		while (pBucket != pEnd);
 		numEntries = 0;
 		return true;
-	}
-
-	void DumpLoads()
-	{
-		UInt32 loadsArray[0x20];
-		MemZero(loadsArray, sizeof(loadsArray));
-		Bucket *pBucket = buckets;
-		UInt32 maxLoad = 0, entryCount;
-		for (Bucket *pEnd = End(); pBucket != pEnd; pBucket++)
-		{
-			entryCount = pBucket->Size();
-			loadsArray[entryCount]++;
-			if (maxLoad < entryCount)
-				maxLoad = entryCount;
-		}
-		PrintDebug("Size = %d\nBuckets = %d\n----------------\n", numEntries, numBuckets);
-		for (UInt32 iter = 0; iter <= maxLoad; iter++)
-			PrintDebug("%d:\t%05d (%.4f%%)", iter, loadsArray[iter], 100.0 * (double)loadsArray[iter] / numEntries);
 	}
 
 	class Iterator
@@ -1391,18 +1295,59 @@ public:
 
 	void RemoveRange(UInt32 beginIdx, UInt32 count)
 	{
-		if (beginIdx >= numItems) return;
+		if (!count || (beginIdx >= numItems)) return;
 		if (count > (numItems - beginIdx))
 			count = numItems - beginIdx;
-		T_Data *pData = data + beginIdx + count;
-		for (UInt32 index = count; index; index--)
+		T_Data *pBgn = data + beginIdx, *pEnd = pBgn + count, *pData = pBgn;
+		do
 		{
-			pData--;
 			pData->~T_Data();
+			pData++;
 		}
-		if ((beginIdx + count) < numItems)
-			MemCopy(pData, pData + count, sizeof(T_Data) * (numItems - beginIdx - count));
+		while (pData != pEnd);
+		UInt32 size = (UInt32)End() - (UInt32)pData;
+		if (size) MemCopy(pBgn, pData, size);
 		numItems -= count;
+	}
+
+	void Resize(UInt32 newSize)
+	{
+		if (numItems == newSize)
+			return;
+		T_Data *pData, *pEnd;
+		if (numItems < newSize)
+		{
+			if (!data)
+			{
+				numAlloc = newSize;
+				data = (T_Data*)malloc(sizeof(T_Data) * numAlloc);
+			}
+			else if (numAlloc < newSize)
+			{
+				numAlloc = newSize;
+				data = (T_Data*)realloc(data, sizeof(T_Data) * numAlloc);
+			}
+			pData = data + numItems;
+			pEnd = data + newSize;
+			do
+			{
+				new (pData) T_Data();
+				pData++;
+			}
+			while (pData != pEnd);
+		}
+		else
+		{
+			pData = data + newSize;
+			pEnd = End();
+			do
+			{
+				pData->~T_Data();
+				pData++;
+			}
+			while (pData != pEnd);
+		}
+		numItems = newSize;
 	}
 
 	T_Data Pop()
@@ -1469,70 +1414,51 @@ public:
 	{
 		friend Vector;
 
+		Vector		*contObj;
 		T_Data		*pData;
-		T_Data		*pEnd;
+		UInt32		index;
 
 	public:
-		bool End() const {return pData == pEnd;}
-		void operator++() {pData++;}
-
+		T_Data& Get() const {return *pData;}
 		T_Data& operator*() const {return *pData;}
 		T_Data& operator->() const {return *pData;}
-		T_Data& Get() const {return *pData;}
+		bool End() const {return index >= contObj->numItems;}
+		UInt32 Index() const {return index;}
 
-		Iterator() {}
-		Iterator(Vector &source) : pData(source.data), pEnd(source.End()) {}
-		Iterator(Vector &source, UInt32 index) : pEnd(source.End())
+		void operator++()
 		{
-			pData = (source.numItems > index) ? (source.data + index) : pEnd;
+			pData++;
+			index++;
 		}
-	};
+		void operator--()
+		{
+			pData--;
+			index--;
+		}
 
-	class RvIterator : public Iterator
-	{
-		Vector		*contObj;
-
-	public:
-		Vector* Container() const {return contObj;}
-
-		void operator--() {pData--;}
-
-		void Remove()
+		void Remove(bool frwrd = true)
 		{
 			contObj->numItems--;
 			pData->~T_Data();
 			UInt32 size = (UInt32)contObj->End() - (UInt32)pData;
 			if (size) MemCopy(pData, pData + 1, size);
-		}
-
-		RvIterator(Vector &source) : contObj(&source)
-		{
-			pEnd = contObj->data - 1;
-			pData = pEnd + contObj->numItems;
-		}
-	};
-
-	class CpIterator : public Iterator
-	{
-	public:
-		CpIterator(Vector &source)
-		{
-			if (source.numItems)
+			if (frwrd)
 			{
-				UInt32 size = source.numItems * sizeof(T_Data);
-				pData = (T_Data*)MemCopy(GetAuxBuffer(s_auxBuffers[2], size), source.data, size);
-				pEnd = pData + source.numItems;
+				pData--;
+				index--;
 			}
-			else pEnd = pData = NULL;
+		}
+
+		Iterator() {}
+		Iterator(Vector &source) : contObj(&source), pData(source.data), index(0) {}
+		Iterator(Vector &source, UInt32 _index) : contObj(&source), index(_index)
+		{
+			pData = source.data + index;
 		}
 	};
 
 	Iterator Begin() {return Iterator(*this);}
 	Iterator BeginAt(UInt32 index) {return Iterator(*this, index);}
-
-	RvIterator BeginRv() {return RvIterator(*this);}
-
-	CpIterator BeginCp() {return CpIterator(*this);}
 };
 
 template <typename T_Data, UInt32 size> class FixedTypeArray

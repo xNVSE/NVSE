@@ -53,7 +53,7 @@ class ArrayIterLoop : public ForEachLoop
 	ArrayID					m_srcID;
 	ArrayID					m_iterID;
 	ArrayKey				m_curKey;
-	ScriptEventList::Var	* m_iterVar;
+	ScriptEventList::Var	*m_iterVar;
 
 	void UpdateIterator(const ArrayElement* elem);
 public:
@@ -61,7 +61,11 @@ public:
 	virtual ~ArrayIterLoop();
 
 	virtual bool Update(COMMAND_ARGS);
-	bool IsEmpty() { return (g_ArrayMap.SizeOf(m_srcID) == -1 || g_ArrayMap.SizeOf(m_srcID) == 0);	}
+	bool IsEmpty()
+	{
+		ArrayVar *arr = g_ArrayMap.Get(m_srcID);
+		return !arr || !arr->Size();
+	}
 };
 
 // iterates over characters in a string

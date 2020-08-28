@@ -476,15 +476,17 @@ TESLevCreature* ExtractLevCreature(COMMAND_ARGS)
 bool Cmd_GetRaceHairs_Execute(COMMAND_ARGS)
 {
 	TESRace* race = NULL;
-	ArrayID arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arr;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
 
-	if (ExtractArgs(EXTRACT_ARGS, &race) && race) {
-		double idx = 0.0;
-		for (tList<TESHair>::Iterator iter = race->hairs.Begin(); !iter.End(); ++iter) {
+	if (ExtractArgs(EXTRACT_ARGS, &race) && race)
+	{
+		double idx = 0;
+		for (tList<TESHair>::Iterator iter = race->hairs.Begin(); !iter.End(); ++iter)
+		{
 			if (iter.Get()) {
-				g_ArrayMap.SetElementFormID(arr, idx, iter.Get()->refID);
-				idx += 1.0;
+				arr->SetElementFormID(idx, iter.Get()->refID);
+				idx += 1;
 			}
 		}
 	}
@@ -495,15 +497,16 @@ bool Cmd_GetRaceHairs_Execute(COMMAND_ARGS)
 bool Cmd_GetRaceEyes_Execute(COMMAND_ARGS)
 {
 	TESRace* race = NULL;
-	ArrayID arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arr;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
 
-	if (ExtractArgs(EXTRACT_ARGS, &race) && race) {
-		double idx = 0.0;
+	if (ExtractArgs(EXTRACT_ARGS, &race) && race)
+	{
+		double idx = 0;
 		for (tList<TESEyes>::Iterator iter = race->eyes.Begin(); !iter.End(); ++iter) {
 			if (iter.Get()) {
-				g_ArrayMap.SetElementFormID(arr, idx, iter.Get()->refID);
-				idx += 1.0;
+				arr->SetElementFormID(idx, iter.Get()->refID);
+				idx += 1;
 			}
 		}
 	}
@@ -514,9 +517,9 @@ bool Cmd_GetRaceEyes_Execute(COMMAND_ARGS)
 bool Cmd_GetBaseSpellListSpells_Execute(COMMAND_ARGS)
 {
 	// returns an array of factions for the specified actor base form
-	ArrayID arrID = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arrID;
-	double arrIndex = 0.0;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
+	double arrIndex = 0;
 
 	TESActorBase* actorBase = ExtractActorBase(PASS_COMMAND_ARGS);
 	if (actorBase)
@@ -525,8 +528,8 @@ bool Cmd_GetBaseSpellListSpells_Execute(COMMAND_ARGS)
 		{
 			if (iter.Get())
 			{
-				g_ArrayMap.SetElementFormID(arrID, arrIndex, iter.Get()->refID);
-				arrIndex += 1.0;
+				arr->SetElementFormID(arrIndex, iter.Get()->refID);
+				arrIndex += 1;
 			}
 		}
 	}
@@ -537,9 +540,9 @@ bool Cmd_GetBaseSpellListSpells_Execute(COMMAND_ARGS)
 bool Cmd_GetBaseSpellListLevSpells_Execute(COMMAND_ARGS)
 {
 	// returns an array of factions for the specified actor base form
-	ArrayID arrID = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arrID;
-	double arrIndex = 0.0;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
+	double arrIndex = 0;
 
 	TESActorBase* actorBase = ExtractActorBase(PASS_COMMAND_ARGS);
 	if (actorBase)
@@ -548,8 +551,8 @@ bool Cmd_GetBaseSpellListLevSpells_Execute(COMMAND_ARGS)
 		{
 			if (iter.Get())
 			{
-				g_ArrayMap.SetElementFormID(arrID, arrIndex, iter.Get()->refID);
-				arrIndex += 1.0;
+				arr->SetElementFormID(arrIndex, iter.Get()->refID);
+				arrIndex += 1;
 			}
 		}
 	}
@@ -560,9 +563,9 @@ bool Cmd_GetBaseSpellListLevSpells_Execute(COMMAND_ARGS)
 bool Cmd_GetBaseFactions_Execute(COMMAND_ARGS)
 {
 	// returns an array of factions for the specified actor base form
-	ArrayID arrID = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arrID;
-	double arrIndex = 0.0;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
+	double arrIndex = 0;
 
 	TESActorBase* actorBase = ExtractActorBase(PASS_COMMAND_ARGS);
 	if (actorBase)
@@ -572,8 +575,8 @@ bool Cmd_GetBaseFactions_Execute(COMMAND_ARGS)
 			TESActorBaseData::FactionListData * data = iter.Get();
 			if (data && data->faction)
 			{
-				g_ArrayMap.SetElementFormID(arrID, arrIndex, data->faction->refID);
-				arrIndex += 1.0;
+				arr->SetElementFormID(arrIndex, data->faction->refID);
+				arrIndex += 1;
 			}
 		}
 	}
@@ -584,9 +587,9 @@ bool Cmd_GetBaseFactions_Execute(COMMAND_ARGS)
 bool Cmd_GetBaseRanks_Execute(COMMAND_ARGS)
 {
 	// returns an array of factions for the specified actor base form
-	ArrayID arrID = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arrID;
-	double arrIndex = 0.0;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
+	double arrIndex = 0;
 
 	TESActorBase* actorBase = ExtractActorBase(PASS_COMMAND_ARGS);
 	if (actorBase)
@@ -596,8 +599,8 @@ bool Cmd_GetBaseRanks_Execute(COMMAND_ARGS)
 			TESActorBaseData::FactionListData * data = iter.Get();
 			if (data && data->faction)
 			{
-				g_ArrayMap.SetElementNumber(arrID, arrIndex, data->rank);
-				arrIndex += 1.0;
+				arr->SetElementNumber(arrIndex, data->rank);
+				arrIndex += 1;
 			}
 		}
 	}
@@ -608,9 +611,9 @@ bool Cmd_GetBaseRanks_Execute(COMMAND_ARGS)
 bool Cmd_GetBasePackages_Execute(COMMAND_ARGS)
 {
 	// returns an array of factions for the specified actor base form
-	ArrayID arrID = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arrID;
-	double arrIndex = 0.0;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
+	double arrIndex = 0;
 
 	TESActorBase* actorBase = ExtractActorBase(PASS_COMMAND_ARGS);
 	if (actorBase)
@@ -620,8 +623,8 @@ bool Cmd_GetBasePackages_Execute(COMMAND_ARGS)
 			TESPackage * data = iter.Get();
 			if (data)
 			{
-				g_ArrayMap.SetElementFormID(arrID, arrIndex, data->refID);
-				arrIndex += 1.0;
+				arr->SetElementFormID(arrIndex, data->refID);
+				arrIndex += 1;
 			}
 		}
 	}
@@ -634,15 +637,18 @@ bool Cmd_GetBasePackages_Execute(COMMAND_ARGS)
 bool Cmd_GetFactionRankNames_Execute(COMMAND_ARGS)
 {
 	TESFaction* form = NULL;
-	ArrayID arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arr;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
 
-	if (ExtractArgs(EXTRACT_ARGS, &form) && form) {
-		double idx = 0.0;
-		for (tList<TESFaction::Rank>::Iterator iter = form->ranks.Begin(); !iter.End(); ++iter) {
-			if (iter.Get()) {
-				g_ArrayMap.SetElementString(arr, idx, iter.Get()->name.CStr());
-				idx += 1.0;
+	if (ExtractArgs(EXTRACT_ARGS, &form) && form)
+	{
+		double idx = 0;
+		for (tList<TESFaction::Rank>::Iterator iter = form->ranks.Begin(); !iter.End(); ++iter)
+		{
+			if (iter.Get())
+			{
+				arr->SetElementString(idx, iter.Get()->name.CStr());
+				idx += 1;
 			}
 		}
 	}
@@ -653,15 +659,18 @@ bool Cmd_GetFactionRankNames_Execute(COMMAND_ARGS)
 bool Cmd_GetFactionRankFemaleNames_Execute(COMMAND_ARGS)
 {
 	TESFaction* form = NULL;
-	ArrayID arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arr;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
 
-	if (ExtractArgs(EXTRACT_ARGS, &form) && form) {
-		double idx = 0.0;
-		for (tList<TESFaction::Rank>::Iterator iter = form->ranks.Begin(); !iter.End(); ++iter) {
-			if (iter.Get()) {
-				g_ArrayMap.SetElementString(arr, idx, iter.Get()->femaleName.CStr());
-				idx += 1.0;
+	if (ExtractArgs(EXTRACT_ARGS, &form) && form)
+	{
+		double idx = 0;
+		for (tList<TESFaction::Rank>::Iterator iter = form->ranks.Begin(); !iter.End(); ++iter)
+		{
+			if (iter.Get())
+			{
+				arr->SetElementString(idx, iter.Get()->femaleName.CStr());
+				idx += 1;
 			}
 		}
 	}
@@ -671,16 +680,16 @@ bool Cmd_GetFactionRankFemaleNames_Execute(COMMAND_ARGS)
 
 bool Cmd_GetHeadParts_Execute(COMMAND_ARGS)
 {
-	ArrayID arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arr;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
 
 	TESNPC* form = ExtractNPC(PASS_COMMAND_ARGS);
 	if (form) {
-		double idx = 0.0;
+		double idx = 0;
 		for (tList<BGSHeadPart>::Iterator iter = form->headPart.Begin(); !iter.End(); ++iter) {
 			if (iter.Get()) {
-				g_ArrayMap.SetElementFormID(arr, idx, iter.Get()->refID);
-				idx += 1.0;
+				arr->SetElementFormID(idx, iter.Get()->refID);
+				idx += 1;
 			}
 		}
 	}
@@ -690,16 +699,16 @@ bool Cmd_GetHeadParts_Execute(COMMAND_ARGS)
 
 bool Cmd_GetLevCreatureRefs_Execute(COMMAND_ARGS)
 {
-	ArrayID arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arr;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
 
 	TESLevCreature* form = ExtractLevCreature(PASS_COMMAND_ARGS);
 	if (form) {
-		double idx = 0.0;
+		double idx = 0;
 		for (tList<TESLeveledList::BaseData>::Iterator iter = form->list.datas.Begin(); !iter.End(); ++iter) {
 			if (iter.Get()) {
-				g_ArrayMap.SetElementFormID(arr, idx, iter.Get()->refr->refID);
-				idx += 1.0;
+				arr->SetElementFormID(idx, iter.Get()->refr->refID);
+				idx += 1;
 			}
 		}
 	}
@@ -709,16 +718,16 @@ bool Cmd_GetLevCreatureRefs_Execute(COMMAND_ARGS)
 
 bool Cmd_GetLevCharacterRefs_Execute(COMMAND_ARGS)
 {
-	ArrayID arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arr;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
 
 	TESLevCharacter* form = ExtractLevCharacter(PASS_COMMAND_ARGS);
 	if (form) {
-		double idx = 0.0;
+		double idx = 0;
 		for (tList<TESLeveledList::BaseData>::Iterator iter = form->list.datas.Begin(); !iter.End(); ++iter) {
 			if (iter.Get()) {
-				g_ArrayMap.SetElementFormID(arr, idx, iter.Get()->refr->refID);
-				idx += 1.0;
+				arr->SetElementFormID(idx, iter.Get()->refr->refID);
+				idx += 1;
 			}
 		}
 	}
@@ -731,15 +740,15 @@ bool Cmd_GetLevCharacterRefs_Execute(COMMAND_ARGS)
 bool Cmd_GetListForms_Execute(COMMAND_ARGS)
 {
 	BGSListForm* form = NULL;
-	ArrayID arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arr;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
 
 	if (ExtractArgs(EXTRACT_ARGS, &form) && form) {
-		double idx = 0.0;
+		double idx = 0;
 		for (tList<TESForm>::Iterator iter = form->list.Begin(); !iter.End(); ++iter) {
 			if (iter.Get()) {
-				g_ArrayMap.SetElementFormID(arr, idx, iter.Get()->refID);
-				idx += 1.0;
+				arr->SetElementFormID(idx, iter.Get()->refID);
+				idx += 1;
 			}
 		}
 	}
@@ -750,9 +759,9 @@ bool Cmd_GetListForms_Execute(COMMAND_ARGS)
 bool Cmd_GetActiveFactions_Execute(COMMAND_ARGS)
 {
 	// returns an array of factions for the specified actor
-	ArrayID arrID = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arrID;
-	double arrIndex = 0.0;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
+	double arrIndex = 0;
 
 	Actor* actor = ExtractActor(PASS_COMMAND_ARGS);
 	TESActorBase* actorBase = ConvertActorBase(thisObj, actor);
@@ -774,8 +783,8 @@ bool Cmd_GetActiveFactions_Execute(COMMAND_ARGS)
 
 				if (!changed)
 				{
-					g_ArrayMap.SetElementFormID(arrID, arrIndex, data->faction->refID);
-					arrIndex += 1.0;
+					arr->SetElementFormID(arrIndex, data->faction->refID);
+					arrIndex += 1;
 				}
 			}
 		}
@@ -785,8 +794,8 @@ bool Cmd_GetActiveFactions_Execute(COMMAND_ARGS)
 			ExtraFactionChanges::FactionListData* data = iter.Get();
 			if (data && data->faction && (0 <= data->rank))	// negative rank means removed from faction
 			{
-				g_ArrayMap.SetElementFormID(arrID, arrIndex, data->faction->refID);
-				arrIndex += 1.0;
+				arr->SetElementFormID(arrIndex, data->faction->refID);
+				arrIndex += 1;
 			}
 		}
 	}
@@ -797,9 +806,9 @@ bool Cmd_GetActiveFactions_Execute(COMMAND_ARGS)
 bool Cmd_GetActiveRanks_Execute(COMMAND_ARGS)
 {
 	// returns an array of factions ranks for the specified actor
-	ArrayID arrID = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arrID;
-	double arrIndex = 0.0;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
+	double arrIndex = 0;
 
 	Actor* actor = ExtractActor(PASS_COMMAND_ARGS);
 	TESActorBase* actorBase = ConvertActorBase(thisObj, actor);
@@ -821,8 +830,8 @@ bool Cmd_GetActiveRanks_Execute(COMMAND_ARGS)
 
 				if (!changed)
 				{
-					g_ArrayMap.SetElementNumber(arrID, arrIndex, data->rank);
-					arrIndex += 1.0;
+					arr->SetElementNumber(arrIndex, data->rank);
+					arrIndex += 1;
 				}
 			}
 		}
@@ -832,8 +841,8 @@ bool Cmd_GetActiveRanks_Execute(COMMAND_ARGS)
 			ExtraFactionChanges::FactionListData* data = iter.Get();
 			if (data && data->faction && (0 <= data->rank))	// negative rank means removed from faction
 			{
-				g_ArrayMap.SetElementNumber(arrID, arrIndex, data->rank);
-				arrIndex += 1.0;
+				arr->SetElementNumber(arrIndex, data->rank);
+				arrIndex += 1;
 			}
 		}
 	}
@@ -1092,18 +1101,17 @@ bool Cmd_SetNthDefaultForm_Execute(COMMAND_ARGS)
 bool Cmd_GetDefaultForms_Execute(COMMAND_ARGS)
 {
 	// returns an array of all the default forms
-	ArrayID arrID = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arrID;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
 
 	BGSDefaultObjectManager* g = BGSDefaultObjectManager::GetSingleton();
-	
+	TESForm *pForm;
+	double arrIndex = 0;
 	for (UInt32 formIndex = 0; formIndex < BGSDefaultObjectManager::kDefaultObject_Max; formIndex++)
 	{
-		TESForm*	pForm = g->defaultObjects.asArray[formIndex];
-		if (pForm)
-			g_ArrayMap.SetElementFormID(arrID, formIndex, pForm->refID);
-		else
-			g_ArrayMap.SetElementFormID(arrID, formIndex, 0);
+		pForm = g->defaultObjects.asArray[formIndex];
+		arr->SetElementFormID(arrIndex, pForm ? pForm->refID : 0);
+		arrIndex += 1;
 	}
 
 	return true;
@@ -1112,9 +1120,9 @@ bool Cmd_GetDefaultForms_Execute(COMMAND_ARGS)
 bool Cmd_GetCurrentQuestObjectiveTeleportLinks_Execute(COMMAND_ARGS)
 {
 	// returns an array of teleport links for the active objective of the active quest.
-	ArrayID arrID = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arrID;
-	double arrIndex = 0.0;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
+	double arrIndex = 0;
 
 	PlayerCharacter* player = PlayerCharacter::GetSingleton();
 	if (player)
@@ -1122,30 +1130,29 @@ bool Cmd_GetCurrentQuestObjectiveTeleportLinks_Execute(COMMAND_ARGS)
 		QuestObjectiveTargets* targets = player->GetCurrentQuestObjectiveTargets();
 		if (targets)
 		{
+			ArrayVar *subArr;
+			double subArrIndex;
 			for (tList<BGSQuestObjective::Target>::Iterator iter = targets->Begin() ; !iter.End(); ++iter)
 			{
-				ArrayID subArrID = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-				double subArrIndex = 0.0;
-				g_ArrayMap.SetElementArray(arrID, arrIndex, subArrID);
-				arrIndex += 1.0;
+				subArr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+				subArrIndex = 0;
+				arr->SetElementArray(arrIndex, subArr->ID());
+				arrIndex += 1;
 				BGSQuestObjective::Target * data = iter.Get();
 				if (data && data->teleportLinks.size)
 				{
-					for (UInt32 i = 0; i<data->teleportLinks.size; i++)
+					for (UInt32 i = 0; i < data->teleportLinks.size; i++)
 					{
 						BGSQuestObjective::TeleportLink teleportLink = data->teleportLinks.data[i];
-						if (teleportLink.door && teleportLink.door->refID)
+						if (teleportLink.door)
 						{
-							g_ArrayMap.SetElementFormID(subArrID, subArrIndex, teleportLink.door->refID);
-							subArrIndex += 1.0;
+							subArr->SetElementFormID(subArrIndex, teleportLink.door->refID);
+							subArrIndex += 1;
 						}
 					}
 				}
-				if (data && data->target /*&& data->target->target*/)
-				{
-					g_ArrayMap.SetElementFormID(subArrID, subArrIndex, data->target/*->target*/->refID);
-					subArrIndex += 1.0;
-				}
+				if (data && data->target)
+					subArr->SetElementFormID(subArrIndex, data->target->refID);
 			}
 
 		}

@@ -17,20 +17,20 @@ ArrayVarElementContainer::ArrayVarElementContainer(bool isArray)
 
 ArrayVarElementContainer::ArrayVarElementContainer() = default;
 
-ArrayElement& ArrayVarElementContainer::operator[](ArrayKey i) const
-{
-	if (isArray_) [[likely]]
-	{
-		const std::size_t index = i.key.num;
-		if (index >= array_->size())
-		{
-			array_->push_back(ArrayElement());
-			return array_->back();
-		}
-		return (*array_)[index];
-	}
-	return (*map_)[i];
-}
+//ArrayElement& ArrayVarElementContainer::operator[](const ArrayKey& i) const
+//{
+//	if (isArray_) [[likely]]
+//	{
+//		const std::size_t index = i.key.num;
+//		if (index >= array_->size())
+//		{
+//			array_->push_back(ArrayElement());
+//			return array_->back();
+//		}
+//		return (*array_)[index];
+//	}
+//	return (*map_)[i];
+//}
 
 ArrayVarElementContainer::iterator::iterator() = default;
 
@@ -86,23 +86,23 @@ bool ArrayVarElementContainer::iterator::operator!=(const iterator& other) const
 
 static ArrayKey s_packedKey(0.0);
 
-const ArrayKey& ArrayVarElementContainer::iterator::first() const
+const ArrayKey* ArrayVarElementContainer::iterator::first() const
 {
 	if (isArray_) [[likely]]
 	{
 		s_packedKey.key.num = arrIter_ - containerPtr_->getVectorRef().begin();
-		return s_packedKey;
+		return &s_packedKey;
 	}
-	return mapIter_->first;
+	return &mapIter_->first;
 }
 
-ArrayElement& ArrayVarElementContainer::iterator::second() const
+ArrayElement* ArrayVarElementContainer::iterator::second() const
 {
 	if (isArray_) [[likely]]
 	{
-		return *arrIter_;
+		return arrIter_._Ptr;
 	}
-	return mapIter_->second;
+	return &mapIter_->second;
 }
 
 ArrayVarElementContainer::iterator ArrayVarElementContainer::find(const ArrayKey& key) const
@@ -119,14 +119,14 @@ ArrayVarElementContainer::iterator ArrayVarElementContainer::find(const ArrayKey
 	return iterator(map_->find(key));
 }
 
-std::size_t ArrayVarElementContainer::count(const ArrayKey& key) const
+std::size_t ArrayVarElementContainer::count(const ArrayKey* key) const
 {
 	if (isArray_) [[likely]]
 	{
-		std::size_t index = key.key.num;
+		std::size_t index = key->key.num;
 		return (index < array_->size()) ? 1 : 0;
 	}
-	return map_->count(key);
+	return map_->count(*key);
 }
 
 ArrayVarElementContainer::iterator ArrayVarElementContainer::begin() const
@@ -156,28 +156,29 @@ std::size_t ArrayVarElementContainer::size() const
 	return map_->size();
 }
 
-std::size_t ArrayVarElementContainer::erase(const ArrayKey& key) const
+std::size_t ArrayVarElementContainer::erase(const ArrayKey* key) const
 {
 	if (isArray_) [[likely]]
 	{
-		array_->erase(array_->begin() + key.key.num);
+		array_->erase(array_->begin() + key->key.num);
 		return 1;
 	}
-	return map_->erase(key);
+	return map_->erase(*key);
 }
 
-std::size_t ArrayVarElementContainer::erase(const ArrayKey& low, const ArrayKey& high) const
+std::size_t ArrayVarElementContainer::erase(const ArrayKey* low, const ArrayKey* high) const
 {
 	if (!isArray_)
 	{
 		throw std::invalid_argument("Attempt to erase range of elements from map");
 	}
-	if (high.key.num > array_->size() || low.key.num > array_->size())
+	UInt32 iLow = (int)low->key.num, iHigh = (int)high->key.num;
+	if (iHigh > array_->size() || iLow > array_->size())
 	{
 		throw std::out_of_range("Attempt to erase out of range array var");
 	}
-	array_->erase(array_->begin() + low.key.num, array_->begin() + high.key.num);
-	return high.key.num - low.key.num;
+	array_->erase(array_->begin() + iLow, array_->begin() + iHigh);
+	return iHigh - iLow;
 }
 
 std::vector<ArrayElement>& ArrayVarElementContainer::getVectorRef() const
