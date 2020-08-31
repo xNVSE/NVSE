@@ -281,8 +281,9 @@ public:
 	UInt16		refIdx;
 	UInt16		varIdx;
 	UInt32 eventListsDestroyedCount = 0;
-	ScriptToken* shortCircuitParent;
+	OperatorType shortCircuitParentType;
 	UInt8 shortCircuitDistance;
+	UInt8 shortCircuitStackOffset;
 };
 
 struct SliceToken : ScriptToken
