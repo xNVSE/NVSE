@@ -3359,6 +3359,8 @@ CachedTokenIter GetOperatorParent(CachedTokenIter iter, const CachedTokenIter& i
 	return iterEnd;
 }
 
+constexpr auto g_noShortCircuit = kOpType_Max;
+
 void ParseShortCircuit(CachedTokens& cachedTokens)
 {
 	const auto end = cachedTokens.end();
@@ -3368,7 +3370,16 @@ void ParseShortCircuit(CachedTokens& cachedTokens)
 		auto& token = iter->token;
 		
 		// Required to make short circuit compatible with Reverse Polish Notation stack
-		token.shortCircuitStackOffset = token.IsOperator() ? (stackOffset -= token.GetOperator()->numOperands - 1) + 1 : ++stackOffset;
+		if (token.IsOperator()) 
+		{
+			stackOffset -= token.GetOperator()->numOperands - 1;
+			token.shortCircuitStackOffset = stackOffset + 1;
+		}
+		else
+		{
+			++stackOffset;
+			token.shortCircuitStackOffset = stackOffset + 1;
+		}
 
 		auto parent = iter;
 		auto innerIter = CachedTokenIter();
@@ -3386,7 +3397,7 @@ void ParseShortCircuit(CachedTokens& cachedTokens)
 		}
 		else
 		{
-			token.shortCircuitParentType = kOpType_Max;
+			token.shortCircuitParentType = g_noShortCircuit;
 			token.shortCircuitDistance = 0;
 		}
 	}
@@ -3418,18 +3429,16 @@ void ShortCircuit(OperandStack& operands, CachedTokenIter& iter)
 {
 	auto* lastToken = operands.top();
 	const auto type = lastToken->shortCircuitParentType;
-	if (type == kOpType_Max)
+	if (type == g_noShortCircuit)
 		return;
 
 	const auto eval = lastToken->GetBool();
 	if (type == kOpType_LogicalAnd && !eval || type == kOpType_LogicalOr && eval)
 	{
 		std::advance(iter, lastToken->shortCircuitDistance);
-		const auto stackOffset = lastToken->shortCircuitStackOffset;
-		if (stackOffset == 1)
-			return;
-		for (auto i = 0U; i < stackOffset; ++i)
+		for (auto i = 0U; i < lastToken->shortCircuitStackOffset; ++i)
 		{
+			// Make sure only one operand is left in RPN stack
 			operands.top()->Delete();
 			operands.pop();
 		}
