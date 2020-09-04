@@ -210,12 +210,16 @@ public:
 
 		ContainerType	m_type;
 		ContainerPtr	m_container;
+#if !_DEBUG // iterators have extra instrumentation code that causes the implicit destructor to be marked as deleted in debug
 		union
 		{
+#endif
 			ElementVector::iterator		arrayIter;
 			ElementNumMap::iterator		numMapIter;
 			ElementStrMap::iterator		strMapIter;
-		};
+#if !_DEBUG
+		}
+#endif
 
 	public:
 		iterator(ElementVector *_array, ElementVector::iterator iter);

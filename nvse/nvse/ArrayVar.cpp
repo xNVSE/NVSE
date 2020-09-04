@@ -1177,13 +1177,6 @@ ArrayVarMap* ArrayVarMap::GetSingleton()
 
 void ArrayVarMap::Add(ArrayVar* var, UInt32 varID, UInt32 numRefs, UInt8* refs)
 {
-#if _DEBUG
-	if (Exists(varID))
-	{
-		DEBUG_PRINT("ArrayVarMap::Add() -> ArrayID %d already exists and will be overwritten.", varID);
-	}
-#endif
-
 	VarMap::Insert(varID, var);
 	var->m_ID = varID;
 	if (!numRefs)		// nobody refers to this array, queue for deletion
