@@ -28,5 +28,5 @@ class TokenCache
 public:
 	CachedTokens& Get(UInt8* key);
 	void Clear();
-	std::size_t Size() const;
+	[[nodiscard]] std::size_t Size() const;
 };

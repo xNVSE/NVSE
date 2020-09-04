@@ -3344,7 +3344,9 @@ CachedTokenIter GetOperatorParent(CachedTokenIter iter, const CachedTokenIter& i
 			{
 				return iter;
 			}
-			--count;
+			
+			// e.g. `1 0 ! &&` prevent ! being parent of 1
+			count -= token.GetOperator()->numOperands - 1;
 		}
 		else
 		{
@@ -3381,19 +3383,19 @@ void ParseShortCircuit(CachedTokens& cachedTokens)
 			token.shortCircuitStackOffset = stackOffset + 1;
 		}
 
-		auto parent = iter;
-		auto innerIter = CachedTokenIter();
+		auto grandparent = iter;
+		auto parent = CachedTokenIter();
 		do
 		{
 			// Find last "parent" operator of same type. E.g `0 1 && 1 && 1 &&` should jump straight to end of expression.
-			innerIter = parent;
-			parent = GetOperatorParent(parent, end);
-		} while (parent != end && parent->token.IsLogicalOperator() && (innerIter == iter || parent->token.GetOperator() == innerIter->token.GetOperator()));
+			parent = grandparent;
+			grandparent = GetOperatorParent(grandparent, end);
+		} while (grandparent != end && grandparent->token.IsLogicalOperator() && (parent == iter || grandparent->token.GetOperator() == parent->token.GetOperator()));
 		
-		if (innerIter != iter && innerIter->token.IsLogicalOperator())
+		if (parent != iter && parent->token.IsLogicalOperator())
 		{
-			token.shortCircuitParentType = innerIter->token.GetOperator()->type;
-			token.shortCircuitDistance = innerIter - iter;
+			token.shortCircuitParentType = parent->token.GetOperator()->type;
+			token.shortCircuitDistance = parent - iter;
 		}
 		else
 		{
@@ -3444,13 +3446,6 @@ void ShortCircuit(OperandStack& operands, CachedTokenIter& iter)
 		}
 		operands.push(ScriptToken::Create(eval));
 	}
-	else if (lastToken->Type() == kTokenType_Command)
-	{
-		// Cache result of command tokens so that they don't get executed more than once.
-		lastToken->Delete();
-		operands.pop();
-		operands.push(ScriptToken::Create(eval));
-	}
 }
 
 void CopyShortCircuitInfo(ScriptToken* to, ScriptToken* from)
@@ -3487,7 +3482,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 
 		if (curToken->Type() != kTokenType_Operator)
 		{
-			if (curToken->Type() == kTokenType_Command && (curToken->returnType == kRetnType_Ambiguous || curToken->returnType == kRetnType_ArrayIndex)) [[unlikely]]
+			if (curToken->Type() == kTokenType_Command)
 			{
 				auto* cmdToken = ExecuteCommandToken(curToken);
 				if (cmdToken == nullptr)
