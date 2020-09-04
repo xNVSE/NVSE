@@ -682,45 +682,110 @@ DataType ArrayVar::GetElementType(const ArrayKey* key)
 
 const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 {
-	ArrayIterator start = m_elements.begin();
-	ArrayIterator end = m_elements.end();
-	if (range)
+	static ArrayKey arrNumKey(kDataType_Numeric), arrStrKey(kDataType_String);
+
+	switch (GetContainerType())
 	{
-		if (range->bIsString != (KeyType() == kDataType_String))
+		default:
+		case kContainer_Array:
+		{
+			ElementVector *pArray = m_elements.getArrayPtr();
+			UInt32 arrSize = pArray->size(), iLow, iHigh;
+			if (range)
+			{
+				if (range->bIsString)
+					return NULL;
+				iLow = (int)range->m_lower;
+				iHigh = (int)range->m_upper;
+				if (iHigh >= arrSize)
+					iHigh = arrSize - 1;
+				if ((iLow >= arrSize) || (iLow > iHigh))
+					return NULL;
+			}
+			else
+			{
+				iLow = 0;
+				iHigh = arrSize - 1;
+			}
+			ArrayElement *elements = pArray->data();
+			for (int idx = iLow; idx <= iHigh; idx++)
+			{
+				if (elements[idx] != *toFind) continue;
+				arrNumKey.key.num = idx;
+				return &arrNumKey;
+			}
 			return NULL;
-
-		// locate lower and upper bounds
-		ArrayKey lo;
-		ArrayKey hi;
-		range->GetArrayBounds(lo, hi);
-
-		if (m_bPacked)
-		{
-			end = start;
-			start += (int)lo.key.num;
-			end += (int)hi.key.num;
 		}
-		else
+		case kContainer_NumericMap:
 		{
-			ArrayIterator theEnd = m_elements.end();
-			while ((start != theEnd) && (*start.first() < lo))
-				++start;
-
-			end = start;
-			while ((end != theEnd) && (*end.first() <= hi))
-				++end;
+			ElementNumMap *pNumMap = m_elements.getNumMapPtr();
+			auto iter = pNumMap->begin();
+			if (range)
+			{
+				if (range->bIsString)
+					return NULL;
+				bool inRange = false;
+				for (; iter != pNumMap->end(); ++iter)
+				{
+					if (!inRange)
+					{
+						if (iter->first >= range->m_lower)
+							inRange = true;
+						else continue;
+					}
+					if (iter->first > range->m_upper)
+						return NULL;
+					if (iter->second == *toFind) break;
+				}
+			}
+			else
+			{
+				for (; iter != pNumMap->end(); ++iter)
+					if (iter->second == *toFind) break;
+			}
+			if (iter != pNumMap->end())
+			{
+				arrNumKey.key.num = iter->first;
+				return &arrNumKey;
+			}
+			return NULL;
+		}
+		case kContainer_StringMap:
+		{
+			ElementStrMap *pStrMap = m_elements.getStrMapPtr();
+			auto iter = pStrMap->begin();
+			if (range)
+			{
+				if (!range->bIsString)
+					return NULL;
+				const char *sLow = range->m_lowerStr.c_str(), *sHigh = range->m_upperStr.c_str();
+				bool inRange = false;
+				for (; iter != pStrMap->end(); ++iter)
+				{
+					if (!inRange)
+					{
+						if (StrCompare(iter->first.Get(), sLow) >= 0)
+							inRange = true;
+						else continue;
+					}
+					if (StrCompare(iter->first.Get(), sHigh) > 0)
+						return NULL;
+					if (iter->second == *toFind) break;
+				}
+			}
+			else
+			{
+				for (; iter != pStrMap->end(); ++iter)
+					if (iter->second == *toFind) break;
+			}
+			if (iter != pStrMap->end())
+			{
+				arrStrKey.key.str = const_cast<char*>(iter->first.Get());
+				return &arrStrKey;
+			}
+			return NULL;
 		}
 	}
-
-	// do the search
-	while (start != end)
-	{
-		if (*start.second() == *toFind)
-			return start.first();
-		++start;
-	}
-
-	return NULL;
 }
 
 bool ArrayVar::GetFirstElement(ArrayElement** outElem, const ArrayKey** outKey)
@@ -788,11 +853,10 @@ UInt32 ArrayVar::EraseElement(const ArrayKey* key)
 	return m_elements.erase(key);
 }
 
-UInt32 ArrayVar::EraseElements(const ArrayKey* lo, const ArrayKey* hi)
+UInt32 ArrayVar::EraseElements(const Slice* slice)
 {
-	if ((lo->KeyType() != hi->KeyType()) || (lo->KeyType() != KeyType()))
-		return -1;
-	return m_elements.erase(lo, hi);
+	if (slice->bIsString) return -1;
+	return m_elements.erase((int)slice->m_lower, (int)slice->m_upper);
 }
 
 UInt32 ArrayVar::EraseAllElements()
@@ -817,10 +881,7 @@ bool ArrayVar::SetSize(UInt32 newSize, const ArrayElement* padWith)
 		}
 	}
 	else if (varSize > newSize)
-	{
-		ArrayKey lo(newSize), hi(varSize - 1);
-		return EraseElements(&lo, &hi) != -1;
-	}
+		return m_elements.erase(newSize, varSize - 1) > 0;
 
 	return true;
 }
@@ -916,48 +977,69 @@ ArrayVar *ArrayVar::Copy(UInt8 modIndex, bool bDeepCopy)
 
 ArrayVar *ArrayVar::MakeSlice(const Slice* slice, UInt8 modIndex)
 {
-	// keys in slice match those in source unless array packed, in which case they must start at zero
-
-	ArrayKey lo;
-	ArrayKey hi;
-
-	if (slice->bIsString && (m_keyType == kDataType_String))
-	{
-		lo = ArrayKey(slice->m_lowerStr.c_str());
-		hi = ArrayKey(slice->m_upperStr.c_str());
-
-	}
-	else if (!slice->bIsString && (m_keyType == kDataType_Numeric))
-	{
-		lo = ArrayKey(slice->m_lower);
-		hi = ArrayKey(slice->m_upper);
-	}
-	else return 0;
-
 	ArrayVar *newVar = g_ArrayMap.Create(m_keyType, m_bPacked, modIndex);
-	ArrayIterator start = m_elements.begin();
 
-	for (; start != m_elements.end(); ++start)
+	if (slice->bIsString != (m_keyType == kDataType_String))
+		return newVar;
+
+	switch (GetContainerType())
 	{
-		if (*start.first() >= lo)
-			break;
-	}
-
-	double packedIndex = 0;
-
-	for (ArrayIterator end = start; end != m_elements.end(); ++end)
-	{
-		if (*end.first() > hi)
-			break;
-
-		if (m_bPacked)
+		default:
+		case kContainer_Array:
 		{
-			newVar->SetElement(packedIndex, end.second());
-			packedIndex += 1;
+			ElementVector *pArray = m_elements.getArrayPtr();
+			UInt32 arrSize = pArray->size(), iLow = (int)slice->m_lower, iHigh = (int)slice->m_upper;
+			if (iHigh >= arrSize)
+				iHigh = arrSize - 1;
+			if ((iLow >= arrSize) || (iLow > iHigh))
+				break;
+			ArrayElement *elements = pArray->data();
+			double packedIndex = 0;
+			for (int idx = iLow; idx <= iHigh; idx++)
+			{
+				newVar->SetElement(packedIndex, &elements[idx]);
+				packedIndex += 1;
+			}
+			break;
 		}
-		else newVar->SetElement(end.first(), end.second());
+		case kContainer_NumericMap:
+		{
+			ElementNumMap *pNumMap = m_elements.getNumMapPtr();
+			bool inRange = false;
+			for (auto iter = pNumMap->begin(); iter != pNumMap->end(); ++iter)
+			{
+				if (!inRange)
+				{
+					if (iter->first >= slice->m_lower)
+						inRange = true;
+					else continue;
+				}
+				if (iter->first > slice->m_upper)
+					break;
+				newVar->SetElement(iter->first, &iter->second);
+			}
+			break;
+		}
+		case kContainer_StringMap:
+		{
+			ElementStrMap *pStrMap = m_elements.getStrMapPtr();
+			const char *sLow = slice->m_lowerStr.c_str(), *sHigh = slice->m_upperStr.c_str();
+			bool inRange = false;
+			for (auto iter = pStrMap->begin(); iter != pStrMap->end(); ++iter)
+			{
+				if (!inRange)
+				{
+					if (StrCompare(iter->first.Get(), sLow) >= 0)
+						inRange = true;
+					else continue;
+				}
+				if (StrCompare(iter->first.Get(), sHigh) > 0)
+					break;
+				newVar->SetElement(iter->first.Get(), &iter->second);
+			}
+			break;
+		}
 	}
-
 	return newVar;
 }
 
@@ -1327,8 +1409,6 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 						break;
 					}
 					case kDataType_Array:
-						intfc->WriteRecordData(&pElem->m_data.arrID, sizeof(ArrayID));
-						break;
 					case kDataType_Form:
 						intfc->WriteRecordData(&pElem->m_data.formID, sizeof(UInt32));
 						break;
@@ -1352,13 +1432,13 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 	UInt8 modIndex, keyType;
 	bool bPacked;
 	ContainerType contType;
-	UInt8 buffer[kMaxMessageLength];
+	static UInt8 buffer[kMaxMessageLength];
+	UInt8 *bufferPtr = buffer;
 
 	//Reset(intfc);
 	bool bContinue = true;
 	UInt32 lastIndexRead = 0;
 
-	UInt8 *bufferPtr = buffer;
 	double numKey;
 
 	while (bContinue && intfc->GetNextRecordInfo(&type, &version, &length))
@@ -1412,7 +1492,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 							}
 
 							if (intfc->ResolveRefID(curModIndex << 24, &tempRefID))
-								buffer[refIdx++] = (tempRefID >> 24);
+								bufferPtr[refIdx++] = (tempRefID >> 24);
 						}
 
 						numRefs = refIdx;
@@ -1423,7 +1503,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 					if (modIndex)		// owning mod is loaded
 					{
 						numRefs = 1;
-						buffer[0] = modIndex;
+						bufferPtr[0] = modIndex;
 					}
 				}
 				
@@ -1443,7 +1523,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				
 				// create array and add to map
 				ArrayVar* newArr = new ArrayVar(keyType, bPacked, modIndex);
-				Add(newArr, arrayID, numRefs, buffer);
+				Add(newArr, arrayID, numRefs, bufferPtr);
 
 				// read the array elements			
 				intfc->ReadRecordData(&numElements, sizeof(numElements));
@@ -1478,8 +1558,8 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 					if (keyType == kDataType_String)
 					{
 						intfc->ReadRecordData(&strLength, sizeof(strLength));
-						if (strLength) intfc->ReadRecordData(buffer, strLength);
-						buffer[strLength] = 0;
+						if (strLength) intfc->ReadRecordData(bufferPtr, strLength);
+						bufferPtr[strLength] = 0;
 					}
 					else if (!bPacked || (version < 2))
 						intfc->ReadRecordData(&numKey, sizeof(double));

@@ -218,7 +218,7 @@ public:
 			ElementNumMap::iterator		numMapIter;
 			ElementStrMap::iterator		strMapIter;
 #if !_DEBUG
-		}
+		};
 #endif
 
 	public:
@@ -249,7 +249,7 @@ public:
 
 	size_t erase(const ArrayKey* key) const;
 
-	size_t erase(const ArrayKey* low, const ArrayKey* high) const;
+	size_t erase(UInt32 iLow, UInt32 iHigh) const;
 
 	void clear() const;
 
@@ -339,7 +339,7 @@ public:
 	bool GetPrevElement(ArrayKey* prevKey, ArrayElement** outElem, const ArrayKey** outKey);
 
 	UInt32 EraseElement(const ArrayKey* key);
-	UInt32 EraseElements(const ArrayKey* lo, const ArrayKey* hi);	// returns num erased
+	UInt32 EraseElements(const Slice* slice);	// returns num erased
 	UInt32 EraseAllElements();
 
 	bool SetSize(UInt32 newSize, const ArrayElement* padWith);

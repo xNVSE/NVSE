@@ -252,11 +252,7 @@ bool Cmd_ar_Erase_Execute(COMMAND_ARGS)
 					// are we erasing a range or a single element?
 					const Slice* slice = eval.Arg(1)->GetSlice();
 					if (slice)
-					{
-						ArrayKey lo, hi;
-						slice->GetArrayBounds(lo, hi);
-						numErased = arr->EraseElements(&lo, &hi);
-					}
+						numErased = arr->EraseElements(slice);
 					else
 					{
 						if (eval.Arg(1)->CanConvertTo(kTokenType_String))

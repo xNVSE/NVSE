@@ -1,4 +1,5 @@
 #include "ArrayVar.h"
+#include "ScriptUtils.h"
 
 ArrayVarElementContainer::~ArrayVarElementContainer()
 {
@@ -302,14 +303,16 @@ size_t ArrayVarElementContainer::erase(const ArrayKey* key) const
 	}
 }
 
-size_t ArrayVarElementContainer::erase(const ArrayKey* low, const ArrayKey* high) const
+size_t ArrayVarElementContainer::erase(UInt32 iLow, UInt32 iHigh) const
 {
-	if (m_type != kContainer_Array) return 0;
-	UInt32 iLow = (int)low->key.num, iHigh = (int)high->key.num;
-	if ((iLow >= m_container.pArray->size()) || (iLow >= iHigh))
+	if ((m_type != kContainer_Array) || m_container.pArray->empty())
 		return 0;
-	if (iHigh > m_container.pArray->size())
-		iHigh = m_container.pArray->size();
+	UInt32 arrSize = m_container.pArray->size();
+	if (iHigh >= arrSize)
+		iHigh = arrSize - 1;
+	if ((iLow >= arrSize) || (iLow > iHigh))
+		return 0;
+	iHigh++;
 	for (UInt32 idx = iLow; idx < iHigh; idx++)
 		(*m_container.pArray)[idx].Unset();
 	m_container.pArray->erase(m_container.pArray->begin() + iLow, m_container.pArray->begin() + iHigh);
