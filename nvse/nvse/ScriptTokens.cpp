@@ -147,6 +147,17 @@ bool ScriptToken::IsInvalid() const
 	return this->type == kTokenType_Invalid;
 }
 
+bool ScriptToken::IsOperator() const
+{
+	return this->type == kTokenType_Operator;
+}
+
+bool ScriptToken::IsLogicalOperator() const
+{
+	const auto& type = GetOperator()->type;
+	return type == kOpType_LogicalOr || type == kOpType_LogicalAnd;
+}
+
 #if RUNTIME
 // ###TODO: Read() sets variable type; better to pass it to this constructor
 ScriptToken::ScriptToken(ScriptEventList::Var* var) : refIdx(0), type(kTokenType_Variable), variableType(Script::eVarType_Invalid)

@@ -5,7 +5,7 @@
 struct TokenCacheEntry
 {
 	ScriptToken token;
-	Op_Eval eval;
+	Op_Eval eval = nullptr;
 	bool swapOrder;
 };
 
@@ -28,5 +28,5 @@ class TokenCache
 public:
 	CachedTokens& Get(UInt8* key);
 	void Clear();
-	std::size_t Size();
+	[[nodiscard]] std::size_t Size() const;
 };

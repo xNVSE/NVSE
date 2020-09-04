@@ -1765,51 +1765,6 @@ static ParamInfo kDynamicParams[] =
 	{	"object",	kNVSEParamType_Form,	0	},
 };
 
-TokenCacheEntry& CachedTokens::Get(std::size_t key)
-{
-	return this->container_[key];
-}
-
-void CachedTokens::Append(const TokenCacheEntry& entry)
-{
-	this->container_.push_back(entry);
-}
-
-std::size_t CachedTokens::Size() const
-{
-	return container_.size();
-}
-
-bool CachedTokens::Empty() const
-{
-	return container_.empty();
-}
-
-std::vector<TokenCacheEntry>::iterator CachedTokens::begin()
-{
-	return container_.begin();
-}
-
-std::vector<TokenCacheEntry>::iterator CachedTokens::end()
-{
-	return container_.end();
-}
-
-CachedTokens& TokenCache::Get(UInt8* key)
-{
-	return cache_[key];
-}
-
-void TokenCache::Clear()
-{
-	cache_.Clear();
-}
-
-std::size_t TokenCache::Size()
-{
-	return cache_.Size();
-}
-
 DynamicParamInfo::DynamicParamInfo(std::vector<UserFunctionParam> &params)
 {
 	m_numParams = params.size() > kMaxParams ? kMaxParams : params.size();
@@ -2795,7 +2750,6 @@ std::string ExpressionEvaluator::ReadString(UInt32& incrData)
 
 void ExpressionEvaluator::PushOnStack()
 {
-	ThreadLocalData& localData = ThreadLocalData::Get();
 	ExpressionEvaluator* top = localData.expressionEvaluator;
 	m_parent = top;
 	localData.expressionEvaluator = this;
@@ -2804,10 +2758,10 @@ void ExpressionEvaluator::PushOnStack()
 	if (top) {
 		// figure out base offset into script data
 		if (top->script == script) {
-			m_baseOffset = top->m_data - (UInt8*)script->data - 4;
+			m_baseOffset = top->m_data - static_cast<UInt8*>(script->data) - 4;
 		}
 		else {	// non-recursive user-defined function call
-			m_baseOffset = m_data - (UInt8*)script->data - 4;
+			m_baseOffset = m_data - static_cast<UInt8*>(script->data) - 4;
 		}
 
 		// inherit flags
@@ -2816,7 +2770,7 @@ void ExpressionEvaluator::PushOnStack()
 	}
 }
 
-void ExpressionEvaluator::PopFromStack()
+void ExpressionEvaluator::PopFromStack() const
 {
 	if (m_parent) {
 		// propogate info to parent
@@ -2825,21 +2779,16 @@ void ExpressionEvaluator::PopFromStack()
 			m_parent->m_flags.Set(kFlag_ErrorOccurred);
 		}
 	}
-
-	ThreadLocalData& localData = ThreadLocalData::Get();
 	localData.expressionEvaluator = m_parent;
 }
 
 ExpressionEvaluator::ExpressionEvaluator(COMMAND_ARGS) : m_opcodeOffsetPtr(opcodeOffsetPtr), m_result(result), 
-	m_thisObj(thisObj), script(scriptObj), eventList(eventList), m_params(paramInfo), m_numArgsExtracted(0), m_baseOffset(0),
-	m_expectedReturnType(kRetnType_Default)
+	m_thisObj(thisObj), m_containingObj(containingObj), m_params(paramInfo), m_numArgsExtracted(0), m_expectedReturnType(kRetnType_Default), m_baseOffset(0),
+	localData(ThreadLocalData::Get()), tokenCache(localData.tokenCache), script(scriptObj), eventList(eventList)
 {
-	m_scriptData = (UInt8*)scriptData;
+	m_scriptData = static_cast<UInt8*>(scriptData);
 	m_data = m_scriptData + *m_opcodeOffsetPtr;
 
-	//memset(m_args, 0, sizeof(m_args));
-
-	m_containingObj = containingObj;	
 	m_baseOffset = *opcodeOffsetPtr - 4;
 
 	m_flags.Clear();
@@ -3410,8 +3359,6 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 	return true;
 }
 
-//UInt8* g_lastCacheKeyDebug;
-
 ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 {
 	// execute the command
@@ -3450,8 +3397,6 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 	ExpectReturnType(kRetnType_Default);	// expect default return type unless called command specifies otherwise
 	bool bExecuted = cmdInfo->execute(cmdInfo->params, m_scriptData, callingObj, contObj, script, eventList, &cmdResult, &opcodeOffset);
 
-	*m_opcodeOffsetPtr = opcodeOffset;
-
 	if (!bExecuted)
 	{
 		Error("Command %s failed to execute", cmdInfo->longName);
@@ -3465,6 +3410,15 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 
 	switch (retnType)
 	{
+	case kRetnType_Default:
+	{
+		return ScriptToken::Create(cmdResult);
+	}
+	case kRetnType_Form:
+	{
+		return ScriptToken::CreateForm(*reinterpret_cast<UInt64*>(&cmdResult));
+	}
+
 	case kRetnType_String:
 	{
 		StringVar* strVar = g_StringMap.Get(cmdResult);
@@ -3480,16 +3434,85 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 		Error("A command returned an invalid array");
 		break;
 	}
-	case kRetnType_Form:
-	{
-		return ScriptToken::CreateForm(*((UInt64*)&cmdResult));
-	}
-	case kRetnType_Default:
-		return ScriptToken::Create(cmdResult);
 	default:
 		Error("Unknown command return type %d while executing command in ExpressionEvaluator::Evaluate()", retnType);
 	}
 	return nullptr;
+}
+
+using CachedTokenIter = std::vector<TokenCacheEntry>::iterator;
+CachedTokenIter GetOperatorParent(CachedTokenIter iter, const CachedTokenIter& iterEnd)
+{
+	++iter;
+	auto count = 0U;
+	while (iter != iterEnd)
+	{
+		const auto& token = iter->token;
+		if (token.IsOperator())
+		{
+			if (count == 0)
+			{
+				return iter;
+			}
+			
+			// e.g. `1 0 ! &&` prevent ! being parent of 1
+			count -= token.GetOperator()->numOperands - 1;
+		}
+		else
+		{
+			++count;
+		}
+		if (count == 0)
+		{
+			return iter;
+		}
+		++iter;
+	}
+	return iterEnd;
+}
+
+constexpr auto g_noShortCircuit = kOpType_Max;
+
+void ParseShortCircuit(CachedTokens& cachedTokens)
+{
+	const auto end = cachedTokens.end();
+	auto stackOffset = -1;
+	for (auto iter = cachedTokens.begin(); iter != end; ++iter)
+	{
+		auto& token = iter->token;
+		
+		// Required to make short circuit compatible with Reverse Polish Notation stack
+		if (token.IsOperator()) 
+		{
+			stackOffset -= token.GetOperator()->numOperands - 1;
+			token.shortCircuitStackOffset = stackOffset + 1;
+		}
+		else
+		{
+			++stackOffset;
+			token.shortCircuitStackOffset = stackOffset + 1;
+		}
+
+		auto grandparent = iter;
+		auto parent = CachedTokenIter();
+		do
+		{
+			// Find last "parent" operator of same type. E.g `0 1 && 1 && 1 &&` should jump straight to end of expression.
+			parent = grandparent;
+			grandparent = GetOperatorParent(grandparent, end);
+		} while (grandparent != end && grandparent->token.IsLogicalOperator() && (parent == iter || grandparent->token.GetOperator() == parent->token.GetOperator()));
+		
+		if (parent != iter && parent->token.IsLogicalOperator())
+		{
+			token.shortCircuitParentType = parent->token.GetOperator()->type;
+			token.shortCircuitDistance = parent - iter;
+		}
+		else
+		{
+			token.shortCircuitParentType = g_noShortCircuit;
+			token.shortCircuitDistance = 0;
+		}
+	}
 }
 
 bool ExpressionEvaluator::ParseBytecode(CachedTokens& cachedTokens)
@@ -3499,23 +3522,53 @@ bool ExpressionEvaluator::ParseBytecode(CachedTokens& cachedTokens)
 	const auto* endData = m_data + argLen - sizeof(UInt16);
 	while (m_data < endData)
 	{
-		ScriptToken token(*this);
+		auto token = ScriptToken(*this);
 		if (token.IsInvalid())
 		{
 			return false;
-		}		
+		}
 		token.cached = true;
 		cachedTokens.Append(TokenCacheEntry{ token });
 	}
 	cachedTokens.incrementData = m_data - dataBeforeParsing;
+	ParseShortCircuit(cachedTokens);
 	return true;
+}
+
+using OperandStack = FastStack<ScriptToken*, 16>;
+
+void ShortCircuit(OperandStack& operands, CachedTokenIter& iter)
+{
+	auto* lastToken = operands.top();
+	const auto type = lastToken->shortCircuitParentType;
+	if (type == g_noShortCircuit)
+		return;
+
+	const auto eval = lastToken->GetBool();
+	if (type == kOpType_LogicalAnd && !eval || type == kOpType_LogicalOr && eval)
+	{
+		std::advance(iter, lastToken->shortCircuitDistance);
+		for (auto i = 0U; i < lastToken->shortCircuitStackOffset; ++i)
+		{
+			// Make sure only one operand is left in RPN stack
+			operands.top()->Delete();
+			operands.pop();
+		}
+		operands.push(ScriptToken::Create(eval));
+	}
+}
+
+void CopyShortCircuitInfo(ScriptToken* to, ScriptToken* from)
+{
+	to->shortCircuitParentType = from->shortCircuitParentType;
+	to->shortCircuitDistance = from->shortCircuitDistance;
+	to->shortCircuitStackOffset = from->shortCircuitStackOffset;
 }
 
 ScriptToken* ExpressionEvaluator::Evaluate()
 {
 	auto* cacheKey = GetCommandOpcodePosition();
 	auto& cache = tokenCache.Get(cacheKey);
-	auto cachedBefore = true;
 	if (cache.Empty())
 	{
 		const auto successParsing = ParseBytecode(cache);
@@ -3524,33 +3577,31 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			Error("Failed to parse script data");
 			return nullptr;
 		}
-		cachedBefore = false;
 	}
 	else
 	{
 		m_data += cache.incrementData;
 	}
 
-	FastStack<ScriptToken*, 16> operands;
-	for (auto& entry : cache)
+	OperandStack operands;
+	for (auto iter = cache.begin(); iter != cache.end(); ++iter)
 	{
+		auto& entry = *iter;
 		auto* curToken = &entry.token;
 		curToken->context = this;
-		
-		// no short circuit for this unfortunately
-		if (curToken->Type() == kTokenType_Command && (curToken->returnType == kRetnType_Ambiguous || curToken->returnType == kRetnType_ArrayIndex)) [[unlikely]]
+
+		if (curToken->Type() != kTokenType_Operator)
 		{
-			auto* commandToken = ExecuteCommandToken(curToken);
-			if (commandToken == nullptr)
+			if (curToken->Type() == kTokenType_Command)
 			{
-				break;
+				auto* cmdToken = ExecuteCommandToken(curToken);
+				if (cmdToken == nullptr)
+				{
+					break;
+				}
+				CopyShortCircuitInfo(cmdToken, curToken);
+				curToken = cmdToken;
 			}
-			operands.push(commandToken);
-			continue;
-		}
-		
-		if (entry.token.Type() != kTokenType_Operator)
-		{
 			operands.push(curToken);
 		}
 		else
@@ -3576,22 +3627,16 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			}
 
 			ScriptToken* opResult;
-			if (!cachedBefore)
+			if (entry.eval == nullptr)
 			{
-#if !DISABLE_CACHING
 				opResult = op->Evaluate(lhOperand, rhOperand, this, entry.eval, entry.swapOrder);
-#else
-				opResult = op->Evaluate(lhOperand, rhOperand, this);
-#endif
 			}
 			else
 			{
-#if !DISABLE_CACHING
 				auto& bSwapOrder = entry.swapOrder;
 				auto& eval = entry.eval;
 				auto& type = op->type;
 				opResult = bSwapOrder ? eval(type, rhOperand, lhOperand, this) : eval(type, lhOperand, rhOperand, this);
-#endif
 			}
 
 			lhOperand->Delete();
@@ -3603,8 +3648,11 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				break;
 			}
 
+			CopyShortCircuitInfo(opResult, curToken);
 			operands.push(opResult);
 		}
+		
+		ShortCircuit(operands, iter);
 	}
 
 	// adjust opcode offset ptr (important for recursive calls to Evaluate()
