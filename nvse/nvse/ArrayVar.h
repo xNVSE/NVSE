@@ -117,11 +117,10 @@ struct ArrayElement
 	static bool CompareAsString(const ArrayElement& lhs, const ArrayElement& rhs);
 
 	bool operator<(const ArrayElement& rhs) const;
-	bool Equals(const ArrayElement& compareTo) const;
+	bool operator==(const ArrayElement& rhs) const;
 
 	bool IsGood() { return m_data.dataType != kDataType_Invalid;	}
 };
-STATIC_ASSERT(sizeof(ArrayElement) == 0x10);
 
 struct ArrayKey
 {
@@ -131,10 +130,10 @@ struct ArrayKey
 	ArrayKey(double _key);
 	ArrayKey(const char* _key);
 	ArrayKey(const ArrayKey& from);
+	ArrayKey(DataType type);
 
-	UInt8		KeyType() const { return key.dataType; }
-	void		SetNumericKey(double newVal)	{	key.dataType = kDataType_Numeric; key.num = newVal;	}
-	bool		IsValid() const { return key.dataType != kDataType_Invalid;	}
+	UInt8 KeyType() const { return key.dataType; }
+	bool IsValid() const { return key.dataType != kDataType_Invalid;	}
 
 	bool operator<(const ArrayKey& rhs) const;
 	bool operator==(const ArrayKey& rhs) const;
@@ -142,68 +141,118 @@ struct ArrayKey
 	bool operator>(const ArrayKey& rhs) const { return !(*this < rhs || *this == rhs); }
 	bool operator<=(const ArrayKey& rhs) const { return !(*this > rhs); }
 };
-STATIC_ASSERT(sizeof(ArrayKey) == 0x10);
+
+class StringKey
+{
+	char	*key;
+
+public:
+	StringKey() {key = NULL;}
+	StringKey(const StringKey &from)
+	{
+		key = CopyString(from.key);
+	}
+
+	~StringKey()
+	{
+		if (key)
+		{
+			free(key);
+			key = NULL;
+		}
+	}
+
+	const char *Get() const {return key;}
+
+	bool operator<(const StringKey &rhs) const
+	{
+		return StrCompare(key, rhs.key) < 0;
+	}
+	bool operator==(const StringKey &rhs) const
+	{
+		return StrCompare(key, rhs.key) == 0;
+	}
+};
+
+typedef std::vector<ArrayElement> ElementVector;
+typedef std::map<double, ArrayElement> ElementNumMap;
+typedef std::map<StringKey, ArrayElement> ElementStrMap;
+
+enum ContainerType
+{
+	kContainer_Array,
+	kContainer_NumericMap,
+	kContainer_StringMap
+};
 
 class ArrayVarElementContainer
 {
-	std::unique_ptr<std::vector<ArrayElement>> array_ = nullptr;
-	std::unique_ptr<std::map<ArrayKey, ArrayElement>> map_ = nullptr;
+	friend class ArrayVar;
 
-	bool isArray_ = false;
-	
+	union ContainerPtr
+	{
+		ElementVector	*pArray;
+		ElementNumMap	*pNumMap;
+		ElementStrMap	*pStrMap;
+	};
+
+	ContainerType	m_type;
+	ContainerPtr	m_container;
+
 public:
-	ArrayVarElementContainer(bool isArray);
+	ArrayVarElementContainer() : m_type(kContainer_Array) {m_container.pArray = NULL;}
 
-	ArrayVarElementContainer();
-
-	//ArrayElement& operator [](const ArrayKey& i) const;
+	~ArrayVarElementContainer();
 
 	class iterator
-	{		
+	{
+		friend ArrayVarElementContainer;
+
+		ContainerType	m_type;
+		ContainerPtr	m_container;
+		union
+		{
+			ElementVector::iterator		arrayIter;
+			ElementNumMap::iterator		numMapIter;
+			ElementStrMap::iterator		strMapIter;
+		};
+
 	public:
-		bool isArray_ = false;
-		std::map<ArrayKey, ArrayElement>::iterator mapIter_;
-		std::vector<ArrayElement>::iterator arrIter_;
-		ArrayVarElementContainer const* containerPtr_ = nullptr;
-
-		iterator();
-
-		explicit iterator(const std::map<ArrayKey, ArrayElement>::iterator iter);
-
-		iterator(std::vector<ArrayElement>::iterator iter, ArrayVarElementContainer const* containerRef);
+		iterator(ElementVector *_array, ElementVector::iterator iter);
+		iterator(ElementNumMap *_numMap, ElementNumMap::iterator iter);
+		iterator(ElementStrMap *_strMap, ElementStrMap::iterator iter);
 
 		void operator++();
-
 		void operator--();
+
+		iterator& operator+=(UInt32 incBy);
+		iterator& operator-=(UInt32 decBy);
 
 		bool operator!=(const iterator& other) const;
 
-		[[nodiscard]] const ArrayKey* first() const;
+		const ArrayKey* first() const;
 
-		[[nodiscard]] ArrayElement* second() const;
+		ArrayElement* second() const;
 	};
 
-	[[nodiscard]] iterator find(const ArrayKey& key) const;
+	iterator begin() const;
 
-	[[nodiscard]] iterator begin() const;
+	iterator end() const;
 
-	[[nodiscard]] iterator end() const;
+	iterator find(const ArrayKey* key) const;
 
-	[[nodiscard]] std::size_t size() const;
+	size_t size() const;
 
-	std::size_t count(const ArrayKey* key) const;
+	size_t erase(const ArrayKey* key) const;
 
-	std::size_t erase(const ArrayKey* key) const;
-
-	std::size_t erase(const ArrayKey* low, const ArrayKey* high) const;
+	size_t erase(const ArrayKey* low, const ArrayKey* high) const;
 
 	void clear() const;
 
-	std::vector<ArrayElement>& getVectorRef() const;
-
-	std::map<ArrayKey, ArrayElement>& getMapRef() const;
+	ElementVector* getArrayPtr() const {return m_container.pArray;}
+	ElementNumMap* getNumMapPtr() const {return m_container.pNumMap;}
+	ElementStrMap* getStrMapPtr() const {return m_container.pStrMap;}
 };
-
 
 typedef ArrayVarElementContainer::iterator ArrayIterator;
 
@@ -222,7 +271,6 @@ class ArrayVar
 	bool				m_bPacked;
 	std::vector<UInt8>	m_refs;		// data is modIndex of referring object; size() is number of references
 
-	explicit ArrayVar(UInt8 modIndex);
 	ArrayVar(UInt32 keyType, bool packed, UInt8 modIndex);
 
 public:
@@ -239,12 +287,11 @@ public:
 		kSortType_UserFunction,
 	};
 
-	~ArrayVar();
-
 	UInt32 ID()	const	{ return m_ID;	}
 	UInt8 KeyType() const	{ return m_keyType; }
 	bool IsPacked() const	{ return m_bPacked; }
 	UInt32 Size() const		{ return m_elements.size(); }
+	ContainerType GetContainerType() const {return m_elements.m_type;}
 
 	ArrayElement* Get(const ArrayKey* key, bool bCanCreateNew);
 	ArrayElement* Get(double key, bool bCanCreateNew);
@@ -325,7 +372,6 @@ public:
 	void    RemoveReference(ArrayID* ref, UInt8 referringModIndex);
 	void    AddReference(double* ref, ArrayID toRef, UInt8 referringModIndex);
 	void	RemoveReference(double* ref, UInt8 referringModIndex);
-	void	Erase(ArrayID toErase);
 
 	ArrayElement* GetElement(ArrayID id, const ArrayKey* key);
 

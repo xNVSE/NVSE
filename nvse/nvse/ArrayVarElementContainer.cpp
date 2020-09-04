@@ -1,217 +1,345 @@
-#include <stdexcept>
-
 #include "ArrayVar.h"
 
-ArrayVarElementContainer::ArrayVarElementContainer(bool isArray)
+ArrayVarElementContainer::~ArrayVarElementContainer()
 {
-	this->isArray_ = isArray;
-	if (isArray)
+	if (!m_container.pArray) return;
+	clear();
+	switch (m_type)
 	{
-		this->array_ = std::make_unique<std::vector<ArrayElement>>();
+		case kContainer_Array:
+			delete m_container.pArray;
+			break;
+		case kContainer_NumericMap:
+			delete m_container.pNumMap;
+			break;
+		case kContainer_StringMap:
+			delete m_container.pStrMap;
+			break;
 	}
-	else
-	{
-		this->map_ = std::make_unique<std::map<ArrayKey, ArrayElement>>();
-	}
+	m_container.pArray = NULL;
 }
 
-ArrayVarElementContainer::ArrayVarElementContainer() = default;
-
-//ArrayElement& ArrayVarElementContainer::operator[](const ArrayKey& i) const
-//{
-//	if (isArray_) [[likely]]
-//	{
-//		const std::size_t index = i.key.num;
-//		if (index >= array_->size())
-//		{
-//			array_->push_back(ArrayElement());
-//			return array_->back();
-//		}
-//		return (*array_)[index];
-//	}
-//	return (*map_)[i];
-//}
-
-ArrayVarElementContainer::iterator::iterator() = default;
-
-ArrayVarElementContainer::iterator::iterator(const std::map<ArrayKey, ArrayElement>::iterator iter)
+ArrayVarElementContainer::iterator::iterator(ElementVector *_array, ElementVector::iterator iter)
 {
-	this->isArray_ = false;
-	this->mapIter_ = iter;
+	m_type = kContainer_Array;
+	m_container.pArray = _array;
+	arrayIter = iter;
 }
 
-ArrayVarElementContainer::iterator::iterator(std::vector<ArrayElement>::iterator iter, ArrayVarElementContainer const* containerPtr)
+ArrayVarElementContainer::iterator::iterator(ElementNumMap *_numMap, ElementNumMap::iterator iter)
 {
-	this->isArray_ = true;
-	this->arrIter_ = iter;
-	this->containerPtr_ = containerPtr;
+	m_type = kContainer_NumericMap;
+	m_container.pNumMap = _numMap;
+	numMapIter = iter;
+}
+
+ArrayVarElementContainer::iterator::iterator(ElementStrMap *_strMap, ElementStrMap::iterator iter)
+{
+	m_type = kContainer_StringMap;
+	m_container.pStrMap = _strMap;
+	strMapIter = iter;
 }
 
 void ArrayVarElementContainer::iterator::operator++()
 {
-	if (isArray_) [[likely]]
+	switch (m_type)
 	{
-		++arrIter_;
-	}
-	else
-	{
-		++mapIter_;
+		case kContainer_Array:
+			++arrayIter;
+			break;
+		case kContainer_NumericMap:
+			++numMapIter;
+			break;
+		case kContainer_StringMap:
+			++strMapIter;
+			break;
 	}
 }
 
 void ArrayVarElementContainer::iterator::operator--()
 {
-	if (isArray_) [[likely]]
+	switch (m_type)
 	{
-		--arrIter_;
+		case kContainer_Array:
+			--arrayIter;
+			break;
+		case kContainer_NumericMap:
+			--numMapIter;
+			break;
+		case kContainer_StringMap:
+			--strMapIter;
+			break;
 	}
-	else
+}
+
+ArrayVarElementContainer::iterator& ArrayVarElementContainer::iterator::operator+=(UInt32 incBy)
+{
+	switch (m_type)
 	{
-		--mapIter_;
+		case kContainer_Array:
+		{
+			UInt32 fromEnd = m_container.pArray->end() - arrayIter;
+			if (incBy > fromEnd)
+				incBy = fromEnd;
+			arrayIter += incBy;
+			break;
+		}
+		case kContainer_NumericMap:
+		{
+			auto mapEnd = m_container.pNumMap->end();
+			while (incBy && (numMapIter != mapEnd))
+			{
+				++numMapIter;
+				incBy--;
+			}
+			break;
+		}
+		case kContainer_StringMap:
+		{
+			auto mapEnd = m_container.pStrMap->end();
+			while (incBy && (strMapIter != mapEnd))
+			{
+				++strMapIter;
+				incBy--;
+			}
+			break;
+		}
 	}
+	return *this;
+}
+
+ArrayVarElementContainer::iterator& ArrayVarElementContainer::iterator::operator-=(UInt32 decBy)
+{
+	switch (m_type)
+	{
+		case kContainer_Array:
+		{
+			UInt32 index = arrayIter - m_container.pArray->begin();
+			if (decBy > index)
+				decBy = index;
+			arrayIter -= decBy;
+			break;
+		}
+		case kContainer_NumericMap:
+		{
+			auto mapBgn = m_container.pNumMap->begin();
+			while (decBy && (numMapIter != mapBgn))
+			{
+				--numMapIter;
+				decBy--;
+			}
+			break;
+		}
+		case kContainer_StringMap:
+		{
+			auto mapBgn = m_container.pStrMap->begin();
+			while (decBy && (strMapIter != mapBgn))
+			{
+				--strMapIter;
+				decBy--;
+			}
+			break;
+		}
+	}
+	return *this;
 }
 
 bool ArrayVarElementContainer::iterator::operator!=(const iterator& other) const
 {
-	if (other.isArray_ != this->isArray_)
+	if (m_type == other.m_type)
 	{
-		return true;
+		switch (m_type)
+		{
+			case kContainer_Array:
+				return arrayIter != other.arrayIter;
+			case kContainer_NumericMap:
+				return numMapIter != other.numMapIter;
+			case kContainer_StringMap:
+				return strMapIter != other.strMapIter;
+		}
 	}
-	if (isArray_) [[likely]]
-	{
-		return other.arrIter_ != this->arrIter_;
-	}
-	return other.mapIter_ != this->mapIter_;
+	return true;
 }
-
-static ArrayKey s_packedKey(0.0);
 
 const ArrayKey* ArrayVarElementContainer::iterator::first() const
 {
-	if (isArray_) [[likely]]
+	static ArrayKey arrNumKey(kDataType_Numeric), arrStrKey(kDataType_String);
+	switch (m_type)
 	{
-		s_packedKey.key.num = arrIter_ - containerPtr_->getVectorRef().begin();
-		return &s_packedKey;
+		default:
+		case kContainer_Array:
+			arrNumKey.key.num = arrayIter - m_container.pArray->begin();
+			return &arrNumKey;
+		case kContainer_NumericMap:
+			arrNumKey.key.num = numMapIter->first;
+			return &arrNumKey;
+		case kContainer_StringMap:
+			arrStrKey.key.str = const_cast<char*>(strMapIter->first.Get());
+			return &arrStrKey;
 	}
-	return &mapIter_->first;
 }
 
 ArrayElement* ArrayVarElementContainer::iterator::second() const
 {
-	if (isArray_) [[likely]]
+	switch (m_type)
 	{
-		return arrIter_._Ptr;
+		default:
+		case kContainer_Array:
+			return arrayIter._Ptr;
+		case kContainer_NumericMap:
+			return &numMapIter->second;
+		case kContainer_StringMap:
+			return &strMapIter->second;
 	}
-	return &mapIter_->second;
-}
-
-ArrayVarElementContainer::iterator ArrayVarElementContainer::find(const ArrayKey& key) const
-{
-	if (isArray_) [[likely]]
-	{
-		std::size_t index = key.key.num;
-		if (index >= array_->size())
-		{
-			return iterator(array_->end(), this);
-		}
-		return iterator(array_->begin() + key.key.num, this);
-	}
-	return iterator(map_->find(key));
-}
-
-std::size_t ArrayVarElementContainer::count(const ArrayKey* key) const
-{
-	if (isArray_) [[likely]]
-	{
-		std::size_t index = key->key.num;
-		return (index < array_->size()) ? 1 : 0;
-	}
-	return map_->count(*key);
 }
 
 ArrayVarElementContainer::iterator ArrayVarElementContainer::begin() const
 {
-	if (isArray_) [[likely]]
+	switch (m_type)
 	{
-		return iterator(array_->begin(), this);
+		default:
+		case kContainer_Array:
+			return iterator(m_container.pArray, m_container.pArray->begin());
+		case kContainer_NumericMap:
+			return iterator(m_container.pNumMap, m_container.pNumMap->begin());
+		case kContainer_StringMap:
+			return iterator(m_container.pStrMap, m_container.pStrMap->begin());
 	}
-	return iterator(map_->begin());
 }
 
 ArrayVarElementContainer::iterator ArrayVarElementContainer::end() const
 {
-	if (isArray_) [[likely]]
+	switch (m_type)
 	{
-		return iterator(array_->end(), this);
+		default:
+		case kContainer_Array:
+			return iterator(m_container.pArray, m_container.pArray->end());
+		case kContainer_NumericMap:
+			return iterator(m_container.pNumMap, m_container.pNumMap->end());
+		case kContainer_StringMap:
+			return iterator(m_container.pStrMap, m_container.pStrMap->end());
 	}
-	return iterator(map_->end());
 }
 
-std::size_t ArrayVarElementContainer::size() const
+ArrayVarElementContainer::iterator ArrayVarElementContainer::find(const ArrayKey* key) const
 {
-	if (isArray_) [[likely]]
+	switch (m_type)
 	{
-		return array_->size();
+		default:
+		case kContainer_Array:
+		{
+			if (key->key.dataType == kDataType_Numeric)
+			{
+				UInt32 index = (int)key->key.num;
+				if (index < m_container.pArray->size())
+					return iterator(m_container.pArray, m_container.pArray->begin() + index);
+			}
+			return iterator(m_container.pArray, m_container.pArray->end());
+		}
+		case kContainer_NumericMap:
+			if (key->key.dataType == kDataType_Numeric)
+				return iterator(m_container.pNumMap, m_container.pNumMap->find(key->key.num));
+			return iterator(m_container.pNumMap, m_container.pNumMap->end());
+		case kContainer_StringMap:
+			if (key->key.dataType == kDataType_String)
+				return iterator(m_container.pStrMap, m_container.pStrMap->find(*(StringKey*)&key->key.str));
+			return iterator(m_container.pStrMap, m_container.pStrMap->end());
 	}
-	return map_->size();
 }
 
-std::size_t ArrayVarElementContainer::erase(const ArrayKey* key) const
+size_t ArrayVarElementContainer::size() const
 {
-	if (isArray_) [[likely]]
+	switch (m_type)
 	{
-		UInt32 idx = (int)key->key.num;
-		if (idx >= array_->size())
-			return 0;
-		(*array_)[idx].Unset();
-		array_->erase(array_->begin() + idx);
+		default:
+		case kContainer_Array:
+			return m_container.pArray->size();
+		case kContainer_NumericMap:
+			return m_container.pNumMap->size();
+		case kContainer_StringMap:
+			return m_container.pStrMap->size();
 	}
-	else
-	{
-		auto findKey = map_->find(*key);
-		if (findKey == map_->end())
-			return 0;
-		findKey->second.Unset();
-		map_->erase(findKey);
-	}
-	return 1;
 }
 
-std::size_t ArrayVarElementContainer::erase(const ArrayKey* low, const ArrayKey* high) const
+size_t ArrayVarElementContainer::erase(const ArrayKey* key) const
 {
-	if (!isArray_)
-		throw std::invalid_argument("Attempt to erase range of elements from map");
+	switch (m_type)
+	{
+		default:
+		case kContainer_Array:
+		{
+			if (key->key.dataType != kDataType_Numeric)
+				return 0;
+			UInt32 idx = (int)key->key.num;
+			if (idx >= m_container.pArray->size())
+				return 0;
+			(*m_container.pArray)[idx].Unset();
+			m_container.pArray->erase(m_container.pArray->begin() + idx);
+			return 1;
+		}
+		case kContainer_NumericMap:
+		{
+			if (key->key.dataType != kDataType_Numeric)
+				return 0;
+			auto findKey = m_container.pNumMap->find(key->key.num);
+			if (findKey == m_container.pNumMap->end())
+				return 0;
+			findKey->second.Unset();
+			m_container.pNumMap->erase(findKey);
+			return 1;
+		}
+		case kContainer_StringMap:
+		{
+			if (key->key.dataType != kDataType_String)
+				return 0;
+			auto findKey = m_container.pStrMap->find(*(StringKey*)&key->key.str);
+			if (findKey == m_container.pStrMap->end())
+				return 0;
+			findKey->second.Unset();
+			m_container.pStrMap->erase(findKey);
+			return 1;
+		}
+	}
+}
+
+size_t ArrayVarElementContainer::erase(const ArrayKey* low, const ArrayKey* high) const
+{
+	if (m_type != kContainer_Array) return 0;
 	UInt32 iLow = (int)low->key.num, iHigh = (int)high->key.num;
-	if ((iHigh > array_->size()) || (iLow > array_->size()))
-		throw std::out_of_range("Attempt to erase out of range array var");
+	if ((iLow >= m_container.pArray->size()) || (iLow >= iHigh))
+		return 0;
+	if (iHigh > m_container.pArray->size())
+		iHigh = m_container.pArray->size();
 	for (UInt32 idx = iLow; idx < iHigh; idx++)
-		(*array_)[idx].Unset();
-	array_->erase(array_->begin() + iLow, array_->begin() + iHigh);
+		(*m_container.pArray)[idx].Unset();
+	m_container.pArray->erase(m_container.pArray->begin() + iLow, m_container.pArray->begin() + iHigh);
 	return iHigh - iLow;
 }
 
 void ArrayVarElementContainer::clear() const
 {
-	if (isArray_) [[likely]]
+	switch (m_type)
 	{
-		for (UInt32 idx = 0; idx < array_->size(); idx++)
-			(*array_)[idx].Unset();
-		array_->clear();
+		case kContainer_Array:
+		{
+			for (UInt32 idx = 0; idx < m_container.pArray->size(); idx++)
+				(*m_container.pArray)[idx].Unset();
+			m_container.pArray->clear();
+			break;
+		}
+		case kContainer_NumericMap:
+		{
+			for (auto iter = m_container.pNumMap->begin(); iter != m_container.pNumMap->end(); ++iter)
+				iter->second.Unset();
+			m_container.pNumMap->clear();
+			break;
+		}
+		case kContainer_StringMap:
+		{
+			for (auto iter = m_container.pStrMap->begin(); iter != m_container.pStrMap->end(); ++iter)
+				iter->second.Unset();
+			m_container.pStrMap->clear();
+			break;
+		}
 	}
-	else
-	{
-		for (auto iter = map_->begin(); iter != map_->end(); ++iter)
-			iter->second.Unset();
-		map_->clear();
-	}
-}
-
-std::vector<ArrayElement>& ArrayVarElementContainer::getVectorRef() const
-{
-	return *array_;
-}
-
-std::map<ArrayKey, ArrayElement>& ArrayVarElementContainer::getMapRef() const
-{
-	return *map_;
 }

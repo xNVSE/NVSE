@@ -237,6 +237,13 @@ public:
 		bool End() const {return index >= table->numEntries;}
 		Map* Table() const {return table;}
 
+		void Init(Map &source)
+		{
+			table = &source;
+			pEntry = table->entries;
+			index = 0;
+		}
+
 		void operator++()
 		{
 			pEntry++;
@@ -1424,6 +1431,13 @@ public:
 		T_Data& operator->() const {return *pData;}
 		bool End() const {return index >= contObj->numItems;}
 		UInt32 Index() const {return index;}
+
+		void Init(Vector &source)
+		{
+			contObj = &source;
+			pData = contObj->data;
+			index = 0;
+		}
 
 		void operator++()
 		{

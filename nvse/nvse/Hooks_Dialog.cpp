@@ -93,11 +93,11 @@ static char* __stdcall doTileTextHook(char* text, TileText* tile)
 			arr->SetElementString("speakerName", lastSpeaker);
 			result = doTileTextEvent(argsArrayId, "OnSpeakerText", result, tileName);
 		} catch(...) {
-			g_ArrayMap.Erase(argsArrayId);
+			g_ArrayMap.Delete(argsArrayId);
 			argsArrayId = 0;
 		}
 		if (argsArrayId)
-			g_ArrayMap.Erase(argsArrayId);
+			g_ArrayMap.Delete(argsArrayId);
 		gLog.Indent();
 		_DMESSAGE("doTileTextHook \"%s\" says '%s' for [%08x] '%s'", lastSpeaker, result, tile, tileName);
 		gLog.Outdent();
@@ -111,11 +111,11 @@ static char* __stdcall doTileTextHook(char* text, TileText* tile)
 		if (argsArrayId) try {
 			result = doTileTextEvent(argsArrayId, "OnTopic", result, tileName);
 		} catch(...) {
-			g_ArrayMap.Erase(argsArrayId);
+			g_ArrayMap.Delete(argsArrayId);
 			argsArrayId = 0;
 		}
 		if (argsArrayId)
-			g_ArrayMap.Erase(argsArrayId);
+			g_ArrayMap.Delete(argsArrayId);
 		gLog.Indent();
 		_DMESSAGE("doTileTextHook Topic: '%s' for [%08x] '%s'", result, tile, tileName);
 		gLog.Outdent();
@@ -127,11 +127,11 @@ static char* __stdcall doTileTextHook(char* text, TileText* tile)
 		if (argsArrayId) try {
 			result = doTileTextEvent(argsArrayId, "OnTileText", result, tileName);
 		} catch(...) {
-			g_ArrayMap.Erase(argsArrayId);
+			g_ArrayMap.Delete(argsArrayId);
 			argsArrayId = 0;
 		}
 		if (argsArrayId)
-			g_ArrayMap.Erase(argsArrayId);
+			g_ArrayMap.Delete(argsArrayId);
 		gLog.Indent();
 		_DMESSAGE("doTileTextHook: '%s' for [%08x] '%s'", text, tile, tileName);
 		gLog.Outdent();
