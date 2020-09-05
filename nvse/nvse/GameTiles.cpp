@@ -124,10 +124,10 @@ Tile * Tile::GetComponentTile(const char * componentPath)
 char *Tile::GetComponentFullName(char *resStr)
 {
 	if (*(UInt32*)this == 0x106ED44)
-		return (char*)MemCopy(resStr, name.m_data, name.m_dataLen) + name.m_dataLen;
+		return (char*)memcpy(resStr, name.m_data, name.m_dataLen) + name.m_dataLen;
 	char *fullName = parent->GetComponentFullName(resStr);
 	*fullName++ = '/';
-	fullName = (char*)MemCopy(fullName, name.m_data, name.m_dataLen) + name.m_dataLen;
+	fullName = (char*)memcpy(fullName, name.m_data, name.m_dataLen) + name.m_dataLen;
 	DListNode<Tile> *node = ((DList<Tile>*)&parent->childList)->Tail();
 	while (node->data != this)
 		node = node->prev;

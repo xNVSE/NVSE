@@ -1,5 +1,8 @@
 #pragma once
 
+typedef void* (*memcpy_t)(void*, const void*, size_t);
+extern const memcpy_t _memcpy, _memmove;
+
 double dCos(double angle);
 double dSin(double angle);
 double dTan(double angle);
@@ -8,8 +11,6 @@ double dAtan(double value);
 double dAsin(double value);
 double dAcos(double value);
 double dAtan2(double y, double x);
-
-void* __fastcall MemCopy(void* dest, const void* src, UInt32 length);
 
 UInt32 __fastcall StrLen(const char* str);
 

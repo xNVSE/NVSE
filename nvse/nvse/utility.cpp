@@ -12,6 +12,8 @@ kDbl4dPI = 1.2732395447351628,
 kDblTanPId6 = 0.5773502691896257,
 kDblTanPId12 = 0.2679491924311227;
 
+const memcpy_t _memcpy = memcpy, _memmove = memmove;
+
 double cos_p(double angle)
 {
 	angle *= angle;
@@ -140,62 +142,6 @@ double dAtan2(double y, double x)
 	return 0;
 }
 
-__declspec(naked) void* __fastcall MemCopy(void *dest, const void *src, UInt32 length)
-{
-	__asm
-	{
-		push	esi
-		push	edi
-		push	ecx
-		test	ecx, ecx
-		jz		done
-		test	edx, edx
-		jz		done
-		mov		eax, [esp+0x10]
-		test	eax, eax
-		jz		done
-		mov		esi, edx
-		mov		edi, ecx
-		sub		ecx, edx
-		js		copyFW
-		jz		done
-		cmp		ecx, eax
-		jb		copyBW
-	copyFW:
-		mov		ecx, eax
-		shr		ecx, 2
-		jz		copyFW1
-		rep movsd
-	copyFW1:
-		and		eax, 3
-		jz		done
-		mov		ecx, eax
-		rep movsb
-	done:
-		cld
-		pop		eax
-		pop		edi
-		pop		esi
-		retn	4
-	copyBW:
-		std
-		lea		esi, [esi+eax-4]
-		lea		edi, [edi+eax-4]
-		mov		ecx, eax
-		shr		ecx, 2
-		jz		copyBW1
-		rep movsd
-	copyBW1:
-		and		eax, 3
-		jz		done
-		add		esi, 3
-		add		edi, 3
-		mov		ecx, eax
-		rep movsb
-		jmp		done
-	}
-}
-
 __declspec(naked) UInt32 __fastcall StrLen(const char *str)
 {
 	__asm
@@ -305,8 +251,10 @@ __declspec(naked) char* __fastcall StrCopy(char *dest, const char *src)
 		push	ecx
 		inc		ecx
 		push	ecx
-		mov		ecx, eax
-		call	MemCopy
+		push	edx
+		push	eax
+		call	_memmove
+		add		esp, 0xC
 		pop		ecx
 		add		eax, ecx
 		retn
@@ -337,8 +285,10 @@ __declspec(naked) char* __fastcall StrNCopy(char *dest, const char *src, UInt32 
 		sub		ecx, edx
 		lea		esi, [eax+ecx]
 		push	ecx
-		mov		ecx, eax
-		call	MemCopy
+		push	edx
+		push	eax
+		call	_memmove
+		add		esp, 0xC
 		mov		eax, esi
 	nullTerm:
 		mov		[eax], 0
@@ -826,9 +776,9 @@ __declspec(naked) char* __fastcall CopyString(const char *key)
 		push	eax
 		call	malloc
 		pop		ecx
-		pop		edx
-		mov		ecx, eax
-		call	MemCopy
+		push	eax
+		call	_memcpy
+		add		esp, 0xC
 		retn
 	}
 }

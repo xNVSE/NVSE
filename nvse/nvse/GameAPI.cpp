@@ -926,7 +926,7 @@ char* ConvertLiteralPercents(char *srcPtr)
 	while (srcPtr = FindChr(srcPtr, '%'))
 	{
 		srcPtr++;
-		MemCopy(srcPtr + 1, srcPtr, endPtr - srcPtr);
+		memmove(srcPtr + 1, srcPtr, endPtr - srcPtr);
 		*srcPtr++ = '%';
 		endPtr++;
 	}
@@ -970,7 +970,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 		size = fmtPos - srcPtr;
 		if (size)
 		{
-			MemCopy(resPtr, srcPtr, size);
+			memcpy(resPtr, srcPtr, size);
 			resPtr += size;
 		}
 		fmtPos++;
@@ -1251,7 +1251,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 	size = endPtr - srcPtr;
 	if (size > 0)
 	{
-		MemCopy(resPtr, srcPtr, size);
+		memcpy(resPtr, srcPtr, size);
 		resPtr += size;
 	}
 	*resPtr = 0;
@@ -1263,7 +1263,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 			snprintf(buffer, kMaxMessageLength - 2, fmtBuffer, f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8], f[9], f[10], f[11], f[12], f[13], f[14], f[15], f[16], f[17], f[18], f[19]);
 			buffer[kMaxMessageLength - 1] = 0;
 		}
-		else MemCopy(buffer, fmtBuffer, (resPtr - fmtBuffer) + 1);
+		else memcpy(buffer, fmtBuffer, (resPtr - fmtBuffer) + 1);
 	}
 	else *buffer = 0;
 
@@ -1501,7 +1501,7 @@ ScriptFormatStringArgs::ScriptFormatStringArgs(UInt32 _numArgs, UInt8* _scriptDa
 	//extract format string
 	UInt32 len = *(UInt16*)scriptData;
 	scriptData += 2;
-	MemCopy(s_tempStrArgBuffer, scriptData, len);
+	memcpy(s_tempStrArgBuffer, scriptData, len);
 	s_tempStrArgBuffer[len] = 0;
 	scriptData += len;
 	if (s_tempStrArgBuffer[0] == '$')

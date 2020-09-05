@@ -1245,7 +1245,7 @@ void ArrayVarMap::Add(ArrayVar* var, UInt32 varID, UInt32 numRefs, UInt8* refs)
 	else				// record references to this array
 	{
 		var->m_refs.Resize(numRefs);
-		MemCopy(var->m_refs.Data(), refs, numRefs);
+		memcpy(var->m_refs.Data(), refs, numRefs);
 	}
 }
 
