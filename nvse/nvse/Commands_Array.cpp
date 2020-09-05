@@ -605,7 +605,7 @@ bool Cmd_ar_Resize_Execute(COMMAND_ARGS)
 			else
 				pad.SetNumber(0.0);
 
-			*result = arr->SetSize(eval.Arg(1)->GetNumber(), &pad);
+			*result = arr->SetSize((int)eval.Arg(1)->GetNumber(), &pad);
 		}
 	}
 
@@ -640,7 +640,7 @@ bool ar_Insert_Execute(COMMAND_ARGS, bool bRange)
 		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
 		if (arr)
 		{
-			double index = eval.Arg(1)->GetNumber();
+			UInt32 index = (int)eval.Arg(1)->GetNumber();
 			if (bRange)
 			{
 				if (eval.Arg(2)->CanConvertTo(kTokenType_Array))
