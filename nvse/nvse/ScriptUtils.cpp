@@ -3476,23 +3476,11 @@ constexpr auto g_noShortCircuit = kOpType_Max;
 void ParseShortCircuit(CachedTokens& cachedTokens)
 {
 	const auto end = cachedTokens.end();
-	auto stackOffset = -1;
+	auto stackOffset = 0;
 	for (auto iter = cachedTokens.begin(); iter != end; ++iter)
 	{
 		auto& token = iter->token;
 		
-		// Required to make short circuit compatible with Reverse Polish Notation stack
-		if (token.IsOperator()) 
-		{
-			stackOffset -= token.GetOperator()->numOperands - 1;
-			token.shortCircuitStackOffset = stackOffset + 1;
-		}
-		else
-		{
-			++stackOffset;
-			token.shortCircuitStackOffset = stackOffset + 1;
-		}
-
 		auto grandparent = iter;
 		auto parent = CachedTokenIter();
 		do
@@ -3511,6 +3499,14 @@ void ParseShortCircuit(CachedTokens& cachedTokens)
 		{
 			token.shortCircuitParentType = g_noShortCircuit;
 			token.shortCircuitDistance = 0;
+		}
+
+		// Required to make short circuit compatible with Reverse Polish Notation stack
+		if (token.IsLogicalOperator())
+			stackOffset = 0;
+		if (token.shortCircuitParentType != g_noShortCircuit)
+		{
+			token.shortCircuitStackOffset = ++stackOffset;
 		}
 	}
 }
