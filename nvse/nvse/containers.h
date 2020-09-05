@@ -132,7 +132,7 @@ protected:
 		AllocDataArray(this, sizeof(Entry));
 		Entry *pEntry = entries + index;
 		index = numEntries - index;
-		if (index) MemCopy(pEntry + 1, pEntry, sizeof(Entry) * index);
+		if (index) memmove(pEntry + 1, pEntry, sizeof(Entry) * index);
 		numEntries++;
 		pEntry->key.Set(key);
 		*outData = pEntry->value.Init();
@@ -204,7 +204,7 @@ public:
 		pEntry->Clear();
 		numEntries--;
 		index = numEntries - index;
-		if (index) MemCopy(pEntry, pEntry + 1, sizeof(Entry) * index);
+		if (index) memmove(pEntry, pEntry + 1, sizeof(Entry) * index);
 		return true;
 	}
 
@@ -280,7 +280,7 @@ public:
 			table->numEntries--;
 			pEntry->Clear();
 			UInt32 size = (UInt32)table->End() - (UInt32)pEntry;
-			if (size) MemCopy(pEntry, pEntry + 1, size);
+			if (size) memmove(pEntry, pEntry + 1, size);
 			if (frwrd)
 			{
 				pEntry--;
@@ -350,7 +350,7 @@ public:
 		AllocDataArray(this, sizeof(M_Key));
 		M_Key *pKey = keys + index;
 		index = numKeys - index;
-		if (index) MemCopy(pKey + 1, pKey, sizeof(M_Key) * index);
+		if (index) memmove(pKey + 1, pKey, sizeof(M_Key) * index);
 		numKeys++;
 		pKey->Set(key);
 		return true;
@@ -370,7 +370,7 @@ public:
 		pKey->Clear();
 		numKeys--;
 		index = numKeys - index;
-		if (index) MemCopy(pKey, pKey + 1, sizeof(M_Key) * index);
+		if (index) memmove(pKey, pKey + 1, sizeof(M_Key) * index);
 		return true;
 	}
 
@@ -425,7 +425,7 @@ public:
 			table->numKeys--;
 			pKey->Clear();
 			UInt32 size = (UInt32)table->End() - (UInt32)pKey;
-			if (size) MemCopy(pKey, pKey + 1, size);
+			if (size) memmove(pKey, pKey + 1, size);
 			if (frwrd)
 			{
 				pKey--;
@@ -1140,7 +1140,7 @@ public:
 			numAlloc = newCount;
 			data = (T_Data*)realloc(data, sizeof(T_Data) * numAlloc);
 		}
-		MemCopy(data + numItems, source.data, sizeof(T_Data) * source.numItems);
+		memmove(data + numItems, source.data, sizeof(T_Data) * source.numItems);
 		numItems = newCount;
 	}
 
@@ -1153,7 +1153,7 @@ public:
 			if (size)
 			{
 				pData = data + index;
-				MemCopy(pData + 1, pData, sizeof(T_Data) * size);
+				memmove(pData + 1, pData, sizeof(T_Data) * size);
 			}
 			*pData = item;
 		}
@@ -1168,7 +1168,7 @@ public:
 		if (size)
 		{
 			pData = data + index;
-			MemCopy(pData + 1, pData, sizeof(T_Data) * size);
+			memmove(pData + 1, pData, sizeof(T_Data) * size);
 		}
 		new (pData) T_Data();
 		return pData;
@@ -1190,7 +1190,7 @@ public:
 		}
 		T_Data *pData = data + index;
 		if (index < numItems)
-			MemCopy(pData + count, pData, sizeof(T_Data) * (numItems - index));
+			memmove(pData + count, pData, sizeof(T_Data) * (numItems - index));
 		numItems = newSize;
 		do
 		{
@@ -1214,7 +1214,7 @@ public:
 		if (uBound)
 		{
 			pData = data + lBound;
-			MemCopy(pData + 1, pData, sizeof(T_Data) * uBound);
+			memmove(pData + 1, pData, sizeof(T_Data) * uBound);
 		}
 		*pData = item;
 		return lBound;
@@ -1307,7 +1307,7 @@ public:
 		pData->~T_Data();
 		numItems--;
 		index = numItems - index;
-		if (index) MemCopy(pData, pData + 1, sizeof(T_Data) * index);
+		if (index) memmove(pData, pData + 1, sizeof(T_Data) * index);
 		return true;
 	}
 
@@ -1323,7 +1323,7 @@ public:
 				numItems--;
 				pData->~T_Data();
 				UInt32 size = (UInt32)End() - (UInt32)pData;
-				if (size) MemCopy(pData, pData + 1, size);
+				if (size) memmove(pData, pData + 1, size);
 				return true;
 			}
 			while (pData != pEnd);
@@ -1345,7 +1345,7 @@ public:
 				numItems--;
 				pData->~T_Data();
 				size = (UInt32)End() - (UInt32)pData;
-				if (size) MemCopy(pData, pData + 1, size);
+				if (size) memmove(pData, pData + 1, size);
 				removed++;
 			}
 			while (pData != pEnd);
@@ -1367,7 +1367,7 @@ public:
 		}
 		while (pData != pEnd);
 		UInt32 size = (UInt32)End() - (UInt32)pData;
-		if (size) MemCopy(pBgn, pData, size);
+		if (size) memmove(pBgn, pData, size);
 		numItems -= count;
 	}
 
@@ -1580,7 +1580,7 @@ public:
 			contObj->numItems--;
 			pData->~T_Data();
 			UInt32 size = (UInt32)contObj->End() - (UInt32)pData;
-			if (size) MemCopy(pData, pData + 1, size);
+			if (size) memmove(pData, pData + 1, size);
 			if (frwrd)
 			{
 				pData--;
