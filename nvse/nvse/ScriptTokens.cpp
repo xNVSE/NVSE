@@ -154,6 +154,8 @@ bool ScriptToken::IsOperator() const
 
 bool ScriptToken::IsLogicalOperator() const
 {
+	if (Type() != kTokenType_Operator)
+		return false;
 	const auto& type = GetOperator()->type;
 	return type == kOpType_LogicalOr || type == kOpType_LogicalAnd;
 }
