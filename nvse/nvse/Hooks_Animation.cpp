@@ -6,15 +6,8 @@
 
 #if RUNTIME
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 #define kHookGetGlobalModelPath 0x0104A1B8
 static const UInt32 kOriginalGetGlobalModelPath = 0x00601C30;
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-#define kHookGetGlobalModelPath 0x0104A1B8
-static const UInt32 kOriginalGetGlobalModelPath = 0x00601BF0;
-#else
-#error
-#endif
 
 static bool __stdcall doAnimationHook(TESModel* model)
 {

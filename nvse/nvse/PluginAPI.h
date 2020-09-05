@@ -230,6 +230,8 @@ struct NVSEMessagingInterface
 		kMessage_DeleteGameName,		// version of the messages sent with a save file name instead of a save file path.
 		kMessage_RenameGameName,
 		kMessage_RenameNewGameName,
+		
+		kMessage_DeferredInit,
 	};
 
 	UInt32	version;
@@ -328,6 +330,7 @@ struct NVSEArrayVarInterface
 		UInt8		type;
 
 		friend class PluginAPI::ArrayAPI;
+		friend class ArrayVar;
 		void Reset() { if (type == kType_String) { FormHeap_Free(str); type = kType_Invalid; str = NULL; } }
 	public:
 		enum

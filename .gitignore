@@ -379,10 +379,16 @@ FodyWeavers.xsd
 # Visual Studio Files
 **/Debug
 **/Release
+**/Release\ CS
 **/Debug\ CS
+**/Debug\ VC9
+**/Release\ VC9
 *.suo
 *.csproj.user
 *.vbproj.user
 ipch
 *sdf
 
+common/Debug VC9/common_vc9.vcxproj.FileListAbsolute.txt
+*.tlog
+*.recipe

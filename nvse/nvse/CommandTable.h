@@ -1,5 +1,6 @@
 #pragma once
 
+#include <unordered_map>
 #include <vector>
 
 class TESObjectREFR;
@@ -278,7 +279,7 @@ private:
 	void AddDebugCommands();
 
 	typedef std::vector <CommandInfo>				CommandList;
-	typedef std::map <UInt32, CommandMetadata>		CmdMetadataList;
+	typedef std::unordered_map<UInt32, CommandMetadata>	CmdMetadataList;
 	typedef std::map <UInt32, CommandReturnType>	OpcodeReturnTypeMap;
 	typedef std::map <UInt32, UInt32>				OpcodeToPluginMap;
 
@@ -287,10 +288,6 @@ private:
 
 	UInt32		m_baseID;
 	UInt32		m_curID;
-
-	// todo: combine these in to a single struct
-	//OpcodeReturnTypeMap	m_returnTypes;		// maps opcode to return type, only string/array-returning cmds included
-	//OpcodeToPluginMap	m_opcodesByPlugin;	// maps opcode to owning plugin opcode base
 
 	std::vector<UInt32>	m_opcodesByRelease;	// maps an NVSE major version # to opcode of first command added to that release, beginning with v0008
 

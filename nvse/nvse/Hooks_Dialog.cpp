@@ -12,52 +12,15 @@
 
 #if RUNTIME
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
-#define kHookDialogResponseStart 0x00A16F02
-#define kHookDialogResponseRtn 0x00A16F09
 #define kHookTextStart 0x00A1307E
 #define kHookTextRtn 0x00A1308A
 #define kHookTextStrLen 0x00EC6130
 #define kHookTileTextStart 0x00A21D48
 #define kHookTileTextRtn 0x00A21D4F
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-#define kHookDialogResponseStart 0x00A16AC2
-#define kHookDialogResponseRtn 0x00A16AC9
-#define kHookTextStart 0x00A12C3E
-#define kHookTextRtn 0x00A12C4A
-#define kHookTextStrLen 0x00EC60C0
-#define kHookTileTextStart 0x00A21918
-#define kHookTileTextRtn 0x00A2191F
-#else
-#error
-#endif
-static const UInt32 addrHookDialogResponseRtn = kHookDialogResponseRtn;
+
 static const UInt32 addrHookTextRtn = kHookTextRtn;
 static const UInt32 addrHookTextStrLen = kHookTextStrLen;
 static const UInt32 addrHookTileTextRtn = kHookTileTextRtn;
-
-static char* __stdcall doDialogHook(char* text, UInt32* offset, void* object)
-{
-	// we can use an event to call before a text is output
-	*offset = *offset;
-	return text;
-}
-
-static __declspec(naked) int DialogResponseHook()
-{
-	_asm 
-	{
-		//pusha
-		//push [ebp - 0x0A00]	// this
-		//push [ebp + 0x010]
-		//push [ebp + 0x00C]
-		//call doDialogHook
-		//mov [ebp + 0x0C], eax
-		//popa
-		mov ax, [ebp - 0x0A04]
-		jmp addrHookDialogResponseRtn
-	}
-}
 
 static char* __stdcall doTextHook(char* text, FontManager::FontInfo* font)
 {
@@ -95,18 +58,19 @@ static CRITICAL_SECTION	csTileText;				// trying to avoid what looks like anothe
 char * doTileTextEvent(ArrayID argsArrayId, const char * eventName, char * text, char * tileName)
 {
 	char lastText[32768];
-	std::string replacedText;
 	const char* senderName = "NVSE";
 	char * result = text;
-	g_ArrayMap.SetElementString(argsArrayId, "tileName", tileName);
-	g_ArrayMap.SetElementString(argsArrayId, "text", result);
-	if (EventManager::DispatchUserDefinedEvent(eventName, NULL, argsArrayId, senderName)) {
-		g_ArrayMap.GetElementString(argsArrayId, "text", replacedText);
-		if (_stricmp(result, replacedText.c_str()))
-			if (!strcpy_s(lastText, 32767, replacedText.c_str()))
-				result = lastText;
+
+	ArrayVar *arr = g_ArrayMap.Get(argsArrayId);
+	arr->SetElementString("tileName", tileName);
+	arr->SetElementString("text", result);
+	if (EventManager::DispatchUserDefinedEvent(eventName, NULL, argsArrayId, senderName))
+	{
+		ArrayElement *elem = arr->Get("text", false);
+		const char* replacedText;
+		if (elem && elem->GetAsString(&replacedText) && !StrEqualCI(result, replacedText) && !strcpy_s(lastText, 32767, replacedText))
+			result = lastText;
 	}
-	replacedText.clear();
 	return result;
 }
 
@@ -116,22 +80,24 @@ static char* __stdcall doTileTextHook(char* text, TileText* tile)
 	char* result = text;
 
 	char tileName[4096] = "";
+	ArrayVar *arr;
 	ArrayID argsArrayId = 0;
 
 	if (tile)
-		strcpy_s(tileName, 4095, tile->GetQualifiedName().c_str());
+		tile->GetComponentFullName(tileName);
 	if (strstr(tileName, "\\DM_SpeakerText")) // This a NPC speaking
 	{
-		argsArrayId = g_ArrayMap.Create(kDataType_String, false, 255);
+		arr = g_ArrayMap.Create(kDataType_String, false, 255);
+		argsArrayId = arr ? arr->ID() : 0;
 		if (argsArrayId) try {
-			g_ArrayMap.SetElementString(argsArrayId, "speakerName", lastSpeaker);
+			arr->SetElementString("speakerName", lastSpeaker);
 			result = doTileTextEvent(argsArrayId, "OnSpeakerText", result, tileName);
 		} catch(...) {
-			g_ArrayMap.Erase(argsArrayId);
+			g_ArrayMap.Delete(argsArrayId);
 			argsArrayId = 0;
 		}
 		if (argsArrayId)
-			g_ArrayMap.Erase(argsArrayId);
+			g_ArrayMap.Delete(argsArrayId);
 		gLog.Indent();
 		_DMESSAGE("doTileTextHook \"%s\" says '%s' for [%08x] '%s'", lastSpeaker, result, tile, tileName);
 		gLog.Outdent();
@@ -140,29 +106,32 @@ static char* __stdcall doTileTextHook(char* text, TileText* tile)
 		lastSpeaker = text;
 	if (strstr(tileName, "MenuRoot\\DialogMenu") && strstr(tileName, "\\ListItemText")) // This is a topic
 	{
-		argsArrayId = g_ArrayMap.Create(kDataType_String, false, 255);
+		arr = g_ArrayMap.Create(kDataType_String, false, 255);
+		argsArrayId = arr ? arr->ID() : 0;
 		if (argsArrayId) try {
 			result = doTileTextEvent(argsArrayId, "OnTopic", result, tileName);
 		} catch(...) {
-			g_ArrayMap.Erase(argsArrayId);
+			g_ArrayMap.Delete(argsArrayId);
 			argsArrayId = 0;
 		}
 		if (argsArrayId)
-			g_ArrayMap.Erase(argsArrayId);
+			g_ArrayMap.Delete(argsArrayId);
 		gLog.Indent();
 		_DMESSAGE("doTileTextHook Topic: '%s' for [%08x] '%s'", result, tile, tileName);
 		gLog.Outdent();
 	}
-	if (enableAllTileTextHook && g_gameStarted) {
-		argsArrayId = g_ArrayMap.Create(kDataType_String, false, 255);
+	if (enableAllTileTextHook && g_gameStarted)
+	{
+		arr = g_ArrayMap.Create(kDataType_String, false, 255);
+		argsArrayId = arr ? arr->ID() : 0;
 		if (argsArrayId) try {
 			result = doTileTextEvent(argsArrayId, "OnTileText", result, tileName);
 		} catch(...) {
-			g_ArrayMap.Erase(argsArrayId);
+			g_ArrayMap.Delete(argsArrayId);
 			argsArrayId = 0;
 		}
 		if (argsArrayId)
-			g_ArrayMap.Erase(argsArrayId);
+			g_ArrayMap.Delete(argsArrayId);
 		gLog.Indent();
 		_DMESSAGE("doTileTextHook: '%s' for [%08x] '%s'", text, tile, tileName);
 		gLog.Outdent();
@@ -194,11 +163,6 @@ void Hook_Dialog_Init(void)
 	UInt32	enableTextHook = 0;
 	UInt32	enableTileTextHook = 1;	// Defaults to true as of v4.6 Beta 3
 
-	if(GetNVSEConfigOption_UInt32("Text", "EnableDialogHook", &enableDialogHook) && enableDialogHook)
-	{
-		WriteRelJump(kHookDialogResponseStart, (UInt32)DialogResponseHook);
-		_MESSAGE("Dialog hooked");
-	}
 	if(GetNVSEConfigOption_UInt32("Text", "EnableTextHook", &enableTextHook) && enableTextHook)
 	{
 		// This looks to be called a lot . Every displayed text ?

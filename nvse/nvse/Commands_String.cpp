@@ -17,7 +17,7 @@
 
 bool Cmd_sv_Construct_Execute(COMMAND_ARGS)
 {
-	char buffer[kMaxMessageLength] = {0};
+	char buffer[kMaxMessageLength];
 
 	//not checking the return value here 'cuz we need to assign to the string regardless
 	ExtractFormatStringArgs(0, buffer, PASS_FMTSTR_ARGS, kCommandInfo_sv_Construct.numParams);
@@ -28,7 +28,7 @@ bool Cmd_sv_Construct_Execute(COMMAND_ARGS)
 
 bool Cmd_sv_Set_Execute(COMMAND_ARGS)
 {
-	char buffer[kMaxMessageLength] = { 0 };
+	char buffer[kMaxMessageLength];
 	UInt32 stringID = 0;
 	if (ExtractFormatStringArgs(0, buffer, PASS_FMTSTR_ARGS, kCommandInfo_sv_Set.numParams, &stringID))
 	{
@@ -54,8 +54,8 @@ bool Cmd_sv_Destruct_Execute(COMMAND_ARGS)
         *result = 0;            //store zero in destructed string_var
         double strID = 0;
         UInt8 modIndex = 0;
-
-        if (ExtractSetStatementVar(scriptObj, eventList, scriptData, &strID, &modIndex, true))
+		bool temp = false;
+        if (ExtractSetStatementVar(scriptObj, eventList, scriptData, &strID, &temp, &modIndex, true))
             g_StringMap.Delete(strID);
 
         return true;
@@ -108,7 +108,7 @@ bool Cmd_sv_Compare_Execute(COMMAND_ARGS)
 {
 	*result = -2;			//sentinel value if comparison fails
 	UInt32 stringID = 0;
-	char buffer[kMaxMessageLength] = { 0 };
+	char buffer[kMaxMessageLength];
 	UInt32 bCaseSensitive = 0;
 
 	if (!ExtractFormatStringArgs(0, buffer, PASS_FMTSTR_ARGS, kCommandInfo_sv_Compare.numParams, &stringID, &bCaseSensitive))
@@ -173,7 +173,7 @@ bool StringVar_Find_Execute(COMMAND_ARGS, UInt32 mode, CommandInfo* commandInfo)
 	UInt32 numChars = -1;
 	UInt32 bCaseSensitive = 0;
 	UInt32 numToReplace = -1;			//replace all by default
-	char toFind[kMaxMessageLength] = { 0 };
+	char toFind[kMaxMessageLength];
 
 	UInt32 intResult = -1;
 
@@ -256,7 +256,7 @@ bool Cmd_sv_Insert_Execute(COMMAND_ARGS)
 {
 	UInt32 strID = 0;
 	UInt32 insertionPos = 0;
-	char subString[kMaxMessageLength] = { 0 };
+	char subString[kMaxMessageLength];
 	*result = 0;
 
 	if (!ExtractFormatStringArgs(0, subString, PASS_FMTSTR_ARGS, kCommandInfo_sv_Insert.numParams, &strID, &insertionPos))
@@ -394,7 +394,7 @@ bool Cmd_GetName_Execute(COMMAND_ARGS)
 
 bool Cmd_GetStringGameSetting_Execute(COMMAND_ARGS)
 {
-	char settingName[0x100] = { 0 };
+	char settingName[0x100];
 	const char* settingString = "";
 
 	if (ExtractArgs(EXTRACT_ARGS, &settingName))
@@ -402,7 +402,7 @@ bool Cmd_GetStringGameSetting_Execute(COMMAND_ARGS)
 		Setting* setting = NULL;
 		GameSettingCollection* gmsts = GameSettingCollection::GetSingleton();
 		if (gmsts && gmsts->GetGameSetting(settingName, &setting) && setting && setting->GetType() == Setting::kSetting_String)
-			setting->Get(settingString);
+			settingString = setting->Get();
 	}
 
 	AssignToStringVar(PASS_COMMAND_ARGS, settingString);
@@ -412,7 +412,7 @@ bool Cmd_GetStringGameSetting_Execute(COMMAND_ARGS)
 
 bool Cmd_GetStringIniSetting_Execute(COMMAND_ARGS)
 {
-	char settingName[kMaxMessageLength] = { 0 };
+	char settingName[kMaxMessageLength];
 	*result = -1;
 
 	if (ExtractArgs(EXTRACT_ARGS, &settingName))
@@ -420,7 +420,7 @@ bool Cmd_GetStringIniSetting_Execute(COMMAND_ARGS)
 		Setting* setting;
 		if (GetIniSetting(settingName, &setting))
 		{
-			char val[kMaxMessageLength] = { 0 };
+			char val[kMaxMessageLength];
 			if (const char * pVal = setting->Get())
 			{
 				strcpy_s(val, kMaxMessageLength, pVal);
@@ -439,7 +439,7 @@ bool Cmd_GetStringIniSetting_Execute(COMMAND_ARGS)
 // setting name included in format string i.e. "sSomeSetting|newSettingValue"
 bool Cmd_SetStringGameSettingEX_Execute(COMMAND_ARGS)
 {
-	char fmtString[kMaxMessageLength] = { 0 };
+	char fmtString[kMaxMessageLength];
 	*result = 0;
 
 	if (ExtractFormatStringArgs(0, fmtString, PASS_FMTSTR_ARGS, kCommandInfo_SetStringGameSettingEX.numParams))
@@ -465,7 +465,7 @@ bool Cmd_SetStringGameSettingEX_Execute(COMMAND_ARGS)
 // setting name included in format string i.e. "sSomeSetting|newSettingValue"
 bool Cmd_SetStringIniSetting_Execute(COMMAND_ARGS)
 {
-	char fmtString[kMaxMessageLength] = { 0 };
+	char fmtString[kMaxMessageLength];
 	*result = 0;
 
 	if (ExtractFormatStringArgs(0, fmtString, PASS_FMTSTR_ARGS, kCommandInfo_SetStringGameSettingEX.numParams))
@@ -515,7 +515,7 @@ bool Cmd_GetModelPath_Execute(COMMAND_ARGS)
 bool Cmd_SetModelPathEX_Execute(COMMAND_ARGS)
 {
 	TESForm* form = NULL;
-	char newPath[kMaxMessageLength] = { 0 };
+	char newPath[kMaxMessageLength];
 
 	if (ExtractFormatStringArgs(0, newPath, PASS_FMTSTR_ARGS, kCommandInfo_SetModelPathEX.numParams, &form))
 	{
@@ -587,7 +587,7 @@ bool Cmd_GetTexturePath_Execute(COMMAND_ARGS)
 bool Cmd_SetIconPathEX_Execute(COMMAND_ARGS)
 {
 	TESForm* form = NULL;
-	char newPath[kMaxMessageLength] = { 0 };
+	char newPath[kMaxMessageLength];
 
 	if (ExtractFormatStringArgs(0, newPath, PASS_FMTSTR_ARGS, kCommandInfo_SetIconPathEX.numParams, &form))
 	{
@@ -629,7 +629,7 @@ bool Cmd_SetTexturePath_Execute(COMMAND_ARGS)
 	return true;
 }
 
-static enum {
+enum {
 	eMode_Get,
 	eMode_Set
 };
@@ -639,7 +639,7 @@ bool BipedPathFunc_Execute(COMMAND_ARGS, UInt32 mode, bool bIcon)
 	UInt32 whichPath = 0;
 	TESForm* form = NULL;
 	const char* pathStr = "";
-	char newPath[kMaxMessageLength] = { 0 };
+	char newPath[kMaxMessageLength];
 
 	bool bExtracted = false;
 	if (mode == eMode_Set)
@@ -712,7 +712,7 @@ bool Cmd_SetNthFactionRankNameEX_Execute(COMMAND_ARGS)
 	TESForm* form = NULL;
 	UInt32 rank = 0;
 	UInt32 gender = 0;
-	char newName[kMaxMessageLength] = { 0 };
+	char newName[kMaxMessageLength];
 
 	if (ExtractFormatStringArgs(0, newName, PASS_FMTSTR_ARGS, kCommandInfo_SetNthFactionRankNameEX.numParams, &form, &rank, &gender))
 	{
@@ -751,7 +751,7 @@ bool Cmd_SetNthEffectItemScriptNameEX_Execute(COMMAND_ARGS)
 {
 	TESForm* form = NULL;
 	UInt32 whichEffect = 0;
-	char newName[kMaxMessageLength] = { 0 };
+	char newName[kMaxMessageLength];
 
 	if (ExtractFormatStringArgs(0, newName, PASS_FMTSTR_ARGS, kCommandInfo_SetNthEffectItemScriptNameEX.numParams, &form, &whichEffect))
 	{
@@ -823,7 +823,7 @@ bool Cmd_GetFormIDString_Execute(COMMAND_ARGS)
 		form = thisObj;
 
 	UInt32 formID = form ? form->refID : 0;
-	char str[0x20] = { 0 };
+	char str[0x20];
 	sprintf_s(str, sizeof(str), "%08X", formID);
 	AssignToStringVar(PASS_COMMAND_ARGS, str);
 	return true;
@@ -832,7 +832,7 @@ bool Cmd_GetFormIDString_Execute(COMMAND_ARGS)
 bool Cmd_GetRawFormIDString_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	char str[0x20] = { 0 };
+	char str[0x20];
 	UInt32 formID = 0;
 
 	if (eval.ExtractArgs() && eval.NumArgs() == 1) {
@@ -891,8 +891,8 @@ bool Cmd_ToNumber_Execute(COMMAND_ARGS)
 bool Cmd_sv_Split_Execute(COMMAND_ARGS)
 {
 	// args: string delims
-	ArrayID arrID = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arrID;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
 
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() == 2 && eval.Arg(0)->CanConvertTo(kTokenType_String) && eval.Arg(1)->CanConvertTo(kTokenType_String))
@@ -900,11 +900,11 @@ bool Cmd_sv_Split_Execute(COMMAND_ARGS)
 		Tokenizer tokens(eval.Arg(0)->GetString(), eval.Arg(1)->GetString());
 		std::string token;
 
-		double idx = 0.0;
+		double idx = 0;
 		while (tokens.NextToken(token) != -1)
 		{
-			g_ArrayMap.SetElementString(arrID, idx, token);
-			idx += 1.0;
+			arr->SetElementString(idx, token.c_str());
+			idx += 1;
 		}
 	}
 

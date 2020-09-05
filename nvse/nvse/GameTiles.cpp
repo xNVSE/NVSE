@@ -20,128 +20,126 @@ UInt32 Tile::TraitNameToID(const char * traitName)
 	return ::TraitNameToID(traitName);
 }
 
-Tile::Value * Tile::GetValue(UInt32 typeID)
+__declspec(naked) Tile::Value *Tile::GetValue(UInt32 typeID)
 {
-	// values are sorted so could use binary search but these are not particularly large arrays
-	for(UInt32 i = 0; i < values.size; i++)
+	__asm
 	{
-		Tile::Value * val = values[i];
-		if(val && val->id == typeID)
-			return val;
+		push	ebx
+		push	esi
+		push	edi
+		mov		ebx, [ecx+0x14]
+		xor		esi, esi
+		mov		edi, [ecx+0x18]
+		mov		edx, [esp+0x10]
+	iterHead:
+		cmp		esi, edi
+		jz		iterEnd
+		lea		ecx, [esi+edi]
+		shr		ecx, 1
+		mov		eax, [ebx+ecx*4]
+		cmp		[eax], edx
+		jz		done
+		jb		isLT
+		mov		edi, ecx
+		jmp		iterHead
+	isLT:
+		lea		esi, [ecx+1]
+		jmp		iterHead
+	iterEnd:
+		xor		eax, eax
+	done:
+		pop		edi
+		pop		esi
+		pop		ebx
+		retn	4
 	}
-
-	return NULL;
 }
 
-Tile::Value * Tile::GetValue(const char * valueName)
+Tile::Value * Tile::GetValueName(const char * valueName)
 {
-	UInt32 typeID = TraitNameToID(valueName);
-
-	return GetValue(typeID);
+	return GetValue(TraitNameToID(valueName));
 }
 
 Tile * Tile::GetChild(const char * childName)
 {
-	Tile * child = NULL;
-	std::string tileName(childName);
 	int childIndex = 0;
-	
-	// Allow child names like "foo:4" to select the 4th "foo" child. There 
-	// must be a non-empty string before the colon, a single colon character, 
-	// then a non-empty sequence of digits.
-	const char * colon = strchr(childName, ':');
-	if (colon && (colon != childName)) {
+	char *colon = FindChr(childName, ':');
+	if (colon)
+	{
+		if (colon == childName) return NULL;
+		*colon = 0;
 		childIndex = atoi(colon + 1);
-		tileName = std::string(childName, (colon - childName));
-		//DEBUG_PRINT("tileName: %s, childIndex: %d", tileName.c_str(), childIndex);
 	}
-
-	int foundCount = 0;
+	Tile *result = NULL;
 	for(tList<ChildNode>::Iterator iter = childList.Begin(); !iter.End(); ++iter)
 	{
-		// Allow child name "*" to match any child
-		if(*iter && iter->child && (
-			(tileName == "*") || (!_stricmp(iter->child->name.m_data, tileName.c_str()))))
+		if (*iter && iter->child && ((*childName == '*') || StrEqualCI(iter->child->name.m_data, childName)) && !childIndex--)
 		{
-			if (foundCount == childIndex) {
-				child = iter->child;
-				break;
-			} else {
-				foundCount++;
-			}
+			result = iter->child;
+			break;
 		}
 	}
-
-	return child;
+	if (colon) *colon = ':';
+	return result;
 }
 
 // Find a tile or tile value by component path.
 // Returns NULL if component path not found.
 // Returns Tile* and clears "trait" if component was a tile.
 // Returns Tile* and sets "trait" if component was a tile value.
-Tile * Tile::GetComponent(const char * componentPath, std::string * trait)
+Tile * Tile::GetComponent(const char * componentPath, const char **trait)
 {
-	Tokenizer tokens(componentPath, "\\/");
-	std::string curToken;
-	Tile * parentTile = this;
-
-	while(tokens.NextToken(curToken) != -1 && parentTile)
+	Tile *parentTile = this;
+	char *slashPos;
+	while (slashPos = SlashPos(componentPath))
 	{
-		// DEBUG_PRINT("childName: %s", curToken.c_str());
-
-		Tile * child = parentTile->GetChild(curToken.c_str());
-		if(!child)
-		{
-			// didn't find child; is this last token?
-			if(tokens.NextToken(curToken) == -1)
-			{
-				*trait = curToken;
-				return parentTile;
-			}
-			else	// nope, error
-				return NULL;
-		}
-		else
-			parentTile = child;
+		*slashPos = 0;
+		parentTile = parentTile->GetChild(componentPath);
+		if (!parentTile) return NULL;
+		componentPath = slashPos + 1;
 	}
-
-	trait->clear();
+	if (*componentPath)
+	{
+		Tile *result = parentTile->GetChild(componentPath);
+		if (result) return result;
+		*trait = componentPath;
+	}
 	return parentTile;
 }
 
 Tile::Value * Tile::GetComponentValue(const char * componentPath)
 {
-	std::string trait;
-	Tile* tile = GetComponent(componentPath, &trait);
-	if (tile && trait.length())
-	{
-		return tile->GetValue(trait.c_str());
-	}
-	return NULL;
+	const char *trait = NULL;
+	Tile *tile = GetComponent(componentPath, &trait);
+	return (tile && trait) ? tile->GetValueName(trait) : NULL;
 }
 
 Tile * Tile::GetComponentTile(const char * componentPath)
 {
-	std::string trait;
-	Tile* tile = GetComponent(componentPath, &trait);
-	if (tile && !trait.length())
-	{
-		return tile;
-	}
-	return NULL;
+	const char *trait = NULL;
+	Tile *tile = GetComponent(componentPath, &trait);
+	return (tile && !trait) ? tile : NULL;
 }
 
-std::string Tile::GetQualifiedName(void)
+char *Tile::GetComponentFullName(char *resStr)
 {
-	std::string qualifiedName;
-
-	//if(parent && !parent->GetFloatValue(kTileValue_class, &parentClass))	// i.e., parent is not a menu
-	if(parent)
-		qualifiedName = parent->GetQualifiedName() + "\\";
-
-	qualifiedName += name.m_data;
-
-	return qualifiedName;
+	if (*(UInt32*)this == 0x106ED44)
+		return (char*)memcpy(resStr, name.m_data, name.m_dataLen) + name.m_dataLen;
+	char *fullName = parent->GetComponentFullName(resStr);
+	*fullName++ = '/';
+	fullName = (char*)memcpy(fullName, name.m_data, name.m_dataLen) + name.m_dataLen;
+	DListNode<Tile> *node = ((DList<Tile>*)&parent->childList)->Tail();
+	while (node->data != this)
+		node = node->prev;
+	int index = 0;
+	while ((node = node->prev) && StrEqualCS(name.m_data, node->data->name.m_data))
+		index++;
+	if (index)
+	{
+		*fullName++ = ':';
+		fullName = IntToStr(fullName, index);
+	}
+	return fullName;
 }
 
 void Tile::Dump(void)

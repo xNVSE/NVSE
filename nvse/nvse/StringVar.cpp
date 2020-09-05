@@ -7,6 +7,7 @@
 #include "ScriptUtils.h"
 #include "GameData.h"
 #include "GameApi.h"
+#include <set>
 
 StringVar::StringVar(const char* in_data, UInt32 in_refID)
 {
@@ -241,7 +242,7 @@ void StringVarMap::Save(NVSESerializationInterface* intfc)
 	intfc->OpenRecord('STVS', 0);
 
 	if (m_state) {
-		for (std::map<UInt32, StringVar*>::iterator iter = m_state->vars.begin();
+		for (_VarMap::iterator iter = m_state->vars.begin();
 				iter != m_state->vars.end();
 				iter++)
 		{
@@ -267,7 +268,7 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 	UInt32 type, length, version, stringID, tempRefID;
 	UInt16 strLength;
 	UInt8 modIndex;
-	char buffer[kMaxMessageLength] = { 0 };
+	char buffer[kMaxMessageLength];
 
 	Clean();
 
@@ -328,6 +329,8 @@ UInt32	StringVarMap::Add(UInt8 varModIndex, const char* data, bool bTemp)
 {
 	UInt32 varID = GetUnusedID();
 	Insert(varID, new StringVar(data, varModIndex << 24));
+
+	// UDFs are instanced once so all strings should be temporary - Kormakur
 	if (bTemp)
 		MarkTemporary(varID, true);
 
@@ -347,15 +350,10 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 	if (!newValue || len >= kMaxMessageLength)		//if null pointer or too long, assign an empty string
 		newValue = "";
 
-	if (ExtractSetStatementVar(scriptObj, eventList, scriptData, &strID, &modIndex)) {
+	if (ExtractSetStatementVar(scriptObj, eventList, scriptData, &strID, &bTemp, &modIndex)) {
 		strVar = g_StringMap.Get(strID);
-		bTemp = false;
 	}
-	else if (!bTemp) {
-		_WARNING("Function must be used within a Set statement or NVSE expression");
-		return false;
-	}
-
+	
 	if (!modIndex)
 		modIndex = scriptObj->GetModIndex();
 

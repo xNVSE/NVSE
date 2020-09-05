@@ -36,14 +36,6 @@ static NVSEStringVarInterface g_NVSEStringVarInterface =
 	AssignToStringVar,
 };
 
-#if 0
-	static NVSEIOInterface g_NVSEIOInterface = 
-	{
-		NVSEIOInterface::kVersion,
-		Plugin_IsKeyPressed
-	};
-#endif
-
 static NVSEArrayVarInterface g_NVSEArrayVarInterface =
 {
 	PluginAPI::ArrayAPI::CreateArray,
@@ -56,6 +48,7 @@ static NVSEArrayVarInterface g_NVSEArrayVarInterface =
 	PluginAPI::ArrayAPI::LookupArrayByID,
 	PluginAPI::ArrayAPI::GetElement,
 	PluginAPI::ArrayAPI::GetElements,
+	PluginAPI::ArrayAPI::GetArrayPacked
 };
 
 static NVSEScriptInterface g_NVSEScriptInterface =
@@ -100,12 +93,7 @@ static const NVSEInterface g_NVSEInterface =
 	PluginManager::GetPluginHandle,
 	PluginManager::RegisterTypedCommand,
 	PluginManager::GetFalloutDir,
-
-#ifndef NOGORE
 	0,
-#else
-	1,
-#endif
 };
 
 #ifdef RUNTIME

@@ -27,6 +27,18 @@ UserFunctionManager::~UserFunctionManager()
 	}
 }
 
+static SmallObjectsAllocator::Allocator<FunctionContext, 5> g_functionContextAllocator;
+
+void* FunctionContext::operator new(size_t size)
+{
+	return g_functionContextAllocator.Allocate();
+}
+
+void FunctionContext::operator delete(void* p)
+{
+	g_functionContextAllocator.Free(p);
+}
+
 UserFunctionManager* UserFunctionManager::GetSingleton()
 {
 	ThreadLocalData& data = ThreadLocalData::Get();
@@ -97,8 +109,10 @@ public:
 
 		if (scrToken) {
 			m_funcScript = DYNAMIC_CAST(scrToken->GetTESForm(), TESForm, Script);
-			delete scrToken;
-			scrToken = NULL;
+			if (!scrToken->cached)
+			{
+				delete scrToken;
+			}
 		}
 
 		return m_funcScript;
@@ -241,7 +255,7 @@ bool UserFunctionManager::Return(ExpressionEvaluator* eval)
 FunctionInfo* UserFunctionManager::GetFunctionInfo(Script* funcScript)
 {
 	FunctionInfo* funcInfo = NULL;
-	std::map<Script*, FunctionInfo*>::iterator iter = m_functionInfos.find(funcScript);
+	const auto iter = m_functionInfos.find(funcScript);
 	if (iter != m_functionInfos.end())
 		funcInfo = iter->second;
 	else	// doesn't exist yet, create and cache
@@ -491,6 +505,7 @@ bool FunctionContext::Execute(FunctionCaller & caller)
 	if (!caller.PopulateArgs(m_eventList, m_info))
 		return false;
 
+	
 	// run the script
 	CALL_MEMBER_FN(m_info->GetScript(), Execute)(caller.ThisObj(), m_eventList, caller.ContainingObj(), false);
 
@@ -561,7 +576,7 @@ bool InternalFunctionCaller::PopulateArgs(ScriptEventList* eventList, FunctionIn
 			case Script::eVarType_Array:
 				{
 					ArrayID arrID = (ArrayID)m_args[i];
-					if (g_ArrayMap.Exists (arrID))
+					if (g_ArrayMap.Get(arrID))
 						g_ArrayMap.AddReference (&var->data, arrID, info->GetScript()->GetModIndex());
 					else
 						var->data = 0;
@@ -592,23 +607,16 @@ bool InternalFunctionCaller::vSetArgs(UInt8 numArgs, va_list args)
 		return false;
 	}
 
-	if (extraTraces)
-		gLog.Indent();
-
 	m_numArgs = numArgs;
 	for (UInt8 i = 0; i < numArgs; i++) {
 		m_args[i] = va_arg(args, void*);
-		if (extraTraces)
-			_MESSAGE("Extracting arg %d : %s", i, ((ScriptToken*)m_args[i])->DebugPrint());
 	}
-
-	if (extraTraces)
-		gLog.Outdent();
 
 	return true;
 }
 
-namespace PluginAPI {
+namespace PluginAPI
+{
 	bool CallFunctionScript(Script* fnScript, TESObjectREFR* callingObj, TESObjectREFR* container, 
 		NVSEArrayVarInterface::Element* result, UInt8 numArgs, ...)
 	{
@@ -616,34 +624,36 @@ namespace PluginAPI {
 		va_list args;
 		va_start(args, numArgs);
 		bool success = caller.vSetArgs(numArgs, args);
-		if (success) {
-			*result = NVSEArrayVarInterface::Element();
+		if (success)
+		{
 			ScriptToken* ret = UserFunctionManager::Call(caller);
-			if (ret) {
-				switch (ret->Type()) {
-					case kTokenType_Number:
-						*result =  ret->GetNumber();
-						break;
-					case kTokenType_Form:
-						*result =  ret->GetTESForm();
-						break;
-					case kTokenType_Array:
-						*result = (NVSEArrayVarInterface::Array*)ret->GetArray();
-						break;
-					case kTokenType_String:
-						{
-							*result = NVSEArrayVarInterface::Element(ret->GetString());
+			if (ret)
+			{
+				if (result)
+				{
+					switch (ret->Type())
+					{
+						case kTokenType_Number:
+							*result =  ret->GetNumber();
 							break;
-						}
-					default:
-						ShowRuntimeError(fnScript, "Function script called from plugin returned unexpected type %02X", ret->Type());
-						success = false;
+						case kTokenType_Form:
+							*result =  ret->GetTESForm();
+							break;
+						case kTokenType_Array:
+							*result = ret->GetArray();
+							break;
+						case kTokenType_String:
+							*result = ret->GetString();
+							break;
+						default:
+							*result = NVSEArrayVarInterface::Element();
+							ShowRuntimeError(fnScript, "Function script called from plugin returned unexpected type %02X", ret->Type());
+							success = false;
+					}
 				}
-
 				delete ret;
 			}
 		}
-
 		return success;
 	}
 }

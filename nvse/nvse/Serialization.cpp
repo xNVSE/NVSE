@@ -347,86 +347,75 @@ void HandleSaveGame(const char * path)
 
 	_MESSAGE("saving to %s", g_savePath.c_str());
 
-	// disabled for testing purposes
-#if 0
-	if(s_pluginCallbacks.empty())
+	if (!s_currentFile.Create(g_savePath.c_str()))
 	{
-		// no callbacks = nothing to write, delete the file if it exists
-		DeleteFile(g_savePath.c_str());
+		_ERROR("HandleSaveGame: couldn't create save file (%s)", g_savePath.c_str());
+		return;
 	}
-	else
-#endif
+
+	try
 	{
-		if(!s_currentFile.Create(g_savePath.c_str()))
+		// init header
+		s_fileHeader.signature =		Header::kSignature;
+		s_fileHeader.formatVersion =	Header::kVersion;
+		s_fileHeader.nvseVersion =		NVSE_VERSION_INTEGER;
+		s_fileHeader.nvseMinorVersion =	NVSE_VERSION_INTEGER_MINOR;
+		s_fileHeader.falloutVersion =	RUNTIME_VERSION;
+		s_fileHeader.numPlugins =		0;
+
+		s_currentFile.Skip(sizeof(s_fileHeader));
+
+		// iterate through plugins
+		_MESSAGE("saving %d plugins to %s", s_pluginCallbacks.size(), g_savePath.c_str());
+		for(UInt32 i = 0; i < s_pluginCallbacks.size(); i++)
 		{
-			_ERROR("HandleSaveGame: couldn't create save file (%s)", g_savePath.c_str());
-			return;
-		}
-
-		try
-		{
-			// init header
-			s_fileHeader.signature =		Header::kSignature;
-			s_fileHeader.formatVersion =	Header::kVersion;
-			s_fileHeader.nvseVersion =		NVSE_VERSION_INTEGER;
-			s_fileHeader.nvseMinorVersion =	NVSE_VERSION_INTEGER_MINOR;
-			s_fileHeader.falloutVersion =	RUNTIME_VERSION;
-			s_fileHeader.numPlugins =		0;
-
-			s_currentFile.Skip(sizeof(s_fileHeader));
-
-			// iterate through plugins
-			_MESSAGE("saving %d plugins to %s", s_pluginCallbacks.size(), g_savePath.c_str());
-			for(UInt32 i = 0; i < s_pluginCallbacks.size(); i++)
+			if(s_pluginCallbacks[i].save)
 			{
-				if(s_pluginCallbacks[i].save)
+				// set up header info
+				s_currentPlugin = i;
+
+				s_pluginHeader.opcodeBase = i ? g_pluginManager.GetBaseOpcode(i - 1) : kNvseOpcodeBase;
+				s_pluginHeader.numChunks = 0;
+				s_pluginHeader.length = 0;
+
+				if(!s_pluginHeader.opcodeBase)
 				{
-					// set up header info
-					s_currentPlugin = i;
+					_ERROR("HandleSaveGame: plugin with default opcode base registered for serialization");
+					continue;
+				}
 
-					s_pluginHeader.opcodeBase = i ? g_pluginManager.GetBaseOpcode(i - 1) : kNvseOpcodeBase;
-					s_pluginHeader.numChunks = 0;
-					s_pluginHeader.length = 0;
+				s_chunkOpen = false;
 
-					if(!s_pluginHeader.opcodeBase)
-					{
-						_ERROR("HandleSaveGame: plugin with default opcode base registered for serialization");
-						continue;
-					}
+				// call the plugin
+				s_pluginCallbacks[i].save(NULL);
 
-					s_chunkOpen = false;
+				// flush the remaining chunk data
+				FlushWriteChunk();
 
-					// call the plugin
-					s_pluginCallbacks[i].save(NULL);
+				if(s_pluginHeader.numChunks)
+				{
+					UInt64	curOffset = s_currentFile.GetOffset();
 
-					// flush the remaining chunk data
-					FlushWriteChunk();
+					s_currentFile.SetOffset(s_pluginHeaderOffset);
+					s_currentFile.WriteBuf(&s_pluginHeader, sizeof(s_pluginHeader));
 
-					if(s_pluginHeader.numChunks)
-					{
-						UInt64	curOffset = s_currentFile.GetOffset();
+					s_currentFile.SetOffset(curOffset);
 
-						s_currentFile.SetOffset(s_pluginHeaderOffset);
-						s_currentFile.WriteBuf(&s_pluginHeader, sizeof(s_pluginHeader));
-
-						s_currentFile.SetOffset(curOffset);
-
-						s_fileHeader.numPlugins++;
-					}
+					s_fileHeader.numPlugins++;
 				}
 			}
-
-			// write header
-			s_currentFile.SetOffset(0);
-			s_currentFile.WriteBuf(&s_fileHeader, sizeof(s_fileHeader));
-		}
-		catch(...)
-		{
-			_ERROR("HandleSaveGame: exception during save");
 		}
 
-		s_currentFile.Close();
+		// write header
+		s_currentFile.SetOffset(0);
+		s_currentFile.WriteBuf(&s_fileHeader, sizeof(s_fileHeader));
 	}
+	catch(...)
+	{
+		_ERROR("HandleSaveGame: exception during save");
+	}
+
+	s_currentFile.Close();
 }
 
 void HandlePreLoadGame(const char * path)

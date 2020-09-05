@@ -478,7 +478,7 @@ const char * GetDXDescription(UInt32 keycode)
 		if(g_mouseButtonNames[keycode - 256])
 			keyName = g_mouseButtonNames[keycode - 256]->name;
 	}
-	else if (keycode == 264)		//OB doesn't provide names for wheel up/down
+	else if (keycode == 264)
 		keyName = "WheelUp";
 	else if (keycode == 265)
 		keyName = "WheelDown";
@@ -602,4 +602,14 @@ void ErrOutput::vShow(const char* msg, va_list args)
 	tempMsg.bDisabled = false;
 
 	vShow(tempMsg, args);
+}
+
+void ShowErrorMessageBox(const char* message)
+{
+	int msgboxID = MessageBox(
+		NULL,
+		message,
+		"Error",
+		MB_ICONWARNING | MB_OK
+	);
 }

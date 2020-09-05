@@ -5,7 +5,8 @@
 #include "GameUI.h"
 #include "GameData.h"
 #include "Hooks_SaveLoad.h"
-#include <set>
+
+#include "containers.h"
 #include "GameScript.h"
 #include "SafeWrite.h"
 #include "Hooks_Gameplay.h"
@@ -21,7 +22,7 @@ Cmd_Execute Cmd_AddSpell_Execute = (Cmd_Execute)0x005C1DB0;
 
 bool Cmd_GetNumericGameSetting_Execute(COMMAND_ARGS)
 {
-	char settingName[512] = { 0 };
+	char settingName[512];
 	*result = -1;
 
 	if (ExtractArgs(EXTRACT_ARGS, &settingName))
@@ -40,7 +41,7 @@ bool Cmd_GetNumericGameSetting_Execute(COMMAND_ARGS)
 
 bool Cmd_SetNumericGameSetting_Execute(COMMAND_ARGS)
 {
-	char settingName[512] = { 0 };
+	char settingName[512];
 	float newVal = 0;
 	*result = 0;
 
@@ -62,7 +63,7 @@ bool Cmd_SetNumericGameSetting_Execute(COMMAND_ARGS)
 
 bool Cmd_GetNumericIniSetting_Execute(COMMAND_ARGS)
 {
-	char settingName[512] = { 0 };
+	char settingName[512];
 	*result = -1;
 
 	if (ExtractArgs(EXTRACT_ARGS, &settingName))
@@ -81,7 +82,7 @@ bool Cmd_GetNumericIniSetting_Execute(COMMAND_ARGS)
 
 bool Cmd_SetNumericIniSetting_Execute(COMMAND_ARGS)
 {
-	char settingName[512] = { 0 };
+	char settingName[512];
 	float newVal = 0;
 	*result = 0;
 
@@ -117,7 +118,7 @@ bool Cmd_GetCrosshairRef_Execute(COMMAND_ARGS)
 
 bool Cmd_GetGameLoaded_Execute(COMMAND_ARGS)
 {
-	static std::set<UInt32>	informedScripts;
+	static UnorderedSet<UInt32> informedScripts;
 
 	*result = 0;
 
@@ -125,7 +126,7 @@ bool Cmd_GetGameLoaded_Execute(COMMAND_ARGS)
 	if(g_gameLoaded)
 	{
 		// yes, clear the list of scripts we've informed and reset the 'game loaded' flag
-		informedScripts.clear();
+		informedScripts.Clear();
 
 		g_gameLoaded = false;
 	}
@@ -133,30 +134,30 @@ bool Cmd_GetGameLoaded_Execute(COMMAND_ARGS)
 	if(scriptObj)
 	{
 		// have we returned 'true' to this script yet?
-		if(informedScripts.find(scriptObj->refID) == informedScripts.end())
+		if(!informedScripts.HasKey(scriptObj->refID))
 		{
 			// no, return true and add to the set
 			*result = 1;
 
-			informedScripts.insert(scriptObj->refID);
+			informedScripts.Insert(scriptObj->refID);
 		}
 		if (IsConsoleMode())
 			Console_Print("GetGameLoaded >> %.0f", *result);
 	}
-
+	
 	return true;
 }
 
 bool Cmd_GetGameRestarted_Execute(COMMAND_ARGS)
 {
-	static std::set<UInt32> regScripts;
+	static UnorderedSet<UInt32> regScripts;
 
 	*result = 0;
 
-	if (scriptObj && (regScripts.find(scriptObj->refID) == regScripts.end()))
+	if (scriptObj && !regScripts.HasKey(scriptObj->refID))
 	{
 		*result = 1;
-		regScripts.insert(scriptObj->refID);
+		regScripts.Insert(scriptObj->refID);
 	}
 
 	return true;

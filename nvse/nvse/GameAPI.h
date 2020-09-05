@@ -378,7 +378,7 @@ public:
 	virtual bool Arg(argType asType, void * outResult) = 0;	// retrieve next arg
 	virtual bool SkipArgs(UInt32 numToSkip) = 0;			// skip specified # of args
 	virtual bool HasMoreArgs() = 0;
-	virtual std::string GetFormatString() = 0;						// return format string
+	virtual char *GetFormatString() = 0;						// return format string
 };
 
 // concrete class used for extracting script args
@@ -388,7 +388,7 @@ public:
 	virtual bool Arg(argType asType, void* outResult);
 	virtual bool SkipArgs(UInt32 numToSkip);
 	virtual bool HasMoreArgs();
-	virtual std::string GetFormatString();
+	virtual char *GetFormatString();
 
 	ScriptFormatStringArgs(UInt32 _numArgs, UInt8* _scriptData, Script* _scriptObj, ScriptEventList* _eventList);
 	UInt32 GetNumArgs();
@@ -398,12 +398,11 @@ private:
 	UInt32			numArgs;
 	UInt8			* scriptData;
 	Script			* scriptObj;
-	ScriptEventList	* eventList;
-	std::string fmtString;
+	ScriptEventList		* eventList;
 };
 bool SCRIPT_ASSERT(bool expr, Script* script, const char * errorMsg, ...);
 
-bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* scriptDataIn, double* outVarData, UInt8* outModIndex = NULL, bool shortPath = false);
+bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* scriptDataIn, double* outVarData, bool* makeTemporary, UInt8* outModIndex = NULL, bool shortPath = false);
 bool ExtractFormattedString(FormatStringArgs& args, char* buffer);
 
 class ChangesMap;

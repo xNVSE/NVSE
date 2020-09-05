@@ -10,6 +10,8 @@
 #include <stack>
 #include <vector>
 
+#include "FastStack.h"
+
 struct ScriptRunner;
 struct ForEachContext;
 
@@ -32,6 +34,9 @@ public:
 	virtual ~WhileLoop() { }
 
 	virtual bool Update(COMMAND_ARGS);
+
+	void* operator new(size_t size);
+	void operator delete(void* p);
 };
 
 // iterates over contents of some collection
@@ -48,7 +53,7 @@ class ArrayIterLoop : public ForEachLoop
 	ArrayID					m_srcID;
 	ArrayID					m_iterID;
 	ArrayKey				m_curKey;
-	ScriptEventList::Var	* m_iterVar;
+	ScriptEventList::Var	*m_iterVar;
 
 	void UpdateIterator(const ArrayElement* elem);
 public:
@@ -56,7 +61,11 @@ public:
 	virtual ~ArrayIterLoop();
 
 	virtual bool Update(COMMAND_ARGS);
-	bool IsEmpty() { return (g_ArrayMap.SizeOf(m_srcID) == -1 || g_ArrayMap.SizeOf(m_srcID) == 0);	}
+	bool IsEmpty()
+	{
+		ArrayVar *arr = g_ArrayMap.Get(m_srcID);
+		return !arr || !arr->Size();
+	}
 };
 
 // iterates over characters in a string
@@ -105,7 +114,7 @@ class LoopManager
 		UInt32		endIP;		// ip of instruction following loop end
 	};
 
-	std::stack<LoopInfo>	m_loops;
+	FastStack<LoopInfo, 8>	m_loops;
 	
 	void RestoreStack(ScriptRunner* state, SavedIPInfo* info);
 

@@ -1,4 +1,7 @@
 #include "ScriptTokens.h"
+
+#include <unordered_map>
+
 #include "ScriptUtils.h"
 #include "GameRTTI.h"
 
@@ -34,6 +37,7 @@ ScriptToken::ScriptToken(Token_Type _type, UInt8 _varType, UInt16 _refIdx) : typ
 { 
 	INC_TOKEN_COUNT
 }
+
 ScriptToken::ScriptToken(bool boolean) : type(kTokenType_Boolean), refIdx(0), variableType(Script::eVarType_Invalid)
 {
 	INC_TOKEN_COUNT
@@ -81,7 +85,7 @@ ScriptToken::ScriptToken(UInt32 id, Token_Type asType) : refIdx(0), type(asType)
 #if RUNTIME
 	case kTokenType_Array:
 		value.arrID = id;
-		type = (g_ArrayMap.Exists(id) || id == 0) ? kTokenType_Array : kTokenType_Invalid;
+		type = (!id || g_ArrayMap.Get(id)) ? kTokenType_Array : kTokenType_Invalid;
 		break;
 #endif
 	default:
@@ -94,6 +98,13 @@ ScriptToken::ScriptToken(Operator* op) : type(kTokenType_Operator), refIdx(0), v
 	INC_TOKEN_COUNT
 	value.op = op;
 }
+
+#if RUNTIME
+ScriptToken::ScriptToken(ExpressionEvaluator& evaluator)
+{
+	ReadFrom(&evaluator);
+}
+#endif
 
 ScriptToken::ScriptToken(VariableInfo* varInfo, UInt16 refIdx, UInt32 varType) : refIdx(refIdx), variableType(varType)
 {
@@ -125,40 +136,32 @@ ScriptToken::ScriptToken(CommandInfo* cmdInfo, UInt16 refIdx) : type(kTokenType_
 	value.cmd = cmdInfo;
 }
 
-char debugPrint[512];
-
-char* ScriptToken::DebugPrint(void)
-{
-	switch (type) {
-		case kTokenType_Number: sprintf_s(debugPrint, 512, "[Type=Number, Value=%g]", value.num); break;
-		case kTokenType_Boolean: sprintf_s(debugPrint, 512, "[Type=Boolean, Value=%s]", (value.num ? "true" : "false")); break;
-		case kTokenType_String: sprintf_s(debugPrint, 512, "[Type=String, Value=%s]", value.str); break;
-		case kTokenType_Form: sprintf_s(debugPrint, 512, "[Type=Form, Value=%08X]", value.formID); break;
-		case kTokenType_Ref: sprintf_s(debugPrint, 512, "[Type=Ref, Value=%s]", value.refVar->name); break;
-		case kTokenType_Global: sprintf_s(debugPrint, 512, "[Type=Global, Value=%s]", value.global->GetName()); break;
-		case kTokenType_ArrayElement: sprintf_s(debugPrint, 512, "[Type=ArrayElement, Value=%g]", value.num); break;
-		case kTokenType_Slice: sprintf_s(debugPrint, 512, "[Type=Slice, Value=%g]", value.num); break;
-		case kTokenType_Command: sprintf_s(debugPrint, 512, "[Type=Command, Value=%g]", value.cmd->opcode); break;
 #if RUNTIME
-		case kTokenType_Array: sprintf_s(debugPrint, 512, "[Type=Array, Value=%g]", value.arrID); break;
-		case kTokenType_Variable: sprintf_s(debugPrint, 512, "[Type=Variable, Value=%g]", value.var->id); break;
-		case kTokenType_NumericVar: sprintf_s(debugPrint, 512, "[Type=NumericVar, Value=%g]", value.var->data); break;
-		case kTokenType_ArrayVar: sprintf_s(debugPrint, 512, "[Type=ArrayVar, Value=%g]", value.arrID); break;
-		case kTokenType_StringVar: sprintf_s(debugPrint, 512, "[Type=StringVar, Value=%g]", value.num); break;
-#endif
-		case kTokenType_RefVar: sprintf_s(debugPrint, 512, "[Type=RefVar, Index=%d (EDID not available)]", value.refVar->varIdx); break;
-		case kTokenType_Ambiguous: sprintf_s(debugPrint, 512, "[Type=Ambiguous, no Value]"); break;
-		case kTokenType_Operator: sprintf_s(debugPrint, 512, "[Type=Operator, Value=%g]", value.op->type); break;
-		case kTokenType_ForEachContext: sprintf_s(debugPrint, 512, "[Type=ForEachContext, Value=%g]", value.num); break;
-		case kTokenType_Byte: sprintf_s(debugPrint, 512, "[Type=Byte, Value=%g]", value.num); break;
-		case kTokenType_Short: sprintf_s(debugPrint, 512, "[Type=Short, Value=%g]", value.num); break;
-		case kTokenType_Int: sprintf_s(debugPrint, 512, "[Type=Int, Value=%g]", value.num); break;
-		case kTokenType_Pair: sprintf_s(debugPrint, 512, "[Type=Pair, Value=%g]", value.num); break;
-		case kTokenType_AssignableString: sprintf_s(debugPrint, 512, "[Type=AssignableString, Value=%s]", value.str); break;
-		case kTokenType_Invalid: sprintf_s(debugPrint, 512, "[Type=Invalid, no Value]"); break;
-		case kTokenType_Empty: sprintf_s(debugPrint, 512, "[Type=Empty, no Value]"); break;
+void ScriptToken::Delete() const
+{
+	if (this && !cached)
+	{
+		delete this;
 	}
-	return debugPrint;
+}
+#endif
+
+bool ScriptToken::IsInvalid() const
+{
+	return this->type == kTokenType_Invalid;
+}
+
+bool ScriptToken::IsOperator() const
+{
+	return this->type == kTokenType_Operator;
+}
+
+bool ScriptToken::IsLogicalOperator() const
+{
+	if (Type() != kTokenType_Operator)
+		return false;
+	const auto& type = GetOperator()->type;
+	return type == kOpType_LogicalOr || type == kOpType_LogicalAnd;
 }
 
 #if RUNTIME
@@ -175,6 +178,18 @@ ForEachContextToken::ForEachContextToken(UInt32 srcID, UInt32 iterID, UInt32 var
 	value.formID = 0;
 }
 
+SmallObjectsAllocator::Allocator<ForEachContextToken, 4> g_forEachTokenAllocator;
+
+void* ForEachContextToken::operator new(size_t size)
+{
+	return g_forEachTokenAllocator.Allocate();
+}
+
+void ForEachContextToken::operator delete(void* p)
+{
+	g_forEachTokenAllocator.Free(p);
+}
+
 ScriptToken* ScriptToken::Create(ForEachContext* forEach)
 {
 	if (!forEach)
@@ -187,7 +202,7 @@ ScriptToken* ScriptToken::Create(ForEachContext* forEach)
 	}
 	else if (forEach->variableType == Script::eVarType_Array)
 	{
-		if (!g_ArrayMap.Exists(forEach->sourceID) || !g_ArrayMap.Exists(forEach->iteratorID))
+		if (!g_ArrayMap.Get(forEach->sourceID) || !g_ArrayMap.Get(forEach->iteratorID))
 			return NULL;
 	}
 	else if (forEach->variableType == Script::eVarType_Ref)
@@ -202,14 +217,16 @@ ScriptToken* ScriptToken::Create(ForEachContext* forEach)
 	return new ForEachContextToken(forEach->sourceID, forEach->iteratorID, forEach->variableType, forEach->var);
 }
 
-ScriptToken* ScriptToken::Create(ArrayID arrID, ArrayKey* key)									
-{ 
-	return key ? new ArrayElementToken(arrID, key) : NULL;
+ScriptToken* ScriptToken::Create(ArrayID arrID, ArrayKey* key)
+{
+	if (key) return new ArrayElementToken(arrID, key);
+	else return NULL;
 }
 
-ScriptToken* ScriptToken::Create(Slice* slice)													
-{ 
-	return slice ? new SliceToken(slice) : NULL;
+ScriptToken* ScriptToken::Create(Slice* slice)
+{
+	if (slice) return new SliceToken(slice);
+	else return NULL;
 }
 
 ScriptToken* ScriptToken::Create(ScriptToken* l, ScriptToken* r)
@@ -224,11 +241,26 @@ ScriptToken* ScriptToken::Create(UInt32 varID, UInt32 lbound, UInt32 ubound)
 
 ScriptToken* ScriptToken::Create(ArrayElementToken* elem, UInt32 lbound, UInt32 ubound)
 {
+	
 	if (elem && elem->GetString()) {
 		return new AssignableStringArrayElementToken(elem->GetOwningArrayID(), *elem->GetArrayKey(), lbound, ubound);
 	}
 
 	return NULL;
+}
+
+static SmallObjectsAllocator::Allocator<ScriptToken, 24> g_scriptTokenAllocator;
+
+void* ScriptToken::operator new(size_t size)
+{
+	//return ::operator new(size);
+	return g_scriptTokenAllocator.Allocate();
+}
+
+void ScriptToken::operator delete(void* p)
+{
+	//::operator delete(p);
+	g_scriptTokenAllocator.Free(p);
 }
 
 ArrayElementToken::ArrayElementToken(ArrayID arr, ArrayKey* _key)
@@ -285,8 +317,13 @@ AssignableStringVarToken::AssignableStringVarToken(UInt32 _id, UInt32 lbound, UI
 AssignableStringArrayElementToken::AssignableStringArrayElementToken(UInt32 _id, const ArrayKey& _key, UInt32 lbound, UInt32 ubound)
 	: AssignableStringToken(_id, lbound, ubound), key(_key)
 {
-	std::string elemStr;
-	if (g_ArrayMap.GetElementString(value.arrID, key, elemStr)) {
+	ArrayVar *arr = g_ArrayMap.Get(value.arrID);
+	if (!arr) return;
+
+	const char* pElemStr;
+	if (arr->GetElementString(&key, &pElemStr))
+	{
+		std::string elemStr(pElemStr);
 		upper = (upper > elemStr.length()) ? elemStr.length() - 1 : upper;
 		substring = elemStr.substr(lbound, ubound - lbound + 1);
 	}
@@ -312,19 +349,20 @@ bool AssignableStringVarToken::Assign(const char* str)
 
 bool AssignableStringArrayElementToken::Assign(const char* str)
 {
-	std::string elemStr;
-	if (g_ArrayMap.GetElementString(value.arrID, key, elemStr)) {
-		if (lower <= upper && upper < elemStr.length()) {
-			elemStr.erase(lower, upper - lower + 1);
-			if (str) {
-				elemStr.insert(lower, str);
-				g_ArrayMap.SetElementString(value.arrID, key, elemStr);
-				substring = elemStr;
-			}
-			return true;
+	ArrayElement *elem = g_ArrayMap.GetElement(value.arrID, &key);
+	const char* pElemStr;
+	if (elem && elem->GetAsString(&pElemStr) && (lower <= upper) && (upper < StrLen(pElemStr)))
+	{
+		std::string elemStr(pElemStr);
+		elemStr.erase(lower, upper - lower + 1);
+		if (str)
+		{
+			elemStr.insert(lower, str);
+			elem->SetString(elemStr.c_str());
+			substring = elemStr;
 		}
+		return true;
 	}
-
 	return false;
 }
 
@@ -356,7 +394,7 @@ Slice::Slice(const Slice* _slice)
 
 *****************************************/
 
-const char* ScriptToken::GetString() const
+const char* ScriptToken::GetString()
 {
 	static const char* empty = "";
 	const char* result = NULL;
@@ -364,39 +402,91 @@ const char* ScriptToken::GetString() const
 	if (type == kTokenType_String)
 		result = value.str.c_str();
 #if RUNTIME
-	else if (type == kTokenType_StringVar && value.var)
+	else if (type == kTokenType_StringVar)
 	{
+		ResolveVariable();
+		if (!value.var)
+		{
+			return "";
+		}
 		StringVar* strVar = g_StringMap.Get(value.var->data);
-		result = strVar ? strVar->GetCString() : NULL;
+		if (strVar) result = strVar->GetCString();
+		else result = NULL;
+	}
+	else if (type == kTokenType_Command)
+	{
+		auto* token = context->ExecuteCommandToken(this);
+		if (token)
+		{
+			value.str = std::move(token->value.str);
+			delete token;
+			return value.str.c_str();
+		}
 	}
 #endif
-	return result ? result : empty;
+	if (result)
+		return result;
+	return empty;
 }
 
-UInt32 ScriptToken::GetFormID() const
+UInt32 ScriptToken::GetFormID()
 {
 	if (type == kTokenType_Form)
 		return value.formID;
 #if RUNTIME
-	else if (type == kTokenType_RefVar && value.var)
-		return *(UInt64*)(&value.var->data);
+	if (type == kTokenType_RefVar)
+	{
+		ResolveVariable();
+		if (!value.var)
+		{
+			return 0;
+		}
+		return *reinterpret_cast<UInt64*>(&value.var->data);
+	}
+	if (type == kTokenType_Command)
+	{
+		auto* token = context->ExecuteCommandToken(this);
+		if (token)
+		{
+			const auto result = token->GetFormID();
+			delete token;
+			return result;
+		}
+		
+	}
 #endif
 	else if (type == kTokenType_Number)
 		return value.formID;
 	else if (type == kTokenType_Ref && value.refVar)
 		return value.refVar->form ? value.refVar->form->refID : 0;
-	else
-		return 0;
+	return 0;
 }
 
-TESForm* ScriptToken::GetTESForm() const
+TESForm* ScriptToken::GetTESForm()
 {
 	// ###TODO: handle Ref (RefVariable)? Read() turns RefVariable into Form so that type is compile-time only
 #if RUNTIME
 	if (type == kTokenType_Form)
 		return LookupFormByID(value.formID);
-	else if (type == kTokenType_RefVar && value.var)
-		return LookupFormByID(*((UInt64*)(&value.var->data)));
+	if (type == kTokenType_RefVar && value.var)
+	{
+		ResolveVariable();
+		if (!value.var)
+		{
+			return nullptr;
+		}
+		return LookupFormByID(*reinterpret_cast<UInt64*>(&value.var->data));
+	}
+	if (type == kTokenType_Command)
+	{
+		auto* token = context->ExecuteCommandToken(this);
+		if (token)
+		{
+			auto* result = token->GetTESForm();
+			delete token;
+			return result;
+		}
+	}
 #endif
 
 	if (type == kTokenType_Ref && value.refVar)
@@ -405,7 +495,7 @@ TESForm* ScriptToken::GetTESForm() const
 		return NULL;
 }
 
-double ScriptToken::GetNumber() const
+double ScriptToken::GetNumber()
 {
 	if (type == kTokenType_Number || type == kTokenType_Boolean)
 		return value.num;
@@ -414,13 +504,30 @@ double ScriptToken::GetNumber() const
 #if RUNTIME
 	else if ((type == kTokenType_NumericVar && value.var) ||
 	         (type == kTokenType_StringVar && value.var))
+	{
+		ResolveVariable();
+		if (!value.var)
+		{
+			return 0.0;
+		}
 		return value.var->data;
+	}
+		
+	else if (type == kTokenType_Command)
+	{
+		auto* token = context->ExecuteCommandToken(this);
+		if (token)
+		{
+			const auto result = token->GetNumber();
+			delete token;
+			return result;
+		}
+	}
 #endif
-	else
-		return 0.0;
+	return 0.0;
 }
 
-bool ScriptToken::GetBool() const
+bool ScriptToken::GetBool()
 {
 	switch (type)
 	{
@@ -438,7 +545,24 @@ bool ScriptToken::GetBool() const
 	case kTokenType_StringVar:
 	case kTokenType_ArrayVar:
 	case kTokenType_RefVar:
-		return value.var->data ? true : false;
+		{
+			ResolveVariable();
+			if (!value.var)
+			{
+				return false;
+			}
+			return value.var->data ? true : false;
+		}
+	case kTokenType_Command:
+		{
+			auto* token = context->ExecuteCommandToken(this);
+			if (token)
+			{
+				const auto result = token->GetBool();
+				delete token;
+				return result;
+			}
+		}
 #endif
 	default:
 		return false;
@@ -451,25 +575,68 @@ Operator* ScriptToken::GetOperator() const
 }
 
 #if RUNTIME
-ArrayID ScriptToken::GetArray() const
+ArrayID ScriptToken::GetArray()
 {
 	if (type == kTokenType_Array)
 		return value.arrID;
-	else if (type == kTokenType_ArrayVar)
+	if (type == kTokenType_ArrayVar)
+	{
+		ResolveVariable();
+		if (!value.var)
+		{
+			return false;
+		}
 		return value.var->data;
-	else
-		return 0;
+	}
+	if (type == kTokenType_Command)
+	{
+		auto* token = context->ExecuteCommandToken(this);
+		if (token)
+		{
+			const auto result = token->GetArray();
+			delete token;
+			return result;
+		}
+	}
+	return 0;
 }
 
-ScriptEventList::Var* ScriptToken::GetVar() const
+ScriptEventList::Var* ScriptToken::GetVar()
 {
+	ResolveVariable();
 	return IsVariable() ? value.var : NULL;
+}
+
+void ScriptToken::ResolveVariable()
+{
+	auto clear = false;
+	if (g_scriptEventListsDestroyed != eventListsDestroyedCount)
+	{		
+		eventListsDestroyedCount = g_scriptEventListsDestroyed;
+		clear = true;
+	}
+	if (value.var == nullptr || varIdx != value.var->id || this->scriptEventList != context->eventList || clear)
+	{
+		scriptEventList = context->eventList;
+		if (refIdx)
+		{
+			Script::RefVariable* refVar = context->script->GetVariable(refIdx);
+			if (refVar)
+			{
+				refVar->Resolve(context->eventList);
+				if (refVar->form)
+					scriptEventList = EventListFromForm(refVar->form);
+			}
+		}
+		value.var = scriptEventList->GetVariable(varIdx);
+	}
 }
 #endif
 
 TESGlobal* ScriptToken::GetGlobal() const
 {
-	return type == kTokenType_Global ? value.global : NULL;
+	if (type == kTokenType_Global) return value.global;
+	return NULL;
 }
 
 VariableInfo* ScriptToken::GetVarInfo() const
@@ -488,13 +655,14 @@ VariableInfo* ScriptToken::GetVarInfo() const
 
 CommandInfo* ScriptToken::GetCommandInfo() const
 {
-	return type == kTokenType_Command ? value.cmd : NULL;
+	if (type == kTokenType_Command) return value.cmd;
+	return NULL;
 }
 
 #if RUNTIME
 
 
-UInt32 ScriptToken::GetActorValue() const
+UInt32 ScriptToken::GetActorValue()
 {
 	UInt32 actorVal = eActorVal_NoActorValue;
 	if (CanConvertTo(kTokenType_Number)) {
@@ -513,7 +681,7 @@ UInt32 ScriptToken::GetActorValue() const
 	return actorVal;
 }
 
-char ScriptToken::GetAxis() const
+char ScriptToken::GetAxis()
 {
 	char axis = -1;
 	const char* str = GetString();
@@ -537,54 +705,19 @@ char ScriptToken::GetAxis() const
 	return axis;
 }
 
-UInt32 ScriptToken::GetSex() const
+UInt32 ScriptToken::GetSex()
 {
-	UInt32 sex = -1;
 	const char* str = GetString();
 	if (str) {
 		if (!_stricmp(str, "male")) {
-			sex = 0;
+			return 0;
 		}
 		else if (!_stricmp(str, "female")) {
-			sex = 1;
+			return 1;
 		}
 	}
 
-	return sex;
-}
-
-EffectSetting* ScriptToken::GetEffectSetting() const
-{
-	EffectSetting* eff = NULL;
-	//if (CanConvertTo(kTokenType_Number)) {
-	//	eff = EffectSetting::EffectSettingForC(GetNumber());
-	//}
-	//else {
-	//	const char* str = GetString();
-	//	if (str) {
-	//		if (strlen(str) == 4) {
-	//			UInt32 code = *((UInt32*)str);
-	//			eff = EffectSetting::EffectSettingForC(code);
-	//		}
-	//	}
-	//	else {
-	//		eff = DYNAMIC_CAST(GetTESForm(), TESForm, EffectSetting);
-	//	}
-	//}
-
-	return eff;
-}
-
-UInt32 ScriptToken::GetAnimGroup() const
-{
-	UInt32 group = 0xFF;
-	//UInt32 group = TESAnimGroup::kAnimGroup_Max;
-	//const char* str = GetString();
-	//if (str) {
-	//	group = TESAnimGroup::AnimGroupForString(str);
-	//}
-
-	return group;
+	return -1;
 }
 
 #endif // RUNTIME
@@ -595,8 +728,28 @@ UInt32 ScriptToken::GetAnimGroup() const
 
 *************************************************/
 
+Token_Type ToTokenType(CommandReturnType type)
+{
+	switch (type) {
+	case kRetnType_Default:
+		return kTokenType_Number;
+	case kRetnType_Form:
+		return kTokenType_Form;
+	case kRetnType_String:
+		return kTokenType_String;
+	case kRetnType_Array:
+		return kTokenType_Array;
+	default:
+		return kTokenType_Invalid;
+	}
+}
+
 bool ScriptToken::CanConvertTo(Token_Type to) const
 {
+	if (type == kTokenType_Command)
+	{
+		return CanConvertOperand(ToTokenType(returnType), to);
+	}
 	return CanConvertOperand(type, to);
 }
 
@@ -615,7 +768,9 @@ ScriptToken* ScriptToken::Read(ExpressionEvaluator* context)
 Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 {
 	UInt8 typeCode = context->ReadByte();
-
+	this->owningScript = context->script;
+	this->context = context;
+	this->scriptEventList = context->eventList;
 	switch (typeCode)
 	{
 	case 'B':
@@ -638,11 +793,12 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		value.num = context->ReadFloat();
 		break;
 	case 'S':
-		{
-			type = kTokenType_String;
-			value.str = context->ReadString();
-			break;
-		}
+	{
+		type = kTokenType_String;
+		UInt32 incData = 0;
+		value.str = context->ReadString(incData);
+		break;
+	}
 	case 'R':
 		type = kTokenType_Ref;
 		refIdx = context->Read16();
@@ -655,93 +811,100 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 			value.refVar->Resolve(context->eventList);
 			value.formID = value.refVar->form ? value.refVar->form->refID : 0;
 		}
+		//incrementData = 3;
 		break;
 	case 'G':
+	{
+		type = kTokenType_Global;
+		refIdx = context->Read16();
+		Script::RefVariable* refVar = context->script->GetVariable(refIdx);
+		if (!refVar)
 		{
-			type = kTokenType_Global;
-			refIdx = context->Read16();
-			Script::RefVariable* refVar = context->script->GetVariable(refIdx);
-			if (!refVar)
-			{
-				type = kTokenType_Invalid;
-				break;
-			}
-			refVar->Resolve(context->eventList);
-			value.global = DYNAMIC_CAST(refVar->form, TESForm, TESGlobal);
-			if (!value.global)
-				type = kTokenType_Invalid;
+			type = kTokenType_Invalid;
 			break;
 		}
-	case 'X':
-		{
-			type = kTokenType_Command;
-			refIdx = context->Read16();
-			UInt16 opcode = context->Read16();
-			value.cmd = g_scriptCommands.GetByOpcode(opcode);
-			if (!value.cmd)
-				type = kTokenType_Invalid;
-			break;
-		}
-	case 'V':
-		{
-			variableType = context->ReadByte();
-			switch (variableType)
-			{
-			case Script::eVarType_Array:
-				type = kTokenType_ArrayVar;
-				break;
-			case Script::eVarType_Integer:
-			case Script::eVarType_Float:
-				type = kTokenType_NumericVar;
-				break;
-			case Script::eVarType_Ref:
-				type = kTokenType_RefVar;
-				break;
-			case Script::eVarType_String:
-				type = kTokenType_StringVar;
-				break;
-			default:
-				type = kTokenType_Invalid;
-			}
+		refVar->Resolve(context->eventList);
+		value.global = DYNAMIC_CAST(refVar->form, TESForm, TESGlobal);
+		if (!value.global)
+			type = kTokenType_Invalid;
 
-			refIdx = context->Read16();
-
-			ScriptEventList* eventList = context->eventList;
-			if (refIdx)
-			{
-				Script::RefVariable* refVar = context->script->GetVariable(refIdx);
-				if (refVar)
-				{
-					refVar->Resolve(context->eventList);
-					if (refVar->form)
-						eventList = EventListFromForm(refVar->form);
-				}
-			}
-
-			UInt16 varIdx = context->Read16();
-			value.var = NULL;
-			if (eventList)
-				value.var = eventList->GetVariable(varIdx);
-
-			if (!value.var)
-				type = kTokenType_Invalid;
-			break;
-		}
-	default:
-		{
-			if (typeCode < kOpType_Max)
-			{
-				type = kTokenType_Operator;
-				value.op =  &s_operators[typeCode];
-			}
-			else
-			{
-				context->Error("Unexpected token type %d (%02x) encountered", typeCode, typeCode);
-				type = kTokenType_Invalid;
-			}
-		}
+		break;
 	}
+	case 'X':
+	{
+		type = kTokenType_Command;
+		refIdx = context->Read16();
+		const auto opcode = context->Read16();
+		value.cmd = g_scriptCommands.GetByOpcode(opcode);
+		if (!value.cmd)
+			type = kTokenType_Invalid;
+		auto argsLen = context->Read16();
+		opcodeOffset = context->m_data - context->m_scriptData;
+		context->m_data += argsLen - 2;
+		returnType = g_scriptCommands.GetReturnType(value.cmd);
+		break;
+	}
+	case 'V':
+	{
+		variableType = context->ReadByte();
+		switch (variableType)
+		{
+		case Script::eVarType_Array:
+			type = kTokenType_ArrayVar;
+			break;
+		case Script::eVarType_Integer:
+		case Script::eVarType_Float:
+			type = kTokenType_NumericVar;
+			break;
+		case Script::eVarType_Ref:
+			type = kTokenType_RefVar;
+			break;
+		case Script::eVarType_String:
+			type = kTokenType_StringVar;
+			break;
+		default:
+			type = kTokenType_Invalid;
+		}
 
+		refIdx = context->Read16();
+
+		ScriptEventList* eventList = context->eventList;
+		if (refIdx)
+		{
+			Script::RefVariable* refVar = context->script->GetVariable(refIdx);
+			if (refVar)
+			{
+				refVar->Resolve(context->eventList);
+				if (refVar->form)
+					eventList = EventListFromForm(refVar->form);
+			}
+		}
+
+		varIdx = context->Read16();
+		value.var = NULL;
+		if (eventList)
+			value.var = eventList->GetVariable(varIdx);
+
+		if (!value.var)
+			type = kTokenType_Invalid;
+		//incrementData = 6;
+		break;
+	}
+	default:
+	{
+		if (typeCode < kOpType_Max)
+		{
+			type = kTokenType_Operator;
+			value.op = &s_operators[typeCode];
+		}
+		else
+		{
+			context->Error("Unexpected token type %d (%02x) encountered", typeCode, typeCode);
+			type = kTokenType_Invalid;
+		}
+		//incrementData = 1;
+	}
+	}
 	return type;
 }
 
@@ -817,7 +980,7 @@ bool ScriptToken::Write(ScriptLineBuffer* buf)
 }
 
 #if RUNTIME
-ScriptToken* ScriptToken::ToBasicToken() const
+ScriptToken* ScriptToken::ToBasicToken()
 {
 	if (CanConvertTo(kTokenType_String))
 		return Create(GetString());
@@ -880,7 +1043,10 @@ bool ArrayElementToken::CanConvertTo(Token_Type to) const
 	else if (to == kTokenType_ArrayElement)
 		return true;
 
-	UInt8 elemType = g_ArrayMap.GetElementType(GetOwningArrayID(), key);
+	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
+	if (!arr) return false;
+
+	DataType elemType = arr->GetElementType(&key);
 	if (elemType == kDataType_Invalid)
 		return false;
 
@@ -901,58 +1067,71 @@ bool ArrayElementToken::CanConvertTo(Token_Type to) const
 	return false;
 }
 
-double ArrayElementToken::GetNumber() const
+SmallObjectsAllocator::Allocator<ArrayElementToken, 4> g_arrayTokenAllocator;
+
+void* ArrayElementToken::operator new(size_t size)
+{
+	return g_arrayTokenAllocator.Allocate();
+}
+
+void ArrayElementToken::operator delete(void* p)
+{
+	g_arrayTokenAllocator.Free(p);
+}
+
+double ArrayElementToken::GetNumber()
 {
 	double out = 0.0;
-	g_ArrayMap.GetElementNumber(GetOwningArrayID(), key, &out);
+	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
+	if (arr) arr->GetElementNumber(&key, &out);
 	return out;
 }
 
-const char* ArrayElementToken::GetString() const
+const char* ArrayElementToken::GetString()
 {
-	static const char* empty = "";
-	const char* out = NULL;
-	g_ArrayMap.GetElementCString(GetOwningArrayID(), key, &out);
-	return out ? out : empty;
+	const char* out = "";
+	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
+	if (arr) arr->GetElementString(&key, &out);
+	return out;
 }
 
-UInt32 ArrayElementToken::GetFormID() const
+UInt32 ArrayElementToken::GetFormID()
 {
 	UInt32 out = 0;
-	g_ArrayMap.GetElementFormID(GetOwningArrayID(), key, &out);
+	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
+	if (arr) arr->GetElementFormID(&key, &out);
 	return out;
 }
 
-TESForm* ArrayElementToken::GetTESForm() const
+TESForm* ArrayElementToken::GetTESForm()
 {
 	TESForm* out = NULL;
-	g_ArrayMap.GetElementForm(GetOwningArrayID(), key, &out);
+	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
+	if (arr) arr->GetElementForm(&key, &out);
 	return out;
 }
 
-bool ArrayElementToken::GetBool() const
+bool ArrayElementToken::GetBool()
 {
-	UInt8 elemType = g_ArrayMap.GetElementType(GetOwningArrayID(), key);
-	if (elemType == kDataType_Numeric)
-	{
-		double out = 0.0;
-		g_ArrayMap.GetElementNumber(GetOwningArrayID(), key, &out);
-		return out ? true : false;
-	}
-	else if (elemType == kDataType_Form)
-	{
-		UInt32 out = 0;
-		g_ArrayMap.GetElementFormID(GetOwningArrayID(), key, &out);
-		return out ? true : false;
-	}
+	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
+	if (!arr) return false;
+
+	ArrayElement *elem = arr->Get(&key, false);
+	if (!elem) return false;
+
+	if (elem->DataType() == kDataType_Numeric)
+		return elem->m_data.num != 0;
+	else if (elem->DataType() == kDataType_Form)
+		return elem->m_data.formID != 0;
 
 	return false;
 }
 
-ArrayID ArrayElementToken::GetArray() const
+ArrayID ArrayElementToken::GetArray()
 {
 	ArrayID out = 0;
-	g_ArrayMap.GetElementArray(GetOwningArrayID(), key, &out);
+	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
+	if (arr) arr->GetElementArray(&key, &out);
 	return out;
 }
 
@@ -1091,13 +1270,14 @@ bool CanConvertOperand(Token_Type from, Token_Type to)
 {
 	if (from == to)
 		return true;
-	else if (from >= kTokenType_Invalid || to >= kTokenType_Invalid)
+	if (from >= kTokenType_Invalid || to >= kTokenType_Invalid)
 		return false;
 
 	Operand* op = &s_operands[from];
 	for (UInt32 i = 0; i < op->numRules; i++)
 	{
-		if (op->rules[i] == to)
+		auto& rule = op->rules[i];
+		if (rule == to)
 			return true;
 	}
 
@@ -1125,8 +1305,8 @@ void Slice::GetArrayBounds(ArrayKey& lo, ArrayKey& hi) const
 {
 	if (bIsString)
 	{
-		lo = ArrayKey(m_lowerStr);
-		hi = ArrayKey(m_upperStr);
+		lo = ArrayKey(m_lowerStr.c_str());
+		hi = ArrayKey(m_upperStr.c_str());
 	}
 	else
 	{

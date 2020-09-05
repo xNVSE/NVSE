@@ -14,6 +14,7 @@
 #include "Utilities.h"
 #include "PluginManager.h"
 #include "NiNodes.h"
+#include <stdexcept>
 
 #include "Commands_Console.h"
 #include "Commands_Game.h"
@@ -80,8 +81,6 @@ struct PatchLocation
 
 #if RUNTIME
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
-
 static const PatchLocation kPatch_ScriptCommands_Start[] =
 {
 	{	0x005B1172, 0x00 },
@@ -135,79 +134,8 @@ static const PatchLocation kPatch_ScriptCommands_MaxIdx[] =
 	{	0x005B115B + 3, 0 },
 	{	0x005B19A0 + 3, (UInt32)(-0x1000) },
 	{	0x005BCBDD + 6, (UInt32)(-0x1000) },
-
-#if 0
-	// ### investigate this function
-	{	0x0067F0B8 + 3,	0 },
-	{	0x0067F0D5 + 3, (UInt32)(-0x1000) },
-	{	0x0067F0F4 + 3, (UInt32)(-0x1000) },
-#endif
-
 	{	0 },
 };
-
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-
-static const PatchLocation kPatch_ScriptCommands_Start[] =
-{
-	{	0x005B1212, 0x00 },
-	{	0x005B1A51, 0x00 },
-	{	0x005B1A6E, 0x04 },
-	{	0x005B1A98, 0x08 },
-	{	0x005BCC7A, 0x0C },
-	{	0x005BCC9D, 0x00 },
-	{	0x005BCCC0, 0x04 },
-	{	0x005BCCE0, 0x0C },
-	{	0x005BCCF6, 0x0C },
-	{	0x005BCD16, 0x04 },
-	{	0x005BCD28, 0x04 },
-	{	0x005BCD44, 0x0C },
-	{	0x005BCD54, 0x04 },
-	{	0x005BCD64, 0x00 },
-	{	0x005BCD83, 0x0C },
-	{	0x005BCD93, 0x00 },
-	{	0x005BCDB2, 0x04 },
-	{	0x005BCDC4, 0x04 },
-	{	0x005BCDE0, 0x04 },
-	{	0x005BCDF0, 0x00 },
-	{	0x005BCE0F, 0x00 },
-	{	0x0068128B, 0x20 },
-	{	0x006812A2, 0x10 },
-	{	0x006812D2, 0x20 },
-	{	0x0068166B, 0x20 },
-	{	0x0068185E, 0x00 },
-	{	0x00681C7F, 0x14 },
-	{	0x00681E0D, 0x12 },
-	{	0x00681E7F, 0x14 },
-	{	0x00681ED2, 0x14 },
-	{	0x00681F32, 0x14 },
-	{	0x0087A469, 0x12 },
-	{	0x0087A4A8, 0x14 },
-	{	0 },
-};
-
-static const PatchLocation kPatch_ScriptCommands_End[] =
-{
-	{	0x005AEAF9, 0x08 },
-	{	0 },
-};
-
-// 127B / 027B
-// 1280 / 0280
-static const PatchLocation kPatch_ScriptCommands_MaxIdx[] =
-{
-	{	0x00593AF9 + 1, 0 },
-	{	0x005AEAF7 + 6, 0 },
-	{	0x005B11FB + 3, 0 },
-	{	0x005B1A40 + 3, (UInt32)(-0x1000) },
-	{	0x005BCC4D + 6, (UInt32)(-0x1000) },
-
-	{	0 },
-};
-
-#else
-#error
-#endif
 
 void ApplyPatchEditorOpCodeDataList(void) {
 }
@@ -405,46 +333,6 @@ bool Cmd_DumpDocs_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool Cmd_tcmd_Execute(COMMAND_ARGS)
-{
-	_MESSAGE("tcmd");
-
-	Console_Print("hello world");
-
-	_MESSAGE("tcmd Menus");
-	Debug_DumpMenus();
-	_MESSAGE("tcmd Tiles Traits");
-	Debug_DumpTraits();
-	_MESSAGE("tcmd Anim Groups");
-	DumpAnimGroups();
-	//_MESSAGE("tcmd Tile Image");
-	//Debug_DumpTileImages();
-
-	*result = 0;
-
-	return true;
-}
-
-bool Cmd_tcmd2_Execute(COMMAND_ARGS)
-{
-	UInt32	arg;
-
-	_MESSAGE("tcmd2");
-
-	if(ExtractArgs(EXTRACT_ARGS, &arg))
-	{
-		Console_Print("hello args: %d", arg);
-	}
-	else
-	{
-		Console_Print("hello args: failed");
-	}
-
-	*result = 0;
-
-	return true;
-}
-
 class Dumper {
 	UInt32 m_sizeToDump;
 public:
@@ -456,69 +344,6 @@ public:
 		return true;
 	}
 };
-
-bool Cmd_tcmd3_Execute(COMMAND_ARGS)
-{
-	TESForm* pForm = NULL;
-	_MESSAGE("tcmd3");
-
-	if (ExtractArgs(EXTRACT_ARGS, &pForm)) {
-		// we have a pForm
-	} 
-		
-	if (!pForm && thisObj && thisObj->baseForm) {
-		pForm = thisObj->baseForm;
-	}
-
-//	DataHandler* pDH = DataHandler::Get();
-//	int x = 4;
-
-//	GameSettingCollection* pGC = GameSettingCollection::GetSingleton();
-//	IniSettingCollection* pISC = IniSettingCollection::GetIniSettings();
-//	IniSettingCollection* pIPC = IniSettingCollection::GetIniPrefs();
-
-	InterfaceManager* pIM = InterfaceManager::GetSingleton();
-//	DumpClass(pIM);
-
-//	UInt32 formID = 0x105228;
-//	TESForm* pLookedUp = LookupFormByID(formID);
-//	if(pLookedUp) {
-//		UInt32 addr = 0x011B9C2C;
-//		DumpClass((void*)pForm);
-//	}
-
-//	TESObjectWEAP* pWeap = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);
-
-	PlayerCharacter* pPC = PlayerCharacter::GetSingleton();
-	if (pPC) {
-		BaseProcess* pBaseProc = pPC->baseProcess;
-		BaseProcess::AmmoInfo* pAmmoInfo = pBaseProc->GetAmmoInfo();
-		DumpClass(pAmmoInfo);
-		DumpClass(pAmmoInfo->unk00);
-//		ExtraAmmo* pAmmo = GetByTypeCast(pPC->extraDataList, Ammo);
-		int x = 4;
-	}
-
-
-
-//	MagicTarget* pTarget = DYNAMIC_CAST(pPC, PlayerCharacter, MagicTarget);
-//	if(pTarget) {
-//		EffectNode* pEffects = pTarget->GetEffectList();
-//		UInt32 cnt = pEffects->Count();
-//		ActiveEffect* pEffect = pEffects->GetNthItem(1);
-//		UInt32 formID = 0x5C6C1;
-//		TESForm* pForm = LookupFormByID(formID);
-//		EffectSetting* pSetting = DYNAMIC_CAST(pForm, TESForm, EffectSetting);
-//
-//		int c = 0;
-//
-//		//pEffects->Visit(Dumper(32));
-//
-//	}
-
-
-	return true;
-}
 
 #endif
 
@@ -536,9 +361,6 @@ DEFINE_CMD_COND(GetNVSEVersion, returns the installed version of NVSE, 0, NULL);
 DEFINE_CMD_COND(GetNVSERevision, returns the numbered revision of the installed version of NVSE, 0, NULL);
 DEFINE_CMD_COND(GetNVSEBeta, returns the numbered beta of the installed version of NVSE, 0, NULL);
 DEFINE_COMMAND(DumpDocs, , 0, 0, NULL);
-DEFINE_COMMAND(tcmd, test, 0, 0, NULL);
-DEFINE_CMD_ALT(tcmd2, testargcmd ,test, 0, 1, kTestArgCommand_Params);
-DEFINE_CMD_ALT(tcmd3, testdump, dump info, 0, 1, kTestDumpCommand_Params);
 
 #define ADD_CMD(command) Add(&kCommandInfo_ ## command )
 #define ADD_CMD_RET(command, rtnType) Add(&kCommandInfo_ ## command, rtnType )
@@ -551,13 +373,7 @@ void CommandTable::Init(void)
 {
 	static CommandInfo* kCmdInfo_Unused_1;
 #if RUNTIME
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 	kCmdInfo_Unused_1 = (CommandInfo*)0x0118E4F8;
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	kCmdInfo_Unused_1 = (CommandInfo*)0x0118E4F8;
-#else
-#error
-#endif
 #else
 	kCmdInfo_Unused_1 = (CommandInfo*)0x00E9D7A0;
 #endif
@@ -696,17 +512,6 @@ void CommandTable::Dump(void)
 	for(CommandList::iterator iter = m_commands.begin(); iter != m_commands.end(); ++iter)
 	{
 		_DMESSAGE("%08X %04X %s %s", iter->opcode, iter->needsParent, iter->longName, iter->shortName);
-		gLog.Indent();
-
-#if 0
-		for(UInt32 i = 0; i < iter->numParams; i++)
-		{
-			ParamInfo	* param = &iter->params[i];
-			_DMESSAGE("%08X %08X %s", param->typeID, param->isOptional, param->typeStr);
-		}
-#endif
-
-		gLog.Outdent();
 	}
 }
 
@@ -949,12 +754,21 @@ CommandInfo * CommandTable::GetByName(const char * name)
 
 CommandInfo* CommandTable::GetByOpcode(UInt32 opcode)
 {
-	// could do binary search here but padding command has opcode 0
-	for (CommandList::iterator iter = m_commands.begin(); iter != m_commands.end(); ++iter)
-		if (iter->opcode == opcode)
-			return &(*iter);
+	const auto baseOpcode = m_commands.begin()->opcode;
+	const auto arrayIndex = opcode - baseOpcode;
+	if (arrayIndex >= m_commands.size())
+	{
+		return nullptr;
+	}
+	auto* const command = &m_commands[arrayIndex];
+	if (command->opcode != opcode)
+	{
+		//_MESSAGE("ERROR: mismatched command opcodes when executing CommandTable::GetByOpcode (opcode: %X base: %X index: %d index opcode: %X)",
+		//	opcode, baseOpcode, arrayIndex, command->opcode);
+		return nullptr;
+	}
+	return command;
 
-	return NULL;
 }
 
 CommandReturnType CommandTable::GetReturnType(const CommandInfo* cmd)
@@ -1073,6 +887,26 @@ void ImportConsoleCommand(const char * name)
 	}
 }
 
+bool Cmd_tcmd_Execute(COMMAND_ARGS)
+{
+	return true;
+}
+
+bool Cmd_tcmd2_Execute(COMMAND_ARGS)
+{
+	return true;
+}
+
+bool Cmd_tcmd3_Execute(COMMAND_ARGS)
+{
+	return true;
+}
+
+DEFINE_COMMAND(tcmd, test, 0, 0, NULL);
+DEFINE_CMD_ALT(tcmd2, testargcmd ,test, 0, 1, kTestArgCommand_Params);
+DEFINE_CMD_ALT(tcmd3, testdump, dump info, 0, 1, kTestDumpCommand_Params);
+
+
 // internal commands added at the end
 void CommandTable::AddDebugCommands()
 {
@@ -1083,6 +917,7 @@ void CommandTable::AddDebugCommands()
 	ADD_CMD(tcmd);
 	ADD_CMD(tcmd2);
 	ADD_CMD(tcmd3);
+
 	ADD_CMD(DumpDocs);
 }
 
@@ -1298,9 +1133,7 @@ void CommandTable::AddCommandsV1()
 	ADD_CMD(IsFormValid);
 	ADD_CMD(IsReference);
 
-	// beta 4 - compat with 1.1.1.280
-	// oh, sorry, compat with 1.1.1.285
-	// oh, I am bad at reading, compat with 1.2.0.285
+	// beta 4 - compat with 1.2.0.285
 
 	// beta 5
 	ADD_CMD(GetWeaponRequiredStrength);
@@ -1651,7 +1484,7 @@ void CommandTable::AddCommandsV4()
 	ADD_CMD_RET(GetScopeModelPath, kRetnType_String);
 	ADD_CMD(SetScopeModelPath);
 
-	// 4.3 and 4.4 skîpped
+	// 4.3 and 4.4 skï¿½pped
 
 	// 4.5 beta 01 none added
 
@@ -1773,12 +1606,6 @@ void CommandTable::AddCommandsV5()
 	ADD_CMD_RET(GetCurrentQuestObjectiveTeleportLinks, kRetnType_Array);
 	
 	// Port of trig functions from OBSE
-	//ADD_CMD(rSin);
-	//ADD_CMD(rCos);
-	//ADD_CMD(rTan);
-	//ADD_CMD(ASin);
-	//ADD_CMD(ACos);
-	//ADD_CMD(ATan);
 	ADD_CMD(ATan2);
 	ADD_CMD(Sinh);
 	ADD_CMD(Cosh);
@@ -1802,15 +1629,6 @@ void CommandTable::AddCommandsV5()
 	ADD_CMD_RET(GetClass, kRetnType_Form);
 	ADD_CMD_RET(GetNameOfClass, kRetnType_String);
 	ADD_CMD(ShowLevelUpMenu);
-
-	// x.y beta 0x - String needing underlying forms implementation
-	#if 0
-
-	ADD_CMD_RET(GetNthEffectItemScriptName, kRetnType_String);
-	ADD_CMD(SetNthEffectItemScriptNameEX);
-
-	#endif
-
 }
 
 namespace PluginAPI {

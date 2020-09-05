@@ -86,10 +86,6 @@ bool InventoryReference::WriteRefDataToContainer()
 
 	if (m_data.xData) {
 		WriteToExtraDataList(&m_tempRef->extraDataList, m_data.xData);
-
-#if _DEBUG && 0
-		m_data.xData->DebugDump();
-#endif
 	}
 
 	return true;
@@ -186,24 +182,8 @@ bool InventoryReference::MoveToContainer(TESObjectREFR* dest)
 {
 	ExtraContainerChanges* xChanges = ExtraContainerChanges::GetForRef(dest);
 	if (xChanges && Validate() && m_tempRef && m_containerRef) {
-		//if (m_data.xData && m_data.xData->IsWorn()) {
-			QueueAction(new DeferredRemoveAction(m_data, dest));
-			return true;
-		//}
-		//else {
-		//	//if (m_data.entry->extendData->RemoveIf(ExtraDataListInExtendDataListMatcher(m_data.xData))) {
-		//	//	SetRemoved();
-		//	//	ExtraDataList* newDataList = ExtraDataList::Create();
-		//	//	newDataList->Copy(&m_tempRef->extraDataList);
-		//	//	m_data.entry->Remove(m_data.xData, true);
-		//	//	return xChanges->Add(m_tempRef->baseForm, newDataList) ? true : false;
-		//	//}
-		//	SetRemoved();
-		//	ExtraDataList* newDataList = ExtraDataList::Create();
-		//	newDataList->Copy(&m_tempRef->extraDataList);
-		//	m_data.entry->Remove(m_data.xData, false);
-		//	return xChanges->Add(m_tempRef->baseForm, newDataList) ? true : false;
-		//}
+		QueueAction(new DeferredRemoveAction(m_data, dest));
+		return true;
 	}
 	return false;
 }
@@ -273,7 +253,7 @@ bool InventoryReference::DeferredEquipAction::Execute(InventoryReference* iref)
 		else {
 			UInt16 count = 1;
 			if (data.type->typeID == kFormType_Ammo) {
-				// equip a *stack* of arrows
+				// equip a *stack* of ammo
 				count = iref->GetCount();
 			}
 			actor->EquipItem(data.type, count, data.xData ? data.xData : NULL, 1, false);
@@ -308,10 +288,6 @@ void InventoryReference::Data::CreateForUnextendedEntry(ExtraContainerChanges::E
 	while (totalCount > 32767) {
 		xDL = ExtraDataList::Create(ExtraCount::Create(32767));
 		dataOut.push_back(Data(entry->type, entry, xDL));
-		//if (entry->extendData)
-		//	entry->extendData->AddAt(xDL, eListEnd);
-		//else
-		//	entry->extendData = ExtraContainerChangesExtendDataListCreate(xDL);
 		totalCount -= 32767;
 	}
 
@@ -321,9 +297,5 @@ void InventoryReference::Data::CreateForUnextendedEntry(ExtraContainerChanges::E
 		else
 			xDL = NULL;
 		dataOut.push_back(Data(entry->type, entry, xDL));
-		//if (entry->extendData)
-		//	entry->extendData->AddAt(xDL, eListEnd);
-		//else
-		//	entry->extendData = ExtraContainerChangesExtendDataListCreate(xDL);
 	}
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "containers.h"
+#include "ScriptTokenCache.h"
 #include "common/ICriticalSection.h"
 
 class ExpressionEvaluator;
@@ -10,9 +12,10 @@ class LoopManager;
 
 struct ThreadLocalData
 {
-	ExpressionEvaluator		* expressionEvaluator;	// evaluator at top of expression stack
-	UserFunctionManager		* userFunctionManager;	// per-thread singleton
-	LoopManager				* loopManager;			// per-thread singleton
+	ExpressionEvaluator* expressionEvaluator;	// evaluator at top of expression stack
+	UserFunctionManager* userFunctionManager;	// per-thread singleton
+	LoopManager* loopManager;			// per-thread singleton
+	TokenCache tokenCache;
 
 	ThreadLocalData() : expressionEvaluator(NULL), userFunctionManager(NULL), loopManager(NULL) {
 		//
@@ -23,7 +26,7 @@ struct ThreadLocalData
 		ThreadLocalData* data = TryGet();
 		if (!data) {
 			data = new ThreadLocalData();
-			int result = TlsSetValue(s_tlsIndex, data);
+			const auto result = TlsSetValue(s_tlsIndex, data);
 			ASSERT_STR(result, "TlsSetValue() failed in ThreadLocalData::Get()");
 		}
 
@@ -32,7 +35,7 @@ struct ThreadLocalData
 
 	// get for current thread if data exists
 	static ThreadLocalData* TryGet() {
-		return (ThreadLocalData*)TlsGetValue(s_tlsIndex);
+		return static_cast<ThreadLocalData*>(TlsGetValue(s_tlsIndex));
 	}
 
 	static void Init();

@@ -27,68 +27,51 @@ ArrayIterLoop::ArrayIterLoop(const ForEachContext* context, UInt8 modIndex)
 	g_ArrayMap.RemoveReference(&m_iterVar->data, modIndex);
 	g_ArrayMap.AddReference(&m_iterVar->data, context->iteratorID, 0xFF);
 
-	ArrayElement elem;
-	ArrayKey key;
-
-	if (g_ArrayMap.GetFirstElement(m_srcID, &elem, &key))
+	ArrayVar *arr = g_ArrayMap.Get(m_srcID);
+	if (arr)
 	{
-		m_curKey = key;
-		UpdateIterator(&elem);		// initialize iterator to first element in array
+		const ArrayKey *key;
+		ArrayElement *elem;
+		if (arr->GetFirstElement(&elem, &key))
+		{
+			m_curKey = *key;
+			UpdateIterator(elem);		// initialize iterator to first element in array
+		}
 	}
 }
 
 void ArrayIterLoop::UpdateIterator(const ArrayElement* elem)
 {
-	std::string val("value");
-	std::string key("key");
-
-	// iter["value"] = element data
-	switch (elem->DataType())
-	{
-	case kDataType_String:
-		g_ArrayMap.SetElementString(m_iterID, val, elem->m_data.str);
-		break;
-	case kDataType_Numeric:
-		g_ArrayMap.SetElementNumber(m_iterID, val, elem->m_data.num);
-		break;
-	case kDataType_Form:
-		{
-			g_ArrayMap.SetElementFormID(m_iterID, val, elem->m_data.formID);
-			break;
-		}
-	case kDataType_Array:
-		{
-			ArrayID arrID = elem->m_data.num;
-			g_ArrayMap.SetElementArray(m_iterID, val, arrID);
-			break;
-		}
-	default:
-		DEBUG_PRINT("ArrayIterLoop::UpdateIterator(): unknown datatype %d found for element value", elem->DataType());
-	}
+	ArrayVar *arr = g_ArrayMap.Get(m_iterID);
+	if (!arr) return;
 
 	// iter["key"] = element key
-	switch (m_curKey.KeyType())
+	ArrayElement *newElem = arr->Get("key", true);
+	if (newElem)
 	{
-	case kDataType_String:
-		g_ArrayMap.SetElementString(m_iterID, key, m_curKey.Key().str);
-		break;
-	default:
-		g_ArrayMap.SetElementNumber(m_iterID, key, m_curKey.Key().num);
+		if (m_curKey.KeyType() == kDataType_String)
+			newElem->SetString(m_curKey.key.str);
+		else newElem->SetNumber(m_curKey.key.num);
 	}
+	// iter["value"] = element data
+	newElem = arr->Get("value", true);
+	if (newElem) newElem->Set(elem);
 }
 
 bool ArrayIterLoop::Update(COMMAND_ARGS)
 {
-	ArrayElement elem;
-	ArrayKey key;
-
-	if (g_ArrayMap.GetNextElement(m_srcID, &m_curKey, &elem, &key))
+	ArrayVar *arr = g_ArrayMap.Get(m_srcID);
+	if (arr)
 	{
-		m_curKey = key;
-		UpdateIterator(&elem);	
-		return true;
+		ArrayElement *elem;
+		const ArrayKey *key;
+		if (arr->GetNextElement(&m_curKey, &elem, &key))
+		{
+			m_curKey = *key;
+			UpdateIterator(elem);	
+			return true;
+		}
 	}
-
 	return false;
 }
 
@@ -193,7 +176,6 @@ ContainerIterLoop::ContainerIterLoop(const ForEachContext* context)
 					}
 				}
 				else {
-					// wtf??
 					DEBUG_PRINT("Warning: encountered NULL ExtraContainerChanges::Entry::Data pointer in ContainerIterLoop constructor.");
 				}
 			}
@@ -237,24 +219,6 @@ ContainerIterLoop::ContainerIterLoop(const ForEachContext* context)
 bool ContainerIterLoop::UnsetIterator()
 {
 	return m_invRef->WriteRefDataToContainer();
-
-	/*
-	// copy extra data back to container entry
-	ExtraContainerChanges::EntryExtendData* data = m_elements[m_iterIndex].data;
-	if (!data->data && m_tempRef->baseExtraList.m_data) {
-		data->data = ExtraDataList::Create();
-	}
-
-	if (data->data) {
-		data->data->m_data = m_tempRef->baseExtraList.m_data;
-		memcpy(&data->data->m_presenceBitfield, &m_tempRef->baseExtraList.m_presenceBitfield, sizeof(data->data->m_presenceBitfield));
-	}
-
-	m_tempRef->baseExtraList.m_data = NULL;
-	memset(&m_tempRef->baseExtraList.m_presenceBitfield, 0, 0xC);
-
-	return true;
-	*/
 }
 
 bool ContainerIterLoop::SetIterator()
@@ -368,7 +332,22 @@ bool WhileLoop::Update(COMMAND_ARGS)
 	*opcodeOffsetPtr = originalOffset;
 
 	if (bResult && eval.Arg(0))
-			bResult = eval.Arg(0)->GetBool();
+	{
+		bResult = eval.Arg(0)->GetBool();
+	}
 
 	return bResult;
+}
+
+
+static SmallObjectsAllocator::Allocator<WhileLoop, 8> g_whileLoopAllocator;
+
+void* WhileLoop::operator new(size_t size)
+{
+	return g_whileLoopAllocator.Allocate();
+}
+
+void WhileLoop::operator delete(void* p)
+{
+	g_whileLoopAllocator.Free(p);
 }

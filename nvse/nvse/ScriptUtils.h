@@ -1,4 +1,6 @@
 #pragma once
+#include "containers.h"
+#include "ThreadLocal.h"
 
 /*
 	Expressions are evaluated according to a set of rules stored in lookup tables. Each type of operand can 
@@ -8,6 +10,12 @@
 	they are defined until the first one matching the operands is encountered. At run-time this means the routines
 	which perform the operations can know that the operands are of the expected type.
 */
+
+#if RUNTIME
+
+extern UInt32 g_scriptEventListsDestroyed;
+
+#endif
 
 struct Operator;
 struct ScriptEventList;
@@ -25,6 +33,7 @@ class FunctionCaller;
 #endif
 
 extern ErrOutput g_ErrOut;
+
 
 // these are used in ParamInfo to specify expected Token_Type of args to commands taking NVSE expressions as args
 enum {
@@ -75,6 +84,7 @@ public:
 
 class ExpressionEvaluator
 {
+	friend ScriptToken;
 	enum { kMaxArgs = NVSE_EXPR_MAX_ARGS };
 
 	enum {
@@ -96,12 +106,14 @@ class ExpressionEvaluator
 	CommandReturnType	m_expectedReturnType;
 	UInt16				m_baseOffset;
 	ExpressionEvaluator	* m_parent;
+	ThreadLocalData&	localData;
+	TokenCache&			tokenCache;
 
-	UInt8*			&Data()	{ return m_data;	}
 	CommandReturnType GetExpectedReturnType() { CommandReturnType type = m_expectedReturnType; m_expectedReturnType = kRetnType_Default; return type; }
+	bool ParseBytecode(CachedTokens& cachedTokens);
 
 	void PushOnStack();
-	void PopFromStack();
+	void PopFromStack() const;
 public:
 	static bool	Active();
 
@@ -127,9 +139,17 @@ public:
 	// extract formatted string args compiled with compiler override
 	bool ExtractFormatStringArgs(va_list varArgs, UInt32 fmtStringPos, char* fmtStringOut, UInt32 maxParams);
 
+	ScriptToken* ExecuteCommandToken(ScriptToken const* token);
 	ScriptToken*	Evaluate();			// evaluates a single argument/token
 
-	ScriptToken*	Arg(UInt32 idx) { return idx < kMaxArgs ? m_args[idx] : NULL; }
+	ScriptToken*	Arg(UInt32 idx)
+	{
+		if (idx >= m_numArgsExtracted)
+		{
+			return nullptr;
+		}
+		return m_args[idx];
+	}
 	UInt8			NumArgs() { return m_numArgsExtracted; }
 	void			SetParams(ParamInfo* newParams)	{	m_params = newParams;	}
 	void			ExpectReturnType(CommandReturnType type) { m_expectedReturnType = type; }
@@ -139,14 +159,18 @@ public:
 	TESObjectREFR*	ThisObj() { return m_thisObj; }
 	TESObjectREFR*	ContainingObj() { return m_containingObj; }
 
+	UInt8*&		Data() { return m_data; }
 	UInt8		ReadByte();
 	UInt16		Read16();
 	double		ReadFloat();
-	std::string	ReadString();
+	std::string	ReadString(UInt32& incrData);
 	SInt8		ReadSignedByte();
 	SInt16		ReadSigned16();
 	UInt32		Read32();
 	SInt32		ReadSigned32();
+
+	UInt8* GetCommandOpcodePosition() const;
+	CommandInfo* GetCommand() const;
 };
 
 bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem, ExpressionEvaluator* context);

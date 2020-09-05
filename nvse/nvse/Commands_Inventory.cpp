@@ -2067,7 +2067,7 @@ bool Cmd_GetAmmoCasing_Execute(COMMAND_ARGS)
 	}
 
 	TESAmmo* pAmmo = DYNAMIC_CAST(form, TESForm, TESAmmo);
-	if (pAmmo) {
+	if (pAmmo && pAmmo->casing) {
 		*refResult = pAmmo->casing->refID;
 	}
 	return true;
@@ -2471,7 +2471,7 @@ bool SetTokenValueOrRef(TESObjectREFR * thisObj, TESForm* pItem, float value = 1
 				currRank = 0;
 			pForm = SetFirstItemWithHealthAndOwnershipByRefID(thisObj, refID, 1, value, ref, currRank);
 			thisObj->MarkAsModified(TESObjectREFR::kChanged_Inventory);	// Makes the change permanent
-			if (IsConsoleMode()) {
+			if (IsConsoleMode() && ref != nullptr) {
 				if (pForm->GetFullName())
 					Console_Print("SetTokenValueOrRef: >> %f [%x] (%s)", value, ref->refID, pForm->GetFullName()->name);
 				else

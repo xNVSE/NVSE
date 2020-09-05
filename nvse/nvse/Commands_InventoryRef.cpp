@@ -300,11 +300,12 @@ bool Cmd_GetInvRefsForItem_Execute(COMMAND_ARGS)
 {
 	// returns an array of inventory references for the specified base object in the calling object's inventory
 	TESForm* item = NULL;
-	ArrayID arrID = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arrID;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
 
-	if (thisObj && ExtractArgs(EXTRACT_ARGS, &item) && item) {
-		double arrIndex = 0.0;
+	if (thisObj && ExtractArgs(EXTRACT_ARGS, &item) && item)
+	{
+		double arrIndex = 0;
 
 		// get count for base container
 		TESContainer* cont = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESContainer);
@@ -335,8 +336,8 @@ bool Cmd_GetInvRefsForItem_Execute(COMMAND_ARGS)
 							//}
 							InventoryReference::Data dataIR(item, entry, xData);
 							InventoryReference* iref = InventoryReference::Create(thisObj, dataIR, false);
-							g_ArrayMap.SetElementFormID(arrID, arrIndex, iref->GetRef()->refID);
-							arrIndex += 1.0;
+							arr->SetElementFormID(arrIndex, iref->GetRef()->refID);
+							arrIndex += 1;
 							baseCount -= GetCountForExtraDataList(xData);
 						}
 					}
@@ -365,8 +366,8 @@ bool Cmd_GetInvRefsForItem_Execute(COMMAND_ARGS)
 				InventoryReference::Data::CreateForUnextendedEntry(entry, baseCount, refData);
 				for (std::vector<InventoryReference::Data>::iterator iter = refData.begin(); iter != refData.end(); ++iter) {
 					InventoryReference* iref = InventoryReference::Create(thisObj, *iter, false);
-					g_ArrayMap.SetElementFormID(arrID, arrIndex, iref->GetRef()->refID);
-					arrIndex += 1.0;
+					arr->SetElementFormID(arrIndex, iref->GetRef()->refID);
+					arrIndex += 1;
 				}
 			}
 		}

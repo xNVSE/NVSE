@@ -16,6 +16,12 @@
     <Filter Include="hooks">
       <UniqueIdentifier>{350cc942-8e78-41aa-9d79-8384e271f9b9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="lib">
+      <UniqueIdentifier>{ef94c411-7c4e-4721-bb88-b1b6ec558640}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="lib\jip">
+      <UniqueIdentifier>{93d93604-5010-4ad9-9342-49286858e435}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Algohol\algMath.cpp">
@@ -204,6 +210,27 @@
     </ClCompile>
     <ClCompile Include="Hooks_Other.cpp">
       <Filter>hooks</Filter>
+    </ClCompile>
+    <ClCompile Include="OverloadsGlobal.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="ArrayVarElementContainer.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="MemoryPool.cpp">
+      <Filter>lib</Filter>
+    </ClCompile>
+    <ClCompile Include="printf.cpp">
+      <Filter>lib</Filter>
+    </ClCompile>
+    <ClCompile Include="containers.cpp">
+      <Filter>lib\jip</Filter>
+    </ClCompile>
+    <ClCompile Include="utility.cpp">
+      <Filter>lib\jip</Filter>
+    </ClCompile>
+    <ClCompile Include="ScriptTokenCache.cpp">
+      <Filter>internals</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -412,6 +439,27 @@
     <ClInclude Include="prefix.h" />
     <ClInclude Include="Hooks_Other.h">
       <Filter>hooks</Filter>
+    </ClInclude>
+    <ClInclude Include="SmallObjectsAllocator.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="FastStack.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="MemoryPool.h">
+      <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="printf.h">
+      <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="containers.h">
+      <Filter>lib\jip</Filter>
+    </ClInclude>
+    <ClInclude Include="utility.h">
+      <Filter>lib\jip</Filter>
+    </ClInclude>
+    <ClInclude Include="ScriptTokenCache.h">
+      <Filter>internals</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

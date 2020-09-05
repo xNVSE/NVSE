@@ -67,6 +67,12 @@ UInt32 Script::GetVariableType(VariableInfo* varInfo)
 	}
 }
 
+bool Script::IsUserDefinedFunction() const
+{
+	auto* scriptData = static_cast<UInt8*>(data);
+	return *(scriptData + 8) == 0x0D;
+}
+
 #if RUNTIME
 
 void Script::RefVariable::Resolve(ScriptEventList * eventList)

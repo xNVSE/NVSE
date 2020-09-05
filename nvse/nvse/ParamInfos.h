@@ -46,21 +46,6 @@ static ParamInfo kParams_TwoFloats[2] =
 	{	"float",	kParamType_Float,	0 },
 };
 
-// static ParamInfo kParams_OneSpellItem[1] =
-// {
-// 	{	"spell", kParamType_SpellItem, 0 }, 
-// };
-// 
-// static ParamInfo kParams_OneMagicItem[1] =
-// {
-// 	{	"spell", kParamType_MagicItem, 0 }, 
-// };
-// 
-// static ParamInfo kParams_OneMagicEffect[1] =
-// {
-// 	{	"magic effect", kParamType_MagicEffect, 0 }, 
-// };
-
 static ParamInfo kParams_OneObjectID[1] =
 {
 	{	"item", kParamType_ObjectID, 0},
@@ -294,6 +279,11 @@ static ParamInfo kParams_EquipItem[3] =
 static ParamInfo kParams_OneFaction[1] =
 {
 	{	"faction",	kParamType_Faction,	0	},
+};
+
+static ParamInfo kParams_OneActorBase[1] =
+{
+	{	"base actor",	kParamType_ActorBase,	0	},
 };
 
 static ParamInfo kParams_OneOptionalActorBase[1] =

@@ -4,6 +4,8 @@
 #include <sstream>
 #include <utility>
 
+
+#include "containers.h"
 #include "GameUI.h"
 #include "GameAPI.h"
 
@@ -26,18 +28,40 @@
 
 static const float fErrorReturnValue = -999;
 
-static enum eUICmdAction {
+bool g_tilesDestroyed = false;
+
+
+enum eUICmdAction {
 	kGetFloat,
 	kSetFloat,
 	kSetString,
 	kSetFormattedString,
 };
 
+Tile::Value* GetCachedComponentValue(const char* component)
+{
+	static UnorderedMap<const char*, Tile::Value*> map;
+
+	if (g_tilesDestroyed)
+	{
+		g_tilesDestroyed = false;
+		map.Clear();
+	}
+
+	Tile::Value** valPtr;
+	if (map.Insert(component, &valPtr))
+	{
+		*valPtr = InterfaceManager::GetMenuComponentValue(component);
+	}
+
+	return *valPtr;
+}
+
 bool GetSetUIValue_Execute(COMMAND_ARGS, eUICmdAction action)
 {
-	char component[kMaxMessageLength] = { 0 };
+	char component[kMaxMessageLength];
 	float newFloat;
-	char newStr[kMaxMessageLength] = { 0 };
+	char newStr[kMaxMessageLength];
 	*result = 0;
 
 	bool bExtracted = false;
@@ -62,7 +86,7 @@ bool GetSetUIValue_Execute(COMMAND_ARGS, eUICmdAction action)
 
 	if (bExtracted)
 	{
-		Tile::Value* val = InterfaceManager::GetMenuComponentValue(component);
+		Tile::Value* val = GetCachedComponentValue(component);
 		if (val)
 		{
 			switch (action)
@@ -114,7 +138,7 @@ bool Cmd_SetUIStringEx_Execute(COMMAND_ARGS)
 	return GetSetUIValue_Execute(PASS_COMMAND_ARGS, kSetFormattedString);
 }
 
-static enum {
+enum {
 	kReverseSort = 1,
 	kNormalizeItemNames = 2,
 	kAsFloat = 4,
@@ -279,8 +303,8 @@ static void NormalizeItemName(std::string & str)
 
 bool Cmd_SortUIListBox_Execute(COMMAND_ARGS)
 {
-	char tilePath[kMaxMessageLength] = { 0 };
-	char sortSpecStr[kMaxMessageLength] = { 0 };
+	char tilePath[kMaxMessageLength];
+	char sortSpecStr[kMaxMessageLength];
 	*result = 0;
 
 	if (!ExtractArgs(EXTRACT_ARGS, &tilePath, &sortSpecStr))

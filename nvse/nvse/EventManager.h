@@ -50,42 +50,6 @@ namespace EventManager
 		kEventID_OnActivate = kEventID_ScriptEventListMAX,
 		kEventID_OnDropItem,
 
-		//kEventID_OnVampireFeed,		// player feeds as a vampire
-		//kEventID_OnSkillUp,			// natural skill increase through use
-		//kEventID_OnScriptedSkillUp,	// from ModPCSkill/AdvanceSkill cmd
-		//kEventID_OnMapMarkerAdd,	// map marker becomes visible
-		//kEventID_OnSpellCast,		// actor casts spell
-		//kEventID_OnScrollCast,		// actor casts using scroll (same hook as OnSpellCast)
-		//kEventID_OnFallImpact,		// actor lands from a fall. Does not check fall duration/damage/if creature can fly
-		//kEventID_OnActorDrop,		// actor drops item from inventory into the game world.
-		//kEventID_OnDrinkPotion,		// actor drinks a potion, including via EquipItem command
-		//kEventID_OnEatIngredient,	// actor eats an ingredient
-		//kEventID_OnNewGame,			// player starts a new game
-		//kEventID_OnHealthDamage,	// actor takes health damage
-		//kEventID_OnSoulTrap,		// player successfully traps a soul
-		//kEventID_OnRaceSelectionComplete,	// player exits RaceSexMenu
-
-		//// events related to changes in HighProcess::currentAction
-		//// these are slightly misnamed
-		//kEventID_OnMeleeAttack,			// beginning of anim for melee/staff attack, spell cast
-		//kEventID_OnMeleeRelease,		// release of bow/melee/staff attack, spell cast
-		//kEventID_OnBowAttack,			// beginning of bow attack anim
-		//kEventID_OnBowRelease,			// on arrow attach, undocumented (not hugely useful)
-		//kEventID_OnBlock,
-		//kEventID_OnRecoil,
-		//kEventID_OnStagger,
-		//kEventID_OnDodge,
-
-		//kEventID_OnEnchant,
-		//kEventID_OnCreateSpell,
-		//kEventID_OnCreatePotion,
-
-		//kEventID_OnQuestComplete,
-		//kEventID_OnMagicCast,			// MagicCaster successfully casts a magic item
-		//kEventID_OnMagicApply,			// MagicTarget successfully applies a magic item
-		//kEventID_OnWaterSurface,
-		//kEventID_OnWaterDive,
-
 		kEventID_GameEventMAX,
 
 		// NVSE internal events, correspond to NVSEMessagingInterface messages
@@ -155,9 +119,6 @@ namespace EventManager
 	// removes handler only if all filters match
 	bool RemoveHandler(const char* id, EventCallback& handler);
 
-	// removes all instances of handler regardless of filters
-	bool RemoveHandler(const char* id, Script* fnScript);
-
 	// handle an NVSEMessagingInterface message
 	void HandleNVSEMessage(UInt32 msgID, void* data);
 
@@ -174,10 +135,4 @@ namespace EventManager
 
 	// dispatch a user-defined event from a script
 	bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 argsArrayId, const char* senderName);
-
-	// OnWaterDive/Surface stuff
-	// ###TODO: move this elsewhere
-	void SetActorMaxSwimBreath(Actor* actor, float nuMax);
-	float __stdcall GetActorMaxSwimBreath(Actor* actor);
-	bool SetActorSwimBreathOverride(Actor* actor, UInt32 state);
 };

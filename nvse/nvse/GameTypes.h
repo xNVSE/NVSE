@@ -326,6 +326,52 @@ public:
 };
 STATIC_ASSERT(sizeof(tList<void *>) == 0x8);
 
+template <typename T_Data> struct DListNode
+{
+	DListNode	*next;
+	DListNode	*prev;
+	T_Data		*data;
+
+	DListNode *Advance(UInt32 times)
+	{
+		DListNode *result = this;
+		while (result && times)
+		{
+			times--;
+			result = result->next;
+		}
+		return result;
+	}
+
+	DListNode *Regress(UInt32 times)
+	{
+		DListNode *result = this;
+		while (result && times)
+		{
+			times--;
+			result = result->prev;
+		}
+		return result;
+	}
+};
+
+template <class Item> class DList
+{
+public:
+	typedef DListNode<Item> Node;
+
+private:
+	Node		*first;
+	Node		*last;
+	UInt32		count;
+
+public:
+	bool Empty() const {return !first;}
+	Node *Head() {return first;}
+	Node *Tail() {return last;}
+	UInt32 Size() const {return count;}
+};
+
 // 010
 template <class T>
 class BSSimpleList

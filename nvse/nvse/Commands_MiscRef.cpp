@@ -671,13 +671,13 @@ bool Cmd_GetNumRefsInCell_Execute(COMMAND_ARGS)
 bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 {
 	// returns an array of references formID in the specified cell(s)
-	ArrayID arrID = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = arrID;
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
 	UInt32 formType = 0;
 	SInt32 cellDepth = -127;
 	UInt32 includeTakenRefs = 0;
 	double uGrid = 0;
-	double arrIndex = 0.0;
+	double arrIndex = 0;
 
 	PlayerCharacter* pc = PlayerCharacter::GetSingleton();
 	if (!pc || !(pc->parentCell))
@@ -720,29 +720,29 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 				case 0:
 					if (RefMatcherAnyForm(bIncludeTakenRefs).Accept(pRefr))
 					{
-						g_ArrayMap.SetElementFormID(arrID, arrIndex, pRefr->refID);
-						arrIndex += 1.0;
+						arr->SetElementFormID(arrIndex, pRefr->refID);
+						arrIndex += 1;
 					}
 					break;
 				case 200:
 					if (RefMatcherActor().Accept(pRefr))
 					{
-						g_ArrayMap.SetElementFormID(arrID, arrIndex, pRefr->refID);
-						arrIndex += 1.0;
+						arr->SetElementFormID(arrIndex, pRefr->refID);
+						arrIndex += 1;
 					}
 					break;
 				case 201:
 					if (RefMatcherItem(bIncludeTakenRefs).Accept(pRefr))
 					{
-						g_ArrayMap.SetElementFormID(arrID, arrIndex, pRefr->refID);
-						arrIndex += 1.0;
+						arr->SetElementFormID(arrIndex, pRefr->refID);
+						arrIndex += 1;
 					}
 					break;
 				default:
 					if (RefMatcherFormType(formType, bIncludeTakenRefs).Accept(pRefr))
 					{
-						g_ArrayMap.SetElementFormID(arrID, arrIndex, pRefr->refID);
-						arrIndex += 1.0;
+						arr->SetElementFormID(arrIndex, pRefr->refID);
+						arrIndex += 1;
 					}
 				}
 		}

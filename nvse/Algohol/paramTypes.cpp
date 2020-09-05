@@ -7,16 +7,6 @@ ParamInfo kParams_Vector3Floats[3] =
 	{"vector_z", kParamType_Float, 0}
 };
 
-/*ParamInfo kParams_Vector6Floats[6] =
-{
-	{"vectorA_x", kParamType_Float, 0},
-	{"vectorA_y", kParamType_Float, 0},
-	{"vectorA_z", kParamType_Float, 0},
-	{"vectorB_x", kParamType_Float, 0},
-	{"vectorB_y", kParamType_Float, 0},
-	{"vectorB_z", kParamType_Float, 0}
-};*/
-
 ParamInfo kParams_Vector3Strings3Floats[6] =
 {
 	{"vector_x_name", kParamType_String, 0},

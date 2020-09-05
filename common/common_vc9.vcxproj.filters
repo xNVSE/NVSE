@@ -2,28 +2,28 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="streams">
-      <UniqueIdentifier>{2e39cf1e-e327-42f7-b617-6338057e0711}</UniqueIdentifier>
+      <UniqueIdentifier>{d5441df5-4dd6-47b9-9354-92c957d34ad0}</UniqueIdentifier>
     </Filter>
     <Filter Include="debug">
-      <UniqueIdentifier>{96eed612-2d80-46e8-8814-1b641d747b5e}</UniqueIdentifier>
+      <UniqueIdentifier>{ce6a1e8c-50a6-4722-bce7-6b17a4af542e}</UniqueIdentifier>
     </Filter>
     <Filter Include="threads">
-      <UniqueIdentifier>{8f1a9870-c68a-48cf-b078-0b8f3a080bb4}</UniqueIdentifier>
+      <UniqueIdentifier>{c8a4c03f-54f2-4946-9315-332a9e803295}</UniqueIdentifier>
     </Filter>
     <Filter Include="datatypes">
-      <UniqueIdentifier>{4b926ea4-53ec-440a-8976-8d50a40e0d80}</UniqueIdentifier>
+      <UniqueIdentifier>{f5f79544-dcf5-4caa-87bd-95b27c2a3b67}</UniqueIdentifier>
     </Filter>
     <Filter Include="utilities">
-      <UniqueIdentifier>{9919b7aa-7e2c-4784-8eae-3abf63dd0732}</UniqueIdentifier>
+      <UniqueIdentifier>{1aca6980-35ec-4606-b204-1e1caf44f3ee}</UniqueIdentifier>
     </Filter>
     <Filter Include="memory">
-      <UniqueIdentifier>{f318a913-e7a7-410f-a8f2-df3d80552429}</UniqueIdentifier>
+      <UniqueIdentifier>{4be8a678-f69d-43e9-ab74-51144e5e5e81}</UniqueIdentifier>
     </Filter>
     <Filter Include="pipe">
-      <UniqueIdentifier>{d1f2e39c-3e90-42ac-965e-7188ecbe2d77}</UniqueIdentifier>
+      <UniqueIdentifier>{b1db4bbb-3699-4557-af03-c2ca41a7c049}</UniqueIdentifier>
     </Filter>
     <Filter Include="files">
-      <UniqueIdentifier>{8095e581-12e7-4e91-92b2-b6b7cbe56aba}</UniqueIdentifier>
+      <UniqueIdentifier>{fdcf7ab0-6b31-4e21-9ae5-ab65c0af18da}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -105,7 +105,6 @@
     <ClCompile Include="IDirectoryIterator.cpp">
       <Filter>files</Filter>
     </ClCompile>
-    <ClCompile Include="IPrefix.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="IBufferStream.h">
