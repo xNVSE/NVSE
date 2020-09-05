@@ -1159,6 +1159,47 @@ public:
 		}
 	}
 
+	T_Data *Insert(UInt32 index)
+	{
+		if (index > numItems)
+			return NULL;
+		UInt32 size = numItems - index;
+		T_Data *pData = AllocateData();
+		if (size)
+		{
+			pData = data + index;
+			MemCopy(pData + 1, pData, sizeof(T_Data) * size);
+		}
+		new (pData) T_Data();
+		return pData;
+	}
+
+	void InsertSize(UInt32 index, UInt32 count)
+	{
+		if ((index > numItems) || !count) return;
+		UInt32 newSize = numItems + count;
+		if (!data)
+		{
+			numAlloc = newSize;
+			data = (T_Data*)malloc(sizeof(T_Data) * numAlloc);
+		}
+		else if (numAlloc < newSize)
+		{
+			numAlloc = newSize;
+			data = (T_Data*)realloc(data, sizeof(T_Data) * numAlloc);
+		}
+		T_Data *pData = data + index;
+		if (index < numItems)
+			MemCopy(pData + count, pData, sizeof(T_Data) * (numItems - index));
+		numItems = newSize;
+		do
+		{
+			new (pData) T_Data();
+			pData++;
+		}
+		while (--count);
+	}
+
 	UInt32 InsertSorted(const T_Data &item)
 	{
 		UInt32 lBound = 0, uBound = numItems, index;

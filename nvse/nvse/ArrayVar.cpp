@@ -378,20 +378,16 @@ ArrayElement* ArrayVar::Get(const ArrayKey* key, bool bCanCreateNew)
 		case kContainer_Array:
 		{
 			auto *pArray = m_elements.getArrayPtr();
-			UInt32 size = pArray->Size();
 			int idx = key->key.num;
 			if (idx < 0)
-				idx += size;
-			UInt32 intIdx = idx;
-			if (intIdx < size)
-				return &(*pArray)[intIdx];
-			if (bCanCreateNew)
+				idx += pArray->Size();
+			ArrayElement *outElem = pArray->GetPtr((UInt32)idx);
+			if (!outElem && bCanCreateNew)
 			{
-				ArrayElement *newElem = pArray->Emplace();
-				newElem->m_data.owningArray = m_ID;
-				return newElem;
+				outElem = pArray->Emplace();
+				outElem->m_data.owningArray = m_ID;
 			}
-			return NULL;
+			return outElem;
 		}
 		case kContainer_NumericMap:
 		{
@@ -429,20 +425,16 @@ ArrayElement* ArrayVar::Get(double key, bool bCanCreateNew)
 		case kContainer_Array:
 		{
 			auto *pArray = m_elements.getArrayPtr();
-			UInt32 size = pArray->Size();
 			int idx = key;
 			if (idx < 0)
-				idx += size;
-			UInt32 intIdx = idx;
-			if (intIdx < size)
-				return &(*pArray)[intIdx];
-			if (bCanCreateNew)
+				idx += pArray->Size();
+			ArrayElement *outElem = pArray->GetPtr((UInt32)idx);
+			if (!outElem && bCanCreateNew)
 			{
-				ArrayElement *newElem = pArray->Emplace();
-				newElem->m_data.owningArray = m_ID;
-				return newElem;
+				outElem = pArray->Emplace();
+				outElem->m_data.owningArray = m_ID;
 			}
-			return NULL;
+			return outElem;
 		}
 		case kContainer_NumericMap:
 		{
@@ -859,7 +851,7 @@ bool ArrayVar::SetSize(UInt32 newSize, const ArrayElement* padWith)
 {
 	if (!m_bPacked) return false;
 
-	UInt32 varSize = m_elements.getArrayPtr()->Size();
+	UInt32 varSize = m_elements.size();
 	if (varSize < newSize)
 	{
 		double elemIdx = (int)varSize;
@@ -881,8 +873,7 @@ bool ArrayVar::Insert(UInt32 atIndex, const ArrayElement* toInsert)
 	auto *pVec = m_elements.getArrayPtr();
 	UInt32 varSize = pVec->Size();
 	if (atIndex > varSize) return false;
-	pVec->Insert(ArrayElement(), atIndex);
-	(*pVec)[atIndex].Set(toInsert);
+	pVec->Insert(atIndex)->Set(toInsert);
 	return true;
 }
 
@@ -900,12 +891,9 @@ bool ArrayVar::Insert(UInt32 atIndex, ArrayID rangeID)
 	UInt32 srcSize = pSrc->Size();
 	if (!srcSize) return true;
 
-	for (UInt32 idx = 0; idx < srcSize; idx++)
-		pDest->Insert(ArrayElement(), atIndex + idx);
-
+	pDest->InsertSize(atIndex, srcSize);
 	ArrayElement *pDestData = pDest->Data() + atIndex, *pSrcData = pSrc->Data();
-
-	for (size_t idx = 0; idx < srcSize; idx++)
+	for (UInt32 idx = 0; idx < srcSize; idx++)
 		pDestData[idx].Set(&pSrcData[idx]);
 
 	return true;
