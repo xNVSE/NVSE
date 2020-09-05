@@ -1,5 +1,7 @@
 #include "ArrayVar.h"
 
+#if RUNTIME
+
 ArrayVarElementContainer::~ArrayVarElementContainer()
 {
 	clear();
@@ -222,3 +224,5 @@ ArrayElement* ArrayVarElementContainer::iterator::second()
 			return &AsStrMap().Get();
 	}
 }
+
+#endif

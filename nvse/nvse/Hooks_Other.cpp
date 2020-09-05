@@ -5,8 +5,10 @@
 #include "SafeWrite.h"
 #include "Commands_UI.h"
 
+#if RUNTIME
 namespace OtherHooks
 {
+	
 	void __stdcall PrintCurrentThreadID()
 	{
 		_MESSAGE("Thread ID: %X", GetCurrentThreadId());
@@ -57,3 +59,4 @@ namespace OtherHooks
 		WriteRelJump(0x5AA0A4, UInt32(ScriptEventListsDestroyedHook));
 	}
 }
+#endif

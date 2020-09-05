@@ -197,9 +197,9 @@ protected:
 
 public:
 	ScriptToken();
+#if RUNTIME
 	ScriptToken(ExpressionEvaluator& evaluator);
-
-	Token_Type	ReadFrom(ExpressionEvaluator* context);	// reconstitute param from compiled data, return the type
+#endif
 
 	virtual	~ScriptToken();
 
@@ -212,9 +212,11 @@ public:
 	virtual const Slice *			GetSlice() const { return NULL; }
 	virtual bool					GetBool();
 #if RUNTIME
+	Token_Type	ReadFrom(ExpressionEvaluator* context);	// reconstitute param from compiled data, return the type
 	virtual ArrayID					GetArray();
 	ScriptEventList::Var *			GetVar();
 	void							ResolveVariable();
+	void							Delete() const;
 #endif
 	virtual bool			CanConvertTo(Token_Type to) const;	// behavior varies b/w compile/run-time for ambiguous types
 	virtual ArrayID			GetOwningArrayID() const { return 0; }
@@ -242,7 +244,6 @@ public:
 	bool					IsVariable() const	{ return type >= kTokenType_NumericVar && type <= kTokenType_ArrayVar; }
 
 	double					GetNumericRepresentation(bool bFromHex);	// attempts to convert string to number
-	void					Delete() const;
 	bool					IsInvalid() const;
 	bool					IsOperator() const;
 	bool					IsLogicalOperator() const;
@@ -269,21 +270,23 @@ public:
 	static ScriptToken* Create(ArrayElementToken* elem, UInt32 lbound, UInt32 ubound);
 	static ScriptToken* Create(UInt32 bogus);	// unimplemented, to block implicit conversion to double
 
+	UInt16		refIdx;
+	CommandReturnType returnType;
+#if RUNTIME
 	void* operator new(size_t size);
-
 	void operator delete(void* p);
-
+	
 	bool cached = false;
 	UInt32 opcodeOffset;
-	CommandReturnType returnType;
 	ExpressionEvaluator* context;
 	ScriptEventList* scriptEventList;
-	UInt16		refIdx;
 	UInt16		varIdx;
 	UInt32 eventListsDestroyedCount = 0;
 	OperatorType shortCircuitParentType;
 	UInt8 shortCircuitDistance;
 	UInt8 shortCircuitStackOffset;
+#endif
+
 };
 
 struct SliceToken : ScriptToken

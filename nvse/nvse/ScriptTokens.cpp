@@ -99,10 +99,12 @@ ScriptToken::ScriptToken(Operator* op) : type(kTokenType_Operator), refIdx(0), v
 	value.op = op;
 }
 
+#if RUNTIME
 ScriptToken::ScriptToken(ExpressionEvaluator& evaluator)
 {
 	ReadFrom(&evaluator);
 }
+#endif
 
 ScriptToken::ScriptToken(VariableInfo* varInfo, UInt16 refIdx, UInt32 varType) : refIdx(refIdx), variableType(varType)
 {
@@ -134,6 +136,7 @@ ScriptToken::ScriptToken(CommandInfo* cmdInfo, UInt16 refIdx) : type(kTokenType_
 	value.cmd = cmdInfo;
 }
 
+#if RUNTIME
 void ScriptToken::Delete() const
 {
 	if (this && !cached)
@@ -141,6 +144,7 @@ void ScriptToken::Delete() const
 		delete this;
 	}
 }
+#endif
 
 bool ScriptToken::IsInvalid() const
 {

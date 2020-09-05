@@ -68,11 +68,13 @@ static bool ShowWarning(const char* msg)
 
 ErrOutput g_ErrOut(ShowError, ShowWarning);
 
+#if RUNTIME
 inline UInt32 AddStringVar(const char* data, ScriptToken& lh)
 {
 	const auto makeTemporary = lh.GetOwningScript()->IsUserDefinedFunction() && lh.refIdx == 0;
 	return g_StringMap.Add(lh.GetOwningScript()->GetModIndex(), data, makeTemporary);
 }
+#endif
 
 #if RUNTIME
 
