@@ -244,6 +244,17 @@ public:
 			index = 0;
 		}
 
+		void Last(Map &source)
+		{
+			table = &source;
+			index = table->numEntries;
+			if (index)
+			{
+				index--;
+				pEntry = table->entries + index;
+			}
+		}
+
 		void operator++()
 		{
 			pEntry++;
@@ -255,8 +266,9 @@ public:
 			index--;
 		}
 
-		void Find(T_Key key)
+		void Find(Map &source, T_Key key)
 		{
+			table = &source;
 			pEntry = table->entries;
 			if (table->GetIndex(key, &index))
 				pEntry += index;
@@ -278,10 +290,11 @@ public:
 
 		Iterator() {}
 		Iterator(Map &source) : table(&source), pEntry(source.entries), index(0) {}
-		Iterator(Map &source, T_Key key) : table(&source) {Find(key);}
+		Iterator(Map &source, T_Key key) {Find(source, key);}
 	};
 
 	Iterator Begin() {return Iterator(*this);}
+
 	Iterator Find(T_Key key) {return Iterator(*this, key);}
 };
 
@@ -1107,7 +1120,7 @@ public:
 
 	T_Data Top() const {return numItems ? data[numItems - 1] : NULL;}
 
-	void Append(const T_Data item)
+	void Append(const T_Data &item)
 	{
 		T_Data *pData = AllocateData();
 		*pData = item;
@@ -1379,7 +1392,8 @@ public:
 		numItems = 0;
 	}
 
-	void QuickSort(UInt32 p, UInt32 q)
+private:
+	void QuickSortAscending(UInt32 p, UInt32 q)
 	{
 		if (p >= q) return;
 		UInt32 i = p;
@@ -1397,8 +1411,66 @@ public:
 		*temp = data[i];
 		data[i] = data[p];
 		data[p] = *temp;
-		QuickSort(p, i);
-		QuickSort(i + 1, q);
+		QuickSortAscending(p, i);
+		QuickSortAscending(i + 1, q);
+	}
+
+	void QuickSortDescending(UInt32 p, UInt32 q)
+	{
+		if (p >= q) return;
+		UInt32 i = p;
+		UInt8 buffer[sizeof(T_Data)];
+		T_Data *temp = (T_Data*)&buffer;
+		for (UInt32 j = p + 1; j < q; j++)
+		{
+			if (!(data[p] < data[j]))
+				continue;
+			i++;
+			*temp = data[i];
+			data[i] = data[j];
+			data[j] = *temp;
+		}
+		*temp = data[i];
+		data[i] = data[p];
+		data[p] = *temp;
+		QuickSortDescending(p, i);
+		QuickSortDescending(i + 1, q);
+	}
+
+	typedef bool (*SortComperator)(const T_Data &lhs, const T_Data &rhs);
+	void QuickSortCustom(UInt32 p, UInt32 q, SortComperator comperator)
+	{
+		if (p >= q) return;
+		UInt32 i = p;
+		UInt8 buffer[sizeof(T_Data)];
+		T_Data *temp = (T_Data*)&buffer;
+		for (UInt32 j = p + 1; j < q; j++)
+		{
+			if (comperator(data[p], data[j]))
+				continue;
+			i++;
+			*temp = data[i];
+			data[i] = data[j];
+			data[j] = *temp;
+		}
+		*temp = data[i];
+		data[i] = data[p];
+		data[p] = *temp;
+		QuickSortCustom(p, i, comperator);
+		QuickSortCustom(i + 1, q, comperator);
+	}
+public:
+
+	void Sort(bool descending = false)
+	{
+		if (descending)
+			QuickSortDescending(0, numItems);
+		else QuickSortAscending(0, numItems);
+	}
+
+	void Sort(SortComperator comperator)
+	{
+		QuickSortCustom(0, numItems, comperator);
 	}
 
 	void Shuffle()
@@ -1437,6 +1509,13 @@ public:
 			contObj = &source;
 			pData = contObj->data;
 			index = 0;
+		}
+
+		void Find(Vector &source, UInt32 _index)
+		{
+			contObj = &source;
+			index = _index;
+			pData = contObj->data + index;
 		}
 
 		void operator++()

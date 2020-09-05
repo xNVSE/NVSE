@@ -142,42 +142,6 @@ struct ArrayKey
 	bool operator<=(const ArrayKey& rhs) const { return !(*this > rhs); }
 };
 
-class StringKey
-{
-	char	*key;
-
-public:
-	StringKey() {key = NULL;}
-	StringKey(const StringKey &from)
-	{
-		key = CopyString(from.key);
-	}
-
-	~StringKey()
-	{
-		if (key)
-		{
-			free(key);
-			key = NULL;
-		}
-	}
-
-	const char *Get() const {return key;}
-
-	bool operator<(const StringKey &rhs) const
-	{
-		return StrCompare(key, rhs.key) < 0;
-	}
-	bool operator==(const StringKey &rhs) const
-	{
-		return StrCompare(key, rhs.key) == 0;
-	}
-};
-
-typedef std::vector<ArrayElement> ElementVector;
-typedef std::map<double, ArrayElement> ElementNumMap;
-typedef std::map<StringKey, ArrayElement> ElementStrMap;
-
 enum ContainerType
 {
 	kContainer_Array,
@@ -185,77 +149,88 @@ enum ContainerType
 	kContainer_StringMap
 };
 
+typedef Vector<ArrayElement> ElementVector;
+typedef Map<double, ArrayElement> ElementNumMap;
+typedef Map<char*, ArrayElement> ElementStrMap;
+
 class ArrayVarElementContainer
 {
 	friend class ArrayVar;
 
-	union ContainerPtr
+	struct GenericContainer
 	{
-		ElementVector	*pArray;
-		ElementNumMap	*pNumMap;
-		ElementStrMap	*pStrMap;
+		void		*data;
+		UInt32		numItems;
+		UInt32		numAlloc;
 	};
 
-	ContainerType	m_type;
-	ContainerPtr	m_container;
+	ContainerType		m_type;
+	GenericContainer	m_container;
+
+	ElementVector& AsArray() {return *(ElementVector*)&m_container;}
+	ElementNumMap& AsNumMap() {return *(ElementNumMap*)&m_container;}
+	ElementStrMap& AsStrMap() {return *(ElementStrMap*)&m_container;}
 
 public:
-	ArrayVarElementContainer() : m_type(kContainer_Array) {m_container.pArray = NULL;}
+	ArrayVarElementContainer() : m_type(kContainer_Array)
+	{
+		m_container.data = NULL;
+		m_container.numItems = 0;
+		m_container.numAlloc = 2;
+	}
 
 	~ArrayVarElementContainer();
+
+	UInt32 size() const {return m_container.numItems;}
+
+	void clear();
+
+	UInt32 erase(const ArrayKey* key);
+
+	UInt32 erase(UInt32 iLow, UInt32 iHigh);
 
 	class iterator
 	{
 		friend ArrayVarElementContainer;
 
-		ContainerType	m_type;
-		ContainerPtr	m_container;
-#if !_DEBUG // iterators have extra instrumentation code that causes the implicit destructor to be marked as deleted in debug
-		union
+		struct GenericIterator
 		{
-#endif
-			ElementVector::iterator		arrayIter;
-			ElementNumMap::iterator		numMapIter;
-			ElementStrMap::iterator		strMapIter;
-#if !_DEBUG
+			void		*contObj;
+			void		*pData;
+			UInt32		index;
 		};
-#endif
+
+		ContainerType	m_type;
+		GenericIterator	m_iter;
+
+		ElementVector::Iterator& AsArray() {return *(ElementVector::Iterator*)&m_iter;}
+		ElementNumMap::Iterator& AsNumMap() {return *(ElementNumMap::Iterator*)&m_iter;}
+		ElementStrMap::Iterator& AsStrMap() {return *(ElementStrMap::Iterator*)&m_iter;}
 
 	public:
-		iterator(ElementVector *_array, ElementVector::iterator iter);
-		iterator(ElementNumMap *_numMap, ElementNumMap::iterator iter);
-		iterator(ElementStrMap *_strMap, ElementStrMap::iterator iter);
+		iterator() {}
+		iterator(ArrayVarElementContainer& container);
+		iterator(ArrayVarElementContainer& container, bool reverse);
+		iterator(ArrayVarElementContainer& container, const ArrayKey* key);
+
+		bool End();
 
 		void operator++();
 		void operator--();
 
-		iterator& operator+=(UInt32 incBy);
-		iterator& operator-=(UInt32 decBy);
+		const ArrayKey* first();
 
-		bool operator!=(const iterator& other) const;
-
-		const ArrayKey* first() const;
-
-		ArrayElement* second() const;
+		ArrayElement* second();
 	};
 
-	iterator begin() const;
+	iterator begin() {return iterator(*this);}
+	iterator rbegin() {return iterator(*this, true);}
 
-	iterator end() const;
+	iterator find(const ArrayKey* key) {return iterator(*this, key);}
 
-	iterator find(const ArrayKey* key) const;
-
-	size_t size() const;
-
-	size_t erase(const ArrayKey* key) const;
-
-	size_t erase(UInt32 iLow, UInt32 iHigh) const;
-
-	void clear() const;
-
-	ElementVector* getArrayPtr() const {return m_container.pArray;}
-	ElementNumMap* getNumMapPtr() const {return m_container.pNumMap;}
-	ElementStrMap* getStrMapPtr() const {return m_container.pStrMap;}
+	ElementVector* getArrayPtr() {return &AsArray();}
+	ElementNumMap* getNumMapPtr() {return &AsNumMap();}
+	ElementStrMap* getStrMapPtr() {return &AsStrMap();}
 };
 
 typedef ArrayVarElementContainer::iterator ArrayIterator;
@@ -273,7 +248,7 @@ class ArrayVar
 	UInt8				m_owningModIndex;
 	UInt8				m_keyType;
 	bool				m_bPacked;
-	std::vector<UInt8>	m_refs;		// data is modIndex of referring object; size() is number of references
+	Vector<UInt8>		m_refs;		// data is modIndex of referring object; size() is number of references
 
 	ArrayVar(UInt32 keyType, bool packed, UInt8 modIndex);
 
