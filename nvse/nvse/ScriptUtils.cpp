@@ -1438,7 +1438,7 @@ void ExpressionEvaluator::ToggleErrorSuppression(bool bSuppress) {
 
 void ExpressionEvaluator::Error(const char* fmt, ...)
 {
-	m_flags.Set(kFlag_ErrorOccurred);
+		m_flags.Set(kFlag_ErrorOccurred);
 
 	if (m_flags.IsSet(kFlag_SuppressErrorMessages))
 		return;
@@ -1450,7 +1450,6 @@ void ExpressionEvaluator::Error(const char* fmt, ...)
 	vsprintf_s(errorMsg, 0x400, fmt, args);
 
 	// include script data offset and command name/opcode
-	UInt16* opcodePtr = (UInt16*)((UInt8*)script->data + m_baseOffset);
 	CommandInfo* cmd = GetCommand();
 
 	// include mod filename, save having to ask users to figure it out themselves
