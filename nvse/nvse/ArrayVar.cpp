@@ -2,6 +2,7 @@
 #include "ArrayVar.h"
 #include "GameForms.h"
 #include <algorithm>
+#include <intrin.h>
 
 #if RUNTIME
 #include "GameAPI.h"
@@ -269,6 +270,14 @@ void ArrayElement::Unset()
 	m_data.dataType = kDataType_Invalid;
 }
 
+void ArrayElement::Swap(const ArrayElement &rhs)
+{
+	const __m128i lData = _mm_loadu_si128((__m128i*)this);
+	const __m128i rData = _mm_loadu_si128((__m128i*)&rhs);
+	_mm_storeu_si128((__m128i*)this, rData);
+	_mm_storeu_si128((__m128i*)&rhs, lData);
+}
+
 ///////////////////////
 // ArrayKey
 //////////////////////
@@ -365,6 +374,7 @@ ArrayElement* ArrayVar::Get(const ArrayKey* key, bool bCanCreateNew)
 
 	switch (GetContainerType())
 	{
+		default:
 		case kContainer_Array:
 		{
 			auto *pArray = m_elements.getArrayPtr();
@@ -381,38 +391,31 @@ ArrayElement* ArrayVar::Get(const ArrayKey* key, bool bCanCreateNew)
 				newElem->m_data.owningArray = m_ID;
 				return newElem;
 			}
-			break;
+			return NULL;
 		}
 		case kContainer_NumericMap:
 		{
 			auto *pMap = m_elements.getNumMapPtr();
 			if (bCanCreateNew)
 			{
-				ArrayElement *newElem = &(*pMap)[key->key.num];
+				ArrayElement *newElem = pMap->Emplace(key->key.num);
 				newElem->m_data.owningArray = m_ID;
 				return newElem;
 			}
-			auto findKey = pMap->Find(key->key.num);
-			if (!findKey.End())
-				return &findKey.Get();
-			break;
+			return pMap->GetPtr(key->key.num);
 		}
 		case kContainer_StringMap:
 		{
 			auto *pMap = m_elements.getStrMapPtr();
 			if (bCanCreateNew)
 			{
-				ArrayElement *newElem = &(*pMap)[key->key.str];
+				ArrayElement *newElem = pMap->Emplace(key->key.str);
 				newElem->m_data.owningArray = m_ID;
 				return newElem;
 			}
-			auto findKey = pMap->Find(key->key.str);
-			if (!findKey.End())
-				return &findKey.Get();
-			break;
+			return pMap->GetPtr(key->key.str);
 		}
 	}
-	return NULL;
 }
 
 ArrayElement* ArrayVar::Get(double key, bool bCanCreateNew)
@@ -422,6 +425,7 @@ ArrayElement* ArrayVar::Get(double key, bool bCanCreateNew)
 
 	switch (GetContainerType())
 	{
+		default:
 		case kContainer_Array:
 		{
 			auto *pArray = m_elements.getArrayPtr();
@@ -438,24 +442,20 @@ ArrayElement* ArrayVar::Get(double key, bool bCanCreateNew)
 				newElem->m_data.owningArray = m_ID;
 				return newElem;
 			}
-			break;
+			return NULL;
 		}
 		case kContainer_NumericMap:
 		{
 			auto *pMap = m_elements.getNumMapPtr();
 			if (bCanCreateNew)
 			{
-				ArrayElement *newElem = &(*pMap)[key];
+				ArrayElement *newElem = pMap->Emplace(key);
 				newElem->m_data.owningArray = m_ID;
 				return newElem;
 			}
-			auto findKey = pMap->Find(key);
-			if (!findKey.End())
-				return &findKey.Get();
-			break;
+			return pMap->GetPtr(key);
 		}
 	}
-	return NULL;
 }
 
 ArrayElement* ArrayVar::Get(const char* key, bool bCanCreateNew)
@@ -466,14 +466,11 @@ ArrayElement* ArrayVar::Get(const char* key, bool bCanCreateNew)
 	auto *pMap = m_elements.getStrMapPtr();
 	if (bCanCreateNew)
 	{
-		ArrayElement *newElem = &(*pMap)[const_cast<char*>(key)];
+		ArrayElement *newElem = pMap->Emplace(const_cast<char*>(key));
 		newElem->m_data.owningArray = m_ID;
 		return newElem;
 	}
-	auto findKey = pMap->Find(const_cast<char*>(key));
-	if (!findKey.End())
-		return &findKey.Get();
-	return NULL;
+	return pMap->GetPtr(const_cast<char*>(key));
 }
 
 bool ArrayVar::HasKey(double key)
@@ -675,6 +672,8 @@ const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 {
 	static ArrayKey arrNumKey(kDataType_Numeric), arrStrKey(kDataType_String);
 
+	if (Empty()) return NULL;
+
 	switch (GetContainerType())
 	{
 		default:
@@ -779,7 +778,7 @@ const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 
 bool ArrayVar::GetFirstElement(ArrayElement** outElem, const ArrayKey** outKey)
 {
-	if (!Size()) return false;
+	if (Empty()) return false;
 
 	ArrayIterator iter = m_elements.begin();
 	*outKey = iter.first();
@@ -789,7 +788,7 @@ bool ArrayVar::GetFirstElement(ArrayElement** outElem, const ArrayKey** outKey)
 
 bool ArrayVar::GetLastElement(ArrayElement** outElem, const ArrayKey** outKey)
 {
-	if (!Size()) return false;
+	if (Empty()) return false;
 
 	ArrayIterator iter = m_elements.rbegin();
 	*outKey = iter.first();
@@ -799,7 +798,7 @@ bool ArrayVar::GetLastElement(ArrayElement** outElem, const ArrayKey** outKey)
 
 bool ArrayVar::GetNextElement(ArrayKey* prevKey, ArrayElement** outElem, const ArrayKey** outKey)
 {
-	if (!prevKey || !Size())
+	if (!prevKey || Empty())
 		return false;
 
 	ArrayIterator iter = m_elements.find(prevKey);
@@ -818,7 +817,7 @@ bool ArrayVar::GetNextElement(ArrayKey* prevKey, ArrayElement** outElem, const A
 
 bool ArrayVar::GetPrevElement(ArrayKey* prevKey, ArrayElement** outElem, const ArrayKey** outKey)
 {
-	if (!prevKey || !Size())
+	if (!prevKey || Empty())
 		return false;
 
 	ArrayIterator iter = m_elements.find(prevKey);
@@ -838,14 +837,14 @@ bool ArrayVar::GetPrevElement(ArrayKey* prevKey, ArrayElement** outElem, const A
 
 UInt32 ArrayVar::EraseElement(const ArrayKey* key)
 {
-	if (KeyType() != key->KeyType())
+	if (Empty() || (KeyType() != key->KeyType()))
 		return -1;
 	return m_elements.erase(key);
 }
 
 UInt32 ArrayVar::EraseElements(const Slice* slice)
 {
-	if (slice->bIsString) return -1;
+	if (slice->bIsString || Empty()) return -1;
 	return m_elements.erase((int)slice->m_lower, (int)slice->m_upper);
 }
 
@@ -965,7 +964,7 @@ ArrayVar *ArrayVar::MakeSlice(const Slice* slice, UInt8 modIndex)
 {
 	ArrayVar *newVar = g_ArrayMap.Create(m_keyType, m_bPacked, modIndex);
 
-	if (slice->bIsString != (m_keyType == kDataType_String))
+	if (Empty() || (slice->bIsString != (m_keyType == kDataType_String)))
 		return newVar;
 
 	switch (GetContainerType())
@@ -1032,9 +1031,10 @@ class SortFunctionCaller : public FunctionCaller
 	Script			*m_comparator;
 	ArrayVar		*m_lhs;
 	ArrayVar		*m_rhs;
+	bool			descending;
 
 public:
-	SortFunctionCaller(Script* comparator) : m_comparator(comparator), m_lhs(NULL), m_rhs(NULL)
+	SortFunctionCaller(Script* comparator, bool _descending) : m_comparator(comparator), m_lhs(NULL), m_rhs(NULL), descending(_descending)
 	{ 
 		if (comparator)
 		{
@@ -1086,14 +1086,18 @@ public:
 	virtual TESObjectREFR* ThisObj() { return NULL; }
 	virtual TESObjectREFR* ContainingObj() { return NULL; }
 
-	bool operator()(const ArrayElement& lhs, const ArrayElement& rhs)
+	bool Compare(const ArrayElement& lhs, const ArrayElement& rhs)
 	{
 		m_lhs->SetElement(0.0, &lhs);
 		m_rhs->SetElement(0.0, &rhs);
 		ScriptToken* result = UserFunctionManager::Call(*this);
-		bool bResult = result ? result->GetBool() : false;
-		delete result;
-		return bResult;
+		if (result)
+		{
+			bool bResult = result->GetBool();
+			delete result;
+			return descending ? !bResult : bResult;
+		}
+		return false;
 	}
 };
 
@@ -1101,40 +1105,43 @@ void ArrayVar::Sort(ArrayVar *result, SortOrder order, SortType type, Script* co
 {
 	// restriction: all elements of src must be of the same type for default sort
 	// restriction not in effect for alpha sort (all values treated as strings) or custom sort (all values boxed as arrays)
-	std::vector<ArrayElement> vec;
+
+	if (Empty()) return;
+
 	ArrayIterator iter = m_elements.begin();
 	UInt32 dataType = iter.second()->DataType();
 	if (dataType == kDataType_Invalid || dataType == kDataType_Array)	// nonsensical to sort array of arrays
 		return;
 
 	// copy elems to vec, verify all are of same type
+	double elemIdx = 0;
 	for (; !iter.End(); ++iter)
 	{
 		if (type == kSortType_Default && iter.second()->DataType() != dataType)
 			return;
-		vec.push_back(*iter.second());
+		result->SetElement(elemIdx, iter.second());
+		elemIdx += 1;
 	}
 
 	// let STL do the sort
-	if (type == kSortType_Default)
-		std::sort(vec.begin(), vec.end());
-	else if (type == kSortType_Alpha)
-		std::sort(vec.begin(), vec.end(), ArrayElement::CompareAsString);
-	else if (type == kSortType_UserFunction)
+	auto pOutArr = result->m_elements.getArrayPtr();
+	switch (type)
 	{
-		if (!comparator) return;
-		SortFunctionCaller sorter(comparator);
-		std::sort(vec.begin(), vec.end(), sorter);
-	}
-
-	if (order == kSort_Descending)
-		std::reverse(vec.begin(), vec.end());
-
-	double elemIdx = 0;
-	for (UInt32 i = 0; i < vec.size(); i++)
-	{
-		result->SetElement(elemIdx, &vec[i]);
-		elemIdx += 1;
+		case kSortType_Default:
+			pOutArr->Sort(order == kSort_Descending);
+			break;
+		case kSortType_Alpha:
+			if (order == kSort_Descending)
+				pOutArr->Sort(ArrayElement::CompareAsStringDescending);
+			else pOutArr->Sort(ArrayElement::CompareAsString);
+			break;
+		case kSortType_UserFunction:
+		{
+			if (!comparator) break;
+			SortFunctionCaller sorter(comparator, order == kSort_Descending);
+			pOutArr->Sort(sorter);
+			break;
+		}
 	}
 }
 

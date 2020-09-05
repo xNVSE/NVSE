@@ -159,20 +159,6 @@ ArrayVarElementContainer::iterator::iterator(ArrayVarElementContainer& container
 	}
 }
 
-bool ArrayVarElementContainer::iterator::End()
-{
-	switch (m_type)
-	{
-		default:
-		case kContainer_Array:
-			return AsArray().End();
-		case kContainer_NumericMap:
-			return AsNumMap().End();
-		case kContainer_StringMap:
-			return AsStrMap().End();
-	}
-}
-
 void ArrayVarElementContainer::iterator::operator++()
 {
 	switch (m_type)

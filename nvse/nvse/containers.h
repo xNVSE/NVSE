@@ -1397,20 +1397,14 @@ private:
 	{
 		if (p >= q) return;
 		UInt32 i = p;
-		UInt8 buffer[sizeof(T_Data)];
-		T_Data *temp = (T_Data*)&buffer;
 		for (UInt32 j = p + 1; j < q; j++)
 		{
 			if (data[p] < data[j])
 				continue;
 			i++;
-			*temp = data[i];
-			data[i] = data[j];
-			data[j] = *temp;
+			data[j].Swap(data[i]);
 		}
-		*temp = data[i];
-		data[i] = data[p];
-		data[p] = *temp;
+		data[p].Swap(data[i]);
 		QuickSortAscending(p, i);
 		QuickSortAscending(i + 1, q);
 	}
@@ -1419,43 +1413,48 @@ private:
 	{
 		if (p >= q) return;
 		UInt32 i = p;
-		UInt8 buffer[sizeof(T_Data)];
-		T_Data *temp = (T_Data*)&buffer;
 		for (UInt32 j = p + 1; j < q; j++)
 		{
 			if (!(data[p] < data[j]))
 				continue;
 			i++;
-			*temp = data[i];
-			data[i] = data[j];
-			data[j] = *temp;
+			data[j].Swap(data[i]);
 		}
-		*temp = data[i];
-		data[i] = data[p];
-		data[p] = *temp;
+		data[p].Swap(data[i]);
 		QuickSortDescending(p, i);
 		QuickSortDescending(i + 1, q);
 	}
 
-	typedef bool (*SortComperator)(const T_Data &lhs, const T_Data &rhs);
-	void QuickSortCustom(UInt32 p, UInt32 q, SortComperator comperator)
+	typedef bool (*CompareFunc)(const T_Data &lhs, const T_Data &rhs);
+	void QuickSortCustom(UInt32 p, UInt32 q, CompareFunc compareFunc)
 	{
 		if (p >= q) return;
 		UInt32 i = p;
-		UInt8 buffer[sizeof(T_Data)];
-		T_Data *temp = (T_Data*)&buffer;
 		for (UInt32 j = p + 1; j < q; j++)
 		{
-			if (comperator(data[p], data[j]))
+			if (compareFunc(data[p], data[j]))
 				continue;
 			i++;
-			*temp = data[i];
-			data[i] = data[j];
-			data[j] = *temp;
+			data[j].Swap(data[i]);
 		}
-		*temp = data[i];
-		data[i] = data[p];
-		data[p] = *temp;
+		data[p].Swap(data[i]);
+		QuickSortCustom(p, i, compareFunc);
+		QuickSortCustom(i + 1, q, compareFunc);
+	}
+
+	template <class SortComperator>
+	void QuickSortCustom(UInt32 p, UInt32 q, SortComperator &comperator)
+	{
+		if (p >= q) return;
+		UInt32 i = p;
+		for (UInt32 j = p + 1; j < q; j++)
+		{
+			if (comperator.Compare(data[p], data[j]))
+				continue;
+			i++;
+			data[j].Swap(data[i]);
+		}
+		data[p].Swap(data[i]);
 		QuickSortCustom(p, i, comperator);
 		QuickSortCustom(i + 1, q, comperator);
 	}
@@ -1468,7 +1467,13 @@ public:
 		else QuickSortAscending(0, numItems);
 	}
 
-	void Sort(SortComperator comperator)
+	void Sort(CompareFunc compareFunc)
+	{
+		QuickSortCustom(0, numItems, compareFunc);
+	}
+
+	template <class SortComperator>
+	void Sort(SortComperator &comperator)
 	{
 		QuickSortCustom(0, numItems, comperator);
 	}

@@ -96,7 +96,7 @@ struct ArrayElement
 	void  Unset();
 	std::string ToString() const;
 
-	DataType DataType() const { return m_data.dataType; }
+	DataType DataType() const {return m_data.dataType;}
 	UInt8 GetOwningModIndex() const;
 
 	bool GetAsNumber(double* out) const;
@@ -111,15 +111,18 @@ struct ArrayElement
 	bool SetNumber(double num);
 	bool Set(const ArrayElement* elem);
 
+	void Swap(const ArrayElement& rhs);
+
 	ArrayElement();
 	ArrayElement(const ArrayElement& from);
 
 	static bool CompareAsString(const ArrayElement& lhs, const ArrayElement& rhs);
+	static bool CompareAsStringDescending(const ArrayElement& lhs, const ArrayElement& rhs) {return !CompareAsString(lhs, rhs);}
 
 	bool operator<(const ArrayElement& rhs) const;
 	bool operator==(const ArrayElement& rhs) const;
 
-	bool IsGood() { return m_data.dataType != kDataType_Invalid;	}
+	bool IsGood() {return m_data.dataType != kDataType_Invalid;}
 };
 
 struct ArrayKey
@@ -132,8 +135,8 @@ struct ArrayKey
 	ArrayKey(const ArrayKey& from);
 	ArrayKey(DataType type);
 
-	UInt8 KeyType() const { return key.dataType; }
-	bool IsValid() const { return key.dataType != kDataType_Invalid;	}
+	UInt8 KeyType() const {return key.dataType;}
+	bool IsValid() const {return key.dataType != kDataType_Invalid;}
 
 	bool operator<(const ArrayKey& rhs) const;
 	bool operator==(const ArrayKey& rhs) const;
@@ -183,6 +186,8 @@ public:
 
 	UInt32 size() const {return m_container.numItems;}
 
+	bool empty() const {return !m_container.numItems;}
+
 	void clear();
 
 	UInt32 erase(const ArrayKey* key);
@@ -195,9 +200,9 @@ public:
 
 		struct GenericIterator
 		{
-			void		*contObj;
-			void		*pData;
-			UInt32		index;
+			GenericContainer	*contObj;
+			void				*pData;
+			UInt32				index;
 		};
 
 		ContainerType	m_type;
@@ -208,12 +213,11 @@ public:
 		ElementStrMap::Iterator& AsStrMap() {return *(ElementStrMap::Iterator*)&m_iter;}
 
 	public:
-		iterator() {}
 		iterator(ArrayVarElementContainer& container);
 		iterator(ArrayVarElementContainer& container, bool reverse);
 		iterator(ArrayVarElementContainer& container, const ArrayKey* key);
 
-		bool End();
+		bool End() {return m_iter.index >= m_iter.contObj->numItems;}
 
 		void operator++();
 		void operator--();
@@ -266,10 +270,11 @@ public:
 		kSortType_UserFunction,
 	};
 
-	UInt32 ID()	const	{ return m_ID;	}
-	UInt8 KeyType() const	{ return m_keyType; }
-	bool IsPacked() const	{ return m_bPacked; }
-	UInt32 Size() const		{ return m_elements.size(); }
+	UInt32 ID()	const {return m_ID;}
+	UInt8 KeyType() const {return m_keyType;}
+	bool IsPacked() const {return m_bPacked;}
+	UInt32 Size() const {return m_elements.size();}
+	bool Empty() const {return m_elements.empty();}
 	ContainerType GetContainerType() const {return m_elements.m_type;}
 
 	ArrayElement* Get(const ArrayKey* key, bool bCanCreateNew);
