@@ -1434,6 +1434,17 @@ public:
 	}
 
 private:
+	void RawSwap(const T_Data &lhs, const T_Data &rhs)
+	{
+		struct Buffer
+		{
+			UInt8	bytes[sizeof(T_Data)];
+		}
+		temp = *(Buffer*)&lhs;
+		*(Buffer*)&lhs = *(Buffer*)&rhs;
+		*(Buffer*)&rhs = temp;
+	}
+
 	void QuickSortAscending(UInt32 p, UInt32 q)
 	{
 		if (p >= q) return;
@@ -1443,9 +1454,9 @@ private:
 			if (data[p] < data[j])
 				continue;
 			i++;
-			data[j].Swap(data[i]);
+			RawSwap(data[j], data[i]);
 		}
-		data[p].Swap(data[i]);
+		RawSwap(data[p], data[i]);
 		QuickSortAscending(p, i);
 		QuickSortAscending(i + 1, q);
 	}
@@ -1459,9 +1470,9 @@ private:
 			if (!(data[p] < data[j]))
 				continue;
 			i++;
-			data[j].Swap(data[i]);
+			RawSwap(data[j], data[i]);
 		}
-		data[p].Swap(data[i]);
+		RawSwap(data[p], data[i]);
 		QuickSortDescending(p, i);
 		QuickSortDescending(i + 1, q);
 	}
@@ -1476,9 +1487,9 @@ private:
 			if (compareFunc(data[p], data[j]))
 				continue;
 			i++;
-			data[j].Swap(data[i]);
+			RawSwap(data[j], data[i]);
 		}
-		data[p].Swap(data[i]);
+		RawSwap(data[p], data[i]);
 		QuickSortCustom(p, i, compareFunc);
 		QuickSortCustom(i + 1, q, compareFunc);
 	}
@@ -1493,9 +1504,9 @@ private:
 			if (comperator.Compare(data[p], data[j]))
 				continue;
 			i++;
-			data[j].Swap(data[i]);
+			RawSwap(data[j], data[i]);
 		}
-		data[p].Swap(data[i]);
+		RawSwap(data[p], data[i]);
 		QuickSortCustom(p, i, comperator);
 		QuickSortCustom(i + 1, q, comperator);
 	}
@@ -1521,17 +1532,13 @@ public:
 
 	void Shuffle()
 	{
-		UInt8 buffer[sizeof(T_Data)];
-		T_Data *temp = (T_Data*)&buffer;
 		UInt32 idx = numItems, rand;
 		while (idx > 1)
 		{
 			rand = GetRandomUInt(idx);
 			idx--;
-			if (rand == idx) continue;
-			*temp = data[rand];
-			data[rand] = data[idx];
-			data[idx] = *temp;
+			if (rand != idx)
+				RawSwap(data[rand], data[idx]);
 		}
 	}
 

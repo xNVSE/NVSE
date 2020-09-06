@@ -7,6 +7,40 @@ extern NVSESerializationInterface	g_NVSESerializationInterface;
 namespace Serialization
 {
 
+struct SerializationTask
+{
+	UInt8		*bufferPtr;
+	UInt32		length;
+
+	void Reset();
+
+	SerializationTask() : bufferPtr(NULL), length(0) {}
+
+	bool Save();
+	bool Load();
+
+	UInt32 GetOffset() const;
+	void SetOffset(UInt32 offset);
+
+	void Skip(UInt32 size);
+
+	void Write8(UInt8 inData);
+	void Write16(UInt16 inData);
+	void Write32(UInt32 inData);
+	void Write64(const void *inData);
+	void WriteBuf(const void *inData, UInt32 size);
+
+	UInt8 Read8();
+	UInt16 Read16();
+	UInt32 Read32();
+	void Read64(void *outData);
+	void ReadBuf(void *outData, UInt32 size);
+
+	void PeekBuf(void *outData, UInt32 size);
+
+	UInt32 GetRemain() const {return length - GetOffset();}
+};
+
 struct PluginCallbacks
 {
 	PluginCallbacks()
@@ -30,8 +64,18 @@ bool	WriteRecord(UInt32 type, UInt32 version, const void * buf, UInt32 length);
 bool	OpenRecord(UInt32 type, UInt32 version);
 bool	WriteRecordData(const void * buf, UInt32 length);
 
+void	WriteRecord8(UInt8 inData);
+void	WriteRecord16(UInt16 inData);
+void	WriteRecord32(UInt32 inData);
+void	WriteRecord64(const void *inData);
+
 bool	GetNextRecordInfo(UInt32 * type, UInt32 * version, UInt32 * length);
 UInt32	ReadRecordData(void * buf, UInt32 length);
+
+UInt8	ReadRecord8();
+UInt16	ReadRecord16();
+UInt32	ReadRecord32();
+void	ReadRecord64(void *outData);
 
 bool	ResolveRefID(UInt32 refID, UInt32 * outRefID);
 

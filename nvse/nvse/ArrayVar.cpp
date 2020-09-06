@@ -270,14 +270,6 @@ void ArrayElement::Unset()
 	m_data.dataType = kDataType_Invalid;
 }
 
-void ArrayElement::Swap(const ArrayElement &rhs)
-{
-	const __m128i lData = _mm_loadu_si128((__m128i*)this);
-	const __m128i rData = _mm_loadu_si128((__m128i*)&rhs);
-	_mm_storeu_si128((__m128i*)this, rData);
-	_mm_storeu_si128((__m128i*)&rhs, lData);
-}
-
 ///////////////////////
 // ArrayKey
 //////////////////////
@@ -1340,15 +1332,15 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 			keyType = pVar->m_keyType;
 
 			intfc->OpenRecord('ARVR', kVersion);
-			intfc->WriteRecordData(&pVar->m_owningModIndex, sizeof(UInt8));
-			intfc->WriteRecordData(&iter->first, sizeof(UInt32));
-			intfc->WriteRecordData(&keyType, sizeof(UInt8));
-			intfc->WriteRecordData(&pVar->m_bPacked, sizeof(bool));
-			intfc->WriteRecordData(&numRefs, sizeof(numRefs));
+			intfc->WriteRecord8(pVar->m_owningModIndex);
+			intfc->WriteRecord32(iter->first);
+			intfc->WriteRecord8(keyType);
+			intfc->WriteRecord8(pVar->m_bPacked);
+			intfc->WriteRecord32(numRefs);
 			intfc->WriteRecordData(pVar->m_refs.Data(), numRefs);
 
 			numRefs = pVar->Size();
-			intfc->WriteRecordData(&numRefs, sizeof(UInt32));
+			intfc->WriteRecord32(numRefs);
 			if (!numRefs) continue;
 
 			for (ArrayIterator elems = pVar->m_elements.begin(); !elems.End(); ++elems)
@@ -1360,29 +1352,29 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 				{
 					str = pKey->key.str;
 					len = StrLen(str);
-					intfc->WriteRecordData(&len, sizeof(len));
+					intfc->WriteRecord16(len);
 					if (len) intfc->WriteRecordData(str, len);
 				}
 				else if (!pVar->m_bPacked)
-					intfc->WriteRecordData(&pKey->key.num, sizeof(double));
+					intfc->WriteRecord64(&pKey->key.num);
 				
-				intfc->WriteRecordData(&pElem->m_data.dataType, sizeof(UInt8));
+				intfc->WriteRecord8(pElem->m_data.dataType);
 				switch (pElem->m_data.dataType)
 				{
 					case kDataType_Numeric:
-						intfc->WriteRecordData(&pElem->m_data.num, sizeof(double));
+						intfc->WriteRecord64(&pElem->m_data.num);
 						break;
 					case kDataType_String:
 					{
 						str = pElem->m_data.str;
 						len = StrLen(str);
-						intfc->WriteRecordData(&len, sizeof(len));
+						intfc->WriteRecord16(len);
 						if (len) intfc->WriteRecordData(str, len);
 						break;
 					}
 					case kDataType_Array:
 					case kDataType_Form:
-						intfc->WriteRecordData(&pElem->m_data.formID, sizeof(UInt32));
+						intfc->WriteRecord32(pElem->m_data.formID);
 						break;
 					default:
 						_MESSAGE("Error in ArrayVarMap::Save() - unhandled element type %d. Element not saved.", pElem->m_data.dataType);
@@ -1421,7 +1413,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				break;
 			case 'ARVR':
 			{
-				intfc->ReadRecordData(&modIndex, sizeof(modIndex));
+				modIndex = intfc->ReadRecord8();
 				if (!intfc->ResolveRefID(modIndex << 24, &tempRefID))
 				{
 					// owning mod was removed, but there may be references to it from other mods
@@ -1434,9 +1426,9 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				else
 					modIndex = (tempRefID >> 24);
 
-				intfc->ReadRecordData(&arrayID, sizeof(arrayID));
-				intfc->ReadRecordData(&keyType, sizeof(keyType));
-				intfc->ReadRecordData(&bPacked, sizeof(bPacked));
+				arrayID = intfc->ReadRecord32();
+				keyType = intfc->ReadRecord8();
+				bPacked = intfc->ReadRecord8();
 
 				// read refs, fix up mod indexes, discard refs from unloaded mods
 				UInt32 numRefs = 0;		// # of references to this array
@@ -1444,15 +1436,15 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				// reference-counting implemented in v1
 				if (version >= 1)
 				{
-					intfc->ReadRecordData(&numRefs, sizeof(numRefs));
+					numRefs = intfc->ReadRecord32();
 					if (numRefs)
 					{
 						UInt32 tempRefID = 0;
-						UInt8 curModIndex = 0;
+						UInt8 curModIndex;
 						UInt32 refIdx = 0;
 						for (UInt32 i = 0; i < numRefs; i++)
 						{
-							intfc->ReadRecordData(&curModIndex, sizeof(curModIndex));
+							curModIndex = intfc->ReadRecord8();
 							if (!modIndex)
 							{
 								if (intfc->ResolveRefID(curModIndex << 24, &tempRefID))
@@ -1497,7 +1489,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				Add(newArr, arrayID, numRefs, buffer);
 
 				// read the array elements			
-				intfc->ReadRecordData(&numElements, sizeof(numElements));
+				numElements = intfc->ReadRecord32();
 				if (!numElements) continue;
 
 				contType = newArr->GetContainerType();
@@ -1528,19 +1520,14 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				{
 					if (keyType == kDataType_String)
 					{
-						intfc->ReadRecordData(&strLength, sizeof(strLength));
+						strLength = intfc->ReadRecord16();
 						if (strLength) intfc->ReadRecordData(buffer, strLength);
 						buffer[strLength] = 0;
 					}
 					else if (!bPacked || (version < 2))
-						intfc->ReadRecordData(&numKey, sizeof(double));
+						intfc->ReadRecord64(&numKey);
 					
-					UInt8 elemType;
-					if (intfc->ReadRecordData(&elemType, sizeof(elemType)) == 0)
-					{
-						_MESSAGE("ArrayVarMap::Load() reading past end of file");
-						return;
-					}
+					UInt8 elemType = intfc->ReadRecord8();
 
 					switch (contType)
 					{
@@ -1562,11 +1549,11 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 					switch (elemType)
 					{
 						case kDataType_Numeric:
-							intfc->ReadRecordData(&elem->m_data.num, sizeof(double));
+							intfc->ReadRecord64(&elem->m_data.num);
 							break;
 						case kDataType_String:
 						{
-							intfc->ReadRecordData(&strLength, sizeof(strLength));
+							strLength = intfc->ReadRecord16();
 							if (strLength)
 							{
 								char *strVal = (char*)malloc(strLength + 1);
@@ -1578,12 +1565,11 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 							break;
 						}
 						case kDataType_Array:
-							intfc->ReadRecordData(&elem->m_data.arrID, sizeof(ArrayID));
+							elem->m_data.arrID = intfc->ReadRecord32();
 							break;
 						case kDataType_Form:
 						{
-							UInt32 formID;
-							intfc->ReadRecordData(&formID, sizeof(formID));
+							UInt32 formID = intfc->ReadRecord32();
 							if (!intfc->ResolveRefID(formID, &formID))
 								formID = 0;
 							elem->m_data.formID = formID;

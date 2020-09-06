@@ -1438,6 +1438,8 @@ void ExpressionEvaluator::ToggleErrorSuppression(bool bSuppress) {
 		m_flags.Clear(kFlag_SuppressErrorMessages); 
 }
 
+static UnorderedSet<const char*> s_warnedMods; // show corner message only once per mod script error - Korri
+
 void ExpressionEvaluator::Error(const char* fmt, ...)
 {
 	m_flags.Set(kFlag_ErrorOccurred);
@@ -1463,13 +1465,11 @@ void ExpressionEvaluator::Error(const char* fmt, ...)
 			modName = "Unknown";
 	}
 
-	static UnorderedSet<const char*> warnedMods; // show corner message only once per mod script error - Korri
-	if (!warnedMods.HasKey(modName))
+	if (s_warnedMods.Insert(modName))
 	{
 		char message[512];
 		snprintf(message, sizeof(message), "%s: error (see console print)", modName);
 		QueueUIMessage(message, 0, reinterpret_cast<const char*>(0x1049638), nullptr, 2.5F, false);
-		warnedMods.Insert(modName);
 	}
 
 	ShowRuntimeError(script, "%s\n    File: %s Offset: 0x%04X Command: %s", errorMsg, modName, m_baseOffset, cmd ? cmd->longName : "<unknown>");

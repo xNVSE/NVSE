@@ -252,10 +252,10 @@ void StringVarMap::Save(NVSESerializationInterface* intfc)
 			intfc->OpenRecord('STVR', 0);
 			UInt8 modIndex = iter->second->GetOwningModIndex();
 
-			intfc->WriteRecordData(&modIndex, sizeof(UInt8));
-			intfc->WriteRecordData(&iter->first, sizeof(UInt32));
+			intfc->WriteRecord8(modIndex);
+			intfc->WriteRecord32(iter->first);
 			UInt16 len = iter->second->GetLength();
-			intfc->WriteRecordData(&len, sizeof(len));
+			intfc->WriteRecord16(len);
 			intfc->WriteRecordData(iter->second->GetCString(), len);
 		}
 	}
@@ -296,7 +296,7 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 
 			break;
 		case 'STVR':
-			intfc->ReadRecordData(&modIndex, sizeof(modIndex));
+			modIndex = intfc->ReadRecord8();
 			if (!intfc->ResolveRefID(modIndex << 24, &tempRefID))
 			{
 				// owning mod is no longer loaded so discard
@@ -305,8 +305,8 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 			else
 				modIndex = tempRefID >> 24;
 
-			intfc->ReadRecordData(&stringID, sizeof(stringID));
-			intfc->ReadRecordData(&strLength, sizeof(strLength));
+			stringID = intfc->ReadRecord32();
+			strLength = intfc->ReadRecord16();
 			
 			intfc->ReadRecordData(buffer, strLength);
 			buffer[strLength] = 0;

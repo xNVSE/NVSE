@@ -111,8 +111,6 @@ struct ArrayElement
 	bool SetNumber(double num);
 	bool Set(const ArrayElement* elem);
 
-	void Swap(const ArrayElement& rhs);
-
 	ArrayElement();
 	ArrayElement(const ArrayElement& from);
 
