@@ -345,6 +345,8 @@ bool ArrayKey::operator==(const ArrayKey& rhs) const
 	}
 }
 
+ArrayKey s_arrNumKey(kDataType_Numeric), s_arrStrKey(kDataType_String);
+
 ///////////////////////
 // ArrayVar
 //////////////////////
@@ -654,8 +656,6 @@ DataType ArrayVar::GetElementType(const ArrayKey* key)
 
 const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 {
-	static ArrayKey arrNumKey(kDataType_Numeric), arrStrKey(kDataType_String);
-
 	if (Empty()) return NULL;
 
 	switch (GetContainerType())
@@ -685,8 +685,8 @@ const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 			for (int idx = iLow; idx <= iHigh; idx++)
 			{
 				if (elements[idx] != *toFind) continue;
-				arrNumKey.key.num = idx;
-				return &arrNumKey;
+				s_arrNumKey.key.num = idx;
+				return &s_arrNumKey;
 			}
 			return NULL;
 		}
@@ -718,8 +718,8 @@ const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 			}
 			if (!iter.End())
 			{
-				arrNumKey.key.num = iter.Key();
-				return &arrNumKey;
+				s_arrNumKey.key.num = iter.Key();
+				return &s_arrNumKey;
 			}
 			return NULL;
 		}
@@ -752,8 +752,8 @@ const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 			}
 			if (!iter.End())
 			{
-				arrStrKey.key.str = const_cast<char*>(iter.Key());
-				return &arrStrKey;
+				s_arrStrKey.key.str = const_cast<char*>(iter.Key());
+				return &s_arrStrKey;
 			}
 			return NULL;
 		}
@@ -1309,7 +1309,7 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 {
 	Clean();
 
-	intfc->OpenRecord('ARVS', kVersion);
+	Serialization::OpenRecord('ARVS', kVersion);
 
 	if (m_state)
 	{
@@ -1331,16 +1331,16 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 			if (!numRefs) continue;
 			keyType = pVar->m_keyType;
 
-			intfc->OpenRecord('ARVR', kVersion);
-			intfc->WriteRecord8(pVar->m_owningModIndex);
-			intfc->WriteRecord32(iter->first);
-			intfc->WriteRecord8(keyType);
-			intfc->WriteRecord8(pVar->m_bPacked);
-			intfc->WriteRecord32(numRefs);
-			intfc->WriteRecordData(pVar->m_refs.Data(), numRefs);
+			Serialization::OpenRecord('ARVR', kVersion);
+			Serialization::WriteRecord8(pVar->m_owningModIndex);
+			Serialization::WriteRecord32(iter->first);
+			Serialization::WriteRecord8(keyType);
+			Serialization::WriteRecord8(pVar->m_bPacked);
+			Serialization::WriteRecord32(numRefs);
+			Serialization::WriteRecordData(pVar->m_refs.Data(), numRefs);
 
 			numRefs = pVar->Size();
-			intfc->WriteRecord32(numRefs);
+			Serialization::WriteRecord32(numRefs);
 			if (!numRefs) continue;
 
 			for (ArrayIterator elems = pVar->m_elements.begin(); !elems.End(); ++elems)
@@ -1352,29 +1352,29 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 				{
 					str = pKey->key.str;
 					len = StrLen(str);
-					intfc->WriteRecord16(len);
-					if (len) intfc->WriteRecordData(str, len);
+					Serialization::WriteRecord16(len);
+					if (len) Serialization::WriteRecordData(str, len);
 				}
 				else if (!pVar->m_bPacked)
-					intfc->WriteRecord64(&pKey->key.num);
+					Serialization::WriteRecord64(&pKey->key.num);
 				
-				intfc->WriteRecord8(pElem->m_data.dataType);
+				Serialization::WriteRecord8(pElem->m_data.dataType);
 				switch (pElem->m_data.dataType)
 				{
 					case kDataType_Numeric:
-						intfc->WriteRecord64(&pElem->m_data.num);
+						Serialization::WriteRecord64(&pElem->m_data.num);
 						break;
 					case kDataType_String:
 					{
 						str = pElem->m_data.str;
 						len = StrLen(str);
-						intfc->WriteRecord16(len);
-						if (len) intfc->WriteRecordData(str, len);
+						Serialization::WriteRecord16(len);
+						if (len) Serialization::WriteRecordData(str, len);
 						break;
 					}
 					case kDataType_Array:
 					case kDataType_Form:
-						intfc->WriteRecord32(pElem->m_data.formID);
+						Serialization::WriteRecord32(pElem->m_data.formID);
 						break;
 					default:
 						_MESSAGE("Error in ArrayVarMap::Save() - unhandled element type %d. Element not saved.", pElem->m_data.dataType);
@@ -1382,7 +1382,7 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 			}
 		}
 	}
-	intfc->OpenRecord('ARVE', kVersion);
+	Serialization::OpenRecord('ARVE', kVersion);
 }
 
 void ArrayVarMap::Load(NVSESerializationInterface* intfc)
@@ -1404,7 +1404,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 
 	double numKey;
 
-	while (bContinue && intfc->GetNextRecordInfo(&type, &version, &length))
+	while (bContinue && Serialization::GetNextRecordInfo(&type, &version, &length))
 	{
 		switch (type)
 		{
@@ -1413,8 +1413,8 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				break;
 			case 'ARVR':
 			{
-				modIndex = intfc->ReadRecord8();
-				if (!intfc->ResolveRefID(modIndex << 24, &tempRefID))
+				modIndex = Serialization::ReadRecord8();
+				if (!Serialization::ResolveRefID(modIndex << 24, &tempRefID))
 				{
 					// owning mod was removed, but there may be references to it from other mods
 					// assign ownership to the first mod which refers to it and is still loaded
@@ -1426,9 +1426,9 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				else
 					modIndex = (tempRefID >> 24);
 
-				arrayID = intfc->ReadRecord32();
-				keyType = intfc->ReadRecord8();
-				bPacked = intfc->ReadRecord8();
+				arrayID = Serialization::ReadRecord32();
+				keyType = Serialization::ReadRecord8();
+				bPacked = Serialization::ReadRecord8();
 
 				// read refs, fix up mod indexes, discard refs from unloaded mods
 				UInt32 numRefs = 0;		// # of references to this array
@@ -1436,7 +1436,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				// reference-counting implemented in v1
 				if (version >= 1)
 				{
-					numRefs = intfc->ReadRecord32();
+					numRefs = Serialization::ReadRecord32();
 					if (numRefs)
 					{
 						UInt32 tempRefID = 0;
@@ -1444,17 +1444,17 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 						UInt32 refIdx = 0;
 						for (UInt32 i = 0; i < numRefs; i++)
 						{
-							curModIndex = intfc->ReadRecord8();
+							curModIndex = Serialization::ReadRecord8();
 							if (!modIndex)
 							{
-								if (intfc->ResolveRefID(curModIndex << 24, &tempRefID))
+								if (Serialization::ResolveRefID(curModIndex << 24, &tempRefID))
 								{
 									modIndex = tempRefID >> 24;
 									_MESSAGE("ArrayID %d was owned by an unloaded mod. Assigning ownership to mod #%d", arrayID, modIndex);
 								}
 							}
 
-							if (intfc->ResolveRefID(curModIndex << 24, &tempRefID))
+							if (Serialization::ResolveRefID(curModIndex << 24, &tempRefID))
 								buffer[refIdx++] = (tempRefID >> 24);
 						}
 
@@ -1489,7 +1489,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				Add(newArr, arrayID, numRefs, buffer);
 
 				// read the array elements			
-				numElements = intfc->ReadRecord32();
+				numElements = Serialization::ReadRecord32();
 				if (!numElements) continue;
 
 				contType = newArr->GetContainerType();
@@ -1520,14 +1520,14 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				{
 					if (keyType == kDataType_String)
 					{
-						strLength = intfc->ReadRecord16();
-						if (strLength) intfc->ReadRecordData(buffer, strLength);
+						strLength = Serialization::ReadRecord16();
+						if (strLength) Serialization::ReadRecordData(buffer, strLength);
 						buffer[strLength] = 0;
 					}
 					else if (!bPacked || (version < 2))
-						intfc->ReadRecord64(&numKey);
+						Serialization::ReadRecord64(&numKey);
 					
-					UInt8 elemType = intfc->ReadRecord8();
+					UInt8 elemType = Serialization::ReadRecord8();
 
 					switch (contType)
 					{
@@ -1549,15 +1549,15 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 					switch (elemType)
 					{
 						case kDataType_Numeric:
-							intfc->ReadRecord64(&elem->m_data.num);
+							Serialization::ReadRecord64(&elem->m_data.num);
 							break;
 						case kDataType_String:
 						{
-							strLength = intfc->ReadRecord16();
+							strLength = Serialization::ReadRecord16();
 							if (strLength)
 							{
 								char *strVal = (char*)malloc(strLength + 1);
-								intfc->ReadRecordData(strVal, strLength);
+								Serialization::ReadRecordData(strVal, strLength);
 								strVal[strLength] = 0;
 								elem->m_data.str = strVal;
 							}
@@ -1565,12 +1565,12 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 							break;
 						}
 						case kDataType_Array:
-							elem->m_data.arrID = intfc->ReadRecord32();
+							elem->m_data.arrID = Serialization::ReadRecord32();
 							break;
 						case kDataType_Form:
 						{
-							UInt32 formID = intfc->ReadRecord32();
-							if (!intfc->ResolveRefID(formID, &formID))
+							UInt32 formID = Serialization::ReadRecord32();
+							if (!Serialization::ResolveRefID(formID, &formID))
 								formID = 0;
 							elem->m_data.formID = formID;
 							break;

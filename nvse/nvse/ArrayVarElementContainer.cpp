@@ -195,19 +195,18 @@ void ArrayVarElementContainer::iterator::operator--()
 
 const ArrayKey* ArrayVarElementContainer::iterator::first()
 {
-	static ArrayKey arrNumKey(kDataType_Numeric), arrStrKey(kDataType_String);
 	switch (m_type)
 	{
 		default:
 		case kContainer_Array:
-			arrNumKey.key.num = (int)m_iter.index;
-			return &arrNumKey;
+			s_arrNumKey.key.num = (int)m_iter.index;
+			return &s_arrNumKey;
 		case kContainer_NumericMap:
-			arrNumKey.key.num = AsNumMap().Key();
-			return &arrNumKey;
+			s_arrNumKey.key.num = AsNumMap().Key();
+			return &s_arrNumKey;
 		case kContainer_StringMap:
-			arrStrKey.key.str = const_cast<char*>(AsStrMap().Key());
-			return &arrStrKey;
+			s_arrStrKey.key.str = const_cast<char*>(AsStrMap().Key());
+			return &s_arrStrKey;
 	}
 }
 

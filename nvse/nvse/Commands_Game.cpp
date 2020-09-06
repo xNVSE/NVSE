@@ -116,30 +116,19 @@ bool Cmd_GetCrosshairRef_Execute(COMMAND_ARGS)
 	return true;
 }
 
+UnorderedSet<UInt32> s_gameLoadedInformedScripts, s_gameRestartedInformedScripts;
+
 bool Cmd_GetGameLoaded_Execute(COMMAND_ARGS)
 {
-	static UnorderedSet<UInt32> informedScripts;
-
 	*result = 0;
 
-	// was a game loaded?
-	if(g_gameLoaded)
-	{
-		// yes, clear the list of scripts we've informed and reset the 'game loaded' flag
-		informedScripts.Clear();
-
-		g_gameLoaded = false;
-	}
-
-	if(scriptObj)
+	if (scriptObj)
 	{
 		// have we returned 'true' to this script yet?
-		if(!informedScripts.HasKey(scriptObj->refID))
+		if (s_gameLoadedInformedScripts.Insert(scriptObj->refID))
 		{
 			// no, return true and add to the set
 			*result = 1;
-
-			informedScripts.Insert(scriptObj->refID);
 		}
 		if (IsConsoleMode())
 			Console_Print("GetGameLoaded >> %.0f", *result);
@@ -150,15 +139,9 @@ bool Cmd_GetGameLoaded_Execute(COMMAND_ARGS)
 
 bool Cmd_GetGameRestarted_Execute(COMMAND_ARGS)
 {
-	static UnorderedSet<UInt32> regScripts;
-
-	*result = 0;
-
-	if (scriptObj && !regScripts.HasKey(scriptObj->refID))
-	{
+	if (scriptObj && s_gameRestartedInformedScripts.Insert(scriptObj->refID))
 		*result = 1;
-		regScripts.Insert(scriptObj->refID);
-	}
+	else *result = 0;
 
 	return true;
 }

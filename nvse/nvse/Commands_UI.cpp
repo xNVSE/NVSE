@@ -38,21 +38,19 @@ enum eUICmdAction {
 	kSetFormattedString,
 };
 
+static UnorderedMap<const char*, Tile::Value*> s_cachedTileValues;
+
 Tile::Value* GetCachedComponentValue(const char* component)
 {
-	static UnorderedMap<const char*, Tile::Value*> map;
-
 	if (g_tilesDestroyed)
 	{
 		g_tilesDestroyed = false;
-		map.Clear();
+		s_cachedTileValues.Clear();
 	}
 
 	Tile::Value** valPtr;
-	if (map.Insert(component, &valPtr))
-	{
+	if (s_cachedTileValues.Insert(component, &valPtr))
 		*valPtr = InterfaceManager::GetMenuComponentValue(component);
-	}
 
 	return *valPtr;
 }

@@ -121,10 +121,13 @@ static __declspec(naked) void FinishLoadGameHook(void)
 	}
 }
 
+extern UnorderedSet<UInt32> s_gameLoadedInformedScripts;
+
 static void __stdcall DoLoadGameHook(const char* saveFilePath)
 {
 	g_gameLoaded = true;
 	g_gameStarted = true;
+	s_gameLoadedInformedScripts.Clear();
 
 	_MESSAGE("NVSE DLL DoLoadGameHook: %s", saveFilePath);
 	Serialization::HandleLoadGame(saveFilePath);
@@ -172,6 +175,7 @@ static void NewGameHook(void)
 
 	g_gameLoaded = true;
 	g_gameStarted = true;
+	s_gameLoadedInformedScripts.Clear();
 	Serialization::HandleNewGame();
 }
 
