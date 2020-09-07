@@ -1097,7 +1097,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 
 				if (form)
 				{			
-					if (form->Unk_3C())
+					if (form->GetIsReference())
 						form = ((TESObjectREFR*)form)->baseForm;
 
 					UInt8 objType = 0;

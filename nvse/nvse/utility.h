@@ -3,6 +3,50 @@
 typedef void* (*memcpy_t)(void*, const void*, size_t);
 extern const memcpy_t _memcpy, _memmove;
 
+//	Workaround for bypassing the compiler calling the d'tor on function-scope objects.
+template <typename T> class TempObject
+{
+	struct Buffer
+	{
+		UInt8	bytes[sizeof(T)];
+	}
+	objData;
+
+public:
+	TempObject() {Reset();}
+	TempObject(const T &src) {objData = *(Buffer*)&src;}
+
+	void Reset() {new ((T*)&objData) T();}
+
+	TempObject& operator=(const T &rhs) {objData = *(Buffer*)&rhs;}
+	TempObject& operator=(const TempObject &rhs) {objData = rhs.objData;}
+
+	T& Get() {return *(T*)&objData;}
+	T* Ptr() {return (T*)&objData;}
+};
+
+//	Assign rhs to lhs, bypassing operator=
+template <typename T> __forceinline void RawAssign(const T &lhs, const T &rhs)
+{
+	struct Helper
+	{
+		UInt8	bytes[sizeof(T)];
+	};
+	*(Helper*)&lhs = *(Helper*)&rhs;
+}
+
+//	Swap lhs and rhs, bypassing operator=
+template <typename T> __forceinline void RawSwap(const T &lhs, const T &rhs)
+{
+	struct Helper
+	{
+		UInt8	bytes[sizeof(T)];
+	}
+	temp = *(Helper*)&lhs;
+	*(Helper*)&lhs = *(Helper*)&rhs;
+	*(Helper*)&rhs = temp;
+}
+
 double dCos(double angle);
 double dSin(double angle);
 double dTan(double angle);

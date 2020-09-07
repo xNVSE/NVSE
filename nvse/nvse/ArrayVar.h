@@ -94,7 +94,6 @@ struct ArrayElement
 	ArrayData	m_data;
 
 	void  Unset();
-	std::string ToString() const;
 
 	DataType DataType() const {return m_data.dataType;}
 	UInt8 GetOwningModIndex() const;
@@ -114,8 +113,8 @@ struct ArrayElement
 	ArrayElement();
 	ArrayElement(const ArrayElement& from);
 
-	static bool CompareAsString(const ArrayElement& lhs, const ArrayElement& rhs);
-	static bool CompareAsStringDescending(const ArrayElement& lhs, const ArrayElement& rhs) {return !CompareAsString(lhs, rhs);}
+	static bool CompareNames(const ArrayElement& lhs, const ArrayElement& rhs);
+	static bool CompareNamesDescending(const ArrayElement& lhs, const ArrayElement& rhs) {return !CompareNames(lhs, rhs);}
 
 	bool operator<(const ArrayElement& rhs) const;
 	bool operator==(const ArrayElement& rhs) const;

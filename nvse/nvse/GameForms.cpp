@@ -37,38 +37,20 @@ UInt8 TESForm::GetModIndex() const
 
 TESFullName* TESForm::GetFullName()
 {
-	TESForm* baseForm = this;
-	TESFullName* fullName = NULL;
-
-	if (typeID >= kFormType_Reference && typeID <= kFormType_ACRE)	//handle MapMarkers and references
+	if (typeID == kFormType_Cell)		// some exterior cells inherit name of parent worldspace
 	{
-		TESObjectREFR* refr = DYNAMIC_CAST(this, TESForm, TESObjectREFR);
-		//if (refr->baseForm->typeID == kFormType_Static)
-		//{
-		//	ExtraMapMarker* mapMarker = (ExtraMapMarker*)refr->extraDataList.GetByType(kExtraData_MapMarker);
-		//	if (mapMarker && mapMarker->data)
-		//		fullName = &mapMarker->data->fullName;
-		//}
-
-		if (!fullName)		//if not a mapmarker, use the base form instead
-			baseForm = refr->baseForm;
+		TESObjectCELL *cell = (TESObjectCELL*)this;
+		TESFullName *fullName = &cell->fullName;
+		if ((!fullName->name.m_data || !fullName->name.m_dataLen) && cell->worldSpace)
+			return &cell->worldSpace->fullName;
+		return fullName;
 	}
-	else if (typeID == kFormType_Cell)		// some exterior cells inherit name of parent worldspace
-	{
-		TESObjectCELL* cell = DYNAMIC_CAST(this, TESForm, TESObjectCELL);
-		if (cell && cell->worldSpace)
-			if (!cell->fullName.name.m_data || !cell->fullName.name.m_dataLen)
-					baseForm = cell->worldSpace;
-	}
-
-	if(!fullName)
-		fullName = DYNAMIC_CAST(baseForm, TESForm, TESFullName);
-	return fullName;
+	TESForm *baseForm = GetIsReference() ? ((TESObjectREFR*)this)->baseForm : this;
+	return DYNAMIC_CAST(baseForm, TESForm, TESFullName);
 }
 
 const char* TESForm::GetTheName()
 {
-	TESForm* baseForm = this;
 	TESFullName* fullName = GetFullName();
 	if (fullName)
 		return fullName->name.CStr();

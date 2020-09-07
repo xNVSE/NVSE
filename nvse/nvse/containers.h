@@ -1123,7 +1123,7 @@ public:
 	void Append(const T_Data &item)
 	{
 		T_Data *pData = AllocateData();
-		*pData = item;
+		RawAssign<T_Data>(*pData, item);
 	}
 
 	void Concatenate(const Vector &source)
@@ -1155,7 +1155,7 @@ public:
 				pData = data + index;
 				memmove(pData + 1, pData, sizeof(T_Data) * size);
 			}
-			*pData = item;
+			RawAssign<T_Data>(*pData, item);
 		}
 	}
 
@@ -1200,13 +1200,16 @@ public:
 		while (--count);
 	}
 
-	UInt32 InsertSorted(const T_Data &item)
+	UInt32 InsertSorted(const T_Data &item, bool descending = false)
 	{
 		UInt32 lBound = 0, uBound = numItems, index;
+		bool isLT;
 		while (lBound != uBound)
 		{
 			index = (lBound + uBound) >> 1;
-			if (item < data[index]) uBound = index;
+			isLT = item < data[index];
+			if (descending) isLT = !isLT;
+			if (isLT) uBound = index;
 			else lBound = index + 1;
 		}
 		uBound = numItems - lBound;
@@ -1216,7 +1219,51 @@ public:
 			pData = data + lBound;
 			memmove(pData + 1, pData, sizeof(T_Data) * uBound);
 		}
-		*pData = item;
+		RawAssign<T_Data>(*pData, item);
+		return lBound;
+	}
+
+	typedef bool (*CompareFunc)(const T_Data &lhs, const T_Data &rhs);
+	UInt32 InsertSorted(const T_Data &item, CompareFunc compareFunc)
+	{
+		UInt32 lBound = 0, uBound = numItems, index;
+		while (lBound != uBound)
+		{
+			index = (lBound + uBound) >> 1;
+			if (compareFunc(item, data[index]))
+				uBound = index;
+			else lBound = index + 1;
+		}
+		uBound = numItems - lBound;
+		T_Data *pData = AllocateData();
+		if (uBound)
+		{
+			pData = data + lBound;
+			memmove(pData + 1, pData, sizeof(T_Data) * uBound);
+		}
+		RawAssign<T_Data>(*pData, item);
+		return lBound;
+	}
+
+	template <class SortComperator>
+	UInt32 InsertSorted(const T_Data &item, SortComperator &comperator)
+	{
+		UInt32 lBound = 0, uBound = numItems, index;
+		while (lBound != uBound)
+		{
+			index = (lBound + uBound) >> 1;
+			if (comperator.Compare(item, data[index]))
+				uBound = index;
+			else lBound = index + 1;
+		}
+		uBound = numItems - lBound;
+		T_Data *pData = AllocateData();
+		if (uBound)
+		{
+			pData = data + lBound;
+			memmove(pData + 1, pData, sizeof(T_Data) * uBound);
+		}
+		RawAssign<T_Data>(*pData, item);
 		return lBound;
 	}
 
@@ -1242,7 +1289,7 @@ public:
 			while (pData != pEnd);
 		}
 		pData = AllocateData();
-		*pData = item;
+		RawAssign<T_Data>(*pData, item);
 		return true;
 	}
 
@@ -1434,17 +1481,6 @@ public:
 	}
 
 private:
-	void RawSwap(const T_Data &lhs, const T_Data &rhs)
-	{
-		struct Buffer
-		{
-			UInt8	bytes[sizeof(T_Data)];
-		}
-		temp = *(Buffer*)&lhs;
-		*(Buffer*)&lhs = *(Buffer*)&rhs;
-		*(Buffer*)&rhs = temp;
-	}
-
 	void QuickSortAscending(UInt32 p, UInt32 q)
 	{
 		if (p >= q) return;
@@ -1454,9 +1490,9 @@ private:
 			if (data[p] < data[j])
 				continue;
 			i++;
-			RawSwap(data[j], data[i]);
+			RawSwap<T_Data>(data[j], data[i]);
 		}
-		RawSwap(data[p], data[i]);
+		RawSwap<T_Data>(data[p], data[i]);
 		QuickSortAscending(p, i);
 		QuickSortAscending(i + 1, q);
 	}
@@ -1470,14 +1506,13 @@ private:
 			if (!(data[p] < data[j]))
 				continue;
 			i++;
-			RawSwap(data[j], data[i]);
+			RawSwap<T_Data>(data[j], data[i]);
 		}
-		RawSwap(data[p], data[i]);
+		RawSwap<T_Data>(data[p], data[i]);
 		QuickSortDescending(p, i);
 		QuickSortDescending(i + 1, q);
 	}
 
-	typedef bool (*CompareFunc)(const T_Data &lhs, const T_Data &rhs);
 	void QuickSortCustom(UInt32 p, UInt32 q, CompareFunc compareFunc)
 	{
 		if (p >= q) return;
@@ -1487,9 +1522,9 @@ private:
 			if (compareFunc(data[p], data[j]))
 				continue;
 			i++;
-			RawSwap(data[j], data[i]);
+			RawSwap<T_Data>(data[j], data[i]);
 		}
-		RawSwap(data[p], data[i]);
+		RawSwap<T_Data>(data[p], data[i]);
 		QuickSortCustom(p, i, compareFunc);
 		QuickSortCustom(i + 1, q, compareFunc);
 	}
@@ -1504,9 +1539,9 @@ private:
 			if (comperator.Compare(data[p], data[j]))
 				continue;
 			i++;
-			RawSwap(data[j], data[i]);
+			RawSwap<T_Data>(data[j], data[i]);
 		}
-		RawSwap(data[p], data[i]);
+		RawSwap<T_Data>(data[p], data[i]);
 		QuickSortCustom(p, i, comperator);
 		QuickSortCustom(i + 1, q, comperator);
 	}
@@ -1538,7 +1573,7 @@ public:
 			rand = GetRandomUInt(idx);
 			idx--;
 			if (rand != idx)
-				RawSwap(data[rand], data[idx]);
+				RawSwap<T_Data>(data[rand], data[idx]);
 		}
 	}
 

@@ -106,47 +106,23 @@ UInt8 ArrayElement::GetOwningModIndex() const
 	return arr ? arr->m_owningModIndex : 0;
 }
 
-std::string ArrayElement::ToString() const
+bool ArrayElement::CompareNames(const ArrayElement& lhs, const ArrayElement& rhs)
 {
-	char buf[0x50];
-
-	switch (m_data.dataType)
+	TESForm *lform = LookupFormByID(lhs.m_data.formID);
+	if (lform)
 	{
-	case kDataType_Numeric:
-		sprintf_s(buf, sizeof(buf), "%f", m_data.num);
-		return buf;
-	case kDataType_String:
-		return m_data.GetStr();
-	case kDataType_Array:
-		sprintf_s(buf, sizeof(buf), "Array ID %d", m_data.arrID);
-		return buf;
-	case kDataType_Form:
+		TESForm *rform = LookupFormByID(rhs.m_data.formID);
+		if (rform)
 		{
-			UInt32 refID = m_data.formID;
-			TESForm* form = LookupFormByID(refID);
-			if (form)
+			const char *lName = lform->GetTheName();
+			if (*lName)
 			{
-				const char* formName = GetFullName(form);
-				if (formName)
-					return formName;
+				const char *rName = rform->GetTheName();
+				if (*rName) return StrCompare(lName, rName) < 0;
 			}
-			sprintf_s(buf, sizeof(buf), "%08x", refID);
-			return buf;
 		}
-	default:
-		return "<INVALID>";
 	}
-}
-			
-bool ArrayElement::CompareAsString(const ArrayElement& lhs, const ArrayElement& rhs)
-{
-	// used by std::sort to sort elements by string representation
-	// for forms, this is the name, or the actorvaluestring representation of formID if no name
-
-	std::string lhStr = lhs.ToString();
-	std::string rhStr = rhs.ToString();
-
-	return StrCompare(lhStr.c_str(), rhStr.c_str()) < 0;
+	return lhs.m_data.formID < rhs.m_data.formID;
 }
 
 bool ArrayElement::SetForm(const TESForm* form)
@@ -259,6 +235,9 @@ bool ArrayElement::GetAsString(const char** out) const
 
 void ArrayElement::Unset()
 {
+	if (m_data.dataType == kDataType_Invalid)
+		return;
+
 	if (m_data.dataType == kDataType_String)
 	{
 		if (m_data.str)
@@ -1083,43 +1062,60 @@ public:
 
 void ArrayVar::Sort(ArrayVar *result, SortOrder order, SortType type, Script* comparator)
 {
-	// restriction: all elements of src must be of the same type for default sort
-	// restriction not in effect for alpha sort (all values treated as strings) or custom sort (all values boxed as arrays)
+	// restriction: all elements of src must be of the same type
 
 	if (Empty()) return;
 
 	ArrayIterator iter = m_elements.begin();
-	UInt32 dataType = iter.second()->DataType();
-	if (dataType == kDataType_Invalid || dataType == kDataType_Array)	// nonsensical to sort array of arrays
+	DataType dataType = iter.second()->DataType();
+	if ((dataType == kDataType_Invalid) || (dataType == kDataType_Array))	// nonsensical to sort array of arrays
 		return;
 
-	// copy elems to vec, verify all are of same type
-	double elemIdx = 0;
-	for (; !iter.End(); ++iter)
-	{
-		if (type == kSortType_Default && iter.second()->DataType() != dataType)
-			return;
-		result->SetElement(elemIdx, iter.second());
-		elemIdx += 1;
-	}
+	if ((type == kSortType_Alpha) && (dataType != kDataType_Form))
+		type = kSortType_Default;
 
-	// let STL do the sort
 	auto pOutArr = result->m_elements.getArrayPtr();
+	result->m_elements.m_container.numAlloc = m_elements.size();
+	TempObject<ArrayElement> tempElem;
+	bool descending = (order == kSort_Descending);
 	switch (type)
 	{
 		case kSortType_Default:
-			pOutArr->Sort(order == kSort_Descending);
+		{
+			for (; !iter.End(); ++iter)
+			{
+				if (iter.second()->DataType() != dataType)
+					continue;
+				tempElem.Get().Set(iter.second());
+				pOutArr->InsertSorted(tempElem.Get(), descending);
+				tempElem.Reset();
+			}
 			break;
+		}
 		case kSortType_Alpha:
-			if (order == kSort_Descending)
-				pOutArr->Sort(ArrayElement::CompareAsStringDescending);
-			else pOutArr->Sort(ArrayElement::CompareAsString);
+		{
+			for (; !iter.End(); ++iter)
+			{
+				if (iter.second()->DataType() != kDataType_Form)
+					continue;
+				tempElem.Get().SetFormID(iter.second()->m_data.formID);
+				pOutArr->InsertSorted(tempElem.Get(), descending ? ArrayElement::CompareNamesDescending : ArrayElement::CompareNames);
+				tempElem.Reset();
+			}
 			break;
+		}
 		case kSortType_UserFunction:
 		{
 			if (!comparator) break;
-			SortFunctionCaller sorter(comparator, order == kSort_Descending);
-			pOutArr->Sort(sorter);
+			SortFunctionCaller sorter(comparator, descending);
+			for (; !iter.End(); ++iter)
+			{
+				if (iter.second()->DataType() != dataType)
+					continue;
+				tempElem.Get().Set(iter.second());
+				pOutArr->InsertSorted(tempElem.Get(), sorter);
+				tempElem.Reset();
+			}
 			break;
 		}
 	}
