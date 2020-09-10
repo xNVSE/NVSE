@@ -1086,8 +1086,8 @@ void ArrayVar::Sort(ArrayVar *result, SortOrder order, SortType type, Script* co
 			{
 				if (iter.second()->DataType() != dataType)
 					continue;
-				tempElem.Get().Set(iter.second());
-				pOutArr->InsertSorted(tempElem.Get(), descending);
+				tempElem().Set(iter.second());
+				pOutArr->InsertSorted(tempElem(), descending);
 				tempElem.Reset();
 			}
 			break;
@@ -1098,8 +1098,8 @@ void ArrayVar::Sort(ArrayVar *result, SortOrder order, SortType type, Script* co
 			{
 				if (iter.second()->DataType() != kDataType_Form)
 					continue;
-				tempElem.Get().SetFormID(iter.second()->m_data.formID);
-				pOutArr->InsertSorted(tempElem.Get(), descending ? ArrayElement::CompareNamesDescending : ArrayElement::CompareNames);
+				tempElem().SetFormID(iter.second()->m_data.formID);
+				pOutArr->InsertSorted(tempElem(), descending ? ArrayElement::CompareNamesDescending : ArrayElement::CompareNames);
 				tempElem.Reset();
 			}
 			break;
@@ -1112,8 +1112,8 @@ void ArrayVar::Sort(ArrayVar *result, SortOrder order, SortType type, Script* co
 			{
 				if (iter.second()->DataType() != dataType)
 					continue;
-				tempElem.Get().Set(iter.second());
-				pOutArr->InsertSorted(tempElem.Get(), sorter);
+				tempElem().Set(iter.second());
+				pOutArr->InsertSorted(tempElem(), sorter);
 				tempElem.Reset();
 			}
 			break;
@@ -1309,7 +1309,6 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 
 	if (m_state)
 	{
-		_VarMap& vars = m_state->vars;
 		ArrayVar *pVar;
 		UInt32 numRefs;
 		UInt8 keyType;
@@ -1317,19 +1316,19 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 		const ArrayElement *pElem;
 		char *str;
 		UInt16 len;
-		for (_VarMap::iterator iter = vars.begin(); iter != vars.end(); ++iter)
+		for (auto iter = m_state->vars.Begin(); !iter.End(); ++iter)
 		{
-			if (IsTemporary(iter->first))
+			if (IsTemporary(iter.Key()))
 				continue;
 
-			pVar = iter->second;
+			pVar = *iter;
 			numRefs = pVar->m_refs.Size();
 			if (!numRefs) continue;
 			keyType = pVar->m_keyType;
 
 			Serialization::OpenRecord('ARVR', kVersion);
 			Serialization::WriteRecord8(pVar->m_owningModIndex);
-			Serialization::WriteRecord32(iter->first);
+			Serialization::WriteRecord32(iter.Key());
 			Serialization::WriteRecord8(keyType);
 			Serialization::WriteRecord8(pVar->m_bPacked);
 			Serialization::WriteRecord32(numRefs);
@@ -1592,8 +1591,8 @@ void ArrayVarMap::Clean()		// garbage collection: delete unreferenced arrays
 
 	if (!m_state) return;
 
-	while (m_state->tempVars.size())
-		Delete(*(m_state->tempVars.begin()));
+	while (!m_state->tempVars.Empty())
+		Delete(m_state->tempVars.Keys()[m_state->tempVars.Size() - 1]);
 }
 
 namespace PluginAPI

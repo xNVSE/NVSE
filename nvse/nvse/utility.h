@@ -18,11 +18,10 @@ public:
 
 	void Reset() {new ((T*)&objData) T();}
 
+	T& operator()() {return *(T*)&objData;}
+
 	TempObject& operator=(const T &rhs) {objData = *(Buffer*)&rhs;}
 	TempObject& operator=(const TempObject &rhs) {objData = rhs.objData;}
-
-	T& Get() {return *(T*)&objData;}
-	T* Ptr() {return (T*)&objData;}
 };
 
 //	Assign rhs to lhs, bypassing operator=

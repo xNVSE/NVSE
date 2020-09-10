@@ -1,7 +1,5 @@
 #pragma once
 
-#include <map>
-#include <set>
 #include "Serialization.h"
 
 // simple template class used to support NVSE custom data types (strings, arrays, etc)
@@ -10,8 +8,8 @@ template <class Var>
 class VarMap
 {
 protected:
-	typedef std::map<UInt32, Var*>	_VarMap;
-	typedef std::set<UInt32>		_VarIDs;
+	typedef Map<UInt32, Var*>	_VarMap;
+	typedef Set<UInt32>			_VarIDs;
 
 	class VarCache {
 		// if desired this can be replaced with an impl that caches more than one var without changing client code
@@ -47,7 +45,8 @@ protected:
 		}
 	};
 
-	struct	State {
+	struct State
+	{
 		_VarMap				vars;
 		_VarIDs				tempVars;		// set of IDs of unreferenced vars, makes for easy cleanup
 		_VarIDs				availableVars;	// IDs < greatest used ID available as IDs for new vars
@@ -68,38 +67,32 @@ protected:
 
 			::EnterCriticalSection(&cs);
 
-			try
+			if (!availableVars.Empty())
 			{
-				if (availableVars.size())
-				{
-					id = *availableVars.begin();
-					availableVars.erase(id);
-				}
-				else if (vars.size())
-				{
-					_VarMap::iterator iter = vars.end();
-					--iter;
-					id = iter->first + 1;
-				}
-			} catch(...) {}
+				auto iter = availableVars.Begin();
+				id = *iter;
+				iter.Remove(false);
+			}
+			else if (!vars.Empty())
+				id = vars.Data()[vars.Size() - 1].key.Get() + 1;
 
 			::LeaveCriticalSection(&cs);
 
 			return id;
 		}
 
-		Var*	Get(UInt32 varID)
+		Var* Get(UInt32 varID)
 		{
-			if (varID != 0) {
+			if (varID != 0)
+			{
 				Var* var = cache.Get(varID);
-				if (var) {
-					return var;
-				}
+				if (var) return var;
 
-				_VarMap::iterator it = vars.find(varID);
-				if (it != vars.end())  {
-					cache.Insert(varID, it->second);
-					return it->second;
+				var = vars.Get(varID);
+				if (var)
+				{
+					cache.Insert(varID, var);
+					return var;
 				}
 			}
 			
@@ -115,32 +108,24 @@ protected:
 		{
 			::EnterCriticalSection(&cs);
 
-			try
-			{
-				vars[varID] = var;
-			} catch(...) {}
+			vars[varID] = var;
 
 			::LeaveCriticalSection(&cs);
-
 		}
 
 		void	Delete(UInt32 varID)
 		{
 			::EnterCriticalSection(&cs);
 
-			try
+			cache.Remove(varID);
+			auto iter = vars.Find(varID);
+			if (!iter.End())
 			{
-				Var* var = Get(varID);
-				if (var)
-				{
-					cache.Remove(varID);
-
-					delete var;
-					vars.erase(varID);
-				}
-				tempVars.erase(varID);
-				SetIDAvailable(varID);
-			} catch(...) {}
+				delete *iter;
+				iter.Remove(false);
+			}
+			tempVars.Erase(varID);
+			SetIDAvailable(varID);
 
 			::LeaveCriticalSection(&cs);
 
@@ -153,24 +138,14 @@ protected:
 
 		void Reset()
 		{
-			try
-			{
-				cache.Reset();
-				_VarMap::iterator itEnd = vars.end();
-				_VarMap::iterator iter = vars.begin();
-				_VarMap::iterator toErase = iter;
-				while (iter != itEnd)
-				{
-					delete iter->second;
-					toErase = iter;
-					++iter;
-					vars.erase(toErase);
-				}
+			cache.Reset();
 
-				vars.clear();
-				tempVars.clear();
-				availableVars.clear();
-			} catch (...) {}
+			for (auto iter = vars.Begin(); !iter.End(); ++iter)
+				delete *iter;
+
+			vars.Clear();
+			tempVars.Clear();
+			availableVars.Clear();
 
 			::DeleteCriticalSection(&cs);
 		}
@@ -178,19 +153,19 @@ protected:
 		void	MarkTemporary(UInt32 varID, bool bTemporary)
 		{
 			if (bTemporary)
-				tempVars.insert(varID);
+				tempVars.Insert(varID);
 			else
-				tempVars.erase(varID);
+				tempVars.Erase(varID);
 		}
 
 		bool IsTemporary(UInt32 varID)
 		{
-			return (tempVars.find(varID) != tempVars.end()) ? true : false;
+			return tempVars.HasKey(varID);
 		}
 
 		void SetIDAvailable(UInt32 id) {
 			if (id) {
-				availableVars.insert(id);
+				availableVars.Insert(id);
 			}
 		}
 	};

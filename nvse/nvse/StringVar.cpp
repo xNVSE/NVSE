@@ -35,7 +35,7 @@ SInt32 StringVar::Compare(char* rhs, bool caseSensitive)
 	SInt32 cmp = 0;
 	if (!caseSensitive)
 	{
-		cmp = _stricmp(data.c_str(), rhs);
+		cmp = StrCompare(data.c_str(), rhs);
 		if (cmp > 0)
 			return -1;
 		else if (cmp < 0)
@@ -241,22 +241,19 @@ void StringVarMap::Save(NVSESerializationInterface* intfc)
 
 	Serialization::OpenRecord('STVS', 0);
 
-	if (m_state) {
-		for (_VarMap::iterator iter = m_state->vars.begin();
-				iter != m_state->vars.end();
-				iter++)
+	if (m_state)
+	{
+		for (auto iter = m_state->vars.Begin(); !iter.End(); ++iter)
 		{
-			if (IsTemporary(iter->first))	// don't save temp strings
+			if (IsTemporary(iter.Key()))	// don't save temp strings
 				continue;
 
 			Serialization::OpenRecord('STVR', 0);
-			UInt8 modIndex = iter->second->GetOwningModIndex();
-
-			Serialization::WriteRecord8(modIndex);
-			Serialization::WriteRecord32(iter->first);
-			UInt16 len = iter->second->GetLength();
+			Serialization::WriteRecord8(iter->GetOwningModIndex());
+			Serialization::WriteRecord32(iter.Key());
+			UInt16 len = iter->GetLength();
 			Serialization::WriteRecord16(len);
-			Serialization::WriteRecordData(iter->second->GetCString(), len);
+			Serialization::WriteRecordData(iter->GetCString(), len);
 		}
 	}
 	Serialization::OpenRecord('STVE', 0);
@@ -386,13 +383,11 @@ bool AssignToStringVar(COMMAND_ARGS, const char* newValue) {	// Adds another cal
 
 void StringVarMap::Clean()		// clean up any temporary vars
 {
-	if (m_state) {
-		while (m_state->tempVars.size())
-		{
-			UInt32 idToDelete = *(m_state->tempVars.begin());
-			Delete(idToDelete);
-		}
-	}
+	if (!m_state) return;
+
+	for (auto iter = m_state->tempVars.Begin(); !iter.End(); ++iter)
+		Delete(*iter);
+	m_state->tempVars.Clear();
 }
 
 namespace PluginAPI

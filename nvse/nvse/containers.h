@@ -55,8 +55,8 @@ template <typename T_Data> class MapValue
 
 public:
 	T_Data *Init() {return &value;}
-	T_Data& Get() const {return value;}
-	T_Data *Ptr() const {return &value;}
+	T_Data& Get() {return value;}
+	T_Data *Ptr() {return &value;}
 	void Clear() {value.~T_Data();}
 };
 
@@ -70,8 +70,8 @@ public:
 		value = (T_Data*)malloc(sizeof(T_Data));
 		return value;
 	}
-	T_Data& Get() const {return *value;}
-	T_Data *Ptr() const {return value;}
+	T_Data& Get() {return *value;}
+	T_Data *Ptr() {return value;}
 	void Clear()
 	{
 		value->~T_Data();
@@ -155,6 +155,7 @@ public:
 
 	UInt32 Size() const {return numEntries;}
 	bool Empty() const {return !numEntries;}
+	Entry *Data() const {return entries;}
 
 	bool Insert(Key_Arg key, T_Data **outData)
 	{
@@ -186,13 +187,13 @@ public:
 		return GetIndex(key, &index);
 	}
 
-	T_Data Get(Key_Arg key) const
+	T_Data Get(Key_Arg key)
 	{
 		UInt32 index;
 		return GetIndex(key, &index) ? entries[index].value.Get() : NULL;
 	}
 
-	T_Data* GetPtr(Key_Arg key) const
+	T_Data* GetPtr(Key_Arg key)
 	{
 		UInt32 index;
 		return GetIndex(key, &index) ? entries[index].value.Ptr() : NULL;
