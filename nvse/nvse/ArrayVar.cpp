@@ -1592,7 +1592,7 @@ void ArrayVarMap::Clean()		// garbage collection: delete unreferenced arrays
 	if (!m_state) return;
 
 	while (!m_state->tempVars.Empty())
-		Delete(m_state->tempVars.Keys()[m_state->tempVars.Size() - 1]);
+		Delete(m_state->tempVars.LastKey());
 }
 
 namespace PluginAPI

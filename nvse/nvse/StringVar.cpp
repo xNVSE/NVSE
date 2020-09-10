@@ -385,9 +385,8 @@ void StringVarMap::Clean()		// clean up any temporary vars
 {
 	if (!m_state) return;
 
-	for (auto iter = m_state->tempVars.Begin(); !iter.End(); ++iter)
-		Delete(*iter);
-	m_state->tempVars.Clear();
+	while (!m_state->tempVars.Empty())
+		Delete(m_state->tempVars.LastKey());
 }
 
 namespace PluginAPI

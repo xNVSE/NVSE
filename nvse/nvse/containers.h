@@ -693,13 +693,13 @@ public:
 
 	bool HasKey(Key_Arg key) const {return FindEntry(key) ? true : false;}
 
-	T_Data Get(Key_Arg key) const
+	T_Data Get(Key_Arg key)
 	{
 		Entry *pEntry = FindEntry(key);
 		return pEntry ? pEntry->value : NULL;
 	}
 
-	T_Data* GetPtr(Key_Arg key) const
+	T_Data* GetPtr(Key_Arg key)
 	{
 		Entry *pEntry = FindEntry(key);
 		return pEntry ? &pEntry->value : NULL;

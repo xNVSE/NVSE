@@ -4,12 +4,24 @@
 
 // simple template class used to support NVSE custom data types (strings, arrays, etc)
 
+struct _VarIDs : Set<UInt32>
+{
+	UInt32 PopFirst()
+	{
+		UInt32 *keys = Keys(), first = *keys;
+		if (--numKeys)
+			memmove(keys, keys + 1, numKeys * 4);
+		return first;
+	}
+
+	UInt32 LastKey() {return Keys()[numKeys - 1];}
+};
+
 template <class Var>
 class VarMap
 {
 protected:
 	typedef Map<UInt32, Var*>	_VarMap;
-	typedef Set<UInt32>			_VarIDs;
 
 	class VarCache {
 		// if desired this can be replaced with an impl that caches more than one var without changing client code
@@ -68,11 +80,7 @@ protected:
 			::EnterCriticalSection(&cs);
 
 			if (!availableVars.Empty())
-			{
-				auto iter = availableVars.Begin();
-				id = *iter;
-				iter.Remove(false);
-			}
+				id = availableVars.PopFirst();
 			else if (!vars.Empty())
 				id = vars.Data()[vars.Size() - 1].key.Get() + 1;
 
@@ -83,20 +91,15 @@ protected:
 
 		Var* Get(UInt32 varID)
 		{
-			if (varID != 0)
+			if (!varID) return NULL;
+			Var* var = cache.Get(varID);
+			if (!var)
 			{
-				Var* var = cache.Get(varID);
-				if (var) return var;
-
 				var = vars.Get(varID);
 				if (var)
-				{
 					cache.Insert(varID, var);
-					return var;
-				}
 			}
-			
-			return NULL;
+			return var;
 		}
 
 		bool	VarExists(UInt32 varID)

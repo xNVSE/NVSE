@@ -5,22 +5,16 @@
 ArrayVarElementContainer::~ArrayVarElementContainer()
 {
 	clear();
-	switch (m_type)
+	if (m_container.data)
 	{
-		case kContainer_Array:
-			AsArray().~ElementVector();
-			break;
-		case kContainer_NumericMap:
-			AsNumMap().~ElementNumMap();
-			break;
-		case kContainer_StringMap:
-			AsStrMap().~ElementStrMap();
-			break;
+		free(m_container.data);
+		m_container.data = NULL;
 	}
 }
 
 void ArrayVarElementContainer::clear()
 {
+	if (empty()) return;
 	switch (m_type)
 	{
 		default:
@@ -28,7 +22,7 @@ void ArrayVarElementContainer::clear()
 		{
 			for (auto iter = AsArray().Begin(); !iter.End(); ++iter)
 				iter.Get().Unset();
-			AsArray().Clear();
+			m_container.numItems = 0;
 			break;
 		}
 		case kContainer_NumericMap:
@@ -50,6 +44,7 @@ void ArrayVarElementContainer::clear()
 
 UInt32 ArrayVarElementContainer::erase(const ArrayKey *key)
 {
+	if (empty()) return 0;
 	switch (m_type)
 	{
 		default:
@@ -91,7 +86,7 @@ UInt32 ArrayVarElementContainer::erase(const ArrayKey *key)
 
 UInt32 ArrayVarElementContainer::erase(UInt32 iLow, UInt32 iHigh)
 {
-	if ((m_type != kContainer_Array) || !m_container.numItems)
+	if (empty() || (m_type != kContainer_Array))
 		return 0;
 	UInt32 arrSize = m_container.numItems;
 	if (iHigh >= arrSize)
