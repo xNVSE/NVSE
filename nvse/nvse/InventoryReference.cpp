@@ -43,7 +43,7 @@ InventoryReference::~InventoryReference()
 	// note: TESObjectREFR::Destroy() frees up the formID for reuse
 	if (m_tempRef) {
 		s_refmap.erase(m_tempRef->refID);
-		m_tempRef->Destroy(false);
+		m_tempRef->Destroy(true);
 	}
 
 	// remove unnecessary extra data, consolidate identical stacks
