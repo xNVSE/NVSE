@@ -211,7 +211,7 @@ public:
 	TESForm();
 	~TESForm();
 
-	virtual void *		Destroy(bool noDealloc);			// func_00C in GECK ?? I think ??
+	virtual void *		Destroy(bool doFree);			// func_00C in GECK ?? I think ??
 	virtual void		Unk_05(void);						// Might be set default value (called from constructor)
 	virtual void		Unk_06(void);						// Might be clear values
 	virtual bool		Unk_07(void);
