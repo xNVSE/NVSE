@@ -42,14 +42,14 @@ __declspec(naked) UInt32 __fastcall AlignBucketCount(UInt32 count)
 		mov		eax, MAP_DEFAULT_BUCKET_COUNT
 		retn
 	gtMin:
+		cmp		ecx, MAP_MAX_BUCKET_COUNT
+		jb		ltMax
 		mov		eax, MAP_MAX_BUCKET_COUNT
-		cmp		ecx, eax
-		jb		iterHead
 		retn
-	iterHead:
-		shr		eax, 1
-		test	ecx, eax
-		jz		iterHead
+	ltMax:
+		xor		eax, eax
+		bsr		edx, ecx
+		bts		eax, edx
 		cmp		eax, ecx
 		jz		done
 		shl		eax, 1
@@ -58,13 +58,13 @@ __declspec(naked) UInt32 __fastcall AlignBucketCount(UInt32 count)
 	}
 }
 
-void *s_scrappedMapEntries[0x20] = {NULL};
+void *s_scrappedListNodes[0x20] = {NULL};
 
-__declspec(naked) void* __fastcall AllocMapEntry(UInt32 size)
+__declspec(naked) void* __fastcall AllocListNode(UInt32 size)
 {
 	__asm
 	{
-		lea		edx, s_scrappedMapEntries[ecx]
+		lea		edx, s_scrappedListNodes[ecx]
 		mov		eax, [edx]
 		test	eax, eax
 		jz		doAlloc
@@ -79,11 +79,11 @@ __declspec(naked) void* __fastcall AllocMapEntry(UInt32 size)
 	}
 }
 
-__declspec(naked) void __fastcall ScrapMapEntry(void *entry, UInt32 size)
+__declspec(naked) void __fastcall ScrapListNode(void *entry, UInt32 size)
 {
 	__asm
 	{
-		lea		eax, s_scrappedMapEntries[edx]
+		lea		eax, s_scrappedListNodes[edx]
 		mov		edx, [eax]
 		mov		[ecx], edx
 		mov		[eax], ecx
