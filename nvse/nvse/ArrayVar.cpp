@@ -357,7 +357,7 @@ ArrayElement* ArrayVar::Get(const ArrayKey* key, bool bCanCreateNew)
 			ArrayElement *outElem = pArray->GetPtr((UInt32)idx);
 			if (!outElem && bCanCreateNew)
 			{
-				outElem = pArray->Emplace();
+				outElem = pArray->Append();
 				outElem->m_data.owningArray = m_ID;
 			}
 			return outElem;
@@ -404,7 +404,7 @@ ArrayElement* ArrayVar::Get(double key, bool bCanCreateNew)
 			ArrayElement *outElem = pArray->GetPtr((UInt32)idx);
 			if (!outElem && bCanCreateNew)
 			{
-				outElem = pArray->Emplace();
+				outElem = pArray->Append();
 				outElem->m_data.owningArray = m_ID;
 			}
 			return outElem;
