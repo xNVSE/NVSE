@@ -127,7 +127,7 @@ void BaseExtraList::Copy(BaseExtraList* from)
 
 bool BaseExtraList::IsWorn()
 {
-	return (HasType(kExtraData_Worn) || HasType(kExtraData_WornLeft));
+	return HasType(kExtraData_Worn);
 }
 
 void BaseExtraList::DebugDump() const
