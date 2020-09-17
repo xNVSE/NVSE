@@ -68,8 +68,8 @@ static void HandleMainLoopHook(void)
 	}
 
 	// if any temporary references to inventory objects exist, clean them up
-	if (InventoryReference::HasData())
-		InventoryReference::Clean();
+	if (!s_invRefMap.Empty())
+		s_invRefMap.Clear();
 
 	// Tick event manager
 	EventManager::Tick();

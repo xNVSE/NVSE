@@ -56,7 +56,7 @@ bool Cmd_CreateTempRef_Execute(COMMAND_ARGS)
 
 	TESForm* form = NULL;
 	if (ExtractArgs(EXTRACT_ARGS, &form) && form) {
-		InventoryReference* iref = InventoryReference::Create(NULL, InventoryReference::Data(form, NULL, NULL), false);
+		InventoryReference* iref = CreateInventoryRef(NULL, InventoryReference::Data(form, NULL, NULL), false);
 		if (iref) {
 			*refResult = iref->GetRef()->refID;
 		}
@@ -235,7 +235,7 @@ bool Cmd_GetFirstRefForItem_Execute(COMMAND_ARGS)
 							//	xData = ExtraDataList::Create();
 							//}
 							InventoryReference::Data dataIR(item, entry, xData);
-							InventoryReference* iref = InventoryReference::Create(thisObj, dataIR, false);
+							InventoryReference* iref = CreateInventoryRef(thisObj, dataIR, false);
 							g_invRefArray[idx].refIDs.push_back(iref->GetRef()->refID);
 							baseCount -= GetCountForExtraDataList(xData);
 						}
@@ -264,7 +264,7 @@ bool Cmd_GetFirstRefForItem_Execute(COMMAND_ARGS)
 				std::vector<InventoryReference::Data> refData;
 				InventoryReference::Data::CreateForUnextendedEntry(entry, baseCount, refData);
 				for (std::vector<InventoryReference::Data>::iterator iter = refData.begin(); iter != refData.end(); ++iter) {
-					InventoryReference* iref = InventoryReference::Create(thisObj, *iter, false);
+					InventoryReference* iref = CreateInventoryRef(thisObj, *iter, false);
 					g_invRefArray[idx].refIDs.push_back(iref->GetRef()->refID);
 				}
 			}
@@ -335,7 +335,7 @@ bool Cmd_GetInvRefsForItem_Execute(COMMAND_ARGS)
 							//	xData = ExtraDataList::Create();
 							//}
 							InventoryReference::Data dataIR(item, entry, xData);
-							InventoryReference* iref = InventoryReference::Create(thisObj, dataIR, false);
+							InventoryReference* iref = CreateInventoryRef(thisObj, dataIR, false);
 							arr->SetElementFormID(arrIndex, iref->GetRef()->refID);
 							arrIndex += 1;
 							baseCount -= GetCountForExtraDataList(xData);
@@ -365,7 +365,7 @@ bool Cmd_GetInvRefsForItem_Execute(COMMAND_ARGS)
 				std::vector<InventoryReference::Data> refData;
 				InventoryReference::Data::CreateForUnextendedEntry(entry, baseCount, refData);
 				for (std::vector<InventoryReference::Data>::iterator iter = refData.begin(); iter != refData.end(); ++iter) {
-					InventoryReference* iref = InventoryReference::Create(thisObj, *iter, false);
+					InventoryReference* iref = CreateInventoryRef(thisObj, *iter, false);
 					arr->SetElementFormID(arrIndex, iref->GetRef()->refID);
 					arrIndex += 1;
 				}

@@ -116,7 +116,7 @@ ContainerIterLoop::ContainerIterLoop(const ForEachContext* context)
 	TESObjectREFR* contRef = DYNAMIC_CAST((TESForm*)context->sourceID, TESForm, TESObjectREFR);
 	m_refVar = context->var;
 	m_iterIndex = 0;
-	m_invRef = InventoryReference::Create(contRef, IRefData(NULL, NULL, NULL), false);	
+	m_invRef = CreateInventoryRef(contRef, IRefData(NULL, NULL, NULL), false);	
 
 	// first: figure out what items exist by default
 	std::map<TESForm*, SInt32> baseObjectCounts;

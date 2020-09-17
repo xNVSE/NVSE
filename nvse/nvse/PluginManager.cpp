@@ -771,7 +771,7 @@ bool PluginManager::Dispatch_Message(PluginHandle sender, UInt32 messageType, vo
 
 PluginHandle PluginManager::LookupHandleFromName(const char* pluginName)
 {
-	if (!_stricmp("NVSE", pluginName))
+	if (StrEqualCI("NVSE", pluginName))
 		return 0;
 
 	UInt32	idx = 1;
@@ -779,7 +779,7 @@ PluginHandle PluginManager::LookupHandleFromName(const char* pluginName)
 	for(LoadedPluginList::iterator iter = m_plugins.begin(); iter != m_plugins.end(); ++iter)
 	{
 		LoadedPlugin	* plugin = &(*iter);
-		if(!_stricmp(plugin->info.name, pluginName))
+		if(StrEqualCI(plugin->info.name, pluginName))
 		{
 			return idx;
 		}
@@ -791,7 +791,7 @@ PluginHandle PluginManager::LookupHandleFromName(const char* pluginName)
 
 PluginHandle PluginManager::LookupHandleFromPath(const char* pluginPath)
 {
-	if (!_stricmp("", pluginPath))
+	if (!pluginPath || !*pluginPath)
 		return 0;
 
 	UInt32	idx = 1;
@@ -799,7 +799,7 @@ PluginHandle PluginManager::LookupHandleFromPath(const char* pluginPath)
 	for(LoadedPluginList::iterator iter = m_plugins.begin(); iter != m_plugins.end(); ++iter)
 	{
 		LoadedPlugin	* plugin = &(*iter);
-		if(!_stricmp(plugin->path, pluginPath))
+		if(StrEqualCI(plugin->path, pluginPath))
 		{
 			return idx;
 		}
@@ -819,7 +819,6 @@ void * PluginManager::GetSingleton(UInt32 singletonID)
 	case NVSEDataInterface::kNVSEData_DIHookControl: result = (void*) (DIHookControl::GetSingletonPtr()); break;
 	case NVSEDataInterface::kNVSEData_ArrayMap: result = (void*) (ArrayVarMap::GetSingleton()); break;
 	case NVSEDataInterface::kNVSEData_StringMap: result = (void*) (StringVarMap::GetSingleton()); break;
-	case NVSEDataInterface::kNVSEData_InventoryReferenceMap: result = (void*) (InventoryReference::GetSingleton()); break;
 	}
 	return result;
 }
@@ -830,7 +829,7 @@ void * PluginManager::GetFunc(UInt32 funcID)
 	void * result = NULL;
 	switch(funcID)
 	{
-	case NVSEDataInterface::kNVSEData_InventoryReferenceCreate: result = (void*)&InventoryReference::Create; break;
+	case NVSEDataInterface::kNVSEData_InventoryReferenceCreate: result = (void*)&CreateInventoryRef; break;
 	case NVSEDataInterface::kNVSEData_InventoryReferenceGetForRefID: result = (void*)&InventoryReference::GetForRefID; break;
 	case NVSEDataInterface::kNVSEData_InventoryReferenceGetRefBySelf: result = (void*)&InventoryReference::GetRefBySelf; break;	// new static version as the standard GetRef cannot be converted to void*
 	case NVSEDataInterface::kNVSEData_ArrayVarMapDeleteBySelf: result = (void*)&ArrayVarMap::DeleteBySelf; break;
