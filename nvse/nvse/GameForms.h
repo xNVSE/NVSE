@@ -273,7 +273,7 @@ public:
 	virtual bool		Unk_3D(void);
 	virtual bool		Unk_3E(void);
 	virtual bool		Unk_3F(void);	// returnTrue for refr whose baseForm is a TESActorBase
-	virtual bool		Unk_40(void);	// Called from GetActorValue, might be is Actor (called also from AddItem and PlayGroup)
+	virtual bool		IsActor(void);
 	virtual UInt32		Unk_41(void);
 	virtual void		CopyFrom(const TESForm * form);
 	virtual bool		Compare(TESForm * form);
