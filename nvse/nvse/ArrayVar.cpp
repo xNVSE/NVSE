@@ -1045,7 +1045,7 @@ public:
 	virtual TESObjectREFR* ThisObj() { return NULL; }
 	virtual TESObjectREFR* ContainingObj() { return NULL; }
 
-	bool Compare(const ArrayElement& lhs, const ArrayElement& rhs)
+	bool operator()(const ArrayElement& lhs, const ArrayElement& rhs)
 	{
 		m_lhs->SetElement(0.0, &lhs);
 		m_rhs->SetElement(0.0, &rhs);
