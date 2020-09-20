@@ -65,8 +65,8 @@ public:
 	Data						m_data;
 	TESObjectREFR				*m_containerRef;
 	TESObjectREFR				*m_tempRef;
-	LinkedList<DeferredAction>	m_deferredActions;
-	UInt8						pad14[20];	// This used to be std::queue<DeferredAction*>; Padded to preserve sizeof == 0x30, for backward compatibility with plugins.
+	Stack<DeferredAction>		m_deferredActions;
+	UInt8						pad18[20];	// This used to be std::queue<DeferredAction*>; Padded to preserve sizeof == 0x30, for backward compatibility with plugins.
 	bool						m_bDoValidation;
 	bool						m_bRemoved;
 
