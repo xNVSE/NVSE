@@ -552,47 +552,35 @@ bool Cmd_GetCallingScript_Execute(COMMAND_ARGS)
 
 bool ExtractEventCallback(ExpressionEvaluator& eval, EventManager::EventCallback* outCallback, char* outName)
 {
-	if (eval.ExtractArgs() && eval.NumArgs() >= 2) {
+	if (eval.ExtractArgs() && eval.NumArgs() >= 2)
+	{
 		const char* eventName = eval.Arg(0)->GetString();
 		Script* script = DYNAMIC_CAST(eval.Arg(1)->GetTESForm(), TESForm, Script);
-		if (eventName && script) {
+		if (eventName && script)
+		{
+			outCallback->script = script;
 			strcpy_s(outName, 0x20, eventName);
-			TESForm* sourceFilter = NULL;
-			TESForm* targetFilter = NULL;
-			TESObjectREFR* thisObjFilter = NULL;
 
 			// any filters?
-			for (UInt32 i = 2; i < eval.NumArgs(); i++) {
+			for (UInt32 i = 2; i < eval.NumArgs(); i++)
+			{
 				const TokenPair* pair = eval.Arg(i)->GetPair();
-				if (pair && pair->left && pair->right) {
+				if (pair && pair->left && pair->right)
+				{
 					const char* key = pair->left->GetString();
-					if (key) {
-						if (!_stricmp(key, "ref") || !_stricmp(key, "first")) {
-							sourceFilter = /* DYNAMIC_CAST( */ pair->right->GetTESForm() /* , TESForm, TESObjectREFR) */ ;
+					if (key)
+					{
+						if (StrEqualCI(key, "ref") || StrEqualCI(key, "first"))
+						{
+							outCallback->source = pair->right->GetTESForm();
 						}
-						else if (!_stricmp(key, "object") || !_stricmp(key, "second")) {
-							//// special-case MGEF
-							//if (!_stricmp(eventName, "onmagiceffecthit")) {
-							//	const char* effStr = pair->right->GetString();
-							//	if (effStr && strlen(effStr) == 4) {
-							//		targetFilter = EffectSetting::EffectSettingForC(*((UInt32*)effStr));
-							//	}
-							//}
-							//else
-							//if (!_stricmp(eventName, "onhealthdamage")) {
-							//	// special-case OnHealthDamage - don't filter by damage, do filter by damaged actor
-							//	thisObjFilter = /* DYNAMIC_CAST( */ pair->right->GetTESForm() /* , TESForm, TESObjectREFR) */ ;
-							//}
-							//else
-							{
-								targetFilter = pair->right->GetTESForm();
-							}
+						else if (StrEqualCI(key, "object") || StrEqualCI(key, "second"))
+						{
+							outCallback->object = pair->right->GetTESForm();
 						}
 					}
 				}
 			}
-
-			*outCallback = EventManager::EventCallback(script, sourceFilter, targetFilter, thisObjFilter);
 			return true;
 		}
 	}
@@ -603,7 +591,7 @@ bool ExtractEventCallback(ExpressionEvaluator& eval, EventManager::EventCallback
 bool Cmd_SetEventHandler_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	EventManager::EventCallback callback(NULL);
+	EventManager::EventCallback callback;
 	char eventName[0x20];
 	if (ExtractEventCallback(eval, &callback, eventName)) {
 		if (EventManager::SetHandler(eventName, callback))
@@ -616,7 +604,7 @@ bool Cmd_SetEventHandler_Execute(COMMAND_ARGS)
 bool Cmd_RemoveEventHandler_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	EventManager::EventCallback callback(NULL);
+	EventManager::EventCallback callback;
 	char eventName[0x20];
 	if (ExtractEventCallback(eval, &callback, eventName)) {
 		if (EventManager::RemoveHandler(eventName, callback))
@@ -628,10 +616,7 @@ bool Cmd_RemoveEventHandler_Execute(COMMAND_ARGS)
 
 bool Cmd_GetCurrentEventName_Execute(COMMAND_ARGS)
 {
-	std::string eventStr = EventManager::GetCurrentEventName();
-	const char* eventName = eventStr.c_str();
-
-	AssignToStringVar(PASS_COMMAND_ARGS, eventName);
+	AssignToStringVar(PASS_COMMAND_ARGS, EventManager::GetCurrentEventName());
 	return true;
 }
 

@@ -79,38 +79,27 @@ namespace EventManager
 	// Represents an event handler registered for an event.
 	struct EventCallback
 	{
-		EventCallback(Script* funcScript, TESObjectREFR* sourceFilter = NULL, TESForm* objectFilter = NULL, TESObjectREFR* thisObj = NULL)
-			: script(funcScript), source((TESForm*)sourceFilter), object(objectFilter), callingObj(thisObj), flags(0) { }
-		EventCallback(Script* funcScript, BGSListForm* sourceFilter, TESForm* objectFilter = NULL, TESObjectREFR* thisObj = NULL)
-			: script(funcScript), source((TESForm*)sourceFilter), object(objectFilter), callingObj(thisObj), flags(0) { }
-		EventCallback(Script* funcScript, TESForm* sourceFilter, TESForm* objectFilter = NULL, TESObjectREFR* thisObj = NULL)
-			: script(funcScript), source(sourceFilter), object(objectFilter), callingObj(thisObj), flags(0) { }
-		~EventCallback() { }
-		EventCallback& operator=(const EventCallback& other) {
+		EventCallback() : script(NULL), source(NULL), object(NULL), removed(false), pendingRemove(false) {}
+		EventCallback(Script* funcScript, TESForm* sourceFilter = NULL, TESForm* objectFilter = NULL)
+			: script(funcScript), source(sourceFilter), object(objectFilter), removed(false), pendingRemove(false) {}
+		EventCallback& operator=(const EventCallback& other)
+		{
 			script = other.script;
 			source = other.source;
 			object = other.object;
-			callingObj = other.callingObj;
-			flags = other.flags;
+			removed = other.removed;
+			pendingRemove = other.pendingRemove;
 			return *this;
 		};
 
-		
-		enum {
-			kFlag_Removed		= 1 << 0,		// set when RemoveEventHandler called while handler is in use
-			kFlag_InUse			= 1 << 1,		// is in use by HandleEvent (so removing it would invalidate an iterator)
-		};
+		Script			*script;
+		TESForm			*source;				// first arg to handler (reference or base form or form list)
+		TESForm			*object;				// second arg to handler
+		bool			removed;
+		bool			pendingRemove;
 
-		Script			* script;
-		TESForm			* source;				// first arg to handler (reference or base form or form list)
-		TESForm			* object;				// second arg to handler
-		TESObjectREFR	* callingObj;			// invoking object for handler
-		UInt8			flags;
-
-		bool IsInUse() const { return flags & kFlag_InUse ? true : false; }
-		bool IsRemoved() const { return flags & kFlag_Removed ? true : false; }
-		void SetInUse(bool bSet) { flags = bSet ? flags | kFlag_InUse : flags & ~kFlag_InUse; }
-		void SetRemoved(bool bSet) { flags = bSet ? flags | kFlag_Removed : flags & ~kFlag_Removed; }
+		bool IsRemoved() const { return removed; }
+		void SetRemoved(bool bSet) { removed = bSet; }
 		bool Equals(const EventCallback& rhs) const;	// compare, return true if the two handlers are identical
 	};
 
@@ -126,7 +115,7 @@ namespace EventManager
 	void __stdcall HandleEvent(UInt32 id, void * arg0, void * arg1);
 
 	// name of whatever event is currently being handled, empty string if none
-	std::string GetCurrentEventName();
+	const char* GetCurrentEventName();
 
 	// called each frame to update internal state
 	void Tick();
