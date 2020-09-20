@@ -155,7 +155,7 @@ bool InventoryReference::RemoveFromContainer()
 	{
 		if (m_data.xData && m_data.xData->IsWorn())
 		{
-			m_deferredActions.Prepend(kAction_Remove, m_data);
+			m_deferredActions.Push(kAction_Remove, m_data);
 			return true;
 		}
 		SetRemoved();
@@ -175,7 +175,7 @@ bool InventoryReference::MoveToContainer(TESObjectREFR* dest)
 	ExtraContainerChanges* xChanges = ExtraContainerChanges::GetForRef(dest);
 	if (xChanges && Validate() && m_tempRef && m_containerRef)
 	{
-		m_deferredActions.Prepend(kAction_Remove, m_data, dest);
+		m_deferredActions.Push(kAction_Remove, m_data, dest);
 		return true;
 	}
 	return false;
@@ -207,20 +207,19 @@ bool InventoryReference::SetEquipped(bool bEquipped)
 	}
 	else if (!bEquipped)
 		return false;
-	m_deferredActions.Prepend(kAction_Equip, m_data);
+	m_deferredActions.Push(kAction_Equip, m_data);
 	return true;
 }
 
 void InventoryReference::DoDeferredActions()
 {
-	if (m_deferredActions.Empty()) return;
-	for (auto iter = m_deferredActions.Begin(); !iter.End(); ++iter)
+	DeferredAction *action;
+	while (action = m_deferredActions.Pop())
 	{
-		SetData(iter.Get().Data());
+		SetData(action->Data());
 		if (Validate() && GetContainer())
-			iter.Get().Execute(this);
+			action->Execute(this);
 	}
-	m_deferredActions.Clear();
 }
 
 bool InventoryReference::DeferredAction::Execute(InventoryReference* iref)
