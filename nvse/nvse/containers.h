@@ -14,7 +14,7 @@ void __fastcall ScrapListNode(void *entry, UInt32 entrySize);
 
 #define ALLOC_NODE(type) (type*)AllocListNode(sizeof(type))
 
-template <typename T_Data> class LinkedList
+template <typename T_Data> class Stack
 {
 	using Data_Arg = std::conditional_t<std::is_scalar_v<T_Data>, T_Data, T_Data&>;
 
@@ -28,74 +28,172 @@ template <typename T_Data> class LinkedList
 
 	Node	*head;
 
-	Node *GetLastNode() const
+public:
+	Stack() : head(NULL) {}
+	~Stack() {Clear();}
+
+	bool Empty() const {return !head;}
+
+	T_Data& Top()
 	{
-		Node *pNode = head;
-		if (pNode)
-			while (pNode->next)
-				pNode = pNode->next;
-		return pNode;
+		return head->data;
 	}
 
-	Node *GetNthNode(UInt32 index, Node **outPrev) const
+	T_Data *Push(Data_Arg item)
 	{
-		Node *pNode = head, *prev = NULL;
+		Node *newNode = ALLOC_NODE(Node);
+		T_Data *data = &newNode->data;
+		RawAssign<T_Data>(*data, item);
+		newNode->next = head;
+		head = newNode;
+		return data;
+	}
+
+	template <typename ...Args>
+	T_Data *Push(Args && ...args)
+	{
+		Node *newNode = ALLOC_NODE(Node);
+		T_Data *data = &newNode->data;
+		new (data) T_Data(std::forward<Args>(args)...);
+		newNode->next = head;
+		head = newNode;
+		return data;
+	}
+
+	T_Data *Pop()
+	{
+		if (!head) return NULL;
+		T_Data *frontItem = &head->data;
+		Node *toRemove = head;
+		head = head->next;
+		toRemove->Clear();
+		ScrapListNode(toRemove, sizeof(Node));
+		return frontItem;
+	}
+
+	void Clear()
+	{
+		if (!head) return;
+		Node *pNode;
+		do
+		{
+			pNode = head;
+			head = head->next;
+			pNode->Clear();
+			ScrapListNode(pNode, sizeof(Node));
+		}
+		while (head);
+	}
+};
+
+
+template <typename T_Data> class LinkedList
+{
+	using Data_Arg = std::conditional_t<std::is_scalar_v<T_Data>, T_Data, T_Data&>;
+
+	struct Node
+	{
+		Node		*next;
+		Node		*prev;
+		T_Data		data;
+
+		void Clear() {data.~T_Data();}
+	};
+
+	Node	*head;
+	Node	*tail;
+
+	Node *GetNthNode(UInt32 index) const
+	{
+		Node *pNode = head;
 		while (pNode)
 		{
 			if (!index) break;
 			index--;
-			prev = pNode;
 			pNode = pNode->next;
 		}
-		if (outPrev) *outPrev = prev;
 		return pNode;
 	}
 
-	Node *FindNode(Data_Arg item, Node **outPrev) const
+	Node *PrependNew()
 	{
-		if (!head) return NULL;
-		Node *pNode = head, *prev = NULL;
-		do
+		Node *newNode = ALLOC_NODE(Node);
+		newNode->next = head;
+		newNode->prev = NULL;
+		if (head) head->prev = newNode;
+		else tail = newNode;
+		head = newNode;
+		return newNode;
+	}
+
+	Node *AppendNew()
+	{
+		Node *newNode = ALLOC_NODE(Node);
+		newNode->next = NULL;
+		newNode->prev = tail;
+		if (tail) tail->next = newNode;
+		else head = newNode;
+		tail = newNode;
+		return newNode;
+	}
+
+	Node *InsertNew(UInt32 index)
+	{
+		Node *pNode = GetNthNode(index);
+		if (!pNode) return AppendNew();
+		Node *prev = pNode->prev, *newNode = ALLOC_NODE(Node);
+		newNode->next = pNode;
+		newNode->prev = prev;
+		pNode->prev = newNode;
+		if (prev) prev->next = newNode;
+		else head = newNode;
+		return newNode;
+	}
+
+	Node *FindNode(Data_Arg item) const
+	{
+		if (head)
 		{
-			if (pNode->data == item)
+			Node *pNode = head;
+			do
 			{
-				if (outPrev) *outPrev = prev;
-				return pNode;
+				if (pNode->data == item)
+					return pNode;
 			}
-			prev = pNode;
+			while (pNode = pNode->next);
 		}
-		while (pNode = pNode->next);
 		return NULL;
 	}
 
 	template <class Matcher>
-	Node *FindNode(Matcher &matcher, Node **outPrev) const
+	Node *FindNode(Matcher &matcher) const
 	{
-		if (!head) return NULL;
-		Node *pNode = head, *prev = NULL;
-		do
+		if (head)
 		{
-			if (matcher(pNode->data))
+			Node *pNode = head;
+			do
 			{
-				if (outPrev) *outPrev = prev;
-				return pNode;
+				if (matcher(pNode->data))
+					return pNode;
 			}
-			prev = pNode;
+			while (pNode = pNode->next);
 		}
-		while (pNode = pNode->next);
 		return NULL;
 	}
 
-	void RemoveNode(Node *toRemove, Node *prev)
+	void RemoveNode(Node *toRemove)
 	{
-		if (prev) prev->next = toRemove->next;
-		else head = toRemove->next;
+		Node *next = toRemove->next, *prev = toRemove->prev;
+		if (prev) prev->next = next;
+		else head = next;
+		if (next) next->prev = prev;
+		else tail = prev;
 		toRemove->Clear();
 		ScrapListNode(toRemove, sizeof(Node));
 	}
 
 public:
-	LinkedList() : head(NULL) {}
+	LinkedList() : head(NULL), tail(NULL) {}
 	~LinkedList() {Clear();}
 
 	bool Empty() const {return !head;}
@@ -110,173 +208,215 @@ public:
 		return size;
 	}
 
+	LinkedList& operator=(const LinkedList &from)
+	{
+		Clear();
+		Node *pNode = from.head, *newNode;
+		while (pNode)
+		{
+			newNode = AppendNew();
+			RawAssign<T_Data>(newNode->data, pNode->data);
+			pNode = pNode->next;
+		}
+		return *this;
+	}
+
 	T_Data *Prepend(Data_Arg item)
 	{
-		Node *newNode = ALLOC_NODE(Node);
+		Node *newNode = PrependNew();
 		T_Data *data = &newNode->data;
 		RawAssign<T_Data>(*data, item);
-		newNode->next = head;
-		head = newNode;
 		return data;
 	}
 
 	template <typename ...Args>
 	T_Data *Prepend(Args && ...args)
 	{
-		Node *newNode = ALLOC_NODE(Node);
+		Node *newNode = PrependNew();
 		T_Data *data = &newNode->data;
 		new (data) T_Data(std::forward<Args>(args)...);
-		newNode->next = head;
-		head = newNode;
 		return data;
 	}
 
 	T_Data *Append(Data_Arg item)
 	{
-		Node *newNode = ALLOC_NODE(Node);
+		Node *newNode = AppendNew();
 		T_Data *data = &newNode->data;
 		RawAssign<T_Data>(*data, item);
-		newNode->next = NULL;
-		Node *pNode = GetLastNode();
-		if (pNode) pNode->next = newNode;
-		else head = newNode;
 		return data;
 	}
 
 	template <typename ...Args>
 	T_Data *Append(Args && ...args)
 	{
-		Node *newNode = ALLOC_NODE(Node);
+		Node *newNode = AppendNew();
 		T_Data *data = &newNode->data;
 		new (data) T_Data(std::forward<Args>(args)...);
-		newNode->next = NULL;
-		Node *pNode = GetLastNode();
-		if (pNode) pNode->next = newNode;
-		else head = newNode;
 		return data;
 	}
 
 	T_Data *Insert(UInt32 index, Data_Arg item)
 	{
-		Node *newNode = ALLOC_NODE(Node);
+		Node *newNode = InsertNew(index);
 		T_Data *data = &newNode->data;
 		RawAssign<T_Data>(*data, item);
-		Node *pNode = GetNthNode(index, NULL);
-		newNode->next = pNode;
-		if (prev) prev->next = newNode;
-		else head = newNode;
 		return data;
 	}
 
 	template <typename ...Args>
 	T_Data *Insert(UInt32 index, Args && ...args)
 	{
-		Node *newNode = ALLOC_NODE(Node);
+		Node *newNode = InsertNew(index);
 		T_Data *data = &newNode->data;
 		new (data) T_Data(std::forward<Args>(args)...);
-		Node *pNode = GetNthNode(index, NULL);
-		newNode->next = pNode;
-		if (prev) prev->next = newNode;
-		else head = newNode;
 		return data;
+	}
+
+	T_Data *GetNth(UInt32 index) const
+	{
+		Node *pNode = GetNthNode(index);
+		return pNode ? &pNode->data : NULL;
+	}
+
+	T_Data *Front() const
+	{
+		return head ? &head->data : NULL;
+	}
+
+	T_Data *Back() const
+	{
+		return tail ? &tail->data : NULL;
 	}
 
 	SInt32 GetIndexOf(Data_Arg item) const
 	{
-		if (!head) return -1;
-		Node *pNode = head;
-		SInt32 index = 0;
-		do
+		if (head)
 		{
-			if (pNode->data == item)
-				return index;
-			index++;
+			Node *pNode = head;
+			SInt32 index = 0;
+			do
+			{
+				if (pNode->data == item)
+					return index;
+				index++;
+			}
+			while (pNode = pNode->next);
 		}
-		while (pNode = pNode->next);
 		return -1;
 	}
 
 	template <class Matcher>
 	SInt32 GetIndexOf(Matcher &matcher) const
 	{
-		if (!head) return -1;
-		Node *pNode = head;
-		SInt32 index = 0;
-		do
+		if (head)
 		{
-			if (matcher(pNode->data))
-				return index;
-			index++;
+			Node *pNode = head;
+			SInt32 index = 0;
+			do
+			{
+				if (matcher(pNode->data))
+					return index;
+				index++;
+			}
+			while (pNode = pNode->next);
 		}
-		while (pNode = pNode->next);
 		return -1;
 	}
 
 	bool IsInList(Data_Arg item) const
 	{
-		if (!head) return false;
-		Node *pNode = head;
-		do
+		if (head)
 		{
-			if (pNode->data == item)
-				return true;
+			Node *pNode = head;
+			do
+			{
+				if (pNode->data == item)
+					return true;
+			}
+			while (pNode = pNode->next);
 		}
-		while (pNode = pNode->next);
 		return false;
 	}
 
 	template <class Matcher>
 	bool IsInList(Matcher &matcher) const
 	{
-		if (!head) return false;
-		Node *pNode = head;
-		do
+		if (head)
 		{
-			if (matcher(pNode->data))
-				return true;
+			Node *pNode = head;
+			do
+			{
+				if (matcher(pNode->data))
+					return true;
+			}
+			while (pNode = pNode->next);
 		}
-		while (pNode = pNode->next);
 		return false;
 	}
 
-	bool Remove(Data_Arg item)
+	T_Data *Remove(Data_Arg item)
 	{
-		Node *prev, *pNode = FindNode(item, &prev);
+		Node *pNode = FindNode(item);
 		if (pNode)
 		{
-			RemoveNode(pNode, prev);
-			return true;
+			RemoveNode(pNode);
+			return &pNode->data;
 		}
-		return false;
+		return NULL;
 	}
 
 	template <class Matcher>
-	bool Remove(Matcher &matcher)
+	T_Data *Remove(Matcher &matcher)
 	{
-		Node *prev, *pNode = FindNode(matcher, &prev);
+		Node *pNode = FindNode(matcher);
 		if (pNode)
 		{
-			RemoveNode(pNode, prev);
-			return true;
+			RemoveNode(pNode);
+			return &pNode->data;
 		}
-		return false;
+		return NULL;
 	}
 
-	bool RemoveNth(UInt32 index)
+	T_Data *RemoveNth(UInt32 index)
 	{
-		Node *prev, *pNode = GetNthNode(index, &prev);
+		Node *pNode = GetNthNode(index);
 		if (pNode)
 		{
-			RemoveNode(pNode, prev);
-			return true;
+			RemoveNode(pNode);
+			return &pNode->data;
 		}
-		return false;
+		return NULL;
+	}
+
+	T_Data *PopFront()
+	{
+		if (!head) return NULL;
+		T_Data *frontItem = &head->data;
+		RemoveNode(head);
+		return frontItem;
+	}
+
+	T_Data *PopBack()
+	{
+		if (!tail) return NULL;
+		T_Data *backItem = &tail->data;
+		RemoveNode(tail);
+		return backItem;
 	}
 
 	void Clear()
 	{
-		while (head)
-			RemoveNode(head, NULL);
+		if (!head) return;
+		Node *pNode;
+		do
+		{
+			pNode = head;
+			head = head->next;
+			pNode->Clear();
+			ScrapListNode(pNode, sizeof(Node));
+		}
+		while (head);
+		tail = NULL;
 	}
 
 	class Iterator
@@ -288,6 +428,7 @@ public:
 	public:
 		bool End() const {return !pNode;}
 		void operator++() {pNode = pNode->next;}
+		void operator--() {pNode = pNode->prev;}
 
 		Data_Arg operator*() const {return pNode->data;}
 		Data_Arg operator->() const {return pNode->data;}
@@ -295,21 +436,45 @@ public:
 
 		Iterator() : pNode(NULL) {}
 		Iterator(Node *_node) : pNode(_node) {}
+
+		Iterator& operator=(const Iterator &other)
+		{
+			pNode = other.pNode;
+			return *this;
+		}
+
+		void Remove(LinkedList &theList, bool frwrd = true)
+		{
+			Node *toRemove = pNode;
+			pNode = frwrd ? pNode->next : pNode->prev;
+			theList.RemoveNode(toRemove);
+		}
 	};
+
+	T_Data *Remove(Iterator &iter)
+	{
+		Node *pNode = iter.pNode;
+		if (pNode)
+		{
+			RemoveNode(pNode);
+			return &pNode->data;
+		}
+		return NULL;
+	}
 
 	Iterator Begin() {return Iterator(head);}
 
+	Iterator RBegin() {return Iterator(tail);}
+
 	Iterator Find(Data_Arg item)
 	{
-		Node *pNode = FindNode(item, NULL);
-		return Iterator(pNode);
+		return Iterator(FindNode(item));
 	}
 
 	template <class Matcher>
 	Iterator Find(Matcher &matcher)
 	{
-		Node *pNode = FindNode(matcher, NULL);
-		return Iterator(pNode);
+		return Iterator(FindNode(matcher));
 	}
 };
 
@@ -370,7 +535,7 @@ template <typename T_Data> class MapValue_p
 public:
 	T_Data *Init()
 	{
-		value = (T_Data*)malloc(sizeof(T_Data));
+		value = ALLOC_NODE(T_Data);
 		return value;
 	}
 	T_Data& Get() {return *value;}
@@ -378,7 +543,7 @@ public:
 	void Clear()
 	{
 		value->~T_Data();
-		free(value);
+		ScrapListNode(value, sizeof(T_Data));
 	}
 };
 
@@ -848,8 +1013,16 @@ template <typename T_Key, typename T_Data> class UnorderedMap
 
 		void Clear()
 		{
-			while (entries)
-				Remove(entries, NULL);
+			if (!entries) return;
+			Entry *pEntry;
+			do
+			{
+				pEntry = entries;
+				entries = entries->next;
+				pEntry->Clear();
+				ScrapListNode(pEntry, sizeof(Entry));
+			}
+			while (entries);
 		}
 
 		UInt32 Size() const
@@ -979,14 +1152,6 @@ public:
 		return outData;
 	}
 
-	Data_Arg InsertNotIn(Key_Arg key, Data_Arg value)
-	{
-		T_Data *outData;
-		if (InsertKey(key, &outData))
-			*outData = value;
-		return value;
-	}
-
 	bool HasKey(Key_Arg key) const {return FindEntry(key) ? true : false;}
 
 	T_Data Get(Key_Arg key)
@@ -1023,32 +1188,9 @@ public:
 		return false;
 	}
 
-	T_Data GetErase(Key_Arg key)
+	void Clear()
 	{
-		if (numEntries)
-		{
-			UInt32 hashVal = HashKey<T_Key>(key);
-			Bucket *pBucket = &buckets[hashVal & (numBuckets - 1)];
-			Entry *pEntry = pBucket->entries, *prev = NULL;
-			while (pEntry)
-			{
-				if (pEntry->key.Match(key, hashVal))
-				{
-					T_Data outVal = pEntry->value;
-					numEntries--;
-					pBucket->Remove(pEntry, prev);
-					return outVal;
-				}
-				prev = pEntry;
-				pEntry = pEntry->next;
-			}
-		}
-		return NULL;
-	}
-
-	bool Clear()
-	{
-		if (!numEntries) return false;
+		if (!numEntries) return;
 		Bucket *pBucket = buckets, *pEnd = End();
 		do
 		{
@@ -1057,7 +1199,6 @@ public:
 		}
 		while (pBucket != pEnd);
 		numEntries = 0;
-		return true;
 	}
 
 	class Iterator
@@ -1190,8 +1331,16 @@ template <typename T_Key> class UnorderedSet
 
 		void Clear()
 		{
-			while (entries)
-				Remove(entries, NULL);
+			if (!entries) return;
+			Entry *pEntry;
+			do
+			{
+				pEntry = entries;
+				entries = entries->next;
+				pEntry->Clear();
+				ScrapListNode(pEntry, sizeof(Entry));
+			}
+			while (entries);
 		}
 
 		UInt32 Size() const
@@ -1314,9 +1463,9 @@ public:
 		return false;
 	}
 
-	bool Clear()
+	void Clear()
 	{
-		if (!numEntries) return false;
+		if (!numEntries) return;
 		Bucket *pBucket = buckets, *pEnd = End();
 		do
 		{
@@ -1325,7 +1474,6 @@ public:
 		}
 		while (pBucket != pEnd);
 		numEntries = 0;
-		return true;
 	}
 
 	class Iterator
@@ -1534,7 +1682,7 @@ public:
 		while (lBound != uBound)
 		{
 			index = (lBound + uBound) >> 1;
-			if (comperator.Compare(item, data[index]))
+			if (comperator(item, data[index]))
 				uBound = index;
 			else lBound = index + 1;
 		}
@@ -1572,13 +1720,11 @@ public:
 		if (numItems)
 		{
 			T_Data *pData = data, *pEnd = End();
-			UInt32 index = 0;
 			do
 			{
 				if (*pData == item)
-					return index;
+					return pData - data;
 				pData++;
-				index++;
 			}
 			while (pData != pEnd);
 		}
@@ -1591,34 +1737,15 @@ public:
 		if (numItems)
 		{
 			T_Data *pData = data, *pEnd = End();
-			UInt32 index = 0;
 			do
 			{
-				if (finder.Match(*pData))
-					return index;
+				if (finder(*pData))
+					return pData - data;
 				pData++;
-				index++;
 			}
 			while (pData != pEnd);
 		}
 		return -1;
-	}
-
-	template <class Finder>
-	T_Data* Find(Finder &finder) const
-	{
-		if (numItems)
-		{
-			T_Data *pData = data, *pEnd = End();
-			do
-			{
-				if (finder.Match(*pData))
-					return pData;
-				pData++;
-			}
-			while (pData != pEnd);
-		}
-		return NULL;
 	}
 
 	bool RemoveNth(UInt32 index)
@@ -1662,7 +1789,7 @@ public:
 			do
 			{
 				pData--;
-				if (!finder.Match(*pData)) continue;
+				if (!finder(*pData)) continue;
 				numItems--;
 				pData->~T_Data();
 				size = (UInt32)End() - (UInt32)pData;
@@ -1809,7 +1936,7 @@ private:
 		UInt32 i = p;
 		for (UInt32 j = p + 1; j < q; j++)
 		{
-			if (comperator.Compare(data[p], data[j]))
+			if (comperator(data[p], data[j]))
 				continue;
 			i++;
 			RawSwap<T_Data>(data[j], data[i]);
