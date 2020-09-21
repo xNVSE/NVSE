@@ -19,12 +19,6 @@ UserFunctionManager::~UserFunctionManager()
 		delete m_functionStack.top();
 		m_functionStack.pop();
 	}
-
-	while (m_functionInfos.size())
-	{
-		delete m_functionInfos.begin()->second;
-		m_functionInfos.erase(m_functionInfos.begin());
-	}
 }
 
 static SmallObjectsAllocator::Allocator<FunctionContext, 5> g_functionContextAllocator;
@@ -254,18 +248,7 @@ bool UserFunctionManager::Return(ExpressionEvaluator* eval)
 
 FunctionInfo* UserFunctionManager::GetFunctionInfo(Script* funcScript)
 {
-	FunctionInfo* funcInfo = NULL;
-	const auto iter = m_functionInfos.find(funcScript);
-	if (iter != m_functionInfos.end())
-		funcInfo = iter->second;
-	else	// doesn't exist yet, create and cache
-	{
-		funcInfo = new FunctionInfo(funcScript);
-		m_functionInfos[funcScript] = funcInfo;
-		if (!funcInfo->IsGood())
-			ShowRuntimeError(funcScript, "Could not parse function definition.");
-	}
-
+	FunctionInfo *funcInfo = m_functionInfos.Emplace(funcScript, funcScript);
 	return (funcInfo->IsGood()) ? funcInfo : NULL;
 }
 	

@@ -58,7 +58,7 @@ __declspec(naked) UInt32 __fastcall AlignBucketCount(UInt32 count)
 	}
 }
 
-void *s_scrappedListNodes[0x20] = {NULL};
+void *s_scrappedListNodes[0x50] = {NULL};
 
 __declspec(naked) void* __fastcall AllocListNode(UInt32 size)
 {

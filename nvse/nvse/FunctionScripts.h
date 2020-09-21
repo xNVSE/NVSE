@@ -47,6 +47,7 @@ private:
 	ScriptEventList		* m_eventList;		// cached for quicker construction of function script, but requires care when dealing with recursive function calls
 
 public:
+	FunctionInfo() {}
 	FunctionInfo(Script* script);
 	~FunctionInfo();
 
@@ -100,7 +101,7 @@ class UserFunctionManager
 	
 	UInt32								m_nestDepth;
 	FastStack<FunctionContext*, 8>		m_functionStack; // I'd put 1 but you just know there's someone who loves recursion enough to do it in obscript -Korma
-	std::unordered_map<Script*, FunctionInfo*>	m_functionInfos;
+	UnorderedMap<Script*, FunctionInfo>	m_functionInfos;
 
 	// these take a ptr to the function script to check that it matches executing script
 	FunctionContext* Top(Script* funcScript);

@@ -891,10 +891,10 @@ void Init()
 	EVENT_INFO("renamegamename", kEventParams_OneString, nullptr, 0);
 	EVENT_INFO("renamenewgamename", kEventParams_OneString, nullptr, 0);
 
-	s_eventNameToID["onequip"] = 1;
-	s_eventNameToID["onunequip"] = 3;
-	s_eventNameToID["on0x0080000"] = 17;
-	s_eventNameToID["on0x00400000"] = 20;
+	s_eventNameToID["onequip"] = kEventID_OnActorEquip;
+	s_eventNameToID["onunequip"] = kEventID_OnActorUnequip;
+	s_eventNameToID["on0x0080000"] = kEventID_OnGrab;
+	s_eventNameToID["on0x00400000"] = kEventID_OnFire;
 
 	ASSERT (kEventID_InternalMAX == s_eventInfos.Size());
 
