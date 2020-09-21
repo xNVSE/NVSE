@@ -122,13 +122,13 @@ ScriptToken* Eval_Comp_String_String(OperatorType op, ScriptToken* lh, ScriptTok
 	switch (op)
 	{
 	case kOpType_GreaterThan:
-		return ScriptToken::Create(_stricmp(lhs, rhs) > 0);
+		return ScriptToken::Create(StrCompare(lhs, rhs) > 0);
 	case kOpType_LessThan:
-		return ScriptToken::Create(_stricmp(lhs, rhs) < 0);
+		return ScriptToken::Create(StrCompare(lhs, rhs) < 0);
 	case kOpType_GreaterOrEqual:
-		return ScriptToken::Create(_stricmp(lhs, rhs) >= 0);
+		return ScriptToken::Create(StrCompare(lhs, rhs) >= 0);
 	case kOpType_LessOrEqual:
-		return ScriptToken::Create(_stricmp(lhs, rhs) <= 0);
+		return ScriptToken::Create(StrCompare(lhs, rhs) <= 0);
 	default:
 		context->Error("Unhandled operator %s", OpTypeToSymbol(op));
 		return NULL;
@@ -170,9 +170,9 @@ ScriptToken* Eval_Eq_String(OperatorType op, ScriptToken* lh, ScriptToken* rh, E
 	switch (op)
 	{
 	case kOpType_Equals:
-		return ScriptToken::Create(_stricmp(lhs, rhs) == 0);
+		return ScriptToken::Create(StrEqualCI(lhs, rhs));
 	case kOpType_NotEqual:
-		return ScriptToken::Create(_stricmp(lhs, rhs) != 0);
+		return ScriptToken::Create(!StrEqualCI(lhs, rhs));
 	default:
 		context->Error("Unhandled operator %s", OpTypeToSymbol(op));
 		return NULL;
@@ -1672,6 +1672,7 @@ bool ExpressionParser::ValidateArgType(UInt32 paramType, Token_Type argType, boo
 			case kParamType_Sex:
 				return CanConvertOperand(argType, kTokenType_String);
 			case kParamType_Float:
+			case kParamType_Double:
 			case kParamType_Integer:
 			case kParamType_QuestStage:
 			case kParamType_CrimeType:
@@ -1730,7 +1731,7 @@ bool GetUserFunctionParams(const std::string& scriptText, std::vector<UserFuncti
 		std::string token;
 		if (tokens.NextToken(token) != -1)
 		{
-			if (!_stricmp(token.c_str(), "begin"))
+			if (StrEqualCI(token.c_str(), "begin"))
 			{
 				UInt32 argStartPos = lineText.find("{");
 				UInt32 argEndPos = lineText.find("}");
@@ -1862,7 +1863,7 @@ bool ExpressionParser::ParseUserFunctionCall()
 		char* funcScriptText = funcScript->text;
 		Script::VarInfoEntry* funcScriptVars = &funcScript->varList;
 
-		if (!_stricmp(GetEditorID(funcScript), m_scriptBuf->scriptName.m_data))
+		if (StrEqualCI(GetEditorID(funcScript), m_scriptBuf->scriptName.m_data))
 		{
 			funcScriptText = m_scriptBuf->scriptText;
 			funcScriptVars = &m_scriptBuf->vars;
@@ -1940,7 +1941,7 @@ bool ExpressionParser::ParseUserFunctionDefinition()
 		std::string token;
 		if (tokens.NextToken(token) != -1)
 		{
-			if (!_stricmp(token.c_str(), "begin"))
+			if (StrEqualCI(token.c_str(), "begin"))
 			{
 				if (bFoundBegin)
 				{
@@ -1950,7 +1951,7 @@ bool ExpressionParser::ParseUserFunctionDefinition()
 
 				bFoundBegin = true;
 			}
-			else if (!_stricmp(token.c_str(), "array_var"))
+			else if (StrEqualCI(token.c_str(), "array_var"))
 			{
 				if (bFoundBegin)
 				{
@@ -1970,9 +1971,9 @@ bool ExpressionParser::ParseUserFunctionDefinition()
 			}
 			else if (bFoundBegin)
 			{
-				if (!_stricmp(token.c_str(), "string_var") || !_stricmp(token.c_str(), "float") || !_stricmp(token.c_str(), "int") ||
-				!_stricmp(token.c_str(), "ref") || !_stricmp(token.c_str(), "reference") || !_stricmp(token.c_str(), "short") ||
-				!_stricmp(token.c_str(), "long"))
+				if (StrEqualCI(token.c_str(), "string_var") || StrEqualCI(token.c_str(), "float") || StrEqualCI(token.c_str(), "int") ||
+					StrEqualCI(token.c_str(), "ref") || StrEqualCI(token.c_str(), "reference") || StrEqualCI(token.c_str(), "short") ||
+					StrEqualCI(token.c_str(), "long"))
 				{
 					Message(kError_UserFunctionVarsMustPrecedeDefinition);
 					return false;
@@ -2477,7 +2478,7 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 	}
 
 	// "player" can be base object or ref. Assume base object unless called with dot syntax
-	if (!_stricmp(refToken.c_str(), "player") && dotPos != -1)
+	if (StrEqualCI(refToken.c_str(), "player") && dotPos != -1)
 		refToken = "playerRef";
 
 	Script::RefVariable* refVar = m_scriptBuf->ResolveRef(refToken.c_str());
@@ -2990,6 +2991,15 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 		case kParamType_Float:
 			if (arg->CanConvertTo(kTokenType_Number)) {
 				float* out = va_arg(varArgs, float*);
+				*out = arg->GetNumber();
+			}
+			else {
+				return false;
+			}
+			break;
+		case kParamType_Double:
+			if (arg->CanConvertTo(kTokenType_Number)) {
+				double* out = va_arg(varArgs, double*);
 				*out = arg->GetNumber();
 			}
 			else {
