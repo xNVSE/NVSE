@@ -30,7 +30,7 @@ static void  InstallActivateHook();
 static void	 InstallOnActorEquipHook();
 
 enum {
-	kEventMask_OnActivate		= 0xFFFFFFFF,		// special case as OnActivate has no event mask
+	kEventMask_OnActivate		= 0x01000000,		// special case as OnActivate has no event mask
 };
 
 typedef void (* EventHookInstaller)();
@@ -47,23 +47,23 @@ UInt32 EventIDForString(const char* eventStr)
 
 struct EventInfo
 {
-	EventInfo (const char *name_, UInt8* params_, UInt8 nParams_, bool defer_, EventHookInstaller* installer_)
-		: evName(name_), paramTypes(params_), numParams(nParams_), isDeferred(defer_), installHook(installer_)
+	EventInfo (const char *name_, UInt8* params_, UInt8 nParams_, UInt32 eventMask_, EventHookInstaller* installer_)
+		: evName(name_), paramTypes(params_), numParams(nParams_), eventMask(eventMask_), installHook(installer_)
 	{
 		UInt32 eventID = s_eventNameToID.Size(), *idPtr;
 		if (s_eventNameToID.Insert(evName, &idPtr))
 			*idPtr = eventID;
 	}
-	EventInfo (const char *name_, UInt8 * params_, UInt8 numParams_) : evName(name_), paramTypes(params_), numParams(numParams_), isDeferred(false), installHook(NULL)
+	EventInfo (const char *name_, UInt8 * params_, UInt8 numParams_) : evName(name_), paramTypes(params_), numParams(numParams_), eventMask(0), installHook(NULL)
 		{ }
-	EventInfo () : evName(""), paramTypes(NULL), numParams(0), isDeferred(false), installHook(NULL)
+	EventInfo () : evName(""), paramTypes(NULL), numParams(0), eventMask(0), installHook(NULL)
 		{ ; }
 	EventInfo (const EventInfo& other) :
 		evName(other.evName), 
 		paramTypes(other.paramTypes),
 		numParams(other.numParams), 
 		callbacks(other.callbacks),
-		isDeferred(other.isDeferred), 
+		eventMask(other.eventMask), 
 		installHook(other.installHook)
 		{ 
 		}
@@ -72,7 +72,7 @@ struct EventInfo
 		paramTypes = other.paramTypes;
 		numParams = other.numParams;
 		callbacks = other.callbacks;
-		isDeferred = other.isDeferred;
+		eventMask = other.eventMask;
 		installHook = other.installHook;
 		return *this;
 	};
@@ -80,7 +80,7 @@ struct EventInfo
 	const char			*evName;			// must be lowercase
 	UInt8				*paramTypes;
 	UInt8				numParams;
-	bool				isDeferred;		// dispatch event in Tick() instead of immediately - currently unused
+	UInt32				eventMask;
 	CallbackList		callbacks;
 	EventHookInstaller	*installHook;	// if a hook is needed for this event type, this will be non-null. 
 										// install it once and then set *installHook to NULL. Allows multiple events
@@ -154,7 +154,7 @@ static const UInt32 kVtbl_TESObjectREFR = 0x0102F55C;
 static const UInt32 kMarkEvent_HookAddr = 0x005AC750;
 static const UInt32 kMarkEvent_RetnAddr = 0x005AC756;
 
-static const UInt32 kActivate_HookAddr = 0x00573183;
+static const UInt32 kActivate_HookAddr = 0x0057318E;
 static const UInt32 kActivate_RetnAddr = 0x00573194;
 
 static const UInt32 kDestroyCIOS_HookAddr = 0x008232B5;
@@ -180,33 +180,34 @@ static TESForm* s_lastOnHitAttacker = NULL;
 // Hooks
 /////////////////////////////////
 
+UInt32 s_eventsInUse = 0;
+
 static __declspec(naked) void MarkEventHook(void)
 {
-	__asm {
+	__asm
+	{
 		// overwritten code
-		push    ebp
-		mov     ebp, esp
-		sub     esp, 8
+		push	ebp
+		mov		ebp, esp
+		sub		esp, 8
 
 		// grab args
-		pushad
-		mov	eax, [ebp+0x0C]			// ExtraDataList*
-		test eax, eax
-		jz	XDataListIsNull
+		mov		eax, [ebp+0xC]			// ExtraDataList*
+		test	eax, eax
+		jz		skipHandle
 
-	//XDataListIsNotNull:
-		sub eax, 0x44				// TESObjectREFR* thisObj
-		mov ecx, [ebp+0x10]			// event mask
-		mov edx, [ebp+0x08]			// target
+		mov		edx, [ebp+0x10]
+		test	s_eventsInUse, edx
+		jz		skipHandle
 
-		push edx
-		push eax
-		push ecx
-		call HandleGameEvent
+		push	dword ptr [ebp+8]		// target
+		sub		eax, 0x44				// TESObjectREFR* thisObj
+		push	eax
+		push	edx						// event mask
+		call	HandleGameEvent
 
-	XDataListIsNull:
-		popad
-		jmp [kMarkEvent_RetnAddr]
+	skipHandle:
+		jmp		kMarkEvent_RetnAddr
 	}
 }		
 
@@ -217,18 +218,15 @@ void InstallHook()
 
 static __declspec(naked) void DestroyCIOSHook(void)
 {
-	__asm {
-		pushad
-		cmp ecx, 0
-		jz doHook
-		popad
-		mov edx, [ecx]
+	__asm
+	{
+		test	ecx, ecx
+		jz		doHook
+		mov		edx, [ecx]
 		ret
-
-doHook:
-		popad
+	doHook:
 		fldz
-		jmp	[kDestroyCIOS_RetnAddr]
+		jmp		kDestroyCIOS_RetnAddr
 	}
 }
 
@@ -239,19 +237,20 @@ static void InstallDestroyCIOSHook()
 
 static __declspec(naked) void OnActorEquipHook(void)
 {
-	static const UInt32 s_callAddr = 0x004BF0E0;
-	static const UInt32 kEventMask = ScriptEventList::kEvent_OnActorEquip;
-	__asm {
-		pushad
-		push [ebp+0x08]
-		push [ebp+0x10]
-		push [kEventMask]
-		mov [s_InsideOnActorEquipHook], 0x0FFFFFFFF
-		call HandleGameEvent
-		mov [s_InsideOnActorEquipHook], 0x0
-		popad
+	__asm
+	{
+		test	s_eventsInUse, 2
+		jz		skipHandle
 
-		jmp	[s_callAddr]
+		push	dword ptr [ebp+8]
+		push	dword ptr [ebp+0x10]
+		push	2
+		call	HandleGameEvent
+		mov		ecx, [ebp-0xA8]
+
+	skipHandle:
+		mov		eax, 0x4BF0E0
+		jmp		eax
 	}
 }
 
@@ -278,21 +277,19 @@ static void InstallOnActorEquipHook()
 
 static __declspec(naked) void TESObjectREFR_ActivateHook(void)
 {
-	__asm {
-		pushad
-		push [ebp+0x08]			// activating refr
-		push ecx				// this
-		mov eax, kEventMask_OnActivate
-		push eax
-		call HandleGameEvent
-		popad
+	__asm
+	{
+		test	s_eventsInUse, kEventMask_OnActivate
+		jz		skipHandle
 
-		// overwritten code
-		push esi
-		mov	[ebp-0x012C], ecx
-		mov	byte ptr [ebp-1], 0
+		push	dword ptr [ebp+8]	// activating refr
+		push	ecx					// this
+		push	kEventMask_OnActivate
+		call	HandleGameEvent
+		mov		ecx, [ebp-0x12C]
 
-		jmp	[kActivate_RetnAddr]
+	skipHandle:
+		jmp		kActivate_RetnAddr
 	}
 }
 
@@ -338,18 +335,14 @@ UInt32 EventIDForMask(UInt32 eventMask)
 			return kEventID_OnStartCombat;
 		case ScriptEventList::kEvent_SayToDone:
 			return kEventID_SayToDone;
-		case ScriptEventList::kEvent_0x00400000:
-			return kEventID_0x00400000;
+		case ScriptEventList::kEvent_OnFire:
+			return kEventID_OnFire;
 		case ScriptEventList::kEvent_OnOpen:
 			return kEventID_OnOpen;
 		case ScriptEventList::kEvent_OnClose:
 			return kEventID_OnClose;
-		case ScriptEventList::kEvent_OnOpen2:
-			return kEventID_OnOpen;
-		case ScriptEventList::kEvent_OnClose2:
-			return kEventID_OnClose;
-		case ScriptEventList::kEvent_0x00080000:
-			return kEventID_0x00080000;
+		case ScriptEventList::kEvent_OnGrab:
+			return kEventID_OnGrab;
 		case ScriptEventList::kEvent_OnTrigger:
 			return kEventID_OnTrigger;
 		case ScriptEventList::kEvent_OnTriggerEnter:
@@ -412,8 +405,7 @@ bool EventCallback::Equals(const EventCallback& rhs) const
 class EventHandlerCaller : public InternalFunctionCaller
 {
 public:
-	EventHandlerCaller(Script* script, EventInfo* eventInfo, void* arg0, void* arg1, TESObjectREFR* callingObj = NULL)
-		: InternalFunctionCaller(script, callingObj), m_eventInfo(eventInfo)
+	EventHandlerCaller(Script* script, EventInfo* eventInfo, void* arg0, void* arg1) : InternalFunctionCaller(script, NULL), m_eventInfo(eventInfo)
 	{
 		UInt8 numArgs = 2;
 		if (!arg1)
@@ -493,7 +485,7 @@ struct DeferredCallback
 		if (callback->removed) return;
 
 		s_eventStack.Push(eventInfo->evName);
-		ScriptToken *result = UserFunctionManager::Call(EventHandlerCaller(callback->script, eventInfo, arg0, arg1, NULL));
+		ScriptToken *result = UserFunctionManager::Call(EventHandlerCaller(callback->script, eventInfo, arg0, arg1));
 		s_eventStack.Pop();
 
 		// result is unused
@@ -506,17 +498,20 @@ DeferredCallbackList s_deferredCallbacks;
 
 struct DeferredRemoveCallback
 {
-	CallbackList			*callbacks;
+	EventInfo				*eventInfo;
 	CallbackList::Iterator	iterator;
 
-	DeferredRemoveCallback(CallbackList *pList, const CallbackList::Iterator &iter) : callbacks(pList), iterator(iter) {}
+	DeferredRemoveCallback(EventInfo *pEventInfo, const CallbackList::Iterator &iter) : eventInfo(pEventInfo), iterator(iter) {}
 
 	~DeferredRemoveCallback()
 	{
-		EventCallback &callback = iterator.Get();
-		if (callback.removed)
-			callbacks->Remove(iterator);
-		else callback.pendingRemove = false;
+		if (iterator.Get().removed)
+		{
+			eventInfo->callbacks.Remove(iterator);
+			if (eventInfo->callbacks.Empty() && eventInfo->eventMask)
+				s_eventsInUse &= ~eventInfo->eventMask;
+		}
+		else iterator.Get().pendingRemove = false;
 	}
 };
 
@@ -556,7 +551,7 @@ void __stdcall HandleEvent(UInt32 id, void* arg0, void* arg1)
 		{
 			// handle immediately
 			s_eventStack.Push(eventInfo->evName);
-			ScriptToken* result = UserFunctionManager::Call(EventHandlerCaller(callback.script, eventInfo, arg0, arg1, NULL));
+			ScriptToken* result = UserFunctionManager::Call(EventHandlerCaller(callback.script, eventInfo, arg0, arg1));
 			s_eventStack.Pop();
 
 			// result is unused
@@ -612,16 +607,17 @@ bool SetHandler(const char* eventName, EventCallback& handler)
 
 	ScopedLock lock(s_criticalSection);
 
-	UInt32 id = s_eventNameToID.Size(), *idPtr;
+	UInt32 *idPtr;
 	if (s_eventNameToID.Insert(eventName, &idPtr))
 	{
 		// have to assume registering for a user-defined event which has not been used before this point
-		*idPtr = id;
+		*idPtr = s_eventInfos.Size();
 		char *nameCopy = CopyString(eventName);
 		StrToLower(nameCopy);
 		s_eventInfos.Append(nameCopy, kEventParams_OneArray, 1);
 	}
-	else id = *idPtr;
+
+	UInt32 id = *idPtr;
 
 	if (id < s_eventInfos.Size())
 	{
@@ -654,6 +650,9 @@ bool SetHandler(const char* eventName, EventCallback& handler)
 		}
 
 		info->callbacks.Append(handler);
+
+		s_eventsInUse |= info->eventMask;
+
 		return true;
 	}
 
@@ -696,31 +695,34 @@ bool RemoveHandler(const char* id, EventCallback& handler)
 
 	UInt32 eventType = EventIDForString(id);
 	bool bRemovedAtLeastOne = false;
-	if (eventType < s_eventInfos.Size() && !s_eventInfos[eventType].callbacks.Empty())
+	if (eventType < s_eventInfos.Size())
 	{
-		CallbackList* callbacks = &s_eventInfos[eventType].callbacks;
-		for (auto iter = callbacks->Begin(); !iter.End(); ++iter)
+		EventInfo *eventInfo = &s_eventInfos[eventType];
+		if (!eventInfo->callbacks.Empty())
 		{
-			EventCallback &callback = iter.Get();
-
-			if (handler.script != callback.script)
-				continue;
-
-			if (handler.source && (handler.source != callback.source))
-				continue;
-
-			if (handler.object && (handler.object != callback.object))
-				continue;
-
-			callback.SetRemoved(true);
-
-			if (!callback.pendingRemove)
+			for (auto iter = eventInfo->callbacks.Begin(); !iter.End(); ++iter)
 			{
-				callback.pendingRemove = true;
-				s_deferredRemoveList.Push(callbacks, iter);
-			}
+				EventCallback &callback = iter.Get();
 
-			bRemovedAtLeastOne = true;
+				if (handler.script != callback.script)
+					continue;
+
+				if (handler.source && (handler.source != callback.source))
+					continue;
+
+				if (handler.object && (handler.object != callback.object))
+					continue;
+
+				callback.SetRemoved(true);
+
+				if (!callback.pendingRemove)
+				{
+					callback.pendingRemove = true;
+					s_deferredRemoveList.Push(eventInfo, iter);
+				}
+
+				bRemovedAtLeastOne = true;
+			}
 		}
 	}
 	
@@ -736,7 +738,8 @@ void __stdcall HandleGameEvent(UInt32 eventMask, TESObjectREFR* source, TESForm*
 	ScopedLock lock(s_criticalSection);
 
 	// ScriptEventList can be marked more than once per event, cheap check to prevent sending duplicate events to scripts
-	if (source != s_lastObj || object != s_lastTarget || eventMask != s_lastEvent) {
+	if (source != s_lastObj || object != s_lastTarget || eventMask != s_lastEvent)
+	{
 		s_lastObj = source;
 		s_lastEvent = eventMask;
 		s_lastTarget = object;
@@ -747,17 +750,22 @@ void __stdcall HandleGameEvent(UInt32 eventMask, TESObjectREFR* source, TESForm*
 	}
 
 	UInt32 eventID = EventIDForMask(eventMask);
-	if (eventID != kEventID_INVALID) {
-		if (eventID == kEventID_OnHitWith) {
+	if (eventID != kEventID_INVALID)
+	{
+		if (eventID == kEventID_OnHitWith)
+		{
 			// special check for OnHitWith, since it gets called redundantly
-			if (source != s_lastOnHitWithActor || object != s_lastOnHitWithWeapon) {
+			if (source != s_lastOnHitWithActor || object != s_lastOnHitWithWeapon)
+			{
 				s_lastOnHitWithActor = source;
 				s_lastOnHitWithWeapon = object;
 				HandleEvent(eventID, source, object);
 			}
 		}
-		else if (eventID == kEventID_OnHit) {
-			if (source != s_lastOnHitVictim || object != s_lastOnHitAttacker) {
+		else if (eventID == kEventID_OnHit)
+		{
+			if (source != s_lastOnHitVictim || object != s_lastOnHitAttacker)
+			{
 				s_lastOnHitVictim = source;
 				s_lastOnHitAttacker = object;
 				HandleEvent(eventID, source, object);
@@ -836,52 +844,57 @@ void Tick()
 
 void Init()
 {
-#define EVENT_INFO(name, params, hookInstaller, deferred) s_eventInfos.Append(name, params, params ? sizeof(params) : 0, deferred, hookInstaller);
+#define EVENT_INFO(name, params, hookInstaller, eventMask) s_eventInfos.Append(name, params, params ? sizeof(params) : 0, eventMask, hookInstaller)
 
 
-	EVENT_INFO("onadd", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("onactorequip", kEventParams_GameEvent, &s_ActorEquipHook, false)
-	EVENT_INFO("ondrop", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("onactorunequip", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("ondeath", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("onmurder", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("oncombatend", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("onhit", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("onhitwith", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("onpackagechange", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("onpackagestart", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("onpackagedone", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("onload", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("onmagiceffecthit", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("onsell", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("onstartcombat", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("saytodone", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("on0x0080000", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("onopen", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("onclose", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("on0x00400000", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("ontrigger", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("ontriggerenter", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("ontriggerleave", kEventParams_GameEvent, &s_MainEventHook, false)
-	EVENT_INFO("onreset", kEventParams_GameEvent, &s_MainEventHook, false)
+	EVENT_INFO("onadd", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnAdd);
+	EVENT_INFO("onactorequip", kEventParams_GameEvent, &s_ActorEquipHook, ScriptEventList::kEvent_OnEquip);
+	EVENT_INFO("ondrop", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnDrop);
+	EVENT_INFO("onactorunequip", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnUnequip);
+	EVENT_INFO("ondeath", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnDeath);
+	EVENT_INFO("onmurder", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnMurder);
+	EVENT_INFO("oncombatend", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnCombatEnd);
+	EVENT_INFO("onhit", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnHit);
+	EVENT_INFO("onhitwith", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnHitWith);
+	EVENT_INFO("onpackagechange", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnPackageChange);
+	EVENT_INFO("onpackagestart", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnPackageStart);
+	EVENT_INFO("onpackagedone", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnPackageDone);
+	EVENT_INFO("onload", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnLoad);
+	EVENT_INFO("onmagiceffecthit", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnMagicEffectHit);
+	EVENT_INFO("onsell", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnSell);
+	EVENT_INFO("onstartcombat", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnStartCombat);
+	EVENT_INFO("saytodone", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_SayToDone);
+	EVENT_INFO("ongrab", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnGrab);
+	EVENT_INFO("onopen", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnOpen);
+	EVENT_INFO("onclose", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnClose);
+	EVENT_INFO("onfire", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnFire);
+	EVENT_INFO("ontrigger", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnTrigger);
+	EVENT_INFO("ontriggerenter", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnTriggerEnter);
+	EVENT_INFO("ontriggerleave", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnTriggerLeave);
+	EVENT_INFO("onreset", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnReset);
 
-	EVENT_INFO("onactivate", kEventParams_GameEvent, &s_ActivateHook, false)
-	EVENT_INFO("ondropitem", kEventParams_GameEvent, &s_MainEventHook, false)
+	EVENT_INFO("onactivate", kEventParams_GameEvent, &s_ActivateHook, kEventMask_OnActivate);
+	EVENT_INFO("ondropitem", kEventParams_GameEvent, &s_MainEventHook, 0);
 
-	EVENT_INFO("exitgame", nullptr, nullptr, false)
-	EVENT_INFO("exittomainmenu", nullptr, nullptr, false)
-	EVENT_INFO("loadgame", kEventParams_OneString, nullptr, false)
-	EVENT_INFO("savegame", kEventParams_OneString, nullptr, false)
-	EVENT_INFO("qqq", nullptr, nullptr, false)
-	EVENT_INFO("postloadgame", kEventParams_OneInteger, nullptr, false)
-	EVENT_INFO("runtimescripterror", kEventParams_OneString, nullptr, false)
-	EVENT_INFO("deletegame", kEventParams_OneString, nullptr, false)
-	EVENT_INFO("renamegame", kEventParams_OneString, nullptr, false)
-	EVENT_INFO("renamenewgame", kEventParams_OneString, nullptr, false)
-	EVENT_INFO("newgame", nullptr, nullptr, false)
-	EVENT_INFO("deletegamename", kEventParams_OneString, nullptr, false)
-	EVENT_INFO("renamegamename", kEventParams_OneString, nullptr, false)
-	EVENT_INFO("renamenewgamename", kEventParams_OneString, nullptr, false)
+	EVENT_INFO("exitgame", nullptr, nullptr, 0);
+	EVENT_INFO("exittomainmenu", nullptr, nullptr, 0);
+	EVENT_INFO("loadgame", kEventParams_OneString, nullptr, 0);
+	EVENT_INFO("savegame", kEventParams_OneString, nullptr, 0);
+	EVENT_INFO("qqq", nullptr, nullptr, 0);
+	EVENT_INFO("postloadgame", kEventParams_OneInteger, nullptr, 0);
+	EVENT_INFO("runtimescripterror", kEventParams_OneString, nullptr, 0);
+	EVENT_INFO("deletegame", kEventParams_OneString, nullptr, 0);
+	EVENT_INFO("renamegame", kEventParams_OneString, nullptr, 0);
+	EVENT_INFO("renamenewgame", kEventParams_OneString, nullptr, 0);
+	EVENT_INFO("newgame", nullptr, nullptr, 0);
+	EVENT_INFO("deletegamename", kEventParams_OneString, nullptr, 0);
+	EVENT_INFO("renamegamename", kEventParams_OneString, nullptr, 0);
+	EVENT_INFO("renamenewgamename", kEventParams_OneString, nullptr, 0);
+
+	s_eventNameToID["onequip"] = 1;
+	s_eventNameToID["onunequip"] = 3;
+	s_eventNameToID["on0x0080000"] = 17;
+	s_eventNameToID["on0x00400000"] = 20;
 
 	ASSERT (kEventID_InternalMAX == s_eventInfos.Size());
 
