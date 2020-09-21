@@ -3567,7 +3567,9 @@ void ShortCircuit(OperandStack& operands, CachedTokenIter& iter)
 		for (auto i = 0U; i < lastToken->shortCircuitStackOffset; ++i)
 		{
 			// Make sure only one operand is left in RPN stack
-			operands.top()->Delete();
+			auto* operand = operands.top();
+			if (operand)
+				operand->Delete();
 			operands.pop();
 		}
 		operands.push(ScriptToken::Create(eval));
@@ -3655,8 +3657,11 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				opResult = bSwapOrder ? eval(type, rhOperand, lhOperand, this) : eval(type, lhOperand, rhOperand, this);
 			}
 
-			lhOperand->Delete();
-			rhOperand->Delete();
+			if (lhOperand)
+				lhOperand->Delete();
+
+			if (rhOperand)
+				rhOperand->Delete();
 
 			if (!opResult)
 			{
@@ -3679,7 +3684,9 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 		Error("An expression failed to evaluate to a valid result");
 		while (operands.size())
 		{
-			operands.top()->Delete();
+			auto* operand = operands.top();
+			if (operand)
+				operand->Delete();
 			operands.pop();
 		}
 		return nullptr;

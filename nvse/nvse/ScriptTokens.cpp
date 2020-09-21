@@ -139,7 +139,7 @@ ScriptToken::ScriptToken(CommandInfo* cmdInfo, UInt16 refIdx) : type(kTokenType_
 #if RUNTIME
 void ScriptToken::Delete() const
 {
-	if (this && !cached)
+	if (!cached)
 	{
 		delete this;
 	}
