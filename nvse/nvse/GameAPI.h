@@ -140,13 +140,13 @@ struct ScriptEventList
 		kEvent_OnSell			= 0x00004000,		// 0x0072FE29 and 0x0072FF05, linked to 'Barter Amount Traded' Misc Stat
 		kEvent_OnStartCombat	= 0x00008000,
 
-		kEvent_OnOpen2			= 0x00010000,		// while opening some container, not all
-		kEvent_OnClose2			= 0x00020000,		// idem
+		kEvent_OnOpen			= 0x00010000,		// while opening some container, not all
+		kEvent_OnClose			= 0x00020000,		// idem
 		kEvent_SayToDone		= 0x00040000,		// in Func0050 0x005791C1 in relation to SayToTopicInfo (OnSayToDone? or OnSayStart/OnSayEnd?)
-		kEvent_0x00080000		= 0x00080000,		// 0x0095FACD and 0x009604B0 (same func which is called from PlayerCharacter_func001B and 0021)
-		kEvent_OnOpen			= 0x00100000,		// 0x0047ACCA in relation to container
-		kEvent_OnClose			= 0x00200000,		// 0x004763E7/0x0047ADEE
-		kEvent_0x00400000		= 0x00400000,		// 0x008BAFB9 (references to package use item and use weapon are close)
+		kEvent_OnGrab			= 0x00080000,		// 0x0095FACD and 0x009604B0 (same func which is called from PlayerCharacter_func001B and 0021)
+		kEvent_OnRelease		= 0x00100000,		// 0x0047ACCA in relation to container
+		kEvent_OnDestructionStageChange	= 0x00200000,		// 0x004763E7/0x0047ADEE
+		kEvent_OnFire			= 0x00400000,		// 0x008BAFB9 (references to package use item and use weapon are close)
 
 		kEvent_OnTrigger		= 0x10000000,		// 0x005D8D6A	Cmd_EnterTrigger_Execute
 		kEvent_OnTriggerEnter	= 0x20000000,		// 0x005D8D50	Cmd_EnterTrigger_Execute
