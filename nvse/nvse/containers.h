@@ -34,6 +34,16 @@ public:
 
 	bool Empty() const {return !head;}
 
+	UInt32 Size() const
+	{
+		if (!head) return 0;
+		UInt32 size = 1;
+		Node *pNode = head;
+		while (pNode = pNode->next)
+			size++;
+		return size;
+	}
+
 	T_Data& Top()
 	{
 		return head->data;
@@ -85,7 +95,6 @@ public:
 		while (head);
 	}
 };
-
 
 template <typename T_Data> class LinkedList
 {
