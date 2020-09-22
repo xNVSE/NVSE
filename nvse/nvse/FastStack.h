@@ -1,66 +1,79 @@
 #pragma once
-#include <memory>
-#include <stack>
 
-
-template <class T, std::size_t S>
-class FastStack
+template <typename T_Data, size_t S> class FastStack
 {
-	T items_[S];
-	std::size_t pos_ = 0;
-	std::unique_ptr<std::stack<T>> fallbackStack_ = nullptr;
+	using Data_Arg = std::conditional_t<std::is_scalar_v<T_Data>, T_Data, T_Data&>;
 
-	void allocateStack()
+	struct Node
 	{
-		if (fallbackStack_ == nullptr)
-		{
-			fallbackStack_ = std::make_unique<std::stack<T>>();
-			//_MESSAGE("%s has ran out stack space", typeid(T).name());
-			//ShowErrorMessageBox("FastStack Warning");
-		}
-	}
-	
+		Node* next;
+		T_Data		data;
+
+		void Clear() { data.~T_Data(); }
+	};
+
+	Node* head;
+	size_t		numItems;
+
 public:
-	__forceinline void push(T t)
+	FastStack() : head(NULL), numItems(0) {}
+	~FastStack() { reset(); }
+
+	bool empty() const { return !numItems; }
+
+	size_t size() const { return numItems; }
+
+	T_Data& top()
 	{
-		if (pos_ >= S)
-		{
-			allocateStack();
-			fallbackStack_->push(std::move(t));
-		}
-		else
-		{
-			items_[pos_] = std::move(t);
-		}
-		++pos_;
+		return head->data;
 	}
 
-	T& top()
+	T_Data* push(Data_Arg item)
 	{
-		if (pos_ > S)
-		{
-			return fallbackStack_->top();
-		}
-		
-		return items_[pos_ - 1];
+		Node* newNode = ALLOC_NODE(Node);
+		T_Data* data = &newNode->data;
+		RawAssign<T_Data>(*data, item);
+		newNode->next = head;
+		head = newNode;
+		numItems++;
+		return data;
 	}
 
-	void pop()
+	template <typename ...Args>
+	T_Data* push(Args && ...args)
 	{
-		if (pos_ > S)
-		{
-			fallbackStack_->pop();
-		}
-		--pos_;
+		Node* newNode = ALLOC_NODE(Node);
+		T_Data* data = &newNode->data;
+		new (data) T_Data(std::forward<Args>(args)...);
+		newNode->next = head;
+		head = newNode;
+		numItems++;
+		return data;
 	}
 
-	std::size_t size() const
+	T_Data* pop()
 	{
-		return pos_;
+		if (!head) return NULL;
+		T_Data* frontItem = &head->data;
+		Node* toRemove = head;
+		head = head->next;
+		toRemove->Clear();
+		ScrapListNode(toRemove, sizeof(Node));
+		numItems--;
+		return frontItem;
 	}
 
 	void reset()
 	{
-		pos_ = 0;
+		if (!head) return;
+		Node* pNode;
+		do
+		{
+			pNode = head;
+			head = head->next;
+			pNode->Clear();
+			ScrapListNode(pNode, sizeof(Node));
+		} while (head);
+		numItems = 0;
 	}
 };
