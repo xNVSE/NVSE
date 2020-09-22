@@ -171,6 +171,8 @@ public:
 
 	UInt8* GetCommandOpcodePosition() const;
 	CommandInfo* GetCommand() const;
+
+	static ICriticalSection s_criticalSection;
 };
 
 bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem, ExpressionEvaluator* context);
