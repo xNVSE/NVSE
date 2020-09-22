@@ -100,7 +100,7 @@ class UserFunctionManager
 	static const UInt32	kMaxNestDepth = 30;	// arbitrarily low; have seen 180+ nested calls execute w/o problems
 	
 	UInt32								m_nestDepth;
-	FastStack<FunctionContext*, 8>		m_functionStack; // I'd put 1 but you just know there's someone who loves recursion enough to do it in obscript -Korma
+	FastStack<FunctionContext*>		m_functionStack; // I'd put 1 but you just know there's someone who loves recursion enough to do it in obscript -Korma
 	UnorderedMap<Script*, FunctionInfo>	m_functionInfos;
 
 	// these take a ptr to the function script to check that it matches executing script

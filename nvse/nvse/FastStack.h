@@ -1,6 +1,6 @@
 #pragma once
 
-template <typename T_Data, size_t S> class FastStack
+template <typename T_Data> class FastStack
 {
 	using Data_Arg = std::conditional_t<std::is_scalar_v<T_Data>, T_Data, T_Data&>;
 

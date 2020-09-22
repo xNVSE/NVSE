@@ -3551,7 +3551,7 @@ bool ExpressionEvaluator::ParseBytecode(CachedTokens& cachedTokens)
 	return true;
 }
 
-using OperandStack = FastStack<ScriptToken*, 16>;
+using OperandStack = FastStack<ScriptToken*>;
 
 void ShortCircuit(OperandStack& operands, CachedTokenIter& iter)
 {
