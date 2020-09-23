@@ -148,6 +148,7 @@ protected:
 			{
 				iter.Last(vars);
 				if (iter.End()) break;
+				delete *iter;
 				iter.Remove(false);
 			}
 
