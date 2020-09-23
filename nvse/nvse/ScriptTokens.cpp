@@ -709,10 +709,10 @@ UInt32 ScriptToken::GetSex()
 {
 	const char* str = GetString();
 	if (str) {
-		if (!_stricmp(str, "male")) {
+		if (StrEqualCI(str, "male")) {
 			return 0;
 		}
-		else if (!_stricmp(str, "female")) {
+		else if (StrEqualCI(str, "female")) {
 			return 1;
 		}
 	}
@@ -1009,7 +1009,7 @@ double ScriptToken::GetNumericRepresentation(bool bFromHex)
 			// if string begins with "0x", interpret as hex
 			Tokenizer tok(str, " \t\r\n");
 			std::string pre;
-			if (tok.NextToken(pre) != -1 && pre.length() >= 2 && !_stricmp(pre.substr(0, 2).c_str(), "0x"))
+			if (tok.NextToken(pre) != -1 && pre.length() >= 2 && StrEqualCI(pre.substr(0, 2).c_str(), "0x"))
 				bFromHex = true;
 		}
 

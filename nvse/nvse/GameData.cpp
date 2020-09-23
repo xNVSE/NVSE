@@ -15,7 +15,7 @@ public:
 
 	bool Accept(ModInfo* modInfo)
 	{
-		return _stricmp(modInfo->name, m_stringToFind) == 0;
+		return StrEqualCI(modInfo->name, m_stringToFind);
 	}
 };
 
