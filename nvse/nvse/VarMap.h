@@ -143,10 +143,14 @@ protected:
 		{
 			cache.Reset();
 
-			for (auto iter = vars.Begin(); !iter.End(); ++iter)
-				delete *iter;
+			_VarMap::Iterator iter;
+			while (true)
+			{
+				iter.Last(vars);
+				if (iter.End()) break;
+				iter.Remove(false);
+			}
 
-			vars.Clear();
 			tempVars.Clear();
 			availableVars.Clear();
 
