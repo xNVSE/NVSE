@@ -773,12 +773,7 @@ CommandInfo* CommandTable::GetByOpcode(UInt32 opcode)
 
 CommandReturnType CommandTable::GetReturnType(const CommandInfo* cmd)
 {
-	CommandMetadata * metadata = NULL;
-	if (cmd)
-		metadata = &m_metadata[cmd->opcode];
-	if (metadata)
-		return metadata->returnType;
-	return kRetnType_Default;
+	return m_metadata[cmd->opcode].returnType;
 }
 
 void CommandTable::SetReturnType(UInt32 opcode, CommandReturnType retnType)
@@ -787,9 +782,7 @@ void CommandTable::SetReturnType(UInt32 opcode, CommandReturnType retnType)
 	if (!cmdInfo)
 		_MESSAGE("CommandTable::SetReturnType() - cannot locate command with opcode %04X", opcode);
 	else {
-		CommandMetadata * metadata = &m_metadata[opcode];
-		if (metadata)
-			metadata->returnType = retnType;
+		m_metadata[opcode].returnType = retnType;
 	}
 }
 
@@ -825,12 +818,10 @@ void CommandTable::RemoveDisabledPlugins(void)
 {
 	for (CommandList::iterator iter = m_commands.begin(); iter != m_commands.end(); ++iter)
 	{
-		CommandMetadata * metadata = &m_metadata[iter->opcode];
-		if (metadata)
-			// plugin failed to load but still registered some commands?
-			// realistically the game is going to go down hard if this happens anyway
-			if(g_pluginManager.LookupHandleFromBaseOpcode(metadata->parentPlugin) == kPluginHandle_Invalid)
-				Replace(iter->opcode, &kPaddingCommand);
+		// plugin failed to load but still registered some commands?
+		// realistically the game is going to go down hard if this happens anyway
+		if(g_pluginManager.LookupHandleFromBaseOpcode(m_metadata[iter->opcode].parentPlugin) == kPluginHandle_Invalid)
+			Replace(iter->opcode, &kPaddingCommand);
 	}
 }
 
@@ -851,12 +842,10 @@ PluginInfo * CommandTable::GetParentPlugin(const CommandInfo * cmd)
 	if (cmd->opcode < kNVSEOpcodeTest)
 		return &g_NVSEPluginInfo;
 
-	CommandMetadata * metadata = &m_metadata[cmd->opcode];
-	if (metadata) {
-		PluginInfo	* info = g_pluginManager.GetInfoFromBase(metadata->parentPlugin);
-		if (info)
-			return info;
-	}
+	PluginInfo *info = g_pluginManager.GetInfoFromBase(m_metadata[cmd->opcode].parentPlugin);
+	if (info)
+		return info;
+
 	return NULL;
 }
 

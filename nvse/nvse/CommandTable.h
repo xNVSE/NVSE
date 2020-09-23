@@ -279,9 +279,7 @@ private:
 	void AddDebugCommands();
 
 	typedef std::vector <CommandInfo>				CommandList;
-	typedef std::unordered_map<UInt32, CommandMetadata>	CmdMetadataList;
-	typedef std::map <UInt32, CommandReturnType>	OpcodeReturnTypeMap;
-	typedef std::map <UInt32, UInt32>				OpcodeToPluginMap;
+	typedef UnorderedMap<UInt32, CommandMetadata>	CmdMetadataList;
 
 	CommandList		m_commands;
 	CmdMetadataList	m_metadata;
