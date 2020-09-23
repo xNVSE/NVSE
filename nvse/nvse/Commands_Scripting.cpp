@@ -29,8 +29,8 @@ static const void * kOpHandlerRetnAddr = (void *)0x005E225B;
 #endif
 
 //static SavedIPInfo s_savedIPTable[kMaxSavedIPs] = { { 0 } };
-typedef std::unordered_map<UInt32, SavedIPInfo> MapSavedIPInfo;
-static std::unordered_map<UInt32, MapSavedIPInfo> s_savedIPTable;
+typedef UnorderedMap<UInt32, SavedIPInfo> MapSavedIPInfo;
+static UnorderedMap<UInt32, MapSavedIPInfo> s_savedIPTable;
 
 // ### stack abuse! get a pointer to the parent's stack frame
 // ### valid when parent is called from kOpHandlerRetnAddr
@@ -58,24 +58,7 @@ bool Cmd_Label_Execute(COMMAND_ARGS)
 {
 	UInt32	idx = 0;
 
-	if(!ExtractArgs(EXTRACT_ARGS, &idx)) return true;
-
-	// this must happen after extractargs updates opcodeOffsetPtr so it points to the next instruction
-	if (s_savedIPTable.find(scriptObj->refID) == s_savedIPTable.end())
-	{
-		MapSavedIPInfo * newMapSavedIPInfo = new MapSavedIPInfo;
-		s_savedIPTable[scriptObj->refID] = *newMapSavedIPInfo;
-	}
-	if (s_savedIPTable.find(scriptObj->refID) == s_savedIPTable.end())
-		return true;
-
-	if (s_savedIPTable[scriptObj->refID].find(idx) == s_savedIPTable[scriptObj->refID].end())
-	{
-		SavedIPInfo* newSavedIPInfo = (SavedIPInfo*)new SavedIPInfo;
-		s_savedIPTable[scriptObj->refID][idx] = *newSavedIPInfo;
-	}
-	if (s_savedIPTable[scriptObj->refID].find(idx) == s_savedIPTable[scriptObj->refID].end())
-		return true;
+	if (!ExtractArgs(EXTRACT_ARGS, &idx)) return true;
 
 	SavedIPInfo		* info = &s_savedIPTable[scriptObj->refID][idx];
 	ScriptRunner	* scriptRunner = GetScriptRunner(opcodeOffsetPtr);
@@ -96,14 +79,14 @@ bool Cmd_Goto_Execute(COMMAND_ARGS)
 {
 	UInt32	idx = 0;
 
-	if(!ExtractArgs(EXTRACT_ARGS, &idx)) return true;
+	if (!ExtractArgs(EXTRACT_ARGS, &idx)) return true;
 
-	if (s_savedIPTable.find(scriptObj->refID) == s_savedIPTable.end())
-		return true;
-	if (s_savedIPTable[scriptObj->refID].find(idx) == s_savedIPTable[scriptObj->refID].end()) 
-		return true;
+	MapSavedIPInfo *savedIPInfo = s_savedIPTable.GetPtr(scriptObj->refID);
+	if (!savedIPInfo) return true;
 
-	SavedIPInfo		* info = &s_savedIPTable[scriptObj->refID][idx];
+	SavedIPInfo *info = savedIPInfo->GetPtr(idx);
+	if (!info) return true;
+
 	ScriptRunner	* scriptRunner = GetScriptRunner(opcodeOffsetPtr);
 	SInt32			* calculatedOpLength = GetCalculatedOpLength(opcodeOffsetPtr);
 
