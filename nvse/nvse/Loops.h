@@ -91,7 +91,7 @@ class ContainerIterLoop : public ForEachLoop
 	InventoryReference			* m_invRef;
 	ScriptEventList::Var		* m_refVar;
 	UInt32						m_iterIndex;
-	std::vector<IRefData>		m_elements;
+	Vector<IRefData>			m_elements;
 
 	bool SetIterator();
 	bool UnsetIterator();
@@ -100,7 +100,7 @@ public:
 	virtual ~ContainerIterLoop();
 
 	virtual bool Update(COMMAND_ARGS);
-	virtual bool IsEmpty() { return m_elements.size() == 0; }
+	virtual bool IsEmpty() { return m_elements.Empty(); }
 };
 
 class LoopManager

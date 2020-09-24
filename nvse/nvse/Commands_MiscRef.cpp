@@ -247,9 +247,7 @@ struct CellScanInfo
 	UInt8	cellDepth;									//depth of adjacent cells to scan
 	bool	includeTakenRefs;
 
-	CellScanInfo() : curCell(NULL), cell(NULL), world(NULL), curX(0), curY(0), formType(0), cellDepth(0), includeTakenRefs(false)
-	{	}
-
+	CellScanInfo() {}
 	CellScanInfo(UInt8 _cellDepth, UInt8 _formType, bool _includeTaken, TESObjectCELL* _cell) 
 					:	curCell(NULL), cell(_cell), world(NULL), curX(0), curY(0), formType(_formType), cellDepth(_cellDepth), includeTakenRefs(_includeTaken)
 	{
@@ -452,27 +450,21 @@ static const TESObjectCELL::RefList::Iterator GetCellRefEntry(const TESObjectCEL
 	return entry;
 }
 
-static TESObjectREFR* CellScan(Script* scriptObj, TESObjectCELL* cellToScan = NULL, UInt32 formType = 0, UInt32 cellDepth = 0, bool getFirst = false,
-							   bool includeTaken = false /*, ProjectileFinder* projFinder = NULL*/, TESObjectREFR* refr = NULL)
+UnorderedMap<UInt32, CellScanInfo> s_scanScripts;
+
+static TESObjectREFR* CellScan(Script* scriptObj, TESObjectCELL* cellToScan = NULL, UInt32 formType = 0, UInt32 cellDepth = 0, bool getFirst = false, bool includeTaken = false, TESObjectREFR* refr = NULL)
 {
-	static std::map<UInt32, CellScanInfo> scanScripts;
-	UInt32 idx = scriptObj->refID;
-
-	if (getFirst)
-		scanScripts.erase(idx);
-
-	if (scanScripts.find(idx) == scanScripts.end())
+	CellScanInfo *info;
+	if (s_scanScripts.Insert(scriptObj->refID, &info) || getFirst)
 	{
-		scanScripts[idx] = CellScanInfo(cellDepth, formType, includeTaken, cellToScan);
-		scanScripts[idx].FirstCell();
+		new (info) CellScanInfo(cellDepth, formType, includeTaken, cellToScan);
+		info->FirstCell();
 	}
-
-	CellScanInfo* info = &(scanScripts[idx]);
 
 	bool bContinue = true;
 	while (bContinue)
 	{
-		info->prev = GetCellRefEntry(info->curCell->objectList, info->formType, info->prev, info->includeTakenRefs /*, projFinder*/, refr);
+		info->prev = GetCellRefEntry(info->curCell->objectList, info->formType, info->prev, info->includeTakenRefs, refr);
 		if (info->prev.End() || !(*info->prev))				//no ref found
 		{
 			if (!info->NextCell())			//check next cell if possible
@@ -486,10 +478,9 @@ static TESObjectREFR* CellScan(Script* scriptObj, TESObjectCELL* cellToScan = NU
 		return info->prev.Get();
 	else
 	{
-		scanScripts.erase(idx);
+		s_scanScripts.Erase(scriptObj->refID);
 		return NULL;
 	}
-
 }
 
 static bool GetFirstRef_Execute(COMMAND_ARGS, bool bUsePlayerCell = true, bool bUseRefr = false)

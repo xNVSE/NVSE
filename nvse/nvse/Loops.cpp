@@ -119,43 +119,52 @@ ContainerIterLoop::ContainerIterLoop(const ForEachContext* context)
 	m_invRef = CreateInventoryRef(contRef, IRefData(NULL, NULL, NULL), false);	
 
 	// first: figure out what items exist by default
-	std::map<TESForm*, SInt32> baseObjectCounts;
 	TESContainer* cont = DYNAMIC_CAST(contRef->baseForm, TESForm, TESContainer);
-	if (cont) {
-		for (TESContainer::FormCountList::Iterator cur = cont->formCountList.Begin(); !cur.End(); ++cur) {
-			if (cur.Get() && cur.Get()->form && cur.Get()->form->typeID != kFormType_LeveledItem) {
-				DEBUG_PRINT("Base container has %d %s", cur.Get()->count, GetFullName(cur.Get()->form));
+	if (cont)
+	{
+		UnorderedMap<TESForm*, SInt32> baseObjectCounts;
+		for (TESContainer::FormCountList::Iterator cur = cont->formCountList.Begin(); !cur.End(); ++cur)
+		{
+			if (cur.Get() && cur.Get()->form && cur.Get()->form->typeID != kFormType_LeveledItem)
+			{
+				//DEBUG_PRINT("Base container has %d %s", cur.Get()->count, GetFullName(cur.Get()->form));
 				baseObjectCounts[cur.Get()->form] = cur.Get()->count;
 			}
 		}
 	
 		// now populate the vec
 		ExtraContainerChanges* xChanges = (ExtraContainerChanges*)contRef->extraDataList.GetByType(kExtraData_ContainerChanges);
-		if (xChanges && xChanges->data) {
-			for (ExtraContainerChanges::EntryDataList::Iterator entry = xChanges->data->objList->Begin(); !entry.End(); ++entry) {
-				if (entry.Get()) {
+		if (xChanges && xChanges->data)
+		{
+			for (ExtraContainerChanges::EntryDataList::Iterator entry = xChanges->data->objList->Begin(); !entry.End(); ++entry)
+			{
+				if (entry.Get())
+				{
 					TESForm* baseObj = entry.Get()->type;
 
 					SInt32 countDelta = entry.Get()->countDelta;
 					SInt32 actualCount = countDelta;
-					bool isInBaseContainer = baseObjectCounts.find(baseObj) != baseObjectCounts.end();
-					if (isInBaseContainer) {
-						baseObjectCounts[baseObj] += countDelta;
-						actualCount = baseObjectCounts[baseObj];
+					SInt32 *isInBaseContainer = baseObjectCounts.GetPtr(baseObj);
+					if (isInBaseContainer)
+					{
+						*isInBaseContainer += countDelta;
+						actualCount = *isInBaseContainer;
 					}
 
-					if (entry.Get()->extendData) {
+					if (entry.Get()->extendData)
+					{
 						UInt32 total = 0;
-						for (ExtraContainerChanges::ExtendDataList::Iterator extend = entry.Get()->extendData->Begin(); !extend.End(); ++extend) {
+						for (ExtraContainerChanges::ExtendDataList::Iterator extend = entry.Get()->extendData->Begin(); !extend.End(); ++extend)
+						{
 							if (total >= actualCount) {
 								break;
 							}
 
 							total += GetCountForExtraDataList(extend.Get());
-							m_elements.push_back(IRefData(baseObj, entry.Get(), extend.Get()));
+							m_elements.Append(baseObj, entry.Get(), extend.Get());
 						}
 
-						SInt32 remainder = isInBaseContainer ? baseObjectCounts[baseObj] : countDelta;
+						SInt32 remainder = isInBaseContainer ? *isInBaseContainer : countDelta;
 						remainder -= total;
 						if (remainder > 0) {
 							InventoryReference::Data::CreateForUnextendedEntry(entry.Get(), remainder, m_elements);
@@ -164,7 +173,7 @@ ContainerIterLoop::ContainerIterLoop(const ForEachContext* context)
 					else {
 						SInt32 actualCount = countDelta;
 						if (isInBaseContainer) {
-							actualCount += baseObjectCounts[baseObj];
+							actualCount += *isInBaseContainer;
 						}
 						if (actualCount > 0) {
 							InventoryReference::Data::CreateForUnextendedEntry(entry.Get(), actualCount, m_elements);
@@ -172,7 +181,7 @@ ContainerIterLoop::ContainerIterLoop(const ForEachContext* context)
 					}
 
 					if (isInBaseContainer) {
-						baseObjectCounts.erase(baseObj);
+						baseObjectCounts.Erase(baseObj);
 					}
 				}
 				else {
@@ -180,7 +189,8 @@ ContainerIterLoop::ContainerIterLoop(const ForEachContext* context)
 				}
 			}
 		}
-		else if (baseObjectCounts.size()) {
+		else if (!baseObjectCounts.Empty())
+		{
 			if (!xChanges) {
 				xChanges = ExtraContainerChanges::Create();
 			}
@@ -188,25 +198,29 @@ ContainerIterLoop::ContainerIterLoop(const ForEachContext* context)
 			xChanges->data = ExtraContainerChanges::Data::Create(contRef);
 			xChanges->data->objList = (ExtraContainerChanges::EntryDataList*)FormHeap_Allocate(sizeof(ExtraContainerChanges::EntryDataList));
 
-			std::map<TESForm*, SInt32>::iterator first = baseObjectCounts.begin();
-			xChanges->data->objList->AddAt(ExtraContainerChanges::EntryData::Create(first->first, first->second), eListEnd);
-			baseObjectCounts.erase(first);
+			auto first = baseObjectCounts.Begin();
+			xChanges->data->objList->AddAt(ExtraContainerChanges::EntryData::Create(first.Key(), *first), eListEnd);
+			first.Remove();
 		}
 
 		// now add entries for objects in base but without associated ExtraContainerChanges
 		// these extra entries will be removed when we're done with the loop
-		if (baseObjectCounts.size()) {
-			for (std::map<TESForm*, SInt32>::iterator iter = baseObjectCounts.begin(); iter != baseObjectCounts.end(); ++iter) {
-				if (iter->second > 0) {
-					ExtraContainerChanges::EntryData* ed = ExtraContainerChanges::EntryData::Create(iter->first, iter->second);
+		if (!baseObjectCounts.Empty())
+		{
+			for (auto iter = baseObjectCounts.Begin(); !iter.End(); ++iter)
+			{
+				if (*iter > 0)
+				{
+					ExtraContainerChanges::EntryData* ed = ExtraContainerChanges::EntryData::Create(iter.Key(), *iter);
 					ExtraDataList* xData = NULL;
-					if (iter->second > 1) {
+					if (*iter > 1)
+					{
 						ed->extendData = (ExtraContainerChanges::ExtendDataList*)FormHeap_Allocate(sizeof(ExtraContainerChanges::ExtendDataList));
-						xData = ExtraDataList::Create(ExtraCount::Create(iter->second));
+						xData = ExtraDataList::Create(ExtraCount::Create(*iter));
 						ed->extendData->AddAt(xData, eListEnd);
 					}
 
-					m_elements.push_back(IRefData(iter->first, ed, xData));
+					m_elements.Append(iter.Key(), ed, xData);
 				}
 			}
 		}
@@ -224,12 +238,14 @@ bool ContainerIterLoop::UnsetIterator()
 bool ContainerIterLoop::SetIterator()
 {
 	TESObjectREFR* refr = m_invRef->GetRef();
-	if (m_iterIndex < m_elements.size() && refr) {
+	if (m_iterIndex < m_elements.Size() && refr)
+	{
 		m_invRef->SetData(m_elements[m_iterIndex]);
 		*((UInt64*)&m_refVar->data) = refr->refID;
 		return true;
 	}
-	else {
+	else
+	{
 		// loop ends, ref will shortly be invalid so zero out the var
 		m_refVar->data = 0;
 		m_invRef->SetData(IRefData(NULL, NULL, NULL));

@@ -443,7 +443,7 @@ bool Cmd_SetAltControl_Execute(COMMAND_ARGS)
 
 // lets scripters register user-defined controls to help avoid conflicts
 // key = key/button code, data = set of mod indices of mods which have registered key as a custom control
-typedef std::map <UInt32, std::set <UInt8> > RegisteredControlMap;
+typedef Map<UInt32, Set<UInt8>> RegisteredControlMap;
 static RegisteredControlMap s_registeredControls;
 
 bool Cmd_SetIsControl_Execute(COMMAND_ARGS)
@@ -455,12 +455,15 @@ bool Cmd_SetIsControl_Execute(COMMAND_ARGS)
 
 	*result = 0;
 
-	if(ExtractArgs(EXTRACT_ARGS, &key, &bIsControl) && key < kMaxMacros)
+	if (ExtractArgs(EXTRACT_ARGS, &key, &bIsControl) && key < kMaxMacros)
 	{
-		if(bIsControl)
-			s_registeredControls[key].insert(modIndex);
+		if (bIsControl)
+			s_registeredControls[key].Insert(modIndex);
 		else
-			s_registeredControls[key].erase(modIndex);
+		{
+			Set<UInt8> *modIdxSet = s_registeredControls.GetPtr(key);
+			if (modIdxSet) modIdxSet->Erase(modIndex);
+		}
 	}
 
 	return true;
@@ -473,14 +476,15 @@ bool Cmd_IsControl_Execute(COMMAND_ARGS)
 
 	*result = 0;
 
-	if(!ExtractArgs(EXTRACT_ARGS, &key))
+	if (!ExtractArgs(EXTRACT_ARGS, &key))
 		return true;
 
 	// check game controls
 	*result = IsControl(key) ? 1 : 0;
 
 	// check mod custom controls
-	if(s_registeredControls[key].size())
+	Set<UInt8> *modIdxSet = s_registeredControls.GetPtr(key);
+	if (modIdxSet && !modIdxSet->Empty())
 		*result += 2;
 
 	return true;

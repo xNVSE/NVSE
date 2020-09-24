@@ -1,7 +1,6 @@
 #pragma once
 
 #include "InventoryInfo.h"
-#include <vector>
 
 class TESObjectREFR;
 
@@ -21,7 +20,7 @@ public:
 		Data(const Data& rhs) : type(rhs.type), entry(rhs.entry), xData(rhs.xData) { }
 		Data() : type(NULL), entry(NULL), xData(NULL) { }
 
-		static void CreateForUnextendedEntry(ExtraContainerChanges::EntryData* entry, SInt32 totalCount, std::vector<Data> &dataOut);
+		static void CreateForUnextendedEntry(ExtraContainerChanges::EntryData* entry, SInt32 totalCount, Vector<Data> &dataOut);
 	};
 
 	~InventoryReference();

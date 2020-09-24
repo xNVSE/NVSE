@@ -14,11 +14,9 @@ UserFunctionManager::UserFunctionManager() : m_nestDepth(0)
 
 UserFunctionManager::~UserFunctionManager()
 {
-	while (m_functionStack.size())
-	{
-		delete m_functionStack.top();
-		m_functionStack.pop();
-	}
+	FunctionContext **context;
+	while (context = m_functionStack.pop())
+		delete *context;
 }
 
 static SmallObjectsAllocator::Allocator<FunctionContext, 5> g_functionContextAllocator;

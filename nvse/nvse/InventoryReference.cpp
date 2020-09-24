@@ -251,7 +251,7 @@ bool InventoryReference::DeferredAction::Execute(InventoryReference* iref)
 	}
 }
 
-void InventoryReference::Data::CreateForUnextendedEntry(ExtraContainerChanges::EntryData* entry, SInt32 totalCount, std::vector<Data> &dataOut)
+void InventoryReference::Data::CreateForUnextendedEntry(ExtraContainerChanges::EntryData* entry, SInt32 totalCount, Vector<Data> &dataOut)
 {
 	if (totalCount < 1) {
 		return;
@@ -263,7 +263,7 @@ void InventoryReference::Data::CreateForUnextendedEntry(ExtraContainerChanges::E
 	while (totalCount > 32767)
 	{
 		xDL = ExtraDataList::Create(ExtraCount::Create(32767));
-		dataOut.push_back(Data(entry->type, entry, xDL));
+		dataOut.Append(entry->type, entry, xDL);
 		totalCount -= 32767;
 	}
 
@@ -273,7 +273,7 @@ void InventoryReference::Data::CreateForUnextendedEntry(ExtraContainerChanges::E
 			xDL = ExtraDataList::Create(ExtraCount::Create(totalCount));
 		else
 			xDL = NULL;
-		dataOut.push_back(Data(entry->type, entry, xDL));
+		dataOut.Append(entry->type, entry, xDL);
 	}
 }
 

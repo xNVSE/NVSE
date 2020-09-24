@@ -6,13 +6,10 @@
 #include "GameObjects.h"
 #include "GameExtraData.h"
 
-#include <map>
-#include <vector>
-
 // Introduced to be available to plugin that needs to manipulate inventory
 
-typedef std::vector<ExtraContainerChanges::EntryData*> ExtraDataVec;
-typedef std::map<TESForm*, UInt32> ExtraContainerMap;
+typedef Vector<ExtraContainerChanges::EntryData*> ExtraDataVec;
+typedef UnorderedMap<TESForm*, UInt32> ExtraContainerMap;
 
 void PrintItemType(TESForm * form);
 TESForm* GetItemByIdx(TESObjectREFR* thisObj, UInt32 objIdx, SInt32* outNumItems);
@@ -23,12 +20,11 @@ TESForm * SetFirstItemWithHealthAndOwnershipByRefID(TESObjectREFR* thisObj, UInt
 
 class ExtraContainerInfo
 {
-	ExtraDataVec	m_vec;
-	ExtraContainerMap m_map;
+	ExtraDataVec		m_vec;
+	ExtraContainerMap	m_map;
 public:
-	ExtraContainerInfo(ExtraContainerChanges::EntryDataList * entryList) : m_map(), m_vec()
+	ExtraContainerInfo(ExtraContainerChanges::EntryDataList * entryList) : m_vec(128)
 	{
-		m_vec.reserve(128);
 		if (entryList) {
 			entryList->Visit(*this);
 		}
@@ -36,33 +32,34 @@ public:
 
 	bool Accept(ExtraContainerChanges::EntryData* data) 
 	{
-		if (data) {
-			m_vec.push_back(data);
-			m_map[data->type] = m_vec.size()-1;
+		if (data)
+		{
+			m_map[data->type] = m_vec.Size();
+			m_vec.Append(data);
 		}
 		return true;
 	}
 
 	bool IsValidFormCount(TESContainer::FormCount* formCount, SInt32& numObjects)
 	{
-		if (formCount) {
+		if (formCount)
+		{
 			numObjects = formCount->count;
 			TESForm* pForm = formCount->form;
 
 			if (DYNAMIC_CAST(pForm, TESForm, TESLevItem))
 				return false;
 
-			ExtraContainerMap::iterator it = m_map.find(pForm);
-			ExtraContainerMap::iterator itEnd = m_map.end();
-			if (it != itEnd) {
-				UInt32 index = it->second;
-				ExtraContainerChanges::EntryData* pXData = m_vec[index];
+			UInt32 *index = m_map.GetPtr(pForm);
+			if (index)
+			{
+				ExtraContainerChanges::EntryData* pXData = m_vec[*index];
 				if (pXData) {
 					numObjects += pXData->countDelta;
 				}
 				// clear the object from the vector so we don't bother to look for it
 				// in the second step
-				m_vec[index] = NULL;
+				m_vec[*index] = NULL;
 			}
 
 			if (numObjects > 0) {
@@ -76,51 +73,47 @@ public:
 	}
 
 	// returns the count of items left in the vector
-	UInt32 CountItems() {
+	UInt32 CountItems()
+	{
 		UInt32 count = 0;
-		ExtraDataVec::iterator itEnd = m_vec.end();
-		ExtraDataVec::iterator it = m_vec.begin();
-		while (it != itEnd) {
-			ExtraContainerChanges::EntryData* extraData = (*it);
-			if (extraData && (extraData->countDelta > 0)) {
+		ExtraContainerChanges::EntryData *extraData;
+		for (auto iter = m_vec.Begin(); !iter.End(); ++iter)
+		{
+			extraData = *iter;
+			if (extraData && (extraData->countDelta > 0))
+			{
 				count++;
-				if (IsConsoleMode()) {
+				if (IsConsoleMode())
 					PrintItemType(extraData->type);
-				}
 			}
-			++it;
 		}
 		return count;
 	}
 
-	ExtraContainerChanges::EntryData* GetNth(UInt32 n, UInt32 count) {
-		ExtraDataVec::iterator itEnd = m_vec.end();
-		ExtraDataVec::iterator it = m_vec.begin();
-		while (it != itEnd) {
-			ExtraContainerChanges::EntryData* extraData = (*it);
-			if (extraData && (extraData->countDelta > 0)) {
-				if(count == n)
-				{
+	ExtraContainerChanges::EntryData* GetNth(UInt32 n, UInt32 count)
+	{
+		ExtraContainerChanges::EntryData *extraData;
+		for (auto iter = m_vec.Begin(); !iter.End(); ++iter)
+		{
+			extraData = *iter;
+			if (extraData && (extraData->countDelta > 0))
+			{
+				if (count == n)
 					return extraData;
-				}
 				count++;
 			}
-			++it;
 		}
 		return NULL;
 	}
 
-	ExtraContainerChanges::EntryData* GetRefID(SInt32 refID) {
-		ExtraDataVec::iterator itEnd = m_vec.end();
-		ExtraDataVec::iterator it = m_vec.begin();
-		while (it != itEnd) {
-			ExtraContainerChanges::EntryData* extraData = (*it);
-			if (extraData && (extraData->countDelta > 0) && (extraData->type)) {
-				if(extraData->type->refID==refID) {
-					return extraData;
-				}
-			}
-			++it;
+	ExtraContainerChanges::EntryData* GetRefID(SInt32 refID)
+	{
+		ExtraContainerChanges::EntryData *extraData;
+		for (auto iter = m_vec.Begin(); !iter.End(); ++iter)
+		{
+			extraData = *iter;
+			if (extraData && (extraData->countDelta > 0) && extraData->type && (extraData->type->refID == refID))
+				return extraData;
 		}
 		return NULL;
 	}

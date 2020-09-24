@@ -274,7 +274,7 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 	UInt32 modVarCounts[0x100] = {0};				// for each mod, # of string vars loaded
 	static const UInt32 varCountThreshold = 100;	// what we'll consider a "large number" of vars; 
 													// obviously a few mods may require more than this without it being a problem
-	std::set<UInt8> exceededMods;
+	Set<UInt8> exceededMods;
 
 	bool bContinue = true;
 	while (bContinue && Serialization::GetNextRecordInfo(&type, &version, &length))
@@ -284,9 +284,10 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 		case 'STVE':			//end of block
 			bContinue = false;
 
-			if (exceededMods.size()) {
+			if (!exceededMods.Empty())
+			{
 				_MESSAGE("  WARNING: substantial numbers of string variables exist for the following files (may indicate savegame bloat):");
-				for (std::set<UInt8>::iterator iter = exceededMods.begin(); iter != exceededMods.end(); ++iter) {
+				for (auto iter = exceededMods.Begin(); !iter.End(); ++iter) {
 					_MESSAGE("    %s (%d strings)", DataHandler::Get()->GetNthModName(*iter), modVarCounts[*iter]);
 				}
 			}
@@ -311,7 +312,7 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 			Insert(stringID, new StringVar(buffer, tempRefID));
 			modVarCounts[modIndex] += 1;
 			if (modVarCounts[modIndex] == varCountThreshold) {
-				exceededMods.insert(modIndex);
+				exceededMods.Insert(modIndex);
 			}
 					
 			break;
