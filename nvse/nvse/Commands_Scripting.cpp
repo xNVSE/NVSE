@@ -510,32 +510,28 @@ ModLocalDataManager s_modDataManager;
 
 ArrayElement* ModLocalDataManager::Get(UInt8 modIndex, const char* key)
 {
-	auto iter = m_data.Find(modIndex);
-	if (!iter.End())
-	{
-		auto dataIter = iter.Get().Find(const_cast<char*>(key));
-		if (!dataIter.End())
-			return &dataIter.Get();
-	}
+	ModLocalData *modLocData = m_data.GetPtr(modIndex);
+	if (modLocData)
+		return modLocData->GetPtr(const_cast<char*>(key));
 	return NULL;
 }
 
 ArrayID ModLocalDataManager::GetAllAsNVSEArray(UInt8 modIndex)
 {
 	ArrayVar *arr = g_ArrayMap.Create(kDataType_String, false, modIndex);
-	auto iter = m_data.Find(modIndex);
-	if (!iter.End())
-		for (auto dataIter = iter.Get().Begin(); !dataIter.End(); ++dataIter)
+	ModLocalData *modLocData = m_data.GetPtr(modIndex);
+	if (modLocData)
+		for (auto dataIter = modLocData->Begin(); !dataIter.End(); ++dataIter)
 			arr->SetElement(dataIter.Key(), &dataIter.Get());
 	return arr->ID();
 }
 
 bool ModLocalDataManager::Remove(UInt8 modIndex, const char* key)
 {
-	auto iter = m_data.Find(modIndex);
-	if (!iter.End())
+	ModLocalData *modLocData = m_data.GetPtr(modIndex);
+	if (modLocData)
 	{
-		auto dataIter = iter.Get().Find(const_cast<char*>(key));
+		auto dataIter = modLocData->Find(const_cast<char*>(key));
 		if (!dataIter.End())
 		{
 			dataIter.Get().Unset();
