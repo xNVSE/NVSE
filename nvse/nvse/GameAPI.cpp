@@ -960,7 +960,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 
 	static char fmtBuffer[0x4000];
 
-	char *resPtr = fmtBuffer, *srcPtr = s_tempStrArgBuffer, *endPtr = StrEnd(srcPtr), *fmtPos, *strPtr, *omitEndPtr;
+	char *resPtr = fmtBuffer, *srcPtr = args.GetFormatString(), *endPtr = StrEnd(srcPtr), *fmtPos, *strPtr, *omitEndPtr;
 	int size;
 	TESForm *form;
 
