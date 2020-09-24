@@ -496,14 +496,12 @@ class ModLocalDataManager
 public:
 	ArrayElement* Get(UInt8 modIndex, const char* key);
 	bool Set(UInt8 modIndex, const char* key, const ArrayElement& data);
-	bool Set(UInt8 modIndex, const char* key, ScriptToken* data, ExpressionEvaluator& eval);
 	bool Remove(UInt8 modIndex, const char* key);
 	ArrayID GetAllAsNVSEArray(UInt8 modIndex);
 
-	~ModLocalDataManager();
 private:
-	typedef std::map<const char*, ArrayElement*, bool (*)(const char*, const char*)> ModLocalData;
-	typedef std::map<UInt8, ModLocalData*> ModLocalDataMap;
+	typedef UnorderedMap<char*, ArrayElement> ModLocalData;
+	typedef UnorderedMap<UInt32, ModLocalData> ModLocalDataMap;
 
 	ModLocalDataMap m_data;
 };
@@ -512,113 +510,72 @@ ModLocalDataManager s_modDataManager;
 
 ArrayElement* ModLocalDataManager::Get(UInt8 modIndex, const char* key)
 {
-	ModLocalDataMap::iterator iter = m_data.find(modIndex);
-	if (iter != m_data.end() && iter->second) {
-		ModLocalData::iterator dataIter = iter->second->find(key);
-		if (dataIter != iter->second->end()) {
-			return dataIter->second;
-		}
+	auto iter = m_data.Find(modIndex);
+	if (!iter.End())
+	{
+		auto dataIter = iter.Get().Find(const_cast<char*>(key));
+		if (!dataIter.End())
+			return &dataIter.Get();
 	}
-
 	return NULL;
 }
 
 ArrayID ModLocalDataManager::GetAllAsNVSEArray(UInt8 modIndex)
 {
 	ArrayVar *arr = g_ArrayMap.Create(kDataType_String, false, modIndex);
-	ModLocalDataMap::iterator iter = m_data.find(modIndex);
-	if (iter != m_data.end() && iter->second)
-	{
-		for (ModLocalData::iterator dataIter = iter->second->begin(); dataIter != iter->second->end(); ++dataIter)
-			arr->SetElement(dataIter->first, dataIter->second);
-	}
-
+	auto iter = m_data.Find(modIndex);
+	if (!iter.End())
+		for (auto dataIter = iter.Get().Begin(); !dataIter.End(); ++dataIter)
+			arr->SetElement(dataIter.Key(), &dataIter.Get());
 	return arr->ID();
 }
 
 bool ModLocalDataManager::Remove(UInt8 modIndex, const char* key)
 {
-	ModLocalDataMap::iterator iter = m_data.find(modIndex);
-	if (iter != m_data.end() && iter->second) {
-		ModLocalData::iterator dataIter = iter->second->find(key);
-		if (dataIter != iter->second->end()) {
-			iter->second->erase(dataIter);
+	auto iter = m_data.Find(modIndex);
+	if (!iter.End())
+	{
+		auto dataIter = iter.Get().Find(const_cast<char*>(key));
+		if (!dataIter.End())
+		{
+			dataIter.Get().Unset();
+			dataIter.Remove();
 			return true;
 		}
 	}
-
 	return false;
 }
 
 bool ModLocalDataManager::Set(UInt8 modIndex, const char* key, const ArrayElement& data)
 {
-	ArrayID dummy = 0;
-	if (key && !data.GetAsArray(&dummy)) {
-		UInt32 len = strlen(key) + 1;
-		char* newKey = new char[len+1];
-		strcpy_s(newKey, len, key);
-		MakeUpper(newKey);
-		key = newKey;
-
-		ModLocalDataMap::iterator indexIter = m_data.find(modIndex);
-		if (indexIter == m_data.end()) {
-			indexIter = m_data.insert(ModLocalDataMap::value_type(modIndex, new ModLocalData(ci_less))).first;
-		}
-
-		ModLocalData::iterator dataIter = indexIter->second->find(key);
-		if (dataIter == indexIter->second->end()) {
-			dataIter = indexIter->second->insert(ModLocalData::value_type(key, new ArrayElement())).first;
-		}
-
-		return dataIter->second->Set(&data);
+	if (*key)
+	{
+		//MakeUpper(const_cast<char*>(key));
+		m_data[modIndex][const_cast<char*>(key)].Set(&data);
+		return true;
 	}
-
 	return false;
-}
-
-bool ModLocalDataManager::Set(UInt8 modIndex, const char* key, ScriptToken* data, ExpressionEvaluator& eval)
-{
-	if (data) {
-		ArrayElement elem;
-		if (BasicTokenToElem(data, elem, &eval)) {
-			return Set(modIndex, key, elem);
-		}
-	}
-
-	return false;
-}
-
-ModLocalDataManager::~ModLocalDataManager()
-{
-	for (ModLocalDataMap::iterator index = m_data.begin(); index != m_data.end(); ++index) {
-		for (ModLocalData::iterator data = index->second->begin(); data != index->second->end(); ++data) {
-			delete data->second;
-			delete data->first;
-		}
-		delete index->second;
-	}
 }
 
 bool Cmd_SetModLocalData_Execute(COMMAND_ARGS)
 {
-	*result = 0.0;
-
+	*result = 0;
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	if (eval.ExtractArgs() && eval.NumArgs() == 2 && eval.Arg(0)->CanConvertTo(kTokenType_String)) {
-		*result = s_modDataManager.Set(scriptObj->GetModIndex(), eval.Arg(0)->GetString(), eval.Arg(1), eval) ? 1.0 : 0.0;
+	if (eval.ExtractArgs() && eval.NumArgs() == 2 && eval.Arg(0)->CanConvertTo(kTokenType_String))
+	{
+		ArrayElement elem;
+		if (BasicTokenToElem(eval.Arg(1), elem, &eval) && (elem.DataType() != kDataType_Array) && s_modDataManager.Set(scriptObj->GetModIndex(), eval.Arg(0)->GetString(), elem))
+			*result = 1;
 	}
-
 	return true;
 }
 
 bool Cmd_RemoveModLocalData_Execute(COMMAND_ARGS)
 {
-	*result = 0.0;
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	if (eval.ExtractArgs() && eval.NumArgs() == 1 && eval.Arg(0)->CanConvertTo(kTokenType_String)) {
-		*result = s_modDataManager.Remove(scriptObj->GetModIndex(), eval.Arg(0)->GetString()) ? 1.0 : 0.0;
-	}
-
+	if (eval.ExtractArgs() && eval.NumArgs() == 1 && eval.Arg(0)->CanConvertTo(kTokenType_String) && s_modDataManager.Remove(scriptObj->GetModIndex(), eval.Arg(0)->GetString()))
+		*result = 1;
+	else *result = 0;
 	return true;
 }
 
@@ -628,41 +585,39 @@ bool Cmd_GetModLocalData_Execute(COMMAND_ARGS)
 	eval.ExpectReturnType(kRetnType_Default);
 	*result = 0;
 
-	if (eval.ExtractArgs() && eval.NumArgs() == 1 && eval.Arg(0)->CanConvertTo(kTokenType_String)) {
-		ArrayElement* data = s_modDataManager.Get(scriptObj->GetModIndex(), eval.Arg(0)->GetString());
-		if (data) {
-			double num = 0;
-			UInt32 formID = 0;
-			const char *str;
-
-			if (data->GetAsNumber(&num)) {
-				*result = num;
-				return true;
-			}
-			else if (data->GetAsFormID(&formID)) {
-				UInt32* refResult = (UInt32*)result;
-				*refResult = formID;
-				eval.ExpectReturnType(kRetnType_Form);
-				return true;
-			}
-			else if (data->GetAsString(&str)) {
-				AssignToStringVar(PASS_COMMAND_ARGS, str);
-				eval.ExpectReturnType(kRetnType_String);
-				return true;
+	if (eval.ExtractArgs() && eval.NumArgs() == 1 && eval.Arg(0)->CanConvertTo(kTokenType_String))
+	{
+		ArrayElement *data = s_modDataManager.Get(scriptObj->GetModIndex(), eval.Arg(0)->GetString());
+		if (data)
+		{
+			switch (data->DataType())
+			{
+				case kDataType_Numeric:
+					*result = data->m_data.num;
+					break;
+				case kDataType_Form:
+				{
+					UInt32 *refResult = (UInt32*)result;
+					*refResult = data->m_data.formID;
+					eval.ExpectReturnType(kRetnType_Form);
+					break;
+				}
+				case kDataType_String:
+					AssignToStringVar(PASS_COMMAND_ARGS, data->m_data.GetStr());
+					eval.ExpectReturnType(kRetnType_String);
+					break;
 			}
 		}
 	}
-
 	return true;
 }
 
 bool Cmd_ModLocalDataExists_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	if (eval.ExtractArgs() && eval.NumArgs() == 1 && eval.Arg(0)->CanConvertTo(kTokenType_String)) {
-		*result = s_modDataManager.Get(scriptObj->GetModIndex(), eval.Arg(0)->GetString()) ? 1.0 : 0.0;
-	}
-
+	if (eval.ExtractArgs() && eval.NumArgs() == 1 && eval.Arg(0)->CanConvertTo(kTokenType_String) && s_modDataManager.Get(scriptObj->GetModIndex(), eval.Arg(0)->GetString()))
+		*result = 1;
+	else *result = 0;
 	return true;
 }
 
