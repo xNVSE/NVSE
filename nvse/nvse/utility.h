@@ -1,7 +1,7 @@
 #pragma once
 
 typedef void* (*memcpy_t)(void*, const void*, size_t);
-extern const memcpy_t _memcpy, _memmove;
+extern memcpy_t _memcpy, _memmove;
 
 //	Workaround for bypassing the compiler calling the d'tor on function-scope objects.
 template <typename T> class TempObject
