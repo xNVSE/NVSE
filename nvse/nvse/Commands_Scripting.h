@@ -13,24 +13,34 @@ struct SavedIPInfo
 	UInt32	stack[kMaxSavedIPStack];
 };
 
-struct ScriptRunner
+// represents the currently executing script context
+class ScriptRunner
 {
-	UInt32				unk00;			// 00
-	TESForm				*baseForm;		// 04
-	ScriptEventList			*eventList;		// 08
-	UInt32				unk0C;			// 0C
-	UInt32				unk10;			// 10
-	Script				*script;		// 14
-	UInt32				unk18;			// 18	= 6 after failed to evaluate expression
-	UInt32				unk1C;			// 1C
-	UInt32				stackDepth;		// 20
-	UInt32				stack[10];		// 24
-	UInt32				stack2Depth;		// 4C
-	UInt32				stack2[10];		// 50
-	UInt32				stack3[10];		// 78
-	UInt8				byteA0;			// A0
-	UInt8				byteA1;			// A1	is set during runLine if CmdExecute.byt025 is not NULL
-	UInt8				padA2[2];		// A2
+public:
+	static const UInt32	kStackDepth = 10;
+
+	enum
+	{
+		kStackFlags_IF = 1 << 0,
+		kStackFlags_ELSEIF = 1 << 1,
+		/* ELSE and ENDIF modify the above flags*/
+	};
+
+	// members
+	/*00*/ TESObjectREFR* containingObj; // set when executing scripts on inventory objects
+	/*04*/ TESForm* callingRefBaseForm;
+	/*08*/ ScriptEventList* eventList;
+	/*0C*/ UInt32 unk0C;
+	/*10*/ UInt32 unk10; // pointer? set to NULL before executing an instruction
+	/*14*/ Script* script;
+	/*18*/ UInt32 unk18; // set to 6 after a failed expression evaluation
+	/*1C*/ UInt32 unk1C; // set to Expression::errorCode
+	/*20*/ UInt32 ifStackDepth;
+	/*24*/ UInt32 ifStack[kStackDepth];	// stores flags
+	/*4C*/ UInt32 unk4C[(0xA0 - 0x4C) >> 2];
+	/*A0*/ UInt8 invalidReferences;	// set when the dot operator fails to resolve a reference (inside the error message handler)
+	/*A1*/ UInt8 unkA1;	// set when the executing CommandInfo's 2nd flag bit (+0x25) is set
+	/*A2*/ UInt16 padA2;
 };
 STATIC_ASSERT(sizeof(ScriptRunner) == 0xA4);
 

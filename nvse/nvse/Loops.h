@@ -12,7 +12,7 @@
 
 #include "FastStack.h"
 
-struct ScriptRunner;
+class ScriptRunner;
 struct ForEachContext;
 
 // abstract base for Loop classes

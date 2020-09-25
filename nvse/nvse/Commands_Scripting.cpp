@@ -67,10 +67,10 @@ bool Cmd_Label_Execute(COMMAND_ARGS)
 	info->ip = *opcodeOffsetPtr;
 
 	// save if/else/endif stack
-	info->stackDepth = scriptRunner->stackDepth;
+	info->stackDepth = scriptRunner->ifStackDepth;
 	ASSERT((info->stackDepth + 1) < kMaxSavedIPStack);
 
-	memcpy(info->stack, scriptRunner->stack, (info->stackDepth + 1) * sizeof(UInt32));
+	memcpy(info->stack, scriptRunner->ifStack, (info->stackDepth + 1) * sizeof(UInt32));
 
 	return true;
 }
@@ -94,8 +94,8 @@ bool Cmd_Goto_Execute(COMMAND_ARGS)
 	*calculatedOpLength += info->ip - *opcodeOffsetPtr;
 
 	// restore the if/else/endif stack
-	scriptRunner->stackDepth = info->stackDepth;
-	memcpy(scriptRunner->stack, info->stack, (info->stackDepth + 1) * sizeof(UInt32));
+	scriptRunner->ifStackDepth = info->stackDepth;
+	memcpy(scriptRunner->ifStack, info->stack, (info->stackDepth + 1) * sizeof(UInt32));
 
 	return true;
 }

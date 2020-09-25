@@ -249,7 +249,7 @@ ScriptToken* ScriptToken::Create(ArrayElementToken* elem, UInt32 lbound, UInt32 
 	return NULL;
 }
 
-static SmallObjectsAllocator::Allocator<ScriptToken, 24> g_scriptTokenAllocator;
+static SmallObjectsAllocator::Allocator<ScriptToken, 32> g_scriptTokenAllocator;
 
 void* ScriptToken::operator new(size_t size)
 {

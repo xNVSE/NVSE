@@ -276,16 +276,16 @@ void LoopManager::Add(Loop* loop, ScriptRunner* state, UInt32 startOffset, UInt3
 	// save the stack
 	SavedIPInfo* savedInfo = &loopInfo.ipInfo;
 	savedInfo->ip = startOffset;
-	savedInfo->stackDepth = state->stackDepth;
-	memcpy(savedInfo->stack, state->stack, (savedInfo->stackDepth + 1) * sizeof(UInt32));
+	savedInfo->stackDepth = state->ifStackDepth;
+	memcpy(savedInfo->stack, state->ifStack, (savedInfo->stackDepth + 1) * sizeof(UInt32));
 
 	m_loops.push(loopInfo);
 }
 
 void LoopManager::RestoreStack(ScriptRunner* state, SavedIPInfo* info)
 {
-	state->stackDepth = info->stackDepth;
-	memcpy(state->stack, info->stack, (info->stackDepth + 1) * sizeof(UInt32));
+	state->ifStackDepth = info->stackDepth;
+	memcpy(state->ifStack, info->stack, (info->stackDepth + 1) * sizeof(UInt32));
 }
 
 bool LoopManager::Break(ScriptRunner* state, COMMAND_ARGS)
