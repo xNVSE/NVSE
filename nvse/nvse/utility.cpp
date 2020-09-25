@@ -12,7 +12,7 @@ kDbl4dPI = 1.2732395447351628,
 kDblTanPId6 = 0.5773502691896257,
 kDblTanPId12 = 0.2679491924311227;
 
-const memcpy_t _memcpy = memcpy, _memmove = memmove;
+memcpy_t _memcpy = memcpy, _memmove = memmove;
 
 double cos_p(double angle)
 {
