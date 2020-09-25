@@ -358,13 +358,13 @@ struct ForEachContextToken : ScriptToken
 	void operator delete(void* p);
 };
 
-struct AssignableStringToken : ScriptToken
+struct AssignableSubstringToken : ScriptToken
 {
 	UInt32		lower;
 	UInt32		upper;
 	std::string	substring;
 
-	AssignableStringToken(UInt32 _id, UInt32 lbound, UInt32 ubound);
+	AssignableSubstringToken(UInt32 _id, UInt32 lbound, UInt32 ubound);
 	const char* GetString() override { return substring.c_str(); }
 	virtual bool Assign(const char* str) = 0;
 
@@ -379,9 +379,9 @@ struct AssignableStringToken : ScriptToken
 	}
 };
 
-struct AssignableStringVarToken : public AssignableStringToken
+struct AssignableSubstringStringVarToken : public AssignableSubstringToken
 {
-	AssignableStringVarToken(UInt32 _id, UInt32 lbound, UInt32 ubound);
+	AssignableSubstringStringVarToken(UInt32 _id, UInt32 lbound, UInt32 ubound);
 	bool Assign(const char* str) override;
 
 	void* operator new(size_t size)
@@ -395,11 +395,11 @@ struct AssignableStringVarToken : public AssignableStringToken
 	}
 };
 
-struct AssignableStringArrayElementToken : public AssignableStringToken
+struct AssignableSubstringArrayElementToken : public AssignableSubstringToken
 {
 	ArrayKey	key;
 
-	AssignableStringArrayElementToken(UInt32 _id, const ArrayKey& _key, UInt32 lbound, UInt32 ubound);
+	AssignableSubstringArrayElementToken(UInt32 _id, const ArrayKey& _key, UInt32 lbound, UInt32 ubound);
 	ArrayID		GetArray() override { return value.arrID; }
 	bool Assign(const char* str) override;
 

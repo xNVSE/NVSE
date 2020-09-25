@@ -326,8 +326,8 @@ ScriptToken* Eval_Assign_String(OperatorType op, ScriptToken* lh, ScriptToken* r
 
 ScriptToken* Eval_Assign_AssignableString(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	AssignableStringToken* aStr = dynamic_cast<AssignableStringToken*> (lh);
-	return aStr->Assign(rh->GetString()) ? ScriptToken::Create(aStr->GetString()) : NULL;
+	AssignableSubstringToken* aStr = dynamic_cast<AssignableSubstringToken*> (lh);
+	return aStr->Assign(rh->GetString()) ? ScriptToken::Create(aStr->GetString()) : nullptr;
 }
 
 ScriptToken* Eval_Assign_Form(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)

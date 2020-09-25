@@ -236,14 +236,14 @@ ScriptToken* ScriptToken::Create(ScriptToken* l, ScriptToken* r)
 
 ScriptToken* ScriptToken::Create(UInt32 varID, UInt32 lbound, UInt32 ubound)
 {
-	return new AssignableStringVarToken(varID, lbound, ubound);
+	return new AssignableSubstringStringVarToken(varID, lbound, ubound);
 }
 
 ScriptToken* ScriptToken::Create(ArrayElementToken* elem, UInt32 lbound, UInt32 ubound)
 {
 	
 	if (elem && elem->GetString()) {
-		return new AssignableStringArrayElementToken(elem->GetOwningArrayID(), *elem->GetArrayKey(), lbound, ubound);
+		return new AssignableSubstringArrayElementToken(elem->GetOwningArrayID(), *elem->GetArrayKey(), lbound, ubound);
 	}
 
 	return NULL;
@@ -296,7 +296,7 @@ PairToken::PairToken(ScriptToken* l, ScriptToken* r) : ScriptToken(kTokenType_Pa
 		type = kTokenType_Invalid;
 }
 
-AssignableStringToken::AssignableStringToken(UInt32 _id, UInt32 lbound, UInt32 ubound) 
+AssignableSubstringToken::AssignableSubstringToken(UInt32 _id, UInt32 lbound, UInt32 ubound) 
 	:  ScriptToken(kTokenType_AssignableString, Script::eVarType_Invalid, 0), lower(lbound), upper(ubound), substring()
 {
 	value.arrID = _id;
@@ -305,7 +305,7 @@ AssignableStringToken::AssignableStringToken(UInt32 _id, UInt32 lbound, UInt32 u
 	}
 }
 
-AssignableStringVarToken::AssignableStringVarToken(UInt32 _id, UInt32 lbound, UInt32 ubound) : AssignableStringToken(_id, lbound, ubound)
+AssignableSubstringStringVarToken::AssignableSubstringStringVarToken(UInt32 _id, UInt32 lbound, UInt32 ubound) : AssignableSubstringToken(_id, lbound, ubound)
 {
 	StringVar* strVar = g_StringMap.Get(value.arrID);
 	if (strVar) {
@@ -314,8 +314,8 @@ AssignableStringVarToken::AssignableStringVarToken(UInt32 _id, UInt32 lbound, UI
 	}
 }
 
-AssignableStringArrayElementToken::AssignableStringArrayElementToken(UInt32 _id, const ArrayKey& _key, UInt32 lbound, UInt32 ubound)
-	: AssignableStringToken(_id, lbound, ubound), key(_key)
+AssignableSubstringArrayElementToken::AssignableSubstringArrayElementToken(UInt32 _id, const ArrayKey& _key, UInt32 lbound, UInt32 ubound)
+	: AssignableSubstringToken(_id, lbound, ubound), key(_key)
 {
 	ArrayVar *arr = g_ArrayMap.Get(value.arrID);
 	if (!arr) return;
@@ -329,7 +329,7 @@ AssignableStringArrayElementToken::AssignableStringArrayElementToken(UInt32 _id,
 	}
 }
 
-bool AssignableStringVarToken::Assign(const char* str)
+bool AssignableSubstringStringVarToken::Assign(const char* str)
 {
 	StringVar* strVar = g_StringMap.Get(value.arrID);
 	if (strVar) {
@@ -343,11 +343,10 @@ bool AssignableStringVarToken::Assign(const char* str)
 			return true;
 		}
 	}
-
 	return false;
 }
 
-bool AssignableStringArrayElementToken::Assign(const char* str)
+bool AssignableSubstringArrayElementToken::Assign(const char* str)
 {
 	ArrayElement *elem = g_ArrayMap.GetElement(value.arrID, &key);
 	const char* pElemStr;
