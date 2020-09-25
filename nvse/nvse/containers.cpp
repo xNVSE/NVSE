@@ -12,27 +12,29 @@ __declspec(naked) void* __fastcall Pool_Alloc(UInt32 size)
 	__asm
 	{
 		push	ecx
+		cmp		ecx, MAX_CACHED_BLOCK_SIZE
+		ja		doAlloc
 		push	offset s_poolCritSection
 		call	EnterCriticalSection
 		pop		ecx
-		cmp		ecx, MAX_CACHED_BLOCK_SIZE
-		ja		doAlloc
 		lea		edx, s_availableCachedBlocks[ecx]
 		mov		eax, [edx]
 		test	eax, eax
-		jz		doAlloc
+		jz		leaveCS
 		mov		ecx, [eax]
 		mov		[edx], ecx
-		jmp		done
-	doAlloc:
-		push	ecx
-		call	malloc
-		pop		ecx
-	done:
 		push	eax
 		push	offset s_poolCritSection
 		call	LeaveCriticalSection
 		pop		eax
+		retn
+	leaveCS:
+		push	ecx
+		push	offset s_poolCritSection
+		call	LeaveCriticalSection
+	doAlloc:
+		call	malloc
+		pop		ecx
 		retn
 	}
 }
@@ -54,14 +56,14 @@ __declspec(naked) void __fastcall Pool_Free(void *pBlock, UInt32 size)
 {
 	__asm
 	{
+		push	ecx
 		cmp		edx, MAX_CACHED_BLOCK_SIZE
 		ja		doFree
 		push	edx
-		push	ecx
 		push	offset s_poolCritSection
 		call	EnterCriticalSection
-		pop		ecx
 		pop		edx
+		pop		ecx
 		lea		eax, s_availableCachedBlocks[edx]
 		mov		edx, [eax]
 		mov		[ecx], edx
@@ -70,7 +72,6 @@ __declspec(naked) void __fastcall Pool_Free(void *pBlock, UInt32 size)
 		call	LeaveCriticalSection
 		retn
 	doFree:
-		push	ecx
 		call	free
 		pop		ecx
 		retn
