@@ -613,3 +613,13 @@ void ShowErrorMessageBox(const char* message)
 		MB_ICONWARNING | MB_OK
 	);
 }
+
+ScopedLock::ScopedLock(ICriticalSection& critSection) : m_critSection(critSection)
+{
+	m_critSection.Enter();
+}
+
+ScopedLock::~ScopedLock()
+{
+	m_critSection.Leave();
+}

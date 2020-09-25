@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 
+#include "common/ICriticalSection.h"
+
 class Script;
 
 void DumpClass(void * theClassPtr, UInt32 nIntsToDump = 512);
@@ -196,3 +198,14 @@ inline void GameHeapFree(void* ptr)
 }
 
 void ShowErrorMessageBox(const char* message);
+
+class ScopedLock
+{
+public:
+	ScopedLock(ICriticalSection& critSection);
+
+	~ScopedLock();
+
+private:
+	ICriticalSection& m_critSection;
+};

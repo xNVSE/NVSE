@@ -10,18 +10,14 @@ void __stdcall HandleThreadExit()
 	// when thread exits, free singleton objects in thread local storage
 
 	ThreadLocalData* data = ThreadLocalData::TryGet();
-	if (data) {
-		if (data->expressionEvaluator) {
+	if (data) 
+	{
+		if (data->expressionEvaluator) 
 			_WARNING("Game thread exiting with non-empty ExpressionEvaluator stack");
-		}
+		
+		delete data->userFunctionManager;
+		delete data->loopManager;
 
-		if (data->userFunctionManager) {
-			delete data->userFunctionManager;
-		}
-
-		if (data->loopManager) {
-			delete data->loopManager;
-		}
 
 		// free memory allocated for this thread's data
 		delete data;
@@ -38,6 +34,29 @@ static __declspec(naked) void BackgroundLoaderThreadHook(void)
 		// overwritten code
 		retn 4
 	}
+}
+
+ThreadLocalData::ThreadLocalData(): expressionEvaluator(NULL), userFunctionManager(NULL), loopManager(NULL)
+{
+	//
+}
+
+ThreadLocalData& ThreadLocalData::Get()
+{
+	ThreadLocalData* data = TryGet();
+	if (!data)
+	{
+		data = new ThreadLocalData();
+		const auto result = TlsSetValue(s_tlsIndex, data);
+		ASSERT_STR(result, "TlsSetValue() failed in ThreadLocalData::Get()");
+	}
+
+	return *data;
+}
+
+ThreadLocalData* ThreadLocalData::TryGet()
+{
+	return static_cast<ThreadLocalData*>(TlsGetValue(s_tlsIndex));
 }
 
 void ThreadLocalData::Init()

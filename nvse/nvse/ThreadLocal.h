@@ -1,6 +1,5 @@
 #pragma once
 
-#include "containers.h"
 #include "ScriptTokenCache.h"
 #include "common/ICriticalSection.h"
 
@@ -17,45 +16,17 @@ struct ThreadLocalData
 	LoopManager* loopManager;			// per-thread singleton
 	TokenCache tokenCache;
 
-	ThreadLocalData() : expressionEvaluator(NULL), userFunctionManager(NULL), loopManager(NULL) {
-		//
-	}
+	ThreadLocalData();
 
 	// get data for current thread, creating if it doesn't exist yet
-	static ThreadLocalData& Get() {
-		ThreadLocalData* data = TryGet();
-		if (!data) {
-			data = new ThreadLocalData();
-			const auto result = TlsSetValue(s_tlsIndex, data);
-			ASSERT_STR(result, "TlsSetValue() failed in ThreadLocalData::Get()");
-		}
-
-		return *data;
-	}
+	static ThreadLocalData& Get();
 
 	// get for current thread if data exists
-	static ThreadLocalData* TryGet() {
-		return static_cast<ThreadLocalData*>(TlsGetValue(s_tlsIndex));
-	}
+	static ThreadLocalData* TryGet();
 
 	static void Init();
 	static void DeInit();
 
 private:
 	static DWORD	s_tlsIndex;
-};
-
-class ScopedLock
-{
-public:
-	ScopedLock(ICriticalSection& critSection) : m_critSection(critSection) {
-		m_critSection.Enter();
-	}
-
-	~ScopedLock() {
-		m_critSection.Leave();
-	}
-
-private:
-	ICriticalSection& m_critSection;
 };
