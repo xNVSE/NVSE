@@ -160,24 +160,24 @@ protected:
 	UInt8		variableType;	
 	Script*		owningScript;
 
-	struct Value {
-		std::string					str;
-		union {
-			Script::RefVariable		* refVar;
-			UInt32					formID;
-			double					num;
-			TESGlobal				* global;
-			Operator				* op;
+	union Value
+	{
+		Script::RefVariable		* refVar;
+		UInt32					formID;
+		double					num;
+		char					* str;
+		TESGlobal				* global;
+		Operator				* op;
 #if RUNTIME		// run-time only
-			ArrayID					arrID;
-			ScriptEventList::Var	* var;
+		ArrayID					arrID;
+		ScriptEventList::Var	* var;
 #endif
-			// compile-time only
-			VariableInfo			* varInfo;
-			CommandInfo				* cmd;
-			ScriptToken				* token;
-		};
+		// compile-time only
+		VariableInfo			* varInfo;
+		CommandInfo				* cmd;
+		ScriptToken				* token;
 	} value;
+
 	ScriptToken(Token_Type _type, UInt8 _varType, UInt16 _refIdx);
 	ScriptToken(bool boolean);
 	ScriptToken(double num);
@@ -270,6 +270,10 @@ public:
 	static ScriptToken* Create(ArrayElementToken* elem, UInt32 lbound, UInt32 ubound);
 	static ScriptToken* Create(UInt32 bogus);	// unimplemented, to block implicit conversion to double
 
+	void SetString(const char *srcStr);
+
+	ScriptToken& operator=(const ScriptToken &rhs);
+
 	UInt16		refIdx;
 	CommandReturnType returnType;
 #if RUNTIME
@@ -288,6 +292,7 @@ public:
 #endif
 
 };
+//STATIC_ASSERT(sizeof(ScriptToken) == 0x30);
 
 struct SliceToken : ScriptToken
 {

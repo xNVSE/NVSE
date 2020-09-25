@@ -18,6 +18,11 @@ ScriptToken::~ScriptToken()
 #ifdef DBG_EXPR_LEAKS
 	TOKEN_COUNT--;
 #endif
+	if ((type == kTokenType_String) && value.str)
+	{
+		free(value.str);
+		value.str = NULL;
+	}
 }
 
 /*************************************
@@ -59,13 +64,13 @@ ScriptToken::ScriptToken(Script::RefVariable* refVar, UInt16 refIdx) : type(kTok
 ScriptToken::ScriptToken(const std::string& str) : type(kTokenType_String), refIdx(0), variableType(Script::eVarType_Invalid)
 {
 	INC_TOKEN_COUNT
-	value.str = str;
+	value.str = str.empty() ? NULL : CopyString(str.c_str());
 }
 
 ScriptToken::ScriptToken(const char* str) : type(kTokenType_String), refIdx(0), variableType(Script::eVarType_Invalid)
 {
 	INC_TOKEN_COUNT
-	value.str = str;
+	value.str = (str && *str) ? CopyString(str) : NULL;
 }
 
 ScriptToken::ScriptToken(TESGlobal* global, UInt16 refIdx) : type(kTokenType_Global), refIdx(refIdx), variableType(Script::eVarType_Invalid)
@@ -263,6 +268,22 @@ void ScriptToken::operator delete(void* p)
 	g_scriptTokenAllocator.Free(p);
 }
 
+ScriptToken& ScriptToken::operator=(const ScriptToken& rhs)
+{
+	if (this != &rhs)
+	{
+		if ((type == kTokenType_String) && value.str)
+			free(value.str);
+		memcpy(this, &rhs, sizeof(ScriptToken));
+		if ((type == kTokenType_String) && value.str)
+		{
+			char *strCopy = CopyString(value.str);
+			value.str = strCopy;
+		}
+	}
+	return *this;
+}
+
 ArrayElementToken::ArrayElementToken(ArrayID arr, ArrayKey* _key)
 : ScriptToken(kTokenType_ArrayElement, Script::eVarType_Invalid, 0)
 {
@@ -394,13 +415,24 @@ Slice::Slice(const Slice* _slice)
 
 *****************************************/
 
+void ScriptToken::SetString(const char *srcStr)
+{
+	if (type == kTokenType_String)
+	{
+		if (value.str)
+			free(value.str);
+	}
+	else type = kTokenType_String;
+	value.str = (srcStr && *srcStr) ? CopyString(srcStr) : NULL;
+}
+
 const char* ScriptToken::GetString()
 {
 	static const char* empty = "";
 	const char* result = NULL;
 
 	if (type == kTokenType_String)
-		result = value.str.c_str();
+		result = value.str;
 #if RUNTIME
 	else if (type == kTokenType_StringVar)
 	{
@@ -418,9 +450,13 @@ const char* ScriptToken::GetString()
 		auto* token = context->ExecuteCommandToken(this);
 		if (token)
 		{
-			value.str = std::move(token->value.str);
+			if (token->type == kTokenType_String)
+			{
+				SetString(token->value.str);
+				token->value.str = NULL;
+				result = value.str;
+			}
 			delete token;
-			return value.str.c_str();
 		}
 	}
 #endif
@@ -794,7 +830,12 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		break;
 	case 'S':
 	{
-		type = kTokenType_String;
+		if (type == kTokenType_String)
+		{
+			if (value.str)
+				free(value.str);
+		}
+		else type = kTokenType_String;
 		UInt32 incData = 0;
 		value.str = context->ReadString(incData);
 		break;
@@ -956,7 +997,7 @@ bool ScriptToken::Write(ScriptLineBuffer* buf)
 			}
 		}
 	case kTokenType_String:
-		return buf->WriteString(value.str.c_str());
+		return buf->WriteString(value.str);
 	case kTokenType_Ref:
 	case kTokenType_Global:
 		return buf->Write16(refIdx);

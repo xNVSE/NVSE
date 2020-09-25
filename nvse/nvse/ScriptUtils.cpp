@@ -2746,17 +2746,19 @@ double ExpressionEvaluator::ReadFloat()
 	return data;
 }
 
-std::string ExpressionEvaluator::ReadString(UInt32& incrData)
+char *ExpressionEvaluator::ReadString(UInt32& incrData)
 {
 	UInt16 len = Read16();
-	char* buf = new char[len + 1];
-	memcpy(buf, Data(), len);
-	buf[len] = 0;
-	std::string str = buf;
-	Data() += len;
-	delete[] buf;
 	incrData = 2 + len;
-	return str;
+	if (len)
+	{
+		char *resStr = (char*)malloc(len + 1);
+		memcpy(resStr, Data(), len);
+		resStr[len] = 0;
+		Data() += len;
+		return resStr;
+	}
+	return NULL;
 }
 
 void ExpressionEvaluator::PushOnStack()
