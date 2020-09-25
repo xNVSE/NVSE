@@ -1,13 +1,20 @@
+#include "common/ICriticalSection.h"
 #include "nvse/containers.h"
 
 #define MAX_CACHED_BLOCK_SIZE 0x200
 
 alignas(16) void *s_availableCachedBlocks[(MAX_CACHED_BLOCK_SIZE >> 2) + 1] = {NULL};
 
+ICriticalSection s_poolCritSection;
+
 __declspec(naked) void* __fastcall Pool_Alloc(UInt32 size)
 {
 	__asm
 	{
+		push	ecx
+		push	offset s_poolCritSection
+		call	EnterCriticalSection
+		pop		ecx
 		cmp		ecx, MAX_CACHED_BLOCK_SIZE
 		ja		doAlloc
 		lea		edx, s_availableCachedBlocks[ecx]
@@ -16,11 +23,16 @@ __declspec(naked) void* __fastcall Pool_Alloc(UInt32 size)
 		jz		doAlloc
 		mov		ecx, [eax]
 		mov		[edx], ecx
-		retn
+		jmp		done
 	doAlloc:
 		push	ecx
 		call	malloc
 		pop		ecx
+	done:
+		push	eax
+		push	offset s_poolCritSection
+		call	LeaveCriticalSection
+		pop		eax
 		retn
 	}
 }
@@ -44,10 +56,18 @@ __declspec(naked) void __fastcall Pool_Free(void *pBlock, UInt32 size)
 	{
 		cmp		edx, MAX_CACHED_BLOCK_SIZE
 		ja		doFree
+		push	edx
+		push	ecx
+		push	offset s_poolCritSection
+		call	EnterCriticalSection
+		pop		ecx
+		pop		edx
 		lea		eax, s_availableCachedBlocks[edx]
 		mov		edx, [eax]
 		mov		[ecx], edx
 		mov		[eax], ecx
+		push	offset s_poolCritSection
+		call	LeaveCriticalSection
 		retn
 	doFree:
 		push	ecx
@@ -131,52 +151,21 @@ __declspec(naked) void* __fastcall Pool_Realloc_Al4(void *pBlock, UInt32 curSize
 	}
 }
 
-#define MAX_CACHED_BUCKETS MAX_CACHED_BLOCK_SIZE >> 2
-
 __declspec(naked) void* __fastcall Pool_Alloc_Buckets(UInt32 numBuckets)
 {
 	__asm
 	{
-		cmp		ecx, MAX_CACHED_BUCKETS
-		ja		doAlloc
-		lea		edx, s_availableCachedBlocks[ecx*4]
-		mov		eax, [edx]
-		test	eax, eax
-		jz		doAlloc
+		push	ecx
+		shl		ecx, 2
+		call	Pool_Alloc
+		pop		ecx
 		push	eax
 		push	edi
 		mov		edi, eax
-		mov		eax, [eax]
-		mov		[edx], eax
 		xor		eax, eax
 		rep stosd
 		pop		edi
 		pop		eax
-		retn
-	doAlloc:
-		push	4
-		push	ecx
-		call	calloc
-		add		esp, 8
-		retn
-	}
-}
-
-__declspec(naked) void __fastcall Pool_Free_Buckets(void *pBuckets, UInt32 numBuckets)
-{
-	__asm
-	{
-		cmp		edx, MAX_CACHED_BUCKETS
-		ja		doFree
-		lea		eax, s_availableCachedBlocks[edx*4]
-		mov		edx, [eax]
-		mov		[ecx], edx
-		mov		[eax], ecx
-		retn
-	doFree:
-		push	ecx
-		call	free
-		pop		ecx
 		retn
 	}
 }

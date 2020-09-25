@@ -14,7 +14,6 @@ void __fastcall Pool_Free_Al4(void *pBlock, UInt32 size);
 void* __fastcall Pool_Realloc(void *pBlock, UInt32 curSize, UInt32 reqSize);
 void* __fastcall Pool_Realloc_Al4(void *pBlock, UInt32 curSize, UInt32 reqSize);
 void* __fastcall Pool_Alloc_Buckets(UInt32 numBuckets);
-void __fastcall Pool_Free_Buckets(void *pBuckets, UInt32 numBuckets);
 UInt32 __fastcall AlignBucketCount(UInt32 count);
 
 #define POOL_ALLOC(count, type) (alignof(type) < 4) ? (type*)Pool_Alloc_Al4(count * sizeof(type)) : (type*)Pool_Alloc(count * sizeof(type))
@@ -1090,7 +1089,7 @@ template <typename T_Key, typename T_Data> class UnorderedMap
 			pBucket++;
 		}
 		while (pBucket != pEnd);
-		Pool_Free_Buckets(buckets, numBuckets);
+		Pool_Free(buckets, numBuckets * sizeof(Bucket));
 		buckets = newBuckets;
 		numBuckets = newCount + 1;
 	}
@@ -1137,7 +1136,7 @@ public:
 	{
 		if (!buckets) return;
 		Clear();
-		Pool_Free_Buckets(buckets, numBuckets);
+		Pool_Free(buckets, numBuckets * sizeof(Bucket));
 		buckets = NULL;
 	}
 
@@ -1408,7 +1407,7 @@ template <typename T_Key> class UnorderedSet
 			pBucket++;
 		}
 		while (pBucket != pEnd);
-		Pool_Free_Buckets(buckets, numBuckets);
+		Pool_Free(buckets, numBuckets * sizeof(Bucket));
 		buckets = newBuckets;
 		numBuckets = newCount + 1;
 	}
@@ -1419,7 +1418,7 @@ public:
 	{
 		if (!buckets) return;
 		Clear();
-		Pool_Free_Buckets(buckets, numBuckets);
+		Pool_Free(buckets, numBuckets * sizeof(Bucket));
 		buckets = NULL;
 	}
 
