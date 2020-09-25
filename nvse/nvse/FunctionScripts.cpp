@@ -92,11 +92,8 @@ public:
 				scrToken = ScriptToken::Read(&m_eval);
 				break;
 			case 1:
-			{
-				ScopedLock lock(ExpressionEvaluator::s_criticalSection);
 				scrToken = m_eval.Evaluate();
 				break;
-			}
 			default:
 				m_eval.Error("Unknown bytecode version %d encountered in Call statement", m_callerVersion);
 				return NULL;

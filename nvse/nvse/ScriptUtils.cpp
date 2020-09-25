@@ -2823,7 +2823,7 @@ ExpressionEvaluator::~ExpressionEvaluator()
 
 bool ExpressionEvaluator::ExtractArgs()
 {
-	ScopedLock lock(s_criticalSection);
+	
 	UInt32 numArgs = ReadByte();
 	UInt32 curArg = 0;
 	while (curArg < numArgs)
@@ -2842,8 +2842,6 @@ bool ExpressionEvaluator::ExtractArgs()
 	else
 		return false;
 }
-
-ICriticalSection ExpressionEvaluator::s_criticalSection;
 
 bool ExpressionEvaluator::ExtractDefaultArgs(va_list varArgs, bool bConvertTESForms)
 {
