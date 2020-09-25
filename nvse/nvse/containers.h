@@ -7,12 +7,20 @@
 #define MAP_MAX_BUCKET_COUNT		0x40000
 #define VECTOR_DEFAULT_ALLOC		8
 
-void __fastcall AllocDataArray(void *container, UInt32 dataSize);
+void* __fastcall Pool_Alloc(UInt32 size);
+void* __fastcall Pool_Alloc_Al4(UInt32 size);
+void __fastcall Pool_Free(void *pBlock, UInt32 size);
+void __fastcall Pool_Free_Al4(void *pBlock, UInt32 size);
+void* __fastcall Pool_Realloc(void *pBlock, UInt32 curSize, UInt32 reqSize);
+void* __fastcall Pool_Realloc_Al4(void *pBlock, UInt32 curSize, UInt32 reqSize);
+void* __fastcall Pool_Alloc_Buckets(UInt32 numBuckets);
+void __fastcall Pool_Free_Buckets(void *pBuckets, UInt32 numBuckets);
 UInt32 __fastcall AlignBucketCount(UInt32 count);
-void* __fastcall AllocListNode(UInt32 entrySize);
-void __fastcall ScrapListNode(void *entry, UInt32 entrySize);
 
-#define ALLOC_NODE(type) (type*)AllocListNode(sizeof(type))
+#define POOL_ALLOC(count, type) (alignof(type) < 4) ? (type*)Pool_Alloc_Al4(count * sizeof(type)) : (type*)Pool_Alloc(count * sizeof(type))
+#define POOL_FREE(block, count, type) (alignof(type) < 4) ? Pool_Free_Al4(block, count * sizeof(type)) : Pool_Free(block, count * sizeof(type))
+#define POOL_REALLOC(block, curCount, newCount, type) block = (alignof(type) < 4) ? (type*)Pool_Realloc_Al4(block, curCount * sizeof(type), newCount * sizeof(type)) : (type*)Pool_Realloc(block, curCount * sizeof(type), newCount * sizeof(type))
+#define ALLOC_NODE(type) (type*)Pool_Alloc(sizeof(type))
 
 template <typename T_Data> class Stack
 {
@@ -77,7 +85,7 @@ public:
 		Node *toRemove = head;
 		head = head->next;
 		toRemove->Clear();
-		ScrapListNode(toRemove, sizeof(Node));
+		Pool_Free(toRemove, sizeof(Node));
 		return frontItem;
 	}
 
@@ -90,7 +98,7 @@ public:
 			pNode = head;
 			head = head->next;
 			pNode->Clear();
-			ScrapListNode(pNode, sizeof(Node));
+			Pool_Free(pNode, sizeof(Node));
 		}
 		while (head);
 	}
@@ -198,7 +206,7 @@ template <typename T_Data> class LinkedList
 		if (next) next->prev = prev;
 		else tail = prev;
 		toRemove->Clear();
-		ScrapListNode(toRemove, sizeof(Node));
+		Pool_Free(toRemove, sizeof(Node));
 	}
 
 public:
@@ -422,7 +430,7 @@ public:
 			pNode = head;
 			head = head->next;
 			pNode->Clear();
-			ScrapListNode(pNode, sizeof(Node));
+			Pool_Free(pNode, sizeof(Node));
 		}
 		while (head);
 		tail = NULL;
@@ -552,7 +560,7 @@ public:
 	void Clear()
 	{
 		value->~T_Data();
-		ScrapListNode(value, sizeof(T_Data));
+		Pool_Free(value, sizeof(T_Data));
 	}
 };
 
@@ -607,7 +615,14 @@ template <typename T_Key, typename T_Data> class Map
 			*outData = entries[index].value.Ptr();
 			return false;
 		}
-		AllocDataArray(this, sizeof(Entry));
+		if (!entries)
+			entries = POOL_ALLOC(numAlloc, Entry);
+		else if (numAlloc <= numEntries)
+		{
+			UInt32 newAlloc = numAlloc << 1;
+			POOL_REALLOC(entries, numAlloc, newAlloc, Entry);
+			numAlloc = newAlloc;
+		}
 		Entry *pEntry = entries + index;
 		index = numEntries - index;
 		if (index) memmove(pEntry + 1, pEntry, sizeof(Entry) * index);
@@ -625,7 +640,7 @@ public:
 	{
 		if (!entries) return;
 		Clear();
-		free(entries);
+		POOL_FREE(entries, numAlloc, Entry);
 		entries = NULL;
 	}
 
@@ -815,7 +830,7 @@ public:
 	{
 		if (!keys) return;
 		Clear();
-		free(keys);
+		POOL_FREE(keys, numAlloc, M_Key);
 		keys = NULL;
 	}
 
@@ -827,7 +842,14 @@ public:
 	{
 		UInt32 index;
 		if (GetIndex(key, &index)) return false;
-		AllocDataArray(this, sizeof(M_Key));
+		if (!keys)
+			keys = POOL_ALLOC(numAlloc, M_Key);
+		else if (numAlloc <= numKeys)
+		{
+			UInt32 newAlloc = numAlloc << 1;
+			POOL_REALLOC(keys, numAlloc, newAlloc, M_Key);
+			numAlloc = newAlloc;
+		}
 		M_Key *pKey = keys + index;
 		index = numKeys - index;
 		if (index) memmove(pKey + 1, pKey, sizeof(M_Key) * index);
@@ -1017,7 +1039,7 @@ template <typename T_Key, typename T_Data> class UnorderedMap
 			if (prev) prev->next = entry->next;
 			else entries = entry->next;
 			entry->Clear();
-			ScrapListNode(entry, sizeof(Entry));
+			Pool_Free(entry, sizeof(Entry));
 		}
 
 		void Clear()
@@ -1029,7 +1051,7 @@ template <typename T_Key, typename T_Data> class UnorderedMap
 				pEntry = entries;
 				entries = entries->next;
 				pEntry->Clear();
-				ScrapListNode(pEntry, sizeof(Entry));
+				Pool_Free(pEntry, sizeof(Entry));
 			}
 			while (entries);
 		}
@@ -1053,7 +1075,7 @@ template <typename T_Key, typename T_Data> class UnorderedMap
 
 	__declspec(noinline) void ResizeTable(UInt32 newCount)
 	{
-		Bucket *pBucket = buckets, *pEnd = End(), *newBuckets = (Bucket*)calloc(newCount, sizeof(Bucket));
+		Bucket *pBucket = buckets, *pEnd = End(), *newBuckets = (Bucket*)Pool_Alloc_Buckets(newCount);
 		Entry *pEntry, *pTemp;
 		newCount--;
 		do
@@ -1068,7 +1090,7 @@ template <typename T_Key, typename T_Data> class UnorderedMap
 			pBucket++;
 		}
 		while (pBucket != pEnd);
-		free(buckets);
+		Pool_Free_Buckets(buckets, numBuckets);
 		buckets = newBuckets;
 		numBuckets = newCount + 1;
 	}
@@ -1089,7 +1111,7 @@ template <typename T_Key, typename T_Data> class UnorderedMap
 		if (!buckets)
 		{
 			numBuckets = AlignBucketCount(numBuckets);
-			buckets = (Bucket*)calloc(numBuckets, sizeof(Bucket));
+			buckets = (Bucket*)Pool_Alloc_Buckets(numBuckets);
 		}
 		else if ((numEntries > numBuckets) && (numBuckets < MAP_MAX_BUCKET_COUNT))
 			ResizeTable(numBuckets << 1);
@@ -1115,7 +1137,7 @@ public:
 	{
 		if (!buckets) return;
 		Clear();
-		free(buckets);
+		Pool_Free_Buckets(buckets, numBuckets);
 		buckets = NULL;
 	}
 
@@ -1335,7 +1357,7 @@ template <typename T_Key> class UnorderedSet
 			if (prev) prev->next = entry->next;
 			else entries = entry->next;
 			entry->Clear();
-			ScrapListNode(entry, sizeof(Entry));
+			Pool_Free(entry, sizeof(Entry));
 		}
 
 		void Clear()
@@ -1347,7 +1369,7 @@ template <typename T_Key> class UnorderedSet
 				pEntry = entries;
 				entries = entries->next;
 				pEntry->Clear();
-				ScrapListNode(pEntry, sizeof(Entry));
+				Pool_Free(pEntry, sizeof(Entry));
 			}
 			while (entries);
 		}
@@ -1371,7 +1393,7 @@ template <typename T_Key> class UnorderedSet
 
 	__declspec(noinline) void ResizeTable(UInt32 newCount)
 	{
-		Bucket *pBucket = buckets, *pEnd = End(), *newBuckets = (Bucket*)calloc(newCount, sizeof(Bucket));
+		Bucket *pBucket = buckets, *pEnd = End(), *newBuckets = (Bucket*)Pool_Alloc_Buckets(newCount);
 		Entry *pEntry, *pTemp;
 		newCount--;
 		do
@@ -1386,7 +1408,7 @@ template <typename T_Key> class UnorderedSet
 			pBucket++;
 		}
 		while (pBucket != pEnd);
-		free(buckets);
+		Pool_Free_Buckets(buckets, numBuckets);
 		buckets = newBuckets;
 		numBuckets = newCount + 1;
 	}
@@ -1397,7 +1419,7 @@ public:
 	{
 		if (!buckets) return;
 		Clear();
-		free(buckets);
+		Pool_Free_Buckets(buckets, numBuckets);
 		buckets = NULL;
 	}
 
@@ -1424,7 +1446,7 @@ public:
 		if (!buckets)
 		{
 			numBuckets = AlignBucketCount(numBuckets);
-			buckets = (Bucket*)calloc(numBuckets, sizeof(Bucket));
+			buckets = (Bucket*)Pool_Alloc_Buckets(numBuckets);
 		}
 		else if ((numEntries > numBuckets) && (numBuckets < MAP_MAX_BUCKET_COUNT))
 			ResizeTable(numBuckets << 1);
@@ -1540,7 +1562,14 @@ template <typename T_Data> class Vector
 
 	T_Data *AllocateData()
 	{
-		AllocDataArray(this, sizeof(T_Data));
+		if (!data)
+			data = POOL_ALLOC(numAlloc, T_Data);
+		else if (numAlloc <= numItems)
+		{
+			UInt32 newAlloc = numAlloc << 1;
+			POOL_REALLOC(data, numAlloc, newAlloc, T_Data);
+			numAlloc = newAlloc;
+		}
 		return data + numItems++;
 	}
 
@@ -1552,7 +1581,7 @@ public:
 	{
 		if (!data) return;
 		Clear();
-		free(data);
+		POOL_FREE(data, numAlloc, T_Data);
 		data = NULL;
 	}
 
@@ -1620,12 +1649,12 @@ public:
 		if (!data)
 		{
 			numAlloc = newSize;
-			data = (T_Data*)malloc(sizeof(T_Data) * numAlloc);
+			data = POOL_ALLOC(numAlloc, T_Data);
 		}
 		else if (numAlloc < newSize)
 		{
+			POOL_REALLOC(data, numAlloc, newSize, T_Data);
 			numAlloc = newSize;
-			data = (T_Data*)realloc(data, sizeof(T_Data) * numAlloc);
 		}
 		T_Data *pData = data + index;
 		if (index < numItems)
@@ -1713,12 +1742,12 @@ public:
 		if (!data)
 		{
 			if (numAlloc < newCount) numAlloc = newCount;
-			data = (T_Data*)malloc(sizeof(T_Data) * numAlloc);
+			data = POOL_ALLOC(numAlloc, T_Data);
 		}
 		else if (numAlloc < newCount)
 		{
+			POOL_REALLOC(data, numAlloc, newCount, T_Data);
 			numAlloc = newCount;
-			data = (T_Data*)realloc(data, sizeof(T_Data) * numAlloc);
 		}
 		memmove(data + numItems, source.data, sizeof(T_Data) * source.numItems);
 		numItems = newCount;
@@ -1838,12 +1867,12 @@ public:
 			if (!data)
 			{
 				numAlloc = newSize;
-				data = (T_Data*)malloc(sizeof(T_Data) * numAlloc);
+				data = POOL_ALLOC(numAlloc, T_Data);
 			}
 			else if (numAlloc < newSize)
 			{
+				POOL_REALLOC(data, numAlloc, newSize, T_Data);
 				numAlloc = newSize;
-				data = (T_Data*)realloc(data, sizeof(T_Data) * numAlloc);
 			}
 			pData = data + numItems;
 			pEnd = data + newSize;

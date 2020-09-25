@@ -58,7 +58,7 @@ public:
 		Node* toRemove = head;
 		head = head->next;
 		toRemove->Clear();
-		ScrapListNode(toRemove, sizeof(Node));
+		Pool_Free(toRemove, sizeof(Node));
 		numItems--;
 		return frontItem;
 	}
@@ -72,7 +72,7 @@ public:
 			pNode = head;
 			head = head->next;
 			pNode->Clear();
-			ScrapListNode(pNode, sizeof(Node));
+			Pool_Free(pNode, sizeof(Node));
 		} while (head);
 		numItems = 0;
 	}
