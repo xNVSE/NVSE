@@ -3,7 +3,6 @@
 #include "MemoryPool.h"
 #include "common/ICriticalSection.h"
 
-class ScopedLock;
 
 namespace SmallObjectsAllocator
 {
@@ -15,6 +14,12 @@ namespace SmallObjectsAllocator
 #endif
 		MemoryPool<T, sizeof(T)* C> pool_;
 		ICriticalSection criticalSection_;
+
+		void Free(T* ptr)
+		{
+			pool_.deallocate(ptr);
+		}
+		
 	public:
 		T* Allocate()
 		{
@@ -30,14 +35,9 @@ namespace SmallObjectsAllocator
 			return pool_.allocate();
 		}
 
-		void Free(T* ptr)
-		{
-			pool_.deallocate(ptr);
-		}
-
 		void Free(void* ptr)
 		{
-
+			ScopedLock lock(criticalSection_);
 			Free(static_cast<T*>(ptr));
 #if _DEBUG
 			--count_;
