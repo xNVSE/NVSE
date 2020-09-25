@@ -830,12 +830,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		break;
 	case 'S':
 	{
-		if (type == kTokenType_String)
-		{
-			if (value.str)
-				free(value.str);
-		}
-		else type = kTokenType_String;
+		type = kTokenType_String;
 		UInt32 incData = 0;
 		value.str = context->ReadString(incData);
 		break;
