@@ -1,4 +1,5 @@
 #pragma once
+#pragma warning(disable: 4359)
 
 #include <type_traits>
 
@@ -570,7 +571,7 @@ template <typename T_Key, typename T_Data> class Map
 	using Key_Arg = std::conditional_t<std::is_scalar_v<T_Key>, T_Key, const T_Key&>;
 	using Data_Arg = std::conditional_t<std::is_scalar_v<T_Data>, T_Data, T_Data&>;
 
-	struct Entry
+	struct __declspec(align(4)) Entry
 	{
 		M_Key		key;
 		M_Value		value;
@@ -945,20 +946,20 @@ public:
 
 template <typename T_Key> __forceinline UInt32 HashKey(T_Key inKey)
 {
-	UInt32 uKey = *(UInt32*)&inKey;
-	if (sizeof(T_Key) > 4)
-		uKey += uKey ^ ((UInt32*)&inKey)[1];
+	if (std::is_same_v<T_Key, char*> || std::is_same_v<T_Key, const char*>)
+		return StrHashCI(reinterpret_cast<const char*>(inKey));
+	UInt32 uKey;
+	if (sizeof(T_Key) == 1)
+		uKey = *(UInt8*)&inKey;
+	else if (sizeof(T_Key) == 2)
+		uKey = *(UInt16*)&inKey;
+	else
+	{
+		uKey = *(UInt32*)&inKey;
+		if (sizeof(T_Key) > 4)
+			uKey += uKey ^ ((UInt32*)&inKey)[1];
+	}
 	return (uKey * 0xD) ^ (uKey >> 0xF);
-}
-
-template <> __forceinline UInt32 HashKey<const char*>(const char *inKey)
-{
-	return StrHashCI(inKey);
-}
-
-template <> __forceinline UInt32 HashKey<char*>(char *inKey)
-{
-	return StrHashCI(inKey);
 }
 
 template <typename T_Key> class HashedKey
