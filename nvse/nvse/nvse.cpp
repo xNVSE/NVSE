@@ -100,6 +100,9 @@ void NVSE_Initialize(void)
 			if (logLevel>IDebugLog::kLevel_DebugMessage)
 				logLevel = IDebugLog::kLevel_DebugMessage;
 #endif
+		_memcpy = memcpy;
+		_memmove = memmove;
+
 		gLog.SetLogLevel((IDebugLog::LogLevel)logLevel);
 
 		MersenneTwister::init_genrand(GetTickCount());
