@@ -3462,23 +3462,23 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 	return nullptr;
 }
 
-using CachedTokenIter = std::vector<TokenCacheEntry>::iterator;
-CachedTokenIter GetOperatorParent(CachedTokenIter iter, const CachedTokenIter& iterEnd)
+using CachedTokenIter = Vector<TokenCacheEntry>::Iterator;
+TokenCacheEntry *GetOperatorParent(TokenCacheEntry *iter, TokenCacheEntry *iterEnd)
 {
 	++iter;
 	auto count = 0U;
 	while (iter != iterEnd)
 	{
-		const auto& token = iter->token;
-		if (token.IsOperator())
+		const auto token = &iter->token;
+		if (token->IsOperator())
 		{
 			if (count == 0)
 			{
 				return iter;
 			}
-			
+
 			// e.g. `1 0 ! &&` prevent ! being parent of 1
-			count -= token.GetOperator()->numOperands - 1;
+			count -= token->GetOperator()->numOperands - 1;
 		}
 		else
 		{
@@ -3497,25 +3497,27 @@ constexpr auto g_noShortCircuit = kOpType_Max;
 
 void ParseShortCircuit(CachedTokens& cachedTokens)
 {
-	const auto end = cachedTokens.end();
+	auto end = cachedTokens.end();
 	auto stackOffset = 0;
-	for (auto iter = cachedTokens.begin(); iter != end; ++iter)
+	for (auto iter = cachedTokens.begin(); !iter.End(); ++iter)
 	{
-		auto& token = iter->token;
-		
-		auto grandparent = iter;
-		auto parent = CachedTokenIter();
+		TokenCacheEntry* curr = &iter.Get();
+
+		auto &token = iter.Get().token;
+
+		TokenCacheEntry* grandparent = curr;
+		TokenCacheEntry* parent;
 		do
 		{
 			// Find last "parent" operator of same type. E.g `0 1 && 1 && 1 &&` should jump straight to end of expression.
 			parent = grandparent;
 			grandparent = GetOperatorParent(grandparent, end);
-		} while (grandparent != end && grandparent->token.IsLogicalOperator() && (parent == iter || grandparent->token.GetOperator() == parent->token.GetOperator()));
-		
-		if (parent != iter && parent->token.IsLogicalOperator())
+		} while (grandparent != end && grandparent->token.IsLogicalOperator() && (parent == curr || grandparent->token.GetOperator() == parent->token.GetOperator()));
+
+		if (parent != curr && parent->token.IsLogicalOperator())
 		{
 			token.shortCircuitParentType = parent->token.GetOperator()->type;
-			token.shortCircuitDistance = parent - iter;
+			token.shortCircuitDistance = parent - curr;
 		}
 		else
 		{
@@ -3540,11 +3542,10 @@ bool ExpressionEvaluator::ParseBytecode(CachedTokens& cachedTokens)
 	const auto* endData = m_data + argLen - sizeof(UInt16);
 	while (m_data < endData)
 	{
-		cachedTokens.Append(*this);
-		ScriptToken *token = &cachedTokens.back().token;
-		if (token->IsInvalid())
+		TokenCacheEntry *entry = cachedTokens.Append(*this);
+		if (entry->token.IsInvalid())
 			return false;
-		token->cached = true;
+		entry->token.cached = true;
 	}
 	cachedTokens.incrementData = m_data - dataBeforeParsing;
 	ParseShortCircuit(cachedTokens);
@@ -3563,7 +3564,7 @@ void ShortCircuit(OperandStack& operands, CachedTokenIter& iter)
 	const auto eval = lastToken->GetBool();
 	if (type == kOpType_LogicalAnd && !eval || type == kOpType_LogicalOr && eval)
 	{
-		std::advance(iter, lastToken->shortCircuitDistance);
+		iter += lastToken->shortCircuitDistance;
 		for (auto i = 0U; i < lastToken->shortCircuitStackOffset; ++i)
 		{
 			// Make sure only one operand is left in RPN stack
@@ -3602,29 +3603,29 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	}
 
 	OperandStack operands;
-	for (auto iter = cache.begin(); iter != cache.end(); ++iter)
+	for (auto iter = cache.begin(); !iter.End(); ++iter)
 	{
-		auto& entry = *iter;
-		auto* curToken = &entry.token;
-		curToken->context = this;
+		auto &entry = iter.Get();
+		auto &curToken = entry.token;
+		curToken.context = this;
 
-		if (curToken->Type() != kTokenType_Operator)
+		if (curToken.Type() != kTokenType_Operator)
 		{
-			if (curToken->Type() == kTokenType_Command)
+			if (curToken.Type() == kTokenType_Command)
 			{
-				auto* cmdToken = ExecuteCommandToken(curToken);
+				auto* cmdToken = ExecuteCommandToken(&curToken);
 				if (cmdToken == nullptr)
 				{
 					break;
 				}
-				CopyShortCircuitInfo(cmdToken, curToken);
+				CopyShortCircuitInfo(cmdToken, &curToken);
 				curToken = cmdToken;
 			}
-			operands.push(curToken);
+			operands.push(&curToken);
 		}
 		else
 		{
-			auto* op = curToken->GetOperator();
+			auto* op = curToken.GetOperator();
 			ScriptToken* lhOperand = nullptr;
 			ScriptToken* rhOperand = nullptr;
 
@@ -3636,12 +3637,12 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 
 			switch (op->numOperands)
 			{
-			case 2:
-				rhOperand = operands.top();
-				operands.pop();
-			case 1:
-				lhOperand = operands.top();
-				operands.pop();
+				case 2:
+					rhOperand = operands.top();
+					operands.pop();
+				case 1:
+					lhOperand = operands.top();
+					operands.pop();
 			}
 
 			ScriptToken* opResult;
@@ -3669,10 +3670,10 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				break;
 			}
 
-			CopyShortCircuitInfo(opResult, curToken);
+			CopyShortCircuitInfo(opResult, &curToken);
 			operands.push(opResult);
 		}
-		
+
 		ShortCircuit(operands, iter);
 	}
 

@@ -2055,6 +2055,18 @@ public:
 			index--;
 		}
 
+		void operator+=(UInt32 count)
+		{
+			pData += count;
+			index += count;
+		}
+
+		void operator-=(UInt32 count)
+		{
+			pData -= count;
+			index -= count;
+		}
+
 		void Remove(bool frwrd = true)
 		{
 			contObj->numItems--;
