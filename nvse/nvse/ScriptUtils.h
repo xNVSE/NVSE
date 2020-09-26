@@ -163,7 +163,7 @@ public:
 	UInt8		ReadByte();
 	UInt16		Read16();
 	double		ReadFloat();
-	std::string	ReadString(UInt32& incrData);
+	char		*ReadString(UInt32& incrData);
 	SInt8		ReadSignedByte();
 	SInt16		ReadSigned16();
 	UInt32		Read32();
