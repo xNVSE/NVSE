@@ -5,9 +5,9 @@ TokenCacheEntry& CachedTokens::Get(std::size_t key)
 	return this->container_[key];
 }
 
-void CachedTokens::Append(const TokenCacheEntry& entry)
+void CachedTokens::Append(ExpressionEvaluator &expEval)
 {
-	this->container_.push_back(entry);
+	this->container_.emplace_back(expEval);
 }
 
 std::size_t CachedTokens::Size() const

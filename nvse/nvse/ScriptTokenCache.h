@@ -7,6 +7,8 @@ struct TokenCacheEntry
 	ScriptToken token;
 	Op_Eval eval = nullptr;
 	bool swapOrder;
+
+	TokenCacheEntry(ExpressionEvaluator &expEval) : token(expEval), eval(nullptr), swapOrder(false) {}
 };
 
 class CachedTokens
@@ -15,7 +17,8 @@ class CachedTokens
 public:
 	std::size_t incrementData;
 	[[nodiscard]] TokenCacheEntry& Get(std::size_t key);
-	void Append(const TokenCacheEntry& entry);
+	TokenCacheEntry& back() {return container_.back();}
+	void Append(ExpressionEvaluator &expEval);
 	[[nodiscard]] std::size_t Size() const;
 	[[nodiscard]] bool Empty() const;
 	std::vector<TokenCacheEntry>::iterator begin();
