@@ -3465,11 +3465,11 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 using CachedTokenIter = Vector<TokenCacheEntry>::Iterator;
 TokenCacheEntry *GetOperatorParent(TokenCacheEntry *iter, TokenCacheEntry *iterEnd)
 {
-	++iter;
-	auto count = 0U;
-	while (iter != iterEnd)
+	iter++;
+	int count = 0;
+	while (iter < iterEnd)
 	{
-		const auto token = &iter->token;
+		const ScriptToken *token = &iter->token;
 		if (token->IsOperator())
 		{
 			if (count == 0)
@@ -3482,13 +3482,13 @@ TokenCacheEntry *GetOperatorParent(TokenCacheEntry *iter, TokenCacheEntry *iterE
 		}
 		else
 		{
-			++count;
+			count++;
 		}
 		if (count == 0)
 		{
 			return iter;
 		}
-		++iter;
+		iter++;
 	}
 	return iterEnd;
 }
@@ -3497,23 +3497,24 @@ constexpr auto g_noShortCircuit = kOpType_Max;
 
 void ParseShortCircuit(CachedTokens& cachedTokens)
 {
-	auto end = cachedTokens.end();
-	auto stackOffset = 0;
-	for (auto iter = cachedTokens.begin(); !iter.End(); ++iter)
+	TokenCacheEntry *end = cachedTokens.DataEnd();
+	int stackOffset = 0;
+	for (auto iter = cachedTokens.Begin(); !iter.End(); ++iter)
 	{
-		TokenCacheEntry* curr = &iter.Get();
+		TokenCacheEntry *curr = &iter.Get();
 
-		auto &token = iter.Get().token;
-
-		TokenCacheEntry* grandparent = curr;
-		TokenCacheEntry* parent;
+		ScriptToken &token = curr->token;
+		
+		TokenCacheEntry *grandparent = curr;
+		TokenCacheEntry *parent;
 		do
 		{
 			// Find last "parent" operator of same type. E.g `0 1 && 1 && 1 &&` should jump straight to end of expression.
 			parent = grandparent;
 			grandparent = GetOperatorParent(grandparent, end);
-		} while (grandparent != end && grandparent->token.IsLogicalOperator() && (parent == curr || grandparent->token.GetOperator() == parent->token.GetOperator()));
-
+		}
+		while (grandparent < end && grandparent->token.IsLogicalOperator() && (parent == curr || grandparent->token.GetOperator() == parent->token.GetOperator()));
+		
 		if (parent != curr && parent->token.IsLogicalOperator())
 		{
 			token.shortCircuitParentType = parent->token.GetOperator()->type;
@@ -3537,9 +3538,9 @@ void ParseShortCircuit(CachedTokens& cachedTokens)
 
 bool ExpressionEvaluator::ParseBytecode(CachedTokens& cachedTokens)
 {
-	const auto* dataBeforeParsing = m_data;
-	const auto argLen = Read16();
-	const auto* endData = m_data + argLen - sizeof(UInt16);
+	const UInt8 *dataBeforeParsing = m_data;
+	const UInt16 argLen = Read16();
+	const UInt8 *endData = m_data + argLen - sizeof(UInt16);
 	while (m_data < endData)
 	{
 		TokenCacheEntry *entry = cachedTokens.Append(*this);
@@ -3556,19 +3557,19 @@ using OperandStack = FastStack<ScriptToken*>;
 
 void ShortCircuit(OperandStack& operands, CachedTokenIter& iter)
 {
-	auto* lastToken = operands.top();
-	const auto type = lastToken->shortCircuitParentType;
+	ScriptToken *lastToken = operands.top();
+	const OperatorType type = lastToken->shortCircuitParentType;
 	if (type == g_noShortCircuit)
 		return;
 
-	const auto eval = lastToken->GetBool();
+	const bool eval = lastToken->GetBool();
 	if (type == kOpType_LogicalAnd && !eval || type == kOpType_LogicalOr && eval)
 	{
 		iter += lastToken->shortCircuitDistance;
-		for (auto i = 0U; i < lastToken->shortCircuitStackOffset; ++i)
+		for (UInt32 i = 0; i < lastToken->shortCircuitStackOffset; ++i)
 		{
 			// Make sure only one operand is left in RPN stack
-			auto* operand = operands.top();
+			ScriptToken *operand = operands.top();
 			if (operand)
 				operand->Delete();
 			operands.pop();
@@ -3586,12 +3587,11 @@ void CopyShortCircuitInfo(ScriptToken* to, ScriptToken* from)
 
 ScriptToken* ExpressionEvaluator::Evaluate()
 {
-	auto* cacheKey = GetCommandOpcodePosition();
-	auto& cache = tokenCache.Get(cacheKey);
+	UInt8 *cacheKey = GetCommandOpcodePosition();
+	CachedTokens &cache = tokenCache.Get(cacheKey);
 	if (cache.Empty())
 	{
-		const auto successParsing = ParseBytecode(cache);
-		if (!successParsing)
+		if (!ParseBytecode(cache))
 		{
 			Error("Failed to parse script data");
 			return nullptr;
@@ -3603,29 +3603,29 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	}
 
 	OperandStack operands;
-	for (auto iter = cache.begin(); !iter.End(); ++iter)
+	for (auto iter = cache.Begin(); !iter.End(); ++iter)
 	{
-		auto &entry = iter.Get();
-		auto &curToken = entry.token;
-		curToken.context = this;
+		TokenCacheEntry &entry = iter.Get();
+		ScriptToken *curToken = &entry.token;
+		curToken->context = this;
 
-		if (curToken.Type() != kTokenType_Operator)
+		if (curToken->Type() != kTokenType_Operator)
 		{
-			if (curToken.Type() == kTokenType_Command)
+			if (curToken->Type() == kTokenType_Command)
 			{
-				auto* cmdToken = ExecuteCommandToken(&curToken);
+				ScriptToken *cmdToken = ExecuteCommandToken(curToken);
 				if (cmdToken == nullptr)
 				{
 					break;
 				}
-				CopyShortCircuitInfo(cmdToken, &curToken);
+				CopyShortCircuitInfo(cmdToken, curToken);
 				curToken = cmdToken;
 			}
-			operands.push(&curToken);
+			operands.push(curToken);
 		}
 		else
 		{
-			auto* op = curToken.GetOperator();
+			Operator *op = curToken->GetOperator();
 			ScriptToken* lhOperand = nullptr;
 			ScriptToken* rhOperand = nullptr;
 
@@ -3637,12 +3637,12 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 
 			switch (op->numOperands)
 			{
-				case 2:
-					rhOperand = operands.top();
-					operands.pop();
-				case 1:
-					lhOperand = operands.top();
-					operands.pop();
+			case 2:
+				rhOperand = operands.top();
+				operands.pop();
+			case 1:
+				lhOperand = operands.top();
+				operands.pop();
 			}
 
 			ScriptToken* opResult;
@@ -3652,10 +3652,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			}
 			else
 			{
-				auto& bSwapOrder = entry.swapOrder;
-				auto& eval = entry.eval;
-				auto& type = op->type;
-				opResult = bSwapOrder ? eval(type, rhOperand, lhOperand, this) : eval(type, lhOperand, rhOperand, this);
+				opResult = entry.swapOrder ? entry.eval(op->type, rhOperand, lhOperand, this) : entry.eval(op->type, lhOperand, rhOperand, this);
 			}
 
 			if (lhOperand)
@@ -3670,10 +3667,10 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				break;
 			}
 
-			CopyShortCircuitInfo(opResult, &curToken);
+			CopyShortCircuitInfo(opResult, curToken);
 			operands.push(opResult);
 		}
-
+		
 		ShortCircuit(operands, iter);
 	}
 
@@ -3685,7 +3682,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 		Error("An expression failed to evaluate to a valid result");
 		while (operands.size())
 		{
-			auto* operand = operands.top();
+			ScriptToken *operand = operands.top();
 			if (operand)
 				operand->Delete();
 			operands.pop();

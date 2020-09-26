@@ -20,12 +20,12 @@ bool CachedTokens::Empty() const
 	return container_.Empty();
 }
 
-Vector<TokenCacheEntry>::Iterator CachedTokens::begin()
+Vector<TokenCacheEntry>::Iterator CachedTokens::Begin()
 {
 	return container_.Begin();
 }
 
-TokenCacheEntry* CachedTokens::end()
+TokenCacheEntry* CachedTokens::DataEnd()
 {
 	return container_.Data() + container_.Size();
 }
