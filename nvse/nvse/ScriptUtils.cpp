@@ -3540,13 +3540,11 @@ bool ExpressionEvaluator::ParseBytecode(CachedTokens& cachedTokens)
 	const auto* endData = m_data + argLen - sizeof(UInt16);
 	while (m_data < endData)
 	{
-		auto token = ScriptToken(*this);
-		if (token.IsInvalid())
-		{
+		cachedTokens.Append(*this);
+		ScriptToken *token = &cachedTokens.back().token;
+		if (token->IsInvalid())
 			return false;
-		}
-		token.cached = true;
-		cachedTokens.Append(TokenCacheEntry{ token });
+		token->cached = true;
 	}
 	cachedTokens.incrementData = m_data - dataBeforeParsing;
 	ParseShortCircuit(cachedTokens);
