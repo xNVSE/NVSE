@@ -197,6 +197,7 @@ protected:
 
 public:
 	ScriptToken();
+	ScriptToken(const ScriptToken& from);
 #if RUNTIME
 	ScriptToken(ExpressionEvaluator& evaluator);
 #endif

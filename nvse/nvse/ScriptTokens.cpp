@@ -141,6 +141,28 @@ ScriptToken::ScriptToken(CommandInfo* cmdInfo, UInt16 refIdx) : type(kTokenType_
 	value.cmd = cmdInfo;
 }
 
+ScriptToken::ScriptToken(const ScriptToken &from)
+{
+	INC_TOKEN_COUNT
+	type = from.type;
+	variableType = from.variableType;
+	owningScript = from.owningScript;
+	refIdx = from.refIdx;
+	returnType = from.returnType;
+	cached = from.cached;
+	opcodeOffset = from.opcodeOffset;
+	context = from.context;
+	scriptEventList = from.scriptEventList;
+	varIdx = from.varIdx;
+	eventListsDestroyedCount = from.eventListsDestroyedCount;
+	shortCircuitParentType = from.shortCircuitParentType;
+	shortCircuitDistance = from.shortCircuitDistance;
+	shortCircuitStackOffset = from.shortCircuitStackOffset;
+	if (type == kTokenType_String)
+		value.str = from.value.str ? CopyString(from.value.str) : NULL;
+	else value = from.value;
+}
+
 #if RUNTIME
 void ScriptToken::Delete() const
 {

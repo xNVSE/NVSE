@@ -13,16 +13,15 @@ struct TokenCacheEntry
 
 class CachedTokens
 {
-	std::vector<TokenCacheEntry> container_;
+	Vector<TokenCacheEntry> container_;
 public:
 	std::size_t incrementData;
 	[[nodiscard]] TokenCacheEntry& Get(std::size_t key);
-	TokenCacheEntry& back() {return container_.back();}
-	void Append(ExpressionEvaluator &expEval);
+	TokenCacheEntry* Append(ExpressionEvaluator &expEval);
 	[[nodiscard]] std::size_t Size() const;
 	[[nodiscard]] bool Empty() const;
-	std::vector<TokenCacheEntry>::iterator begin();
-	std::vector<TokenCacheEntry>::iterator end();
+	Vector<TokenCacheEntry>::Iterator begin();
+	TokenCacheEntry* end();
 };
 
 class TokenCache
