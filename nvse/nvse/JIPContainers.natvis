@@ -18,4 +18,13 @@
 			</ArrayItems>
 		</Expand>
 	</Type>
+	<Type Name="Map&lt;*&gt;">
+		<DisplayString>{{ Size={numEntries} }}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>numEntries</Size>
+				<ValuePointer>entries</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
 </AutoVisualizer>
