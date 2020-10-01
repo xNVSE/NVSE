@@ -33,7 +33,7 @@ __declspec(naked) void* __fastcall Pool_Alloc(UInt32 size)
 		push	offset s_poolCritSection
 		call	LeaveCriticalSection
 	doAlloc:
-		call	malloc
+		call	_malloc_base
 		pop		ecx
 		retn
 	}
@@ -72,7 +72,7 @@ __declspec(naked) void __fastcall Pool_Free(void *pBlock, UInt32 size)
 		call	LeaveCriticalSection
 		retn
 	doFree:
-		call	free
+		call	_free_base
 		pop		ecx
 		retn
 	}
@@ -113,7 +113,7 @@ __declspec(naked) void* __fastcall Pool_Realloc(void *pBlock, UInt32 curSize, UI
 	doRealloc:
 		push	dword ptr [esp+4]
 		push	ecx
-		call	realloc
+		call	_realloc_base
 		add		esp, 8
 		retn	4
 	}
@@ -146,7 +146,7 @@ __declspec(naked) void* __fastcall Pool_Realloc_Al4(void *pBlock, UInt32 curSize
 	doRealloc:
 		push	dword ptr [esp+4]
 		push	ecx
-		call	realloc
+		call	_realloc_base
 		add		esp, 8
 		retn	4
 	}
