@@ -2769,14 +2769,6 @@ void ExpressionEvaluator::PushOnStack()
 
 	// inherit properties of parent
 	if (top) {
-		// figure out base offset into script data
-		if (top->script == script) {
-			m_baseOffset = top->m_data - static_cast<UInt8*>(script->data) - 4;
-		}
-		else {	// non-recursive user-defined function call
-			m_baseOffset = m_data - static_cast<UInt8*>(script->data) - 4;
-		}
-
 		// inherit flags
 		m_flags.RawSet(top->m_flags.Get());
 		m_flags.Clear(kFlag_ErrorOccurred);
@@ -3667,6 +3659,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				break;
 			}
 
+			opResult->context = this;
 			CopyShortCircuitInfo(opResult, curToken);
 			operands.push(opResult);
 		}

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.40629.0
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30523.141
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nvse_loader", "nvse_loader\nvse_loader.vcxproj", "{48AC56E6-868A-473A-9B30-28B9E970CDCC}"
 EndProject
@@ -27,7 +27,6 @@ Global
 		{48AC56E6-868A-473A-9B30-28B9E970CDCC}.Debug ng|Win32.ActiveCfg = Debug|Win32
 		{48AC56E6-868A-473A-9B30-28B9E970CDCC}.Debug ng|Win32.Build.0 = Debug|Win32
 		{48AC56E6-868A-473A-9B30-28B9E970CDCC}.Debug|Win32.ActiveCfg = Debug|Win32
-		{48AC56E6-868A-473A-9B30-28B9E970CDCC}.Debug|Win32.Build.0 = Debug|Win32
 		{48AC56E6-868A-473A-9B30-28B9E970CDCC}.Release CS|Win32.ActiveCfg = Release|Win32
 		{48AC56E6-868A-473A-9B30-28B9E970CDCC}.Release ng|Win32.ActiveCfg = Release|Win32
 		{48AC56E6-868A-473A-9B30-28B9E970CDCC}.Release ng|Win32.Build.0 = Release|Win32
@@ -61,7 +60,6 @@ Global
 		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Debug ng|Win32.ActiveCfg = Debug|Win32
 		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Debug ng|Win32.Build.0 = Debug|Win32
 		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Debug|Win32.ActiveCfg = Debug|Win32
-		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Debug|Win32.Build.0 = Debug|Win32
 		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Release CS|Win32.ActiveCfg = Release|Win32
 		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Release ng|Win32.ActiveCfg = Release|Win32
 		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Release ng|Win32.Build.0 = Release|Win32
@@ -72,7 +70,6 @@ Global
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Debug ng|Win32.ActiveCfg = Debug|Win32
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Debug ng|Win32.Build.0 = Debug|Win32
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Debug|Win32.ActiveCfg = Debug|Win32
-		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Debug|Win32.Build.0 = Debug|Win32
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Release CS|Win32.ActiveCfg = Release|Win32
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Release CS|Win32.Build.0 = Release|Win32
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Release ng|Win32.ActiveCfg = Release|Win32
@@ -82,5 +79,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8038282A-57C1-46F8-A628-AEBA3957B254}
 	EndGlobalSection
 EndGlobal
