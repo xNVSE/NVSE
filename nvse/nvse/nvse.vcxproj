@@ -661,6 +661,9 @@
   <ItemGroup>
     <ResourceCompile Include="nvse_version.rc" />
   </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="JIPContainers.natvis" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

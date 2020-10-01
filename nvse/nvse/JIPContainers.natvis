@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+	<Type Name="Vector&lt;*&gt;">
+		<DisplayString>{{ size={numItems} }}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>numItems</Size>
+				<ValuePointer>data</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+</AutoVisualizer>

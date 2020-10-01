@@ -477,4 +477,7 @@
   <ItemGroup>
     <ResourceCompile Include="nvse_version.rc" />
   </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="JIPContainers.natvis" />
+  </ItemGroup>
 </Project>
