@@ -22,7 +22,7 @@ class StringVar
 	std::string data;
 	UInt8		owningModIndex;
 public:
-	StringVar(const char* in_data, UInt32 in_refID);
+	StringVar(const char* in_data, UInt8 modIndex);
 
 	void		Set(const char* newString);
 	SInt32		Compare(char* rhs, bool caseSensitive);

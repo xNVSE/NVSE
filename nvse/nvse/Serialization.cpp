@@ -689,9 +689,6 @@ void HandlePostLoadGame(bool bLoadSucceeded)
 
 	// inform plugins
 	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_PostLoadGame, (void*)bLoadSucceeded, 1, NULL);
-
-	// handle internal stuff
-	Core_PostLoadCallback(bLoadSucceeded);
 }
 
 void HandleLoadGame(const char * path, NVSESerializationInterface::EventCallback PluginCallbacks::* callback)

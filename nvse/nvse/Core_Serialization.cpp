@@ -97,12 +97,6 @@ void Core_NewGameCallback(void * reserved)
 	g_StringMap.Clean();
 }
 
-void Core_PostLoadCallback(bool bLoadSucceeded)
-{
-	g_ArrayMap.PostLoad(bLoadSucceeded);
-	g_StringMap.PostLoad(bLoadSucceeded);
-}
-
 void Core_PreLoadCallback(void * reserved)
 {
 	// this is invoked only if at least one other plugin registers a preload callback
@@ -112,8 +106,8 @@ void Core_PreLoadCallback(void * reserved)
 
 	NVSESerializationInterface* intfc = &g_NVSESerializationInterface;
 
-	g_ArrayMap.Preload();
-	g_StringMap.Preload();
+	g_ArrayMap.Reset();
+	g_StringMap.Reset();
 
 	UInt32 type, version, length;
 
