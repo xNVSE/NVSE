@@ -237,9 +237,24 @@ ScriptToken* Eval_Add_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, 
 	return ScriptToken::Create(lh->GetNumber() + rh->GetNumber());
 }
 
+char* __fastcall ConcatStrings(const char *lStr, const char *rStr)
+{
+	UInt32 lLen = StrLen(lStr), rLen = StrLen(rStr);
+	if (lLen || rLen)
+	{
+		char *conStr = (char*)malloc(lLen + rLen + 1);
+		if (lLen) memcpy(conStr, lStr, lLen);
+		memcpy(conStr + lLen, rStr, rLen + 1);
+		return conStr;
+	}
+	return NULL;
+}
+
 ScriptToken* Eval_Add_String(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	return ScriptToken::Create(std::string(lh->GetString()) + std::string(rh->GetString()));
+	ScriptToken *token = ScriptToken::Create((const char*)NULL);
+	token->value.str = ConcatStrings(lh->GetString(), rh->GetString());
+	return token;
 }
 
 ScriptToken* Eval_Arithmetic(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
@@ -536,8 +551,9 @@ ScriptToken* Eval_PlusEquals_String(OperatorType op, ScriptToken* lh, ScriptToke
 		strVar = g_StringMap.Get(strID);
 	}
 
-	strVar->Set((strVar->String() + rh->GetString()).c_str());
-	return ScriptToken::Create(strVar->String());
+	strVar->StringRef() += rh->GetString();
+
+	return ScriptToken::Create(strVar->GetCString());
 }
 
 ScriptToken* Eval_TimesEquals_String(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
@@ -554,29 +570,27 @@ ScriptToken* Eval_TimesEquals_String(OperatorType op, ScriptToken* lh, ScriptTok
 	}
 
 	std::string str = strVar->String();
-	std::string result = "";
 
 	int rhNum = rh->GetNumber();
-	if (rhNum > 0)
+	while (rhNum > 0)
 	{
-		for (int i = 0; i < rhNum; i++)
-			result += str;
+		strVar->StringRef() += str;
+		rhNum--;
 	}
 
-	strVar->Set(result.c_str());
 	return ScriptToken::Create(strVar->GetCString());
 }
 
 ScriptToken* Eval_Multiply_String_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	int rhNum = rh->GetNumber();
-	std::string str = lh->GetString();
-	std::string result = "";
+	const char *str = lh->GetString();
+	std::string result;
 
-	if (rhNum > 0)
+	int rhNum = rh->GetNumber();
+	while (rhNum > 0)
 	{
-		for (int i = 0; i < rhNum; i++)
-			result += str;
+		result += str;
+		rhNum--;
 	}
 
 	return ScriptToken::Create(result.c_str());
@@ -681,10 +695,11 @@ ScriptToken* Eval_PlusEquals_Elem_String(OperatorType op, ScriptToken* lh, Scrip
 		const char* pElemStr;
 		if (elem && elem->GetAsString(&pElemStr))
 		{
-			std::string elemStr(pElemStr);
-			elemStr += rh->GetString();
-			elem->SetString(elemStr.c_str());
-			return ScriptToken::Create(elemStr);
+			ScriptToken *token = ScriptToken::Create((const char*)NULL);
+			char *conStr = ConcatStrings(pElemStr, rh->GetString());
+			token->value.str = conStr;
+			elem->SetString(conStr);
+			return token;
 		}
 	}
 	return NULL;
@@ -692,12 +707,12 @@ ScriptToken* Eval_PlusEquals_Elem_String(OperatorType op, ScriptToken* lh, Scrip
 
 ScriptToken* Eval_Negation(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	return ScriptToken::Create(lh->GetNumber() * -1);
+	return ScriptToken::Create(-lh->GetNumber());
 }
 
 ScriptToken* Eval_LogicalNot(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	return ScriptToken::Create(lh->GetBool() ? false : true);
+	return ScriptToken::Create(!lh->GetBool());
 }
 
 ScriptToken* Eval_Subscript_Array_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
@@ -820,11 +835,12 @@ ScriptToken* Eval_Subscript_StringVar_Slice(OperatorType op, ScriptToken* lh, Sc
 
 ScriptToken* Eval_Subscript_String(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	UInt32 idx = (rh->GetNumber() < 0) ? strlen(lh->GetString()) + rh->GetNumber() : rh->GetNumber();
-	if (idx < strlen(lh->GetString()))
-		return ScriptToken::Create(std::string(lh->GetString()).substr(idx, 1));
-	else
-		return ScriptToken::Create("");
+	const char *lStr = lh->GetString();
+	UInt32 lLen = StrLen(lStr);
+	UInt32 idx = (int)rh->GetNumber();
+	if (idx < 0) idx += lLen;
+	UInt32 chr = (idx < lLen) ? lStr[idx] : 0;
+	return ScriptToken::Create((const char*)&chr);
 }
 
 ScriptToken* Eval_Subscript_String_Slice(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
@@ -890,19 +906,19 @@ ScriptToken* Eval_ToString_Number(OperatorType op, ScriptToken* lh, ScriptToken*
 {
 	char buf[0x20];
 	snprintf(buf, sizeof(buf), "%g", lh->GetNumber());
-	return ScriptToken::Create(std::string(buf));
+	return ScriptToken::Create(buf);
 }
 
 ScriptToken* Eval_ToString_Form(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	return ScriptToken::Create(std::string(GetFullName(lh->GetTESForm())));
+	return ScriptToken::Create(GetFullName(lh->GetTESForm()));
 }
 
 ScriptToken* Eval_ToString_Array(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
 	char buf[0x20];
-	sprintf_s(buf, sizeof(buf), "Array ID %d", lh->GetArray());
-	return ScriptToken::Create(std::string(buf));
+	snprintf(buf, sizeof(buf), "Array ID %d", lh->GetArray());
+	return ScriptToken::Create(buf);
 }
 
 ScriptToken* Eval_ToNumber(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
