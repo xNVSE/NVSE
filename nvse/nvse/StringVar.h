@@ -36,6 +36,7 @@ public:
 	static UInt32	GetCharType(char ch);
 
 	std::string String()					{	return data;	}
+	std::string& StringRef() {return data;}
 	const char*	GetCString();
 	UInt32		GetLength();
 	UInt8		GetOwningModIndex();	
