@@ -1136,7 +1136,7 @@ void ArrayVar::Dump()
 		switch (KeyType())
 		{
 		case kDataType_Numeric:
-			sprintf_s(numBuf, sizeof(numBuf), "%f", iter.first()->key.num);
+			snprintf(numBuf, sizeof(numBuf), "%f", iter.first()->key.num);
 			elementInfo += numBuf;
 			break;
 		case kDataType_String:
@@ -1151,7 +1151,7 @@ void ArrayVar::Dump()
 		switch (iter.second()->m_data.dataType)
 		{
 		case kDataType_Numeric:
-			sprintf_s(numBuf, sizeof(numBuf), "%f", iter.second()->m_data.num);
+			snprintf(numBuf, sizeof(numBuf), "%f", iter.second()->m_data.num);
 			elementInfo += numBuf;
 			break;
 		case kDataType_String:
@@ -1159,14 +1159,14 @@ void ArrayVar::Dump()
 			break;
 		case kDataType_Array:
 			elementInfo += "(Array ID #";
-			sprintf_s(numBuf, sizeof(numBuf), "%d", iter.second()->m_data.arrID);
+			snprintf(numBuf, sizeof(numBuf), "%d", iter.second()->m_data.arrID);
 			elementInfo += numBuf;
 			elementInfo += ")";
 			break;
 		case kDataType_Form:
 			{
 				UInt32 refID = iter.second()->m_data.formID;
-				sprintf_s(numBuf, sizeof(numBuf), "%08X", refID);
+				snprintf(numBuf, sizeof(numBuf), "%08X", refID);
 				TESForm* form = LookupFormByID(refID);
 				if (form)
 					elementInfo += GetFullName(form);
