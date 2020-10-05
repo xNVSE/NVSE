@@ -9,10 +9,10 @@
 #include "GameApi.h"
 #include <set>
 
-StringVar::StringVar(const char* in_data, UInt32 in_refID)
+StringVar::StringVar(const char* in_data, UInt8 modIndex)
 {
-	data = std::string(in_data);
-	owningModIndex = in_refID >> 24;
+	data = in_data;
+	owningModIndex = modIndex;
 }
 
 StringVarMap* StringVarMap::GetSingleton()
@@ -27,32 +27,12 @@ const char* StringVar::GetCString()
 
 void StringVar::Set(const char* newString)
 {
-	data = std::string(newString);
+	data = newString;
 }
 
 SInt32 StringVar::Compare(char* rhs, bool caseSensitive)
 {
-	SInt32 cmp = 0;
-	if (!caseSensitive)
-	{
-		cmp = StrCompare(data.c_str(), rhs);
-		if (cmp > 0)
-			return -1;
-		else if (cmp < 0)
-			return 1;
-		else
-			return 0;
-	}
-	else
-	{
-		std::string str2(rhs);
-		if (data == str2)
-			return 0;
-		else if (data > str2)
-			return -1;
-		else
-			return 1;
-	}
+	return caseSensitive ? strcmp(rhs, data.c_str()) : StrCompare(rhs, data.c_str());
 }
 
 void StringVar::Insert(const char* subString, UInt32 insertionPos)
@@ -241,21 +221,21 @@ void StringVarMap::Save(NVSESerializationInterface* intfc)
 
 	Serialization::OpenRecord('STVS', 0);
 
-	if (m_state)
+	StringVar *var;
+	for (auto iter = vars.Begin(); !iter.End(); ++iter)
 	{
-		for (auto iter = m_state->vars.Begin(); !iter.End(); ++iter)
-		{
-			if (IsTemporary(iter.Key()))	// don't save temp strings
-				continue;
+		if (IsTemporary(iter.Key()))	// don't save temp strings
+			continue;
 
-			Serialization::OpenRecord('STVR', 0);
-			Serialization::WriteRecord8(iter->GetOwningModIndex());
-			Serialization::WriteRecord32(iter.Key());
-			UInt16 len = iter->GetLength();
-			Serialization::WriteRecord16(len);
-			Serialization::WriteRecordData(iter->GetCString(), len);
-		}
+		var = &iter.Get();
+		Serialization::OpenRecord('STVR', 0);
+		Serialization::WriteRecord8(var->GetOwningModIndex());
+		Serialization::WriteRecord32(iter.Key());
+		UInt16 len = var->GetLength();
+		Serialization::WriteRecord16(len);
+		Serialization::WriteRecordData(var->GetCString(), len);
 	}
+
 	Serialization::OpenRecord('STVE', 0);
 }
 
@@ -309,7 +289,7 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 			Serialization::ReadRecordData(buffer, strLength);
 			buffer[strLength] = 0;
 
-			Insert(stringID, new StringVar(buffer, tempRefID));
+			Insert(stringID, buffer, modIndex);
 			modVarCounts[modIndex] += 1;
 			if (modVarCounts[modIndex] == varCountThreshold) {
 				exceededMods.Insert(modIndex);
@@ -326,7 +306,7 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 UInt32	StringVarMap::Add(UInt8 varModIndex, const char* data, bool bTemp)
 {
 	UInt32 varID = GetUnusedID();
-	Insert(varID, new StringVar(data, varModIndex << 24));
+	Insert(varID, data, varModIndex << 24);
 
 	// UDFs are instanced once so all strings should be temporary - Kormakur
 	if (bTemp)
@@ -384,10 +364,8 @@ bool AssignToStringVar(COMMAND_ARGS, const char* newValue) {	// Adds another cal
 
 void StringVarMap::Clean()		// clean up any temporary vars
 {
-	if (!m_state) return;
-
-	while (!m_state->tempVars.Empty())
-		Delete(m_state->tempVars.LastKey());
+	while (!tempIDs.Empty())
+		Delete(tempIDs.LastKey());
 }
 
 namespace PluginAPI

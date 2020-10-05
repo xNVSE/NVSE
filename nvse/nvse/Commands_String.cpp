@@ -824,7 +824,7 @@ bool Cmd_GetFormIDString_Execute(COMMAND_ARGS)
 
 	UInt32 formID = form ? form->refID : 0;
 	char str[0x20];
-	sprintf_s(str, sizeof(str), "%08X", formID);
+	snprintf(str, sizeof(str), "%08X", formID);
 	AssignToStringVar(PASS_COMMAND_ARGS, str);
 	return true;
 }
@@ -848,7 +848,7 @@ bool Cmd_GetRawFormIDString_Execute(COMMAND_ARGS)
 		}
 	}
 
-	sprintf_s(str, sizeof(str), "%08X", formID);
+	snprintf(str, sizeof(str), "%08X", formID);
 	AssignToStringVar(PASS_COMMAND_ARGS, str);
 	DEBUG_PRINT(str);
 	return true;
@@ -862,10 +862,10 @@ bool Cmd_NumToHex_Execute(COMMAND_ARGS)
 
 	char fmtStr[0x20];
 	width = width <= 8 ? width : 8;
-	sprintf_s(fmtStr, sizeof(fmtStr), "%%0%dX", width);
+	snprintf(fmtStr, sizeof(fmtStr), "%%0%dX", width);
 
 	char hexStr[0x20];
-	sprintf_s(hexStr, sizeof(hexStr), fmtStr, num);
+	snprintf(hexStr, sizeof(hexStr), fmtStr, num);
 
 	AssignToStringVar(PASS_COMMAND_ARGS, hexStr);
 	return true;

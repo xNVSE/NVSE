@@ -155,7 +155,7 @@ struct ForEachContext
 struct ScriptToken
 {
 	friend ExpressionEvaluator;
-protected:
+
 	Token_Type	type;
 	UInt8		variableType;	
 	Script*		owningScript;
@@ -195,7 +195,6 @@ protected:
 	ScriptToken(ScriptEventList::Var* var);
 #endif
 
-public:
 	ScriptToken();
 	ScriptToken(const ScriptToken& from);
 #if RUNTIME

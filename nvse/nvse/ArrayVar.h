@@ -253,9 +253,9 @@ class ArrayVar
 	bool				m_bPacked;
 	Vector<UInt8>		m_refs;		// data is modIndex of referring object; size() is number of references
 
+public:
 	ArrayVar(UInt32 keyType, bool packed, UInt8 modIndex);
 
-public:
 	enum SortOrder
 	{
 		kSort_Ascending,
@@ -339,7 +339,7 @@ class ArrayVarMap : public VarMap<ArrayVar>
 	// this gets incremented whenever serialization format changes
 	static const UInt32 kVersion = 2;
 
-	void Add(ArrayVar* var, UInt32 varID, UInt32 numRefs, UInt8* refs);
+	ArrayVar* Add(UInt32 varID, UInt32 keyType, bool packed, UInt8 modIndex, UInt32 numRefs, UInt8* refs);
 public:
 	void Save(NVSESerializationInterface* intfc);
 	void Load(NVSESerializationInterface* intfc);

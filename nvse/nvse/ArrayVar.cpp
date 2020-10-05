@@ -1136,7 +1136,7 @@ void ArrayVar::Dump()
 		switch (KeyType())
 		{
 		case kDataType_Numeric:
-			sprintf_s(numBuf, sizeof(numBuf), "%f", iter.first()->key.num);
+			snprintf(numBuf, sizeof(numBuf), "%f", iter.first()->key.num);
 			elementInfo += numBuf;
 			break;
 		case kDataType_String:
@@ -1151,7 +1151,7 @@ void ArrayVar::Dump()
 		switch (iter.second()->m_data.dataType)
 		{
 		case kDataType_Numeric:
-			sprintf_s(numBuf, sizeof(numBuf), "%f", iter.second()->m_data.num);
+			snprintf(numBuf, sizeof(numBuf), "%f", iter.second()->m_data.num);
 			elementInfo += numBuf;
 			break;
 		case kDataType_String:
@@ -1159,14 +1159,14 @@ void ArrayVar::Dump()
 			break;
 		case kDataType_Array:
 			elementInfo += "(Array ID #";
-			sprintf_s(numBuf, sizeof(numBuf), "%d", iter.second()->m_data.arrID);
+			snprintf(numBuf, sizeof(numBuf), "%d", iter.second()->m_data.arrID);
 			elementInfo += numBuf;
 			elementInfo += ")";
 			break;
 		case kDataType_Form:
 			{
 				UInt32 refID = iter.second()->m_data.formID;
-				sprintf_s(numBuf, sizeof(numBuf), "%08X", refID);
+				snprintf(numBuf, sizeof(numBuf), "%08X", refID);
 				TESForm* form = LookupFormByID(refID);
 				if (form)
 					elementInfo += GetFullName(form);
@@ -1224,9 +1224,9 @@ ArrayVarMap* ArrayVarMap::GetSingleton()
 	return &g_ArrayMap;
 }
 
-void ArrayVarMap::Add(ArrayVar* var, UInt32 varID, UInt32 numRefs, UInt8* refs)
+ArrayVar* ArrayVarMap::Add(UInt32 varID, UInt32 keyType, bool packed, UInt8 modIndex, UInt32 numRefs, UInt8* refs)
 {
-	VarMap::Insert(varID, var);
+	ArrayVar* var = VarMap::Insert(varID, keyType, packed, modIndex);
 	var->m_ID = varID;
 	if (!numRefs)		// nobody refers to this array, queue for deletion
 		MarkTemporary(varID, true);
@@ -1235,14 +1235,14 @@ void ArrayVarMap::Add(ArrayVar* var, UInt32 varID, UInt32 numRefs, UInt8* refs)
 		var->m_refs.Resize(numRefs);
 		memcpy(var->m_refs.Data(), refs, numRefs);
 	}
+	return var;
 }
 
 ArrayVar* ArrayVarMap::Create(UInt32 keyType, bool bPacked, UInt8 modIndex)
 {
-	ArrayVar* newVar = new ArrayVar(keyType, bPacked, modIndex);
 	ArrayID varID = GetUnusedID();
+	ArrayVar* newVar = VarMap::Insert(varID, keyType, bPacked, modIndex);
 	newVar->m_ID = varID;
-	VarMap::Insert(varID, newVar);
 	MarkTemporary(varID, true);		// queue for deletion until a reference to this array is made
 	return newVar;
 }
@@ -1307,76 +1307,74 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 
 	Serialization::OpenRecord('ARVS', kVersion);
 
-	if (m_state)
+	ArrayVar *pVar;
+	UInt32 numRefs;
+	UInt8 keyType;
+	const ArrayKey *pKey;
+	const ArrayElement *pElem;
+	char *str;
+	UInt16 len;
+	for (auto iter = vars.Begin(); !iter.End(); ++iter)
 	{
-		ArrayVar *pVar;
-		UInt32 numRefs;
-		UInt8 keyType;
-		const ArrayKey *pKey;
-		const ArrayElement *pElem;
-		char *str;
-		UInt16 len;
-		for (auto iter = m_state->vars.Begin(); !iter.End(); ++iter)
+		if (IsTemporary(iter.Key()))
+			continue;
+
+		pVar = &iter.Get();
+		numRefs = pVar->m_refs.Size();
+		if (!numRefs) continue;
+		keyType = pVar->m_keyType;
+
+		Serialization::OpenRecord('ARVR', kVersion);
+		Serialization::WriteRecord8(pVar->m_owningModIndex);
+		Serialization::WriteRecord32(iter.Key());
+		Serialization::WriteRecord8(keyType);
+		Serialization::WriteRecord8(pVar->m_bPacked);
+		Serialization::WriteRecord32(numRefs);
+		Serialization::WriteRecordData(pVar->m_refs.Data(), numRefs);
+
+		numRefs = pVar->Size();
+		Serialization::WriteRecord32(numRefs);
+		if (!numRefs) continue;
+
+		for (ArrayIterator elems = pVar->m_elements.begin(); !elems.End(); ++elems)
 		{
-			if (IsTemporary(iter.Key()))
-				continue;
+			pKey = elems.first();
+			pElem = elems.second();
 
-			pVar = *iter;
-			numRefs = pVar->m_refs.Size();
-			if (!numRefs) continue;
-			keyType = pVar->m_keyType;
-
-			Serialization::OpenRecord('ARVR', kVersion);
-			Serialization::WriteRecord8(pVar->m_owningModIndex);
-			Serialization::WriteRecord32(iter.Key());
-			Serialization::WriteRecord8(keyType);
-			Serialization::WriteRecord8(pVar->m_bPacked);
-			Serialization::WriteRecord32(numRefs);
-			Serialization::WriteRecordData(pVar->m_refs.Data(), numRefs);
-
-			numRefs = pVar->Size();
-			Serialization::WriteRecord32(numRefs);
-			if (!numRefs) continue;
-
-			for (ArrayIterator elems = pVar->m_elements.begin(); !elems.End(); ++elems)
+			if (keyType == kDataType_String)
 			{
-				pKey = elems.first();
-				pElem = elems.second();
-
-				if (keyType == kDataType_String)
+				str = pKey->key.str;
+				len = StrLen(str);
+				Serialization::WriteRecord16(len);
+				if (len) Serialization::WriteRecordData(str, len);
+			}
+			else if (!pVar->m_bPacked)
+				Serialization::WriteRecord64(&pKey->key.num);
+				
+			Serialization::WriteRecord8(pElem->m_data.dataType);
+			switch (pElem->m_data.dataType)
+			{
+				case kDataType_Numeric:
+					Serialization::WriteRecord64(&pElem->m_data.num);
+					break;
+				case kDataType_String:
 				{
-					str = pKey->key.str;
+					str = pElem->m_data.str;
 					len = StrLen(str);
 					Serialization::WriteRecord16(len);
 					if (len) Serialization::WriteRecordData(str, len);
+					break;
 				}
-				else if (!pVar->m_bPacked)
-					Serialization::WriteRecord64(&pKey->key.num);
-				
-				Serialization::WriteRecord8(pElem->m_data.dataType);
-				switch (pElem->m_data.dataType)
-				{
-					case kDataType_Numeric:
-						Serialization::WriteRecord64(&pElem->m_data.num);
-						break;
-					case kDataType_String:
-					{
-						str = pElem->m_data.str;
-						len = StrLen(str);
-						Serialization::WriteRecord16(len);
-						if (len) Serialization::WriteRecordData(str, len);
-						break;
-					}
-					case kDataType_Array:
-					case kDataType_Form:
-						Serialization::WriteRecord32(pElem->m_data.formID);
-						break;
-					default:
-						_MESSAGE("Error in ArrayVarMap::Save() - unhandled element type %d. Element not saved.", pElem->m_data.dataType);
-				}
+				case kDataType_Array:
+				case kDataType_Form:
+					Serialization::WriteRecord32(pElem->m_data.formID);
+					break;
+				default:
+					_MESSAGE("Error in ArrayVarMap::Save() - unhandled element type %d. Element not saved.", pElem->m_data.dataType);
 			}
 		}
 	}
+
 	Serialization::OpenRecord('ARVE', kVersion);
 }
 
@@ -1480,8 +1478,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				}
 				
 				// create array and add to map
-				ArrayVar* newArr = new ArrayVar(keyType, bPacked, modIndex);
-				Add(newArr, arrayID, numRefs, buffer);
+				ArrayVar* newArr = Add(arrayID, keyType, bPacked, modIndex, numRefs, buffer);
 
 				// read the array elements			
 				numElements = Serialization::ReadRecord32();
@@ -1589,10 +1586,8 @@ void ArrayVarMap::Clean()		// garbage collection: delete unreferenced arrays
 	// ArrayVar destructor may queue more IDs for deletion if deleted array contains other arrays
 	// so on each pass through the loop we delete the first ID in the queue until none remain
 
-	if (!m_state) return;
-
-	while (!m_state->tempVars.Empty())
-		Delete(m_state->tempVars.LastKey());
+	while (!tempIDs.Empty())
+		Delete(tempIDs.LastKey());
 }
 
 namespace PluginAPI

@@ -290,7 +290,7 @@ bool Cmd_ToString_Execute(COMMAND_ARGS)
 		else if (eval.Arg(0)->CanConvertTo(kTokenType_Number))
 		{
 			char buf[0x20];
-			sprintf_s(buf, sizeof(buf), "%g", eval.Arg(0)->GetNumber());
+			snprintf(buf, sizeof(buf), "%g", eval.Arg(0)->GetNumber());
 			tokenAsString = buf;
 		}
 		else if (eval.Arg(0)->CanConvertTo(kTokenType_Form))
