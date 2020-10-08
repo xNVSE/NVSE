@@ -6,6 +6,8 @@ extern memcpy_t _memcpy, _memmove;
 //	Workaround for bypassing the compiler calling the d'tor on function-scope objects.
 template <typename T> class TempObject
 {
+	friend T;
+
 	struct Buffer
 	{
 		UInt8	bytes[sizeof(T)];
