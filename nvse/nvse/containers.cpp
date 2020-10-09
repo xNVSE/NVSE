@@ -56,6 +56,10 @@ __declspec(naked) void __fastcall Pool_Free(void *pBlock, UInt32 size)
 {
 	__asm
 	{
+		test	ecx, ecx
+		jnz		proceed
+		retn
+	proceed:
 		push	ecx
 		cmp		edx, MAX_CACHED_BLOCK_SIZE
 		ja		doFree
@@ -97,6 +101,12 @@ __declspec(naked) void* __fastcall Pool_Realloc(void *pBlock, UInt32 curSize, UI
 	{
 		cmp		edx, MAX_CACHED_BLOCK_SIZE
 		ja		doRealloc
+		test	ecx, ecx
+		jnz		proceed
+		mov		ecx, [esp+4]
+		call	Pool_Alloc
+		retn	4
+	proceed:
 		push	edx
 		push	ecx
 		mov		ecx, [esp+0xC]
@@ -130,6 +140,12 @@ __declspec(naked) void* __fastcall Pool_Realloc_Al4(void *pBlock, UInt32 curSize
 	isAligned:
 		cmp		edx, MAX_CACHED_BLOCK_SIZE
 		ja		doRealloc
+		test	ecx, ecx
+		jnz		proceed
+		mov		ecx, [esp+4]
+		call	Pool_Alloc_Al4
+		retn	4
+	proceed:
 		push	edx
 		push	ecx
 		mov		ecx, [esp+0xC]

@@ -5,10 +5,17 @@
 ArrayVarElementContainer::~ArrayVarElementContainer()
 {
 	clear();
-	if (m_container.data)
+	switch (m_type)
 	{
-		free(m_container.data);
-		m_container.data = NULL;
+		case kContainer_Array:
+			AsArray().~ElementVector();
+			break;
+		case kContainer_NumericMap:
+			AsNumMap().~ElementNumMap();
+			break;
+		case kContainer_StringMap:
+			AsStrMap().~ElementStrMap();
+			break;
 	}
 }
 
