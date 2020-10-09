@@ -104,12 +104,13 @@ ScriptToken::ScriptToken(Operator* op) : type(kTokenType_Operator), refIdx(0), v
 	value.op = op;
 }
 
-#if RUNTIME
+
 ScriptToken::ScriptToken(ExpressionEvaluator& evaluator)
 {
+#if RUNTIME
 	ReadFrom(&evaluator);
-}
 #endif
+}
 
 ScriptToken::ScriptToken(VariableInfo* varInfo, UInt16 refIdx, UInt32 varType) : refIdx(refIdx), variableType(varType)
 {
@@ -149,6 +150,7 @@ ScriptToken::ScriptToken(const ScriptToken &from)
 	owningScript = from.owningScript;
 	refIdx = from.refIdx;
 	returnType = from.returnType;
+#if RUNTIME
 	cached = from.cached;
 	opcodeOffset = from.opcodeOffset;
 	context = from.context;
@@ -158,6 +160,7 @@ ScriptToken::ScriptToken(const ScriptToken &from)
 	shortCircuitParentType = from.shortCircuitParentType;
 	shortCircuitDistance = from.shortCircuitDistance;
 	shortCircuitStackOffset = from.shortCircuitStackOffset;
+#endif
 	if (type == kTokenType_String)
 		value.str = from.value.str ? CopyString(from.value.str) : NULL;
 	else value = from.value;

@@ -197,9 +197,8 @@ struct ScriptToken
 
 	ScriptToken();
 	ScriptToken(const ScriptToken& from);
-#if RUNTIME
+
 	ScriptToken(ExpressionEvaluator& evaluator);
-#endif
 
 	virtual	~ScriptToken();
 
