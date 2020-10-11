@@ -212,7 +212,7 @@ struct ScriptLineBuffer
 	UInt32				dataOffset;			// 40C
 	UInt32				cmdOpcode;			// 410 not initialized. Opcode of command being parsed
 	UInt32				callingRefIndex;	// 414 not initialized. Zero if cmd not invoked with dot syntax
-	UInt32				unk418;				// 418
+	UInt32				errorCode;			// 418
 
 	// these write data and update dataOffset
 	bool Write(const void* buf, UInt32 bufsize);
@@ -236,7 +236,7 @@ struct ScriptBuffer
 	UInt32			textOffset;			// 004 
 	UInt32			unk008;				// 008
 	String			scriptName;			// 00C
-	UInt32			unk014;				// 014
+	UInt32			errorCode;			// 014
 	UInt16			unk018;				// 018
 	UInt16			unk01A;				// 01A
 	UInt32			curLineNumber;		// 01C 
