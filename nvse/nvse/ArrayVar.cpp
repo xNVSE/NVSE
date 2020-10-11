@@ -1227,6 +1227,7 @@ ArrayVarMap* ArrayVarMap::GetSingleton()
 ArrayVar* ArrayVarMap::Add(UInt32 varID, UInt32 keyType, bool packed, UInt8 modIndex, UInt32 numRefs, UInt8* refs)
 {
 	ArrayVar* var = VarMap::Insert(varID, keyType, packed, modIndex);
+	availableIDs.Erase(varID);
 	var->m_ID = varID;
 	if (!numRefs)		// nobody refers to this array, queue for deletion
 		MarkTemporary(varID, true);
