@@ -13,76 +13,15 @@ static const UInt32 s_ExtraDataListVtbl							= 0x010143D8;
 
 bool BaseExtraList::HasType(UInt32 type) const
 {
-	UInt32 index = (type >> 3);
-	UInt8 bitMask = 1 << (type % 8);
-	return (m_presenceBitfield[index] & bitMask) != 0;
-}
-
-BSExtraData * BaseExtraList::GetByType(UInt32 type) const
-{
-	if (!HasType(type)) return NULL;
-
-	for(BSExtraData * traverse = m_data; traverse; traverse = traverse->next)
-		if(traverse->type == type)
-			return traverse;
-
-#if _DEBUG
-	_MESSAGE("ExtraData HasType(%d) is true but it wasn't found!", type);
-	DebugDump();
-#endif
-	return NULL;
+	return (m_presenceBitfield[type >> 3] & (1 << (type & 7))) != 0;
 }
 
 void BaseExtraList::MarkType(UInt32 type, bool bCleared)
 {
-	UInt32 index = (type >> 3);
-	UInt8 bitMask = 1 << (type % 8);
-	UInt8& flag = m_presenceBitfield[index];
-	if (bCleared) {
-		flag &= ~bitMask;
-	} else {
-		flag |= bitMask;
-	}
-}
-
-bool BaseExtraList::Remove(BSExtraData* toRemove, bool free)
-{
-	if (!toRemove) return false;
-
-	if (HasType(toRemove->type)) {
-		bool bRemoved = false;
-		if (m_data == toRemove) {
-			m_data = m_data->next;
-			bRemoved = true;
-		}
-
-		for (BSExtraData* traverse = m_data; traverse; traverse = traverse->next) {
-			if (traverse->next == toRemove) {
-				traverse->next = toRemove->next;
-				bRemoved = true;
-				break;
-			}
-		}
-		if (bRemoved) {
-			MarkType(toRemove->type, true);
-			if (free)
-				FormHeap_Free(toRemove);
-		}
-		return true;
-	}
-
-	return false;
-}
-
-bool BaseExtraList::Add(BSExtraData* toAdd)
-{
-	if (!toAdd || HasType(toAdd->type)) return false;
-	
-	BSExtraData* next = m_data;
-	m_data = toAdd;
-	toAdd->next = next;
-	MarkType(toAdd->type, false);
-	return true;
+	UInt8 bitMask = 1 << (type & 7);
+	UInt8 &flag = m_presenceBitfield[type >> 3];
+	if (bCleared) flag &= ~bitMask;
+	else flag |= bitMask;
 }
 
 ExtraDataList* ExtraDataList::Create(BSExtraData* xBSData)
@@ -93,36 +32,6 @@ ExtraDataList* ExtraDataList::Create(BSExtraData* xBSData)
 	if (xBSData)
 		xData->Add(xBSData);
 	return xData;
-}
-
-bool BaseExtraList::RemoveByType(UInt32 type, bool free)
-{
-	if (HasType(type)) {
-		return Remove(GetByType(type), free);
-	}
-	return false;
-}
-
-void BaseExtraList::RemoveAll()
-{
-	while (m_data) {
-		BSExtraData* data = m_data;
-		m_data = data->next;
-		MarkType(data->type, true);
-		FormHeap_Free(data);
-	}
-}
-
-void BaseExtraList::Copy(BaseExtraList* from)
-{
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
-	ThisStdCall(0x00411EC0, this, from);	// 428920 in last Fallout3
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	ThisStdCall(0x00411F10, this, from);	// 428920 in last Fallout3
-#elif EDITOR
-#else
-#error
-#endif
 }
 
 bool BaseExtraList::IsWorn()

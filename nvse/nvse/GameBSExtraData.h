@@ -1,6 +1,7 @@
 #pragma once
 
 // Added to remove a cyclic dependency between GameForms.h and GameExtraData.h
+#include "Utilities.h"
 
 class TESForm;
 
@@ -24,22 +25,45 @@ public:
 // 020
 struct BaseExtraList
 {
-	bool			HasType(UInt32 type) const;
-	BSExtraData *	GetByType(UInt32 type) const;
+	bool HasType(UInt32 type) const;
 
-	void			MarkType(UInt32 type, bool bCleared);
-	bool			Remove(BSExtraData* toRemove, bool free = false);
-	bool			RemoveByType(UInt32 type, bool free = false);
-	bool			Add(BSExtraData* toAdd);
-	void			RemoveAll();
+	__forceinline BSExtraData *GetByType(UInt8 type) const
+	{
+		return ThisStdCall<BSExtraData*>(0x410220, this, type);
+	}
 
-	bool			MarkScriptEvent(UInt32 eventMask, TESForm* eventTarget);
+	void MarkType(UInt32 type, bool bCleared);
 
-	void			Copy(BaseExtraList* from);
+	__forceinline void Remove(BSExtraData *toRemove, bool doFree)
+	{
+		ThisStdCall(0x410020, this, toRemove, doFree);
+	}
 
-	void			DebugDump() const;
+	__forceinline void RemoveByType(UInt32 type)
+	{
+		ThisStdCall(0x410140, this, type);
+	}
 
-	bool			IsWorn();
+	__forceinline BSExtraData *Add(BSExtraData *toAdd)
+	{
+		return ThisStdCall<BSExtraData*>(0x40FF60, this, toAdd);
+	}
+
+	__forceinline void RemoveAll(bool doFree = false)
+	{
+		ThisStdCall(0x411FD0, this, doFree);
+	}
+
+	bool MarkScriptEvent(UInt32 eventMask, TESForm* eventTarget);
+
+	__forceinline void Copy(BaseExtraList *from)
+	{
+		ThisStdCall(0x411EC0, this, from);
+	}
+
+	void DebugDump() const;
+
+	bool IsWorn();
 
 	void		** m_vtbl;					// 000
 	BSExtraData	* m_data;					// 004

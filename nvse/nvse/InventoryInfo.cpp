@@ -206,46 +206,40 @@ TESForm * SetFirstItemWithHealthAndOwnershipByRefID(TESObjectREFR* thisObj, UInt
 	if (!pXHealth) {
 		if (Health != -1.0) {
 			pXHealth = ExtraHealth::Create();
-			if (!pExtraDataList->Add(pXHealth))
-				FormHeap_Free(pXHealth);
-			else
-				pXHealth->health = Health;
+			pExtraDataList->Add(pXHealth);
+			pXHealth->health = Health;
 		}
 	}
 	else
 		if (Health != -1.0)
 			if (pHealth && Health==pHealth->health)
-				pExtraDataList->Remove(pXHealth);
+				pExtraDataList->Remove(pXHealth, true);
 			else
 				pXHealth->health = Health;
 	if (!pXOwner) {
 		if (pOwner) {
 			pXOwner = ExtraOwnership::Create();
-			if (!pExtraDataList->Add(pXOwner))
-				FormHeap_Free(pXOwner);
-			else
-				pXOwner->owner = pOwner;
+			pExtraDataList->Add(pXOwner);
+			pXOwner->owner = pOwner;
 		}
 	}
 	else
 		if (pOwner)
 			pXOwner->owner = pOwner;
 		else
-			pExtraDataList->Remove(pXOwner);
+			pExtraDataList->Remove(pXOwner, true);
 	if (!pXRank) {
 		if (Rank) {
 			pXRank = ExtraRank::Create();
-			if (!pExtraDataList->Add(pXRank))
-				FormHeap_Free(pXRank);
-			else
-				pXRank->rank = Rank;
+			pExtraDataList->Add(pXRank);
+			pXRank->rank = Rank;
 		}
 	}
 	else
 		if (Rank)
 			pXRank->rank = Rank;
 		else
-			pExtraDataList->Remove(pXRank);
+			pExtraDataList->Remove(pXRank, true);
 
 	if (pXCount)
 		pXCount->count = NumItems;

@@ -852,14 +852,10 @@ bool Cmd_ClearOpenKey_Execute(COMMAND_ARGS)
 		return true;
 
 	ExtraLock* xLock = GetByTypeCast(thisObj->extraDataList, Lock);
-	if (xLock) {
-		if (thisObj->extraDataList.Remove(xLock))
-		{
-			FormHeap_Free(xLock->data);
-			FormHeap_Free(xLock);
-			*result = 1;
-			return true;
-		}
+	if (xLock)
+	{
+		thisObj->extraDataList.Remove(xLock, true);
+		*result = 1;
 	}
 
 	return true;
