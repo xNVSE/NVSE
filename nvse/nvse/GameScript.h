@@ -84,7 +84,8 @@ public:
 		UInt32	dataLength;	// 08 (20)
 		UInt32	varCount;	// 0C (24)
 		UInt16	type;		// 10 (28)
-		UInt16	unk12;		// 12 (2A)
+		bool	compiled;	// 12 (2A)
+		UInt8   unk13;      // 13 (2B)
 	};
 
 	enum {
