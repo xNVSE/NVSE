@@ -215,7 +215,7 @@ static bool ExtraContainerChangesExtendDataListRemove(ExtraContainerChanges::Ext
 			xData->RemoveNth(i);
 			if (bFreeList) {
 				for (UInt32 j = 0 ; j<0xFF ; j++)
-					pExtraDataList->RemoveByType(j, true);
+					pExtraDataList->RemoveByType(j);
 				FormHeap_Free(xList);
 			}
 			return true;
@@ -233,7 +233,7 @@ void ExtraContainerChanges::EntryData::Cleanup()
 			if (iter.Get()) {
 				ExtraCount* xCount = (ExtraCount*)iter.Get()->GetByType(kExtraData_Count);
 				if (xCount && xCount->count<2)
-					iter.Get()->RemoveByType(kExtraData_Count, true);
+					iter.Get()->RemoveByType(kExtraData_Count);
 				if (countDelta || iter.Get()->m_data)	// There are other extras than count like ExtraWorn :)
 					++iter;
 				else

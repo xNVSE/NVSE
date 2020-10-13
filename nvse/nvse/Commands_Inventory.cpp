@@ -1636,7 +1636,7 @@ bool Cmd_SetHotkeyItem_Execute(COMMAND_ARGS)
 				};
 			}
 			if(found) {
-				found->RemoveByType(kExtraData_Hotkey, true);
+				found->RemoveByType(kExtraData_Hotkey);
 				xHotkey = NULL;
 				found = NULL;
 			}
@@ -1708,7 +1708,7 @@ bool Cmd_ClearHotkey_Execute(COMMAND_ARGS)
 					break;
             }
             if(found)
-				found->RemoveByType(kExtraData_Hotkey, true);
+				found->RemoveByType(kExtraData_Hotkey);
         }
     }
     return true;
@@ -1794,9 +1794,7 @@ static bool AdjustHealth(TESHealthForm* pHealth, ExtraDataList* pExtraData, floa
 	if (nuHealth < 0) nuHealth = 0;
 	if (nuHealth >= pHealth->health) {
 		if (pXHealth) {
-			pExtraData->Remove(pXHealth);
-			FormHeap_Free(pXHealth);
-			pXHealth = NULL;
+			pExtraData->Remove(pXHealth, true);
 		}
 	} else if (pXHealth) {
 		pXHealth->health = nuHealth;
@@ -1805,10 +1803,7 @@ static bool AdjustHealth(TESHealthForm* pHealth, ExtraDataList* pExtraData, floa
 		pXHealth = ExtraHealth::Create();
 		if (pXHealth) {
 			pXHealth->health = nuHealth;
-			if (!pExtraData->Add(pXHealth)) {
-				FormHeap_Free(pXHealth);
-				pXHealth = NULL;
-			}
+			pExtraData->Add(pXHealth);
 		}
 	}
 	return true;
@@ -2253,23 +2248,17 @@ bool Cmd_SetEquippedWeaponModFlags_Execute(COMMAND_ARGS)
 	// Modify existing flags
 	if (pXWeaponModFlags) {
 		if (flags) {
-			pXWeaponModFlags->flags = (UInt8) flags;
+			pXWeaponModFlags->flags = (UInt8)flags;
 		} else {
-			equipD.pExtraData->Remove(pXWeaponModFlags);
-			FormHeap_Free(pXWeaponModFlags);
-			pXWeaponModFlags = NULL;
+			equipD.pExtraData->Remove(pXWeaponModFlags, true);
 		}
 
 		// Create new extra data
 	} else if (flags) {
 		pXWeaponModFlags = ExtraWeaponModFlags::Create();
 		if (pXWeaponModFlags) {
-			pXWeaponModFlags->flags = (UInt8) flags;
-
-			if (!equipD.pExtraData->Add(pXWeaponModFlags)) {
-				FormHeap_Free(pXWeaponModFlags);
-				pXWeaponModFlags = NULL;
-			}
+			pXWeaponModFlags->flags = (UInt8)flags;
+			equipD.pExtraData->Add(pXWeaponModFlags);
 		}
 	}
 

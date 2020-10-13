@@ -163,16 +163,9 @@ public:
 // thread-safe template versions of ThisStdCall()
 
 template <typename T_Ret = UInt32, typename ...Args>
-__forceinline T_Ret ThisStdCall(UInt32 _addr, void *_this, Args ...args)
+__forceinline T_Ret ThisStdCall(UInt32 _addr, const void *_this, Args ...args)
 {
-	class T {};
-	union
-	{
-		UInt32	addr;
-		T_Ret	(T::*func)(Args...);
-	}
-	u = {_addr};
-	return ((T*)_this->*u.func)(std::forward<Args>(args)...);
+	return ((T_Ret (__thiscall *)(const void*, Args...))_addr)(_this, std::forward<Args>(args)...);
 }
 
 template <typename T_Ret = void, typename ...Args>
