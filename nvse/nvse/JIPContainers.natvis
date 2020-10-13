@@ -27,4 +27,23 @@
 			</ArrayItems>
 		</Expand>
 	</Type>
+	<Type Name="UnorderedMap&lt;*&gt;">
+		<DisplayString>{{ Buckets={numBuckets} }}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>numBuckets</Size>
+				<ValuePointer>buckets</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<Type Name="ArrayVarElementContainer::GenericContainer">
+		<DisplayString>{{ Size={numItems} }}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>numItems</Size>
+				<ValuePointer>data</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
 </AutoVisualizer>

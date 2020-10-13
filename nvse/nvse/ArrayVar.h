@@ -161,9 +161,9 @@ class ArrayVarElementContainer
 
 	struct GenericContainer
 	{
-		void		*data;
-		UInt32		numItems;
-		UInt32		numAlloc;
+		ArrayElement *data;
+		UInt32		 numItems;
+		UInt32		 numAlloc;
 	};
 
 	ContainerType		m_type;
