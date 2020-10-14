@@ -349,9 +349,7 @@ FunctionInfo::~FunctionInfo()
 	if (m_numDestructibles)
 		delete[] m_destructibles;
 
-	if (m_eventList) {
-		delete m_eventList;
-	}
+	GameHeapFree(m_eventList);
 }
 
 FunctionContext* FunctionInfo::CreateContext(UInt8 version, Script* invokingScript)
