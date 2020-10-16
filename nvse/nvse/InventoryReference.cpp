@@ -7,21 +7,13 @@ InventoryReferenceMap s_invRefMap(0x80);
 
 void WriteToExtraDataList(BaseExtraList* from, BaseExtraList* to)
 {
-	ASSERT(to || from);
-
 	if (from)
 	{
 		if (to)
-		{
-			to->m_data = from->m_data;
-			memcpy(to->m_presenceBitfield, from->m_presenceBitfield, 0xC);
-		}
+			memcpy(&to->m_data, &from->m_data, 0x1C);
 	}
 	else if (to)
-	{
-		to->m_data = NULL;
-		memset(to->m_presenceBitfield, 0, 0xC);
-	}
+		memset(&to->m_data, 0, 0x1C);
 }
 
 InventoryReference::~InventoryReference()
@@ -35,6 +27,13 @@ InventoryReference::~InventoryReference()
 	if (m_tempRef)
 	{
 		m_tempRef->Destroy(true);
+	}
+
+	if (m_tempEntry)
+	{
+		if (m_tempEntry->extendData)
+			GameHeapFree(m_tempEntry->extendData);
+		GameHeapFree(m_tempEntry);
 	}
 
 	// remove unnecessary extra data, consolidate identical stacks
@@ -51,7 +50,7 @@ InventoryReference::~InventoryReference()
 void InventoryReference::Release()
 {
 	DoDeferredActions();
-	SetData(Data(NULL, NULL, NULL));
+	SetData(Data());
 }
 
 bool InventoryReference::SetData(const Data &data)
@@ -61,8 +60,7 @@ bool InventoryReference::SetData(const Data &data)
 	m_bRemoved = false;
 	m_tempRef->baseForm = data.type;
 	m_data = data;
-	ExtraDataList* list = data.xData ? data.xData : NULL;
-	WriteToExtraDataList(list, &m_tempRef->extraDataList);
+	WriteToExtraDataList(data.xData, &m_tempRef->extraDataList);
 	return true;
 }
 
@@ -73,34 +71,15 @@ bool InventoryReference::WriteRefDataToContainer()
 	else if (m_bRemoved)
 		return true;
 
-	if (!m_data.xData && m_tempRef->extraDataList.m_data)	// some data was added to ref, create list to hold it
-	{
-		m_data.xData = ExtraDataList::Create();
-	}
-
 	if (m_data.xData)
-	{
 		WriteToExtraDataList(&m_tempRef->extraDataList, m_data.xData);
-	}
 
 	return true;
 }
 
-SInt16 InventoryReference::GetCount()
+SInt32 InventoryReference::GetCount()
 {
-	SInt16 count = 0;
-	if (Validate())
-	{
-		count = 1;
-		if (m_data.xData)
-		{
-			ExtraCount* xCount = (ExtraCount*)m_data.xData->GetByType(kExtraData_Count);
-			if (xCount)
-			{
-				count = xCount->count;
-			}
-		}
-	}
+	SInt32 count = m_data.entry->countDelta;
 
 	if (count < 0)
 	{
@@ -284,8 +263,31 @@ InventoryReference *CreateInventoryRef(TESObjectREFR *container, const Inventory
 	s_invRefMap.Insert(refr->refID, &invRefr);
 	invRefr->m_containerRef = container;
 	invRefr->m_tempRef = refr;
+	invRefr->m_tempEntry = NULL;
 	invRefr->m_bDoValidation = bValidate;
 	invRefr->m_bRemoved = false;
 	invRefr->SetData(data);
 	return invRefr;
+}
+
+ExtraContainerChanges::EntryData *CreateTempEntry(TESForm *itemForm, SInt32 countDelta, ExtraDataList *xData)
+{
+	ExtraContainerChanges::EntryData *entry = (ExtraContainerChanges::EntryData*)GameHeapAlloc(sizeof(ExtraContainerChanges::EntryData));
+	if (xData)
+	{
+		entry->extendData = (ExtraContainerChanges::ExtendDataList*)GameHeapAlloc(8);
+		entry->extendData->Init(xData);
+	}
+	else entry->extendData = NULL;
+	entry->countDelta = countDelta;
+	entry->type = itemForm;
+	return entry;
+}
+
+TESObjectREFR* CreateInventoryRefEntry(TESObjectREFR *container, TESForm *itemForm, SInt32 countDelta, ExtraDataList *xData)
+{
+	ExtraContainerChanges::EntryData *entry = CreateTempEntry(itemForm, countDelta, xData);
+	InventoryReference *invRef = CreateInventoryRef(container, InventoryReference::Data(itemForm, entry, xData), false);
+	invRef->m_tempEntry = entry;
+	return invRef->m_tempRef;
 }

@@ -52,7 +52,7 @@ ArrayElement::ArrayElement()
 {
 	m_data.dataType = kDataType_Invalid;
 	m_data.owningArray = 0;
-	m_data.num = 0;
+	m_data.arrID = 0;
 }
 
 ArrayElement::ArrayElement(const ArrayElement& from)

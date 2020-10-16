@@ -65,16 +65,19 @@ public:
 	TESObjectREFR				*m_containerRef;
 	TESObjectREFR				*m_tempRef;
 	Stack<DeferredAction>		m_deferredActions;
-	UInt8						pad18[20];	// This used to be std::queue<DeferredAction*>; Padded to preserve sizeof == 0x30, for backward compatibility with plugins.
+	ExtraContainerChanges::EntryData	*m_tempEntry;
+	UInt8						pad1C[0x10];	// This used to be std::queue<DeferredAction*>; Padded to preserve sizeof == 0x30, for backward compatibility with plugins.
 	bool						m_bDoValidation;
 	bool						m_bRemoved;
 
 	bool Validate();
 	void DoDeferredActions();
-	SInt16 GetCount();
+	SInt32 GetCount();
 };
 
 typedef UnorderedMap<UInt32, InventoryReference> InventoryReferenceMap;
 extern InventoryReferenceMap s_invRefMap;
 
 InventoryReference* CreateInventoryRef(TESObjectREFR* container, const InventoryReference::Data &data, bool bValidate);
+ExtraContainerChanges::EntryData *CreateTempEntry(TESForm *itemForm, SInt32 countDelta, ExtraDataList *xData);
+TESObjectREFR* CreateInventoryRefEntry(TESObjectREFR *container, TESForm *itemForm, SInt32 countDelta, ExtraDataList *xData);

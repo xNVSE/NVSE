@@ -108,6 +108,7 @@ bool Cmd_GetFirstRefForItem_Execute(COMMAND_ARGS)
 			
 			// get container changes for refr
 			ExtraContainerChanges* xChanges = (ExtraContainerChanges*)thisObj->extraDataList.GetByType(kExtraData_ContainerChanges);
+			TESObjectREFR *invRef;
 			if (xChanges && xChanges->data && xChanges->data->objList)
 			{
 				// locate entry for this item type
@@ -116,22 +117,18 @@ bool Cmd_GetFirstRefForItem_Execute(COMMAND_ARGS)
 				// create temp refs for each stack
 				if (entry)
 				{
-					ExtraContainerChanges::EntryData* ed = entry;
-					baseCount += ed->countDelta;
-					if (baseCount)
+					baseCount += entry->countDelta;
+					if (baseCount && entry->extendData)
 					{
-						ExtraContainerChanges::ExtendDataList* extend = ed->extendData;
-						ExtraDataList* xData = NULL;
-						for (UInt32 index = 0; extend->Count()>index; index++)
+						ExtraDataList *xData;
+						SInt32 xCount;
+						for (auto xdIter = entry->extendData->Begin(); !xdIter.End(); ++xdIter)
 						{
-							xData = extend->GetNthItem(index);
-							//if (!xData) {
-							//	xData = ExtraDataList::Create();
-							//}
-							InventoryReference::Data dataIR(item, entry, xData);
-							InventoryReference* iref = CreateInventoryRef(thisObj, dataIR, false);
-							invRefArr->refIDs.Append(iref->GetRef()->refID);
-							baseCount -= GetCountForExtraDataList(xData);
+							xData = xdIter.Get();
+							xCount = GetCountForExtraDataList(xData);
+							baseCount -= xCount;
+							invRef = CreateInventoryRefEntry(thisObj, item, xCount, xData);
+							if (invRef) invRefArr->refIDs.Append(invRef->refID);
 						}
 					}
 				}
@@ -139,30 +136,8 @@ bool Cmd_GetFirstRefForItem_Execute(COMMAND_ARGS)
 
 			if (baseCount > 0)
 			{
-				// create temp ref for items in base container not accounted for by container changes
-				xChanges = ExtraContainerChanges::GetForRef(thisObj);
-				if (!xChanges->data) {
-					xChanges->data = ExtraContainerChanges::Data::Create(thisObj);
-				}
-
-				if (!xChanges->data->objList) {
-					xChanges->data->objList = ExtraContainerChangesEntryDataListCreate();
-				}
-
-				// locate entry for this item type
-				ExtraContainerChanges::EntryData* entry = xChanges->data->objList->Find(ItemInEntryDataListMatcher(item));
-
-				if (!entry) {
-					entry = ExtraContainerChanges::EntryData::Create(item->refID, baseCount);
-				}
-
-				Vector<InventoryReference::Data> refData;
-				InventoryReference::Data::CreateForUnextendedEntry(entry, baseCount, refData);
-				for (auto iter = refData.Begin(); !iter.End(); ++iter)
-				{
-					InventoryReference* iref = CreateInventoryRef(thisObj, *iter, false);
-					invRefArr->refIDs.Append(iref->GetRef()->refID);
-				}
+				invRef = CreateInventoryRefEntry(thisObj, item, baseCount, NULL);
+				if (invRef) invRefArr->refIDs.Append(invRef->refID);
 			}
 		}
 	}
@@ -217,56 +192,41 @@ bool Cmd_GetInvRefsForItem_Execute(COMMAND_ARGS)
 			
 			// get container changes for refr
 			ExtraContainerChanges* xChanges = (ExtraContainerChanges*)thisObj->extraDataList.GetByType(kExtraData_ContainerChanges);
-			if (xChanges && xChanges->data && xChanges->data->objList) {
+			TESObjectREFR *invRef;
+			if (xChanges && xChanges->data && xChanges->data->objList)
+			{
 				// locate entry for this item type
 				ExtraContainerChanges::EntryData* entry = xChanges->data->objList->Find(ItemInEntryDataListMatcher(item));
-
 				// create temp refs for each stack
-				if (entry) {
-					ExtraContainerChanges::EntryData* ed = entry;
-					baseCount += ed->countDelta;
-					if (baseCount) {
-						ExtraContainerChanges::ExtendDataList* extend = ed->extendData;
-						ExtraDataList* xData = NULL;
-						for (UInt32 index = 0; extend->Count()>index; index++) {
-							xData = extend->GetNthItem(index);
-							//if (!xData) {
-							//	xData = ExtraDataList::Create();
-							//}
-							InventoryReference::Data dataIR(item, entry, xData);
-							InventoryReference* iref = CreateInventoryRef(thisObj, dataIR, false);
-							arr->SetElementFormID(arrIndex, iref->GetRef()->refID);
-							arrIndex += 1;
-							baseCount -= GetCountForExtraDataList(xData);
+				if (entry)
+				{
+					baseCount += entry->countDelta;
+					if (baseCount && entry->extendData)
+					{
+						ExtraDataList *xData;
+						SInt32 xCount;
+						for (auto xdIter = entry->extendData->Begin(); !xdIter.End(); ++xdIter)
+						{
+							xData = xdIter.Get();
+							xCount = GetCountForExtraDataList(xData);
+							baseCount -= xCount;
+							invRef = CreateInventoryRefEntry(thisObj, item, xCount, xData);
+							if (invRef)
+							{
+								arr->SetElementFormID(arrIndex, invRef->refID);
+								arrIndex += 1;
+							}
 						}
 					}
 				}
 			}
 
-			if (baseCount > 0) {
-				// create temp ref for items in base container not accounted for by container changes
-				xChanges = ExtraContainerChanges::GetForRef(thisObj);
-				if (!xChanges->data) {
-					xChanges->data = ExtraContainerChanges::Data::Create(thisObj);
-				}
-
-				if (!xChanges->data->objList) {
-					xChanges->data->objList = ExtraContainerChangesEntryDataListCreate();
-				}
-
-				// locate entry for this item type
-				ExtraContainerChanges::EntryData* entry = xChanges->data->objList->Find(ItemInEntryDataListMatcher(item));
-
-				if (!entry) {
-					entry = ExtraContainerChanges::EntryData::Create(item->refID, baseCount);
-				}
-
-				Vector<InventoryReference::Data> refData;
-				InventoryReference::Data::CreateForUnextendedEntry(entry, baseCount, refData);
-				for (auto iter = refData.Begin(); !iter.End(); ++iter)
+			if (baseCount > 0)
+			{
+				invRef = CreateInventoryRefEntry(thisObj, item, baseCount, NULL);
+				if (invRef)
 				{
-					InventoryReference* iref = CreateInventoryRef(thisObj, *iter, false);
-					arr->SetElementFormID(arrIndex, iref->GetRef()->refID);
+					arr->SetElementFormID(arrIndex, invRef->refID);
 					arrIndex += 1;
 				}
 			}

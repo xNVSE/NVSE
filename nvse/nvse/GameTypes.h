@@ -130,7 +130,11 @@ private:
 
 public:
 
-	void Init() { m_listHead.item = NULL; m_listHead.next = NULL; }
+	void Init(Item *item = NULL)
+	{
+		m_listHead.item = item;
+		m_listHead.next = NULL;
+	}
 
 	_Node* Head() const { return const_cast<_Node*>(&m_listHead); }
 
@@ -162,6 +166,11 @@ public:
 	Item* GetNthItem(SInt32 n) const {
 		NodePos pos = GetNthNode(n);
 		return (pos.index == n && pos.node) ? pos.node->Item() : NULL;
+	}
+
+	Item *GetFirstItem() const
+	{
+		return m_listHead.item;
 	}
 
 	Item* GetLastItem() const {

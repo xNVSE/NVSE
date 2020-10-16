@@ -179,12 +179,16 @@ ExtraContainerChanges::ExtendDataList* ExtraContainerChangesExtendDataListCreate
 	return xData;
 }
 
-static void ExtraContainerChangesExtendDataListFree(ExtraContainerChanges::ExtendDataList* xData, bool bFreeList) {
-	if (xData) {
-		if (bFreeList) {
+static void ExtraContainerChangesExtendDataListFree(ExtraContainerChanges::ExtendDataList* xData, bool bFreeList)
+{
+	if (xData)
+	{
+		if (bFreeList)
+		{
 			UInt32 i = 0;
 			ExtraDataList* pExtraDataList = xData->GetNthItem(i);
-			while (pExtraDataList) {
+			while (pExtraDataList)
+			{
 				for (UInt32 j = 0 ; j<0xFF ; j++)
 					pExtraDataList->RemoveByType(j);
 				i++;
@@ -303,7 +307,7 @@ bool ExtraContainerChanges::EntryData::Remove(ExtraDataList* toRemove, bool bFre
 			extendData->RemoveNth(index);
 			countDelta -= count;
 			if (bFree) {
-				toRemove->RemoveAll();
+				toRemove->RemoveAll(true);
 				FormHeap_Free(toRemove);
 			}
 			return true;
@@ -537,11 +541,7 @@ ExtraContainerChanges* ExtraContainerChanges::GetForRef(TESObjectREFR* refr)
 	ExtraContainerChanges* xChanges = (ExtraContainerChanges*)refr->extraDataList.GetByType(kExtraData_ContainerChanges);
 	if (!xChanges) {
 		xChanges = ExtraContainerChanges::Create();
-		if (xChanges)
-			if (!refr->extraDataList.Add(xChanges)) {
-				ExtraContainerChangesFree(xChanges, false);
-				return NULL;
-			}
+		refr->extraDataList.Add(xChanges);
 	}
 	return xChanges;
 }

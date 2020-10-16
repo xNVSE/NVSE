@@ -309,29 +309,22 @@ TESForm * AddItemHealthPercentOwner(TESObjectREFR* thisObj, UInt32 refID, SInt32
 		pExtraDataList = ExtraDataList::Create();
 		if (!(1.0 == Health)) {
 			pXHealth = ExtraHealth::Create();
-			if (!pExtraDataList->Add(pXHealth))
-				FormHeap_Free(pXHealth);
-			else
-				pXHealth->health = pHealth->GetHealth() * Health;
+			pExtraDataList->Add(pXHealth);
+			pXHealth->health = pHealth->GetHealth() * Health;
 		}
 		if (pOwner) {
 			pXOwner = ExtraOwnership::Create();
-			if (!pExtraDataList->Add(pXOwner))
-				FormHeap_Free(pXOwner);
-			else
-				pXOwner->owner = pOwner;
+			pExtraDataList->Add(pXOwner);
+			pXOwner->owner = pOwner;
 		}
 		if (Rank) {
 			pXRank = ExtraRank::Create();
-			if (!pExtraDataList->Add(pXRank))
-				FormHeap_Free(pXRank);
-			else
-				pXRank->rank = Rank;
+			pExtraDataList->Add(pXRank);
+			pXRank->rank = Rank;
 		}
 		if (pScript) {
 			pXScript = ExtraScript::Create(pForm, true);
-			if (!pExtraDataList->Add(pXScript))
-				FormHeap_Free(pXScript);
+			pExtraDataList->Add(pXScript);
 		}
 	}
 	thisObj->AddItem(pForm, pExtraDataList, NumItems);

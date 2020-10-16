@@ -69,8 +69,7 @@ static bool GetScript_Execute(COMMAND_ARGS, EScriptMode eMode)
 				effect->RemoveScript();
 			if (!parmForm && thisObj) {
 				// Remove ExtraScript entry - otherwise the script will keep running until the reference is reloaded.
-				if (thisObj->extraDataList.HasType(kExtraData_Script))
-					thisObj->extraDataList.RemoveByType(kExtraData_Script);
+				thisObj->extraDataList.RemoveByType(kExtraData_Script);
 			}
 			break;
 		}
@@ -153,7 +152,7 @@ bool Cmd_SetScript_Execute(COMMAND_ARGS)
 	}
 	if (script->IsObjectScript() && !parmForm && thisObj) {
 		// Re-building ExtraScript entry - the new script then starts running immediately (instead of only on reload).
-		if (thisObj->extraDataList.HasType(kExtraData_Script)) thisObj->extraDataList.RemoveByType(kExtraData_Script);
+		thisObj->extraDataList.RemoveByType(kExtraData_Script);
 		thisObj->extraDataList.Add(ExtraScript::Create(form, true));
 
 		// Commented out until solved

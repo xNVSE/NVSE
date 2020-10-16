@@ -88,10 +88,10 @@ class ContainerIterLoop : public ForEachLoop
 {
 	typedef InventoryReference::Data	IRefData;
 
-	InventoryReference			* m_invRef;
-	ScriptEventList::Var		* m_refVar;
-	UInt32						m_iterIndex;
-	Vector<IRefData>			m_elements;
+	InventoryReference							*m_invRef;
+	ScriptEventList::Var						*m_refVar;
+	UInt32										m_iterIndex;
+	Vector<ExtraContainerChanges::EntryData*>	m_elements;
 
 	bool SetIterator();
 	bool UnsetIterator();
