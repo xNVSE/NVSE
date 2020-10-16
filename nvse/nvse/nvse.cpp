@@ -63,6 +63,10 @@ void NVSE_Initialize(void)
 		FILETIME	now;
 		GetSystemTimeAsFileTime(&now);
 
+		UInt32 bMousePatch;
+		if (GetNVSEConfigOption_UInt32("DEBUG", "EscapeMouse", &bMousePatch) && bMousePatch)
+			PatchCoopLevel();
+
 #if RUNTIME
 		_MESSAGE("NVSE runtime: initialize (version = %d.%d.%d %08X %08X%08X)",
 			NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA, RUNTIME_VERSION,
@@ -81,10 +85,9 @@ void NVSE_Initialize(void)
 				logLevel = IDebugLog::kLevel_DebugMessage;
 		if (GetNVSEConfigOption_UInt32("DEBUG", "AlternateUpdate3D", &au3D) && au3D)
 			alternateUpdate3D = true;
-		SetPriorityClass(GetCurrentProcess(), IDLE_PRIORITY_CLASS);
+		// SetPriorityClass(GetCurrentProcess(), IDLE_PRIORITY_CLASS);
 
 #if RUNTIME
-		PatchCoopLevel();
 		if (GetNVSEConfigOption_UInt32("RUNTIME DEBUG", "WaitForDebugger", &waitForDebugger) && waitForDebugger)
 			WaitForDebugger();
 		GetNVSEConfigOption_UInt32("FIXES", "EnablePrintDuringOnEquip", &s_CheckInsideOnActorEquipHook);

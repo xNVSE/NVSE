@@ -111,8 +111,9 @@ public:
 	// in debug builds, force cooperative level so input isn't locked out
 	HRESULT _stdcall SetCooperativeLevel(HWND a,DWORD b)
 	{
+		
 #if defined(_DEBUG) || 0
-		b = DISCL_BACKGROUND | DISCL_NONEXCLUSIVE;
+		// b = DISCL_BACKGROUND | DISCL_NONEXCLUSIVE;
 #endif
 		return m_device->SetCooperativeLevel(a,b);
 	}
