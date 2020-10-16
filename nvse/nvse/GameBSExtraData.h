@@ -49,9 +49,9 @@ struct BaseExtraList
 		return ThisStdCall<BSExtraData*>(0x40FF60, this, toAdd);
 	}
 
-	__forceinline void RemoveAll(bool doFree = false)
+	__forceinline void RemoveAll(bool doFree)
 	{
-		ThisStdCall(0x411FD0, this, doFree);
+		ThisStdCall(0x40FAE0, this, doFree);
 	}
 
 	bool MarkScriptEvent(UInt32 eventMask, TESForm* eventTarget);
