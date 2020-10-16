@@ -11,6 +11,7 @@
 #include "GameSettings.h"
 #include "GameProcess.h"
 #include "ArrayVar.h"
+#include "InventoryReference.h"
 
 bool Cmd_GetBaseObject_Execute(COMMAND_ARGS)
 {
@@ -755,16 +756,13 @@ bool Cmd_GetRefsInCell_Execute(COMMAND_ARGS)
 
 bool Cmd_GetRefCount_Execute(COMMAND_ARGS)
 {
-	if (!thisObj)
-		return true;
-
-	*result = 1;
-
-	ExtraCount* pXCount = GetByTypeCast(thisObj->extraDataList, Count);
-	if (pXCount) {
-		*result = pXCount->count;
-		if (IsConsoleMode())
-			Console_Print("%s: %d", GetFullName(thisObj->baseForm), pXCount->count);
+	InventoryReference *invRefr = s_invRefMap.GetPtr(thisObj->refID);
+	if (invRefr)
+		*result = invRefr->m_data.entry->countDelta;
+	else
+	{
+		ExtraCount *xCount = GetByTypeCast(thisObj->extraDataList, Count);
+		*result = xCount ? xCount->count : 1;
 	}
 	return true;
 }
@@ -780,10 +778,7 @@ bool Cmd_SetRefCount_Execute(COMMAND_ARGS)
 	ExtraCount* pXCount = GetByTypeCast(thisObj->extraDataList, Count);
 	if (!pXCount) {
 		pXCount = ExtraCount::Create();
-		if (!thisObj->extraDataList.Add(pXCount)) {
-			FormHeap_Free(pXCount);
-			return true;
-		}
+		thisObj->extraDataList.Add(pXCount);
 	}
 	pXCount->count = newCount;
 
@@ -827,12 +822,7 @@ bool Cmd_SetOpenKey_Execute(COMMAND_ARGS)
 	ExtraLock* xLock = GetByTypeCast(thisObj->extraDataList, Lock);
 	if (!xLock) {
 		xLock = ExtraLock::Create();
-		if (!thisObj->extraDataList.Add(xLock))
-		{
-			FormHeap_Free(xLock->data);
-			FormHeap_Free(xLock);
-			return true;
-		}
+		thisObj->extraDataList.Add(xLock);
 	}
 
 	if (xLock)

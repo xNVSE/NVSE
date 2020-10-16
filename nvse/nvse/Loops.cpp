@@ -145,6 +145,7 @@ ContainerIterLoop::ContainerIterLoop(const ForEachContext* context)
 					SInt32 countDelta = entry.Get()->countDelta;
 					SInt32 actualCount = countDelta;
 					SInt32 *isInBaseContainer = baseObjectCounts.GetPtr(baseObj);
+					SInt32 xCount;
 					if (isInBaseContainer)
 					{
 						*isInBaseContainer += countDelta;
@@ -156,51 +157,36 @@ ContainerIterLoop::ContainerIterLoop(const ForEachContext* context)
 						UInt32 total = 0;
 						for (ExtraContainerChanges::ExtendDataList::Iterator extend = entry.Get()->extendData->Begin(); !extend.End(); ++extend)
 						{
-							if (total >= actualCount) {
+							if (total >= actualCount)
 								break;
-							}
 
-							total += GetCountForExtraDataList(extend.Get());
-							m_elements.Append(baseObj, entry.Get(), extend.Get());
+							xCount = GetCountForExtraDataList(extend.Get());
+							total += xCount;
+							m_elements.Append(CreateTempEntry(baseObj, xCount, extend.Get()));
 						}
 
 						SInt32 remainder = isInBaseContainer ? *isInBaseContainer : countDelta;
 						remainder -= total;
-						if (remainder > 0) {
-							InventoryReference::Data::CreateForUnextendedEntry(entry.Get(), remainder, m_elements);
-						}
+						if (remainder > 0)
+							m_elements.Append(CreateTempEntry(baseObj, remainder, NULL));
 					}
-					else {
+					else
+					{
 						SInt32 actualCount = countDelta;
-						if (isInBaseContainer) {
+						if (isInBaseContainer)
 							actualCount += *isInBaseContainer;
-						}
-						if (actualCount > 0) {
-							InventoryReference::Data::CreateForUnextendedEntry(entry.Get(), actualCount, m_elements);
-						}
+
+						if (actualCount > 0)
+							m_elements.Append(CreateTempEntry(baseObj, actualCount, NULL));
 					}
 
-					if (isInBaseContainer) {
+					if (isInBaseContainer)
 						baseObjectCounts.Erase(baseObj);
-					}
 				}
 				else {
 					DEBUG_PRINT("Warning: encountered NULL ExtraContainerChanges::Entry::Data pointer in ContainerIterLoop constructor.");
 				}
 			}
-		}
-		else if (!baseObjectCounts.Empty())
-		{
-			if (!xChanges) {
-				xChanges = ExtraContainerChanges::Create();
-			}
-
-			xChanges->data = ExtraContainerChanges::Data::Create(contRef);
-			xChanges->data->objList = (ExtraContainerChanges::EntryDataList*)FormHeap_Allocate(sizeof(ExtraContainerChanges::EntryDataList));
-
-			auto first = baseObjectCounts.Begin();
-			xChanges->data->objList->AddAt(ExtraContainerChanges::EntryData::Create(first.Key(), *first), eListEnd);
-			first.Remove();
 		}
 
 		// now add entries for objects in base but without associated ExtraContainerChanges
@@ -210,18 +196,7 @@ ContainerIterLoop::ContainerIterLoop(const ForEachContext* context)
 			for (auto iter = baseObjectCounts.Begin(); !iter.End(); ++iter)
 			{
 				if (*iter > 0)
-				{
-					ExtraContainerChanges::EntryData* ed = ExtraContainerChanges::EntryData::Create(iter.Key(), *iter);
-					ExtraDataList* xData = NULL;
-					if (*iter > 1)
-					{
-						ed->extendData = (ExtraContainerChanges::ExtendDataList*)FormHeap_Allocate(sizeof(ExtraContainerChanges::ExtendDataList));
-						xData = ExtraDataList::Create(ExtraCount::Create(*iter));
-						ed->extendData->AddAt(xData, eListEnd);
-					}
-
-					m_elements.Append(iter.Key(), ed, xData);
-				}
+					m_elements.Append(CreateTempEntry(iter.Key(), *iter, NULL));
 			}
 		}
 	}
@@ -240,7 +215,9 @@ bool ContainerIterLoop::SetIterator()
 	TESObjectREFR* refr = m_invRef->GetRef();
 	if (m_iterIndex < m_elements.Size() && refr)
 	{
-		m_invRef->SetData(m_elements[m_iterIndex]);
+		ExtraContainerChanges::EntryData *entry = m_elements[m_iterIndex];
+		ExtraDataList *xData = entry->extendData ? entry->extendData->GetFirstItem() : NULL;
+		m_invRef->SetData(IRefData(entry->type, entry, xData));
 		*((UInt64*)&m_refVar->data) = refr->refID;
 		return true;
 	}
@@ -248,7 +225,7 @@ bool ContainerIterLoop::SetIterator()
 	{
 		// loop ends, ref will shortly be invalid so zero out the var
 		m_refVar->data = 0;
-		m_invRef->SetData(IRefData(NULL, NULL, NULL));
+		m_invRef->SetData(IRefData());
 		return false;
 	}
 }
@@ -262,6 +239,12 @@ bool ContainerIterLoop::Update(COMMAND_ARGS)
 
 ContainerIterLoop::~ContainerIterLoop()
 {
+	for (auto iter = m_elements.Begin(); !iter.End(); ++iter)
+	{
+		if (iter->extendData)
+			GameHeapFree(iter->extendData);
+		GameHeapFree(*iter);
+	}
 	m_invRef->Release();
 	m_refVar->data = 0;
 }
