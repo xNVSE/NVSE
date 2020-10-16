@@ -1637,7 +1637,6 @@ bool Cmd_SetHotkeyItem_Execute(COMMAND_ARGS)
 			}
 			if(found) {
 				found->RemoveByType(kExtraData_Hotkey);
-				xHotkey = NULL;
 				found = NULL;
 			}
 
