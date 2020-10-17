@@ -233,9 +233,15 @@ struct ScriptBuffer
 		Node<tData>	* next;
 	};
 
+	enum RuntimeMode
+	{
+		kEditor = 0,
+		kGameConsole = 1,
+	};
+
 	char			* scriptText;		// 000
 	UInt32			textOffset;			// 004 
-	UInt32			unk008;				// 008
+	RuntimeMode		runtimeMode;		// 008
 	String			scriptName;			// 00C
 	UInt32			errorCode;			// 014
 	UInt16			unk018;				// 018
