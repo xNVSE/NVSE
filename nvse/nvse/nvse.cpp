@@ -63,11 +63,11 @@ void NVSE_Initialize(void)
 		FILETIME	now;
 		GetSystemTimeAsFileTime(&now);
 
+#if RUNTIME
 		UInt32 bMousePatch;
 		if (GetNVSEConfigOption_UInt32("DEBUG", "EscapeMouse", &bMousePatch) && bMousePatch)
 			PatchCoopLevel();
-
-#if RUNTIME
+		
 		_MESSAGE("NVSE runtime: initialize (version = %d.%d.%d %08X %08X%08X)",
 			NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA, RUNTIME_VERSION,
 			now.dwHighDateTime, now.dwLowDateTime);
