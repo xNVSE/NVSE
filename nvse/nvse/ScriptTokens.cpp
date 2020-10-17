@@ -663,8 +663,10 @@ ArrayID ScriptToken::GetArray()
 
 ScriptEventList::Var* ScriptToken::GetVar()
 {
+	if (!IsVariable())
+		return nullptr;
 	ResolveVariable();
-	return IsVariable() ? value.var : NULL;
+	return value.var;
 }
 
 void ScriptToken::ResolveVariable()
