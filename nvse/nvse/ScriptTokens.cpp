@@ -606,6 +606,7 @@ bool ScriptToken::ResolveVariable()
 	}
 	if (value.var == nullptr || varIdx != value.var->id || this->scriptEventList != context->eventList || clear)
 	{
+		value.var = nullptr;
 		scriptEventList = context->eventList;
 		if (refIdx)
 		{
