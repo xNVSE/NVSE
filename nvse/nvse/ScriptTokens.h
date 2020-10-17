@@ -213,8 +213,8 @@ struct ScriptToken
 #if RUNTIME
 	Token_Type	ReadFrom(ExpressionEvaluator* context);	// reconstitute param from compiled data, return the type
 	virtual ArrayID					GetArray();
-	ScriptEventList::Var *			GetVar();
-	void							ResolveVariable();
+	ScriptEventList::Var *			GetVar() const;
+	bool ResolveVariable();
 	void							Delete() const;
 #endif
 	virtual bool			CanConvertTo(Token_Type to) const;	// behavior varies b/w compile/run-time for ambiguous types

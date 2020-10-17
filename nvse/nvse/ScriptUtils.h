@@ -139,7 +139,7 @@ public:
 	// extract formatted string args compiled with compiler override
 	bool ExtractFormatStringArgs(va_list varArgs, UInt32 fmtStringPos, char* fmtStringOut, UInt32 maxParams);
 
-	ScriptToken* ExecuteCommandToken(ScriptToken const* token);
+	ScriptToken*	ExecuteCommandToken(ScriptToken const* token);
 	ScriptToken*	Evaluate();			// evaluates a single argument/token
 
 	ScriptToken*	Arg(UInt32 idx)

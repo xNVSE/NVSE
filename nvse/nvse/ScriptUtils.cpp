@@ -3629,6 +3629,11 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				CopyShortCircuitInfo(cmdToken, curToken);
 				curToken = cmdToken;
 			}
+			else if (curToken->IsVariable() && !curToken->ResolveVariable())
+			{
+				Error("Failed to resolve variable");
+				break;
+			}
 			operands.push(curToken);
 		}
 		else

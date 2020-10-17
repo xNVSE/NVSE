@@ -460,7 +460,6 @@ const char* ScriptToken::GetString()
 #if RUNTIME
 	else if (type == kTokenType_StringVar)
 	{
-		ResolveVariable();
 		if (!value.var)
 		{
 			return "";
@@ -468,20 +467,6 @@ const char* ScriptToken::GetString()
 		StringVar* strVar = g_StringMap.Get(value.var->data);
 		if (strVar) result = strVar->GetCString();
 		else result = NULL;
-	}
-	else if (type == kTokenType_Command)
-	{
-		auto* token = context->ExecuteCommandToken(this);
-		if (token)
-		{
-			if (token->type == kTokenType_String)
-			{
-				SetString(token->value.str);
-				token->value.str = NULL;
-				result = value.str;
-			}
-			delete token;
-		}
 	}
 #endif
 	if (result)
@@ -496,23 +481,11 @@ UInt32 ScriptToken::GetFormID()
 #if RUNTIME
 	if (type == kTokenType_RefVar)
 	{
-		ResolveVariable();
 		if (!value.var)
 		{
 			return 0;
 		}
 		return *reinterpret_cast<UInt64*>(&value.var->data);
-	}
-	if (type == kTokenType_Command)
-	{
-		auto* token = context->ExecuteCommandToken(this);
-		if (token)
-		{
-			const auto result = token->GetFormID();
-			delete token;
-			return result;
-		}
-		
 	}
 #endif
 	else if (type == kTokenType_Number)
@@ -530,22 +503,11 @@ TESForm* ScriptToken::GetTESForm()
 		return LookupFormByID(value.formID);
 	if (type == kTokenType_RefVar && value.var)
 	{
-		ResolveVariable();
 		if (!value.var)
 		{
 			return nullptr;
 		}
 		return LookupFormByID(*reinterpret_cast<UInt64*>(&value.var->data));
-	}
-	if (type == kTokenType_Command)
-	{
-		auto* token = context->ExecuteCommandToken(this);
-		if (token)
-		{
-			auto* result = token->GetTESForm();
-			delete token;
-			return result;
-		}
 	}
 #endif
 
@@ -565,23 +527,11 @@ double ScriptToken::GetNumber()
 	else if ((type == kTokenType_NumericVar && value.var) ||
 	         (type == kTokenType_StringVar && value.var))
 	{
-		ResolveVariable();
 		if (!value.var)
 		{
 			return 0.0;
 		}
 		return value.var->data;
-	}
-		
-	else if (type == kTokenType_Command)
-	{
-		auto* token = context->ExecuteCommandToken(this);
-		if (token)
-		{
-			const auto result = token->GetNumber();
-			delete token;
-			return result;
-		}
 	}
 #endif
 	return 0.0;
@@ -606,22 +556,11 @@ bool ScriptToken::GetBool()
 	case kTokenType_ArrayVar:
 	case kTokenType_RefVar:
 		{
-			ResolveVariable();
 			if (!value.var)
 			{
 				return false;
 			}
 			return value.var->data ? true : false;
-		}
-	case kTokenType_Command:
-		{
-			auto* token = context->ExecuteCommandToken(this);
-			if (token)
-			{
-				const auto result = token->GetBool();
-				delete token;
-				return result;
-			}
 		}
 #endif
 	default:
@@ -641,35 +580,23 @@ ArrayID ScriptToken::GetArray()
 		return value.arrID;
 	if (type == kTokenType_ArrayVar)
 	{
-		ResolveVariable();
 		if (!value.var)
 		{
 			return false;
 		}
 		return value.var->data;
 	}
-	if (type == kTokenType_Command)
-	{
-		auto* token = context->ExecuteCommandToken(this);
-		if (token)
-		{
-			const auto result = token->GetArray();
-			delete token;
-			return result;
-		}
-	}
 	return 0;
 }
 
-ScriptEventList::Var* ScriptToken::GetVar()
+ScriptEventList::Var* ScriptToken::GetVar() const
 {
 	if (!IsVariable())
 		return nullptr;
-	ResolveVariable();
 	return value.var;
 }
 
-void ScriptToken::ResolveVariable()
+bool ScriptToken::ResolveVariable()
 {
 	auto clear = false;
 	if (g_scriptEventListsDestroyed != eventListsDestroyedCount)
@@ -690,8 +617,12 @@ void ScriptToken::ResolveVariable()
 					scriptEventList = EventListFromForm(refVar->form);
 			}
 		}
-		value.var = scriptEventList->GetVariable(varIdx);
+		if (scriptEventList)
+			value.var = scriptEventList->GetVariable(varIdx);
+		if (!value.var)
+			return false;
 	}
+	return true;
 }
 #endif
 
@@ -808,10 +739,6 @@ Token_Type ToTokenType(CommandReturnType type)
 
 bool ScriptToken::CanConvertTo(Token_Type to) const
 {
-	if (type == kTokenType_Command)
-	{
-		return CanConvertOperand(ToTokenType(returnType), to);
-	}
 	return CanConvertOperand(type, to);
 }
 
