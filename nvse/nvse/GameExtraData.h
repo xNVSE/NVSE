@@ -312,7 +312,7 @@ public:
 	void EventCreate(UInt32 eventCode, TESObjectREFR* container);
 };
 
-UInt32 GetCountForExtraDataList(ExtraDataList* list);
+SInt32 GetCountForExtraDataList(ExtraDataList* list);
 
 // 010
 class ExtraContainerChanges : public BSExtraData
@@ -340,9 +340,26 @@ public:
 		static EntryData* Create(TESForm* pForm, UInt32 count = 1, ExtraContainerChanges::ExtendDataList* pExtendDataList = NULL);
 		ExtendDataList * Add(ExtraDataList* newList);
 		bool Remove(ExtraDataList* toRemove, bool bFree = false);
+
+		bool HasExtraLeveledItem()
+		{
+			if (!extendData) return false;
+			for (auto iter = extendData->Begin(); !iter.End(); ++iter)
+				if (iter->HasType(kExtraData_LeveledItem)) return true;
+			return false;
+		}
 	};
 
-	typedef tList<EntryData> EntryDataList;
+	struct EntryDataList : tList<EntryData>
+	{
+		EntryData *FindForItem(TESForm *item)
+		{
+			for (auto iter = Begin(); !iter.End(); ++iter)
+				if (iter->type == item) return iter.Get();
+			return NULL;
+		}
+	};
+
 	typedef std::vector<EntryData*> DataArray;
 	typedef std::vector<ExtendDataList*> ExtendDataArray;
 
@@ -389,6 +406,16 @@ public:
 };
 typedef ExtraContainerChanges::DataArray ExtraContainerDataArray;
 typedef ExtraContainerChanges::ExtendDataArray ExtraContainerExtendDataArray;
+
+struct InventoryItemData
+{
+	SInt32								count;
+	ExtraContainerChanges::EntryData	*entry;
+
+	InventoryItemData(SInt32 _count, ExtraContainerChanges::EntryData *_entry) : count(_count), entry(_entry) {}
+};
+
+typedef UnorderedMap<TESForm*, InventoryItemData> InventoryItemsMap;
 
 // Finds an ExtraDataList in an ExtendDataList
 class ExtraDataListInExtendDataListMatcher

@@ -645,7 +645,7 @@ ExtraWeaponModFlags* ExtraWeaponModFlags::Create()
 	return xWeaponModFlags;
 }
 
-UInt32 GetCountForExtraDataList(ExtraDataList* list)
+SInt32 GetCountForExtraDataList(ExtraDataList* list)
 {
 	if (!list)
 		return 1;
