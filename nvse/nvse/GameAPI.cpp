@@ -51,32 +51,8 @@ const _DoCheckScriptRunnerAndRun DoCheckScriptRunnerAndRun = (_DoCheckScriptRunn
 
 SaveGameManager ** g_saveGameManager = (SaveGameManager**)0x011DE134;
 
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-
-const _ExtractArgs ExtractArgs = (_ExtractArgs)0x005ACE60;
-
-const _FormHeap_Allocate FormHeap_Allocate = (_FormHeap_Allocate)0x00401000;
-const _FormHeap_Free FormHeap_Free = (_FormHeap_Free)0x0042F4D0;
-
-const _LookupFormByID LookupFormByID = (_LookupFormByID)0x004849B0;
-const _CreateFormInstance CreateFormInstance = (_CreateFormInstance)0x00465F10;
-
-const _GetSingleton ConsoleManager_GetSingleton = (_GetSingleton)0x0071B110;
-bool * bEchoConsole = (bool*)0x011F158C;
-
-const _QueueUIMessage QueueUIMessage = (_QueueUIMessage)0x00705220;	// Called from Cmd_AddSpell_Execute
-
-const _ShowMessageBox ShowMessageBox = (_ShowMessageBox)0x00703DB0;
-const _ShowMessageBox_Callback ShowMessageBox_Callback = (_ShowMessageBox_Callback)0x005B4B10;
-const _ShowMessageBox_pScriptRefID ShowMessageBox_pScriptRefID = (_ShowMessageBox_pScriptRefID)0x011CAC64;
-const _ShowMessageBox_button ShowMessageBox_button = (_ShowMessageBox_button)0x0118C684;
-
-const _GetActorValueName GetActorValueName = (_GetActorValueName)0x0066E620;	// See Cmd_GetActorValue_Eval
-const UInt32 * g_TlsIndexPtr = (UInt32 *)0x0126FD98;
-const _MarkBaseExtraListScriptEvent MarkBaseExtraListScriptEvent = (_MarkBaseExtraListScriptEvent)0x005AC900;
-const _DoCheckScriptRunnerAndRun DoCheckScriptRunnerAndRun = (_DoCheckScriptRunnerAndRun)0x005AC340;
-
-SaveGameManager ** g_saveGameManager = (SaveGameManager**)0x011DE134;
+// Johnny Guitar supports this
+const _GetFormByID GetFormByID = (_GetFormByID)(0x483A00);
 
 #elif EDITOR
 

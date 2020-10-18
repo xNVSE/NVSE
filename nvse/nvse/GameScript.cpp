@@ -109,12 +109,6 @@ ScriptEventList* Script::CreateEventList(void)
 	return result;
 }
 
-Script::RefVariable* ScriptBuffer::ResolveRef(const char* refName)
-{
-	// ###TODO: Handle player, ref vars, quests, globals
-	return NULL;
-}
-
 bool Script::RunScriptLine2(const char * text, TESObjectREFR* object, bool bSuppressOutput)
 {
 	//ToggleConsoleOutput(!bSuppressOutput);
@@ -139,7 +133,7 @@ bool Script::RunScriptLine(const char * text, TESObjectREFR * object)
 	return RunScriptLine2(text, object, false);
 }
 
-#else		// CS-stuff below
+#endif
 
 Script::RefVariable* ScriptBuffer::ResolveRef(const char* refName)
 {
@@ -198,8 +192,6 @@ Script::RefVariable* ScriptBuffer::ResolveRef(const char* refName)
 	else
 		return NULL;
 }
-
-#endif
 
 UInt32 ScriptBuffer::GetRefIdx(Script::RefVariable* ref)
 {
