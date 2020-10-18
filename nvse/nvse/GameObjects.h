@@ -155,7 +155,7 @@ public:
 	bool Update3D_v1c();	// Less worse version as used by some modders
 	TESContainer* GetContainer();
 	bool IsMapMarker();
-	UInt32 GetItemCount(TESForm *item);
+	bool GetInventoryItems(InventoryItemsMap &invItems);
 
 	static TESObjectREFR* Create(bool bTemp = false);
 

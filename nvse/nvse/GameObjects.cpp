@@ -73,7 +73,11 @@ QuestObjectiveTargets* PlayerCharacter::GetCurrentQuestObjectiveTargets()
 
 TESContainer* TESObjectREFR::GetContainer()
 {
-	return (TESContainer*)ThisStdCall(s_TESObjectREFR__GetContainer, this);	// First call in REFR::RemoveItem
+	if (IsActor())
+		return &((TESActorBase*)baseForm)->container;
+	if (baseForm->typeID == kFormType_Container)
+		return &((TESObjectCONT*)baseForm)->container;
+	return NULL;
 }
 
 bool TESObjectREFR::IsMapMarker()
@@ -268,3 +272,45 @@ ExtraContainerExtendDataArray	Actor::GetEquippedExtendDataList()
 	return outExtendData;
 }
 
+bool TESObjectREFR::GetInventoryItems(InventoryItemsMap &invItems)
+{
+	TESContainer *container = GetContainer();
+	if (!container) return false;
+	ExtraContainerChanges *xChanges = (ExtraContainerChanges*)extraDataList.GetByType(kExtraData_ContainerChanges);
+	ExtraContainerChanges::EntryDataList *entryList = (xChanges && xChanges->data) ? xChanges->data->objList : NULL;
+	if (!entryList) return false;
+
+	TESForm *item;
+	SInt32 contCount, countDelta;
+	ExtraContainerChanges::EntryData *entry;
+
+	for (auto contIter = container->formCountList.Begin(); !contIter.End(); ++contIter)
+	{
+		item = contIter->form;
+		if ((item->typeID == kFormType_LeveledItem) || invItems.HasKey(item))
+			continue;
+		contCount = container->GetCountForForm(item);
+		if (entry = entryList->FindForItem(item))
+		{
+			countDelta = entry->countDelta;
+			if (entry->HasExtraLeveledItem())
+				contCount = countDelta;
+			else contCount += countDelta;
+		}
+		if (contCount > 0)
+			invItems.Emplace(item, contCount, entry);
+	}
+
+	for (auto xtraIter = entryList->Begin(); !xtraIter.End(); ++xtraIter)
+	{
+		entry = xtraIter.Get();
+		item = entry->type;
+		if (invItems.HasKey(item))
+			continue;
+		countDelta = entry->countDelta;
+		if (countDelta > 0)
+			invItems.Emplace(item, countDelta, entry);
+	}
+
+	return !invItems.Empty();
+}

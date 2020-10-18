@@ -97,50 +97,54 @@ bool Cmd_GetFirstRefForItem_Execute(COMMAND_ARGS)
 		invRefArr->type = item;
 
 		// get count for base container
-		TESContainer* cont = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESContainer);
+		TESContainer *cont = thisObj->GetContainer();
 		if (cont)
 		{
-			TESContainer::FormCount* pFound = cont->formCountList.Find(ContainerFindType(item));
-			SInt32 baseCount = 0;
-			if (pFound) {
-				baseCount = (pFound->count > 0) ? pFound->count : 0;
-			}
-			
-			// get container changes for refr
-			ExtraContainerChanges* xChanges = (ExtraContainerChanges*)thisObj->extraDataList.GetByType(kExtraData_ContainerChanges);
-			TESObjectREFR *invRef;
-			if (xChanges && xChanges->data && xChanges->data->objList)
+			ExtraContainerChanges *xChanges = (ExtraContainerChanges*)thisObj->extraDataList.GetByType(kExtraData_ContainerChanges);
+			ExtraContainerChanges::EntryDataList *entryList = (xChanges && xChanges->data) ? xChanges->data->objList : NULL;
+			if (entryList)
 			{
-				// locate entry for this item type
-				ExtraContainerChanges::EntryData* entry = xChanges->data->objList->Find(ItemInEntryDataListMatcher(item));
-
-				// create temp refs for each stack
+				SInt32 baseCount = cont->GetCountForForm(item);
+				ExtraContainerChanges::EntryData *entry = entryList->FindForItem(item);
+				TESObjectREFR *invRef;
 				if (entry)
 				{
-					baseCount += entry->countDelta;
-					if (baseCount && entry->extendData)
+					SInt32 xCount = entry->countDelta;
+					if (baseCount)
+					{
+						if (entry->HasExtraLeveledItem())
+							baseCount = xCount;
+						else baseCount += xCount;
+					}
+					else baseCount = xCount;
+
+					if ((baseCount > 0) && entry->extendData)
 					{
 						ExtraDataList *xData;
-						SInt32 xCount;
-						for (auto xdIter = entry->extendData->Begin(); !xdIter.End(); ++xdIter)
+						for (auto xdlIter = entry->extendData->Begin(); !xdlIter.End(); ++xdlIter)
 						{
-							xData = xdIter.Get();
+							xData = xdlIter.Get();
 							xCount = GetCountForExtraDataList(xData);
+							if (xCount < 1) continue;
+							if (xCount > baseCount)
+								xCount = baseCount;
 							baseCount -= xCount;
 							invRef = CreateInventoryRefEntry(thisObj, item, xCount, xData);
-							if (invRef) invRefArr->refIDs.Append(invRef->refID);
+							invRefArr->refIDs.Append(invRef->refID);
+							if (!baseCount) break;
 						}
 					}
 				}
-			}
 
-			if (baseCount > 0)
-			{
-				invRef = CreateInventoryRefEntry(thisObj, item, baseCount, NULL);
-				if (invRef) invRefArr->refIDs.Append(invRef->refID);
+				if (baseCount > 0)
+				{
+					invRef = CreateInventoryRefEntry(thisObj, item, baseCount, NULL);
+					invRefArr->refIDs.Append(invRef->refID);
+				}
 			}
 		}
 	}
+
 	if (!invRefArr->refIDs.Empty())
 	{
 		invRefArr->next = 1;
@@ -179,57 +183,50 @@ bool Cmd_GetInvRefsForItem_Execute(COMMAND_ARGS)
 
 	if (thisObj && ExtractArgs(EXTRACT_ARGS, &item) && item)
 	{
+		TESContainer *cont = thisObj->GetContainer();
+		if (!cont) return true;
+		ExtraContainerChanges *xChanges = (ExtraContainerChanges*)thisObj->extraDataList.GetByType(kExtraData_ContainerChanges);
+		ExtraContainerChanges::EntryDataList *entryList = (xChanges && xChanges->data) ? xChanges->data->objList : NULL;
+		if (!entryList) return true;
+
 		double arrIndex = 0;
-
-		// get count for base container
-		TESContainer* cont = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESContainer);
-		if (cont) {
-			TESContainer::FormCount* pFound = cont->formCountList.Find(ContainerFindType(item));
-			SInt32 baseCount = 0;
-			if (pFound) {
-				baseCount = (pFound->count > 0) ? pFound->count : 0;
-			}
-			
-			// get container changes for refr
-			ExtraContainerChanges* xChanges = (ExtraContainerChanges*)thisObj->extraDataList.GetByType(kExtraData_ContainerChanges);
-			TESObjectREFR *invRef;
-			if (xChanges && xChanges->data && xChanges->data->objList)
+		SInt32 baseCount = cont->GetCountForForm(item);
+		ExtraContainerChanges::EntryData *entry = entryList->FindForItem(item);
+		TESObjectREFR *invRef;
+		if (entry)
+		{
+			SInt32 xCount = entry->countDelta;
+			if (baseCount)
 			{
-				// locate entry for this item type
-				ExtraContainerChanges::EntryData* entry = xChanges->data->objList->Find(ItemInEntryDataListMatcher(item));
-				// create temp refs for each stack
-				if (entry)
-				{
-					baseCount += entry->countDelta;
-					if (baseCount && entry->extendData)
-					{
-						ExtraDataList *xData;
-						SInt32 xCount;
-						for (auto xdIter = entry->extendData->Begin(); !xdIter.End(); ++xdIter)
-						{
-							xData = xdIter.Get();
-							xCount = GetCountForExtraDataList(xData);
-							baseCount -= xCount;
-							invRef = CreateInventoryRefEntry(thisObj, item, xCount, xData);
-							if (invRef)
-							{
-								arr->SetElementFormID(arrIndex, invRef->refID);
-								arrIndex += 1;
-							}
-						}
-					}
-				}
+				if (entry->HasExtraLeveledItem())
+					baseCount = xCount;
+				else baseCount += xCount;
 			}
+			else baseCount = xCount;
 
-			if (baseCount > 0)
+			if ((baseCount > 0) && entry->extendData)
 			{
-				invRef = CreateInventoryRefEntry(thisObj, item, baseCount, NULL);
-				if (invRef)
+				ExtraDataList *xData;
+				for (auto xdlIter = entry->extendData->Begin(); !xdlIter.End(); ++xdlIter)
 				{
+					xData = xdlIter.Get();
+					xCount = GetCountForExtraDataList(xData);
+					if (xCount < 1) continue;
+					if (xCount > baseCount)
+						xCount = baseCount;
+					baseCount -= xCount;
+					invRef = CreateInventoryRefEntry(thisObj, item, xCount, xData);
 					arr->SetElementFormID(arrIndex, invRef->refID);
 					arrIndex += 1;
+					if (!baseCount) break;
 				}
 			}
+		}
+
+		if (baseCount > 0)
+		{
+			invRef = CreateInventoryRefEntry(thisObj, item, baseCount, NULL);
+			arr->SetElementFormID(arrIndex, invRef->refID);
 		}
 	}
 

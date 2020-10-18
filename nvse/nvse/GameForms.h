@@ -1014,7 +1014,8 @@ public:
 
 	typedef tList<FormCount> FormCountList;
 	FormCountList formCountList;	// 004
-	// 00C
+	
+	SInt32 GetCountForForm(TESForm *form);
 };
 
 // 00C

@@ -113,91 +113,40 @@ bool StringIterLoop::Update(COMMAND_ARGS)
 
 ContainerIterLoop::ContainerIterLoop(const ForEachContext* context)
 {
-	TESObjectREFR* contRef = DYNAMIC_CAST((TESForm*)context->sourceID, TESForm, TESObjectREFR);
+	TESObjectREFR* contRef = (TESObjectREFR*)context->sourceID;
 	m_refVar = context->var;
 	m_iterIndex = 0;
-	m_invRef = CreateInventoryRef(contRef, IRefData(NULL, NULL, NULL), false);	
+	m_invRef = CreateInventoryRef(contRef, IRefData(), false);
 
-	// first: figure out what items exist by default
-	TESContainer* cont = DYNAMIC_CAST(contRef->baseForm, TESForm, TESContainer);
-	if (cont)
+	InventoryItemsMap invItems(0x40);
+	if (contRef->GetInventoryItems(invItems))
 	{
-		UnorderedMap<TESForm*, SInt32> baseObjectCounts;
-		for (TESContainer::FormCountList::Iterator cur = cont->formCountList.Begin(); !cur.End(); ++cur)
+		TESForm *item;
+		SInt32 baseCount, xCount;
+		ExtraContainerChanges::EntryData *entry;
+		ExtraDataList *xData;
+
+		for (auto dataIter = invItems.Begin(); !dataIter.End(); ++dataIter)
 		{
-			if (cur.Get() && cur.Get()->form && cur.Get()->form->typeID != kFormType_LeveledItem)
+			item = dataIter.Key();
+			baseCount = dataIter.Get().count;
+			entry = dataIter.Get().entry;
+			if (entry && entry->extendData)
 			{
-				//DEBUG_PRINT("Base container has %d %s", cur.Get()->count, GetFullName(cur.Get()->form));
-				baseObjectCounts[cur.Get()->form] = cur.Get()->count;
-			}
-		}
-	
-		// now populate the vec
-		ExtraContainerChanges* xChanges = (ExtraContainerChanges*)contRef->extraDataList.GetByType(kExtraData_ContainerChanges);
-		if (xChanges && xChanges->data)
-		{
-			for (ExtraContainerChanges::EntryDataList::Iterator entry = xChanges->data->objList->Begin(); !entry.End(); ++entry)
-			{
-				if (entry.Get())
+				for (auto xdlIter = entry->extendData->Begin(); !xdlIter.End(); ++xdlIter)
 				{
-					TESForm* baseObj = entry.Get()->type;
-
-					SInt32 countDelta = entry.Get()->countDelta;
-					SInt32 actualCount = countDelta;
-					SInt32 *isInBaseContainer = baseObjectCounts.GetPtr(baseObj);
-					SInt32 xCount;
-					if (isInBaseContainer)
-					{
-						*isInBaseContainer += countDelta;
-						actualCount = *isInBaseContainer;
-					}
-
-					if (entry.Get()->extendData)
-					{
-						UInt32 total = 0;
-						for (ExtraContainerChanges::ExtendDataList::Iterator extend = entry.Get()->extendData->Begin(); !extend.End(); ++extend)
-						{
-							if (total >= actualCount)
-								break;
-
-							xCount = GetCountForExtraDataList(extend.Get());
-							total += xCount;
-							m_elements.Append(CreateTempEntry(baseObj, xCount, extend.Get()));
-						}
-
-						SInt32 remainder = isInBaseContainer ? *isInBaseContainer : countDelta;
-						remainder -= total;
-						if (remainder > 0)
-							m_elements.Append(CreateTempEntry(baseObj, remainder, NULL));
-					}
-					else
-					{
-						SInt32 actualCount = countDelta;
-						if (isInBaseContainer)
-							actualCount += *isInBaseContainer;
-
-						if (actualCount > 0)
-							m_elements.Append(CreateTempEntry(baseObj, actualCount, NULL));
-					}
-
-					if (isInBaseContainer)
-						baseObjectCounts.Erase(baseObj);
-				}
-				else {
-					DEBUG_PRINT("Warning: encountered NULL ExtraContainerChanges::Entry::Data pointer in ContainerIterLoop constructor.");
+					xData = xdlIter.Get();
+					xCount = GetCountForExtraDataList(xData);
+					if (xCount < 1) continue;
+					if (xCount > baseCount)
+						xCount = baseCount;
+					baseCount -= xCount;
+					m_elements.Append(CreateTempEntry(item, xCount, xData));
+					if (!baseCount) break;
 				}
 			}
-		}
-
-		// now add entries for objects in base but without associated ExtraContainerChanges
-		// these extra entries will be removed when we're done with the loop
-		if (!baseObjectCounts.Empty())
-		{
-			for (auto iter = baseObjectCounts.Begin(); !iter.End(); ++iter)
-			{
-				if (*iter > 0)
-					m_elements.Append(CreateTempEntry(iter.Key(), *iter, NULL));
-			}
+			if (baseCount > 0)
+				m_elements.Append(CreateTempEntry(item, baseCount, NULL));
 		}
 	}
 

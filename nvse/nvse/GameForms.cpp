@@ -819,3 +819,10 @@ Script* EffectSetting::	RemoveScript()
 	return SetScript(NULL);
 };
 
+SInt32 TESContainer::GetCountForForm(TESForm *form)
+{
+	SInt32 result = 0;
+	for (auto iter = formCountList.Begin(); !iter.End(); ++iter)
+		if (iter->form == form) result += iter->count;
+	return result;
+}
