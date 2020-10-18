@@ -328,12 +328,11 @@ ScriptToken* Eval_Assign_String(OperatorType op, ScriptToken* lh, ScriptToken* r
 	StringVar* strVar = g_StringMap.Get(strID);
 
 	const char *str = rh->GetString();
+	if ((*str == '%') && ((str[1] | 0x20) == 'e'))
+		str += 2;
 	
 	if (!strVar)
-	{
-		//strID = g_StringMap.Add(context->script->GetModIndex(), rh->GetString(), makeTemporary);
 		var->data = (int)AddStringVar(str, *lh);
-	}
 	else strVar->Set(str);
 
 	return ScriptToken::Create(str);
