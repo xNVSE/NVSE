@@ -795,7 +795,7 @@ namespace ExtractArgsOverride {
 			g_ErrOut.Show("ERROR: Could not get execution context in ExtractFormattedString()");
 			return false;
 		}
-
+		*opcodeOffsetPtr += 2;
 		ExpressionEvaluator eval(paramInfo, scriptData, context->callingRef, context->containerRef, scriptObj, eventList,
 			NULL, opcodeOffsetPtr);
 		return eval.ExtractFormatStringArgs(varArgs, fmtStringPos, fmtStringOut, maxParams);

@@ -1264,8 +1264,7 @@ bool ExtractFormatStringArgs(UInt32 fmtStringPos, char* buffer, ParamInfo * para
 	scriptData += 2;
 
 	if (numArgs < 0) {
-		UInt32 offsetPtr = 0;
-		bool bResult = ExtractArgsOverride::ExtractFormattedString(paramInfo, scriptData, scriptObj, eventList, &offsetPtr, args,
+		bool bResult = ExtractArgsOverride::ExtractFormattedString(paramInfo, static_cast<UInt8*>(scriptDataIn), scriptObj, eventList, scriptDataOffset, args,
 			fmtStringPos, buffer, maxParams);
 		if (!bResult) {
 			DEBUG_PRINT("ExtractFormatStringArgs returns false");
