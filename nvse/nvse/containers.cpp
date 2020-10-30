@@ -7,6 +7,7 @@ alignas(16) void *s_availableCachedBlocks[(MAX_CACHED_BLOCK_SIZE >> 2) + 1] = {N
 
 ICriticalSection s_poolCritSection;
 
+#if !_DEBUG
 __declspec(naked) void* __fastcall Pool_Alloc(UInt32 size)
 {
 	__asm
@@ -186,6 +187,51 @@ __declspec(naked) void* __fastcall Pool_Alloc_Buckets(UInt32 numBuckets)
 		retn
 	}
 }
+
+#else
+
+// doing this to track memory related issues, debug mode new operator will memset the data
+
+void* Pool_Alloc(UInt32 size)
+{
+	return ::operator new(size);
+}
+
+void* Pool_Alloc_Al4(UInt32 size)
+{
+	return Pool_Alloc(size);
+}
+
+void Pool_Free(void *pBlock, UInt32 size)
+{
+	::operator delete(pBlock);
+}
+
+void Pool_Free_Al4(void *pBlock, UInt32 size)
+{
+	Pool_Free(pBlock, size);
+}
+
+void* Pool_Realloc(void *pBlock, UInt32 curSize, UInt32 reqSize)
+{
+	void* data = Pool_Alloc(reqSize);
+	std::memcpy(data, pBlock, curSize);
+	Pool_Free(pBlock, curSize);
+	return data;
+}
+
+void* Pool_Realloc_Al4(void *pBlock, UInt32 curSize, UInt32 reqSize)
+{
+	return Pool_Realloc(pBlock, curSize, reqSize);
+}
+
+void* Pool_Alloc_Buckets(UInt32 numBuckets)
+{
+	void* data = Pool_Alloc(numBuckets * 4);
+	std::memset(data, 0, numBuckets * 4);
+	return data;
+}
+#endif
 
 __declspec(naked) UInt32 __fastcall AlignBucketCount(UInt32 count)
 {

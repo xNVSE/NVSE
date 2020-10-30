@@ -8,6 +8,7 @@
 #define MAP_MAX_BUCKET_COUNT		0x40000
 #define VECTOR_DEFAULT_ALLOC		8
 
+#if !_DEBUG
 void* __fastcall Pool_Alloc(UInt32 size);
 void* __fastcall Pool_Alloc_Al4(UInt32 size);
 void __fastcall Pool_Free(void *pBlock, UInt32 size);
@@ -15,6 +16,15 @@ void __fastcall Pool_Free_Al4(void *pBlock, UInt32 size);
 void* __fastcall Pool_Realloc(void *pBlock, UInt32 curSize, UInt32 reqSize);
 void* __fastcall Pool_Realloc_Al4(void *pBlock, UInt32 curSize, UInt32 reqSize);
 void* __fastcall Pool_Alloc_Buckets(UInt32 numBuckets);
+#else
+void* Pool_Alloc(UInt32 size);
+void* Pool_Alloc_Al4(UInt32 size);
+void Pool_Free(void* pBlock, UInt32 size);
+void Pool_Free_Al4(void* pBlock, UInt32 size);
+void* Pool_Realloc(void* pBlock, UInt32 curSize, UInt32 reqSize);
+void* Pool_Realloc_Al4(void* pBlock, UInt32 curSize, UInt32 reqSize);
+void* Pool_Alloc_Buckets(UInt32 numBuckets);
+#endif
 UInt32 __fastcall AlignBucketCount(UInt32 count);
 
 #define POOL_ALLOC(count, type) (alignof(type) < 4) ? (type*)Pool_Alloc_Al4(count * sizeof(type)) : (type*)Pool_Alloc(count * sizeof(type))
