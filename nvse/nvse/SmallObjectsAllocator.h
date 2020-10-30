@@ -1,6 +1,8 @@
 #pragma once
 
+#if !_DEBUG
 #include "MemoryPool.h"
+#endif
 #include "common/ICriticalSection.h"
 
 
@@ -11,13 +13,18 @@ namespace SmallObjectsAllocator
 	{
 #if _DEBUG
 		std::size_t count_ = 0;
-#endif
+#else
 		MemoryPool<T, sizeof(T)* C> pool_;
+#endif
 		ICriticalSection criticalSection_;
 
 		void Free(T* ptr)
 		{
+#if _DEBUG
+			::operator delete(ptr);
+#else
 			pool_.deallocate(ptr);
+#endif
 		}
 		
 	public:
@@ -30,9 +37,13 @@ namespace SmallObjectsAllocator
 			{
 				_MESSAGE("Warning, possible memory leak");
 			}
-#endif
-			
+
+			return static_cast<T*>(operator new(sizeof(T)));
+#else
 			return pool_.allocate();
+
+#endif
+
 		}
 
 		void Free(void* ptr)
