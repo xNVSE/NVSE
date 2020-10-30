@@ -3577,7 +3577,7 @@ void ShortCircuit(OperandStack& operands, CachedTokenIter& iter)
 		{
 			// Make sure only one operand is left in RPN stack
 			ScriptToken *operand = operands.top();
-			if (operand)
+			if (operand && operand != lastToken)
 				operand->Delete();
 			operands.pop();
 		}
