@@ -47,7 +47,7 @@ template <typename T_Data> class Stack
 	Node	*head;
 
 public:
-	Stack() : head(NULL) {}
+	Stack() : head(nullptr) {}
 	~Stack() {Clear();}
 
 	bool Empty() const {return !head;}
@@ -90,7 +90,7 @@ public:
 
 	T_Data *Pop()
 	{
-		if (!head) return NULL;
+		if (!head) return nullptr;
 		T_Data *frontItem = &head->data;
 		Node *toRemove = head;
 		head = head->next;
@@ -146,7 +146,7 @@ template <typename T_Data> class LinkedList
 	{
 		Node *newNode = ALLOC_NODE(Node);
 		newNode->next = head;
-		newNode->prev = NULL;
+		newNode->prev = nullptr;
 		if (head) head->prev = newNode;
 		else tail = newNode;
 		head = newNode;
@@ -156,7 +156,7 @@ template <typename T_Data> class LinkedList
 	Node *AppendNew()
 	{
 		Node *newNode = ALLOC_NODE(Node);
-		newNode->next = NULL;
+		newNode->next = nullptr;
 		newNode->prev = tail;
 		if (tail) tail->next = newNode;
 		else head = newNode;
@@ -189,7 +189,7 @@ template <typename T_Data> class LinkedList
 			}
 			while (pNode = pNode->next);
 		}
-		return NULL;
+		return nullptr;
 	}
 
 	template <class Matcher>
@@ -205,7 +205,7 @@ template <typename T_Data> class LinkedList
 			}
 			while (pNode = pNode->next);
 		}
-		return NULL;
+		return nullptr;
 	}
 
 	void RemoveNode(Node *toRemove)
@@ -220,7 +220,7 @@ template <typename T_Data> class LinkedList
 	}
 
 public:
-	LinkedList() : head(NULL), tail(NULL) {}
+	LinkedList() : head(nullptr), tail(nullptr) {}
 	~LinkedList() {Clear();}
 
 	bool Empty() const {return !head;}
@@ -302,17 +302,17 @@ public:
 	T_Data *GetNth(UInt32 index) const
 	{
 		Node *pNode = GetNthNode(index);
-		return pNode ? &pNode->data : NULL;
+		return pNode ? &pNode->data : nullptr;
 	}
 
 	T_Data *Front() const
 	{
-		return head ? &head->data : NULL;
+		return head ? &head->data : nullptr;
 	}
 
 	T_Data *Back() const
 	{
-		return tail ? &tail->data : NULL;
+		return tail ? &tail->data : nullptr;
 	}
 
 	SInt32 GetIndexOf(Data_Arg item) const
@@ -389,7 +389,7 @@ public:
 			RemoveNode(pNode);
 			return &pNode->data;
 		}
-		return NULL;
+		return nullptr;
 	}
 
 	template <class Matcher>
@@ -401,7 +401,7 @@ public:
 			RemoveNode(pNode);
 			return &pNode->data;
 		}
-		return NULL;
+		return nullptr;
 	}
 
 	T_Data *RemoveNth(UInt32 index)
@@ -412,12 +412,12 @@ public:
 			RemoveNode(pNode);
 			return &pNode->data;
 		}
-		return NULL;
+		return nullptr;
 	}
 
 	T_Data *PopFront()
 	{
-		if (!head) return NULL;
+		if (!head) return nullptr;
 		T_Data *frontItem = &head->data;
 		RemoveNode(head);
 		return frontItem;
@@ -425,7 +425,7 @@ public:
 
 	T_Data *PopBack()
 	{
-		if (!tail) return NULL;
+		if (!tail) return nullptr;
 		T_Data *backItem = &tail->data;
 		RemoveNode(tail);
 		return backItem;
@@ -443,7 +443,7 @@ public:
 			Pool_Free(pNode, sizeof(Node));
 		}
 		while (head);
-		tail = NULL;
+		tail = nullptr;
 	}
 
 	class Iterator
@@ -454,14 +454,16 @@ public:
 
 	public:
 		bool End() const {return !pNode;}
+		explicit operator bool() const {return pNode != nullptr;}
 		void operator++() {pNode = pNode->next;}
 		void operator--() {pNode = pNode->prev;}
 
 		Data_Arg operator*() const {return pNode->data;}
 		Data_Arg operator->() const {return pNode->data;}
+		Data_Arg operator()() const {return pNode->data;}
 		Data_Arg Get() const {return pNode->data;}
 
-		Iterator() : pNode(NULL) {}
+		Iterator() : pNode(nullptr) {}
 		Iterator(Node *_node) : pNode(_node) {}
 
 		Iterator& operator=(const Iterator &other)
@@ -486,7 +488,7 @@ public:
 			RemoveNode(pNode);
 			return &pNode->data;
 		}
-		return NULL;
+		return nullptr;
 	}
 
 	Iterator Begin() {return Iterator(head);}
@@ -516,8 +518,8 @@ public:
 	void Set(Key_Arg inKey) {key = inKey;}
 	char Compare(Key_Arg inKey) const
 	{
-		if (inKey == key) return 0;
-		return (inKey < key) ? -1 : 1;
+		if (inKey < key) return -1;
+		return (key < inKey) ? 1 : 0;
 	}
 	void Clear() {key.~T_Key();}
 };
@@ -645,13 +647,13 @@ template <typename T_Key, typename T_Data> class Map
 	Entry *End() const {return entries + numEntries;}
 
 public:
-	Map(UInt32 _alloc = MAP_DEFAULT_ALLOC) : entries(NULL), numEntries(0), numAlloc(_alloc) {}
+	Map(UInt32 _alloc = MAP_DEFAULT_ALLOC) : entries(nullptr), numEntries(0), numAlloc(_alloc) {}
 	~Map()
 	{
 		if (!entries) return;
 		Clear();
 		POOL_FREE(entries, numAlloc, Entry);
-		entries = NULL;
+		entries = nullptr;
 	}
 
 	UInt32 Size() const {return numEntries;}
@@ -697,7 +699,7 @@ public:
 	T_Data* GetPtr(Key_Arg key)
 	{
 		UInt32 index;
-		return GetIndex(key, &index) ? entries[index].value.Ptr() : NULL;
+		return GetIndex(key, &index) ? entries[index].value.Ptr() : nullptr;
 	}
 
 	bool Erase(Key_Arg key)
@@ -738,7 +740,9 @@ public:
 		Data_Arg Get() const {return pEntry->value.Get();}
 		Data_Arg operator*() const {return pEntry->value.Get();}
 		Data_Arg operator->() const {return pEntry->value.Get();}
+		Data_Arg operator()() const {return pEntry->value.Get();}
 		bool End() const {return index >= table->numEntries;}
+		explicit operator bool() const {return index < table->numEntries;}
 		Map* Table() const {return table;}
 
 		void Init(Map &source)
@@ -792,7 +796,6 @@ public:
 			}
 		}
 
-		Iterator() {}
 		Iterator(Map &source) : table(&source), pEntry(source.entries), index(0) {}
 		Iterator(Map &source, Key_Arg key) {Find(source, key);}
 	};
@@ -835,13 +838,13 @@ protected:
 	M_Key *End() const {return keys + numKeys;}
 
 public:
-	Set(UInt32 _alloc = MAP_DEFAULT_ALLOC) : keys(NULL), numKeys(0), numAlloc(_alloc) {}
+	Set(UInt32 _alloc = MAP_DEFAULT_ALLOC) : keys(nullptr), numKeys(0), numAlloc(_alloc) {}
 	~Set()
 	{
 		if (!keys) return;
 		Clear();
 		POOL_FREE(keys, numAlloc, M_Key);
-		keys = NULL;
+		keys = nullptr;
 	}
 
 	UInt32 Size() const {return numKeys;}
@@ -910,7 +913,10 @@ public:
 	public:
 		Key_Arg operator*() const {return pKey->Get();}
 		Key_Arg operator->() const {return pKey->Get();}
+		Key_Arg operator()() const {return pKey->Get();}
+		Key_Arg Key() const {return pKey->Get();}
 		bool End() const {return index >= table->numKeys;}
+		explicit operator bool() const {return index < table->numKeys;}
 		Set* Table() const {return table;}
 
 		void operator++()
@@ -945,7 +951,6 @@ public:
 			}
 		}
 
-		Iterator() {}
 		Iterator(Set &source) : table(&source), pKey(source.keys), index(0) {}
 		Iterator(Set &source, Key_Arg key) : table(&source) {Find(key);}
 	};
@@ -1113,7 +1118,7 @@ template <typename T_Key, typename T_Data> class UnorderedMap
 			for (Entry *pEntry = buckets[hashVal & (numBuckets - 1)].entries; pEntry; pEntry = pEntry->next)
 				if (pEntry->key.Match(key, hashVal)) return pEntry;
 		}
-		return NULL;
+		return nullptr;
 	}
 
 	bool InsertKey(Key_Arg key, T_Data **outData)
@@ -1142,13 +1147,13 @@ template <typename T_Key, typename T_Data> class UnorderedMap
 	}
 
 public:
-	UnorderedMap(UInt32 _numBuckets = MAP_DEFAULT_BUCKET_COUNT) : buckets(NULL), numBuckets(_numBuckets), numEntries(0) {}
+	UnorderedMap(UInt32 _numBuckets = MAP_DEFAULT_BUCKET_COUNT) : buckets(nullptr), numBuckets(_numBuckets), numEntries(0) {}
 	~UnorderedMap()
 	{
 		if (!buckets) return;
 		Clear();
 		Pool_Free(buckets, numBuckets * sizeof(Bucket));
-		buckets = NULL;
+		buckets = nullptr;
 	}
 
 	UInt32 Size() const {return numEntries;}
@@ -1204,7 +1209,7 @@ public:
 	T_Data* GetPtr(Key_Arg key)
 	{
 		Entry *pEntry = FindEntry(key);
-		return pEntry ? &pEntry->value : NULL;
+		return pEntry ? &pEntry->value : nullptr;
 	}
 
 	bool Erase(Key_Arg key)
@@ -1213,7 +1218,7 @@ public:
 		{
 			UInt32 hashVal = HashKey<T_Key>(key);
 			Bucket *pBucket = &buckets[hashVal & (numBuckets - 1)];
-			Entry *pEntry = pBucket->entries, *prev = NULL;
+			Entry *pEntry = pBucket->entries, *prev = nullptr;
 			while (pEntry)
 			{
 				if (pEntry->key.Match(key, hashVal))
@@ -1260,7 +1265,7 @@ public:
 		void Init(UnorderedMap &_table)
 		{
 			table = &_table;
-			entry = NULL;
+			entry = nullptr;
 			if (table->numEntries)
 			{
 				bucket = table->buckets;
@@ -1272,7 +1277,7 @@ public:
 		{
 			if (!table->numEntries)
 			{
-				entry = NULL;
+				entry = nullptr;
 				return;
 			}
 			UInt32 hashVal = HashKey<T_Key>(key);
@@ -1291,7 +1296,9 @@ public:
 		Data_Arg Get() const {return entry->value;}
 		Data_Arg operator*() const {return entry->value;}
 		Data_Arg operator->() const {return entry->value;}
+		Data_Arg operator()() const {return entry->value;}
 		bool End() const {return !entry;}
+		explicit operator bool() const {return entry != nullptr;}
 
 		void operator++()
 		{
@@ -1311,14 +1318,14 @@ public:
 			{
 				for (Entry *temp = bucket->entries; temp; temp = temp->next)
 					if (temp == entry) return true;
-				entry = NULL;
+				entry = nullptr;
 			}
 			return false;
 		}
 
 		void Remove()
 		{
-			Entry *curr = bucket->entries, *prev = NULL;
+			Entry *curr = bucket->entries, *prev = nullptr;
 			do
 			{
 				if (curr == entry) break;
@@ -1330,7 +1337,7 @@ public:
 			entry = prev;
 		}
 
-		Iterator() : table(NULL), entry(NULL) {}
+		Iterator() : table(nullptr), entry(nullptr) {}
 		Iterator(UnorderedMap &_table) {Init(_table);}
 		Iterator(UnorderedMap &_table, Key_Arg key) : table(&_table) {Find(key);}
 	};
@@ -1424,13 +1431,13 @@ template <typename T_Key> class UnorderedSet
 	}
 
 public:
-	UnorderedSet(UInt32 _numBuckets = MAP_DEFAULT_BUCKET_COUNT) : buckets(NULL), numBuckets(_numBuckets), numEntries(0) {}
+	UnorderedSet(UInt32 _numBuckets = MAP_DEFAULT_BUCKET_COUNT) : buckets(nullptr), numBuckets(_numBuckets), numEntries(0) {}
 	~UnorderedSet()
 	{
 		if (!buckets) return;
 		Clear();
 		Pool_Free(buckets, numBuckets * sizeof(Bucket));
-		buckets = NULL;
+		buckets = nullptr;
 	}
 
 	UInt32 Size() const {return numEntries;}
@@ -1488,7 +1495,7 @@ public:
 		{
 			UInt32 hashVal = HashKey<T_Key>(key);
 			Bucket *pBucket = &buckets[hashVal & (numBuckets - 1)];
-			Entry *pEntry = pBucket->entries, *prev = NULL;
+			Entry *pEntry = pBucket->entries, *prev = nullptr;
 			while (pEntry)
 			{
 				if (pEntry->key.Match(key, hashVal))
@@ -1535,7 +1542,7 @@ public:
 		void Init(UnorderedSet &_table)
 		{
 			table = &_table;
-			entry = NULL;
+			entry = nullptr;
 			if (table->numEntries)
 			{
 				bucket = table->buckets;
@@ -1545,7 +1552,10 @@ public:
 
 		Key_Arg operator*() const {return entry->key.Get();}
 		Key_Arg operator->() const {return entry->key.Get();}
+		Key_Arg operator()() const {return entry->key.Get();}
+		Key_Arg Key() const {return entry->key.Get();}
 		bool End() const {return !entry;}
+		explicit operator bool() const {return entry != nullptr;}
 
 		void operator++()
 		{
@@ -1555,7 +1565,7 @@ public:
 			FindNonEmpty();
 		}
 
-		Iterator() : table(NULL), entry(NULL) {}
+		Iterator() : table(nullptr), entry(nullptr) {}
 		Iterator(UnorderedSet &_table) {Init(_table);}
 	};
 
@@ -1586,13 +1596,13 @@ template <typename T_Data> class Vector
 	T_Data *End() const {return data + numItems;}
 
 public:
-	Vector(UInt32 _alloc = VECTOR_DEFAULT_ALLOC) : data(NULL), numItems(0), numAlloc(_alloc) {}
+	Vector(UInt32 _alloc = VECTOR_DEFAULT_ALLOC) : data(nullptr), numItems(0), numAlloc(_alloc) {}
 	~Vector()
 	{
 		if (!data) return;
 		Clear();
 		POOL_FREE(data, numAlloc, T_Data);
-		data = NULL;
+		data = nullptr;
 	}
 
 	UInt32 Size() const {return numItems;}
@@ -1602,7 +1612,7 @@ public:
 
 	T_Data& operator[](UInt32 index) const {return data[index];}
 
-	T_Data* GetPtr(UInt32 index) const {return (index < numItems) ? (data + index) : NULL;}
+	T_Data* GetPtr(UInt32 index) const {return (index < numItems) ? (data + index) : nullptr;}
 
 	Data_Arg Top() const {return data[numItems - 1];}
 
@@ -1624,7 +1634,7 @@ public:
 	T_Data* Insert(UInt32 index, Data_Arg item)
 	{
 		if (index > numItems)
-			return NULL;
+			return nullptr;
 		UInt32 size = numItems - index;
 		T_Data *pData = AllocateData();
 		if (size)
@@ -1640,7 +1650,7 @@ public:
 	T_Data* Insert(UInt32 index, Args&& ...args)
 	{
 		if (index > numItems)
-			return NULL;
+			return nullptr;
 		UInt32 size = numItems - index;
 		T_Data *pData = AllocateData();
 		if (size)
@@ -2037,7 +2047,9 @@ public:
 		Data_Arg Get() const {return *pData;}
 		Data_Arg operator*() const {return *pData;}
 		Data_Arg operator->() const {return *pData;}
+		Data_Arg operator()() const {return *pData;}
 		bool End() const {return index >= contObj->numItems;}
+		explicit operator bool() const {return index < contObj->numItems;}
 		UInt32 Index() const {return index;}
 
 		void Init(Vector &source)
@@ -2090,7 +2102,6 @@ public:
 			}
 		}
 
-		Iterator() {}
 		Iterator(Vector &source) : contObj(&source), pData(source.data), index(0) {}
 		Iterator(Vector &source, UInt32 _index) : contObj(&source), index(_index)
 		{
@@ -2104,7 +2115,8 @@ public:
 
 template <typename T_Data, UInt32 size> class FixedTypeArray
 {
-protected:
+	using Data_Arg = std::conditional_t<std::is_scalar_v<T_Data>, T_Data, T_Data&>;
+
 	UInt32		numItems;
 	T_Data		data[size];
 
@@ -2115,16 +2127,19 @@ public:
 	bool Empty() const {return !numItems;}
 	T_Data *Data() {return data;}
 
-	bool Append(T_Data item)
+	bool Append(Data_Arg item)
 	{
-		if (numItems >= size) return false;
-		data[numItems++] = item;
-		return true;
+		if (numItems < size)
+		{
+			RawAssign<T_Data>(data[numItems++], item);
+			return true;
+		}
+		return false;
 	}
 
-	T_Data PopBack()
+	T_Data *PopBack()
 	{
-		return numItems ? data[--numItems] : 0;
+		return numItems ? &data[--numItems] : nullptr;
 	}
 
 	class Iterator
@@ -2135,12 +2150,14 @@ public:
 		T_Data		*pEnd;
 
 	public:
-		bool End() const {return pData == pEnd;}
+		bool End() const {return pData >= pEnd;}
+		explicit operator bool() const {return pData < pEnd;}
 		void operator++() {pData++;}
 
-		T_Data& operator*() const {return *pData;}
-		T_Data& operator->() const {return *pData;}
-		T_Data& Get() const {return *pData;}
+		Data_Arg operator*() const {return *pData;}
+		Data_Arg operator->() const {return *pData;}
+		Data_Arg operator()() const {return *pData;}
+		Data_Arg Get() const {return *pData;}
 
 		Iterator(FixedTypeArray &source) : pData(source.data), pEnd(source.data + source.numItems) {}
 	};
