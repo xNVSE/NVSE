@@ -296,7 +296,8 @@ private:
 extern CommandTable	g_consoleCommands;
 extern CommandTable	g_scriptCommands;
 
-namespace PluginAPI {
+namespace PluginAPI
+{
 	const CommandInfo* GetCmdTblStart();
 	const CommandInfo* GetCmdTblEnd();
 	const CommandInfo* GetCmdByOpcode(UInt32 opcode);
@@ -304,4 +305,5 @@ namespace PluginAPI {
 	UInt32 GetCmdRetnType(const CommandInfo* cmd);
 	UInt32 GetReqVersion(const CommandInfo* cmd);
 	const PluginInfo* GetCmdParentPlugin(const CommandInfo* cmd);
+	const PluginInfo* GetPluginInfoByName(const char *pluginName);
 }

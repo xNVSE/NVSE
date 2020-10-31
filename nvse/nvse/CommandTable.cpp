@@ -1620,7 +1620,8 @@ void CommandTable::AddCommandsV5()
 	ADD_CMD(ShowLevelUpMenu);
 }
 
-namespace PluginAPI {
+namespace PluginAPI
+{
 	const CommandInfo* GetCmdTblStart() { return g_scriptCommands.GetStart(); }
 	const CommandInfo* GetCmdTblEnd() { return g_scriptCommands.GetEnd(); }
 	const CommandInfo* GetCmdByOpcode(UInt32 opcode) { return g_scriptCommands.GetByOpcode(opcode); }
@@ -1628,4 +1629,5 @@ namespace PluginAPI {
 	UInt32 GetCmdRetnType(const CommandInfo* cmd) { return g_scriptCommands.GetReturnType(cmd); }
 	UInt32 GetReqVersion(const CommandInfo* cmd) { return g_scriptCommands.GetRequiredNVSEVersion(cmd); }
 	const PluginInfo* GetCmdParentPlugin(const CommandInfo* cmd) { return g_scriptCommands.GetParentPlugin(cmd); }
+	const PluginInfo* GetPluginInfoByName(const char *pluginName) {	return g_pluginManager.GetInfoByName(pluginName); }
 }

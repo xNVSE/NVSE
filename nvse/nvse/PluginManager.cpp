@@ -70,7 +70,8 @@ static const NVSECommandTableInterface g_NVSECommandTableInterface =
 	PluginAPI::GetCmdByName,
 	PluginAPI::GetCmdRetnType,
 	PluginAPI::GetReqVersion,
-	PluginAPI::GetCmdParentPlugin
+	PluginAPI::GetCmdParentPlugin,
+	PluginAPI::GetPluginInfoByName
 };
 
 static const NVSEInterface g_NVSEInterface =
