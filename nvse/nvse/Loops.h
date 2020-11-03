@@ -114,7 +114,7 @@ class LoopManager
 		UInt32		endIP;		// ip of instruction following loop end
 	};
 
-	FastStack<LoopInfo>	m_loops;
+	Stack<LoopInfo>	m_loops;
 	
 	void RestoreStack(ScriptRunner* state, SavedIPInfo* info);
 
