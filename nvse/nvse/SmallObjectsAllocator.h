@@ -1,15 +1,13 @@
 #pragma once
 
-#if !_DEBUG
 #include "MemoryPool.h"
-#endif
 #include "common/ICriticalSection.h"
 
 
 namespace SmallObjectsAllocator
 {
 	template <class T, std::size_t C>
-	class Allocator
+	class LockBasedAllocator
 	{
 #if _DEBUG
 		std::size_t count_ = 0;
@@ -53,6 +51,48 @@ namespace SmallObjectsAllocator
 #if _DEBUG
 			--count_;
 #endif
+		}
+
+		
+	};
+
+	// only to be used where allocations are *not* shared between threads. 10x faster than lock-based allocator (from my testing)
+	template <class T, std::size_t C>
+	class PerThreadAllocator
+	{
+		struct MemObj
+		{
+			T t;
+			void* poolPtr;
+		};
+		using MemPool = MemoryPool<MemObj, sizeof(MemObj)* C>;
+		DWORD tlsIndex = TlsAlloc();
+
+		MemPool* GetPool()
+		{
+			auto* pool = static_cast<MemPool*>(TlsGetValue(tlsIndex));
+			if (!pool)
+			{
+				pool = new MemPool();
+				TlsSetValue(tlsIndex, pool);
+			}
+			return pool;
+		}
+
+	public:
+		T* Allocate()
+		{
+			auto* pool = GetPool();
+			auto* memObj = static_cast<MemObj*>(pool->allocate());
+			memObj->poolPtr = pool;
+			return &memObj->t;
+		}
+
+		static void Free(void* ptr)
+		{
+			auto* mPtr = static_cast<MemObj*>(ptr);
+			auto* pool = static_cast<MemPool*>(mPtr->poolPtr);
+			pool->deallocate(mPtr);
 		}
 	};
 }

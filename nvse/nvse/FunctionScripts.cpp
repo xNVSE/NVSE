@@ -19,7 +19,7 @@ UserFunctionManager::~UserFunctionManager()
 		delete *context;
 }
 
-static SmallObjectsAllocator::Allocator<FunctionContext, 5> g_functionContextAllocator;
+static SmallObjectsAllocator::LockBasedAllocator<FunctionContext, 5> g_functionContextAllocator;
 
 void* FunctionContext::operator new(size_t size)
 {

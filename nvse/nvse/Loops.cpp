@@ -288,7 +288,7 @@ bool WhileLoop::Update(COMMAND_ARGS)
 }
 
 
-static SmallObjectsAllocator::Allocator<WhileLoop, 8> g_whileLoopAllocator;
+static SmallObjectsAllocator::LockBasedAllocator<WhileLoop, 8> g_whileLoopAllocator;
 
 void* WhileLoop::operator new(size_t size)
 {
