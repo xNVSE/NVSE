@@ -20,18 +20,18 @@ template <typename T_Data> class FastStack
 public:
 
 	FastStack() : head(NULL), numItems(0) {}
-	~FastStack() { reset(); }
+	~FastStack() { Reset(); }
 
-	bool empty() const { return !numItems; }
+	bool Empty() const { return !numItems; }
 
-	size_t size() const { return numItems; }
+	size_t Size() const { return numItems; }
 
-	T_Data& top()
+	T_Data& Top()
 	{
 		return head->data;
 	}
 
-	T_Data* push(Data_Arg item)
+	T_Data* Push(Data_Arg item)
 	{
 		Node* newNode = s_allocator.Allocate();
 		T_Data* data = &newNode->data;
@@ -43,7 +43,7 @@ public:
 	}
 
 	template <typename ...Args>
-	T_Data* push(Args && ...args)
+	T_Data* Push(Args && ...args)
 	{
 		Node* newNode = s_allocator.Allocate();
 		T_Data* data = &newNode->data;
@@ -54,7 +54,7 @@ public:
 		return data;
 	}
 
-	T_Data* pop()
+	T_Data* Pop()
 	{
 		if (!head) return NULL;
 		T_Data* frontItem = &head->data;
@@ -66,7 +66,7 @@ public:
 		return frontItem;
 	}
 
-	void reset()
+	void Reset()
 	{
 		if (!head) return;
 		do

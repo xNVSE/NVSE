@@ -106,7 +106,7 @@ class UserFunctionManager
 	// these take a ptr to the function script to check that it matches executing script
 	FunctionContext* Top(Script* funcScript);
 	bool Pop(Script* funcScript);
-	void Push(FunctionContext* context) { m_functionStack.push(context); }
+	void Push(FunctionContext* context) { m_functionStack.Push(context); }
 	FunctionInfo* GetFunctionInfo(Script* funcScript);
 
 public:

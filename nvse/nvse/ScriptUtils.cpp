@@ -3564,7 +3564,7 @@ using OperandStack = FastStack<ScriptToken*>;
 
 void ShortCircuit(OperandStack& operands, CachedTokenIter& iter)
 {
-	ScriptToken *lastToken = operands.top();
+	ScriptToken *lastToken = operands.Top();
 	const OperatorType type = lastToken->shortCircuitParentType;
 	if (type == g_noShortCircuit)
 		return;
@@ -3576,12 +3576,12 @@ void ShortCircuit(OperandStack& operands, CachedTokenIter& iter)
 		for (UInt32 i = 0; i < lastToken->shortCircuitStackOffset; ++i)
 		{
 			// Make sure only one operand is left in RPN stack
-			ScriptToken *operand = operands.top();
+			ScriptToken *operand = operands.Top();
 			if (operand && operand != lastToken)
 				operand->Delete();
-			operands.pop();
+			operands.Pop();
 		}
-		operands.push(ScriptToken::Create(eval));
+		operands.Push(ScriptToken::Create(eval));
 	}
 }
 
@@ -3633,7 +3633,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				Error("Failed to resolve variable");
 				break;
 			}
-			operands.push(curToken);
+			operands.Push(curToken);
 		}
 		else
 		{
@@ -3641,7 +3641,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			ScriptToken* lhOperand = nullptr;
 			ScriptToken* rhOperand = nullptr;
 
-			if (op->numOperands > operands.size())
+			if (op->numOperands > operands.Size())
 			{
 				Error("Too few operands for operator %s", op->symbol);
 				break;
@@ -3650,11 +3650,11 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			switch (op->numOperands)
 			{
 			case 2:
-				rhOperand = operands.top();
-				operands.pop();
+				rhOperand = operands.Top();
+				operands.Pop();
 			case 1:
-				lhOperand = operands.top();
-				operands.pop();
+				lhOperand = operands.Top();
+				operands.Pop();
 			}
 
 			ScriptToken* opResult;
@@ -3681,7 +3681,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 
 			opResult->context = this;
 			CopyShortCircuitInfo(opResult, curToken);
-			operands.push(opResult);
+			operands.Push(opResult);
 		}
 		
 		ShortCircuit(operands, iter);
@@ -3690,20 +3690,20 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	// adjust opcode offset ptr (important for recursive calls to Evaluate()
 	*m_opcodeOffsetPtr += cache.incrementData;
 
-	if (operands.size() != 1)		// should have one operand remaining - result of expression
+	if (operands.Size() != 1)		// should have one operand remaining - result of expression
 	{
 		Error("An expression failed to evaluate to a valid result");
-		while (operands.size())
+		while (operands.Size())
 		{
-			ScriptToken *operand = operands.top();
+			ScriptToken *operand = operands.Top();
 			if (operand)
 				operand->Delete();
-			operands.pop();
+			operands.Pop();
 		}
 		return nullptr;
 	}
 
-	return operands.top();
+	return operands.Top();
 }
 
 //	Pop required operand(s)

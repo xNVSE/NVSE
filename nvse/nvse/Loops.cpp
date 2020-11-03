@@ -211,7 +211,7 @@ void LoopManager::Add(Loop* loop, ScriptRunner* state, UInt32 startOffset, UInt3
 	savedInfo->stackDepth = state->ifStackDepth;
 	memcpy(savedInfo->stack, state->ifStack, (savedInfo->stackDepth + 1) * sizeof(UInt32));
 
-	m_loops.push(loopInfo);
+	m_loops.Push(loopInfo);
 }
 
 void LoopManager::RestoreStack(ScriptRunner* state, SavedIPInfo* info)
@@ -222,10 +222,10 @@ void LoopManager::RestoreStack(ScriptRunner* state, SavedIPInfo* info)
 
 bool LoopManager::Break(ScriptRunner* state, COMMAND_ARGS)
 {
-	if (!m_loops.size())
+	if (!m_loops.Size())
 		return false;
 
-	LoopInfo* loopInfo = &m_loops.top();
+	LoopInfo* loopInfo = &m_loops.Top();
 
 	RestoreStack(state, &loopInfo->ipInfo);
 
@@ -237,17 +237,17 @@ bool LoopManager::Break(ScriptRunner* state, COMMAND_ARGS)
 
 	delete loopInfo->loop;
 
-	m_loops.pop();
+	m_loops.Pop();
 
 	return true;
 }
 
 bool LoopManager::Continue(ScriptRunner* state, COMMAND_ARGS)
 {
-	if (!m_loops.size())
+	if (!m_loops.Size())
 		return false;
 
-	LoopInfo* loopInfo = &m_loops.top();
+	LoopInfo* loopInfo = &m_loops.Top();
 
 	if (!loopInfo->loop->Update(PASS_COMMAND_ARGS))
 	{

@@ -15,7 +15,7 @@ UserFunctionManager::UserFunctionManager() : m_nestDepth(0)
 UserFunctionManager::~UserFunctionManager()
 {
 	FunctionContext **context;
-	while (context = m_functionStack.pop())
+	while (context = m_functionStack.Pop())
 		delete *context;
 }
 
@@ -43,8 +43,8 @@ UserFunctionManager* UserFunctionManager::GetSingleton()
 
 FunctionContext* UserFunctionManager::Top(Script* funcScript)
 {
-	if (m_functionStack.size() && m_functionStack.top()->Info()->GetScript() == funcScript)
-		return m_functionStack.top();
+	if (m_functionStack.Size() && m_functionStack.Top()->Info()->GetScript() == funcScript)
+		return m_functionStack.Top();
 
 	return NULL;
 }
@@ -54,16 +54,16 @@ bool UserFunctionManager::Pop(Script* funcScript)
 	FunctionContext* context = Top(funcScript);
 	if (context)
 	{
-		m_functionStack.pop();
+		m_functionStack.Pop();
 		delete context;
 		return true;
 	}
 
 #ifdef DBG_EXPR_LEAKS
-	if (FUNCTION_CONTEXT_COUNT != m_functionStack.size()) {
+	if (FUNCTION_CONTEXT_COUNT != m_functionStack.Size()) {
 		DEBUG_PRINT("UserFunctionManager::Pop() detects leak - %d FunctionContext exist, %d expected",
 			FUNCTION_CONTEXT_COUNT,
-			m_functionStack.size());
+			m_functionStack.Size());
 	}
 #endif
 
