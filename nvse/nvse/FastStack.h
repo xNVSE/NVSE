@@ -1,4 +1,5 @@
 #pragma once
+#include "SmallObjectsAllocator.h"
 
 template <typename T_Data> class FastStack
 {
@@ -13,9 +14,11 @@ template <typename T_Data> class FastStack
 	};
 
 	Node* head;
-	size_t		numItems;
-
+	size_t numItems;
+	using Allocator = SmallObjectsAllocator::PerThreadAllocator<Node, 16>;
+	static  Allocator s_allocator;
 public:
+
 	FastStack() : head(NULL), numItems(0) {}
 	~FastStack() { reset(); }
 
@@ -30,7 +33,7 @@ public:
 
 	T_Data* push(Data_Arg item)
 	{
-		Node* newNode = ALLOC_NODE(Node);
+		Node* newNode = s_allocator.Allocate();
 		T_Data* data = &newNode->data;
 		RawAssign<T_Data>(*data, item);
 		newNode->next = head;
@@ -42,7 +45,7 @@ public:
 	template <typename ...Args>
 	T_Data* push(Args && ...args)
 	{
-		Node* newNode = ALLOC_NODE(Node);
+		Node* newNode = s_allocator.Allocate();
 		T_Data* data = &newNode->data;
 		new (data) T_Data(std::forward<Args>(args)...);
 		newNode->next = head;
@@ -58,7 +61,7 @@ public:
 		Node* toRemove = head;
 		head = head->next;
 		toRemove->Clear();
-		Pool_Free(toRemove, sizeof(Node));
+		s_allocator.Free(toRemove);
 		numItems--;
 		return frontItem;
 	}
@@ -66,14 +69,16 @@ public:
 	void reset()
 	{
 		if (!head) return;
-		Node* pNode;
 		do
 		{
-			pNode = head;
+			Node* pNode = head;
 			head = head->next;
 			pNode->Clear();
-			Pool_Free(pNode, sizeof(Node));
+			s_allocator.Free(pNode);
 		} while (head);
 		numItems = 0;
 	}
 };
+
+template <typename T>
+typename FastStack<T>::Allocator FastStack<T>::s_allocator;
