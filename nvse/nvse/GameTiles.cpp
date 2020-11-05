@@ -73,7 +73,7 @@ Tile * Tile::GetChild(const char * childName)
 	Tile *result = NULL;
 	for(tList<ChildNode>::Iterator iter = childList.Begin(); !iter.End(); ++iter)
 	{
-		if (*iter && iter->child && ((*childName == '*') || StrEqualCI(iter->child->name.m_data, childName)) && !childIndex--)
+		if (*iter && iter->child && ((*childName == '*') || !StrCompare(iter->child->name.m_data, childName)) && !childIndex--)
 		{
 			result = iter->child;
 			break;

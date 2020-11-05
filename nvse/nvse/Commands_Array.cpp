@@ -164,9 +164,9 @@ bool Cmd_ar_Construct_Execute(COMMAND_ARGS)
 
 	UInt8 keyType = kDataType_Numeric;
 	bool bPacked = false;
-	if (StrEqualCI(arType, "StringMap"))
+	if (!StrCompare(arType, "StringMap"))
 		keyType = kDataType_String;
-	else if (!StrEqualCI(arType, "Map"))
+	else if (StrCompare(arType, "Map") != 0)
 		bPacked = true;
 
 	ArrayVar *newArr = g_ArrayMap.Create(keyType, bPacked, scriptObj->GetModIndex());

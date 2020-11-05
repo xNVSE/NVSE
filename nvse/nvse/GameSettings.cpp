@@ -126,7 +126,7 @@ public:
 		{	}
 	bool Accept(Setting* info)
 	{
-		if (StrEqualCI(m_settingName, info->name))
+		if (!StrCompare(m_settingName, info->name))
 			return true;
 		else
 			return false;

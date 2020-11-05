@@ -15,7 +15,7 @@ public:
 
 	bool Accept(ModInfo* modInfo)
 	{
-		return StrEqualCI(modInfo->name, m_stringToFind);
+		return !StrCompare(modInfo->name, m_stringToFind);
 	}
 };
 

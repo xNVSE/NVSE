@@ -569,11 +569,11 @@ bool ExtractEventCallback(ExpressionEvaluator& eval, EventManager::EventCallback
 					const char* key = pair->left->GetString();
 					if (key)
 					{
-						if (StrEqualCI(key, "ref") || StrEqualCI(key, "first"))
+						if (!StrCompare(key, "ref") || !StrCompare(key, "first"))
 						{
 							outCallback->source = pair->right->GetTESForm();
 						}
-						else if (StrEqualCI(key, "object") || StrEqualCI(key, "second"))
+						else if (!StrCompare(key, "object") || !StrCompare(key, "second"))
 						{
 							outCallback->object = pair->right->GetTESForm();
 						}

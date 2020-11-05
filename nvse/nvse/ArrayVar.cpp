@@ -95,7 +95,7 @@ bool ArrayElement::operator==(const ArrayElement& rhs) const
 		case kDataType_Array:
 			return m_data.formID == rhs.m_data.formID;
 		case kDataType_String:
-			return StrEqualCI(m_data.str, rhs.m_data.str);
+			return !StrCompare(m_data.str, rhs.m_data.str);
 		default:
 			return m_data.num == rhs.m_data.num;
 	}
@@ -318,7 +318,7 @@ bool ArrayKey::operator==(const ArrayKey& rhs) const
 	case kDataType_Numeric:
 		return key.num == rhs.key.num;
 	case kDataType_String:
-		return StrEqualCI(key.str, rhs.key.str);
+		return !StrCompare(key.str, rhs.key.str);
 	default:
 		//_MESSAGE("Error: Invalid ArrayKey type %d", rhs.keyType);
 		return true;

@@ -744,8 +744,8 @@ void CommandInfo::DumpFunctionDef() const
 
 CommandInfo * CommandTable::GetByName(const char * name)
 {
-	for(CommandList::iterator iter = m_commands.begin(); iter != m_commands.end(); ++iter)
-		if(StrEqualCI(name, iter->longName) || (iter->shortName && StrEqualCI(name, iter->shortName)))
+	for (CommandList::iterator iter = m_commands.begin(); iter != m_commands.end(); ++iter)
+		if (!StrCompare(name, iter->longName) || (iter->shortName && !StrCompare(name, iter->shortName)))
 			return &(*iter);
 
 	return NULL;

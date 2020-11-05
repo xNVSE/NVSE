@@ -170,9 +170,9 @@ ScriptToken* Eval_Eq_String(OperatorType op, ScriptToken* lh, ScriptToken* rh, E
 	switch (op)
 	{
 	case kOpType_Equals:
-		return ScriptToken::Create(StrEqualCI(lhs, rhs));
+		return ScriptToken::Create(!StrCompare(lhs, rhs));
 	case kOpType_NotEqual:
-		return ScriptToken::Create(!StrEqualCI(lhs, rhs));
+		return ScriptToken::Create(StrCompare(lhs, rhs) != 0);
 	default:
 		context->Error("Unhandled operator %s", OpTypeToSymbol(op));
 		return NULL;
@@ -1746,7 +1746,7 @@ bool GetUserFunctionParams(const std::string& scriptText, std::vector<UserFuncti
 		std::string token;
 		if (tokens.NextToken(token) != -1)
 		{
-			if (StrEqualCI(token.c_str(), "begin"))
+			if (!StrCompare(token.c_str(), "begin"))
 			{
 				UInt32 argStartPos = lineText.find("{");
 				UInt32 argEndPos = lineText.find("}");
@@ -1878,7 +1878,7 @@ bool ExpressionParser::ParseUserFunctionCall()
 		char* funcScriptText = funcScript->text;
 		Script::VarInfoEntry* funcScriptVars = &funcScript->varList;
 
-		if (StrEqualCI(GetEditorID(funcScript), m_scriptBuf->scriptName.m_data))
+		if (!StrCompare(GetEditorID(funcScript), m_scriptBuf->scriptName.m_data))
 		{
 			funcScriptText = m_scriptBuf->scriptText;
 			funcScriptVars = &m_scriptBuf->vars;
@@ -1956,7 +1956,7 @@ bool ExpressionParser::ParseUserFunctionDefinition()
 		std::string token;
 		if (tokens.NextToken(token) != -1)
 		{
-			if (StrEqualCI(token.c_str(), "begin"))
+			if (!StrCompare(token.c_str(), "begin"))
 			{
 				if (bFoundBegin)
 				{
@@ -1966,7 +1966,7 @@ bool ExpressionParser::ParseUserFunctionDefinition()
 
 				bFoundBegin = true;
 			}
-			else if (StrEqualCI(token.c_str(), "array_var"))
+			else if (!StrCompare(token.c_str(), "array_var"))
 			{
 				if (bFoundBegin)
 				{
@@ -1986,9 +1986,9 @@ bool ExpressionParser::ParseUserFunctionDefinition()
 			}
 			else if (bFoundBegin)
 			{
-				if (StrEqualCI(token.c_str(), "string_var") || StrEqualCI(token.c_str(), "float") || StrEqualCI(token.c_str(), "int") ||
-					StrEqualCI(token.c_str(), "ref") || StrEqualCI(token.c_str(), "reference") || StrEqualCI(token.c_str(), "short") ||
-					StrEqualCI(token.c_str(), "long"))
+				if (!StrCompare(token.c_str(), "string_var") || !StrCompare(token.c_str(), "float") || !StrCompare(token.c_str(), "int") ||
+					!StrCompare(token.c_str(), "ref") || !StrCompare(token.c_str(), "reference") || !StrCompare(token.c_str(), "short") ||
+					!StrCompare(token.c_str(), "long"))
 				{
 					Message(kError_UserFunctionVarsMustPrecedeDefinition);
 					return false;
@@ -2493,7 +2493,7 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 	}
 
 	// "player" can be base object or ref. Assume base object unless called with dot syntax
-	if (StrEqualCI(refToken.c_str(), "player") && dotPos != -1)
+	if (!StrCompare(refToken.c_str(), "player") && dotPos != -1)
 		refToken = "playerRef";
 
 	Script::RefVariable* refVar = m_scriptBuf->ResolveRef(refToken.c_str());

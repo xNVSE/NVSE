@@ -19,18 +19,18 @@ UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText)
 			UInt32 varType = -1;
 
 			// variable declaration?
-			if (StrEqualCI(curToken.c_str(), "string_var"))
+			if (!StrCompare(curToken.c_str(), "string_var"))
 				varType = Script::eVarType_String;
-			else if (StrEqualCI(curToken.c_str(), "array_var"))
+			else if (!StrCompare(curToken.c_str(), "array_var"))
 				varType = Script::eVarType_Array;
-			else if (StrEqualCI(curToken.c_str(), "float"))
+			else if (!StrCompare(curToken.c_str(), "float"))
 				varType = Script::eVarType_Float;
-			else if (StrEqualCI(curToken.c_str(), "long") || StrEqualCI(curToken.c_str(), "int") || StrEqualCI(curToken.c_str(), "short"))
+			else if (!StrCompare(curToken.c_str(), "long") || !StrCompare(curToken.c_str(), "int") || !StrCompare(curToken.c_str(), "short"))
 				varType = Script::eVarType_Integer;
-			else if (StrEqualCI(curToken.c_str(), "ref") || StrEqualCI(curToken.c_str(), "reference"))
+			else if (!StrCompare(curToken.c_str(), "ref") || !StrCompare(curToken.c_str(), "reference"))
 				varType = Script::eVarType_Ref;
 
-			if (varType != -1 && tokens.NextToken(curToken) != -1 && StrEqualCI(curToken.c_str(), varName))
+			if (varType != -1 && tokens.NextToken(curToken) != -1 && !StrCompare(curToken.c_str(), varName))
 			{
 				return varType;
 			}
@@ -254,7 +254,7 @@ public:
 	bool Accept(VariableInfo* varInfo)
 	{
 		//_MESSAGE("  cur var: %s to match: %s", varInfo->name.m_data, m_varName);
-		if (StrEqualCI(m_varName, varInfo->name.m_data))
+		if (!StrCompare(m_varName, varInfo->name.m_data))
 			return true;
 		else
 			return false;
@@ -352,7 +352,7 @@ VariableInfo* Script::VarInfoEntry::GetVariableByName(const char* varName)
 {
 	for (Script::VarInfoEntry* entry = this; entry; entry = entry->next)
 	{
-		if (entry->data && StrEqualCI(entry->data->name.m_data, varName))
+		if (entry->data && !StrCompare(entry->data->name.m_data, varName))
 			return entry->data;
 	}
 

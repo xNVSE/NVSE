@@ -1289,7 +1289,7 @@ bool Cmd_DelAnimation_Execute(COMMAND_ARGS)
 			{
 				++index;
 				char* aName = iter.Get();
-				if (aName && StrEqualCI(aName, pName))
+				if (aName && !StrCompare(aName, pName))
 				{
 					FormHeap_Free(pAnim->animNames.RemoveNth(index));
 					break;

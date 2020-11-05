@@ -68,7 +68,7 @@ char * doTileTextEvent(ArrayID argsArrayId, const char * eventName, char * text,
 	{
 		ArrayElement *elem = arr->Get("text", false);
 		const char* replacedText;
-		if (elem && elem->GetAsString(&replacedText) && !StrEqualCI(result, replacedText) && !strcpy_s(lastText, 32767, replacedText))
+		if (elem && elem->GetAsString(&replacedText) && (StrCompare(result, replacedText) != 0) && !strcpy_s(lastText, 32767, replacedText))
 			result = lastText;
 	}
 	return result;

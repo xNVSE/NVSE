@@ -772,15 +772,15 @@ bool PluginManager::Dispatch_Message(PluginHandle sender, UInt32 messageType, vo
 
 PluginHandle PluginManager::LookupHandleFromName(const char* pluginName)
 {
-	if (StrEqualCI("NVSE", pluginName))
+	if (!StrCompare("NVSE", pluginName))
 		return 0;
 
 	UInt32	idx = 1;
 
-	for(LoadedPluginList::iterator iter = m_plugins.begin(); iter != m_plugins.end(); ++iter)
+	for (LoadedPluginList::iterator iter = m_plugins.begin(); iter != m_plugins.end(); ++iter)
 	{
 		LoadedPlugin	* plugin = &(*iter);
-		if(StrEqualCI(plugin->info.name, pluginName))
+		if (!StrCompare(plugin->info.name, pluginName))
 		{
 			return idx;
 		}
@@ -797,10 +797,10 @@ PluginHandle PluginManager::LookupHandleFromPath(const char* pluginPath)
 
 	UInt32	idx = 1;
 
-	for(LoadedPluginList::iterator iter = m_plugins.begin(); iter != m_plugins.end(); ++iter)
+	for (LoadedPluginList::iterator iter = m_plugins.begin(); iter != m_plugins.end(); ++iter)
 	{
 		LoadedPlugin	* plugin = &(*iter);
-		if(StrEqualCI(plugin->path, pluginPath))
+		if (!StrCompare(plugin->path, pluginPath))
 		{
 			return idx;
 		}
