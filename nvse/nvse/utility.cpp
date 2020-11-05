@@ -1,160 +1,57 @@
 #include "nvse/utility.h"
 
-const double
-kDblOne = 1,
-kDblPI = 3.141592653589793,
-kDblPIx2 = 6.283185307179586,
-kDblPIx3d2 = 4.71238898038469,
-kDblPId2 = 1.5707963267948966,
-kDblPId6 = 0.5235987755982989,
-kDbl2dPI = 0.6366197723675814,
-kDbl4dPI = 1.2732395447351628,
-kDblTanPId6 = 0.5773502691896257,
-kDblTanPId12 = 0.2679491924311227;
-
 memcpy_t _memcpy = memcpy, _memmove = memmove;
-
-double cos_p(double angle)
-{
-	angle *= angle;
-	return 0.999999953464 + angle * (angle * (0.0416635846769 + angle * (0.00002315393167 * angle - 0.0013853704264)) - 0.499999053455);
-}
-
-double dCos(double angle)
-{
-	if (angle < 0) angle = -angle;
-	while (angle > kDblPIx2)
-		angle -= kDblPIx2;
-
-	int quad = int(angle * kDbl2dPI);
-	switch (quad)
-	{
-		case 0:
-			return cos_p(angle);
-		case 1:
-			return -cos_p(kDblPI - angle);
-		case 2:
-			return -cos_p(angle - kDblPI);
-		default:
-			return cos_p(kDblPIx2 - angle);
-	}
-}
-
-double dSin(double angle)
-{
-	return dCos(kDblPId2 - angle);
-}
-
-
-double tan_p(double angle)
-{
-	angle *= kDbl4dPI;
-	double ang2 = angle * angle;
-	return angle * (211.849369664121 - 12.5288887278448 * ang2) / (269.7350131214121 + ang2 * (ang2 - 71.4145309347748));
-}
-
-double dTan(double angle)
-{
-	while (angle > kDblPIx2)
-		angle -= kDblPIx2;
-
-	int octant = int(angle * kDbl4dPI);
-	switch (octant)
-	{
-		case 0:
-			return tan_p(angle);
-		case 1:
-			return 1.0 / tan_p(kDblPId2 - angle);
-		case 2:
-			return -1.0 / tan_p(angle - kDblPId2);
-		case 3:
-			return -tan_p(kDblPI - angle);
-		case 4:
-			return tan_p(angle - kDblPI);
-		case 5:
-			return 1.0 / tan_p(kDblPIx3d2 - angle);
-		case 6:
-			return -1.0 / tan_p(angle - kDblPIx3d2);
-		default:
-			return -tan_p(kDblPIx2 - angle);
-	}
-}
-
-double dAtan(double value)
-{
-	bool sign = (value < 0);
-	if (sign) value = -value;
-
-	bool complement = (value > 1.0);
-	if (complement) value = 1.0 / value;
-
-	bool region = (value > kDblTanPId12);
-	if (region)
-		value = (value - kDblTanPId6) / (1.0 + kDblTanPId6 * value);
-
-	double res = value;
-	value *= value;
-	res *= (1.6867629106 + value * 0.4378497304) / (1.6867633134 + value);
-
-	if (region) res += kDblPId6;
-	if (complement) res = kDblPId2 - res;
-
-	return sign ? -res : res;
-}
-
-double dAsin(double value)
-{
-	__asm
-	{
-		movq	xmm5, value
-		movq	xmm6, xmm5
-		mulsd	xmm6, xmm6
-		movq	xmm7, kDblOne
-		subsd	xmm7, xmm6
-		sqrtsd	xmm7, xmm7
-		divsd	xmm5, xmm7
-		movq	value, xmm5
-	}
-	return dAtan(value);
-}
-
-double dAcos(double value)
-{
-	return kDblPId2 - dAsin(value);
-}
-
-double dAtan2(double y, double x)
-{
-	if (x != 0)
-	{
-		double z = y / x;
-		if (x > 0)
-			return dAtan(z);
-		else if (y < 0)
-			return dAtan(z) - kDblPI;
-		else
-			return dAtan(z) + kDblPI;
-	}
-	else if (y > 0)
-		return kDblPId2;
-	else if (y < 0)
-		return -kDblPId2;
-	return 0;
-}
 
 __declspec(naked) UInt32 __fastcall StrLen(const char *str)
 {
 	__asm
 	{
-		mov		eax, ecx
 		test	ecx, ecx
-		jz		done
-	iterHead:
-		cmp		[eax], 0
-		jz		done
-		inc		eax
-		jmp		iterHead
+		jnz		proceed
+		xor		eax, eax
+		retn
+	proceed:
+		push	ecx
+		test	ecx, 3
+		jz		iter4
+	iter1:
+		mov		al, [ecx]
+		inc		ecx
+		test	al, al
+		jz		done1
+		test	ecx, 3
+		jnz		iter1
+	iter4:
+		mov		eax, [ecx]
+		mov		edx, 0x7EFEFEFF
+		add		edx, eax
+		xor		eax, 0xFFFFFFFF
+		xor		eax, edx
+		add		ecx, 4
+		test	eax, 0x81010100
+		jz		iter4
+		mov		eax, [ecx-4]
+		test	al, al
+		jz		done4
+		test	ah, ah
+		jz		done3
+		test	eax, 0xFF0000
+		jz		done2
+		test	eax, 0xFF000000
+		jnz		iter4
+	done1:
+		lea		eax, [ecx-1]
+		jmp		done
+	done2:
+		lea		eax, [ecx-2]
+		jmp		done
+	done3:
+		lea		eax, [ecx-3]
+		jmp		done
+	done4:
+		lea		eax, [ecx-4]
 	done:
+		pop		ecx
 		sub		eax, ecx
 		retn
 	}
@@ -349,11 +246,14 @@ __declspec(naked) bool __fastcall StrEqualCS(const char *lstr, const char *rstr)
 		mov		esi, ecx
 		mov		edi, edx
 		call	StrLen
-		mov		edx, eax
+		push	eax
 		mov		ecx, edi
 		call	StrLen
+		pop		edx
 		cmp		eax, edx
 		jnz		retn0
+		test	eax, eax
+		jz		retn1
 		mov		ecx, edx
 		shr		ecx, 2
 		jz		comp1
@@ -391,11 +291,14 @@ __declspec(naked) bool __fastcall StrEqualCI(const char *lstr, const char *rstr)
 		mov		esi, ecx
 		mov		edi, edx
 		call	StrLen
-		mov		edx, eax
+		push	eax
 		mov		ecx, edi
 		call	StrLen
+		pop		edx
 		cmp		eax, edx
 		jnz		retnFalse
+		test	eax, eax
+		jz		retnTrue
 		xor		eax, eax
 		mov		ecx, eax
 	iterHead:
@@ -408,6 +311,7 @@ __declspec(naked) bool __fastcall StrEqualCI(const char *lstr, const char *rstr)
 		inc		edi
 		dec		edx
 		jnz		iterHead
+	retnTrue:
 		mov		al, 1
 		pop		edi
 		pop		esi
@@ -480,11 +384,14 @@ __declspec(naked) char __fastcall StrBeginsCS(const char *lstr, const char *rstr
 		mov		esi, ecx
 		mov		edi, edx
 		call	StrLen
-		mov		edx, eax
+		push	eax
 		mov		ecx, edi
 		call	StrLen
+		pop		edx
 		cmp		eax, edx
 		jg		retn0
+		test	edx, edx
+		jz		retn1
 		mov		ecx, eax
 		shr		ecx, 2
 		jz		comp1
@@ -524,11 +431,14 @@ __declspec(naked) char __fastcall StrBeginsCI(const char *lstr, const char *rstr
 		mov		esi, ecx
 		mov		edi, edx
 		call	StrLen
-		mov		edx, eax
+		push	eax
 		mov		ecx, edi
 		call	StrLen
+		pop		edx
 		cmp		eax, edx
 		jg		retn0
+		test	edx, edx
+		jz		iterEnd
 		xor		ecx, ecx
 		mov		edx, ecx
 	iterHead:
@@ -649,13 +559,13 @@ __declspec(naked) char* __fastcall SubStrCS(const char *srcStr, const char *subS
 		push	ebx
 		push	esi
 		push	edi
+		mov		edi, edx
 		call	StrLen
 		test	eax, eax
 		jz		done
 		mov		esi, ecx
-		mov		edi, edx
 		mov		ebx, eax
-		mov		ecx, edx
+		mov		ecx, edi
 		call	StrLen
 		sub		ebx, eax
 		js		retnNULL
@@ -695,13 +605,13 @@ __declspec(naked) char* __fastcall SubStrCI(const char *srcStr, const char *subS
 		push	ebx
 		push	esi
 		push	edi
+		mov		edi, edx
 		call	StrLen
 		test	eax, eax
 		jz		done
 		mov		esi, ecx
-		mov		edi, edx
 		mov		ebx, eax
-		mov		ecx, edx
+		mov		ecx, edi
 		call	StrLen
 		sub		ebx, eax
 		js		retnNULL

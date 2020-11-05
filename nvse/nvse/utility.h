@@ -48,15 +48,6 @@ template <typename T> __forceinline void RawSwap(const T &lhs, const T &rhs)
 	*(Helper*)&rhs = temp;
 }
 
-double dCos(double angle);
-double dSin(double angle);
-double dTan(double angle);
-
-double dAtan(double value);
-double dAsin(double value);
-double dAcos(double value);
-double dAtan2(double y, double x);
-
 UInt32 __fastcall StrLen(const char* str);
 
 char* __fastcall StrEnd(const char* str);
