@@ -5,7 +5,7 @@
 
 alignas(16) void *s_availableCachedBlocks[(MAX_CACHED_BLOCK_SIZE >> 2) + 1] = {NULL};
 
-ICriticalSection s_poolCritSection;
+UInt32 s_poolSemaphore = 0;
 
 #if !_DEBUG
 __declspec(naked) void* __fastcall Pool_Alloc(UInt32 size)
@@ -15,24 +15,25 @@ __declspec(naked) void* __fastcall Pool_Alloc(UInt32 size)
 		push	ecx
 		cmp		ecx, MAX_CACHED_BLOCK_SIZE
 		ja		doAlloc
-		push	offset s_poolCritSection
-		call	EnterCriticalSection
+		mov		ecx, offset s_poolSemaphore
+		fnop
+	spinHead:
+		xor		eax, eax
+		lock cmpxchg [ecx], ecx
+		test	eax, eax
+		jnz		spinHead
 		pop		ecx
 		lea		edx, s_availableCachedBlocks[ecx]
 		mov		eax, [edx]
 		test	eax, eax
-		jz		leaveCS
+		jz		noCached
 		mov		ecx, [eax]
 		mov		[edx], ecx
-		push	eax
-		push	offset s_poolCritSection
-		call	LeaveCriticalSection
-		pop		eax
+		mov		s_poolSemaphore, 0
 		retn
-	leaveCS:
+	noCached:
+		mov		s_poolSemaphore, 0
 		push	ecx
-		push	offset s_poolCritSection
-		call	LeaveCriticalSection
 	doAlloc:
 		call	_malloc_base
 		pop		ecx
@@ -64,17 +65,21 @@ __declspec(naked) void __fastcall Pool_Free(void *pBlock, UInt32 size)
 		push	ecx
 		cmp		edx, MAX_CACHED_BLOCK_SIZE
 		ja		doFree
-		push	edx
-		push	offset s_poolCritSection
-		call	EnterCriticalSection
-		pop		edx
+		mov		ecx, offset s_poolSemaphore
+		jmp		spinHead
+		and		esp, 0xEFFFFFFF
+		mov		eax, 0
+	spinHead:
+		xor		eax, eax
+		lock cmpxchg [ecx], ecx
+		test	eax, eax
+		jnz		spinHead
 		pop		ecx
 		lea		eax, s_availableCachedBlocks[edx]
 		mov		edx, [eax]
 		mov		[ecx], edx
 		mov		[eax], ecx
-		push	offset s_poolCritSection
-		call	LeaveCriticalSection
+		mov		s_poolSemaphore, 0
 		retn
 	doFree:
 		call	_free_base
