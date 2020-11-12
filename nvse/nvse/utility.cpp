@@ -21,11 +21,12 @@ __declspec(naked) UInt32 __fastcall StrLen(const char *str)
 		jz		done1
 		test	ecx, 3
 		jnz		iter1
+		nop
 	iter4:
 		mov		eax, [ecx]
 		mov		edx, 0x7EFEFEFF
 		add		edx, eax
-		xor		eax, 0xFFFFFFFF
+		not		eax
 		xor		eax, edx
 		add		ecx, 4
 		test	eax, 0x81010100
@@ -53,23 +54,6 @@ __declspec(naked) UInt32 __fastcall StrLen(const char *str)
 	done:
 		pop		ecx
 		sub		eax, ecx
-		retn
-	}
-}
-
-__declspec(naked) char* __fastcall StrEnd(const char *str)
-{
-	__asm
-	{
-		mov		eax, ecx
-		test	ecx, ecx
-		jz		done
-	iterHead:
-		cmp		[eax], 0
-		jz		done
-		inc		eax
-		jmp		iterHead
-	done:
 		retn
 	}
 }
@@ -132,24 +116,21 @@ __declspec(naked) char* __fastcall StrCopy(char *dest, const char *src)
 		mov		eax, ecx
 		test	ecx, ecx
 		jz		done
-		mov		ecx, edx
 		test	edx, edx
-		jnz		getSize
+		jnz		proceed
 		mov		[eax], 0
 	done:
 		retn
-	getSize:
-		cmp		[ecx], 0
-		jz		doCopy
-		inc		ecx
-		jmp		getSize
-	doCopy:
-		sub		ecx, edx
+	proceed:
 		push	ecx
-		inc		ecx
+		mov		ecx, edx
+		call	StrLen
+		pop		edx
+		push	eax
+		inc		eax
+		push	eax
 		push	ecx
 		push	edx
-		push	eax
 		call	_memmove
 		add		esp, 0xC
 		pop		ecx
@@ -162,35 +143,31 @@ __declspec(naked) char* __fastcall StrNCopy(char *dest, const char *src, UInt32 
 {
 	__asm
 	{
-		push	esi
 		mov		eax, ecx
 		test	ecx, ecx
 		jz		done
 		test	edx, edx
 		jz		nullTerm
-		mov		esi, [esp+8]
-		test	esi, esi
+		cmp		dword ptr [esp+4], 0
 		jz		nullTerm
+		push	esi
+		mov		esi, ecx
 		mov		ecx, edx
-	getSize:
-		cmp		[ecx], 0
-		jz		doCopy
-		inc		ecx
-		dec		esi
-		jnz		getSize
-	doCopy:
-		sub		ecx, edx
-		lea		esi, [eax+ecx]
-		push	ecx
+		call	StrLen
+		mov		edx, [esp+8]
+		cmp		edx, eax
+		cmova	edx, eax
 		push	edx
-		push	eax
+		push	ecx
+		push	esi
+		add		esi, edx
 		call	_memmove
 		add		esp, 0xC
 		mov		eax, esi
+		pop		esi
 	nullTerm:
 		mov		[eax], 0
 	done:
-		pop		esi
 		retn	4
 	}
 }
@@ -200,15 +177,14 @@ __declspec(naked) char* __fastcall StrCat(char *dest, const char *src)
 	__asm
 	{
 		test	ecx, ecx
-		jnz		iterHead
+		jnz		proceed
 		mov		eax, ecx
 		retn
-	iterHead:
-		cmp		[ecx], 0
-		jz		done
-		inc		ecx
-		jmp		iterHead
-	done:
+	proceed:
+		push	edx
+		call	StrLen
+		pop		edx
+		add		ecx, eax
 		jmp		StrCopy
 	}
 }
@@ -339,6 +315,10 @@ __declspec(naked) char __fastcall StrCompare(const char *lstr, const char *rstr)
 		jz		retnGT
 		xor		eax, eax
 		mov		ebx, eax
+		jmp		iterHead
+		and		esp, 0xEFFFFFFF
+		lea		esp, [esp]
+		fnop
 	iterHead:
 		mov		al, [ecx]
 		test	al, al
@@ -441,6 +421,8 @@ __declspec(naked) char __fastcall StrBeginsCI(const char *lstr, const char *rstr
 		jz		iterEnd
 		xor		ecx, ecx
 		mov		edx, ecx
+		jmp		iterHead
+		and		esp, 0xEFFFFFFF
 	iterHead:
 		mov		cl, [edi]
 		test	cl, cl
@@ -475,6 +457,11 @@ __declspec(naked) void __fastcall StrToLower(char *str)
 		test	ecx, ecx
 		jz		done
 		xor		eax, eax
+		jmp		iterHead
+	done:
+		retn
+		and		esp, 0xEFFFFFFF
+		nop
 	iterHead:
 		mov		al, [ecx]
 		test	al, al
@@ -483,8 +470,6 @@ __declspec(naked) void __fastcall StrToLower(char *str)
 		mov		[ecx], dl
 		inc		ecx
 		jmp		iterHead
-	done:
-		retn
 	}
 }
 
@@ -495,6 +480,8 @@ __declspec(naked) void __fastcall ReplaceChr(char *str, char from, char to)
 		test	ecx, ecx
 		jz		done
 		mov		al, [esp+4]
+		jmp		iterHead
+		and		esp, 0xEFFFFFFF
 	iterHead:
 		cmp		[ecx], 0
 		jz		done
@@ -515,7 +502,13 @@ __declspec(naked) char* __fastcall FindChr(const char *str, char chr)
 	{
 		mov		eax, ecx
 		test	ecx, ecx
-		jz		done
+		jnz		iterHead
+		retn
+	retnNULL:
+		xor		eax, eax
+	done:
+		retn
+		and		esp, 0xEFFFFFFF
 	iterHead:
 		cmp		[eax], 0
 		jz		retnNULL
@@ -523,10 +516,6 @@ __declspec(naked) char* __fastcall FindChr(const char *str, char chr)
 		jz		done
 		inc		eax
 		jmp		iterHead
-	retnNULL:
-		xor		eax, eax
-	done:
-		retn
 	}
 }
 
@@ -538,6 +527,8 @@ __declspec(naked) char* __fastcall FindChrR(const char *str, UInt32 length, char
 		jz		retnNULL
 		lea		eax, [ecx+edx]
 		mov		dl, [esp+4]
+		jmp		iterHead
+		lea		esp, [esp]
 	iterHead:
 		cmp		eax, ecx
 		jz		retnNULL
@@ -657,7 +648,13 @@ __declspec(naked) char* __fastcall SlashPos(const char *str)
 	{
 		mov		eax, ecx
 		test	ecx, ecx
-		jz		done
+		jnz		iterHead
+		retn
+	retnNULL:
+		xor		eax, eax
+	done:
+		retn
+		and		esp, 0xEFFFFFFF
 	iterHead:
 		mov		cl, [eax]
 		test	cl, cl
@@ -668,10 +665,6 @@ __declspec(naked) char* __fastcall SlashPos(const char *str)
 		jz		done
 		inc		eax
 		jmp		iterHead
-	retnNULL:
-		xor		eax, eax
-	done:
-		retn
 	}
 }
 
@@ -748,6 +741,8 @@ __declspec(naked) UInt32 __fastcall StrHashCS(const char *inKey)
 		test	ecx, ecx
 		jnz		proceed
 		retn
+		and		esp, 0xEFFFFFFF
+		lea		esp, [esp]
 	iterHead:
 		mov		edx, eax
 		shl		edx, 5
@@ -772,6 +767,11 @@ __declspec(naked) UInt32 __fastcall StrHashCI(const char *inKey)
 		jz		done
 		mov		esi, ecx
 		mov		ecx, eax
+		jmp		iterHead
+	done:
+		pop		esi
+		retn
+		nop
 	iterHead:
 		mov		cl, [esi]
 		test	cl, cl
@@ -783,41 +783,5 @@ __declspec(naked) UInt32 __fastcall StrHashCI(const char *inKey)
 		add		eax, edx
 		inc		esi
 		jmp		iterHead
-	done:
-		pop		esi
-		retn
-	}
-}
-
-AuxBuffer s_auxBuffers[3];
-
-__declspec(naked) UInt8* __fastcall GetAuxBuffer(AuxBuffer &buffer, UInt32 reqSize)
-{
-	__asm
-	{
-		mov		eax, [ecx]
-		cmp		[ecx+4], edx
-		jnb		sizeOK
-		mov		[ecx+4], edx
-		push	ecx
-		push	edx
-		test	eax, eax
-		jz		doAlloc
-		push	eax
-		call	free
-		pop		ecx
-		jmp		doAlloc
-	sizeOK:
-		test	eax, eax
-		jnz		done
-		push	ecx
-		push	dword ptr [ecx+4]
-	doAlloc:
-		call	malloc
-		pop		ecx
-		pop		ecx
-		mov		[ecx], eax
-	done:
-		retn
 	}
 }

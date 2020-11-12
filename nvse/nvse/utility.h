@@ -50,8 +50,6 @@ template <typename T> __forceinline void RawSwap(const T &lhs, const T &rhs)
 
 UInt32 __fastcall StrLen(const char* str);
 
-char* __fastcall StrEnd(const char* str);
-
 bool __fastcall MemCmp(const void* ptr1, const void* ptr2, UInt32 bsize);
 
 void __fastcall MemZero(void* dest, UInt32 bsize);
@@ -93,20 +91,5 @@ char* __fastcall IntToStr(char *str, int num);
 UInt32 __fastcall StrHashCS(const char* inKey);
 
 UInt32 __fastcall StrHashCI(const char* inKey);
-
-#define AUX_BUFFER_INIT_SIZE 0x8000
-
-class AuxBuffer
-{
-	UInt8* ptr;
-	UInt32 size;
-
-public:
-	AuxBuffer() : ptr(NULL), size(AUX_BUFFER_INIT_SIZE) {}
-};
-
-extern AuxBuffer s_auxBuffers[3];
-
-UInt8* __fastcall GetAuxBuffer(AuxBuffer& buffer, UInt32 reqSize);
 
 #define GetRandomUInt(n) ThisStdCall<UInt32, UInt32>(0xAA5230, (void*)0x11C4180, n)

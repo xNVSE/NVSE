@@ -83,7 +83,7 @@ TileMenu* InterfaceManager::GetMenuByPath(const char * componentPath, const char
 		do
 		{
 			s_menuNameToID[strPos] = kMenuIDs[count];
-			strPos = StrEnd(strPos) + 1;
+			strPos += StrLen(strPos) + 1;
 		}
 		while (++count < 36);
 	}

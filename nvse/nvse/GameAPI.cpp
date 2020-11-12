@@ -898,7 +898,7 @@ ScriptEventList* EventListFromForm(TESForm* form)
 
 char* ConvertLiteralPercents(char *srcPtr)
 {
-	char *endPtr = StrEnd(srcPtr);
+	char *endPtr = srcPtr + StrLen(srcPtr);
 	while (srcPtr = FindChr(srcPtr, '%'))
 	{
 		srcPtr++;
@@ -936,7 +936,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 
 	static char fmtBuffer[0x4000];
 
-	char *resPtr = fmtBuffer, *srcPtr = args.GetFormatString(), *endPtr = StrEnd(srcPtr), *fmtPos, *strPtr, *omitEndPtr;
+	char *resPtr = fmtBuffer, *srcPtr = args.GetFormatString(), *fmtPos, *strPtr, *omitEndPtr;
 	int size;
 	TESForm *form;
 
@@ -1224,8 +1224,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 		srcPtr = fmtPos + 1;
 	}
 
-	size = endPtr - srcPtr;
-	if (size > 0)
+	if (size = StrLen(srcPtr))
 	{
 		memcpy(resPtr, srcPtr, size);
 		resPtr += size;

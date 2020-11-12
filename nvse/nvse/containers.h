@@ -10,26 +10,20 @@
 
 #if !_DEBUG
 void* __fastcall Pool_Alloc(UInt32 size);
-void* __fastcall Pool_Alloc_Al4(UInt32 size);
 void __fastcall Pool_Free(void *pBlock, UInt32 size);
-void __fastcall Pool_Free_Al4(void *pBlock, UInt32 size);
 void* __fastcall Pool_Realloc(void *pBlock, UInt32 curSize, UInt32 reqSize);
-void* __fastcall Pool_Realloc_Al4(void *pBlock, UInt32 curSize, UInt32 reqSize);
 void* __fastcall Pool_Alloc_Buckets(UInt32 numBuckets);
 #else
 void* Pool_Alloc(UInt32 size);
-void* Pool_Alloc_Al4(UInt32 size);
 void Pool_Free(void* pBlock, UInt32 size);
-void Pool_Free_Al4(void* pBlock, UInt32 size);
 void* Pool_Realloc(void* pBlock, UInt32 curSize, UInt32 reqSize);
-void* Pool_Realloc_Al4(void* pBlock, UInt32 curSize, UInt32 reqSize);
 void* Pool_Alloc_Buckets(UInt32 numBuckets);
 #endif
 UInt32 __fastcall AlignBucketCount(UInt32 count);
 
-#define POOL_ALLOC(count, type) (alignof(type) < 4) ? (type*)Pool_Alloc_Al4(count * sizeof(type)) : (type*)Pool_Alloc(count * sizeof(type))
-#define POOL_FREE(block, count, type) (alignof(type) < 4) ? Pool_Free_Al4(block, count * sizeof(type)) : Pool_Free(block, count * sizeof(type))
-#define POOL_REALLOC(block, curCount, newCount, type) block = (alignof(type) < 4) ? (type*)Pool_Realloc_Al4(block, curCount * sizeof(type), newCount * sizeof(type)) : (type*)Pool_Realloc(block, curCount * sizeof(type), newCount * sizeof(type))
+#define POOL_ALLOC(count, type) (type*)Pool_Alloc(count * sizeof(type))
+#define POOL_FREE(block, count, type) Pool_Free(block, count * sizeof(type))
+#define POOL_REALLOC(block, curCount, newCount, type) block = (type*)Pool_Realloc(block, curCount * sizeof(type), newCount * sizeof(type))
 #define ALLOC_NODE(type) (type*)Pool_Alloc(sizeof(type))
 
 template <typename T_Data> class Stack
