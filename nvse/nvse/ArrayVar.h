@@ -96,7 +96,6 @@ struct ArrayElement
 	void  Unset();
 
 	DataType DataType() const {return m_data.dataType;}
-	UInt8 GetOwningModIndex() const;
 
 	bool GetAsNumber(double* out) const;
 	bool GetAsString(const char **out) const;
@@ -272,6 +271,7 @@ public:
 	UInt32 ID()	const {return m_ID;}
 	UInt8 KeyType() const {return m_keyType;}
 	bool IsPacked() const {return m_bPacked;}
+	UInt8 OwningModIndex() const {return m_owningModIndex;}
 	UInt32 Size() const {return m_elements.size();}
 	bool Empty() const {return m_elements.empty();}
 	ContainerType GetContainerType() const {return m_elements.m_type;}
@@ -358,10 +358,14 @@ public:
 
 	ArrayElement* GetElement(ArrayID id, const ArrayKey* key);
 
+	void DumpAll();
+
 	static ArrayVarMap * GetSingleton(void);
 };
 
 extern ArrayVarMap g_ArrayMap;
+
+UInt8 __fastcall GetArrayOwningModIndex(ArrayID arrID);
 
 namespace PluginAPI
 {

@@ -101,10 +101,10 @@ bool ArrayElement::operator==(const ArrayElement& rhs) const
 	}
 }
 
-UInt8 ArrayElement::GetOwningModIndex() const
+UInt8 __fastcall GetArrayOwningModIndex(ArrayID arrID)
 {
-	ArrayVar *arr = g_ArrayMap.Get(m_data.owningArray);
-	return arr ? arr->m_owningModIndex : 0;
+	ArrayVar *arr = g_ArrayMap.Get(arrID);
+	return arr ? arr->OwningModIndex() : 0;
 }
 
 bool ArrayElement::CompareNames(const ArrayElement& lhs, const ArrayElement& rhs)
@@ -159,7 +159,7 @@ bool ArrayElement::SetArray(ArrayID arr)
 
 	m_data.dataType = kDataType_Array;
 	if (m_data.owningArray)
-		g_ArrayMap.AddReference(&m_data.arrID, arr, GetOwningModIndex());
+		g_ArrayMap.AddReference(&m_data.arrID, arr, GetArrayOwningModIndex(m_data.owningArray));
 	else	// this element is not inside any array, so it's just a temporary
 		m_data.arrID = arr;
 
@@ -245,7 +245,7 @@ void ArrayElement::Unset()
 			free(m_data.str);
 	}
 	else if (m_data.dataType == kDataType_Array)
-		g_ArrayMap.RemoveReference(&m_data.arrID, GetOwningModIndex());
+		g_ArrayMap.RemoveReference(&m_data.arrID, GetArrayOwningModIndex(m_data.arrID));
 	
 	m_data.dataType = kDataType_Invalid;
 }
@@ -1265,7 +1265,7 @@ void ArrayVarMap::AddReference(ArrayID* ref, ArrayID toRef, UInt8 referringModIn
 		MarkTemporary(toRef, false);
 	}
 }
-		
+
 void ArrayVarMap::RemoveReference(ArrayID* ref, UInt8 referringModIndex)
 {
 	ArrayVar* var = Get(*ref);
@@ -1590,6 +1590,12 @@ void ArrayVarMap::Clean()		// garbage collection: delete unreferenced arrays
 
 	while (!tempIDs.Empty())
 		Delete(tempIDs.LastKey());
+}
+
+void ArrayVarMap::DumpAll()
+{
+	for (auto iter = vars.Begin(); !iter.End(); ++iter)
+		Console_Print("ID: %d  Refs: %d",iter.Get().ID(), iter.Get().m_refs.Size());
 }
 
 namespace PluginAPI
