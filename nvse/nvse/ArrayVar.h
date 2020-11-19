@@ -117,6 +117,7 @@ struct ArrayElement
 
 	bool operator<(const ArrayElement& rhs) const;
 	bool operator==(const ArrayElement& rhs) const;
+	bool operator!=(const ArrayElement& rhs) const;
 
 	bool IsGood() {return m_data.dataType != kDataType_Invalid;}
 };

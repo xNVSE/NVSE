@@ -101,6 +101,11 @@ bool ArrayElement::operator==(const ArrayElement& rhs) const
 	}
 }
 
+bool ArrayElement::operator!=(const ArrayElement& rhs) const
+{
+	return !(*this == rhs);
+}
+
 UInt8 __fastcall GetArrayOwningModIndex(ArrayID arrID)
 {
 	ArrayVar *arr = g_ArrayMap.Get(arrID);
