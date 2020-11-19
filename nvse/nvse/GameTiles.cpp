@@ -63,7 +63,7 @@ Tile::Value * Tile::GetValueName(const char * valueName)
 Tile * Tile::GetChild(const char * childName)
 {
 	int childIndex = 0;
-	char *colon = FindChr(childName, ':');
+	char *colon = strchr(const_cast<char*>(childName), ':');
 	if (colon)
 	{
 		if (colon == childName) return NULL;
@@ -132,7 +132,7 @@ char *Tile::GetComponentFullName(char *resStr)
 	while (node->data != this)
 		node = node->prev;
 	int index = 0;
-	while ((node = node->prev) && StrEqualCS(name.m_data, node->data->name.m_data))
+	while ((node = node->prev) && !strcmp(name.m_data, node->data->name.m_data))
 		index++;
 	if (index)
 	{
