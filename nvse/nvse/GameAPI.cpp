@@ -899,7 +899,7 @@ ScriptEventList* EventListFromForm(TESForm* form)
 char* ConvertLiteralPercents(char *srcPtr)
 {
 	char *endPtr = srcPtr + StrLen(srcPtr);
-	while (srcPtr = FindChr(srcPtr, '%'))
+	while (srcPtr = strchr(srcPtr, '%'))
 	{
 		srcPtr++;
 		memmove(srcPtr + 1, srcPtr, endPtr - srcPtr);
@@ -941,7 +941,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 	TESForm *form;
 
 	//extract args
-	while (fmtPos = FindChr(srcPtr, '%'))
+	while (fmtPos = strchr(srcPtr, '%'))
 	{
 		size = fmtPos - srcPtr;
 		if (size)
@@ -1153,7 +1153,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 				break;
 			case '{':											//omit portion of string based on flag param
 			{
-				omitEndPtr = SubStrCS(fmtPos + 1, "%}");
+				omitEndPtr = strstr(fmtPos + 1, "%}");
 				if (omitEndPtr)
 				{
 					if (!args.Arg(args.kArgType_Float, &data))
@@ -1164,7 +1164,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 					else
 					{
 						fmtPos++;
-						while ((strPtr = FindChr(fmtPos, '%')) && (strPtr < omitEndPtr) && args.HasMoreArgs())
+						while ((strPtr = strchr(fmtPos, '%')) && (strPtr < omitEndPtr) && args.HasMoreArgs())
 						{
 							strPtr++;
 							switch (*strPtr)
