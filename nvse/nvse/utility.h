@@ -48,9 +48,23 @@ template <typename T> __forceinline void RawSwap(const T &lhs, const T &rhs)
 	*(Helper*)&rhs = temp;
 }
 
-UInt32 __fastcall StrLen(const char* str);
+// These are used for 10h aligning segments in ASM code (massive performance gain, particularly with loops). VS compiler doesn't support multi-byte NOP.
+#define NOP_0x2 __asm fnop
+#define NOP_0x3 __asm lea esp, [esp]
+#define NOP_0x4 __asm test ax, 0
+#define NOP_0x5 __asm test eax, 0
+#define NOP_0x6 __asm test esp, 0
+#define NOP_0x7 __asm test dword ptr [esp], 0
+#define NOP_0x8 __asm test dword ptr [esp-4], 0
+#define NOP_0x9 NOP_0x4 NOP_0x5
+#define NOP_0xA NOP_0x5 NOP_0x5
+#define NOP_0xB NOP_0x5 NOP_0x6
+#define NOP_0xC NOP_0x6 NOP_0x6
+#define NOP_0xD NOP_0x6 NOP_0x7
+#define NOP_0xE NOP_0x7 NOP_0x7
+#define NOP_0xF NOP_0x7 NOP_0x8
 
-bool __fastcall MemCmp(const void* ptr1, const void* ptr2, UInt32 bsize);
+UInt32 __fastcall StrLen(const char* str);
 
 void __fastcall MemZero(void* dest, UInt32 bsize);
 
@@ -60,25 +74,9 @@ char* __fastcall StrNCopy(char* dest, const char* src, UInt32 length);
 
 char* __fastcall StrCat(char* dest, const char* src);
 
-bool __fastcall StrEqualCS(const char* lstr, const char* rstr);
-
-bool __fastcall StrEqualCI(const char* lstr, const char* rstr);
-
 char __fastcall StrCompare(const char* lstr, const char* rstr);
 
-char __fastcall StrBeginsCS(const char* lstr, const char* rstr);
-
-char __fastcall StrBeginsCI(const char* lstr, const char* rstr);
-
 void __fastcall StrToLower(char* str);
-
-void __fastcall ReplaceChr(char* str, char from, char to);
-
-char* __fastcall FindChr(const char* str, char chr);
-
-char* __fastcall FindChrR(const char* str, UInt32 length, char chr);
-
-char* __fastcall SubStrCS(const char *srcStr, const char *subStr);
 
 char* __fastcall SubStrCI(const char *srcStr, const char *subStr);
 

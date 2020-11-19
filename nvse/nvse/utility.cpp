@@ -42,46 +42,24 @@ __declspec(naked) UInt32 __fastcall StrLen(const char *str)
 		jnz		iter4
 	done1:
 		lea		eax, [ecx-1]
-		jmp		done
-	done2:
-		lea		eax, [ecx-2]
-		jmp		done
-	done3:
-		lea		eax, [ecx-3]
-		jmp		done
-	done4:
-		lea		eax, [ecx-4]
-	done:
 		pop		ecx
 		sub		eax, ecx
 		retn
-	}
-}
-
-__declspec(naked) bool __fastcall MemCmp(const void *ptr1, const void *ptr2, UInt32 bsize)
-{
-	__asm
-	{
-		push	esi
-		push	edi
-		mov		esi, ecx
-		mov		edi, edx
-		mov		eax, [esp+0xC]
-		mov		ecx, eax
-		shr		ecx, 2
-		jz		comp1
-		repe cmpsd
-		jnz		done
-	comp1:
-		and		eax, 3
-		jz		done
-		mov		ecx, eax
-		repe cmpsb
-	done:
-		setz	al
-		pop		edi
-		pop		esi
-		retn	4
+	done2:
+		lea		eax, [ecx-2]
+		pop		ecx
+		sub		eax, ecx
+		retn
+	done3:
+		lea		eax, [ecx-3]
+		pop		ecx
+		sub		eax, ecx
+		retn
+	done4:
+		lea		eax, [ecx-4]
+		pop		ecx
+		sub		eax, ecx
+		retn
 	}
 }
 
@@ -209,463 +187,73 @@ __declspec(align(16)) const UInt8 kCaseConverter[] =
 	0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF
 };
 
-__declspec(naked) bool __fastcall StrEqualCS(const char *lstr, const char *rstr)
+char __fastcall StrCompare(const char *lstr, const char *rstr)
 {
-	__asm
+	if (!lstr) return rstr ? -1 : 0;
+	if (!rstr) return 1;
+	UInt8 lchr, rchr;
+	while (*lstr)
 	{
-		push	esi
-		push	edi
-		test	ecx, ecx
-		jz		retn0
-		test	edx, edx
-		jz		retn0
-		mov		esi, ecx
-		mov		edi, edx
-		call	StrLen
-		push	eax
-		mov		ecx, edi
-		call	StrLen
-		pop		edx
-		cmp		eax, edx
-		jnz		retn0
-		test	eax, eax
-		jz		retn1
-		mov		ecx, edx
-		shr		ecx, 2
-		jz		comp1
-		repe cmpsd
-		jnz		retn0
-	comp1:
-		and		edx, 3
-		jz		retn1
-		mov		ecx, edx
-		repe cmpsb
-		jnz		retn0
-	retn1:
-		mov		al, 1
-		pop		edi
-		pop		esi
-		retn
-	retn0:
-		xor		al, al
-		pop		edi
-		pop		esi
-		retn
+		lchr = kCaseConverter[*(UInt8*)lstr];
+		rchr = kCaseConverter[*(UInt8*)rstr];
+		if (lchr == rchr)
+		{
+			lstr++;
+			rstr++;
+			continue;
+		}
+		return (lchr < rchr) ? -1 : 1;
+	}
+	return *rstr ? -1 : 0;
+}
+
+void __fastcall StrToLower(char *str)
+{
+	if (!str) return;
+	UInt8 curr;
+	while (curr = *str)
+	{
+		*str = kCaseConverter[curr];
+		str++;
 	}
 }
 
-__declspec(naked) bool __fastcall StrEqualCI(const char *lstr, const char *rstr)
+char* __fastcall SubStrCI(const char *srcStr, const char *subStr)
 {
-	__asm
+	int srcLen = StrLen(srcStr);
+	if (!srcLen) return NULL;
+	int subLen = StrLen(subStr);
+	if (!subLen) return NULL;
+	srcLen -= subLen;
+	if (srcLen < 0) return NULL;
+	int index;
+	do
 	{
-		push	esi
-		push	edi
-		test	ecx, ecx
-		jz		retnFalse
-		test	edx, edx
-		jz		retnFalse
-		mov		esi, ecx
-		mov		edi, edx
-		call	StrLen
-		push	eax
-		mov		ecx, edi
-		call	StrLen
-		pop		edx
-		cmp		eax, edx
-		jnz		retnFalse
-		test	eax, eax
-		jz		retnTrue
-		xor		eax, eax
-		mov		ecx, eax
-	iterHead:
-		mov		al, [esi]
-		mov		cl, kCaseConverter[eax]
-		mov		al, [edi]
-		cmp		cl, kCaseConverter[eax]
-		jnz		retnFalse
-		inc		esi
-		inc		edi
-		dec		edx
-		jnz		iterHead
-	retnTrue:
-		mov		al, 1
-		pop		edi
-		pop		esi
-		retn
-	retnFalse:
-		xor		al, al
-		pop		edi
-		pop		esi
-		retn
+		index = 0;
+		while (true)
+		{
+			if (kCaseConverter[*(UInt8*)(srcStr + index)] != kCaseConverter[*(UInt8*)(subStr + index)])
+				break;
+			if (++index == subLen)
+				return const_cast<char*>(srcStr);
+		}
+		srcStr++;
 	}
+	while (--srcLen >= 0);
+	return NULL;
 }
 
-__declspec(naked) char __fastcall StrCompare(const char *lstr, const char *rstr)
+char* __fastcall SlashPos(const char *str)
 {
-	__asm
+	if (!str) return NULL;
+	char curr;
+	while (curr = *str)
 	{
-		push	ebx
-		test	ecx, ecx
-		jnz		proceed
-		test	edx, edx
-		jz		retnEQ
-		jmp		retnLT
-	proceed:
-		test	edx, edx
-		jz		retnGT
-		xor		eax, eax
-		mov		ebx, eax
-		jmp		iterHead
-		and		esp, 0xEFFFFFFF
-		lea		esp, [esp]
-		fnop
-	iterHead:
-		mov		al, [ecx]
-		test	al, al
-		jz		iterEnd
-		mov		bl, kCaseConverter[eax]
-		mov		al, [edx]
-		cmp		bl, kCaseConverter[eax]
-		jz		iterNext
-		jl		retnLT
-		jmp		retnGT
-	iterNext:
-		inc		ecx
-		inc		edx
-		jmp		iterHead
-	iterEnd:
-		cmp		[edx], 0
-		jz		retnEQ
-	retnLT:
-		mov		al, -1
-		pop		ebx
-		retn
-	retnGT:
-		mov		al, 1
-		pop		ebx
-		retn
-	retnEQ:
-		xor		al, al
-		pop		ebx
-		retn
+		if ((curr == '/') || (curr == '\\'))
+			return const_cast<char*>(str);
+		str++;
 	}
-}
-
-__declspec(naked) char __fastcall StrBeginsCS(const char *lstr, const char *rstr)
-{
-	__asm
-	{
-		push	esi
-		push	edi
-		test	ecx, ecx
-		jz		retn0
-		test	edx, edx
-		jz		retn0
-		mov		esi, ecx
-		mov		edi, edx
-		call	StrLen
-		push	eax
-		mov		ecx, edi
-		call	StrLen
-		pop		edx
-		cmp		eax, edx
-		jg		retn0
-		test	edx, edx
-		jz		retn1
-		mov		ecx, eax
-		shr		ecx, 2
-		jz		comp1
-		repe cmpsd
-		jnz		retn0
-	comp1:
-		and		eax, 3
-		jz		retn1
-		mov		ecx, eax
-		repe cmpsb
-		jnz		retn0
-	retn1:
-		cmp		[esi], 0
-		setz	al
-		inc		al
-		pop		edi
-		pop		esi
-		retn
-	retn0:
-		xor		al, al
-		pop		edi
-		pop		esi
-		retn
-	}
-}
-
-__declspec(naked) char __fastcall StrBeginsCI(const char *lstr, const char *rstr)
-{
-	__asm
-	{
-		push	esi
-		push	edi
-		test	ecx, ecx
-		jz		retn0
-		test	edx, edx
-		jz		retn0
-		mov		esi, ecx
-		mov		edi, edx
-		call	StrLen
-		push	eax
-		mov		ecx, edi
-		call	StrLen
-		pop		edx
-		cmp		eax, edx
-		jg		retn0
-		test	edx, edx
-		jz		iterEnd
-		xor		ecx, ecx
-		mov		edx, ecx
-		jmp		iterHead
-		and		esp, 0xEFFFFFFF
-	iterHead:
-		mov		cl, [edi]
-		test	cl, cl
-		jz		iterEnd
-		mov		dl, kCaseConverter[ecx]
-		mov		cl, [esi]
-		cmp		dl, kCaseConverter[ecx]
-		jnz		retn0
-		inc		esi
-		inc		edi
-		dec		eax
-		jnz		iterHead
-	iterEnd:
-		cmp		[esi], 0
-		setz	al
-		inc		al
-		pop		edi
-		pop		esi
-		retn
-	retn0:
-		xor		al, al
-		pop		edi
-		pop		esi
-		retn
-	}
-}
-
-__declspec(naked) void __fastcall StrToLower(char *str)
-{
-	__asm
-	{
-		test	ecx, ecx
-		jz		done
-		xor		eax, eax
-		jmp		iterHead
-	done:
-		retn
-		and		esp, 0xEFFFFFFF
-		nop
-	iterHead:
-		mov		al, [ecx]
-		test	al, al
-		jz		done
-		mov		dl, kCaseConverter[eax]
-		mov		[ecx], dl
-		inc		ecx
-		jmp		iterHead
-	}
-}
-
-__declspec(naked) void __fastcall ReplaceChr(char *str, char from, char to)
-{
-	__asm
-	{
-		test	ecx, ecx
-		jz		done
-		mov		al, [esp+4]
-		jmp		iterHead
-		and		esp, 0xEFFFFFFF
-	iterHead:
-		cmp		[ecx], 0
-		jz		done
-		cmp		[ecx], dl
-		jnz		iterNext
-		mov		[ecx], al
-	iterNext:
-		inc		ecx
-		jmp		iterHead
-	done:
-		retn	4
-	}
-}
-
-__declspec(naked) char* __fastcall FindChr(const char *str, char chr)
-{
-	__asm
-	{
-		mov		eax, ecx
-		test	ecx, ecx
-		jnz		iterHead
-		retn
-	retnNULL:
-		xor		eax, eax
-	done:
-		retn
-		and		esp, 0xEFFFFFFF
-	iterHead:
-		cmp		[eax], 0
-		jz		retnNULL
-		cmp		[eax], dl
-		jz		done
-		inc		eax
-		jmp		iterHead
-	}
-}
-
-__declspec(naked) char* __fastcall FindChrR(const char *str, UInt32 length, char chr)
-{
-	__asm
-	{
-		test	ecx, ecx
-		jz		retnNULL
-		lea		eax, [ecx+edx]
-		mov		dl, [esp+4]
-		jmp		iterHead
-		lea		esp, [esp]
-	iterHead:
-		cmp		eax, ecx
-		jz		retnNULL
-		dec		eax
-		cmp		[eax], dl
-		jz		done
-		jmp		iterHead
-	retnNULL:
-		xor		eax, eax
-	done:
-		retn	4
-	}
-}
-
-__declspec(naked) char* __fastcall SubStrCS(const char *srcStr, const char *subStr)
-{
-	__asm
-	{
-		push	ebx
-		push	esi
-		push	edi
-		mov		edi, edx
-		call	StrLen
-		test	eax, eax
-		jz		done
-		mov		esi, ecx
-		mov		ebx, eax
-		mov		ecx, edi
-		call	StrLen
-		sub		ebx, eax
-		js		retnNULL
-	mainHead:
-		mov		ecx, esi
-		mov		edx, edi
-	subHead:
-		mov		al, [edx]
-		test	al, al
-		jnz		proceed
-		mov		eax, esi
-		jmp		done
-	proceed:
-		cmp		al, [ecx]
-		jnz		mainNext
-		inc		ecx
-		inc		edx
-		jmp		subHead
-	mainNext:
-		inc		esi
-		dec		ebx
-		jns		mainHead
-	retnNULL:
-		xor		eax, eax
-	done:
-		pop		edi
-		pop		esi
-		pop		ebx
-		retn
-	}
-}
-
-__declspec(naked) char* __fastcall SubStrCI(const char *srcStr, const char *subStr)
-{
-	__asm
-	{
-		push	ebx
-		push	esi
-		push	edi
-		mov		edi, edx
-		call	StrLen
-		test	eax, eax
-		jz		done
-		mov		esi, ecx
-		mov		ebx, eax
-		mov		ecx, edi
-		call	StrLen
-		sub		ebx, eax
-		js		retnNULL
-		push	ebx
-		xor		eax, eax
-		mov		ebx, eax
-	mainHead:
-		mov		ecx, esi
-		mov		edx, edi
-	subHead:
-		mov		al, [edx]
-		test	al, al
-		jnz		proceed
-		mov		eax, esi
-		pop		ecx
-		jmp		done
-	proceed:
-		mov		bl, kCaseConverter[eax]
-		mov		al, [ecx]
-		cmp		bl, kCaseConverter[eax]
-		jnz		mainNext
-		inc		ecx
-		inc		edx
-		jmp		subHead
-	mainNext:
-		inc		esi
-		dec		dword ptr [esp]
-		jns		mainHead
-		pop		ecx
-	retnNULL:
-		xor		eax, eax
-	done:
-		pop		edi
-		pop		esi
-		pop		ebx
-		retn
-	}
-}
-
-__declspec(naked) char* __fastcall SlashPos(const char *str)
-{
-	__asm
-	{
-		mov		eax, ecx
-		test	ecx, ecx
-		jnz		iterHead
-		retn
-	retnNULL:
-		xor		eax, eax
-	done:
-		retn
-		and		esp, 0xEFFFFFFF
-	iterHead:
-		mov		cl, [eax]
-		test	cl, cl
-		jz		retnNULL
-		cmp		cl, '/'
-		jz		done
-		cmp		cl, '\\'
-		jz		done
-		inc		eax
-		jmp		iterHead
-	}
+	return NULL;
 }
 
 __declspec(naked) char* __fastcall CopyString(const char *key)
@@ -741,8 +329,7 @@ __declspec(naked) UInt32 __fastcall StrHashCS(const char *inKey)
 		test	ecx, ecx
 		jnz		proceed
 		retn
-		and		esp, 0xEFFFFFFF
-		lea		esp, [esp]
+		NOP_0x9
 	iterHead:
 		mov		edx, eax
 		shl		edx, 5
