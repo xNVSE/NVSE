@@ -328,8 +328,8 @@ ScriptToken* Eval_Assign_String(OperatorType op, ScriptToken* lh, ScriptToken* r
 	StringVar* strVar = g_StringMap.Get(strID);
 
 	const char *str = rh->GetString();
-	if ((*str == '%') && ((str[1] | 0x20) == 'e'))
-		str += 2;
+	//if ((*str == '%') && ((str[1] | 0x20) == 'e'))
+	//	str += 2;
 	
 	if (!strVar)
 		var->data = (int)AddStringVar(str, *lh);
