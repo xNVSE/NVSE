@@ -21,8 +21,11 @@ template <class Var>
 class VarMap
 {
 protected:
+#if _DEBUG
+	typedef Map<UInt32, Var> _VarMap;
+#else
 	typedef UnorderedMap<UInt32, Var> _VarMap;
-
+#endif
 	class VarCache
 	{
 		// if desired this can be replaced with an impl that caches more than one var without changing client code

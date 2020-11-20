@@ -739,6 +739,10 @@ public:
 		explicit operator bool() const {return index < table->numEntries;}
 		Map* Table() const {return table;}
 
+		Iterator() : table(nullptr), pEntry(nullptr), index(0)
+		{
+		}
+
 		void Init(Map &source)
 		{
 			table = &source;
