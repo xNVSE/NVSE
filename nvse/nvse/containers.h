@@ -501,6 +501,46 @@ public:
 	}
 };
 
+template <typename T_Data> __forceinline UInt32 AlignNumAlloc(UInt32 numAlloc)
+{
+	switch (alignof(T_Data))
+	{
+		case 1:
+			if (numAlloc & 0xF)
+			{
+				numAlloc &= 0xFFFFFFF0;
+				numAlloc += 0x10;
+			}
+			return numAlloc;
+		case 2:
+			if (numAlloc & 7)
+			{
+				numAlloc &= 0xFFFFFFF8;
+				numAlloc += 8;
+			}
+			return numAlloc;
+		default:
+		{
+			switch (sizeof(T_Data) & 0xC)
+			{
+				case 0:
+					return numAlloc;
+				case 8:
+					if (numAlloc & 1)
+						numAlloc++;
+					return numAlloc;
+				default:
+					if (numAlloc & 3)
+					{
+						numAlloc &= 0xFFFFFFFC;
+						numAlloc += 4;
+					}
+					return numAlloc;
+			}
+		}
+	}
+}
+
 template <typename T_Key> class MapKey
 {
 	using Key_Arg = std::conditional_t<std::is_scalar_v<T_Key>, T_Key, const T_Key&>;
@@ -622,7 +662,10 @@ template <typename T_Key, typename T_Data> class Map
 			return false;
 		}
 		if (!entries)
+		{
+			numAlloc = AlignNumAlloc<Entry>(numAlloc);
 			entries = POOL_ALLOC(numAlloc, Entry);
+		}
 		else if (numAlloc <= numEntries)
 		{
 			UInt32 newAlloc = numAlloc << 1;
@@ -854,7 +897,10 @@ public:
 		UInt32 index;
 		if (GetIndex(key, &index)) return false;
 		if (!keys)
+		{
+			numAlloc = AlignNumAlloc<M_Key>(numAlloc);
 			keys = POOL_ALLOC(numAlloc, M_Key);
+		}
 		else if (numAlloc <= numKeys)
 		{
 			UInt32 newAlloc = numAlloc << 1;
@@ -1581,7 +1627,10 @@ template <typename T_Data> class Vector
 	T_Data *AllocateData()
 	{
 		if (!data)
+		{
+			numAlloc = AlignNumAlloc<T_Data>(numAlloc);
 			data = POOL_ALLOC(numAlloc, T_Data);
+		}
 		else if (numAlloc <= numItems)
 		{
 			UInt32 newAlloc = numAlloc << 1;
@@ -1666,11 +1715,12 @@ public:
 		UInt32 newSize = numItems + count;
 		if (!data)
 		{
-			numAlloc = newSize;
+			numAlloc = AlignNumAlloc<T_Data>(newSize);
 			data = POOL_ALLOC(numAlloc, T_Data);
 		}
 		else if (numAlloc < newSize)
 		{
+			newSize = AlignNumAlloc<T_Data>(newSize);
 			POOL_REALLOC(data, numAlloc, newSize, T_Data);
 			numAlloc = newSize;
 		}
@@ -1760,14 +1810,36 @@ public:
 		if (!data)
 		{
 			if (numAlloc < newCount) numAlloc = newCount;
+			numAlloc = AlignNumAlloc<T_Data>(numAlloc);
 			data = POOL_ALLOC(numAlloc, T_Data);
 		}
 		else if (numAlloc < newCount)
 		{
+			newCount = AlignNumAlloc<T_Data>(newCount);
 			POOL_REALLOC(data, numAlloc, newCount, T_Data);
 			numAlloc = newCount;
 		}
 		memmove(data + numItems, source.data, sizeof(T_Data) * source.numItems);
+		numItems = newCount;
+	}
+
+	void Concatenate(const T_Data *srcData, UInt32 srcSize)
+	{
+		if (!srcSize) return;
+		UInt32 newCount = numItems + srcSize;
+		if (!data)
+		{
+			if (numAlloc < newCount) numAlloc = newCount;
+			numAlloc = AlignNumAlloc<T_Data>(numAlloc);
+			data = POOL_ALLOC(numAlloc, T_Data);
+		}
+		else if (numAlloc < newCount)
+		{
+			newCount = AlignNumAlloc<T_Data>(newCount);
+			POOL_REALLOC(data, numAlloc, newCount, T_Data);
+			numAlloc = newCount;
+		}
+		memcpy(data + numItems, srcData, sizeof(T_Data) * srcSize);
 		numItems = newCount;
 	}
 
@@ -1884,11 +1956,12 @@ public:
 		{
 			if (!data)
 			{
-				numAlloc = newSize;
+				numAlloc = AlignNumAlloc<T_Data>(newSize);
 				data = POOL_ALLOC(numAlloc, T_Data);
 			}
 			else if (numAlloc < newSize)
 			{
+				newSize = AlignNumAlloc<T_Data>(newSize);
 				POOL_REALLOC(data, numAlloc, newSize, T_Data);
 				numAlloc = newSize;
 			}

@@ -1235,13 +1235,10 @@ ArrayVar* ArrayVarMap::Add(UInt32 varID, UInt32 keyType, bool packed, UInt8 modI
 	ArrayVar* var = VarMap::Insert(varID, keyType, packed, modIndex);
 	availableIDs.Erase(varID);
 	var->m_ID = varID;
-	if (!numRefs)		// nobody refers to this array, queue for deletion
+	if (numRefs)		// record references to this array
+		var->m_refs.Concatenate(refs, numRefs);
+	else				// nobody refers to this array, queue for deletion
 		MarkTemporary(varID, true);
-	else				// record references to this array
-	{
-		var->m_refs.Resize(numRefs);
-		memcpy(var->m_refs.Data(), refs, numRefs);
-	}
 	return var;
 }
 
@@ -1281,7 +1278,10 @@ void ArrayVarMap::RemoveReference(ArrayID* ref, UInt8 referringModIndex)
 
 		// if refcount is zero, queue for deletion
 		if (var->m_refs.Empty())
-			MarkTemporary(var->ID(), true);
+		{
+			//MarkTemporary(var->ID(), true);
+			Delete(var->ID());
+		}
 	}
 
 	// store 0 in reference
