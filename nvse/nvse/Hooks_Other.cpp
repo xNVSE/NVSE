@@ -40,6 +40,19 @@ namespace OtherHooks
 		}
 	}
 
+	__declspec(naked) void TilesCreatedHook()
+	{
+		// Eddoursol reported a problem where stagnant deleted tiles got cached
+		__asm
+		{
+			mov g_tilesDestroyed, 1
+			pop ecx
+			mov esp, ebp
+			pop ebp
+			ret
+		}
+	}
+
 	__declspec(naked) void ScriptEventListsDestroyedHook()
 	{
 		static UInt32 hookedCall = 0x5A8EA0;
@@ -56,6 +69,7 @@ namespace OtherHooks
 	{
 		WriteRelJump(0x593E0B, UInt32(SaveRunLineScriptHook));
 		WriteRelJump(0x9FF5FB, UInt32(TilesDestroyedHook));
+		WriteRelJump(0x709910, UInt32(TilesCreatedHook));
 		WriteRelJump(0x5AA0A4, UInt32(ScriptEventListsDestroyedHook));
 	}
 }
