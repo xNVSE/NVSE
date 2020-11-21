@@ -47,11 +47,17 @@ Tile::Value* GetCachedComponentValue(const char* component)
 		g_tilesDestroyed = false;
 		s_cachedTileValues.Clear();
 	}
-
+	
 	Tile::Value** valPtr;
 	if (s_cachedTileValues.Insert(component, &valPtr))
-		*valPtr = InterfaceManager::GetMenuComponentValue(component);
+		*valPtr = nullptr;
 
+	if (!*valPtr)
+	{
+		auto* tile = InterfaceManager::GetMenuComponentValue(component);
+		if (tile)
+			*valPtr = tile;
+	}
 	return *valPtr;
 }
 
