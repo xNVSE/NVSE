@@ -3505,40 +3505,34 @@ constexpr auto g_noShortCircuit = kOpType_Max;
 void ParseShortCircuit(CachedTokens& cachedTokens)
 {
 	TokenCacheEntry *end = cachedTokens.DataEnd();
-	int stackOffset = 0;
 	for (auto iter = cachedTokens.Begin(); !iter.End(); ++iter)
 	{
 		TokenCacheEntry *curr = &iter.Get();
-
 		ScriptToken &token = curr->token;
-		
 		TokenCacheEntry *grandparent = curr;
-		TokenCacheEntry *parent;
+		TokenCacheEntry *furthestParent;
+		
 		do
 		{
 			// Find last "parent" operator of same type. E.g `0 1 && 1 && 1 &&` should jump straight to end of expression.
-			parent = grandparent;
+			furthestParent = grandparent;
 			grandparent = GetOperatorParent(grandparent, end);
 		}
-		while (grandparent < end && grandparent->token.IsLogicalOperator() && (parent == curr || grandparent->token.GetOperator() == parent->token.GetOperator()));
+		while (grandparent < end && grandparent->token.IsLogicalOperator() && (furthestParent == curr || grandparent->token.GetOperator() == furthestParent->token.GetOperator()));
 		
-		if (parent != curr && parent->token.IsLogicalOperator())
+		if (furthestParent != curr && furthestParent->token.IsLogicalOperator())
 		{
-			token.shortCircuitParentType = parent->token.GetOperator()->type;
-			token.shortCircuitDistance = parent - curr;
+			token.shortCircuitParentType = furthestParent->token.GetOperator()->type;
+			token.shortCircuitDistance = furthestParent - curr;
+
+			auto* parent = GetOperatorParent(curr, end);
+			token.shortCircuitStackOffset = curr + 1 == parent ? 2 : 1;
 		}
 		else
 		{
 			token.shortCircuitParentType = g_noShortCircuit;
 			token.shortCircuitDistance = 0;
-		}
-
-		// Required to make short circuit compatible with Reverse Polish Notation stack
-		if (token.IsLogicalOperator())
-			stackOffset = 0;
-		if (token.shortCircuitParentType != g_noShortCircuit)
-		{
-			token.shortCircuitStackOffset = ++stackOffset;
+			token.shortCircuitStackOffset = 0;
 		}
 	}
 }
