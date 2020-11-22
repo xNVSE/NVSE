@@ -42,7 +42,26 @@
 		<Expand>
 			<ArrayItems>
 				<Size>numItems</Size>
-				<ValuePointer>data</ValuePointer>
+				<ValuePointer>(ElementStrMap::Entry*)data</ValuePointer> <!-- Array -->
+			</ArrayItems>
+		</Expand>
+	</Type>
+	<Type Name="ArrayVarElementContainer">
+		<DisplayString Condition="m_type == 0">{{ Size={m_container.numItems} Type=Array }}</DisplayString>
+		<DisplayString Condition="m_type == 1">{{ Size={m_container.numItems} Type=Numeric Map }}</DisplayString>
+		<DisplayString Condition="m_type == 2">{{ Size={m_container.numItems} Type=String Map }}</DisplayString>
+		<Expand>
+			<ArrayItems Condition="m_type == 0">
+				<Size>m_container.numItems</Size>
+				<ValuePointer>(ArrayElement*)m_container.data</ValuePointer>
+			</ArrayItems>
+			<ArrayItems Condition="m_type == 1">
+				<Size>m_container.numItems</Size>
+				<ValuePointer>(ElementNumMap::Entry*)m_container.data</ValuePointer>
+			</ArrayItems>
+			<ArrayItems Condition="m_type == 2">
+				<Size>m_container.numItems</Size>
+				<ValuePointer>(ElementStrMap::Entry*)m_container.data</ValuePointer>
 			</ArrayItems>
 		</Expand>
 	</Type>
