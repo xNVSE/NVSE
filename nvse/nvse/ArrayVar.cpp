@@ -893,35 +893,33 @@ ArrayVar *ArrayVar::GetKeys(UInt8 modIndex)
 	return keysArr;
 }
 
-ArrayVar *ArrayVar::Copy(UInt8 modIndex, bool bDeepCopy)
+ArrayVar* ArrayVar::Copy(UInt8 modIndex, bool bDeepCopy)
 {
-	ArrayVar *copyArr = g_ArrayMap.Create(m_keyType, m_bPacked, modIndex);
-	const ArrayKey *arrKey;
-	const ArrayElement *arrElem;
+	ArrayVar* copyArr = g_ArrayMap.Create(m_keyType, m_bPacked, modIndex);
+	const ArrayElement* arrElem;
 	for (ArrayIterator iter = m_elements.begin(); !iter.End(); ++iter)
 	{
-		arrKey = iter.first();
+		TempObject<ArrayKey> tempKey(*iter.first());
 		arrElem = iter.second();
 		if ((arrElem->DataType() == kDataType_Array) && bDeepCopy)
 		{
-			ArrayVar *innerArr = g_ArrayMap.Get(arrElem->m_data.arrID);
+			ArrayVar* innerArr = g_ArrayMap.Get(arrElem->m_data.arrID);
 			if (innerArr)
 			{
-				ArrayVar *innerCopy = innerArr->Copy(modIndex, true);
-				if (arrKey->KeyType() == kDataType_Numeric)
+				ArrayVar* innerCopy = innerArr->Copy(modIndex, true);
+				if (tempKey().KeyType() == kDataType_Numeric)
 				{
-					if (copyArr->SetElementArray(arrKey->key.num, innerCopy->ID()))
+					if (copyArr->SetElementArray(tempKey().key.num, innerCopy->ID()))
 						continue;
 				}
-				else if (copyArr->SetElementArray(arrKey->key.GetStr(), innerCopy->ID()))
+				else if (copyArr->SetElementArray(tempKey().key.GetStr(), innerCopy->ID()))
 					continue;
 			}
 			DEBUG_PRINT("ArrayVarMap::Copy failed to make deep copy of inner array");
 		}
-		else if (!copyArr->SetElement(arrKey, arrElem))
+		else if (!copyArr->SetElement(&tempKey(), arrElem))
 			DEBUG_PRINT("ArrayVarMap::Copy failed to set element in copied array");
 	}
-
 	return copyArr;
 }
 
