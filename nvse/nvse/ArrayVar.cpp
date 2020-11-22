@@ -899,7 +899,7 @@ ArrayVar* ArrayVar::Copy(UInt8 modIndex, bool bDeepCopy)
 	const ArrayElement* arrElem;
 	for (ArrayIterator iter = m_elements.begin(); !iter.End(); ++iter)
 	{
-		TempObject<ArrayKey> tempKey(*iter.first());
+		TempObject<ArrayKey> tempKey(*iter.first()); // required as iterators pass static objects and this function is recursive
 		arrElem = iter.second();
 		if ((arrElem->DataType() == kDataType_Array) && bDeepCopy)
 		{
