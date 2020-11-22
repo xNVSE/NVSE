@@ -383,6 +383,7 @@ FodyWeavers.xsd
 **/Debug\ CS
 **/Debug\ VC9
 **/Release\ VC9
+**/Release_Dbg
 *.suo
 *.csproj.user
 *.vbproj.user

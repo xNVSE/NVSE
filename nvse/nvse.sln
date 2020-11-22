@@ -20,6 +20,7 @@ Global
 		Debug|Win32 = Debug|Win32
 		Release CS|Win32 = Release CS|Win32
 		Release ng|Win32 = Release ng|Win32
+		Release_DBG|Win32 = Release_DBG|Win32
 		Release|Win32 = Release|Win32
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
@@ -30,6 +31,8 @@ Global
 		{48AC56E6-868A-473A-9B30-28B9E970CDCC}.Release CS|Win32.ActiveCfg = Release|Win32
 		{48AC56E6-868A-473A-9B30-28B9E970CDCC}.Release ng|Win32.ActiveCfg = Release|Win32
 		{48AC56E6-868A-473A-9B30-28B9E970CDCC}.Release ng|Win32.Build.0 = Release|Win32
+		{48AC56E6-868A-473A-9B30-28B9E970CDCC}.Release_DBG|Win32.ActiveCfg = Release_DBG|Win32
+		{48AC56E6-868A-473A-9B30-28B9E970CDCC}.Release_DBG|Win32.Build.0 = Release_DBG|Win32
 		{48AC56E6-868A-473A-9B30-28B9E970CDCC}.Release|Win32.ActiveCfg = Release|Win32
 		{48AC56E6-868A-473A-9B30-28B9E970CDCC}.Release|Win32.Build.0 = Release|Win32
 		{EB65382C-3CE5-4B5E-B3B1-51E500BCE904}.Debug CS|Win32.ActiveCfg = Debug CS|Win32
@@ -42,6 +45,8 @@ Global
 		{EB65382C-3CE5-4B5E-B3B1-51E500BCE904}.Release CS|Win32.Build.0 = Release CS|Win32
 		{EB65382C-3CE5-4B5E-B3B1-51E500BCE904}.Release ng|Win32.ActiveCfg = Release ng|Win32
 		{EB65382C-3CE5-4B5E-B3B1-51E500BCE904}.Release ng|Win32.Build.0 = Release ng|Win32
+		{EB65382C-3CE5-4B5E-B3B1-51E500BCE904}.Release_DBG|Win32.ActiveCfg = Release_DBG|Win32
+		{EB65382C-3CE5-4B5E-B3B1-51E500BCE904}.Release_DBG|Win32.Build.0 = Release_DBG|Win32
 		{EB65382C-3CE5-4B5E-B3B1-51E500BCE904}.Release|Win32.ActiveCfg = Release|Win32
 		{EB65382C-3CE5-4B5E-B3B1-51E500BCE904}.Release|Win32.Build.0 = Release|Win32
 		{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}.Debug CS|Win32.ActiveCfg = Debug|Win32
@@ -54,6 +59,8 @@ Global
 		{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}.Release CS|Win32.Build.0 = Release|Win32
 		{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}.Release ng|Win32.ActiveCfg = Release|Win32
 		{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}.Release ng|Win32.Build.0 = Release|Win32
+		{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}.Release_DBG|Win32.ActiveCfg = Release_DBG|Win32
+		{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}.Release_DBG|Win32.Build.0 = Release_DBG|Win32
 		{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}.Release|Win32.ActiveCfg = Release|Win32
 		{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}.Release|Win32.Build.0 = Release|Win32
 		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Debug CS|Win32.ActiveCfg = Debug|Win32
@@ -63,6 +70,8 @@ Global
 		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Release CS|Win32.ActiveCfg = Release|Win32
 		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Release ng|Win32.ActiveCfg = Release|Win32
 		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Release ng|Win32.Build.0 = Release|Win32
+		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Release_DBG|Win32.ActiveCfg = Release_DBG|Win32
+		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Release_DBG|Win32.Build.0 = Release_DBG|Win32
 		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Release|Win32.ActiveCfg = Release|Win32
 		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Release|Win32.Build.0 = Release|Win32
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Debug CS|Win32.ActiveCfg = Debug|Win32
@@ -74,6 +83,8 @@ Global
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Release CS|Win32.Build.0 = Release|Win32
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Release ng|Win32.ActiveCfg = Release|Win32
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Release ng|Win32.Build.0 = Release|Win32
+		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Release_DBG|Win32.ActiveCfg = Release_DBG|Win32
+		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Release_DBG|Win32.Build.0 = Release_DBG|Win32
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Release|Win32.ActiveCfg = Release|Win32
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
