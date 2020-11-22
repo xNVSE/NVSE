@@ -1279,8 +1279,11 @@ void ArrayVarMap::RemoveReference(ArrayID* ref, UInt8 referringModIndex)
 		// if refcount is zero, queue for deletion
 		if (var->m_refs.Empty())
 		{
-			//MarkTemporary(var->ID(), true);
+#if _DEBUG // Deleting directly not suitable for Map (as opposed to UnorderedMap used in Release)
+			MarkTemporary(var->ID(), true);
+#else
 			Delete(var->ID());
+#endif
 		}
 	}
 
