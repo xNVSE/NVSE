@@ -1073,7 +1073,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 
 				if (form)
 				{			
-					if (form->GetIsReference())
+					if (form->RetTrue())
 						form = ((TESObjectREFR*)form)->baseForm;
 
 					UInt8 objType = 0;

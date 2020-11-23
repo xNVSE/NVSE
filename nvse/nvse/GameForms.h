@@ -269,7 +269,7 @@ public:
 	virtual bool		Unk_39(void);
 	virtual bool		Unk_3A(void);
 	virtual bool		Unk_3B(void);
-	virtual bool		GetIsReference();
+	virtual bool		RetTrue();
 	virtual bool		Unk_3D(void);
 	virtual bool		Unk_3E(void);
 	virtual bool		Unk_3F(void);	// returnTrue for refr whose baseForm is a TESActorBase
