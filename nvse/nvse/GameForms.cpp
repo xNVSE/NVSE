@@ -45,7 +45,7 @@ TESFullName* TESForm::GetFullName()
 			return &cell->worldSpace->fullName;
 		return fullName;
 	}
-	TESForm *baseForm = GetIsReference() ? ((TESObjectREFR*)this)->baseForm : this;
+	TESForm *baseForm = IsReference() ? ((TESObjectREFR*)this)->baseForm : this;
 	return DYNAMIC_CAST(baseForm, TESForm, TESFullName);
 }
 
