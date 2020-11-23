@@ -1280,7 +1280,8 @@ void ArrayVarMap::RemoveReference(ArrayID* ref, UInt8 referringModIndex)
 #if _DEBUG // Deleting directly not suitable for Map (as opposed to UnorderedMap used in Release)
 			MarkTemporary(var->ID(), true);
 #else
-			Delete(var->ID());
+			//Delete(var->ID());
+			MarkTemporary(var->ID(), true);
 #endif
 		}
 	}
