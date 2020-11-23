@@ -3402,7 +3402,7 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 	if (callingRef)
 	{
 		callingRef->Resolve(eventList);
-		if (callingRef->form && callingRef->form->IsReference())
+		if (callingRef->form && callingRef->form->GetIsReference())
 			callingObj = DYNAMIC_CAST(callingRef->form, TESForm, TESObjectREFR);
 		else
 		{

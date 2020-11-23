@@ -1174,7 +1174,7 @@ bool Cmd_GetNthAnimation_Execute(COMMAND_ARGS)
 		if (!pForm && thisObj)
 			pForm = thisObj;
 
-		if (pForm && pForm->IsReference())
+		if (pForm && pForm->GetIsReference())
 		{
 			TESObjectREFR* pRef = DYNAMIC_CAST(thisObj, TESForm, TESObjectREFR);
 			if (pRef)
@@ -1222,7 +1222,7 @@ bool Cmd_AddAnimation_Execute(COMMAND_ARGS)
 		if (!pForm && thisObj)
 			pForm = thisObj;
 
-		if (pForm && pForm->IsReference())
+		if (pForm && pForm->GetIsReference())
 		{
 			TESObjectREFR* pRef = DYNAMIC_CAST(thisObj, TESForm, TESObjectREFR);
 			if (pRef)
@@ -1264,7 +1264,7 @@ bool Cmd_DelAnimation_Execute(COMMAND_ARGS)
 		if (!pForm && thisObj)
 			pForm = thisObj;
 
-		if (pForm && pForm->IsReference())
+		if (pForm && pForm->GetIsReference())
 		{
 			TESObjectREFR* pRef = DYNAMIC_CAST(thisObj, TESForm, TESObjectREFR);
 			if (pRef)
@@ -1310,7 +1310,7 @@ bool Cmd_DelAnimations_Execute(COMMAND_ARGS)
 		if (!pForm && thisObj)
 			pForm = thisObj;
 
-		if (pForm && pForm->IsReference())
+		if (pForm && pForm->GetIsReference())
 		{
 			TESObjectREFR* pRef = DYNAMIC_CAST(thisObj, TESForm, TESObjectREFR);
 			if (pRef)

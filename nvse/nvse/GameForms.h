@@ -336,7 +336,6 @@ public:
 	// return a new base form which is the clone of this form
 	TESForm* CloneForm(bool bPersist = true) const;
 	bool     IsInventoryObject() const;
-	bool	 IsReference()	{return typeID >= kFormType_Reference && typeID <= kFormType_ACRE;}
 
 	MEMBER_FN_PREFIX(TESForm);
 #if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
