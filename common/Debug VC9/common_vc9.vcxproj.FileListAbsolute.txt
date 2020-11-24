@@ -1,2 +1,0 @@
-C:\Users\KormakurBreki\Documents\nvse plugin\nvse_5_1_beta4 (5)\nvse_5_1_beta4\src\common\Debug VC9\common_vc9.lib
-C:\Users\KormakurBreki\Documents\nvse plugin\nvse_5_1_beta4 (5)\nvse_5_1_beta4\src\common\Debug VC9\common_vc9.pdb
