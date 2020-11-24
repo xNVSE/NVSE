@@ -53,6 +53,13 @@
     </ClCompile>
     <ClCompile Include="dllmain.c" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="..\nvse\nvse\containers.cpp">
+      <Filter>nvse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\nvse\nvse\utility.cpp">
+      <Filter>nvse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\nvse\nvse\printf.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\nvse\nvse\GameAPI.h">
@@ -98,6 +105,12 @@
       <Filter>nvse</Filter>
     </ClInclude>
     <ClInclude Include="..\nvse\nvse\Utilities.h">
+      <Filter>nvse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\nvse\nvse\containers.h">
+      <Filter>nvse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\nvse\nvse\utility.h">
       <Filter>nvse</Filter>
     </ClInclude>
   </ItemGroup>

@@ -190,6 +190,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\nvse\nvse\containers.cpp" />
     <ClCompile Include="..\nvse\nvse\GameAPI.cpp" />
     <ClCompile Include="..\nvse\nvse\GameBSExtraData.cpp" />
     <ClCompile Include="..\nvse\nvse\GameData.cpp" />
@@ -203,8 +204,10 @@
     <ClCompile Include="..\nvse\nvse\GameTasks.cpp" />
     <ClCompile Include="..\nvse\nvse\GameTiles.cpp" />
     <ClCompile Include="..\nvse\nvse\GameTypes.cpp" />
+    <ClCompile Include="..\nvse\nvse\printf.cpp" />
     <ClCompile Include="..\nvse\nvse\SafeWrite.cpp" />
     <ClCompile Include="..\nvse\nvse\Utilities.cpp" />
+    <ClCompile Include="..\nvse\nvse\utility.cpp" />
     <ClCompile Include="dllmain.c">
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug ng|Win32'">
       </ForcedIncludeFiles>
@@ -218,6 +221,7 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\nvse\nvse\containers.h" />
     <ClInclude Include="..\nvse\nvse\GameAPI.h" />
     <ClInclude Include="..\nvse\nvse\GameBSExtraData.h" />
     <ClInclude Include="..\nvse\nvse\GameData.h" />
@@ -233,6 +237,7 @@
     <ClInclude Include="..\nvse\nvse\GameTypes.h" />
     <ClInclude Include="..\nvse\nvse\SafeWrite.h" />
     <ClInclude Include="..\nvse\nvse\Utilities.h" />
+    <ClInclude Include="..\nvse\nvse\utility.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />
