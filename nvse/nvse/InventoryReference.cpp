@@ -192,12 +192,13 @@ bool InventoryReference::SetEquipped(bool bEquipped)
 
 void InventoryReference::DoDeferredActions()
 {
-	DeferredAction *action;
-	while (action = m_deferredActions.Pop())
+	while (!m_deferredActions.Empty())
 	{
+		DeferredAction* action = &m_deferredActions.Top();
 		SetData(action->Data());
 		if (Validate() && GetContainer())
 			action->Execute(this);
+		m_deferredActions.Pop();
 	}
 }
 

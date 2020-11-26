@@ -13,10 +13,12 @@ UserFunctionManager::UserFunctionManager() : m_nestDepth(0)
 }
 
 UserFunctionManager::~UserFunctionManager()
-{
-	FunctionContext **context;
-	while (context = m_functionStack.Pop())
-		delete *context;
+{	
+	while (!m_functionStack.Empty())
+	{
+		FunctionContext** context = &m_functionStack.Top();
+		delete* context;
+	}
 }
 
 static SmallObjectsAllocator::LockBasedAllocator<FunctionContext, 5> g_functionContextAllocator;
