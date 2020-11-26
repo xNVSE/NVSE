@@ -1873,7 +1873,7 @@ bool ExpressionParser::ParseUserFunctionCall()
 
 	// lookup paramInfo from Script
 	// if recursive call, look up from ScriptBuffer instead
-	if (funcScript)
+	if (funcScript && funcScript->text)
 	{
 		char* funcScriptText = funcScript->text;
 		Script::VarInfoEntry* funcScriptVars = &funcScript->varList;
@@ -1894,7 +1894,7 @@ bool ExpressionParser::ParseUserFunctionCall()
 		DynamicParamInfo dynamicParams(funcParams);
 		bParsed = ParseArgs(dynamicParams.Params(), dynamicParams.NumParams());
 	}
-	else	// using refVar as function pointer, use default params
+	else	// using refVar as function pointer, use default params OR NOT EDITOR
 	{
 		ParamInfo* params = kParams_DefaultUserFunctionParams;
 		UInt32 numParams = NUM_PARAMS(kParams_DefaultUserFunctionParams);
