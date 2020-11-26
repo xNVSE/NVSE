@@ -3,7 +3,7 @@
 #if _DEBUG
 extern Map<UInt32, Map<UInt32, UInt32>> g_nvseVarGarbageCollectionMap;
 #else
-exterm UnorderedMap<UInt32, UnorderedMap<UInt32, UInt32>> g_nvseVarGarbageCollectionMap;
+extern UnorderedMap<UInt32, UnorderedMap<UInt32, UInt32>> g_nvseVarGarbageCollectionMap;
 #endif
 
 
