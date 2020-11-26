@@ -1,6 +1,14 @@
 #pragma once
 
 #if _DEBUG
+extern Map<UInt32, Map<UInt32, UInt32>> g_nvseVarGarbageCollectionMap;
+#else
+exterm UnorderedMap<UInt32, UnorderedMap<UInt32, UInt32>> g_nvseVarGarbageCollectionMap;
+#endif
+
+
+
+#if _DEBUG
 #define DBG_EXPR_LEAKS 1
 extern SInt32 TOKEN_COUNT;
 extern SInt32 EXPECTED_TOKEN_COUNT;

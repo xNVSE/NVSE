@@ -755,10 +755,11 @@ ScriptToken* ScriptToken::Read(ExpressionEvaluator* context)
 	return NULL;
 }
 
+
 #if _DEBUG
-Map<UInt32, Set<UInt32>> g_nvseVarGarbageCollectionMap;
+Map<UInt32, Map<UInt32, UInt32>> g_nvseVarGarbageCollectionMap;
 #else
-UnorderedMap<UInt32, Set<UInt32>> g_nvseVarGarbageCollectionMap;
+UnorderedMap<UInt32, UnorderedMap<UInt32, UInt32>> g_nvseVarGarbageCollectionMap;
 #endif
 
 Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
@@ -884,9 +885,9 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		if (!value.var)
 			type = kTokenType_Invalid;
 
-		// to be deleted on event list destruction
+		// to be deleted on event list destruction, see Hooks_Other.cpp#CleanUpNVSEVars
 		if (type == kTokenType_ArrayVar || type == kTokenType_StringVar && refIdx == 0)
-			g_nvseVarGarbageCollectionMap[owningScript->refID].Insert(varIdx);
+			g_nvseVarGarbageCollectionMap[owningScript->refID].Emplace(varIdx, type);
 		
 		break;
 	}
