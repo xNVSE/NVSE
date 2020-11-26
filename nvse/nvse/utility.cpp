@@ -21,7 +21,7 @@ __declspec(naked) UInt32 __fastcall StrLen(const char *str)
 		jz		done1
 		test	ecx, 3
 		jnz		iter1
-		nop
+		ALIGN 16
 	iter4:
 		mov		eax, [ecx]
 		mov		edx, 0x7EFEFEFF
@@ -325,21 +325,25 @@ __declspec(naked) UInt32 __fastcall StrHashCS(const char *inKey)
 {
 	__asm
 	{
-		xor		eax, eax
+		push	esi
+		mov		eax, 0x1505
 		test	ecx, ecx
-		jnz		proceed
-		retn
-		NOP_0x9
+		jz		done
+		mov		esi, ecx
+		xor		ecx, ecx
+		ALIGN 16
 	iterHead:
+		mov		cl, [esi]
+		test	cl, cl
+		jz		done
 		mov		edx, eax
+		add		eax, ecx
 		shl		edx, 5
 		add		eax, edx
-	proceed:
-		movzx	edx, byte ptr [ecx]
-		add		eax, edx
-		inc		ecx
-		test	edx, edx
-		jnz		iterHead
+		inc		esi
+		jmp		iterHead
+	done:
+		pop		esi
 		retn
 	}
 }
@@ -349,16 +353,12 @@ __declspec(naked) UInt32 __fastcall StrHashCI(const char *inKey)
 	__asm
 	{
 		push	esi
-		xor		eax, eax
+		mov		eax, 0x1505
 		test	ecx, ecx
 		jz		done
 		mov		esi, ecx
-		mov		ecx, eax
-		jmp		iterHead
-	done:
-		pop		esi
-		retn
-		nop
+		xor		ecx, ecx
+		ALIGN 16
 	iterHead:
 		mov		cl, [esi]
 		test	cl, cl
@@ -370,5 +370,49 @@ __declspec(naked) UInt32 __fastcall StrHashCI(const char *inKey)
 		add		eax, edx
 		inc		esi
 		jmp		iterHead
+	done:
+		pop		esi
+		retn
 	}
+}
+
+void SpinLock::Enter()
+{
+	UInt32 threadID = GetCurrentThreadId();
+	if (owningThread == threadID)
+	{
+		enterCount++;
+		return;
+	}
+	while (InterlockedCompareExchange(&owningThread, threadID, 0));
+	enterCount = 1;
+}
+
+#define FAST_SLEEP_COUNT 10000UL
+
+void SpinLock::EnterSleep()
+{
+	UInt32 threadID = GetCurrentThreadId();
+	if (owningThread == threadID)
+	{
+		enterCount++;
+		return;
+	}
+	UInt32 fastIdx = FAST_SLEEP_COUNT;
+	while (InterlockedCompareExchange(&owningThread, threadID, 0))
+	{
+		if (fastIdx)
+		{
+			fastIdx--;
+			Sleep(0);
+		}
+		else Sleep(1);
+	}
+	enterCount = 1;
+}
+
+void SpinLock::Leave()
+{
+	if (owningThread && !--enterCount)
+		owningThread = 0;
 }
