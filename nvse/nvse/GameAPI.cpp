@@ -384,13 +384,14 @@ static const char* ResolveStringArgument(ScriptEventList* eventList, const char*
 	return result;
 }
 
-static bool v_ExtractArgsEx(SInt16 numArgs, ParamInfo * paramInfo, UInt8* &scriptData, Script * scriptObj, ScriptEventList * eventList, va_list args)
+static bool v_ExtractArgsEx(SInt16 numArgs, ParamInfo * paramInfo, UInt8* &scriptData, Script * scriptObj, ScriptEventList * eventList, UInt8* scriptDataOriginal, UInt32* opcodeOffsetPtr, va_list args)
 {
 #if NVSE_CORE
 	if (numArgs < 0) {
-		UInt32 opcodeOffsetPtr = 0;
-		if (ExtractArgsOverride::ExtractArgs(paramInfo, scriptData, scriptObj, eventList, &opcodeOffsetPtr, args, false, numArgs)) {
-			scriptData += opcodeOffsetPtr;
+		*opcodeOffsetPtr += 2;
+		const auto beforeOffset = *opcodeOffsetPtr;
+		if (ExtractArgsOverride::ExtractArgs(paramInfo, scriptDataOriginal, scriptObj, eventList, opcodeOffsetPtr, args, false, numArgs)) {
+			scriptData += *opcodeOffsetPtr - beforeOffset;
 			return true;
 		}
 		else {
@@ -839,7 +840,7 @@ bool ExtractArgsEx(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptDa
 
 	//DEBUG_MESSAGE("scriptData:%08x numArgs:%d paramInfo:%08x scriptObj:%08x eventList:%08x", scriptData, numArgs, paramInfo, scriptObj, eventList);
 
-	bool bExtracted = v_ExtractArgsEx(numArgs, paramInfo, scriptData, scriptObj, eventList, args);
+	bool bExtracted = v_ExtractArgsEx(numArgs, paramInfo, scriptData, scriptObj, eventList, static_cast<UInt8*>(scriptDataIn), scriptDataOffset, args);
 	va_end(args);
 	return bExtracted;
 }
@@ -1276,7 +1277,7 @@ bool ExtractFormatStringArgs(UInt32 fmtStringPos, char* buffer, ParamInfo * para
 	bool bExtracted = false;
 	if (fmtStringPos > 0)
 	{
-		bExtracted = v_ExtractArgsEx(fmtStringPos, paramInfo, scriptData, scriptObj, eventList, args);
+		bExtracted = v_ExtractArgsEx(fmtStringPos, paramInfo, scriptData, scriptObj, eventList, static_cast<UInt8*>(scriptDataIn), scriptDataOffset, args);
 		if (!bExtracted)
 			return false;
 	}
@@ -1292,7 +1293,7 @@ bool ExtractFormatStringArgs(UInt32 fmtStringPos, char* buffer, ParamInfo * para
 		if ((numArgs + fmtStringPos + 21) > maxParams)		//scripter included too many optional params - adjust to prevent crash
 			numArgs = (maxParams - fmtStringPos - 21);
 
-		bExtracted = v_ExtractArgsEx(numArgs, &(paramInfo[fmtStringPos + 21]), scriptData, scriptObj, eventList, args);
+		bExtracted = v_ExtractArgsEx(numArgs, &(paramInfo[fmtStringPos + 21]), scriptData, scriptObj, eventList, static_cast<UInt8*>(scriptDataIn), scriptDataOffset, args);
 	}
 
 	va_end(args);
