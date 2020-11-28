@@ -1,4 +1,3 @@
-#include "common/ICriticalSection.h"
 #include "nvse/containers.h"
 
 #define MAX_CACHED_BLOCK_SIZE 0x400
@@ -56,14 +55,14 @@ __declspec(naked) void* __fastcall Pool_Alloc(UInt32 size)
 		div		esi
 		push	eax
 		sub		ecx, edx
-		lea		eax, [ecx+0xC]
-		push	eax
+		add		ecx, 8
+		push	ecx
 		call	_malloc_base
 		pop		ecx
 		pop		ecx
 		sub		ecx, 2
 		pop		edx
-		add		eax, 0xC
+		add		eax, 8
 		and		al, 0xF0
 		mov		[edx], eax
 		lea		edx, [eax+esi]
@@ -91,7 +90,7 @@ __declspec(naked) void __fastcall Pool_Free(void *pBlock, UInt32 size)
 		jz		isAligned
 		and		dl, 0xF0
 		add		edx, 0x10
-		nop
+		ALIGN 16
 	isAligned:
 		cmp		edx, MAX_CACHED_BLOCK_SIZE
 		jbe		doCache
@@ -141,7 +140,7 @@ __declspec(naked) void* __fastcall Pool_Realloc(void *pBlock, UInt32 curSize, UI
 		add		esp, 8
 	done:
 		retn	4
-		NOP_0x5
+		ALIGN 16
 	doCache:
 		push	edx
 		push	eax

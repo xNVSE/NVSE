@@ -436,33 +436,36 @@ private:
 	EventInfo		* m_eventInfo;
 };
 
-bool TryGetReference(TESObjectREFR* refr)
+__declspec(naked) bool __fastcall IsValidReference(void *object)
 {
-	// ### HACK HACK HACK
-	// MarkEventList() may have been called for a BaseExtraList not associated with a TESObjectREFR
-	bool bIsRefr = false;
-	__try 
+	// Workaround for cases where MarkEventList() is called on an ExtraDataList not associated with a TESObjectREFR.
+	/*
+	0102F55C	TESObjectREFR
+	01086A6C	Character
+	010870AC	Creature
+	0108AA3C	PlayerCharacter
+	0108C3C4	BeamProjectile
+	0108EA64	ContinuousBeamProjectile
+	0108EE04	Explosion
+	0108F2F4	FlameProjectile
+	0108F674	GrenadeProjectile
+	0108FA44	MissileProjectile
+	*/
+	__asm
 	{
-		switch (*((UInt32*)refr))
-		{
-			case kVtbl_PlayerCharacter:
-			case kVtbl_Character:
-			case kVtbl_Creature:
-			case kVtbl_ArrowProjectile:
-			case kVtbl_MagicBallProjectile:
-			case kVtbl_MagicBoltProjectile:
-			case kVtbl_MagicFogProjectile:
-			case kVtbl_MagicSprayProjectile:
-			case kVtbl_TESObjectREFR:
-				bIsRefr = true;
-		}
+		test	byte ptr [ecx], 4
+		jz		retnFalse
+		cmp		word ptr [ecx+2], 0x108
+		jz		retnTrue
+		cmp		dword ptr [ecx], 0x102F55C
+		jnz		retnFalse
+	retnTrue:
+		mov		al, 1
+		retn
+	retnFalse:
+		xor		al, al
+		retn
 	}
-	__except(EXCEPTION_EXECUTE_HANDLER) 
-	{
-		bIsRefr = false;
-	}
-
-	return bIsRefr;
 }
 
 // stack of event names pushed when handler invoked, popped when handler returns
@@ -535,7 +538,7 @@ void __stdcall HandleEvent(UInt32 id, void* arg0, void* arg1)
 		// Check filters
 		if (callback.source && (arg0 != callback.source))
 		{
-			if (!TryGetReference((TESObjectREFR*)arg0) || (((TESObjectREFR*)arg0)->baseForm != callback.source))
+			if (!IsValidReference(arg0) || (((TESObjectREFR*)arg0)->baseForm != callback.source))
 				continue;
 		}
 
@@ -731,7 +734,7 @@ bool RemoveHandler(const char* id, EventCallback& handler)
 
 void __stdcall HandleGameEvent(UInt32 eventMask, TESObjectREFR* source, TESForm* object)
 {
-	if (!TryGetReference(source)) {
+	if (!IsValidReference(source)) {
 		return;
 	}
 
