@@ -8,10 +8,11 @@
 #if RUNTIME
 namespace OtherHooks
 {
-	
-	void __stdcall PrintCurrentThreadID()
+	// set ... to and if ... statements pass a different scriptData value from the stack, hook is used to save last position
+	// function call is needed as g_lastScriptData is thread_local, compiler generates TlsSetValue from statement
+	void __fastcall SaveOpcodePosition(UInt8* currentOpcodePos)
 	{
-		_MESSAGE("Thread ID: %X", GetCurrentThreadId());
+		g_lastScriptData = currentOpcodePos;
 	}
 
 	__declspec(naked) void SaveRunLineScriptHook()
@@ -22,7 +23,7 @@ namespace OtherHooks
 		{
 			call hookedCall
 			mov ecx, [ebp+0x8]
-			mov g_lastScriptData, ecx
+			call SaveOpcodePosition
 			jmp returnAddress
 		}
 	}
