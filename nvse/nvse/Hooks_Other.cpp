@@ -87,10 +87,9 @@ namespace OtherHooks
 			node = node->next;
 		}
 	}
-
+	
 	void __fastcall OnScriptEventListDestroyed(const ScriptEventList* eventList)
 	{
-		g_scriptEventListsDestroyed = true;
 		CleanUpNVSEVars(eventList);
 	}
 	__declspec(naked) void ScriptEventListsDestroyedHook()
