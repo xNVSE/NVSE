@@ -15,6 +15,8 @@ namespace OtherHooks
 	};
 	
 	extern Vector<QueuedEventListDestruction> s_eventListDestructionQueue;
+
+	void CleanUpNVSEVars(const ScriptEventList* eventList);
 	
 	void Hooks_Other_Init();
 }

@@ -63,7 +63,6 @@ Vector<QueuedScript> s_queuedScripts(0x40);
 
 void QueuedScript::Execute()
 {
-	_MESSAGE("%08X\t%08X", script->refID, thisObj ? thisObj->refID : 0);
 	ThisStdCall<bool>(0x5E2590, CdeclCall<void*>(0x5E24D0), script, thisObj, eventList, containingObj, arg5, arg6, arg7,
 		arg8);
 }
@@ -116,7 +115,12 @@ static void HandleMainLoopHook(void)
 		s_queuedScripts.Clear();
 
 		for (auto iter = OtherHooks::s_eventListDestructionQueue.Begin(); iter; ++iter)
-			iter().Destroy();
+		{
+			auto& entry = iter();
+			OtherHooks::CleanUpNVSEVars(entry.eventList);
+			entry.Destroy();
+		}
+		
 		OtherHooks::s_eventListDestructionQueue.Clear();
 #endif
 	}

@@ -88,11 +88,6 @@ namespace OtherHooks
 			node = node->next;
 		}
 	}
-	
-	void __fastcall OnScriptEventListDestroyed(const ScriptEventList* eventList)
-	{
-		CleanUpNVSEVars(eventList);
-	}
 
 	Vector<QueuedEventListDestruction> s_eventListDestructionQueue;
 
@@ -107,19 +102,13 @@ namespace OtherHooks
 		static UInt32 returnAddress = 0x41AF7F;
 		__asm
 		{
-			// ScriptEventList* already in ecx
-			//push ecx
-			call OnScriptEventListDestroyed
 			mov ecx, [ebp-0x4]
 			mov edx, [ebp+0x8]
 			call QueueEventListDestruction
-			mov eax, [ebp - 0x4]
+			mov eax, [ebp-0x4]
 			mov esp, ebp
 			pop ebp
 			retn 4
-			//pop ecx
-			//call hookedCall
-			//jmp returnAddress
 		}
 	}
 
