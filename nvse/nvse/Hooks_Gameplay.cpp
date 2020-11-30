@@ -56,6 +56,52 @@ static const UInt32 kExtraOwnershipDefaultSetting  = 0x00411F78;	//	0040A654 in 
 
 DWORD g_mainThreadID = 0;
 
+struct QueuedScript
+{
+	Script				*script;
+	TESObjectREFR		*thisObj;
+	ScriptEventList		*eventList;
+	TESObjectREFR		*containingObj;
+	UInt8				arg5;
+	UInt8				arg6;
+	UInt8				arg7;
+	UInt8				pad13;
+	UInt32				arg8;
+
+	QueuedScript(Script *_script, TESObjectREFR *_thisObj, ScriptEventList *_eventList, TESObjectREFR *_containingObj, UInt8 _arg5, UInt8 _arg6, UInt8 _arg7, UInt32 _arg8) :
+		script(_script), thisObj(_thisObj), eventList(_eventList), containingObj(_containingObj), arg5(_arg5), arg6(_arg6), arg7(_arg7), arg8(_arg8) {}
+
+	void Execute()
+	{
+		_MESSAGE("%08X\t%08X", script->refID, thisObj ? thisObj->refID : 0);
+		ThisStdCall<bool>(0x5E2590, CdeclCall<void*>(0x5E24D0), script, thisObj, eventList, containingObj, arg5, arg6, arg7, arg8);
+	}
+};
+
+Vector<QueuedScript> s_queuedScripts(0x40);
+
+bool __stdcall AddQueuedScript(Script *script, TESObjectREFR *thisObj, ScriptEventList *eventList, TESObjectREFR *containingObj, UInt8 arg5, UInt8 arg6, UInt8 arg7, UInt32 arg8)
+{
+	s_queuedScripts.Append(script, thisObj, eventList, containingObj, arg5, arg6, arg7, arg8);
+	return true;
+}
+
+__declspec(naked) bool __fastcall Hook_ScriptRunner_Run(void *srQueue, int EDX, Script *script, TESObjectREFR *thisObj, ScriptEventList *eventList, TESObjectREFR *containingObj, UInt8 arg5, UInt8 arg6, UInt8 arg7, UInt32 arg8)
+{
+	__asm
+	{
+		push	ecx
+		call	GetCurrentThreadId
+		pop		ecx
+		cmp		g_mainThreadID, eax
+		jnz		addQueue
+		mov		eax, 0x5E2590
+		jmp		eax
+	addQueue:
+		jmp		AddQueuedScript
+	}
+}
+
 static void HandleMainLoopHook(void)
 {
 	static bool s_recordedMainThreadID = false;
@@ -65,6 +111,17 @@ static void HandleMainLoopHook(void)
 		g_mainThreadID = GetCurrentThreadId();
 		
 		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_DeferredInit, NULL, 0, NULL);
+
+		WriteRelCall(0x5AC295, (UInt32)Hook_ScriptRunner_Run);
+		WriteRelCall(0x5AC368, (UInt32)Hook_ScriptRunner_Run);
+		WriteRelCall(0x5AC3A8, (UInt32)Hook_ScriptRunner_Run);
+		WriteRelCall(0x5AC3E9, (UInt32)Hook_ScriptRunner_Run);
+	}
+	else if (!s_queuedScripts.Empty())
+	{
+		for (auto iter = s_queuedScripts.Begin(); iter; ++iter)
+			iter().Execute();
+		s_queuedScripts.Clear();
 	}
 
 	// if any temporary references to inventory objects exist, clean them up
