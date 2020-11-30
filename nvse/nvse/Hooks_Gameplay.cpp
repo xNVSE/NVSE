@@ -53,9 +53,11 @@ static const UInt32 kExtraOwnershipDefaultSetting  = 0x00411F78;	//	0040A654 in 
 // Byte array at the end of the sub who is the 4th call in ExtraDataList__RemoveAllCopyableExtra
 //don't see a second array.. static const UInt32 kExtraOwnershipDefaultSetting2 = 0x0041FE0D;	//
 
-
 DWORD g_mainThreadID = 0;
 
+#define SINGLE_THREAD_SCRIPTS 1
+
+#if SINGLE_THREAD_SCRIPTS
 struct QueuedScript
 {
 	Script				*script;
@@ -101,6 +103,7 @@ __declspec(naked) bool __fastcall Hook_ScriptRunner_Run(void *srQueue, int EDX, 
 		jmp		AddQueuedScript
 	}
 }
+#endif
 
 static void HandleMainLoopHook(void)
 {
@@ -112,6 +115,7 @@ static void HandleMainLoopHook(void)
 		
 		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_DeferredInit, NULL, 0, NULL);
 
+#if SINGLE_THREAD_SCRIPTS
 		WriteRelCall(0x5AC295, (UInt32)Hook_ScriptRunner_Run);
 		WriteRelCall(0x5AC368, (UInt32)Hook_ScriptRunner_Run);
 		WriteRelCall(0x5AC3A8, (UInt32)Hook_ScriptRunner_Run);
@@ -119,9 +123,12 @@ static void HandleMainLoopHook(void)
 	}
 	else if (!s_queuedScripts.Empty())
 	{
+		*(UInt32*)0x11CAEDC = 1;
 		for (auto iter = s_queuedScripts.Begin(); iter; ++iter)
 			iter().Execute();
+		*(UInt32*)0x11CAEDC = 0;
 		s_queuedScripts.Clear();
+#endif
 	}
 
 	// if any temporary references to inventory objects exist, clean them up
