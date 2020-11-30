@@ -96,7 +96,19 @@ __declspec(naked) bool __fastcall Hook_ScriptRunner_Run(void *srQueue, int EDX, 
 		call	GetCurrentThreadId
 		pop		ecx
 		cmp		g_mainThreadID, eax
+		jz		doRun
+		mov		eax, [esp+4]
+		cmp		word ptr [eax+0x28], 0x100
 		jnz		addQueue
+		mov		eax, [esp+0xC]
+		test	eax, eax
+		jz		addQueue
+		mov		eax, [eax+0x10]
+		test	eax, eax
+		jz		addQueue
+		cmp		byte ptr [eax+1], 0
+		jz		addQueue
+	doRun:
 		mov		eax, 0x5E2590
 		jmp		eax
 	addQueue:
