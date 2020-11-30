@@ -14,6 +14,7 @@
 #include "GameOSDepend.h"
 #include "InventoryReference.h"
 #include "EventManager.h"
+#include "Hooks_Other.h"
 
 static void HandleMainLoopHook(void);
 
@@ -58,29 +59,14 @@ DWORD g_mainThreadID = 0;
 #define SINGLE_THREAD_SCRIPTS 1
 
 #if SINGLE_THREAD_SCRIPTS
-struct QueuedScript
-{
-	Script				*script;
-	TESObjectREFR		*thisObj;
-	ScriptEventList		*eventList;
-	TESObjectREFR		*containingObj;
-	UInt8				arg5;
-	UInt8				arg6;
-	UInt8				arg7;
-	UInt8				pad13;
-	UInt32				arg8;
-
-	QueuedScript(Script *_script, TESObjectREFR *_thisObj, ScriptEventList *_eventList, TESObjectREFR *_containingObj, UInt8 _arg5, UInt8 _arg6, UInt8 _arg7, UInt32 _arg8) :
-		script(_script), thisObj(_thisObj), eventList(_eventList), containingObj(_containingObj), arg5(_arg5), arg6(_arg6), arg7(_arg7), arg8(_arg8) {}
-
-	void Execute()
-	{
-		_MESSAGE("%08X\t%08X", script->refID, thisObj ? thisObj->refID : 0);
-		ThisStdCall<bool>(0x5E2590, CdeclCall<void*>(0x5E24D0), script, thisObj, eventList, containingObj, arg5, arg6, arg7, arg8);
-	}
-};
-
 Vector<QueuedScript> s_queuedScripts(0x40);
+
+void QueuedScript::Execute()
+{
+	_MESSAGE("%08X\t%08X", script->refID, thisObj ? thisObj->refID : 0);
+	ThisStdCall<bool>(0x5E2590, CdeclCall<void*>(0x5E24D0), script, thisObj, eventList, containingObj, arg5, arg6, arg7,
+		arg8);
+}
 
 bool __stdcall AddQueuedScript(Script *script, TESObjectREFR *thisObj, ScriptEventList *eventList, TESObjectREFR *containingObj, UInt8 arg5, UInt8 arg6, UInt8 arg7, UInt32 arg8)
 {
@@ -96,19 +82,7 @@ __declspec(naked) bool __fastcall Hook_ScriptRunner_Run(void *srQueue, int EDX, 
 		call	GetCurrentThreadId
 		pop		ecx
 		cmp		g_mainThreadID, eax
-		jz		doRun
-		mov		eax, [esp+4]
-		cmp		word ptr [eax+0x28], 0x100
 		jnz		addQueue
-		mov		eax, [esp+0xC]
-		test	eax, eax
-		jz		addQueue
-		mov		eax, [eax+0x10]
-		test	eax, eax
-		jz		addQueue
-		cmp		byte ptr [eax+1], 0
-		jz		addQueue
-	doRun:
 		mov		eax, 0x5E2590
 		jmp		eax
 	addQueue:
@@ -140,6 +114,10 @@ static void HandleMainLoopHook(void)
 			iter().Execute();
 		*(UInt32*)0x11CAEDC = 0;
 		s_queuedScripts.Clear();
+
+		for (auto iter = OtherHooks::s_eventListDestructionQueue.Begin(); iter; ++iter)
+			iter().Destroy();
+		OtherHooks::s_eventListDestructionQueue.Clear();
 #endif
 	}
 

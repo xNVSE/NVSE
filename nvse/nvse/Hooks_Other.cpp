@@ -4,6 +4,7 @@
 #include "ScriptUtils.h"
 #include "SafeWrite.h"
 #include "Commands_UI.h"
+#include "Hooks_Gameplay.h"
 
 #if RUNTIME
 namespace OtherHooks
@@ -92,6 +93,14 @@ namespace OtherHooks
 	{
 		CleanUpNVSEVars(eventList);
 	}
+
+	Vector<QueuedEventListDestruction> s_eventListDestructionQueue;
+
+	void __fastcall QueueEventListDestruction(ScriptEventList* eventList, bool doFree)
+	{
+		s_eventListDestructionQueue.Append(eventList, doFree);
+	}
+	
 	__declspec(naked) void ScriptEventListsDestroyedHook()
 	{
 		static UInt32 hookedCall = 0x5A8BC0;
@@ -99,12 +108,26 @@ namespace OtherHooks
 		__asm
 		{
 			// ScriptEventList* already in ecx
-			push ecx
+			//push ecx
 			call OnScriptEventListDestroyed
-			pop ecx
-			call hookedCall
-			jmp returnAddress
+			mov ecx, [ebp-0x4]
+			mov edx, [ebp+0x8]
+			call QueueEventListDestruction
+			mov eax, [ebp - 0x4]
+			mov esp, ebp
+			pop ebp
+			retn 4
+			//pop ecx
+			//call hookedCall
+			//jmp returnAddress
 		}
+	}
+
+	void QueuedEventListDestruction::Destroy()
+	{
+		ThisStdCall(0x5A8BC0, eventList);
+		if (doFree)
+			GameHeapFree(eventList);
 	}
 
 	void Hooks_Other_Init()
