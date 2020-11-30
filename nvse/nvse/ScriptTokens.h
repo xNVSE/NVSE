@@ -289,9 +289,7 @@ struct ScriptToken
 	bool cached = false;
 	UInt32 opcodeOffset;
 	ExpressionEvaluator* context;
-	ScriptEventList* scriptEventList;
 	UInt16		varIdx;
-	UInt32 eventListsDestroyedCount = 0;
 	OperatorType shortCircuitParentType;
 	UInt8 shortCircuitDistance;
 	UInt8 shortCircuitStackOffset;

@@ -154,9 +154,7 @@ ScriptToken::ScriptToken(const ScriptToken &from)
 	cached = from.cached;
 	opcodeOffset = from.opcodeOffset;
 	context = from.context;
-	scriptEventList = from.scriptEventList;
 	varIdx = from.varIdx;
-	eventListsDestroyedCount = from.eventListsDestroyedCount;
 	shortCircuitParentType = from.shortCircuitParentType;
 	shortCircuitDistance = from.shortCircuitDistance;
 	shortCircuitStackOffset = from.shortCircuitStackOffset;
@@ -598,31 +596,22 @@ ScriptEventList::Var* ScriptToken::GetVar() const
 
 bool ScriptToken::ResolveVariable()
 {
-	auto clear = false;
-	if (g_scriptEventListsDestroyed != eventListsDestroyedCount)
-	{		
-		eventListsDestroyedCount = g_scriptEventListsDestroyed;
-		clear = true;
-	}
-	if (value.var == nullptr || varIdx != value.var->id || this->scriptEventList != context->eventList || clear)
+	value.var = nullptr;
+	auto* scriptEventList = context->eventList;
+	if (refIdx)
 	{
-		value.var = nullptr;
-		scriptEventList = context->eventList;
-		if (refIdx)
+		Script::RefVariable* refVar = context->script->GetVariable(refIdx);
+		if (refVar)
 		{
-			Script::RefVariable* refVar = context->script->GetVariable(refIdx);
-			if (refVar)
-			{
-				refVar->Resolve(context->eventList);
-				if (refVar->form)
-					scriptEventList = EventListFromForm(refVar->form);
-			}
+			refVar->Resolve(context->eventList);
+			if (refVar->form)
+				scriptEventList = EventListFromForm(refVar->form);
 		}
-		if (scriptEventList)
-			value.var = scriptEventList->GetVariable(varIdx);
-		if (!value.var)
-			return false;
 	}
+	if (scriptEventList)
+		value.var = scriptEventList->GetVariable(varIdx);
+	if (!value.var)
+		return false;
 	return true;
 }
 #endif
@@ -767,7 +756,6 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 	UInt8 typeCode = context->ReadByte();
 	this->owningScript = context->script;
 	this->context = context;
-	this->scriptEventList = context->eventList;
 	switch (typeCode)
 	{
 	case 'B':

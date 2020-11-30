@@ -11,12 +11,6 @@
 	which perform the operations can know that the operands are of the expected type.
 */
 
-#if RUNTIME
-
-extern UInt32 g_scriptEventListsDestroyed;
-
-#endif
-
 struct Operator;
 struct ScriptEventList;
 class ExpressionEvaluator;
