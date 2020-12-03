@@ -36,8 +36,7 @@ extern const _FormHeap_Allocate FormHeap_Allocate;
 typedef void (* _FormHeap_Free)(void * ptr);
 extern const _FormHeap_Free FormHeap_Free;
 
-typedef TESForm * (* _LookupFormByID)(UInt32 id);
-extern const _LookupFormByID LookupFormByID;
+TESForm* __stdcall LookupFormByID(UInt32 refID);
 
 template <class Item>
 class tList
