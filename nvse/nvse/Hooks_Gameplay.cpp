@@ -63,8 +63,24 @@ Vector<QueuedScript> s_queuedScripts(0x40);
 
 void QueuedScript::Execute()
 {
-	ThisStdCall<bool>(0x5E2590, CdeclCall<void*>(0x5E24D0), script, thisObj, eventList, containingObj, arg5, arg6, arg7,
-		arg8);
+	if (*(UInt32*)script != 0x1037094)
+	{
+		_MESSAGE("QueuedScript::Execute() attempting to execute invalid script.");
+		return;
+	}
+	TESForm *_thisObj = NULL;
+	if (thisObj && !(_thisObj = LookupFormByID(thisObj)))
+	{
+		_MESSAGE("QueuedScript::Execute() attempting to execute %08X on invalid thisObj (%08X).", script->refID, thisObj);
+		return;
+	}
+	TESForm *_containingObj = NULL;
+	if (containingObj && !(_containingObj = LookupFormByID(containingObj)))
+	{
+		_MESSAGE("QueuedScript::Execute() attempting to execute %08X on invalid containingObj (%08X).", script->refID, containingObj);
+		return;
+	}
+	ThisStdCall<bool>(0x5E2590, CdeclCall<void*>(0x5E24D0), script, _thisObj, eventList, _containingObj, arg5, arg6, arg7, arg8);
 }
 
 bool __stdcall AddQueuedScript(Script *script, TESObjectREFR *thisObj, ScriptEventList *eventList, TESObjectREFR *containingObj, UInt8 arg5, UInt8 arg6, UInt8 arg7, UInt32 arg8)
@@ -108,21 +124,24 @@ static void HandleMainLoopHook(void)
 	}
 	else if (!s_queuedScripts.Empty())
 	{
-		*(UInt32*)0x11CAEDC = 1;
+		//InterlockedIncrement((UInt32*)0x11CAEDC);
 		for (auto iter = s_queuedScripts.Begin(); iter; ++iter)
 			iter().Execute();
-		*(UInt32*)0x11CAEDC = 0;
+		//InterlockedDecrement((UInt32*)0x11CAEDC);
 		s_queuedScripts.Clear();
+#endif
+	}
 
+	if (!OtherHooks::s_eventListDestructionQueue.Empty())
+	{
 		for (auto iter = OtherHooks::s_eventListDestructionQueue.Begin(); iter; ++iter)
 		{
-			auto& entry = iter();
-			OtherHooks::CleanUpNVSEVars(entry.eventList);
-			entry.Destroy();
+			auto eventList = *iter;
+			OtherHooks::CleanUpNVSEVars(eventList);
+			ThisStdCall(0x5A8BC0, eventList);
+			GameHeapFree(eventList);
 		}
-		
 		OtherHooks::s_eventListDestructionQueue.Clear();
-#endif
 	}
 
 	// if any temporary references to inventory objects exist, clean them up

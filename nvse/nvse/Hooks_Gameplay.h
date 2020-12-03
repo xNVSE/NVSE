@@ -1,28 +1,28 @@
 #pragma once
 #include "CommandTable.h"
 #include "Utilities.h"
+#include "GameObjects.h"
 
 class Menu;
-class TESRace;
-class TESForm;
-class TESObjectREFR;
-class AlchemyItem;
-class TESDescription;
 
 struct QueuedScript
 {
-	Script* script;
-	TESObjectREFR* thisObj;
-	ScriptEventList* eventList;
-	TESObjectREFR* containingObj;
-	UInt8				arg5;
-	UInt8				arg6;
-	UInt8				arg7;
-	UInt8				pad13;
-	UInt32				arg8;
+	Script			*script;
+	UInt32			thisObj;
+	ScriptEventList	*eventList;
+	UInt32			containingObj;
+	UInt8			arg5;
+	UInt8			arg6;
+	UInt8			arg7;
+	UInt8			pad13;
+	UInt32			arg8;
 
 	QueuedScript(Script* _script, TESObjectREFR* _thisObj, ScriptEventList* _eventList, TESObjectREFR* _containingObj, UInt8 _arg5, UInt8 _arg6, UInt8 _arg7, UInt32 _arg8) :
-		script(_script), thisObj(_thisObj), eventList(_eventList), containingObj(_containingObj), arg5(_arg5), arg6(_arg6), arg7(_arg7), arg8(_arg8) {}
+		script(_script), eventList(_eventList), arg5(_arg5), arg6(_arg6), arg7(_arg7), arg8(_arg8)
+	{
+		thisObj = _thisObj ? _thisObj->refID : 0;
+		containingObj = _containingObj ? _containingObj->refID : 0;
+	}
 
 	void Execute();
 };
