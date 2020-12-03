@@ -3,18 +3,7 @@
 
 namespace OtherHooks
 {
-	struct QueuedEventListDestruction
-	{
-		ScriptEventList* eventList;
-		bool doFree;
-
-		QueuedEventListDestruction(ScriptEventList* eventList, bool doFree) : eventList(eventList), doFree(doFree)
-		{}
-
-		void Destroy();
-	};
-	
-	extern Vector<QueuedEventListDestruction> s_eventListDestructionQueue;
+	extern Vector<ScriptEventList*> s_eventListDestructionQueue;
 
 	void CleanUpNVSEVars(const ScriptEventList* eventList);
 	

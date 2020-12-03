@@ -89,34 +89,12 @@ namespace OtherHooks
 		}
 	}
 
-	Vector<QueuedEventListDestruction> s_eventListDestructionQueue;
-
-	void __fastcall QueueEventListDestruction(ScriptEventList* eventList, bool doFree)
-	{
-		s_eventListDestructionQueue.Append(eventList, doFree);
-	}
+	Vector<ScriptEventList*> s_eventListDestructionQueue(0x80);
 	
-	__declspec(naked) void ScriptEventListsDestroyedHook()
+	ScriptEventList* __fastcall ScriptEventListsDestroyedHook(ScriptEventList *eventList, int EDX, bool doFree)
 	{
-		static UInt32 hookedCall = 0x5A8BC0;
-		static UInt32 returnAddress = 0x41AF7F;
-		__asm
-		{
-			mov ecx, [ebp-0x4]
-			mov edx, [ebp+0x8]
-			call QueueEventListDestruction
-			mov eax, [ebp-0x4]
-			mov esp, ebp
-			pop ebp
-			retn 4
-		}
-	}
-
-	void QueuedEventListDestruction::Destroy()
-	{
-		ThisStdCall(0x5A8BC0, eventList);
-		if (doFree)
-			GameHeapFree(eventList);
+		s_eventListDestructionQueue.Append(eventList);
+		return eventList;
 	}
 
 	void Hooks_Other_Init()
@@ -124,7 +102,7 @@ namespace OtherHooks
 		WriteRelJump(0x593E0B, UInt32(SaveRunLineScriptHook));
 		WriteRelJump(0x9FF5FB, UInt32(TilesDestroyedHook));
 		WriteRelJump(0x709910, UInt32(TilesCreatedHook));
-		WriteRelJump(0x41AF7A, UInt32(ScriptEventListsDestroyedHook));
+		WriteRelJump(0x41AF70, UInt32(ScriptEventListsDestroyedHook));
 	}
 }
 #endif
