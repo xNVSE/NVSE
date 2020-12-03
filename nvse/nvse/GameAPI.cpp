@@ -24,6 +24,12 @@ typedef void * (* _GetSingleton)(bool canCreateNew);
 
 char s_tempStrArgBuffer[0x4000];
 
+TESForm* __stdcall LookupFormByID(UInt32 refID)
+{
+	NiTPointerMap<TESForm> *formsMap = *(NiTPointerMap<TESForm>**)0x11C54C0;
+	return formsMap->Lookup(refID);
+}
+
 #if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 
 const _ExtractArgs ExtractArgs = (_ExtractArgs)0x005ACCB0;
@@ -31,7 +37,6 @@ const _ExtractArgs ExtractArgs = (_ExtractArgs)0x005ACCB0;
 const _FormHeap_Allocate FormHeap_Allocate = (_FormHeap_Allocate)0x00401000;
 const _FormHeap_Free FormHeap_Free = (_FormHeap_Free)0x00401030;
 
-const _LookupFormByID LookupFormByID = (_LookupFormByID)0x004839C0;
 const _CreateFormInstance CreateFormInstance = (_CreateFormInstance)0x00465110;
 
 const _GetSingleton ConsoleManager_GetSingleton = (_GetSingleton)0x0071B160;
