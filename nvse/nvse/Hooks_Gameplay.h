@@ -17,12 +17,7 @@ struct QueuedScript
 	UInt8			pad13;
 	UInt32			arg8;
 
-	QueuedScript(Script* _script, TESObjectREFR* _thisObj, ScriptEventList* _eventList, TESObjectREFR* _containingObj, UInt8 _arg5, UInt8 _arg6, UInt8 _arg7, UInt32 _arg8) :
-		script(_script), eventList(_eventList), arg5(_arg5), arg6(_arg6), arg7(_arg7), arg8(_arg8)
-	{
-		thisObj = _thisObj ? _thisObj->refID : 0;
-		containingObj = _containingObj ? _containingObj->refID : 0;
-	}
+	QueuedScript(Script* _script, TESObjectREFR* _thisObj, ScriptEventList* _eventList, TESObjectREFR* _containingObj, UInt8 _arg5, UInt8 _arg6, UInt8 _arg7, UInt32 _arg8);
 
 	void Execute();
 };

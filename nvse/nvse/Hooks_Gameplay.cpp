@@ -59,29 +59,52 @@ DWORD g_mainThreadID = 0;
 #define SINGLE_THREAD_SCRIPTS 1
 
 #if SINGLE_THREAD_SCRIPTS
-Vector<QueuedScript> s_queuedScripts(0x40);
+QueuedScript::QueuedScript(Script* _script, TESObjectREFR* _thisObj, ScriptEventList* _eventList, TESObjectREFR* _containingObj, UInt8 _arg5, UInt8 _arg6, UInt8 _arg7, UInt32 _arg8) :
+	eventList(_eventList), arg5(_arg5), arg6(_arg6), arg7(_arg7), arg8(_arg8)
+{
+	if (_script->flags & 0x4000)
+	{
+		script = (Script*)GameHeapAlloc(sizeof(Script));
+		memcpy(script, _script, 0x44);
+		script->text = NULL;
+		script->refList.var = NULL;
+		script->refList.next = NULL;
+		script->varList.data = NULL;
+		script->varList.next = NULL;
+		script->data = GameHeapAlloc(_script->info.dataLength);
+		memcpy(script->data, _script->data, _script->info.dataLength);
+		CdeclCall(0x5AB7F0, &_script->refList, &script->refList, script);
+		CdeclCall(0x5AB930, &_script->varList, &script->varList, script);
+	}
+	else script = _script;
+	thisObj = _thisObj ? _thisObj->refID : 0;
+	containingObj = _containingObj ? _containingObj->refID : 0;
+}
 
 void QueuedScript::Execute()
 {
-	if (*(UInt32*)script != 0x1037094)
-	{
-		_MESSAGE("QueuedScript::Execute() attempting to execute invalid script.");
-		return;
-	}
 	TESForm *_thisObj = NULL;
 	if (thisObj && !(_thisObj = LookupFormByID(thisObj)))
 	{
 		_MESSAGE("QueuedScript::Execute() attempting to execute %08X on invalid thisObj (%08X).", script->refID, thisObj);
-		return;
+		goto done;
 	}
 	TESForm *_containingObj = NULL;
 	if (containingObj && !(_containingObj = LookupFormByID(containingObj)))
 	{
 		_MESSAGE("QueuedScript::Execute() attempting to execute %08X on invalid containingObj (%08X).", script->refID, containingObj);
-		return;
+		goto done;
 	}
 	ThisStdCall<bool>(0x5E2590, CdeclCall<void*>(0x5E24D0), script, _thisObj, eventList, _containingObj, arg5, arg6, arg7, arg8);
+done:
+	if (script->flags & 0x4000)
+	{
+		ThisStdCall(0x5AA2A0, script);
+		GameHeapFree(script);
+	}
 }
+
+Vector<QueuedScript> s_queuedScripts(0x40);
 
 bool __stdcall AddQueuedScript(Script *script, TESObjectREFR *thisObj, ScriptEventList *eventList, TESObjectREFR *containingObj, UInt8 arg5, UInt8 arg6, UInt8 arg7, UInt32 arg8)
 {
@@ -132,17 +155,7 @@ static void HandleMainLoopHook(void)
 #endif
 	}
 
-	if (!OtherHooks::s_eventListDestructionQueue.Empty())
-	{
-		for (auto iter = OtherHooks::s_eventListDestructionQueue.Begin(); iter; ++iter)
-		{
-			auto eventList = *iter;
-			OtherHooks::CleanUpNVSEVars(eventList);
-			ThisStdCall(0x5A8BC0, eventList);
-			GameHeapFree(eventList);
-		}
-		OtherHooks::s_eventListDestructionQueue.Clear();
-	}
+	OtherHooks::s_eventListDestructionQueue.Clear();
 
 	// if any temporary references to inventory objects exist, clean them up
 	if (!s_invRefMap.Empty())

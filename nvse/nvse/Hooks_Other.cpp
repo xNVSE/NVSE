@@ -89,7 +89,14 @@ namespace OtherHooks
 		}
 	}
 
-	Vector<ScriptEventList*> s_eventListDestructionQueue(0x80);
+	QueuedEventList::~QueuedEventList()
+	{
+		CleanUpNVSEVars(eventList);
+		ThisStdCall(0x5A8BC0, eventList);
+		GameHeapFree(eventList);
+	}
+
+	Vector<QueuedEventList> s_eventListDestructionQueue(0x80);
 	
 	ScriptEventList* __fastcall ScriptEventListsDestroyedHook(ScriptEventList *eventList, int EDX, bool doFree)
 	{
