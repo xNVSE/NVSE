@@ -56,43 +56,21 @@ namespace SmallObjectsAllocator
 		
 	};
 
-	// only to be used where allocations are *not* shared between threads. 10x faster than lock-based allocator (from my testing)
 	template <class T, std::size_t C>
-	class PerThreadAllocator
+	class FastAllocator
 	{
-		struct MemObj
-		{
-			T t;
-			void* poolPtr;
-		};
-		using MemPool = MemoryPool<MemObj, sizeof(MemObj)* C>;
-		DWORD tlsIndex = TlsAlloc();
-
-		MemPool* GetPool()
-		{
-			auto* pool = static_cast<MemPool*>(TlsGetValue(tlsIndex));
-			if (!pool)
-			{
-				pool = new MemPool();
-				TlsSetValue(tlsIndex, pool);
-			}
-			return pool;
-		}
+		using MemPool = MemoryPool<T, sizeof(T)* C>;
+		MemPool pool_;
 
 	public:
 		T* Allocate()
 		{
-			auto* pool = GetPool();
-			auto* memObj = static_cast<MemObj*>(pool->allocate());
-			memObj->poolPtr = pool;
-			return &memObj->t;
+			return pool_.allocate();
 		}
 
-		static void Free(void* ptr)
+		void Free(void* ptr)
 		{
-			auto* mPtr = static_cast<MemObj*>(ptr);
-			auto* pool = static_cast<MemPool*>(mPtr->poolPtr);
-			pool->deallocate(mPtr);
+			pool_.deallocate(static_cast<T*>(ptr));
 		}
 	};
 }

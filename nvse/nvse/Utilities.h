@@ -2,6 +2,7 @@
 #include <string>
 
 #include "common/ICriticalSection.h"
+#define SINGLE_THREAD_SCRIPTS 1
 
 class Script;
 

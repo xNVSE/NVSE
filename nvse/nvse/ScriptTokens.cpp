@@ -206,7 +206,7 @@ ForEachContextToken::ForEachContextToken(UInt32 srcID, UInt32 iterID, UInt32 var
 	value.formID = 0;
 }
 
-SmallObjectsAllocator::PerThreadAllocator<ForEachContextToken, 4> g_forEachTokenAllocator;
+thread_local SmallObjectsAllocator::FastAllocator<ForEachContextToken, 4> g_forEachTokenAllocator;
 
 void* ForEachContextToken::operator new(size_t size)
 {
@@ -277,7 +277,7 @@ ScriptToken* ScriptToken::Create(ArrayElementToken* elem, UInt32 lbound, UInt32 
 	return NULL;
 }
 
-static SmallObjectsAllocator::PerThreadAllocator<ScriptToken, 32> g_scriptTokenAllocator;
+thread_local SmallObjectsAllocator::FastAllocator<ScriptToken, 32> g_scriptTokenAllocator;
 
 void* ScriptToken::operator new(size_t size)
 {
@@ -1056,7 +1056,7 @@ bool ArrayElementToken::CanConvertTo(Token_Type to) const
 	return false;
 }
 
-SmallObjectsAllocator::PerThreadAllocator<ArrayElementToken, 4> g_arrayTokenAllocator;
+thread_local SmallObjectsAllocator::FastAllocator<ArrayElementToken, 4> g_arrayTokenAllocator;
 
 void* ArrayElementToken::operator new(size_t size)
 {

@@ -3,7 +3,6 @@
 #include "Utilities.h"
 #include "GameObjects.h"
 
-#define SINGLE_THREAD_SCRIPTS 1
 
 class Menu;
 
