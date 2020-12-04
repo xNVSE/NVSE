@@ -21,9 +21,19 @@ struct QueuedScript
 
 	void Execute();
 };
-
 extern Vector<QueuedScript> s_queuedScripts;
 
+struct QueuedScript2
+{
+	Script			*script;
+	UInt32			thisObj;
+	ScriptEventList	*eventList;
+
+	QueuedScript2(Script* _script, TESObjectREFR* _thisObj, ScriptEventList* _eventList);
+
+	void Execute();
+};
+extern Vector<QueuedScript2> s_queuedScripts2;
 
 void Hook_Gameplay_Init(void);
 void ToggleUIMessages(bool enableSpam);
