@@ -95,7 +95,7 @@ void QueuedScript::Execute()
 		_MESSAGE("QueuedScript::Execute() attempting to execute %08X on invalid containingObj (%08X).", script->refID, containingObj);
 		goto done;
 	}
-	ThisStdCall<bool>(0x5E2590, CdeclCall<void*>(0x5E24D0), script, _thisObj, eventList, _containingObj, arg5, arg6, arg7, arg8);
+	ThisStdCall<bool>(0x5E2590, (void*)0x11CAED0, script, _thisObj, eventList, _containingObj, arg5, arg6, arg7, arg8);
 done:
 	if (script->flags & 0x4000)
 	{
@@ -142,7 +142,7 @@ void QueuedScript2::Execute()
 		_MESSAGE("QueuedScript2::Execute() attempting to execute %08X on invalid thisObj (%08X).", script->refID, thisObj);
 		goto done;
 	}
-	ThisStdCall<bool>(0x5E2730, CdeclCall<void*>(0x5E24D0), script, _thisObj, eventList);
+	ThisStdCall<bool>(0x5E2730, (void*)0x11CAED0, script, _thisObj, eventList);
 done:
 	if (script->flags & 0x4000)
 	{
@@ -194,6 +194,9 @@ static void HandleMainLoopHook(void)
 
 		WriteRelCall(0x5AA05A, (UInt32)Hook_ScriptRunner_Run2);
 		WriteRelCall(0x5AC1CF, (UInt32)Hook_ScriptRunner_Run2);
+
+		for (UInt32 addr : {0x5AA053, 0x5AC1C8, 0x5AC28E, 0x5AC361, 0x5AC3A1, 0x5AC3E2})
+			SafeWriteBuf(addr, "\xB8\xD0\xAE\x1C\x01", 5);
 	}
 	else
 	{
