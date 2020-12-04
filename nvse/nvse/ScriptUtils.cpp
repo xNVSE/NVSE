@@ -2802,7 +2802,7 @@ void ExpressionEvaluator::PopFromStack() const
 
 ExpressionEvaluator::ExpressionEvaluator(COMMAND_ARGS) : m_opcodeOffsetPtr(opcodeOffsetPtr), m_result(result), 
 	m_thisObj(thisObj), m_containingObj(containingObj), m_params(paramInfo), m_numArgsExtracted(0), m_expectedReturnType(kRetnType_Default), m_baseOffset(0),
-	localData(ThreadLocalData::Get()), tokenCache(localData.tokenCache), script(scriptObj), eventList(eventList)
+	localData(ThreadLocalData::Get()), script(scriptObj), eventList(eventList)
 {
 	m_scriptData = static_cast<UInt8*>(scriptData);
 	m_data = m_scriptData + *m_opcodeOffsetPtr;
@@ -3584,10 +3584,12 @@ void CopyShortCircuitInfo(ScriptToken* to, ScriptToken* from)
 	to->shortCircuitStackOffset = from->shortCircuitStackOffset;
 }
 
+thread_local TokenCache g_tokenCache;
+
 ScriptToken* ExpressionEvaluator::Evaluate()
 {
 	UInt8 *cacheKey = GetCommandOpcodePosition();
-	CachedTokens &cache = tokenCache.Get(cacheKey);
+	CachedTokens &cache = g_tokenCache.Get(cacheKey);
 	if (cache.Empty())
 	{
 		if (!ParseBytecode(cache))

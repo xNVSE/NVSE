@@ -101,7 +101,6 @@ class ExpressionEvaluator
 	UInt16				m_baseOffset;
 	ExpressionEvaluator	* m_parent;
 	ThreadLocalData&	localData;
-	TokenCache&			tokenCache;
 
 	CommandReturnType GetExpectedReturnType() { CommandReturnType type = m_expectedReturnType; m_expectedReturnType = kRetnType_Default; return type; }
 	bool ParseBytecode(CachedTokens& cachedTokens);

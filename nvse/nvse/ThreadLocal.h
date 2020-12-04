@@ -14,7 +14,6 @@ struct ThreadLocalData
 	ExpressionEvaluator* expressionEvaluator;	// evaluator at top of expression stack
 	UserFunctionManager* userFunctionManager;	// per-thread singleton
 	LoopManager* loopManager;			// per-thread singleton
-	TokenCache tokenCache;
 
 	ThreadLocalData();
 
