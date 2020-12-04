@@ -81,4 +81,4 @@ public:
 };
 
 template <typename T>
-typename FastStack<T>::Allocator FastStack<T>::s_allocator;
+thread_local typename FastStack<T>::Allocator FastStack<T>::s_allocator;
