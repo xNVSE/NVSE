@@ -4,7 +4,12 @@
 #include "NiNodes.h"
 #include "GameScript.h"
 
+#if SINGLE_THREAD_SCRIPTS
+extern UInt8* g_lastScriptData;
+#else
 extern thread_local UInt8* g_lastScriptData;
+#endif
+
 
 struct ParamInfo;
 class TESForm;

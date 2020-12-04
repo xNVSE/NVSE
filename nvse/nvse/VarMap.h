@@ -83,15 +83,17 @@ protected:
 	{
 		UInt32 id = 1;
 
+#if !SINGLE_THREAD_SCRIPTS
 		::EnterCriticalSection(&cs);
-
+#endif
 		if (!availableIDs.Empty())
 			id = availableIDs.PopFirst();
 		else if (!usedIDs.Empty())
 			id = usedIDs.LastKey() + 1;
 
+#if !SINGLE_THREAD_SCRIPTS
 		::LeaveCriticalSection(&cs);
-
+#endif
 		return id;
 	}
 
@@ -128,19 +130,25 @@ public:
 	template <typename ...Args>
 	Var* Insert(UInt32 varID, Args&& ...args)
 	{
+#if !SINGLE_THREAD_SCRIPTS
 		::EnterCriticalSection(&cs);
+#endif
 
 		usedIDs.Insert(varID);
 		Var* var = vars.Emplace(varID, std::forward<Args>(args)...);
 
+#if !SINGLE_THREAD_SCRIPTS
 		::LeaveCriticalSection(&cs);
+#endif
 
 		return var;
 	}
 
 	void Delete(UInt32 varID)
 	{
+#if !SINGLE_THREAD_SCRIPTS
 		::EnterCriticalSection(&cs);
+#endif
 
 		cache.Remove(varID);
 		vars.Erase(varID);
@@ -148,7 +156,9 @@ public:
 		tempIDs.Erase(varID);
 		SetIDAvailable(varID);
 
+#if !SINGLE_THREAD_SCRIPTS
 		::LeaveCriticalSection(&cs);
+#endif
 	}
 
 	static void DeleteBySelf(VarMap* self, UInt32 varID)

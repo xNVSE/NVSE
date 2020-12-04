@@ -14,7 +14,12 @@
 #include "ScriptUtils.h"
 #endif
 
+#if SINGLE_THREAD_SCRIPTS
+UInt8* g_lastScriptData;
+#else
 thread_local UInt8* g_lastScriptData;
+#endif
+
 
 static NVSEStringVarInterface* s_StringVarInterface = NULL;
 bool alternateUpdate3D = false;

@@ -11,6 +11,20 @@ namespace OtherHooks
 {
 	// set ... to and if ... statements pass a different scriptData value from the stack, hook is used to save last position
 	// function call is needed as g_lastScriptData is thread_local, compiler generates TlsSetValue from statement
+#if SINGLE_THREAD_SCRIPTS
+	__declspec(naked) void SaveRunLineScriptHook()
+	{
+		static const UInt32 hookedCall = 0x594D40;
+		static const UInt32 returnAddress = 0x593E10;
+		__asm
+		{
+			call hookedCall
+			mov ecx, [ebp + 0x8]
+			mov g_lastScriptData, ecx
+			jmp returnAddress
+		}
+	}
+#else
 	void __fastcall SaveOpcodePosition(UInt8* currentOpcodePos)
 	{
 		g_lastScriptData = currentOpcodePos;
@@ -23,11 +37,14 @@ namespace OtherHooks
 		__asm
 		{
 			call hookedCall
-			mov ecx, [ebp+0x8]
+			mov ecx, [ebp + 0x8]
 			call SaveOpcodePosition
 			jmp returnAddress
 		}
 	}
+#endif
+
+	
 
 	__declspec(naked) void TilesDestroyedHook()
 	{

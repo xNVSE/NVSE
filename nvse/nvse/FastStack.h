@@ -16,7 +16,12 @@ template <typename T_Data> class FastStack
 	Node* head;
 	size_t numItems;
 	using Allocator = SmallObjectsAllocator::FastAllocator<Node, 16>;
+#if SINGLE_THREAD_SCRIPTS
+	static Allocator s_allocator;
+#else
 	static thread_local Allocator s_allocator;
+#endif
+
 public:
 
 	FastStack() : head(NULL), numItems(0) {}
