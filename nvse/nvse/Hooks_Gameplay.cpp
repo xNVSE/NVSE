@@ -59,24 +59,26 @@ DWORD g_mainThreadID = 0;
 #define SINGLE_THREAD_SCRIPTS 1
 
 #if SINGLE_THREAD_SCRIPTS
+Script* __fastcall CopyScript(Script *source)
+{
+	Script *script = (Script*)GameHeapAlloc(sizeof(Script));
+	memcpy(script, source, 0x44);
+	script->text = NULL;
+	script->refList.var = NULL;
+	script->refList.next = NULL;
+	script->varList.data = NULL;
+	script->varList.next = NULL;
+	script->data = GameHeapAlloc(source->info.dataLength);
+	memcpy(script->data, source->data, source->info.dataLength);
+	CdeclCall(0x5AB7F0, &source->refList, &script->refList, script);
+	CdeclCall(0x5AB930, &source->varList, &script->varList, script);
+	return script;
+}
+
 QueuedScript::QueuedScript(Script* _script, TESObjectREFR* _thisObj, ScriptEventList* _eventList, TESObjectREFR* _containingObj, UInt8 _arg5, UInt8 _arg6, UInt8 _arg7, UInt32 _arg8) :
 	eventList(_eventList), arg5(_arg5), arg6(_arg6), arg7(_arg7), arg8(_arg8)
 {
-	if (_script->flags & 0x4000)
-	{
-		script = (Script*)GameHeapAlloc(sizeof(Script));
-		memcpy(script, _script, 0x44);
-		script->text = NULL;
-		script->refList.var = NULL;
-		script->refList.next = NULL;
-		script->varList.data = NULL;
-		script->varList.next = NULL;
-		script->data = GameHeapAlloc(_script->info.dataLength);
-		memcpy(script->data, _script->data, _script->info.dataLength);
-		CdeclCall(0x5AB7F0, &_script->refList, &script->refList, script);
-		CdeclCall(0x5AB930, &_script->varList, &script->varList, script);
-	}
-	else script = _script;
+	script = (_script->flags & 0x4000) ? CopyScript(_script) : _script;
 	thisObj = _thisObj ? _thisObj->refID : 0;
 	containingObj = _containingObj ? _containingObj->refID : 0;
 }
@@ -127,6 +129,53 @@ __declspec(naked) bool __fastcall Hook_ScriptRunner_Run(void *srQueue, int EDX, 
 		jmp		AddQueuedScript
 	}
 }
+
+QueuedScript2::QueuedScript2(Script *_script, TESObjectREFR *_thisObj, ScriptEventList *_eventList) : eventList(_eventList)
+{
+	script = (_script->flags & 0x4000) ? CopyScript(_script) : _script;
+	thisObj = _thisObj ? _thisObj->refID : 0;
+}
+
+void QueuedScript2::Execute()
+{
+	TESForm *_thisObj = NULL;
+	if (thisObj && !(_thisObj = LookupFormByID(thisObj)))
+	{
+		_MESSAGE("QueuedScript2::Execute() attempting to execute %08X on invalid thisObj (%08X).", script->refID, thisObj);
+		goto done;
+	}
+	ThisStdCall<bool>(0x5E2730, CdeclCall<void*>(0x5E24D0), script, _thisObj, eventList);
+done:
+	if (script->flags & 0x4000)
+	{
+		ThisStdCall(0x5AA2A0, script);
+		GameHeapFree(script);
+	}
+}
+
+Vector<QueuedScript2> s_queuedScripts2(0x40);
+
+bool __stdcall AddQueuedScript2(Script *script, TESObjectREFR *thisObj, ScriptEventList *eventList)
+{
+	s_queuedScripts2.Append(script, thisObj, eventList);
+	return true;
+}
+
+__declspec(naked) bool __fastcall Hook_ScriptRunner_Run2(void *srQueue, int EDX, Script *script, TESObjectREFR *thisObj, ScriptEventList *eventList)
+{
+	__asm
+	{
+		push	ecx
+		call	GetCurrentThreadId
+		pop		ecx
+		cmp		g_mainThreadID, eax
+		jnz		addQueue
+		mov		eax, 0x5E2730
+		jmp		eax
+	addQueue:
+		jmp		AddQueuedScript2
+	}
+}
 #endif
 
 static void HandleMainLoopHook(void)
@@ -144,14 +193,26 @@ static void HandleMainLoopHook(void)
 		WriteRelCall(0x5AC368, (UInt32)Hook_ScriptRunner_Run);
 		WriteRelCall(0x5AC3A8, (UInt32)Hook_ScriptRunner_Run);
 		WriteRelCall(0x5AC3E9, (UInt32)Hook_ScriptRunner_Run);
+
+		WriteRelCall(0x5AA05A, (UInt32)Hook_ScriptRunner_Run2);
+		WriteRelCall(0x5AC1CF, (UInt32)Hook_ScriptRunner_Run2);
 	}
-	else if (!s_queuedScripts.Empty())
+	else
 	{
-		//InterlockedIncrement((UInt32*)0x11CAEDC);
-		for (auto iter = s_queuedScripts.Begin(); iter; ++iter)
-			iter().Execute();
-		//InterlockedDecrement((UInt32*)0x11CAEDC);
-		s_queuedScripts.Clear();
+		if (!s_queuedScripts.Empty())
+		{
+			//InterlockedIncrement((UInt32*)0x11CAEDC);
+			for (auto iter = s_queuedScripts.Begin(); iter; ++iter)
+				iter().Execute();
+			//InterlockedDecrement((UInt32*)0x11CAEDC);
+			s_queuedScripts.Clear();
+		}
+		if (!s_queuedScripts2.Empty())
+		{
+			for (auto iter = s_queuedScripts2.Begin(); iter; ++iter)
+				iter().Execute();
+			s_queuedScripts2.Clear();
+		}
 #endif
 	}
 
