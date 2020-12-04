@@ -95,23 +95,9 @@ namespace OtherHooks
 		ThisStdCall(0x5A8BC0, eventList);
 		GameHeapFree(eventList);
 	}
-
-	QueuedEventList::~QueuedEventList()
-	{
-		DeleteEventList(eventList);
-	}
-
-	Vector<QueuedEventList> s_eventListDestructionQueue(0x80);
 	
 	ScriptEventList* __fastcall ScriptEventListsDestroyedHook(ScriptEventList *eventList, int EDX, bool doFree)
 	{
-#if SINGLE_THREAD_SCRIPTS
-		if (GetCurrentThreadId() != g_mainThreadID)
-		{
-			s_eventListDestructionQueue.Append(eventList);
-			return eventList;
-		}
-#endif
 		DeleteEventList(eventList);
 		return eventList;
 	}

@@ -72,9 +72,8 @@ protected:
 	_VarIDs				tempIDs;		// set of IDs of unreferenced vars, makes for easy cleanup
 	_VarIDs				availableIDs;	// IDs < greatest used ID available as IDs for new vars
 	VarCache			cache;
-#if !SINGLE_THREAD_SCRIPTS
 	CRITICAL_SECTION	cs;				// trying to avoid what looks like concurrency issues
-#endif
+
 
 	void SetIDAvailable(UInt32 id)
 	{
@@ -84,33 +83,26 @@ protected:
 	UInt32 GetUnusedID()
 	{
 		UInt32 id = 1;
-#if !SINGLE_THREAD_SCRIPTS
 		::EnterCriticalSection(&cs);
-#endif
+
 		if (!availableIDs.Empty())
 			id = availableIDs.PopFirst();
 		else if (!usedIDs.Empty())
 			id = usedIDs.LastKey() + 1;
-#if !SINGLE_THREAD_SCRIPTS
 		::LeaveCriticalSection(&cs);
-#endif
 		return id;
 	}
 
 public:
 	VarMap()
 	{
-#if !SINGLE_THREAD_SCRIPTS
 		::InitializeCriticalSection(&cs);
-#endif
 	}
 
 	~VarMap()
 	{
 		Reset();
-#if !SINGLE_THREAD_SCRIPTS
 		::DeleteCriticalSection(&cs);
-#endif
 	}
 
 	Var* Get(UInt32 varID)
@@ -134,30 +126,22 @@ public:
 	template <typename ...Args>
 	Var* Insert(UInt32 varID, Args&& ...args)
 	{
-#if !SINGLE_THREAD_SCRIPTS
 		::EnterCriticalSection(&cs);
-#endif
 		usedIDs.Insert(varID);
 		Var* var = vars.Emplace(varID, std::forward<Args>(args)...);
-#if !SINGLE_THREAD_SCRIPTS
 		::LeaveCriticalSection(&cs);
-#endif
 		return var;
 	}
 
 	void Delete(UInt32 varID)
 	{
-#if !SINGLE_THREAD_SCRIPTS
 		::EnterCriticalSection(&cs);
-#endif
 		cache.Remove(varID);
 		vars.Erase(varID);
 		usedIDs.Erase(varID);
 		tempIDs.Erase(varID);
 		SetIDAvailable(varID);
-#if !SINGLE_THREAD_SCRIPTS
 		::LeaveCriticalSection(&cs);
-#endif
 	}
 
 	static void DeleteBySelf(VarMap* self, UInt32 varID)
