@@ -56,8 +56,6 @@ static const UInt32 kExtraOwnershipDefaultSetting  = 0x00411F78;	//	0040A654 in 
 
 DWORD g_mainThreadID = 0;
 
-#define SINGLE_THREAD_SCRIPTS 1
-
 #if SINGLE_THREAD_SCRIPTS
 Script* __fastcall CopyScript(Script *source)
 {
