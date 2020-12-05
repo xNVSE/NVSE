@@ -72,6 +72,7 @@ const _GetFormByID GetFormByID = (_GetFormByID)(0x483A00);
 	const _FormHeap_Free FormHeap_Free = (_FormHeap_Free)0x0000401180;
 	const _ShowCompilerError ShowCompilerError = (_ShowCompilerError)0x005C5730;	// Called with aNonPersistentR (still same sub as the other one)
 
+// 0x5C64C0 <- start of huge editor function that IDA can't disassemble.
 #else
 
 #error RUNTIME_VERSION unknown
