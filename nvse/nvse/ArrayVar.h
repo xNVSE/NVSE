@@ -142,7 +142,7 @@ struct ArrayKey
 	bool operator<=(const ArrayKey& rhs) const { return !(*this > rhs); }
 };
 
-extern ArrayKey s_arrNumKey, s_arrStrKey;
+extern thread_local ArrayKey s_arrNumKey, s_arrStrKey;
 
 enum ContainerType
 {

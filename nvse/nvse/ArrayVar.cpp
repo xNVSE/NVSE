@@ -330,7 +330,7 @@ bool ArrayKey::operator==(const ArrayKey& rhs) const
 	}
 }
 
-ArrayKey s_arrNumKey(kDataType_Numeric), s_arrStrKey(kDataType_String);
+thread_local ArrayKey s_arrNumKey(kDataType_Numeric), s_arrStrKey(kDataType_String);
 
 ///////////////////////
 // ArrayVar
