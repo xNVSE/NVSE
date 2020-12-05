@@ -3760,11 +3760,7 @@ bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem, ExpressionEvaluato
 	else if (basicToken->CanConvertTo(kTokenType_Form))
 		elem.SetFormID(basicToken->GetFormID());
 	else if (basicToken->CanConvertTo(kTokenType_Array))
-	{
-		ArrayID arrID = basicToken->GetArray();
-		elem.m_data.owningArray = 0;
-		elem.SetArray(arrID);
-	}
+		elem.SetArray(basicToken->GetArray());
 	else
 		bResult = false;
 
