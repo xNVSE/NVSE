@@ -30,27 +30,35 @@ bool Cmd_Log10_Execute(COMMAND_ARGS)
 
 bool Cmd_Floor_Execute(COMMAND_ARGS)
 {
-	*result = 0;
-
-	float arg = 0;
-	if(!ExtractArgs(EXTRACT_ARGS, &arg))
-		return true;
-
-	*result = floor(arg);
-
+	float arg;
+	if (ExtractArgs(EXTRACT_ARGS, &arg))
+	{
+		_asm
+		{
+			cvtss2sd	xmm0, arg
+			roundsd	xmm0, xmm0, 1
+			mov		ecx, result
+			movsd	qword ptr [ecx], xmm0
+		}
+	}
+	else *result = 0;
 	return true;
 }
 
 bool Cmd_Ceil_Execute(COMMAND_ARGS)
 {
-	*result = 0;
-
-	float arg = 0;
-	if(!ExtractArgs(EXTRACT_ARGS, &arg))
-		return true;
-
-	*result = ceil(arg);
-
+	float arg;
+	if (ExtractArgs(EXTRACT_ARGS, &arg))
+	{
+		_asm
+		{
+			cvtss2sd	xmm0, arg
+			roundsd	xmm0, xmm0, 2
+			mov		ecx, result
+			movsd	qword ptr [ecx], xmm0
+		}
+	}
+	else *result = 0;
 	return true;
 }
 
