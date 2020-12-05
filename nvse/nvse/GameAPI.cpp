@@ -24,11 +24,13 @@ typedef void * (* _GetSingleton)(bool canCreateNew);
 
 char s_tempStrArgBuffer[0x4000];
 
+#if RUNTIME
 TESForm* __stdcall LookupFormByID(UInt32 refID)
 {
 	NiTPointerMap<TESForm> *formsMap = *(NiTPointerMap<TESForm>**)0x11C54C0;
 	return formsMap->Lookup(refID);
 }
+#endif
 
 #if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 
