@@ -850,7 +850,9 @@ bool ArrayVar::Insert(UInt32 atIndex, const ArrayElement* toInsert)
 	auto *pVec = m_elements.getArrayPtr();
 	UInt32 varSize = pVec->Size();
 	if (atIndex > varSize) return false;
-	pVec->Insert(atIndex)->Set(toInsert);
+	ArrayElement *newElem = pVec->Insert(atIndex);
+	newElem->m_data.owningArray = m_ID;
+	newElem->Set(toInsert);
 	return true;
 }
 
@@ -871,7 +873,10 @@ bool ArrayVar::Insert(UInt32 atIndex, ArrayID rangeID)
 	pDest->InsertSize(atIndex, srcSize);
 	ArrayElement *pDestData = pDest->Data() + atIndex, *pSrcData = pSrc->Data();
 	for (UInt32 idx = 0; idx < srcSize; idx++)
+	{
+		pDestData[idx].m_data.owningArray = m_ID;
 		pDestData[idx].Set(&pSrcData[idx]);
+	}
 
 	return true;
 }
@@ -1081,6 +1086,7 @@ void ArrayVar::Sort(ArrayVar *result, SortOrder order, SortType type, Script* co
 	auto pOutArr = result->m_elements.getArrayPtr();
 	result->m_elements.m_container.numAlloc = m_elements.size();
 	TempObject<ArrayElement> tempElem;
+	tempElem().m_data.owningArray = result->m_ID;
 	bool descending = (order == kSort_Descending);
 	switch (type)
 	{
@@ -1092,7 +1098,7 @@ void ArrayVar::Sort(ArrayVar *result, SortOrder order, SortType type, Script* co
 					continue;
 				tempElem().Set(iter.second());
 				pOutArr->InsertSorted(tempElem(), descending);
-				tempElem.Reset();
+				tempElem().m_data.dataType = kDataType_Invalid;
 			}
 			break;
 		}
@@ -1104,7 +1110,7 @@ void ArrayVar::Sort(ArrayVar *result, SortOrder order, SortType type, Script* co
 					continue;
 				tempElem().SetFormID(iter.second()->m_data.formID);
 				pOutArr->InsertSorted(tempElem(), descending ? ArrayElement::CompareNamesDescending : ArrayElement::CompareNames);
-				tempElem.Reset();
+				tempElem().m_data.dataType = kDataType_Invalid;
 			}
 			break;
 		}
@@ -1118,7 +1124,7 @@ void ArrayVar::Sort(ArrayVar *result, SortOrder order, SortType type, Script* co
 					continue;
 				tempElem().Set(iter.second());
 				pOutArr->InsertSorted(tempElem(), sorter);
-				tempElem.Reset();
+				tempElem().m_data.dataType = kDataType_Invalid;
 			}
 			break;
 		}
