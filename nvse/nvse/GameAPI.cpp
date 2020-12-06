@@ -876,7 +876,7 @@ UInt32 ScriptEventList::ResetAllVariables()
 			entry->var->data = 0.0;
 			numVars++;
 		}
-
+	OtherHooks::CleanUpNVSEVars(this);
 	return numVars;
 }
 
