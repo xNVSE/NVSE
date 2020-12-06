@@ -869,6 +869,7 @@ void ScriptEventList::Dump(void)
 
 UInt32 ScriptEventList::ResetAllVariables()
 {
+	OtherHooks::CleanUpNVSEVars(this);
 	UInt32 numVars = 0;
 	for (VarEntry * entry = m_vars; entry; entry = entry->next)
 		if (entry->var)
@@ -876,7 +877,6 @@ UInt32 ScriptEventList::ResetAllVariables()
 			entry->var->data = 0.0;
 			numVars++;
 		}
-	OtherHooks::CleanUpNVSEVars(this);
 	return numVars;
 }
 
