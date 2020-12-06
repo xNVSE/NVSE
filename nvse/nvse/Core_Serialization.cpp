@@ -5,6 +5,7 @@
 #include <string>
 #include "StringVar.h"
 #include "ArrayVar.h"
+#include "ScriptTokens.h"
 
 /*************************
 Save file format:
@@ -106,6 +107,7 @@ void Core_PreLoadCallback(void * reserved)
 
 	NVSESerializationInterface* intfc = &g_NVSESerializationInterface;
 
+	g_nvseVarGarbageCollectionMap.Clear();
 	g_ArrayMap.Reset();
 	g_StringMap.Reset();
 
