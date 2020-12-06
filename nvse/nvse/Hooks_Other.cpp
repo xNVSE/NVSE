@@ -75,10 +75,10 @@ namespace OtherHooks
 					switch (type)
 					{
 					case kTokenType_StringVar:
-						g_StringMap.MarkTemporary(id, true);
+						g_StringMap.MarkTemporary(node->var->data, true);
 						break;
 					case kTokenType_ArrayVar:
-						g_ArrayMap.MarkTemporary(id, true);
+						g_ArrayMap.MarkTemporary(node->var->data, true);
 						break;
 					default:
 						break;
