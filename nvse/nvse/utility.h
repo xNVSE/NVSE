@@ -1,5 +1,7 @@
 #pragma once
 
+#include <intrin.h>
+
 typedef void* (*memcpy_t)(void*, const void*, size_t);
 extern memcpy_t _memcpy, _memmove;
 
@@ -65,6 +67,10 @@ template <typename T> __forceinline void RawSwap(const T &lhs, const T &rhs)
 #define NOP_0xD NOP_0x6 NOP_0x7
 #define NOP_0xE NOP_0x7 NOP_0x7
 #define NOP_0xF NOP_0x7 NOP_0x8
+
+int __vectorcall ifloor(float value);
+
+int __vectorcall iceil(float value);
 
 UInt32 __fastcall StrLen(const char* str);
 
