@@ -1328,7 +1328,7 @@ void CommandTable::AddCommandsV4()
 	ADD_CMD(ForEach);
 	ADD_CMD(Continue);
 	ADD_CMD(Break);
-	ADD_CMD(ToString);
+	ADD_CMD_RET(ToString, kRetnType_String);
 	ADD_CMD(Print);
 	ADD_CMD(testexpr);
 	ADD_CMD_RET(TypeOf, kRetnType_String);
