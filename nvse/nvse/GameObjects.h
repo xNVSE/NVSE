@@ -146,10 +146,10 @@ public:
 
 	ScriptEventList *	GetEventList() const;
 
-	bool IsTaken() const { return (flags & kFlags_Taken) == kFlags_Taken; } // Need to implement
+	bool IsTaken() const { return (flags & kFlags_Taken) != 0; }
 	bool IsPersistent() const { return (flags & kFlags_Persistent) != 0; }
 	bool IsTemporary() { return (flags & kFlags_Temporary) ? true : false; }
-	bool IsDeleted() { return (flags & kFlags_Deleted) ? true : false; }
+	bool IsDeleted() const { return (flags & kFlags_Deleted) ? true : false; }
 
 	bool Update3D();
 	bool Update3D_v1c();	// Less worse version as used by some modders
