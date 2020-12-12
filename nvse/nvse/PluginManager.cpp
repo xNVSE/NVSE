@@ -432,6 +432,7 @@ std::string GetLastErrorAsString()
 	return message;
 }
 
+#define LOAD_EXCEPTION_BUFFER_LEN 70
 bool PluginManager::InstallPlugin(std::string pluginPath)
 {
 	_MESSAGE("checking plugin %s", pluginPath.c_str());
@@ -453,8 +454,8 @@ bool PluginManager::InstallPlugin(std::string pluginPath)
 		if(plugin.query && plugin.load)
 		{
 			const char	* loadStatus = NULL;
-
-			loadStatus = SafeCallQueryPlugin(&plugin, &g_NVSEInterface);
+			char buf[LOAD_EXCEPTION_BUFFER_LEN];
+			loadStatus = SafeCallQueryPlugin(&plugin, &g_NVSEInterface, buf);
 
 			if(!loadStatus)
 			{
@@ -462,7 +463,7 @@ bool PluginManager::InstallPlugin(std::string pluginPath)
 
 				if(!loadStatus)
 				{
-					loadStatus = SafeCallLoadPlugin(&plugin, &g_NVSEInterface);
+					loadStatus = SafeCallLoadPlugin(&plugin, &g_NVSEInterface, buf);
 
 					if(!loadStatus)
 					{
@@ -539,8 +540,15 @@ void PluginManager::InstallPlugins(void)
 	Dispatch_Message(0, NVSEMessagingInterface::kMessage_PostPostLoad, NULL, 0, NULL);
 }
 
+int QueryLoadPluginExceptionFilter(_EXCEPTION_POINTERS* exceptionInfo, HMODULE pluginHandle, char* errorOut, const char* type)
+{
+	uintptr_t exceptionAddr = exceptionInfo->ContextRecord->Eip - (uintptr_t)pluginHandle + 0x10000000;
+	snprintf(errorOut, LOAD_EXCEPTION_BUFFER_LEN, "disabled, fatal error occurred at %08X while %s plugin", exceptionAddr, type);
+	return EXCEPTION_EXECUTE_HANDLER;
+}
+
 // SEH-wrapped calls to plugin API functions to avoid bugs from bringing down the core
-const char * PluginManager::SafeCallQueryPlugin(LoadedPlugin * plugin, const NVSEInterface * nvse)
+const char * PluginManager::SafeCallQueryPlugin(LoadedPlugin * plugin, const NVSEInterface * nvse, char* errorOut)
 {
 	__try
 	{
@@ -549,16 +557,15 @@ const char * PluginManager::SafeCallQueryPlugin(LoadedPlugin * plugin, const NVS
 			return "reported as incompatible during query";
 		}
 	}
-	__except(EXCEPTION_EXECUTE_HANDLER)
+	__except(QueryLoadPluginExceptionFilter(GetExceptionInformation(), plugin->handle, errorOut, "querying"))
 	{
-		// something very bad happened
-		return "disabled, fatal error occurred while querying plugin";
+		return errorOut;
 	}
 
 	return NULL;
 }
 
-const char * PluginManager::SafeCallLoadPlugin(LoadedPlugin * plugin, const NVSEInterface * nvse)
+const char * PluginManager::SafeCallLoadPlugin(LoadedPlugin * plugin, const NVSEInterface * nvse, char* errorOut)
 {
 	__try
 	{
@@ -567,10 +574,9 @@ const char * PluginManager::SafeCallLoadPlugin(LoadedPlugin * plugin, const NVSE
 			return "reported as incompatible during load";
 		}
 	}
-	__except(EXCEPTION_EXECUTE_HANDLER)
+	__except (QueryLoadPluginExceptionFilter(GetExceptionInformation(), plugin->handle, errorOut, "loading"))
 	{
-		// something very bad happened
-		return "disabled, fatal error occurred while loading plugin";
+		return errorOut;
 	}
 
 	return NULL;

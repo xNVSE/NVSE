@@ -56,8 +56,8 @@ private:
 	bool	InstallPlugin(std::string pluginPath);
 	void	InstallPlugins(void);
 
-	const char *	SafeCallQueryPlugin(LoadedPlugin * plugin, const NVSEInterface * nvse);
-	const char *	SafeCallLoadPlugin(LoadedPlugin * plugin, const NVSEInterface * nvse);
+	const char *	SafeCallQueryPlugin(LoadedPlugin * plugin, const NVSEInterface * nvse, char* errorBuffer);
+	const char *	SafeCallLoadPlugin(LoadedPlugin * plugin, const NVSEInterface * nvse, char* errorBuffer);
 
 	const char *	CheckPluginCompatibility(LoadedPlugin * plugin);
 
