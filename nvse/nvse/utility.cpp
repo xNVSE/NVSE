@@ -2,6 +2,46 @@
 
 memcpy_t _memcpy = memcpy, _memmove = memmove;
 
+__declspec(naked) int __vectorcall ifloor(float value)
+{
+	__asm
+	{
+		movd	eax, xmm0
+		test	eax, eax
+		jns		isPos
+		push	0x3FA0
+		ldmxcsr	[esp]
+		cvtss2si	eax, xmm0
+		mov		dword ptr [esp], 0x1FA0
+		ldmxcsr	[esp]
+		pop		ecx
+		retn
+	isPos:
+		cvttss2si	eax, xmm0
+		retn
+	}
+}
+
+__declspec(naked) int __vectorcall iceil(float value)
+{
+	__asm
+	{
+		movd	eax, xmm0
+		test	eax, eax
+		js		isNeg
+		push	0x5FA0
+		ldmxcsr	[esp]
+		cvtss2si	eax, xmm0
+		mov		dword ptr [esp], 0x1FA0
+		ldmxcsr	[esp]
+		pop		ecx
+		retn
+	isNeg:
+		cvttss2si	eax, xmm0
+		retn
+	}
+}
+
 __declspec(naked) UInt32 __fastcall StrLen(const char *str)
 {
 	__asm

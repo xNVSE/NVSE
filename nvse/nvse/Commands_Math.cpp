@@ -32,15 +32,7 @@ bool Cmd_Floor_Execute(COMMAND_ARGS)
 {
 	float arg;
 	if (ExtractArgs(EXTRACT_ARGS, &arg))
-	{
-		_asm
-		{
-			cvtss2sd	xmm0, arg
-			roundsd	xmm0, xmm0, 1
-			mov		ecx, result
-			movsd	qword ptr [ecx], xmm0
-		}
-	}
+		*result = ifloor(arg);
 	else *result = 0;
 	return true;
 }
@@ -49,15 +41,7 @@ bool Cmd_Ceil_Execute(COMMAND_ARGS)
 {
 	float arg;
 	if (ExtractArgs(EXTRACT_ARGS, &arg))
-	{
-		_asm
-		{
-			cvtss2sd	xmm0, arg
-			roundsd	xmm0, xmm0, 2
-			mov		ecx, result
-			movsd	qword ptr [ecx], xmm0
-		}
-	}
+		*result = iceil(arg);
 	else *result = 0;
 	return true;
 }
