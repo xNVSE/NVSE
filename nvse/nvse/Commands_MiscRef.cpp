@@ -456,8 +456,16 @@ UnorderedMap<UInt32, CellScanInfo> s_scanScripts;
 static TESObjectREFR* CellScan(Script* scriptObj, TESObjectCELL* cellToScan = NULL, UInt32 formType = 0, UInt32 cellDepth = 0, bool getFirst = false, bool includeTaken = false, TESObjectREFR* refr = NULL)
 {
 	CellScanInfo *info;
+	auto refId = scriptObj->refID;
+	if (scriptObj->GetModIndex() == 0xFF && IsConsoleMode())
+		refId = 0xFFFEED; // console creates new script per command, use common magic refID for all
 	if (s_scanScripts.Insert(scriptObj->refID, &info) || getFirst)
 	{
+		if (!cellToScan)
+		{
+			ShowRuntimeError(scriptObj, "GetFirstRef MUST be called before GetNextRef");
+			return nullptr;
+		}
 		new (info) CellScanInfo(cellDepth, formType, includeTaken, cellToScan);
 		info->FirstCell();
 	}
@@ -586,6 +594,9 @@ bool Cmd_GetNextRef_Execute(COMMAND_ARGS)
 	TESObjectREFR* refr = CellScan(scriptObj);
 	if (refr)
 		*refResult = refr->refID;
+
+	if (IsConsoleMode())
+		Console_Print("GetNextRef >> %08x", *refResult);
 
 	return true;
 }

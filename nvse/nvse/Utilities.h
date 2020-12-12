@@ -202,3 +202,11 @@ public:
 private:
 	ICriticalSection& m_critSection;
 };
+
+#if RUNTIME
+
+const char* GetModName(Script* script);
+
+void ShowRuntimeError(Script* script, const char* fmt, ...);
+
+#endif

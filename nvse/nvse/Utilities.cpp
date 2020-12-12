@@ -3,6 +3,12 @@
 #include <string>
 #include <algorithm>
 
+
+#include "containers.h"
+#include "GameData.h"
+#include "PluginAPI.h"
+#include "PluginManager.h"
+
 #if RUNTIME
 #include "GameAPI.h"
 #include "GameForms.h"
@@ -623,3 +629,60 @@ ScopedLock::~ScopedLock()
 {
 	m_critSection.Leave();
 }
+
+#if RUNTIME
+
+UnorderedSet<UInt32> g_warnedScripts;
+
+const char* GetModName(Script* script)
+{
+	const char* modName = "In-game console";
+	if (script->GetModIndex() != 0xFF)
+	{
+		modName = DataHandler::Get()->GetNthModName(script->GetModIndex());
+		if (!modName || !modName[0])
+			modName = "Unknown";
+	}
+	return modName;
+}
+
+void ShowRuntimeError(Script* script, const char* fmt, ...)
+{
+	char errorHeader[0x400];
+	const auto* modName = GetModName(script);
+	
+	const auto* scriptName = script ? script->GetName() : nullptr; // JohnnyGuitarNVSE allows this
+	if (scriptName && strlen(scriptName) != 0)
+	{
+		sprintf_s(errorHeader, 0x400, "Error in script %08x (%s) in mod %s", script ? script->refID : 0, scriptName, modName);
+	}
+	else
+	{
+		sprintf_s(errorHeader, 0x400, "Error in script %08x in mod %s", script ? script->refID : 0, modName);
+	}
+
+	if (g_warnedScripts.Insert(script->refID))
+	{
+		char message[512];
+		snprintf(message, sizeof(message), "%s: NVSE error (see console print)", GetModName(script));
+		if (!IsConsoleMode())
+			QueueUIMessage(message, 0, reinterpret_cast<const char*>(0x1049638), nullptr, 2.5F, false);
+	}
+
+	va_list args;
+	va_start(args, fmt);
+
+	char	errorMsg[0x400];
+	vsprintf_s(errorMsg, 0x400, fmt, args);
+
+	Console_Print(errorHeader);
+	_MESSAGE(errorHeader);
+	Console_Print(errorMsg);
+	_MESSAGE(errorMsg);
+
+	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_RuntimeScriptError, errorMsg, 4, NULL);
+
+	va_end(args);
+}
+
+#endif

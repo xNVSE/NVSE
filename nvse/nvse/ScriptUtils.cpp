@@ -1451,7 +1451,7 @@ void ExpressionEvaluator::ToggleErrorSuppression(bool bSuppress) {
 		m_flags.Clear(kFlag_SuppressErrorMessages); 
 }
 
-static UnorderedSet<const char*> s_warnedMods; // show corner message only once per mod script error - Korri
+static UnorderedSet<const char*> s_warnedMods; // show corner message only once per mod script error 
 
 void ExpressionEvaluator::Error(const char* fmt, ...)
 {
@@ -1470,20 +1470,7 @@ void ExpressionEvaluator::Error(const char* fmt, ...)
 	CommandInfo* cmd = GetCommand();
 
 	// include mod filename, save having to ask users to figure it out themselves
-	const char* modName = "Savegame";
-	if (script->GetModIndex() != 0xFF)
-	{
-		modName = DataHandler::Get()->GetNthModName(script->GetModIndex());
-		if (!modName || !modName[0])
-			modName = "Unknown";
-	}
-
-	if (s_warnedMods.Insert(modName))
-	{
-		char message[512];
-		snprintf(message, sizeof(message), "%s: error (see console print)", modName);
-		QueueUIMessage(message, 0, reinterpret_cast<const char*>(0x1049638), nullptr, 2.5F, false);
-	}
+	const char* modName = GetModName(script);
 
 	ShowRuntimeError(script, "%s\n    File: %s Offset: 0x%04X Command: %s", errorMsg, modName, m_baseOffset, cmd ? cmd->longName : "<unknown>");
 	if (m_flags.IsSet(kFlag_StackTraceOnError))
@@ -2658,38 +2645,6 @@ std::string ExpressionParser::GetCurToken()
 // error routines
 
 #if RUNTIME
-
-void ShowRuntimeError(Script* script, const char* fmt, ...)
-{
-	char errorHeader[0x400];
-	if (script != nullptr)
-	{
-		const auto* scriptName = script->GetName(); // JohnnyGuitarNVSE allows this
-		if (scriptName && strlen(scriptName) != 0)
-		{
-			sprintf_s(errorHeader, 0x400, "Error in script %08x (%s)", script ? script->refID : 0, scriptName);
-		}
-	}
-	else
-	{
-		sprintf_s(errorHeader, 0x400, "Error in script %08x", script ? script->refID : 0);
-	}
-
-	va_list args;
-	va_start(args, fmt);
-
-	char	errorMsg[0x400];
-	vsprintf_s(errorMsg, 0x400, fmt, args);
-
-	Console_Print(errorHeader);
-	_MESSAGE(errorHeader);
-	Console_Print(errorMsg);
-	_MESSAGE(errorMsg);
-
-	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_RuntimeScriptError, errorMsg, 4, NULL); 
-
-	va_end(args);
-}
 
 /**********************************
 	ExpressionEvaluator
