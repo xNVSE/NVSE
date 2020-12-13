@@ -8,7 +8,7 @@
 #include "GameAPI.h"
 #include "GameData.h"
 #include "FunctionScripts.h"
-
+#include <sstream>
 #endif
 
 ArrayVarMap g_ArrayMap;
@@ -114,9 +114,11 @@ std::string ArrayElement::GetStringRepresentation() const
 		return "invalid";
 	case kDataType_Numeric:
 		{
+			std::stringstream ss;
 			double numeric;
 			this->GetAsNumber(&numeric);
-			return std::to_string(numeric);
+			ss << numeric;
+			return ss.str();
 		}
 	case kDataType_Form:
 		{
@@ -1267,7 +1269,7 @@ std::string ArrayVar::GetStringRepresentation() const
 		}
 	case kContainer_NumericMap:
 		{
-			std::string result = "{";
+			std::string result = "[";
 			auto* container = this->m_elements.getNumMapPtr();
 			for (auto iter = container->Begin(); !iter.End(); ++iter)
 			{
@@ -1275,19 +1277,19 @@ std::string ArrayVar::GetStringRepresentation() const
 				if (iter.Index() != container->Size() - 1)
 					result += ", ";
 			}
-			result += "}";
+			result += "]";
 			return result;
 		}
 	case kContainer_StringMap:
 	{
-		std::string result = "{";
+		std::string result = "[";
 		auto* container = this->m_elements.getStrMapPtr();
 		for (auto iter = container->Begin(); !iter.End(); ++iter)
 		{
 			result += '"' + std::string(iter.Key()) + '"' + ": " + iter.Get().GetStringRepresentation();
 			if (iter.Index() != container->Size() - 1)
 				result += ", ";
-			result += "}";
+			result += "]";
 			return result;
 		}
 	}
