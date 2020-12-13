@@ -913,9 +913,11 @@ ScriptToken* Eval_ToString_Form(OperatorType op, ScriptToken* lh, ScriptToken* r
 
 ScriptToken* Eval_ToString_Array(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	char buf[0x20];
-	snprintf(buf, sizeof(buf), "Array ID %d", lh->GetArray());
-	return ScriptToken::Create(buf);
+	const auto arrayId = lh->GetArray();
+	const auto* arrayVar = g_ArrayMap.Get(arrayId);
+	if (arrayVar)
+		return ScriptToken::Create(arrayVar->GetStringRepresentation());
+	return ScriptToken::Create("array ID " + std::to_string(arrayId) + " (invalid)");
 }
 
 ScriptToken* Eval_ToNumber(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)

@@ -269,7 +269,7 @@ public:
 	virtual bool		Unk_39(void);
 	virtual bool		Unk_3A(void);
 	virtual bool		Unk_3B(void);
-	virtual bool		GetIsReference();
+	virtual bool		GetIsReference() const;
 	virtual bool		Unk_3D(void);
 	virtual bool		Unk_3E(void);
 	virtual bool		Unk_3F(void);	// returnTrue for refr whose baseForm is a TESActorBase
@@ -285,7 +285,7 @@ public:
 	virtual bool		Unk_49(void * arg0, void * arg1, void * arg2, void * arg3, void * arg4);	// looks to be func33 in Oblivion
 	virtual void		SetRefID(UInt32 refID, bool generateID);
 	virtual char *		GetName2(void);	// GetName as in OBSE ?
-	virtual char *		GetName(void);	// GetEditorID as in OBSE ?
+	virtual char *		GetName(void) const;	// GetEditorID as in OBSE ?
 	virtual bool		SetEditorID(const char * edid);		// simply returns true at run-time
 	// 4E
 
@@ -324,9 +324,10 @@ public:
 
 	TESForm *		TryGetREFRParent(void);
 	UInt8			GetModIndex() const;
-	TESFullName*	GetFullName();
+	TESFullName*	GetFullName() const;
 	const char*		GetTheName();
 	bool			IsCloned() const;
+	std::string		GetStringRepresentation() const;
 
 	bool IsWeapon() { return typeID == kFormType_Weapon; }
 	bool IsArmor() { return typeID == kFormType_Armor; }

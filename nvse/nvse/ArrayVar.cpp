@@ -20,12 +20,12 @@ ArrayData::~ArrayData()
 	dataType = kDataType_Invalid;
 }
 
-const char *ArrayData::GetStr() const
+const char* ArrayData::GetStr() const
 {
 	return str ? str : "";
 }
 
-void ArrayData::SetStr(const char *srcStr)
+void ArrayData::SetStr(const char* srcStr)
 {
 	str = (srcStr && *srcStr) ? CopyString(srcStr) : NULL;
 }
@@ -74,13 +74,13 @@ bool ArrayElement::operator<(const ArrayElement& rhs) const
 
 	switch (m_data.dataType)
 	{
-		case kDataType_Form:
-		case kDataType_Array:
-			return m_data.formID < rhs.m_data.formID;
-		case kDataType_String:
-			return StrCompare(m_data.str, rhs.m_data.str) < 0;
-		default:
-			return m_data.num < rhs.m_data.num;
+	case kDataType_Form:
+	case kDataType_Array:
+		return m_data.formID < rhs.m_data.formID;
+	case kDataType_String:
+		return StrCompare(m_data.str, rhs.m_data.str) < 0;
+	default:
+		return m_data.num < rhs.m_data.num;
 	}
 }
 
@@ -91,13 +91,13 @@ bool ArrayElement::operator==(const ArrayElement& rhs) const
 
 	switch (m_data.dataType)
 	{
-		case kDataType_Form:
-		case kDataType_Array:
-			return m_data.formID == rhs.m_data.formID;
-		case kDataType_String:
-			return !StrCompare(m_data.str, rhs.m_data.str);
-		default:
-			return m_data.num == rhs.m_data.num;
+	case kDataType_Form:
+	case kDataType_Array:
+		return m_data.formID == rhs.m_data.formID;
+	case kDataType_String:
+		return !StrCompare(m_data.str, rhs.m_data.str);
+	default:
+		return m_data.num == rhs.m_data.num;
 	}
 }
 
@@ -106,24 +106,65 @@ bool ArrayElement::operator!=(const ArrayElement& rhs) const
 	return !(*this == rhs);
 }
 
+std::string ArrayElement::GetStringRepresentation() const
+{
+	switch (this->DataType())
+	{
+	case kDataType_Invalid:
+		return "invalid";
+	case kDataType_Numeric:
+		{
+			double numeric;
+			this->GetAsNumber(&numeric);
+			return std::to_string(numeric);
+		}
+	case kDataType_Form:
+		{
+			UInt32 formId;
+			this->GetAsFormID(&formId);
+			auto* form = LookupFormByID(formId);
+			if (form)
+				return form->GetStringRepresentation();
+			return "null";
+		}
+	case kDataType_String:
+		{
+			const char* str;
+			this->GetAsString(&str);
+			return '"' + std::string(str) + '"';
+		}
+	case kDataType_Array:
+		{
+			ArrayID id;
+			this->GetAsArray(&id);
+			const auto* arr = g_ArrayMap.Get(id);
+			if (arr)
+				return arr->GetStringRepresentation();
+			return "invalid array";
+		}
+	default:
+		return "unknown";
+	}
+}
+
 UInt8 __fastcall GetArrayOwningModIndex(ArrayID arrID)
 {
-	ArrayVar *arr = g_ArrayMap.Get(arrID);
+	ArrayVar* arr = g_ArrayMap.Get(arrID);
 	return arr ? arr->OwningModIndex() : 0;
 }
 
 bool ArrayElement::CompareNames(const ArrayElement& lhs, const ArrayElement& rhs)
 {
-	TESForm *lform = LookupFormByID(lhs.m_data.formID);
+	TESForm* lform = LookupFormByID(lhs.m_data.formID);
 	if (lform)
 	{
-		TESForm *rform = LookupFormByID(rhs.m_data.formID);
+		TESForm* rform = LookupFormByID(rhs.m_data.formID);
 		if (rform)
 		{
-			const char *lName = lform->GetTheName();
+			const char* lName = lform->GetTheName();
 			if (*lName)
 			{
-				const char *rName = rform->GetTheName();
+				const char* rName = rform->GetTheName();
 				if (*rName) return StrCompare(lName, rName) < 0;
 			}
 		}
@@ -165,7 +206,7 @@ bool ArrayElement::SetArray(ArrayID arr)
 	m_data.dataType = kDataType_Array;
 	if (m_data.owningArray)
 		g_ArrayMap.AddReference(&m_data.arrID, arr, GetArrayOwningModIndex(m_data.owningArray));
-	else	// this element is not inside any array, so it's just a temporary
+	else // this element is not inside any array, so it's just a temporary
 		m_data.arrID = arr;
 
 	return true;
@@ -208,7 +249,7 @@ bool ArrayElement::GetAsArray(ArrayID* out) const
 {
 	if (m_data.dataType != kDataType_Array)
 		return false;
-	if (m_data.arrID && !g_ArrayMap.Get(m_data.arrID))	// it's okay for arrayID to be 0, otherwise check if array exists
+	if (m_data.arrID && !g_ArrayMap.Get(m_data.arrID)) // it's okay for arrayID to be 0, otherwise check if array exists
 		return false;
 
 	*out = m_data.arrID;
@@ -251,7 +292,7 @@ void ArrayElement::Unset()
 	}
 	else if (m_data.dataType == kDataType_Array)
 		g_ArrayMap.RemoveReference(&m_data.arrID, GetArrayOwningModIndex(m_data.arrID));
-	
+
 	m_data.dataType = kDataType_Invalid;
 }
 
@@ -336,7 +377,8 @@ thread_local ArrayKey s_arrNumKey(kDataType_Numeric), s_arrStrKey(kDataType_Stri
 // ArrayVar
 //////////////////////
 
-ArrayVar::ArrayVar(UInt32 _keyType, bool _packed, UInt8 modIndex) : m_ID(0), m_keyType(_keyType), m_bPacked(_packed), m_owningModIndex(modIndex)
+ArrayVar::ArrayVar(UInt32 _keyType, bool _packed, UInt8 modIndex) : m_ID(0), m_keyType(_keyType), m_bPacked(_packed),
+                                                                    m_owningModIndex(modIndex)
 {
 	if (m_keyType == kDataType_String)
 		m_elements.m_type = kContainer_StringMap;
@@ -353,14 +395,14 @@ ArrayElement* ArrayVar::Get(const ArrayKey* key, bool bCanCreateNew)
 
 	switch (GetContainerType())
 	{
-		default:
-		case kContainer_Array:
+	default:
+	case kContainer_Array:
 		{
-			auto *pArray = m_elements.getArrayPtr();
+			auto* pArray = m_elements.getArrayPtr();
 			int idx = key->key.num;
 			if (idx < 0)
 				idx += pArray->Size();
-			ArrayElement *outElem = pArray->GetPtr((UInt32)idx);
+			ArrayElement* outElem = pArray->GetPtr((UInt32)idx);
 			if (!outElem && bCanCreateNew)
 			{
 				outElem = pArray->Append();
@@ -368,23 +410,23 @@ ArrayElement* ArrayVar::Get(const ArrayKey* key, bool bCanCreateNew)
 			}
 			return outElem;
 		}
-		case kContainer_NumericMap:
+	case kContainer_NumericMap:
 		{
-			auto *pMap = m_elements.getNumMapPtr();
+			auto* pMap = m_elements.getNumMapPtr();
 			if (bCanCreateNew)
 			{
-				ArrayElement *newElem = pMap->Emplace(key->key.num);
+				ArrayElement* newElem = pMap->Emplace(key->key.num);
 				newElem->m_data.owningArray = m_ID;
 				return newElem;
 			}
 			return pMap->GetPtr(key->key.num);
 		}
-		case kContainer_StringMap:
+	case kContainer_StringMap:
 		{
-			auto *pMap = m_elements.getStrMapPtr();
+			auto* pMap = m_elements.getStrMapPtr();
 			if (bCanCreateNew)
 			{
-				ArrayElement *newElem = pMap->Emplace(key->key.str);
+				ArrayElement* newElem = pMap->Emplace(key->key.str);
 				newElem->m_data.owningArray = m_ID;
 				return newElem;
 			}
@@ -400,14 +442,14 @@ ArrayElement* ArrayVar::Get(double key, bool bCanCreateNew)
 
 	switch (GetContainerType())
 	{
-		default:
-		case kContainer_Array:
+	default:
+	case kContainer_Array:
 		{
-			auto *pArray = m_elements.getArrayPtr();
+			auto* pArray = m_elements.getArrayPtr();
 			int idx = key;
 			if (idx < 0)
 				idx += pArray->Size();
-			ArrayElement *outElem = pArray->GetPtr((UInt32)idx);
+			ArrayElement* outElem = pArray->GetPtr((UInt32)idx);
 			if (!outElem && bCanCreateNew)
 			{
 				outElem = pArray->Append();
@@ -415,12 +457,12 @@ ArrayElement* ArrayVar::Get(double key, bool bCanCreateNew)
 			}
 			return outElem;
 		}
-		case kContainer_NumericMap:
+	case kContainer_NumericMap:
 		{
-			auto *pMap = m_elements.getNumMapPtr();
+			auto* pMap = m_elements.getNumMapPtr();
 			if (bCanCreateNew)
 			{
-				ArrayElement *newElem = pMap->Emplace(key);
+				ArrayElement* newElem = pMap->Emplace(key);
 				newElem->m_data.owningArray = m_ID;
 				return newElem;
 			}
@@ -434,10 +476,10 @@ ArrayElement* ArrayVar::Get(const char* key, bool bCanCreateNew)
 	if ((m_keyType != kDataType_String) || (GetContainerType() != kContainer_StringMap))
 		return NULL;
 
-	auto *pMap = m_elements.getStrMapPtr();
+	auto* pMap = m_elements.getStrMapPtr();
 	if (bCanCreateNew)
 	{
-		ArrayElement *newElem = pMap->Emplace(const_cast<char*>(key));
+		ArrayElement* newElem = pMap->Emplace(const_cast<char*>(key));
 		newElem->m_data.owningArray = m_ID;
 		return newElem;
 	}
@@ -461,7 +503,7 @@ bool ArrayVar::HasKey(const ArrayKey* key)
 
 bool ArrayVar::SetElementNumber(double key, double num)
 {
-	ArrayElement *elem = Get(key, true);
+	ArrayElement* elem = Get(key, true);
 	if (!elem) return false;
 	elem->SetNumber(num);
 	return true;
@@ -469,7 +511,7 @@ bool ArrayVar::SetElementNumber(double key, double num)
 
 bool ArrayVar::SetElementNumber(const char* key, double num)
 {
-	ArrayElement *elem = Get(key, true);
+	ArrayElement* elem = Get(key, true);
 	if (!elem) return false;
 	elem->SetNumber(num);
 	return true;
@@ -477,7 +519,7 @@ bool ArrayVar::SetElementNumber(const char* key, double num)
 
 bool ArrayVar::SetElementString(double key, const char* str)
 {
-	ArrayElement *elem = Get(key, true);
+	ArrayElement* elem = Get(key, true);
 	if (!elem) return false;
 	elem->SetString(str);
 	return true;
@@ -485,7 +527,7 @@ bool ArrayVar::SetElementString(double key, const char* str)
 
 bool ArrayVar::SetElementString(const char* key, const char* str)
 {
-	ArrayElement *elem = Get(key, true);
+	ArrayElement* elem = Get(key, true);
 	if (!elem) return false;
 	elem->SetString(str);
 	return true;
@@ -493,7 +535,7 @@ bool ArrayVar::SetElementString(const char* key, const char* str)
 
 bool ArrayVar::SetElementFormID(double key, UInt32 refID)
 {
-	ArrayElement *elem = Get(key, true);
+	ArrayElement* elem = Get(key, true);
 	if (!elem) return false;
 	elem->SetFormID(refID);
 	return true;
@@ -501,7 +543,7 @@ bool ArrayVar::SetElementFormID(double key, UInt32 refID)
 
 bool ArrayVar::SetElementFormID(const char* key, UInt32 refID)
 {
-	ArrayElement *elem = Get(key, true);
+	ArrayElement* elem = Get(key, true);
 	if (!elem) return false;
 	elem->SetFormID(refID);
 	return true;
@@ -509,7 +551,7 @@ bool ArrayVar::SetElementFormID(const char* key, UInt32 refID)
 
 bool ArrayVar::SetElementArray(double key, ArrayID srcID)
 {
-	ArrayElement *elem = Get(key, true);
+	ArrayElement* elem = Get(key, true);
 	if (!elem) return false;
 	elem->SetArray(srcID);
 	return true;
@@ -517,7 +559,7 @@ bool ArrayVar::SetElementArray(double key, ArrayID srcID)
 
 bool ArrayVar::SetElementArray(const char* key, ArrayID srcID)
 {
-	ArrayElement *elem = Get(key, true);
+	ArrayElement* elem = Get(key, true);
 	if (!elem) return false;
 	elem->SetArray(srcID);
 	return true;
@@ -525,7 +567,7 @@ bool ArrayVar::SetElementArray(const char* key, ArrayID srcID)
 
 bool ArrayVar::SetElement(double key, const ArrayElement* val)
 {
-	ArrayElement *elem = Get(key, true);
+	ArrayElement* elem = Get(key, true);
 	if (!elem) return false;
 	elem->Set(val);
 	return true;
@@ -533,7 +575,7 @@ bool ArrayVar::SetElement(double key, const ArrayElement* val)
 
 bool ArrayVar::SetElement(const char* key, const ArrayElement* val)
 {
-	ArrayElement *elem = Get(key, true);
+	ArrayElement* elem = Get(key, true);
 	if (!elem) return false;
 	elem->Set(val);
 	return true;
@@ -541,7 +583,7 @@ bool ArrayVar::SetElement(const char* key, const ArrayElement* val)
 
 bool ArrayVar::SetElement(const ArrayKey* key, const ArrayElement* val)
 {
-	ArrayElement *elem = (key->KeyType() == kDataType_Numeric) ? Get(key->key.num, true) : Get(key->key.GetStr(), true);
+	ArrayElement* elem = (key->KeyType() == kDataType_Numeric) ? Get(key->key.num, true) : Get(key->key.GetStr(), true);
 	if (!elem) return false;
 	elem->Set(val);
 	return true;
@@ -549,75 +591,75 @@ bool ArrayVar::SetElement(const ArrayKey* key, const ArrayElement* val)
 
 bool ArrayVar::SetElementFromAPI(double key, const NVSEArrayVarInterface::Element* srcElem)
 {
-	ArrayElement *elem = Get(key, true);
+	ArrayElement* elem = Get(key, true);
 	if (!elem) return false;
 	switch (srcElem->type)
 	{
-		case NVSEArrayVarInterface::Element::kType_Numeric:
-			elem->SetNumber(srcElem->num);
-			break;
-		case NVSEArrayVarInterface::Element::kType_Form:
+	case NVSEArrayVarInterface::Element::kType_Numeric:
+		elem->SetNumber(srcElem->num);
+		break;
+	case NVSEArrayVarInterface::Element::kType_Form:
 		{
 			UInt32 formID = srcElem->form ? srcElem->form->refID : 0;
 			elem->SetFormID(formID);
 			break;
 		}
-		case NVSEArrayVarInterface::Element::kType_String:
-			elem->SetString(srcElem->str);
-			break;
-		case NVSEArrayVarInterface::Element::kType_Array:
-			elem->SetArray((ArrayID)srcElem->arr);
-			break;
+	case NVSEArrayVarInterface::Element::kType_String:
+		elem->SetString(srcElem->str);
+		break;
+	case NVSEArrayVarInterface::Element::kType_Array:
+		elem->SetArray((ArrayID)srcElem->arr);
+		break;
 	}
 	return true;
 }
 
 bool ArrayVar::SetElementFromAPI(const char* key, const NVSEArrayVarInterface::Element* srcElem)
 {
-	ArrayElement *elem = Get(key, true);
+	ArrayElement* elem = Get(key, true);
 	if (!elem) return false;
 	switch (srcElem->type)
 	{
-		case NVSEArrayVarInterface::Element::kType_Numeric:
-			elem->SetNumber(srcElem->num);
-			break;
-		case NVSEArrayVarInterface::Element::kType_Form:
+	case NVSEArrayVarInterface::Element::kType_Numeric:
+		elem->SetNumber(srcElem->num);
+		break;
+	case NVSEArrayVarInterface::Element::kType_Form:
 		{
 			UInt32 formID = srcElem->form ? srcElem->form->refID : 0;
 			elem->SetFormID(formID);
 			break;
 		}
-		case NVSEArrayVarInterface::Element::kType_String:
-			elem->SetString(srcElem->str);
-			break;
-		case NVSEArrayVarInterface::Element::kType_Array:
-			elem->SetArray((ArrayID)srcElem->arr);
-			break;
+	case NVSEArrayVarInterface::Element::kType_String:
+		elem->SetString(srcElem->str);
+		break;
+	case NVSEArrayVarInterface::Element::kType_Array:
+		elem->SetArray((ArrayID)srcElem->arr);
+		break;
 	}
 	return true;
 }
 
 bool ArrayVar::GetElementNumber(const ArrayKey* key, double* out)
 {
-	ArrayElement *elem = Get(key, false);
+	ArrayElement* elem = Get(key, false);
 	return (elem && elem->GetAsNumber(out));
 }
 
 bool ArrayVar::GetElementString(const ArrayKey* key, const char** out)
 {
-	ArrayElement *elem = Get(key, false);
+	ArrayElement* elem = Get(key, false);
 	return (elem && elem->GetAsString(out));
 }
 
 bool ArrayVar::GetElementFormID(const ArrayKey* key, UInt32* out)
 {
-	ArrayElement *elem = Get(key, false);
+	ArrayElement* elem = Get(key, false);
 	return (elem && elem->GetAsFormID(out));
 }
 
 bool ArrayVar::GetElementForm(const ArrayKey* key, TESForm** out)
 {
-	ArrayElement *elem = Get(key, false);
+	ArrayElement* elem = Get(key, false);
 	UInt32 refID;
 	if (elem && elem->GetAsFormID(&refID))
 	{
@@ -629,7 +671,7 @@ bool ArrayVar::GetElementForm(const ArrayKey* key, TESForm** out)
 
 bool ArrayVar::GetElementArray(const ArrayKey* key, ArrayID* out)
 {
-	ArrayElement *elem = Get(key, false);
+	ArrayElement* elem = Get(key, false);
 	return (elem && elem->GetAsArray(out));
 }
 
@@ -645,10 +687,10 @@ const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 
 	switch (GetContainerType())
 	{
-		default:
-		case kContainer_Array:
+	default:
+	case kContainer_Array:
 		{
-			ElementVector *pArray = m_elements.getArrayPtr();
+			ElementVector* pArray = m_elements.getArrayPtr();
 			UInt32 arrSize = pArray->Size(), iLow, iHigh;
 			if (range)
 			{
@@ -666,7 +708,7 @@ const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 				iLow = 0;
 				iHigh = arrSize - 1;
 			}
-			ArrayElement *elements = pArray->Data();
+			ArrayElement* elements = pArray->Data();
 			for (int idx = iLow; idx <= iHigh; idx++)
 			{
 				if (elements[idx] != *toFind) continue;
@@ -675,7 +717,7 @@ const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 			}
 			return NULL;
 		}
-		case kContainer_NumericMap:
+	case kContainer_NumericMap:
 		{
 			ElementNumMap::Iterator iter(*m_elements.getNumMapPtr());
 			if (range)
@@ -708,7 +750,7 @@ const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 			}
 			return NULL;
 		}
-		case kContainer_StringMap:
+	case kContainer_StringMap:
 		{
 			ElementStrMap::Iterator iter(*m_elements.getStrMapPtr());
 			if (range)
@@ -847,10 +889,10 @@ bool ArrayVar::SetSize(UInt32 newSize, const ArrayElement* padWith)
 bool ArrayVar::Insert(UInt32 atIndex, const ArrayElement* toInsert)
 {
 	if (!m_bPacked) return false;
-	auto *pVec = m_elements.getArrayPtr();
+	auto* pVec = m_elements.getArrayPtr();
 	UInt32 varSize = pVec->Size();
 	if (atIndex > varSize) return false;
-	ArrayElement *newElem = pVec->Insert(atIndex);
+	ArrayElement* newElem = pVec->Insert(atIndex);
 	newElem->m_data.owningArray = m_ID;
 	newElem->Set(toInsert);
 	return true;
@@ -881,9 +923,9 @@ bool ArrayVar::Insert(UInt32 atIndex, ArrayID rangeID)
 	return true;
 }
 
-ArrayVar *ArrayVar::GetKeys(UInt8 modIndex)
+ArrayVar* ArrayVar::GetKeys(UInt8 modIndex)
 {
-	ArrayVar *keysArr = g_ArrayMap.Create(kDataType_Numeric, true, modIndex);
+	ArrayVar* keysArr = g_ArrayMap.Create(kDataType_Numeric, true, modIndex);
 	double currKey = 0;
 
 	for (ArrayIterator iter = m_elements.begin(); !iter.End(); ++iter)
@@ -904,7 +946,8 @@ ArrayVar* ArrayVar::Copy(UInt8 modIndex, bool bDeepCopy)
 	const ArrayElement* arrElem;
 	for (ArrayIterator iter = m_elements.begin(); !iter.End(); ++iter)
 	{
-		TempObject<ArrayKey> tempKey(*iter.first()); // required as iterators pass static objects and this function is recursive
+		TempObject<ArrayKey> tempKey(*iter.first());
+		// required as iterators pass static objects and this function is recursive
 		arrElem = iter.second();
 		if ((arrElem->DataType() == kDataType_Array) && bDeepCopy)
 		{
@@ -923,30 +966,30 @@ ArrayVar* ArrayVar::Copy(UInt8 modIndex, bool bDeepCopy)
 			DEBUG_PRINT("ArrayVarMap::Copy failed to make deep copy of inner array");
 		}
 		else if (!copyArr->SetElement(&tempKey(), arrElem))
-			DEBUG_PRINT("ArrayVarMap::Copy failed to set element in copied array");
+		DEBUG_PRINT("ArrayVarMap::Copy failed to set element in copied array");
 	}
 	return copyArr;
 }
 
-ArrayVar *ArrayVar::MakeSlice(const Slice* slice, UInt8 modIndex)
+ArrayVar* ArrayVar::MakeSlice(const Slice* slice, UInt8 modIndex)
 {
-	ArrayVar *newVar = g_ArrayMap.Create(m_keyType, m_bPacked, modIndex);
+	ArrayVar* newVar = g_ArrayMap.Create(m_keyType, m_bPacked, modIndex);
 
 	if (Empty() || (slice->bIsString != (m_keyType == kDataType_String)))
 		return newVar;
 
 	switch (GetContainerType())
 	{
-		default:
-		case kContainer_Array:
+	default:
+	case kContainer_Array:
 		{
-			ElementVector *pArray = m_elements.getArrayPtr();
+			ElementVector* pArray = m_elements.getArrayPtr();
 			UInt32 arrSize = pArray->Size(), iLow = (int)slice->m_lower, iHigh = (int)slice->m_upper;
 			if (iHigh >= arrSize)
 				iHigh = arrSize - 1;
 			if ((iLow >= arrSize) || (iLow > iHigh))
 				break;
-			ArrayElement *elements = pArray->Data();
+			ArrayElement* elements = pArray->Data();
 			double packedIndex = 0;
 			for (int idx = iLow; idx <= iHigh; idx++)
 			{
@@ -955,7 +998,7 @@ ArrayVar *ArrayVar::MakeSlice(const Slice* slice, UInt8 modIndex)
 			}
 			break;
 		}
-		case kContainer_NumericMap:
+	case kContainer_NumericMap:
 		{
 			bool inRange = false;
 			for (auto iter = m_elements.getNumMapPtr()->Begin(); !iter.End(); ++iter)
@@ -972,7 +1015,7 @@ ArrayVar *ArrayVar::MakeSlice(const Slice* slice, UInt8 modIndex)
 			}
 			break;
 		}
-		case kContainer_StringMap:
+	case kContainer_StringMap:
 		{
 			const char *sLow = slice->m_lowerStr.c_str(), *sHigh = slice->m_upperStr.c_str();
 			bool inRange = false;
@@ -996,14 +1039,15 @@ ArrayVar *ArrayVar::MakeSlice(const Slice* slice, UInt8 modIndex)
 
 class SortFunctionCaller : public FunctionCaller
 {
-	Script			*m_comparator;
-	ArrayVar		*m_lhs;
-	ArrayVar		*m_rhs;
-	bool			descending;
+	Script* m_comparator;
+	ArrayVar* m_lhs;
+	ArrayVar* m_rhs;
+	bool descending;
 
 public:
-	SortFunctionCaller(Script* comparator, bool _descending) : m_comparator(comparator), m_lhs(NULL), m_rhs(NULL), descending(_descending)
-	{ 
+	SortFunctionCaller(Script* comparator, bool _descending) : m_comparator(comparator), m_lhs(NULL), m_rhs(NULL),
+	                                                           descending(_descending)
+	{
 		if (comparator)
 		{
 			m_lhs = g_ArrayMap.Create(kDataType_Numeric, true, comparator->GetModIndex());
@@ -1011,10 +1055,12 @@ public:
 		}
 	}
 
-	virtual ~SortFunctionCaller() { }
+	virtual ~SortFunctionCaller()
+	{
+	}
 
 	virtual UInt8 ReadCallerVersion() { return UserFunctionManager::kVersion; }
-	virtual Script * ReadScript() { return m_comparator; }
+	virtual Script* ReadScript() { return m_comparator; }
 
 	virtual bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info)
 	{
@@ -1031,16 +1077,19 @@ public:
 					ShowRuntimeError(m_comparator, "Could not look up argument variable for function script");
 					return false;
 				}
-				else {
+				else
+				{
 					g_ArrayMap.AddReference(&var->data, m_lhs->ID(), m_comparator->GetModIndex());
 				}
 
 				var = eventList->GetVariable(rhs->varIdx);
-				if (!var) {
+				if (!var)
+				{
 					ShowRuntimeError(m_comparator, "Could not look up argument variable for function script");
 					return false;
 				}
-				else {
+				else
+				{
 					g_ArrayMap.AddReference(&var->data, m_rhs->ID(), m_comparator->GetModIndex());
 				}
 
@@ -1069,7 +1118,7 @@ public:
 	}
 };
 
-void ArrayVar::Sort(ArrayVar *result, SortOrder order, SortType type, Script* comparator)
+void ArrayVar::Sort(ArrayVar* result, SortOrder order, SortType type, Script* comparator)
 {
 	// restriction: all elements of src must be of the same type
 
@@ -1077,7 +1126,7 @@ void ArrayVar::Sort(ArrayVar *result, SortOrder order, SortType type, Script* co
 
 	ArrayIterator iter = m_elements.begin();
 	DataType dataType = iter.second()->DataType();
-	if ((dataType == kDataType_Invalid) || (dataType == kDataType_Array))	// nonsensical to sort array of arrays
+	if ((dataType == kDataType_Invalid) || (dataType == kDataType_Array)) // nonsensical to sort array of arrays
 		return;
 
 	if ((type == kSortType_Alpha) && (dataType != kDataType_Form))
@@ -1090,7 +1139,7 @@ void ArrayVar::Sort(ArrayVar *result, SortOrder order, SortType type, Script* co
 	bool descending = (order == kSort_Descending);
 	switch (type)
 	{
-		case kSortType_Default:
+	case kSortType_Default:
 		{
 			for (; !iter.End(); ++iter)
 			{
@@ -1102,19 +1151,20 @@ void ArrayVar::Sort(ArrayVar *result, SortOrder order, SortType type, Script* co
 			}
 			break;
 		}
-		case kSortType_Alpha:
+	case kSortType_Alpha:
 		{
 			for (; !iter.End(); ++iter)
 			{
 				if (iter.second()->DataType() != kDataType_Form)
 					continue;
 				tempElem().SetFormID(iter.second()->m_data.formID);
-				pOutArr->InsertSorted(tempElem(), descending ? ArrayElement::CompareNamesDescending : ArrayElement::CompareNames);
+				pOutArr->InsertSorted(
+					tempElem(), descending ? ArrayElement::CompareNamesDescending : ArrayElement::CompareNames);
 				tempElem().m_data.dataType = kDataType_Invalid;
 			}
 			break;
 		}
-		case kSortType_UserFunction:
+	case kSortType_UserFunction:
 		{
 			if (!comparator) break;
 			SortFunctionCaller sorter(comparator, descending);
@@ -1135,7 +1185,8 @@ void ArrayVar::Dump()
 {
 	const char* owningModName = DataHandler::Get()->GetNthModName(m_owningModIndex);
 
-	Console_Print("** Dumping Array #%d **\nRefs: %d Owner %02X: %s", m_ID, m_refs.Size(), m_owningModIndex, owningModName);
+	Console_Print("** Dumping Array #%d **\nRefs: %d Owner %02X: %s", m_ID, m_refs.Size(), m_owningModIndex,
+	              owningModName);
 	_MESSAGE("** Dumping Array #%d **\nRefs: %d Owner %02X: %s", m_ID, m_refs.Size(), m_owningModIndex, owningModName);
 
 	for (ArrayIterator iter = m_elements.begin(); !iter.End(); ++iter)
@@ -1197,6 +1248,54 @@ void ArrayVar::Dump()
 	}
 }
 
+std::string ArrayVar::GetStringRepresentation() const
+{
+	switch (this->m_elements.m_type)
+	{
+	case kContainer_Array:
+		{
+			std::string result = "[";
+			auto* container = this->m_elements.getArrayPtr();
+			for (auto iter = container->Begin(); !iter.End(); ++iter)
+			{
+				result += iter.Get().GetStringRepresentation();
+				if (iter.Index() != container->Size() - 1)
+					result += ", ";
+			}
+			result += "]";
+			return result;
+		}
+	case kContainer_NumericMap:
+		{
+			std::string result = "{";
+			auto* container = this->m_elements.getNumMapPtr();
+			for (auto iter = container->Begin(); !iter.End(); ++iter)
+			{
+				result += std::to_string(iter.Key()) + ": " + iter.Get().GetStringRepresentation();
+				if (iter.Index() != container->Size() - 1)
+					result += ", ";
+			}
+			result += "}";
+			return result;
+		}
+	case kContainer_StringMap:
+	{
+		std::string result = "{";
+		auto* container = this->m_elements.getStrMapPtr();
+		for (auto iter = container->Begin(); !iter.End(); ++iter)
+		{
+			result += '"' + std::string(iter.Key()) + '"' + ": " + iter.Get().GetStringRepresentation();
+			if (iter.Index() != container->Size() - 1)
+				result += ", ";
+			result += "}";
+			return result;
+		}
+	}
+	default:
+		return "invalid array";
+	}
+}
+
 /*void ArrayVar::Pack()
 {
 	if (!IsPacked() || !Size())
@@ -1239,9 +1338,9 @@ ArrayVar* ArrayVarMap::Add(UInt32 varID, UInt32 keyType, bool packed, UInt8 modI
 	ArrayVar* var = VarMap::Insert(varID, keyType, packed, modIndex);
 	availableIDs.Erase(varID);
 	var->m_ID = varID;
-	if (numRefs)		// record references to this array
+	if (numRefs) // record references to this array
 		var->m_refs.Concatenate(refs, numRefs);
-	else				// nobody refers to this array, queue for deletion
+	else // nobody refers to this array, queue for deletion
 		MarkTemporary(varID, true);
 	return var;
 }
@@ -1251,23 +1350,23 @@ ArrayVar* ArrayVarMap::Create(UInt32 keyType, bool bPacked, UInt8 modIndex)
 	ArrayID varID = GetUnusedID();
 	ArrayVar* newVar = VarMap::Insert(varID, keyType, bPacked, modIndex);
 	newVar->m_ID = varID;
-	MarkTemporary(varID, true);		// queue for deletion until a reference to this array is made
+	MarkTemporary(varID, true); // queue for deletion until a reference to this array is made
 	return newVar;
 }
 
 void ArrayVarMap::AddReference(ArrayID* ref, ArrayID toRef, UInt8 referringModIndex)
 {
 	if (*ref == toRef)
-		return;			// already refers to this array
+		return; // already refers to this array
 
-	if (*ref)			// refers to a different array, remove that reference
+	if (*ref) // refers to a different array, remove that reference
 		RemoveReference(ref, referringModIndex);
 
 	ArrayVar* arr = Get(toRef);
 	if (arr)
 	{
-		arr->m_refs.Append(referringModIndex);	// record reference, increment refcount
-		*ref = toRef;								// store ref'ed ArrayID in reference
+		arr->m_refs.Append(referringModIndex); // record reference, increment refcount
+		*ref = toRef; // store ref'ed ArrayID in reference
 		MarkTemporary(toRef, false);
 	}
 }
@@ -1310,9 +1409,9 @@ void ArrayVarMap::RemoveReference(double* ref, UInt8 referringModIndex)
 	*ref = refID;
 }
 
-ArrayElement *ArrayVarMap::GetElement(ArrayID id, const ArrayKey* key)
+ArrayElement* ArrayVarMap::GetElement(ArrayID id, const ArrayKey* key)
 {
-	ArrayVar *arr = Get(id);
+	ArrayVar* arr = Get(id);
 	return arr ? arr->Get(key, false) : NULL;
 }
 
@@ -1322,12 +1421,12 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 
 	Serialization::OpenRecord('ARVS', kVersion);
 
-	ArrayVar *pVar;
+	ArrayVar* pVar;
 	UInt32 numRefs;
 	UInt8 keyType;
-	const ArrayKey *pKey;
-	const ArrayElement *pElem;
-	char *str;
+	const ArrayKey* pKey;
+	const ArrayElement* pElem;
+	char* str;
 	UInt16 len;
 	for (auto iter = vars.Begin(); !iter.End(); ++iter)
 	{
@@ -1365,14 +1464,14 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 			}
 			else if (!pVar->m_bPacked)
 				Serialization::WriteRecord64(&pKey->key.num);
-				
+
 			Serialization::WriteRecord8(pElem->m_data.dataType);
 			switch (pElem->m_data.dataType)
 			{
-				case kDataType_Numeric:
-					Serialization::WriteRecord64(&pElem->m_data.num);
-					break;
-				case kDataType_String:
+			case kDataType_Numeric:
+				Serialization::WriteRecord64(&pElem->m_data.num);
+				break;
+			case kDataType_String:
 				{
 					str = pElem->m_data.str;
 					len = StrLen(str);
@@ -1380,12 +1479,13 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 					if (len) Serialization::WriteRecordData(str, len);
 					break;
 				}
-				case kDataType_Array:
-				case kDataType_Form:
-					Serialization::WriteRecord32(pElem->m_data.formID);
-					break;
-				default:
-					_MESSAGE("Error in ArrayVarMap::Save() - unhandled element type %d. Element not saved.", pElem->m_data.dataType);
+			case kDataType_Array:
+			case kDataType_Form:
+				Serialization::WriteRecord32(pElem->m_data.formID);
+				break;
+			default:
+				_MESSAGE("Error in ArrayVarMap::Save() - unhandled element type %d. Element not saved.",
+				         pElem->m_data.dataType);
 			}
 		}
 	}
@@ -1397,7 +1497,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 {
 	_MESSAGE("Loading array variables");
 
-	Clean();		// clean up any vars queued for garbage collection
+	Clean(); // clean up any vars queued for garbage collection
 
 	UInt32 type, length, version, arrayID, tempRefID, numElements;
 	UInt16 strLength;
@@ -1416,10 +1516,10 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 	{
 		switch (type)
 		{
-			case 'ARVE':			//end of block
-				bContinue = false;
-				break;
-			case 'ARVR':
+		case 'ARVE': //end of block
+			bContinue = false;
+			break;
+		case 'ARVR':
 			{
 				modIndex = Serialization::ReadRecord8();
 				if (!Serialization::ResolveRefID(modIndex << 24, &tempRefID))
@@ -1428,7 +1528,8 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 					// assign ownership to the first mod which refers to it and is still loaded
 					// if no loaded mods refer to it, discard
 					// we handle all of that below
-					_MESSAGE("Mod owning array was removed from load order; will attempt to assign ownership to a referring mod.");
+					_MESSAGE(
+						"Mod owning array was removed from load order; will attempt to assign ownership to a referring mod.");
 					modIndex = 0;
 				}
 				else
@@ -1439,7 +1540,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				bPacked = Serialization::ReadRecord8();
 
 				// read refs, fix up mod indexes, discard refs from unloaded mods
-				UInt32 numRefs = 0;		// # of references to this array
+				UInt32 numRefs = 0; // # of references to this array
 
 				// reference-counting implemented in v1
 				if (version >= 1)
@@ -1458,7 +1559,8 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 								if (Serialization::ResolveRefID(curModIndex << 24, &tempRefID))
 								{
 									modIndex = tempRefID >> 24;
-									_MESSAGE("ArrayID %d was owned by an unloaded mod. Assigning ownership to mod #%d", arrayID, modIndex);
+									_MESSAGE("ArrayID %d was owned by an unloaded mod. Assigning ownership to mod #%d",
+									         arrayID, modIndex);
 								}
 							}
 
@@ -1469,15 +1571,15 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 						numRefs = refIdx;
 					}
 				}
-				else		// v0 arrays assumed to have only one reference (the owning mod)
+				else // v0 arrays assumed to have only one reference (the owning mod)
 				{
-					if (modIndex)		// owning mod is loaded
+					if (modIndex) // owning mod is loaded
 					{
 						numRefs = 1;
 						buffer[0] = modIndex;
 					}
 				}
-				
+
 				if (!modIndex)
 				{
 					_MESSAGE("Array ID %d is referred to by no loaded mods. Discarding", arrayID);
@@ -1491,7 +1593,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 					SetIDAvailable(lastIndexRead);
 					lastIndexRead++;
 				}
-				
+
 				// create array and add to map
 				ArrayVar* newArr = Add(arrayID, keyType, bPacked, modIndex, numRefs, buffer);
 
@@ -1502,25 +1604,25 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				contType = newArr->GetContainerType();
 
 				ArrayElement *elements, *elem;
-				ElementNumMap *pNumMap;
-				ElementStrMap *pStrMap;
+				ElementNumMap* pNumMap;
+				ElementStrMap* pStrMap;
 				switch (contType)
 				{
-					case kContainer_Array:
+				case kContainer_Array:
 					{
-						auto *pArray = newArr->m_elements.getArrayPtr();
+						auto* pArray = newArr->m_elements.getArrayPtr();
 						pArray->Resize(numElements);
 						elements = pArray->Data();
 						break;
 					}
-					case kContainer_NumericMap:
-						pNumMap = newArr->m_elements.getNumMapPtr();
-						break;
-					case kContainer_StringMap:
-						pStrMap = newArr->m_elements.getStrMapPtr();
-						break;
-					default:
-						continue;
+				case kContainer_NumericMap:
+					pNumMap = newArr->m_elements.getNumMapPtr();
+					break;
+				case kContainer_StringMap:
+					pStrMap = newArr->m_elements.getStrMapPtr();
+					break;
+				default:
+					continue;
 				}
 
 				for (UInt32 i = 0; i < numElements; i++)
@@ -1533,21 +1635,21 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 					}
 					else if (!bPacked || (version < 2))
 						Serialization::ReadRecord64(&numKey);
-					
+
 					UInt8 elemType = Serialization::ReadRecord8();
 
 					switch (contType)
 					{
-						default:
-						case kContainer_Array:
-							elem = &elements[i];
-							break;
-						case kContainer_NumericMap:
-							elem = &(*pNumMap)[numKey];
-							break;
-						case kContainer_StringMap:
-							elem = &(*pStrMap)[(char*)buffer];
-							break;
+					default:
+					case kContainer_Array:
+						elem = &elements[i];
+						break;
+					case kContainer_NumericMap:
+						elem = &(*pNumMap)[numKey];
+						break;
+					case kContainer_StringMap:
+						elem = &(*pStrMap)[(char*)buffer];
+						break;
 					}
 
 					elem->m_data.dataType = (DataType)elemType;
@@ -1555,15 +1657,15 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 
 					switch (elemType)
 					{
-						case kDataType_Numeric:
-							Serialization::ReadRecord64(&elem->m_data.num);
-							break;
-						case kDataType_String:
+					case kDataType_Numeric:
+						Serialization::ReadRecord64(&elem->m_data.num);
+						break;
+					case kDataType_String:
 						{
 							strLength = Serialization::ReadRecord16();
 							if (strLength)
 							{
-								char *strVal = (char*)malloc(strLength + 1);
+								char* strVal = (char*)malloc(strLength + 1);
 								Serialization::ReadRecordData(strVal, strLength);
 								strVal[strLength] = 0;
 								elem->m_data.str = strVal;
@@ -1571,10 +1673,10 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 							else elem->m_data.str = NULL;
 							break;
 						}
-						case kDataType_Array:
-							elem->m_data.arrID = Serialization::ReadRecord32();
-							break;
-						case kDataType_Form:
+					case kDataType_Array:
+						elem->m_data.arrID = Serialization::ReadRecord32();
+						break;
+					case kDataType_Form:
 						{
 							UInt32 formID = Serialization::ReadRecord32();
 							if (!Serialization::ResolveRefID(formID, &formID))
@@ -1582,21 +1684,22 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 							elem->m_data.formID = formID;
 							break;
 						}
-						default:
-							_MESSAGE("Unknown element type %d encountered while loading array var, element discarded.", elemType);
-							break;
+					default:
+						_MESSAGE("Unknown element type %d encountered while loading array var, element discarded.",
+						         elemType);
+						break;
 					}
 				}
 				break;
 			}
-			default:
-				_MESSAGE("Error loading array var map: unexpected chunk type %d", type);
-				break;
+		default:
+			_MESSAGE("Error loading array var map: unexpected chunk type %d", type);
+			break;
 		}
 	}
 }
 
-void ArrayVarMap::Clean()		// garbage collection: delete unreferenced arrays
+void ArrayVarMap::Clean() // garbage collection: delete unreferenced arrays
 {
 	// ArrayVar destructor may queue more IDs for deletion if deleted array contains other arrays
 	// so on each pass through the loop we delete the first ID in the queue until none remain
@@ -1608,14 +1711,15 @@ void ArrayVarMap::Clean()		// garbage collection: delete unreferenced arrays
 void ArrayVarMap::DumpAll()
 {
 	for (auto iter = vars.Begin(); !iter.End(); ++iter)
-		Console_Print("ID: %d  Refs: %d",iter.Get().ID(), iter.Get().m_refs.Size());
+		Console_Print("ID: %d  Refs: %d", iter.Get().ID(), iter.Get().m_refs.Size());
 }
 
 namespace PluginAPI
 {
-	NVSEArrayVarInterface::Array* ArrayAPI::CreateArray(const NVSEArrayVarInterface::Element* data, UInt32 size, Script* callingScript)
+	NVSEArrayVarInterface::Array* ArrayAPI::CreateArray(const NVSEArrayVarInterface::Element* data, UInt32 size,
+	                                                    Script* callingScript)
 	{
-		ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, callingScript->GetModIndex());
+		ArrayVar* arr = g_ArrayMap.Create(kDataType_Numeric, true, callingScript->GetModIndex());
 		if (!arr) return NULL;
 		double elemIdx = 0;
 		for (UInt32 i = 0; i < size; i++)
@@ -1626,18 +1730,21 @@ namespace PluginAPI
 		return (NVSEArrayVarInterface::Array*)arr->m_ID;
 	}
 
-	NVSEArrayVarInterface::Array* ArrayAPI::CreateStringMap(const char** keys, const NVSEArrayVarInterface::Element* values, UInt32 size, Script* callingScript)
+	NVSEArrayVarInterface::Array* ArrayAPI::CreateStringMap(const char** keys,
+	                                                        const NVSEArrayVarInterface::Element* values, UInt32 size,
+	                                                        Script* callingScript)
 	{
-		ArrayVar *arr = g_ArrayMap.Create(kDataType_String, false, callingScript->GetModIndex());
+		ArrayVar* arr = g_ArrayMap.Create(kDataType_String, false, callingScript->GetModIndex());
 		if (!arr) return NULL;
 		for (UInt32 i = 0; i < size; i++)
 			arr->SetElementFromAPI(keys[i], &values[i]);
 		return (NVSEArrayVarInterface::Array*)arr->m_ID;
 	}
 
-	NVSEArrayVarInterface::Array* ArrayAPI::CreateMap(const double* keys, const NVSEArrayVarInterface::Element* values, UInt32 size, Script* callingScript)
+	NVSEArrayVarInterface::Array* ArrayAPI::CreateMap(const double* keys, const NVSEArrayVarInterface::Element* values,
+	                                                  UInt32 size, Script* callingScript)
 	{
-		ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, false, callingScript->GetModIndex());
+		ArrayVar* arr = g_ArrayMap.Create(kDataType_Numeric, false, callingScript->GetModIndex());
 		if (!arr) return NULL;
 		for (UInt32 i = 0; i < size; i++)
 			arr->SetElementFromAPI(keys[i], &values[i]);
@@ -1655,9 +1762,10 @@ namespace PluginAPI
 		return true;
 	}
 
-	void ArrayAPI::SetElement(NVSEArrayVarInterface::Array* arr, const NVSEArrayVarInterface::Element& key, const NVSEArrayVarInterface::Element& value)
+	void ArrayAPI::SetElement(NVSEArrayVarInterface::Array* arr, const NVSEArrayVarInterface::Element& key,
+	                          const NVSEArrayVarInterface::Element& value)
 	{
-		ArrayVar *arrVar = g_ArrayMap.Get((ArrayID)arr);
+		ArrayVar* arrVar = g_ArrayMap.Get((ArrayID)arr);
 		if (!arrVar) return;
 		switch (key.type)
 		{
@@ -1672,55 +1780,57 @@ namespace PluginAPI
 
 	void ArrayAPI::AppendElement(NVSEArrayVarInterface::Array* arr, const NVSEArrayVarInterface::Element& value)
 	{
-		ArrayVar *arrVar = g_ArrayMap.Get((ArrayID)arr);
+		ArrayVar* arrVar = g_ArrayMap.Get((ArrayID)arr);
 		if (arrVar && (arrVar->KeyType() == kDataType_Numeric) && arrVar->IsPacked())
 			arrVar->SetElementFromAPI((int)arrVar->m_elements.getArrayPtr()->Size(), &value);
 	}
 
 	UInt32 ArrayAPI::GetArraySize(NVSEArrayVarInterface::Array* arr)
 	{
-		ArrayVar *arrVar = g_ArrayMap.Get((ArrayID)arr);
+		ArrayVar* arrVar = g_ArrayMap.Get((ArrayID)arr);
 		return arrVar ? arrVar->Size() : 0;
 	}
 
 	UInt32 ArrayAPI::GetArrayPacked(NVSEArrayVarInterface::Array* arr)
 	{
-		ArrayVar *arrVar = g_ArrayMap.Get((ArrayID)arr);
+		ArrayVar* arrVar = g_ArrayMap.Get((ArrayID)arr);
 		return arrVar ? arrVar->m_bPacked : 0;
 	}
 
 	NVSEArrayVarInterface::Array* ArrayAPI::LookupArrayByID(UInt32 id)
 	{
-		ArrayVar *arrVar = g_ArrayMap.Get(id);
+		ArrayVar* arrVar = g_ArrayMap.Get(id);
 		return arrVar ? (NVSEArrayVarInterface::Array*)id : 0;
 	}
 
-	bool ArrayAPI::GetElement(NVSEArrayVarInterface::Array* arr, const NVSEArrayVarInterface::Element& key, NVSEArrayVarInterface::Element& out)
+	bool ArrayAPI::GetElement(NVSEArrayVarInterface::Array* arr, const NVSEArrayVarInterface::Element& key,
+	                          NVSEArrayVarInterface::Element& out)
 	{
-		 ArrayVar* var = g_ArrayMap.Get((ArrayID)arr);
-		 if (var)
-		 {
-			 ArrayElement* data = NULL;
-			 switch (key.type)
-			 {
-				 case key.kType_String:
-					 if (var->KeyType() == kDataType_String)
-						 data = var->Get(key.str, false);
-					 break;
-				 case key.kType_Numeric:
-					 if (var->KeyType() == kDataType_Numeric)
-						 data = var->Get(key.num, false);
-					 break;
-			 }
-		 
-			 if (data)
-				 return InternalElemToPluginElem(data, &out);
-		 }
+		ArrayVar* var = g_ArrayMap.Get((ArrayID)arr);
+		if (var)
+		{
+			ArrayElement* data = NULL;
+			switch (key.type)
+			{
+			case key.kType_String:
+				if (var->KeyType() == kDataType_String)
+					data = var->Get(key.str, false);
+				break;
+			case key.kType_Numeric:
+				if (var->KeyType() == kDataType_Numeric)
+					data = var->Get(key.num, false);
+				break;
+			}
 
-		 return false;
+			if (data)
+				return InternalElemToPluginElem(data, &out);
+		}
+
+		return false;
 	}
-		
-	bool ArrayAPI::GetElements(NVSEArrayVarInterface::Array* arr, NVSEArrayVarInterface::Element* elements, NVSEArrayVarInterface::Element* keys)
+
+	bool ArrayAPI::GetElements(NVSEArrayVarInterface::Array* arr, NVSEArrayVarInterface::Element* elements,
+	                           NVSEArrayVarInterface::Element* keys)
 	{
 		if (!elements)
 			return false;
@@ -1736,12 +1846,12 @@ namespace PluginAPI
 				{
 					switch (keyType)
 					{
-						case kDataType_Numeric:
-							keys[i] = iter.first()->key.num;
-							break;
-						case kDataType_String:
-							keys[i] = iter.first()->key.GetStr();
-							break;
+					case kDataType_Numeric:
+						keys[i] = iter.first()->key.num;
+						break;
+					case kDataType_String:
+						keys[i] = iter.first()->key.GetStr();
+						break;
 					}
 				}
 				InternalElemToPluginElem(iter.second(), &elements[i]);
@@ -1757,22 +1867,22 @@ namespace PluginAPI
 	{
 		switch (src->DataType())
 		{
-			case kDataType_Numeric:
-				*out = src->m_data.num;
-				break;
-			case kDataType_Form:
-				*out = LookupFormByID(src->m_data.formID);
-				break;
-			case kDataType_Array:
+		case kDataType_Numeric:
+			*out = src->m_data.num;
+			break;
+		case kDataType_Form:
+			*out = LookupFormByID(src->m_data.formID);
+			break;
+		case kDataType_Array:
 			{
 				ArrayID arrID = 0;
 				src->GetAsArray(&arrID);
 				*out = (NVSEArrayVarInterface::Array*)arrID;
 				break;
 			}
-			case kDataType_String:
-				*out = src->m_data.GetStr();
-				break;
+		case kDataType_String:
+			*out = src->m_data.GetStr();
+			break;
 		}
 		return true;
 	}

@@ -834,6 +834,11 @@ public:
 			}
 		}
 
+		UInt32 Index() const
+		{
+			return index;
+		}
+
 		Iterator(Map &source) : table(&source), pEntry(source.entries), index(0) {}
 		Iterator(Map &source, Key_Arg key) {Find(source, key);}
 	};

@@ -35,7 +35,7 @@ UInt8 TESForm::GetModIndex() const
 	return (refID >> 24);
 }
 
-TESFullName* TESForm::GetFullName()
+TESFullName* TESForm::GetFullName() const
 {
 	if (typeID == kFormType_Cell)		// some exterior cells inherit name of parent worldspace
 	{
@@ -45,7 +45,7 @@ TESFullName* TESForm::GetFullName()
 			return &cell->worldSpace->fullName;
 		return fullName;
 	}
-	TESForm *baseForm = GetIsReference() ? ((TESObjectREFR*)this)->baseForm : this;
+	const TESForm *baseForm = GetIsReference() ? ((TESObjectREFR*)this)->baseForm : this;
 	return DYNAMIC_CAST(baseForm, TESForm, TESFullName);
 }
 
@@ -101,6 +101,13 @@ TESForm * TESForm::CloneForm(bool persist) const
 bool TESForm::IsCloned() const
 {
 	return GetModIndex() == 0xff;
+}
+
+std::string TESForm::GetStringRepresentation() const
+{
+	char buffer[512];
+	snprintf(buffer, sizeof(buffer), R"({id: %X, edid: "%s", name: "%s"})", refID, GetName(), GetFullName()->name.CStr());
+	return buffer;
 }
 
 // static

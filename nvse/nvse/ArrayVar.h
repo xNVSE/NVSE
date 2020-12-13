@@ -120,6 +120,8 @@ struct ArrayElement
 	bool operator!=(const ArrayElement& rhs) const;
 
 	bool IsGood() {return m_data.dataType != kDataType_Invalid;}
+
+	std::string GetStringRepresentation() const;
 };
 
 struct ArrayKey
@@ -169,9 +171,9 @@ class ArrayVarElementContainer
 	ContainerType		m_type;
 	GenericContainer	m_container;
 
-	ElementVector& AsArray() {return *(ElementVector*)&m_container;}
-	ElementNumMap& AsNumMap() {return *(ElementNumMap*)&m_container;}
-	ElementStrMap& AsStrMap() {return *(ElementStrMap*)&m_container;}
+	ElementVector& AsArray() const {return *(ElementVector*)&m_container;}
+	ElementNumMap& AsNumMap() const {return *(ElementNumMap*)&m_container;}
+	ElementStrMap& AsStrMap() const {return *(ElementStrMap*)&m_container;}
 
 public:
 	ArrayVarElementContainer() : m_type(kContainer_Array)
@@ -231,9 +233,9 @@ public:
 
 	iterator find(const ArrayKey* key) {return iterator(*this, key);}
 
-	ElementVector* getArrayPtr() {return &AsArray();}
-	ElementNumMap* getNumMapPtr() {return &AsNumMap();}
-	ElementStrMap* getStrMapPtr() {return &AsStrMap();}
+	ElementVector* getArrayPtr() const {return &AsArray();}
+	ElementNumMap* getNumMapPtr() const {return &AsNumMap();}
+	ElementStrMap* getStrMapPtr() const {return &AsStrMap();}
 };
 
 typedef ArrayVarElementContainer::iterator ArrayIterator;
@@ -333,6 +335,8 @@ public:
 	void Sort(ArrayVar *result, SortOrder order, SortType type, Script* comparator = NULL);
 
 	void Dump();
+
+	std::string GetStringRepresentation() const;
 };
 
 class ArrayVarMap : public VarMap<ArrayVar>
