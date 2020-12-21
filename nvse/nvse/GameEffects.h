@@ -8,7 +8,7 @@ public:
 
 	virtual ActiveEffect *	Clone(void);
 	virtual void			Unk_02(UInt32 arg);
-	virtual void			Unk_03(UInt32 arg);
+	virtual void			Unk_03(UInt32 arg); // nullsub
 	virtual void			SaveGame(UInt32 arg);
 	virtual void			LoadGame(UInt32 arg);
 	virtual void			Unk_06(UInt32 arg);
@@ -16,11 +16,15 @@ public:
 	virtual void			Unk_08(UInt32 arg);
 	virtual bool			UnregisterCaster(MagicCaster * _caster);	// returns 1 and clears caster if it matches the parameter, else returns 0
 	virtual bool			Unk_0A(void);
-	virtual void			CopyTo(ActiveEffect * target);
+	virtual void			Unk_0B(ActiveEffect * target);
 	virtual bool			Unk_0C(UInt32 arg);
 	virtual bool			Unk_0D(UInt32 arg);
 	virtual void			Unk_0E(UInt32 arg);		// update/add effect?
 	virtual void			Terminate(void);	// update/add effect?
+	virtual void			Unk_10(UInt32 arg);
+	virtual void			CopyTo(ActiveEffect* to);
+	virtual void			Unk_12();
+	virtual void			Unk_13();
 
 //	void		** _vtbl;			// 00
 	float		timeElapsed;		// 04
@@ -37,7 +41,7 @@ public:
 	MagicTarget	* target;			// 24
 	MagicCaster	* caster;			// 28
 	UInt32		spellType;			// 2C e.g. SpellItem::kType_Ability
-	UInt32		unk30;				// 30
+	UInt32		sound;				// 30 Sound* in stewie's tweaks
 	UInt32		unk34;				// 34
 	UInt32		unk38;				// 38
 	TESForm		* enchantObject;	// 3C enchanted obj responsible for effect
@@ -243,6 +247,13 @@ class ScriptEffect : public ActiveEffect
 public:
 	ScriptEffect();
 	~ScriptEffect();
+
+	virtual void Unk_14();
+	virtual void Unk_15();
+	virtual void RunScriptAndDestroyEventList();
+	
+	Script* script;
+	ScriptEventList* eventList;
 };
 
 class ShieldEffect : public ValueModifierEffect
