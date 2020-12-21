@@ -1,9 +1,7 @@
 #include "ScriptTokens.h"
-
-#include <unordered_map>
-
 #include "ScriptUtils.h"
 #include "GameRTTI.h"
+#include "SmallObjectsAllocator.h"
 
 #ifdef DBG_EXPR_LEAKS
 	SInt32 TOKEN_COUNT = 0;
@@ -745,10 +743,11 @@ ScriptToken* ScriptToken::Read(ExpressionEvaluator* context)
 }
 
 
+
 #if _DEBUG
-Map<UInt32, Map<UInt32, UInt32>> g_nvseVarGarbageCollectionMap;
+Map<ScriptEventList*, Map<UInt32, NVSEVarType>> g_nvseVarGarbageCollectionMap;
 #else
-UnorderedMap<UInt32, UnorderedMap<UInt32, UInt32>> g_nvseVarGarbageCollectionMap;
+UnorderedMap<ScriptEventList*, UnorderedMap<UInt32, NVSEVarType>> g_nvseVarGarbageCollectionMap;
 #endif
 
 Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
@@ -875,7 +874,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 
 		// to be deleted on event list destruction, see Hooks_Other.cpp#CleanUpNVSEVars
 		if (type == kTokenType_ArrayVar || type == kTokenType_StringVar && refIdx == 0)
-			g_nvseVarGarbageCollectionMap[owningScript->refID].Emplace(varIdx, type);
+			g_nvseVarGarbageCollectionMap[eventList].Emplace(varIdx, type == kTokenType_StringVar ? NVSEVarType::kVarType_String : NVSEVarType::kVarType_Array);
 		
 		break;
 	}

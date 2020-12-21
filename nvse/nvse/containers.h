@@ -727,7 +727,7 @@ public:
 	T_Data Get(Key_Arg key)
 	{
 		UInt32 index;
-		return GetIndex(key, &index) ? entries[index].value.Get() : NULL;
+		return GetIndex(key, &index) ? entries[index].value.Get() : static_cast<T_Data>(NULL);
 	}
 
 	T_Data* GetPtr(Key_Arg key)

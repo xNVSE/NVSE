@@ -67,11 +67,13 @@ static bool ShowWarning(const char* msg)
 ErrOutput g_ErrOut(ShowError, ShowWarning);
 
 #if RUNTIME
-inline UInt32 AddStringVar(const char* data, ScriptToken& lh)
+UInt32 AddStringVar(const char* data, ScriptToken& lh, ExpressionEvaluator& context)
 {
 	const auto makeTemporary = lh.owningScript->IsUserDefinedFunction() && lh.refIdx == 0;
+	g_nvseVarGarbageCollectionMap[context.eventList].Emplace(lh.GetVar()->id, NVSEVarType::kVarType_String);
 	return g_StringMap.Add(lh.owningScript->GetModIndex(), data, makeTemporary);
 }
+
 #endif
 
 #if RUNTIME
@@ -326,11 +328,9 @@ ScriptToken* Eval_Assign_String(OperatorType op, ScriptToken* lh, ScriptToken* r
 	StringVar* strVar = g_StringMap.Get(strID);
 
 	const char *str = rh->GetString();
-	//if ((*str == '%') && ((str[1] | 0x20) == 'e'))
-	//	str += 2;
-	
+
 	if (!strVar)
-		var->data = (int)AddStringVar(str, *lh);
+		var->data = (int)AddStringVar(str, *lh, *context);
 	else strVar->Set(str);
 
 	return ScriptToken::Create(str);
@@ -369,6 +369,7 @@ ScriptToken* Eval_Assign_Array(OperatorType op, ScriptToken* lh, ScriptToken* rh
 {
 	ScriptEventList::Var *var = lh->GetVar();
 	g_ArrayMap.AddReference(&var->data, rh->GetArray(), context->script->GetModIndex());
+	g_nvseVarGarbageCollectionMap[context->eventList].Emplace(var->id, NVSEVarType::kVarType_Array);
 	return ScriptToken::CreateArray(var->data);
 }
 
@@ -543,7 +544,7 @@ ScriptToken* Eval_PlusEquals_String(OperatorType op, ScriptToken* lh, ScriptToke
 	if (!strVar)
 	{
 		//strID = g_StringMap.Add(context->script->GetModIndex(), "");
-		strID = AddStringVar("", *lh);
+		strID = AddStringVar("", *lh, *context);
 		var->data = (int)strID;
 		strVar = g_StringMap.Get(strID);
 	}
@@ -561,7 +562,7 @@ ScriptToken* Eval_TimesEquals_String(OperatorType op, ScriptToken* lh, ScriptTok
 	if (!strVar)
 	{
 		//strID = g_StringMap.Add(context->script->GetModIndex(), "");
-		strID = AddStringVar("", *lh);
+		strID = AddStringVar("", *lh, *context);
 		var->data = (int)strID;
 		strVar = g_StringMap.Get(strID);
 	}
@@ -946,7 +947,7 @@ ScriptToken* Eval_In(OperatorType op, ScriptToken* lh, ScriptToken* rh, Expressi
 			if (!sv)
 			{
 				//iterID = g_StringMap.Add(context->script->GetModIndex(), "");
-				iterID = AddStringVar("", *lh);
+				iterID = AddStringVar("", *lh, *context);
 				var->data = (int)iterID;
 			}
 

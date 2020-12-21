@@ -55,12 +55,10 @@ namespace OtherHooks
 		}
 	}
 
-	void CleanUpNVSEVars(const ScriptEventList* eventList)
+	void CleanUpNVSEVars(ScriptEventList* eventList)
 	{
 		// Prevent leakage of variables that's ScriptEventList gets deleted (e.g. in Effect scripts)
-		if (!eventList->m_script)
-			return;
-		auto* scriptVars = g_nvseVarGarbageCollectionMap.GetPtr(eventList->m_script->refID);
+		auto* scriptVars = g_nvseVarGarbageCollectionMap.GetPtr(eventList);
 		if (!scriptVars)
 			return;
 		auto* node = eventList->m_vars;
@@ -70,23 +68,21 @@ namespace OtherHooks
 			{
 				const auto id = node->var->id;
 				const auto type = scriptVars->Get(id);
-				if (type)
+				switch (type)
 				{
-					switch (type)
-					{
-					case kTokenType_StringVar:
-						g_StringMap.MarkTemporary(static_cast<int>(node->var->data), true);
-						break;
-					case kTokenType_ArrayVar:
-						g_ArrayMap.MarkTemporary(static_cast<int>(node->var->data), true);
-						break;
-					default:
-						break;
-					}
+				case NVSEVarType::kVarType_String:
+					g_StringMap.MarkTemporary(static_cast<int>(node->var->data), true);
+					break;
+				case NVSEVarType::kVarType_Array:
+					g_ArrayMap.MarkTemporary(static_cast<int>(node->var->data), true);
+					break;
+				default:
+					break;
 				}
 			}
 			node = node->next;
 		}
+		g_nvseVarGarbageCollectionMap.Erase(eventList);
 	}
 
 	void DeleteEventList(ScriptEventList* eventList)

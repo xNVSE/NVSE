@@ -1432,7 +1432,7 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 				if (outModIndex)
 					*outModIndex = (script->refID >> 24);
 				bExtracted = true;
-				g_nvseVarGarbageCollectionMap[script->refID].Emplace(varIdx, kTokenType_StringVar);
+				g_nvseVarGarbageCollectionMap[eventList].Emplace(varIdx, NVSEVarType::kVarType_String);
 			}
 		}
 		break;

@@ -1,14 +1,6 @@
 #pragma once
 
 #if _DEBUG
-extern Map<UInt32, Map<UInt32, UInt32>> g_nvseVarGarbageCollectionMap;
-#else
-extern UnorderedMap<UInt32, UnorderedMap<UInt32, UInt32>> g_nvseVarGarbageCollectionMap;
-#endif
-
-
-
-#if _DEBUG
 #define DBG_EXPR_LEAKS 1
 extern SInt32 TOKEN_COUNT;
 extern SInt32 EXPECTED_TOKEN_COUNT;
@@ -19,14 +11,26 @@ extern SInt32 FUNCTION_CONTEXT_COUNT;
 #include "CommandTable.h"
 #include "GameForms.h"
 #include "ArrayVar.h"
-#include "SmallObjectsAllocator.h"
 
 #if RUNTIME
 #include "StringVar.h"
 #include "GameAPI.h"
 
 #endif
-#define DISABLE_CACHING 0
+
+enum class NVSEVarType
+{
+	kVarType_Null = 0,
+	kVarType_Array,
+	kVarType_String
+};
+#if _DEBUG
+extern Map<ScriptEventList*, Map<UInt32, NVSEVarType>> g_nvseVarGarbageCollectionMap;
+#else
+extern UnorderedMap<ScriptEventList*, UnorderedMap<UInt32, NVSEVarType>> g_nvseVarGarbageCollectionMap;
+#endif
+
+
 
 struct Operator;
 struct SliceToken;

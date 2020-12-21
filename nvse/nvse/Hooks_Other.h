@@ -3,7 +3,7 @@
 
 namespace OtherHooks
 {
-	void CleanUpNVSEVars(const ScriptEventList* eventList);
+	void CleanUpNVSEVars(ScriptEventList* eventList);
 	
 	void Hooks_Other_Init();
 }
