@@ -336,7 +336,7 @@ static size_t _etoa(out_fct_type out, char* buffer, size_t idx, size_t maxlen, d
 
 
 // internal ftoa for fixed decimal floating point
-static size_t _ftoa(out_fct_type out, char* buffer, size_t idx, size_t maxlen, double value, unsigned int prec, unsigned int width, unsigned int flags)
+static size_t _ftoa(out_fct_type out, char* buffer, size_t idx, size_t maxlen, double value, unsigned int prec, unsigned int width, unsigned int flags, bool is_g = false)
 {
     char buf[PRINTF_FTOA_BUFFER_SIZE];
     size_t len = 0U;
@@ -415,16 +415,19 @@ static size_t _ftoa(out_fct_type out, char* buffer, size_t idx, size_t maxlen, d
             --count;
             char lastChar = (char)(48U + (frac % 10U));
             buf[len++] = lastChar;
-            if (lastChar == '0')
+            if (is_g)
             {
-                if (!b)
+                if (lastChar == '0')
                 {
-                    len--;
+                    if (!b)
+                    {
+                        len--;
+                    }
                 }
-            }
-            else
-            {
-                b = true;
+                else
+                {
+                    b = true;
+                }
             }
             if (!(frac /= 10U)) {
                 break;
@@ -571,7 +574,7 @@ static size_t _etoa(out_fct_type out, char* buffer, size_t idx, size_t maxlen, d
 
     // output the floating part
     const size_t start_idx = idx;
-    idx = _ftoa(out, buffer, idx, maxlen, negative ? -value : value, prec, fwidth, flags & ~FLAGS_ADAPT_EXP);
+    idx = _ftoa(out, buffer, idx, maxlen, negative ? -value : value, prec, fwidth, flags & ~FLAGS_ADAPT_EXP, true);
 
     // output the exponent part
     if (minwidth) {
