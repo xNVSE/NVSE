@@ -1445,6 +1445,11 @@ bool ExpressionEvaluator::Active()
 	return ThreadLocalData::Get().expressionEvaluator != NULL;
 }
 
+ExpressionEvaluator& ExpressionEvaluator::Get()
+{
+	return *ThreadLocalData::Get().expressionEvaluator;
+}
+
 void ExpressionEvaluator::ToggleErrorSuppression(bool bSuppress) { 
 	if (bSuppress) {
 		m_flags.Clear(kFlag_ErrorOccurred);
@@ -3694,13 +3699,16 @@ ScriptToken* Operator::Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEv
 
 		if (bRuleMatches)
 		{
-			cacheEval = rule->eval;
-			cacheSwapOrder = bSwapOrder;
+			if (lhs->Type() != kTokenType_ArrayElement && rhs ? rhs->Type() != kTokenType_ArrayElement : true) // array elements depend on CanConvertTo to fail, can't cache eval
+			{
+				cacheEval = rule->eval;
+				cacheSwapOrder = bSwapOrder;
+			}
 			return bSwapOrder ? rule->eval(type, rhs, lhs, context) : rule->eval(type, lhs, rhs, context);
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem, ExpressionEvaluator* context)

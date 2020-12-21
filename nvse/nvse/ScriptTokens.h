@@ -254,6 +254,7 @@ struct ScriptToken
 	bool					IsVariable() const	{ return type >= kTokenType_NumericVar && type <= kTokenType_ArrayVar; }
 
 	double					GetNumericRepresentation(bool bFromHex);	// attempts to convert string to number
+	char* DebugPrint() const;
 	bool					IsInvalid() const;
 	bool					IsOperator() const;
 	bool					IsLogicalOperator() const;
@@ -297,6 +298,11 @@ struct ScriptToken
 	OperatorType shortCircuitParentType;
 	UInt8 shortCircuitDistance;
 	UInt8 shortCircuitStackOffset;
+
+#if _DEBUG
+	std::string varName;
+#endif
+	
 #endif
 
 };

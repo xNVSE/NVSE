@@ -109,6 +109,7 @@ class ExpressionEvaluator
 	void PopFromStack() const;
 public:
 	static bool	Active();
+	static ExpressionEvaluator& Get();
 
 	ExpressionEvaluator(COMMAND_ARGS);
 	~ExpressionEvaluator();
