@@ -1249,7 +1249,7 @@ public:
 	T_Data Get(Key_Arg key)
 	{
 		Entry *pEntry = FindEntry(key);
-		return pEntry ? pEntry->value : NULL;
+		return pEntry ? pEntry->value : static_cast<T_Data>(NULL);
 	}
 
 	T_Data* GetPtr(Key_Arg key)
