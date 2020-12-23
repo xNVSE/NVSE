@@ -755,7 +755,6 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 	UInt8 typeCode = context->ReadByte();
 	this->owningScript = context->script;
 	this->context = context;
-	this->opcodeOffset = *context->m_opcodeOffsetPtr;
 	switch (typeCode)
 	{
 	case 'B':

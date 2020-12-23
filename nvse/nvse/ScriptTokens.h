@@ -302,7 +302,6 @@ struct ScriptToken
 
 #if _DEBUG
 	std::string varName;
-	UInt32 opcodeOffset;
 #endif
 #endif
 
