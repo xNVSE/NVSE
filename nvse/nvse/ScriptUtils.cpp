@@ -3381,7 +3381,7 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 	//UInt16 argsLen = Read16();
 
 	//*m_opcodeOffsetPtr = m_data - m_scriptData;
-	UInt32 opcodeOffset = token->opcodeOffset;
+	UInt32 opcodeOffset = token->cmdOpcodeOffset;
 	CommandReturnType retnType = token->returnType;
 
 	ExpectReturnType(kRetnType_Default);	// expect default return type unless called command specifies otherwise
@@ -3536,7 +3536,7 @@ void ShortCircuit(OperandStack& operands, CachedTokenIter& iter)
 				operand->Delete();
 			operands.Pop();
 		}
-		operands.Push(ScriptToken::Create(eval));
+		operands.Push(lastToken);
 	}
 }
 
@@ -3623,6 +3623,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			{
 				opResult = entry.swapOrder ? entry.eval(op->type, rhOperand, lhOperand, this) : entry.eval(op->type, lhOperand, rhOperand, this);
 			}
+
 
 			if (lhOperand)
 				lhOperand->Delete();

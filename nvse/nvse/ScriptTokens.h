@@ -261,6 +261,7 @@ struct ScriptToken
 
 	static ScriptToken* Read(ExpressionEvaluator* context);
 
+
 	static ScriptToken* Create(bool boolean)													{ return new ScriptToken(boolean); }
 	static ScriptToken* Create(double num)														{ return new ScriptToken(num);	}
 	static ScriptToken* Create(Script::RefVariable* refVar, UInt16 refIdx)						{ return refVar ? new ScriptToken(refVar, refIdx) : NULL; }
@@ -292,7 +293,7 @@ struct ScriptToken
 	void operator delete(void* p);
 	
 	bool cached = false;
-	UInt32 opcodeOffset;
+	UInt32 cmdOpcodeOffset;
 	ExpressionEvaluator* context;
 	UInt16		varIdx;
 	OperatorType shortCircuitParentType;
@@ -301,8 +302,8 @@ struct ScriptToken
 
 #if _DEBUG
 	std::string varName;
+	UInt32 opcodeOffset;
 #endif
-	
 #endif
 
 };

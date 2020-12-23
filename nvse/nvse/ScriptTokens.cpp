@@ -150,7 +150,7 @@ ScriptToken::ScriptToken(const ScriptToken &from)
 	returnType = from.returnType;
 #if RUNTIME
 	cached = from.cached;
-	opcodeOffset = from.opcodeOffset;
+	cmdOpcodeOffset = from.cmdOpcodeOffset;
 	context = from.context;
 	varIdx = from.varIdx;
 	shortCircuitParentType = from.shortCircuitParentType;
@@ -755,6 +755,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 	UInt8 typeCode = context->ReadByte();
 	this->owningScript = context->script;
 	this->context = context;
+	this->opcodeOffset = *context->m_opcodeOffsetPtr;
 	switch (typeCode)
 	{
 	case 'B':
@@ -823,7 +824,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		if (!value.cmd)
 			type = kTokenType_Invalid;
 		auto argsLen = context->Read16();
-		opcodeOffset = context->m_data - context->m_scriptData;
+		cmdOpcodeOffset = context->m_data - context->m_scriptData;
 		context->m_data += argsLen - 2;
 		returnType = g_scriptCommands.GetReturnType(value.cmd);
 		break;
