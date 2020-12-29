@@ -4,6 +4,7 @@
 #include "ScriptUtils.h"
 #include "SafeWrite.h"
 #include "Commands_UI.h"
+#include "Hooks_ExpressionEvalOptimized.h"
 #include "Hooks_Gameplay.h"
 
 #if RUNTIME
@@ -96,6 +97,7 @@ namespace OtherHooks
 	{
 		DeleteEventList(eventList);
 		return eventList;
+		
 	}
 
 	void Hooks_Other_Init()
@@ -104,6 +106,7 @@ namespace OtherHooks
 		WriteRelJump(0x9FF5FB, UInt32(TilesDestroyedHook));
 		WriteRelJump(0x709910, UInt32(TilesCreatedHook));
 		WriteRelJump(0x41AF70, UInt32(ScriptEventListsDestroyedHook));
+		Hook_Evaluator();
 	}
 }
 #endif

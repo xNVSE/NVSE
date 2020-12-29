@@ -1676,7 +1676,7 @@ public:
 	T_Data* Append(Args&& ...args)
 	{
 		T_Data *pData = AllocateData();
-		new (pData) T_Data(std::forward<Args>(args)...);
+		::new (pData) T_Data(std::forward<Args>(args)...);
 		return pData;
 	}
 

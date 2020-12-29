@@ -3801,6 +3801,7 @@ private:
 	bool		ProcessBlock(BlockType blockType);
 	bool		AdvanceLine();
 	const char	* BlockTypeAsString(BlockType type);
+	void HandleMacros();
 public:
 	Preprocessor(ScriptBuffer* buf);
 
@@ -3825,7 +3826,7 @@ const char* Preprocessor::BlockTypeAsString(BlockType type)
 }
 
 Preprocessor::Preprocessor(ScriptBuffer* buf) : m_buf(buf), m_loopDepth(0), m_curLineText(""), m_curLineNo(0),
-	m_curBlockStartingLineNo(1), m_scriptText(buf->scriptText), m_scriptTextOffset(0)
+                                                m_curBlockStartingLineNo(1), m_scriptText(buf->scriptText), m_scriptTextOffset(0)
 {
 	AdvanceLine();
 }

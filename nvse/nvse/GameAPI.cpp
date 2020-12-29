@@ -5,13 +5,13 @@
 #include "GameTypes.h"
 #include "CommandTable.h"
 #include "GameScript.h"
-#include "Hooks_Other.h"
 #include "StringVar.h"
 #include "printf.h"
 
 #if NVSE_CORE
 #include "Hooks_Script.h"
 #include "ScriptUtils.h"
+#include "Hooks_Other.h"
 #endif
 
 thread_local UInt8* g_lastScriptData;
@@ -869,7 +869,9 @@ void ScriptEventList::Dump(void)
 
 UInt32 ScriptEventList::ResetAllVariables()
 {
+#if NVSE_CORE
 	OtherHooks::CleanUpNVSEVars(this);
+#endif
 	UInt32 numVars = 0;
 	for (VarEntry * entry = m_vars; entry; entry = entry->next)
 		if (entry->var)
@@ -1432,7 +1434,9 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 				if (outModIndex)
 					*outModIndex = (script->refID >> 24);
 				bExtracted = true;
+#if NVSE_CORE
 				g_nvseVarGarbageCollectionMap[eventList].Emplace(varIdx, NVSEVarType::kVarType_String);
+#endif
 			}
 		}
 		break;

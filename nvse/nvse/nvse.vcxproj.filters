@@ -232,6 +232,9 @@
     <ClCompile Include="ScriptTokenCache.cpp">
       <Filter>internals</Filter>
     </ClCompile>
+    <ClCompile Include="Hooks_ExpressionEvalOptimized.cpp">
+      <Filter>hooks</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
@@ -461,6 +464,7 @@
     <ClInclude Include="ScriptTokenCache.h">
       <Filter>internals</Filter>
     </ClInclude>
+    <ClInclude Include="Hooks_ExpressionEvalOptimized.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">

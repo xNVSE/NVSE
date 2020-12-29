@@ -645,7 +645,7 @@ const char* GetModName(Script* script)
 	}
 	return modName;
 }
-
+#if NVSE_CORE
 void ShowRuntimeError(Script* script, const char* fmt, ...)
 {
 	char errorHeader[0x400];
@@ -684,5 +684,5 @@ void ShowRuntimeError(Script* script, const char* fmt, ...)
 
 	va_end(args);
 }
-
+#endif
 #endif

@@ -511,10 +511,15 @@ bool PluginManager::InstallPlugin(std::string pluginPath)
 	}
 }
 
+#define NO_PLUGINS 0
+
 void PluginManager::InstallPlugins(void)
 {
 	UInt32 nFound;
 
+#if NO_PLUGINS
+	return;
+#endif
 	// avoid realloc
 	m_plugins.reserve(5);
 

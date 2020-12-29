@@ -28,7 +28,7 @@
 		</Expand>
 	</Type>
 	<Type Name="UnorderedMap&lt;*&gt;">
-		<DisplayString>{{ Buckets={numBuckets} }}</DisplayString>
+		<DisplayString>{{ Buckets={numBuckets} Size={numEntries} }}</DisplayString>
 		<Expand>
 			<ArrayItems>
 				<Size>numBuckets</Size>
@@ -64,5 +64,9 @@
 				<ValuePointer>(ElementStrMap::Entry*)m_container.data</ValuePointer>
 			</ArrayItems>
 		</Expand>
+	</Type>
+	<Type Name="kEvaluator::Token">
+		<DisplayString Condition="type == 1">Operand={value.operand}</DisplayString>
+		<DisplayString Condition="type == 3">Operator={value.operator_}</DisplayString>
 	</Type>
 </AutoVisualizer>
