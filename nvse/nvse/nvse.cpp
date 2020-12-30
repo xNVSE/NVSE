@@ -14,6 +14,7 @@
 #include "Commands_Input.h"
 #include "GameAPI.h"
 #include "EventManager.h"
+#include "HotReloadUtils.h"
 
 #if RUNTIME
 IDebugLog	gLog("nvse.log");
@@ -59,7 +60,6 @@ void NVSE_Initialize(void)
 #ifndef _DEBUG
 	__try {
 #endif
-
 		FILETIME	now;
 		GetSystemTimeAsFileTime(&now);
 
@@ -148,7 +148,7 @@ void NVSE_Initialize(void)
 			CreateHookWindow();
 #endif
 #endif
-
+		InitializeHotReload();
 		FlushInstructionCache(GetCurrentProcess(), NULL, 0);
 
 #ifndef _DEBUG
@@ -175,6 +175,10 @@ extern "C"
 		if (dwReason == DLL_PROCESS_ATTACH)
 		{
 			NVSE_Initialize();
+		}
+		else if (dwReason == DLL_PROCESS_DETACH)
+		{
+			WSACleanup();
 		}
 		return TRUE;
 	}

@@ -235,6 +235,10 @@
     <ClCompile Include="Hooks_ExpressionEvalOptimized.cpp">
       <Filter>hooks</Filter>
     </ClCompile>
+    <ClCompile Include="SocketUtils.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="HotReloadUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
@@ -465,6 +469,10 @@
       <Filter>internals</Filter>
     </ClInclude>
     <ClInclude Include="Hooks_ExpressionEvalOptimized.h" />
+    <ClInclude Include="SocketUtils.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="HotReloadUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">

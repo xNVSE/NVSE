@@ -28,7 +28,12 @@ class TokenCache
 {
 	UnorderedMap<UInt8*, CachedTokens> cache_;
 public:
+	TokenCache();
 	CachedTokens& Get(UInt8* key);
 	void Clear();
 	[[nodiscard]] std::size_t Size() const;
+	bool Empty() const;
+
+	static Set<TokenCache*> tlsInstances;
+	static void ClearAll();
 };

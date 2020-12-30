@@ -30,6 +30,11 @@ TokenCacheEntry* CachedTokens::DataEnd()
 	return container_.Data() + container_.Size();
 }
 
+TokenCache::TokenCache()
+{
+	tlsInstances.Insert(this);
+}
+
 CachedTokens& TokenCache::Get(UInt8* key)
 {
 	return cache_[key];
@@ -44,3 +49,19 @@ std::size_t TokenCache::Size() const
 {
 	return cache_.Size();
 }
+
+bool TokenCache::Empty() const
+{
+	return cache_.Empty();
+}
+
+void TokenCache::ClearAll()
+{
+	for (auto iter = tlsInstances.Begin(); !iter.End(); ++iter)
+	{
+		if(!iter->Empty())
+			iter->Clear();
+	}
+}
+
+Set<TokenCache*> TokenCache::tlsInstances;

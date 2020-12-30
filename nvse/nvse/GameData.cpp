@@ -1,10 +1,20 @@
 #include "GameData.h"
 
-
-DataHandler* DataHandler::Get() {
+#if RUNTIME
+DataHandler* DataHandler::Get()
+{
 	DataHandler** g_dataHandler = (DataHandler**)0x011C3F2C;
 	return *g_dataHandler;
 }
+#else
+
+DataHandler* DataHandler::Get()
+{
+	DataHandler** g_dataHandler = (DataHandler**)0xED3B0C;
+	return *g_dataHandler;
+}
+
+#endif
 
 class LoadedModFinder
 {

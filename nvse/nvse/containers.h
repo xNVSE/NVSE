@@ -1284,12 +1284,11 @@ public:
 	{
 		if (!numEntries) return;
 		Bucket *pBucket = buckets, *pEnd = End();
-		do
+		while (pBucket != pEnd)
 		{
 			pBucket->Clear();
-			pBucket++;
+			++pBucket;
 		}
-		while (pBucket != pEnd);
 		numEntries = 0;
 	}
 

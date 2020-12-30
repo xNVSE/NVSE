@@ -186,7 +186,7 @@
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention />
       <TargetMachine>MachineX86</TargetMachine>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PostBuildEvent>
@@ -227,7 +227,7 @@
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention />
       <TargetMachine>MachineX86</TargetMachine>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Message>Installing DLL...</Message>
@@ -271,7 +271,7 @@
       <DataExecutionPrevention>
       </DataExecutionPrevention>
       <TargetMachine>MachineX86</TargetMachine>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Message>Installing DLL...</Message>
@@ -307,7 +307,7 @@
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention />
       <TargetMachine>MachineX86</TargetMachine>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Message>Installing DLL...</Message>
@@ -343,7 +343,7 @@
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention />
       <TargetMachine>MachineX86</TargetMachine>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Message>Installing DLL...</Message>
@@ -379,7 +379,7 @@
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention />
       <TargetMachine>MachineX86</TargetMachine>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Message>Installing DLL...</Message>
@@ -414,7 +414,7 @@
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention />
       <TargetMachine>MachineX86</TargetMachine>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Message>Installing DLL...</Message>
@@ -527,7 +527,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="GameData.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="GameExtraData.cpp">
@@ -603,6 +603,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Hooks_Script.cpp" />
+    <ClCompile Include="HotReloadUtils.cpp" />
     <ClCompile Include="InventoryInfo.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
@@ -629,6 +630,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="SocketUtils.cpp" />
     <ClCompile Include="StringVar.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
@@ -696,6 +698,7 @@
     <ClInclude Include="Hooks_Other.h" />
     <ClInclude Include="Hooks_SaveLoad.h" />
     <ClInclude Include="Hooks_Script.h" />
+    <ClInclude Include="HotReloadUtils.h" />
     <ClInclude Include="InventoryInfo.h" />
     <ClInclude Include="InventoryReference.h" />
     <ClInclude Include="Loops.h" />
@@ -714,6 +717,7 @@
     <ClInclude Include="ScriptTokens.h" />
     <ClInclude Include="ScriptUtils.h" />
     <ClInclude Include="Serialization.h" />
+    <ClInclude Include="SocketUtils.h" />
     <ClInclude Include="StringVar.h" />
     <ClInclude Include="ThreadLocal.h" />
     <ClInclude Include="Utilities.h" />

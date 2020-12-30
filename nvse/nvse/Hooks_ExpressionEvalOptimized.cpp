@@ -339,7 +339,23 @@ void kEvaluator::Token::operator delete(void* ptr)
 		g_tempTokens.Free(ptr);
 }
 
+kEvaluator::TokenListMap::TokenListMap()
+{
+	tlsInstances_.Insert(this);
+}
+
+void kEvaluator::TokenListMap::ClearAll()
+{
+	for (auto iter = tlsInstances_.Begin(); !iter.End(); ++iter)
+	{
+		if (!iter->map.Empty())
+			iter->map.Clear();
+	}
+}
+
 void Hook_Evaluator()
 {
 	WriteRelJump(0x593DB0, UInt32(Hook_Expression_Eval));
 }
+
+Set<kEvaluator::TokenListMap*> kEvaluator::TokenListMap::tlsInstances_;

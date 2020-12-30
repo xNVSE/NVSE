@@ -12,7 +12,7 @@ namespace SmallObjectsAllocator
 	template <class T, std::size_t C>
 	class LockBasedAllocator
 	{
-#if __DEBUG
+#if _DEBUG
 		std::size_t count_ = 0;
 #else
 		MemoryPool<T, sizeof(T)* C> pool_;
@@ -21,7 +21,7 @@ namespace SmallObjectsAllocator
 
 		void Free(T* ptr)
 		{
-#if __DEBUG
+#if _DEBUG
 			::operator delete(ptr);
 #else
 			pool_.deallocate(ptr);
@@ -32,7 +32,7 @@ namespace SmallObjectsAllocator
 		T* Allocate()
 		{
 			ScopedLock lock(criticalSection_);
-#if __DEBUG
+#if _DEBUG
 			++count_;
 			if (count_ > C)
 			{
@@ -51,7 +51,7 @@ namespace SmallObjectsAllocator
 		{
 			ScopedLock lock(criticalSection_);
 			Free(static_cast<T*>(ptr));
-#if __DEBUG
+#if _DEBUG
 			--count_;
 #endif
 		}
@@ -62,7 +62,7 @@ namespace SmallObjectsAllocator
 	template <class T, std::size_t C>
 	class FastAllocator
 	{
-#if __DEBUG
+#if _DEBUG
 		std::size_t count_ = 0;
 
 		struct MemLeakDebugInfo
@@ -78,7 +78,7 @@ namespace SmallObjectsAllocator
 	public:
 		T* Allocate()
 		{
-#if __DEBUG
+#if _DEBUG
 			++count_;
 			if (count_ > C)
 			{
@@ -99,7 +99,7 @@ namespace SmallObjectsAllocator
 
 		void Free(void* ptr)
 		{
-#if __DEBUG
+#if _DEBUG
 			--count_;
 			allocatedBlocks_.remove_if([ptr](auto& info) {return info.t == ptr; });
 			::operator delete(ptr);

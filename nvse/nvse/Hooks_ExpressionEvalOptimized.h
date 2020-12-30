@@ -54,13 +54,14 @@ namespace kEvaluator
 	public:
 		Vector<Token> tokens;
 		UInt32 appendAmount;
-
-		
 	};
 
 	class TokenListMap
 	{
+		static Set<TokenListMap*> tlsInstances_;
 	public:
+		TokenListMap();
+		static void ClearAll();
 		UnorderedMap<UInt8*, TokenList> map;
 	};
 }
