@@ -1,7 +1,7 @@
 #pragma once
 #include "containers.h"
 #include "ScriptTokens.h"
-
+#include <atomic>
 struct TokenCacheEntry
 {
 	ScriptToken		token;
@@ -27,13 +27,12 @@ public:
 class TokenCache
 {
 	UnorderedMap<UInt8*, CachedTokens> cache_;
+	static std::atomic<int> tlsClearAllCookie_;
+	static thread_local int tlsClearAllToken_;
 public:
-	TokenCache();
 	CachedTokens& Get(UInt8* key);
 	void Clear();
 	[[nodiscard]] std::size_t Size() const;
 	bool Empty() const;
-
-	static Set<TokenCache*> tlsInstances;
-	static void ClearAll();
+	static void MarkForClear();
 };

@@ -16,7 +16,6 @@
 #include "EventManager.h"
 #include "Hooks_ExpressionEvalOptimized.h"
 #include "Hooks_Other.h"
-#include "HotReloadUtils.h"
 #include "ScriptTokenCache.h"
 
 static void HandleMainLoopHook(void);
@@ -74,13 +73,6 @@ static void HandleMainLoopHook(void)
 	// if any temporary references to inventory objects exist, clean them up
 	if (!s_invRefMap.Empty())
 		s_invRefMap.Clear();
-
-	if (g_clearTokenCaches)
-	{
-		TokenCache::ClearAll();
-		kEvaluator::TokenListMap::ClearAll();
-		g_clearTokenCaches = false;
-	}
 
 	// Tick event manager
 	EventManager::Tick();

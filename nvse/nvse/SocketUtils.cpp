@@ -53,9 +53,9 @@ bool SocketServer::CloseConnection()
 	return true;
 }
 
-char s_recvBuf[0x500];
+char s_recvBuf[0x1000];
 
-bool SocketServer::ReadData(std::vector<char>& buffer, UInt32 numBytes)
+bool SocketServer::ReadData(char* buffer, UInt32 numBytes)
 {
 	auto total = 0U;
 	while (total < numBytes)
@@ -66,7 +66,12 @@ bool SocketServer::ReadData(std::vector<char>& buffer, UInt32 numBytes)
 			this->m_errno = errno;
 			return false;
 		}
-		buffer.insert(buffer.end(), s_recvBuf, s_recvBuf + numBytesRead);
+		if (numBytes == 0)
+		{
+			_MESSAGE("Hot Reload Error: Tried to receive more bytes than sent");
+			return false;
+		}
+		std::memcpy(buffer + total, s_recvBuf, numBytesRead);
 		total += numBytesRead;
 	}
 	return true;
@@ -101,12 +106,12 @@ SocketClient::~SocketClient()
 	closesocket(this->m_socket);
 }
 
-bool SocketClient::SendData(UInt8* data, std::size_t size)
+bool SocketClient::SendData(const char* data, std::size_t size)
 {
 	auto total = 0U;
 	while (total < size)
 	{
-		const auto numBytesSent = send(m_socket, reinterpret_cast<const char*>(&data[total]), size - total, 0);
+		const auto numBytesSent = send(m_socket, &data[total], size - total, 0);
 		if (numBytesSent == -1)
 		{
 			this->m_errno = errno;

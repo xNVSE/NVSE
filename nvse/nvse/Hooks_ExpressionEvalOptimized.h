@@ -1,4 +1,6 @@
 #pragma once
+#include <atomic>
+
 #include "SmallObjectsAllocator.h"
 
 namespace Expression
@@ -58,11 +60,12 @@ namespace kEvaluator
 
 	class TokenListMap
 	{
-		static Set<TokenListMap*> tlsInstances_;
-	public:
-		TokenListMap();
-		static void ClearAll();
 		UnorderedMap<UInt8*, TokenList> map;
+	public:
+		TokenList& Get(UInt8* key);
+		static void MarkForClear();
+		static std::atomic<int> tlsClearAllCookie;
+		static thread_local int tlsClearAllToken;
 	};
 }
 

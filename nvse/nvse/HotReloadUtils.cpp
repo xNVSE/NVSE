@@ -5,6 +5,8 @@
 #include <thread>
 
 #include "GameData.h"
+#include "Hooks_ExpressionEvalOptimized.h"
+#include "ScriptTokenCache.h"
 
 class ScriptTransferObject
 {
@@ -12,16 +14,35 @@ public:
 	UInt32 scriptRefID;
 	UInt32 nameLength;
 	UInt32 dataLength;
+	UInt32 varInfoLength;
+};
+
+class VarInfoTransferObject
+{
+public:
+	UInt32 idx{};
+	UInt32 type{};
+	UInt32 nameLength{};
+#if RUNTIME
+	VarInfoTransferObject() = default;
+#endif
+
+	VarInfoTransferObject(UInt32 idx, UInt32 type, UInt32 nameLength) : idx(idx), type(type), nameLength(nameLength) {}
 };
 
 const auto g_nvsePort = 12059;
 
 #if RUNTIME
 
+class VarInfoObject : public VarInfoTransferObject
+{
+public:
+	std::string name;
+};
+
 SocketServer g_hotReloadServer(g_nvsePort);
 std::thread g_hotReloadThread;
 
-bool g_clearTokenCaches = false;
 
 void Error(const char* fmt, ...)
 {
@@ -48,28 +69,37 @@ void InitHotReloadServer(int i)
 		}
 		if (!g_hotReloadServer.WaitForConnection())
 		{
-			Error("Failed to listen for clients (%d)", g_hotReloadServer.m_errno);
+			Error("Failed to listen for client (%d)", g_hotReloadServer.m_errno);
 			return;
 		}
-		std::vector<char> buf;
-		if (!g_hotReloadServer.ReadData(buf, sizeof(ScriptTransferObject)))
+		ScriptTransferObject obj{};
+		if (!g_hotReloadServer.ReadData(obj))
 		{
 			Error("Failed to receive transfer data (%d)", g_hotReloadServer.m_errno);
 			return;
 		}
-		auto* obj = reinterpret_cast<ScriptTransferObject*>(buf.data());
-		std::vector<char> modNameBuf;
-		if (!g_hotReloadServer.ReadData(modNameBuf, obj->nameLength))
+		std::string modName;
+		if (!g_hotReloadServer.ReadData(modName, obj.nameLength))
 		{
 			Error("Failed to receive mod name (%d)", g_hotReloadServer.m_errno);
 			return;
 		}
-		std::string modName(modNameBuf.begin(), modNameBuf.end());
-		std::vector<char> scriptData;
-		if (!g_hotReloadServer.ReadData(scriptData, obj->dataLength))
+		std::vector<char> scriptData(obj.dataLength, 0);
+		if (!g_hotReloadServer.ReadData(scriptData.data(), obj.dataLength))
 		{
 			Error("Failed to receive script data (%d)", g_hotReloadServer.m_errno);
 			return;
+		}
+		std::vector<VarInfoObject> varInfos;
+		for (auto i = 0U; i < obj.varInfoLength; ++i)
+		{
+			VarInfoTransferObject varInfo;
+			if (!g_hotReloadServer.ReadData(varInfo))
+			{
+				Error("Failed to receive var info (index %d, errno %d)", i, g_hotReloadServer.m_errno);
+				return;
+			}
+			
 		}
 		g_hotReloadServer.CloseConnection();
 		const auto* modInfo = DataHandler::Get()->LookupModByName(modName.c_str());
@@ -78,7 +108,7 @@ void InitHotReloadServer(int i)
 			Error("Mod name %s is not loaded in-game");
 			continue;
 		}
-		const auto refId = obj->scriptRefID + (modInfo->modIndex << 24);
+		const auto refId = obj.scriptRefID + (modInfo->modIndex << 24);
 		auto* form = LookupFormByID(refId);
 		if (!form)
 		{
@@ -92,19 +122,22 @@ void InitHotReloadServer(int i)
 			continue;
 		}
 		auto* oldDataPtr = script->data;
-		auto* newData = GameHeapAlloc(obj->dataLength);
-		std::memcpy(newData, scriptData.data(), obj->dataLength);
+		auto* newData = GameHeapAlloc(obj.dataLength);
+		std::memcpy(newData, scriptData.data(), obj.dataLength);
 		script->data = newData;
 		GameHeapFree(oldDataPtr);
 		std::string reloadMsg = "(xNVSE) Reloaded script " + std::string(script->GetName()) + " in " + modName;
 		Console_Print(reloadMsg.c_str());
 		QueueUIMessage(reloadMsg.c_str(), 0, nullptr, nullptr, 2.5F, false);
-		g_clearTokenCaches = true;
+
+		// clear any cached script data
+		TokenCache::MarkForClear();
+		kEvaluator::TokenListMap::MarkForClear();
 	}
 }
 #else
 
-void __fastcall SendHotReloadData(Script* script)
+void SendHotReloadData(Script* script)
 {
 	ModInfo* activeFile = DataHandler::Get()->activeFile;
 	SocketClient client("127.0.0.1", g_nvsePort);
@@ -114,9 +147,28 @@ void __fastcall SendHotReloadData(Script* script)
 	scriptTransferObject.scriptRefID = script->refID;
 	scriptTransferObject.dataLength = script->info.dataLength;
 	scriptTransferObject.nameLength = strlen(activeFile->name);
-	client.SendData(reinterpret_cast<UInt8*>(&scriptTransferObject), sizeof(ScriptTransferObject));
-	client.SendData(reinterpret_cast<UInt8*>(activeFile->name), scriptTransferObject.nameLength);
-	client.SendData(static_cast<UInt8*>(script->data), script->info.dataLength);
+	client.SendData(scriptTransferObject);
+	client.SendData(activeFile->name, scriptTransferObject.nameLength);
+	client.SendData(static_cast<char*>(script->data), script->info.dataLength);
+	auto* node = &script->varList;
+	while (node)
+	{
+		if (node->data)
+		{
+			VarInfoTransferObject obj(node->data->idx, node->data->type, node->data->name.m_dataLen);
+			client.SendData(obj);
+			client.SendData(node->data->name.CStr(), node->data->name.m_dataLen);
+		}
+		node = node->Next();
+	}
+}
+
+std::thread g_hotReloadClientThread;
+
+void __fastcall SendHotReloadDataHook(Script* script)
+{
+	g_hotReloadClientThread = std::thread(SendHotReloadData, script);
+	g_hotReloadClientThread.detach();
 }
 
 __declspec(naked) void Hook_HotReload()
@@ -129,7 +181,7 @@ __declspec(naked) void Hook_HotReload()
 		mov [script], ecx
 		call Script__CopyFromScriptBuffer
 		mov ecx, script
-		call SendHotReloadData
+		call SendHotReloadDataHook
 		jmp returnLocation
 	}
 }
@@ -147,6 +199,7 @@ void InitializeHotReload()
 	
 #if RUNTIME
 	g_hotReloadThread = std::thread(InitHotReloadServer, 0);
+	g_hotReloadThread.detach();
 #else
 	WriteRelJump(0x5C97DB, UInt32(Hook_HotReload));
 #endif

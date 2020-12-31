@@ -234,7 +234,7 @@ double __fastcall Hook_Expression_Eval(Expression::Expression* expr, UInt32 EDX,
 		expr->lastErrorID = Expression::kScriptError_OutOfMemory;
 		return 0.0;
 	}
-	auto& tokenList = g_tokenListMap.map[scriptData];
+	auto& tokenList = g_tokenListMap.Get(scriptData);
 	if (tokenList.tokens.Empty())
 	{
 		if (!ParseBytecode(tokenList, expr, scriptData, numChars))
@@ -339,18 +339,19 @@ void kEvaluator::Token::operator delete(void* ptr)
 		g_tempTokens.Free(ptr);
 }
 
-kEvaluator::TokenListMap::TokenListMap()
+kEvaluator::TokenList& kEvaluator::TokenListMap::Get(UInt8* key)
 {
-	tlsInstances_.Insert(this);
+	if (tlsClearAllToken != tlsClearAllCookie)
+	{
+		this->map.Clear();
+		tlsClearAllToken = tlsClearAllCookie;
+	}
+	return this->map[key];
 }
 
-void kEvaluator::TokenListMap::ClearAll()
+void kEvaluator::TokenListMap::MarkForClear()
 {
-	for (auto iter = tlsInstances_.Begin(); !iter.End(); ++iter)
-	{
-		if (!iter->map.Empty())
-			iter->map.Clear();
-	}
+	++tlsClearAllCookie;
 }
 
 void Hook_Evaluator()
@@ -358,4 +359,5 @@ void Hook_Evaluator()
 	WriteRelJump(0x593DB0, UInt32(Hook_Expression_Eval));
 }
 
-Set<kEvaluator::TokenListMap*> kEvaluator::TokenListMap::tlsInstances_;
+std::atomic<int> kEvaluator::TokenListMap::tlsClearAllCookie = 0;
+thread_local int kEvaluator::TokenListMap::tlsClearAllToken = 0;

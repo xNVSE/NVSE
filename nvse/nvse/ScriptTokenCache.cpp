@@ -1,5 +1,7 @@
 #include "ScriptTokenCache.h"
 
+#include <atomic>
+
 TokenCacheEntry& CachedTokens::Get(std::size_t key)
 {
 	return this->container_[key];
@@ -30,19 +32,20 @@ TokenCacheEntry* CachedTokens::DataEnd()
 	return container_.Data() + container_.Size();
 }
 
-TokenCache::TokenCache()
-{
-	tlsInstances.Insert(this);
-}
-
 CachedTokens& TokenCache::Get(UInt8* key)
 {
+	if (tlsClearAllCookie_ != tlsClearAllToken_)
+	{
+		tlsClearAllToken_ = tlsClearAllCookie_;
+		cache_.Clear();
+	} 
 	return cache_[key];
 }
 
 void TokenCache::Clear()
 {
-	cache_.Clear();
+	if (!cache_.Empty())
+		cache_.Clear();
 }
 
 std::size_t TokenCache::Size() const
@@ -55,13 +58,10 @@ bool TokenCache::Empty() const
 	return cache_.Empty();
 }
 
-void TokenCache::ClearAll()
+void TokenCache::MarkForClear()
 {
-	for (auto iter = tlsInstances.Begin(); !iter.End(); ++iter)
-	{
-		if(!iter->Empty())
-			iter->Clear();
-	}
+	++tlsClearAllCookie_;
 }
 
-Set<TokenCache*> TokenCache::tlsInstances;
+std::atomic<int> TokenCache::tlsClearAllCookie_ = 0;
+thread_local int TokenCache::tlsClearAllToken_ = 0;
