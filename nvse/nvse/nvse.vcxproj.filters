@@ -473,6 +473,9 @@
       <Filter>internals</Filter>
     </ClInclude>
     <ClInclude Include="HotReloadUtils.h" />
+    <ClInclude Include="rewrites.h">
+      <Filter>lib\jip</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">

@@ -73,6 +73,33 @@ bool Script::IsUserDefinedFunction() const
 	return *(scriptData + 8) == 0x0D;
 }
 
+UInt32 Script::GetVarCount() const
+{
+	// info->varCount include index
+	auto count = 0U;
+	auto* node = &this->varList;
+	while (node)
+	{
+		if (node->data)
+			++count;
+		node = node->Next();
+	}
+	return count;
+}
+
+UInt32 Script::GetRefCount() const
+{
+	auto count = 0U;
+	auto* node = &this->refList;
+	while (node)
+	{
+		if (node->var)
+			++count;
+		node = node->Next();
+	}
+	return count;
+}
+
 #if RUNTIME
 
 void Script::RefVariable::Resolve(ScriptEventList * eventList)

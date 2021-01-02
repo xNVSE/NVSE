@@ -34,7 +34,7 @@ public:
 	{
 		String	name;		// 000 variable name/editorID (not used at run-time)
 		TESForm	* form;		// 008
-		UInt32	varIdx;		// 00C always zero in editor
+		UInt32	varIdx;		// 00C
 
 		void	Resolve(ScriptEventList * eventList);
 	};
@@ -154,6 +154,8 @@ public:
 #error
 #endif
 	ScriptEventList	* CreateEventList();
+	UInt32 GetVarCount() const;
+	UInt32 GetRefCount() const;
 };
 
 STATIC_ASSERT(sizeof(Script) == SCRIPT_SIZE);

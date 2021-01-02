@@ -660,6 +660,11 @@ const char* TESPackage::PackageTime::DayForCode(UInt8 dayCode)
 	return TESPackage_DayStrings[dayCode];
 }
 
+VariableInfo::~VariableInfo()
+{
+	GameHeapFree(this->name.m_data);
+}
+
 const char* TESPackage::PackageTime::MonthForCode(UInt8 monthCode)
 {
 	monthCode += 1;

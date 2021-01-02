@@ -42,216 +42,290 @@ TESForm* __stdcall LookupFormByID(UInt32 refID);
 typedef TESForm* (*_LookupFormByID)(UInt32 id);
 extern const _LookupFormByID LookupFormByID;
 #endif
-template <class Item>
-class tList
+template <typename T_Data> struct ListNode
 {
-	typedef Item tItem;
+	T_Data* data;
+	ListNode* next;
 
-public:
-	struct _Node {
-		
-		tItem*	item;
-		_Node*	next;
+	ListNode() : data(NULL), next(NULL) {}
+	ListNode(T_Data* _data) : data(_data), next(NULL) {}
 
-		tItem* Item() const { return item; }
-		_Node* Next() const { return next; }
+	T_Data* Data() const { return data; }
+	ListNode* Next() const { return next; }
 
-		// become the next entry and return my item
-		tItem* RemoveMe() {
-			tItem* pRemoved = item;
-			_Node* pNext = next;
-			if (pNext) {
-				item = pNext->item;
-				next = pNext->next;
-				FormHeap_Free(pNext);
-			} else {
-				item = NULL;
-				next = NULL;
-			}
-			return pRemoved;
+	ListNode* RemoveMe()
+	{
+		if (next)
+		{
+			ListNode* pNext = next;
+			data = next->data;
+			next = next->next;
+			FormHeap_Free(pNext);
+			return this;
 		}
-	};
+		data = NULL;
+		return NULL;
+	}
 
-private:
-	_Node m_listHead;
+	ListNode* RemoveNext()
+	{
+		ListNode* pNext = next;
+		next = next->next;
+		FormHeap_Free(pNext);
+		return next;
+	}
+
+	ListNode* Append(T_Data* _data)
+	{
+		ListNode* newNode = (ListNode*)FormHeap_Allocate(sizeof(ListNode));
+		newNode->data = _data;
+		newNode->next = next;
+		next = newNode;
+		return newNode;
+	}
+
+	ListNode* Insert(T_Data* _data)
+	{
+		ListNode* newNode = (ListNode*)FormHeap_Allocate(sizeof(ListNode));
+		newNode->data = data;
+		data = _data;
+		newNode->next = next;
+		next = newNode;
+		return newNode;
+	}
+};
+
+template <class Item> class tList
+{
+public:
+	typedef ListNode<Item> _Node;
+
+	_Node	m_listHead;
 
 	template <class Op>
-	UInt32 FreeNodes(_Node* node, Op &compareOp) const
+	UInt32 FreeNodes(_Node* node, Op& compareOp) const
 	{
-		static UInt32 nodeCount = 0;
-		static UInt32 numFreed = 0;
-		static UInt32 lqstNumFreed = 0;
-
-		if (node->Next())
+		static UInt32 nodeCount = 0, numFreed = 0, lastNumFreed = 0;
+		if (node->next)
 		{
 			nodeCount++;
-			FreeNodes(node->Next(), compareOp);
+			FreeNodes(node->next, compareOp);
 			nodeCount--;
 		}
-
-		if (compareOp.Accept(node->Item()))
+		if (compareOp.Accept(node->data))
 		{
 			node->RemoveMe();
 			numFreed++;
 		}
-
-		if (!nodeCount)	//reset vars after recursing back to head
+		if (!nodeCount)
 		{
-			lqstNumFreed = numFreed;
+			lastNumFreed = numFreed;
 			numFreed = 0;
 		}
-
-		return lqstNumFreed;
+		return lastNumFreed;
 	}
 
-
-	struct NodePos {
-		NodePos(): node(NULL), index(eListInvalid) {}
-
-		_Node*	node;
-		SInt32	index;
-	};
-
-
-	NodePos GetNthNode(SInt32 index) const {
-		NodePos pos;
-		SInt32 n = 0;
-		_Node* pCur = Head();
-
-		while (pCur && pCur->Item()) {
-			if (n == index) break;
-			if (eListEnd == index && !pCur->Next()) break;
-			pCur = pCur->Next();
-			++n;
-		}
-
-		pos.node = pCur;
-		pos.index = n;
-
-		return pos;
-	}
-
-public:
-
-	void Init(Item *item = NULL)
+	_Node* GetLastNode(SInt32* outIdx = NULL) const
 	{
-		m_listHead.item = item;
+		SInt32 index = 0;
+		_Node* node = Head();
+		while (node->next)
+		{
+			node = node->next;
+			index++;
+		}
+		if (outIdx) *outIdx = index;
+		return node;
+	}
+
+	_Node* GetNthNode(SInt32 index) const
+	{
+		if (index >= 0)
+		{
+			_Node* node = Head();
+			do
+			{
+				if (!index) return node;
+				index--;
+			} while (node = node->next);
+		}
+		return NULL;
+	}
+
+	void Init(Item* item = NULL)
+	{
+		m_listHead.data = item;
 		m_listHead.next = NULL;
 	}
 
 	_Node* Head() const { return const_cast<_Node*>(&m_listHead); }
 
+	bool Empty() const { return !m_listHead.data; }
+
 	class Iterator
 	{
-		_Node*	m_cur;
+		_Node* m_curr;
+
 	public:
-		Iterator() : m_cur(NULL) {}
-		Iterator(_Node* node) : m_cur(node) { }
-		Iterator operator++()	{ if (!End()) m_cur = m_cur->Next(); return *this;}
-		bool End() { return (!m_cur || (!m_cur->item && !m_cur->next)); }
-		const Item* operator->() { return (m_cur) ? m_cur->Item() : NULL; }
-		const Item* operator*() { return (m_cur) ? m_cur->Item() : NULL; }
-		const Iterator& operator=(const Iterator& rhs) {
-			m_cur = rhs.m_cur;
+		Iterator operator++()
+		{
+			if (m_curr) m_curr = m_curr->next;
 			return *this;
 		}
-		Item* Get() { return (m_cur) ? m_cur->Item() : NULL; }
+		bool End() const { return !m_curr || (!m_curr->data && !m_curr->next); }
+		Item* operator->() const { return m_curr->data; }
+		Item*& operator*() const { return m_curr->data; }
+		const Iterator& operator=(const Iterator& rhs)
+		{
+			m_curr = rhs.m_curr;
+			return *this;
+		}
+		Item* Get() const { return m_curr->data; }
+		void Next() { if (m_curr) m_curr = m_curr->next; }
+		void Find(Item* _item)
+		{
+			while (m_curr)
+			{
+				if (m_curr->data == _item) break;
+				m_curr = m_curr->next;
+			}
+		}
+
+		Iterator(_Node* node = NULL) : m_curr(node) {}
+		Iterator(tList& _list) : m_curr(&_list.m_listHead) {}
+		Iterator(tList* _list) : m_curr(&_list->m_listHead) {}
+		Iterator(tList& _list, Item* _item) : m_curr(&_list.m_listHead) { Find(_item); }
+		Iterator(tList* _list, Item* _item) : m_curr(&_list->m_listHead) { Find(_item); }
 	};
-	
+
 	const Iterator Begin() const { return Iterator(Head()); }
 
-
-	UInt32 Count() const {
-		NodePos pos = GetNthNode(eListCount);
-		return (pos.index > 0) ? pos.index : 0;
+	UInt32 Count() const
+	{
+		if (!m_listHead.data) return 0;
+		_Node* node = Head();
+		UInt32 count = 1;
+		while (node = node->next) count++;
+		return count;
 	};
 
-	Item* GetNthItem(SInt32 n) const {
-		NodePos pos = GetNthNode(n);
-		return (pos.index == n && pos.node) ? pos.node->Item() : NULL;
-	}
-
-	Item *GetFirstItem() const
+	bool IsInList(Item* item) const
 	{
-		return m_listHead.item;
+		_Node* node = Head();
+		do
+		{
+			if (node->data == item) return true;
+			node = node->next;
+		} while (node);
+		return false;
 	}
 
-	Item* GetLastItem() const {
-		NodePos pos = GetNthNode(eListEnd);
-		return pos.node->Item();
+	Item* GetFirstItem() const
+	{
+		return m_listHead.data;
 	}
 
-	SInt32 AddAt(Item* item, SInt32 index) {
-		if (!m_listHead.item) {
-			m_listHead.item = item;
-			return 0;
-		}
+	Item* GetLastItem() const
+	{
+		return GetLastNode()->data;
+	}
 
-		NodePos pos = GetNthNode(index);
-		_Node* pTargetNode = pos.node;
-		_Node* newNode = (_Node*)FormHeap_Allocate(sizeof(_Node));
-		if (newNode && pTargetNode) {
-			if (index == eListEnd) {
-				pTargetNode->next = newNode;
-				newNode->item = item;
-				newNode->next = NULL;
-			} else {
-				newNode->item = pTargetNode->item;
-				newNode->next = pTargetNode->next;
-				pTargetNode->item = item;
-				pTargetNode->next = newNode;
-			}
-			return pos.index;
+	Item* GetNthItem(SInt32 index) const
+	{
+		if (eListEnd == index)
+			return GetLastNode()->data;
+		_Node* node = GetNthNode(index);
+		return node ? node->data : NULL;
+	}
+
+	SInt32 AddAt(Item* item, SInt32 index)
+	{
+		if (!item) return eListInvalid;
+		_Node* node;
+		if (!index)
+		{
+			if (m_listHead.data) m_listHead.Insert(item);
+			else m_listHead.data = item;
 		}
-		return eListInvalid;
+		else if (eListEnd == index)
+		{
+			node = GetLastNode(&index);
+			if (node->data) node->Append(item);
+			else node->data = item;
+		}
+		else
+		{
+			node = GetNthNode(index);
+			if (!node) return eListInvalid;
+			node->Insert(item);
+		}
+		return index;
+	}
+
+	SInt32 Append(Item* item)
+	{
+		SInt32 index = eListInvalid;
+		if (item)
+		{
+			_Node* node = GetLastNode(&index);
+			if (node->data) node->Append(item);
+			else node->data = item;
+		}
+		return index;
+	}
+
+	void Insert(Item* item)
+	{
+		if (item)
+		{
+			if (m_listHead.data) m_listHead.Insert(item);
+			else m_listHead.data = item;
+		}
+	}
+
+	void CopyFrom(tList& sourceList)
+	{
+		_Node* target = Head(), * source = sourceList.Head();
+		RemoveAll();
+		if (!source->data) return;
+		target->data = source->data;
+		while (source = source->next)
+			target = target->Append(source->data);
 	}
 
 	template <class Op>
-	void Visit(Op& op, _Node* prev = NULL) const {
-		const _Node* pCur = (prev) ? prev->next : Head();
-		bool bContinue = true;
-		while (pCur && bContinue) {
-			bContinue = op.Accept(pCur->Item());
-			if (bContinue) {
-				pCur = pCur->next;
-			}
+	void Visit(Op& op, _Node* prev = NULL) const
+	{
+		_Node* curr = prev ? prev->next : Head();
+		while (curr)
+		{
+			if (!curr->data || !op.Accept(curr->data)) break;
+			curr = curr->next;
 		}
 	}
 
 	template <class Op>
 	Item* Find(Op& op) const
 	{
-		const _Node* pCur = Head(); 
-
-		bool bFound = false;
-		while (pCur && !bFound)
+		_Node* curr = Head();
+		Item* pItem;
+		do
 		{
-			if (!pCur->Item())
-				pCur = pCur->Next();
-			else
-			{
-				bFound = op.Accept(pCur->Item());
-				if (!bFound)
-					pCur = pCur->Next();
-			}
-		}
-		return (bFound && pCur) ? pCur->Item() : NULL;
+			pItem = curr->data;
+			if (pItem && op.Accept(pItem)) return pItem;
+			curr = curr->next;
+		} while (curr);
+		return NULL;
 	}
 
 	template <class Op>
-	Iterator Find(Op& op, Iterator prev) const
+	Iterator Find(Op& op, Iterator& prev) const
 	{
-		Iterator curIt = (prev.End()) ? Begin() : ++prev;
-		bool bFound = false;
-		
-		while(!curIt.End() && !bFound) {
-			const tItem * pCur = *curIt;
-			if (pCur) {
-				bFound = op.Accept(pCur);
-			}
-			if (!bFound) {
-				++curIt;
-			}	
+		Iterator curIt = prev.End() ? Begin() : ++prev;
+		while (!curIt.End())
+		{
+			if (*curIt && op.Accept(*curIt)) break;
+			++curIt;
 		}
 		return curIt;
 	}
@@ -265,78 +339,162 @@ public:
 	UInt32 CountIf(Op& op) const
 	{
 		UInt32 count = 0;
-		const _Node* pCur = Head();
-		while (pCur)
+		_Node* curr = Head();
+		do
 		{
-			if (pCur->Item() && op.Accept(pCur->Item()))
-				count++;
-			pCur = pCur->Next();
-		}
+			if (curr->data && op.Accept(curr->data)) count++;
+			curr = curr->next;
+		} while (curr);
 		return count;
 	}
 
-	class AcceptAll {
+	class AcceptAll
+	{
 	public:
-		bool Accept(Item* item) {
-			return true;
-		}
+		bool Accept(Item* item) { return true; }
 	};
 
 	void RemoveAll() const
 	{
-		FreeNodes(const_cast<_Node*>(Head()), AcceptAll());
+		_Node* nextNode = Head(), * currNode = nextNode->next;
+		nextNode->data = NULL;
+		nextNode->next = NULL;
+		while (currNode)
+		{
+			nextNode = currNode->next;
+			FormHeap_Free(currNode);
+			currNode = nextNode;
+		}
 	}
 
-	Item* RemoveNth(SInt32 n) 
+	void DeleteAll() const
 	{
-		Item* pRemoved = NULL;
-		if (n == 0) {
-			pRemoved = m_listHead.RemoveMe();
-		} else if (n > 0) {
-			NodePos nodePos = GetNthNode(n);
-			if (nodePos.node && nodePos.index == n) {
-				pRemoved = nodePos.node->RemoveMe();
+		_Node* nextNode = Head(), * currNode = nextNode->next;
+		FormHeap_Free(nextNode->data);
+		nextNode->data = NULL;
+		nextNode->next = NULL;
+		while (currNode)
+		{
+			nextNode = currNode->next;
+			currNode->data->~Item();
+			FormHeap_Free(currNode->data);
+			FormHeap_Free(currNode);
+			currNode = nextNode;
+		}
+	}
+
+	Item* RemoveNth(SInt32 idx)
+	{
+		Item* removed = NULL;
+		if (idx <= 0)
+		{
+			removed = m_listHead.data;
+			m_listHead.RemoveMe();
+		}
+		else
+		{
+			_Node* node = Head();
+			while (node->next && --idx)
+				node = node->next;
+			if (!idx)
+			{
+				removed = node->next->data;
+				node->RemoveNext();
 			}
 		}
-		return pRemoved;
+		return removed;
 	};
 
-	Item* ReplaceNth(SInt32 n, tItem* item) 
+	UInt32 Remove(Item* item)
 	{
-		Item* pReplaced = NULL;
-		NodePos nodePos = GetNthNode(n);
-		if (nodePos.node && nodePos.index == n) {
-			pReplaced = nodePos.node->item;
-			nodePos.node->item = item;
+		UInt32 removed = 0;
+		_Node* curr = Head(), * prev = NULL;
+		do
+		{
+			if (curr->data == item)
+			{
+				curr = prev ? prev->RemoveNext() : curr->RemoveMe();
+				removed++;
+			}
+			else
+			{
+				prev = curr;
+				curr = curr->next;
+			}
+		} while (curr);
+		return removed;
+	}
+
+	Item* ReplaceNth(SInt32 index, Item* item)
+	{
+		Item* replaced = NULL;
+		if (item)
+		{
+			_Node* node;
+			if (eListEnd == index)
+				node = GetLastNode();
+			else
+			{
+				node = GetNthNode(index);
+				if (!node) return NULL;
+			}
+			replaced = node->data;
+			node->data = item;
 		}
-		return pReplaced;
+		return replaced;
+	}
+
+	UInt32 Replace(Item* item, Item* replace)
+	{
+		UInt32 replaced = 0;
+		_Node* curr = Head();
+		do
+		{
+			if (curr->data == item)
+			{
+				curr->data = replace;
+				replaced++;
+			}
+			curr = curr->next;
+		} while (curr);
+		return replaced;
 	}
 
 	template <class Op>
 	UInt32 RemoveIf(Op& op)
 	{
-		return FreeNodes(const_cast<_Node*>(Head()), op);
+		return FreeNodes(Head(), op);
+	}
+
+	SInt32 GetIndexOf(Item* item)
+	{
+		SInt32 idx = 0;
+		_Node* curr = Head();
+		do
+		{
+			if (curr->data == item) return idx;
+			idx++;
+			curr = curr->next;
+		} while (curr);
+		return -1;
 	}
 
 	template <class Op>
 	SInt32 GetIndexOf(Op& op)
 	{
 		SInt32 idx = 0;
-		const _Node* pCur = Head();
-		while (pCur && pCur->Item() && !op.Accept(pCur->Item()))
+		_Node* curr = Head();
+		do
 		{
+			if (curr->data && op.Accept(curr->data)) return idx;
 			idx++;
-			pCur = pCur->Next();
-		}
-
-		if (pCur && pCur->Item())
-			return idx;
-		else
-			return -1;
+			curr = curr->next;
+		} while (curr);
+		return -1;
 	}
-
 };
-STATIC_ASSERT(sizeof(tList<void *>) == 0x8);
+STATIC_ASSERT(sizeof(tList<void*>) == 0x8);
+
 
 template <typename T_Data> struct DListNode
 {

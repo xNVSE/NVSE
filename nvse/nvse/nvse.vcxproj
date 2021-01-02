@@ -528,7 +528,7 @@
     </ClCompile>
     <ClCompile Include="GameData.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="GameExtraData.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
@@ -711,6 +711,7 @@
     <ClInclude Include="PluginManager.h" />
     <ClInclude Include="prefix.h" />
     <ClInclude Include="printf.h" />
+    <ClInclude Include="rewrites.h" />
     <ClInclude Include="SafeWrite.h" />
     <ClInclude Include="ScriptTokenCache.h" />
     <ClInclude Include="SmallObjectsAllocator.h" />

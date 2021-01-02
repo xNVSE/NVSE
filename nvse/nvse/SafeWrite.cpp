@@ -63,3 +63,16 @@ void WriteRelJle(UInt32 jumpSrc, UInt32 jumpTgt)
 	SafeWrite16(jumpSrc, 0x8E0F);
 	SafeWrite32(jumpSrc + 2, jumpTgt - jumpSrc - 2 - 4);
 }
+
+void PatchMemoryNop(ULONG_PTR Address, SIZE_T Size)
+{
+	DWORD d = 0;
+	VirtualProtect((LPVOID)Address, Size, PAGE_EXECUTE_READWRITE, &d);
+
+	for (SIZE_T i = 0; i < Size; i++)
+		*(volatile BYTE*)(Address + i) = 0x90; //0x90 == opcode for NOP
+
+	VirtualProtect((LPVOID)Address, Size, d, &d);
+
+	FlushInstructionCache(GetCurrentProcess(), (LPVOID)Address, Size);
+}

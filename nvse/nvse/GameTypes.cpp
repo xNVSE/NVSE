@@ -119,5 +119,6 @@ double String::Compare(const String& compareTo, bool caseSensitive)
 
 const char * String::CStr(void)
 {
+
 	return (m_data && m_dataLen) ? m_data : "";
 }

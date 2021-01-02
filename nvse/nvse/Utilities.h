@@ -180,16 +180,6 @@ __forceinline T_Ret CdeclCall(UInt32 _addr, Args ...args)
 	return ((T_Ret (__cdecl *)(Args...))_addr)(std::forward<Args>(args)...);
 }
 
-inline void* GameHeapAlloc(UInt32 size)
-{
-	return ThisStdCall<void*>(0xAA3E40, (void*)0x11F6238, size);
-}
-
-inline void GameHeapFree(void* ptr)
-{
-	ThisStdCall(0xAA4060, (void*)0x11F6238, ptr);
-}
-
 void ShowErrorMessageBox(const char* message);
 
 class ScopedLock
@@ -208,5 +198,15 @@ private:
 const char* GetModName(Script* script);
 
 void ShowRuntimeError(Script* script, const char* fmt, ...);
+
+inline void* GameHeapAlloc(UInt32 size)
+{
+	return ThisStdCall<void*>(0xAA3E40, (void*)0x11F6238, size);
+}
+
+inline void GameHeapFree(void* ptr)
+{
+	ThisStdCall(0xAA4060, (void*)0x11F6238, ptr);
+}
 
 #endif
