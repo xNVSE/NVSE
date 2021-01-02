@@ -183,7 +183,7 @@ public:
 	ReloadedScript(tList<VariableInfo>* oldVarList) : oldVarList(oldVarList) {}
 	~ReloadedScript()
 	{
-		GameHeapFree(oldVarList);
+		oldVarList->DeleteAll();
 	}
 };
 
@@ -263,9 +263,8 @@ void HandleHotReload()
 		return;
 	if (!HandleRefListChanges(script, refInfos))
 	{
+		reinterpret_cast<tList<VariableInfo>*>(&script->varList)->DeleteAll();
 		script->varList = *reinterpret_cast<Script::VarInfoEntry*>(oldVarList);
-		oldVarList->Head()->Data()->~VariableInfo();
-		GameHeapFree(oldVarList);
 		return;
 	}
 	auto* oldDataPtr = script->data;
