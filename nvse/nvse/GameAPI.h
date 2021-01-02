@@ -403,7 +403,7 @@ private:
 };
 bool SCRIPT_ASSERT(bool expr, Script* script, const char * errorMsg, ...);
 
-bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* scriptDataIn, double* outVarData, bool* makeTemporary, UInt8* outModIndex = NULL, bool shortPath = false);
+bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* scriptDataIn, double* outVarData, bool* makeTemporary, UInt32* opcodeOffsetPtr, UInt8* outModIndex = NULL);
 bool ExtractFormattedString(FormatStringArgs& args, char* buffer);
 
 class ChangesMap;
@@ -946,6 +946,9 @@ struct NavMeshStaticAvoidNode
 	UInt32	unk020;	// 20
 	UInt32	unk024;	// 24
 };	// Alloc'd to 0x28
+
+// Gets the real script data ptr, as it can be a pointer to a buffer on the stack in case of vanilla expressions in set and if statements
+UInt8* GetScriptDataPosition(Script* script, void* scriptDataIn, const UInt32* opcodeOffsetPtrIn);
 
 /* I need to port NiTypes 
 

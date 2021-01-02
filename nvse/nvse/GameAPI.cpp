@@ -1311,20 +1311,20 @@ bool ExtractFormatStringArgs(UInt32 fmtStringPos, char* buffer, ParamInfo * para
 
 #endif
 
-bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* scriptDataIn, double * outVarData, bool* makeTemporary, UInt8* outModIndex, bool shortPath)
+bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* scriptDataIn, double * outVarData, bool* makeTemporary, UInt32* opcodeOffsetPtr, UInt8* outModIndex)
 {
 	/*	DOES NOT WORK WITH FalloutNV, we are going to abuse the stack instead: ~ It does work, just have to adjust the value to 0x1D5 :^)
 	//when script command called as righthand side of a set statement, the script data containing the variable
 	//to assign to remains on the stack as arg to a previous function. We can get to it through scriptData in COMMAND_ARGS
 	*/
-	auto* dataStart = static_cast<UInt8*>(scriptDataIn);	// should be 0x58 (or 0x72 if called with dot syntax)
+	auto* scriptData = GetScriptDataPosition(script, scriptDataIn, opcodeOffsetPtr) - 6;
 
-	if (*dataStart != 0x58 && *dataStart != 0x72) 
+	auto* dataStart = scriptData + 1; // should be 0x58 (or 0x72 if called with dot syntax)
+	if (*dataStart != 0x58 && *dataStart != 0x72)
 	{
 		return false;
 	}
 
-	auto* scriptData = *(static_cast<UInt8**>(scriptDataIn) + 0x1D5);
 
 	if (*(scriptData - 5) != 0x73) // make sure `set ... to` and not `if ...`
 	{
@@ -1777,6 +1777,16 @@ void Debug_DumpFontNames(void)
 	for(UInt32 i = 0; i < FontArraySize; i++)
 		_MESSAGE("Font %d is named %s", i+1, fonts[i]->path);
 
+}
+
+UInt8* GetScriptDataPosition(Script* script, void* scriptDataIn, const UInt32* opcodeOffsetPtrIn)
+{
+	if (scriptDataIn != script->data) // set ... to or if ..., script data is stored on stack and not heap
+	{
+		auto* scriptData = *(static_cast<UInt8**>(scriptDataIn) + 0x1D5);
+		return scriptData + *opcodeOffsetPtrIn + 1;
+	}
+	return static_cast<UInt8*>(scriptDataIn) + *opcodeOffsetPtrIn;
 }
 
 #endif
