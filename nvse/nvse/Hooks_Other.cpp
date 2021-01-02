@@ -10,26 +10,6 @@
 #if RUNTIME
 namespace OtherHooks
 {
-	// set ... to and if ... statements pass a different scriptData value from the stack, hook is used to save last position
-	// function call is needed as g_lastScriptData is thread_local, compiler generates TlsSetValue from statement
-	void __fastcall SaveOpcodePosition(UInt8* currentOpcodePos)
-	{
-		g_lastScriptData = currentOpcodePos;
-	}
-
-	__declspec(naked) void SaveRunLineScriptHook()
-	{
-		static const UInt32 hookedCall = 0x594D40;
-		static const UInt32 returnAddress = 0x593E10;
-		__asm
-		{
-			call hookedCall
-			mov ecx, [ebp+0x8]
-			call SaveOpcodePosition
-			jmp returnAddress
-		}
-	}
-
 	__declspec(naked) void TilesDestroyedHook()
 	{
 		__asm
@@ -102,7 +82,6 @@ namespace OtherHooks
 
 	void Hooks_Other_Init()
 	{
-		WriteRelJump(0x593E0B, UInt32(SaveRunLineScriptHook));
 		WriteRelJump(0x9FF5FB, UInt32(TilesDestroyedHook));
 		WriteRelJump(0x709910, UInt32(TilesCreatedHook));
 		WriteRelJump(0x41AF70, UInt32(ScriptEventListsDestroyedHook));

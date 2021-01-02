@@ -14,7 +14,6 @@
 #include "Hooks_Other.h"
 #endif
 
-thread_local UInt8* g_lastScriptData;
 
 static NVSEStringVarInterface* s_StringVarInterface = NULL;
 bool alternateUpdate3D = false;
@@ -1314,18 +1313,20 @@ bool ExtractFormatStringArgs(UInt32 fmtStringPos, char* buffer, ParamInfo * para
 
 bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* scriptDataIn, double * outVarData, bool* makeTemporary, UInt8* outModIndex, bool shortPath)
 {
-	/*	DOES NOT WORK WITH FalloutNV, we are going to abuse the stack instead:
+	/*	DOES NOT WORK WITH FalloutNV, we are going to abuse the stack instead: ~ It does work, just have to adjust the value to 0x1D5 :^)
 	//when script command called as righthand side of a set statement, the script data containing the variable
 	//to assign to remains on the stack as arg to a previous function. We can get to it through scriptData in COMMAND_ARGS
 	*/
-	UInt8* dataStart = (UInt8*)scriptDataIn;	// should be 0x58 (or 0x72 if called with dot syntax)
+	auto* dataStart = static_cast<UInt8*>(scriptDataIn);	// should be 0x58 (or 0x72 if called with dot syntax)
 
 	if (*dataStart != 0x58 && *dataStart != 0x72) 
 	{
 		return false;
 	}
 
-	if (*(g_lastScriptData - 5) != 0x73) // make sure `set ... to` and not `if ...`
+	auto* scriptData = *(static_cast<UInt8**>(scriptDataIn) + 0x1D5);
+
+	if (*(scriptData - 5) != 0x73) // make sure `set ... to` and not `if ...`
 	{
 		return false;
 	}
@@ -1350,7 +1351,6 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 
 	SInt32 scriptDataOffset = (UInt32)scriptData - (UInt32)(script->data);*/
 	//auto scriptData = reinterpret_cast<UInt8*>(g_lastScriptData);
-	auto* scriptData = reinterpret_cast<UInt8*>(g_lastScriptData);
 	SInt32 scriptDataOffset = (UInt32)scriptData - (UInt32)(script->data);
 
 	if (scriptDataOffset < 5)

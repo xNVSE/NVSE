@@ -228,7 +228,6 @@ void CleanUpStack(FastStack<kEvaluator::Token*>& stack)
 
 double __fastcall Hook_Expression_Eval(Expression::Expression* expr, UInt32 EDX, UInt8* scriptData, TESObjectREFR* ref, TESObjectREFR* containingObj, Script* scriptObj, ScriptEventList* eventList, std::size_t numChars, bool aFalse)
 {
-	g_lastScriptData = scriptData;
 	if (numChars > 512)
 	{
 		expr->lastErrorID = Expression::kScriptError_OutOfMemory;

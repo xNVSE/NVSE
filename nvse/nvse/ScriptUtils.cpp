@@ -2702,9 +2702,10 @@ SInt32 ExpressionEvaluator::ReadSigned32()
 
 UInt8* ExpressionEvaluator::GetCommandOpcodePosition() const
 {
+	auto* scriptData = *(reinterpret_cast<UInt8**>(m_scriptData) + 0x1D5);
 	if (m_scriptData != script->data) // set ... to or if ..., script data is stored on stack and not heap
 	{
-		return g_lastScriptData + *m_opcodeOffsetPtr + 1;
+		return scriptData + *m_opcodeOffsetPtr + 1;
 	}
 	return static_cast<UInt8*>(m_scriptData) + *m_opcodeOffsetPtr;
 }
