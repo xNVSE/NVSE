@@ -1,4 +1,5 @@
 #include "nvse/containers.h"
+#include "utility.h"
 
 #define MAX_CACHED_BLOCK_SIZE 0x400
 #define MEMORY_POOL_SIZE 0x1000

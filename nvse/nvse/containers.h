@@ -1,6 +1,7 @@
 #pragma once
 
 #include <type_traits>
+#include "utility.h"
 
 #define MAP_DEFAULT_ALLOC			8
 #define MAP_DEFAULT_BUCKET_COUNT	8
