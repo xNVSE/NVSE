@@ -6,12 +6,9 @@
 struct ScriptEventList;
 struct ScriptBuffer;
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
+#if RUNTIME
 #define SCRIPT_SIZE 0x54
 static const UInt32 kScript_ExecuteFnAddr = 0x005AC1E0;
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-#define SCRIPT_SIZE 0x54
-static const UInt32 kScript_ExecuteFnAddr = 0x005AC390;
 #elif EDITOR
 #define SCRIPT_SIZE 0x48
 static const UInt32 kScript_SetTextFnAddr = 0x005C27B0;
@@ -136,22 +133,13 @@ public:
 
 	// no changed flags (TESForm flags)
 	MEMBER_FN_PREFIX(Script);
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
+#if RUNTIME
 	// arg3 appears to be true for result scripts (runs script even if dataLength <= 4)
 	DEFINE_MEMBER_FN(Execute, bool, kScript_ExecuteFnAddr, TESObjectREFR* thisObj, ScriptEventList* eventList, TESObjectREFR* containingObj, bool arg3);
 	DEFINE_MEMBER_FN(Constructor, Script *, 0x005AA0F0);
 	DEFINE_MEMBER_FN(SetText, void, 0x005ABE50, const char * text);
 	DEFINE_MEMBER_FN(Run, bool, 0x005AC400, void * scriptContext, bool unkAlwaysOne, TESObjectREFR * object);
 	DEFINE_MEMBER_FN(Destructor, void, 0x005AA1A0);
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	DEFINE_MEMBER_FN(Execute, bool, kScript_ExecuteFnAddr, TESObjectREFR* thisObj, ScriptEventList* eventList, TESObjectREFR* containingObj, bool arg3);
-	DEFINE_MEMBER_FN(Constructor, Script *, 0x005AA220);
-	DEFINE_MEMBER_FN(SetText, void, 0x005AC000, const char * text);
-	DEFINE_MEMBER_FN(Run, bool, 0x005AC5B0, void * scriptContext, bool unkAlwaysOne, TESObjectREFR * object);
-	DEFINE_MEMBER_FN(Destructor, void, 0x005AA2D0);
-#elif EDITOR
-#else
-#error
 #endif
 	ScriptEventList	* CreateEventList();
 	UInt32 GetVarCount() const;

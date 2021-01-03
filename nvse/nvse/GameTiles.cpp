@@ -6,14 +6,7 @@
 typedef NiTMapBase <const char *, int>	TraitNameMap;
 TraitNameMap	* g_traitNameMap = (TraitNameMap *)0x011F32F4;
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 const _TraitNameToID TraitNameToID = (_TraitNameToID)0x00A01860;
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-const _TraitNameToID TraitNameToID = (_TraitNameToID)0x00A01730;
-#elif EDITOR
-#else
-#error
-#endif
 
 UInt32 Tile::TraitNameToID(const char * traitName)
 {

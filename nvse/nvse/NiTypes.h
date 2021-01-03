@@ -3,16 +3,8 @@
 
 #if RUNTIME
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 const UInt32 _NiTMap_Lookup = 0x00853130;
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-const UInt32 _NiTMap_Lookup = 0x00844740;
-#else
-#error
-#endif
 
-#else
-const UInt32 _NiTMap_Lookup = 0;
 #endif
 
 // 8
@@ -139,24 +131,12 @@ struct NiTArray
 
 template <typename T> void NiTArray<T>::AddAtIndex(UInt32 index, T* item)
 {
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 	ThisStdCall(0x00869640, this, index, item);
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	ThisStdCall(0x00869110, this, index, item);
-#else
-#error unsupported Oblivion version
-#endif
 }
 
 template <typename T> void NiTArray<T>::SetCapacity(UInt16 newCapacity)
 {
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 	ThisStdCall(0x008696E0, this, newCapacity);
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	ThisStdCall(0x00869190, this, newCapacity);
-#else
-#error unsupported Runtime version
-#endif
 }
 
 #endif

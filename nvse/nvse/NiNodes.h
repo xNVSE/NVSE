@@ -452,13 +452,7 @@ class ActiveEffect;
 
 // member fn addresses
 #if RUNTIME
-	#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
-		const UInt32 kNiObjectNET_GetExtraData = 0x006FF9C0;
-	#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-		const UInt32 kNiObjectNET_GetExtraData = 0x006FF9C0;
-	#else
-		#error unsupported Runtime version
-	#endif
+	const UInt32 kNiObjectNET_GetExtraData = 0x006FF9C0;
 #endif
 
 struct NiMemObject

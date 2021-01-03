@@ -2,13 +2,8 @@
 #include "GameAPI.h"
 #include "GameExtraData.h"
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
+#if RUNTIME
 static const UInt32 s_ExtraDataListVtbl							= 0x010143E8;	//	0x0100e3a8;
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-static const UInt32 s_ExtraDataListVtbl							= 0x010143D8;
-#elif EDITOR
-#else
-#error
 #endif
 
 bool BaseExtraList::HasType(UInt32 type) const

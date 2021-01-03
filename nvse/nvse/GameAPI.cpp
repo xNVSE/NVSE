@@ -29,9 +29,6 @@ TESForm* __stdcall LookupFormByID(UInt32 refID)
 	NiTPointerMap<TESForm> *formsMap = *(NiTPointerMap<TESForm>**)0x11C54C0;
 	return formsMap->Lookup(refID);
 }
-#endif
-
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 
 const _ExtractArgs ExtractArgs = (_ExtractArgs)0x005ACCB0;
 
@@ -60,6 +57,7 @@ SaveGameManager ** g_saveGameManager = (SaveGameManager**)0x011DE134;
 // Johnny Guitar supports this
 const _GetFormByID GetFormByID = (_GetFormByID)(0x483A00);
 
+
 #elif EDITOR
 
 //	FormMap* g_FormMap = (FormMap *)0x009EE18C;		// currently unused
@@ -72,9 +70,6 @@ const _GetFormByID GetFormByID = (_GetFormByID)(0x483A00);
 	const _ShowCompilerError ShowCompilerError = (_ShowCompilerError)0x005C5730;	// Called with aNonPersistentR (still same sub as the other one)
 
 // 0x5C64C0 <- start of huge editor function that IDA can't disassemble.
-#else
-
-#error RUNTIME_VERSION unknown
 
 #endif
 
@@ -1743,13 +1738,7 @@ FontManager* FontManager::GetSingleton()
 FontManager::FontInfo* FontManager::FontInfo::Load(const char* path, UInt32 ID)
 {
 	FontInfo* info = (FontInfo*)FormHeap_Allocate(sizeof(FontInfo));
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 	return (FontManager::FontInfo*)ThisStdCall(0x00A12020, info, ID, path, 1);
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	return (FontManager::FontInfo*)ThisStdCall(0x00A11BE0, info, ID, path, 1);
-#else
-#error unsupported Runtime version
-#endif
 }
 
 bool FontManager::FontInfo::GetName(char* out)

@@ -339,13 +339,8 @@ public:
 	bool     IsInventoryObject() const;
 
 	MEMBER_FN_PREFIX(TESForm);
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
+#if RUNTIME
 	DEFINE_MEMBER_FN(MarkAsTemporary, void, 0x00484490);	// probably a member of TESForm
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	DEFINE_MEMBER_FN(MarkAsTemporary, void, 0x00485480);	// probably a member of TESForm
-#elif EDITOR
-#else
-#error
 #endif
 
 };
@@ -2963,13 +2958,8 @@ struct ValidBip01Names {	// somehow descend from NiNodeArray
 	Character		* character;	// 2B0
 
 	MEMBER_FN_PREFIX(ValidBip01Names);
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
+#if RUNTIME
 	DEFINE_MEMBER_FN(Destroy, bool, 0x00418E00, ValidBip01Names*, bool);	// Destoy and optionally free the structure/class
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	DEFINE_MEMBER_FN(Destroy, bool, 0x00418C60, ValidBip01Names*, bool);	// Destoy and optionally free the structure/class
-#elif EDITOR
-#else
-#error
 #endif
 };
 

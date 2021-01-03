@@ -160,15 +160,9 @@ public:
 	static TESObjectREFR* Create(bool bTemp = false);
 
 	MEMBER_FN_PREFIX(TESObjectREFR);
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
+#if RUNTIME
 	DEFINE_MEMBER_FN(Activate, bool, 0x00573170, TESObjectREFR*, UInt32, UInt32, UInt32);	// Usage Activate(actionRef, 0, 0, 1); found inside Cmd_Activate_Execute as the last call (190 bytes)
 	DEFINE_MEMBER_FN(Set3D, void, 0x0094EB40, NiNode*, bool);	// Usage Set3D(niNode, true); virtual func 0073
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	DEFINE_MEMBER_FN(Activate, bool, 0x00573430, TESObjectREFR*, UInt32, UInt32, UInt32);	// Usage Activate(actionRef, 0, 0, 1); found inside Cmd_Activate_Execute
-	DEFINE_MEMBER_FN(Set3D, void, 0x005705A0, NiNode*, bool);	// Usage Set3D(niNode, true); virtual func 0073
-#elif EDITOR
-#else
-#error
 #endif
 };
 

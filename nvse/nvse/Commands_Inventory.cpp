@@ -5,17 +5,8 @@
 #include "GameObjects.h"
 #include "GameProcess.h"
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 static const Cmd_Execute Cmd_EquipItem_Execute		= (Cmd_Execute)0x005D0060;
 static const Cmd_Execute Cmd_UnequipItem_Execute	= (Cmd_Execute)0x005D0300;
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-static const Cmd_Execute Cmd_EquipItem_Execute		= (Cmd_Execute)0x005D0070;
-static const Cmd_Execute Cmd_UnequipItem_Execute	= (Cmd_Execute)0x005D0310;
-#else
-
-#error RUNTIME_VERSION unknown
-
-#endif
 
 // testing conditionals with this
 bool Cmd_GetWeight_Eval(COMMAND_ARGS_EVAL)

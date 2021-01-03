@@ -39,27 +39,12 @@ CommandTable g_scriptCommands;
 
 #if RUNTIME
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
-
 // 1.4.0.525 runtime
 UInt32 g_offsetConsoleCommandsStart = 0x0118E8E0;
 UInt32 g_offsetConsoleCommandsLast = 0x011908C0;
 UInt32 g_offsetScriptCommandsStart = 0x01190910;
 UInt32 g_offsetScriptCommandsLast = 0x01196D10;
 static const Cmd_Parse g_defaultParseCommand = (Cmd_Parse)0x005B1BA0;
-
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-
-// 1.4.0.525 nogore runtime
-UInt32 g_offsetConsoleCommandsStart = 0x0118E8E0;
-UInt32 g_offsetConsoleCommandsLast = 0x011908C0;
-UInt32 g_offsetScriptCommandsStart = 0x01190910;
-UInt32 g_offsetScriptCommandsLast = 0x01196D10;
-static const Cmd_Parse g_defaultParseCommand = (Cmd_Parse)0x005B1C40;
-
-#else
-#error
-#endif
 
 #else
 

@@ -18,13 +18,7 @@
 #include "FunctionScripts.h"
 #include "Loops.h"
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 static const void * kOpHandlerRetnAddr = (void *)0x005E234B;
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-static const void * kOpHandlerRetnAddr = (void *)0x005E225B;
-#else
-#error
-#endif
 
 #endif
 

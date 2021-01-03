@@ -27,7 +27,7 @@ struct ChunkAndFormType {
 	const char	* formName;	// ie 'NPC_'
 };
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
+#if RUNTIME
 static const UInt32 _ModInfo_GetNextChunk = 0x004726B0; // args: none retn: UInt32 subrecordType (third call in TESObjectARMO_LoadForm)
 static const UInt32 _ModInfo_GetChunkData = 0x00472890;	// args: void* buf, UInt32 bufSize retn: bool readSucceeded (fifth call in TESObjectARMO_LoadForm)
 static const UInt32 _ModInfo_Read32		  =	0x004727F0;	// args: void* buf retn: void (find 'LPER', then next call, still in TESObjectARMO_LoadForm)
@@ -47,29 +47,6 @@ static UInt32* g_CreatedObjectSize = (UInt32*)0x011C54D0;
 		// in first call (Form_startSaveForm) in TESObjectARMO__SaveForm:
 		//		g_CreatedObjectSize is set to 18h
 		//		g_CreatedObjectData is set to the eax result of the next call
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-static const UInt32 _ModInfo_GetNextChunk = 0x004735D0; // args: none retn: UInt32 subrecordType (third call in TESObjectARMO_LoadForm)
-static const UInt32 _ModInfo_GetChunkData = 0x00473790;	// args: void* buf, UInt32 bufSize retn: bool readSucceeded (fifth call in TESObjectARMO_LoadForm)
-static const UInt32 _ModInfo_Read32		  =	0x004736F0;	// args: void* buf retn: void (find 'LPER', then next call, still in TESObjectARMO_LoadForm)
-static const UInt32 _ModInfo_HasMoreSubrecords = 0x00473610;	// Last call before "looping" to GetNextChunk in TESObjectARMO_LoadForm.
-static const UInt32 _ModInfo_InitializeForm = 0x00486100;	// args: TESForm* retn: void (second call in TESObjectARMO_LoadForm)
-
-// addresses of static ModInfo members holding type info about currently loading form
-static UInt32* s_ModInfo_CurrentChunkTypeCode = (UInt32*)0x011C54F4;
-static UInt32* s_ModInfo_CurrentFormTypeEnum = (UInt32*)0x011C54F0;
-// in last call (SetStaticFieldsAndGetFormTypeEnum) of first call (ModInfo__GetFormInfoTypeID) from _ModInfo_InitializeForm
-		//		s_ModInfo_CurrentChunkTypeCode is first cmp
-		//		s_ModInfo_CurrentChunkTypeEnum is next mov
-static const ChunkAndFormType* s_ModInfo_ChunkAndFormTypes = (const ChunkAndFormType*)0x01187008;	// Array used in the loop in SetStaticFieldsAndGetFormTypeEnum, starts under dd offset aNone
-
-static UInt8** g_CreatedObjectData = (UInt8**)0x011C54CC;	// pointer to FormInfo + form data, filled out by TESForm::SaveForm()
-static UInt32* g_CreatedObjectSize = (UInt32*)0x011C54D0;
-		// in first call in TESObjectARMO__SaveForm:
-		//		g_CreatedObjectSize is set to 18h
-		//		g_CreatedObjectData is set to the eax result of the next call
-#elif EDITOR
-#else
-#error
 #endif
 
 // 10
@@ -321,13 +298,8 @@ public:
 	const char* GetNthModName(UInt32 modIndex);
 
 	MEMBER_FN_PREFIX(DataHandler);
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
+#if RUNTIME
 	DEFINE_MEMBER_FN(DoAddForm, UInt32, 0x004603B0, TESForm * pForm);	// stupid name is because AddForm is redefined in windows header files
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	DEFINE_MEMBER_FN(DoAddForm, UInt32, 0x00461160, TESForm * pForm);	// stupid name is because AddForm is redefined in windows header files
-#elif EDITOR
-#else
-#error
 #endif
 
 	TESQuest* GetQuestByName(const char* questName);

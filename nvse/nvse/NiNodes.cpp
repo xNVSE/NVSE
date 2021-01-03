@@ -4,20 +4,12 @@
 void TextureFormat::InitFromD3DFMT(UInt32 fmt)
 {
 	typedef void (* _D3DFMTToTextureFormat)(UInt32 d3dfmt, TextureFormat * dst);
-	#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
-		_D3DFMTToTextureFormat D3DFMTToTextureFormat = (_D3DFMTToTextureFormat)0x00E7C1E0;
-	#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-		_D3DFMTToTextureFormat D3DFMTToTextureFormat = (_D3DFMTToTextureFormat)0x00E7C680;
-	#endif
-
+	_D3DFMTToTextureFormat D3DFMTToTextureFormat = (_D3DFMTToTextureFormat)0x00E7C1E0;
+	
 	D3DFMTToTextureFormat(fmt, this);
 }
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
-	static const UInt32 kNiObjectNET_SetNameAddr = 0x00A5B690;
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	static const UInt32 kNiObjectNET_SetNameAddr = 0x00A5B370;
-#endif
+static const UInt32 kNiObjectNET_SetNameAddr = 0x00A5B690;
 
 // an array of structs describing each of the game's anim groups
 static const TESAnimGroup::AnimGroupInfo* s_animGroupInfos = (const TESAnimGroup::AnimGroupInfo*)0x011977D8;

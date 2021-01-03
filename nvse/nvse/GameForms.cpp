@@ -5,18 +5,10 @@
 #include "GameObjects.h"
 #include "GameData.h"
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
+#if RUNTIME
 static const ActorValueInfo** ActorValueInfoPointerArray = (const ActorValueInfo**)0x0011D61C8;		// See GetActorValueInfo
 static const _GetActorValueInfo GetActorValueInfo = (_GetActorValueInfo)0x00066E920;	// See GetActorValueName
 BGSDefaultObjectManager ** g_defaultObjectManager = (BGSDefaultObjectManager**)0x011CA80C;
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-static const ActorValueInfo** ActorValueInfoPointerArray = (const ActorValueInfo**)0x0011D61C8;		// See GetActorValueInfo (same as gore)
-static const _GetActorValueInfo GetActorValueInfo = (_GetActorValueInfo)0x0066E480;	// See GetActorValueName
-BGSDefaultObjectManager ** g_defaultObjectManager = (BGSDefaultObjectManager**)0x011CA80C;
-#else
-static const ActorValueInfo** ActorValueInfoPointerArray = (const ActorValueInfo**)0;
-static const _GetActorValueInfo GetActorValueInfo = (_GetActorValueInfo)0;
-BGSDefaultObjectManager ** g_defaultObjectManager = (BGSDefaultObjectManager**)0x0;
 #endif
 
 TESForm * TESForm::TryGetREFRParent(void)
@@ -398,14 +390,10 @@ SInt32 BGSListForm::ReplaceForm(TESForm* pForm, TESForm* pReplaceWith)
 bool TESForm::IsInventoryObject() const
 {
 	typedef bool (* _IsInventoryObjectType)(UInt32 formType);
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
+#if RUNTIME
 	static _IsInventoryObjectType IsInventoryObjectType = (_IsInventoryObjectType)0x00481F30;	// first call from first case of main switch in _ExtractArg
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	static _IsInventoryObjectType IsInventoryObjectType = (_IsInventoryObjectType)0x00482F50;	// first call from first case of main switch in _ExtractArg
 #elif EDITOR
 	static _IsInventoryObjectType IsInventoryObjectType = (_IsInventoryObjectType)0x004F4100;	// first call from first case of main switch in Cmd_DefaultParse
-#else
-#error
 #endif
 	return IsInventoryObjectType(typeID);
 }
@@ -617,11 +605,8 @@ UInt8 TESPackage::ObjectCodeForString(const char* objString)
 	return kObjectType_Max;
 }
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525 || RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
+#if RUNTIME
 	static const char** s_procNames = (const char**)0x011A3CC0;
-#elif EDITOR
-#else
-#error unsupported Fallout version
 #endif
 
 const char* TESPackage::StringForProcedureCode(eProcedure proc)

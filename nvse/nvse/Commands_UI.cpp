@@ -9,22 +9,10 @@
 #include "GameUI.h"
 #include "GameAPI.h"
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 #define the_VATScamStruct		0x011F2250
 #define the_VATSunclick			0x009C88A0
 #define the_VATSexecute			0x00705780
 #define	the_DoShowLevelUpMenu	0x00784C80
-#elif  RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-#define the_VATScamStruct		0x011F2250
-#define the_VATSunclick			0x009C8760
-#define the_VATSexecute			0x007056B0
-#define	the_DoShowLevelUpMenu	0x007850B0
-#else
-#define the_VATScamStruct		0
-#define the_VATSunclick			0
-#define the_VATSexecute			0
-#define	the_DoShowLevelUpMenu	0
-#endif
 
 static const float fErrorReturnValue = -999;
 

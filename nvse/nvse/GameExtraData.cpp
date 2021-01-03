@@ -62,7 +62,7 @@ STATIC_ASSERT(sizeof(ExtraWornLeft) == 0x0C);
 STATIC_ASSERT(sizeof(ExtraCannotWear) == 0x0C);
 STATIC_ASSERT(sizeof(ExtraContainerChanges::EntryData) == 0x0C);
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
+#if RUNTIME
 static const UInt32 s_ExtraContainerChangesVtbl					= 0x01015BB8;	//	0x0100fb78;
 static const UInt32 s_ExtraWornVtbl								= 0x01015BDC;
 //static const UInt32 s_ExtraWornLeftVtbl							= 0x01015BE8;
@@ -88,34 +88,6 @@ static const UInt32 s_ExtraSemaphore	= 0x011C3920;
 static const UInt32 s_SemaphoreWait		= 0x0040FBF0;
 static const UInt32 s_SemaphoreLeave	= 0x0040FBA0;
 
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-static const UInt32 s_ExtraContainerChangesVtbl					= 0X1015BA8;
-static const UInt32 s_ExtraWornVtbl								= 0X1015BCC;
-//static const UInt32 s_ExtraWornLeftVtbl							= 0x01015BD8;	//	
-static const UInt32 s_ExtraCannotWearVtbl						= 0X1015BE4;
-
-static const UInt32 s_ExtraOwnershipVtbl						= 0X10158A4;
-static const UInt32 s_ExtraRankVtbl								= 0X10158BC;
-static const UInt32 s_ExtraActionVtbl							= 0X1015B9C;
-static const UInt32 s_ExtraFactionChangesVtbl					= 0X1015F20;
-static const UInt32 s_ExtraScriptVtbl							= 0X1015904;
-
-//static const UInt32 s_ExtraScript_init							= 0x0042C5B0;	//	
-
-static const UInt32 s_ExtraHealthVtbl = 0x010158D4;
-static const UInt32 s_ExtraLockVtbl = 0x0101588C;
-static const UInt32 s_ExtraCountVtbl = 0x010158C8;
-static const UInt32 s_ExtraTeleportVtbl = 0x01015898;
-static const UInt32 s_ExtraWeaponModFlagsVtbl = 0x01015994;
-
-static const UInt32 s_ExtraHotkeyVtbl = 0x0101591C;
-
-static const UInt32 s_ExtraSemaphore	= 0x011C3920;
-static const UInt32 s_SemaphoreWait		= 0x0040FC20;
-static const UInt32 s_SemaphoreLeave	= 0x0040FBE0;
-
-#else
-#error
 #endif
 
 static void** g_ExtraSemaphore = (void **)s_ExtraSemaphore;

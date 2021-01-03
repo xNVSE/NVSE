@@ -11,14 +11,7 @@
 #include "SafeWrite.h"
 #include "Hooks_Gameplay.h"
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
 Cmd_Execute Cmd_AddSpell_Execute = (Cmd_Execute)0x005C1D40;
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-Cmd_Execute Cmd_AddSpell_Execute = (Cmd_Execute)0x005C1DB0;
-
-#else
-#error unsupported version of fallout
-#endif
 
 bool Cmd_GetNumericGameSetting_Execute(COMMAND_ARGS)
 {
@@ -316,15 +309,10 @@ bool Cmd_MessageBoxEx_Execute(COMMAND_ARGS)
 	return true;
 }
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
+#if RUNTIME
 static UInt32* kuGridsToLoadAddr = (UInt32*)0x011C63D0;
 static UInt32 kuGridsSquareAddr = 0x005D45A5;
 static Cmd_Execute Cmd_OutputLocalMapPictures_Execute = (Cmd_Execute)0x005D4580;
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-static UInt32* kuGridsToLoadAddr = (UInt32*)0x011C63D0;
-static UInt32 kuGridsSquareAddr = 0x005D4575;
-static Cmd_Execute Cmd_OutputLocalMapPictures_Execute = (Cmd_Execute)0x005D4550;
-#elif EDITOR
 #else
 #error
 #endif

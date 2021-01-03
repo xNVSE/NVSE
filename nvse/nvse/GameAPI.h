@@ -12,13 +12,8 @@ struct BaseExtraList;
 #define playerID	0x7
 #define playerRefID 0x14
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
+#if RUNTIME
 	static const UInt32 s_Console__Print = 0x0071D0A0;
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	static const UInt32 s_Console__Print = 0x0071D070;
-#elif EDITOR
-#else
-#error
 #endif
 
 extern bool extraTraces;
@@ -645,25 +640,14 @@ public:
 	static TESSaveLoadGame* Get();
 
 	MEMBER_FN_PREFIX(TESSaveLoadGame);
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
+#if RUNTIME
 	DEFINE_MEMBER_FN(AddCreatedForm, UInt32, 0x00861780, TESForm * pForm);
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-	DEFINE_MEMBER_FN(AddCreatedForm, UInt32, 0x00861330, TESForm * pForm);
-#elif EDITOR
-#else
-#error
 #endif
 };
 
-#if RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525
+#if RUNTIME
 const UInt32 _SaveGameManager_ConstructSavegameFilename = 0x0084FF90;
 const UInt32 _SaveGameManager_ConstructSavegamePath		= 0x0084FF30;
-#elif RUNTIME_VERSION == RUNTIME_VERSION_1_4_0_525ng
-const UInt32 _SaveGameManager_ConstructSavegameFilename = 0x0084F9E0;
-const UInt32 _SaveGameManager_ConstructSavegamePath		= 0x0084F980;
-#elif EDITOR
-#else
-#error
 #endif
 
 template <typename T_Key, typename T_Data>
