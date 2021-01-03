@@ -59,7 +59,9 @@
     <ClCompile Include="..\nvse\nvse\utility.cpp">
       <Filter>nvse</Filter>
     </ClCompile>
-    <ClCompile Include="..\nvse\nvse\printf.cpp" />
+    <ClCompile Include="..\nvse\nvse\printf.cpp">
+      <Filter>nvse</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\nvse\nvse\GameAPI.h">
