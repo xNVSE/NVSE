@@ -11,18 +11,18 @@
 #define RegisterScriptCommand(name) 	nvse->RegisterCommand(&kCommandInfo_ ##name);
 #endif
 
-
-
 IDebugLog		gLog("nvse_plugin_example.log");
 
 PluginHandle	g_pluginHandle = kPluginHandle_Invalid;
 
-NVSEMessagingInterface* g_msg;
-NVSEInterface* SaveNVSE;
+NVSEMessagingInterface* g_messagingInterface;
+NVSEInterface* g_nvseInterface;
 NVSECommandTableInterface* g_cmdTable;
 const CommandInfo* g_TFC;
-NVSEScriptInterface* g_script;
 
+#if RUNTIME
+NVSEScriptInterface* g_script;
+#endif
 // This is a message handler for nvse events
 // With this, plugins can listen to messages such as whenever the game loads
 void MessageHandler(NVSEMessagingInterface::Message* msg)
@@ -68,6 +68,9 @@ void MessageHandler(NVSEMessagingInterface::Message* msg)
 	}
 }
 
+bool Cmd_ExamplePlugin_PluginTest_Execute(COMMAND_ARGS);
+
+#if RUNTIME
 //In here we define a script function
 //Script functions must always follow the Cmd_FunctionName_Execute naming convention
 bool Cmd_ExamplePlugin_PluginTest_Execute(COMMAND_ARGS)
@@ -80,14 +83,14 @@ bool Cmd_ExamplePlugin_PluginTest_Execute(COMMAND_ARGS)
 
 	return true;
 }
+#endif
 
 //This defines a function without a condition, that does not take any arguments
 DEFINE_COMMAND_PLUGIN(ExamplePlugin_PluginTest, "prints a string", 0, 0, NULL)
 
+bool Cmd_ExamplePlugin_IsNPCFemale_Eval(COMMAND_ARGS_EVAL);
 
-
-
-
+#if RUNTIME
 //Conditions must follow the Cmd_FunctionName_Eval naming convention
 bool Cmd_ExamplePlugin_IsNPCFemale_Eval(COMMAND_ARGS_EVAL)
 {
@@ -95,10 +98,12 @@ bool Cmd_ExamplePlugin_IsNPCFemale_Eval(COMMAND_ARGS_EVAL)
 	TESNPC* npc = (TESNPC*)arg1;
 	*result = npc->baseData.IsFemale() ? 1 : 0;
 	return true;
-
 }
+#endif
 
+bool Cmd_ExamplePlugin_IsNPCFemale_Execute(COMMAND_ARGS);
 
+#if RUNTIME
 bool Cmd_ExamplePlugin_IsNPCFemale_Execute(COMMAND_ARGS)
 {
 	//Created a simple condition 
@@ -113,92 +118,88 @@ bool Cmd_ExamplePlugin_IsNPCFemale_Execute(COMMAND_ARGS)
 
 	return true;
 }
-
+#endif
 DEFINE_COMMAND_PLUGIN(ExamplePlugin_IsNPCFemale, "Checks if npc is female", 0, 1, kParams_OneActorBase)
 
+bool NVSEPlugin_Query(const NVSEInterface* nvse, PluginInfo* info)
+{
+	_MESSAGE("query");
 
+	// fill out the info structure
+	info->infoVersion = PluginInfo::kInfoVersion;
+	info->name = "MyFirstPlugin";
+	info->version = 2;
 
-extern "C" {
-
-	bool NVSEPlugin_Query(const NVSEInterface* nvse, PluginInfo* info)
+	// version checks
+	if (nvse->nvseVersion < NVSE_VERSION_INTEGER)
 	{
-		_MESSAGE("query");
+		_ERROR("NVSE version too old (got %08X expected at least %08X)", nvse->nvseVersion, NVSE_VERSION_INTEGER);
+		return false;
+	}
 
-		// fill out the info structure
-		info->infoVersion = PluginInfo::kInfoVersion;
-		info->name = "MyFirstPlugin";
-		info->version = 2;
-
-		// version checks
-		if (nvse->nvseVersion < NVSE_VERSION_INTEGER)
+	if (!nvse->isEditor)
+	{
+		if (nvse->runtimeVersion < RUNTIME_VERSION_1_4_0_525)
 		{
-			_ERROR("NVSE version too old (got %08X expected at least %08X)", nvse->nvseVersion, NVSE_VERSION_INTEGER);
+			_ERROR("incorrect runtime version (got %08X need at least %08X)", nvse->runtimeVersion, RUNTIME_VERSION_1_4_0_525);
 			return false;
 		}
 
-		if (!nvse->isEditor)
+		if (nvse->isNogore)
 		{
-			if (nvse->runtimeVersion < RUNTIME_VERSION_1_4_0_525)
-			{
-				_ERROR("incorrect runtime version (got %08X need at least %08X)", nvse->runtimeVersion, RUNTIME_VERSION_1_4_0_525);
-				return false;
-			}
-
-			if (nvse->isNogore)
-			{
-				_ERROR("NoGore is not supported");
-				return false;
-			}
+			_ERROR("NoGore is not supported");
+			return false;
 		}
-
-		else
-		{
-			if (nvse->editorVersion < CS_VERSION_1_4_0_518)
-			{
-				_ERROR("incorrect editor version (got %08X need at least %08X)", nvse->editorVersion, CS_VERSION_1_4_0_518);
-				return false;
-			}
-		}
-
-		// version checks pass
-		// any version compatibility checks should be done here
-		return true;
 	}
 
-	bool NVSEPlugin_Load(const NVSEInterface* nvse)
+	else
 	{
-		_MESSAGE("load");
-
-		g_pluginHandle = nvse->GetPluginHandle();
-
-		// save the NVSEinterface in cas we need it later
-		SaveNVSE = (NVSEInterface*)nvse;
-
-		// register to receive messages from NVSE
-		NVSEMessagingInterface* msgIntfc = (NVSEMessagingInterface*)nvse->QueryInterface(kInterface_Messaging);
-		msgIntfc->RegisterListener(g_pluginHandle, "NVSE", MessageHandler);
-		g_msg = msgIntfc;
-
-		g_script = (NVSEScriptInterface*)nvse->QueryInterface(kInterface_Script);
-
-		/***************************************************************************
-		 *
-		 *	READ THIS!
-		 *
-		 *	Before releasing your plugin, you need to request an opcode range from
-		 *	the NVSE team and set it in your first SetOpcodeBase call. If you do not
-		 *	do this, your plugin will create major compatibility issues with other
-		 *	plugins, and will not load in release versions of NVSE. See
-		 *	nvse_readme.txt for more information.
-		 *
-		 **************************************************************************/
-
-		 // register commands
-		nvse->SetOpcodeBase(0x2000);
-		RegisterScriptCommand(ExamplePlugin_PluginTest);
-		RegisterScriptCommand(ExamplePlugin_IsNPCFemale);
-
-		return true;
+		if (nvse->editorVersion < CS_VERSION_1_4_0_518)
+		{
+			_ERROR("incorrect editor version (got %08X need at least %08X)", nvse->editorVersion, CS_VERSION_1_4_0_518);
+			return false;
+		}
 	}
 
-};
+	// version checks pass
+	// any version compatibility checks should be done here
+	return true;
+}
+
+bool NVSEPlugin_Load(const NVSEInterface* nvse)
+{
+	_MESSAGE("load");
+
+	g_pluginHandle = nvse->GetPluginHandle();
+
+	// save the NVSEinterface in cas we need it later
+	g_nvseInterface = (NVSEInterface*)nvse;
+
+	// register to receive messages from NVSE
+	g_messagingInterface = (NVSEMessagingInterface*)nvse->QueryInterface(kInterface_Messaging);
+	g_messagingInterface->RegisterListener(g_pluginHandle, "NVSE", MessageHandler);
+
+#if RUNTIME
+	g_script = (NVSEScriptInterface*)nvse->QueryInterface(kInterface_Script);
+#endif
+	/***************************************************************************
+	 *
+	 *	READ THIS!
+	 *
+	 *	Before releasing your plugin, you need to request an opcode range from
+	 *	the NVSE team and set it in your first SetOpcodeBase call. If you do not
+	 *	do this, your plugin will create major compatibility issues with other
+	 *	plugins, and will not load in release versions of NVSE. See
+	 *	nvse_readme.txt for more information.
+	 *
+	 *	See https://geckwiki.com/index.php?title=NVSE_Opcode_Base
+	 *
+	 **************************************************************************/
+
+	 // register commands
+	nvse->SetOpcodeBase(0x2000);
+	RegisterScriptCommand(ExamplePlugin_PluginTest);
+	RegisterScriptCommand(ExamplePlugin_IsNPCFemale);
+
+	return true;
+}

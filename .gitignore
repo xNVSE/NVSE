@@ -390,6 +390,8 @@ FodyWeavers.xsd
 ipch
 *sdf
 **/common/Debug\ VC9/
+**/Release\ GECK
+**/Debug\ GECK
 
 
 *.tlog
