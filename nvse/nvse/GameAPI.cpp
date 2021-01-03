@@ -1325,7 +1325,6 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 		return false;
 	}
 
-
 	if (*(scriptData - 5) != 0x73) // make sure `set ... to` and not `if ...`
 	{
 		return false;

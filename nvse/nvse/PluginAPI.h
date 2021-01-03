@@ -177,7 +177,7 @@ struct NVSEMessagingInterface
 	typedef void (* EventCallback)(Message* msg);
 
 	enum {
-		kVersion = 3
+		kVersion = 4
 	};
 
 	// NVSE messages
@@ -230,8 +230,10 @@ struct NVSEMessagingInterface
 		kMessage_DeleteGameName,		// version of the messages sent with a save file name instead of a save file path.
 		kMessage_RenameGameName,
 		kMessage_RenameNewGameName,
-		
+
+// added for kVersion == 4 (xNVSE)
 		kMessage_DeferredInit,
+		kMessage_ClearScriptDataCache
 	};
 
 	UInt32	version;
@@ -479,7 +481,7 @@ struct NVSEScriptInterface
 struct NVSEDataInterface
 {
 	enum {
-		kVersion = 1
+		kVersion = 2
 	};
 
 	UInt32		version;
@@ -508,6 +510,8 @@ struct NVSEDataInterface
 		kNVSEData_DataMax,
 	};
 	void * (* GetData)(UInt32 dataID);
+	// v2: xNVSE caches script data for additional performance and short circuit evaluation, if you are manipulating script data then you can clear the cache 
+	void (*ClearScriptDataCache)();
 };
 #endif
 

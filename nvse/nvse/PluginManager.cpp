@@ -120,6 +120,7 @@ static const NVSEDataInterface g_NVSEDataInterface =
 	PluginManager::GetSingleton,
 	PluginManager::GetFunc,
 	PluginManager::GetData,
+	PluginManager::ClearScriptDataCache
 };
 #endif
 
@@ -875,6 +876,12 @@ void * PluginManager::GetData(UInt32 dataID)
 	case NVSEDataInterface::kNVSEData_NumPreloadMods: result = &s_numPreloadMods; break;
 	}
 	return result;
+}
+
+void PluginManager::ClearScriptDataCache()
+{
+	TokenCache::MarkForClear();
+	Dispatch_Message(0, NVSEMessagingInterface::kMessage_ClearScriptDataCache, NULL, 0, NULL);
 }
 
 
