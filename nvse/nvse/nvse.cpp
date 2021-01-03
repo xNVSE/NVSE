@@ -14,7 +14,6 @@
 #include "Commands_Input.h"
 #include "GameAPI.h"
 #include "EventManager.h"
-#include "HotReloadUtils.h"
 
 #if RUNTIME
 IDebugLog	gLog("nvse.log");
@@ -148,7 +147,6 @@ void NVSE_Initialize(void)
 			CreateHookWindow();
 #endif
 #endif
-		InitializeHotReload();
 		FlushInstructionCache(GetCurrentProcess(), NULL, 0);
 
 #ifndef _DEBUG

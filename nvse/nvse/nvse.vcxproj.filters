@@ -235,7 +235,6 @@
     <ClCompile Include="SocketUtils.cpp">
       <Filter>internals</Filter>
     </ClCompile>
-    <ClCompile Include="HotReloadUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
@@ -468,7 +467,6 @@
     <ClInclude Include="SocketUtils.h">
       <Filter>internals</Filter>
     </ClInclude>
-    <ClInclude Include="HotReloadUtils.h" />
     <ClInclude Include="rewrites.h">
       <Filter>lib\jip</Filter>
     </ClInclude>
