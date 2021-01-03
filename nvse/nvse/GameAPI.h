@@ -947,6 +947,38 @@ struct NavMeshStaticAvoidNode
 	UInt32	unk024;	// 24
 };	// Alloc'd to 0x28
 
+
+// represents the currently executing script context
+class ScriptRunner
+{
+public:
+	static const UInt32	kStackDepth = 10;
+
+	enum
+	{
+		kStackFlags_IF = 1 << 0,
+		kStackFlags_ELSEIF = 1 << 1,
+		/* ELSE and ENDIF modify the above flags*/
+	};
+
+	// members
+	/*00*/ TESObjectREFR* containingObj; // set when executing scripts on inventory objects
+	/*04*/ TESForm* callingRefBaseForm;
+	/*08*/ ScriptEventList* eventList;
+	/*0C*/ UInt32 unk0C;
+	/*10*/ UInt32 unk10; // pointer? set to NULL before executing an instruction
+	/*14*/ Script* script;
+	/*18*/ UInt32 unk18; // set to 6 after a failed expression evaluation
+	/*1C*/ UInt32 unk1C; // set to Expression::errorCode
+	/*20*/ UInt32 ifStackDepth;
+	/*24*/ UInt32 ifStack[kStackDepth];	// stores flags
+	/*4C*/ UInt32 unk4C[(0xA0 - 0x4C) >> 2];
+	/*A0*/ UInt8 invalidReferences;	// set when the dot operator fails to resolve a reference (inside the error message handler)
+	/*A1*/ UInt8 unkA1;	// set when the executing CommandInfo's 2nd flag bit (+0x25) is set
+	/*A2*/ UInt16 padA2;
+};
+STATIC_ASSERT(sizeof(ScriptRunner) == 0xA4);
+
 // Gets the real script data ptr, as it can be a pointer to a buffer on the stack in case of vanilla expressions in set and if statements
 UInt8* GetScriptDataPosition(Script* script, void* scriptDataIn, const UInt32* opcodeOffsetPtrIn);
 
