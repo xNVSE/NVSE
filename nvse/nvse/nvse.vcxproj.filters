@@ -232,9 +232,6 @@
     <ClCompile Include="ScriptTokenCache.cpp">
       <Filter>internals</Filter>
     </ClCompile>
-    <ClCompile Include="SocketUtils.cpp">
-      <Filter>internals</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
@@ -462,9 +459,6 @@
       <Filter>lib\jip</Filter>
     </ClInclude>
     <ClInclude Include="ScriptTokenCache.h">
-      <Filter>internals</Filter>
-    </ClInclude>
-    <ClInclude Include="SocketUtils.h">
       <Filter>internals</Filter>
     </ClInclude>
     <ClInclude Include="rewrites.h">
