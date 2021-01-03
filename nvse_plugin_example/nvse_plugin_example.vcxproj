@@ -339,6 +339,7 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\nvse\nvse\CommandTable.h" />
     <ClInclude Include="..\nvse\nvse\containers.h" />
     <ClInclude Include="..\nvse\nvse\GameAPI.h" />
     <ClInclude Include="..\nvse\nvse\GameBSExtraData.h" />

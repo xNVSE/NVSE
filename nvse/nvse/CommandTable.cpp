@@ -262,16 +262,6 @@ static void ApplyPatch(const PatchLocation * patch, UInt32 newData)
 	}
 }
 
-bool Cmd_Default_Execute(COMMAND_ARGS)
-{
-	return true;
-}
-
-bool Cmd_Default_Eval(COMMAND_ARGS_EVAL)
-{
-	return true;
-}
-
 bool Cmd_Default_Parse(UInt32 numParams, ParamInfo * paramInfo, ScriptLineBuffer * lineBuf, ScriptBuffer * scriptBuf)
 {
 	return g_defaultParseCommand(numParams, paramInfo, lineBuf, scriptBuf);

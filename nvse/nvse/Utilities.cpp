@@ -686,3 +686,14 @@ void ShowRuntimeError(Script* script, const char* fmt, ...)
 }
 #endif
 #endif
+
+
+bool Cmd_Default_Execute(COMMAND_ARGS)
+{
+	return true;
+}
+
+bool Cmd_Default_Eval(COMMAND_ARGS_EVAL)
+{
+	return true;
+}
