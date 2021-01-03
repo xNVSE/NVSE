@@ -592,7 +592,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_DBG|Win32'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="Hooks_ExpressionEvalOptimized.cpp" />
     <ClCompile Include="Hooks_Gameplay.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
@@ -692,7 +691,6 @@
     <ClInclude Include="Hooks_Dialog.h" />
     <ClInclude Include="Hooks_DirectInput8Create.h" />
     <ClInclude Include="Hooks_Editor.h" />
-    <ClInclude Include="Hooks_ExpressionEvalOptimized.h" />
     <ClInclude Include="Hooks_Gameplay.h" />
     <ClInclude Include="Hooks_Logging.h" />
     <ClInclude Include="Hooks_Other.h" />

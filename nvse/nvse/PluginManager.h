@@ -38,6 +38,7 @@ public:
 	static void * GetSingleton(UInt32 singletonID);
 	static void * GetFunc(UInt32 funcID);
 	static void * GetData(UInt32 dataID);
+	static void ClearScriptDataCache();
 
 private:
 	struct LoadedPlugin

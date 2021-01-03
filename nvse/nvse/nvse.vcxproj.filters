@@ -232,9 +232,6 @@
     <ClCompile Include="ScriptTokenCache.cpp">
       <Filter>internals</Filter>
     </ClCompile>
-    <ClCompile Include="Hooks_ExpressionEvalOptimized.cpp">
-      <Filter>hooks</Filter>
-    </ClCompile>
     <ClCompile Include="SocketUtils.cpp">
       <Filter>internals</Filter>
     </ClCompile>
@@ -468,7 +465,6 @@
     <ClInclude Include="ScriptTokenCache.h">
       <Filter>internals</Filter>
     </ClInclude>
-    <ClInclude Include="Hooks_ExpressionEvalOptimized.h" />
     <ClInclude Include="SocketUtils.h">
       <Filter>internals</Filter>
     </ClInclude>

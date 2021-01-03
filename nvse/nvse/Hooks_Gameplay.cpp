@@ -14,7 +14,6 @@
 #include "GameOSDepend.h"
 #include "InventoryReference.h"
 #include "EventManager.h"
-#include "Hooks_ExpressionEvalOptimized.h"
 #include "Hooks_Other.h"
 #include "ScriptTokenCache.h"
 

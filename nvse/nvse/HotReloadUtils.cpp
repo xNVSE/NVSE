@@ -8,7 +8,6 @@
 
 #include "Commands_Scripting.h"
 #include "GameData.h"
-#include "Hooks_ExpressionEvalOptimized.h"
 #include "ScriptTokenCache.h"
 
 class ScriptTransferObject
@@ -285,7 +284,6 @@ void HandleHotReload()
 	g_handledEventLists.clear();
 	// clear any cached script data
 	TokenCache::MarkForClear();
-	kEvaluator::TokenListMap::MarkForClear();
 }
 
 void InitHotReloadServer(int i)
