@@ -174,10 +174,6 @@ extern "C"
 		{
 			NVSE_Initialize();
 		}
-		else if (dwReason == DLL_PROCESS_DETACH)
-		{
-			WSACleanup();
-		}
 		return TRUE;
 	}
 };
