@@ -233,7 +233,8 @@ struct NVSEMessagingInterface
 
 // added for kVersion == 4 (xNVSE)
 		kMessage_DeferredInit,
-		kMessage_ClearScriptDataCache
+		kMessage_ClearScriptDataCache,
+		kMessage_MainGameLoop,			// called each game loop
 	};
 
 	UInt32	version;
