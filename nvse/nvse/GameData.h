@@ -170,7 +170,7 @@ struct ModInfo		// referred to by game as TESFile
 	
 	bool IsLoaded() const { return true; }
 
-#if !EDITOR
+#if RUNTIME
 	/*** used by TESForm::LoadForm() among others ***/
 	MEMBER_FN_PREFIX(ModInfo);
 	DEFINE_MEMBER_FN(GetNextChunk, UInt32, _ModInfo_GetNextChunk);	// returns chunk type

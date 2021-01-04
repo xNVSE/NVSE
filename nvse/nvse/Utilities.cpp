@@ -687,6 +687,34 @@ void ShowRuntimeError(Script* script, const char* fmt, ...)
 #endif
 #endif
 
+std::string FormatString(const char* fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+
+	char msg[0x400];
+	vsprintf_s(msg, 0x400, fmt, args);
+	return msg;
+}
+
+void GeckExtenderMessageLog(const char* fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+
+	auto* window = FindWindow("RTEDITLOG", nullptr);
+	if (!window)
+	{
+		_MESSAGE("Failed to find GECK Extender Message Log window");
+		return;
+	}
+	
+	char buffer[0x400];
+	vsprintf_s(buffer, 0x400, fmt, args);
+
+	// Extender handles freeing buffer
+	SendMessage(window, 0x8004, 0, reinterpret_cast<LPARAM>(buffer));
+}
 
 bool Cmd_Default_Execute(COMMAND_ARGS)
 {
