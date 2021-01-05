@@ -410,7 +410,7 @@ static size_t _ftoa(out_fct_type out, char* buffer, size_t idx, size_t maxlen, d
     }
     else {
         unsigned int count = prec;
-        bool b = false;
+        bool b = !is_g;
         while (len < PRINTF_FTOA_BUFFER_SIZE) {
             --count;
             char lastChar = (char)(48U + (frac % 10U));
