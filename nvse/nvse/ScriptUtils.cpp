@@ -2744,9 +2744,6 @@ void ExpressionEvaluator::PopFromStack() const
 	if (m_parent) {
 		// propogate info to parent
 		m_parent->m_expectedReturnType = m_expectedReturnType;
-		if (m_flags.IsSet(kFlag_ErrorOccurred)) {
-			m_parent->m_flags.Set(kFlag_ErrorOccurred);
-		}
 	}
 	localData.expressionEvaluator = m_parent;
 }
@@ -3686,6 +3683,8 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 
 std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken& faultingToken) const
 {
+	if (m_flags.IsSet(kFlag_SuppressErrorMessages))
+		return "";
 	std::stack<std::string> operands; // JIP Stack crashes
 	for (auto iter = tokens.Begin(); !iter.End(); ++iter)
 	{

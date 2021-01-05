@@ -135,8 +135,6 @@ bool Cmd_testexpr_Execute(COMMAND_ARGS)
 		else
 			*result = 1;
 	}
-
-	eval.ToggleErrorSuppression(false);
 	return true;
 }
 
