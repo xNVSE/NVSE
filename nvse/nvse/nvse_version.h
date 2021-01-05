@@ -3,9 +3,9 @@
 
 // these have to be macros so they can be used in the .rc
 #define NVSE_VERSION_INTEGER		5
-#define NVSE_VERSION_INTEGER_MINOR	3
-#define NVSE_VERSION_INTEGER_BETA	9
-#define NVSE_VERSION_VERSTRING		"0, 5, 3, 9"
+#define NVSE_VERSION_INTEGER_MINOR	4
+#define NVSE_VERSION_INTEGER_BETA	0
+#define NVSE_VERSION_VERSTRING		"0, 5, 4, 0"
 #define NVSE_VERSION_PADDEDSTRING	"0005"
 
 // build numbers do not appear to follow the same format as with oblivion
