@@ -101,6 +101,7 @@ class ExpressionEvaluator
 	UInt16				m_baseOffset;
 	ExpressionEvaluator	* m_parent;
 	ThreadLocalData&	localData;
+	std::vector<std::string> errorMessages;
 
 	CommandReturnType GetExpectedReturnType() { CommandReturnType type = m_expectedReturnType; m_expectedReturnType = kRetnType_Default; return type; }
 	bool ParseBytecode(CachedTokens& cachedTokens);
@@ -135,6 +136,7 @@ public:
 
 	ScriptToken*	ExecuteCommandToken(ScriptToken const* token);
 	ScriptToken*	Evaluate();			// evaluates a single argument/token
+	std::string GetLineText(CachedTokens& tokens, ScriptToken& faultingToken) const;
 
 	ScriptToken*	Arg(UInt32 idx)
 	{

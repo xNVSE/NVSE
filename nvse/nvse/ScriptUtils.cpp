@@ -1474,15 +1474,7 @@ void ExpressionEvaluator::Error(const char* fmt, ...)
 	char	errorMsg[0x400];
 	vsprintf_s(errorMsg, 0x400, fmt, args);
 
-	// include script data offset and command name/opcode
-	CommandInfo* cmd = GetCommand();
-
-	// include mod filename, save having to ask users to figure it out themselves
-	const char* modName = GetModName(script);
-
-	ShowRuntimeError(script, "%s\n    File: %s Offset: 0x%04X Command: %s", errorMsg, modName, m_baseOffset, cmd ? cmd->longName : "<unknown>");
-	if (m_flags.IsSet(kFlag_StackTraceOnError))
-		PrintStackTrace();
+	this->errorMessages.emplace_back(errorMsg);
 }
 
 void ExpressionEvaluator::PrintStackTrace() {
@@ -2785,6 +2777,25 @@ ExpressionEvaluator::~ExpressionEvaluator()
 			delete token;
 		}
 	}
+
+	if (!this->errorMessages.empty())
+	{
+		std::string error;
+		for (const auto& msg : errorMessages)
+		{
+			error += msg + '\n';
+		}
+		error.pop_back(); // remove last "\n"
+		// include script data offset and command name/opcode
+		CommandInfo* cmd = GetCommand();
+
+		// include mod filename, save having to ask users to figure it out themselves
+		const char* modName = GetModName(script);
+
+		ShowRuntimeError(script, "%s\n    File: %s Offset: 0x%04X Command: %s", error.c_str(), modName, m_baseOffset, cmd ? cmd->longName : "<unknown>");
+		if (m_flags.IsSet(kFlag_StackTraceOnError))
+			PrintStackTrace();
+	}
 }
 
 bool ExpressionEvaluator::ExtractArgs()
@@ -3355,17 +3366,21 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 	}
 
 	TESObjectREFR* callingObj = m_thisObj;
-	Script::RefVariable* callingRef = script->GetVariable(token->GetRefIndex());
+	Script::RefVariable* callingRef = script->GetRefFromRefList(token->GetRefIndex());
 	if (callingRef)
 	{
 		callingRef->Resolve(eventList);
-		if (callingRef->form && callingRef->form->GetIsReference())
-			callingObj = DYNAMIC_CAST(callingRef->form, TESForm, TESObjectREFR);
-		else
+		if (!callingRef->form)
 		{
-			Error("Attempting to call a function on a NULL reference or base object");
+			Error("Attempting to call a function on a NULL reference");
 			return nullptr;
 		}
+		if (!callingRef->form->GetIsReference())
+		{
+			Error("Attempting to call a function on a base object (this must be a reference)");
+			return nullptr;
+		}
+		callingObj = DYNAMIC_CAST(callingRef->form, TESForm, TESObjectREFR);
 	}
 
 
@@ -3563,7 +3578,8 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	}
 
 	OperandStack operands;
-	for (auto iter = cache.Begin(); !iter.End(); ++iter)
+	auto iter = cache.Begin();
+	for (; !iter.End(); ++iter)
 	{
 		TokenCacheEntry &entry = iter.Get();
 		ScriptToken *curToken = &entry.token;
@@ -3644,9 +3660,17 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	// adjust opcode offset ptr (important for recursive calls to Evaluate()
 	*m_opcodeOffsetPtr += cache.incrementData;
 
-	if (operands.Size() != 1)		// should have one operand remaining - result of expression
+	if (operands.Size() != 1 || this->HasErrors())		// should have one operand remaining - result of expression
 	{
-		Error("An expression failed to evaluate to a valid result");
+		const auto currentLine = this->GetLineText(cache, iter.Get().token);
+		if (!currentLine.empty())
+		{
+			Error("Script line approximation: %s (error wrapped in #'s)", currentLine.c_str());
+		}
+		else
+		{
+			Error("An expression failed to evaluate to a valid result. (Failed to approximate script line)");
+		}
 		while (operands.Size())
 		{
 			ScriptToken *operand = operands.Top();
@@ -3658,6 +3682,191 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	}
 
 	return operands.Top();
+}
+
+std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken& faultingToken) const
+{
+	std::stack<std::string> operands; // JIP Stack crashes
+	for (auto iter = tokens.Begin(); !iter.End(); ++iter)
+	{
+		auto& token = iter.Get().token;
+		if (!token.IsOperator())
+		{
+			switch (token.Type())
+			{
+			case kTokenType_Number:
+				operands.push(FormatString("%g", token.GetNumber()));
+				break;
+			case kTokenType_String:
+				operands.push('"' + std::string(token.GetString()) + '"');
+				break;
+			case kTokenType_Form:
+			{
+				auto* form = token.GetTESForm();
+				if (form)
+				{
+					auto* formName = form->GetName();
+					if (!formName || StrLen(formName) == 0)
+						operands.push("<FORM (EDITOR ID NOT LOADED)>");
+					else
+						operands.push(std::string(formName));
+					break;
+				}
+				return "";
+			}
+
+			case kTokenType_Global:
+			{
+				auto* global = token.GetGlobal();
+				if (global)
+				{
+					operands.push(std::string(global->name.CStr()));
+					break;
+				}
+				return "";
+			}
+
+			case kTokenType_Command:
+			{
+				auto* cmdInfo = token.GetCommandInfo();
+				if (cmdInfo)
+				{
+					auto operand = std::string(cmdInfo->longName);
+					if (cmdInfo->numParams)
+					{
+						operand += " <...args>";
+					}
+					auto* callingRef = script->GetRefFromRefList(token.GetRefIndex());
+					if (callingRef && callingRef->form)
+					{
+						auto* name = callingRef->form->GetName();
+						if (name && StrLen(name))
+							operand = std::string(name) + "." + operand;
+					}
+					else if (callingRef && callingRef->varIdx)
+					{
+						auto* varInfo = script->GetVariableInfo(callingRef->varIdx);
+						if (varInfo)
+						{
+							operand = std::string(varInfo->name.CStr()) + "." + operand;
+						}
+					}
+					operands.push(operand);
+					break;
+				}
+				return "";
+			}
+			case kTokenType_NumericVar:
+			case kTokenType_RefVar:
+			case kTokenType_StringVar:
+			case kTokenType_ArrayVar:
+			{
+				auto* var = token.GetVar();
+				if (var)
+				{
+					if (token.refIdx == 0)
+					{
+						auto* varInfo = script->GetVariableInfo(var->id);
+						if (varInfo)
+						{
+							operands.push(std::string(varInfo->name.CStr()));
+							break;
+						}
+					}
+					else
+					{
+						// reference.variable
+						auto* refVar = script->GetRefFromRefList(token.refIdx);
+						if (!refVar)
+						{
+							return "";
+						}
+						refVar->Resolve(eventList);
+						auto* refr = DYNAMIC_CAST(refVar->form, TESForm, TESObjectREFR);
+						if (refr)
+						{
+							auto* evtList = refr->GetEventList();
+							if (evtList && evtList->m_script)
+							{
+								auto* varInfo = evtList->m_script->GetVariableInfo(var->id);
+								if (varInfo && refr->GetName())
+								{
+									operands.push(std::string(refr->GetName()) + '.' + std::string(varInfo->name.CStr()));
+									break;
+								}
+							}
+						}
+						else
+						{
+							auto* quest = DYNAMIC_CAST(refVar->form, TESForm, TESQuest);
+							if (quest)
+							{
+								auto* script = quest->scriptable.script;
+								if (!script)
+									return "";
+								auto* varInfo = script->GetVariableInfo(var->id);
+								if (varInfo && quest->GetEditorName())
+								{
+									operands.push(std::string(quest->GetName()) + '.' + std::string(varInfo->name.CStr()));
+									break;
+								}
+							}
+						}
+					}
+					
+				}
+				return "";
+			}
+
+			default:
+				return "";
+			}
+		}
+		else
+		{
+			auto* op = token.GetOperator();
+			if (!op)
+				return "";
+			if (operands.size() < op->numOperands)
+				return "";
+
+			if (op->numOperands == 2)
+			{
+				auto rh = operands.top();
+				operands.pop();
+				auto lh = operands.top();
+				operands.pop();
+
+				if (op->type == kOpType_LeftBracket)
+					operands.push(lh + '[' + rh + ']');
+				else if (op->type == kOpType_Slice || op->type == kOpType_Exponent || op->type == kOpType_MemberAccess || op->type == kOpType_MakePair)
+					operands.push(lh + std::string(op->symbol) + rh);
+				else
+					operands.push(lh + " " + std::string(op->symbol) + " " + rh);
+			}
+			else if (op->numOperands == 1)
+			{
+				auto operand = operands.top();
+				operands.pop();
+				operands.push(std::string(op->symbol) + operand);
+			}
+		}
+		if (&faultingToken == &token && !operands.empty())
+		{
+			auto lastStr = operands.top();
+			operands.pop();
+			lastStr = "###" + lastStr + "###";
+			operands.push(lastStr);
+		}
+	}
+	if (operands.size() == 1)
+	{
+		CommandInfo* cmd = GetCommand();
+		if (!cmd || !cmd->longName)
+			return "";
+		return std::string(cmd->longName) + " " + operands.top();
+	}
+	return "";
 }
 
 //	Pop required operand(s)

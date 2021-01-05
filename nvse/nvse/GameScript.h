@@ -111,7 +111,7 @@ public:
 	UInt8			pad055[3];
 #endif
 
-	RefVariable *	GetVariable(UInt32 reqIdx);
+	RefVariable *	GetRefFromRefList(UInt32 refIdx);
 	VariableInfo*	GetVariableInfo(UInt32 idx);
 
 	UInt32			AddVariable(TESForm * form);

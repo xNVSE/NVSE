@@ -648,17 +648,23 @@ const char* GetModName(Script* script)
 #if NVSE_CORE
 void ShowRuntimeError(Script* script, const char* fmt, ...)
 {
-	char errorHeader[0x400];
+	va_list args;
+	va_start(args, fmt);
+
+	char errorMsg[0x800];
+	vsprintf_s(errorMsg, sizeof(errorMsg), fmt, args);
+	
+	char errorHeader[0x900];
 	const auto* modName = GetModName(script);
 	
 	const auto* scriptName = script ? script->GetName() : nullptr; // JohnnyGuitarNVSE allows this
 	if (scriptName && strlen(scriptName) != 0)
 	{
-		sprintf_s(errorHeader, 0x400, "Error in script %08x (%s) in mod %s", script ? script->refID : 0, scriptName, modName);
+		sprintf_s(errorHeader, sizeof(errorHeader), "Error in script %08x (%s) in mod %s\n%s", script ? script->refID : 0, scriptName, modName, errorMsg);
 	}
 	else
 	{
-		sprintf_s(errorHeader, 0x400, "Error in script %08x in mod %s", script ? script->refID : 0, modName);
+		sprintf_s(errorHeader, sizeof(errorHeader), "Error in script %08x in mod %s\n%s", script ? script->refID : 0, modName, errorMsg);
 	}
 
 	if (g_warnedScripts.Insert(script->refID))
@@ -669,16 +675,8 @@ void ShowRuntimeError(Script* script, const char* fmt, ...)
 			QueueUIMessage(message, 0, reinterpret_cast<const char*>(0x1049638), nullptr, 2.5F, false);
 	}
 
-	va_list args;
-	va_start(args, fmt);
-
-	char	errorMsg[0x400];
-	vsprintf_s(errorMsg, 0x400, fmt, args);
-
 	Console_Print(errorHeader);
 	_MESSAGE(errorHeader);
-	Console_Print(errorMsg);
-	_MESSAGE(errorMsg);
 
 	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_RuntimeScriptError, errorMsg, 4, NULL);
 

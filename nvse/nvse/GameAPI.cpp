@@ -207,7 +207,7 @@ ScriptEventList* ResolveExternalVar(ScriptEventList* in_EventList, Script* in_Sc
 	UInt16 varIdx = *((UInt16*)++scriptData);
 	scriptData += 2;
 
-	Script::RefVariable* refVar = in_Script->GetVariable(varIdx);
+	Script::RefVariable* refVar = in_Script->GetRefFromRefList(varIdx);
 	if (refVar)
 	{
 		refVar->Resolve(in_EventList);
@@ -238,7 +238,7 @@ TESGlobal* ResolveGlobalVar(ScriptEventList* in_EventList, Script* in_Script, UI
 	UInt16 varIdx = *((UInt16*)++scriptData);
 	scriptData += 2;
 
-	Script::RefVariable* globalRef = in_Script->GetVariable(varIdx);
+	Script::RefVariable* globalRef = in_Script->GetRefFromRefList(varIdx);
 	if (globalRef)
 		global = (TESGlobal*)DYNAMIC_CAST(globalRef->form, TESForm, TESGlobal);
 
@@ -339,7 +339,7 @@ TESForm* ResolveForm(UInt8* &scriptData, Script* scriptObj, ScriptEventList* eve
 	{
 	case 'r':
 		{
-			Script::RefVariable	* var = scriptObj->GetVariable(varIdx);
+			Script::RefVariable	* var = scriptObj->GetRefFromRefList(varIdx);
 			if(var)
 			{
 				var->Resolve(eventList);
@@ -685,7 +685,7 @@ bool ExtractArgsRaw(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptD
 							UInt16	varIdx = *((UInt16 *)scriptData);
 							scriptData += 2;
 
-							Script::RefVariable	* var = scriptObj->GetVariable(varIdx);
+							Script::RefVariable	* var = scriptObj->GetRefFromRefList(varIdx);
 							if(var)
 							{
 								TESForm	* eventListSrc = var->form;
@@ -789,7 +789,7 @@ bool ExtractArgsRaw(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptD
 						UInt16	varIdx = *((UInt16 *)scriptData);
 						scriptData += 2;
 
-						Script::RefVariable	* var = scriptObj->GetVariable(varIdx);
+						Script::RefVariable	* var = scriptObj->GetRefFromRefList(varIdx);
 						ASSERT(var);
 
 						var->Resolve(eventList);
@@ -1358,7 +1358,7 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 	case 'G':						//global
 		{
 			UInt16 refIdx = *(UInt16*)(scriptData + 1);
-			Script::RefVariable* refVar = script->GetVariable(refIdx);
+			Script::RefVariable* refVar = script->GetRefFromRefList(refIdx);
 			if (!refVar)
 				break;
 
@@ -1379,7 +1379,7 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 			if (scriptDataOffset >= 8 && *(scriptData - 3) == 'r')	//external var
 			{
 				UInt16 refIdx = *(UInt16*)(scriptData - 2);
-				Script::RefVariable* refVar = script->GetVariable(refIdx);
+				Script::RefVariable* refVar = script->GetRefFromRefList(refIdx);
 				if (!refVar)
 					break;
 

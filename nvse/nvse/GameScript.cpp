@@ -292,13 +292,13 @@ VariableInfo* Script::GetVariableByName(const char* varName)
 		return NULL;
 }
 
-Script::RefVariable	* Script::GetVariable(UInt32 reqIdx)
+Script::RefVariable	* Script::GetRefFromRefList(UInt32 refIdx)
 {
 	UInt32	idx = 1;	// yes, really starts at 1
-	if (reqIdx)
+	if (refIdx)
 		for(RefListEntry * entry = &refList; entry; entry = entry->next)
 		{
-			if(idx == reqIdx)
+			if(idx == refIdx)
 				return entry->var;
 
 			idx++;
