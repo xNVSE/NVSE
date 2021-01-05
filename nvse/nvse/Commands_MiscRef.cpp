@@ -459,7 +459,7 @@ static TESObjectREFR* CellScan(Script* scriptObj, TESObjectCELL* cellToScan = NU
 	auto refId = scriptObj->refID;
 	if (scriptObj->GetModIndex() == 0xFF && IsConsoleMode())
 		refId = 0xFFFEED; // console creates new script per command, use common magic refID for all
-	if (s_scanScripts.Insert(scriptObj->refID, &info) || getFirst)
+	if (s_scanScripts.Insert(refId, &info) || getFirst)
 	{
 		if (!cellToScan)
 		{
@@ -474,7 +474,7 @@ static TESObjectREFR* CellScan(Script* scriptObj, TESObjectCELL* cellToScan = NU
 	while (bContinue)
 	{
 		info->prev = GetCellRefEntry(info->curCell->objectList, info->formType, info->prev, info->includeTakenRefs, refr);
-		if (info->prev.End() || !(*info->prev))				//no ref found
+		if (info->prev.End() || !*info->prev)				//no ref found
 		{
 			if (!info->NextCell())			//check next cell if possible
 				bContinue = false;
@@ -482,14 +482,11 @@ static TESObjectREFR* CellScan(Script* scriptObj, TESObjectCELL* cellToScan = NU
 		else
 			bContinue = false;			//found a ref
 	}
-
-	if ((*info->prev))
+	
+	if (!info->prev.End() && *info->prev)
 		return info->prev.Get();
-	else
-	{
-		s_scanScripts.Erase(scriptObj->refID);
-		return NULL;
-	}
+	s_scanScripts.Erase(scriptObj->refID);
+	return NULL;
 }
 
 static bool GetFirstRef_Execute(COMMAND_ARGS, bool bUsePlayerCell = true, bool bUseRefr = false)
