@@ -3636,7 +3636,6 @@ struct Condition {
 
 struct VariableInfo
 {
-	~VariableInfo();
 	UInt32			idx;		// 00
 	UInt32			pad04;		// 04
 	double			data;		// 08
