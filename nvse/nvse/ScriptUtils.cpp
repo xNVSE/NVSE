@@ -772,8 +772,8 @@ ScriptToken* Eval_Subscript_Array_Number(OperatorType op, ScriptToken* lh, Scrip
 		context->Error("Invalid array access - expected string index, received numeric.");
 		return NULL;
 	}
-
 	ArrayKey key(rh->GetNumber());
+	
 	return ScriptToken::Create(arrID, &key);
 }
 
@@ -3718,10 +3718,10 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 		const auto currentLine = this->GetLineText(cache, iter.Get().token);
 		if (!currentLine.empty())
 		{
-			Error("Script line approximation: %s (error wrapped in #'s)", currentLine.c_str());
+			Error("Script line approximation: %s (error wrapped in ##'s)", currentLine.c_str());
 			const auto variablesText = this->GetVariablesText(cache);
 			if (!variablesText.empty())
-				Error("\twhere %s", variablesText.c_str());
+				Error("\tWhere %s", variablesText.c_str());
 		}
 		else
 		{
@@ -3862,7 +3862,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken& 
 		{
 			auto lastStr = operands.top();
 			operands.pop();
-			lastStr = "#" + lastStr + "#";
+			lastStr = "##" + lastStr + "##";
 			operands.push(lastStr);
 		}
 	}
@@ -3952,7 +3952,6 @@ ScriptToken* Operator::Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEv
 				bRuleMatches = true;
 			}
 		}
-
 		if (bRuleMatches)
 		{
 			if (lhs->Type() != kTokenType_ArrayElement && rhs ? rhs->Type() != kTokenType_ArrayElement : true) // array elements depend on CanConvertTo to fail, can't cache eval
@@ -3963,7 +3962,10 @@ ScriptToken* Operator::Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEv
 			return bSwapOrder ? rule->eval(type, rhs, lhs, context) : rule->eval(type, lhs, rhs, context);
 		}
 	}
-
+	if (rhs->Type() == kTokenType_ArrayElement || lhs->Type() == kTokenType_ArrayElement)
+	{
+		context->Error("Array does not contain key");
+	}
 	return nullptr;
 }
 
