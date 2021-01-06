@@ -100,6 +100,16 @@ UInt32 Script::GetRefCount() const
 	return count;
 }
 
+tList<VariableInfo>* Script::GetVars()
+{
+	return reinterpret_cast<tList<VariableInfo>*>(&this->varList);
+}
+
+tList<Script::RefVariable>* Script::GetRefList()
+{
+	return reinterpret_cast<tList<RefVariable>*>(&this->refList);
+}
+
 #if RUNTIME
 
 void Script::RefVariable::Resolve(ScriptEventList * eventList)

@@ -144,6 +144,9 @@ public:
 	ScriptEventList	* CreateEventList();
 	UInt32 GetVarCount() const;
 	UInt32 GetRefCount() const;
+
+	tList<VariableInfo>* GetVars();
+	tList<RefVariable>* GetRefList();
 };
 
 STATIC_ASSERT(sizeof(Script) == SCRIPT_SIZE);

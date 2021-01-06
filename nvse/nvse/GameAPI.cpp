@@ -260,6 +260,11 @@ void ScriptEventList::Destructor()
 	}
 }
 
+tList<ScriptEventList::Var>* ScriptEventList::GetVars() const
+{
+	return reinterpret_cast<tList<Var>*>(m_vars);
+}
+
 static bool ExtractFloat(double& out, UInt8* &scriptData, Script* scriptObj, ScriptEventList* eventList)
 {
 	//extracts one float arg

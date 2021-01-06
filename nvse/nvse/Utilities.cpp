@@ -709,8 +709,8 @@ void GeckExtenderMessageLog(const char* fmt, ...)
 	
 	char buffer[0x400];
 	vsprintf_s(buffer, 0x400, fmt, args);
+	strcat_s(buffer, "\n");
 
-	// Extender handles freeing buffer
 	SendMessage(window, 0x8004, 0, reinterpret_cast<LPARAM>(buffer));
 }
 

@@ -350,6 +350,7 @@
     <ClInclude Include="..\nvse\nvse\GameObjects.h" />
     <ClInclude Include="..\nvse\nvse\GameOSDepend.h" />
     <ClInclude Include="..\nvse\nvse\GameRTTI.h" />
+    <ClInclude Include="..\nvse\nvse\GameScript.h" />
     <ClInclude Include="..\nvse\nvse\GameSettings.h" />
     <ClInclude Include="..\nvse\nvse\GameTasks.h" />
     <ClInclude Include="..\nvse\nvse\GameTiles.h" />
