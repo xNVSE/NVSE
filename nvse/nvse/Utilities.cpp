@@ -660,11 +660,11 @@ void ShowRuntimeError(Script* script, const char* fmt, ...)
 	const auto* scriptName = script ? script->GetName() : nullptr; // JohnnyGuitarNVSE allows this
 	if (scriptName && strlen(scriptName) != 0)
 	{
-		sprintf_s(errorHeader, sizeof(errorHeader), "Error in script %08x (%s) in mod %s\n%s", script ? script->refID : 0, scriptName, modName, errorMsg);
+		sprintf_s(errorHeader, sizeof(errorHeader), "Error in script %08X (%s) in mod %s\n%s", script ? script->refID : 0, scriptName, modName, errorMsg);
 	}
 	else
 	{
-		sprintf_s(errorHeader, sizeof(errorHeader), "Error in script %08x in mod %s\n%s", script ? script->refID : 0, modName, errorMsg);
+		sprintf_s(errorHeader, sizeof(errorHeader), "Error in script %08X in mod %s\n%s", script ? script->refID : 0, modName, errorMsg);
 	}
 
 	if (g_warnedScripts.Insert(script->refID))

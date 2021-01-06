@@ -137,6 +137,7 @@ public:
 	ScriptToken*	ExecuteCommandToken(ScriptToken const* token);
 	ScriptToken*	Evaluate();			// evaluates a single argument/token
 	std::string GetLineText(CachedTokens& tokens, ScriptToken& faultingToken) const;
+	std::string GetVariablesText(CachedTokens& tokens) const;
 
 	ScriptToken*	Arg(UInt32 idx)
 	{

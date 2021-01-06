@@ -1,4 +1,7 @@
 #include "ScriptUtils.h"
+
+#include <set>
+
 #include "CommandTable.h"
 #include "GameForms.h"
 #include "GameObjects.h"
@@ -247,7 +250,7 @@ char* __fastcall ConcatStrings(const char *lStr, const char *rStr)
 		memcpy(conStr + lLen, rStr, rLen + 1);
 		return conStr;
 	}
-	return NULL;
+	return "";
 }
 
 ScriptToken* Eval_Add_String(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
@@ -373,13 +376,33 @@ ScriptToken* Eval_Assign_Array(OperatorType op, ScriptToken* lh, ScriptToken* rh
 	return ScriptToken::CreateArray(var->data);
 }
 
+const auto g_invalidElemMessageStr = "Array element is invalid";
+
+bool GetArrayAndArrayKey(ScriptToken* lh, const ArrayKey*& key, ArrayVar*& arr, ExpressionEvaluator* context)
+{
+	key = lh->GetArrayKey();
+	if (!key)
+	{
+		context->Error(g_invalidElemMessageStr);
+		return false;
+	}
+	arr = g_ArrayMap.Get(lh->GetOwningArrayID());
+	if (!arr)
+	{
+		context->Error("Invalid array access - the array was not initialized.");
+		return false;
+	}
+	return true;
+}
+
 ScriptToken* Eval_Assign_Elem_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	const ArrayKey* key = lh->GetArrayKey();
-	if (!key) return NULL;
-
-	ArrayVar *arr = g_ArrayMap.Get(lh->GetOwningArrayID());
-	if (!arr) return NULL;
+	const ArrayKey* key;
+	ArrayVar* arr;
+	if (!GetArrayAndArrayKey(lh, key, arr, context))
+	{
+		return nullptr;
+	}
 
 	double value = rh->GetNumber();
 	if (key->KeyType() == kDataType_Numeric)
@@ -395,51 +418,66 @@ ScriptToken* Eval_Assign_Elem_Number(OperatorType op, ScriptToken* lh, ScriptTok
 
 ScriptToken* Eval_Assign_Elem_String(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	const ArrayKey* key = lh->GetArrayKey();
-	if (!key) return NULL;
-
-	ArrayVar *arr = g_ArrayMap.Get(lh->GetOwningArrayID());
-	if (!arr) return NULL;
+	const ArrayKey* key;
+	ArrayVar* arr;
+	if (!GetArrayAndArrayKey(lh, key, arr, context))
+	{
+		return nullptr;
+	}
 
 	const char *str = rh->GetString();
 	if (key->KeyType() == kDataType_Numeric)
 	{
 		if (!arr->SetElementString(key->key.num, str))
-			return NULL;
+		{
+			context->Error("Element with key not found");
+			return nullptr;
+		}
 	}
 	else if (!arr->SetElementString(key->key.GetStr(), str))
-		return NULL;
+	{
+		context->Error("Element with key not found");
+		return nullptr;
+	}
 
 	return ScriptToken::Create(str);
 }
 
 ScriptToken* Eval_Assign_Elem_Form(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	const ArrayKey* key = lh->GetArrayKey();
-	if (!key) return NULL;
-
-	ArrayVar *arr = g_ArrayMap.Get(lh->GetOwningArrayID());
-	if (!arr) return NULL;
+	const ArrayKey* key;
+	ArrayVar* arr;
+	if (!GetArrayAndArrayKey(lh, key, arr, context))
+	{
+		return nullptr;
+	}
 
 	UInt32 formID = rh->GetFormID();
 	if (key->KeyType() == kDataType_Numeric)
 	{
 		if (!arr->SetElementFormID(key->key.num, formID))
-			return NULL;
+		{
+			context->Error("Element with key not found");
+			return nullptr;
+		}
 	}
 	else if (!arr->SetElementFormID(key->key.GetStr(), formID))
-		return NULL;
+	{
+		context->Error("Element with key not found");
+		return nullptr;
+	}
 
 	return ScriptToken::CreateForm(formID);
 }
 
 ScriptToken* Eval_Assign_Elem_Array(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
-	const ArrayKey* key = lh->GetArrayKey();
-	if (!key) return NULL;
-
-	ArrayVar *arr = g_ArrayMap.Get(lh->GetOwningArrayID());
-	if (!arr) return NULL;
+	const ArrayKey* key;
+	ArrayVar* arr;
+	if (!GetArrayAndArrayKey(lh, key, arr, context))
+	{
+		return nullptr;
+	}
 
 	ArrayID rhArrID = rh->GetArray();
 	if (key->KeyType() == kDataType_Numeric)
@@ -608,6 +646,7 @@ ScriptToken* Eval_PlusEquals_Elem_Number(OperatorType op, ScriptToken* lh, Scrip
 			return ScriptToken::Create(elemVal);
 		}
 	}
+	context->Error(g_invalidElemMessageStr);
 	return NULL;
 }
 
@@ -625,6 +664,7 @@ ScriptToken* Eval_MinusEquals_Elem_Number(OperatorType op, ScriptToken* lh, Scri
 			return ScriptToken::Create(elemVal);
 		}
 	}
+	context->Error(g_invalidElemMessageStr);
 	return NULL;
 }
 
@@ -642,6 +682,7 @@ ScriptToken* Eval_TimesEquals_Elem(OperatorType op, ScriptToken* lh, ScriptToken
 			return ScriptToken::Create(elemVal);
 		}
 	}
+	context->Error(g_invalidElemMessageStr);
 	return NULL;
 }
 
@@ -664,6 +705,7 @@ ScriptToken* Eval_DividedEquals_Elem(OperatorType op, ScriptToken* lh, ScriptTok
 			context->Error("Division by zero");
 		}
 	}
+	context->Error(g_invalidElemMessageStr);
 	return NULL;
 }
 
@@ -681,6 +723,7 @@ ScriptToken* Eval_ExponentEquals_Elem(OperatorType op, ScriptToken* lh, ScriptTo
 			return ScriptToken::Create(result);
 		}
 	}
+	context->Error(g_invalidElemMessageStr);
 	return NULL;
 }
 
@@ -700,6 +743,7 @@ ScriptToken* Eval_PlusEquals_Elem_String(OperatorType op, ScriptToken* lh, Scrip
 			return token;
 		}
 	}
+	context->Error(g_invalidElemMessageStr);
 	return NULL;
 }
 
@@ -750,6 +794,10 @@ ScriptToken* Eval_Subscript_Elem_Number(OperatorType op, ScriptToken* lh, Script
 ScriptToken* Eval_Subscript_Elem_Slice(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
 	const Slice* slice = rh->GetSlice();
+	if (!slice || slice->bIsString)
+	{
+		context->Error("Invalid array slice operation - array is uninitialized or supplied index does not match key type");
+	}
 	return (slice && !slice->bIsString) ? ScriptToken::Create(dynamic_cast<ArrayElementToken*>(lh), slice->m_lower, slice->m_upper) : NULL;
 }
 
@@ -786,6 +834,8 @@ ScriptToken* Eval_Subscript_Array_Slice(OperatorType op, ScriptToken* lh, Script
 	return NULL;
 }
 
+const auto* g_stringVarUninitializedMsg = "String var is uninitialized";
+
 ScriptToken* Eval_Subscript_StringVar_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
 	ScriptEventList::Var* var = lh->GetVar();
@@ -793,6 +843,7 @@ ScriptToken* Eval_Subscript_StringVar_Number(OperatorType op, ScriptToken* lh, S
 	if (var) {
 		StringVar* strVar = g_StringMap.Get(var->data);
 		if (!strVar) {
+			context->Error(g_stringVarUninitializedMsg);
 			return NULL;	// uninitialized
 		}
 
@@ -801,7 +852,8 @@ ScriptToken* Eval_Subscript_StringVar_Number(OperatorType op, ScriptToken* lh, S
 			idx += strVar->GetLength();
 		}
 	}
-
+	else
+		context->Error("Invalid variable");
 	return var ? ScriptToken::Create(var->data, idx, idx) : NULL;
 }
 
@@ -812,7 +864,9 @@ ScriptToken* Eval_Subscript_StringVar_Slice(OperatorType op, ScriptToken* lh, Sc
 	double upper = slice->m_upper;
 	double lower = slice->m_lower;
 	StringVar* strVar = g_StringMap.Get(var->data);
-	if (!strVar) {
+	if (!strVar) 
+	{
+		context->Error(g_stringVarUninitializedMsg);
 		return NULL;
 	}
 
@@ -828,6 +882,7 @@ ScriptToken* Eval_Subscript_StringVar_Slice(OperatorType op, ScriptToken* lh, Sc
 	if (var && slice && !slice->bIsString) {
 		return ScriptToken::Create(var->data, lower, upper);
 	}
+	context->Error("Invalid string var slice operation - variable invalid or variable is not a string var");
 	return NULL;
 }
 
@@ -968,10 +1023,11 @@ ScriptToken* Eval_In(OperatorType op, ScriptToken* lh, ScriptToken* rh, Expressi
 				ScriptToken* forEach = ScriptToken::Create(&con);
 				return forEach;
 			}
+			context->Error("Source is a base form (must be a reference)");
 			return NULL;
 		}
 	}
-
+	context->Error("Unsupported variable type (only array_var, string_var and ref supported)");
 	return NULL;
 }
 
@@ -1008,7 +1064,7 @@ ScriptToken* Eval_Dereference(OperatorType op, ScriptToken* lh, ScriptToken* rh,
 		if (arr->GetFirstElement(&elem, &firstKey))
 			return ScriptToken::Create(arrID, const_cast<ArrayKey*>(firstKey));
 	}
-
+	context->Error("Invalid array access - the array was not initialized.");
 	return NULL;
 }
 
@@ -3663,6 +3719,9 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 		if (!currentLine.empty())
 		{
 			Error("Script line approximation: %s (error wrapped in #'s)", currentLine.c_str());
+			const auto variablesText = this->GetVariablesText(cache);
+			if (!variablesText.empty())
+				Error("\twhere %s", variablesText.c_str());
 		}
 		else
 		{
@@ -3760,61 +3819,10 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken& 
 			case kTokenType_StringVar:
 			case kTokenType_ArrayVar:
 			{
-				auto* var = token.GetVar();
-				if (var)
-				{
-					if (token.refIdx == 0)
-					{
-						auto* varInfo = script->GetVariableInfo(var->id);
-						if (varInfo)
-						{
-							operands.push(std::string(varInfo->name.CStr()));
-							break;
-						}
-					}
-					else
-					{
-						// reference.variable
-						auto* refVar = script->GetRefFromRefList(token.refIdx);
-						if (!refVar)
-						{
-							return "";
-						}
-						refVar->Resolve(eventList);
-						auto* refr = DYNAMIC_CAST(refVar->form, TESForm, TESObjectREFR);
-						if (refr)
-						{
-							auto* evtList = refr->GetEventList();
-							if (evtList && evtList->m_script)
-							{
-								auto* varInfo = evtList->m_script->GetVariableInfo(var->id);
-								if (varInfo && refr->GetName())
-								{
-									operands.push(std::string(refr->GetName()) + '.' + std::string(varInfo->name.CStr()));
-									break;
-								}
-							}
-						}
-						else
-						{
-							auto* quest = DYNAMIC_CAST(refVar->form, TESForm, TESQuest);
-							if (quest)
-							{
-								auto* script = quest->scriptable.script;
-								if (!script)
-									return "";
-								auto* varInfo = script->GetVariableInfo(var->id);
-								if (varInfo && quest->GetEditorName())
-								{
-									operands.push(std::string(quest->GetName()) + '.' + std::string(varInfo->name.CStr()));
-									break;
-								}
-							}
-						}
-					}
-					
-				}
-				return "";
+				const auto varName = token.GetVariableName(eventList);
+				if (!varName.empty())
+					operands.push(varName);
+				break;
 			}
 
 			default:
@@ -3854,7 +3862,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken& 
 		{
 			auto lastStr = operands.top();
 			operands.pop();
-			lastStr = "###" + lastStr + "###";
+			lastStr = "#" + lastStr + "#";
 			operands.push(lastStr);
 		}
 	}
@@ -3866,6 +3874,49 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken& 
 		return std::string(cmd->longName) + " " + operands.top();
 	}
 	return "";
+}
+
+std::string ExpressionEvaluator::GetVariablesText(CachedTokens& tokens) const
+{
+	std::string result;
+	std::set<std::pair<UInt32, UInt32>> printedVars;
+	for (auto iter = tokens.Begin(); !iter.End(); ++iter)
+	{
+		auto& token = iter.Get().token;
+		if (printedVars.find(std::make_pair(token.refIdx, token.varIdx)) != printedVars.end())
+			continue;
+		if (token.IsVariable())
+		{
+			result += token.GetVariableName(eventList) + "=" + token.GetVariableDataAsString();
+			printedVars.insert(std::make_pair(token.refIdx, token.varIdx));
+			if (!iter.LastElement())
+				result += ", ";
+		}
+		else if (token.Type() == kTokenType_Command && token.refIdx)
+		{
+			auto* ref = script->GetRefFromRefList(token.refIdx);
+			if (ref && ref->varIdx)
+			{
+				auto* varInfo = script->GetVariableInfo(ref->varIdx);
+				if (varInfo && varInfo->name.m_bufLen)
+				{
+					auto* var = eventList->GetVariable(varInfo->idx);
+					if (var)
+					{
+						auto* form = LookupFormByID(var->GetFormId());
+						
+						auto* formName = form ? form->GetName() : nullptr;
+						if (formName && StrLen(formName))
+							result += FormatString("%s=%s (%X)", varInfo->name.CStr(), formName, var->GetFormId());
+						else
+							result += FormatString("%s=%X", varInfo->name.CStr(), var->GetFormId());
+					
+					}
+				}
+			}
+		}
+	}
+	return result;
 }
 
 //	Pop required operand(s)

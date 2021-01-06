@@ -2,6 +2,7 @@
 #include "ScriptUtils.h"
 #include "GameRTTI.h"
 #include "SmallObjectsAllocator.h"
+#include "GameObjects.h"
 
 #ifdef DBG_EXPR_LEAKS
 	SInt32 TOKEN_COUNT = 0;
@@ -188,6 +189,44 @@ bool ScriptToken::IsLogicalOperator() const
 		return false;
 	const auto& type = GetOperator()->type;
 	return type == kOpType_LogicalOr || type == kOpType_LogicalAnd;
+}
+
+std::string ScriptToken::GetVariableDataAsString()
+{
+	switch (Type())
+	{
+	case kTokenType_NumericVar:
+	{
+		return FormatString("%g", GetNumber());
+	}
+	case kTokenType_RefVar:
+	{
+		auto* form = GetTESForm();
+		if (form)
+		{
+			auto* name = form->GetName();
+			if (name && StrLen(name))
+				return FormatString("%s (%X)", name, value.var->GetFormId());
+			return FormatString("%X", value.var->GetFormId());
+		}
+		return FormatString("invalid form (%X)", value.var ? value.var->GetFormId() : 0);
+	}
+	case kTokenType_StringVar:
+	{
+		return '"' + std::string(GetString()) + '"';
+	}
+	case kTokenType_ArrayVar:
+	{
+		auto* arr = GetArrayVar();
+		if (arr)
+		{
+			return FormatString("array id %d size %d", arr->ID(), arr->Size());
+		}
+		return "invalid array";
+	}
+	default: break;
+	}
+	return "";
 }
 
 #if RUNTIME
@@ -446,6 +485,62 @@ void ScriptToken::SetString(const char *srcStr)
 	value.str = (srcStr && *srcStr) ? CopyString(srcStr) : NULL;
 }
 
+std::string ScriptToken::GetVariableName(ScriptEventList* eventList) const
+{
+	auto* var = GetVar();
+	auto* script = owningScript;
+	if (var)
+	{
+		if (refIdx == 0)
+		{
+			auto* varInfo = script->GetVariableInfo(var->id);
+			if (varInfo)
+			{
+				return std::string(varInfo->name.CStr());
+			}
+		}
+		else
+		{
+			// reference.variable
+			auto* refVar = script->GetRefFromRefList(refIdx);
+			if (!refVar)
+			{
+				return "";
+			}
+			refVar->Resolve(eventList);
+			auto* refr = DYNAMIC_CAST(refVar->form, TESForm, TESObjectREFR);
+			if (refr)
+			{
+				auto* evtList = refr->GetEventList();
+				if (evtList && evtList->m_script)
+				{
+					auto* varInfo = evtList->m_script->GetVariableInfo(var->id);
+					if (varInfo && refr->GetName())
+					{
+						return std::string(refr->GetName()) + '.' + std::string(varInfo->name.CStr());
+					}
+				}
+			}
+			else
+			{
+				auto* quest = DYNAMIC_CAST(refVar->form, TESForm, TESQuest);
+				if (quest)
+				{
+					auto* refScript = quest->scriptable.script;
+					if (!refScript)
+						return "";
+					auto* varInfo = refScript->GetVariableInfo(var->id);
+					if (varInfo && quest->GetEditorName())
+					{
+						return std::string(quest->GetName()) + '.' + std::string(varInfo->name.CStr());
+					}
+				}
+			}
+		}
+	}
+	return "";
+}
+
 const char* ScriptToken::GetString()
 {
 	static const char* empty = "";
@@ -499,10 +594,6 @@ TESForm* ScriptToken::GetTESForm()
 		return LookupFormByID(value.formID);
 	if (type == kTokenType_RefVar && value.var)
 	{
-		if (!value.var)
-		{
-			return nullptr;
-		}
 		return LookupFormByID(*reinterpret_cast<UInt64*>(&value.var->data));
 	}
 #endif
@@ -583,6 +674,11 @@ ArrayID ScriptToken::GetArray()
 		return value.var->data;
 	}
 	return 0;
+}
+
+ArrayVar* ScriptToken::GetArrayVar()
+{
+	return g_ArrayMap.Get(GetArray());
 }
 
 ScriptEventList::Var* ScriptToken::GetVar() const

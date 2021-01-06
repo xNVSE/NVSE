@@ -1255,6 +1255,11 @@ void RegisterStringVarInterface(NVSEStringVarInterface* intfc)
 	s_StringVarInterface = intfc;
 }
 
+UInt64 ScriptEventList::Var::GetFormId()
+{
+	return *reinterpret_cast<UInt64*>(&data);
+}
+
 #if NVSE_CORE
 
 //fmtStringPos is index of fmtString param in paramInfo, with first param = 0

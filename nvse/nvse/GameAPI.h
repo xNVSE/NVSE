@@ -163,6 +163,8 @@ struct ScriptEventList
 		UInt32		id;
 		VarEntry	* nextEntry;
 		double		data;
+
+		UInt64 GetFormId();
 	};
 
 	struct VarEntry

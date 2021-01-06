@@ -225,6 +225,7 @@ struct ScriptToken
 #if RUNTIME
 	Token_Type	ReadFrom(ExpressionEvaluator* context);	// reconstitute param from compiled data, return the type
 	virtual ArrayID					GetArray();
+	ArrayVar*						GetArrayVar();
 	ScriptEventList::Var *			GetVar() const;
 	bool ResolveVariable();
 	void							Delete() const;
@@ -258,6 +259,7 @@ struct ScriptToken
 	bool					IsInvalid() const;
 	bool					IsOperator() const;
 	bool					IsLogicalOperator() const;
+	std::string				GetVariableDataAsString();
 
 	static ScriptToken* Read(ExpressionEvaluator* context);
 
@@ -283,6 +285,7 @@ struct ScriptToken
 	static ScriptToken* Create(UInt32 bogus);	// unimplemented, to block implicit conversion to double
 
 	void SetString(const char *srcStr);
+	std::string GetVariableName(ScriptEventList* eventList) const;
 
 	ScriptToken& operator=(const ScriptToken &rhs);
 
@@ -358,9 +361,7 @@ struct ArrayElementToken : ScriptToken
 	TESForm*		GetTESForm() override;
 	bool			GetBool()  override;
 	bool			CanConvertTo(Token_Type to) const override;
-	ArrayID			GetOwningArrayID() const override
-	{
-		return type == kTokenType_ArrayElement ? value.arrID : 0; }
+	ArrayID			GetOwningArrayID() const override { return type == kTokenType_ArrayElement ? value.arrID : 0; }
 	void* operator new(size_t size);
 
 	void operator delete(void* p);

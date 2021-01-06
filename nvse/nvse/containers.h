@@ -2122,6 +2122,7 @@ public:
 		Data_Arg operator->() const {return *pData;}
 		Data_Arg operator()() const {return *pData;}
 		bool End() const {return index >= contObj->numItems;}
+		bool LastElement() const { return index + 1 >= contObj->numItems; }
 		explicit operator bool() const {return index < contObj->numItems;}
 		UInt32 Index() const {return index;}
 
