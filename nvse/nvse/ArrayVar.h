@@ -317,8 +317,8 @@ public:
 
 	bool GetFirstElement(ArrayElement** outElem, const ArrayKey** outKey);
 	bool GetLastElement(ArrayElement** outElem, const ArrayKey** outKey);
-	bool GetNextElement(ArrayKey* prevKey, ArrayElement** outElem, const ArrayKey** outKey);
-	bool GetPrevElement(ArrayKey* prevKey, ArrayElement** outElem, const ArrayKey** outKey);
+	bool GetNextElement(const ArrayKey* prevKey, ArrayElement** outElem, const ArrayKey** outKey);
+	bool GetPrevElement(const ArrayKey* prevKey, ArrayElement** outElem, const ArrayKey** outKey);
 
 	UInt32 EraseElement(const ArrayKey* key);
 	UInt32 EraseElements(const Slice* slice);	// returns num erased

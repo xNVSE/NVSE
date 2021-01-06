@@ -220,7 +220,35 @@ std::string ScriptToken::GetVariableDataAsString()
 		auto* arr = GetArrayVar();
 		if (arr)
 		{
-			return FormatString("array id %d size %d", arr->ID(), arr->Size());
+			if (arr->Size() <= 5)
+			{
+				auto str = FormatString("array keys [");
+				const ArrayKey* key;
+				ArrayElement* elem;
+				if (arr->GetFirstElement(&elem, &key))
+				{
+					do
+					{
+						switch (arr->KeyType())
+						{
+						case kDataType_Numeric:
+							str += FormatString("%g, ", key->key.num);
+							break;
+						case kDataType_String:
+							str += FormatString("\"%s\", ", key->key.GetStr());
+							break;
+						default:
+							break;
+						}
+					}
+					while (arr->GetNextElement(key, &elem, &key));
+					for (auto i = 0; i < 2 && !str.empty(); ++i)
+						str.pop_back(); // remove ", "
+				}
+				str += ']';
+				return str;
+			}
+			return FormatString("array size %d", arr->Size());
 		}
 		return "uninitialized array";
 	}

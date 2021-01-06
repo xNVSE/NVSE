@@ -3889,8 +3889,7 @@ std::string ExpressionEvaluator::GetVariablesText(CachedTokens& tokens) const
 		{
 			result += token.GetVariableName(eventList) + "=" + token.GetVariableDataAsString();
 			printedVars.insert(std::make_pair(token.refIdx, token.varIdx));
-			if (!iter.LastElement())
-				result += ", ";
+			result += ", ";
 		}
 		else if (token.Type() == kTokenType_Command && token.refIdx)
 		{
@@ -3914,8 +3913,11 @@ std::string ExpressionEvaluator::GetVariablesText(CachedTokens& tokens) const
 					}
 				}
 			}
+			result += ", ";
 		}
 	}
+	for (auto i = 0; i < 2 && !result.empty(); ++i)
+		result.pop_back(); // remove ", "
 	return result;
 }
 

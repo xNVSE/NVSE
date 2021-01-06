@@ -809,7 +809,7 @@ bool ArrayVar::GetLastElement(ArrayElement** outElem, const ArrayKey** outKey)
 	return true;
 }
 
-bool ArrayVar::GetNextElement(ArrayKey* prevKey, ArrayElement** outElem, const ArrayKey** outKey)
+bool ArrayVar::GetNextElement(const ArrayKey* prevKey, ArrayElement** outElem, const ArrayKey** outKey)
 {
 	if (!prevKey || Empty())
 		return false;
@@ -828,7 +828,7 @@ bool ArrayVar::GetNextElement(ArrayKey* prevKey, ArrayElement** outElem, const A
 	return false;
 }
 
-bool ArrayVar::GetPrevElement(ArrayKey* prevKey, ArrayElement** outElem, const ArrayKey** outKey)
+bool ArrayVar::GetPrevElement(const ArrayKey* prevKey, ArrayElement** outElem, const ArrayKey** outKey)
 {
 	if (!prevKey || Empty())
 		return false;
