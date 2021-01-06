@@ -209,7 +209,7 @@ std::string ScriptToken::GetVariableDataAsString()
 				return FormatString("%s (%X)", name, value.var->GetFormId());
 			return FormatString("%X", value.var->GetFormId());
 		}
-		return FormatString("invalid form (%X)", value.var ? value.var->GetFormId() : 0);
+		return FormatString("uninitialized form (%X)", value.var ? value.var->GetFormId() : 0);
 	}
 	case kTokenType_StringVar:
 	{
@@ -222,7 +222,7 @@ std::string ScriptToken::GetVariableDataAsString()
 		{
 			return FormatString("array id %d size %d", arr->ID(), arr->Size());
 		}
-		return "invalid array";
+		return "uninitialized array";
 	}
 	default: break;
 	}
@@ -576,7 +576,7 @@ UInt32 ScriptToken::GetFormID()
 		{
 			return 0;
 		}
-		return *reinterpret_cast<UInt64*>(&value.var->data);
+		return *reinterpret_cast<UInt32*>(&value.var->data);
 	}
 #endif
 	else if (type == kTokenType_Number)
@@ -594,7 +594,7 @@ TESForm* ScriptToken::GetTESForm()
 		return LookupFormByID(value.formID);
 	if (type == kTokenType_RefVar && value.var)
 	{
-		return LookupFormByID(*reinterpret_cast<UInt64*>(&value.var->data));
+		return LookupFormByID(*reinterpret_cast<UInt32*>(&value.var->data));
 	}
 #endif
 

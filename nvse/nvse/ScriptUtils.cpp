@@ -3470,7 +3470,7 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 	}
 	case kRetnType_Form:
 	{
-		return ScriptToken::CreateForm(*reinterpret_cast<UInt64*>(&cmdResult));
+		return ScriptToken::CreateForm(*reinterpret_cast<UInt32*>(&cmdResult));
 	}
 
 	case kRetnType_String:

@@ -1255,9 +1255,9 @@ void RegisterStringVarInterface(NVSEStringVarInterface* intfc)
 	s_StringVarInterface = intfc;
 }
 
-UInt64 ScriptEventList::Var::GetFormId()
+UInt32 ScriptEventList::Var::GetFormId()
 {
-	return *reinterpret_cast<UInt64*>(&data);
+	return *reinterpret_cast<UInt32*>(&data);
 }
 
 #if NVSE_CORE
