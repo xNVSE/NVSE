@@ -9,7 +9,7 @@ This is a community maintained up-to-date fork of **New Vegas Script Extender** 
 
 ## Download
 
-[Download the latest NVSE](https://github.com/xNVSE/NVSE/releases/latest/download/nvse_5_1_beta6.7z)
+[Download the latest NVSE](https://github.com/xNVSE/NVSE/releases/download/6.0.0/nvse_6_0_0.7z)
 
 Changelogs and all releases are provided in the [releases section](https://github.com/NVSEx/NVSE/releases).
 
