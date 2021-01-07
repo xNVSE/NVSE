@@ -191,6 +191,7 @@ struct ScriptEventList
 	UInt32	ResetAllVariables();
 
 	void	Destructor();
+	tList<Var>* GetVars() const;
 };
 
 ScriptEventList* EventListFromForm(TESForm* form);
