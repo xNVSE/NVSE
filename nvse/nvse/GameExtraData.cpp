@@ -405,7 +405,7 @@ void ExtraContainerChanges::Cleanup()
 
 			for (SInt32 index = 0; index < iter->extendData->Count(); ) {
 				ExtraDataList* xtendData = iter->extendData->GetNthItem(index);
-				if (!xtendData->m_data) {
+				if (xtendData && !xtendData->m_data) {
 					iter->extendData->RemoveNth(index);
 					FormHeap_Free(xtendData);
 				}
