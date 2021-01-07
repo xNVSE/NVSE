@@ -191,6 +191,7 @@ bool ScriptToken::IsLogicalOperator() const
 	return type == kOpType_LogicalOr || type == kOpType_LogicalAnd;
 }
 
+#if RUNTIME
 std::string ScriptToken::GetVariableDataAsString()
 {
 	switch (Type())
@@ -256,6 +257,7 @@ std::string ScriptToken::GetVariableDataAsString()
 	}
 	return "";
 }
+#endif
 
 #if RUNTIME
 // ###TODO: Read() sets variable type; better to pass it to this constructor
@@ -513,6 +515,7 @@ void ScriptToken::SetString(const char *srcStr)
 	value.str = (srcStr && *srcStr) ? CopyString(srcStr) : NULL;
 }
 
+#if RUNTIME
 std::string ScriptToken::GetVariableName(ScriptEventList* eventList) const
 {
 	auto* var = GetVar();
@@ -568,6 +571,7 @@ std::string ScriptToken::GetVariableName(ScriptEventList* eventList) const
 	}
 	return "";
 }
+#endif
 
 const char* ScriptToken::GetString()
 {
