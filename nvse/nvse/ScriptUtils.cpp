@@ -3790,6 +3790,10 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken& 
 				if (cmdInfo)
 				{
 					auto operand = std::string(cmdInfo->longName);
+					if (operand.empty())
+					{
+						operand = FormatString("<MISSING PLUGIN COMMAND %X>", cmdInfo->opcode);
+					}
 					if (cmdInfo->numParams)
 					{
 						operand += " <...args>";
