@@ -2533,10 +2533,12 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 			return ScriptToken::Create(varInfo, 0, m_scriptBuf->GetVariableType(varInfo, NULL));
 	}
 
+#if EDITOR
 	// "player" can be base object or ref. Assume base object unless called with dot syntax
 	if (!StrCompare(refToken.c_str(), "player") && dotPos != -1)
 		refToken = "playerRef";
-
+#endif
+	
 	Script::RefVariable* refVar = m_scriptBuf->ResolveRef(refToken.c_str());
 	if (dotPos != -1 && !refVar)
 	{
