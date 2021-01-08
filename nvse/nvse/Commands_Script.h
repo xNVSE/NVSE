@@ -61,9 +61,9 @@ static ParamInfo kParams_GetFormFromMod[2] =
 	{	"formID",	kParamType_String,	0	},
 };
 
-DEFINE_COMMAND(GetNumExplicitRefs, returns the number of literal references in a script, 0, 1, kParams_OneOptionalObjectID);
+DEFINE_COMMAND(GetNumExplicitRefs, returns the number of literal references in a script, 0, 1, kParams_OneOptionalForm);
 
-DEFINE_COMMAND(GetNthExplicitRef, returns the nth literal reference in a script, 0, 2, kParams_OneInt_OneOptionalObjectID);
+DEFINE_COMMAND(GetNthExplicitRef, returns the nth literal reference in a script, 0, 2, kParams_OneInt_OneOptionalForm);
 
 DEFINE_COMMAND(RunScript, debug, 0, 1, kParams_OneForm);
 

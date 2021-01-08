@@ -106,7 +106,7 @@ DEFINE_CMD(ToLower, converts a character to lowercase, 0, kParams_OneInt);
 
 DEFINE_CMD(GetNthModName, returns the name of the nth active mod, 0, kParams_OneInt);
 
-DEFINE_CMD(GetName, returns the name of an object, 0, kParams_OneOptionalObjectID);
+DEFINE_CMD(GetName, returns the name of an object, 0, kParams_OneOptionalForm);
 
 DEFINE_CMD(GetStringGameSetting, returns the value of a string game setting, 0, kParams_OneString);
 
@@ -116,13 +116,13 @@ DEFINE_CMD(SetStringGameSettingEX, sets a string game setting, 0, kParams_Format
 
 DEFINE_CMD(SetStringIniSetting, sets a string ini setting, 0, kParams_FormatString);
 
-DEFINE_CMD(GetModelPath, returns the model path of an object, 0, kParams_OneOptionalObjectID);
+DEFINE_CMD(GetModelPath, returns the model path of an object, 0, kParams_OneOptionalForm);
 
-DEFINE_CMD(GetIconPath, returns the icon path of an object, 0, kParams_OneOptionalObjectID);
+DEFINE_CMD(GetIconPath, returns the icon path of an object, 0, kParams_OneOptionalForm);
 
-DEFINE_CMD(GetBipedModelPath, returns a model path, 0, kParams_OneInt_OneOptionalObjectID);
+DEFINE_CMD(GetBipedModelPath, returns a model path, 0, kParams_OneInt_OneOptionalForm);
 
-DEFINE_CMD(GetBipedIconPath, returns an icon path, 0, kParams_OneInt_OneOptionalObjectID);
+DEFINE_CMD(GetBipedIconPath, returns an icon path, 0, kParams_OneInt_OneOptionalForm);
 
 static ParamInfo kParams_SetPathEX[SIZEOF_FMT_STRING_PARAMS + 1] =
 {
@@ -146,7 +146,7 @@ DEFINE_CMD(SetBipedIconPathEX, sets a biped icon path, 0, kParams_SetBipedPathEX
 DEFINE_CMD(SetBipedModelPathEX, sets a biped model path, 0, kParams_SetBipedPathEX);
 
 DEFINE_CMD(GetTexturePath, "returns the texture path of an object. This command is identical to GetIconPath, but also works for other object types such as skills, classes, and miscellaneous objects.",
-			   0, kParams_OneOptionalObjectID);
+			   0, kParams_OneOptionalForm);
 
 static ParamInfo kNVSEParams_OneString_OneOptionalForm[] =
 {
@@ -198,7 +198,7 @@ DEFINE_CMD(SetNthFactionRankNameEX, sets the name of the nth faction rank, 0, kP
 
 DEFINE_CMD(GetKeyName, returns the name of a key given a scan code, 0, kParams_OneInt);
 DEFINE_CMD(AsciiToChar, returns a single character string given an ASCII code, 0, kParams_OneInt);
-DEFINE_CMD(GetFormIDString, returns a formID of a form as a hex string, 0, kParams_OneOptionalObjectID);
+DEFINE_CMD(GetFormIDString, returns a formID of a form as a hex string, 0, kParams_OneOptionalForm);
 DEFINE_CMD(NumToHex, returns a number as a hex string of the specified width, 0, kParams_OneInt_OneOptionalInt);
 
 static ParamInfo kNVSEParams_OneStringOneOptionalInt[2] =

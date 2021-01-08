@@ -62,6 +62,12 @@ static ParamInfo kParams_OneInt_OneOptionalObjectID[2] =
 	{	"item",			kParamType_ObjectID,	1	},
 };
 
+static ParamInfo kParams_OneInt_OneOptionalForm[2] =
+{
+	{	"path type",	kParamType_Integer,			0	},
+	{	"form",			kParamType_AnyForm,	1	},
+};
+
 static ParamInfo kParams_OneObjectID_OneInt[2] =
 {
 	{	"item",		kParamType_ObjectID,	0	},
