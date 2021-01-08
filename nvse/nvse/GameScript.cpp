@@ -191,6 +191,12 @@ Script::RefVariable* ScriptBuffer::ResolveRef(const char* refName)
 	else		// is it a form or global?
 	{
 		TESForm* form = GetFormByID(refName);
+#if RUNTIME
+		if (_stricmp(refName, "player") == 0)
+		{
+			form = LookupFormByID(0x14);
+		}
+#endif
 		if (form)
 		{
 			TESObjectREFR* refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);

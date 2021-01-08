@@ -2559,7 +2559,7 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 			else						// literal reference to a form
 				return ScriptToken::Create(refVar, refIdx);
 		}
-		else if (refVar->form && refVar->form->typeID != kFormType_Reference && refVar->form->typeID != kFormType_Quest)
+		else if (refVar->form && !refVar->form->GetIsReference() && refVar->form->typeID != kFormType_Quest)
 		{
 			Message(kError_InvalidDotSyntax);
 			return NULL;
@@ -2578,7 +2578,7 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 				Message(kError_RefRequired, cmdInfo->longName);
 				return NULL;
 			}
-			if (refVar && refVar->form && refVar->form->typeID != kFormType_Reference)	// make sure we're calling it on a reference
+			if (refVar && refVar->form && !refVar->form->GetIsReference())	// make sure we're calling it on a reference
 				return NULL;
 
 			return ScriptToken::Create(cmdInfo, refIdx);
