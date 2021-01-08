@@ -93,7 +93,7 @@ UInt32 ArrayVarElementContainer::erase(const ArrayKey *key)
 
 UInt32 ArrayVarElementContainer::erase(UInt32 iLow, UInt32 iHigh)
 {
-	if (empty() || (m_type != kContainer_Array))
+	if (empty() || (m_type != kContainer_Array && m_type != kContainer_NumericMap))
 		return 0;
 	UInt32 arrSize = m_container.numItems;
 	if (iHigh >= arrSize)
@@ -101,12 +101,32 @@ UInt32 ArrayVarElementContainer::erase(UInt32 iLow, UInt32 iHigh)
 	if ((iLow >= arrSize) || (iLow > iHigh))
 		return 0;
 	iHigh++;
-	ArrayElement *elements = AsArray().Data();
-	for (UInt32 idx = iLow; idx < iHigh; idx++)
-		elements[idx].Unset();
-	iHigh -= iLow;
-	AsArray().RemoveRange(iLow, iHigh);
-	return iHigh;
+	if (m_type == kContainer_Array)
+	{
+		ArrayElement* elements = AsArray().Data();
+		for (UInt32 idx = iLow; idx < iHigh; idx++)
+			elements[idx].Unset();
+		iHigh -= iLow;
+		AsArray().RemoveRange(iLow, iHigh);
+		return iHigh;
+	}
+	if (m_type == kContainer_NumericMap)
+	{
+		auto& elements = AsNumMap();
+		auto numErased = 0U;
+		for (auto i = iLow; i < iHigh; ++i)
+		{
+			auto* element = elements.GetPtr(i);
+			if (element)
+			{
+				element->Unset();
+				elements.Erase(i);
+				++numErased;
+			}
+		}
+		return numErased;
+	}
+	return -1;
 }
 
 ArrayVarElementContainer::iterator::iterator(ArrayVarElementContainer& container)
