@@ -313,7 +313,7 @@ void TESObjectWEAP::SetAttackAnimation(UInt8 _attackAnim)
 			break;
 		}
 		case 13: {
-			eAttackAnim_AttackThrow2;
+			attackAnim = eAttackAnim_AttackThrow2;
 			break;
 		}
 		case 14: {
