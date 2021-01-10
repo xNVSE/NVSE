@@ -204,13 +204,10 @@ std::string ScriptToken::GetVariableDataAsString()
 	{
 		auto* form = GetTESForm();
 		if (form)
-		{
-			auto* name = form->GetName();
-			if (name && StrLen(name))
-				return FormatString("%s (%X)", name, value.var->GetFormId());
-			return FormatString("%X", value.var->GetFormId());
-		}
-		return FormatString(value.var ? "invalid form (%X)" : "uninitialized form (%X)", value.var ? value.var->GetFormId() : 0);
+			return form->GetStringRepresentation();
+		if (value.var && value.var->GetFormId())
+			return FormatString("invalid form (%X)", value.var->GetFormId());
+		return "uninitialized form (0)";
 	}
 	case kTokenType_StringVar:
 	{

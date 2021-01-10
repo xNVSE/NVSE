@@ -3908,14 +3908,14 @@ std::string ExpressionEvaluator::GetVariablesText(CachedTokens& tokens) const
 					auto* var = eventList->GetVariable(varInfo->idx);
 					if (var)
 					{
+						auto* varName = varInfo->name.CStr();
 						auto* form = LookupFormByID(var->GetFormId());
-						
-						auto* formName = form ? form->GetName() : nullptr;
-						if (formName && StrLen(formName))
-							result += FormatString("%s=%s (%X)", varInfo->name.CStr(), formName, var->GetFormId());
+						if (form)
+							result += FormatString("%s=%s", varName, form->GetStringRepresentation().c_str());
+						else if (var->GetFormId())
+							result += FormatString("%s=invalid form (%x)", varName, var->GetFormId());
 						else
-							result += FormatString("%s=%X", varInfo->name.CStr(), var->GetFormId());
-					
+							result += FormatString("%s=uninitialized form (0)", varName);
 					}
 				}
 			}

@@ -97,9 +97,7 @@ bool TESForm::IsCloned() const
 
 std::string TESForm::GetStringRepresentation() const
 {
-	char buffer[512];
-	snprintf(buffer, sizeof(buffer), R"([id: %X, edid: %s, name: "%s"])", refID, GetName(), GetFullName()->name.CStr());
-	return buffer;
+	return FormatString(R"([id: %X, edid: "%s", name: "%s"])", refID, GetName(), GetFullName()->name.CStr());
 }
 
 // static
