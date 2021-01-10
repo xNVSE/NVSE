@@ -9,7 +9,7 @@ This is a community maintained up-to-date fork of **New Vegas Script Extender** 
 
 ## Download
 
-[Download the latest NVSE](https://github.com/xNVSE/NVSE/releases/download/6.0.0/nvse_6_0_0.7z)
+[Download the latest NVSE](https://github.com/xNVSE/NVSE/releases/download/6.0.1/nvse_6_0_1.7z)
 
 Changelogs and all releases are provided in the [releases section](https://github.com/NVSEx/NVSE/releases).
 
@@ -37,10 +37,7 @@ NVSE was created and maintained by *Ian Patterson*,
 (ianpatt, behippo, scruggsywuggsy the ferret, and hlp)
 
 Contributions from *Timeslip*, *Elminster AU*
- 
 
-The home page for NVSE is http://nvse.silverlock.org/
+This version is maintained by *korri123* (aka Kormákur) and *jazzisparis*.
 
-
-This version is maintained by *korri123* (aka Kormákur), *lStewieAl*, *jazzisparis*, *iranrmrf*, *c6*, and *carxt* (aka karut)
-
+xNVSE has contributions from *lStewieAl*, *c6* and *carxt*
