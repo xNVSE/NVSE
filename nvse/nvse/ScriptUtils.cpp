@@ -2648,7 +2648,7 @@ bool ExpressionParser::ParseFunctionCall(CommandInfo* cmdInfo)
 	m_lineBuf->cmdOpcode = cmdInfo->opcode;
 	m_lineBuf->callingRefIndex = 0;
 	m_lineBuf->lineOffset = 0;
-	m_lineBuf->paramTextLen = m_lineBuf->paramTextLen - oldOffset;
+	m_lineBuf->paramTextLen = m_lineBuf->paramTextLen - oldOffset - 1;
 	
 	// parse the command if numParams > 0
 	bool bParsed = ParseNestedFunction(cmdInfo, m_lineBuf, m_scriptBuf);
