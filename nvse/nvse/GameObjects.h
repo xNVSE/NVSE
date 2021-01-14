@@ -3,6 +3,7 @@
 #include "GameForms.h"
 #include "GameBSExtraData.h"
 #include "GameExtraData.h"
+#include "GameProcess.h"
 
 class TESObjectCELL;
 struct ScriptEventList;
@@ -76,7 +77,7 @@ public:
 	virtual void		Unk_76(void);
 	virtual void		Unk_77(void);
 	virtual void		Unk_78(void);
-	virtual Animation *	GetAnimation(void);			// 0079
+	virtual AnimData*	GetAnimData(void);			// 0079
 	virtual ValidBip01Names * GetValidBip01Names(void);	// 007A	Character only
 	virtual ValidBip01Names * CallGetValidBip01Names(void);
 	virtual void		SetValidBip01Names(ValidBip01Names validBip01Names);
@@ -513,7 +514,6 @@ public:
 	EquippedItemsList	GetEquippedItems();
 	ExtraContainerDataArray	GetEquippedEntryDataList();
 	ExtraContainerExtendDataArray GetEquippedExtendDataList();
-	TESObjectWEAP *GetEquippedWeapon();
 };
 
 STATIC_ASSERT(offsetof(Actor, magicCaster) == 0x088);
@@ -631,6 +631,8 @@ public:
 	static void UpdateHead(void);
 	QuestObjectiveTargets* GetCurrentQuestObjectiveTargets();
 };
+
+extern PlayerCharacter** g_thePlayer;
 
 STATIC_ASSERT(offsetof(PlayerCharacter, ragDollController) == 0x0AC);
 STATIC_ASSERT(offsetof(PlayerCharacter, questObjectiveList) == 0x6BC);

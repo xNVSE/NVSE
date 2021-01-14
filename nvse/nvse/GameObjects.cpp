@@ -42,7 +42,7 @@ ScriptEventList* TESObjectREFR::GetEventList() const
 	return 0;
 }
 
-static PlayerCharacter** g_thePlayer = (PlayerCharacter **)0x011DEA3C;
+PlayerCharacter** g_thePlayer = (PlayerCharacter **)0x011DEA3C;
 
 PlayerCharacter* PlayerCharacter::GetSingleton()
 {
