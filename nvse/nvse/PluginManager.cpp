@@ -742,10 +742,10 @@ bool PluginManager::RegisterListener(PluginHandle listener, const char* sender, 
 bool PluginManager::Dispatch_Message(PluginHandle sender, UInt32 messageType, void * data, UInt32 dataLen, const char* receiver)
 {
 #ifdef RUNTIME
-	_DMESSAGE("dispatch message to event handlers");
+	//_DMESSAGE("dispatch message to event handlers");
 	EventManager::HandleNVSEMessage(messageType, data);
 #endif
-	_DMESSAGE("dispatch message to plugin listeners");
+	//_DMESSAGE("dispatch message to plugin listeners");
 	UInt32 numRespondents = 0;
 	PluginHandle target = kPluginHandle_Invalid;
 
@@ -789,12 +789,12 @@ bool PluginManager::Dispatch_Message(PluginHandle sender, UInt32 messageType, vo
 		}
 		else
 		{
-		    _DMESSAGE("sending %u to %u", messageType, iter->listener);
+		    //_DMESSAGE("sending %u to %u", messageType, iter->listener);
 			iter->handleMessage(&msg);
 			numRespondents++;
 		}
 	}
-	_DMESSAGE("dispatched message.");
+	//_DMESSAGE("dispatched message.");
 	return numRespondents ? true : false;
 }
 
