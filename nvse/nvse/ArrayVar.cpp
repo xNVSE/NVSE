@@ -1358,9 +1358,6 @@ ArrayVar* ArrayVarMap::Create(UInt32 keyType, bool bPacked, UInt8 modIndex)
 
 void ArrayVarMap::AddReference(ArrayID* ref, ArrayID toRef, UInt8 referringModIndex)
 {
-	if (*ref == toRef)
-		return; // already refers to this array
-
 	if (*ref) // refers to a different array, remove that reference
 		RemoveReference(ref, referringModIndex);
 
