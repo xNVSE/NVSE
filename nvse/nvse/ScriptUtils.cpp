@@ -73,7 +73,8 @@ ErrOutput g_ErrOut(ShowError, ShowWarning);
 UInt32 AddStringVar(const char* data, ScriptToken& lh, ExpressionEvaluator& context)
 {
 	const auto makeTemporary = lh.owningScript->IsUserDefinedFunction() && lh.refIdx == 0;
-	g_nvseVarGarbageCollectionMap[context.eventList].Emplace(lh.GetVar()->id, NVSEVarType::kVarType_String);
+	if (!lh.refIdx)
+		g_nvseVarGarbageCollectionMap[context.eventList].Emplace(lh.GetVar()->id, NVSEVarType::kVarType_String);
 	return g_StringMap.Add(lh.owningScript->GetModIndex(), data, makeTemporary);
 }
 
@@ -372,7 +373,8 @@ ScriptToken* Eval_Assign_Array(OperatorType op, ScriptToken* lh, ScriptToken* rh
 {
 	ScriptEventList::Var *var = lh->GetVar();
 	g_ArrayMap.AddReference(&var->data, rh->GetArray(), context->script->GetModIndex());
-	g_nvseVarGarbageCollectionMap[context->eventList].Emplace(var->id, NVSEVarType::kVarType_Array);
+	if (!lh->refIdx)
+		g_nvseVarGarbageCollectionMap[context->eventList].Emplace(var->id, NVSEVarType::kVarType_Array);
 	return ScriptToken::CreateArray(var->data);
 }
 

@@ -54,7 +54,8 @@ namespace OtherHooks
 					g_StringMap.MarkTemporary(static_cast<int>(node->var->data), true);
 					break;
 				case NVSEVarType::kVarType_Array:
-					g_ArrayMap.MarkTemporary(static_cast<int>(node->var->data), true);
+					//g_ArrayMap.MarkTemporary(static_cast<int>(node->var->data), true);
+					g_ArrayMap.RemoveReference(&node->var->data, eventList->m_script->GetModIndex());
 					break;
 				default:
 					break;

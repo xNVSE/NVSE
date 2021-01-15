@@ -695,6 +695,13 @@ std::string FormatString(const char* fmt, ...)
 	return msg;
 }
 
+std::vector<void*> GetCallStack(int i)
+{
+	std::vector<void*> vecTrace(i, nullptr);
+	CaptureStackBackTrace(0, i, reinterpret_cast<PVOID*>(vecTrace.data()), nullptr);
+	return vecTrace;
+}
+
 void GeckExtenderMessageLog(const char* fmt, ...)
 {
 	va_list args;

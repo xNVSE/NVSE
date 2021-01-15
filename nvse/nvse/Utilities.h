@@ -1,5 +1,7 @@
 #pragma once
 #include <string>
+#include <vector>
+
 
 #include "common/ICriticalSection.h"
 
@@ -216,3 +218,5 @@ std::string FormatString(const char* fmt, ...);
 #if EDITOR
 void GeckExtenderMessageLog(const char* fmt, ...);
 #endif
+
+std::vector<void*> GetCallStack(int i);

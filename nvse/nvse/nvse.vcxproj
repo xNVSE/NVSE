@@ -275,7 +275,7 @@
     </Link>
     <PostBuildEvent>
       <Message>Installing DLL...</Message>
-      <Command>copy "$(TargetPath)" "$(FalloutNVPath)\nvse_1_4.dllRELEASE"</Command>
+      <Command>copy "$(TargetPath)" "$(FalloutNVPath)\nvse_1_4.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">
