@@ -1386,8 +1386,10 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 	case 'f':
 	case 's':
 		{
+			bool isExternalVar = false;
 			if (scriptDataOffset >= 8 && *(scriptData - 3) == 'r')	//external var
 			{
+				isExternalVar = true;
 				UInt16 refIdx = *(UInt16*)(scriptData - 2);
 				Script::RefVariable* refVar = script->GetRefFromRefList(refIdx);
 				if (!refVar)
@@ -1425,10 +1427,6 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 				else
 					break;
 			}
-			else if(script->IsUserDefinedFunction())
-			{
-				*makeTemporary = true;
-			}
 
 			UInt16 varIdx = *(UInt16*)(scriptData + 1);
 			ScriptEventList::Var* var = eventList->GetVariable(varIdx);
@@ -1438,9 +1436,16 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 				if (outModIndex)
 					*outModIndex = (script->refID >> 24);
 				bExtracted = true;
+				if (!isExternalVar)
+				{
+					if (script->IsUserDefinedFunction())
+					{
+						*makeTemporary = true;
 #if NVSE_CORE
-				g_nvseVarGarbageCollectionMap[eventList].Emplace(varIdx, NVSEVarType::kVarType_String);
+						g_nvseVarGarbageCollectionMap[eventList].Emplace(varIdx, NVSEVarType::kVarType_String);
 #endif
+					}
+				}
 			}
 		}
 		break;
