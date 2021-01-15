@@ -855,3 +855,68 @@ public:
 
 	////virtual void	Unk_21C();
 	////virtual void	Unk_21D();
+class AnimSequenceBase;
+
+// 100+
+struct AnimData
+{
+	struct Unk124
+	{
+		struct Unk18
+		{
+			UInt32			unk00[9];
+			UInt32			unk24;
+		};
+
+		UInt32			unk00[6];
+		Unk18* unk18;
+	};
+
+	struct Unk128
+	{
+		UInt32			unk00[11];
+		TESIdleForm* idle2C;
+	};
+
+	UInt32							unk000;				// 000
+	Actor* actor;				// 004
+	NiNode* nSceneRoot;		// 008
+	NiNode* nBip01;			// 00C
+	UInt32							unk010;				// 010
+	float							flt014;				// 014
+	float							flt018;				// 018
+	UInt32							unk01C;				// 01C
+	float							flt020;				// 020
+	UInt32							unk024;				// 024
+	NiNode* nPelvis;			// 028
+	NiNode* nBip01Copy;		// 02C
+	NiNode* nLForearm;			// 030
+	NiNode* nHead;				// 034
+	NiNode* nWeapon;			// 038
+	UInt32							unk03C[2];			// 03C
+	NiNode* nNeck1;			// 044
+	UInt32							unk048[5];			// 048
+	SInt32							sequenceState1[8];	// 05C
+	SInt32							sequenceState2[8];	// 07C
+	UInt32							unk09C[12];			// 09C
+	float							flt0CC;				// 0CC
+	float							flt0D0;				// 0D0
+	UInt32							unk0D4;				// 0D4
+	NiControllerManager* unk0D8;			// 0D8
+	NiTPointerMap<AnimSequenceBase>* unk0DC;			// 0DC
+	BSAnimGroupSequence* animSequence[8];	// 0E0
+	BSAnimGroupSequence* animSeq100;		// 100
+	UInt32							unk104;				// 104
+	UInt32							unk108;				// 108
+	float							flt10C;				// 10C
+	float							flt110;				// 110
+	float							flt114;				// 114
+	float							flt118;				// 118
+	float							flt11C;				// 11C
+	UInt8							byte120;			// 120
+	UInt8							byte121;			// 121
+	UInt16							word122;			// 122
+	Unk124* unk124;			// 124
+	Unk128* unk128;			// 128
+};
+STATIC_ASSERT(sizeof(AnimData) == 0x12C);
