@@ -3970,7 +3970,7 @@ ScriptToken* Operator::Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEv
 			return bSwapOrder ? rule->eval(type, rhs, lhs, context) : rule->eval(type, lhs, rhs, context);
 		}
 	}
-	if (rhs->Type() == kTokenType_ArrayElement || lhs->Type() == kTokenType_ArrayElement)
+	if (rhs && rhs->Type() == kTokenType_ArrayElement || lhs && lhs->Type() == kTokenType_ArrayElement)
 	{
 		context->Error("Array does not contain key");
 	}
