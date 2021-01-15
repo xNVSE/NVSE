@@ -178,7 +178,7 @@ public:
 #if _DEBUG
 			if constexpr (std::is_same_v<Var, ArrayVar>)
 			{
-				debugInfos[varID] = GetCallStack(12);
+				//debugInfos[varID] = GetCallStack(12);
 			}
 #endif
 			tempIDs.Insert(varID);
@@ -188,7 +188,7 @@ public:
 #if _DEBUG
 			if constexpr (std::is_same_v<Var, ArrayVar>)
 			{
-				debugInfos.erase(varID);
+				//debugInfos.erase(varID);
 			}
 #endif
 			tempIDs.Erase(varID);
