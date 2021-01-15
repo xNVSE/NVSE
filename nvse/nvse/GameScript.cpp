@@ -175,7 +175,7 @@ Script::RefVariable* ScriptBuffer::ResolveRef(const char* refName)
 	for (Script::RefListEntry* cur = &refVars; cur; cur = cur->next)
 	{
 		listEnd = cur;
-		if (cur->var && !_stricmp(cur->var->name.m_data, refName))
+		if (cur->var && cur->var->name.m_data && !_stricmp(cur->var->name.m_data, refName))
 			return cur->var;
 	}
 
