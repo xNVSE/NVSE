@@ -312,6 +312,12 @@ bool IdentifyEXE(const char * procName, bool isEditor, std::string * dllSuffix, 
 		return false;
 	}
 
+	if (isNoGore)
+	{
+		PrintLoaderError("You have the german NoGore version of FalloutNV.exe which is not supported by NVSE. To fix this search online for a \"German Uncut Fallout New Vegas Patch\" or request a different EXE from Steam customer support.");
+		return false;
+	}
+
 	// ### how to tell the difference between nogore versions and standard without a global checksum?
 	// ### since we're mapping the exe to check for steam anyway, checksum the .text segment maybe?
 
