@@ -324,7 +324,7 @@ public:
 
 	bool Accept(const TESObjectREFR* refr)
 	{
-		if (!m_includeTaken && refr->IsTaken())
+		if (!m_includeTaken && refr->IsInventoryObject() && refr->IsTaken())
 			return false;
 		else if (refr == m_refr)
 			return true;
