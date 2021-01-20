@@ -1441,10 +1441,10 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 					if (script->IsUserDefinedFunction())
 					{
 						*makeTemporary = true;
-#if NVSE_CORE
-						g_nvseVarGarbageCollectionMap[eventList].Emplace(varIdx, NVSEVarType::kVarType_String);
-#endif
 					}
+#if NVSE_CORE
+					g_nvseVarGarbageCollectionMap[eventList].Emplace(varIdx, NVSEVarType::kVarType_String);
+#endif
 				}
 			}
 		}

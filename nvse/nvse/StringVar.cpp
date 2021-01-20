@@ -321,15 +321,20 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 {
 	double strID = 0;
 	UInt8 modIndex = 0;
-	bool bTemp = ExpressionEvaluator::Active();
+	bool bTemp = true;
 	StringVar* strVar = NULL;
 
 	UInt32 len = (newValue) ? strlen(newValue) : 0;
 	if (!newValue || len >= kMaxMessageLength)		//if null pointer or too long, assign an empty string
 		newValue = "";
 
-	if (ExtractSetStatementVar(scriptObj, eventList, scriptData, &strID, &bTemp, opcodeOffsetPtr, &modIndex)) {
+	if (ExtractSetStatementVar(scriptObj, eventList, scriptData, &strID, &bTemp, opcodeOffsetPtr, &modIndex)) 
+	{
 		strVar = g_StringMap.Get(strID);
+	}
+	else
+	{
+		bTemp = true;
 	}
 	
 	if (!modIndex)
@@ -341,8 +346,10 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 		g_StringMap.MarkTemporary(strID, false);
 	}
 	else
+	{
 		strID = g_StringMap.Add(modIndex, newValue, bTemp);
-
+	}
+	
 	*result = strID;
 
 #if _DEBUG	// console feedback disabled in release by request (annoying when called from batch scripts)
