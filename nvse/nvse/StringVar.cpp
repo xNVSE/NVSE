@@ -306,7 +306,7 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 UInt32	StringVarMap::Add(UInt8 varModIndex, const char* data, bool bTemp)
 {
 	UInt32 varID = GetUnusedID();
-	Insert(varID, data, varModIndex << 24);
+	Insert(varID, data, varModIndex);
 
 	// UDFs are instanced once so all strings should be temporary - Kormakur
 	if (bTemp)
