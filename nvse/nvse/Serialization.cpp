@@ -222,6 +222,7 @@ bool SerializationTask::Load()
 	if (length == SERIALIZATION_BUFFER_SIZE)
 	{
 		_ERROR("HandleLoadGame: co-save file exceeds 4MB!");
+		ShowErrorMessageBox("NVSE cosave failed to load as it exceeded 4MB. Please ping the devs on the xNVSE Discord server about this matter.");
 		return false;
 	}
 
