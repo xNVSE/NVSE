@@ -391,10 +391,10 @@ void CommandTable::Init(void)
 
 	_MESSAGE("max id = %08X", g_scriptCommands.GetMaxID());
 
-	_MESSAGE("console commands");
-	g_consoleCommands.Dump();
-	_MESSAGE("script commands");
-	g_scriptCommands.Dump();
+	//_MESSAGE("console commands");
+	//g_consoleCommands.Dump();
+	//_MESSAGE("script commands");
+	//g_scriptCommands.Dump();
 
 	_MESSAGE("patched");
 }
