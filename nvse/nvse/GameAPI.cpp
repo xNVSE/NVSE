@@ -1010,7 +1010,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 				if (!args.Arg(args.kArgType_Form, &form))
 					return false;
 
-				resPtr += snprintf(resPtr, 9, "%08X", form ? form->refID : 0);
+				resPtr += sprintf_s(resPtr, 9, "%08X", form ? form->refID : 0);
 				break;
 			}
 			case 'c':											//named component of another object
@@ -1245,7 +1245,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 	{
 		if (argIdx)
 		{
-			snprintf(buffer, kMaxMessageLength - 2, fmtBuffer, f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8], f[9], f[10], f[11], f[12], f[13], f[14], f[15], f[16], f[17], f[18], f[19]);
+			sprintf_s(buffer, kMaxMessageLength - 2, fmtBuffer, f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8], f[9], f[10], f[11], f[12], f[13], f[14], f[15], f[16], f[17], f[18], f[19]);
 			buffer[kMaxMessageLength - 1] = 0;
 		}
 		else memcpy(buffer, fmtBuffer, (resPtr - fmtBuffer) + 1);
