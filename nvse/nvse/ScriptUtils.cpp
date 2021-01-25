@@ -3769,7 +3769,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken& 
 				{
 					auto* formName = form->GetName();
 					if (!formName || StrLen(formName) == 0)
-						operands.push("<FORM (EDITOR ID NOT LOADED)>");
+						operands.push(FormatString("%X", form->refID));
 					else
 						operands.push(std::string(formName));
 					break;
