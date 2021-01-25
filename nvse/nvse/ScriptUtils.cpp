@@ -3964,7 +3964,12 @@ ScriptToken* Operator::Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEv
 		}
 		if (bRuleMatches)
 		{
-			if (lhs->Type() != kTokenType_ArrayElement && rhs ? rhs->Type() != kTokenType_ArrayElement : true) // array elements depend on CanConvertTo to fail, can't cache eval
+			auto shouldCache = true;
+			if (lhs && lhs->Type() == kTokenType_ArrayElement || rhs && rhs->Type() == kTokenType_ArrayElement) // array elements depend on CanConvertTo to fail, can't cache eval
+			{
+				shouldCache = false;
+			}
+			if (shouldCache)
 			{
 				cacheEval = rule->eval;
 				cacheSwapOrder = bSwapOrder;
