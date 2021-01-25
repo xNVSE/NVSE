@@ -3803,21 +3803,27 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken& 
 						operand += " <...args>";
 					}
 					auto* callingRef = script->GetRefFromRefList(token.GetRefIndex());
-					
-					if (callingRef && callingRef->varIdx)
+
+					if (callingRef)
 					{
-						auto* varInfo = script->GetVariableInfo(callingRef->varIdx);
-						if (varInfo)
+						if (callingRef->varIdx)
 						{
-							operand = std::string(varInfo->name.CStr()) + "." + operand;
+							auto* varInfo = script->GetVariableInfo(callingRef->varIdx);
+							if (varInfo)
+							{
+								operand = std::string(varInfo->name.CStr()) + "." + operand;
+							}
+						}
+						else if (callingRef->form)
+						{
+							auto* name = callingRef->form->GetName();
+							if (name && StrLen(name))
+								operand = std::string(name) + "." + operand;
+							else
+								operand = FormatString("%X", callingRef->form->refID) + "." + operand;
 						}
 					}
-					else if (callingRef && callingRef->form)
-					{
-						auto* name = callingRef->form->GetName();
-						if (name && StrLen(name))
-							operand = std::string(name) + "." + operand;
-					}
+					
 					operands.push(operand);
 					break;
 				}
