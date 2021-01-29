@@ -436,36 +436,20 @@ private:
 	EventInfo		* m_eventInfo;
 };
 
-__declspec(naked) bool __fastcall IsValidReference(void *object)
+bool IsValidReference(void* refr)
 {
-	// Workaround for cases where MarkEventList() is called on an ExtraDataList not associated with a TESObjectREFR.
-	/*
-	0102F55C	TESObjectREFR
-	01086A6C	Character
-	010870AC	Creature
-	0108AA3C	PlayerCharacter
-	0108C3C4	BeamProjectile
-	0108EA64	ContinuousBeamProjectile
-	0108EE04	Explosion
-	0108F2F4	FlameProjectile
-	0108F674	GrenadeProjectile
-	0108FA44	MissileProjectile
-	*/
-	__asm
+	bool bIsRefr = false;
+	__try
 	{
-		test	byte ptr [ecx], 4
-		jz		retnFalse
-		cmp		word ptr [ecx+2], 0x108
-		jz		retnTrue
-		cmp		dword ptr [ecx], 0x102F55C
-		jnz		retnFalse
-	retnTrue:
-		mov		al, 1
-		retn
-	retnFalse:
-		xor		al, al
-		retn
+		if ((*(UInt8*)refr & 4) && ((((UInt16*)refr)[1] == 0x108) || (*(UInt32*)refr == 0x102F55C)))
+			bIsRefr = true;
 	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		bIsRefr = false;
+	}
+
+	return bIsRefr;
 }
 
 // stack of event names pushed when handler invoked, popped when handler returns
