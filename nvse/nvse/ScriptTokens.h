@@ -260,6 +260,7 @@ struct ScriptToken
 	bool					IsOperator() const;
 	bool					IsLogicalOperator() const;
 	std::string				GetVariableDataAsString();
+	const char* GetVariableTypeString() const;
 
 	static ScriptToken* Read(ExpressionEvaluator* context);
 
@@ -362,6 +363,7 @@ struct ArrayElementToken : ScriptToken
 	bool			GetBool()  override;
 	bool			CanConvertTo(Token_Type to) const override;
 	ArrayID			GetOwningArrayID() const override { return type == kTokenType_ArrayElement ? value.arrID : 0; }
+	ArrayVar*		GetOwningArrayVar() const { return g_ArrayMap.Get(GetOwningArrayID()); }
 	void* operator new(size_t size);
 
 	void operator delete(void* p);

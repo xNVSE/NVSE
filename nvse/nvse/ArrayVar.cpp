@@ -13,6 +13,18 @@
 
 ArrayVarMap g_ArrayMap;
 
+const char* DataTypeToString(DataType dataType)
+{
+	switch (dataType) {
+	case kDataType_Invalid: return "Invalid";
+	case kDataType_Numeric: return "Numeric";
+	case kDataType_Form: return "Form";
+	case kDataType_String: return "String";
+	case kDataType_Array: return "Array";
+	default: return "Unknown";
+	}
+}
+
 ArrayData::~ArrayData()
 {
 	if ((dataType == kDataType_String) && str)
@@ -114,11 +126,9 @@ std::string ArrayElement::GetStringRepresentation() const
 		return "invalid";
 	case kDataType_Numeric:
 		{
-			std::stringstream ss;
 			double numeric;
 			this->GetAsNumber(&numeric);
-			ss << numeric;
-			return ss.str();
+			return FormatString("%g", numeric);
 		}
 	case kDataType_Form:
 		{

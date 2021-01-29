@@ -66,6 +66,8 @@ enum DataType : UInt8
 	kDataType_Array,
 };
 
+const char* DataTypeToString(DataType dataType);
+
 struct ArrayData
 {
 	DataType	dataType;

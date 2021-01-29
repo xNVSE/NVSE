@@ -218,7 +218,7 @@ std::string ScriptToken::GetVariableDataAsString()
 		auto* arr = GetArrayVar();
 		if (arr)
 		{
-			if (arr->Size() <= 5)
+			if (arr->Size() <= 10)
 			{
 				auto str = FormatString("array keys [");
 				const ArrayKey* key;
@@ -253,6 +253,18 @@ std::string ScriptToken::GetVariableDataAsString()
 	default: break;
 	}
 	return "";
+}
+
+const char* ScriptToken::GetVariableTypeString() const
+{
+	switch (this->Type())
+	{
+	case kTokenType_NumericVar: return "Numeric";
+	case kTokenType_RefVar: return "Form";
+	case kTokenType_StringVar: return "String";
+	case kTokenType_ArrayVar: return "Array";
+	default: return "Not a variable";
+	}
 }
 #endif
 

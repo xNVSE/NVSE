@@ -3917,7 +3917,7 @@ std::string ExpressionEvaluator::GetVariablesText(CachedTokens& tokens) const
 					auto* var = eventList->GetVariable(varInfo->idx);
 					if (var)
 					{
-						auto* varName = varInfo->name.CStr();
+						const auto* varName = varInfo->name.CStr();
 						auto* form = LookupFormByID(var->GetFormId());
 						if (form)
 							result += FormatString("%s=%s", varName, form->GetStringRepresentation().c_str());
@@ -3984,9 +3984,33 @@ ScriptToken* Operator::Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEv
 			return bSwapOrder ? rule->eval(type, rhs, lhs, context) : rule->eval(type, lhs, rhs, context);
 		}
 	}
-	if (rhs && rhs->Type() == kTokenType_ArrayElement || lhs && lhs->Type() == kTokenType_ArrayElement)
+
+	// relay error message
+	for (auto* token : {lhs, rhs})
 	{
-		context->Error("Array does not contain key");
+		auto* elemToken = dynamic_cast<ArrayElementToken*>(token);
+		if (elemToken)
+		{
+			auto* var = elemToken->GetOwningArrayVar();
+			if (var && !var->Get(token->GetArrayKey(), false))
+			{
+				context->Error("Array does not contain key");
+				return nullptr;
+			}
+		}
+	}
+
+	if (lhs->IsVariable() && rhs->CanConvertTo(kTokenType_ArrayElement))
+	{
+		if (!rhs->CanConvertTo(lhs->Type()))
+		{
+			auto* var = rhs->GetArrayVar();
+			if (var)
+			{
+				auto type = var->GetElementType(rhs->GetArrayKey());
+				context->Error("Variable of type '%s' cannot be assigned to array element of type '%s'", lhs->GetVariableTypeString(), DataTypeToString(type));
+			}
+		}
 	}
 	return nullptr;
 }
