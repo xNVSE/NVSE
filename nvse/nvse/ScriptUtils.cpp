@@ -1589,7 +1589,7 @@ bool ExpressionParser::ParseArgs(ParamInfo* params, UInt32 numParams, bool bUses
 
 	while ((ch = Peek(Offset())))
 	{
-		if (!isspace(ch))
+		if (!isspace(static_cast<unsigned char>(ch)))
 			break;
 
 		Offset()++;		
@@ -1627,7 +1627,7 @@ bool ExpressionParser::ParseArgs(ParamInfo* params, UInt32 numParams, bool bUses
 
 	while ((ch = Peek(Offset())))
 	{
-		if (!isspace(ch))
+		if (!isspace(static_cast<unsigned char>(ch)))
 			break;
 
 		Offset()++;		
@@ -1861,7 +1861,7 @@ bool ExpressionParser::ParseUserFunctionCall()
 	UInt32 paramLen = strlen(m_lineBuf->paramText);
 
 	// parse function object
-	while (isspace(Peek()))
+	while (isspace(static_cast<unsigned char>(Peek())))
 	{
 		Offset()++;
 		if (Offset() >= paramLen)
@@ -1908,7 +1908,7 @@ bool ExpressionParser::ParseUserFunctionCall()
 
 	// skip any commas between function name and args
 	// silly thing to have to fix but whatever
-	while ((isspace(Peek()) || Peek() == ',') && Offset() < paramLen)
+	while ((isspace(static_cast<unsigned char>(Peek())) || Peek() == ',') && Offset() < paramLen)
 		Offset()++;
 
 	// determine paramInfo for function and parse the args
@@ -2150,7 +2150,7 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 	char ch;
 	while (Offset() < exprEnd && (ch = Peek()))
 	{
-		if (isspace(ch))
+		if (isspace(static_cast<unsigned char>(ch)))
 		{
 			Offset()++;
 			continue;
@@ -2334,7 +2334,7 @@ ScriptToken* ExpressionParser::ParseOperand(bool (* pred)(ScriptToken* operand))
 	char ch;
 	while ((ch = Peek(Offset())))
 	{
-		if (!isspace(ch))
+		if (!isspace(static_cast<unsigned char>(ch)))
 			break;
 
 		Offset()++;		
@@ -2385,7 +2385,7 @@ Operator* ExpressionParser::ParseOperator(bool bExpectBinaryOperator, bool bCons
 	}
 
 	ch = Peek(Offset() + 1);
-	if (ch && ispunct(ch))		// possibly a two-character operator, check second char
+	if (ch && ispunct(static_cast<unsigned char>(ch)))		// possibly a two-character operator, check second char
 	{
 		std::vector<Operator*>::iterator iter = ops.begin();
 		while (iter != ops.end())
@@ -2694,7 +2694,7 @@ std::string ExpressionParser::GetCurToken()
 	const char* tokStart = CurText();
 	while ((ch = Peek()))
 	{
-		if (isspace(ch) || (ispunct(ch) && ch != '_' && ch != '.'))
+		if (isspace(static_cast<unsigned char>(ch)) || (ispunct(static_cast<unsigned char>(ch)) && ch != '_' && ch != '.'))
 			break;
 		Offset()++;
 	}
