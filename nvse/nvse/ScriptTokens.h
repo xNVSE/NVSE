@@ -125,6 +125,8 @@ enum Token_Type : UInt8
 	kTokenType_Empty = kTokenType_Max + 1,
 };
 
+const char* TokenTypeToString(Token_Type type);
+
 struct Slice		// a range used for indexing into a string or array, expressed as arr[a:b]
 {
 	bool			bIsString;
@@ -364,6 +366,14 @@ struct ArrayElementToken : ScriptToken
 	bool			CanConvertTo(Token_Type to) const override;
 	ArrayID			GetOwningArrayID() const override { return type == kTokenType_ArrayElement ? value.arrID : 0; }
 	ArrayVar*		GetOwningArrayVar() const { return g_ArrayMap.Get(GetOwningArrayID()); }
+	ArrayElement*	GetElement() const
+	{
+		auto* arrayVar = GetOwningArrayVar();
+		if (!arrayVar)
+			return nullptr;
+		return arrayVar->Get(GetArrayKey(), false);
+	}
+	
 	void* operator new(size_t size);
 
 	void operator delete(void* p);

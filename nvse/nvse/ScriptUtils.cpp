@@ -3991,8 +3991,7 @@ ScriptToken* Operator::Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEv
 		auto* elemToken = dynamic_cast<ArrayElementToken*>(token);
 		if (elemToken)
 		{
-			auto* var = elemToken->GetOwningArrayVar();
-			if (var && !var->Get(token->GetArrayKey(), false))
+			if (!elemToken->GetElement())
 			{
 				context->Error("Array does not contain key");
 				return nullptr;
@@ -4000,18 +3999,24 @@ ScriptToken* Operator::Evaluate(ScriptToken* lhs, ScriptToken* rhs, ExpressionEv
 		}
 	}
 
-	if (lhs->IsVariable() && rhs->CanConvertTo(kTokenType_ArrayElement))
+	const auto* lhsStr = TokenTypeToString(lhs->Type());
+	auto* lhsElement = dynamic_cast<ArrayElementToken*>(lhs);
+	if (lhsElement && lhsElement->GetElement())
+		lhsStr = DataTypeToString(lhsElement->GetElement()->DataType());
+	if (rhs)
 	{
-		if (!rhs->CanConvertTo(lhs->Type()))
-		{
-			auto* var = rhs->GetArrayVar();
-			if (var)
-			{
-				auto type = var->GetElementType(rhs->GetArrayKey());
-				context->Error("Variable of type '%s' cannot be assigned to array element of type '%s'", lhs->GetVariableTypeString(), DataTypeToString(type));
-			}
-		}
+		const auto* rhsStr = TokenTypeToString(rhs->Type());
+		auto* rhsElement = dynamic_cast<ArrayElementToken*>(rhs);
+		if (rhsElement && rhsElement->GetElement())
+			rhsStr = DataTypeToString(rhsElement->GetElement()->DataType());
+		
+		context->Error("Cannot evaluate %s %s %s", lhsStr, this->symbol, rhsStr);
 	}
+	else
+	{
+		context->Error("Operators %s cannot be used for type %s", this->symbol, lhsStr);
+	}
+	
 	return nullptr;
 }
 

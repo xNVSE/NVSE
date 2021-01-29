@@ -492,6 +492,37 @@ SliceToken::SliceToken(Slice* _slice) : ScriptToken(kTokenType_Slice, Script::eV
 	//
 }
 
+const char* TokenTypeToString(Token_Type type)
+{
+	switch (type) { case kTokenType_Number: return "Number";
+	case kTokenType_Boolean: return "Boolean";
+	case kTokenType_String: return "String";
+	case kTokenType_Form: return "Form";
+	case kTokenType_Ref: return "Ref";
+	case kTokenType_Global: return "Global";
+	case kTokenType_Array: return "Array";
+	case kTokenType_ArrayElement: return "Array Element";
+	case kTokenType_Slice: return "Slice";
+	case kTokenType_Command: return "Command";
+	case kTokenType_Variable: return "Variable";
+	case kTokenType_NumericVar: return "Numeric Variable";
+	case kTokenType_RefVar: return "Reference Variable";
+	case kTokenType_StringVar: return "String Variable";
+	case kTokenType_ArrayVar: return "Array Variable";
+	case kTokenType_Ambiguous: return "Ambiguous";
+	case kTokenType_Operator: return "Operator";
+	case kTokenType_ForEachContext: return "ForEach Context";
+	case kTokenType_Byte: return "Byte";
+	case kTokenType_Short: return "Short";
+	case kTokenType_Int: return "Int";
+	case kTokenType_Pair: return "Pair";
+	case kTokenType_AssignableString: return "Assignable String";
+	case kTokenType_Invalid: return "Invalid";
+	case kTokenType_Empty: return "Empty";
+	default: return "Unknown";
+	}
+}
+
 Slice::Slice(const Slice* _slice)
 {
 	bIsString = _slice->bIsString;
