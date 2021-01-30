@@ -58,7 +58,7 @@ TESContainer* TESObjectREFR::GetContainer()
 {
 	if (IsActor())
 		return &((TESActorBase*)baseForm)->container;
-	if (baseForm->typeID == kFormType_Container)
+	if (baseForm->typeID == kFormType_TESObjectCONT)
 		return &((TESObjectCONT*)baseForm)->container;
 	return NULL;
 }
@@ -267,7 +267,7 @@ bool TESObjectREFR::GetInventoryItems(InventoryItemsMap &invItems)
 	for (auto contIter = container->formCountList.Begin(); !contIter.End(); ++contIter)
 	{
 		item = contIter->form;
-		if ((item->typeID == kFormType_LeveledItem) || invItems.HasKey(item))
+		if ((item->typeID == kFormType_TESLevItem) || invItems.HasKey(item))
 			continue;
 		contCount = container->GetCountForForm(item);
 		if (entry = entryList->FindForItem(item))

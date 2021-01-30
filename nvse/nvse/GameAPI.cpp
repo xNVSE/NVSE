@@ -214,18 +214,10 @@ ScriptEventList* ResolveExternalVar(ScriptEventList* in_EventList, Script* in_Sc
 		TESForm* refObj = refVar->form;
 		if (refObj)
 		{
-			if (refObj->typeID == kFormType_Reference)
-			{
-				TESObjectREFR* refr = DYNAMIC_CAST(refObj, TESForm, TESObjectREFR);
-				if (refr)
-					refEventList = refr->GetEventList();
-			}
-			else if (refObj->typeID == kFormType_Quest)
-			{
-				TESQuest* quest = DYNAMIC_CAST(refObj, TESForm, TESQuest);
-				if (quest)
-					refEventList = quest->scriptEventList;
-			}
+			if (refObj->typeID == kFormType_TESQuest)
+				refEventList = ((TESQuest*)refObj)->scriptEventList;
+			else if (((refObj->typeID >= kFormType_TESObjectREFR) && (refObj->typeID <= kFormType_FlameProjectile)) || (refObj->typeID == kFormType_ContinuousBeamProjectile))
+				refEventList = ((TESObjectREFR*)refObj)->GetEventList();
 		}
 	}
 
@@ -234,15 +226,14 @@ ScriptEventList* ResolveExternalVar(ScriptEventList* in_EventList, Script* in_Sc
 
 TESGlobal* ResolveGlobalVar(ScriptEventList* in_EventList, Script* in_Script, UInt8* &scriptData)
 {
-	TESGlobal* global = NULL;
 	UInt16 varIdx = *((UInt16*)++scriptData);
 	scriptData += 2;
 
 	Script::RefVariable* globalRef = in_Script->GetRefFromRefList(varIdx);
-	if (globalRef)
-		global = (TESGlobal*)DYNAMIC_CAST(globalRef->form, TESForm, TESGlobal);
+	if (globalRef && globalRef->form && (globalRef->form->typeID == kFormType_TESGlobal))
+		return (TESGlobal*)globalRef->form;
 
-	return global;
+	return NULL;
 }
 
 void ScriptEventList::Destructor()
@@ -265,52 +256,61 @@ tList<ScriptEventList::Var>* ScriptEventList::GetVars() const
 	return reinterpret_cast<tList<Var>*>(m_vars);
 }
 
-static bool ExtractFloat(double& out, UInt8* &scriptData, Script* scriptObj, ScriptEventList* eventList)
+static bool ExtractFloat(double *out, UInt8 *&scriptData, Script *scriptObj, ScriptEventList *eventList)
 {
-	//extracts one float arg
-
-	bool ret = false;
 	if (*scriptData == 'r')		//reference to var in another script
 	{
-		eventList = ResolveExternalVar(eventList, scriptObj, scriptData);
+		Script::RefVariable *refVar = scriptObj->GetRefFromRefList(*(UInt16*)(scriptData + 1));
+		if (!refVar) return false;
+
+		refVar->Resolve(eventList);
+		TESForm *refObj = refVar->form;
+		if (!refObj) return false;
+
+		if IS_ID(refObj, TESQuest)
+			eventList = ((TESQuest*)refObj)->scriptEventList;
+		else if (((refObj->typeID >= kFormType_TESObjectREFR) && (refObj->typeID <= kFormType_FlameProjectile)) || IS_ID(refObj, ContinuousBeamProjectile))
+			eventList = ((TESObjectREFR*)refObj)->GetEventList();
+		else eventList = NULL;
+
 		if (!eventList)			//couldn't resolve script ref
 			return false;
+		scriptData += 3;
 	}	
 
 	switch (*scriptData)
 	{
-	case 'G':		//global var
-	{
-		TESGlobal* global = ResolveGlobalVar(eventList, scriptObj, scriptData);
-		if (global)
+		case 'G':		//global var
 		{
-			out = global->data;
-			ret = true;
+			Script::RefVariable *globalRef = scriptObj->GetRefFromRefList(*(UInt16*)(scriptData + 1));
+			if (globalRef && IS_ID(globalRef->form, TESGlobal))
+			{
+				scriptData += 3;
+				*out = ((TESGlobal*)globalRef->form)->data;
+				return true;
+			}
+			break;
 		}
-		break;
-	}
-	case 'z':		//literal double
-	{
-		out = *((double*)++scriptData);
-		scriptData += sizeof(double);
-		ret = true;
-		break;
-	}
-	case 'f':
-	case 's':		//local var
-	{
-		UInt16 varIdx = *((UInt16*)++scriptData);
-		scriptData += 2;
-		ScriptEventList::Var* var = eventList->GetVariable(varIdx);
-		if (var)
+		case 'z':		//literal double
 		{
-			out = var->data;
-			ret = true;
+			*out = *(double*)(scriptData + 1);
+			scriptData += 9;
+			return true;
 		}
-		break;
+		case 'f':
+		case 's':		//local var
+		{
+			ScriptEventList::Var *var = eventList->GetVariable(*(UInt16*)(scriptData + 1));
+			if (var)
+			{
+				scriptData += 3;
+				*out = var->data;
+				return true;
+			}
+			break;
+		}
 	}
-	}
-	return ret;
+	return false;
 }
 
 TESForm* ExtractFormFromFloat(UInt8* &scriptData, Script* scriptObj, ScriptEventList* eventList)
@@ -391,7 +391,20 @@ static const char* ResolveStringArgument(ScriptEventList* eventList, const char*
 	return result;
 }
 
-static bool v_ExtractArgsEx(SInt16 numArgs, ParamInfo * paramInfo, UInt8* &scriptData, Script * scriptObj, ScriptEventList * eventList, UInt8* scriptDataOriginal, UInt32* opcodeOffsetPtr, va_list args)
+const UInt8 kClassifyParamExtract[] =
+{
+	0, 1, 4, 6, 6, 2, 6, 6, 3, 6, 2, 6, 6, 6, 6, 6, 6, 6, 2, 6, 6, 6, 7, 1, 6, 6, 6, 6, 2, 6, 6, 6, 3, 6, 6,
+	6, 6, 6, 6, 6, 6, 2, 6, 6, 5, 7, 7, 6, 7, 6, 6, 2, 2, 6, 6, 2, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6
+};
+
+const bool kInventoryType[] =
+{
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+	1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0
+};
+
+static bool v_ExtractArgsEx(SInt16 numArgs, ParamInfo *paramInfo, UInt8 *&scriptData, Script *scriptObj, ScriptEventList *eventList, UInt8 *scriptDataOriginal, UInt32 *opcodeOffsetPtr, va_list args)
 {
 #if NVSE_CORE
 	if (numArgs < 0) {
@@ -408,200 +421,339 @@ static bool v_ExtractArgsEx(SInt16 numArgs, ParamInfo * paramInfo, UInt8* &scrip
 	}
 #endif
 
-	for(UInt32 i = 0; i < numArgs; i++)
+	ParamInfo *info;
+	UInt32 paramType;
+	for (UInt32 i = 0; i < numArgs; i++)
 	{
-		ParamInfo	* info = &paramInfo[i];
+		info = &paramInfo[i];
+		paramType = info->typeID;
+		if (paramType > kParamType_Region)
+			return false;
 
-		//DEBUG_MESSAGE("ParamType: %d Type: %d Param: %s scriptData: %08x", info->typeID, *scriptData, info->typeStr, scriptData);	
-
-		switch(info->typeID)
+		switch (kClassifyParamExtract[paramType])
 		{
-			case kParamType_String:
+			case 0:
 			{
-				char	* out = va_arg(args, char *);
-
-				UInt16	len = *((UInt16 *)scriptData);
+				char *out = va_arg(args, char*);
+				UInt32 length = *(UInt16*)scriptData;
 				scriptData += 2;
+				memcpy(out, scriptData, length);
+				scriptData += length;
+				out[length] = 0;
 
-				memcpy(out, scriptData, len);
-				scriptData += len;
-
-				out[len] = 0;
-
-				const char* resolved = ResolveStringArgument(eventList, out);
-				if (resolved != out)
+				if (*out == '$')
 				{
-					UInt32 resolvedLen = strlen(resolved);
-					memcpy(out, resolved, resolvedLen);
-					out[resolvedLen] = 0;
-				}
-			}
-			break;
-
-			case kParamType_Integer:
-			case kParamType_QuestStage:
-			{
-				UInt32	* out = va_arg(args, UInt32 *);
-				UInt8	type = *scriptData;
-				switch(type)
-				{
-					case 0x6E: // "n"
-						*out = *((UInt32 *)++scriptData);
-						scriptData += sizeof(UInt32);
-						break;
-					case 0x7A: // "z"
-						*out = *((double *)++scriptData);
-						scriptData += sizeof(double);
-						break;					
-					case 0x66: // "f"
-					case 0x72: // "r"
-					case 0x73: // "s"
-					case 0x47: // "G"
+					VariableInfo *varInfo = scriptObj->GetVariableByName(out + 1);
+					if (varInfo)
 					{
-						double data = 0;
-						if (ExtractFloat(data, scriptData, scriptObj, eventList))
-							*out = data;
-						else
-							return false;
-
-						break;
+						ScriptEventList::Var *var = eventList->GetVariable(varInfo->idx);
+						if (var)
+						{
+							StringVar *strVar = g_StringMap.Get((int)var->data);
+							if (strVar)
+								memcpy(out, strVar->GetCString(), strVar->GetLength() + 1);
+							else *out = 0;
+						}
 					}
-
-					default:
-						_ERROR("ExtractArgsEx: unknown integer type (%02X)", type);
-						return false;
 				}
-			}
-			break;
-
-			case kParamType_Float:
-			{
-				float	* out = va_arg(args, float *);
-				UInt8	type = *scriptData;
-				switch(type)
-				{
-					case 0x7A: // "z"
-						*out = *((double *)++scriptData);
-						scriptData += sizeof(double);
-						break;
-
-					case 0x72: // "r"
-					case 0x66: // "f"
-					case 0x73: // "s"
-					case 0x47: // "G"
-					{
-						double data = 0;
-						if (ExtractFloat(data, scriptData, scriptObj, eventList))
-							*out = data;
-						else
-							return false;
-						
-						break;
-					}
-
-					default:
-						_ERROR("ExtractArgsEx: unknown float type (%02X)", type);
-						return false;
-				}
-			}
-			break;
-
-			case kParamType_ObjectID:
-			case kParamType_ObjectRef:
-			case kParamType_Actor:
-			case kParamType_SpellItem:
-			case kParamType_Cell:
-			case kParamType_MagicItem:
-			case kParamType_Sound:
-			case kParamType_Topic:
-			case kParamType_Quest:
-			case kParamType_Race:
-			case kParamType_Class:
-			case kParamType_Faction:
-			case kParamType_Global:
-			case kParamType_Furniture:
-			case kParamType_TESObject:
-			case kParamType_MapMarker:
-			case kParamType_ActorBase:
-			case kParamType_Container:
-			case kParamType_WorldSpace:
-			case kParamType_AIPackage:
-			case kParamType_CombatStyle:
-			case kParamType_MagicEffect:
-			case kParamType_WeatherID:
-			case kParamType_NPC:
-			case kParamType_Owner:
-			case kParamType_EffectShader:
-			case kParamType_FormList:
-			case kParamType_MenuIcon:
-			case kParamType_Perk:
-			case kParamType_Note:
-			case kParamType_ImageSpaceModifier:
-			case kParamType_ImageSpace:
-			case kParamType_EncounterZone:
-			case kParamType_Message:
-			case kParamType_InvObjOrFormList:
-			case kParamType_NonFormList:
-			case kParamType_SoundFile:
-			case kParamType_LeveledOrBaseChar:
-			case kParamType_LeveledOrBaseCreature:
-			case kParamType_LeveledChar:
-			case kParamType_LeveledCreature:
-			case kParamType_LeveledItem:
-			case kParamType_AnyForm:
-			case kParamType_Reputation:
-			case kParamType_Casino:
-			case kParamType_CasinoChip:
-			case kParamType_Challenge:
-			case kParamType_CaravanMoney:
-			case kParamType_CaravanCard:
-			case kParamType_CaravanDeck:
-			case kParamType_Region:
-			{
-				TESForm	** out = va_arg(args, TESForm **);
-				TESForm* form = ResolveForm(scriptData, scriptObj, eventList);
-				if (!form)
-					return false;
-
-				*out = form;
-			}
-			break;
-
-			case kParamType_ActorValue:
-			case kParamType_AnimationGroup:
-			case kParamType_Sex:
-			case kParamType_CrimeType:
-			case kParamType_MiscellaneousStat:
-			case kParamType_Alignment:
-			case kParamType_EquipType:
-			case kParamType_CriticalStage:
-			{
-				UInt32	* out = va_arg(args, UInt32 *);
-
-				*out = *((UInt16 *)scriptData);
-				scriptData += 2;
-			}
-			break;
-
-			case kParamType_Axis:
-			case kParamType_FormType:
-			{
-				UInt32	* out = va_arg(args, UInt32 *);
-
-				*out = *((UInt8 *)scriptData);
-				scriptData += 1;
-			}
-			break;
-
-			// known unhandled types
-			case kParamType_VariableName:
-				// fall through to error reporter
-
-			default:
-				_ERROR("Unhandled type encountered. Arg #%d numArgs = %d paramType = %d paramStr = %s",
-					i, numArgs, info->typeID, info->typeStr);
-				HALT("unhandled type");
 				break;
+			}
+			case 1:
+			{
+				SInt32 *out = va_arg(args, SInt32*);
+				if (*scriptData == 'n')
+				{
+					*out = *(SInt32*)(scriptData + 1);
+					scriptData += 5;
+				}
+				else if (*scriptData == 'z')
+				{
+					*out = *(double*)(scriptData + 1);
+					scriptData += 9;
+				}
+				else
+				{
+					double data;
+					if (!ExtractFloat(&data, scriptData, scriptObj, eventList))
+						return false;
+					*out = data;
+				}
+				break;
+			}
+			case 2:
+			{
+				UInt32 *out = va_arg(args, UInt32*);
+				*out = *(UInt16*)scriptData;
+				scriptData += 2;
+				break;
+			}
+			case 3:
+			{
+				UInt8 *out = va_arg(args, UInt8*);
+				*out = *(UInt8*)scriptData;
+				scriptData += 1;
+				break;
+			}
+			case 4:
+			{
+				float *out = va_arg(args, float*);
+				if (*scriptData == 'z')
+				{
+					*out = *(double*)(scriptData + 1);
+					scriptData += 9;
+				}
+				else
+				{
+					double data;
+					if (!ExtractFloat(&data, scriptData, scriptObj, eventList))
+						return false;
+					*out = data;
+				}
+				break;
+			}
+			case 5:
+			{
+				double *out = va_arg(args, double*);
+				if (*scriptData == 'z')
+				{
+					*out = *(double*)(scriptData + 1);
+					scriptData += 9;
+				}
+				else if (!ExtractFloat(out, scriptData, scriptObj, eventList))
+					return false;
+				break;
+			}
+			case 6:
+			{
+				TESForm *form = NULL;
+				if (*scriptData == 'f')
+				{
+					ScriptEventList::Var *var = eventList->GetVariable(*(UInt16*)(scriptData + 1));
+					if (var)
+						form = LookupFormByRefID(*(UInt32*)&var->data);
+				}
+				else if (*scriptData == 'r')
+				{
+					Script::RefVariable	*var = scriptObj->GetRefFromRefList(*(UInt16*)(scriptData + 1));
+					if (var)
+					{
+						var->Resolve(eventList);
+						form = var->form;
+					}
+				}
+
+				if (!form) return false;
+				scriptData += 3;
+				TESForm **out = va_arg(args, TESForm**);
+
+				switch (paramType)
+				{
+					case kParamType_ObjectID:
+						if (!kInventoryType[form->typeID])
+							return false;
+						break;
+					case kParamType_ObjectRef:
+					case kParamType_Container:
+						if ((form->typeID < kFormType_TESObjectREFR) || ((form->typeID > kFormType_FlameProjectile) && NOT_ID(form, ContinuousBeamProjectile)))
+							return false;
+						break;
+					case kParamType_Actor:
+						if (NOT_ID(form, Character) && NOT_ID(form, Creature))
+							return false;
+						break;
+					case kParamType_SpellItem:
+						if (NOT_ID(form, SpellItem) && NOT_ID(form, TESObjectBOOK))
+							return false;
+						break;
+					case kParamType_Cell:
+						if NOT_ID(form, TESObjectCELL)
+							return false;
+						break;
+					case kParamType_MagicItem:
+					{
+						MagicItem *magicItem = DYNAMIC_CAST(form, TESForm, MagicItem);
+						if (!magicItem) return false;
+						form = (TESForm*)magicItem;
+						break;
+					}
+					case kParamType_Sound:
+						if NOT_ID(form, TESSound)
+							return false;
+						break;
+					case kParamType_Topic:
+						if NOT_ID(form, TESTopic)
+							return false;
+						break;
+					case kParamType_Quest:
+						if NOT_ID(form, TESQuest)
+							return false;
+						break;
+					case kParamType_Race:
+						if NOT_ID(form, TESRace)
+							return false;
+						break;
+					case kParamType_Class:
+						if NOT_ID(form, TESClass)
+							return false;
+						break;
+					case kParamType_Faction:
+						if NOT_ID(form, TESFaction)
+							return false;
+						break;
+					case kParamType_Global:
+						if NOT_ID(form, TESGlobal)
+							return false;
+						break;
+					case kParamType_Furniture:
+						if (NOT_ID(form, TESFurniture) && NOT_ID(form, BGSListForm))
+							return false;
+						break;
+					case kParamType_TESObject:
+						if (!form->IsBoundObject())
+							return false;
+						break;
+					case kParamType_MapMarker:
+						if (NOT_ID(form, TESObjectREFR) || (((TESObjectREFR*)form)->baseForm->refID != 0x10))
+							return false;
+						break;
+					case kParamType_ActorBase:
+						if (NOT_ID(form, TESNPC) && NOT_ID(form, TESCreature))
+							return false;
+						break;
+					case kParamType_WorldSpace:
+						if NOT_ID(form, TESWorldSpace)
+							return false;
+						break;
+					case kParamType_AIPackage:
+						if NOT_ID(form, TESPackage)
+							return false;
+						break;
+					case kParamType_CombatStyle:
+						if NOT_ID(form, TESCombatStyle)
+							return false;
+						break;
+					case kParamType_MagicEffect:
+						if NOT_ID(form, EffectSetting)
+							return false;
+						break;
+					case kParamType_WeatherID:
+						if NOT_ID(form, TESWeather)
+							return false;
+						break;
+					case kParamType_NPC:
+						if NOT_ID(form, TESNPC)
+							return false;
+						break;
+					case kParamType_Owner:
+						if (NOT_ID(form, TESFaction) && NOT_ID(form, TESNPC))
+							return false;
+						break;
+					case kParamType_EffectShader:
+						if NOT_ID(form, TESEffectShader)
+							return false;
+						break;
+					case kParamType_FormList:
+						if NOT_ID(form, BGSListForm)
+							return false;
+						break;
+					case kParamType_MenuIcon:
+						if NOT_ID(form, BGSMenuIcon)
+							return false;
+						break;
+					case kParamType_Perk:
+						if NOT_ID(form, BGSPerk)
+							return false;
+						break;
+					case kParamType_Note:
+						if NOT_ID(form, BGSNote)
+							return false;
+						break;
+					case kParamType_ImageSpaceModifier:
+						if NOT_ID(form, TESImageSpaceModifier)
+							return false;
+						break;
+					case kParamType_ImageSpace:
+						if NOT_ID(form, TESImageSpace)
+							return false;
+						break;
+					case kParamType_EncounterZone:
+						if NOT_ID(form, BGSEncounterZone)
+							return false;
+						break;
+					case kParamType_Message:
+						if NOT_ID(form, BGSMessage)
+							return false;
+						break;
+					case kParamType_InvObjOrFormList:
+						if (NOT_ID(form, BGSListForm) && !kInventoryType[form->typeID])
+							return false;
+						break;
+					case kParamType_NonFormList:
+						if (IS_ID(form, BGSListForm) || !form->IsBoundObject())
+							return false;
+						break;
+					case kParamType_SoundFile:
+						if NOT_ID(form, BGSMusicType)
+							return false;
+						break;
+					case kParamType_LeveledOrBaseChar:
+						if (NOT_ID(form, TESNPC) && NOT_ID(form, TESLevCharacter))
+							return false;
+						break;
+					case kParamType_LeveledOrBaseCreature:
+						if (NOT_ID(form, TESCreature) && NOT_ID(form, TESLevCreature))
+							return false;
+						break;
+					case kParamType_LeveledChar:
+						if NOT_ID(form, TESLevCharacter)
+							return false;
+						break;
+					case kParamType_LeveledCreature:
+						if NOT_ID(form, TESLevCreature)
+							return false;
+						break;
+					case kParamType_LeveledItem:
+						if NOT_ID(form, TESLevItem)
+							return false;
+						break;
+					case kParamType_Reputation:
+						if NOT_ID(form, TESReputation)
+							return false;
+						break;
+					case kParamType_Casino:
+						if NOT_ID(form, TESCasino)
+							return false;
+						break;
+					case kParamType_CasinoChip:
+						if NOT_ID(form, TESCasinoChips)
+							return false;
+						break;
+					case kParamType_Challenge:
+						if NOT_ID(form, TESChallenge)
+							return false;
+						break;
+					case kParamType_CaravanMoney:
+						if NOT_ID(form, TESCaravanMoney)
+							return false;
+						break;
+					case kParamType_CaravanCard:
+						if NOT_ID(form, TESCaravanCard)
+							return false;
+						break;
+					case kParamType_CaravanDeck:
+						if NOT_ID(form, TESCaravanDeck)
+							return false;
+						break;
+					case kParamType_Region:
+						if NOT_ID(form, TESRegion)
+							return false;
+						break;
+				}
+				*out = form;
+				break;
+			}
+			default:
+				return false;
 		}
 	}
 
@@ -696,11 +848,11 @@ bool ExtractArgsRaw(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptD
 								TESForm	* eventListSrc = var->form;
 								switch(eventListSrc->typeID)
 								{
-									case kFormType_Reference:
+									case kFormType_TESObjectREFR:
 										srcEventList = ((TESObjectREFR *)eventListSrc)->GetEventList();
 										break;
 
-									case kFormType_Quest:
+									case kFormType_TESQuest:
 										srcEventList = ((TESQuest *)eventListSrc)->scriptEventList;
 										break;
 
@@ -1027,7 +1179,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 					{
 						switch(form->typeID)
 						{
-							case kFormType_Ammo:
+							case kFormType_TESAmmo:
 							{
 								switch((int)data)
 								{
@@ -1045,7 +1197,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 								resPtr = ConvertLiteralPercents(resPtr);
 								break;
 							}
-							case kFormType_Faction:
+							case kFormType_TESFaction:
 							{
 								StrCopy(resPtr, ((TESFaction*)form)->GetNthRankName(data));
 								resPtr = ConvertLiteralPercents(resPtr);
@@ -1087,7 +1239,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 						form = ((TESObjectREFR*)form)->baseForm;
 
 					UInt8 objType = 0;
-					if (form->typeID == kFormType_NPC)
+					if (form->typeID == kFormType_TESNPC)
 						objType = ((TESNPC*)form)->baseData.IsFemale() ? 2 : 1;
 
 					switch (*fmtPos)
@@ -1400,7 +1552,7 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 				if (!refForm)
 					break;
 
-				if (refForm->typeID == kFormType_Reference)
+				if (refForm->typeID == kFormType_TESObjectREFR)
 				{
 					TESObjectREFR* refr = DYNAMIC_CAST(refForm, TESForm, TESObjectREFR);
 					TESScriptableForm* scriptable = DYNAMIC_CAST(refr->baseForm, TESForm, TESScriptableForm);
@@ -1412,7 +1564,7 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 					else
 						break;
 				}
-				else if (refForm->typeID == kFormType_Quest)
+				else if (refForm->typeID == kFormType_TESQuest)
 				{
 					TESScriptableForm* scriptable = DYNAMIC_CAST(refForm, TESForm, TESScriptableForm);
 					if (scriptable)
@@ -1614,8 +1766,8 @@ bool ScriptFormatStringArgs::Arg(FormatStringArgs::argType asType, void * outRes
 	{
 	case kArgType_Float:
 		{
-			double data = 0;
-			if (ExtractFloat(data, scriptData, scriptObj, eventList))
+			double data;
+			if (ExtractFloat(&data, scriptData, scriptObj, eventList))
 			{
 				*((double*)outResult) = data;
 				return true;

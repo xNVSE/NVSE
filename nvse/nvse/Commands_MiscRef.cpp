@@ -109,7 +109,7 @@ bool GetTeleportInfo(COMMAND_ARGS, UInt32 which)
 {
 	*result = 0;
 
-	if (!thisObj || thisObj->baseForm->typeID != kFormType_Door)
+	if (!thisObj || thisObj->baseForm->typeID != kFormType_TESObjectDOOR)
 		return true;
 
 	ExtraTeleport* tele = GetByTypeCast(thisObj->extraDataList, Teleport);
@@ -160,7 +160,7 @@ bool Cmd_SetDoorTeleport_Execute(COMMAND_ARGS)
 	// linkedDoor x y z (rot). if omitted, coords/rot taken from linked ref
 
 	*result = 0;
-	if (!thisObj || thisObj->baseForm->typeID != kFormType_Door)
+	if (!thisObj || thisObj->baseForm->typeID != kFormType_TESObjectDOOR)
 		return true;
 
 	TESObjectREFR* linkedDoor = NULL;
@@ -361,7 +361,7 @@ public:
 	{
 		if (!m_includeTaken && refr->IsTaken())
 			return false;
-		else if (refr->baseForm->typeID == m_formType && refr->baseForm->refID != 7)	//exclude player for kFormType_NPC
+		else if (refr->baseForm->typeID == m_formType && refr->baseForm->refID != 7)	//exclude player for kFormType_TESNPC
 			return true;
 		else
 			return false;
@@ -376,9 +376,9 @@ public:
 
 	bool Accept(const TESObjectREFR* refr)
 	{
-		if (refr->baseForm->typeID == kFormType_Creature)
+		if (refr->baseForm->typeID == kFormType_TESCreature)
 			return true;
-		else if (refr->baseForm->typeID == kFormType_NPC && refr->baseForm->refID != 7) //exclude the player
+		else if (refr->baseForm->typeID == kFormType_TESNPC && refr->baseForm->refID != 7) //exclude the player
 			return true;
 		else
 			return false;
@@ -399,19 +399,19 @@ public:
 
 		switch (refr->baseForm->typeID)
 		{
-			case kFormType_Armor:
-			case kFormType_Book:
-			case kFormType_Clothing:
-			case kFormType_Ingredient:
-			case kFormType_Misc:
-			case kFormType_Weapon:
-			case kFormType_Ammo:
-			case kFormType_Key:
+			case kFormType_TESObjectARMO:
+			case kFormType_TESObjectBOOK:
+			case kFormType_TESObjectCLOT:
+			case kFormType_IngredientItem:
+			case kFormType_TESObjectMISC:
+			case kFormType_TESObjectWEAP:
+			case kFormType_TESAmmo:
+			case kFormType_TESKey:
 			case kFormType_AlchemyItem:
-			case kFormType_ARMA:
+			case kFormType_TESObjectARMA:
 				return true;
 
-			case kFormType_Light:
+			case kFormType_TESObjectLIGH:
 				TESObjectLIGH* light = DYNAMIC_CAST(refr->baseForm, TESForm, TESObjectLIGH);
 				if (light)
 					if (light->icon.ddsPath.m_dataLen)	//temp hack until I find canCarry flag on TESObjectLIGH

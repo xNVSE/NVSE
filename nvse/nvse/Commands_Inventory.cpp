@@ -1466,7 +1466,7 @@ static void _ClearHotKey ( UInt32 whichKey ) {
 			while (xEntry = visitor.Find(finder, xEntry))
 			{
 				ExtraQuickKey* toRemove = static_cast<ExtraQuickKey*>(xEntry->data->extendData->data->GetByType(kExtraData_QuickKey));
-				//if (toRemove && (quickKey->start->data->typeID != kFormType_Spell || toRemove->keyID > 7))
+				//if (toRemove && (quickKey->start->data->typeID != kFormType_SpellItem || toRemove->keyID > 7))
 				if (toRemove && toRemove->keyID > 7)
 				{
 					xEntry->data->extendData->data->Remove(toRemove);
@@ -1557,7 +1557,7 @@ bool Cmd_SetHotKeyItem_Execute(COMMAND_ARGS)
 
 	ExtraQuickKey* xQKey = NULL;
 
-	if (qkForm->typeID != kFormType_Spell)	//add ExtraQuickKey to new item's extra data list
+	if (qkForm->typeID != kFormType_SpellItem)	//add ExtraQuickKey to new item's extra data list
 	{
 		ExtraContainerChanges* xChanges = static_cast <ExtraContainerChanges *>((*g_thePlayer)->baseExtraList.GetByType(kExtraData_ContainerChanges));
 		if (xChanges)		//look up form in player's inventory
@@ -2781,8 +2781,8 @@ bool Cmd_EquipItem2_Execute(COMMAND_ARGS)
 
 	UInt8 itemType = item->typeID;
 	// Those following are the only equip-able types.
-	if ((itemType != kFormType_Armor) && (itemType != kFormType_Book) && (itemType != kFormType_Weapon) && 
-		(itemType != kFormType_Ammo) && (itemType != kFormType_AlchemyItem)) return true;
+	if ((itemType != kFormType_TESObjectARMO) && (itemType != kFormType_TESObjectBOOK) && (itemType != kFormType_TESObjectWEAP) && 
+		(itemType != kFormType_TESAmmo) && (itemType != kFormType_AlchemyItem)) return true;
 
 	ExtraContainerChanges *xChanges = (ExtraContainerChanges*)actor->extraDataList.GetByType(kExtraData_ContainerChanges);
 	if (!xChanges || !xChanges->data || !xChanges->data->objList) return true;
@@ -2791,13 +2791,13 @@ bool Cmd_EquipItem2_Execute(COMMAND_ARGS)
 	if (!entry) return true;
 
 	UInt32 eqpCount = 1;
-	if (itemType == kFormType_Weapon)
+	if (itemType == kFormType_TESObjectWEAP)
 	{
 		TESObjectWEAP *weapon = DYNAMIC_CAST(item, TESForm, TESObjectWEAP);
 		// If the weapon is stack-able, equip whole stack.
 		if (weapon && (weapon->eWeaponType > 9)) eqpCount = entry->countDelta;
 	}
-	else if (itemType == kFormType_Ammo) eqpCount = entry->countDelta;
+	else if (itemType == kFormType_TESAmmo) eqpCount = entry->countDelta;
 
 	ExtraDataList *xData = entry->extendData ? entry->extendData->GetNthItem(0) : NULL;
 

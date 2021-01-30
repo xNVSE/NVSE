@@ -253,13 +253,13 @@ UInt32 ScriptBuffer::GetVariableType(VariableInfo* varInfo, Script::RefVariable*
 			TESScriptableForm* scriptable = NULL;
 			switch (refVar->form->typeID)
 			{
-			case kFormType_Reference:
+			case kFormType_TESObjectREFR:
 				{
 					TESObjectREFR* refr = DYNAMIC_CAST(refVar->form, TESForm, TESObjectREFR);
 					scriptable = DYNAMIC_CAST(refr->baseForm, TESForm, TESScriptableForm);
 					break;
 				}
-			case kFormType_Quest:
+			case kFormType_TESQuest:
 				scriptable = DYNAMIC_CAST(refVar->form, TESForm, TESScriptableForm);
 			}
 
@@ -298,28 +298,34 @@ public:
 	}
 };
 
-VariableInfo* Script::GetVariableByName(const char* varName)
+VariableInfo *Script::GetVariableByName(const char *varName)
 {
-	VarListVisitor visitor(&varList);
-	const VarInfoEntry* varEntry = visitor.Find(ScriptVarFinder(varName));
-	if (varEntry)
-		return varEntry->data;
-	else
-		return NULL;
+	VarInfoEntry *varIter = &varList;
+	VariableInfo *varInfo;
+	do
+	{
+		varInfo = varIter->data;
+		if (varInfo && !StrCompare(varName, varInfo->name.m_data))
+			return varInfo;
+	}
+	while (varIter = varIter->next);
+	return NULL;
 }
 
 Script::RefVariable	* Script::GetRefFromRefList(UInt32 refIdx)
 {
-	UInt32	idx = 1;	// yes, really starts at 1
+	UInt32 idx = 1;	// yes, really starts at 1
 	if (refIdx)
-		for(RefListEntry * entry = &refList; entry; entry = entry->next)
+	{
+		RefListEntry *varIter = &refList;
+		do
 		{
-			if(idx == refIdx)
-				return entry->var;
-
+			if (idx == refIdx)
+				return varIter->var;
 			idx++;
 		}
-
+		while (varIter = varIter->next);
+	}
 	return NULL;
 }
 

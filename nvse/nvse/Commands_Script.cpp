@@ -144,7 +144,7 @@ bool Cmd_SetScript_Execute(COMMAND_ARGS)
 		*refResult = oldScript->refID;
 	}
 
-	if ((script->IsQuestScript() && form->typeID == kFormType_Quest) || script->IsObjectScript()) {
+	if ((script->IsQuestScript() && form->typeID == kFormType_TESQuest) || script->IsObjectScript()) {
 		scriptForm->script = script;
 		// clean up event list here?
 		// This is necessary in order to make sure the script uses the correct questDelayTime.

@@ -12,126 +12,127 @@ enum FormType
 	kFormType_TES4,
 	kFormType_Group,
 	kFormType_GMST,
-	kFormType_TextureSet,
-	kFormType_MenuIcon,
-	kFormType_Global,
-	kFormType_Class,
-	kFormType_Faction,					// 08
-	kFormType_HeadPart,
-	kFormType_Hair,
-	kFormType_Eyes,
-	kFormType_Race,
-	kFormType_Sound,
-	kFormType_AcousticSpace,
-	kFormType_Skill,
-	kFormType_Effect,					// 10
+	kFormType_BGSTextureSet,
+	kFormType_BGSMenuIcon,
+	kFormType_TESGlobal,
+	kFormType_TESClass,
+	kFormType_TESFaction,					// 08
+	kFormType_BGSHeadPart,
+	kFormType_TESHair,
+	kFormType_TESEyes,
+	kFormType_TESRace,
+	kFormType_TESSound,
+	kFormType_BGSAcousticSpace,
+	kFormType_TESSkill,
+	kFormType_EffectSetting,					// 10
 	kFormType_Script,
-	kFormType_LandTexture,
-	kFormType_Enchantment,
-	kFormType_Spell,
-	kFormType_Activator,
-	kFormType_TalkingActivator,
-	kFormType_Terminal,
-	kFormType_Armor,					// 18	inv object
-	kFormType_Book,						// 19	inv object
-	kFormType_Clothing,					// 1A	inv object
-	kFormType_Container,
-	kFormType_Door,
-	kFormType_Ingredient,				// 1D	inv object
-	kFormType_Light,					// 1E	inv object
-	kFormType_Misc,						// 1F	inv object
-	kFormType_Static,					// 20
-	kFormType_StaticCollection,
-	kFormType_MoveableStatic,
-	kFormType_PlaceableWater,
-	kFormType_Grass,
-	kFormType_Tree,
-	kFormType_Flora,
-	kFormType_Furniture,
-	kFormType_Weapon,					// 28	inv object
-	kFormType_Ammo,						// 29	inv object
-	kFormType_NPC,						// 2A
-	kFormType_Creature,					// 2B
-	kFormType_LeveledCreature,			// 2C
-	kFormType_LeveledCharacter,			// 2D
-	kFormType_Key,						// 2E	inv object
+	kFormType_TESLandTexture,
+	kFormType_EnchantmentItem,
+	kFormType_SpellItem,
+	kFormType_TESObjectACTI,
+	kFormType_BGSTalkingActivator,
+	kFormType_BGSTerminal,
+	kFormType_TESObjectARMO,					// 18	inv object
+	kFormType_TESObjectBOOK,						// 19	inv object
+	kFormType_TESObjectCLOT,					// 1A	inv object
+	kFormType_TESObjectCONT,
+	kFormType_TESObjectDOOR,
+	kFormType_IngredientItem,				// 1D	inv object
+	kFormType_TESObjectLIGH,					// 1E	inv object
+	kFormType_TESObjectMISC,						// 1F	inv object
+	kFormType_TESObjectSTAT,					// 20
+	kFormType_BGSStaticCollection,
+	kFormType_BGSMovableStatic,
+	kFormType_BGSPlaceableWater,
+	kFormType_TESGrass,
+	kFormType_TESObjectTREE,
+	kFormType_TESFlora,
+	kFormType_TESFurniture,
+	kFormType_TESObjectWEAP,					// 28	inv object
+	kFormType_TESAmmo,						// 29	inv object
+	kFormType_TESNPC,						// 2A
+	kFormType_TESCreature,					// 2B
+	kFormType_TESLevCreature,			// 2C
+	kFormType_TESLevCharacter,			// 2D
+	kFormType_TESKey,						// 2E	inv object
 	kFormType_AlchemyItem,				// 2F	inv object
-	kFormType_IdleMarker,				// 30
-	kFormType_Note,						// 31	inv object
-	kFormType_ConstructibleObject,		// 32	inv object
-	kFormType_Projectile,
-	kFormType_LeveledItem,				// 34	inv object
-	kFormType_Weather,
-	kFormType_Climate,
-	kFormType_Region,
-	kFormType_NAVI,						// 38
-	kFormType_Cell,
-	kFormType_Reference,				// 3A
-	kFormType_ACHR,						// 3B
-	kFormType_ACRE,						// 3C
-	kFormType_PMIS,						// 3D
-	kFormType_PGRE,						// 3E
-	kFormType_PBEA,						// 3F
-	kFormType_PFLA,						// 40
-	kFormType_WorldSpace,
-	kFormType_Land,
+	kFormType_BGSIdleMarker,				// 30
+	kFormType_BGSNote,						// 31	inv object
+	kFormType_BGSConstructibleObject,		// 32	inv object
+	kFormType_BGSProjectile,
+	kFormType_TESLevItem,				// 34	inv object
+	kFormType_TESWeather,
+	kFormType_TESClimate,
+	kFormType_TESRegion,
+	kFormType_NavMeshInfoMap,						// 38
+	kFormType_TESObjectCELL,
+	kFormType_TESObjectREFR,				// 3A
+	kFormType_Character,						// 3B
+	kFormType_Creature,						// 3C
+	kFormType_MissileProjectile,						// 3D
+	kFormType_GrenadeProjectile,						// 3E
+	kFormType_BeamProjectile,						// 3F
+	kFormType_FlameProjectile,						// 40
+	kFormType_TESWorldSpace,
+	kFormType_TESObjectLAND,
 	kFormType_NavMesh,
 	kFormType_TLOD,
-	kFormType_DIAL,
-	kFormType_INFO,
-	kFormType_Quest,
-	kFormType_Idle,						// 48
-	kFormType_Package,
-	kFormType_CombatStyle,
-	kFormType_LoadScreen,
-	kFormType_LeveledSpell,
-	kFormType_ANIO,
-	kFormType_WaterForm,
-	kFormType_EffectShader,
+	kFormType_TESTopic,
+	kFormType_TESTopicInfo,
+	kFormType_TESQuest,
+	kFormType_TESIdleForm,						// 48
+	kFormType_TESPackage,
+	kFormType_TESCombatStyle,
+	kFormType_TESLoadScreen,
+	kFormType_TESLevSpell,
+	kFormType_TESObjectANIO,
+	kFormType_TESWaterForm,
+	kFormType_TESEffectShader,
 	kFormType_TOFT,						// 50	table of Offset (see OffsetData in Worldspace)
-	kFormType_Explosion,
-	kFormType_Debris,
-	kFormType_ImageSpace,
-	kFormType_ImageSpaceModifier,
-	kFormType_ListForm,					// 55
-	kFormType_Perk,
-	kFormType_BodyPartData,
-	kFormType_AddonNode,				// 58
+	kFormType_BGSExplosion,
+	kFormType_BGSDebris,
+	kFormType_TESImageSpace,
+	kFormType_TESImageSpaceModifier,
+	kFormType_BGSListForm,					// 55
+	kFormType_BGSPerk,
+	kFormType_BGSBodyPartData,
+	kFormType_BGSAddonNode,				// 58
 	kFormType_ActorValueInfo,
-	kFormType_RadiationStage,
-	kFormType_CameraShot,
-	kFormType_CameraPath,
-	kFormType_VoiceType,
-	kFormType_ImpactData,
-	kFormType_ImpactDataSet,
-	kFormType_ARMA,						// 60
-	kFormType_EncounterZone,
-	kFormType_Message,
-	kFormType_Ragdoll,
+	kFormType_BGSRadiationStage,
+	kFormType_BGSCameraShot,
+	kFormType_BGSCameraPath,
+	kFormType_BGSVoiceType,
+	kFormType_BGSImpactData,
+	kFormType_BGSImpactDataSet,
+	kFormType_TESObjectARMA,						// 60
+	kFormType_BGSEncounterZone,
+	kFormType_BGSMessage,
+	kFormType_BGSRagdoll,
 	kFormType_DOBJ,
-	kFormType_LightingTemplate,
-	kFormType_SoundFile,
-	kFormType_ItemMod,					// 67	inv object
-	kFormType_Reputation,				// 68
-	kFormType_PCBE,						// 69 Continuous Beam
-	kFormType_Recipe,
-	kFormType_RecipeCategory,
-	kFormType_CasinoChip,				// 6C	inv object
-	kFormType_Casino,
-	kFormType_LoadScreenType,
+	kFormType_BGSLightingTemplate,
+	kFormType_BGSMusicType,
+	kFormType_TESObjectIMOD,					// 67	inv object
+	kFormType_TESReputation,				// 68
+	kFormType_ContinuousBeamProjectile,						// 69 Continuous Beam
+	kFormType_TESRecipe,
+	kFormType_TESRecipeCategory,
+	kFormType_TESCasinoChips,				// 6C	inv object
+	kFormType_TESCasino,
+	kFormType_TESLoadScreenType,
 	kFormType_MediaSet,
 	kFormType_MediaLocationController,	// 70
-	kFormType_Challenge,
-	kFormType_AmmoEffect,
-	kFormType_CaravanCard,				// 73	inv object
-	kFormType_CaravanMoney,				// 74	inv object
-	kFormType_CaravanDeck,
-	kFormType_DehydrationStages,
-	kFormType_HungerStages,
-	kFormType_SleepDeprivationStages,	// 78
+	kFormType_TESChallenge,
+	kFormType_TESAmmoEffect,
+	kFormType_TESCaravanCard,				// 73	inv object
+	kFormType_TESCaravanMoney,				// 74	inv object
+	kFormType_TESCaravanDeck,
+	kFormType_BGSDehydrationStage,
+	kFormType_BGSHungerStage,
+	kFormType_BGSSleepDeprevationStage,	// 78
 };
 
-
+#define IS_ID(form, type) (form->typeID == kFormType_##type)
+#define NOT_ID(form, type) (form->typeID != kFormType_##type)
 
 struct ModInfo;		// in GameData.h 
 class TESFullName;
@@ -267,13 +268,13 @@ public:
 	virtual void		Unk_37(void);		// write esp format
 	virtual void		readOBNDSubRecord(ModInfo * modInfo);	// read esp format
 	virtual bool		Unk_39(void);
-	virtual bool		Unk_3A(void);
+	virtual bool		IsBoundObject(void);
 	virtual bool		Unk_3B(void);
 #if RUNTIME
 	virtual bool		GetIsReference() const;
 #else
 	virtual bool		Unk_3C();
-	bool GetIsReference() const { return typeID == kFormType_Reference; }
+	bool GetIsReference() const { return typeID == kFormType_TESObjectREFR; }
 #endif
 	virtual bool		Unk_3D(void);
 	virtual bool		Unk_3E(void);
@@ -334,8 +335,8 @@ public:
 	bool			IsCloned() const;
 	std::string		GetStringRepresentation() const;
 
-	bool IsWeapon() { return typeID == kFormType_Weapon; }
-	bool IsArmor() { return typeID == kFormType_Armor; }
+	bool IsWeapon() { return typeID == kFormType_TESObjectWEAP; }
+	bool IsArmor() { return typeID == kFormType_TESObjectARMO; }
 
 	// adds a new form to the game (from CloneForm or LoadForm)
 	void DoAddForm(TESForm* newForm, bool bPersist = true, bool record = true) const;

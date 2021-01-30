@@ -29,7 +29,7 @@ UInt8 TESForm::GetModIndex() const
 
 TESFullName* TESForm::GetFullName() const
 {
-	if (typeID == kFormType_Cell)		// some exterior cells inherit name of parent worldspace
+	if (typeID == kFormType_TESObjectCELL)		// some exterior cells inherit name of parent worldspace
 	{
 		TESObjectCELL *cell = (TESObjectCELL*)this;
 		TESFullName *fullName = &cell->fullName;

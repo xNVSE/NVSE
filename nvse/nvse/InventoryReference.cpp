@@ -216,7 +216,7 @@ bool InventoryReference::DeferredAction::Execute(InventoryReference* iref)
 			if (data.xData && data.xData->IsWorn())
 				actor->UnequipItem(data.type, 1, data.xData, 0, false, 0);
 			else
-				actor->EquipItem(data.type, (data.type->typeID == kFormType_Ammo) ? iref->GetCount() : 1, data.xData, 1, false);
+				actor->EquipItem(data.type, (data.type->typeID == kFormType_TESAmmo) ? iref->GetCount() : 1, data.xData, 1, false);
 			return true;
 		}
 		case kAction_Remove:
