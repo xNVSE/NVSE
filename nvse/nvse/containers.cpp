@@ -221,12 +221,13 @@ __declspec(naked) UInt32 __fastcall AlignBucketCount(UInt32 count)
 		mov		eax, MAP_MAX_BUCKET_COUNT
 		retn
 	ltMax:
-		xor		eax, eax
-		bsr		edx, ecx
-		bts		eax, edx
-		cmp		eax, ecx
+		mov		eax, ecx
+		bsr		ecx, eax
+		bsf		edx, eax
+		cmp		cl, dl
 		jz		done
-		shl		eax, 1
+		mov		eax, 2
+		shl		eax, cl
 	done:
 		retn
 	}
