@@ -266,7 +266,7 @@ void SerializationTask::Write32(UInt32 inData)
 
 void SerializationTask::Write64(const void *inData)
 {
-	*(UInt64*)bufferPtr = *(UInt64*)inData;
+	*(double*)bufferPtr = *(double*)inData;
 	bufferPtr += 8;
 	length += 8;
 }
@@ -288,7 +288,7 @@ void SerializationTask::WriteBuf(const void *inData, UInt32 size)
 			*(UInt32*)bufferPtr = *(UInt32*)inData;
 			break;
 		case 8:
-			*(UInt64*)bufferPtr = *(UInt64*)inData;
+			*(double*)bufferPtr = *(double*)inData;
 			break;
 		default:
 			memcpy(bufferPtr, inData, size);
@@ -321,7 +321,7 @@ UInt32 SerializationTask::Read32()
 
 void SerializationTask::Read64(void *outData)
 {
-	*(UInt64*)outData = *(UInt64*)bufferPtr;
+	*(double*)outData = *(double*)bufferPtr;
 	bufferPtr += 8;
 }
 
@@ -342,7 +342,7 @@ void SerializationTask::ReadBuf(void *outData, UInt32 size)
 			*(UInt32*)outData = *(UInt32*)bufferPtr;
 			break;
 		case 8:
-			*(UInt64*)outData = *(UInt64*)bufferPtr;
+			*(double*)outData = *(double*)bufferPtr;
 			break;
 		default:
 			memcpy(outData, bufferPtr, size);
@@ -553,6 +553,20 @@ void ReadRecord64(void *outData)
 	s_chunkHeader.length -= 8;
 
 	s_serializationTask.Read64(outData);
+}
+
+void SkipNBytes(UInt32 byteNum)
+{
+	ASSERT(s_chunkOpen);
+
+	if (!byteNum) return;
+
+	if (byteNum > s_chunkHeader.length)
+		byteNum = s_chunkHeader.length;
+
+	s_serializationTask.Skip(byteNum);
+
+	s_chunkHeader.length -= byteNum;
 }
 
 UInt32 PeekRecordData(void * buf, UInt32 length)
@@ -907,4 +921,6 @@ NVSESerializationInterface	g_NVSESerializationInterface =
 	Serialization::ReadRecord16,
 	Serialization::ReadRecord32,
 	Serialization::ReadRecord64,
+
+	Serialization::SkipNBytes,
 };
