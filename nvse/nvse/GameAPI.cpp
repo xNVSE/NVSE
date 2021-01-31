@@ -201,39 +201,32 @@ std::string GetSavegamePath()
 }
 
 // ExtractArgsEx code
-ScriptEventList* ResolveExternalVar(ScriptEventList* in_EventList, Script* in_Script, UInt8* &scriptData)
+ScriptEventList *ResolveExternalVar(ScriptEventList *in_EventList, Script *in_Script, UInt8 *&scriptData)
 {
-	ScriptEventList* refEventList = NULL;
-	UInt16 varIdx = *((UInt16*)++scriptData);
-	scriptData += 2;
-
-	Script::RefVariable* refVar = in_Script->GetRefFromRefList(varIdx);
+	Script::RefVariable *refVar = in_Script->GetRefFromRefList(*(UInt16*)(scriptData + 1));
 	if (refVar)
 	{
 		refVar->Resolve(in_EventList);
-		TESForm* refObj = refVar->form;
+		TESForm *refObj = refVar->form;
 		if (refObj)
 		{
+			scriptData += 3;
 			if (refObj->typeID == kFormType_TESQuest)
-				refEventList = ((TESQuest*)refObj)->scriptEventList;
-			else if (((refObj->typeID >= kFormType_TESObjectREFR) && (refObj->typeID <= kFormType_FlameProjectile)) || (refObj->typeID == kFormType_ContinuousBeamProjectile))
-				refEventList = ((TESObjectREFR*)refObj)->GetEventList();
+				return ((TESQuest*)refObj)->scriptEventList;
+			else if (((refObj->typeID >= kFormType_TESObjectREFR) && (refObj->typeID <= kFormType_FlameProjectile)) || IS_ID(refObj, ContinuousBeamProjectile))
+				return ((TESObjectREFR*)refObj)->GetEventList();
 		}
 	}
-
-	return refEventList;
+	return NULL;
 }
 
-TESGlobal* ResolveGlobalVar(ScriptEventList* in_EventList, Script* in_Script, UInt8* &scriptData)
+TESGlobal *ResolveGlobalVar(Script *scriptObj, UInt8 *&scriptData)
 {
-	UInt16 varIdx = *((UInt16*)++scriptData);
-	scriptData += 2;
-
-	Script::RefVariable* globalRef = in_Script->GetRefFromRefList(varIdx);
-	if (globalRef && globalRef->form && (globalRef->form->typeID == kFormType_TESGlobal))
-		return (TESGlobal*)globalRef->form;
-
-	return NULL;
+	Script::RefVariable *globalRef = scriptObj->GetRefFromRefList(*(UInt16*)(scriptData + 1));
+	if (!globalRef || !globalRef->form || NOT_ID(globalRef->form, TESGlobal))
+		return NULL;
+	scriptData += 3;
+	return (TESGlobal*)globalRef->form;
 }
 
 void ScriptEventList::Destructor()
@@ -258,47 +251,50 @@ tList<ScriptEventList::Var>* ScriptEventList::GetVars() const
 
 static bool ExtractFloat(double *out, UInt8 *&scriptData, Script *scriptObj, ScriptEventList *eventList)
 {
-	if (*scriptData == 'r')		//reference to var in another script
+	if (*scriptData == 'z')
 	{
-		Script::RefVariable *refVar = scriptObj->GetRefFromRefList(*(UInt16*)(scriptData + 1));
-		if (!refVar) return false;
-
-		refVar->Resolve(eventList);
-		TESForm *refObj = refVar->form;
-		if (!refObj) return false;
-
-		if IS_ID(refObj, TESQuest)
-			eventList = ((TESQuest*)refObj)->scriptEventList;
-		else if (((refObj->typeID >= kFormType_TESObjectREFR) && (refObj->typeID <= kFormType_FlameProjectile)) || IS_ID(refObj, ContinuousBeamProjectile))
-			eventList = ((TESObjectREFR*)refObj)->GetEventList();
-		else eventList = NULL;
-
-		if (!eventList)			//couldn't resolve script ref
-			return false;
-		scriptData += 3;
-	}	
-
-	switch (*scriptData)
+		*out = *(double*)(scriptData + 1);
+		scriptData += 9;
+		return true;
+	}
+	else if (*scriptData == 'n')
 	{
-		case 'G':		//global var
+		*out = *(SInt32*)(scriptData + 1);
+		scriptData += 5;
+		return true;
+	}
+	else if (*scriptData == 'G')
+	{
+		Script::RefVariable *globalRef = scriptObj->GetRefFromRefList(*(UInt16*)(scriptData + 1));
+		if (globalRef && globalRef->form && IS_ID(globalRef->form, TESGlobal))
 		{
-			Script::RefVariable *globalRef = scriptObj->GetRefFromRefList(*(UInt16*)(scriptData + 1));
-			if (globalRef && IS_ID(globalRef->form, TESGlobal))
-			{
-				scriptData += 3;
-				*out = ((TESGlobal*)globalRef->form)->data;
-				return true;
-			}
-			break;
-		}
-		case 'z':		//literal double
-		{
-			*out = *(double*)(scriptData + 1);
-			scriptData += 9;
+			*out = ((TESGlobal*)globalRef->form)->data;
+			scriptData += 3;
 			return true;
 		}
-		case 'f':
-		case 's':		//local var
+	}
+	else
+	{
+		if (*scriptData == 'r')		//reference to var in another script
+		{
+			Script::RefVariable *refVar = scriptObj->GetRefFromRefList(*(UInt16*)(scriptData + 1));
+			if (!refVar) return false;
+
+			refVar->Resolve(eventList);
+			TESForm *refObj = refVar->form;
+			if (!refObj) return false;
+
+			if IS_ID(refObj, TESQuest)
+				eventList = ((TESQuest*)refObj)->scriptEventList;
+			else if (((refObj->typeID >= kFormType_TESObjectREFR) && (refObj->typeID <= kFormType_FlameProjectile)) || IS_ID(refObj, ContinuousBeamProjectile))
+				eventList = ((TESObjectREFR*)refObj)->GetEventList();
+			else eventList = NULL;
+
+			if (!eventList)			//couldn't resolve script ref
+				return false;
+			scriptData += 3;
+		}
+		if ((*scriptData == 'f') || (*scriptData == 's'))
 		{
 			ScriptEventList::Var *var = eventList->GetVariable(*(UInt16*)(scriptData + 1));
 			if (var)
@@ -307,7 +303,6 @@ static bool ExtractFloat(double *out, UInt8 *&scriptData, Script *scriptObj, Scr
 				*out = var->data;
 				return true;
 			}
-			break;
 		}
 	}
 	return false;
@@ -404,29 +399,12 @@ const bool kInventoryType[] =
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0
 };
 
-static bool v_ExtractArgsEx(SInt16 numArgs, ParamInfo *paramInfo, UInt8 *&scriptData, Script *scriptObj, ScriptEventList *eventList, UInt8 *scriptDataOriginal, UInt32 *opcodeOffsetPtr, va_list args)
+static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&scriptData, Script *scriptObj, ScriptEventList *eventList, va_list args)
 {
-#if NVSE_CORE
-	if (numArgs < 0) {
-		*opcodeOffsetPtr += 2;
-		const auto beforeOffset = *opcodeOffsetPtr;
-		if (ExtractArgsOverride::ExtractArgs(paramInfo, scriptDataOriginal, scriptObj, eventList, opcodeOffsetPtr, args, false, numArgs)) {
-			scriptData += *opcodeOffsetPtr - beforeOffset;
-			return true;
-		}
-		else {
-			DEBUG_PRINT("v_ExtractArgsEx returns false");
-			return false;
-		}
-	}
-#endif
-
-	ParamInfo *info;
 	UInt32 paramType;
 	for (UInt32 i = 0; i < numArgs; i++)
 	{
-		info = &paramInfo[i];
-		paramType = info->typeID;
+		paramType = paramInfo[i].typeID;
 		if (paramType > kParamType_Region)
 			return false;
 
@@ -466,11 +444,6 @@ static bool v_ExtractArgsEx(SInt16 numArgs, ParamInfo *paramInfo, UInt8 *&script
 					*out = *(SInt32*)(scriptData + 1);
 					scriptData += 5;
 				}
-				else if (*scriptData == 'z')
-				{
-					*out = *(double*)(scriptData + 1);
-					scriptData += 9;
-				}
 				else
 				{
 					double data;
@@ -496,43 +469,24 @@ static bool v_ExtractArgsEx(SInt16 numArgs, ParamInfo *paramInfo, UInt8 *&script
 			}
 			case 4:
 			{
+				double data;
+				if (!ExtractFloat(&data, scriptData, scriptObj, eventList))
+					return false;
 				float *out = va_arg(args, float*);
-				if (*scriptData == 'z')
-				{
-					*out = *(double*)(scriptData + 1);
-					scriptData += 9;
-				}
-				else
-				{
-					double data;
-					if (!ExtractFloat(&data, scriptData, scriptObj, eventList))
-						return false;
-					*out = data;
-				}
+				*out = data;
 				break;
 			}
 			case 5:
 			{
 				double *out = va_arg(args, double*);
-				if (*scriptData == 'z')
-				{
-					*out = *(double*)(scriptData + 1);
-					scriptData += 9;
-				}
-				else if (!ExtractFloat(out, scriptData, scriptObj, eventList))
+				if (!ExtractFloat(out, scriptData, scriptObj, eventList))
 					return false;
 				break;
 			}
 			case 6:
 			{
 				TESForm *form = NULL;
-				if (*scriptData == 'f')
-				{
-					ScriptEventList::Var *var = eventList->GetVariable(*(UInt16*)(scriptData + 1));
-					if (var)
-						form = LookupFormByRefID(*(UInt32*)&var->data);
-				}
-				else if (*scriptData == 'r')
+				if (*scriptData == 'r')
 				{
 					Script::RefVariable	*var = scriptObj->GetRefFromRefList(*(UInt16*)(scriptData + 1));
 					if (var)
@@ -541,10 +495,13 @@ static bool v_ExtractArgsEx(SInt16 numArgs, ParamInfo *paramInfo, UInt8 *&script
 						form = var->form;
 					}
 				}
-
+				else if (*scriptData == 'f')
+				{
+					ScriptEventList::Var *var = eventList->GetVariable(*(UInt16*)(scriptData + 1));
+					if (var)
+						form = LookupFormByRefID(*(UInt32*)&var->data);
+				}
 				if (!form) return false;
-				scriptData += 3;
-				TESForm **out = va_arg(args, TESForm**);
 
 				switch (paramType)
 				{
@@ -749,7 +706,10 @@ static bool v_ExtractArgsEx(SInt16 numArgs, ParamInfo *paramInfo, UInt8 *&script
 							return false;
 						break;
 				}
+
+				TESForm **out = va_arg(args, TESForm**);
 				*out = form;
+				scriptData += 3;
 				break;
 			}
 			default:
@@ -988,18 +948,39 @@ bool ExtractArgsRaw(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptD
 	return true;
 }
 
-bool ExtractArgsEx(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptDataOffset, Script * scriptObj, ScriptEventList * eventList, ...)
+bool ExtractArgsEx(ParamInfo *paramInfo, void *scriptDataIn, UInt32 *scriptDataOffset, Script *scriptObj, ScriptEventList *eventList, ...)
 {
 	va_list	args;
 	va_start(args, eventList);
 
-	UInt8	* scriptData = ((UInt8 *)scriptDataIn) + *scriptDataOffset;
-	UInt32	numArgs = *((UInt16 *)scriptData);
+	UInt8 *scriptData = (UInt8*)scriptDataIn + *scriptDataOffset;
+	UInt32 numArgs = *(UInt16*)scriptData;
 	scriptData += 2;
 
 	//DEBUG_MESSAGE("scriptData:%08x numArgs:%d paramInfo:%08x scriptObj:%08x eventList:%08x", scriptData, numArgs, paramInfo, scriptObj, eventList);
 
-	bool bExtracted = v_ExtractArgsEx(numArgs, paramInfo, scriptData, scriptObj, eventList, static_cast<UInt8*>(scriptDataIn), scriptDataOffset, args);
+	bool bExtracted = false;
+
+#if NVSE_CORE
+	if (numArgs > 0x7FFF)
+	{
+		*scriptDataOffset += 2;
+		const auto beforeOffset = *scriptDataOffset;
+		if (ExtractArgsOverride::ExtractArgs(paramInfo, static_cast<UInt8*>(scriptDataIn), scriptObj, eventList, scriptDataOffset, args, false, numArgs))
+		{
+			scriptData += *scriptDataOffset - beforeOffset;
+			bExtracted = true;
+		}
+		else
+		{
+			DEBUG_PRINT("v_ExtractArgsEx returns false");
+		}
+	}
+	else
+#endif
+	if (v_ExtractArgsEx(numArgs, paramInfo, scriptData, scriptObj, eventList, args))
+		bExtracted = true;
+
 	va_end(args);
 	return bExtracted;
 }
@@ -1443,7 +1424,7 @@ bool ExtractFormatStringArgs(UInt32 fmtStringPos, char* buffer, ParamInfo * para
 	bool bExtracted = false;
 	if (fmtStringPos > 0)
 	{
-		bExtracted = v_ExtractArgsEx(fmtStringPos, paramInfo, scriptData, scriptObj, eventList, static_cast<UInt8*>(scriptDataIn), scriptDataOffset, args);
+		bExtracted = v_ExtractArgsEx(fmtStringPos, paramInfo, scriptData, scriptObj, eventList, args);
 		if (!bExtracted)
 			return false;
 	}
@@ -1459,7 +1440,7 @@ bool ExtractFormatStringArgs(UInt32 fmtStringPos, char* buffer, ParamInfo * para
 		if ((numArgs + fmtStringPos + 21) > maxParams)		//scripter included too many optional params - adjust to prevent crash
 			numArgs = (maxParams - fmtStringPos - 21);
 
-		bExtracted = v_ExtractArgsEx(numArgs, &(paramInfo[fmtStringPos + 21]), scriptData, scriptObj, eventList, static_cast<UInt8*>(scriptDataIn), scriptDataOffset, args);
+		bExtracted = v_ExtractArgsEx(numArgs, &(paramInfo[fmtStringPos + 21]), scriptData, scriptObj, eventList, args);
 	}
 
 	va_end(args);
@@ -1764,17 +1745,13 @@ bool ScriptFormatStringArgs::Arg(FormatStringArgs::argType asType, void * outRes
 
 	switch (asType)
 	{
-	case kArgType_Float:
+		case kArgType_Float:
 		{
-			double data;
-			if (ExtractFloat(&data, scriptData, scriptObj, eventList))
-			{
-				*((double*)outResult) = data;
+			if (ExtractFloat((double*)outResult, scriptData, scriptObj, eventList))
 				return true;
-			}
+			break;
 		}
-		break;
-	case kArgType_Form:
+		case kArgType_Form:
 		{
 			TESForm* form = ExtractFormFromFloat(scriptData, scriptObj, eventList);
 			*((TESForm**)outResult) = form;
