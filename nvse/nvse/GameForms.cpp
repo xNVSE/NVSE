@@ -230,7 +230,8 @@ void TESObjectWEAP::SetHandGrip(UInt8 _handGrip)
 
 UInt8 TESObjectWEAP::AttackAnimation() const
 {
-	switch(attackAnim) {
+	switch (attackAnim)
+	{
 		case eAttackAnim_Default:		return 0;
 		case eAttackAnim_Attack3:		return 1;
 		case eAttackAnim_Attack4:		return 2;
@@ -250,95 +251,19 @@ UInt8 TESObjectWEAP::AttackAnimation() const
 		case eAttackAnim_AttackThrow5:	return 16;
 		case eAttackAnim_PlaceMine:		return 17;
 		case eAttackAnim_PlaceMine2:	return 18;
-
-		default:
-			return -1;
+		case eAttackAnim_Attack9:		return 19;
+		case eAttackAnim_AttackThrow6:	return 20;
+		case eAttackAnim_AttackThrow7:	return 21;
+		case eAttackAnim_AttackThrow8:	return 22;
+		default:						return 255;
 	}
 }
 
+const UInt8 kAttackAnims[] = {255, 38, 44, 50, 56, 62, 68, 26, 74, 32, 80, 86, 114, 120, 126, 132, 138, 102, 108, 144, 150, 156, 162};
+
 void TESObjectWEAP::SetAttackAnimation(UInt8 _attackAnim)
 {
-	switch(_attackAnim) {
-		case 0: {
-			attackAnim = eAttackAnim_Default; 
-			break;
-		}
-		case 1: {
-			attackAnim = eAttackAnim_Attack3; 
-			break;
-		}
-		case 2: {
-			attackAnim = eAttackAnim_Attack4;
-			break;
-		}
-		case 3: {
-			attackAnim = eAttackAnim_Attack5;
-			break;
-		}
-		case 4: {
-			attackAnim = eAttackAnim_Attack6;
-			break;
-		}
-		case 5: {
-			attackAnim = eAttackAnim_Attack7;
-			break;
-		}
-		case 6: {
-			attackAnim = eAttackAnim_Attack8;
-			break;
-		}
-		
-		case 7: {
-			attackAnim = eAttackAnim_AttackLeft;
-			break;
-		}
-		case 8: {
-			attackAnim = eAttackAnim_AttackLoop;
-			break;
-		}
-		case 9: {
-			attackAnim = eAttackAnim_AttackRight;
-			break;
-		}
-		case 10: {
-			attackAnim = eAttackAnim_AttackSpin;
-			break;
-		}
-		case 11: {
-			attackAnim = eAttackAnim_AttackSpin2;
-			break;
-		}
-		case 12: {
-			attackAnim = eAttackAnim_AttackThrow;
-			break;
-		}
-		case 13: {
-			attackAnim = eAttackAnim_AttackThrow2;
-			break;
-		}
-		case 14: {
-			attackAnim = eAttackAnim_AttackThrow3;
-			break;
-		}
-		case 15: {
-			attackAnim = eAttackAnim_AttackThrow4;
-			break;
-		}
-		case 16: {
-			attackAnim = eAttackAnim_AttackThrow5;
-			break;
-		}
-		case 17: {
-			attackAnim = eAttackAnim_PlaceMine;
-			break;
-		}
-		case 18: {
-			attackAnim = eAttackAnim_PlaceMine2;
-			break;
-		}
-		default:
-			break;
-	}
+	attackAnim = kAttackAnims[_attackAnim];
 }
 
 TESObjectIMOD* TESObjectWEAP::GetItemMod(UInt8 which)

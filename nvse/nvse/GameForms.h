@@ -2592,26 +2592,30 @@ public:
 	};
 
 	enum EAttackAnimations {
-		eAttackAnim_Default			= 0xff,	// 11111111
-		eAttackAnim_Attack3			= 0x26,	// 00100110
-		eAttackAnim_Attack4			= 0x2c, // 00101100
-		eAttackAnim_Attack5			= 0x32,	// 00110010
-		eAttackAnim_Attack6			= 0x38, // 
-		eAttackAnim_Attack7			= 0x3e,
-		eAttackAnim_Attack8			= 0x44,
-		eAttackAnim_AttackLeft		= 0x1a,
-		eAttackAnim_AttackLoop		= 0x4a,
-		eAttackAnim_AttackRight		= 0x20,
-		eAttackAnim_AttackSpin		= 0x50,
-		eAttackAnim_AttackSpin2		= 0x56,
-		eAttackAnim_AttackThrow		= 0x6d,
-		eAttackAnim_AttackThrow2	= 0x73,
-		eAttackAnim_AttackThrow3	= 0x79,
-		eAttackAnim_AttackThrow4	= 0x7F,
-		eAttackAnim_AttackThrow5	= 0x85,
-		eAttackAnim_PlaceMine		= 0x61,
-		eAttackAnim_PlaceMine2		= 0x67,
-		eAttackAnim_Count			= 19,
+		eAttackAnim_Default =		255,
+		eAttackAnim_Attack3 =		38,
+		eAttackAnim_Attack4 =		44,
+		eAttackAnim_Attack5 =		50,
+		eAttackAnim_Attack6 =		56,
+		eAttackAnim_Attack7 =		62,
+		eAttackAnim_Attack8 =		68,
+		eAttackAnim_Attack9 =		144,
+		eAttackAnim_AttackLeft =	26,
+		eAttackAnim_AttackLoop =	74,
+		eAttackAnim_AttackRight =	32,
+		eAttackAnim_AttackSpin =	80,
+		eAttackAnim_AttackSpin2 =	86,
+		eAttackAnim_AttackThrow =	114,
+		eAttackAnim_AttackThrow2 =	120,
+		eAttackAnim_AttackThrow3 =	126,
+		eAttackAnim_AttackThrow4 =	132,
+		eAttackAnim_AttackThrow5 =	138,
+		eAttackAnim_AttackThrow6 =	150,
+		eAttackAnim_AttackThrow7 =	156,
+		eAttackAnim_AttackThrow8 =	162,
+		eAttackAnim_PlaceMine =		102,
+		eAttackAnim_PlaceMine2 =	108,
+		eAttackAnim_Count =			23,
 	};
 
 	enum ReloadAnim {
@@ -2789,7 +2793,8 @@ public:
 	float				value2Mod[3];		// 1AC
 	float				impulseDist;		// 1B8
 	UInt32				skillRequirement;	// 1BC
-	UInt32				criticalDamage;		// 1C0
+	UInt16				criticalDamage;		// 1C0
+	UInt8				unk1C2[2];			// 1C2
 	float				criticalPercent;	// 1C4
 	UInt8				critDamageFlags;	// 1C8
 	UInt8				pad1C9[3];			// 1C9
