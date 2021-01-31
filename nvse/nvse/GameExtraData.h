@@ -925,3 +925,10 @@ public:
 
 	Animation* data;	// 0C
 };	// 10
+
+// 10
+class ExtraObjectHealth : public BSExtraData
+{
+public:
+	float			health;		// 0C
+};

@@ -1770,11 +1770,23 @@ bool Cmd_GetInventoryObject_Execute(COMMAND_ARGS)
 bool Cmd_GetCurrentHealth_Execute(COMMAND_ARGS)
 {
 	*result = 0;
-	if (!thisObj) return true;
-	TESHealthForm* pHealth = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESHealthForm);
-	if (!pHealth) return true;
-	ExtraHealth* pXHealth = (ExtraHealth*)thisObj->extraDataList.GetByType(kExtraData_Health);
-	*result = pXHealth ? pXHealth->health : pHealth->health;
+	TESHealthForm *healthForm = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESHealthForm);
+	if (healthForm)
+	{
+		ExtraHealth *xHealth = (ExtraHealth*)thisObj->extraDataList.GetByType(kExtraData_Health);
+		*result = xHealth ? xHealth->health : (int)healthForm->health;
+	}
+	else
+	{
+		BGSDestructibleObjectForm *destructible = DYNAMIC_CAST(thisObj->baseForm, TESForm, BGSDestructibleObjectForm);
+		if (destructible && destructible->data)
+		{
+			ExtraObjectHealth *xObjHealth = (ExtraObjectHealth*)thisObj->extraDataList.GetByType(kExtraData_ObjectHealth);
+			*result = xObjHealth ? xObjHealth->health : (int)destructible->data->health;
+		}
+	}
+	if (IsConsoleMode())
+		Console_Print("GetCurrentHealth >> %.4f", *result);
 	return true;
 }
 
