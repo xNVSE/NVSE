@@ -40,7 +40,7 @@ public:
 	UInt32				unk010[(0x028 - 0x010) >> 2];	// 010
 	Tile				* cursor;						// 028
 	UInt32				unk02C[(0x070 - 0x02C) >> 2];	// 02C
-	TESObjectREFR		* debugSelection;				// 070
+	UInt32				unk070;							// 070
 	UInt32				unk074;							// 074
 	UInt32				unk078;							// 078
 	UInt32				unk07C;							// 07C
@@ -62,7 +62,7 @@ public:
 	UInt8				pad0E5[3];
 	UInt32				unk0E8;							// 0E8
 	UInt32				unk0EC;							// 0EC
-	UInt32				unk0F0;							// 0F0	compared to activated object during Activate
+	TESObjectREFR		*debugSelection;				// 0F0	compared to activated object during Activate
 	UInt32				unk0F4;							// 0F4
 	UInt32				unk0F8;							// 0F8
 	TESObjectREFR		* crosshairRef;					// 0FC
@@ -80,7 +80,7 @@ public:
 	UInt32				unk468[(0x584 - 0x474) >> 2];	// 474
 };
 STATIC_ASSERT(sizeof(InterfaceManager) == 0x584);
-STATIC_ASSERT(offsetof(InterfaceManager, debugSelection) == 0x070);
+STATIC_ASSERT(offsetof(InterfaceManager, debugSelection) == 0x0F0);
 STATIC_ASSERT(offsetof(InterfaceManager, crosshairRef) == 0x0FC);
 STATIC_ASSERT(offsetof(InterfaceManager, pipboyManager) == 0x174);
 
