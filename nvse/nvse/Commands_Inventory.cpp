@@ -207,7 +207,7 @@ bool Cmd_GetType_Execute(COMMAND_ARGS)
 	if(!ExtractArgsEx(EXTRACT_ARGS_EX, &form)) return true;
 	form = form->TryGetREFRParent();
 	if (!form) {
-		if (!thisObj) return true;
+		if (!thisObj || !thisObj->baseForm) return true;
 		form = thisObj->baseForm;
 	}
 
