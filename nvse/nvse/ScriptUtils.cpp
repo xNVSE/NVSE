@@ -2556,12 +2556,12 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 		{
 			if (refVar->varIdx)			// it's a variable
 				return ScriptToken::Create(m_scriptBuf->vars.GetVariableByName(refVar->name.m_data), 0, Script::eVarType_Ref);
-			else if (refVar->form && refVar->form->typeID == kFormType_Global)
+			else if (refVar->form && refVar->form->typeID == kFormType_TESGlobal)
 				return ScriptToken::Create((TESGlobal*)refVar->form, refIdx);
 			else						// literal reference to a form
 				return ScriptToken::Create(refVar, refIdx);
 		}
-		else if (refVar->form && !refVar->form->GetIsReference() && refVar->form->typeID != kFormType_Quest)
+		else if (refVar->form && !refVar->form->GetIsReference() && refVar->form->typeID != kFormType_TESQuest)
 		{
 			Message(kError_InvalidDotSyntax);
 			return NULL;
@@ -3151,7 +3151,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 							case kParamType_SpellItem:
 								{
 									SpellItem* spell = DYNAMIC_CAST(form, TESForm, SpellItem);
-									if (spell || form->typeID == kFormType_Book) {
+									if (spell || form->typeID == kFormType_TESObjectBOOK) {
 										TESForm** out = va_arg(varArgs, TESForm**);
 										*out = form;
 									}
@@ -3303,7 +3303,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 								break;
 							case kParamType_InvObjOrFormList:
 								{
-									if (form->IsInventoryObject() || (form->typeID == kFormType_ListForm)) {
+									if (form->IsInventoryObject() || (form->typeID == kFormType_BGSListForm)) {
 										TESForm** out = va_arg(varArgs, TESForm**);
 										*out = form;
 									}
@@ -3314,7 +3314,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 								break;
 							case kParamType_NonFormList:
 								{
-									if (form->Unk_3A() && (form->typeID != kFormType_ListForm)) {
+									if (form->IsBoundObject() && (form->typeID != kFormType_BGSListForm)) {
 										TESForm** out = va_arg(varArgs, TESForm**);
 										*out = form;
 									}
@@ -3329,67 +3329,67 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 									UInt32 typeToMatch = -1;
 									switch (info->typeID) {
 										case kParamType_Sound:
-											typeToMatch = kFormType_Sound; break;
+											typeToMatch = kFormType_TESSound; break;
 										case kParamType_Topic:
-											typeToMatch = kFormType_DIAL; break;
+											typeToMatch = kFormType_TESTopic; break;
 										case kParamType_Quest:
-											typeToMatch = kFormType_Quest; break;
+											typeToMatch = kFormType_TESQuest; break;
 										case kParamType_Race:
-											typeToMatch = kFormType_Race; break;
+											typeToMatch = kFormType_TESRace; break;
 										case kParamType_Faction:
-											typeToMatch = kFormType_Faction; break;
+											typeToMatch = kFormType_TESFaction; break;
 										case kParamType_Class:
-											typeToMatch = kFormType_Class; break;
+											typeToMatch = kFormType_TESClass; break;
 										case kParamType_Global:
-											typeToMatch = kFormType_Global; break;
+											typeToMatch = kFormType_TESGlobal; break;
 										case kParamType_Furniture:
-											typeToMatch = kFormType_Furniture; break;
+											typeToMatch = kFormType_TESFurniture; break;
 										case kParamType_FormList:
-											typeToMatch = kFormType_ListForm; break;
+											typeToMatch = kFormType_BGSListForm; break;
 										case kParamType_WeatherID:
-											typeToMatch = kFormType_Weather; break;
+											typeToMatch = kFormType_TESWeather; break;
 										case kParamType_NPC:
-											typeToMatch = kFormType_NPC; break;
+											typeToMatch = kFormType_TESNPC; break;
 										case kParamType_EffectShader:
-											typeToMatch = kFormType_EffectShader; break;
+											typeToMatch = kFormType_TESEffectShader; break;
 										case kParamType_MenuIcon:
-											typeToMatch = kFormType_MenuIcon; break;
+											typeToMatch = kFormType_BGSMenuIcon; break;
 										case kParamType_Perk:
-											typeToMatch = kFormType_Perk; break;
+											typeToMatch = kFormType_BGSPerk; break;
 										case kParamType_Note:
-											typeToMatch = kFormType_Note; break;
+											typeToMatch = kFormType_BGSNote; break;
 										case kParamType_ImageSpaceModifier:
-											typeToMatch = kFormType_ImageSpaceModifier; break;
+											typeToMatch = kFormType_TESImageSpaceModifier; break;
 										case kParamType_ImageSpace:
-											typeToMatch = kFormType_ImageSpace; break;
+											typeToMatch = kFormType_TESImageSpace; break;
 										case kParamType_EncounterZone:
-											typeToMatch = kFormType_EncounterZone; break;
+											typeToMatch = kFormType_BGSEncounterZone; break;
 										case kParamType_Message:
-											typeToMatch = kFormType_Message; break;
+											typeToMatch = kFormType_BGSMessage; break;
 										case kParamType_SoundFile:
-											typeToMatch = kFormType_SoundFile; break;
+											typeToMatch = kFormType_BGSMusicType; break;
 										case kParamType_LeveledChar:
-											typeToMatch = kFormType_LeveledCharacter; break;
+											typeToMatch = kFormType_TESLevCharacter; break;
 										case kParamType_LeveledCreature:
-											typeToMatch = kFormType_LeveledCreature; break;
+											typeToMatch = kFormType_TESLevCreature; break;
 										case kParamType_LeveledItem:
-											typeToMatch = kFormType_LeveledItem; break;
+											typeToMatch = kFormType_TESLevItem; break;
 										case kParamType_Reputation:
-											typeToMatch = kFormType_Reputation; break;
+											typeToMatch = kFormType_TESReputation; break;
 										case kParamType_Casino:
-											typeToMatch = kFormType_Casino; break;
+											typeToMatch = kFormType_TESCasino; break;
 										case kParamType_CasinoChip:
-											typeToMatch = kFormType_CasinoChip; break;
+											typeToMatch = kFormType_TESCasinoChips; break;
 										case kParamType_Challenge:
-											typeToMatch = kFormType_Challenge; break;
+											typeToMatch = kFormType_TESChallenge; break;
 										case kParamType_CaravanMoney:
-											typeToMatch = kFormType_CaravanMoney; break;
+											typeToMatch = kFormType_TESCaravanMoney; break;
 										case kParamType_CaravanCard:
-											typeToMatch = kFormType_CaravanCard; break;
+											typeToMatch = kFormType_TESCaravanCard; break;
 										case kParamType_CaravanDeck:
-											typeToMatch = kFormType_CaravanDeck; break;
+											typeToMatch = kFormType_TESCaravanDeck; break;
 										case kParamType_Region:
-											typeToMatch = kFormType_Region; break;
+											typeToMatch = kFormType_TESRegion; break;
 									}
 
 									if (form->typeID == typeToMatch) {

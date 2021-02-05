@@ -77,6 +77,8 @@ UInt16	ReadRecord16();
 UInt32	ReadRecord32();
 void	ReadRecord64(void *outData);
 
+void	SkipNBytes(UInt32 byteNum);
+
 bool	ResolveRefID(UInt32 refID, UInt32 * outRefID);
 
 // internal event handlers

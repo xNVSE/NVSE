@@ -68,6 +68,9 @@ template <typename T> __forceinline void RawSwap(const T &lhs, const T &rhs)
 #define NOP_0xE NOP_0x7 NOP_0x7
 #define NOP_0xF NOP_0x7 NOP_0x8
 
+class TESForm;
+TESForm* __stdcall LookupFormByRefID(UInt32 refID);
+
 int __vectorcall ifloor(float value);
 
 int __vectorcall iceil(float value);

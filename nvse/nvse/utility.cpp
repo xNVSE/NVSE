@@ -2,6 +2,34 @@
 
 memcpy_t _memcpy = memcpy, _memmove = memmove;
 
+__declspec(naked) TESForm* __stdcall LookupFormByRefID(UInt32 refID)
+{
+	__asm
+	{
+		mov		ecx, ds:[0x11C54C0]
+		mov		eax, [esp+4]
+		xor		edx, edx
+		div		dword ptr [ecx+4]
+		mov		eax, [ecx+8]
+		mov		eax, [eax+edx*4]
+		test	eax, eax
+		jz		done
+		mov		edx, [esp+4]
+		ALIGN 16
+	iterHead:
+		cmp		[eax+4], edx
+		jz		found
+		mov		eax, [eax]
+		test	eax, eax
+		jnz		iterHead
+		retn	4
+	found:
+		mov		eax, [eax+8]
+	done:
+		retn	4
+	}
+}
+
 __declspec(naked) int __vectorcall ifloor(float value)
 {
 	__asm
