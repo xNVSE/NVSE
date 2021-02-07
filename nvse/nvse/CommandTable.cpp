@@ -626,7 +626,7 @@ const char* StringForParamType(UInt32 paramType)
 		case kParamType_ImageSpaceModifier:	return "ImageSpaceModifier";
 		case kParamType_ImageSpace:			return "ImageSpace";
 		case kParamType_Double:				return "Double";
-		case kParamType_Unhandled2D:		return "unk2D";
+		case kParamType_ScriptVariable:		return "ScriptVar";
 		case kParamType_Unhandled2E:		return "unk2E";
 		case kParamType_EncounterZone:		return "EncounterZone";
 		case kParamType_Unhandled30:		return "unk30";

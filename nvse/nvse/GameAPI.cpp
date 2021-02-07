@@ -249,6 +249,32 @@ tList<ScriptEventList::Var>* ScriptEventList::GetVars() const
 	return reinterpret_cast<tList<Var>*>(m_vars);
 }
 
+ScriptEventList::Var *ExtractScriptVar(UInt8 *&scriptData, Script *scriptObj, ScriptEventList *eventList)
+{
+	if (*scriptData == 'r')		//reference to var in another script
+	{
+		Script::RefVariable *refVar = scriptObj->GetRefFromRefList(*(UInt16*)(scriptData + 1));
+		if (!refVar) return NULL;
+
+		refVar->Resolve(eventList);
+		TESForm *refObj = refVar->form;
+		if (!refObj) return NULL;
+
+		if IS_ID(refObj, TESQuest)
+			eventList = ((TESQuest*)refObj)->scriptEventList;
+		else if (((refObj->typeID >= kFormType_TESObjectREFR) && (refObj->typeID <= kFormType_FlameProjectile)) || IS_ID(refObj, ContinuousBeamProjectile))
+			eventList = ((TESObjectREFR*)refObj)->GetEventList();
+		else eventList = NULL;
+
+		if (!eventList)			//couldn't resolve script ref
+			return NULL;
+		scriptData += 3;
+	}
+	if ((*scriptData == 'f') || (*scriptData == 's'))
+		return eventList->GetVariable(*(UInt16*)(scriptData + 1));
+	return NULL;
+}
+
 static bool ExtractFloat(double *out, UInt8 *&scriptData, Script *scriptObj, ScriptEventList *eventList)
 {
 	if (*scriptData == 'z')
@@ -275,34 +301,12 @@ static bool ExtractFloat(double *out, UInt8 *&scriptData, Script *scriptObj, Scr
 	}
 	else
 	{
-		if (*scriptData == 'r')		//reference to var in another script
+		ScriptEventList::Var *var = ExtractScriptVar(scriptData, scriptObj, eventList);
+		if (var)
 		{
-			Script::RefVariable *refVar = scriptObj->GetRefFromRefList(*(UInt16*)(scriptData + 1));
-			if (!refVar) return false;
-
-			refVar->Resolve(eventList);
-			TESForm *refObj = refVar->form;
-			if (!refObj) return false;
-
-			if IS_ID(refObj, TESQuest)
-				eventList = ((TESQuest*)refObj)->scriptEventList;
-			else if (((refObj->typeID >= kFormType_TESObjectREFR) && (refObj->typeID <= kFormType_FlameProjectile)) || IS_ID(refObj, ContinuousBeamProjectile))
-				eventList = ((TESObjectREFR*)refObj)->GetEventList();
-			else eventList = NULL;
-
-			if (!eventList)			//couldn't resolve script ref
-				return false;
 			scriptData += 3;
-		}
-		if ((*scriptData == 'f') || (*scriptData == 's'))
-		{
-			ScriptEventList::Var *var = eventList->GetVariable(*(UInt16*)(scriptData + 1));
-			if (var)
-			{
-				scriptData += 3;
-				*out = var->data;
-				return true;
-			}
+			*out = var->data;
+			return true;
 		}
 	}
 	return false;
@@ -388,8 +392,8 @@ static const char* ResolveStringArgument(ScriptEventList* eventList, const char*
 
 const UInt8 kClassifyParamExtract[] =
 {
-	0, 1, 4, 6, 6, 2, 6, 6, 3, 6, 2, 6, 6, 6, 6, 6, 6, 6, 2, 6, 6, 6, 7, 1, 6, 6, 6, 6, 2, 6, 6, 6, 3, 6, 6,
-	6, 6, 6, 6, 6, 6, 2, 6, 6, 5, 7, 7, 6, 7, 6, 6, 2, 2, 6, 6, 2, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6
+	0, 1, 4, 6, 6, 2, 6, 6, 3, 6, 2, 6, 6, 6, 6, 6, 6, 6, 2, 6, 6, 6, 8, 1, 6, 6, 6, 6, 2, 6, 6, 6, 3, 6, 6,
+	6, 6, 6, 6, 6, 6, 2, 6, 6, 5, 7, 8, 6, 8, 6, 6, 2, 2, 6, 6, 2, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6
 };
 
 const bool kInventoryType[] =
@@ -709,6 +713,16 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 
 				TESForm **out = va_arg(args, TESForm**);
 				*out = form;
+				scriptData += 3;
+				break;
+			}
+			case 7:
+			{
+				ScriptEventList::Var *var = ExtractScriptVar(scriptData, scriptObj, eventList);
+				if (!var) return false;
+
+				ScriptEventList::Var **out = va_arg(args, ScriptEventList::Var**);
+				*out = var;
 				scriptData += 3;
 				break;
 			}

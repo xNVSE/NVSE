@@ -129,6 +129,7 @@ void NVSE_Initialize(void)
 		Hook_Editor_Init();
 		Hook_Compiler_Init();
 		FixEditorFont();
+		PatchDefaultCommandParser();
 #if 0
 		FixErrorReportBug();
 

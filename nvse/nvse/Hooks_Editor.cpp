@@ -419,4 +419,52 @@ void PatchIsAlpha()
 	SafeWrite8(ScriptCharTableAddr+'$'*2, 2);
 }
 
+__declspec(naked) void CommandParserScriptVarHook()
+{
+	__asm
+	{
+		cmp		dword ptr [ebp], 0x2D
+		jnz		onError
+		test	edx, edx
+		jbe		notRef
+		cmp		cl, 'G'
+		jz		onError
+		mov		edx, [esi+0x40C]
+		mov		byte ptr [esi+edx+0x20C], 'r'
+		inc		dword ptr [esi+0x40C]
+		mov		eax, [esi+0x40C]
+		mov		cx, [esp+0x228]
+		mov		[esi+eax+0x20C], cx
+		add		dword ptr [esi+0x40C], 2
+		mov		cl, [esp+0x22C]
+		cmp		cl, 'G'
+		jz		onError
+	notRef:
+		cmp		dword ptr [esp+0x234], 0
+		jbe		onError
+		mov		edx, [esi+0x40C]
+		mov		[esi+edx+0x20C], cl
+		inc		dword ptr [esi+0x40C]
+		mov		eax, [esi+0x40C]
+		mov		cx, [esp+0x234]
+		mov		[esi+eax+0x20C], cx
+		mov		eax, 0x5C7E95
+		jmp		eax
+	onError:
+		mov		eax, 0x5C7F11
+		jmp		eax
+	}
+}
+
+void PatchDefaultCommandParser()
+{
+	//	Handle kParamType_Double
+	SafeWrite8(0x5C830C, 1);
+	*(UInt16*)0xE9C1DC = 1;
+
+	//	Handle kParamType_ScriptVariable
+	SafeWrite32(0x5C82DC, (UInt32)CommandParserScriptVarHook);
+	*(UInt8*)0xE9C1E4 = 1;
+}
+
 #endif

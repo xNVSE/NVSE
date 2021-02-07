@@ -15,4 +15,7 @@ void PatchConditionalCommands(void);
 // Allow use of special characters '$', '[', and ']' in string params to script commands
 void PatchIsAlpha(void);
 
+// Handle new param types
+void PatchDefaultCommandParser();
+
 #endif

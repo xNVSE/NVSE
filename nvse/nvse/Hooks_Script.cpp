@@ -144,6 +144,10 @@ void Hook_Script_Init()
 	SafeWrite8(0x593DB6, 7);
 	SafeWrite16(0x593E5A, 0xF8B4);
 
+	// Handle kParamType_Double in vanilla ExtractArgs
+	SafeWrite8(0x5B3C30, 1);
+	*(UInt16*)0x118CF34 = 1;
+
 	// hook ExtractArgs() to handle commands normally compiled with Cmd_Default_Parse which were instead compiled with Cmd_Expression_Parse
 	ExtractArgsOverride::Init_Hooks();
 

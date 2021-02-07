@@ -59,7 +59,7 @@ enum ParamType
 	kParamType_ImageSpaceModifier =		0x2A,	//							kFormType_TESImageSpaceModifier
 	kParamType_ImageSpace =				0x2B,	//							kFormType_TESImageSpace
 	kParamType_Double =					0x2C,	// 
-	kParamType_Unhandled2D =			0x2D,	// 
+	kParamType_ScriptVariable =			0x2D,	// 
 	kParamType_Unhandled2E =			0x2E,	// 
 	kParamType_EncounterZone =			0x2F,	//							kFormType_BGSEncounterZone
 	kParamType_Unhandled30 =			0x30,	// 
