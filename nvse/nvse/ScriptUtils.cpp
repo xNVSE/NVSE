@@ -1751,6 +1751,8 @@ bool ExpressionParser::ValidateArgType(UInt32 paramType, Token_Type argType, boo
 					CanConvertOperand(argType, kTokenType_Form);
 			case kParamType_Array:
 				return CanConvertOperand(argType, kTokenType_Array);
+			case kParamType_ScriptVariable:
+				return CanConvertOperand(argType, kTokenType_Variable);
 			default:
 				// all the rest are TESForm of some sort or another
 				return CanConvertOperand(argType, kTokenType_Form);
