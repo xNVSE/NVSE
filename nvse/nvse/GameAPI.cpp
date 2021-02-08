@@ -1469,7 +1469,7 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 	//when script command called as righthand side of a set statement, the script data containing the variable
 	//to assign to remains on the stack as arg to a previous function. We can get to it through scriptData in COMMAND_ARGS
 	*/
-	auto* scriptData = GetScriptDataPosition(script, scriptDataIn, opcodeOffsetPtr) - 6;
+	auto* scriptData = GetScriptDataPosition(script, scriptDataIn, opcodeOffsetPtr) - *opcodeOffsetPtr - 1;
 
 	auto* dataStart = scriptData + 1; // should be 0x58 (or 0x72 if called with dot syntax)
 	if (*dataStart != 0x58 && *dataStart != 0x72)
