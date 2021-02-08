@@ -3040,6 +3040,15 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 				return false;
 			}
 			break;
+		case kParamType_ScriptVariable:
+			if (arg->CanConvertTo(kTokenType_Variable))
+			{
+				auto** out = va_arg(varArgs, ScriptEventList::Var**);
+				*out = arg->GetVar();
+			}
+			else
+				return false;
+			break;
 		case kParamType_String:
 			{
 				const char* str = arg->GetString();
