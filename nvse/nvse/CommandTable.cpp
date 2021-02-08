@@ -324,7 +324,7 @@ public:
 
 static ParamInfo kTestArgCommand_Params[] =
 {
-	{	"int", kParamType_Integer, 0 },
+	{	"variable", kParamType_ScriptVariable, 0 },
 };
 
 static ParamInfo kTestDumpCommand_Params[] = 
@@ -858,6 +858,16 @@ bool Cmd_tcmd_Execute(COMMAND_ARGS)
 
 bool Cmd_tcmd2_Execute(COMMAND_ARGS)
 {
+
+#if RUNTIME
+	*result = 0;
+	ScriptEventList::Var* variable;
+	if (ExtractArgsEx(EXTRACT_ARGS_EX, &variable) && variable)
+	{
+		*result = 1;
+		Console_Print("%d", variable->id);
+	}
+#endif
 	return true;
 }
 
