@@ -180,19 +180,19 @@ static ParamInfo kParams_OneObject[1] =
 static ParamInfo kParams_OneString_OneOptionalObject[2] =
 {
 	{	"string",		kParamType_String,			0	},
-	{	"item",			kParamType_TESObject,	1	},
+	{	"item",			kParamType_AnyForm,	1	},
 };
 
 static ParamInfo kParams_OneObject_OneOptionalObject[2] =
 {
-	{	"target item",	kParamType_TESObject,		0	},
-	{	"object",		kParamType_TESObject,		1	},
+	{	"target item",	kParamType_AnyForm,		0	},
+	{	"object",		kParamType_AnyForm,		1	},
 };
 
 static ParamInfo kParams_OneInt_OneOptionalObject[2] =
 {
 	{	"int",	kParamType_Integer,			0	},
-	{	"item",			kParamType_TESObject,	1	},
+	{	"item",			kParamType_AnyForm,	1	},
 };
 
 static ParamInfo kParams_SetEquippedFloat[2] =

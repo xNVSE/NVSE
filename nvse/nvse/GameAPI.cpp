@@ -514,7 +514,6 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 							return false;
 						break;
 					case kParamType_ObjectRef:
-					case kParamType_Container:
 						if ((form->typeID < kFormType_TESObjectREFR) || ((form->typeID > kFormType_FlameProjectile) && NOT_ID(form, ContinuousBeamProjectile)))
 							return false;
 						break;
@@ -579,6 +578,10 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 						break;
 					case kParamType_ActorBase:
 						if (NOT_ID(form, TESNPC) && NOT_ID(form, TESCreature))
+							return false;
+						break;
+					case kParamType_Container:
+						if (NOT_ID(form, Character) && NOT_ID(form, Creature) && (NOT_ID(form, TESObjectREFR) || NOT_ID(((TESObjectREFR*)form)->baseForm, TESObjectCONT)))
 							return false;
 						break;
 					case kParamType_WorldSpace:

@@ -16,12 +16,12 @@
 #define DEFINE_SET_CUR_FLOAT(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, 1, 2, kParams_SetEquippedFloat);
 
 DEFINE_CMD_COND(GetWeight, returns the weight of the sepcified base form, 0, kParams_OneOptionalObjectID);
-DEFINE_GET_OBJ(GetHealth, GetBaseHealth, returns the base health of the object or calling reference);
+DEFINE_GET_FORM(GetHealth, GetBaseHealth, returns the base health of the object or calling reference);
 DEFINE_GET_INV(GetValue, GetItemValue, returns the base value of the object or calling reference);
 DEFINE_SET_INV_FLOAT(SetWeight, , sets the weight of the object); 
 DEFINE_CMD_ALT(SetHealth, SetObjectHealth, sets the base health of the specified base form, 0, 2, kParams_OneInt_OneOptionalObject);
 DEFINE_CMD_ALT(SetBaseItemValue, SetValue, sets the monetary value of a base object, 0, 2, kParams_OneObjectID_OneInt);
-DEFINE_GET_OBJ(GetType, GetObjectType, returns the type of the specified base form);
+DEFINE_GET_FORM(GetType, GetObjectType, returns the type of the specified base form);
 DEFINE_GET_INV(GetRepairList, grl, returns the repair list for the inventory object);
 DEFINE_GET_INV(GetEquipType,  , returns the equipment type of the inventory object);
 DEFINE_CMD_ALT(CompareNames,  , compares one name to another, 0, 2, kParams_OneObject_OneOptionalObject);
@@ -189,7 +189,7 @@ static ParamInfo kParams_OneObjectID_TwoFloat_OneObject_OneOptionalRank[5] =
 	{	"item",		kParamType_ObjectID,	0	},
 	{	"count",	kParamType_Float,		0	},
 	{	"health",	kParamType_Float,		0	},
- 	{	"owner",	kParamType_TESObject,	0	},
+ 	{	"owner",	kParamType_AnyForm,	0	},
  	{	"rank",		kParamType_Integer,		1	},
 };
 
@@ -197,7 +197,7 @@ static ParamInfo kParams_OneObjectID_OneFloat_OneObject_OneOptionalRank[4] =
 {
 	{	"item",		kParamType_ObjectID,	0	},
 	{	"count",	kParamType_Float,		0	},
- 	{	"owner",	kParamType_TESObject,	0	},
+ 	{	"owner",	kParamType_AnyForm,	0	},
  	{	"rank",		kParamType_Integer,		1	},
 };
 
@@ -207,7 +207,7 @@ DEFINE_COMMAND(AddItemHealthPercentOwner, adds an item to a container at a speci
 static ParamInfo kParams_OneObjectID_OneObject[2] =
 {
 	{	"item",			kParamType_ObjectID,	0	},
- 	{	"reference",	kParamType_TESObject,	0	},
+ 	{	"reference",	kParamType_AnyForm,	0	},
 };
 static ParamInfo kParams_OneObjectID_OneActor[2] =
 {
@@ -223,7 +223,7 @@ static ParamInfo kParams_OneObjectID_OneFloat_OneObject[3] =
 {
 	{	"item",			kParamType_ObjectID,	0	},
 	{	"value",		kParamType_Float,		0	},
- 	{	"reference",	kParamType_TESObject,	0	},
+ 	{	"reference",	kParamType_AnyForm,	0	},
 };
 
 // Token: A token is an Item that can only be present once in inventory, and must allow Health and Ownership.
