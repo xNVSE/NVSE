@@ -636,6 +636,8 @@ UnorderedSet<UInt32> g_warnedScripts;
 
 const char* GetModName(Script* script)
 {
+	if (!script)
+		return "Unknown or deleted script";
 	const char* modName = "In-game console";
 	if (script->GetModIndex() != 0xFF)
 	{
@@ -667,7 +669,9 @@ void ShowRuntimeError(Script* script, const char* fmt, ...)
 		sprintf_s(errorHeader, sizeof(errorHeader), "Error in script %08X in mod %s\n%s", script ? script->refID : 0, modName, errorMsg);
 	}
 
-	if (g_warnedScripts.Insert(script->refID))
+	auto refId = script ? script->refID : 0xDEADBEEF;
+
+	if (g_warnedScripts.Insert(refId))
 	{
 		char message[512];
 		snprintf(message, sizeof(message), "%s: NVSE error (see console print)", GetModName(script));
