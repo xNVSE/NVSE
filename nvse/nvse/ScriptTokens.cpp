@@ -956,7 +956,10 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		refIdx = context->Read16();
 		value.refVar = context->script->GetRefFromRefList(refIdx);
 		if (!value.refVar)
+		{
+			context->Error("Could not find ref %X in ref list!");
 			type = kTokenType_Invalid;
+		}
 		else
 		{
 			type = kTokenType_Form;
@@ -972,13 +975,17 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		Script::RefVariable* refVar = context->script->GetRefFromRefList(refIdx);
 		if (!refVar)
 		{
+			context->Error("Could not resolve global %X", refIdx);
 			type = kTokenType_Invalid;
 			break;
 		}
 		refVar->Resolve(context->eventList);
 		value.global = DYNAMIC_CAST(refVar->form, TESForm, TESGlobal);
 		if (!value.global)
+		{
+			context->Error("Failed to resolve global");
 			type = kTokenType_Invalid;
+		}
 
 		break;
 	}
@@ -989,7 +996,10 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		const auto opcode = context->Read16();
 		value.cmd = g_scriptCommands.GetByOpcode(opcode);
 		if (!value.cmd)
+		{
+			context->Error("Failed to resolve command with opcode %X", opcode);
 			type = kTokenType_Invalid;
+		}
 		auto argsLen = context->Read16();
 		cmdOpcodeOffset = context->m_data - context->m_scriptData;
 		context->m_data += argsLen - 2;
@@ -1015,6 +1025,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 			type = kTokenType_StringVar;
 			break;
 		default:
+			context->Error("Unsupported variable type %X", variableType);
 			type = kTokenType_Invalid;
 		}
 
