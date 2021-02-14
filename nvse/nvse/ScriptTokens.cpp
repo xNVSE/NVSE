@@ -957,7 +957,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		value.refVar = context->script->GetRefFromRefList(refIdx);
 		if (!value.refVar)
 		{
-			context->Error("Could not find ref %X in ref list!");
+			context->Error("Could not find ref %X in ref list!", refIdx);
 			type = kTokenType_Invalid;
 		}
 		else
@@ -1049,7 +1049,10 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 			value.var = eventList->GetVariable(varIdx);
 
 		if (!value.var)
+		{
+			context->Error("Failed to resolve variable");
 			type = kTokenType_Invalid;
+		}
 #if _DEBUG
 		if (value.var && !refIdx)
 		{
