@@ -127,7 +127,7 @@ DEFINE_CMD(GetBipedIconPath, returns an icon path, 0, kParams_OneInt_OneOptional
 static ParamInfo kParams_SetPathEX[SIZEOF_FMT_STRING_PARAMS + 1] =
 {
 	FORMAT_STRING_PARAMS,
-	{	"object",	kParamType_ObjectID,	1	},
+	{	"object" ,	kParamType_AnyForm,	1	},
 };
 
 DEFINE_CMD(SetModelPathEX, sets a simple model path, 0, kParams_SetPathEX);
@@ -138,7 +138,7 @@ static ParamInfo kParams_SetBipedPathEX[SIZEOF_FMT_STRING_PARAMS + 2] =
 {
 	FORMAT_STRING_PARAMS,
 	{	"whichPath",	kParamType_Integer,			0	},
-	{	"item",			kParamType_ObjectID,	1	},
+	{	"item",			kParamType_AnyForm,	1	},
 };
 
 DEFINE_CMD(SetBipedIconPathEX, sets a biped icon path, 0, kParams_SetBipedPathEX);

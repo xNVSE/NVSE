@@ -179,7 +179,7 @@ DEFINE_GET_FORM(IsClonedForm, IsCloned, returns whether the specified form is a 
 static ParamInfo kParams_SetNameEx[22] =
 {
 	FORMAT_STRING_PARAMS,
-	{"inventory object", kParamType_ObjectID,	1	},
+	{"inventory object", kParamType_AnyForm,	1	},
 };
 
 DEFINE_COMMAND(SetNameEx, sets the name of the object based on the format string, 0, 22, kParams_SetNameEx);
