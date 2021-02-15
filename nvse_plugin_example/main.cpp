@@ -63,7 +63,6 @@ void MessageHandler(NVSEMessagingInterface::Message* msg)
 		_MESSAGE("Received runtime script error message %s", msg->data);
 		break;
 	default:
-		_MESSAGE("Plugin Example received unknown message");
 		break;
 	}
 }
