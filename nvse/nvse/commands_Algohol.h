@@ -4,7 +4,7 @@
 #include "algohol/paramTypes.h"
 
 DEFINE_CMD_ALT(V3Length, v3len, returns length of given vector3, 0, 3, kParams_Vector3Floats);
-DEFINE_CMD_ALT(V3Normalize, v3norm, returns normalized vector3, 0, 3, kParams_Vector3Floats);
+DEFINE_CMD_ALT(V3Normalize, v3norm, returns normalized vector3, 0, 6, kParams_Vector3Strings3Floats);
 // DEFINE_CMD_ALT(V3Dotproduct, v3dprod, returns dotproduct of two vectors, 0, 9, kParams_Vector6Floats);
 DEFINE_CMD_ALT(V3Crossproduct, v3xprod, returns crossproduct of two vectors, 0, 9, kParams_Vector3Strings6Floats);
 
