@@ -563,12 +563,18 @@ bool __stdcall HandleBeginCompile(ScriptBuffer* buf)
 	return bResult;
 }
 
+void __fastcall ScriptCompileMessage(Script* script)
+{
+	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptCompile, script, 4, nullptr);
+}
+
 static __declspec(naked) void CompileScriptHook(void)
 {
 	static bool precompileResult;
-
+	static Script* script = nullptr;
 	__asm
 	{
+		mov [script], eax
 		mov		eax, [esp + 4]					// grab the second arg (ScriptBuffer*)
 		pushad
 		push	eax
@@ -578,7 +584,10 @@ static __declspec(naked) void CompileScriptHook(void)
 		call[kBeginScriptCompileCallAddr]	// let the compiler take over
 		test	al, al
 		jz		EndHook							// return false if CompileScript() returned false
+		mov ecx, script
+		call ScriptCompileMessage
 		mov		al, [precompileResult]			// else return result of Precompile
+		
 		EndHook:
 		// there's a small possibility that the compiler override is still in effect here (e.g. scripter forgot an 'end')
 		// so make sure there's no chance it remains in effect, otherwise potentially could affect result script compilation
