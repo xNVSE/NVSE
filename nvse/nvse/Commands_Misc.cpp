@@ -333,7 +333,7 @@ bool Cmd_GetAltPerkRank_Execute(COMMAND_ARGS)
 	Actor	* pActor = NULL;
 
 	if (ExtractArgs(EXTRACT_ARGS, &pPerk, &pActor))
-		return Cmd_GetPerkRank_Eval(thisObj, pPerk, pActor, result);
+		return Cmd_GetAltPerkRank_Eval(thisObj, pPerk, pActor, result);
 	return true;
 }
 

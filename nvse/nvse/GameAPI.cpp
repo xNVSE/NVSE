@@ -438,6 +438,10 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 						}
 					}
 				}
+
+				if ((*out == '%') && ((out[1] | 0x20) == 'e') && !out[2])
+					*out = 0;
+
 				break;
 			}
 			case 1:
