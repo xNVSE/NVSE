@@ -3,7 +3,6 @@
 #include "GameForms.h"
 #include "GameObjects.h"
 #include "GameTypes.h"
-#include "CommandTable.h"
 #include "GameScript.h"
 #include "StringVar.h"
 #include "printf.h"
@@ -30,7 +29,13 @@ TESForm* __stdcall LookupFormByID(UInt32 refID)
 	return formsMap->Lookup(refID);
 }
 
+bool ExtractArgsEx(ParamInfo *paramInfo, void *scriptDataIn, UInt32 *scriptDataOffset, Script *scriptObj, ScriptEventList *eventList, ...);
+
+#if USE_EXTRACT_ARGS_EX
+const _ExtractArgs ExtractArgs = ExtractArgsEx;
+#else
 const _ExtractArgs ExtractArgs = (_ExtractArgs)0x005ACCB0;
+#endif
 
 const _FormHeap_Allocate FormHeap_Allocate = (_FormHeap_Allocate)0x00401000;
 const _FormHeap_Free FormHeap_Free = (_FormHeap_Free)0x00401030;

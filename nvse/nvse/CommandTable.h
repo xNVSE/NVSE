@@ -113,13 +113,19 @@ struct ParamInfo
 	UInt32		isOptional;	// do other bits do things?
 };
 
+#define USE_EXTRACT_ARGS_EX 1
+
 #define COMMAND_ARGS		ParamInfo * paramInfo, void * scriptData, TESObjectREFR * thisObj, TESObjectREFR * containingObj, Script * scriptObj, ScriptEventList * eventList, double * result, UInt32 * opcodeOffsetPtr
 #define PASS_COMMAND_ARGS	paramInfo, scriptData, thisObj, containingObj, scriptObj, eventList, result, opcodeOffsetPtr
-#define EXTRACT_ARGS		paramInfo, scriptData, opcodeOffsetPtr, thisObj, containingObj, scriptObj, eventList
 #define COMMAND_ARGS_EVAL	TESObjectREFR * thisObj, void * arg1, void * arg2, double * result
 #define PASS_CMD_ARGS_EVAL	thisObj, arg1, arg2, result
 #define EXTRACT_ARGS_EX		paramInfo, scriptData, opcodeOffsetPtr, scriptObj, eventList
 #define PASS_FMTSTR_ARGS	paramInfo, scriptData, opcodeOffsetPtr, scriptObj, eventList
+#if USE_EXTRACT_ARGS_EX
+#define EXTRACT_ARGS		EXTRACT_ARGS_EX
+#else
+#define EXTRACT_ARGS		paramInfo, scriptData, opcodeOffsetPtr, thisObj, containingObj, scriptObj, eventList
+#endif
 
 //Macro to make CommandInfo definitions a bit less tedious
 

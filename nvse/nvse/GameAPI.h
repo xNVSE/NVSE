@@ -2,6 +2,7 @@
 
 #include "GameTypes.h"
 #include "NiNodes.h"
+#include "CommandTable.h"
 #include "GameScript.h"
 
 struct ParamInfo;
@@ -31,7 +32,11 @@ void Console_Print(const char * fmt, ...);
 
 #if RUNTIME
 
+#if USE_EXTRACT_ARGS_EX
+typedef bool (*_ExtractArgs)(ParamInfo *paramInfo, void *scriptDataIn, UInt32 *scriptDataOffset, Script *scriptObj, ScriptEventList *eventList, ...);
+#else
 typedef bool (* _ExtractArgs)(ParamInfo * paramInfo, void * scriptData, UInt32 * arg2, TESObjectREFR * arg3, TESObjectREFR * arg4, Script * script, ScriptEventList * eventList, ...);
+#endif
 extern const _ExtractArgs ExtractArgs;
 
 typedef TESForm * (* _CreateFormInstance)(UInt8 type);
