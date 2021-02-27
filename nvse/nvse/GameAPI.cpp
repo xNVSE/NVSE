@@ -420,29 +420,36 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 				char *out = va_arg(args, char*);
 				UInt32 length = *(UInt16*)scriptData;
 				scriptData += 2;
-				memcpy(out, scriptData, length);
-				scriptData += length;
 				out[length] = 0;
 
-				if (*out == '$')
+				if (length)
 				{
-					VariableInfo *varInfo = scriptObj->GetVariableByName(out + 1);
-					if (varInfo)
+					memcpy(out, scriptData, length);
+					scriptData += length;
+
+					if ((length > 1) && (*out == '$'))
 					{
-						ScriptEventList::Var *var = eventList->GetVariable(varInfo->idx);
-						if (var)
+						VariableInfo *varInfo = scriptObj->GetVariableByName(out + 1);
+						if (varInfo)
 						{
-							StringVar *strVar = g_StringMap.Get((int)var->data);
-							if (strVar)
-								memcpy(out, strVar->GetCString(), strVar->GetLength() + 1);
-							else *out = 0;
+							ScriptEventList::Var *var = eventList->GetVariable(varInfo->idx);
+							if (var)
+							{
+								StringVar *strVar = g_StringMap.Get((int)var->data);
+								if (strVar)
+								{
+									length = strVar->GetLength();
+									if (length)
+										memcpy(out, strVar->GetCString(), length + 1);
+									else *out = 0;
+								}
+							}
 						}
 					}
+
+					if ((length == 2) && (*out == '%') && ((out[1] | 0x20) == 'e'))
+						*out = 0;
 				}
-
-				if ((*out == '%') && ((out[1] | 0x20) == 'e') && !out[2])
-					*out = 0;
-
 				break;
 			}
 			case 1:

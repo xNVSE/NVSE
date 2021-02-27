@@ -39,41 +39,34 @@ static const UInt32 kScriptRunner_RunCallAddr = 0x00702FC0;			// overwritten cal
 static const UInt32 kScriptRunner_RunEndProcAddr = 0x005E113A;		// retn 0x20
 
 
-static UInt32 __stdcall DoExtractString(char* scriptData, UInt32 dataLen, char* dest, ScriptEventList* eventList)
+void __stdcall DoExtractString(ScriptEventList *eventList, char *dest, char *scriptData, UInt32 dataLen)
 {
-	// copy the string
-	memcpy(dest, scriptData, dataLen);
-	UInt32 newDataLen = dataLen;
-
-	if (newDataLen && dest[0] == '$' && eventList && eventList->m_script)	// variable name
+	dest[dataLen] = 0;
+	if (dataLen)
 	{
-		VariableInfo* varInfo = NULL;
-		if ((newDataLen < 0x100) && (dest[newDataLen]))
-			dest[newDataLen] = 0;
-		varInfo = eventList->m_script->GetVariableByName(dest + 1);
-		if (varInfo)
+		memcpy(dest, scriptData, dataLen);
+		if ((dataLen > 1) && (*dest == '$') && eventList && eventList->m_script)
 		{
-			ScriptEventList::Var* var;
-			var = eventList->GetVariable(varInfo->idx);
-			if (var)
+			VariableInfo *varInfo = eventList->m_script->GetVariableByName(dest + 1);
+			if (varInfo)
 			{
-				StringVar* strVar;
-				strVar = g_StringMap.Get(var->data);
-				if (strVar)
-					if (strVar->GetLength() < 0x100) {		// replace string with contents of string var
-						strcpy_s(dest, strVar->GetLength() + 1, strVar->GetCString());
-						newDataLen = strVar->GetLength();
+				ScriptEventList::Var *var = eventList->GetVariable(varInfo->idx);
+				if (var)
+				{
+					StringVar *strVar = g_StringMap.Get((int)var->data);
+					if (strVar)
+					{
+						dataLen = strVar->GetLength();
+						if (dataLen)
+							memcpy(dest, strVar->GetCString(), dataLen + 1);
+						else *dest = 0;
 					}
+				}
 			}
 		}
-	}			// "%e" becomes an empty string
-	else if (newDataLen == 2 && dest[0] == '%' && toupper(dest[1]) == 'E') {
-		newDataLen = 0;
+		if ((dataLen == 2) && (*dest == '%') && ((dest[1] | 0x20) == 'e'))
+			*dest = 0;
 	}
-	// force zero terminated string
-	if ((newDataLen < 0x100) && (dest[newDataLen]))
-		dest[newDataLen] = 0;
-	return dataLen;
 }
 
 static __declspec(naked) void ExtractStringHook(void)
@@ -82,22 +75,12 @@ static __declspec(naked) void ExtractStringHook(void)
 	// Original code copies a string literal from script data to buffer
 	// If string is of format $localVariableName, replace literal with contents of string var
 
-	__asm {
-		// Grab the args to memcpy()
-		pushad
-
-		mov eax, [ebp + 0x020]	// arg20 = ScriptEventList
-		push eax
-		push edx				// destination buffer
-		movzx eax, word ptr [ebp - 0xE4]	// var_E4 = dataLen //fixed movzx bug where the compiler assumed a BYTE. It's a WORD
-		push eax				// dataLen
-		push ecx				// scriptData
-		call DoExtractString
-		
-		popad
-		
-		add esp, 0Ch			// skipped op
-		jmp[ExtractStringRetnAddr]
+	__asm
+	{
+		push	dword ptr [ebp+0x20]
+		call	DoExtractString
+		mov		eax, 0x5ADDE3
+		jmp		eax
 	}
 }
 
