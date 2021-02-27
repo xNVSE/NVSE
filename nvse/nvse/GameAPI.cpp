@@ -403,6 +403,7 @@ const bool kInventoryType[] =
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0
 };
 
+#if NVSE_CORE
 static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&scriptData, Script *scriptObj, ScriptEventList *eventList, va_list args)
 {
 	UInt32 paramType;
@@ -740,6 +741,7 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 
 	return true;
 }
+#endif
 
 bool ExtractArgsRaw(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptDataOffset, Script * scriptObj, ScriptEventList * eventList, ...)
 {
@@ -969,6 +971,7 @@ bool ExtractArgsRaw(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptD
 	return true;
 }
 
+#if NVSE_CORE
 bool ExtractArgsEx(ParamInfo *paramInfo, void *scriptDataIn, UInt32 *scriptDataOffset, Script *scriptObj, ScriptEventList *eventList, ...)
 {
 	va_list	args;
@@ -982,7 +985,7 @@ bool ExtractArgsEx(ParamInfo *paramInfo, void *scriptDataIn, UInt32 *scriptDataO
 
 	bool bExtracted = false;
 
-#if NVSE_CORE
+
 	if (numArgs > 0x7FFF)
 	{
 		*scriptDataOffset += 2;
@@ -998,13 +1001,14 @@ bool ExtractArgsEx(ParamInfo *paramInfo, void *scriptDataIn, UInt32 *scriptDataO
 		}
 	}
 	else
-#endif
+
 	if (v_ExtractArgsEx(numArgs, paramInfo, scriptData, scriptObj, eventList, args))
 		bExtracted = true;
 
 	va_end(args);
 	return bExtracted;
 }
+#endif
 
 void ScriptEventList::Dump(void)
 {
