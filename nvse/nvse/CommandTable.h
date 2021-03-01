@@ -113,7 +113,7 @@ struct ParamInfo
 	UInt32		isOptional;	// do other bits do things?
 };
 
-#define USE_EXTRACT_ARGS_EX 1
+#define USE_EXTRACT_ARGS_EX NVSE_CORE
 
 #define COMMAND_ARGS		ParamInfo * paramInfo, void * scriptData, TESObjectREFR * thisObj, TESObjectREFR * containingObj, Script * scriptObj, ScriptEventList * eventList, double * result, UInt32 * opcodeOffsetPtr
 #define PASS_COMMAND_ARGS	paramInfo, scriptData, thisObj, containingObj, scriptObj, eventList, result, opcodeOffsetPtr
