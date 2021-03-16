@@ -882,6 +882,7 @@ void PluginManager::ClearScriptDataCache()
 {
 	TokenCache::MarkForClear();
 	Dispatch_Message(0, NVSEMessagingInterface::kMessage_ClearScriptDataCache, NULL, 0, NULL);
+	UserFunctionManager::ClearInfos();
 }
 
 
