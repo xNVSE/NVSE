@@ -42,7 +42,7 @@ Menu * InterfaceManager::TempMenuByType(UInt32 menuType)
 	return NULL;
 }
 
-TileMenu **g_tileMenuArray = NULL;
+TileMenu ***g_tileMenuArray = (TileMenu***)0x11F350C;
 UnorderedMap<const char*, UInt32> s_menuNameToID({{"MessageMenu", kMenuType_Message}, {"InventoryMenu", kMenuType_Inventory}, {"StatsMenu", kMenuType_Stats},
 	{"HUDMainMenu", kMenuType_HUDMain}, {"LoadingMenu", kMenuType_Loading}, {"ContainerMenu", kMenuType_Container}, {"DialogMenu", kMenuType_Dialog},
 	{"SleepWaitMenu", kMenuType_SleepWait}, {"StartMenu", kMenuType_Start}, {"LockpickMenu", kMenuType_LockPick}, {"QuantityMenu", kMenuType_Quantity},
@@ -64,7 +64,7 @@ TileMenu* InterfaceManager::GetMenuByPath(const char * componentPath, const char
 	if (slashPos) *slashPos = 0;
 	*pSlashPos = slashPos;
 	UInt32 menuID = s_menuNameToID.Get(componentPath);
-	return menuID ? g_tileMenuArray[menuID - kMenuType_Min] : NULL;
+	return menuID ? (*g_tileMenuArray)[menuID - kMenuType_Min] : NULL;
 }
 
 Tile::Value* InterfaceManager::GetMenuComponentValue(const char * componentPath)
