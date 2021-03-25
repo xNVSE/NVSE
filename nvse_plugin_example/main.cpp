@@ -4,8 +4,8 @@
 #include "nvse/ParamInfos.h"
 #include "nvse/GameObjects.h"
 #include <string>
-
-//NoGore is unsupported in this fork
+#include "main.h"
+//NoGore is unsupported in xNVSE
 
 #ifndef RegisterScriptCommand
 #define RegisterScriptCommand(name) 	nvse->RegisterCommand(&kCommandInfo_ ##name);
@@ -19,10 +19,10 @@ NVSEMessagingInterface* g_messagingInterface;
 NVSEInterface* g_nvseInterface;
 NVSECommandTableInterface* g_cmdTable;
 const CommandInfo* g_TFC;
-
 #if RUNTIME
 NVSEScriptInterface* g_script;
 #endif
+bool (*ExtractArgsEx)(COMMAND_ARGS_EX, ...);
 // This is a message handler for nvse events
 // With this, plugins can listen to messages such as whenever the game loads
 void MessageHandler(NVSEMessagingInterface::Message* msg)
@@ -110,7 +110,7 @@ bool Cmd_ExamplePlugin_IsNPCFemale_Execute(COMMAND_ARGS)
 	//EG, Ref.IsFemale would make thisObj = ref
 	//We are using actor bases though, so the function is called as such: ExamplePlugin_IsNPCFemale baseForm
 	TESNPC* npc = 0;
-	if (ExtractArgs(EXTRACT_ARGS, &npc))
+	if (ExtractArgsEx(EXTRACT_ARGS_EX, &npc))
 	{
 		Cmd_ExamplePlugin_IsNPCFemale_Eval(thisObj, npc, NULL, result);
 	}
@@ -181,6 +181,7 @@ bool NVSEPlugin_Load(const NVSEInterface* nvse)
 #if RUNTIME
 	g_script = (NVSEScriptInterface*)nvse->QueryInterface(kInterface_Script);
 #endif
+	ExtractArgsEx = g_script->ExtractArgsEx;
 	/***************************************************************************
 	 *
 	 *	READ THIS!
