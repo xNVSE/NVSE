@@ -28,7 +28,7 @@ public:
 	static TileMenu *			GetMenuByPath(const char * componentPath, const char ** slashPos);
 	static Tile::Value *		GetMenuComponentValue(const char * componentPath);
 	static Tile *				GetMenuComponentTile(const char * componentPath);
-
+	static Tile::Value *		GetMenuComponentValueAlt(const char * componentPath);
 
 
 

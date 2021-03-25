@@ -275,6 +275,9 @@ public:
 	char			*GetComponentFullName(char *resStr);
 
 	void			Dump(void);
+
+	Tile *GetChildAlt(const char *childName);
+	Value *GetComponentValueAlt(const char *componentPath);
 };
 
 // 3C

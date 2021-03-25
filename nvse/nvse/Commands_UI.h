@@ -21,6 +21,10 @@ DEFINE_COMMAND(SetUIString, sets the value of a string UI trait, 0, 2, kParams_T
 DEFINE_COMMAND(SetUIStringEx, sets the value of a string UI trait to a formatted string, 0, 22, kParams_SetUIStringEx);
 DEFINE_COMMAND(SortUIListBox, sorts the items in a UI list_box, 0, 2, kParams_TwoStrings);
 
+DEFINE_COMMAND(GetUIFloatAlt, , 0, 1, kParams_OneString);
+DEFINE_COMMAND(SetUIFloatAlt, , 0, 2, kParams_OneString_OneFloat);
+DEFINE_COMMAND(SetUIStringAlt, , 0, 22, kParams_SetUIStringEx);
+
 // VATS camera
 DEFINE_COMMAND(EndVATScam, "Remove all targets and close VATS mode", false, 0, NULL)
 

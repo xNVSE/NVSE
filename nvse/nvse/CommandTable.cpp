@@ -1603,6 +1603,11 @@ void CommandTable::AddCommandsV5()
 	ADD_CMD_RET(GetClass, kRetnType_Form);
 	ADD_CMD_RET(GetNameOfClass, kRetnType_String);
 	ADD_CMD(ShowLevelUpMenu);
+
+	// 6.0 beta 08
+	ADD_CMD(GetUIFloatAlt);
+	ADD_CMD(SetUIFloatAlt);
+	ADD_CMD(SetUIStringAlt);
 }
 
 namespace PluginAPI
