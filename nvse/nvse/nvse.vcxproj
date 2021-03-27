@@ -180,7 +180,7 @@
     <Link>
       <OutputFile>$(OutDir)nvse_1_4.dll</OutputFile>
       <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
       <SubSystem>Windows</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
