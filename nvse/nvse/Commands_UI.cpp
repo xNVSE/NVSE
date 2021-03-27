@@ -459,3 +459,67 @@ bool Cmd_ShowLevelUpMenu_Execute (COMMAND_ARGS)
 	DoShowLevelUpMenu();
 	return true;
 }
+
+Tile::Value* GetCachedComponentValueAlt(const char* component)
+{
+	if (g_tilesDestroyed)
+	{
+		g_tilesDestroyed = false;
+		s_cachedTileValues.Clear();
+	}
+
+	Tile::Value** valPtr;
+	if (s_cachedTileValues.Insert(component, &valPtr))
+		*valPtr = nullptr;
+
+	if (!*valPtr)
+	{
+		auto* tile = InterfaceManager::GetMenuComponentValueAlt(component);
+		if (tile)
+			*valPtr = tile;
+	}
+	return *valPtr;
+}
+
+bool Cmd_GetUIFloatAlt_Execute(COMMAND_ARGS)
+{
+	*result = fErrorReturnValue;
+	char component[0x200];
+	if (ExtractArgsEx(EXTRACT_ARGS_EX, &component))
+	{
+		Tile::Value *val = GetCachedComponentValueAlt(component);
+		if (val)
+		{
+			*result = val->num;
+			if (IsConsoleMode())
+				Console_Print("GetUIFloatAlt >> %.4f", *result);
+		}
+	}
+	return true;
+}
+
+bool Cmd_SetUIFloatAlt_Execute(COMMAND_ARGS)
+{
+	char component[0x200];
+	float newFloat;
+	if (ExtractArgsEx(EXTRACT_ARGS_EX, &component, &newFloat))
+	{
+		Tile::Value *val = GetCachedComponentValueAlt(component);
+		if (val)
+			CALL_MEMBER_FN(val->parent, SetFloatValue)(val->id, newFloat, true);
+	}
+	return true;
+}
+
+bool Cmd_SetUIStringAlt_Execute(COMMAND_ARGS)
+{
+	char component[0x200];
+	char newStr[kMaxMessageLength];
+	if (ExtractFormatStringArgs(1, newStr, paramInfo, scriptData, opcodeOffsetPtr, scriptObj, eventList, kCommandInfo_SetUIStringAlt.numParams, &component))
+	{
+		Tile::Value *val = GetCachedComponentValueAlt(component);
+		if (val)
+			CALL_MEMBER_FN(val->parent, SetStringValue)(val->id, newStr, true);
+	}
+	return true;
+}

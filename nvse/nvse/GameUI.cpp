@@ -42,22 +42,17 @@ Menu * InterfaceManager::TempMenuByType(UInt32 menuType)
 	return NULL;
 }
 
-const char kMenuNames[] =
-"MessageMenu\0InventoryMenu\0StatsMenu\0HUDMainMenu\0LoadingMenu\0ContainerMenu\0DialogMenu\0SleepWaitMenu\0StartMenu\0\
-LockpickMenu\0QuantityMenu\0MapMenu\0BookMenu\0LevelUpMenu\0RepairMenu\0RaceSexMenu\0CharGenMenu\0TextEditMenu\0BarterMenu\0\
-SurgeryMenu\0HackingMenu\0VATSMenu\0ComputersMenu\0RepairServicesMenu\0TutorialMenu\0SpecialBookMenu\0ItemModMenu\0LoveTesterMenu\0\
-CompanionWheelMenu\0TraitSelectMenu\0RecipeMenu\0SlotMachineMenu\0BlackjackMenu\0RouletteMenu\0CaravanMenu\0TraitMenu";
-const UInt32 kMenuIDs[] =
-{
-	kMenuType_Message, kMenuType_Inventory, kMenuType_Stats, kMenuType_HUDMain, kMenuType_Loading, kMenuType_Container,
-	kMenuType_Dialog, kMenuType_SleepWait, kMenuType_Start, kMenuType_LockPick, kMenuType_Quantity, kMenuType_Map, kMenuType_Book,
-	kMenuType_LevelUp, kMenuType_Repair, kMenuType_RaceSex, kMenuType_CharGen, kMenuType_TextEdit, kMenuType_Barter, kMenuType_Surgery,
-	kMenuType_Hacking, kMenuType_VATS, kMenuType_Computers, kMenuType_RepairServices, kMenuType_Tutorial, kMenuType_SpecialBook,
-	kMenuType_ItemMod, kMenuType_LoveTester, kMenuType_CompanionWheel, kMenuType_TraitSelect, kMenuType_Recipe, kMenuType_SlotMachine,
-	kMenuType_Blackjack, kMenuType_Roulette, kMenuType_Caravan, kMenuType_Trait
-};
-TileMenu **g_tileMenuArray = NULL;
-UnorderedMap<const char*, UInt32> s_menuNameToID(0x40);
+TileMenu ***g_tileMenuArray = (TileMenu***)0x11F350C;
+UnorderedMap<const char*, UInt32> s_menuNameToID({{"MessageMenu", kMenuType_Message}, {"InventoryMenu", kMenuType_Inventory}, {"StatsMenu", kMenuType_Stats},
+	{"HUDMainMenu", kMenuType_HUDMain}, {"LoadingMenu", kMenuType_Loading}, {"ContainerMenu", kMenuType_Container}, {"DialogMenu", kMenuType_Dialog},
+	{"SleepWaitMenu", kMenuType_SleepWait}, {"StartMenu", kMenuType_Start}, {"LockpickMenu", kMenuType_LockPick}, {"QuantityMenu", kMenuType_Quantity},
+	{"MapMenu", kMenuType_Map}, {"BookMenu", kMenuType_Book}, {"LevelUpMenu", kMenuType_LevelUp}, {"RepairMenu", kMenuType_Repair},
+	{"RaceSexMenu", kMenuType_RaceSex}, {"CharGenMenu", kMenuType_CharGen}, {"TextEditMenu", kMenuType_TextEdit}, {"BarterMenu", kMenuType_Barter},
+	{"SurgeryMenu", kMenuType_Surgery}, {"HackingMenu", kMenuType_Hacking}, {"VATSMenu", kMenuType_VATS}, {"ComputersMenu", kMenuType_Computers},
+	{"RepairServicesMenu", kMenuType_RepairServices}, {"TutorialMenu", kMenuType_Tutorial}, {"SpecialBookMenu", kMenuType_SpecialBook},
+	{"ItemModMenu", kMenuType_ItemMod}, {"LoveTesterMenu", kMenuType_LoveTester}, {"CompanionWheelMenu", kMenuType_CompanionWheel},
+	{"TraitSelectMenu", kMenuType_TraitSelect}, {"RecipeMenu", kMenuType_Recipe}, {"SlotMachineMenu", kMenuType_SlotMachine},
+	{"BlackjackMenu", kMenuType_Blackjack}, {"RouletteMenu", kMenuType_Roulette}, {"CaravanMenu", kMenuType_Caravan}, {"TraitMenu", kMenuType_Trait}});
 
 // Split component path into "top-level menu name" and "everything else".
 // Path is of format "MenuType/tile/tile/..." following hierarchy defined in menu's xml.
@@ -65,24 +60,11 @@ UnorderedMap<const char*, UInt32> s_menuNameToID(0x40);
 // pSlashPos is set to the slash character after the top-level menu name.
 TileMenu* InterfaceManager::GetMenuByPath(const char * componentPath, const char ** pSlashPos)
 {
-	if (s_menuNameToID.Empty())
-	{
-		g_tileMenuArray = *(TileMenu***)0x11F350C;
-		const char *strPos = kMenuNames;
-		UInt32 count = 0;
-		do
-		{
-			s_menuNameToID[strPos] = kMenuIDs[count];
-			strPos += StrLen(strPos) + 1;
-		}
-		while (++count < 36);
-	}
-
 	char *slashPos = SlashPos(componentPath);
 	if (slashPos) *slashPos = 0;
 	*pSlashPos = slashPos;
 	UInt32 menuID = s_menuNameToID.Get(componentPath);
-	return menuID ? g_tileMenuArray[menuID - kMenuType_Min] : NULL;
+	return menuID ? (*g_tileMenuArray)[menuID - kMenuType_Min] : NULL;
 }
 
 Tile::Value* InterfaceManager::GetMenuComponentValue(const char * componentPath)
@@ -92,6 +74,16 @@ Tile::Value* InterfaceManager::GetMenuComponentValue(const char * componentPath)
 	TileMenu *tileMenu = GetMenuByPath(componentPath, &slashPos);
 	if (tileMenu && slashPos)
 		return tileMenu->GetComponentValue(slashPos + 1);
+	return NULL;
+}
+
+Tile::Value* InterfaceManager::GetMenuComponentValueAlt(const char * componentPath)
+{
+	// path is of format "MenuType/tile/tile/.../traitName" following hierarchy defined in menu's xml
+	const char *slashPos;
+	TileMenu *tileMenu = GetMenuByPath(componentPath, &slashPos);
+	if (tileMenu && slashPos)
+		return tileMenu->GetComponentValueAlt(slashPos + 1);
 	return NULL;
 }
 

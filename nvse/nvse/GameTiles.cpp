@@ -76,6 +76,44 @@ Tile * Tile::GetChild(const char * childName)
 	return result;
 }
 
+Tile *Tile::GetChildAlt(const char *childName)
+{
+	int childIndex = 0;
+	char *colon = strchr(const_cast<char*>(childName), ':');
+	if (colon)
+	{
+		if (colon == childName) return NULL;
+		*colon = 0;
+		childIndex = atoi(colon + 1);
+	}
+	Tile *result = NULL;
+	bool wildcard = *childName == '*';
+	for (auto node = ((DList<Tile>*)&childList)->Head(); node; node = node->next)
+	{
+		if (node->data && (wildcard || !StrCompare(node->data->name.m_data, childName)) && !childIndex--)
+		{
+			result = node->data;
+			break;
+		}
+	}
+	if (colon) *colon = ':';
+	return result;
+}
+
+Tile::Value *Tile::GetComponentValueAlt(const char *componentPath)
+{
+	Tile *parentTile = this;
+	char *slashPos;
+	while (slashPos = SlashPos(componentPath))
+	{
+		*slashPos = 0;
+		parentTile = parentTile->GetChildAlt(componentPath);
+		if (!parentTile) return NULL;
+		componentPath = slashPos + 1;
+	}
+	return *componentPath ? parentTile->GetValueName(componentPath) : NULL;
+}
+
 // Find a tile or tile value by component path.
 // Returns NULL if component path not found.
 // Returns Tile* and clears "trait" if component was a tile.
