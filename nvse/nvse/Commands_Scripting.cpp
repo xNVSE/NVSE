@@ -54,6 +54,10 @@ bool Cmd_Label_Execute(COMMAND_ARGS)
 
 	if (!ExtractArgs(EXTRACT_ARGS, &idx)) return true;
 
+#if USE_EXTRACT_ARGS_EX
+	*opcodeOffsetPtr += *(UInt16*)((UInt8*)scriptData + *opcodeOffsetPtr - 2);
+#endif
+
 	SavedIPInfo		* info = &s_savedIPTable[scriptObj->refID][idx];
 	ScriptRunner	* scriptRunner = GetScriptRunner(opcodeOffsetPtr);
 
@@ -80,6 +84,10 @@ bool Cmd_Goto_Execute(COMMAND_ARGS)
 
 	SavedIPInfo *info = savedIPInfo->GetPtr(idx);
 	if (!info) return true;
+
+#if USE_EXTRACT_ARGS_EX
+	*opcodeOffsetPtr += *(UInt16*)((UInt8*)scriptData + *opcodeOffsetPtr - 2);
+#endif
 
 	ScriptRunner	* scriptRunner = GetScriptRunner(opcodeOffsetPtr);
 	SInt32			* calculatedOpLength = GetCalculatedOpLength(opcodeOffsetPtr);
