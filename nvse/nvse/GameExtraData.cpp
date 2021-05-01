@@ -403,16 +403,19 @@ void ExtraContainerChanges::Cleanup()
 				continue;
 			}
 
-			for (SInt32 index = 0; index < iter->extendData->Count(); ) {
-				ExtraDataList* xtendData = iter->extendData->GetNthItem(index);
-				if (xtendData && !xtendData->m_data) {
-					iter->extendData->RemoveNth(index);
+			auto xIter = iter->extendData->Head();
+			if (!xIter) continue;
+			do
+			{
+				ExtraDataList* xtendData = xIter->data;
+				if (xtendData && !xtendData->m_data)
+				{
 					FormHeap_Free(xtendData);
+					xIter = xIter->RemoveMe();
+					if (!xIter) break;
 				}
-				else {
-					index++;
-				}
-			}
+
+			} while (xIter = xIter->next);
 		}
 	}
 }
