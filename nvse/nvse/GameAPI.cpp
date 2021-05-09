@@ -410,13 +410,13 @@ const bool kInventoryType[] =
 
 enum ExtractParamType
 {
-	kExtractParam_Variable = 0,
+	kExtractParam_StringLiteral = 0,
 	kExtractParam_Int = 1,
 	kExtractParam_Short = 2,
 	kExtractParam_Byte = 3,
 	kExtractParam_Float = 4,
 	kExtractParam_Double = 5,
-	kExtractParam_Form = 6,
+	kExtractParam_FormOrVariable = 6,
 };
 
 #if NVSE_CORE
@@ -431,7 +431,7 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 
 		switch (kClassifyParamExtract[paramType])
 		{
-			case kExtractParam_Variable:
+			case kExtractParam_StringLiteral:
 			{
 				char *out = va_arg(args, char*);
 				UInt32 length = *(UInt16*)scriptData;
@@ -515,7 +515,7 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 					return false;
 				break;
 			}
-			case kExtractParam_Form:
+			case kExtractParam_FormOrVariable:
 			{
 				TESForm *form = NULL;
 				if (*scriptData == 'r')
