@@ -408,6 +408,17 @@ const bool kInventoryType[] =
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0
 };
 
+enum ExtractParamType
+{
+	kExtractParam_Variable = 0,
+	kExtractParam_Int = 1,
+	kExtractParam_Short = 2,
+	kExtractParam_Byte = 3,
+	kExtractParam_Float = 4,
+	kExtractParam_Double = 5,
+	kExtractParam_Form = 6,
+};
+
 #if NVSE_CORE
 static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&scriptData, Script *scriptObj, ScriptEventList *eventList, va_list args)
 {
@@ -420,7 +431,7 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 
 		switch (kClassifyParamExtract[paramType])
 		{
-			case 0:
+			case kExtractParam_Variable:
 			{
 				char *out = va_arg(args, char*);
 				UInt32 length = *(UInt16*)scriptData;
@@ -457,7 +468,7 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 				}
 				break;
 			}
-			case 1:
+			case kExtractParam_Int:
 			{
 				SInt32 *out = va_arg(args, SInt32*);
 				if (*scriptData == 'n')
@@ -474,21 +485,21 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 				}
 				break;
 			}
-			case 2:
+			case kExtractParam_Short:
 			{
 				UInt32 *out = va_arg(args, UInt32*);
 				*out = *(UInt16*)scriptData;
 				scriptData += 2;
 				break;
 			}
-			case 3:
+			case kExtractParam_Byte:
 			{
 				UInt8 *out = va_arg(args, UInt8*);
 				*out = *(UInt8*)scriptData;
 				scriptData += 1;
 				break;
 			}
-			case 4:
+			case kExtractParam_Float:
 			{
 				double data;
 				if (!ExtractFloat(&data, scriptData, scriptObj, eventList))
@@ -497,14 +508,14 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 				*out = data;
 				break;
 			}
-			case 5:
+			case kExtractParam_Double:
 			{
 				double *out = va_arg(args, double*);
 				if (!ExtractFloat(out, scriptData, scriptObj, eventList))
 					return false;
 				break;
 			}
-			case 6:
+			case kExtractParam_Form:
 			{
 				TESForm *form = NULL;
 				if (*scriptData == 'r')
