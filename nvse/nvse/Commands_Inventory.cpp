@@ -8,31 +8,40 @@
 static const Cmd_Execute Cmd_EquipItem_Execute		= (Cmd_Execute)0x005D0060;
 static const Cmd_Execute Cmd_UnequipItem_Execute	= (Cmd_Execute)0x005D0300;
 
+
+void GetWeight_Call(TESForm* form, double *result)
+{
+	TESWeightForm* weightForm = DYNAMIC_CAST(form, TESForm, TESWeightForm);
+	if (weightForm)
+	{
+		*result = weightForm->weight;
+	}
+	else 
+	{
+		TESAmmo* pAmmo = DYNAMIC_CAST(form, TESForm, TESAmmo);
+		if (pAmmo) 
+		{
+			*result = pAmmo->weight;
+		}
+	}
+}
+
 // testing conditionals with this
 bool Cmd_GetWeight_Eval(COMMAND_ARGS_EVAL)
 {
 	*result = 0;
-	TESForm* form = (TESForm*)arg1;
-	if (form)
+	if (arg1)
 	{
-		bool bFoundWeight = false;
-		TESWeightForm* weightForm = DYNAMIC_CAST(form, TESForm, TESWeightForm);
-		if (weightForm)
-		{
-			*result = weightForm->weight;
-			bFoundWeight = true;
-		} else {
-			TESAmmo* pAmmo = DYNAMIC_CAST(form, TESForm, TESAmmo);
-			if (pAmmo) {
-				*result = pAmmo->weight;
-				bFoundWeight = true;
-			}
-		}
-
-		if (bFoundWeight && IsConsoleMode())
-			Console_Print("GetWeight >> %.2f", *result);
+		TESForm* form = (TESForm*)arg1;
+		GetWeight_Call(form, result);
 	}
-
+	else if (thisObj)  //evaluates if the condition has an INVALID (default) parameter
+	{
+		TESForm* form = thisObj->baseForm;
+		GetWeight_Call(form, result);
+	}
+	if (IsConsoleMode())
+		Console_Print("GetWeight >> %.2f", *result);
 	return true;
 }
 
@@ -74,6 +83,25 @@ bool Cmd_GetHealth_Execute(COMMAND_ARGS)
 	}
 	return true;
 }
+bool Cmd_GetHealth_Eval(COMMAND_ARGS_EVAL)
+{
+	*result = 0;
+	if (thisObj)  //evaluates if the condition has an INVALID (default) parameter. 
+				//With kParams_OneOptionalForm, arg1 will always be INVALID (no way to select a form).
+	{
+		TESForm* pForm = thisObj->baseForm;
+		TESHealthForm* pHealth = DYNAMIC_CAST(pForm, TESForm, TESHealthForm);
+		if (pHealth)
+		{
+			*result = pHealth->health;
+#if _DEBUG
+			Console_Print("GetHealth >> %.2f", *result);
+#endif
+		}
+	}
+
+	return true;
+}
 
 bool Cmd_GetValue_Execute(COMMAND_ARGS)
 {
@@ -92,6 +120,31 @@ bool Cmd_GetValue_Execute(COMMAND_ARGS)
 		*result = pValue->value;
 		if (IsConsoleMode())
 			Console_Print("GetValue >> %.2f", *result);
+	}
+	return true;
+}
+bool Cmd_GetValue_Eval(COMMAND_ARGS_EVAL)
+{
+	*result = 0;
+	TESForm* pForm;
+
+	if (arg1)
+	{
+		pForm = (TESForm*)arg1;
+	}
+	else if (thisObj)
+	{
+		pForm = thisObj->baseForm;
+	}
+	else return true;
+	
+	TESValueForm* pValue = DYNAMIC_CAST(pForm, TESForm, TESValueForm);
+	if (pValue) 
+	{
+		*result = pValue->value;
+#if _DEBUG
+		Console_Print("GetValue >> %.2f", *result);
+#endif
 	}
 	return true;
 }
@@ -223,6 +276,19 @@ bool Cmd_GetType_Execute(COMMAND_ARGS)
 	}
 	return true;
 }
+bool Cmd_GetType_Eval(COMMAND_ARGS_EVAL)
+{
+	*result = 0;
+	if (thisObj)
+	{
+		TESForm* form = thisObj->baseForm;
+		*result = form->typeID;
+#if _DEBUG
+		Console_Print("Type of %s: %d", form->GetName(), form->typeID);
+#endif
+	}
+	return true;
+}
 
 bool Cmd_GetRepairList_Execute(COMMAND_ARGS)
 {
@@ -261,6 +327,31 @@ bool Cmd_GetEquipType_Execute(COMMAND_ARGS)
 	BGSEquipType* pEquipType = DYNAMIC_CAST(pForm, TESForm, BGSEquipType);
 	if (pEquipType) {
 		*result = pEquipType->equipType;
+	}
+	return true;
+}
+bool Cmd_GetEquipType_Eval(COMMAND_ARGS_EVAL)
+{
+	*result = 0;
+	TESForm* pForm = 0;
+
+	if (arg1)
+	{
+		pForm = (TESForm*)arg1;
+	}
+	else if (thisObj)
+	{
+		pForm = thisObj->baseForm;
+	}
+	else return true;
+
+	BGSEquipType* pEquipType = DYNAMIC_CAST(pForm, TESForm, BGSEquipType);
+	if (pEquipType) 
+	{
+		*result = pEquipType->equipType;
+#if _DEBUG
+		Console_Print("GetEquipType >> %f", *result);
+#endif
 	}
 	return true;
 }
@@ -308,6 +399,31 @@ bool Cmd_GetWeaponClipRounds_Execute(COMMAND_ARGS)
 	}
 	return true;
 }
+bool Cmd_GetWeaponClipRounds_Eval(COMMAND_ARGS_EVAL)
+{
+	*result = 0;
+	TESForm* pForm = NULL;
+	
+	if (arg1)
+	{
+		pForm = (TESForm*)arg1;
+	}
+	else if (thisObj)
+	{
+		pForm = thisObj->baseForm;
+	}
+	else return true;
+	
+	BGSClipRoundsForm* pClipRounds = DYNAMIC_CAST(pForm, TESForm, BGSClipRoundsForm);
+	if (pClipRounds) 
+	{
+		*result = pClipRounds->clipRounds;
+#if _DEBUG
+		Console_Print("clipRounds: %d", pClipRounds->clipRounds);
+#endif
+	}
+	return true;
+}
 
 bool Cmd_GetAttackDamage_Execute(COMMAND_ARGS)
 {
@@ -320,6 +436,30 @@ bool Cmd_GetAttackDamage_Execute(COMMAND_ARGS)
 		if (!thisObj) return true;
 		pForm = thisObj->baseForm;
 	}
+
+	TESAttackDamageForm* pDamage = DYNAMIC_CAST(pForm, TESForm, TESAttackDamageForm);
+	if (pDamage) {
+		*result = pDamage->damage;
+#if _DEBUG
+		Console_Print("damage: %d", pDamage->damage);
+#endif
+	}
+	return true;
+}
+bool Cmd_GetAttackDamage_Eval(COMMAND_ARGS_EVAL)
+{
+	*result = 0;
+	TESForm* pForm = NULL;
+
+	if (arg1)
+	{
+		pForm = (TESForm*)arg1;
+	}
+	else if (thisObj)
+	{
+		pForm = thisObj->baseForm;
+	}
+	else return true;
 
 	TESAttackDamageForm* pDamage = DYNAMIC_CAST(pForm, TESForm, TESAttackDamageForm);
 	if (pDamage) {
@@ -376,19 +516,8 @@ enum EWeapValues
 	eWeap_Flags2,
 };
 
-bool GetWeaponValue_Execute(COMMAND_ARGS, UInt32 whichVal)
+bool GetWeaponValue(TESObjectWEAP* pWeapon, UInt32 whichVal, double *result)
 {
-	*result = 0;
-	TESForm* pForm = 0;
-	
-	if (!ExtractArgs(EXTRACT_ARGS, &pForm)) return true;
-	pForm = pForm->TryGetREFRParent();
-	if (!pForm) {
-		if (!thisObj) return true;
-		pForm = thisObj->baseForm;
-	}
-
-	TESObjectWEAP* pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);
 	if (pWeapon) {
 		switch(whichVal) {
 			case eWeap_Type:				*result = pWeapon->eWeaponType; break;
@@ -449,213 +578,404 @@ bool GetWeaponValue_Execute(COMMAND_ARGS, UInt32 whichVal)
 			default: HALT("unknown weapon value"); break;
 		}
 	}
-
 	return true;
+}
+
+bool GetWeaponValue_Execute(COMMAND_ARGS, UInt32 whichVal)
+{
+	*result = 0;
+	TESForm* pForm = 0;
+
+	if (!ExtractArgs(EXTRACT_ARGS, &pForm)) return true;
+	pForm = pForm->TryGetREFRParent();
+	if (!pForm) {
+		if (!thisObj) return true;
+		pForm = thisObj->baseForm;
+	}
+	TESObjectWEAP* pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);
+	return GetWeaponValue(pWeapon, whichVal, result);
+}
+
+bool GetWeaponValue_Eval(COMMAND_ARGS_EVAL, UInt32 whichVal)
+{
+	*result = 0;
+	TESForm* pForm = 0;
+	
+	if (arg1)
+	{
+		pForm = (TESForm*)arg1;
+	}
+	else if (thisObj)
+	{
+		pForm = thisObj->baseForm;
+	}
+	else return true;
+	
+	TESObjectWEAP* pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);	
+	return GetWeaponValue(pWeapon, whichVal, result);
 }
 
 bool Cmd_GetWeaponType_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_Type);
 }
+bool Cmd_GetWeaponType_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_Type);
+}
 
 bool Cmd_GetWeaponMinSpread_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_MinSpread);
+}
+bool Cmd_GetWeaponMinSpread_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_MinSpread);
 }
 
 bool Cmd_GetWeaponSpread_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_Spread);
 }
+bool Cmd_GetWeaponSpread_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_Spread);
+}
 
 bool Cmd_GetWeaponProjectile_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_Proj);
 }
+//No Eval since it returns a ref.
 
 bool Cmd_GetWeaponSightFOV_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_SightFOV);
+}
+bool Cmd_GetWeaponSightFOV_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_SightFOV);
 }
 
 bool Cmd_GetWeaponMinRange_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_MinRange);
 }
+bool Cmd_GetWeaponMinRange_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_MinRange);
+}
 
 bool Cmd_GetWeaponMaxRange_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_Range);
+}
+bool Cmd_GetWeaponMaxRange_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_Range);
 }
 
 bool Cmd_GetWeaponAmmoUse_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_AmmoUse);
 }
+bool Cmd_GetWeaponAmmoUse_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_AmmoUse);
+}
 
 bool Cmd_GetWeaponActionPoints_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_APCost);
+}
+bool Cmd_GetWeaponActionPoints_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_APCost);
 }
 
 bool Cmd_GetWeaponCritDamage_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_CritDam);
 }
+bool Cmd_GetWeaponCritDamage_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_CritDam);
+}
 
 bool Cmd_GetWeaponCritChance_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_CritChance);
+}
+bool Cmd_GetWeaponCritChance_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_CritChance);
 }
 
 bool Cmd_GetWeaponCritEffect_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_CritEffect);
 }
+//No Eval since it returns a ref.
 
 bool Cmd_GetWeaponFireRate_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_FireRate);
+}
+bool Cmd_GetWeaponFireRate_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_FireRate);
 }
 
 bool Cmd_GetWeaponAnimAttackMult_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_AnimAttackMult);
 }
+bool Cmd_GetWeaponAnimAttackMult_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_AnimAttackMult);
+}
 
 bool Cmd_GetWeaponRumbleLeftMotor_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_RumbleLeft);
+}
+bool Cmd_GetWeaponRumbleLeftMotor_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_RumbleLeft);
 }
 
 bool Cmd_GetWeaponRumbleRightMotor_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_RumbleRight);
 }
+bool Cmd_GetWeaponRumbleRightMotor_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_RumbleRight);
+}
 
 bool Cmd_GetWeaponRumbleDuration_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_RumbleDuration);
+}
+bool Cmd_GetWeaponRumbleDuration_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_RumbleDuration);
 }
 
 bool Cmd_GetWeaponRumbleWavelength_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_RumbleWaveLength);
 }
+bool Cmd_GetWeaponRumbleWavelength_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_RumbleWaveLength);
+}
 
 bool Cmd_GetWeaponAnimShotsPerSec_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_AnimShotsPerSec);
+}
+bool Cmd_GetWeaponAnimShotsPerSec_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_AnimShotsPerSec);
 }
 
 bool Cmd_GetWeaponAnimReloadTime_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_AnimReloadTime);
 }
+bool Cmd_GetWeaponAnimReloadTime_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_AnimReloadTime);
+}
 
 bool Cmd_GetWeaponAnimJamTime_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_AnimJamTime);
+}
+bool Cmd_GetWeaponAnimJamTime_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_AnimJamTime);
 }
 
 bool Cmd_GetWeaponSkill_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_Skill);
 }
+bool Cmd_GetWeaponSkill_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_Skill);
+}
 
 bool Cmd_GetWeaponResistType_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_ResistType);
+}
+bool Cmd_GetWeaponResistType_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_ResistType);
 }
 
 bool Cmd_GetWeaponFireDelayMin_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_FireDelayMin);
 }
+bool Cmd_GetWeaponFireDelayMin_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_FireDelayMin);
+}
 
 bool Cmd_GetWeaponFireDelayMax_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_FireDelayMax);
+}
+bool Cmd_GetWeaponFireDelayMax_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_FireDelayMax);
 }
 
 bool Cmd_GetWeaponAnimMult_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_AnimMult);
 }
+bool Cmd_GetWeaponAnimMult_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_AnimMult);
+}
 
 bool Cmd_GetWeaponReach_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_Reach);
+}
+bool Cmd_GetWeaponReach_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_Reach);
 }
 
 bool Cmd_GetWeaponIsAutomatic_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_IsAutomatic);
 }
+bool Cmd_GetWeaponIsAutomatic_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_IsAutomatic);
+}
 
 bool Cmd_GetWeaponHandGrip_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_HandGrip);
+}
+bool Cmd_GetWeaponHandGrip_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_HandGrip);
 }
 
 bool Cmd_GetWeaponReloadAnim_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_ReloadAnim);
 }
+bool Cmd_GetWeaponReloadAnim_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_ReloadAnim);
+}
 
 bool Cmd_GetWeaponBaseVATSChance_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_VATSChance);
+}
+bool Cmd_GetWeaponBaseVATSChance_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_VATSChance);
 }
 
 bool Cmd_GetWeaponAttackAnimation_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_AttackAnim);
 }
+bool Cmd_GetWeaponAttackAnimation_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_AttackAnim);
+}
 
 bool Cmd_GetWeaponNumProjectiles_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_NumProj);
+}
+bool Cmd_GetWeaponNumProjectiles_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_NumProj);
 }
 
 bool Cmd_GetWeaponAimArc_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_AimArc);
 }
+bool Cmd_GetWeaponAimArc_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_AimArc);
+}
 
 bool Cmd_GetWeaponLimbDamageMult_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_LimbDamageMult);
+}
+bool Cmd_GetWeaponLimbDamageMult_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_LimbDamageMult);
 }
 
 bool Cmd_GetWeaponSightUsage_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_SightUsage);
 }
+bool Cmd_GetWeaponSightUsage_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_SightUsage);
+}
 
 bool Cmd_GetWeaponRequiredStrength_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_ReqStr);
+}
+bool Cmd_GetWeaponRequiredStrength_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_ReqStr);
 }
 
 bool Cmd_GetWeaponRequiredSkill_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_ReqSkill);
 }
+bool Cmd_GetWeaponRequiredSkill_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_ReqSkill);
+}
 
 bool Cmd_GetWeaponLongBursts_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_LongBursts);
+}
+bool Cmd_GetWeaponLongBursts_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_LongBursts);
 }
 
 bool Cmd_GetWeaponFlags1_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_Flags1);
 }
+bool Cmd_GetWeaponFlags1_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_Flags1);
+}
 
 bool Cmd_GetWeaponFlags2_Execute(COMMAND_ARGS)
 {
 	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_Flags2);
+}
+bool Cmd_GetWeaponFlags2_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_Flags2);
 }
 
 // testing conditionals with this
@@ -670,6 +990,18 @@ bool Cmd_GetWeaponHasScope_Eval(COMMAND_ARGS_EVAL)
 		{
 			*result = weapon->HasScope() ? 1 : 0;
 		}
+	}
+	else if (thisObj)
+	{
+		form = thisObj->baseForm;
+		TESObjectWEAP* weapon = DYNAMIC_CAST(form, TESForm, TESObjectWEAP);
+		if (weapon)
+		{
+			*result = weapon->HasScope();
+		}
+#if _DEBUG
+		Console_Print("GetWeaponHasScope >> %f", *result);
+#endif
 	}
 
 	return true;
@@ -1297,6 +1629,36 @@ bool Cmd_GetEquippedCurrentHealth_Execute(COMMAND_ARGS)
 	}
 	return true;
 }
+bool Cmd_GetEquippedCurrentHealth_Eval(COMMAND_ARGS_EVAL)
+{
+	*result = 0;
+
+	if (thisObj) 
+	{
+		UInt32 slotIdx = (UInt32)arg1;
+		MatchBySlot matcher(slotIdx);
+		EquipData equipD = FindEquipped(thisObj, matcher);
+		if (equipD.pForm) 
+		{
+			ExtraHealth* pXHealth = equipD.pExtraData ? (ExtraHealth*)equipD.pExtraData->GetByType(kExtraData_Health) : NULL;
+			if (pXHealth) 
+			{
+				*result = pXHealth->health;
+			}
+			else 
+			{
+				TESHealthForm* pHealth = DYNAMIC_CAST(equipD.pForm, TESForm, TESHealthForm);
+				if (pHealth)
+					*result = pHealth->health;
+			}
+		}
+	}
+#if _DEBUG
+	Console_Print("GetEquippedCurrentHealth: baseHealth >> %f", *result);
+#endif
+
+	return true;
+}
 
 bool Cmd_CompareNames_Execute(COMMAND_ARGS)
 {
@@ -1704,14 +2066,11 @@ bool Cmd_ClearHotkey_Execute(COMMAND_ARGS)
     return true;
 }
 
-bool Cmd_GetNumItems_Execute(COMMAND_ARGS)
+UInt32 GetNumItems_Call(TESObjectREFR* thisObj)
 {
-	*result = 0;
-	if (!thisObj) return true;
+	UInt32 count = 0;
 
 	// handle critical section?
-
-	UInt32 count = 0;
 
 	ExtraContainerChanges* pXContainerChanges = static_cast<ExtraContainerChanges*>(thisObj->extraDataList.GetByType(kExtraData_ContainerChanges));
 	ExtraContainerInfo info(pXContainerChanges ? pXContainerChanges->GetEntryDataList() : NULL);
@@ -1731,12 +2090,33 @@ bool Cmd_GetNumItems_Execute(COMMAND_ARGS)
 	// now count the remaining items
 	count += info.CountItems();
 
-	*result = count;
-
 	// handle leave critical section
+	
+	return count;
+}
+
+bool Cmd_GetNumItems_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	if (!thisObj) return true;
+
+	*result = GetNumItems_Call(thisObj);
 
 	if(IsConsoleMode())
-		Console_Print("item count: %d", count);
+		Console_Print("item count: %f", *result);
+
+	return true;
+}
+bool Cmd_GetNumItems_Eval(COMMAND_ARGS_EVAL)
+{
+	*result = 0;
+	if (!thisObj) return true;
+
+	*result = GetNumItems_Call(thisObj);
+
+#if _DEBUG
+	Console_Print("GetNumItems >> %f", *result);
+#endif
 
 	return true;
 }
@@ -1787,6 +2167,30 @@ bool Cmd_GetCurrentHealth_Execute(COMMAND_ARGS)
 	}
 	if (IsConsoleMode())
 		Console_Print("GetCurrentHealth >> %.4f", *result);
+	return true;
+}
+bool Cmd_GetCurrentHealth_Eval(COMMAND_ARGS_EVAL)
+{
+	*result = 0;
+	if (!thisObj) return true;
+	TESHealthForm* healthForm = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESHealthForm);
+	if (healthForm)
+	{
+		ExtraHealth* xHealth = (ExtraHealth*)thisObj->extraDataList.GetByType(kExtraData_Health);
+		*result = xHealth ? xHealth->health : (int)healthForm->health;
+	}
+	else
+	{
+		BGSDestructibleObjectForm* destructible = DYNAMIC_CAST(thisObj->baseForm, TESForm, BGSDestructibleObjectForm);
+		if (destructible && destructible->data)
+		{
+			ExtraObjectHealth* xObjHealth = (ExtraObjectHealth*)thisObj->extraDataList.GetByType(kExtraData_ObjectHealth);
+			*result = xObjHealth ? xObjHealth->health : (int)destructible->data->health;
+		}
+	}
+#if _DEBUG
+	Console_Print("GetCurrentHealth >> %.4f", *result);
+#endif
 	return true;
 }
 
@@ -1870,6 +2274,31 @@ bool Cmd_GetArmorAR_Execute(COMMAND_ARGS)
 	}
 	return true;
 }
+bool Cmd_GetArmorAR_Eval(COMMAND_ARGS_EVAL)
+{
+	*result = 0;
+	TESForm* pForm = NULL;
+
+	if (arg1)
+	{
+		pForm = (TESForm*)arg1;
+	}
+	else if (thisObj)
+	{
+		pForm = thisObj->baseForm;
+	}
+	else return true;
+
+	TESObjectARMO* pArmor = DYNAMIC_CAST(pForm, TESForm, TESObjectARMO);
+	if (pArmor) 
+	{
+		*result = pArmor->armorRating;
+#if _DEBUG
+		Console_Print("%s armor rating: %d", GetFullName(pArmor), pArmor->armorRating);
+#endif
+	}
+	return true;
+}
 
 bool Cmd_SetArmorAR_Execute(COMMAND_ARGS)
 {
@@ -1910,6 +2339,31 @@ bool Cmd_GetArmorDT_Execute(COMMAND_ARGS)
 	}
 	return true;
 }
+bool Cmd_GetArmorDT_Eval(COMMAND_ARGS_EVAL)
+{
+	*result = 0;
+	TESForm* pForm = NULL;
+
+	if (arg1)
+	{
+		pForm = (TESForm*)arg1;
+	}
+	else if (thisObj)
+	{
+		pForm = thisObj->baseForm;
+	}
+	else return true;
+
+	TESObjectARMO* pArmor = DYNAMIC_CAST(pForm, TESForm, TESObjectARMO);
+	if (pArmor) 
+	{
+		*result = pArmor->damageThreshold;
+#if _DEBUG
+			Console_Print("%s damage threshold: %f", GetFullName(pArmor), pArmor->damageThreshold);
+#endif
+	}
+	return true;
+}
 
 bool Cmd_SetArmorDT_Execute(COMMAND_ARGS)
 {
@@ -1945,6 +2399,27 @@ bool Cmd_IsPowerArmor_Execute(COMMAND_ARGS)
 	}
 	return true;
 }
+bool Cmd_IsPowerArmor_Eval(COMMAND_ARGS_EVAL)
+{
+	*result = 0;
+	TESForm* pForm = NULL;
+	if (arg1)
+	{
+		pForm = (TESForm*)arg1;
+	}
+	else if (thisObj)
+	{
+		pForm = thisObj->baseForm;
+	}
+	else return true;
+
+	TESBipedModelForm* pBiped = DYNAMIC_CAST(pForm, TESForm, TESBipedModelForm);
+	if (pBiped) 
+	{
+		*result = pBiped->IsPowerArmor() ? 1 : 0;
+	}
+	return true;
+}
 
 bool Cmd_SetIsPowerArmor_Execute(COMMAND_ARGS)
 {
@@ -1975,6 +2450,29 @@ bool Cmd_IsQuestItem_Execute(COMMAND_ARGS)
 
 		*result = pForm->IsQuestItem();
 	}
+	return true;
+}
+bool Cmd_IsQuestItem_Eval(COMMAND_ARGS_EVAL)
+{
+	*result = 0;
+	TESForm* pForm = NULL;
+	if (arg1)
+	{
+		pForm = (TESForm*)arg1;
+	}
+	else if (thisObj)
+	{
+		pForm = thisObj->baseForm;
+	}
+	else return true;
+
+	if (pForm)
+		*result = pForm->IsQuestItem();
+
+#if _DEBUG
+	Console_Print("IsQuestItem >> %f", *result); 
+#endif
+
 	return true;
 }
 
@@ -2034,6 +2532,30 @@ bool Cmd_GetAmmoSpeed_Execute(COMMAND_ARGS)
 	}
 	return true;
 }
+bool Cmd_GetAmmoSpeed_Eval(COMMAND_ARGS_EVAL)
+{
+	*result = 0;
+	TESForm* form = NULL;
+	if (arg1)
+	{
+		form = (TESForm*)arg1;
+	}
+	else if (thisObj)
+	{
+		form = thisObj->baseForm;
+	}
+	else return true;
+
+	TESAmmo* pAmmo = DYNAMIC_CAST(form, TESForm, TESAmmo);
+	if (pAmmo) 
+	{
+		*result = pAmmo->speed;
+#if _DEBUG
+		Console_Print("%s ammo speed: %f", GetFullName(pAmmo), pAmmo->speed);
+#endif
+	}
+	return true;
+}
 
 bool Cmd_GetAmmoConsumedPercent_Execute(COMMAND_ARGS)
 {
@@ -2047,6 +2569,27 @@ bool Cmd_GetAmmoConsumedPercent_Execute(COMMAND_ARGS)
 
 	TESAmmo* pAmmo = DYNAMIC_CAST(form, TESForm, TESAmmo);
 	if (pAmmo) {
+		*result = pAmmo->ammoPercentConsumed;
+	}
+	return true;
+}
+bool Cmd_GetAmmoConsumedPercent_Eval(COMMAND_ARGS_EVAL)
+{
+	*result = 0;
+	TESForm* form;
+	if (arg1)
+	{
+		form = (TESForm*)arg1;
+	}
+	else if (thisObj)
+	{
+		form = thisObj->baseForm;
+	}
+	else return true;
+
+	TESAmmo* pAmmo = DYNAMIC_CAST(form, TESForm, TESAmmo);
+	if (pAmmo) 
+	{
 		*result = pAmmo->ammoPercentConsumed;
 	}
 	return true;
@@ -2194,30 +2737,41 @@ bool Cmd_CloneForm_Execute(COMMAND_ARGS)
 	return CloneForm_Execute(PASS_COMMAND_ARGS, true);
 }
 
-bool Cmd_GetEquippedWeaponModFlags_Execute(COMMAND_ARGS)
+void GetEquippedWeaponModFlags_Call(TESObjectREFR* thisObj, double *result)
 {
-	*result = 0;
-
-	if (!thisObj)
-		return true;
-
 	MatchBySlot matcher(5);
 	EquipData equipD = FindEquipped(thisObj, matcher);
 
-	if (!equipD.pForm)
-		return true;
-
-	if (!equipD.pExtraData)
-		return true;
+	if (!equipD.pForm) return;
+	if (!equipD.pExtraData) return;
 
 	ExtraWeaponModFlags* pXWeaponModFlags = (ExtraWeaponModFlags*)equipD.pExtraData->GetByType(kExtraData_WeaponModFlags);
-	if (pXWeaponModFlags) {
+	if (pXWeaponModFlags)
 		*result = pXWeaponModFlags->flags;
-		if(IsConsoleMode())
-			Console_Print("Weapon Mod Flags: %d", pXWeaponModFlags->flags);
-	} else if(IsConsoleMode()) {
-		Console_Print("Weapon Mod Flags: 0");
-	}
+}
+
+bool Cmd_GetEquippedWeaponModFlags_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	if (!thisObj) return true;
+
+	GetEquippedWeaponModFlags_Call(thisObj, result);
+
+	if (IsConsoleMode())
+		Console_Print("Weapon Mod Flags: %f", *result);
+
+	return true;
+}
+bool Cmd_GetEquippedWeaponModFlags_Eval(COMMAND_ARGS_EVAL)
+{
+	*result = 0;
+	if (!thisObj) return true;
+
+	GetEquippedWeaponModFlags_Call(thisObj, result);
+
+#if _DEBUG
+	Console_Print("Weapon Mod Flags: %f", *result);
+#endif
 
 	return true;
 }

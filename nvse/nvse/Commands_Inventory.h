@@ -5,6 +5,7 @@
 
 // for use with Inventory Objects
 #define DEFINE_GET_INV(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, 0, 1, kParams_OneOptionalObjectID);
+#define DEFINE_GET_INV_COND(name, alt, desc) DEFINE_CMD_ALT_COND(name, alt, desc, 0, kParams_OneOptionalObjectID);
 #define DEFINE_SET_INV_INT(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, 0, 2, kParams_OneInt_OneOptionalObjectID);
 #define DEFINE_SET_INV_FLOAT(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, 0, 2, kParams_OneFloat_OneOptionalObjectID);
 #define DEFINE_SET_INV_MAGIC(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, 0, 2, kParams_OneMagicItem_OneOptionalObjectID);
@@ -12,24 +13,26 @@
 #define DEFINE_GET_OBJ(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, 0, 1, kParams_OneOptionalObject);
 
 #define DEFINE_GET_FORM(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, 0, 1, kParams_OneOptionalForm);
+#define DEFINE_GET_FORM_COND(name, alt, desc) DEFINE_CMD_ALT_COND(name, alt, desc, 0, kParams_OneOptionalForm);  //arg1/2 will always be INVALID
 
 #define DEFINE_SET_CUR_FLOAT(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, 1, 2, kParams_SetEquippedFloat);
 
-DEFINE_CMD_COND(GetWeight, returns the weight of the sepcified base form, 0, kParams_OneOptionalObjectID);
-DEFINE_GET_FORM(GetHealth, GetBaseHealth, returns the base health of the object or calling reference);
-DEFINE_GET_INV(GetValue, GetItemValue, returns the base value of the object or calling reference);
+
+DEFINE_CMD_COND(GetWeight, returns the weight of the specified base form, 0, kParams_OneOptionalObjectID);
+DEFINE_GET_FORM_COND(GetHealth, GetBaseHealth, returns the base health of the object or calling reference);
+DEFINE_GET_INV_COND(GetValue, GetItemValue, returns the base value of the object or calling reference); 
 DEFINE_SET_INV_FLOAT(SetWeight, , sets the weight of the object); 
 DEFINE_CMD_ALT(SetHealth, SetObjectHealth, sets the base health of the specified base form, 0, 2, kParams_OneInt_OneOptionalObject);
 DEFINE_CMD_ALT(SetBaseItemValue, SetValue, sets the monetary value of a base object, 0, 2, kParams_OneObjectID_OneInt);
-DEFINE_GET_FORM(GetType, GetObjectType, returns the type of the specified base form);
+DEFINE_GET_FORM_COND(GetType, GetObjectType, returns the type of the specified base form);
 DEFINE_GET_INV(GetRepairList, grl, returns the repair list for the inventory object);
-DEFINE_GET_INV(GetEquipType,  , returns the equipment type of the inventory object);
+DEFINE_GET_INV_COND(GetEquipType,  , returns the equipment type of the inventory object);
 DEFINE_CMD_ALT(CompareNames,  , compares one name to another, 0, 2, kParams_OneObject_OneOptionalObject);
 DEFINE_CMD_ALT(SetName,  , sets the name of the object., 0, 2, kParams_OneString_OneOptionalObject);
-DEFINE_COMMAND(GetCurrentHealth, returns the current health of the calling ref, 1, 0, NULL);
+DEFINE_CMD_COND(GetCurrentHealth, returns the current health of the calling ref, 1, NULL);
 DEFINE_COMMAND(SetCurrentHealth, sets the current health of the calling ref, 1, 1, kParams_OneFloat);
 DEFINE_CMD_ALT(SetRepairList,  , sets the repair list for the specified item., 0, 2, kParams_OneFormList_OneOptionalObjectID);
-DEFINE_GET_INV(IsQuestItem, , returns 1 if the object or calling reference is a quest item);
+DEFINE_GET_INV_COND(IsQuestItem, , returns 1 if the object or calling reference is a quest item);
 DEFINE_SET_INV_INT(SetQuestItem, , Sets whether the specified object or object reference is a quest item);
 DEFINE_GET_INV(GetObjectEffect, GetEnchantment, returns the object effect of the inventory object.);
 
@@ -44,59 +47,59 @@ DEFINE_COMMAND(ClearHotkey, "clears the item associated with the specified hotke
 
 // Inventory functions
 DEFINE_CMD_ALT(GetEquippedObject, GetEqObj, returns the base object of the item in the specified slot, 1, 1, kParams_OneInt);
-DEFINE_CMD_ALT(GetEquippedCurrentHealth, GetEqCurHealth, returns the current health of the object equipped in the specified slot, 1, 1, kParams_OneInt);
+DEFINE_CMD_ALT_COND(GetEquippedCurrentHealth, GetEqCurHealth, returns the current health of the object equipped in the specified slot, 1, kParams_OneInt);
 DEFINE_SET_CUR_FLOAT(SetEquippedCurrentHealth, SetEqCurHealth, sets the current health of the equipped object at the given slot.);
-DEFINE_CMD_ALT(GetNumItems, GetNumObjects, returns the number of items contained by the calling ref, 1, 0, NULL);
+DEFINE_CMD_ALT_COND(GetNumItems, GetNumObjects, returns the number of items contained by the calling ref, 1, NULL);
 DEFINE_CMD_ALT(GetInventoryObject, GetNthObject, returns the base object of the specified index contained in the calling ref, 1, 1, kParams_OneInt);
 
 
 // Weapon functions
 DEFINE_GET_INV(GetWeaponAmmo, GetAmmo, returns the ammo of a weapon);
-DEFINE_GET_INV(GetWeaponClipRounds, GetClipSize, returns the clip size for the weapon);
-DEFINE_GET_INV(GetAttackDamage, GetDamage, returns the attack damage for the weapon);
-DEFINE_GET_INV(GetWeaponType, GetWeapType, returns the weapon type);
-DEFINE_GET_INV(GetWeaponMinSpread, GetMinSpread, returns the minimum spread of the weapon);
-DEFINE_GET_INV(GetWeaponSpread, GetSpread, returns the spread of the weapon);
+DEFINE_GET_INV_COND(GetWeaponClipRounds, GetClipSize, returns the clip size for the weapon);
+DEFINE_GET_INV_COND(GetAttackDamage, GetDamage, returns the attack damage for the weapon);
+DEFINE_GET_INV_COND(GetWeaponType, GetWeapType, returns the weapon type);
+DEFINE_GET_INV_COND(GetWeaponMinSpread, GetMinSpread, returns the minimum spread of the weapon);
+DEFINE_GET_INV_COND(GetWeaponSpread, GetSpread, returns the spread of the weapon);
 DEFINE_GET_INV(GetWeaponProjectile, GetWeapProj, returns the weapon projectile info);
-DEFINE_GET_INV(GetWeaponSightFOV, GetSightFOV, returns the zoom field of view for the weapon);
-DEFINE_GET_INV(GetWeaponMinRange, GetMinRange, returns the min range of the weapon);
-DEFINE_GET_INV(GetWeaponMaxRange, GetMaxRange, returns the max range of the weapon);
-DEFINE_GET_INV(GetWeaponAmmoUse, GetAmmoUse, returns the ammo used per shot of the weapon);
-DEFINE_GET_INV(GetWeaponActionPoints, GetAP, returns the number of action points per shot of the weapon);
-DEFINE_GET_INV(GetWeaponCritDamage, GetCritDam, returns the critical damage of the weapon);
-DEFINE_GET_INV(GetWeaponCritChance, GetCritPerc, returns the chance of a critical shot for the weapon);
+DEFINE_GET_INV_COND(GetWeaponSightFOV, GetSightFOV, returns the zoom field of view for the weapon);
+DEFINE_GET_INV_COND(GetWeaponMinRange, GetMinRange, returns the min range of the weapon);
+DEFINE_GET_INV_COND(GetWeaponMaxRange, GetMaxRange, returns the max range of the weapon);
+DEFINE_GET_INV_COND(GetWeaponAmmoUse, GetAmmoUse, returns the ammo used per shot of the weapon);
+DEFINE_GET_INV_COND(GetWeaponActionPoints, GetAP, returns the number of action points per shot of the weapon);
+DEFINE_GET_INV_COND(GetWeaponCritDamage, GetCritDam, returns the critical damage of the weapon);
+DEFINE_GET_INV_COND(GetWeaponCritChance, GetCritPerc, returns the chance of a critical shot for the weapon);
 DEFINE_GET_INV(GetWeaponCritEffect, GetCritEffect, returns the spell for the critical effect for the weapon);
-DEFINE_GET_INV(GetWeaponFireRate, GetFireRate, returns the fire rate of the weapon.);
-DEFINE_GET_INV(GetWeaponAnimAttackMult, GetAnimAttackMult, returns the animation attack multiplier of the weapon.);
-DEFINE_GET_INV(GetWeaponRumbleLeftMotor, GetRumbleLeft, returns the rumble left motor of the weapon.);
-DEFINE_GET_INV(GetWeaponRumbleRightMotor, GetRumbleRight, returns the rumble right motor of the weapon.);
-DEFINE_GET_INV(GetWeaponRumbleDuration, GetRumbleDuration, returns the rumble duration of the weapon.);
-DEFINE_GET_INV(GetWeaponRumbleWavelength, GetRumbleWavelen, returns the rumble wavelegnth for the weapon.);
-DEFINE_GET_INV(GetWeaponAnimShotsPerSec, GetAnimShotsPerSec, returns the animation shots per second of the weapon.);
-DEFINE_GET_INV(GetWeaponAnimReloadTime, GetAnimReloadTime, retuns the animation reload time for the weapon.);
-DEFINE_GET_INV(GetWeaponAnimJamTime, GetAnimJamTime, returns the animation jam time of the weapon.);
-DEFINE_GET_INV(GetWeaponSkill,  , returns the skill for the weapon.);
-DEFINE_GET_INV(GetWeaponResistType, GetWeaponResist, returns the resist type for the weapon.);
-DEFINE_GET_INV(GetWeaponFireDelayMin, GetFireDelayMin, returns the semi-auto min fire delay for the weapon.);
-DEFINE_GET_INV(GetWeaponFireDelayMax, GetFireDelayMax, returns the semi-auto max fire delay for the weapon.);
-DEFINE_GET_INV(GetWeaponAnimMult, GetAnimMult, returns the animation multiplier for the weapon);
-DEFINE_GET_INV(GetWeaponReach, GetReach,returns the reach of the weapon);
-DEFINE_GET_INV(GetWeaponIsAutomatic, GetIsAutomatic, returns 1 if the weapon is an automatic weapon);
-DEFINE_GET_INV(GetWeaponHandGrip, GetHandGrip, returns the hand grip of the weapon);
-DEFINE_GET_INV(GetWeaponReloadAnim, GetReloadAnim, returns the reload animation of the weapon);
-DEFINE_GET_INV(GetWeaponBaseVATSChance, GetVATSChance, returns the base VATS chance of the weapon);
-DEFINE_GET_INV(GetWeaponAttackAnimation, GetAttackAnim, returns the attack animation of the weapon);
-DEFINE_GET_INV(GetWeaponNumProjectiles, GetNumProj, returns the number of projectiles used in a single shot by the weapon.);
-DEFINE_GET_INV(GetWeaponAimArc, GetAimArc, returns the aim arc of the weapon.);
-DEFINE_GET_INV(GetWeaponLimbDamageMult, GetLimbDamageMult, returns the limb damage multiplier of the weapon.);
-DEFINE_GET_INV(GetWeaponSightUsage, GetSightUsage, returns the sight usage of the weapon.);
+DEFINE_GET_INV_COND(GetWeaponFireRate, GetFireRate, returns the fire rate of the weapon.);
+DEFINE_GET_INV_COND(GetWeaponAnimAttackMult, GetAnimAttackMult, returns the animation attack multiplier of the weapon.);
+DEFINE_GET_INV_COND(GetWeaponRumbleLeftMotor, GetRumbleLeft, returns the rumble left motor of the weapon.);
+DEFINE_GET_INV_COND(GetWeaponRumbleRightMotor, GetRumbleRight, returns the rumble right motor of the weapon.);
+DEFINE_GET_INV_COND(GetWeaponRumbleDuration, GetRumbleDuration, returns the rumble duration of the weapon.);
+DEFINE_GET_INV_COND(GetWeaponRumbleWavelength, GetRumbleWavelen, returns the rumble wavelegnth for the weapon.);
+DEFINE_GET_INV_COND(GetWeaponAnimShotsPerSec, GetAnimShotsPerSec, returns the animation shots per second of the weapon.);
+DEFINE_GET_INV_COND(GetWeaponAnimReloadTime, GetAnimReloadTime, retuns the animation reload time for the weapon.);
+DEFINE_GET_INV_COND(GetWeaponAnimJamTime, GetAnimJamTime, returns the animation jam time of the weapon.);
+DEFINE_GET_INV_COND(GetWeaponSkill,  , returns the skill for the weapon.);
+DEFINE_GET_INV_COND(GetWeaponResistType, GetWeaponResist, returns the resist type for the weapon.);
+DEFINE_GET_INV_COND(GetWeaponFireDelayMin, GetFireDelayMin, returns the semi-auto min fire delay for the weapon.);
+DEFINE_GET_INV_COND(GetWeaponFireDelayMax, GetFireDelayMax, returns the semi-auto max fire delay for the weapon.);
+DEFINE_GET_INV_COND(GetWeaponAnimMult, GetAnimMult, returns the animation multiplier for the weapon);
+DEFINE_GET_INV_COND(GetWeaponReach, GetReach,returns the reach of the weapon);
+DEFINE_GET_INV_COND(GetWeaponIsAutomatic, GetIsAutomatic, returns 1 if the weapon is an automatic weapon);
+DEFINE_GET_INV_COND(GetWeaponHandGrip, GetHandGrip, returns the hand grip of the weapon);
+DEFINE_GET_INV_COND(GetWeaponReloadAnim, GetReloadAnim, returns the reload animation of the weapon);
+DEFINE_GET_INV_COND(GetWeaponBaseVATSChance, GetVATSChance, returns the base VATS chance of the weapon);
+DEFINE_GET_INV_COND(GetWeaponAttackAnimation, GetAttackAnim, returns the attack animation of the weapon);
+DEFINE_GET_INV_COND(GetWeaponNumProjectiles, GetNumProj, returns the number of projectiles used in a single shot by the weapon.);
+DEFINE_GET_INV_COND(GetWeaponAimArc, GetAimArc, returns the aim arc of the weapon.);
+DEFINE_GET_INV_COND(GetWeaponLimbDamageMult, GetLimbDamageMult, returns the limb damage multiplier of the weapon.);
+DEFINE_GET_INV_COND(GetWeaponSightUsage, GetSightUsage, returns the sight usage of the weapon.);
 DEFINE_CMD_COND(GetWeaponHasScope, returns whether the weapon has a scope or not., 0, kParams_OneOptionalObjectID);
 DEFINE_COMMAND(GetWeaponItemMod, returns the specified item mod of the weapon, 0, 2, kParams_OneInt_OneOptionalObjectID);
-DEFINE_GET_INV(GetWeaponRequiredStrength, GetReqStr, returns the required strength for the weapon.);
-DEFINE_GET_INV(GetWeaponRequiredSkill, GetReqSkill, returns the required strength for the weapon.);
-DEFINE_GET_INV(GetWeaponLongBursts, GetLongBursts, returns if a weapon uses long bursts);
-DEFINE_GET_INV(GetWeaponFlags1, , returns weapon flags bitfield 1);
-DEFINE_GET_INV(GetWeaponFlags2, , returns weapon flags bitfield 2);
+DEFINE_GET_INV_COND(GetWeaponRequiredStrength, GetReqStr, returns the required strength for the weapon.);
+DEFINE_GET_INV_COND(GetWeaponRequiredSkill, GetReqSkill, returns the required strength for the weapon.);
+DEFINE_GET_INV_COND(GetWeaponLongBursts, GetLongBursts, returns if a weapon uses long bursts);
+DEFINE_GET_INV_COND(GetWeaponFlags1, , returns weapon flags bitfield 1);
+DEFINE_GET_INV_COND(GetWeaponFlags2, , returns weapon flags bitfield 2);
 
 DEFINE_CMD_ALT(SetWeaponAmmo, SetAmmo, sets the ammo of the weapon, 0, 2, kParams_OneInventoryItem_OneOptionalObjectID);
 DEFINE_SET_INV_INT(SetWeaponClipRounds, SetClipSize, sets the weapon clip size);
@@ -133,16 +136,16 @@ DEFINE_SET_INV_INT(SetWeaponResistType, SetWeaponResist, sets the weapon clip si
 DEFINE_SET_INV_INT(SetWeaponLongBursts, SetLongBursts, sets if a weapon uses long bursts);
 DEFINE_SET_INV_INT(SetWeaponFlags1, , sets weapon flags bitfield 1);
 DEFINE_SET_INV_INT(SetWeaponFlags2, , sets weapon flags bitfield 2);
-DEFINE_COMMAND(GetEquippedWeaponModFlags, returns equipped weapon mod flags, 1, 0, NULL);
+DEFINE_CMD_COND(GetEquippedWeaponModFlags, returns equipped weapon mod flags, 1, NULL);
 DEFINE_COMMAND(SetEquippedWeaponModFlags, sets equipped weapon mod flags, 1, 1, kParams_OneInt);
 DEFINE_COMMAND(GetWeaponItemModEffect, returns the specified item mod effect id of the weapon, 0, 2, kParams_OneInt_OneOptionalObjectID);
 DEFINE_COMMAND(GetWeaponItemModValue1, returns the specified item mod value1 of the weapon, 0, 2, kParams_OneInt_OneOptionalObjectID);
 DEFINE_COMMAND(GetWeaponItemModValue2, returns the specified item mod value2 of the weapon, 0, 2, kParams_OneInt_OneOptionalObjectID);
 
 // Armor functions
-DEFINE_GET_INV(GetArmorAR, GetArmorArmorRating, returns the armor rating of the specified armor.);
-DEFINE_GET_INV(IsPowerArmor, IsPA, returns whether the biped form is considered power armor.);
-DEFINE_GET_INV(GetArmorDT, GetArmorDamageThreshold, returns the damage threshold of the armor.);
+DEFINE_GET_INV_COND(GetArmorAR, GetArmorArmorRating, returns the armor rating of the specified armor.);
+DEFINE_GET_INV_COND(IsPowerArmor, IsPA, returns whether the biped form is considered power armor.);
+DEFINE_GET_INV_COND(GetArmorDT, GetArmorDamageThreshold, returns the damage threshold of the armor.);
 DEFINE_GET_INV(IsPlayable, , returns whether the biped form is usable by the player.);
 DEFINE_GET_INV(GetEquipmentSlotsMask, GetESM, returns the slots used by the biped form as a bitmask.);
 DEFINE_GET_INV(GetEquipmentBipedMask, GetEBM, gets the flags used by the biped form as a bitmask.);
@@ -155,8 +158,8 @@ DEFINE_SET_INV_INT(SetEquipmentSlotsMask, SetESM, sets the slots used by the bip
 DEFINE_SET_INV_INT(SetEquipmentBipedMask, SetEBM, sets the flags used by the biped form from a bitmask.);
 
 // Ammo functions
-DEFINE_GET_INV(GetAmmoSpeed, , returns the speed of the specified ammo.);
-DEFINE_GET_INV(GetAmmoConsumedPercent, , returns the percentage of ammo consumed for the specified ammo.);
+DEFINE_GET_INV_COND(GetAmmoSpeed, , returns the speed of the specified ammo.);
+DEFINE_GET_INV_COND(GetAmmoConsumedPercent, , returns the percentage of ammo consumed for the specified ammo.);
 DEFINE_GET_INV(GetAmmoCasing, , returns the casing of the specified ammo);
 
 DEFINE_COMMAND(GetPlayerCurrentAmmoRounds, returns the current number of rounds in the clip of the player, 0, 0, NULL);
@@ -245,5 +248,6 @@ DEFINE_CMD(EquipMe, equips the calling object on its owner, 1, NULL);
 DEFINE_CMD(UnequipMe, unequips the calling object on its owner, 1, NULL);
 
 DEFINE_COMMAND(IsEquipped, returns 1 if the calling object is currently being worn, 1, 0, NULL);
+//Does not work as a condition function.
 
 DEFINE_CMD(GetMe, returns the current object reference for items that do not accept GetSelf. For most of those the value will not survive the current frame!!!, 1, NULL);
