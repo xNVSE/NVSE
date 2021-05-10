@@ -1533,6 +1533,8 @@ void ExpressionEvaluator::Error(const char* fmt, ...)
 	vsprintf_s(errorMsg, 0x400, fmt, args);
 
 	this->errorMessages.emplace_back(errorMsg);
+
+	va_end(args);
 }
 
 void ExpressionEvaluator::PrintStackTrace() {
@@ -2173,7 +2175,7 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 				}
 
 				// replace closing bracket with 0 to ensure subexpression doesn't try to read past end of expr
-				m_lineBuf->paramText[endBracPos] = 0;
+				// m_lineBuf->paramText[endBracPos] = 0;
 
 				operandType = ParseSubExpression(endBracPos - Offset());
 				Offset() = endBracPos + 1;	// skip the closing bracket
@@ -2803,6 +2805,8 @@ UInt8* ExpressionEvaluator::GetCommandOpcodePosition() const
 
 CommandInfo* ExpressionEvaluator::GetCommand() const
 {
+	if (m_inline)
+		return nullptr;
 	auto* opcodePtr = reinterpret_cast<UInt16*>(static_cast<UInt8*>(m_scriptData) + m_baseOffset);
 	return g_scriptCommands.GetByOpcode(*opcodePtr);
 }
@@ -3936,9 +3940,11 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken& 
 	}
 	if (operands.size() == 1)
 	{
+		if (m_inline)
+			return "(" + operands.top() + ")";
 		CommandInfo* cmd = GetCommand();
 		if (!cmd || !cmd->longName)
-			return "";
+			return operands.top();
 		return std::string(cmd->longName) + " " + operands.top();
 	}
 	return "";

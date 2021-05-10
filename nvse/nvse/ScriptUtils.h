@@ -109,6 +109,8 @@ class ExpressionEvaluator
 	void PushOnStack();
 	void PopFromStack() const;
 public:
+	bool m_inline;
+
 	static bool	Active();
 	static ExpressionEvaluator& Get();
 

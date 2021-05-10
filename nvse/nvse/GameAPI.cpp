@@ -395,11 +395,12 @@ static const char* ResolveStringArgument(ScriptEventList* eventList, const char*
 	return result;
 }
 
-bool ExtractExpression(ParamInfo* paramInfo, UInt8*& scriptData, Script* scriptObj, ScriptEventList* eventList, va_list args, void* scriptDataIn)
+bool ExtractExpression(ParamInfo* paramInfo, UInt8*& scriptData, Script* scriptObj, ScriptEventList* eventList, va_list& args, void* scriptDataIn)
 {
 	double unusedResult = 0;
 	UInt32 offset = scriptData - scriptDataIn;
 	ExpressionEvaluator evaluator(paramInfo, scriptDataIn, nullptr, nullptr, scriptObj, eventList, &unusedResult, &offset);
+	evaluator.m_inline = true;
 	auto* token = evaluator.Evaluate();
 	scriptData += offset - (scriptData - scriptDataIn);
 	if (!token)
