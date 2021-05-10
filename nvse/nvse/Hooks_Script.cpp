@@ -39,6 +39,19 @@ static const UInt32 kScriptRunner_RunCallAddr = 0x00702FC0;			// overwritten cal
 static const UInt32 kScriptRunner_RunEndProcAddr = 0x005E113A;		// retn 0x20
 
 
+bool OverrideWithExtractArgsEx(ParamInfo* paramInfo, void* scriptData, int* opcodeOffsetPtr, TESObjectREFR* thisObj, TESObjectREFR* containingObj, Script* scriptObj, ScriptEventList* eventList, ...)
+{
+	va_list	args;
+	va_start(args, eventList);
+	const auto result = vExtractArgsEx(paramInfo, scriptData, reinterpret_cast<UInt32*>(opcodeOffsetPtr), scriptObj, eventList, args);
+#if _DEBUG
+	if (!result)
+		_MESSAGE("ExtractArgsEx Failed!");
+#endif
+	va_end(args);
+	return result;
+}
+
 void __stdcall DoExtractString(ScriptEventList *eventList, char *dest, char *scriptData, UInt32 dataLen)
 {
 	dest[dataLen] = 0;
@@ -136,6 +149,10 @@ void Hook_Script_Init()
 
 	// Following report of functions failing to be called, with at least one reported case of issue with threading: in case it is needed.
 	::InitializeCriticalSection(&csGameScript);
+
+#if USE_EXTRACT_ARGS_EX
+	WriteRelJump(0x5ACCB0, UInt32(OverrideWithExtractArgsEx));
+#endif
 }
 
 #else	// CS-stuff

@@ -773,6 +773,8 @@ public:
 
 std::string GetSavegamePath();
 
+bool vExtractArgsEx(ParamInfo* paramInfo, void* scriptDataIn, UInt32* scriptDataOffset, Script* scriptObj, ScriptEventList* eventList, va_list args);
+
 #endif
 
 class ButtonIcon;
