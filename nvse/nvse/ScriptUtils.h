@@ -172,6 +172,13 @@ public:
 
 bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem, ExpressionEvaluator* context);
 
+enum ParamParenthResult : UInt8
+{
+	kParamParent_NoParam,
+	kParamParent_Success,
+	kParamParent_SyntaxError
+};
+
 class ExpressionParser
 {
 	enum { kMaxArgs = NVSE_EXPR_MAX_ARGS };
@@ -228,6 +235,7 @@ class ExpressionParser
 	ScriptToken *	PeekOperand(UInt32& outReadLen);
 	bool			ParseFunctionCall(CommandInfo* cmdInfo);
 	Token_Type		PopOperator(std::stack<Operator*> & ops, std::stack<Token_Type> & operands);
+	Token_Type ParseArgument(UInt32 argsEndPos);
 
 	UInt32	MatchOpenBracket(Operator* openBracOp);
 	std::string GetCurToken();
@@ -243,6 +251,7 @@ public:
 	bool			ParseUserFunctionDefinition();
 	ScriptToken	*	ParseOperand(bool (* pred)(ScriptToken* operand));
 	Token_Type		ArgType(UInt32 idx) { return idx < kMaxArgs ? m_argTypes[idx] : kTokenType_Invalid; }
+	ParamParenthResult ParseParenthesis(ParamInfo* paramInfo, UInt32 paramIndex);
 };
 
 void ShowRuntimeError(Script* script, const char* fmt, ...);

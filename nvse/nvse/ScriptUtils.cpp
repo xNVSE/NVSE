@@ -1633,38 +1633,25 @@ bool ExpressionParser::ParseArgs(ParamInfo* params, UInt32 numParams, bool bUses
 		Offset()++;		
 	}
 
-	UInt8* dataStart = m_lineBuf->dataBuf + m_lineBuf->dataOffset;
 
 	while (m_numArgsParsed < numParams && Offset() < argsEndPos)
 	{
-		// reserve space to store expr length
-		m_lineBuf->dataOffset += 2;
-
-		Token_Type argType = ParseSubExpression(argsEndPos - Offset());
+		const auto argType = ParseArgument(argsEndPos);
 		if (argType == kTokenType_Invalid)
 			return false;
-		else if (argType == kTokenType_Empty) {
+		if (argType == kTokenType_Empty)
 			// reached end of args
 			break;
-		}
-		else 		// is arg of expected type(s)?
+		// is arg of expected type(s)?
+		if (!ValidateArgType(params[m_numArgsParsed].typeID, argType, bUsesNVSEParamTypes))
 		{
-			if (!ValidateArgType(params[m_numArgsParsed].typeID, argType, bUsesNVSEParamTypes))
-			{
-				#if RUNTIME
-					ShowCompilerError(m_lineBuf, "Invalid expression for parameter %d. Expected %s.", m_numArgsParsed + 1, params[m_numArgsParsed].typeStr);
-				#else
+#if RUNTIME
+			ShowCompilerError(m_lineBuf, "Invalid expression for parameter %d. Expected %s.", m_numArgsParsed + 1, params[m_numArgsParsed].typeStr);
+#else
 					ShowCompilerError(m_scriptBuf, "Invalid expression for parameter %d. Expected %s.", m_numArgsParsed + 1, params[m_numArgsParsed].typeStr);
-				#endif
-				return false;
-			}
+#endif
+			return false;
 		}
-
-		m_argTypes[m_numArgsParsed++] = argType;
-
-		// store expr length for this arg
-		*((UInt16*)dataStart) = (m_lineBuf->dataBuf + m_lineBuf->dataOffset) - dataStart;
-		dataStart = m_lineBuf->dataBuf + m_lineBuf->dataOffset;
 	}
 
 	if (Offset() < argsEndPos && s_parserDepth == 1)	// some leftover stuff in text
@@ -2330,7 +2317,23 @@ Token_Type ExpressionParser::PopOperator(std::stack<Operator*> & ops, std::stack
 
 	return result;
 }
-		
+
+Token_Type ExpressionParser::ParseArgument(UInt32 argsEndPos)
+{
+	auto* dataStart = m_lineBuf->dataBuf + m_lineBuf->dataOffset;
+	// reserve space to store expr length
+	m_lineBuf->dataOffset += 2;
+
+	const auto argType = ParseSubExpression(argsEndPos - Offset());
+	
+	m_argTypes[m_numArgsParsed++] = argType;
+
+	// store expr length for this arg
+	*reinterpret_cast<UInt16*>(dataStart) = m_lineBuf->dataBuf + m_lineBuf->dataOffset - dataStart;
+
+	return argType;
+}
+
 ScriptToken* ExpressionParser::ParseOperand(bool (* pred)(ScriptToken* operand))
 {
 	char ch;
@@ -2351,6 +2354,46 @@ ScriptToken* ExpressionParser::ParseOperand(bool (* pred)(ScriptToken* operand))
 	}
 
 	return token;
+}
+
+ParamParenthResult ExpressionParser::ParseParenthesis(ParamInfo* paramInfo, UInt32 paramIndex)
+{
+	char c;
+	auto index = m_lineBuf->lineOffset;
+	while (((c = m_lineBuf->paramText[index])) && isspace(c)) ++index;
+
+	if (c != '(')
+		return kParamParent_NoParam;
+	Offset() = index + 1;
+
+	const auto endIdx = MatchOpenBracket(&s_operators[kOpType_LeftParen]);
+	if (endIdx == -1)
+	{
+		Message(kError_MismatchedBrackets);
+		return kParamParent_SyntaxError;
+	}
+
+	m_lineBuf->WriteByte(0xFF);
+	const auto result = ParseArgument(endIdx);
+
+	if (result == kTokenType_Invalid)
+	{
+		return kParamParent_SyntaxError;
+	}
+	
+	auto& param = paramInfo[paramIndex];
+	if (!ValidateArgType(param.typeID, result, false))
+	{
+#if RUNTIME
+		ShowCompilerError(m_lineBuf, "Invalid expression for parameter %d. Expected %s (got %s).", paramIndex + 1, param.typeStr, TokenTypeToString(result));
+#else
+		ShowCompilerError(m_scriptBuf, "Invalid expression for parameter %d. Expected %s (got %s).", paramIndex + 1, param.typeStr, TokenTypeToString(result));
+#endif
+		return kParamParent_SyntaxError;
+	}
+
+	++Offset(); // show that we parsed ')'
+	return kParamParent_Success;
 }
 
 Operator* ExpressionParser::ParseOperator(bool bExpectBinaryOperator, bool bConsumeIfFound)

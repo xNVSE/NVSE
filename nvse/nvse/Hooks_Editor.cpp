@@ -1,7 +1,10 @@
 #include "Hooks_Editor.h"
+
+#include "GameScript.h"
 #include "SafeWrite.h"
 #include "GameTypes.h"
 #include "richedit.h"
+#include "ScriptUtils.h"
 
 #if EDITOR
 
@@ -456,6 +459,58 @@ __declspec(naked) void CommandParserScriptVarHook()
 	}
 }
 
+ParamParenthResult __fastcall HandleParameterParenthesis(ScriptLineBuffer* scriptLineBuffer, ScriptBuffer* scriptBuffer, ParamInfo* paramInfo, UInt32 paramIndex)
+{
+	auto parser = ExpressionParser(scriptBuffer, scriptLineBuffer);
+	return parser.ParseParenthesis(paramInfo, paramIndex);
+}
+
+__declspec(naked) void ParameterParenthesisHook()
+{
+	const static auto stackOffset = 0x264;
+	
+	const static auto paramIndexLoc = stackOffset - 0x230;
+	const static auto paramInfoLoc = stackOffset + 0x4 + 0x8;
+	const static auto scriptBufLoc = stackOffset + 0x8 + 0x10;
+	const static auto lineBufLoc = stackOffset + 0x8 + 0xC;
+
+	const static auto fnParseScriptWord = 0x5C6190;
+	const static auto continueLoop = 0x5C7E9C;
+	const static auto returnAddress = 0x5C68C5;
+	const static auto prematureReturn = 0x5C7F1E;
+	__asm
+	{
+		mov eax, paramIndexLoc
+		mov ecx, [esp + eax]
+		push ecx
+		
+		mov eax, paramInfoLoc
+		mov ecx, [esp + eax]
+		push ecx
+
+		mov eax, scriptBufLoc
+		mov edx, [esp + eax]
+		
+		mov eax, lineBufLoc
+		mov ecx, [esp + eax]
+		
+		call HandleParameterParenthesis
+		cmp al, [kParamParent_NoParam]
+		je notParenthesis
+
+		add esp, 0x24
+		cmp al, [kParamParent_SyntaxError]
+		je syntaxError
+		jmp continueLoop
+	syntaxError:
+		mov al, 0
+		jmp	prematureReturn
+	notParenthesis:
+		call fnParseScriptWord
+		jmp returnAddress
+	}
+}
+
 void PatchDefaultCommandParser()
 {
 	//	Handle kParamType_Double
@@ -465,6 +520,9 @@ void PatchDefaultCommandParser()
 	//	Handle kParamType_ScriptVariable
 	SafeWrite32(0x5C82DC, (UInt32)CommandParserScriptVarHook);
 	*(UInt8*)0xE9C1E4 = 1;
+
+	// Brackets in Param to NVSE parser
+	WriteRelJump(0x5C68C0, UInt32(ParameterParenthesisHook));
 }
 
 #endif

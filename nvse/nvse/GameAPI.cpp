@@ -395,10 +395,11 @@ static const char* ResolveStringArgument(ScriptEventList* eventList, const char*
 	return result;
 }
 
+// Corresponds to ParamType
 const UInt8 kClassifyParamExtract[] =
 {
 	0, 1, 4, 6, 6, 2, 6, 6, 3, 6, 2, 6, 6, 6, 6, 6, 6, 6, 2, 6, 6, 6, 8, 1, 6, 6, 6, 6, 2, 6, 6, 6, 3, 6, 6,
-	6, 6, 6, 6, 6, 6, 2, 6, 6, 5, 7, 8, 6, 8, 6, 6, 2, 2, 6, 6, 2, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6
+	6, 6, 6, 6, 6, 6, 2, 6, 6, 5, 7, 8, 6, 8, 6, 6, 2, 2, 6, 6, 2, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
 };
 
 const bool kInventoryType[] =
@@ -417,18 +418,42 @@ enum ExtractParamType
 	kExtractParam_Float = 4,
 	kExtractParam_Double = 5,
 	kExtractParam_FormOrVariable = 6,
+	kExtractParam_ScriptVariable = 7,
 };
 
-#if NVSE_CORE
-static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&scriptData, Script *scriptObj, ScriptEventList *eventList, va_list args)
+bool ExtractExpression(ParamInfo* paramInfo, UInt8*& scriptData, Script* scriptObj, ScriptEventList* eventList, va_list args, const UInt32* opcodeOffsetPtr, void* scriptDataIn)
 {
-	UInt32 paramType;
+	double unusedResult = 0;
+	UInt32 offset = scriptData - scriptDataIn;
+	ExpressionEvaluator evaluator(paramInfo, scriptDataIn, nullptr, nullptr, scriptObj, eventList, &unusedResult, &offset);
+	auto* token = evaluator.Evaluate();
+	scriptData += offset - (scriptData - scriptDataIn);
+	if (!token)
+		return false;
+	const auto result = evaluator.ConvertDefaultArg(token, paramInfo, true, args);
+	delete token;
+	if (!result)
+		return false;
+	return true;
+}
+
+#if NVSE_CORE
+static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&scriptData, Script *scriptObj, ScriptEventList *eventList, va_list args, const UInt32* opcodeOffsetPtr, void* scriptDataIn)
+{
 	for (UInt32 i = 0; i < numArgs; i++)
 	{
-		paramType = paramInfo[i].typeID;
+		const UInt32 paramType = paramInfo[i].typeID;
 		if (paramType > kParamType_Region)
 			return false;
 
+		if (*scriptData == 0xFF)
+		{
+			++scriptData;
+			if (!ExtractExpression(&paramInfo[i], scriptData, scriptObj, eventList, args, opcodeOffsetPtr, scriptDataIn))
+				return false;
+			continue;
+		}
+		
 		switch (kClassifyParamExtract[paramType])
 		{
 			case kExtractParam_StringLiteral:
@@ -747,7 +772,7 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 				scriptData += 3;
 				break;
 			}
-			case 7:
+			case kExtractParam_ScriptVariable:
 			{
 				ScriptEventList::Var *var = ExtractScriptVar(scriptData, scriptObj, eventList);
 				if (!var) return false;
@@ -1023,9 +1048,7 @@ bool ExtractArgsEx(ParamInfo *paramInfo, void *scriptDataIn, UInt32 *scriptDataO
 			DEBUG_PRINT("v_ExtractArgsEx returns false");
 		}
 	}
-	else
-
-	if (v_ExtractArgsEx(numArgs, paramInfo, scriptData, scriptObj, eventList, args))
+	else if (v_ExtractArgsEx(numArgs, paramInfo, scriptData, scriptObj, eventList, args, scriptDataOffset, scriptDataIn))
 		bExtracted = true;
 
 	va_end(args);
@@ -1472,7 +1495,7 @@ bool ExtractFormatStringArgs(UInt32 fmtStringPos, char* buffer, ParamInfo * para
 	bool bExtracted = false;
 	if (fmtStringPos > 0)
 	{
-		bExtracted = v_ExtractArgsEx(fmtStringPos, paramInfo, scriptData, scriptObj, eventList, args);
+		bExtracted = v_ExtractArgsEx(fmtStringPos, paramInfo, scriptData, scriptObj, eventList, args, scriptDataOffset, scriptDataIn);
 		if (!bExtracted)
 			return false;
 	}
@@ -1488,7 +1511,7 @@ bool ExtractFormatStringArgs(UInt32 fmtStringPos, char* buffer, ParamInfo * para
 		if ((numArgs + fmtStringPos + 21) > maxParams)		//scripter included too many optional params - adjust to prevent crash
 			numArgs = (maxParams - fmtStringPos - 21);
 
-		bExtracted = v_ExtractArgsEx(numArgs, &(paramInfo[fmtStringPos + 21]), scriptData, scriptObj, eventList, args);
+		bExtracted = v_ExtractArgsEx(numArgs, &(paramInfo[fmtStringPos + 21]), scriptData, scriptObj, eventList, args, scriptDataOffset, scriptDataIn);
 	}
 
 	va_end(args);
