@@ -1652,6 +1652,7 @@ bool ExpressionParser::ParseArgs(ParamInfo* params, UInt32 numParams, bool bUses
 #endif
 			return false;
 		}
+		m_argTypes[m_numArgsParsed++] = argType;
 	}
 
 	if (Offset() < argsEndPos && s_parserDepth == 1)	// some leftover stuff in text
@@ -2325,8 +2326,6 @@ Token_Type ExpressionParser::ParseArgument(UInt32 argsEndPos)
 	m_lineBuf->dataOffset += 2;
 
 	const auto argType = ParseSubExpression(argsEndPos - Offset());
-	
-	m_argTypes[m_numArgsParsed++] = argType;
 
 	// store expr length for this arg
 	*reinterpret_cast<UInt16*>(dataStart) = m_lineBuf->dataBuf + m_lineBuf->dataOffset - dataStart;

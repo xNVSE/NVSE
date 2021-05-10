@@ -395,6 +395,22 @@ static const char* ResolveStringArgument(ScriptEventList* eventList, const char*
 	return result;
 }
 
+bool ExtractExpression(ParamInfo* paramInfo, UInt8*& scriptData, Script* scriptObj, ScriptEventList* eventList, va_list args, void* scriptDataIn)
+{
+	double unusedResult = 0;
+	UInt32 offset = scriptData - scriptDataIn;
+	ExpressionEvaluator evaluator(paramInfo, scriptDataIn, nullptr, nullptr, scriptObj, eventList, &unusedResult, &offset);
+	auto* token = evaluator.Evaluate();
+	scriptData += offset - (scriptData - scriptDataIn);
+	if (!token)
+		return false;
+	const auto result = evaluator.ConvertDefaultArg(token, paramInfo, true, args);
+	delete token;
+	if (!result)
+		return false;
+	return true;
+}
+
 // Corresponds to ParamType
 const UInt8 kClassifyParamExtract[] =
 {
@@ -421,24 +437,9 @@ enum ExtractParamType
 	kExtractParam_ScriptVariable = 7,
 };
 
-bool ExtractExpression(ParamInfo* paramInfo, UInt8*& scriptData, Script* scriptObj, ScriptEventList* eventList, va_list args, const UInt32* opcodeOffsetPtr, void* scriptDataIn)
-{
-	double unusedResult = 0;
-	UInt32 offset = scriptData - scriptDataIn;
-	ExpressionEvaluator evaluator(paramInfo, scriptDataIn, nullptr, nullptr, scriptObj, eventList, &unusedResult, &offset);
-	auto* token = evaluator.Evaluate();
-	scriptData += offset - (scriptData - scriptDataIn);
-	if (!token)
-		return false;
-	const auto result = evaluator.ConvertDefaultArg(token, paramInfo, true, args);
-	delete token;
-	if (!result)
-		return false;
-	return true;
-}
 
 #if NVSE_CORE
-static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&scriptData, Script *scriptObj, ScriptEventList *eventList, va_list args, const UInt32* opcodeOffsetPtr, void* scriptDataIn)
+static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&scriptData, Script *scriptObj, ScriptEventList *eventList, va_list args, void* scriptDataIn)
 {
 	for (UInt32 i = 0; i < numArgs; i++)
 	{
@@ -449,7 +450,7 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 		if (*scriptData == 0xFF)
 		{
 			++scriptData;
-			if (!ExtractExpression(&paramInfo[i], scriptData, scriptObj, eventList, args, opcodeOffsetPtr, scriptDataIn))
+			if (!ExtractExpression(&paramInfo[i], scriptData, scriptObj, eventList, args, scriptDataIn))
 				return false;
 			continue;
 		}
@@ -1020,12 +1021,9 @@ bool ExtractArgsRaw(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptD
 }
 
 #if NVSE_CORE
-bool ExtractArgsEx(ParamInfo *paramInfo, void *scriptDataIn, UInt32 *scriptDataOffset, Script *scriptObj, ScriptEventList *eventList, ...)
+bool vExtractArgsEx(ParamInfo* paramInfo, void* scriptDataIn, UInt32* scriptDataOffset, Script* scriptObj, ScriptEventList* eventList, va_list args)
 {
-	va_list	args;
-	va_start(args, eventList);
-
-	UInt8 *scriptData = (UInt8*)scriptDataIn + *scriptDataOffset;
+	UInt8* scriptData = (UInt8*)scriptDataIn + *scriptDataOffset;
 	UInt32 numArgs = *(UInt16*)scriptData;
 	scriptData += 2;
 
@@ -1048,8 +1046,17 @@ bool ExtractArgsEx(ParamInfo *paramInfo, void *scriptDataIn, UInt32 *scriptDataO
 			DEBUG_PRINT("v_ExtractArgsEx returns false");
 		}
 	}
-	else if (v_ExtractArgsEx(numArgs, paramInfo, scriptData, scriptObj, eventList, args, scriptDataOffset, scriptDataIn))
+	else if (v_ExtractArgsEx(numArgs, paramInfo, scriptData, scriptObj, eventList, args, scriptDataIn))
 		bExtracted = true;
+	return bExtracted;
+}
+
+bool ExtractArgsEx(ParamInfo *paramInfo, void *scriptDataIn, UInt32 *scriptDataOffset, Script *scriptObj, ScriptEventList *eventList, ...)
+{
+	va_list	args;
+	va_start(args, eventList);
+
+	const auto bExtracted = vExtractArgsEx(paramInfo, scriptDataIn, scriptDataOffset, scriptObj, eventList, args);
 
 	va_end(args);
 	return bExtracted;
@@ -1495,7 +1502,7 @@ bool ExtractFormatStringArgs(UInt32 fmtStringPos, char* buffer, ParamInfo * para
 	bool bExtracted = false;
 	if (fmtStringPos > 0)
 	{
-		bExtracted = v_ExtractArgsEx(fmtStringPos, paramInfo, scriptData, scriptObj, eventList, args, scriptDataOffset, scriptDataIn);
+		bExtracted = v_ExtractArgsEx(fmtStringPos, paramInfo, scriptData, scriptObj, eventList, args, scriptDataIn);
 		if (!bExtracted)
 			return false;
 	}
@@ -1511,7 +1518,7 @@ bool ExtractFormatStringArgs(UInt32 fmtStringPos, char* buffer, ParamInfo * para
 		if ((numArgs + fmtStringPos + 21) > maxParams)		//scripter included too many optional params - adjust to prevent crash
 			numArgs = (maxParams - fmtStringPos - 21);
 
-		bExtracted = v_ExtractArgsEx(numArgs, &(paramInfo[fmtStringPos + 21]), scriptData, scriptObj, eventList, args, scriptDataOffset, scriptDataIn);
+		bExtracted = v_ExtractArgsEx(numArgs, &(paramInfo[fmtStringPos + 21]), scriptData, scriptObj, eventList, args, scriptDataIn);
 	}
 
 	va_end(args);
