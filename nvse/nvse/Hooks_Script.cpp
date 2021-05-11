@@ -43,7 +43,7 @@ bool OverrideWithExtractArgsEx(ParamInfo* paramInfo, void* scriptData, int* opco
 {
 	va_list	args;
 	va_start(args, eventList);
-	const auto result = vExtractArgsEx(paramInfo, scriptData, reinterpret_cast<UInt32*>(opcodeOffsetPtr), scriptObj, eventList, args);
+	const auto result = vExtractArgsEx(paramInfo, scriptData, reinterpret_cast<UInt32*>(opcodeOffsetPtr), scriptObj, eventList, args, true);
 #if _DEBUG
 	if (!result)
 		_MESSAGE("ExtractArgsEx Failed!");
@@ -152,6 +152,8 @@ void Hook_Script_Init()
 
 #if USE_EXTRACT_ARGS_EX
 	WriteRelJump(0x5ACCB0, UInt32(OverrideWithExtractArgsEx));
+	// Never let commands return false and stop scripts
+	//SafeWriteBuf(0x5ACBC0, "\x90\x90", 2);
 #endif
 }
 

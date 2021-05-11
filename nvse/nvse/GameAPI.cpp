@@ -1022,7 +1022,7 @@ bool ExtractArgsRaw(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptD
 }
 
 #if NVSE_CORE
-bool vExtractArgsEx(ParamInfo* paramInfo, void* scriptDataIn, UInt32* scriptDataOffset, Script* scriptObj, ScriptEventList* eventList, va_list args)
+bool vExtractArgsEx(ParamInfo* paramInfo, void* scriptDataIn, UInt32* scriptDataOffset, Script* scriptObj, ScriptEventList* eventList, va_list args, bool incrementOffsetPtr)
 {
 	UInt8* scriptData = (UInt8*)scriptDataIn + *scriptDataOffset;
 	UInt32 numArgs = *(UInt16*)scriptData;
@@ -1049,6 +1049,10 @@ bool vExtractArgsEx(ParamInfo* paramInfo, void* scriptDataIn, UInt32* scriptData
 	}
 	else if (v_ExtractArgsEx(numArgs, paramInfo, scriptData, scriptObj, eventList, args, scriptDataIn))
 		bExtracted = true;
+	if (incrementOffsetPtr)
+	{
+		*scriptDataOffset += scriptData - (static_cast<UInt8*>(scriptDataIn) + *scriptDataOffset);
+	}
 	return bExtracted;
 }
 

@@ -2387,8 +2387,7 @@ ParamParenthResult ExpressionParser::ParseParenthesis(ParamInfo* paramInfo, UInt
 	const auto result = ParseArgument(endIdx);
 
 	strcpy_s(m_lineBuf->paramText, len, realText);
-
-
+	
 	Offset() = endIdx + 1; // show that we parsed ')'
 
 	if (result == kTokenType_Invalid)
