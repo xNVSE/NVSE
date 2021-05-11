@@ -1565,7 +1565,7 @@ void ExpressionEvaluator::PrintStackTrace() {
 static SInt32 s_parserDepth = 0;
 
 ExpressionParser::ExpressionParser(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf) 
-	: m_scriptBuf(scriptBuf), m_lineBuf(lineBuf), m_len(m_lineBuf->paramTextLen), m_numArgsParsed(0)
+	: m_scriptBuf(scriptBuf), m_lineBuf(lineBuf), m_len(m_lineBuf->paramTextLen ? m_lineBuf->paramTextLen : strlen(m_lineBuf->paramText)), m_numArgsParsed(0)
 { 
 	ASSERT(s_parserDepth >= 0);
 	s_parserDepth++;
@@ -2376,10 +2376,18 @@ ParamParenthResult ExpressionParser::ParseParenthesis(ParamInfo* paramInfo, UInt
 	
 	m_lineBuf->WriteByte(0xFF);
 
+	// prevent mismatched brackets errors inside if or set statements
+	const auto len = sizeof m_lineBuf->paramText / sizeof(char);
+	char realText[len];
+	strcpy_s(realText, len, m_lineBuf->paramText);
+	
 	// replace closing bracket with 0 to ensure subexpression doesn't try to read past end of expr (for rigging commands)
 	m_lineBuf->paramText[endIdx] = 0;
 	
 	const auto result = ParseArgument(endIdx);
+
+	strcpy_s(m_lineBuf->paramText, len, realText);
+
 
 	Offset() = endIdx + 1; // show that we parsed ')'
 

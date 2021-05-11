@@ -220,12 +220,6 @@ struct ScriptLineBuffer
 // size 0x58? Nothing initialized beyond 0x50.
 struct ScriptBuffer
 {	
-	template <typename tData> struct Node
-	{
-		tData		* data;
-		Node<tData>	* next;
-	};
-
 	enum RuntimeMode
 	{
 		kEditor = 0,
@@ -252,7 +246,7 @@ struct ScriptBuffer
 	Script::VarInfoEntry	vars;		// 03C
 	Script::RefListEntry	refVars;	// 044 probably ref vars
 	UInt32			unk04C;				// 04C num lines?
-	Node<ScriptLineBuffer>	lines;		// 050
+	tList<ScriptLineBuffer>	lines;		// 050
 	// nothing else initialized
 
 	// convert a variable or form to a RefVar, add to refList if necessary

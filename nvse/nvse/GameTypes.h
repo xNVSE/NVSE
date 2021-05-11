@@ -3,6 +3,7 @@
 #include <list>
 #include "Utilities.h"
 #include "NiTypes.h"
+#include <functional>
 
 // 8
 class String
@@ -491,6 +492,23 @@ public:
 			curr = curr->next;
 		} while (curr);
 		return -1;
+	}
+
+	using Lambda = std::function<bool(Item*)>;
+
+	Item* FindFirst(const Lambda& func) const
+	{
+		for (auto iter = Begin(); !iter.End(); ++iter)
+		{
+			if (*iter && func(*iter))
+				return *iter;
+		}
+		return nullptr;
+	}
+
+	bool Contains(const Lambda& func) const
+	{
+		return FindFirst(func) != nullptr;
 	}
 };
 STATIC_ASSERT(sizeof(tList<void*>) == 0x8);
