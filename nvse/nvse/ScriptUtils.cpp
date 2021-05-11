@@ -1565,7 +1565,7 @@ void ExpressionEvaluator::PrintStackTrace() {
 static SInt32 s_parserDepth = 0;
 
 ExpressionParser::ExpressionParser(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf) 
-	: m_scriptBuf(scriptBuf), m_lineBuf(lineBuf), m_len(strlen(m_lineBuf->paramText)), m_numArgsParsed(0)
+	: m_scriptBuf(scriptBuf), m_lineBuf(lineBuf), m_len(m_lineBuf->paramTextLen), m_numArgsParsed(0)
 { 
 	ASSERT(s_parserDepth >= 0);
 	s_parserDepth++;
@@ -2174,8 +2174,8 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 					return kTokenType_Invalid;
 				}
 
-				// replace closing bracket with 0 to ensure subexpression doesn't try to read past end of expr
-				// m_lineBuf->paramText[endBracPos] = 0;
+				// replace closing bracket with 0 to ensure subexpression doesn't try to read past end of expr (for rigging commands)
+				m_lineBuf->paramText[endBracPos] = 0;
 
 				operandType = ParseSubExpression(endBracPos - Offset());
 				Offset() = endBracPos + 1;	// skip the closing bracket
@@ -2360,7 +2360,7 @@ ScriptToken* ExpressionParser::ParseOperand(bool (* pred)(ScriptToken* operand))
 ParamParenthResult ExpressionParser::ParseParenthesis(ParamInfo* paramInfo, UInt32 paramIndex)
 {
 	char c;
-	auto index = m_lineBuf->lineOffset;
+	auto index = Offset();
 	while (((c = m_lineBuf->paramText[index])) && isspace(c)) ++index;
 
 	if (c != '(')
@@ -2373,9 +2373,15 @@ ParamParenthResult ExpressionParser::ParseParenthesis(ParamInfo* paramInfo, UInt
 		Message(kError_MismatchedBrackets);
 		return kParamParent_SyntaxError;
 	}
-
+	
 	m_lineBuf->WriteByte(0xFF);
+
+	// replace closing bracket with 0 to ensure subexpression doesn't try to read past end of expr (for rigging commands)
+	m_lineBuf->paramText[endIdx] = 0;
+	
 	const auto result = ParseArgument(endIdx);
+
+	Offset() = endIdx + 1; // show that we parsed ')'
 
 	if (result == kTokenType_Invalid)
 	{
@@ -2393,7 +2399,7 @@ ParamParenthResult ExpressionParser::ParseParenthesis(ParamInfo* paramInfo, UInt
 		return kParamParent_SyntaxError;
 	}
 
-	++Offset(); // show that we parsed ')'
+	
 	return kParamParent_Success;
 }
 
