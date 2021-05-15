@@ -1,5 +1,7 @@
 #include "Hooks_Editor.h"
 
+
+#include "Commands_Scripting.h"
 #include "GameScript.h"
 #include "SafeWrite.h"
 #include "GameTypes.h"
@@ -511,6 +513,102 @@ __declspec(naked) void ParameterParenthesisHook()
 	}
 }
 
+// Expand ScriptLineBuffer to allow multiline expressions with parenthesis
+int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
+{
+	lineBuf->paramTextLen = 0;
+	memset(lineBuf->paramText, '\0', sizeof lineBuf->paramText);
+	const auto* curScriptText = reinterpret_cast<unsigned char*>(&scriptBuf->scriptText[scriptBuf->textOffset]);
+	const auto* oldScriptText = curScriptText;
+	auto numBrackets = 0;
+
+	// skip all spaces and tabs in the beginning
+	while (isspace(*curScriptText))
+	{
+		if (*curScriptText == '\n')
+			++lineBuf->lineNumber;
+		++curScriptText;
+	}
+
+	while (true)
+	{
+		const auto curChar = *curScriptText++;
+		switch (curChar)
+		{
+			case '(':
+			{
+				++numBrackets;
+				break;
+			}
+			case ')':
+			{
+				--numBrackets;
+				if (numBrackets < 0)
+				{
+					scriptBuf->curLineNumber = lineBuf->lineNumber;
+					ShowCompilerError(scriptBuf, "Mismatched parenthesis");
+					lineBuf->errorCode = 1;
+					return 0;
+				}
+				break;
+			}
+			case '\0':
+			{
+				--curScriptText;
+				if (numBrackets)
+				{
+					scriptBuf->curLineNumber = lineBuf->lineNumber;
+					ShowCompilerError(scriptBuf, "Mismatched parenthesis");
+					lineBuf->errorCode = 1;
+					return 0;
+				}
+				// fallback intentional
+			}
+			case '\n':
+			{
+				if (numBrackets == 0)
+				{
+					auto* curLineText = reinterpret_cast<unsigned char*>(&lineBuf->paramText[lineBuf->paramTextLen - 1]);
+					while (isspace(*curLineText))
+					{
+						*curLineText-- = '\0';
+						--lineBuf->paramTextLen;
+					}
+					//++lineBuf->lineNumber;
+					lineBuf->paramText[lineBuf->paramTextLen] = '\0';
+					return curScriptText - oldScriptText;
+				}
+				break;
+			}
+			case ';':
+			{
+				while (*curScriptText && *curScriptText != '\n') 
+					++curScriptText;
+				break;
+			}
+			case '\r':
+			{
+				continue;
+			}
+			default:
+			{
+				break;
+			}
+		}
+		const auto maxLen = sizeof lineBuf->paramText;
+		if (lineBuf->paramTextLen >= maxLen)
+		{
+			if (numBrackets)
+				ShowCompilerError(scriptBuf, "Max script expression length inside parenthesis (%d characters) exceeded.", maxLen);
+			else
+				ShowCompilerError(scriptBuf, "Max script line length (%d characters) exceeded.", maxLen);
+			lineBuf->errorCode = 16;
+			return 0;
+		}
+		lineBuf->paramText[lineBuf->paramTextLen++] = curChar;
+	}
+}
+
 void PatchDefaultCommandParser()
 {
 	//	Handle kParamType_Double
@@ -523,6 +621,9 @@ void PatchDefaultCommandParser()
 
 	// Brackets in Param to NVSE parser
 	WriteRelJump(0x5C68C0, UInt32(ParameterParenthesisHook));
+
+	// Allow multiline expressions with parenthesis
+	WriteRelJump(0x5C5830, UInt32(ParseNextLine));
 }
 
 #endif
