@@ -7,9 +7,9 @@ TokenCacheEntry& CachedTokens::Get(std::size_t key)
 	return this->container_[key];
 }
 
-TokenCacheEntry* CachedTokens::Append(ExpressionEvaluator &expEval)
+TokenCacheEntry* CachedTokens::Append(const ScriptToken& scriptToken)
 {
-	return this->container_.Append(expEval);
+	return this->container_.Append(TokenCacheEntry(scriptToken));
 }
 
 std::size_t CachedTokens::Size() const

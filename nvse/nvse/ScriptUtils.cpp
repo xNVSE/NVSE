@@ -2593,12 +2593,6 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 		if (varInfo)
 			return ScriptToken::Create(varInfo, 0, m_scriptBuf->GetVariableType(varInfo, NULL));
 	}
-
-#if EDITOR
-	// "player" can be base object or ref. Assume base object unless called with dot syntax
-	if (!StrCompare(refToken.c_str(), "player") && dotPos != -1)
-		refToken = "playerRef";
-#endif
 	
 	Script::RefVariable* refVar = m_scriptBuf->ResolveRef(refToken.c_str());
 	if (dotPos != -1 && !refVar)
@@ -3643,7 +3637,7 @@ bool ExpressionEvaluator::ParseBytecode(CachedTokens& cachedTokens)
 	const UInt8 *endData = m_data + argLen - sizeof(UInt16);
 	while (m_data < endData)
 	{
-		TokenCacheEntry *entry = cachedTokens.Append(*this);
+		TokenCacheEntry *entry = cachedTokens.Append(ScriptToken(*this));
 		if (entry->token.IsInvalid())
 			return false;
 		entry->token.cached = true;
