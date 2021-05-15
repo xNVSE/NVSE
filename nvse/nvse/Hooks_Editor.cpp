@@ -516,11 +516,16 @@ __declspec(naked) void ParameterParenthesisHook()
 // Expand ScriptLineBuffer to allow multiline expressions with parenthesis
 int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 {
+	const auto maxLen = sizeof lineBuf->paramText;
 	lineBuf->paramTextLen = 0;
 	memset(lineBuf->paramText, '\0', sizeof lineBuf->paramText);
+	
 	const auto* curScriptText = reinterpret_cast<unsigned char*>(&scriptBuf->scriptText[scriptBuf->textOffset]);
 	const auto* oldScriptText = curScriptText;
+	
 	auto numBrackets = 0;
+	auto capturedNonSpace = false;
+	auto numSpacesInParenthesis = 0;
 
 	// skip all spaces and tabs in the beginning
 	while (isspace(*curScriptText))
@@ -529,7 +534,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 			++lineBuf->lineNumber;
 		++curScriptText;
 	}
-
+	
 	while (true)
 	{
 		const auto curChar = *curScriptText++;
@@ -562,11 +567,13 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 					lineBuf->errorCode = 1;
 					return 0;
 				}
+				if (!capturedNonSpace)
+					return 0;
 				// fallback intentional
 			}
 			case '\n':
 			{
-				if (numBrackets == 0)
+				if (numBrackets == 0 && capturedNonSpace)
 				{
 					auto* curLineText = reinterpret_cast<unsigned char*>(&lineBuf->paramText[lineBuf->paramTextLen - 1]);
 					while (isspace(*curLineText))
@@ -576,15 +583,18 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 					}
 					//++lineBuf->lineNumber;
 					lineBuf->paramText[lineBuf->paramTextLen] = '\0';
+					lineBuf->lineNumber += numSpacesInParenthesis;
 					return curScriptText - oldScriptText;
 				}
+				if (numBrackets)
+					++numSpacesInParenthesis;
 				break;
 			}
 			case ';':
 			{
 				while (*curScriptText && *curScriptText != '\n') 
 					++curScriptText;
-				break;
+				// fallback intentional
 			}
 			case '\r':
 			{
@@ -595,7 +605,6 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 				break;
 			}
 		}
-		const auto maxLen = sizeof lineBuf->paramText;
 		if (lineBuf->paramTextLen >= maxLen)
 		{
 			if (numBrackets)
@@ -605,7 +614,10 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 			lineBuf->errorCode = 16;
 			return 0;
 		}
-		lineBuf->paramText[lineBuf->paramTextLen++] = curChar;
+		if (!isspace(curChar)) 
+			capturedNonSpace = true;
+		if (capturedNonSpace)
+			lineBuf->paramText[lineBuf->paramTextLen++] = curChar;
 	}
 }
 
