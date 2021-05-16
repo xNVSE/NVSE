@@ -629,7 +629,7 @@ const char* StringForParamType(UInt32 paramType)
 		case kParamType_ScriptVariable:		return "ScriptVar";
 		case kParamType_Unhandled2E:		return "unk2E";
 		case kParamType_EncounterZone:		return "EncounterZone";
-		case kParamType_Unhandled30:		return "unk30";
+		case kParamType_IdleForm:			return "IdleForm";
 		case kParamType_Message:			return "Message";
 		case kParamType_InvObjOrFormList:	return "InvObjectOrFormList";
 		case kParamType_Alignment:			return "Alignment";

@@ -103,6 +103,8 @@ void ShowCompilerError(ScriptLineBuffer* lineBuf, const char* fmt, ...);
 typedef void (__cdecl *_ShowCompilerError)(ScriptBuffer* Buffer, const char* format, ...);
 extern const _ShowCompilerError		ShowCompilerError;
 
+bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineBuffer *lineBuffer, ScriptBuffer *scriptBuffer);
+
 #endif
 
 typedef TESForm* (__cdecl* _GetFormByID)(const char* editorID);

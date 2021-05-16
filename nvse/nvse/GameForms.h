@@ -261,7 +261,11 @@ public:
 	virtual bool		Unk_30(void);		// returns false
 	virtual void		Unk_31(bool set);	// 00000020 then calls Fn12 MarkAsModified
 	virtual void		Unk_32(bool set);	// 00000002 with a lot of housekeeping
+#if RUNTIME
 	virtual void		SetQuestItem(bool set);	// 00000400 then calls Fn12 MarkAsModified
+#else
+	virtual bool		Unk_33(void);
+#endif
 	virtual void		Unk_34(bool set);	// 00000040 then calls Fn12 MarkAsModified
 	virtual void		Unk_35(bool set);	// 00010000 then calls Fn12 MarkAsModified
 	virtual void		Unk_36(bool set);	// 00020000
@@ -3470,7 +3474,8 @@ public:
 	}; // Exterior is 3 DWord, Interior is 5 DWord and 5 floats
 
 	TESFullName				fullName;			// 018	// 030 in GECK
-	UInt16					unk024;				// 024	// bit 0 would be interior, that makes it DATA
+	UInt8					cellFlags;			// 024
+	UInt8					byte25;				// 025
 	UInt8					flags2;				// 026	// 5 or 6 would mean cell is loaded, name based on OBSE
 	UInt8					unk027;				// 027
 	ExtraDataList			extraDataList;		// 028

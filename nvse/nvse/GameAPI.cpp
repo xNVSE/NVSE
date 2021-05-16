@@ -22,6 +22,13 @@ typedef void * (* _GetSingleton)(bool canCreateNew);
 
 char s_tempStrArgBuffer[0x4000];
 
+const bool kInventoryType[] =
+{
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+	1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0
+};
+
 #if RUNTIME
 TESForm* __stdcall LookupFormByID(UInt32 refID)
 {
@@ -75,6 +82,645 @@ const _GetFormByID GetFormByID = (_GetFormByID)(0x483A00);
 	const _ShowCompilerError ShowCompilerError = (_ShowCompilerError)0x005C5730;	// Called with aNonPersistentR (still same sub as the other one)
 
 // 0x5C64C0 <- start of huge editor function that IDA can't disassemble.
+
+// 24
+struct AnimGroupInfo
+{
+	const char	*name;			// 00
+	UInt32		unk04;			// 04
+	UInt32		sequenceType;	// 08
+	UInt32		unk0C;			// 0C
+	UInt32		unk10;			// 10
+	UInt32		unk14[4];		// 14
+}
+*g_animGroupInfos = (AnimGroupInfo*)0xE98290;
+
+const char **g_formTypeNames = (const char**)0xEA6DB8;
+const char **g_alignmentTypeNames = (const char**)0xE93FF4;
+const char **g_equipTypeNames = (const char**)0xE93C40;
+const char **g_criticalStageNames = (const char**)0xE91188;
+
+// 220
+struct ScriptParseToken
+{
+	char		tokenString[0x200];	// 000
+	UInt16		refIdx;				// 200
+	UInt8		pad202[2];
+	UInt8		tokenType;			// 204
+	UInt8		pad205[3];
+	UInt32		cmdOpcode;			// 208
+	UInt16		varIdx;				// 20C
+	UInt8		pad20E[2];
+	TESForm		*refObj;			// 210
+	UInt32		unk214;				// 214
+	UInt32		unk218;				// 218
+	UInt32		paramTextLen;		// 21C
+};
+
+bool (*IsStringInteger)(const char *str) = (bool (*)(const char*))0x523390;
+bool (*IsStringFloat)(const char *str) = (bool (*)(const char*))0x5233D0;
+
+/*
+Bit 0	Can be a numeric-type variable.
+Bit 1	Is TESForm/BaseFormComponent-derived.
+*/
+const UInt8 kParamFlagsTable[] =
+{
+	0, 1, 1, 2, 2, 0, 2, 2, 0, 2, 0, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 0, 1, 2, 2, 2, 2, 0, 2, 2, 2, 0, 2, 2,
+	2, 2, 2, 2, 2, 2, 0, 2, 2, 1, 1, 2, 2, 2, 2, 2, 0, 0, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+};
+
+ParamParenthResult __fastcall HandleParameterParenthesis(ScriptLineBuffer* scriptLineBuffer, ScriptBuffer* scriptBuffer, ParamInfo* paramInfo, UInt32 paramIndex);
+
+bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineBuffer *lineBuffer, ScriptBuffer *scriptBuffer)
+{
+	lineBuffer->lineOffset = 0;
+	
+	UInt8 *pDataBuf = &lineBuffer->dataBuf[lineBuffer->dataOffset];
+	
+	UInt16 *pNumParams = (UInt16*)pDataBuf;
+	*pNumParams = numParams;
+	pDataBuf += 2;
+	lineBuffer->dataOffset += 2;
+	
+	ScriptParseToken spToken;
+	ParamInfo *currInfo;
+	UInt32 paramType;
+	UInt8 paramFlags;
+	UInt32 numCharsParsed, i;
+	const char *errorFmt;
+	char axis;
+	UInt8 parenthesisRes;
+	
+	for (UInt32 idx = 0; idx < numParams; idx++)
+	{
+		currInfo = &paramInfo[idx];
+		paramType = currInfo->typeID;
+		paramFlags = kParamFlagsTable[paramType];
+		ZeroMemory(spToken.tokenString, 0x200);
+
+		parenthesisRes = HandleParameterParenthesis(lineBuffer, scriptBuffer, paramInfo, idx);
+		if (parenthesisRes == kParamParent_SyntaxError)
+			return false;
+		if (parenthesisRes == kParamParent_Success)
+			continue;
+
+		numCharsParsed = CdeclCall<UInt32>(0x5C6190, scriptBuffer, &spToken, lineBuffer->paramText, &lineBuffer->lineOffset, paramFlags & 1, 0);
+		if (!numCharsParsed)
+		{
+			if (currInfo->isOptional)
+			{
+				*pNumParams = idx;
+				return true;
+			}
+			ShowCompilerError(scriptBuffer, (const char*)0xD5FF78, currInfo->typeStr);
+			return false;
+		}
+		if (!(paramFlags & 1) && (spToken.refIdx || spToken.tokenType))
+		{
+			ShowCompilerError(scriptBuffer, (const char*)0xD5FF38, currInfo->typeStr);
+			return false;
+		}
+		if (paramFlags & 2)
+		{
+			if (!ThisStdCall<bool>(0x5C5C20, scriptBuffer, &spToken, 0, 0) || !spToken.refIdx)
+			{
+				errorFmt = (const char*)0xD5FEF0;
+				goto compileError;
+			}
+			switch (paramType)
+			{
+				case kParamType_ObjectID:
+					if (!spToken.varIdx && (!spToken.refObj || !kInventoryType[spToken.refObj->typeID]))
+					{
+						errorFmt = (const char*)0xD60DB8;
+						goto compileError;
+					}
+					break;
+				case kParamType_ObjectRef:
+					if (!spToken.varIdx && (!spToken.refObj || !DYNAMIC_CAST(spToken.refObj, TESForm, TESObjectREFR)))
+					{
+						errorFmt = (const char*)0xD5FEA0;
+						goto compileError;
+					}
+					break;
+				case kParamType_Actor:
+					if (!spToken.varIdx && (!spToken.refObj || !spToken.refObj->Unk_39()))
+					{
+						errorFmt = (const char*)0xD60C90;
+						goto compileError;
+					}
+					break;
+				case kParamType_MapMarker:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESObjectREFR) || (((TESObjectREFR*)spToken.refObj)->baseForm != *(TESForm**)0xEDDA34)))
+					{
+						errorFmt = (const char*)0xD60CD8;
+						goto compileError;
+					}
+					break;
+				case kParamType_Container:
+					if (!spToken.varIdx && (!spToken.refObj || !DYNAMIC_CAST(spToken.refObj, TESForm, TESObjectREFR) || !ThisStdCall<TESContainer*>(0x63D740, spToken.refObj)))
+					{
+						errorFmt = (const char*)0xD60D20;
+						goto compileError;
+					}
+					break;
+				case kParamType_SpellItem:
+					if (!spToken.varIdx && (!spToken.refObj || (NOT_ID(spToken.refObj, SpellItem) && NOT_ID(spToken.refObj, TESObjectBOOK))))
+					{
+						errorFmt = (const char*)0xD60C48;
+						goto compileError;
+					}
+					break;
+				case kParamType_Cell:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESObjectCELL) || !(((TESObjectCELL*)spToken.refObj)->cellFlags & 1)))
+					{
+						errorFmt = (const char*)0xD60BF8;
+						goto compileError;
+					}
+					break;
+				case kParamType_MagicItem:
+					if (!spToken.varIdx && (!spToken.refObj || !DYNAMIC_CAST(spToken.refObj, TESForm, MagicItem)))
+					{
+						errorFmt = (const char*)0xD609C0;
+						goto compileError;
+					}
+					break;
+				case kParamType_Sound:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESSound)))
+					{
+						errorFmt = (const char*)0xD60928;
+						goto compileError;
+					}
+					break;
+				case kParamType_Topic:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESTopic)))
+					{
+						errorFmt = (const char*)0xD60898;
+						goto compileError;
+					}
+					break;
+				case kParamType_Quest:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESQuest)))
+					{
+						errorFmt = (const char*)0xD60858;
+						goto compileError;
+					}
+					break;
+				case kParamType_Race:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESRace)))
+					{
+						errorFmt = (const char*)0xD60818;
+						goto compileError;
+					}
+					break;
+				case kParamType_Class:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESClass)))
+					{
+						errorFmt = (const char*)0xD607D0;
+						goto compileError;
+					}
+					break;
+				case kParamType_Faction:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESFaction)))
+					{
+						errorFmt = (const char*)0xD60788;
+						goto compileError;
+					}
+					break;
+				case kParamType_Global:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESGlobal)))
+					{
+						errorFmt = (const char*)0xD60540;
+						goto compileError;
+					}
+					break;
+				case kParamType_Furniture:
+					if (!spToken.varIdx && (!spToken.refObj || (NOT_ID(spToken.refObj, TESFurniture) && NOT_ID(spToken.refObj, BGSListForm))))
+					{
+						errorFmt = (const char*)0xD604E8;
+						goto compileError;
+					}
+					break;
+				case kParamType_TESObject:
+					if (!spToken.varIdx && (!spToken.refObj || !DYNAMIC_CAST(spToken.refObj, TESForm, TESObject)))
+					{
+						errorFmt = (const char*)0xD60D70;
+						goto compileError;
+					}
+					break;
+				case kParamType_ActorBase:
+					if (!spToken.varIdx && (!spToken.refObj || (NOT_ID(spToken.refObj, TESNPC) && NOT_ID(spToken.refObj, TESCreature))))
+					{
+						errorFmt = (const char*)0xD604A0;
+						goto compileError;
+					}
+					break;
+				case kParamType_WorldSpace:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESWorldSpace)))
+					{
+						errorFmt = (const char*)0xD60A08;
+						goto compileError;
+					}
+					break;
+				case kParamType_AIPackage:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESPackage)))
+					{
+						errorFmt = (const char*)0xD60458;
+						goto compileError;
+					}
+					break;
+				case kParamType_CombatStyle:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESCombatStyle)))
+					{
+						errorFmt = (const char*)0xD60410;
+						goto compileError;
+					}
+					break;
+				case kParamType_MagicEffect:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, EffectSetting)))
+					{
+						errorFmt = (const char*)0xD60970;
+						goto compileError;
+					}
+					break;
+				case kParamType_WeatherID:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESWeather)))
+					{
+						errorFmt = (const char*)0xD603C8;
+						goto compileError;
+					}
+					break;
+				case kParamType_NPC:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESNPC)))
+					{
+						errorFmt = (const char*)0xD602EC;
+						goto compileError;
+					}
+					break;
+				case kParamType_Owner:
+					if (!spToken.varIdx && (!spToken.refObj || (NOT_ID(spToken.refObj, TESFaction) && NOT_ID(spToken.refObj, TESNPC))))
+					{
+						errorFmt = (const char*)0xD602A8;
+						goto compileError;
+					}
+					break;
+				case kParamType_EffectShader:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESEffectShader)))
+					{
+						errorFmt = (const char*)0xD60258;
+						goto compileError;
+					}
+					break;
+				case kParamType_FormList:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, BGSListForm)))
+					{
+						errorFmt = (const char*)0xD60B18;
+						goto compileError;
+					}
+					break;
+				case kParamType_MenuIcon:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, BGSMenuIcon)))
+					{
+						errorFmt = (const char*)0xD60AD0;
+						goto compileError;
+					}
+					break;
+				case kParamType_Perk:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, BGSPerk)))
+					{
+						errorFmt = (const char*)0xD60A90;
+						goto compileError;
+					}
+					break;
+				case kParamType_Note:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, BGSNote)))
+					{
+						errorFmt = (const char*)0xD60A50;
+						goto compileError;
+					}
+					break;
+				case kParamType_ImageSpaceModifier:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESImageSpaceModifier)))
+					{
+						errorFmt = (const char*)0xD60378;
+						goto compileError;
+					}
+					break;
+				case kParamType_ImageSpace:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESImageSpace)))
+					{
+						errorFmt = (const char*)0xD60330;
+						goto compileError;
+					}
+					break;
+				case kParamType_EncounterZone:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, BGSEncounterZone)))
+					{
+						errorFmt = (const char*)0xD60BA8;
+						goto compileError;
+					}
+					break;
+				case kParamType_IdleForm:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESIdleForm)))
+					{
+						errorFmt = (const char*)0xD60B60;
+						goto compileError;
+					}
+					break;
+				case kParamType_Message:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, BGSMessage)))
+					{
+						errorFmt = (const char*)0xD60210;
+						goto compileError;
+					}
+					break;
+				case kParamType_InvObjOrFormList:
+					if (!spToken.varIdx && (!spToken.refObj || (NOT_ID(spToken.refObj, BGSListForm) && !kInventoryType[spToken.refObj->typeID])))
+					{
+						errorFmt = (const char*)0xD60DB8;
+						goto compileError;
+					}
+					break;
+				case kParamType_NonFormList:
+					if (!spToken.varIdx && (!spToken.refObj || (NOT_ID(spToken.refObj, BGSListForm) && !spToken.refObj->Unk_33())))
+					{
+						errorFmt = (const char*)0xD60D70;
+						goto compileError;
+					}
+					break;
+				case kParamType_SoundFile:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, BGSMusicType)))
+					{
+						errorFmt = (const char*)0xD608E0;
+						goto compileError;
+					}
+					break;
+				case kParamType_LeveledOrBaseChar:
+					if (!spToken.varIdx && (!spToken.refObj || (NOT_ID(spToken.refObj, TESNPC) && NOT_ID(spToken.refObj, TESLevCharacter))))
+					{
+						errorFmt = (const char*)0xD601B8;
+						goto compileError;
+					}
+					break;
+				case kParamType_LeveledOrBaseCreature:
+					if (!spToken.varIdx && (!spToken.refObj || (NOT_ID(spToken.refObj, TESCreature) && NOT_ID(spToken.refObj, TESLevCreature))))
+					{
+						errorFmt = (const char*)0xD60160;
+						goto compileError;
+					}
+					break;
+				case kParamType_LeveledChar:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESLevCharacter)))
+					{
+						errorFmt = (const char*)0xD60110;
+						goto compileError;
+					}
+					break;
+				case kParamType_LeveledCreature:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESLevCreature)))
+					{
+						errorFmt = (const char*)0xD600C0;
+						goto compileError;
+					}
+					break;
+				case kParamType_LeveledItem:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESLevItem)))
+					{
+						errorFmt = (const char*)0xD60078;
+						goto compileError;
+					}
+					break;
+				case kParamType_AnyForm:
+					if (!spToken.varIdx && !spToken.refObj)
+					{
+						errorFmt = (const char*)0xD5FE60;
+						goto compileError;
+					}
+					break;
+				case kParamType_Reputation:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESReputation)))
+					{
+						errorFmt = (const char*)0xD60740;
+						goto compileError;
+					}
+					break;
+				case kParamType_Casino:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESCasino)))
+					{
+						errorFmt = (const char*)0xD606B0;
+						goto compileError;
+					}
+					break;
+				case kParamType_CasinoChip:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESCasinoChips)))
+					{
+						errorFmt = (const char*)0xD60668;
+						goto compileError;
+					}
+					break;
+				case kParamType_Challenge:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESChallenge)))
+					{
+						errorFmt = (const char*)0xD606F8;
+						goto compileError;
+					}
+					break;
+				case kParamType_CaravanMoney:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESCaravanMoney)))
+					{
+						errorFmt = (const char*)0xD60618;
+						goto compileError;
+					}
+					break;
+				case kParamType_CaravanCard:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESCaravanCard)))
+					{
+						errorFmt = (const char*)0xD605D0;
+						goto compileError;
+					}
+					break;
+				case kParamType_CaravanDeck:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESCaravanDeck)))
+					{
+						errorFmt = (const char*)0xD605D0;
+						goto compileError;
+					}
+					break;
+				case kParamType_Region:
+					if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESRegion)))
+					{
+						errorFmt = (const char*)0xD60588;
+						goto compileError;
+					}
+					break;
+				default:
+					return false;
+			}
+			
+			*pDataBuf++ = 'r';
+			*(UInt16*)pDataBuf = spToken.refIdx;
+			pDataBuf += 2;
+		}
+		else
+		{
+			switch (paramType)
+			{
+				case kParamType_String:
+					*(UInt16*)pDataBuf = numCharsParsed;
+					pDataBuf += 2;
+					memcpy(pDataBuf, spToken.tokenString, numCharsParsed);
+					pDataBuf += numCharsParsed;
+					break;
+				case kParamType_Integer:
+				case kParamType_Float:
+				case kParamType_QuestStage:
+				case kParamType_Double:
+					if (spToken.refIdx)
+					{
+						if (spToken.tokenType == 'G')
+							*pDataBuf = 'G';
+						else
+							*pDataBuf = 'r';
+						pDataBuf++;
+						*(UInt16*)pDataBuf = spToken.refIdx;
+						pDataBuf += 2;
+					}
+					if (spToken.tokenType == 'G')
+						break;
+					errorFmt = (const char*)0xD5FE18;
+					if (spToken.varIdx)
+					{
+						*pDataBuf++ = spToken.tokenType;
+						*(UInt16*)pDataBuf = spToken.varIdx;
+						pDataBuf += 2;
+					}
+					else if ((paramType == kParamType_Integer) || (paramType == kParamType_QuestStage))
+					{
+						if (!IsStringInteger(spToken.tokenString))
+							goto compileError;
+						*pDataBuf++ = 'n';
+						*(int*)pDataBuf = atoi(spToken.tokenString);
+						pDataBuf += 4;
+					}
+					else
+					{
+						if (!IsStringFloat(spToken.tokenString))
+							goto compileError;
+						*pDataBuf++ = 'z';
+						*(double*)pDataBuf = atof(spToken.tokenString);
+						pDataBuf += 8;
+					}
+					break;
+				case kParamType_ScriptVariable:
+					if (!spToken.varIdx || (spToken.tokenType == 'G'))
+					{
+						ShowCompilerError(scriptBuffer, "Invalid script variable for parameter.\r\nCompiled script not saved!");
+						return false;
+					}
+					if (spToken.refIdx)
+					{
+						*pDataBuf++ = 'r';
+						*(UInt16*)pDataBuf = spToken.refIdx;
+						pDataBuf += 2;
+					}
+					*pDataBuf++ = spToken.tokenType;
+					*(UInt16*)pDataBuf = spToken.varIdx;
+					pDataBuf += 2;
+					break;
+				case kParamType_ActorValue:
+					i = CdeclCall<UInt32>(0x491300, spToken.tokenString);
+					if (i < 77)
+						goto setTokenValue;
+					errorFmt = (const char*)0xD5FDD0;
+					goto compileError;
+				case kParamType_Axis:
+					axis = spToken.tokenString[0] & 0xDF;
+					if ((axis < 'X') || (axis > 'Z'))
+					{
+						ShowCompilerError(scriptBuffer, (const char*)0xD5FBE8, currInfo->typeStr);
+						return false;
+					}
+					*pDataBuf++ = axis;
+					break;
+				case kParamType_AnimationGroup:
+					for (i = 0; (i < 245) && StrCompare(g_animGroupInfos[i].name, spToken.tokenString); i++);
+					if (i < 245)
+						goto setTokenValue;
+					errorFmt = (const char*)0xD60028;
+					goto compileError;
+				case kParamType_Sex:
+					i = 0;
+					if (StrCompare(*(const char**)0xE9AB18, spToken.tokenString))
+					{
+						if (StrCompare(*(const char**)0xE9AB1C, spToken.tokenString))
+						{
+							ShowCompilerError(scriptBuffer, (const char*)0xD5FB98, currInfo->typeStr);
+							return false;
+						}
+						i = 1;
+					}
+					goto setTokenValue;
+				case kParamType_CrimeType:
+					if (IsStringInteger(spToken.tokenString) && ((i = atoi(spToken.tokenString)) <= 4))
+						goto setTokenValue;
+					ShowCompilerError(scriptBuffer, (const char*)0xD5FC30, spToken.tokenString, currInfo->typeStr, 4);
+					return false;
+				case kParamType_FormType:
+					for (i = 0; (i < 87) && StrCompare(g_formTypeNames[i], spToken.tokenString); i++);
+					if (i < 87)
+					{
+						i = ((UInt8*)0xEA7078)[i];
+						goto setTokenValue;
+					}
+					errorFmt = (const char*)0xD5FFE0;
+					goto compileError;
+				case kParamType_MiscellaneousStat:
+					i = CdeclCall<UInt32>(0x52E790, spToken.tokenString);
+					if (i < 43)
+						goto setTokenValue;
+					errorFmt = (const char*)0xD5FCA8;
+					goto compileError;
+				case kParamType_Alignment:
+					for (i = 0; (i < 5) && StrCompare(g_alignmentTypeNames[i], spToken.tokenString); i++);
+					if (i < 5)
+						goto setTokenValue;
+					errorFmt = (const char*)0xD5FD88;
+					goto compileError;
+				case kParamType_EquipType:
+					for (i = 0; (i < 14) && StrCompare(g_equipTypeNames[i], spToken.tokenString); i++);
+					if (i < 14)
+						goto setTokenValue;
+					errorFmt = (const char*)0xD5FCF0;
+					goto compileError;
+				case kParamType_CriticalStage:
+					for (i = 0; (i < 5) && StrCompare(g_criticalStageNames[i], spToken.tokenString); i++);
+					if (i == 5)
+					{
+						errorFmt = (const char*)0xD5FD38;
+						goto compileError;
+					}
+setTokenValue:
+					*(UInt16*)pDataBuf = i;
+					pDataBuf += 2;
+					break;
+				default:
+					return false;
+			}
+		}
+
+		lineBuffer->dataOffset = pDataBuf - lineBuffer->dataBuf;
+	}
+	if (lineBuffer->lineOffset < lineBuffer->paramTextLen)
+	{
+		ShowCompilerError(scriptBuffer, (const char*)0xD5FFAC);
+		return false;
+	}
+	return true;
+compileError:
+	ShowCompilerError(scriptBuffer, errorFmt, spToken.tokenString, currInfo->typeStr);
+	return false;
+}
 
 #endif
 
@@ -417,13 +1063,6 @@ const UInt8 kClassifyParamExtract[] =
 {
 	0, 1, 4, 6, 6, 2, 6, 6, 3, 6, 2, 6, 6, 6, 6, 6, 6, 6, 2, 6, 6, 6, 8, 1, 6, 6, 6, 6, 2, 6, 6, 6, 3, 6, 6,
 	6, 6, 6, 6, 6, 6, 2, 6, 6, 5, 7, 8, 6, 8, 6, 6, 2, 2, 6, 6, 2, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-};
-
-const bool kInventoryType[] =
-{
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-	1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0
 };
 
 enum ExtractParamType

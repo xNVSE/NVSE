@@ -1,10 +1,8 @@
 #include "Hooks_Editor.h"
 
-
 #include "Commands_Scripting.h"
-#include "GameScript.h"
+#include "GameAPI.h"
 #include "SafeWrite.h"
-#include "GameTypes.h"
 #include "richedit.h"
 #include "ScriptUtils.h"
 
@@ -624,15 +622,18 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 void PatchDefaultCommandParser()
 {
 	//	Handle kParamType_Double
-	SafeWrite8(0x5C830C, 1);
-	*(UInt16*)0xE9C1DC = 1;
+	/*SafeWrite8(0x5C830C, 1);
+	*(UInt16*)0xE9C1DC = 1;*/
 
 	//	Handle kParamType_ScriptVariable
-	SafeWrite32(0x5C82DC, (UInt32)CommandParserScriptVarHook);
-	*(UInt8*)0xE9C1E4 = 1;
+	/*SafeWrite32(0x5C82DC, (UInt32)CommandParserScriptVarHook);
+	*(UInt8*)0xE9C1E4 = 1;*/
+
+	//	Replace DefaultCommandParser
+	WriteRelJump(0x5C67E0, (UInt32)DefaultCommandParseHook);
 
 	// Brackets in Param to NVSE parser
-	WriteRelJump(0x5C68C0, UInt32(ParameterParenthesisHook));
+	//WriteRelJump(0x5C68C0, UInt32(ParameterParenthesisHook));
 
 	// Allow multiline expressions with parenthesis
 	WriteRelJump(0x5C5830, UInt32(ParseNextLine));

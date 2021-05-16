@@ -7,7 +7,9 @@ const void * RTTI_BGSSleepDeprevationStage = (void *)0x011830A0;
 const void * RTTI_AlchemyItem = (void *)0x011830CC;
 const void * RTTI_MagicItemObject = (void *)0x011830E8;
 const void * RTTI_TESIcon = (void *)0x01183200;
-const void * RTTI_MagicItem = (void *)0x01183140;
+*/
+const void * RTTI_MagicItem = (void *)0x00E8E908;
+/*
 const void * RTTI_TESFullName = (void *)0x01183158;
 const void * RTTI_BaseFormComponent = (void *)0x01183040;
 const void * RTTI_Setting = (void *)0x011835E8;
@@ -299,7 +301,9 @@ const void * RTTI_TESObjectLIGH = (void *)0x01183938;
 const void * RTTI_TESBoundObject = (void *)0x01183108;
 const void * RTTI_TESBoundAnimObject = (void *)0x01189E28;
 const void * RTTI_TESBoundTreeObject = (void *)0x0118A5F0;
-const void * RTTI_TESObject = (void *)0x01183128;
+*/
+const void * RTTI_TESObject = (void *)0x00E8E8B8;
+/*
 const void * RTTI_TESObjectACTI = (void *)0x01186584;
 const void * RTTI_BGSOpenCloseForm = (void *)0x01186A3C;
 const void * RTTI_TESObjectANIO = (void *)0x01186244;

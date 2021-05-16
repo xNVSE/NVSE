@@ -62,7 +62,7 @@ enum ParamType
 	kParamType_ScriptVariable =			0x2D,	// 
 	kParamType_Unhandled2E =			0x2E,	// 
 	kParamType_EncounterZone =			0x2F,	//							kFormType_BGSEncounterZone
-	kParamType_Unhandled30 =			0x30,	// 
+	kParamType_IdleForm =				0x30,	// 
 	kParamType_Message =				0x31,	//							kFormType_BGSMessage
 	kParamType_InvObjOrFormList =		0x32,	// AddItem					IsInventoryObjectType or kFormType_BGSListForm
 	kParamType_Alignment =				0x33,	// GetIsAlignment			UInt32 *, immediate UInt16
