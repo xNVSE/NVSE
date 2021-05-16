@@ -223,7 +223,7 @@ struct ScriptBuffer
 		UInt8			unk03A[2];
 	};
 
-	char			* scriptText;		// 000
+	const char		* scriptText;		// 000
 	UInt32			textOffset;			// 004 
 	RuntimeMode		runtimeMode;		// 008
 	String			scriptName;			// 00C
@@ -236,7 +236,7 @@ struct ScriptBuffer
 	ScriptBufInfo	info;				// 028
 	Script::VarInfoList	vars;		// 03C
 	Script::RefList	refVars;	// 044 probably ref vars
-	UInt32			unk04C;				// 04C num lines?
+	Script*			currentScript;				// 04C num lines?
 	tList<ScriptLineBuffer>	lines;		// 050
 	// nothing else initialized
 

@@ -1910,7 +1910,7 @@ bool ExpressionParser::ParseUserFunctionCall()
 	// if recursive call, look up from ScriptBuffer instead
 	if (funcScript && funcScript->text)
 	{
-		char* funcScriptText = funcScript->text;
+		const char* funcScriptText = funcScript->text;
 		Script::VarInfoList* funcScriptVars = &funcScript->varList;
 
 		if (!StrCompare(GetEditorID(funcScript), m_scriptBuf->scriptName.m_data))
@@ -2337,14 +2337,14 @@ Token_Type ExpressionParser::ParseArgument(UInt32 argsEndPos)
 
 ScriptToken* ExpressionParser::ParseLambda()
 {
-	const auto* beginData = Text();
+	const auto* beginData = Text() - strlen("begin");
 	auto nest = 1;
 	while (nest != 0 && Text())
 	{
 		auto token = GetCurToken();
 		if (_stricmp(token.c_str(), "begin") == 0)
 			++nest;
-		else if (_stricmp(token.c_str(), "end"))
+		else if (_stricmp(token.c_str(), "end") == 0)
 			--nest;
 	}
 	if (nest)
@@ -2356,9 +2356,18 @@ ScriptToken* ExpressionParser::ParseLambda()
 #endif
 		return nullptr;
 	}
+
+	const std::string lambdaText(beginData, Text() - beginData);
 	
 	ScriptBuffer newScriptBuffer = {};
+	ThisStdCall(0x5C5660, &newScriptBuffer); // ScriptBuffer::Init
+	
 	newScriptBuffer.info = m_scriptBuf->info;
+	newScriptBuffer.refVars = m_scriptBuf->refVars;
+	newScriptBuffer.vars = m_scriptBuf->vars;
+	newScriptBuffer.scriptText = lambdaText.c_str();
+
+	ThisStdCall(0x5C8910, &newScriptBuffer); // ScriptBuffer::Delete
 }
 
 ScriptToken* ExpressionParser::ParseOperand(bool (* pred)(ScriptToken* operand))
