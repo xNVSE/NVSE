@@ -1770,7 +1770,7 @@ static ParamInfo kParams_DefaultUserFunctionParams[] =
 // records version of bytecode representation to avoid problems if representation changes later
 static const UInt8 kUserFunction_Version = 1;
 
-bool GetUserFunctionParams(const std::string& scriptText, std::vector<UserFunctionParam> &outParams, Script::VarInfoEntry* varList)
+bool GetUserFunctionParams(const std::string& scriptText, std::vector<UserFunctionParam> &outParams, Script::VarInfoList* varList)
 {
 	std::string lineText;
 	Tokenizer lines(scriptText.c_str(), "\r\n");
@@ -1911,7 +1911,7 @@ bool ExpressionParser::ParseUserFunctionCall()
 	if (funcScript && funcScript->text)
 	{
 		char* funcScriptText = funcScript->text;
-		Script::VarInfoEntry* funcScriptVars = &funcScript->varList;
+		Script::VarInfoList* funcScriptVars = &funcScript->varList;
 
 		if (!StrCompare(GetEditorID(funcScript), m_scriptBuf->scriptName.m_data))
 		{
@@ -2355,7 +2355,6 @@ ScriptToken* ExpressionParser::ParseLambda()
 	
 	ScriptBuffer newScriptBuffer = {};
 	newScriptBuffer.info = m_scriptBuf->info;
-	
 }
 
 ScriptToken* ExpressionParser::ParseOperand(bool (* pred)(ScriptToken* operand))
@@ -2656,7 +2655,7 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 		if (cmdInfo)
 		{
 			// if quest script, check that calling obj supplied for cmds requiring it
-			if (m_scriptBuf->scriptType == Script::eType_Quest && cmdInfo->needsParent && !refVar)
+			if (m_scriptBuf->info.scriptType == Script::eType_Quest && cmdInfo->needsParent && !refVar)
 			{
 				Message(kError_RefRequired, cmdInfo->longName);
 				return NULL;
@@ -2749,7 +2748,7 @@ bool ExpressionParser::ParseFunctionCall(CommandInfo* cmdInfo)
 
 VariableInfo* ExpressionParser::LookupVariable(const char* varName, Script::RefVariable* refVar)
 {
-	Script::VarInfoEntry* vars = &m_scriptBuf->vars;
+	Script::VarInfoList* vars = &m_scriptBuf->vars;
 
 	if (refVar)
 	{

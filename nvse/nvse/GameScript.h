@@ -36,18 +36,10 @@ public:
 		void	Resolve(ScriptEventList * eventList);
 	};
 
-	struct RefListEntry
+	struct RefList : tList<RefVariable>
 	{
-		RefVariable		* var;
-		RefListEntry	* next;
-
-		RefVariable* Info() const { return var; }
-		RefListEntry* Next() const { return next; }
-		void SetNext(RefListEntry* nextEntry) { next = nextEntry; }
-		RefVariable* GetRefVariableByName(const char* name);
-		UInt32 GetIndex(RefVariable* refVar);
+		UInt32 GetIndex(Script::RefVariable* refVar);
 	};
-	typedef Visitor<RefListEntry, RefVariable> RefListVisitor;
 
 	enum {
 		eVarType_Float = 0,			//ref is also zero
@@ -61,17 +53,11 @@ public:
 		eVarType_Invalid
 	};
 
-	struct VarInfoEntry
+	struct VarInfoList : tList<VariableInfo>
 	{
-		VariableInfo	* data;
-		VarInfoEntry	* next;
-
-		VariableInfo* Info() const { return data; }
-		VarInfoEntry* Next() const { return next; }
-
 		VariableInfo* GetVariableByName(const char* name);
 	};
-	typedef Visitor<VarInfoEntry, VariableInfo> VarListVisitor;
+	typedef Visitor<VarInfoList, VariableInfo> VarListVisitor;
 
 	// 14
 	struct ScriptInfo
@@ -103,8 +89,8 @@ public:
 	float			secondsPassed;			// 03C      - only if you've modified fQuestDelayTime
 	TESQuest*		quest;					// 040
 #endif
-	RefListEntry	refList;				// 044 / 034 / 048 - ref variables and immediates
-	VarInfoEntry	varList;				// 04C / 03C / 050 - local variable list
+	RefList	refList;				// 044 / 034 / 048 - ref variables and immediates
+	VarInfoList	varList;				// 04C / 03C / 050 - local variable list
 #if !RUNTIME
 	void			* unk050;				//     /     / 050
 	UInt8			unk054;					//	   /     / 054
@@ -248,8 +234,8 @@ struct ScriptBuffer
 	UInt8			* scriptData;		// 020 pointer to 0x4000-byte array
 	UInt32			dataOffset;			// 024
 	ScriptBufInfo	info;				// 028
-	Script::VarInfoEntry	vars;		// 03C
-	Script::RefListEntry	refVars;	// 044 probably ref vars
+	Script::VarInfoList	vars;		// 03C
+	Script::RefList	refVars;	// 044 probably ref vars
 	UInt32			unk04C;				// 04C num lines?
 	tList<ScriptLineBuffer>	lines;		// 050
 	// nothing else initialized

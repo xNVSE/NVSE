@@ -238,6 +238,7 @@ class ExpressionParser
 	bool			ParseFunctionCall(CommandInfo* cmdInfo);
 	Token_Type		PopOperator(std::stack<Operator*> & ops, std::stack<Token_Type> & operands);
 	Token_Type ParseArgument(UInt32 argsEndPos);
+	ScriptToken* ParseLambda();
 
 	UInt32	MatchOpenBracket(Operator* openBracOp);
 	std::string GetCurToken();
