@@ -2335,6 +2335,29 @@ Token_Type ExpressionParser::ParseArgument(UInt32 argsEndPos)
 	return argType;
 }
 
+ScriptToken* ExpressionParser::ParseLambda()
+{
+	const auto* beginData = Text();
+	auto nest = 1;
+	while (nest != 0 && Text())
+	{
+		auto token = GetCurToken();
+		if (_stricmp(token.c_str(), "begin") == 0)
+			++nest;
+		else if (_stricmp(token.c_str(), "end"))
+			--nest;
+	}
+	if (nest)
+	{
+		ShowCompilerError(m_scriptBuf, "Mismatched begin/end block in anonymous user function");
+		return nullptr;
+	}
+	
+	ScriptBuffer newScriptBuffer = {};
+	newScriptBuffer.info = m_scriptBuf->info;
+	
+}
+
 ScriptToken* ExpressionParser::ParseOperand(bool (* pred)(ScriptToken* operand))
 {
 	char ch;
@@ -2558,6 +2581,11 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 
 	std::string token = GetCurToken();
 	std::string refToken = token;
+
+	if (_stricmp(token.c_str(), "begin") == 0)
+	{
+		return ParseLambda();
+	}
 
 	// some operators (e.g. ->) expect a string literal, filter them out now
 	if (curOp && curOp->ExpectsStringLiteral()) {
@@ -4143,15 +4171,17 @@ struct BlockInfo
 
 static Block s_blocks[] =
 {
-	{	"begin",	kBlockType_ScriptBlock,	Block::kFunction_Open	},
-	{	"end",		kBlockType_ScriptBlock,	Block::kFunction_Terminate	},
+	// Commented out since this is already validated by GECK
+	
+	// {	"begin",	kBlockType_ScriptBlock,	Block::kFunction_Open	}, 
+	// {	"end",		kBlockType_ScriptBlock,	Block::kFunction_Terminate	},
 	{	"while",	kBlockType_Loop,		Block::kFunction_Open	},
 	{	"foreach",	kBlockType_Loop,		Block::kFunction_Open	},
 	{	"loop",		kBlockType_Loop,		Block::kFunction_Terminate	},
-	{	"if",		kBlockType_If,			Block::kFunction_Open	},
-	{	"elseif",	kBlockType_If,			Block::kFunction_Dual	},
-	{	"else",		kBlockType_If,			Block::kFunction_Dual	},
-	{	"endif",	kBlockType_If,			Block::kFunction_Terminate	},
+	// {	"if",		kBlockType_If,			Block::kFunction_Open	},
+	// {	"elseif",	kBlockType_If,			Block::kFunction_Dual	},
+	// {	"else",		kBlockType_If,			Block::kFunction_Dual	},
+	// {	"endif",	kBlockType_If,			Block::kFunction_Terminate	},
 };
 
 static UInt32 s_numBlocks = SIZEOF_ARRAY(s_blocks, Block);
@@ -4219,39 +4249,37 @@ bool Preprocessor::AdvanceLine()
 		m_scriptTextOffset = m_scriptText.length();
 		return true;
 	}
-	else if (m_scriptTextOffset == endPos)		// empty line
+	if (m_scriptTextOffset == endPos)		// empty line
 	{
 		m_scriptTextOffset += 2;
 		return AdvanceLine();
 	}
-	else									// line contains text
+	// line contains text
+	m_curLineText = m_scriptText.substr(m_scriptTextOffset, endPos - m_scriptTextOffset);
+
+	// strip comments
+	for (UInt32 i = 0; i < m_curLineText.length(); i++)
 	{
-		m_curLineText = m_scriptText.substr(m_scriptTextOffset, endPos - m_scriptTextOffset);
-
-		// strip comments
-		for (UInt32 i = 0; i < m_curLineText.length(); i++)
+		if (m_curLineText[i] == '"')
 		{
-			if (m_curLineText[i] == '"')
-			{
-				if (i + 1 == m_curLineText.length())	// trailing, mismatched quote - CS will catch
-					break;
-
-				i = m_curLineText.find('"', i+1);
-				if (i == -1)		// mismatched quotes, CS compiler will catch
-					break;
-				else
-					i++;
-			}
-			else if (m_curLineText[i] == ';')
-			{
-				m_curLineText = m_curLineText.substr(0, i);
+			if (i + 1 == m_curLineText.length())	// trailing, mismatched quote - CS will catch
 				break;
-			}
-		}
 
-		m_scriptTextOffset = endPos + 2;
-		return true;
+			i = m_curLineText.find('"', i+1);
+			if (i == -1)		// mismatched quotes, CS compiler will catch
+				break;
+			else
+				i++;
+		}
+		else if (m_curLineText[i] == ';')
+		{
+			m_curLineText = m_curLineText.substr(0, i);
+			break;
+		}
 	}
+
+	m_scriptTextOffset = endPos + 2;
+	return true;
 }
 
 bool Preprocessor::HandleDirectives()
