@@ -446,7 +446,7 @@ bool Cmd_GetNumExplicitRefs_Execute(COMMAND_ARGS)
 	{
 		targetScript = GetScriptArg(thisObj, form);
 		if (targetScript)
-			*result = (Script::RefListVisitor(&targetScript->refList).CountIf(ExplicitRefFinder()));
+			*result = targetScript->refList.CountIf(ExplicitRefFinder());
 	}
 
 	if (IsConsoleMode())
@@ -467,23 +467,22 @@ bool Cmd_GetNthExplicitRef_Execute(COMMAND_ARGS)
 		Script* targetScript = GetScriptArg(thisObj, form);
 		if (targetScript)
 		{
-			Script::RefListVisitor visitor(&targetScript->refList);
 			UInt32 count = 0;
-			const Script::RefListEntry* entry = NULL;
+			const Script::RefVariable* entry = NULL;
 			while (count <= refIdx)
 			{
-				entry = visitor.Find(ExplicitRefFinder(), entry);
+				entry = targetScript->refList.Find(ExplicitRefFinder());
 				if (!entry)
 					break;
 
 				count++;
 			}
 
-			if (count == refIdx + 1 && entry && entry->var && entry->var->form)
+			if (count == refIdx + 1 && entry && entry->form)
 			{
-				*refResult = entry->var->form->refID;
+				*refResult = entry->form->refID;
 				if (IsConsoleMode())
-					Console_Print("GetNthExplicitRef >> %s (%08x)", GetFullName(entry->var->form), *refResult);
+					Console_Print("GetNthExplicitRef >> %s (%08x)", GetFullName(entry->form), *refResult);
 			}
 		}
 	}

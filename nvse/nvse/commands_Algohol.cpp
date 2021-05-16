@@ -13,11 +13,11 @@
 
 void setVarByName( Script *scriptObj, ScriptEventList *eventList, const char *var_name, float value )
 {
-	for ( Script::VarInfoList *entry = &( scriptObj->varList ); entry; entry = entry->next )
+	for (auto entry = scriptObj->varList.Begin(); !entry.End(); entry.Next())
 	{
-		if ( !strcmp( ( (char*)entry->data->name.CStr() ), var_name ) )
+		if ( !strcmp(entry->name.CStr(), var_name ) )
 		{
-			eventList->GetVariable( entry->data->idx )->data = value;
+			eventList->GetVariable(entry->idx)->data = value;
 			break;
 		}
 	}

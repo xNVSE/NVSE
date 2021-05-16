@@ -2349,7 +2349,11 @@ ScriptToken* ExpressionParser::ParseLambda()
 	}
 	if (nest)
 	{
+#if RUNTIME
+		ShowCompilerError(m_lineBuf, "Mismatched begin/end block in anonymous user function");
+#else
 		ShowCompilerError(m_scriptBuf, "Mismatched begin/end block in anonymous user function");
+#endif
 		return nullptr;
 	}
 	
