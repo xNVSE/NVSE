@@ -143,7 +143,7 @@ bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineB
 	pDataBuf += 2;
 	lineBuffer->dataOffset += 2;
 	
-	ScriptParseToken spToken;
+	ScriptParseToken spToken{};
 	ParamInfo *currInfo;
 	UInt32 paramType;
 	UInt8 paramFlags;
