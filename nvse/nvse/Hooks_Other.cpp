@@ -64,11 +64,13 @@ namespace OtherHooks
 			node = node->next;
 		}
 		g_nvseVarGarbageCollectionMap.Erase(eventList);
+		// TODO Handle lambdas!!
 	}
 
 	void DeleteEventList(ScriptEventList* eventList)
 	{
 		CleanUpNVSEVars(eventList);
+		g_lambdaEventListMap.erase_value(eventList); // erase if exists
 		ThisStdCall(0x5A8BC0, eventList);
 		GameHeapFree(eventList);
 	}

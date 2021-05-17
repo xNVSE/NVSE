@@ -418,6 +418,30 @@ bool FunctionInfo::Execute(FunctionCaller& caller, FunctionContext* context)
 	FunctionContext
 ******************************/
 
+bool CopyToEventList(ScriptEventList* to, ScriptEventList* from)
+{
+	// need to refactor m_vars to tList later
+	auto* toVars = reinterpret_cast<tList<ScriptEventList::Var>*>(to->m_vars);
+	auto* fromVars = reinterpret_cast<tList<ScriptEventList::Var>*>(from->m_vars);
+	auto fromIter = fromVars->Begin();
+	for (auto toIter = toVars->Begin(); !toIter.End(); ++toIter, ++fromIter)
+	{
+		if (fromIter.End())
+		{
+			return false;
+		}
+		if (toIter->id == fromIter->id)
+		{
+			toIter->data = fromIter->data;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	return false;
+}
+
 FunctionContext::FunctionContext(FunctionInfo* info, UInt8 version, Script* invokingScript) : m_info(info), m_eventList(NULL),
 m_invokingScript(invokingScript), m_callerVersion(version), m_bad(true), m_result(NULL)
 {
@@ -451,6 +475,15 @@ m_invokingScript(invokingScript), m_callerVersion(version), m_bad(true), m_resul
 		else
 			ShowRuntimeError(info->GetScript(), "Couldn't recreate eventlist");
 		return;
+	}
+
+	if (auto* parentEventList = g_lambdaEventListMap.get_value(info->GetScript()))
+	{
+		if (!CopyToEventList(m_eventList, parentEventList))
+		{
+			ShowRuntimeError(info->GetScript(), "Event list mismatch between lambda and outer script");
+			return;
+		}
 	}
 
 	// successfully constructed

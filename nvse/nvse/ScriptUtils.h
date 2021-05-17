@@ -167,6 +167,7 @@ public:
 	SInt16		ReadSigned16();
 	UInt32		Read32();
 	SInt32		ReadSigned32();
+	void ReadBuf(UInt32 len, UInt8* data);
 
 	UInt8* GetCommandOpcodePosition() const;
 	CommandInfo* GetCommand() const;
@@ -229,6 +230,8 @@ class ExpressionParser
 	const char * CurText() { return Text() + Offset(); }
 
 	void	Message(UInt32 errorCode, ...);
+
+	void PrintCompileError(const std::string& message) const;
 
 	Token_Type		Parse();
 	Token_Type		ParseSubExpression(UInt32 exprLen);

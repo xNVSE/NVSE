@@ -1,4 +1,8 @@
 #include "ScriptTokens.h"
+
+
+#include "bimap.h"
+#include "GameAPI.h"
 #include "ScriptUtils.h"
 #include "GameRTTI.h"
 #include "SmallObjectsAllocator.h"
@@ -17,10 +21,21 @@ ScriptToken::~ScriptToken()
 #ifdef DBG_EXPR_LEAKS
 	TOKEN_COUNT--;
 #endif
-	if ((type == kTokenType_String) && value.str)
+	if (type == kTokenType_String && value.str)
 	{
 		free(value.str);
 		value.str = NULL;
+	}
+	else if (type == kTokenType_Lambda && value.lambda)
+	{
+#if RUNTIME
+		// Keep commented, memory has to be reused, NO FREEING THE POINTER
+		// Delete<Script, 0x5AA1A0>(value.lambda);
+		ThisStdCall(0x5AA1A0, value.lambda); // call destructor though to free script data pointer
+#else
+		Delete<Script, 0x5C5220>(value.lambda);
+#endif
+		value.lambda = nullptr;
 	}
 }
 
@@ -97,6 +112,11 @@ ScriptToken::ScriptToken(UInt32 id, Token_Type asType) : refIdx(0), type(asType)
 	}
 }
 
+ScriptToken::ScriptToken(Script* script) : type(kTokenType_Lambda), refIdx(0), variableType(Script::eVarType_Invalid)
+{
+	value.lambda = script;
+}
+
 ScriptToken::ScriptToken(Operator* op) : type(kTokenType_Operator), refIdx(0), variableType(Script::eVarType_Invalid)
 {
 	INC_TOKEN_COUNT
@@ -162,16 +182,6 @@ ScriptToken::ScriptToken(const ScriptToken &from)
 		value.str = from.value.str ? CopyString(from.value.str) : NULL;
 	else value = from.value;
 }
-
-#if RUNTIME
-void ScriptToken::Delete() const
-{
-	if (!cached)
-	{
-		delete this;
-	}
-}
-#endif
 
 bool ScriptToken::IsInvalid() const
 {
@@ -363,8 +373,12 @@ void* ScriptToken::operator new(size_t size)
 
 void ScriptToken::operator delete(void* p)
 {
+	auto* token = static_cast<ScriptToken*>(p);
+	if (token && !token->cached)
+	{
+		g_scriptTokenAllocator.Free(token);
+	}
 	//::operator delete(p);
-	g_scriptTokenAllocator.Free(p);
 }
 
 ScriptToken& ScriptToken::operator=(const ScriptToken& rhs)
@@ -517,6 +531,7 @@ const char* TokenTypeToString(Token_Type type)
 	case kTokenType_Int: return "Int";
 	case kTokenType_Pair: return "Pair";
 	case kTokenType_AssignableString: return "Assignable String";
+	case kTokenType_Lambda: return "Anonymous Function";
 	case kTokenType_Invalid: return "Invalid";
 	case kTokenType_Empty: return "Empty";
 	default: return "Unknown";
@@ -918,6 +933,12 @@ Map<ScriptEventList*, Map<UInt32, NVSEVarType>> g_nvseVarGarbageCollectionMap;
 UnorderedMap<ScriptEventList*, UnorderedMap<UInt32, NVSEVarType>> g_nvseVarGarbageCollectionMap;
 #endif
 
+stde::unordered_bimap<Script*, ScriptEventList*> g_lambdaEventListMap;
+
+// This is required since if the script token cache is cleared and a plugin has a reference to the script it has to be in the same place
+// or the plugin will keep a reference to an invalid pointer.
+std::unordered_map<UInt8*, Script*> g_lambdaHeapMap;
+
 Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 {
 	UInt8 typeCode = context->ReadByte();
@@ -1000,7 +1021,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 			context->Error("Failed to resolve command with opcode %X", opcode);
 			type = kTokenType_Invalid;
 		}
-		auto argsLen = context->Read16();
+		const auto argsLen = context->Read16();
 		cmdOpcodeOffset = context->m_data - context->m_scriptData;
 		context->m_data += argsLen - 2;
 		returnType = g_scriptCommands.GetReturnType(value.cmd);
@@ -1066,6 +1087,36 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		
 		break;
 	}
+	case 'F':
+	{
+		type = kTokenType_Lambda;
+		const auto dataLen = context->Read32();
+		auto* scriptData = static_cast<UInt8*>(FormHeap_Allocate(dataLen));
+		context->ReadBuf(dataLen, scriptData);
+
+		// auto script = MakeUnique<Script, 0x5AA0F0, 0x5AA1A0>();
+		Script* script;
+		if (const auto iter = g_lambdaHeapMap.find(context->GetCommandOpcodePosition()); iter != g_lambdaHeapMap.end())
+		{
+			// if a script is being recompiled (i.e. through hot reload) it's important that script pointers in plugins don't get invalidated
+			script = iter->second;
+			ThisStdCall(0x5AA0F0, script); // script constructor
+		}
+		else
+		{
+			script = New<Script, 0x5AA0F0>();
+			g_lambdaHeapMap.emplace(context->GetCommandOpcodePosition(), script);
+		}
+		script->data = scriptData;
+		script->info.dataLength = dataLen;
+		CdeclCall(0x5AB930, &context->script->varList, &script->varList); // CopyVarList
+		CdeclCall(0x5AB7F0, &context->script->refList, &script->refList); // CopyRefList
+		script->info.numRefs = context->script->info.numRefs;
+		script->info.varCount = context->script->info.varCount;
+		this->value.lambda = script;
+		g_lambdaEventListMap.insert(value.lambda, context->eventList);
+		break;
+	}
 	default:
 	{
 		if (typeCode < kOpType_Max)
@@ -1088,7 +1139,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 
 // compiling typecodes to printable chars just makes verifying parser output much easier
 static char TokenCodes[kTokenType_Max] =
-{ 'Z', '!', 'S', '!', 'R', 'G', '!', '!', '!', 'X', 'V', 'V', 'V', 'V', 'V', '!', 'O', '!', 'B', 'I', 'L' };
+{ 'Z', '!', 'S', '!', 'R', 'G', '!', '!', '!', 'X', 'V', 'V', 'V', 'V', 'V', '!', 'O', '!', 'B', 'I', 'L', '!', '!', 'F' };
 
 STATIC_ASSERT(SIZEOF_ARRAY(TokenCodes, char) == kTokenType_Max);
 
@@ -1148,7 +1199,10 @@ bool ScriptToken::Write(ScriptLineBuffer* buf)
 		return buf->Write16(value.varInfo->idx);
 	case kTokenType_Operator:
 		return buf->WriteByte(value.op->type);
-
+	case kTokenType_Lambda:
+		// ref list and var list are shared by scripts
+		buf->Write32(value.lambda->info.dataLength);
+		return buf->Write(value.lambda->data, value.lambda->info.dataLength);
 	// the rest are run-time only
 	default:
 		return false;
@@ -1403,6 +1457,11 @@ Token_Type kConversions_AssignableString[] =
 	kTokenType_String,
 };
 
+Token_Type kConversions_Lambda[] =
+{
+	kTokenType_Form
+};
+
 // just an array of the types to which a given token type can be converted
 struct Operand
 {
@@ -1438,6 +1497,7 @@ static Operand s_operands[] =
 	{	NULL,	0			},
 	{	NULL,	0			},	// pair
 	{	OPERAND(AssignableString)	},
+	{ OPERAND(Lambda) }
 };
 
 STATIC_ASSERT(SIZEOF_ARRAY(s_operands, Operand) == kTokenType_Max);

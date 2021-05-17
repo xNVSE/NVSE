@@ -1743,6 +1743,7 @@ bool ExpressionParser::ValidateArgType(UInt32 paramType, Token_Type argType, boo
 				return CanConvertOperand(argType, kTokenType_Array);
 			case kParamType_ScriptVariable:
 				return CanConvertOperand(argType, kTokenType_Variable);
+			
 			default:
 				// all the rest are TESForm of some sort or another
 				return CanConvertOperand(argType, kTokenType_Form);
@@ -2110,6 +2111,15 @@ void ExpressionParser::Message(UInt32 errorCode, ...)
 	va_end(args);
 }
 
+void ExpressionParser::PrintCompileError(const std::string& message) const
+{
+#if RUNTIME
+	ShowCompilerError(m_lineBuf, message.c_str());
+#else
+	ShowCompilerError(m_scriptBuf, message.c_str());
+#endif
+}
+
 UInt32	ExpressionParser::MatchOpenBracket(Operator* openBracOp)
 {
 	char closingBrac = openBracOp->GetMatchedBracket();
@@ -2335,13 +2345,24 @@ Token_Type ExpressionParser::ParseArgument(UInt32 argsEndPos)
 	return argType;
 }
 
+const void* g_scriptCompiler = reinterpret_cast<void*>(0xECFDF8);
+
 ScriptToken* ExpressionParser::ParseLambda()
 {
-	const auto* beginData = Text() - strlen("begin");
+#if RUNTIME
+	PrintCompileError("Anonymous functions are not supported from console.");
+	return nullptr;
+#endif
+	const auto* beginData = CurText() - strlen("begin");
 	auto nest = 1;
-	while (nest != 0 && Text())
+	while (nest != 0 && CurText())
 	{
 		auto token = GetCurToken();
+		if (token.empty())
+		{
+			++Offset();
+			continue;
+		}
 		if (_stricmp(token.c_str(), "begin") == 0)
 			++nest;
 		else if (_stricmp(token.c_str(), "end") == 0)
@@ -2349,25 +2370,39 @@ ScriptToken* ExpressionParser::ParseLambda()
 	}
 	if (nest)
 	{
-#if RUNTIME
-		ShowCompilerError(m_lineBuf, "Mismatched begin/end block in anonymous user function");
-#else
-		ShowCompilerError(m_scriptBuf, "Mismatched begin/end block in anonymous user function");
-#endif
+		PrintCompileError("Mismatched begin/end block in anonymous user function/lambda");
+		return nullptr;
+	}
+	
+	std::string lambdaText(beginData, CurText() - beginData);
+	const auto lambdaScriptBuf = MakeUnique<ScriptBuffer, 0x5C5660, 0x5C8910>();
+	auto scriptLambda = MakeUnique<Script, 0x5C1D60, 0x5C5220>();
+	
+	lambdaScriptBuf->partialScript = true;
+	lambdaScriptBuf->currentScript = scriptLambda.get();
+	lambdaScriptBuf->info.varCount = m_scriptBuf->info.varCount;
+	lambdaScriptBuf->info.numRefs= m_scriptBuf->info.numRefs;
+	lambdaScriptBuf->scriptText = lambdaText.data();
+	lambdaScriptBuf->scriptName.Set(FormatString("%sLambdaAtLine%d", m_scriptBuf->scriptName.CStr(), m_lineBuf->lineNumber).c_str());
+	lambdaScriptBuf->curLineNumber = m_lineBuf->lineNumber;
+	
+	CdeclCall(0x5C3310, &this->m_scriptBuf->refVars, &lambdaScriptBuf->refVars, nullptr); // CopyRefList(from, to, unk)
+	CdeclCall(0x5C2CE0, &this->m_scriptBuf->vars, &lambdaScriptBuf->vars); // CopyVarList(from, to)
+
+	auto* beginEndOffset = reinterpret_cast<UInt32*>(0xED9D54);
+	const auto savedOffset = *beginEndOffset;
+	*beginEndOffset = 0;
+	
+	const auto compileResult = ThisStdCall<bool>(0x5C96E0, g_scriptCompiler, scriptLambda.get(), lambdaScriptBuf.get()); // CompileScript
+
+	*beginEndOffset = savedOffset;
+	
+	if (!compileResult)
+	{
 		return nullptr;
 	}
 
-	const std::string lambdaText(beginData, Text() - beginData);
-	
-	ScriptBuffer newScriptBuffer = {};
-	ThisStdCall(0x5C5660, &newScriptBuffer); // ScriptBuffer::Init
-	
-	newScriptBuffer.info = m_scriptBuf->info;
-	newScriptBuffer.refVars = m_scriptBuf->refVars;
-	newScriptBuffer.vars = m_scriptBuf->vars;
-	newScriptBuffer.scriptText = lambdaText.c_str();
-
-	ThisStdCall(0x5C8910, &newScriptBuffer); // ScriptBuffer::Delete
+	return new ScriptToken(scriptLambda.release());
 }
 
 ScriptToken* ExpressionParser::ParseOperand(bool (* pred)(ScriptToken* operand))
@@ -2668,7 +2703,7 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 		if (cmdInfo)
 		{
 			// if quest script, check that calling obj supplied for cmds requiring it
-			if (m_scriptBuf->info.scriptType == Script::eType_Quest && cmdInfo->needsParent && !refVar)
+			if (m_scriptBuf->info.type == Script::eType_Quest && cmdInfo->needsParent && !refVar)
 			{
 				Message(kError_RefRequired, cmdInfo->longName);
 				return NULL;
@@ -2845,6 +2880,12 @@ SInt32 ExpressionEvaluator::ReadSigned32()
 	return data;
 }
 
+void ExpressionEvaluator::ReadBuf(UInt32 len, UInt8* data)
+{
+	std::memcpy(data, Data(), len);
+	Data() += len;
+}
+
 UInt8* ExpressionEvaluator::GetCommandOpcodePosition() const
 {
 	return GetScriptDataPosition(script, m_scriptData, m_opcodeOffsetPtr);
@@ -2879,6 +2920,8 @@ char *ExpressionEvaluator::ReadString(UInt32& incrData)
 	}
 	return NULL;
 }
+
+
 
 void ExpressionEvaluator::PushOnStack()
 {
@@ -3705,7 +3748,7 @@ void ShortCircuit(OperandStack& operands, CachedTokenIter& iter)
 			// Make sure only one operand is left in RPN stack
 			ScriptToken *operand = operands.Top();
 			if (operand && operand != lastToken)
-				operand->Delete();
+				delete operand;
 			operands.Pop();
 		}
 		operands.Push(lastToken);
@@ -3797,12 +3840,8 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				opResult = entry.swapOrder ? entry.eval(op->type, rhOperand, lhOperand, this) : entry.eval(op->type, lhOperand, rhOperand, this);
 			}
 
-
-			if (lhOperand)
-				lhOperand->Delete();
-
-			if (rhOperand)
-				rhOperand->Delete();
+			delete lhOperand;
+			delete rhOperand;
 
 			if (!opResult)
 			{
@@ -3839,7 +3878,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 		{
 			ScriptToken *operand = operands.Top();
 			if (operand)
-				operand->Delete();
+				delete operand;
 			operands.Pop();
 		}
 		return nullptr;

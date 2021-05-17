@@ -1,4 +1,5 @@
 #pragma once
+#include "bimap.h"
 
 #if _DEBUG
 #define DBG_EXPR_LEAKS 1
@@ -16,7 +17,11 @@ extern SInt32 FUNCTION_CONTEXT_COUNT;
 #include "StringVar.h"
 #include "GameAPI.h"
 
+
+extern stde::unordered_bimap<Script*, ScriptEventList*> g_lambdaEventListMap;
+
 #endif
+
 
 enum class NVSEVarType
 {
@@ -117,6 +122,7 @@ enum Token_Type : UInt8
 
 	kTokenType_Pair,
 	kTokenType_AssignableString,
+	kTokenType_Lambda,
 
 	kTokenType_Invalid,
 	kTokenType_Max = kTokenType_Invalid,
@@ -190,6 +196,7 @@ struct ScriptToken
 		VariableInfo			* varInfo;
 		CommandInfo				* cmd;
 		ScriptToken				* token;
+		Script* lambda;
 	} value;
 
 	ScriptToken(Token_Type _type, UInt8 _varType, UInt16 _refIdx);
@@ -203,6 +210,7 @@ struct ScriptToken
 	ScriptToken(TESGlobal* global, UInt16 refIdx);
 	ScriptToken(Operator* op);
 	ScriptToken(UInt32 data, Token_Type asType);		// ArrayID or FormID
+	ScriptToken(Script* script);
 
 	//ScriptToken(const ScriptToken& rhs);	// unimplemented, don't want copy constructor called
 #if RUNTIME
@@ -230,7 +238,6 @@ struct ScriptToken
 	ArrayVar*						GetArrayVar();
 	ScriptEventList::Var *			GetVar() const;
 	bool ResolveVariable();
-	void							Delete() const;
 #endif
 	virtual bool			CanConvertTo(Token_Type to) const;	// behavior varies b/w compile/run-time for ambiguous types
 	virtual ArrayID			GetOwningArrayID() const { return 0; }

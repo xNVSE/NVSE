@@ -645,6 +645,7 @@
     <ClInclude Include="..\Algohol\algTypes.h" />
     <ClInclude Include="..\Algohol\paramTypes.h" />
     <ClInclude Include="ArrayVar.h" />
+    <ClInclude Include="bimap.h" />
     <ClInclude Include="commands_Algohol.h" />
     <ClInclude Include="Commands_Array.h" />
     <ClInclude Include="Commands_Console.h" />

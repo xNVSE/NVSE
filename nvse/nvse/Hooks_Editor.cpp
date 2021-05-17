@@ -595,10 +595,6 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 					++curScriptText;
 				// fallback intentional
 			}
-			case '\r':
-			{
-				continue;
-			}
 			default:
 			{
 				break;

@@ -62,7 +62,7 @@ public:
 	// 14
 	struct ScriptInfo
 	{
-		UInt32	unk0;		// 00 (18)
+		UInt32	lastID;		// 00 (18)
 		UInt32	numRefs;	// 04 (1C)
 		UInt32	dataLength;	// 08 (20)
 		UInt32	varCount;	// 0C (24)
@@ -212,18 +212,7 @@ struct ScriptBuffer
 		kGameConsole = 1,
 	};
 
-	struct ScriptBufInfo
-	{
-		UInt32			unk028;				// 028
-		UInt32			numRefs;			// 02C
-		UInt32			unk030;				// 030
-		UInt32			varCount;			// 034 script->varCount
-		UInt8			scriptType;			// 038 script->type
-		UInt8			unk039;				// 039 script->unk35
-		UInt8			unk03A[2];
-	};
-
-	const char		* scriptText;		// 000
+	char		* scriptText;		// 000
 	UInt32			textOffset;			// 004 
 	RuntimeMode		runtimeMode;		// 008
 	String			scriptName;			// 00C
@@ -233,7 +222,7 @@ struct ScriptBuffer
 	UInt32			curLineNumber;		// 01C
 	UInt8			* scriptData;		// 020 pointer to 0x4000-byte array
 	UInt32			dataOffset;			// 024
-	ScriptBufInfo	info;				// 028
+	Script::ScriptInfo	info;				// 028
 	Script::VarInfoList	vars;		// 03C
 	Script::RefList	refVars;	// 044 probably ref vars
 	Script*			currentScript;				// 04C num lines?

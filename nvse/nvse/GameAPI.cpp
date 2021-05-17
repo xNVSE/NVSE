@@ -406,7 +406,7 @@ bool ExtractExpression(ParamInfo* paramInfo, UInt8*& scriptData, Script* scriptO
 	if (!token)
 		return false;
 	const auto result = evaluator.ConvertDefaultArg(token, paramInfo, true, args);
-	token->Delete();
+	delete token;
 	if (!result)
 		return false;
 	return true;
