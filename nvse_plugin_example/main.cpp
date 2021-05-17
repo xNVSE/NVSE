@@ -12,17 +12,8 @@
 #endif
 
 IDebugLog		gLog("nvse_plugin_example.log");
-
 PluginHandle	g_pluginHandle = kPluginHandle_Invalid;
 
-NVSEMessagingInterface* g_messagingInterface;
-NVSEInterface* g_nvseInterface;
-NVSECommandTableInterface* g_cmdTable;
-const CommandInfo* g_TFC;
-#if RUNTIME
-NVSEScriptInterface* g_script;
-#endif
-bool (*ExtractArgsEx)(COMMAND_ARGS_EX, ...);
 // This is a message handler for nvse events
 // With this, plugins can listen to messages such as whenever the game loads
 void MessageHandler(NVSEMessagingInterface::Message* msg)
@@ -69,7 +60,7 @@ void MessageHandler(NVSEMessagingInterface::Message* msg)
 
 bool Cmd_ExamplePlugin_PluginTest_Execute(COMMAND_ARGS);
 
-#if RUNTIME
+#if RUNTIME  //if non-GECK version (in-game)
 //In here we define a script function
 //Script functions must always follow the Cmd_FunctionName_Execute naming convention
 bool Cmd_ExamplePlugin_PluginTest_Execute(COMMAND_ARGS)
@@ -130,9 +121,9 @@ bool NVSEPlugin_Query(const NVSEInterface* nvse, PluginInfo* info)
 	info->version = 2;
 
 	// version checks
-	if (nvse->nvseVersion < NVSE_VERSION_INTEGER)
+	if (nvse->nvseVersion < PACKED_NVSE_VERSION)
 	{
-		_ERROR("NVSE version too old (got %08X expected at least %08X)", nvse->nvseVersion, NVSE_VERSION_INTEGER);
+		_ERROR("NVSE version too old (got %08X expected at least %08X)", nvse->nvseVersion, PACKED_NVSE_VERSION);
 		return false;
 	}
 
