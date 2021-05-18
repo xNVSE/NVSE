@@ -41,6 +41,7 @@ namespace OtherHooks
 		auto* scriptVars = g_nvseVarGarbageCollectionMap.GetPtr(eventList);
 		if (!scriptVars)
 			return;
+		ScopedLock lock(g_gcCriticalSection);
 		auto* node = eventList->m_vars;
 		while (node)
 		{

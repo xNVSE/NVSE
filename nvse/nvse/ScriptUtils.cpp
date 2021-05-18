@@ -74,7 +74,7 @@ UInt32 AddStringVar(const char* data, ScriptToken& lh, ExpressionEvaluator& cont
 {
 	const auto makeTemporary = lh.owningScript->IsUserDefinedFunction() && lh.refIdx == 0;
 	if (!lh.refIdx)
-		g_nvseVarGarbageCollectionMap[context.eventList].Emplace(lh.GetVar()->id, NVSEVarType::kVarType_String);
+		AddToGarbageCollection(context.eventList, lh.GetVar()->id, NVSEVarType::kVarType_String);
 	return g_StringMap.Add(lh.owningScript->GetModIndex(), data, makeTemporary);
 }
 
@@ -374,7 +374,8 @@ ScriptToken* Eval_Assign_Array(OperatorType op, ScriptToken* lh, ScriptToken* rh
 	ScriptEventList::Var *var = lh->GetVar();
 	g_ArrayMap.AddReference(&var->data, rh->GetArray(), context->script->GetModIndex());
 	if (!lh->refIdx)
-		g_nvseVarGarbageCollectionMap[context->eventList].Emplace(var->id, NVSEVarType::kVarType_Array);
+		AddToGarbageCollection(context->eventList, var->id, NVSEVarType::kVarType_String);
+
 	return ScriptToken::CreateArray(var->data);
 }
 

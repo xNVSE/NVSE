@@ -107,7 +107,10 @@ void Core_PreLoadCallback(void * reserved)
 
 	NVSESerializationInterface* intfc = &g_NVSESerializationInterface;
 
+	g_gcCriticalSection.Enter();
 	g_nvseVarGarbageCollectionMap.Clear();
+	g_gcCriticalSection.Leave();
+	
 	g_ArrayMap.Reset();
 	g_StringMap.Reset();
 

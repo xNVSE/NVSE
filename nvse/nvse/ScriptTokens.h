@@ -30,6 +30,7 @@ extern Map<ScriptEventList*, Map<UInt32, NVSEVarType>> g_nvseVarGarbageCollectio
 extern UnorderedMap<ScriptEventList*, UnorderedMap<UInt32, NVSEVarType>> g_nvseVarGarbageCollectionMap;
 #endif
 
+extern ICriticalSection g_gcCriticalSection;
 
 
 struct Operator;
@@ -502,3 +503,4 @@ struct Operator
 };
 
 bool CanConvertOperand(Token_Type from, Token_Type to);	// don't use directly at run-time, use ScriptToken::CanConvertTo() instead
+void AddToGarbageCollection(ScriptEventList* eventList, UInt32 varIdx, NVSEVarType type);

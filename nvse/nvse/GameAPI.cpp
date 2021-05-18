@@ -20,7 +20,7 @@ bool alternateUpdate3D = false;
 // arg1 = 1, ignored if canCreateNew is false, passed to 'init' function if a new object is created
 typedef void * (* _GetSingleton)(bool canCreateNew);
 
-char s_tempStrArgBuffer[0x4000];
+thread_local char s_tempStrArgBuffer[0x4000];
 
 const bool kInventoryType[] =
 {
@@ -1799,7 +1799,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 	double f[maxArgs], data;
 	UInt32 argIdx = 0;
 
-	static char fmtBuffer[0x4000];
+	char fmtBuffer[0x4000];
 
 	char *resPtr = fmtBuffer, *srcPtr = args.GetFormatString(), *fmtPos, *strPtr, *omitEndPtr;
 	int size;
@@ -2298,7 +2298,7 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 						*makeTemporary = true;
 					}
 #if NVSE_CORE
-					g_nvseVarGarbageCollectionMap[eventList].Emplace(varIdx, NVSEVarType::kVarType_String);
+					AddToGarbageCollection(eventList, varIdx, NVSEVarType::kVarType_String);
 #endif
 				}
 			}
