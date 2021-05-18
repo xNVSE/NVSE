@@ -57,12 +57,16 @@ namespace stde
 		inline size_t index_of_key(const key_type& key) const
 		{
 			const auto k_itr = m_key_tree.find(key);
+			if (k_itr == m_key_tree.end())
+				return -1;
 			const auto offset = static_cast<unsigned>(std::distance(m_key_tree.begin(), k_itr));
 			return (offset < m_key_tree.size() ? offset : 0);
 		}
 		inline size_t index_of_value(const value_type& value) const
 		{
 			const auto v_itr = m_value_tree.find(value);
+			if (v_itr == m_value_tree.end())
+				return -1;
 			const auto offset = static_cast<unsigned>(std::distance(m_value_tree.begin(), v_itr));
 			return (offset < m_value_tree.size() ? offset : 0);
 		}
@@ -140,6 +144,7 @@ namespace stde
 		value_type get_value(const key_type& key) const
 		{
 			const auto offset = index_of_key(key);
+			if (offset == -1) return nullptr;
 			auto v_itr = m_value_tree.begin();
 			std::advance(v_itr, offset);
 			return *v_itr;
@@ -147,6 +152,7 @@ namespace stde
 		key_type get_key(const value_type& value) const
 		{
 			const auto offset = index_of_value(value);
+			if (offset == -1) return nullptr;
 			auto k_itr = m_key_tree.begin();
 			std::advance(k_itr, offset);
 			return *k_itr;
