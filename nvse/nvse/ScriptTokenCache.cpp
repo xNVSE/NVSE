@@ -48,7 +48,7 @@ CachedTokens& TokenCache::Get(UInt8* key)
 	if (tlsClearAllCookie_ != tlsClearAllToken_)
 	{
 		tlsClearAllToken_ = tlsClearAllCookie_;
-		cache_.Clear();
+		Clear();
 	} 
 	return cache_[key];
 }

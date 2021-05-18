@@ -51,7 +51,9 @@ namespace OtherHooks
 				switch (type)
 				{
 				case NVSEVarType::kVarType_String:
-					g_StringMap.MarkTemporary(static_cast<int>(node->var->data), true);
+					// make sure not to delete string vars from lambdas as the parent script owns them; not necessary for arrays since the have ref counting
+					if (!g_lambdaParentScriptEventListMap.has_key(eventList->m_script))
+						g_StringMap.MarkTemporary(static_cast<int>(node->var->data), true);
 					break;
 				case NVSEVarType::kVarType_Array:
 					//g_ArrayMap.MarkTemporary(static_cast<int>(node->var->data), true);
@@ -70,7 +72,7 @@ namespace OtherHooks
 	void DeleteEventList(ScriptEventList* eventList)
 	{
 		CleanUpNVSEVars(eventList);
-		g_lambdaEventListMap.erase_value(eventList); // erase if exists
+		g_lambdaParentScriptEventListMap.erase_value(eventList); // erase if exists
 		ThisStdCall(0x5A8BC0, eventList);
 		GameHeapFree(eventList);
 	}

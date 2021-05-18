@@ -474,7 +474,7 @@ m_invokingScript(invokingScript), m_callerVersion(version), m_bad(true), m_resul
 		return;
 	}
 
-	if (auto* parentEventList = g_lambdaEventListMap.get_value(info->GetScript()))
+	if (auto* parentEventList = g_lambdaParentScriptEventListMap.get_value(info->GetScript()))
 	{
 		if (!CopyToEventList(m_eventList, parentEventList))
 		{

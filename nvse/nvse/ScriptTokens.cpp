@@ -930,7 +930,7 @@ Map<ScriptEventList*, Map<UInt32, NVSEVarType>> g_nvseVarGarbageCollectionMap;
 UnorderedMap<ScriptEventList*, UnorderedMap<UInt32, NVSEVarType>> g_nvseVarGarbageCollectionMap;
 #endif
 
-stde::unordered_bimap<Script*, ScriptEventList*> g_lambdaEventListMap;
+stde::unordered_bimap<Script*, ScriptEventList*> g_lambdaParentScriptEventListMap;
 
 // This is required since if the script token cache is cleared and a plugin has a reference to the script it has to be in the same place
 // or the plugin will keep a reference to an invalid pointer.
@@ -1088,8 +1088,10 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 	{
 		type = kTokenType_Lambda;
 		const auto dataLen = context->Read32();
-		auto* scriptData = static_cast<UInt8*>(FormHeap_Allocate(dataLen));
-		context->ReadBuf(dataLen, scriptData);
+		auto* const dataPtr = context->Data();
+		context->Data() += dataLen;
+		//auto* scriptData = static_cast<UInt8*>(FormHeap_Allocate(dataLen));
+		//context->ReadBuf(dataLen, scriptData);
 
 		// auto script = MakeUnique<Script, 0x5AA0F0, 0x5AA1A0>();
 		Script* script;
@@ -1104,7 +1106,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 			script = New<Script, 0x5AA0F0>();
 			g_lambdaHeapMap.emplace(context->GetCommandOpcodePosition(), script);
 		}
-		script->data = scriptData;
+		script->data = dataPtr;
 		script->info.dataLength = dataLen;
 		CdeclCall(0x5AB930, &context->script->varList, &script->varList); // CopyVarList
 		CdeclCall(0x5AB7F0, &context->script->refList, &script->refList); // CopyRefList
@@ -1112,7 +1114,8 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		script->info.varCount = context->script->info.varCount;
 		script->info.lastID = context->script->info.lastID;
 		value.lambda = script;
-		g_lambdaEventListMap.insert(value.lambda, context->eventList);
+		g_lambdaParentScriptEventListMap.insert(value.lambda, context->eventList);
+			
 		break;
 	}
 	default:

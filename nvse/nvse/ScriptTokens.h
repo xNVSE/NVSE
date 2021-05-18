@@ -18,7 +18,7 @@ extern SInt32 FUNCTION_CONTEXT_COUNT;
 #include "GameAPI.h"
 
 
-extern stde::unordered_bimap<Script*, ScriptEventList*> g_lambdaEventListMap;
+extern stde::unordered_bimap<Script*, ScriptEventList*> g_lambdaParentScriptEventListMap;
 
 #endif
 
