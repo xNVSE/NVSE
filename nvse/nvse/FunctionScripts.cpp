@@ -103,10 +103,7 @@ public:
 
 		if (scrToken) {
 			m_funcScript = DYNAMIC_CAST(scrToken->GetTESForm(), TESForm, Script);
-			if (!scrToken->cached)
-			{
-				delete scrToken;
-			}
+			delete scrToken;
 		}
 
 		return m_funcScript;
@@ -248,7 +245,7 @@ bool UserFunctionManager::Return(ExpressionEvaluator* eval)
 
 FunctionInfo* UserFunctionManager::GetFunctionInfo(Script* funcScript)
 {
-	FunctionInfo *funcInfo = m_functionInfos.Emplace(funcScript, funcScript);
+	FunctionInfo* funcInfo = m_functionInfos.Emplace(funcScript, funcScript);
 	return (funcInfo->IsGood()) ? funcInfo : NULL;
 }
 	
@@ -439,7 +436,7 @@ bool CopyToEventList(ScriptEventList* to, ScriptEventList* from)
 			return false;
 		}
 	}
-	return false;
+	return true;
 }
 
 FunctionContext::FunctionContext(FunctionInfo* info, UInt8 version, Script* invokingScript) : m_info(info), m_eventList(NULL),

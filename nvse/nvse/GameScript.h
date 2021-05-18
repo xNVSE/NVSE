@@ -41,7 +41,8 @@ public:
 		UInt32 GetIndex(Script::RefVariable* refVar);
 	};
 
-	enum {
+	enum VariableType
+	{
 		eVarType_Float = 0,			//ref is also zero
 		eVarType_Integer,
 
@@ -234,6 +235,8 @@ struct ScriptBuffer
 	UInt32	GetRefIdx(Script::RefVariable* ref);
 	UInt32	GetVariableType(VariableInfo* varInfo, Script::RefVariable* refVar);
 };
+static_assert(sizeof(ScriptBuffer) == 0x58);
+
 
 UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText);	// parses scriptText to determine var type
 Script* GetScriptFromForm(TESForm* form);

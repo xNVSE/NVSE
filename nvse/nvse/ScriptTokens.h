@@ -218,7 +218,6 @@ struct ScriptToken
 #endif
 
 	ScriptToken();
-	ScriptToken(const ScriptToken& from);
 
 	ScriptToken(ExpressionEvaluator& evaluator);
 
@@ -297,13 +296,13 @@ struct ScriptToken
 	void SetString(const char *srcStr);
 	std::string GetVariableName(ScriptEventList* eventList) const;
 
-	ScriptToken& operator=(const ScriptToken &rhs);
-
 	UInt16		refIdx;
 	CommandReturnType returnType;
 #if RUNTIME
 	void* operator new(size_t size);
+	void* operator new(size_t size, bool useMemoryPool);
 	void operator delete(void* p);
+	void operator delete(void* p, bool useMemoryPool);
 	
 	bool cached = false;
 	UInt32 cmdOpcodeOffset;
@@ -317,7 +316,8 @@ struct ScriptToken
 	std::string varName;
 #endif
 #endif
-
+private:
+	bool memoryPooled;
 };
 //STATIC_ASSERT(sizeof(ScriptToken) == 0x30);
 

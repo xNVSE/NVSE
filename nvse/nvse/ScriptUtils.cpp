@@ -2347,6 +2347,8 @@ Token_Type ExpressionParser::ParseArgument(UInt32 argsEndPos)
 
 const void* g_scriptCompiler = reinterpret_cast<void*>(0xECFDF8);
 
+std::unordered_map<ScriptBuffer*, ScriptBuffer*> g_lambdaParentScriptMap;
+
 ScriptToken* ExpressionParser::ParseLambda()
 {
 #if RUNTIME
@@ -2377,30 +2379,60 @@ ScriptToken* ExpressionParser::ParseLambda()
 	std::string lambdaText(beginData, CurText() - beginData);
 	const auto lambdaScriptBuf = MakeUnique<ScriptBuffer, 0x5C5660, 0x5C8910>();
 	auto scriptLambda = MakeUnique<Script, 0x5C1D60, 0x5C5220>();
+
+	const auto varCount = m_scriptBuf->info.varCount;
+	const auto numRefs = m_scriptBuf->info.numRefs;
 	
 	lambdaScriptBuf->partialScript = true;
 	lambdaScriptBuf->currentScript = scriptLambda.get();
-	lambdaScriptBuf->info.varCount = m_scriptBuf->info.varCount;
-	lambdaScriptBuf->info.numRefs= m_scriptBuf->info.numRefs;
+
+	scriptLambda->info.varCount = varCount;
+	scriptLambda->info.lastID = varCount;
+	scriptLambda->info.numRefs = numRefs;
+	
+	lambdaScriptBuf->info.varCount = varCount;
+	lambdaScriptBuf->info.lastID = varCount;
+	lambdaScriptBuf->info.numRefs= numRefs;
+	
 	lambdaScriptBuf->scriptText = lambdaText.data();
 	lambdaScriptBuf->scriptName.Set(FormatString("%sLambdaAtLine%d", m_scriptBuf->scriptName.CStr(), m_lineBuf->lineNumber).c_str());
 	lambdaScriptBuf->curLineNumber = m_lineBuf->lineNumber;
-	
-	CdeclCall(0x5C3310, &this->m_scriptBuf->refVars, &lambdaScriptBuf->refVars, nullptr); // CopyRefList(from, to, unk)
-	CdeclCall(0x5C2CE0, &this->m_scriptBuf->vars, &lambdaScriptBuf->vars); // CopyVarList(from, to)
+
+	*lambdaScriptBuf->scriptData = 0x1D; // Fake a script name (1D 00 00 00) so that it's not an outlier from other scripts
+	lambdaScriptBuf->dataOffset = 4;
+
+	// CdeclCall(0x5C3310, &this->m_scriptBuf->refVars, &lambdaScriptBuf->refVars, nullptr); // CopyRefList(from, to, unk)
+	// CdeclCall(0x5C2CE0, &this->m_scriptBuf->vars, &lambdaScriptBuf->vars); // CopyVarList(from, to)
+
+	// we want the compile to add onto out ref list and var list, so we copy the pointers
+	lambdaScriptBuf->refVars = m_scriptBuf->refVars;
+	lambdaScriptBuf->vars = m_scriptBuf->vars;
 
 	auto* beginEndOffset = reinterpret_cast<UInt32*>(0xED9D54);
 	const auto savedOffset = *beginEndOffset;
 	*beginEndOffset = 0;
-	
+
+	g_lambdaParentScriptMap.emplace(lambdaScriptBuf.get(), m_scriptBuf);
+
 	const auto compileResult = ThisStdCall<bool>(0x5C96E0, g_scriptCompiler, scriptLambda.get(), lambdaScriptBuf.get()); // CompileScript
 
+	g_lambdaParentScriptMap.erase(lambdaScriptBuf.get());
+
 	*beginEndOffset = savedOffset;
+
+	m_scriptBuf->refVars = lambdaScriptBuf->refVars;
+	m_scriptBuf->vars = lambdaScriptBuf->vars;
+	
+	// prevent destructor from deleting our vars
+	lambdaScriptBuf->refVars = {};
+	lambdaScriptBuf->vars = {};
+	
+	m_scriptBuf->info.numRefs = lambdaScriptBuf->info.numRefs;
+	m_scriptBuf->info.varCount = lambdaScriptBuf->info.varCount;
+	m_scriptBuf->info.lastID = lambdaScriptBuf->info.lastID;
 	
 	if (!compileResult)
-	{
 		return nullptr;
-	}
 
 	return new ScriptToken(scriptLambda.release());
 }
@@ -3652,7 +3684,7 @@ TokenCacheEntry *GetOperatorParent(TokenCacheEntry *iter, TokenCacheEntry *iterE
 	int count = 0;
 	while (iter < iterEnd)
 	{
-		const ScriptToken *token = &iter->token;
+		const ScriptToken *token = iter->token;
 		if (token->IsOperator())
 		{
 			if (count == 0)
@@ -3684,7 +3716,7 @@ void ParseShortCircuit(CachedTokens& cachedTokens)
 	for (auto iter = cachedTokens.Begin(); !iter.End(); ++iter)
 	{
 		TokenCacheEntry *curr = &iter.Get();
-		ScriptToken &token = curr->token;
+		ScriptToken &token = *curr->token;
 		TokenCacheEntry *grandparent = curr;
 		TokenCacheEntry *furthestParent;
 		
@@ -3694,11 +3726,11 @@ void ParseShortCircuit(CachedTokens& cachedTokens)
 			furthestParent = grandparent;
 			grandparent = GetOperatorParent(grandparent, end);
 		}
-		while (grandparent < end && grandparent->token.IsLogicalOperator() && (furthestParent == curr || grandparent->token.GetOperator() == furthestParent->token.GetOperator()));
+		while (grandparent < end && grandparent->token->IsLogicalOperator() && (furthestParent == curr || grandparent->token->GetOperator() == furthestParent->token->GetOperator()));
 		
-		if (furthestParent != curr && furthestParent->token.IsLogicalOperator())
+		if (furthestParent != curr && furthestParent->token->IsLogicalOperator())
 		{
-			token.shortCircuitParentType = furthestParent->token.GetOperator()->type;
+			token.shortCircuitParentType = furthestParent->token->GetOperator()->type;
 			token.shortCircuitDistance = furthestParent - curr;
 
 			auto* parent = GetOperatorParent(curr, end);
@@ -3720,10 +3752,10 @@ bool ExpressionEvaluator::ParseBytecode(CachedTokens& cachedTokens)
 	const UInt8 *endData = m_data + argLen - sizeof(UInt16);
 	while (m_data < endData)
 	{
-		TokenCacheEntry *entry = cachedTokens.Append(ScriptToken(*this));
-		if (entry->token.IsInvalid())
+		TokenCacheEntry *entry = cachedTokens.Append(ScriptToken::Read(this));
+		if (entry->token->IsInvalid())
 			return false;
-		entry->token.cached = true;
+		entry->token->cached = true;
 	}
 	cachedTokens.incrementData = m_data - dataBeforeParsing;
 	ParseShortCircuit(cachedTokens);
@@ -3786,7 +3818,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	for (; !iter.End(); ++iter)
 	{
 		TokenCacheEntry &entry = iter.Get();
-		ScriptToken *curToken = &entry.token;
+		ScriptToken *curToken = entry.token;
 		curToken->context = this;
 
 		if (curToken->Type() != kTokenType_Operator)
@@ -3862,7 +3894,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 
 	if (operands.Size() != 1 || this->HasErrors())		// should have one operand remaining - result of expression
 	{
-		const auto currentLine = this->GetLineText(cache, iter.Get().token);
+		const auto currentLine = this->GetLineText(cache, *iter.Get().token);
 		if (!currentLine.empty())
 		{
 			Error("Script line approximation: %s (error wrapped in ##'s)", currentLine.c_str());
@@ -3894,7 +3926,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken& 
 	std::stack<std::string> operands; // JIP Stack crashes
 	for (auto iter = tokens.Begin(); !iter.End(); ++iter)
 	{
-		auto& token = iter.Get().token;
+		auto& token = *iter.Get().token;
 		if (!token.IsOperator())
 		{
 			switch (token.Type())
@@ -4042,7 +4074,7 @@ std::string ExpressionEvaluator::GetVariablesText(CachedTokens& tokens) const
 	std::set<std::pair<UInt32, UInt32>> printedVars;
 	for (auto iter = tokens.Begin(); !iter.End(); ++iter)
 	{
-		auto& token = iter.Get().token;
+		auto& token = *iter.Get().token;
 		if (printedVars.find(std::make_pair(token.refIdx, token.varIdx)) != printedVars.end())
 			continue;
 		if (token.IsVariable())

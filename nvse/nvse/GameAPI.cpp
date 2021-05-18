@@ -407,9 +407,7 @@ bool ExtractExpression(ParamInfo* paramInfo, UInt8*& scriptData, Script* scriptO
 		return false;
 	const auto result = evaluator.ConvertDefaultArg(token, paramInfo, true, args);
 	delete token;
-	if (!result)
-		return false;
-	return true;
+	return result;
 }
 
 // Corresponds to ParamType

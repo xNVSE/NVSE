@@ -593,7 +593,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 			{
 				while (*curScriptText && *curScriptText != '\n') 
 					++curScriptText;
-				// fallback intentional
+				continue;
 			}
 			default:
 			{

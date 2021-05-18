@@ -27,6 +27,7 @@ class FunctionCaller;
 #endif
 
 extern ErrOutput g_ErrOut;
+extern std::unordered_map<ScriptBuffer*, ScriptBuffer*> g_lambdaParentScriptMap;
 
 
 // these are used in ParamInfo to specify expected Token_Type of args to commands taking NVSE expressions as args

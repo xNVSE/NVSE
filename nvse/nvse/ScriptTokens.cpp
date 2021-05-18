@@ -21,6 +21,9 @@ ScriptToken::~ScriptToken()
 #ifdef DBG_EXPR_LEAKS
 	TOKEN_COUNT--;
 #endif
+#if RUNTIME
+	if (cached) return;
+#endif
 	if (type == kTokenType_String && value.str)
 	{
 		free(value.str);
@@ -159,28 +162,6 @@ ScriptToken::ScriptToken(CommandInfo* cmdInfo, UInt16 refIdx) : type(kTokenType_
 {
 	INC_TOKEN_COUNT
 	value.cmd = cmdInfo;
-}
-
-ScriptToken::ScriptToken(const ScriptToken &from)
-{
-	INC_TOKEN_COUNT
-	type = from.type;
-	variableType = from.variableType;
-	owningScript = from.owningScript;
-	refIdx = from.refIdx;
-	returnType = from.returnType;
-#if RUNTIME
-	cached = from.cached;
-	cmdOpcodeOffset = from.cmdOpcodeOffset;
-	context = from.context;
-	varIdx = from.varIdx;
-	shortCircuitParentType = from.shortCircuitParentType;
-	shortCircuitDistance = from.shortCircuitDistance;
-	shortCircuitStackOffset = from.shortCircuitStackOffset;
-#endif
-	if (type == kTokenType_String)
-		value.str = from.value.str ? CopyString(from.value.str) : NULL;
-	else value = from.value;
 }
 
 bool ScriptToken::IsInvalid() const
@@ -367,8 +348,24 @@ thread_local SmallObjectsAllocator::FastAllocator<ScriptToken, 32> g_scriptToken
 
 void* ScriptToken::operator new(size_t size)
 {
+	return operator new (size, true);
+}
+
+void* ScriptToken::operator new(size_t size, const bool useMemoryPool)
+{
 	//return ::operator new(size);
-	return g_scriptTokenAllocator.Allocate();
+	ScriptToken* alloc;
+	if (useMemoryPool)
+	{
+		alloc = g_scriptTokenAllocator.Allocate();
+		alloc->memoryPooled = true;
+	}
+	else
+	{
+		alloc = static_cast<ScriptToken*>(::operator new(size));
+		alloc->memoryPooled = false;
+	}
+	return alloc;
 }
 
 void ScriptToken::operator delete(void* p)
@@ -376,25 +373,27 @@ void ScriptToken::operator delete(void* p)
 	auto* token = static_cast<ScriptToken*>(p);
 	if (token && !token->cached)
 	{
-		g_scriptTokenAllocator.Free(token);
-	}
-	//::operator delete(p);
-}
-
-ScriptToken& ScriptToken::operator=(const ScriptToken& rhs)
-{
-	if (this != &rhs)
-	{
-		if ((type == kTokenType_String) && value.str)
-			free(value.str);
-		memcpy(this, &rhs, sizeof(ScriptToken));
-		if ((type == kTokenType_String) && value.str)
+		if (token->memoryPooled)
 		{
-			char *strCopy = CopyString(value.str);
-			value.str = strCopy;
+			g_scriptTokenAllocator.Free(token);
+		}
+		else
+		{
+			::operator delete(p);
 		}
 	}
-	return *this;
+}
+
+void ScriptToken::operator delete(void* p, const bool useMemoryPool)
+{
+	if (useMemoryPool)
+	{
+		g_scriptTokenAllocator.Free(p);
+	}
+	else
+	{
+		::operator delete(p);
+	}
 }
 
 ArrayElementToken::ArrayElementToken(ArrayID arr, ArrayKey* _key)
@@ -680,15 +679,13 @@ TESForm* ScriptToken::GetTESForm()
 	if (type == kTokenType_Form)
 		return LookupFormByID(value.formID);
 	if (type == kTokenType_RefVar && value.var)
-	{
 		return LookupFormByID(*reinterpret_cast<UInt32*>(&value.var->data));
-	}
 #endif
-
+	if (type == kTokenType_Lambda)
+		return value.lambda;
 	if (type == kTokenType_Ref && value.refVar)
 		return value.refVar->form;
-	else
-		return NULL;
+	return NULL;
 }
 
 double ScriptToken::GetNumber()
@@ -917,7 +914,7 @@ bool ScriptToken::CanConvertTo(Token_Type to) const
 
 ScriptToken* ScriptToken::Read(ExpressionEvaluator* context)
 {
-	ScriptToken* newToken = new ScriptToken();
+	auto* newToken = new (false) ScriptToken();
 	if (newToken->ReadFrom(context) != kTokenType_Invalid)
 		return newToken;
 
@@ -1113,7 +1110,8 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		CdeclCall(0x5AB7F0, &context->script->refList, &script->refList); // CopyRefList
 		script->info.numRefs = context->script->info.numRefs;
 		script->info.varCount = context->script->info.varCount;
-		this->value.lambda = script;
+		script->info.lastID = context->script->info.lastID;
+		value.lambda = script;
 		g_lambdaEventListMap.insert(value.lambda, context->eventList);
 		break;
 	}

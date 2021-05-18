@@ -4,6 +4,7 @@
 #include "GameObjects.h"
 #include "CommandTable.h"
 #include "GameRTTI.h"
+#include "ScriptUtils.h"
 
 UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText)
 {
@@ -251,7 +252,16 @@ UInt32 ScriptBuffer::GetVariableType(VariableInfo* varInfo, Script::RefVariable*
 			return Script::eVarType_Invalid;
 	}
 
-	return GetDeclaredVariableType(varInfo->name.m_data, scrText);
+	const auto res = GetDeclaredVariableType(varInfo->name.m_data, scrText);
+	if (res == Script::eVarType_Invalid)
+	{
+		if (auto iter = g_lambdaParentScriptMap.find(this); iter != g_lambdaParentScriptMap.end())
+		{
+			// if script is a lambda, use parent script's 
+			return iter->second->GetVariableType(varInfo, refVar);
+		}
+	}
+	return res;
 }
 
 /******************************
