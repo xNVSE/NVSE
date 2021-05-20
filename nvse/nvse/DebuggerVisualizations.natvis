@@ -65,8 +65,17 @@
 			</ArrayItems>
 		</Expand>
 	</Type>
-	<Type Name="kEvaluator::Token">
-		<DisplayString Condition="type == 1">Operand={value.operand}</DisplayString>
-		<DisplayString Condition="type == 3">Operator={value.operator_}</DisplayString>
+	<Type Name="tList&lt;*&gt;">
+		<DisplayString>{{ BSSimpleList }}</DisplayString>
+		<Expand>
+			<CustomListItems>
+				<Variable Name="v_iter" InitialValue="&amp;m_listHead"/>
+				<Loop>
+					<Break Condition="v_iter == 0"/>
+					<Item>v_iter-&gt;data</Item>
+					<Exec>v_iter = v_iter-&gt;next</Exec>
+				</Loop>
+			</CustomListItems>
+		</Expand>
 	</Type>
 </AutoVisualizer>
