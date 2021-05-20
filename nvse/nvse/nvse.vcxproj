@@ -611,6 +611,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="LambdaManager.cpp" />
     <ClCompile Include="Loops.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
@@ -698,6 +699,7 @@
     <ClInclude Include="Hooks_Script.h" />
     <ClInclude Include="InventoryInfo.h" />
     <ClInclude Include="InventoryReference.h" />
+    <ClInclude Include="LambdaManager.h" />
     <ClInclude Include="Loops.h" />
     <ClInclude Include="MemoryPool.h" />
     <ClInclude Include="NiNodes.h" />
@@ -731,7 +733,7 @@
     <ResourceCompile Include="nvse_version.rc" />
   </ItemGroup>
   <ItemGroup>
-    <Natvis Include="JIPContainers.natvis" />
+    <Natvis Include="DebuggerVisualizations.natvis" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

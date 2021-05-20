@@ -17,9 +17,6 @@ extern SInt32 FUNCTION_CONTEXT_COUNT;
 #include "StringVar.h"
 #include "GameAPI.h"
 
-
-extern stde::unordered_bimap<Script*, ScriptEventList*> g_lambdaParentScriptEventListMap;
-
 #endif
 
 
@@ -292,6 +289,7 @@ struct ScriptToken
 	static ScriptToken* Create(UInt32 varID, UInt32 lbound, UInt32 ubound);
 	static ScriptToken* Create(ArrayElementToken* elem, UInt32 lbound, UInt32 ubound);
 	static ScriptToken* Create(UInt32 bogus);	// unimplemented, to block implicit conversion to double
+	static ScriptToken* Create(Script* scriptLambda) { return scriptLambda ?  new ScriptToken(scriptLambda) : nullptr; }
 
 	void SetString(const char *srcStr);
 	std::string GetVariableName(ScriptEventList* eventList) const;
@@ -304,7 +302,7 @@ struct ScriptToken
 	void operator delete(void* p);
 	void operator delete(void* p, bool useMemoryPool);
 	
-	bool cached = false;
+	bool cached;
 	UInt32 cmdOpcodeOffset;
 	ExpressionEvaluator* context;
 	UInt16		varIdx;

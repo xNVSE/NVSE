@@ -7,6 +7,7 @@
 #include "GameRTTI.h"
 #include "SmallObjectsAllocator.h"
 #include "GameObjects.h"
+#include "LambdaManager.h"
 
 #ifdef DBG_EXPR_LEAKS
 	SInt32 TOKEN_COUNT = 0;
@@ -34,7 +35,6 @@ ScriptToken::~ScriptToken()
 #if RUNTIME
 		// Keep commented, memory has to be reused, NO FREEING THE POINTER
 		// Delete<Script, 0x5AA1A0>(value.lambda);
-		ThisStdCall(0x5AA1A0, value.lambda); // call destructor though to free script data pointer
 #else
 		Delete<Script, 0x5C5220>(value.lambda);
 #endif
@@ -359,11 +359,13 @@ void* ScriptToken::operator new(size_t size, const bool useMemoryPool)
 	{
 		alloc = g_scriptTokenAllocator.Allocate();
 		alloc->memoryPooled = true;
+		alloc->cached = false;
 	}
 	else
 	{
 		alloc = static_cast<ScriptToken*>(::operator new(size));
 		alloc->memoryPooled = false;
+		alloc->cached = true;
 	}
 	return alloc;
 }
@@ -914,7 +916,7 @@ bool ScriptToken::CanConvertTo(Token_Type to) const
 
 ScriptToken* ScriptToken::Read(ExpressionEvaluator* context)
 {
-	auto* newToken = new (false) ScriptToken();
+	auto* newToken = new (false) ScriptToken(); // false marks the token as cached, it can't be deleted until it's not cached.
 	if (newToken->ReadFrom(context) != kTokenType_Invalid)
 		return newToken;
 
@@ -929,12 +931,6 @@ Map<ScriptEventList*, Map<UInt32, NVSEVarType>> g_nvseVarGarbageCollectionMap;
 #else
 UnorderedMap<ScriptEventList*, UnorderedMap<UInt32, NVSEVarType>> g_nvseVarGarbageCollectionMap;
 #endif
-
-stde::unordered_bimap<Script*, ScriptEventList*> g_lambdaParentScriptEventListMap;
-
-// This is required since if the script token cache is cleared and a plugin has a reference to the script it has to be in the same place
-// or the plugin will keep a reference to an invalid pointer.
-std::unordered_map<UInt8*, Script*> g_lambdaHeapMap;
 
 Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 {
@@ -1087,35 +1083,13 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 	case 'F':
 	{
 		type = kTokenType_Lambda;
+		// context: we need a script lambda per event list so that each lambda can copy the appropriate locals; tokens are created
+		// once per script data so we need to create the Script object later
 		const auto dataLen = context->Read32();
-		auto* const dataPtr = context->Data();
-		context->Data() += dataLen;
-		//auto* scriptData = static_cast<UInt8*>(FormHeap_Allocate(dataLen));
-		//context->ReadBuf(dataLen, scriptData);
-
-		// auto script = MakeUnique<Script, 0x5AA0F0, 0x5AA1A0>();
-		Script* script;
-		if (const auto iter = g_lambdaHeapMap.find(context->GetCommandOpcodePosition()); iter != g_lambdaHeapMap.end())
-		{
-			// if a script is being recompiled (i.e. through hot reload) it's important that script pointers in plugins don't get invalidated
-			script = iter->second;
-			ThisStdCall(0x5AA0F0, script); // script constructor
-		}
-		else
-		{
-			script = New<Script, 0x5AA0F0>();
-			g_lambdaHeapMap.emplace(context->GetCommandOpcodePosition(), script);
-		}
-		script->data = dataPtr;
-		script->info.dataLength = dataLen;
-		CdeclCall(0x5AB930, &context->script->varList, &script->varList); // CopyVarList
-		CdeclCall(0x5AB7F0, &context->script->refList, &script->refList); // CopyRefList
-		script->info.numRefs = context->script->info.numRefs;
-		script->info.varCount = context->script->info.varCount;
-		script->info.lastID = context->script->info.lastID;
-		value.lambda = script;
-		g_lambdaParentScriptEventListMap.insert(value.lambda, context->eventList);
-			
+		auto* scriptData = static_cast<UInt8*>(FormHeap_Allocate(dataLen));
+		context->ReadBuf(dataLen, scriptData);
+		LambdaManager::g_lastScriptData = LambdaManager::ScriptData(scriptData, dataLen);
+		value.lambda = nullptr;
 		break;
 	}
 	default:

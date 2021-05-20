@@ -193,7 +193,7 @@ class ExpressionParser
 	Token_Type			m_argTypes[kMaxArgs];
 	UInt8				m_numArgsParsed;
 
-	enum {								// varargs
+	enum ScriptLineError {								// varargs
 		kError_CantParse,
 		kError_TooManyOperators,
 		kError_TooManyOperands,
@@ -213,9 +213,11 @@ class ExpressionParser
 		kError_UserFunctionVarsMustPrecedeDefinition,
 		kError_UserFunctionParamsUndefined,
 		kError_ExpectedStringLiteral,
+		kError_LineDataOverflow,
 
 		kWarning_UnquotedString,		// string:unquotedString
 		kWarning_FunctionPointer,
+
 
 		kError_Max
 	};
@@ -230,7 +232,7 @@ class ExpressionParser
 	const char * Text()	{ return m_lineBuf->paramText; }
 	const char * CurText() { return Text() + Offset(); }
 
-	void	Message(UInt32 errorCode, ...);
+	void	Message(ScriptLineError errorCode, ...) const;
 
 	void PrintCompileError(const std::string& message) const;
 

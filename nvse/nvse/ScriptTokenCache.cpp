@@ -74,6 +74,7 @@ bool TokenCache::Empty() const
 
 void TokenCache::MarkForClear()
 {
+	// Required since cache is thread_local and needs to be cleared on each thread
 	++tlsClearAllCookie_;
 }
 

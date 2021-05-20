@@ -14,6 +14,7 @@
 #include "ParamInfos.h"
 #include "FunctionScripts.h"
 #include "GameRTTI.h"
+#include "LambdaManager.h"
 #if RUNTIME
 
 #ifdef DBG_EXPR_LEAKS
@@ -2077,6 +2078,7 @@ static ErrOutput::Message s_expressionErrors[] =
 	{	"Variables in user function scripts must precede function definition."	},
 	{	"Could not parse user function parameter list in function definition.\nMay be caused by undefined variable,  missing {brackets}, or attempt to use a single variable to hold more than one parameter."	},
 	{	"Expected string literal."	},
+	{	"Too much compiled data for a single line/multi-line parenthesis expression." },
 
 	// warnings
 	{	"Unquoted argument '%s' will be treated as string by default. Check spelling if a form or variable was intended.", true	},
@@ -2088,7 +2090,7 @@ static ErrOutput::Message s_expressionErrors[] =
 
 ErrOutput::Message * ExpressionParser::s_Messages = s_expressionErrors;
 
-void ExpressionParser::Message(UInt32 errorCode, ...)
+void ExpressionParser::Message(ScriptLineError errorCode, ...) const
 {
 	errorCode = errorCode > kError_Max ? kError_Max : errorCode;
 	va_list args;
@@ -2217,7 +2219,12 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 				return kTokenType_Invalid;
 
 			// write it to postfix expression, we'll check validity below
-			operand->Write(m_lineBuf);
+			if (!operand->Write(m_lineBuf))
+			{
+				delete operand;
+				Message(kError_LineDataOverflow);
+				return kTokenType_Invalid;
+			}
 			operandType = operand->Type();
 
 			CommandInfo* cmdInfo = operand->GetCommandInfo();
@@ -3752,10 +3759,10 @@ bool ExpressionEvaluator::ParseBytecode(CachedTokens& cachedTokens)
 	const UInt8 *endData = m_data + argLen - sizeof(UInt16);
 	while (m_data < endData)
 	{
-		TokenCacheEntry *entry = cachedTokens.Append(ScriptToken::Read(this));
-		if (entry->token->IsInvalid())
+		auto* token = ScriptToken::Read(this);
+		if (!token) 
 			return false;
-		entry->token->cached = true;
+		cachedTokens.Append(token);
 	}
 	cachedTokens.incrementData = m_data - dataBeforeParsing;
 	ParseShortCircuit(cachedTokens);
@@ -3908,15 +3915,21 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 		}
 		while (operands.Size())
 		{
-			ScriptToken *operand = operands.Top();
-			if (operand)
-				delete operand;
+			auto* operand = operands.Top();
+			delete operand;
 			operands.Pop();
 		}
 		return nullptr;
 	}
 
-	return operands.Top();
+	auto* result = operands.Top();
+	if (result->type == kTokenType_Lambda)
+	{
+		// There needs to be a unique lambda per script event list so that variables can have the correct values
+		result = ScriptToken::Create(LambdaManager::CreateLambdaScript(cacheKey, eventList, script));
+	}
+	
+	return result;
 }
 
 std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken& faultingToken) const

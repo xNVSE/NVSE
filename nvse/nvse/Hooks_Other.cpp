@@ -5,6 +5,7 @@
 #include "SafeWrite.h"
 #include "Commands_UI.h"
 #include "Hooks_Gameplay.h"
+#include "LambdaManager.h"
 
 #if RUNTIME
 namespace OtherHooks
@@ -52,7 +53,7 @@ namespace OtherHooks
 				{
 				case NVSEVarType::kVarType_String:
 					// make sure not to delete string vars from lambdas as the parent script owns them; not necessary for arrays since the have ref counting
-					if (!g_lambdaParentScriptEventListMap.has_key(eventList->m_script))
+					if (LambdaManager::IsScriptLambda(eventList->m_script))
 						g_StringMap.MarkTemporary(static_cast<int>(node->var->data), true);
 					break;
 				case NVSEVarType::kVarType_Array:
@@ -72,7 +73,7 @@ namespace OtherHooks
 	void DeleteEventList(ScriptEventList* eventList)
 	{
 		CleanUpNVSEVars(eventList);
-		g_lambdaParentScriptEventListMap.erase_value(eventList); // erase if exists
+		LambdaManager::MarkParentAsDeleted(eventList); // deletes if exists
 		ThisStdCall(0x5A8BC0, eventList);
 		GameHeapFree(eventList);
 	}
