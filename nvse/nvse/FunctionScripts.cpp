@@ -527,6 +527,7 @@ FunctionContext::~FunctionContext()
 		else {
 			m_eventList->ResetAllVariables();
 		}
+		LambdaManager::MarkParentAsDeleted(m_eventList); // If any lambdas refer to the event list, clear them away
 	}
 
 	delete m_result;
