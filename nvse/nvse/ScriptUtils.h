@@ -256,6 +256,8 @@ public:
 
 	bool			ParseArgs(ParamInfo* params, UInt32 numParams, bool bUsesNVSEParamTypes = true);
 	bool			ValidateArgType(UInt32 paramType, Token_Type argType, bool bIsNVSEParam);
+	bool ParseUserFunctionParameters(std::vector<UserFunctionParam>& out, const std::string& funcScriptText,
+	                                 Script::VarInfoList* funcScriptVars) const;
 	bool			ParseUserFunctionCall();
 	bool			ParseUserFunctionDefinition();
 	ScriptToken	*	ParseOperand(bool (* pred)(ScriptToken* operand));

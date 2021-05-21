@@ -1773,7 +1773,7 @@ static ParamInfo kParams_DefaultUserFunctionParams[] =
 // records version of bytecode representation to avoid problems if representation changes later
 static const UInt8 kUserFunction_Version = 1;
 
-bool GetUserFunctionParams(const std::string& scriptText, std::vector<UserFunctionParam> &outParams, Script::VarInfoList* varList)
+bool GetUserFunctionParamNames(const std::string& scriptText, std::vector<std::string>& out)
 {
 	std::string lineText;
 	Tokenizer lines(scriptText.c_str(), "\r\n");
@@ -1791,32 +1791,42 @@ bool GetUserFunctionParams(const std::string& scriptText, std::vector<UserFuncti
 				if (argStartPos == -1 || argEndPos == -1 || (argStartPos > argEndPos))
 					return false;
 
-				std::string argStr = lineText.substr(argStartPos+1, argEndPos - argStartPos - 1);
+				std::string argStr = lineText.substr(argStartPos + 1, argEndPos - argStartPos - 1);
 				Tokenizer argTokens(argStr.c_str(), "\t ,");
 				while (argTokens.NextToken(token) != -1)
 				{
-					VariableInfo* varInfo = varList->GetVariableByName(token.c_str());
-					if (!varInfo)
-						return false;
-
-					UInt32 varType = GetDeclaredVariableType(token.c_str(), scriptText.c_str());
-					if (varType == Script::eVarType_Invalid)
-						return false;
-
-					// make sure user isn't trying to use a var more than once as a param
-					for (UInt32 i = 0; i < outParams.size(); i++)
-						if (outParams[i].varIdx == varInfo->idx)
-							return false;
-
-					outParams.push_back(UserFunctionParam(varInfo->idx, varType));
+					out.push_back(token);
 				}
-
 				return true;
 			}
 		}
 	}
 
 	return false;
+}
+
+bool GetUserFunctionParams(const std::vector<std::string>& paramNames, std::vector<UserFunctionParam> &outParams, Script::VarInfoList* varList, const std::string& fullScriptText)
+{
+	for (const auto& token : paramNames)
+	{
+		VariableInfo* varInfo = varList->GetVariableByName(token.c_str());
+		if (!varInfo)
+			return false;
+
+		UInt32 varType = GetDeclaredVariableType(token.c_str(), fullScriptText.c_str());
+		if (varType == Script::eVarType_Invalid)
+		{
+			return false;
+		}
+
+		// make sure user isn't trying to use a var more than once as a param
+		for (UInt32 i = 0; i < outParams.size(); i++)
+			if (outParams[i].varIdx == varInfo->idx)
+				return false;
+
+		outParams.push_back(UserFunctionParam(varInfo->idx, varType));
+	}
+	return true;
 }
 
 // index into array with Script::eVarType_XXX
@@ -1834,6 +1844,34 @@ DynamicParamInfo::DynamicParamInfo(std::vector<UserFunctionParam> &params)
 	m_numParams = params.size() > kMaxParams ? kMaxParams : params.size();
 	for (UInt32 i = 0; i < m_numParams && i < kMaxParams; i++)
 		m_paramInfo[i] = kDynamicParams[params[i].varType];
+}
+
+bool ExpressionParser::ParseUserFunctionParameters(std::vector<UserFunctionParam>& out, const std::string& funcScriptText, Script::VarInfoList* funcScriptVars) const
+{
+	std::vector<std::string> funcParamNames;
+	if (!GetUserFunctionParamNames(funcScriptText, funcParamNames))
+	{
+		Message(kError_UserFunctionParamsUndefined);
+		return false;
+	}
+
+	if (!GetUserFunctionParams(funcParamNames, out, funcScriptVars, funcScriptText))
+	{
+		auto success = false;
+		// check if lambda
+		if (const auto lambdaParentIter = g_lambdaParentScriptMap.find(m_scriptBuf); lambdaParentIter != g_lambdaParentScriptMap.end())
+		{
+			const auto* scrText = lambdaParentIter->second->scriptText;
+			if (GetUserFunctionParams(funcParamNames, out, funcScriptVars, scrText))
+				success = true;
+		}
+		if (!success)
+		{
+			Message(kError_UserFunctionParamsUndefined);
+			return false;
+		}
+	}
+	return true;
 }
 
 bool ExpressionParser::ParseUserFunctionCall()
@@ -1923,12 +1961,9 @@ bool ExpressionParser::ParseUserFunctionCall()
 		}
 
 		std::vector<UserFunctionParam> funcParams;
-		if (!GetUserFunctionParams(funcScriptText, funcParams, funcScriptVars))
-		{
-			Message(kError_UserFunctionParamsUndefined);
+		if (!ParseUserFunctionParameters(funcParams, funcScriptText, funcScriptVars))
 			return false;
-		}
-
+		
 		DynamicParamInfo dynamicParams(funcParams);
 		bParsed = ParseArgs(dynamicParams.Params(), dynamicParams.NumParams());
 	}
@@ -1962,15 +1997,12 @@ bool ExpressionParser::ParseUserFunctionDefinition()
 
 	// parse parameter list
 	std::vector<UserFunctionParam> params;
-	if (!GetUserFunctionParams(m_scriptBuf->scriptText, params, &m_scriptBuf->vars))
-	{
-		Message(kError_UserFunctionParamsUndefined);
+	if (!ParseUserFunctionParameters(params, m_scriptBuf->scriptText, &m_scriptBuf->vars))
 		return false;
-	}
 
 	// write param info
 	m_lineBuf->WriteByte(params.size());
-	for (std::vector<UserFunctionParam>::iterator iter = params.begin(); iter != params.end(); ++iter)
+	for (auto iter = params.begin(); iter != params.end(); ++iter)
 	{
 		m_lineBuf->Write16(iter->varIdx);
 		m_lineBuf->WriteByte(iter->varType);

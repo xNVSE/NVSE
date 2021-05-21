@@ -155,7 +155,7 @@ protected:
 	TESObjectREFR	* m_thisObj;
 	TESObjectREFR	* m_container;
 
-	virtual bool ValidateParam(UserFunctionParam* param, UInt8 paramIndex) { return true; }
+	virtual bool ValidateParam(UserFunctionParam* param, UInt8 paramIndex) { return param != nullptr; }
 }; 
 
 namespace PluginAPI {

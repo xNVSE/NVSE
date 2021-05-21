@@ -6,6 +6,7 @@
 
 #include "containers.h"
 #include "GameData.h"
+#include "LambdaManager.h"
 #include "PluginAPI.h"
 #include "PluginManager.h"
 
@@ -660,16 +661,25 @@ void ShowRuntimeError(Script* script, const char* fmt, ...)
 	const auto* modName = GetModName(script);
 	
 	const auto* scriptName = script ? script->GetName() : nullptr; // JohnnyGuitarNVSE allows this
+	auto refId = script ? script->refID : 0;
+	if (script && LambdaManager::IsScriptLambda(script))
+	{
+		Script* parentScript;
+		if (auto* parentEventList = LambdaManager::GetParentEventList(script); parentEventList && ((parentScript = parentEventList->m_script)))
+		{
+			refId = parentScript->refID;
+			scriptName = parentScript->GetName();
+		}
+	}
 	if (scriptName && strlen(scriptName) != 0)
 	{
-		sprintf_s(errorHeader, sizeof(errorHeader), "Error in script %08X (%s) in mod %s\n%s", script ? script->refID : 0, scriptName, modName, errorMsg);
+		sprintf_s(errorHeader, sizeof(errorHeader), "Error in script %08X (%s) in mod %s\n%s", refId, scriptName, modName, errorMsg);
 	}
 	else
 	{
-		sprintf_s(errorHeader, sizeof(errorHeader), "Error in script %08X in mod %s\n%s", script ? script->refID : 0, modName, errorMsg);
+		sprintf_s(errorHeader, sizeof(errorHeader), "Error in script %08X in mod %s\n%s", refId, modName, errorMsg);
 	}
 
-	auto refId = script ? script->refID : 0xDEADBEEF;
 
 	if (g_warnedScripts.Insert(refId))
 	{

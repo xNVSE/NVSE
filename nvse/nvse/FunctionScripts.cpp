@@ -584,6 +584,7 @@ bool InternalFunctionCaller::PopulateArgs(ScriptEventList* eventList, FunctionIn
 	for (UInt32 i = 0; i < m_numArgs; i++) {
 		UserFunctionParam* param = info->GetParam(i);
 		if (!ValidateParam(param, i)) {
+			ShowRuntimeError(m_script, "Failed to extract arg %d", i);
 			return false;
 		}
 
