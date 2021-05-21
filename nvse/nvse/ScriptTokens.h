@@ -309,6 +309,7 @@ struct ScriptToken
 	OperatorType shortCircuitParentType;
 	UInt8 shortCircuitDistance;
 	UInt8 shortCircuitStackOffset;
+	bool formOrNumber = false;
 
 #if _DEBUG
 	std::string varName;

@@ -688,6 +688,8 @@ TESForm* ScriptToken::GetTESForm()
 		return value.lambda;
 	if (type == kTokenType_Ref && value.refVar)
 		return value.refVar->form;
+	if (type == kTokenType_Number && formOrNumber)
+		return LookupFormByID(*reinterpret_cast<UInt32*>(&value.num));
 	return NULL;
 }
 

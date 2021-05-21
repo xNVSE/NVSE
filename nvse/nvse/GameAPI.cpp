@@ -900,6 +900,30 @@ tList<ScriptEventList::Var>* ScriptEventList::GetVars() const
 	return reinterpret_cast<tList<Var>*>(m_vars);
 }
 
+bool vExtractExpression(ParamInfo* paramInfo, UInt8*& scriptData, Script* scriptObj, ScriptEventList* eventList, void* scriptDataIn, va_list& args)
+{
+	double unusedResult = 0;
+	UInt32 offset = scriptData - static_cast<UInt8*>(scriptDataIn);
+	ExpressionEvaluator evaluator(paramInfo, scriptDataIn, nullptr, nullptr, scriptObj, eventList, &unusedResult, &offset);
+	evaluator.m_inline = true;
+	auto* token = evaluator.Evaluate();
+	scriptData += offset - (scriptData - static_cast<UInt8*>(scriptDataIn));
+	if (!token)
+		return false;
+	const auto result = evaluator.ConvertDefaultArg(token, paramInfo, true, args);
+	delete token;
+	return result;
+}
+
+bool ExtractExpression(ParamInfo* paramInfo, UInt8*& scriptData, Script* scriptObj, ScriptEventList* eventList, void* scriptDataIn, ...)
+{
+	va_list args;
+	va_start(args, scriptDataIn);
+	auto res = vExtractExpression(paramInfo, scriptData, scriptObj, eventList, scriptDataIn, args);
+	va_end(args);
+	return res;
+}
+
 ScriptEventList::Var *ExtractScriptVar(UInt8 *&scriptData, Script *scriptObj, ScriptEventList *eventList)
 {
 	if (*scriptData == 'r')		//reference to var in another script
@@ -926,21 +950,29 @@ ScriptEventList::Var *ExtractScriptVar(UInt8 *&scriptData, Script *scriptObj, Sc
 	return NULL;
 }
 
-static bool ExtractFloat(double *out, UInt8 *&scriptData, Script *scriptObj, ScriptEventList *eventList)
+static bool ExtractFloat(double *out, UInt8 *&scriptData, Script *scriptObj, ScriptEventList *eventList, void* scriptDataIn)
 {
+	if (*scriptData == 0xFF)
+	{
+		++scriptData;
+		ParamInfo floatInfo{ "float", kParamType_Double, false };
+		if (!ExtractExpression(&floatInfo, scriptData, scriptObj, eventList, scriptDataIn, out))
+			return false;
+		return true;
+	}
 	if (*scriptData == 'z')
 	{
 		*out = *(double*)(scriptData + 1);
 		scriptData += 9;
 		return true;
 	}
-	else if (*scriptData == 'n')
+	if (*scriptData == 'n')
 	{
 		*out = *(SInt32*)(scriptData + 1);
 		scriptData += 5;
 		return true;
 	}
-	else if (*scriptData == 'G')
+	if (*scriptData == 'G')
 	{
 		Script::RefVariable *globalRef = scriptObj->GetRefFromRefList(*(UInt16*)(scriptData + 1));
 		if (globalRef && globalRef->form && IS_ID(globalRef->form, TESGlobal))
@@ -963,9 +995,17 @@ static bool ExtractFloat(double *out, UInt8 *&scriptData, Script *scriptObj, Scr
 	return false;
 }
 
-TESForm* ExtractFormFromFloat(UInt8* &scriptData, Script* scriptObj, ScriptEventList* eventList)
+TESForm* ExtractFormFromFloat(UInt8* &scriptData, Script* scriptObj, ScriptEventList* eventList, void* scriptDataIn)
 {
 	TESForm* outForm = NULL;
+	if (*scriptData == 0xFF)
+	{
+		++scriptData;
+		ParamInfo formInfo{ "form", kParamType_AnyForm, false };
+		if (!ExtractExpression(&formInfo, scriptData, scriptObj, eventList, scriptDataIn, &outForm))
+			return nullptr;
+		return outForm;
+	}
 	if (*scriptData == 'r')		//doesn't work as intended yet so refs must be local vars
 	{
 		eventList = ResolveExternalVar(eventList, scriptObj, scriptData);
@@ -982,7 +1022,7 @@ TESForm* ExtractFormFromFloat(UInt8* &scriptData, Script* scriptObj, ScriptEvent
 
 	return outForm;
 }
-
+#if 0
 TESForm* ResolveForm(UInt8* &scriptData, Script* scriptObj, ScriptEventList* eventList)
 {
 	TESForm* outForm = NULL;
@@ -1009,7 +1049,7 @@ TESForm* ResolveForm(UInt8* &scriptData, Script* scriptObj, ScriptEventList* eve
 	}
 	return outForm;
 }
-
+#endif
 static const char* StringFromStringVar(UInt32 strID)
 {
 #if NVSE_CORE
@@ -1038,21 +1078,6 @@ static const char* ResolveStringArgument(ScriptEventList* eventList, const char*
 		}
 	}
 
-	return result;
-}
-
-bool ExtractExpression(ParamInfo* paramInfo, UInt8*& scriptData, Script* scriptObj, ScriptEventList* eventList, va_list& args, void* scriptDataIn)
-{
-	double unusedResult = 0;
-	UInt32 offset = scriptData - scriptDataIn;
-	ExpressionEvaluator evaluator(paramInfo, scriptDataIn, nullptr, nullptr, scriptObj, eventList, &unusedResult, &offset);
-	evaluator.m_inline = true;
-	auto* token = evaluator.Evaluate();
-	scriptData += offset - (scriptData - scriptDataIn);
-	if (!token)
-		return false;
-	const auto result = evaluator.ConvertDefaultArg(token, paramInfo, true, args);
-	delete token;
 	return result;
 }
 
@@ -1088,7 +1113,7 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 		if (*scriptData == 0xFF)
 		{
 			++scriptData;
-			if (!ExtractExpression(&paramInfo[i], scriptData, scriptObj, eventList, args, scriptDataIn))
+			if (!vExtractExpression(&paramInfo[i], scriptData, scriptObj, eventList, scriptDataIn, args))
 				return false;
 			continue;
 		}
@@ -1143,7 +1168,7 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 				else
 				{
 					double data;
-					if (!ExtractFloat(&data, scriptData, scriptObj, eventList))
+					if (!ExtractFloat(&data, scriptData, scriptObj, eventList, scriptDataIn))
 						return false;
 					*out = data;
 				}
@@ -1166,7 +1191,7 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 			case kExtractParam_Float:
 			{
 				double data;
-				if (!ExtractFloat(&data, scriptData, scriptObj, eventList))
+				if (!ExtractFloat(&data, scriptData, scriptObj, eventList, scriptDataIn))
 					return false;
 				float *out = va_arg(args, float*);
 				*out = data;
@@ -1175,7 +1200,7 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 			case kExtractParam_Double:
 			{
 				double *out = va_arg(args, double*);
-				if (!ExtractFloat(out, scriptData, scriptObj, eventList))
+				if (!ExtractFloat(out, scriptData, scriptObj, eventList, scriptDataIn))
 					return false;
 				break;
 			}
@@ -2149,7 +2174,7 @@ bool ExtractFormatStringArgs(UInt32 fmtStringPos, char* buffer, ParamInfo * para
 			return false;
 	}
 
-	ScriptFormatStringArgs scriptArgs(numArgs, scriptData, scriptObj, eventList);
+	ScriptFormatStringArgs scriptArgs(numArgs, scriptData, scriptObj, eventList, scriptDataIn);
 	bExtracted = ExtractFormattedString(scriptArgs, buffer);
 
 	numArgs = scriptArgs.GetNumArgs();
@@ -2345,8 +2370,8 @@ UInt32 GetActorValueForString(const char* strActorVal, bool bForScript)
 	return eActorVal_NoActorValue;
 }
 
-ScriptFormatStringArgs::ScriptFormatStringArgs(UInt32 _numArgs, UInt8* _scriptData, Script* _scriptObj, ScriptEventList* _eventList)
-: numArgs(_numArgs), scriptData(_scriptData), scriptObj(_scriptObj), eventList(_eventList)
+ScriptFormatStringArgs::ScriptFormatStringArgs(UInt32 _numArgs, UInt8* _scriptData, Script* _scriptObj, ScriptEventList* _eventList, void* scriptDataIn)
+: numArgs(_numArgs), scriptData(_scriptData), scriptObj(_scriptObj), eventList(_eventList), scriptDataIn(scriptDataIn)
 {
 	//extract format string
 	UInt32 len = *(UInt16*)scriptData;
@@ -2467,13 +2492,13 @@ bool ScriptFormatStringArgs::Arg(FormatStringArgs::argType asType, void * outRes
 	{
 		case kArgType_Float:
 		{
-			if (ExtractFloat((double*)outResult, scriptData, scriptObj, eventList))
+			if (ExtractFloat((double*)outResult, scriptData, scriptObj, eventList, scriptDataIn))
 				return true;
 			break;
 		}
 		case kArgType_Form:
 		{
-			TESForm* form = ExtractFormFromFloat(scriptData, scriptObj, eventList);
+			TESForm* form = ExtractFormFromFloat(scriptData, scriptObj, eventList, scriptDataIn);
 			*((TESForm**)outResult) = form;
 			return true;
 		}

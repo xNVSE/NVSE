@@ -396,7 +396,7 @@ public:
 	virtual bool HasMoreArgs();
 	virtual char *GetFormatString();
 
-	ScriptFormatStringArgs(UInt32 _numArgs, UInt8* _scriptData, Script* _scriptObj, ScriptEventList* _eventList);
+	ScriptFormatStringArgs(UInt32 _numArgs, UInt8* _scriptData, Script* _scriptObj, ScriptEventList* _eventList, void* scriptDataIn);
 	UInt32 GetNumArgs();
 	UInt8* GetScriptData();
 
@@ -405,6 +405,7 @@ private:
 	UInt8			* scriptData;
 	Script			* scriptObj;
 	ScriptEventList		* eventList;
+	void* scriptDataIn;
 };
 bool SCRIPT_ASSERT(bool expr, Script* script, const char * errorMsg, ...);
 

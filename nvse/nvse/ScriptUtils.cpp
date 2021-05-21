@@ -3317,7 +3317,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 			break;
 		default:	// all the rest are TESForm
 			{
-				if (arg->CanConvertTo(kTokenType_Form)) {
+				if (arg->CanConvertTo(kTokenType_Form) || arg->type == kTokenType_Number && arg->formOrNumber) {
 					TESForm* form = arg->GetTESForm();
 
 					if (!bConvertTESForms) {
@@ -3626,6 +3626,10 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 						return false;
 					}
 				}
+				else
+				{
+					return false;
+				}
 			}
 	}
 
@@ -3689,7 +3693,11 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 	{
 	case kRetnType_Default:
 	{
-		return ScriptToken::Create(cmdResult);
+		auto* tokenResult = ScriptToken::Create(cmdResult);
+		// since there are no return types in most commands, we check if it's possible that it returned a form
+		if (*(reinterpret_cast<UInt32*>(&cmdResult) + 1) == 0 && LookupFormByID((*reinterpret_cast<UInt32*>(&cmdResult))))
+			tokenResult->formOrNumber = true; // Can be either
+		return tokenResult;
 	}
 	case kRetnType_Form:
 	{
