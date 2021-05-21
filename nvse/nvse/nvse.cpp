@@ -50,7 +50,6 @@ void WaitForDebugger(void)
 	{
 		Sleep(10);
 	}
-
 	Sleep(1000 * 2);
 }
 

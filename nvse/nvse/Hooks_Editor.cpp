@@ -579,7 +579,6 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 						*curLineText-- = '\0';
 						--lineBuf->paramTextLen;
 					}
-					//++lineBuf->lineNumber;
 					lineBuf->paramText[lineBuf->paramTextLen] = '\0';
 					lineBuf->lineNumber += numSpacesInParenthesis;
 					return curScriptText - oldScriptText;
@@ -592,10 +591,6 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 			{
 				while (*curScriptText && *curScriptText != '\n') 
 					++curScriptText;
-				// fallback intentional
-			}
-			case '\r':
-			{
 				continue;
 			}
 			default:

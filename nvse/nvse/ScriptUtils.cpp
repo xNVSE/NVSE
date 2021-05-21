@@ -14,6 +14,7 @@
 #include "ParamInfos.h"
 #include "FunctionScripts.h"
 #include "GameRTTI.h"
+#include "LambdaManager.h"
 #if RUNTIME
 
 #ifdef DBG_EXPR_LEAKS
@@ -1744,6 +1745,7 @@ bool ExpressionParser::ValidateArgType(UInt32 paramType, Token_Type argType, boo
 				return CanConvertOperand(argType, kTokenType_Array);
 			case kParamType_ScriptVariable:
 				return CanConvertOperand(argType, kTokenType_Variable);
+			
 			default:
 				// all the rest are TESForm of some sort or another
 				return CanConvertOperand(argType, kTokenType_Form);
@@ -1771,7 +1773,7 @@ static ParamInfo kParams_DefaultUserFunctionParams[] =
 // records version of bytecode representation to avoid problems if representation changes later
 static const UInt8 kUserFunction_Version = 1;
 
-bool GetUserFunctionParams(const std::string& scriptText, std::vector<UserFunctionParam> &outParams, Script::VarInfoEntry* varList)
+bool GetUserFunctionParams(const std::string& scriptText, std::vector<UserFunctionParam> &outParams, Script::VarInfoList* varList)
 {
 	std::string lineText;
 	Tokenizer lines(scriptText.c_str(), "\r\n");
@@ -1911,8 +1913,8 @@ bool ExpressionParser::ParseUserFunctionCall()
 	// if recursive call, look up from ScriptBuffer instead
 	if (funcScript && funcScript->text)
 	{
-		char* funcScriptText = funcScript->text;
-		Script::VarInfoEntry* funcScriptVars = &funcScript->varList;
+		const char* funcScriptText = funcScript->text;
+		Script::VarInfoList* funcScriptVars = &funcScript->varList;
 
 		if (!StrCompare(GetEditorID(funcScript), m_scriptBuf->scriptName.m_data))
 		{
@@ -2077,6 +2079,7 @@ static ErrOutput::Message s_expressionErrors[] =
 	{	"Variables in user function scripts must precede function definition."	},
 	{	"Could not parse user function parameter list in function definition.\nMay be caused by undefined variable,  missing {brackets}, or attempt to use a single variable to hold more than one parameter."	},
 	{	"Expected string literal."	},
+	{	"Too much compiled data for a single line/multi-line parenthesis expression." },
 
 	// warnings
 	{	"Unquoted argument '%s' will be treated as string by default. Check spelling if a form or variable was intended.", true	},
@@ -2088,7 +2091,7 @@ static ErrOutput::Message s_expressionErrors[] =
 
 ErrOutput::Message * ExpressionParser::s_Messages = s_expressionErrors;
 
-void ExpressionParser::Message(UInt32 errorCode, ...)
+void ExpressionParser::Message(ScriptLineError errorCode, ...) const
 {
 	errorCode = errorCode > kError_Max ? kError_Max : errorCode;
 	va_list args;
@@ -2109,6 +2112,15 @@ void ExpressionParser::Message(UInt32 errorCode, ...)
 	}
 
 	va_end(args);
+}
+
+void ExpressionParser::PrintCompileError(const std::string& message) const
+{
+#if RUNTIME
+	ShowCompilerError(m_lineBuf, message.c_str());
+#else
+	ShowCompilerError(m_scriptBuf, message.c_str());
+#endif
 }
 
 UInt32	ExpressionParser::MatchOpenBracket(Operator* openBracOp)
@@ -2208,7 +2220,12 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 				return kTokenType_Invalid;
 
 			// write it to postfix expression, we'll check validity below
-			operand->Write(m_lineBuf);
+			if (!operand->Write(m_lineBuf))
+			{
+				delete operand;
+				Message(kError_LineDataOverflow);
+				return kTokenType_Invalid;
+			}
 			operandType = operand->Type();
 
 			CommandInfo* cmdInfo = operand->GetCommandInfo();
@@ -2334,6 +2351,98 @@ Token_Type ExpressionParser::ParseArgument(UInt32 argsEndPos)
 	*reinterpret_cast<UInt16*>(dataStart) = m_lineBuf->dataBuf + m_lineBuf->dataOffset - dataStart;
 
 	return argType;
+}
+
+const void* g_scriptCompiler = reinterpret_cast<void*>(0xECFDF8);
+
+std::unordered_map<ScriptBuffer*, ScriptBuffer*> g_lambdaParentScriptMap;
+
+ScriptToken* ExpressionParser::ParseLambda()
+{
+#if RUNTIME
+	PrintCompileError("Anonymous functions are not supported from console.");
+	return nullptr;
+#endif
+	const auto* beginData = CurText() - strlen("begin");
+	auto nest = 1;
+	while (nest != 0 && CurText())
+	{
+		auto token = GetCurToken();
+		if (token.empty())
+		{
+			++Offset();
+			continue;
+		}
+		if (_stricmp(token.c_str(), "begin") == 0)
+			++nest;
+		else if (_stricmp(token.c_str(), "end") == 0)
+			--nest;
+	}
+	if (nest)
+	{
+		PrintCompileError("Mismatched begin/end block in anonymous user function/lambda");
+		return nullptr;
+	}
+	
+	std::string lambdaText(beginData, CurText() - beginData);
+	const auto lambdaScriptBuf = MakeUnique<ScriptBuffer, 0x5C5660, 0x5C8910>();
+	auto scriptLambda = MakeUnique<Script, 0x5C1D60, 0x5C5220>();
+
+	const auto varCount = m_scriptBuf->info.varCount;
+	const auto numRefs = m_scriptBuf->info.numRefs;
+	
+	lambdaScriptBuf->partialScript = true;
+	lambdaScriptBuf->currentScript = scriptLambda.get();
+
+	scriptLambda->info.varCount = varCount;
+	scriptLambda->info.lastID = varCount;
+	scriptLambda->info.numRefs = numRefs;
+	
+	lambdaScriptBuf->info.varCount = varCount;
+	lambdaScriptBuf->info.lastID = varCount;
+	lambdaScriptBuf->info.numRefs= numRefs;
+	
+	lambdaScriptBuf->scriptText = lambdaText.data();
+	lambdaScriptBuf->scriptName.Set(FormatString("%sLambdaAtLine%d", m_scriptBuf->scriptName.CStr(), m_lineBuf->lineNumber).c_str());
+	lambdaScriptBuf->curLineNumber = m_lineBuf->lineNumber;
+
+	*lambdaScriptBuf->scriptData = 0x1D; // Fake a script name (1D 00 00 00) so that it's not an outlier from other scripts
+	lambdaScriptBuf->dataOffset = 4;
+
+	// CdeclCall(0x5C3310, &this->m_scriptBuf->refVars, &lambdaScriptBuf->refVars, nullptr); // CopyRefList(from, to, unk)
+	// CdeclCall(0x5C2CE0, &this->m_scriptBuf->vars, &lambdaScriptBuf->vars); // CopyVarList(from, to)
+
+	// we want the compile to add onto out ref list and var list, so we copy the pointers
+	lambdaScriptBuf->refVars = m_scriptBuf->refVars;
+	lambdaScriptBuf->vars = m_scriptBuf->vars;
+
+	auto* beginEndOffset = reinterpret_cast<UInt32*>(0xED9D54);
+	const auto savedOffset = *beginEndOffset;
+	*beginEndOffset = 0;
+
+	g_lambdaParentScriptMap.emplace(lambdaScriptBuf.get(), m_scriptBuf);
+
+	const auto compileResult = ThisStdCall<bool>(0x5C96E0, g_scriptCompiler, scriptLambda.get(), lambdaScriptBuf.get()); // CompileScript
+
+	g_lambdaParentScriptMap.erase(lambdaScriptBuf.get());
+
+	*beginEndOffset = savedOffset;
+
+	m_scriptBuf->refVars = lambdaScriptBuf->refVars;
+	m_scriptBuf->vars = lambdaScriptBuf->vars;
+	
+	// prevent destructor from deleting our vars
+	lambdaScriptBuf->refVars = {};
+	lambdaScriptBuf->vars = {};
+	
+	m_scriptBuf->info.numRefs = lambdaScriptBuf->info.numRefs;
+	m_scriptBuf->info.varCount = lambdaScriptBuf->info.varCount;
+	m_scriptBuf->info.lastID = lambdaScriptBuf->info.lastID;
+	
+	if (!compileResult)
+		return nullptr;
+
+	return new ScriptToken(scriptLambda.release());
 }
 
 ScriptToken* ExpressionParser::ParseOperand(bool (* pred)(ScriptToken* operand))
@@ -2560,6 +2669,11 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 	std::string token = GetCurToken();
 	std::string refToken = token;
 
+	if (_stricmp(token.c_str(), "begin") == 0)
+	{
+		return ParseLambda();
+	}
+
 	// some operators (e.g. ->) expect a string literal, filter them out now
 	if (curOp && curOp->ExpectsStringLiteral()) {
 		if (!token.length() || bExpectStringVar) {
@@ -2629,7 +2743,7 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 		if (cmdInfo)
 		{
 			// if quest script, check that calling obj supplied for cmds requiring it
-			if (m_scriptBuf->scriptType == Script::eType_Quest && cmdInfo->needsParent && !refVar)
+			if (m_scriptBuf->info.type == Script::eType_Quest && cmdInfo->needsParent && !refVar)
 			{
 				Message(kError_RefRequired, cmdInfo->longName);
 				return NULL;
@@ -2722,7 +2836,7 @@ bool ExpressionParser::ParseFunctionCall(CommandInfo* cmdInfo)
 
 VariableInfo* ExpressionParser::LookupVariable(const char* varName, Script::RefVariable* refVar)
 {
-	Script::VarInfoEntry* vars = &m_scriptBuf->vars;
+	Script::VarInfoList* vars = &m_scriptBuf->vars;
 
 	if (refVar)
 	{
@@ -2806,6 +2920,12 @@ SInt32 ExpressionEvaluator::ReadSigned32()
 	return data;
 }
 
+void ExpressionEvaluator::ReadBuf(UInt32 len, UInt8* data)
+{
+	std::memcpy(data, Data(), len);
+	Data() += len;
+}
+
 UInt8* ExpressionEvaluator::GetCommandOpcodePosition() const
 {
 	return GetScriptDataPosition(script, m_scriptData, m_opcodeOffsetPtr);
@@ -2840,6 +2960,8 @@ char *ExpressionEvaluator::ReadString(UInt32& incrData)
 	}
 	return NULL;
 }
+
+
 
 void ExpressionEvaluator::PushOnStack()
 {
@@ -3570,7 +3692,7 @@ TokenCacheEntry *GetOperatorParent(TokenCacheEntry *iter, TokenCacheEntry *iterE
 	int count = 0;
 	while (iter < iterEnd)
 	{
-		const ScriptToken *token = &iter->token;
+		const ScriptToken *token = iter->token;
 		if (token->IsOperator())
 		{
 			if (count == 0)
@@ -3602,7 +3724,7 @@ void ParseShortCircuit(CachedTokens& cachedTokens)
 	for (auto iter = cachedTokens.Begin(); !iter.End(); ++iter)
 	{
 		TokenCacheEntry *curr = &iter.Get();
-		ScriptToken &token = curr->token;
+		ScriptToken &token = *curr->token;
 		TokenCacheEntry *grandparent = curr;
 		TokenCacheEntry *furthestParent;
 		
@@ -3612,11 +3734,11 @@ void ParseShortCircuit(CachedTokens& cachedTokens)
 			furthestParent = grandparent;
 			grandparent = GetOperatorParent(grandparent, end);
 		}
-		while (grandparent < end && grandparent->token.IsLogicalOperator() && (furthestParent == curr || grandparent->token.GetOperator() == furthestParent->token.GetOperator()));
+		while (grandparent < end && grandparent->token->IsLogicalOperator() && (furthestParent == curr || grandparent->token->GetOperator() == furthestParent->token->GetOperator()));
 		
-		if (furthestParent != curr && furthestParent->token.IsLogicalOperator())
+		if (furthestParent != curr && furthestParent->token->IsLogicalOperator())
 		{
-			token.shortCircuitParentType = furthestParent->token.GetOperator()->type;
+			token.shortCircuitParentType = furthestParent->token->GetOperator()->type;
 			token.shortCircuitDistance = furthestParent - curr;
 
 			auto* parent = GetOperatorParent(curr, end);
@@ -3638,10 +3760,10 @@ bool ExpressionEvaluator::ParseBytecode(CachedTokens& cachedTokens)
 	const UInt8 *endData = m_data + argLen - sizeof(UInt16);
 	while (m_data < endData)
 	{
-		TokenCacheEntry *entry = cachedTokens.Append(ScriptToken(*this));
-		if (entry->token.IsInvalid())
+		auto* token = ScriptToken::Read(this);
+		if (!token) 
 			return false;
-		entry->token.cached = true;
+		cachedTokens.Append(token);
 	}
 	cachedTokens.incrementData = m_data - dataBeforeParsing;
 	ParseShortCircuit(cachedTokens);
@@ -3666,7 +3788,7 @@ void ShortCircuit(OperandStack& operands, CachedTokenIter& iter)
 			// Make sure only one operand is left in RPN stack
 			ScriptToken *operand = operands.Top();
 			if (operand && operand != lastToken)
-				operand->Delete();
+				delete operand;
 			operands.Pop();
 		}
 		operands.Push(lastToken);
@@ -3704,7 +3826,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	for (; !iter.End(); ++iter)
 	{
 		TokenCacheEntry &entry = iter.Get();
-		ScriptToken *curToken = &entry.token;
+		ScriptToken *curToken = entry.token;
 		curToken->context = this;
 
 		if (curToken->Type() != kTokenType_Operator)
@@ -3723,6 +3845,11 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			{
 				Error("Failed to resolve variable");
 				break;
+			}
+			else if (curToken->type == kTokenType_Lambda)
+			{
+				// There needs to be a unique lambda per script event list so that variables can have the correct values
+				curToken = ScriptToken::Create(LambdaManager::CreateLambdaScript(cacheKey, eventList, script));
 			}
 			operands.Push(curToken);
 		}
@@ -3758,12 +3885,8 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				opResult = entry.swapOrder ? entry.eval(op->type, rhOperand, lhOperand, this) : entry.eval(op->type, lhOperand, rhOperand, this);
 			}
 
-
-			if (lhOperand)
-				lhOperand->Delete();
-
-			if (rhOperand)
-				rhOperand->Delete();
+			delete lhOperand;
+			delete rhOperand;
 
 			if (!opResult)
 			{
@@ -3784,7 +3907,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 
 	if (operands.Size() != 1 || this->HasErrors())		// should have one operand remaining - result of expression
 	{
-		const auto currentLine = this->GetLineText(cache, iter.Get().token);
+		const auto currentLine = this->GetLineText(cache, *iter.Get().token);
 		if (!currentLine.empty())
 		{
 			Error("Script line approximation: %s (error wrapped in ##'s)", currentLine.c_str());
@@ -3798,14 +3921,13 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 		}
 		while (operands.Size())
 		{
-			ScriptToken *operand = operands.Top();
-			if (operand)
-				operand->Delete();
+			auto* operand = operands.Top();
+			delete operand;
 			operands.Pop();
 		}
 		return nullptr;
 	}
-
+	
 	return operands.Top();
 }
 
@@ -3816,7 +3938,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken& 
 	std::stack<std::string> operands; // JIP Stack crashes
 	for (auto iter = tokens.Begin(); !iter.End(); ++iter)
 	{
-		auto& token = iter.Get().token;
+		auto& token = *iter.Get().token;
 		if (!token.IsOperator())
 		{
 			switch (token.Type())
@@ -3964,7 +4086,7 @@ std::string ExpressionEvaluator::GetVariablesText(CachedTokens& tokens) const
 	std::set<std::pair<UInt32, UInt32>> printedVars;
 	for (auto iter = tokens.Begin(); !iter.End(); ++iter)
 	{
-		auto& token = iter.Get().token;
+		auto& token = *iter.Get().token;
 		if (printedVars.find(std::make_pair(token.refIdx, token.varIdx)) != printedVars.end())
 			continue;
 		if (token.IsVariable())
@@ -4144,15 +4266,17 @@ struct BlockInfo
 
 static Block s_blocks[] =
 {
-	{	"begin",	kBlockType_ScriptBlock,	Block::kFunction_Open	},
-	{	"end",		kBlockType_ScriptBlock,	Block::kFunction_Terminate	},
+	// Commented out since this is already validated by GECK
+	
+	// {	"begin",	kBlockType_ScriptBlock,	Block::kFunction_Open	}, 
+	// {	"end",		kBlockType_ScriptBlock,	Block::kFunction_Terminate	},
 	{	"while",	kBlockType_Loop,		Block::kFunction_Open	},
 	{	"foreach",	kBlockType_Loop,		Block::kFunction_Open	},
 	{	"loop",		kBlockType_Loop,		Block::kFunction_Terminate	},
-	{	"if",		kBlockType_If,			Block::kFunction_Open	},
-	{	"elseif",	kBlockType_If,			Block::kFunction_Dual	},
-	{	"else",		kBlockType_If,			Block::kFunction_Dual	},
-	{	"endif",	kBlockType_If,			Block::kFunction_Terminate	},
+	// {	"if",		kBlockType_If,			Block::kFunction_Open	},
+	// {	"elseif",	kBlockType_If,			Block::kFunction_Dual	},
+	// {	"else",		kBlockType_If,			Block::kFunction_Dual	},
+	// {	"endif",	kBlockType_If,			Block::kFunction_Terminate	},
 };
 
 static UInt32 s_numBlocks = SIZEOF_ARRAY(s_blocks, Block);
@@ -4220,39 +4344,37 @@ bool Preprocessor::AdvanceLine()
 		m_scriptTextOffset = m_scriptText.length();
 		return true;
 	}
-	else if (m_scriptTextOffset == endPos)		// empty line
+	if (m_scriptTextOffset == endPos)		// empty line
 	{
 		m_scriptTextOffset += 2;
 		return AdvanceLine();
 	}
-	else									// line contains text
+	// line contains text
+	m_curLineText = m_scriptText.substr(m_scriptTextOffset, endPos - m_scriptTextOffset);
+
+	// strip comments
+	for (UInt32 i = 0; i < m_curLineText.length(); i++)
 	{
-		m_curLineText = m_scriptText.substr(m_scriptTextOffset, endPos - m_scriptTextOffset);
-
-		// strip comments
-		for (UInt32 i = 0; i < m_curLineText.length(); i++)
+		if (m_curLineText[i] == '"')
 		{
-			if (m_curLineText[i] == '"')
-			{
-				if (i + 1 == m_curLineText.length())	// trailing, mismatched quote - CS will catch
-					break;
-
-				i = m_curLineText.find('"', i+1);
-				if (i == -1)		// mismatched quotes, CS compiler will catch
-					break;
-				else
-					i++;
-			}
-			else if (m_curLineText[i] == ';')
-			{
-				m_curLineText = m_curLineText.substr(0, i);
+			if (i + 1 == m_curLineText.length())	// trailing, mismatched quote - CS will catch
 				break;
-			}
-		}
 
-		m_scriptTextOffset = endPos + 2;
-		return true;
+			i = m_curLineText.find('"', i+1);
+			if (i == -1)		// mismatched quotes, CS compiler will catch
+				break;
+			else
+				i++;
+		}
+		else if (m_curLineText[i] == ';')
+		{
+			m_curLineText = m_curLineText.substr(0, i);
+			break;
+		}
 	}
+
+	m_scriptTextOffset = endPos + 2;
+	return true;
 }
 
 bool Preprocessor::HandleDirectives()

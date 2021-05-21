@@ -27,6 +27,7 @@ class FunctionCaller;
 #endif
 
 extern ErrOutput g_ErrOut;
+extern std::unordered_map<ScriptBuffer*, ScriptBuffer*> g_lambdaParentScriptMap;
 
 
 // these are used in ParamInfo to specify expected Token_Type of args to commands taking NVSE expressions as args
@@ -167,6 +168,7 @@ public:
 	SInt16		ReadSigned16();
 	UInt32		Read32();
 	SInt32		ReadSigned32();
+	void ReadBuf(UInt32 len, UInt8* data);
 
 	UInt8* GetCommandOpcodePosition() const;
 	CommandInfo* GetCommand() const;
@@ -191,7 +193,7 @@ class ExpressionParser
 	Token_Type			m_argTypes[kMaxArgs];
 	UInt8				m_numArgsParsed;
 
-	enum {								// varargs
+	enum ScriptLineError {								// varargs
 		kError_CantParse,
 		kError_TooManyOperators,
 		kError_TooManyOperands,
@@ -211,9 +213,11 @@ class ExpressionParser
 		kError_UserFunctionVarsMustPrecedeDefinition,
 		kError_UserFunctionParamsUndefined,
 		kError_ExpectedStringLiteral,
+		kError_LineDataOverflow,
 
 		kWarning_UnquotedString,		// string:unquotedString
 		kWarning_FunctionPointer,
+
 
 		kError_Max
 	};
@@ -228,7 +232,9 @@ class ExpressionParser
 	const char * Text()	{ return m_lineBuf->paramText; }
 	const char * CurText() { return Text() + Offset(); }
 
-	void	Message(UInt32 errorCode, ...);
+	void	Message(ScriptLineError errorCode, ...) const;
+
+	void PrintCompileError(const std::string& message) const;
 
 	Token_Type		Parse();
 	Token_Type		ParseSubExpression(UInt32 exprLen);
@@ -238,6 +244,7 @@ class ExpressionParser
 	bool			ParseFunctionCall(CommandInfo* cmdInfo);
 	Token_Type		PopOperator(std::stack<Operator*> & ops, std::stack<Token_Type> & operands);
 	Token_Type ParseArgument(UInt32 argsEndPos);
+	ScriptToken* ParseLambda();
 
 	UInt32	MatchOpenBracket(Operator* openBracOp);
 	std::string GetCurToken();

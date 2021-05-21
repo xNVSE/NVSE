@@ -36,20 +36,13 @@ public:
 		void	Resolve(ScriptEventList * eventList);
 	};
 
-	struct RefListEntry
+	struct RefList : tList<RefVariable>
 	{
-		RefVariable		* var;
-		RefListEntry	* next;
-
-		RefVariable* Info() const { return var; }
-		RefListEntry* Next() const { return next; }
-		void SetNext(RefListEntry* nextEntry) { next = nextEntry; }
-		RefVariable* GetRefVariableByName(const char* name);
-		UInt32 GetIndex(RefVariable* refVar);
+		UInt32 GetIndex(Script::RefVariable* refVar);
 	};
-	typedef Visitor<RefListEntry, RefVariable> RefListVisitor;
 
-	enum {
+	enum VariableType
+	{
 		eVarType_Float = 0,			//ref is also zero
 		eVarType_Integer,
 
@@ -61,22 +54,16 @@ public:
 		eVarType_Invalid
 	};
 
-	struct VarInfoEntry
+	struct VarInfoList : tList<VariableInfo>
 	{
-		VariableInfo	* data;
-		VarInfoEntry	* next;
-
-		VariableInfo* Info() const { return data; }
-		VarInfoEntry* Next() const { return next; }
-
 		VariableInfo* GetVariableByName(const char* name);
 	};
-	typedef Visitor<VarInfoEntry, VariableInfo> VarListVisitor;
+	typedef Visitor<VarInfoList, VariableInfo> VarListVisitor;
 
 	// 14
 	struct ScriptInfo
 	{
-		UInt32	unk0;		// 00 (18)
+		UInt32	lastID;		// 00 (18)
 		UInt32	numRefs;	// 04 (1C)
 		UInt32	dataLength;	// 08 (20)
 		UInt32	varCount;	// 0C (24)
@@ -103,8 +90,8 @@ public:
 	float			secondsPassed;			// 03C      - only if you've modified fQuestDelayTime
 	TESQuest*		quest;					// 040
 #endif
-	RefListEntry	refList;				// 044 / 034 / 048 - ref variables and immediates
-	VarInfoEntry	varList;				// 04C / 03C / 050 - local variable list
+	RefList	refList;				// 044 / 034 / 048 - ref variables and immediates
+	VarInfoList	varList;				// 04C / 03C / 050 - local variable list
 #if !RUNTIME
 	void			* unk050;				//     /     / 050
 	UInt8			unk054;					//	   /     / 054
@@ -226,26 +213,20 @@ struct ScriptBuffer
 		kGameConsole = 1,
 	};
 
-	char			* scriptText;		// 000
+	char		* scriptText;		// 000
 	UInt32			textOffset;			// 004 
 	RuntimeMode		runtimeMode;		// 008
 	String			scriptName;			// 00C
 	UInt32			errorCode;			// 014
-	UInt16			unk018;				// 018
-	UInt16			unk01A;				// 01A
-	UInt32			curLineNumber;		// 01C 
+	bool			partialScript;		// 018
+	UInt8			pad019[3];			// 018
+	UInt32			curLineNumber;		// 01C
 	UInt8			* scriptData;		// 020 pointer to 0x4000-byte array
 	UInt32			dataOffset;			// 024
-	UInt32			unk028;				// 028
-	UInt32			numRefs;			// 02C
-	UInt32			unk030;				// 030
-	UInt32			varCount;			// 034 script->varCount
-	UInt8			scriptType;			// 038 script->type
-	UInt8			unk039;				// 039 script->unk35
-	UInt8			unk03A[2];
-	Script::VarInfoEntry	vars;		// 03C
-	Script::RefListEntry	refVars;	// 044 probably ref vars
-	UInt32			unk04C;				// 04C num lines?
+	Script::ScriptInfo	info;				// 028
+	Script::VarInfoList	vars;		// 03C
+	Script::RefList	refVars;	// 044 probably ref vars
+	Script*			currentScript;				// 04C num lines?
 	tList<ScriptLineBuffer>	lines;		// 050
 	// nothing else initialized
 
@@ -254,6 +235,8 @@ struct ScriptBuffer
 	UInt32	GetRefIdx(Script::RefVariable* ref);
 	UInt32	GetVariableType(VariableInfo* varInfo, Script::RefVariable* refVar);
 };
+static_assert(sizeof(ScriptBuffer) == 0x58);
+
 
 UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText);	// parses scriptText to determine var type
 Script* GetScriptFromForm(TESForm* form);

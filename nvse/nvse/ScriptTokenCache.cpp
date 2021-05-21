@@ -7,7 +7,7 @@ TokenCacheEntry& CachedTokens::Get(std::size_t key)
 	return this->container_[key];
 }
 
-TokenCacheEntry* CachedTokens::Append(const ScriptToken& scriptToken)
+TokenCacheEntry* CachedTokens::Append(ScriptToken* scriptToken)
 {
 	return this->container_.Append(TokenCacheEntry(scriptToken));
 }
@@ -32,20 +32,34 @@ TokenCacheEntry* CachedTokens::DataEnd()
 	return container_.Data() + container_.Size();
 }
 
+void CachedTokens::Clear()
+{
+	for (auto iter = Begin(); !iter.End(); ++iter)
+	{
+		auto* token = iter.Get().token;
+		token->cached = false;
+		delete token;
+	}
+	this->container_.Clear();
+}
+
 CachedTokens& TokenCache::Get(UInt8* key)
 {
 	if (tlsClearAllCookie_ != tlsClearAllToken_)
 	{
 		tlsClearAllToken_ = tlsClearAllCookie_;
-		cache_.Clear();
+		Clear();
 	} 
 	return cache_[key];
 }
 
 void TokenCache::Clear()
 {
-	if (!cache_.Empty())
-		cache_.Clear();
+	for (auto iter = cache_.Begin(); !iter.End(); ++iter)
+	{
+		iter.Get().Clear();
+	}
+	this->cache_.Clear();
 }
 
 std::size_t TokenCache::Size() const
@@ -60,6 +74,7 @@ bool TokenCache::Empty() const
 
 void TokenCache::MarkForClear()
 {
+	// Required since cache is thread_local and needs to be cleared on each thread
 	++tlsClearAllCookie_;
 }
 

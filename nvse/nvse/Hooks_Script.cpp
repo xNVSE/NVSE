@@ -562,6 +562,9 @@ bool __stdcall HandleBeginCompile(ScriptBuffer* buf)
 		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_Precompile, buf, sizeof(buf), NULL);
 	}
 
+	if (!bResult)
+		buf->errorCode = 1;
+
 	return bResult;
 }
 

@@ -232,6 +232,9 @@
     <ClCompile Include="ScriptTokenCache.cpp">
       <Filter>internals</Filter>
     </ClCompile>
+    <ClCompile Include="LambdaManager.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
@@ -464,6 +467,9 @@
     <ClInclude Include="rewrites.h">
       <Filter>lib\jip</Filter>
     </ClInclude>
+    <ClInclude Include="LambdaManager.h">
+      <Filter>internals</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">
@@ -481,6 +487,6 @@
     <ResourceCompile Include="nvse_version.rc" />
   </ItemGroup>
   <ItemGroup>
-    <Natvis Include="JIPContainers.natvis" />
+    <Natvis Include="DebuggerVisualizations.natvis" />
   </ItemGroup>
 </Project>

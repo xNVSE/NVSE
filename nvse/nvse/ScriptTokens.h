@@ -18,6 +18,7 @@ extern SInt32 FUNCTION_CONTEXT_COUNT;
 
 #endif
 
+
 enum class NVSEVarType
 {
 	kVarType_Null = 0,
@@ -118,6 +119,7 @@ enum Token_Type : UInt8
 
 	kTokenType_Pair,
 	kTokenType_AssignableString,
+	kTokenType_Lambda,
 
 	kTokenType_Invalid,
 	kTokenType_Max = kTokenType_Invalid,
@@ -191,6 +193,7 @@ struct ScriptToken
 		VariableInfo			* varInfo;
 		CommandInfo				* cmd;
 		ScriptToken				* token;
+		Script* lambda;
 	} value;
 
 	ScriptToken(Token_Type _type, UInt8 _varType, UInt16 _refIdx);
@@ -204,6 +207,7 @@ struct ScriptToken
 	ScriptToken(TESGlobal* global, UInt16 refIdx);
 	ScriptToken(Operator* op);
 	ScriptToken(UInt32 data, Token_Type asType);		// ArrayID or FormID
+	ScriptToken(Script* script);
 
 	//ScriptToken(const ScriptToken& rhs);	// unimplemented, don't want copy constructor called
 #if RUNTIME
@@ -211,7 +215,6 @@ struct ScriptToken
 #endif
 
 	ScriptToken();
-	ScriptToken(const ScriptToken& from);
 
 	ScriptToken(ExpressionEvaluator& evaluator);
 
@@ -231,7 +234,6 @@ struct ScriptToken
 	ArrayVar*						GetArrayVar();
 	ScriptEventList::Var *			GetVar() const;
 	bool ResolveVariable();
-	void							Delete() const;
 #endif
 	virtual bool			CanConvertTo(Token_Type to) const;	// behavior varies b/w compile/run-time for ambiguous types
 	virtual ArrayID			GetOwningArrayID() const { return 0; }
@@ -287,19 +289,20 @@ struct ScriptToken
 	static ScriptToken* Create(UInt32 varID, UInt32 lbound, UInt32 ubound);
 	static ScriptToken* Create(ArrayElementToken* elem, UInt32 lbound, UInt32 ubound);
 	static ScriptToken* Create(UInt32 bogus);	// unimplemented, to block implicit conversion to double
+	static ScriptToken* Create(Script* scriptLambda) { return scriptLambda ?  new ScriptToken(scriptLambda) : nullptr; }
 
 	void SetString(const char *srcStr);
 	std::string GetVariableName(ScriptEventList* eventList) const;
-
-	ScriptToken& operator=(const ScriptToken &rhs);
 
 	UInt16		refIdx;
 	CommandReturnType returnType;
 #if RUNTIME
 	void* operator new(size_t size);
+	void* operator new(size_t size, bool useMemoryPool);
 	void operator delete(void* p);
+	void operator delete(void* p, bool useMemoryPool);
 	
-	bool cached = false;
+	bool cached;
 	UInt32 cmdOpcodeOffset;
 	ExpressionEvaluator* context;
 	UInt16		varIdx;
@@ -311,7 +314,8 @@ struct ScriptToken
 	std::string varName;
 #endif
 #endif
-
+private:
+	bool memoryPooled;
 };
 //STATIC_ASSERT(sizeof(ScriptToken) == 0x30);
 

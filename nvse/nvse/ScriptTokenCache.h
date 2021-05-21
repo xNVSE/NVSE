@@ -4,11 +4,11 @@
 #include <atomic>
 struct TokenCacheEntry
 {
-	ScriptToken		token;
+	ScriptToken*	token;
 	Op_Eval			eval;
 	bool			swapOrder;
 
-	TokenCacheEntry(const ScriptToken& scriptToken) : token(scriptToken), eval(nullptr), swapOrder(false) {}
+	TokenCacheEntry(ScriptToken* scriptToken) : token(scriptToken), eval(nullptr), swapOrder(false) {}
 };
 
 class CachedTokens
@@ -17,11 +17,12 @@ class CachedTokens
 public:
 	std::size_t incrementData;
 	[[nodiscard]] TokenCacheEntry& Get(std::size_t key);
-	TokenCacheEntry* Append(const ScriptToken& scriptToken);
+	TokenCacheEntry* Append(ScriptToken* scriptToken);
 	[[nodiscard]] std::size_t Size() const;
 	[[nodiscard]] bool Empty() const;
 	Vector<TokenCacheEntry>::Iterator Begin();
 	TokenCacheEntry *DataEnd();
+	void Clear();
 };
 
 class TokenCache

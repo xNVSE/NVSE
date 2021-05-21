@@ -44,7 +44,7 @@ private:
 	UInt8				m_functionVersion;	// bytecode version of Function statement
 	bool				m_bad;
 	UInt8				m_instanceCount;
-	ScriptEventList		* m_eventList;		// cached for quicker construction of function script, but requires care when dealing with recursive function calls
+	ScriptEventList		* m_eventList = nullptr;		// cached for quicker construction of function script, but requires care when dealing with recursive function calls
 
 public:
 	FunctionInfo() {}
@@ -74,6 +74,7 @@ private:
 	Script			* m_invokingScript;
 	UInt8			m_callerVersion;
 	bool			m_bad;
+	bool			m_isLambda = false;
 public:
 	FunctionContext(FunctionInfo* info, UInt8 version, Script* invokingScript);
 	~FunctionContext();
@@ -84,6 +85,7 @@ public:
 	ScriptToken*  Result() { return m_result; }
 	FunctionInfo* Info() { return m_info; }
 	Script* InvokingScript() { return m_invokingScript; }
+	bool IsLambda() const { return m_isLambda; }
 	void* operator new(size_t size);
 	void operator delete(void* p);
 };
