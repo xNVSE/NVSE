@@ -7,7 +7,7 @@ thread_local LambdaManager::ScriptData LambdaManager::g_lastScriptData;
 // need to look up event list for the lambda to use itself
 static std::unordered_map<Script*, ScriptEventList*> g_lambdaParentEventListMap;
 // needs to be kept since if an event list is deleted the pointer becomes invalid; clear both maps so that it uses an empty event list instead
-static std::multimap<ScriptEventList*, Script*>	g_parentEventListLambdaMap;
+static std::unordered_map<ScriptEventList*, std::vector<Script*>> g_parentEventListLambdaMap;
 // used for memoizing scripts and prevent endless allocation of scripts
 static std::map<std::pair<UInt8*, ScriptEventList*>, Script*> g_lambdaScriptPosMap;
 
@@ -37,7 +37,8 @@ Script* LambdaManager::CreateLambdaScript(UInt8* position, ScriptEventList* pare
 	scriptLambda->info.lastID = parentScript->info.lastID;
 	
 	g_lambdaParentEventListMap.emplace(scriptLambda, parentEventList);
-	g_parentEventListLambdaMap.emplace(parentEventList, scriptLambda);
+	auto& eventListLambdas = g_parentEventListLambdaMap[parentEventList];
+	eventListLambdas.push_back(scriptLambda);
 	return scriptLambda;
 }
 
@@ -51,11 +52,14 @@ ScriptEventList* LambdaManager::GetParentEventList(Script* scriptLambda)
 
 void LambdaManager::MarkParentAsDeleted(ScriptEventList* parentEventList)
 {
-	const auto iter = g_parentEventListLambdaMap.find(parentEventList);
-	if (iter == g_parentEventListLambdaMap.end()) return;
+	const auto iterScripts = g_parentEventListLambdaMap.find(parentEventList);
+	if (iterScripts == g_parentEventListLambdaMap.end()) return;
 	ScopedLock lock(g_lambdaCs);
-	g_lambdaParentEventListMap.erase(iter->second);
-	g_parentEventListLambdaMap.erase(iter);
+	for (auto* scriptLambda : iterScripts->second)
+	{
+		g_lambdaParentEventListMap.erase(scriptLambda);
+	}
+	g_parentEventListLambdaMap.erase(iterScripts);
 }
 
 bool LambdaManager::IsScriptLambda(Script* script)
