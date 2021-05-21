@@ -68,7 +68,6 @@ namespace OtherHooks
 			node = node->next;
 		}
 		g_nvseVarGarbageCollectionMap.Erase(eventList);
-		// TODO Handle lambdas!!
 	}
 
 	void DeleteEventList(ScriptEventList* eventList)

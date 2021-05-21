@@ -2516,7 +2516,7 @@ ParamParenthResult ExpressionParser::ParseParenthesis(ParamInfo* paramInfo, UInt
 		return kParamParent_SyntaxError;
 	}
 	
-	m_lineBuf->WriteByte(0xFF);
+	m_lineBuf->Write16(0xFFFF);
 
 	// prevent mismatched brackets errors inside if or set statements
 	const auto len = sizeof m_lineBuf->paramText / sizeof(char);

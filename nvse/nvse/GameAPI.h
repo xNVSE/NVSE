@@ -399,7 +399,7 @@ public:
 	ScriptFormatStringArgs(UInt32 _numArgs, UInt8* _scriptData, Script* _scriptObj, ScriptEventList* _eventList, void* scriptDataIn);
 	UInt32 GetNumArgs();
 	UInt8* GetScriptData();
-
+	bool m_bad = false;
 private:
 	UInt32			numArgs;
 	UInt8			* scriptData;

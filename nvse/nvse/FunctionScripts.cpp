@@ -416,7 +416,7 @@ bool FunctionInfo::Execute(FunctionCaller& caller, FunctionContext* context)
 	// this should never happen as max function call depth is capped at 30
 	ASSERT(m_instanceCount < 0xFF);
 	auto enteredLambdaLock = false;
-	if (context->IsLambda())
+	if (context->IsLambda() && LambdaManager::g_lambdasCleared)
 	{
 		enteredLambdaLock = true;
 		LambdaManager::g_lambdaCs.Enter();
