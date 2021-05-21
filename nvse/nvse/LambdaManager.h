@@ -4,6 +4,8 @@
 
 namespace LambdaManager
 {
+	extern ICriticalSection g_lambdaCs;
+	extern std::atomic<bool> g_lambdasCleared;
 	struct ScriptData
 	{
 		UInt8* scriptData;

@@ -1,7 +1,6 @@
 #include "ScriptTokens.h"
 
 
-#include "bimap.h"
 #include "GameAPI.h"
 #include "ScriptUtils.h"
 #include "GameRTTI.h"
@@ -667,10 +666,12 @@ UInt32 ScriptToken::GetFormID()
 		return *reinterpret_cast<UInt32*>(&value.var->data);
 	}
 #endif
-	else if (type == kTokenType_Number)
+	if (type == kTokenType_Number)
 		return value.formID;
-	else if (type == kTokenType_Ref && value.refVar)
+	if (type == kTokenType_Ref && value.refVar)
 		return value.refVar->form ? value.refVar->form->refID : 0;
+	if (type == kTokenType_Lambda && value.lambda)
+		return value.lambda->refID;
 	return 0;
 }
 

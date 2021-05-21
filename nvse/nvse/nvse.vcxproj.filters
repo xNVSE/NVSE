@@ -233,7 +233,7 @@
       <Filter>internals</Filter>
     </ClCompile>
     <ClCompile Include="LambdaManager.cpp">
-      <Filter>api</Filter>
+      <Filter>internals</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -467,11 +467,8 @@
     <ClInclude Include="rewrites.h">
       <Filter>lib\jip</Filter>
     </ClInclude>
-    <ClInclude Include="bimap.h">
-      <Filter>lib</Filter>
-    </ClInclude>
     <ClInclude Include="LambdaManager.h">
-      <Filter>api</Filter>
+      <Filter>internals</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -74,7 +74,7 @@ private:
 	Script			* m_invokingScript;
 	UInt8			m_callerVersion;
 	bool			m_bad;
-	bool			m_usesParentEventList = false;
+	bool			m_isLambda = false;
 public:
 	FunctionContext(FunctionInfo* info, UInt8 version, Script* invokingScript);
 	~FunctionContext();
@@ -85,6 +85,7 @@ public:
 	ScriptToken*  Result() { return m_result; }
 	FunctionInfo* Info() { return m_info; }
 	Script* InvokingScript() { return m_invokingScript; }
+	bool IsLambda() const { return m_isLambda; }
 	void* operator new(size_t size);
 	void operator delete(void* p);
 };

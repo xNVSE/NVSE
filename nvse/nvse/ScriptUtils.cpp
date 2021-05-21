@@ -3845,6 +3845,11 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 				Error("Failed to resolve variable");
 				break;
 			}
+			else if (curToken->type == kTokenType_Lambda)
+			{
+				// There needs to be a unique lambda per script event list so that variables can have the correct values
+				curToken = ScriptToken::Create(LambdaManager::CreateLambdaScript(cacheKey, eventList, script));
+			}
 			operands.Push(curToken);
 		}
 		else
@@ -3921,15 +3926,8 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 		}
 		return nullptr;
 	}
-
-	auto* result = operands.Top();
-	if (result->type == kTokenType_Lambda)
-	{
-		// There needs to be a unique lambda per script event list so that variables can have the correct values
-		result = ScriptToken::Create(LambdaManager::CreateLambdaScript(cacheKey, eventList, script));
-	}
 	
-	return result;
+	return operands.Top();
 }
 
 std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken& faultingToken) const

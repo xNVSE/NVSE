@@ -1,78 +1,79 @@
 #include "LambdaManager.h"
-
-#include "bimap.h"
 #include "GameAPI.h"
-#include <unordered_map>
 
+// set in ScriptToken::ReadFrom
 thread_local LambdaManager::ScriptData LambdaManager::g_lastScriptData;
 
-static stde::unordered_map<Script*, ScriptEventList*> g_lambdaParentEventListMap;
+// need to look up event list for the lambda to use itself
+static std::unordered_map<Script*, ScriptEventList*> g_lambdaParentEventListMap;
+// needs to be kept since if an event list is deleted the pointer becomes invalid; clear both maps so that it uses an empty event list instead
+static std::multimap<ScriptEventList*, Script*>	g_parentEventListLambdaMap;
+// used for memoizing scripts and prevent endless allocation of scripts
+static std::map<std::pair<UInt8*, ScriptEventList*>, Script*> g_lambdaScriptPosMap;
 
-// This is required since if the script token cache is cleared and a plugin has a reference to the script it has to be in the same place
-// or the plugin will keep a reference to an invalid pointer.
-static stde::unordered_map<std::pair<UInt8*, ScriptEventList*>, Script*> g_lambdaHeapMap;
-static std::unordered_set<Script*> g_lambdaCache;
-static ICriticalSection g_lambdaCs;
+// avoid concurrency issues
+ICriticalSection LambdaManager::g_lambdaCs;
+std::atomic<bool> LambdaManager::g_lambdasCleared = false;
 
 Script* LambdaManager::CreateLambdaScript(UInt8* position, ScriptEventList* parentEventList, Script* parentScript)
 {
-	auto newScript = false;
 	// auto script = MakeUnique<Script, 0x5AA0F0, 0x5AA1A0>();
-	Script* scriptLambda;
-	if (const auto iter = g_lambdaHeapMap.find(std::make_pair(position, parentEventList)); iter != g_lambdaHeapMap.end())
+	const auto key = std::make_pair(position, parentEventList);
+	if (const auto iter = g_lambdaScriptPosMap.find(key); iter != g_lambdaScriptPosMap.end())
 	{
-		scriptLambda = iter->second;
-		if (g_lambdaCache.find(scriptLambda) != g_lambdaCache.end())
-			return scriptLambda;
-		// if a script is being recompiled (i.e. through hot reload) it's important that script pointers in plugins don't get invalidated
-		ThisStdCall(0x5AA1A0, scriptLambda); // call destructor to free script data pointer and tLists
-		ThisStdCall(0x5AA0F0, scriptLambda); // script constructor
-	}
-	else
-	{
-		scriptLambda = New<Script, 0x5AA0F0>();
-		newScript = true;
+		return iter->second;
 	}
 	ScopedLock lock(g_lambdaCs);
-	if (newScript)
-		g_lambdaHeapMap[std::make_pair(position, parentEventList)] = scriptLambda;
+	auto* scriptLambda = New<Script, 0x5AA0F0>();
+	g_lambdaScriptPosMap.emplace(key, scriptLambda);
 	scriptLambda->data = g_lastScriptData.scriptData;
 	scriptLambda->info.dataLength = g_lastScriptData.size;
-	CdeclCall(0x5AB930, &parentScript->varList, &scriptLambda->varList); // CopyVarList
-	CdeclCall(0x5AB7F0, &parentScript->refList, &scriptLambda->refList); // CopyRefList
+	
+	scriptLambda->varList = parentScript->varList; // CdeclCall(0x5AB930, &parentScript->varList, &scriptLambda->varList); // CopyVarList
+	scriptLambda->refList = parentScript->refList; // CdeclCall(0x5AB7F0, &parentScript->refList, &scriptLambda->refList); // CopyRefList
+	
 	scriptLambda->info.numRefs = parentScript->info.numRefs;
 	scriptLambda->info.varCount = parentScript->info.varCount;
 	scriptLambda->info.lastID = parentScript->info.lastID;
-	g_lambdaCache.insert(scriptLambda);
-	g_lambdaParentEventListMap[scriptLambda] = parentEventList;
+	
+	g_lambdaParentEventListMap.emplace(scriptLambda, parentEventList);
+	g_parentEventListLambdaMap.emplace(parentEventList, scriptLambda);
 	return scriptLambda;
 }
 
 ScriptEventList* LambdaManager::GetParentEventList(Script* scriptLambda)
 {
-	g_lambdaParentEventListMap[scriptLambda];
-	return g_lambdaParentEventListMap[scriptLambda];
+	const auto iter = g_lambdaParentEventListMap.find(scriptLambda);
+	if (iter != g_lambdaParentEventListMap.end())
+		return iter->second;
+	return nullptr;
 }
 
 void LambdaManager::MarkParentAsDeleted(ScriptEventList* parentEventList)
 {
-#if 0
-	if (g_lambdaParentEventListMap.find(parentEventList) == g_lambdaParentEventListMap.end()) return;
+	const auto iter = g_parentEventListLambdaMap.find(parentEventList);
+	if (iter == g_parentEventListLambdaMap.end()) return;
 	ScopedLock lock(g_lambdaCs);
-	g_lambdaParentEventListMap.erase(parentEventList);
-#endif
+	g_lambdaParentEventListMap.erase(iter->second);
+	g_parentEventListLambdaMap.erase(iter);
 }
 
 bool LambdaManager::IsScriptLambda(Script* script)
 {
-#if 0
-	return g_lambdaHeapMap.to.find(script) != g_lambdaHeapMap.to.end();
-#endif
-	return true;
+	return g_lambdaParentEventListMap.find(script) != g_lambdaParentEventListMap.end();
 }
 
 void LambdaManager::ClearCache()
 {
 	ScopedLock lock(g_lambdaCs);
-	g_lambdaCache.clear();
+	g_lambdasCleared = true;
+	for (auto& pair: g_lambdaScriptPosMap)
+	{
+		auto* scriptLambda = pair.second;
+		FormHeap_Free(scriptLambda->data); // ThisStdCall(0x5AA1A0, scriptLambda); // call destructor to free script data pointer
+		scriptLambda->data = nullptr; // script data and tLists will be freed but script won't be since plugins may store pointers to it to call
+	}
+	g_lambdaScriptPosMap.clear();
+	g_lambdaParentEventListMap.clear();
+	g_parentEventListLambdaMap.clear();
 }

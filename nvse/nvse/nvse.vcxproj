@@ -157,7 +157,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;_DEBUG;_WINDOWS;_USRDLL;NVSE_EXPORTS;RUNTIME;RUNTIME_VERSION=0x040020D0;NVSE_CORE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -611,7 +611,10 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="LambdaManager.cpp" />
+    <ClCompile Include="LambdaManager.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="Loops.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
@@ -623,7 +626,10 @@
     <ClCompile Include="PluginManager.cpp" />
     <ClCompile Include="printf.cpp" />
     <ClCompile Include="SafeWrite.cpp" />
-    <ClCompile Include="ScriptTokenCache.cpp" />
+    <ClCompile Include="ScriptTokenCache.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="ScriptTokens.cpp" />
     <ClCompile Include="ScriptUtils.cpp" />
     <ClCompile Include="Serialization.cpp">
@@ -646,7 +652,6 @@
     <ClInclude Include="..\Algohol\algTypes.h" />
     <ClInclude Include="..\Algohol\paramTypes.h" />
     <ClInclude Include="ArrayVar.h" />
-    <ClInclude Include="bimap.h" />
     <ClInclude Include="commands_Algohol.h" />
     <ClInclude Include="Commands_Array.h" />
     <ClInclude Include="Commands_Console.h" />

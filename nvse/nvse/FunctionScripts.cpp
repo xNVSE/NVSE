@@ -192,9 +192,12 @@ ScriptToken* UserFunctionManager::Call(FunctionCaller & caller)
 
 	if (!funcScript)
 	{
-		ShowRuntimeError(NULL, "Could not extract function script in Call statement.");
+		ShowRuntimeError(NULL, "Could not extract function script.");
 		return NULL;
 	}
+
+	if (!funcScript->data)
+		return nullptr;
 
 	// get function info for script
 	FunctionInfo* info = funcMan->GetFunctionInfo(funcScript);
@@ -412,10 +415,17 @@ bool FunctionInfo::Execute(FunctionCaller& caller, FunctionContext* context)
 {
 	// this should never happen as max function call depth is capped at 30
 	ASSERT(m_instanceCount < 0xFF);
-
+	auto enteredLambdaLock = false;
+	if (context->IsLambda())
+	{
+		enteredLambdaLock = true;
+		LambdaManager::g_lambdaCs.Enter();
+	}
 	m_instanceCount++;
 	bool bResult = context->Execute(caller);
 	m_instanceCount--;
+	if (enteredLambdaLock)
+		LambdaManager::g_lambdaCs.Leave();
 	return bResult;
 }
 
@@ -466,7 +476,7 @@ m_invokingScript(invokingScript), m_callerVersion(version), m_bad(true), m_resul
 	if (auto* parentEventList = LambdaManager::GetParentEventList(info->GetScript()))
 	{
 		m_eventList = parentEventList;
-		m_usesParentEventList = true;
+		m_isLambda = true;
 	}
 	else
 	{
@@ -508,7 +518,7 @@ FunctionContext::~FunctionContext()
 	FUNCTION_CONTEXT_COUNT--;
 #endif
 
-	if (m_eventList && !m_usesParentEventList)
+	if (m_eventList && !m_isLambda)
 	{
 		if (m_eventList != m_info->GetEventList()) {
 			m_eventList->Destructor();
