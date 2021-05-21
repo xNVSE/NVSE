@@ -625,7 +625,7 @@ void PatchDefaultCommandParser()
 	*(UInt8*)0xE9C1E4 = 1;*/
 
 	//	Replace DefaultCommandParser
-	WriteRelJump(0x5C67E0, (UInt32)DefaultCommandParseHook);
+	// WriteRelJump(0x5C67E0, (UInt32)DefaultCommandParseHook);
 
 	// Brackets in Param to NVSE parser
 	//WriteRelJump(0x5C68C0, UInt32(ParameterParenthesisHook));
