@@ -955,7 +955,6 @@ static bool ExtractFloat(double *out, UInt8 *&scriptData, Script *scriptObj, Scr
 {
 	if (*reinterpret_cast<UInt16*>(scriptData) == 0xFFFF)
 	{
-		++scriptData;
 		ParamInfo floatInfo{ "float", kParamType_Double, false };
 		if (!ExtractExpression(&floatInfo, scriptData, scriptObj, eventList, scriptDataIn, out))
 			return false;
