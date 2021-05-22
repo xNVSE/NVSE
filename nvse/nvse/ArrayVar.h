@@ -259,7 +259,7 @@ class ArrayVar
 
 public:
 	ArrayVar(UInt32 keyType, bool packed, UInt8 modIndex);
-
+	~ArrayVar();
 	enum SortOrder
 	{
 		kSort_Ascending,

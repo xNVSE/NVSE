@@ -3038,11 +3038,7 @@ ExpressionEvaluator::~ExpressionEvaluator()
 
 	for (UInt32 i = 0; i < m_numArgsExtracted; i++)
 	{
-		auto& token = m_args[i];
-		if (!token->cached)
-		{
-			delete token;
-		}
+		delete m_args[i];
 	}
 
 	if (!this->errorMessages.empty())
@@ -3844,6 +3840,10 @@ void CopyShortCircuitInfo(ScriptToken* to, ScriptToken* from)
 
 thread_local TokenCache g_tokenCache;
 
+#if _DEBUG && RUNTIME
+thread_local CachedTokens* g_curTokens = nullptr;
+#endif
+
 ScriptToken* ExpressionEvaluator::Evaluate()
 {
 	UInt8 *cacheKey = GetCommandOpcodePosition();
@@ -3860,7 +3860,9 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	{
 		m_data += cache.incrementData;
 	}
-
+#if _DEBUG
+	g_curTokens = &cache;
+#endif
 	OperandStack operands;
 	auto iter = cache.Begin();
 	for (; !iter.End(); ++iter)
@@ -3947,7 +3949,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 
 	if (operands.Size() != 1 || this->HasErrors())		// should have one operand remaining - result of expression
 	{
-		const auto currentLine = this->GetLineText(cache, *iter.Get().token);
+		const auto currentLine = this->GetLineText(cache, iter.Get().token);
 		if (!currentLine.empty())
 		{
 			Error("Script line approximation: %s (error wrapped in ##'s)", currentLine.c_str());
@@ -3971,7 +3973,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	return operands.Top();
 }
 
-std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken& faultingToken) const
+std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken* faultingToken) const
 {
 	if (m_flags.IsSet(kFlag_SuppressErrorMessages))
 		return "";
@@ -4001,7 +4003,8 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken& 
 						operands.push(std::string(formName));
 					break;
 				}
-				return "";
+				operands.push("<bad form>");
+				break;
 			}
 
 			case kTokenType_Global:
@@ -4012,7 +4015,8 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken& 
 					operands.push(std::string(global->name.CStr()));
 					break;
 				}
-				return "";
+				operands.push("<bad global>");
+				break;
 			}
 
 			case kTokenType_Command:
@@ -4054,7 +4058,8 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken& 
 					operands.push(operand);
 					break;
 				}
-				return "";
+				operands.push("<bad command>");
+				break;
 			}
 			case kTokenType_NumericVar:
 			case kTokenType_RefVar:
@@ -4063,12 +4068,20 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken& 
 			{
 				const auto varName = token.GetVariableName(eventList);
 				if (!varName.empty())
+				{
 					operands.push(varName);
+					break;
+				}
+				operands.push("<bad variable>");
 				break;
 			}
-
+			case kTokenType_Lambda:
+			{
+				operands.push("<lambda function>");
+			}
 			default:
-				return "";
+				operands.push("<can't decompile token>");
+				break;
 			}
 		}
 		else
@@ -4100,7 +4113,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken& 
 				operands.push(std::string(op->symbol) + operand);
 			}
 		}
-		if (&faultingToken == &token && !operands.empty())
+		if (faultingToken && faultingToken == &token && !operands.empty())
 		{
 			auto lastStr = operands.top();
 			operands.pop();

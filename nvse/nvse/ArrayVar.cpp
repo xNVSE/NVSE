@@ -388,7 +388,9 @@ thread_local ArrayKey s_arrNumKey(kDataType_Numeric), s_arrStrKey(kDataType_Stri
 ///////////////////////
 // ArrayVar
 //////////////////////
-
+#if _DEBUG
+MemoryLeakDebugCollector<ArrayVar> s_arrayDebugCollector;
+#endif
 ArrayVar::ArrayVar(UInt32 _keyType, bool _packed, UInt8 modIndex) : m_ID(0), m_keyType(_keyType), m_bPacked(_packed),
                                                                     m_owningModIndex(modIndex)
 {
@@ -398,6 +400,18 @@ ArrayVar::ArrayVar(UInt32 _keyType, bool _packed, UInt8 modIndex) : m_ID(0), m_k
 		m_elements.m_type = kContainer_Array;
 	else
 		m_elements.m_type = kContainer_NumericMap;
+
+#if _DEBUG
+	s_arrayDebugCollector.Add(this);
+#endif
+
+}
+
+ArrayVar::~ArrayVar()
+{
+#if _DEBUG
+	s_arrayDebugCollector.Remove(this);
+#endif
 }
 
 ArrayElement* ArrayVar::Get(const ArrayKey* key, bool bCanCreateNew)

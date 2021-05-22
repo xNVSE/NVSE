@@ -139,7 +139,7 @@ public:
 
 	ScriptToken*	ExecuteCommandToken(ScriptToken const* token);
 	ScriptToken*	Evaluate();			// evaluates a single argument/token
-	std::string GetLineText(CachedTokens& tokens, ScriptToken& faultingToken) const;
+	std::string GetLineText(CachedTokens& tokens, ScriptToken* faultingToken) const;
 	std::string GetVariablesText(CachedTokens& tokens) const;
 
 	ScriptToken*	Arg(UInt32 idx)
@@ -273,3 +273,44 @@ bool Cmd_Expression_Parse(UInt32 numParams, ParamInfo* paramInfo, ScriptLineBuff
 
 extern Operator s_operators[];
 
+#if _DEBUG && RUNTIME
+extern thread_local CachedTokens* g_curTokens;
+
+template <typename T>
+class MemoryLeakDebugCollector
+{
+public:
+	struct Info
+	{
+		T* ptr;
+		std::vector<void*> callstack;
+		std::string scriptLine;
+
+		Info(T* ptr, const std::vector<void*>& callstack, const std::string& scriptLine)
+			: ptr(ptr),
+			  callstack(callstack),
+			  scriptLine(scriptLine)
+		{
+		}
+	};
+	std::list<Info> infos;
+
+	void Add(T* t)
+	{
+		std::vector<void*> vecTrace(12);
+		CaptureStackBackTrace(1, 12, reinterpret_cast<PVOID*>(vecTrace.data()), nullptr);
+		std::string scriptLine;
+		if (ExpressionEvaluator::Active())
+		{
+			scriptLine = ExpressionEvaluator::Get().GetLineText(*g_curTokens, nullptr);
+		}
+		infos.emplace_back(t, vecTrace, scriptLine);
+	}
+
+	void Remove(T* t)
+	{
+		infos.remove_if([&](auto& info) {return info.ptr == t; });
+	}
+};
+
+#endif

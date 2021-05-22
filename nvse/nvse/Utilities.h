@@ -220,3 +220,4 @@ void GeckExtenderMessageLog(const char* fmt, ...);
 #endif
 
 std::vector<void*> GetCallStack(int i);
+
