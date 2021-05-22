@@ -155,6 +155,9 @@ void Hook_Script_Init()
 	// Never let commands return false and stop scripts
 	//SafeWriteBuf(0x5ACBC0, "\x90\x90", 2);
 #endif
+	// Prevent scripts from stopping execution if a command returns false or there's a missing reference.
+	SafeWrite8(0x5E1024, 0xEB); // replace jnz with jmp
+	SafeWrite8(0x5E133B, 0xEB);
 }
 
 #else	// CS-stuff
