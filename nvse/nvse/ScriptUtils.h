@@ -274,7 +274,7 @@ bool Cmd_Expression_Parse(UInt32 numParams, ParamInfo* paramInfo, ScriptLineBuff
 extern Operator s_operators[];
 
 #if _DEBUG && RUNTIME
-extern thread_local CachedTokens* g_curTokens;
+extern thread_local std::string g_curLineText;
 
 template <typename T>
 class MemoryLeakDebugCollector
@@ -300,11 +300,7 @@ public:
 		std::vector<void*> vecTrace(12);
 		CaptureStackBackTrace(1, 12, reinterpret_cast<PVOID*>(vecTrace.data()), nullptr);
 		std::string scriptLine;
-		if (ExpressionEvaluator::Active())
-		{
-			scriptLine = ExpressionEvaluator::Get().GetLineText(*g_curTokens, nullptr);
-		}
-		infos.emplace_back(t, vecTrace, scriptLine);
+		infos.emplace_back(t, vecTrace, g_curLineText);
 	}
 
 	void Remove(T* t)

@@ -3841,7 +3841,7 @@ void CopyShortCircuitInfo(ScriptToken* to, ScriptToken* from)
 thread_local TokenCache g_tokenCache;
 
 #if _DEBUG && RUNTIME
-thread_local CachedTokens* g_curTokens = nullptr;
+thread_local std::string g_curLineText;
 #endif
 
 ScriptToken* ExpressionEvaluator::Evaluate()
@@ -3861,7 +3861,8 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 		m_data += cache.incrementData;
 	}
 #if _DEBUG
-	g_curTokens = &cache;
+	g_curLineText = this->GetLineText(cache, nullptr);
+	const auto& lineText = g_curLineText;
 #endif
 	OperandStack operands;
 	auto iter = cache.Begin();
