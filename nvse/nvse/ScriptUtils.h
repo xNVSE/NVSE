@@ -224,13 +224,14 @@ class ExpressionParser
 
 	static ErrOutput::Message	* s_Messages;
 
-	char	Peek(UInt32 idx = -1) {
+	char	Peek(UInt32 idx = -1) const
+	{
 		if (idx == -1)	idx = m_lineBuf->lineOffset;
 		return (idx < m_len) ? m_lineBuf->paramText[idx] : 0;
 	}
-	UInt32&	Offset()	{ return m_lineBuf->lineOffset; }
-	const char * Text()	{ return m_lineBuf->paramText; }
-	const char * CurText() { return Text() + Offset(); }
+	UInt32&	Offset() const { return m_lineBuf->lineOffset; }
+	char* Text() const { return m_lineBuf->paramText; }
+	char* CurText() { return Text() + Offset(); }
 
 	void	Message(ScriptLineError errorCode, ...) const;
 
@@ -241,6 +242,7 @@ class ExpressionParser
 	Operator *		ParseOperator(bool bExpectBinaryOperator, bool bConsumeIfFound = true);
 	ScriptToken	*	ParseOperand(Operator* curOp = NULL);
 	ScriptToken *	PeekOperand(UInt32& outReadLen);
+	bool			HandleMacros();
 	bool			ParseFunctionCall(CommandInfo* cmdInfo);
 	Token_Type		PopOperator(std::stack<Operator*> & ops, std::stack<Token_Type> & operands);
 	Token_Type ParseArgument(UInt32 argsEndPos);

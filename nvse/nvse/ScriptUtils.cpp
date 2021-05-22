@@ -15,6 +15,9 @@
 #include "FunctionScripts.h"
 #include "GameRTTI.h"
 #include "LambdaManager.h"
+#if EDITOR
+#include <regex>
+#endif
 #if RUNTIME
 
 #ifdef DBG_EXPR_LEAKS
@@ -2194,7 +2197,10 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 		}
 
 		Token_Type operandType = kTokenType_Invalid;
-
+		
+		if (!HandleMacros())
+			return kTokenType_Invalid;
+		
 		// is it an operator?
 		Operator* op = ParseOperator(bLastTokenWasOperand);
 		if (op)
@@ -2663,6 +2669,29 @@ ScriptToken* ExpressionParser::PeekOperand(UInt32& outReadLen)
 	outReadLen = Offset() - curOffset;
 	Offset() = curOffset;
 	return operand;
+}
+
+bool ExpressionParser::HandleMacros()
+{
+	// Lambda macro
+	const std::string line = CurText();
+	const std::regex oneLineLambdaRegex(R"(^\{(.*)\}\s*=>\s*(.*))"); // match {iVar, rRef} => ...
+	std::smatch m;
+	if (std::regex_search(line, m, oneLineLambdaRegex) && m.size() == 3)
+	{
+		const auto endPos = m.position(2) + m.str(2).size();
+		const auto toReplaceWith = "begin function {" + m.str(1) + "}\r\nSetFunctionValue " + m.str(2) + "\r\nend";
+		const auto charsLeft = sizeof m_lineBuf->paramText - Offset();
+		if (toReplaceWith.size() > charsLeft)
+		{
+			PrintCompileError("Line length limit reached, unable to translate {} => ... macro");
+			return false;
+		}
+		strcpy_s(CurText(), charsLeft, toReplaceWith.c_str());
+		m_lineBuf->paramTextLen = toReplaceWith.size() + Offset();
+		m_len = m_lineBuf->paramTextLen;
+	}
+	return true;
 }
 
 ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
@@ -4351,10 +4380,10 @@ private:
 	UInt32				m_scriptTextOffset;
 
 	bool		HandleDirectives();		// compiler directives at top of script prefixed with '@'
+	bool		HandleMacros();
 	bool		ProcessBlock(BlockType blockType);
 	bool		AdvanceLine();
 	const char	* BlockTypeAsString(BlockType type);
-	void HandleMacros();
 public:
 	Preprocessor(ScriptBuffer* buf);
 
@@ -4437,6 +4466,11 @@ bool Preprocessor::HandleDirectives()
 	return true;
 }
 
+bool Preprocessor::HandleMacros()
+{
+	return false;
+}
+
 bool Preprocessor::Process()
 {
 	std::string token;
@@ -4455,7 +4489,7 @@ bool Preprocessor::Process()
 			bContinue = AdvanceLine();
 			continue;
 		}
-		
+	
 		const char* tok = token.c_str();
 		bool bIsBlockKeyword = false;
 		for (UInt32 i = 0; i < s_numBlocks; i++)
@@ -4553,12 +4587,17 @@ bool Preprocessor::Process()
 			bContinue = AdvanceLine();
 	}
 
-	if (blockStack.size())
+	if (!blockStack.empty())
 	{
 		g_ErrOut.Show("Error: Mismatched block structure.");
 		return false;
 	}
 
+	// auto* alloc = static_cast<char*>(FormHeap_Allocate(m_scriptText.size() + 1));
+	// strcpy_s(alloc, m_scriptText.size() + 1, m_scriptText.c_str());
+	// FormHeap_Free(m_buf->scriptText);
+	// m_buf->scriptText = alloc;
+		
 	return true;
 }
 
