@@ -1068,3 +1068,5 @@ game_unique_ptr<T> MakeUnique(ConstructorArgs&& ...args)
 	auto* obj = New<T, ConstructorPtr>(std::forward(args)...);
 	return game_unique_ptr<T>(obj, [](T* t) { Delete<T, DestructorPtr>(t); });
 }
+
+UInt32 GetNextFreeFormID(UInt32 formId);

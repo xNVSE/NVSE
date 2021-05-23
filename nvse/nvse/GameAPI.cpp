@@ -2670,4 +2670,10 @@ UInt8* GetScriptDataPosition(Script* script, void* scriptDataIn, const UInt32* o
 	return static_cast<UInt8*>(scriptDataIn) + *opcodeOffsetPtrIn;
 }
 
+UInt32 GetNextFreeFormID(UInt32 formId)
+{
+	while (LookupFormByID(++formId));
+	return formId;
+}
+
 #endif

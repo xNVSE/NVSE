@@ -35,6 +35,11 @@ Script* LambdaManager::CreateLambdaScript(UInt8* position, ScriptEventList* pare
 	scriptLambda->info.numRefs = parentScript->info.numRefs;
 	scriptLambda->info.varCount = parentScript->info.varCount;
 	scriptLambda->info.lastID = parentScript->info.lastID;
+	const auto nextFormId = GetNextFreeFormID(parentScript->refID);
+	if (nextFormId >> 24 == parentScript->GetModIndex())
+	{
+		scriptLambda->SetRefID(nextFormId, true);
+	}
 	
 	g_lambdaParentEventListMap.emplace(scriptLambda, parentEventList);
 	auto& eventListLambdas = g_parentEventListLambdaMap[parentEventList];
