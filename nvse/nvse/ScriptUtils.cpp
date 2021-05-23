@@ -107,6 +107,8 @@ enum {
 
 const char* OpTypeToSymbol(OperatorType op);
 
+bool ValidateVariable(const std::string& varName, Script::VariableType varType);
+
 ScriptToken* Eval_Comp_Number_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
 	switch (op)
@@ -2696,6 +2698,17 @@ bool ExpressionParser::HandleMacros()
 	return true;
 }
 
+bool ValidateVariable(const std::string& varName, Script::VariableType varType)
+{
+	if (const auto iter = g_variableDefinitionsMap.find(varName); iter != g_variableDefinitionsMap.end() && iter->second != varType)
+	{
+		g_ErrOut.Show("Variable redefinition with a different type (saw first '%s', then '%s')", g_variableTypeNames[iter->second], g_variableTypeNames[varType]);
+		return false;
+	}
+	g_variableDefinitionsMap[varName] = varType;
+	return true;
+}
+
 VariableInfo* ExpressionParser::CreateVariable(const std::string& varName, Script::VariableType varType)
 {
 	if (auto* var = m_scriptBuf->vars.FindFirst([&](VariableInfo* v) { return _stricmp(varName.c_str(), v->name.CStr()) == 0; }))
@@ -4635,6 +4648,15 @@ bool Preprocessor::Process()
 			{
 				g_ErrOut.Show("Error line %d:\nReturn cannot be called within the body of a loop.", m_curLineNo);
 				return false;
+			}
+			else if (const auto type = VariableTypeNameToType(tok); type != Script::eVarType_Invalid)
+			{
+				std::string varToken;
+				if (tokens.NextToken(varToken) != -1)
+				{
+					if (!ValidateVariable(varToken, type))
+						return false;
+				}
 			}
 			else
 			{
