@@ -17,7 +17,7 @@ static const UInt32 kScript_SetTextFnAddr = 0x005C27B0;
 #endif
 
 extern CRITICAL_SECTION	csGameScript;				// trying to avoid what looks like concurrency issues
-
+extern const char* g_variableTypeNames[];
 // 54 / 48
 class Script : public TESForm
 {
@@ -53,7 +53,7 @@ public:
 
 		eVarType_Invalid
 	};
-
+	
 	struct VarInfoList : tList<VariableInfo>
 	{
 		VariableInfo* GetVariableByName(const char* name);
@@ -237,6 +237,8 @@ struct ScriptBuffer
 };
 static_assert(sizeof(ScriptBuffer) == 0x58);
 
+
+Script::VariableType VariableTypeNameToType(const char* name);
 
 UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText);	// parses scriptText to determine var type
 Script* GetScriptFromForm(TESForm* form);

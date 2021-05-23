@@ -47,7 +47,11 @@ static bool ShowWarning(const char* msg)
 
 #else
 
-#include "GameApi.h"
+#include "GameAPI.h"
+
+std::unordered_map<std::string, Script::VariableType> g_variableDefinitionsMap;
+
+
 
 const char* GetEditorID(TESForm* form)
 {
@@ -2692,6 +2696,50 @@ bool ExpressionParser::HandleMacros()
 	return true;
 }
 
+VariableInfo* ExpressionParser::CreateVariable(const std::string& varName, Script::VariableType varType)
+{
+	if (auto* var = m_scriptBuf->vars.FindFirst([&](VariableInfo* v) { return _stricmp(varName.c_str(), v->name.CStr()) == 0; }))
+	{
+		if (const auto iter = g_variableDefinitionsMap.find(varName); iter != g_variableDefinitionsMap.end() && iter->second != varType)
+		{
+			PrintCompileError(FormatString("Variable redefinition with a different type (saw first '%s', then '%s')", g_variableTypeNames[iter->second], g_variableTypeNames[varType]));
+			return nullptr;
+		}
+		// all good, already exists
+		return var;
+	}
+	if (varName.empty())
+	{
+		PrintCompileError("Got empty string for variable name");
+		return nullptr;
+	}
+	if (GetFormByID(varName.c_str()))
+	{
+		PrintCompileError("Invalid variable name " + varName + ": Form with that Editor ID already exists.");
+		return nullptr;
+	}
+	if (g_scriptCommands.GetByName(varName.c_str()))
+	{
+		PrintCompileError("Invalid variable name " + varName + ": Command with that name already exists.");
+		return nullptr;
+	}
+	auto* varInfo = New<VariableInfo>();
+	varInfo->idx = ++m_scriptBuf->info.varCount;
+	varInfo->name.Set(varName.c_str());
+	varInfo->type = varType;
+	m_scriptBuf->vars.Append(varInfo);
+	g_variableDefinitionsMap[varName] = varType;
+	return varInfo;
+}
+
+void ExpressionParser::SkipSpaces()
+{
+	while (isspace(static_cast<unsigned char>(*CurText())))
+	{
+		Offset()++;
+	}
+}
+
 ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 {
 	char firstChar = Peek();
@@ -2728,10 +2776,23 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 	std::string token = GetCurToken();
 	std::string refToken = token;
 
-	if (_stricmp(token.c_str(), "begin") == 0)
+	if (!bExpectStringVar)
 	{
-		return ParseLambda();
+		if (_stricmp(token.c_str(), "begin") == 0)
+		{
+			return ParseLambda();
+		}
+		if (const auto varType = VariableTypeNameToType(token.c_str()); varType != Script::eVarType_Invalid)
+		{
+			SkipSpaces();
+			const auto varName = GetCurToken();
+			auto* varInfo = CreateVariable(varName, varType);
+			if (!varInfo)
+				return nullptr;
+			return ScriptToken::Create(varInfo, 0, varType);
+		}
 	}
+	
 
 	// some operators (e.g. ->) expect a string literal, filter them out now
 	if (curOp && curOp->ExpectsStringLiteral()) {

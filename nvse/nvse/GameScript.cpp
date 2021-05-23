@@ -6,8 +6,37 @@
 #include "GameRTTI.h"
 #include "ScriptUtils.h"
 
+const char* g_variableTypeNames[] =
+{
+	"float",
+	"int",
+	"string_var",
+	"array_var",
+	"ref",
+	"invalid"
+};
+
+Script::VariableType VariableTypeNameToType(const char* name)
+{
+	auto varType = Script::eVarType_Invalid;
+	if (!StrCompare(name, "string_var"))
+		varType = Script::eVarType_String;
+	else if (!StrCompare(name, "array_var"))
+		varType = Script::eVarType_Array;
+	else if (!StrCompare(name, "float"))
+		varType = Script::eVarType_Float;
+	else if (!StrCompare(name, "long") || !StrCompare(name, "int") || !StrCompare(name, "short"))
+		varType = Script::eVarType_Integer;
+	else if (!StrCompare(name, "ref") || !StrCompare(name, "reference"))
+		varType = Script::eVarType_Ref;
+	return varType;
+}
+
 UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText)
 {
+	if (const auto iter = g_variableDefinitionsMap.find(varName); iter != g_variableDefinitionsMap.end())
+		return iter->second;
+	
 	Tokenizer scriptLines(scriptText, "\n\r");
 	std::string curLine;
 	while (scriptLines.NextToken(curLine) != -1)
@@ -17,27 +46,14 @@ UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText)
 
 		if (tokens.NextToken(curToken) != -1)
 		{
-			UInt32 varType = -1;
-
-			// variable declaration?
-			if (!StrCompare(curToken.c_str(), "string_var"))
-				varType = Script::eVarType_String;
-			else if (!StrCompare(curToken.c_str(), "array_var"))
-				varType = Script::eVarType_Array;
-			else if (!StrCompare(curToken.c_str(), "float"))
-				varType = Script::eVarType_Float;
-			else if (!StrCompare(curToken.c_str(), "long") || !StrCompare(curToken.c_str(), "int") || !StrCompare(curToken.c_str(), "short"))
-				varType = Script::eVarType_Integer;
-			else if (!StrCompare(curToken.c_str(), "ref") || !StrCompare(curToken.c_str(), "reference"))
-				varType = Script::eVarType_Ref;
-
-			if (varType != -1 && tokens.NextToken(curToken) != -1 && !StrCompare(curToken.c_str(), varName))
+			const auto varType = VariableTypeNameToType(curToken.c_str());
+			if (varType != Script::eVarType_Invalid && tokens.NextToken(curToken) != -1 && !StrCompare(curToken.c_str(), varName))
 			{
+				g_variableDefinitionsMap[varName] = varType;
 				return varType;
 			}
 		}
 	}
-
 	return Script::eVarType_Invalid;
 }
 

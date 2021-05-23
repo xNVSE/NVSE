@@ -28,6 +28,7 @@ class FunctionCaller;
 
 extern ErrOutput g_ErrOut;
 extern std::unordered_map<ScriptBuffer*, ScriptBuffer*> g_lambdaParentScriptMap;
+extern std::unordered_map<std::string, Script::VariableType> g_variableDefinitionsMap;
 
 
 // these are used in ParamInfo to specify expected Token_Type of args to commands taking NVSE expressions as args
@@ -243,6 +244,8 @@ class ExpressionParser
 	ScriptToken	*	ParseOperand(Operator* curOp = NULL);
 	ScriptToken *	PeekOperand(UInt32& outReadLen);
 	bool			HandleMacros();
+	VariableInfo* CreateVariable(const std::string& varName, Script::VariableType varType);
+	void SkipSpaces();
 	bool			ParseFunctionCall(CommandInfo* cmdInfo);
 	Token_Type		PopOperator(std::stack<Operator*> & ops, std::stack<Token_Type> & operands);
 	Token_Type ParseArgument(UInt32 argsEndPos);

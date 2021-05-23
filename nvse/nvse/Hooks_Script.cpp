@@ -577,8 +577,9 @@ bool __stdcall HandleBeginCompile(ScriptBuffer* buf)
 	return bResult;
 }
 
-void __fastcall ScriptCompileMessage(Script* script)
+void __fastcall PostScriptCompile(Script* script)
 {
+	g_variableDefinitionsMap.clear();
 	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptCompile, script, 4, nullptr);
 }
 
@@ -599,7 +600,7 @@ static __declspec(naked) void CompileScriptHook(void)
 		test	al, al
 		jz		EndHook							// return false if CompileScript() returned false
 		mov ecx, script
-		call ScriptCompileMessage
+		call PostScriptCompile
 		mov		al, [precompileResult]			// else return result of Precompile
 		
 		EndHook:
