@@ -15,9 +15,7 @@
 #include "FunctionScripts.h"
 #include "GameRTTI.h"
 #include "LambdaManager.h"
-#if EDITOR
 #include <regex>
-#endif
 #if RUNTIME
 
 #ifdef DBG_EXPR_LEAKS
