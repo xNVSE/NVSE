@@ -5,7 +5,7 @@
 #include "SafeWrite.h"
 #include "richedit.h"
 #include "ScriptUtils.h"
-
+#include <regex>
 #if EDITOR
 
 static char s_InfixToPostfixBuf[0x800];
@@ -511,6 +511,11 @@ __declspec(naked) void ParameterParenthesisHook()
 	}
 }
 
+void HandleLineBufMacros(ScriptLineBuffer* buf)
+{
+	std::string line = buf->paramText;
+}
+
 // Expand ScriptLineBuffer to allow multiline expressions with parenthesis
 int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 {
@@ -524,6 +529,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 	auto numBrackets = 0;
 	auto capturedNonSpace = false;
 	auto numSpacesInParenthesis = 0;
+	auto inStringLiteral = false;
 
 	// skip all spaces and tabs in the beginning
 	while (isspace(*curScriptText))
@@ -540,19 +546,28 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 		{
 			case '(':
 			{
-				++numBrackets;
+				if (!inStringLiteral)
+					++numBrackets;
 				break;
 			}
 			case ')':
 			{
-				--numBrackets;
-				if (numBrackets < 0)
+				if (!inStringLiteral)
 				{
-					scriptBuf->curLineNumber = lineBuf->lineNumber;
-					ShowCompilerError(scriptBuf, "Mismatched parenthesis");
-					lineBuf->errorCode = 1;
-					return 0;
+					--numBrackets;
+					if (numBrackets < 0)
+					{
+						scriptBuf->curLineNumber = lineBuf->lineNumber;
+						ShowCompilerError(scriptBuf, "Mismatched parenthesis");
+						lineBuf->errorCode = 1;
+						return 0;
+					}
 				}
+				break;
+			}
+			case '"':
+			{
+				inStringLiteral = !inStringLiteral;
 				break;
 			}
 			case '\0':
