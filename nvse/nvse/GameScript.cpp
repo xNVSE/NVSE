@@ -32,9 +32,9 @@ Script::VariableType VariableTypeNameToType(const char* name)
 	return varType;
 }
 
-UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText)
+UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText, Script* script)
 {
-	if (const auto iter = g_variableDefinitionsMap.find(varName); iter != g_variableDefinitionsMap.end())
+	if (const auto iter = g_variableDefinitionsMap.find(std::make_pair(script, varName)); iter != g_variableDefinitionsMap.end())
 		return iter->second;
 	
 	Tokenizer scriptLines(scriptText, "\n\r");
@@ -49,7 +49,7 @@ UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText)
 			const auto varType = VariableTypeNameToType(curToken.c_str());
 			if (varType != Script::eVarType_Invalid && tokens.NextToken(curToken) != -1 && !StrCompare(curToken.c_str(), varName))
 			{
-				g_variableDefinitionsMap[varName] = varType;
+				g_variableDefinitionsMap[std::make_pair(script, varName)] = varType;
 				return varType;
 			}
 		}
@@ -70,7 +70,7 @@ Script* GetScriptFromForm(TESForm* form)
 UInt32 Script::GetVariableType(VariableInfo* varInfo)
 {
 	if (text)
-		return GetDeclaredVariableType(varInfo->name.m_data, text);
+		return GetDeclaredVariableType(varInfo->name.m_data, text, this);
 	else
 	{
 		// if it's a ref var a matching varIdx will appear in RefList
@@ -239,6 +239,7 @@ UInt32 ScriptBuffer::GetRefIdx(Script::RefVariable* ref)
 UInt32 ScriptBuffer::GetVariableType(VariableInfo* varInfo, Script::RefVariable* refVar)
 {
 	const char* scrText = scriptText;
+	Script* script = this->currentScript;
 	if (refVar)
 	{
 		if (refVar->form)
@@ -259,7 +260,10 @@ UInt32 ScriptBuffer::GetVariableType(VariableInfo* varInfo, Script::RefVariable*
 			if (scriptable && scriptable->script)
 			{
 				if (scriptable->script->text)
+				{
+					script = scriptable->script;
 					scrText = scriptable->script->text;
+				}
 				else
 					return scriptable->script->GetVariableType(varInfo);
 			}
@@ -268,7 +272,7 @@ UInt32 ScriptBuffer::GetVariableType(VariableInfo* varInfo, Script::RefVariable*
 			return Script::eVarType_Invalid;
 	}
 
-	const auto res = GetDeclaredVariableType(varInfo->name.m_data, scrText);
+	const auto res = GetDeclaredVariableType(varInfo->name.m_data, scrText, script);
 	if (res == Script::eVarType_Invalid)
 	{
 		if (auto iter = g_lambdaParentScriptMap.find(this); iter != g_lambdaParentScriptMap.end())

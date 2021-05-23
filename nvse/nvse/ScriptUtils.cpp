@@ -49,7 +49,7 @@ static bool ShowWarning(const char* msg)
 
 #include "GameAPI.h"
 
-std::unordered_map<std::string, Script::VariableType> g_variableDefinitionsMap;
+std::map<std::pair<Script*, std::string>, Script::VariableType> g_variableDefinitionsMap;
 
 
 
@@ -1812,7 +1812,7 @@ bool GetUserFunctionParamNames(const std::string& scriptText, std::vector<std::s
 	return false;
 }
 
-bool GetUserFunctionParams(const std::vector<std::string>& paramNames, std::vector<UserFunctionParam> &outParams, Script::VarInfoList* varList, const std::string& fullScriptText)
+bool GetUserFunctionParams(const std::vector<std::string>& paramNames, std::vector<UserFunctionParam> &outParams, Script::VarInfoList* varList, const std::string& fullScriptText, Script* script)
 {
 	for (const auto& token : paramNames)
 	{
@@ -1820,7 +1820,7 @@ bool GetUserFunctionParams(const std::vector<std::string>& paramNames, std::vect
 		if (!varInfo)
 			return false;
 
-		UInt32 varType = GetDeclaredVariableType(token.c_str(), fullScriptText.c_str());
+		UInt32 varType = GetDeclaredVariableType(token.c_str(), fullScriptText.c_str(), script);
 		if (varType == Script::eVarType_Invalid)
 		{
 			return false;
@@ -1853,7 +1853,8 @@ DynamicParamInfo::DynamicParamInfo(std::vector<UserFunctionParam> &params)
 		m_paramInfo[i] = kDynamicParams[params[i].varType];
 }
 
-bool ExpressionParser::ParseUserFunctionParameters(std::vector<UserFunctionParam>& out, const std::string& funcScriptText, Script::VarInfoList* funcScriptVars) const
+bool ExpressionParser::ParseUserFunctionParameters(std::vector<UserFunctionParam>& out, const std::string& funcScriptText, Script::VarInfoList* funcScriptVars, Script*
+                                                   script) const
 {
 	std::vector<std::string> funcParamNames;
 	if (!GetUserFunctionParamNames(funcScriptText, funcParamNames))
@@ -1862,14 +1863,14 @@ bool ExpressionParser::ParseUserFunctionParameters(std::vector<UserFunctionParam
 		return false;
 	}
 
-	if (!GetUserFunctionParams(funcParamNames, out, funcScriptVars, funcScriptText))
+	if (!GetUserFunctionParams(funcParamNames, out, funcScriptVars, funcScriptText, script))
 	{
 		auto success = false;
 		// check if lambda
 		if (const auto lambdaParentIter = g_lambdaParentScriptMap.find(m_scriptBuf); lambdaParentIter != g_lambdaParentScriptMap.end())
 		{
 			const auto* scrText = lambdaParentIter->second->scriptText;
-			if (GetUserFunctionParams(funcParamNames, out, funcScriptVars, scrText))
+			if (GetUserFunctionParams(funcParamNames, out, funcScriptVars, scrText, lambdaParentIter->second->currentScript))
 				success = true;
 		}
 		if (!success)
@@ -1960,15 +1961,16 @@ bool ExpressionParser::ParseUserFunctionCall()
 	{
 		const char* funcScriptText = funcScript->text;
 		Script::VarInfoList* funcScriptVars = &funcScript->varList;
-
+		auto* script = funcScript;
 		if (!StrCompare(GetEditorID(funcScript), m_scriptBuf->scriptName.m_data))
 		{
 			funcScriptText = m_scriptBuf->scriptText;
 			funcScriptVars = &m_scriptBuf->vars;
+			script = m_scriptBuf->currentScript;
 		}
 
 		std::vector<UserFunctionParam> funcParams;
-		if (!ParseUserFunctionParameters(funcParams, funcScriptText, funcScriptVars))
+		if (!ParseUserFunctionParameters(funcParams, funcScriptText, funcScriptVars, script))
 			return false;
 		
 		DynamicParamInfo dynamicParams(funcParams);
@@ -2004,7 +2006,7 @@ bool ExpressionParser::ParseUserFunctionDefinition()
 
 	// parse parameter list
 	std::vector<UserFunctionParam> params;
-	if (!ParseUserFunctionParameters(params, m_scriptBuf->scriptText, &m_scriptBuf->vars))
+	if (!ParseUserFunctionParameters(params, m_scriptBuf->scriptText, &m_scriptBuf->vars, m_scriptBuf->currentScript))
 		return false;
 
 	// write param info
@@ -2698,14 +2700,14 @@ bool ExpressionParser::HandleMacros()
 	return true;
 }
 
-bool ValidateVariable(const std::string& varName, Script::VariableType varType)
+bool ValidateVariable(const std::string& varName, Script::VariableType varType, Script* script)
 {
-	if (const auto iter = g_variableDefinitionsMap.find(varName); iter != g_variableDefinitionsMap.end() && iter->second != varType)
+	if (const auto iter = g_variableDefinitionsMap.find(std::make_pair(script, varName)); iter != g_variableDefinitionsMap.end() && iter->second != varType)
 	{
 		g_ErrOut.Show("Variable redefinition with a different type (saw first '%s', then '%s')", g_variableTypeNames[iter->second], g_variableTypeNames[varType]);
 		return false;
 	}
-	g_variableDefinitionsMap[varName] = varType;
+	g_variableDefinitionsMap[std::make_pair(script, varName)] = varType;
 	return true;
 }
 
@@ -2713,7 +2715,7 @@ VariableInfo* ExpressionParser::CreateVariable(const std::string& varName, Scrip
 {
 	if (auto* var = m_scriptBuf->vars.FindFirst([&](VariableInfo* v) { return _stricmp(varName.c_str(), v->name.CStr()) == 0; }))
 	{
-		if (const auto iter = g_variableDefinitionsMap.find(varName); iter != g_variableDefinitionsMap.end() && iter->second != varType)
+		if (const auto iter = g_variableDefinitionsMap.find(std::make_pair(m_scriptBuf->currentScript, varName)); iter != g_variableDefinitionsMap.end() && iter->second != varType)
 		{
 			PrintCompileError(FormatString("Variable redefinition with a different type (saw first '%s', then '%s')", g_variableTypeNames[iter->second], g_variableTypeNames[varType]));
 			return nullptr;
@@ -2741,7 +2743,7 @@ VariableInfo* ExpressionParser::CreateVariable(const std::string& varName, Scrip
 	varInfo->name.Set(varName.c_str());
 	varInfo->type = varType;
 	m_scriptBuf->vars.Append(varInfo);
-	g_variableDefinitionsMap[varName] = varType;
+	g_variableDefinitionsMap[std::make_pair(m_scriptBuf->currentScript, varName)] = varType;
 	return varInfo;
 }
 
@@ -4630,7 +4632,7 @@ bool Preprocessor::Process()
 
 					if (scriptText)
 					{
-						UInt32 varType = GetDeclaredVariableType(varName.c_str(), scriptText);
+						UInt32 varType = GetDeclaredVariableType(varName.c_str(), scriptText, m_buf->currentScript);
 						if (varType == Script::eVarType_Array)
 						{
 							g_ErrOut.Show("Error line %d:\nSet may not be used to assign to an array variable", m_curLineNo);
@@ -4654,7 +4656,7 @@ bool Preprocessor::Process()
 				std::string varToken;
 				if (tokens.NextToken(varToken) != -1)
 				{
-					if (!ValidateVariable(varToken, type))
+					if (!ValidateVariable(varToken, type, m_buf->currentScript))
 						return false;
 				}
 			}

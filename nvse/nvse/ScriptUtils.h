@@ -28,7 +28,7 @@ class FunctionCaller;
 
 extern ErrOutput g_ErrOut;
 extern std::unordered_map<ScriptBuffer*, ScriptBuffer*> g_lambdaParentScriptMap;
-extern std::unordered_map<std::string, Script::VariableType> g_variableDefinitionsMap;
+extern std::map<std::pair<Script*, std::string>, Script::VariableType> g_variableDefinitionsMap;
 
 
 // these are used in ParamInfo to specify expected Token_Type of args to commands taking NVSE expressions as args
@@ -262,7 +262,7 @@ public:
 	bool			ParseArgs(ParamInfo* params, UInt32 numParams, bool bUsesNVSEParamTypes = true);
 	bool			ValidateArgType(UInt32 paramType, Token_Type argType, bool bIsNVSEParam);
 	bool ParseUserFunctionParameters(std::vector<UserFunctionParam>& out, const std::string& funcScriptText,
-	                                 Script::VarInfoList* funcScriptVars) const;
+	                                 Script::VarInfoList* funcScriptVars, Script* script) const;
 	bool			ParseUserFunctionCall();
 	bool			ParseUserFunctionDefinition();
 	ScriptToken	*	ParseOperand(bool (* pred)(ScriptToken* operand));
