@@ -34,9 +34,10 @@ Script::VariableType VariableTypeNameToType(const char* name)
 
 UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText, Script* script)
 {
+#if EDITOR
 	if (const auto iter = g_variableDefinitionsMap.find(std::make_pair(script, varName)); iter != g_variableDefinitionsMap.end())
 		return iter->second;
-	
+#endif
 	Tokenizer scriptLines(scriptText, "\n\r");
 	std::string curLine;
 	while (scriptLines.NextToken(curLine) != -1)
@@ -49,7 +50,9 @@ UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText, Scri
 			const auto varType = VariableTypeNameToType(curToken.c_str());
 			if (varType != Script::eVarType_Invalid && tokens.NextToken(curToken) != -1 && !StrCompare(curToken.c_str(), varName))
 			{
+#if EDITOR
 				g_variableDefinitionsMap[std::make_pair(script, varName)] = varType;
+#endif
 				return varType;
 			}
 		}

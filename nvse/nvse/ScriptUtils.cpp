@@ -107,7 +107,7 @@ enum {
 
 const char* OpTypeToSymbol(OperatorType op);
 
-bool ValidateVariable(const std::string& varName, Script::VariableType varType);
+bool ValidateVariable(const std::string& varName, Script::VariableType varType, Script* script);
 
 ScriptToken* Eval_Comp_Number_Number(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
@@ -2702,12 +2702,14 @@ bool ExpressionParser::HandleMacros()
 
 bool ValidateVariable(const std::string& varName, Script::VariableType varType, Script* script)
 {
+#if EDITOR
 	if (const auto iter = g_variableDefinitionsMap.find(std::make_pair(script, varName)); iter != g_variableDefinitionsMap.end() && iter->second != varType)
 	{
 		g_ErrOut.Show("Variable redefinition with a different type (saw first '%s', then '%s')", g_variableTypeNames[iter->second], g_variableTypeNames[varType]);
 		return false;
 	}
 	g_variableDefinitionsMap[std::make_pair(script, varName)] = varType;
+#endif
 	return true;
 }
 
@@ -2715,11 +2717,8 @@ VariableInfo* ExpressionParser::CreateVariable(const std::string& varName, Scrip
 {
 	if (auto* var = m_scriptBuf->vars.FindFirst([&](VariableInfo* v) { return _stricmp(varName.c_str(), v->name.CStr()) == 0; }))
 	{
-		if (const auto iter = g_variableDefinitionsMap.find(std::make_pair(m_scriptBuf->currentScript, varName)); iter != g_variableDefinitionsMap.end() && iter->second != varType)
-		{
-			PrintCompileError(FormatString("Variable redefinition with a different type (saw first '%s', then '%s')", g_variableTypeNames[iter->second], g_variableTypeNames[varType]));
+		if (!ValidateVariable(varName, varType, m_scriptBuf->currentScript))
 			return nullptr;
-		}
 		// all good, already exists
 		return var;
 	}
@@ -2743,7 +2742,9 @@ VariableInfo* ExpressionParser::CreateVariable(const std::string& varName, Scrip
 	varInfo->name.Set(varName.c_str());
 	varInfo->type = varType;
 	m_scriptBuf->vars.Append(varInfo);
+#if EDITOR
 	g_variableDefinitionsMap[std::make_pair(m_scriptBuf->currentScript, varName)] = varType;
+#endif
 	return varInfo;
 }
 
@@ -3123,7 +3124,7 @@ void ExpressionEvaluator::PopFromStack() const
 
 ExpressionEvaluator::ExpressionEvaluator(COMMAND_ARGS) : m_opcodeOffsetPtr(opcodeOffsetPtr), m_result(result), 
 	m_thisObj(thisObj), m_containingObj(containingObj), m_params(paramInfo), m_numArgsExtracted(0), m_expectedReturnType(kRetnType_Default), m_baseOffset(0),
-	localData(ThreadLocalData::Get()), script(scriptObj), eventList(eventList)
+	localData(ThreadLocalData::Get()), script(scriptObj), eventList(eventList), m_inline(false)
 {
 	m_scriptData = static_cast<UInt8*>(scriptData);
 	m_data = m_scriptData + *m_opcodeOffsetPtr;

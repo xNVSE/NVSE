@@ -143,7 +143,8 @@
 	DuplicateExtraListForContainer	0x0041B090
 */
 
-enum {
+enum ExtraDataType : UInt8
+{
 	kExtraData_Havok                    	= 0x01,
 	kExtraData_Cell3D                   	= 0x02,
 	kExtraData_CellWaterType            	= 0x03,

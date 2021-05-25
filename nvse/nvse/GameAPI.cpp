@@ -1681,6 +1681,10 @@ bool ExtractArgsRaw(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptD
 	return true;
 }
 
+#if _DEBUG
+thread_local CommandInfo* g_lastCommand;
+#endif
+
 #if NVSE_CORE
 bool vExtractArgsEx(ParamInfo* paramInfo, void* scriptDataIn, UInt32* scriptDataOffset, Script* scriptObj, ScriptEventList* eventList, va_list args, bool incrementOffsetPtr)
 {
@@ -1709,7 +1713,12 @@ bool vExtractArgsEx(ParamInfo* paramInfo, void* scriptDataIn, UInt32* scriptData
 	}
 	else if (v_ExtractArgsEx(numArgs, paramInfo, scriptData, scriptObj, eventList, args, scriptDataIn))
 		bExtracted = true;
-	if (incrementOffsetPtr)
+	
+#if _DEBUG
+	auto* opcodePtr = reinterpret_cast<UInt16*>(static_cast<UInt8*>(scriptDataIn) + (*scriptDataOffset - 4));
+	g_lastCommand = g_scriptCommands.GetByOpcode(*opcodePtr);
+#endif
+	if (incrementOffsetPtr && bExtracted)
 	{
 		*scriptDataOffset += scriptData - (static_cast<UInt8*>(scriptDataIn) + *scriptDataOffset);
 	}
