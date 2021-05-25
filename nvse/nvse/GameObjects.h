@@ -157,6 +157,7 @@ public:
 	TESContainer* GetContainer();
 	bool IsMapMarker();
 	bool GetInventoryItems(InventoryItemsMap &invItems);
+	ExtraDroppedItemList* GetDroppedItems();
 
 	static TESObjectREFR* Create(bool bTemp = false);
 

@@ -1093,10 +1093,6 @@ public:
 	__forceinline void Clear() {free(key);}
 };
 
-#if _DEBUG
-template <typename T_Key, typename T_Data>
-using UnorderedMap = Map<T_Key, T_Data>;
-#else
 template <typename T_Key, typename T_Data> class UnorderedMap
 {
 	using H_Key = HashedKey<T_Key>;
@@ -1432,7 +1428,6 @@ public:
 	Iterator Begin() {return Iterator(*this);}
 	Iterator Find(Key_Arg key) {return Iterator(*this, key);}
 };
-#endif
 
 template <typename T_Key> class UnorderedSet
 {

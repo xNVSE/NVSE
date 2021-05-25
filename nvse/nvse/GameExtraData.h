@@ -933,3 +933,9 @@ class ExtraObjectHealth : public BSExtraData
 public:
 	float			health;		// 0C
 };
+
+class ExtraDroppedItemList : public BSExtraData
+{
+public:
+	tList<TESObjectREFR> droppedItemList;
+};

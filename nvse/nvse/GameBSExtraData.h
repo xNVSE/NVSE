@@ -79,3 +79,4 @@ struct ExtraDataList : public BaseExtraList
 
 STATIC_ASSERT(offsetof(BaseExtraList, m_presenceBitfield) == 0x008);
 STATIC_ASSERT(sizeof(ExtraDataList) == 0x020);
+

@@ -29,4 +29,5 @@ template <int x> struct static_assert_test { };
 #define __PREPRO_TOKEN_STR__(a)		__PREPRO_TOKEN_STR2__(a)
 #define __LOC__						__FILE__ "("__PREPRO_TOKEN_STR__(__LINE__)") : "
 
-#define STATIC_ASSERT(a)	typedef static_assert_test <sizeof(StaticAssertFailure<(bool)(a)>)> __MACRO_JOIN__(static_assert_typedef_, __COUNTER__)
+//#define STATIC_ASSERT(a)	typedef static_assert_test <sizeof(StaticAssertFailure<(bool)(a)>)> __MACRO_JOIN__(static_assert_typedef_, __COUNTER__)
+#define STATIC_ASSERT(a) static_assert(a)

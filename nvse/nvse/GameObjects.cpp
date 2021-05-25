@@ -294,3 +294,8 @@ bool TESObjectREFR::GetInventoryItems(InventoryItemsMap &invItems)
 
 	return !invItems.Empty();
 }
+
+ExtraDroppedItemList* TESObjectREFR::GetDroppedItems()
+{
+	return static_cast<ExtraDroppedItemList*>(extraDataList.GetByType(kExtraData_DroppedItemList));
+}
