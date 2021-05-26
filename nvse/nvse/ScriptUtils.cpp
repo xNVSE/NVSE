@@ -1116,6 +1116,27 @@ ScriptToken* Eval_Pair(OperatorType op, ScriptToken* lh, ScriptToken* rh, Expres
 	return ScriptToken::Create(lh, rh);
 }
 
+ScriptToken* Eval_DotSyntax(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
+{
+	auto* form = lh->GetTESForm();
+	if (!rh->GetCommandInfo())
+	{
+		context->Error("Unable to resolve command");
+		return nullptr;
+	}
+	if (!form)
+	{
+		context->Error("Attempting to call a command on a NULL reference");
+		return nullptr;
+	}
+	if (!form->GetIsReference())
+	{
+		context->Error("Attempting to call a function on a base object (this must be a reference)");
+		return nullptr;
+	}
+	return context->ExecuteCommandToken(rh, static_cast<TESObjectREFR*>(form));
+}
+
 #define OP_HANDLER(x) x
 #else
 #define OP_HANDLER(x) NULL
@@ -1430,6 +1451,15 @@ OperationRule kOpRule_MakePair[] =
 	{	kTokenType_Number, kTokenType_Array,	kTokenType_Pair,	OP_HANDLER(Eval_Pair),	true	},
 };
 
+OperationRule kOpRule_Dot[] =
+{
+	{kTokenType_Form, kTokenType_Command, kTokenType_Command, OP_HANDLER(Eval_DotSyntax), true}, // Form is used instead of Ref since commands return Form - no way to check which
+	{kTokenType_ArrayElement, kTokenType_Command, kTokenType_Command, OP_HANDLER(Eval_DotSyntax), true},
+#if EDITOR
+	{kTokenType_Command, kTokenType_Command, kTokenType_Command, OP_HANDLER(Eval_DotSyntax), true}, // kTokenType_Command is used as token type when kRetnType_Default is returned
+#endif
+};
+
 // Operator definitions
 #define OP_RULES(x) SIZEOF_ARRAY(kOpRule_ ## x, OperationRule), kOpRule_ ## x
 
@@ -1491,6 +1521,7 @@ Operator s_operators[] =
 
 	{	91,	"{",	0,	kOpType_LeftBrace,	0,	NULL				},
 	{	91,	"}",	0,	kOpType_RightBrace,	0,	NULL				},
+	{	90, ".", 2, kOpType_Dot, OP_RULES(Dot)},
 
 };
 
@@ -1725,7 +1756,6 @@ bool ExpressionParser::ValidateArgType(UInt32 paramType, Token_Type argType, boo
 		switch (paramType) {
 			case kParamType_String:
 			case kParamType_Axis:
-			case kParamType_AnimationGroup:
 			case kParamType_Sex:
 				return CanConvertOperand(argType, kTokenType_String);
 			case kParamType_Float:
@@ -1736,6 +1766,7 @@ bool ExpressionParser::ValidateArgType(UInt32 paramType, Token_Type argType, boo
 				// string var included here b/c old sv_* cmds take strings as integer IDs
 				return (CanConvertOperand(argType, kTokenType_Number) || CanConvertOperand(argType, kTokenType_StringVar) || 
 					CanConvertOperand(argType, kTokenType_Variable));
+			case kParamType_AnimationGroup:
 			case kParamType_ActorValue:				
 				// we accept string or int for this
 				// at run-time convert string to int if necessary and possible
@@ -2105,7 +2136,7 @@ static ErrOutput::Message s_expressionErrors[] =
 	{	"Too many operators."	},
 	{	"Too many operands.",	},
 	{	"Mismatched brackets."	},
-	{	"Invalid operands for operator %s."	},
+	{	"Invalid operands for operator %s"	},
 	{	"Mismatched quotes."	},
 	{	"Left of dot must be quest or persistent reference."	},
 	{	"Unknown variable '%s'."	},
@@ -2185,6 +2216,8 @@ UInt32	ExpressionParser::MatchOpenBracket(Operator* openBracOp)
 	return openBracCount ? -1 : i;
 }
 
+Token_Type g_lastCommandReturnType = kTokenType_Invalid;
+
 Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 {
 	std::stack<Operator*> ops;
@@ -2263,21 +2296,29 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 			if (!operand)
 				return kTokenType_Invalid;
 
+			if (operand->type == kTokenType_Command && !ops.empty() && ops.top()->type == kOpType_Dot)
+			{
+				if (operand->refIdx)
+				{
+					PrintCompileError("Parsing failure when interpreting dot syntax (token has ref index while dot operator is on operator stack)");
+					return kTokenType_Invalid;
+				}
+				// makes thisObj be the top of the operand stack during runtime
+				operand->useRefFromStack = true;
+			}
+
 			// write it to postfix expression, we'll check validity below
 			if (!operand->Write(m_lineBuf))
 			{
 				delete operand;
-				Message(kError_LineDataOverflow);
 				return kTokenType_Invalid;
 			}
 			operandType = operand->Type();
 
 			CommandInfo* cmdInfo = operand->GetCommandInfo();
-			delete operand;
-			operand = NULL;
 
 			// if command, parse it. also adjust operand type if return value of command is known
-			if (operandType == kTokenType_Command)
+			if (operandType == kTokenType_Command) // 
 			{
 				CommandReturnType retnType = g_scriptCommands.GetReturnType(cmdInfo);
 				if (retnType == kRetnType_String)		
@@ -2287,6 +2328,13 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 				else if (retnType == kRetnType_Form)
 					operandType = kTokenType_Form;
 
+				if (operand->useRefFromStack)
+				{
+					g_lastCommandReturnType = operandType;
+					// right dot op rule takes kTokenType_Command
+					operandType = kTokenType_Command;
+				}
+				
 				s_parserDepth++;
 				bool bParsed = ParseFunctionCall(cmdInfo);
 				s_parserDepth--;
@@ -2294,10 +2342,12 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 				if (!bParsed)
 				{
 					Message(kError_CantParse);
+					delete operand;
 					return kTokenType_Invalid;
 				}
 			}
-
+			delete operand;
+			operand = NULL;
 			bLastTokenWasOperand = true;
 		}
 
@@ -2373,6 +2423,14 @@ Token_Type ExpressionParser::PopOperator(std::stack<Operator*> & ops, std::stack
 		return kTokenType_Invalid;
 	}
 
+	if (topOp->type == kOpType_Dot)
+		result = g_lastCommandReturnType;
+	if (result == kTokenType_Invalid)
+	{
+		PrintCompileError("Failure parsing chained dot syntax: the command return type was not saved.");
+		return kTokenType_Invalid;
+	}
+	
 	operands.push(result);
 
 	// write operator to postfix expression
@@ -2830,33 +2888,40 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 	// check for a calling object
 	Script::RefVariable* callingObj = NULL;
 	UInt16 refIdx = 0;
-	UInt32 dotPos = token.find('.');
-	if (dotPos != -1)
+	bool hasDot = false;
+	if (Peek() == '.')
 	{
-		refToken = token.substr(0, dotPos);
-		token = token.substr(dotPos + 1);
+		++Offset();
+		hasDot = true;
+		refToken = std::move(token);
+		token = GetCurToken();
 	}
-
+	
 	// before we go any further, check for local variable in case of name collisions between vars and other objects
-	if (dotPos == -1)
+	if (!hasDot)
 	{
 		VariableInfo* varInfo = LookupVariable(token.c_str(), NULL);
 		if (varInfo)
 			return ScriptToken::Create(varInfo, 0, m_scriptBuf->GetVariableType(varInfo, NULL));
 	}
-	
+	auto usesRefFromStack = curOp && curOp->type == kOpType_Dot;
 	Script::RefVariable* refVar = m_scriptBuf->ResolveRef(refToken.c_str());
-	if (dotPos != -1 && !refVar)
+	if (hasDot && !refVar)
 	{
-		Message(kError_InvalidDotSyntax);
-		return NULL;
+		//Message(kError_InvalidDotSyntax);
+		//return NULL;
+
+		// Use dot operator syntax instead, allowing chained dot syntax
+		hasDot = false;
+		Offset() -= token.size() + 1;
+		token = std::move(refToken);
 	}
 	else if (refVar)
 		refIdx = m_scriptBuf->GetRefIdx(refVar);
 
 	if (refVar)
 	{
-		if (dotPos == -1)
+		if (!hasDot)
 		{
 			if (refVar->varIdx)			// it's a variable
 				return ScriptToken::Create(m_scriptBuf->vars.GetVariableByName(refVar->name.m_data), 0, Script::eVarType_Ref);
@@ -2879,7 +2944,7 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 		if (cmdInfo)
 		{
 			// if quest script, check that calling obj supplied for cmds requiring it
-			if (m_scriptBuf->info.type == Script::eType_Quest && cmdInfo->needsParent && !refVar)
+			if (m_scriptBuf->info.type == Script::eType_Quest && cmdInfo->needsParent && !refVar && !usesRefFromStack)
 			{
 				Message(kError_RefRequired, cmdInfo->longName);
 				return NULL;
@@ -2893,7 +2958,7 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 
 	// variable?
 	VariableInfo* varInfo = LookupVariable(token.c_str(), refVar);
-	if (!varInfo && dotPos != -1)
+	if (!varInfo && hasDot)
 	{
 		Message(kError_CantFindVariable, token.c_str());
 		return NULL;
@@ -2998,7 +3063,7 @@ std::string ExpressionParser::GetCurToken()
 	const char* tokStart = CurText();
 	while ((ch = Peek()))
 	{
-		if (isspace(static_cast<unsigned char>(ch)) || (ispunct(static_cast<unsigned char>(ch)) && ch != '_' && ch != '.'))
+		if (isspace(static_cast<unsigned char>(ch)) || (ispunct(static_cast<unsigned char>(ch)) && ch != '_'))
 			break;
 		Offset()++;
 	}
@@ -3736,7 +3801,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, b
 	return true;
 }
 
-ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
+ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token, TESObjectREFR* stackRef = nullptr)
 {
 	// execute the command
 	CommandInfo* cmdInfo = token->GetCommandInfo();
@@ -3746,21 +3811,29 @@ ScriptToken* ExpressionEvaluator::ExecuteCommandToken(ScriptToken const* token)
 	}
 
 	TESObjectREFR* callingObj = m_thisObj;
-	Script::RefVariable* callingRef = script->GetRefFromRefList(token->GetRefIndex());
-	if (callingRef)
+	Script::RefVariable* callingRef = nullptr;
+	if (const auto refIdx = token->GetRefIndex())
 	{
-		callingRef->Resolve(eventList);
-		if (!callingRef->form)
+		callingRef = script->GetRefFromRefList(refIdx);
+		if (callingRef)
 		{
-			Error("Attempting to call a function on a NULL reference");
-			return nullptr;
+			callingRef->Resolve(eventList);
+			if (!callingRef->form)
+			{
+				Error("Attempting to call a function on a NULL reference");
+				return nullptr;
+			}
+			if (!callingRef->form->GetIsReference())
+			{
+				Error("Attempting to call a function on a base object (this must be a reference)");
+				return nullptr;
+			}
+			callingObj = DYNAMIC_CAST(callingRef->form, TESForm, TESObjectREFR);
 		}
-		if (!callingRef->form->GetIsReference())
-		{
-			Error("Attempting to call a function on a base object (this must be a reference)");
-			return nullptr;
-		}
-		callingObj = DYNAMIC_CAST(callingRef->form, TESForm, TESObjectREFR);
+	}
+	else if (stackRef)
+	{
+		callingObj = stackRef;
 	}
 
 
@@ -3978,7 +4051,7 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 
 		if (curToken->Type() != kTokenType_Operator)
 		{
-			if (curToken->Type() == kTokenType_Command)
+			if (curToken->Type() == kTokenType_Command && !curToken->useRefFromStack)
 			{
 				ScriptToken *cmdToken = ExecuteCommandToken(curToken);
 				if (cmdToken == nullptr)

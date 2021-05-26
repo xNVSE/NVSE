@@ -392,7 +392,10 @@ UInt32 Script::RefList::GetIndex(Script::RefVariable* refVar)
 bool ScriptLineBuffer::Write(const void* buf, UInt32 bufsize)
 {
 	if (dataOffset + bufsize >= kBufferSize)
+	{
+		g_ErrOut.Show("Line data buffer overflow! To fix this make the line shorter in length.");
 		return false;
+	}
 
 	memcpy(dataBuf + dataOffset, buf, bufsize);
 	dataOffset += bufsize;

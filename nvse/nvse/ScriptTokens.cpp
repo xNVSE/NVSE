@@ -1008,10 +1008,13 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		{
 			context->Error("Failed to resolve global");
 			type = kTokenType_Invalid;
+			break;
 		}
 
 		break;
 	}
+	case 'x':
+		useRefFromStack = true;
 	case 'X':
 	{
 		type = kTokenType_Command;
@@ -1022,11 +1025,12 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		{
 			context->Error("Failed to resolve command with opcode %X", opcode);
 			type = kTokenType_Invalid;
+			break;
 		}
+		returnType = g_scriptCommands.GetReturnType(value.cmd);
 		const auto argsLen = context->Read16();
 		cmdOpcodeOffset = context->m_data - context->m_scriptData;
 		context->m_data += argsLen - 2;
-		returnType = g_scriptCommands.GetReturnType(value.cmd);
 		break;
 	}
 	case 'V':
@@ -1050,6 +1054,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		default:
 			context->Error("Unsupported variable type %X", variableType);
 			type = kTokenType_Invalid;
+			return type;
 		}
 
 		refIdx = context->Read16();
@@ -1075,6 +1080,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		{
 			context->Error("Failed to resolve variable");
 			type = kTokenType_Invalid;
+			return type;
 		}
 #if _DEBUG
 		if (value.var && !refIdx)
@@ -1122,21 +1128,50 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 #endif
 
 // compiling typecodes to printable chars just makes verifying parser output much easier
-static char TokenCodes[kTokenType_Max] =
-{ 'Z', '!', 'S', '!', 'R', 'G', '!', '!', '!', 'X', 'V', 'V', 'V', 'V', 'V', '!', 'O', '!', 'B', 'I', 'L', '!', '!', 'F' };
+// static char TokenCodes[kTokenType_Max] =
+// { 'Z', '!', 'S', '!', 'R', 'G', '!', '!', '!', 'X', 'V', 'V', 'V', 'V', 'V', '!', 'O', '!', 'B', 'I', 'L', '!', '!', 'F' };
+// STATIC_ASSERT(SIZEOF_ARRAY(TokenCodes, char) == kTokenType_Max);
 
-STATIC_ASSERT(SIZEOF_ARRAY(TokenCodes, char) == kTokenType_Max);
+const std::unordered_map g_tokenCodes =
+{
+	std::make_pair(kTokenType_Number, 'Z'),
+	std::make_pair(kTokenType_String, 'S'),
+	std::make_pair(kTokenType_Ref, 'R'),
+	std::make_pair(kTokenType_Global, 'G'),
+	std::make_pair(kTokenType_Command, 'X'),
+	std::make_pair(kTokenType_Variable, 'V'),
+	std::make_pair(kTokenType_NumericVar, 'V'),
+	std::make_pair(kTokenType_RefVar, 'V'),
+	std::make_pair(kTokenType_StringVar, 'V'),
+	std::make_pair(kTokenType_ArrayVar, 'V'),
+	std::make_pair(kTokenType_Operator, 'O'),
+	std::make_pair(kTokenType_Byte, 'B'),
+	std::make_pair(kTokenType_Short, 'I'),
+	std::make_pair(kTokenType_Int, 'L'),
+	std::make_pair(kTokenType_Lambda, 'F'),
+};
 
 inline char TokenTypeToCode(Token_Type type)
 {
-	return type < kTokenType_Max ? TokenCodes[type] : 0;
+	if (const auto iter = g_tokenCodes.find(type); iter != g_tokenCodes.end())
+		return iter->second;
+	return 0;
 }
 
-bool ScriptToken::Write(ScriptLineBuffer* buf)
+bool ScriptToken::Write(ScriptLineBuffer* buf) const
 {
-	if (type != kTokenType_Operator && type != kTokenType_Number)
-		buf->WriteByte(TokenTypeToCode(type));
+	const auto code = TokenTypeToCode(type);
+	if (!code)
+	{
+		g_ErrOut.Show("Unhandled token type %s for ScriptToken::Write", TokenTypeToString(type));
+		return false;
+	}
 
+	if (type == kTokenType_Command && useRefFromStack)
+		buf->WriteByte('x');
+	else if (type != kTokenType_Operator && type != kTokenType_Number)
+		buf->WriteByte(code);
+	
 	switch (type)
 	{
 	case kTokenType_Number:
@@ -1481,7 +1516,7 @@ static Operand s_operands[] =
 	{	NULL,	0			},
 	{	NULL,	0			},	// pair
 	{	OPERAND(AssignableString)	},
-	{ OPERAND(Lambda) }
+	{ OPERAND(Lambda) },
 };
 
 STATIC_ASSERT(SIZEOF_ARRAY(s_operands, Operand) == kTokenType_Max);

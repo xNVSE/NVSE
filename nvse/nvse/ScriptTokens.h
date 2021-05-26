@@ -1,4 +1,5 @@
 #pragma once
+#include "SmallObjectsAllocator.h"
 
 #if _DEBUG
 #define DBG_EXPR_LEAKS 1
@@ -87,6 +88,8 @@ enum OperatorType : UInt8
 	kOpType_LeftBrace,
 	kOpType_RightBrace,
 
+	kOpType_Dot, // added in xNVSE 6.1 - allow for quest.var.command
+
 	kOpType_Max
 };
 
@@ -119,8 +122,9 @@ enum Token_Type : UInt8
 
 	kTokenType_Pair,
 	kTokenType_AssignableString,
+	// xNVSE 6.1.0
 	kTokenType_Lambda,
-
+	
 	kTokenType_Invalid,
 	kTokenType_Max = kTokenType_Invalid,
 
@@ -253,7 +257,7 @@ struct ScriptToken
 	char					GetAxis();			// 'X', 'Y', 'Z', or otherwise -1
 	UInt32					GetSex();				// 0=male, 1=female, otherwise -1
 
-	bool					Write(ScriptLineBuffer* buf);
+	bool					Write(ScriptLineBuffer* buf) const;
 	Token_Type				Type() const		{ return type; }
 
 	bool					IsGood() const		{ return type != kTokenType_Invalid;	}
@@ -294,8 +298,8 @@ struct ScriptToken
 	void SetString(const char *srcStr);
 	std::string GetVariableName(ScriptEventList* eventList) const;
 
+	bool useRefFromStack = false; // when eval'ing commands, don't use refIdx but top of stack which is reference
 	UInt16		refIdx;
-	CommandReturnType returnType;
 #if RUNTIME
 	void* operator new(size_t size);
 	void* operator new(size_t size, bool useMemoryPool);
@@ -303,6 +307,7 @@ struct ScriptToken
 	void operator delete(void* p, bool useMemoryPool);
 	
 	bool cached;
+	CommandReturnType returnType;
 	UInt32 cmdOpcodeOffset;
 	ExpressionEvaluator* context;
 	UInt16		varIdx;
@@ -314,9 +319,10 @@ struct ScriptToken
 #if _DEBUG
 	std::string varName;
 #endif
+	private:
+		bool memoryPooled;
 #endif
-private:
-	bool memoryPooled;
+	
 };
 //STATIC_ASSERT(sizeof(ScriptToken) == 0x30);
 
@@ -450,6 +456,25 @@ struct AssignableSubstringArrayElementToken : public AssignableSubstringToken
 	{
 		::operator delete(p);
 	}
+};
+
+struct CommandRefToken : ScriptToken
+{
+	TESObjectREFR* thisObjRef;
+
+	CommandRefToken(CommandInfo* cmdInfo, TESObjectREFR* ref) : ScriptToken(cmdInfo, 0), thisObjRef(ref){}
+	
+	void* operator new(size_t size)
+	{
+		return s_allocator.Allocate();
+	}
+
+	void operator delete(void* p)
+	{
+		s_allocator.Free(p);
+	}
+private:
+	static SmallObjectsAllocator::FastAllocator<CommandRefToken, 4> s_allocator;
 };
 
 #endif

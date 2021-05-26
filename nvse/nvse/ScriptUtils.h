@@ -1,3 +1,4 @@
+
 #pragma once
 #include "containers.h"
 #include "ThreadLocal.h"
@@ -140,7 +141,7 @@ public:
 	// extract formatted string args compiled with compiler override
 	bool ExtractFormatStringArgs(va_list varArgs, UInt32 fmtStringPos, char* fmtStringOut, UInt32 maxParams);
 
-	ScriptToken*	ExecuteCommandToken(ScriptToken const* token);
+	ScriptToken*	ExecuteCommandToken(ScriptToken const* token, TESObjectREFR* stackRef);
 	ScriptToken*	Evaluate();			// evaluates a single argument/token
 	std::string GetLineText(CachedTokens& tokens, ScriptToken* faultingToken) const;
 	std::string GetVariablesText(CachedTokens& tokens) const;
