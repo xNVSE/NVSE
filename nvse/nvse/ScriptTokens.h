@@ -458,25 +458,6 @@ struct AssignableSubstringArrayElementToken : public AssignableSubstringToken
 	}
 };
 
-struct CommandRefToken : ScriptToken
-{
-	TESObjectREFR* thisObjRef;
-
-	CommandRefToken(CommandInfo* cmdInfo, TESObjectREFR* ref) : ScriptToken(cmdInfo, 0), thisObjRef(ref){}
-	
-	void* operator new(size_t size)
-	{
-		return s_allocator.Allocate();
-	}
-
-	void operator delete(void* p)
-	{
-		s_allocator.Free(p);
-	}
-private:
-	static SmallObjectsAllocator::FastAllocator<CommandRefToken, 4> s_allocator;
-};
-
 #endif
 
 typedef ScriptToken* (* Op_Eval)(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context);

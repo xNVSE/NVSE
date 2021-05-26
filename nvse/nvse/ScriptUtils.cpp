@@ -2318,7 +2318,7 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 			CommandInfo* cmdInfo = operand->GetCommandInfo();
 
 			// if command, parse it. also adjust operand type if return value of command is known
-			if (operandType == kTokenType_Command) // 
+			if (operandType == kTokenType_Command)
 			{
 				CommandReturnType retnType = g_scriptCommands.GetReturnType(cmdInfo);
 				if (retnType == kRetnType_String)		
@@ -2424,12 +2424,15 @@ Token_Type ExpressionParser::PopOperator(std::stack<Operator*> & ops, std::stack
 	}
 
 	if (topOp->type == kOpType_Dot)
-		result = g_lastCommandReturnType;
-	if (result == kTokenType_Invalid)
 	{
-		PrintCompileError("Failure parsing chained dot syntax: the command return type was not saved.");
-		return kTokenType_Invalid;
+		if (g_lastCommandReturnType == kTokenType_Invalid)
+		{
+			PrintCompileError("Failure parsing chained dot syntax: the command return type was not saved.");
+			return kTokenType_Invalid;
+		}
+		result = g_lastCommandReturnType;
 	}
+	
 	
 	operands.push(result);
 
