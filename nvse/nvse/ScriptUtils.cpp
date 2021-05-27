@@ -2882,6 +2882,21 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 		}
 	}
 
+	if (token.rfind("0x", 0) == 0)
+	{
+		// hexadecimal
+		try
+		{
+			const auto result = std::stoul(token, nullptr, 16);
+			return ScriptToken::Create(static_cast<double>(result));
+		}
+		catch (...)
+		{
+			PrintCompileError("Invalid hexadecimal syntax");
+			return nullptr;
+		}
+	}
+	
 	// try to convert to a number
 	char* leftOvers = NULL;
 	double dVal = strtod(token.c_str(), &leftOvers);
