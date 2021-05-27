@@ -511,9 +511,24 @@ __declspec(naked) void ParameterParenthesisHook()
 	}
 }
 
+std::vector g_lineMacros =
+{
+	ScriptLineMacro([&](std::string& line)
+	{
+		// VARIABLE = VALUE macro
+		const std::regex assignmentExpr(R"(^([a-zA-Z\_\s\.]*)\=(.*))"); // match int ivar = 4
+		if (std::smatch m; std::regex_search(line, m, assignmentExpr) && m.size() == 3)
+		{
+			line = "let " + m.str(1) + " := " + m.str(2);
+		}
+		return true;
+	}),
+};
+
 void HandleLineBufMacros(ScriptLineBuffer* buf)
 {
-	std::string line = buf->paramText;
+	for (const auto& macro : g_lineMacros)
+		macro.EvalMacro(buf);
 }
 
 // Expand ScriptLineBuffer to allow multiline expressions with parenthesis
@@ -596,6 +611,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 					}
 					lineBuf->paramText[lineBuf->paramTextLen] = '\0';
 					lineBuf->lineNumber += numSpacesInParenthesis;
+					HandleLineBufMacros(lineBuf);
 					return curScriptText - oldScriptText;
 				}
 				if (numBrackets)

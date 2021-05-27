@@ -12,6 +12,7 @@
 	which perform the operations can know that the operands are of the expected type.
 */
 
+class ScriptLineMacro;
 struct Operator;
 struct ScriptEventList;
 class ExpressionEvaluator;
@@ -22,6 +23,7 @@ class FunctionCaller;
 
 #include "ScriptTokens.h"
 #include <stack>
+#include <utility>
 
 #if RUNTIME
 #include <cstdarg>
@@ -189,6 +191,7 @@ enum ParamParenthResult : UInt8
 
 class ExpressionParser
 {
+	friend ScriptLineMacro;
 	enum { kMaxArgs = NVSE_EXPR_MAX_ARGS };
 
 	ScriptBuffer		* m_scriptBuf;
@@ -280,6 +283,16 @@ bool PrecompileScript(ScriptBuffer* buf);
 bool Cmd_Expression_Parse(UInt32 numParams, ParamInfo* paramInfo, ScriptLineBuffer* lineBuf, ScriptBuffer* scriptBuf);
 
 extern Operator s_operators[];
+
+class ScriptLineMacro
+{
+	using ModifyFunction = std::function<bool(std::string&)>;
+	ModifyFunction  modifyFunction_;
+public:
+	explicit ScriptLineMacro(ModifyFunction modifyFunction);
+
+	bool EvalMacro(ScriptLineBuffer* lineBuf, ExpressionParser* parser = nullptr) const;
+};
 
 #if _DEBUG && RUNTIME
 extern thread_local std::string g_curLineText;

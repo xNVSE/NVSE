@@ -2738,25 +2738,26 @@ ScriptToken* ExpressionParser::PeekOperand(UInt32& outReadLen)
 	return operand;
 }
 
+std::vector g_expressionParserMacros =
+{
+	ScriptLineMacro([&](std::string& line)
+	{
+		// Lambda macro
+		const std::regex oneLineLambdaRegex(R"(^\{(.*)\}\s*=>\s*(.*))"); // match {iVar, rRef} => ...
+		if (std::smatch m; std::regex_search(line, m, oneLineLambdaRegex) && m.size() == 3)
+		{
+			line = "begin function {" + m.str(1) + "}\r\nSetFunctionValue " + m.str(2) + "\r\nend";
+		}
+		return true;
+	}),
+};
+
 bool ExpressionParser::HandleMacros()
 {
-	// Lambda macro
-	const std::string line = CurText();
-	const std::regex oneLineLambdaRegex(R"(^\{(.*)\}\s*=>\s*(.*))"); // match {iVar, rRef} => ...
-	std::smatch m;
-	if (std::regex_search(line, m, oneLineLambdaRegex) && m.size() == 3)
+	for (const auto& macro: g_expressionParserMacros)
 	{
-		const auto endPos = m.position(2) + m.str(2).size();
-		const auto toReplaceWith = "begin function {" + m.str(1) + "}\r\nSetFunctionValue " + m.str(2) + "\r\nend";
-		const auto charsLeft = sizeof m_lineBuf->paramText - Offset();
-		if (toReplaceWith.size() > charsLeft)
-		{
-			PrintCompileError("Line length limit reached, unable to translate {} => ... macro");
+		if (!macro.EvalMacro(m_lineBuf, this))
 			return false;
-		}
-		strcpy_s(CurText(), charsLeft, toReplaceWith.c_str());
-		m_lineBuf->paramTextLen = toReplaceWith.size() + Offset();
-		m_len = m_lineBuf->paramTextLen;
 	}
 	return true;
 }
@@ -4787,4 +4788,27 @@ bool Cmd_Expression_Parse(UInt32 numParams, ParamInfo* paramInfo, ScriptLineBuff
 {
 	ExpressionParser parser(scriptBuf, lineBuf);
 	return (parser.ParseArgs(paramInfo, numParams));
+}
+
+ScriptLineMacro::ScriptLineMacro(ModifyFunction modifyFunction): modifyFunction_(std::move(modifyFunction))
+{
+}
+
+bool ScriptLineMacro::EvalMacro(ScriptLineBuffer* lineBuf, ExpressionParser* parser) const
+{
+	auto* str = lineBuf->paramText + lineBuf->lineOffset;
+	std::string copy = str;
+	if (!modifyFunction_(copy))
+		return false;
+	const auto charsLeft = sizeof lineBuf->paramText - lineBuf->lineOffset;
+	if (copy.size() > charsLeft)
+	{
+		g_ErrOut.Show("Line length limit reached, could not translate macro.");
+		return false;
+	}
+	strcpy_s(str, charsLeft, copy.c_str());
+	lineBuf->paramTextLen = copy.size() + lineBuf->lineOffset;
+	if (parser)
+		parser->m_len = lineBuf->paramTextLen;
+	return true;
 }
