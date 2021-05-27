@@ -1626,8 +1626,7 @@ bool ExpressionParser::ParseArgs(ParamInfo* params, UInt32 numParams, bool bUses
 
 	// see if args are enclosed in {braces}, if so don't parse beyond closing brace
 	UInt32 argsEndPos = m_len;
-	char ch = 0;
-	UInt32 i = 0;
+	char ch;
 
 	while ((ch = Peek(Offset())))
 	{
@@ -1638,6 +1637,9 @@ bool ExpressionParser::ParseArgs(ParamInfo* params, UInt32 numParams, bool bUses
 	}
 	UInt32 offset = Offset();
 	UInt32 endOffset = argsEndPos;
+
+	if (!HandleMacros())
+		return false;
 
 	if ('{' == Peek(Offset())) // restrict parsing to the enclosed text
 		while ((ch = Peek(Offset())))
@@ -1703,8 +1705,8 @@ bool ExpressionParser::ParseArgs(ParamInfo* params, UInt32 numParams, bool bUses
 		// so this check is not necessary unless we're finished parsing the entire line
 		Message(kError_TooManyArgs);
 		return false;
-	} else
-		Offset() = endOffset + 1;
+	}
+	Offset() = endOffset + 1;
 
 	// did we get all required args?
 	UInt32 numExpectedArgs = 0;
@@ -2106,7 +2108,7 @@ bool ExpressionParser::ParseUserFunctionDefinition()
 			}
 		}
 	}
-	
+
 	// write destructible var info
 	m_lineBuf->WriteByte(arrayVarIndexes.size());
 	for (UInt32 i = 0; i < arrayVarIndexes.size(); i++)
@@ -2220,6 +2222,9 @@ Token_Type g_lastCommandReturnType = kTokenType_Invalid;
 
 Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 {
+	const std::string curExpr = m_lineBuf->paramText;
+	auto* curOffs = CurText();
+	
 	std::stack<Operator*> ops;
 	std::stack<Token_Type> operands;
 
@@ -2268,6 +2273,7 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 				m_lineBuf->paramText[endBracPos] = 0;
 
 				operandType = ParseSubExpression(endBracPos - Offset());
+				
 				Offset() = endBracPos + 1;	// skip the closing bracket
 				bLastTokenWasOperand = true;
 			}
@@ -2367,6 +2373,9 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 		if (PopOperator(ops, operands) == kTokenType_Invalid)
 			return kTokenType_Invalid;
 	}
+	
+	// restore line text if any macros were applied
+	strcpy_s(curOffs, sizeof m_lineBuf->paramText - (curOffs - m_lineBuf->paramText), curExpr.c_str());
 
 	// done, make sure we've got a result
 	if (ops.size() != 0)
@@ -2750,6 +2759,7 @@ std::vector g_expressionParserMacros =
 		}
 		return true;
 	}),
+	
 };
 
 bool ExpressionParser::HandleMacros()
@@ -2828,7 +2838,7 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 		Message(kError_CantParse);
 		return NULL;
 	}
-	else if (firstChar == '"')			// string literal
+	if (firstChar == '"')			// string literal
 	{
 		Offset()++;
 		const char* endQuotePtr = strchr(CurText(), '"');
@@ -2837,15 +2847,12 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 			Message(kError_MismatchedQuotes);
 			return NULL;
 		}
-		else
-		{
-			std::string strLit(CurText(), endQuotePtr - CurText());
-			Offset() = endQuotePtr - Text() + 1;
-			FormatString(strLit);
-			return ScriptToken::Create(strLit);
-		}
+		std::string strLit(CurText(), endQuotePtr - CurText());
+		Offset() = endQuotePtr - Text() + 1;
+		FormatString(strLit);
+		return ScriptToken::Create(strLit);
 	}
-	else if (firstChar == '$')	// string vars passed to vanilla cmds as '$var'; not necessary here but allowed for consistency
+	if (firstChar == '$')	// string vars passed to vanilla cmds as '$var'; not necessary here but allowed for consistency
 	{
 		bExpectStringVar = true;
 		Offset()++;
@@ -2862,6 +2869,12 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 		}
 		if (const auto varType = VariableTypeNameToType(token.c_str()); varType != Script::eVarType_Invalid)
 		{
+			if (_stricmp(token.c_str(), "array_var") == 0)
+			{
+				// text is parsed so that arrays can be ref counted; won't detect inline array vars.
+				PrintCompileError("array_vars are not allowed to be declared inline.");
+				return nullptr;
+			}
 			SkipSpaces();
 			const auto varName = GetCurToken();
 			auto* varInfo = CreateVariable(varName, varType);
@@ -2873,14 +2886,14 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 	
 
 	// some operators (e.g. ->) expect a string literal, filter them out now
-	if (curOp && curOp->ExpectsStringLiteral()) {
-		if (!token.length() || bExpectStringVar) {
+	if (curOp && curOp->ExpectsStringLiteral()) 
+	{
+		if (!token.length() || bExpectStringVar) 
+		{
 			Message(kError_ExpectedStringLiteral);
 			return NULL;
 		}
-		else {
-			return ScriptToken::Create(token);
-		}
+		return ScriptToken::Create(token);
 	}
 
 	if (token.rfind("0x", 0) == 0)
@@ -2944,12 +2957,12 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 		{
 			if (refVar->varIdx)			// it's a variable
 				return ScriptToken::Create(m_scriptBuf->vars.GetVariableByName(refVar->name.m_data), 0, Script::eVarType_Ref);
-			else if (refVar->form && refVar->form->typeID == kFormType_TESGlobal)
+			if (refVar->form && refVar->form->typeID == kFormType_TESGlobal)
 				return ScriptToken::Create((TESGlobal*)refVar->form, refIdx);
-			else						// literal reference to a form
-				return ScriptToken::Create(refVar, refIdx);
+			// literal reference to a form
+			return ScriptToken::Create(refVar, refIdx);
 		}
-		else if (refVar->form && !refVar->form->GetIsReference() && refVar->form->typeID != kFormType_TESQuest)
+		if (refVar->form && !refVar->form->GetIsReference() && refVar->form->typeID != kFormType_TESQuest)
 		{
 			Message(kError_InvalidDotSyntax);
 			return NULL;
@@ -2982,7 +2995,7 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 		Message(kError_CantFindVariable, token.c_str());
 		return NULL;
 	}
-	else if (varInfo)
+	if (varInfo)
 	{
 		UInt8 theVarType = m_scriptBuf->GetVariableType(varInfo, refVar);
 		if (bExpectStringVar && theVarType != Script::eVarType_String)
@@ -2990,11 +3003,9 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 			Message(kError_ExpectedStringVariable);
 			return NULL;
 		}
-		else
-			return ScriptToken::Create(varInfo, refIdx, theVarType);
-
+		return ScriptToken::Create(varInfo, refIdx, theVarType);
 	}
-	else if (bExpectStringVar)
+	if (bExpectStringVar)
 	{
 		Message(kError_ExpectedStringVariable);
 		return NULL;
@@ -3007,7 +3018,8 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 	}
 
 	// anything else that makes it this far is treated as string
-	if (!curOp || curOp->type != kOpType_MemberAccess) {
+	if (!curOp || curOp->type != kOpType_MemberAccess) 
+	{
 		Message(kWarning_UnquotedString, token.c_str());
 	}
 
@@ -4547,7 +4559,6 @@ private:
 	UInt32				m_scriptTextOffset;
 
 	bool		HandleDirectives();		// compiler directives at top of script prefixed with '@'
-	bool		HandleMacros();
 	bool		ProcessBlock(BlockType blockType);
 	bool		AdvanceLine();
 	const char	* BlockTypeAsString(BlockType type);
@@ -4631,11 +4642,6 @@ bool Preprocessor::HandleDirectives()
 {
 	// does nothing at present
 	return true;
-}
-
-bool Preprocessor::HandleMacros()
-{
-	return false;
 }
 
 bool Preprocessor::Process()

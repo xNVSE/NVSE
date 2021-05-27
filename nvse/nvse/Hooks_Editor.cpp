@@ -511,30 +511,9 @@ __declspec(naked) void ParameterParenthesisHook()
 	}
 }
 
-std::vector g_lineMacros =
-{
-	ScriptLineMacro([&](std::string& line)
-	{
-		// VARIABLE = VALUE macro
-		const std::regex assignmentExpr(R"(^([a-zA-Z\_\s\.]*)\=(.*))"); // match int ivar = 4
-		if (std::smatch m; std::regex_search(line, m, assignmentExpr) && m.size() == 3)
-		{
-			line = "let " + m.str(1) + " := " + m.str(2);
-		}
-		return true;
-	}),
-};
-
-void HandleLineBufMacros(ScriptLineBuffer* buf)
-{
-	for (const auto& macro : g_lineMacros)
-		macro.EvalMacro(buf);
-}
-
 // Expand ScriptLineBuffer to allow multiline expressions with parenthesis
 int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 {
-	const auto maxLen = sizeof lineBuf->paramText;
 	lineBuf->paramTextLen = 0;
 	memset(lineBuf->paramText, '\0', sizeof lineBuf->paramText);
 	
@@ -611,7 +590,6 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 					}
 					lineBuf->paramText[lineBuf->paramTextLen] = '\0';
 					lineBuf->lineNumber += numSpacesInParenthesis;
-					HandleLineBufMacros(lineBuf);
 					return curScriptText - oldScriptText;
 				}
 				if (numBrackets)
@@ -629,7 +607,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 				break;
 			}
 		}
-		if (lineBuf->paramTextLen >= maxLen)
+		if (const auto maxLen = sizeof lineBuf->paramText; lineBuf->paramTextLen >= maxLen)
 		{
 			if (numBrackets)
 				ShowCompilerError(scriptBuf, "Max script expression length inside parenthesis (%d characters) exceeded.", maxLen);
