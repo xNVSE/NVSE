@@ -1,4 +1,3 @@
-// ReSharper disable All
 #include "ScriptUtils.h"
 
 #include <set>
@@ -17,6 +16,7 @@
 #include "GameRTTI.h"
 #include "LambdaManager.h"
 #include <regex>
+#include <utility>
 #if RUNTIME
 
 #ifdef DBG_EXPR_LEAKS
@@ -79,10 +79,9 @@ ErrOutput g_ErrOut(ShowError, ShowWarning);
 #if RUNTIME
 UInt32 AddStringVar(const char* data, ScriptToken& lh, ExpressionEvaluator& context)
 {
-	const auto makeTemporary = lh.owningScript->IsUserDefinedFunction() && lh.refIdx == 0;
 	if (!lh.refIdx)
 		AddToGarbageCollection(context.eventList, lh.GetVar()->id, NVSEVarType::kVarType_String);
-	return g_StringMap.Add(lh.owningScript->GetModIndex(), data, makeTemporary);
+	return g_StringMap.Add(lh.owningScript->GetModIndex(), data, false);
 }
 
 #endif
@@ -1949,7 +1948,7 @@ bool ExpressionParser::ParseUserFunctionCall()
 	UInt32 peekLen = 0;
 	bool foundFunc = false;
 	Script* funcScript = NULL;
-	ScriptToken* funcForm = PeekOperand(peekLen);
+	auto funcForm = std::unique_ptr<ScriptToken>(PeekOperand(peekLen));
 	UInt16* savedLenPtr = (UInt16*)(m_lineBuf->dataBuf + m_lineBuf->dataOffset);
 	UInt16 startingOffset = m_lineBuf->dataOffset;
 	m_lineBuf->dataOffset += 2;
@@ -1969,12 +1968,8 @@ bool ExpressionParser::ParseUserFunctionCall()
 		}
 	}
 
-	delete funcForm;
-	funcForm = NULL;
-
 	if (!foundFunc)	{
 		Message(kError_ExpectedUserFunction);
-		delete funcForm;
 		return false;
 	}
 	else {
@@ -2221,13 +2216,13 @@ UInt32	ExpressionParser::MatchOpenBracket(Operator* openBracOp)
 
 Token_Type g_lastCommandReturnType = kTokenType_Invalid;
 
-static struct SavedScriptLine
+struct SavedScriptLine
 {
 	std::string curExpr;
 	char* curOffset;
 	UInt32 len;
 
-	SavedScriptLine(const std::string& curExpr, char* gCurOffs, UInt32 gLen): curExpr(curExpr),curOffset(gCurOffs),len(gLen)
+	SavedScriptLine(std::string curExpr, char* gCurOffs, UInt32 len): curExpr(std::move(curExpr)),curOffset(gCurOffs),len(len)
 	{}
 };
 static std::stack<SavedScriptLine> g_savedScriptLines;
@@ -2240,9 +2235,13 @@ void ExpressionParser::SaveScriptLine()
 void ExpressionParser::RestoreScriptLine()
 {
 	const auto& line = g_savedScriptLines.top();
-	strcpy_s(line.curOffset, sizeof m_lineBuf->paramText - line.len, line.curExpr.c_str());
-	m_len = line.len;
-	m_lineBuf->paramTextLen = line.len;
+	if (m_len != line.len) // only modify offset if macros were actually applied
+	{
+		strcpy_s(line.curOffset, sizeof m_lineBuf->paramText - line.len, line.curExpr.c_str());
+		m_len = line.len;
+		m_lineBuf->paramTextLen = line.len;
+		Offset() = line.curOffset - m_lineBuf->paramText + line.curExpr.size();
+	}
 	g_savedScriptLines.pop();
 }
 
@@ -2323,7 +2322,7 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 			break;
 		else	// must be an operand (or a syntax error)
 		{
-			ScriptToken* operand = ParseOperand(ops.size() ? ops.top() : NULL);
+			const auto operand = std::unique_ptr<ScriptToken>(ParseOperand(ops.size() ? ops.top() : NULL));
 			if (!operand)
 				return kTokenType_Invalid;
 
@@ -2341,7 +2340,6 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 			// write it to postfix expression, we'll check validity below
 			if (!operand->Write(m_lineBuf))
 			{
-				delete operand;
 				return kTokenType_Invalid;
 			}
 			operandType = operand->Type();
@@ -2373,12 +2371,9 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 				if (!bParsed)
 				{
 					Message(kError_CantParse);
-					delete operand;
 					return kTokenType_Invalid;
 				}
 			}
-			delete operand;
-			operand = NULL;
 			bLastTokenWasOperand = true;
 		}
 
@@ -2522,8 +2517,9 @@ ScriptToken* ExpressionParser::ParseLambda()
 		PrintCompileError("Mismatched begin/end block in anonymous user function/lambda");
 		return nullptr;
 	}
-	
-	std::string lambdaText(beginData, CurText() - beginData);
+	const auto textLen = CurText() - beginData + 1;
+	auto* lambdaText = static_cast<char*>(FormHeap_Allocate(textLen));
+	strcpy_s(lambdaText, textLen, beginData);
 	const auto lambdaScriptBuf = MakeUnique<ScriptBuffer, 0x5C5660, 0x5C8910>();
 	auto scriptLambda = MakeUnique<Script, 0x5C1D60, 0x5C5220>();
 
@@ -2541,12 +2537,14 @@ ScriptToken* ExpressionParser::ParseLambda()
 	lambdaScriptBuf->info.lastID = varCount;
 	lambdaScriptBuf->info.numRefs= numRefs;
 	
-	lambdaScriptBuf->scriptText = lambdaText.data();
 	lambdaScriptBuf->scriptName.Set(FormatString("%sLambdaAtLine%d", m_scriptBuf->scriptName.CStr(), m_lineBuf->lineNumber).c_str());
 	lambdaScriptBuf->curLineNumber = m_lineBuf->lineNumber;
 
 	*lambdaScriptBuf->scriptData = 0x1D; // Fake a script name (1D 00 00 00) so that it's not an outlier from other scripts
 	lambdaScriptBuf->dataOffset = 4;
+
+	lambdaScriptBuf->scriptText = lambdaText;
+	scriptLambda->text = lambdaText;
 
 	// CdeclCall(0x5C3310, &this->m_scriptBuf->refVars, &lambdaScriptBuf->refVars, nullptr); // CopyRefList(from, to, unk)
 	// CdeclCall(0x5C2CE0, &this->m_scriptBuf->vars, &lambdaScriptBuf->vars); // CopyVarList(from, to)
@@ -2573,6 +2571,7 @@ ScriptToken* ExpressionParser::ParseLambda()
 	// prevent destructor from deleting our vars
 	lambdaScriptBuf->refVars = {};
 	lambdaScriptBuf->vars = {};
+	lambdaScriptBuf->scriptText = nullptr;
 	
 	m_scriptBuf->info.numRefs = lambdaScriptBuf->info.numRefs;
 	m_scriptBuf->info.varCount = lambdaScriptBuf->info.varCount;
@@ -2801,14 +2800,16 @@ std::vector g_expressionParserMacros =
 		if (std::smatch m; std::regex_search(line, m, oneLineLambdaRegex) && m.size() == 3)
 		{
 			line = "begin function {" + m.str(1) + "}\r\nSetFunctionValue " + m.str(2) + "\r\nend";
+			return true;
 		}
-		return true;
+		return false;
 	}),
 	
 };
 
 bool ExpressionParser::HandleMacros()
 {
+	
 	for (const auto& macro: g_expressionParserMacros)
 	{
 		if (!macro.EvalMacro(m_lineBuf, this))
@@ -4850,7 +4851,7 @@ bool ScriptLineMacro::EvalMacro(ScriptLineBuffer* lineBuf, ExpressionParser* par
 	auto* str = lineBuf->paramText + lineBuf->lineOffset;
 	std::string copy = str;
 	if (!modifyFunction_(copy))
-		return false;
+		return true;
 	const auto charsLeft = sizeof lineBuf->paramText - lineBuf->lineOffset;
 	if (copy.size() > charsLeft)
 	{
