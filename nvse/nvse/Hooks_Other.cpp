@@ -54,7 +54,7 @@ namespace OtherHooks
 				{
 				case NVSEVarType::kVarType_String:
 					// make sure not to delete string vars from lambdas as the parent script owns them; not necessary for arrays since the have ref counting
-					if (LambdaManager::IsScriptLambda(eventList->m_script))
+					if (!LambdaManager::IsScriptLambda(eventList->m_script))
 						g_StringMap.MarkTemporary(static_cast<int>(node->var->data), true);
 					break;
 				case NVSEVarType::kVarType_Array:

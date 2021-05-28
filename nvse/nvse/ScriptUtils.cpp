@@ -1,3 +1,4 @@
+// ReSharper disable All
 #include "ScriptUtils.h"
 
 #include <set>
@@ -382,7 +383,7 @@ ScriptToken* Eval_Assign_Array(OperatorType op, ScriptToken* lh, ScriptToken* rh
 	ScriptEventList::Var *var = lh->GetVar();
 	g_ArrayMap.AddReference(&var->data, rh->GetArray(), context->script->GetModIndex());
 	if (!lh->refIdx)
-		AddToGarbageCollection(context->eventList, var->id, NVSEVarType::kVarType_String);
+		AddToGarbageCollection(context->eventList, var->id, NVSEVarType::kVarType_Array);
 
 	return ScriptToken::CreateArray(var->data);
 }
@@ -2220,10 +2221,34 @@ UInt32	ExpressionParser::MatchOpenBracket(Operator* openBracOp)
 
 Token_Type g_lastCommandReturnType = kTokenType_Invalid;
 
+static struct SavedScriptLine
+{
+	std::string curExpr;
+	char* curOffset;
+	UInt32 len;
+
+	SavedScriptLine(const std::string& curExpr, char* gCurOffs, UInt32 gLen): curExpr(curExpr),curOffset(gCurOffs),len(gLen)
+	{}
+};
+static std::stack<SavedScriptLine> g_savedScriptLines;
+
+void ExpressionParser::SaveScriptLine()
+{
+	g_savedScriptLines.emplace(m_lineBuf->paramText, CurText(), m_len);	
+}
+
+void ExpressionParser::RestoreScriptLine()
+{
+	const auto& line = g_savedScriptLines.top();
+	strcpy_s(line.curOffset, sizeof m_lineBuf->paramText - line.len, line.curExpr.c_str());
+	m_len = line.len;
+	m_lineBuf->paramTextLen = line.len;
+	g_savedScriptLines.pop();
+}
+
 Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 {
-	const std::string curExpr = m_lineBuf->paramText;
-	auto* curOffs = CurText();
+	SaveScriptLine();
 	
 	std::stack<Operator*> ops;
 	std::stack<Token_Type> operands;
@@ -2375,7 +2400,7 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 	}
 	
 	// restore line text if any macros were applied
-	strcpy_s(curOffs, sizeof m_lineBuf->paramText - (curOffs - m_lineBuf->paramText), curExpr.c_str());
+	RestoreScriptLine();
 
 	// done, make sure we've got a result
 	if (ops.size() != 0)
@@ -2740,10 +2765,30 @@ static void FormatString(std::string& str)
 
 ScriptToken* ExpressionParser::PeekOperand(UInt32& outReadLen)
 {
-	UInt32 curOffset = Offset();
+	outReadLen = 0;
+	SaveScriptLine();
+	const UInt32 curOffset = Offset();
+	SkipSpaces();
+	while (*CurText() == '(')
+	{
+		++Offset();
+		const auto endBracketPos = MatchOpenBracket(&s_operators[kOpType_LeftParen]);
+		if (endBracketPos == -1)
+		{
+			Message(kError_MismatchedBrackets);
+			return nullptr;
+		}
+		m_lineBuf->paramText[endBracketPos] = 0;
+		if (!outReadLen)
+			outReadLen = endBracketPos;
+	}
+	if (!HandleMacros())
+		return nullptr;
 	ScriptToken* operand = ParseOperand();
-	outReadLen = Offset() - curOffset;
+	if (!outReadLen)
+		outReadLen = Offset() - curOffset;
 	Offset() = curOffset;
+	RestoreScriptLine();
 	return operand;
 }
 
@@ -2872,8 +2917,8 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 			if (_stricmp(token.c_str(), "array_var") == 0)
 			{
 				// text is parsed so that arrays can be ref counted; won't detect inline array vars.
-				PrintCompileError("array_vars are not allowed to be declared inline.");
-				return nullptr;
+				//PrintCompileError("array_vars are not allowed to be declared inline.");
+				//return nullptr;
 			}
 			SkipSpaces();
 			const auto varName = GetCurToken();

@@ -167,30 +167,15 @@ public:
 		availableIDs.Clear();
 	}
 
-#if _DEBUG
-	std::map<UInt32, std::vector<void*>> debugInfos;
-#endif
-	
+
 	void MarkTemporary(UInt32 varID, bool bTemporary)
 	{
 		if (bTemporary)
 		{
-#if _DEBUG
-			if constexpr (std::is_same_v<Var, ArrayVar>)
-			{
-				//debugInfos[varID] = GetCallStack(12);
-			}
-#endif
 			tempIDs.Insert(varID);
 		}
 		else
 		{
-#if _DEBUG
-			if constexpr (std::is_same_v<Var, ArrayVar>)
-			{
-				//debugInfos.erase(varID);
-			}
-#endif
 			tempIDs.Erase(varID);
 		}
 	}

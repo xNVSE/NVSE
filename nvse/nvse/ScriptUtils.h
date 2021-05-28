@@ -245,6 +245,8 @@ class ExpressionParser
 	void PrintCompileError(const std::string& message) const;
 
 	Token_Type		Parse();
+	void SaveScriptLine();
+	void RestoreScriptLine();
 	Token_Type		ParseSubExpression(UInt32 exprLen);
 	Operator *		ParseOperator(bool bExpectBinaryOperator, bool bConsumeIfFound = true);
 	ScriptToken	*	ParseOperand(Operator* curOp = NULL);
