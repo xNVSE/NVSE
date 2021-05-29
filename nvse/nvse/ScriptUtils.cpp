@@ -2965,21 +2965,36 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 		return ScriptToken::Create(token);
 	}
 
+	
 	if (token.rfind("0x", 0) == 0)
 	{
 		// hexadecimal
 		try
 		{
-			const auto result = std::stoul(token, nullptr, 16);
-			return ScriptToken::Create(static_cast<double>(result));
+			std::size_t parsed = 0;
+			const auto result = std::stoul(token, &parsed, 16);
+			if (parsed == token.size())
+				return ScriptToken::Create(static_cast<double>(result));
 		}
-		catch (...)
-		{
-			PrintCompileError("Invalid hexadecimal syntax");
-			return nullptr;
-		}
+		catch (...){}
+		PrintCompileError("Invalid hexadecimal syntax");
+		return nullptr;
 	}
-	
+	if (token.rfind("0b", 0) == 0)
+	{
+		// binary
+		try
+		{
+			token.erase(0, 2);
+			std::size_t parsed = 0;
+			const auto result = std::stoul(token, &parsed, 2);
+			if (parsed == token.size())
+				return ScriptToken::Create(static_cast<double>(result));
+		}
+		catch (...){}
+		PrintCompileError("Invalid binary syntax");
+		return nullptr;
+	}
 	// try to convert to a number
 	char* leftOvers = NULL;
 	double dVal = strtod(token.c_str(), &leftOvers);
