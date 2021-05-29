@@ -7,6 +7,8 @@
 #include <stack>
 #include <string>
 
+#include "GameAPI.h"
+
 // a size of ~1KB should be enough for a single line of code
 char s_ExpressionParserAltBuffer[0x500] = { 0 };
 
@@ -555,7 +557,7 @@ namespace CompilerOverride {
 	}
 }
 
-bool __stdcall HandleBeginCompile(ScriptBuffer* buf)
+bool __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 {
 	// empty out the loop stack
 	while (s_loopStartOffsets.size())
@@ -574,6 +576,8 @@ bool __stdcall HandleBeginCompile(ScriptBuffer* buf)
 	if (!bResult)
 		buf->errorCode = 1;
 
+	buf->currentScript = script;
+	
 	return bResult;
 }
 
@@ -585,6 +589,9 @@ void __fastcall PostScriptCompileSuccess(Script* script)
 void PostScriptCompile()
 {
 	g_variableDefinitionsMap.clear();
+	for (const auto iter : g_lambdaParentScriptMap)
+		Delete<Script, 0x5C5220>(iter.first);
+	g_lambdaParentScriptMap.clear();
 }
 
 static __declspec(naked) void CompileScriptHook(void)
@@ -596,6 +603,8 @@ static __declspec(naked) void CompileScriptHook(void)
 		mov [script], eax
 		mov		eax, [esp + 4]					// grab the second arg (ScriptBuffer*)
 		pushad
+		mov ecx, script
+		push ecx
 		push	eax
 		call	HandleBeginCompile				// Precompile
 		mov[precompileResult], al			// save result

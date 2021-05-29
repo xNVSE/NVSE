@@ -35,7 +35,8 @@ ScriptToken::~ScriptToken()
 		// Keep commented, memory has to be reused, NO FREEING THE POINTER
 		// Delete<Script, 0x5AA1A0>(value.lambda);
 #else
-		Delete<Script, 0x5C5220>(value.lambda);
+		// Keep commented, deleted in PostScriptCompile
+		// Delete<Script, 0x5C5220>(value.lambda);
 #endif
 		value.lambda = nullptr;
 	}

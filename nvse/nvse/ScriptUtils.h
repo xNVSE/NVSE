@@ -1,5 +1,7 @@
 
 #pragma once
+#include <unordered_set>
+
 #include "containers.h"
 #include "ThreadLocal.h"
 
@@ -30,11 +32,12 @@ class FunctionCaller;
 #endif
 
 extern ErrOutput g_ErrOut;
-extern std::unordered_map<ScriptBuffer*, ScriptBuffer*> g_lambdaParentScriptMap;
+extern std::unordered_map<Script*, Script*> g_lambdaParentScriptMap;
 #if EDITOR
 extern std::map<std::pair<Script*, std::string>, Script::VariableType> g_variableDefinitionsMap;
 #endif
 
+Script * GetLambdaParentScript(Script * scriptLambda);
 
 // these are used in ParamInfo to specify expected Token_Type of args to commands taking NVSE expressions as args
 enum {
@@ -189,6 +192,11 @@ enum ParamParenthResult : UInt8
 	kParamParent_SyntaxError
 };
 
+enum class MacroType
+{
+	OneLineLambda
+};
+
 class ExpressionParser
 {
 	friend ScriptLineMacro;
@@ -199,6 +207,7 @@ class ExpressionParser
 	UInt32				m_len;
 	Token_Type			m_argTypes[kMaxArgs];
 	UInt8				m_numArgsParsed;
+	std::unordered_set<MacroType> appliedMacros_;
 
 	enum ScriptLineError {								// varargs
 		kError_CantParse,
@@ -291,9 +300,14 @@ class ScriptLineMacro
 	using ModifyFunction = std::function<bool(std::string&)>;
 	ModifyFunction  modifyFunction_;
 public:
-	explicit ScriptLineMacro(ModifyFunction modifyFunction);
-
-	bool EvalMacro(ScriptLineBuffer* lineBuf, ExpressionParser* parser = nullptr) const;
+	MacroType type;
+	explicit ScriptLineMacro(ModifyFunction modifyFunction, MacroType type);
+	enum class MacroResult
+	{
+		Error, Skipped, Applied 
+	};
+	
+	MacroResult EvalMacro(ScriptLineBuffer* lineBuf, ExpressionParser* parser = nullptr) const;
 };
 
 #if _DEBUG && RUNTIME
@@ -333,3 +347,7 @@ public:
 };
 
 #endif
+
+Script::VariableType GetSavedVarType(Script* script, const std::string& name);
+
+void SaveVarType(Script* script, const std::string& name, Script::VariableType type);

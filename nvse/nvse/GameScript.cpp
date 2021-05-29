@@ -35,8 +35,8 @@ Script::VariableType VariableTypeNameToType(const char* name)
 UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText, Script* script)
 {
 #if EDITOR
-	if (const auto iter = g_variableDefinitionsMap.find(std::make_pair(script, varName)); iter != g_variableDefinitionsMap.end())
-		return iter->second;
+	if (const auto savedVarType = GetSavedVarType(script, varName); savedVarType != Script::eVarType_Invalid)
+		return savedVarType;
 #endif
 	Tokenizer scriptLines(scriptText, "\n\r");
 	std::string curLine;
@@ -51,12 +51,14 @@ UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText, Scri
 			if (varType != Script::eVarType_Invalid && tokens.NextToken(curToken) != -1 && !StrCompare(curToken.c_str(), varName))
 			{
 #if EDITOR
-				g_variableDefinitionsMap[std::make_pair(script, varName)] = varType;
+				SaveVarType(script, varName, varType);
 #endif
 				return varType;
 			}
 		}
 	}
+	if (auto* parent = GetLambdaParentScript(script))
+		return GetDeclaredVariableType(varName, parent->text, parent);
 	return Script::eVarType_Invalid;
 }
 
@@ -274,17 +276,7 @@ UInt32 ScriptBuffer::GetVariableType(VariableInfo* varInfo, Script::RefVariable*
 		else			// this is a ref variable, not a literal form - can't look up script vars
 			return Script::eVarType_Invalid;
 	}
-
-	const auto res = GetDeclaredVariableType(varInfo->name.m_data, scrText, script);
-	if (res == Script::eVarType_Invalid)
-	{
-		if (auto iter = g_lambdaParentScriptMap.find(this); iter != g_lambdaParentScriptMap.end())
-		{
-			// if script is a lambda, use parent script's 
-			return iter->second->GetVariableType(varInfo, refVar);
-		}
-	}
-	return res;
+	return GetDeclaredVariableType(varInfo->name.m_data, scrText, script);
 }
 
 /******************************

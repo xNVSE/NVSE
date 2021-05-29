@@ -1,3 +1,4 @@
+
 #include "ScriptUtils.h"
 
 #include <set>
@@ -52,7 +53,17 @@ static bool ShowWarning(const char* msg)
 
 std::map<std::pair<Script*, std::string>, Script::VariableType> g_variableDefinitionsMap;
 
+Script::VariableType GetSavedVarType(Script* script, const std::string& name)
+{
+	if (const auto iter = g_variableDefinitionsMap.find(std::make_pair(script, name)); iter != g_variableDefinitionsMap.end())
+		return iter->second;
+	return Script::eVarType_Invalid;
+}
 
+void SaveVarType(Script* script, const std::string& name, Script::VariableType type)
+{
+	g_variableDefinitionsMap.emplace(std::make_pair(script, name), type);
+}
 
 const char* GetEditorID(TESForm* form)
 {
@@ -1900,10 +1911,9 @@ bool ExpressionParser::ParseUserFunctionParameters(std::vector<UserFunctionParam
 	{
 		auto success = false;
 		// check if lambda
-		if (const auto lambdaParentIter = g_lambdaParentScriptMap.find(m_scriptBuf); lambdaParentIter != g_lambdaParentScriptMap.end())
+		if (auto* parent = GetLambdaParentScript(this->m_scriptBuf->currentScript))
 		{
-			const auto* scrText = lambdaParentIter->second->scriptText;
-			if (GetUserFunctionParams(funcParamNames, out, funcScriptVars, scrText, lambdaParentIter->second->currentScript))
+			if (const auto* scrText = parent->text; GetUserFunctionParams(funcParamNames, out, funcScriptVars, scrText, parent))
 				success = true;
 		}
 		if (!success)
@@ -2229,7 +2239,7 @@ static std::stack<SavedScriptLine> g_savedScriptLines;
 
 void ExpressionParser::SaveScriptLine()
 {
-	g_savedScriptLines.emplace(m_lineBuf->paramText, CurText(), m_len);	
+	g_savedScriptLines.emplace(CurText(), CurText(), m_len);	
 }
 
 void ExpressionParser::RestoreScriptLine()
@@ -2489,7 +2499,14 @@ Token_Type ExpressionParser::ParseArgument(UInt32 argsEndPos)
 
 const void* g_scriptCompiler = reinterpret_cast<void*>(0xECFDF8);
 
-std::unordered_map<ScriptBuffer*, ScriptBuffer*> g_lambdaParentScriptMap;
+std::unordered_map<Script*, Script*> g_lambdaParentScriptMap;
+
+Script* GetLambdaParentScript(Script* scriptLambda)
+{
+	if (const auto iter = g_lambdaParentScriptMap.find(scriptLambda); iter != g_lambdaParentScriptMap.end())
+		return iter->second;
+	return nullptr;
+}
 
 ScriptToken* ExpressionParser::ParseLambda()
 {
@@ -2540,6 +2557,12 @@ ScriptToken* ExpressionParser::ParseLambda()
 	lambdaScriptBuf->scriptName.Set(FormatString("%sLambdaAtLine%d", m_scriptBuf->scriptName.CStr(), m_lineBuf->lineNumber).c_str());
 	lambdaScriptBuf->curLineNumber = m_lineBuf->lineNumber;
 
+	if (const auto iter = appliedMacros_.find(MacroType::OneLineLambda); iter != appliedMacros_.end())
+	{
+		lambdaScriptBuf->curLineNumber -= 2;
+		appliedMacros_.erase(iter);
+	}
+
 	*lambdaScriptBuf->scriptData = 0x1D; // Fake a script name (1D 00 00 00) so that it's not an outlier from other scripts
 	lambdaScriptBuf->dataOffset = 4;
 
@@ -2557,11 +2580,9 @@ ScriptToken* ExpressionParser::ParseLambda()
 	const auto savedOffset = *beginEndOffset;
 	*beginEndOffset = 0;
 
-	g_lambdaParentScriptMap.emplace(lambdaScriptBuf.get(), m_scriptBuf);
+	g_lambdaParentScriptMap.emplace(lambdaScriptBuf->currentScript, m_scriptBuf->currentScript);
 
 	const auto compileResult = ThisStdCall<bool>(0x5C96E0, g_scriptCompiler, scriptLambda.get(), lambdaScriptBuf.get()); // CompileScript
-
-	g_lambdaParentScriptMap.erase(lambdaScriptBuf.get());
 
 	*beginEndOffset = savedOffset;
 
@@ -2779,15 +2800,15 @@ ScriptToken* ExpressionParser::PeekOperand(UInt32& outReadLen)
 		}
 		m_lineBuf->paramText[endBracketPos] = 0;
 		if (!outReadLen)
-			outReadLen = endBracketPos;
+			outReadLen = endBracketPos + 1 - curOffset;
 	}
 	if (!HandleMacros())
 		return nullptr;
 	ScriptToken* operand = ParseOperand();
 	if (!outReadLen)
 		outReadLen = Offset() - curOffset;
-	Offset() = curOffset;
 	RestoreScriptLine();
+	Offset() = curOffset;
 	return operand;
 }
 
@@ -2803,17 +2824,19 @@ std::vector g_expressionParserMacros =
 			return true;
 		}
 		return false;
-	}),
+	}, MacroType::OneLineLambda),
 	
 };
 
 bool ExpressionParser::HandleMacros()
 {
-	
 	for (const auto& macro: g_expressionParserMacros)
 	{
-		if (!macro.EvalMacro(m_lineBuf, this))
+		const auto result = macro.EvalMacro(m_lineBuf, this);
+		if (result == ScriptLineMacro::MacroResult::Error)
 			return false;
+		if (result == ScriptLineMacro::MacroResult::Applied)
+			appliedMacros_.emplace(macro.type);
 	}
 	return true;
 }
@@ -2821,12 +2844,12 @@ bool ExpressionParser::HandleMacros()
 bool ValidateVariable(const std::string& varName, Script::VariableType varType, Script* script)
 {
 #if EDITOR
-	if (const auto iter = g_variableDefinitionsMap.find(std::make_pair(script, varName)); iter != g_variableDefinitionsMap.end() && iter->second != varType)
+	if (const auto savedVarType = GetSavedVarType(script, varName); savedVarType != varType && savedVarType != Script::eVarType_Invalid)
 	{
-		g_ErrOut.Show("Variable redefinition with a different type (saw first '%s', then '%s')", g_variableTypeNames[iter->second], g_variableTypeNames[varType]);
+		g_ErrOut.Show("Variable redefinition with a different type (saw first '%s', then '%s')", g_variableTypeNames[savedVarType], g_variableTypeNames[varType]);
 		return false;
 	}
-	g_variableDefinitionsMap[std::make_pair(script, varName)] = varType;
+	SaveVarType(script, varName, varType);
 #endif
 	return true;
 }
@@ -2861,7 +2884,7 @@ VariableInfo* ExpressionParser::CreateVariable(const std::string& varName, Scrip
 	varInfo->type = varType;
 	m_scriptBuf->vars.Append(varInfo);
 #if EDITOR
-	g_variableDefinitionsMap[std::make_pair(m_scriptBuf->currentScript, varName)] = varType;
+	SaveVarType(m_scriptBuf->currentScript, varName, varType);
 #endif
 	return varInfo;
 }
@@ -3136,13 +3159,16 @@ VariableInfo* ExpressionParser::LookupVariable(const char* varName, Script::RefV
 
 std::string ExpressionParser::GetCurToken()
 {
-	char ch;
+	unsigned char ch;
 	const char* tokStart = CurText();
+	auto numeric = true;
 	while ((ch = Peek()))
 	{
-		if (isspace(static_cast<unsigned char>(ch)) || (ispunct(static_cast<unsigned char>(ch)) && ch != '_'))
+		if (isspace(ch) || ispunct(ch) && ch != '_' && (ch != '.' || !numeric))
 			break;
 		Offset()++;
+		if (!isdigit(ch))
+			numeric = false;
 	}
 
 	return std::string(tokStart, CurText() - tokStart);
@@ -4842,25 +4868,25 @@ bool Cmd_Expression_Parse(UInt32 numParams, ParamInfo* paramInfo, ScriptLineBuff
 	return (parser.ParseArgs(paramInfo, numParams));
 }
 
-ScriptLineMacro::ScriptLineMacro(ModifyFunction modifyFunction): modifyFunction_(std::move(modifyFunction))
+ScriptLineMacro::ScriptLineMacro(ModifyFunction modifyFunction, MacroType type): modifyFunction_(std::move(modifyFunction)), type(type)
 {
 }
 
-bool ScriptLineMacro::EvalMacro(ScriptLineBuffer* lineBuf, ExpressionParser* parser) const
+ScriptLineMacro::MacroResult ScriptLineMacro::EvalMacro(ScriptLineBuffer* lineBuf, ExpressionParser* parser) const
 {
 	auto* str = lineBuf->paramText + lineBuf->lineOffset;
 	std::string copy = str;
 	if (!modifyFunction_(copy))
-		return true;
+		return MacroResult::Skipped;
 	const auto charsLeft = sizeof lineBuf->paramText - lineBuf->lineOffset;
 	if (copy.size() > charsLeft)
 	{
 		g_ErrOut.Show("Line length limit reached, could not translate macro.");
-		return false;
+		return MacroResult::Error;
 	}
 	strcpy_s(str, charsLeft, copy.c_str());
 	lineBuf->paramTextLen = copy.size() + lineBuf->lineOffset;
 	if (parser)
 		parser->m_len = lineBuf->paramTextLen;
-	return true;
+	return MacroResult::Applied;
 }
