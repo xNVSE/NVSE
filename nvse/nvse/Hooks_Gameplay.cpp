@@ -59,7 +59,7 @@ void HandleDelayedCall()
 {
 	if (g_callAfterScripts.empty())
 		return; // avoid lock overhead
-	g_gameSecondsPassed += *g_globalTimeMult * g_timeGlobal->secondsPassed;
+	
 	ScopedLock lock(g_callAfterScriptsCS);
 
 	auto iter = g_callAfterScripts.begin();
@@ -78,7 +78,7 @@ void HandleDelayedCall()
 	}
 }
 
-extern std::map<Script*, CallWhileInfo> g_callWhileInfos;
+extern std::vector<CallWhileInfo> g_callWhileInfos;
 extern ICriticalSection g_callWhileInfosCS;
 
 void HandleCallWhileScripts()
@@ -90,16 +90,41 @@ void HandleCallWhileScripts()
 	auto iter = g_callWhileInfos.begin();
 	while (iter != g_callWhileInfos.end())
 	{
-		InternalFunctionCaller conditionCaller(iter->second.condition);
+		InternalFunctionCaller conditionCaller(iter->condition);
 		if (auto conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(conditionCaller)); conditionResult && conditionResult->GetBool())
 		{
-			InternalFunctionCaller scriptCaller(iter->second.callFunction, iter->second.thisObj);
+			InternalFunctionCaller scriptCaller(iter->callFunction, iter->thisObj);
 			delete UserFunctionManager::Call(scriptCaller);
 			++iter;
 		}
 		else
 		{
 			iter = g_callWhileInfos.erase(iter);
+		}
+	}
+}
+
+extern std::vector<DelayedCallInfo> g_callForInfos;
+extern ICriticalSection g_callForInfosCS;
+
+void HandleCallForScripts()
+{
+	if (g_callForInfos.empty())
+		return; // avoid lock overhead
+	ScopedLock lock(g_callForInfosCS);
+
+	auto iter = g_callForInfos.begin();
+	while (iter != g_callForInfos.end())
+	{
+		if (g_gameSecondsPassed < iter->time)
+		{
+			InternalFunctionCaller caller(iter->script, iter->thisObj);
+			delete UserFunctionManager::Call(caller);
+			++iter;
+		}
+		else
+		{
+			iter = g_callForInfos.erase(iter);
 		}
 	}
 }
@@ -137,11 +162,15 @@ static void HandleMainLoopHook(void)
 	g_ArrayMap.Clean();
 	g_StringMap.Clean();
 
+	g_gameSecondsPassed += *g_globalTimeMult * g_timeGlobal->secondsPassed;
 	// handle calls from cmd CallAfter
 	HandleDelayedCall();
 
 	// handle calls from cmd CallWhile
 	HandleCallWhileScripts();
+
+	// handle calls from cmd CallFor
+	HandleCallForScripts();
 }
 
 #define DEBUG_PRINT_CHANNEL(idx)								\

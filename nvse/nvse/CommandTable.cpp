@@ -1616,8 +1616,9 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(SetUIFloatAlt);
 	ADD_CMD(SetUIStringAlt);
 	// 6.1 beta 00
-	ADD_CMD(CallAfter);
+	ADD_CMD(CallAfterSeconds);
 	ADD_CMD(CallWhile);
+	ADD_CMD(CallForSeconds);
 }
 
 namespace PluginAPI
