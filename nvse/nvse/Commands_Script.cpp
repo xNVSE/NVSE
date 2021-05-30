@@ -658,7 +658,7 @@ bool Cmd_CallAfter_Execute(COMMAND_ARGS)
 	return true;
 }
 
-std::vector<CallWhileInfo> g_callWhileInfos;
+std::map<Script*, CallWhileInfo> g_callWhileInfos;
 ICriticalSection g_callWhileInfosCS;
 
 bool Cmd_CallWhile_Execute(COMMAND_ARGS)
@@ -671,7 +671,7 @@ bool Cmd_CallWhile_Execute(COMMAND_ARGS)
 		if (!form || !IS_ID(form, Script)) return true;
 
 	ScopedLock lock(g_callWhileInfosCS);
-	g_callWhileInfos.emplace_back(callFunction, conditionFunction, thisObj);
+	g_callWhileInfos.emplace(callFunction, CallWhileInfo(callFunction, conditionFunction, thisObj));
 	return true;
 }
 

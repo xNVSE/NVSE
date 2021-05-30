@@ -67,13 +67,39 @@ void HandleDelayedCall()
 	{
 		if (g_gameSecondsPassed >= iter->time)
 		{
-			InternalFunctionCaller caller(iter->script, iter->thisObj, nullptr);
+			InternalFunctionCaller caller(iter->script, iter->thisObj);
 			delete UserFunctionManager::Call(caller);
 			iter = g_callAfterScripts.erase(iter); // yes, this is valid: https://stackoverflow.com/a/3901380/6741772
 		}
 		else
 		{
 			++iter;
+		}
+	}
+}
+
+extern std::map<Script*, CallWhileInfo> g_callWhileInfos;
+extern ICriticalSection g_callWhileInfosCS;
+
+void HandleCallWhileScripts()
+{
+	if (g_callWhileInfos.empty())
+		return; // avoid lock overhead
+	ScopedLock lock(g_callWhileInfosCS);
+
+	auto iter = g_callWhileInfos.begin();
+	while (iter != g_callWhileInfos.end())
+	{
+		InternalFunctionCaller conditionCaller(iter->second.condition);
+		if (auto conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(conditionCaller)); conditionResult && conditionResult->GetBool())
+		{
+			InternalFunctionCaller scriptCaller(iter->second.callFunction, iter->second.thisObj);
+			delete UserFunctionManager::Call(scriptCaller);
+			++iter;
+		}
+		else
+		{
+			iter = g_callWhileInfos.erase(iter);
 		}
 	}
 }
@@ -113,6 +139,9 @@ static void HandleMainLoopHook(void)
 
 	// handle calls from cmd CallAfter
 	HandleDelayedCall();
+
+	// handle calls from cmd CallWhile
+	HandleCallWhileScripts();
 }
 
 #define DEBUG_PRINT_CHANNEL(idx)								\

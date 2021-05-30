@@ -97,7 +97,14 @@ static ParamInfo kParams_CallAfter[2] =
 	{	"function",	kParamType_AnyForm,0	},
 };
 
+static ParamInfo kParams_CallWhile[2] =
+{
+	{	"function",	kParamType_AnyForm,	0	},
+	{	"condition",	kParamType_AnyForm,0	},
+};
+
 DEFINE_COMMAND(CallAfter, calls UDF after seconds, 0, 2, kParams_CallAfter);
+DEFINE_COMMAND(CallWhile, calls UDF each frame while condition is met, 0, 2, kParams_CallWhile);
 
 struct DelayedCallInfo
 {

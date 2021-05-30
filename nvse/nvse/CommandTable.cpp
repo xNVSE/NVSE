@@ -1617,6 +1617,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(SetUIStringAlt);
 	// 6.1 beta 00
 	ADD_CMD(CallAfter);
+	ADD_CMD(CallWhile);
 }
 
 namespace PluginAPI
