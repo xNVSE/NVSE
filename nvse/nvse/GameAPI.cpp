@@ -13,6 +13,8 @@
 #include "Hooks_Other.h"
 #endif
 
+TimeGlobal* g_timeGlobal = reinterpret_cast<TimeGlobal*>(0x11F6394);
+float* g_globalTimeMult = reinterpret_cast<float*>(0x11AC3A0);
 
 static NVSEStringVarInterface* s_StringVarInterface = NULL;
 bool alternateUpdate3D = false;

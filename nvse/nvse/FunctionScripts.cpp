@@ -173,7 +173,8 @@ private:
 
 ScriptToken* UserFunctionManager::Call(ExpressionEvaluator* eval)
 {
-	return Call(ScriptFunctionCaller(*eval));
+	ScriptFunctionCaller caller(*eval);
+	return Call(caller);
 }
 
 ScriptToken* UserFunctionManager::Call(FunctionCaller & caller)

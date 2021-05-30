@@ -706,6 +706,7 @@ bool Cmd_Call_Parse(UInt32 numParams, ParamInfo* paramInfo, ScriptLineBuffer* li
 	return parser.ParseUserFunctionCall();
 }
 
+
 static ParamInfo kParams_OneBasicType[] =
 {
 	{	"expression",	kNVSEParamType_BasicType,	0	},

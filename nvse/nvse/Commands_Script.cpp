@@ -644,4 +644,35 @@ bool Cmd_DispatchEvent_Execute (COMMAND_ARGS)
 	return true;
 }
 
+std::vector<DelayedCallInfo> g_callAfterScripts;
+ICriticalSection g_callAfterScriptsCS;
+
+bool Cmd_CallAfter_Execute(COMMAND_ARGS)
+{
+	float time;
+	Script* callFunction;
+	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction) || !callFunction || !IS_ID(callFunction, Script))
+		return true;
+	ScopedLock lock(g_callAfterScriptsCS);
+	g_callAfterScripts.emplace_back(callFunction, time, thisObj);
+	return true;
+}
+
+std::vector<CallWhileInfo> g_callWhileInfos;
+ICriticalSection g_callWhileInfosCS;
+
+bool Cmd_CallWhile_Execute(COMMAND_ARGS)
+{
+	Script* callFunction;
+	Script* conditionFunction;
+	if (!ExtractArgs(EXTRACT_ARGS, &callFunction, &conditionFunction))
+		return true;
+	for (auto* form : {callFunction, conditionFunction})
+		if (!form || !IS_ID(form, Script)) return true;
+
+	ScopedLock lock(g_callWhileInfosCS);
+	g_callWhileInfos.emplace_back(callFunction, conditionFunction, thisObj);
+	return true;
+}
+
 #endif

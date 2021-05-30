@@ -52,3 +52,5 @@ extern CommandInfo kCommandInfo_GetAllModLocalData;
 
 extern CommandInfo kCommandInfo_Internal_PushExecutionContext;
 extern CommandInfo kCommandInfo_Internal_PopExecutionContext;
+
+extern CommandInfo kCommandInfo_CallAfter;

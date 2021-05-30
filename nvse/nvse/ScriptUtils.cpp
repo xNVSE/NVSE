@@ -1629,7 +1629,7 @@ ExpressionParser::~ExpressionParser()
 	s_parserDepth--;
 }
 
-bool ExpressionParser::ParseArgs(ParamInfo* params, UInt32 numParams, bool bUsesNVSEParamTypes)
+bool ExpressionParser::ParseArgs(ParamInfo* params, UInt32 numParams, bool bUsesNVSEParamTypes, bool parseWholeLine)
 {
 	// reserve space for UInt8 numargs at beginning of compiled code
 	UInt8* numArgsPtr = m_lineBuf->dataBuf + m_lineBuf->dataOffset;
@@ -1688,7 +1688,6 @@ bool ExpressionParser::ParseArgs(ParamInfo* params, UInt32 numParams, bool bUses
 		Offset()++;		
 	}
 
-
 	while (m_numArgsParsed < numParams && Offset() < argsEndPos)
 	{
 		const auto argType = ParseArgument(argsEndPos);
@@ -1703,21 +1702,22 @@ bool ExpressionParser::ParseArgs(ParamInfo* params, UInt32 numParams, bool bUses
 #if RUNTIME
 			ShowCompilerError(m_lineBuf, "Invalid expression for parameter %d. Expected %s.", m_numArgsParsed + 1, params[m_numArgsParsed].typeStr);
 #else
-					ShowCompilerError(m_scriptBuf, "Invalid expression for parameter %d. Expected %s.", m_numArgsParsed + 1, params[m_numArgsParsed].typeStr);
+			ShowCompilerError(m_scriptBuf, "Invalid expression for parameter %d. Expected %s.", m_numArgsParsed + 1, params[m_numArgsParsed].typeStr);
 #endif
 			return false;
 		}
 		m_argTypes[m_numArgsParsed++] = argType;
 	}
 
-	if (Offset() < argsEndPos && s_parserDepth == 1)	// some leftover stuff in text
+	if (Offset() < argsEndPos && s_parserDepth == 1 && parseWholeLine)	// some leftover stuff in text
 	{
 		// when parsing commands as args to other commands or components of larger expressions, we expect to have some leftovers
 		// so this check is not necessary unless we're finished parsing the entire line
 		Message(kError_TooManyArgs);
 		return false;
 	}
-	Offset() = endOffset + 1;
+	if (parseWholeLine)
+		Offset() = endOffset + 1;
 
 	// did we get all required args?
 	UInt32 numExpectedArgs = 0;
@@ -1909,18 +1909,8 @@ bool ExpressionParser::ParseUserFunctionParameters(std::vector<UserFunctionParam
 
 	if (!GetUserFunctionParams(funcParamNames, out, funcScriptVars, funcScriptText, script))
 	{
-		auto success = false;
-		// check if lambda
-		if (auto* parent = GetLambdaParentScript(this->m_scriptBuf->currentScript))
-		{
-			if (const auto* scrText = parent->text; GetUserFunctionParams(funcParamNames, out, funcScriptVars, scrText, parent))
-				success = true;
-		}
-		if (!success)
-		{
-			Message(kError_UserFunctionParamsUndefined);
-			return false;
-		}
+		Message(kError_UserFunctionParamsUndefined);
+		return false;
 	}
 	return true;
 }
@@ -2013,7 +2003,9 @@ bool ExpressionParser::ParseUserFunctionCall()
 			return false;
 		
 		DynamicParamInfo dynamicParams(funcParams);
-		bParsed = ParseArgs(dynamicParams.Params(), dynamicParams.NumParams());
+		
+		ExpressionParser parser(m_scriptBuf, m_lineBuf); // created a new one instead of using this since since m_numArgsParsed is > 0 in Cmd_CallAfter_Parse
+		bParsed = parser.ParseArgs(dynamicParams.Params(), dynamicParams.NumParams());
 	}
 	else	// using refVar as function pointer, use default params OR NOT EDITOR
 	{
@@ -2350,6 +2342,7 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 			// write it to postfix expression, we'll check validity below
 			if (!operand->Write(m_lineBuf))
 			{
+				PrintCompileError("Failed to compile token.");
 				return kTokenType_Invalid;
 			}
 			operandType = operand->Type();
@@ -2599,7 +2592,12 @@ ScriptToken* ExpressionParser::ParseLambda()
 	m_scriptBuf->info.lastID = lambdaScriptBuf->info.lastID;
 	
 	if (!compileResult)
+	{
+		g_lambdaParentScriptMap.erase(lambdaScriptBuf->currentScript);
+		scriptLambda->refList = {};
+		scriptLambda->varList = {};
 		return nullptr;
+	}
 
 	return new ScriptToken(scriptLambda.release());
 }
@@ -4615,17 +4613,17 @@ struct BlockInfo
 
 static Block s_blocks[] =
 {
-	// Commented out since this is already validated by GECK
+	// Commented out since for lambdas
 	
 	// {	"begin",	kBlockType_ScriptBlock,	Block::kFunction_Open	}, 
 	// {	"end",		kBlockType_ScriptBlock,	Block::kFunction_Terminate	},
 	{	"while",	kBlockType_Loop,		Block::kFunction_Open	},
 	{	"foreach",	kBlockType_Loop,		Block::kFunction_Open	},
 	{	"loop",		kBlockType_Loop,		Block::kFunction_Terminate	},
-	// {	"if",		kBlockType_If,			Block::kFunction_Open	},
-	// {	"elseif",	kBlockType_If,			Block::kFunction_Dual	},
-	// {	"else",		kBlockType_If,			Block::kFunction_Dual	},
-	// {	"endif",	kBlockType_If,			Block::kFunction_Terminate	},
+	 {	"if",		kBlockType_If,			Block::kFunction_Open	},
+	 {	"elseif",	kBlockType_If,			Block::kFunction_Dual	},
+	 {	"else",		kBlockType_If,			Block::kFunction_Dual	},
+	 {	"endif",	kBlockType_If,			Block::kFunction_Terminate	},
 };
 
 static UInt32 s_numBlocks = SIZEOF_ARRAY(s_blocks, Block);

@@ -10,10 +10,12 @@
 #include <set>
 #include "StringVar.h"
 #include "ArrayVar.h"
+#include "Commands_Script.h"
 #include "PluginManager.h"
 #include "GameOSDepend.h"
 #include "InventoryReference.h"
 #include "EventManager.h"
+#include "FunctionScripts.h"
 #include "Hooks_Other.h"
 #include "ScriptTokenCache.h"
 
@@ -48,6 +50,34 @@ bool RunCommand_NS(COMMAND_ARGS, Cmd_Execute cmd)
 	return cmdResult;
 }
 
+extern std::vector<DelayedCallInfo> g_callAfterScripts;
+extern ICriticalSection g_callAfterScriptsCS;
+float g_gameSecondsPassed = 0;
+
+// xNVSE 6.1
+void HandleDelayedCall()
+{
+	if (g_callAfterScripts.empty())
+		return; // avoid lock overhead
+	g_gameSecondsPassed += *g_globalTimeMult * g_timeGlobal->secondsPassed;
+	ScopedLock lock(g_callAfterScriptsCS);
+
+	auto iter = g_callAfterScripts.begin();
+	while (iter != g_callAfterScripts.end())
+	{
+		if (g_gameSecondsPassed >= iter->time)
+		{
+			InternalFunctionCaller caller(iter->script, iter->thisObj, nullptr);
+			delete UserFunctionManager::Call(caller);
+			iter = g_callAfterScripts.erase(iter); // yes, this is valid: https://stackoverflow.com/a/3901380/6741772
+		}
+		else
+		{
+			++iter;
+		}
+	}
+}
+
 // boolean, used by ExtraDataList::IsExtraDefaultForContainer() to determine if ExtraOwnership should be treated
 // as 'non-default' for an inventory object. Is 0 in vanilla, set to 1 to make ownership NOT treated as default
 // Might be those addresses, used to decide if can be copied
@@ -80,6 +110,9 @@ static void HandleMainLoopHook(void)
 	// clean up any temp arrays/strings (moved after deffered processing because of array parameter to User Defined Events)
 	g_ArrayMap.Clean();
 	g_StringMap.Clean();
+
+	// handle calls from cmd CallAfter
+	HandleDelayedCall();
 }
 
 #define DEBUG_PRINT_CHANNEL(idx)								\

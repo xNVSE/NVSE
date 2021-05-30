@@ -90,3 +90,39 @@ static ParamInfo kNVSEParams_DispatchEvent[3] =
 };
 
 DEFINE_COMMAND_EXP(DispatchEvent, dispatches a user-defined event to any registered listeners, 0, kNVSEParams_DispatchEvent);
+
+static ParamInfo kParams_CallAfter[2] =
+{
+	{	"seconds",	kParamType_Float,	0	},
+	{	"function",	kParamType_AnyForm,0	},
+};
+
+DEFINE_COMMAND(CallAfter, calls UDF after seconds, 0, 2, kParams_CallAfter);
+
+struct DelayedCallInfo
+{
+	Script* script;
+	float time;
+	TESObjectREFR* thisObj;
+
+	DelayedCallInfo(Script* script, float time, TESObjectREFR* thisObj)
+		: script(script),
+		  time(time),
+		  thisObj(thisObj)
+	{
+	}
+};
+
+struct CallWhileInfo
+{
+	Script* callFunction;
+	Script* condition;
+	TESObjectREFR* thisObj;
+
+	CallWhileInfo(Script* callFunction, Script* condition, TESObjectREFR* thisObj)
+		: callFunction(callFunction),
+		  condition(condition),
+		  thisObj(thisObj)
+	{
+	}
+};

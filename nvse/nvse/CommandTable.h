@@ -283,6 +283,7 @@ private:
 	void AddCommandsV3s();
 	void AddCommandsV4();
 	void AddCommandsV5();
+	void AddCommandsV6();
 	void AddDebugCommands();
 
 	typedef std::vector <CommandInfo>				CommandList;

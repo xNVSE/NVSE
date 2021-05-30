@@ -265,7 +265,6 @@ class ExpressionParser
 	void SkipSpaces();
 	bool			ParseFunctionCall(CommandInfo* cmdInfo);
 	Token_Type		PopOperator(std::stack<Operator*> & ops, std::stack<Token_Type> & operands);
-	Token_Type ParseArgument(UInt32 argsEndPos);
 	ScriptToken* ParseLambda();
 
 	UInt32	MatchOpenBracket(Operator* openBracOp);
@@ -276,7 +275,7 @@ public:
 	ExpressionParser(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf);
 	~ExpressionParser();
 
-	bool			ParseArgs(ParamInfo* params, UInt32 numParams, bool bUsesNVSEParamTypes = true);
+	bool			ParseArgs(ParamInfo* params, UInt32 numParams, bool bUsesNVSEParamTypes = true, bool parseWholeLine = true);
 	bool			ValidateArgType(UInt32 paramType, Token_Type argType, bool bIsNVSEParam);
 	bool ParseUserFunctionParameters(std::vector<UserFunctionParam>& out, const std::string& funcScriptText,
 	                                 Script::VarInfoList* funcScriptVars, Script* script) const;
@@ -284,6 +283,7 @@ public:
 	bool			ParseUserFunctionDefinition();
 	ScriptToken	*	ParseOperand(bool (* pred)(ScriptToken* operand));
 	Token_Type		ArgType(UInt32 idx) { return idx < kMaxArgs ? m_argTypes[idx] : kTokenType_Invalid; }
+	Token_Type ParseArgument(UInt32 argsEndPos);
 	ParamParenthResult ParseParenthesis(ParamInfo* paramInfo, UInt32 paramIndex);
 };
 

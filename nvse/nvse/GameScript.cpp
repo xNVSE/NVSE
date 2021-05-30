@@ -402,10 +402,10 @@ bool ScriptLineBuffer::Write32(UInt32 buf)
 bool ScriptLineBuffer::WriteString(const char* buf)
 {
 	UInt32 len = StrLen(buf);
-	if ((len < 0x10000) && Write16(len) && len)
+	if (len < 0x10000 && Write16(len) && len)
 		return Write(buf, len);
 
-	return false;
+	return true;
 }
 
 bool ScriptLineBuffer::Write16(UInt16 buf)

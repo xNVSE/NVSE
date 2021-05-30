@@ -374,6 +374,7 @@ void CommandTable::Init(void)
 	g_scriptCommands.AddCommandsV3s();
 	g_scriptCommands.AddCommandsV4();
 	g_scriptCommands.AddCommandsV5();
+	g_scriptCommands.AddCommandsV6();
 
 #if _DEBUG
 	g_scriptCommands.AddDebugCommands();
@@ -1604,10 +1605,18 @@ void CommandTable::AddCommandsV5()
 	ADD_CMD_RET(GetNameOfClass, kRetnType_String);
 	ADD_CMD(ShowLevelUpMenu);
 
+
+}
+
+void CommandTable::AddCommandsV6()
+{
+	RecordReleaseVersion();
 	// 6.0 beta 08
 	ADD_CMD(GetUIFloatAlt);
 	ADD_CMD(SetUIFloatAlt);
 	ADD_CMD(SetUIStringAlt);
+	// 6.1 beta 00
+	ADD_CMD(CallAfter);
 }
 
 namespace PluginAPI
