@@ -4,7 +4,6 @@
 #include "nvse/ParamInfos.h"
 #include "nvse/GameObjects.h"
 #include <string>
-#include "main.h"
 //NoGore is unsupported in xNVSE
 
 #ifndef RegisterScriptCommand
@@ -13,6 +12,17 @@
 
 IDebugLog		gLog("nvse_plugin_example.log");
 PluginHandle	g_pluginHandle = kPluginHandle_Invalid;
+
+NVSEMessagingInterface* g_messagingInterface;
+NVSEInterface* g_nvseInterface;
+NVSECommandTableInterface* g_cmdTable;
+const CommandInfo* g_TFC;
+
+#if RUNTIME  //if non-GECK version (in-game)
+NVSEScriptInterface* g_script;
+#endif
+
+bool (*ExtractArgsEx)(COMMAND_ARGS_EX, ...);
 
 // This is a message handler for nvse events
 // With this, plugins can listen to messages such as whenever the game loads

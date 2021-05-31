@@ -119,7 +119,6 @@
       <Filter>nvse</Filter>
     </ClInclude>
     <ClInclude Include="..\nvse\nvse\GameScript.h" />
-    <ClInclude Include="main.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />

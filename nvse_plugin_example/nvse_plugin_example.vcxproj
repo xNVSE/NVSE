@@ -358,7 +358,6 @@
     <ClInclude Include="..\nvse\nvse\SafeWrite.h" />
     <ClInclude Include="..\nvse\nvse\Utilities.h" />
     <ClInclude Include="..\nvse\nvse\utility.h" />
-    <ClInclude Include="main.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />
