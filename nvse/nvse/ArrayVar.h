@@ -337,6 +337,7 @@ public:
 	void Sort(ArrayVar *result, SortOrder order, SortType type, Script* comparator = NULL);
 
 	void Dump();
+	void DumpToFile(const char* filePath, bool append);
 
 	std::string GetStringRepresentation() const;
 };
