@@ -68,7 +68,7 @@ void HandleDelayedCall()
 		if (g_gameSecondsPassed >= iter->time)
 		{
 			InternalFunctionCaller caller(iter->script, iter->thisObj);
-			delete UserFunctionManager::Call(caller);
+			delete UserFunctionManager::Call(std::move(caller));
 			iter = g_callAfterScripts.erase(iter); // yes, this is valid: https://stackoverflow.com/a/3901380/6741772
 		}
 		else
@@ -91,10 +91,10 @@ void HandleCallWhileScripts()
 	while (iter != g_callWhileInfos.end())
 	{
 		InternalFunctionCaller conditionCaller(iter->condition);
-		if (auto conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(conditionCaller)); conditionResult && conditionResult->GetBool())
+		if (auto conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); conditionResult && conditionResult->GetBool())
 		{
 			InternalFunctionCaller scriptCaller(iter->callFunction, iter->thisObj);
-			delete UserFunctionManager::Call(scriptCaller);
+			delete UserFunctionManager::Call(std::move(scriptCaller));
 			++iter;
 		}
 		else
@@ -119,7 +119,7 @@ void HandleCallForScripts()
 		if (g_gameSecondsPassed < iter->time)
 		{
 			InternalFunctionCaller caller(iter->script, iter->thisObj);
-			delete UserFunctionManager::Call(caller);
+			delete UserFunctionManager::Call(std::move(caller));
 			++iter;
 		}
 		else

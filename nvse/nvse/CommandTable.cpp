@@ -801,7 +801,7 @@ void CommandTable::RemoveDisabledPlugins(void)
 	}
 }
 
-static char * kNVSEname = "NVSE";
+static const char * kNVSEname = "NVSE";
 
 static PluginInfo g_NVSEPluginInfo =
 {

@@ -104,7 +104,7 @@ public:
 	UInt8		unk11C;							// 11C
 	UInt8		pad11D[3];
 
-	bool GetGameSetting(char* settingName, Setting** out);
+	bool GetGameSetting(const char* settingName, Setting** out);
 	static GameSettingCollection * GetSingleton();
 };
 
@@ -141,6 +141,6 @@ public:
 
 STATIC_ASSERT(sizeof(IniSettingCollection) == 0x114);
 
-bool GetNumericGameSetting(char * settingName, double * result);
-bool GetNumericIniSetting(char * settingName, double * result);
+bool GetNumericGameSetting(const char * settingName, double * result);
+bool GetNumericIniSetting(const char * settingName, double * result);
 bool GetIniSetting(const char* settingName, Setting** out);

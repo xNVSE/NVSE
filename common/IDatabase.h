@@ -16,14 +16,14 @@ class IDatabase
 		IDatabase()	{ newKeyHint = 1; }
 		virtual ~IDatabase()	{ }
 
-		DataType *	Get(UInt64 key)
+		DataType *Get(UInt64 key)
 		{
 			key &= kGUIDMask;
 
 			if(!key)
 				return NULL;
 
-			DataMapType::iterator	iter = theDataMap.find(key);
+			DataMapIterator iter = theDataMap.find(key);
 
 			return (iter == theDataMap.end()) ? NULL : &((*iter).second);
 		}
@@ -35,7 +35,7 @@ class IDatabase
 			if(!key)
 				return NULL;
 
-			DataMapType::iterator	iter = theDataMap.find(key);
+			DataMapIterator	iter = theDataMap.find(key);
 
 			return (iter == theDataMap.end()) ? &theDataMap[key] : NULL;
 		}
@@ -49,7 +49,7 @@ class IDatabase
 				if(!newKey)
 					newKey++;
 
-				DataMapType::iterator	iter = theDataMap.find(newKey);
+				DataMapIterator	iter = theDataMap.find(newKey);
 
 				// is 'newKey' unused?
 				if(iter == theDataMap.end())

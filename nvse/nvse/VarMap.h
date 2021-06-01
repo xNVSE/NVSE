@@ -154,7 +154,7 @@ public:
 	{
 		cache.Reset();
 
-		_VarMap::Iterator iter;
+		typename _VarMap::Iterator iter;
 		while (true)
 		{
 			iter.Init(vars);

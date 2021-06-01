@@ -184,17 +184,6 @@ __forceinline T_Ret CdeclCall(UInt32 _addr, Args ...args)
 
 void ShowErrorMessageBox(const char* message);
 
-class ScopedLock
-{
-public:
-	ScopedLock(ICriticalSection& critSection);
-
-	~ScopedLock();
-
-private:
-	ICriticalSection& m_critSection;
-};
-
 #if RUNTIME
 
 const char* GetModName(Script* script);

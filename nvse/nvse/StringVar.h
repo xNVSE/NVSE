@@ -29,7 +29,7 @@ public:
 	void		Insert(const char* subString, UInt32 insertionPos);
 	UInt32		Find(char* subString, UInt32 startPos, UInt32 numChars, bool bCaseSensitive = false);	//returns position of substring
 	UInt32		Count(char* subString, UInt32 startPos, UInt32 numChars, bool bCaseSensitive = false);
-	UInt32		Replace(char* toReplace, char* replaceWith, UInt32 startPos, UInt32 numChars, bool bCaseSensitive, UInt32 numToReplace = -1);	//returns num replaced
+	UInt32		Replace(const char* toReplace, const char* replaceWith, UInt32 startPos, UInt32 numChars, bool bCaseSensitive, UInt32 numToReplace = -1);	//returns num replaced
 	void		Erase(UInt32 startPos, UInt32 numChars);
 	std::string	SubString(UInt32 startPos, UInt32 numChars);
 	char		At(UInt32 charPos);

@@ -531,7 +531,7 @@ void FramerateTracker::Update(void)
 		for(UInt32 i = 0; i < kFrameTimeHistoryLength; i++)
 			total += m_frameTimeHistory[i];
 
-		m_averageFrameTime = total / kFrameTimeHistoryLength;
+		m_averageFrameTime = total / static_cast<int>(kFrameTimeHistoryLength);
 	}
 	else
 	{

@@ -1133,7 +1133,7 @@ public:
 	{
 		m_lhs->SetElement(0.0, &lhs);
 		m_rhs->SetElement(0.0, &rhs);
-		ScriptToken* result = UserFunctionManager::Call(*this);
+		ScriptToken* result = UserFunctionManager::Call(std::move(*this));
 		if (result)
 		{
 			bool bResult = result->GetBool();
