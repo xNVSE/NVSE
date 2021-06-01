@@ -181,8 +181,8 @@ bool NVSEPlugin_Load(const NVSEInterface* nvse)
 
 #if RUNTIME
 	g_script = (NVSEScriptInterface*)nvse->QueryInterface(kInterface_Script);
-#endif
 	ExtractArgsEx = g_script->ExtractArgsEx;
+#endif
 	/***************************************************************************
 	 *
 	 *	READ THIS!
