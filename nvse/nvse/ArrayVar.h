@@ -336,7 +336,7 @@ public:
 
 	void Sort(ArrayVar *result, SortOrder order, SortType type, Script* comparator = NULL);
 
-	void Dump();
+	void Dump(const std::function<void(const std::string&)>& output = [&](const std::string& input){ Console_Print(input.c_str()); });
 	void DumpToFile(const char* filePath, bool append);
 
 	std::string GetStringRepresentation() const;

@@ -1777,8 +1777,8 @@ bool ExpressionParser::ValidateArgType(UInt32 paramType, Token_Type argType, boo
 			case kParamType_QuestStage:
 			case kParamType_CrimeType:
 				// string var included here b/c old sv_* cmds take strings as integer IDs
-				return (CanConvertOperand(argType, kTokenType_Number) || CanConvertOperand(argType, kTokenType_StringVar) || 
-					CanConvertOperand(argType, kTokenType_Variable));
+				return CanConvertOperand(argType, kTokenType_Number) || CanConvertOperand(argType, kTokenType_StringVar) || 
+					CanConvertOperand(argType, kTokenType_Variable);
 			case kParamType_AnimationGroup:
 			case kParamType_ActorValue:				
 				// we accept string or int for this

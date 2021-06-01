@@ -1207,12 +1207,11 @@ void ArrayVar::Sort(ArrayVar* result, SortOrder order, SortType type, Script* co
 	}
 }
 
-void ArrayVar::Dump()
+void ArrayVar::Dump(const std::function<void(const std::string&)>& output)
 {
 	const char* owningModName = DataHandler::Get()->GetNthModName(m_owningModIndex);
 
-	Console_Print("** Dumping Array #%d **\nRefs: %d Owner %02X: %s", m_ID, m_refs.Size(), m_owningModIndex,
-	              owningModName);
+	output(FormatString("** Dumping Array #%d **\nRefs: %d Owner %02X: %s", m_ID, m_refs.Size(), m_owningModIndex, owningModName));
 	_MESSAGE("** Dumping Array #%d **\nRefs: %d Owner %02X: %s", m_ID, m_refs.Size(), m_owningModIndex, owningModName);
 
 	for (ArrayIterator iter = m_elements.begin(); !iter.End(); ++iter)
@@ -1269,8 +1268,8 @@ void ArrayVar::Dump()
 			elementInfo += "?Unknown Element Type?";
 		}
 
-		Console_Print("%s", elementInfo.c_str());
-		_MESSAGE("%s", elementInfo.c_str());
+		output(elementInfo);
+		_MESSAGE(elementInfo.c_str());
 	}
 }
 
@@ -1291,70 +1290,7 @@ void ArrayVar::DumpToFile(const char* filePath, bool append)
 		
 		if (!e)
 		{
-			const char* owningModName = DataHandler::Get()->GetNthModName(m_owningModIndex);
-			
-			fprintf(f, "** Dumping Array #%d **\nRefs: %d Owner %02X: %s", m_ID, m_refs.Size(), m_owningModIndex, owningModName);
-			fprintf(f, "\r\n");
-			_MESSAGE("** Dumping Array #%d **\nRefs: %d Owner %02X: %s", m_ID, m_refs.Size(), m_owningModIndex, owningModName);
-
-			for (ArrayIterator iter = m_elements.begin(); !iter.End(); ++iter)
-			{
-				char numBuf[0x50];
-				std::string elementInfo("[ ");
-
-				switch (KeyType())
-				{
-				case kDataType_Numeric:
-					snprintf(numBuf, sizeof(numBuf), "%f", iter.first()->key.num);
-					elementInfo += numBuf;
-					break;
-				case kDataType_String:
-					elementInfo += iter.first()->key.GetStr();
-					break;
-				default:
-					elementInfo += "?Unknown Key Type?";
-				}
-
-				elementInfo += " ] : ";
-
-				switch (iter.second()->m_data.dataType)
-				{
-				case kDataType_Numeric:
-					snprintf(numBuf, sizeof(numBuf), "%f", iter.second()->m_data.num);
-					elementInfo += numBuf;
-					break;
-				case kDataType_String:
-					elementInfo += iter.second()->m_data.GetStr();
-					break;
-				case kDataType_Array:
-					elementInfo += "(Array ID #";
-					snprintf(numBuf, sizeof(numBuf), "%d", iter.second()->m_data.arrID);
-					elementInfo += numBuf;
-					elementInfo += ")";
-					break;
-				case kDataType_Form:
-				{
-					UInt32 refID = iter.second()->m_data.formID;
-					snprintf(numBuf, sizeof(numBuf), "%08X", refID);
-					TESForm* form = LookupFormByID(refID);
-					if (form)
-						elementInfo += GetFullName(form);
-					else
-						elementInfo += "<?NAME?>";
-
-					elementInfo += " (";
-					elementInfo += numBuf;
-					elementInfo += ")";
-					break;
-				}
-				default:
-					elementInfo += "?Unknown Element Type?";
-				}
-
-				fprintf(f, "%s\n", elementInfo.c_str());
-				_MESSAGE("%s", elementInfo.c_str());
-			}
-			
+			Dump([&](const std::string& input){ fprintf(f, (input + "\r\n").c_str()); });
 			fclose(f);
 		}
 		else
