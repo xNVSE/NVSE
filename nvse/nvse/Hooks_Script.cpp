@@ -576,6 +576,10 @@ bool __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 	if (!bResult)
 		buf->errorCode = 1;
 
+	// fix issue where removing a variable and then recompiling would still work.
+	script->varList.DeleteAll();
+	script->varList = {};
+	
 	buf->currentScript = script;
 	
 	return bResult;
