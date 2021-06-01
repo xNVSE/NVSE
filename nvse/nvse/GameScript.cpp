@@ -57,8 +57,10 @@ UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText, Scri
 			}
 		}
 	}
+#if NVSE_CORE
 	if (auto* parent = GetLambdaParentScript(script))
 		return GetDeclaredVariableType(varName, parent->text, parent);
+#endif
 	return Script::eVarType_Invalid;
 }
 
@@ -385,7 +387,9 @@ bool ScriptLineBuffer::Write(const void* buf, UInt32 bufsize)
 {
 	if (dataOffset + bufsize >= kBufferSize)
 	{
+#if NVSE_CORE
 		g_ErrOut.Show("Line data buffer overflow! To fix this make the line shorter in length.");
+#endif
 		return false;
 	}
 

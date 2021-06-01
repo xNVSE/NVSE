@@ -358,8 +358,9 @@ public:
 	UInt32	numBuckets;	// 4
 	Entry	** buckets;	// 8
 	UInt32	numItems;	// C
-
+#if RUNTIME
 	DEFINE_MEMBER_FN_LONG(NiTMapBase, Lookup, bool, _NiTMap_Lookup, T_Key key, T_Data * dataOut);
+#endif
 };
 
 // 14

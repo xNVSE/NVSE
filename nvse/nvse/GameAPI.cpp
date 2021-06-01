@@ -901,7 +901,7 @@ tList<ScriptEventList::Var>* ScriptEventList::GetVars() const
 {
 	return reinterpret_cast<tList<Var>*>(m_vars);
 }
-
+#if NVSE_CORE
 bool vExtractExpression(ParamInfo* paramInfo, UInt8*& scriptData, Script* scriptObj, ScriptEventList* eventList, void* scriptDataIn, va_list& args)
 {
 	scriptData += sizeof(UInt16);
@@ -926,6 +926,7 @@ bool ExtractExpression(ParamInfo* paramInfo, UInt8*& scriptData, Script* scriptO
 	va_end(args);
 	return res;
 }
+
 
 ScriptEventList::Var *ExtractScriptVar(UInt8 *&scriptData, Script *scriptObj, ScriptEventList *eventList)
 {
@@ -1023,6 +1024,8 @@ TESForm* ExtractFormFromFloat(UInt8* &scriptData, Script* scriptObj, ScriptEvent
 
 	return outForm;
 }
+#endif
+
 #if 0
 TESForm* ResolveForm(UInt8* &scriptData, Script* scriptObj, ScriptEventList* eventList)
 {
@@ -2377,7 +2380,7 @@ UInt32 GetActorValueForString(const char* strActorVal, bool bForScript)
 	}
 	return eActorVal_NoActorValue;
 }
-
+#if NVSE_CORE
 ScriptFormatStringArgs::ScriptFormatStringArgs(UInt32 _numArgs, UInt8* _scriptData, Script* _scriptObj, ScriptEventList* _eventList, void* scriptDataIn)
 : numArgs(_numArgs), scriptData(_scriptData), scriptObj(_scriptObj), eventList(_eventList), scriptDataIn(scriptDataIn)
 {
@@ -2451,7 +2454,7 @@ bool ScriptFormatStringArgs::SkipArgs(UInt32 numToSkip)
 
 	return true;
 }
-
+#endif
 //Log error if expression evaluates to false
 bool SCRIPT_ASSERT(bool expr, Script* script, const char * errorMsg, ...)
 {
@@ -2495,7 +2498,7 @@ bool SCRIPT_ASSERT(bool expr, Script* script, const char * errorMsg, ...)
 	//	}
 	return expr;
 }
-
+#if NVSE_CORE
 bool ScriptFormatStringArgs::Arg(FormatStringArgs::argType asType, void * outResult)
 {
 	if (!SCRIPT_ASSERT((numArgs > 0), scriptObj, "Too few args for format specifier"))
@@ -2521,6 +2524,7 @@ bool ScriptFormatStringArgs::Arg(FormatStringArgs::argType asType, void * outRes
 
 	return false;
 }
+#endif
 
 void ShowCompilerError(ScriptLineBuffer* lineBuf, const char * fmt, ...)
 {

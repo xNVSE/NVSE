@@ -382,8 +382,8 @@ void FixEditorFont(void)
 
 void CreateTokenTypedefs(void)
 {
-char** tokenAlias_Float = (char**)0x00E9BE9C;	//reserved for array variable	// Find "Unknown variable or function '%s'.", previous call, first 59h case is an array containng reserved words
-char** tokenAlias_Long	= (char**)0x00E9BE74;	//string variable
+	auto* tokenAlias_Float = reinterpret_cast<const char**>(0x00E9BE9C);	//reserved for array variable	// Find "Unknown variable or function '%s'.", previous call, first 59h case is an array containng reserved words
+	auto* tokenAlias_Long	= reinterpret_cast<const char**>(0x00E9BE74);	//string variable
 
 	*tokenAlias_Long = "string_var";
 	*tokenAlias_Float = "array_var";
