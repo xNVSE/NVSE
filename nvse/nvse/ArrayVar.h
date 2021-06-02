@@ -258,6 +258,9 @@ class ArrayVar
 	Vector<UInt8>		m_refs;		// data is modIndex of referring object; size() is number of references
 
 public:
+#if _DEBUG
+	std::string varName;
+#endif
 	ArrayVar(UInt32 keyType, bool packed, UInt8 modIndex);
 	~ArrayVar();
 	enum SortOrder
@@ -366,9 +369,13 @@ public:
 
 	ArrayElement* GetElement(ArrayID id, const ArrayKey* key);
 
-	void DumpAll();
+	void DumpAll(bool save);
 
 	static ArrayVarMap * GetSingleton(void);
+
+#if _DEBUG
+	std::vector<ArrayVar*> GetByName(const char* name);
+#endif
 };
 
 extern ArrayVarMap g_ArrayMap;

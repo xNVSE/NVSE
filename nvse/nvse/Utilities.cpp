@@ -706,6 +706,16 @@ std::vector<void*> GetCallStack(int i)
 	return vecTrace;
 }
 
+bool FindStringCI(const std::string& strHaystack, const std::string& strNeedle)
+{
+	auto it = std::search(
+		strHaystack.begin(), strHaystack.end(),
+		strNeedle.begin(), strNeedle.end(),
+		[](char ch1, char ch2) { return std::toupper(ch1) == std::toupper(ch2); }
+	);
+	return (it != strHaystack.end());
+}
+
 void GeckExtenderMessageLog(const char* fmt, ...)
 {
 	va_list args;

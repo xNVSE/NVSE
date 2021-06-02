@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -210,3 +211,4 @@ void GeckExtenderMessageLog(const char* fmt, ...);
 
 std::vector<void*> GetCallStack(int i);
 
+bool FindStringCI(const std::string& strHaystack, const std::string& strNeedle);

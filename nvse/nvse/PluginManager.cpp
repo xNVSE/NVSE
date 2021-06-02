@@ -772,9 +772,9 @@ bool PluginManager::Dispatch_Message(PluginHandle sender, UInt32 messageType, vo
 	if (!senderName)
 		return false;
 
-	for (std::vector<PluginListener>::iterator iter = s_pluginListeners[sender].begin(); iter != s_pluginListeners[sender].end(); ++iter)
+	for (auto iter = s_pluginListeners[sender].begin(); iter != s_pluginListeners[sender].end(); ++iter)
 	{
-		NVSEMessagingInterface::Message msg;
+		NVSEMessagingInterface::Message msg{};
 		msg.data = data;
 		msg.type = messageType;
 		msg.sender = senderName;

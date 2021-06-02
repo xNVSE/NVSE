@@ -530,7 +530,8 @@ bool ArrayVar::HasKey(const ArrayKey* key)
 bool ArrayVar::SetElementNumber(double key, double num)
 {
 	ArrayElement* elem = Get(key, true);
-	if (!elem) return false;
+	if (!elem) 
+		return false;
 	elem->SetNumber(num);
 	return true;
 }
@@ -538,7 +539,8 @@ bool ArrayVar::SetElementNumber(double key, double num)
 bool ArrayVar::SetElementNumber(const char* key, double num)
 {
 	ArrayElement* elem = Get(key, true);
-	if (!elem) return false;
+	if (!elem) 
+		return false;
 	elem->SetNumber(num);
 	return true;
 }
@@ -546,7 +548,8 @@ bool ArrayVar::SetElementNumber(const char* key, double num)
 bool ArrayVar::SetElementString(double key, const char* str)
 {
 	ArrayElement* elem = Get(key, true);
-	if (!elem) return false;
+	if (!elem) 
+		return false;
 	elem->SetString(str);
 	return true;
 }
@@ -554,7 +557,8 @@ bool ArrayVar::SetElementString(double key, const char* str)
 bool ArrayVar::SetElementString(const char* key, const char* str)
 {
 	ArrayElement* elem = Get(key, true);
-	if (!elem) return false;
+	if (!elem)
+		return false;
 	elem->SetString(str);
 	return true;
 }
@@ -562,7 +566,8 @@ bool ArrayVar::SetElementString(const char* key, const char* str)
 bool ArrayVar::SetElementFormID(double key, UInt32 refID)
 {
 	ArrayElement* elem = Get(key, true);
-	if (!elem) return false;
+	if (!elem) 
+		return false;
 	elem->SetFormID(refID);
 	return true;
 }
@@ -570,7 +575,8 @@ bool ArrayVar::SetElementFormID(double key, UInt32 refID)
 bool ArrayVar::SetElementFormID(const char* key, UInt32 refID)
 {
 	ArrayElement* elem = Get(key, true);
-	if (!elem) return false;
+	if (!elem) 
+		return false;
 	elem->SetFormID(refID);
 	return true;
 }
@@ -578,7 +584,8 @@ bool ArrayVar::SetElementFormID(const char* key, UInt32 refID)
 bool ArrayVar::SetElementArray(double key, ArrayID srcID)
 {
 	ArrayElement* elem = Get(key, true);
-	if (!elem) return false;
+	if (!elem) 
+		return false;
 	elem->SetArray(srcID);
 	return true;
 }
@@ -586,7 +593,8 @@ bool ArrayVar::SetElementArray(double key, ArrayID srcID)
 bool ArrayVar::SetElementArray(const char* key, ArrayID srcID)
 {
 	ArrayElement* elem = Get(key, true);
-	if (!elem) return false;
+	if (!elem) 
+		return false;
 	elem->SetArray(srcID);
 	return true;
 }
@@ -594,7 +602,8 @@ bool ArrayVar::SetElementArray(const char* key, ArrayID srcID)
 bool ArrayVar::SetElement(double key, const ArrayElement* val)
 {
 	ArrayElement* elem = Get(key, true);
-	if (!elem) return false;
+	if (!elem)
+		return false;
 	elem->Set(val);
 	return true;
 }
@@ -602,7 +611,8 @@ bool ArrayVar::SetElement(double key, const ArrayElement* val)
 bool ArrayVar::SetElement(const char* key, const ArrayElement* val)
 {
 	ArrayElement* elem = Get(key, true);
-	if (!elem) return false;
+	if (!elem) 
+		return false;
 	elem->Set(val);
 	return true;
 }
@@ -610,7 +620,8 @@ bool ArrayVar::SetElement(const char* key, const ArrayElement* val)
 bool ArrayVar::SetElement(const ArrayKey* key, const ArrayElement* val)
 {
 	ArrayElement* elem = (key->KeyType() == kDataType_Numeric) ? Get(key->key.num, true) : Get(key->key.GetStr(), true);
-	if (!elem) return false;
+	if (!elem)
+		return false;
 	elem->Set(val);
 	return true;
 }
@@ -618,7 +629,8 @@ bool ArrayVar::SetElement(const ArrayKey* key, const ArrayElement* val)
 bool ArrayVar::SetElementFromAPI(double key, const NVSEArrayVarInterface::Element* srcElem)
 {
 	ArrayElement* elem = Get(key, true);
-	if (!elem) return false;
+	if (!elem) 
+		return false;
 	switch (srcElem->type)
 	{
 	case NVSEArrayVarInterface::Element::kType_Numeric:
@@ -643,7 +655,8 @@ bool ArrayVar::SetElementFromAPI(double key, const NVSEArrayVarInterface::Elemen
 bool ArrayVar::SetElementFromAPI(const char* key, const NVSEArrayVarInterface::Element* srcElem)
 {
 	ArrayElement* elem = Get(key, true);
-	if (!elem) return false;
+	if (!elem) 
+		return false;
 	switch (srcElem->type)
 	{
 	case NVSEArrayVarInterface::Element::kType_Numeric:
@@ -709,7 +722,8 @@ DataType ArrayVar::GetElementType(const ArrayKey* key)
 
 const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 {
-	if (Empty()) return NULL;
+	if (Empty()) 
+		return NULL;
 
 	switch (GetContainerType())
 	{
@@ -815,7 +829,8 @@ const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 
 bool ArrayVar::GetFirstElement(ArrayElement** outElem, const ArrayKey** outKey)
 {
-	if (Empty()) return false;
+	if (Empty()) 
+		return false;
 
 	ArrayIterator iter = m_elements.begin();
 	*outKey = iter.first();
@@ -825,7 +840,8 @@ bool ArrayVar::GetFirstElement(ArrayElement** outElem, const ArrayKey** outKey)
 
 bool ArrayVar::GetLastElement(ArrayElement** outElem, const ArrayKey** outKey)
 {
-	if (Empty()) return false;
+	if (Empty()) 
+		return false;
 
 	ArrayIterator iter = m_elements.rbegin();
 	*outKey = iter.first();
@@ -881,7 +897,8 @@ UInt32 ArrayVar::EraseElement(const ArrayKey* key)
 
 UInt32 ArrayVar::EraseElements(const Slice* slice)
 {
-	if (slice->bIsString || Empty()) return -1;
+	if (slice->bIsString || Empty()) 
+		return -1;
 	return m_elements.erase((int)slice->m_lower, (int)slice->m_upper);
 }
 
@@ -894,7 +911,8 @@ UInt32 ArrayVar::EraseAllElements()
 
 bool ArrayVar::SetSize(UInt32 newSize, const ArrayElement* padWith)
 {
-	if (!m_bPacked) return false;
+	if (!m_bPacked) 
+		return false;
 
 	UInt32 varSize = m_elements.size();
 	if (varSize < newSize)
@@ -914,7 +932,8 @@ bool ArrayVar::SetSize(UInt32 newSize, const ArrayElement* padWith)
 
 bool ArrayVar::Insert(UInt32 atIndex, const ArrayElement* toInsert)
 {
-	if (!m_bPacked) return false;
+	if (!m_bPacked) 
+		return false;
 	auto* pVec = m_elements.getArrayPtr();
 	UInt32 varSize = pVec->Size();
 	if (atIndex > varSize) return false;
@@ -1211,8 +1230,16 @@ void ArrayVar::Dump(const std::function<void(const std::string&)>& output)
 {
 	const char* owningModName = DataHandler::Get()->GetNthModName(m_owningModIndex);
 
-	output(FormatString("** Dumping Array #%d **\nRefs: %d Owner %02X: %s", m_ID, m_refs.Size(), m_owningModIndex, owningModName));
-	_MESSAGE("** Dumping Array #%d **\nRefs: %d Owner %02X: %s", m_ID, m_refs.Size(), m_owningModIndex, owningModName);
+#if _DEBUG
+	auto temp = g_ArrayMap.IsTemporary(m_ID);
+	if (temp) 
+		return;
+	auto str = FormatString("** Dumping Array #%d **\nRefs: %d Owner %02X: %s Temp: %s Name: %s", m_ID, m_refs.Size(), m_owningModIndex, owningModName, temp ? "true" : "false", /*varName.c_str()*/"");
+#else
+	auto str = FormatString("** Dumping Array #%d **\nRefs: %d Owner %02X: %s", m_ID, m_refs.Size(), m_owningModIndex, owningModName);
+#endif
+	output(str);
+	_MESSAGE("%s", str.c_str());
 
 	for (ArrayIterator iter = m_elements.begin(); !iter.End(); ++iter)
 	{
@@ -1388,6 +1415,15 @@ ArrayVarMap* ArrayVarMap::GetSingleton()
 	return &g_ArrayMap;
 }
 
+std::vector<ArrayVar*> ArrayVarMap::GetByName(const char* name)
+{
+	std::vector<ArrayVar*> out;
+	for (auto iter = vars.Begin(); !iter.End(); ++iter)
+		if (FindStringCI(iter.Get().varName, name))
+			out.push_back(&iter.Get());
+	return out;
+}
+
 ArrayVar* ArrayVarMap::Add(UInt32 varID, UInt32 keyType, bool packed, UInt8 modIndex, UInt32 numRefs, UInt8* refs)
 {
 	ArrayVar* var = VarMap::Insert(varID, keyType, packed, modIndex);
@@ -1470,6 +1506,10 @@ ArrayElement* ArrayVarMap::GetElement(ArrayID id, const ArrayKey* key)
 void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 {
 	Clean();
+
+#if _DEBUG
+	DumpAll(true);
+#endif
 
 	Serialization::OpenRecord('ARVS', kVersion);
 
@@ -1749,6 +1789,10 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 			break;
 		}
 	}
+	
+#if _DEBUG
+	DumpAll(false);
+#endif
 }
 
 void ArrayVarMap::Clean() // garbage collection: delete unreferenced arrays
@@ -1760,10 +1804,14 @@ void ArrayVarMap::Clean() // garbage collection: delete unreferenced arrays
 		Delete(tempIDs.LastKey());
 }
 
-void ArrayVarMap::DumpAll()
+void ArrayVarMap::DumpAll(bool save)
 {
+	auto append = false;
 	for (auto iter = vars.Begin(); !iter.End(); ++iter)
-		Console_Print("ID: %d  Refs: %d", iter.Get().ID(), iter.Get().m_refs.Size());
+	{
+		iter.Get().DumpToFile(save ? "array_save.txt" : "array_load.txt", append);
+		append = true;
+	}
 }
 
 namespace PluginAPI

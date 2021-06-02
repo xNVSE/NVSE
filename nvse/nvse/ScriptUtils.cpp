@@ -396,7 +396,15 @@ ScriptToken* Eval_Assign_Array(OperatorType op, ScriptToken* lh, ScriptToken* rh
 	g_ArrayMap.AddReference(&var->data, rh->GetArray(), context->script->GetModIndex());
 	if (!lh->refIdx)
 		AddToGarbageCollection(context->eventList, var->id, NVSEVarType::kVarType_Array);
-
+#if _DEBUG
+	auto* script = context->script;
+	if (lh->refIdx)
+		script = GetReferencedQuestScript(lh->refIdx, context->eventList);
+	if (auto* arrayVar = rh->GetArrayVar(); arrayVar && var)
+		arrayVar->varName = std::string(script->GetName()) + '.' + script->GetVariableInfo(var->id)->name.CStr();
+	else if (arrayVar && arrayVar->varName.empty())
+		arrayVar->varName = "<eval assign var not found>";
+#endif
 	return ScriptToken::CreateArray(var->data);
 }
 

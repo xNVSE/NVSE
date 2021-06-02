@@ -2692,4 +2692,18 @@ UInt32 GetNextFreeFormID(UInt32 formId)
 	return formId;
 }
 
+Script* GetReferencedQuestScript(UInt32 refIdx, ScriptEventList* baseEventList)
+{
+	if (auto* refVar = baseEventList->m_script->GetRefFromRefList(refIdx); refVar)
+	{
+		refVar->Resolve(baseEventList);
+		if (refVar->form)
+		{
+			if (auto* quest = DYNAMIC_CAST(refVar->form, TESForm, TESQuest))
+				return quest->scriptable.script;
+		}
+	}
+	return nullptr;
+}
+
 #endif
