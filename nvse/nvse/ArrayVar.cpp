@@ -1269,7 +1269,7 @@ void ArrayVar::Dump(const std::function<void(const std::string&)>& output)
 		}
 
 		output(elementInfo);
-		_MESSAGE(elementInfo.c_str());
+		_MESSAGE("%s", elementInfo.c_str());
 	}
 }
 
@@ -1290,7 +1290,7 @@ void ArrayVar::DumpToFile(const char* filePath, bool append)
 		
 		if (!e)
 		{
-			Dump([&](const std::string& input){ fprintf(f, (input + "\r\n").c_str()); });
+			Dump([&](const std::string& input){ fprintf(f, "%s", input.c_str()); });
 			fclose(f);
 		}
 		else
