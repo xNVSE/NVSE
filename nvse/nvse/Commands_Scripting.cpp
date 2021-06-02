@@ -309,12 +309,12 @@ bool Cmd_Print_Execute(COMMAND_ARGS)
 	{
 		const char* str = eval.Arg(0)->GetString();
 		if (strlen(str) < 512)
-			Console_Print(str);
+			Console_Print("%s", str);
 		else
 			Console_Print_Long(str);
 #if _DEBUG
 		// useful for testing script output
-		_MESSAGE(str);
+		_MESSAGE("%s", str);
 #endif
 	}
 
@@ -332,12 +332,12 @@ bool Cmd_PrintDebug_Execute(COMMAND_ARGS)
 		{
 			const char* str = eval.Arg(0)->GetString();
 			if (strlen(str) < 512)
-				Console_Print(str);
+				Console_Print("%s", str);
 			else
 				Console_Print_Long(str);
 #if _DEBUG
 			// useful for testing script output
-			_MESSAGE(str);
+			_MESSAGE("%s", str);
 #endif
 		}
 	}
@@ -360,7 +360,7 @@ bool Cmd_PrintF(COMMAND_ARGS, bool debug)
 				if (!e)
 				{
 					const char* str = eval.Arg(1)->GetString();
-					fprintf(f, str);
+					fprintf(f, "%s", str);
 					fprintf(f, "\r\n");
 					fclose(f);
 				}
