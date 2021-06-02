@@ -1290,7 +1290,7 @@ void ArrayVar::DumpToFile(const char* filePath, bool append)
 		
 		if (!e)
 		{
-			Dump([&](const std::string& input){ fprintf(f, "%s", input.c_str()); });
+			Dump([&](const std::string& input){ fprintf(f, "%s\n", input.c_str()); });
 			fclose(f);
 		}
 		else
