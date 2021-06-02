@@ -174,10 +174,10 @@ private:
 ScriptToken* UserFunctionManager::Call(ExpressionEvaluator* eval)
 {
 	ScriptFunctionCaller caller(*eval);
-	return Call(caller);
+	return Call(std::move(caller));
 }
 
-ScriptToken* UserFunctionManager::Call(FunctionCaller & caller)
+ScriptToken* UserFunctionManager::Call(FunctionCaller&& caller)
 {
 	UserFunctionManager* funcMan = GetSingleton();
 
@@ -569,7 +569,7 @@ bool FunctionContext::Return(ExpressionEvaluator* eval)
 		m_result = eval->Arg(0)->ToBasicToken();
 		return true;
 	}
-}	
+}
 
 /*******************************
 	InternalFunctionCaller
@@ -665,7 +665,7 @@ namespace PluginAPI
 		bool success = caller.vSetArgs(numArgs, args);
 		if (success)
 		{
-			ScriptToken* ret = UserFunctionManager::Call(caller);
+			ScriptToken* ret = UserFunctionManager::Call(std::move(caller));
 			if (ret)
 			{
 				if (result)

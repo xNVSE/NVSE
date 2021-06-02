@@ -879,12 +879,18 @@ void * PluginManager::GetData(UInt32 dataID)
 	return result;
 }
 
+extern UnorderedSet<UInt32> s_gameLoadedInformedScripts, s_gameRestartedInformedScripts;
+
 void PluginManager::ClearScriptDataCache()
 {
 	TokenCache::MarkForClear();
 	Dispatch_Message(0, NVSEMessagingInterface::kMessage_ClearScriptDataCache, NULL, 0, NULL);
 	UserFunctionManager::ClearInfos();
 	LambdaManager::ClearCache();
+
+	// Lambdas get cleared; give a chance for quest scripts to reregister lambda event listeners.
+	s_gameLoadedInformedScripts.Clear();
+	s_gameRestartedInformedScripts.Clear();
 }
 
 

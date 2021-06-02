@@ -1203,7 +1203,7 @@ bool ScriptToken::Write(ScriptLineBuffer* buf) const
 			}
 		}
 	case kTokenType_String:
-		return buf->WriteString(value.str);
+		return buf->WriteString(value.str ? value.str : "");
 	case kTokenType_Ref:
 	case kTokenType_Global:
 		return buf->Write16(refIdx);
@@ -1580,7 +1580,7 @@ char* ScriptToken::DebugPrint() const
 	switch (type) {
 		case kTokenType_Number: sprintf_s(debugPrint, 512, "[Type=Number, Value=%g]", value.num); break;
 		case kTokenType_Boolean: sprintf_s(debugPrint, 512, "[Type=Boolean, Value=%s]", value.num ? "true" : "false"); break;
-		case kTokenType_String: sprintf_s(debugPrint, 512, "[Type=String, Value=%s]", value.str); break;
+		case kTokenType_String: sprintf_s(debugPrint, 512, "[Type=String, Value=%s]", value.str ? value.str : ""); break;
 		case kTokenType_Form: sprintf_s(debugPrint, 512, "[Type=Form, Value=%08X]", value.formID); break;
 		case kTokenType_Ref: sprintf_s(debugPrint, 512, "[Type=Ref, Value=%s]", value.refVar->name.CStr()); break;
 		case kTokenType_Global: sprintf_s(debugPrint, 512, "[Type=Global, Value=%s]", value.global->GetName()); break;
@@ -1602,7 +1602,7 @@ char* ScriptToken::DebugPrint() const
 		case kTokenType_Short: sprintf_s(debugPrint, 512, "[Type=Short, Value=%g]", value.num); break;
 		case kTokenType_Int: sprintf_s(debugPrint, 512, "[Type=Int, Value=%g]", value.num); break;
 		case kTokenType_Pair: sprintf_s(debugPrint, 512, "[Type=Pair, Value=%g]", value.num); break;
-		case kTokenType_AssignableString: sprintf_s(debugPrint, 512, "[Type=AssignableString, Value=%s]", value.str); break;
+		case kTokenType_AssignableString: sprintf_s(debugPrint, 512, "[Type=AssignableString, Value=%s]", value.str ? value.str : ""); break;
 		case kTokenType_Invalid: sprintf_s(debugPrint, 512, "[Type=Invalid, no Value]"); break;
 		case kTokenType_Empty: sprintf_s(debugPrint, 512, "[Type=Empty, no Value]"); break;
 	}

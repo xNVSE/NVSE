@@ -105,7 +105,7 @@ UInt32 StringVar::GetLength()
 	return data.length();
 }
 
-UInt32 StringVar::Replace(char* toReplace, char* replaceWith, UInt32 startPos, UInt32 numChars, bool bCaseSensitive, UInt32 numToReplace)
+UInt32 StringVar::Replace(const char* toReplace, const char* replaceWith, UInt32 startPos, UInt32 numChars, bool bCaseSensitive, UInt32 numToReplace)
 {
 	// calc length of substring
 	if (startPos >= GetLength())

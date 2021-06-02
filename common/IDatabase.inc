@@ -4,7 +4,7 @@ void IDatabase <DataType>::Save(IDataStream * stream)
 	stream->Write32(theDataMap.size());
 	stream->Write64(newKeyHint);
 	
-	for(DataMapType::iterator iter = theDataMap.begin(); iter != theDataMap.end(); iter++)
+	for(DataMapIterator iter = theDataMap.begin(); iter != theDataMap.end(); iter++)
 	{
 		stream->Write64((*iter).first);
 		stream->WriteBuf(&((*iter).second), sizeof(DataType));

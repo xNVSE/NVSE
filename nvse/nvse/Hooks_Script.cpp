@@ -1,5 +1,8 @@
 #include "SafeWrite.h"
 #include "Hooks_Script.h"
+
+#include <ranges>
+
 #include "GameForms.h"
 #include "GameScript.h"
 #include "ScriptUtils.h"
@@ -557,6 +560,9 @@ namespace CompilerOverride {
 	}
 }
 
+// ScriptBuffer::currentScript not used due to GECK treating it as external ref script
+std::stack<Script*> g_currentScriptStack;
+
 bool __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 {
 	// empty out the loop stack
@@ -567,7 +573,8 @@ bool __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 	//  - check for usage of array variables in Set statements (disallowed)
 	//  - check loop structure integrity
 	//  - check for use of ResetAllVariables on scripts containing string/array vars
-
+	g_currentScriptStack.push(script);
+	
 	bool bResult = PrecompileScript(buf);
 	if (bResult) {
 		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_Precompile, buf, sizeof(buf), NULL);
@@ -575,8 +582,6 @@ bool __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 
 	if (!bResult)
 		buf->errorCode = 1;
-
-	buf->currentScript = script;
 	
 	return bResult;
 }
@@ -589,9 +594,10 @@ void __fastcall PostScriptCompileSuccess(Script* script)
 void PostScriptCompile()
 {
 	g_variableDefinitionsMap.clear();
-	for (const auto iter : g_lambdaParentScriptMap)
-		Delete<Script, 0x5C5220>(iter.first);
+	for (const auto& key : g_lambdaParentScriptMap | std::views::keys)
+		Delete<Script, 0x5C5220>(key);
 	g_lambdaParentScriptMap.clear();
+	g_currentScriptStack.pop();
 }
 
 static __declspec(naked) void CompileScriptHook(void)

@@ -119,7 +119,7 @@ public:
 	static ScriptToken* Call(ExpressionEvaluator* eval);
 	static bool	Return(ExpressionEvaluator* eval);
 	static bool Enter(Script* funcScript);
-	static ScriptToken* Call(FunctionCaller & caller);
+	static ScriptToken* Call(FunctionCaller&& caller);
 	static UInt32 GetFunctionParamTypes(Script* fnScript, UInt8* typesOut);
 
 	// return script that called fnScript

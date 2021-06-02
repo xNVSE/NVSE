@@ -208,6 +208,7 @@ class ExpressionParser
 	Token_Type			m_argTypes[kMaxArgs];
 	UInt8				m_numArgsParsed;
 	std::unordered_set<MacroType> appliedMacros_;
+	Script* m_script;
 
 	enum ScriptLineError {								// varargs
 		kError_CantParse,

@@ -63,7 +63,7 @@ public:
 	// 14
 	struct ScriptInfo
 	{
-		UInt32	lastID;		// 00 (18)
+		UInt32	unusedVariableCount;		// 00 (18)
 		UInt32	numRefs;	// 04 (1C)
 		UInt32	dataLength;	// 08 (20)
 		UInt32	varCount;	// 0C (24)
@@ -231,9 +231,10 @@ struct ScriptBuffer
 	// nothing else initialized
 
 	// convert a variable or form to a RefVar, add to refList if necessary
-	Script::RefVariable* ResolveRef(const char* refName);
+	Script::RefVariable* ResolveRef(const char* refName, Script* script);
 	UInt32	GetRefIdx(Script::RefVariable* ref);
-	UInt32	GetVariableType(VariableInfo* varInfo, Script::RefVariable* refVar);
+	VariableInfo* GetVariableByName(const char* name);
+	UInt32	GetVariableType(VariableInfo* varInfo, Script::RefVariable* refVar, Script* script);
 };
 static_assert(sizeof(ScriptBuffer) == 0x58);
 

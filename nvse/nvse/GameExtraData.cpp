@@ -647,7 +647,7 @@ ExtraAction* ExtraAction::Create()
 	return xAction;
 }
 
-char * GetExtraDataName(UInt8 ExtraDataType) {
+const char* GetExtraDataName(UInt8 ExtraDataType) {
 	switch (ExtraDataType) {			
 		case	kExtraData_Havok                    	: return "Havok"; break;
 		case	kExtraData_Cell3D                   	: return "Cell3D"; break;

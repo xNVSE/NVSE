@@ -34,7 +34,7 @@ Script* LambdaManager::CreateLambdaScript(UInt8* position, ScriptEventList* pare
 	
 	scriptLambda->info.numRefs = parentScript->info.numRefs;
 	scriptLambda->info.varCount = parentScript->info.varCount;
-	scriptLambda->info.lastID = parentScript->info.lastID;
+	scriptLambda->info.unusedVariableCount = parentScript->info.unusedVariableCount;
 	const auto nextFormId = GetNextFreeFormID(parentScript->refID);
 	if (nextFormId >> 24 == parentScript->GetModIndex())
 	{

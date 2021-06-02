@@ -621,16 +621,6 @@ void ShowErrorMessageBox(const char* message)
 	);
 }
 
-ScopedLock::ScopedLock(ICriticalSection& critSection) : m_critSection(critSection)
-{
-	m_critSection.Enter();
-}
-
-ScopedLock::~ScopedLock()
-{
-	m_critSection.Leave();
-}
-
 #if RUNTIME
 
 UnorderedSet<UInt32> g_warnedScripts;

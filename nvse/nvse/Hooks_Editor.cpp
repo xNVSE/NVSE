@@ -382,8 +382,8 @@ void FixEditorFont(void)
 
 void CreateTokenTypedefs(void)
 {
-char** tokenAlias_Float = (char**)0x00E9BE9C;	//reserved for array variable	// Find "Unknown variable or function '%s'.", previous call, first 59h case is an array containng reserved words
-char** tokenAlias_Long	= (char**)0x00E9BE74;	//string variable
+	auto* tokenAlias_Float = reinterpret_cast<const char**>(0x00E9BE9C);	//reserved for array variable	// Find "Unknown variable or function '%s'.", previous call, first 59h case is an array containng reserved words
+	auto* tokenAlias_Long	= reinterpret_cast<const char**>(0x00E9BE74);	//string variable
 
 	*tokenAlias_Long = "string_var";
 	*tokenAlias_Float = "array_var";
@@ -515,11 +515,25 @@ std::vector g_lineMacros =
 {
 	ScriptLineMacro([&](std::string& line)
 	{
-		// VARIABLE = VALUE macro
-		const std::regex assignmentExpr(R"(^([a-zA-Z\_\s\.0-9]+)\=([a-zA-Z\_\s\.\$\!0-9]+))"); // match int ivar = 4
-		if (std::smatch m; std::regex_search(line, m, assignmentExpr) && m.size() == 3)
+		
+		static const std::vector<std::pair<std::string, std::string>> s_shortHandMacros =
 		{
-			line = "let " + m.str(1) + " := " + m.str(2);
+			std::make_pair(":=", R"(\=)"),
+			std::make_pair("+=", R"(\+\=)"),
+			std::make_pair("-=", R"(\-\=)"),
+			std::make_pair("*=", R"(\*\=)"),
+			std::make_pair("/=", R"(\/\=)"),
+		};
+
+		for (const auto& [realOp, regexOp] : s_shortHandMacros)
+		{
+			// VARIABLE = VALUE macro 
+			const std::regex assignmentExpr(R"(^([a-zA-Z\_\s\.0-9]+))" + regexOp + R"(([a-zA-Z\_\s\.\$\!0-9\-\(\{][.\s\S]*))"); // match int ivar = 4
+			if (std::smatch m; std::regex_search(line, m, assignmentExpr) && m.size() == 3)
+			{
+				line = "let " + m.str(1) + " " + realOp + " " + m.str(2);
+				return true;
+			}
 		}
 		return true;
 	}, MacroType::AssignmentShortHand),

@@ -42,21 +42,18 @@ namespace SmallObjectsAllocator
 			return static_cast<T*>(operator new(sizeof(T)));
 #else
 			return pool_.allocate();
-
 #endif
-
 		}
 
 		void Free(void* ptr)
 		{
+
 			ScopedLock lock(criticalSection_);
 			Free(static_cast<T*>(ptr));
 #if _DEBUG
 			--count_;
 #endif
 		}
-
-		
 	};
 
 	template <class T, std::size_t C>

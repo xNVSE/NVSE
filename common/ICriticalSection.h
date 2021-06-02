@@ -13,3 +13,20 @@ class ICriticalSection
 	private:
 		CRITICAL_SECTION	critSection;
 };
+
+class ScopedLock
+{
+public:
+	ScopedLock(ICriticalSection& critSection) : m_critSection(critSection)
+	{
+		m_critSection.Enter();
+	}
+
+	~ScopedLock()
+	{
+		m_critSection.Leave();
+	}
+
+private:
+	ICriticalSection& m_critSection;
+};

@@ -98,7 +98,7 @@ bool Setting::Set(const char* str)
 	return false;
 }
 
-bool GameSettingCollection::GetGameSetting(char* settingName, Setting** out)
+bool GameSettingCollection::GetGameSetting(const char* settingName, Setting** out)
 {
 	return CALL_MEMBER_FN(&settingMap, Lookup)(settingName, out); // ***** hippo fix me ****
 }
@@ -158,7 +158,7 @@ bool GetIniSetting(const char* settingName, Setting** out)
 	return false;
 }
 
-bool GetNumericGameSetting(char * settingName, double * result)
+bool GetNumericGameSetting(const char * settingName, double * result)
 {
 	bool bResult = false;
 	*result = -1;
@@ -181,7 +181,7 @@ bool GetNumericGameSetting(char * settingName, double * result)
 	return bResult;
 }
 
-bool GetNumericIniSetting(char * settingName, double * result)
+bool GetNumericIniSetting(const char * settingName, double * result)
 {
 	bool bResult = false;
 	*result = -1;

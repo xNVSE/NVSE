@@ -51,6 +51,7 @@ static bool ShowWarning(const char* msg)
 
 #include "GameAPI.h"
 
+extern std::stack<Script*> g_currentScriptStack;
 std::map<std::pair<Script*, std::string>, Script::VariableType> g_variableDefinitionsMap;
 
 Script::VariableType GetSavedVarType(Script* script, const std::string& name)
@@ -267,10 +268,11 @@ char* __fastcall ConcatStrings(const char *lStr, const char *rStr)
 	{
 		char *conStr = (char*)malloc(lLen + rLen + 1);
 		if (lLen) memcpy(conStr, lStr, lLen);
-		memcpy(conStr + lLen, rStr, rLen + 1);
+		if (rLen)
+			memcpy(conStr + lLen, rStr, rLen + 1);
 		return conStr;
 	}
-	return "";
+	return nullptr;
 }
 
 ScriptToken* Eval_Add_String(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
@@ -1620,7 +1622,15 @@ ExpressionParser::ExpressionParser(ScriptBuffer* scriptBuf, ScriptLineBuffer* li
 { 
 	ASSERT(s_parserDepth >= 0);
 	s_parserDepth++;
-	memset(m_argTypes, kTokenType_Invalid, sizeof(m_argTypes)); 
+	memset(m_argTypes, kTokenType_Invalid, sizeof(m_argTypes));
+#if RUNTIME
+	m_script = scriptBuf->currentScript;
+#else
+	if (g_currentScriptStack.empty())
+		g_ErrOut.Show("Error: current script stack is empty");
+	else
+		m_script = g_currentScriptStack.top();
+#endif
 }
 
 ExpressionParser::~ExpressionParser()
@@ -1995,7 +2005,7 @@ bool ExpressionParser::ParseUserFunctionCall()
 		{
 			funcScriptText = m_scriptBuf->scriptText;
 			funcScriptVars = &m_scriptBuf->vars;
-			script = m_scriptBuf->currentScript;
+			script = m_script;
 		}
 
 		std::vector<UserFunctionParam> funcParams;
@@ -2037,7 +2047,7 @@ bool ExpressionParser::ParseUserFunctionDefinition()
 
 	// parse parameter list
 	std::vector<UserFunctionParam> params;
-	if (!ParseUserFunctionParameters(params, m_scriptBuf->scriptText, &m_scriptBuf->vars, m_scriptBuf->currentScript))
+	if (!ParseUserFunctionParameters(params, m_scriptBuf->scriptText, &m_scriptBuf->vars, m_script))
 		return false;
 
 	// write param info
@@ -2506,7 +2516,7 @@ ScriptToken* ExpressionParser::ParseLambda()
 #if RUNTIME
 	PrintCompileError("Anonymous functions are not supported from console.");
 	return nullptr;
-#endif
+#else
 	const auto* beginData = CurText() - strlen("begin");
 	auto nest = 1;
 	while (nest != 0 && CurText())
@@ -2537,14 +2547,13 @@ ScriptToken* ExpressionParser::ParseLambda()
 	const auto numRefs = m_scriptBuf->info.numRefs;
 	
 	lambdaScriptBuf->partialScript = true;
-	lambdaScriptBuf->currentScript = scriptLambda.get();
-
+	
 	scriptLambda->info.varCount = varCount;
-	scriptLambda->info.lastID = varCount;
+	scriptLambda->info.unusedVariableCount = varCount;
 	scriptLambda->info.numRefs = numRefs;
 	
 	lambdaScriptBuf->info.varCount = varCount;
-	lambdaScriptBuf->info.lastID = varCount;
+	lambdaScriptBuf->info.unusedVariableCount = varCount;
 	lambdaScriptBuf->info.numRefs= numRefs;
 	
 	lambdaScriptBuf->scriptName.Set(FormatString("%sLambdaAtLine%d", m_scriptBuf->scriptName.CStr(), m_lineBuf->lineNumber).c_str());
@@ -2573,9 +2582,14 @@ ScriptToken* ExpressionParser::ParseLambda()
 	const auto savedOffset = *beginEndOffset;
 	*beginEndOffset = 0;
 
-	g_lambdaParentScriptMap.emplace(lambdaScriptBuf->currentScript, m_scriptBuf->currentScript);
+	g_lambdaParentScriptMap.emplace(scriptLambda.get(), m_script);
+
+	// lambdaScriptBuf->currentScript = scriptLambda.get();
+	g_currentScriptStack.push(scriptLambda.get());
 
 	const auto compileResult = ThisStdCall<bool>(0x5C96E0, g_scriptCompiler, scriptLambda.get(), lambdaScriptBuf.get()); // CompileScript
+
+	g_currentScriptStack.pop();
 
 	*beginEndOffset = savedOffset;
 
@@ -2589,17 +2603,19 @@ ScriptToken* ExpressionParser::ParseLambda()
 	
 	m_scriptBuf->info.numRefs = lambdaScriptBuf->info.numRefs;
 	m_scriptBuf->info.varCount = lambdaScriptBuf->info.varCount;
-	m_scriptBuf->info.lastID = lambdaScriptBuf->info.lastID;
+	m_scriptBuf->info.unusedVariableCount = lambdaScriptBuf->info.unusedVariableCount;
 	
 	if (!compileResult)
 	{
-		g_lambdaParentScriptMap.erase(lambdaScriptBuf->currentScript);
+		g_lambdaParentScriptMap.erase(scriptLambda.get());
 		scriptLambda->refList = {};
 		scriptLambda->varList = {};
 		return nullptr;
 	}
 
 	return new ScriptToken(scriptLambda.release());
+#endif
+
 }
 
 ScriptToken* ExpressionParser::ParseOperand(bool (* pred)(ScriptToken* operand))
@@ -2856,7 +2872,7 @@ VariableInfo* ExpressionParser::CreateVariable(const std::string& varName, Scrip
 {
 	if (auto* var = m_scriptBuf->vars.FindFirst([&](VariableInfo* v) { return _stricmp(varName.c_str(), v->name.CStr()) == 0; }))
 	{
-		if (!ValidateVariable(varName, varType, m_scriptBuf->currentScript))
+		if (!ValidateVariable(varName, varType, m_script))
 			return nullptr;
 		// all good, already exists
 		return var;
@@ -2877,12 +2893,15 @@ VariableInfo* ExpressionParser::CreateVariable(const std::string& varName, Scrip
 		return nullptr;
 	}
 	auto* varInfo = New<VariableInfo>();
-	varInfo->idx = ++m_scriptBuf->info.varCount;
+	if (const auto* existingVar = m_script->GetVariableByName(varName.c_str()))
+		varInfo->idx = existingVar->idx;
+	else
+		varInfo->idx = ++m_scriptBuf->info.varCount;
 	varInfo->name.Set(varName.c_str());
 	varInfo->type = varType;
 	m_scriptBuf->vars.Append(varInfo);
 #if EDITOR
-	SaveVarType(m_scriptBuf->currentScript, varName, varType);
+	SaveVarType(m_script, varName, varType);
 #endif
 	return varInfo;
 }
@@ -2936,12 +2955,6 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 		}
 		if (const auto varType = VariableTypeNameToType(token.c_str()); varType != Script::eVarType_Invalid)
 		{
-			if (_stricmp(token.c_str(), "array_var") == 0)
-			{
-				// text is parsed so that arrays can be ref counted; won't detect inline array vars.
-				//PrintCompileError("array_vars are not allowed to be declared inline.");
-				//return nullptr;
-			}
 			SkipSpaces();
 			const auto varName = GetCurToken();
 			auto* varInfo = CreateVariable(varName, varType);
@@ -2951,7 +2964,6 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 		}
 	}
 	
-
 	// some operators (e.g. ->) expect a string literal, filter them out now
 	if (curOp && curOp->ExpectsStringLiteral()) 
 	{
@@ -3016,10 +3028,10 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 	{
 		VariableInfo* varInfo = LookupVariable(token.c_str(), NULL);
 		if (varInfo)
-			return ScriptToken::Create(varInfo, 0, m_scriptBuf->GetVariableType(varInfo, NULL));
+			return ScriptToken::Create(varInfo, 0, m_scriptBuf->GetVariableType(varInfo, NULL, m_script));
 	}
 	auto usesRefFromStack = curOp && curOp->type == kOpType_Dot;
-	Script::RefVariable* refVar = m_scriptBuf->ResolveRef(refToken.c_str());
+	Script::RefVariable* refVar = m_scriptBuf->ResolveRef(refToken.c_str(), m_script);
 	if (hasDot && !refVar)
 	{
 		//Message(kError_InvalidDotSyntax);
@@ -3079,7 +3091,7 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 	}
 	if (varInfo)
 	{
-		UInt8 theVarType = m_scriptBuf->GetVariableType(varInfo, refVar);
+		UInt8 theVarType = m_scriptBuf->GetVariableType(varInfo, refVar, m_script);
 		if (bExpectStringVar && theVarType != Script::eVarType_String)
 		{
 			Message(kError_ExpectedStringVariable);
@@ -4642,6 +4654,7 @@ private:
 	UInt32				m_curBlockStartingLineNo;
 	std::string			m_scriptText;
 	UInt32				m_scriptTextOffset;
+	Script*				m_script;
 
 	bool		HandleDirectives();		// compiler directives at top of script prefixed with '@'
 	bool		ProcessBlock(BlockType blockType);
@@ -4671,7 +4684,7 @@ const char* Preprocessor::BlockTypeAsString(BlockType type)
 }
 
 Preprocessor::Preprocessor(ScriptBuffer* buf) : m_buf(buf), m_loopDepth(0), m_curLineText(""), m_curLineNo(0),
-                                                m_curBlockStartingLineNo(1), m_scriptText(buf->scriptText), m_scriptTextOffset(0)
+                                                m_curBlockStartingLineNo(1), m_scriptText(buf->scriptText), m_scriptTextOffset(0), m_script(g_currentScriptStack.top())
 {
 	AdvanceLine();
 }
@@ -4840,7 +4853,7 @@ bool Preprocessor::Process()
 				std::string varToken;
 				if (tokens.NextToken(varToken) != -1)
 				{
-					if (!ValidateVariable(varToken, type, m_buf->currentScript))
+					if (!ValidateVariable(varToken, type, m_script))
 						return false;
 				}
 			}
