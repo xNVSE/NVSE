@@ -178,7 +178,7 @@ bool Script::RunScriptLine(const char * text, TESObjectREFR * object)
 
 #endif
 
-Script::RefVariable* ScriptBuffer::ResolveRef(const char* refName)
+Script::RefVariable* ScriptBuffer::ResolveRef(const char* refName, Script* script)
 {
 	Script::RefVariable* newRef = NULL;
 
@@ -190,7 +190,7 @@ Script::RefVariable* ScriptBuffer::ResolveRef(const char* refName)
 
 	// is it a local ref variable?
 	VariableInfo* varInfo = vars.GetVariableByName(refName);
-	if (varInfo && GetVariableType(varInfo, NULL) == Script::eVarType_Ref)
+	if (varInfo && GetVariableType(varInfo, NULL, script) == Script::eVarType_Ref)
 	{
 		newRef = (Script::RefVariable*)FormHeap_Allocate(sizeof(Script::RefVariable));
 		newRef->form = NULL;
@@ -243,10 +243,16 @@ UInt32 ScriptBuffer::GetRefIdx(Script::RefVariable* ref)
 	return idx;
 }
 
-UInt32 ScriptBuffer::GetVariableType(VariableInfo* varInfo, Script::RefVariable* refVar)
+VariableInfo* ScriptBuffer::GetVariableByName(const char* name)
+{
+	if (VariableInfo * var; (var = vars.FindFirst([&](VariableInfo* v) { return _stricmp(name, v->name.CStr()) == 0; })))
+		return var;
+	return nullptr;
+}
+
+UInt32 ScriptBuffer::GetVariableType(VariableInfo* varInfo, Script::RefVariable* refVar, Script* script)
 {
 	const char* scrText = scriptText;
-	Script* script = this->currentScript;
 	if (refVar)
 	{
 		if (refVar->form)
