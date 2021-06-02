@@ -1207,12 +1207,11 @@ void ArrayVar::Sort(ArrayVar* result, SortOrder order, SortType type, Script* co
 	}
 }
 
-void ArrayVar::Dump()
+void ArrayVar::Dump(const std::function<void(const std::string&)>& output)
 {
 	const char* owningModName = DataHandler::Get()->GetNthModName(m_owningModIndex);
 
-	Console_Print("** Dumping Array #%d **\nRefs: %d Owner %02X: %s", m_ID, m_refs.Size(), m_owningModIndex,
-	              owningModName);
+	output(FormatString("** Dumping Array #%d **\nRefs: %d Owner %02X: %s", m_ID, m_refs.Size(), m_owningModIndex, owningModName));
 	_MESSAGE("** Dumping Array #%d **\nRefs: %d Owner %02X: %s", m_ID, m_refs.Size(), m_owningModIndex, owningModName);
 
 	for (ArrayIterator iter = m_elements.begin(); !iter.End(); ++iter)
@@ -1269,8 +1268,38 @@ void ArrayVar::Dump()
 			elementInfo += "?Unknown Element Type?";
 		}
 
-		Console_Print("%s", elementInfo.c_str());
+		output(elementInfo);
 		_MESSAGE("%s", elementInfo.c_str());
+	}
+}
+
+void ArrayVar::DumpToFile(const char* filePath, bool append)
+{
+	try
+	{
+		FILE* f;
+		errno_t e;
+		if (append)
+		{
+			e = fopen_s(&f, filePath, "a+");
+		}
+		else
+		{
+			e = fopen_s(&f, filePath, "w+");
+		}
+		
+		if (!e)
+		{
+			Dump([&](const std::string& input){ fprintf(f, "%s\n", input.c_str()); });
+			fclose(f);
+		}
+		else
+			_MESSAGE("Cannot open file %s [%d]", filePath, e);
+
+	}
+	catch (...)
+	{
+		_MESSAGE("Cannot write to file %s", filePath);
 	}
 }
 

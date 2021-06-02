@@ -219,6 +219,23 @@ bool Cmd_ar_Dump_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_ar_DumpF_Execute(COMMAND_ARGS)
+{
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (eval.ExtractArgs() && eval.Arg(0) && eval.Arg(0)->CanConvertTo(kTokenType_Array))
+	{
+		if (eval.Arg(1) && eval.Arg(1)->CanConvertTo(kTokenType_String))
+		{
+			ArrayVar* arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+			bool bAppend = true;
+			if (eval.Arg(2) && eval.Arg(2)->CanConvertTo(kTokenType_Boolean))
+				bAppend = eval.Arg(2)->GetBool();
+			if (arr) arr->DumpToFile(eval.Arg(1)->GetString(), bAppend); 
+		}
+	}
+	return true;
+}
+
 bool Cmd_ar_DumpID_Execute(COMMAND_ARGS)
 {
 	UInt32 arrayID = 0;
