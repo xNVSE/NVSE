@@ -516,7 +516,7 @@ std::vector g_lineMacros =
 	ScriptLineMacro([&](std::string& line)
 	{
 		// VARIABLE = VALUE macro
-		const std::regex assignmentExpr(R"(^([a-zA-Z\_\s\.0-9]+)\=([a-zA-Z\_\s\.\$\!0-9]+))"); // match int ivar = 4
+		const std::regex assignmentExpr(R"(^([a-zA-Z\_\s\.0-9]+)\=([a-zA-Z\_\s\.\$\!0-9\-]+))"); // match int ivar = 4
 		if (std::smatch m; std::regex_search(line, m, assignmentExpr) && m.size() == 3)
 		{
 			line = "let " + m.str(1) + " := " + m.str(2);
