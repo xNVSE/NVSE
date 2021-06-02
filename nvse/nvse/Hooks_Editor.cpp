@@ -527,8 +527,8 @@ std::vector g_lineMacros =
 
 		for (const auto& [realOp, regexOp] : s_shortHandMacros)
 		{
-			// VARIABLE = VALUE macro
-			const std::regex assignmentExpr(R"(^([a-zA-Z\_\s\.0-9]+))" + regexOp + R"(([a-zA-Z\_\s\.\$\!0-9\-]+))"); // match int ivar = 4
+			// VARIABLE = VALUE macro 
+			const std::regex assignmentExpr(R"(^([a-zA-Z\_\s\.0-9]+))" + regexOp + R"(([a-zA-Z\_\s\.\$\!0-9\-\(\{][.\s\S]*))"); // match int ivar = 4
 			if (std::smatch m; std::regex_search(line, m, assignmentExpr) && m.size() == 3)
 			{
 				line = "let " + m.str(1) + " " + realOp + " " + m.str(2);

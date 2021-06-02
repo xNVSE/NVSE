@@ -2516,7 +2516,7 @@ ScriptToken* ExpressionParser::ParseLambda()
 #if RUNTIME
 	PrintCompileError("Anonymous functions are not supported from console.");
 	return nullptr;
-#endif
+#else
 	const auto* beginData = CurText() - strlen("begin");
 	auto nest = 1;
 	while (nest != 0 && CurText())
@@ -2614,6 +2614,8 @@ ScriptToken* ExpressionParser::ParseLambda()
 	}
 
 	return new ScriptToken(scriptLambda.release());
+#endif
+
 }
 
 ScriptToken* ExpressionParser::ParseOperand(bool (* pred)(ScriptToken* operand))
@@ -2953,12 +2955,6 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 		}
 		if (const auto varType = VariableTypeNameToType(token.c_str()); varType != Script::eVarType_Invalid)
 		{
-			if (_stricmp(token.c_str(), "array_var") == 0)
-			{
-				// text is parsed so that arrays can be ref counted; won't detect inline array vars.
-				//PrintCompileError("array_vars are not allowed to be declared inline.");
-				//return nullptr;
-			}
 			SkipSpaces();
 			const auto varName = GetCurToken();
 			auto* varInfo = CreateVariable(varName, varType);
@@ -2968,7 +2964,6 @@ ScriptToken* ExpressionParser::ParseOperand(Operator* curOp)
 		}
 	}
 	
-
 	// some operators (e.g. ->) expect a string literal, filter them out now
 	if (curOp && curOp->ExpectsStringLiteral()) 
 	{
