@@ -513,6 +513,9 @@ bool PluginManager::InstallPlugin(std::string pluginPath)
 	}
 }
 
+_GetLNEventMask GetLNEventMask = nullptr;
+_ProcessLNEventHandler ProcessLNEventHandler = nullptr;
+
 #define NO_PLUGINS 0
 
 void PluginManager::InstallPlugins(void)
@@ -545,6 +548,15 @@ void PluginManager::InstallPlugins(void)
 	Dispatch_Message(0, NVSEMessagingInterface::kMessage_PostLoad, NULL, 0, NULL);
 	// second post-load dispatch
 	Dispatch_Message(0, NVSEMessagingInterface::kMessage_PostPostLoad, NULL, 0, NULL);
+
+#if RUNTIME
+	HMODULE jipln = GetModuleHandle("jip_nvse");
+	if (jipln)
+	{
+		GetLNEventMask = (_GetLNEventMask)GetProcAddress(jipln, (LPCSTR)10);
+		ProcessLNEventHandler = (_ProcessLNEventHandler)GetProcAddress(jipln, (LPCSTR)11);
+	}
+#endif
 }
 
 int QueryLoadPluginExceptionFilter(_EXCEPTION_POINTERS* exceptionInfo, HMODULE pluginHandle, char* errorOut, const char* type)
