@@ -2,6 +2,7 @@
 #include "ParamInfos.h"
 #include "GameScript.h"
 #include "ScriptUtils.h"
+#include "PluginManager.h"
 
 #if RUNTIME
 #include "GameAPI.h"
@@ -586,15 +587,29 @@ bool ExtractEventCallback(ExpressionEvaluator& eval, EventManager::EventCallback
 	return false;
 }
 
+bool ProcessEventHandler(char *eventName, EventManager::EventCallback &callback, bool addEvt)
+{
+	if (GetLNEventMask)
+	{
+		char *colon = strchr(eventName, ':');
+		if (colon) *colon++ = 0;
+		UInt32 eventMask = GetLNEventMask(eventName);
+		if (eventMask)
+		{
+			UInt32 numFilter = (colon && *colon) ? atoi(colon) : 0;
+			return ProcessLNEventHandler(eventMask, callback.script, addEvt, callback.source, numFilter);
+		}
+	}
+	return addEvt ? EventManager::SetHandler(eventName, callback) : EventManager::RemoveHandler(eventName, callback);
+}
+
 bool Cmd_SetEventHandler_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
 	char eventName[0x20];
-	if (ExtractEventCallback(eval, &callback, eventName)) {
-		if (EventManager::SetHandler(eventName, callback))
-			*result = 1.0;
-	}
+	if (ExtractEventCallback(eval, &callback, eventName) && ProcessEventHandler(eventName, callback, true))
+		*result = 1.0;
 
 	return true;
 }
@@ -604,10 +619,8 @@ bool Cmd_RemoveEventHandler_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
 	char eventName[0x20];
-	if (ExtractEventCallback(eval, &callback, eventName)) {
-		if (EventManager::RemoveHandler(eventName, callback))
-			*result = 1.0;
-	}
+	if (ExtractEventCallback(eval, &callback, eventName) && ProcessEventHandler(eventName, callback, false))
+		*result = 1.0;
 
 	return true;
 }
