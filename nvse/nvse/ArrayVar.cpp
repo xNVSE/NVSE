@@ -1414,7 +1414,7 @@ ArrayVarMap* ArrayVarMap::GetSingleton()
 {
 	return &g_ArrayMap;
 }
-
+#if _DEBUG
 std::vector<ArrayVar*> ArrayVarMap::GetByName(const char* name)
 {
 	std::vector<ArrayVar*> out;
@@ -1424,6 +1424,27 @@ std::vector<ArrayVar*> ArrayVarMap::GetByName(const char* name)
 	return out;
 }
 
+std::vector<ArrayVar*> ArrayVarMap::GetArraysContainingArrayID(ArrayID id)
+{
+	std::vector<ArrayVar*> out;
+	for (auto iter = vars.Begin(); !iter.End(); ++iter)
+	{
+		for (auto elemIter = iter.Get().m_elements.begin(); !elemIter.End(); ++elemIter)
+		{
+			ArrayID iterId;
+			if (elemIter.second()->DataType() == DataType::kDataType_Array && elemIter.second()->GetAsArray(&iterId))
+			{
+				if (iterId == id)
+				{
+					out.push_back(&iter.Get());
+					break;
+				}
+			}
+		}
+	}
+	return out;
+}
+#endif
 ArrayVar* ArrayVarMap::Add(UInt32 varID, UInt32 keyType, bool packed, UInt8 modIndex, UInt32 numRefs, UInt8* refs)
 {
 	ArrayVar* var = VarMap::Insert(varID, keyType, packed, modIndex);

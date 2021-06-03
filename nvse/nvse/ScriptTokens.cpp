@@ -273,7 +273,7 @@ ForEachContextToken::ForEachContextToken(UInt32 srcID, UInt32 iterID, UInt32 var
 	value.formID = 0;
 }
 
-thread_local SmallObjectsAllocator::FastAllocator<ForEachContextToken, 4> g_forEachTokenAllocator;
+thread_local SmallObjectsAllocator::FastAllocator<ForEachContextToken, 16> g_forEachTokenAllocator;
 
 void* ForEachContextToken::operator new(size_t size)
 {

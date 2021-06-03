@@ -95,14 +95,15 @@ UInt32 ArrayVarElementContainer::erase(UInt32 iLow, UInt32 iHigh)
 {
 	if (empty() || (m_type != kContainer_Array && m_type != kContainer_NumericMap))
 		return 0;
-	UInt32 arrSize = m_container.numItems;
-	if (iHigh >= arrSize)
-		iHigh = arrSize - 1;
-	if ((iLow >= arrSize) || (iLow > iHigh))
-		return 0;
-	iHigh++;
+	
 	if (m_type == kContainer_Array)
 	{
+		UInt32 arrSize = m_container.numItems;
+		if (iHigh >= arrSize)
+			iHigh = arrSize - 1;
+		if ((iLow >= arrSize) || (iLow > iHigh))
+			return 0;
+		iHigh++;
 		ArrayElement* elements = AsArray().Data();
 		for (UInt32 idx = iLow; idx < iHigh; idx++)
 			elements[idx].Unset();

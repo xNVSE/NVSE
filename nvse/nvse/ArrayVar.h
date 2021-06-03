@@ -375,6 +375,7 @@ public:
 
 #if _DEBUG
 	std::vector<ArrayVar*> GetByName(const char* name);
+	std::vector<ArrayVar*> GetArraysContainingArrayID(ArrayID id);
 #endif
 };
 

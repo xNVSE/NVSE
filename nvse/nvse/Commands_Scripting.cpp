@@ -360,8 +360,7 @@ bool Cmd_PrintF(COMMAND_ARGS, bool debug)
 				if (!e)
 				{
 					const char* str = eval.Arg(1)->GetString();
-					fprintf(f, "%s", str);
-					fprintf(f, "\r\n");
+					fprintf(f, "%s\n", str);
 					fclose(f);
 				}
 				else

@@ -854,8 +854,6 @@ void ImportConsoleCommand(const char * name)
 
 bool Cmd_tcmd_Execute(COMMAND_ARGS)
 {
-	g_ArrayMap.DumpAll(true);
-	Console_Print("Dumped all arrays");
 	return true;
 }
 

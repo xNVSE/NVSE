@@ -34,7 +34,7 @@ namespace SmallObjectsAllocator
 			ScopedLock lock(criticalSection_);
 #if _DEBUG
 			++count_;
-			if (count_ > C)
+			if (count_ > C * 10)
 			{
 				_MESSAGE("Warning, possible memory leak");
 			}

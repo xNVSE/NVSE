@@ -2066,6 +2066,7 @@ bool ExpressionParser::ParseUserFunctionDefinition()
 		m_lineBuf->WriteByte(iter->varType);
 	}
 
+
 	// determine which if any local variables must be destroyed on function exit (string and array vars)
 	// ensure no variables declared after function definition
 	// ensure only one Begin block in script
@@ -2075,7 +2076,8 @@ bool ExpressionParser::ParseUserFunctionDefinition()
 	std::string scrText = m_scriptBuf->scriptText;
 
 	std::vector<UInt16> arrayVarIndexes;
-
+	// deprecated, automatic garbage collection in place since xnvse 6
+#if 0
 	std::string lineText;
 	Tokenizer lines(scrText.c_str(), "\r\n");
 	while (lines.NextToken(lineText) != -1)
@@ -2124,7 +2126,7 @@ bool ExpressionParser::ParseUserFunctionDefinition()
 			}
 		}
 	}
-
+#endif
 	// write destructible var info
 	m_lineBuf->WriteByte(arrayVarIndexes.size());
 	for (UInt32 i = 0; i < arrayVarIndexes.size(); i++)
