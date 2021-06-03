@@ -1528,10 +1528,6 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 {
 	Clean();
 
-#if _DEBUG
-	DumpAll(true);
-#endif
-
 	Serialization::OpenRecord('ARVS', kVersion);
 
 	ArrayVar* pVar;
@@ -1810,10 +1806,6 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 			break;
 		}
 	}
-	
-#if _DEBUG
-	DumpAll(false);
-#endif
 }
 
 void ArrayVarMap::Clean() // garbage collection: delete unreferenced arrays

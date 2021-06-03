@@ -137,10 +137,9 @@ static const UInt32 kExtraOwnershipDefaultSetting  = 0x00411F78;	//	0040A654 in 
 //don't see a second array.. static const UInt32 kExtraOwnershipDefaultSetting2 = 0x0041FE0D;	//
 
 DWORD g_mainThreadID = 0;
-
+bool s_recordedMainThreadID = false;
 static void HandleMainLoopHook(void)
-{
-	static bool s_recordedMainThreadID = false;
+{ 
 	if (!s_recordedMainThreadID)
 	{
 		s_recordedMainThreadID = true;

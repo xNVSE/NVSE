@@ -819,8 +819,16 @@ bool ConsoleManager::HasConsoleOutputFilename(void) {
 bool s_InsideOnActorEquipHook = false;
 UInt32 s_CheckInsideOnActorEquipHook = 1;
 
+#if NVSE_CORE
+extern bool s_recordedMainThreadID;
+#endif
+
 void Console_Print(const char * fmt, ...)
 {
+#if NVSE_CORE
+	if (!s_recordedMainThreadID)
+		return;
+#endif
 	//if (!s_CheckInsideOnActorEquipHook || !s_InsideOnActorEquipHook) {
 	ConsoleManager	* mgr = ConsoleManager::GetSingleton();
 	if(mgr)

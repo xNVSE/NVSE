@@ -2913,6 +2913,7 @@ VariableInfo* ExpressionParser::CreateVariable(const std::string& varName, Scrip
 #if EDITOR
 	SaveVarType(m_script, varName, varType);
 #endif
+	m_scriptBuf->ResolveRef(varName.c_str(), m_script); // ref var
 	return varInfo;
 }
 
@@ -3325,6 +3326,9 @@ void ExpressionEvaluator::PopFromStack() const
 	localData.expressionEvaluator = m_parent;
 }
 
+#if _DEBUG
+const char* g_lastScriptName = nullptr;
+#endif
 ExpressionEvaluator::ExpressionEvaluator(COMMAND_ARGS) : m_opcodeOffsetPtr(opcodeOffsetPtr), m_result(result), 
 	m_thisObj(thisObj), m_containingObj(containingObj), m_params(paramInfo), m_numArgsExtracted(0), m_expectedReturnType(kRetnType_Default), m_baseOffset(0),
 	localData(ThreadLocalData::Get()), script(scriptObj), eventList(eventList), m_inline(false)
@@ -3335,6 +3339,10 @@ ExpressionEvaluator::ExpressionEvaluator(COMMAND_ARGS) : m_opcodeOffsetPtr(opcod
 	m_baseOffset = *opcodeOffsetPtr - 4;
 
 	m_flags.Clear();
+
+#if _DEBUG
+	g_lastScriptName = script->GetName();
+#endif
 
 	PushOnStack();
 }
