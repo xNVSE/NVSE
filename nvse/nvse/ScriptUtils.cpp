@@ -338,8 +338,9 @@ ScriptToken* Eval_Integer(OperatorType op, ScriptToken* lh, ScriptToken* rh, Exp
 
 // Warning: does not currently support all operations, only a handful.
 // Return value is up to the receiving function to interpret; can be used for "l &= r" or "l & r"
-double Apply_LeftVal_RightVal_Operator(OperatorType op, double l, double r, ExpressionEvaluator* context)
+double Apply_LeftVal_RightVal_Operator(OperatorType op, double l, double r, ExpressionEvaluator* context, bool &hasError)
 {
+	hasError = false;
 	switch (op)  //todo: apply this to other "Equal" functions?
 	{
 	case	kOpType_BitwiseOr:
@@ -353,12 +354,14 @@ double Apply_LeftVal_RightVal_Operator(OperatorType op, double l, double r, Expr
 		if ((SInt64)r != 0)
 			return ((SInt64)l % (SInt64)r);
 		else {
+			hasError = true;
 			context->Error("Division by zero");
 			return NULL;
 		}
 	default:
 		context->Error("Unhandled operator %s", OpTypeToSymbol(op));
-		return NULL;  //unsure if this can cause weird behavior.
+		hasError = true;
+		return NULL;
 	}
 }
 
@@ -589,8 +592,11 @@ ScriptToken* Eval_HandleEquals(OperatorType op, ScriptToken* lh, ScriptToken* rh
 	ScriptEventList::Var* var = lh->GetVar();
 	double l = var->data;
 	double r = rh->GetNumber();
-	var->data = Apply_LeftVal_RightVal_Operator(op, l, r, context);
-	return ScriptToken::Create(var->data);
+	bool hasError;
+	var->data = Apply_LeftVal_RightVal_Operator(op, l, r, context, hasError);
+	if (!hasError)
+		return ScriptToken::Create(var->data);
+	return nullptr;
 }
 
 ScriptToken* Eval_PlusEquals_Global(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
@@ -635,8 +641,11 @@ ScriptToken* Eval_HandleEquals_Global(OperatorType op, ScriptToken* lh, ScriptTo
 {
 	double l = lh->GetGlobal()->data;
 	double r = rh->GetNumber();
-	lh->GetGlobal()->data = Apply_LeftVal_RightVal_Operator(op, l, r, context);;
-	return ScriptToken::Create(lh->GetGlobal()->data);
+	bool hasError;
+	lh->GetGlobal()->data = Apply_LeftVal_RightVal_Operator(op, l, r, context, hasError);
+	if (!hasError)
+		return ScriptToken::Create(lh->GetGlobal()->data);
+	return nullptr;
 }
 
 
@@ -803,9 +812,13 @@ ScriptToken* Eval_HandleEquals_Elem(OperatorType op, ScriptToken* lh, ScriptToke
 		if (elem && elem->GetAsNumber(&l))
 		{
 			double r = rh->GetNumber();
-			double result = Apply_LeftVal_RightVal_Operator(op, l, r, context);
-			elem->SetNumber(result);
-			return ScriptToken::Create(result);
+			bool hasError;
+			double result = Apply_LeftVal_RightVal_Operator(op, l, r, context, hasError);
+			if (!hasError)
+			{
+				elem->SetNumber(result);
+				return ScriptToken::Create(result);
+			}
 		}
 	}
 	context->Error(g_invalidElemMessageStr);
