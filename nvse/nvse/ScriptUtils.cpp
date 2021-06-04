@@ -356,12 +356,6 @@ double Apply_LeftVal_RightVal_Operator(OperatorType op, double l, double r, Expr
 			context->Error("Division by zero");
 			return NULL;
 		}
-	case	kOpType_RightShift:
-	case	kOpType_RightShiftEquals:
-		return ((SInt64)l >> (SInt64)r);
-	case	kOpType_LeftShift:
-	case	kOpType_LeftShiftEquals:
-		return ((SInt64)l << (SInt64)r);
 	default:
 		context->Error("Unhandled operator %s", OpTypeToSymbol(op));
 		return NULL;  //unsure if this can cause weird behavior.

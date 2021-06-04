@@ -655,8 +655,6 @@ bool Cmd_Let_Parse(UInt32 numParams, ParamInfo* paramInfo, ScriptLineBuffer* lin
 	case kOpType_BitwiseOrEquals:
 	case kOpType_BitwiseAndEquals:
 	case kOpType_ModuloEquals:
-	case kOpType_RightShiftEquals:
-	case kOpType_LeftShiftEquals:
 		return true;
 	default:
 		#ifndef RUNTIME
