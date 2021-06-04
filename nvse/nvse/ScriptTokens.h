@@ -92,8 +92,6 @@ enum OperatorType : UInt8
 	kOpType_BitwiseOrEquals,
 	kOpType_BitwiseAndEquals,
 	kOpType_ModuloEquals,
-	kOpType_RightShiftEquals,
-	kOpType_LeftShiftEquals,
 
 	kOpType_Max
 };
@@ -479,7 +477,7 @@ struct OperationRule
 struct Operator
 {
 	UInt8			precedence;
-	char			symbol[4];
+	char			symbol[3];
 	UInt8			numOperands;
 	OperatorType	type;
 	UInt8			numRules;

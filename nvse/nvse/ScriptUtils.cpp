@@ -1619,8 +1619,6 @@ Operator s_operators[] =
 	{	2,	"|=",	2,	kOpType_BitwiseOrEquals,	OP_RULES(HandleEquals)	},
 	{	2,	"&=",	2,	kOpType_BitwiseAndEquals,	OP_RULES(HandleEquals)	},
 	{	2,	"%=",	2,	kOpType_ModuloEquals,		OP_RULES(HandleEquals)	},
-	{	2,	">>=",2,	kOpType_RightShiftEquals,	OP_RULES(HandleEquals)	},
-	{	2,	"<<=",2,	kOpType_LeftShiftEquals,	OP_RULES(HandleEquals)	},
 
 };
 
