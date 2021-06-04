@@ -310,7 +310,7 @@ struct ScriptToken
 	void operator delete(void* p, bool useMemoryPool);
 	void operator delete(void* p); // unimplemented: keeping this here to shut up the compiler warning about non matching delete
 	
-	bool cached;
+	bool cached = false;
 	CommandReturnType returnType;
 	UInt32 cmdOpcodeOffset;
 	ExpressionEvaluator* context;
@@ -324,7 +324,7 @@ struct ScriptToken
 	std::string varName;
 #endif
 private:
-	bool memoryPooled;
+	bool memoryPooled = true;
 #endif
 	
 };

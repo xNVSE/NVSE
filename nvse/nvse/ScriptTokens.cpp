@@ -355,14 +355,14 @@ void* ScriptToken::operator new(size_t size, const bool useMemoryPool)
 	if (useMemoryPool)
 	{
 		alloc = g_scriptTokenAllocator.Allocate();
-		alloc->memoryPooled = true;
-		alloc->cached = false;
+		//alloc->memoryPooled = true;
+		//alloc->cached = false;
 	}
 	else
 	{
 		alloc = static_cast<ScriptToken*>(::operator new(size));
-		alloc->memoryPooled = false;
-		alloc->cached = true;
+		//alloc->memoryPooled = false;
+		//alloc->cached = true;
 	}
 	return alloc;
 }
@@ -911,12 +911,15 @@ bool ScriptToken::CanConvertTo(Token_Type to) const
 
 ScriptToken* ScriptToken::Read(ExpressionEvaluator* context)
 {
-	auto* newToken = new (false) ScriptToken(); // false marks the token as cached, it can't be deleted until it's not cached.
+	auto* newToken = new (false) ScriptToken(); // false allocates the token on heap instead of memory pool
+	newToken->cached = true;
+	newToken->memoryPooled = false;
+	
 	if (newToken->ReadFrom(context) != kTokenType_Invalid)
 		return newToken;
 
 	delete newToken;
-	return NULL;
+	return nullptr;
 }
 
 
