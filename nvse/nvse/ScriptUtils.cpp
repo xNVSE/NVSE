@@ -833,6 +833,7 @@ ScriptToken* Eval_HandleEquals_Elem(OperatorType op, ScriptToken* lh, ScriptToke
 				elem->SetNumber(result);
 				return ScriptToken::Create(result);
 			}
+			return nullptr;
 		}
 	}
 	context->Error(g_invalidElemMessageStr);
