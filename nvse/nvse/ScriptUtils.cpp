@@ -341,7 +341,7 @@ ScriptToken* Eval_Integer(OperatorType op, ScriptToken* lh, ScriptToken* rh, Exp
 double Apply_LeftVal_RightVal_Operator(OperatorType op, double l, double r, ExpressionEvaluator* context, bool &hasError)
 {
 	hasError = false;
-	switch (op)  //todo: apply this to other "Equal" functions?
+	switch (op)
 	{
 	case	kOpType_BitwiseOr:
 	case	kOpType_BitwiseOrEquals:
@@ -601,9 +601,12 @@ ScriptToken* Eval_HandleEquals(OperatorType op, ScriptToken* lh, ScriptToken* rh
 	double l = var->data;
 	double r = rh->GetNumber();
 	bool hasError;
-	var->data = Apply_LeftVal_RightVal_Operator(op, l, r, context, hasError);
+	double const result = Apply_LeftVal_RightVal_Operator(op, l, r, context, hasError);
 	if (!hasError)
+	{
+		var->data = result;
 		return ScriptToken::Create(var->data);
+	}
 	return nullptr;
 }
 
@@ -650,9 +653,12 @@ ScriptToken* Eval_HandleEquals_Global(OperatorType op, ScriptToken* lh, ScriptTo
 	double l = lh->GetGlobal()->data;
 	double r = rh->GetNumber();
 	bool hasError;
-	lh->GetGlobal()->data = Apply_LeftVal_RightVal_Operator(op, l, r, context, hasError);
+	double const result = Apply_LeftVal_RightVal_Operator(op, l, r, context, hasError);
 	if (!hasError)
+	{
+		lh->GetGlobal()->data = result; 
 		return ScriptToken::Create(lh->GetGlobal()->data);
+	}
 	return nullptr;
 }
 
@@ -821,7 +827,7 @@ ScriptToken* Eval_HandleEquals_Elem(OperatorType op, ScriptToken* lh, ScriptToke
 		{
 			double r = rh->GetNumber();
 			bool hasError;
-			double result = Apply_LeftVal_RightVal_Operator(op, l, r, context, hasError);
+			double const result = Apply_LeftVal_RightVal_Operator(op, l, r, context, hasError);
 			if (!hasError)
 			{
 				elem->SetNumber(result);
