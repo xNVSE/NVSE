@@ -336,6 +336,35 @@ ScriptToken* Eval_Integer(OperatorType op, ScriptToken* lh, ScriptToken* rh, Exp
 	}
 }
 
+// Warning: does not currently support all operations, only a handful.
+// Return value is up to the receiving function to interpret; can be used for "l &= r" or "l & r"
+double Apply_LeftVal_RightVal_Operator(OperatorType op, double l, double r, ExpressionEvaluator* context, bool &hasError)
+{
+	hasError = false;
+	switch (op)
+	{
+	case	kOpType_BitwiseOr:
+	case	kOpType_BitwiseOrEquals:
+		return ((SInt64)l | (SInt64)r);
+	case	kOpType_BitwiseAnd:
+	case	kOpType_BitwiseAndEquals:
+		return ((SInt64)l & (SInt64)r);
+	case	kOpType_Modulo:
+	case	kOpType_ModuloEquals:
+		if ((SInt64)r != 0)
+			return ((SInt64)l % (SInt64)r);
+		else {
+			hasError = true;
+			context->Error("Division by zero");
+			return NULL;
+		}
+	default:
+		context->Error("Unhandled operator %s", OpTypeToSymbol(op));
+		hasError = true;
+		return NULL;
+	}
+}
+
 ScriptToken* Eval_Assign_Numeric(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
 	double result = rh->GetNumber();
@@ -566,6 +595,20 @@ ScriptToken* Eval_ExponentEquals(OperatorType op, ScriptToken* lh, ScriptToken* 
 	return ScriptToken::Create(var->data);
 }
 
+ScriptToken* Eval_HandleEquals(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
+{
+	ScriptEventList::Var* var = lh->GetVar();
+	double l = var->data;
+	double r = rh->GetNumber();
+	bool hasError;
+	double const result = Apply_LeftVal_RightVal_Operator(op, l, r, context, hasError);
+	if (!hasError)
+	{
+		var->data = result;
+		return ScriptToken::Create(var->data);
+	}
+	return nullptr;
+}
 
 ScriptToken* Eval_PlusEquals_Global(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
 {
@@ -603,6 +646,20 @@ ScriptToken* Eval_ExponentEquals_Global(OperatorType op, ScriptToken* lh, Script
 	double lhNum = lh->GetGlobal()->data;
 	lh->GetGlobal()->data = pow(lhNum,rh->GetNumber());
 	return ScriptToken::Create(lh->GetGlobal()->data);
+}
+
+ScriptToken* Eval_HandleEquals_Global(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
+{
+	double l = lh->GetGlobal()->data;
+	double r = rh->GetNumber();
+	bool hasError;
+	double const result = Apply_LeftVal_RightVal_Operator(op, l, r, context, hasError);
+	if (!hasError)
+	{
+		lh->GetGlobal()->data = result; 
+		return ScriptToken::Create(lh->GetGlobal()->data);
+	}
+	return nullptr;
 }
 
 
@@ -757,6 +814,30 @@ ScriptToken* Eval_ExponentEquals_Elem(OperatorType op, ScriptToken* lh, ScriptTo
 	}
 	context->Error(g_invalidElemMessageStr);
 	return NULL;
+}
+
+ScriptToken* Eval_HandleEquals_Elem(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
+{
+	const ArrayKey* const key = lh->GetArrayKey();
+	if (key)
+	{
+		ArrayElement* const elem = g_ArrayMap.GetElement(lh->GetOwningArrayID(), key);
+		double l;
+		if (elem && elem->GetAsNumber(&l))
+		{
+			double r = rh->GetNumber();
+			bool hasError;
+			double const result = Apply_LeftVal_RightVal_Operator(op, l, r, context, hasError);
+			if (!hasError)
+			{
+				elem->SetNumber(result);
+				return ScriptToken::Create(result);
+			}
+			return nullptr;
+		}
+	}
+	context->Error(g_invalidElemMessageStr);
+	return nullptr;
 }
 
 ScriptToken* Eval_PlusEquals_Elem_String(OperatorType op, ScriptToken* lh, ScriptToken* rh, ExpressionEvaluator* context)
@@ -1342,6 +1423,19 @@ OperationRule kOpRule_ExponentEquals[] =
 	{	kTokenType_Global,		kTokenType_Number,		kTokenType_Number,	OP_HANDLER(Eval_ExponentEquals_Global),	true	},
 };
 
+OperationRule kOpRule_HandleEquals[] =
+{
+#if !RUNTIME
+	{	kTokenType_NumericVar,	kTokenType_Ambiguous,	kTokenType_Number,	NULL,	true	},
+	{	kTokenType_ArrayElement,kTokenType_Ambiguous,	kTokenType_Number,	NULL,	true	},
+	{	kTokenType_Global,		kTokenType_Ambiguous,	kTokenType_Number,	NULL,	true	},
+	{	kTokenType_Ambiguous,	kTokenType_Ambiguous,	kTokenType_Number,	NULL,	false	},
+	{	kTokenType_Ambiguous,	kTokenType_Number,		kTokenType_Number,		NULL,	true	},
+#endif
+	{	kTokenType_NumericVar,	kTokenType_Number,		kTokenType_Number,	OP_HANDLER(Eval_HandleEquals),	true	},
+	{	kTokenType_ArrayElement,kTokenType_Number,		kTokenType_Number,	OP_HANDLER(Eval_HandleEquals_Elem),	true	},
+	{	kTokenType_Global,		kTokenType_Number,		kTokenType_Number,	OP_HANDLER(Eval_HandleEquals_Global),true	},
+};
 
 OperationRule kOpRule_Negation[] =
 {
@@ -1543,6 +1637,10 @@ Operator s_operators[] =
 	{	91,	"{",	0,	kOpType_LeftBrace,	0,	NULL				},
 	{	91,	"}",	0,	kOpType_RightBrace,	0,	NULL				},
 	{	90, ".", 2, kOpType_Dot, OP_RULES(Dot)},
+
+	{	2,	"|=",	2,	kOpType_BitwiseOrEquals,	OP_RULES(HandleEquals)	},
+	{	2,	"&=",	2,	kOpType_BitwiseAndEquals,	OP_RULES(HandleEquals)	},
+	{	2,	"%=",	2,	kOpType_ModuloEquals,		OP_RULES(HandleEquals)	},
 
 };
 

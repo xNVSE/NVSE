@@ -523,6 +523,9 @@ std::vector g_lineMacros =
 			std::make_pair("-=", R"(\-\=)"),
 			std::make_pair("*=", R"(\*\=)"),
 			std::make_pair("/=", R"(\/\=)"),
+			std::make_pair("|=", R"(\|\=)"),
+			std::make_pair("&=", R"(\&\=)"),
+			std::make_pair("%=", R"(\%\=)"),
 		};
 
 		for (const auto& [realOp, regexOp] : s_shortHandMacros)

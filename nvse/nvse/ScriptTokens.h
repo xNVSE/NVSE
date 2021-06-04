@@ -89,6 +89,9 @@ enum OperatorType : UInt8
 	kOpType_RightBrace,
 
 	kOpType_Dot, // added in xNVSE 6.1 - allow for quest.var.command
+	kOpType_BitwiseOrEquals,
+	kOpType_BitwiseAndEquals,
+	kOpType_ModuloEquals,
 
 	kOpType_Max
 };
