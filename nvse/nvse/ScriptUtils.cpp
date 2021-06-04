@@ -4421,7 +4421,12 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken* 
 				{
 					auto* formName = form->GetName();
 					if (!formName || StrLen(formName) == 0)
-						operands.push(FormatString("%X", form->refID));
+					{
+						if (form->refID == 0x14)
+							operands.push("Player");
+						else
+							operands.push(FormatString("%X", form->refID));
+					}
 					else
 						operands.push(std::string(formName));
 					break;
