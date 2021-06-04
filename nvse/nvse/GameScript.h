@@ -12,8 +12,6 @@ static const UInt32 kScript_ExecuteFnAddr = 0x005AC1E0;
 #elif EDITOR
 #define SCRIPT_SIZE 0x48
 static const UInt32 kScript_SetTextFnAddr = 0x005C27B0;
-#else
-#error
 #endif
 
 extern CRITICAL_SECTION	csGameScript;				// trying to avoid what looks like concurrency issues

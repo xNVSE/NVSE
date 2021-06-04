@@ -13,7 +13,6 @@
 #if RUNTIME
 #include "GameAPI.h"
 #include "GameForms.h"
-#include "GameScript.h"
 #endif
 
 void DumpClass(void * theClassPtr, UInt32 nIntsToDump)

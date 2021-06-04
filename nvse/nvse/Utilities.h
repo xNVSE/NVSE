@@ -3,9 +3,6 @@
 #include <string>
 #include <vector>
 
-
-#include "common/ICriticalSection.h"
-
 class Script;
 
 void DumpClass(void * theClassPtr, UInt32 nIntsToDump = 512);
