@@ -231,7 +231,7 @@
     </Link>
     <PostBuildEvent>
       <Message>Installing DLL...</Message>
-      <Command>copy "$(TargetPath)" "C:\Games\Steam\steamapps\common\Fallout New Vegas\nvse_1_4.dll"</Command>
+      <Command>copy "$(TargetPath)" "$(FalloutNVPath)\nvse_1_4.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_DBG|Win32'">
@@ -348,7 +348,7 @@
     </Link>
     <PostBuildEvent>
       <Message>Installing DLL...</Message>
-      <Command>copy "$(TargetPath)" "C:\Games\Steam\steamapps\common\Fallout New Vegas\nvse_editor_1_4.dll"</Command>
+      <Command>copy "$(TargetPath)" "$(FalloutNVPath)\nvse_editor_1_4.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug ng|Win32'">
