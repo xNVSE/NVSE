@@ -306,8 +306,9 @@ struct ScriptToken
 #if RUNTIME
 	void* operator new(size_t size);
 	void* operator new(size_t size, bool useMemoryPool);
-	void operator delete(void* p);
+	void operator delete(ScriptToken* token, std::destroying_delete_t);
 	void operator delete(void* p, bool useMemoryPool);
+	void operator delete(void* p); // unimplemented: keeping this here to shut up the compiler warning about non matching delete
 	
 	bool cached;
 	CommandReturnType returnType;
@@ -322,8 +323,8 @@ struct ScriptToken
 #if _DEBUG
 	std::string varName;
 #endif
-	private:
-		bool memoryPooled;
+private:
+	bool memoryPooled;
 #endif
 	
 };

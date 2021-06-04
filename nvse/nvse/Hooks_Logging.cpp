@@ -1,6 +1,8 @@
 #include "Hooks_Logging.h"
 #include "SafeWrite.h"
 #include <cstdarg>
+
+#include "GameAPI.h"
 #include "Utilities.h"
 
 #if RUNTIME
@@ -13,26 +15,43 @@ static FILE * s_errorLog = NULL;
 static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
 {
 	va_list	args;
-
-#if _DEBUG
-	if (*(UInt32*)fmt == 'IRCS')
-	{
-		int breakpointHere = 0;
-	}
-#endif
-
+	bool alt;
 	if(0xFFFF < (UInt32)fmt)
 	{
 		va_start(args, fmt);
-		vfprintf(s_errorLog, fmt, args);
+		alt = false;
 	}
 	else
 	{
 		va_start(args, fmt_alt);
+		alt = true;
+	}
+
+	if(!alt)
+	{
+		vfprintf(s_errorLog, fmt, args);
+	}
+	else
+	{
 		vfprintf(s_errorLog, fmt_alt, args);
 	}
 	fputc('\n', s_errorLog);
 
+#if _DEBUG
+	char buf[0x1000];
+
+	if (!alt)
+		vsnprintf(buf, sizeof buf, fmt, args);
+	else
+		vsnprintf(buf, sizeof buf, fmt_alt, args);
+	if (*(UInt32*)buf == 'IRCS')
+	{
+		int breakpointHere = 0;
+		Console_Print("%s", buf);
+	}
+#endif
+
+	
 	va_end(args);
 
 	return 0;

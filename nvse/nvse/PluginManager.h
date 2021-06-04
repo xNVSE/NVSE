@@ -75,3 +75,8 @@ extern PluginManager	g_pluginManager;
 
 extern CommandInfo kCommandInfo_IsPluginInstalled;
 extern CommandInfo kCommandInfo_GetPluginVersion;
+
+typedef UInt32 (__stdcall *_GetLNEventMask)(const char *eventName);
+extern _GetLNEventMask GetLNEventMask;
+typedef bool (__stdcall *_ProcessLNEventHandler)(UInt32 eventMask, Script *udfScript, bool addEvt, TESForm *formFilter, UInt32 numFilter);
+extern _ProcessLNEventHandler ProcessLNEventHandler;

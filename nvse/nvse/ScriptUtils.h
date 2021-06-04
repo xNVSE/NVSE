@@ -29,6 +29,10 @@ class FunctionCaller;
 
 #if RUNTIME
 #include <cstdarg>
+
+#if _DEBUG
+extern const char* g_lastScriptName;
+#endif
 #endif
 
 extern ErrOutput g_ErrOut;

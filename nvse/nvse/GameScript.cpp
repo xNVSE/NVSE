@@ -192,8 +192,8 @@ Script::RefVariable* ScriptBuffer::ResolveRef(const char* refName, Script* scrip
 	VariableInfo* varInfo = vars.GetVariableByName(refName);
 	if (varInfo && GetVariableType(varInfo, NULL, script) == Script::eVarType_Ref)
 	{
-		newRef = (Script::RefVariable*)FormHeap_Allocate(sizeof(Script::RefVariable));
-		newRef->form = NULL;
+		newRef = New<Script::RefVariable>();
+		newRef->varIdx = varInfo->idx;
 	}
 	else		// is it a form or global?
 	{
@@ -213,8 +213,7 @@ Script::RefVariable* ScriptBuffer::ResolveRef(const char* refName, Script* scrip
 			if (refr && !refr->IsPersistent())		// only persistent refs can be used in scripts
 				return NULL;
 
-			newRef = (Script::RefVariable*)FormHeap_Allocate(sizeof(Script::RefVariable));
-			memset(newRef, 0, sizeof(Script::RefVariable));
+			newRef = New<Script::RefVariable>();
 			newRef->form = form;
 		}
 	}
@@ -222,7 +221,6 @@ Script::RefVariable* ScriptBuffer::ResolveRef(const char* refName, Script* scrip
 	if (newRef)		// got it, add to refList
 	{
 		newRef->name.Set(refName);
-		newRef->varIdx = 0;
 		refVars.Append(newRef);
 		info.numRefs++;
 		return newRef;

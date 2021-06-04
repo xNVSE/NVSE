@@ -425,7 +425,15 @@ ScriptToken* Eval_Assign_Array(OperatorType op, ScriptToken* lh, ScriptToken* rh
 	g_ArrayMap.AddReference(&var->data, rh->GetArray(), context->script->GetModIndex());
 	if (!lh->refIdx)
 		AddToGarbageCollection(context->eventList, var->id, NVSEVarType::kVarType_Array);
-
+#if _DEBUG
+	auto* script = context->script;
+	if (lh->refIdx)
+		script = GetReferencedQuestScript(lh->refIdx, context->eventList);
+	if (auto* arrayVar = rh->GetArrayVar(); arrayVar && var)
+		arrayVar->varName = std::string(script->GetName()) + '.' + script->GetVariableInfo(var->id)->name.CStr();
+	else if (arrayVar && arrayVar->varName.empty())
+		arrayVar->varName = "<eval assign var not found>";
+#endif
 	return ScriptToken::CreateArray(var->data);
 }
 
@@ -2149,6 +2157,7 @@ bool ExpressionParser::ParseUserFunctionDefinition()
 		m_lineBuf->WriteByte(iter->varType);
 	}
 
+
 	// determine which if any local variables must be destroyed on function exit (string and array vars)
 	// ensure no variables declared after function definition
 	// ensure only one Begin block in script
@@ -2158,7 +2167,8 @@ bool ExpressionParser::ParseUserFunctionDefinition()
 	std::string scrText = m_scriptBuf->scriptText;
 
 	std::vector<UInt16> arrayVarIndexes;
-
+	// deprecated, automatic garbage collection in place since xnvse 6
+#if 0
 	std::string lineText;
 	Tokenizer lines(scrText.c_str(), "\r\n");
 	while (lines.NextToken(lineText) != -1)
@@ -2207,7 +2217,7 @@ bool ExpressionParser::ParseUserFunctionDefinition()
 			}
 		}
 	}
-
+#endif
 	// write destructible var info
 	m_lineBuf->WriteByte(arrayVarIndexes.size());
 	for (UInt32 i = 0; i < arrayVarIndexes.size(); i++)
@@ -2630,7 +2640,8 @@ ScriptToken* ExpressionParser::ParseLambda()
 	}
 	const auto textLen = CurText() - beginData + 1;
 	auto* lambdaText = static_cast<char*>(FormHeap_Allocate(textLen));
-	strcpy_s(lambdaText, textLen, beginData);
+	memset(lambdaText, 0, textLen);
+	std::memcpy(lambdaText, beginData, textLen);
 	const auto lambdaScriptBuf = MakeUnique<ScriptBuffer, 0x5C5660, 0x5C8910>();
 	auto scriptLambda = MakeUnique<Script, 0x5C1D60, 0x5C5220>();
 
@@ -2994,6 +3005,7 @@ VariableInfo* ExpressionParser::CreateVariable(const std::string& varName, Scrip
 #if EDITOR
 	SaveVarType(m_script, varName, varType);
 #endif
+	m_scriptBuf->ResolveRef(varName.c_str(), m_script); // ref var
 	return varInfo;
 }
 
@@ -3406,6 +3418,9 @@ void ExpressionEvaluator::PopFromStack() const
 	localData.expressionEvaluator = m_parent;
 }
 
+#if _DEBUG
+const char* g_lastScriptName = nullptr;
+#endif
 ExpressionEvaluator::ExpressionEvaluator(COMMAND_ARGS) : m_opcodeOffsetPtr(opcodeOffsetPtr), m_result(result), 
 	m_thisObj(thisObj), m_containingObj(containingObj), m_params(paramInfo), m_numArgsExtracted(0), m_expectedReturnType(kRetnType_Default), m_baseOffset(0),
 	localData(ThreadLocalData::Get()), script(scriptObj), eventList(eventList), m_inline(false)
@@ -3416,6 +3431,10 @@ ExpressionEvaluator::ExpressionEvaluator(COMMAND_ARGS) : m_opcodeOffsetPtr(opcod
 	m_baseOffset = *opcodeOffsetPtr - 4;
 
 	m_flags.Clear();
+
+#if _DEBUG
+	g_lastScriptName = script->GetName();
+#endif
 
 	PushOnStack();
 }

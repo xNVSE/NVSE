@@ -20,4 +20,5 @@ namespace LambdaManager
 	void MarkParentAsDeleted(ScriptEventList* parentEventList);
 	bool IsScriptLambda(Script* script);
 	void ClearCache();
+	void DeleteAllForParentScript(Script* script);
 }

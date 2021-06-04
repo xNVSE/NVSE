@@ -513,6 +513,9 @@ bool PluginManager::InstallPlugin(std::string pluginPath)
 	}
 }
 
+_GetLNEventMask GetLNEventMask = nullptr;
+_ProcessLNEventHandler ProcessLNEventHandler = nullptr;
+
 #define NO_PLUGINS 0
 
 void PluginManager::InstallPlugins(void)
@@ -545,6 +548,15 @@ void PluginManager::InstallPlugins(void)
 	Dispatch_Message(0, NVSEMessagingInterface::kMessage_PostLoad, NULL, 0, NULL);
 	// second post-load dispatch
 	Dispatch_Message(0, NVSEMessagingInterface::kMessage_PostPostLoad, NULL, 0, NULL);
+
+#if RUNTIME
+	HMODULE jipln = GetModuleHandle("jip_nvse");
+	if (jipln)
+	{
+		GetLNEventMask = (_GetLNEventMask)GetProcAddress(jipln, (LPCSTR)10);
+		ProcessLNEventHandler = (_ProcessLNEventHandler)GetProcAddress(jipln, (LPCSTR)11);
+	}
+#endif
 }
 
 int QueryLoadPluginExceptionFilter(_EXCEPTION_POINTERS* exceptionInfo, HMODULE pluginHandle, char* errorOut, const char* type)
@@ -772,9 +784,9 @@ bool PluginManager::Dispatch_Message(PluginHandle sender, UInt32 messageType, vo
 	if (!senderName)
 		return false;
 
-	for (std::vector<PluginListener>::iterator iter = s_pluginListeners[sender].begin(); iter != s_pluginListeners[sender].end(); ++iter)
+	for (auto iter = s_pluginListeners[sender].begin(); iter != s_pluginListeners[sender].end(); ++iter)
 	{
-		NVSEMessagingInterface::Message msg;
+		NVSEMessagingInterface::Message msg{};
 		msg.data = data;
 		msg.type = messageType;
 		msg.sender = senderName;
@@ -864,6 +876,7 @@ void * PluginManager::GetFunc(UInt32 funcID)
 	case NVSEDataInterface::kNVSEData_InventoryReferenceGetRefBySelf: result = (void*)&InventoryReference::GetRefBySelf; break;	// new static version as the standard GetRef cannot be converted to void*
 	case NVSEDataInterface::kNVSEData_ArrayVarMapDeleteBySelf: result = (void*)&ArrayVarMap::DeleteBySelf; break;
 	case NVSEDataInterface::kNVSEData_StringVarMapDeleteBySelf: result = (void*)&StringVarMap::DeleteBySelf; break;
+	case NVSEDataInterface::kNVSEData_LambdaDeleteAllForScript: result = (void*)&LambdaManager::DeleteAllForParentScript; break;
 	}
 	return result;
 }
@@ -886,11 +899,7 @@ void PluginManager::ClearScriptDataCache()
 	TokenCache::MarkForClear();
 	Dispatch_Message(0, NVSEMessagingInterface::kMessage_ClearScriptDataCache, NULL, 0, NULL);
 	UserFunctionManager::ClearInfos();
-	LambdaManager::ClearCache();
-
-	// Lambdas get cleared; give a chance for quest scripts to reregister lambda event listeners.
-	s_gameLoadedInformedScripts.Clear();
-	s_gameRestartedInformedScripts.Clear();
+	// LambdaManager::ClearCache(); Instead use LambdaClearForParentScript
 }
 
 

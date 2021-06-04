@@ -21,9 +21,6 @@ ScriptToken::~ScriptToken()
 #ifdef DBG_EXPR_LEAKS
 	TOKEN_COUNT--;
 #endif
-#if RUNTIME
-	if (cached) return;
-#endif
 	if (type == kTokenType_String && value.str)
 	{
 		free(value.str);
@@ -273,7 +270,9 @@ ForEachContextToken::ForEachContextToken(UInt32 srcID, UInt32 iterID, UInt32 var
 	value.formID = 0;
 }
 
-thread_local SmallObjectsAllocator::FastAllocator<ForEachContextToken, 4> g_forEachTokenAllocator;
+thread_local SmallObjectsAllocator::FastAllocator<ScriptToken, 32> g_scriptTokenAllocator;
+thread_local SmallObjectsAllocator::FastAllocator<ArrayElementToken, 4> g_arrayElementTokenAllocator;
+thread_local SmallObjectsAllocator::FastAllocator<ForEachContextToken, 16> g_forEachTokenAllocator;
 
 void* ForEachContextToken::operator new(size_t size)
 {
@@ -344,8 +343,6 @@ ScriptToken* ScriptToken::Create(ArrayElementToken* elem, UInt32 lbound, UInt32 
 	return NULL;
 }
 
-thread_local SmallObjectsAllocator::FastAllocator<ScriptToken, 32> g_scriptTokenAllocator;
-
 void* ScriptToken::operator new(size_t size)
 {
 	return operator new (size, true);
@@ -370,32 +367,26 @@ void* ScriptToken::operator new(size_t size, const bool useMemoryPool)
 	return alloc;
 }
 
-void ScriptToken::operator delete(void* p)
-{
-	auto* token = static_cast<ScriptToken*>(p);
-	if (token && !token->cached)
-	{
-		if (token->memoryPooled)
-		{
-			g_scriptTokenAllocator.Free(token);
-		}
-		else
-		{
-			::operator delete(p);
-		}
-	}
-}
-
-void ScriptToken::operator delete(void* p, const bool useMemoryPool)
+void ScriptToken::operator delete(void* p, bool useMemoryPool)
 {
 	if (useMemoryPool)
-	{
 		g_scriptTokenAllocator.Free(p);
-	}
 	else
-	{
 		::operator delete(p);
-	}
+}
+
+// C++20 destroying delete can avoid calling destructor if we don't want the object deleted
+// derived classes will not call this delete (tested), they will continue using their own non-destroying operator delete overload
+void ScriptToken::operator delete(ScriptToken* token, std::destroying_delete_t)
+{
+	if (!token || token->cached)
+		return;
+	token->~ScriptToken();
+	
+	if (token->memoryPooled)
+		g_scriptTokenAllocator.Free(token);
+	else
+		::operator delete(token);
 }
 
 ArrayElementToken::ArrayElementToken(ArrayID arr, ArrayKey* _key)
@@ -1088,6 +1079,19 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		{
 			this->varName = context->script->GetVariableInfo(varIdx)->name.CStr();
 		}
+		if (value.var && value.var->data && type == kTokenType_ArrayVar)
+		{
+			auto* script = context->script;
+			if (refIdx)
+				script = GetReferencedQuestScript(refIdx, context->eventList);
+			if (auto * var = g_ArrayMap.Get(value.var->data); var)
+				if (auto* varInfo = script->GetVariableInfo(value.var->id))
+					var->varName = std::string(script->GetName())+ "." + std::string(varInfo->name.CStr());
+				else
+					var->varName = "<no var info>";
+			else
+				var->varName = "<var not found>";
+		}
 #endif
 
 		// to be deleted on event list destruction, see Hooks_Other.cpp#CleanUpNVSEVars
@@ -1317,16 +1321,16 @@ bool ArrayElementToken::CanConvertTo(Token_Type to) const
 	return false;
 }
 
-thread_local SmallObjectsAllocator::FastAllocator<ArrayElementToken, 4> g_arrayTokenAllocator;
+
 
 void* ArrayElementToken::operator new(size_t size)
 {
-	return g_arrayTokenAllocator.Allocate();
+	return g_arrayElementTokenAllocator.Allocate();
 }
 
 void ArrayElementToken::operator delete(void* p)
 {
-	g_arrayTokenAllocator.Free(p);
+	g_arrayElementTokenAllocator.Free(p);
 }
 
 double ArrayElementToken::GetNumber()

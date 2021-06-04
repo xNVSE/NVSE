@@ -3,6 +3,7 @@
 #include "GameTypes.h"
 #include "NiNodes.h"
 #include "CommandTable.h"
+#include "GameRTTI.h"
 #include "GameScript.h"
 
 struct ParamInfo;
@@ -1096,3 +1097,5 @@ struct TimeGlobal : Timer
 
 extern TimeGlobal* g_timeGlobal;
 extern float* g_globalTimeMult;
+
+Script* GetReferencedQuestScript(UInt32 refIdx, ScriptEventList* baseEventList);

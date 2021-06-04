@@ -546,7 +546,6 @@ bool HandleLineBufMacros(ScriptLineBuffer* buf)
 	return true;
 }
 
-
 // Expand ScriptLineBuffer to allow multiline expressions with parenthesis
 int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 {

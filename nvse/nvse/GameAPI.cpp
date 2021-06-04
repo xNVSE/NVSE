@@ -819,8 +819,16 @@ bool ConsoleManager::HasConsoleOutputFilename(void) {
 bool s_InsideOnActorEquipHook = false;
 UInt32 s_CheckInsideOnActorEquipHook = 1;
 
+#if NVSE_CORE
+extern bool s_recordedMainThreadID;
+#endif
+
 void Console_Print(const char * fmt, ...)
 {
+#if NVSE_CORE
+	if (!s_recordedMainThreadID)
+		return;
+#endif
 	//if (!s_CheckInsideOnActorEquipHook || !s_InsideOnActorEquipHook) {
 	ConsoleManager	* mgr = ConsoleManager::GetSingleton();
 	if(mgr)
@@ -1833,7 +1841,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 	static const int maxArgs = 20;
 	double f[maxArgs], data;
 	UInt32 argIdx = 0;
-
+	bool noArgFormat = false;
 	char fmtBuffer[0x4000];
 
 	char *resPtr = fmtBuffer, *srcPtr = args.GetFormatString(), *fmtPos, *strPtr, *omitEndPtr;
@@ -1856,6 +1864,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 			case '%':										//literal %
 				*(UInt16*)resPtr = '%%';
 				resPtr += 2;
+				noArgFormat = true;
 				break;
 			case 'z':
 			case 'Z':										//string variable
@@ -2133,7 +2142,7 @@ bool ExtractFormattedString(FormatStringArgs& args, char* buffer)
 
 	if (fmtBuffer[0])
 	{
-		if (argIdx)
+		if (argIdx || noArgFormat)
 			sprintf_s(buffer, kMaxMessageLength - 2, fmtBuffer, f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8], f[9], f[10], f[11], f[12], f[13], f[14], f[15], f[16], f[17], f[18], f[19]);
 		else memcpy(buffer, fmtBuffer, (resPtr - fmtBuffer) + 1);
 	}
@@ -2689,6 +2698,20 @@ UInt32 GetNextFreeFormID(UInt32 formId)
 {
 	while (LookupFormByID(++formId));
 	return formId;
+}
+
+Script* GetReferencedQuestScript(UInt32 refIdx, ScriptEventList* baseEventList)
+{
+	if (auto* refVar = baseEventList->m_script->GetRefFromRefList(refIdx); refVar)
+	{
+		refVar->Resolve(baseEventList);
+		if (refVar->form)
+		{
+			if (auto* quest = DYNAMIC_CAST(refVar->form, TESForm, TESQuest))
+				return quest->scriptable.script;
+		}
+	}
+	return nullptr;
 }
 
 #endif
