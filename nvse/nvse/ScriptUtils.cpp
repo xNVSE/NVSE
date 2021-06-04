@@ -2549,7 +2549,8 @@ ScriptToken* ExpressionParser::ParseLambda()
 	}
 	const auto textLen = CurText() - beginData + 1;
 	auto* lambdaText = static_cast<char*>(FormHeap_Allocate(textLen));
-	strcpy_s(lambdaText, textLen, beginData);
+	memset(lambdaText, 0, textLen);
+	std::memcpy(lambdaText, beginData, textLen);
 	const auto lambdaScriptBuf = MakeUnique<ScriptBuffer, 0x5C5660, 0x5C8910>();
 	auto scriptLambda = MakeUnique<Script, 0x5C1D60, 0x5C5220>();
 
