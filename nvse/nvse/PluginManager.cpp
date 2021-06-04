@@ -876,6 +876,7 @@ void * PluginManager::GetFunc(UInt32 funcID)
 	case NVSEDataInterface::kNVSEData_InventoryReferenceGetRefBySelf: result = (void*)&InventoryReference::GetRefBySelf; break;	// new static version as the standard GetRef cannot be converted to void*
 	case NVSEDataInterface::kNVSEData_ArrayVarMapDeleteBySelf: result = (void*)&ArrayVarMap::DeleteBySelf; break;
 	case NVSEDataInterface::kNVSEData_StringVarMapDeleteBySelf: result = (void*)&StringVarMap::DeleteBySelf; break;
+	case NVSEDataInterface::kNVSEData_LambdaDeleteAllForScript: result = (void*)&LambdaManager::DeleteAllForParentScript; break;
 	}
 	return result;
 }
@@ -898,11 +899,7 @@ void PluginManager::ClearScriptDataCache()
 	TokenCache::MarkForClear();
 	Dispatch_Message(0, NVSEMessagingInterface::kMessage_ClearScriptDataCache, NULL, 0, NULL);
 	UserFunctionManager::ClearInfos();
-	LambdaManager::ClearCache();
-
-	// Lambdas get cleared; give a chance for quest scripts to reregister lambda event listeners.
-	s_gameLoadedInformedScripts.Clear();
-	s_gameRestartedInformedScripts.Clear();
+	// LambdaManager::ClearCache(); Instead use LambdaClearForParentScript
 }
 
 

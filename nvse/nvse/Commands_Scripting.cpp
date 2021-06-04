@@ -314,7 +314,7 @@ bool Cmd_Print_Execute(COMMAND_ARGS)
 			Console_Print_Long(str);
 #if _DEBUG
 		// useful for testing script output
-		_MESSAGE("%s", str);
+		//_MESSAGE("%s", str);
 #endif
 	}
 

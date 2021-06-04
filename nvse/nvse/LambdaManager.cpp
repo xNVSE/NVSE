@@ -1,4 +1,7 @@
 #include "LambdaManager.h"
+
+#include <ranges>
+
 #include "GameAPI.h"
 
 // set in ScriptToken::ReadFrom
@@ -85,4 +88,23 @@ void LambdaManager::ClearCache()
 	g_lambdaScriptPosMap.clear();
 	g_lambdaParentEventListMap.clear();
 	g_parentEventListLambdaMap.clear();
+}
+
+void LambdaManager::DeleteAllForParentScript(Script* script)
+{
+	ScopedLock lock(g_lambdaCs);
+	g_lambdasCleared = true;
+	std::vector<Script*> lambdas;
+	for (auto& [scriptLambda, parentEventList] : g_lambdaParentEventListMap)
+	{
+		if (parentEventList->m_script == script)
+		{
+			FormHeap_Free(scriptLambda->data); // ThisStdCall(0x5AA1A0, scriptLambda); // call destructor to free script data pointer
+			scriptLambda->data = nullptr; // script data and tLists will be freed but script won't be since plugins may store pointers to it to call
+			lambdas.push_back(scriptLambda);
+		}
+	}
+	std::erase_if(g_lambdaScriptPosMap, [&](auto& p) { return std::ranges::find(lambdas, p.second) != lambdas.end(); });
+	std::erase_if(g_lambdaParentEventListMap, [&](auto& p) {return p.second->m_script == script;});
+	std::erase_if(g_parentEventListLambdaMap, [&](auto& p) {return p.first->m_script == script;});
 }

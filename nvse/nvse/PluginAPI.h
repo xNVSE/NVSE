@@ -483,7 +483,7 @@ struct NVSEScriptInterface
 struct NVSEDataInterface
 {
 	enum {
-		kVersion = 2
+		kVersion = 3
 	};
 
 	UInt32		version;
@@ -502,7 +502,7 @@ struct NVSEDataInterface
 		kNVSEData_InventoryReferenceGetRefBySelf,
 		kNVSEData_ArrayVarMapDeleteBySelf,
 		kNVSEData_StringVarMapDeleteBySelf,
-
+		kNVSEData_LambdaDeleteAllForScript,
 		kNVSEData_FuncMax,
 	};
 	void * (* GetFunc)(UInt32 funcID);
@@ -514,6 +514,9 @@ struct NVSEDataInterface
 	void * (* GetData)(UInt32 dataID);
 	// v2: xNVSE caches script data for additional performance and short circuit evaluation, if you are manipulating script data then you can clear the cache 
 	void (*ClearScriptDataCache)();
+	// v3
+	
+	
 };
 #endif
 
