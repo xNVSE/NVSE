@@ -56,6 +56,8 @@ std::map<std::pair<Script*, std::string>, Script::VariableType> g_variableDefini
 
 Script::VariableType GetSavedVarType(Script* script, const std::string& name)
 {
+	if (!script) 
+		return Script::eVarType_Invalid;
 	if (const auto iter = g_variableDefinitionsMap.find(std::make_pair(script, name)); iter != g_variableDefinitionsMap.end())
 		return iter->second;
 	return Script::eVarType_Invalid;
@@ -1732,7 +1734,7 @@ ExpressionParser::ExpressionParser(ScriptBuffer* scriptBuf, ScriptLineBuffer* li
 	m_script = scriptBuf->currentScript;
 #else
 	if (g_currentScriptStack.empty())
-		g_ErrOut.Show("Error: current script stack is empty");
+		m_script = nullptr;
 	else
 		m_script = g_currentScriptStack.top();
 #endif
@@ -2978,6 +2980,8 @@ bool ValidateVariable(const std::string& varName, Script::VariableType varType, 
 
 VariableInfo* ExpressionParser::CreateVariable(const std::string& varName, Script::VariableType varType)
 {
+	if (!m_script)
+		return nullptr;
 	if (auto* var = m_scriptBuf->vars.FindFirst([&](VariableInfo* v) { return _stricmp(varName.c_str(), v->name.CStr()) == 0; }))
 	{
 		if (!ValidateVariable(varName, varType, m_script))
