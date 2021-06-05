@@ -1701,6 +1701,9 @@ thread_local CommandInfo* g_lastCommand;
 #if NVSE_CORE
 bool vExtractArgsEx(ParamInfo* paramInfo, void* scriptDataIn, UInt32* scriptDataOffset, Script* scriptObj, ScriptEventList* eventList, va_list args, bool incrementOffsetPtr)
 {
+	if (!paramInfo)
+		return false;
+	
 	UInt8* scriptData = (UInt8*)scriptDataIn + *scriptDataOffset;
 	UInt32 numArgs = *(UInt16*)scriptData;
 	scriptData += 2;
