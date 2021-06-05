@@ -560,7 +560,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 	
 	auto numBrackets = 0;
 	auto capturedNonSpace = false;
-	auto numSpacesInParenthesis = 0;
+	auto numNewLinesInParenthesis = 0;
 	auto inStringLiteral = false;
 
 	// skip all spaces and tabs in the beginning
@@ -627,13 +627,15 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 						--lineBuf->paramTextLen;
 					}
 					lineBuf->paramText[lineBuf->paramTextLen] = '\0';
-					lineBuf->lineNumber += numSpacesInParenthesis;
+					lineBuf->lineNumber += numNewLinesInParenthesis;
 					if (!HandleLineBufMacros(lineBuf))
 						return 0;
 					return curScriptText - oldScriptText;
 				}
 				if (numBrackets)
-					++numSpacesInParenthesis;
+					++numNewLinesInParenthesis;
+				else if (!capturedNonSpace)
+					++lineBuf->lineNumber;
 				break;
 			}
 			case ';':
