@@ -268,8 +268,7 @@ char* __fastcall ConcatStrings(const char *lStr, const char *rStr)
 	{
 		char *conStr = (char*)malloc(lLen + rLen + 1);
 		if (lLen) memcpy(conStr, lStr, lLen);
-		if (rLen)
-			memcpy(conStr + lLen, rStr, rLen + 1);
+		memcpy(conStr + lLen, rStr, rLen + 1);
 		return conStr;
 	}
 	return nullptr;
