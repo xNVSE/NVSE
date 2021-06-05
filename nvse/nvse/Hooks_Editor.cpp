@@ -515,7 +515,6 @@ std::vector g_lineMacros =
 {
 	ScriptLineMacro([&](std::string& line)
 	{
-		
 		static const std::vector<std::pair<std::string, std::string>> s_shortHandMacros =
 		{
 			std::make_pair(":=", R"(\=)"),
@@ -531,14 +530,14 @@ std::vector g_lineMacros =
 		for (const auto& [realOp, regexOp] : s_shortHandMacros)
 		{
 			// VARIABLE = VALUE macro 
-			const std::regex assignmentExpr(R"(^([a-zA-Z\_\s\.0-9]+))" + regexOp + R"(([a-zA-Z\_\s\.\$\!0-9\-\(\{][.\s\S]*))"); // match int ivar = 4
-			if (std::smatch m; std::regex_search(line, m, assignmentExpr) && m.size() == 3)
+			const std::regex assignmentExpr(R"(([a-zA-Z\_\s\.0-9]+))" + regexOp + R"(([a-zA-Z\_\s\.\$\!0-9\-\(\{][.\s\S]*))"); // match int ivar = 4
+			if (std::smatch m; std::regex_search(line, m, assignmentExpr, std::regex_constants::match_continuous) && m.size() == 3)
 			{
 				line = "let " + m.str(1) + " " + realOp + " " + m.str(2);
 				return true;
 			}
 		}
-		return true;
+		return false;
 	}, MacroType::AssignmentShortHand),
 };
 bool HandleLineBufMacros(ScriptLineBuffer* buf)
