@@ -146,7 +146,7 @@ public:
 	bool vSetArgs(UInt8 numArgs, va_list args);
 
 protected:
-	enum { kMaxArgs = 5 };	
+	enum { kMaxArgs = 10 };	
 
 	UInt8			m_callerVersion;
 	UInt8			m_numArgs;
