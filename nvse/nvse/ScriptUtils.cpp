@@ -1717,6 +1717,41 @@ void ExpressionEvaluator::PrintStackTrace() {
 #define OPERAND_CONVERT(x) NULL
 #endif
 
+ExpressionEvaluator* __stdcall ExpressionEvaluatorCreate(COMMAND_ARGS)
+{
+#if RUNTIME
+	return new ExpressionEvaluator(PASS_COMMAND_ARGS);
+#else
+	return nullptr;
+#endif
+}
+
+void __fastcall ExpressionEvaluatorDestroy(ExpressionEvaluator *eval)
+{
+#if RUNTIME
+	delete eval;
+#endif
+}
+
+UInt8 __fastcall ExpressionEvaluatorGetNumArgs(ExpressionEvaluator *eval)
+{
+	return eval->NumArgs();
+}
+
+bool __fastcall ExpressionEvaluatorExtractArgs(ExpressionEvaluator *eval)
+{
+#if RUNTIME
+	return eval->ExtractArgs();
+#else
+	return false;
+#endif
+}
+
+PluginScriptToken* __fastcall ExpressionEvaluatorGetNthArg(ExpressionEvaluator *eval, UInt32 idx)
+{
+	return (PluginScriptToken*)eval->Arg(idx);
+}
+
 // ExpressionParser
 
 // Not particularly fond of this but it's become necessary to distinguish between a parser which is parsing part of a larger

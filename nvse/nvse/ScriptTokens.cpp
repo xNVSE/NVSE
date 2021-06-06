@@ -907,6 +907,35 @@ bool ScriptToken::CanConvertTo(Token_Type to) const
 	return CanConvertOperand(type, to);
 }
 
+UInt8 __fastcall ScriptTokenGetType(PluginScriptToken *scrToken)
+{
+	return ((ScriptToken*)scrToken)->Type();
+}
+
+double __fastcall ScriptTokenGetNumber(PluginScriptToken *scrToken)
+{
+	return ((ScriptToken*)scrToken)->GetNumber();
+}
+
+TESForm* __fastcall ScriptTokenGetForm(PluginScriptToken *scrToken)
+{
+	return ((ScriptToken*)scrToken)->GetTESForm();
+}
+
+const char* __fastcall ScriptTokenGetString(PluginScriptToken *scrToken)
+{
+	return ((ScriptToken*)scrToken)->GetString();
+}
+
+UInt32 __fastcall ScriptTokenGetArrayID(PluginScriptToken *scrToken)
+{
+#if RUNTIME
+	return ((ScriptToken*)scrToken)->GetArray();
+#else
+	return 0;
+#endif
+}
+
 #if RUNTIME
 
 ScriptToken* ScriptToken::Read(ExpressionEvaluator* context)

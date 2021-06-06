@@ -40,6 +40,8 @@ public:
 	static void * GetData(UInt32 dataID);
 	static void ClearScriptDataCache();
 
+	static void InitExpressionEvaluatorUtils(ExpressionEvaluatorUtils *utils);
+
 private:
 	struct LoadedPlugin
 	{
