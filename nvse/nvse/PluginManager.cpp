@@ -96,6 +96,7 @@ static const NVSEInterface g_NVSEInterface =
 	PluginManager::RegisterTypedCommand,
 	PluginManager::GetFalloutDir,
 	0,
+	PluginManager::InitExpressionEvaluatorUtils
 };
 
 #ifdef RUNTIME
@@ -262,7 +263,10 @@ bool PluginManager::RegisterCommand(CommandInfo * _info)
 		info.eval = Cmd_Default_Eval;	// adding support for that
 #endif
 
-	if(!info.parse) info.parse = Cmd_Default_Parse;
+	if (!info.parse)
+		info.parse = Cmd_Default_Parse;
+	else if (info.parse != Cmd_Expression_Parse)
+		info.parse = Cmd_Expression_Parse;
 	if(!info.shortName) info.shortName = "";
 	if(!info.helpText) info.helpText = "";
 
@@ -288,9 +292,10 @@ bool PluginManager::RegisterTypedCommand(CommandInfo * _info, CommandReturnType 
 		info.eval = Cmd_Default_Eval;	// adding support for that
 #endif
 
-	if(!info.parse) {
+	if (!info.parse)
 		info.parse = Cmd_Default_Parse;
-	}
+	else if (info.parse != Cmd_Expression_Parse)
+		info.parse = Cmd_Expression_Parse;
 
 	if(!info.shortName) info.shortName = "";
 	if(!info.helpText) info.helpText = "";
@@ -400,6 +405,21 @@ const char* PluginManager::GetFalloutDir()
 {
 	static std::string fDir(GetFalloutDirectory());
 	return fDir.c_str();
+}
+
+void PluginManager::InitExpressionEvaluatorUtils(ExpressionEvaluatorUtils *utils)
+{
+	utils->CreateExpressionEvaluator = ExpressionEvaluatorCreate;
+	utils->DestroyExpressionEvaluator = ExpressionEvaluatorDestroy;
+	utils->ExtractArgsEval = ExpressionEvaluatorExtractArgs;
+	utils->GetNumArgs = ExpressionEvaluatorGetNumArgs;
+	utils->GetNthArg = ExpressionEvaluatorGetNthArg;
+
+	utils->ScriptTokenGetType = ScriptTokenGetType;
+	utils->ScriptTokenGetNumber = ScriptTokenGetNumber;
+	utils->ScriptTokenGetForm = ScriptTokenGetForm;
+	utils->ScriptTokenGetString = ScriptTokenGetString;
+	utils->ScriptTokenGetArrayID = ScriptTokenGetArrayID;
 }
 
 bool PluginManager::FindPluginDirectory(void)

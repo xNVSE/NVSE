@@ -330,6 +330,13 @@ private:
 };
 //STATIC_ASSERT(sizeof(ScriptToken) == 0x30);
 
+struct PluginScriptToken;
+UInt8 __fastcall ScriptTokenGetType(PluginScriptToken *scrToken);
+double __fastcall ScriptTokenGetNumber(PluginScriptToken *scrToken);
+TESForm* __fastcall ScriptTokenGetForm(PluginScriptToken *scrToken);
+const char* __fastcall ScriptTokenGetString(PluginScriptToken *scrToken);
+UInt32 __fastcall ScriptTokenGetArrayID(PluginScriptToken *scrToken);
+
 struct SliceToken : ScriptToken
 {
 	Slice	slice;

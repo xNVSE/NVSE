@@ -90,6 +90,8 @@ public:
 	UInt32 NumParams()	{ return m_numParams;	}
 };
 
+struct PluginScriptToken;
+
 class ExpressionEvaluator
 {
 	friend ScriptToken;
@@ -188,6 +190,12 @@ public:
 };
 
 bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem, ExpressionEvaluator* context);
+
+ExpressionEvaluator* __stdcall ExpressionEvaluatorCreate(COMMAND_ARGS);
+void __fastcall ExpressionEvaluatorDestroy(ExpressionEvaluator *eval);
+UInt8 __fastcall ExpressionEvaluatorGetNumArgs(ExpressionEvaluator *eval);
+bool __fastcall ExpressionEvaluatorExtractArgs(ExpressionEvaluator *eval);
+PluginScriptToken* __fastcall ExpressionEvaluatorGetNthArg(ExpressionEvaluator *eval, UInt32 idx);
 
 enum ParamParenthResult : UInt8
 {

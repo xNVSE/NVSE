@@ -49,6 +49,8 @@ enum
 	kInterface_Max
 };
 
+struct ExpressionEvaluatorUtils;
+
 struct NVSEInterface
 {
 	UInt32	nvseVersion;
@@ -71,6 +73,8 @@ struct NVSEInterface
 
 	// Allows checking for nogore edition
 	UInt32	isNogore;
+
+	void		(*InitExpressionEvaluatorUtils)(ExpressionEvaluatorUtils *utils);
 };
 
 struct NVSEConsoleInterface
@@ -712,3 +716,82 @@ typedef bool (* _NVSEPlugin_Load)(const NVSEInterface * nvse);
  *	previous implementations.
  *	
  ******************************************************************************/
+
+class ExpressionEvaluator;
+struct PluginScriptToken;
+
+struct ExpressionEvaluatorUtils
+{
+	ExpressionEvaluator*	(__stdcall *CreateExpressionEvaluator)(COMMAND_ARGS);
+	void					(__fastcall *DestroyExpressionEvaluator)(ExpressionEvaluator *eval);
+	bool					(__fastcall *ExtractArgsEval)(ExpressionEvaluator *eval);
+	UInt8					(__fastcall *GetNumArgs)(ExpressionEvaluator *eval);
+	PluginScriptToken*		(__fastcall *GetNthArg)(ExpressionEvaluator *eval, UInt32 idx);
+
+	UInt8					(__fastcall *ScriptTokenGetType)(PluginScriptToken *scrToken);
+	double					(__fastcall *ScriptTokenGetNumber)(PluginScriptToken *scrToken);
+	TESForm*				(__fastcall *ScriptTokenGetForm)(PluginScriptToken *scrToken);
+	const char*				(__fastcall *ScriptTokenGetString)(PluginScriptToken *scrToken);
+	UInt32					(__fastcall *ScriptTokenGetArrayID)(PluginScriptToken *scrToken);
+};
+
+extern ExpressionEvaluatorUtils s_expEvalUtils;
+
+class PluginExpressionEvaluator
+{
+	ExpressionEvaluator		*eval;
+
+public:
+	PluginExpressionEvaluator(COMMAND_ARGS)
+	{
+		eval = s_expEvalUtils.CreateExpressionEvaluator(PASS_COMMAND_ARGS);
+	}
+	~PluginExpressionEvaluator()
+	{
+		s_expEvalUtils.DestroyExpressionEvaluator(eval);
+	}
+
+	bool ExtractArgs()
+	{
+		return s_expEvalUtils.ExtractArgsEval(eval);
+	}
+
+	UInt8 NumArgs()
+	{
+		return s_expEvalUtils.GetNumArgs(eval);
+	}
+
+	PluginScriptToken *Arg(UInt32 idx)
+	{
+		return s_expEvalUtils.GetNthArg(eval, idx);
+	}
+};
+
+struct PluginScriptToken
+{
+	UInt8 GetType()
+	{
+		return s_expEvalUtils.ScriptTokenGetType(this);
+	}
+
+	double GetNumber()
+	{
+		return s_expEvalUtils.ScriptTokenGetNumber(this);
+	}
+
+	TESForm *GetTESForm()
+	{
+		return s_expEvalUtils.ScriptTokenGetForm(this);
+	}
+
+	const char *GetString()
+	{
+		return s_expEvalUtils.ScriptTokenGetString(this);
+	}
+#if RUNTIME
+	NVSEArrayVarInterface::Array *GetArrayVar()
+	{
+		return (NVSEArrayVarInterface::Array*)s_expEvalUtils.ScriptTokenGetArrayID(this);
+	}
+#endif
+};
