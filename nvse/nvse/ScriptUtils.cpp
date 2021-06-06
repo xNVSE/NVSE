@@ -4532,7 +4532,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken* 
 
 				if (op->type == kOpType_LeftBracket)
 					operands.push(lh + '[' + rh + ']');
-				else if (op->type == kOpType_Slice || op->type == kOpType_Exponent || op->type == kOpType_MemberAccess || op->type == kOpType_MakePair)
+				else if (op->type == kOpType_Slice || op->type == kOpType_Exponent || op->type == kOpType_MemberAccess || op->type == kOpType_MakePair || op->type == kOpType_Dot)
 					operands.push(lh + std::string(op->symbol) + rh);
 				else
 					operands.push(lh + " " + std::string(op->symbol) + " " + rh);
