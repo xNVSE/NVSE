@@ -789,17 +789,18 @@ void SetConsoleEcho(bool doEcho)
 
 const char * GetFullName(TESForm * baseForm)
 {
-	if(baseForm)
+	if (baseForm)
 	{
 		TESFullName* fullName = baseForm->GetFullName();
-		if(fullName && fullName->name.m_data)
+		if(fullName && fullName->name.m_data && fullName->name.m_dataLen)
 		{
-			if (fullName->name.m_dataLen)
-				return fullName->name.m_data;
+			return fullName->name.m_data;
+		} else {
+			return "<no name>";
 		}
 	}
 
-	return "<no name>";
+	return "<NULL>";
 }
 
 ConsoleManager * ConsoleManager::GetSingleton(void)
