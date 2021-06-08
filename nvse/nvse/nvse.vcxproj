@@ -619,7 +619,10 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="MemoryPool.cpp" />
+    <ClCompile Include="MemoryPool.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="NiNodes.cpp" />
     <ClCompile Include="nvse.cpp" />
     <ClCompile Include="OverloadsGlobal.cpp" />
@@ -718,7 +721,10 @@
     <ClInclude Include="rewrites.h" />
     <ClInclude Include="SafeWrite.h" />
     <ClInclude Include="ScriptTokenCache.h" />
-    <ClInclude Include="SmallObjectsAllocator.h" />
+    <ClInclude Include="SmallObjectsAllocator.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="ScriptTokens.h" />
     <ClInclude Include="ScriptUtils.h" />
     <ClInclude Include="Serialization.h" />

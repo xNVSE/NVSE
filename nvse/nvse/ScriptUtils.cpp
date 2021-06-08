@@ -1229,7 +1229,7 @@ ScriptToken* Eval_DotSyntax(OperatorType op, ScriptToken* lh, ScriptToken* rh, E
 	}
 	if (!form)
 	{
-		context->Error("Attempting to call a command on a NULL reference");
+		context->Error("Attempting to call a command on a non-form or a NULL reference");
 		return nullptr;
 	}
 	if (!form->GetIsReference())
@@ -2479,7 +2479,7 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 		else	// must be an operand (or a syntax error)
 		{
 			const auto operand = std::unique_ptr<ScriptToken>(ParseOperand(ops.size() ? ops.top() : NULL));
-			if (!operand)
+			if (!operand || operand->type == kTokenType_Invalid)
 				return kTokenType_Invalid;
 
 			if (operand->type == kTokenType_Command && !ops.empty() && ops.top()->type == kOpType_Dot)

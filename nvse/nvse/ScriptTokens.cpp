@@ -151,6 +151,9 @@ ScriptToken::ScriptToken(VariableInfo* varInfo, UInt16 refIdx, UInt32 varType) :
 		type = kTokenType_RefVar;
 		break;
 	default:
+#if EDITOR
+		g_ErrOut.Show("Unable to resolve variable type for %s", varInfo->name.CStr());
+#endif
 		type = kTokenType_Invalid;
 	}
 }
