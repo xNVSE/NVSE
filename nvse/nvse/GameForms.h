@@ -4781,12 +4781,16 @@ public:
 STATIC_ASSERT(sizeof(BGSAddonNode) == 0x60);
 
 // ActorValueInfo (C4)
-class ActorValueInfo : public TESForm {
+class ActorValueInfo : public TESForm
+{
 public:
-	UInt32 fill_018[(0x038-0x018) >> 2];		// 018 0037
-	char * actorValueName;						// 038
-	UInt32 fill_03C[(0x044-0x03C) >> 2];		// 03C 043
-	UInt32 avFlags;								// 044
+	TESFullName			fullName;
+	TESDescription		description;
+	TESIcon				icon;
+
+	char				*infoName;		// 38
+	String				avName;			// 3C
+	UInt32				avFlags;		// 44
 		//		bit 0x01	used in list of modified ActorValue for Player and others. Either can damage or "special damage", see 0x00937280
 		//		bit 0x03
 		//		bit 0x04
@@ -4795,13 +4799,11 @@ public:
 		//		bit 0x0B
 		//		bit 0x0C
 		//		bit 0x0E	canModify
-	UInt32 unk_048;								// 048
-	UInt32 unk_04C;								// 04C		// Address of callback used in GetValueInfo, result in st
-	UInt32 unk_050;								// 050
-	UInt32 unk_054;								// 054		// Address of a callback used in SetActorValue
-	UInt32 fill_058[(0x098-0x058) >> 2];		// 058 097
-	UInt32 unk_098;								// 098
-	UInt32 fill_09C[(0x0C4-0x09C) >> 2];		// 09C 0C3
+	UInt32				unk48;			// 48
+	UInt32				callback4C;		// 4C
+	UInt32				unk50;			// 50
+	UInt32				callback54;		// 54
+	UInt32				unk4C[27];		// 4C
 };
 
 STATIC_ASSERT(sizeof(ActorValueInfo) == 0x0C4);
