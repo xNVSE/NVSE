@@ -330,13 +330,6 @@ private:
 };
 //STATIC_ASSERT(sizeof(ScriptToken) == 0x30);
 
-struct PluginScriptToken;
-UInt8 __fastcall ScriptTokenGetType(PluginScriptToken *scrToken);
-double __fastcall ScriptTokenGetNumber(PluginScriptToken *scrToken);
-TESForm* __fastcall ScriptTokenGetForm(PluginScriptToken *scrToken);
-const char* __fastcall ScriptTokenGetString(PluginScriptToken *scrToken);
-UInt32 __fastcall ScriptTokenGetArrayID(PluginScriptToken *scrToken);
-
 struct SliceToken : ScriptToken
 {
 	Slice	slice;
@@ -373,6 +366,22 @@ struct PairToken : ScriptToken
 };
 
 #if RUNTIME
+
+struct PluginScriptToken;
+UInt8 __fastcall ScriptTokenGetType(PluginScriptToken *scrToken);
+bool __fastcall ScriptTokenCanConvertTo(PluginScriptToken *scrToken, Token_Type toType);
+double __fastcall ScriptTokenGetFloat(PluginScriptToken *scrToken);
+bool __fastcall ScriptTokenGetBool(PluginScriptToken *scrToken);
+UInt32 __fastcall ScriptTokenGetFormID(PluginScriptToken *scrToken);
+TESForm* __fastcall ScriptTokenGetTESForm(PluginScriptToken *scrToken);
+const char* __fastcall ScriptTokenGetString(PluginScriptToken *scrToken);
+UInt32 __fastcall ScriptTokenGetArrayID(PluginScriptToken *scrToken);
+UInt32 __fastcall ScriptTokenGetActorValue(PluginScriptToken *scrToken);
+ScriptEventList::Var* __fastcall ScriptTokenGetScriptVar(PluginScriptToken *scrToken);
+struct PluginTokenPair;
+const PluginTokenPair* __fastcall ScriptTokenGetPair(PluginScriptToken *scrToken);
+struct PluginTokenSlice;
+const PluginTokenSlice* __fastcall ScriptTokenGetSlice(PluginScriptToken *scrToken);
 
 struct ArrayElementToken : ScriptToken
 {

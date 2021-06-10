@@ -265,7 +265,7 @@ bool PluginManager::RegisterCommand(CommandInfo * _info)
 
 	if (!info.parse)
 		info.parse = Cmd_Default_Parse;
-	else if (info.parse != Cmd_Expression_Parse)
+	else if (info.parse == Cmd_Expression_Plugin_Parse)
 		info.parse = Cmd_Expression_Parse;
 	if(!info.shortName) info.shortName = "";
 	if(!info.helpText) info.helpText = "";
@@ -294,7 +294,7 @@ bool PluginManager::RegisterTypedCommand(CommandInfo * _info, CommandReturnType 
 
 	if (!info.parse)
 		info.parse = Cmd_Default_Parse;
-	else if (info.parse != Cmd_Expression_Parse)
+	else if (info.parse == Cmd_Expression_Plugin_Parse)
 		info.parse = Cmd_Expression_Parse;
 
 	if(!info.shortName) info.shortName = "";
@@ -409,6 +409,7 @@ const char* PluginManager::GetFalloutDir()
 
 void PluginManager::InitExpressionEvaluatorUtils(ExpressionEvaluatorUtils *utils)
 {
+#if RUNTIME
 	utils->CreateExpressionEvaluator = ExpressionEvaluatorCreate;
 	utils->DestroyExpressionEvaluator = ExpressionEvaluatorDestroy;
 	utils->ExtractArgsEval = ExpressionEvaluatorExtractArgs;
@@ -416,10 +417,17 @@ void PluginManager::InitExpressionEvaluatorUtils(ExpressionEvaluatorUtils *utils
 	utils->GetNthArg = ExpressionEvaluatorGetNthArg;
 
 	utils->ScriptTokenGetType = ScriptTokenGetType;
-	utils->ScriptTokenGetNumber = ScriptTokenGetNumber;
-	utils->ScriptTokenGetForm = ScriptTokenGetForm;
+	utils->ScriptTokenGetFloat = ScriptTokenGetFloat;
+	utils->ScriptTokenGetBool = ScriptTokenGetBool;
+	utils->ScriptTokenGetFormID = ScriptTokenGetFormID;
+	utils->ScriptTokenGetTESForm = ScriptTokenGetTESForm;
 	utils->ScriptTokenGetString = ScriptTokenGetString;
 	utils->ScriptTokenGetArrayID = ScriptTokenGetArrayID;
+	utils->ScriptTokenGetActorValue = ScriptTokenGetActorValue;
+	utils->ScriptTokenGetScriptVar = ScriptTokenGetScriptVar;
+	utils->ScriptTokenGetPair = ScriptTokenGetPair;
+	utils->ScriptTokenGetSlice = ScriptTokenGetSlice;
+#endif
 }
 
 bool PluginManager::FindPluginDirectory(void)

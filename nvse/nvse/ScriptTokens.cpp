@@ -755,7 +755,7 @@ ArrayID ScriptToken::GetArray()
 		{
 			return false;
 		}
-		return value.var->data;
+		return (int)value.var->data;
 	}
 	return 0;
 }
@@ -910,17 +910,34 @@ bool ScriptToken::CanConvertTo(Token_Type to) const
 	return CanConvertOperand(type, to);
 }
 
+#if RUNTIME
+
 UInt8 __fastcall ScriptTokenGetType(PluginScriptToken *scrToken)
 {
 	return ((ScriptToken*)scrToken)->Type();
 }
 
-double __fastcall ScriptTokenGetNumber(PluginScriptToken *scrToken)
+bool __fastcall ScriptTokenCanConvertTo(PluginScriptToken *scrToken, Token_Type toType)
+{
+	return ((ScriptToken*)scrToken)->CanConvertTo(toType);
+}
+
+double __fastcall ScriptTokenGetFloat(PluginScriptToken *scrToken)
 {
 	return ((ScriptToken*)scrToken)->GetNumber();
 }
 
-TESForm* __fastcall ScriptTokenGetForm(PluginScriptToken *scrToken)
+bool __fastcall ScriptTokenGetBool(PluginScriptToken *scrToken)
+{
+	return ((ScriptToken*)scrToken)->GetBool();
+}
+
+UInt32 __fastcall ScriptTokenGetFormID(PluginScriptToken *scrToken)
+{
+	return ((ScriptToken*)scrToken)->GetFormID();
+}
+
+TESForm* __fastcall ScriptTokenGetTESForm(PluginScriptToken *scrToken)
 {
 	return ((ScriptToken*)scrToken)->GetTESForm();
 }
@@ -932,14 +949,28 @@ const char* __fastcall ScriptTokenGetString(PluginScriptToken *scrToken)
 
 UInt32 __fastcall ScriptTokenGetArrayID(PluginScriptToken *scrToken)
 {
-#if RUNTIME
 	return ((ScriptToken*)scrToken)->GetArray();
-#else
-	return 0;
-#endif
 }
 
-#if RUNTIME
+UInt32 __fastcall ScriptTokenGetActorValue(PluginScriptToken *scrToken)
+{
+	return ((ScriptToken*)scrToken)->GetActorValue();
+}
+
+ScriptEventList::Var* __fastcall ScriptTokenGetScriptVar(PluginScriptToken *scrToken)
+{
+	return ((ScriptToken*)scrToken)->GetVar();
+}
+
+const PluginTokenPair* __fastcall ScriptTokenGetPair(PluginScriptToken *scrToken)
+{
+	return (const PluginTokenPair*)((ScriptToken*)scrToken)->GetPair();
+}
+
+const PluginTokenSlice* __fastcall ScriptTokenGetSlice(PluginScriptToken *scrToken)
+{
+	return (const PluginTokenSlice*)((ScriptToken*)scrToken)->GetSlice();
+}
 
 ScriptToken* ScriptToken::Read(ExpressionEvaluator* context)
 {
