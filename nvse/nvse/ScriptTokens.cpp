@@ -911,62 +911,62 @@ bool ScriptToken::CanConvertTo(Token_Type to) const
 
 UInt8 __fastcall ScriptTokenGetType(PluginScriptToken *scrToken)
 {
-	return ((ScriptToken*)scrToken)->Type();
+	return reinterpret_cast<ScriptToken*>(scrToken)->Type();
 }
 
 bool __fastcall ScriptTokenCanConvertTo(PluginScriptToken *scrToken, Token_Type toType)
 {
-	return ((ScriptToken*)scrToken)->CanConvertTo(toType);
+	return reinterpret_cast<ScriptToken*>(scrToken)->CanConvertTo(toType);
 }
 
 double __fastcall ScriptTokenGetFloat(PluginScriptToken *scrToken)
 {
-	return ((ScriptToken*)scrToken)->GetNumber();
+	return reinterpret_cast<ScriptToken*>(scrToken)->GetNumber();
 }
 
 bool __fastcall ScriptTokenGetBool(PluginScriptToken *scrToken)
 {
-	return ((ScriptToken*)scrToken)->GetBool();
+	return reinterpret_cast<ScriptToken*>(scrToken)->GetBool();
 }
 
 UInt32 __fastcall ScriptTokenGetFormID(PluginScriptToken *scrToken)
 {
-	return ((ScriptToken*)scrToken)->GetFormID();
+	return reinterpret_cast<ScriptToken*>(scrToken)->GetFormID();
 }
 
 TESForm* __fastcall ScriptTokenGetTESForm(PluginScriptToken *scrToken)
 {
-	return ((ScriptToken*)scrToken)->GetTESForm();
+	return reinterpret_cast<ScriptToken*>(scrToken)->GetTESForm();
 }
 
 const char* __fastcall ScriptTokenGetString(PluginScriptToken *scrToken)
 {
-	return ((ScriptToken*)scrToken)->GetString();
+	return reinterpret_cast<ScriptToken*>(scrToken)->GetString();
 }
 
 UInt32 __fastcall ScriptTokenGetArrayID(PluginScriptToken *scrToken)
 {
-	return ((ScriptToken*)scrToken)->GetArray();
+	return reinterpret_cast<ScriptToken*>(scrToken)->GetArray();
 }
 
 UInt32 __fastcall ScriptTokenGetActorValue(PluginScriptToken *scrToken)
 {
-	return ((ScriptToken*)scrToken)->GetActorValue();
+	return reinterpret_cast<ScriptToken*>(scrToken)->GetActorValue();
 }
 
 ScriptEventList::Var* __fastcall ScriptTokenGetScriptVar(PluginScriptToken *scrToken)
 {
-	return ((ScriptToken*)scrToken)->GetVar();
+	return reinterpret_cast<ScriptToken*>(scrToken)->GetVar();
 }
 
 const PluginTokenPair* __fastcall ScriptTokenGetPair(PluginScriptToken *scrToken)
 {
-	return (const PluginTokenPair*)((ScriptToken*)scrToken)->GetPair();
+	return reinterpret_cast<const PluginTokenPair*>(reinterpret_cast<ScriptToken*>(scrToken)->GetPair());
 }
 
 const PluginTokenSlice* __fastcall ScriptTokenGetSlice(PluginScriptToken *scrToken)
 {
-	return (const PluginTokenSlice*)((ScriptToken*)scrToken)->GetSlice();
+	return reinterpret_cast<const PluginTokenSlice*>(reinterpret_cast<ScriptToken*>(scrToken)->GetSlice());
 }
 
 ScriptToken* ScriptToken::Read(ExpressionEvaluator* context)
