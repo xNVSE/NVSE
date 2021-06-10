@@ -28,6 +28,7 @@
 #include "common/ICriticalSection.h"
 #include "ThreadLocal.h"
 #include "PluginManager.h"
+#include "SmallObjectsAllocator.h"
 
 const char* GetEditorID(TESForm* form)
 {
@@ -1717,40 +1718,38 @@ void ExpressionEvaluator::PrintStackTrace() {
 #define OPERAND_CONVERT(x) NULL
 #endif
 
+#if RUNTIME
+thread_local SmallObjectsAllocator::FastAllocator<ExpressionEvaluator, 4> g_pluginExpEvalAllocator;
+
 ExpressionEvaluator* __stdcall ExpressionEvaluatorCreate(COMMAND_ARGS)
 {
-#if RUNTIME
-	return new ExpressionEvaluator(PASS_COMMAND_ARGS);
-#else
-	return nullptr;
+	ExpressionEvaluator *expEval = g_pluginExpEvalAllocator.Allocate();
+	if (expEval)
+		new (expEval) ExpressionEvaluator(PASS_COMMAND_ARGS);
+	return expEval;
+}
+
+void __fastcall ExpressionEvaluatorDestroy(ExpressionEvaluator *expEval)
+{
+	expEval->~ExpressionEvaluator();
+	g_pluginExpEvalAllocator.Free(expEval);
+}
+
+bool __fastcall ExpressionEvaluatorExtractArgs(ExpressionEvaluator *expEval)
+{
+	return expEval->ExtractArgs();
+}
+
+UInt8 __fastcall ExpressionEvaluatorGetNumArgs(ExpressionEvaluator *expEval)
+{
+	return expEval->NumArgs();
+}
+
+PluginScriptToken* __fastcall ExpressionEvaluatorGetNthArg(ExpressionEvaluator *expEval, UInt32 argIdx)
+{
+	return (PluginScriptToken*)expEval->Arg(argIdx);
+}
 #endif
-}
-
-void __fastcall ExpressionEvaluatorDestroy(ExpressionEvaluator *eval)
-{
-#if RUNTIME
-	delete eval;
-#endif
-}
-
-UInt8 __fastcall ExpressionEvaluatorGetNumArgs(ExpressionEvaluator *eval)
-{
-	return eval->NumArgs();
-}
-
-bool __fastcall ExpressionEvaluatorExtractArgs(ExpressionEvaluator *eval)
-{
-#if RUNTIME
-	return eval->ExtractArgs();
-#else
-	return false;
-#endif
-}
-
-PluginScriptToken* __fastcall ExpressionEvaluatorGetNthArg(ExpressionEvaluator *eval, UInt32 idx)
-{
-	return (PluginScriptToken*)eval->Arg(idx);
-}
 
 // ExpressionParser
 

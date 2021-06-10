@@ -159,13 +159,19 @@ struct ParamInfo
 	DEFINE_COMMAND(name, description, refRequired, (sizeof(paramInfo) / sizeof(ParamInfo)), paramInfo)
 
 #define DEFINE_COMMAND_EXP(name, description, refRequired, paramInfo) \
-	DEFINE_CMD_ALT_EXP(name, , description, refRequired, paramInfo)	
+	DEFINE_CMD_ALT_EXP(name, , description, refRequired, paramInfo)
 
 #define DEFINE_COMMAND_PLUGIN(name, description, refRequired, numParams, paramInfo) \
 	DEFINE_CMD_FULL(name, , description, refRequired, numParams, paramInfo, NULL)
 
 #define DEFINE_COMMAND_ALT_PLUGIN(name, altName, description, refRequired, numParams, paramInfo) \
 	DEFINE_CMD_FULL(name, altName, description, refRequired, numParams, paramInfo, NULL)
+
+#define DEFINE_COMMAND_PLUGIN_EXP(name, description, refRequired, paramInfo) \
+	DEFINE_CMD_FULL(name, , description, refRequired, (sizeof(paramInfo) / sizeof(ParamInfo)), paramInfo, Cmd_Expression_Plugin_Parse)
+
+#define DEFINE_COMMAND_ALT_PLUGIN_EXP(name, altName, description, refRequired, paramInfo) \
+	DEFINE_CMD_FULL(name, altName, description, refRequired, (sizeof(paramInfo) / sizeof(ParamInfo)), paramInfo, Cmd_Expression_Plugin_Parse)
 
 // for commands which can be used as conditionals
 #define DEFINE_CMD_ALT_COND_ANY(name, altName, description, refRequired, paramInfo, parser) \
@@ -199,6 +205,7 @@ bool Cmd_Default_Execute(COMMAND_ARGS);
 
 typedef bool (* Cmd_Parse)(UInt32 numParams, ParamInfo * paramInfo, ScriptLineBuffer * lineBuf, ScriptBuffer * scriptBuf);
 bool Cmd_Default_Parse(UInt32 numParams, ParamInfo * paramInfo, ScriptLineBuffer * lineBuf, ScriptBuffer * scriptBuf);
+const Cmd_Parse Cmd_Expression_Plugin_Parse = (Cmd_Parse)0x08000000;
 
 typedef bool (* Cmd_Eval)(COMMAND_ARGS_EVAL);
 bool Cmd_Default_Eval(COMMAND_ARGS_EVAL);

@@ -719,79 +719,142 @@ typedef bool (* _NVSEPlugin_Load)(const NVSEInterface * nvse);
 
 class ExpressionEvaluator;
 struct PluginScriptToken;
+struct PluginTokenPair;
+struct PluginTokenSlice;
 
 struct ExpressionEvaluatorUtils
 {
+#if RUNTIME
 	ExpressionEvaluator*	(__stdcall *CreateExpressionEvaluator)(COMMAND_ARGS);
-	void					(__fastcall *DestroyExpressionEvaluator)(ExpressionEvaluator *eval);
-	bool					(__fastcall *ExtractArgsEval)(ExpressionEvaluator *eval);
-	UInt8					(__fastcall *GetNumArgs)(ExpressionEvaluator *eval);
-	PluginScriptToken*		(__fastcall *GetNthArg)(ExpressionEvaluator *eval, UInt32 idx);
+	void					(__fastcall *DestroyExpressionEvaluator)(ExpressionEvaluator *expEval);
+	bool					(__fastcall *ExtractArgsEval)(ExpressionEvaluator *expEval);
+	UInt8					(__fastcall *GetNumArgs)(ExpressionEvaluator *expEval);
+	PluginScriptToken*		(__fastcall *GetNthArg)(ExpressionEvaluator *expEval, UInt32 argIdx);
 
 	UInt8					(__fastcall *ScriptTokenGetType)(PluginScriptToken *scrToken);
-	double					(__fastcall *ScriptTokenGetNumber)(PluginScriptToken *scrToken);
-	TESForm*				(__fastcall *ScriptTokenGetForm)(PluginScriptToken *scrToken);
+	double					(__fastcall *ScriptTokenGetFloat)(PluginScriptToken *scrToken);
+	bool					(__fastcall *ScriptTokenGetBool)(PluginScriptToken *scrToken);
+	UInt32					(__fastcall *ScriptTokenGetFormID)(PluginScriptToken *scrToken);
+	TESForm*				(__fastcall *ScriptTokenGetTESForm)(PluginScriptToken *scrToken);
 	const char*				(__fastcall *ScriptTokenGetString)(PluginScriptToken *scrToken);
 	UInt32					(__fastcall *ScriptTokenGetArrayID)(PluginScriptToken *scrToken);
+	UInt32					(__fastcall *ScriptTokenGetActorValue)(PluginScriptToken *scrToken);
+	ScriptEventList::Var*	(__fastcall *ScriptTokenGetScriptVar)(PluginScriptToken *scrToken);
+	const PluginTokenPair*	(__fastcall *ScriptTokenGetPair)(PluginScriptToken *scrToken);
+	const PluginTokenSlice*	(__fastcall *ScriptTokenGetSlice)(PluginScriptToken *scrToken);
+#endif
 };
 
 extern ExpressionEvaluatorUtils s_expEvalUtils;
 
 class PluginExpressionEvaluator
 {
-	ExpressionEvaluator		*eval;
+	ExpressionEvaluator		*expEval;
 
 public:
+#if RUNTIME
 	PluginExpressionEvaluator(COMMAND_ARGS)
 	{
-		eval = s_expEvalUtils.CreateExpressionEvaluator(PASS_COMMAND_ARGS);
+		expEval = s_expEvalUtils.CreateExpressionEvaluator(PASS_COMMAND_ARGS);
 	}
 	~PluginExpressionEvaluator()
 	{
-		s_expEvalUtils.DestroyExpressionEvaluator(eval);
+		if (expEval) s_expEvalUtils.DestroyExpressionEvaluator(expEval);
 	}
 
 	bool ExtractArgs()
 	{
-		return s_expEvalUtils.ExtractArgsEval(eval);
+		return expEval && s_expEvalUtils.ExtractArgsEval(expEval);
 	}
 
 	UInt8 NumArgs()
 	{
-		return s_expEvalUtils.GetNumArgs(eval);
+		return s_expEvalUtils.GetNumArgs(expEval);
 	}
 
-	PluginScriptToken *Arg(UInt32 idx)
+	PluginScriptToken *GetNthArg(UInt32 argIdx)
 	{
-		return s_expEvalUtils.GetNthArg(eval, idx);
+		return s_expEvalUtils.GetNthArg(expEval, argIdx);
 	}
+#endif
 };
 
 struct PluginScriptToken
 {
+#if RUNTIME
 	UInt8 GetType()
 	{
 		return s_expEvalUtils.ScriptTokenGetType(this);
 	}
 
-	double GetNumber()
+	double GetFloat()
 	{
-		return s_expEvalUtils.ScriptTokenGetNumber(this);
+		return s_expEvalUtils.ScriptTokenGetFloat(this);
+	}
+
+	int GetInt()
+	{
+		return int(s_expEvalUtils.ScriptTokenGetFloat(this));
+	}
+
+	bool GetBool()
+	{
+		return s_expEvalUtils.ScriptTokenGetBool(this);
+	}
+
+	UInt32 GetFormID()
+	{
+		return s_expEvalUtils.ScriptTokenGetFormID(this);
 	}
 
 	TESForm *GetTESForm()
 	{
-		return s_expEvalUtils.ScriptTokenGetForm(this);
+		return s_expEvalUtils.ScriptTokenGetTESForm(this);
 	}
 
 	const char *GetString()
 	{
 		return s_expEvalUtils.ScriptTokenGetString(this);
 	}
-#if RUNTIME
+
 	NVSEArrayVarInterface::Array *GetArrayVar()
 	{
 		return (NVSEArrayVarInterface::Array*)s_expEvalUtils.ScriptTokenGetArrayID(this);
 	}
+
+	UInt32 GetActorValue()
+	{
+		return s_expEvalUtils.ScriptTokenGetActorValue(this);
+	}
+
+	ScriptEventList::Var *GetScriptVar()
+	{
+		return s_expEvalUtils.ScriptTokenGetScriptVar(this);
+	}
+
+	const PluginTokenPair *GetPair()
+	{
+		return s_expEvalUtils.ScriptTokenGetPair(this);
+	}
+
+	const PluginTokenSlice *GetSlice()
+	{
+		return s_expEvalUtils.ScriptTokenGetSlice(this);
+	}
 #endif
+};
+
+struct PluginTokenPair
+{
+	PluginScriptToken	*left;
+	PluginScriptToken	*right;
+};
+
+struct PluginTokenSlice
+{
+	bool			bIsString;
+	double			m_upper;
+	double			m_lower;
+	std::string		m_lowerStr;
+	std::string		m_upperStr;
 };
