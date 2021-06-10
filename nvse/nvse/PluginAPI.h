@@ -507,6 +507,7 @@ struct NVSEDataInterface
 		kNVSEData_ArrayVarMapDeleteBySelf,
 		kNVSEData_StringVarMapDeleteBySelf,
 		kNVSEData_LambdaDeleteAllForScript,
+		kNVSEData_InventoryReferenceCreateEntry,
 		kNVSEData_FuncMax,
 	};
 	void * (* GetFunc)(UInt32 funcID);

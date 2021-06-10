@@ -285,7 +285,7 @@ ExtraContainerChanges::EntryData *CreateTempEntry(TESForm *itemForm, SInt32 coun
 	return entry;
 }
 
-TESObjectREFR* CreateInventoryRefEntry(TESObjectREFR *container, TESForm *itemForm, SInt32 countDelta, ExtraDataList *xData)
+TESObjectREFR* __stdcall CreateInventoryRefEntry(TESObjectREFR *container, TESForm *itemForm, SInt32 countDelta, ExtraDataList *xData)
 {
 	ExtraContainerChanges::EntryData *entry = CreateTempEntry(itemForm, countDelta, xData);
 	InventoryReference *invRef = CreateInventoryRef(container, InventoryReference::Data(itemForm, entry, xData), false);
