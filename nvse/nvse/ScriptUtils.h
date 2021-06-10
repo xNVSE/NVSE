@@ -191,11 +191,11 @@ public:
 
 bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem, ExpressionEvaluator* context);
 
-ExpressionEvaluator* __stdcall ExpressionEvaluatorCreate(COMMAND_ARGS);
-void __fastcall ExpressionEvaluatorDestroy(ExpressionEvaluator *expEval);
-bool __fastcall ExpressionEvaluatorExtractArgs(ExpressionEvaluator *expEval);
-UInt8 __fastcall ExpressionEvaluatorGetNumArgs(ExpressionEvaluator *expEval);
-PluginScriptToken* __fastcall ExpressionEvaluatorGetNthArg(ExpressionEvaluator *expEval, UInt32 argIdx);
+void* __stdcall ExpressionEvaluatorCreate(COMMAND_ARGS);
+void __fastcall ExpressionEvaluatorDestroy(void *expEval);
+bool __fastcall ExpressionEvaluatorExtractArgs(void *expEval);
+UInt8 __fastcall ExpressionEvaluatorGetNumArgs(void *expEval);
+PluginScriptToken* __fastcall ExpressionEvaluatorGetNthArg(void *expEval, UInt32 argIdx);
 
 enum ParamParenthResult : UInt8
 {
