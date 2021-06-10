@@ -386,9 +386,9 @@ bool Cmd_IsControlPressed_Eval(COMMAND_ARGS_EVAL)
 bool Cmd_IsControlPressed_Execute(COMMAND_ARGS)
 {
 	*result = 0;
-	UInt32 ctrl = 0;
+	UInt32 ctrl, flags = 1;
 
-	if(ExtractArgs(EXTRACT_ARGS, &ctrl))
+	if (ExtractArgs(EXTRACT_ARGS, &ctrl, &flags))
 		return Cmd_IsControlPressed_Eval(thisObj, (void*)ctrl, 0, result);
 
 	return true;
