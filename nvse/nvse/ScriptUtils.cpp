@@ -1721,7 +1721,7 @@ void ExpressionEvaluator::PrintStackTrace() {
 #if RUNTIME
 thread_local SmallObjectsAllocator::FastAllocator<ExpressionEvaluator, 4> g_pluginExpEvalAllocator;
 
-ExpressionEvaluator* __stdcall ExpressionEvaluatorCreate(COMMAND_ARGS)
+void* __stdcall ExpressionEvaluatorCreate(COMMAND_ARGS)
 {
 	ExpressionEvaluator *expEval = g_pluginExpEvalAllocator.Allocate();
 	if (expEval)
@@ -1729,25 +1729,25 @@ ExpressionEvaluator* __stdcall ExpressionEvaluatorCreate(COMMAND_ARGS)
 	return expEval;
 }
 
-void __fastcall ExpressionEvaluatorDestroy(ExpressionEvaluator *expEval)
+void __fastcall ExpressionEvaluatorDestroy(void *expEval)
 {
-	expEval->~ExpressionEvaluator();
+	reinterpret_cast<ExpressionEvaluator*>(expEval)->~ExpressionEvaluator();
 	g_pluginExpEvalAllocator.Free(expEval);
 }
 
-bool __fastcall ExpressionEvaluatorExtractArgs(ExpressionEvaluator *expEval)
+bool __fastcall ExpressionEvaluatorExtractArgs(void *expEval)
 {
-	return expEval->ExtractArgs();
+	return reinterpret_cast<ExpressionEvaluator*>(expEval)->ExtractArgs();
 }
 
-UInt8 __fastcall ExpressionEvaluatorGetNumArgs(ExpressionEvaluator *expEval)
+UInt8 __fastcall ExpressionEvaluatorGetNumArgs(void *expEval)
 {
-	return expEval->NumArgs();
+	return reinterpret_cast<ExpressionEvaluator*>(expEval)->NumArgs();
 }
 
-PluginScriptToken* __fastcall ExpressionEvaluatorGetNthArg(ExpressionEvaluator *expEval, UInt32 argIdx)
+PluginScriptToken* __fastcall ExpressionEvaluatorGetNthArg(void *expEval, UInt32 argIdx)
 {
-	return (PluginScriptToken*)expEval->Arg(argIdx);
+	return reinterpret_cast<PluginScriptToken*>(reinterpret_cast<ExpressionEvaluator*>(expEval)->Arg(argIdx));
 }
 #endif
 
