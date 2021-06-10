@@ -717,7 +717,6 @@ typedef bool (* _NVSEPlugin_Load)(const NVSEInterface * nvse);
  *	
  ******************************************************************************/
 
-class ExpressionEvaluator;
 struct PluginScriptToken;
 struct PluginTokenPair;
 struct PluginTokenSlice;
