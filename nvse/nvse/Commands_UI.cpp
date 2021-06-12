@@ -8,6 +8,7 @@
 #include "containers.h"
 #include "GameUI.h"
 #include "GameAPI.h"
+#include "common/ICriticalSection.h"
 
 #define the_VATScamStruct		0x011F2250
 #define the_VATSunclick			0x009C88A0
@@ -27,9 +28,11 @@ enum eUICmdAction {
 };
 
 static UnorderedMap<const char*, Tile::Value*> s_cachedTileValues;
+ICriticalSection g_tileCS;
 
 Tile::Value* GetCachedComponentValue(const char* component)
 {
+	ScopedLock lock(g_tileCS);
 	if (g_tilesDestroyed)
 	{
 		g_tilesDestroyed = false;
@@ -462,6 +465,7 @@ bool Cmd_ShowLevelUpMenu_Execute (COMMAND_ARGS)
 
 Tile::Value* GetCachedComponentValueAlt(const char* component)
 {
+	ScopedLock lock(g_tileCS);
 	if (g_tilesDestroyed)
 	{
 		g_tilesDestroyed = false;
