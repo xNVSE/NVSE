@@ -1808,6 +1808,32 @@ ScriptEventList* EventListFromForm(TESForm* form)
 	return eventList;
 }
 
+Script* GetParentScript(Script* script, ScriptEventList* eventList, UInt16 refIdx)
+{
+	if (!refIdx)
+		return nullptr;
+	auto* refVar = script->GetRefFromRefList(refIdx);
+	if (!refVar)
+		return nullptr;	
+	refVar->Resolve(eventList);
+	if (!refVar->form)
+		return nullptr;
+	auto* parentEventList = EventListFromForm(refVar->form);
+	if (!parentEventList)
+		return nullptr;
+	return parentEventList->m_script;
+}
+
+const char* GetVariableName(ScriptEventList::Var* var, Script* script, ScriptEventList* eventList, UInt16 refIdx=0)
+{
+	if (auto* parent = GetParentScript(script, eventList, refIdx))
+		script = parent;
+	auto* result = script->varList.FindFirst([&](VariableInfo* info) {return info->idx == var->id; });
+	if (!result)
+		return "";
+	return result->name.CStr();
+}
+
 char* ConvertLiteralPercents(char *srcPtr)
 {
 	char *endPtr = srcPtr + StrLen(srcPtr);

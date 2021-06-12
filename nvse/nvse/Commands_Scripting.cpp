@@ -622,6 +622,40 @@ bool Cmd_GetAllModLocalData_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_PrintVar_Execute(COMMAND_ARGS)
+{
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (!eval.ExtractArgs() || !eval.Arg(0) || !eval.Arg(0)->GetVar())
+		return true;
+	auto* token = eval.Arg(0);
+	std::string variableValue;
+	switch (token->Type())
+	{
+	case kTokenType_NumericVar:
+		variableValue = FormatString("%g", token->GetNumber());
+		break;
+	case kTokenType_StringVar:
+		variableValue = FormatString(R"("%s")", token->GetString());
+		break;
+	case kTokenType_ArrayVar:
+		if (auto* arrayVar = token->GetArrayVar())
+			variableValue = arrayVar->GetStringRepresentation();
+		else
+			variableValue = "uninitialized or invalid array";
+		break;
+	case kTokenType_RefVar:
+		if (auto* form = token->GetTESForm())
+			variableValue = form->GetStringRepresentation();
+		else
+			variableValue = "invalid form";
+	default:
+		break;
+	}
+	const auto toPrint = std::string(GetVariableName(token->GetVar(), scriptObj, eventList, token->refIdx)) + ": " + variableValue;
+	Console_Print("%s", toPrint.c_str());
+	return true;
+}
+
 bool Cmd_Internal_PushExecutionContext_Execute(COMMAND_ARGS)
 {
 	ExtractArgsOverride::PushContext(thisObj, containingObj, (UInt8*)scriptData, opcodeOffsetPtr);

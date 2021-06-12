@@ -3,6 +3,7 @@
 #include "CommandTable.h"
 #include "ParamInfos.h"
 #include "GameAPI.h"
+#include "ScriptUtils.h"
 
 static const UInt32	kMaxSavedIPStack = 20;	// twice the supposed limit
 
@@ -53,4 +54,9 @@ extern CommandInfo kCommandInfo_GetAllModLocalData;
 extern CommandInfo kCommandInfo_Internal_PushExecutionContext;
 extern CommandInfo kCommandInfo_Internal_PopExecutionContext;
 
-extern CommandInfo kCommandInfo_CallAfter;
+static ParamInfo kParams_OneNVSEVariable[] =
+{
+	{"variable", kNVSEParamType_Variable, 0}
+};
+
+DEFINE_CMD_ALT_EXP(PrintVar, PrintV, , false, kParams_OneNVSEVariable);

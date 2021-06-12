@@ -204,6 +204,10 @@ struct ScriptEventList
 
 ScriptEventList* EventListFromForm(TESForm* form);
 
+Script* GetParentScript(Script* script, ScriptEventList* eventList, UInt16 refIdx);
+
+const char* GetVariableName(ScriptEventList::Var* var, Script* script, ScriptEventList* eventList, UInt16 refIdx);
+
 typedef bool (* _MarkBaseExtraListScriptEvent)(TESForm* target, BaseExtraList* extraList, UInt32 eventMask);
 extern const _MarkBaseExtraListScriptEvent MarkBaseExtraListScriptEvent;
 

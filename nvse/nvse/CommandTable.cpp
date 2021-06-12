@@ -1621,6 +1621,9 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(CallWhile);
 	ADD_CMD(CallForSeconds);
 	ADD_CMD(ar_DumpF);
+
+	// 6.1 beta 03
+	ADD_CMD(PrintVar);
 }
 
 namespace PluginAPI
