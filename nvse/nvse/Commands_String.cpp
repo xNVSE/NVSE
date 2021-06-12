@@ -769,27 +769,41 @@ bool Cmd_SetNthEffectItemScriptNameEX_Execute(COMMAND_ARGS)
 
 #endif
 
+ActorValueInfo **g_actorValueInfoArray = (ActorValueInfo**)0x11D61C8;
+
 bool Cmd_ActorValueToString_Execute(COMMAND_ARGS)
 {
-	UInt32 av = eActorVal_FalloutMax;
-	std::string avStr = "";
-
-	if (ExtractArgs(EXTRACT_ARGS, &av) && av < eActorVal_FalloutMax)
-		avStr = GetActorValueString(av);
-
-	AssignToStringVar(PASS_COMMAND_ARGS, avStr.c_str());
+	const char *resStr = NULL;
+	UInt32 avCode;
+	if (ExtractArgs(EXTRACT_ARGS, &avCode) && (avCode < eActorVal_FalloutMax))
+		resStr = g_actorValueInfoArray[avCode]->infoName;
+	if (!resStr) resStr = "Unknown";
+	AssignToStringVar(PASS_COMMAND_ARGS, resStr);
 	return true;
 }
 
 bool Cmd_ActorValueToStringC_Execute(COMMAND_ARGS)
 {
-	UInt32 av = eActorVal_FalloutMax;
-	std::string avStr = "";
-
-	if (ExtractArgs(EXTRACT_ARGS, &av) && av < eActorVal_FalloutMax)
-		avStr = GetActorValueString(av);
-
-	AssignToStringVar(PASS_COMMAND_ARGS, avStr.c_str());
+	const char *resStr = NULL;
+	UInt32 avCode, nameType = 0;
+	if (ExtractArgs(EXTRACT_ARGS, &avCode, &nameType) && (avCode < eActorVal_FalloutMax))
+	{
+		ActorValueInfo *avInfo = g_actorValueInfoArray[avCode];
+		switch (nameType)
+		{
+			case 0:
+				resStr = avInfo->infoName;
+				break;
+			case 1:
+				resStr = avInfo->fullName.name.m_data;
+				break;
+			case 2:
+				resStr = avInfo->avName.m_data;
+				break;
+		}
+	}
+	if (!resStr) resStr = "Unknown";
+	AssignToStringVar(PASS_COMMAND_ARGS, resStr);
 	return true;
 }
 

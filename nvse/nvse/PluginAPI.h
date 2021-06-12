@@ -507,6 +507,7 @@ struct NVSEDataInterface
 		kNVSEData_ArrayVarMapDeleteBySelf,
 		kNVSEData_StringVarMapDeleteBySelf,
 		kNVSEData_LambdaDeleteAllForScript,
+		kNVSEData_InventoryReferenceCreateEntry,
 		kNVSEData_FuncMax,
 	};
 	void * (* GetFunc)(UInt32 funcID);
@@ -717,7 +718,6 @@ typedef bool (* _NVSEPlugin_Load)(const NVSEInterface * nvse);
  *	
  ******************************************************************************/
 
-class ExpressionEvaluator;
 struct PluginScriptToken;
 struct PluginTokenPair;
 struct PluginTokenSlice;
@@ -725,11 +725,11 @@ struct PluginTokenSlice;
 struct ExpressionEvaluatorUtils
 {
 #if RUNTIME
-	ExpressionEvaluator*	(__stdcall *CreateExpressionEvaluator)(COMMAND_ARGS);
-	void					(__fastcall *DestroyExpressionEvaluator)(ExpressionEvaluator *expEval);
-	bool					(__fastcall *ExtractArgsEval)(ExpressionEvaluator *expEval);
-	UInt8					(__fastcall *GetNumArgs)(ExpressionEvaluator *expEval);
-	PluginScriptToken*		(__fastcall *GetNthArg)(ExpressionEvaluator *expEval, UInt32 argIdx);
+	void*					(__stdcall *CreateExpressionEvaluator)(COMMAND_ARGS);
+	void					(__fastcall *DestroyExpressionEvaluator)(void *expEval);
+	bool					(__fastcall *ExtractArgsEval)(void *expEval);
+	UInt8					(__fastcall *GetNumArgs)(void *expEval);
+	PluginScriptToken*		(__fastcall *GetNthArg)(void *expEval, UInt32 argIdx);
 
 	UInt8					(__fastcall *ScriptTokenGetType)(PluginScriptToken *scrToken);
 	double					(__fastcall *ScriptTokenGetFloat)(PluginScriptToken *scrToken);
@@ -749,7 +749,7 @@ extern ExpressionEvaluatorUtils s_expEvalUtils;
 
 class PluginExpressionEvaluator
 {
-	ExpressionEvaluator		*expEval;
+	void		*expEval;
 
 public:
 #if RUNTIME

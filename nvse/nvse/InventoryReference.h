@@ -80,4 +80,4 @@ extern InventoryReferenceMap s_invRefMap;
 
 InventoryReference* CreateInventoryRef(TESObjectREFR* container, const InventoryReference::Data &data, bool bValidate);
 ExtraContainerChanges::EntryData *CreateTempEntry(TESForm *itemForm, SInt32 countDelta, ExtraDataList *xData);
-TESObjectREFR* CreateInventoryRefEntry(TESObjectREFR *container, TESForm *itemForm, SInt32 countDelta, ExtraDataList *xData);
+TESObjectREFR* __stdcall CreateInventoryRefEntry(TESObjectREFR *container, TESForm *itemForm, SInt32 countDelta, ExtraDataList *xData);

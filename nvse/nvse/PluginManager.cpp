@@ -905,6 +905,7 @@ void * PluginManager::GetFunc(UInt32 funcID)
 	case NVSEDataInterface::kNVSEData_ArrayVarMapDeleteBySelf: result = (void*)&ArrayVarMap::DeleteBySelf; break;
 	case NVSEDataInterface::kNVSEData_StringVarMapDeleteBySelf: result = (void*)&StringVarMap::DeleteBySelf; break;
 	case NVSEDataInterface::kNVSEData_LambdaDeleteAllForScript: result = (void*)&LambdaManager::DeleteAllForParentScript; break;
+	case NVSEDataInterface::kNVSEData_InventoryReferenceCreateEntry: result = (void*)&CreateInventoryRefEntry; break;
 	}
 	return result;
 }

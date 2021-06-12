@@ -239,7 +239,7 @@ DEFINE_COMMAND_EXP(sv_ToLower, converts all characters in the string to lowercas
 DEFINE_COMMAND_EXP(sv_ToUpper, converts all characters in the string to uppercase, 0, kParams_OneNVSEString);
 
 DEFINE_CMD_ALT(ActorValueToString, AVString, returns the localized string corresponding to an actor value, 0, 1, kParams_OneActorValue);
-DEFINE_CMD_ALT(ActorValueToStringC, AVStringC, returns the localized string corresponding to an actor value code, 0, 1, kParams_OneInt);
+DEFINE_CMD_ALT(ActorValueToStringC, AVStringC, returns the localized string corresponding to an actor value code, 0, 2, kParams_OneInt_OneOptionalInt);
 
 DEFINE_COMMAND(GetScopeModelPath, "Get the path to the scope model of a weapon", 0, 1, kParams_OneOptionalObjectID)
 DEFINE_COMMAND(SetScopeModelPath, "Set the path to the scope model of a weapon", 0, 2, kParams_OneString_OneOptionalObjectID)
