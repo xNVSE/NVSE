@@ -54,11 +54,12 @@ class ArrayIterLoop : public ForEachLoop
 	ArrayID					m_iterID;
 	ArrayKey				m_curKey;
 	ScriptEventList::Var	*m_iterVar;
+	UInt8					m_modIndex;
 
 	void UpdateIterator(const ArrayElement* elem);
 public:
 	ArrayIterLoop(const ForEachContext* context, UInt8 modIndex);
-	virtual ~ArrayIterLoop();
+	~ArrayIterLoop() override;
 
 	virtual bool Update(COMMAND_ARGS);
 	bool IsEmpty()

@@ -17,7 +17,7 @@ LoopManager* LoopManager::GetSingleton()
 	return localData.loopManager;
 }
 
-ArrayIterLoop::ArrayIterLoop(const ForEachContext* context, UInt8 modIndex)
+ArrayIterLoop::ArrayIterLoop(const ForEachContext* context, UInt8 modIndex) : m_modIndex(modIndex)
 {
 	m_srcID = context->sourceID;
 	m_iterID = context->iteratorID;
@@ -25,7 +25,7 @@ ArrayIterLoop::ArrayIterLoop(const ForEachContext* context, UInt8 modIndex)
 
 	// clear the iterator var before initializing it
 	g_ArrayMap.RemoveReference(&m_iterVar->data, modIndex);
-	g_ArrayMap.AddReference(&m_iterVar->data, context->iteratorID, 0xFF);
+	g_ArrayMap.AddReference(&m_iterVar->data, context->iteratorID, modIndex);
 
 	ArrayVar *arr = g_ArrayMap.Get(m_srcID);
 	if (arr)
@@ -78,7 +78,7 @@ bool ArrayIterLoop::Update(COMMAND_ARGS)
 ArrayIterLoop::~ArrayIterLoop()
 {
 	//g_ArrayMap.RemoveReference(&m_iterID, 0xFF);
-	g_ArrayMap.RemoveReference(&m_iterVar->data, 0xFF);
+	g_ArrayMap.RemoveReference(&m_iterVar->data, m_modIndex);
 }
 
 StringIterLoop::StringIterLoop(const ForEachContext* context)

@@ -160,7 +160,7 @@ void Hook_Script_Init()
 	// Never let commands return false and stop scripts
 	//SafeWriteBuf(0x5ACBC0, "\x90\x90", 2);
 #endif
-	UInt32 bAllowScriptsToCrash = 0;
+	UInt32 bAllowScriptsToCrash = 1;
 	GetNVSEConfigOption_UInt32("RELEASE", "bAllowScriptsToCrash", &bAllowScriptsToCrash);
 	// Prevent scripts from stopping execution if a command returns false or there's a missing reference.
 	if (!bAllowScriptsToCrash)

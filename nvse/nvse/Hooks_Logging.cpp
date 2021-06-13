@@ -44,7 +44,8 @@ static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
 		vsnprintf(buf, sizeof buf, fmt, args);
 	else
 		vsnprintf(buf, sizeof buf, fmt_alt, args);
-	if (*(UInt32*)buf == 'IRCS')
+	auto intRep = *(UInt32*)buf;
+	if (intRep == 'IRCS' || intRep == 'ssiM' || intRep == 'liaF' || intRep == 'avnI')
 	{
 		int breakpointHere = 0;
 		Console_Print("%s", buf);
