@@ -2,6 +2,7 @@
 
 #include "Utilities.h"
 #include "GameForms.h"
+#include "common/ICriticalSection.h"
 
 struct ScriptEventList;
 struct ScriptBuffer;
@@ -14,7 +15,7 @@ static const UInt32 kScript_ExecuteFnAddr = 0x005AC1E0;
 static const UInt32 kScript_SetTextFnAddr = 0x005C27B0;
 #endif
 
-extern CRITICAL_SECTION	csGameScript;				// trying to avoid what looks like concurrency issues
+extern ICriticalSection	csGameScript;				// trying to avoid what looks like concurrency issues
 extern const char* g_variableTypeNames[];
 // 54 / 48
 class Script : public TESForm

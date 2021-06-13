@@ -7,6 +7,7 @@
 #include "GameTiles.h"
 #include "EventManager.h"
 #include "ArrayVar.h"
+#include "common/ICriticalSection.h"
 
 // This is almost finished but should NOT be used yet :)
 
@@ -53,7 +54,7 @@ static __declspec(naked) int TextHook()
 
 static char * lastSpeaker = NULL;
 static UInt32 enableAllTileTextHook = 0;
-static CRITICAL_SECTION	csTileText;				// trying to avoid what looks like another concurrency issues
+static ICriticalSection	csTileText;				// trying to avoid what looks like another concurrency issues
 
 char * doTileTextEvent(ArrayID argsArrayId, const char * eventName, char * text, char * tileName)
 {
@@ -76,7 +77,7 @@ char * doTileTextEvent(ArrayID argsArrayId, const char * eventName, char * text,
 
 static char* __stdcall doTileTextHook(char* text, TileText* tile)
 {
-	::EnterCriticalSection(&csTileText);
+	csTileText.Enter();
 	char* result = text;
 
 	char tileName[4096] = "";
@@ -137,7 +138,7 @@ static char* __stdcall doTileTextHook(char* text, TileText* tile)
 		gLog.Outdent();
 	}
 
-	::LeaveCriticalSection(&csTileText);
+	csTileText.Leave();
 	return result;
 
 }
@@ -171,7 +172,6 @@ void Hook_Dialog_Init(void)
 	}
 	if(GetNVSEConfigOption_UInt32("Text", "EnableTileTextHook", &enableTileTextHook) && enableTileTextHook)
 	{
-		::InitializeCriticalSection(&csTileText);
 		WriteRelJump(kHookTileTextStart, (UInt32)TileTextHook);
 		_MESSAGE("TileText hooked");
 		if(GetNVSEConfigOption_UInt32("Text", "EnableAllTileTextHook", &enableAllTileTextHook) && enableAllTileTextHook)
