@@ -152,6 +152,9 @@ void Hook_Script_Init()
 	// hook ExtractArgs() to handle commands normally compiled with Cmd_Default_Parse which were instead compiled with Cmd_Expression_Parse
 	ExtractArgsOverride::Init_Hooks();
 
+	// Following report of functions failing to be called, with at least one reported case of issue with threading: in case it is needed.
+	::InitializeCriticalSection(&csGameScript);
+
 #if USE_EXTRACT_ARGS_EX
 	WriteRelJump(0x5ACCB0, UInt32(OverrideWithExtractArgsEx));
 	// Never let commands return false and stop scripts

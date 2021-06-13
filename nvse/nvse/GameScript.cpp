@@ -137,18 +137,18 @@ void Script::RefVariable::Resolve(ScriptEventList * eventList)
 	}
 }
 
-ICriticalSection	csGameScript;				// trying to avoid what looks like concurrency issues
+CRITICAL_SECTION	csGameScript;				// trying to avoid what looks like concurrency issues
 
 ScriptEventList* Script::CreateEventList(void)
 {
 	ScriptEventList* result = NULL;
-	csGameScript.Enter();
+	::EnterCriticalSection(&csGameScript);
 	try
 	{
 		result = (ScriptEventList*)ThisStdCall(0x005ABF60, this);	// 4th sub above Script::Execute (was 1st above in Oblivion) Execute is the second to last call in Run
 	} catch(...) {}
 
-	csGameScript.Leave();
+	::LeaveCriticalSection(&csGameScript);
 	return result;
 }
 
