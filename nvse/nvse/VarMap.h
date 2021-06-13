@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Serialization.h"
+#include "common/ICriticalSection.h"
 
 // simple template class used to support NVSE custom data types (strings, arrays, etc)
 
@@ -72,7 +73,7 @@ protected:
 	_VarIDs				tempIDs;		// set of IDs of unreferenced vars, makes for easy cleanup
 	_VarIDs				availableIDs;	// IDs < greatest used ID available as IDs for new vars
 	VarCache			cache;
-	CRITICAL_SECTION	cs;				// trying to avoid what looks like concurrency issues
+	ICriticalSection	cs;				// trying to avoid what looks like concurrency issues
 
 
 	void SetIDAvailable(UInt32 id)
@@ -83,26 +84,24 @@ protected:
 	UInt32 GetUnusedID()
 	{
 		UInt32 id = 1;
-		::EnterCriticalSection(&cs);
+		cs.Enter();
 
 		if (!availableIDs.Empty())
 			id = availableIDs.PopFirst();
 		else if (!usedIDs.Empty())
 			id = usedIDs.LastKey() + 1;
-		::LeaveCriticalSection(&cs);
+		cs.Leave();
 		return id;
 	}
 
 public:
 	VarMap()
 	{
-		::InitializeCriticalSection(&cs);
 	}
 
 	~VarMap()
 	{
 		Reset();
-		::DeleteCriticalSection(&cs);
 	}
 
 	Var* Get(UInt32 varID)
@@ -126,22 +125,22 @@ public:
 	template <typename ...Args>
 	Var* Insert(UInt32 varID, Args&& ...args)
 	{
-		::EnterCriticalSection(&cs);
+		cs.Enter();
 		usedIDs.Insert(varID);
 		Var* var = vars.Emplace(varID, std::forward<Args>(args)...);
-		::LeaveCriticalSection(&cs);
+		cs.Leave();
 		return var;
 	}
 
 	void Delete(UInt32 varID)
 	{
-		::EnterCriticalSection(&cs);
+		cs.Enter();
 		cache.Remove(varID);
 		vars.Erase(varID);
 		usedIDs.Erase(varID);
 		tempIDs.Erase(varID);
 		SetIDAvailable(varID);
-		::LeaveCriticalSection(&cs);
+		cs.Leave();
 	}
 
 	static void DeleteBySelf(VarMap* self, UInt32 varID)
