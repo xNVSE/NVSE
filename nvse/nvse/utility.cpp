@@ -2,6 +2,46 @@
 
 memcpy_t _memcpy = memcpy, _memmove = memmove;
 
+__declspec(naked) PrimitiveCS *PrimitiveCS::Enter()
+{
+	__asm
+	{
+		push	ebx
+		mov		ebx, ecx
+		call	GetCurrentThreadId
+		cmp		[ebx], eax
+		jnz		doSpin
+		mov		eax, ebx
+		pop		ebx
+		retn
+		ALIGN 16
+	doSpin:
+		push	esi
+		push	edi
+		mov		esi, eax
+		mov		edi, 0x2710
+		ALIGN 16
+	spinHead:
+		xor		eax, eax
+		lock cmpxchg [ebx], esi
+		test	eax, eax
+		jz		done
+		xor		edx, edx
+		dec		edi
+		sets	dl
+		push	edx
+		call	Sleep
+		jmp		spinHead
+		ALIGN 16
+	done:
+		mov		eax, ebx
+		pop		edi
+		pop		esi
+		pop		ebx
+		retn
+	}
+}
+
 __declspec(naked) TESForm* __stdcall LookupFormByRefID(UInt32 refID)
 {
 	__asm

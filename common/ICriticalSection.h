@@ -51,20 +51,13 @@ public:
 			enterCount++;
 			return;
 		}
-		DWORD fastIdx = 10000;
+		long fastIdx = 10000;
 		while (InterlockedCompareExchange(&owningThread, currThread, 0))
-		{
-			if (fastIdx)
-			{
-				fastIdx--;
-				Sleep(0);
-			}
-			else Sleep(1);
-		}
+			Sleep(--fastIdx < 0);
 		enterCount = 1;
 	}
 
-	void Leave()
+	__forceinline void Leave()
 	{
 		if (!--enterCount)
 			owningThread = 0;

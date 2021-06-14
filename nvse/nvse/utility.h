@@ -68,6 +68,26 @@ template <typename T> __forceinline void RawSwap(const T &lhs, const T &rhs)
 #define NOP_0xE NOP_0x7 NOP_0x7
 #define NOP_0xF NOP_0x7 NOP_0x8
 
+class PrimitiveCS
+{
+	DWORD		m_owningThread;
+
+public:
+	PrimitiveCS() : m_owningThread(0) {}
+
+	PrimitiveCS *Enter();
+	__forceinline void Leave() {m_owningThread = 0;}
+};
+
+class PrimitiveScopedLock
+{
+	PrimitiveCS		*m_cs;
+
+public:
+	PrimitiveScopedLock(PrimitiveCS &cs) : m_cs(&cs) {cs.Enter();}
+	~PrimitiveScopedLock() {m_cs->Leave();}
+};
+
 class TESForm;
 TESForm* __stdcall LookupFormByRefID(UInt32 refID);
 

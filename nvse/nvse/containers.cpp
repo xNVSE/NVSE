@@ -1,10 +1,22 @@
 #include "nvse/containers.h"
 #include "utility.h"
 
-#define MAX_CACHED_BLOCK_SIZE 0x400
-#define MEMORY_POOL_SIZE 0x1000
+#define MAX_BLOCK_SIZE		0x400
+#define MEMORY_POOL_SIZE	0x1000
 
-alignas(16) void *s_availableCachedBlocks[(MAX_CACHED_BLOCK_SIZE >> 4) + 1] = {NULL};
+struct MemoryPool
+{
+	struct BlockNode
+	{
+		BlockNode	*m_next;
+		//	Data
+	};
+
+	PrimitiveCS		m_cs;
+	BlockNode		*m_pools[MAX_BLOCK_SIZE >> 4] = {nullptr};
+};
+
+alignas(16) MemoryPool s_memoryPool;
 
 #if !_DEBUG
 __declspec(naked) void* __fastcall Pool_Alloc(UInt32 size)
@@ -15,27 +27,24 @@ __declspec(naked) void* __fastcall Pool_Alloc(UInt32 size)
 		jbe		minSize
 		test	cl, 0xF
 		jz		isAligned
-		and		cl, 0xF0
+		and		ecx, 0xFFFFFFF0
 		add		ecx, 0x10
 	isAligned:
-		cmp		ecx, MAX_CACHED_BLOCK_SIZE
+		cmp		ecx, MAX_BLOCK_SIZE
 		jbe		doCache
 		push	ecx
 		call	_malloc_base
 		pop		ecx
 		retn
-		NOP_0x6
 	minSize:
 		mov		ecx, 0x10
 	doCache:
-		mov		edx, offset s_availableCachedBlocks
-	spinHead:
-		xor		eax, eax
-		lock cmpxchg [edx], edx
-		test	eax, eax
-		jnz		spinHead
-		mov		eax, ecx
-		shr		eax, 2
+		push	ecx
+		mov		ecx, offset s_memoryPool.m_cs
+		call	PrimitiveCS::Enter
+		pop		ecx
+		mov		edx, ecx
+		shr		edx, 2
 		add		edx, eax
 		mov		eax, [edx]
 		test	eax, eax
@@ -43,9 +52,9 @@ __declspec(naked) void* __fastcall Pool_Alloc(UInt32 size)
 		mov		ecx, [eax]
 		mov		[edx], ecx
 		xor		edx, edx
-		mov		s_availableCachedBlocks, edx
+		mov		s_memoryPool.m_cs.m_owningThread, edx
 		retn
-		nop
+		ALIGN 16
 	allocPool:
 		push	esi
 		mov		esi, ecx
@@ -67,6 +76,7 @@ __declspec(naked) void* __fastcall Pool_Alloc(UInt32 size)
 		and		al, 0xF0
 		mov		[edx], eax
 		lea		edx, [eax+esi]
+		ALIGN 16
 	linkHead:
 		mov		[eax], edx
 		mov		eax, edx
@@ -75,7 +85,7 @@ __declspec(naked) void* __fastcall Pool_Alloc(UInt32 size)
 		jnz		linkHead
 		mov		[eax], ecx
 		mov		eax, edx
-		mov		s_availableCachedBlocks, ecx
+		mov		s_memoryPool.m_cs.m_owningThread, ecx
 		pop		esi
 		retn
 	}
@@ -89,33 +99,31 @@ __declspec(naked) void __fastcall Pool_Free(void *pBlock, UInt32 size)
 		jz		nullPtr
 		test	dl, 0xF
 		jz		isAligned
-		and		dl, 0xF0
+		and		edx, 0xFFFFFFF0
 		add		edx, 0x10
 		ALIGN 16
 	isAligned:
-		cmp		edx, MAX_CACHED_BLOCK_SIZE
-		jbe		doCache
-		push	ecx
-		call	_free_base
-		pop		ecx
-	nullPtr:
-		retn
-		NOP_0xA
-	doCache:
+		cmp		edx, MAX_BLOCK_SIZE
+		ja		doFree
 		push	edx
-		mov		edx, offset s_availableCachedBlocks
-	spinHead:
-		xor		eax, eax
-		lock cmpxchg [edx], edx
-		test	eax, eax
-		jnz		spinHead
-		pop		eax
-		shr		eax, 2
+		push	ecx
+		mov		ecx, offset s_memoryPool.m_cs
+		call	PrimitiveCS::Enter
+		pop		ecx
+		pop		edx
+		shr		edx, 2
 		add		edx, eax
 		mov		eax, [edx]
 		mov		[ecx], eax
 		mov		[edx], ecx
-		mov		s_availableCachedBlocks, 0
+		mov		s_memoryPool.m_cs.m_owningThread, 0
+	nullPtr:
+		retn
+		ALIGN 16
+	doFree:
+		push	ecx
+		call	_free_base
+		pop		ecx
 		retn
 	}
 }
@@ -127,22 +135,11 @@ __declspec(naked) void* __fastcall Pool_Realloc(void *pBlock, UInt32 curSize, UI
 		mov		eax, ecx
 		mov		ecx, [esp+4]
 		test	eax, eax
-		jnz		notNull
-		call	Pool_Alloc
-		retn	4
-	notNull:
+		jz		nullPtr
 		cmp		ecx, edx
 		jbe		done
-		cmp		edx, MAX_CACHED_BLOCK_SIZE
-		jbe		doCache
-		push	ecx
-		push	eax
-		call	_realloc_base
-		add		esp, 8
-	done:
-		retn	4
-		ALIGN 16
-	doCache:
+		cmp		edx, MAX_BLOCK_SIZE
+		ja		doRealloc
 		push	edx
 		push	eax
 		call	Pool_Alloc
@@ -154,6 +151,18 @@ __declspec(naked) void* __fastcall Pool_Realloc(void *pBlock, UInt32 curSize, UI
 		push	eax
 		call	Pool_Free
 		pop		eax
+		retn	4
+		ALIGN 16
+	nullPtr:
+		call	Pool_Alloc
+	done:
+		retn	4
+		ALIGN 16
+	doRealloc:
+		push	ecx
+		push	eax
+		call	_realloc_base
+		add		esp, 8
 		retn	4
 	}
 }
