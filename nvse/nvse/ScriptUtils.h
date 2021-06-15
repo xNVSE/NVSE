@@ -102,7 +102,7 @@ class ExpressionEvaluator
 		kFlag_ErrorOccurred			= 1 << 1,
 		kFlag_StackTraceOnError		= 1 << 2,
 	};
-
+public:
 	Bitfield<UInt32>	 m_flags;
 	UInt8				* m_scriptData;
 	UInt32				* m_opcodeOffsetPtr;
@@ -124,7 +124,7 @@ class ExpressionEvaluator
 
 	void PushOnStack();
 	void PopFromStack() const;
-public:
+
 	bool m_inline;
 
 	static bool	Active();

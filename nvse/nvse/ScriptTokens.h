@@ -1,4 +1,5 @@
 #pragma once
+#include "LambdaManager.h"
 #include "SmallObjectsAllocator.h"
 
 #if _DEBUG
@@ -16,7 +17,6 @@ extern SInt32 FUNCTION_CONTEXT_COUNT;
 #if RUNTIME
 #include "StringVar.h"
 #include "GameAPI.h"
-
 #endif
 
 
@@ -195,6 +195,7 @@ struct ScriptToken
 #if RUNTIME		// run-time only
 		ArrayID					arrID;
 		ScriptEventList::Var	* var;
+		LambdaManager::ScriptData lambdaScriptData;
 #endif
 		// compile-time only
 		VariableInfo			* varInfo;

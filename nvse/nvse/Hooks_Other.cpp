@@ -8,8 +8,10 @@
 #include "LambdaManager.h"
 
 #if RUNTIME
+
 namespace OtherHooks
 {
+	thread_local TESObjectREFR* g_lastScriptOwnerRef = nullptr;
 	__declspec(naked) void TilesDestroyedHook()
 	{
 		__asm
@@ -72,8 +74,8 @@ namespace OtherHooks
 
 	void DeleteEventList(ScriptEventList* eventList)
 	{
-		CleanUpNVSEVars(eventList);
 		LambdaManager::MarkParentAsDeleted(eventList); // deletes if exists
+		CleanUpNVSEVars(eventList);
 		ThisStdCall(0x5A8BC0, eventList);
 		GameHeapFree(eventList);
 	}
@@ -82,7 +84,43 @@ namespace OtherHooks
 	{
 		DeleteEventList(eventList);
 		return eventList;
-		
+	}
+
+	void __fastcall SaveLastScriptOwnerRef(TESObjectREFR* ref)
+	{
+		g_lastScriptOwnerRef = ref;
+#if _DEBUG
+		//if (ref && !LookupFormByID(ref->refID))
+		//	DebugBreak();
+#endif
+	}
+
+	__declspec(naked) void SaveScriptOwnerRefHook()
+	{
+		const static auto hookedCall = 0x702FC0;
+		const static auto retnAddr = 0x5E0D56;
+		__asm
+		{
+			mov ecx, [ebp+0xC]
+			call SaveLastScriptOwnerRef
+			call hookedCall
+			jmp retnAddr
+		}
+	}
+
+	__declspec(naked) void SaveScriptOwnerRefHook2()
+	{
+		const static auto hookedCall = 0x4013E0;
+		const static auto retnAddr = 0x5E119F;
+		__asm
+		{
+			push ecx
+			mov ecx, [ebp+0xC]
+			call SaveLastScriptOwnerRef
+			pop ecx
+			call hookedCall
+			jmp retnAddr
+		}
 	}
 
 	void Hooks_Other_Init()
@@ -90,6 +128,9 @@ namespace OtherHooks
 		WriteRelJump(0x9FF5FB, UInt32(TilesDestroyedHook));
 		WriteRelJump(0x709910, UInt32(TilesCreatedHook));
 		WriteRelJump(0x41AF70, UInt32(ScriptEventListsDestroyedHook));
+		
+		WriteRelJump(0x5E0D51, UInt32(SaveScriptOwnerRefHook));
+		WriteRelJump(0x5E119A, UInt32(SaveScriptOwnerRefHook2));
 	}
 }
 #endif

@@ -3404,7 +3404,7 @@ void ExpressionEvaluator::ReadBuf(UInt32 len, UInt8* data)
 
 UInt8* ExpressionEvaluator::GetCommandOpcodePosition() const
 {
-	return GetScriptDataPosition(script, m_scriptData, m_opcodeOffsetPtr);
+	return GetScriptDataPosition(script, m_scriptData, *m_opcodeOffsetPtr);
 }
 
 CommandInfo* ExpressionEvaluator::GetCommand() const
@@ -4321,7 +4321,6 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	}
 #if _DEBUG
 	g_curLineText = this->GetLineText(cache, nullptr);
-	const auto& lineText = g_curLineText;
 #endif
 	OperandStack operands;
 	auto iter = cache.Begin();
@@ -4351,7 +4350,14 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			else if (curToken->type == kTokenType_Lambda)
 			{
 				// There needs to be a unique lambda per script event list so that variables can have the correct values
-				curToken = ScriptToken::Create(LambdaManager::CreateLambdaScript(cacheKey, eventList, script));
+				// curToken needs not be deleted since it's always cached
+				auto* script = CreateLambdaScript(cacheKey, curToken->value.lambdaScriptData, *this);
+				if (!script)
+				{
+					Error("Failed to create lambda script");
+					break;
+				}
+				curToken = ScriptToken::Create(script);
 			}
 			operands.Push(curToken);
 		}

@@ -4,6 +4,7 @@
 #include "ParamInfos.h"
 #include "GameAPI.h"
 #include "LambdaManager.h"
+#include "ScriptUtils.h"
 #include "Utilities.h"
 
 #ifdef RUNTIME

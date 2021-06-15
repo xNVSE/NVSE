@@ -521,6 +521,7 @@ FunctionContext::~FunctionContext()
 
 	if (m_eventList && !m_isLambda)
 	{
+		LambdaManager::MarkParentAsDeleted(m_eventList); // If any lambdas refer to the event list, clear them away
 		if (m_eventList != m_info->GetEventList()) {
 			m_eventList->Destructor();
 			FormHeap_Free(m_eventList);
@@ -528,7 +529,6 @@ FunctionContext::~FunctionContext()
 		else {
 			m_eventList->ResetAllVariables();
 		}
-		LambdaManager::MarkParentAsDeleted(m_eventList); // If any lambdas refer to the event list, clear them away
 	}
 
 	delete m_result;
