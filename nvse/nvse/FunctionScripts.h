@@ -161,6 +161,7 @@ protected:
 namespace PluginAPI {
 	bool CallFunctionScript(Script* fnScript, TESObjectREFR* callingObj, TESObjectREFR* container,
 		NVSEArrayVarInterface::Element* result, UInt8 numArgs, ...);
+	bool CallFunctionScriptAlt(Script *fnScript, TESObjectREFR *callingObj, UInt8 numArgs, ...);
 }
 
 #endif

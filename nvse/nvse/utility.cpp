@@ -11,32 +11,34 @@ __declspec(naked) PrimitiveCS *PrimitiveCS::Enter()
 		call	GetCurrentThreadId
 		cmp		[ebx], eax
 		jnz		doSpin
+	done:
 		mov		eax, ebx
 		pop		ebx
 		retn
-		ALIGN 16
+		NOP_0xA
 	doSpin:
+		mov		ecx, eax
+		xor		eax, eax
+		lock cmpxchg [ebx], ecx
+		test	eax, eax
+		jz		done
 		push	esi
 		push	edi
-		mov		esi, eax
+		mov		esi, ecx
 		mov		edi, 0x2710
-		ALIGN 16
 	spinHead:
+		dec		edi
+		mov		edx, edi
+		shr		edx, 0x1F
+		push	edx
+		call	Sleep
 		xor		eax, eax
 		lock cmpxchg [ebx], esi
 		test	eax, eax
-		jz		done
-		xor		edx, edx
-		dec		edi
-		sets	dl
-		push	edx
-		call	Sleep
-		jmp		spinHead
-		ALIGN 16
-	done:
-		mov		eax, ebx
+		jnz		spinHead
 		pop		edi
 		pop		esi
+		mov		eax, ebx
 		pop		ebx
 		retn
 	}

@@ -695,4 +695,18 @@ namespace PluginAPI
 		}
 		return success;
 	}
+
+	bool CallFunctionScriptAlt(Script *fnScript, TESObjectREFR *callingObj, UInt8 numArgs, ...)
+	{
+		InternalFunctionCaller caller(fnScript, callingObj, NULL);
+		va_list args;
+		va_start(args, numArgs);
+		if (caller.vSetArgs(numArgs, args))
+		{
+			ScriptToken *ret = UserFunctionManager::Call(std::move(caller));
+			if (ret) delete ret;
+			return true;
+		}
+		return false;
+	}
 }
