@@ -17,6 +17,7 @@ namespace LambdaManager
 	Script* CreateLambdaScript(UInt8* position, const ScriptData& scriptData, const ExpressionEvaluator&);
 	ScriptEventList* GetParentEventList(Script* scriptLambda);
 	void MarkParentAsDeleted(ScriptEventList*& parentEventList);
-	bool IsScriptLambda(Script* script);
-	void DeleteAllForParentScript(Script* script);
+	bool IsScriptLambda(Script* scriptLambda);
+	void DeleteAllForParentScript(Script* parentScript);
+	void ClearSavedDeletedEventLists();
 }

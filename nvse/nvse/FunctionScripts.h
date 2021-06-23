@@ -39,14 +39,13 @@ private:
 	DynamicParamInfo	m_dParamInfo;
 	std::vector<UserFunctionParam> m_userFunctionParams;
 	Script				* m_script;			// function script
-	UInt16				* m_destructibles;	// dynamic array of var indexes of local array vars to be destroyed on function return
-	UInt8				m_numDestructibles;
 	UInt8				m_functionVersion;	// bytecode version of Function statement
 	bool				m_bad;
 	UInt8				m_instanceCount;
-	ScriptEventList		* m_eventList = nullptr;		// cached for quicker construction of function script, but requires care when dealing with recursive function calls
+	ScriptEventList		* m_eventList;		// cached for quicker construction of function script, but requires care when dealing with recursive function calls
 
 public:
+	bool				m_isLambda;
 	FunctionInfo() {}
 	FunctionInfo(Script* script);
 	~FunctionInfo();
@@ -58,7 +57,6 @@ public:
 	ParamInfo* Params() { return m_dParamInfo.Params(); }
 	DynamicParamInfo& ParamInfo() { return m_dParamInfo; }
 	UserFunctionParam* GetParam(UInt32 paramIndex);
-	bool CleanEventList(ScriptEventList* eventList);
 	bool Execute(FunctionCaller& caller, FunctionContext* context);
 	ScriptEventList* GetEventList() { return m_eventList; }
 	UInt32 GetParamVarTypes(UInt8* out) const;	// returns count, if > 0 returns types as array
@@ -74,7 +72,6 @@ private:
 	Script			* m_invokingScript;
 	UInt8			m_callerVersion;
 	bool			m_bad;
-	bool			m_isLambda = false;
 public:
 	FunctionContext(FunctionInfo* info, UInt8 version, Script* invokingScript);
 	~FunctionContext();
@@ -85,7 +82,6 @@ public:
 	ScriptToken*  Result() { return m_result; }
 	FunctionInfo* Info() { return m_info; }
 	Script* InvokingScript() { return m_invokingScript; }
-	bool IsLambda() const { return m_isLambda; }
 	void* operator new(size_t size);
 	void operator delete(void* p);
 };

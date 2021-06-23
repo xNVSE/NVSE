@@ -100,6 +100,7 @@ void Core_NewGameCallback(void * reserved)
 
 	g_ArrayMap.Clean();
 	g_StringMap.Clean();
+	LambdaManager::ClearSavedDeletedEventLists();
 }
 
 void Core_PreLoadCallback(void * reserved)
@@ -141,6 +142,7 @@ void Core_PreLoadCallback(void * reserved)
 				break;
 		}
 	}
+	LambdaManager::ClearSavedDeletedEventLists();
 }
 
 
