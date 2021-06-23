@@ -103,9 +103,9 @@ static ParamInfo kParams_CallWhile[2] =
 	{	"condition",	kParamType_AnyForm,0	},
 };
 
-DEFINE_COMMAND(CallAfterSeconds, calls UDF after argument number of seconds, 0, 2, kParams_CallAfter);
+DEFINE_CMD_ALT(CallAfterSeconds, CallAfter, calls UDF after argument number of seconds, 0, 2, kParams_CallAfter);
 DEFINE_COMMAND(CallWhile, calls UDF each frame while condition is met, 0, 2, kParams_CallWhile);
-DEFINE_COMMAND(CallForSeconds, calls UDF each frame for argument number of seconds, 0, 2, kParams_CallAfter);
+DEFINE_CMD_ALT(CallForSeconds, CallFor, calls UDF each frame for argument number of seconds, 0, 2, kParams_CallAfter);
 
 struct DelayedCallInfo
 {
