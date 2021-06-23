@@ -271,6 +271,11 @@ Script* UserFunctionManager::GetInvokingScript(Script* fnScript)
 	return context ? context->InvokingScript() : NULL;
 }
 
+void UserFunctionManager::ClearInfos()
+{
+	GetSingleton()->m_functionInfos.Clear();
+}
+
 /*****************************
 	FunctionInfo
 *****************************/
@@ -416,17 +421,11 @@ bool FunctionInfo::Execute(FunctionCaller& caller, FunctionContext* context)
 {
 	// this should never happen as max function call depth is capped at 30
 	ASSERT(m_instanceCount < 0xFF);
-	auto enteredLambdaLock = false;
-	if (context->IsLambda() && LambdaManager::g_lambdasCleared)
-	{
-		enteredLambdaLock = true;
-		LambdaManager::g_lambdaCs.Enter();
-	}
 	m_instanceCount++;
+
 	bool bResult = context->Execute(caller);
+
 	m_instanceCount--;
-	if (enteredLambdaLock)
-		LambdaManager::g_lambdaCs.Leave();
 	return bResult;
 }
 
@@ -522,12 +521,15 @@ FunctionContext::~FunctionContext()
 	if (m_eventList && !m_isLambda)
 	{
 		LambdaManager::MarkParentAsDeleted(m_eventList); // If any lambdas refer to the event list, clear them away
-		if (m_eventList != m_info->GetEventList()) {
-			m_eventList->Destructor();
-			FormHeap_Free(m_eventList);
-		}
-		else {
-			m_eventList->ResetAllVariables();
+		if (m_eventList)
+		{
+			if (m_eventList != m_info->GetEventList()) {
+				m_eventList->Destructor();
+				FormHeap_Free(m_eventList);
+			}
+			else {
+				m_eventList->ResetAllVariables();
+			}	
 		}
 	}
 
@@ -547,12 +549,7 @@ bool FunctionContext::Execute(FunctionCaller & caller)
 	// run the script
 	CALL_MEMBER_FN(m_info->GetScript(), Execute)(caller.ThisObj(), m_eventList, caller.ContainingObj(), false);
 
-	// clean up
-	if (m_info->CleanEventList(m_eventList))
-		return true;
-
-	ShowRuntimeError(m_info->GetScript(), "Couldn't clean event list after function call.");
-	return false;
+	return true;
 }
 
 bool FunctionContext::Return(ExpressionEvaluator* eval)

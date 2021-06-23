@@ -40,7 +40,7 @@ namespace OtherHooks
 
 	void CleanUpNVSEVars(ScriptEventList* eventList)
 	{
-		// Prevent leakage of variables that's ScriptEventList gets deleted (e.g. in Effect scripts)
+		// Prevent leakage of variables that's ScriptEventList gets deleted (e.g. in Effect scripts, UDF)
 		auto* scriptVars = g_nvseVarGarbageCollectionMap.GetPtr(eventList);
 		if (!scriptVars)
 			return;
@@ -72,27 +72,28 @@ namespace OtherHooks
 		g_nvseVarGarbageCollectionMap.Erase(eventList);
 	}
 
-	void DeleteEventList(ScriptEventList* eventList)
+	void DeleteEventList(ScriptEventList* eventList, bool markLambda)
 	{
-		LambdaManager::MarkParentAsDeleted(eventList); // deletes if exists
-		CleanUpNVSEVars(eventList);
-		ThisStdCall(0x5A8BC0, eventList);
-		GameHeapFree(eventList);
+		if (markLambda)
+			LambdaManager::MarkParentAsDeleted(eventList); // deletes if exists
+		if (eventList)
+		{
+			CleanUpNVSEVars(eventList);
+			ThisStdCall(0x5A8BC0, eventList);
+			GameHeapFree(eventList);
+		}
 	}
 	
 	ScriptEventList* __fastcall ScriptEventListsDestroyedHook(ScriptEventList *eventList, int EDX, bool doFree)
 	{
-		DeleteEventList(eventList);
+		DeleteEventList(eventList, true);
 		return eventList;
 	}
 
+	// Saves last thisObj in effect/object scripts before they get assigned to something else with dot syntax
 	void __fastcall SaveLastScriptOwnerRef(TESObjectREFR* ref)
 	{
 		g_lastScriptOwnerRef = ref;
-#if _DEBUG
-		//if (ref && !LookupFormByID(ref->refID))
-		//	DebugBreak();
-#endif
 	}
 
 	__declspec(naked) void SaveScriptOwnerRefHook()

@@ -4465,7 +4465,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken* 
 					auto* formName = form->GetName();
 					if (!formName || StrLen(formName) == 0)
 					{
-						if (form->refID == 0x14)
+						if (form->refID == 0x14 || form->refID == 0x7)
 							operands.push("Player");
 						else
 							operands.push(FormatString("%X", form->refID));
@@ -4521,6 +4521,8 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken* 
 							auto* name = callingRef->form->GetName();
 							if (name && StrLen(name))
 								operand = std::string(name) + "." + operand;
+							else if (callingRef->form->refID == 0x14 || callingRef->form->refID == 0x7)
+								operand = "Player." + operand;
 							else
 								operand = FormatString("%X", callingRef->form->refID) + "." + operand;
 						}

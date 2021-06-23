@@ -125,7 +125,7 @@ public:
 	// return script that called fnScript
 	static Script* GetInvokingScript(Script* fnScript);
 
-	static void ClearInfos() { GetSingleton()->m_functionInfos.Clear(); }
+	static void ClearInfos();
 };
 
 // allows us to call function scripts directly

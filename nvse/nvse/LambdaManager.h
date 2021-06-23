@@ -6,7 +6,6 @@ class ExpressionEvaluator;
 namespace LambdaManager
 {
 	extern ICriticalSection g_lambdaCs;
-	extern std::atomic<bool> g_lambdasCleared;
 	struct ScriptData
 	{
 		UInt8* scriptData;
@@ -19,6 +18,5 @@ namespace LambdaManager
 	ScriptEventList* GetParentEventList(Script* scriptLambda);
 	void MarkParentAsDeleted(ScriptEventList*& parentEventList);
 	bool IsScriptLambda(Script* script);
-	void ClearCache();
 	void DeleteAllForParentScript(Script* script);
 }
