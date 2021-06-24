@@ -457,7 +457,7 @@ FunctionContext::~FunctionContext()
 	if (m_eventList && !m_info->m_isLambda)
 	{
 		const auto doFree = m_eventList != m_info->GetEventList();
-		LambdaManager::MarkParentAsDeleted(m_eventList, doFree); // If any lambdas refer to the event list, clear them away
+		LambdaManager::MarkParentAsDeleted(m_eventList); // If any lambdas refer to the event list, clear them away
 		if (m_eventList)
 		{
 			if (doFree) {
