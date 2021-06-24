@@ -73,7 +73,7 @@ namespace OtherHooks
 	void DeleteEventList(ScriptEventList* eventList, bool markLambda)
 	{
 		if (markLambda)
-			LambdaManager::MarkParentAsDeleted(eventList, true); // deletes if exists
+			LambdaManager::MarkParentAsDeleted(eventList); // deletes if exists
 		if (eventList)
 		{
 			CleanUpNVSEVars(eventList);
