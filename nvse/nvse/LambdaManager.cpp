@@ -105,55 +105,19 @@ FormID GetFormIDForLambda(ScriptEventList* parentEventList)
 		return 0;
 	return GetFormIDForLambda(lpIt->first);
 }
-#if _DEBUG
-std::vector<ScriptEventList*> g_test;
-#endif
-// gets a "deleted" event list that was saved instead so that a future callback can potentially use it
-ScriptEventList* GetDeletedEventList(Script* scriptLambda)
-{
-	const auto formID = GetFormIDForLambda(scriptLambda);
-	if (!formID)
-		return nullptr;
-	if (const auto deletedListIter = g_deletedEventListMap.find(formID); deletedListIter != g_deletedEventListMap.end())
-	{
-#if _DEBUG
-		g_test.push_back(deletedListIter->second.first);
-#endif
-		return deletedListIter->second.first;
-	}
-	return nullptr;
-}
 
 ScriptEventList* LambdaManager::GetParentEventList(Script* scriptLambda)
 {
 	const auto iter = g_lambdaParentEventListMap.find(scriptLambda);
 	if (iter != g_lambdaParentEventListMap.end())
 		return iter->second;
-	if (auto* deletedList = GetDeletedEventList(scriptLambda))
-		return deletedList;
 	return nullptr;
 }
 
-void LambdaManager::MarkParentAsDeleted(ScriptEventList*& parentEventList, bool doFreeDeferred)
+void LambdaManager::MarkParentAsDeleted(ScriptEventList*& parentEventList)
 {
 	ScopedLock lock(g_lambdaCs);
-	const auto formID = GetFormIDForLambda(parentEventList);
-	if (!formID)
-		return;
-	if (!RemoveEventList(parentEventList))
-		return;
-	auto& [deletedEventList, doFree] = g_deletedEventListMap[formID];
-	
-	if (deletedEventList)
-	{
-		if (doFree)
-			OtherHooks::DeleteEventList(deletedEventList, false);
-		else
-			OtherHooks::CleanUpNVSEVars(deletedEventList);
-	}
-	deletedEventList = parentEventList;
-	doFree = doFreeDeferred;
-	parentEventList = nullptr; // assign reference to null so it can't be deleted
+	RemoveEventList(parentEventList);
 }
 
 bool LambdaManager::IsScriptLambda(Script* scriptLambda)
@@ -181,11 +145,5 @@ void LambdaManager::DeleteAllForParentScript(Script* parentScript)
 
 void LambdaManager::ClearSavedDeletedEventLists()
 {
-	ScopedLock lock(g_lambdaCs);
-	for (auto& [eventList, doFree] : g_deletedEventListMap | std::views::values)
-	{
-		OtherHooks::DeleteEventList(eventList, false);
-	}
-	g_deletedEventListMap.clear();
+	// reserved for future use
 }
-
