@@ -73,12 +73,15 @@ namespace OtherHooks
 	void DeleteEventList(ScriptEventList* eventList, bool markLambda)
 	{
 		if (markLambda)
-			LambdaManager::MarkParentAsDeleted(eventList); // deletes if exists
+			LambdaManager::MarkParentAsDeleted(eventList, true); // deletes if exists
 		if (eventList)
 		{
 			CleanUpNVSEVars(eventList);
 			ThisStdCall(0x5A8BC0, eventList);
-			GameHeapFree(eventList);
+			//GameHeapFree(eventList);
+#if _DEBUG
+			memset(eventList, 0xDD, sizeof ScriptEventList);
+#endif
 		}
 	}
 	

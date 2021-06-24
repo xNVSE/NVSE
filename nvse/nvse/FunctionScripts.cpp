@@ -456,10 +456,11 @@ FunctionContext::~FunctionContext()
 
 	if (m_eventList && !m_info->m_isLambda)
 	{
-		LambdaManager::MarkParentAsDeleted(m_eventList); // If any lambdas refer to the event list, clear them away
+		const auto doFree = m_eventList != m_info->GetEventList();
+		LambdaManager::MarkParentAsDeleted(m_eventList, doFree); // If any lambdas refer to the event list, clear them away
 		if (m_eventList)
 		{
-			if (m_eventList != m_info->GetEventList()) {
+			if (doFree) {
 				m_eventList->Destructor();
 				FormHeap_Free(m_eventList);
 			}
