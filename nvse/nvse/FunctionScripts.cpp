@@ -2,6 +2,7 @@
 #include "ScriptTokens.h"
 #include "ThreadLocal.h"
 #include "GameRTTI.h"
+#include "Hooks_Other.h"
 #include "LambdaManager.h"
 
 /*******************************************
@@ -271,12 +272,17 @@ Script* UserFunctionManager::GetInvokingScript(Script* fnScript)
 	return context ? context->InvokingScript() : NULL;
 }
 
+void UserFunctionManager::ClearInfos()
+{
+	GetSingleton()->m_functionInfos.Clear();
+}
+
 /*****************************
 	FunctionInfo
 *****************************/
 
 FunctionInfo::FunctionInfo(Script* script)
-: m_script(script), m_destructibles(NULL), m_numDestructibles(0), m_functionVersion(-1), m_bad(0), m_instanceCount(0), m_eventList(NULL)
+: m_script(script), m_functionVersion(-1), m_bad(false), m_instanceCount(0), m_eventList(nullptr), m_isLambda(LambdaManager::IsScriptLambda(script))
 {
 	if (!script || !script->data)
 		return;
@@ -288,7 +294,7 @@ FunctionInfo::FunctionInfo(Script* script)
 	if (script->info.dataLength < 15)
 		return;
 
-	UInt8* data = (UInt8*)script->data;
+	auto* data = (UInt8*)script->data;
 	if (*(data + 8) != 0x0D)		// not a 'Begin Function' block
 	{
 		ShowRuntimeError(script, "Begin Function block not found in compiled script data");
@@ -313,54 +319,45 @@ FunctionInfo::FunctionInfo(Script* script)
 	// **************************
 
 	// read params and construct ParamInfo
-	UInt8 numParams = *data++;
+	const UInt8 numParams = *data++;
 	std::vector<UserFunctionParam> params(numParams);
 
 	for (UInt32 i = 0; i < numParams; i++)
 	{
-		UInt16 idx = *((UInt16*)data);
+		const UInt16 idx = *((UInt16*)data);
 		data += 2;
-		UInt8 type = *data++;
+		const UInt8 type = *data++;
 		params[i] = UserFunctionParam(idx, type);
 	}
 
 	m_dParamInfo = DynamicParamInfo(params);
 	m_userFunctionParams = params;
 
-	if (!LambdaManager::IsScriptLambda(m_script))
+	if (!m_isLambda)
 	{
-		// read destructibles
-		m_numDestructibles = *data++;
-		if (m_numDestructibles)
-		{
-			m_destructibles = new UInt16[m_numDestructibles];
-			for (UInt32 i = 0; i < m_numDestructibles; i++)
-			{
-				m_destructibles[i] = *((UInt16*)data);
-				data += 2;
-			}
-		}
-
 		// construct event list
-		m_eventList = m_script->CreateEventList();
+		m_eventList = script->CreateEventList();
 		if (!m_eventList)
-			ShowRuntimeError(script, "Cannot create initial event script.");
+			ShowRuntimeError(script, "Cannot create variable list for function script.");
 
 		// successfully constructed
-		m_bad = (NULL == m_eventList);
 	}
 	else
 	{
-		m_bad = false;
+		m_eventList = LambdaManager::GetParentEventList(script);
+		if (!m_eventList)
+			m_eventList = script->CreateEventList();
 	}
+	m_bad = m_eventList == nullptr;
+#if _DEBUG
+	this->editorID = m_script->GetName();
+#endif
 }
 
 FunctionInfo::~FunctionInfo()
 {
-	if (m_numDestructibles)
-		delete[] m_destructibles;
-	if (m_eventList)
-		GameHeapFree(m_eventList);
+	if (m_eventList && !m_isLambda)
+		OtherHooks::DeleteEventList(m_eventList);
 }
 
 FunctionContext* FunctionInfo::CreateContext(UInt8 version, Script* invokingScript)
@@ -398,35 +395,15 @@ UInt32 FunctionInfo::GetParamVarTypes(UInt8* out) const
 	return count;
 }
 
-bool FunctionInfo::CleanEventList(ScriptEventList* eventList)
-{
-	for (UInt32 i = 0; i < m_numDestructibles; i++)
-	{
-		ScriptEventList::Var* var = eventList->GetVariable(m_destructibles[i]);
-		if (!var)
-			return false;
-
-		g_ArrayMap.RemoveReference(&var->data, m_script->GetModIndex());
-	}
-
-	return true;
-}
-
 bool FunctionInfo::Execute(FunctionCaller& caller, FunctionContext* context)
 {
 	// this should never happen as max function call depth is capped at 30
 	ASSERT(m_instanceCount < 0xFF);
-	auto enteredLambdaLock = false;
-	if (context->IsLambda() && LambdaManager::g_lambdasCleared)
-	{
-		enteredLambdaLock = true;
-		LambdaManager::g_lambdaCs.Enter();
-	}
 	m_instanceCount++;
+
 	bool bResult = context->Execute(caller);
+
 	m_instanceCount--;
-	if (enteredLambdaLock)
-		LambdaManager::g_lambdaCs.Leave();
 	return bResult;
 }
 
@@ -434,32 +411,8 @@ bool FunctionInfo::Execute(FunctionCaller& caller, FunctionContext* context)
 	FunctionContext
 ******************************/
 
-bool CopyToEventList(ScriptEventList* to, ScriptEventList* from)
-{
-	// need to refactor m_vars to tList later
-	auto* toVars = reinterpret_cast<tList<ScriptEventList::Var>*>(to->m_vars);
-	auto* fromVars = reinterpret_cast<tList<ScriptEventList::Var>*>(from->m_vars);
-	auto fromIter = fromVars->Begin();
-	for (auto toIter = toVars->Begin(); !toIter.End(); ++toIter, ++fromIter)
-	{
-		if (fromIter.End())
-		{
-			return false;
-		}
-		if (toIter->id == fromIter->id)
-		{
-			toIter->data = fromIter->data;
-		}
-		else
-		{
-			return false;
-		}
-	}
-	return true;
-}
-
 FunctionContext::FunctionContext(FunctionInfo* info, UInt8 version, Script* invokingScript) : m_info(info), m_eventList(NULL),
-m_invokingScript(invokingScript), m_callerVersion(version), m_bad(true), m_result(NULL)
+m_result(NULL), m_invokingScript(invokingScript), m_callerVersion(version), m_bad(true)
 {
 #ifdef DBG_EXPR_LEAKS
 	FUNCTION_CONTEXT_COUNT++;
@@ -474,40 +427,26 @@ m_invokingScript(invokingScript), m_callerVersion(version), m_bad(true), m_resul
 		ShowRuntimeError(info->GetScript(), "Unknown function version %02X", version);
 		return;
 	}
-	if (auto* parentEventList = LambdaManager::GetParentEventList(info->GetScript()))
+	if (info->IsActive() && !info->m_isLambda) 
 	{
-		m_eventList = parentEventList;
-		m_isLambda = true;
+		m_eventList = info->GetScript()->CreateEventList();
 	}
-	else
+	else 
 	{
-		if (info->IsActive()) {
+		m_eventList = info->GetEventList();
+		if (!m_eventList && !info->m_isLambda) // Let's try again if it failed originally (though info would be null in that case, so very unlikely to be called ever).
 			m_eventList = info->GetScript()->CreateEventList();
-		}
-		else {
-			m_eventList = info->GetEventList();
-			if (!m_eventList) // Let's try again if it failed originally (though info would be null in that case, so very unlikely to be called ever).
-				m_eventList = info->GetScript()->CreateEventList();
-		}
 	}
 	if (!m_eventList)
 	{
-		if (info->IsActive())
-			ShowRuntimeError(info->GetScript(), "Couldn't create eventlist");
+		if (info->m_isLambda)
+			ShowRuntimeError(info->GetScript(), "Failed to retrieve parent variable list for lambda script");
+		else if (info->IsActive())
+			ShowRuntimeError(info->GetScript(), "Couldn't create variable list for function script");
 		else
-			ShowRuntimeError(info->GetScript(), "Couldn't recreate eventlist");
+			ShowRuntimeError(info->GetScript(), "Couldn't recreate variable list for function script");
 		return;
 	}
-#if 0
-	if (auto* parentEventList = LambdaManager::GetParentEventList(info->GetScript()))
-	{
-		if (!CopyToEventList(m_eventList, parentEventList))
-		{
-			ShowRuntimeError(info->GetScript(), "Event list mismatch between lambda and outer script");
-			return;
-		}
-	}
-#endif
 
 	// successfully constructed
 	m_bad = false;
@@ -519,16 +458,19 @@ FunctionContext::~FunctionContext()
 	FUNCTION_CONTEXT_COUNT--;
 #endif
 
-	if (m_eventList && !m_isLambda)
+	if (m_eventList && !m_info->m_isLambda)
 	{
-		if (m_eventList != m_info->GetEventList()) {
-			m_eventList->Destructor();
-			FormHeap_Free(m_eventList);
-		}
-		else {
-			m_eventList->ResetAllVariables();
-		}
 		LambdaManager::MarkParentAsDeleted(m_eventList); // If any lambdas refer to the event list, clear them away
+		if (m_eventList)
+		{
+			if (m_eventList != m_info->GetEventList()) {
+				m_eventList->Destructor();
+				FormHeap_Free(m_eventList);
+			}
+			else {
+				m_eventList->ResetAllVariables();
+			}	
+		}
 	}
 
 	delete m_result;
@@ -547,12 +489,7 @@ bool FunctionContext::Execute(FunctionCaller & caller)
 	// run the script
 	CALL_MEMBER_FN(m_info->GetScript(), Execute)(caller.ThisObj(), m_eventList, caller.ContainingObj(), false);
 
-	// clean up
-	if (m_info->CleanEventList(m_eventList))
-		return true;
-
-	ShowRuntimeError(m_info->GetScript(), "Couldn't clean event list after function call.");
-	return false;
+	return true;
 }
 
 bool FunctionContext::Return(ExpressionEvaluator* eval)

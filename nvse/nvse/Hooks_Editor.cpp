@@ -511,6 +511,20 @@ __declspec(naked) void ParameterParenthesisHook()
 	}
 }
 
+std::string ReplaceAll(std::string str, const std::string& from, const std::string& to) {
+	size_t start_pos = 0;
+	while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
+		str.replace(start_pos, from.length(), to);
+		start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
+	}
+	return str;
+}
+
+bool StrContains(const std::string& str, const std::string& subStr)
+{
+	 return str.find(subStr) != std::string::npos;
+}
+
 std::vector g_lineMacros =
 {
 	ScriptLineMacro([&](std::string& line)
@@ -526,14 +540,26 @@ std::vector g_lineMacros =
 			std::make_pair("&=", R"(\&\=)"),
 			std::make_pair("%=", R"(\%\=)"),
 		};
-
+		std::string optVarTypeDecl; // int, ref etc in int iVar = 10 for example
+		for (auto& varType : g_variableTypeNames)
+		{
+			if (line.starts_with(varType))
+			{
+				optVarTypeDecl = varType;
+				line.erase(0, optVarTypeDecl.size());
+				optVarTypeDecl += ' ';
+				break;
+			}
+		}
+		
 		for (const auto& [realOp, regexOp] : s_shortHandMacros)
 		{
+			
 			// VARIABLE = VALUE macro 
-			const std::regex assignmentExpr(R"(([a-zA-Z\_\s\.0-9]+))" + regexOp + R"(([a-zA-Z\_\s\.\$\!0-9\-\(\{][.\s\S]*))"); // match int ivar = 4
+			const std::regex assignmentExpr(R"(([a-zA-Z\_\.0-9\[\]]+)\s*)" + regexOp + R"(([a-zA-Z\_\s\.\$\!0-9\-\(\{][.\s\S]*))"); // match int ivar = 4
 			if (std::smatch m; std::regex_search(line, m, assignmentExpr, std::regex_constants::match_continuous) && m.size() == 3)
 			{
-				line = "let " + m.str(1) + " " + realOp + " " + m.str(2);
+				line = "let " + optVarTypeDecl + m.str(1) + " " + realOp + " " + m.str(2);
 				return true;
 			}
 		}
@@ -569,7 +595,8 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 			++lineBuf->lineNumber;
 		++curScriptText;
 	}
-	
+
+	char lastChar = '\0';
 	while (true)
 	{
 		const auto curChar = *curScriptText++;
@@ -645,6 +672,8 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 			}
 			default:
 			{
+				if (isspace(lastChar) && isspace(curChar) && !inStringLiteral)
+					continue;
 				break;
 			}
 		}
@@ -661,6 +690,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 			capturedNonSpace = true;
 		if (capturedNonSpace)
 			lineBuf->paramText[lineBuf->paramTextLen++] = curChar;
+		lastChar = curChar;
 	}
 }
 

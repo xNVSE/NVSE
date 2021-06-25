@@ -16,7 +16,7 @@ static const UInt32 kScript_SetTextFnAddr = 0x005C27B0;
 #endif
 
 extern ICriticalSection	csGameScript;				// trying to avoid what looks like concurrency issues
-extern const char* g_variableTypeNames[];
+extern const char* g_variableTypeNames[6];
 // 54 / 48
 class Script : public TESForm
 {

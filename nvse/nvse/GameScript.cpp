@@ -6,7 +6,7 @@
 #include "GameRTTI.h"
 #include "ScriptUtils.h"
 
-const char* g_variableTypeNames[] =
+const char* g_variableTypeNames[6] =
 {
 	"float",
 	"int",

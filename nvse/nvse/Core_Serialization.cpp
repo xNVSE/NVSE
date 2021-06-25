@@ -46,8 +46,12 @@ void Core_SaveCallback(void * reserved)
 #ifdef DEBUG
 	SaveCreatedObjects(intfc);
 #endif
+	// prevent arrays from being saved that were supposed to be deleted but are held due to potential future callbacks
+	LambdaManager::ClearSavedDeletedEventLists();
+
 	g_ArrayMap.Save(intfc);
 	g_StringMap.Save(intfc);
+
 }
 
 void Core_LoadCallback(void * reserved)
@@ -96,6 +100,7 @@ void Core_NewGameCallback(void * reserved)
 
 	g_ArrayMap.Clean();
 	g_StringMap.Clean();
+	LambdaManager::ClearSavedDeletedEventLists();
 }
 
 void Core_PreLoadCallback(void * reserved)
@@ -137,6 +142,7 @@ void Core_PreLoadCallback(void * reserved)
 				break;
 		}
 	}
+	LambdaManager::ClearSavedDeletedEventLists();
 }
 
 

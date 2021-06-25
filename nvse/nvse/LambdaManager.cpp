@@ -1,36 +1,61 @@
 #include "LambdaManager.h"
-
+#include "common/ICriticalSection.h"
 #include <ranges>
 
+#include "Commands_Scripting.h"
 #include "GameAPI.h"
+#include "GameObjects.h"
+#include "Hooks_Other.h"
 
-// set in ScriptToken::ReadFrom
-thread_local LambdaManager::ScriptData LambdaManager::g_lastScriptData;
+using ScriptLambda = Script;
+using FormID = UInt32;
 
 // need to look up event list for the lambda to use itself
-static std::unordered_map<Script*, ScriptEventList*> g_lambdaParentEventListMap;
-// needs to be kept since if an event list is deleted the pointer becomes invalid; clear both maps so that it uses an empty event list instead
-static std::unordered_map<ScriptEventList*, std::vector<Script*>> g_parentEventListLambdaMap;
+static std::unordered_map<ScriptLambda*, ScriptEventList*> g_lambdaParentEventListMap;
+
 // used for memoizing scripts and prevent endless allocation of scripts
-static std::map<std::pair<UInt8*, ScriptEventList*>, Script*> g_lambdaScriptPosMap;
+static std::map<std::pair<UInt8*, FormID>, ScriptLambda*> g_lambdaScriptPosMap;
+
+// contains all lambdas
+static std::unordered_set<ScriptLambda*> g_lambdas;
 
 // avoid concurrency issues
 ICriticalSection LambdaManager::g_lambdaCs;
-std::atomic<bool> LambdaManager::g_lambdasCleared = false;
 
-Script* LambdaManager::CreateLambdaScript(UInt8* position, ScriptEventList* parentEventList, Script* parentScript)
+void SetLambdaParent(ScriptLambda* scriptLambda, ScriptEventList* parentEventList)
 {
+	g_lambdaParentEventListMap[scriptLambda] = parentEventList;
+}
+
+Script* LambdaManager::CreateLambdaScript(UInt8* position, const ScriptData& scriptData, const ExpressionEvaluator& exprEval)
+{
+	ScopedLock lock(g_lambdaCs);
+	auto* parentEventList = exprEval.eventList;
+	auto* parentScript = exprEval.script;
+
+	// use ref ID instead of event list ptr to prevent memory leaking from effect scripts
+	UInt32 ownerRefID;
+	if (parentScript->IsQuestScript() && parentScript->quest)
+		ownerRefID = parentScript->quest->refID;
+	else if (parentScript->IsUserDefinedFunction())
+		ownerRefID = parentScript->refID;
+	else if (OtherHooks::g_lastScriptOwnerRef)
+		ownerRefID = OtherHooks::g_lastScriptOwnerRef->refID;
+	else
+		return nullptr;
+	
 	// auto script = MakeUnique<Script, 0x5AA0F0, 0x5AA1A0>();
-	const auto key = std::make_pair(position, parentEventList);
+	const auto key = std::make_pair(position, ownerRefID);
 	if (const auto iter = g_lambdaScriptPosMap.find(key); iter != g_lambdaScriptPosMap.end())
 	{
-		return iter->second;
+		auto* scriptLambda = iter->second;
+		SetLambdaParent(scriptLambda, parentEventList);
+		return scriptLambda;
 	}
-	ScopedLock lock(g_lambdaCs);
 	auto* scriptLambda = New<Script, 0x5AA0F0>();
-	g_lambdaScriptPosMap.emplace(key, scriptLambda);
-	scriptLambda->data = g_lastScriptData.scriptData;
-	scriptLambda->info.dataLength = g_lastScriptData.size;
+	g_lambdaScriptPosMap[key] = scriptLambda;
+	scriptLambda->data = scriptData.scriptData;
+	scriptLambda->info.dataLength = scriptData.size;
 	
 	scriptLambda->varList = parentScript->varList; // CdeclCall(0x5AB930, &parentScript->varList, &scriptLambda->varList); // CopyVarList
 	scriptLambda->refList = parentScript->refList; // CdeclCall(0x5AB7F0, &parentScript->refList, &scriptLambda->refList); // CopyRefList
@@ -43,11 +68,42 @@ Script* LambdaManager::CreateLambdaScript(UInt8* position, ScriptEventList* pare
 	{
 		scriptLambda->SetRefID(nextFormId, true);
 	}
-	
-	g_lambdaParentEventListMap.emplace(scriptLambda, parentEventList);
-	auto& eventListLambdas = g_parentEventListLambdaMap[parentEventList];
-	eventListLambdas.push_back(scriptLambda);
+	SetLambdaParent(scriptLambda, parentEventList);
+	g_lambdas.emplace(scriptLambda);
 	return scriptLambda;
+}
+
+bool RemoveEventList(ScriptEventList* parentEventList)
+{
+	return std::erase_if(g_lambdaParentEventListMap, [&](auto& p)
+	{
+		auto& [lambda, eventList] = p;
+		return eventList == parentEventList;
+	});
+}
+
+FormID GetFormIDForLambda(Script* scriptLambda)
+{
+	const auto spIt = std::ranges::find_if(g_lambdaScriptPosMap, [&](auto& p)
+	{
+		auto& [pair, lambda] = p;
+		return lambda == scriptLambda;
+	});
+	if (spIt == g_lambdaScriptPosMap.end())
+		return 0;
+	return spIt->first.second;
+}
+
+FormID GetFormIDForLambda(ScriptEventList* parentEventList)
+{
+	const auto lpIt = std::ranges::find_if(g_lambdaParentEventListMap, [&](auto& p)
+	{
+		auto& [lambdaScript, eventList] = p;
+		return parentEventList == eventList;
+	});
+	if (lpIt == g_lambdaParentEventListMap.end()) 
+		return 0;
+	return GetFormIDForLambda(lpIt->first);
 }
 
 ScriptEventList* LambdaManager::GetParentEventList(Script* scriptLambda)
@@ -60,51 +116,33 @@ ScriptEventList* LambdaManager::GetParentEventList(Script* scriptLambda)
 
 void LambdaManager::MarkParentAsDeleted(ScriptEventList* parentEventList)
 {
-	const auto iterScripts = g_parentEventListLambdaMap.find(parentEventList);
-	if (iterScripts == g_parentEventListLambdaMap.end()) return;
 	ScopedLock lock(g_lambdaCs);
-	for (auto* scriptLambda : iterScripts->second)
-	{
-		g_lambdaParentEventListMap.erase(scriptLambda);
-	}
-	g_parentEventListLambdaMap.erase(iterScripts);
+	RemoveEventList(parentEventList);
 }
 
-bool LambdaManager::IsScriptLambda(Script* script)
+bool LambdaManager::IsScriptLambda(Script* scriptLambda)
 {
-	return g_lambdaParentEventListMap.find(script) != g_lambdaParentEventListMap.end();
+	return g_lambdas.contains(scriptLambda);
 }
 
-void LambdaManager::ClearCache()
+void LambdaManager::DeleteAllForParentScript(Script* parentScript)
 {
 	ScopedLock lock(g_lambdaCs);
-	g_lambdasCleared = true;
-	for (auto& pair: g_lambdaScriptPosMap)
-	{
-		auto* scriptLambda = pair.second;
-		FormHeap_Free(scriptLambda->data); // ThisStdCall(0x5AA1A0, scriptLambda); // call destructor to free script data pointer
-		scriptLambda->data = nullptr; // script data and tLists will be freed but script won't be since plugins may store pointers to it to call
-	}
-	g_lambdaScriptPosMap.clear();
-	g_lambdaParentEventListMap.clear();
-	g_parentEventListLambdaMap.clear();
-}
-
-void LambdaManager::DeleteAllForParentScript(Script* script)
-{
-	ScopedLock lock(g_lambdaCs);
-	g_lambdasCleared = true;
 	std::vector<Script*> lambdas;
 	for (auto& [scriptLambda, parentEventList] : g_lambdaParentEventListMap)
 	{
-		if (parentEventList->m_script == script)
+		if (parentEventList->m_script == parentScript)
 		{
-			FormHeap_Free(scriptLambda->data); // ThisStdCall(0x5AA1A0, scriptLambda); // call destructor to free script data pointer
-			scriptLambda->data = nullptr; // script data and tLists will be freed but script won't be since plugins may store pointers to it to call
+			FormHeap_Free(scriptLambda->data); // ThisStdCall(0x5AA1A0, scriptLambda); // call destructor to free parentScript data pointer
+			scriptLambda->data = nullptr; // parentScript data and tLists will be freed but parentScript won't be since plugins may store pointers to it to call
 			lambdas.push_back(scriptLambda);
 		}
 	}
 	std::erase_if(g_lambdaScriptPosMap, [&](auto& p) { return std::ranges::find(lambdas, p.second) != lambdas.end(); });
-	std::erase_if(g_lambdaParentEventListMap, [&](auto& p) {return p.second->m_script == script;});
-	std::erase_if(g_parentEventListLambdaMap, [&](auto& p) {return p.first->m_script == script;});
+	std::erase_if(g_lambdaParentEventListMap, [&](auto& p) {return p.second->m_script == parentScript;});
+}
+
+void LambdaManager::ClearSavedDeletedEventLists()
+{
+	// reserved for future use
 }

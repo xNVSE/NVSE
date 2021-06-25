@@ -982,7 +982,7 @@ public:
 STATIC_ASSERT(sizeof(ScriptRunner) == 0xA4);
 
 // Gets the real script data ptr, as it can be a pointer to a buffer on the stack in case of vanilla expressions in set and if statements
-UInt8* GetScriptDataPosition(Script* script, void* scriptDataIn, const UInt32* opcodeOffsetPtrIn);
+UInt8* GetScriptDataPosition(Script* script, void* scriptDataIn, UInt32 opcodeOffset);
 
 /* I need to port NiTypes 
 

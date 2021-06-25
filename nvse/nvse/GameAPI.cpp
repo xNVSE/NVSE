@@ -894,6 +894,7 @@ TESGlobal *ResolveGlobalVar(Script *scriptObj, UInt8 *&scriptData)
 void ScriptEventList::Destructor()
 {
 // OBLIVION	ThisStdCall(0x004FB4E0, this);
+	OtherHooks::CleanUpNVSEVars(this);
 	if (m_eventList)
 		m_eventList->RemoveAll();
 	while (m_vars) {
@@ -910,6 +911,7 @@ tList<ScriptEventList::Var>* ScriptEventList::GetVars() const
 {
 	return reinterpret_cast<tList<Var>*>(m_vars);
 }
+
 #if NVSE_CORE
 bool vExtractExpression(ParamInfo* paramInfo, UInt8*& scriptData, Script* scriptObj, ScriptEventList* eventList, void* scriptDataIn, va_list& args)
 {
@@ -1700,6 +1702,7 @@ thread_local CommandInfo* g_lastCommand;
 #endif
 
 #if NVSE_CORE
+
 bool vExtractArgsEx(ParamInfo* paramInfo, void* scriptDataIn, UInt32* scriptDataOffset, Script* scriptObj, ScriptEventList* eventList, va_list args, bool incrementOffsetPtr)
 {
 	if (!paramInfo)
@@ -1712,7 +1715,6 @@ bool vExtractArgsEx(ParamInfo* paramInfo, void* scriptDataIn, UInt32* scriptData
 	//DEBUG_MESSAGE("scriptData:%08x numArgs:%d paramInfo:%08x scriptObj:%08x eventList:%08x", scriptData, numArgs, paramInfo, scriptObj, eventList);
 
 	bool bExtracted = false;
-
 
 	if (numArgs > 0x7FFF)
 	{
@@ -1739,6 +1741,7 @@ bool vExtractArgsEx(ParamInfo* paramInfo, void* scriptDataIn, UInt32* scriptData
 	{
 		*scriptDataOffset += scriptData - (static_cast<UInt8*>(scriptDataIn) + *scriptDataOffset);
 	}
+	
 	return bExtracted;
 }
 
@@ -2250,7 +2253,7 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 	//when script command called as righthand side of a set statement, the script data containing the variable
 	//to assign to remains on the stack as arg to a previous function. We can get to it through scriptData in COMMAND_ARGS
 	*/
-	auto* scriptData = GetScriptDataPosition(script, scriptDataIn, opcodeOffsetPtr) - *opcodeOffsetPtr - 1;
+	auto* scriptData = GetScriptDataPosition(script, scriptDataIn, *opcodeOffsetPtr) - *opcodeOffsetPtr - 1;
 
 	auto* dataStart = scriptData + 1; // should be 0x58 (or 0x72 if called with dot syntax)
 	if (*dataStart != 0x58 && *dataStart != 0x72)
@@ -2714,14 +2717,14 @@ void Debug_DumpFontNames(void)
 
 }
 
-UInt8* GetScriptDataPosition(Script* script, void* scriptDataIn, const UInt32* opcodeOffsetPtrIn)
+UInt8* GetScriptDataPosition(Script* script, void* scriptDataIn, UInt32 opcodeOffset)
 {
 	if (scriptDataIn != script->data) // set ... to or if ..., script data is stored on stack and not heap
 	{
 		auto* scriptData = *(static_cast<UInt8**>(scriptDataIn) + 0x1D5);
-		return scriptData + *opcodeOffsetPtrIn + 1;
+		return scriptData + opcodeOffset + 1;
 	}
-	return static_cast<UInt8*>(scriptDataIn) + *opcodeOffsetPtrIn;
+	return static_cast<UInt8*>(scriptDataIn) + opcodeOffset;
 }
 
 UInt32 GetNextFreeFormID(UInt32 formId)

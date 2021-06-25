@@ -1174,8 +1174,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 		const auto dataLen = context->Read32();
 		auto* scriptData = static_cast<UInt8*>(FormHeap_Allocate(dataLen));
 		context->ReadBuf(dataLen, scriptData);
-		LambdaManager::g_lastScriptData = LambdaManager::ScriptData(scriptData, dataLen);
-		value.lambda = nullptr;
+		value.lambdaScriptData = LambdaManager::ScriptData(scriptData, dataLen);
 		break;
 	}
 	default:

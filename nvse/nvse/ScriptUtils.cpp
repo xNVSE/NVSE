@@ -2850,6 +2850,7 @@ Operator* ExpressionParser::ParseOperator(bool bExpectBinaryOperator, bool bCons
 
 	// check first character
 	char ch = Peek();
+	auto firstChar = ch;
 	if (ch == ',')		// arg expression delimiter
 	{
 		Offset() += 1;
@@ -2898,6 +2899,10 @@ Operator* ExpressionParser::ParseOperator(bool bExpectBinaryOperator, bool bCons
 				break;
 			}
 		}
+		
+		// adding this for consistency with macro
+		if (!op && firstChar == '=')
+			op = &s_operators[kOpType_Assignment];
 	}
 
 	if (!op && ops.size() == 1)
@@ -2905,7 +2910,6 @@ Operator* ExpressionParser::ParseOperator(bool bExpectBinaryOperator, bool bCons
 
 	if (op && bConsumeIfFound)
 		Offset() += strlen(op->symbol);
-
 	return op;
 }	
 
@@ -3404,7 +3408,7 @@ void ExpressionEvaluator::ReadBuf(UInt32 len, UInt8* data)
 
 UInt8* ExpressionEvaluator::GetCommandOpcodePosition() const
 {
-	return GetScriptDataPosition(script, m_scriptData, m_opcodeOffsetPtr);
+	return GetScriptDataPosition(script, m_scriptData, *m_opcodeOffsetPtr);
 }
 
 CommandInfo* ExpressionEvaluator::GetCommand() const
@@ -4321,7 +4325,6 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 	}
 #if _DEBUG
 	g_curLineText = this->GetLineText(cache, nullptr);
-	const auto& lineText = g_curLineText;
 #endif
 	OperandStack operands;
 	auto iter = cache.Begin();
@@ -4351,7 +4354,14 @@ ScriptToken* ExpressionEvaluator::Evaluate()
 			else if (curToken->type == kTokenType_Lambda)
 			{
 				// There needs to be a unique lambda per script event list so that variables can have the correct values
-				curToken = ScriptToken::Create(LambdaManager::CreateLambdaScript(cacheKey, eventList, script));
+				// curToken needs not be deleted since it's always cached
+				auto* script = CreateLambdaScript(cacheKey, curToken->value.lambdaScriptData, *this);
+				if (!script)
+				{
+					Error("Failed to create lambda script");
+					break;
+				}
+				curToken = ScriptToken::Create(script);
 			}
 			operands.Push(curToken);
 		}
@@ -4459,7 +4469,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken* 
 					auto* formName = form->GetName();
 					if (!formName || StrLen(formName) == 0)
 					{
-						if (form->refID == 0x14)
+						if (form->refID == 0x14 || form->refID == 0x7)
 							operands.push("Player");
 						else
 							operands.push(FormatString("%X", form->refID));
@@ -4515,6 +4525,8 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens& tokens, ScriptToken* 
 							auto* name = callingRef->form->GetName();
 							if (name && StrLen(name))
 								operand = std::string(name) + "." + operand;
+							else if (callingRef->form->refID == 0x14 || callingRef->form->refID == 0x7)
+								operand = "Player." + operand;
 							else
 								operand = FormatString("%X", callingRef->form->refID) + "." + operand;
 						}
@@ -5031,12 +5043,6 @@ bool Preprocessor::Process()
 		g_ErrOut.Show("Error: Mismatched block structure.");
 		return false;
 	}
-
-	// auto* alloc = static_cast<char*>(FormHeap_Allocate(m_scriptText.size() + 1));
-	// strcpy_s(alloc, m_scriptText.size() + 1, m_scriptText.c_str());
-	// FormHeap_Free(m_buf->scriptText);
-	// m_buf->scriptText = alloc;
-		
 	return true;
 }
 
