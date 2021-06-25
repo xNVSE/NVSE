@@ -70,24 +70,17 @@ namespace OtherHooks
 		g_nvseVarGarbageCollectionMap.Erase(eventList);
 	}
 
-	void DeleteEventList(ScriptEventList* eventList, bool markLambda)
+	void DeleteEventList(ScriptEventList* eventList)
 	{
-		if (markLambda)
-			LambdaManager::MarkParentAsDeleted(eventList); // deletes if exists
-		if (eventList)
-		{
-			CleanUpNVSEVars(eventList);
-			ThisStdCall(0x5A8BC0, eventList);
-			//GameHeapFree(eventList);
-#if _DEBUG
-			memset(eventList, 0xDD, sizeof ScriptEventList);
-#endif
-		}
+		LambdaManager::MarkParentAsDeleted(eventList); // deletes if exists
+		CleanUpNVSEVars(eventList);
+		ThisStdCall(0x5A8BC0, eventList);
+		GameHeapFree(eventList);
 	}
 	
 	ScriptEventList* __fastcall ScriptEventListsDestroyedHook(ScriptEventList *eventList, int EDX, bool doFree)
 	{
-		DeleteEventList(eventList, true);
+		DeleteEventList(eventList);
 		return eventList;
 	}
 

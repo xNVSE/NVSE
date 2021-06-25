@@ -43,7 +43,9 @@ private:
 	bool				m_bad;
 	UInt8				m_instanceCount;
 	ScriptEventList		* m_eventList;		// cached for quicker construction of function script, but requires care when dealing with recursive function calls
-
+#if _DEBUG
+	const char*			editorID;
+#endif
 public:
 	bool				m_isLambda;
 	FunctionInfo() {}

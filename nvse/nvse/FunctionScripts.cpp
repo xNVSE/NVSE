@@ -2,6 +2,7 @@
 #include "ScriptTokens.h"
 #include "ThreadLocal.h"
 #include "GameRTTI.h"
+#include "Hooks_Other.h"
 #include "LambdaManager.h"
 
 /*******************************************
@@ -345,15 +346,18 @@ FunctionInfo::FunctionInfo(Script* script)
 	{
 		m_eventList = LambdaManager::GetParentEventList(script);
 		if (!m_eventList)
-			ShowRuntimeError(script, "Parent variable list not found for lambda parent script");
+			m_eventList = script->CreateEventList();
 	}
 	m_bad = m_eventList == nullptr;
+#if _DEBUG
+	this->editorID = m_script->GetName();
+#endif
 }
 
 FunctionInfo::~FunctionInfo()
 {
-	if (m_eventList)
-		GameHeapFree(m_eventList);
+	if (m_eventList && !m_isLambda)
+		OtherHooks::DeleteEventList(m_eventList);
 }
 
 FunctionContext* FunctionInfo::CreateContext(UInt8 version, Script* invokingScript)
@@ -456,11 +460,10 @@ FunctionContext::~FunctionContext()
 
 	if (m_eventList && !m_info->m_isLambda)
 	{
-		const auto doFree = m_eventList != m_info->GetEventList();
 		LambdaManager::MarkParentAsDeleted(m_eventList); // If any lambdas refer to the event list, clear them away
 		if (m_eventList)
 		{
-			if (doFree) {
+			if (m_eventList != m_info->GetEventList()) {
 				m_eventList->Destructor();
 				FormHeap_Free(m_eventList);
 			}

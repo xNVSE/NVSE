@@ -79,7 +79,7 @@ bool RemoveEventList(ScriptEventList* parentEventList)
 	{
 		auto& [lambda, eventList] = p;
 		return eventList == parentEventList;
-	}) != 0;
+	});
 }
 
 FormID GetFormIDForLambda(Script* scriptLambda)
@@ -114,7 +114,7 @@ ScriptEventList* LambdaManager::GetParentEventList(Script* scriptLambda)
 	return nullptr;
 }
 
-void LambdaManager::MarkParentAsDeleted(ScriptEventList*& parentEventList)
+void LambdaManager::MarkParentAsDeleted(ScriptEventList* parentEventList)
 {
 	ScopedLock lock(g_lambdaCs);
 	RemoveEventList(parentEventList);
@@ -133,7 +133,6 @@ void LambdaManager::DeleteAllForParentScript(Script* parentScript)
 	{
 		if (parentEventList->m_script == parentScript)
 		{
-			g_lambdas.erase(scriptLambda);
 			FormHeap_Free(scriptLambda->data); // ThisStdCall(0x5AA1A0, scriptLambda); // call destructor to free parentScript data pointer
 			scriptLambda->data = nullptr; // parentScript data and tLists will be freed but parentScript won't be since plugins may store pointers to it to call
 			lambdas.push_back(scriptLambda);
