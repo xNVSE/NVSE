@@ -2850,6 +2850,7 @@ Operator* ExpressionParser::ParseOperator(bool bExpectBinaryOperator, bool bCons
 
 	// check first character
 	char ch = Peek();
+	auto firstChar = ch;
 	if (ch == ',')		// arg expression delimiter
 	{
 		Offset() += 1;
@@ -2898,6 +2899,10 @@ Operator* ExpressionParser::ParseOperator(bool bExpectBinaryOperator, bool bCons
 				break;
 			}
 		}
+		
+		// adding this for consistency with macro
+		if (!op && firstChar == '=')
+			op = &s_operators[kOpType_Assignment];
 	}
 
 	if (!op && ops.size() == 1)
@@ -2905,7 +2910,6 @@ Operator* ExpressionParser::ParseOperator(bool bExpectBinaryOperator, bool bCons
 
 	if (op && bConsumeIfFound)
 		Offset() += strlen(op->symbol);
-
 	return op;
 }	
 
@@ -5039,12 +5043,6 @@ bool Preprocessor::Process()
 		g_ErrOut.Show("Error: Mismatched block structure.");
 		return false;
 	}
-
-	// auto* alloc = static_cast<char*>(FormHeap_Allocate(m_scriptText.size() + 1));
-	// strcpy_s(alloc, m_scriptText.size() + 1, m_scriptText.c_str());
-	// FormHeap_Free(m_buf->scriptText);
-	// m_buf->scriptText = alloc;
-		
 	return true;
 }
 
