@@ -595,7 +595,8 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 			++lineBuf->lineNumber;
 		++curScriptText;
 	}
-	
+
+	char lastChar = '\0';
 	while (true)
 	{
 		const auto curChar = *curScriptText++;
@@ -671,6 +672,8 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 			}
 			default:
 			{
+				if (isspace(lastChar) && isspace(curChar) && !inStringLiteral)
+					continue;
 				break;
 			}
 		}
@@ -687,6 +690,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 			capturedNonSpace = true;
 		if (capturedNonSpace)
 			lineBuf->paramText[lineBuf->paramTextLen++] = curChar;
+		lastChar = curChar;
 	}
 }
 
