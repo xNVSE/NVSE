@@ -556,7 +556,7 @@ std::vector g_lineMacros =
 		{
 			
 			// VARIABLE = VALUE macro 
-			const std::regex assignmentExpr(R"(([a-zA-Z\_\.0-9\[\]]+)\s*)" + regexOp + R"(([a-zA-Z\_\s\.\$\!0-9\-\(\{][.\s\S]*))"); // match int ivar = 4
+			const std::regex assignmentExpr(R"(([a-zA-Z\_\.0-9\[\]\"]+)\s*)" + regexOp + R"(([a-zA-Z\_\s\.\$\!0-9\-\(\{][.\s\S]*))"); // match int ivar = 4
 			if (std::smatch m; std::regex_search(line, m, assignmentExpr, std::regex_constants::match_continuous) && m.size() == 3)
 			{
 				line = "let " + optVarTypeDecl + m.str(1) + " " + realOp + " " + m.str(2);
