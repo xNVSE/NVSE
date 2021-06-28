@@ -26,6 +26,8 @@ enum class NVSEVarType
 	kVarType_Array,
 	kVarType_String
 };
+
+#if RUNTIME
 #if _DEBUG
 extern Map<ScriptEventList*, Map<ScriptEventList::Var*, NVSEVarType>> g_nvseVarGarbageCollectionMap;
 #else
@@ -33,7 +35,7 @@ extern UnorderedMap<ScriptEventList*, UnorderedMap<ScriptEventList::Var*, NVSEVa
 #endif
 
 extern ICriticalSection g_gcCriticalSection;
-
+#endif
 
 struct Operator;
 struct SliceToken;
@@ -535,4 +537,6 @@ struct Operator
 };
 
 bool CanConvertOperand(Token_Type from, Token_Type to);	// don't use directly at run-time, use ScriptToken::CanConvertTo() instead
+#if RUNTIME
 void AddToGarbageCollection(ScriptEventList* eventList, ScriptEventList::Var* var, NVSEVarType type);
+#endif
