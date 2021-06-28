@@ -50,8 +50,7 @@ namespace OtherHooks
 		{
 			if (node->var)
 			{
-				const auto id = node->var->id;
-				const auto type = scriptVars->Get(id);
+				const auto type = scriptVars->Get(node->var);
 				switch (type)
 				{
 				case NVSEVarType::kVarType_String:

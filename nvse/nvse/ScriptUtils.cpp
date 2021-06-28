@@ -95,7 +95,7 @@ ErrOutput g_ErrOut(ShowError, ShowWarning);
 UInt32 AddStringVar(const char* data, ScriptToken& lh, ExpressionEvaluator& context)
 {
 	if (!lh.refIdx)
-		AddToGarbageCollection(context.eventList, lh.GetVar()->id, NVSEVarType::kVarType_String);
+		AddToGarbageCollection(context.eventList, lh.GetVar(), NVSEVarType::kVarType_String);
 	return g_StringMap.Add(lh.owningScript->GetModIndex(), data, false);
 }
 
@@ -426,7 +426,7 @@ ScriptToken* Eval_Assign_Array(OperatorType op, ScriptToken* lh, ScriptToken* rh
 	ScriptEventList::Var *var = lh->GetVar();
 	g_ArrayMap.AddReference(&var->data, rh->GetArray(), context->script->GetModIndex());
 	if (!lh->refIdx)
-		AddToGarbageCollection(context->eventList, var->id, NVSEVarType::kVarType_Array);
+		AddToGarbageCollection(context->eventList, var, NVSEVarType::kVarType_Array);
 #if _DEBUG
 	auto* script = context->script;
 	if (lh->refIdx)

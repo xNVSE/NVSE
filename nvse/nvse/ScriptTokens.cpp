@@ -988,15 +988,16 @@ ScriptToken* ScriptToken::Read(ExpressionEvaluator* context)
 
 
 #if _DEBUG
-Map<ScriptEventList*, Map<UInt32, NVSEVarType>> g_nvseVarGarbageCollectionMap;
+Map<ScriptEventList*, Map<ScriptEventList::Var*, NVSEVarType>> g_nvseVarGarbageCollectionMap;
+
 #else
-UnorderedMap<ScriptEventList*, UnorderedMap<UInt32, NVSEVarType>> g_nvseVarGarbageCollectionMap;
+UnorderedMap<ScriptEventList*, UnorderedMap<ScriptEventList::Var*, NVSEVarType>> g_nvseVarGarbageCollectionMap;
 #endif
 ICriticalSection g_gcCriticalSection;
-void AddToGarbageCollection(ScriptEventList* eventList, UInt32 varIdx, NVSEVarType type)
+void AddToGarbageCollection(ScriptEventList* eventList, ScriptEventList::Var* var, NVSEVarType type)
 {
 	ScopedLock lock(g_gcCriticalSection);
-	g_nvseVarGarbageCollectionMap[eventList].Emplace(varIdx, type);
+	g_nvseVarGarbageCollectionMap[eventList].Emplace(var, type);
 }
 
 Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
@@ -1162,7 +1163,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator* context)
 
 		// to be deleted on event list destruction, see Hooks_Other.cpp#CleanUpNVSEVars
 		if (type == kTokenType_ArrayVar || type == kTokenType_StringVar && refIdx == 0)
-			AddToGarbageCollection(eventList, varIdx, type == kTokenType_StringVar ? NVSEVarType::kVarType_String : NVSEVarType::kVarType_Array);
+			AddToGarbageCollection(eventList, value.var, type == kTokenType_StringVar ? NVSEVarType::kVarType_String : NVSEVarType::kVarType_Array);
 		
 		break;
 	}

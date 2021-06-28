@@ -1122,22 +1122,17 @@ public:
 					ShowRuntimeError(m_comparator, "Could not look up argument variable for function script");
 					return false;
 				}
-				else
-				{
-					g_ArrayMap.AddReference(&var->data, m_lhs->ID(), m_comparator->GetModIndex());
-				}
-
+				g_ArrayMap.AddReference(&var->data, m_lhs->ID(), m_comparator->GetModIndex());
+				AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_Array);
+				
 				var = eventList->GetVariable(rhs->varIdx);
 				if (!var)
 				{
 					ShowRuntimeError(m_comparator, "Could not look up argument variable for function script");
 					return false;
 				}
-				else
-				{
-					g_ArrayMap.AddReference(&var->data, m_rhs->ID(), m_comparator->GetModIndex());
-				}
-
+				g_ArrayMap.AddReference(&var->data, m_rhs->ID(), m_comparator->GetModIndex());
+				AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_Array);
 				return true;
 			}
 		}

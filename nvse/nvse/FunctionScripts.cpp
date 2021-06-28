@@ -139,11 +139,17 @@ public:
 			{
 			case Script::eVarType_Array:
 				if (arg->CanConvertTo(kTokenType_Array))
+				{
 					g_ArrayMap.AddReference(&var->data, arg->GetArray(), info->GetScript()->GetModIndex());
+					AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_Array);
+				}
 				break;
 			case Script::eVarType_String:
 				if (arg->CanConvertTo(kTokenType_String))
+				{
 					var->data = g_StringMap.Add(info->GetScript()->GetModIndex(), arg->GetString(), true);
+					AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_String);
+				}
 				break;
 			case Script::eVarType_Ref:
 				if (arg->CanConvertTo(kTokenType_Form))
@@ -461,16 +467,14 @@ FunctionContext::~FunctionContext()
 	if (m_eventList && !m_info->m_isLambda)
 	{
 		LambdaManager::MarkParentAsDeleted(m_eventList); // If any lambdas refer to the event list, clear them away
-		if (m_eventList)
-		{
-			if (m_eventList != m_info->GetEventList()) {
-				m_eventList->Destructor();
-				FormHeap_Free(m_eventList);
-			}
-			else {
-				m_eventList->ResetAllVariables();
-			}	
+
+		if (m_eventList != m_info->GetEventList()) {
+			m_eventList->Destructor();
+			FormHeap_Free(m_eventList);
 		}
+		else {
+			m_eventList->ResetAllVariables();
+		}	
 	}
 
 	delete m_result;
@@ -548,12 +552,16 @@ bool InternalFunctionCaller::PopulateArgs(ScriptEventList* eventList, FunctionIn
 				break;
 			case Script::eVarType_String:
 				var->data = g_StringMap.Add(info->GetScript()->GetModIndex(), (const char*)m_args[i], true);
+				AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_String);
 				break;
 			case Script::eVarType_Array:
 				{
 					ArrayID arrID = (ArrayID)m_args[i];
 					if (g_ArrayMap.Get(arrID))
-						g_ArrayMap.AddReference (&var->data, arrID, info->GetScript()->GetModIndex());
+					{
+						g_ArrayMap.AddReference(&var->data, arrID, info->GetScript()->GetModIndex());
+						AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_Array);
+					}
 					else
 						var->data = 0;
 				}

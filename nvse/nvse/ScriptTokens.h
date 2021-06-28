@@ -27,9 +27,9 @@ enum class NVSEVarType
 	kVarType_String
 };
 #if _DEBUG
-extern Map<ScriptEventList*, Map<UInt32, NVSEVarType>> g_nvseVarGarbageCollectionMap;
+extern Map<ScriptEventList*, Map<ScriptEventList::Var*, NVSEVarType>> g_nvseVarGarbageCollectionMap;
 #else
-extern UnorderedMap<ScriptEventList*, UnorderedMap<UInt32, NVSEVarType>> g_nvseVarGarbageCollectionMap;
+extern UnorderedMap<ScriptEventList*, UnorderedMap<ScriptEventList::Var*, NVSEVarType>> g_nvseVarGarbageCollectionMap;
 #endif
 
 extern ICriticalSection g_gcCriticalSection;
@@ -535,4 +535,4 @@ struct Operator
 };
 
 bool CanConvertOperand(Token_Type from, Token_Type to);	// don't use directly at run-time, use ScriptToken::CanConvertTo() instead
-void AddToGarbageCollection(ScriptEventList* eventList, UInt32 varIdx, NVSEVarType type);
+void AddToGarbageCollection(ScriptEventList* eventList, ScriptEventList::Var* var, NVSEVarType type);

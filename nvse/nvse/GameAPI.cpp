@@ -2374,7 +2374,7 @@ bool ExtractSetStatementVar(Script* script, ScriptEventList* eventList, void* sc
 						*makeTemporary = true;
 					}
 #if NVSE_CORE
-					AddToGarbageCollection(eventList, varIdx, NVSEVarType::kVarType_String);
+					AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_String);
 #endif
 				}
 			}
