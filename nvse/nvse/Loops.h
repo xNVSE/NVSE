@@ -53,11 +53,12 @@ class ArrayIterLoop : public ForEachLoop
 	ArrayID					m_srcID;
 	ArrayID					m_iterID;
 	ArrayKey				m_curKey;
-	ScriptEventList::Var	*m_iterVar;
 	UInt8					m_modIndex;
 
 	void UpdateIterator(const ArrayElement* elem);
 public:
+	ScriptEventList::Var	*m_iterVar;
+	
 	ArrayIterLoop(const ForEachContext* context, UInt8 modIndex);
 	~ArrayIterLoop() override;
 

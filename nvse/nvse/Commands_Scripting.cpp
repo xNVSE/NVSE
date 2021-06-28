@@ -210,6 +210,7 @@ bool Cmd_ForEach_Execute(COMMAND_ARGS)
 			if (context->variableType == Script::eVarType_Array)
 			{
 				ArrayIterLoop* arrayLoop = new ArrayIterLoop(context, scriptObj->GetModIndex());
+				AddToGarbageCollection(eventList, arrayLoop->m_iterVar, NVSEVarType::kVarType_Array);
 				loop = arrayLoop;
 			}
 			else if (context->variableType == Script::eVarType_String)
