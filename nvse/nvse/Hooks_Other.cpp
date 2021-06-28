@@ -6,6 +6,7 @@
 #include "Commands_UI.h"
 #include "Hooks_Gameplay.h"
 #include "LambdaManager.h"
+#include "PluginManager.h"
 
 #if RUNTIME
 
@@ -79,6 +80,7 @@ namespace OtherHooks
 	
 	ScriptEventList* __fastcall ScriptEventListsDestroyedHook(ScriptEventList *eventList, int EDX, bool doFree)
 	{
+		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_EventListDestroyed, eventList, sizeof ScriptEventList, nullptr);
 		DeleteEventList(eventList);
 		return eventList;
 	}
