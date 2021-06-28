@@ -532,6 +532,7 @@ std::vector g_lineMacros =
 		static const std::vector<std::pair<std::string, std::string>> s_shortHandMacros =
 		{
 			std::make_pair(":=", R"(\=)"),
+			std::make_pair(":=", R"(\:\=)"),
 			std::make_pair("+=", R"(\+\=)"),
 			std::make_pair("-=", R"(\-\=)"),
 			std::make_pair("*=", R"(\*\=)"),
