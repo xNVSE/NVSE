@@ -908,6 +908,8 @@ void * PluginManager::GetFunc(UInt32 funcID)
 	case NVSEDataInterface::kNVSEData_StringVarMapDeleteBySelf: result = (void*)&StringVarMap::DeleteBySelf; break;
 	case NVSEDataInterface::kNVSEData_LambdaDeleteAllForScript: result = (void*)&LambdaManager::DeleteAllForParentScript; break;
 	case NVSEDataInterface::kNVSEData_InventoryReferenceCreateEntry: result = (void*)&CreateInventoryRefEntry; break;
+	case NVSEDataInterface::kNVSEData_LambdaSaveVariableList: result = (void*)&LambdaManager::SaveLambdaVariables; break;
+	case NVSEDataInterface::kNVSEData_LambdaUnsaveVariableList: result = (void*)&LambdaManager::UnsaveLambdaVariables; break;
 	}
 	return result;
 }
