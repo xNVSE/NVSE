@@ -18,6 +18,10 @@ struct BaseExtraList;
 	static const UInt32 s_Console__Print = 0x0071D0A0;
 #endif
 
+#if _DEBUG && NVSE_CORE
+std::vector<void*>* GetFreedPtrInfo(void* ptr);
+#endif
+
 extern bool extraTraces;
 extern bool alternateUpdate3D;
 extern bool s_InsideOnActorEquipHook;
@@ -197,9 +201,8 @@ struct ScriptEventList
 	void	Dump(void);
 	Var *	GetVariable(UInt32 id);
 	UInt32	ResetAllVariables();
-
-	void	Destructor();
 	tList<Var>* GetVars() const;
+	ScriptEventList* Copy();
 };
 
 ScriptEventList* EventListFromForm(TESForm* form);

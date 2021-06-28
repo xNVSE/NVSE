@@ -47,8 +47,24 @@ const _ExtractArgs ExtractArgs = (_ExtractArgs)0x005ACCB0;
 #endif
 
 const _FormHeap_Allocate FormHeap_Allocate = (_FormHeap_Allocate)0x00401000;
+#if _DEBUG && NVSE_CORE
+std::unordered_map<void*, std::vector<void*>> g_debugFreedPtrCallstacks;
+std::vector<void*>* GetFreedPtrInfo(void* ptr)
+{
+	if (auto iter = g_debugFreedPtrCallstacks.find(ptr); iter != g_debugFreedPtrCallstacks.end())
+		return &iter->second;
+	return nullptr;
+}
+void FormHeapFreeAndLog(void* ptr)
+{
+	auto callstack = GetCallStack(10);
+	g_debugFreedPtrCallstacks.emplace(ptr, callstack);
+	CdeclCall(0x401030, ptr);
+}
+const _FormHeap_Free FormHeap_Free = FormHeapFreeAndLog;
+#else
 const _FormHeap_Free FormHeap_Free = (_FormHeap_Free)0x00401030;
-
+#endif
 const _CreateFormInstance CreateFormInstance = (_CreateFormInstance)0x00465110;
 
 const _GetSingleton ConsoleManager_GetSingleton = (_GetSingleton)0x0071B160;
@@ -891,25 +907,47 @@ TESGlobal *ResolveGlobalVar(Script *scriptObj, UInt8 *&scriptData)
 	return (TESGlobal*)globalRef->form;
 }
 
-void ScriptEventList::Destructor()
-{
-// OBLIVION	ThisStdCall(0x004FB4E0, this);
-	OtherHooks::CleanUpNVSEVars(this);
-	if (m_eventList)
-		m_eventList->RemoveAll();
-	while (m_vars) {
-		if (m_vars->var) {
-			FormHeap_Free(m_vars->var);
-		}
-		VarEntry* next = m_vars->next;
-		FormHeap_Free(m_vars);
-		m_vars = next;
-	}
-}
-
 tList<ScriptEventList::Var>* ScriptEventList::GetVars() const
 {
 	return reinterpret_cast<tList<Var>*>(m_vars);
+}
+
+ScriptEventList* ScriptEventList::Copy()
+{
+	auto* newEventList = New<ScriptEventList, 0x5A8B80>();
+	newEventList->m_script = m_script;
+	newEventList->m_vars = (VarEntry*)New<tList<Var>>();
+	auto* vars = GetVars();
+#if NVSE_CORE
+	auto* nvseVars = g_nvseVarGarbageCollectionMap.GetPtr(this);
+#endif
+	for (auto varIter = vars->Begin(); !varIter.End(); ++varIter)
+	{
+		auto* var = *varIter;
+		auto* newVar = New<Var>();
+		newEventList->GetVars()->Append(newVar);
+		newVar->id = var->id;
+#if NVSE_CORE
+		if (nvseVars)
+		{
+			const auto type = nvseVars->Get(var);
+			switch (type)
+			{
+			case NVSEVarType::kVarType_Array:
+				g_ArrayMap.AddReference(&newVar->data, var->data, m_script->GetModIndex());
+				AddToGarbageCollection(this, newVar, NVSEVarType::kVarType_Array);
+				continue;
+			case NVSEVarType::kVarType_String: 
+				newVar->data = g_StringMap.Add(m_script->GetModIndex(), g_StringMap.Get(var->data)->GetCString(), false);
+				AddToGarbageCollection(this, newVar, NVSEVarType::kVarType_String);
+				continue;
+			default: break;
+			}
+		}
+#endif
+		newVar->data = var->data;
+	}
+	return newEventList;
 }
 
 #if NVSE_CORE

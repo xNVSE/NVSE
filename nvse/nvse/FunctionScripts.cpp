@@ -466,13 +466,15 @@ FunctionContext::~FunctionContext()
 
 	if (m_eventList && !m_info->m_isLambda)
 	{
+		
 		LambdaManager::MarkParentAsDeleted(m_eventList); // If any lambdas refer to the event list, clear them away
 
-		if (m_eventList != m_info->GetEventList()) {
-			m_eventList->Destructor();
-			FormHeap_Free(m_eventList);
+		if (m_eventList != m_info->GetEventList()) 
+		{
+			OtherHooks::DeleteEventList(m_eventList);
 		}
-		else {
+		else 
+		{
 			m_eventList->ResetAllVariables();
 		}	
 	}
@@ -489,7 +491,6 @@ bool FunctionContext::Execute(FunctionCaller & caller)
 	if (!caller.PopulateArgs(m_eventList, m_info))
 		return false;
 
-	
 	// run the script
 	CALL_MEMBER_FN(m_info->GetScript(), Execute)(caller.ThisObj(), m_eventList, caller.ContainingObj(), false);
 

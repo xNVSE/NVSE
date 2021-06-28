@@ -191,8 +191,8 @@ ContainerIterLoop::~ContainerIterLoop()
 	for (auto iter = m_elements.Begin(); !iter.End(); ++iter)
 	{
 		if (iter->extendData)
-			GameHeapFree(iter->extendData);
-		GameHeapFree(*iter);
+			FormHeap_Free(iter->extendData);
+		FormHeap_Free(*iter);
 	}
 	m_invRef->Release();
 	m_refVar->data = 0;

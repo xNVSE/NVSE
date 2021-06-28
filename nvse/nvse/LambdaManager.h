@@ -13,6 +13,14 @@ namespace LambdaManager
 		ScriptData() = default;
 		ScriptData(UInt8* scriptData, UInt32 size) : scriptData(scriptData), size(size){}
 	};
+
+	class LambdaVariableContext
+	{
+		Script* scriptLambda;
+	public:
+		LambdaVariableContext(Script* scriptLambda);
+		~LambdaVariableContext();
+	};
 	
 	Script* CreateLambdaScript(UInt8* position, const ScriptData& scriptData, const ExpressionEvaluator&);
 	ScriptEventList* GetParentEventList(Script* scriptLambda);
@@ -20,4 +28,8 @@ namespace LambdaManager
 	bool IsScriptLambda(Script* scriptLambda);
 	void DeleteAllForParentScript(Script* parentScript);
 	void ClearSavedDeletedEventLists();
+
+	// makes sure that a variable list is not deleted by the game while a lambda is still pending execution
+	void SaveLambdaVariables(Script* scriptLambda);
+	void UnsaveLambdaVariables(Script* scriptLambda);
 }

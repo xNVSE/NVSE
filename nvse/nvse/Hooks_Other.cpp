@@ -74,7 +74,7 @@ namespace OtherHooks
 		LambdaManager::MarkParentAsDeleted(eventList); // deletes if exists
 		CleanUpNVSEVars(eventList);
 		ThisStdCall(0x5A8BC0, eventList);
-		GameHeapFree(eventList);
+		FormHeap_Free(eventList);
 	}
 	
 	ScriptEventList* __fastcall ScriptEventListsDestroyedHook(ScriptEventList *eventList, int EDX, bool doFree)

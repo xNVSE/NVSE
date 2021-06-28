@@ -701,7 +701,7 @@ std::string FormatString(const char* fmt, ...)
 std::vector<void*> GetCallStack(int i)
 {
 	std::vector<void*> vecTrace(i, nullptr);
-	CaptureStackBackTrace(0, i, reinterpret_cast<PVOID*>(vecTrace.data()), nullptr);
+	CaptureStackBackTrace(1, i, reinterpret_cast<PVOID*>(vecTrace.data()), nullptr);
 	return vecTrace;
 }
 

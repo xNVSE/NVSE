@@ -188,16 +188,6 @@ const char* GetModName(Script* script);
 
 void ShowRuntimeError(Script* script, const char* fmt, ...);
 
-inline void* GameHeapAlloc(UInt32 size)
-{
-	return ThisStdCall<void*>(0xAA3E40, (void*)0x11F6238, size);
-}
-
-inline void GameHeapFree(void* ptr)
-{
-	ThisStdCall(0xAA4060, (void*)0x11F6238, ptr);
-}
-
 #endif
 
 std::string FormatString(const char* fmt, ...);

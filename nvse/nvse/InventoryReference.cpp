@@ -32,8 +32,8 @@ InventoryReference::~InventoryReference()
 	if (m_tempEntry)
 	{
 		if (m_tempEntry->extendData)
-			GameHeapFree(m_tempEntry->extendData);
-		GameHeapFree(m_tempEntry);
+			FormHeap_Free(m_tempEntry->extendData);
+		FormHeap_Free(m_tempEntry);
 	}
 
 	// remove unnecessary extra data, consolidate identical stacks
@@ -273,10 +273,10 @@ InventoryReference *CreateInventoryRef(TESObjectREFR *container, const Inventory
 
 ExtraContainerChanges::EntryData *CreateTempEntry(TESForm *itemForm, SInt32 countDelta, ExtraDataList *xData)
 {
-	ExtraContainerChanges::EntryData *entry = (ExtraContainerChanges::EntryData*)GameHeapAlloc(sizeof(ExtraContainerChanges::EntryData));
+	ExtraContainerChanges::EntryData *entry = (ExtraContainerChanges::EntryData*)FormHeap_Allocate(sizeof(ExtraContainerChanges::EntryData));
 	if (xData)
 	{
-		entry->extendData = (ExtraContainerChanges::ExtendDataList*)GameHeapAlloc(8);
+		entry->extendData = (ExtraContainerChanges::ExtendDataList*)FormHeap_Allocate(8);
 		entry->extendData->Init(xData);
 	}
 	else entry->extendData = NULL;

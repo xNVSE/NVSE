@@ -112,11 +112,13 @@ struct DelayedCallInfo
 	Script* script;
 	float time;
 	TESObjectREFR* thisObj;
+	LambdaManager::LambdaVariableContext lambdaVariableContext;
 
 	DelayedCallInfo(Script* script, float time, TESObjectREFR* thisObj)
 		: script(script),
 		  time(time),
-		  thisObj(thisObj)
+		  thisObj(thisObj),
+		  lambdaVariableContext(script)
 	{
 	}
 };
@@ -126,11 +128,15 @@ struct CallWhileInfo
 	Script* callFunction;
 	Script* condition;
 	TESObjectREFR* thisObj;
+	LambdaManager::LambdaVariableContext callFnLambdaCtx;
+	LambdaManager::LambdaVariableContext condFnLambdaCtx;
 
 	CallWhileInfo(Script* callFunction, Script* condition, TESObjectREFR* thisObj)
 		: callFunction(callFunction),
 		  condition(condition),
-		  thisObj(thisObj)
+		  thisObj(thisObj),
+		  callFnLambdaCtx(callFunction),
+		  condFnLambdaCtx(condition)
 	{
 	}
 };

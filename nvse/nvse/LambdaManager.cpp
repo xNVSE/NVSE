@@ -73,15 +73,6 @@ Script* LambdaManager::CreateLambdaScript(UInt8* position, const ScriptData& scr
 	return scriptLambda;
 }
 
-bool RemoveEventList(ScriptEventList* parentEventList)
-{
-	return std::erase_if(g_lambdaParentEventListMap, [&](auto& p)
-	{
-		auto& [lambda, eventList] = p;
-		return eventList == parentEventList;
-	});
-}
-
 FormID GetFormIDForLambda(Script* scriptLambda)
 {
 	const auto spIt = std::ranges::find_if(g_lambdaScriptPosMap, [&](auto& p)
@@ -94,16 +85,29 @@ FormID GetFormIDForLambda(Script* scriptLambda)
 	return spIt->first.second;
 }
 
-FormID GetFormIDForLambda(ScriptEventList* parentEventList)
+auto GetLambdaForParentIter(ScriptEventList* parentEventList)
 {
-	const auto lpIt = std::ranges::find_if(g_lambdaParentEventListMap, [&](auto& p)
+	return std::ranges::find_if(g_lambdaParentEventListMap, [&](auto& p)
 	{
 		auto& [lambdaScript, eventList] = p;
 		return parentEventList == eventList;
 	});
+}
+
+Script* GetLambdaForParent(ScriptEventList* parentEventList)
+{
+	const auto lpIt = GetLambdaForParentIter(parentEventList);
 	if (lpIt == g_lambdaParentEventListMap.end()) 
+		return nullptr;
+	return lpIt->first;
+}
+
+FormID GetFormIDForLambda(ScriptEventList* parentEventList)
+{
+	auto* scriptLambda = GetLambdaForParent(parentEventList);
+	if (!scriptLambda) 
 		return 0;
-	return GetFormIDForLambda(lpIt->first);
+	return GetFormIDForLambda(scriptLambda);
 }
 
 ScriptEventList* LambdaManager::GetParentEventList(Script* scriptLambda)
@@ -112,12 +116,6 @@ ScriptEventList* LambdaManager::GetParentEventList(Script* scriptLambda)
 	if (iter != g_lambdaParentEventListMap.end())
 		return iter->second;
 	return nullptr;
-}
-
-void LambdaManager::MarkParentAsDeleted(ScriptEventList* parentEventList)
-{
-	ScopedLock lock(g_lambdaCs);
-	RemoveEventList(parentEventList);
 }
 
 bool LambdaManager::IsScriptLambda(Script* scriptLambda)
@@ -145,4 +143,78 @@ void LambdaManager::DeleteAllForParentScript(Script* parentScript)
 void LambdaManager::ClearSavedDeletedEventLists()
 {
 	// reserved for future use
+}
+
+struct SavedLambdaContext
+{
+	UInt32 refCount = 0;
+	bool markedForDelete = false;
+};
+
+std::unordered_map<ScriptLambda*, SavedLambdaContext> g_savedVarLists;
+
+bool IsVarListSaved(ScriptLambda* scriptLambda)
+{
+	return g_savedVarLists.contains(scriptLambda);
+}
+
+void RemoveEventList(auto iter)
+{
+	g_lambdaParentEventListMap.erase(iter);
+}
+
+void RemoveEventList(ScriptEventList* parentEventList)
+{
+	const auto iter = GetLambdaForParentIter(parentEventList);
+	RemoveEventList(iter);
+}
+
+void LambdaManager::MarkParentAsDeleted(ScriptEventList* parentEventList)
+{
+	ScopedLock lock(g_lambdaCs);
+	const auto scriptLambdaIter = GetLambdaForParentIter(parentEventList);
+	if (scriptLambdaIter == g_lambdaParentEventListMap.end())
+		return;
+	auto* scriptLambda = scriptLambdaIter->first;
+	RemoveEventList(scriptLambdaIter);
+	if (auto iter = g_savedVarLists.find(scriptLambda); iter != g_savedVarLists.end())
+	{
+		auto& ctx = iter->second;
+		ctx.markedForDelete = true;
+		auto* copy = parentEventList->Copy();
+		SetLambdaParent(scriptLambda, copy);
+	}
+}
+
+void LambdaManager::SaveLambdaVariables(Script* scriptLambda)
+{
+	++g_savedVarLists[scriptLambda].refCount;
+}
+
+void LambdaManager::UnsaveLambdaVariables(Script* scriptLambda)
+{
+	const auto iter = g_savedVarLists.find(scriptLambda);
+	if (iter == g_savedVarLists.end())
+		return;
+	auto [refCount, markedForDelete] = iter->second;
+	--refCount;
+	if (refCount == 0)
+	{
+		g_savedVarLists.erase(iter);
+		if (markedForDelete)
+		{
+			auto* parent = GetParentEventList(scriptLambda);
+			OtherHooks::DeleteEventList(parent);
+		}
+	}
+}
+
+LambdaManager::LambdaVariableContext::LambdaVariableContext(Script* scriptLambda) : scriptLambda(scriptLambda)
+{
+	SaveLambdaVariables(scriptLambda);
+}
+
+LambdaManager::LambdaVariableContext::~LambdaVariableContext()
+{
+	UnsaveLambdaVariables(this->scriptLambda);
 }
