@@ -206,7 +206,7 @@ enum ParamParenthResult : UInt8
 
 enum class MacroType
 {
-	OneLineLambda, AssignmentShortHand
+	OneLineLambda, AssignmentShortHand, IfEval
 };
 
 class ExpressionParser
