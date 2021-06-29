@@ -466,10 +466,10 @@ FunctionContext::~FunctionContext()
 
 	if (m_eventList && !m_info->m_isLambda)
 	{
-		
-		LambdaManager::MarkParentAsDeleted(m_eventList); // If any lambdas refer to the event list, clear them away
+		const auto doFree = m_eventList != m_info->GetEventList(); // check if bottom of call stack (first is always cached)
+		LambdaManager::MarkParentAsDeleted(m_eventList, doFree); // If any lambdas refer to the event list, clear them away
 
-		if (m_eventList != m_info->GetEventList()) 
+		if (doFree) 
 		{
 			OtherHooks::DeleteEventList(m_eventList);
 		}

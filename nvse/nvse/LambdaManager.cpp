@@ -169,7 +169,7 @@ void RemoveEventList(ScriptEventList* parentEventList)
 	RemoveEventList(iter);
 }
 
-void LambdaManager::MarkParentAsDeleted(ScriptEventList* parentEventList)
+void LambdaManager::MarkParentAsDeleted(ScriptEventList* parentEventList, bool doFree)
 {
 	ScopedLock lock(g_lambdaCs);
 	const auto scriptLambdaIter = GetLambdaForParentIter(parentEventList);
@@ -180,7 +180,8 @@ void LambdaManager::MarkParentAsDeleted(ScriptEventList* parentEventList)
 	if (auto iter = g_savedVarLists.find(scriptLambda); iter != g_savedVarLists.end())
 	{
 		auto& ctx = iter->second;
-		ctx.markedForDelete = true;
+		if (doFree)
+			ctx.markedForDelete = true;
 		auto* copy = parentEventList->Copy();
 		SetLambdaParent(scriptLambda, copy);
 	}

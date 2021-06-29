@@ -72,7 +72,7 @@ namespace OtherHooks
 
 	void DeleteEventList(ScriptEventList* eventList)
 	{
-		LambdaManager::MarkParentAsDeleted(eventList); // deletes if exists
+		LambdaManager::MarkParentAsDeleted(eventList, true); // deletes if exists
 		CleanUpNVSEVars(eventList);
 		ThisStdCall(0x5A8BC0, eventList);
 		FormHeap_Free(eventList);
