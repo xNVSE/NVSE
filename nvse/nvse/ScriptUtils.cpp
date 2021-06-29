@@ -2390,7 +2390,7 @@ void ExpressionParser::SaveScriptLine()
 void ExpressionParser::RestoreScriptLine()
 {
 	const auto& line = g_savedScriptLines.top();
-	if (m_len != line.len) // only modify offset if macros were actually applied
+	if (_stricmp(line.curOffset, line.curExpr.c_str()) != 0)
 	{
 		strcpy_s(line.curOffset, sizeof m_lineBuf->paramText - line.len, line.curExpr.c_str());
 		m_len = line.len;
@@ -2448,11 +2448,13 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 					return kTokenType_Invalid;
 				}
 
+				SaveScriptLine();
 				// replace closing bracket with 0 to ensure subexpression doesn't try to read past end of expr (for rigging commands)
 				m_lineBuf->paramText[endBracPos] = 0;
 
 				operandType = ParseSubExpression(endBracPos - Offset());
 				
+				RestoreScriptLine();
 				Offset() = endBracPos + 1;	// skip the closing bracket
 				bLastTokenWasOperand = true;
 			}
@@ -2948,9 +2950,9 @@ static void FormatString(std::string& str)
 ScriptToken* ExpressionParser::PeekOperand(UInt32& outReadLen)
 {
 	outReadLen = 0;
-	SaveScriptLine();
 	const UInt32 curOffset = Offset();
 	SkipSpaces();
+	SaveScriptLine();
 	while (*CurText() == '(')
 	{
 		++Offset();
