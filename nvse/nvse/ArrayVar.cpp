@@ -1116,7 +1116,7 @@ public:
 			UserFunctionParam* rhs = info->GetParam(1);
 			if (lhs && rhs && lhs->varType == Script::eVarType_Array && rhs->varType == Script::eVarType_Array)
 			{
-				ScriptEventList::Var* var = eventList->GetVariable(lhs->varIdx);
+				ScriptLocal* var = eventList->GetVariable(lhs->varIdx);
 				if (!var)
 				{
 					ShowRuntimeError(m_comparator, "Could not look up argument variable for function script");

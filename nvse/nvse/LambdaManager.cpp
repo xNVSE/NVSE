@@ -14,7 +14,9 @@ struct VariableListContext
 {
 	UInt32 refCount = 0;
 	ScriptEventList* eventListCopy = nullptr;
-	std::vector<ScriptLambda*> lambdas;
+#if _DEBUG
+	std::unordered_set<ScriptLambda*> lambdas;
+#endif
 };
 
 // used for memoizing scripts and prevent endless allocation of scripts
@@ -24,6 +26,8 @@ std::unordered_map<ScriptEventList*, VariableListContext> g_savedVarLists;
 struct LambdaContext
 {
 	ScriptEventList* parentEventList = nullptr;
+	// any lambdas that are referenced within this lambda
+	std::unique_ptr<std::vector<ScriptLambda*>> capturedLambdaVariableScripts;
 };
 
 // contains all lambdas
@@ -31,6 +35,13 @@ static std::unordered_map<ScriptLambda*, LambdaContext> g_lambdas;
 
 // avoid concurrency issues
 ICriticalSection LambdaManager::g_lambdaCs;
+
+LambdaContext* GetLambdaContext(ScriptLambda* scriptLambda)
+{
+	if (auto iter = g_lambdas.find(scriptLambda); iter != g_lambdas.end())
+		return &iter->second;
+	return nullptr;
+}
 
 void SetLambdaParent(LambdaContext& ctx, ScriptEventList* parentEventList)
 {
@@ -156,12 +167,17 @@ void LambdaManager::ClearSavedDeletedEventLists()
 	// reserved for future use
 }
 
-VariableListContext* GetVarListContext(Script* scriptLambda)
+auto GetVarListContextIter(Script* scriptLambda)
 {
-	const auto varListCopyIter = std::ranges::find_if(g_savedVarLists, [&](auto& p)
+	return std::ranges::find_if(g_savedVarLists, [&](auto& p)
 	{
 		return std::ranges::find(p.second.lambdas, scriptLambda) != p.second.lambdas.end();
 	});
+}
+
+VariableListContext* GetVarListContext(Script* scriptLambda)
+{
+	const auto varListCopyIter = GetVarListContextIter(scriptLambda);
 	if (varListCopyIter != g_savedVarLists.end())
 		return &varListCopyIter->second;
 	return nullptr;
@@ -174,7 +190,6 @@ ScriptEventList* LambdaManager::GetParentEventList(Script* scriptLambda)
 		return nullptr;
 	if (auto* eventList = iter->second.parentEventList)
 		return eventList;
-
 	// saved variable lists
 	auto* varListContext = GetVarListContext(scriptLambda);
 	if (varListContext && varListContext->eventListCopy)
@@ -184,10 +199,10 @@ ScriptEventList* LambdaManager::GetParentEventList(Script* scriptLambda)
 
 void RemoveEventList(ScriptEventList* eventList)
 {
-	for (auto& [parentEventList] : g_lambdas | std::views::values)
+	for (auto& ctx : g_lambdas | std::views::values)
 	{
-		if (parentEventList == eventList)
-			parentEventList = nullptr;
+		if (ctx.parentEventList == eventList)
+			ctx.parentEventList = nullptr;
 	}
 }
 
@@ -202,14 +217,47 @@ void LambdaManager::MarkParentAsDeleted(ScriptEventList* parentEventList)
 	}
 }
 
+void CaptureChildLambdas(ScriptLambda* scriptLambda, LambdaContext& ctx)
+{
+	// save any children lambda's variable lists
+	auto* eventList = ctx.parentEventList;
+	if (ctx.capturedLambdaVariableScripts)
+		return;
+	
+	// cached since O(n^2)
+	auto varLambdas = std::make_unique<std::vector<ScriptLambda*>>();
+	for (auto* ref : scriptLambda->refList)
+	{
+		if (!ref->varIdx)
+			continue;
+		ref->Resolve(eventList);
+		auto* form = ref->form;
+		if (IS_ID(form, Script) && LambdaManager::IsScriptLambda((ScriptLambda*)form))
+			varLambdas->push_back((ScriptLambda*)form);
+	}
+	ctx.capturedLambdaVariableScripts = std::move(varLambdas);
+}
+
 void LambdaManager::SaveLambdaVariables(Script* scriptLambda)
 {
-	auto* eventList = GetParentEventList(scriptLambda);
+	auto* ctx = GetLambdaContext(scriptLambda);
+	if (!ctx)
+		return;
+	auto* eventList = ctx->parentEventList;
 	if (!eventList)
 		return;
-	auto& [refCount, eventListCopy, lambdas] = g_savedVarLists[eventList];
-	++refCount;
-	lambdas.push_back(scriptLambda);
+	auto& varCtx = g_savedVarLists[eventList];
+	++varCtx.refCount;
+#if _DEBUG
+	varCtx.lambdas.insert(scriptLambda);
+#endif
+
+	// save any child lambda variables
+	CaptureChildLambdas(scriptLambda, *ctx);
+	for (auto* childLambda : *ctx->capturedLambdaVariableScripts)
+	{
+		SaveLambdaVariables(childLambda);
+	}
 }
 
 void DeleteLambdaScript(auto& iter)
@@ -219,16 +267,38 @@ void DeleteLambdaScript(auto& iter)
 	scriptLambda->Destroy(true);
 }
 
+void DebugError()
+{
+#if _DEBUG
+	DebugBreak();
+#endif
+}
 
 void LambdaManager::UnsaveLambdaVariables(Script* scriptLambda)
 {
-	auto* eventList = GetParentEventList(scriptLambda);
-	const auto iter = g_savedVarLists.find(eventList);
-	if (iter == g_savedVarLists.end())
+	auto* ctx = GetLambdaContext(scriptLambda);
+	if (!ctx)
+	{
+		DebugError();
 		return;
-	auto& refCount = iter->second.refCount;
-	const auto eventListCopy = iter->second.eventListCopy;
+	}
+	auto iter = GetVarListContextIter(scriptLambda);
+	if (iter == g_savedVarLists.end())
+	{
+		DebugError();
+		return;
+	}
+	auto& varCtx = iter->second;
+	auto& refCount = varCtx.refCount;
+	const auto eventListCopy = varCtx.eventListCopy;
 	--refCount;
+
+	// before proceeding check if there were any child lambdas referenced, delete their event list
+	for (auto* childLambda : *ctx->capturedLambdaVariableScripts)
+	{
+		UnsaveLambdaVariables(childLambda);
+	}
+	
 	if (refCount == 0)
 	{
 		g_savedVarLists.erase(iter);

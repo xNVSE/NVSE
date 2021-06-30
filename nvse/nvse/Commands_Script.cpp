@@ -15,7 +15,8 @@
 #include "FunctionScripts.h"
 //#include "ModTable.h"
 
-enum EScriptMode {
+enum EScriptMode
+{
 	eScript_HasScript,
 	eScript_Get,
 	eScript_Remove,
@@ -24,56 +25,66 @@ enum EScriptMode {
 static bool GetScript_Execute(COMMAND_ARGS, EScriptMode eMode)
 {
 	*result = 0;
-	TESForm* form = NULL;
+	TESForm *form = NULL;
 
 	ExtractArgsEx(EXTRACT_ARGS_EX, &form);
 	bool parmForm = form ? true : false;
 
 	form = form->TryGetREFRParent();
-	if (!form) {
-		if (!thisObj) return true;
+	if (!form)
+	{
+		if (!thisObj)
+			return true;
 		form = thisObj->baseForm;
 	}
 
-	TESScriptableForm* scriptForm = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
-	Script* script = NULL;
-	EffectSetting* effect = NULL;
-	if (!scriptForm)	// Let's try for a MGEF
+	TESScriptableForm *scriptForm = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
+	Script *script = NULL;
+	EffectSetting *effect = NULL;
+	if (!scriptForm) // Let's try for a MGEF
 	{
 		effect = DYNAMIC_CAST(form, TESForm, EffectSetting);
 		if (effect)
 			script = effect->GetScript();
-	} else
+	}
+	else
 		script = (scriptForm) ? scriptForm->script : NULL;
 
-	switch(eMode) {
-		case eScript_HasScript: {
-			*result = (script != NULL) ? 1 : 0;
-			break;
+	switch (eMode)
+	{
+	case eScript_HasScript:
+	{
+		*result = (script != NULL) ? 1 : 0;
+		break;
+	}
+	case eScript_Get:
+	{
+		if (script)
+		{
+			UInt32 *refResult = (UInt32 *)result;
+			*refResult = script->refID;
 		}
-		case eScript_Get: {
-			if (script) {
-				UInt32* refResult = (UInt32*)result;
-				*refResult = script->refID;
-			}
-			break;
+		break;
+	}
+	case eScript_Remove:
+	{
+		// simply forget about the script
+		if (script)
+		{
+			UInt32 *refResult = (UInt32 *)result;
+			*refResult = script->refID;
 		}
-		case eScript_Remove: {
-			// simply forget about the script
-			if (script) {
-				UInt32* refResult = (UInt32*)result;
-				*refResult = script->refID;
-			}
-			if (scriptForm)
-				scriptForm->script = NULL;
-			else if (effect)
-				effect->RemoveScript();
-			if (!parmForm && thisObj) {
-				// Remove ExtraScript entry - otherwise the script will keep running until the reference is reloaded.
-				thisObj->extraDataList.RemoveByType(kExtraData_Script);
-			}
-			break;
+		if (scriptForm)
+			scriptForm->script = NULL;
+		else if (effect)
+			effect->RemoveScript();
+		if (!parmForm && thisObj)
+		{
+			// Remove ExtraScript entry - otherwise the script will keep running until the reference is reloaded.
+			thisObj->extraDataList.RemoveByType(kExtraData_Script);
 		}
+		break;
+	}
 	}
 	return true;
 }
@@ -96,62 +107,71 @@ bool Cmd_RemoveScript_Execute(COMMAND_ARGS)
 bool Cmd_SetScript_Execute(COMMAND_ARGS)
 {
 	*result = 0;
-	UInt32* refResult = (UInt32*)result;
+	UInt32 *refResult = (UInt32 *)result;
 
-	TESForm* form = NULL;
-	TESForm* pForm = NULL;
-	TESForm* scriptArg = NULL;
+	TESForm *form = NULL;
+	TESForm *pForm = NULL;
+	TESForm *scriptArg = NULL;
 
 	ExtractArgsEx(EXTRACT_ARGS_EX, &scriptArg, &form);
 	bool parmForm = form ? true : false;
 
 	form = form->TryGetREFRParent();
-	if (!form) {
-		if (!thisObj) return true;
+	if (!form)
+	{
+		if (!thisObj)
+			return true;
 		form = thisObj->baseForm;
 	}
 
-	TESScriptableForm* scriptForm = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
-	Script* oldScript = NULL;
-	EffectSetting* effect = NULL;
-	if (!scriptForm)	// Let's try for a MGEF
+	TESScriptableForm *scriptForm = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
+	Script *oldScript = NULL;
+	EffectSetting *effect = NULL;
+	if (!scriptForm) // Let's try for a MGEF
 	{
 		effect = DYNAMIC_CAST(form, TESForm, EffectSetting);
 		if (effect)
 			oldScript = effect->GetScript();
 		else
 			return true;
-	} else
+	}
+	else
 		oldScript = scriptForm->script;
 
-	Script* script = DYNAMIC_CAST(scriptArg, TESForm, Script);
-	if (!script) return true;
+	Script *script = DYNAMIC_CAST(scriptArg, TESForm, Script);
+	if (!script)
+		return true;
 
 	// we can only get a magic script here for an EffectSetting
-	if (script->IsMagicScript() && !effect) return true;
+	if (script->IsMagicScript() && !effect)
+		return true;
 
 	// we can't get an unknown script here
-	if (script->IsUnkScript()) return true;
+	if (script->IsUnkScript())
+		return true;
 
-	if (script->IsMagicScript()) {
+	if (script->IsMagicScript())
+	{
 		effect->SetScript(script);
 		// clean up event list here?
 	}
-	else
-		if (effect)	// we need a magic script and some var won't be initialized
-			return true;
+	else if (effect) // we need a magic script and some var won't be initialized
+		return true;
 
-	if (oldScript) {
+	if (oldScript)
+	{
 		*refResult = oldScript->refID;
 	}
 
-	if ((script->IsQuestScript() && form->typeID == kFormType_TESQuest) || script->IsObjectScript()) {
+	if ((script->IsQuestScript() && form->typeID == kFormType_TESQuest) || script->IsObjectScript())
+	{
 		scriptForm->script = script;
 		// clean up event list here?
 		// This is necessary in order to make sure the script uses the correct questDelayTime.
 		script->quest = DYNAMIC_CAST(form, TESForm, TESQuest);
 	}
-	if (script->IsObjectScript() && !parmForm && thisObj) {
+	if (script->IsObjectScript() && !parmForm && thisObj)
+	{
 		// Re-building ExtraScript entry - the new script then starts running immediately (instead of only on reload).
 		thisObj->extraDataList.RemoveByType(kExtraData_Script);
 		thisObj->extraDataList.Add(ExtraScript::Create(form, true));
@@ -161,7 +181,7 @@ bool Cmd_SetScript_Execute(COMMAND_ARGS)
 		//if (thisObj->extraDataList.Add(ExtraScript::Create(form, true))) {
 		//	ExtraScript* xScript = (ExtraScript*)thisObj->extraDataList.GetByType(kExtraData_Script);
 		//	DoCheckScriptRunnerAndRun(thisObj, &(thisObj->extraDataList));
-		//	//MarkBaseExtraListScriptEvent(thisObj, &(thisObj->extraDataList), ScriptEventList::kEvent_OnLoad); 
+		//	//MarkBaseExtraListScriptEvent(thisObj, &(thisObj->extraDataList), ScriptEventList::kEvent_OnLoad);
 		//	if (xScript) {
 		//		xScript->EventCreate(ScriptEventList::kEvent_OnLoad, NULL);
 		//	}
@@ -172,15 +192,19 @@ bool Cmd_SetScript_Execute(COMMAND_ARGS)
 
 bool Cmd_IsFormValid_Execute(COMMAND_ARGS)
 {
-	TESForm* pForm = NULL;
+	TESForm *pForm = NULL;
 	*result = 0;
-	if (ExtractArgsEx(EXTRACT_ARGS_EX, &pForm)) {
+	if (ExtractArgsEx(EXTRACT_ARGS_EX, &pForm))
+	{
 		pForm = pForm->TryGetREFRParent();
-		if (!pForm) {
-			if (!thisObj) return true;
+		if (!pForm)
+		{
+			if (!thisObj)
+				return true;
 			pForm = thisObj->baseForm;
 		}
-		if (pForm) {
+		if (pForm)
+		{
 			*result = 1;
 		}
 		if (IsConsoleMode())
@@ -191,7 +215,7 @@ bool Cmd_IsFormValid_Execute(COMMAND_ARGS)
 
 bool Cmd_IsReference_Execute(COMMAND_ARGS)
 {
-	TESObjectREFR* refr = NULL;
+	TESObjectREFR *refr = NULL;
 	*result = 0;
 	if (ExtractArgs(EXTRACT_ARGS, &refr))
 		*result = 1;
@@ -201,7 +225,8 @@ bool Cmd_IsReference_Execute(COMMAND_ARGS)
 	return true;
 }
 
-enum {
+enum
+{
 	eScriptVar_Get = 1,
 	eScriptVar_GetRef,
 	eScriptVar_Has,
@@ -210,22 +235,22 @@ enum {
 bool GetVariable_Execute(COMMAND_ARGS, UInt32 whichAction)
 {
 	char varName[256];
-	TESQuest* quest = NULL;
-	Script* targetScript = NULL;
-	ScriptEventList* targetEventList = NULL;
+	TESQuest *quest = NULL;
+	Script *targetScript = NULL;
+	ScriptEventList *targetEventList = NULL;
 	*result = 0;
 
 	if (!ExtractArgs(EXTRACT_ARGS, &varName, &quest))
 		return true;
 	if (quest)
 	{
-		TESScriptableForm* scriptable = DYNAMIC_CAST(quest, TESQuest, TESScriptableForm);
+		TESScriptableForm *scriptable = DYNAMIC_CAST(quest, TESQuest, TESScriptableForm);
 		targetScript = scriptable->script;
 		targetEventList = quest->scriptEventList;
 	}
 	else if (thisObj)
 	{
-		TESScriptableForm* scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm);
+		TESScriptableForm *scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm);
 		if (scriptable)
 		{
 			targetScript = scriptable->script;
@@ -235,22 +260,22 @@ bool GetVariable_Execute(COMMAND_ARGS, UInt32 whichAction)
 
 	if (targetScript && targetEventList)
 	{
-		VariableInfo* varInfo = targetScript->GetVariableByName(varName);
+		VariableInfo *varInfo = targetScript->GetVariableByName(varName);
 		if (varInfo)
 		{
 			if (whichAction == eScriptVar_Has)
 				*result = 1;
 			else
 			{
-				ScriptEventList::Var* var = targetEventList->GetVariable(varInfo->idx);
+				ScriptLocal *var = targetEventList->GetVariable(varInfo->idx);
 				if (var)
 				{
 					if (whichAction == eScriptVar_Get)
 						*result = var->data;
 					else if (whichAction == eScriptVar_GetRef)
 					{
-						UInt32* refResult = (UInt32*)result;
-						*refResult = (*(UInt64*)&var->data);
+						UInt32 *refResult = (UInt32 *)result;
+						*refResult = (*(UInt64 *)&var->data);
 					}
 				}
 			}
@@ -263,9 +288,9 @@ bool GetVariable_Execute(COMMAND_ARGS, UInt32 whichAction)
 bool Cmd_SetVariable_Execute(COMMAND_ARGS)
 {
 	char varName[256];
-	TESQuest* quest = NULL;
-	Script* targetScript = NULL;
-	ScriptEventList* targetEventList = NULL;
+	TESQuest *quest = NULL;
+	Script *targetScript = NULL;
+	ScriptEventList *targetEventList = NULL;
 	float value = 0;
 	*result = 0;
 
@@ -273,13 +298,13 @@ bool Cmd_SetVariable_Execute(COMMAND_ARGS)
 		return true;
 	if (quest)
 	{
-		TESScriptableForm* scriptable = DYNAMIC_CAST(quest, TESQuest, TESScriptableForm);
+		TESScriptableForm *scriptable = DYNAMIC_CAST(quest, TESQuest, TESScriptableForm);
 		targetScript = scriptable->script;
 		targetEventList = quest->scriptEventList;
 	}
 	else if (thisObj)
 	{
-		TESScriptableForm* scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm);
+		TESScriptableForm *scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm);
 		if (scriptable)
 		{
 			targetScript = scriptable->script;
@@ -289,11 +314,12 @@ bool Cmd_SetVariable_Execute(COMMAND_ARGS)
 
 	if (targetScript && targetEventList)
 	{
-		VariableInfo* varInfo = targetScript->GetVariableByName(varName);
+		VariableInfo *varInfo = targetScript->GetVariableByName(varName);
 		if (varInfo)
 		{
-			ScriptEventList::Var* var = targetEventList->GetVariable(varInfo->idx);
-			if (var) var->data = value;
+			ScriptLocal *var = targetEventList->GetVariable(varInfo->idx);
+			if (var)
+				var->data = value;
 		}
 	}
 
@@ -303,23 +329,23 @@ bool Cmd_SetVariable_Execute(COMMAND_ARGS)
 bool Cmd_SetRefVariable_Execute(COMMAND_ARGS)
 {
 	char varName[256];
-	TESQuest* quest = NULL;
-	Script* targetScript = NULL;
-	ScriptEventList* targetEventList = NULL;
-	TESForm * value = NULL;
+	TESQuest *quest = NULL;
+	Script *targetScript = NULL;
+	ScriptEventList *targetEventList = NULL;
+	TESForm *value = NULL;
 	*result = 0;
 
 	if (!ExtractArgs(EXTRACT_ARGS, &varName, &value, &quest))
 		return true;
 	if (quest)
 	{
-		TESScriptableForm* scriptable = DYNAMIC_CAST(quest, TESQuest, TESScriptableForm);
+		TESScriptableForm *scriptable = DYNAMIC_CAST(quest, TESQuest, TESScriptableForm);
 		targetScript = scriptable->script;
 		targetEventList = quest->scriptEventList;
 	}
 	else if (thisObj)
 	{
-		TESScriptableForm* scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm);
+		TESScriptableForm *scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm);
 		if (scriptable)
 		{
 			targetScript = scriptable->script;
@@ -329,14 +355,14 @@ bool Cmd_SetRefVariable_Execute(COMMAND_ARGS)
 
 	if (targetScript && targetEventList)
 	{
-		VariableInfo* varInfo = targetScript->GetVariableByName(varName);
+		VariableInfo *varInfo = targetScript->GetVariableByName(varName);
 		if (varInfo)
 		{
-			ScriptEventList::Var* var = targetEventList->GetVariable(varInfo->idx);
+			ScriptLocal *var = targetEventList->GetVariable(varInfo->idx);
 			if (var)
 			{
-				UInt32* refResult = (UInt32*)result;
-				(*(UInt64*)&var->data) = value ? value->refID : 0 ;
+				UInt32 *refResult = (UInt32 *)result;
+				(*(UInt64 *)&var->data) = value ? value->refID : 0;
 			}
 		}
 	}
@@ -364,7 +390,8 @@ bool Cmd_GetRefVariable_Execute(COMMAND_ARGS)
 
 bool Cmd_GetArrayVariable_Execute(COMMAND_ARGS)
 {
-	if (!ExpressionEvaluator::Active()) {
+	if (!ExpressionEvaluator::Active())
+	{
 		ShowRuntimeError(scriptObj, "GetArrayVariable must be called within the context of an NVSE expression");
 		return false;
 	}
@@ -375,8 +402,8 @@ bool Cmd_GetArrayVariable_Execute(COMMAND_ARGS)
 
 bool Cmd_CompareScripts_Execute(COMMAND_ARGS)
 {
-	Script* script1 = NULL;
-	Script* script2 = NULL;
+	Script *script1 = NULL;
+	Script *script2 = NULL;
 	*result = 0;
 
 	if (!ExtractArgsEx(EXTRACT_ARGS_EX, &script1, &script2))
@@ -400,8 +427,8 @@ bool Cmd_ResetAllVariables_Execute(COMMAND_ARGS)
 	//sets all vars to 0
 	*result = 0;
 
-	ScriptEventList* list = eventList;			//reset calling script by default
-	if (thisObj)								//call on a reference to reset that ref's script vars
+	ScriptEventList *list = eventList; //reset calling script by default
+	if (thisObj)					   //call on a reference to reset that ref's script vars
 		list = thisObj->GetEventList();
 
 	if (list)
@@ -413,7 +440,7 @@ bool Cmd_ResetAllVariables_Execute(COMMAND_ARGS)
 class ExplicitRefFinder
 {
 public:
-	bool Accept(const Script::RefVariable* var)
+	bool Accept(const Script::RefVariable *var)
 	{
 		if (var && var->varIdx == 0)
 			return true;
@@ -422,14 +449,14 @@ public:
 	}
 };
 
-Script* GetScriptArg(TESObjectREFR* thisObj, TESForm* form)
+Script *GetScriptArg(TESObjectREFR *thisObj, TESForm *form)
 {
-	Script* targetScript = NULL;
+	Script *targetScript = NULL;
 	if (form)
 		targetScript = DYNAMIC_CAST(form, TESForm, Script);
 	else if (thisObj)
 	{
-		TESScriptableForm* scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm);
+		TESScriptableForm *scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm);
 		if (scriptable)
 			targetScript = scriptable->script;
 	}
@@ -439,8 +466,8 @@ Script* GetScriptArg(TESObjectREFR* thisObj, TESForm* form)
 
 bool Cmd_GetNumExplicitRefs_Execute(COMMAND_ARGS)
 {
-	TESForm* form = NULL;
-	Script* targetScript = NULL;
+	TESForm *form = NULL;
+	Script *targetScript = NULL;
 	*result = 0;
 
 	if (ExtractArgsEx(EXTRACT_ARGS_EX, &form))
@@ -458,18 +485,18 @@ bool Cmd_GetNumExplicitRefs_Execute(COMMAND_ARGS)
 
 bool Cmd_GetNthExplicitRef_Execute(COMMAND_ARGS)
 {
-	TESForm* form = NULL;
+	TESForm *form = NULL;
 	UInt32 refIdx = 0;
-	UInt32* refResult = (UInt32*)result;
+	UInt32 *refResult = (UInt32 *)result;
 	*refResult = 0;
 
 	if (ExtractArgsEx(EXTRACT_ARGS_EX, &refIdx, &form))
 	{
-		Script* targetScript = GetScriptArg(thisObj, form);
+		Script *targetScript = GetScriptArg(thisObj, form);
 		if (targetScript)
 		{
 			UInt32 count = 0;
-			const Script::RefVariable* entry = NULL;
+			const Script::RefVariable *entry = NULL;
 			while (count <= refIdx)
 			{
 				entry = targetScript->refList.Find(ExplicitRefFinder());
@@ -493,21 +520,23 @@ bool Cmd_GetNthExplicitRef_Execute(COMMAND_ARGS)
 
 bool Cmd_RunScript_Execute(COMMAND_ARGS)
 {
-	TESForm* form = NULL;
+	TESForm *form = NULL;
 
 	if (ExtractArgsEx(EXTRACT_ARGS_EX, &form))
 	{
 
 		form = form->TryGetREFRParent();
-		if (!form) {
-			if (!thisObj) return true;
+		if (!form)
+		{
+			if (!thisObj)
+				return true;
 			form = thisObj->baseForm;
 		}
 
-		TESScriptableForm* scriptForm = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
-		Script* script = NULL;
-		EffectSetting* effect = NULL;
-		if (!scriptForm)	// Let's try for a MGEF
+		TESScriptableForm *scriptForm = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
+		Script *script = NULL;
+		EffectSetting *effect = NULL;
+		if (!scriptForm) // Let's try for a MGEF
 		{
 			effect = DYNAMIC_CAST(form, TESForm, EffectSetting);
 			if (effect)
@@ -516,13 +545,14 @@ bool Cmd_RunScript_Execute(COMMAND_ARGS)
 			{
 				script = DYNAMIC_CAST(form, TESForm, Script);
 			}
-		} else
+		}
+		else
 			script = scriptForm->script;
 
 		if (script)
 		{
 			bool runResult = CALL_MEMBER_FN(script, Execute)(thisObj, 0, 0, 0);
-			Console_Print("ran script, returned %s",runResult ? "true" : "false");
+			Console_Print("ran script, returned %s", runResult ? "true" : "false");
 		}
 	}
 
@@ -532,29 +562,30 @@ bool Cmd_RunScript_Execute(COMMAND_ARGS)
 bool Cmd_GetCurrentScript_Execute(COMMAND_ARGS)
 {
 	// apparently this is useful
-	UInt32* refResult = (UInt32*)result;
+	UInt32 *refResult = (UInt32 *)result;
 	*refResult = scriptObj->refID;
 	return true;
 }
 
 bool Cmd_GetCallingScript_Execute(COMMAND_ARGS)
 {
-	UInt32* refResult = (UInt32*)result;
+	UInt32 *refResult = (UInt32 *)result;
 	*refResult = 0;
-	Script* caller = UserFunctionManager::GetInvokingScript(scriptObj);
-	if (caller) {
+	Script *caller = UserFunctionManager::GetInvokingScript(scriptObj);
+	if (caller)
+	{
 		*refResult = caller->refID;
 	}
 
 	return true;
 }
 
-bool ExtractEventCallback(ExpressionEvaluator& eval, EventManager::EventCallback* outCallback, char* outName)
+bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback *outCallback, char *outName)
 {
 	if (eval.ExtractArgs() && eval.NumArgs() >= 2)
 	{
-		const char* eventName = eval.Arg(0)->GetString();
-		Script* script = DYNAMIC_CAST(eval.Arg(1)->GetTESForm(), TESForm, Script);
+		const char *eventName = eval.Arg(0)->GetString();
+		Script *script = DYNAMIC_CAST(eval.Arg(1)->GetTESForm(), TESForm, Script);
 		if (eventName && script)
 		{
 			outCallback->script = script;
@@ -563,10 +594,10 @@ bool ExtractEventCallback(ExpressionEvaluator& eval, EventManager::EventCallback
 			// any filters?
 			for (UInt32 i = 2; i < eval.NumArgs(); i++)
 			{
-				const TokenPair* pair = eval.Arg(i)->GetPair();
+				const TokenPair *pair = eval.Arg(i)->GetPair();
 				if (pair && pair->left && pair->right)
 				{
-					const char* key = pair->left->GetString();
+					const char *key = pair->left->GetString();
 					if (key)
 					{
 						if (!StrCompare(key, "ref") || !StrCompare(key, "first"))
@@ -592,7 +623,8 @@ bool ProcessEventHandler(char *eventName, EventManager::EventCallback &callback,
 	if (GetLNEventMask)
 	{
 		char *colon = strchr(eventName, ':');
-		if (colon) *colon++ = 0;
+		if (colon)
+			*colon++ = 0;
 		UInt32 eventMask = GetLNEventMask(eventName);
 		if (eventMask)
 		{
@@ -631,29 +663,29 @@ bool Cmd_GetCurrentEventName_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool Cmd_DispatchEvent_Execute (COMMAND_ARGS)
+bool Cmd_DispatchEvent_Execute(COMMAND_ARGS)
 {
-	ExpressionEvaluator eval (PASS_COMMAND_ARGS);
-	if (!eval.ExtractArgs () || eval.NumArgs() == 0)
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (!eval.ExtractArgs() || eval.NumArgs() == 0)
 		return true;
 
-	const char* eventName = eval.Arg(0)->GetString ();
+	const char *eventName = eval.Arg(0)->GetString();
 	if (!eventName)
 		return true;
 
 	ArrayID argsArrayId = 0;
-	const char* senderName = NULL;
+	const char *senderName = NULL;
 	if (eval.NumArgs() > 1)
 	{
-		if (!eval.Arg(1)->CanConvertTo (kTokenType_Array))
+		if (!eval.Arg(1)->CanConvertTo(kTokenType_Array))
 			return true;
-		argsArrayId = eval.Arg(1)->GetArray ();
+		argsArrayId = eval.Arg(1)->GetArray();
 
 		if (eval.NumArgs() > 2)
-			senderName = eval.Arg(2)->GetString ();
+			senderName = eval.Arg(2)->GetString();
 	}
 
-	*result = EventManager::DispatchUserDefinedEvent (eventName, scriptObj, argsArrayId, senderName) ? 1.0 : 0.0;
+	*result = EventManager::DispatchUserDefinedEvent(eventName, scriptObj, argsArrayId, senderName) ? 1.0 : 0.0;
 	return true;
 }
 
@@ -665,7 +697,7 @@ ICriticalSection g_callAfterScriptsCS;
 bool Cmd_CallAfterSeconds_Execute(COMMAND_ARGS)
 {
 	float time;
-	Script* callFunction;
+	Script *callFunction;
 	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction) || !callFunction || !IS_ID(callFunction, Script))
 		return true;
 	ScopedLock lock(g_callAfterScriptsCS);
@@ -678,12 +710,13 @@ ICriticalSection g_callWhileInfosCS;
 
 bool Cmd_CallWhile_Execute(COMMAND_ARGS)
 {
-	Script* callFunction;
-	Script* conditionFunction;
+	Script *callFunction;
+	Script *conditionFunction;
 	if (!ExtractArgs(EXTRACT_ARGS, &callFunction, &conditionFunction))
 		return true;
-	for (auto* form : {callFunction, conditionFunction})
-		if (!form || !IS_ID(form, Script)) return true;
+	for (auto *form : {callFunction, conditionFunction})
+		if (!form || !IS_ID(form, Script))
+			return true;
 
 	ScopedLock lock(g_callWhileInfosCS);
 	g_callWhileInfos.emplace_back(callFunction, conditionFunction, thisObj);
@@ -696,7 +729,7 @@ ICriticalSection g_callForInfosCS;
 bool Cmd_CallForSeconds_Execute(COMMAND_ARGS)
 {
 	float time;
-	Script* callFunction;
+	Script *callFunction;
 	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction) || !callFunction || !IS_ID(callFunction, Script))
 		return true;
 	ScopedLock lock(g_callAfterScriptsCS);

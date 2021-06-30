@@ -753,7 +753,7 @@ struct ExpressionEvaluatorUtils
 	const char*				(__fastcall *ScriptTokenGetString)(PluginScriptToken *scrToken);
 	UInt32					(__fastcall *ScriptTokenGetArrayID)(PluginScriptToken *scrToken);
 	UInt32					(__fastcall *ScriptTokenGetActorValue)(PluginScriptToken *scrToken);
-	ScriptEventList::Var*	(__fastcall *ScriptTokenGetScriptVar)(PluginScriptToken *scrToken);
+	ScriptLocal*	(__fastcall *ScriptTokenGetScriptVar)(PluginScriptToken *scrToken);
 	const PluginTokenPair*	(__fastcall *ScriptTokenGetPair)(PluginScriptToken *scrToken);
 	const PluginTokenSlice*	(__fastcall *ScriptTokenGetSlice)(PluginScriptToken *scrToken);
 #endif
@@ -841,7 +841,7 @@ struct PluginScriptToken
 		return s_expEvalUtils.ScriptTokenGetActorValue(this);
 	}
 
-	ScriptEventList::Var *GetScriptVar()
+	ScriptLocal *GetScriptVar()
 	{
 		return s_expEvalUtils.ScriptTokenGetScriptVar(this);
 	}

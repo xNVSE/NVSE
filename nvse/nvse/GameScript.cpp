@@ -6,17 +6,16 @@
 #include "GameRTTI.h"
 #include "ScriptUtils.h"
 
-const char* g_variableTypeNames[6] =
-{
-	"float",
-	"int",
-	"string_var",
-	"array_var",
-	"ref",
-	"invalid"
-};
+const char *g_variableTypeNames[6] =
+	{
+		"float",
+		"int",
+		"string_var",
+		"array_var",
+		"ref",
+		"invalid"};
 
-Script::VariableType VariableTypeNameToType(const char* name)
+Script::VariableType VariableTypeNameToType(const char *name)
 {
 	auto varType = Script::eVarType_Invalid;
 	if (!StrCompare(name, "string_var"))
@@ -32,7 +31,7 @@ Script::VariableType VariableTypeNameToType(const char* name)
 	return varType;
 }
 
-UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText, Script* script)
+UInt32 GetDeclaredVariableType(const char *varName, const char *scriptText, Script *script)
 {
 #if EDITOR
 	if (const auto savedVarType = GetSavedVarType(script, varName); savedVarType != Script::eVarType_Invalid)
@@ -58,30 +57,30 @@ UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText, Scri
 		}
 	}
 #if NVSE_CORE
-	if (auto* parent = GetLambdaParentScript(script))
+	if (auto *parent = GetLambdaParentScript(script))
 		return GetDeclaredVariableType(varName, parent->text, parent);
 #endif
 	return Script::eVarType_Invalid;
 }
 
-Script* GetScriptFromForm(TESForm* form)
+Script *GetScriptFromForm(TESForm *form)
 {
-	TESObjectREFR* refr =  DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+	TESObjectREFR *refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
 	if (refr)
 		form = refr->baseForm;
 
-	TESScriptableForm* scriptable = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
+	TESScriptableForm *scriptable = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
 	return scriptable ? scriptable->script : NULL;
 }
 
-UInt32 Script::GetVariableType(VariableInfo* varInfo)
+UInt32 Script::GetVariableType(VariableInfo *varInfo)
 {
 	if (text)
 		return GetDeclaredVariableType(varInfo->name.m_data, text, this);
 	else
 	{
 		// if it's a ref var a matching varIdx will appear in RefList
-		if (refList.Contains([&](const RefVariable* ref) {return ref->varIdx == varInfo->idx; }))
+		if (refList.Contains([&](const RefVariable *ref) { return ref->varIdx == varInfo->idx; }))
 			return eVarType_Ref;
 		return varInfo->type;
 	}
@@ -89,7 +88,7 @@ UInt32 Script::GetVariableType(VariableInfo* varInfo)
 
 bool Script::IsUserDefinedFunction() const
 {
-	auto* scriptData = static_cast<UInt8*>(data);
+	auto *scriptData = static_cast<UInt8 *>(data);
 	return *(scriptData + 8) == 0x0D;
 }
 
@@ -97,7 +96,7 @@ UInt32 Script::GetVarCount() const
 {
 	// info->varCount include index
 	auto count = 0U;
-	auto* node = this->varList.Head();
+	auto *node = this->varList.Head();
 	while (node)
 	{
 		if (node->data->data)
@@ -112,92 +111,99 @@ UInt32 Script::GetRefCount() const
 	return refList.Count();
 }
 
-tList<VariableInfo>* Script::GetVars()
+tList<VariableInfo> *Script::GetVars()
 {
-	return reinterpret_cast<tList<VariableInfo>*>(&this->varList);
+	return reinterpret_cast<tList<VariableInfo> *>(&this->varList);
 }
 
-tList<Script::RefVariable>* Script::GetRefList()
+tList<Script::RefVariable> *Script::GetRefList()
 {
-	return reinterpret_cast<tList<RefVariable>*>(&this->refList);
+	return reinterpret_cast<tList<RefVariable> *>(&this->refList);
 }
 
 #if RUNTIME
 
-void Script::RefVariable::Resolve(ScriptEventList * eventList)
+void Script::RefVariable::Resolve(ScriptEventList *eventList)
 {
-	if(varIdx && eventList)
+	if (varIdx && eventList)
 	{
-		ScriptEventList::Var	* var = eventList->GetVariable(varIdx);
-		if(var)
+		ScriptLocal *var = eventList->GetVariable(varIdx);
+		if (var)
 		{
-			UInt32	refID = *((UInt32 *)&var->data);
+			UInt32 refID = *((UInt32 *)&var->data);
 			form = LookupFormByID(refID);
 		}
 	}
 }
 
-ICriticalSection	csGameScript;				// trying to avoid what looks like concurrency issues
+ICriticalSection csGameScript; // trying to avoid what looks like concurrency issues
 
-ScriptEventList* Script::CreateEventList(void)
+ScriptEventList *Script::CreateEventList(void)
 {
-	ScriptEventList* result = NULL;
+	ScriptEventList *result = NULL;
 	csGameScript.Enter();
 	try
 	{
-		result = (ScriptEventList*)ThisStdCall(0x005ABF60, this);	// 4th sub above Script::Execute (was 1st above in Oblivion) Execute is the second to last call in Run
-	} catch(...) {}
+		result = (ScriptEventList *)ThisStdCall(0x005ABF60, this); // 4th sub above Script::Execute (was 1st above in Oblivion) Execute is the second to last call in Run
+	}
+	catch (...)
+	{
+	}
 
 	csGameScript.Leave();
 	return result;
 }
 
-bool Script::RunScriptLine2(const char * text, TESObjectREFR* object, bool bSuppressOutput)
+bool Script::RunScriptLine2(const char *text, TESObjectREFR *object, bool bSuppressOutput)
 {
 	//ToggleConsoleOutput(!bSuppressOutput);
 
-	ConsoleManager	* consoleManager = ConsoleManager::GetSingleton();
+	ConsoleManager *consoleManager = ConsoleManager::GetSingleton();
 
-	UInt8	scriptBuf[sizeof(Script)];
-	Script	* script = (Script *)scriptBuf;
+	UInt8 scriptBuf[sizeof(Script)];
+	Script *script = (Script *)scriptBuf;
 
-	CALL_MEMBER_FN(script, Constructor)();
-	CALL_MEMBER_FN(script, MarkAsTemporary)();
-	CALL_MEMBER_FN(script, SetText)(text);
+	CALL_MEMBER_FN(script, Constructor)
+	();
+	CALL_MEMBER_FN(script, MarkAsTemporary)
+	();
+	CALL_MEMBER_FN(script, SetText)
+	(text);
 	bool bResult = CALL_MEMBER_FN(script, Run)(consoleManager->scriptContext, true, object);
-	CALL_MEMBER_FN(script, Destructor)();
+	CALL_MEMBER_FN(script, Destructor)
+	();
 
 	//ToggleConsoleOutput(true);
 	return bResult;
 }
 
-bool Script::RunScriptLine(const char * text, TESObjectREFR * object)
+bool Script::RunScriptLine(const char *text, TESObjectREFR *object)
 {
 	return RunScriptLine2(text, object, false);
 }
 
 #endif
 
-Script::RefVariable* ScriptBuffer::ResolveRef(const char* refName, Script* script)
+Script::RefVariable *ScriptBuffer::ResolveRef(const char *refName, Script *script)
 {
-	Script::RefVariable* newRef = NULL;
+	Script::RefVariable *newRef = NULL;
 
 	// see if it's already in the refList
-	auto* match = refVars.FindFirst([&](Script::RefVariable* cur) { return cur->name.m_data && !_stricmp(cur->name.m_data, refName); });
+	auto *match = refVars.FindFirst([&](Script::RefVariable *cur) { return cur->name.m_data && !_stricmp(cur->name.m_data, refName); });
 	if (match)
 		return match;
 	// not in list
 
 	// is it a local ref variable?
-	VariableInfo* varInfo = vars.GetVariableByName(refName);
+	VariableInfo *varInfo = vars.GetVariableByName(refName);
 	if (varInfo && GetVariableType(varInfo, NULL, script) == Script::eVarType_Ref)
 	{
 		newRef = New<Script::RefVariable>();
 		newRef->varIdx = varInfo->idx;
 	}
-	else		// is it a form or global?
+	else // is it a form or global?
 	{
-		TESForm* form;
+		TESForm *form;
 		if (_stricmp(refName, "player") == 0)
 		{
 			// PlayerRef (this is how the vanilla compiler handles it so I'm changing it for consistency and to fix issues)
@@ -209,8 +215,8 @@ Script::RefVariable* ScriptBuffer::ResolveRef(const char* refName, Script* scrip
 		}
 		if (form)
 		{
-			TESObjectREFR* refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
-			if (refr && !refr->IsPersistent())		// only persistent refs can be used in scripts
+			TESObjectREFR *refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+			if (refr && !refr->IsPersistent()) // only persistent refs can be used in scripts
 				return NULL;
 
 			newRef = New<Script::RefVariable>();
@@ -218,7 +224,7 @@ Script::RefVariable* ScriptBuffer::ResolveRef(const char* refName, Script* scrip
 		}
 	}
 
-	if (newRef)		// got it, add to refList
+	if (newRef) // got it, add to refList
 	{
 		newRef->name.Set(refName);
 		refVars.Append(newRef);
@@ -228,10 +234,10 @@ Script::RefVariable* ScriptBuffer::ResolveRef(const char* refName, Script* scrip
 	return NULL;
 }
 
-UInt32 ScriptBuffer::GetRefIdx(Script::RefVariable* ref)
+UInt32 ScriptBuffer::GetRefIdx(Script::RefVariable *ref)
 {
 	UInt32 idx = 0;
-	for (Script::RefList::_Node* curEntry = refVars.Head(); curEntry && curEntry->data; curEntry = curEntry->next)
+	for (Script::RefList::_Node *curEntry = refVars.Head(); curEntry && curEntry->data; curEntry = curEntry->next)
 	{
 		idx++;
 		if (ref == curEntry->data)
@@ -241,29 +247,29 @@ UInt32 ScriptBuffer::GetRefIdx(Script::RefVariable* ref)
 	return idx;
 }
 
-VariableInfo* ScriptBuffer::GetVariableByName(const char* name)
+VariableInfo *ScriptBuffer::GetVariableByName(const char *name)
 {
-	if (VariableInfo * var; (var = vars.FindFirst([&](VariableInfo* v) { return _stricmp(name, v->name.CStr()) == 0; })))
+	if (VariableInfo * var; (var = vars.FindFirst([&](VariableInfo *v) { return _stricmp(name, v->name.CStr()) == 0; })))
 		return var;
 	return nullptr;
 }
 
-UInt32 ScriptBuffer::GetVariableType(VariableInfo* varInfo, Script::RefVariable* refVar, Script* script)
+UInt32 ScriptBuffer::GetVariableType(VariableInfo *varInfo, Script::RefVariable *refVar, Script *script)
 {
-	const char* scrText = scriptText;
+	const char *scrText = scriptText;
 	if (refVar)
 	{
 		if (refVar->form)
 		{
-			TESScriptableForm* scriptable = NULL;
+			TESScriptableForm *scriptable = NULL;
 			switch (refVar->form->typeID)
 			{
 			case kFormType_TESObjectREFR:
-				{
-					TESObjectREFR* refr = DYNAMIC_CAST(refVar->form, TESForm, TESObjectREFR);
-					scriptable = DYNAMIC_CAST(refr->baseForm, TESForm, TESScriptableForm);
-					break;
-				}
+			{
+				TESObjectREFR *refr = DYNAMIC_CAST(refVar->form, TESForm, TESObjectREFR);
+				scriptable = DYNAMIC_CAST(refr->baseForm, TESForm, TESScriptableForm);
+				break;
+			}
 			case kFormType_TESQuest:
 				scriptable = DYNAMIC_CAST(refVar->form, TESForm, TESScriptableForm);
 			}
@@ -279,7 +285,7 @@ UInt32 ScriptBuffer::GetVariableType(VariableInfo* varInfo, Script::RefVariable*
 					return scriptable->script->GetVariableType(varInfo);
 			}
 		}
-		else			// this is a ref variable, not a literal form - can't look up script vars
+		else // this is a ref variable, not a literal form - can't look up script vars
 			return Script::eVarType_Invalid;
 	}
 	return GetDeclaredVariableType(varInfo->name.m_data, scrText, script);
@@ -292,10 +298,11 @@ UInt32 ScriptBuffer::GetVariableType(VariableInfo* varInfo, Script::RefVariable*
 class ScriptVarFinder
 {
 public:
-	const char* m_varName;
-	ScriptVarFinder(const char* varName) : m_varName(varName)
-		{	}
-	bool Accept(VariableInfo* varInfo)
+	const char *m_varName;
+	ScriptVarFinder(const char *varName) : m_varName(varName)
+	{
+	}
+	bool Accept(VariableInfo *varInfo)
 	{
 		//_MESSAGE("  cur var: %s to match: %s", varInfo->name.m_data, m_varName);
 		if (!StrCompare(m_varName, varInfo->name.m_data))
@@ -310,17 +317,16 @@ VariableInfo *Script::GetVariableByName(const char *varName)
 	auto *varIter = varList.Head();
 	do
 	{
-		auto* varInfo = varIter->data;
+		auto *varInfo = varIter->data;
 		if (varInfo && !StrCompare(varName, varInfo->name.m_data))
 			return varInfo;
-	}
-	while (varIter = varIter->next);
+	} while (varIter = varIter->next);
 	return NULL;
 }
 
-Script::RefVariable	* Script::GetRefFromRefList(UInt32 refIdx)
+Script::RefVariable *Script::GetRefFromRefList(UInt32 refIdx)
 {
-	UInt32 idx = 1;	// yes, really starts at 1
+	UInt32 idx = 1; // yes, really starts at 1
 	if (refIdx)
 	{
 		auto *varIter = refList.Head();
@@ -329,24 +335,23 @@ Script::RefVariable	* Script::GetRefFromRefList(UInt32 refIdx)
 			if (idx == refIdx)
 				return varIter->data;
 			idx++;
-		}
-		while (varIter = varIter->next);
+		} while (varIter = varIter->next);
 	}
 	return NULL;
 }
 
-VariableInfo* Script::GetVariableInfo(UInt32 idx)
+VariableInfo *Script::GetVariableInfo(UInt32 idx)
 {
-	for (auto* entry = varList.Head(); entry; entry = entry->next)
+	for (auto *entry = varList.Head(); entry; entry = entry->next)
 		if (entry->data && entry->data->idx == idx)
 			return entry->data;
 
 	return NULL;
 }
 
-UInt32 Script::AddVariable(TESForm * form)
+UInt32 Script::AddVariable(TESForm *form)
 {
-	auto* var = static_cast<RefVariable*>(FormHeap_Allocate(sizeof(RefVariable)));
+	auto *var = static_cast<RefVariable *>(FormHeap_Allocate(sizeof(RefVariable)));
 
 	var->name.Set("");
 	var->form = form;
@@ -362,12 +367,12 @@ void Script::CleanupVariables(void)
 	refList.DeleteAll();
 }
 
-VariableInfo* Script::VarInfoList::GetVariableByName(const char* varName)
+VariableInfo *Script::VarInfoList::GetVariableByName(const char *varName)
 {
-	return FindFirst([&](const VariableInfo* v) { return StrCompare(v->name.m_data, varName) == 0; });
+	return FindFirst([&](const VariableInfo *v) { return StrCompare(v->name.m_data, varName) == 0; });
 }
 
-UInt32 Script::RefList::GetIndex(Script::RefVariable* refVar)
+UInt32 Script::RefList::GetIndex(Script::RefVariable *refVar)
 {
 	UInt32 idx = 0;
 	for (auto cur = this->Begin(); !cur.End(); cur.Next())
@@ -387,7 +392,7 @@ UInt32 Script::RefList::GetIndex(Script::RefVariable* refVar)
 //const char	* ScriptLineBuffer::kDelims_Whitespace = " \t\n\r";
 //const char  * ScriptLineBuffer::kDelims_WhitespaceAndBrackets = " \t\n\r[]";
 
-bool ScriptLineBuffer::Write(const void* buf, UInt32 bufsize)
+bool ScriptLineBuffer::Write(const void *buf, UInt32 bufsize)
 {
 	if (dataOffset + bufsize >= kBufferSize)
 	{
@@ -407,7 +412,7 @@ bool ScriptLineBuffer::Write32(UInt32 buf)
 	return Write(&buf, sizeof(UInt32));
 }
 
-bool ScriptLineBuffer::WriteString(const char* buf)
+bool ScriptLineBuffer::WriteString(const char *buf)
 {
 	UInt32 len = StrLen(buf);
 	if (len < 0x10000 && Write16(len) && len)
@@ -430,6 +435,3 @@ bool ScriptLineBuffer::WriteFloat(double buf)
 {
 	return Write(&buf, sizeof(double));
 }
-
-
-

@@ -19,8 +19,8 @@ struct ForEachContext;
 class Loop
 {
 public:
-	Loop() { }
-	virtual ~Loop() { }
+	Loop() {}
+	virtual ~Loop() {}
 
 	virtual bool Update(COMMAND_ARGS) = 0;
 };
@@ -28,15 +28,15 @@ public:
 // continues until test expression evaluates false
 class WhileLoop : public Loop
 {
-	UInt32		m_exprOffset;		// offset of test expression in script data
+	UInt32 m_exprOffset; // offset of test expression in script data
 public:
-	WhileLoop(UInt32 exprOffset) : m_exprOffset(exprOffset) { }
-	virtual ~WhileLoop() { }
+	WhileLoop(UInt32 exprOffset) : m_exprOffset(exprOffset) {}
+	virtual ~WhileLoop() {}
 
 	virtual bool Update(COMMAND_ARGS);
 
-	void* operator new(size_t size);
-	void operator delete(void* p);
+	void *operator new(size_t size);
+	void operator delete(void *p);
 };
 
 // iterates over contents of some collection
@@ -50,16 +50,17 @@ public:
 // iterates over elements of an Array
 class ArrayIterLoop : public ForEachLoop
 {
-	ArrayID					m_srcID;
-	ArrayID					m_iterID;
-	ArrayKey				m_curKey;
-	UInt8					m_modIndex;
+	ArrayID m_srcID;
+	ArrayID m_iterID;
+	ArrayKey m_curKey;
+	UInt8 m_modIndex;
 
-	void UpdateIterator(const ArrayElement* elem);
+	void UpdateIterator(const ArrayElement *elem);
+
 public:
-	ScriptEventList::Var	*m_iterVar;
-	
-	ArrayIterLoop(const ForEachContext* context, UInt8 modIndex);
+	ScriptLocal *m_iterVar;
+
+	ArrayIterLoop(const ForEachContext *context, UInt8 modIndex);
 	~ArrayIterLoop() override;
 
 	virtual bool Update(COMMAND_ARGS);
@@ -73,13 +74,13 @@ public:
 // iterates over characters in a string
 class StringIterLoop : public ForEachLoop
 {
-	std::string		m_src;
-	UInt32			m_curIndex;
-	UInt32			m_iterID;
+	std::string m_src;
+	UInt32 m_curIndex;
+	UInt32 m_iterID;
 
 public:
-	StringIterLoop(const ForEachContext* context);
-	virtual ~StringIterLoop() { }
+	StringIterLoop(const ForEachContext *context);
+	virtual ~StringIterLoop() {}
 
 	virtual bool Update(COMMAND_ARGS);
 	bool IsEmpty() { return m_src.length() == 0; }
@@ -88,17 +89,18 @@ public:
 // iterates over contents of a container, creating temporary reference for each item in turn
 class ContainerIterLoop : public ForEachLoop
 {
-	typedef InventoryReference::Data	IRefData;
+	typedef InventoryReference::Data IRefData;
 
-	InventoryReference							*m_invRef;
-	ScriptEventList::Var						*m_refVar;
-	UInt32										m_iterIndex;
-	Vector<ExtraContainerChanges::EntryData*>	m_elements;
+	InventoryReference *m_invRef;
+	ScriptLocal *m_refVar;
+	UInt32 m_iterIndex;
+	Vector<ExtraContainerChanges::EntryData *> m_elements;
 
 	bool SetIterator();
 	bool UnsetIterator();
+
 public:
-	ContainerIterLoop(const ForEachContext* context);
+	ContainerIterLoop(const ForEachContext *context);
 	virtual ~ContainerIterLoop();
 
 	virtual bool Update(COMMAND_ARGS);
@@ -107,23 +109,23 @@ public:
 
 class LoopManager
 {
-	LoopManager() { }
+	LoopManager() {}
 
-	struct LoopInfo 
+	struct LoopInfo
 	{
-		Loop*		loop;
-		SavedIPInfo	ipInfo;		// stack depth, ip of loop start
-		UInt32		endIP;		// ip of instruction following loop end
+		Loop *loop;
+		SavedIPInfo ipInfo; // stack depth, ip of loop start
+		UInt32 endIP;		// ip of instruction following loop end
 	};
 
-	Stack<LoopInfo>	m_loops;
-	
-	void RestoreStack(ScriptRunner* state, SavedIPInfo* info);
+	Stack<LoopInfo> m_loops;
+
+	void RestoreStack(ScriptRunner *state, SavedIPInfo *info);
 
 public:
-	static LoopManager* GetSingleton();
+	static LoopManager *GetSingleton();
 
-	void Add(Loop* loop, ScriptRunner* state, UInt32 startOffset, UInt32 endOffset, COMMAND_ARGS);
-	bool Break(ScriptRunner* state, COMMAND_ARGS);
-	bool Continue(ScriptRunner* state, COMMAND_ARGS);
+	void Add(Loop *loop, ScriptRunner *state, UInt32 startOffset, UInt32 endOffset, COMMAND_ARGS);
+	bool Break(ScriptRunner *state, COMMAND_ARGS);
+	bool Continue(ScriptRunner *state, COMMAND_ARGS);
 };

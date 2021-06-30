@@ -2,6 +2,7 @@
 #pragma once
 
 #include <vector>
+
 #include "Utilities.h"
 #include "GameTypes.h"
 #include "GameBSExtraData.h"
@@ -3650,6 +3651,8 @@ struct Condition {
 	TESObjectREFR*	reference;	// 018
 };
 
+struct ScriptLocal;
+
 struct VariableInfo
 {
 	UInt32			idx;		// 00
@@ -3659,6 +3662,9 @@ struct VariableInfo
 	UInt8			pad11[3];	// 11
 	UInt32			unk14;		// 14
 	String			name;		// 18
+
+	ScriptLocal* Resolve(ScriptEventList* eventList);
+	TESForm* GetTESForm();
 };
 
 // TESQuest (6C)
