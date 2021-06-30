@@ -9,12 +9,14 @@ namespace Serialization
 
 struct SerializationTask
 {
+	UInt8		*bufferStart;
 	UInt8		*bufferPtr;
 	UInt32		length;
+	UInt32		bufferSize;
 
 	void Reset();
 
-	SerializationTask() : bufferPtr(NULL), length(0) {}
+	SerializationTask(UInt8* buffer, UInt32 bufferSize) : bufferStart(buffer), bufferPtr(NULL), length(0), bufferSize(bufferSize) {}
 
 	bool Save();
 	bool Load();

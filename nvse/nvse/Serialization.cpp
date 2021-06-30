@@ -55,8 +55,11 @@ struct ChunkHeader
 };
 
 // locals
+#define SERIALIZATION_BUFFER_SIZE 0x400000
 
-SerializationTask s_serializationTask;
+alignas(16) static UInt8 s_serializationBuffer[SERIALIZATION_BUFFER_SIZE];
+	
+SerializationTask s_serializationTask(s_serializationBuffer, SERIALIZATION_BUFFER_SIZE);
 
 typedef std::vector <PluginCallbacks>	PluginCallbackList;
 PluginCallbackList	s_pluginCallbacks;
@@ -181,13 +184,9 @@ void InternalSetPreLoadCallback(PluginHandle plugin, NVSESerializationInterface:
 
 //==========================================================================
 
-#define SERIALIZATION_BUFFER_SIZE 0x400000
-
-alignas(16) static UInt8 s_serializationBuffer[SERIALIZATION_BUFFER_SIZE];
-
 void SerializationTask::Reset()
 {
-	bufferPtr = s_serializationBuffer;
+	bufferPtr = bufferStart;
 	length = 0;
 }
 
@@ -202,7 +201,7 @@ bool SerializationTask::Save()
 		return false;
 	}
 
-	WriteFile(saveFile, s_serializationBuffer, length, &length, NULL);
+	WriteFile(saveFile, bufferStart, length, &length, NULL);
 	CloseHandle(saveFile);
 
 	return true;
@@ -216,10 +215,10 @@ bool SerializationTask::Load()
 	if (saveFile == INVALID_HANDLE_VALUE)
 		return false;
 
-	ReadFile(saveFile, s_serializationBuffer, SERIALIZATION_BUFFER_SIZE, &length, NULL);
+	ReadFile(saveFile, bufferStart, bufferSize, &length, NULL);
 	CloseHandle(saveFile);
 
-	if (length == SERIALIZATION_BUFFER_SIZE)
+	if (length == bufferSize)
 	{
 		_ERROR("HandleLoadGame: co-save file exceeds 4MB!");
 		ShowErrorMessageBox("NVSE cosave failed to load as it exceeded 4MB. Please ping the devs on the xNVSE Discord server about this matter.");
@@ -231,12 +230,12 @@ bool SerializationTask::Load()
 
 UInt32 SerializationTask::GetOffset() const
 {
-	return (UInt32)(bufferPtr - s_serializationBuffer);
+	return (UInt32)(bufferPtr - bufferStart);
 }
 
 void SerializationTask::SetOffset(UInt32 offset)
 {
-	bufferPtr = s_serializationBuffer + offset;
+	bufferPtr = bufferStart + offset;
 }
 
 void SerializationTask::Skip(UInt32 size)
