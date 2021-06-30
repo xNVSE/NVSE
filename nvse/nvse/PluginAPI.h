@@ -520,6 +520,8 @@ struct NVSEDataInterface
 		kNVSEData_LambdaSaveVariableList,
 		kNVSEData_LambdaUnsaveVariableList,
 		
+		kNVSEData_IsScriptLambda,
+		
 		kNVSEData_FuncMax,
 	};
 	void * (* GetFunc)(UInt32 funcID);
