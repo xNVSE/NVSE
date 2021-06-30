@@ -907,25 +907,19 @@ TESGlobal *ResolveGlobalVar(Script *scriptObj, UInt8 *&scriptData)
 	return (TESGlobal*)globalRef->form;
 }
 
-tList<ScriptEventList::Var>* ScriptEventList::GetVars() const
-{
-	return reinterpret_cast<tList<Var>*>(m_vars);
-}
-
 ScriptEventList* ScriptEventList::Copy()
 {
 	auto* newEventList = New<ScriptEventList, 0x5A8B80>();
 	newEventList->m_script = m_script;
-	newEventList->m_vars = (VarEntry*)New<tList<Var>>();
-	auto* vars = GetVars();
+	newEventList->m_vars = New<tList<Var>>();
 #if NVSE_CORE
 	auto* nvseVars = g_nvseVarGarbageCollectionMap.GetPtr(this);
 #endif
-	for (auto varIter = vars->Begin(); !varIter.End(); ++varIter)
+	for (auto varIter = m_vars->Begin(); !varIter.End(); ++varIter)
 	{
 		auto* var = *varIter;
 		auto* newVar = New<Var>();
-		newEventList->GetVars()->Append(newVar);
+		newEventList->m_vars->Append(newVar);
 		newVar->id = var->id;
 #if NVSE_CORE
 		if (nvseVars)
@@ -1815,22 +1809,23 @@ UInt32 ScriptEventList::ResetAllVariables()
 	OtherHooks::CleanUpNVSEVars(this);
 #endif
 	UInt32 numVars = 0;
-	for (VarEntry * entry = m_vars; entry; entry = entry->next)
-		if (entry->var)
+	for (auto* var : *m_vars)
+	{
+		if (var)
 		{
-			entry->var->data = 0.0;
-			numVars++;
+			var->data = 0.0;
+			++numVars;
 		}
+	}
 	return numVars;
 }
 
 ScriptEventList::Var * ScriptEventList::GetVariable(UInt32 id)
 {
-	for(VarEntry * entry = m_vars; entry; entry = entry->next)
-		if(entry->var && entry->var->id == id)
-			return entry->var;
-
-	return NULL;
+	return m_vars->FindFirst([&](Var* entry)
+	{
+		return entry->id == id;
+	});
 }
 
 ScriptEventList* EventListFromForm(TESForm* form)

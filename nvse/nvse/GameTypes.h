@@ -201,6 +201,11 @@ public:
 					break;
 				m_curr = m_curr->next;
 			}
+			
+		}
+		bool operator!=(Iterator& other) const
+		{
+			return m_curr != other.m_curr;
 		}
 
 		Iterator(_Node *node = NULL) : m_curr(node) {}
@@ -210,7 +215,7 @@ public:
 		Iterator(tList *_list, Item *_item) : m_curr(&_list->m_listHead) { Find(_item); }
 	};
 
-	const Iterator Begin() const { return Iterator(Head()); }
+	Iterator Begin() const { return Iterator(Head()); }
 
 	UInt32 Count() const
 	{
@@ -537,6 +542,19 @@ public:
 	{
 		return FindFirst(func) != nullptr;
 	}
+
+	// for use with C++11 range based loops only.
+	Iterator begin() const
+	{
+		return Begin();
+	}
+
+	// for use with C++11 range based loops only.
+	Iterator end() const
+	{
+		return Iterator(static_cast<_Node*>(nullptr));
+	}
+
 };
 STATIC_ASSERT(sizeof(tList<void *>) == 0x8);
 

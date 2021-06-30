@@ -46,26 +46,24 @@ namespace OtherHooks
 		if (!scriptVars)
 			return;
 		ScopedLock lock(g_gcCriticalSection);
-		auto* node = eventList->m_vars;
-		while (node)
+		for (auto* var : *eventList->m_vars)
 		{
-			if (node->var)
+			if (var)
 			{
-				const auto type = scriptVars->Get(node->var);
+				const auto type = scriptVars->Get(var);
 				switch (type)
 				{
 				case NVSEVarType::kVarType_String:
-					g_StringMap.MarkTemporary(static_cast<int>(node->var->data), true);
+					g_StringMap.MarkTemporary(static_cast<int>(var->data), true);
 					break;
 				case NVSEVarType::kVarType_Array:
 					//g_ArrayMap.MarkTemporary(static_cast<int>(node->var->data), true);
-					g_ArrayMap.RemoveReference(&node->var->data, eventList->m_script->GetModIndex());
+					g_ArrayMap.RemoveReference(&var->data, eventList->m_script->GetModIndex());
 					break;
 				default:
 					break;
 				}
 			}
-			node = node->next;
 		}
 		g_nvseVarGarbageCollectionMap.Erase(eventList);
 	}

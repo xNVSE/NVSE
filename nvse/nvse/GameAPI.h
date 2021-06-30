@@ -179,12 +179,6 @@ struct ScriptEventList
 		UInt32 GetFormId();
 	};
 
-	struct VarEntry
-	{
-		Var			* var;
-		VarEntry	* next;
-	};
-
 	struct Struct010
 	{
 		UInt8 unk00[8];
@@ -195,13 +189,12 @@ struct ScriptEventList
 	Script			* m_script;		// 00
 	UInt32			  m_unk1;			// 04
 	EventList		* m_eventList;	// 08
-	VarEntry		* m_vars;		// 0C
+	tList<Var>		* m_vars;		// 0C
 	Struct010		* unk010;		// 10
 
 	void	Dump(void);
 	Var *	GetVariable(UInt32 id);
 	UInt32	ResetAllVariables();
-	tList<Var>* GetVars() const;
 	ScriptEventList* Copy();
 };
 
