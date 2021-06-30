@@ -344,17 +344,12 @@ FunctionInfo::FunctionInfo(Script* script)
 		// construct event list
 		m_eventList = script->CreateEventList();
 		if (!m_eventList)
+		{
 			ShowRuntimeError(script, "Cannot create variable list for function script.");
-
+			m_bad = true;
+		}
 		// successfully constructed
 	}
-	else
-	{
-		m_eventList = LambdaManager::GetParentEventList(script);
-		if (!m_eventList)
-			m_eventList = script->CreateEventList();
-	}
-	m_bad = m_eventList == nullptr;
 #if _DEBUG
 	this->editorID = m_script->GetName();
 #endif
@@ -362,7 +357,7 @@ FunctionInfo::FunctionInfo(Script* script)
 
 FunctionInfo::~FunctionInfo()
 {
-	if (m_eventList && !m_isLambda)
+	if (m_eventList)
 		OtherHooks::DeleteEventList(m_eventList);
 }
 
@@ -433,7 +428,11 @@ m_result(NULL), m_invokingScript(invokingScript), m_callerVersion(version), m_ba
 		ShowRuntimeError(info->GetScript(), "Unknown function version %02X", version);
 		return;
 	}
-	if (info->IsActive() && !info->m_isLambda) 
+	if (info->m_isLambda)
+	{
+		m_eventList = LambdaManager::GetParentEventList(info->GetScript());
+	}
+	else if (info->IsActive()) 
 	{
 		m_eventList = info->GetScript()->CreateEventList();
 	}
@@ -466,10 +465,9 @@ FunctionContext::~FunctionContext()
 
 	if (m_eventList && !m_info->m_isLambda)
 	{
-		const auto doFree = m_eventList != m_info->GetEventList(); // check if bottom of call stack (first is always cached)
-		LambdaManager::MarkParentAsDeleted(m_eventList, doFree); // If any lambdas refer to the event list, clear them away
+		LambdaManager::MarkParentAsDeleted(m_eventList); // If any lambdas refer to the event list, clear them away
 
-		if (doFree) 
+		if (m_eventList != m_info->GetEventList())  // check if bottom of call stack (first is always cached)
 		{
 			OtherHooks::DeleteEventList(m_eventList);
 		}

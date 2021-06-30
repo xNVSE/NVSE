@@ -239,7 +239,7 @@ bool ParseNestedFunction(CommandInfo* cmd, ScriptLineBuffer* lineBuf, ScriptBuff
 {
 	// disable check for end of line
 	PatchEndOfLineCheck(true);
-
+	
 	s_bParsingExpression = true;
 	bool bParsed = cmd->parse(cmd->numParams, cmd->params, lineBuf, scriptBuf);
 	s_bParsingExpression = false;
