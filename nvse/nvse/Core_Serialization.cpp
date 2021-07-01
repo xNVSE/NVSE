@@ -5,6 +5,7 @@
 #include <string>
 #include "StringVar.h"
 #include "ArrayVar.h"
+#include "Commands_Script.h"
 #include "ScriptTokens.h"
 
 /*************************
@@ -115,6 +116,9 @@ void Core_PreLoadCallback(void * reserved)
 	g_gcCriticalSection.Enter();
 	g_nvseVarGarbageCollectionMap.Clear();
 	g_gcCriticalSection.Leave();
+
+	g_callWhileInfos.clear();
+	g_callForInfos.clear();
 	
 	g_ArrayMap.Reset();
 	g_StringMap.Reset();

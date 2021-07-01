@@ -161,19 +161,19 @@ static void HandleMainLoopHook(void)
 	g_ArrayMap.Clean();
 	g_StringMap.Clean();
 
+	// handle calls from cmd CallWhile
+	HandleCallWhileScripts();
+	
 	const auto isMenuMode = CdeclCall<bool>(0x702360);
 
 	if (!isMenuMode)
 	{
 		g_gameSecondsPassed += *g_globalTimeMult * g_timeGlobal->secondsPassed;
 		
-		// handle calls from cmd CallAfter
+		// handle calls from cmd CallAfterSeconds
 		HandleDelayedCall();
 
-		// handle calls from cmd CallWhile
-		HandleCallWhileScripts();
-
-		// handle calls from cmd CallFor
+		// handle calls from cmd CallForSeconds
 		HandleCallForScripts();
 	}
 }

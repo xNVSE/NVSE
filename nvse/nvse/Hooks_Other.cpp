@@ -1,12 +1,11 @@
 #include "Hooks_Other.h"
 #include "GameAPI.h"
-#include "Commands_UI.h"
 #include "ScriptUtils.h"
 #include "SafeWrite.h"
-#include "Commands_UI.h"
 #include "Hooks_Gameplay.h"
 #include "LambdaManager.h"
 #include "PluginManager.h"
+#include "Commands_UI.h"
 
 #if RUNTIME
 

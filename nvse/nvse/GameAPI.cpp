@@ -1900,6 +1900,7 @@ UInt32 ScriptEventList::ResetAllVariables()
 	return numVars;
 }
 
+
 ScriptLocal *ScriptEventList::GetVariable(UInt32 id)
 {
 	return m_vars->FindFirst([&](ScriptLocal *entry) {
@@ -3003,14 +3004,13 @@ UInt8 *GetScriptDataPosition(Script *script, void *scriptDataIn, UInt32 opcodeOf
 
 UInt32 GetNextFreeFormID(UInt32 formId)
 {
-	while (LookupFormByID(++formId))
-		;
+	while (LookupFormByID(++formId));
 	return formId;
 }
 
 Script *GetReferencedQuestScript(UInt32 refIdx, ScriptEventList *baseEventList)
 {
-	if (auto *refVar = baseEventList->m_script->GetRefFromRefList(refIdx); refVar)
+	if (auto *refVar = baseEventList->m_script->GetRefFromRefList(refIdx))
 	{
 		refVar->Resolve(baseEventList);
 		if (refVar->form)

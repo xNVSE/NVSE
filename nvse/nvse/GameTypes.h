@@ -526,9 +526,8 @@ public:
 		return -1;
 	}
 
-	using Lambda = std::function<bool(Item *)>;
-
-	Item *FindFirst(const Lambda &func) const
+	template <typename F>
+	Item *FindFirst(const F &func) const
 	{
 		for (auto iter = Begin(); !iter.End(); ++iter)
 		{
@@ -537,8 +536,9 @@ public:
 		}
 		return nullptr;
 	}
-
-	bool Contains(const Lambda &func) const
+	
+	template <typename F>
+	bool Contains(const F &func) const
 	{
 		return FindFirst(func) != nullptr;
 	}

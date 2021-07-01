@@ -140,3 +140,6 @@ struct CallWhileInfo
 	{
 	}
 };
+
+extern std::vector<DelayedCallInfo> g_callForInfos;
+extern std::vector<CallWhileInfo> g_callWhileInfos;

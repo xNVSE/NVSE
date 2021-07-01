@@ -137,6 +137,7 @@ Script* GetLambdaForParent(ScriptEventList* parentEventList)
 	return lpIt->first;
 }
 
+
 FormID GetFormIDForLambda(ScriptEventList* parentEventList)
 {
 	auto* scriptLambda = GetLambdaForParent(parentEventList);
@@ -193,8 +194,9 @@ auto GetVarListContextIter(Script* scriptLambda)
 {
 	return std::ranges::find_if(g_savedVarLists, [&](auto& p)
 	{
-		return std::ranges::find(p.second.lambdas, scriptLambda) != p.second.lambdas.end();
+		return p.second.lambdas.find(scriptLambda) != p.second.lambdas.end();
 	});
+	
 }
 
 VariableListContext* GetVarListContext(Script* scriptLambda)
