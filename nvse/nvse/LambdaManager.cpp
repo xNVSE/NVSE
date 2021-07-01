@@ -14,9 +14,7 @@ struct VariableListContext
 {
 	UInt32 refCount = 0;
 	ScriptEventList* eventListCopy = nullptr;
-#if _DEBUG
 	std::unordered_set<ScriptLambda*> lambdas;
-#endif
 };
 
 // used for memoizing scripts and prevent endless allocation of scripts
@@ -272,9 +270,7 @@ void LambdaManager::SaveLambdaVariables(Script* scriptLambda)
 		return;
 	auto& varCtx = g_savedVarLists[eventList];
 	++varCtx.refCount;
-#if _DEBUG
 	varCtx.lambdas.insert(scriptLambda);
-#endif
 
 	// save any child lambda variables
 	CaptureChildLambdas(scriptLambda, *ctx);
