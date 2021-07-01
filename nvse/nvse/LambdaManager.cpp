@@ -25,9 +25,15 @@ std::unordered_map<ScriptEventList*, VariableListContext> g_savedVarLists;
 
 struct LambdaContext
 {
+	Script* parentScript = nullptr;
 	ScriptEventList* parentEventList = nullptr;
 	// any lambdas that are referenced within this lambda
 	std::unique_ptr<std::vector<ScriptLambda*>> capturedLambdaVariableScripts;
+
+#if _DEBUG
+	std::string name;
+	TESForm* ref = nullptr;
+#endif
 };
 
 // contains all lambdas
@@ -97,7 +103,11 @@ Script* LambdaManager::CreateLambdaScript(UInt8* position, const ScriptData& scr
 	auto iter = g_lambdas.emplace(scriptLambda, LambdaContext());
 	auto& ctx = iter.first->second;
 	SetLambdaParent(ctx, parentEventList);
-	
+	ctx.parentScript = parentScript;
+#if _DEBUG
+	ctx.name = std::string(parentScript->GetName()) + "LambdaAt" + std::to_string(*exprEval.m_opcodeOffsetPtr);
+	ctx.ref = LookupFormByID(ownerRefID);
+#endif
 	return scriptLambda;
 }
 
@@ -142,13 +152,14 @@ bool LambdaManager::IsScriptLambda(Script* scriptLambda)
 	return g_lambdas.contains(scriptLambda);
 }
 
+// Hot reload function
 void LambdaManager::DeleteAllForParentScript(Script* parentScript)
 {
 	ScopedLock lock(g_lambdaCs);
 	std::vector<Script*> lambdas;
 	for (auto& [scriptLambda, ctx] : g_lambdas)
 	{
-		if (ctx.parentEventList && ctx.parentEventList->m_script == parentScript)
+		if (ctx.parentScript == parentScript)
 		{
 			FormHeap_Free(scriptLambda->data); // ThisStdCall(0x5AA1A0, scriptLambda); // call destructor to free parentScript data pointer
 			lambdas.push_back(scriptLambda);
@@ -158,7 +169,20 @@ void LambdaManager::DeleteAllForParentScript(Script* parentScript)
 			scriptLambda->refList = {};
 		}
 	}
+	for (auto& ctx : g_lambdas | std::views::values)
+	{
+		auto iter = std::ranges::find_if(*ctx.capturedLambdaVariableScripts, [&](Script* script)
+		{
+			return std::ranges::find(lambdas, script) != lambdas.end();
+		});
+		if (iter != ctx.capturedLambdaVariableScripts->end())
+			ctx.capturedLambdaVariableScripts = nullptr;
+	}
 	std::erase_if(g_lambdaScriptPosMap, [&](auto& p) { return std::ranges::find(lambdas, p.second) != lambdas.end(); });
+	std::erase_if(g_lambdas, [&](auto& p)
+	{
+		return std::ranges::find(lambdas, p.first) != lambdas.end();
+	});
 	g_savedVarLists.clear();
 }
 
@@ -267,27 +291,14 @@ void DeleteLambdaScript(auto& iter)
 	scriptLambda->Destroy(true);
 }
 
-void DebugError()
-{
-#if _DEBUG
-	DebugBreak();
-#endif
-}
-
 void LambdaManager::UnsaveLambdaVariables(Script* scriptLambda)
 {
 	auto* ctx = GetLambdaContext(scriptLambda);
 	if (!ctx)
-	{
-		DebugError();
 		return;
-	}
 	auto iter = GetVarListContextIter(scriptLambda);
 	if (iter == g_savedVarLists.end())
-	{
-		DebugError();
 		return;
-	}
 	auto& varCtx = iter->second;
 	auto& refCount = varCtx.refCount;
 	const auto eventListCopy = varCtx.eventListCopy;
