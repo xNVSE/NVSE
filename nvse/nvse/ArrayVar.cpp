@@ -1325,6 +1325,11 @@ void ArrayVar::DumpToFile(const char* filePath, bool append)
 	}
 }
 
+ArrayVarElementContainer::iterator ArrayVar::Begin()
+{
+	return m_elements.begin();
+}
+
 std::string ArrayVar::GetStringRepresentation() const
 {
 	switch (this->m_elements.m_type)

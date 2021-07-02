@@ -1,4 +1,6 @@
 #include "Commands_Array.h"
+
+#include "FunctionScripts.h"
 #include "GameForms.h"
 #include "GameRTTI.h"
 
@@ -366,7 +368,7 @@ bool Cmd_ar_Find_Execute(COMMAND_ARGS)
 	{
 		// what type of element are we looking for?
 		ArrayElement toFind;
-		BasicTokenToElem(eval.Arg(0), toFind, &eval);
+		BasicTokenToElem(eval.Arg(0), toFind);
 		
 		// get the array
 		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(1)->GetArray());
@@ -412,6 +414,34 @@ enum eIterMode {
 	kIterMode_Next,
 	kIterMode_Prev
 };
+
+void ReturnElement(COMMAND_ARGS, ExpressionEvaluator& eval, ArrayElement* element)
+{
+	switch (element->DataType())
+	{
+	case kDataType_Numeric:
+		eval.ExpectReturnType(kRetnType_Default);
+		element->GetAsNumber(result);
+		break;
+	case kDataType_Form:
+		eval.ExpectReturnType(kRetnType_Form);
+		element->GetAsFormID((UInt32*)result);
+		break;
+	case kDataType_String:
+		eval.ExpectReturnType(kRetnType_String);
+		const char* stringResult;
+		element->GetAsString(&stringResult);
+		AssignToStringVar(PASS_COMMAND_ARGS, stringResult);
+		break;
+	case kDataType_Array: 
+		eval.ExpectReturnType(kRetnType_Array);
+		element->GetAsArray((UInt32*)result);
+		break;
+	default: 
+		*result = 0;
+		break;
+	}
+}
 
 bool ArrayIterCommand(COMMAND_ARGS, eIterMode iterMode)
 {
@@ -618,7 +648,7 @@ bool Cmd_ar_Resize_Execute(COMMAND_ARGS)
 		{
 			ArrayElement pad;
 			if (eval.NumArgs() == 3)
-				BasicTokenToElem(eval.Arg(2), pad, &eval);
+				BasicTokenToElem(eval.Arg(2), pad);
 			else
 				pad.SetNumber(0.0);
 
@@ -639,7 +669,7 @@ bool Cmd_ar_Append_Execute(COMMAND_ARGS)
 		if (arr)
 		{
 			ArrayElement toAppend;
-			if (BasicTokenToElem(eval.Arg(1), toAppend, &eval))
+			if (BasicTokenToElem(eval.Arg(1), toAppend))
 				*result = arr->Insert(arr->Size(), &toAppend);
 		}
 	}
@@ -666,7 +696,7 @@ bool ar_Insert_Execute(COMMAND_ARGS, bool bRange)
 			else
 			{
 				ArrayElement toInsert;
-				if (BasicTokenToElem(eval.Arg(2), toInsert, &eval))
+				if (BasicTokenToElem(eval.Arg(2), toInsert))
 					*result = arr->Insert(index, &toInsert);
 			}
 		}
@@ -700,7 +730,7 @@ bool Cmd_ar_List_Execute(COMMAND_ARGS)
 		{
 			ScriptToken* tok = eval.Arg(i)->ToBasicToken();
 			ArrayElement elem;
-			if (BasicTokenToElem(tok, elem, &eval))
+			if (BasicTokenToElem(tok, elem))
 			{
 				arr->SetElement(elemIdx, &elem);
 				elemIdx += 1;
@@ -750,7 +780,7 @@ bool Cmd_ar_Map_Execute(COMMAND_ARGS)
 				// get the value first
 				ScriptToken* val = pair->right->ToBasicToken();
 				ArrayElement elem;
-				if (BasicTokenToElem(val, elem, &eval))
+				if (BasicTokenToElem(val, elem))
 				{
 					if (keyType == kDataType_String)
 					{
@@ -797,5 +827,99 @@ bool Cmd_ar_Range_Execute(COMMAND_ARGS)
 		}
 	}
 
+	return true;
+}
+
+ArrayVar* ElementToIterator(Script* script, ArrayIterator& iter)
+{
+	auto* arr = g_ArrayMap.Create(kDataType_String, false, script->GetModIndex());
+	const auto* key = iter.first();
+	if (key->KeyType() == kDataType_String)
+		arr->SetElementString("key", key->key.str);
+	else 
+		arr->SetElementNumber("key", key->key.num);
+	arr->SetElement("value", iter.second());
+	return arr;
+}
+
+struct ArrayFunctionContext
+{
+	ExpressionEvaluator eval;
+	ArrayVar* arr;
+	Script* condScript;
+	bool success;
+
+	ArrayFunctionContext(COMMAND_ARGS): eval(PASS_COMMAND_ARGS), success(false) {}
+};
+
+ArrayFunctionContext ExtractArrayUDF(COMMAND_ARGS)
+{
+	ArrayFunctionContext ctx(PASS_COMMAND_ARGS);
+	auto& eval = ctx.eval;
+	*eval.m_result = 0;
+	if (!eval.ExtractArgs() || eval.NumArgs() != 2)
+		return ctx;
+	ctx.arr = eval.Arg(0)->GetArrayVar();
+	ctx.condScript = eval.Arg(1)->GetUserFunction();
+	if (!ctx.arr || !ctx.condScript)
+		return ctx;
+	ctx.success = true;
+	return ctx;
+}
+
+bool Cmd_ar_FindWhere_Execute(COMMAND_ARGS)
+{
+	auto [eval, arr, conditionScript, success] = ExtractArrayUDF(PASS_COMMAND_ARGS);
+	if (!success)
+		return true;
+	for (auto iter = arr->Begin(); !iter.End(); ++iter)
+	{
+		InternalFunctionCaller caller(conditionScript, thisObj, containingObj);
+		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
+		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		if (tokenResult->GetBool())
+		{
+			ReturnElement(PASS_COMMAND_ARGS, eval, iter.second());
+			break;
+		}
+	}
+	return true;
+}
+
+bool Cmd_ar_Filter_Execute(COMMAND_ARGS)
+{
+	auto [eval, arr, conditionScript, success] = ExtractArrayUDF(PASS_COMMAND_ARGS);
+	if (!success)
+		return true;	auto* returnArray = g_ArrayMap.Create(arr->KeyType(), arr->IsPacked(), scriptObj->GetModIndex());
+	for (auto iter = arr->Begin(); !iter.End(); ++iter)
+	{
+		InternalFunctionCaller caller(conditionScript, thisObj, containingObj);
+		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
+		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		if (tokenResult->GetBool())
+		{
+			returnArray->SetElement(iter.first(), iter.second());
+		}
+	}
+	*result = returnArray->ID();
+	return true;
+}
+
+bool Cmd_ar_MapTo_Execute(COMMAND_ARGS)
+{
+	auto [eval, arr, transformScript, success] = ExtractArrayUDF(PASS_COMMAND_ARGS);
+	if (!success)
+		return true;
+	auto* returnArray = g_ArrayMap.Create(arr->KeyType(), arr->IsPacked(), scriptObj->GetModIndex());
+	for (auto iter = arr->Begin(); !iter.End(); ++iter)
+	{
+		InternalFunctionCaller caller(transformScript, thisObj, containingObj);
+		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
+		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		ArrayElement element;
+		if (BasicTokenToElem(tokenResult.get(), element))
+			returnArray->SetElement(iter.first(), &element);
+	}
+	*result = returnArray->ID();
 	return true;
 }

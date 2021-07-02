@@ -216,6 +216,11 @@ void ArrayVarElementContainer::iterator::operator--()
 	}
 }
 
+bool ArrayVarElementContainer::iterator::operator!=(const iterator& other) const
+{
+	return this->m_iter.pData != other.m_iter.pData;
+}
+
 const ArrayKey* ArrayVarElementContainer::iterator::first()
 {
 	switch (m_type)

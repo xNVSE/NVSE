@@ -560,7 +560,7 @@ bool Cmd_SetModLocalData_Execute(COMMAND_ARGS)
 	if (eval.ExtractArgs() && eval.NumArgs() == 2 && eval.Arg(0)->CanConvertTo(kTokenType_String))
 	{
 		ArrayElement elem;
-		if (BasicTokenToElem(eval.Arg(1), elem, &eval) && (elem.DataType() != kDataType_Array) && s_modDataManager.Set(scriptObj->GetModIndex(), eval.Arg(0)->GetString(), elem))
+		if (BasicTokenToElem(eval.Arg(1), elem) && (elem.DataType() != kDataType_Array) && s_modDataManager.Set(scriptObj->GetModIndex(), eval.Arg(0)->GetString(), elem))
 			*result = 1;
 	}
 	return true;

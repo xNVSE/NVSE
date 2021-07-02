@@ -839,6 +839,16 @@ bool ScriptToken::ResolveVariable()
 		return false;
 	return true;
 }
+
+Script* ScriptToken::GetUserFunction()
+{
+	auto* form = GetTESForm();
+	if (!form)
+		return nullptr;
+	if (!IS_ID(form, Script))
+		return nullptr;
+	return (Script*) form;
+}
 #endif
 
 TESGlobal *ScriptToken::GetGlobal() const

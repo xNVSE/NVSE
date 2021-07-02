@@ -189,7 +189,7 @@ public:
 	CommandInfo* GetCommand() const;
 };
 
-bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem, ExpressionEvaluator* context);
+bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem);
 
 void* __stdcall ExpressionEvaluatorCreate(COMMAND_ARGS);
 void __fastcall ExpressionEvaluatorDestroy(void *expEval);

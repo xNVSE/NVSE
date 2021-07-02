@@ -243,6 +243,7 @@ struct ScriptToken
 	ArrayVar *GetArrayVar();
 	ScriptLocal *GetVar() const;
 	bool ResolveVariable();
+	Script* GetUserFunction();
 #endif
 	virtual bool CanConvertTo(Token_Type to) const; // behavior varies b/w compile/run-time for ambiguous types
 	virtual ArrayID GetOwningArrayID() const { return 0; }

@@ -1789,6 +1789,11 @@ void CommandTable::AddCommandsV6()
 
 	// 6.1 beta 03
 	ADD_CMD(PrintVar);
+
+	// 6.1 beta 06
+	ADD_CMD_RET(ar_FindWhere, kRetnType_ArrayIndex);
+	ADD_CMD_RET(ar_Filter, kRetnType_Array);
+	ADD_CMD_RET(ar_MapTo, kRetnType_Array);
 }
 
 namespace PluginAPI

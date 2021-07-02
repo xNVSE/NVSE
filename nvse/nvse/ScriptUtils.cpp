@@ -4874,7 +4874,7 @@ ScriptToken *Operator::Evaluate(ScriptToken *lhs, ScriptToken *rhs, ExpressionEv
 	return nullptr;
 }
 
-bool BasicTokenToElem(ScriptToken *token, ArrayElement &elem, ExpressionEvaluator *context)
+bool BasicTokenToElem(ScriptToken *token, ArrayElement &elem)
 {
 	ScriptToken *basicToken = token->ToBasicToken();
 	if (!basicToken)

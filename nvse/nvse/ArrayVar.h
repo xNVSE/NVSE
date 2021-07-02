@@ -224,6 +224,7 @@ public:
 
 		void operator++();
 		void operator--();
+		bool operator!=(const iterator& other) const;
 
 		const ArrayKey* first();
 
@@ -341,6 +342,8 @@ public:
 
 	void Dump(const std::function<void(const std::string&)>& output = [&](const std::string& input){ Console_Print("%s", input.c_str()); });
 	void DumpToFile(const char* filePath, bool append);
+
+	ArrayVarElementContainer::iterator Begin();
 
 	std::string GetStringRepresentation() const;
 };

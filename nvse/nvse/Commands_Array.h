@@ -183,3 +183,13 @@ static ParamInfo kNVSEParams_ar_Range[3] =
 };
 
 DEFINE_COMMAND_EXP(ar_Range, returns an array containing numbers beginning with 'start' up to and including 'end' in intervals 'step', 0, kNVSEParams_ar_Range);
+
+static ParamInfo kNVSEParams_OneArray_OneFunction[2] =
+{
+	{	"array",	kNVSEParamType_Array,	0	},
+	{	"condition user defined function",		kNVSEParamType_Form,	0	},
+};
+
+DEFINE_COMMAND_EXP(ar_FindWhere, finds first element in array which satisfies a condition, false, kNVSEParams_OneArray_OneFunction);
+DEFINE_COMMAND_EXP(ar_Filter, filters an array on a condition, false, kNVSEParams_OneArray_OneFunction);
+DEFINE_COMMAND_EXP(ar_MapTo, transforms an array into a new array from a script, false, kNVSEParams_OneArray_OneFunction);
