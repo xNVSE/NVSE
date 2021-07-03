@@ -976,11 +976,6 @@ public:
 	/*A0*/ UInt8 invalidReferences; // set when the dot operator fails to resolve a reference (inside the error message handler)
 	/*A1*/ UInt8 unkA1;				// set when the executing CommandInfo's 2nd flag bit (+0x25) is set
 	/*A2*/ UInt16 padA2;
-
-	static ScriptRunner* Get()
-	{
-		return CdeclCall<ScriptRunner*>(0x5E24D0);
-	}
 };
 STATIC_ASSERT(sizeof(ScriptRunner) == 0xA4);
 
