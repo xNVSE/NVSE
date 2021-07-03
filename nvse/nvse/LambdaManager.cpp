@@ -256,8 +256,8 @@ void CaptureChildLambdas(ScriptLambda* scriptLambda, LambdaContext& ctx)
 			continue;
 		ref->Resolve(eventList);
 		auto* form = ref->form;
-		if (IS_ID(form, Script) && LambdaManager::IsScriptLambda((ScriptLambda*)form))
-			varLambdas->push_back((ScriptLambda*)form);
+		if (form && IS_ID(form, Script) && LambdaManager::IsScriptLambda(static_cast<ScriptLambda*>(form)))
+			varLambdas->push_back(static_cast<ScriptLambda*>(form));
 	}
 	ctx.capturedLambdaVariableScripts = std::move(varLambdas);
 }
@@ -321,7 +321,27 @@ LambdaManager::LambdaVariableContext::LambdaVariableContext(Script* scriptLambda
 	SaveLambdaVariables(scriptLambda);
 }
 
+// prevent reallocation from destroying other lambda context
+LambdaManager::LambdaVariableContext::LambdaVariableContext(LambdaVariableContext&& other) noexcept: scriptLambda(
+	other.scriptLambda)
+{
+	other.scriptLambda = nullptr;
+}
+
+LambdaManager::LambdaVariableContext& LambdaManager::LambdaVariableContext::operator=(
+	LambdaVariableContext&& other) noexcept
+{
+	if (this == &other)
+		return *this;
+	if (this->scriptLambda)
+		UnsaveLambdaVariables(this->scriptLambda);
+	scriptLambda = other.scriptLambda;
+	other.scriptLambda = nullptr;
+	return *this;
+}
+
 LambdaManager::LambdaVariableContext::~LambdaVariableContext()
 {
-	UnsaveLambdaVariables(this->scriptLambda);
+	if (this->scriptLambda)
+		UnsaveLambdaVariables(this->scriptLambda);
 }

@@ -19,6 +19,13 @@ namespace LambdaManager
 		Script* scriptLambda;
 	public:
 		LambdaVariableContext(Script* scriptLambda);
+
+		LambdaVariableContext(const LambdaVariableContext& other) = delete;
+		LambdaVariableContext& operator=(const LambdaVariableContext& other) = delete;
+
+		LambdaVariableContext(LambdaVariableContext&& other) noexcept;
+		LambdaVariableContext& operator=(LambdaVariableContext&& other) noexcept;
+
 		~LambdaVariableContext();
 	};
 	
@@ -32,7 +39,4 @@ namespace LambdaManager
 	// makes sure that a variable list is not deleted by the game while a lambda is still pending execution
 	void SaveLambdaVariables(Script* scriptLambda);
 	void UnsaveLambdaVariables(Script* scriptLambda);
-
-	void MarkAsStoredInVariable(Script* scriptLambda);
-	void MarkAsRemovedFromVariable(Script* scriptLambda);
 }
