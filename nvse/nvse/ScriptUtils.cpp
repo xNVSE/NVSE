@@ -2053,7 +2053,7 @@ static ParamInfo kDynamicParams[] =
 		{"object", kNVSEParamType_Form, 0},
 };
 
-DynamicParamInfo::DynamicParamInfo(std::vector<UserFunctionParam> &params)
+DynamicParamInfo::DynamicParamInfo(const std::vector<UserFunctionParam> &params)
 {
 	m_numParams = params.size() > kMaxParams ? kMaxParams : params.size();
 	for (UInt32 i = 0; i < m_numParams && i < kMaxParams; i++)

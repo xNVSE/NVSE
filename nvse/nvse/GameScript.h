@@ -1,11 +1,18 @@
 #pragma once
 
+#include <span>
+
 #include "Utilities.h"
 #include "GameForms.h"
 #include "common/ICriticalSection.h"
-
+#include "CommandTable.h"
 struct ScriptEventList;
 struct ScriptBuffer;
+struct ScriptOperator;
+
+extern std::span<CommandInfo> g_eventBlockCommandInfos;
+extern std::span<CommandInfo> g_scriptStatementCommandInfos;
+extern std::span<ScriptOperator> g_gameScriptOperators;
 
 #if RUNTIME
 #define SCRIPT_SIZE 0x54
@@ -243,3 +250,30 @@ Script::VariableType VariableTypeNameToType(const char* name);
 UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText, Script* script);	// parses scriptText to determine var type
 Script* GetScriptFromForm(TESForm* form);
 
+enum class ScriptOperatorCode
+{
+	kOp_LeftBracket = 0x0,
+	kOp_RightBracket = 0x1,
+	kOp_LogicalAnd = 0x2,
+	kOp_LogicalOr = 0x3,
+	kOp_LessThanOrEqual = 0x4,
+	kOp_LessThan = 0x5,
+	kOp_GreaterThanOrEqual = 0x6,
+	kOp_GreaterThan = 0x7,
+	kOp_Equals = 0x8,
+	kOp_NotEquals = 0x9,
+	kOp_Minus = 0xA,
+	kOp_Plus = 0xB,
+	kOp_Multiply = 0xC,
+	kOp_Divide = 0xD,
+	kOp_Modulo = 0xE,
+	kOp_Tilde = 0xF,
+	kOp_MAX = 0x10,
+};
+
+struct ScriptOperator
+{
+  ScriptOperatorCode code;
+  UInt8 precedence;
+  char operatorString[3];
+};

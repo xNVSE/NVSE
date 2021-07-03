@@ -629,6 +629,7 @@
     <ClCompile Include="PluginManager.cpp" />
     <ClCompile Include="printf.cpp" />
     <ClCompile Include="SafeWrite.cpp" />
+    <ClCompile Include="ScriptAnalyzer.cpp" />
     <ClCompile Include="ScriptTokenCache.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
@@ -720,6 +721,7 @@
     <ClInclude Include="printf.h" />
     <ClInclude Include="rewrites.h" />
     <ClInclude Include="SafeWrite.h" />
+    <ClInclude Include="ScriptAnalyzer.h" />
     <ClInclude Include="ScriptTokenCache.h" />
     <ClInclude Include="SmallObjectsAllocator.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>

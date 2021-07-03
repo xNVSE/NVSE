@@ -15,6 +15,12 @@ const char *g_variableTypeNames[6] =
 		"ref",
 		"invalid"};
 
+#if RUNTIME
+std::span<CommandInfo> g_eventBlockCommandInfos = {reinterpret_cast<CommandInfo*>(0x118E2F0), 38};
+std::span<CommandInfo> g_scriptStatementCommandInfos = {reinterpret_cast<CommandInfo*>(0x118CB50), 16};
+std::span<ScriptOperator> g_gameScriptOperators = {reinterpret_cast<ScriptOperator*>(0x118CAD0), 16};
+#endif
+
 Script::VariableType VariableTypeNameToType(const char *name)
 {
 	auto varType = Script::eVarType_Invalid;

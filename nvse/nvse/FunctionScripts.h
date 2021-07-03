@@ -47,7 +47,9 @@ private:
 	const char*			editorID;
 #endif
 public:
+	UInt8*				m_singleLineLambdaPosition = nullptr;
 	bool				m_isLambda;
+	
 	FunctionInfo() {}
 	FunctionInfo(Script* script);
 	~FunctionInfo();

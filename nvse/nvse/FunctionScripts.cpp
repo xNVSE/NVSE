@@ -1,9 +1,12 @@
 #include "FunctionScripts.h"
+
+#include "Commands_Scripting.h"
 #include "ScriptTokens.h"
 #include "ThreadLocal.h"
 #include "GameRTTI.h"
 #include "Hooks_Other.h"
 #include "LambdaManager.h"
+#include "ScriptAnalyzer.h"
 
 /*******************************************
 	UserFunctionManager
@@ -297,6 +300,30 @@ void UserFunctionManager::ClearInfos()
 	FunctionInfo
 *****************************/
 
+bool IsSingleLineLambda(Script* script, UInt8*& setFunctionValuePos)
+{
+	auto result = true;
+	UInt16 matchingCodes[] = {
+		static_cast<UInt16>(ScriptParsing::ScriptStatementCode::ScriptName),
+		static_cast<UInt16>(ScriptParsing::ScriptStatementCode::Begin),
+		static_cast<UInt16>(kCommandInfo_SetFunctionValue.opcode),
+		static_cast<UInt16>(ScriptParsing::ScriptStatementCode::End)
+	};
+	ScriptParsing::ScriptIterator iter(script);
+	for (auto opcode : matchingCodes)
+	{
+		if (opcode != iter.opcode)
+		{
+			result = false;
+			break;
+		}
+		if (opcode == kCommandInfo_SetFunctionValue.opcode)
+			setFunctionValuePos = iter.curData;
+		++iter;
+	}
+	return result;
+}
+
 FunctionInfo::FunctionInfo(Script *script)
 	: m_script(script), m_functionVersion(-1), m_bad(false), m_instanceCount(0), m_eventList(nullptr), m_isLambda(LambdaManager::IsScriptLambda(script))
 {
@@ -336,18 +363,19 @@ FunctionInfo::FunctionInfo(Script *script)
 
 	// read params and construct ParamInfo
 	const UInt8 numParams = *data++;
-	std::vector<UserFunctionParam> params(numParams);
+	std::vector<UserFunctionParam> params;
+	params.reserve(numParams);
 
 	for (UInt32 i = 0; i < numParams; i++)
 	{
 		const UInt16 idx = *((UInt16 *)data);
 		data += 2;
 		const UInt8 type = *data++;
-		params[i] = UserFunctionParam(idx, type);
+		params.emplace_back(idx, type);
 	}
 
 	m_dParamInfo = DynamicParamInfo(params);
-	m_userFunctionParams = params;
+	m_userFunctionParams = std::move(params);
 
 	if (!m_isLambda)
 	{
@@ -359,6 +387,13 @@ FunctionInfo::FunctionInfo(Script *script)
 			m_bad = true;
 		}
 		// successfully constructed
+	}
+	else
+	{
+		// optimization, no need to run whole script if it's only a single line
+		UInt8* pos;
+		if (IsSingleLineLambda(script, pos))
+			this->m_singleLineLambdaPosition = pos;
 	}
 #if _DEBUG
 	this->editorID = m_script->GetName();
@@ -492,6 +527,13 @@ FunctionContext::~FunctionContext()
 	delete m_result;
 }
 
+void ExecuteSingleLineLambda(FunctionInfo* info, FunctionCaller& caller, ScriptEventList* eventList)
+{
+	double result;
+	UInt32 opcodeOffset = info->m_singleLineLambdaPosition - static_cast<UInt8*>(info->GetScript()->data);
+	kCommandInfo_SetFunctionValue.execute(kCommandInfo_SetFunctionValue.params, info->GetScript()->data, caller.ThisObj(), caller.ContainingObj(), info->GetScript(), eventList, &result, &opcodeOffset);
+}
+
 bool FunctionContext::Execute(FunctionCaller &caller)
 {
 	if (!IsGood())
@@ -501,10 +543,11 @@ bool FunctionContext::Execute(FunctionCaller &caller)
 	if (!caller.PopulateArgs(m_eventList, m_info))
 		return false;
 
-	// run the script
-	CALL_MEMBER_FN(m_info->GetScript(), Execute)
-	(caller.ThisObj(), m_eventList, caller.ContainingObj(), false);
-
+	if (m_info->m_singleLineLambdaPosition) // performance optimization for {} => ... lambdas
+		ExecuteSingleLineLambda(m_info, caller, m_eventList);
+	else
+		// run the script
+		CALL_MEMBER_FN(m_info->GetScript(), Execute)(caller.ThisObj(), m_eventList, caller.ContainingObj(), false);
 	return true;
 }
 

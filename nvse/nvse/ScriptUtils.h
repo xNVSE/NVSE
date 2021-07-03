@@ -83,7 +83,7 @@ private:
 	UInt32		m_numParams;
 
 public:
-	DynamicParamInfo(std::vector<UserFunctionParam> &params);
+	DynamicParamInfo(const std::vector<UserFunctionParam> &params);
 	DynamicParamInfo() : m_numParams(0) { }
 
 	ParamInfo* Params()	{	return m_paramInfo;	}
