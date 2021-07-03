@@ -847,36 +847,36 @@ struct ArrayFunctionContext
 	ExpressionEvaluator eval;
 	ArrayVar* arr;
 	Script* condScript;
-	bool success;
 
-	ArrayFunctionContext(COMMAND_ARGS): eval(PASS_COMMAND_ARGS), success(false) {}
+	ArrayFunctionContext(COMMAND_ARGS): eval(PASS_COMMAND_ARGS) {}
 };
 
-ArrayFunctionContext ExtractArrayUDF(COMMAND_ARGS)
+bool ExtractArrayUDF(ArrayFunctionContext& ctx)
 {
-	ArrayFunctionContext ctx(PASS_COMMAND_ARGS);
 	auto& eval = ctx.eval;
-	*eval.m_result = 0;
 	if (!eval.ExtractArgs() || eval.NumArgs() != 2)
-		return ctx;
+		return false;
 	ctx.arr = eval.Arg(0)->GetArrayVar();
 	ctx.condScript = eval.Arg(1)->GetUserFunction();
 	if (!ctx.arr || !ctx.condScript)
-		return ctx;
-	ctx.success = true;
-	return ctx;
+		return false;
+	return true;
 }
 
 bool Cmd_ar_FindWhere_Execute(COMMAND_ARGS)
 {
-	auto [eval, arr, conditionScript, success] = ExtractArrayUDF(PASS_COMMAND_ARGS);
-	if (!success)
+	ArrayFunctionContext ctx(PASS_COMMAND_ARGS);
+	*result = 0;
+	if (!ExtractArrayUDF(ctx))
 		return true;
+	auto& [eval, arr, conditionScript] = ctx;
 	for (auto iter = arr->Begin(); !iter.End(); ++iter)
 	{
 		InternalFunctionCaller caller(conditionScript, thisObj, containingObj);
 		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
 		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		if (!tokenResult)
+			return true;
 		if (tokenResult->GetBool())
 		{
 			ReturnElement(PASS_COMMAND_ARGS, eval, iter.second());
@@ -888,14 +888,19 @@ bool Cmd_ar_FindWhere_Execute(COMMAND_ARGS)
 
 bool Cmd_ar_Filter_Execute(COMMAND_ARGS)
 {
-	auto [eval, arr, conditionScript, success] = ExtractArrayUDF(PASS_COMMAND_ARGS);
-	if (!success)
-		return true;	auto* returnArray = g_ArrayMap.Create(arr->KeyType(), arr->IsPacked(), scriptObj->GetModIndex());
+	ArrayFunctionContext ctx(PASS_COMMAND_ARGS);
+	*result = 0;
+	if (!ExtractArrayUDF(ctx))
+		return true;
+	auto& [eval, arr, conditionScript] = ctx;
+	auto* returnArray = g_ArrayMap.Create(arr->KeyType(), arr->IsPacked(), scriptObj->GetModIndex());
 	for (auto iter = arr->Begin(); !iter.End(); ++iter)
 	{
 		InternalFunctionCaller caller(conditionScript, thisObj, containingObj);
 		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
 		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		if (!tokenResult)
+			return true;
 		if (tokenResult->GetBool())
 		{
 			returnArray->SetElement(iter.first(), iter.second());
@@ -907,15 +912,19 @@ bool Cmd_ar_Filter_Execute(COMMAND_ARGS)
 
 bool Cmd_ar_MapTo_Execute(COMMAND_ARGS)
 {
-	auto [eval, arr, transformScript, success] = ExtractArrayUDF(PASS_COMMAND_ARGS);
-	if (!success)
+	ArrayFunctionContext ctx(PASS_COMMAND_ARGS);
+	*result = 0;
+	if (!ExtractArrayUDF(ctx))
 		return true;
+	auto& [eval, arr, transformScript] = ctx;
 	auto* returnArray = g_ArrayMap.Create(arr->KeyType(), arr->IsPacked(), scriptObj->GetModIndex());
 	for (auto iter = arr->Begin(); !iter.End(); ++iter)
 	{
 		InternalFunctionCaller caller(transformScript, thisObj, containingObj);
 		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
 		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		if (!tokenResult)
+			return true;
 		ArrayElement element;
 		if (BasicTokenToElem(tokenResult.get(), element))
 			returnArray->SetElement(iter.first(), &element);
