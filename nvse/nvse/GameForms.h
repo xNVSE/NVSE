@@ -3665,6 +3665,7 @@ struct VariableInfo
 
 	ScriptLocal* Resolve(ScriptEventList* eventList);
 	TESForm* GetTESForm();
+	bool IsReferenceType(Script* parentScript);
 };
 
 // TESQuest (6C)

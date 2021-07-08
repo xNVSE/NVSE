@@ -124,6 +124,7 @@ public:
 
 	void PushOnStack();
 	void PopFromStack() const;
+	CachedTokens* GetTokens();
 
 	bool m_inline;
 

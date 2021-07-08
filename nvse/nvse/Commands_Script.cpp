@@ -1,8 +1,12 @@
 #include "Commands_Script.h"
+
+#include <filesystem>
+
 #include "ParamInfos.h"
 #include "GameScript.h"
 #include "ScriptUtils.h"
 #include "PluginManager.h"
+#include "ScriptAnalyzer.h"
 
 #if RUNTIME
 #include "GameAPI.h"
@@ -13,6 +17,7 @@
 
 #include "EventManager.h"
 #include "FunctionScripts.h"
+#include <fstream>
 //#include "ModTable.h"
 
 enum EScriptMode
@@ -734,6 +739,28 @@ bool Cmd_CallForSeconds_Execute(COMMAND_ARGS)
 		return true;
 	ScopedLock lock(g_callAfterScriptsCS);
 	g_callForInfos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj);
+	return true;
+}
+
+bool Cmd_DecompileScript_Execute(COMMAND_ARGS)
+{
+	Script* script;
+	*result = 0;
+	if (!ExtractArgs(EXTRACT_ARGS, &script) || !IS_ID(script, Script))
+		return true;
+	ScriptParsing::ScriptAnalyzer analyzer(script);
+	analyzer.Parse();
+	const auto* dirName = "DecompiledScripts";
+	if (!std::filesystem::exists(dirName))
+		std::filesystem::create_directory(dirName);
+	const auto modDirName = FormatString("%s/%s", dirName, GetModName(script));
+	if (!std::filesystem::exists(modDirName))
+		std::filesystem::create_directory(modDirName);
+	const auto filePath = modDirName + '/' + std::string(script->GetName()) + ".gek";
+	std::ofstream os(filePath);
+	os << analyzer.DecompileScript();
+	Console_Print("Decompiled script to '%s'", filePath.c_str());
+	*result = 1;
 	return true;
 }
 

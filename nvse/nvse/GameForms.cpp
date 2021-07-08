@@ -688,6 +688,11 @@ TESForm *VariableInfo::GetTESForm()
 	return LookupFormByID(*(UInt32 *)&data);
 }
 
+bool VariableInfo::IsReferenceType(Script* parentScript)
+{
+	return std::find_if(parentScript->refList.begin(), parentScript->refList.end(), [&](auto it) {return it->varIdx == this->idx;}) != parentScript->refList.end();
+}
+
 const char *TESPackage::PackageTime::MonthForCode(UInt8 monthCode)
 {
 	monthCode += 1;

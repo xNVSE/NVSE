@@ -1,21 +1,43 @@
 ﻿#pragma once
+#include <stack>
+
+#include "GameAPI.h"
+#include "GameObjects.h"
+#include "GameRTTI.h"
 #include "GameScript.h"
+
+class ExpressionEvaluator;
+class CachedTokens;
 
 namespace ScriptParsing
 {
+	class CommandCallToken;
+	enum class ExpressionCode : UInt8;
+
 	class ScriptIterator
 	{
 		void ReadLine();
 	public:
+		UInt8 Read8();
 		UInt16 Read16();
 		UInt32 Read32();
-		
-		UInt16 opcode;
-		UInt16 length;
+		UInt64 Read64();
+		float ReadFloat();
+		double ReadDouble();
+		Script::RefVariable* ReadRefVar();
+		VariableInfo* ReadVariable(TESForm*& refOut, ExpressionCode& typeOut);
+		bool ReadStringLiteral(std::string_view& out);
+		bool ReadNumericConstant(double& result);
+		Script::RefVariable* GetCallingReference() const;
+
+		UInt16 opcode{};
+		UInt16 length{};
+		UInt16 refIdx{};
 		Script* script;
 		UInt8* curData;
 
 		explicit ScriptIterator(Script* script);
+		ScriptIterator() : script(nullptr), curData(nullptr) {}
 		void operator++();
 		bool End() const;
 	};
@@ -39,6 +61,15 @@ namespace ScriptParsing
 		Ref = 0x1F,
 	};
 
+	enum class ExpressionCode : UInt8
+	{
+		None = '\0',
+		Int = 's',
+		FloatOrRef = 'f',
+		Global = 'G',
+		Command = 'X'
+	};
+
 	// unfinished
 	class ScriptLine
 	{
@@ -46,6 +77,10 @@ namespace ScriptParsing
 		ScriptIterator context;
 		CommandInfo* statementCmd;
 		virtual ~ScriptLine() = default;
+
+		UInt8 Read8();
+		UInt16 Read16();
+		UInt32 Read32();
 
 		ScriptLine(const ScriptIterator& context, CommandInfo* cmd);
 
@@ -56,6 +91,9 @@ namespace ScriptParsing
 	{
 	public:
 		ScriptCommandCall(const ScriptIterator& contextParam);
+		std::unique_ptr<CommandCallToken> commandCallToken = nullptr;
+
+		std::string ToString() override;
 	};
 
 	class ScriptStatement : public ScriptLine
@@ -67,10 +105,7 @@ namespace ScriptParsing
 	class ScriptNameStatement : public ScriptStatement
 	{
 	public:
-		ScriptNameStatement(const ScriptIterator& context)
-			: ScriptStatement(context)
-		{
-		}
+		ScriptNameStatement(const ScriptIterator& context);
 
 		std::string ToString() override;
 	};
@@ -85,15 +120,184 @@ namespace ScriptParsing
 		std::string ToString() override;
 	};
 
+	class ExpressionToken
+	{
+	public:
+		ExpressionCode code = ExpressionCode::None;
+		virtual ~ExpressionToken() = default;
+
+		ExpressionToken() = default;
+
+		explicit ExpressionToken(ExpressionCode code);
+
+	};
+
+	class OperatorToken : public ExpressionToken
+	{
+	public:
+		ScriptOperator* scriptOperator;
+
+		explicit OperatorToken(ScriptOperator* scriptOperator);
+
+		std::string ToString(std::vector<std::string>& stack);
+	};
+
+	class OperandToken : public ExpressionToken
+	{
+	public:
+		explicit OperandToken(ExpressionCode code)
+			: ExpressionToken(code)
+		{
+		}
+
+		OperandToken() = default;
+		virtual std::string ToString() = 0;
+
+	};
+
+	class ScriptVariableToken : public OperandToken
+	{
+	public:
+		TESForm* ref = nullptr;
+		VariableInfo* varInfo;
+
+		ScriptVariableToken(ExpressionCode varType, VariableInfo* info, TESForm* ref = nullptr);
+
+		std::string ToString() override;
+	};
+
+	class StringLiteralToken : public OperandToken
+	{
+	public:
+		std::string_view stringLiteral;
+
+		explicit StringLiteralToken(const std::string_view& stringLiteral);
+
+		std::string ToString() override;
+	};
+
+	class NumericConstantToken : public OperandToken
+	{
+	public:
+		double value;
+
+		explicit NumericConstantToken(double value);
+
+		std::string ToString() override;
+	};
+
+	class RefToken : public OperandToken
+	{
+	public:
+		Script::RefVariable* refVariable;
+		Script* script;
+
+		explicit RefToken(Script* script, Script::RefVariable* refVariable);
+
+		std::string ToString() override;
+	};
+
+	class GlobalVariableToken : public RefToken
+	{
+	public:
+		TESGlobal* global;
+
+		explicit GlobalVariableToken(Script::RefVariable* refVariable);
+
+		std::string ToString() override;
+	};
+
+	class InlineExpressionToken : public OperandToken
+	{
+	public:
+		std::unique_ptr<ExpressionEvaluator> eval = nullptr;
+		CachedTokens* tokens;
+
+		InlineExpressionToken(ScriptIterator& context);
+
+		std::string ToString() override;
+	};
+
+	class CommandCallToken : public OperandToken
+	{
+	public:
+		CommandInfo* cmdInfo;
+		Script::RefVariable* callingReference;
+		
+		std::vector<std::unique_ptr<OperandToken>> args;
+
+		std::unique_ptr<ExpressionEvaluator> expressionEvaluator = nullptr;
+		std::vector<CachedTokens*> expressionEvalArgs;
+
+		CommandCallToken(const ScriptIterator& context);
+		CommandCallToken(CommandInfo* cmdInfo, Script::RefVariable* callingRef);
+
+		std::string ToString() override;
+
+		bool ReadVariableToken(ScriptIterator& context);
+
+		bool ReadFormToken(ScriptIterator& context);
+
+		bool ReadNumericToken(ScriptIterator& context);
+
+		bool ParseCommandArgs(ScriptIterator context);
+	};
+
+	class Expression
+	{
+	public:
+		ScriptIterator context;
+		UInt16 expressionLength = 0;
+		std::vector<std::unique_ptr<ExpressionToken>> stack;
+
+		ScriptOperator* ReadOperator();
+
+		bool ReadExpression();
+
+		Expression() = default;
+		explicit Expression(const ScriptIterator& context);
+
+		std::string ToString();
+	};
+
+	class SetToStatement : public ScriptStatement
+	{
+	public:
+		char type = 0;
+		std::unique_ptr<OperandToken> toVariable = nullptr;
+		Expression expression;
+
+		explicit SetToStatement(const ScriptIterator& contextParam);
+
+		std::string ToString() override;
+	};
+
+	class ConditionalStatement : public ScriptStatement
+	{
+	public:
+		UInt16 numBytesToJumpOnFalse;
+		Expression expression;
+		explicit ConditionalStatement(const ScriptIterator& contextParam);
+		std::string ToString() override
+		{
+			return ScriptLine::ToString() + " " + expression.ToString();
+		}
+	};
+	
 	class ScriptAnalyzer
 	{
 		ScriptIterator iter_;
 		std::vector<std::unique_ptr<ScriptLine>> lines_;
-		void AddLine(std::unique_ptr<ScriptLine> line);
+		template <typename T>
+		void Add()
+		{
+			this->lines_.emplace_back(std::make_unique<T>(this->iter_));
+		}
 	public:
 		ScriptAnalyzer(Script* script);
 
-		void ParseNext();
+		void Parse();
+		std::string DecompileScript();
 	};
 
 }

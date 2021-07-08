@@ -1138,7 +1138,7 @@ static const char *ResolveStringArgument(ScriptEventList *eventList, const char 
 }
 
 // Corresponds to ParamType
-const UInt8 kClassifyParamExtract[] =
+const UInt8 kClassifyParamExtract[70] =
 	{
 		0,
 		1,
@@ -1210,18 +1210,6 @@ const UInt8 kClassifyParamExtract[] =
 		6,
 		6,
 		6,
-};
-
-enum ExtractParamType
-{
-	kExtractParam_StringLiteral = 0,
-	kExtractParam_Int = 1,
-	kExtractParam_Short = 2,
-	kExtractParam_Byte = 3,
-	kExtractParam_Float = 4,
-	kExtractParam_Double = 5,
-	kExtractParam_FormOrVariable = 6,
-	kExtractParam_ScriptVariable = 7,
 };
 
 #if NVSE_CORE
@@ -1327,7 +1315,7 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 				return false;
 			break;
 		}
-		case kExtractParam_FormOrVariable:
+		case kExtractParam_Form:
 		{
 			TESForm *form = NULL;
 			if (*scriptData == 'r')
@@ -1899,7 +1887,6 @@ UInt32 ScriptEventList::ResetAllVariables()
 	}
 	return numVars;
 }
-
 
 ScriptLocal *ScriptEventList::GetVariable(UInt32 id)
 {
@@ -3004,7 +2991,8 @@ UInt8 *GetScriptDataPosition(Script *script, void *scriptDataIn, UInt32 opcodeOf
 
 UInt32 GetNextFreeFormID(UInt32 formId)
 {
-	while (LookupFormByID(++formId));
+	while (LookupFormByID(++formId))
+		;
 	return formId;
 }
 

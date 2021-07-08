@@ -145,6 +145,7 @@ public:
 	ExtraDataList	extraDataList;			// 044
 	RenderState		* renderState;			// 064	- (05C in FOSE)
 
+	ExtraScript* GetExtraScript() const;
 	ScriptEventList *	GetEventList() const;
 
 	bool IsTaken() const { return (flags & kFlags_Taken) != 0; }

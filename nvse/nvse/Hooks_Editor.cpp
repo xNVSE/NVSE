@@ -614,7 +614,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 		++curScriptText;
 	}
 
-	char lastChar = '\0';
+	unsigned char lastChar = '\0';
 	while (true)
 	{
 		const auto curChar = *curScriptText++;

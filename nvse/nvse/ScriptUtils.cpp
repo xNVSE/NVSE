@@ -4442,10 +4442,9 @@ thread_local TokenCache g_tokenCache;
 thread_local std::string g_curLineText;
 #endif
 
-ScriptToken *ExpressionEvaluator::Evaluate()
+CachedTokens* ExpressionEvaluator::GetTokens()
 {
-	UInt8 *cacheKey = GetCommandOpcodePosition();
-	CachedTokens &cache = g_tokenCache.Get(cacheKey);
+	CachedTokens &cache = g_tokenCache.Get(GetCommandOpcodePosition());
 	if (cache.Empty())
 	{
 		if (!ParseBytecode(cache))
@@ -4458,6 +4457,15 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 	{
 		m_data += cache.incrementData;
 	}
+	return &cache;
+}
+
+ScriptToken *ExpressionEvaluator::Evaluate()
+{
+	CachedTokens* cachePtr = GetTokens();
+	if (!cachePtr)
+		return nullptr;
+	auto& cache = *cachePtr;
 #if _DEBUG
 	g_curLineText = this->GetLineText(cache, nullptr);
 #endif
@@ -4490,7 +4498,7 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 			{
 				// There needs to be a unique lambda per script event list so that variables can have the correct values
 				// curToken needs not be deleted since it's always cached
-				auto *script = CreateLambdaScript(cacheKey, curToken->value.lambdaScriptData, *this);
+				auto *script = CreateLambdaScript(GetCommandOpcodePosition(), curToken->value.lambdaScriptData, *this);
 				if (!script)
 				{
 					Error("Failed to create lambda script");
@@ -4564,7 +4572,10 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 		}
 		else
 		{
-			Error("An expression failed to evaluate to a valid result. (Failed to approximate script line)");
+			if (operands.Size() != 1)
+				Error("An expression failed to evaluate to a valid result. (Failed to approximate script line) 0");
+			else
+				Error("An expression failed to evaluate to a valid result. (Failed to approximate script line) 1");
 		}
 		while (operands.Size())
 		{

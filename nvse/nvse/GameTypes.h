@@ -203,7 +203,12 @@ public:
 			}
 			
 		}
-		bool operator!=(Iterator& other) const
+		bool operator!=(const Iterator& other) const
+		{
+			return m_curr != other.m_curr;
+		}
+
+		bool operator!=(Iterator&& other) const
 		{
 			return m_curr != other.m_curr;
 		}

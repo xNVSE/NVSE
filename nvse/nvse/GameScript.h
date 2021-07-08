@@ -13,7 +13,7 @@ struct ScriptOperator;
 extern std::span<CommandInfo> g_eventBlockCommandInfos;
 extern std::span<CommandInfo> g_scriptStatementCommandInfos;
 extern std::span<ScriptOperator> g_gameScriptOperators;
-
+extern ActorValueInfo **g_actorValueInfoArray;
 #if RUNTIME
 #define SCRIPT_SIZE 0x54
 static const UInt32 kScript_ExecuteFnAddr = 0x005AC1E0;
@@ -40,6 +40,8 @@ public:
 		UInt32	varIdx;		// 00C
 
 		void	Resolve(ScriptEventList * eventList);
+
+		Script* GetReferencedScript() const;
 	};
 
 	struct RefList : tList<RefVariable>

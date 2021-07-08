@@ -19,6 +19,11 @@ const char *g_variableTypeNames[6] =
 std::span<CommandInfo> g_eventBlockCommandInfos = {reinterpret_cast<CommandInfo*>(0x118E2F0), 38};
 std::span<CommandInfo> g_scriptStatementCommandInfos = {reinterpret_cast<CommandInfo*>(0x118CB50), 16};
 std::span<ScriptOperator> g_gameScriptOperators = {reinterpret_cast<ScriptOperator*>(0x118CAD0), 16};
+ActorValueInfo **g_actorValueInfoArray = reinterpret_cast<ActorValueInfo**>(0x11D61C8);
+#else
+std::span<CommandInfo> g_eventBlockCommandInfos = {reinterpret_cast<CommandInfo*>(0xE9D598), 38};
+std::span<CommandInfo> g_scriptStatementCommandInfos = {reinterpret_cast<CommandInfo*>(0xE9BDF8), 16};
+std::span<ScriptOperator> g_gameScriptOperators = {reinterpret_cast<ScriptOperator*>(0xE9BD7D), 16};
 #endif
 
 Script::VariableType VariableTypeNameToType(const char *name)
@@ -377,6 +382,20 @@ VariableInfo *Script::VarInfoList::GetVariableByName(const char *varName)
 {
 	return FindFirst([&](const VariableInfo *v) { return StrCompare(v->name.m_data, varName) == 0; });
 }
+
+#if RUNTIME
+Script* Script::RefVariable::GetReferencedScript() const
+{
+	if (!form)
+		return nullptr;
+	if (IS_ID(form, TESQuest))
+		return static_cast<TESQuest*>(form)->scriptable.script;
+	if (auto* refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR))
+		if (auto* extraScript = refr->GetExtraScript())
+			return extraScript->script;
+	return nullptr;
+}
+#endif
 
 UInt32 Script::RefList::GetIndex(Script::RefVariable *refVar)
 {

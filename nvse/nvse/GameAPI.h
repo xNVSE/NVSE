@@ -16,6 +16,8 @@ struct BaseExtraList;
 
 #if RUNTIME
 static const UInt32 s_Console__Print = 0x0071D0A0;
+extern const UInt8 kClassifyParamExtract[70];
+
 #endif
 
 #if _DEBUG && NVSE_CORE
@@ -1099,3 +1101,15 @@ extern TimeGlobal *g_timeGlobal;
 extern float *g_globalTimeMult;
 
 Script *GetReferencedQuestScript(UInt32 refIdx, ScriptEventList *baseEventList);
+
+enum ExtractParamType
+{
+	kExtractParam_StringLiteral = 0,
+	kExtractParam_Int = 1,
+	kExtractParam_Short = 2,
+	kExtractParam_Byte = 3,
+	kExtractParam_Float = 4,
+	kExtractParam_Double = 5,
+	kExtractParam_Form = 6,
+	kExtractParam_ScriptVariable = 7,
+};

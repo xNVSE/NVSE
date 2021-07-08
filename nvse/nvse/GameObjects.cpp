@@ -29,17 +29,24 @@ static NiObject **	g_3rdPersonCameraNode =				(NiObject**)kg_Camera3rd;
 static NiObject **	g_1stPersonCameraBipedNode =		(NiObject**)kg_Bip;
 static NiObject **	g_1stPersonCameraNode =				(NiObject**)kg_Camera1st;
 
-ScriptEventList* TESObjectREFR::GetEventList() const
+ExtraScript* TESObjectREFR::GetExtraScript() const
 {
 	BSExtraData* xData = extraDataList.GetByType(kExtraData_Script);
 	if (xData)
 	{
-		ExtraScript* xScript = DYNAMIC_CAST(xData, BSExtraData, ExtraScript);
+		const auto xScript = DYNAMIC_CAST(xData, BSExtraData, ExtraScript);
 		if (xScript)
-			return xScript->eventList;
+			return xScript;
 	}
 
-	return 0;
+	return nullptr;
+}
+
+ScriptEventList* TESObjectREFR::GetEventList() const
+{
+	if (auto* extraScript = GetExtraScript())
+		return extraScript->eventList;
+	return nullptr;
 }
 
 PlayerCharacter** g_thePlayer = (PlayerCharacter **)0x011DEA3C;

@@ -779,8 +779,6 @@ bool Cmd_SetNthEffectItemScriptNameEX_Execute(COMMAND_ARGS)
 
 #endif
 
-ActorValueInfo **g_actorValueInfoArray = (ActorValueInfo **)0x11D61C8;
-
 bool Cmd_ActorValueToString_Execute(COMMAND_ARGS)
 {
 	const char *resStr = NULL;
