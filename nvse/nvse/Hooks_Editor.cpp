@@ -462,7 +462,7 @@ __declspec(naked) void CommandParserScriptVarHook()
 ParamParenthResult __fastcall HandleParameterParenthesis(ScriptLineBuffer* scriptLineBuffer, ScriptBuffer* scriptBuffer, ParamInfo* paramInfo, UInt32 paramIndex)
 {
 	auto parser = ExpressionParser(scriptBuffer, scriptLineBuffer);
-	return parser.ParseParenthesis(paramInfo, paramIndex);
+	return parser.ParseParentheses(paramInfo, paramIndex);
 }
 
 __declspec(naked) void ParameterParenthesisHook()

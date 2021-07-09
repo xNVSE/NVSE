@@ -390,19 +390,21 @@ std::string ScriptParsing::CommandCallToken::ToString()
 ScriptOperator* ScriptParsing::Expression::ReadOperator()
 {
 	auto* prevPos = context.curData;
+	const auto isNonOperatorChar = [](unsigned char c) { return c <= 0x20 || isspace(c) || !ispunct(c); };
+	if (isNonOperatorChar(*context.curData))
+		return nullptr;
 	for (auto& op : g_gameScriptOperators)
 	{
 		auto match = true;
 		for (auto i = 0; i < 2; ++i)
 		{
 			const auto opChar = op.operatorString[i];
-			const auto curChar = static_cast<char>(context.Read8());
-			if (curChar <= 0x20 || isspace(curChar))
+			const auto curChar = context.Read8();
+			if (isNonOperatorChar(curChar))
 			{
-				--context.curData;
 				break;
 			}
-			if (opChar != curChar)
+			if (opChar != static_cast<char>(curChar))
 			{
 				match = false;
 				break;
@@ -520,8 +522,11 @@ const UInt32 g_gameParseCommands[] = {0x5B1BA0, 0x5B3C70, 0x5B3CA0, 0x5B3C40, 0x
 
 bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context)
 {
-	if (*reinterpret_cast<UInt16*>(context.curData) > 0x7FFF || !Contains(g_gameParseCommands, reinterpret_cast<UInt32>(cmdInfo->parse)))
+	const auto isCompilerOverride = *reinterpret_cast<UInt16*>(context.curData) > 0x7FFF;
+	if (isCompilerOverride || !Contains(g_gameParseCommands, reinterpret_cast<UInt32>(cmdInfo->parse)))
 	{
+		if (isCompilerOverride)
+			context.curData += 2;
 		UInt32 offset = context.curData - static_cast<UInt8*>(context.script->data);
 		this->expressionEvaluator = std::make_unique<ExpressionEvaluator>(nullptr, context.script->data, nullptr, nullptr, context.script, nullptr, nullptr, &offset);
 		const auto exprEvalNumArgs = this->expressionEvaluator->ReadByte();

@@ -2807,7 +2807,7 @@ ScriptToken *ExpressionParser::ParseOperand(bool (*pred)(ScriptToken *operand))
 	return token;
 }
 
-ParamParenthResult ExpressionParser::ParseParenthesis(ParamInfo *paramInfo, UInt32 paramIndex)
+ParamParenthResult ExpressionParser::ParseParentheses(ParamInfo *paramInfo, UInt32 paramIndex)
 {
 	char c;
 	auto index = Offset();

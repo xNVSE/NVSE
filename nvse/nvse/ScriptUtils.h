@@ -298,7 +298,7 @@ public:
 	ScriptToken	*	ParseOperand(bool (* pred)(ScriptToken* operand));
 	Token_Type		ArgType(UInt32 idx) { return idx < kMaxArgs ? m_argTypes[idx] : kTokenType_Invalid; }
 	Token_Type ParseArgument(UInt32 argsEndPos);
-	ParamParenthResult ParseParenthesis(ParamInfo* paramInfo, UInt32 paramIndex);
+	ParamParenthResult ParseParentheses(ParamInfo* paramInfo, UInt32 paramIndex);
 };
 
 void ShowRuntimeError(Script* script, const char* fmt, ...);
