@@ -128,6 +128,7 @@ enum Token_Type : UInt8
 	kTokenType_AssignableString,
 	// xNVSE 6.1.0
 	kTokenType_Lambda,
+	kTokenType_LambdaScriptData,
 
 	kTokenType_Invalid,
 	kTokenType_Max = kTokenType_Invalid,

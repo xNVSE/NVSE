@@ -17,6 +17,8 @@
 #include "LambdaManager.h"
 #include <regex>
 #include <utility>
+
+#include "ScriptAnalyzer.h"
 #if RUNTIME
 
 #ifdef DBG_EXPR_LEAKS
@@ -4457,6 +4459,8 @@ CachedTokens* ExpressionEvaluator::GetTokens()
 	{
 		m_data += cache.incrementData;
 	}
+	// adjust opcode offset ptr (important for recursive calls to Evaluate()
+	*m_opcodeOffsetPtr += cache.incrementData;
 	return &cache;
 }
 
@@ -4494,7 +4498,7 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 				Error("Failed to resolve variable");
 				break;
 			}
-			else if (curToken->type == kTokenType_Lambda)
+			else if (curToken->type == kTokenType_LambdaScriptData)
 			{
 				// There needs to be a unique lambda per script event list so that variables can have the correct values
 				// curToken needs not be deleted since it's always cached
@@ -4556,16 +4560,14 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 
 		ShortCircuit(operands, iter);
 	}
-
-	// adjust opcode offset ptr (important for recursive calls to Evaluate()
-	*m_opcodeOffsetPtr += cache.incrementData;
-
+	
 	if (operands.Size() != 1 || this->HasErrors()) // should have one operand remaining - result of expression
 	{
 		const auto currentLine = this->GetLineText(cache, iter.Get().token);
 		if (!currentLine.empty())
 		{
-			Error("Script line approximation: %s (error wrapped in ##'s)", currentLine.c_str());
+			auto* cmd = GetCommand();
+			Error("Script line approximation: %s %s (error wrapped in ##'s)", cmd ? cmd->longName : "", currentLine.c_str());
 			const auto variablesText = this->GetVariablesText(cache);
 			if (!variablesText.empty())
 				Error("\tWhere %s", variablesText.c_str());
@@ -4645,7 +4647,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 				auto *cmdInfo = token.GetCommandInfo();
 				if (cmdInfo)
 				{
-					auto operand = std::string(cmdInfo->longName);
+					/*auto operand = std::string(cmdInfo->longName);
 					if (operand.empty())
 					{
 						operand = FormatString("<MISSING PLUGIN COMMAND %X>", cmdInfo->opcode);
@@ -4676,9 +4678,11 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 							else
 								operand = FormatString("%X", callingRef->form->refID) + "." + operand;
 						}
-					}
-
-					operands.push(operand);
+					}*/
+					ScriptParsing::CommandCallToken callToken(cmdInfo, script->GetRefFromRefList(token.refIdx));
+					ScriptParsing::ScriptIterator it(script, cmdInfo->opcode, 0, token.refIdx, static_cast<UInt8*>(script->data) + token.cmdOpcodeOffset);
+					callToken.ParseCommandArgs(it);
+					operands.push(callToken.ToString());
 					break;
 				}
 				operands.push("<bad command>");
@@ -4698,9 +4702,11 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 				operands.push("<bad variable>");
 				break;
 			}
-			case kTokenType_Lambda:
+			case kTokenType_LambdaScriptData:
 			{
-				operands.push("<lambda function>");
+				auto scriptLambda = MakeUnique<Script, 0x5AA1A0>(LambdaManager::CreateLambdaScript(token.value.lambdaScriptData, script));
+				ScriptParsing::ScriptAnalyzer analyzer(scriptLambda.get());
+				operands.push(analyzer.DecompileScript());
 			}
 			default:
 				operands.push("<can't decompile token>");

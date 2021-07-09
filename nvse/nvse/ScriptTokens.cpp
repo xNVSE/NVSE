@@ -868,7 +868,7 @@ Script* ScriptToken::GetUserFunction()
 		return nullptr;
 	if (!IS_ID(form, Script))
 		return nullptr;
-	return (Script*) form;
+	return static_cast<Script*>(form);
 }
 #endif
 
@@ -1210,7 +1210,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator *context)
 	}
 	case 'F':
 	{
-		type = kTokenType_Lambda;
+		type = kTokenType_LambdaScriptData;
 		// context: we need a script lambda per event list so that each lambda can copy the appropriate locals; tokens are created
 		// once per script data so we need to create the Script object later
 		const auto dataLen = context->Read32();
@@ -1634,6 +1634,7 @@ static Operand s_operands[] =
 		{NULL, 0}, // pair
 		{OPERAND(AssignableString)},
 		{OPERAND(Lambda)},
+		{NULL, 0}
 };
 
 STATIC_ASSERT(SIZEOF_ARRAY(s_operands, Operand) == kTokenType_Max);

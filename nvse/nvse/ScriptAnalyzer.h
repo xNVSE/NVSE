@@ -37,6 +37,8 @@ namespace ScriptParsing
 		UInt8* curData;
 
 		explicit ScriptIterator(Script* script);
+		ScriptIterator(Script* script, UInt8* position);
+		ScriptIterator(Script* script, UInt16 opcode, UInt16 length, UInt16 refIdx, UInt8* data);
 		ScriptIterator() : script(nullptr), curData(nullptr) {}
 		void operator++();
 		bool End() const;
@@ -70,7 +72,6 @@ namespace ScriptParsing
 		Command = 'X'
 	};
 
-	// unfinished
 	class ScriptLine
 	{
 	public:
@@ -297,6 +298,7 @@ namespace ScriptParsing
 		ScriptAnalyzer(Script* script);
 
 		void Parse();
+		static std::unique_ptr<ScriptLine> ParseLine(const ScriptIterator& iter);
 		std::string DecompileScript();
 	};
 

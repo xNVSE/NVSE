@@ -6,6 +6,17 @@
 #include "Commands_Scripting.h"
 #include "ScriptUtils.h"
 
+template <typename L, typename T>
+bool Contains(const L& list, T t)
+{
+	for (auto i : list)
+	{
+		if (i == t)
+			return true;
+	}
+	return false;
+}
+
 UInt8 Read8(UInt8*& curData)
 {
 	const auto byte = *curData;
@@ -103,6 +114,15 @@ void ScriptParsing::ScriptIterator::ReadLine()
 ScriptParsing::ScriptIterator::ScriptIterator(Script* script) : script(script), curData(static_cast<UInt8*>(script->data))
 {
 	ReadLine();
+}
+
+ScriptParsing::ScriptIterator::ScriptIterator(Script* script, UInt8* position) : script(script), curData(position)
+{
+	ReadLine();
+}
+
+ScriptParsing::ScriptIterator::ScriptIterator(Script* script, UInt16 opcode, UInt16 length, UInt16 refIdx, UInt8* data): opcode(opcode), length(length), refIdx(refIdx), script(script), curData(data)
+{
 }
 
 void ScriptParsing::ScriptIterator::operator++()
@@ -484,9 +504,11 @@ void RegisterNVSEVars(CachedTokens& tokens, Script* script)
 	}
 }
 
+const UInt32 g_gameParseCommands[] = {0x5B1BA0, 0x5B3C70, 0x5B3CA0, 0x5B3C40, 0x5B3CD0, reinterpret_cast<UInt32>(Cmd_Default_Parse) };
+
 bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context)
 {
-	if (*reinterpret_cast<UInt16*>(context.curData) > 0x7FFF || this->cmdInfo->parse != g_defaultParseCommand)
+	if (*reinterpret_cast<UInt16*>(context.curData) > 0x7FFF || !Contains(g_gameParseCommands, reinterpret_cast<UInt32>(cmdInfo->parse)))
 	{
 		UInt32 offset = context.curData - static_cast<UInt8*>(context.script->data);
 		this->expressionEvaluator = std::make_unique<ExpressionEvaluator>(nullptr, context.script->data, nullptr, nullptr, context.script, nullptr, nullptr, &offset);
@@ -700,58 +722,46 @@ ScriptParsing::ConditionalStatement::ConditionalStatement(const ScriptIterator& 
 
 ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script) : iter_(script) {}
 
+
+
 void ScriptParsing::ScriptAnalyzer::Parse()
 {
 	while (!this->iter_.End())
 	{
-		const auto opcode =  this->iter_.opcode;
-		if (opcode <= static_cast<UInt32>(ScriptStatementCode::Ref))
-		{
-			switch (static_cast<ScriptStatementCode>(opcode))
-			{
-			case ScriptStatementCode::Begin: 
-				Add<BeginStatement>();
-				break;
-			case ScriptStatementCode::End: 
-			case ScriptStatementCode::Short:
-			case ScriptStatementCode::Long:
-			case ScriptStatementCode::Float:
-			case ScriptStatementCode::Return:
-			case ScriptStatementCode::Ref:
-			case ScriptStatementCode::EndIf:
-			case ScriptStatementCode::ReferenceFunction: 
-				Add<ScriptStatement>();
-				break;
-			case ScriptStatementCode::SetTo:
-				Add<SetToStatement>();
-				break;
-			case ScriptStatementCode::If:
-			case ScriptStatementCode::ElseIf:
-			case ScriptStatementCode::Else:
-				Add<ConditionalStatement>();
-				break;
-			case ScriptStatementCode::ScriptName: 
-				Add<ScriptNameStatement>();
-				break;
-			}
-		}
-		else
-		{
-			Add<ScriptCommandCall>();
-		}
+		this->lines_.push_back(ParseLine(this->iter_));
 		++this->iter_;
 	}
 }
 
-template <typename T>
-bool Contains(const std::initializer_list<T>& list, T t)
+std::unique_ptr<ScriptParsing::ScriptLine> ScriptParsing::ScriptAnalyzer::ParseLine(const ScriptIterator& iter)
 {
-	for (auto i : list)
+	const auto opcode =  iter.opcode;
+	if (opcode <= static_cast<UInt32>(ScriptStatementCode::Ref))
 	{
-		if (i == t)
-			return true;
+		switch (static_cast<ScriptStatementCode>(opcode))
+		{
+		case ScriptStatementCode::Begin: 
+			return std::make_unique<BeginStatement>(iter);
+		case ScriptStatementCode::End: 
+		case ScriptStatementCode::Short:
+		case ScriptStatementCode::Long:
+		case ScriptStatementCode::Float:
+		case ScriptStatementCode::Return:
+		case ScriptStatementCode::Ref:
+		case ScriptStatementCode::EndIf:
+		case ScriptStatementCode::ReferenceFunction: 
+			return std::make_unique<ScriptStatement>(iter);
+		case ScriptStatementCode::SetTo:
+			return std::make_unique<SetToStatement>(iter);
+		case ScriptStatementCode::If:
+		case ScriptStatementCode::ElseIf:
+		case ScriptStatementCode::Else:
+			return std::make_unique<ConditionalStatement>(iter);
+		case ScriptStatementCode::ScriptName: 
+			return std::make_unique<ScriptNameStatement>(iter);
+		}
 	}
-	return false;
+	return std::make_unique<ScriptCommandCall>(iter);
 }
 
 std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
@@ -770,9 +780,7 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 		if (isAdd && !scriptText.ends_with("\n\n"))
 			scriptText += '\n';
 		if (isMin)
-		{
 			--numTabs;
-		}
 		const auto isNeutral = Contains(nestNeutralOpcodes, opcode);
 		if (isNeutral)
 			--numTabs;

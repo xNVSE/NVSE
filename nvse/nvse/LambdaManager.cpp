@@ -57,6 +57,21 @@ void SetLambdaParent(ScriptLambda* scriptLambda, ScriptEventList* parentEventLis
 	SetLambdaParent(g_lambdas[scriptLambda], parentEventList);
 }
 
+Script* LambdaManager::CreateLambdaScript(const ScriptData& scriptData, Script* parentScript)
+{
+	auto* scriptLambda = New<Script, 0x5AA0F0>();
+	scriptLambda->data = scriptData.scriptData;
+	scriptLambda->info.dataLength = scriptData.size;
+	
+	scriptLambda->varList = parentScript->varList; // CdeclCall(0x5AB930, &parentScript->varList, &scriptLambda->varList); // CopyVarList
+	scriptLambda->refList = parentScript->refList; // CdeclCall(0x5AB7F0, &parentScript->refList, &scriptLambda->refList); // CopyRefList
+	
+	scriptLambda->info.numRefs = parentScript->info.numRefs;
+	scriptLambda->info.varCount = parentScript->info.varCount;
+	scriptLambda->info.unusedVariableCount = parentScript->info.unusedVariableCount;
+	return scriptLambda;
+}
+
 Script* LambdaManager::CreateLambdaScript(UInt8* position, const ScriptData& scriptData, const ExpressionEvaluator& exprEval)
 {
 	ScopedLock lock(g_lambdaCs);
@@ -82,17 +97,8 @@ Script* LambdaManager::CreateLambdaScript(UInt8* position, const ScriptData& scr
 		SetLambdaParent(scriptLambda, parentEventList);
 		return scriptLambda;
 	}
-	auto* scriptLambda = New<Script, 0x5AA0F0>();
+	auto* scriptLambda = CreateLambdaScript(scriptData, parentScript);
 	g_lambdaScriptPosMap[key] = scriptLambda;
-	scriptLambda->data = scriptData.scriptData;
-	scriptLambda->info.dataLength = scriptData.size;
-	
-	scriptLambda->varList = parentScript->varList; // CdeclCall(0x5AB930, &parentScript->varList, &scriptLambda->varList); // CopyVarList
-	scriptLambda->refList = parentScript->refList; // CdeclCall(0x5AB7F0, &parentScript->refList, &scriptLambda->refList); // CopyRefList
-	
-	scriptLambda->info.numRefs = parentScript->info.numRefs;
-	scriptLambda->info.varCount = parentScript->info.varCount;
-	scriptLambda->info.unusedVariableCount = parentScript->info.unusedVariableCount;
 	const auto nextFormId = GetNextFreeFormID(parentScript->refID);
 	if (nextFormId >> 24 == parentScript->GetModIndex())
 	{
