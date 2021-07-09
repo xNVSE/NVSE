@@ -313,7 +313,12 @@ bool StringForNumericParam(ParamType typeID, int value, std::string& argStr)
 		}
 	case kParamType_Axis:
 		{
-			argStr += value == 0 ? "X" : value == 1 ? "Y" : value == 2 ? "Z" : "<unknown axis>";
+			argStr += value == 88 ? "X" : value == 89? "Y" : value == 90 ? "Z" : "<unknown axis>";
+			return true;
+		}
+	case kParamType_Sex:
+		{
+			argStr += value == 0 ? "Male" : value == 1? "Female" : "<invalid sex>";
 			return true;
 		}
 	default: 
@@ -448,6 +453,7 @@ bool ScriptParsing::CommandCallToken::ReadNumericToken(ScriptIterator& context)
 		args.push_back(std::make_unique<GlobalVariableToken>(context.ReadRefVar()));
 		break;
 	default:
+		--context.curData;
 		if (!ReadVariableToken(context))
 			return false;
 		break;
@@ -591,8 +597,9 @@ bool ScriptParsing::Expression::ReadExpression()
 				continue;
 			}
 		case 'n':
-			break;
 		case 'z':
+			// no idea what these do
+			DebugBreak();
 			break;
 		case '"':
 			{
@@ -658,7 +665,7 @@ std::string ScriptParsing::Expression::ToString()
 ScriptParsing::SetToStatement::SetToStatement(const ScriptIterator& contextParam): ScriptStatement(contextParam)
 {
 	type = *context.curData;
-	if (type == 'r' || type == 's' || type == 's')
+	if (type == 'r' || type == 's' || type == 'f')
 	{
 		TESForm* ref = nullptr;
 		auto varType = ExpressionCode::None;
@@ -751,7 +758,7 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 {
 	auto* script = this->iter_.script;
 	std::string scriptText;
-	auto numTabs = 0u;
+	auto numTabs = 0;
 	const auto nestAddOpcodes = {static_cast<UInt32>(ScriptStatementCode::If), static_cast<UInt32>(ScriptStatementCode::Begin), kCommandInfo_While.opcode, kCommandInfo_ForEach.opcode};
 	const auto nestMinOpcodes = {static_cast<UInt32>(ScriptStatementCode::EndIf), static_cast<UInt32>(ScriptStatementCode::End), kCommandInfo_Loop.opcode};
 	const auto nestNeutralOpcodes = {static_cast<UInt32>(ScriptStatementCode::Else), static_cast<UInt32>(ScriptStatementCode::ElseIf)};
@@ -769,6 +776,8 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 		const auto isNeutral = Contains(nestNeutralOpcodes, opcode);
 		if (isNeutral)
 			--numTabs;
+		if (numTabs < 0)
+			numTabs = 0;
 		scriptText += std::string(numTabs, '\t') + iter->ToString();
 		if (isMin && !scriptText.ends_with("\n\n"))
 			scriptText += '\n';
