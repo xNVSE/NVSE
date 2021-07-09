@@ -1,5 +1,6 @@
 ﻿#include "ScriptAnalyzer.h"
 
+#include <format>
 #include <numeric>
 #include <ranges>
 
@@ -247,9 +248,20 @@ ScriptParsing::NumericConstantToken::NumericConstantToken(double value): value(v
 {
 }
 
+std::string DoubleToString(double x)
+{
+    char buf[0x100];
+    sprintf(buf, "%.10f", x);
+    char* p = buf + strlen(buf) - 1;
+    while (*p == '0' && *p-- != '.');
+    *(p+1) = '\0';
+    if (*p == '.') *p = '\0';
+    return buf;
+}
+
 std::string ScriptParsing::NumericConstantToken::ToString()
 {
-	return FormatString("%g", value);
+	return DoubleToString(value); // %g starts using scientific notation - bad!
 }
 
 ScriptParsing::RefToken::RefToken(Script* script, Script::RefVariable* refVariable): refVariable(refVariable), script(script)
