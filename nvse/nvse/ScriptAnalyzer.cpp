@@ -8,7 +8,14 @@
 #include "FunctionScripts.h"
 #include "ScriptUtils.h"
 
-static bool g_compilerOverrideEnabled = false;
+std::stack<ScriptParsing::ScriptAnalyzer*> g_analyzerStack;
+
+ScriptParsing::ScriptAnalyzer* GetAnalyzer()
+{
+	if (g_analyzerStack.empty())
+		return nullptr;
+	return g_analyzerStack.top();
+}
 
 template <typename L, typename T>
 bool Contains(const L& list, T t)
@@ -198,7 +205,7 @@ ScriptParsing::BeginStatement::BeginStatement(const ScriptIterator& contextParam
 	this->endJumpLength = this->context.Read32();
 	
 	this->commandCallToken = std::make_unique<CommandCallToken>(eventBlockCmd, nullptr);
-	if (context.length)
+	if (context.length > 6)
 	{
 		const ScriptIterator iter(context.script, eventBlockCmd->opcode, context.length, 0, context.curData);
 		commandCallToken->ParseCommandArgs(iter);
@@ -208,7 +215,8 @@ ScriptParsing::BeginStatement::BeginStatement(const ScriptIterator& contextParam
 
 std::string ScriptParsing::BeginStatement::ToString()
 {
-	return ScriptLine::ToString() + " " + (g_compilerOverrideEnabled ? "_" : "") + (this->commandCallToken ? this->commandCallToken->ToString() : "");
+	auto compilerOverrideEnabled = GetAnalyzer() ? GetAnalyzer()->compilerOverrideEnabled : false;
+	return ScriptLine::ToString() + " " + (compilerOverrideEnabled ? "_" : "") + (this->commandCallToken ? this->commandCallToken->ToString() : "");
 }
 
 ScriptParsing::ExpressionToken::ExpressionToken(ExpressionCode code): code(code)
@@ -234,16 +242,37 @@ std::string ScriptParsing::OperatorToken::ToString(std::vector<std::string>& sta
 	return lhOperand + " " + scriptOperator->operatorString + " " + rhOperand;
 }
 
-ScriptParsing::ScriptVariableToken::ScriptVariableToken(ExpressionCode varType, VariableInfo* info, TESForm* ref) : OperandToken(varType),
-	ref(ref), varInfo(info)
+std::string ScriptParsing::ScriptVariableToken::GetBackupName()
+{
+	auto* analyzer = GetAnalyzer();
+	std::string prefix = "i";
+	if (analyzer ? analyzer->arrayVariables.contains(this->varInfo) : false)
+		prefix = "a";
+	else if (analyzer ? analyzer->stringVariables.contains(this->varInfo) : false)
+		prefix = "s";
+	else if (varInfo->idx == Script::eVarType_Float)
+	{
+		if (varInfo->IsReferenceType(this->script))
+			prefix = "r";
+		else
+			prefix = "f";
+	}
+	return prefix + "Var" + std::to_string(varInfo->idx);
+}
+
+ScriptParsing::ScriptVariableToken::ScriptVariableToken(Script* script, ExpressionCode varType, VariableInfo* info, TESForm* ref) : OperandToken(varType), script(script),
+                                                                                                                    ref(ref), varInfo(info)
 {
 }
 
 std::string ScriptParsing::ScriptVariableToken::ToString()
 {
+	std::string varName = varInfo->name.CStr();
+	if (varName.empty())
+		varName = GetBackupName();
 	if (ref)
-		return std::string(ref->GetName()) + '.' + std::string(varInfo->name.CStr());
-	return varInfo->name.CStr();
+		return std::string(ref->GetName()) + '.' + varName;
+	return varName;
 }
 
 ScriptParsing::StringLiteralToken::StringLiteralToken(const std::string_view& stringLiteral): stringLiteral(
@@ -468,7 +497,7 @@ bool ScriptParsing::CommandCallToken::ReadVariableToken(ScriptIterator& context)
 	auto* var = context.ReadVariable(ref, type);
 	if (!var)
 		return false;
-	args.push_back(std::make_unique<ScriptVariableToken>(type, var, ref));
+	args.push_back(std::make_unique<ScriptVariableToken>(context.script, type, var, ref));
 	return true;
 }
 
@@ -518,26 +547,31 @@ bool ScriptParsing::ScriptIterator::ReadStringLiteral(std::string_view& out)
 	return true;
 }
 
-static std::unordered_set<VariableInfo*> g_arrayVariables;
-static std::unordered_set<VariableInfo*> g_stringVariables;
-
 void RegisterNVSEVar(VariableInfo* info, Script::VariableType type)
 {
-	if (type == Script::eVarType_Array)
-		g_arrayVariables.insert(info);
-	else if (type == Script::eVarType_String)
-		g_stringVariables.insert(info);
+	if (auto* analyzer = GetAnalyzer())
+	{
+		if (type == Script::eVarType_Array)
+			analyzer->arrayVariables.insert(info);
+		else if (type == Script::eVarType_String)
+			analyzer->stringVariables.insert(info);
+	}
+
 }
 
 void RegisterNVSEVars(CachedTokens& tokens, Script* script)
 {
-	for (auto iter = tokens.Begin(); !iter.End(); ++iter)
+	if (auto* analyzer = GetAnalyzer())
 	{
-		auto* token = iter.Get().token;
-		if (token->type == kTokenType_ArrayVar)
-			g_arrayVariables.insert(script->GetVariableInfo(token->varIdx));
-		else if (token->type == kTokenType_StringVar)
-			g_stringVariables.insert(script->GetVariableInfo(token->varIdx));
+		for (auto iter = tokens.Begin(); !iter.End(); ++iter)
+		{
+			auto* token = iter.Get().token;
+			if (token->type == kTokenType_ArrayVar)
+				analyzer->arrayVariables.insert(script->GetVariableInfo(token->varIdx));
+			else if (token->type == kTokenType_StringVar)
+				analyzer->stringVariables.insert(script->GetVariableInfo(token->varIdx));
+		}
+
 	}
 }
 
@@ -553,7 +587,7 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context)
 		{
 			auto* varInfo = context.script->GetVariableInfo(param.varIdx);
 			RegisterNVSEVar(varInfo, static_cast<Script::VariableType>(param.varType));
-			args.push_back(std::make_unique<ScriptVariableToken>(ExpressionCode::None, varInfo));
+			args.push_back(std::make_unique<ScriptVariableToken>(context.script, ExpressionCode::None, varInfo));
 		}
 		return true;
 	}
@@ -562,7 +596,8 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context)
 	{
 		if (compilerOverride)
 		{
-			g_compilerOverrideEnabled = true;
+			if (auto* analyzer = GetAnalyzer())
+				analyzer->compilerOverrideEnabled = true;
 			context.curData += 2;
 		}
 		UInt32 offset = context.curData - static_cast<UInt8*>(context.script->data);
@@ -653,7 +688,7 @@ bool ScriptParsing::Expression::ReadExpression()
 			{
 				const auto varIdx = context.Read16();
 				auto* script = refVar ? refVar->GetReferencedScript() : context.script;
-				this->stack.push_back(std::make_unique<ScriptVariableToken>(static_cast<ExpressionCode>(curChar),
+				this->stack.push_back(std::make_unique<ScriptVariableToken>(context.script, static_cast<ExpressionCode>(curChar),
 					script->GetVariableInfo(varIdx), refVar ? refVar->form : nullptr));
 				refVar = nullptr;
 				continue;
@@ -727,12 +762,38 @@ ScriptParsing::Expression::Expression(const ScriptIterator& context): context(co
 std::string ScriptParsing::Expression::ToString()
 {
 	std::vector<std::string> operands;
+	std::vector<ScriptOperator*> operatorStack;
+	std::unordered_set<std::string> composites;
 	for (auto& iter : this->stack)
 	{
 		if (auto* operatorToken = dynamic_cast<OperatorToken*>(iter.get()))
-			operands.push_back(operatorToken->ToString(operands));
+		{
+			if (!operatorStack.empty() && !operands.empty())
+			{
+				auto* lastOp = operatorStack.back();
+				operatorStack.pop_back();
+				if (operatorToken->scriptOperator->precedence > lastOp->precedence)
+				{
+					auto& rhOperand = operands.back();
+					if (composites.contains(rhOperand))
+						rhOperand = '(' + rhOperand + ')';
+					if (operands.size() > 1)
+					{
+						auto& lhOperand = operands.at(operands.size() - 2);
+						if (composites.contains(lhOperand))
+							lhOperand = '(' + lhOperand + ')';
+					}
+				}
+			}
+			operatorStack.push_back(operatorToken->scriptOperator);
+			auto result = operatorToken->ToString(operands);
+			composites.insert(result);
+			operands.push_back(result);
+		}
 		else if (auto* operandToken = dynamic_cast<OperandToken*>(iter.get()))
+		{
 			operands.push_back(operandToken->ToString());
+		}
 	}
 	if (operands.size() != 1)
 		return "";
@@ -747,7 +808,7 @@ ScriptParsing::SetToStatement::SetToStatement(const ScriptIterator& contextParam
 		TESForm* ref = nullptr;
 		auto varType = ExpressionCode::None;
 		auto* var = context.ReadVariable(ref, varType);
-		this->toVariable = std::make_unique<ScriptVariableToken>(varType, var, ref);
+		this->toVariable = std::make_unique<ScriptVariableToken>(context.script, varType, var, ref);
 	}
 	else if (type == 'G')
 	{
@@ -777,14 +838,13 @@ ScriptParsing::ConditionalStatement::ConditionalStatement(const ScriptIterator& 
 
 ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script) : iter_(script)
 {
-	g_compilerOverrideEnabled = false;
+	g_analyzerStack.push(this);
+	Parse();
 }
 
 ScriptParsing::ScriptAnalyzer::~ScriptAnalyzer()
 {
-	g_compilerOverrideEnabled = false;
-	g_arrayVariables.clear();
-	g_stringVariables.clear();
+	g_analyzerStack.pop();
 }
 
 
@@ -840,11 +900,12 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 	for (auto& iter : this->lines_)
 	{
 		const auto opcode = iter->statementCmd->opcode;
-		if (opcode == kCommandInfo_Internal_PushExecutionContext.opcode || opcode == kCommandInfo_Internal_PopExecutionContext.opcode)
+		if (opcode == kCommandInfo_Internal_PushExecutionContext.opcode || opcode == kCommandInfo_Internal_PopExecutionContext.opcode
+			|| opcode == static_cast<UInt16>(ScriptStatementCode::ScriptName) && isLambdaScript)
 			continue;
 		const auto isMin = Contains(nestMinOpcodes, opcode);
 		const auto isAdd = Contains(nestAddOpcodes, opcode);
-		if (isAdd && !scriptText.ends_with("\n\n") && lastOpcode != opcode)
+		if (isAdd && !scriptText.ends_with("\n\n") && !Contains(nestAddOpcodes, lastOpcode))
 			scriptText += '\n';
 		if (isMin)
 			--numTabs;
@@ -853,8 +914,14 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 			--numTabs;
 		if (numTabs < 0)
 			numTabs = 0;
-		scriptText += std::string(numTabs, '\t') + iter->ToString();
-		if (isMin && !scriptText.ends_with("\n\n") && lastOpcode != opcode)
+
+		auto nextLine = iter->ToString();
+		// adjust lambda script indent
+		auto tabStr = std::string(numTabs, '\t');
+		ReplaceAll(nextLine, "\n", '\n' + tabStr);
+
+		scriptText += tabStr + nextLine;
+		if (isMin && !scriptText.ends_with("\n\n") && !Contains(nestMinOpcodes, lastOpcode))
 			scriptText += '\n';
 		if (isNeutral || isAdd)
 			++numTabs;
@@ -867,9 +934,9 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 			for (auto* var : script->varList)
 			{
 				auto varName = std::string(var->name.CStr());
-				if (g_arrayVariables.contains(var))
+				if (arrayVariables.contains(var))
 					scriptText += "Array_var " + varName;
-				else if (g_stringVariables.contains(var))
+				else if (stringVariables.contains(var))
 					scriptText += "String_var " + varName;
 				else
 				{

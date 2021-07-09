@@ -715,6 +715,17 @@ bool FindStringCI(const std::string& strHaystack, const std::string& strNeedle)
 	return (it != strHaystack.end());
 }
 
+void ReplaceAll(std::string &str, const std::string& from, const std::string& to)
+{
+    size_t startPos = 0;
+    while((startPos = str.find(from, startPos)) != std::string::npos) 
+	{
+        str.replace(startPos, from.length(), to);
+        startPos += to.length(); // Handles case where 'to' is a substring of 'from'
+    }
+
+}
+
 void GeckExtenderMessageLog(const char* fmt, ...)
 {
 	va_list args;

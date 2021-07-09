@@ -755,7 +755,6 @@ bool Cmd_DecompileScript_Execute(COMMAND_ARGS)
 	else
 		fileExtension = "gek";
 	ScriptParsing::ScriptAnalyzer analyzer(script);
-	analyzer.Parse();
 	const auto* dirName = "DecompiledScripts";
 	if (!std::filesystem::exists(dirName))
 		std::filesystem::create_directory(dirName);

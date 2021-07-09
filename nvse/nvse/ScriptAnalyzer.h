@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <stack>
+#include <unordered_set>
 
 #include "GameAPI.h"
 #include "GameObjects.h"
@@ -177,11 +178,13 @@ namespace ScriptParsing
 
 	class ScriptVariableToken : public OperandToken
 	{
+		std::string GetBackupName();
 	public:
+		Script* script;
 		TESForm* ref = nullptr;
 		VariableInfo* varInfo;
 
-		ScriptVariableToken(ExpressionCode varType, VariableInfo* info, TESForm* ref = nullptr);
+		ScriptVariableToken(Script* script, ExpressionCode varType, VariableInfo* info, TESForm* ref = nullptr);
 
 		std::string ToString() override;
 	};
@@ -296,11 +299,16 @@ namespace ScriptParsing
 		{
 			this->lines_.emplace_back(std::make_unique<T>(this->iter_));
 		}
+		void Parse();
 	public:
+		bool isLambdaScript = false;
+		bool compilerOverrideEnabled = false;
+		std::unordered_set<VariableInfo*> arrayVariables;
+		std::unordered_set<VariableInfo*> stringVariables;
+
 		ScriptAnalyzer(Script* script);
 		~ScriptAnalyzer();
 
-		void Parse();
 		static std::unique_ptr<ScriptLine> ParseLine(const ScriptIterator& iter);
 		std::string DecompileScript();
 	};

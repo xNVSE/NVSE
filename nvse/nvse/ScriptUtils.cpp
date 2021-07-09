@@ -4593,8 +4593,8 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 
 std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *faultingToken) const
 {
-	std::stack<std::string> operands;
-	std::stack<Operator*> operators;
+	std::vector<std::string> operands;
+	std::vector<Operator*> operators;
 	std::unordered_set<std::string> composites;
 	for (auto iter = tokens.Begin(); !iter.End(); ++iter)
 	{
@@ -4604,10 +4604,10 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 			switch (token.Type())
 			{
 			case kTokenType_Number:
-				operands.push(FormatString("%g", token.GetNumber()));
+				operands.push_back(FormatString("%g", token.GetNumber()));
 				break;
 			case kTokenType_String:
-				operands.push('"' + std::string(token.GetString()) + '"');
+				operands.push_back('"' + std::string(token.GetString()) + '"');
 				break;
 			case kTokenType_Form:
 			{
@@ -4618,15 +4618,15 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 					if (!formName || StrLen(formName) == 0)
 					{
 						if (form->refID == 0x14 || form->refID == 0x7)
-							operands.push("Player");
+							operands.push_back("Player");
 						else
-							operands.push(FormatString("%X", form->refID));
+							operands.push_back(FormatString("%X", form->refID));
 					}
 					else
-						operands.push(std::string(formName));
+						operands.push_back(std::string(formName));
 					break;
 				}
-				operands.push("<bad form>");
+				operands.push_back("<bad form>");
 				break;
 			}
 
@@ -4635,10 +4635,10 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 				auto *global = token.GetGlobal();
 				if (global)
 				{
-					operands.push(std::string(global->name.CStr()));
+					operands.push_back(std::string(global->name.CStr()));
 					break;
 				}
-				operands.push("<bad global>");
+				operands.push_back("<bad global>");
 				break;
 			}
 
@@ -4650,12 +4650,12 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 					ScriptParsing::CommandCallToken callToken(cmdInfo, script->GetRefFromRefList(token.refIdx));
 					ScriptParsing::ScriptIterator it(script, cmdInfo->opcode, 0, token.refIdx, static_cast<UInt8*>(script->data) + token.cmdOpcodeOffset);
 					callToken.ParseCommandArgs(it);
-					operands.push(callToken.ToString());
+					operands.push_back(callToken.ToString());
 					if (callToken.expressionEvalArgs.size() > 1)
-						operands.top() = '(' + operands.top() + ')';
+						operands.back() = '(' + operands.back() + ')';
 					break;
 				}
-				operands.push("<bad command>");
+				operands.push_back("<bad command>");
 				break;
 			}
 			case kTokenType_NumericVar:
@@ -4666,20 +4666,30 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 				const auto varName = token.GetVariableName();
 				if (!varName.empty())
 				{
-					operands.push(varName);
+					operands.push_back(varName);
 					break;
 				}
-				operands.push("<bad variable>");
+				operands.push_back("<bad variable>");
 				break;
 			}
 			case kTokenType_LambdaScriptData:
 			{
-				auto scriptLambda = MakeUnique<Script, 0x5AA1A0>(LambdaManager::CreateLambdaScript(token.value.lambdaScriptData, script));
+				auto scriptLambda = MakeUnique<Script>(CreateLambdaScript(token.value.lambdaScriptData, script));
 				ScriptParsing::ScriptAnalyzer analyzer(scriptLambda.get());
-				operands.push(analyzer.DecompileScript());
+				analyzer.isLambdaScript = true;
+				auto result = analyzer.DecompileScript();
+				
+				// trim whitespace
+				while (!result.empty() && isspace(static_cast<unsigned char>(*result.begin())))
+					result.erase(result.begin());
+				while (!result.empty() && isspace(static_cast<unsigned char>(result.back())))
+					result.pop_back();
+
+				operands.push_back(result);
+				break;
 			}
 			default:
-				operands.push("<can't decompile token>");
+				operands.push_back("<can't decompile token>");
 				break;
 			}
 		}
@@ -4691,55 +4701,60 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 			if (operands.size() < op->numOperands)
 				return "";
 
-			if (!operators.empty())
+			if (!operators.empty() && !operands.empty())
 			{
-				auto* lastOp = operators.top();
-				operators.pop();
+				auto* lastOp = operators.back();
+				operators.pop_back();
 				if (op->Precedes(lastOp))
 				{
-					auto& topOperand = operands.top();
-					if (composites.contains(topOperand))
-						topOperand = '(' + topOperand + ')';
+					auto& rhOperand = operands.back();
+					if (composites.contains(rhOperand))
+						rhOperand = '(' + rhOperand + ')';
+					if (operands.size() > 1)
+					{
+						auto& lhOperand = operands.at(operands.size() - 2);
+						if (composites.contains(lhOperand))
+							lhOperand = '(' + lhOperand + ')';
+					}
 				}
 			}
-			operators.push(op);
+			operators.push_back(op);
 
 			if (op->numOperands == 2)
 			{
-				auto rh = operands.top();
-				operands.pop();
-				auto lh = operands.top();
-				operands.pop();
+				auto rh = operands.back();
+				operands.pop_back();
+				auto lh = operands.back();
+				operands.pop_back();
 
 				if (op->type == kOpType_LeftBracket)
-					operands.push(lh + '[' + rh + ']');
+					operands.push_back(lh + '[' + rh + ']');
 				else if (op->type == kOpType_Slice || op->type == kOpType_Exponent || op->type == kOpType_MemberAccess || op->type == kOpType_MakePair || op->type == kOpType_Dot)
-					operands.push(lh + std::string(op->symbol) + rh);
+					operands.push_back(lh + std::string(op->symbol) + rh);
 				else
-					operands.push(lh + " " + std::string(op->symbol) + " " + rh);
+					operands.push_back(lh + " " + std::string(op->symbol) + " " + rh);
 			}
 			else if (op->numOperands == 1)
 			{
-				auto operand = operands.top();
-				operands.pop();
-				operands.push(std::string(op->symbol) + operand);
+				auto& operand = operands.back();
+				operand = std::string(op->symbol) + operand;
 			}
-			composites.insert(operands.top());
+			composites.insert(operands.back());
 		}
 		if (faultingToken && faultingToken == &token && !operands.empty())
 		{
-			auto& lastStr = operands.top();
+			auto& lastStr = operands.back();
 			lastStr = "##" + lastStr + "##";
 		}
 	}
 	if (operands.size() == 1)
 	{
 		if (m_inline)
-			return "(" + operands.top() + ")";
+			return "(" + operands.back() + ")";
 		CommandInfo *cmd = GetCommand();
 		if (!cmd || !cmd->longName)
-			return operands.top();
-		return operands.top();
+			return operands.back();
+		return operands.back();
 	}
 	return "";
 }
