@@ -4561,7 +4561,7 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 		ShortCircuit(operands, iter);
 	}
 	
-	if (operands.Size() != 1 || this->HasErrors()) // should have one operand remaining - result of expression
+	if (operands.Size() != 1 || this->HasErrors() && !m_flags.IsSet(kFlag_SuppressErrorMessages)) // should have one operand remaining - result of expression
 	{
 		const auto currentLine = this->GetLineText(cache, iter.Get().token);
 		if (!currentLine.empty())
@@ -4593,9 +4593,9 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 
 std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *faultingToken) const
 {
-	if (m_flags.IsSet(kFlag_SuppressErrorMessages))
-		return "";
-	std::stack<std::string> operands; // JIP Stack crashes
+	std::stack<std::string> operands;
+	std::stack<Operator*> operators;
+	std::unordered_set<std::string> composites;
 	for (auto iter = tokens.Begin(); !iter.End(); ++iter)
 	{
 		auto &token = *iter.Get().token;
@@ -4647,42 +4647,12 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 				auto *cmdInfo = token.GetCommandInfo();
 				if (cmdInfo)
 				{
-					/*auto operand = std::string(cmdInfo->longName);
-					if (operand.empty())
-					{
-						operand = FormatString("<MISSING PLUGIN COMMAND %X>", cmdInfo->opcode);
-					}
-					if (cmdInfo->numParams)
-					{
-						operand += " <...args>";
-					}
-					auto *callingRef = script->GetRefFromRefList(token.GetRefIndex());
-
-					if (callingRef)
-					{
-						if (callingRef->varIdx)
-						{
-							auto *varInfo = script->GetVariableInfo(callingRef->varIdx);
-							if (varInfo)
-							{
-								operand = std::string(varInfo->name.CStr()) + "." + operand;
-							}
-						}
-						else if (callingRef->form)
-						{
-							auto *name = callingRef->form->GetName();
-							if (name && StrLen(name))
-								operand = std::string(name) + "." + operand;
-							else if (callingRef->form->refID == 0x14 || callingRef->form->refID == 0x7)
-								operand = "Player." + operand;
-							else
-								operand = FormatString("%X", callingRef->form->refID) + "." + operand;
-						}
-					}*/
 					ScriptParsing::CommandCallToken callToken(cmdInfo, script->GetRefFromRefList(token.refIdx));
 					ScriptParsing::ScriptIterator it(script, cmdInfo->opcode, 0, token.refIdx, static_cast<UInt8*>(script->data) + token.cmdOpcodeOffset);
 					callToken.ParseCommandArgs(it);
 					operands.push(callToken.ToString());
+					if (callToken.expressionEvalArgs.size() > 1)
+						operands.top() = '(' + operands.top() + ')';
 					break;
 				}
 				operands.push("<bad command>");
@@ -4721,6 +4691,19 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 			if (operands.size() < op->numOperands)
 				return "";
 
+			if (!operators.empty())
+			{
+				auto* lastOp = operators.top();
+				operators.pop();
+				if (op->Precedes(lastOp))
+				{
+					auto& topOperand = operands.top();
+					if (composites.contains(topOperand))
+						topOperand = '(' + topOperand + ')';
+				}
+			}
+			operators.push(op);
+
 			if (op->numOperands == 2)
 			{
 				auto rh = operands.top();
@@ -4741,13 +4724,12 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 				operands.pop();
 				operands.push(std::string(op->symbol) + operand);
 			}
+			composites.insert(operands.top());
 		}
 		if (faultingToken && faultingToken == &token && !operands.empty())
 		{
-			auto lastStr = operands.top();
-			operands.pop();
+			auto& lastStr = operands.top();
 			lastStr = "##" + lastStr + "##";
-			operands.push(lastStr);
 		}
 	}
 	if (operands.size() == 1)

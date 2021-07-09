@@ -35,7 +35,6 @@ public:
 // stores info about function script (params, etc). generated once per function script and cached
 struct FunctionInfo
 {
-private:
 	DynamicParamInfo	m_dParamInfo;
 	std::vector<UserFunctionParam> m_userFunctionParams;
 	Script				* m_script;			// function script
@@ -46,7 +45,6 @@ private:
 #if _DEBUG
 	const char*			editorID;
 #endif
-public:
 	UInt8*				m_singleLineLambdaPosition = nullptr;
 	bool				m_isLambda;
 	

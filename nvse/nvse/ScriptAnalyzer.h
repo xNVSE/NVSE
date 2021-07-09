@@ -11,6 +11,7 @@ class CachedTokens;
 
 namespace ScriptParsing
 {
+	class ExpressionToken;
 	class CommandCallToken;
 	enum class ExpressionCode : UInt8;
 
@@ -72,6 +73,23 @@ namespace ScriptParsing
 		Command = 'X'
 	};
 
+	class Expression
+	{
+	public:
+		ScriptIterator context;
+		UInt16 expressionLength = 0;
+		std::vector<std::unique_ptr<ExpressionToken>> stack;
+
+		ScriptOperator* ReadOperator();
+
+		bool ReadExpression();
+
+		Expression() = default;
+		explicit Expression(const ScriptIterator& context);
+
+		std::string ToString();
+	};
+
 	class ScriptLine
 	{
 	public:
@@ -116,6 +134,7 @@ namespace ScriptParsing
 	public:
 		CommandInfo* eventBlockCmd;
 		UInt32 endJumpLength;
+		std::unique_ptr<CommandCallToken> commandCallToken = nullptr;;
 		BeginStatement(const ScriptIterator& contextParam);
 
 		std::string ToString() override;
@@ -244,23 +263,6 @@ namespace ScriptParsing
 		bool ParseCommandArgs(ScriptIterator context);
 	};
 
-	class Expression
-	{
-	public:
-		ScriptIterator context;
-		UInt16 expressionLength = 0;
-		std::vector<std::unique_ptr<ExpressionToken>> stack;
-
-		ScriptOperator* ReadOperator();
-
-		bool ReadExpression();
-
-		Expression() = default;
-		explicit Expression(const ScriptIterator& context);
-
-		std::string ToString();
-	};
-
 	class SetToStatement : public ScriptStatement
 	{
 	public:
@@ -296,6 +298,7 @@ namespace ScriptParsing
 		}
 	public:
 		ScriptAnalyzer(Script* script);
+		~ScriptAnalyzer();
 
 		void Parse();
 		static std::unique_ptr<ScriptLine> ParseLine(const ScriptIterator& iter);

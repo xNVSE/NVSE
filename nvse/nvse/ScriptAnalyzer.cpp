@@ -5,7 +5,10 @@
 #include <ranges>
 
 #include "Commands_Scripting.h"
+#include "FunctionScripts.h"
 #include "ScriptUtils.h"
+
+static bool g_compilerOverrideEnabled = false;
 
 template <typename L, typename T>
 bool Contains(const L& list, T t)
@@ -165,7 +168,9 @@ ScriptParsing::ScriptCommandCall::ScriptCommandCall(const ScriptIterator& contex
     ScriptLine(contextParam, g_scriptCommands.GetByOpcode(contextParam.opcode)), commandCallToken(std::make_unique<CommandCallToken>(contextParam))
 {
 	if (context.length)
+	{
 		commandCallToken->ParseCommandArgs(context);
+	}
 }
 
 std::string ScriptParsing::ScriptCommandCall::ToString()
@@ -191,12 +196,19 @@ ScriptParsing::BeginStatement::BeginStatement(const ScriptIterator& contextParam
 	const auto eventOpcode = this->context.Read16();
 	this->eventBlockCmd = &g_eventBlockCommandInfos[eventOpcode];
 	this->endJumpLength = this->context.Read32();
+	
+	this->commandCallToken = std::make_unique<CommandCallToken>(eventBlockCmd, nullptr);
+	if (context.length)
+	{
+		const ScriptIterator iter(context.script, eventBlockCmd->opcode, context.length, 0, context.curData);
+		commandCallToken->ParseCommandArgs(iter);
+	}
 }
 
 
 std::string ScriptParsing::BeginStatement::ToString()
 {
-	return ScriptLine::ToString() + " " + std::string(this->eventBlockCmd->longName);
+	return ScriptLine::ToString() + " " + (g_compilerOverrideEnabled ? "_" : "") + (this->commandCallToken ? this->commandCallToken->ToString() : "");
 }
 
 ScriptParsing::ExpressionToken::ExpressionToken(ExpressionCode code): code(code)
@@ -323,68 +335,71 @@ ScriptParsing::CommandCallToken::CommandCallToken(CommandInfo* cmdInfo, Script::
 template <typename T, typename F>
 std::string TokenListToString(std::vector<T>& tokens, F&& f)
 {
+	auto i = 0u;
 	return std::accumulate(tokens.begin(), tokens.end(), std::string(), [&](const std::string& a, T& b)
 	{
-		return a + ' ' + f(b);
+		return a + ' ' + f(b, i++);
 	});
 }
 
-bool StringForNumericParam(ParamType typeID, int value, std::string& argStr)
+std::string StringForNumericParam(ParamType typeID, int value)
 {
 	switch (typeID)
 	{
 	case kParamType_ActorValue:
 		{
-			argStr += g_actorValueInfoArray[value]->infoName;
-			return true;
+			return g_actorValueInfoArray[value]->infoName;
 		}
 	case kParamType_AnimationGroup:
 		{
-			argStr += TESAnimGroup::StringForAnimGroupCode(value);
-			return true;
+			return TESAnimGroup::StringForAnimGroupCode(value);
 		}
 	case kParamType_Axis:
 		{
-			argStr += value == 88 ? "X" : value == 89? "Y" : value == 90 ? "Z" : "<unknown axis>";
-			return true;
+			return value == 88 ? "X" : value == 89? "Y" : value == 90 ? "Z" : "<unknown axis>";
 		}
 	case kParamType_Sex:
 		{
-			argStr += value == 0 ? "Male" : value == 1? "Female" : "<invalid sex>";
-			return true;
+			return value == 0 ? "Male" : value == 1? "Female" : "<invalid sex>";
 		}
 	default: 
 		break;
 	}
-	return false;
+	return "";
 }
 
 std::string ScriptParsing::CommandCallToken::ToString()
 {
+	if (this->cmdInfo->execute == kCommandInfo_Function.execute)
+	{
+		return std::string(cmdInfo->longName) + " {" + TokenListToString(this->args, [&](auto& token, UInt32 i)
+		{
+			return token->ToString() + (i != args.size() - 1 ? "," : "");
+		}) + " }";
+	}
 	if (this->expressionEvaluator)
 	{
-		return cmdInfo->longName + TokenListToString(this->expressionEvalArgs, [&](CachedTokens* t)
+		return cmdInfo->longName + TokenListToString(this->expressionEvalArgs, [&](CachedTokens* t, UInt32 callCount)
 		{
-			return this->expressionEvaluator->GetLineText(*t, nullptr);
+			auto text = this->expressionEvaluator->GetLineText(*t, nullptr);
+			if (expressionEvalArgs.size() > 1 && t->Size() > 1)
+				text = '(' + text + ')';
+			return text;
 		});
 	}
-	std::string argStr;
-	for (auto i = 0u; i < args.size(); ++i)
+	return cmdInfo->longName + TokenListToString(this->args, [&](auto& token, UInt32 i)
 	{
-		auto& arg = *args[i];
+		auto& arg = *token;
 		const auto typeID = static_cast<ParamType>(cmdInfo->params[i].typeID);
-		argStr += ' ';
 		auto* numToken = dynamic_cast<NumericConstantToken*>(&arg);
 		if (numToken)
 		{
 			const auto value = static_cast<int>(numToken->value);
-			if (StringForNumericParam(typeID, value, argStr))
-				continue;
+			if (auto str = StringForNumericParam(typeID, value); !str.empty())
+				return str;
 		}
-		
-		argStr += arg.ToString();
-	}
-	return cmdInfo->longName + argStr;
+		return arg.ToString();
+	});
 }
 
 ScriptOperator* ScriptParsing::Expression::ReadOperator()
@@ -506,6 +521,14 @@ bool ScriptParsing::ScriptIterator::ReadStringLiteral(std::string_view& out)
 static std::unordered_set<VariableInfo*> g_arrayVariables;
 static std::unordered_set<VariableInfo*> g_stringVariables;
 
+void RegisterNVSEVar(VariableInfo* info, Script::VariableType type)
+{
+	if (type == Script::eVarType_Array)
+		g_arrayVariables.insert(info);
+	else if (type == Script::eVarType_String)
+		g_stringVariables.insert(info);
+}
+
 void RegisterNVSEVars(CachedTokens& tokens, Script* script)
 {
 	for (auto iter = tokens.Begin(); !iter.End(); ++iter)
@@ -518,15 +541,30 @@ void RegisterNVSEVars(CachedTokens& tokens, Script* script)
 	}
 }
 
+
 const UInt32 g_gameParseCommands[] = {0x5B1BA0, 0x5B3C70, 0x5B3CA0, 0x5B3C40, 0x5B3CD0, reinterpret_cast<UInt32>(Cmd_Default_Parse) };
 
 bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context)
 {
-	const auto isCompilerOverride = *reinterpret_cast<UInt16*>(context.curData) > 0x7FFF;
-	if (isCompilerOverride || !Contains(g_gameParseCommands, reinterpret_cast<UInt32>(cmdInfo->parse)))
+	if (cmdInfo->execute == kCommandInfo_Function.execute)
 	{
-		if (isCompilerOverride)
+		FunctionInfo info(context.script);
+		for (auto& param : info.m_userFunctionParams)
+		{
+			auto* varInfo = context.script->GetVariableInfo(param.varIdx);
+			RegisterNVSEVar(varInfo, static_cast<Script::VariableType>(param.varType));
+			args.push_back(std::make_unique<ScriptVariableToken>(ExpressionCode::None, varInfo));
+		}
+		return true;
+	}
+	const auto compilerOverride = *reinterpret_cast<UInt16*>(context.curData) > 0x7FFF;
+	if (compilerOverride || !Contains(g_gameParseCommands, reinterpret_cast<UInt32>(cmdInfo->parse)))
+	{
+		if (compilerOverride)
+		{
+			g_compilerOverrideEnabled = true;
 			context.curData += 2;
+		}
 		UInt32 offset = context.curData - static_cast<UInt8*>(context.script->data);
 		this->expressionEvaluator = std::make_unique<ExpressionEvaluator>(nullptr, context.script->data, nullptr, nullptr, context.script, nullptr, nullptr, &offset);
 		const auto exprEvalNumArgs = this->expressionEvaluator->ReadByte();
@@ -737,8 +775,17 @@ ScriptParsing::ConditionalStatement::ConditionalStatement(const ScriptIterator& 
 		expression.ReadExpression();
 }
 
-ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script) : iter_(script) {}
+ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script) : iter_(script)
+{
+	g_compilerOverrideEnabled = false;
+}
 
+ScriptParsing::ScriptAnalyzer::~ScriptAnalyzer()
+{
+	g_compilerOverrideEnabled = false;
+	g_arrayVariables.clear();
+	g_stringVariables.clear();
+}
 
 
 void ScriptParsing::ScriptAnalyzer::Parse()
@@ -789,12 +836,15 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 	const auto nestAddOpcodes = {static_cast<UInt32>(ScriptStatementCode::If), static_cast<UInt32>(ScriptStatementCode::Begin), kCommandInfo_While.opcode, kCommandInfo_ForEach.opcode};
 	const auto nestMinOpcodes = {static_cast<UInt32>(ScriptStatementCode::EndIf), static_cast<UInt32>(ScriptStatementCode::End), kCommandInfo_Loop.opcode};
 	const auto nestNeutralOpcodes = {static_cast<UInt32>(ScriptStatementCode::Else), static_cast<UInt32>(ScriptStatementCode::ElseIf)};
+	UInt16 lastOpcode = 0;
 	for (auto& iter : this->lines_)
 	{
 		const auto opcode = iter->statementCmd->opcode;
+		if (opcode == kCommandInfo_Internal_PushExecutionContext.opcode || opcode == kCommandInfo_Internal_PopExecutionContext.opcode)
+			continue;
 		const auto isMin = Contains(nestMinOpcodes, opcode);
 		const auto isAdd = Contains(nestAddOpcodes, opcode);
-		if (isAdd && !scriptText.ends_with("\n\n"))
+		if (isAdd && !scriptText.ends_with("\n\n") && lastOpcode != opcode)
 			scriptText += '\n';
 		if (isMin)
 			--numTabs;
@@ -804,7 +854,7 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 		if (numTabs < 0)
 			numTabs = 0;
 		scriptText += std::string(numTabs, '\t') + iter->ToString();
-		if (isMin && !scriptText.ends_with("\n\n"))
+		if (isMin && !scriptText.ends_with("\n\n") && lastOpcode != opcode)
 			scriptText += '\n';
 		if (isNeutral || isAdd)
 			++numTabs;
@@ -839,9 +889,8 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 				scriptText += '\n';
 			}
 			scriptText += '\n';
-			g_arrayVariables.clear();
-			g_stringVariables.clear();
 		}
+		lastOpcode = opcode;
 	}
 	return scriptText;
 }
