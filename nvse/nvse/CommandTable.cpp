@@ -44,7 +44,7 @@ UInt32 g_offsetConsoleCommandsStart = 0x0118E8E0;
 UInt32 g_offsetConsoleCommandsLast = 0x011908C0;
 UInt32 g_offsetScriptCommandsStart = 0x01190910;
 UInt32 g_offsetScriptCommandsLast = 0x01196D10;
-static const Cmd_Parse g_defaultParseCommand = (Cmd_Parse)0x005B1BA0;
+const Cmd_Parse g_defaultParseCommand = (Cmd_Parse)0x005B1BA0;
 
 #else
 
@@ -53,7 +53,7 @@ UInt32 g_offsetConsoleCommandsStart = 0x00E9DB88;
 UInt32 g_offsetConsoleCommandsLast = 0x00E9FB90;
 UInt32 g_offsetScriptCommandsStart = 0x00E9FBB8;
 UInt32 g_offsetScriptCommandsLast = 0x00EA5FB8;
-static const Cmd_Parse g_defaultParseCommand = (Cmd_Parse)0x005C67E0;
+const Cmd_Parse g_defaultParseCommand = (Cmd_Parse)0x005C67E0;
 
 #endif
 

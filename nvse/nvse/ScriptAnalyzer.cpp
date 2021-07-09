@@ -472,39 +472,39 @@ bool ScriptParsing::ScriptIterator::ReadStringLiteral(std::string_view& out)
 static std::unordered_set<VariableInfo*> g_arrayVariables;
 static std::unordered_set<VariableInfo*> g_stringVariables;
 
-void RegisterNVSEVars(CachedTokens& tokens)
+void RegisterNVSEVars(CachedTokens& tokens, Script* script)
 {
 	for (auto iter = tokens.Begin(); !iter.End(); ++iter)
 	{
 		auto* token = iter.Get().token;
 		if (token->type == kTokenType_ArrayVar)
-			g_arrayVariables.insert(token->GetVarInfo());
+			g_arrayVariables.insert(script->GetVariableInfo(token->varIdx));
 		else if (token->type == kTokenType_StringVar)
-			g_stringVariables.insert(token->GetVarInfo());
+			g_stringVariables.insert(script->GetVariableInfo(token->varIdx));
 	}
 }
 
 bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context)
 {
-	const auto numArgs = context.Read16();
-	if (numArgs > 0x7FFF)
+	if (*reinterpret_cast<UInt16*>(context.curData) > 0x7FFF || this->cmdInfo->parse != g_defaultParseCommand)
 	{
 		UInt32 offset = context.curData - static_cast<UInt8*>(context.script->data);
 		this->expressionEvaluator = std::make_unique<ExpressionEvaluator>(nullptr, context.script->data, nullptr, nullptr, context.script, nullptr, nullptr, &offset);
-		const auto exprEvalNumArgs = context.Read8();
+		const auto exprEvalNumArgs = this->expressionEvaluator->ReadByte();
 		this->expressionEvalArgs.reserve(exprEvalNumArgs);
 		for (auto i = 0u; i < exprEvalNumArgs; ++i)
 			this->expressionEvalArgs.push_back(this->expressionEvaluator->GetTokens());
 		for (auto* token : this->expressionEvalArgs)
-			RegisterNVSEVars(*token);
-		context.curData = this->expressionEvaluator->m_data;
+			RegisterNVSEVars(*token, context.script);
 		return true;
 	}
+	const auto numArgs = context.Read16();
 	for (auto i = 0u; i < numArgs; ++i)
 	{
 		const auto typeID = static_cast<ExtractParamType>(kClassifyParamExtract[cmdInfo->params[i].typeID]);
-		if (*reinterpret_cast<UInt32*>(context.curData) == 0xFFFF)
+		if (*reinterpret_cast<UInt16*>(context.curData) == 0xFFFF)
 		{
+			context.curData += 2;
 			args.push_back(std::make_unique<InlineExpressionToken>(context));
 			continue;
 		}
@@ -792,22 +792,25 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 			for (auto* var : script->varList)
 			{
 				auto varName = std::string(var->name.CStr());
-				if (var->type == Script::VariableType::eVarType_Float)
-				{
-					if (var->IsReferenceType(script))
-						scriptText += "Ref " + varName;
-					else
-						scriptText += "Float " + varName;
-				}
+				if (g_arrayVariables.contains(var))
+					scriptText += "Array_var " + varName;
+				else if (g_stringVariables.contains(var))
+					scriptText += "String_var " + varName;
 				else
 				{
-					if (g_arrayVariables.contains(var))
-						scriptText += "Array_var " + varName;
-					else if (g_stringVariables.contains(var))
-						scriptText += "String_var " + varName;
+					if (var->type == Script::VariableType::eVarType_Float)
+					{
+						if (var->IsReferenceType(script))
+							scriptText += "Ref " + varName;
+						else
+							scriptText += "Float " + varName;
+					}
 					else
+					{
 						scriptText += "Int " + varName;
+					}
 				}
+				
 				scriptText += '\n';
 			}
 			scriptText += '\n';

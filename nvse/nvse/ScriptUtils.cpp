@@ -4689,7 +4689,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 			case kTokenType_StringVar:
 			case kTokenType_ArrayVar:
 			{
-				const auto varName = token.GetVariableName(eventList);
+				const auto varName = token.GetVariableName();
 				if (!varName.empty())
 				{
 					operands.push(varName);
@@ -4751,7 +4751,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 		CommandInfo *cmd = GetCommand();
 		if (!cmd || !cmd->longName)
 			return operands.top();
-		return std::string(cmd->longName) + " " + operands.top();
+		return operands.top();
 	}
 	return "";
 }
@@ -4767,7 +4767,7 @@ std::string ExpressionEvaluator::GetVariablesText(CachedTokens &tokens) const
 			continue;
 		if (token.IsVariable())
 		{
-			result += token.GetVariableName(eventList) + "=" + token.GetVariableDataAsString();
+			result += token.GetVariableName() + "=" + token.GetVariableDataAsString();
 			printedVars.insert(std::make_pair(token.refIdx, token.varIdx));
 			result += ", ";
 		}

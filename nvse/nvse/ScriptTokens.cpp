@@ -611,59 +611,55 @@ void ScriptToken::SetString(const char *srcStr)
 }
 
 #if RUNTIME
-std::string ScriptToken::GetVariableName(ScriptEventList *eventList) const
+std::string ScriptToken::GetVariableName() const
 {
-	auto *var = GetVar();
 	auto *script = owningScript;
-	if (var)
+	if (refIdx == 0)
 	{
-		if (refIdx == 0)
+		auto *varInfo = script->GetVariableInfo(varIdx);
+		if (varInfo)
 		{
-			auto *varInfo = script->GetVariableInfo(var->id);
-			if (varInfo)
+			return std::string(varInfo->name.CStr());
+		}
+	}
+	else
+	{
+		// reference.variable
+		auto *refVar = script->GetRefFromRefList(refIdx);
+		if (!refVar)
+		{
+			return "";
+		}
+		auto *refr = DYNAMIC_CAST(refVar->form, TESForm, TESObjectREFR);
+		if (refr)
+		{
+			auto *evtList = refr->GetEventList();
+			if (evtList && evtList->m_script)
 			{
-				return std::string(varInfo->name.CStr());
+				auto *varInfo = evtList->m_script->GetVariableInfo(varIdx);
+				if (varInfo && refr->GetName())
+				{
+					return std::string(refr->GetName()) + '.' + std::string(varInfo->name.CStr());
+				}
 			}
 		}
 		else
 		{
-			// reference.variable
-			auto *refVar = script->GetRefFromRefList(refIdx);
-			if (!refVar)
+			auto *quest = DYNAMIC_CAST(refVar->form, TESForm, TESQuest);
+			if (quest)
 			{
-				return "";
-			}
-			refVar->Resolve(eventList);
-			auto *refr = DYNAMIC_CAST(refVar->form, TESForm, TESObjectREFR);
-			if (refr)
-			{
-				auto *evtList = refr->GetEventList();
-				if (evtList && evtList->m_script)
+				auto *refScript = quest->scriptable.script;
+				if (!refScript)
+					return "";
+				auto *varInfo = refScript->GetVariableInfo(varIdx);
+				if (varInfo && quest->GetEditorName())
 				{
-					auto *varInfo = evtList->m_script->GetVariableInfo(var->id);
-					if (varInfo && refr->GetName())
-					{
-						return std::string(refr->GetName()) + '.' + std::string(varInfo->name.CStr());
-					}
-				}
-			}
-			else
-			{
-				auto *quest = DYNAMIC_CAST(refVar->form, TESForm, TESQuest);
-				if (quest)
-				{
-					auto *refScript = quest->scriptable.script;
-					if (!refScript)
-						return "";
-					auto *varInfo = refScript->GetVariableInfo(var->id);
-					if (varInfo && quest->GetEditorName())
-					{
-						return std::string(quest->GetName()) + '.' + std::string(varInfo->name.CStr());
-					}
+					return std::string(quest->GetName()) + '.' + std::string(varInfo->name.CStr());
 				}
 			}
 		}
 	}
+
 	return "";
 }
 #endif
@@ -822,7 +818,7 @@ ScriptLocal *ScriptToken::GetVar() const
 bool ScriptToken::ResolveVariable()
 {
 	value.var = nullptr;
-	auto *scriptEventList = context->eventList;
+	auto *eventList = context->eventList;
 	if (refIdx)
 	{
 		Script::RefVariable *refVar = context->script->GetRefFromRefList(refIdx);
@@ -830,13 +826,38 @@ bool ScriptToken::ResolveVariable()
 		{
 			refVar->Resolve(context->eventList);
 			if (refVar->form)
-				scriptEventList = EventListFromForm(refVar->form);
+				eventList = EventListFromForm(refVar->form);
 		}
 	}
-	if (scriptEventList)
-		value.var = scriptEventList->GetVariable(varIdx);
+	if (eventList)
+		value.var = eventList->GetVariable(varIdx);
 	if (!value.var)
 		return false;
+	// to be deleted on event list destruction, see Hooks_Other.cpp#CleanUpNVSEVars
+	if (type == kTokenType_ArrayVar || type == kTokenType_StringVar && refIdx == 0)
+		AddToGarbageCollection(eventList, value.var, type == kTokenType_StringVar ? NVSEVarType::kVarType_String : NVSEVarType::kVarType_Array);
+
+#if _DEBUG
+	if (value.var && !refIdx)
+	{
+		this->varName = context->script->GetVariableInfo(varIdx)->name.CStr();
+	}
+	if (value.var && value.var->data && type == kTokenType_ArrayVar)
+	{
+		auto *script = context->script;
+		if (refIdx)
+			script = GetReferencedQuestScript(refIdx, context->eventList);
+		if (auto *var = g_ArrayMap.Get(value.var->data); var)
+			if (auto *varInfo = script->GetVariableInfo(value.var->id))
+				var->varName = std::string(script->GetName()) + "." + std::string(varInfo->name.CStr());
+			else
+				var->varName = "<no var info>";
+		else
+			var->varName = "<var not found>";
+	}
+#endif
+
+
 	return true;
 }
 
@@ -1184,54 +1205,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator *context)
 		}
 
 		refIdx = context->Read16();
-
-		ScriptEventList *eventList = context->eventList;
-		if (refIdx)
-		{
-			Script::RefVariable *refVar = context->script->GetRefFromRefList(refIdx);
-			if (refVar)
-			{
-				refVar->Resolve(context->eventList);
-				if (refVar->form)
-					eventList = EventListFromForm(refVar->form);
-			}
-		}
-
 		varIdx = context->Read16();
-		value.var = NULL;
-		if (eventList)
-			value.var = eventList->GetVariable(varIdx);
-
-		if (!value.var)
-		{
-			context->Error("Failed to resolve variable");
-			type = kTokenType_Invalid;
-			return type;
-		}
-#if _DEBUG
-		if (value.var && !refIdx)
-		{
-			this->varName = context->script->GetVariableInfo(varIdx)->name.CStr();
-		}
-		if (value.var && value.var->data && type == kTokenType_ArrayVar)
-		{
-			auto *script = context->script;
-			if (refIdx)
-				script = GetReferencedQuestScript(refIdx, context->eventList);
-			if (auto *var = g_ArrayMap.Get(value.var->data); var)
-				if (auto *varInfo = script->GetVariableInfo(value.var->id))
-					var->varName = std::string(script->GetName()) + "." + std::string(varInfo->name.CStr());
-				else
-					var->varName = "<no var info>";
-			else
-				var->varName = "<var not found>";
-		}
-#endif
-
-		// to be deleted on event list destruction, see Hooks_Other.cpp#CleanUpNVSEVars
-		if (type == kTokenType_ArrayVar || type == kTokenType_StringVar && refIdx == 0)
-			AddToGarbageCollection(eventList, value.var, type == kTokenType_StringVar ? NVSEVarType::kVarType_String : NVSEVarType::kVarType_Array);
-
 		break;
 	}
 	case 'F':

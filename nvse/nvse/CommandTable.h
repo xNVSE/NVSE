@@ -322,3 +322,7 @@ namespace PluginAPI
 	const PluginInfo* GetCmdParentPlugin(const CommandInfo* cmd);
 	const PluginInfo* GetPluginInfoByName(const char *pluginName);
 }
+
+#if NVSE_CORE
+extern const Cmd_Parse g_defaultParseCommand;
+#endif

@@ -301,7 +301,7 @@ struct ScriptToken
 	static ScriptToken *Create(Script *scriptLambda) { return scriptLambda ? new ScriptToken(scriptLambda) : nullptr; }
 
 	void SetString(const char *srcStr);
-	std::string GetVariableName(ScriptEventList *eventList) const;
+	std::string GetVariableName() const;
 
 	bool useRefFromStack = false; // when eval'ing commands, don't use refIdx but top of stack which is reference
 	UInt16 refIdx;
