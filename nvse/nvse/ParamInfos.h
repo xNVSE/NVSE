@@ -353,3 +353,8 @@ static ParamInfo kParams_OneSpellItem[1] =
 	{	"spell", kParamType_SpellItem, 0 }, 
 };
 
+static ParamInfo kParams_OneForm_OneOptionalString[2] =
+{
+	{	"form",	kParamType_AnyForm,	0	},
+	{	"string",	kParamType_String,	1	},
+};

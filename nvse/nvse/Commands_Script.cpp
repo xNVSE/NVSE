@@ -746,8 +746,14 @@ bool Cmd_DecompileScript_Execute(COMMAND_ARGS)
 {
 	Script* script;
 	*result = 0;
-	if (!ExtractArgs(EXTRACT_ARGS, &script) || !IS_ID(script, Script))
+	char fileExtensionArg[0x100]{};
+	if (!ExtractArgs(EXTRACT_ARGS, &script, &fileExtensionArg) || !IS_ID(script, Script))
 		return true;
+	std::string fileExtension;
+	if (fileExtensionArg[0])
+		fileExtension = std::string(fileExtensionArg);
+	else
+		fileExtension = "gek";
 	ScriptParsing::ScriptAnalyzer analyzer(script);
 	analyzer.Parse();
 	const auto* dirName = "DecompiledScripts";
@@ -756,7 +762,7 @@ bool Cmd_DecompileScript_Execute(COMMAND_ARGS)
 	const auto modDirName = FormatString("%s/%s", dirName, GetModName(script));
 	if (!std::filesystem::exists(modDirName))
 		std::filesystem::create_directory(modDirName);
-	const auto filePath = modDirName + '/' + std::string(script->GetName()) + ".gek";
+	const auto filePath = modDirName + '/' + std::string(script->GetName()) + '.' + fileExtension;
 	std::ofstream os(filePath);
 	os << analyzer.DecompileScript();
 	Console_Print("Decompiled script to '%s'", filePath.c_str());
