@@ -47,14 +47,20 @@ void IDebugLog::Open(const char * path)
 				{
 					return; // Failed to create directory.
 				}
+				// Try to create file
+				sprintf_s(name, sizeof(name), "%s\\%s\\%s", IDebugLog::cPath, "Logs", path);
+				id++;
+				logFile = nullptr;
+				logFile = _fsopen(name, "w", _SH_DENYWR);
 			}
+			else {
+				// Cannot open file, attempt again with file+ID.
+				sprintf_s(name, sizeof(name), "%s\\%s\\%s%d", IDebugLog::cPath, "Logs", path, id); //File Not Open?
+				id++;
 
-			// Directory exist but no file, create file.
-			sprintf_s(name, sizeof(name), "%s\\%s\\%s", IDebugLog::cPath, "Logs", path); //Keep trying
-			id++;
-
-			logFile = nullptr;
-			logFile = _fsopen(name, "w", _SH_DENYWR);
+				logFile = nullptr;
+				logFile = _fsopen(name, "w", _SH_DENYWR);
+			}
 		}
 		while(!logFile && (id < 5));
 	}
