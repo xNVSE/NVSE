@@ -3434,7 +3434,7 @@ void ExpressionEvaluator::ReadBuf(UInt32 len, UInt8 *data)
 
 UInt8 *ExpressionEvaluator::GetCommandOpcodePosition() const
 {
-	return GetScriptDataPosition(script, m_scriptData, *m_opcodeOffsetPtr);
+	return script->data + *m_opcodeOffsetPtr;
 }
 
 CommandInfo *ExpressionEvaluator::GetCommand() const
@@ -4648,7 +4648,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 				if (cmdInfo)
 				{
 					ScriptParsing::CommandCallToken callToken(cmdInfo, script->GetRefFromRefList(token.refIdx));
-					ScriptParsing::ScriptIterator it(script, cmdInfo->opcode, 0, token.refIdx, static_cast<UInt8*>(script->data) + token.cmdOpcodeOffset);
+					ScriptParsing::ScriptIterator it(script, cmdInfo->opcode, 0, token.refIdx, static_cast<UInt8*>(m_scriptData) + token.cmdOpcodeOffset);
 					callToken.ParseCommandArgs(it);
 					operands.push_back(callToken.ToString());
 					if (callToken.expressionEvalArgs.size() > 1)

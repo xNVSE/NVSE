@@ -258,7 +258,7 @@ void CaptureChildLambdas(ScriptLambda* scriptLambda, LambdaContext& ctx)
 	auto varLambdas = std::make_unique<std::vector<ScriptLambda*>>();
 	for (auto* ref : scriptLambda->refList)
 	{
-		if (!ref->varIdx)
+		if (!ref || !ref->varIdx)
 			continue;
 		ref->Resolve(eventList);
 		auto* form = ref->form;

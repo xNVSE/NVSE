@@ -412,7 +412,8 @@ private:
 };
 bool SCRIPT_ASSERT(bool expr, Script *script, const char *errorMsg, ...);
 
-bool ExtractSetStatementVar(Script *script, ScriptEventList *eventList, void *scriptDataIn, double *outVarData, bool *makeTemporary, UInt32 *opcodeOffsetPtr, UInt8 *outModIndex = NULL);
+bool ExtractSetStatementVar(Script *script, ScriptEventList *eventList, void *scriptDataIn, double *outVarData, bool *makeTemporary,
+                            const UInt32 *opcodeOffsetPtr, UInt8 *outModIndex, TESObjectREFR* refr);
 bool ExtractFormattedString(FormatStringArgs &args, char *buffer);
 
 class ChangesMap;
@@ -980,9 +981,6 @@ public:
 	/*A2*/ UInt16 padA2;
 };
 STATIC_ASSERT(sizeof(ScriptRunner) == 0xA4);
-
-// Gets the real script data ptr, as it can be a pointer to a buffer on the stack in case of vanilla expressions in set and if statements
-UInt8 *GetScriptDataPosition(Script *script, void *scriptDataIn, UInt32 opcodeOffset);
 
 /* I need to port NiTypes 
 
