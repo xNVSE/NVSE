@@ -6,17 +6,21 @@
 #include "LambdaManager.h"
 #include "PluginManager.h"
 #include "Commands_UI.h"
+#include "GameTiles.h"
+#include "MemoizedMap.h"
 
 #if RUNTIME
-
 namespace OtherHooks
 {
 	thread_local TESObjectREFR* g_lastScriptOwnerRef = nullptr;
+
+	const static auto ClearCachedTileMap = &MemoizedMap<const char*, Tile::Value*>::Clear;
+
 	__declspec(naked) void TilesDestroyedHook()
 	{
 		__asm
 		{
-			mov g_tilesDestroyed, 1
+			call ClearCachedTileMap // static function
 			// original asm
 			pop ecx
 			mov esp, ebp
@@ -30,7 +34,7 @@ namespace OtherHooks
 		// Eddoursol reported a problem where stagnant deleted tiles got cached
 		__asm
 		{
-			mov g_tilesDestroyed, 1
+			call ClearCachedTileMap // static function
 			pop ecx
 			mov esp, ebp
 			pop ebp
@@ -69,6 +73,7 @@ namespace OtherHooks
 
 	void DeleteEventList(ScriptEventList* eventList)
 	{
+		
 		LambdaManager::MarkParentAsDeleted(eventList); // deletes if exists
 		CleanUpNVSEVars(eventList);
 		ThisStdCall(0x5A8BC0, eventList);

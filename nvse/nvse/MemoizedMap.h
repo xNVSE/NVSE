@@ -1,12 +1,14 @@
 #pragma once
-#include "containers.h"
+
 #include <atomic>
+
+#include "containers.h"
+
 template <typename K, typename V>
 class MemoizedMap
 {
 public:
 	thread_local static UnorderedMap<K, V> map;
-
 	template <typename F>
 	V& Get(const K& key, F&& f)
 	{
@@ -17,7 +19,9 @@ public:
 		}
 		V* value;
 		if (map.Insert(key, &value))
+		{
 			*value = f(key);
+		}
 		return *value;
 	}
 

@@ -3713,10 +3713,10 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 	break;
 	case kParamType_Integer:
 	{
-		UInt32 *out = va_arg(varArgs, UInt32 *);
 		// handle string_var passed as integer to sv_* cmds
 		if (arg->CanConvertTo(kTokenType_StringVar))
 		{
+			UInt32 *out = va_arg(varArgs, UInt32 *);
 			ScriptLocal *var = arg->GetVar();
 			if (!var)
 				return false;
@@ -3725,6 +3725,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 		}
 		if (arg->CanConvertTo(kTokenType_String))
 		{
+			UInt32 *out = va_arg(varArgs, UInt32 *);
 			*out = g_StringMap.Add(script->GetModIndex(), arg->GetString(), true);
 			break;
 		}
@@ -4818,9 +4819,6 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 	{
 		if (m_inline)
 			return "(" + operands.back() + ")";
-		CommandInfo *cmd = GetCommand();
-		if (!cmd || !cmd->longName)
-			return operands.back();
 		return operands.back();
 	}
 	return "";

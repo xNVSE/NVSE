@@ -3,12 +3,6 @@
 #include "CommandTable.h"
 #include "ParamInfos.h"
 
-#if RUNTIME
-
-extern bool g_tilesDestroyed;
-
-#endif
-
 static ParamInfo kParams_SetUIStringEx[] =
 {
 	{	"component name",	kParamType_String,	0 },

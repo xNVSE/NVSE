@@ -1318,6 +1318,36 @@ public:
 		return false;
 	}
 
+	template <typename F>
+	std::size_t EraseIf(F&& f)
+	{
+		auto numErased = 0u;
+		if (numEntries)
+		{
+			for (auto* bucket = buckets; bucket != End(); ++bucket)
+			{
+				Entry* entry = bucket->entries, *prev = nullptr;
+				while (entry)
+				{
+					if (f(*entry))
+					{
+						auto* nextEntry = entry->next;
+						--numEntries;
+						++numErased;
+						bucket->Remove(entry, prev);
+						entry = nextEntry;
+					}
+					else
+					{
+						prev = entry;
+						entry = entry->next;
+					}
+				}
+			}
+		}
+		return numErased;
+	}
+
 	void Clear()
 	{
 		if (!numEntries) return;
