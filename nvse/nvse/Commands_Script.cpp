@@ -4,6 +4,7 @@
 
 #include "ParamInfos.h"
 #include "GameScript.h"
+#include "MemoizedMap.h"
 #include "ScriptUtils.h"
 #include "PluginManager.h"
 #include "ScriptAnalyzer.h"
@@ -811,16 +812,21 @@ bool Cmd_HasScriptCommand_Execute(COMMAND_ARGS)
 	return true;
 }
 
+static MemoizedMap<const char*, UInt32> s_opcodeMap;
+
 bool Cmd_GetCommandOpcode_Execute(COMMAND_ARGS)
 {
 	*result = 0;
 	char buf[0x400];
 	if (!ExtractArgs(EXTRACT_ARGS, buf))
 		return true;
-	auto* cmd = g_scriptCommands.GetByName(buf);
-	if (!cmd)
-		return true;
-	*result = cmd->opcode;
+	*result = s_opcodeMap.Get(buf, [](const char* buf)
+	{
+		auto* cmd = g_scriptCommands.GetByName(buf);
+		if (!cmd)
+			return 0u;
+		return static_cast<unsigned>(cmd->opcode);
+	});
 	return true;
 }
 

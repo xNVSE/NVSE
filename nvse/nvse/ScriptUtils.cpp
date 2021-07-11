@@ -3521,7 +3521,7 @@ ExpressionEvaluator::ExpressionEvaluator(COMMAND_ARGS) : m_opcodeOffsetPtr(opcod
 
 ExpressionEvaluator::~ExpressionEvaluator()
 {
-	if (moved_)
+	if (moved_) [[unlikely]]
 		return;
 	PopFromStack();
 
