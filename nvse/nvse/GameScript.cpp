@@ -200,16 +200,17 @@ Script::RefVariable *ScriptBuffer::ResolveRef(const char *refName, Script *scrip
 	Script::RefVariable *newRef = NULL;
 
 	// see if it's already in the refList
-	auto *match = refVars.FindFirst([&](Script::RefVariable *cur) { return cur->name.m_data && !_stricmp(cur->name.m_data, refName); });
-	if (match)
-		return match;
+	auto *foundRef = refVars.FindFirst([&](Script::RefVariable *cur) { return cur->name.m_data && !_stricmp(cur->name.m_data, refName); });
+	if (foundRef)
+		newRef = foundRef;
 	// not in list
 
 	// is it a local ref variable?
 	VariableInfo *varInfo = vars.GetVariableByName(refName);
 	if (varInfo && GetVariableType(varInfo, NULL, script) == Script::eVarType_Ref)
 	{
-		newRef = New<Script::RefVariable>();
+		if (!newRef)
+			newRef = New<Script::RefVariable>();
 		newRef->varIdx = varInfo->idx;
 	}
 	else // is it a form or global?
@@ -229,20 +230,19 @@ Script::RefVariable *ScriptBuffer::ResolveRef(const char *refName, Script *scrip
 			TESObjectREFR *refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
 			if (refr && !refr->IsPersistent()) // only persistent refs can be used in scripts
 				return NULL;
-
-			newRef = New<Script::RefVariable>();
+			if (!newRef)
+				newRef = New<Script::RefVariable>();
 			newRef->form = form;
 		}
 	}
 
-	if (newRef) // got it, add to refList
+	if (!foundRef && newRef) // got it, add to refList
 	{
 		newRef->name.Set(refName);
 		refVars.Append(newRef);
 		info.numRefs++;
-		return newRef;
 	}
-	return NULL;
+	return newRef;
 }
 
 UInt32 ScriptBuffer::GetRefIdx(Script::RefVariable *ref)
