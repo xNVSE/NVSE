@@ -102,6 +102,7 @@ class ExpressionEvaluator
 		kFlag_ErrorOccurred			= 1 << 1,
 		kFlag_StackTraceOnError		= 1 << 2,
 	};
+	bool moved_ = false;
 public:
 	Bitfield<UInt32>	 m_flags;
 	UInt8				* m_scriptData;
@@ -118,6 +119,14 @@ public:
 	ExpressionEvaluator	* m_parent;
 	ThreadLocalData&	localData;
 	std::vector<std::string> errorMessages;
+
+	ExpressionEvaluator(const ExpressionEvaluator& other) = delete;
+
+	ExpressionEvaluator(ExpressionEvaluator&& other) noexcept;
+
+	ExpressionEvaluator& operator=(const ExpressionEvaluator& other) = delete;
+
+	ExpressionEvaluator& operator=(ExpressionEvaluator&& other) noexcept;
 
 	CommandReturnType GetExpectedReturnType() { CommandReturnType type = m_expectedReturnType; m_expectedReturnType = kRetnType_Default; return type; }
 	bool ParseBytecode(CachedTokens& cachedTokens);
@@ -290,7 +299,7 @@ public:
 	~ExpressionParser();
 
 	bool			ParseArgs(ParamInfo* params, UInt32 numParams, bool bUsesNVSEParamTypes = true, bool parseWholeLine = true);
-	bool			ValidateArgType(UInt32 paramType, Token_Type argType, bool bIsNVSEParam);
+	bool			ValidateArgType(ParamType paramType, Token_Type argType, bool bIsNVSEParam);
 	bool ParseUserFunctionParameters(std::vector<UserFunctionParam>& out, const std::string& funcScriptText,
 	                                 Script::VarInfoList* funcScriptVars, Script* script) const;
 	bool			ParseUserFunctionCall();

@@ -232,6 +232,7 @@ struct ScriptToken
 	virtual ~ScriptToken();
 
 	virtual const char *GetString();
+	std::size_t GetStringLength() const;
 	virtual UInt32 GetFormID();
 	virtual TESForm *GetTESForm();
 	virtual double GetNumber();

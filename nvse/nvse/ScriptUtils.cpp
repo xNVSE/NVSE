@@ -1858,7 +1858,7 @@ bool ExpressionParser::ParseArgs(ParamInfo *params, UInt32 numParams, bool bUses
 			// reached end of args
 			break;
 		// is arg of expected type(s)?
-		if (!ValidateArgType(params[m_numArgsParsed].typeID, argType, bUsesNVSEParamTypes))
+		if (!ValidateArgType(static_cast<ParamType>(params[m_numArgsParsed].typeID), argType, bUsesNVSEParamTypes))
 		{
 #if RUNTIME
 			ShowCompilerError(m_lineBuf, "Invalid expression for parameter %d. Expected %s.", m_numArgsParsed + 1, params[m_numArgsParsed].typeStr);
@@ -1896,7 +1896,7 @@ bool ExpressionParser::ParseArgs(ParamInfo *params, UInt32 numParams, bool bUses
 	return true;
 }
 
-bool ExpressionParser::ValidateArgType(UInt32 paramType, Token_Type argType, bool bIsNVSEParam)
+bool ExpressionParser::ValidateArgType(ParamType paramType, Token_Type argType, bool bIsNVSEParam)
 {
 	if (bIsNVSEParam)
 	{
@@ -1929,7 +1929,7 @@ bool ExpressionParser::ValidateArgType(UInt32 paramType, Token_Type argType, boo
 			// we'll find out at run-time
 			return true;
 		}
-
+		
 		switch (paramType)
 		{
 		case kParamType_String:
@@ -1942,6 +1942,12 @@ bool ExpressionParser::ValidateArgType(UInt32 paramType, Token_Type argType, boo
 		case kParamType_QuestStage:
 		case kParamType_CrimeType:
 			// string var included here b/c old sv_* cmds take strings as integer IDs
+			if (argType != kTokenType_StringVar && CanConvertOperand(argType, kTokenType_String))
+			{
+				auto* cmdInfo = g_scriptCommands.GetByOpcode(m_lineBuf->cmdOpcode);
+				if (cmdInfo && std::string_view(cmdInfo->longName).starts_with("sv_")) // only allow this for old sv commands that take int
+					return true;
+			}
 			return CanConvertOperand(argType, kTokenType_Number) || CanConvertOperand(argType, kTokenType_StringVar) ||
 				   CanConvertOperand(argType, kTokenType_Variable);
 		case kParamType_AnimationGroup:
@@ -2847,7 +2853,7 @@ ParamParenthResult ExpressionParser::ParseParentheses(ParamInfo *paramInfo, UInt
 	}
 
 	auto &param = paramInfo[paramIndex];
-	if (!ValidateArgType(param.typeID, result, false))
+	if (!ValidateArgType(static_cast<ParamType>(param.typeID), result, false))
 	{
 #if RUNTIME
 		ShowCompilerError(m_lineBuf, "Invalid expression for parameter %d. Expected %s (got %s).", paramIndex + 1, param.typeStr, TokenTypeToString(result));
@@ -3515,6 +3521,8 @@ ExpressionEvaluator::ExpressionEvaluator(COMMAND_ARGS) : m_opcodeOffsetPtr(opcod
 
 ExpressionEvaluator::~ExpressionEvaluator()
 {
+	if (moved_)
+		return;
 	PopFromStack();
 
 	for (UInt32 i = 0; i < m_numArgsExtracted; i++)
@@ -3705,12 +3713,19 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 	break;
 	case kParamType_Integer:
 	{
-		ScriptLocal *var = arg->GetVar();
+		UInt32 *out = va_arg(varArgs, UInt32 *);
 		// handle string_var passed as integer to sv_* cmds
-		if (var && arg->CanConvertTo(kTokenType_StringVar))
+		if (arg->CanConvertTo(kTokenType_StringVar))
 		{
-			UInt32 *out = va_arg(varArgs, UInt32 *);
+			ScriptLocal *var = arg->GetVar();
+			if (!var)
+				return false;
 			*out = var->data;
+			break;
+		}
+		if (arg->CanConvertTo(kTokenType_String))
+		{
+			*out = g_StringMap.Add(script->GetModIndex(), arg->GetString(), true);
 			break;
 		}
 	}
@@ -4387,6 +4402,55 @@ void ParseShortCircuit(CachedTokens &cachedTokens)
 			token.shortCircuitStackOffset = 0;
 		}
 	}
+}
+
+ExpressionEvaluator::ExpressionEvaluator(ExpressionEvaluator&& other) noexcept:
+	m_flags(other.m_flags),
+	m_scriptData(other.m_scriptData),
+	m_opcodeOffsetPtr(other.m_opcodeOffsetPtr),
+	m_result(other.m_result),
+	m_thisObj(other.m_thisObj),
+	m_containingObj(other.m_containingObj),
+	m_data(other.m_data),
+	m_params(other.m_params),
+	m_numArgsExtracted(other.m_numArgsExtracted),
+	m_expectedReturnType(other.m_expectedReturnType),
+	m_baseOffset(other.m_baseOffset),
+	m_parent(other.m_parent),
+	localData(other.localData),
+	errorMessages(std::move(other.errorMessages)),
+	m_inline(other.m_inline),
+	script(other.script),
+	eventList(other.eventList)
+{
+	std::memcpy(this->m_args, other.m_args, other.m_numArgsExtracted);
+	other.moved_ = true; // no need to memset other.m_args, moved_ will return from destructor
+}
+
+ExpressionEvaluator& ExpressionEvaluator::operator=(ExpressionEvaluator&& other) noexcept
+{
+	if (this == &other)
+		return *this;
+	other.moved_ = true;
+	std::memcpy(this->m_args, other.m_args, other.m_numArgsExtracted);
+	m_flags = other.m_flags;
+	m_scriptData = other.m_scriptData;
+	m_opcodeOffsetPtr = other.m_opcodeOffsetPtr;
+	m_result = other.m_result;
+	m_thisObj = other.m_thisObj;
+	m_containingObj = other.m_containingObj;
+	m_data = other.m_data;
+	m_params = other.m_params;
+	m_numArgsExtracted = other.m_numArgsExtracted;
+	m_expectedReturnType = other.m_expectedReturnType;
+	m_baseOffset = other.m_baseOffset;
+	m_parent = other.m_parent;
+	localData = other.localData;
+	errorMessages = std::move(other.errorMessages);
+	m_inline = other.m_inline;
+	script = other.script;
+	eventList = other.eventList;
+	return *this;
 }
 
 bool ExpressionEvaluator::ParseBytecode(CachedTokens &cachedTokens)

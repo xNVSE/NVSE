@@ -690,6 +690,21 @@ const char *ScriptToken::GetString()
 	return empty;
 }
 
+std::size_t ScriptToken::GetStringLength() const
+{
+	if (type == kTokenType_String)
+		return strlen(value.str);
+#if RUNTIME
+	if (type == kTokenType_StringVar)
+	{
+		StringVar *strVar = g_StringMap.Get(value.var->data);
+		if (strVar)
+			return strVar->GetLength();
+	}
+#endif
+	return 0;
+}
+
 UInt32 ScriptToken::GetFormID()
 {
 	if (type == kTokenType_Form)
