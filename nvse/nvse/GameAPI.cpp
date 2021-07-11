@@ -6,6 +6,7 @@
 #include "GameScript.h"
 #include "StringVar.h"
 #include "printf.h"
+#include "ScriptAnalyzer.h"
 
 #if NVSE_CORE
 #include "Hooks_Script.h"
@@ -2351,144 +2352,50 @@ bool ExtractFormatStringArgs(UInt32 fmtStringPos, char *buffer, ParamInfo *param
 
 #endif
 
-bool ExtractSetStatementVar(Script *script, ScriptEventList *eventList, void *scriptDataIn, double *outVarData, bool *makeTemporary, UInt32 *opcodeOffsetPtr, UInt8 *outModIndex)
+bool ExtractSetStatementVar(Script *script, ScriptEventList *eventList, void *scriptDataIn, double *outVarData, bool *makeTemporary, const UInt32 *opcodeOffsetPtr, UInt8 *outModIndex, TESObjectREFR* refr)
 {
-	/*	DOES NOT WORK WITH FalloutNV, we are going to abuse the stack instead: ~ It does work, just have to adjust the value to 0x1D5 :^)
-	//when script command called as righthand side of a set statement, the script data containing the variable
-	//to assign to remains on the stack as arg to a previous function. We can get to it through scriptData in COMMAND_ARGS
-	*/
-	auto *scriptData = GetScriptDataPosition(script, scriptDataIn, *opcodeOffsetPtr) - *opcodeOffsetPtr - 1;
+	auto *scriptData = static_cast<UInt8 *>(scriptDataIn) + *opcodeOffsetPtr;
+	auto* backPtr = scriptData - 5;
 
-	auto *dataStart = scriptData + 1; // should be 0x58 (or 0x72 if called with dot syntax)
-	if (*dataStart != 0x58 && *dataStart != 0x72)
-	{
+	if (*backPtr != 'X')
 		return false;
-	}
 
-	if (*(scriptData - 5) != 0x73) // make sure `set ... to` and not `if ...`
-	{
+	if (*(backPtr - 3) == 'r')
+		backPtr -= 3;
+
+	if (*(backPtr - 9) == 'r')
+		backPtr -= 13;
+	else
+		backPtr -= 10;
+	
+	auto* statementStart = backPtr;
+	if (*statementStart != static_cast<UInt8>(ScriptParsing::ScriptStatementCode::SetTo)) // make sure `set ... to` and not `if ...`
 		return false;
-	}
 
+	const ScriptParsing::ScriptIterator iterator(script, statementStart);
+	const auto statementCtx = ScriptParsing::SetToStatement(iterator);
+	if (statementCtx.error || !statementCtx.toVariable || statementCtx.toVariable->error)
+		return false;
+
+	if (auto* scriptVar = dynamic_cast<ScriptParsing::ScriptVariableToken*>(statementCtx.toVariable.get()))
+	{
+		ScriptLocal *var = eventList->GetVariable(scriptVar->varInfo->idx);
+		if (!var)
+			return false;
+		*outModIndex = scriptVar->script->GetModIndex();
+		*outVarData = var->data;
+		if (!scriptVar->ref || scriptVar->ref == script->quest || scriptVar->ref == refr) // if not an external script
+			AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_String);
+	}
+	else if (auto* globalVar = dynamic_cast<ScriptParsing::GlobalVariableToken*>(statementCtx.toVariable.get()))
+	{
+		*outModIndex = globalVar->global->GetModIndex();
+		*outVarData = globalVar->global->data;
+	}
+	else
+		return false;
 	*makeTemporary = false;
-
-	// Calculate frame pointer for 4 calls above:
-	/*void* callerFramePointer;
-	_asm {
-		mov callerFramePointer, ebp
-	}
-	for (int i = 0; i < 3; i++)
-		callerFramePointer = (void*)(*(UInt32*)callerFramePointer);
-	if (!shortPath) {
-		callerFramePointer = (void*)(*(UInt32*)callerFramePointer);	// sv_Destruct calls us directly, others goes through AssignToStringVar
-		callerFramePointer = (void*)(*(UInt32*)callerFramePointer);	// one more added for when multiple commands are grouped (like GetBipedModelPath)
-	}
-
-	UInt32 scriptDataPtrAddr = (UInt32)(callerFramePointer) + 0x08;
-	UInt32* scriptDataAddr = (UInt32*)scriptDataPtrAddr;
-	UInt8* scriptData = (UInt8*)(*scriptDataAddr);
-
-	SInt32 scriptDataOffset = (UInt32)scriptData - (UInt32)(script->data);*/
-	//auto scriptData = reinterpret_cast<UInt8*>(g_lastScriptData);
-	SInt32 scriptDataOffset = (UInt32)scriptData - (UInt32)(script->data);
-
-	if (scriptDataOffset < 5)
-		return false;
-
-	bool bExtracted = false;
-	scriptData -= 5;
-
-	switch (*scriptData) //work backwards from opcode to find lefthand var
-	{
-	case 'G': //global
-	{
-		UInt16 refIdx = *(UInt16 *)(scriptData + 1);
-		Script::RefVariable *refVar = script->GetRefFromRefList(refIdx);
-		if (!refVar)
-			break;
-
-		TESGlobal *globalVar = DYNAMIC_CAST(refVar->form, TESForm, TESGlobal);
-		if (globalVar)
-		{
-			*outVarData = globalVar->data;
-			if (outModIndex)
-				*outModIndex = (globalVar->refID >> 24);
-			bExtracted = true;
-		}
-	}
-	break;
-	case 'l':
-	case 'f':
-	case 's':
-	{
-		bool isExternalVar = false;
-		if (scriptDataOffset >= 8 && *(scriptData - 3) == 'r') //external var
-		{
-			isExternalVar = true;
-			UInt16 refIdx = *(UInt16 *)(scriptData - 2);
-			Script::RefVariable *refVar = script->GetRefFromRefList(refIdx);
-			if (!refVar)
-				break;
-
-			refVar->Resolve(eventList);
-			TESForm *refForm = refVar->form;
-			if (!refForm)
-				break;
-
-			if (refForm->typeID == kFormType_TESObjectREFR)
-			{
-				TESObjectREFR *refr = DYNAMIC_CAST(refForm, TESForm, TESObjectREFR);
-				TESScriptableForm *scriptable = DYNAMIC_CAST(refr->baseForm, TESForm, TESScriptableForm);
-				if (scriptable)
-				{
-					script = scriptable->script;
-					eventList = refr->GetEventList();
-				}
-				else
-					break;
-			}
-			else if (refForm->typeID == kFormType_TESQuest)
-			{
-				TESScriptableForm *scriptable = DYNAMIC_CAST(refForm, TESForm, TESScriptableForm);
-				if (scriptable)
-				{
-					script = scriptable->script;
-					TESQuest *quest = DYNAMIC_CAST(scriptable, TESScriptableForm, TESQuest);
-					eventList = quest->scriptEventList;
-				}
-				else
-					break;
-			}
-			else
-				break;
-		}
-
-		UInt16 varIdx = *(UInt16 *)(scriptData + 1);
-		ScriptLocal *var = eventList->GetVariable(varIdx);
-		if (var)
-		{
-			*outVarData = var->data;
-			if (outModIndex)
-				*outModIndex = (script->refID >> 24);
-			bExtracted = true;
-			if (!isExternalVar)
-			{
-				if (script->IsUserDefinedFunction())
-				{
-					*makeTemporary = true;
-				}
-#if NVSE_CORE
-				AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_String);
-#endif
-			}
-		}
-	}
-	break;
-	default:
-		SCRIPT_ASSERT(false, script, "Function must be used within a Set statement");
-	}
-
-	return bExtracted;
+	return true;
 }
 
 // g_baseActorValueNames is only filled in after oblivion's global initializers run
@@ -2977,16 +2884,6 @@ void Debug_DumpFontNames(void)
 
 	for (UInt32 i = 0; i < FontArraySize; i++)
 		_MESSAGE("Font %d is named %s", i + 1, fonts[i]->path);
-}
-
-UInt8 *GetScriptDataPosition(Script *script, void *scriptDataIn, UInt32 opcodeOffset)
-{
-	if (scriptDataIn != script->data) // set ... to or if ..., script data is stored on stack and not heap
-	{
-		auto *scriptData = *(static_cast<UInt8 **>(scriptDataIn) + 0x1D5);
-		return scriptData + opcodeOffset + 1;
-	}
-	return static_cast<UInt8 *>(scriptDataIn) + opcodeOffset;
 }
 
 UInt32 GetNextFreeFormID(UInt32 formId)

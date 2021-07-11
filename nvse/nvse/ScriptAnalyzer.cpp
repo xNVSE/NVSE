@@ -72,6 +72,8 @@ double ReadDouble(UInt8*& curData)
 
 CommandInfo* GetScriptStatement(ScriptParsing::ScriptStatementCode code)
 {
+	if (code > ScriptParsing::ScriptStatementCode::Max)
+		return nullptr;
 	return &g_scriptStatementCommandInfos[static_cast<unsigned int>(code) - 0x10];
 }
 
@@ -164,6 +166,8 @@ UInt32 ScriptParsing::ScriptLine::Read32()
 
 ScriptParsing::ScriptLine::ScriptLine(const ScriptIterator& context, CommandInfo* cmd): context(context), statementCmd(cmd)
 {
+	if (!cmd)
+		error = true;
 }
 
 std::string ScriptParsing::ScriptLine::ToString()
@@ -174,9 +178,12 @@ std::string ScriptParsing::ScriptLine::ToString()
 ScriptParsing::ScriptCommandCall::ScriptCommandCall(const ScriptIterator& contextParam):
     ScriptLine(contextParam, g_scriptCommands.GetByOpcode(contextParam.opcode)), commandCallToken(std::make_unique<CommandCallToken>(contextParam))
 {
+	if (error)
+		return;
 	if (context.length)
 	{
-		commandCallToken->ParseCommandArgs(context);
+		if (!commandCallToken->ParseCommandArgs(context))
+			error = true;
 	}
 }
 
@@ -200,6 +207,8 @@ std::string ScriptParsing::ScriptNameStatement::ToString()
 
 ScriptParsing::BeginStatement::BeginStatement(const ScriptIterator& contextParam) : ScriptStatement(contextParam)
 {
+	if (error)
+		return;
 	const auto eventOpcode = this->context.Read16();
 	this->eventBlockCmd = &g_eventBlockCommandInfos[eventOpcode];
 	this->endJumpLength = this->context.Read32();
@@ -208,7 +217,8 @@ ScriptParsing::BeginStatement::BeginStatement(const ScriptIterator& contextParam
 	if (context.length > 6)
 	{
 		const ScriptIterator iter(context.script, eventBlockCmd->opcode, context.length, 0, context.curData);
-		commandCallToken->ParseCommandArgs(iter);
+		if (!commandCallToken->ParseCommandArgs(iter))
+			error = true;
 	}
 }
 
@@ -225,16 +235,22 @@ ScriptParsing::ExpressionToken::ExpressionToken(ExpressionCode code): code(code)
 
 ScriptParsing::OperatorToken::OperatorToken(ScriptOperator* scriptOperator): scriptOperator(scriptOperator)
 {
+	if (!scriptOperator)
+		error = true;
 }
 
 std::string ScriptParsing::OperatorToken::ToString(std::vector<std::string>& stack)
 {
 	if (scriptOperator->code == ScriptOperatorCode::kOp_Tilde)
 	{
+		if (stack.empty())
+			return "<invalid number of operands on stack>";
 		const auto topOp = stack.back();
 		stack.pop_back();
 		return '-' + topOp;
 	}
+	if (stack.size() < 2)
+		return "<invalid number of operands on stack>";
 	const auto rhOperand = stack.back();
 	stack.pop_back();
 	const auto lhOperand = stack.back();
@@ -263,6 +279,8 @@ std::string ScriptParsing::ScriptVariableToken::GetBackupName()
 ScriptParsing::ScriptVariableToken::ScriptVariableToken(Script* script, ExpressionCode varType, VariableInfo* info, TESForm* ref) : OperandToken(varType), script(script),
                                                                                                                     ref(ref), varInfo(info)
 {
+	if (!this->varInfo || !this->script)
+		error = true;
 }
 
 std::string ScriptParsing::ScriptVariableToken::ToString()
@@ -282,7 +300,7 @@ ScriptParsing::StringLiteralToken::StringLiteralToken(const std::string_view& st
 
 std::string ScriptParsing::StringLiteralToken::ToString()
 {
-	return std::string(this->stringLiteral);
+	return '"' +std::string(this->stringLiteral) + '"';
 }
 
 ScriptParsing::NumericConstantToken::NumericConstantToken(double value): value(value)
@@ -307,6 +325,8 @@ std::string ScriptParsing::NumericConstantToken::ToString()
 
 ScriptParsing::RefToken::RefToken(Script* script, Script::RefVariable* refVariable): refVariable(refVariable), script(script)
 {
+	if (!refVariable)
+		error = true;
 }
 
 std::string ScriptParsing::RefToken::ToString()
@@ -330,8 +350,11 @@ std::string ScriptParsing::RefToken::ToString()
 }
 
 ScriptParsing::GlobalVariableToken::GlobalVariableToken(Script::RefVariable* refVariableParam): RefToken(nullptr, refVariableParam),
-                                                                                           global(DYNAMIC_CAST(refVariableParam->form, TESForm, TESGlobal))
+                                                                                           global(DYNAMIC_CAST(refVariableParam ? refVariableParam->form : nullptr, TESForm, TESGlobal))
 {
+	if (!global)
+		error = true;
+		
 }
 std::string ScriptParsing::GlobalVariableToken::ToString()
 {
@@ -340,15 +363,19 @@ std::string ScriptParsing::GlobalVariableToken::ToString()
 
 ScriptParsing::InlineExpressionToken::InlineExpressionToken(ScriptIterator& context)
 {
-	UInt32 offset = context.curData - static_cast<UInt8*>(context.script->data);
+	UInt32 offset = context.curData - context.script->data;
 	this->eval = std::make_unique<ExpressionEvaluator>(nullptr, context.script->data, nullptr, nullptr, context.script, nullptr, nullptr, &offset);
 	this->eval->m_inline = true;
 	this->tokens = eval->GetTokens();
+	if (!tokens)
+		error = true;
 	context.curData = this->eval->m_data;
 }
 
 std::string ScriptParsing::InlineExpressionToken::ToString()
 {
+	if (!this->tokens)
+		return "<failed to decompile inline expression>";
 	return eval->GetLineText(*this->tokens, nullptr);
 }
 
@@ -359,6 +386,8 @@ ScriptParsing::CommandCallToken::CommandCallToken(const ScriptIterator& iter): O
 
 ScriptParsing::CommandCallToken::CommandCallToken(CommandInfo* cmdInfo, Script::RefVariable* callingRef) : cmdInfo(cmdInfo), callingReference(callingRef)
 {
+	if (!cmdInfo)
+		error = true;
 }
 
 template <typename T, typename F>
@@ -542,6 +571,8 @@ bool ScriptParsing::CommandCallToken::ReadNumericToken(ScriptIterator& context)
 bool ScriptParsing::ScriptIterator::ReadStringLiteral(std::string_view& out)
 {
 	const auto strLen = Read16();
+	if (strLen > 0x200)
+		return false;
 	out = std::string_view(reinterpret_cast<char*>(curData), strLen);
 	curData += strLen;
 	return true;
@@ -588,6 +619,8 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context)
 			auto* varInfo = context.script->GetVariableInfo(param.varIdx);
 			RegisterNVSEVar(varInfo, static_cast<Script::VariableType>(param.varType));
 			args.push_back(std::make_unique<ScriptVariableToken>(context.script, ExpressionCode::None, varInfo));
+			if (args.back()->error)
+				return false;
 		}
 		return true;
 	}
@@ -600,12 +633,20 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context)
 				analyzer->compilerOverrideEnabled = true;
 			context.curData += 2;
 		}
-		UInt32 offset = context.curData - static_cast<UInt8*>(context.script->data);
+		if (cmdInfo->parse == kCommandInfo_While.parse)
+			context.curData += 4;
+		
+		UInt32 offset = context.curData - context.script->data;
 		this->expressionEvaluator = std::make_unique<ExpressionEvaluator>(nullptr, context.script->data, nullptr, nullptr, context.script, nullptr, nullptr, &offset);
 		const auto exprEvalNumArgs = this->expressionEvaluator->ReadByte();
 		this->expressionEvalArgs.reserve(exprEvalNumArgs);
 		for (auto i = 0u; i < exprEvalNumArgs; ++i)
-			this->expressionEvalArgs.push_back(this->expressionEvaluator->GetTokens());
+		{
+			auto* tokens = this->expressionEvaluator->GetTokens();
+			if (!tokens)
+				return false;
+			this->expressionEvalArgs.push_back(tokens);
+		}
 		for (auto* token : this->expressionEvalArgs)
 			RegisterNVSEVars(*token, context.script);
 		return true;
@@ -649,6 +690,8 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context)
 				return false;
 			break;
 		}
+		if (args.back()->error)
+			return false;
 	}
 	return true;
 }
@@ -802,6 +845,8 @@ std::string ScriptParsing::Expression::ToString()
 
 ScriptParsing::SetToStatement::SetToStatement(const ScriptIterator& contextParam): ScriptStatement(contextParam)
 {
+	if (error)
+		return;
 	type = *context.curData;
 	if (type == 'r' || type == 's' || type == 'f')
 	{
@@ -812,15 +857,21 @@ ScriptParsing::SetToStatement::SetToStatement(const ScriptIterator& contextParam
 	}
 	else if (type == 'G')
 	{
+		++context.curData;
 		this->toVariable = std::make_unique<GlobalVariableToken>(context.ReadRefVar());
 	}
 	else
 	{
 		DebugBreak();
 	}
-	
+	if (this->toVariable->error)
+	{
+		error = true;
+		return;
+	}
 	expression = Expression(context);
-	expression.ReadExpression();
+	if (!expression.ReadExpression())
+		error = true;
 }
 
 std::string ScriptParsing::SetToStatement::ToString()
@@ -830,10 +881,15 @@ std::string ScriptParsing::SetToStatement::ToString()
 
 ScriptParsing::ConditionalStatement::ConditionalStatement(const ScriptIterator& contextParam): ScriptStatement(contextParam), expression(context)
 {
+	if (error)
+		return;
 	numBytesToJumpOnFalse = Read16();
 	expression = Expression(context);
 	if (context.opcode != static_cast<UInt16>(ScriptStatementCode::Else))
-		expression.ReadExpression();
+	{
+		if (!expression.ReadExpression())
+			error = true;
+	}
 }
 
 ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script) : iter_(script)
@@ -958,6 +1014,8 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 			scriptText += '\n';
 		}
 		lastOpcode = opcode;
+		if (iter->error)
+			scriptText += "; there was an error decompiling this line";
 	}
 	return scriptText;
 }

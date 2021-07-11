@@ -91,7 +91,7 @@ public:
 #endif
 	ScriptInfo		info;					// 018 / 018 / 02C
 	char			* text;					// 02C / 02C / 040
-	void			* data;					// 030 / 030 / 044
+	UInt8			* data;					// 030 / 030 / 044
 #if RUNTIME
 	float			unk34;					// 034
 	float			questDelayTimeCounter;	// 038      - init'd to fQuestDelayTime, decremented by frametime each frame

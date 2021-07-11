@@ -63,6 +63,7 @@ namespace ScriptParsing
 		ScriptName = 0x1D,
 		Return = 0x1E,
 		Ref = 0x1F,
+		Max = Ref,
 	};
 
 	enum class ExpressionCode : UInt8
@@ -96,6 +97,7 @@ namespace ScriptParsing
 	public:
 		ScriptIterator context;
 		CommandInfo* statementCmd;
+		bool error = false;
 		virtual ~ScriptLine() = default;
 
 		UInt8 Read8();
@@ -145,6 +147,7 @@ namespace ScriptParsing
 	{
 	public:
 		ExpressionCode code = ExpressionCode::None;
+		bool error = false;
 		virtual ~ExpressionToken() = default;
 
 		ExpressionToken() = default;

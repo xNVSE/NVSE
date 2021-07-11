@@ -122,6 +122,39 @@ static __declspec(naked) void ExpressionParserBufferOverflowHook_2(void)
 	}
 }
 
+void __stdcall HandleExpressionEvalRun(UInt8* exprSubsetPtr, UInt8* exprSubset, UInt32 numBytesParsed, Script* script, UInt8* pos, UInt8** scriptData, UInt32* opcodeOffsetPtr)
+{
+	// Do not use temporary stack buffer for script data when command is called from an if/set statement, instead set script data as correct ptr and opcode offset also as correct offset
+	*scriptData = script->data;
+	*opcodeOffsetPtr = pos - script->data + (exprSubsetPtr - exprSubset - numBytesParsed);
+}
+
+__declspec(naked) void ExpressionEvalRunCommandHook()
+{
+	const static auto returnAddress = 0x5949D9;
+	const static auto getValueFunction = 0x5AC7A0;
+	__asm
+	{
+		mov edx, [esp + 0x8] // opcodeOffsetPtr
+		lea ecx, [esp + 0x4] // scriptData
+		push edx
+		push ecx
+		mov ecx, [ebp + 0x8] // pos
+		push ecx
+		mov ecx, [ebp + 0x14] // script
+		push ecx
+		mov ecx, [ebp - 0x30] // numbytesparsed
+		push ecx
+		lea ecx, [ebp - 0x250] // subset
+		push ecx
+		mov ecx, [ebp - 0x44] // subsetPtr
+		push ecx
+		call HandleExpressionEvalRun
+		call getValueFunction
+		jmp returnAddress
+	}
+}
+
 void Hook_Script_Init()
 {
 	WriteRelJump(ExtractStringPatchAddr, (UInt32)&ExtractStringHook);
@@ -165,6 +198,8 @@ void Hook_Script_Init()
 		SafeWrite8(0x5E1024, 0xEB); // replace jnz with jmp
 		SafeWrite8(0x5E133B, 0xEB);
 	}
+	
+	WriteRelJump(0x5949D4, reinterpret_cast<UInt32>(ExpressionEvalRunCommandHook));
 }
 
 #else // CS-stuff
