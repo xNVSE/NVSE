@@ -947,12 +947,10 @@ bool DoesTokenCallCmd(ScriptParsing::CommandCallToken& token, CommandInfo* cmd)
 		return false;
 	});
 	if (argsCallCmd)
-	{
 		return true;
-	}
 	if (DoAnyExpressionEvalTokensCallCmd(token.expressionEvalArgs, cmd))
 		return true;
-	return false;;
+	return false;
 }
 
 bool ScriptParsing::ScriptAnalyzer::CallsCommand(CommandInfo* cmd)

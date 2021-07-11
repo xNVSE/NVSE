@@ -184,7 +184,7 @@ void ShowErrorMessageBox(const char* message);
 
 #if RUNTIME
 
-const char* GetModName(Script* script);
+const char* GetModName(TESForm* form);
 
 void ShowRuntimeError(Script* script, const char* fmt, ...);
 

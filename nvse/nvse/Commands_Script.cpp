@@ -742,29 +742,53 @@ bool Cmd_CallForSeconds_Execute(COMMAND_ARGS)
 	return true;
 }
 
+void DecompileScriptToFolder(const std::string& scriptName, Script* script, const std::string& fileExtension, const std::string_view& modName)
+{
+	ScriptParsing::ScriptAnalyzer analyzer(script);
+	const auto* dirName = "DecompiledScripts";
+	if (!std::filesystem::exists(dirName))
+		std::filesystem::create_directory(dirName);
+	const auto modDirName = FormatString("%s/%s", dirName, modName.data());
+	if (!std::filesystem::exists(modDirName))
+		std::filesystem::create_directory(modDirName);
+	const auto filePath = modDirName + '/' + scriptName + '.' + fileExtension;
+	std::ofstream os(filePath);
+	os << analyzer.DecompileScript();
+	Console_Print("Decompiled script to '%s'", filePath.c_str());
+}
+
 bool Cmd_DecompileScript_Execute(COMMAND_ARGS)
 {
-	Script* script;
+	TESForm* form;
 	*result = 0;
 	char fileExtensionArg[0x100]{};
-	if (!ExtractArgs(EXTRACT_ARGS, &script, &fileExtensionArg) || !IS_ID(script, Script))
+	if (!ExtractArgs(EXTRACT_ARGS, &form, &fileExtensionArg))
 		return true;
 	std::string fileExtension;
 	if (fileExtensionArg[0])
 		fileExtension = std::string(fileExtensionArg);
 	else
 		fileExtension = "gek";
-	ScriptParsing::ScriptAnalyzer analyzer(script);
-	const auto* dirName = "DecompiledScripts";
-	if (!std::filesystem::exists(dirName))
-		std::filesystem::create_directory(dirName);
-	const auto modDirName = FormatString("%s/%s", dirName, GetModName(script));
-	if (!std::filesystem::exists(modDirName))
-		std::filesystem::create_directory(modDirName);
-	const auto filePath = modDirName + '/' + std::string(script->GetName()) + '.' + fileExtension;
-	std::ofstream os(filePath);
-	os << analyzer.DecompileScript();
-	Console_Print("Decompiled script to '%s'", filePath.c_str());
+	if (IS_ID(form, Script))
+	{
+		auto* script = static_cast<Script*>(form);
+		std::string name = script->GetName();
+		if (name.empty())
+			name = FormatString("%X", script->refID & 0x00FFFFFF);
+		DecompileScriptToFolder(name, script, fileExtension, GetModName(script));
+	}
+	else if (IS_ID(form, TESPackage))
+	{
+		auto* package = static_cast<TESPackage*>(form);
+		for (auto& packageEvent : {std::make_pair("OnBegin", &package->onBeginAction), std::make_pair("OnEnd", &package->onEndAction), std::make_pair("OnChange", &package->onChangeAction)})
+		{
+			auto& [name, action] = packageEvent;
+			if (action->script)
+				DecompileScriptToFolder(std::string(package->GetName()) + name, action->script, fileExtension, GetModName(package));
+		}
+	}
+	else
+		return true;
 	*result = 1;
 	return true;
 }

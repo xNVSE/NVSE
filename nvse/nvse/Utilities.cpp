@@ -624,14 +624,14 @@ void ShowErrorMessageBox(const char* message)
 
 UnorderedSet<UInt32> g_warnedScripts;
 
-const char* GetModName(Script* script)
+const char* GetModName(TESForm* form)
 {
-	if (!script)
+	if (!form)
 		return "Unknown or deleted script";
-	const char* modName = "In-game console";
-	if (script->GetModIndex() != 0xFF)
+	const char* modName = IS_ID(form, Script) ? "In-game console" : "Dynamic forms";
+	if (form->GetModIndex() != 0xFF)
 	{
-		modName = DataHandler::Get()->GetNthModName(script->GetModIndex());
+		modName = DataHandler::Get()->GetNthModName(form->GetModIndex());
 		if (!modName || !modName[0])
 			modName = "Unknown";
 	}
