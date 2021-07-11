@@ -769,4 +769,35 @@ bool Cmd_DecompileScript_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_HasScriptCommand_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	Script* script;
+	UInt32 commandOpcode;
+	if (!ExtractArgs(EXTRACT_ARGS, &script, &commandOpcode) || !IS_ID(script, Script))
+		return true;
+	ScriptParsing::ScriptAnalyzer analyzer(script);
+	if (analyzer.error)
+		return true;
+	auto* cmdInfo = g_scriptCommands.GetByOpcode(commandOpcode);
+	if (!cmdInfo)
+		return true;
+	if (analyzer.CallsCommand(cmdInfo))
+		*result = 1;
+	return true;
+}
+
+bool Cmd_GetCommandOpcode_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	char buf[0x400];
+	if (!ExtractArgs(EXTRACT_ARGS, buf))
+		return true;
+	auto* cmd = g_scriptCommands.GetByName(buf);
+	if (!cmd)
+		return true;
+	*result = cmd->opcode;
+	return true;
+}
+
 #endif

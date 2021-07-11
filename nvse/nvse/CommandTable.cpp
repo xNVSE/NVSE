@@ -1795,6 +1795,8 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD_RET(ar_Filter, kRetnType_Array);
 	ADD_CMD_RET(ar_MapTo, kRetnType_Array);
 	ADD_CMD(DecompileScript);
+	ADD_CMD(HasScriptCommand);
+	ADD_CMD(GetCommandOpcode);
 }
 
 namespace PluginAPI

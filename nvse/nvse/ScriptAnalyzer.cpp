@@ -164,7 +164,7 @@ UInt32 ScriptParsing::ScriptLine::Read32()
 	return context.Read32();
 }
 
-ScriptParsing::ScriptLine::ScriptLine(const ScriptIterator& context, CommandInfo* cmd): context(context), statementCmd(cmd)
+ScriptParsing::ScriptLine::ScriptLine(const ScriptIterator& context, CommandInfo* cmd): context(context), cmdInfo(cmd)
 {
 	if (!cmd)
 		error = true;
@@ -172,7 +172,7 @@ ScriptParsing::ScriptLine::ScriptLine(const ScriptIterator& context, CommandInfo
 
 std::string ScriptParsing::ScriptLine::ToString()
 {
-	return std::string(this->statementCmd->longName);
+	return std::string(this->cmdInfo->longName);
 }
 
 ScriptParsing::ScriptCommandCall::ScriptCommandCall(const ScriptIterator& contextParam):
@@ -262,9 +262,9 @@ std::string ScriptParsing::ScriptVariableToken::GetBackupName()
 {
 	auto* analyzer = GetAnalyzer();
 	std::string prefix = "i";
-	if (analyzer ? analyzer->arrayVariables.contains(this->varInfo) : false)
+	if (analyzer && analyzer->arrayVariables.contains(this->varInfo))
 		prefix = "a";
-	else if (analyzer ? analyzer->stringVariables.contains(this->varInfo) : false)
+	else if (analyzer && analyzer->stringVariables.contains(this->varInfo))
 		prefix = "s";
 	else if (varInfo->idx == Script::eVarType_Float)
 	{
@@ -879,6 +879,11 @@ std::string ScriptParsing::SetToStatement::ToString()
 	return "Set " + this->toVariable->ToString() + " To " + expression.ToString();
 }
 
+ScriptParsing::Expression& ScriptParsing::SetToStatement::GetExpression()
+{
+	return expression;
+}
+
 ScriptParsing::ConditionalStatement::ConditionalStatement(const ScriptIterator& contextParam): ScriptStatement(contextParam), expression(context)
 {
 	if (error)
@@ -890,6 +895,89 @@ ScriptParsing::ConditionalStatement::ConditionalStatement(const ScriptIterator& 
 		if (!expression.ReadExpression())
 			error = true;
 	}
+}
+
+std::string ScriptParsing::ConditionalStatement::ToString()
+{
+	return ScriptLine::ToString() + " " + expression.ToString();
+}
+
+ScriptParsing::Expression& ScriptParsing::ConditionalStatement::GetExpression()
+{
+	return expression;
+}
+
+bool DoAnyExpressionEvalTokensCallCmd(const std::vector<CachedTokens*>& tokenList, CommandInfo* cmd);
+
+bool DoExpressionEvalTokensCallCmd(CachedTokens* tokens, CommandInfo* cmd)
+{
+	std::span exprEvalArgs {tokens->DataBegin(), tokens->Size()};
+	return std::ranges::any_of(exprEvalArgs, [&](TokenCacheEntry& entry)
+	{
+		if (entry.token->type == kTokenType_Command)
+		{
+			if (entry.token->value.cmd == cmd)
+				return true;
+			const auto callToken = entry.token->GetCallToken();
+			if (DoAnyExpressionEvalTokensCallCmd(callToken.expressionEvalArgs, cmd))
+				return true;
+		}
+		return false;
+	});
+}
+
+bool DoAnyExpressionEvalTokensCallCmd(const std::vector<CachedTokens*>& tokenList, CommandInfo* cmd)
+{
+	return std::ranges::any_of(tokenList, [&](CachedTokens* tokens)
+	{
+		return DoExpressionEvalTokensCallCmd(tokens, cmd);
+	});
+}
+
+bool DoesTokenCallCmd(ScriptParsing::CommandCallToken& token, CommandInfo* cmd)
+{
+	if (token.cmdInfo == cmd)
+		return true;
+	const auto argsCallCmd = std::ranges::any_of(token.args, [&](auto& tokenPtr)
+	{
+		ScriptParsing::OperandToken& token = *tokenPtr;
+		if (auto* inlineExpression = dynamic_cast<ScriptParsing::InlineExpressionToken*>(&token))
+			if (DoExpressionEvalTokensCallCmd(inlineExpression->tokens, cmd))
+				return true;
+		return false;
+	});
+	if (argsCallCmd)
+	{
+		return true;
+	}
+	if (DoAnyExpressionEvalTokensCallCmd(token.expressionEvalArgs, cmd))
+		return true;
+	return false;;
+}
+
+bool ScriptParsing::ScriptAnalyzer::CallsCommand(CommandInfo* cmd)
+{
+	return std::ranges::any_of(this->lines_, [&](std::unique_ptr<ScriptLine>& line)
+	{
+		if (line->cmdInfo == cmd)
+			return true;
+		ScriptCommandCall* cmdCall; CommandCallToken* argsToken;
+		if ((cmdCall = dynamic_cast<ScriptCommandCall*>(line.get())) && (argsToken = cmdCall->commandCallToken.get()) && DoesTokenCallCmd(*argsToken, cmd))
+			return true;
+		if (auto* expressionStatement = dynamic_cast<ExpressionStatement*>(line.get()))
+		{
+			auto& expression = expressionStatement->GetExpression();
+			for (auto& token : expression.stack)
+			{
+				CommandCallToken* cmdCallToken;
+				if (!(cmdCallToken = dynamic_cast<CommandCallToken*>(token.get())))
+					continue;
+				if (DoesTokenCallCmd(*cmdCallToken, cmd))
+					return true;
+			}
+		}
+		return false;
+	});
 }
 
 ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script) : iter_(script)
@@ -909,6 +997,8 @@ void ScriptParsing::ScriptAnalyzer::Parse()
 	while (!this->iter_.End())
 	{
 		this->lines_.push_back(ParseLine(this->iter_));
+		if (lines_.back()->error)
+			error = true;
 		++this->iter_;
 	}
 }
@@ -955,7 +1045,7 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 	UInt16 lastOpcode = 0;
 	for (auto& iter : this->lines_)
 	{
-		const auto opcode = iter->statementCmd->opcode;
+		const auto opcode = iter->cmdInfo->opcode;
 		if (opcode == kCommandInfo_Internal_PushExecutionContext.opcode || opcode == kCommandInfo_Internal_PopExecutionContext.opcode
 			|| opcode == static_cast<UInt16>(ScriptStatementCode::ScriptName) && isLambdaScript)
 			continue;

@@ -1,10 +1,6 @@
 ﻿#pragma once
-#include <stack>
 #include <unordered_set>
-
-#include "GameAPI.h"
 #include "GameObjects.h"
-#include "GameRTTI.h"
 #include "GameScript.h"
 
 class ExpressionEvaluator;
@@ -96,7 +92,7 @@ namespace ScriptParsing
 	{
 	public:
 		ScriptIterator context;
-		CommandInfo* statementCmd;
+		CommandInfo* cmdInfo;
 		bool error = false;
 		virtual ~ScriptLine() = default;
 
@@ -269,7 +265,14 @@ namespace ScriptParsing
 		bool ParseCommandArgs(ScriptIterator context);
 	};
 
-	class SetToStatement : public ScriptStatement
+	class ExpressionStatement
+	{
+	public:
+		virtual ~ExpressionStatement() = default;
+		virtual Expression& GetExpression() = 0;
+	};
+
+	class SetToStatement : public ScriptStatement, public ExpressionStatement
 	{
 	public:
 		char type = 0;
@@ -279,35 +282,32 @@ namespace ScriptParsing
 		explicit SetToStatement(const ScriptIterator& contextParam);
 
 		std::string ToString() override;
+		Expression& GetExpression() override;
 	};
 
-	class ConditionalStatement : public ScriptStatement
+	class ConditionalStatement : public ScriptStatement, public ExpressionStatement
 	{
 	public:
 		UInt16 numBytesToJumpOnFalse;
 		Expression expression;
 		explicit ConditionalStatement(const ScriptIterator& contextParam);
-		std::string ToString() override
-		{
-			return ScriptLine::ToString() + " " + expression.ToString();
-		}
+		std::string ToString() override;
+		Expression& GetExpression() override;
 	};
 	
 	class ScriptAnalyzer
 	{
 		ScriptIterator iter_;
 		std::vector<std::unique_ptr<ScriptLine>> lines_;
-		template <typename T>
-		void Add()
-		{
-			this->lines_.emplace_back(std::make_unique<T>(this->iter_));
-		}
 		void Parse();
 	public:
 		bool isLambdaScript = false;
 		bool compilerOverrideEnabled = false;
+		bool error = false;
 		std::unordered_set<VariableInfo*> arrayVariables;
 		std::unordered_set<VariableInfo*> stringVariables;
+
+		bool CallsCommand(CommandInfo* cmd);
 
 		ScriptAnalyzer(Script* script);
 		~ScriptAnalyzer();

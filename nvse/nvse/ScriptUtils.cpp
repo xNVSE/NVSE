@@ -4647,9 +4647,12 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 				auto *cmdInfo = token.GetCommandInfo();
 				if (cmdInfo)
 				{
-					ScriptParsing::CommandCallToken callToken(cmdInfo, script->GetRefFromRefList(token.refIdx));
-					ScriptParsing::ScriptIterator it(script, cmdInfo->opcode, 0, token.refIdx, static_cast<UInt8*>(m_scriptData) + token.cmdOpcodeOffset);
-					callToken.ParseCommandArgs(it);
+					auto callToken = token.GetCallToken();
+					if (callToken.error)
+					{
+						operands.push_back("<failed resolve cmd>");
+						break;
+					}
 					operands.push_back(callToken.ToString());
 					if (callToken.expressionEvalArgs.size() > 1)
 						operands.back() = '(' + operands.back() + ')';

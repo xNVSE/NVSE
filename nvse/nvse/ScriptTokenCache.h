@@ -21,7 +21,8 @@ public:
 	[[nodiscard]] std::size_t Size() const;
 	[[nodiscard]] bool Empty() const;
 	Vector<TokenCacheEntry>::Iterator Begin();
-	TokenCacheEntry *DataEnd();
+	TokenCacheEntry *DataBegin() const;
+	TokenCacheEntry *DataEnd() const;
 	void Clear();
 };
 

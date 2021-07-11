@@ -1,5 +1,6 @@
 #pragma once
 #include "LambdaManager.h"
+#include "ScriptAnalyzer.h"
 #include "SmallObjectsAllocator.h"
 
 #if _DEBUG
@@ -245,6 +246,7 @@ struct ScriptToken
 	ScriptLocal *GetVar() const;
 	bool ResolveVariable();
 	Script* GetUserFunction();
+	ScriptParsing::CommandCallToken GetCallToken() const;
 #endif
 	virtual bool CanConvertTo(Token_Type to) const; // behavior varies b/w compile/run-time for ambiguous types
 	virtual ArrayID GetOwningArrayID() const { return 0; }

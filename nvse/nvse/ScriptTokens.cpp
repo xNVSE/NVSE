@@ -870,6 +870,18 @@ Script* ScriptToken::GetUserFunction()
 		return nullptr;
 	return static_cast<Script*>(form);
 }
+
+ScriptParsing::CommandCallToken ScriptToken::GetCallToken() const
+{
+	auto* cmdInfo = GetCommandInfo();
+	if (!cmdInfo)
+		return ScriptParsing::CommandCallToken(nullptr, nullptr);
+	ScriptParsing::CommandCallToken callToken(GetCommandInfo(), owningScript->GetRefFromRefList(refIdx));
+	const ScriptParsing::ScriptIterator it(owningScript, cmdInfo->opcode, 0, refIdx, owningScript->data + cmdOpcodeOffset);
+	callToken.ParseCommandArgs(it);
+	return callToken;
+
+}
 #endif
 
 TESGlobal *ScriptToken::GetGlobal() const

@@ -145,4 +145,6 @@ extern std::vector<DelayedCallInfo> g_callForInfos;
 extern std::vector<CallWhileInfo> g_callWhileInfos;
 
 
-DEFINE_COMMAND(DecompileScript, decompiles script, false, 2, kParams_OneForm_OneOptionalString);
+DEFINE_COMMAND(DecompileScript, decompiles a script to file, false, 2, kParams_OneForm_OneOptionalString);
+DEFINE_COMMAND(HasScriptCommand, returns 1 if script contains call to a command, false, 2, kParams_OneForm_OneInt);
+DEFINE_COMMAND(GetCommandOpcode, gets opcode for command name, false, 1, kParams_OneString);
