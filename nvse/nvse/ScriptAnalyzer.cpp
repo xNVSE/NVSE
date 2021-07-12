@@ -466,10 +466,15 @@ ScriptOperator* ScriptParsing::Expression::ReadOperator()
 	const auto isNonOperatorChar = [](unsigned char c) { return c <= 0x20 || isspace(c) || !ispunct(c); };
 	if (isNonOperatorChar(*context.curData))
 		return nullptr;
+	ScriptOperator* result = nullptr;
+	auto maxCharsMatched = 0u;
+	auto* retPos = prevPos;
 	for (auto& op : g_gameScriptOperators)
 	{
-		auto match = true;
-		for (auto i = 0; i < 2; ++i)
+		auto curCharsMatched = 0u;
+		const auto len = strlen(op.operatorString);
+		bool match = true;
+		for (auto i = 0u; i < len; ++i)
 		{
 			const auto opChar = op.operatorString[i];
 			const auto curChar = context.Read8();
@@ -482,12 +487,18 @@ ScriptOperator* ScriptParsing::Expression::ReadOperator()
 				match = false;
 				break;
 			}
+			++curCharsMatched;
 		}
-		if (match)
-			return &op;
+		if (match && curCharsMatched > maxCharsMatched) // match >= over > if input is that
+		{
+			result = &op;
+			maxCharsMatched = curCharsMatched;
+			retPos = context.curData;
+		}
 		context.curData = prevPos;
 	}
-	return nullptr;
+	context.curData = retPos;
+	return result;
 }
 
 Script::RefVariable* ScriptParsing::ScriptIterator::ReadRefVar()
@@ -839,7 +850,7 @@ std::string ScriptParsing::Expression::ToString()
 		}
 	}
 	if (operands.size() != 1)
-		return "";
+		return "; failed to decompile expression";
 	return operands.back();
 }
 
@@ -890,11 +901,8 @@ ScriptParsing::ConditionalStatement::ConditionalStatement(const ScriptIterator& 
 		return;
 	numBytesToJumpOnFalse = Read16();
 	expression = Expression(context);
-	if (context.opcode != static_cast<UInt16>(ScriptStatementCode::Else))
-	{
-		if (!expression.ReadExpression())
+	if (!expression.ReadExpression())
 			error = true;
-	}
 }
 
 std::string ScriptParsing::ConditionalStatement::ToString()
@@ -1017,13 +1025,13 @@ std::unique_ptr<ScriptParsing::ScriptLine> ScriptParsing::ScriptAnalyzer::ParseL
 		case ScriptStatementCode::Return:
 		case ScriptStatementCode::Ref:
 		case ScriptStatementCode::EndIf:
-		case ScriptStatementCode::ReferenceFunction: 
+		case ScriptStatementCode::ReferenceFunction:
+		case ScriptStatementCode::Else:
 			return std::make_unique<ScriptStatement>(iter);
 		case ScriptStatementCode::SetTo:
 			return std::make_unique<SetToStatement>(iter);
 		case ScriptStatementCode::If:
 		case ScriptStatementCode::ElseIf:
-		case ScriptStatementCode::Else:
 			return std::make_unique<ConditionalStatement>(iter);
 		case ScriptStatementCode::ScriptName: 
 			return std::make_unique<ScriptNameStatement>(iter);
