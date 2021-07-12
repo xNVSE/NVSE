@@ -219,11 +219,22 @@ enum class MacroType
 	OneLineLambda, AssignmentShortHand, IfEval
 };
 
+struct SavedScriptLine
+{
+	std::string curExpr;
+	char *curOffset;
+	UInt32 len;
+
+	SavedScriptLine(std::string curExpr, char *gCurOffs, UInt32 len) : curExpr(std::move(curExpr)), curOffset(gCurOffs), len(len)
+	{
+	}
+};
+
 class ExpressionParser
 {
 	friend ScriptLineMacro;
 	enum { kMaxArgs = NVSE_EXPR_MAX_ARGS };
-
+	std::stack<SavedScriptLine> savedScriptLines;
 	ScriptBuffer		* m_scriptBuf;
 	ScriptLineBuffer	* m_lineBuf;
 	UInt32				m_len;

@@ -2395,34 +2395,23 @@ UInt32 ExpressionParser::MatchOpenBracket(Operator *openBracOp)
 
 Token_Type g_lastCommandReturnType = kTokenType_Invalid;
 
-struct SavedScriptLine
-{
-	std::string curExpr;
-	char *curOffset;
-	UInt32 len;
-
-	SavedScriptLine(std::string curExpr, char *gCurOffs, UInt32 len) : curExpr(std::move(curExpr)), curOffset(gCurOffs), len(len)
-	{
-	}
-};
-static std::stack<SavedScriptLine> g_savedScriptLines;
-
 void ExpressionParser::SaveScriptLine()
 {
-	g_savedScriptLines.emplace(CurText(), CurText(), m_len);
+	savedScriptLines.emplace(CurText(), CurText(), m_len);
 }
 
 void ExpressionParser::RestoreScriptLine()
 {
-	const auto &line = g_savedScriptLines.top();
+	const auto &line = savedScriptLines.top();
 	if (_stricmp(line.curOffset, line.curExpr.c_str()) != 0)
 	{
-		strcpy_s(line.curOffset, sizeof m_lineBuf->paramText - line.len, line.curExpr.c_str());
+		const auto offset = line.curOffset - m_lineBuf->paramText + line.curExpr.size();
+		strcpy_s(line.curOffset, sizeof m_lineBuf->paramText - (line.curOffset - m_lineBuf->paramText), line.curExpr.c_str());
 		m_len = line.len;
 		m_lineBuf->paramTextLen = line.len;
-		Offset() = line.curOffset - m_lineBuf->paramText + line.curExpr.size();
+		Offset() = offset;
 	}
-	g_savedScriptLines.pop();
+	savedScriptLines.pop();
 }
 
 Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
