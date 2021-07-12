@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <unordered_set>
+#include "GameAPI.h"
 #include "GameObjects.h"
 #include "GameScript.h"
 
@@ -37,11 +38,12 @@ namespace ScriptParsing
 		UInt16 refIdx{};
 		Script* script;
 		UInt8* curData;
+		UInt8* startData;
 
 		explicit ScriptIterator(Script* script);
 		ScriptIterator(Script* script, UInt8* position);
 		ScriptIterator(Script* script, UInt16 opcode, UInt16 length, UInt16 refIdx, UInt8* data);
-		ScriptIterator() : script(nullptr), curData(nullptr) {}
+		ScriptIterator();
 		void operator++();
 		bool End() const;
 	};
@@ -266,6 +268,8 @@ namespace ScriptParsing
 
 		bool ReadNumericToken(ScriptIterator& context);
 
+		bool ParseGameArgs(ScriptIterator& context, UInt32 numArgs);
+		bool ParseArg(ScriptIterator& context, ExtractParamType type);
 		bool ParseCommandArgs(ScriptIterator context);
 	};
 
@@ -303,8 +307,8 @@ namespace ScriptParsing
 	{
 		void Parse();
 	public:
-		ScriptIterator iter_;
-		std::vector<std::unique_ptr<ScriptLine>> lines_;
+		ScriptIterator iter;
+		std::vector<std::unique_ptr<ScriptLine>> lines;
 		bool isLambdaScript = false;
 		bool compilerOverrideEnabled = false;
 		bool error = false;

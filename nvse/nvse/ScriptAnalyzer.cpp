@@ -158,19 +158,24 @@ void ScriptParsing::ScriptIterator::ReadLine()
 		refIdx = 0;
 		length = Read16();
 	}
+	startData = curData;
 }
 
-ScriptParsing::ScriptIterator::ScriptIterator(Script* script) : script(script), curData(static_cast<UInt8*>(script->data))
+ScriptParsing::ScriptIterator::ScriptIterator(Script* script) : script(script), curData(script->data), startData(curData)
 {
 	ReadLine();
 }
 
-ScriptParsing::ScriptIterator::ScriptIterator(Script* script, UInt8* position) : script(script), curData(position)
+ScriptParsing::ScriptIterator::ScriptIterator(Script* script, UInt8* position) : script(script), curData(position), startData(position)
 {
 	ReadLine();
 }
 
-ScriptParsing::ScriptIterator::ScriptIterator(Script* script, UInt16 opcode, UInt16 length, UInt16 refIdx, UInt8* data): opcode(opcode), length(length), refIdx(refIdx), script(script), curData(data)
+ScriptParsing::ScriptIterator::ScriptIterator(Script* script, UInt16 opcode, UInt16 length, UInt16 refIdx, UInt8* data): opcode(opcode), length(length), refIdx(refIdx), script(script), curData(data), startData(data)
+{
+}
+
+ScriptParsing::ScriptIterator::ScriptIterator(): script(nullptr), curData(nullptr), startData(nullptr)
 {
 }
 
@@ -336,7 +341,11 @@ ScriptParsing::StringLiteralToken::StringLiteralToken(const std::string_view& st
 
 std::string ScriptParsing::StringLiteralToken::ToString()
 {
-	return '"' +std::string(this->stringLiteral) + '"';
+	std::string str(this->stringLiteral);
+	ReplaceAll(str, "\n", "%r");
+	ReplaceAll(str, "%", "%%");
+	ReplaceAll(str, "\"", "%q");
+	return '"' + str + '"';
 }
 
 ScriptParsing::NumericConstantToken::NumericConstantToken(double value): value(value)
@@ -618,6 +627,17 @@ bool ScriptParsing::CommandCallToken::ReadNumericToken(ScriptIterator& context)
 	return true;
 }
 
+bool ScriptParsing::CommandCallToken::ParseGameArgs(ScriptIterator& context, UInt32 numArgs)
+{
+	for (auto i = 0u; i < numArgs; ++i)
+	{
+		const auto typeID = static_cast<ExtractParamType>(kClassifyParamExtract[cmdInfo->params[i].typeID]);
+		if (!ParseArg(context, typeID))
+			return false;
+	}
+	return true;
+}
+
 bool ScriptParsing::ScriptIterator::ReadStringLiteral(std::string_view& out)
 {
 	const auto strLen = Read16();
@@ -656,6 +676,47 @@ void RegisterNVSEVars(CachedTokens& tokens, Script* script)
 	}
 }
 
+bool ScriptParsing::CommandCallToken::ParseArg(ScriptIterator& context, ExtractParamType typeID)
+{
+	if (*reinterpret_cast<UInt16*>(context.curData) == 0xFFFF)
+	{
+		context.curData += 2;
+		args.push_back(std::make_unique<InlineExpressionToken>(context));
+		return true;
+	}
+	switch (typeID)
+	{
+	case kExtractParam_StringLiteral:
+		{
+			std::string_view stringLit;
+			if (context.ReadStringLiteral(stringLit))
+				args.push_back(std::make_unique<StringLiteralToken>(stringLit));
+			break;
+		}
+	case kExtractParam_Int:
+	case kExtractParam_Float:
+	case kExtractParam_Double:
+		ReadNumericToken(context);
+		break;
+	case kExtractParam_Short:
+		args.push_back(std::make_unique<NumericConstantToken>(context.Read16()));
+		break;
+	case kExtractParam_Byte:
+		args.push_back(std::make_unique<NumericConstantToken>(context.Read8()));
+		break;
+	case kExtractParam_Form:
+		if (!ReadFormToken(context))
+			return false;
+		break;
+	case kExtractParam_ScriptVariable:
+		if (!ReadVariableToken(context))
+			return false;
+		break;
+	}
+	if (args.back()->error)
+		return false;
+	return true;
+}
 
 const UInt32 g_gameParseCommands[] = {0x5B1BA0, 0x5B3C70, 0x5B3CA0, 0x5B3C40, 0x5B3CD0, reinterpret_cast<UInt32>(Cmd_Default_Parse) };
 
@@ -702,45 +763,16 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context)
 		return true;
 	}
 	const auto numArgs = context.Read16();
-	for (auto i = 0u; i < numArgs; ++i)
+	if (!ParseGameArgs(context, numArgs))
+		return false;
+	if (context.curData < context.startData + context.length)
 	{
-		const auto typeID = static_cast<ExtractParamType>(kClassifyParamExtract[cmdInfo->params[i].typeID]);
-		if (*reinterpret_cast<UInt16*>(context.curData) == 0xFFFF)
-		{
-			context.curData += 2;
-			args.push_back(std::make_unique<InlineExpressionToken>(context));
-			continue;
-		}
-		switch (typeID)
-		{
-		case kExtractParam_StringLiteral:
-			{
-				std::string_view stringLit;
-				if (context.ReadStringLiteral(stringLit))
-					args.push_back(std::make_unique<StringLiteralToken>(stringLit));
-				break;
-			}
-		case kExtractParam_Int:
-		case kExtractParam_Float:
-		case kExtractParam_Double:
-			ReadNumericToken(context);
-			break;
-		case kExtractParam_Short:
-			args.push_back(std::make_unique<NumericConstantToken>(context.Read16()));
-			break;
-		case kExtractParam_Byte:
-			args.push_back(std::make_unique<NumericConstantToken>(context.Read8()));
-			break;
-		case kExtractParam_Form:
-			if (!ReadFormToken(context))
-				return false;
-			break;
-		case kExtractParam_ScriptVariable:
-			if (!ReadVariableToken(context))
-				return false;
-			break;
-		}
-		if (args.back()->error)
+		// message box args?
+		const auto numArgs = *context.curData;
+		if (numArgs > 9)
+			return true;
+		++context.curData;
+		if (!ParseGameArgs(context, numArgs))
 			return false;
 	}
 	return true;
@@ -1058,7 +1090,8 @@ std::unique_ptr<ScriptParsing::ScriptLine> ScriptParsing::ScriptAnalyzer::ParseL
 	const auto opcode =  iter.opcode;
 	if (opcode <= static_cast<UInt32>(ScriptStatementCode::Ref))
 	{
-		switch (static_cast<ScriptStatementCode>(opcode))
+		const auto statementCode = static_cast<ScriptStatementCode>(opcode);
+		switch (statementCode)
 		{
 		case ScriptStatementCode::Begin: 
 			return std::make_unique<BeginStatement>(iter);
@@ -1092,13 +1125,19 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 	const auto nestAddOpcodes = {static_cast<UInt32>(ScriptStatementCode::If), static_cast<UInt32>(ScriptStatementCode::Begin), kCommandInfo_While.opcode, kCommandInfo_ForEach.opcode};
 	const auto nestMinOpcodes = {static_cast<UInt32>(ScriptStatementCode::EndIf), static_cast<UInt32>(ScriptStatementCode::End), kCommandInfo_Loop.opcode};
 	const auto nestNeutralOpcodes = {static_cast<UInt32>(ScriptStatementCode::Else), static_cast<UInt32>(ScriptStatementCode::ElseIf)};
-	UInt16 lastOpcode = 0;
-	for (auto& iter : this->lines)
+	UInt32 lastOpcode = 0;
+	for (auto& it : this->lines)
 	{
-		const auto opcode = iter->cmdInfo->opcode;
+		const auto opcode = it->cmdInfo->opcode;
 		if (opcode == kCommandInfo_Internal_PushExecutionContext.opcode || opcode == kCommandInfo_Internal_PopExecutionContext.opcode
 			|| opcode == static_cast<UInt16>(ScriptStatementCode::ScriptName) && isLambdaScript)
 			continue;
+		if (it->error)
+		{
+			scriptText += it->ToString();
+			scriptText += " ; there was an error decompiling this line";
+			continue;
+		}
 		const auto isMin = Contains(nestMinOpcodes, opcode);
 		const auto isAdd = Contains(nestAddOpcodes, opcode);
 		if (isAdd && !scriptText.ends_with("\n\n") && !Contains(nestAddOpcodes, lastOpcode) && !Contains(nestNeutralOpcodes, lastOpcode))
@@ -1111,7 +1150,7 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 		if (numTabs < 0)
 			numTabs = 0;
 
-		auto nextLine = iter->ToString();
+		auto nextLine = it->ToString();
 		// adjust lambda script indent
 		auto tabStr = std::string(numTabs, '\t');
 		ReplaceAll(nextLine, "\n", '\n' + tabStr);
@@ -1122,15 +1161,15 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 		if (isNeutral || isAdd)
 			++numTabs;
 
-		if (iter->error)
-			scriptText += "; there was an error decompiling this line";
 		scriptText += '\n';
 
-		if (opcode == static_cast<UInt16>(ScriptStatementCode::ScriptName))
+		if (opcode == static_cast<UInt16>(ScriptStatementCode::ScriptName) && !script->varList.Empty())
 		{
 			scriptText += '\n';
 			for (auto* var : script->varList)
 			{
+				if (!var)
+					continue;
 				auto varName = std::string(var->name.CStr());
 				if (arrayVariables.contains(var))
 					scriptText += "Array_var " + varName;

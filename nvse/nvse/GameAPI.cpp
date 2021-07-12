@@ -1813,6 +1813,11 @@ bool vExtractArgsEx(ParamInfo *paramInfo, void *scriptDataIn, UInt32 *scriptData
 	UInt32 numArgs = *(UInt16 *)scriptData;
 	scriptData += 2;
 
+#if _DEBUG
+	auto *opcodePtr = reinterpret_cast<UInt16 *>(static_cast<UInt8 *>(scriptDataIn) + (*scriptDataOffset - 4));
+	g_lastCommand = g_scriptCommands.GetByOpcode(*opcodePtr);
+#endif
+
 	//DEBUG_MESSAGE("scriptData:%08x numArgs:%d paramInfo:%08x scriptObj:%08x eventList:%08x", scriptData, numArgs, paramInfo, scriptObj, eventList);
 
 	bool bExtracted = false;
@@ -1834,10 +1839,6 @@ bool vExtractArgsEx(ParamInfo *paramInfo, void *scriptDataIn, UInt32 *scriptData
 	else if (v_ExtractArgsEx(numArgs, paramInfo, scriptData, scriptObj, eventList, args, scriptDataIn))
 		bExtracted = true;
 
-#if _DEBUG
-	auto *opcodePtr = reinterpret_cast<UInt16 *>(static_cast<UInt8 *>(scriptDataIn) + (*scriptDataOffset - 4));
-	g_lastCommand = g_scriptCommands.GetByOpcode(*opcodePtr);
-#endif
 	if (incrementOffsetPtr && bExtracted)
 	{
 		*scriptDataOffset += scriptData - (static_cast<UInt8 *>(scriptDataIn) + *scriptDataOffset);
