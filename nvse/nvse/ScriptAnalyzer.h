@@ -14,6 +14,7 @@ namespace ScriptParsing
 	enum class ExpressionCode : UInt8;
 
 	bool ScriptContainsCommand(Script* script, CommandInfo* info, CommandInfo* eventBlock);
+	bool PluginDecompileScript(Script* script, SInt32 lineNumber, char* buffer, UInt32 bufferSize);
 
 	class ScriptIterator
 	{
@@ -300,10 +301,10 @@ namespace ScriptParsing
 	
 	class ScriptAnalyzer
 	{
-		ScriptIterator iter_;
-		std::vector<std::unique_ptr<ScriptLine>> lines_;
 		void Parse();
 	public:
+		ScriptIterator iter_;
+		std::vector<std::unique_ptr<ScriptLine>> lines_;
 		bool isLambdaScript = false;
 		bool compilerOverrideEnabled = false;
 		bool error = false;

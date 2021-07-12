@@ -912,6 +912,7 @@ void * PluginManager::GetFunc(UInt32 funcID)
 	case NVSEDataInterface::kNVSEData_LambdaUnsaveVariableList: result = (void*)&LambdaManager::UnsaveLambdaVariables; break;
 	case NVSEDataInterface::kNVSEData_IsScriptLambda: result = (void*)&LambdaManager::IsScriptLambda; break;
 	case NVSEDataInterface::kNVSEData_HasScriptCommand: result = (void*)&ScriptParsing::ScriptContainsCommand; break;
+	case NVSEDataInterface::kNVSEData_DecompileScript: result = (void*)&ScriptParsing::PluginDecompileScript; break;
 	}
 	return result;
 }

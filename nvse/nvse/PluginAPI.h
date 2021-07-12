@@ -522,6 +522,7 @@ struct NVSEDataInterface
 		
 		kNVSEData_IsScriptLambda,
 		kNVSEData_HasScriptCommand,
+		kNVSEData_DecompileScript,
 		
 		kNVSEData_FuncMax,
 	};

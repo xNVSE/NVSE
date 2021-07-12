@@ -86,12 +86,30 @@ CommandInfo* GetEventCommandInfo(UInt16 opcode)
 
 bool ScriptParsing::ScriptContainsCommand(Script* script, CommandInfo* info, CommandInfo* eventBlock)
 {
-	ScriptParsing::ScriptAnalyzer analyzer(script);
+	ScriptAnalyzer analyzer(script);
 	if (analyzer.error)
 		return false;
 	if (analyzer.CallsCommand(info, eventBlock))
 		return true;
 	return false;
+}
+
+bool ScriptParsing::PluginDecompileScript(Script* script, SInt32 lineNumber, char* buffer, UInt32 bufferSize)
+{
+	ScriptAnalyzer analyzer(script);
+	if (lineNumber != -1)
+	{
+		auto str = analyzer.lines.at(lineNumber)->ToString();
+		if (str.size() > bufferSize)
+			return false;
+		strcpy_s(buffer, bufferSize, str.c_str());
+		return true;
+	}
+	auto str = analyzer.DecompileScript();
+	if (str.size() > bufferSize)
+		return false;
+	strcpy_s(buffer, bufferSize, str.c_str());
+	return true;
 
 }
 
@@ -984,7 +1002,7 @@ bool DoesTokenCallCmd(ScriptParsing::CommandCallToken& token, CommandInfo* cmd)
 bool ScriptParsing::ScriptAnalyzer::CallsCommand(CommandInfo* cmd, CommandInfo* eventBlockInfo = nullptr)
 {
 	CommandInfo* lastEventBlock = nullptr;
-	return std::ranges::any_of(this->lines_, [&](std::unique_ptr<ScriptLine>& line)
+	return std::ranges::any_of(this->lines, [&](std::unique_ptr<ScriptLine>& line)
 	{
 		BeginStatement* beginStatement;
 		if (eventBlockInfo && (beginStatement = dynamic_cast<BeginStatement*>(line.get())))
@@ -1012,7 +1030,7 @@ bool ScriptParsing::ScriptAnalyzer::CallsCommand(CommandInfo* cmd, CommandInfo* 
 	});
 }
 
-ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script) : iter_(script), script(script)
+ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script) : iter(script), script(script)
 {
 	g_analyzerStack.push(this);
 	Parse();
@@ -1026,12 +1044,12 @@ ScriptParsing::ScriptAnalyzer::~ScriptAnalyzer()
 
 void ScriptParsing::ScriptAnalyzer::Parse()
 {
-	while (!this->iter_.End())
+	while (!this->iter.End())
 	{
-		this->lines_.push_back(ParseLine(this->iter_));
-		if (lines_.back()->error)
+		this->lines.push_back(ParseLine(this->iter));
+		if (lines.back()->error)
 			error = true;
-		++this->iter_;
+		++this->iter;
 	}
 }
 
@@ -1068,14 +1086,14 @@ std::unique_ptr<ScriptParsing::ScriptLine> ScriptParsing::ScriptAnalyzer::ParseL
 
 std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 {
-	auto* script = this->iter_.script;
+	auto* script = this->iter.script;
 	std::string scriptText;
 	auto numTabs = 0;
 	const auto nestAddOpcodes = {static_cast<UInt32>(ScriptStatementCode::If), static_cast<UInt32>(ScriptStatementCode::Begin), kCommandInfo_While.opcode, kCommandInfo_ForEach.opcode};
 	const auto nestMinOpcodes = {static_cast<UInt32>(ScriptStatementCode::EndIf), static_cast<UInt32>(ScriptStatementCode::End), kCommandInfo_Loop.opcode};
 	const auto nestNeutralOpcodes = {static_cast<UInt32>(ScriptStatementCode::Else), static_cast<UInt32>(ScriptStatementCode::ElseIf)};
 	UInt16 lastOpcode = 0;
-	for (auto& iter : this->lines_)
+	for (auto& iter : this->lines)
 	{
 		const auto opcode = iter->cmdInfo->opcode;
 		if (opcode == kCommandInfo_Internal_PushExecutionContext.opcode || opcode == kCommandInfo_Internal_PopExecutionContext.opcode
