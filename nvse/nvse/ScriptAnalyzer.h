@@ -245,7 +245,7 @@ namespace ScriptParsing
 	{
 	public:
 		CommandInfo* cmdInfo;
-		Script::RefVariable* callingReference;
+		std::unique_ptr<RefToken> callingReference = nullptr;
 		
 		std::vector<std::unique_ptr<OperandToken>> args;
 
@@ -253,7 +253,7 @@ namespace ScriptParsing
 		std::vector<CachedTokens*> expressionEvalArgs;
 
 		CommandCallToken(const ScriptIterator& context);
-		CommandCallToken(CommandInfo* cmdInfo, Script::RefVariable* callingRef);
+		CommandCallToken(CommandInfo* cmdInfo, Script::RefVariable* callingRef, Script* script);
 
 		std::string ToString() override;
 
@@ -307,6 +307,7 @@ namespace ScriptParsing
 		bool error = false;
 		std::unordered_set<VariableInfo*> arrayVariables;
 		std::unordered_set<VariableInfo*> stringVariables;
+		Script* script;
 
 		bool CallsCommand(CommandInfo* cmd, CommandInfo* eventBlockInfo);
 

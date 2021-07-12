@@ -220,7 +220,7 @@ ScriptParsing::BeginStatement::BeginStatement(const ScriptIterator& contextParam
 	this->eventBlockCmd = GetEventCommandInfo(eventOpcode);
 	this->endJumpLength = this->context.Read32();
 	
-	this->commandCallToken = std::make_unique<CommandCallToken>(eventBlockCmd, nullptr);
+	this->commandCallToken = std::make_unique<CommandCallToken>(eventBlockCmd, nullptr, context.script);
 	if (context.length > 6)
 	{
 		const ScriptIterator iter(context.script, eventBlockCmd->opcode, context.length, 0, context.curData);
@@ -387,14 +387,18 @@ std::string ScriptParsing::InlineExpressionToken::ToString()
 }
 
 ScriptParsing::CommandCallToken::CommandCallToken(const ScriptIterator& iter): OperandToken(ExpressionCode::Command),
-                                                                               cmdInfo(g_scriptCommands.GetByOpcode(iter.opcode)), callingReference(iter.GetCallingReference())
+                                                                               cmdInfo(g_scriptCommands.GetByOpcode(iter.opcode))
 {
+	if (auto* callingRef = iter.GetCallingReference())
+		callingReference = std::make_unique<RefToken>(iter.script, callingRef);
 }
 
-ScriptParsing::CommandCallToken::CommandCallToken(CommandInfo* cmdInfo, Script::RefVariable* callingRef) : cmdInfo(cmdInfo), callingReference(callingRef)
+ScriptParsing::CommandCallToken::CommandCallToken(CommandInfo* cmdInfo, Script::RefVariable* callingRef, Script* script) : cmdInfo(cmdInfo)
 {
 	if (!cmdInfo)
 		error = true;
+	if (callingRef)
+		callingReference = std::make_unique<RefToken>(script, callingRef);
 }
 
 template <typename T, typename F>
@@ -435,6 +439,9 @@ std::string StringForNumericParam(ParamType typeID, int value)
 
 std::string ScriptParsing::CommandCallToken::ToString()
 {
+	std::string refStr;
+	if (callingReference)
+		refStr = callingReference->ToString() + '.';
 	if (this->cmdInfo->execute == kCommandInfo_Function.execute)
 	{
 		return std::string(cmdInfo->longName) + " {" + TokenListToString(this->args, [&](auto& token, UInt32 i)
@@ -444,7 +451,7 @@ std::string ScriptParsing::CommandCallToken::ToString()
 	}
 	if (this->expressionEvaluator)
 	{
-		return cmdInfo->longName + TokenListToString(this->expressionEvalArgs, [&](CachedTokens* t, UInt32 callCount)
+		return refStr + cmdInfo->longName + TokenListToString(this->expressionEvalArgs, [&](CachedTokens* t, UInt32 callCount)
 		{
 			auto text = this->expressionEvaluator->GetLineText(*t, nullptr);
 			if (expressionEvalArgs.size() > 1 && t->Size() > 1)
@@ -452,7 +459,7 @@ std::string ScriptParsing::CommandCallToken::ToString()
 			return text;
 		});
 	}
-	return cmdInfo->longName + TokenListToString(this->args, [&](auto& token, UInt32 i)
+	return refStr + cmdInfo->longName + TokenListToString(this->args, [&](auto& token, UInt32 i)
 	{
 		auto& arg = *token;
 		const auto typeID = static_cast<ParamType>(cmdInfo->params[i].typeID);
@@ -784,7 +791,7 @@ bool ScriptParsing::Expression::ReadExpression()
 		case 'X':
 			{
 				const auto opcode = context.Read16();
-				auto token = std::make_unique<CommandCallToken>(g_scriptCommands.GetByOpcode(opcode), refVar);
+				auto token = std::make_unique<CommandCallToken>(g_scriptCommands.GetByOpcode(opcode), refVar, context.script);
 				const auto dataLen = context.Read16();
 				if (dataLen && !token->ParseCommandArgs(context))
 					return false;
@@ -999,7 +1006,7 @@ bool ScriptParsing::ScriptAnalyzer::CallsCommand(CommandInfo* cmd, CommandInfo* 
 	});
 }
 
-ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script) : iter_(script)
+ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script) : iter_(script), script(script)
 {
 	g_analyzerStack.push(this);
 	Parse();

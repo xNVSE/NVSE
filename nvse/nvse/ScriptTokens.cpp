@@ -890,8 +890,8 @@ ScriptParsing::CommandCallToken ScriptToken::GetCallToken() const
 {
 	auto* cmdInfo = GetCommandInfo();
 	if (!cmdInfo)
-		return ScriptParsing::CommandCallToken(nullptr, nullptr);
-	ScriptParsing::CommandCallToken callToken(GetCommandInfo(), owningScript->GetRefFromRefList(refIdx));
+		return ScriptParsing::CommandCallToken(nullptr, nullptr, nullptr);
+	ScriptParsing::CommandCallToken callToken(GetCommandInfo(), owningScript->GetRefFromRefList(refIdx), owningScript);
 	const ScriptParsing::ScriptIterator it(owningScript, cmdInfo->opcode, 0, refIdx, owningScript->data + cmdOpcodeOffset);
 	callToken.ParseCommandArgs(it);
 	return callToken;
