@@ -521,6 +521,7 @@ struct NVSEDataInterface
 		kNVSEData_LambdaUnsaveVariableList,
 		
 		kNVSEData_IsScriptLambda,
+		kNVSEData_HasScriptCommand,
 		
 		kNVSEData_FuncMax,
 	};

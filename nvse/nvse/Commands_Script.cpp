@@ -817,16 +817,13 @@ bool Cmd_HasScriptCommand_Execute(COMMAND_ARGS)
 	}
 	if (!script)
 		return true;
-	ScriptParsing::ScriptAnalyzer analyzer(script);
-	if (analyzer.error)
-		return true;
 	auto* cmdInfo = g_scriptCommands.GetByOpcode(commandOpcode);
 	if (!cmdInfo)
 		return true;
 	CommandInfo* eventCmd = nullptr;
 	if (eventOpcode != -1)
 		eventCmd = GetEventCommandInfo(eventOpcode);
-	if (analyzer.CallsCommand(cmdInfo, eventCmd))
+	if (ScriptParsing::ScriptContainsCommand(script, cmdInfo, eventCmd))
 		*result = 1;
 	return true;
 }

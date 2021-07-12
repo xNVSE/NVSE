@@ -13,6 +13,8 @@ namespace ScriptParsing
 	class CommandCallToken;
 	enum class ExpressionCode : UInt8;
 
+	bool ScriptContainsCommand(Script* script, CommandInfo* info, CommandInfo* eventBlock);
+
 	class ScriptIterator
 	{
 		void ReadLine();

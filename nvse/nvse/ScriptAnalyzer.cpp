@@ -84,6 +84,17 @@ CommandInfo* GetEventCommandInfo(UInt16 opcode)
 	return &g_eventBlockCommandInfos[opcode];
 }
 
+bool ScriptParsing::ScriptContainsCommand(Script* script, CommandInfo* info, CommandInfo* eventBlock)
+{
+	ScriptParsing::ScriptAnalyzer analyzer(script);
+	if (analyzer.error)
+		return false;
+	if (analyzer.CallsCommand(info, eventBlock))
+		return true;
+	return false;
+
+}
+
 UInt8 ScriptParsing::ScriptIterator::Read8()
 {
 	return ::Read8(curData);
@@ -775,8 +786,7 @@ bool ScriptParsing::Expression::ReadExpression()
 		case 'n':
 		case 'z':
 			// no idea what these do
-			DebugBreak();
-			break;
+			return false;
 		case '"':
 			{
 				std::string_view strLit;
