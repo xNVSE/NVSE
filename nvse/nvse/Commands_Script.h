@@ -144,7 +144,14 @@ struct CallWhileInfo
 extern std::vector<DelayedCallInfo> g_callForInfos;
 extern std::vector<CallWhileInfo> g_callWhileInfos;
 
+static ParamInfo kParams_HasScriptCommand[3] =
+{
+	{	"command opcode",	kParamType_Integer,			0	},
+	{	"form",			kParamType_AnyForm,	1	},
+	{	"event block id",			kParamType_Integer,	1	}
+};
+
 
 DEFINE_COMMAND(DecompileScript, decompiles a script to file, false, 2, kParams_OneForm_OneOptionalString);
-DEFINE_COMMAND(HasScriptCommand, returns 1 if script contains call to a command, false, 2, kParams_OneForm_OneInt);
+DEFINE_COMMAND(HasScriptCommand, returns 1 if script contains call to a command, false, 3, kParams_HasScriptCommand);
 DEFINE_COMMAND(GetCommandOpcode, gets opcode for command name, false, 1, kParams_OneString);

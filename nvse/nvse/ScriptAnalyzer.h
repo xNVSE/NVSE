@@ -5,6 +5,7 @@
 
 class ExpressionEvaluator;
 class CachedTokens;
+CommandInfo* GetEventCommandInfo(UInt16 opcode);
 
 namespace ScriptParsing
 {
@@ -307,7 +308,7 @@ namespace ScriptParsing
 		std::unordered_set<VariableInfo*> arrayVariables;
 		std::unordered_set<VariableInfo*> stringVariables;
 
-		bool CallsCommand(CommandInfo* cmd);
+		bool CallsCommand(CommandInfo* cmd, CommandInfo* eventBlockInfo);
 
 		ScriptAnalyzer(Script* script);
 		~ScriptAnalyzer();

@@ -797,9 +797,25 @@ bool Cmd_DecompileScript_Execute(COMMAND_ARGS)
 bool Cmd_HasScriptCommand_Execute(COMMAND_ARGS)
 {
 	*result = 0;
-	Script* script;
 	UInt32 commandOpcode;
-	if (!ExtractArgs(EXTRACT_ARGS, &script, &commandOpcode) || !IS_ID(script, Script))
+	TESForm* form;
+	UInt32 eventOpcode = -1;
+	Script* script = nullptr;
+	if (!ExtractArgs(EXTRACT_ARGS, &commandOpcode, &form, &eventOpcode))
+		return true;
+	if (!form)
+		form = thisObj;
+	if (!form)
+		return true;
+	if (IS_ID(form, Script))
+		script = static_cast<Script*>(form);
+	else if (form->GetIsReference())
+	{
+		auto* ref = static_cast<TESObjectREFR*>(form);
+		if (auto* extraScript = ref->GetExtraScript())
+			script = extraScript->script;
+	}
+	if (!script)
 		return true;
 	ScriptParsing::ScriptAnalyzer analyzer(script);
 	if (analyzer.error)
@@ -807,7 +823,10 @@ bool Cmd_HasScriptCommand_Execute(COMMAND_ARGS)
 	auto* cmdInfo = g_scriptCommands.GetByOpcode(commandOpcode);
 	if (!cmdInfo)
 		return true;
-	if (analyzer.CallsCommand(cmdInfo))
+	CommandInfo* eventCmd = nullptr;
+	if (eventOpcode != -1)
+		eventCmd = GetEventCommandInfo(eventOpcode);
+	if (analyzer.CallsCommand(cmdInfo, eventCmd))
 		*result = 1;
 	return true;
 }

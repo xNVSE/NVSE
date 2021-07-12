@@ -77,6 +77,13 @@ CommandInfo* GetScriptStatement(ScriptParsing::ScriptStatementCode code)
 	return &g_scriptStatementCommandInfos[static_cast<unsigned int>(code) - 0x10];
 }
 
+CommandInfo* GetEventCommandInfo(UInt16 opcode)
+{
+	if (opcode > 37)
+		return nullptr;
+	return &g_eventBlockCommandInfos[opcode];
+}
+
 UInt8 ScriptParsing::ScriptIterator::Read8()
 {
 	return ::Read8(curData);
@@ -210,7 +217,7 @@ ScriptParsing::BeginStatement::BeginStatement(const ScriptIterator& contextParam
 	if (error)
 		return;
 	const auto eventOpcode = this->context.Read16();
-	this->eventBlockCmd = &g_eventBlockCommandInfos[eventOpcode];
+	this->eventBlockCmd = GetEventCommandInfo(eventOpcode);
 	this->endJumpLength = this->context.Read32();
 	
 	this->commandCallToken = std::make_unique<CommandCallToken>(eventBlockCmd, nullptr);
@@ -961,10 +968,16 @@ bool DoesTokenCallCmd(ScriptParsing::CommandCallToken& token, CommandInfo* cmd)
 	return false;
 }
 
-bool ScriptParsing::ScriptAnalyzer::CallsCommand(CommandInfo* cmd)
+bool ScriptParsing::ScriptAnalyzer::CallsCommand(CommandInfo* cmd, CommandInfo* eventBlockInfo = nullptr)
 {
+	CommandInfo* lastEventBlock = nullptr;
 	return std::ranges::any_of(this->lines_, [&](std::unique_ptr<ScriptLine>& line)
 	{
+		BeginStatement* beginStatement;
+		if (eventBlockInfo && (beginStatement = dynamic_cast<BeginStatement*>(line.get())))
+			lastEventBlock = beginStatement->eventBlockCmd;
+		if (eventBlockInfo && lastEventBlock && lastEventBlock != eventBlockInfo)
+			return false;
 		if (line->cmdInfo == cmd)
 			return true;
 		ScriptCommandCall* cmdCall; CommandCallToken* argsToken;
@@ -1057,7 +1070,7 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 			continue;
 		const auto isMin = Contains(nestMinOpcodes, opcode);
 		const auto isAdd = Contains(nestAddOpcodes, opcode);
-		if (isAdd && !scriptText.ends_with("\n\n") && !Contains(nestAddOpcodes, lastOpcode))
+		if (isAdd && !scriptText.ends_with("\n\n") && !Contains(nestAddOpcodes, lastOpcode) && !Contains(nestNeutralOpcodes, lastOpcode))
 			scriptText += '\n';
 		if (isMin)
 			--numTabs;
@@ -1073,11 +1086,13 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 		ReplaceAll(nextLine, "\n", '\n' + tabStr);
 
 		scriptText += tabStr + nextLine;
-		if (isMin && !scriptText.ends_with("\n\n") && !Contains(nestMinOpcodes, lastOpcode))
+		if (isMin && !scriptText.ends_with("\n\n") && !Contains(nestMinOpcodes, lastOpcode) && !Contains(nestNeutralOpcodes, lastOpcode))
 			scriptText += '\n';
 		if (isNeutral || isAdd)
 			++numTabs;
 
+		if (iter->error)
+			scriptText += "; there was an error decompiling this line";
 		scriptText += '\n';
 
 		if (opcode == static_cast<UInt16>(ScriptStatementCode::ScriptName))
@@ -1110,8 +1125,6 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 			scriptText += '\n';
 		}
 		lastOpcode = opcode;
-		if (iter->error)
-			scriptText += "; there was an error decompiling this line";
 	}
 	return scriptText;
 }
