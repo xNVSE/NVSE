@@ -492,10 +492,6 @@ ScriptOperator* ScriptParsing::Expression::ReadOperator()
 		{
 			const auto opChar = op.operatorString[i];
 			const auto curChar = context.Read8();
-			if (isNonOperatorChar(curChar))
-			{
-				break;
-			}
 			if (opChar != static_cast<char>(curChar))
 			{
 				match = false;
