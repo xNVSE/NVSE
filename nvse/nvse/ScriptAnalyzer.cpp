@@ -628,6 +628,8 @@ bool ScriptParsing::CommandCallToken::ReadNumericToken(ScriptIterator& context)
 
 bool ScriptParsing::CommandCallToken::ParseGameArgs(ScriptIterator& context, UInt32 numArgs)
 {
+	if (!cmdInfo->params)
+		return true;
 	for (auto i = 0u; i < numArgs; ++i)
 	{
 		const auto typeID = static_cast<ExtractParamType>(kClassifyParamExtract[cmdInfo->params[i].typeID]);
