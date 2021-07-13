@@ -252,6 +252,7 @@ namespace ScriptParsing
 		bool ParseGameArgs(ScriptIterator& context, UInt32 numArgs);
 		
 	public:
+		int opcode = -1;
 		CommandInfo* cmdInfo;
 		std::unique_ptr<RefToken> callingReference = nullptr;
 		
@@ -261,7 +262,7 @@ namespace ScriptParsing
 		std::vector<CachedTokens*> expressionEvalArgs;
 
 		CommandCallToken(const ScriptIterator& context);
-		CommandCallToken(CommandInfo* cmdInfo, Script::RefVariable* callingRef, Script* script);
+		CommandCallToken(UInt32 opcode, Script::RefVariable* callingRef, Script* script);
 
 		std::string ToString() override;
 

@@ -260,7 +260,7 @@ ScriptParsing::BeginStatement::BeginStatement(const ScriptIterator& contextParam
 	this->eventBlockCmd = GetEventCommandInfo(eventOpcode);
 	this->endJumpLength = this->context.Read32();
 	
-	this->commandCallToken = std::make_unique<CommandCallToken>(eventBlockCmd, nullptr, context.script);
+	this->commandCallToken = std::make_unique<CommandCallToken>(eventBlockCmd ? eventBlockCmd->opcode : -1, nullptr, context.script);
 	if (context.length > 6) // if more than eventOpcode and endJumpLength
 	{
 		const ScriptIterator iter(context.script, eventBlockCmd->opcode, context.length, 0, context.curData);
@@ -332,6 +332,11 @@ ScriptParsing::ScriptVariableToken::ScriptVariableToken(Script* script, Expressi
 
 std::string ScriptParsing::ScriptVariableToken::ToString()
 {
+	if (!varInfo)
+	{
+		error = true;
+		return "<failed to get variable>";
+	}
 	std::string varName = varInfo->name.CStr();
 	if (varName.empty())
 		varName = GetBackupName();
@@ -384,7 +389,10 @@ std::string ScriptParsing::RefToken::ToString()
 	{
 		auto* varInfo = script->GetVariableInfo(refVariable->varIdx);
 		if (!varInfo)
+		{
+			error = true;
 			return "<failed to get var info>";
+		}
 		return varInfo->name.CStr();
 	}
 	if (refVariable->form)
@@ -394,6 +402,7 @@ std::string ScriptParsing::RefToken::ToString()
 			return FormatString("<%X>", refVariable->form->refID);
 		return editorId;
 	}
+	error = true;
 	return "<failed to resolve ref list entry>";
 }
 
@@ -423,11 +432,14 @@ ScriptParsing::InlineExpressionToken::InlineExpressionToken(ScriptIterator& cont
 std::string ScriptParsing::InlineExpressionToken::ToString()
 {
 	if (!this->tokens)
+	{
+		error = true;
 		return "<failed to decompile inline expression>";
+	}
 	return eval->GetLineText(*this->tokens, nullptr);
 }
 
-ScriptParsing::CommandCallToken::CommandCallToken(CommandInfo* cmdInfo, Script::RefVariable* callingRef, Script* script) : cmdInfo(cmdInfo)
+ScriptParsing::CommandCallToken::CommandCallToken(UInt32 opcode, Script::RefVariable* callingRef, Script* script) : cmdInfo(g_scriptCommands.GetByOpcode(opcode)), opcode(opcode)
 {
 	if (!cmdInfo)
 		error = true;
@@ -435,8 +447,9 @@ ScriptParsing::CommandCallToken::CommandCallToken(CommandInfo* cmdInfo, Script::
 		callingReference = std::make_unique<RefToken>(script, callingRef);
 }
 
-ScriptParsing::CommandCallToken::CommandCallToken(const ScriptIterator& iter): CommandCallToken(g_scriptCommands.GetByOpcode(iter.opcode), iter.GetCallingReference(), iter.script)
+ScriptParsing::CommandCallToken::CommandCallToken(const ScriptIterator& iter): CommandCallToken(iter.opcode, iter.GetCallingReference(), iter.script)
 {
+	opcode = iter.opcode;
 }
 
 template <typename T, typename F>
@@ -477,6 +490,8 @@ std::string StringForNumericParam(ParamType typeID, int value)
 
 std::string ScriptParsing::CommandCallToken::ToString()
 {
+	if (!cmdInfo)
+		return FormatString("<MISSING COMMAND OPCODE %X>", this->opcode);
 	std::string refStr;
 	if (callingReference)
 		refStr = callingReference->ToString() + '.';
@@ -722,6 +737,8 @@ const UInt32 g_gameParseCommands[] = {0x5B1BA0, 0x5B3C70, 0x5B3CA0, 0x5B3C40, 0x
 
 bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context, UInt32 dataLen)
 {
+	if (!cmdInfo)
+		return false;
 	if (cmdInfo->execute == kCommandInfo_Function.execute)
 	{
 		FunctionInfo info(context.script);
@@ -849,9 +866,9 @@ bool ScriptParsing::Expression::ReadExpression()
 		case 'X':
 			{
 				const auto opcode = context.Read16();
-				auto token = std::make_unique<CommandCallToken>(g_scriptCommands.GetByOpcode(opcode), refVar, context.script);
+				auto token = std::make_unique<CommandCallToken>(opcode, refVar, context.script);
 				const auto dataLen = context.Read16();
-				if (dataLen && !token->ParseCommandArgs(context, dataLen))
+				if (!token->error && dataLen && !token->ParseCommandArgs(context, dataLen))
 					return false;
 				this->stack.push_back(std::move(token));
 				context.curData += dataLen;
@@ -922,10 +939,12 @@ std::string ScriptParsing::Expression::ToString()
 		}
 	}
 	if (operands.size() != 1)
+	{
 		return "; failed to decompile expression, bad expression stack:" + TokenListToString(operands, [&](const std::string& s , unsigned i)
 		{
 			return i == operands.size() - 1 ? "'" + s + "'" : "'" + s + "',";
 		});
+	}
 	return operands.back();
 }
 
