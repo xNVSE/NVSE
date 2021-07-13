@@ -262,7 +262,7 @@ namespace ScriptParsing
 		std::vector<CachedTokens*> expressionEvalArgs;
 
 		CommandCallToken(const ScriptIterator& context);
-		CommandCallToken(UInt32 opcode, Script::RefVariable* callingRef, Script* script);
+		CommandCallToken(CommandInfo* cmdInfo, UInt32 opcode, Script::RefVariable* callingRef, Script* script);
 
 		std::string ToString() override;
 

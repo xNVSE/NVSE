@@ -260,7 +260,7 @@ ScriptParsing::BeginStatement::BeginStatement(const ScriptIterator& contextParam
 	this->eventBlockCmd = GetEventCommandInfo(eventOpcode);
 	this->endJumpLength = this->context.Read32();
 	
-	this->commandCallToken = std::make_unique<CommandCallToken>(eventBlockCmd ? eventBlockCmd->opcode : -1, nullptr, context.script);
+	this->commandCallToken = std::make_unique<CommandCallToken>(eventBlockCmd, eventBlockCmd ? eventBlockCmd->opcode : -1, nullptr, context.script);
 	if (context.length > 6) // if more than eventOpcode and endJumpLength
 	{
 		const ScriptIterator iter(context.script, eventBlockCmd->opcode, context.length, 0, context.curData);
@@ -439,7 +439,7 @@ std::string ScriptParsing::InlineExpressionToken::ToString()
 	return eval->GetLineText(*this->tokens, nullptr);
 }
 
-ScriptParsing::CommandCallToken::CommandCallToken(UInt32 opcode, Script::RefVariable* callingRef, Script* script) : cmdInfo(g_scriptCommands.GetByOpcode(opcode)), opcode(opcode)
+ScriptParsing::CommandCallToken::CommandCallToken(CommandInfo* cmdInfo, UInt32 opcode, Script::RefVariable* callingRef, Script* script) : cmdInfo(cmdInfo), opcode(opcode)
 {
 	if (!cmdInfo)
 		error = true;
@@ -447,7 +447,7 @@ ScriptParsing::CommandCallToken::CommandCallToken(UInt32 opcode, Script::RefVari
 		callingReference = std::make_unique<RefToken>(script, callingRef);
 }
 
-ScriptParsing::CommandCallToken::CommandCallToken(const ScriptIterator& iter): CommandCallToken(iter.opcode, iter.GetCallingReference(), iter.script)
+ScriptParsing::CommandCallToken::CommandCallToken(const ScriptIterator& iter): CommandCallToken(g_scriptCommands.GetByOpcode(iter.opcode), iter.opcode, iter.GetCallingReference(), iter.script)
 {
 	opcode = iter.opcode;
 }
@@ -832,7 +832,7 @@ bool ScriptParsing::Expression::ReadExpression()
 			{
 				const auto varIdx = context.Read16();
 				auto* script = refVar ? refVar->GetReferencedScript() : context.script;
-				this->stack.push_back(std::make_unique<ScriptVariableToken>(context.script, static_cast<ExpressionCode>(curChar),
+				this->stack.push_back(std::make_unique<ScriptVariableToken>(script, static_cast<ExpressionCode>(curChar),
 					script->GetVariableInfo(varIdx), refVar ? refVar->form : nullptr));
 				refVar = nullptr;
 				continue;
@@ -866,7 +866,7 @@ bool ScriptParsing::Expression::ReadExpression()
 		case 'X':
 			{
 				const auto opcode = context.Read16();
-				auto token = std::make_unique<CommandCallToken>(opcode, refVar, context.script);
+				auto token = std::make_unique<CommandCallToken>(g_scriptCommands.GetByOpcode(opcode), opcode, refVar, context.script);
 				const auto dataLen = context.Read16();
 				if (!token->error && dataLen && !token->ParseCommandArgs(context, dataLen))
 					return false;
@@ -1164,7 +1164,7 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 		if (it->error)
 		{
 			scriptText += it->ToString();
-			scriptText += " ; there was an error decompiling this line";
+			scriptText += " ; there was an error decompiling this line\n";
 			continue;
 		}
 		const auto isMin = Contains(nestMinOpcodes, opcode);
