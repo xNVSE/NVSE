@@ -3496,14 +3496,11 @@ ExpressionEvaluator::ExpressionEvaluator(COMMAND_ARGS) : m_opcodeOffsetPtr(opcod
 {
 	m_scriptData = static_cast<UInt8 *>(scriptData);
 	m_data = m_scriptData + *m_opcodeOffsetPtr;
+	m_pushedOnStack = true;
 
 	m_baseOffset = *opcodeOffsetPtr - 4;
 
 	m_flags.Clear();
-
-#if _DEBUG
-	g_lastScriptName = script->GetName();
-#endif
 
 	PushOnStack();
 }
@@ -3512,7 +3509,8 @@ ExpressionEvaluator::~ExpressionEvaluator()
 {
 	if (moved_) [[unlikely]]
 		return;
-	PopFromStack();
+	if (m_pushedOnStack)
+		PopFromStack();
 
 	for (UInt32 i = 0; i < m_numArgsExtracted; i++)
 	{
@@ -3537,6 +3535,19 @@ ExpressionEvaluator::~ExpressionEvaluator()
 		if (m_flags.IsSet(kFlag_StackTraceOnError))
 			PrintStackTrace();
 	}
+}
+
+ExpressionEvaluator::ExpressionEvaluator(UInt8* scriptData, Script* script, UInt32* opcodeOffsetPtr) :
+	m_pushedOnStack(false), m_scriptData(scriptData), m_opcodeOffsetPtr(opcodeOffsetPtr), m_result(nullptr), m_thisObj(nullptr), m_containingObj(nullptr),
+	m_args{},
+	m_params(nullptr),
+	m_numArgsExtracted(0),
+	m_expectedReturnType(),
+	m_baseOffset(0), m_parent(nullptr), localData(ThreadLocalData::Get()), m_inline(false),
+	script(script), eventList(nullptr)
+{
+	m_data = m_scriptData + *m_opcodeOffsetPtr;
+	m_flags.Clear();
 }
 
 bool ExpressionEvaluator::ExtractArgs()

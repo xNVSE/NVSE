@@ -103,6 +103,7 @@ class ExpressionEvaluator
 		kFlag_StackTraceOnError		= 1 << 2,
 	};
 	bool moved_ = false;
+	bool m_pushedOnStack;
 public:
 	Bitfield<UInt32>	 m_flags;
 	UInt8				* m_scriptData;
@@ -142,6 +143,9 @@ public:
 
 	ExpressionEvaluator(COMMAND_ARGS);
 	~ExpressionEvaluator();
+
+	// script analyzing constructor
+	ExpressionEvaluator(UInt8* scriptData, Script* script, UInt32* opcodeOffsetPtr);
 
 	Script			* script;
 	ScriptEventList	* eventList;

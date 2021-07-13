@@ -412,7 +412,7 @@ std::string ScriptParsing::GlobalVariableToken::ToString()
 ScriptParsing::InlineExpressionToken::InlineExpressionToken(ScriptIterator& context)
 {
 	UInt32 offset = context.curData - context.script->data;
-	this->eval = std::make_unique<ExpressionEvaluator>(nullptr, context.script->data, nullptr, nullptr, context.script, nullptr, nullptr, &offset);
+	this->eval = std::make_unique<ExpressionEvaluator>(context.script->data, context.script, &offset);
 	this->eval->m_inline = true;
 	this->tokens = eval->GetTokens();
 	if (!tokens)
@@ -748,7 +748,7 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context, U
 			context.curData += 4;
 		
 		UInt32 offset = context.curData - context.script->data;
-		this->expressionEvaluator = std::make_unique<ExpressionEvaluator>(nullptr, context.script->data, nullptr, nullptr, context.script, nullptr, nullptr, &offset);
+		this->expressionEvaluator = std::make_unique<ExpressionEvaluator>(context.script->data, context.script, &offset);
 		const auto exprEvalNumArgs = this->expressionEvaluator->ReadByte();
 		this->expressionEvalArgs.reserve(exprEvalNumArgs);
 		for (auto i = 0u; i < exprEvalNumArgs; ++i)
