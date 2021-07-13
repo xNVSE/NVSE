@@ -4775,7 +4775,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 			{
 				auto* lastOp = operators.back();
 				operators.pop_back();
-				if (op->Precedes(lastOp))
+				if (lastOp->precedence < op->precedence)
 				{
 					auto& rhOperand = operands.back();
 					if (composites.contains(rhOperand))

@@ -1161,12 +1161,6 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 		if (opcode == kCommandInfo_Internal_PushExecutionContext.opcode || opcode == kCommandInfo_Internal_PopExecutionContext.opcode
 			|| opcode == static_cast<UInt16>(ScriptStatementCode::ScriptName) && isLambdaScript)
 			continue;
-		if (it->error)
-		{
-			scriptText += it->ToString();
-			scriptText += " ; there was an error decompiling this line\n";
-			continue;
-		}
 		const auto isMin = Contains(nestMinOpcodes, opcode);
 		const auto isAdd = Contains(nestAddOpcodes, opcode);
 		if (isAdd && !scriptText.ends_with("\n\n") && !Contains(nestAddOpcodes, lastOpcode) && !Contains(nestNeutralOpcodes, lastOpcode))
@@ -1180,6 +1174,9 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 			numTabs = 0;
 
 		auto nextLine = it->ToString();
+		scriptText += '\n';
+		if (it->error)
+			scriptText += " ; there was an error decompiling this line\n";
 		// adjust lambda script indent
 		auto tabStr = std::string(numTabs, '\t');
 		ReplaceAll(nextLine, "\n", '\n' + tabStr);
@@ -1190,7 +1187,7 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 		if (isNeutral || isAdd)
 			++numTabs;
 
-		scriptText += '\n';
+		
 
 		if (opcode == static_cast<UInt16>(ScriptStatementCode::ScriptName) && !script->varList.Empty())
 		{
