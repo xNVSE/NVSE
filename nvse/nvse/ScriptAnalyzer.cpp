@@ -1152,10 +1152,28 @@ std::unique_ptr<ScriptParsing::ScriptLine> ScriptParsing::ScriptAnalyzer::ParseL
 	return std::make_unique<ScriptCommandCall>(iter);
 }
 
+std::string GetTimeString()
+{
+	time_t rawtime;
+	struct tm * timeinfo;
+	char buffer[80];
+
+	time (&rawtime);
+	timeinfo = localtime(&rawtime);
+
+	strftime(buffer,sizeof buffer,"%d-%m-%Y %H:%M:%S", timeinfo);
+	return buffer;
+}
+
+auto GetNVSEVersionString()
+{
+	return FormatString("%d.%d.%d", NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA);
+}
+
 std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 {
 	auto* script = this->iter.script;
-	std::string scriptText;
+	std::string scriptText = "; Decompiled with xNVSE " + GetNVSEVersionString() + " at " + GetTimeString() + "\n; Author of decompiler: https://github.com/korri123 (Kormákur)\n";
 	auto numTabs = 0;
 	const auto nestAddOpcodes = {static_cast<UInt32>(ScriptStatementCode::If), static_cast<UInt32>(ScriptStatementCode::Begin), kCommandInfo_While.opcode, kCommandInfo_ForEach.opcode};
 	const auto nestMinOpcodes = {static_cast<UInt32>(ScriptStatementCode::EndIf), static_cast<UInt32>(ScriptStatementCode::End), kCommandInfo_Loop.opcode};
