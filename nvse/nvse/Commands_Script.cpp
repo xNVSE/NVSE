@@ -755,7 +755,8 @@ void DecompileScriptToFolder(const std::string& scriptName, Script* script, cons
 	const auto filePath = modDirName + '/' + scriptName + '.' + fileExtension;
 	std::ofstream os(filePath);
 	os << analyzer.DecompileScript();
-	Console_Print("Decompiled script to '%s'", filePath.c_str());
+	if (IsConsoleMode())
+		Console_Print("Decompiled script to '%s'", filePath.c_str());
 }
 
 bool Cmd_DecompileScript_Execute(COMMAND_ARGS)
