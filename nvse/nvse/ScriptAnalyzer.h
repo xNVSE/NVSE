@@ -31,7 +31,7 @@ namespace ScriptParsing
 		Script::RefVariable* ReadRefVar();
 		VariableInfo* ReadVariable(TESForm*& refOut, ExpressionCode& typeOut);
 		bool ReadStringLiteral(std::string_view& out);
-		bool ReadNumericConstant(double& result);
+		bool ReadNumericConstant(double& result, UInt8* endData);
 		Script::RefVariable* GetCallingReference() const;
 
 		UInt16 opcode{};

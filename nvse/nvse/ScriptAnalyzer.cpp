@@ -797,13 +797,19 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context, U
 	return true;
 }
 
-bool ScriptParsing::ScriptIterator::ReadNumericConstant(double& result)
+bool ScriptParsing::ScriptIterator::ReadNumericConstant(double& result, UInt8* endData)
 {
-	char* endPtr;
-	result = strtod(reinterpret_cast<char*>(curData), &endPtr);
-	if (endPtr == reinterpret_cast<char*>(curData))
+	char buf[0x201];
+	const auto len = endData - curData;
+	if (len > 0x200)
 		return false;
-	curData = reinterpret_cast<unsigned char*>(endPtr);
+	std::memcpy(buf, curData, len);
+	buf[len] = 0;
+	char* endPtr;
+	result = strtod(buf, &endPtr);
+	if (endPtr == buf)
+		return false;
+	curData += endPtr - buf;
 	return true;
 }
 
@@ -888,7 +894,7 @@ bool ScriptParsing::Expression::ReadExpression()
 		}
 
 		double constant;
-		if (context.ReadNumericConstant(constant))
+		if (context.ReadNumericConstant(constant, endData))
 		{
 			stack.push_back(std::make_unique<NumericConstantToken>(constant));
 			continue;
@@ -1173,6 +1179,9 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 		if (numTabs < 0)
 			numTabs = 0;
 
+		if (!scriptText.ends_with("\n\n") && Contains(nestMinOpcodes, lastOpcode) && !Contains(nestMinOpcodes, opcode) && !Contains(nestNeutralOpcodes, opcode))
+			scriptText += '\n';
+		
 		auto nextLine = it->ToString();
 		if (it->error)
 			nextLine += " ; there was an error decompiling this line\n";
@@ -1181,13 +1190,9 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 		ReplaceAll(nextLine, "\n", '\n' + tabStr);
 
 		scriptText += tabStr + nextLine + '\n';
-		if (isMin && !scriptText.ends_with("\n\n") && !Contains(nestMinOpcodes, lastOpcode) && !Contains(nestNeutralOpcodes, lastOpcode))
-			scriptText += '\n';
 		if (isNeutral || isAdd)
 			++numTabs;
-
 		
-
 		if (opcode == static_cast<UInt16>(ScriptStatementCode::ScriptName) && !script->varList.Empty())
 		{
 			scriptText += '\n';
