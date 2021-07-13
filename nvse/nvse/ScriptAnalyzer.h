@@ -7,6 +7,7 @@
 class ExpressionEvaluator;
 class CachedTokens;
 CommandInfo* GetEventCommandInfo(UInt16 opcode);
+void UnformatString(std::string& str);
 
 namespace ScriptParsing
 {

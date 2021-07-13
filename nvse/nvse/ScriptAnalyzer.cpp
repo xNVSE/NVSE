@@ -84,6 +84,12 @@ CommandInfo* GetEventCommandInfo(UInt16 opcode)
 	return &g_eventBlockCommandInfos[opcode];
 }
 
+void UnformatString(std::string& str)
+{
+	ReplaceAll(str, "\n", "%r");
+	ReplaceAll(str, "\"", "%q");
+}
+
 bool ScriptParsing::ScriptContainsCommand(Script* script, CommandInfo* info, CommandInfo* eventBlock)
 {
 	ScriptAnalyzer analyzer(script);
@@ -342,9 +348,7 @@ ScriptParsing::StringLiteralToken::StringLiteralToken(const std::string_view& st
 std::string ScriptParsing::StringLiteralToken::ToString()
 {
 	std::string str(this->stringLiteral);
-	ReplaceAll(str, "\n", "%r");
-	ReplaceAll(str, "%", "%%");
-	ReplaceAll(str, "\"", "%q");
+	UnformatString(str);
 	return '"' + str + '"';
 }
 
@@ -380,16 +384,15 @@ std::string ScriptParsing::RefToken::ToString()
 	{
 		auto* varInfo = script->GetVariableInfo(refVariable->varIdx);
 		if (!varInfo)
-			return "";
+			return "<failed to get var info>";
 		return varInfo->name.CStr();
 	}
 	if (refVariable->form)
 	{
-		if (refVariable->form->refID == 0x7)
-			return "Player";
-		if (refVariable->form->refID == 0x14)
-			return "PlayerRef";
-		return refVariable->form->GetName();
+		auto* editorId =  refVariable->form->GetEditorID();
+		if (!editorId || StrLen(editorId) == 0)
+			return FormatString("<%X>", refVariable->form->refID);
+		return editorId;
 	}
 	return "<failed to resolve ref list entry>";
 }
@@ -501,8 +504,7 @@ std::string ScriptParsing::CommandCallToken::ToString()
 	{
 		auto& arg = *token;
 		const auto typeID = static_cast<ParamType>(cmdInfo->params[i].typeID);
-		auto* numToken = dynamic_cast<NumericConstantToken*>(&arg);
-		if (numToken)
+		if (auto* numToken = dynamic_cast<NumericConstantToken*>(&arg))
 		{
 			const auto value = static_cast<int>(numToken->value);
 			if (auto str = StringForNumericParam(typeID, value); !str.empty())

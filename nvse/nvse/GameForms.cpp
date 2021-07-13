@@ -11,6 +11,19 @@ static const _GetActorValueInfo GetActorValueInfo = (_GetActorValueInfo)0x00066E
 BGSDefaultObjectManager **g_defaultObjectManager = (BGSDefaultObjectManager **)0x011CA80C;
 #endif
 
+#if RUNTIME
+const char* TESForm::GetEditorID() const
+{
+	if (refID == 0x7)
+		return "Player";
+	if (refID == 0x14)
+		return "PlayerRef";
+	if (refID == 0xA)
+		return "LockPick"; // BobbyPin in game for some reason, LockPick in GECK
+	return GetName();
+}
+#endif
+
 TESForm *TESForm::TryGetREFRParent(void)
 {
 	TESForm *result = this;

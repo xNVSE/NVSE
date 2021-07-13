@@ -300,6 +300,8 @@ public:
 	virtual bool		SetEditorID(const char * edid);		// simply returns true at run-time
 	// 4E
 
+	const char* GetEditorID() const;
+	
 	struct EditorData {
 		String		editorID;			// 00
 		UInt32		vcMasterFormID;		// 08 - Version control 1 (looks to be a refID inside the Version Control master)

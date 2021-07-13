@@ -4661,20 +4661,21 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 				operands.push_back(FormatString("%g", token.GetNumber()));
 				break;
 			case kTokenType_String:
-				operands.push_back('"' + std::string(token.GetString()) + '"');
+			{
+				auto str = std::string(token.GetString());
+				UnformatString(str);
+				operands.push_back('"' + str + '"');
 				break;
+			}
 			case kTokenType_Form:
 			{
 				auto *form = token.GetTESForm();
 				if (form)
 				{
-					auto *formName = form->GetName();
+					auto *formName = form->GetEditorID();
 					if (!formName || StrLen(formName) == 0)
 					{
-						if (form->refID == 0x14 || form->refID == 0x7)
-							operands.push_back("Player");
-						else
-							operands.push_back(FormatString("%X", form->refID));
+						operands.push_back(FormatString("<%X>", form->refID));
 					}
 					else
 						operands.push_back(std::string(formName));
