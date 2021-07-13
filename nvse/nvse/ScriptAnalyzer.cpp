@@ -1174,14 +1174,13 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 			numTabs = 0;
 
 		auto nextLine = it->ToString();
-		scriptText += '\n';
 		if (it->error)
-			scriptText += " ; there was an error decompiling this line\n";
+			nextLine += " ; there was an error decompiling this line\n";
 		// adjust lambda script indent
 		auto tabStr = std::string(numTabs, '\t');
 		ReplaceAll(nextLine, "\n", '\n' + tabStr);
 
-		scriptText += tabStr + nextLine;
+		scriptText += tabStr + nextLine + '\n';
 		if (isMin && !scriptText.ends_with("\n\n") && !Contains(nestMinOpcodes, lastOpcode) && !Contains(nestNeutralOpcodes, lastOpcode))
 			scriptText += '\n';
 		if (isNeutral || isAdd)
