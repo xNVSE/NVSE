@@ -4525,7 +4525,7 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 		return nullptr;
 	auto& cache = *cachePtr;
 #if _DEBUG
-	g_curLineText = this->GetLineText(cache, nullptr);
+	//g_curLineText = this->GetLineText(cache, nullptr);
 #endif
 	OperandStack operands;
 	auto iter = cache.Begin();
@@ -4650,6 +4650,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 	std::vector<std::string> operands;
 	std::vector<Operator*> operators;
 	std::unordered_set<std::string> composites;
+	auto* cmd = GetCommand();
 	for (auto iter = tokens.Begin(); !iter.End(); ++iter)
 	{
 		auto &token = *iter.Get().token;
@@ -4709,7 +4710,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 						break;
 					}
 					operands.push_back(callToken.ToString());
-					if (callToken.expressionEvalArgs.size() > 1)
+					if (!callToken.expressionEvalArgs.empty() && !(iter+1).End())
 						operands.back() = '(' + operands.back() + ')';
 					break;
 				}

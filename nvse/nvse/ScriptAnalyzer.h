@@ -249,6 +249,8 @@ namespace ScriptParsing
 
 	class CommandCallToken : public OperandToken
 	{
+		bool ParseGameArgs(ScriptIterator& context, UInt32 numArgs);
+		
 	public:
 		CommandInfo* cmdInfo;
 		std::unique_ptr<RefToken> callingReference = nullptr;
@@ -269,9 +271,7 @@ namespace ScriptParsing
 
 		bool ReadNumericToken(ScriptIterator& context);
 
-		bool ParseGameArgs(ScriptIterator& context, UInt32 numArgs);
-		bool ParseArg(ScriptIterator& context, ExtractParamType type);
-		bool ParseCommandArgs(ScriptIterator context);
+		bool ParseCommandArgs(ScriptIterator context, UInt32 dataLen);
 	};
 
 	class ExpressionStatement

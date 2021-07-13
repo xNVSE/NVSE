@@ -2246,6 +2246,11 @@ public:
 			index -= count;
 		}
 
+		Iterator operator+(const UInt32 first) const
+		{
+			return Iterator(*contObj, index+first);
+		}
+
 		void Remove(bool frwrd = true)
 		{
 			contObj->numItems--;
