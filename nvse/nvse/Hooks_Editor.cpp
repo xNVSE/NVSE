@@ -554,15 +554,29 @@ std::vector g_lineMacros =
 				break;
 			}
 		}
+
+		const auto arrLeftBracketPos = line.find_first_of('[');
+		if (arrLeftBracketPos != std::string::npos)
+		{
+			const auto arrRightBracketPos = line.find_first_of(']');
+			if (arrRightBracketPos > arrLeftBracketPos)
+			{
+				const auto end =line.begin() + arrRightBracketPos;
+				line.erase(std::remove_if(line.begin() + arrLeftBracketPos, end, isspace), end);
+			}
+		}
 		
 		for (const auto& [realOp, regexOp] : s_shortHandMacros)
 		{
-			
 			// VARIABLE = VALUE macro 
-			const std::regex assignmentExpr(R"(([a-zA-Z\_\.0-9\[\]\"]+)\s*)" + regexOp + R"(([a-zA-Z\_\s\.\$\!0-9\-\(\{][.\s\S]*))"); // match int ivar = 4
+			const std::regex assignmentExpr(R"(([a-zA-Z\_\.0-9\[\]\"\-\+\=\*\/]+)\s*)" + regexOp + R"(([a-zA-Z\_\s\.\$\!0-9\-\(\{][.\s\S]*))"); // match int ivar = 4
 			if (std::smatch m; std::regex_search(line, m, assignmentExpr, std::regex_constants::match_continuous) && m.size() == 3)
 			{
-				line = "let " + optVarTypeDecl + m.str(1) + " " + realOp + " " + m.str(2);
+				auto varName = m.str(1);
+				std::erase_if(varName, isspace);
+				if (!std::ranges::any_of(varName, isalpha))
+					return false;
+				line = "let " + optVarTypeDecl + varName + " " + realOp + " " + m.str(2);
 				return true;
 			}
 		}
