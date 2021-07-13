@@ -97,7 +97,7 @@ UInt32 AddStringVar(const char *data, ScriptToken &lh, ExpressionEvaluator &cont
 {
 	if (!lh.refIdx)
 		AddToGarbageCollection(context.eventList, lh.GetVar(), NVSEVarType::kVarType_String);
-	return g_StringMap.Add(lh.owningScript->GetModIndex(), data, false);
+	return g_StringMap.Add(context.script->GetModIndex(), data, false);
 }
 
 #endif
@@ -4714,7 +4714,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 				auto *cmdInfo = token.GetCommandInfo();
 				if (cmdInfo)
 				{
-					auto callToken = token.GetCallToken();
+					auto callToken = token.GetCallToken(script);
 					if (callToken.error)
 					{
 						operands.push_back("<failed resolve cmd>");
@@ -4733,7 +4733,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 			case kTokenType_StringVar:
 			case kTokenType_ArrayVar:
 			{
-				const auto varName = token.GetVariableName();
+				const auto varName = token.GetVariableName(script);
 				if (!varName.empty())
 				{
 					operands.push_back(varName);
@@ -4837,7 +4837,7 @@ std::string ExpressionEvaluator::GetVariablesText(CachedTokens &tokens) const
 			continue;
 		if (token.IsVariable())
 		{
-			result += token.GetVariableName() + "=" + token.GetVariableDataAsString();
+			result += token.GetVariableName(script) + "=" + token.GetVariableDataAsString();
 			printedVars.insert(std::make_pair(token.refIdx, token.varIdx));
 			result += ", ";
 		}

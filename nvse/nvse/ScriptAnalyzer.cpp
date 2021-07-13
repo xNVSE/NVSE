@@ -707,7 +707,7 @@ void RegisterNVSEVars(CachedTokens& tokens, Script* script)
 				analyzer->stringVariables.insert(script->GetVariableInfo(token->varIdx));
 			else if (token->type == kTokenType_Command)
 			{
-				auto cmdCallToken = token->GetCallToken();
+				auto cmdCallToken = token->GetCallToken(script);
 				for (auto* arg : cmdCallToken.expressionEvalArgs)
 					RegisterNVSEVars(*arg, script);
 			}
@@ -1000,9 +1000,13 @@ bool DoExpressionEvalTokensCallCmd(CachedTokens* tokens, CommandInfo* cmd)
 		{
 			if (entry.token->value.cmd == cmd)
 				return true;
-			const auto callToken = entry.token->GetCallToken();
-			if (DoAnyExpressionEvalTokensCallCmd(callToken.expressionEvalArgs, cmd))
-				return true;
+			if (auto* analyzer = GetAnalyzer())
+			{
+				const auto callToken = entry.token->GetCallToken(analyzer->script);
+				if (DoAnyExpressionEvalTokensCallCmd(callToken.expressionEvalArgs, cmd))
+					return true;
+			}
+
 		}
 		return false;
 	});

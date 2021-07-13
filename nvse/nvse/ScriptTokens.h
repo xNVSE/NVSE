@@ -185,7 +185,6 @@ struct ScriptToken
 
 	Token_Type type;
 	UInt8 variableType;
-	Script *owningScript;
 
 	union Value
 	{
@@ -247,7 +246,7 @@ struct ScriptToken
 	ScriptLocal *GetVar() const;
 	bool ResolveVariable();
 	Script* GetUserFunction();
-	ScriptParsing::CommandCallToken GetCallToken() const;
+	ScriptParsing::CommandCallToken GetCallToken(Script* script) const;
 #endif
 	virtual bool CanConvertTo(Token_Type to) const; // behavior varies b/w compile/run-time for ambiguous types
 	virtual ArrayID GetOwningArrayID() const { return 0; }
@@ -305,7 +304,7 @@ struct ScriptToken
 	static ScriptToken *Create(Script *scriptLambda) { return scriptLambda ? new ScriptToken(scriptLambda) : nullptr; }
 
 	void SetString(const char *srcStr);
-	std::string GetVariableName() const;
+	std::string GetVariableName(Script* script) const;
 
 	bool useRefFromStack = false; // when eval'ing commands, don't use refIdx but top of stack which is reference
 	UInt16 refIdx;

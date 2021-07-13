@@ -611,9 +611,8 @@ void ScriptToken::SetString(const char *srcStr)
 }
 
 #if RUNTIME
-std::string ScriptToken::GetVariableName() const
+std::string ScriptToken::GetVariableName(Script* script) const
 {
-	auto *script = owningScript;
 	if (refIdx == 0)
 	{
 		auto *varInfo = script->GetVariableInfo(varIdx);
@@ -886,15 +885,15 @@ Script* ScriptToken::GetUserFunction()
 	return static_cast<Script*>(form);
 }
 
-ScriptParsing::CommandCallToken ScriptToken::GetCallToken() const
+ScriptParsing::CommandCallToken ScriptToken::GetCallToken(Script* script) const
 {
 	auto* cmdInfo = GetCommandInfo();
 	if (!cmdInfo)
 		return ScriptParsing::CommandCallToken(nullptr, nullptr, nullptr);
-	ScriptParsing::CommandCallToken callToken(GetCommandInfo(), owningScript->GetRefFromRefList(refIdx), owningScript);
-	UInt8* data = owningScript->data + cmdOpcodeOffset;
+	ScriptParsing::CommandCallToken callToken(GetCommandInfo(), script->GetRefFromRefList(refIdx), script);
+	UInt8* data = script->data + cmdOpcodeOffset;
 	UInt16 length = *reinterpret_cast<UInt16*>(data - 2);
-	const ScriptParsing::ScriptIterator it(owningScript, cmdInfo->opcode, length, refIdx, owningScript->data + cmdOpcodeOffset);
+	const ScriptParsing::ScriptIterator it(script, cmdInfo->opcode, length, refIdx, script->data + cmdOpcodeOffset);
 	callToken.ParseCommandArgs(it, it.length);
 	return callToken;
 
@@ -1120,7 +1119,6 @@ void AddToGarbageCollection(ScriptEventList *eventList, ScriptLocal *var, NVSEVa
 Token_Type ScriptToken::ReadFrom(ExpressionEvaluator *context)
 {
 	UInt8 typeCode = context->ReadByte();
-	this->owningScript = context->script;
 	this->context = context;
 	switch (typeCode)
 	{
