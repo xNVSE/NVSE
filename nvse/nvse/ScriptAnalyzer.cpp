@@ -105,6 +105,8 @@ bool ScriptParsing::PluginDecompileScript(Script* script, SInt32 lineNumber, cha
 	ScriptAnalyzer analyzer(script);
 	if (lineNumber != -1)
 	{
+		if (lineNumber >= analyzer.lines.size())
+			return false;
 		auto str = analyzer.lines.at(lineNumber)->ToString();
 		if (str.size() > bufferSize)
 			return false;
