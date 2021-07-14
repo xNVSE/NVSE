@@ -767,11 +767,17 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context, U
 	{
 		if (cmdInfo->parse == kCommandInfo_While.parse)
 			context.curData += 4;
-		
 		UInt32 offset = context.curData - context.script->data;
 		this->expressionEvaluator = std::make_unique<ExpressionEvaluator>(context.script->data, context.script, &offset);
+		if (cmdInfo->parse == kCommandInfo_Call.parse)
+		{
+			const auto callerVersion = this->expressionEvaluator->ReadByte();
+			auto* tokens = this->expressionEvaluator->GetTokens();
+			if (!tokens)
+				return false;
+			this->expressionEvalArgs.push_back(tokens);
+		}
 		const auto exprEvalNumArgs = this->expressionEvaluator->ReadByte();
-		this->expressionEvalArgs.reserve(exprEvalNumArgs);
 		for (auto i = 0u; i < exprEvalNumArgs; ++i)
 		{
 			auto* tokens = this->expressionEvaluator->GetTokens();
