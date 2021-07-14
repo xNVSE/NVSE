@@ -4721,7 +4721,14 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 						break;
 					}
 					operands.push_back(callToken.ToString());
+					bool appliedParams = false;
 					if (!callToken.expressionEvalArgs.empty() && !(iter+1).End())
+					{
+						appliedParams = true;
+						operands.back() = '(' + operands.back() + ')';
+					}
+					std::span paramInfo {cmdInfo->params, cmdInfo->numParams};
+					if (!appliedParams && std::ranges::any_of(paramInfo, [](auto& p) {return p.isOptional;}) && !(iter+1).End())
 						operands.back() = '(' + operands.back() + ')';
 					break;
 				}

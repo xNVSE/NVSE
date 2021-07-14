@@ -921,9 +921,10 @@ std::string ScriptParsing::Expression::ToString()
 	std::vector<std::string> operands;
 	std::vector<ScriptOperator*> operatorStack;
 	std::unordered_set<std::string> composites;
-	for (auto& iter : this->stack)
+	for (auto iter = this->stack.begin(); iter != this->stack.end(); ++iter)
 	{
-		if (auto* operatorToken = dynamic_cast<OperatorToken*>(iter.get()))
+		auto& token = *iter;
+		if (auto* operatorToken = dynamic_cast<OperatorToken*>(token.get()))
 		{
 			if (!operatorStack.empty() && !operands.empty())
 			{
@@ -947,9 +948,19 @@ std::string ScriptParsing::Expression::ToString()
 			composites.insert(result);
 			operands.push_back(result);
 		}
-		else if (auto* operandToken = dynamic_cast<OperandToken*>(iter.get()))
+		else if (auto* operandToken = dynamic_cast<OperandToken*>(token.get()))
 		{
 			operands.push_back(operandToken->ToString());
+			CommandCallToken* callToken;
+			// if it has optional params, wrap in parenthesis
+			if (iter+1 != stack.end() && (callToken = dynamic_cast<CommandCallToken*>(token.get())))
+			{
+				std::span paramInfo{callToken->cmdInfo->params, callToken->cmdInfo->numParams};
+				if (std::ranges::any_of(paramInfo, [](auto& p) {return p.isOptional;}))
+				{
+					operands.back() = '(' + operands.back() + ')';
+				}
+			}
 		}
 	}
 	if (operands.size() != 1)
