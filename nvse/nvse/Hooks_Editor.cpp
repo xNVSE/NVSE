@@ -609,6 +609,13 @@ bool HandleLineBufMacros(ScriptLineBuffer* buf)
 // Expand ScriptLineBuffer to allow multiline expressions with parenthesis
 int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 {
+	const auto lineError = [&](const char* str)
+	{
+		scriptBuf->curLineNumber = lineBuf->lineNumber;
+		ShowCompilerError(scriptBuf, "%s", str);
+		lineBuf->errorCode = 1;
+		return 0;
+	};
 	lineBuf->paramTextLen = 0;
 	memset(lineBuf->paramText, '\0', sizeof lineBuf->paramText);
 	
@@ -619,6 +626,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 	auto capturedNonSpace = false;
 	auto numNewLinesInParenthesis = 0;
 	auto inStringLiteral = false;
+	auto inMultilineComment = false;
 
 	// skip all spaces and tabs in the beginning
 	while (isspace(*curScriptText))
@@ -631,7 +639,30 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 	unsigned char lastChar = '\0';
 	while (true)
 	{
+		const auto curTwoChars = *reinterpret_cast<const UInt16*>(curScriptText);
+		if (curTwoChars == '*/' && !inStringLiteral && !inMultilineComment)
+		{
+			inMultilineComment = true;
+			curScriptText += 2;
+			continue;
+		}
+		if (curTwoChars == '/*' && !inStringLiteral && inMultilineComment)
+		{
+			inMultilineComment = false;
+			curScriptText += 2;
+			continue;
+
+		}
 		const auto curChar = *curScriptText++;
+		if (curChar == 0)
+		{
+			if (inMultilineComment)
+				return lineError("Mismatched comment block (missing '*/' for a present '/*')");
+			if (inStringLiteral)
+				return lineError("Mismatched quotes. A string literal was not closed.");
+		}
+		if (inMultilineComment)
+			continue;
 		switch (curChar)
 		{
 			case '(':
@@ -646,12 +677,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 				{
 					--numBrackets;
 					if (numBrackets < 0)
-					{
-						scriptBuf->curLineNumber = lineBuf->lineNumber;
-						ShowCompilerError(scriptBuf, "Mismatched parenthesis");
-						lineBuf->errorCode = 1;
-						return 0;
-					}
+						return lineError("Mismatched parenthesis");
 				}
 				break;
 			}
@@ -664,12 +690,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 			{
 				--curScriptText;
 				if (numBrackets)
-				{
-					scriptBuf->curLineNumber = lineBuf->lineNumber;
-					ShowCompilerError(scriptBuf, "Mismatched parenthesis");
-					lineBuf->errorCode = 1;
-					return 0;
-				}
+					return lineError("Mismatched parenthesis");
 				if (!capturedNonSpace)
 					return 0;
 				// fallback intentional
