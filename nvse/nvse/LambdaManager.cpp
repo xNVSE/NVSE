@@ -262,7 +262,7 @@ void CaptureChildLambdas(ScriptLambda* scriptLambda, LambdaContext& ctx)
 			continue;
 		ref->Resolve(eventList);
 		auto* form = ref->form;
-		if (form && IS_ID(form, Script) && LambdaManager::IsScriptLambda(static_cast<ScriptLambda*>(form)))
+		if (form && IS_ID(form, Script) && LambdaManager::IsScriptLambda(static_cast<ScriptLambda*>(form)) && form != scriptLambda)
 			varLambdas->push_back(static_cast<ScriptLambda*>(form));
 	}
 	ctx.capturedLambdaVariableScripts = std::move(varLambdas);
