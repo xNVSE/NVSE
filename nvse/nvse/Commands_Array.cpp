@@ -949,7 +949,7 @@ bool ExtractIntAndLambdaUDF(IntAndLambdaFunctionContext& ctx)
 		return false;
 	ctx.integer = eval.Arg(0)->GetNumber();
 	ctx.condScript = eval.Arg(1)->GetUserFunction();
-	if (!ctx.condScript)
+	if (!ctx.integer ||!ctx.condScript)
 		return false;
 	return true;
 }
