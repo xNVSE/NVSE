@@ -962,10 +962,10 @@ bool Cmd_ar_Generate_Execute(COMMAND_ARGS)
 		return true;
 	auto& [eval, numElemsToGenerate, generatorFunction] = ctx;
 	auto* returnArray = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	InternalFunctionCaller caller(generatorFunction, thisObj, containingObj);
-	caller.SetArgs(0);  //may not be doing anything.
 	for (UInt32 i = 0; i < numElemsToGenerate; i++)
 	{
+		InternalFunctionCaller caller(generatorFunction, thisObj, containingObj);
+		caller.SetArgs(0);  //may not be doing anything.
 		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
 		if (!tokenResult)
 			return true;
