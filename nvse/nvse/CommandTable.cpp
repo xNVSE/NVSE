@@ -1798,8 +1798,9 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(HasScriptCommand);
 	ADD_CMD(GetCommandOpcode);
 
-	// unknown version
+	// 6.1 beta 07
 	ADD_CMD_RET(ar_Generate, kRetnType_Array);
+	ADD_CMD_RET(ar_Init, kRetnType_Array);
 }
 
 namespace PluginAPI

@@ -976,3 +976,39 @@ bool Cmd_ar_Generate_Execute(COMMAND_ARGS)
 	*result = returnArray->ID();
 	return true;
 }
+
+struct IntAndElemContext
+{
+	ExpressionEvaluator eval;
+	UInt32 integer;
+	ArrayElement elem;
+
+	IntAndElemContext(COMMAND_ARGS) : eval(PASS_COMMAND_ARGS) {}
+};
+
+bool ExtractIntAndElemUDF(IntAndElemContext& ctx)
+{
+	auto& eval = ctx.eval;
+	if (!eval.ExtractArgs() || eval.NumArgs() != 2)
+		return false;
+	ctx.integer = eval.Arg(0)->GetNumber();
+	if (!ctx.integer)
+		return false;
+	if (!BasicTokenToElem(eval.Arg(1), ctx.elem))
+		return false;
+	return true;
+}
+
+bool Cmd_ar_Init_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	IntAndElemContext ctx(PASS_COMMAND_ARGS);
+	if (!ExtractIntAndElemUDF(ctx))
+		return true;
+	auto& [eval, numElemsToInitialize, elem] = ctx;
+	auto* returnArray = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	for (UInt32 i = 0; i < numElemsToInitialize; i++)
+		returnArray->Insert(i, &elem);
+	*result = returnArray->ID();
+	return true;
+}
