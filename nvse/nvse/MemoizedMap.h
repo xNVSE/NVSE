@@ -19,9 +19,9 @@ public:
 		}
 		V* value;
 		if (map.Insert(key, &value))
-		{
+			*value = 0; // Fix issue that affected Vanilla UI+ with lStewieAl's Tweaks bContainerDefaultToRightSide
+		if (!*value)
 			*value = f(key);
-		}
 		return *value;
 	}
 
