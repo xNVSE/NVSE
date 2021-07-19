@@ -932,3 +932,47 @@ bool Cmd_ar_MapTo_Execute(COMMAND_ARGS)
 	*result = returnArray->ID();
 	return true;
 }
+
+struct IntAndLambdaFunctionContext
+{
+	ExpressionEvaluator eval;
+	UInt32 integer;
+	Script* condScript;
+
+	IntAndLambdaFunctionContext(COMMAND_ARGS) : eval(PASS_COMMAND_ARGS) {}
+};
+
+bool ExtractIntAndLambdaUDF(IntAndLambdaFunctionContext& ctx)
+{
+	auto& eval = ctx.eval;
+	if (!eval.ExtractArgs() || eval.NumArgs() != 2)
+		return false;
+	ctx.integer = eval.Arg(0)->GetNumber();
+	ctx.condScript = eval.Arg(1)->GetUserFunction();
+	if (!ctx.integer ||!ctx.condScript)
+		return false;
+	return true;
+}
+
+bool Cmd_ar_Generate_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	IntAndLambdaFunctionContext ctx(PASS_COMMAND_ARGS);
+	if (!ExtractIntAndLambdaUDF(ctx))
+		return true;
+	auto& [eval, numElemsToGenerate, generatorFunction] = ctx;
+	auto* returnArray = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	for (UInt32 i = 0; i < numElemsToGenerate; i++)
+	{
+		InternalFunctionCaller caller(generatorFunction, thisObj, containingObj);
+		caller.SetArgs(0);  //may not be doing anything.
+		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		if (!tokenResult)
+			return true;
+		ArrayElement element;
+		if (BasicTokenToElem(tokenResult.get(), element))
+			returnArray->Insert(i, &element);
+	}
+	*result = returnArray->ID();
+	return true;
+}
