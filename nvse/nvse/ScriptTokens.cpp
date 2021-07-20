@@ -618,7 +618,8 @@ std::string ScriptToken::GetVariableName(Script* script) const
 		auto *varInfo = script->GetVariableInfo(varIdx);
 		if (varInfo)
 		{
-			return std::string(varInfo->name.CStr());
+			ScriptParsing::ScriptVariableToken scriptVarToken(script, ScriptParsing::ExpressionCode::None, varInfo, nullptr);
+			return scriptVarToken.ToString();
 		}
 	}
 	else
@@ -632,13 +633,14 @@ std::string ScriptToken::GetVariableName(Script* script) const
 		auto *refr = DYNAMIC_CAST(refVar->form, TESForm, TESObjectREFR);
 		if (refr)
 		{
-			auto *evtList = refr->GetEventList();
-			if (evtList && evtList->m_script)
+			auto *extraScript = refr->GetExtraScript();
+			if (extraScript && extraScript->script)
 			{
-				auto *varInfo = evtList->m_script->GetVariableInfo(varIdx);
+				auto *varInfo = extraScript->script->GetVariableInfo(varIdx);
 				if (varInfo && refr->GetName())
 				{
-					return std::string(refr->GetName()) + '.' + std::string(varInfo->name.CStr());
+					ScriptParsing::ScriptVariableToken scriptVarToken(extraScript->script, ScriptParsing::ExpressionCode::None, varInfo, refVar->form);
+					return scriptVarToken.ToString();
 				}
 			}
 		}
@@ -651,9 +653,10 @@ std::string ScriptToken::GetVariableName(Script* script) const
 				if (!refScript)
 					return "";
 				auto *varInfo = refScript->GetVariableInfo(varIdx);
-				if (varInfo && quest->GetEditorName())
+				if (varInfo)
 				{
-					return std::string(quest->GetName()) + '.' + std::string(varInfo->name.CStr());
+					ScriptParsing::ScriptVariableToken scriptVarToken(refScript, ScriptParsing::ExpressionCode::None, varInfo, refVar->form);
+					return scriptVarToken.ToString();
 				}
 			}
 		}

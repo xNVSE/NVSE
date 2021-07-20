@@ -4746,7 +4746,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 					operands.push_back(varName);
 					break;
 				}
-				operands.push_back("<bad variable>");
+				operands.push_back(FormatString("<failed to get var name %d %d>", token.refIdx, token.varIdx));
 				break;
 			}
 			case kTokenType_LambdaScriptData:

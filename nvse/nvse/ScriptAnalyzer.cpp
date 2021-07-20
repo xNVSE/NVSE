@@ -393,9 +393,10 @@ std::string ScriptParsing::RefToken::ToString()
 		if (!varInfo)
 		{
 			error = true;
-			return "<failed to get var info>";
+			return FormatString("<failed to get var info index %d>", refVariable->varIdx);
 		}
-		return varInfo->name.CStr();
+		ScriptVariableToken scriptVarToken(script, ExpressionCode::None, varInfo, nullptr);
+		return scriptVarToken.ToString();
 	}
 	if (refVariable->form)
 	{
@@ -626,7 +627,7 @@ bool ScriptParsing::CommandCallToken::ReadNumericToken(ScriptIterator& context)
 	switch (code)
 	{
 	case 'n':
-		args.push_back(std::make_unique<NumericConstantToken>(context.Read32()));
+		args.push_back(std::make_unique<NumericConstantToken>(static_cast<int>(context.Read32())));
 		break;
 	case 'z':
 		args.push_back(std::make_unique<NumericConstantToken>(context.ReadDouble()));
@@ -1237,7 +1238,8 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 			{
 				if (!var)
 					continue;
-				auto varName = std::string(var->name.CStr());
+				ScriptVariableToken token(script, ExpressionCode::None, var, nullptr);
+				auto varName = token.ToString();
 				if (arrayVariables.contains(var))
 					scriptText += "Array_var " + varName;
 				else if (stringVariables.contains(var))
