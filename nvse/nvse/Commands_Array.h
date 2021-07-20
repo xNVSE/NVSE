@@ -200,4 +200,12 @@ static ParamInfo kNVSEParams_OneInt_OneFunction[2] =
 	{	"condition user defined function",		kNVSEParamType_Form,	0	},
 };
 
-DEFINE_COMMAND_EXP(ar_Generate, creates a new array from a script with x amount of elements, false, kNVSEParams_OneInt_OneFunction);
+DEFINE_COMMAND_EXP(ar_Generate, "creates a new array from a function called each time for each element", false, kNVSEParams_OneInt_OneFunction);
+
+static ParamInfo kNVSEParams_OneInt_OneElem[2] =
+{
+	{	"int",	kNVSEParamType_Number,	0	},
+	{	"element",		kNVSEParamType_BasicType,	0	},
+};
+
+DEFINE_CMD_ALT_EXP(ar_Init, ar_Initialize, "creates a new array with x amount of elements, all set to a single value", false, kNVSEParams_OneInt_OneElem);
