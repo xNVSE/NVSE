@@ -4746,12 +4746,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 					operands.push_back(varName);
 					break;
 				}
-				token.value.varInfo = script->GetVariableInfo(token.varIdx);
-				ScriptParsing::ScriptVariableToken scriptVarToken(script, ScriptParsing::ExpressionCode::None, token.GetVarInfo(), nullptr);
-				if (!scriptVarToken.error)
-					operands.push_back(scriptVarToken.ToString());
-				else
-					operands.push_back("<failed to get var name>");
+				operands.push_back(FormatString("<failed to get var name %d %d>", token.refIdx, token.varIdx));
 				break;
 			}
 			case kTokenType_LambdaScriptData:
