@@ -939,7 +939,7 @@ ScriptEventList *ScriptEventList::Copy()
 				AddToGarbageCollection(this, newVar, NVSEVarType::kVarType_Array);
 				continue;
 			case NVSEVarType::kVarType_String:
-				newVar->data = g_StringMap.Add(m_script->GetModIndex(), g_StringMap.Get(var->data)->GetCString(), false);
+				newVar->data = g_StringMap.Add(m_script->GetModIndex(), g_StringMap.Get(var->data)->GetCString(), false, nullptr);
 				AddToGarbageCollection(this, newVar, NVSEVarType::kVarType_String);
 				continue;
 			default:
@@ -2357,7 +2357,6 @@ bool ExtractSetStatementVar(Script *script, ScriptEventList *eventList, void *sc
 {
 	auto *scriptData = static_cast<UInt8 *>(scriptDataIn) + *opcodeOffsetPtr;
 	auto* backPtr = scriptData - 5;
-
 	if (*backPtr != 'X')
 		return false;
 

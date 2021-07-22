@@ -25,15 +25,14 @@ ScriptToken::~ScriptToken()
 		free(value.str);
 		value.str = NULL;
 	}
+	else if (type == kTokenType_StringVar && !value.var) // command result
+	{
+		auto& cache = GetFunctionResultCachedStringVar();
+		if (cache.var == value.nvseVariable.stringVar)
+			cache.inUse = false;
+	}
 	else if (type == kTokenType_Lambda && value.lambda)
 	{
-#if RUNTIME
-		// Keep commented, memory has to be reused, NO FREEING THE POINTER
-		// Delete<Script, 0x5AA1A0>(value.lambda);
-#else
-		// Keep commented, deleted in PostScriptCompile
-		// Delete<Script, 0x5C5220>(value.lambda);
-#endif
 		value.lambda = nullptr;
 	}
 }
@@ -112,6 +111,11 @@ ScriptToken::ScriptToken(UInt32 id, Token_Type asType) : refIdx(0), type(asType)
 ScriptToken::ScriptToken(Script *script) : type(kTokenType_Lambda), refIdx(0), variableType(Script::eVarType_Invalid)
 {
 	value.lambda = script;
+}
+
+ScriptToken::ScriptToken(ScriptLocal* scriptLocal, StringVar* stringVar) : type(kTokenType_StringVar), variableType(Script::eVarType_String), refIdx(0), varIdx(0)
+{
+	value.nvseVariable = { scriptLocal, stringVar};
 }
 
 ScriptToken::ScriptToken(Operator *op) : type(kTokenType_Operator), refIdx(0), variableType(Script::eVarType_Invalid)
@@ -676,6 +680,8 @@ const char *ScriptToken::GetString()
 #if RUNTIME
 	else if (type == kTokenType_StringVar)
 	{
+		if (value.nvseVariable.stringVar)
+			return value.nvseVariable.stringVar->GetCString();
 		if (!value.var)
 		{
 			return "";
@@ -699,7 +705,7 @@ std::size_t ScriptToken::GetStringLength() const
 #if RUNTIME
 	if (type == kTokenType_StringVar)
 	{
-		StringVar *strVar = g_StringMap.Get(value.var->data);
+		StringVar *strVar = GetStringVar();
 		if (strVar)
 			return strVar->GetLength();
 	}
@@ -832,9 +838,19 @@ ScriptLocal *ScriptToken::GetVar() const
 	return value.var;
 }
 
+StringVar* ScriptToken::GetStringVar() const
+{
+	if (type != kTokenType_StringVar)
+		return nullptr;
+	if (value.nvseVariable.stringVar)
+		return value.nvseVariable.stringVar;
+	if (value.var)
+		return g_StringMap.Get(static_cast<int>(value.var->data));
+	return nullptr;
+}
+
 bool ScriptToken::ResolveVariable()
 {
-	value.var = nullptr;
 	auto *eventList = context->eventList;
 	if (refIdx)
 	{
@@ -851,8 +867,11 @@ bool ScriptToken::ResolveVariable()
 	if (!value.var)
 		return false;
 	// to be deleted on event list destruction, see Hooks_Other.cpp#CleanUpNVSEVars
-	if (type == kTokenType_ArrayVar || type == kTokenType_StringVar && refIdx == 0)
+	if ((type == kTokenType_ArrayVar || type == kTokenType_StringVar) && refIdx == 0)
 		AddToGarbageCollection(eventList, value.var, type == kTokenType_StringVar ? NVSEVarType::kVarType_String : NVSEVarType::kVarType_Array);
+
+	if (type == kTokenType_StringVar)
+		value.nvseVariable.stringVar = g_StringMap.Get(value.var->data);
 
 #if _DEBUG
 	if (value.var && !refIdx)
@@ -1236,6 +1255,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator *context)
 
 		refIdx = context->Read16();
 		varIdx = context->Read16();
+		value.nvseVariable = { nullptr, {nullptr}};
 		break;
 	}
 	case 'F':

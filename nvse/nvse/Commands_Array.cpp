@@ -378,7 +378,7 @@ bool Cmd_ar_Find_Execute(COMMAND_ARGS)
 		if (keyType == kDataType_String)
 		{
 			eval.ExpectReturnType(kRetnType_String);
-			*result = g_StringMap.Add(scriptObj->GetModIndex(), s_arrayErrorCodeStr, true);
+			*result = g_StringMap.Add(scriptObj->GetModIndex(), s_arrayErrorCodeStr, true, nullptr);
 		}
 		else
 		{
@@ -402,7 +402,7 @@ bool Cmd_ar_Find_Execute(COMMAND_ARGS)
 		if (keyType == kDataType_Numeric)
 			*result = idx->key.num;
 		else
-			*result = g_StringMap.Add(scriptObj->GetModIndex(), idx->key.GetStr(), true);
+			*result = g_StringMap.Add(scriptObj->GetModIndex(), idx->key.GetStr(), true, nullptr);
 	}
 
 	return true;

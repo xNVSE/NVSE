@@ -93,13 +93,19 @@ static bool ShowWarning(const char *msg)
 ErrOutput g_ErrOut(ShowError, ShowWarning);
 
 #if RUNTIME
-UInt32 AddStringVar(const char *data, ScriptToken &lh, ExpressionEvaluator &context)
+UInt32 AddStringVar(const char *data, ScriptToken &lh, ExpressionEvaluator &context, StringVar** svOut)
 {
 	if (!lh.refIdx)
 		AddToGarbageCollection(context.eventList, lh.GetVar(), NVSEVarType::kVarType_String);
-	return g_StringMap.Add(context.script->GetModIndex(), data, false);
+	return g_StringMap.Add(context.script->GetModIndex(), data, false, svOut);
 }
 
+UInt32 AddStringVar(StringVar&& other, ScriptToken& lh, ExpressionEvaluator& context, StringVar** svOut)
+{
+	if (!lh.refIdx)
+		AddToGarbageCollection(context.eventList, lh.GetVar(), NVSEVarType::kVarType_String);
+	return g_StringMap.Add(std::move(other), false, svOut);
+}
 #endif
 
 #if RUNTIME
@@ -384,18 +390,31 @@ ScriptToken *Eval_Assign_Numeric(OperatorType op, ScriptToken *lh, ScriptToken *
 
 ScriptToken *Eval_Assign_String(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *var = lh->GetVar();
-	UInt32 strID = (int)var->data;
-	StringVar *strVar = g_StringMap.Get(strID);
-
+	ScriptLocal *lhVar = lh->GetVar();
+	StringVar* lhStrVar = lh->GetStringVar();
+	if (rh->type == kTokenType_StringVar && rh->value.var == nullptr) // nullptr = rvalue returned from a command call
+	{
+		// optimizations
+		auto* rhStrVar = rh->GetStringVar();
+		if (!rhStrVar)
+			return nullptr;
+		// move the string if it's temporary
+		if (!lhStrVar)
+		{
+			lhVar->data = static_cast<int>(AddStringVar(std::move(*rhStrVar), *lh, *context, &lhStrVar));
+		}
+		else
+			lhStrVar->Set(std::move(*rhStrVar));
+		return ScriptToken::Create(lhVar, lhStrVar);
+	}
+	
 	const char *str = rh->GetString();
-
-	if (!strVar)
-		var->data = (int)AddStringVar(str, *lh, *context);
+	if (!lhStrVar)
+		lhVar->data = static_cast<int>(AddStringVar(str, *lh, *context, &lhStrVar));
 	else
-		strVar->Set(str);
+		lhStrVar->Set(str);
 
-	return ScriptToken::Create(str);
+	return ScriptToken::Create(lhVar, lhStrVar);
 }
 
 ScriptToken *Eval_Assign_AssignableString(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
@@ -621,19 +640,19 @@ ScriptToken *Eval_HandleEquals(OperatorType op, ScriptToken *lh, ScriptToken *rh
 ScriptToken *Eval_PlusEquals_Global(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	lh->GetGlobal()->data += rh->GetNumber();
-	return ScriptToken::Create(lh->GetGlobal()->data);
+	return ScriptToken::Create(static_cast<double>(lh->GetGlobal()->data));
 }
 
 ScriptToken *Eval_MinusEquals_Global(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	lh->GetGlobal()->data -= rh->GetNumber();
-	return ScriptToken::Create(lh->GetGlobal()->data);
+	return ScriptToken::Create(static_cast<double>(lh->GetGlobal()->data));
 }
 
 ScriptToken *Eval_TimesEquals_Global(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	lh->GetGlobal()->data *= rh->GetNumber();
-	return ScriptToken::Create(lh->GetGlobal()->data);
+	return ScriptToken::Create(static_cast<double>(lh->GetGlobal()->data));
 }
 
 ScriptToken *Eval_DividedEquals_Global(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
@@ -646,14 +665,14 @@ ScriptToken *Eval_DividedEquals_Global(OperatorType op, ScriptToken *lh, ScriptT
 	}
 
 	lh->GetGlobal()->data /= num;
-	return ScriptToken::Create(lh->GetGlobal()->data);
+	return ScriptToken::Create(static_cast<double>(lh->GetGlobal()->data));
 }
 
 ScriptToken *Eval_ExponentEquals_Global(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	double lhNum = lh->GetGlobal()->data;
 	lh->GetGlobal()->data = pow(lhNum, rh->GetNumber());
-	return ScriptToken::Create(lh->GetGlobal()->data);
+	return ScriptToken::Create(static_cast<double>(lh->GetGlobal()->data));
 }
 
 ScriptToken *Eval_HandleEquals_Global(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
@@ -665,7 +684,7 @@ ScriptToken *Eval_HandleEquals_Global(OperatorType op, ScriptToken *lh, ScriptTo
 	if (!hasError)
 	{
 		lh->GetGlobal()->data = result;
-		return ScriptToken::Create(lh->GetGlobal()->data);
+		return ScriptToken::Create(static_cast<double>(lh->GetGlobal()->data));
 	}
 	return nullptr;
 }
@@ -678,14 +697,14 @@ ScriptToken *Eval_PlusEquals_String(OperatorType op, ScriptToken *lh, ScriptToke
 	if (!strVar)
 	{
 		//strID = g_StringMap.Add(context->script->GetModIndex(), "");
-		strID = AddStringVar("", *lh, *context);
-		var->data = (int)strID;
+		strID = AddStringVar("", *lh, *context, &strVar);
+		var->data = static_cast<int>(strID);
 		strVar = g_StringMap.Get(strID);
 	}
 
 	strVar->StringRef() += rh->GetString();
 
-	return ScriptToken::Create(strVar->GetCString());
+	return ScriptToken::Create(var, strVar);
 }
 
 ScriptToken *Eval_TimesEquals_String(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
@@ -696,7 +715,7 @@ ScriptToken *Eval_TimesEquals_String(OperatorType op, ScriptToken *lh, ScriptTok
 	if (!strVar)
 	{
 		//strID = g_StringMap.Add(context->script->GetModIndex(), "");
-		strID = AddStringVar("", *lh, *context);
+		strID = AddStringVar("", *lh, *context, &strVar);
 		var->data = (int)strID;
 		strVar = g_StringMap.Get(strID);
 	}
@@ -710,7 +729,7 @@ ScriptToken *Eval_TimesEquals_String(OperatorType op, ScriptToken *lh, ScriptTok
 		rhNum--;
 	}
 
-	return ScriptToken::Create(strVar->GetCString());
+	return ScriptToken::Create(var, strVar);
 }
 
 ScriptToken *Eval_Multiply_String_Number(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
@@ -1086,8 +1105,8 @@ ScriptToken *Eval_ToString_String(OperatorType op, ScriptToken *lh, ScriptToken 
 ScriptToken *Eval_ToString_Number(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	char buf[0x20];
-	snprintf(buf, sizeof(buf), "%g", lh->GetNumber());
-	return ScriptToken::Create(buf);
+	snprintf(buf, sizeof buf, "%g", lh->GetNumber());
+	return ScriptToken::Create(static_cast<const char*>(buf));
 }
 
 ScriptToken *Eval_ToString_Form(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
@@ -1130,11 +1149,11 @@ ScriptToken *Eval_In(OperatorType op, ScriptToken *lh, ScriptToken *rh, Expressi
 		if (!sv)
 		{
 			//iterID = g_StringMap.Add(context->script->GetModIndex(), "");
-			iterID = AddStringVar("", *lh, *context);
+			iterID = AddStringVar("", *lh, *context, nullptr);
 			var->data = (int)iterID;
 		}
 
-		UInt32 srcID = g_StringMap.Add(context->script->GetModIndex(), rh->GetString(), true);
+		UInt32 srcID = g_StringMap.Add(context->script->GetModIndex(), rh->GetString(), true, nullptr);
 		ForEachContext con(srcID, iterID, Script::eVarType_String, var);
 		ScriptToken *forEach = ScriptToken::Create(&con);
 		return forEach;
@@ -3726,7 +3745,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 		if (arg->CanConvertTo(kTokenType_String))
 		{
 			UInt32 *out = va_arg(varArgs, UInt32 *);
-			*out = g_StringMap.Add(script->GetModIndex(), arg->GetString(), true);
+			*out = g_StringMap.Add(script->GetModIndex(), arg->GetString(), true, nullptr);
 			break;
 		}
 	}
@@ -4316,11 +4335,10 @@ ScriptToken *ExpressionEvaluator::ExecuteCommandToken(ScriptToken const *token, 
 	{
 		return ScriptToken::CreateForm(*reinterpret_cast<UInt32 *>(&cmdResult));
 	}
-
 	case kRetnType_String:
 	{
 		StringVar *strVar = g_StringMap.Get(cmdResult);
-		return ScriptToken::Create(strVar ? strVar->GetCString() : "");
+		return ScriptToken::Create(nullptr, strVar);
 	}
 	case kRetnType_Array:
 	{
@@ -4536,7 +4554,7 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 		return nullptr;
 	auto& cache = *cachePtr;
 #if _DEBUG
-	//g_curLineText = this->GetLineText(cache, nullptr);
+	g_curLineText = this->GetLineText(cache, nullptr);
 #endif
 	OperandStack operands;
 	auto iter = cache.Begin();

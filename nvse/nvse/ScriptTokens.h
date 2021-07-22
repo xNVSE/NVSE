@@ -178,6 +178,16 @@ struct ForEachContext
 
 #endif
 
+struct CustomVariableContext
+{
+	ScriptLocal* scriptLocal;
+	union
+	{
+		StringVar* stringVar;
+		ArrayVar* arrayVar;
+	};
+};
+
 // slightly less ugly but still cheap polymorphism
 struct ScriptToken
 {
@@ -198,6 +208,7 @@ struct ScriptToken
 		ArrayID arrID;
 		ScriptLocal *var;
 		LambdaManager::ScriptData lambdaScriptData;
+		CustomVariableContext nvseVariable;
 #endif
 		// compile-time only
 		VariableInfo *varInfo;
@@ -218,6 +229,7 @@ struct ScriptToken
 	ScriptToken(Operator *op);
 	ScriptToken(UInt32 data, Token_Type asType); // ArrayID or FormID
 	ScriptToken(Script *script);
+	ScriptToken(ScriptLocal* scriptLocal, StringVar* stringVar);
 
 	//ScriptToken(const ScriptToken& rhs);	// unimplemented, don't want copy constructor called
 #if RUNTIME
@@ -244,6 +256,7 @@ struct ScriptToken
 	virtual ArrayID GetArray();
 	ArrayVar *GetArrayVar();
 	ScriptLocal *GetVar() const;
+	StringVar* GetStringVar() const;
 	bool ResolveVariable();
 	Script* GetUserFunction();
 	ScriptParsing::CommandCallToken GetCallToken(Script* script) const;
@@ -282,6 +295,10 @@ struct ScriptToken
 
 	static ScriptToken *Read(ExpressionEvaluator *context);
 
+	// block implicit conversations
+	template <typename T>
+	static ScriptToken* Create(T value) = delete;
+	
 	static ScriptToken *Create(bool boolean) { return new ScriptToken(boolean); }
 	static ScriptToken *Create(double num) { return new ScriptToken(num); }
 	static ScriptToken *Create(Script::RefVariable *refVar, UInt16 refIdx) { return refVar ? new ScriptToken(refVar, refIdx) : NULL; }
@@ -302,6 +319,7 @@ struct ScriptToken
 	static ScriptToken *Create(ArrayElementToken *elem, UInt32 lbound, UInt32 ubound);
 	static ScriptToken *Create(UInt32 bogus); // unimplemented, to block implicit conversion to double
 	static ScriptToken *Create(Script *scriptLambda) { return scriptLambda ? new ScriptToken(scriptLambda) : nullptr; }
+	static ScriptToken* Create(ScriptLocal* local, StringVar* stringVar) { return stringVar ? new ScriptToken(local, stringVar) : nullptr; }
 
 	void SetString(const char *srcStr);
 	std::string GetVariableName(Script* script) const;
