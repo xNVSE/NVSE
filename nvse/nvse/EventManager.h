@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 
+#include "LambdaManager.h"
+
 class Script;
 class TESForm;
 class TESObjectREFR;
@@ -79,24 +81,43 @@ namespace EventManager
 	// Represents an event handler registered for an event.
 	struct EventCallback
 	{
-		EventCallback() : script(NULL), source(NULL), object(NULL), removed(false), pendingRemove(false) {}
+		EventCallback() : script(NULL), source(NULL), object(NULL), removed(false), pendingRemove(false), lambdaVariableContext(nullptr) {}
 		EventCallback(Script* funcScript, TESForm* sourceFilter = NULL, TESForm* objectFilter = NULL)
-			: script(funcScript), source(sourceFilter), object(objectFilter), removed(false), pendingRemove(false) {}
-		EventCallback& operator=(const EventCallback& other)
+			: script(funcScript), source(sourceFilter), object(objectFilter), removed(false), pendingRemove(false), lambdaVariableContext(funcScript) {}
+
+		EventCallback(const EventCallback& other) = delete;
+
+		EventCallback(EventCallback&& other) noexcept
+			: script(other.script),
+			  source(other.source),
+			  object(other.object),
+			  removed(other.removed),
+			  pendingRemove(other.pendingRemove),
+			  lambdaVariableContext(std::move(other.lambdaVariableContext))
 		{
+		}
+
+		EventCallback& operator=(const EventCallback& other) = delete;
+
+		EventCallback& operator=(EventCallback&& other) noexcept
+		{
+			if (this == &other)
+				return *this;
 			script = other.script;
 			source = other.source;
 			object = other.object;
 			removed = other.removed;
 			pendingRemove = other.pendingRemove;
+			lambdaVariableContext = std::move(other.lambdaVariableContext);
 			return *this;
-		};
+		}
 
 		Script			*script;
 		TESForm			*source;				// first arg to handler (reference or base form or form list)
 		TESForm			*object;				// second arg to handler
 		bool			removed;
 		bool			pendingRemove;
+		LambdaManager::LambdaVariableContext lambdaVariableContext;
 
 		bool IsRemoved() const { return removed; }
 		void SetRemoved(bool bSet) { removed = bSet; }
