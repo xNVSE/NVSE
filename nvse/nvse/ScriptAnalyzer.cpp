@@ -475,7 +475,7 @@ std::string StringForNumericParam(ParamType typeID, int value)
 		}
 	case kParamType_Axis:
 		{
-			return value == 'x' ? "X" : value == 'y' ? "Y" : value == 'z' ? "Z" : "<unknown axis>";
+			return value == 'X' ? "X" : value == 'Y' ? "Y" : value == 'Z' ? "Z" : "<unknown axis>";
 		}
 	case kParamType_AnimationGroup:
 		{
