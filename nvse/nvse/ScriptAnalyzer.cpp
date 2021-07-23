@@ -473,19 +473,72 @@ std::string StringForNumericParam(ParamType typeID, int value)
 		{
 			return g_actorValueInfoArray[value]->infoName;
 		}
+	case kParamType_Axis:
+		{
+			return value == 88 ? "X" : value == 89 ? "Y" : value == 90 ? "Z" : "<unknown axis>";
+		}
 	case kParamType_AnimationGroup:
 		{
 			return TESAnimGroup::StringForAnimGroupCode(value);
 		}
-	case kParamType_Axis:
-		{
-			return value == 88 ? "X" : value == 89? "Y" : value == 90 ? "Z" : "<unknown axis>";
-		}
 	case kParamType_Sex:
 		{
-			return value == 0 ? "Male" : value == 1? "Female" : "<invalid sex>";
+			return value == 0 ? "Male" : value == 1 ? "Female" : "<invalid sex>";
 		}
-	default: 
+	case kParamType_MiscellaneousStat:
+		{	
+			switch (value)
+			{
+				case 1: return "\"Quests Completed\"";
+				case 2: return "\"Locations Discovered\"";
+				case 3: return "\"People Killed\"";
+				case 4: return "\"Creatures Killed\"";
+				case 5: return "\"Locks Picked\"";
+				case 6: return "\"Computers Hacked\"";
+				case 7: return "\"Stimpaks Taken\"";
+				case 8: return "\"Rad-X Taken\"";
+				case 9: return "\"RadAway Taken\"";
+				case 10: return "\"Chems Taken\"";
+				case 11: return "\"Times Addicted\"";
+				case 12: return "\"Mines Disarmed\"";
+				case 13: return "\"Speech Successes\"";
+				case 14: return "\"Pockets Picked\"";
+				case 15: return "\"Pants Exploded\"";
+				case 16: return "\"Books Read\"";
+				case 17: return "\"Health From Stimpaks\"";
+				case 18: return "\"Weapons Created\"";
+				case 19: return "\"Health From Food\"";
+				case 20: return "\"Water Consumed\"";
+				case 21: return "\"Sandman Kills\"";
+				case 22: return "\"Paralyzing Punches\"";
+				case 23: return "\"Robots Disabled\"";
+				case 24: return "\"Times Slept\"";
+				case 25: return "\"Corpses Eaten\"";
+				case 26: return "\"Mysterious Stranger Visits\"";
+				case 27: return "\"Doctor Bags Used\"";
+				case 28: return "\"Challenges Completed\"";
+				case 29: return "\"Miss Fortunate Occurrences\"";
+				case 30: return "\"Disintegrations\"";
+				case 31: return "\"Have Limbs Crippled\"";
+				case 32: return "\"Speech Failures\"";
+				case 33: return "\"Items Crafted\"";
+				case 34: return "\"Weapon Modifications\"";
+				case 35: return "\"Items Repaired\"";
+				case 36: return "\"Total Things Killed\"";
+				case 37: return "\"Dismembered Limbs\"";
+				case 38: return "\"Caravan Games Won\"";
+				case 39: return "\"Caravan Games Lost\"";
+				case 40: return "\"Barter Amount Traded\"";
+				case 41: return "\"Roulette Games Played\"";
+				case 42: return "\"Blackjack Games Played\"";
+				case 43: return "\"Slots Games Played\"";
+			}
+		}
+	case kParamType_CriticalStage:
+		{
+			return ((const char**)0x119BBB0)[value];
+		}
+	default:
 		break;
 	}
 	return "";
