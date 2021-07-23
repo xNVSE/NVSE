@@ -326,7 +326,8 @@ void LambdaManager::UnsaveLambdaVariables(Script* scriptLambda)
 
 LambdaManager::LambdaVariableContext::LambdaVariableContext(Script* scriptLambda) : scriptLambda(scriptLambda)
 {
-	SaveLambdaVariables(scriptLambda);
+	if (scriptLambda)
+		SaveLambdaVariables(scriptLambda);
 }
 
 // prevent reallocation from destroying other lambda context

@@ -749,7 +749,7 @@ void RegisterNVSEVars(CachedTokens& tokens, Script* script)
 }
 
 const UInt32 g_gameParseCommands[] = {0x5B1BA0, 0x5B3C70, 0x5B3CA0, 0x5B3C40, 0x5B3CD0, reinterpret_cast<UInt32>(Cmd_Default_Parse) };
-
+const UInt32 g_messageBoxParseCmds[] = { 0x5B3CD0, 0x5B3C40, 0x5B3C70, 0x5B3CA0 };
 bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context, UInt32 dataLen)
 {
 	if (!cmdInfo)
@@ -805,15 +805,17 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context, U
 	const auto numArgs = context.Read16();
 	if (!ParseGameArgs(context, numArgs))
 		return false;
-	if (context.curData < context.startData + dataLen)
+	if (context.curData < context.startData + dataLen && Contains(g_messageBoxParseCmds, reinterpret_cast<UInt32>(cmdInfo->parse)))
 	{
 		// message box args?
-		const auto numArgs = *context.curData;
+		const auto numArgs = context.Read16();
 		if (numArgs > 9)
-			return true;
-		++context.curData;
-		if (!ParseGameArgs(context, numArgs))
 			return false;
+		for (auto i = 0u; i < numArgs; ++i)
+		{
+			if (!ReadVariableToken(context))
+				return false;
+		}
 	}
 	return true;
 }
