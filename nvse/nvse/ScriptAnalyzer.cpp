@@ -473,19 +473,31 @@ std::string StringForNumericParam(ParamType typeID, int value)
 		{
 			return g_actorValueInfoArray[value]->infoName;
 		}
+	case kParamType_Axis:
+		{
+			return value == 'X' ? "X" : value == 'Y' ? "Y" : value == 'Z' ? "Z" : "<unknown axis>";
+		}
 	case kParamType_AnimationGroup:
 		{
 			return TESAnimGroup::StringForAnimGroupCode(value);
 		}
-	case kParamType_Axis:
-		{
-			return value == 88 ? "X" : value == 89? "Y" : value == 90 ? "Z" : "<unknown axis>";
-		}
 	case kParamType_Sex:
 		{
-			return value == 0 ? "Male" : value == 1? "Female" : "<invalid sex>";
+			return value == 0 ? "Male" : value == 1 ? "Female" : "<invalid sex>";
 		}
-	default: 
+	case kParamType_MiscellaneousStat:
+		{	
+			if (value < 43)
+				return FormatString("\"%s\"", ((const char**)0x1189280)[value]);
+			break;
+		}
+	case kParamType_CriticalStage:
+		{
+			if (value < 5)
+				return ((const char**)0x119BBB0)[value];
+			break;
+		}
+	default:
 		break;
 	}
 	return "";
