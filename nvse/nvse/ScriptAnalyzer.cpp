@@ -801,7 +801,7 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context, U
 			return false;
 		for (auto i = 0u; i < numArgs; ++i)
 		{
-			if (!ReadVariableToken(context))
+			if (!ReadNumericToken(context))
 				return false;
 		}
 	}
