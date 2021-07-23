@@ -176,6 +176,8 @@ void LambdaManager::DeleteAllForParentScript(Script* parentScript)
 	}
 	for (auto& ctx : g_lambdas | std::views::values)
 	{
+		if (!ctx.capturedLambdaVariableScripts)
+			continue;
 		auto iter = std::ranges::find_if(*ctx.capturedLambdaVariableScripts, [&](Script* script)
 		{
 			return std::ranges::find(lambdas, script) != lambdas.end();

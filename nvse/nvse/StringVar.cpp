@@ -15,6 +15,11 @@ StringVar::StringVar(const char* in_data, UInt8 modIndex)
 	owningModIndex = modIndex;
 }
 
+StringVar::StringVar(StringVar&& other) noexcept: data(std::move(other.data)),
+                                                  owningModIndex(other.owningModIndex)
+{
+}
+
 StringVarMap* StringVarMap::GetSingleton()
 {
 	return &g_StringMap;
@@ -28,6 +33,11 @@ const char* StringVar::GetCString()
 void StringVar::Set(const char* newString)
 {
 	data = newString;
+}
+
+void StringVar::Set(StringVar&& other)
+{
+	data = std::move(other.StringRef());
 }
 
 SInt32 StringVar::Compare(char* rhs, bool caseSensitive)
@@ -303,19 +313,46 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 	}
 }
 
-UInt32	StringVarMap::Add(UInt8 varModIndex, const char* data, bool bTemp)
+UInt32	StringVarMap::Add(UInt8 varModIndex, const char* data, bool bTemp, StringVar** svOut)
 {
 	UInt32 varID = GetUnusedID();
-	Insert(varID, data, varModIndex);
-
-	// UDFs are instanced once so all strings should be temporary - Kormakur
+	auto* sv = Insert(varID, data, varModIndex);
+	if (svOut)
+		*svOut = sv;
 	if (bTemp)
 		MarkTemporary(varID, true);
 
 	return varID;
 }
 
+UInt32 StringVarMap::Add(StringVar&& moveVar, bool bTemp, StringVar** svOut)
+{
+	const auto varID = GetUnusedID();
+	auto* sv = Insert(varID, std::move(moveVar));
+	if (svOut)
+		*svOut = sv;
+	if (bTemp)
+		MarkTemporary(varID, true);
+	return varID;
+}
+
 StringVarMap g_StringMap;
+
+thread_local FunctionResultStringVar s_functionResultStringVar;
+static thread_local int svMapClearLocalToken = 0;
+static std::atomic<int> svMapClearGlobalToken = 0;
+
+// no compiler optimizations on thread_local in msvc
+__declspec(noinline) FunctionResultStringVar& GetFunctionResultCachedStringVar()
+{
+	if (svMapClearLocalToken != svMapClearGlobalToken)
+	{
+		s_functionResultStringVar = { nullptr, 0, false };
+		svMapClearLocalToken = svMapClearGlobalToken;
+	}
+	return s_functionResultStringVar;
+}
+
 
 bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 {
@@ -323,31 +360,48 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 	UInt8 modIndex = 0;
 	bool bTemp = true;
 	StringVar* strVar = NULL;
+	const auto isExpressionEvaluator = ExpressionEvaluator::Active();
 
 	UInt32 len = (newValue) ? strlen(newValue) : 0;
 	if (!newValue || len >= kMaxMessageLength)		//if null pointer or too long, assign an empty string
 		newValue = "";
 
-	if (ExtractSetStatementVar(scriptObj, eventList, scriptData, &strID, &bTemp, opcodeOffsetPtr, &modIndex, thisObj)) 
+	if (!isExpressionEvaluator && ExtractSetStatementVar(scriptObj, eventList, scriptData, &strID, &bTemp, opcodeOffsetPtr, &modIndex, thisObj))
 	{
 		strVar = g_StringMap.Get(strID);
-	}
-	else
-	{
-		bTemp = true;
 	}
 	
 	if (!modIndex)
 		modIndex = scriptObj->GetModIndex();
 
-	if (strVar)
+	if (!isExpressionEvaluator) // set to statement
 	{
-		strVar->Set(newValue);
-		g_StringMap.MarkTemporary(strID, false);
+		if (strVar)
+		{
+			strVar->Set(newValue);
+			g_StringMap.MarkTemporary(strID, false);
+		}
+		else
+		{
+			strID = static_cast<int>(g_StringMap.Add(modIndex, newValue, bTemp));
+		}
 	}
 	else
 	{
-		strID = g_StringMap.Add(modIndex, newValue, bTemp);
+		auto& functionResult = GetFunctionResultCachedStringVar();
+		if (!functionResult.inUse)
+		{
+			// optimizations, creating a new string var is slow
+			if (!functionResult.var)
+				functionResult.id = g_StringMap.Add(modIndex, newValue, false, &functionResult.var);
+			else
+				functionResult.var->Set(newValue);
+
+			functionResult.inUse = true;
+			strID = static_cast<int>(functionResult.id);
+		}
+		else
+			strID = static_cast<int>(g_StringMap.Add(modIndex, newValue, true, nullptr));
 	}
 	
 	*result = strID;
@@ -373,6 +427,13 @@ void StringVarMap::Clean()		// clean up any temporary vars
 {
 	while (!tempIDs.Empty())
 		Delete(tempIDs.LastKey());
+}
+
+
+void StringVarMap::Reset()
+{
+	VarMap<StringVar>::Reset();
+	++svMapClearGlobalToken;
 }
 
 namespace PluginAPI

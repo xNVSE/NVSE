@@ -635,8 +635,8 @@ bool SetHandler(const char* eventName, EventCallback& handler)
 				}
 			}
 		}
-
-		info->callbacks.Append(handler);
+		handler.lambdaVariableContext = LambdaManager::LambdaVariableContext(handler.script);
+		info->callbacks.Append(std::move(handler));
 
 		s_eventsInUse |= info->eventMask;
 
