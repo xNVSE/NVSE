@@ -25,12 +25,14 @@ ScriptToken::~ScriptToken()
 		free(value.str);
 		value.str = NULL;
 	}
+#if RUNTIME
 	else if (type == kTokenType_StringVar && !value.var) // command result
 	{
 		auto& cache = GetFunctionResultCachedStringVar();
 		if (cache.var == value.nvseVariable.stringVar)
 			cache.inUse = false;
 	}
+#endif
 	else if (type == kTokenType_Lambda && value.lambda)
 	{
 		value.lambda = nullptr;
@@ -112,11 +114,12 @@ ScriptToken::ScriptToken(Script *script) : type(kTokenType_Lambda), refIdx(0), v
 {
 	value.lambda = script;
 }
-
+#if RUNTIME
 ScriptToken::ScriptToken(ScriptLocal* scriptLocal, StringVar* stringVar) : type(kTokenType_StringVar), variableType(Script::eVarType_String), refIdx(0), varIdx(0)
 {
 	value.nvseVariable = { scriptLocal, stringVar};
 }
+#endif
 
 ScriptToken::ScriptToken(Operator *op) : type(kTokenType_Operator), refIdx(0), variableType(Script::eVarType_Invalid)
 {
@@ -386,6 +389,54 @@ void ScriptToken::operator delete(void *p, bool useMemoryPool)
 		g_scriptTokenAllocator.Free(p);
 	else
 		::operator delete(p);
+}
+
+ScriptToken::ScriptToken(ScriptToken&& other) noexcept: type(other.type),
+	variableType(other.variableType),
+	value(other.value),
+	useRefFromStack(other.useRefFromStack),
+	refIdx(other.refIdx),
+	cached(other.cached),
+	returnType(other.returnType),
+	cmdOpcodeOffset(other.cmdOpcodeOffset),
+	context(other.context),
+	varIdx(other.varIdx),
+	shortCircuitParentType(other.shortCircuitParentType),
+	shortCircuitDistance(other.shortCircuitDistance),
+	shortCircuitStackOffset(other.shortCircuitStackOffset),
+	formOrNumber(other.formOrNumber),
+#if _DEBUG
+	varName(std::move(other.varName)),
+#endif
+	memoryPooled(other.memoryPooled)
+{
+	other.value.num = 0;
+}
+
+ScriptToken& ScriptToken::operator=(ScriptToken&& other) noexcept
+{
+	if (this == &other)
+		return *this;
+	type = other.type;
+	variableType = other.variableType;
+	value = other.value;
+	useRefFromStack = other.useRefFromStack;
+	refIdx = other.refIdx;
+	cached = other.cached;
+	returnType = other.returnType;
+	cmdOpcodeOffset = other.cmdOpcodeOffset;
+	context = other.context;
+	varIdx = other.varIdx;
+	shortCircuitParentType = other.shortCircuitParentType;
+	shortCircuitDistance = other.shortCircuitDistance;
+	shortCircuitStackOffset = other.shortCircuitStackOffset;
+	formOrNumber = other.formOrNumber;
+#if _DEBUG
+	varName = std::move(other.varName);
+#endif
+	memoryPooled = other.memoryPooled;
+	other.value.num = 0;
+	return *this;
 }
 
 // C++20 destroying delete can avoid calling destructor if we don't want the object deleted

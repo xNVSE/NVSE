@@ -178,6 +178,7 @@ struct ForEachContext
 
 #endif
 
+#if RUNTIME
 struct CustomVariableContext
 {
 	ScriptLocal* scriptLocal;
@@ -187,6 +188,7 @@ struct CustomVariableContext
 		ArrayVar* arrayVar;
 	};
 };
+#endif
 
 // slightly less ugly but still cheap polymorphism
 struct ScriptToken
@@ -217,6 +219,8 @@ struct ScriptToken
 		Script *lambda;
 	} value;
 
+	
+
 	ScriptToken(Token_Type _type, UInt8 _varType, UInt16 _refIdx);
 	ScriptToken(bool boolean);
 	ScriptToken(double num);
@@ -229,10 +233,8 @@ struct ScriptToken
 	ScriptToken(Operator *op);
 	ScriptToken(UInt32 data, Token_Type asType); // ArrayID or FormID
 	ScriptToken(Script *script);
-	ScriptToken(ScriptLocal* scriptLocal, StringVar* stringVar);
-
-	//ScriptToken(const ScriptToken& rhs);	// unimplemented, don't want copy constructor called
 #if RUNTIME
+	ScriptToken(ScriptLocal* scriptLocal, StringVar* stringVar);
 	ScriptToken(ScriptLocal *var);
 #endif
 
@@ -319,8 +321,9 @@ struct ScriptToken
 	static ScriptToken *Create(ArrayElementToken *elem, UInt32 lbound, UInt32 ubound);
 	static ScriptToken *Create(UInt32 bogus); // unimplemented, to block implicit conversion to double
 	static ScriptToken *Create(Script *scriptLambda) { return scriptLambda ? new ScriptToken(scriptLambda) : nullptr; }
+#if RUNTIME
 	static ScriptToken* Create(ScriptLocal* local, StringVar* stringVar) { return stringVar ? new ScriptToken(local, stringVar) : nullptr; }
-
+#endif
 	void SetString(const char *srcStr);
 	std::string GetVariableName(Script* script) const;
 
@@ -332,6 +335,14 @@ struct ScriptToken
 	void operator delete(ScriptToken *token, std::destroying_delete_t);
 	void operator delete(void *p, bool useMemoryPool);
 	void operator delete(void *p); // unimplemented: keeping this here to shut up the compiler warning about non matching delete
+
+	ScriptToken(const ScriptToken& other) = delete;
+
+	ScriptToken(ScriptToken&& other) noexcept;
+
+	ScriptToken& operator=(const ScriptToken& other) = delete;
+
+	ScriptToken& operator=(ScriptToken&& other) noexcept;
 
 	bool cached = false;
 	CommandReturnType returnType;
