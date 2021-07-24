@@ -270,7 +270,7 @@ void CaptureChildLambdas(ScriptLambda* scriptLambda, LambdaContext& ctx)
 	ctx.capturedLambdaVariableScripts = std::move(varLambdas);
 }
 
-void LambdaManager::SaveLambdaVariables(Script* scriptLambda)
+void SaveLambdaVariables(Script* scriptLambda, Script* parentLambda)
 {
 	auto* ctx = GetLambdaContext(scriptLambda);
 	if (!ctx)
@@ -286,9 +286,16 @@ void LambdaManager::SaveLambdaVariables(Script* scriptLambda)
 	CaptureChildLambdas(scriptLambda, *ctx);
 	for (auto* childLambda : *ctx->capturedLambdaVariableScripts)
 	{
-		SaveLambdaVariables(childLambda);
+		if (childLambda != parentLambda)
+			SaveLambdaVariables(childLambda, scriptLambda);
 	}
 }
+
+void LambdaManager::SaveLambdaVariables(Script* scriptLambda)
+{
+	::SaveLambdaVariables(scriptLambda, nullptr);
+}
+
 
 void DeleteLambdaScript(auto& iter)
 {
@@ -297,7 +304,7 @@ void DeleteLambdaScript(auto& iter)
 	scriptLambda->Destroy(true);
 }
 
-void LambdaManager::UnsaveLambdaVariables(Script* scriptLambda)
+void UnsaveLambdaVariables(Script* scriptLambda, Script* parentScript)
 {
 	auto* ctx = GetLambdaContext(scriptLambda);
 	if (!ctx)
@@ -313,15 +320,21 @@ void LambdaManager::UnsaveLambdaVariables(Script* scriptLambda)
 	// before proceeding check if there were any child lambdas referenced, delete their event list
 	for (auto* childLambda : *ctx->capturedLambdaVariableScripts)
 	{
-		UnsaveLambdaVariables(childLambda);
+		if (childLambda != parentScript)
+			UnsaveLambdaVariables(childLambda, scriptLambda);
 	}
-	
+
 	if (refCount == 0)
 	{
 		g_savedVarLists.erase(iter);
 		if (eventListCopy)
 			OtherHooks::DeleteEventList(eventListCopy);
 	}
+}
+
+void LambdaManager::UnsaveLambdaVariables(Script* scriptLambda)
+{
+	UnsaveLambdaVariables(scriptLambda, nullptr);
 }
 
 LambdaManager::LambdaVariableContext::LambdaVariableContext(Script* scriptLambda) : scriptLambda(scriptLambda)
