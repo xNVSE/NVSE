@@ -28,6 +28,8 @@ const char* TESForm::GetEditorID() const
 		return "RadiationMarker";
 	if (refID == 0x3D)
 		return "DefaultCombatStyle";
+	if (refID == 0x147)
+		return "PipBoyLight";
 	if (refID == 0x163)
 		return "HelpManual";
 	if (refID == 0x1F5)

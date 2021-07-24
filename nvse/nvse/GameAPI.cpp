@@ -14,6 +14,7 @@
 #include "Hooks_Other.h"
 #endif
 
+NiTMap<const char*, TESForm*>** g_formEditorIDsMap = reinterpret_cast<NiTMap<const char*, TESForm*>**>(0x11C54C8);
 TimeGlobal *g_timeGlobal = reinterpret_cast<TimeGlobal *>(0x11F6394);
 float *g_globalTimeMult = reinterpret_cast<float *>(0x11AC3A0);
 

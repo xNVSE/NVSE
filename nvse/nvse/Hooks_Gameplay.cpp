@@ -136,12 +136,33 @@ static const UInt32 kExtraOwnershipDefaultSetting  = 0x00411F78;	//	0040A654 in 
 // Byte array at the end of the sub who is the 4th call in ExtraDataList__RemoveAllCopyableExtra
 //don't see a second array.. static const UInt32 kExtraOwnershipDefaultSetting2 = 0x0041FE0D;	//
 
+void ApplyGECKEditorIDs()
+{
+	// fix inconsistency
+	const auto set = [](UInt32 id, const char* str)
+	{
+		LookupFormByID(id)->SetEditorID(str);
+	};
+	set(0x14, "PlayerRef");
+	set(0xA, "Lockpick");
+	set(0x2D, "MaleAdult01Default");
+	set(0x2E, "FemaleAdult01Default");
+	set(0x33, "RadiationMarker");
+	set(0x3D, "DefaultCombatStyle");
+	set(0x147, "PipBoyLight");
+	set(0x163, "HelpManual");
+	set(0x1F5, "DefaultWaterExplosion");
+	set(0x1F6, "GasTrapDummy");
+}
+
 DWORD g_mainThreadID = 0;
 bool s_recordedMainThreadID = false;
 static void HandleMainLoopHook(void)
 { 
 	if (!s_recordedMainThreadID)
 	{
+		(*g_formEditorIDsMap)->numItems;
+		ApplyGECKEditorIDs();
 		s_recordedMainThreadID = true;
 		g_mainThreadID = GetCurrentThreadId();
 		

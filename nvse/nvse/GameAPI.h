@@ -674,6 +674,8 @@ public:
 	~NiTMap();
 };
 
+extern NiTMap<const char*, TESForm*>** g_formEditorIDsMap;
+
 class BGSCellNumericIDArrayMap;
 class BGSLoadGameSubBuffer;
 class BGSReconstructFormsInFileMap;
