@@ -122,6 +122,7 @@ void NVSE_Initialize(void)
 		EventManager::Init();
 
 		Hook_Dialog_Init();
+		PatchGameCommandParser();
 #endif
 
 #if EDITOR
