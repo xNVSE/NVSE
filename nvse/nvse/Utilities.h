@@ -200,3 +200,27 @@ std::vector<void*> GetCallStack(int i);
 
 bool FindStringCI(const std::string& strHaystack, const std::string& strNeedle);
 void ReplaceAll(std::string &str, const std::string& from, const std::string& to);
+
+extern bool g_warnScriptErrors;
+
+template <typename L, typename T>
+bool Contains(const L& list, T t)
+{
+	for (auto i : list)
+	{
+		if (i == t)
+			return true;
+	}
+	return false;
+}
+
+template <typename T>
+bool Contains(std::initializer_list<T> list, const T& t)
+{
+	for (auto i : list)
+	{
+		if (i == t)
+			return true;
+	}
+	return false;
+}

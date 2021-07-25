@@ -2,6 +2,7 @@
 #include "SafeWrite.h"
 #include <string>
 #include <algorithm>
+#include <filesystem>
 
 
 #include "containers.h"
@@ -669,11 +670,10 @@ void ShowRuntimeError(Script* script, const char* fmt, ...)
 		sprintf_s(errorHeader, sizeof(errorHeader), "Error in script %08X in mod %s\n%s", refId, modName, errorMsg);
 	}
 
-
-	if (g_warnedScripts.Insert(refId))
+	if (g_warnScriptErrors && g_warnedScripts.Insert(refId))
 	{
 		char message[512];
-		snprintf(message, sizeof(message), "%s: NVSE error (see console print)", GetModName(script));
+		snprintf(message, sizeof(message), "%s: Script error (see console print)", GetModName(script));
 		if (!IsConsoleMode())
 			QueueUIMessage(message, 0, reinterpret_cast<const char*>(0x1049638), nullptr, 2.5F, false);
 	}

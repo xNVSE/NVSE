@@ -1,3 +1,5 @@
+#include <filesystem>
+
 #include "CommandTable.h"
 #include "Hooks_DirectInput8Create.h"
 #include "Hooks_SaveLoad.h"
@@ -42,6 +44,7 @@ UInt32 waitForDebugger;
 UInt32 createHookWindow;
 UInt32 et;
 UInt32 au3D;
+bool g_warnScriptErrors = false;
 
 void WaitForDebugger(void)
 {
@@ -51,6 +54,14 @@ void WaitForDebugger(void)
 		Sleep(10);
 	}
 	Sleep(1000 * 2);
+}
+
+void CheckIfModAuthor()
+{
+	g_warnScriptErrors = std::filesystem::exists("GECK.exe");
+	UInt32 iniOpt;
+	if (GetNVSEConfigOption_UInt32("RELEASE", "bWarnScriptErrors", &iniOpt))
+		g_warnScriptErrors = iniOpt;
 }
 
 void NVSE_Initialize(void)
@@ -65,6 +76,7 @@ void NVSE_Initialize(void)
 		UInt32 bMousePatch;
 		if (GetNVSEConfigOption_UInt32("DEBUG", "EscapeMouse", &bMousePatch) && bMousePatch)
 			PatchCoopLevel();
+		CheckIfModAuthor();
 		
 		_MESSAGE("NVSE runtime: initialize (version = %d.%d.%d %08X %08X%08X)",
 			NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA, RUNTIME_VERSION,
