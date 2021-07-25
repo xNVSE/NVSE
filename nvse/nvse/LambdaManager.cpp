@@ -265,7 +265,11 @@ void CaptureChildLambdas(ScriptLambda* scriptLambda, LambdaContext& ctx)
 		ref->Resolve(eventList);
 		auto* form = ref->form;
 		if (form && IS_ID(form, Script) && LambdaManager::IsScriptLambda(static_cast<ScriptLambda*>(form)) && form != scriptLambda)
-			varLambdas->push_back(static_cast<ScriptLambda*>(form));
+		{
+			auto* childLambda = static_cast<ScriptLambda*>(form);
+			if (LambdaManager::GetParentEventList(scriptLambda) != ctx.parentEventList) // do not capture the variables of a lambda which you share variables with
+				varLambdas->push_back(childLambda);
+		}
 	}
 	ctx.capturedLambdaVariableScripts = std::move(varLambdas);
 }
