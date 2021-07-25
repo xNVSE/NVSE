@@ -320,10 +320,11 @@ namespace ScriptParsing
 
 		bool CallsCommand(CommandInfo* cmd, CommandInfo* eventBlockInfo);
 
-		ScriptAnalyzer(Script* script);
+		ScriptAnalyzer(Script* script, bool parse = true);
 		~ScriptAnalyzer();
 
 		static std::unique_ptr<ScriptLine> ParseLine(const ScriptIterator& iter);
+		std::unique_ptr<ScriptParsing::ScriptLine> ParseLine(UInt32 line);
 		std::string DecompileScript();
 	};
 

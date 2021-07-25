@@ -84,8 +84,8 @@ Script* LambdaManager::CreateLambdaScript(UInt8* position, const ScriptData& scr
 		ownerRefID = parentScript->quest->refID;
 	else if (parentScript->IsUserDefinedFunction())
 		ownerRefID = parentScript->refID;
-	else if (OtherHooks::g_lastScriptOwnerRef)
-		ownerRefID = OtherHooks::g_lastScriptOwnerRef->refID;
+	else if (auto* ownerRef = OtherHooks::g_currentScriptContext.scriptOwnerRef)
+		ownerRefID = ownerRef->refID;
 	else
 		return nullptr;
 	

@@ -12,7 +12,8 @@
 #if RUNTIME
 namespace OtherHooks
 {
-	thread_local TESObjectREFR* g_lastScriptOwnerRef = nullptr;
+	
+	thread_local CurrentScriptContext g_currentScriptContext;
 
 	const static auto ClearCachedTileMap = &MemoizedMap<const char*, Tile::Value*>::Clear;
 
@@ -88,9 +89,23 @@ namespace OtherHooks
 	}
 
 	// Saves last thisObj in effect/object scripts before they get assigned to something else with dot syntax
-	void __fastcall SaveLastScriptOwnerRef(TESObjectREFR* ref)
+	void __fastcall SaveLastScriptOwnerRef(UInt8* ebp)
 	{
-		g_lastScriptOwnerRef = ref;
+		auto& [script, scriptRunner, lineNumberPtr, scriptOwnerRef] = g_currentScriptContext;
+		scriptOwnerRef = *reinterpret_cast<TESObjectREFR**>(ebp + 0xC);
+		script = *reinterpret_cast<Script**>(ebp + 0x8);
+		const auto returnAddress = *reinterpret_cast<UInt32*>(ebp+4);
+		if (returnAddress == 0x5E265B)
+		{
+			scriptRunner = *reinterpret_cast<ScriptRunner**>(ebp - 0x774);
+			lineNumberPtr = reinterpret_cast<UInt32*>(ebp - 0x40);
+		}
+		else
+		{
+			// ScriptRunner::Run2
+			scriptRunner = *reinterpret_cast<ScriptRunner**>(ebp - 0x744);
+			lineNumberPtr = reinterpret_cast<UInt32*>(ebp - 0x28);
+		}
 	}
 
 	__declspec(naked) void SaveScriptOwnerRefHook()
@@ -99,7 +114,7 @@ namespace OtherHooks
 		const static auto retnAddr = 0x5E0D56;
 		__asm
 		{
-			mov ecx, [ebp+0xC]
+			lea ecx, [ebp]
 			call SaveLastScriptOwnerRef
 			call hookedCall
 			jmp retnAddr
@@ -113,7 +128,7 @@ namespace OtherHooks
 		__asm
 		{
 			push ecx
-			mov ecx, [ebp+0xC]
+			lea ecx, [ebp]
 			call SaveLastScriptOwnerRef
 			pop ecx
 			call hookedCall

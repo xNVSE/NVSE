@@ -3,7 +3,14 @@
 
 namespace OtherHooks
 {
-	extern thread_local TESObjectREFR* g_lastScriptOwnerRef;
+	struct CurrentScriptContext
+	{
+		Script* script = nullptr;
+		ScriptRunner* scriptRunner = nullptr;
+		UInt32* lineNumberPtr = nullptr;
+		TESObjectREFR* scriptOwnerRef = nullptr;
+	};
+	extern thread_local CurrentScriptContext g_currentScriptContext;
 	void CleanUpNVSEVars(ScriptEventList* eventList);
 
 	void DeleteEventList(ScriptEventList* eventList);

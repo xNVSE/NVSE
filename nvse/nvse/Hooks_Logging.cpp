@@ -1,8 +1,11 @@
 #include "Hooks_Logging.h"
 #include "SafeWrite.h"
 #include <cstdarg>
+#include <unordered_set>
 
 #include "GameAPI.h"
+#include "Hooks_Other.h"
+#include "ScriptAnalyzer.h"
 #include "Utilities.h"
 
 #if RUNTIME
@@ -10,6 +13,7 @@
 #define kPatchSCOF 0x0071DE73
 #define kStrCRLF 0x0101F520
 #define kBufferSCOF 0x0071DE11
+
 
 static FILE * s_errorLog = NULL;
 static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
@@ -52,6 +56,29 @@ static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
 	}
 #endif
 
+	if (g_warnScriptErrors)
+	{
+		const auto retnAddress = reinterpret_cast<UInt32>(_ReturnAddress());
+		if (retnAddress >= 0x5E1550 && retnAddress <= 0x5E23A4) // script::runline
+		{
+			char buf[0x400];
+			if (!alt)
+				vsnprintf(buf, sizeof buf, fmt, args);
+			else
+				vsnprintf(buf, sizeof buf, fmt_alt, args);
+			auto& scriptContext = OtherHooks::g_currentScriptContext;
+			if (scriptContext.script && scriptContext.lineNumberPtr)
+			{
+				ScriptParsing::ScriptAnalyzer analyzer(scriptContext.script, false);
+				const auto line = analyzer.ParseLine(*scriptContext.lineNumberPtr - 1);
+				if (line)
+				{
+					ShowRuntimeError(scriptContext.script, "%s\nDecompiled Line: %s", buf, line->ToString().c_str());
+				}
+			}
+		}
+		
+	}
 	
 	va_end(args);
 

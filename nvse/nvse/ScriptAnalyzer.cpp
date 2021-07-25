@@ -17,17 +17,6 @@ ScriptParsing::ScriptAnalyzer* GetAnalyzer()
 	return g_analyzerStack.top();
 }
 
-template <typename L, typename T>
-bool Contains(const L& list, T t)
-{
-	for (auto i : list)
-	{
-		if (i == t)
-			return true;
-	}
-	return false;
-}
-
 UInt8 Read8(UInt8*& curData)
 {
 	const auto byte = *curData;
@@ -1131,10 +1120,13 @@ bool ScriptParsing::ScriptAnalyzer::CallsCommand(CommandInfo* cmd, CommandInfo* 
 	});
 }
 
-ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script) : iter(script), script(script)
+ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script, bool parse) : iter(script), script(script)
 {
 	g_analyzerStack.push(this);
-	Parse();
+	if (parse)
+	{
+		Parse();
+	}
 }
 
 ScriptParsing::ScriptAnalyzer::~ScriptAnalyzer()
@@ -1184,6 +1176,19 @@ std::unique_ptr<ScriptParsing::ScriptLine> ScriptParsing::ScriptAnalyzer::ParseL
 		}
 	}
 	return std::make_unique<ScriptCommandCall>(iter);
+}
+
+std::unique_ptr<ScriptParsing::ScriptLine> ScriptParsing::ScriptAnalyzer::ParseLine(UInt32 line)
+{
+	auto count = 0u;
+	while (count < line && !this->iter.End())
+	{
+		++this->iter;
+		++count;
+	}
+	if (line != count)
+		return nullptr;
+	return ParseLine(this->iter);
 }
 
 std::string GetTimeString()
