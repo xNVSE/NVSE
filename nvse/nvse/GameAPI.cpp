@@ -1813,9 +1813,9 @@ bool vExtractArgsEx(ParamInfo *paramInfo, void *scriptDataIn, UInt32 *scriptData
 	UInt8 *scriptData = (UInt8 *)scriptDataIn + *scriptDataOffset;
 	UInt32 numArgs = *(UInt16 *)scriptData;
 	scriptData += 2;
-
+	auto* opcodePtr = reinterpret_cast<UInt16*>(static_cast<UInt8*>(scriptDataIn) + (*scriptDataOffset - 4));
+	OtherHooks::g_currentScriptContext.command = g_scriptCommands.GetByOpcode(*opcodePtr);
 #if _DEBUG
-	auto *opcodePtr = reinterpret_cast<UInt16 *>(static_cast<UInt8 *>(scriptDataIn) + (*scriptDataOffset - 4));
 	g_lastCommand = g_scriptCommands.GetByOpcode(*opcodePtr);
 #endif
 

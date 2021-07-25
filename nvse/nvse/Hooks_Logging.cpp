@@ -18,6 +18,14 @@
 static FILE * s_errorLog = NULL;
 static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
 {
+	auto& scriptContext = OtherHooks::g_currentScriptContext;
+	const auto retnAddress = reinterpret_cast<UInt32>(_ReturnAddress());
+
+	if (scriptContext.command && scriptContext.command->opcode == 4418 && retnAddress == 0x5E2383) // shut up Dispel
+	{
+		// context: Dispel returns false deliberately if called within own script effect to act as a "Return" statement
+		return 0;
+	}
 	va_list	args;
 	bool alt;
 	if(0xFFFF < (UInt32)fmt)
@@ -56,27 +64,27 @@ static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
 	}
 #endif
 
-
-	const auto retnAddress = reinterpret_cast<UInt32>(_ReturnAddress());
-	if (retnAddress >= 0x5E1550 && retnAddress <= 0x5E23A4) // script::runline
+	if (g_warnScriptErrors)
 	{
-		char buf[0x400];
-		if (!alt)
-			vsnprintf(buf, sizeof buf, fmt, args);
-		else
-			vsnprintf(buf, sizeof buf, fmt_alt, args);
-		auto& scriptContext = OtherHooks::g_currentScriptContext;
-		if (scriptContext.script && scriptContext.lineNumberPtr)
+		if (retnAddress >= 0x5E1550 && retnAddress <= 0x5E23A4) // script::runline
 		{
-			ScriptParsing::ScriptAnalyzer analyzer(scriptContext.script, false);
-			const auto line = analyzer.ParseLine(*scriptContext.lineNumberPtr - 1);
-			if (line)
+			char buf[0x400];
+			if (!alt)
+				vsnprintf(buf, sizeof buf, fmt, args);
+			else
+				vsnprintf(buf, sizeof buf, fmt_alt, args);
+			if (scriptContext.script && scriptContext.lineNumberPtr)
 			{
-				ShowRuntimeError(scriptContext.script, "%s\nDecompiled Line: %s", buf, line->ToString().c_str());
+				ScriptParsing::ScriptAnalyzer analyzer(scriptContext.script, false);
+				const auto line = analyzer.ParseLine(*scriptContext.lineNumberPtr - 1);
+				if (line)
+				{
+					ShowRuntimeError(scriptContext.script, "%s\nDecompiled Line: %s", buf, line->ToString().c_str());
+				}
 			}
 		}
+		
 	}
-
 	
 	va_end(args);
 

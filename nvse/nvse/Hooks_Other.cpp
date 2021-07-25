@@ -91,7 +91,8 @@ namespace OtherHooks
 	// Saves last thisObj in effect/object scripts before they get assigned to something else with dot syntax
 	void __fastcall SaveLastScriptOwnerRef(UInt8* ebp)
 	{
-		auto& [script, scriptRunner, lineNumberPtr, scriptOwnerRef] = g_currentScriptContext;
+		auto& [script, scriptRunner, lineNumberPtr, scriptOwnerRef, command] = g_currentScriptContext;
+		command = nullptr; // set in ExtractArgsEx
 		scriptOwnerRef = *reinterpret_cast<TESObjectREFR**>(ebp + 0xC);
 		script = *reinterpret_cast<Script**>(ebp + 0x8);
 		const auto returnAddress = *reinterpret_cast<UInt32*>(ebp+4);

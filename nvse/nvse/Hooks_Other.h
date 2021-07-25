@@ -9,6 +9,7 @@ namespace OtherHooks
 		ScriptRunner* scriptRunner = nullptr;
 		UInt32* lineNumberPtr = nullptr;
 		TESObjectREFR* scriptOwnerRef = nullptr;
+		CommandInfo* command = nullptr;
 	};
 	extern thread_local CurrentScriptContext g_currentScriptContext;
 	void CleanUpNVSEVars(ScriptEventList* eventList);
