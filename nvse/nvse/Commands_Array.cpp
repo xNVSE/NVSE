@@ -876,7 +876,7 @@ bool Cmd_ar_FindWhere_Execute(COMMAND_ARGS)
 		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
 		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
 		if (!tokenResult)
-			return true;
+			continue;
 		if (tokenResult->GetBool())
 		{
 			ReturnElement(PASS_COMMAND_ARGS, eval, iter.second());
@@ -900,7 +900,7 @@ bool Cmd_ar_Filter_Execute(COMMAND_ARGS)
 		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
 		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
 		if (!tokenResult)
-			return true;
+			continue;
 		if (tokenResult->GetBool())
 		{
 			returnArray->SetElement(iter.first(), iter.second());
@@ -924,7 +924,7 @@ bool Cmd_ar_MapTo_Execute(COMMAND_ARGS)
 		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
 		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
 		if (!tokenResult)
-			return true;
+			continue;
 		ArrayElement element;
 		if (BasicTokenToElem(tokenResult.get(), element))
 			returnArray->SetElement(iter.first(), &element);
@@ -968,7 +968,7 @@ bool Cmd_ar_Generate_Execute(COMMAND_ARGS)
 		caller.SetArgs(0);  //may not be doing anything.
 		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
 		if (!tokenResult)
-			return true;
+			continue;
 		ArrayElement element;
 		if (BasicTokenToElem(tokenResult.get(), element))
 			returnArray->Insert(i, &element);

@@ -4,6 +4,7 @@
 
 #include "Commands_Scripting.h"
 #include "GameAPI.h"
+#include "GameData.h"
 #include "GameObjects.h"
 #include "Hooks_Other.h"
 
@@ -59,7 +60,9 @@ void SetLambdaParent(ScriptLambda* scriptLambda, ScriptEventList* parentEventLis
 
 Script* LambdaManager::CreateLambdaScript(const ScriptData& scriptData, Script* parentScript)
 {
+	DataHandler::Get()->DisableAssignFormIDs(true);
 	auto* scriptLambda = New<Script, 0x5AA0F0>();
+	DataHandler::Get()->DisableAssignFormIDs(false);
 	scriptLambda->data = scriptData.scriptData;
 	scriptLambda->info.dataLength = scriptData.size;
 	
