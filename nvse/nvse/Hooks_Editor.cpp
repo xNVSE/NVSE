@@ -544,7 +544,7 @@ std::vector g_lineMacros =
 		std::string optVarTypeDecl; // int, ref etc in int iVar = 10 for example
 		for (auto& varType : g_variableTypeNames)
 		{
-			if (line.starts_with(varType))
+			if (_stricmp(line.substr(0, strlen(varType)).c_str(), varType) == 0)
 			{
 				optVarTypeDecl = varType;
 				line.erase(0, optVarTypeDecl.size());
