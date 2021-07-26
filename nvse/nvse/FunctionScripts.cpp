@@ -699,6 +699,8 @@ namespace PluginAPI
 				}
 				delete ret;
 			}
+			else
+				success = false;
 		}
 		return success;
 	}
