@@ -147,6 +147,7 @@ const UInt8 kParamFlagsTable[] =
 		0, 1, 1, 2, 2, 0, 2, 2, 0, 2, 0, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 0, 1, 2, 2, 2, 2, 0, 2, 2, 2, 0, 2, 2,
 		2, 2, 2, 2, 2, 2, 0, 2, 2, 1, 1, 2, 2, 2, 2, 2, 0, 0, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2};
 
+#if NVSE_CORE
 ParamParenthResult __fastcall HandleParameterParenthesis(ScriptLineBuffer *scriptLineBuffer, ScriptBuffer *scriptBuffer, ParamInfo *paramInfo, UInt32 paramIndex);
 
 bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineBuffer *lineBuffer, ScriptBuffer *scriptBuffer)
@@ -745,7 +746,7 @@ compileError:
 }
 
 #endif
-
+#endif
 #if RUNTIME
 
 struct TLSData
@@ -2354,6 +2355,7 @@ bool ExtractFormatStringArgs(UInt32 fmtStringPos, char *buffer, ParamInfo *param
 
 #endif
 
+#if NVSE_CORE
 bool ExtractSetStatementVar(Script *script, ScriptEventList *eventList, void *scriptDataIn, double *outVarData, bool *makeTemporary, const UInt32 *opcodeOffsetPtr, UInt8 *outModIndex, TESObjectREFR* refr)
 {
 	auto *scriptData = static_cast<UInt8 *>(scriptDataIn) + *opcodeOffsetPtr;
@@ -2398,6 +2400,7 @@ bool ExtractSetStatementVar(Script *script, ScriptEventList *eventList, void *sc
 	*makeTemporary = false;
 	return true;
 }
+#endif
 
 // g_baseActorValueNames is only filled in after oblivion's global initializers run
 const char *GetActorValueString(UInt32 actorValue)
