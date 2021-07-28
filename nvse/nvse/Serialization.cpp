@@ -55,8 +55,11 @@ struct ChunkHeader
 };
 
 // locals
+#if _DEBUG
+#define SERIALIZATION_BUFFER_SIZE 0x600000
+#else
 #define SERIALIZATION_BUFFER_SIZE 0x400000
-
+#endif
 alignas(16) static UInt8 s_serializationBuffer[SERIALIZATION_BUFFER_SIZE];
 	
 SerializationTask s_serializationTask(s_serializationBuffer, SERIALIZATION_BUFFER_SIZE);
@@ -584,18 +587,10 @@ bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 {
 	UInt8 modID = refID >> 24;
 
-	// pass dynamic ids straight through
-	if (modID == 0xFF)
-	{
-		*outRefID = refID;
-		return true;
-	}
-
-	UInt8 loadedModID = 0xFF;
 	if (modID >= s_numPreloadMods)
 		return false;
 
-	loadedModID = ResolveModIndexForPreload(modID);
+	const UInt8 loadedModID = ResolveModIndexForPreload(modID);
 	if (loadedModID == 0xFF) 
 		return false;	// unloaded
 
