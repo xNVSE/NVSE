@@ -4267,6 +4267,7 @@ ScriptToken *ExpressionEvaluator::ExecuteCommandToken(ScriptToken const *token, 
 	CommandInfo *cmdInfo = token->GetCommandInfo();
 	if (!cmdInfo)
 	{
+		Error("Failed to execute command: command info not found.");
 		return nullptr;
 	}
 
@@ -4338,6 +4339,8 @@ ScriptToken *ExpressionEvaluator::ExecuteCommandToken(ScriptToken const *token, 
 	case kRetnType_String:
 	{
 		StringVar *strVar = g_StringMap.Get(cmdResult);
+		if (!strVar)
+			Error("Failed to resolve string return result (string ID was %g)", cmdResult);
 		return ScriptToken::Create(nullptr, strVar);
 	}
 	case kRetnType_Array:

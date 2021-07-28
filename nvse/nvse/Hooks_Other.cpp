@@ -89,19 +89,18 @@ namespace OtherHooks
 	}
 
 	// Saves last thisObj in effect/object scripts before they get assigned to something else with dot syntax
-	void __fastcall SaveLastScriptOwnerRef(UInt8* ebp)
+	void __fastcall SaveLastScriptOwnerRef(UInt8* ebp, int spot)
 	{
 		auto& [script, scriptRunner, lineNumberPtr, scriptOwnerRef, command] = g_currentScriptContext;
 		command = nullptr; // set in ExtractArgsEx
 		scriptOwnerRef = *reinterpret_cast<TESObjectREFR**>(ebp + 0xC);
 		script = *reinterpret_cast<Script**>(ebp + 0x8);
-		const auto returnAddress = *reinterpret_cast<UInt32*>(ebp+4);
-		if (returnAddress == 0x5E265B)
+		if (spot == 1)
 		{
 			scriptRunner = *reinterpret_cast<ScriptRunner**>(ebp - 0x774);
 			lineNumberPtr = reinterpret_cast<UInt32*>(ebp - 0x40);
 		}
-		else
+		else if (spot == 2)
 		{
 			// ScriptRunner::Run2
 			scriptRunner = *reinterpret_cast<ScriptRunner**>(ebp - 0x744);
@@ -116,6 +115,7 @@ namespace OtherHooks
 		__asm
 		{
 			lea ecx, [ebp]
+			mov edx, 1
 			call SaveLastScriptOwnerRef
 			call hookedCall
 			jmp retnAddr
@@ -129,6 +129,7 @@ namespace OtherHooks
 		__asm
 		{
 			push ecx
+			mov edx, 2
 			lea ecx, [ebp]
 			call SaveLastScriptOwnerRef
 			pop ecx

@@ -4,6 +4,7 @@
 #include <unordered_set>
 
 #include "GameAPI.h"
+#include "GameData.h"
 #include "Hooks_Other.h"
 #include "ScriptAnalyzer.h"
 #include "Utilities.h"
@@ -75,17 +76,26 @@ static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
 				vsnprintf(buf, sizeof buf, fmt_alt, args);
 			if (scriptContext.script && scriptContext.lineNumberPtr)
 			{
-				ScriptParsing::ScriptAnalyzer analyzer(scriptContext.script, false);
-				const auto line = analyzer.ParseLine(*scriptContext.lineNumberPtr - 1);
-				if (line)
+				const auto modName = DataHandler::Get()->GetNthModName(scriptContext.script->GetModIndex());
+				if (modName)
 				{
-					ShowRuntimeError(scriptContext.script, "%s\nDecompiled Line: %s", buf, line->ToString().c_str());
+					const static auto noWarnModules = { "FalloutNV.esm", "DeadMoney.esm", "HonestHearts.esm", "CaravanPack.esm", "OldWorldBlues.esm", "LonesomeRoad.esm", "GunRunnersArsenal.esm", "MercenaryPack.esm", "ClassicPack.esm", "TribalPack.esm" };
+					const auto isOfficial = ra::any_of(noWarnModules, _L(const char* name, _stricmp(name, modName) == 0));
+					if (!isOfficial)
+					{
+						
+						ScriptParsing::ScriptAnalyzer analyzer(scriptContext.script, false);
+						const auto line = analyzer.ParseLine(*scriptContext.lineNumberPtr - 1);
+						if (line)
+						{
+							ShowRuntimeError(scriptContext.script, "%s\nDecompiled Line: %s", buf, line->ToString().c_str());
+						}
+					}
 				}
 			}
 		}
 		
 	}
-	
 	va_end(args);
 
 	return 0;

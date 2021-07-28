@@ -3,6 +3,7 @@
 #include <string>
 #include <algorithm>
 #include <filesystem>
+#include <tlhelp32.h>
 
 
 #include "containers.h"
@@ -753,4 +754,32 @@ bool Cmd_Default_Execute(COMMAND_ARGS)
 bool Cmd_Default_Eval(COMMAND_ARGS_EVAL)
 {
 	return true;
+}
+
+void ToWChar(wchar_t* ws, const char* c)
+{
+	swprintf(ws, 100, L"%hs", c);
+}
+
+bool IsProcessRunning(const char* executableName)
+{
+	PROCESSENTRY32 entry;
+	entry.dwSize = sizeof(PROCESSENTRY32);
+
+	const auto snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
+
+	if (!Process32First(snapshot, &entry)) {
+		CloseHandle(snapshot);
+		return false;
+	}
+
+	do {
+		if (!_stricmp(entry.szExeFile, executableName)) {
+			CloseHandle(snapshot);
+			return true;
+		}
+	} while (Process32Next(snapshot, &entry));
+
+	CloseHandle(snapshot);
+	return false;
 }

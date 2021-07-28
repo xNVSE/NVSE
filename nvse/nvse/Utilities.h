@@ -224,3 +224,8 @@ bool Contains(std::initializer_list<T> list, const T& t)
 	}
 	return false;
 }
+
+#define _L(x, y) [&](x) {return y;}
+namespace ra = std::ranges;
+
+bool IsProcessRunning(const char* processName);

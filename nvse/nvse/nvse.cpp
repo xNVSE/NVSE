@@ -58,7 +58,7 @@ void WaitForDebugger(void)
 
 void CheckIfModAuthor()
 {
-	g_warnScriptErrors = std::filesystem::exists("GECK.exe");
+	g_warnScriptErrors = IsProcessRunning("GECK.exe");
 	UInt32 iniOpt;
 	if (GetNVSEConfigOption_UInt32("RELEASE", "bWarnScriptErrors", &iniOpt))
 		g_warnScriptErrors = iniOpt;
