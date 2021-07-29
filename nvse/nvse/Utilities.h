@@ -229,3 +229,5 @@ bool Contains(std::initializer_list<T> list, const T& t)
 namespace ra = std::ranges;
 
 bool IsProcessRunning(const char* processName);
+
+void DisplayMessage(const char* msg);

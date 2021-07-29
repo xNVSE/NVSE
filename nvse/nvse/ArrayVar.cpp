@@ -1620,7 +1620,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 	UInt32 lastIndexRead = 0;
 
 	double numKey;
-
+	std::unordered_map<UInt8, UInt32> varCountMap;
 	while (bContinue && Serialization::GetNextRecordInfo(&type, &version, &length))
 	{
 		switch (type)
@@ -1675,6 +1675,18 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 
 							if (Serialization::ResolveRefID(curModIndex << 24, &tempRefID))
 								buffer[refIdx++] = (tempRefID >> 24);
+
+							bool resolveRefID = true;
+#if !_DEBUG
+							resolveRefID = Serialization::ResolveRefID(curModIndex << 24, nullptr);
+#endif
+							if (g_showFileSizeWarning && resolveRefID)
+							{
+								auto& numVars = varCountMap[curModIndex];
+								numVars++;
+								if (numVars > 2000)
+									g_cosaveWarning.modIndices.insert(curModIndex);
+							}
 						}
 
 						numRefs = refIdx;

@@ -57,6 +57,7 @@ int __stdcall OnHook(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	// call original winmain
 	_MESSAGE("calling winmain");
 
+
 	int result = g_hookedWinMain(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
 
 	_MESSAGE("returned from winmain (%d)", result);

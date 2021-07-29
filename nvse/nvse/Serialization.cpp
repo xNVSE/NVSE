@@ -7,12 +7,15 @@
 //#include "EventManager.h"
 
 // ### TODO: only create save file when something has registered a handler
-
+bool g_showFileSizeWarning = false;
+CosaveWarning g_cosaveWarning;
+extern bool g_noSaveWarnings;
 namespace Serialization
 {
 
 static UInt32	kNvseOpcodeBase = 0x1400;
 static std::string	g_savePath;
+static UInt32 g_lastLoadSize = 0x40000;
 
 // file format internals
 
@@ -54,15 +57,7 @@ struct ChunkHeader
 	UInt32	length;
 };
 
-// locals
-#if _DEBUG
-#define SERIALIZATION_BUFFER_SIZE 0x600000
-#else
-#define SERIALIZATION_BUFFER_SIZE 0x400000
-#endif
-alignas(16) static UInt8 s_serializationBuffer[SERIALIZATION_BUFFER_SIZE];
-	
-SerializationTask s_serializationTask(s_serializationBuffer, SERIALIZATION_BUFFER_SIZE);
+SerializationTask s_serializationTask;
 
 typedef std::vector <PluginCallbacks>	PluginCallbackList;
 PluginCallbackList	s_pluginCallbacks;
@@ -187,15 +182,17 @@ void InternalSetPreLoadCallback(PluginHandle plugin, NVSESerializationInterface:
 
 //==========================================================================
 
-void SerializationTask::Reset()
+
+void SerializationTask::PrepareSave()
 {
-	bufferPtr = bufferStart;
-	length = 0;
+	this->length = max(g_lastLoadSize, 0x40000);
+	this->bufferStart = new UInt8[this->length];
+	this->bufferPtr = this->bufferStart;
 }
 
 bool SerializationTask::Save()
 {
-	if (!length) return false;
+	if (!GetOffset()) return false;
 
 	HANDLE saveFile = CreateFile(g_savePath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (saveFile == INVALID_HANDLE_VALUE)
@@ -203,32 +200,39 @@ bool SerializationTask::Save()
 		_ERROR("HandleSaveGame: couldn't create save file (%s)", g_savePath.c_str());
 		return false;
 	}
-
-	WriteFile(saveFile, bufferStart, length, &length, NULL);
+	
+	WriteFile(saveFile, bufferStart, GetOffset(), nullptr, NULL);
 	CloseHandle(saveFile);
 
 	return true;
 }
-
+	
 bool SerializationTask::Load()
 {
-	Reset();
-
+	g_showFileSizeWarning = false;
 	HANDLE saveFile = CreateFile(g_savePath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (saveFile == INVALID_HANDLE_VALUE)
 		return false;
 
-	ReadFile(saveFile, bufferStart, bufferSize, &length, NULL);
+	const auto fileSize = GetFileSize(saveFile, nullptr);
+
+	this->length = fileSize;
+	this->bufferStart = new UInt8[this->length];
+	this->bufferPtr = this->bufferStart;
+	ReadFile(saveFile, bufferStart, length, nullptr, NULL);
 	CloseHandle(saveFile);
 
-	if (length == bufferSize)
-	{
-		_ERROR("HandleLoadGame: co-save file exceeds 4MB!");
-		ShowErrorMessageBox("NVSE cosave failed to load as it exceeded 4MB. Please ping the devs on the xNVSE Discord server about this matter.");
-		return false;
-	}
-
+	if (this->length >= 0x400000 && !g_noSaveWarnings)
+		g_showFileSizeWarning = true;
+	g_lastLoadSize = this->length;
 	return length > 0;
+}
+
+void SerializationTask::Unload()
+{
+	delete[] this->bufferStart;
+	this->bufferPtr = this->bufferStart = nullptr;
+	this->length = 0;
 }
 
 UInt32 SerializationTask::GetOffset() const
@@ -238,43 +242,47 @@ UInt32 SerializationTask::GetOffset() const
 
 void SerializationTask::SetOffset(UInt32 offset)
 {
+	if (offset > length)
+		Resize();
 	bufferPtr = bufferStart + offset;
 }
 
 void SerializationTask::Skip(UInt32 size)
 {
+	CheckResize(size);
 	bufferPtr += size;
 }
 
 void SerializationTask::Write8(UInt8 inData)
 {
+	CheckResize(sizeof(UInt8));
 	*bufferPtr++ = inData;
-	length++;
 }
 
 void SerializationTask::Write16(UInt16 inData)
 {
+	CheckResize(sizeof(UInt16));
 	*(UInt16*)bufferPtr = inData;
 	bufferPtr += 2;
-	length += 2;
 }
 
 void SerializationTask::Write32(UInt32 inData)
 {
+	CheckResize(sizeof(UInt32));
 	*(UInt32*)bufferPtr = inData;
 	bufferPtr += 4;
-	length += 4;
 }
 
 void SerializationTask::Write64(const void *inData)
 {
+	CheckResize(sizeof(double));
 	*(double*)bufferPtr = *(double*)inData;
 	bufferPtr += 8;
-	length += 8;
 }
 
 void SerializationTask::WriteBuf(const void *inData, UInt32 size)
 {
+	CheckResize(size);
 	switch (size)
 	{
 		case 0:
@@ -297,7 +305,24 @@ void SerializationTask::WriteBuf(const void *inData, UInt32 size)
 			break;
 	}
 	bufferPtr += size;
-	length += size;
+}
+
+void SerializationTask::Resize()
+{
+	const auto newLen = this->length * 2;
+	const auto offset = this->GetOffset();
+	auto* newBuf = new UInt8[newLen];
+	std::memcpy(newBuf, this->bufferStart, this->length);
+	delete[] this->bufferStart;
+	this->length = newLen;
+	this->bufferStart = newBuf;
+	this->bufferPtr = this->bufferStart + offset;
+}
+
+void SerializationTask::CheckResize(UInt32 size)
+{
+	if (GetOffset() + size > this->length)
+		Resize();
 }
 
 UInt8 SerializationTask::Read8()
@@ -595,7 +620,8 @@ bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 		return false;	// unloaded
 
 	// fixup ID, success
-	*outRefID = (loadedModID << 24) | (refID & 0x00FFFFFF);
+	if (outRefID)
+		*outRefID = (loadedModID << 24) | (refID & 0x00FFFFFF);
 
 	return true;
 }
@@ -615,7 +641,7 @@ void HandleSaveGame(const char * path)
 
 	_MESSAGE("saving to %s", g_savePath.c_str());
 
-	s_serializationTask.Reset();
+	s_serializationTask.PrepareSave();
 
 	try
 	{
@@ -700,6 +726,20 @@ void HandlePostLoadGame(bool bLoadSucceeded)
 	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_PostLoadGame, (void*)bLoadSucceeded, 1, NULL);
 }
 
+void ShowCosaveWarning()
+{
+	std::string msg = "NVSE: This co-save file has exceeded 4mb in file size which indicates a possible script leak. To fix this disable the following mods, load the save, save the game and then re-enable them:\n\n";
+	for (const auto idx : g_cosaveWarning.modIndices)
+	{
+		if (idx < g_modsLoaded.size())
+		{
+			msg += "- " + g_modsLoaded.at(idx) + "\n";
+		}
+	}
+	msg += "\nTo disable this warning, set bNoSaveWarnings=1 in Data\\NVSE\\nvse_config.ini. It is advised you update to the latest xNVSE. If you are on the latest xNVSE version or this warning persists report this to the xNVSE GitHub or Discord.";
+	DisplayMessage(msg.c_str());
+}
+
 void HandleLoadGame(const char * path, NVSESerializationInterface::EventCallback PluginCallbacks::* callback)
 {
 	// pass file path to plugins registered as listeners
@@ -725,104 +765,112 @@ void HandleLoadGame(const char * path, NVSESerializationInterface::EventCallback
 
 		return;
 	}
-	else
+	try
 	{
-		try
+		Header header;
+
+		s_serializationTask.ReadBuf(&header, sizeof(header));
+
+		if (header.signature != Header::kSignature)
 		{
-			Header header;
+			_ERROR("HandleLoadGame: invalid file signature (found %08X expected %08X)", header.signature, Header::kSignature);
+			s_serializationTask.Unload();
+			return;
+		}
 
-			s_serializationTask.ReadBuf(&header, sizeof(header));
+		if (header.formatVersion <= Header::kVersion_Invalid)
+		{
+			_ERROR("HandleLoadGame: version invalid (%08X)", header.formatVersion);
+			s_serializationTask.Unload();
+			return;
+		}
 
-			if (header.signature != Header::kSignature)
-			{
-				_ERROR("HandleLoadGame: invalid file signature (found %08X expected %08X)", header.signature, Header::kSignature);
-				return;
-			}
-
-			if (header.formatVersion <= Header::kVersion_Invalid)
-			{
-				_ERROR("HandleLoadGame: version invalid (%08X)", header.formatVersion);
-				return;
-			}
-
-			if (header.formatVersion > Header::kVersion)
-			{
-				_ERROR("HandleLoadGame: version too new (found %08X current %08X)", header.formatVersion, Header::kVersion);
-				return;
-			}
+		if (header.formatVersion > Header::kVersion)
+		{
+			_ERROR("HandleLoadGame: version too new (found %08X current %08X)", header.formatVersion, Header::kVersion);
+			s_serializationTask.Unload();
+			return;
+		}
 			
-			// no older versions to handle
+		// no older versions to handle
 
-			// reset flags
-			for (PluginCallbackList::iterator iter = s_pluginCallbacks.begin(); iter != s_pluginCallbacks.end(); ++iter)
-				iter->hadData = false;
+		// reset flags
+		for (PluginCallbackList::iterator iter = s_pluginCallbacks.begin(); iter != s_pluginCallbacks.end(); ++iter)
+			iter->hadData = false;
 			
-			NVSESerializationInterface::EventCallback curCallback = NULL;
-			// iterate through plugin data chunks
-			while (s_serializationTask.GetRemain() >= sizeof(PluginHeader))
+		NVSESerializationInterface::EventCallback curCallback = NULL;
+		// iterate through plugin data chunks
+		while (s_serializationTask.GetRemain() >= sizeof(PluginHeader))
+		{
+			s_serializationTask.ReadBuf(&s_pluginHeader, sizeof(s_pluginHeader));
+
+			UInt32 pluginChunkStart = s_serializationTask.GetOffset();
+
+			// find the corresponding plugin
+			UInt32 pluginIdx = (s_pluginHeader.opcodeBase == kNvseOpcodeBase) ? 0 : g_pluginManager.LookupHandleFromBaseOpcode(s_pluginHeader.opcodeBase);
+			if (pluginIdx != kPluginHandle_Invalid)
 			{
-				s_serializationTask.ReadBuf(&s_pluginHeader, sizeof(s_pluginHeader));
+				s_pluginCallbacks[pluginIdx].hadData = true;
 
-				UInt32 pluginChunkStart = s_serializationTask.GetOffset();
-
-				// find the corresponding plugin
-				UInt32 pluginIdx = (s_pluginHeader.opcodeBase == kNvseOpcodeBase) ? 0 : g_pluginManager.LookupHandleFromBaseOpcode(s_pluginHeader.opcodeBase);
-				if (pluginIdx != kPluginHandle_Invalid)
+				if (s_pluginCallbacks[pluginIdx].*callback)
 				{
-					s_pluginCallbacks[pluginIdx].hadData = true;
-
-					if (s_pluginCallbacks[pluginIdx].*callback)
-					{
-						s_chunkOpen = false;
-						curCallback = s_pluginCallbacks[pluginIdx].*callback;
-						curCallback((void*)path);
-					}
-					else
-					{
-						// ### wtf?
-						_WARNING("plugin has data in save file but no handler");
-
-						s_serializationTask.Skip(s_pluginHeader.length);
-					}
+					s_chunkOpen = false;
+					curCallback = s_pluginCallbacks[pluginIdx].*callback;
+					curCallback((void*)path);
 				}
 				else
 				{
-					// ### TODO: save the data temporarily?
-					_WARNING("data in save file for plugin, but plugin isn't loaded");
+					// ### wtf?
+					_WARNING("plugin has data in save file but no handler");
 
 					s_serializationTask.Skip(s_pluginHeader.length);
 				}
+			}
+			else
+			{
+				// ### TODO: save the data temporarily?
+				_WARNING("data in save file for plugin, but plugin isn't loaded");
 
-				UInt32 expectedOffset = pluginChunkStart + s_pluginHeader.length;
-				if (s_serializationTask.GetOffset() != expectedOffset)
-				{
-					_WARNING("plugin did not read all of its data (at %016I64X expected %016I64X)", s_serializationTask.GetOffset(), expectedOffset);
-					s_serializationTask.SetOffset(expectedOffset);
-				}
+				s_serializationTask.Skip(s_pluginHeader.length);
 			}
 
-			// call load callback for plugins that didn't have data in the file
-			for (PluginCallbackList::iterator iter = s_pluginCallbacks.begin(); iter != s_pluginCallbacks.end(); ++iter)
+			UInt32 expectedOffset = pluginChunkStart + s_pluginHeader.length;
+			if (s_serializationTask.GetOffset() != expectedOffset)
 			{
-				if (!iter->hadData && (*iter).*callback)
-				{
-					s_pluginHeader.numChunks = 0;
-					s_chunkOpen = false;
-					curCallback = (*iter).*callback;
-					curCallback(NULL);
-				}
+				_WARNING("plugin did not read all of its data (at %016I64X expected %016I64X)", s_serializationTask.GetOffset(), expectedOffset);
+				s_serializationTask.SetOffset(expectedOffset);
 			}
 		}
-		catch(...)
-		{
-			_ERROR("HandleLoadGame: exception during load");
 
-			// ### this could be handled better, individually catch around each plugin so one plugin can't mess things up for everyone else
-			if (!s_preloading) {
-				HandleNewGame();
+		// call load callback for plugins that didn't have data in the file
+		for (PluginCallbackList::iterator iter = s_pluginCallbacks.begin(); iter != s_pluginCallbacks.end(); ++iter)
+		{
+			if (!iter->hadData && (*iter).*callback)
+			{
+				s_pluginHeader.numChunks = 0;
+				s_chunkOpen = false;
+				curCallback = (*iter).*callback;
+				curCallback(NULL);
 			}
 		}
 	}
+	catch(...)
+	{
+		_ERROR("HandleLoadGame: exception during load");
+
+		// ### this could be handled better, individually catch around each plugin so one plugin can't mess things up for everyone else
+		if (!s_preloading) {
+			HandleNewGame();
+		}
+	}
+	s_serializationTask.Unload();
+	
+	if (g_showFileSizeWarning && !g_cosaveWarning.modIndices.empty() && !g_cosaveWarning.modIndices.contains(0)) // can't suggest disabling FalloutNV.esm
+	{
+		ShowCosaveWarning();
+	}
+	g_cosaveWarning.modIndices.clear();
+	g_showFileSizeWarning = false;
 }
 
 void GetSaveName(std::string *saveName, const char * path)

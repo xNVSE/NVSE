@@ -1,8 +1,18 @@
 #pragma once
 
+#include <unordered_set>
+
 #include "PluginAPI.h"
 
 extern NVSESerializationInterface	g_NVSESerializationInterface;
+extern bool g_showFileSizeWarning;
+
+struct CosaveWarning
+{
+	std::unordered_set<UInt8> modIndices;
+};
+
+extern CosaveWarning g_cosaveWarning;
 
 namespace Serialization
 {
@@ -12,14 +22,13 @@ struct SerializationTask
 	UInt8		*bufferStart;
 	UInt8		*bufferPtr;
 	UInt32		length;
-	UInt32		bufferSize;
 
-	void Reset();
+	SerializationTask() : bufferStart(nullptr), bufferPtr(nullptr), length(0) {}
 
-	SerializationTask(UInt8* buffer, UInt32 bufferSize) : bufferStart(buffer), bufferPtr(NULL), length(0), bufferSize(bufferSize) {}
-
+	void PrepareSave();
 	bool Save();
 	bool Load();
+	void Unload();
 
 	UInt32 GetOffset() const;
 	void SetOffset(UInt32 offset);
@@ -31,6 +40,8 @@ struct SerializationTask
 	void Write32(UInt32 inData);
 	void Write64(const void *inData);
 	void WriteBuf(const void *inData, UInt32 size);
+	void Resize();
+	void CheckResize(UInt32 size);
 
 	UInt8 Read8();
 	UInt16 Read16();

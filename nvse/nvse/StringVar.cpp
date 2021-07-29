@@ -285,13 +285,19 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 			break;
 		case 'STVR':
 			modIndex = Serialization::ReadRecord8();
+#if _DEBUG
+			modVarCounts[modIndex] += 1;
+			if (modVarCounts[modIndex] == varCountThreshold) {
+				exceededMods.Insert(modIndex);
+				g_cosaveWarning.modIndices.insert(modIndex);
+			}
+#endif
 			if (!Serialization::ResolveRefID(modIndex << 24, &tempRefID))
 			{
 				// owning mod is no longer loaded so discard
 				continue;
 			}
-			else
-				modIndex = tempRefID >> 24;
+			modIndex = tempRefID >> 24;
 
 			stringID = Serialization::ReadRecord32();
 			strLength = Serialization::ReadRecord16();
@@ -300,10 +306,13 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 			buffer[strLength] = 0;
 
 			Insert(stringID, buffer, modIndex);
+#if !_DEBUG
 			modVarCounts[modIndex] += 1;
 			if (modVarCounts[modIndex] == varCountThreshold) {
 				exceededMods.Insert(modIndex);
+				g_cosaveWarning.modIndices.insert(modIndex);
 			}
+#endif
 					
 			break;
 		default:

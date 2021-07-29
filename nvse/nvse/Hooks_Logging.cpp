@@ -83,7 +83,6 @@ static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
 					const auto isOfficial = ra::any_of(noWarnModules, _L(const char* name, _stricmp(name, modName) == 0));
 					if (!isOfficial)
 					{
-						
 						ScriptParsing::ScriptAnalyzer analyzer(scriptContext.script, false);
 						const auto line = analyzer.ParseLine(*scriptContext.lineNumberPtr - 1);
 						if (line)

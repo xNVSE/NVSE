@@ -11,6 +11,7 @@
 #include "StringVar.h"
 #include "ArrayVar.h"
 #include "Commands_Script.h"
+#include "Core_Serialization.h"
 #include "PluginManager.h"
 #include "GameOSDepend.h"
 #include "InventoryReference.h"

@@ -783,3 +783,8 @@ bool IsProcessRunning(const char* executableName)
 	CloseHandle(snapshot);
 	return false;
 }
+
+void DisplayMessage(const char* msg)
+{
+	ShowMessageBox(msg, 0, 0, ShowMessageBox_Callback, 0, 0x17, 0.0, 0.0, "Ok", 0);
+}
