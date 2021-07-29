@@ -694,8 +694,8 @@ std::string FormatString(const char* fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 
-	char msg[0x400];
-	vsprintf_s(msg, 0x400, fmt, args);
+	char msg[0x800];
+	vsprintf_s(msg, 0x800, fmt, args);
 	return msg;
 }
 
@@ -783,8 +783,9 @@ bool IsProcessRunning(const char* executableName)
 	CloseHandle(snapshot);
 	return false;
 }
-
+#if NVSE_CORE && RUNTIME
 void DisplayMessage(const char* msg)
 {
 	ShowMessageBox(msg, 0, 0, ShowMessageBox_Callback, 0, 0x17, 0.0, 0.0, "Ok", 0);
 }
+#endif
