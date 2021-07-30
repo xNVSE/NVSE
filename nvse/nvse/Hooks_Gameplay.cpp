@@ -172,19 +172,16 @@ void DetermineShowScriptErrors()
 		return;
 	}
 
-	const auto* falloutIniPath = reinterpret_cast<const char*>(0x1202FA0);
-	const auto geckIniPath = FormatString("%sGECKPrefs.ini", falloutIniPath);
+	// check if editor has been opened the last two days
+	const auto editorLogPath = GetCurPath() + '\\' + "nvse_editor.log";
 
 	// check if mod author
-	if (!std::filesystem::exists(geckIniPath))
+	if (!std::filesystem::exists(editorLogPath))
 		return;
 
-	const auto fileTime = std::filesystem::last_write_time(geckIniPath);
+	const auto fileTime = std::chrono::clock_cast<std::chrono::system_clock>(std::filesystem::last_write_time(editorLogPath));
 	const auto minTime = std::chrono::system_clock::now() - std::chrono::days(2);
-	const auto fileTimeSeconds = std::chrono::duration_cast<std::chrono::seconds>(fileTime.time_since_epoch()) - std::chrono::seconds(11644473600); // https://developercommunity.visualstudio.com/t/stdfilesystemfile-time-type-does-not-allow-easy-co/251213
-	const auto minTimeSeconds = std::chrono::duration_cast<std::chrono::seconds>(minTime.time_since_epoch());
-
-	if (fileTimeSeconds > minTimeSeconds || IsProcessRunning("GECK.exe"))
+	if (fileTime > minTime)
 		g_warnScriptErrors = true;
 }
 

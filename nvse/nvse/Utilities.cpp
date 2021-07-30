@@ -789,3 +789,11 @@ void DisplayMessage(const char* msg)
 	ShowMessageBox(msg, 0, 0, ShowMessageBox_Callback, 0, 0x17, 0.0, 0.0, "Ok", 0);
 }
 #endif
+
+std::string GetCurPath()
+{
+	char buffer[MAX_PATH] = { 0 };
+	GetModuleFileName(NULL, buffer, MAX_PATH);
+	std::string::size_type pos = std::string(buffer).find_last_of("\\/");
+	return std::string(buffer).substr(0, pos);
+}

@@ -231,3 +231,5 @@ namespace ra = std::ranges;
 bool IsProcessRunning(const char* processName);
 
 void DisplayMessage(const char* msg);
+
+std::string GetCurPath();
