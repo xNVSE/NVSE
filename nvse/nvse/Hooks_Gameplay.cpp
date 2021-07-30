@@ -163,7 +163,7 @@ void ApplyGECKEditorIDs()
 DWORD g_mainThreadID = 0;
 bool s_recordedMainThreadID = false;
 
-void CheckIfModAuthor()
+void DetermineShowScriptErrors()
 {
 	UInt32 iniOpt;
 	if (GetNVSEConfigOption_UInt32("RELEASE", "bWarnScriptErrors", &iniOpt))
@@ -171,23 +171,28 @@ void CheckIfModAuthor()
 		g_warnScriptErrors = iniOpt;
 		return;
 	}
+
 	const auto* falloutIniPath = reinterpret_cast<const char*>(0x1202FA0);
-	const auto geckIniPath = FormatString("%sGECKCustom.ini", falloutIniPath);
+	const auto geckIniPath = FormatString("%sGECKPrefs.ini", falloutIniPath);
+
+	// check if mod author
 	if (!std::filesystem::exists(geckIniPath))
 		return;
+
 	const auto fileTime = std::filesystem::last_write_time(geckIniPath);
 	const auto minTime = std::chrono::system_clock::now() - std::chrono::days(2);
-	if (fileTime.time_since_epoch() > minTime.time_since_epoch() || IsProcessRunning("GECK.exe"))
-	{
+	const auto fileTimeSeconds = std::chrono::duration_cast<std::chrono::seconds>(fileTime.time_since_epoch()) - std::chrono::seconds(11644473600); // https://developercommunity.visualstudio.com/t/stdfilesystemfile-time-type-does-not-allow-easy-co/251213
+	const auto minTimeSeconds = std::chrono::duration_cast<std::chrono::seconds>(minTime.time_since_epoch());
+
+	if (fileTimeSeconds > minTimeSeconds || IsProcessRunning("GECK.exe"))
 		g_warnScriptErrors = true;
-	}
 }
 
 static void HandleMainLoopHook(void)
 { 
 	if (!s_recordedMainThreadID)
 	{
-		CheckIfModAuthor();
+		DetermineShowScriptErrors();
 		ApplyGECKEditorIDs();
 		s_recordedMainThreadID = true;
 		g_mainThreadID = GetCurrentThreadId();
