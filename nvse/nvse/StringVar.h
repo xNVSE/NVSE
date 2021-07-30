@@ -76,6 +76,8 @@ public:
 	UInt32 Add(UInt8 varModIndex, const char* data, bool bTemp = false, StringVar** svOut = nullptr);
 	UInt32 Add(StringVar&& moveVar, bool bTemp, StringVar** svOut);
 	static StringVarMap * GetSingleton(void);
+	void Delete(UInt32 varID);
+	void MarkTemporary(UInt32 varID, bool bTemporary);
 };
 
 extern StringVarMap g_StringMap;
@@ -93,7 +95,7 @@ namespace PluginAPI
 struct FunctionResultStringVar
 {
 	StringVar* var = nullptr;
-	UInt32 id = 0;
+	int id = -1;
 	bool inUse = false;
 };
 

@@ -1,6 +1,9 @@
 #include <set>
 
 #include "Hooks_Gameplay.h"
+
+#include <filesystem>
+
 #include "GameForms.h"
 #include "GameObjects.h"
 #include "SafeWrite.h"
@@ -19,6 +22,7 @@
 #include "FunctionScripts.h"
 #include "Hooks_Other.h"
 #include "ScriptTokenCache.h"
+#include <chrono>
 
 static void HandleMainLoopHook(void);
 
@@ -158,11 +162,32 @@ void ApplyGECKEditorIDs()
 
 DWORD g_mainThreadID = 0;
 bool s_recordedMainThreadID = false;
+
+void CheckIfModAuthor()
+{
+	UInt32 iniOpt;
+	if (GetNVSEConfigOption_UInt32("RELEASE", "bWarnScriptErrors", &iniOpt))
+	{
+		g_warnScriptErrors = iniOpt;
+		return;
+	}
+	const auto* falloutIniPath = reinterpret_cast<const char*>(0x1202FA0);
+	const auto geckIniPath = FormatString("%sGECKCustom.ini", falloutIniPath);
+	if (!std::filesystem::exists(geckIniPath))
+		return;
+	const auto fileTime = std::filesystem::last_write_time(geckIniPath);
+	const auto minTime = std::chrono::system_clock::now() - std::chrono::days(2);
+	if (fileTime.time_since_epoch() > minTime.time_since_epoch() || IsProcessRunning("GECK.exe"))
+	{
+		g_warnScriptErrors = true;
+	}
+}
+
 static void HandleMainLoopHook(void)
 { 
 	if (!s_recordedMainThreadID)
 	{
-		(*g_formEditorIDsMap)->numItems;
+		CheckIfModAuthor();
 		ApplyGECKEditorIDs();
 		s_recordedMainThreadID = true;
 		g_mainThreadID = GetCurrentThreadId();

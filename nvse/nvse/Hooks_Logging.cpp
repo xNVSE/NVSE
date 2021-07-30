@@ -67,13 +67,13 @@ static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
 
 	if (g_warnScriptErrors)
 	{
-		if (retnAddress >= 0x5E1550 && retnAddress <= 0x5E23A4) // script::runline
+		char buf[0x400];
+		if (!alt)
+			vsnprintf(buf, sizeof buf, fmt, args);
+		else
+			vsnprintf(buf, sizeof buf, fmt_alt, args);
+		if (retnAddress >= 0x5E1550 && retnAddress <= 0x5E23A4 || *reinterpret_cast<UInt32*>(buf) == 'IRCS') // script::runline
 		{
-			char buf[0x400];
-			if (!alt)
-				vsnprintf(buf, sizeof buf, fmt, args);
-			else
-				vsnprintf(buf, sizeof buf, fmt_alt, args);
 			if (scriptContext.script && scriptContext.lineNumberPtr)
 			{
 				const auto modName = DataHandler::Get()->GetNthModName(scriptContext.script->GetModIndex());

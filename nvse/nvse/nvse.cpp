@@ -57,13 +57,7 @@ void WaitForDebugger(void)
 	Sleep(1000 * 2);
 }
 
-void CheckIfModAuthor()
-{
-	g_warnScriptErrors = IsProcessRunning("GECK.exe");
-	UInt32 iniOpt;
-	if (GetNVSEConfigOption_UInt32("RELEASE", "bWarnScriptErrors", &iniOpt))
-		g_warnScriptErrors = iniOpt;
-}
+
 
 void NVSE_Initialize(void)
 {
@@ -77,8 +71,7 @@ void NVSE_Initialize(void)
 		UInt32 bMousePatch = 0;
 		if (GetNVSEConfigOption_UInt32("DEBUG", "EscapeMouse", &bMousePatch) && bMousePatch)
 			PatchCoopLevel();
-		CheckIfModAuthor();
-
+		
 		UInt32 noFileWarning = 0;
 		if (GetNVSEConfigOption_UInt32("RELEASE", "bNoSaveWarnings", &bMousePatch) && noFileWarning)
 			g_noSaveWarnings = true;

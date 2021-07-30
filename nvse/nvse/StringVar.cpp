@@ -25,6 +25,25 @@ StringVarMap* StringVarMap::GetSingleton()
 	return &g_StringMap;
 }
 
+void StringVarMap::Delete(UInt32 varID)
+{
+	if (varID != GetFunctionResultCachedStringVar().id)
+		VarMap<StringVar>::Delete(varID);
+#if _DEBUG
+	else
+		DebugBreak();
+#endif
+}
+
+void StringVarMap::MarkTemporary(UInt32 varID, bool bTemporary)
+{
+#if _DEBUG
+	if (varID == GetFunctionResultCachedStringVar().id && bTemporary)
+		DebugBreak();
+#endif
+	VarMap<StringVar>::MarkTemporary(varID, bTemporary);
+}
+
 const char* StringVar::GetCString()
 {
 	return data.c_str();
@@ -356,7 +375,7 @@ __declspec(noinline) FunctionResultStringVar& GetFunctionResultCachedStringVar()
 {
 	if (svMapClearLocalToken != svMapClearGlobalToken)
 	{
-		s_functionResultStringVar = { nullptr, 0, false };
+		s_functionResultStringVar = { nullptr, -1, false };
 		svMapClearLocalToken = svMapClearGlobalToken;
 	}
 	return s_functionResultStringVar;
