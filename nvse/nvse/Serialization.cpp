@@ -185,8 +185,8 @@ void InternalSetPreLoadCallback(PluginHandle plugin, NVSESerializationInterface:
 
 void SerializationTask::PrepareSave()
 {
-	this->length = max(g_lastLoadSize, 0x40000);
-	this->bufferStart = new UInt8[this->length];
+	this->bufferSize = max(g_lastLoadSize, 0x40000);
+	this->bufferStart = new UInt8[this->bufferSize];
 	this->bufferPtr = this->bufferStart;
 }
 
@@ -200,9 +200,11 @@ bool SerializationTask::Save()
 		_ERROR("HandleSaveGame: couldn't create save file (%s)", g_savePath.c_str());
 		return false;
 	}
-	
-	WriteFile(saveFile, bufferStart, GetOffset(), nullptr, NULL);
+	UInt32 numBytesWritten;
+	WriteFile(saveFile, bufferStart, this->length, &numBytesWritten, NULL);
 	CloseHandle(saveFile);
+
+	Unload();
 
 	return true;
 }
@@ -216,23 +218,23 @@ bool SerializationTask::Load()
 
 	const auto fileSize = GetFileSize(saveFile, nullptr);
 
-	this->length = fileSize;
-	this->bufferStart = new UInt8[this->length];
+	this->bufferSize = fileSize;
+	this->bufferStart = new UInt8[this->bufferSize];
 	this->bufferPtr = this->bufferStart;
-	ReadFile(saveFile, bufferStart, length, nullptr, NULL);
+	ReadFile(saveFile, bufferStart, bufferSize, nullptr, NULL);
 	CloseHandle(saveFile);
 
-	if (this->length >= 0x400000 && !g_noSaveWarnings)
+	if (this->bufferSize >= 0x400000 && !g_noSaveWarnings)
 		g_showFileSizeWarning = true;
-	g_lastLoadSize = this->length;
-	return length > 0;
+	g_lastLoadSize = this->bufferSize;
+	return bufferSize > 0;
 }
 
 void SerializationTask::Unload()
 {
 	delete[] this->bufferStart;
 	this->bufferPtr = this->bufferStart = nullptr;
-	this->length = 0;
+	this->bufferSize = 0;
 }
 
 UInt32 SerializationTask::GetOffset() const
@@ -242,8 +244,8 @@ UInt32 SerializationTask::GetOffset() const
 
 void SerializationTask::SetOffset(UInt32 offset)
 {
-	if (offset > length)
-		Resize();
+	if (offset > bufferSize)
+		Resize(offset);
 	bufferPtr = bufferStart + offset;
 }
 
@@ -257,6 +259,7 @@ void SerializationTask::Write8(UInt8 inData)
 {
 	CheckResize(sizeof(UInt8));
 	*bufferPtr++ = inData;
+	length += 1;
 }
 
 void SerializationTask::Write16(UInt16 inData)
@@ -264,6 +267,7 @@ void SerializationTask::Write16(UInt16 inData)
 	CheckResize(sizeof(UInt16));
 	*(UInt16*)bufferPtr = inData;
 	bufferPtr += 2;
+	length += 2;
 }
 
 void SerializationTask::Write32(UInt32 inData)
@@ -271,6 +275,7 @@ void SerializationTask::Write32(UInt32 inData)
 	CheckResize(sizeof(UInt32));
 	*(UInt32*)bufferPtr = inData;
 	bufferPtr += 4;
+	length += 4;
 }
 
 void SerializationTask::Write64(const void *inData)
@@ -278,6 +283,7 @@ void SerializationTask::Write64(const void *inData)
 	CheckResize(sizeof(double));
 	*(double*)bufferPtr = *(double*)inData;
 	bufferPtr += 8;
+	length += 8;
 }
 
 void SerializationTask::WriteBuf(const void *inData, UInt32 size)
@@ -305,24 +311,27 @@ void SerializationTask::WriteBuf(const void *inData, UInt32 size)
 			break;
 	}
 	bufferPtr += size;
+	this->length += size;
 }
 
-void SerializationTask::Resize()
+void SerializationTask::Resize(UInt32 size)
 {
-	const auto newLen = this->length * 2;
+	auto newLen = this->bufferSize * 2;
+	while (newLen < size)
+		newLen *= 2;
 	const auto offset = this->GetOffset();
 	auto* newBuf = new UInt8[newLen];
-	std::memcpy(newBuf, this->bufferStart, this->length);
+	std::memcpy(newBuf, this->bufferStart, this->bufferSize);
 	delete[] this->bufferStart;
-	this->length = newLen;
+	this->bufferSize = newLen;
 	this->bufferStart = newBuf;
 	this->bufferPtr = this->bufferStart + offset;
 }
 
 void SerializationTask::CheckResize(UInt32 size)
 {
-	if (GetOffset() + size > this->length)
-		Resize();
+	if (GetOffset() + size > this->bufferSize)
+		Resize(size);
 }
 
 UInt8 SerializationTask::Read8()

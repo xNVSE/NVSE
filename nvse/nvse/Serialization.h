@@ -19,11 +19,13 @@ namespace Serialization
 
 struct SerializationTask
 {
+private:
 	UInt8		*bufferStart;
 	UInt8		*bufferPtr;
-	UInt32		length;
-
-	SerializationTask() : bufferStart(nullptr), bufferPtr(nullptr), length(0) {}
+	UInt32		bufferSize;
+	UInt32      length;
+public:
+	SerializationTask() : bufferStart(nullptr), bufferPtr(nullptr), bufferSize(0), length(0) {}
 
 	void PrepareSave();
 	bool Save();
@@ -40,7 +42,7 @@ struct SerializationTask
 	void Write32(UInt32 inData);
 	void Write64(const void *inData);
 	void WriteBuf(const void *inData, UInt32 size);
-	void Resize();
+	void Resize(UInt32 size);
 	void CheckResize(UInt32 size);
 
 	UInt8 Read8();
@@ -51,7 +53,7 @@ struct SerializationTask
 
 	void PeekBuf(void *outData, UInt32 size);
 
-	UInt32 GetRemain() const {return length - GetOffset();}
+	UInt32 GetRemain() const {return bufferSize - GetOffset();}
 };
 
 struct PluginCallbacks
