@@ -198,6 +198,9 @@ void DetermineShowScriptErrors()
 	{
 		g_warnScriptErrors = false;
 	}
+#if _DEBUG
+	g_warnScriptErrors = true;
+#endif
 }
 
 static void HandleMainLoopHook(void)
