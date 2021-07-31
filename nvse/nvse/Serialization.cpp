@@ -221,7 +221,8 @@ bool SerializationTask::Load()
 	this->bufferSize = fileSize;
 	this->bufferStart = new UInt8[this->bufferSize];
 	this->bufferPtr = this->bufferStart;
-	ReadFile(saveFile, bufferStart, bufferSize, nullptr, NULL);
+	UInt32 bytesRead;
+	ReadFile(saveFile, bufferStart, bufferSize, &bytesRead, NULL);
 	CloseHandle(saveFile);
 
 	if (this->bufferSize >= 0x400000 && !g_noSaveWarnings)
