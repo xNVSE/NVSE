@@ -1265,17 +1265,12 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 					scriptText += "String_var " + varName;
 				else
 				{
-					if (var->type == Script::VariableType::eVarType_Float)
-					{
-						if (var->IsReferenceType(script))
-							scriptText += "Ref " + varName;
-						else
-							scriptText += "Float " + varName;
-					}
+					if (var->IsReferenceType(script))
+						scriptText += "Ref " + varName;
+					else if (var->type == Script::VariableType::eVarType_Float)
+						scriptText += "Float " + varName;
 					else
-					{
 						scriptText += "Int " + varName;
-					}
 				}
 				
 				scriptText += '\n';
