@@ -53,7 +53,7 @@ public:
 
 	void PeekBuf(void *outData, UInt32 size);
 
-	UInt32 GetRemain() const {return bufferSize - GetOffset();}
+	UInt32 GetRemain() const {return length - GetOffset();}
 };
 
 struct PluginCallbacks
