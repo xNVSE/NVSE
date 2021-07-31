@@ -172,17 +172,25 @@ void DetermineShowScriptErrors()
 		return;
 	}
 
-	// check if editor has been opened the last two days
-	const auto editorLogPath = GetCurPath() + '\\' + "nvse_editor.log";
+	try
+	{
+		// check if editor has been opened the last two days
+		const auto editorLogPath = GetCurPath() + "\\nvse_editor.log";
 
-	// check if mod author
-	if (!std::filesystem::exists(editorLogPath))
-		return;
+		// check if mod author
+		if (!std::filesystem::exists(editorLogPath))
+			return;
 
-	const auto fileTime = std::chrono::clock_cast<std::chrono::system_clock>(std::filesystem::last_write_time(editorLogPath));
-	const auto minTime = std::chrono::system_clock::now() - std::chrono::days(2);
-	if (fileTime > minTime)
-		g_warnScriptErrors = true;
+		const auto fileTime = std::chrono::clock_cast<std::chrono::system_clock>(std::filesystem::last_write_time(editorLogPath));
+		const auto minTime = std::chrono::system_clock::now() - std::chrono::days(2);
+		if (fileTime > minTime)
+			g_warnScriptErrors = true;
+	}
+	catch (...)
+	{
+		// windows 7 seems to fail here
+		g_warnScriptErrors = false;
+	}
 }
 
 static void HandleMainLoopHook(void)
