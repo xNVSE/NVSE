@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <unordered_set>
 
 #include "PluginAPI.h"
@@ -20,7 +21,7 @@ namespace Serialization
 struct SerializationTask
 {
 private:
-	UInt8		*bufferStart;
+	std::unique_ptr<UInt8[]> bufferStart;
 	UInt8		*bufferPtr;
 	UInt32		bufferSize;
 	UInt32      length;

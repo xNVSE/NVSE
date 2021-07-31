@@ -187,8 +187,8 @@ void SerializationTask::PrepareSave()
 {
 	this->length = 0;
 	this->bufferSize = max(g_lastLoadSize, 0x40000);
-	this->bufferStart = new UInt8[this->bufferSize];
-	this->bufferPtr = this->bufferStart;
+	this->bufferStart = std::make_unique<UInt8[]>(bufferSize);
+	this->bufferPtr = this->bufferStart.get();
 }
 
 bool SerializationTask::Save()
@@ -202,7 +202,7 @@ bool SerializationTask::Save()
 		return false;
 	}
 	UInt32 numBytesWritten;
-	WriteFile(saveFile, bufferStart, this->length, &numBytesWritten, NULL);
+	WriteFile(saveFile, bufferStart.get(), this->length, &numBytesWritten, NULL);
 	CloseHandle(saveFile);
 
 	Unload();
@@ -220,9 +220,9 @@ bool SerializationTask::Load()
 	const auto fileSize = GetFileSize(saveFile, nullptr);
 
 	this->bufferSize = fileSize;
-	this->bufferStart = new UInt8[this->bufferSize];
-	this->bufferPtr = this->bufferStart;
-	ReadFile(saveFile, bufferStart, bufferSize, &this->length, NULL);
+	this->bufferStart = std::make_unique<UInt8[]>(bufferSize);
+	this->bufferPtr = this->bufferStart.get();
+	ReadFile(saveFile, bufferStart.get(), bufferSize, &this->length, NULL);
 	CloseHandle(saveFile);
 
 	if (this->bufferSize >= 0x400000 && !g_noSaveWarnings)
@@ -233,21 +233,21 @@ bool SerializationTask::Load()
 
 void SerializationTask::Unload()
 {
-	delete[] this->bufferStart;
-	this->bufferPtr = this->bufferStart = nullptr;
+	this->bufferStart = nullptr;
+	this->bufferPtr = nullptr;
 	this->bufferSize = 0;
 }
 
 UInt32 SerializationTask::GetOffset() const
 {
-	return (UInt32)(bufferPtr - bufferStart);
+	return (UInt32)(bufferPtr - bufferStart.get());
 }
 
 void SerializationTask::SetOffset(UInt32 offset)
 {
 	if (offset > bufferSize)
 		Resize(offset);
-	bufferPtr = bufferStart + offset;
+	bufferPtr = bufferStart.get() + offset;
 }
 
 void SerializationTask::Skip(UInt32 size)
@@ -321,12 +321,11 @@ void SerializationTask::Resize(UInt32 size)
 	while (newLen < size)
 		newLen *= 2;
 	const auto offset = this->GetOffset();
-	auto* newBuf = new UInt8[newLen];
-	std::memcpy(newBuf, this->bufferStart, this->bufferSize);
-	delete[] this->bufferStart;
+	auto newBuf = std::make_unique<UInt8[]>(newLen);
+	std::memcpy(newBuf.get(), this->bufferStart.get(), this->bufferSize);
 	this->bufferSize = newLen;
-	this->bufferStart = newBuf;
-	this->bufferPtr = this->bufferStart + offset;
+	this->bufferStart = std::move(newBuf);
+	this->bufferPtr = this->bufferStart.get() + offset;
 }
 
 void SerializationTask::CheckResize(UInt32 size)
