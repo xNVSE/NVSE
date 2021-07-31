@@ -91,7 +91,7 @@ namespace OtherHooks
 	// Saves last thisObj in effect/object scripts before they get assigned to something else with dot syntax
 	void __fastcall SaveLastScriptOwnerRef(UInt8* ebp, int spot)
 	{
-		auto& [script, scriptRunner, lineNumberPtr, scriptOwnerRef, command] = g_currentScriptContext;
+		auto& [script, scriptRunner, lineNumberPtr, scriptOwnerRef, command, curData] = g_currentScriptContext;
 		command = nullptr; // set in ExtractArgsEx
 		scriptOwnerRef = *reinterpret_cast<TESObjectREFR**>(ebp + 0xC);
 		script = *reinterpret_cast<Script**>(ebp + 0x8);
@@ -99,12 +99,18 @@ namespace OtherHooks
 		{
 			scriptRunner = *reinterpret_cast<ScriptRunner**>(ebp - 0x774);
 			lineNumberPtr = reinterpret_cast<UInt32*>(ebp - 0x40);
+			curData = reinterpret_cast<UInt32*>(ebp - 0x3C);
+			if (*curData == 0xCCCCCCCC)
+			{
+				int i = 0;
+			}
 		}
 		else if (spot == 2)
 		{
 			// ScriptRunner::Run2
 			scriptRunner = *reinterpret_cast<ScriptRunner**>(ebp - 0x744);
 			lineNumberPtr = reinterpret_cast<UInt32*>(ebp - 0x28);
+			curData = reinterpret_cast<UInt32*>(ebp - 0x24);
 		}
 	}
 

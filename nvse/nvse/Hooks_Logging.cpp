@@ -84,6 +84,14 @@ static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
 					if (!isOfficial)
 					{
 						ScriptParsing::ScriptAnalyzer analyzer(scriptContext.script, false);
+						ScriptParsing::ScriptIterator iter(scriptContext.script, scriptContext.script->data + *scriptContext.curDataPtr);
+						if (*(iter.curData - 2) == static_cast<UInt8>(ScriptParsing::ScriptStatementCode::ReferenceFunction))
+						{
+							analyzer.Parse();
+							const auto it = ra::find_if(analyzer.lines, _L(auto & line, line->context.startData == iter.curData - 2));
+							if (it != analyzer.lines.end())
+								iter = it->get()->context;
+						}
 						const auto line = analyzer.ParseLine(*scriptContext.lineNumberPtr - 1);
 						if (line)
 						{

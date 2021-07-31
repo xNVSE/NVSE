@@ -307,8 +307,8 @@ namespace ScriptParsing
 	
 	class ScriptAnalyzer
 	{
-		void Parse();
 	public:
+		void Parse();
 		ScriptIterator iter;
 		std::vector<std::unique_ptr<ScriptLine>> lines;
 		bool isLambdaScript = false;
