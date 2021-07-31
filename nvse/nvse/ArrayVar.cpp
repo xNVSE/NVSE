@@ -1448,6 +1448,7 @@ std::vector<ArrayVar*> ArrayVarMap::GetArraysContainingArrayID(ArrayID id)
 ArrayVar* ArrayVarMap::Add(UInt32 varID, UInt32 keyType, bool packed, UInt8 modIndex, UInt32 numRefs, UInt8* refs)
 {
 	ArrayVar* var = VarMap::Insert(varID, keyType, packed, modIndex);
+	ScopedLock lock(var->m_cs);
 	availableIDs.Erase(varID);
 	var->m_ID = varID;
 	if (numRefs) // record references to this array
@@ -1474,6 +1475,7 @@ void ArrayVarMap::AddReference(ArrayID* ref, ArrayID toRef, UInt8 referringModIn
 	ArrayVar* arr = Get(toRef);
 	if (arr)
 	{
+		ScopedLock lock(arr->m_cs);
 		arr->m_refs.Append(referringModIndex); // record reference, increment refcount
 		*ref = toRef; // store ref'ed ArrayID in reference
 		MarkTemporary(toRef, false);
@@ -1485,6 +1487,7 @@ void ArrayVarMap::RemoveReference(ArrayID* ref, UInt8 referringModIndex)
 	ArrayVar* var = Get(*ref);
 	if (var)
 	{
+		ScopedLock lock(var->m_cs);
 		// decrement refcount
 		var->m_refs.Remove(referringModIndex);
 
