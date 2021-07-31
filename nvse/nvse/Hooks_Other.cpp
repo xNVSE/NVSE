@@ -118,7 +118,9 @@ namespace OtherHooks
 	{
 		__asm
 		{
+			push eax
 			call PostScriptExecute
+			pop eax
 			mov esp, ebp
 			pop ebp
 			ret 0x20
@@ -129,7 +131,9 @@ namespace OtherHooks
 	{
 		__asm
 		{
+			push eax
 			call PostScriptExecute
+			pop eax
 			mov esp, ebp
 			pop ebp
 			ret 0xC
