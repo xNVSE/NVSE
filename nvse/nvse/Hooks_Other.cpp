@@ -6,17 +6,15 @@
 #include "LambdaManager.h"
 #include "PluginManager.h"
 #include "Commands_UI.h"
+#include "FastStack.h"
 #include "GameTiles.h"
 #include "MemoizedMap.h"
 
 #if RUNTIME
 namespace OtherHooks
 {
-	
-	thread_local CurrentScriptContext g_currentScriptContext;
-
 	const static auto ClearCachedTileMap = &MemoizedMap<const char*, Tile::Value*>::Clear;
-
+	thread_local FastStack<CurrentScriptContext> g_currentScriptContext;
 	__declspec(naked) void TilesDestroyedHook()
 	{
 		__asm
@@ -91,7 +89,7 @@ namespace OtherHooks
 	// Saves last thisObj in effect/object scripts before they get assigned to something else with dot syntax
 	void __fastcall SaveLastScriptOwnerRef(UInt8* ebp, int spot)
 	{
-		auto& [script, scriptRunner, lineNumberPtr, scriptOwnerRef, command, curData] = g_currentScriptContext;
+		auto& [script, scriptRunner, lineNumberPtr, scriptOwnerRef, command, curData] = *g_currentScriptContext.Push();
 		command = nullptr; // set in ExtractArgsEx
 		scriptOwnerRef = *reinterpret_cast<TESObjectREFR**>(ebp + 0xC);
 		script = *reinterpret_cast<Script**>(ebp + 0x8);
@@ -100,17 +98,41 @@ namespace OtherHooks
 			scriptRunner = *reinterpret_cast<ScriptRunner**>(ebp - 0x774);
 			lineNumberPtr = reinterpret_cast<UInt32*>(ebp - 0x40);
 			curData = reinterpret_cast<UInt32*>(ebp - 0x3C);
-			if (*curData == 0xCCCCCCCC)
-			{
-				int i = 0;
-			}
 		}
 		else if (spot == 2)
 		{
+			auto& [script, scriptRunner, lineNumberPtr, scriptOwnerRef, command, curData] = *g_currentScriptContext.Push();
 			// ScriptRunner::Run2
 			scriptRunner = *reinterpret_cast<ScriptRunner**>(ebp - 0x744);
 			lineNumberPtr = reinterpret_cast<UInt32*>(ebp - 0x28);
 			curData = reinterpret_cast<UInt32*>(ebp - 0x24);
+		}
+	}
+
+	void PostScriptExecute()
+	{
+		g_currentScriptContext.Pop();
+	}
+
+	__declspec (naked) void PostScriptExecuteHook1()
+	{
+		__asm
+		{
+			call PostScriptExecute
+			mov esp, ebp
+			pop ebp
+			ret 0x20
+		}
+	}
+
+	__declspec (naked) void PostScriptExecuteHook2()
+	{
+		__asm
+		{
+			call PostScriptExecute
+			mov esp, ebp
+			pop ebp
+			ret 0xC
 		}
 	}
 
@@ -152,6 +174,16 @@ namespace OtherHooks
 		
 		WriteRelJump(0x5E0D51, UInt32(SaveScriptOwnerRefHook));
 		WriteRelJump(0x5E119A, UInt32(SaveScriptOwnerRefHook2));
+
+		WriteRelJump(0x5E1137, UInt32(PostScriptExecuteHook1));
+		WriteRelJump(0x5E1392, UInt32(PostScriptExecuteHook2));
+	}
+
+	CurrentScriptContext* GetExecutingScriptContext()
+	{
+		if (!g_currentScriptContext.Empty())
+			return &g_currentScriptContext.Top();
+		return nullptr;
 	}
 }
 #endif

@@ -45,6 +45,7 @@ namespace ScriptParsing
 		ScriptIterator(Script* script, UInt8* position);
 		ScriptIterator(Script* script, UInt16 opcode, UInt16 length, UInt16 refIdx, UInt8* data);
 		ScriptIterator();
+
 		void operator++();
 		bool End() const;
 	};

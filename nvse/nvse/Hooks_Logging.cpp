@@ -19,10 +19,10 @@
 static FILE * s_errorLog = NULL;
 static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
 {
-	auto& scriptContext = OtherHooks::g_currentScriptContext;
+	auto* scriptContext = OtherHooks::GetExecutingScriptContext();
 	const auto retnAddress = reinterpret_cast<UInt32>(_ReturnAddress());
 
-	if (scriptContext.command && scriptContext.command->opcode == 4418 && retnAddress == 0x5E2383) // shut up Dispel
+	if (scriptContext && scriptContext->command && scriptContext->command->opcode == 4418 && retnAddress == 0x5E2383) // shut up Dispel
 	{
 		// context: Dispel returns false deliberately if called within own script effect to act as a "Return" statement
 		return 0;
@@ -65,37 +65,47 @@ static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
 	}
 #endif
 
-	if (g_warnScriptErrors)
+	if (g_warnScriptErrors && scriptContext && scriptContext->script && scriptContext->curDataPtr)
 	{
 		char buf[0x400];
 		if (!alt)
 			vsnprintf(buf, sizeof buf, fmt, args);
 		else
 			vsnprintf(buf, sizeof buf, fmt_alt, args);
-		if (retnAddress >= 0x5E1550 && retnAddress <= 0x5E23A4 || *reinterpret_cast<UInt32*>(buf) == 'IRCS') // script::runline
+		const auto inRunLine = _L(, retnAddress >= 0x5E1550 && retnAddress <= 0x5E23A4);
+		if (inRunLine() || *reinterpret_cast<UInt32*>(buf) == 'IRCS')
 		{
-			if (scriptContext.script && scriptContext.lineNumberPtr)
+			const auto modName = DataHandler::Get()->GetNthModName(scriptContext->script->GetModIndex());
+			if (modName)
 			{
-				const auto modName = DataHandler::Get()->GetNthModName(scriptContext.script->GetModIndex());
-				if (modName)
+				const static auto noWarnModules = { "FalloutNV.esm", "DeadMoney.esm", "HonestHearts.esm", "CaravanPack.esm", "OldWorldBlues.esm", "LonesomeRoad.esm", "GunRunnersArsenal.esm", "MercenaryPack.esm", "ClassicPack.esm", "TribalPack.esm" };
+				const auto isOfficial = ra::any_of(noWarnModules, _L(const char* name, _stricmp(name, modName) == 0));
+				if (!isOfficial)
 				{
-					const static auto noWarnModules = { "FalloutNV.esm", "DeadMoney.esm", "HonestHearts.esm", "CaravanPack.esm", "OldWorldBlues.esm", "LonesomeRoad.esm", "GunRunnersArsenal.esm", "MercenaryPack.esm", "ClassicPack.esm", "TribalPack.esm" };
-					const auto isOfficial = ra::any_of(noWarnModules, _L(const char* name, _stricmp(name, modName) == 0));
-					if (!isOfficial)
+					ScriptParsing::ScriptIterator iter;
+					auto* lineDataStart = scriptContext->script->data + *scriptContext->curDataPtr - 4;
+					const auto defaultIter = _L(,ScriptParsing::ScriptIterator(scriptContext->script, scriptContext->script->data + *scriptContext->curDataPtr - 4));
+					// handles reference functions, no way to know if it's a coincidence that the opcode before it matches it or not so we have to parse the whole script.
+					if (*reinterpret_cast<UInt16*>(lineDataStart - 4) == static_cast<UInt16>(ScriptParsing::ScriptStatementCode::ReferenceFunction)
+						&& scriptContext->script->GetRefFromRefList(*reinterpret_cast<UInt16*>(lineDataStart - 2)))
 					{
-						ScriptParsing::ScriptAnalyzer analyzer(scriptContext.script, false);
-						ScriptParsing::ScriptIterator iter(scriptContext.script, scriptContext.script->data + *scriptContext.curDataPtr);
-						if (*(iter.curData - 2) == static_cast<UInt8>(ScriptParsing::ScriptStatementCode::ReferenceFunction))
-						{
-							analyzer.Parse();
-							const auto it = ra::find_if(analyzer.lines, _L(auto & line, line->context.startData == iter.curData - 2));
-							if (it != analyzer.lines.end())
-								iter = it->get()->context;
-						}
-						const auto line = analyzer.ParseLine(*scriptContext.lineNumberPtr - 1);
+						ScriptParsing::ScriptAnalyzer analyzer(scriptContext->script);
+						const auto it = ra::find_if(analyzer.lines, _L(auto& line, line->context.refIdx && line->context.startData == lineDataStart + 4));
+						if (it != analyzer.lines.end())
+							iter = it->get()->context;
+						else
+							iter = defaultIter();
+					}
+					else
+					{
+						iter = defaultIter();
+					}
+					if (iter.curData)
+					{
+						const auto line = ScriptParsing::ScriptAnalyzer::ParseLine(iter);
 						if (line)
 						{
-							ShowRuntimeError(scriptContext.script, "%s\nDecompiled Line: %s", buf, line->ToString().c_str());
+							ShowRuntimeError(scriptContext->script, "%s\nDecompiled Line: %s", buf, line->ToString().c_str());
 						}
 					}
 				}

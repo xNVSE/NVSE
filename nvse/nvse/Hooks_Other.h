@@ -1,4 +1,5 @@
 #pragma once
+#include "FastStack.h"
 #include "GameAPI.h"
 
 namespace OtherHooks
@@ -12,10 +13,11 @@ namespace OtherHooks
 		CommandInfo* command = nullptr;
 		UInt32* curDataPtr = nullptr;
 	};
-	extern thread_local CurrentScriptContext g_currentScriptContext;
 	void CleanUpNVSEVars(ScriptEventList* eventList);
 
 	void DeleteEventList(ScriptEventList* eventList);
 	
 	void Hooks_Other_Init();
+
+	CurrentScriptContext* GetExecutingScriptContext();
 }
