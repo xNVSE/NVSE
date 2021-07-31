@@ -185,6 +185,7 @@ void InternalSetPreLoadCallback(PluginHandle plugin, NVSESerializationInterface:
 
 void SerializationTask::PrepareSave()
 {
+	this->length = 0;
 	this->bufferSize = max(g_lastLoadSize, 0x40000);
 	this->bufferStart = new UInt8[this->bufferSize];
 	this->bufferPtr = this->bufferStart;
@@ -221,8 +222,7 @@ bool SerializationTask::Load()
 	this->bufferSize = fileSize;
 	this->bufferStart = new UInt8[this->bufferSize];
 	this->bufferPtr = this->bufferStart;
-	UInt32 bytesRead;
-	ReadFile(saveFile, bufferStart, bufferSize, &bytesRead, NULL);
+	ReadFile(saveFile, bufferStart, bufferSize, &this->length, NULL);
 	CloseHandle(saveFile);
 
 	if (this->bufferSize >= 0x400000 && !g_noSaveWarnings)
@@ -772,7 +772,7 @@ void HandleLoadGame(const char * path, NVSESerializationInterface::EventCallback
 		if (!s_preloading) {
 			HandleNewGame();	// treat this as a new game
 		}
-
+		s_serializationTask.Unload();
 		return;
 	}
 	try
