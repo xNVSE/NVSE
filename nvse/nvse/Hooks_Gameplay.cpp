@@ -23,6 +23,9 @@
 #include "Hooks_Other.h"
 #include "ScriptTokenCache.h"
 #include <chrono>
+#include <fstream>
+
+#include "GameData.h"
 
 static void HandleMainLoopHook(void);
 
@@ -162,7 +165,7 @@ void ApplyGECKEditorIDs()
 
 DWORD g_mainThreadID = 0;
 bool s_recordedMainThreadID = false;
-
+std::unordered_set<UInt8> g_myMods;
 void DetermineShowScriptErrors()
 {
 	UInt32 iniOpt;
@@ -174,21 +177,25 @@ void DetermineShowScriptErrors()
 
 	try
 	{
-		// check if editor has been opened the last two days
-		const auto editorLogPath = GetCurPath() + "\\nvse_editor.log";
-
-		// check if mod author
-		if (!std::filesystem::exists(editorLogPath))
-			return;
-
-		const auto fileTime = std::chrono::clock_cast<std::chrono::system_clock>(std::filesystem::last_write_time(editorLogPath));
-		const auto minTime = std::chrono::system_clock::now() - std::chrono::days(2);
-		if (fileTime > minTime)
-			g_warnScriptErrors = true;
+		const auto* myModsFileName = "MyGECKMods.txt";
+		if (std::filesystem::exists(myModsFileName))
+		{
+			std::ifstream is(myModsFileName);
+			std::string curMod;
+			while (std::getline(is, curMod))
+			{
+				if (curMod.empty())
+					continue;
+				if (const auto idx = DataHandler::Get()->GetModIndex(curMod.c_str()); idx != -1)
+				{
+					g_warnScriptErrors = true;
+					g_myMods.insert(idx);
+				}
+			}
+		}
 	}
 	catch (...)
 	{
-		// windows 7 seems to fail here
 		g_warnScriptErrors = false;
 	}
 }

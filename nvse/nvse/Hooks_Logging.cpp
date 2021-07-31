@@ -5,6 +5,7 @@
 
 #include "GameAPI.h"
 #include "GameData.h"
+#include "Hooks_Gameplay.h"
 #include "Hooks_Other.h"
 #include "ScriptAnalyzer.h"
 #include "Utilities.h"
@@ -14,7 +15,6 @@
 #define kPatchSCOF 0x0071DE73
 #define kStrCRLF 0x0101F520
 #define kBufferSCOF 0x0071DE11
-
 
 static FILE * s_errorLog = NULL;
 static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
@@ -65,7 +65,7 @@ static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
 	}
 #endif
 
-	if (g_warnScriptErrors && scriptContext && scriptContext->script && scriptContext->curDataPtr)
+	if (g_warnScriptErrors && scriptContext && scriptContext->script && scriptContext->curDataPtr && g_myMods.contains(scriptContext->script->GetModIndex()))
 	{
 		char buf[0x400];
 		if (!alt)

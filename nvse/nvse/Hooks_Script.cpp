@@ -1,6 +1,7 @@
 #include "SafeWrite.h"
 #include "Hooks_Script.h"
 
+#include <filesystem>
 #include <ranges>
 
 #include "GameForms.h"
@@ -9,8 +10,11 @@
 #include "CommandTable.h"
 #include <stack>
 #include <string>
+#include <fstream>
+#include <set>
 
 #include "GameAPI.h"
+#include "GameData.h"
 
 // a size of ~1KB should be enough for a single line of code
 char s_ExpressionParserAltBuffer[0x500] = {0};
@@ -624,9 +628,40 @@ bool __stdcall HandleBeginCompile(ScriptBuffer *buf, Script *script)
 	return bResult;
 }
 
+void MarkModAsMyMod(Script* script)
+{
+	std::set<std::string> myMods;
+	const auto myModsFileName = "MyGECKMods.txt";
+	if (std::filesystem::exists(myModsFileName))
+	{
+		std::ifstream is(myModsFileName);
+		std::string curMod;
+		while (std::getline(is, curMod))
+		{
+			myMods.emplace(std::move(curMod));
+		}
+	}
+	std::ofstream os(myModsFileName);
+	std::string esmFileName;
+	if (script->mods.Head() && script->mods.Head()->data && ValidString(script->mods.Head()->data->name))
+	{
+		esmFileName = script->mods.Head()->data->name;
+	}
+	else if (DataHandler::Get()->activeFile && ValidString(DataHandler::Get()->activeFile->name))
+	{
+		esmFileName = DataHandler::Get()->activeFile->name;
+	}
+	myMods.emplace(std::move(esmFileName));
+	for (auto& line : myMods)
+	{
+		os << line << std::endl;
+	}
+}
+
 void __fastcall PostScriptCompileSuccess(Script *script)
 {
 	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptCompile, script, 4, nullptr);
+	MarkModAsMyMod(script);
 }
 
 void PostScriptCompile()

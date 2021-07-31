@@ -233,3 +233,5 @@ bool IsProcessRunning(const char* processName);
 void DisplayMessage(const char* msg);
 
 std::string GetCurPath();
+
+bool ValidString(const char* str);
