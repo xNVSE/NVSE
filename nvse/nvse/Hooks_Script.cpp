@@ -261,7 +261,10 @@ void PatchEndOfLineCheck(bool bDisableCheck)
 
 void PatchEndOfLineCheck(bool bDisableCheck)
 {
-	// TODO: implement for run-time
+	if (bDisableCheck)
+		SafeWrite8(0x5B3A8D, 0xEB);
+	else
+		SafeWrite8(0x5B3A8D, 0x73);
 }
 
 #endif
