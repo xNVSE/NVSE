@@ -9,6 +9,8 @@
 #include "GameApi.h"
 #include <set>
 
+#include "Core_Serialization.h"
+
 StringVar::StringVar(const char* in_data, UInt8 modIndex)
 {
 	data = in_data;
@@ -268,6 +270,10 @@ void StringVarMap::Save(NVSESerializationInterface* intfc)
 	Serialization::OpenRecord('STVE', 0);
 }
 
+#if _DEBUG
+extern std::set<std::string> g_modsWithCosaveVars;
+#endif
+
 void StringVarMap::Load(NVSESerializationInterface* intfc)
 {
 	_MESSAGE("Loading strings");
@@ -305,6 +311,7 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 		case 'STVR':
 			modIndex = Serialization::ReadRecord8();
 #if _DEBUG
+			g_modsWithCosaveVars.insert(g_modsLoaded.at(modIndex));
 			modVarCounts[modIndex] += 1;
 			if (modVarCounts[modIndex] == varCountThreshold) {
 				exceededMods.Insert(modIndex);

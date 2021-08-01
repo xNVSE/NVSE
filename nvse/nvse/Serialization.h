@@ -36,7 +36,7 @@ public:
 	UInt32 GetOffset() const;
 	void SetOffset(UInt32 offset);
 
-	void Skip(UInt32 size);
+	void Skip(UInt32 size, bool read);
 
 	void Write8(UInt8 inData);
 	void Write16(UInt16 inData);
@@ -55,6 +55,7 @@ public:
 	void PeekBuf(void *outData, UInt32 size);
 
 	UInt32 GetRemain() const {return length - GetOffset();}
+	void ValidateOffset(UInt32 size) const;
 };
 
 struct PluginCallbacks

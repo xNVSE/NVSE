@@ -1,4 +1,7 @@
 #include "Serialization.h"
+
+#include <stdexcept>
+
 #include "Core_Serialization.h"
 #include "common/IFileStream.h"
 #include "PluginManager.h"
@@ -24,7 +27,7 @@ static UInt32 g_lastLoadSize = 0x40000;
 //		PluginHeader	plugin[header.numPlugins]
 //			ChunkHeader		chunk[plugin.numChunks]
 //				UInt8			data[chunk.length]
-
+	
 struct Header
 {
 	enum
@@ -250,9 +253,12 @@ void SerializationTask::SetOffset(UInt32 offset)
 	bufferPtr = bufferStart.get() + offset;
 }
 
-void SerializationTask::Skip(UInt32 size)
+void SerializationTask::Skip(UInt32 size, bool read)
 {
-	CheckResize(size);
+	if (read)
+		ValidateOffset(size);
+	else
+		CheckResize(size);
 	bufferPtr += size;
 }
 
@@ -336,6 +342,7 @@ void SerializationTask::CheckResize(UInt32 size)
 
 UInt8 SerializationTask::Read8()
 {
+	ValidateOffset(1);
 	UInt8 result = *bufferPtr;
 	bufferPtr++;
 	return result;
@@ -343,6 +350,7 @@ UInt8 SerializationTask::Read8()
 
 UInt16 SerializationTask::Read16()
 {
+	ValidateOffset(2);
 	UInt16 result = *(UInt16*)bufferPtr;
 	bufferPtr += 2;
 	return result;
@@ -350,6 +358,7 @@ UInt16 SerializationTask::Read16()
 
 UInt32 SerializationTask::Read32()
 {
+	ValidateOffset(4);
 	UInt32 result = *(UInt32*)bufferPtr;
 	bufferPtr += 4;
 	return result;
@@ -357,12 +366,14 @@ UInt32 SerializationTask::Read32()
 
 void SerializationTask::Read64(void *outData)
 {
+	ValidateOffset(8);
 	*(double*)outData = *(double*)bufferPtr;
 	bufferPtr += 8;
 }
 
 void SerializationTask::ReadBuf(void *outData, UInt32 size)
 {
+	ValidateOffset(size);
 	switch (size)
 	{
 		case 0:
@@ -389,6 +400,7 @@ void SerializationTask::ReadBuf(void *outData, UInt32 size)
 
 void SerializationTask::PeekBuf(void *outData, UInt32 size)
 {
+	ValidateOffset(size);
 	switch (size)
 	{
 		case 0:
@@ -406,6 +418,14 @@ void SerializationTask::PeekBuf(void *outData, UInt32 size)
 		default:
 			memcpy(outData, bufferPtr, size);
 			break;
+	}
+}
+
+void SerializationTask::ValidateOffset(UInt32 size) const
+{
+	if (GetOffset() + size > this->bufferSize)
+	{
+		throw std::out_of_range("");
 	}
 }
 
@@ -448,13 +468,13 @@ bool OpenRecord(UInt32 type, UInt32 version)
 		ASSERT(!s_chunkOpen);
 
 		s_pluginHeaderOffset = s_serializationTask.GetOffset();
-		s_serializationTask.Skip(sizeof(s_pluginHeader));
+		s_serializationTask.Skip(sizeof(s_pluginHeader), false);
 	}
 
 	FlushWriteChunk();
 
 	s_chunkHeaderOffset = s_serializationTask.GetOffset();
-	s_serializationTask.Skip(sizeof(s_chunkHeader));
+	s_serializationTask.Skip(sizeof(s_chunkHeader), false);
 
 	s_pluginHeader.numChunks++;
 
@@ -502,7 +522,7 @@ static void FlushReadRecord(void)
 		{
 			if (!ignoreNextChunk)
 				_WARNING("plugin didn't finish reading chunk");
-			s_serializationTask.Skip(s_chunkHeader.length);
+			s_serializationTask.Skip(s_chunkHeader.length, true);
 		}
 
 		s_chunkOpen = false;
@@ -600,7 +620,7 @@ void SkipNBytes(UInt32 byteNum)
 	if (byteNum > s_chunkHeader.length)
 		byteNum = s_chunkHeader.length;
 
-	s_serializationTask.Skip(byteNum);
+	s_serializationTask.Skip(byteNum, false);
 
 	s_chunkHeader.length -= byteNum;
 }
@@ -662,7 +682,7 @@ void HandleSaveGame(const char * path)
 		s_fileHeader.falloutVersion =	RUNTIME_VERSION;
 		s_fileHeader.numPlugins =		0;
 
-		s_serializationTask.Skip(sizeof(s_fileHeader));
+		s_serializationTask.Skip(sizeof(s_fileHeader), false);
 
 		// iterate through plugins
 		_MESSAGE("saving %d plugins to %s", s_pluginCallbacks.size(), g_savePath.c_str());
@@ -812,6 +832,11 @@ void HandleLoadGame(const char * path, NVSESerializationInterface::EventCallback
 		while (s_serializationTask.GetRemain() >= sizeof(PluginHeader))
 		{
 			s_serializationTask.ReadBuf(&s_pluginHeader, sizeof(s_pluginHeader));
+			if (!s_pluginHeader.length)
+			{
+				_WARNING("cosave header has size 0");
+				break;
+			}
 
 			UInt32 pluginChunkStart = s_serializationTask.GetOffset();
 
@@ -832,7 +857,7 @@ void HandleLoadGame(const char * path, NVSESerializationInterface::EventCallback
 					// ### wtf?
 					_WARNING("plugin has data in save file but no handler");
 
-					s_serializationTask.Skip(s_pluginHeader.length);
+					s_serializationTask.Skip(s_pluginHeader.length, true);
 				}
 			}
 			else
@@ -840,7 +865,7 @@ void HandleLoadGame(const char * path, NVSESerializationInterface::EventCallback
 				// ### TODO: save the data temporarily?
 				_WARNING("data in save file for plugin, but plugin isn't loaded");
 
-				s_serializationTask.Skip(s_pluginHeader.length);
+				s_serializationTask.Skip(s_pluginHeader.length, true);
 			}
 
 			UInt32 expectedOffset = pluginChunkStart + s_pluginHeader.length;

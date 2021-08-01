@@ -3,6 +3,9 @@
 #include "GameForms.h"
 #include <algorithm>
 #include <intrin.h>
+#include <set>
+
+#include "Core_Serialization.h"
 
 #if RUNTIME
 #include "GameAPI.h"
@@ -1604,7 +1607,9 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 
 	Serialization::OpenRecord('ARVE', kVersion);
 }
-
+#if _DEBUG
+std::set<std::string> g_modsWithCosaveVars;
+#endif
 void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 {
 	_MESSAGE("Loading array variables");
@@ -1634,6 +1639,9 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 		case 'ARVR':
 			{
 				modIndex = Serialization::ReadRecord8();
+#if _DEBUG
+				g_modsWithCosaveVars.insert(g_modsLoaded.at(modIndex));
+#endif
 				if (!Serialization::ResolveRefID(modIndex << 24, &tempRefID))
 				{
 					// owning mod was removed, but there may be references to it from other mods
@@ -1666,6 +1674,9 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 						for (UInt32 i = 0; i < numRefs; i++)
 						{
 							curModIndex = Serialization::ReadRecord8();
+#if _DEBUG
+							g_modsWithCosaveVars.insert(g_modsLoaded.at(curModIndex));
+#endif
 							if (!modIndex)
 							{
 								if (Serialization::ResolveRefID(curModIndex << 24, &tempRefID))
