@@ -1,6 +1,9 @@
 #include <set>
 
 #include "Hooks_Gameplay.h"
+
+#include <filesystem>
+
 #include "GameForms.h"
 #include "GameObjects.h"
 #include "SafeWrite.h"
@@ -11,6 +14,7 @@
 #include "StringVar.h"
 #include "ArrayVar.h"
 #include "Commands_Script.h"
+#include "Core_Serialization.h"
 #include "PluginManager.h"
 #include "GameOSDepend.h"
 #include "InventoryReference.h"
@@ -18,6 +22,10 @@
 #include "FunctionScripts.h"
 #include "Hooks_Other.h"
 #include "ScriptTokenCache.h"
+#include <chrono>
+#include <fstream>
+
+#include "GameData.h"
 
 static void HandleMainLoopHook(void);
 
@@ -157,11 +165,49 @@ void ApplyGECKEditorIDs()
 
 DWORD g_mainThreadID = 0;
 bool s_recordedMainThreadID = false;
+std::unordered_set<UInt8> g_myMods;
+void DetermineShowScriptErrors()
+{
+	UInt32 iniOpt;
+	if (GetNVSEConfigOption_UInt32("RELEASE", "bWarnScriptErrors", &iniOpt))
+	{
+		g_warnScriptErrors = iniOpt;
+		return;
+	}
+
+	try
+	{
+		const auto* myModsFileName = "MyGECKMods.txt";
+		if (std::filesystem::exists(myModsFileName))
+		{
+			std::ifstream is(myModsFileName);
+			std::string curMod;
+			while (std::getline(is, curMod))
+			{
+				if (curMod.empty())
+					continue;
+				if (const auto idx = DataHandler::Get()->GetModIndex(curMod.c_str()); idx != -1)
+				{
+					g_warnScriptErrors = true;
+					g_myMods.insert(idx);
+				}
+			}
+		}
+	}
+	catch (...)
+	{
+		g_warnScriptErrors = false;
+	}
+#if _DEBUG
+	g_warnScriptErrors = true;
+#endif
+}
+
 static void HandleMainLoopHook(void)
 { 
 	if (!s_recordedMainThreadID)
 	{
-		(*g_formEditorIDsMap)->numItems;
+		DetermineShowScriptErrors();
 		ApplyGECKEditorIDs();
 		s_recordedMainThreadID = true;
 		g_mainThreadID = GetCurrentThreadId();

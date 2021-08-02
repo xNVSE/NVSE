@@ -458,13 +458,13 @@ __declspec(naked) void CommandParserScriptVarHook()
 		jmp		eax
 	}
 }
-
+#endif
 ParamParenthResult __fastcall HandleParameterParenthesis(ScriptLineBuffer* scriptLineBuffer, ScriptBuffer* scriptBuffer, ParamInfo* paramInfo, UInt32 paramIndex)
 {
 	auto parser = ExpressionParser(scriptBuffer, scriptLineBuffer);
 	return parser.ParseParentheses(paramInfo, paramIndex);
 }
-
+#if EDITOR
 __declspec(naked) void ParameterParenthesisHook()
 {
 	const static auto stackOffset = 0x264;
@@ -510,7 +510,7 @@ __declspec(naked) void ParameterParenthesisHook()
 		jmp returnAddress
 	}
 }
-
+#endif
 std::string ReplaceAll(std::string str, const std::string& from, const std::string& to) {
 	size_t start_pos = 0;
 	while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
@@ -544,7 +544,8 @@ std::vector g_lineMacros =
 		std::string optVarTypeDecl; // int, ref etc in int iVar = 10 for example
 		for (auto& varType : g_variableTypeNames)
 		{
-			if (line.starts_with(varType))
+			std::string varTypeWithSpace = std::string(varType) + ' ';
+			if (_stricmp(line.substr(0, varTypeWithSpace.size()).c_str(), varTypeWithSpace.c_str()) == 0)
 			{
 				optVarTypeDecl = varType;
 				line.erase(0, optVarTypeDecl.size());
@@ -609,10 +610,15 @@ bool HandleLineBufMacros(ScriptLineBuffer* buf)
 // Expand ScriptLineBuffer to allow multiline expressions with parenthesis
 int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 {
+#if EDITOR
+	auto* errorBuf = scriptBuf;
+#else
+	auto* errorBuf = lineBuf;
+#endif
 	const auto lineError = [&](const char* str)
 	{
 		scriptBuf->curLineNumber = lineBuf->lineNumber;
-		ShowCompilerError(scriptBuf, "%s", str);
+		ShowCompilerError(errorBuf, "%s", str);
 		lineBuf->errorCode = 1;
 		return 0;
 	};
@@ -733,9 +739,9 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 		if (const auto maxLen = sizeof lineBuf->paramText; lineBuf->paramTextLen >= maxLen)
 		{
 			if (numBrackets)
-				ShowCompilerError(scriptBuf, "Max script expression length inside parenthesis (%d characters) exceeded.", maxLen);
+				ShowCompilerError(errorBuf, "Max script expression length inside parenthesis (%d characters) exceeded.", maxLen);
 			else
-				ShowCompilerError(scriptBuf, "Max script line length (%d characters) exceeded.", maxLen);
+				ShowCompilerError(errorBuf, "Max script line length (%d characters) exceeded.", maxLen);
 			lineBuf->errorCode = 16;
 			return 0;
 		}
@@ -746,7 +752,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 		lastChar = curChar;
 	}
 }
-
+#if EDITOR
 void PatchDefaultCommandParser()
 {
 	//	Handle kParamType_Double
@@ -765,6 +771,55 @@ void PatchDefaultCommandParser()
 
 	// Allow multiline expressions with parenthesis
 	WriteRelJump(0x5C5830, UInt32(ParseNextLine));
+}
+#else
+
+const auto* g_arrayVar = "array_var";
+const auto* g_stringVar = "string_var";
+
+__declspec(naked) void InlineExpressionHook()
+{
+	const static auto fnParseScriptWord = 0x5AF5F0;
+	const static auto continueLoop = 0x5B1BFD;
+	const static auto returnAddress = 0x5B1C6A;
+	const static auto prematureReturn = 0x5B3AB4;
+
+	__asm
+	{
+		movzx edx, word ptr [ebp - 0x8] // index
+		push edx
+		mov ecx, [ebp+0xC] // paramInfo
+		push ecx
+		mov edx, [ebp+0x14] // scriptBuffer
+		mov ecx, [ebp+0x10] // lineBuf
+		call HandleParameterParenthesis
+
+		cmp al, [kParamParent_NoParam]
+		je notParenthesis
+		add esp, 0x18
+		cmp al, [kParamParent_SyntaxError]
+		je syntaxError
+		jmp continueLoop
+	syntaxError:
+		mov al, 0
+		jmp	prematureReturn
+	notParenthesis:
+		call fnParseScriptWord
+		jmp returnAddress
+	}
+}
+
+void PatchGameCommandParser()
+{
+	// Allow multiline expressions with parenthesis
+	WriteRelJump(0x5C5830, reinterpret_cast<UInt32>(ParseNextLine));
+
+	const auto tokenAliasFloat = 0x118CBF4;
+	const auto tokenAliasLong = 0x118CBCC;
+	SafeWrite32(tokenAliasFloat, reinterpret_cast<UInt32>(g_arrayVar));
+	SafeWrite32(tokenAliasLong, reinterpret_cast<UInt32>(g_stringVar));
+	WriteRelJump(0x5B1C65, reinterpret_cast<UInt32>(InlineExpressionHook));
+
 }
 
 #endif

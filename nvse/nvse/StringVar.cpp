@@ -9,6 +9,8 @@
 #include "GameApi.h"
 #include <set>
 
+#include "Core_Serialization.h"
+
 StringVar::StringVar(const char* in_data, UInt8 modIndex)
 {
 	data = in_data;
@@ -23,6 +25,25 @@ StringVar::StringVar(StringVar&& other) noexcept: data(std::move(other.data)),
 StringVarMap* StringVarMap::GetSingleton()
 {
 	return &g_StringMap;
+}
+
+void StringVarMap::Delete(UInt32 varID)
+{
+	if (varID != GetFunctionResultCachedStringVar().id)
+		VarMap<StringVar>::Delete(varID);
+#if _DEBUG
+	else
+		DebugBreak();
+#endif
+}
+
+void StringVarMap::MarkTemporary(UInt32 varID, bool bTemporary)
+{
+#if _DEBUG
+	if (varID == GetFunctionResultCachedStringVar().id && bTemporary)
+		DebugBreak();
+#endif
+	VarMap<StringVar>::MarkTemporary(varID, bTemporary);
 }
 
 const char* StringVar::GetCString()
@@ -249,6 +270,10 @@ void StringVarMap::Save(NVSESerializationInterface* intfc)
 	Serialization::OpenRecord('STVE', 0);
 }
 
+#if _DEBUG
+extern std::set<std::string> g_modsWithCosaveVars;
+#endif
+
 void StringVarMap::Load(NVSESerializationInterface* intfc)
 {
 	_MESSAGE("Loading strings");
@@ -285,13 +310,20 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 			break;
 		case 'STVR':
 			modIndex = Serialization::ReadRecord8();
+#if _DEBUG
+			g_modsWithCosaveVars.insert(g_modsLoaded.at(modIndex));
+			modVarCounts[modIndex] += 1;
+			if (modVarCounts[modIndex] == varCountThreshold) {
+				exceededMods.Insert(modIndex);
+				g_cosaveWarning.modIndices.insert(modIndex);
+			}
+#endif
 			if (!Serialization::ResolveRefID(modIndex << 24, &tempRefID))
 			{
 				// owning mod is no longer loaded so discard
 				continue;
 			}
-			else
-				modIndex = tempRefID >> 24;
+			modIndex = tempRefID >> 24;
 
 			stringID = Serialization::ReadRecord32();
 			strLength = Serialization::ReadRecord16();
@@ -300,10 +332,13 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 			buffer[strLength] = 0;
 
 			Insert(stringID, buffer, modIndex);
+#if !_DEBUG
 			modVarCounts[modIndex] += 1;
 			if (modVarCounts[modIndex] == varCountThreshold) {
 				exceededMods.Insert(modIndex);
+				g_cosaveWarning.modIndices.insert(modIndex);
 			}
+#endif
 					
 			break;
 		default:
@@ -347,7 +382,7 @@ __declspec(noinline) FunctionResultStringVar& GetFunctionResultCachedStringVar()
 {
 	if (svMapClearLocalToken != svMapClearGlobalToken)
 	{
-		s_functionResultStringVar = { nullptr, 0, false };
+		s_functionResultStringVar = { nullptr, -1, false };
 		svMapClearLocalToken = svMapClearGlobalToken;
 	}
 	return s_functionResultStringVar;

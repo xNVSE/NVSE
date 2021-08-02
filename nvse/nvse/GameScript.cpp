@@ -44,7 +44,7 @@ Script::VariableType VariableTypeNameToType(const char *name)
 
 UInt32 GetDeclaredVariableType(const char *varName, const char *scriptText, Script *script)
 {
-#if EDITOR
+#if EDITOR && NVSE_CORE
 	if (const auto savedVarType = GetSavedVarType(script, varName); savedVarType != Script::eVarType_Invalid)
 		return savedVarType;
 #endif
@@ -60,7 +60,7 @@ UInt32 GetDeclaredVariableType(const char *varName, const char *scriptText, Scri
 			const auto varType = VariableTypeNameToType(curToken.c_str());
 			if (varType != Script::eVarType_Invalid && tokens.NextToken(curToken) != -1 && !StrCompare(curToken.c_str(), varName))
 			{
-#if EDITOR
+#if EDITOR && NVSE_CORE
 				SaveVarType(script, varName, varType);
 #endif
 				return varType;

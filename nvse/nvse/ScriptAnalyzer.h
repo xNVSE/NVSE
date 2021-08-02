@@ -45,6 +45,7 @@ namespace ScriptParsing
 		ScriptIterator(Script* script, UInt8* position);
 		ScriptIterator(Script* script, UInt16 opcode, UInt16 length, UInt16 refIdx, UInt8* data);
 		ScriptIterator();
+
 		void operator++();
 		bool End() const;
 	};
@@ -307,8 +308,8 @@ namespace ScriptParsing
 	
 	class ScriptAnalyzer
 	{
-		void Parse();
 	public:
+		void Parse();
 		ScriptIterator iter;
 		std::vector<std::unique_ptr<ScriptLine>> lines;
 		bool isLambdaScript = false;
@@ -320,10 +321,11 @@ namespace ScriptParsing
 
 		bool CallsCommand(CommandInfo* cmd, CommandInfo* eventBlockInfo);
 
-		ScriptAnalyzer(Script* script);
+		ScriptAnalyzer(Script* script, bool parse = true);
 		~ScriptAnalyzer();
 
 		static std::unique_ptr<ScriptLine> ParseLine(const ScriptIterator& iter);
+		std::unique_ptr<ScriptParsing::ScriptLine> ParseLine(UInt32 line);
 		std::string DecompileScript();
 	};
 

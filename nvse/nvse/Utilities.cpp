@@ -2,10 +2,13 @@
 #include "SafeWrite.h"
 #include <string>
 #include <algorithm>
+#include <filesystem>
+#include <tlhelp32.h>
 
 
 #include "containers.h"
 #include "GameData.h"
+#include "Hooks_Gameplay.h"
 #include "LambdaManager.h"
 #include "PluginAPI.h"
 #include "PluginManager.h"
@@ -651,6 +654,7 @@ void ShowRuntimeError(Script* script, const char* fmt, ...)
 	
 	const auto* scriptName = script ? script->GetName() : nullptr; // JohnnyGuitarNVSE allows this
 	auto refId = script ? script->refID : 0;
+	const auto modIdx = script ? script->GetModIndex() : 0;
 	if (script && LambdaManager::IsScriptLambda(script))
 	{
 		Script* parentScript;
@@ -669,11 +673,10 @@ void ShowRuntimeError(Script* script, const char* fmt, ...)
 		sprintf_s(errorHeader, sizeof(errorHeader), "Error in script %08X in mod %s\n%s", refId, modName, errorMsg);
 	}
 
-
-	if (g_warnedScripts.Insert(refId))
+	if (g_warnScriptErrors && g_myMods.contains(modIdx) && g_warnedScripts.Insert(refId))
 	{
 		char message[512];
-		snprintf(message, sizeof(message), "%s: NVSE error (see console print)", GetModName(script));
+		snprintf(message, sizeof(message), "%s: Script error (see console print)", GetModName(script));
 		if (!IsConsoleMode())
 			QueueUIMessage(message, 0, reinterpret_cast<const char*>(0x1049638), nullptr, 2.5F, false);
 	}
@@ -693,8 +696,8 @@ std::string FormatString(const char* fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 
-	char msg[0x400];
-	vsprintf_s(msg, 0x400, fmt, args);
+	char msg[0x800];
+	vsprintf_s(msg, 0x800, fmt, args);
 	return msg;
 }
 
@@ -753,4 +756,51 @@ bool Cmd_Default_Execute(COMMAND_ARGS)
 bool Cmd_Default_Eval(COMMAND_ARGS_EVAL)
 {
 	return true;
+}
+
+void ToWChar(wchar_t* ws, const char* c)
+{
+	swprintf(ws, 100, L"%hs", c);
+}
+
+bool IsProcessRunning(const char* executableName)
+{
+	PROCESSENTRY32 entry;
+	entry.dwSize = sizeof(PROCESSENTRY32);
+
+	const auto snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
+
+	if (!Process32First(snapshot, &entry)) {
+		CloseHandle(snapshot);
+		return false;
+	}
+
+	do {
+		if (!_stricmp(entry.szExeFile, executableName)) {
+			CloseHandle(snapshot);
+			return true;
+		}
+	} while (Process32Next(snapshot, &entry));
+
+	CloseHandle(snapshot);
+	return false;
+}
+#if NVSE_CORE && RUNTIME
+void DisplayMessage(const char* msg)
+{
+	ShowMessageBox(msg, 0, 0, ShowMessageBox_Callback, 0, 0x17, 0.0, 0.0, "Ok", 0);
+}
+#endif
+
+std::string GetCurPath()
+{
+	char buffer[MAX_PATH] = { 0 };
+	GetModuleFileName(NULL, buffer, MAX_PATH);
+	std::string::size_type pos = std::string(buffer).find_last_of("\\/");
+	return std::string(buffer).substr(0, pos);
+}
+
+bool ValidString(const char* str)
+{
+	return str && strlen(str);
 }

@@ -1,12 +1,23 @@
 #pragma once
+#include "FastStack.h"
 #include "GameAPI.h"
 
 namespace OtherHooks
 {
-	extern thread_local TESObjectREFR* g_lastScriptOwnerRef;
+	struct CurrentScriptContext
+	{
+		Script* script = nullptr;
+		ScriptRunner* scriptRunner = nullptr;
+		UInt32* lineNumberPtr = nullptr;
+		TESObjectREFR* scriptOwnerRef = nullptr;
+		CommandInfo* command = nullptr;
+		UInt32* curDataPtr = nullptr;
+	};
 	void CleanUpNVSEVars(ScriptEventList* eventList);
 
 	void DeleteEventList(ScriptEventList* eventList);
 	
 	void Hooks_Other_Init();
+
+	CurrentScriptContext* GetExecutingScriptContext();
 }

@@ -161,9 +161,9 @@ void Init_CoreSerialization_Callbacks()
 UInt8	s_preloadModRefIDs[0xFF];
 UInt8	s_numPreloadMods = 0;
 
-#if _DEBUG
+
 std::vector<std::string> g_modsLoaded;
-#endif
+
 bool ReadModListFromCoSave(NVSESerializationInterface * intfc)
 {
 	_MESSAGE("Reading mod list from co-save");
@@ -176,9 +176,12 @@ bool ReadModListFromCoSave(NVSESerializationInterface * intfc)
 		intfc->ReadRecordData(&nameLen, sizeof(nameLen));
 		intfc->ReadRecordData(&name, nameLen);
 		name[nameLen] = 0;
-#if _DEBUG
-		g_modsLoaded.emplace_back(name);
+
+#if !_DEBUG
+		if (g_showFileSizeWarning)
 #endif
+		g_modsLoaded.emplace_back(name);
+
 		s_preloadModRefIDs[i] = DataHandler::Get()->GetModIndex(name);
 	}
 	return true;

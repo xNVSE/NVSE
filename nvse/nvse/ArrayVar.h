@@ -259,6 +259,7 @@ class ArrayVar
 	Vector<UInt8>		m_refs;		// data is modIndex of referring object; size() is number of references
 
 public:
+	ICriticalSection m_cs;
 #if _DEBUG
 	std::string varName;
 #endif

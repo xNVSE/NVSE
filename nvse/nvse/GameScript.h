@@ -227,7 +227,7 @@ struct ScriptBuffer
 	String			scriptName;			// 00C
 	UInt32			errorCode;			// 014
 	bool			partialScript;		// 018
-	UInt8			pad019[3];			// 018
+	UInt8			pad019[3];			// 019
 	UInt32			curLineNumber;		// 01C
 	UInt8			* scriptData;		// 020 pointer to 0x4000-byte array
 	UInt32			dataOffset;			// 024

@@ -4,6 +4,7 @@
 
 #include "Commands_Scripting.h"
 #include "GameAPI.h"
+#include "GameData.h"
 #include "GameObjects.h"
 #include "Hooks_Other.h"
 
@@ -59,7 +60,9 @@ void SetLambdaParent(ScriptLambda* scriptLambda, ScriptEventList* parentEventLis
 
 Script* LambdaManager::CreateLambdaScript(const ScriptData& scriptData, Script* parentScript)
 {
+	DataHandler::Get()->DisableAssignFormIDs(true);
 	auto* scriptLambda = New<Script, 0x5AA0F0>();
+	DataHandler::Get()->DisableAssignFormIDs(false);
 	scriptLambda->data = scriptData.scriptData;
 	scriptLambda->info.dataLength = scriptData.size;
 	
@@ -84,8 +87,8 @@ Script* LambdaManager::CreateLambdaScript(UInt8* position, const ScriptData& scr
 		ownerRefID = parentScript->quest->refID;
 	else if (parentScript->IsUserDefinedFunction())
 		ownerRefID = parentScript->refID;
-	else if (OtherHooks::g_lastScriptOwnerRef)
-		ownerRefID = OtherHooks::g_lastScriptOwnerRef->refID;
+	else if (auto* ownerRef = OtherHooks::GetExecutingScriptContext()->scriptOwnerRef)
+		ownerRefID = ownerRef->refID;
 	else
 		return nullptr;
 	
@@ -265,7 +268,11 @@ void CaptureChildLambdas(ScriptLambda* scriptLambda, LambdaContext& ctx)
 		ref->Resolve(eventList);
 		auto* form = ref->form;
 		if (form && IS_ID(form, Script) && LambdaManager::IsScriptLambda(static_cast<ScriptLambda*>(form)) && form != scriptLambda)
-			varLambdas->push_back(static_cast<ScriptLambda*>(form));
+		{
+			auto* childLambda = static_cast<ScriptLambda*>(form);
+			if (LambdaManager::GetParentEventList(scriptLambda) != ctx.parentEventList) // do not capture the variables of a lambda which you share variables with
+				varLambdas->push_back(childLambda);
+		}
 	}
 	ctx.capturedLambdaVariableScripts = std::move(varLambdas);
 }

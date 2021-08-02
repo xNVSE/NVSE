@@ -934,13 +934,13 @@ bool ScriptToken::ResolveVariable()
 		auto *script = context->script;
 		if (refIdx)
 			script = GetReferencedQuestScript(refIdx, context->eventList);
-		if (auto *var = g_ArrayMap.Get(value.var->data); var)
+		if (auto *var = g_ArrayMap.Get(value.var->data))
+		{
 			if (auto *varInfo = script->GetVariableInfo(value.var->id))
 				var->varName = std::string(script->GetName()) + "." + std::string(varInfo->name.CStr());
 			else
 				var->varName = "<no var info>";
-		else
-			var->varName = "<var not found>";
+		}
 	}
 #endif
 
