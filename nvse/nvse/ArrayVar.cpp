@@ -1228,14 +1228,7 @@ void ArrayVar::Dump(const std::function<void(const std::string&)>& output)
 {
 	const char* owningModName = DataHandler::Get()->GetNthModName(m_owningModIndex);
 
-#if _DEBUG
-	auto temp = g_ArrayMap.IsTemporary(m_ID);
-	if (temp) 
-		return;
-	auto str = FormatString("** Dumping Array #%d **\nRefs: %d Owner %02X: %s Temp: %s Name: %s", m_ID, m_refs.Size(), m_owningModIndex, owningModName, temp ? "true" : "false", /*varName.c_str()*/"");
-#else
 	auto str = FormatString("** Dumping Array #%d **\nRefs: %d Owner %02X: %s", m_ID, m_refs.Size(), m_owningModIndex, owningModName);
-#endif
 	output(str);
 	_MESSAGE("%s", str.c_str());
 
@@ -1642,7 +1635,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 #if _DEBUG
 				g_modsWithCosaveVars.insert(g_modsLoaded.at(modIndex));
 #endif
-				if (!Serialization::ResolveRefID(modIndex << 24, &tempRefID))
+				if (!Serialization::ResolveRefID(modIndex << 24, &tempRefID) || modIndex == 0xFF)
 				{
 					// owning mod was removed, but there may be references to it from other mods
 					// assign ownership to the first mod which refers to it and is still loaded

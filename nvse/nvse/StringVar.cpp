@@ -318,7 +318,7 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 				g_cosaveWarning.modIndices.insert(modIndex);
 			}
 #endif
-			if (!Serialization::ResolveRefID(modIndex << 24, &tempRefID))
+			if (!Serialization::ResolveRefID(modIndex << 24, &tempRefID) || modIndex == 0xFF)
 			{
 				// owning mod is no longer loaded so discard
 				continue;

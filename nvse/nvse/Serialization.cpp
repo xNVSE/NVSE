@@ -641,6 +641,13 @@ bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 {
 	UInt8 modID = refID >> 24;
 
+	// pass dynamic ids straight through
+	if (modID == 0xFF)
+	{
+		*outRefID = refID;
+		return true;
+	}
+
 	if (modID >= s_numPreloadMods)
 		return false;
 
