@@ -216,4 +216,4 @@ static ParamInfo kNVSEParams_TwoArrays[2] =
 	{	"array",		kNVSEParamType_Array,	0	},
 };
 
-DEFINE_COMMAND_EXP(ar_DeepEquals, "checks if every element and sub-elements are identical between two arrays.", false, kNVSEParams_TwoArrays);
+DEFINE_CMD_ALT_EXP(ar_DeepEquals, ar_DeepCompare, "checks if every element and sub-elements are identical between two arrays.", false, kNVSEParams_TwoArrays);
