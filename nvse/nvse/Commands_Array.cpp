@@ -1012,3 +1012,20 @@ bool Cmd_ar_Init_Execute(COMMAND_ARGS)
 	*result = returnArray->ID();
 	return true;
 }
+
+bool Cmd_ar_DeepEquals_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (eval.ExtractArgs() && eval.NumArgs() == 2
+		 && eval.Arg(0)->CanConvertTo(kTokenType_Array) && eval.Arg(1)->CanConvertTo(kTokenType_Array))
+	{
+		auto arr1 = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		auto arr2 = g_ArrayMap.Get(eval.Arg(1)->GetArray());
+		if (arr1 && arr2)
+		{
+			*result = arr1->DeepEquals(arr2);
+		}
+	}
+	return true;
+}

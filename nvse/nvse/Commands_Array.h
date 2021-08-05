@@ -209,3 +209,11 @@ static ParamInfo kNVSEParams_OneInt_OneElem[2] =
 };
 
 DEFINE_CMD_ALT_EXP(ar_Init, ar_Initialize, "creates a new array with x amount of elements, all set to a single value", false, kNVSEParams_OneInt_OneElem);
+
+static ParamInfo kNVSEParams_TwoArrays[2] =
+{
+	{	"array",	kNVSEParamType_Array,	0	},
+	{	"array",		kNVSEParamType_Array,	0	},
+};
+
+DEFINE_COMMAND_EXP(ar_DeepEquals, "checks if every element and sub-elements are identical between two arrays.", false, kNVSEParams_TwoArrays);
