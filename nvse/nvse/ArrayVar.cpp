@@ -1438,11 +1438,7 @@ bool ArrayVar::DeepEquals(ArrayVar* arr2)
 				if (!innerArr1->DeepEquals(innerArr2))  // recursive call
 					return false;
 			}
-			else if (!innerArr1 && !innerArr2)
-			{
-				// do nothing
-			}
-			else
+			else if (innerArr1 || innerArr2)
 			{
 				return false;  // one of the inner arrays is null while the other is not.
 			}
