@@ -347,6 +347,8 @@ public:
 	ArrayVarElementContainer::iterator Begin();
 
 	std::string GetStringRepresentation() const;
+
+	bool DeepEquals(ArrayVar* arr2);
 };
 
 class ArrayVarMap : public VarMap<ArrayVar>
