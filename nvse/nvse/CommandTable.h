@@ -200,6 +200,9 @@ struct ParamInfo
 #define DEFINE_CMD_COND(name, description, refRequired, paramInfo) \
 	DEFINE_CMD_ALT_COND(name, , description, refRequired, paramInfo)
 
+#define DEFINE_CMD_COND_PLUGIN(name, description, refRequired, paramInfo) \
+	DEFINE_CMD_ALT_COND_ANY(name, , description, refRequired, paramInfo, NULL)
+
 typedef bool (* Cmd_Execute)(COMMAND_ARGS);
 bool Cmd_Default_Execute(COMMAND_ARGS);
 
