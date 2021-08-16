@@ -983,7 +983,7 @@ bool Cmd_ar_Generate_Execute(COMMAND_ARGS)
 		{
 			if (isMapArray)
 			{
-				InternalFunctionCaller keyCaller(valueGenerator, thisObj, containingObj);
+				InternalFunctionCaller keyCaller(keyGenerator, thisObj, containingObj);
 				keyCaller.SetArgs(0);  //may not be doing anything.
 				auto tokenKeyResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(keyCaller)));
 				if (!tokenKeyResult) continue;
