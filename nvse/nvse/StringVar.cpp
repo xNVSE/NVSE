@@ -257,7 +257,7 @@ void StringVarMap::Save(NVSESerializationInterface* intfc)
 		if (IsTemporary(iter.Key()))	// don't save temp strings
 			continue;
 		StringVar* var = &iter.Get();
-		if (iter.Key() == 0xFF)
+		if (var->GetOwningModIndex() == 0xFF)
 			continue; // do not save function result cache
 		Serialization::OpenRecord('STVR', 0);
 		Serialization::WriteRecord8(var->GetOwningModIndex());
