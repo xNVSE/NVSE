@@ -933,23 +933,28 @@ bool Cmd_ar_MapTo_Execute(COMMAND_ARGS)
 	return true;
 }
 
-struct IntAndLambdaFunctionContext
+struct Int_OneLambda_OneOptionalLambda_Context
 {
 	ExpressionEvaluator eval;
 	UInt32 integer;
-	Script* condScript;
+	Script* valueGenerator;
+	Script* keyGenerator;
 
-	IntAndLambdaFunctionContext(COMMAND_ARGS) : eval(PASS_COMMAND_ARGS) {}
+	Int_OneLambda_OneOptionalLambda_Context(COMMAND_ARGS) : eval(PASS_COMMAND_ARGS) {}
 };
 
-bool ExtractIntAndLambdaUDF(IntAndLambdaFunctionContext& ctx)
+bool ExtractInt_OneLambda_OneOptionalLambda(Int_OneLambda_OneOptionalLambda_Context& ctx)
 {
 	auto& eval = ctx.eval;
-	if (!eval.ExtractArgs() || eval.NumArgs() != 2)
+	if (!eval.ExtractArgs() || eval.NumArgs() < 2)
 		return false;
 	ctx.integer = eval.Arg(0)->GetNumber();
-	ctx.condScript = eval.Arg(1)->GetUserFunction();
-	if (!ctx.integer ||!ctx.condScript)
+	ctx.valueGenerator = eval.Arg(1)->GetUserFunction();
+	if (eval.NumArgs() == 3)
+		ctx.keyGenerator = eval.Arg(2)->GetUserFunction();
+	else
+		ctx.keyGenerator = nullptr;
+	if (!ctx.integer ||!ctx.valueGenerator)
 		return false;
 	return true;
 }
@@ -957,23 +962,61 @@ bool ExtractIntAndLambdaUDF(IntAndLambdaFunctionContext& ctx)
 bool Cmd_ar_Generate_Execute(COMMAND_ARGS)
 {
 	*result = 0;
-	IntAndLambdaFunctionContext ctx(PASS_COMMAND_ARGS);
-	if (!ExtractIntAndLambdaUDF(ctx))
+	Int_OneLambda_OneOptionalLambda_Context ctx(PASS_COMMAND_ARGS);
+	if (!ExtractInt_OneLambda_OneOptionalLambda(ctx))
 		return true;
-	auto& [eval, numElemsToGenerate, generatorFunction] = ctx;
-	auto* returnArray = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	auto& [eval, numElemsToGenerate, valueGenerator, keyGenerator] = ctx;
+
+	ArrayVar* returnArray = nullptr;
+	bool const isMapArray = keyGenerator;
+	if (!isMapArray)
+		returnArray = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	
 	for (UInt32 i = 0; i < numElemsToGenerate; i++)
 	{
-		InternalFunctionCaller caller(generatorFunction, thisObj, containingObj);
-		caller.SetArgs(0);  //may not be doing anything.
-		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
-		if (!tokenResult)
-			continue;
-		ArrayElement element;
-		if (BasicTokenToElem(tokenResult.get(), element))
-			returnArray->Insert(i, &element);
+		InternalFunctionCaller valueCaller(valueGenerator, thisObj, containingObj);
+		valueCaller.SetArgs(0);  //may not be doing anything.
+		auto tokenValResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(valueCaller)));
+		if (!tokenValResult) continue;
+		ArrayElement valElem;
+		if (BasicTokenToElem(tokenValResult.get(), valElem))
+		{
+			if (isMapArray)
+			{
+				InternalFunctionCaller keyCaller(keyGenerator, thisObj, containingObj);
+				keyCaller.SetArgs(0);  //may not be doing anything.
+				auto tokenKeyResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(keyCaller)));
+				if (!tokenKeyResult) continue;
+				ArrayElement keyElem;
+				if (BasicTokenToElem(tokenKeyResult.get(), keyElem))
+				{
+					auto const keyType = keyElem.DataType();
+					if (keyType != kDataType_Numeric && keyType != kDataType_String)
+						return true;
+					
+					// Initialize returnArray as a map array.
+					if (i == 0 && !returnArray)
+						returnArray = g_ArrayMap.Create(keyType, false, scriptObj->GetModIndex());
+					if (!returnArray) return true;  // hopefully redundant safety check.
+
+					// Set the map array key/value pair.
+					const char* str;
+					if (keyElem.GetAsString(&str))
+						returnArray->SetElement(str, &valElem);
+					else
+					{
+						double num;
+						if (keyElem.GetAsNumber(&num))
+							returnArray->SetElement(num, &valElem);
+					}
+				}
+			}
+			else
+				returnArray->Insert(i, &valElem);
+		}
 	}
-	*result = returnArray->ID();
+	if (returnArray)
+		*result = returnArray->ID();
 	return true;
 }
 

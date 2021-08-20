@@ -258,6 +258,8 @@ class ArrayVar
 	bool				m_bPacked;
 	Vector<UInt8>		m_refs;		// data is modIndex of referring object; size() is number of references
 
+	bool CompareArrays(ArrayVar* arr2, bool checkDeep);
+
 public:
 	ICriticalSection m_cs;
 #if _DEBUG
@@ -348,6 +350,7 @@ public:
 
 	std::string GetStringRepresentation() const;
 
+	bool Equals(ArrayVar* arr2);
 	bool DeepEquals(ArrayVar* arr2);
 };
 
