@@ -1408,6 +1408,9 @@ bool ArrayVar::CompareArrays(ArrayVar* arr2, bool checkDeep)
 	if (this->Size() != arr2->Size())
 		return false;
 
+	if (this->ID() == arr2->ID())
+		return true;
+
 	auto iter2 = arr2->m_elements.begin();
 	for (auto iter1 = this->m_elements.begin(); !iter1.End(); ++iter1, ++iter2)
 	{
