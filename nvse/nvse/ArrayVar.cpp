@@ -1402,6 +1402,56 @@ std::string ArrayVar::GetStringRepresentation() const
 	}
 }*/
 
+
+bool ArrayVar::DeepEquals(ArrayVar* arr2)
+{
+	if (this->Size() != arr2->Size())
+		return false;
+	
+	auto iter2 = arr2->m_elements.begin();
+	for (auto iter1 = this->m_elements.begin(); !iter1.End(); ++iter1, ++iter2)
+	{
+		//== Compare keys.
+		TempObject<ArrayKey> tempKey1(*iter1.first());
+		TempObject<ArrayKey> tempKey2(*iter2.first());
+		// required as iterators pass static objects and this function is recursive   // copied note from ArrayVar::Copy()
+
+		if (tempKey1().KeyType() != tempKey2().KeyType())
+			return false;
+		
+		if (tempKey1() != tempKey2())  // Redundant KeyType check, but who knows when that error message might be re-enabled.
+			return false;
+		
+		//== Compare elements.
+		const ArrayElement& elem1 = *iter1.second();
+		const ArrayElement& elem2 = *iter2.second();
+		
+		if (elem1.DataType() != elem2.DataType())
+			return false;
+		
+		if (elem1.DataType() == kDataType_Array)  // recursion case
+		{
+			auto innerArr1 = g_ArrayMap.Get(elem1.m_data.arrID);
+			auto innerArr2 = g_ArrayMap.Get(elem2.m_data.arrID);
+			if (innerArr1 && innerArr2)
+			{
+				if (!innerArr1->DeepEquals(innerArr2))  // recursive call
+					return false;
+			}
+			else if (innerArr1 || innerArr2)
+			{
+				return false;  // one of the inner arrays is null while the other is not.
+			}
+		}
+		else if (elem1 != elem2)
+			return false;
+	}
+	return true;
+}
+
+
+
+
 //////////////////////////
 // ArrayVarMap
 /////////////////////////
