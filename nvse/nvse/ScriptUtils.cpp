@@ -186,12 +186,31 @@ ScriptToken *Eval_Eq_Number(OperatorType op, ScriptToken *lh, ScriptToken *rh, E
 
 ScriptToken *Eval_Eq_Array(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
+	// Instead of comparing arrayIDs, compare the contents of the arrays.
+	// For nested arrays, compare the arrayIDs to save on computing power. Use the Ar_DeepEquals function if needed.
+	bool isEqual;
+	auto lhArr = g_ArrayMap.Get(lh->GetArray());
+	auto rhArr = g_ArrayMap.Get(rh->GetArray());
+
+	if (lhArr && rhArr)
+	{
+		isEqual = lhArr->Equals(rhArr);
+	}
+	else if (lhArr || rhArr)  // one is null while the other is not.
+	{
+		isEqual = false;
+	}
+	else  // both are null.
+	{
+		isEqual = true;
+	}
+	
 	switch (op)
 	{
 	case kOpType_Equals:
-		return ScriptToken::Create(lh->GetArray() == rh->GetArray());
+		return ScriptToken::Create(isEqual);
 	case kOpType_NotEqual:
-		return ScriptToken::Create(lh->GetArray() != rh->GetArray());
+		return ScriptToken::Create(!isEqual);
 	default:
 		context->Error("Unhandled operator %s", OpTypeToSymbol(op));
 		return NULL;
