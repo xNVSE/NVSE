@@ -13,9 +13,8 @@ using FormID = UInt32;
 
 struct VariableListContext
 {
-	UInt32 refCount = 0;
 	ScriptEventList* eventListCopy = nullptr;
-	std::unordered_set<ScriptLambda*> lambdas;
+	std::unordered_map<ScriptLambda*, std::size_t> lambdas;
 };
 
 // used for memoizing scripts and prevent endless allocation of scripts
@@ -287,8 +286,7 @@ void SaveLambdaVariables(Script* scriptLambda, Script* parentLambda)
 	if (!eventList)
 		return;
 	auto& varCtx = g_savedVarLists[eventList];
-	++varCtx.refCount;
-	varCtx.lambdas.insert(scriptLambda);
+	++varCtx.lambdas[scriptLambda];
 
 	// save any child lambda variables
 	CaptureChildLambdas(scriptLambda, *ctx);
@@ -321,10 +319,12 @@ void UnsaveLambdaVariables(Script* scriptLambda, Script* parentScript)
 	if (iter == g_savedVarLists.end())
 		return;
 	auto& varCtx = iter->second;
-	auto& refCount = varCtx.refCount;
-	varCtx.lambdas.erase(scriptLambda);
+	auto refCountIter = varCtx.lambdas.find(scriptLambda);
+	auto& refCount = refCountIter->second;
+	if (--refCount <= 0)
+		varCtx.lambdas.erase(refCountIter);
+
 	const auto eventListCopy = varCtx.eventListCopy;
-	--refCount;
 
 	// before proceeding check if there were any child lambdas referenced, delete their event list
 	for (auto* childLambda : *ctx->capturedLambdaVariableScripts)
@@ -333,7 +333,7 @@ void UnsaveLambdaVariables(Script* scriptLambda, Script* parentScript)
 			UnsaveLambdaVariables(childLambda, scriptLambda);
 	}
 
-	if (refCount == 0)
+	if (varCtx.lambdas.empty())
 	{
 		g_savedVarLists.erase(iter);
 		if (eventListCopy)
