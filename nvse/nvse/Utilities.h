@@ -235,3 +235,12 @@ void DisplayMessage(const char* msg);
 std::string GetCurPath();
 
 bool ValidString(const char* str);
+
+#if _DEBUG
+
+
+const char* GetFormName(TESForm* form);
+const char* GetFormName(UInt32 formId);
+
+
+#endif

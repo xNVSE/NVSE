@@ -804,3 +804,17 @@ bool ValidString(const char* str)
 {
 	return str && strlen(str);
 }
+
+#if _DEBUG
+// debugger can't call unused member functions
+const char* GetFormName(TESForm* form)
+{
+	return form ? form->GetName() : "";
+}
+
+const char* GetFormName(UInt32 formId)
+{
+	return GetFormName(LookupFormByID(formId));
+}
+
+#endif
