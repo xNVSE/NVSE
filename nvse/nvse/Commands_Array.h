@@ -194,6 +194,8 @@ DEFINE_COMMAND_EXP(ar_FindWhere, "finds first element in array which satisfies a
 DEFINE_COMMAND_EXP(ar_Filter, "filters an array on a condition", false, kNVSEParams_OneArray_OneFunction);
 DEFINE_COMMAND_EXP(ar_MapTo, "transforms an array into a new array from a script", false, kNVSEParams_OneArray_OneFunction);
 DEFINE_COMMAND_EXP(ar_ForEach, "calls a function on each element of array", false, kNVSEParams_OneArray_OneFunction);
+DEFINE_COMMAND_EXP(ar_Any, "checks if any of the elements in array satisfies a function script", false, kNVSEParams_OneArray_OneFunction);
+DEFINE_COMMAND_EXP(ar_All, "checks if all of the elements in array satisfy a function script", false, kNVSEParams_OneArray_OneFunction);
 
 static ParamInfo kNVSEParams_OneInt_OneFunction_OneOptionalFunction[3] =
 {

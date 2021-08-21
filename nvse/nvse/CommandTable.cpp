@@ -1805,6 +1805,8 @@ void CommandTable::AddCommandsV6()
 	// 6.2 beta 01
 	ADD_CMD(ar_DeepEquals);
 	ADD_CMD(ar_ForEach);
+	ADD_CMD(ar_Any);
+	ADD_CMD(ar_All);
 }
 
 namespace PluginAPI

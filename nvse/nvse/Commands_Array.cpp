@@ -950,6 +950,50 @@ bool Cmd_ar_ForEach_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_ar_Any_Execute(COMMAND_ARGS)
+{
+	ArrayFunctionContext ctx(PASS_COMMAND_ARGS);
+	*result = 0;
+	if (!ExtractArrayUDF(ctx))
+		return true;
+	auto& [eval, arr, functionScript] = ctx;
+	for (auto iter = arr->Begin(); !iter.End(); ++iter)
+	{
+		InternalFunctionCaller caller(functionScript, thisObj, containingObj);
+		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
+		const auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		if (!tokenResult)
+			continue;
+		if (static_cast<bool>(tokenResult->GetNumber()))
+		{
+			*result = 1;
+			return true;
+		}
+	}
+	return true;
+}
+
+bool Cmd_ar_All_Execute(COMMAND_ARGS)
+{
+	ArrayFunctionContext ctx(PASS_COMMAND_ARGS);
+	*result = 0;
+	if (!ExtractArrayUDF(ctx))
+		return true;
+	auto& [eval, arr, functionScript] = ctx;
+	for (auto iter = arr->Begin(); !iter.End(); ++iter)
+	{
+		InternalFunctionCaller caller(functionScript, thisObj, containingObj);
+		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
+		const auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		if (!tokenResult)
+			return true; // different from rest here
+		if (!static_cast<bool>(tokenResult->GetNumber()))
+			return true;
+	}
+	*result = 1;
+	return true;
+}
+
 struct Int_OneLambda_OneOptionalLambda_Context
 {
 	ExpressionEvaluator eval;
