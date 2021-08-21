@@ -1802,8 +1802,9 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD_RET(ar_Generate, kRetnType_Array);
 	ADD_CMD_RET(ar_Init, kRetnType_Array);
 
-	// ?unknown version?
+	// 6.2 beta 01
 	ADD_CMD(ar_DeepEquals);
+	ADD_CMD(ar_ForEach);
 }
 
 namespace PluginAPI

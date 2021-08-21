@@ -933,6 +933,23 @@ bool Cmd_ar_MapTo_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_ar_ForEach_Execute(COMMAND_ARGS)
+{
+	ArrayFunctionContext ctx(PASS_COMMAND_ARGS);
+	*result = 0;
+	if (!ExtractArrayUDF(ctx))
+		return true;
+	auto& [eval, arr, functionScript] = ctx;
+	for (auto iter = arr->Begin(); !iter.End(); ++iter)
+	{
+		InternalFunctionCaller caller(functionScript, thisObj, containingObj);
+		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
+		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+	}
+	*result = 1;
+	return true;
+}
+
 struct Int_OneLambda_OneOptionalLambda_Context
 {
 	ExpressionEvaluator eval;
