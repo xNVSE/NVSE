@@ -1992,6 +1992,12 @@ namespace PluginAPI
 		return arrVar ? arrVar->m_bPacked : 0;
 	}
 
+	int ArrayAPI::GetContainerType(NVSEArrayVarInterface::Array* arr)
+	{
+		ArrayVar* arrVar = g_ArrayMap.Get((ArrayID)arr);
+		return arrVar ? arrVar->GetContainerType() : -1;
+	}
+
 	NVSEArrayVarInterface::Array* ArrayAPI::LookupArrayByID(UInt32 id)
 	{
 		ArrayVar* arrVar = g_ArrayMap.Get(id);

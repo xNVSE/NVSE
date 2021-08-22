@@ -261,6 +261,8 @@ struct NVSEMessagingInterface
 *		-Array, a zero-based array with consecutive integer keys
 *		-Map, a mapping of floating point keys to elements
 *		-StringMap, a mapping of string keys to elements
+*	These types can be checked using GetContainerType().
+*	
 *	Container elements are of type Element, which can hold (and supports implicit conversion from) a
 *	TESForm*, a C string, a double-precision float, or an Array*; the latter allows for the creation 
 *	of multi-dimensional arrays.
@@ -387,6 +389,15 @@ struct NVSEArrayVarInterface
 	// version 2
 	UInt32	(* GetArrayPacked)(Array* arr);
 
+	enum ContainerTypes
+	{
+		kArrType_Invalid = -1,
+		kArrType_Array = 0,
+		kArrType_Map,
+		kArrType_StringMap
+	};
+	
+	int		(* GetContainerType)(Array* arr);
 };
 
 #endif

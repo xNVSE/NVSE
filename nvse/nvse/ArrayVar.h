@@ -407,6 +407,7 @@ namespace PluginAPI
 
 		static UInt32 GetArraySize(NVSEArrayVarInterface::Array* arr);
 		static UInt32 GetArrayPacked(NVSEArrayVarInterface::Array* arr);
+		static int GetContainerType(NVSEArrayVarInterface::Array* arr);
 		static NVSEArrayVarInterface::Array* LookupArrayByID(UInt32 id);
 		static bool GetElement(NVSEArrayVarInterface::Array* arr, const NVSEArrayVarInterface::Element& key,
 			NVSEArrayVarInterface::Element& out);
