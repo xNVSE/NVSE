@@ -1366,9 +1366,9 @@ std::string ArrayVar::GetStringRepresentation() const
 			result += '"' + std::string(iter.Key()) + '"' + ": " + iter.Get().GetStringRepresentation();
 			if (iter.Index() != container->Size() - 1)
 				result += ", ";
-			result += "]";
-			return result;
 		}
+		result += "]";
+		return result;
 	}
 	default:
 		return "invalid array";
