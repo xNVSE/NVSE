@@ -5,7 +5,9 @@
 #include <vector>
 #include <list>
 
-
+#if _DEBUG
+void Console_Print(const char*, ...);
+#endif
 
 namespace SmallObjectsAllocator
 {
@@ -36,7 +38,7 @@ namespace SmallObjectsAllocator
 			++count_;
 			if (count_ > C * 10)
 			{
-				_MESSAGE("Warning, possible memory leak");
+				Console_Print("Warning, possible memory leak");
 			}
 
 			return static_cast<T*>(operator new(sizeof(T)));
@@ -79,7 +81,7 @@ namespace SmallObjectsAllocator
 			++count_;
 			if (count_ > C * 10)
 			{
-				_MESSAGE("Warning, possible memory leak");
+				Console_Print("Warning, possible memory leak");
 			}
 			auto* alloc = static_cast<T*>(operator new(sizeof(T)));
 			UInt32 trace[12] = { 0 };

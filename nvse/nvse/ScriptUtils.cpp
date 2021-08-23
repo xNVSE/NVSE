@@ -4513,12 +4513,12 @@ bool ExpressionEvaluator::ParseBytecode(CachedTokens &cachedTokens)
 
 using OperandStack = FastStack<ScriptToken *>;
 
-void ShortCircuit(OperandStack &operands, CachedTokenIter &iter)
+bool ShortCircuit(OperandStack &operands, CachedTokenIter &iter)
 {
 	ScriptToken *lastToken = operands.Top();
 	const OperatorType type = lastToken->shortCircuitParentType;
 	if (type == g_noShortCircuit)
-		return;
+		return true;
 
 	const bool eval = lastToken->GetBool();
 	if (type == kOpType_LogicalAnd && !eval || type == kOpType_LogicalOr && eval)
@@ -4526,6 +4526,8 @@ void ShortCircuit(OperandStack &operands, CachedTokenIter &iter)
 		iter += lastToken->shortCircuitDistance;
 		for (UInt32 i = 0; i < lastToken->shortCircuitStackOffset; ++i)
 		{
+			if (operands.Empty())
+				return false;
 			// Make sure only one operand is left in RPN stack
 			ScriptToken *operand = operands.Top();
 			if (operand && operand != lastToken)
@@ -4534,6 +4536,7 @@ void ShortCircuit(OperandStack &operands, CachedTokenIter &iter)
 		}
 		operands.Push(lastToken);
 	}
+	return true;
 }
 
 void CopyShortCircuitInfo(ScriptToken *to, ScriptToken *from)
@@ -4662,8 +4665,11 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 			CopyShortCircuitInfo(opResult, curToken);
 			operands.Push(opResult);
 		}
-
-		ShortCircuit(operands, iter);
+		if (!ShortCircuit(operands, iter))
+		{
+			Error("An internal NVSE error occurred (short circuit stack mismatch)");
+			break;
+		}
 	}
 	
 	if (operands.Size() != 1 || this->HasErrors() && !m_flags.IsSet(kFlag_SuppressErrorMessages)) // should have one operand remaining - result of expression

@@ -541,7 +541,17 @@ public:
 		}
 		return nullptr;
 	}
-	
+
+	template <typename F>
+	void ForEach(F &&func) const
+	{
+		for (auto iter = Begin(); !iter.End(); ++iter)
+		{
+			if (*iter)
+				func(*iter);
+		}
+	}
+
 	template <typename F>
 	bool Contains(F &&func) const
 	{

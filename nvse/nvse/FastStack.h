@@ -56,7 +56,11 @@ public:
 
 	T_Data* Pop()
 	{
+#if _DEBUG
+		if (!head || !numItems) DebugBreak();
+#else
 		if (!head) return NULL;
+#endif
 		T_Data* frontItem = &head->data;
 		Node* toRemove = head;
 		head = head->next;

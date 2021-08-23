@@ -57,7 +57,7 @@ void SetLambdaParent(ScriptLambda* scriptLambda, ScriptEventList* parentEventLis
 	SetLambdaParent(g_lambdas[scriptLambda], parentEventList);
 }
 
-Script* LambdaManager::CreateLambdaScript(const ScriptData& scriptData, Script* parentScript)
+Script* LambdaManager::CreateLambdaScript(const LambdaManager::ScriptData& scriptData, const Script* parentScript)
 {
 	DataHandler::Get()->DisableAssignFormIDs(true);
 	auto* scriptLambda = New<Script, 0x5AA0F0>();
@@ -71,6 +71,8 @@ Script* LambdaManager::CreateLambdaScript(const ScriptData& scriptData, Script* 
 	scriptLambda->info.numRefs = parentScript->info.numRefs;
 	scriptLambda->info.varCount = parentScript->info.varCount;
 	scriptLambda->info.unusedVariableCount = parentScript->info.unusedVariableCount;
+
+	parentScript->mods.ForEach(_L(ModInfo* info, scriptLambda->mods.Append(info)));
 	return scriptLambda;
 }
 
@@ -165,6 +167,7 @@ void LambdaManager::DeleteAllForParentScript(Script* parentScript)
 {
 	ScopedLock lock(g_lambdaCs);
 	std::vector<Script*> lambdas;
+	int numLambdas = 0;
 	for (auto& [scriptLambda, ctx] : g_lambdas)
 	{
 		if (ctx.parentScript == parentScript)
@@ -175,6 +178,7 @@ void LambdaManager::DeleteAllForParentScript(Script* parentScript)
 			scriptLambda->data = nullptr; // parentScript data and tLists will be freed but parentScript won't be since plugins may store pointers to it to call
 			scriptLambda->varList = {};
 			scriptLambda->refList = {};
+			++numLambdas;
 		}
 	}
 	for (auto& ctx : g_lambdas | std::views::values)
@@ -194,6 +198,11 @@ void LambdaManager::DeleteAllForParentScript(Script* parentScript)
 		return std::ranges::find(lambdas, p.first) != lambdas.end();
 	});
 	g_savedVarLists.clear();
+
+	if (numLambdas)
+	{
+		Console_Print("Invalidated %d lambda(s) which need to be re-initialized", numLambdas);
+	}
 }
 
 void LambdaManager::ClearSavedDeletedEventLists()
