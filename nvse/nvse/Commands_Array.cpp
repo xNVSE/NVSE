@@ -1121,14 +1121,26 @@ bool Cmd_ar_DeepEquals_Execute(COMMAND_ARGS)
 {
 	*result = 0;
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	if (eval.ExtractArgs() && eval.NumArgs() == 2
-		 && eval.Arg(0)->CanConvertTo(kTokenType_Array) && eval.Arg(1)->CanConvertTo(kTokenType_Array))
+	if (eval.ExtractArgs() && eval.NumArgs() == 2)
 	{
-		auto arr1 = g_ArrayMap.Get(eval.Arg(0)->GetArray());
-		auto arr2 = g_ArrayMap.Get(eval.Arg(1)->GetArray());
-		if (arr1 && arr2)
+		bool const arg1IsArr = eval.Arg(0)->CanConvertTo(kTokenType_Array);
+		bool const arg2IsArr = eval.Arg(1)->CanConvertTo(kTokenType_Array);
+		if (arg1IsArr && arg2IsArr)
 		{
-			*result = arr1->DeepEquals(arr2);
+			auto arr1 = eval.Arg(0)->GetArrayVar();
+			auto arr2 = eval.Arg(1)->GetArrayVar();
+			if (arr1 && arr2)
+			{
+				*result = arr1->DeepEquals(arr2);
+			}
+			else if (!arr1 && !arr2)
+			{
+				*result = 1;
+			}
+		}
+		else if (!arg1IsArr && !arg2IsArr)
+		{
+			*result = 1;
 		}
 	}
 	return true;
