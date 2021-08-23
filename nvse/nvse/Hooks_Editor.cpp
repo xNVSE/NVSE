@@ -812,7 +812,7 @@ __declspec(naked) void InlineExpressionHook()
 void PatchGameCommandParser()
 {
 	// Allow multiline expressions with parenthesis
-	WriteRelJump(0x5C5830, reinterpret_cast<UInt32>(ParseNextLine));
+	WriteRelJump(0x5AF3F0, reinterpret_cast<UInt32>(ParseNextLine));
 
 	const auto tokenAliasFloat = 0x118CBF4;
 	const auto tokenAliasLong = 0x118CBCC;

@@ -19,6 +19,10 @@
 #include <utility>
 
 #include "ScriptAnalyzer.h"
+
+extern std::stack<Script*> g_currentScriptStack;
+std::map<std::pair<Script*, std::string>, Script::VariableType> g_variableDefinitionsMap;
+
 #if RUNTIME
 
 #ifdef DBG_EXPR_LEAKS
@@ -53,22 +57,6 @@ static bool ShowWarning(const char *msg)
 
 #include "GameAPI.h"
 
-extern std::stack<Script *> g_currentScriptStack;
-std::map<std::pair<Script *, std::string>, Script::VariableType> g_variableDefinitionsMap;
-
-Script::VariableType GetSavedVarType(Script *script, const std::string &name)
-{
-	if (!script)
-		return Script::eVarType_Invalid;
-	if (const auto iter = g_variableDefinitionsMap.find(std::make_pair(script, name)); iter != g_variableDefinitionsMap.end())
-		return iter->second;
-	return Script::eVarType_Invalid;
-}
-
-void SaveVarType(Script *script, const std::string &name, Script::VariableType type)
-{
-	g_variableDefinitionsMap.emplace(std::make_pair(script, name), type);
-}
 
 const char *GetEditorID(TESForm *form)
 {
@@ -89,6 +77,21 @@ static bool ShowWarning(const char *msg)
 }
 
 #endif
+
+Script::VariableType GetSavedVarType(Script* script, const std::string& name)
+{
+	if (!script)
+		return Script::eVarType_Invalid;
+	if (const auto iter = g_variableDefinitionsMap.find(std::make_pair(script, name)); iter != g_variableDefinitionsMap.end())
+		return iter->second;
+	return Script::eVarType_Invalid;
+}
+
+void SaveVarType(Script* script, const std::string& name, Script::VariableType type)
+{
+	g_variableDefinitionsMap.emplace(std::make_pair(script, name), type);
+}
+
 
 ErrOutput g_ErrOut(ShowError, ShowWarning);
 
@@ -1812,14 +1815,15 @@ ExpressionParser::ExpressionParser(ScriptBuffer *scriptBuf, ScriptLineBuffer *li
 	ASSERT(s_parserDepth >= 0);
 	s_parserDepth++;
 	memset(m_argTypes, kTokenType_Invalid, sizeof(m_argTypes));
-#if RUNTIME
-	m_script = scriptBuf->currentScript;
-#else
+
 	if (g_currentScriptStack.empty())
+#if EDITOR
 		m_script = nullptr;
+#else
+		m_script = m_scriptBuf->currentScript;
+#endif
 	else
 		m_script = g_currentScriptStack.top();
-#endif
 }
 
 ExpressionParser::~ExpressionParser()
@@ -2698,8 +2702,9 @@ Token_Type ExpressionParser::ParseArgument(UInt32 argsEndPos)
 	return argType;
 }
 
+#if EDITOR
 const void *g_scriptCompiler = reinterpret_cast<void *>(0xECFDF8);
-
+#endif
 std::unordered_map<Script *, Script *> g_lambdaParentScriptMap;
 
 Script *GetLambdaParentScript(Script *scriptLambda)
@@ -2711,10 +2716,12 @@ Script *GetLambdaParentScript(Script *scriptLambda)
 
 ScriptToken *ExpressionParser::ParseLambda()
 {
-#if RUNTIME
-	PrintCompileError("Anonymous functions are not supported from console.");
-	return nullptr;
+	bool editor;
+#if EDITOR
+	editor = true;
 #else
+	editor = false;
+#endif
 	const auto *beginData = CurText() - strlen("begin");
 	auto nest = 1;
 	while (nest != 0 && CurText())
@@ -2739,8 +2746,8 @@ ScriptToken *ExpressionParser::ParseLambda()
 	auto *lambdaText = static_cast<char *>(FormHeap_Allocate(textLen));
 	memset(lambdaText, 0, textLen);
 	std::memcpy(lambdaText, beginData, textLen);
-	const auto lambdaScriptBuf = MakeUnique<ScriptBuffer, 0x5C5660, 0x5C8910>();
-	auto scriptLambda = MakeUnique<Script, 0x5C1D60, 0x5C5220>();
+	const auto lambdaScriptBuf = ScriptBuffer::MakeUnique();
+	auto scriptLambda = Script::MakeUnique();
 
 	const auto varCount = m_scriptBuf->info.varCount;
 	const auto numRefs = m_scriptBuf->info.numRefs;
@@ -2777,7 +2784,7 @@ ScriptToken *ExpressionParser::ParseLambda()
 	lambdaScriptBuf->refVars = m_scriptBuf->refVars;
 	lambdaScriptBuf->vars = m_scriptBuf->vars;
 
-	auto *beginEndOffset = reinterpret_cast<UInt32 *>(0xED9D54);
+	auto *beginEndOffset = reinterpret_cast<UInt32 *>(editor ? 0xED9D54 : 0x11CADBC);
 	const auto savedOffset = *beginEndOffset;
 	*beginEndOffset = 0;
 
@@ -2786,7 +2793,7 @@ ScriptToken *ExpressionParser::ParseLambda()
 	// lambdaScriptBuf->currentScript = scriptLambda.get();
 	g_currentScriptStack.push(scriptLambda.get());
 
-	const auto compileResult = ThisStdCall<bool>(0x5C96E0, g_scriptCompiler, scriptLambda.get(), lambdaScriptBuf.get()); // CompileScript
+	const auto compileResult = scriptLambda->Compile(lambdaScriptBuf.get()); // CompileScript
 
 	g_currentScriptStack.pop();
 
@@ -2813,7 +2820,6 @@ ScriptToken *ExpressionParser::ParseLambda()
 	}
 
 	return new ScriptToken(scriptLambda.release());
-#endif
 }
 
 ScriptToken *ExpressionParser::ParseOperand(bool (*pred)(ScriptToken *operand))
@@ -3061,14 +3067,12 @@ bool ExpressionParser::HandleMacros()
 
 bool ValidateVariable(const std::string &varName, Script::VariableType varType, Script *script)
 {
-#if EDITOR
 	if (const auto savedVarType = GetSavedVarType(script, varName); savedVarType != varType && savedVarType != Script::eVarType_Invalid)
 	{
 		g_ErrOut.Show("Variable redefinition with a different type (saw first '%s', then '%s')", g_variableTypeNames[savedVarType], g_variableTypeNames[varType]);
 		return false;
 	}
 	SaveVarType(script, varName, varType);
-#endif
 	return true;
 }
 
@@ -5031,7 +5035,7 @@ bool BasicTokenToElem(ScriptToken *token, ArrayElement &elem)
 	return bResult;
 }
 
-#else // CS only
+#endif
 
 enum BlockType
 {
@@ -5322,8 +5326,6 @@ bool PrecompileScript(ScriptBuffer *buf)
 {
 	return Preprocessor(buf).Process();
 }
-
-#endif
 
 bool Cmd_Expression_Parse(UInt32 numParams, ParamInfo *paramInfo, ScriptLineBuffer *lineBuf, ScriptBuffer *scriptBuf)
 {

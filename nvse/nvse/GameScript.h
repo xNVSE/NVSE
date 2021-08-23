@@ -1,7 +1,6 @@
 #pragma once
 
 #include <span>
-
 #include "Utilities.h"
 #include "GameForms.h"
 #include "common/ICriticalSection.h"
@@ -142,6 +141,12 @@ public:
 
 	tList<VariableInfo>* GetVars();
 	tList<RefVariable>* GetRefList();
+
+	void Delete();
+
+	static game_unique_ptr<Script> MakeUnique();
+
+	bool Compile(ScriptBuffer* buffer);
 };
 
 STATIC_ASSERT(sizeof(Script) == SCRIPT_SIZE);
@@ -243,6 +248,15 @@ struct ScriptBuffer
 	UInt32	GetRefIdx(Script::RefVariable* ref);
 	VariableInfo* GetVariableByName(const char* name);
 	UInt32	GetVariableType(VariableInfo* varInfo, Script::RefVariable* refVar, Script* script);
+
+	static game_unique_ptr<ScriptBuffer> MakeUnique()
+	{
+#if EDITOR
+		return ::MakeUnique<ScriptBuffer, 0x5C5660, 0x5C8910>();
+#else
+		return ::MakeUnique<ScriptBuffer, 0x5AE490, 0x5AE5C0>();
+#endif
+	}
 };
 static_assert(sizeof(ScriptBuffer) == 0x58);
 

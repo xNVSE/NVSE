@@ -91,7 +91,7 @@ Script* LambdaManager::CreateLambdaScript(UInt8* position, const ScriptData& scr
 	else if (auto* ownerRef = OtherHooks::GetExecutingScriptContext()->scriptOwnerRef)
 		ownerRefID = ownerRef->refID;
 	else
-		return nullptr;
+		ownerRefID = parentScript->refID;
 	
 	// auto script = MakeUnique<Script, 0x5AA0F0, 0x5AA1A0>();
 	const auto key = std::make_pair(position, ownerRefID);

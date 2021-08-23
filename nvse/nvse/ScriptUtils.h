@@ -37,9 +37,7 @@ extern const char* g_lastScriptName;
 
 extern ErrOutput g_ErrOut;
 extern std::unordered_map<Script*, Script*> g_lambdaParentScriptMap;
-#if EDITOR
 extern std::map<std::pair<Script*, std::string>, Script::VariableType> g_variableDefinitionsMap;
-#endif
 
 Script * GetLambdaParentScript(Script * scriptLambda);
 

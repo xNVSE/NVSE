@@ -15,12 +15,13 @@
 
 #include "GameAPI.h"
 #include "GameData.h"
+#include "PluginManager.h"
 
 // a size of ~1KB should be enough for a single line of code
 char s_ExpressionParserAltBuffer[0x500] = {0};
 
 #if RUNTIME
-
+void PatchScriptCompile();
 const UInt32 ExtractStringPatchAddr = 0x005ADDCA; // ExtractArgs: follow first jz inside loop then first case of following switch: last call in case.
 const UInt32 ExtractStringRetnAddr = 0x005ADDE3;
 
@@ -204,6 +205,8 @@ void Hook_Script_Init()
 	}
 	
 	WriteRelJump(0x5949D4, reinterpret_cast<UInt32>(ExpressionEvalRunCommandHook));
+
+	PatchScriptCompile();
 }
 
 #else // CS-stuff
@@ -309,6 +312,92 @@ bool HandleLoopEnd(UInt32 offsetToEnd)
 	*((UInt32 *)startPtr) = offsetToEnd;
 	return true;
 }
+
+
+// ScriptBuffer::currentScript not used due to GECK treating it as external ref script
+std::stack<Script*> g_currentScriptStack;
+
+bool __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
+{
+	// empty out the loop stack
+	while (s_loopStartOffsets.size())
+		s_loopStartOffsets.pop();
+
+	// Preprocess the script:
+	//  - check for usage of array variables in Set statements (disallowed)
+	//  - check loop structure integrity
+	//  - check for use of ResetAllVariables on scripts containing string/array vars
+	g_currentScriptStack.push(script);
+
+	bool bResult = PrecompileScript(buf);
+	if (bResult)
+	{
+		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_Precompile, buf, sizeof(buf), NULL);
+	}
+
+	if (!bResult)
+		buf->errorCode = 1;
+
+	return bResult;
+}
+
+void PostScriptCompile()
+{
+	g_variableDefinitionsMap.clear();
+	for (const auto& key : g_lambdaParentScriptMap | std::views::keys)
+		key->Delete();
+	g_lambdaParentScriptMap.clear();
+	g_currentScriptStack.pop();
+}
+
+#if RUNTIME
+
+__declspec(naked) void HookBeginScriptCompile()
+{
+	const static auto retnAddr = 0x5AEB99;
+	__asm
+	{
+		// replaced stuff
+		push ebp
+		mov ebp, esp
+		sub esp, 0x18
+		mov [ebp-0x18], ecx
+		// our stuff
+		mov ecx, [ebp + 0x8] // Script*
+		push ecx
+		mov edx, [ebp+0xC] // ScriptBuffer*
+		push edx
+		call HandleBeginCompile
+		test al, al
+		jnz success
+		// fail
+		mov al, 0
+		mov esp, ebp
+		pop ebp
+		ret 8
+	success:
+		jmp retnAddr
+	}
+}
+
+__declspec(naked) void HookEndScriptCompile()
+{
+	__asm
+	{
+		call PostScriptCompile
+		mov esp, ebp
+		pop ebp
+		ret 8
+	}
+}
+
+void PatchScriptCompile()
+{
+	WriteRelJump(0x5AEB90, reinterpret_cast<UInt32>(HookBeginScriptCompile));
+	WriteRelJump(0x5AEDA0, reinterpret_cast<UInt32>(HookEndScriptCompile));
+}
+
+#endif
 
 #if EDITOR
 
@@ -604,33 +693,6 @@ namespace CompilerOverride
 	}
 }
 
-// ScriptBuffer::currentScript not used due to GECK treating it as external ref script
-std::stack<Script *> g_currentScriptStack;
-
-bool __stdcall HandleBeginCompile(ScriptBuffer *buf, Script *script)
-{
-	// empty out the loop stack
-	while (s_loopStartOffsets.size())
-		s_loopStartOffsets.pop();
-
-	// Preprocess the script:
-	//  - check for usage of array variables in Set statements (disallowed)
-	//  - check loop structure integrity
-	//  - check for use of ResetAllVariables on scripts containing string/array vars
-	g_currentScriptStack.push(script);
-
-	bool bResult = PrecompileScript(buf);
-	if (bResult)
-	{
-		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_Precompile, buf, sizeof(buf), NULL);
-	}
-
-	if (!bResult)
-		buf->errorCode = 1;
-
-	return bResult;
-}
-
 void MarkModAsMyMod(Script* script)
 {
 	std::set<std::string> myMods;
@@ -661,19 +723,12 @@ void MarkModAsMyMod(Script* script)
 	}
 }
 
-void __fastcall PostScriptCompileSuccess(Script *script)
+void __fastcall PostScriptCompileSuccess(Script* script)
 {
 	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptCompile, script, 4, nullptr);
+#if EDITOR
 	MarkModAsMyMod(script);
-}
-
-void PostScriptCompile()
-{
-	g_variableDefinitionsMap.clear();
-	for (const auto &key : g_lambdaParentScriptMap | std::views::keys)
-		Delete<Script, 0x5C5220>(key);
-	g_lambdaParentScriptMap.clear();
-	g_currentScriptStack.pop();
+#endif
 }
 
 static __declspec(naked) void CompileScriptHook(void)
