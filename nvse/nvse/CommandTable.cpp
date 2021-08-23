@@ -1807,6 +1807,9 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(ar_ForEach);
 	ADD_CMD(ar_Any);
 	ADD_CMD(ar_All);
+	ADD_CMD(GetWeaponRegenRate);
+	ADD_CMD(SetWeaponRegenRate);
+	
 }
 
 namespace PluginAPI
