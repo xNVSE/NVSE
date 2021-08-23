@@ -50,7 +50,8 @@ static NVSEArrayVarInterface g_NVSEArrayVarInterface =
 	PluginAPI::ArrayAPI::LookupArrayByID,
 	PluginAPI::ArrayAPI::GetElement,
 	PluginAPI::ArrayAPI::GetElements,
-	PluginAPI::ArrayAPI::GetArrayPacked
+	PluginAPI::ArrayAPI::GetArrayPacked,
+	PluginAPI::ArrayAPI::GetContainerType
 };
 
 static NVSEScriptInterface g_NVSEScriptInterface =
