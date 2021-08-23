@@ -2069,10 +2069,21 @@ bool GetUserFunctionParamNames(const std::string &scriptText, std::vector<std::s
 	return false;
 }
 
-bool GetUserFunctionParams(const std::vector<std::string> &paramNames, std::vector<UserFunctionParam> &outParams, Script::VarInfoList *varList, const std::string &fullScriptText, Script *script)
+bool ExpressionParser::GetUserFunctionParams(const std::vector<std::string> &paramNames, std::vector<UserFunctionParam> &outParams, Script::VarInfoList *varList, const std::string &fullScriptText, Script *script)
 {
+	auto lastVarType = Script::eVarType_Invalid;
 	for (const auto &token : paramNames)
 	{
+		if (lastVarType != Script::eVarType_Invalid)
+		{
+			CreateVariable(token, lastVarType);
+			lastVarType = Script::eVarType_Invalid;
+		}
+		else if (auto iter = ra::find_if(g_variableTypeNames, _L(const char* typeName, _stricmp(typeName, token.c_str()) == 0)); iter != std::end(g_variableTypeNames))
+		{
+			lastVarType = VariableTypeNameToType(*iter);
+			continue;
+		}
 		VariableInfo *varInfo = varList->GetVariableByName(token.c_str());
 		if (!varInfo)
 			return false;
@@ -2110,7 +2121,7 @@ DynamicParamInfo::DynamicParamInfo(const std::vector<UserFunctionParam> &params)
 		m_paramInfo[i] = kDynamicParams[params[i].varType];
 }
 
-bool ExpressionParser::ParseUserFunctionParameters(std::vector<UserFunctionParam> &out, const std::string &funcScriptText, Script::VarInfoList *funcScriptVars, Script *script) const
+bool ExpressionParser::ParseUserFunctionParameters(std::vector<UserFunctionParam> &out, const std::string &funcScriptText, Script::VarInfoList *funcScriptVars, Script *script)
 {
 	std::vector<std::string> funcParamNames;
 	if (!GetUserFunctionParamNames(funcScriptText, funcParamNames))

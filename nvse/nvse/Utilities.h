@@ -292,3 +292,7 @@ game_unique_ptr<T> MakeUnique(ConstructorArgs &&... args)
 	auto* obj = New<T, ConstructorPtr>(std::forward(args)...);
 	return MakeUnique<T, DestructorPtr>(obj);
 }
+
+bool StartsWith(std::string left, std::string right);
+std::string& ToLower(std::string&& data);
+std::string& StripSpace(std::string&& data);

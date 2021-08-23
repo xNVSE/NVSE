@@ -4,8 +4,6 @@
 #include <algorithm>
 #include <filesystem>
 #include <tlhelp32.h>
-
-
 #include "containers.h"
 #include "GameData.h"
 #include "Hooks_Gameplay.h"
@@ -818,3 +816,20 @@ const char* GetFormName(UInt32 formId)
 }
 
 #endif
+
+std::string& ToLower(std::string&& data)
+{
+	ra::transform(data, data.begin(), [](const unsigned char c) { return std::tolower(c); });
+	return data;
+}
+
+std::string& StripSpace(std::string&& data)
+{
+	std::erase_if(data, isspace);
+	return data;
+}
+
+bool StartsWith(std::string left, std::string right)
+{
+	return ToLower(std::move(left)).starts_with(ToLower(std::move(right)));
+}
