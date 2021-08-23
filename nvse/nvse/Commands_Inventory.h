@@ -4,18 +4,18 @@
 #include "ParamInfos.h"
 
 // for use with Inventory Objects
-#define DEFINE_GET_INV(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, 0, 1, kParams_OneOptionalObjectID);
-#define DEFINE_GET_INV_COND(name, alt, desc) DEFINE_CMD_ALT_COND(name, alt, desc, 0, kParams_OneOptionalObjectID);
-#define DEFINE_SET_INV_INT(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, 0, 2, kParams_OneInt_OneOptionalObjectID);
-#define DEFINE_SET_INV_FLOAT(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, 0, 2, kParams_OneFloat_OneOptionalObjectID);
-#define DEFINE_SET_INV_MAGIC(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, 0, 2, kParams_OneMagicItem_OneOptionalObjectID);
+#define DEFINE_GET_INV(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, false, 1, kParams_OneOptionalObjectID);
+#define DEFINE_GET_INV_COND(name, alt, desc) DEFINE_CMD_ALT_COND(name, alt, desc, false, kParams_OneOptionalObjectID);
+#define DEFINE_SET_INV_INT(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, false, 2, kParams_OneInt_OneOptionalObjectID);
+#define DEFINE_SET_INV_FLOAT(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, false, 2, kParams_OneFloat_OneOptionalObjectID);
+#define DEFINE_SET_INV_MAGIC(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, false, 2, kParams_OneMagicItem_OneOptionalObjectID);
 // for use with generic objects (anything with 3D) and general Base Forms that could be other types. Is more inclusive.
-#define DEFINE_GET_OBJ(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, 0, 1, kParams_OneOptionalObject);
+#define DEFINE_GET_OBJ(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, false, 1, kParams_OneOptionalObject);
 
-#define DEFINE_GET_FORM(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, 0, 1, kParams_OneOptionalForm);
-#define DEFINE_GET_FORM_COND(name, alt, desc) DEFINE_CMD_ALT_COND(name, alt, desc, 0, kParams_OneOptionalForm);  //arg1/2 will always be INVALID
+#define DEFINE_GET_FORM(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, false, 1, kParams_OneOptionalForm);
+#define DEFINE_GET_FORM_COND(name, alt, desc) DEFINE_CMD_ALT_COND(name, alt, desc, false, kParams_OneOptionalForm);  //arg1/2 will always be INVALID
 
-#define DEFINE_SET_CUR_FLOAT(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, 1, 2, kParams_SetEquippedFloat);
+#define DEFINE_SET_CUR_FLOAT(name, alt, desc) DEFINE_CMD_ALT(name, alt, desc, true, 2, kParams_SetEquippedFloat);
 
 
 DEFINE_CMD_COND(GetWeight, returns the weight of the specified base form, 0, kParams_OneOptionalObjectID);
@@ -100,6 +100,8 @@ DEFINE_GET_INV_COND(GetWeaponRequiredSkill, GetReqSkill, returns the required st
 DEFINE_GET_INV_COND(GetWeaponLongBursts, GetLongBursts, returns if a weapon uses long bursts);
 DEFINE_GET_INV_COND(GetWeaponFlags1, , returns weapon flags bitfield 1);
 DEFINE_GET_INV_COND(GetWeaponFlags2, , returns weapon flags bitfield 2);
+DEFINE_GET_INV_COND(GetWeaponRegenRate, , "");
+
 
 DEFINE_CMD_ALT(SetWeaponAmmo, SetAmmo, sets the ammo of the weapon, 0, 2, kParams_OneInventoryItem_OneOptionalObjectID);
 DEFINE_SET_INV_INT(SetWeaponClipRounds, SetClipSize, sets the weapon clip size);
@@ -136,6 +138,7 @@ DEFINE_SET_INV_INT(SetWeaponResistType, SetWeaponResist, sets the weapon clip si
 DEFINE_SET_INV_INT(SetWeaponLongBursts, SetLongBursts, sets if a weapon uses long bursts);
 DEFINE_SET_INV_INT(SetWeaponFlags1, , sets weapon flags bitfield 1);
 DEFINE_SET_INV_INT(SetWeaponFlags2, , sets weapon flags bitfield 2);
+DEFINE_SET_INV_FLOAT(SetWeaponRegenRate, , "");
 DEFINE_CMD_COND(GetEquippedWeaponModFlags, returns equipped weapon mod flags, 1, NULL);
 DEFINE_COMMAND(SetEquippedWeaponModFlags, sets equipped weapon mod flags, 1, 1, kParams_OneInt);
 DEFINE_COMMAND(GetWeaponItemModEffect, returns the specified item mod effect id of the weapon, 0, 2, kParams_OneInt_OneOptionalObjectID);
