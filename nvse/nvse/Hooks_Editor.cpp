@@ -6,7 +6,6 @@
 #include "richedit.h"
 #include "ScriptUtils.h"
 #include <regex>
-#include <shlobj.h>
 
 #include "Hooks_Script.h"
 #if EDITOR

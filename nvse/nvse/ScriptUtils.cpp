@@ -5121,6 +5121,7 @@ private:
 
 public:
 	Preprocessor(ScriptBuffer *buf);
+	void RemoveMultiLineComments();
 
 	bool Process(); // returns false if an error is detected
 };
@@ -5145,7 +5146,46 @@ const char *Preprocessor::BlockTypeAsString(BlockType type)
 Preprocessor::Preprocessor(ScriptBuffer *buf) : m_buf(buf), m_loopDepth(0), m_curLineText(""), m_curLineNo(0),
 												m_curBlockStartingLineNo(1), m_scriptText(buf->scriptText), m_scriptTextOffset(0), m_script(g_currentScriptStack.top())
 {
+	RemoveMultiLineComments();
 	AdvanceLine();
+}
+
+void Preprocessor::RemoveMultiLineComments()
+{
+	bool inString = false;
+	bool inComment = false;
+	std::string newScriptText;
+	char curChar;
+	const auto proceed = [&]() { newScriptText += curChar; };
+	for (auto iter = m_scriptText.begin(); iter != m_scriptText.end(); ++iter)
+	{
+		curChar = *iter;
+		auto nextIter = iter + 1;
+		if (nextIter == m_scriptText.end())
+		{
+			proceed();
+			continue;
+		}
+		const auto nextChar = *nextIter;
+		if (curChar == '"')
+			inString = !inString;
+		if (inString)
+		{
+			proceed();
+			continue;
+		}
+		if (curChar == '/' && nextChar == '*')
+			inComment = true;
+		else if (curChar == '*' && nextChar == '/')
+		{
+			++iter;
+			inComment = false;
+			continue;
+		}
+		if (!inComment)
+			proceed();
+	}
+	m_scriptText = newScriptText;
 }
 
 bool Preprocessor::AdvanceLine()
@@ -5156,6 +5196,7 @@ bool Preprocessor::AdvanceLine()
 	m_curLineNo++;
 
 	UInt32 endPos = m_scriptText.find("\r\n", m_scriptTextOffset);
+
 	if (endPos == -1) // last line, no CRLF
 	{
 		m_curLineText = m_scriptText.substr(m_scriptTextOffset, m_scriptText.length() - m_scriptTextOffset);
