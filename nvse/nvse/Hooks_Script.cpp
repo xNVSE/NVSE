@@ -384,7 +384,9 @@ __declspec(naked) void HookEndScriptCompile()
 {
 	__asm
 	{
+		push eax
 		call PostScriptCompile
+		pop eax
 		mov esp, ebp
 		pop ebp
 		ret 8
