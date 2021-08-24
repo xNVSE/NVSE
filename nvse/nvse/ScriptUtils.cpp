@@ -20,7 +20,6 @@
 
 #include "ScriptAnalyzer.h"
 
-extern std::stack<Script*> g_currentScriptStack;
 std::map<std::pair<Script*, std::string>, Script::VariableType> g_variableDefinitionsMap;
 
 #if RUNTIME
@@ -2101,6 +2100,8 @@ bool ExpressionParser::GetUserFunctionParams(const std::vector<std::string> &par
 
 		outParams.push_back(UserFunctionParam(varInfo->idx, varType));
 	}
+	if (lastVarType != Script::eVarType_Invalid)
+		return false;
 	return true;
 }
 
@@ -3049,7 +3050,7 @@ ScriptToken *ExpressionParser::PeekOperand(UInt32 &outReadLen)
 
 std::vector g_expressionParserMacros =
 	{
-		ScriptLineMacro([&](std::string &line) {
+		ScriptLineMacro([&](std::string &line, ScriptBuffer*, ScriptLineBuffer*) {
 			// Lambda macro
 			const std::regex oneLineLambdaRegex(R"(^\{(.*)\}\s*=>\s*(.*))"); // match {iVar, rRef} => ...
 			if (std::smatch m; std::regex_search(line, m, oneLineLambdaRegex) && m.size() == 3)
@@ -3058,16 +3059,14 @@ std::vector g_expressionParserMacros =
 				return true;
 			}
 			return false;
-		},
-						MacroType::OneLineLambda),
-
+		}, MacroType::OneLineLambda),
 };
 
 bool ExpressionParser::HandleMacros()
 {
 	for (const auto &macro : g_expressionParserMacros)
 	{
-		const auto result = macro.EvalMacro(m_lineBuf, this);
+		const auto result = macro.EvalMacro(m_lineBuf, m_scriptBuf, this);
 		if (result == ScriptLineMacro::MacroResult::Error)
 			return false;
 		if (result == ScriptLineMacro::MacroResult::Applied)
@@ -3087,45 +3086,48 @@ bool ValidateVariable(const std::string &varName, Script::VariableType varType, 
 	return true;
 }
 
-VariableInfo *ExpressionParser::CreateVariable(const std::string &varName, Script::VariableType varType)
+VariableInfo* CreateVariable(Script* script, ScriptBuffer* scriptBuf, const std::string& varName, Script::VariableType varType, const std::function<void(const std::string&)>& printCompileError)
 {
-	if (!m_script)
+	if (!script)
 		return nullptr;
-	if (auto *var = m_scriptBuf->vars.FindFirst([&](VariableInfo *v) { return _stricmp(varName.c_str(), v->name.CStr()) == 0; }))
+	if (auto* var = scriptBuf->vars.FindFirst([&](VariableInfo* v) { return _stricmp(varName.c_str(), v->name.CStr()) == 0; }))
 	{
-		if (!ValidateVariable(varName, varType, m_script))
+		if (!ValidateVariable(varName, varType, script))
 			return nullptr;
 		// all good, already exists
 		return var;
 	}
 	if (varName.empty())
 	{
-		PrintCompileError("Got empty string for variable name");
+		printCompileError("Got empty string for variable name");
 		return nullptr;
 	}
 	if (GetFormByID(varName.c_str()))
 	{
-		PrintCompileError("Invalid variable name " + varName + ": Form with that Editor ID already exists.");
+		printCompileError("Invalid variable name " + varName + ": Form with that Editor ID already exists.");
 		return nullptr;
 	}
 	if (g_scriptCommands.GetByName(varName.c_str()))
 	{
-		PrintCompileError("Invalid variable name " + varName + ": Command with that name already exists.");
+		printCompileError("Invalid variable name " + varName + ": Command with that name already exists.");
 		return nullptr;
 	}
-	auto *varInfo = New<VariableInfo>();
-	if (const auto *existingVar = m_script->GetVariableByName(varName.c_str()))
+	auto* varInfo = New<VariableInfo>();
+	if (const auto* existingVar = script->GetVariableByName(varName.c_str()))
 		varInfo->idx = existingVar->idx;
 	else
-		varInfo->idx = ++m_scriptBuf->info.varCount;
+		varInfo->idx = ++scriptBuf->info.varCount;
 	varInfo->name.Set(varName.c_str());
 	varInfo->type = varType;
-	m_scriptBuf->vars.Append(varInfo);
-#if EDITOR
-	SaveVarType(m_script, varName, varType);
-#endif
-	m_scriptBuf->ResolveRef(varName.c_str(), m_script); // ref var
+	scriptBuf->vars.Append(varInfo);
+	SaveVarType(script, varName, varType);
+	scriptBuf->ResolveRef(varName.c_str(), script); // ref var
 	return varInfo;
+}
+
+VariableInfo *ExpressionParser::CreateVariable(const std::string &varName, Script::VariableType varType) const
+{
+	return ::CreateVariable(m_script, m_scriptBuf, varName, varType, _L(const auto& str, PrintCompileError(str)));
 }
 
 void ExpressionParser::SkipSpaces()
@@ -5308,10 +5310,11 @@ bool Preprocessor::Process()
 			}
 			else if (const auto type = VariableTypeNameToType(tok); type != Script::eVarType_Invalid)
 			{
-				std::string varToken;
-				if (tokens.NextToken(varToken) != -1)
+				auto line = tokens.ToNewLine();
+				if (ra::all_of(line, _L(char c, isalnum(c) || c == '_' || c == ',' || isspace(c)))) // ignore `int i = 0`
 				{
-					if (!ValidateVariable(varToken, type, m_script))
+					auto varNames = SplitString(line, ",");
+					if (!ra::all_of(varNames, _L(auto & varName, ValidateVariable(StripSpace(std::move(varName)), type, m_script))))
 						return false;
 				}
 			}
@@ -5348,11 +5351,11 @@ ScriptLineMacro::ScriptLineMacro(ModifyFunction modifyFunction, MacroType type) 
 {
 }
 
-ScriptLineMacro::MacroResult ScriptLineMacro::EvalMacro(ScriptLineBuffer *lineBuf, ExpressionParser *parser) const
+ScriptLineMacro::MacroResult ScriptLineMacro::EvalMacro(ScriptLineBuffer *lineBuf, ScriptBuffer* scriptBuf, ExpressionParser *parser) const
 {
 	auto *str = lineBuf->paramText + lineBuf->lineOffset;
 	std::string copy = str;
-	if (!modifyFunction_(copy))
+	if (!modifyFunction_(copy, scriptBuf, lineBuf))
 		return MacroResult::Skipped;
 	const auto charsLeft = sizeof lineBuf->paramText - lineBuf->lineOffset;
 	if (copy.size() > charsLeft)

@@ -6,6 +6,9 @@
 #include "richedit.h"
 #include "ScriptUtils.h"
 #include <regex>
+#include <shlobj.h>
+
+#include "Hooks_Script.h"
 #if EDITOR
 
 static char s_InfixToPostfixBuf[0x800];
@@ -527,7 +530,7 @@ bool StrContains(const std::string& str, const std::string& subStr)
 
 std::vector g_lineMacros =
 {
-	ScriptLineMacro([&](std::string& line)
+	ScriptLineMacro([&](std::string& line, ScriptBuffer*, ScriptLineBuffer*)
 	{
 		static const std::vector<std::pair<std::string, std::string>> s_shortHandMacros =
 		{
@@ -584,7 +587,7 @@ std::vector g_lineMacros =
 		return false;
 	}, MacroType::AssignmentShortHand),
 #if 0
-	ScriptLineMacro([&](std::string& line)
+	ScriptLineMacro([&](std::string& line, ScriptBuffer*, ScriptLineBuffer*)
 	{
 		for (auto [match, toReplace] : {std::make_pair("ife", "if eval "), std::make_pair("elseife", "elseif eval ")})
 		{
@@ -598,11 +601,37 @@ std::vector g_lineMacros =
 		return false;
 	}, MacroType::IfEval)
 #endif
+	ScriptLineMacro([&](std::string& line, ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
+	{
+		if (auto iter = ra::find_if(g_variableTypeNames, _L(const char* typeName, StartsWith(line, std::string(typeName) + " "))); iter != std::end(g_variableTypeNames))
+		{
+			const auto* typeName = *iter;
+			const auto str = std::string(line).substr(strlen(typeName)+1);
+			auto tokens = SplitString(str, ",");
+			if (tokens.size() <= 1)
+				return false;
+			ra::for_each(tokens, _L(auto& token, token = StripSpace(std::string(token))));
+			if (!ra::all_of(tokens, _L(auto& token, ra::all_of(token, _L(char c, isalnum(c) || c == '_')))))
+				return false;
+			const auto firstVar = tokens.at(0);
+			tokens.erase(tokens.begin()); 
+			line = std::string(typeName) + ' ' + firstVar;
+			auto* currentScript = g_currentScriptStack.top();
+#if EDITOR
+			auto* errorBuf = scriptBuf;
+#else
+			auto* errorBuf = lineBuf;
+#endif
+			ra::for_each(tokens, _L(auto& varName, CreateVariable(currentScript, scriptBuf, varName, VariableTypeNameToType(typeName), _L(auto& msg, ShowCompilerError(errorBuf, "%s", msg.c_str())))));
+		}
+		return false;
+	}, MacroType::MultipleVariableDeclaration)
 };
-bool HandleLineBufMacros(ScriptLineBuffer* buf)
+
+bool HandleLineBufMacros(ScriptLineBuffer* line, ScriptBuffer* buffer)
 {
 	for (const auto& macro : g_lineMacros)
-		if (macro.EvalMacro(buf) == ScriptLineMacro::MacroResult::Error)
+		if (macro.EvalMacro(line, buffer) == ScriptLineMacro::MacroResult::Error)
 			return false;
 	return true;
 }
@@ -713,7 +742,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 					}
 					lineBuf->paramText[lineBuf->paramTextLen] = '\0';
 					lineBuf->lineNumber += numNewLinesInParenthesis;
-					if (!HandleLineBufMacros(lineBuf))
+					if (!HandleLineBufMacros(lineBuf, scriptBuf))
 						return 0;
 					return curScriptText - oldScriptText;
 				}

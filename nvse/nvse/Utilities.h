@@ -109,6 +109,7 @@ public:
 
 	// these return the offset of token in src, or -1 if no token
 	UInt32 NextToken(std::string& outStr);
+	std::string ToNewLine();
 	UInt32 PrevToken(std::string& outStr);
 
 private:
@@ -296,3 +297,4 @@ game_unique_ptr<T> MakeUnique(ConstructorArgs &&... args)
 bool StartsWith(std::string left, std::string right);
 std::string& ToLower(std::string&& data);
 std::string& StripSpace(std::string&& data);
+std::vector<std::string> SplitString(std::string s, std::string delimiter);
