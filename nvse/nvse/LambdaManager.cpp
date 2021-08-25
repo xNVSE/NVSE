@@ -65,9 +65,11 @@ Script* LambdaManager::CreateLambdaScript(const LambdaManager::ScriptData& scrip
 	scriptLambda->data = scriptData.scriptData;
 	scriptLambda->info.dataLength = scriptData.size;
 	
-	scriptLambda->varList = parentScript->varList; // CdeclCall(0x5AB930, &parentScript->varList, &scriptLambda->varList); // CopyVarList
-	scriptLambda->refList = parentScript->refList; // CdeclCall(0x5AB7F0, &parentScript->refList, &scriptLambda->refList); // CopyRefList
-	
+	//scriptLambda->varList = parentScript->varList; // CdeclCall(0x5AB930, &parentScript->varList, &scriptLambda->varList); // CopyVarList
+	//scriptLambda->refList = parentScript->refList; // CdeclCall(0x5AB7F0, &parentScript->refList, &scriptLambda->refList); // CopyRefList
+	CdeclCall(0x5AB930, &parentScript->varList, &scriptLambda->varList);
+	CdeclCall(0x5AB7F0, &parentScript->refList, &scriptLambda->refList);
+
 	scriptLambda->info.numRefs = parentScript->info.numRefs;
 	scriptLambda->info.varCount = parentScript->info.varCount;
 	scriptLambda->info.unusedVariableCount = parentScript->info.unusedVariableCount;
