@@ -644,7 +644,8 @@ bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 	// pass dynamic ids straight through
 	if (modID == 0xFF)
 	{
-		*outRefID = refID;
+		if (outRefID)
+			*outRefID = refID;
 		return true;
 	}
 

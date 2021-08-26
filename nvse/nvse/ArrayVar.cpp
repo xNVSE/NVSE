@@ -1730,6 +1730,8 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 						for (UInt32 i = 0; i < numRefs; i++)
 						{
 							curModIndex = Serialization::ReadRecord8();
+							if (curModIndex == 0xFF)
+								continue;
 #if _DEBUG
 							g_modsWithCosaveVars.insert(g_modsLoaded.at(curModIndex));
 #endif
