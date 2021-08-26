@@ -595,6 +595,8 @@ bool GetWeaponValue_Execute(COMMAND_ARGS, UInt32 whichVal)
 		pForm = thisObj->baseForm;
 	}
 	TESObjectWEAP* pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);
+	if (!pWeapon)
+		return true;
 	return GetWeaponValue(pWeapon, whichVal, result);
 }
 
