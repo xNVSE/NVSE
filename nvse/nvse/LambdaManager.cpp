@@ -257,11 +257,14 @@ void LambdaManager::MarkParentAsDeleted(ScriptEventList* parentEventList)
 	if (auto iter = g_savedVarLists.find(parentEventList); iter != g_savedVarLists.end())
 	{
 		VariableListContext& ctx = iter->second;
-		auto* eventListCopy = parentEventList->Copy();
-		ctx.isCopy = true;
-		// replace deleted parent event list with copied one
-		g_savedVarLists.emplace(eventListCopy, std::move(ctx));
-		g_savedVarLists.erase(iter);
+		if (!ctx.isCopy)
+		{
+			auto* eventListCopy = parentEventList->Copy();
+			ctx.isCopy = true;
+			// replace deleted parent event list with copied one
+			g_savedVarLists.emplace(eventListCopy, std::move(ctx));
+			g_savedVarLists.erase(iter);
+		}
 	}
 }
 
@@ -356,9 +359,10 @@ void LambdaManager::EraseUnusedSavedVariableLists()
 	{
 		if (iter->second.lambdas.empty())
 		{
-			if (iter->second.isCopy)
-				OtherHooks::DeleteEventList(iter->first);
+			auto* eventList = iter->second.isCopy ? iter->first : nullptr;
 			iter = g_savedVarLists.erase(iter);
+			if (eventList)
+				OtherHooks::DeleteEventList(eventList);
 		}
 		else
 			++iter;
