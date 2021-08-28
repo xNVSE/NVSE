@@ -20,6 +20,12 @@
 // a size of ~1KB should be enough for a single line of code
 char s_ExpressionParserAltBuffer[0x500] = {0};
 
+struct ScriptAndScriptBuffer
+{
+	Script* script;
+	ScriptBuffer* scriptBuffer;
+};
+
 #if RUNTIME
 void PatchScriptCompile();
 const UInt32 ExtractStringPatchAddr = 0x005ADDCA; // ExtractArgs: follow first jz inside loop then first case of following switch: last call in case.
@@ -332,7 +338,8 @@ bool __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 	bool bResult = PrecompileScript(buf);
 	if (bResult)
 	{
-		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_Precompile, buf, sizeof(buf), NULL);
+		ScriptAndScriptBuffer msg{ script, buf };
+		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_Precompile, &msg, sizeof(ScriptAndScriptBuffer), NULL);
 	}
 
 	if (!bResult)
@@ -393,10 +400,23 @@ __declspec(naked) void HookEndScriptCompile()
 	}
 }
 
+bool __fastcall ScriptCompileHook(void* compiler, void* _EDX, Script* script, ScriptBuffer* scriptBuffer)
+{
+	if (!HandleBeginCompile(scriptBuffer, script))
+		return false;
+	const auto result = ThisStdCall(0x5AEB90, compiler, script, scriptBuffer);
+	if (result)
+	{
+		ScriptAndScriptBuffer data{ script, scriptBuffer };
+		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptCompile, &data, sizeof(ScriptAndScriptBuffer), nullptr);
+	}
+	PostScriptCompile();
+	return result;
+}
+
 void PatchScriptCompile()
 {
-	WriteRelJump(0x5AEB90, reinterpret_cast<UInt32>(HookBeginScriptCompile));
-	WriteRelJump(0x5AEDA0, reinterpret_cast<UInt32>(HookEndScriptCompile));
+	WriteRelCall(0x5AEE9C, reinterpret_cast<UInt32>(ScriptCompileHook));
 }
 
 #endif
@@ -725,9 +745,10 @@ void MarkModAsMyMod(Script* script)
 	}
 }
 
-void __fastcall PostScriptCompileSuccess(Script* script)
+void __fastcall PostScriptCompileSuccess(Script* script, ScriptBuffer* scriptBuffer)
 {
-	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptCompile, script, 4, nullptr);
+	ScriptAndScriptBuffer msg{ script, scriptBuffer };
+	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptCompile, &msg, sizeof(ScriptAndScriptBuffer), nullptr);
 #if EDITOR
 	MarkModAsMyMod(script);
 #endif
@@ -737,9 +758,11 @@ static __declspec(naked) void CompileScriptHook(void)
 {
 	static bool precompileResult;
 	static Script *script = nullptr;
+	static ScriptBuffer* scriptBuffer = nullptr;
 	__asm {
 		mov [script], eax
 		mov		eax, [esp + 4] // grab the second arg (ScriptBuffer*)
+		mov [scriptBuffer], eax
 		pushad
 		mov ecx, script
 		push ecx
@@ -753,6 +776,7 @@ static __declspec(naked) void CompileScriptHook(void)
 		pop eax
 		test	al, al
 		jz		EndHook // return false if CompileScript() returned false
+		mov edx, scriptBuffer
 		mov ecx, script
 		call PostScriptCompileSuccess
 		mov		al, [precompileResult]								 // else return result of Precompile
