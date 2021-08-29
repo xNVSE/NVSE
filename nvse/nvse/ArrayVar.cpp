@@ -2065,6 +2065,19 @@ namespace PluginAPI
 		return false;
 	}
 
+	bool ArrayAPI::ArrayHasKey(NVSEArrayVarInterface::Array* arr, const NVSEArrayVarInterface::Element& key)
+	{
+		ArrayVar* var = g_ArrayMap.Get((ArrayID)arr);
+		if (var)
+		{
+			if (key.type == key.kType_String)
+				return var->HasKey(key.str);
+			if (key.type == key.kType_Numeric)
+				return var->HasKey(key.num);
+		}
+		return false;
+	}
+
 	// helpers
 	bool ArrayAPI::InternalElemToPluginElem(const ArrayElement* src, NVSEArrayVarInterface::Element* out)
 	{
