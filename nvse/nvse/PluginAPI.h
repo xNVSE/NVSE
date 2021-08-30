@@ -398,6 +398,7 @@ struct NVSEArrayVarInterface
 	};
 	
 	int		(* GetContainerType)(Array* arr);
+	bool	(* ArrayHasKey)(Array* arr, const Element& key);
 };
 
 #endif

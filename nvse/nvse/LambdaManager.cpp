@@ -13,8 +13,8 @@ using FormID = UInt32;
 
 struct VariableListContext
 {
-	ScriptEventList* eventListCopy = nullptr;
 	std::unordered_map<ScriptLambda*, std::size_t> lambdas;
+	bool isCopy = false;
 };
 
 // used for memoizing scripts and prevent endless allocation of scripts
@@ -65,9 +65,11 @@ Script* LambdaManager::CreateLambdaScript(const LambdaManager::ScriptData& scrip
 	scriptLambda->data = scriptData.scriptData;
 	scriptLambda->info.dataLength = scriptData.size;
 	
-	scriptLambda->varList = parentScript->varList; // CdeclCall(0x5AB930, &parentScript->varList, &scriptLambda->varList); // CopyVarList
-	scriptLambda->refList = parentScript->refList; // CdeclCall(0x5AB7F0, &parentScript->refList, &scriptLambda->refList); // CopyRefList
-	
+	//scriptLambda->varList = parentScript->varList; // CdeclCall(0x5AB930, &parentScript->varList, &scriptLambda->varList); // CopyVarList
+	//scriptLambda->refList = parentScript->refList; // CdeclCall(0x5AB7F0, &parentScript->refList, &scriptLambda->refList); // CopyRefList
+	CdeclCall(0x5AB930, &parentScript->varList, &scriptLambda->varList);
+	CdeclCall(0x5AB7F0, &parentScript->refList, &scriptLambda->refList);
+
 	scriptLambda->info.numRefs = parentScript->info.numRefs;
 	scriptLambda->info.varCount = parentScript->info.varCount;
 	scriptLambda->info.unusedVariableCount = parentScript->info.unusedVariableCount;
@@ -91,7 +93,7 @@ Script* LambdaManager::CreateLambdaScript(UInt8* position, const ScriptData& scr
 	else if (auto* ownerRef = OtherHooks::GetExecutingScriptContext()->scriptOwnerRef)
 		ownerRefID = ownerRef->refID;
 	else
-		return nullptr;
+		ownerRefID = parentScript->refID;
 	
 	// auto script = MakeUnique<Script, 0x5AA0F0, 0x5AA1A0>();
 	const auto key = std::make_pair(position, ownerRefID);
@@ -234,10 +236,8 @@ ScriptEventList* LambdaManager::GetParentEventList(Script* scriptLambda)
 		return nullptr;
 	if (auto* eventList = iter->second.parentEventList)
 		return eventList;
-	// saved variable lists
-	auto* varListContext = GetVarListContext(scriptLambda);
-	if (varListContext && varListContext->eventListCopy)
-		return varListContext->eventListCopy;
+	if (const auto varListContextIter = GetVarListContextIter(scriptLambda); varListContextIter != g_savedVarLists.end())
+		return varListContextIter->first;
 	return nullptr;
 }
 
@@ -256,8 +256,15 @@ void LambdaManager::MarkParentAsDeleted(ScriptEventList* parentEventList)
 	RemoveEventList(parentEventList);
 	if (auto iter = g_savedVarLists.find(parentEventList); iter != g_savedVarLists.end())
 	{
-		auto& ctx = iter->second;
-		ctx.eventListCopy = parentEventList->Copy();
+		VariableListContext& ctx = iter->second;
+		if (!ctx.isCopy)
+		{
+			auto* eventListCopy = parentEventList->Copy();
+			ctx.isCopy = true;
+			// replace deleted parent event list with copied one
+			g_savedVarLists.emplace(eventListCopy, std::move(ctx));
+			g_savedVarLists.erase(iter);
+		}
 	}
 }
 
@@ -333,26 +340,33 @@ void UnsaveLambdaVariables(Script* scriptLambda, Script* parentScript)
 	if (--refCount <= 0)
 		varCtx.lambdas.erase(refCountIter);
 
-	const auto eventListCopy = varCtx.eventListCopy;
-
 	// before proceeding check if there were any child lambdas referenced, delete their event list
 	for (auto* childLambda : *ctx->capturedLambdaVariableScripts)
 	{
 		if (childLambda != parentScript)
 			UnsaveLambdaVariables(childLambda, scriptLambda);
 	}
-
-	if (varCtx.lambdas.empty())
-	{
-		g_savedVarLists.erase(iter);
-		if (eventListCopy)
-			OtherHooks::DeleteEventList(eventListCopy);
-	}
 }
 
 void LambdaManager::UnsaveLambdaVariables(Script* scriptLambda)
 {
 	UnsaveLambdaVariables(scriptLambda, nullptr);
+}
+
+void LambdaManager::EraseUnusedSavedVariableLists()
+{
+	for (auto iter = g_savedVarLists.begin(); iter != g_savedVarLists.end();)
+	{
+		if (iter->second.lambdas.empty())
+		{
+			auto* eventList = iter->second.isCopy ? iter->first : nullptr;
+			iter = g_savedVarLists.erase(iter);
+			if (eventList)
+				OtherHooks::DeleteEventList(eventList);
+		}
+		else
+			++iter;
+	}
 }
 
 LambdaManager::LambdaVariableContext::LambdaVariableContext(Script* scriptLambda) : scriptLambda(scriptLambda)

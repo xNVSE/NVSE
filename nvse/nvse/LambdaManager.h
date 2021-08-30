@@ -41,4 +41,6 @@ namespace LambdaManager
 	// makes sure that a variable list is not deleted by the game while a lambda is still pending execution
 	void SaveLambdaVariables(Script* scriptLambda);
 	void UnsaveLambdaVariables(Script* scriptLambda);
+
+	void EraseUnusedSavedVariableLists();
 }

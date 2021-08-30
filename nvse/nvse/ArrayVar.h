@@ -415,6 +415,7 @@ namespace PluginAPI
 			NVSEArrayVarInterface::Element& out);
 		static bool GetElements(NVSEArrayVarInterface::Array* arr, NVSEArrayVarInterface::Element* elements,
 			NVSEArrayVarInterface::Element* keys);
+		static bool ArrayHasKey(NVSEArrayVarInterface::Array* arr, const NVSEArrayVarInterface::Element& key);
 
 		// helper fns
 		static bool InternalElemToPluginElem(const ArrayElement* src, NVSEArrayVarInterface::Element* out);

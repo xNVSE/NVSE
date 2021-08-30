@@ -514,6 +514,7 @@ enum EWeapValues
 	eWeap_LongBursts,
 	eWeap_Flags1,
 	eWeap_Flags2,
+	eWeap_RegenRate,
 };
 
 bool GetWeaponValue(TESObjectWEAP* pWeapon, UInt32 whichVal, double *result)
@@ -575,6 +576,7 @@ bool GetWeaponValue(TESObjectWEAP* pWeapon, UInt32 whichVal, double *result)
 			case eWeap_LongBursts:			*result = pWeapon->weaponFlags2.IsSet(TESObjectWEAP::eFlag_LongBurst); break;
 			case eWeap_Flags1:				*result = pWeapon->weaponFlags1.Get(); break;
 			case eWeap_Flags2:				*result = pWeapon->weaponFlags2.Get(); break;
+			case eWeap_RegenRate:			*result = pWeapon->regenRate; break;
 			default: HALT("unknown weapon value"); break;
 		}
 	}
@@ -593,6 +595,8 @@ bool GetWeaponValue_Execute(COMMAND_ARGS, UInt32 whichVal)
 		pForm = thisObj->baseForm;
 	}
 	TESObjectWEAP* pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);
+	if (!pWeapon)
+		return true;
 	return GetWeaponValue(pWeapon, whichVal, result);
 }
 
@@ -1523,6 +1527,27 @@ bool Cmd_SetWeaponFlags2_Execute(COMMAND_ARGS)
 
 	return true;	
 }
+
+bool Cmd_GetWeaponRegenRate_Execute(COMMAND_ARGS)
+{
+	return GetWeaponValue_Execute(PASS_COMMAND_ARGS, eWeap_RegenRate);
+}
+bool Cmd_GetWeaponRegenRate_Eval(COMMAND_ARGS_EVAL)
+{
+	return GetWeaponValue_Eval(PASS_CMD_ARGS_EVAL, eWeap_RegenRate);
+}
+
+bool Cmd_SetWeaponRegenRate_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	float regenRate;
+	auto pWeap = Extract_FloatAndWeapon(PASS_COMMAND_ARGS, regenRate);
+	if (!pWeap) return true;
+	pWeap->regenRate = regenRate;
+	*result = 1;
+	return true;
+}
+
 
 // Get Equipped Object utility functions
 class MatchBySlot : public FormMatcher

@@ -227,6 +227,7 @@ static void HandleMainLoopHook(void)
 	// clean up any temp arrays/strings (moved after deffered processing because of array parameter to User Defined Events)
 	g_ArrayMap.Clean();
 	g_StringMap.Clean();
+	LambdaManager::EraseUnusedSavedVariableLists();
 
 	// handle calls from cmd CallWhile
 	HandleCallWhileScripts();
@@ -243,6 +244,7 @@ static void HandleMainLoopHook(void)
 		// handle calls from cmd CallForSeconds
 		HandleCallForScripts();
 	}
+
 }
 
 #define DEBUG_PRINT_CHANNEL(idx)								\

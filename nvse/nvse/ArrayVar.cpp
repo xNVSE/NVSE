@@ -1368,9 +1368,9 @@ std::string ArrayVar::GetStringRepresentation() const
 			result += '"' + std::string(iter.Key()) + '"' + ": " + iter.Get().GetStringRepresentation();
 			if (iter.Index() != container->Size() - 1)
 				result += ", ";
-			result += "]";
-			return result;
 		}
+		result += "]";
+		return result;
 	}
 	default:
 		return "invalid array";
@@ -1777,6 +1777,8 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 						for (UInt32 i = 0; i < numRefs; i++)
 						{
 							curModIndex = Serialization::ReadRecord8();
+							if (curModIndex == 0xFF)
+								continue;
 #if _DEBUG
 							g_modsWithCosaveVars.insert(g_modsLoaded.at(curModIndex));
 #endif
@@ -2106,6 +2108,19 @@ namespace PluginAPI
 				i++;
 			}
 			return true;
+		}
+		return false;
+	}
+
+	bool ArrayAPI::ArrayHasKey(NVSEArrayVarInterface::Array* arr, const NVSEArrayVarInterface::Element& key)
+	{
+		ArrayVar* var = g_ArrayMap.Get((ArrayID)arr);
+		if (var)
+		{
+			if (key.type == key.kType_String)
+				return var->HasKey(key.str);
+			if (key.type == key.kType_Numeric)
+				return var->HasKey(key.num);
 		}
 		return false;
 	}

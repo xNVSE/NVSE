@@ -306,16 +306,16 @@ bool Cmd_Print_Execute(COMMAND_ARGS)
 {
 	*result = 0;
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	if (eval.ExtractArgs() && eval.Arg(0) && eval.Arg(0)->CanConvertTo(kTokenType_String))
+	if (eval.ExtractArgs() && eval.Arg(0))
 	{
-		const char* str = eval.Arg(0)->GetString();
-		if (strlen(str) < 512)
-			Console_Print("%s", str);
+		const auto str = eval.Arg(0)->GetStringRepresentation();
+		if (str.size() < 512)
+			Console_Print("%s", str.c_str());
 		else
 			Console_Print_Long(str);
 #if _DEBUG
 		// useful for testing script output
-		//_MESSAGE("%s", str);
+		//_MESSAGE("%s", str.c_str());
 #endif
 	}
 
@@ -329,16 +329,16 @@ bool Cmd_PrintDebug_Execute(COMMAND_ARGS)
 	if (ModDebugState(scriptObj))
 	{
 		ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-		if (eval.ExtractArgs() && eval.Arg(0) && eval.Arg(0)->CanConvertTo(kTokenType_String))
+		if (eval.ExtractArgs() && eval.Arg(0))
 		{
-			const char* str = eval.Arg(0)->GetString();
-			if (strlen(str) < 512)
-				Console_Print("%s", str);
+			const auto str = eval.Arg(0)->GetStringRepresentation();
+			if (str.size() < 512)
+				Console_Print("%s", str.c_str());
 			else
 				Console_Print_Long(str);
 #if _DEBUG
 			// useful for testing script output
-			_MESSAGE("%s", str);
+			_MESSAGE("%s", str.c_str());
 #endif
 		}
 	}

@@ -108,9 +108,10 @@ namespace OtherHooks
 		}
 	}
 
-	void PostScriptExecute()
+	void __fastcall PostScriptExecute(Script* script)
 	{
-		g_currentScriptContext.Pop();
+		if (script)
+			g_currentScriptContext.Pop();
 	}
 
 	__declspec (naked) void PostScriptExecuteHook1()
@@ -118,6 +119,7 @@ namespace OtherHooks
 		__asm
 		{
 			push eax
+			mov ecx, [ebp+0x8]
 			call PostScriptExecute
 			pop eax
 			mov esp, ebp
@@ -131,6 +133,7 @@ namespace OtherHooks
 		__asm
 		{
 			push eax
+			mov ecx, [ebp + 0x8]
 			call PostScriptExecute
 			pop eax
 			mov esp, ebp

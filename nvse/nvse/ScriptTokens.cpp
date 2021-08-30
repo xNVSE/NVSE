@@ -1004,6 +1004,19 @@ CommandInfo *ScriptToken::GetCommandInfo() const
 
 #if RUNTIME
 
+std::string ScriptToken::GetStringRepresentation()
+{
+	if (CanConvertTo(kTokenType_String))
+		return GetString();
+	if (CanConvertTo(kTokenType_Number))
+		return FormatString("%g", GetNumber());
+	if (CanConvertTo(kTokenType_Form) && GetTESForm())
+		return GetTESForm()->GetStringRepresentation();
+	if (CanConvertTo(kTokenType_Array) && GetArrayVar())
+		return GetArrayVar()->GetStringRepresentation();
+	return "";
+}
+
 UInt32 ScriptToken::GetActorValue()
 {
 	UInt32 actorVal = eActorVal_NoActorValue;

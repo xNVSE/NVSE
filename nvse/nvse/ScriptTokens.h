@@ -276,6 +276,7 @@ struct ScriptToken
 	CommandInfo *GetCommandInfo() const;
 	UInt16 GetRefIndex() const { return IsGood() ? refIdx : 0; }
 	UInt8 GetVariableType() const { return IsVariable() ? variableType : Script::eVarType_Invalid; }
+	std::string GetStringRepresentation();
 
 	UInt32 GetActorValue(); // kActorVal_XXX or kActorVal_NoActorValue if none
 	char GetAxis();			// 'X', 'Y', 'Z', or otherwise -1
