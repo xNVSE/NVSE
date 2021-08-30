@@ -280,13 +280,13 @@ public:
 		kSortType_UserFunction,
 	};
 
-	UInt32 ID()	const {return m_ID;}
-	UInt8 KeyType() const {return m_keyType;}
-	bool IsPacked() const {return m_bPacked;}
-	UInt8 OwningModIndex() const {return m_owningModIndex;}
-	UInt32 Size() const {return m_elements.size();}
-	bool Empty() const {return m_elements.empty();}
-	ContainerType GetContainerType() const {return m_elements.m_type;}
+	UInt32 ID()	const { return m_ID; }
+	UInt8 KeyType() const { return m_keyType; }
+	bool IsPacked() const { return m_bPacked; }
+	UInt8 OwningModIndex() const { return m_owningModIndex; }
+	UInt32 Size() const { return m_elements.size(); }
+	bool Empty() const { return m_elements.empty(); }
+	ContainerType GetContainerType() const { return m_elements.m_type; }
 
 	ArrayElement* Get(const ArrayKey* key, bool bCanCreateNew);
 	ArrayElement* Get(double key, bool bCanCreateNew);
@@ -337,8 +337,9 @@ public:
 	bool Insert(UInt32 atIndex, const ArrayElement* toInsert);
 	bool Insert(UInt32 atIndex, ArrayID rangeID);
 
-	ArrayVar *GetKeys(UInt8 modIndex);
-	ArrayVar *Copy(UInt8 modIndex, bool bDeepCopy);
+	ArrayVar* GetKeys(UInt8 modIndex);
+	ArrayVar* Copy(UInt8 modIndex, bool bDeepCopy, const std::function<bool(const TempObject<ArrayKey>&, const ArrayElement*&)>& filter = 
+		[&](const TempObject<ArrayKey>& key, const ArrayElement*& val) { return true; });
 	ArrayVar *MakeSlice(const Slice* slice, UInt8 modIndex);
 
 	void Sort(ArrayVar *result, SortOrder order, SortType type, Script* comparator = NULL);
@@ -352,6 +353,7 @@ public:
 
 	bool Equals(ArrayVar* arr2);
 	bool DeepEquals(ArrayVar* arr2);
+	ArrayVar* Unique();
 };
 
 class ArrayVarMap : public VarMap<ArrayVar>

@@ -1145,3 +1145,15 @@ bool Cmd_ar_DeepEquals_Execute(COMMAND_ARGS)
 	}
 	return true;
 }
+
+bool Cmd_ar_Unique_Execute(COMMAND_ARGS)
+{
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (eval.ExtractArgs() && eval.NumArgs() == 1 && eval.Arg(0)->CanConvertTo(kTokenType_Array))
+	{
+		if (auto arr = eval.Arg(0)->GetArrayVar()) {
+			arr->Unique();
+		}
+	}
+	return true;
+}

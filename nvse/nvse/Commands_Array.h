@@ -221,3 +221,5 @@ static ParamInfo kNVSEParams_TwoArrays[2] =
 };
 
 DEFINE_CMD_ALT_EXP(ar_DeepEquals, ar_DeepCompare, "checks if every element and sub-elements are identical between two arrays.", false, kNVSEParams_TwoArrays);
+
+DEFINE_CMD_ALT_EXP(ar_Unique, ar_MakeUnique, "removes all duplicate values from an array", false, kParams_OneArray);

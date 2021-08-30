@@ -989,7 +989,7 @@ ArrayVar* ArrayVar::GetKeys(UInt8 modIndex)
 	return keysArr;
 }
 
-ArrayVar* ArrayVar::Copy(UInt8 modIndex, bool bDeepCopy)
+ArrayVar* ArrayVar::Copy(UInt8 modIndex, bool bDeepCopy, const std::function<bool(const TempObject<ArrayKey>&, const ArrayElement*&)>& filter)
 {
 	ArrayVar* copyArr = g_ArrayMap.Create(m_keyType, m_bPacked, modIndex);
 	const ArrayElement* arrElem;
@@ -998,6 +998,8 @@ ArrayVar* ArrayVar::Copy(UInt8 modIndex, bool bDeepCopy)
 		TempObject<ArrayKey> tempKey(*iter.first());
 		// required as iterators pass static objects and this function is recursive
 		arrElem = iter.second();
+		if (!filter(tempKey, arrElem))
+			continue;
 		if ((arrElem->DataType() == kDataType_Array) && bDeepCopy)
 		{
 			ArrayVar* innerArr = g_ArrayMap.Get(arrElem->m_data.arrID);
@@ -1462,7 +1464,52 @@ bool ArrayVar::DeepEquals(ArrayVar* arr2)
 	return this->CompareArrays(arr2, true);
 }
 
+struct CompareArrayElems
+{
+	bool operator() (ArrayElement const* l, ArrayElement const* r) const {
+		return l->operator<(*r);
+	}
+};
+typedef std::set<ArrayElement*, CompareArrayElems> ArrayElementSet;
 
+/*
+struct CompareArrayKeys
+{
+	bool operator() (ArrayKey const* l, ArrayKey const* r) const {
+		return l->operator<(*r);
+	}
+};
+typedef std::set<const ArrayKey*, CompareArrayKeys> ArrayKeySet;
+*/
+
+// Creates a new array without duplicates.
+ArrayVar* ArrayVar::Unique()
+{
+	ArrayElementSet values;
+	//ArrayKeySet keysToRemove;
+
+	// todo: filter func
+	
+	return this->Copy(m_owningModIndex, true, );
+	
+		
+	/*
+	ArrayElementSet values;
+	for (auto iter = m_elements.begin(); !iter.End(); ++iter)
+	{
+		auto const val = iter.second();
+		if (values.find(val) != values.end())
+		{
+			// Remove duplicate element.
+			this->EraseElement(iter.first());
+		}
+		else
+		{
+			values.insert(val);
+		}
+	}
+	*/
+}
 
 
 //////////////////////////
