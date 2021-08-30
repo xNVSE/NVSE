@@ -1005,7 +1005,7 @@ ArrayVar* ArrayVar::Copy(UInt8 modIndex, bool bDeepCopy, const std::function<boo
 			ArrayVar* innerArr = g_ArrayMap.Get(arrElem->m_data.arrID);
 			if (innerArr)
 			{
-				ArrayVar* innerCopy = innerArr->Copy(modIndex, true);
+				ArrayVar* innerCopy = innerArr->Copy(modIndex, true, filter);
 				if (tempKey().KeyType() == kDataType_Numeric)
 				{
 					if (copyArr->SetElementArray(tempKey().key.num, innerCopy->ID()))
@@ -1470,7 +1470,7 @@ struct CompareArrayElems
 		return l->operator<(*r);
 	}
 };
-typedef std::set<ArrayElement*, CompareArrayElems> ArrayElementSet;
+typedef std::set<const ArrayElement*, CompareArrayElems> ArrayElementSet;
 
 /*
 struct CompareArrayKeys
@@ -1486,29 +1486,18 @@ typedef std::set<const ArrayKey*, CompareArrayKeys> ArrayKeySet;
 ArrayVar* ArrayVar::Unique()
 {
 	ArrayElementSet values;
-	//ArrayKeySet keysToRemove;
-
-	// todo: filter func
-	
-	return this->Copy(m_owningModIndex, true, );
-	
-		
-	/*
-	ArrayElementSet values;
-	for (auto iter = m_elements.begin(); !iter.End(); ++iter)
+	auto const filterFunc = [&](const TempObject<ArrayKey>& key, const ArrayElement*& val)
 	{
-		auto const val = iter.second();
-		if (values.find(val) != values.end())
-		{
-			// Remove duplicate element.
-			this->EraseElement(iter.first());
+		bool bIncludeElem = true;
+		if (values.find(val) != values.end()) {
+			bIncludeElem = false;
 		}
-		else
-		{
+		else {
 			values.insert(val);
 		}
-	}
-	*/
+		return bIncludeElem;
+	};
+	return this->Copy(m_owningModIndex, true, filterFunc);
 }
 
 

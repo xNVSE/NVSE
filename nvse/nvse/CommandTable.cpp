@@ -1811,7 +1811,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(SetWeaponRegenRate);
 
 	// 6.2 beta 02
-	ADD_CMD(ar_Unique);
+	ADD_CMD_RET(ar_Unique, kRetnType_Array);
 
 }
 
