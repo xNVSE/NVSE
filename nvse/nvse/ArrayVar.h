@@ -338,8 +338,9 @@ public:
 	bool Insert(UInt32 atIndex, ArrayID rangeID);
 
 	ArrayVar* GetKeys(UInt8 modIndex);
-	ArrayVar* Copy(UInt8 modIndex, bool bDeepCopy, const std::function<bool(const TempObject<ArrayKey>&, const ArrayElement*&)>& filter = 
-		[&](const TempObject<ArrayKey>& key, const ArrayElement*& val) { return true; });
+	ArrayVar* Copy(UInt8 modIndex, bool bDeepCopy, const std::function<bool(const TempObject<ArrayKey>&, const ArrayElement*&, const ArrayVar*&)>& Filter =
+		[](const TempObject<ArrayKey>& key, const ArrayElement*& val, const ArrayVar*& owningArr) { return true; },
+		const std::function<void(const ArrayVar*&)>& OnCopyCallback = [](const ArrayVar*& copiedArr) { return; });
 	ArrayVar *MakeSlice(const Slice* slice, UInt8 modIndex);
 
 	void Sort(ArrayVar *result, SortOrder order, SortType type, Script* comparator = NULL);

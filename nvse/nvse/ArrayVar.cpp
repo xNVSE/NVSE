@@ -989,8 +989,11 @@ ArrayVar* ArrayVar::GetKeys(UInt8 modIndex)
 	return keysArr;
 }
 
-ArrayVar* ArrayVar::Copy(UInt8 modIndex, bool bDeepCopy, const std::function<bool(const TempObject<ArrayKey>&, const ArrayElement*&)>& filter)
+ArrayVar* ArrayVar::Copy(UInt8 modIndex, bool bDeepCopy, const std::function<bool(const TempObject<ArrayKey>&, const ArrayElement*&, const ArrayVar*&)>& Filter, 
+	const std::function<void(const ArrayVar*&)>& OnCopyCallback)
 {
+	const ArrayVar* thisArr = this;
+	OnCopyCallback(thisArr);
 	ArrayVar* copyArr = g_ArrayMap.Create(m_keyType, m_bPacked, modIndex);
 	const ArrayElement* arrElem;
 	for (ArrayIterator iter = m_elements.begin(); !iter.End(); ++iter)
@@ -998,14 +1001,14 @@ ArrayVar* ArrayVar::Copy(UInt8 modIndex, bool bDeepCopy, const std::function<boo
 		TempObject<ArrayKey> tempKey(*iter.first());
 		// required as iterators pass static objects and this function is recursive
 		arrElem = iter.second();
-		if (!filter(tempKey, arrElem))
+		if (!Filter(tempKey, arrElem, thisArr))
 			continue;
 		if ((arrElem->DataType() == kDataType_Array) && bDeepCopy)
 		{
-			ArrayVar* innerArr = g_ArrayMap.Get(arrElem->m_data.arrID);
+			ArrayVar* innerArr = g_ArrayMap.Get(arrElem->m_data.arrID); 
 			if (innerArr)
 			{
-				ArrayVar* innerCopy = innerArr->Copy(modIndex, true, filter);
+				ArrayVar* innerCopy = innerArr->Copy(modIndex, true, Filter, OnCopyCallback);
 				if (tempKey().KeyType() == kDataType_Numeric)
 				{
 					if (copyArr->SetElementArray(tempKey().key.num, innerCopy->ID()))
@@ -1472,7 +1475,7 @@ struct CompareArrayElems
 };
 typedef std::set<const ArrayElement*, CompareArrayElems> ArrayElementSet;
 
-/*
+/* Note: Didn't seem to work very well.
 struct CompareArrayKeys
 {
 	bool operator() (ArrayKey const* l, ArrayKey const* r) const {
@@ -1485,19 +1488,28 @@ typedef std::set<const ArrayKey*, CompareArrayKeys> ArrayKeySet;
 // Creates a new array without duplicates.
 ArrayVar* ArrayVar::Unique()
 {
-	ArrayElementSet values;
-	auto const filterFunc = [&](const TempObject<ArrayKey>& key, const ArrayElement*& val)
+	std::map<const ArrayVar*, ArrayElementSet> arrValues;
+	
+	auto const filterFunc = [&](const TempObject<ArrayKey>& key, const ArrayElement*& val, const ArrayVar*& owningArr)
 	{
+		auto &values = arrValues[owningArr];
 		bool bIncludeElem = true;
 		if (values.find(val) != values.end()) {
 			bIncludeElem = false;
 		}
-		else {
-			values.insert(val);
+		else { 
+			values.insert(val);  
 		}
 		return bIncludeElem;
 	};
-	return this->Copy(m_owningModIndex, true, filterFunc);
+	
+	auto const OnCopyCallbackFunc = [&](const ArrayVar*& copiedArr)
+	{
+		ArrayElementSet const values;
+		arrValues[copiedArr] = values;
+	};
+	
+	return this->Copy(m_owningModIndex, true, filterFunc, OnCopyCallbackFunc);
 }
 
 
