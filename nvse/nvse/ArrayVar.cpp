@@ -1509,11 +1509,11 @@ ArrayVar* ArrayVar::Unique()
 		}
 		return bIncludeElem;
 	};
-	
+
+	// Initialize a new ArrayElementSet for the new Array that will be copied.
+	// Might not be needed (?).
 	auto const OnCopyCallbackFunc = [&](const ArrayVar*& copiedArr)
 	{
-		// Initialize a new ArrayElementSet for the new Array that will be copied.
-		// Might not be needed (?).
 		ArrayElementSet const newValues;
 		for (auto& value : std::views::values(ArrayAndAllValues)) {
 			value[copiedArr] = newValues;
