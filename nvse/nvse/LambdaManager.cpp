@@ -315,7 +315,12 @@ void SaveLambdaVariables(Script* scriptLambda, std::optional<LambdaCtxPair> pare
 		return;
 	auto* eventList = ctx->parentEventList;
 	if (!eventList)
-		return;
+	{
+		if (const auto iter = GetVarListContextIter(scriptLambda); iter != g_savedVarLists.end())
+			eventList = iter->first;
+		else
+			return;
+	}
 	auto& varCtx = g_savedVarLists[eventList];
 	auto& refCount = varCtx.lambdas[scriptLambda];
 	++refCount.refCount;
@@ -352,11 +357,11 @@ void UnsaveLambdaVariables(Script* scriptLambda, Script* parentScript)
 	auto* ctx = GetLambdaContext(scriptLambda);
 	if (!ctx)
 		return;
-	auto iter = GetVarListContextIter(scriptLambda);
+	const auto iter = GetVarListContextIter(scriptLambda);
 	if (iter == g_savedVarLists.end())
 		return;
 	auto& varCtx = iter->second;
-	auto refCountIter = varCtx.lambdas.find(scriptLambda);
+	const auto refCountIter = varCtx.lambdas.find(scriptLambda);
 	auto& refCount = refCountIter->second;
 	if (--refCount.refCount <= 0)
 		varCtx.lambdas.erase(refCountIter);
