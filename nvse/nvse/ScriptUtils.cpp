@@ -4576,7 +4576,7 @@ CachedTokens g_consoleTokens;
 CachedTokens* ExpressionEvaluator::GetTokens()
 {
 	const bool isConsole = script->GetModIndex() == 0xFF;
-	CachedTokens &cache = isConsole ? g_tokenCache.Get(GetCommandOpcodePosition()) : g_consoleTokens;
+	CachedTokens &cache = !isConsole ? g_tokenCache.Get(GetCommandOpcodePosition()) : g_consoleTokens;
 	if (isConsole)
 		cache.Clear();
 	if (cache.Empty() || isConsole)
