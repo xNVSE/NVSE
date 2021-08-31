@@ -1486,7 +1486,7 @@ struct CompareArrayKeys
 typedef std::set<const ArrayKey*, CompareArrayKeys> ArrayKeySet;
 */
 
-// Creates a new array without duplicates.
+// Creates a new array without duplicate values.
 ArrayVar* ArrayVar::Unique()
 {
 	typedef std::map<const ArrayVar*, ArrayElementSet> ArrayAndTypedValues;
