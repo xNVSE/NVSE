@@ -206,7 +206,7 @@ ScriptToken *Eval_Eq_Array(OperatorType op, ScriptToken *lh, ScriptToken *rh, Ex
 	{
 		isEqual = true;
 	}
-	
+
 	switch (op)
 	{
 	case kOpType_Equals:
@@ -428,7 +428,7 @@ ScriptToken *Eval_Assign_String(OperatorType op, ScriptToken *lh, ScriptToken *r
 			lhStrVar->Set(std::move(*rhStrVar));
 		return ScriptToken::Create(lhVar, lhStrVar);
 	}
-	
+
 	const char *str = rh->GetString();
 	if (!lhStrVar)
 		lhVar->data = static_cast<int>(AddStringVar(str, *lh, *context, &lhStrVar));
@@ -1970,7 +1970,7 @@ bool ExpressionParser::ValidateArgType(ParamType paramType, Token_Type argType, 
 			// we'll find out at run-time
 			return true;
 		}
-		
+
 		switch (paramType)
 		{
 		case kParamType_String:
@@ -2582,6 +2582,8 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 					operandType = kTokenType_Array;
 				else if (retnType == kRetnType_Form)
 					operandType = kTokenType_Form;
+				else
+					operandType = kTokenType_Number;
 
 				if (operand->useRefFromStack)
 				{
@@ -4569,10 +4571,15 @@ thread_local TokenCache g_tokenCache;
 thread_local std::string g_curLineText;
 #endif
 
+CachedTokens g_consoleTokens;
+
 CachedTokens* ExpressionEvaluator::GetTokens()
 {
-	CachedTokens &cache = g_tokenCache.Get(GetCommandOpcodePosition());
-	if (cache.Empty())
+	const bool isConsole = script->GetModIndex() == 0xFF;
+	CachedTokens &cache = !isConsole ? g_tokenCache.Get(GetCommandOpcodePosition()) : g_consoleTokens;
+	if (isConsole)
+		cache.Clear();
+	if (cache.Empty() || isConsole)
 	{
 		if (!ParseBytecode(cache))
 		{
@@ -4595,7 +4602,7 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 	if (!cachePtr)
 		return nullptr;
 	auto& cache = *cachePtr;
-#if _DEBUG
+#if _DEBUG && 0
 	g_curLineText = this->GetLineText(cache, nullptr);
 #endif
 	OperandStack operands;
@@ -4688,7 +4695,7 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 			break;
 		}
 	}
-	
+
 	if (operands.Size() != 1 || this->HasErrors() && !m_flags.IsSet(kFlag_SuppressErrorMessages)) // should have one operand remaining - result of expression
 	{
 		const auto currentLine = this->GetLineText(cache, iter.Get().token);
@@ -4818,7 +4825,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 				ScriptParsing::ScriptAnalyzer analyzer(scriptLambda.get());
 				analyzer.isLambdaScript = true;
 				auto result = analyzer.DecompileScript();
-				
+
 				// trim whitespace
 				while (!result.empty() && isspace(static_cast<unsigned char>(*result.begin())))
 					result.erase(result.begin());
