@@ -3,6 +3,7 @@
 #include "GameForms.h"
 #include <algorithm>
 #include <intrin.h>
+#include <ranges>
 #include <set>
 
 #include "Core_Serialization.h"
@@ -1488,12 +1489,18 @@ typedef std::set<const ArrayKey*, CompareArrayKeys> ArrayKeySet;
 // Creates a new array without duplicates.
 ArrayVar* ArrayVar::Unique()
 {
-	std::map<const ArrayVar*, ArrayElementSet> arrValues;
+	typedef std::map<const ArrayVar*, ArrayElementSet> ArrayAndTypedValues;
+
+	// Enforce differently-typed maps, since the std::set comparisons won't work if elements being inserted are of different type.
+	ArrayAndTypedValues numValues, frmValues, strValues, arrValues;
+
+	std::map<DataType, ArrayAndTypedValues> ArrayAndAllValues = { { kDataType_Numeric, numValues }, { kDataType_Form, frmValues },
+		{ kDataType_String, strValues }, {kDataType_Array, arrValues} };
 	
 	auto const filterFunc = [&](const TempObject<ArrayKey>& key, const ArrayElement*& val, const ArrayVar*& owningArr)
 	{
-		auto &values = arrValues[owningArr];
 		bool bIncludeElem = true;
+		ArrayElementSet &values = ArrayAndAllValues[val->DataType()][owningArr];
 		if (values.find(val) != values.end()) {
 			bIncludeElem = false;
 		}
@@ -1505,8 +1512,12 @@ ArrayVar* ArrayVar::Unique()
 	
 	auto const OnCopyCallbackFunc = [&](const ArrayVar*& copiedArr)
 	{
-		ArrayElementSet const values;
-		arrValues[copiedArr] = values;
+		// Initialize a new ArrayElementSet for the new Array that will be copied.
+		// Might not be needed (?).
+		ArrayElementSet const newValues;
+		for (auto& value : std::views::values(ArrayAndAllValues)) {
+			value[copiedArr] = newValues;
+		}
 	};
 	
 	return this->Copy(m_owningModIndex, true, filterFunc, OnCopyCallbackFunc);
