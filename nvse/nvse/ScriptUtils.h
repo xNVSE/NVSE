@@ -1,5 +1,6 @@
 
 #pragma once
+#include <optional>
 #include <unordered_set>
 
 #include "containers.h"
@@ -132,7 +133,7 @@ public:
 
 	void PushOnStack();
 	void PopFromStack() const;
-	CachedTokens* GetTokens();
+	CachedTokens* GetTokens(std::optional<CachedTokens>* consoleTokens);
 
 	bool m_inline;
 

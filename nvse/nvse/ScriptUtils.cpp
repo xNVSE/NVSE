@@ -1,6 +1,7 @@
 
 #include "ScriptUtils.h"
 
+#include <optional>
 #include <set>
 
 #include "CommandTable.h"
@@ -4571,12 +4572,10 @@ thread_local TokenCache g_tokenCache;
 thread_local std::string g_curLineText;
 #endif
 
-CachedTokens g_consoleTokens;
-
-CachedTokens* ExpressionEvaluator::GetTokens()
+CachedTokens* ExpressionEvaluator::GetTokens(std::optional<CachedTokens>* consoleTokens)
 {
-	const bool isConsole = script->GetModIndex() == 0xFF;
-	CachedTokens &cache = !isConsole ? g_tokenCache.Get(GetCommandOpcodePosition()) : g_consoleTokens;
+	const bool isConsole = script->GetModIndex() == 0xFF && consoleTokens;
+	CachedTokens &cache = !isConsole ? g_tokenCache.Get(GetCommandOpcodePosition()) : *(*consoleTokens = CachedTokens());
 	if (isConsole)
 		cache.Clear();
 	if (cache.Empty() || isConsole)
@@ -4598,7 +4597,8 @@ CachedTokens* ExpressionEvaluator::GetTokens()
 
 ScriptToken *ExpressionEvaluator::Evaluate()
 {
-	CachedTokens* cachePtr = GetTokens();
+	std::optional<CachedTokens> consoleCache;
+	CachedTokens* cachePtr = GetTokens(&consoleCache);
 	if (!cachePtr)
 		return nullptr;
 	auto& cache = *cachePtr;
