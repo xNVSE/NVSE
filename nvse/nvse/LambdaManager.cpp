@@ -1,4 +1,7 @@
 #include "LambdaManager.h"
+
+#include <optional>
+
 #include "common/ICriticalSection.h"
 #include <ranges>
 
@@ -11,9 +14,14 @@
 using ScriptLambda = Script;
 using FormID = UInt32;
 
+struct LambdaRefCount
+{
+	size_t refCount = 0;
+};
+
 struct VariableListContext
 {
-	std::unordered_map<ScriptLambda*, std::size_t> lambdas;
+	std::unordered_map<ScriptLambda*, LambdaRefCount> lambdas;
 	bool isCopy = false;
 };
 
@@ -26,7 +34,8 @@ struct LambdaContext
 	Script* parentScript = nullptr;
 	ScriptEventList* parentEventList = nullptr;
 	// any lambdas that are referenced within this lambda
-	std::unique_ptr<std::vector<ScriptLambda*>> capturedLambdaVariableScripts;
+	std::optional<std::vector<ScriptLambda*>> capturedLambdaVariableScripts;
+	std::unordered_set<ScriptLambda*> lambdaParents;
 
 #if _DEBUG
 	std::string name;
@@ -192,7 +201,7 @@ void LambdaManager::DeleteAllForParentScript(Script* parentScript)
 			return std::ranges::find(lambdas, script) != lambdas.end();
 		});
 		if (iter != ctx.capturedLambdaVariableScripts->end())
-			ctx.capturedLambdaVariableScripts = nullptr;
+			ctx.capturedLambdaVariableScripts = std::nullopt;
 	}
 	std::erase_if(g_lambdaScriptPosMap, [&](auto& p) { return std::ranges::find(lambdas, p.second) != lambdas.end(); });
 	std::erase_if(g_lambdas, [&](auto& p)
@@ -276,7 +285,7 @@ void CaptureChildLambdas(ScriptLambda* scriptLambda, LambdaContext& ctx)
 		return;
 	
 	// cached since O(n^2)
-	auto varLambdas = std::make_unique<std::vector<ScriptLambda*>>();
+	std::vector<ScriptLambda*> varLambdas;
 	for (auto* ref : scriptLambda->refList)
 	{
 		if (!ref || !ref->varIdx)
@@ -286,14 +295,20 @@ void CaptureChildLambdas(ScriptLambda* scriptLambda, LambdaContext& ctx)
 		if (form && IS_ID(form, Script) && LambdaManager::IsScriptLambda(static_cast<ScriptLambda*>(form)) && form != scriptLambda)
 		{
 			auto* childLambda = static_cast<ScriptLambda*>(form);
-			if (LambdaManager::GetParentEventList(scriptLambda) != ctx.parentEventList) // do not capture the variables of a lambda which you share variables with
-				varLambdas->push_back(childLambda);
+			if (!ctx.lambdaParents.contains(childLambda)) // prevent endless recursion loop
+				varLambdas.push_back(childLambda);
 		}
 	}
 	ctx.capturedLambdaVariableScripts = std::move(varLambdas);
 }
 
-void SaveLambdaVariables(Script* scriptLambda, Script* parentLambda)
+struct LambdaCtxPair
+{
+	ScriptLambda* lambda;
+	LambdaContext* ctx;
+};
+
+void SaveLambdaVariables(Script* scriptLambda, std::optional<LambdaCtxPair> parentLambda)
 {
 	auto* ctx = GetLambdaContext(scriptLambda);
 	if (!ctx)
@@ -302,20 +317,26 @@ void SaveLambdaVariables(Script* scriptLambda, Script* parentLambda)
 	if (!eventList)
 		return;
 	auto& varCtx = g_savedVarLists[eventList];
-	++varCtx.lambdas[scriptLambda];
+	auto& refCount = varCtx.lambdas[scriptLambda];
+	++refCount.refCount;
+
+	if (parentLambda)
+	{
+		ctx->lambdaParents = parentLambda->ctx->lambdaParents;
+		ctx->lambdaParents.insert(parentLambda->lambda);
+	}
 
 	// save any child lambda variables
 	CaptureChildLambdas(scriptLambda, *ctx);
 	for (auto* childLambda : *ctx->capturedLambdaVariableScripts)
 	{
-		if (childLambda != parentLambda)
-			SaveLambdaVariables(childLambda, scriptLambda);
+		SaveLambdaVariables(childLambda, LambdaCtxPair{scriptLambda, ctx});
 	}
 }
 
 void LambdaManager::SaveLambdaVariables(Script* scriptLambda)
 {
-	::SaveLambdaVariables(scriptLambda, nullptr);
+	::SaveLambdaVariables(scriptLambda, std::nullopt);
 }
 
 
@@ -337,7 +358,7 @@ void UnsaveLambdaVariables(Script* scriptLambda, Script* parentScript)
 	auto& varCtx = iter->second;
 	auto refCountIter = varCtx.lambdas.find(scriptLambda);
 	auto& refCount = refCountIter->second;
-	if (--refCount <= 0)
+	if (--refCount.refCount <= 0)
 		varCtx.lambdas.erase(refCountIter);
 
 	// before proceeding check if there were any child lambdas referenced, delete their event list

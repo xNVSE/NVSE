@@ -2582,6 +2582,8 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 					operandType = kTokenType_Array;
 				else if (retnType == kRetnType_Form)
 					operandType = kTokenType_Form;
+				else
+					operandType = kTokenType_Number;
 
 				if (operand->useRefFromStack)
 				{
@@ -4569,10 +4571,15 @@ thread_local TokenCache g_tokenCache;
 thread_local std::string g_curLineText;
 #endif
 
+CachedTokens g_consoleTokens;
+
 CachedTokens* ExpressionEvaluator::GetTokens()
 {
-	CachedTokens &cache = g_tokenCache.Get(GetCommandOpcodePosition());
-	if (cache.Empty())
+	const bool isConsole = script->GetModIndex() == 0xFF;
+	CachedTokens &cache = isConsole ? g_tokenCache.Get(GetCommandOpcodePosition()) : g_consoleTokens;
+	if (isConsole)
+		cache.Clear();
+	if (cache.Empty() || isConsole)
 	{
 		if (!ParseBytecode(cache))
 		{
@@ -4595,7 +4602,7 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 	if (!cachePtr)
 		return nullptr;
 	auto& cache = *cachePtr;
-#if _DEBUG
+#if _DEBUG && 0
 	g_curLineText = this->GetLineText(cache, nullptr);
 #endif
 	OperandStack operands;
