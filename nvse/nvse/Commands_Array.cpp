@@ -1145,3 +1145,18 @@ bool Cmd_ar_DeepEquals_Execute(COMMAND_ARGS)
 	}
 	return true;
 }
+
+bool Cmd_ar_Unique_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (eval.ExtractArgs() && eval.NumArgs() >= 1 && eval.Arg(0)->CanConvertTo(kTokenType_Array))
+	{
+		const bool deepUnique = eval.NumArgs() == 2 ? eval.Arg(0)->GetBool() : false;
+		auto* sourceArray = eval.Arg(0)->GetArrayVar();
+		if (!sourceArray)
+			return true;
+		*result = sourceArray->ToUnique(scriptObj->GetModIndex(), deepUnique)->ID();
+	}
+	return true;
+}

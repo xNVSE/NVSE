@@ -352,6 +352,7 @@ public:
 
 	bool Equals(ArrayVar* arr2);
 	bool DeepEquals(ArrayVar* arr2);
+	ArrayVar* ToUnique(UInt8 modIdx, bool deepUnique);
 };
 
 class ArrayVarMap : public VarMap<ArrayVar>
