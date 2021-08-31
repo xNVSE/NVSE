@@ -58,26 +58,24 @@ bool RunCommand_NS(COMMAND_ARGS, Cmd_Execute cmd)
 	return cmdResult;
 }
 
-extern std::vector<DelayedCallInfo> g_callAfterScripts;
-extern ICriticalSection g_callAfterScriptsCS;
 float g_gameSecondsPassed = 0;
 
 // xNVSE 6.1
 void HandleDelayedCall()
 {
-	if (g_callAfterScripts.empty())
+	if (g_callAfterInfos.empty())
 		return; // avoid lock overhead
 	
-	ScopedLock lock(g_callAfterScriptsCS);
+	ScopedLock lock(g_callAfterInfosCS);
 
-	auto iter = g_callAfterScripts.begin();
-	while (iter != g_callAfterScripts.end())
+	auto iter = g_callAfterInfos.begin();
+	while (iter != g_callAfterInfos.end())
 	{
 		if (g_gameSecondsPassed >= iter->time)
 		{
 			InternalFunctionCaller caller(iter->script, iter->thisObj);
 			delete UserFunctionManager::Call(std::move(caller));
-			iter = g_callAfterScripts.erase(iter); // yes, this is valid: https://stackoverflow.com/a/3901380/6741772
+			iter = g_callAfterInfos.erase(iter); // yes, this is valid: https://stackoverflow.com/a/3901380/6741772
 		}
 		else
 		{
@@ -85,9 +83,6 @@ void HandleDelayedCall()
 		}
 	}
 }
-
-extern std::vector<CallWhileInfo> g_callWhileInfos;
-extern ICriticalSection g_callWhileInfosCS;
 
 void HandleCallWhileScripts()
 {
@@ -111,9 +106,6 @@ void HandleCallWhileScripts()
 		}
 	}
 }
-
-extern std::vector<DelayedCallInfo> g_callForInfos;
-extern ICriticalSection g_callForInfosCS;
 
 void HandleCallForScripts()
 {

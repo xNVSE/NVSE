@@ -697,8 +697,8 @@ bool Cmd_DispatchEvent_Execute(COMMAND_ARGS)
 
 extern float g_gameSecondsPassed;
 
-std::vector<DelayedCallInfo> g_callAfterScripts;
-ICriticalSection g_callAfterScriptsCS;
+std::vector<DelayedCallInfo> g_callAfterInfos;
+ICriticalSection g_callAfterInfosCS;
 
 bool Cmd_CallAfterSeconds_Execute(COMMAND_ARGS)
 {
@@ -706,8 +706,8 @@ bool Cmd_CallAfterSeconds_Execute(COMMAND_ARGS)
 	Script *callFunction;
 	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction) || !callFunction || !IS_ID(callFunction, Script))
 		return true;
-	ScopedLock lock(g_callAfterScriptsCS);
-	g_callAfterScripts.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj);
+	ScopedLock lock(g_callAfterInfosCS);
+	g_callAfterInfos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj);
 	return true;
 }
 
@@ -738,7 +738,7 @@ bool Cmd_CallForSeconds_Execute(COMMAND_ARGS)
 	Script *callFunction;
 	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction) || !callFunction || !IS_ID(callFunction, Script))
 		return true;
-	ScopedLock lock(g_callAfterScriptsCS);
+	ScopedLock lock(g_callAfterInfosCS);
 	g_callForInfos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj);
 	return true;
 }
