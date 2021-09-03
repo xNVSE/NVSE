@@ -149,7 +149,7 @@ protected:
 	UInt8			m_callerVersion;
 	UInt8			m_numArgs;
 	Script			* m_script;
-	void			* m_args[kMaxArgs];
+	va_list m_args;
 	TESObjectREFR	* m_thisObj;
 	TESObjectREFR	* m_container;
 
