@@ -599,24 +599,24 @@ bool InternalFunctionCaller::PopulateArgs(ScriptEventList *eventList, FunctionIn
 		switch (param->varType)
 		{
 		case Script::eVarType_Integer:
-			var->data = va_arg(m_args, SInt32);
+			var->data = (SInt32)m_args[i];
 			break;
 		case Script::eVarType_Float:
-			var->data = va_arg(m_args, double);
+			var->data = *((float *)&m_args[i]);
 			break;
 		case Script::eVarType_Ref:
 		{
-			TESForm *form = va_arg(m_args, TESForm*);
+			TESForm *form = (TESForm *)m_args[i];
 			*((UInt32 *)&var->data) = form ? form->refID : 0;
 		}
 		break;
 		case Script::eVarType_String:
-			var->data = g_StringMap.Add(info->GetScript()->GetModIndex(), va_arg(m_args, const char*), true);
+			var->data = g_StringMap.Add(info->GetScript()->GetModIndex(), (const char *)m_args[i], true);
 			AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_String);
 			break;
 		case Script::eVarType_Array:
 		{
-			ArrayID arrID = va_arg(m_args, ArrayID);
+			ArrayID arrID = (ArrayID)m_args[i];
 			if (g_ArrayMap.Get(arrID))
 			{
 				g_ArrayMap.AddReference(&var->data, arrID, info->GetScript()->GetModIndex());
@@ -653,7 +653,10 @@ bool InternalFunctionCaller::vSetArgs(UInt8 numArgs, va_list args)
 	}
 
 	m_numArgs = numArgs;
-	m_args = args;
+	for (UInt8 i = 0; i < numArgs; i++)
+	{
+		m_args[i] = va_arg(args, void *);
+	}
 
 	return true;
 }
@@ -667,7 +670,6 @@ namespace PluginAPI
 		va_list args;
 		va_start(args, numArgs);
 		bool success = caller.vSetArgs(numArgs, args);
-
 		if (success)
 		{
 			ScriptToken *ret = UserFunctionManager::Call(std::move(caller));
@@ -702,7 +704,6 @@ namespace PluginAPI
 				success = false;
 			}
 		}
-		va_end(args);
 		return success;
 	}
 
