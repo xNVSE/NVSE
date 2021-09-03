@@ -445,6 +445,7 @@ struct NVSECommandTableInterface
  *	is of type kType_Invalid. Up to 10 arguments can be passed in, of type
  *	int, float, or char*; support for passing arrays will be implemented later.
  *	To pass a float, it must be cast like so: *(UInt32*)&myFloat.
+ *	Prior to xNVSE 6.1.2, only 5 args could be passed.
  *
  *	GetFunctionParams() returns the number of parameters expected by a function
  *	script. Returns -1 if the script is not a valid function script. Otherwise, if
