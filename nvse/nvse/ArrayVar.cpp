@@ -111,13 +111,7 @@ bool ArrayElement::operator==(const ArrayElement& rhs) const
 	case kDataType_String:
 		return !StrCompare(m_data.str, rhs.m_data.str);
 	case kDataType_Array:
-		{
-			auto* lArr = g_ArrayMap.Get(m_data.arrID);
-			auto* rArr = g_ArrayMap.Get(rhs.m_data.arrID);
-			if (!lArr || !rArr)
-				return m_data.arrID == rhs.m_data.arrID;
-			return lArr->Equals(rArr);
-		}
+		return m_data.arrID == rhs.m_data.arrID;
 	default:
 		return m_data.num == rhs.m_data.num;
 	}
@@ -1470,31 +1464,6 @@ bool ArrayVar::DeepEquals(ArrayVar* arr2)
 {
 	return this->CompareArrays(arr2, true);
 }
-
-ArrayVar* ArrayVar::ToUnique(UInt8 modIdx, bool deepUnique)
-{
-	auto* returnArray = g_ArrayMap.Create(KeyType(), IsPacked(), modIdx);
-	for (auto iter = Begin(); !iter.End(); ++iter)
-	{
-		const auto* toFind = iter.second();
-		ArrayElement childArrayElement;
-		if (deepUnique && iter.second()->DataType() == kDataType_Array)
-		{
-			auto* childArr = g_ArrayMap.Get(iter.second()->m_data.arrID);
-			if (!childArr)
-				continue;
-			const auto* uniqueChildArr = childArr->ToUnique(modIdx, true);
-			childArrayElement.SetArray(uniqueChildArr->ID());
-			toFind = &childArrayElement;
-		}
-		if (!returnArray->Find(toFind))
-		{
-			returnArray->SetElement(iter.first(), toFind);
-		}
-	}
-	return returnArray;
-}
-
 
 //////////////////////////
 // ArrayVarMap

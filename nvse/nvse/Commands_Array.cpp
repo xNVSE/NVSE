@@ -1150,13 +1150,19 @@ bool Cmd_ar_Unique_Execute(COMMAND_ARGS)
 {
 	*result = 0;
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	if (eval.ExtractArgs() && eval.NumArgs() >= 1 && eval.Arg(0)->CanConvertTo(kTokenType_Array))
+	if (eval.ExtractArgs() && eval.NumArgs() == 1 && eval.Arg(0)->CanConvertTo(kTokenType_Array))
 	{
-		const bool deepUnique = eval.NumArgs() == 2 ? eval.Arg(0)->GetBool() : false;
 		auto* sourceArray = eval.Arg(1)->GetArrayVar();
 		if (!sourceArray)
 			return true;
-		*result = sourceArray->ToUnique(scriptObj->GetModIndex(), deepUnique)->ID();
+		auto* returnArray = g_ArrayMap.Create(sourceArray->KeyType(), sourceArray->IsPacked(), scriptObj->GetModIndex());
+		for (auto iter = sourceArray->Begin(); !iter.End(); ++iter)
+		{
+			const auto* toFind = iter.second();
+			if (!returnArray->Find(toFind))
+				returnArray->SetElement(iter.first(), toFind);
+		}
+		*result = returnArray->ID();
 	}
 	return true;
 }
