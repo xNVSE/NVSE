@@ -1263,11 +1263,14 @@ void ArrayVar::Dump(const std::function<void(const std::string&)>& output)
 			elementInfo += iter.second()->m_data.GetStr();
 			break;
 		case kDataType_Array:
-			elementInfo += "(Array ID #";
-			snprintf(numBuf, sizeof(numBuf), "%d", iter.second()->m_data.arrID);
-			elementInfo += numBuf;
-			elementInfo += ")";
-			break;
+			{
+				auto* arr = g_ArrayMap.Get(iter.second()->m_data.arrID);
+				if (arr)
+					elementInfo += arr->GetStringRepresentation();
+				else
+					elementInfo += "NULL Array";
+				break;
+			}
 		case kDataType_Form:
 			{
 				UInt32 refID = iter.second()->m_data.formID;
@@ -1461,9 +1464,6 @@ bool ArrayVar::DeepEquals(ArrayVar* arr2)
 {
 	return this->CompareArrays(arr2, true);
 }
-
-
-
 
 //////////////////////////
 // ArrayVarMap
