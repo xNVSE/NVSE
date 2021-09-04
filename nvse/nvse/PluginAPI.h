@@ -361,44 +361,13 @@ struct NVSEArrayVarInterface
 		Element(double _num) : num(_num), type(kType_Numeric) { }
 		Element(TESForm* _form) : form(_form), type(kType_Form) { }
 		Element(Array* _array) : arr(_array), type(kType_Array) { }
-		Element(const Element& rhs)
-		{
-			type = rhs.type;
-			switch (rhs.type)
-			{
-			case kType_String:
-				str = CopyCString(rhs.str);
-				break;
-			case kType_Array:
-				arr = rhs.arr;
-				break;
-			case kType_Form:
-				form = rhs.form;
-				break;
-			case kType_Numeric:
-			default:
-				num = rhs.num;
-			}
-		}
+		Element(const Element& rhs) { if (rhs.type == kType_String) { str = CopyCString(rhs.str); } else { num = rhs.num; } type = rhs.type; }
 		Element& operator=(const Element& rhs) {
 			if (this != &rhs) {
 				Reset();
+				if (rhs.type == kType_String) str = CopyCString(rhs.str);
+				else num = rhs.num;
 				type = rhs.type;
-				switch (rhs.type)
-				{
-				case kType_String:
-					str = CopyCString(rhs.str);
-					break;
-				case kType_Array:
-					arr = rhs.arr;
-					break;
-				case kType_Form:
-					form = rhs.form;
-					break;
-				case kType_Numeric:
-				default:
-					num = rhs.num;
-				}
 			}
 			return *this;
 		}
