@@ -366,7 +366,7 @@ struct NVSEArrayVarInterface
 			if (this != &rhs) {
 				Reset();
 				if (rhs.type == kType_String) str = CopyCString(rhs.str);
-				else num = rhs.num;
+				else num = rhs.num; // works even if the type is non-numeric.
 				type = rhs.type;
 			}
 			return *this;
