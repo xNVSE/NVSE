@@ -93,6 +93,8 @@ struct ArrayElement
 	friend class ArrayVar;
 	friend class ArrayVarMap;
 
+	~ArrayElement();
+
 	ArrayData	m_data;
 
 	void  Unset();

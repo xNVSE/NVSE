@@ -31,7 +31,10 @@ const char* DataTypeToString(DataType dataType)
 ArrayData::~ArrayData()
 {
 	if ((dataType == kDataType_String) && str)
+	{
 		free(str);
+		str = nullptr;
+	}
 	dataType = kDataType_Invalid;
 }
 
@@ -57,6 +60,11 @@ ArrayData& ArrayData::operator=(const ArrayData& rhs)
 		else num = rhs.num;
 	}
 	return *this;
+}
+
+ArrayElement::~ArrayElement()
+{
+	Unset();
 }
 
 //////////////////
@@ -203,6 +211,13 @@ bool ArrayElement::SetFormID(UInt32 refID)
 
 	m_data.dataType = kDataType_Form;
 	m_data.formID = refID;
+
+	TESForm* form;
+	if ((form = LookupFormByRefID(refID)) && IS_ID(form, Script) && LambdaManager::IsScriptLambda(static_cast<Script*>(form)))
+	{
+		LambdaManager::SaveLambdaVariables(static_cast<Script*>(form));
+	}
+
 	return true;
 }
 
@@ -306,8 +321,14 @@ void ArrayElement::Unset()
 		if (m_data.str)
 			free(m_data.str);
 	}
-	else if (m_data.dataType == kDataType_Array)
+	else if (m_data.dataType == kDataType_Array && m_data.owningArray)
 		g_ArrayMap.RemoveReference(&m_data.arrID, GetArrayOwningModIndex(m_data.arrID));
+	else if (m_data.dataType == kDataType_Form)
+	{
+		auto* form = LookupFormByRefID(m_data.formID);
+		if (form && IS_ID(form, Script) && LambdaManager::IsScriptLambda(static_cast<Script*>(form)))
+			LambdaManager::UnsaveLambdaVariables(static_cast<Script*>(form));
+	}
 
 	m_data.dataType = kDataType_Invalid;
 }
@@ -1263,11 +1284,14 @@ void ArrayVar::Dump(const std::function<void(const std::string&)>& output)
 			elementInfo += iter.second()->m_data.GetStr();
 			break;
 		case kDataType_Array:
-			elementInfo += "(Array ID #";
-			snprintf(numBuf, sizeof(numBuf), "%d", iter.second()->m_data.arrID);
-			elementInfo += numBuf;
-			elementInfo += ")";
-			break;
+			{
+				auto* arr = g_ArrayMap.Get(iter.second()->m_data.arrID);
+				if (arr)
+					elementInfo += arr->GetStringRepresentation();
+				else
+					elementInfo += "NULL Array";
+				break;
+			}
 		case kDataType_Form:
 			{
 				UInt32 refID = iter.second()->m_data.formID;
@@ -1461,9 +1485,6 @@ bool ArrayVar::DeepEquals(ArrayVar* arr2)
 {
 	return this->CompareArrays(arr2, true);
 }
-
-
-
 
 //////////////////////////
 // ArrayVarMap
