@@ -362,7 +362,15 @@ struct NVSEArrayVarInterface
 		Element(TESForm* _form) : form(_form), type(kType_Form) { }
 		Element(Array* _array) : arr(_array), type(kType_Array) { }
 		Element(const Element& rhs) { if (rhs.type == kType_String) { str = CopyCString(rhs.str); } else { num = rhs.num; } type = rhs.type; }
-		Element& operator=(const Element& rhs) { if (this != &rhs) { Reset(); if (rhs.type == kType_String) str = CopyCString(rhs.str); else num = rhs.num; type = rhs.type; } return *this; }
+		Element& operator=(const Element& rhs) {
+			if (this != &rhs) {
+				Reset();
+				if (rhs.type == kType_String) str = CopyCString(rhs.str);
+				else num = rhs.num;
+				type = rhs.type;
+			}
+			return *this;
+		}
 
 		bool IsValid() const { return type != kType_Invalid; }
 		UInt8 GetType() const { return type; }
@@ -371,6 +379,22 @@ struct NVSEArrayVarInterface
 		Array * Array() { return type == kType_Array ? arr : NULL; }
 		TESForm * Form() { return type == kType_Form ? form : NULL; }
 		double Number() { return type == kType_Numeric ? num : 0.0; }
+		bool Bool()
+		{
+			switch (type)
+			{
+			case kType_Numeric:
+				return num;
+			case kType_Form:
+				return form;
+			case kType_Array:
+				return arr;
+			case kType_String:
+				return str && str[0];
+			default:
+				return false;
+			}
+		}
 	};
 
 	Array* (* CreateArray)(const Element* data, UInt32 size, Script* callingScript);
