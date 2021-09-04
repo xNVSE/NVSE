@@ -311,6 +311,34 @@ bool ArrayElement::GetAsString(const char** out) const
 	return true;
 }
 
+// Try to replicate bool ScriptToken::GetBool()
+bool ArrayElement::GetBool() const
+{
+	bool result = false;
+	switch (DataType())
+	{
+	case kDataType_Array:
+		result = m_data.arrID && g_ArrayMap.Get(m_data.arrID);
+		break;
+	case kDataType_Numeric:
+		result = m_data.num != 0.0;
+		break;
+	case kDataType_Form:
+		result = m_data.formID != 0;
+		break;
+	case kDataType_String:
+		if (auto const str = m_data.GetStr())
+		{
+			if (str[0])
+				result = true;
+		}
+		break;
+	default:
+		return false;
+	}
+	return result;
+}
+
 void ArrayElement::Unset()
 {
 	if (m_data.dataType == kDataType_Invalid)

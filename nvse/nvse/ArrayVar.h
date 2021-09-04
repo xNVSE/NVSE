@@ -105,6 +105,7 @@ struct ArrayElement
 	bool GetAsString(const char **out) const;
 	bool GetAsFormID(UInt32* out) const;
 	bool GetAsArray(ArrayID* out) const;
+	bool GetBool() const;
 
 	bool SetForm(const TESForm* form);
 	bool SetFormID(UInt32 refID);
