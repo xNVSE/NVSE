@@ -388,7 +388,7 @@ struct NVSEArrayVarInterface
 			case kType_Array:
 				return arr;
 			case kType_String:
-				return str && !str[0];
+				return str && str[0];
 			default:
 				return false;
 			}
