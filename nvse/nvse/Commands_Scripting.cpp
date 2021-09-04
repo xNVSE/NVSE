@@ -476,7 +476,10 @@ bool Cmd_CallFunctionCond_Eval(COMMAND_ARGS_EVAL)
 		{
 			if (auto const script = DYNAMIC_CAST(form, TESForm, Script))
 			{
-				PluginAPI::CallFunctionScript(script, thisObj, nullptr, &finalResult, 0);
+				NVSEArrayVarInterface::Element currentResult;
+				PluginAPI::CallFunctionScript(script, thisObj, nullptr, &currentResult, 0);
+				if (currentResult.GetType() == NVSEArrayVarInterface::Element::kType_Numeric)
+					finalResult = currentResult;
 			}
 		}
 	}
