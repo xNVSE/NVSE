@@ -319,7 +319,10 @@ void ArrayElement::Unset()
 	if (m_data.dataType == kDataType_String)
 	{
 		if (m_data.str)
+		{
 			free(m_data.str);
+			m_data.str = nullptr;
+		}
 	}
 	else if (m_data.dataType == kDataType_Array && m_data.owningArray)
 		g_ArrayMap.RemoveReference(&m_data.arrID, GetArrayOwningModIndex(m_data.arrID));
@@ -328,6 +331,7 @@ void ArrayElement::Unset()
 		auto* form = LookupFormByRefID(m_data.formID);
 		if (form && IS_ID(form, Script) && LambdaManager::IsScriptLambda(static_cast<Script*>(form)))
 			LambdaManager::UnsaveLambdaVariables(static_cast<Script*>(form));
+		m_data.formID = 0;
 	}
 
 	m_data.dataType = kDataType_Invalid;
