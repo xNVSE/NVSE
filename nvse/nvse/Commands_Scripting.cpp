@@ -467,26 +467,35 @@ bool Cmd_CallFunctionCond_Execute(COMMAND_ARGS)
 bool Cmd_CallFunctionCond_Eval(COMMAND_ARGS_EVAL)
 {
 	*result = 0;
-
-	NVSEArrayVarInterface::Element finalResult;
+	ArrayElement finalResult;
 	
-	if (BGSListForm* pListForm = (BGSListForm*)arg1)  // safe to cast since the condition won't allow picking any other formType.
+	if (auto const pListForm = (BGSListForm*)arg1)  // safe to cast since the condition won't allow picking any other formType.
 	{
+		auto const bBreakIfFalse = (UInt32)arg2;  // if true, if a UDF returns false, breaks the formlist loop and returns 0.
 		for (auto const &form : pListForm->list)
 		{
-			if (auto const script = DYNAMIC_CAST(form, TESForm, Script))
+			if (auto const scriptIter = DYNAMIC_CAST(form, TESForm, Script))
 			{
-				NVSEArrayVarInterface::Element currentResult;
-				PluginAPI::CallFunctionScript(script, thisObj, nullptr, &currentResult, 0);
-				if (currentResult.GetType() == NVSEArrayVarInterface::Element::kType_Numeric)
-					finalResult = currentResult;
+				InternalFunctionCaller caller(scriptIter, thisObj, nullptr);
+				caller.SetArgs(0);
+				if (auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller))))
+				{
+					BasicTokenToElem(tokenResult.get(), finalResult);
+					if (bBreakIfFalse && !finalResult.GetBool())
+						return true;
+				}
 			}
 		}
 	}
-	
-	if (finalResult.GetType() == NVSEArrayVarInterface::Element::kType_Numeric)
+
+	if (!finalResult.IsGood()) return true;
+	if (double out; finalResult.GetAsNumber(&out))
 	{
-		*result = finalResult.Number();
+		*result = out;
+	}
+	else
+	{
+		*result = finalResult.GetBool();
 	}
 	return true;
 }

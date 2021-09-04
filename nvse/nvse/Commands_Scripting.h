@@ -40,7 +40,7 @@ extern CommandInfo kCommandInfo_TypeOf;
 extern CommandInfo kCommandInfo_Function;
 extern CommandInfo kCommandInfo_Call;
 
-DEFINE_CMD_COND(CallFunctionCond, "calls every UDF in a formlist and returns the result of the last one.", false, kParams_FormList);
+DEFINE_CMD_COND(CallFunctionCond, "calls every UDF in a formlist and returns the result of the last one.", false, kParams_OneFormList_OneOptionalInt);
 
 extern CommandInfo kCommandInfo_SetFunctionValue;
 
