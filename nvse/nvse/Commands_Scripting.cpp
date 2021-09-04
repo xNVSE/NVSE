@@ -458,6 +458,37 @@ bool Cmd_Call_Execute(COMMAND_ARGS)
 	return true;
 }
 
+// don't use this in scripts.
+bool Cmd_CallFunctionCond_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	return true;
+}
+bool Cmd_CallFunctionCond_Eval(COMMAND_ARGS_EVAL)
+{
+	*result = 0;
+
+	NVSEArrayVarInterface::Element finalResult;
+	
+	if (BGSListForm* pListForm = (BGSListForm*)arg1)  // safe to cast since the condition won't allow picking any other formType.
+	{
+		for (auto const &form : pListForm->list)
+		{
+			if (auto const script = DYNAMIC_CAST(form, TESForm, Script))
+			{
+				PluginAPI::CallFunctionScript(script, thisObj, nullptr, &finalResult, 0);
+			}
+		}
+	}
+	
+	if (finalResult.GetType() == NVSEArrayVarInterface::Element::kType_Numeric)
+	{
+		*result = finalResult.Number();
+	}
+	return true;
+}
+
+
 bool Cmd_SetFunctionValue_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);

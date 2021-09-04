@@ -1809,6 +1809,9 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(ar_All);
 	ADD_CMD(GetWeaponRegenRate);
 	ADD_CMD(SetWeaponRegenRate);
+
+	// 6.2 beta 03
+	ADD_CMD(CallFunctionCond);
 	
 }
 
