@@ -366,8 +366,10 @@ struct NVSEArrayVarInterface
 			if (this != &rhs) {
 				Reset();
 				if (rhs.type == kType_String) str = CopyCString(rhs.str);
-				else num = rhs.num; type = rhs.type;
-			} return *this;
+				else num = rhs.num;
+				type = rhs.type;
+			}
+			return *this;
 		}
 
 		bool IsValid() const { return type != kType_Invalid; }
