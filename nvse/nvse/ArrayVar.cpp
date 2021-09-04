@@ -321,7 +321,7 @@ bool ArrayElement::GetBool() const
 		result = m_data.arrID && g_ArrayMap.Get(m_data.arrID);
 		break;
 	case kDataType_Numeric:
-		result = m_data.num != 0;
+		result = m_data.num != 0.0;
 		break;
 	case kDataType_Form:
 		result = m_data.formID != 0;
