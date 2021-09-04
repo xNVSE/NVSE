@@ -467,7 +467,7 @@ bool Cmd_CallFunctionCond_Execute(COMMAND_ARGS)
 bool Cmd_CallFunctionCond_Eval(COMMAND_ARGS_EVAL)
 {
 	*result = 0;
-	ArrayElement finalResult;
+	std::unique_ptr<ScriptToken> tokenResult = nullptr;
 	
 	if (auto const pListForm = (BGSListForm*)arg1)  // safe to cast since the condition won't allow picking any other formType.
 	{
@@ -478,24 +478,22 @@ bool Cmd_CallFunctionCond_Eval(COMMAND_ARGS_EVAL)
 			{
 				InternalFunctionCaller caller(scriptIter, thisObj, nullptr);
 				caller.SetArgs(0);
-				if (auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller))))
+				if (tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller))))
 				{
-					BasicTokenToElem(tokenResult.get(), finalResult);
-					if (bBreakIfFalse && !finalResult.GetBool())
+					if (bBreakIfFalse && !tokenResult->GetBool())
 						return true;
 				}
 			}
 		}
 	}
-
-	if (!finalResult.IsGood()) return true;
-	if (double out; finalResult.GetAsNumber(&out))
+	if (!tokenResult || !tokenResult->IsGood()) return true;
+	if (auto const num = tokenResult->GetNumber(); num != 0.0)
 	{
-		*result = out;
+		*result = num;
 	}
 	else
 	{
-		*result = finalResult.GetBool();
+		*result = tokenResult->GetBool(); 
 	}
 	return true;
 }

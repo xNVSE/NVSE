@@ -163,7 +163,7 @@ static ParamInfo kParams_OneFormList[1] =
 static ParamInfo kParams_OneFormList_OneOptionalInt[2] =
 {
 	{	"form list", kParamType_FormList,	0		},
-	{	"form list", kParamType_Integer,	1		},
+	{	"int", kParamType_Integer,	1		},
 };
 
 
