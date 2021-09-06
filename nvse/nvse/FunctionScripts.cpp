@@ -686,7 +686,7 @@ namespace PluginAPI
 						*result = ret->GetTESForm();
 						break;
 					case kTokenType_Array:
-						*result = ret->GetArray();
+						*result = ArrayAPI::LookupArrayByID(ret->GetArray());
 						break;
 					case kTokenType_String:
 						*result = ret->GetString();
