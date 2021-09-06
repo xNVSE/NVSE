@@ -1152,7 +1152,7 @@ bool Cmd_ar_Unique_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() == 1 && eval.Arg(0)->CanConvertTo(kTokenType_Array))
 	{
-		auto* sourceArray = eval.Arg(1)->GetArrayVar();
+		auto* sourceArray = eval.Arg(0)->GetArrayVar();
 		if (!sourceArray)
 			return true;
 		auto* returnArray = g_ArrayMap.Create(sourceArray->KeyType(), sourceArray->IsPacked(), scriptObj->GetModIndex());
