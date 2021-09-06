@@ -58,7 +58,7 @@ void MessageHandler(NVSEMessagingInterface::Message* msg)
 		_MESSAGE("Received exit game to main menu message");
 		break;
 	case NVSEMessagingInterface::kMessage_Precompile:
-		_MESSAGE("Received precompile message with script at %08x", msg->data);
+		_MESSAGE("Received precompile message with script");
 		break;
 	case NVSEMessagingInterface::kMessage_RuntimeScriptError:
 		_MESSAGE("Received runtime script error message %s", msg->data);
@@ -86,7 +86,7 @@ bool Cmd_ExamplePlugin_PluginTest_Execute(COMMAND_ARGS)
 #endif
 
 //This defines a function without a condition, that does not take any arguments
-DEFINE_COMMAND_PLUGIN(ExamplePlugin_PluginTest, "prints a string", 0, 0, NULL)
+DEFINE_COMMAND_PLUGIN(ExamplePlugin_PluginTest, "prints a string", false, NULL)
 
 bool Cmd_ExamplePlugin_IsNPCFemale_Eval(COMMAND_ARGS_EVAL);
 
@@ -119,7 +119,7 @@ bool Cmd_ExamplePlugin_IsNPCFemale_Execute(COMMAND_ARGS)
 	return true;
 }
 #endif
-DEFINE_COMMAND_PLUGIN(ExamplePlugin_IsNPCFemale, "Checks if npc is female", 0, 1, kParams_OneActorBase)
+DEFINE_COMMAND_PLUGIN(ExamplePlugin_IsNPCFemale, "Checks if npc is female", false, kParams_OneActorBase)
 
 bool NVSEPlugin_Query(const NVSEInterface* nvse, PluginInfo* info)
 {
