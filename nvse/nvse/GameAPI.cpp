@@ -937,13 +937,28 @@ ScriptEventList *ScriptEventList::Copy()
 			switch (type)
 			{
 			case NVSEVarType::kVarType_Array:
-				g_ArrayMap.AddReference(&newVar->data, var->data, m_script->GetModIndex());
-				AddToGarbageCollection(this, newVar, NVSEVarType::kVarType_Array);
-				continue;
+				{
+					if (var->data)
+					{
+						g_ArrayMap.AddReference(&newVar->data, var->data, m_script->GetModIndex());
+						AddToGarbageCollection(this, newVar, NVSEVarType::kVarType_Array);
+					}
+					else // ar_Null'ed
+						newVar->data = 0.0;
+					continue;
+				}
 			case NVSEVarType::kVarType_String:
-				newVar->data = g_StringMap.Add(m_script->GetModIndex(), g_StringMap.Get(var->data)->GetCString(), false, nullptr);
-				AddToGarbageCollection(this, newVar, NVSEVarType::kVarType_String);
-				continue;
+				{
+					auto* stringVar = g_StringMap.Get(var->data);
+					if (stringVar)
+					{
+						newVar->data = g_StringMap.Add(m_script->GetModIndex(), stringVar->GetCString(), false, nullptr);
+						AddToGarbageCollection(this, newVar, NVSEVarType::kVarType_String);
+					}
+					else // Sv_Destructed
+						newVar->data = 0.0;
+					continue;
+				}
 			default:
 				break;
 			}
