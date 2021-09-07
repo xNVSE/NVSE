@@ -74,6 +74,7 @@ private:
 	Script			* m_invokingScript;
 	UInt8			m_callerVersion;
 	bool			m_bad;
+	bool m_lambdaBackupEventList; // if parent event list can't be retrieved, us
 public:
 	FunctionContext(FunctionInfo* info, UInt8 version, Script* invokingScript);
 	~FunctionContext();
