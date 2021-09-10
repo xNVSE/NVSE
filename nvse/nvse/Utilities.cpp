@@ -649,7 +649,9 @@ const char* GetModName(TESForm* form)
 {
 	if (!form)
 		return "Unknown or deleted script";
-	const char* modName = IS_ID(form, Script) ? "In-game console" : "Dynamic forms";
+	const char* modName = IS_ID(form, Script) ? "In-game console" : "Dynamic form";
+	if (form->mods.Head() && form->mods.Head()->data)
+		return form->mods.Head()->Data()->name;
 	if (form->GetModIndex() != 0xFF)
 	{
 		modName = DataHandler::Get()->GetNthModName(form->GetModIndex());
