@@ -78,4 +78,34 @@
 			</CustomListItems>
 		</Expand>
 	</Type>
+	<Type Name="NiTArray&lt;*&gt;">
+		<DisplayString>{{ Size={numObjs} }}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>numObjs</Size>
+				<ValuePointer>data</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+	<Type Name="DList&lt;*&gt;">
+		<DisplayString>{{ DList }}</DisplayString>
+		<Expand>
+			<Item Name="Count">count</Item>
+			<LinkedListItems>
+				<Size>count</Size>
+				<HeadPointer>first</HeadPointer>
+				<NextPointer>next</NextPointer>
+				<ValueNode>data</ValueNode>
+			</LinkedListItems>
+		</Expand>
+	</Type>
+	<Type Name="BSSimpleList&lt;*&gt;">
+		<DisplayString>{{ BSSimpleList }}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>size</Size>
+				<ValuePointer>data</ValuePointer> <!-- Array -->
+			</ArrayItems>
+		</Expand>
+	</Type>
 </AutoVisualizer>
