@@ -130,7 +130,11 @@ struct ScriptLocal
 {
 	UInt32 id;
 	ScriptLocal *nextEntry;
-	double data;
+	union
+	{
+		double data;
+		UInt32 formId;
+	};
 
 	UInt32 GetFormId();
 };
