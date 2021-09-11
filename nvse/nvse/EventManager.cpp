@@ -508,10 +508,9 @@ DeferredRemoveList s_deferredRemoveList;
 void __stdcall HandleEvent(UInt32 id, void* arg0, void* arg1)
 {
 	ScopedLock lock(s_criticalSection);
-
 	EventInfo* eventInfo = &s_eventInfos[id];
 	if (eventInfo->callbacks.Empty()) return;
-
+	bool IsArg0Valid = IsValidReference(arg0);
 	for (auto iter = eventInfo->callbacks.Begin(); !iter.End(); ++iter)
 	{
 		EventCallback &callback = iter.Get();
@@ -522,7 +521,7 @@ void __stdcall HandleEvent(UInt32 id, void* arg0, void* arg1)
 		// Check filters
 		if (callback.source && (arg0 != callback.source))
 		{
-			if (!IsValidReference(arg0) || (((TESObjectREFR*)arg0)->baseForm != callback.source))
+			if (!IsArg0Valid || (((TESObjectREFR*)arg0)->baseForm != callback.source))
 				continue;
 		}
 
