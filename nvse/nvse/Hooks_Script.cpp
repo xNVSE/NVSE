@@ -350,10 +350,6 @@ bool __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 
 void PostScriptCompile()
 {
-	g_variableDefinitionsMap.clear();
-	for (const auto& key : g_lambdaParentScriptMap | std::views::keys)
-		key->Delete();
-	g_lambdaParentScriptMap.clear();
 	g_currentScriptStack.pop();
 }
 

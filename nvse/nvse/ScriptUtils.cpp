@@ -56,6 +56,7 @@ static bool ShowWarning(const char *msg)
 #else
 
 #include "GameAPI.h"
+#include <ranges>
 
 
 const char *GetEditorID(TESForm *form)
@@ -1830,6 +1831,13 @@ ExpressionParser::~ExpressionParser()
 {
 	ASSERT(s_parserDepth > 0);
 	s_parserDepth--;
+	if (s_parserDepth == 0)
+	{
+		g_variableDefinitionsMap.clear();
+		for (const auto& key : g_lambdaParentScriptMap | std::views::keys)
+			key->Delete();
+		g_lambdaParentScriptMap.clear();
+	}
 }
 
 bool ExpressionParser::ParseArgs(ParamInfo *params, UInt32 numParams, bool bUsesNVSEParamTypes, bool parseWholeLine)
@@ -2720,7 +2728,7 @@ Token_Type ExpressionParser::ParseArgument(UInt32 argsEndPos)
 #if EDITOR
 const void *g_scriptCompiler = reinterpret_cast<void *>(0xECFDF8);
 #endif
-std::unordered_map<Script *, Script *> g_lambdaParentScriptMap;
+std::unordered_map<Script*, Script*> g_lambdaParentScriptMap;
 
 Script *GetLambdaParentScript(Script *scriptLambda)
 {
