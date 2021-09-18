@@ -2591,7 +2591,7 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 					operandType = kTokenType_Array;
 				else if (retnType == kRetnType_Form)
 					operandType = kTokenType_Form;
-				else
+				else if (retnType == kRetnType_Default)
 					operandType = kTokenType_Number;
 
 				if (operand->useRefFromStack)
