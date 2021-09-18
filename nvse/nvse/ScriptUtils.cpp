@@ -18,6 +18,7 @@
 #include "LambdaManager.h"
 #include <regex>
 #include <utility>
+#include <ranges>
 
 #include "ScriptAnalyzer.h"
 
