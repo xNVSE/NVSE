@@ -975,7 +975,7 @@ bool vExtractExpression(ParamInfo *paramInfo, UInt8 *&scriptData, Script *script
 	scriptData += sizeof(UInt16);
 	double unusedResult = 0;
 	UInt32 offset = scriptData - static_cast<UInt8 *>(scriptDataIn);
-	ExpressionEvaluator evaluator(paramInfo, scriptDataIn, nullptr, nullptr, scriptObj, eventList, &unusedResult, &offset);
+	ExpressionEvaluator evaluator(paramInfo, scriptDataIn, OtherHooks::GetExecutingScriptContext()->scriptOwnerRef, nullptr, scriptObj, eventList, &unusedResult, &offset);
 	evaluator.m_inline = true;
 	auto *token = evaluator.Evaluate();
 	scriptData += offset - (scriptData - static_cast<UInt8 *>(scriptDataIn));

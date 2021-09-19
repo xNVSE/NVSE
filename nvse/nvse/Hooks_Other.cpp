@@ -194,5 +194,15 @@ namespace OtherHooks
 		emptyCtx = {};
 		return &emptyCtx;
 	}
+
+	void PushScriptContext(const CurrentScriptContext& ctx)
+	{
+		g_currentScriptContext.Push(ctx);
+	}
+
+	void PopScriptContext()
+	{
+		g_currentScriptContext.Pop();
+	}
 }
 #endif

@@ -536,8 +536,10 @@ FunctionContext::~FunctionContext()
 void ExecuteSingleLineLambda(FunctionInfo* info, FunctionCaller& caller, ScriptEventList* eventList)
 {
 	double result;
-	UInt32 opcodeOffset = info->m_singleLineLambdaPosition - static_cast<UInt8*>(info->GetScript()->data);
+	UInt32 opcodeOffset = info->m_singleLineLambdaPosition - info->GetScript()->data;
+	OtherHooks::PushScriptContext({ info->GetScript(), nullptr, nullptr, caller.ThisObj(), &kCommandInfo_SetFunctionValue, nullptr });
 	kCommandInfo_SetFunctionValue.execute(kCommandInfo_SetFunctionValue.params, info->GetScript()->data, caller.ThisObj(), caller.ContainingObj(), info->GetScript(), eventList, &result, &opcodeOffset);
+	OtherHooks::PopScriptContext();
 }
 
 bool FunctionContext::Execute(FunctionCaller &caller)
