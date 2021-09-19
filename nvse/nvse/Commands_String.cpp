@@ -784,7 +784,7 @@ bool Cmd_ActorValueToString_Execute(COMMAND_ARGS)
 	const char *resStr = NULL;
 	UInt32 avCode;
 	if (ExtractArgs(EXTRACT_ARGS, &avCode) && (avCode < eActorVal_FalloutMax))
-		resStr = g_actorValueInfoArray[avCode]->infoName;
+		resStr = g_actorValues[avCode]->infoName;
 	if (!resStr)
 		resStr = "Unknown";
 	AssignToStringVar(PASS_COMMAND_ARGS, resStr);
@@ -797,7 +797,7 @@ bool Cmd_ActorValueToStringC_Execute(COMMAND_ARGS)
 	UInt32 avCode, nameType = 0;
 	if (ExtractArgs(EXTRACT_ARGS, &avCode, &nameType) && (avCode < eActorVal_FalloutMax))
 	{
-		ActorValueInfo *avInfo = g_actorValueInfoArray[avCode];
+		ActorValueInfo *avInfo = g_actorValues[avCode];
 		switch (nameType)
 		{
 		case 0:

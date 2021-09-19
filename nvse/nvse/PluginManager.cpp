@@ -431,6 +431,7 @@ void PluginManager::InitExpressionEvaluatorUtils(ExpressionEvaluatorUtils *utils
 	utils->ScriptTokenGetScriptVar = ScriptTokenGetScriptVar;
 	utils->ScriptTokenGetPair = ScriptTokenGetPair;
 	utils->ScriptTokenGetSlice = ScriptTokenGetSlice;
+	utils->ScriptTokenGetAnimationGroup = ScriptTokenGetAnimationGroup;
 #endif
 }
 

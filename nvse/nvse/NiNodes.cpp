@@ -1,5 +1,10 @@
 #include "NiNodes.h"
 
+#include "GameScript.h"
+#include "MemoizedMap.h"
+
+std::span<TESAnimGroup::AnimGroupInfo> g_animGroups = { reinterpret_cast<TESAnimGroup::AnimGroupInfo*>(0x011977D8), TESAnimGroup::kAnimGroup_Max };
+
 #if RUNTIME
 void TextureFormat::InitFromD3DFMT(UInt32 fmt)
 {
@@ -10,9 +15,6 @@ void TextureFormat::InitFromD3DFMT(UInt32 fmt)
 }
 
 static const UInt32 kNiObjectNET_SetNameAddr = 0x00A5B690;
-
-// an array of structs describing each of the game's anim groups
-static const TESAnimGroup::AnimGroupInfo* s_animGroupInfos = (const TESAnimGroup::AnimGroupInfo*)0x011977D8;
 
 void NiObjectNET::SetName(const char* newName)
 {
@@ -29,24 +31,30 @@ void NiObjectNET::SetName(const char* newName)
 
 const char* TESAnimGroup::StringForAnimGroupCode(UInt32 groupCode)
 {
-	return (groupCode < TESAnimGroup::kAnimGroup_Max) ? s_animGroupInfos[groupCode].name : NULL;
+	return (groupCode < TESAnimGroup::kAnimGroup_Max) ? g_animGroups[groupCode].name : NULL;
 }
+
+MemoizedMap<const char*, UInt32> s_animGroupMap;
 
 UInt32 TESAnimGroup::AnimGroupForString(const char* groupName)
 {
-	for (UInt32 i = 0; i < TESAnimGroup::kAnimGroup_Max; i++) {
-		if (!_stricmp(s_animGroupInfos[i].name, groupName)) {
-			return i;
+	return s_animGroupMap.Get(groupName, [](const char* groupName)
+	{
+		for (UInt32 i = 0; i < kAnimGroup_Max; i++) 
+		{
+			if (!_stricmp(g_animGroups[i].name, groupName)) 
+			{
+				return i;
+			}
 		}
-	}
-
-	return TESAnimGroup::kAnimGroup_Max;
+		return static_cast<UInt32>(kAnimGroup_Max);
+	});
 }
 
 void DumpAnimGroups(void)
 {
 	for (UInt32 i = 0; i < TESAnimGroup::kAnimGroup_Max; i++) {
-		_MESSAGE("%d,%s", i , s_animGroupInfos[i].name);
+		_MESSAGE("%d,%s", i , g_animGroups[i].name);
 		//if (!_stricmp(s_animGroupInfos[i].name, "JumpLandRight"))
 		//	break;
 	}

@@ -3800,7 +3800,6 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 	// fall-through intentional
 	case kParamType_QuestStage:
 	case kParamType_CrimeType:
-	case kParamType_AnimationGroup:
 	case kParamType_MiscellaneousStat:
 	case kParamType_FormType:
 	case kParamType_Alignment:
@@ -3891,6 +3890,18 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 		{
 			return false;
 		}
+	}
+	break;
+	case kParamType_AnimationGroup:
+	{
+		UInt32 animGroup = arg->GetAnimationGroup();
+		if (animGroup != TESAnimGroup::kAnimGroup_Max)
+		{
+			UInt32* out = va_arg(varArgs, UInt32*);
+			*out = animGroup;
+		}
+		else
+			return false;
 	}
 	break;
 	case kParamType_Sex:

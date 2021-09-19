@@ -796,6 +796,8 @@ struct ExpressionEvaluatorUtils
 	ScriptLocal*	(__fastcall *ScriptTokenGetScriptVar)(PluginScriptToken *scrToken);
 	const PluginTokenPair*	(__fastcall *ScriptTokenGetPair)(PluginScriptToken *scrToken);
 	const PluginTokenSlice*	(__fastcall *ScriptTokenGetSlice)(PluginScriptToken *scrToken);
+	UInt32                  (__fastcall* ScriptTokenGetAnimationGroup)(PluginScriptToken* scrToken);
+
 #endif
 };
 
@@ -879,6 +881,11 @@ struct PluginScriptToken
 	UInt32 GetActorValue()
 	{
 		return s_expEvalUtils.ScriptTokenGetActorValue(this);
+	}
+
+	UInt32 GetAnimationGroup()
+	{
+		return s_expEvalUtils.ScriptTokenGetAnimationGroup(this);
 	}
 
 	ScriptLocal *GetScriptVar()

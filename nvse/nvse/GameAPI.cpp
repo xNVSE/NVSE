@@ -4,6 +4,7 @@
 #include "GameObjects.h"
 #include "GameTypes.h"
 #include "GameScript.h"
+#include "MemoizedMap.h"
 #include "StringVar.h"
 #include "printf.h"
 #include "ScriptAnalyzer.h"
@@ -2429,30 +2430,19 @@ const char *GetActorValueString(UInt32 actorValue)
 	return name;
 }
 
-UInt32 GetActorValueForScript(const char *avStr)
+MemoizedMap<const char*, UInt32> s_avNameMap;
+
+UInt32 GetActorValueForString(const char *strActorVal)
 {
-	for (UInt32 i = 0; i <= eActorVal_FalloutMax; i++)
+	return s_avNameMap.Get(strActorVal, [](const char* strActorVal) -> UInt32
 	{
-		char *name = GetActorValueName(i);
-		if (_stricmp(avStr, name) == 0)
-			return i;
-	}
-
-	return eActorVal_NoActorValue;
-}
-
-UInt32 GetActorValueForString(const char *strActorVal, bool bForScript)
-{
-	if (bForScript)
-		return GetActorValueForScript(strActorVal);
-
-	for (UInt32 n = 0; n <= eActorVal_FalloutMax; n++)
-	{
-		char *name = GetActorValueName(n);
-		if (_stricmp(strActorVal, name) == 0)
-			return n;
-	}
-	return eActorVal_NoActorValue;
+		if (const auto iter = ra::find_if(g_actorValues, _L(ActorValueInfo* info, _stricmp(info->infoName, strActorVal) == 0)); 
+			iter != g_actorValues.end())
+		{
+			return iter - g_actorValues.begin();
+		}
+		return eActorVal_NoActorValue;
+	});
 }
 #if NVSE_CORE
 ScriptFormatStringArgs::ScriptFormatStringArgs(UInt32 _numArgs, UInt8 *_scriptData, Script *_scriptObj, ScriptEventList *_eventList, void *scriptDataIn)

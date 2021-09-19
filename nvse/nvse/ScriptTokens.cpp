@@ -1033,11 +1033,20 @@ UInt32 ScriptToken::GetActorValue()
 		const char *str = GetString();
 		if (str)
 		{
-			actorVal = GetActorValueForString(str, true);
+			actorVal = GetActorValueForString(str);
 		}
 	}
 
 	return actorVal;
+}
+
+UInt32 ScriptToken::GetAnimationGroup()
+{
+	if (CanConvertTo(kTokenType_Number))
+		return GetNumber();
+	if (CanConvertTo(kTokenType_String))
+		return TESAnimGroup::AnimGroupForString(GetString());
+	return TESAnimGroup::kAnimGroup_Max;
 }
 
 char ScriptToken::GetAxis()
@@ -1174,6 +1183,11 @@ const PluginTokenPair *__fastcall ScriptTokenGetPair(PluginScriptToken *scrToken
 const PluginTokenSlice *__fastcall ScriptTokenGetSlice(PluginScriptToken *scrToken)
 {
 	return reinterpret_cast<const PluginTokenSlice *>(reinterpret_cast<ScriptToken *>(scrToken)->GetSlice());
+}
+
+UInt32 __fastcall ScriptTokenGetAnimationGroup(PluginScriptToken* scrToken)
+{
+	return reinterpret_cast<ScriptToken*>(scrToken)->GetAnimationGroup();
 }
 
 ScriptToken *ScriptToken::Read(ExpressionEvaluator *context)

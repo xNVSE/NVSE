@@ -460,7 +460,7 @@ std::string StringForNumericParam(ParamType typeID, int value)
 	{
 	case kParamType_ActorValue:
 		{
-			return g_actorValueInfoArray[value]->infoName;
+			return g_actorValues[value]->infoName;
 		}
 	case kParamType_Axis:
 		{

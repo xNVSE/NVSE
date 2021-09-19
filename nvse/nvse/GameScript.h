@@ -12,7 +12,8 @@ struct ScriptOperator;
 extern std::span<CommandInfo> g_eventBlockCommandInfos;
 extern std::span<CommandInfo> g_scriptStatementCommandInfos;
 extern std::span<ScriptOperator> g_gameScriptOperators;
-extern ActorValueInfo **g_actorValueInfoArray;
+extern std::span<ActorValueInfo*> g_actorValues;
+
 #if RUNTIME
 #define SCRIPT_SIZE 0x54
 static const UInt32 kScript_ExecuteFnAddr = 0x005AC1E0;

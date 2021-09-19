@@ -19,7 +19,7 @@ const char *g_variableTypeNames[6] =
 std::span<CommandInfo> g_eventBlockCommandInfos = {reinterpret_cast<CommandInfo*>(0x118E2F0), 38};
 std::span<CommandInfo> g_scriptStatementCommandInfos = {reinterpret_cast<CommandInfo*>(0x118CB50), 16};
 std::span<ScriptOperator> g_gameScriptOperators = {reinterpret_cast<ScriptOperator*>(0x118CAD0), 16};
-ActorValueInfo **g_actorValueInfoArray = reinterpret_cast<ActorValueInfo**>(0x11D61C8);
+std::span<ActorValueInfo*> g_actorValues = { reinterpret_cast<ActorValueInfo**>(0x11D61C8), eActorVal_FalloutMax };
 #else
 std::span<CommandInfo> g_eventBlockCommandInfos = {reinterpret_cast<CommandInfo*>(0xE9D598), 38};
 std::span<CommandInfo> g_scriptStatementCommandInfos = {reinterpret_cast<CommandInfo*>(0xE9BDF8), 16};
