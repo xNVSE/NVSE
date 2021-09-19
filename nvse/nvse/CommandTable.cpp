@@ -1813,6 +1813,9 @@ void CommandTable::AddCommandsV6()
 	// 6.2 beta 03
 	ADD_CMD_RET(ar_Unique, kRetnType_Array);
 	ADD_CMD(CallFunctionCond);
+
+	// 6.2 beta 04
+	ADD_CMD(CallWhen);
 }
 
 namespace PluginAPI

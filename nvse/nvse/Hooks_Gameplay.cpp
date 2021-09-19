@@ -107,6 +107,29 @@ void HandleCallWhileScripts()
 	}
 }
 
+void HandleCallWhenScripts()
+{
+	if (g_callWhenInfos.empty())
+		return; // avoid lock overhead
+	ScopedLock lock(g_callWhenInfosCS);
+
+	auto iter = g_callWhenInfos.begin();
+	while (iter != g_callWhenInfos.end())
+	{
+		InternalFunctionCaller conditionCaller(iter->condition);
+		if (auto conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); conditionResult && conditionResult->GetBool())
+		{
+			InternalFunctionCaller scriptCaller(iter->callFunction, iter->thisObj);
+			delete UserFunctionManager::Call(std::move(scriptCaller));
+			iter = g_callWhenInfos.erase(iter);
+		}
+		else
+		{
+			++iter;
+		}
+	}
+}
+
 void HandleCallForScripts()
 {
 	if (g_callForInfos.empty())
@@ -223,6 +246,7 @@ static void HandleMainLoopHook(void)
 
 	// handle calls from cmd CallWhile
 	HandleCallWhileScripts();
+	HandleCallWhenScripts();
 	
 	const auto isMenuMode = CdeclCall<bool>(0x702360);
 

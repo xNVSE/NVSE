@@ -743,6 +743,25 @@ bool Cmd_CallForSeconds_Execute(COMMAND_ARGS)
 	return true;
 }
 
+std::vector<CallWhileInfo> g_callWhenInfos;
+ICriticalSection g_callWhenInfosCS;
+
+bool Cmd_CallWhen_Execute(COMMAND_ARGS)
+{
+	Script* callFunction;
+	Script* conditionFunction;
+	if (!ExtractArgs(EXTRACT_ARGS, &callFunction, &conditionFunction))
+		return true;
+	for (auto* form : { callFunction, conditionFunction })
+		if (!form || !IS_ID(form, Script))
+			return true;
+
+	ScopedLock lock(g_callWhenInfosCS);
+	g_callWhenInfos.emplace_back(callFunction, conditionFunction, thisObj);
+	return true;
+
+}
+
 void DecompileScriptToFolder(const std::string& scriptName, Script* script, const std::string& fileExtension, const std::string_view& modName)
 {
 	ScriptParsing::ScriptAnalyzer analyzer(script);
