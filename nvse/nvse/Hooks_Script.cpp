@@ -285,17 +285,28 @@ bool ParsingExpression()
 	return s_bParsingExpression;
 }
 
+bool g_patchedEol = false;
+
 bool ParseNestedFunction(CommandInfo *cmd, ScriptLineBuffer *lineBuf, ScriptBuffer *scriptBuf)
 {
+	bool patcher = false;
 	// disable check for end of line
-	PatchEndOfLineCheck(true);
+	if (!g_patchedEol)
+	{
+		g_patchedEol = patcher = true;
+		PatchEndOfLineCheck(true);
+	}
 
 	s_bParsingExpression = true;
 	bool bParsed = cmd->parse(cmd->numParams, cmd->params, lineBuf, scriptBuf);
 	s_bParsingExpression = false;
 
 	// re-enable EOL check
-	PatchEndOfLineCheck(false);
+	if (patcher)
+	{
+		PatchEndOfLineCheck(false);
+		g_patchedEol = false;
+	}
 
 	return bParsed;
 }
