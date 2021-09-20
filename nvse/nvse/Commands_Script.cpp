@@ -697,7 +697,7 @@ bool Cmd_DispatchEvent_Execute(COMMAND_ARGS)
 
 extern float g_gameSecondsPassed;
 
-std::vector<DelayedCallInfo> g_callAfterInfos;
+std::list<DelayedCallInfo> g_callAfterInfos;
 ICriticalSection g_callAfterInfosCS;
 
 bool Cmd_CallAfterSeconds_Execute(COMMAND_ARGS)
@@ -711,7 +711,7 @@ bool Cmd_CallAfterSeconds_Execute(COMMAND_ARGS)
 	return true;
 }
 
-std::vector<CallWhileInfo> g_callWhileInfos;
+std::list<CallWhileInfo> g_callWhileInfos;
 ICriticalSection g_callWhileInfosCS;
 
 bool Cmd_CallWhile_Execute(COMMAND_ARGS)
@@ -729,7 +729,7 @@ bool Cmd_CallWhile_Execute(COMMAND_ARGS)
 	return true;
 }
 
-std::vector<DelayedCallInfo> g_callForInfos;
+std::list<DelayedCallInfo> g_callForInfos;
 ICriticalSection g_callForInfosCS;
 
 bool Cmd_CallForSeconds_Execute(COMMAND_ARGS)
@@ -743,7 +743,7 @@ bool Cmd_CallForSeconds_Execute(COMMAND_ARGS)
 	return true;
 }
 
-std::vector<CallWhileInfo> g_callWhenInfos;
+std::list<CallWhileInfo> g_callWhenInfos;
 ICriticalSection g_callWhenInfosCS;
 
 bool Cmd_CallWhen_Execute(COMMAND_ARGS)

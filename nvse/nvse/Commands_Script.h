@@ -142,10 +142,10 @@ struct CallWhileInfo
 	}
 };
 
-extern std::vector<DelayedCallInfo> g_callForInfos;
-extern std::vector<CallWhileInfo> g_callWhileInfos;
-extern std::vector<DelayedCallInfo> g_callAfterInfos;
-extern std::vector<CallWhileInfo> g_callWhenInfos;
+extern std::list<DelayedCallInfo> g_callForInfos;
+extern std::list<CallWhileInfo> g_callWhileInfos;
+extern std::list<DelayedCallInfo> g_callAfterInfos;
+extern std::list<CallWhileInfo> g_callWhenInfos;
 
 extern ICriticalSection g_callForInfosCS;
 extern ICriticalSection g_callWhileInfosCS;
