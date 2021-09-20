@@ -1212,7 +1212,7 @@ auto GetNVSEVersionString()
 std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 {
 	auto* script = this->iter.script;
-	std::string scriptText = "; Decompiled with xNVSE " + GetNVSEVersionString() + " at " + GetTimeString() + "\n; Author of decompiler: https://github.com/korri123 (Kormákur)\n";
+	std::string scriptText = g_analyzerStack.size() == 1 ? "; Decompiled with xNVSE " + GetNVSEVersionString() + " at " + GetTimeString() + "\n; Author of decompiler: https://github.com/korri123 (Kormakur)\n" : "";
 	auto numTabs = 0;
 	const auto nestAddOpcodes = {static_cast<UInt32>(ScriptStatementCode::If), static_cast<UInt32>(ScriptStatementCode::Begin), kCommandInfo_While.opcode, kCommandInfo_ForEach.opcode};
 	const auto nestMinOpcodes = {static_cast<UInt32>(ScriptStatementCode::EndIf), static_cast<UInt32>(ScriptStatementCode::End), kCommandInfo_Loop.opcode};
