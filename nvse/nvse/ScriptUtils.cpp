@@ -3064,7 +3064,7 @@ std::vector g_expressionParserMacros =
 	{
 		ScriptLineMacro([&](std::string &line, ScriptBuffer*, ScriptLineBuffer*) {
 			// Lambda macro
-			const std::regex oneLineLambdaRegex(R"(^\{(.*)\}\s*=>\s*(.*))"); // match {iVar, rRef} => ...
+			const std::regex oneLineLambdaRegex(R"(^\{([^{}]*)\}\s*=>\s*(.*))"); // match {iVar, rRef} => ...
 			if (std::smatch m; std::regex_search(line, m, oneLineLambdaRegex) && m.size() == 3)
 			{
 				line = "begin function {" + m.str(1) + "}\r\nSetFunctionValue " + m.str(2) + "\r\nend";
