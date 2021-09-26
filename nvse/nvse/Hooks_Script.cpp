@@ -362,6 +362,7 @@ bool __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 void PostScriptCompile()
 {
 	g_currentScriptStack.pop();
+	g_variableDefinitionsMap.clear();
 }
 
 #if RUNTIME

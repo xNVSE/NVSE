@@ -1834,7 +1834,6 @@ ExpressionParser::~ExpressionParser()
 	s_parserDepth--;
 	if (s_parserDepth == 0)
 	{
-		g_variableDefinitionsMap.clear();
 		for (const auto& key : g_lambdaParentScriptMap | std::views::keys)
 			key->Delete();
 		g_lambdaParentScriptMap.clear();
