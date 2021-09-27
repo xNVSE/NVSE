@@ -1995,7 +1995,7 @@ bool ExpressionParser::ValidateArgType(ParamType paramType, Token_Type argType, 
 			if (argType != kTokenType_StringVar && CanConvertOperand(argType, kTokenType_String))
 			{
 				auto* cmdInfo = g_scriptCommands.GetByOpcode(m_lineBuf->cmdOpcode);
-				if (cmdInfo && std::string_view(cmdInfo->longName).starts_with("sv_")) // only allow this for old sv commands that take int
+				if (cmdInfo && (std::string_view(cmdInfo->longName).starts_with("sv_") || cmdInfo->params == kParams_FormatString || cmdInfo->numParams >= 20)) // only allow this for old sv commands that take int
 					return true;
 			}
 			return CanConvertOperand(argType, kTokenType_Number) || CanConvertOperand(argType, kTokenType_StringVar) ||
