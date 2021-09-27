@@ -3767,6 +3767,27 @@ bool ExpressionEvaluator::ExtractFormatStringArgs(va_list varArgs, UInt32 fmtStr
 
 bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, bool bConvertTESForms, va_list &varArgs)
 {
+	const auto handlePrimitiveStringVar = [&]<typename T>()
+	{
+		// handle string_var passed as integer to sv_* cmds
+		if (arg->CanConvertTo(kTokenType_StringVar))
+		{
+			ScriptLocal* var = arg->GetVar();
+			if (var)
+			{
+				T* out = va_arg(varArgs, T*);
+				*out = var->data;
+				return true;
+			}
+		}
+		if (arg->CanConvertTo(kTokenType_String))
+		{
+			T* out = va_arg(varArgs, T*);
+			*out = g_StringMap.Add(script->GetModIndex(), arg->GetString(), true, nullptr);
+			return true;
+		}
+		return false;
+	};
 	// hooray humongous switch statements
 	switch (info->typeID)
 	{
@@ -3779,22 +3800,8 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 	break;
 	case kParamType_Integer:
 	{
-		// handle string_var passed as integer to sv_* cmds
-		if (arg->CanConvertTo(kTokenType_StringVar))
-		{
-			UInt32 *out = va_arg(varArgs, UInt32 *);
-			ScriptLocal *var = arg->GetVar();
-			if (!var)
-				return false;
-			*out = var->data;
+		if (handlePrimitiveStringVar.operator()<UInt32>())
 			break;
-		}
-		if (arg->CanConvertTo(kTokenType_String))
-		{
-			UInt32 *out = va_arg(varArgs, UInt32 *);
-			*out = g_StringMap.Add(script->GetModIndex(), arg->GetString(), true, nullptr);
-			break;
-		}
 	}
 	// fall-through intentional
 	case kParamType_QuestStage:
@@ -3816,6 +3823,8 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 
 		break;
 	case kParamType_Float:
+		if (handlePrimitiveStringVar.operator()<float>())
+			break;
 		if (arg->CanConvertTo(kTokenType_Number))
 		{
 			float *out = va_arg(varArgs, float *);
@@ -3827,6 +3836,8 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 		}
 		break;
 	case kParamType_Double:
+		if (handlePrimitiveStringVar.operator()<double> ())
+			break;
 		if (arg->CanConvertTo(kTokenType_Number))
 		{
 			double *out = va_arg(varArgs, double *);
