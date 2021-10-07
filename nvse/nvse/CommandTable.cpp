@@ -1264,7 +1264,7 @@ void CommandTable::AddCommandsV1()
 	ADD_CMD(GetModIndex);
 	ADD_CMD(GetNumLoadedMods);
 	ADD_CMD(GetSourceModIndex);
-	ADD_CMD(GetDebugSelection);
+	ADD_CMD_RET(GetDebugSelection, kRetnType_Form);
 	ADD_CMD(GetArmorDT);
 	ADD_CMD(SetArmorAR);
 	ADD_CMD(SetArmorDT);
