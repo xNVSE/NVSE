@@ -1103,7 +1103,7 @@ void CommandTable::AddCommandsV1()
 	ADD_CMD(GetWeaponType);
 	ADD_CMD(GetWeaponMinSpread);
 	ADD_CMD(GetWeaponSpread);
-	ADD_CMD(GetWeaponProjectile);
+	ADD_CMD_RET(GetWeaponProjectile, kRetnType_Form);
 	ADD_CMD(GetWeaponSightFOV);
 	ADD_CMD(GetWeaponMinRange);
 	ADD_CMD(GetWeaponMaxRange);
@@ -1111,7 +1111,7 @@ void CommandTable::AddCommandsV1()
 	ADD_CMD(GetWeaponActionPoints);
 	ADD_CMD(GetWeaponCritDamage);
 	ADD_CMD(GetWeaponCritChance);
-	ADD_CMD(GetWeaponCritEffect);
+	ADD_CMD_RET(GetWeaponCritEffect, kRetnType_Form);
 	ADD_CMD(GetWeaponFireRate);
 	ADD_CMD(GetWeaponAnimAttackMult);
 	ADD_CMD(GetWeaponRumbleLeftMotor);
@@ -1161,7 +1161,7 @@ void CommandTable::AddCommandsV1()
 	ADD_CMD(GetEquippedCurrentHealth);
 	ADD_CMD(CompareNames);
 	ADD_CMD(SetName);
-	ADD_CMD(GetHotkeyItem);
+	ADD_CMD_RET(GetHotkeyItem, kRetnType_Form);
 	ADD_CMD(GetNumItems);
 	ADD_CMD_RET(GetInventoryObject, kRetnType_Form);
 	ADD_CMD(SetEquippedCurrentHealth);
@@ -1259,7 +1259,7 @@ void CommandTable::AddCommandsV1()
 	ImportConsoleCommand("TFC"); // changed from ToggleFreeCamera
 	ImportConsoleCommand("TCL"); // changed from ToggleCollision
 	ADD_CMD(GetGameLoaded);
-	ADD_CMD(GetWeaponItemMod);
+	ADD_CMD_RET(GetWeaponItemMod, kRetnType_Form);
 	ADD_CMD(IsModLoaded);
 	ADD_CMD(GetModIndex);
 	ADD_CMD(GetNumLoadedMods);
@@ -1465,7 +1465,7 @@ void CommandTable::AddCommandsV4()
 	// 4.1 beta 01 - subset of CommandScripts from OBSE 21 beta 4
 	ADD_CMD(GetVariable);
 	ADD_CMD(HasVariable);
-	ADD_CMD(GetRefVariable);
+	ADD_CMD_RET(GetRefVariable, kRetnType_Form);
 	ADD_CMD_RET(GetArrayVariable, kRetnType_Array); // corrected in version 4.5 Beta 7
 	ADD_CMD(CompareScripts);
 	ADD_CMD(ResetAllVariables);
