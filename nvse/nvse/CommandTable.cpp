@@ -1291,7 +1291,7 @@ void CommandTable::AddCommandsV1()
 	ADD_CMD(GetAmmoCasing);
 	ADD_CMD(GetPlayerCurrentAmmoRounds);
 	ADD_CMD(SetPlayerCurrentAmmoRounds);
-	ADD_CMD(GetPlayerCurrentAmmo);
+	ADD_CMD_RET(GetPlayerCurrentAmmo, kRetnType_Form);
 
 	// beta 6 - compat with 1.2.0.314
 	ADD_CMD_RET(GetOpenKey, kRetnType_Form);
