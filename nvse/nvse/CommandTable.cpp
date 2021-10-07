@@ -1288,7 +1288,7 @@ void CommandTable::AddCommandsV1()
 	ADD_CMD(SetWeaponSkill);
 	ADD_CMD(GetAmmoSpeed);
 	ADD_CMD(GetAmmoConsumedPercent);
-	ADD_CMD(GetAmmoCasing);
+	ADD_CMD_RET(GetAmmoCasing, kRetnType_Form);
 	ADD_CMD(GetPlayerCurrentAmmoRounds);
 	ADD_CMD(SetPlayerCurrentAmmoRounds);
 	ADD_CMD_RET(GetPlayerCurrentAmmo, kRetnType_Form);
