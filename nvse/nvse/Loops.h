@@ -112,12 +112,14 @@ class FormListIterLoop : public ForEachLoop
 	ListNode<TESForm>	*m_iter;
 	ScriptLocal			*m_refVar;
 
+	bool GetNext();
+
 public:
 	FormListIterLoop(const ForEachContext *context);
 	virtual ~FormListIterLoop() {}
 
 	virtual bool Update(COMMAND_ARGS);
-	inline bool IsEmpty() {return m_iter == nullptr;}
+	inline bool IsEmpty() {return !m_iter || !m_iter->data;}
 };
 
 class LoopManager
