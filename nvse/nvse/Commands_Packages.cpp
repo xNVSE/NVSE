@@ -439,7 +439,7 @@ bool Cmd_GetNthPackage_Execute(COMMAND_ARGS)
 			*refResult = pPackage->refID;
 	}
 	if (IsConsoleMode())
-		Console_Print("GetNthPackage >> %08x (%s) [%s]", pPackage->refID, GetFullName(pPackage), pPackage->GetName());
+		Console_Print("GetNthPackage >> %08x (%s)", pPackage->refID, pPackage->GetName());
 	//DEBUG_MESSAGE("\t\tGNP 1 Actor:%x index:[%d] package:[%010x]\n", pRefr->refID, anIndex, *result);
 	return true;
 }
