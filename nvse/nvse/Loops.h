@@ -107,6 +107,19 @@ public:
 	virtual bool IsEmpty() { return m_elements.Empty(); }
 };
 
+class FormListIterLoop : public ForEachLoop
+{
+	ListNode<TESForm>	*m_iter;
+	ScriptLocal			*m_refVar;
+
+public:
+	FormListIterLoop(const ForEachContext *context);
+	virtual ~FormListIterLoop() {}
+
+	virtual bool Update(COMMAND_ARGS);
+	inline bool IsEmpty() {return m_iter == nullptr;}
+};
+
 class LoopManager
 {
 	LoopManager() {}

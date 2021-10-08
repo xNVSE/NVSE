@@ -1185,12 +1185,15 @@ ScriptToken *Eval_In(OperatorType op, ScriptToken *lh, ScriptToken *rh, Expressi
 	case Script::eVarType_Ref:
 	{
 		TESForm *form = rh->GetTESForm();
-		TESObjectREFR *src = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
-		if (!src && form && (form->refID == playerID))
-			src = (TESObjectREFR *)PlayerCharacter::GetSingleton();
-		if (src)
+		if (form && NOT_ID(form, BGSListForm))
 		{
-			ForEachContext con((UInt32)src, 0, Script::eVarType_Ref, lh->GetVar());
+			if (form->refID == playerID)
+				form = PlayerCharacter::GetSingleton();
+			else form = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+		}
+		if (form)
+		{
+			ForEachContext con((UInt32)form, 0, Script::eVarType_Ref, lh->GetVar());
 			ScriptToken *forEach = ScriptToken::Create(&con);
 			return forEach;
 		}
