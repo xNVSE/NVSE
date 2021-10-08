@@ -1,4 +1,6 @@
 #include "Commands_List.h"
+
+#include "FunctionScripts.h"
 #include "GameForms.h"
 #include "GameRTTI.h"
 #include "GameObjects.h"
@@ -386,5 +388,43 @@ bool Cmd_IsRefInList_Execute(COMMAND_ARGS)
 	}
 #endif
 
+	return true;
+}
+
+
+struct ListFunctionContext
+{
+	BGSListForm* list = nullptr;
+	Script* func = nullptr;
+};
+
+bool ExtractListFunctionContext(ListFunctionContext& ctx, COMMAND_ARGS)
+{
+	if (!ExtractArgs(EXTRACT_ARGS, &ctx.list, &ctx.func))
+		return false;
+
+	if (!ctx.list || !ctx.func)
+		return false;
+
+	if (!IS_ID(ctx.list, BGSListForm) || !IS_ID(ctx.func, Script))
+		return false;
+	
+	return true;
+}
+
+bool Cmd_ForEachInList_Execute(COMMAND_ARGS)
+{
+	*result = false;	// result = bSuccess
+	ListFunctionContext ctx;
+	if (!ExtractListFunctionContext(ctx, PASS_COMMAND_ARGS))
+		return true;
+	auto& [list, functionScript] = ctx;
+	for (auto listItem : list->list)
+	{
+		InternalFunctionCaller caller(functionScript, thisObj, containingObj);
+		caller.SetArgs(1, listItem);
+		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+	}
+	*result = true;
 	return true;
 }
