@@ -419,10 +419,10 @@ bool Cmd_ForEachInList_Execute(COMMAND_ARGS)
 	if (!ExtractListFunctionContext(ctx, PASS_COMMAND_ARGS))
 		return true;
 	auto& [list, functionScript] = ctx;
-	for (auto listItem : list->list)
+	for (auto iter = list->list.Begin(); !iter.End(); ++iter)
 	{
 		InternalFunctionCaller caller(functionScript, thisObj, containingObj);
-		caller.SetArgs(1, listItem);
+		caller.SetArgs(1, iter.Get());
 		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
 	}
 	*result = true;
