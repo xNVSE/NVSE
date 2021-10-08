@@ -1816,6 +1816,9 @@ void CommandTable::AddCommandsV6()
 
 	// 6.2 beta 04
 	ADD_CMD(CallWhen);
+
+	// ?
+	ADD_CMD(ForEachInList);
 }
 
 namespace PluginAPI

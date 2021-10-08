@@ -53,3 +53,11 @@ DEFINE_CMD_ALT(ListReplaceNthForm, ListReplaceNth, replaces the nth form of the 
 DEFINE_CMD_ALT(ListReplaceForm, , replaces the specified from with another., 0, 3, kParams_ReplaceForm);
 
 DEFINE_CMD_ALT(ListClear, , removes all entries from the list, 0, 1, kParams_FormList);
+
+static ParamInfo kParams_OneFormList_OneFunction[2] =
+{
+	{	"array",	kParamType_FormList,	0	},
+	{	"condition user defined function",	kParamType_AnyForm,	0	},
+};
+
+DEFINE_COMMAND(ForEachInList, "invokes a UDF that is called on each form in a formlist.", false, 2, kParams_OneFormList_OneFunction);
