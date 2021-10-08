@@ -220,7 +220,9 @@ bool Cmd_ForEach_Execute(COMMAND_ARGS)
 			}
 			else if (context->variableType == Script::eVarType_Ref)
 			{
-				loop = new ContainerIterLoop(context);
+				if IS_ID(((TESForm*)context->sourceID), BGSListForm)
+					loop = new FormListIterLoop(context);
+				else loop = new ContainerIterLoop(context);
 			}
 		}
 	}
