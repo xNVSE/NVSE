@@ -378,9 +378,7 @@ bool Cmd_GetPackageTargetCount_Execute(COMMAND_ARGS)
 bool Cmd_GetPackageCount_Eval(COMMAND_ARGS_EVAL)
 {
 	*result = 0;
-	UInt32* intResult = (UInt32*)result;
 	TESAIForm* pAI = NULL;
-
 	Actor* pActor = DYNAMIC_CAST(thisObj, TESForm, Actor);
 	if (pActor)
 		pAI = DYNAMIC_CAST(pActor->baseForm, TESForm, TESAIForm);
@@ -389,7 +387,11 @@ bool Cmd_GetPackageCount_Eval(COMMAND_ARGS_EVAL)
 		//DEBUG_MESSAGE("\t\tGPC E Actor:%x AI:[%#10x] intResult:[%0.f]\n", pActor->refID, pAI, *result);
 	}
 	if (IsConsoleMode())
-		Console_Print("GetPackageCount >> %u", *intResult);
+	{
+		// Can't directly use "%u" with a double.
+		UInt32 temp = *result;
+		Console_Print("GetPackageCount >> %u", temp);
+	}
 	return true;
 }
 
@@ -437,7 +439,7 @@ bool Cmd_GetNthPackage_Execute(COMMAND_ARGS)
 			*refResult = pPackage->refID;
 	}
 	if (IsConsoleMode())
-		Console_Print("GetNthPackage >> %u", *refResult);
+		Console_Print("GetNthPackage >> %08x (%s) [%s]", pPackage->refID, GetFullName(pPackage), pPackage->GetName());
 	//DEBUG_MESSAGE("\t\tGNP 1 Actor:%x index:[%d] package:[%010x]\n", pRefr->refID, anIndex, *result);
 	return true;
 }
