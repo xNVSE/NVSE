@@ -312,8 +312,9 @@ ScriptToken *ScriptToken::Create(ForEachContext *forEach)
 	}
 	else if (forEach->variableType == Script::eVarType_Ref)
 	{
-		TESObjectREFR *target = DYNAMIC_CAST((TESForm *)forEach->sourceID, TESForm, TESObjectREFR);
-		if (!target)
+		auto form = (TESForm *)forEach->sourceID;
+		TESObjectREFR *target = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+		if (!target && NOT_ID(form, BGSListForm))
 			return NULL;
 	}
 	else
