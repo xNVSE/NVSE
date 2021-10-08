@@ -56,7 +56,7 @@ DEFINE_CMD_ALT(ListClear, , removes all entries from the list, 0, 1, kParams_For
 
 static ParamInfo kParams_OneFormList_OneFunction[2] =
 {
-	{	"array",	kParamType_FormList,	0	},
+	{	"form list",	kParamType_FormList,	0	},
 	{	"condition user defined function",	kParamType_AnyForm,	0	},
 };
 
