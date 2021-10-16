@@ -151,7 +151,6 @@ bool NVSEPlugin_Query(const NVSEInterface* nvse, PluginInfo* info)
 			return false;
 		}
 	}
-
 	else
 	{
 		if (nvse->editorVersion < CS_VERSION_1_4_0_518)
@@ -170,19 +169,21 @@ bool NVSEPlugin_Load(const NVSEInterface* nvse)
 {
 	_MESSAGE("load");
 
-	g_pluginHandle = nvse->GetPluginHandle();
+	if (!nvse->isEditor)
+	{
+		g_pluginHandle = nvse->GetPluginHandle();
 
-	// save the NVSEinterface in cas we need it later
-	g_nvseInterface = (NVSEInterface*)nvse;
+		// save the NVSEinterface in cas we need it later
+		g_nvseInterface = (NVSEInterface*)nvse;
 
-	// register to receive messages from NVSE
-	g_messagingInterface = (NVSEMessagingInterface*)nvse->QueryInterface(kInterface_Messaging);
-	g_messagingInterface->RegisterListener(g_pluginHandle, "NVSE", MessageHandler);
+		// register to receive messages from NVSE
+		g_messagingInterface = (NVSEMessagingInterface*)nvse->QueryInterface(kInterface_Messaging);
+		g_messagingInterface->RegisterListener(g_pluginHandle, "NVSE", MessageHandler);
 
-#if RUNTIME
-	g_script = (NVSEScriptInterface*)nvse->QueryInterface(kInterface_Script);
-	ExtractArgsEx = g_script->ExtractArgsEx;
-#endif
+		g_script = (NVSEScriptInterface*)nvse->QueryInterface(kInterface_Script);
+		ExtractArgsEx = g_script->ExtractArgsEx;
+	}
+
 	/***************************************************************************
 	 *
 	 *	READ THIS!
