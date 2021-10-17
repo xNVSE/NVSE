@@ -4,6 +4,9 @@
     <Filter Include="nvse">
       <UniqueIdentifier>{92a4f350-f2ec-4fca-bdd3-927732d91b34}</UniqueIdentifier>
     </Filter>
+    <Filter Include="functions">
+      <UniqueIdentifier>{010e4101-a209-4fed-af9f-5ffa21a85c34}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\nvse\nvse\GameAPI.cpp">
@@ -119,6 +122,12 @@
       <Filter>nvse</Filter>
     </ClInclude>
     <ClInclude Include="..\nvse\nvse\GameScript.h" />
+    <ClInclude Include="fn_intro_to_script_functions.h">
+      <Filter>functions</Filter>
+    </ClInclude>
+    <ClInclude Include="fn_typed_functions.h">
+      <Filter>functions</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />
