@@ -6,10 +6,6 @@
 #include <string>
 //NoGore is unsupported in xNVSE
 
-#ifndef RegisterScriptCommand
-#define RegisterScriptCommand(name) 	nvse->RegisterCommand(&kCommandInfo_ ##name);
-#endif
-
 IDebugLog		gLog("nvse_plugin_example.log");
 PluginHandle	g_pluginHandle = kPluginHandle_Invalid;
 
@@ -18,11 +14,35 @@ NVSEInterface* g_nvseInterface;
 NVSECommandTableInterface* g_cmdTable;
 const CommandInfo* g_TFC;
 
-#if RUNTIME  //if non-GECK version (in-game)
+// RUNTIME = Is not being compiled as a GECK plugin.
+#if RUNTIME
 NVSEScriptInterface* g_script;
+NVSEStringVarInterface* g_stringInterface;
+NVSEArrayVarInterface* g_arrayInterface;
+bool (*ExtractArgsEx)(COMMAND_ARGS_EX, ...);
 #endif
 
-bool (*ExtractArgsEx)(COMMAND_ARGS_EX, ...);
+/****************
+ * Here we include the code + definitions for our script functions,
+ * which are packed in header files to avoid lengthening this file.
+ * Notice that these files don't require #include statements for globals/macros like ExtractArgsEx.
+ * This is because the "fn_.h" files are only used here,
+ * and they are included after such globals/macros have been defined.
+ ***************/
+#include "fn_intro_to_script_functions.h" 
+#include "fn_typed_functions.h"
+
+
+// Shortcut macro to register a script command (assigning it an Opcode).
+#define RegisterScriptCommand(name) 	nvse->RegisterCommand(&kCommandInfo_ ##name)
+
+// Short version of RegisterScriptCommand.
+#define REG_CMD(name) RegisterScriptCommand(name)
+
+// Use this when the function's return type is not a number (when registering array/form/string functions).
+//Credits: taken from JohnnyGuitarNVSE.
+#define REG_TYPED_CMD(name, type)	nvse->RegisterTypedCommand(&kCommandInfo_##name,kRetnType_##type)
+
 
 // This is a message handler for nvse events
 // With this, plugins can listen to messages such as whenever the game loads
@@ -67,59 +87,6 @@ void MessageHandler(NVSEMessagingInterface::Message* msg)
 		break;
 	}
 }
-
-bool Cmd_ExamplePlugin_PluginTest_Execute(COMMAND_ARGS);
-
-#if RUNTIME  //if non-GECK version (in-game)
-//In here we define a script function
-//Script functions must always follow the Cmd_FunctionName_Execute naming convention
-bool Cmd_ExamplePlugin_PluginTest_Execute(COMMAND_ARGS)
-{
-	_MESSAGE("plugintest");
-
-	*result = 42;
-
-	Console_Print("plugintest running");
-
-	return true;
-}
-#endif
-
-//This defines a function without a condition, that does not take any arguments
-DEFINE_COMMAND_PLUGIN(ExamplePlugin_PluginTest, "prints a string", false, NULL)
-
-bool Cmd_ExamplePlugin_IsNPCFemale_Eval(COMMAND_ARGS_EVAL);
-
-#if RUNTIME
-//Conditions must follow the Cmd_FunctionName_Eval naming convention
-bool Cmd_ExamplePlugin_IsNPCFemale_Eval(COMMAND_ARGS_EVAL)
-{
-
-	TESNPC* npc = (TESNPC*)arg1;
-	*result = npc->baseData.IsFemale() ? 1 : 0;
-	return true;
-}
-#endif
-
-bool Cmd_ExamplePlugin_IsNPCFemale_Execute(COMMAND_ARGS);
-
-#if RUNTIME
-bool Cmd_ExamplePlugin_IsNPCFemale_Execute(COMMAND_ARGS)
-{
-	//Created a simple condition 
-	//thisObj is what the script extracts as parent caller
-	//EG, Ref.IsFemale would make thisObj = ref
-	//We are using actor bases though, so the function is called as such: ExamplePlugin_IsNPCFemale baseForm
-	TESNPC* npc = 0;
-	if (ExtractArgsEx(EXTRACT_ARGS_EX, &npc))
-	{
-		Cmd_ExamplePlugin_IsNPCFemale_Eval(thisObj, npc, NULL, result);
-	}
-
-	return true;
-}
-#endif
-DEFINE_COMMAND_PLUGIN(ExamplePlugin_IsNPCFemale, "Checks if npc is female", false, kParams_OneActorBase)
 
 bool NVSEPlugin_Query(const NVSEInterface* nvse, PluginInfo* info)
 {
@@ -169,20 +136,26 @@ bool NVSEPlugin_Load(const NVSEInterface* nvse)
 {
 	_MESSAGE("load");
 
+	g_pluginHandle = nvse->GetPluginHandle();
+
+	// save the NVSEinterface in cas we need it later
+	g_nvseInterface = (NVSEInterface*)nvse;
+
+	// register to receive messages from NVSE
+	g_messagingInterface = (NVSEMessagingInterface*)nvse->QueryInterface(kInterface_Messaging);
+	g_messagingInterface->RegisterListener(g_pluginHandle, "NVSE", MessageHandler);
+
 	if (!nvse->isEditor)
 	{
-		g_pluginHandle = nvse->GetPluginHandle();
-
-		// save the NVSEinterface in cas we need it later
-		g_nvseInterface = (NVSEInterface*)nvse;
-
-		// register to receive messages from NVSE
-		g_messagingInterface = (NVSEMessagingInterface*)nvse->QueryInterface(kInterface_Messaging);
-		g_messagingInterface->RegisterListener(g_pluginHandle, "NVSE", MessageHandler);
-
+#if RUNTIME
+		// script and function-related interfaces
 		g_script = (NVSEScriptInterface*)nvse->QueryInterface(kInterface_Script);
+		g_stringInterface = (NVSEStringVarInterface*)nvse->QueryInterface(kInterface_StringVar);
+		g_arrayInterface = (NVSEArrayVarInterface*)nvse->QueryInterface(kInterface_ArrayVar);
 		ExtractArgsEx = g_script->ExtractArgsEx;
+#endif
 	}
+	
 
 	/***************************************************************************
 	 *
@@ -198,10 +171,40 @@ bool NVSEPlugin_Load(const NVSEInterface* nvse)
 	 *
 	 **************************************************************************/
 
+	// Do NOT use this value when releasing your plugin; request your own opcode range.
+	UInt32 const examplePluginOpcodeBase = 0x2000;
+	
 	 // register commands
-	nvse->SetOpcodeBase(0x2000);
-	RegisterScriptCommand(ExamplePlugin_PluginTest);
-	RegisterScriptCommand(ExamplePlugin_IsNPCFemale);
-
+	nvse->SetOpcodeBase(examplePluginOpcodeBase);
+	
+	/*************************
+	 * The hexadecimal Opcodes are written as comments to the left of their respective functions.
+	 * It's important to keep track of how many Opcodes are being used up,
+	 * as each plugin is given a limited range which may need to be expanded at some point.
+	 *
+	 * === How Opcodes Work ===
+	 * Each function is associated to an Opcode,
+	 * which the game uses to look-up where to find your function's code.
+	 * It is CRUCIAL to never change a function's Opcode once it is released to the public.
+	 * This is because when compiling a script, each function being called are represented as Opcodes.
+	 * So changing a function's Opcode will invalidate previously compiled scripts,
+	 * as they will fail to look up that function properly, instead probably finding some other function.
+	 *
+	 * Example: say we compile a script that uses ExamplePlugin_IsNPCFemale.
+	 * The compiled script will check for the Opcode 0x2002 to call that function, and should work fine.
+	 * If we remove /REG_CMD(ExamplePlugin_CrashScript);/, and don't register a new function to replace it,
+	 * then `REG_CMD(ExamplePlugin_IsNPCFemale);` now registers with Opcode #0x2001.
+	 * When we test the script now, a bug/crash is bound to happen,
+	 * since the script is looking for an Opcode which is no longer bound to the expected function.
+	 ************************/
+	
+	/*2000*/ RegisterScriptCommand(ExamplePlugin_PluginTest);
+	/*2001*/ REG_CMD(ExamplePlugin_CrashScript);
+	/*2002*/ REG_CMD(ExamplePlugin_IsNPCFemale);
+	/*2003*/ REG_CMD(ExamplePlugin_FunctionWithAnAlias);
+	/*2004*/ REG_TYPED_CMD(ExamplePlugin_ReturnForm, Form);
+	/*2005*/ REG_TYPED_CMD(ExamplePlugin_ReturnString, String);	// ignore the highlighting for String class, that's not being used here.
+	/*2006*/ REG_TYPED_CMD(ExamplePlugin_ReturnArray, Array);
+	
 	return true;
 }
