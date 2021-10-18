@@ -13,11 +13,14 @@ NVSEMessagingInterface* g_messagingInterface;
 NVSEInterface* g_nvseInterface;
 NVSECommandTableInterface* g_cmdTable;
 const CommandInfo* g_TFC;
+
+// RUNTIME = Is not being compiled as a GECK plugin.
+#if RUNTIME
 NVSEScriptInterface* g_script;
 NVSEStringVarInterface* g_stringInterface;
-NVSEArrayVarInterface* g_arrayInterface; 
-
+NVSEArrayVarInterface* g_arrayInterface;
 bool (*ExtractArgsEx)(COMMAND_ARGS_EX, ...);
+#endif
 
 /****************
  * Here we include the code + definitions for our script functions,
@@ -133,24 +136,25 @@ bool NVSEPlugin_Load(const NVSEInterface* nvse)
 {
 	_MESSAGE("load");
 
+	g_pluginHandle = nvse->GetPluginHandle();
+
+	// save the NVSEinterface in cas we need it later
+	g_nvseInterface = (NVSEInterface*)nvse;
+
+	// register to receive messages from NVSE
+	g_messagingInterface = (NVSEMessagingInterface*)nvse->QueryInterface(kInterface_Messaging);
+	g_messagingInterface->RegisterListener(g_pluginHandle, "NVSE", MessageHandler);
+
 	if (!nvse->isEditor)
 	{
-		g_pluginHandle = nvse->GetPluginHandle();
-
-		// save the NVSEinterface in cas we need it later
-		g_nvseInterface = (NVSEInterface*)nvse;
-
-		// register to receive messages from NVSE
-		g_messagingInterface = (NVSEMessagingInterface*)nvse->QueryInterface(kInterface_Messaging);
-		g_messagingInterface->RegisterListener(g_pluginHandle, "NVSE", MessageHandler);
-
+#if RUNTIME
 		// script and function-related interfaces
 		g_script = (NVSEScriptInterface*)nvse->QueryInterface(kInterface_Script);
 		g_stringInterface = (NVSEStringVarInterface*)nvse->QueryInterface(kInterface_StringVar);
 		g_arrayInterface = (NVSEArrayVarInterface*)nvse->QueryInterface(kInterface_ArrayVar);
 		ExtractArgsEx = g_script->ExtractArgsEx;
+#endif
 	}
-
 	
 
 	/***************************************************************************

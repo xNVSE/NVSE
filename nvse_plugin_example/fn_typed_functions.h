@@ -2,6 +2,7 @@
 
 DEFINE_COMMAND_PLUGIN(ExamplePlugin_ReturnForm, "Returns the form that was given.", false, kParams_OneForm)
 
+#if RUNTIME
 bool Cmd_ExamplePlugin_ReturnForm_Execute(COMMAND_ARGS)
 {
 	*result = 0;
@@ -18,10 +19,12 @@ bool Cmd_ExamplePlugin_ReturnForm_Execute(COMMAND_ARGS)
 	
 	return true;
 }
+#endif
 
 
 DEFINE_COMMAND_PLUGIN(ExamplePlugin_ReturnString, "Returns the string that was given.", false, kParams_OneString)
 
+#if RUNTIME
 bool Cmd_ExamplePlugin_ReturnString_Execute(COMMAND_ARGS)
 {
 	*result = 0;
@@ -36,7 +39,7 @@ bool Cmd_ExamplePlugin_ReturnString_Execute(COMMAND_ARGS)
 	
 	return true;
 }
-
+#endif
 
 // Define a parameter to interpret an int as an array, since a plugin cannot accept an array-type argument yet.
 static ParamInfo kParams_OneArray[1] =
@@ -45,11 +48,14 @@ static ParamInfo kParams_OneArray[1] =
 };
 
 // Shorthand aliases.
+#if RUNTIME
 using NVSEArrayVar = NVSEArrayVarInterface::Array;
 using NVSEArrayElement = NVSEArrayVarInterface::Element;
+#endif
 
 DEFINE_COMMAND_PLUGIN(ExamplePlugin_ReturnArray, "Returns the array that was given.", false, kParams_OneArray)
 
+#if RUNTIME
 bool Cmd_ExamplePlugin_ReturnArray_Execute(COMMAND_ARGS)
 {
 	*result = 0;
@@ -63,3 +69,4 @@ bool Cmd_ExamplePlugin_ReturnArray_Execute(COMMAND_ARGS)
 
 	return true;
 }
+#endif
