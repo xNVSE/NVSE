@@ -171,6 +171,9 @@ public:
 
 TESForm* GetPermanentBaseForm(TESObjectREFR* thisObj);	// For LevelledForm, find real baseForm, not temporary one.
 
+// Taken from JIP LN NVSE.
+float __vectorcall GetDistance3D(TESObjectREFR* ref1, TESObjectREFR* ref2);
+
 STATIC_ASSERT(offsetof(TESObjectREFR, baseForm) == 0x020);
 STATIC_ASSERT(offsetof(TESObjectREFR, extraDataList) == 0x044);
 STATIC_ASSERT(sizeof(TESObjectREFR) == 0x068);

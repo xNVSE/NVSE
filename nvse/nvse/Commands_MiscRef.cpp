@@ -678,6 +678,7 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	UInt32 includeTakenRefs = 0;
 	double uGrid = 0;
 	double arrIndex = 0;
+	float maxDistance = 0;
 
 	PlayerCharacter* pc = PlayerCharacter::GetSingleton();
 	if (!pc || !(pc->parentCell))
@@ -685,18 +686,21 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 
 	TESObjectCELL* cell = NULL;
 	if (bUsePlayerCell)
-		if (ExtractArgs(EXTRACT_ARGS, &formType, &cellDepth, &includeTakenRefs))
+		if (ExtractArgs(EXTRACT_ARGS, &formType, &cellDepth, &includeTakenRefs, &maxDistance))
 			cell = pc->parentCell;
 		else
 			return true;
 	else
-		if (!ExtractArgs(EXTRACT_ARGS, &cell, &formType, &cellDepth, &includeTakenRefs))
+		if (!ExtractArgs(EXTRACT_ARGS, &cell, &formType, &cellDepth, &includeTakenRefs, &maxDistance))
 			return true;
 
 	if (!cell)
 		return true;
 
-	bool bIncludeTakenRefs = includeTakenRefs ? true : false;
+	if (!thisObj)
+		maxDistance = 0;
+
+	bool const bIncludeTakenRefs = includeTakenRefs ? true : false;
 	if (cellDepth == -127)
 		cellDepth = 0;
 	else if (cellDepth == -1)
@@ -713,8 +717,15 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 		const TESObjectCELL::RefList& refList = info.curCell->objectList;
 		for (TESObjectCELL::RefList::Iterator iter = refList.Begin(); !iter.End(); ++iter)
 		{
-			TESObjectREFR * pRefr = iter.Get();
+			TESObjectREFR* pRefr = iter.Get();
 			if (pRefr)
+			{
+				if (maxDistance <= 0 
+					|| GetDistance3D(thisObj, pRefr) > maxDistance)
+				{
+					continue;
+				}
+				
 				switch (formType)
 				{
 				case 0:
@@ -745,6 +756,7 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 						arrIndex += 1;
 					}
 				}
+			}
 		}
 		info.NextCell();
 	}

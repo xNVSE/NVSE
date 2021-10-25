@@ -15,14 +15,15 @@ DEFINE_COMMAND(GetParentCellOwner, returns the owner of the cell of the calling 
 DEFINE_COMMAND(GetOwningFactionRequiredRank, returns the required rank for ownership of the calling reference, 1, 0, NULL);
 DEFINE_COMMAND(GetParentCellOwningFactionRequiredRank, returns the required rank for ownership of the cell of the calling reference, 1, 0, NULL);
 
-static ParamInfo kParams_GetFirstRef[3] =
+static ParamInfo kParams_GetFirstRef[4] =
 {
 	{	"form type",			kParamType_Integer,	1	},
 	{	"cell depth",			kParamType_Integer,	1	},
 	{	"include taken refs",	kParamType_Integer,	1	},
+	{	"max distance",	kParamType_Float,			1	},
 };
 
-DEFINE_COMMAND(GetFirstRef, returns the first reference of the specified type in the current cell, 0, 3, kParams_GetFirstRef);
+DEFINE_COMMAND(GetFirstRef, returns the first reference of the specified type in the current cell, 0, 4, kParams_GetFirstRef);
 DEFINE_COMMAND(GetNextRef, returns the next reference of a given type in the current cell, 0, 0, NULL);
 DEFINE_COMMAND(GetNumRefs, returns the number of references of a given type in the current cell, 0, 3, kParams_GetFirstRef);
 DEFINE_COMMAND(GetRefs, returns an array of references of a given type in the current cell, 0, 3, kParams_GetFirstRef);
@@ -36,15 +37,17 @@ static ParamInfo kParams_GetInGrid[3] =
 
 DEFINE_COMMAND(GetInGrid, returns if a specific reference is in the current cell, 0, 3, kParams_GetInGrid);
 
-static ParamInfo kParams_GetFirstRefInCell[4] =
+static ParamInfo kParams_GetFirstRefInCell[5] =
 {
 	{	"cell",					kParamType_Cell,	0	},
 	{	"form type",			kParamType_Integer,	1	},
 	{	"cell depth",			kParamType_Integer,	1	},
 	{	"include taken refs",	kParamType_Integer,	1	},
+	{	"max distance",	kParamType_Float,			1	},
+
 };
 
-DEFINE_COMMAND(GetFirstRefInCell, returns the first reference of the specified type in the specified cell, 0, 4, kParams_GetFirstRefInCell);
+DEFINE_COMMAND(GetFirstRefInCell, returns the first reference of the specified type in the specified cell, 0, 5, kParams_GetFirstRefInCell);
 DEFINE_COMMAND(GetNumRefsInCell, returns the number of references of a given type in the specified cell, 0, 4, kParams_GetFirstRefInCell);
 DEFINE_COMMAND(GetRefsInCell, returns an array of references of a given type in the specified cell, 0, 4, kParams_GetFirstRefInCell);
 

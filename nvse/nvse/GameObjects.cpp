@@ -208,6 +208,24 @@ TESForm* GetPermanentBaseForm(TESObjectREFR* thisObj)	// For LevelledForm, find 
 	return NULL;
 }
 
+// Taken from JIP LN NVSE.
+__declspec(naked) float __vectorcall GetDistance3D(TESObjectREFR* ref1, TESObjectREFR* ref2)
+{
+	__asm
+	{
+		movups	xmm0, [ecx + 0x30]
+		movups	xmm1, [edx + 0x30]
+		subps	xmm0, xmm1
+		mulps	xmm0, xmm0
+		movhlps	xmm1, xmm0
+		addss	xmm1, xmm0
+		psrlq	xmm0, 0x20
+		addss	xmm1, xmm0
+		sqrtss	xmm0, xmm1
+		retn
+	}
+}
+
 void Actor::EquipItem(TESForm * objType, UInt32 equipCount, ExtraDataList* itemExtraList, UInt32 unk3, bool lockEquip, UInt32 unk5)
 {
 	ThisStdCall(s_Actor_EquipItem, this, objType, equipCount, itemExtraList, unk3, lockEquip, unk5);
