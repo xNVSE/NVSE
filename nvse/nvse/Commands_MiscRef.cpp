@@ -702,22 +702,28 @@ static bool GetNumRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	CellScanInfo info(cellDepth, formType, bIncludeTakenRefs, cell);
 	info.FirstCell();
 
+	auto const anyFormMatcher = RefMatcherAnyForm(bIncludeTakenRefs, thisObj, maxDistance);
+	auto const actorMatcher = RefMatcherActor(thisObj, maxDistance);
+	auto const itemMatcher = RefMatcherItem(bIncludeTakenRefs, thisObj, maxDistance);
+	auto const formTypeMatcher = RefMatcherFormType(formType, bIncludeTakenRefs, thisObj, maxDistance);
+
 	while (info.curCell)
 	{
 		const TESObjectCELL::RefList& refList = info.curCell->objectList;
+		
 		switch (formType)
 		{
 		case 0:
-			*result += refList.CountIf(RefMatcherAnyForm(bIncludeTakenRefs, thisObj, maxDistance));
+			*result += refList.CountIf(anyFormMatcher);
 			break;
 		case 200:
-			*result += refList.CountIf(RefMatcherActor(thisObj, maxDistance));
+			*result += refList.CountIf(actorMatcher);
 			break;
 		case 201:
-			*result += refList.CountIf(RefMatcherItem(bIncludeTakenRefs, thisObj, maxDistance));
+			*result += refList.CountIf(itemMatcher);
 			break;
 		default:
-			*result += refList.CountIf(RefMatcherFormType(formType, bIncludeTakenRefs, thisObj, maxDistance));
+			*result += refList.CountIf(formTypeMatcher);
 		}
 		info.NextCell();
 	}
@@ -776,6 +782,11 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	CellScanInfo info(cellDepth, formType, bIncludeTakenRefs, cell);
 	info.FirstCell();
 
+	auto const anyFormMatcher = RefMatcherAnyForm(bIncludeTakenRefs, thisObj, maxDistance);
+	auto const actorMatcher = RefMatcherActor(thisObj, maxDistance);
+	auto const itemMatcher = RefMatcherItem(bIncludeTakenRefs, thisObj, maxDistance);
+	auto const formTypeMatcher = RefMatcherFormType(formType, bIncludeTakenRefs, thisObj, maxDistance);
+
 	while (info.curCell)
 	{
 		const TESObjectCELL::RefList& refList = info.curCell->objectList;
@@ -786,28 +797,28 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 				switch (formType)
 				{
 				case 0:
-					if (RefMatcherAnyForm(bIncludeTakenRefs, thisObj, maxDistance).Accept(pRefr))
+					if (anyFormMatcher.Accept(pRefr))
 					{
 						arr->SetElementFormID(arrIndex, pRefr->refID);
 						arrIndex += 1;
 					}
 					break;
 				case 200:
-					if (RefMatcherActor(thisObj, maxDistance).Accept(pRefr))
+					if (actorMatcher.Accept(pRefr))
 					{
 						arr->SetElementFormID(arrIndex, pRefr->refID);
 						arrIndex += 1;
 					}
 					break;
 				case 201:
-					if (RefMatcherItem(bIncludeTakenRefs, thisObj, maxDistance).Accept(pRefr))
+					if (itemMatcher.Accept(pRefr))
 					{
 						arr->SetElementFormID(arrIndex, pRefr->refID);
 						arrIndex += 1;
 					}
 					break;
 				default:
-					if (RefMatcherFormType(formType, bIncludeTakenRefs, thisObj, maxDistance).Accept(pRefr))
+					if (formTypeMatcher.Accept(pRefr))
 					{
 						arr->SetElementFormID(arrIndex, pRefr->refID);
 						arrIndex += 1;
