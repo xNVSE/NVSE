@@ -353,9 +353,6 @@ public:
 		if (!m_includeTaken && refr->IsTaken())
 			return false;
 
-		if (refr->baseForm->refID == 7) //exclude player
-			return false;
-
 		if (m_distanceRef && m_maxDistance > 0)
 		{
 			if (GetDistance3D(m_distanceRef, refr) > m_maxDistance)
