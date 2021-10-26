@@ -209,7 +209,7 @@ TESForm* GetPermanentBaseForm(TESObjectREFR* thisObj)	// For LevelledForm, find 
 }
 
 // Taken from JIP LN NVSE.
-__declspec(naked) float __vectorcall GetDistance3D(TESObjectREFR* ref1, TESObjectREFR* ref2)
+__declspec(naked) float __vectorcall GetDistance3D(const TESObjectREFR* ref1, const TESObjectREFR* ref2)
 {
 	__asm
 	{

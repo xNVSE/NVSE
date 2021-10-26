@@ -318,6 +318,7 @@ class RefMatcherARefr
 {
 	bool m_includeTaken;
 	TESObjectREFR* m_refr;
+
 public:
 	RefMatcherARefr(bool includeTaken, TESObjectREFR* refr) : m_includeTaken(includeTaken), m_refr(refr)
 		{ }
@@ -335,17 +336,35 @@ public:
 
 class RefMatcherAnyForm
 {
-	bool m_includeTaken;
-public:
-	RefMatcherAnyForm(bool includeTaken) : m_includeTaken(includeTaken)
-		{ }
+	bool m_includeTaken;	//if true, ignore.
+	TESObjectREFR* m_distanceRef;	//if null, ignore distance check.
+	float m_maxDistance;	//if 0, ignore.
 
-	bool Accept(const TESObjectREFR* refr)
+public:
+	RefMatcherAnyForm(bool includeTaken) : m_includeTaken(includeTaken), m_maxDistance(0), m_distanceRef(nullptr)
+	{}
+
+	RefMatcherAnyForm(bool includeTaken, TESObjectREFR* distanceRef, float maxDistance):
+	m_includeTaken(includeTaken), m_distanceRef(distanceRef), m_maxDistance(maxDistance)
+	{}
+
+	bool Accept(const TESObjectREFR* refr) const
 	{
-		if (m_includeTaken || !(refr->IsTaken()))
-			return true;
-		else
+		if (!m_includeTaken && refr->IsTaken())
 			return false;
+
+		if (refr->baseForm->refID == 7) //exclude player
+			return false;
+
+		if (m_distanceRef && m_maxDistance > 0)
+		{
+			if (GetDistance3D(m_distanceRef, refr) > m_maxDistance)
+			{
+				return false;
+			}
+		}
+		
+		return true;
 	}
 };
 
@@ -353,46 +372,83 @@ class RefMatcherFormType
 {
 	UInt32 m_formType;
 	bool m_includeTaken;
+	TESObjectREFR* m_distanceRef = nullptr;	//if null, ignore distance check.
+	float m_maxDistance = 0;	//if 0, ignore.
+
 public:
 	RefMatcherFormType(UInt32 formType, bool includeTaken) : m_formType(formType), m_includeTaken(includeTaken)
-		{ }
+	{}
 
-	bool Accept(const TESObjectREFR* refr)
+	RefMatcherFormType(UInt32 formType, bool includeTaken, TESObjectREFR* distanceRef, float maxDistance):
+	m_formType(formType), m_includeTaken(includeTaken), m_distanceRef(distanceRef), m_maxDistance(maxDistance)
+	{}
+
+	bool Accept(const TESObjectREFR* refr) const
 	{
 		if (!m_includeTaken && refr->IsTaken())
 			return false;
-		else if (refr->baseForm->typeID == m_formType && refr->baseForm->refID != 7)	//exclude player for kFormType_TESNPC
-			return true;
-		else
+		
+		if (refr->baseForm->typeID != m_formType || refr->baseForm->refID == 7)	//exclude player for kFormType_TESNPC
 			return false;
+
+		if (m_distanceRef && m_maxDistance > 0)
+		{
+			if (GetDistance3D(m_distanceRef, refr) > m_maxDistance)
+			{
+				return false;
+			}
+		}
+
+		return true;
 	}
 };
 
 class RefMatcherActor
 {
+	TESObjectREFR* m_distanceRef = nullptr;	//if null, ignore distance check.
+	float m_maxDistance = 0;	//if 0, ignore.
+	
 public:
-	RefMatcherActor()
-		{ }
-
-	bool Accept(const TESObjectREFR* refr)
+	RefMatcherActor() = default;
+	RefMatcherActor(TESObjectREFR* distanceRef, float maxDistance):
+	m_distanceRef(distanceRef), m_maxDistance(maxDistance)
+	{}
+	
+	bool Accept(const TESObjectREFR* refr) const
 	{
-		if (refr->baseForm->typeID == kFormType_TESCreature)
-			return true;
-		else if (refr->baseForm->typeID == kFormType_TESNPC && refr->baseForm->refID != 7) //exclude the player
-			return true;
-		else
+		if (refr->baseForm->typeID != kFormType_TESCreature
+			&& (refr->baseForm->typeID != kFormType_TESNPC || refr->baseForm->refID == 7)) //exclude the player
+		{
 			return false;
+		}
+
+		if (m_distanceRef && m_maxDistance > 0)
+		{
+			if (GetDistance3D(m_distanceRef, refr) > m_maxDistance)
+			{
+				return false;
+			}
+		}
+
+		return true;
 	}
 };
 
 class RefMatcherItem
 {
 	bool m_includeTaken;
+	TESObjectREFR* m_distanceRef = nullptr;	//if null, ignore distance check.
+	float m_maxDistance = 0;	//if 0, ignore.
+
 public:
 	RefMatcherItem(bool includeTaken) : m_includeTaken(includeTaken)
-		{ }
+	{ }
 
-	bool Accept(const TESObjectREFR* refr)
+	RefMatcherItem(bool includeTaken, TESObjectREFR* distanceRef, float maxDistance) :
+	m_includeTaken(includeTaken), m_distanceRef(distanceRef), m_maxDistance(maxDistance)
+	{ }
+
+	bool Accept(const TESObjectREFR* refr) const
 	{
 		if (!m_includeTaken && refr->IsTaken())
 			return false;
@@ -409,15 +465,25 @@ public:
 			case kFormType_TESKey:
 			case kFormType_AlchemyItem:
 			case kFormType_TESObjectARMA:
-				return true;
+				break;
 
 			case kFormType_TESObjectLIGH:
-				TESObjectLIGH* light = DYNAMIC_CAST(refr->baseForm, TESForm, TESObjectLIGH);
-				if (light)
+				if (TESObjectLIGH* light = DYNAMIC_CAST(refr->baseForm, TESForm, TESObjectLIGH))
 					if (light->icon.ddsPath.m_dataLen)	//temp hack until I find canCarry flag on TESObjectLIGH
-						return true;
+						break;
+			default:
+				return false;
 		}
-		return false;
+
+		if (m_distanceRef && m_maxDistance > 0)
+		{
+			if (GetDistance3D(m_distanceRef, refr) > m_maxDistance)
+			{
+				return false;
+			}
+		}
+		
+		return true;
 	}
 };
 
@@ -605,6 +671,7 @@ static bool GetNumRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	SInt32 cellDepth = -127;
 	UInt32 includeTakenRefs = 0;
 	double uGrid = 0;
+	float maxDistance = 0;
 
 	PlayerCharacter* pc = PlayerCharacter::GetSingleton();
 	if (!pc || !(pc->parentCell))
@@ -612,18 +679,18 @@ static bool GetNumRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 
 	TESObjectCELL* cell = NULL;
 	if (bUsePlayerCell)
-		if (ExtractArgs(EXTRACT_ARGS, &formType, &cellDepth, &includeTakenRefs))
+		if (ExtractArgs(EXTRACT_ARGS, &formType, &cellDepth, &includeTakenRefs, &maxDistance))
 			cell = pc->parentCell;
 		else
 			return true;
 	else
-		if (!ExtractArgs(EXTRACT_ARGS, &cell, &formType, &cellDepth, &includeTakenRefs))
+		if (!ExtractArgs(EXTRACT_ARGS, &cell, &formType, &cellDepth, &includeTakenRefs, &maxDistance))
 			return true;
 
 	if (!cell)
 		return true;
 
-	bool bIncludeTakenRefs = includeTakenRefs ? true : false;
+	bool const bIncludeTakenRefs = includeTakenRefs ? true : false;
 	if (cellDepth == -127)
 		cellDepth = 0;
 	else if (cellDepth == -1)
@@ -641,16 +708,16 @@ static bool GetNumRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 		switch (formType)
 		{
 		case 0:
-			*result += refList.CountIf(RefMatcherAnyForm(bIncludeTakenRefs));
+			*result += refList.CountIf(RefMatcherAnyForm(bIncludeTakenRefs, thisObj, maxDistance));
 			break;
 		case 200:
-			*result += refList.CountIf(RefMatcherActor());
+			*result += refList.CountIf(RefMatcherActor(thisObj, maxDistance));
 			break;
 		case 201:
-			*result += refList.CountIf(RefMatcherItem(bIncludeTakenRefs));
+			*result += refList.CountIf(RefMatcherItem(bIncludeTakenRefs, thisObj, maxDistance));
 			break;
 		default:
-			*result += refList.CountIf(RefMatcherFormType(formType, bIncludeTakenRefs));
+			*result += refList.CountIf(RefMatcherFormType(formType, bIncludeTakenRefs, thisObj, maxDistance));
 		}
 		info.NextCell();
 	}
@@ -697,9 +764,6 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	if (!cell)
 		return true;
 
-	if (!thisObj)
-		maxDistance = 0;
-
 	bool const bIncludeTakenRefs = includeTakenRefs ? true : false;
 	if (cellDepth == -127)
 		cellDepth = 0;
@@ -717,40 +781,33 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 		const TESObjectCELL::RefList& refList = info.curCell->objectList;
 		for (TESObjectCELL::RefList::Iterator iter = refList.Begin(); !iter.End(); ++iter)
 		{
-			TESObjectREFR* pRefr = iter.Get();
-			if (pRefr)
+			if (TESObjectREFR* const pRefr = iter.Get())
 			{
-				if (maxDistance <= 0 
-					|| GetDistance3D(thisObj, pRefr) > maxDistance)
-				{
-					continue;
-				}
-				
 				switch (formType)
 				{
 				case 0:
-					if (RefMatcherAnyForm(bIncludeTakenRefs).Accept(pRefr))
+					if (RefMatcherAnyForm(bIncludeTakenRefs, thisObj, maxDistance).Accept(pRefr))
 					{
 						arr->SetElementFormID(arrIndex, pRefr->refID);
 						arrIndex += 1;
 					}
 					break;
 				case 200:
-					if (RefMatcherActor().Accept(pRefr))
+					if (RefMatcherActor(thisObj, maxDistance).Accept(pRefr))
 					{
 						arr->SetElementFormID(arrIndex, pRefr->refID);
 						arrIndex += 1;
 					}
 					break;
 				case 201:
-					if (RefMatcherItem(bIncludeTakenRefs).Accept(pRefr))
+					if (RefMatcherItem(bIncludeTakenRefs, thisObj, maxDistance).Accept(pRefr))
 					{
 						arr->SetElementFormID(arrIndex, pRefr->refID);
 						arrIndex += 1;
 					}
 					break;
 				default:
-					if (RefMatcherFormType(formType, bIncludeTakenRefs).Accept(pRefr))
+					if (RefMatcherFormType(formType, bIncludeTakenRefs, thisObj, maxDistance).Accept(pRefr))
 					{
 						arr->SetElementFormID(arrIndex, pRefr->refID);
 						arrIndex += 1;
