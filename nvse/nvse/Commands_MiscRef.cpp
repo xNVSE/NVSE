@@ -414,7 +414,7 @@ public:
 	bool Accept(const TESObjectREFR* refr) const
 	{
 		if (refr->baseForm->typeID != kFormType_TESCreature
-			&& (refr->baseForm->typeID != kFormType_TESNPC || refr->baseForm->refID == 7)) //exclude the player
+			&& (refr->baseForm->typeID != kFormType_TESNPC || refr->baseForm->refID == 7)) //exclude the player for kFormType_TESNPC
 		{
 			return false;
 		}
