@@ -190,17 +190,21 @@ static ParamInfo kNVSEParams_OneArray_OneFunction[2] =
 	{	"condition user defined function",		kNVSEParamType_Form,	0	},
 };
 
-DEFINE_COMMAND_EXP(ar_FindWhere, finds first element in array which satisfies a condition, false, kNVSEParams_OneArray_OneFunction);
-DEFINE_COMMAND_EXP(ar_Filter, filters an array on a condition, false, kNVSEParams_OneArray_OneFunction);
-DEFINE_COMMAND_EXP(ar_MapTo, transforms an array into a new array from a script, false, kNVSEParams_OneArray_OneFunction);
+DEFINE_COMMAND_EXP(ar_FindWhere, "finds first element in array which satisfies a condition", false, kNVSEParams_OneArray_OneFunction);
+DEFINE_COMMAND_EXP(ar_Filter, "filters an array on a condition", false, kNVSEParams_OneArray_OneFunction);
+DEFINE_COMMAND_EXP(ar_MapTo, "transforms an array into a new array from a script", false, kNVSEParams_OneArray_OneFunction);
+DEFINE_COMMAND_EXP(ar_ForEach, "calls a function on each element of array", false, kNVSEParams_OneArray_OneFunction);
+DEFINE_COMMAND_EXP(ar_Any, "checks if any of the elements in array satisfies a function script", false, kNVSEParams_OneArray_OneFunction);
+DEFINE_COMMAND_EXP(ar_All, "checks if all of the elements in array satisfy a function script", false, kNVSEParams_OneArray_OneFunction);
 
-static ParamInfo kNVSEParams_OneInt_OneFunction[2] =
+static ParamInfo kNVSEParams_OneInt_OneFunction_OneOptionalFunction[3] =
 {
 	{	"int",	kNVSEParamType_Number,	0	},
 	{	"condition user defined function",		kNVSEParamType_Form,	0	},
+	{	"condition user defined function",		kNVSEParamType_Form,	1	},
 };
 
-DEFINE_COMMAND_EXP(ar_Generate, "creates a new array from a function called each time for each element", false, kNVSEParams_OneInt_OneFunction);
+DEFINE_COMMAND_EXP(ar_Generate, "creates a new array from a function called each time for each element", false, kNVSEParams_OneInt_OneFunction_OneOptionalFunction);
 
 static ParamInfo kNVSEParams_OneInt_OneElem[2] =
 {
@@ -217,3 +221,10 @@ static ParamInfo kNVSEParams_TwoArrays[2] =
 };
 
 DEFINE_CMD_ALT_EXP(ar_DeepEquals, ar_DeepCompare, "checks if every element and sub-elements are identical between two arrays.", false, kNVSEParams_TwoArrays);
+
+static ParamInfo kNVSEParams_OneArray[] =
+{
+	{	"array",	kNVSEParamType_Array,	0	},
+};
+
+DEFINE_COMMAND_EXP(ar_Unique, "returns a new array with no duplicate elements from the source array", false, kNVSEParams_OneArray);

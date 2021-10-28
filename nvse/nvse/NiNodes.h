@@ -1,5 +1,7 @@
 #pragma once
 
+#include <span>
+
 #include "NiTypes.h"
 #include "GameTypes.h"
 #include "Utilities.h"
@@ -1214,6 +1216,8 @@ public:
 	static const char* StringForAnimGroupCode(UInt32 groupCode);
 	static UInt32 AnimGroupForString(const char* groupName);
 };
+
+extern std::span<TESAnimGroup::AnimGroupInfo> g_animGroups;
 
 void DumpAnimGroups(void);
 

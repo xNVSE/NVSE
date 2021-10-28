@@ -4,6 +4,7 @@
 #include "GameObjects.h"
 #include "GameTypes.h"
 #include "GameScript.h"
+#include "MemoizedMap.h"
 #include "StringVar.h"
 #include "printf.h"
 #include "ScriptAnalyzer.h"
@@ -937,13 +938,28 @@ ScriptEventList *ScriptEventList::Copy()
 			switch (type)
 			{
 			case NVSEVarType::kVarType_Array:
-				g_ArrayMap.AddReference(&newVar->data, var->data, m_script->GetModIndex());
-				AddToGarbageCollection(this, newVar, NVSEVarType::kVarType_Array);
-				continue;
+				{
+					if (var->data)
+					{
+						g_ArrayMap.AddReference(&newVar->data, var->data, m_script->GetModIndex());
+						AddToGarbageCollection(this, newVar, NVSEVarType::kVarType_Array);
+					}
+					else // ar_Null'ed
+						newVar->data = 0.0;
+					continue;
+				}
 			case NVSEVarType::kVarType_String:
-				newVar->data = g_StringMap.Add(m_script->GetModIndex(), g_StringMap.Get(var->data)->GetCString(), false, nullptr);
-				AddToGarbageCollection(this, newVar, NVSEVarType::kVarType_String);
-				continue;
+				{
+					auto* stringVar = g_StringMap.Get(var->data);
+					if (stringVar)
+					{
+						newVar->data = g_StringMap.Add(m_script->GetModIndex(), stringVar->GetCString(), false, nullptr);
+						AddToGarbageCollection(this, newVar, NVSEVarType::kVarType_String);
+					}
+					else // Sv_Destructed
+						newVar->data = 0.0;
+					continue;
+				}
 			default:
 				break;
 			}
@@ -960,7 +976,7 @@ bool vExtractExpression(ParamInfo *paramInfo, UInt8 *&scriptData, Script *script
 	scriptData += sizeof(UInt16);
 	double unusedResult = 0;
 	UInt32 offset = scriptData - static_cast<UInt8 *>(scriptDataIn);
-	ExpressionEvaluator evaluator(paramInfo, scriptDataIn, nullptr, nullptr, scriptObj, eventList, &unusedResult, &offset);
+	ExpressionEvaluator evaluator(paramInfo, scriptDataIn, OtherHooks::GetExecutingScriptContext()->scriptOwnerRef, nullptr, scriptObj, eventList, &unusedResult, &offset);
 	evaluator.m_inline = true;
 	auto *token = evaluator.Evaluate();
 	scriptData += offset - (scriptData - static_cast<UInt8 *>(scriptDataIn));
@@ -2414,30 +2430,19 @@ const char *GetActorValueString(UInt32 actorValue)
 	return name;
 }
 
-UInt32 GetActorValueForScript(const char *avStr)
+MemoizedMap<const char*, UInt32> s_avNameMap;
+
+UInt32 GetActorValueForString(const char *strActorVal)
 {
-	for (UInt32 i = 0; i <= eActorVal_FalloutMax; i++)
+	return s_avNameMap.Get(strActorVal, [](const char* strActorVal) -> UInt32
 	{
-		char *name = GetActorValueName(i);
-		if (_stricmp(avStr, name) == 0)
-			return i;
-	}
-
-	return eActorVal_NoActorValue;
-}
-
-UInt32 GetActorValueForString(const char *strActorVal, bool bForScript)
-{
-	if (bForScript)
-		return GetActorValueForScript(strActorVal);
-
-	for (UInt32 n = 0; n <= eActorVal_FalloutMax; n++)
-	{
-		char *name = GetActorValueName(n);
-		if (_stricmp(strActorVal, name) == 0)
-			return n;
-	}
-	return eActorVal_NoActorValue;
+		if (const auto iter = ra::find_if(g_actorValues, _L(ActorValueInfo* info, _stricmp(info->infoName, strActorVal) == 0)); 
+			iter != g_actorValues.end())
+		{
+			return iter - g_actorValues.begin();
+		}
+		return eActorVal_NoActorValue;
+	});
 }
 #if NVSE_CORE
 ScriptFormatStringArgs::ScriptFormatStringArgs(UInt32 _numArgs, UInt8 *_scriptData, Script *_scriptObj, ScriptEventList *_eventList, void *scriptDataIn)

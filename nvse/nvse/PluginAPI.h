@@ -261,6 +261,8 @@ struct NVSEMessagingInterface
 *		-Array, a zero-based array with consecutive integer keys
 *		-Map, a mapping of floating point keys to elements
 *		-StringMap, a mapping of string keys to elements
+*	These types can be checked using GetContainerType().
+*	
 *	Container elements are of type Element, which can hold (and supports implicit conversion from) a
 *	TESForm*, a C string, a double-precision float, or an Array*; the latter allows for the creation 
 *	of multi-dimensional arrays.
@@ -360,7 +362,15 @@ struct NVSEArrayVarInterface
 		Element(TESForm* _form) : form(_form), type(kType_Form) { }
 		Element(Array* _array) : arr(_array), type(kType_Array) { }
 		Element(const Element& rhs) { if (rhs.type == kType_String) { str = CopyCString(rhs.str); } else { num = rhs.num; } type = rhs.type; }
-		Element& operator=(const Element& rhs) { if (this != &rhs) { Reset(); if (rhs.type == kType_String) str = CopyCString(rhs.str); else num = rhs.num; type = rhs.type; } return *this; }
+		Element& operator=(const Element& rhs) {
+			if (this != &rhs) {
+				Reset();
+				if (rhs.type == kType_String) str = CopyCString(rhs.str);
+				else num = rhs.num; // works even if the type is non-numeric.
+				type = rhs.type;
+			}
+			return *this;
+		}
 
 		bool IsValid() const { return type != kType_Invalid; }
 		UInt8 GetType() const { return type; }
@@ -369,6 +379,22 @@ struct NVSEArrayVarInterface
 		Array * Array() { return type == kType_Array ? arr : NULL; }
 		TESForm * Form() { return type == kType_Form ? form : NULL; }
 		double Number() { return type == kType_Numeric ? num : 0.0; }
+		bool Bool()
+		{
+			switch (type)
+			{
+			case kType_Numeric:
+				return num;
+			case kType_Form:
+				return form;
+			case kType_Array:
+				return arr;
+			case kType_String:
+				return str && str[0];
+			default:
+				return false;
+			}
+		}
 	};
 
 	Array* (* CreateArray)(const Element* data, UInt32 size, Script* callingScript);
@@ -387,6 +413,16 @@ struct NVSEArrayVarInterface
 	// version 2
 	UInt32	(* GetArrayPacked)(Array* arr);
 
+	enum ContainerTypes
+	{
+		kArrType_Invalid = -1,
+		kArrType_Array = 0,
+		kArrType_Map,
+		kArrType_StringMap
+	};
+	
+	int		(* GetContainerType)(Array* arr);
+	bool	(* ArrayHasKey)(Array* arr, const Element& key);
 };
 
 #endif
@@ -430,8 +466,10 @@ struct NVSECommandTableInterface
  *	A calling object and containing object can be specified, or passed as NULL.
  *	If successful, it returns true, and the result is passed back from the script
  *	as an NVSEArrayVarInterface::Element. If the script returned nothing, the result
- *	is of type kType_Invalid. Up to 5 arguments can be passed in, of type
+ *	is of type kType_Invalid. Up to 10 arguments can be passed in, of type
  *	int, float, or char*; support for passing arrays will be implemented later.
+ *	To pass a float, it must be cast like so: *(UInt32*)&myFloat.
+ *	Prior to xNVSE 6.1.2, only 5 args could be passed.
  *
  *	GetFunctionParams() returns the number of parameters expected by a function
  *	script. Returns -1 if the script is not a valid function script. Otherwise, if
@@ -758,6 +796,8 @@ struct ExpressionEvaluatorUtils
 	ScriptLocal*	(__fastcall *ScriptTokenGetScriptVar)(PluginScriptToken *scrToken);
 	const PluginTokenPair*	(__fastcall *ScriptTokenGetPair)(PluginScriptToken *scrToken);
 	const PluginTokenSlice*	(__fastcall *ScriptTokenGetSlice)(PluginScriptToken *scrToken);
+	UInt32                  (__fastcall* ScriptTokenGetAnimationGroup)(PluginScriptToken* scrToken);
+
 #endif
 };
 
@@ -841,6 +881,11 @@ struct PluginScriptToken
 	UInt32 GetActorValue()
 	{
 		return s_expEvalUtils.ScriptTokenGetActorValue(this);
+	}
+
+	UInt32 GetAnimationGroup()
+	{
+		return s_expEvalUtils.ScriptTokenGetAnimationGroup(this);
 	}
 
 	ScriptLocal *GetScriptVar()

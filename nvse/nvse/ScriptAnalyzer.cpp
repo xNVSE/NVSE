@@ -415,7 +415,7 @@ ScriptParsing::InlineExpressionToken::InlineExpressionToken(ScriptIterator& cont
 	UInt32 offset = context.curData - context.script->data;
 	this->eval = std::make_unique<ExpressionEvaluator>(context.script->data, context.script, &offset);
 	this->eval->m_inline = true;
-	this->tokens = eval->GetTokens();
+	this->tokens = eval->GetTokens(nullptr);
 	if (!tokens)
 		error = true;
 	context.curData = this->eval->m_data;
@@ -460,7 +460,7 @@ std::string StringForNumericParam(ParamType typeID, int value)
 	{
 	case kParamType_ActorValue:
 		{
-			return g_actorValueInfoArray[value]->infoName;
+			return g_actorValues[value]->infoName;
 		}
 	case kParamType_Axis:
 		{
@@ -774,7 +774,7 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context, U
 		if (cmdInfo->parse == kCommandInfo_Call.parse)
 		{
 			const auto callerVersion = this->expressionEvaluator->ReadByte();
-			auto* tokens = this->expressionEvaluator->GetTokens();
+			auto* tokens = this->expressionEvaluator->GetTokens(nullptr);
 			if (!tokens)
 				return false;
 			this->expressionEvalArgs.push_back(tokens);
@@ -782,7 +782,7 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context, U
 		const auto exprEvalNumArgs = this->expressionEvaluator->ReadByte();
 		for (auto i = 0u; i < exprEvalNumArgs; ++i)
 		{
-			auto* tokens = this->expressionEvaluator->GetTokens();
+			auto* tokens = this->expressionEvaluator->GetTokens(nullptr);
 			if (!tokens)
 				return false;
 			this->expressionEvalArgs.push_back(tokens);
@@ -1212,7 +1212,7 @@ auto GetNVSEVersionString()
 std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 {
 	auto* script = this->iter.script;
-	std::string scriptText = "; Decompiled with xNVSE " + GetNVSEVersionString() + " at " + GetTimeString() + "\n; Author of decompiler: https://github.com/korri123 (Kormákur)\n";
+	std::string scriptText = g_analyzerStack.size() == 1 ? "; Decompiled with xNVSE " + GetNVSEVersionString() + " at " + GetTimeString() + "\n; Author of decompiler: https://github.com/korri123 (Kormakur)\n" : "";
 	auto numTabs = 0;
 	const auto nestAddOpcodes = {static_cast<UInt32>(ScriptStatementCode::If), static_cast<UInt32>(ScriptStatementCode::Begin), kCommandInfo_While.opcode, kCommandInfo_ForEach.opcode};
 	const auto nestMinOpcodes = {static_cast<UInt32>(ScriptStatementCode::EndIf), static_cast<UInt32>(ScriptStatementCode::End), kCommandInfo_Loop.opcode};

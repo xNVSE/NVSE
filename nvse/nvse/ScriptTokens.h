@@ -276,8 +276,10 @@ struct ScriptToken
 	CommandInfo *GetCommandInfo() const;
 	UInt16 GetRefIndex() const { return IsGood() ? refIdx : 0; }
 	UInt8 GetVariableType() const { return IsVariable() ? variableType : Script::eVarType_Invalid; }
+	std::string GetStringRepresentation();
 
 	UInt32 GetActorValue(); // kActorVal_XXX or kActorVal_NoActorValue if none
+	UInt32 GetAnimationGroup();
 	char GetAxis();			// 'X', 'Y', 'Z', or otherwise -1
 	UInt32 GetSex();		// 0=male, 1=female, otherwise -1
 
@@ -415,6 +417,7 @@ struct PluginTokenPair;
 const PluginTokenPair *__fastcall ScriptTokenGetPair(PluginScriptToken *scrToken);
 struct PluginTokenSlice;
 const PluginTokenSlice *__fastcall ScriptTokenGetSlice(PluginScriptToken *scrToken);
+UInt32 __fastcall ScriptTokenGetAnimationGroup(PluginScriptToken* scrToken);
 
 struct ArrayElementToken : ScriptToken
 {

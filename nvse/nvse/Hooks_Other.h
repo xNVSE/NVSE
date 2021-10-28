@@ -20,4 +20,7 @@ namespace OtherHooks
 	void Hooks_Other_Init();
 
 	CurrentScriptContext* GetExecutingScriptContext();
+
+	void PushScriptContext(const CurrentScriptContext& ctx);
+	void PopScriptContext();
 }

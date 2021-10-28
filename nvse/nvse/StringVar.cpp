@@ -252,13 +252,13 @@ void StringVarMap::Save(NVSESerializationInterface* intfc)
 
 	Serialization::OpenRecord('STVS', 0);
 
-	StringVar *var;
 	for (auto iter = vars.Begin(); !iter.End(); ++iter)
 	{
 		if (IsTemporary(iter.Key()))	// don't save temp strings
 			continue;
-
-		var = &iter.Get();
+		StringVar* var = &iter.Get();
+		if (var->GetOwningModIndex() == 0xFF)
+			continue; // do not save function result cache
 		Serialization::OpenRecord('STVR', 0);
 		Serialization::WriteRecord8(var->GetOwningModIndex());
 		Serialization::WriteRecord32(iter.Key());
@@ -388,7 +388,6 @@ __declspec(noinline) FunctionResultStringVar& GetFunctionResultCachedStringVar()
 	return s_functionResultStringVar;
 }
 
-
 bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 {
 	double strID = 0;
@@ -428,12 +427,12 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 		{
 			// optimizations, creating a new string var is slow
 			if (!functionResult.var)
-				functionResult.id = g_StringMap.Add(modIndex, newValue, false, &functionResult.var);
+				functionResult.id = static_cast<int>(g_StringMap.Add(0xFF, newValue, false, &functionResult.var));
 			else
 				functionResult.var->Set(newValue);
 
 			functionResult.inUse = true;
-			strID = static_cast<int>(functionResult.id);
+			strID = functionResult.id;
 		}
 		else
 			strID = static_cast<int>(g_StringMap.Add(modIndex, newValue, true, nullptr));

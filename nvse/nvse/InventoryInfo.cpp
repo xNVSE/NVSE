@@ -305,9 +305,9 @@ TESForm * AddItemHealthPercentOwner(TESObjectREFR* thisObj, UInt32 refID, SInt32
 	ExtraDataList* pExtraDataList = NULL;
 	ExtraScript * pXScript = NULL;
 
-	if (!(1.0 == Health) || pOwner || Rank || pScript) {
+	if (1.0 != Health || pOwner || Rank || pScript) {
 		pExtraDataList = ExtraDataList::Create();
-		if (!(1.0 == Health)) {
+		if (1.0 != Health && (-1.0 != Health) && pHealth) {
 			pXHealth = ExtraHealth::Create();
 			pExtraDataList->Add(pXHealth);
 			pXHealth->health = pHealth->GetHealth() * Health;

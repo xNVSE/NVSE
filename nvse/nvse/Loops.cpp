@@ -198,6 +198,33 @@ ContainerIterLoop::~ContainerIterLoop()
 	m_refVar->data = 0;
 }
 
+bool FormListIterLoop::GetNext()
+{
+	while (m_iter)
+	{
+		TESForm *element = m_iter->data;
+		m_iter = m_iter->next;
+		if (element)
+		{
+			m_refVar->formId = element->refID;
+			return true;
+		}
+	}
+	return false;
+}
+
+FormListIterLoop::FormListIterLoop(const ForEachContext *context)
+{
+	m_iter = ((BGSListForm*)context->sourceID)->list.Head();
+	m_refVar = context->var;
+	GetNext();
+}
+
+bool FormListIterLoop::Update(COMMAND_ARGS)
+{
+	return GetNext();
+}
+
 void LoopManager::Add(Loop* loop, ScriptRunner* state, UInt32 startOffset, UInt32 endOffset, COMMAND_ARGS)
 {
 	// save the instruction offsets

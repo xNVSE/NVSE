@@ -312,8 +312,9 @@ ScriptToken *ScriptToken::Create(ForEachContext *forEach)
 	}
 	else if (forEach->variableType == Script::eVarType_Ref)
 	{
-		TESObjectREFR *target = DYNAMIC_CAST((TESForm *)forEach->sourceID, TESForm, TESObjectREFR);
-		if (!target)
+		auto form = (TESForm *)forEach->sourceID;
+		TESObjectREFR *target = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+		if (!target && NOT_ID(form, BGSListForm))
 			return NULL;
 	}
 	else
@@ -1004,6 +1005,19 @@ CommandInfo *ScriptToken::GetCommandInfo() const
 
 #if RUNTIME
 
+std::string ScriptToken::GetStringRepresentation()
+{
+	if (CanConvertTo(kTokenType_String))
+		return GetString();
+	if (CanConvertTo(kTokenType_Number))
+		return FormatString("%g", GetNumber());
+	if (CanConvertTo(kTokenType_Form) && GetTESForm())
+		return GetTESForm()->GetStringRepresentation();
+	if (CanConvertTo(kTokenType_Array) && GetArrayVar())
+		return GetArrayVar()->GetStringRepresentation();
+	return "";
+}
+
 UInt32 ScriptToken::GetActorValue()
 {
 	UInt32 actorVal = eActorVal_NoActorValue;
@@ -1020,11 +1034,20 @@ UInt32 ScriptToken::GetActorValue()
 		const char *str = GetString();
 		if (str)
 		{
-			actorVal = GetActorValueForString(str, true);
+			actorVal = GetActorValueForString(str);
 		}
 	}
 
 	return actorVal;
+}
+
+UInt32 ScriptToken::GetAnimationGroup()
+{
+	if (CanConvertTo(kTokenType_Number))
+		return GetNumber();
+	if (CanConvertTo(kTokenType_String))
+		return TESAnimGroup::AnimGroupForString(GetString());
+	return TESAnimGroup::kAnimGroup_Max;
 }
 
 char ScriptToken::GetAxis()
@@ -1161,6 +1184,11 @@ const PluginTokenPair *__fastcall ScriptTokenGetPair(PluginScriptToken *scrToken
 const PluginTokenSlice *__fastcall ScriptTokenGetSlice(PluginScriptToken *scrToken)
 {
 	return reinterpret_cast<const PluginTokenSlice *>(reinterpret_cast<ScriptToken *>(scrToken)->GetSlice());
+}
+
+UInt32 __fastcall ScriptTokenGetAnimationGroup(PluginScriptToken* scrToken)
+{
+	return reinterpret_cast<ScriptToken*>(scrToken)->GetAnimationGroup();
 }
 
 ScriptToken *ScriptToken::Read(ExpressionEvaluator *context)

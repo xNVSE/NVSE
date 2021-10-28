@@ -4,8 +4,6 @@
 #include <algorithm>
 #include <filesystem>
 #include <tlhelp32.h>
-
-
 #include "containers.h"
 #include "GameData.h"
 #include "Hooks_Gameplay.h"
@@ -401,6 +399,26 @@ UInt32 Tokenizer::NextToken(std::string& outStr)
 	return -1;
 }
 
+std::string Tokenizer::ToNewLine()
+{
+	if (m_offset == m_data.length())
+		return "";
+
+	size_t start = m_data.find_first_not_of(m_delims, m_offset);
+	if (start != -1)
+	{
+		size_t end = m_data.find_first_of('\n', start);
+		if (end == -1)
+			end = m_data.length();
+
+		m_offset = end;
+		return m_data.substr(start, end - start);
+	}
+
+	return "";
+
+}
+
 UInt32 Tokenizer::PrevToken(std::string& outStr)
 {
 	if (m_offset == 0)
@@ -631,7 +649,9 @@ const char* GetModName(TESForm* form)
 {
 	if (!form)
 		return "Unknown or deleted script";
-	const char* modName = IS_ID(form, Script) ? "In-game console" : "Dynamic forms";
+	const char* modName = IS_ID(form, Script) ? "In-game console" : "Dynamic form";
+	if (form->mods.Head() && form->mods.Head()->data)
+		return form->mods.Head()->Data()->name;
 	if (form->GetModIndex() != 0xFF)
 	{
 		modName = DataHandler::Get()->GetNthModName(form->GetModIndex());
@@ -803,4 +823,61 @@ std::string GetCurPath()
 bool ValidString(const char* str)
 {
 	return str && strlen(str);
+}
+
+#if _DEBUG
+// debugger can't call unused member functions
+const char* GetFormName(TESForm* form)
+{
+	return form ? form->GetName() : "";
+}
+
+const char* GetFormName(UInt32 formId)
+{
+	return GetFormName(LookupFormByID(formId));
+}
+
+#endif
+
+std::string& ToLower(std::string&& data)
+{
+	ra::transform(data, data.begin(), [](const unsigned char c) { return std::tolower(c); });
+	return data;
+}
+
+std::string& StripSpace(std::string&& data)
+{
+	std::erase_if(data, isspace);
+	return data;
+}
+
+bool StartsWith(std::string left, std::string right)
+{
+	return ToLower(std::move(left)).starts_with(ToLower(std::move(right)));
+}
+
+std::vector<std::string> SplitString(std::string s, std::string delimiter)
+{
+	size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+	std::string token;
+	std::vector<std::string> res;
+
+	while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos) {
+		token = s.substr(pos_start, pos_end - pos_start);
+		pos_start = pos_end + delim_len;
+		res.push_back(token);
+	}
+
+	res.push_back(s.substr(pos_start));
+	return res;
+}
+
+UInt8* GetParentBasePtr(void* addressOfReturnAddress, bool lambda)
+{
+	auto* basePtr = static_cast<UInt8*>(addressOfReturnAddress) - 4;
+#if _DEBUG
+	if (lambda) // in debug mode, lambdas are wrapped inside a closure wrapper function, so one more step needed
+		basePtr = *reinterpret_cast<UInt8**>(basePtr);
+#endif
+	return *reinterpret_cast<UInt8**>(basePtr);
 }

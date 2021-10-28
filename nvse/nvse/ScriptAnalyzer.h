@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <optional>
 #include <unordered_set>
 #include "GameAPI.h"
 #include "GameObjects.h"
@@ -251,7 +252,6 @@ namespace ScriptParsing
 	class CommandCallToken : public OperandToken
 	{
 		bool ParseGameArgs(ScriptIterator& context, UInt32 numArgs);
-		
 	public:
 		int opcode = -1;
 		CommandInfo* cmdInfo;

@@ -58,26 +58,24 @@ bool RunCommand_NS(COMMAND_ARGS, Cmd_Execute cmd)
 	return cmdResult;
 }
 
-extern std::vector<DelayedCallInfo> g_callAfterScripts;
-extern ICriticalSection g_callAfterScriptsCS;
 float g_gameSecondsPassed = 0;
 
 // xNVSE 6.1
 void HandleDelayedCall()
 {
-	if (g_callAfterScripts.empty())
+	if (g_callAfterInfos.empty())
 		return; // avoid lock overhead
 	
-	ScopedLock lock(g_callAfterScriptsCS);
+	ScopedLock lock(g_callAfterInfosCS);
 
-	auto iter = g_callAfterScripts.begin();
-	while (iter != g_callAfterScripts.end())
+	auto iter = g_callAfterInfos.begin();
+	while (iter != g_callAfterInfos.end())
 	{
 		if (g_gameSecondsPassed >= iter->time)
 		{
 			InternalFunctionCaller caller(iter->script, iter->thisObj);
 			delete UserFunctionManager::Call(std::move(caller));
-			iter = g_callAfterScripts.erase(iter); // yes, this is valid: https://stackoverflow.com/a/3901380/6741772
+			iter = g_callAfterInfos.erase(iter); // yes, this is valid: https://stackoverflow.com/a/3901380/6741772
 		}
 		else
 		{
@@ -85,9 +83,6 @@ void HandleDelayedCall()
 		}
 	}
 }
-
-extern std::vector<CallWhileInfo> g_callWhileInfos;
-extern ICriticalSection g_callWhileInfosCS;
 
 void HandleCallWhileScripts()
 {
@@ -112,8 +107,28 @@ void HandleCallWhileScripts()
 	}
 }
 
-extern std::vector<DelayedCallInfo> g_callForInfos;
-extern ICriticalSection g_callForInfosCS;
+void HandleCallWhenScripts()
+{
+	if (g_callWhenInfos.empty())
+		return; // avoid lock overhead
+	ScopedLock lock(g_callWhenInfosCS);
+
+	auto iter = g_callWhenInfos.begin();
+	while (iter != g_callWhenInfos.end())
+	{
+		InternalFunctionCaller conditionCaller(iter->condition);
+		if (auto conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); conditionResult && conditionResult->GetBool())
+		{
+			InternalFunctionCaller scriptCaller(iter->callFunction, iter->thisObj);
+			delete UserFunctionManager::Call(std::move(scriptCaller));
+			iter = g_callWhenInfos.erase(iter);
+		}
+		else
+		{
+			++iter;
+		}
+	}
+}
 
 void HandleCallForScripts()
 {
@@ -227,9 +242,11 @@ static void HandleMainLoopHook(void)
 	// clean up any temp arrays/strings (moved after deffered processing because of array parameter to User Defined Events)
 	g_ArrayMap.Clean();
 	g_StringMap.Clean();
+	LambdaManager::EraseUnusedSavedVariableLists();
 
 	// handle calls from cmd CallWhile
 	HandleCallWhileScripts();
+	HandleCallWhenScripts();
 	
 	const auto isMenuMode = CdeclCall<bool>(0x702360);
 
@@ -243,6 +260,7 @@ static void HandleMainLoopHook(void)
 		// handle calls from cmd CallForSeconds
 		HandleCallForScripts();
 	}
+
 }
 
 #define DEBUG_PRINT_CHANNEL(idx)								\

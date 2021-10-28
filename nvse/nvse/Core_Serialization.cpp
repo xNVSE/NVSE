@@ -119,6 +119,8 @@ void Core_PreLoadCallback(void * reserved)
 
 	g_callWhileInfos.clear();
 	g_callForInfos.clear();
+	g_callAfterInfos.clear();
+	g_callWhenInfos.clear();
 	
 	g_ArrayMap.Reset();
 	g_StringMap.Reset();

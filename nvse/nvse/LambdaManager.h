@@ -29,7 +29,7 @@ namespace LambdaManager
 		~LambdaVariableContext();
 	};
 	
-	Script* CreateLambdaScript(const ScriptData& scriptData, Script* parentScript);
+	Script* CreateLambdaScript(const ScriptData& scriptData, const Script* parentScript);
 
 	Script* CreateLambdaScript(UInt8* position, const ScriptData& scriptData, const ExpressionEvaluator&);
 	ScriptEventList* GetParentEventList(Script* scriptLambda);
@@ -41,4 +41,6 @@ namespace LambdaManager
 	// makes sure that a variable list is not deleted by the game while a lambda is still pending execution
 	void SaveLambdaVariables(Script* scriptLambda);
 	void UnsaveLambdaVariables(Script* scriptLambda);
+
+	void EraseUnusedSavedVariableLists();
 }

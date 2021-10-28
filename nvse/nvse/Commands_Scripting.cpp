@@ -220,7 +220,9 @@ bool Cmd_ForEach_Execute(COMMAND_ARGS)
 			}
 			else if (context->variableType == Script::eVarType_Ref)
 			{
-				loop = new ContainerIterLoop(context);
+				if IS_ID(((TESForm*)context->sourceID), BGSListForm)
+					loop = new FormListIterLoop(context);
+				else loop = new ContainerIterLoop(context);
 			}
 		}
 	}
@@ -306,16 +308,16 @@ bool Cmd_Print_Execute(COMMAND_ARGS)
 {
 	*result = 0;
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	if (eval.ExtractArgs() && eval.Arg(0) && eval.Arg(0)->CanConvertTo(kTokenType_String))
+	if (eval.ExtractArgs() && eval.Arg(0))
 	{
-		const char* str = eval.Arg(0)->GetString();
-		if (strlen(str) < 512)
-			Console_Print("%s", str);
+		const auto str = eval.Arg(0)->GetStringRepresentation();
+		if (str.size() < 512)
+			Console_Print("%s", str.c_str());
 		else
 			Console_Print_Long(str);
 #if _DEBUG
 		// useful for testing script output
-		//_MESSAGE("%s", str);
+		//_MESSAGE("%s", str.c_str());
 #endif
 	}
 
@@ -329,16 +331,16 @@ bool Cmd_PrintDebug_Execute(COMMAND_ARGS)
 	if (ModDebugState(scriptObj))
 	{
 		ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-		if (eval.ExtractArgs() && eval.Arg(0) && eval.Arg(0)->CanConvertTo(kTokenType_String))
+		if (eval.ExtractArgs() && eval.Arg(0))
 		{
-			const char* str = eval.Arg(0)->GetString();
-			if (strlen(str) < 512)
-				Console_Print("%s", str);
+			const auto str = eval.Arg(0)->GetStringRepresentation();
+			if (str.size() < 512)
+				Console_Print("%s", str.c_str());
 			else
 				Console_Print_Long(str);
 #if _DEBUG
 			// useful for testing script output
-			_MESSAGE("%s", str);
+			_MESSAGE("%s", str.c_str());
 #endif
 		}
 	}
@@ -457,6 +459,47 @@ bool Cmd_Call_Execute(COMMAND_ARGS)
 	delete funcResult;
 	return true;
 }
+
+// don't use this in scripts.
+bool Cmd_CallFunctionCond_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	return true;
+}
+bool Cmd_CallFunctionCond_Eval(COMMAND_ARGS_EVAL)
+{
+	*result = 0;
+	std::unique_ptr<ScriptToken> tokenResult = nullptr;
+	
+	if (auto const pListForm = (BGSListForm*)arg1)  // safe to cast since the condition won't allow picking any other formType.
+	{
+		auto const bBreakIfFalse = (UInt32)arg2;  // if true, if a UDF returns false, breaks the formlist loop and returns 0.
+		for (auto const &form : pListForm->list)
+		{
+			if (auto const scriptIter = DYNAMIC_CAST(form, TESForm, Script))
+			{
+				InternalFunctionCaller caller(scriptIter, thisObj, nullptr);
+				caller.SetArgs(0);
+				if (tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller))))
+				{
+					if (bBreakIfFalse && !tokenResult->GetBool())
+						return true;
+				}
+			}
+		}
+	}
+	if (!tokenResult || !tokenResult->IsGood()) return true;
+	if (auto const num = tokenResult->GetNumber(); num != 0.0)
+	{
+		*result = num;
+	}
+	else
+	{
+		*result = tokenResult->GetBool(); 
+	}
+	return true;
+}
+
 
 bool Cmd_SetFunctionValue_Execute(COMMAND_ARGS)
 {

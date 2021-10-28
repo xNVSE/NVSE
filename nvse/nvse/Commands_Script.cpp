@@ -697,8 +697,8 @@ bool Cmd_DispatchEvent_Execute(COMMAND_ARGS)
 
 extern float g_gameSecondsPassed;
 
-std::vector<DelayedCallInfo> g_callAfterScripts;
-ICriticalSection g_callAfterScriptsCS;
+std::list<DelayedCallInfo> g_callAfterInfos;
+ICriticalSection g_callAfterInfosCS;
 
 bool Cmd_CallAfterSeconds_Execute(COMMAND_ARGS)
 {
@@ -706,12 +706,12 @@ bool Cmd_CallAfterSeconds_Execute(COMMAND_ARGS)
 	Script *callFunction;
 	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction) || !callFunction || !IS_ID(callFunction, Script))
 		return true;
-	ScopedLock lock(g_callAfterScriptsCS);
-	g_callAfterScripts.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj);
+	ScopedLock lock(g_callAfterInfosCS);
+	g_callAfterInfos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj);
 	return true;
 }
 
-std::vector<CallWhileInfo> g_callWhileInfos;
+std::list<CallWhileInfo> g_callWhileInfos;
 ICriticalSection g_callWhileInfosCS;
 
 bool Cmd_CallWhile_Execute(COMMAND_ARGS)
@@ -729,7 +729,7 @@ bool Cmd_CallWhile_Execute(COMMAND_ARGS)
 	return true;
 }
 
-std::vector<DelayedCallInfo> g_callForInfos;
+std::list<DelayedCallInfo> g_callForInfos;
 ICriticalSection g_callForInfosCS;
 
 bool Cmd_CallForSeconds_Execute(COMMAND_ARGS)
@@ -738,9 +738,28 @@ bool Cmd_CallForSeconds_Execute(COMMAND_ARGS)
 	Script *callFunction;
 	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction) || !callFunction || !IS_ID(callFunction, Script))
 		return true;
-	ScopedLock lock(g_callAfterScriptsCS);
+	ScopedLock lock(g_callAfterInfosCS);
 	g_callForInfos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj);
 	return true;
+}
+
+std::list<CallWhileInfo> g_callWhenInfos;
+ICriticalSection g_callWhenInfosCS;
+
+bool Cmd_CallWhen_Execute(COMMAND_ARGS)
+{
+	Script* callFunction;
+	Script* conditionFunction;
+	if (!ExtractArgs(EXTRACT_ARGS, &callFunction, &conditionFunction))
+		return true;
+	for (auto* form : { callFunction, conditionFunction })
+		if (!form || !IS_ID(form, Script))
+			return true;
+
+	ScopedLock lock(g_callWhenInfosCS);
+	g_callWhenInfos.emplace_back(callFunction, conditionFunction, thisObj);
+	return true;
+
 }
 
 void DecompileScriptToFolder(const std::string& scriptName, Script* script, const std::string& fileExtension, const std::string_view& modName)

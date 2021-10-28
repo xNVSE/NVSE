@@ -14,3 +14,15 @@ void WriteRelJnz(UInt32 jumpSrc, UInt32 jumpTgt);
 void WriteRelJle(UInt32 jumpSrc, UInt32 jumpTgt);
 
 void PatchMemoryNop(ULONG_PTR Address, SIZE_T Size);
+
+template <typename T>
+void WriteRelCall(UInt32 jumpSrc, T jumpTgt)
+{
+	WriteRelCall(jumpSrc, (UInt32)jumpTgt);
+}
+
+template <typename T>
+void WriteRelJump(UInt32 jumpSrc, T jumpTgt)
+{
+	WriteRelJump(jumpSrc, (UInt32)jumpTgt);
+}

@@ -101,7 +101,6 @@ namespace OtherHooks
 		}
 		else if (spot == 2)
 		{
-			auto& [script, scriptRunner, lineNumberPtr, scriptOwnerRef, command, curData] = *g_currentScriptContext.Push();
 			// ScriptRunner::Run2
 			scriptRunner = *reinterpret_cast<ScriptRunner**>(ebp - 0x744);
 			lineNumberPtr = reinterpret_cast<UInt32*>(ebp - 0x28);
@@ -109,9 +108,10 @@ namespace OtherHooks
 		}
 	}
 
-	void PostScriptExecute()
+	void __fastcall PostScriptExecute(Script* script)
 	{
-		g_currentScriptContext.Pop();
+		if (script)
+			g_currentScriptContext.Pop();
 	}
 
 	__declspec (naked) void PostScriptExecuteHook1()
@@ -119,6 +119,7 @@ namespace OtherHooks
 		__asm
 		{
 			push eax
+			mov ecx, [ebp+0x8]
 			call PostScriptExecute
 			pop eax
 			mov esp, ebp
@@ -132,6 +133,7 @@ namespace OtherHooks
 		__asm
 		{
 			push eax
+			mov ecx, [ebp + 0x8]
 			call PostScriptExecute
 			pop eax
 			mov esp, ebp
@@ -183,11 +185,24 @@ namespace OtherHooks
 		WriteRelJump(0x5E1392, UInt32(PostScriptExecuteHook2));
 	}
 
+	thread_local CurrentScriptContext emptyCtx{}; // not every command gets run through script runner
+
 	CurrentScriptContext* GetExecutingScriptContext()
 	{
 		if (!g_currentScriptContext.Empty())
 			return &g_currentScriptContext.Top();
-		return nullptr;
+		emptyCtx = {};
+		return &emptyCtx;
+	}
+
+	void PushScriptContext(const CurrentScriptContext& ctx)
+	{
+		g_currentScriptContext.Push(ctx);
+	}
+
+	void PopScriptContext()
+	{
+		g_currentScriptContext.Pop();
 	}
 }
 #endif

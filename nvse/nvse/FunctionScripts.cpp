@@ -460,7 +460,8 @@ bool FunctionInfo::Execute(FunctionCaller &caller, FunctionContext *context)
 ******************************/
 
 FunctionContext::FunctionContext(FunctionInfo *info, UInt8 version, Script *invokingScript) : m_info(info), m_eventList(NULL),
-																							  m_result(NULL), m_invokingScript(invokingScript), m_callerVersion(version), m_bad(true)
+																							  m_result(NULL), m_invokingScript(invokingScript), m_callerVersion(version),
+																							  m_bad(true), m_lambdaBackupEventList(false)
 {
 #ifdef DBG_EXPR_LEAKS
 	FUNCTION_CONTEXT_COUNT++;
@@ -478,6 +479,11 @@ FunctionContext::FunctionContext(FunctionInfo *info, UInt8 version, Script *invo
 	if (info->m_isLambda)
 	{
 		m_eventList = LambdaManager::GetParentEventList(info->GetScript());
+		if (!m_eventList)
+		{
+			m_lambdaBackupEventList = true;
+			m_eventList = info->GetScript()->CreateEventList();
+		}
 	}
 	else if (info->IsActive())
 	{
@@ -486,7 +492,7 @@ FunctionContext::FunctionContext(FunctionInfo *info, UInt8 version, Script *invo
 	else
 	{
 		m_eventList = info->GetEventList();
-		if (!m_eventList && !info->m_isLambda) // Let's try again if it failed originally (though info would be null in that case, so very unlikely to be called ever).
+		if (!m_eventList) // Let's try again if it failed originally (though info would be null in that case, so very unlikely to be called ever).
 			m_eventList = info->GetScript()->CreateEventList();
 	}
 	if (!m_eventList)
@@ -510,7 +516,7 @@ FunctionContext::~FunctionContext()
 	FUNCTION_CONTEXT_COUNT--;
 #endif
 
-	if (m_eventList && !m_info->m_isLambda)
+	if (m_eventList && (!m_info->m_isLambda || m_lambdaBackupEventList))
 	{
 		LambdaManager::MarkParentAsDeleted(m_eventList); // If any lambdas refer to the event list, clear them away
 
@@ -530,8 +536,10 @@ FunctionContext::~FunctionContext()
 void ExecuteSingleLineLambda(FunctionInfo* info, FunctionCaller& caller, ScriptEventList* eventList)
 {
 	double result;
-	UInt32 opcodeOffset = info->m_singleLineLambdaPosition - static_cast<UInt8*>(info->GetScript()->data);
+	UInt32 opcodeOffset = info->m_singleLineLambdaPosition - info->GetScript()->data;
+	OtherHooks::PushScriptContext({ info->GetScript(), nullptr, nullptr, caller.ThisObj(), &kCommandInfo_SetFunctionValue, nullptr });
 	kCommandInfo_SetFunctionValue.execute(kCommandInfo_SetFunctionValue.params, info->GetScript()->data, caller.ThisObj(), caller.ContainingObj(), info->GetScript(), eventList, &result, &opcodeOffset);
+	OtherHooks::PopScriptContext();
 }
 
 bool FunctionContext::Execute(FunctionCaller &caller)
@@ -686,7 +694,7 @@ namespace PluginAPI
 						*result = ret->GetTESForm();
 						break;
 					case kTokenType_Array:
-						*result = ret->GetArray();
+						*result = ArrayAPI::LookupArrayByID(ret->GetArray());
 						break;
 					case kTokenType_String:
 						*result = ret->GetString();

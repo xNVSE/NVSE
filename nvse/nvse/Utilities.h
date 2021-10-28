@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -108,6 +109,7 @@ public:
 
 	// these return the offset of token in src, or -1 if no token
 	UInt32 NextToken(std::string& outStr);
+	std::string ToNewLine();
 	UInt32 PrevToken(std::string& outStr);
 
 private:
@@ -235,3 +237,68 @@ void DisplayMessage(const char* msg);
 std::string GetCurPath();
 
 bool ValidString(const char* str);
+
+#if _DEBUG
+
+
+const char* GetFormName(TESForm* form);
+const char* GetFormName(UInt32 formId);
+
+
+#endif
+
+typedef void* (*_FormHeap_Allocate)(UInt32 size);
+extern const _FormHeap_Allocate FormHeap_Allocate;
+
+template <typename T, const UInt32 ConstructorPtr = 0, typename... Args>
+T* New(Args &&... args)
+{
+	auto* alloc = FormHeap_Allocate(sizeof(T));
+	if constexpr (ConstructorPtr)
+	{
+		ThisStdCall(ConstructorPtr, alloc, std::forward<Args>(args)...);
+	}
+	else
+	{
+		memset(alloc, 0, sizeof(T));
+	}
+	return static_cast<T*>(alloc);
+}
+
+typedef void (*_FormHeap_Free)(void* ptr);
+extern const _FormHeap_Free FormHeap_Free;
+
+template <typename T, const UInt32 DestructorPtr = 0, typename... Args>
+void Delete(T* t, Args &&... args)
+{
+	if constexpr (DestructorPtr)
+	{
+		ThisStdCall(DestructorPtr, t, std::forward<Args>(args)...);
+	}
+	FormHeap_Free(t);
+}
+
+template <typename T>
+using game_unique_ptr = std::unique_ptr<T, std::function<void(T*)>>;
+
+template <typename T, const UInt32 DestructorPtr = 0>
+game_unique_ptr<T> MakeUnique(T* t)
+{
+	return game_unique_ptr<T>(t, [](T* t2) { Delete<T, DestructorPtr>(t2); });
+}
+
+template <typename T, const UInt32 ConstructorPtr = 0, const UInt32 DestructorPtr = 0, typename... ConstructorArgs>
+game_unique_ptr<T> MakeUnique(ConstructorArgs &&... args)
+{
+	auto* obj = New<T, ConstructorPtr>(std::forward(args)...);
+	return MakeUnique<T, DestructorPtr>(obj);
+}
+
+bool StartsWith(std::string left, std::string right);
+std::string& ToLower(std::string&& data);
+std::string& StripSpace(std::string&& data);
+std::vector<std::string> SplitString(std::string s, std::string delimiter);
+
+#define INLINE_HOOK(retnType, callingConv, ...) static_cast<retnType(callingConv*)(__VA_ARGS__)>([](__VA_ARGS__) [[msvc::forceinline]] -> retnType
+
+UInt8* GetParentBasePtr(void* addressOfReturnAddress, bool lambda = false);

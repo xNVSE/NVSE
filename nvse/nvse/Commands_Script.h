@@ -103,9 +103,10 @@ static ParamInfo kParams_CallWhile[2] =
 	{	"condition",	kParamType_AnyForm,0	},
 };
 
-DEFINE_CMD_ALT(CallAfterSeconds, CallAfter, calls UDF after argument number of seconds, 0, 2, kParams_CallAfter);
-DEFINE_COMMAND(CallWhile, calls UDF each frame while condition is met, 0, 2, kParams_CallWhile);
-DEFINE_CMD_ALT(CallForSeconds, CallFor, calls UDF each frame for argument number of seconds, 0, 2, kParams_CallAfter);
+DEFINE_CMD_ALT(CallAfterSeconds, CallAfter, "calls UDF after argument number of seconds", 0, 2, kParams_CallAfter);
+DEFINE_COMMAND(CallWhile, "calls UDF each frame while condition is met", 0, 2, kParams_CallWhile);
+DEFINE_CMD_ALT(CallForSeconds, CallFor, "calls UDF each frame for argument number of seconds", 0, 2, kParams_CallAfter);
+DEFINE_COMMAND(CallWhen, "calls UDF once when a condition is met which is polled each frame", 0, 2, kParams_CallWhile);
 
 struct DelayedCallInfo
 {
@@ -141,8 +142,17 @@ struct CallWhileInfo
 	}
 };
 
-extern std::vector<DelayedCallInfo> g_callForInfos;
-extern std::vector<CallWhileInfo> g_callWhileInfos;
+extern std::list<DelayedCallInfo> g_callForInfos;
+extern std::list<CallWhileInfo> g_callWhileInfos;
+extern std::list<DelayedCallInfo> g_callAfterInfos;
+extern std::list<CallWhileInfo> g_callWhenInfos;
+
+extern ICriticalSection g_callForInfosCS;
+extern ICriticalSection g_callWhileInfosCS;
+extern ICriticalSection g_callAfterInfosCS;
+extern ICriticalSection g_callWhenInfosCS;
+
+
 
 static ParamInfo kParams_HasScriptCommand[3] =
 {
