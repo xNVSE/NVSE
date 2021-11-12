@@ -146,6 +146,12 @@ void Hook_Logging_Init(void)
 		}
 		fopen_s(&s_errorLog, "falloutnv_error.log", filemode.c_str());
 		fopen_s(&s_havokErrorLog, "falloutnv_havok.log", filemode.c_str());
+		if (bAppendErrorLogs)
+		{
+			time_t my_time = time(nullptr);
+			//format: Day Month Date hh : mm:ss Year
+			printf("\n%s", ctime(&my_time));
+		}
 
 		WriteRelJump(0x005B5E40, (UInt32)ErrorLogHook);
 
