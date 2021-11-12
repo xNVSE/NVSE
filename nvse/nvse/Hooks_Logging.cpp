@@ -139,8 +139,13 @@ void Hook_Logging_Init(void)
 
 	if(GetNVSEConfigOption_UInt32("Logging", "EnableGameErrorLog", &enableGameErrorLog) && enableGameErrorLog)
 	{
-		fopen_s(&s_errorLog, "falloutnv_error.log", "w");
-		fopen_s(&s_havokErrorLog, "falloutnv_havok.log", "w");
+		std::string filemode = "w";	//write and overwrite mode
+		UInt32	bAppendErrorLogs = 0;
+		if (GetNVSEConfigOption_UInt32("Logging", "bAppendErrorLogs", &bAppendErrorLogs) && bAppendErrorLogs) {
+			filemode = "a";	// append mode
+		}
+		fopen_s(&s_errorLog, "falloutnv_error.log", filemode.c_str());
+		fopen_s(&s_havokErrorLog, "falloutnv_havok.log", filemode.c_str());
 
 		WriteRelJump(0x005B5E40, (UInt32)ErrorLogHook);
 
