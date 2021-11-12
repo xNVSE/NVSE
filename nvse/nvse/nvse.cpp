@@ -46,6 +46,7 @@ UInt32 et;
 UInt32 au3D;
 bool g_warnScriptErrors = false;
 bool g_noSaveWarnings = false;
+bool g_appendNVSELogs = false;
 
 void WaitForDebugger(void)
 {
@@ -73,8 +74,12 @@ void NVSE_Initialize(void)
 			PatchCoopLevel();
 		
 		UInt32 noFileWarning = 0;
-		if (GetNVSEConfigOption_UInt32("RELEASE", "bNoSaveWarnings", &bMousePatch) && noFileWarning)
+		if (GetNVSEConfigOption_UInt32("RELEASE", "bNoSaveWarnings", &noFileWarning) && noFileWarning)
 			g_noSaveWarnings = true;
+
+		UInt32 appendNVSELogs = 0;
+		if (GetNVSEConfigOption_UInt32("RELEASE", "bAppendNVSELogs", &appendNVSELogs) && appendNVSELogs)
+			g_appendNVSELogs = true;
 		
 		_MESSAGE("NVSE runtime: initialize (version = %d.%d.%d %08X %08X%08X)",
 			NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA, RUNTIME_VERSION,
