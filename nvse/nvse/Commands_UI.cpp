@@ -475,11 +475,15 @@ bool Cmd_SetUIFloatAlt_Execute(COMMAND_ARGS)
 {
 	char component[0x200];
 	float newFloat;
+	*result = 0;
 	if (ExtractArgsEx(EXTRACT_ARGS_EX, &component, &newFloat))
 	{
 		Tile::Value *val = GetCachedComponentValueAlt(component);
 		if (val)
+		{
 			CALL_MEMBER_FN(val->parent, SetFloatValue)(val->id, newFloat, true);
+			*result = 1;
+		}
 	}
 	return true;
 }
@@ -488,11 +492,32 @@ bool Cmd_SetUIStringAlt_Execute(COMMAND_ARGS)
 {
 	char component[0x200];
 	char newStr[kMaxMessageLength];
+	*result = 0;
 	if (ExtractFormatStringArgs(1, newStr, paramInfo, scriptData, opcodeOffsetPtr, scriptObj, eventList, kCommandInfo_SetUIStringAlt.numParams, &component))
 	{
 		Tile::Value *val = GetCachedComponentValueAlt(component);
 		if (val)
+		{
 			CALL_MEMBER_FN(val->parent, SetStringValue)(val->id, newStr, true);
+			*result = 1;
+		}
+	}
+	return true;
+}
+
+bool Cmd_ModUIFloat_Execute(COMMAND_ARGS)
+{
+	char component[0x200];
+	float newFloat;
+	*result = 0;
+	if (ExtractArgsEx(EXTRACT_ARGS_EX, &component, &newFloat))
+	{
+		Tile::Value* val = GetCachedComponentValueAlt(component);
+		if (val)
+		{
+			CALL_MEMBER_FN(val->parent, SetFloatValue)(val->id, val->num + newFloat, true);
+			*result = 1;
+		}
 	}
 	return true;
 }
