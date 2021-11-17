@@ -866,4 +866,33 @@ bool Cmd_GetCommandOpcode_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_Ternary_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+		eval.ExtractArgs())
+	{
+		ScriptToken* value = eval.Arg(0)->ToBasicToken();
+		if (!value)
+			return true;	// should never happen, could cause weird behavior otherwise.
+
+		Script* call_udf = nullptr;
+		if (value->GetBool()) {
+			call_udf = eval.Arg(1)->GetUserFunction();
+		}
+		else {
+			call_udf = eval.Arg(2)->GetUserFunction();
+		}
+		if (!call_udf)
+			return true;
+		
+		InternalFunctionCaller caller(call_udf, thisObj, containingObj);
+		caller.SetArgs(0);
+		if (auto const tokenValResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller))))
+			tokenValResult->AssignResult(PASS_COMMAND_ARGS);
+	}
+	return true;
+
+}
+
 #endif

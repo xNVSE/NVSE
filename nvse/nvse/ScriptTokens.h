@@ -248,7 +248,7 @@ struct ScriptToken
 	std::size_t GetStringLength() const;
 	virtual UInt32 GetFormID();
 	virtual TESForm *GetTESForm();
-	virtual double GetNumber();
+	virtual double GetNumber() const;
 	virtual const ArrayKey *GetArrayKey() const { return NULL; }
 	virtual const ForEachContext *GetForEachContext() const { return NULL; }
 	virtual const Slice *GetSlice() const { return NULL; }
@@ -296,6 +296,7 @@ struct ScriptToken
 	bool IsLogicalOperator() const;
 	std::string GetVariableDataAsString();
 	const char *GetVariableTypeString() const;
+	void AssignResult(COMMAND_ARGS) const;
 
 	static ScriptToken *Read(ExpressionEvaluator *context);
 
@@ -426,7 +427,7 @@ struct ArrayElementToken : ScriptToken
 	ArrayElementToken(ArrayID arr, ArrayKey *_key);
 	const ArrayKey *GetArrayKey() const override { return type == kTokenType_ArrayElement ? &key : NULL; }
 	const char *GetString() override;
-	double GetNumber() override;
+	double GetNumber() const override;
 	UInt32 GetFormID() override;
 	ArrayID GetArray() override;
 	TESForm *GetTESForm() override;

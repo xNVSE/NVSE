@@ -806,7 +806,7 @@ TESForm *ScriptToken::GetTESForm()
 	return NULL;
 }
 
-double ScriptToken::GetNumber()
+double ScriptToken::GetNumber() const
 {
 	if (type == kTokenType_Number || type == kTokenType_Boolean)
 		return value.num;
@@ -899,6 +899,51 @@ StringVar* ScriptToken::GetStringVar() const
 	if (value.var)
 		return g_StringMap.Get(static_cast<int>(value.var->data));
 	return nullptr;
+}
+
+void ScriptToken::AssignResult(COMMAND_ARGS) const
+{
+	switch (type)
+	{
+	case kTokenType_Form:
+		*(UInt32*)result = value.formID;
+		break;
+	case kTokenType_Global:
+		*result = value.global->data;
+		break;
+	case kTokenType_String:
+	case kTokenType_AssignableString:
+	{
+		AssignToStringVar(PASS_COMMAND_ARGS, value.str);
+#if _DEBUG
+		Console_Print("ScriptToken::AssignResult -> String result.");
+#endif
+		break;
+	}
+#if RUNTIME
+	case kTokenType_Array:
+		*result = value.arrID;
+#if _DEBUG
+		Console_Print("ScriptToken::AssignResult -> Array result.");
+#endif
+		break;
+	case kTokenType_NumericVar:
+	case kTokenType_StringVar:
+	case kTokenType_ArrayVar:
+	case kTokenType_RefVar:
+	{
+		if (value.var) {
+			*result = value.var->data;
+			break;
+		}
+		// false = no break, so it goes to default.
+	}
+#endif
+	case kTokenType_Boolean:
+	case kTokenType_Number:
+	default:
+		*result = value.num;
+	}
 }
 
 bool ScriptToken::ResolveVariable()
@@ -1568,7 +1613,7 @@ void ArrayElementToken::operator delete(void *p)
 	g_arrayElementTokenAllocator.Free(p);
 }
 
-double ArrayElementToken::GetNumber()
+double ArrayElementToken::GetNumber() const
 {
 	double out = 0.0;
 	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());

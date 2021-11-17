@@ -165,3 +165,12 @@ static ParamInfo kParams_HasScriptCommand[3] =
 DEFINE_COMMAND(DecompileScript, decompiles a script to file, false, 2, kParams_OneForm_OneOptionalString);
 DEFINE_COMMAND(HasScriptCommand, returns 1 if script contains call to a command, false, 3, kParams_HasScriptCommand);
 DEFINE_COMMAND(GetCommandOpcode, gets opcode for command name, false, 1, kParams_OneString);
+
+static ParamInfo kParams_Ternary[] =
+{
+	{	"value",			kNVSEParamType_BasicType,	0	},
+	{	"callIfTrue (UDF)",	kNVSEParamType_Form,	0	},
+	{	"callIfFalse (UDF)",	kNVSEParamType_Form,	0	},
+};
+
+DEFINE_COMMAND_EXP(Ternary, "The ternary operator as a function.", false, kParams_Ternary);
