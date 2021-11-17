@@ -1819,6 +1819,7 @@ void CommandTable::AddCommandsV6()
 
 	// ?
 	ADD_CMD(ForEachInList);
+	ADD_CMD(ModUIFloat);
 }
 
 namespace PluginAPI

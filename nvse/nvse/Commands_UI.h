@@ -18,6 +18,7 @@ DEFINE_COMMAND(SortUIListBox, sorts the items in a UI list_box, 0, 2, kParams_Tw
 DEFINE_COMMAND(GetUIFloatAlt, , 0, 1, kParams_OneString);
 DEFINE_COMMAND(SetUIFloatAlt, , 0, 2, kParams_OneString_OneFloat);
 DEFINE_COMMAND(SetUIStringAlt, , 0, 22, kParams_SetUIStringEx);
+DEFINE_COMMAND(ModUIFloat, , 0, 2, kParams_OneString_OneFloat);
 
 // VATS camera
 DEFINE_COMMAND(EndVATScam, "Remove all targets and close VATS mode", false, 0, NULL)
