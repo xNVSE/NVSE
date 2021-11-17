@@ -428,35 +428,11 @@ bool Cmd_Function_Execute(COMMAND_ARGS)
 bool Cmd_Call_Execute(COMMAND_ARGS)
 {
 	*result = 0;
-
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-
-	ScriptToken* funcResult = UserFunctionManager::Call(&eval);
-	if (funcResult)
+	if (auto const funcResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(&eval)))
 	{
-		if (funcResult->CanConvertTo(kTokenType_Number))
-			*result = funcResult->GetNumber();
-		else if (funcResult->CanConvertTo(kTokenType_String))
-		{
-			AssignToStringVar(PASS_COMMAND_ARGS, funcResult->GetString());
-			eval.ExpectReturnType(kRetnType_String);
-		}
-		else if (funcResult->CanConvertTo(kTokenType_Form))
-		{
-			UInt32* refResult = (UInt32*)result;
-			*refResult = funcResult->GetFormID();
-			eval.ExpectReturnType(kRetnType_Form);
-		}
-		else if (funcResult->CanConvertTo(kTokenType_Array))
-		{
-			*result = funcResult->GetArray();
-			eval.ExpectReturnType(kRetnType_Array);
-		}
-		else
-			ShowRuntimeError(scriptObj, "Function call returned unexpected token type %d", funcResult->Type());
+		funcResult->AssignResult(PASS_COMMAND_ARGS, eval);
 	}
-
-	delete funcResult;
 	return true;
 }
 
