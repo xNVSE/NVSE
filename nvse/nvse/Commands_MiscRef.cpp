@@ -334,25 +334,18 @@ public:
 	}
 };
 
-class RefMatcherAnyForm
+struct DistanceMatcher
 {
-	bool m_includeTaken;	//if true, ignore.
-	TESObjectREFR* m_distanceRef;	//if null, ignore distance check.
-	float m_maxDistance;	//if 0, ignore.
-
-public:
-	RefMatcherAnyForm(bool includeTaken) : m_includeTaken(includeTaken), m_maxDistance(0), m_distanceRef(nullptr)
+	TESObjectREFR* m_distanceRef = nullptr;	//if null, ignore distance check.
+	float m_maxDistance = 0;	//if 0, ignore.
+	
+	DistanceMatcher() = default;
+	DistanceMatcher(TESObjectREFR* distanceRef, float maxDistance):
+		m_distanceRef(distanceRef), m_maxDistance(maxDistance)
 	{}
 
-	RefMatcherAnyForm(bool includeTaken, TESObjectREFR* distanceRef, float maxDistance):
-	m_includeTaken(includeTaken), m_distanceRef(distanceRef), m_maxDistance(maxDistance)
-	{}
-
-	bool Accept(const TESObjectREFR* refr) const
+	bool MatchDistance(const TESObjectREFR* refr) const
 	{
-		if (!m_includeTaken && refr->IsTaken())
-			return false;
-
 		if (m_distanceRef && m_maxDistance > 0)
 		{
 			if (GetDistance3D(m_distanceRef, refr) > m_maxDistance)
@@ -360,55 +353,80 @@ public:
 				return false;
 			}
 		}
+		return true;
+	}
+};
+
+struct IncludeTakenMatcher
+{
+	bool m_includeTaken = true;	//if true, ignore.
+
+	IncludeTakenMatcher() = default;
+	IncludeTakenMatcher(bool includeTaken) :
+		m_includeTaken(includeTaken)
+	{}
+
+	bool MatchTakenItems(const TESObjectREFR* refr) const
+	{
+		if (!m_includeTaken && refr->IsTaken())
+			return false;
 		
 		return true;
 	}
 };
 
-class RefMatcherFormType
+struct RefMatcherAnyForm: DistanceMatcher, IncludeTakenMatcher
 {
-	UInt32 m_formType;
-	bool m_includeTaken;
-	TESObjectREFR* m_distanceRef = nullptr;	//if null, ignore distance check.
-	float m_maxDistance = 0;	//if 0, ignore.
-
-public:
-	RefMatcherFormType(UInt32 formType, bool includeTaken) : m_formType(formType), m_includeTaken(includeTaken)
+	RefMatcherAnyForm(bool includeTaken) :
+	DistanceMatcher(nullptr, 0), IncludeTakenMatcher(includeTaken)
 	{}
 
-	RefMatcherFormType(UInt32 formType, bool includeTaken, TESObjectREFR* distanceRef, float maxDistance):
-	m_formType(formType), m_includeTaken(includeTaken), m_distanceRef(distanceRef), m_maxDistance(maxDistance)
+	RefMatcherAnyForm(bool includeTaken, TESObjectREFR* distanceRef, float maxDistance):
+	DistanceMatcher(distanceRef, maxDistance), IncludeTakenMatcher(includeTaken)
 	{}
 
 	bool Accept(const TESObjectREFR* refr) const
 	{
-		if (!m_includeTaken && refr->IsTaken())
+		if (!MatchTakenItems(refr) || !MatchDistance(refr))
+		{
+			return false;
+		}
+		return true;
+	}
+};
+
+struct RefMatcherFormType: DistanceMatcher, IncludeTakenMatcher
+{
+	UInt32 m_formType;
+
+	RefMatcherFormType(UInt32 formType, bool includeTaken) :
+	IncludeTakenMatcher(includeTaken), m_formType(formType)
+	{}
+
+	RefMatcherFormType(UInt32 formType, bool includeTaken, TESObjectREFR* distanceRef, float maxDistance) :
+	DistanceMatcher(distanceRef, maxDistance), IncludeTakenMatcher(includeTaken), m_formType(formType)
+	{}
+
+	bool Accept(const TESObjectREFR* refr) const
+	{
+		if (!MatchTakenItems(refr))
 			return false;
 		
 		if (refr->baseForm->typeID != m_formType || refr->baseForm->refID == 7)	//exclude player for kFormType_TESNPC
 			return false;
 
-		if (m_distanceRef && m_maxDistance > 0)
-		{
-			if (GetDistance3D(m_distanceRef, refr) > m_maxDistance)
-			{
-				return false;
-			}
-		}
+		if (!MatchDistance(refr))
+			return false;
 
 		return true;
 	}
 };
 
-class RefMatcherActor
+struct RefMatcherActor: DistanceMatcher
 {
-	TESObjectREFR* m_distanceRef = nullptr;	//if null, ignore distance check.
-	float m_maxDistance = 0;	//if 0, ignore.
-	
-public:
 	RefMatcherActor() = default;
 	RefMatcherActor(TESObjectREFR* distanceRef, float maxDistance):
-	m_distanceRef(distanceRef), m_maxDistance(maxDistance)
+	DistanceMatcher(distanceRef, maxDistance)
 	{}
 	
 	bool Accept(const TESObjectREFR* refr) const
@@ -419,35 +437,25 @@ public:
 			return false;
 		}
 
-		if (m_distanceRef && m_maxDistance > 0)
-		{
-			if (GetDistance3D(m_distanceRef, refr) > m_maxDistance)
-			{
-				return false;
-			}
-		}
+		if (!MatchDistance(refr))
+			return false;
 
 		return true;
 	}
 };
 
-class RefMatcherItem
+struct RefMatcherItem: IncludeTakenMatcher, DistanceMatcher
 {
-	bool m_includeTaken;
-	TESObjectREFR* m_distanceRef = nullptr;	//if null, ignore distance check.
-	float m_maxDistance = 0;	//if 0, ignore.
-
-public:
-	RefMatcherItem(bool includeTaken) : m_includeTaken(includeTaken)
+	RefMatcherItem(bool includeTaken) : IncludeTakenMatcher(includeTaken)
 	{ }
 
 	RefMatcherItem(bool includeTaken, TESObjectREFR* distanceRef, float maxDistance) :
-	m_includeTaken(includeTaken), m_distanceRef(distanceRef), m_maxDistance(maxDistance)
+	IncludeTakenMatcher(includeTaken), DistanceMatcher(distanceRef, maxDistance)
 	{ }
 
 	bool Accept(const TESObjectREFR* refr) const
 	{
-		if (!m_includeTaken && refr->IsTaken())
+		if (!MatchTakenItems(refr))
 			return false;
 
 		switch (refr->baseForm->typeID)
@@ -472,13 +480,8 @@ public:
 				return false;
 		}
 
-		if (m_distanceRef && m_maxDistance > 0)
-		{
-			if (GetDistance3D(m_distanceRef, refr) > m_maxDistance)
-			{
-				return false;
-			}
-		}
+		if (!MatchDistance(refr))
+			return false;
 		
 		return true;
 	}
