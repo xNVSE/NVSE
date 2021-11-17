@@ -244,18 +244,18 @@ struct ScriptToken
 
 	virtual ~ScriptToken();
 
-	virtual const char *GetString();
+	virtual const char *GetString() const;
 	std::size_t GetStringLength() const;
-	virtual UInt32 GetFormID();
-	virtual TESForm *GetTESForm();
+	virtual UInt32 GetFormID() const;
+	virtual TESForm *GetTESForm() const;
 	virtual double GetNumber() const;
 	virtual const ArrayKey *GetArrayKey() const { return NULL; }
 	virtual const ForEachContext *GetForEachContext() const { return NULL; }
 	virtual const Slice *GetSlice() const { return NULL; }
-	virtual bool GetBool();
+	virtual bool GetBool() const;
 #if RUNTIME
 	Token_Type ReadFrom(ExpressionEvaluator *context); // reconstitute param from compiled data, return the type
-	virtual ArrayID GetArray();
+	virtual ArrayID GetArray() const;
 	ArrayVar *GetArrayVar();
 	ScriptLocal *GetVar() const;
 	StringVar* GetStringVar() const;
@@ -296,7 +296,7 @@ struct ScriptToken
 	bool IsLogicalOperator() const;
 	std::string GetVariableDataAsString();
 	const char *GetVariableTypeString() const;
-	void AssignResult(COMMAND_ARGS) const;
+	void AssignResult(COMMAND_ARGS, ExpressionEvaluator& eval) const;
 
 	static ScriptToken *Read(ExpressionEvaluator *context);
 
@@ -426,12 +426,12 @@ struct ArrayElementToken : ScriptToken
 
 	ArrayElementToken(ArrayID arr, ArrayKey *_key);
 	const ArrayKey *GetArrayKey() const override { return type == kTokenType_ArrayElement ? &key : NULL; }
-	const char *GetString() override;
+	const char *GetString() const override;
 	double GetNumber() const override;
-	UInt32 GetFormID() override;
-	ArrayID GetArray() override;
-	TESForm *GetTESForm() override;
-	bool GetBool() override;
+	UInt32 GetFormID() const override;
+	ArrayID GetArray() const override;
+	TESForm *GetTESForm() const override;
+	bool GetBool() const override;
 	bool CanConvertTo(Token_Type to) const override;
 	ArrayID GetOwningArrayID() const override { return type == kTokenType_ArrayElement ? value.arrID : 0; }
 	ArrayVar *GetOwningArrayVar() const { return g_ArrayMap.Get(GetOwningArrayID()); }
@@ -466,7 +466,7 @@ struct AssignableSubstringToken : ScriptToken
 	std::string substring;
 
 	AssignableSubstringToken(UInt32 _id, UInt32 lbound, UInt32 ubound);
-	const char *GetString() override { return substring.c_str(); }
+	const char *GetString() const override { return substring.c_str(); }
 	virtual bool Assign(const char *str) = 0;
 
 	void *operator new(size_t size)
@@ -501,7 +501,7 @@ struct AssignableSubstringArrayElementToken : public AssignableSubstringToken
 	ArrayKey key;
 
 	AssignableSubstringArrayElementToken(UInt32 _id, const ArrayKey &_key, UInt32 lbound, UInt32 ubound);
-	ArrayID GetArray() override { return value.arrID; }
+	ArrayID GetArray() const override { return value.arrID; }
 	bool Assign(const char *str) override;
 
 	void *operator new(size_t size)

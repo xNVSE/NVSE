@@ -722,7 +722,7 @@ std::string ScriptToken::GetVariableName(Script* script) const
 }
 #endif
 
-const char *ScriptToken::GetString()
+const char *ScriptToken::GetString() const
 {
 	static const char *empty = "";
 	const char *result = NULL;
@@ -765,7 +765,7 @@ std::size_t ScriptToken::GetStringLength() const
 	return 0;
 }
 
-UInt32 ScriptToken::GetFormID()
+UInt32 ScriptToken::GetFormID() const
 {
 	if (type == kTokenType_Form)
 		return value.formID;
@@ -788,7 +788,7 @@ UInt32 ScriptToken::GetFormID()
 	return 0;
 }
 
-TESForm *ScriptToken::GetTESForm()
+TESForm *ScriptToken::GetTESForm() const
 {
 	// ###TODO: handle Ref (RefVariable)? Read() turns RefVariable into Form so that type is compile-time only
 #if RUNTIME
@@ -797,7 +797,7 @@ TESForm *ScriptToken::GetTESForm()
 	if (type == kTokenType_RefVar && value.var)
 		return LookupFormByID(*reinterpret_cast<UInt32 *>(&value.var->data));
 	if (type == kTokenType_Number && formOrNumber)
-		return LookupFormByID(*reinterpret_cast<UInt32 *>(&value.num));
+		return LookupFormByID(*reinterpret_cast<UInt32 *>(const_cast<double*>(&value.num)));
 #endif
 	if (type == kTokenType_Lambda)
 		return value.lambda;
@@ -826,7 +826,7 @@ double ScriptToken::GetNumber() const
 	return 0.0;
 }
 
-bool ScriptToken::GetBool()
+bool ScriptToken::GetBool() const
 {
 	switch (type)
 	{
@@ -863,7 +863,7 @@ Operator *ScriptToken::GetOperator() const
 }
 
 #if RUNTIME
-ArrayID ScriptToken::GetArray()
+ArrayID ScriptToken::GetArray() const
 {
 	if (type == kTokenType_Array)
 		return value.arrID;
@@ -901,49 +901,29 @@ StringVar* ScriptToken::GetStringVar() const
 	return nullptr;
 }
 
-void ScriptToken::AssignResult(COMMAND_ARGS) const
+void ScriptToken::AssignResult(COMMAND_ARGS, ExpressionEvaluator &eval) const
 {
-	switch (type)
-	{
-	case kTokenType_Form:
-		*(UInt32*)result = value.formID;
-		break;
-	case kTokenType_Global:
-		*result = value.global->data;
-		break;
-	case kTokenType_String:
-	case kTokenType_AssignableString:
-	{
-		AssignToStringVar(PASS_COMMAND_ARGS, value.str);
-#if _DEBUG
-		Console_Print("ScriptToken::AssignResult -> String result.");
-#endif
-		break;
+	if (CanConvertTo(kTokenType_Number)) {
+		*result = GetNumber();
 	}
-#if RUNTIME
-	case kTokenType_Array:
-		*result = value.arrID;
-#if _DEBUG
-		Console_Print("ScriptToken::AssignResult -> Array result.");
-#endif
-		break;
-	case kTokenType_NumericVar:
-	case kTokenType_StringVar:
-	case kTokenType_ArrayVar:
-	case kTokenType_RefVar:
+	else if (CanConvertTo(kTokenType_String))
 	{
-		if (value.var) {
-			*result = value.var->data;
-			break;
-		}
-		// false = no break, so it goes to default.
+		AssignToStringVar(PASS_COMMAND_ARGS, GetString());
+		eval.ExpectReturnType(kRetnType_String);
 	}
-#endif
-	case kTokenType_Boolean:
-	case kTokenType_Number:
-	default:
-		*result = value.num;
+	else if (CanConvertTo(kTokenType_Form))
+	{
+		UInt32* refResult = (UInt32*)result;
+		*refResult = GetFormID();
+		eval.ExpectReturnType(kRetnType_Form);
 	}
+	else if (CanConvertTo(kTokenType_Array))
+	{
+		*result = GetArray();
+		eval.ExpectReturnType(kRetnType_Array);
+	}
+	else
+		ShowRuntimeError(scriptObj, "Function call returned unexpected token type %d", Type());
 }
 
 bool ScriptToken::ResolveVariable()
@@ -1622,7 +1602,7 @@ double ArrayElementToken::GetNumber() const
 	return out;
 }
 
-const char *ArrayElementToken::GetString()
+const char *ArrayElementToken::GetString() const
 {
 	const char *out = "";
 	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
@@ -1631,7 +1611,7 @@ const char *ArrayElementToken::GetString()
 	return out;
 }
 
-UInt32 ArrayElementToken::GetFormID()
+UInt32 ArrayElementToken::GetFormID() const
 {
 	UInt32 out = 0;
 	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
@@ -1640,7 +1620,7 @@ UInt32 ArrayElementToken::GetFormID()
 	return out;
 }
 
-TESForm *ArrayElementToken::GetTESForm()
+TESForm *ArrayElementToken::GetTESForm() const
 {
 	TESForm *out = NULL;
 	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
@@ -1649,7 +1629,7 @@ TESForm *ArrayElementToken::GetTESForm()
 	return out;
 }
 
-bool ArrayElementToken::GetBool()
+bool ArrayElementToken::GetBool() const
 {
 	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
 	if (!arr)
@@ -1667,7 +1647,7 @@ bool ArrayElementToken::GetBool()
 	return false;
 }
 
-ArrayID ArrayElementToken::GetArray()
+ArrayID ArrayElementToken::GetArray() const
 {
 	ArrayID out = 0;
 	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());

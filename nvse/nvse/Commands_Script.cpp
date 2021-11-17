@@ -889,7 +889,7 @@ bool Cmd_Ternary_Execute(COMMAND_ARGS)
 		InternalFunctionCaller caller(call_udf, thisObj, containingObj);
 		caller.SetArgs(0);
 		if (auto const tokenValResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller))))
-			tokenValResult->AssignResult(PASS_COMMAND_ARGS);
+			tokenValResult->AssignResult(PASS_COMMAND_ARGS, eval);
 	}
 	return true;
 
