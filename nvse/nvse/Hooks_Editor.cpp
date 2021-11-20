@@ -601,7 +601,8 @@ std::vector g_lineMacros =
 #endif
 	ScriptLineMacro([&](std::string& line, ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 	{
-		if (auto iter = ra::find_if(g_variableTypeNames, _L(const char* typeName, StartsWith(line, std::string(typeName) + " "))); iter != std::end(g_variableTypeNames))
+		if (auto iter = ra::find_if(g_variableTypeNames, _L(const char* typeName, StartsWith(line, std::string(typeName) + " "))); 
+			iter != std::end(g_variableTypeNames))
 		{
 			const auto* typeName = *iter;
 			const auto str = std::string(line).substr(strlen(typeName)+1);

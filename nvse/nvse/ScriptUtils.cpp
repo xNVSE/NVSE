@@ -2090,7 +2090,8 @@ bool ExpressionParser::GetUserFunctionParams(const std::vector<std::string> &par
 			CreateVariable(token, lastVarType);
 			lastVarType = Script::eVarType_Invalid;
 		}
-		else if (auto iter = ra::find_if(g_variableTypeNames, _L(const char* typeName, _stricmp(typeName, token.c_str()) == 0)); iter != std::end(g_variableTypeNames))
+		else if (auto iter = ra::find_if(g_variableTypeNames, _L(const char* typeName, _stricmp(typeName, token.c_str()) == 0)); 
+			iter != std::end(g_variableTypeNames))
 		{
 			lastVarType = VariableTypeNameToType(*iter);
 			continue;
