@@ -1207,7 +1207,7 @@ const UInt8 kClassifyParamExtract[70] =
 		7,
 		8,
 		6,
-		8,
+		6,
 		6,
 		6,
 		2,
@@ -1493,6 +1493,10 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 				if NOT_ID (form, BGSEncounterZone)
 					return false;
 				break;
+			case kParamType_IdleForm:
+				if NOT_ID (form, TESIdleForm)
+					return false;
+				break;
 			case kParamType_Message:
 				if NOT_ID (form, BGSMessage)
 					return false;
@@ -1747,6 +1751,7 @@ bool ExtractArgsRaw(ParamInfo *paramInfo, void *scriptDataIn, UInt32 *scriptData
 		case kParamType_ImageSpaceModifier:
 		case kParamType_ImageSpace:
 		case kParamType_EncounterZone:
+		case kParamType_IdleForm:
 		case kParamType_Message:
 		case kParamType_InvObjOrFormList:
 		case kParamType_NonFormList:

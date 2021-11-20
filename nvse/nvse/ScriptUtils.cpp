@@ -4264,6 +4264,9 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 						case kParamType_EncounterZone:
 							typeToMatch = kFormType_BGSEncounterZone;
 							break;
+						case kParamType_IdleForm:
+							typeToMatch = kFormType_TESIdleForm;
+							break;
 						case kParamType_Message:
 							typeToMatch = kFormType_BGSMessage;
 							break;

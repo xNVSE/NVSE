@@ -608,6 +608,8 @@ const char *SimpleStringForParamType(UInt32 paramType)
 		return "ref";
 	case kParamType_EncounterZone:
 		return "ref";
+	case kParamType_IdleForm:
+		return "ref";
 	case kParamType_Message:
 		return "ref";
 	case kParamType_InvObjOrFormList:
