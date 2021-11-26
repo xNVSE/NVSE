@@ -4359,27 +4359,30 @@ ScriptToken *ExpressionEvaluator::ExecuteCommandToken(ScriptToken const *token, 
 				Error("Attempting to call a function on a NULL reference");
 				return nullptr;
 			}
-			if (!callingRef->form->GetIsReference())
+			callingObj = DYNAMIC_CAST(callingRef->form, TESForm, TESObjectREFR);
+			if (!callingObj)
 			{
 				Error("Attempting to call a function on a base object (this must be a reference)");
 				return nullptr;
 			}
-			callingObj = DYNAMIC_CAST(callingRef->form, TESForm, TESObjectREFR);
 		}
 	}
 	else if (stackRef)
 	{
+		// Used in chained dot syntax (https://geckwiki.com/index.php?title=Chained_dot_syntax)
 		callingObj = stackRef;
+	}
+
+	if (cmdInfo->needsParent && !callingObj)
+	{
+		Error("Function %s requires a calling reference but none or NULL was provided", cmdInfo->longName);
+		return nullptr;
 	}
 
 	TESObjectREFR *contObj = callingRef ? NULL : m_containingObj;
 	double cmdResult = 0;
 
-	//UInt32 numBytesRead = 0;
-	//UInt8* scrData = Data();
-	//UInt16 argsLen = Read16();
 
-	//*m_opcodeOffsetPtr = m_data - m_scriptData;
 	UInt32 opcodeOffset = token->cmdOpcodeOffset;
 	CommandReturnType retnType = token->returnType;
 
