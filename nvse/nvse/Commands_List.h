@@ -16,21 +16,28 @@ static ParamInfo kParams_FormListForm[2] =
 DEFINE_CMD_ALT_COND(ListGetFormIndex, , returns the index for the specified form, 0, kParams_FormListForm);
 DEFINE_CMD_ALT_COND(IsRefInList, , returns the index for the specified form or base Form or permanent base Form, 0, kParams_FormListForm);
 
-static ParamInfo kParams_AddToFormList[3] = 
+static ParamInfo kParams_AddToFormList[4] = 
 {
 	{	"form list", kParamType_FormList,	0		},
 	{	"form",		kParamType_AnyForm,		0		},
-	{	"index",	 kParamType_Integer,	1		}
+	{	"index",	 kParamType_Integer,	1		},
+	{	"bCheckForDuplicates",	 kParamType_Integer,	1		}
 };
 
-DEFINE_CMD_ALT(ListAddForm, , adds the form to the list at the given index (or at the end if not provided), 0, 3, kParams_AddToFormList);
+DEFINE_CMD_ALT(ListAddForm, , adds the form to the list at the given index (or at the end if not provided), false, 4, kParams_AddToFormList);
 
 static ParamInfo kParams_FormList_OptionalInt[2] = 
 {
 	{	"form list", kParamType_FormList,	0		},
 	{	"index",	 kParamType_Integer,	1		}
 };
-DEFINE_CMD_ALT(ListAddReference, ListAddRef, adds the calling reference at the given index (or at the end if not provided), 1, 2, kParams_FormList_OptionalInt);
+static ParamInfo kParams_FormList_TwoOptionalInts[3] =
+{
+	{	"form list", kParamType_FormList,	0		},
+	{	"index",	 kParamType_Integer,	1		},
+	{	"bCheckForDuplicates",	 kParamType_Integer,	1		}
+};
+DEFINE_CMD_ALT(ListAddReference, ListAddRef, adds the calling reference at the given index (or at the end if not provided), 1, 2, kParams_FormList_TwoOptionalInts);
 
 DEFINE_CMD_ALT(ListRemoveNthForm, ListRemoveNth, removes the nth form from the list, 0, 2, kParams_FormList_OptionalInt); 
 DEFINE_CMD_ALT(ListRemoveForm, , removes the specified from from the list., 0, 2, kParams_FormListForm);
