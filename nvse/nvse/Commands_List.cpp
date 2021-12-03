@@ -92,7 +92,7 @@ bool Cmd_ListAddForm_Execute(COMMAND_ARGS)
 	*result = eListInvalid;
 	BGSListForm* pListForm = NULL;
 	TESForm* pForm = NULL;
-	UInt32 n = eListEnd;
+	SInt32 n = eListEnd;
 	UInt32 bCheckForDupes = false;
 
 #if REPORT_BAD_FORMLISTS
@@ -102,9 +102,7 @@ bool Cmd_ListAddForm_Execute(COMMAND_ARGS)
 	ExtractArgsEx(EXTRACT_ARGS_EX, &pListForm, &pForm, &n, &bCheckForDupes);
 	if (pListForm && pForm) {
 		auto const index = pListForm->AddAt(pForm, n, bCheckForDupes);
-		if (index != eListInvalid) {
-			*result = index;
-		}
+		*result = index;
 		if (IsConsoleMode()) {
 			Console_Print("Index: %d", index);
 		}
@@ -123,8 +121,8 @@ bool Cmd_ListAddForm_Execute(COMMAND_ARGS)
 bool Cmd_ListAddReference_Execute(COMMAND_ARGS)
 {
 	*result = eListInvalid;
-	BGSListForm* pListForm = NULL;
-	UInt32 n = eListEnd;
+	BGSListForm* pListForm = nullptr;
+	SInt32 n = eListEnd;
 	UInt32 bCheckForDupes = false;
 	
 #if REPORT_BAD_FORMLISTS
@@ -135,9 +133,7 @@ bool Cmd_ListAddReference_Execute(COMMAND_ARGS)
 		if (!pListForm || !thisObj) return true;
 
 		auto const index = pListForm->AddAt(thisObj, n, bCheckForDupes);
-		if (index != eListInvalid) {
-			*result = index;
-		}
+		*result = index;
 		if (IsConsoleMode()) {
 			Console_Print("Index: %d", index);
 		}
@@ -158,7 +154,7 @@ bool Cmd_ListRemoveNthForm_Execute(COMMAND_ARGS)
 	UInt32* refResult = (UInt32*)result;
 	*refResult = 0;
 
-	BGSListForm* pListForm = NULL;
+	BGSListForm* pListForm = nullptr;
 	UInt32 n = eListEnd;
 
 #if REPORT_BAD_FORMLISTS

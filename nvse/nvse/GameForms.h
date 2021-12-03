@@ -4520,7 +4520,7 @@ public:
 		return list.GetNthItem(n);
 	}
 
-	UInt32 AddAt(TESForm* pForm, SInt32 n, bool const checkDupes = false) {
+	SInt32 AddAt(TESForm* pForm, SInt32 n, bool const checkDupes = false) {
 
 		if (checkDupes) {
 			if (GetIndexOf(pForm) != eListInvalid)
