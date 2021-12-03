@@ -53,7 +53,7 @@ bool Cmd_ListGetNthForm_Execute(COMMAND_ARGS)
 {
 	*result = 0;
 	BGSListForm* pListForm = NULL;
-	UInt32 n = 0;
+	SInt32 n = 0;
 
 #if REPORT_BAD_FORMLISTS
 	__try {
@@ -155,7 +155,7 @@ bool Cmd_ListRemoveNthForm_Execute(COMMAND_ARGS)
 	*refResult = 0;
 
 	BGSListForm* pListForm = nullptr;
-	UInt32 n = eListEnd;
+	SInt32 n = eListEnd;
 
 #if REPORT_BAD_FORMLISTS
 	__try {
@@ -187,7 +187,7 @@ bool Cmd_ListReplaceNthForm_Execute(COMMAND_ARGS)
 
 	BGSListForm* pListForm = NULL;
 	TESForm* pReplaceWith = NULL;
-	UInt32 n = eListEnd;
+	SInt32 n = eListEnd;
 
 #if REPORT_BAD_FORMLISTS
 	__try {
