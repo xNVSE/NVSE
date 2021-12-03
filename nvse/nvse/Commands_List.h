@@ -37,7 +37,7 @@ static ParamInfo kParams_FormList_TwoOptionalInts[3] =
 	{	"index",	 kParamType_Integer,	1		},
 	{	"bCheckForDuplicates",	 kParamType_Integer,	1		}
 };
-DEFINE_CMD_ALT(ListAddReference, ListAddRef, adds the calling reference at the given index (or at the end if not provided), 1, 2, kParams_FormList_TwoOptionalInts);
+DEFINE_CMD_ALT(ListAddReference, ListAddRef, adds the calling reference at the given index (or at the end if not provided), true, 3, kParams_FormList_TwoOptionalInts);
 
 DEFINE_CMD_ALT(ListRemoveNthForm, ListRemoveNth, removes the nth form from the list, 0, 2, kParams_FormList_OptionalInt); 
 DEFINE_CMD_ALT(ListRemoveForm, , removes the specified from from the list., 0, 2, kParams_FormListForm);
