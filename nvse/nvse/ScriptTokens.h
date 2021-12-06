@@ -19,6 +19,7 @@ extern SInt32 FUNCTION_CONTEXT_COUNT;
 #include "StringVar.h"
 #include "GameAPI.h"
 #endif
+#include <variant>
 
 enum class NVSEVarType
 {
@@ -190,6 +191,9 @@ struct CustomVariableContext
 };
 #endif
 
+//ScriptToken but without the extra fields, for long-term storage.
+using VarValue = std::variant<UInt32, double, const char*, ArrayID>;	//formID, num, str, then arrID.
+
 // slightly less ugly but still cheap polymorphism
 struct ScriptToken
 {
@@ -269,6 +273,7 @@ struct ScriptToken
 	virtual const TokenPair *GetPair() const { return NULL; }
 
 	ScriptToken *ToBasicToken(); // return clone as one of string, number, array, form
+	[[nodiscard]] std::optional<VarValue> ToVarValue() const;	// create compact VarValue from this Token's basic value.
 
 	TESGlobal *GetGlobal() const;
 	Operator *GetOperator() const;

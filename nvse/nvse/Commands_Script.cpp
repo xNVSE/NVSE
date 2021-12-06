@@ -728,9 +728,9 @@ bool Cmd_CallWhile_Execute(COMMAND_ARGS)
 		CallArgs args;
 		for (UInt32 i = 2; i < eval.NumArgs(); i++)
 		{
-			if (auto tok = std::unique_ptr<ScriptToken>(eval.Arg(i)->ToBasicToken()))
+			if (auto const varVal = eval.Arg(i)->ToVarValue())
 			{
-				args.push_back(std::move(tok));
+				args.push_back(*varVal);
 			}
 		}
 

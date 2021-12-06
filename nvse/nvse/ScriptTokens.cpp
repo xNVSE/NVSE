@@ -1499,14 +1499,33 @@ ScriptToken *ScriptToken::ToBasicToken()
 {
 	if (CanConvertTo(kTokenType_String))
 		return Create(GetString());
-	else if (CanConvertTo(kTokenType_Array))
+	if (CanConvertTo(kTokenType_Array))
 		return CreateArray(GetArray());
-	else if (CanConvertTo(kTokenType_Form))
+	if (CanConvertTo(kTokenType_Form))
 		return CreateForm(GetFormID());
-	else if (CanConvertTo(kTokenType_Number))
+	if (CanConvertTo(kTokenType_Number))
 		return Create(GetNumber());
-	else
-		return NULL;
+	return nullptr;
+}
+
+std::optional<VarValue> ScriptToken::ToVarValue() const
+{
+	VarValue varVal;
+	if (CanConvertTo(kTokenType_String))
+		return { GetString() };
+	if (CanConvertTo(kTokenType_Array))
+	{
+		varVal.emplace<3>(GetArray());	//cannot use default ctor; ArrKey and FormID are conflicting types.
+		return varVal;
+	}
+	if (CanConvertTo(kTokenType_Form))
+	{
+		varVal.emplace<0>(GetFormID());
+		return varVal;
+	}
+	if (CanConvertTo(kTokenType_Number))
+		return { GetNumber() };
+	return {};
 }
 
 double ScriptToken::GetNumericRepresentation(bool bFromHex)

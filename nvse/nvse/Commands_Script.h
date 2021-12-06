@@ -108,7 +108,7 @@ DEFINE_COMMAND(CallWhile, "calls UDF each frame while condition is met", 0, 2, k
 DEFINE_CMD_ALT(CallForSeconds, CallFor, "calls UDF each frame for argument number of seconds", 0, 2, kParams_CallAfter);
 DEFINE_COMMAND(CallWhen, "calls UDF once when a condition is met which is polled each frame", 0, 2, kParams_CallWhile);
 
-using CallArgs = std::vector<std::unique_ptr<ScriptToken>>;
+using CallArgs = std::vector<VarValue>;
 
 struct DelayedCallInfo
 {
