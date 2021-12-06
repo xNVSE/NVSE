@@ -94,7 +94,8 @@ void HandleCallWhileScripts()
 	while (iter != g_callWhileInfos.end())
 	{
 		InternalFunctionCaller conditionCaller(iter->condition);
-		if (auto conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); conditionResult && conditionResult->GetBool())
+		if (auto const conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); 
+			conditionResult && conditionResult->GetBool())
 		{
 			InternalFunctionCaller scriptCaller(iter->callFunction, iter->thisObj);
 			delete UserFunctionManager::Call(std::move(scriptCaller));
@@ -117,7 +118,8 @@ void HandleCallWhenScripts()
 	while (iter != g_callWhenInfos.end())
 	{
 		InternalFunctionCaller conditionCaller(iter->condition);
-		if (auto conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); conditionResult && conditionResult->GetBool())
+		if (auto const conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); 
+			conditionResult && conditionResult->GetBool())
 		{
 			InternalFunctionCaller scriptCaller(iter->callFunction, iter->thisObj);
 			delete UserFunctionManager::Call(std::move(scriptCaller));

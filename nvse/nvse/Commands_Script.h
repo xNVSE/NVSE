@@ -108,18 +108,22 @@ DEFINE_COMMAND(CallWhile, "calls UDF each frame while condition is met", 0, 2, k
 DEFINE_CMD_ALT(CallForSeconds, CallFor, "calls UDF each frame for argument number of seconds", 0, 2, kParams_CallAfter);
 DEFINE_COMMAND(CallWhen, "calls UDF once when a condition is met which is polled each frame", 0, 2, kParams_CallWhile);
 
+using CallArgs = std::vector<std::unique_ptr<ScriptToken>>;
+
 struct DelayedCallInfo
 {
 	Script* script;
 	float time;
 	TESObjectREFR* thisObj;
 	LambdaManager::LambdaVariableContext lambdaVariableContext;
+	CallArgs args;
 
-	DelayedCallInfo(Script* script, float time, TESObjectREFR* thisObj)
+	DelayedCallInfo(Script* script, float time, TESObjectREFR* thisObj, CallArgs args = {})
 		: script(script),
 		  time(time),
 		  thisObj(thisObj),
-		  lambdaVariableContext(script)
+		  lambdaVariableContext(script),
+		  args(std::move(args))
 	{
 	}
 };
@@ -131,13 +135,15 @@ struct CallWhileInfo
 	TESObjectREFR* thisObj;
 	LambdaManager::LambdaVariableContext callFnLambdaCtx;
 	LambdaManager::LambdaVariableContext condFnLambdaCtx;
+	CallArgs args;
 
-	CallWhileInfo(Script* callFunction, Script* condition, TESObjectREFR* thisObj)
+	CallWhileInfo(Script* callFunction, Script* condition, TESObjectREFR* thisObj, CallArgs args = {})
 		: callFunction(callFunction),
 		  condition(condition),
 		  thisObj(thisObj),
 		  callFnLambdaCtx(callFunction),
-		  condFnLambdaCtx(condition)
+		  condFnLambdaCtx(condition),
+		  args(std::move(args))
 	{
 	}
 };

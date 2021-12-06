@@ -716,16 +716,28 @@ ICriticalSection g_callWhileInfosCS;
 
 bool Cmd_CallWhile_Execute(COMMAND_ARGS)
 {
-	Script *callFunction;
-	Script *conditionFunction;
-	if (!ExtractArgs(EXTRACT_ARGS, &callFunction, &conditionFunction))
-		return true;
-	for (auto *form : {callFunction, conditionFunction})
-		if (!form || !IS_ID(form, Script))
+	*result = false; //bSuccess
+	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+		eval.ExtractArgs())
+	{
+		Script* callFunction = eval.Arg(0)->GetUserFunction();
+		Script* conditionFunction = eval.Arg(1)->GetUserFunction();
+		if (!callFunction || !conditionFunction)
 			return true;
 
-	ScopedLock lock(g_callWhileInfosCS);
-	g_callWhileInfos.emplace_back(callFunction, conditionFunction, thisObj);
+		CallArgs args;
+		for (UInt32 i = 2; i < eval.NumArgs(); i++)
+		{
+			if (auto tok = std::unique_ptr<ScriptToken>(eval.Arg(i)->ToBasicToken()))
+			{
+				args.push_back(std::move(tok));
+			}
+		}
+
+		ScopedLock lock(g_callWhileInfosCS);
+		g_callWhileInfos.emplace_back(callFunction, conditionFunction, thisObj, std::move(args));
+		*result = true;
+	}
 	return true;
 }
 
@@ -872,7 +884,7 @@ bool Cmd_Ternary_Execute(COMMAND_ARGS)
 	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 		eval.ExtractArgs())
 	{
-		ScriptToken* value = eval.Arg(0)->ToBasicToken();
+		auto const value = std::unique_ptr<ScriptToken>(eval.Arg(0)->ToBasicToken());
 		if (!value)
 			return true;	// should never happen, could cause weird behavior otherwise.
 
