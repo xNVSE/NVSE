@@ -135,14 +135,19 @@ struct CallWhileInfo
 	TESObjectREFR* thisObj;
 	LambdaManager::LambdaVariableContext callFnLambdaCtx;
 	LambdaManager::LambdaVariableContext condFnLambdaCtx;
+	enum eFlagVals : UInt8 {
+		kPassArgs_ToCallFunc = 1 << 0,
+		kPassArgs_ToConditionFunc = 1 << 1,
+	} flags;
 	CallArgs args;
 
-	CallWhileInfo(Script* callFunction, Script* condition, TESObjectREFR* thisObj, CallArgs args = {})
+	CallWhileInfo(Script* callFunction, Script* condition, TESObjectREFR* thisObj, UInt8 flags, CallArgs args = {})
 		: callFunction(callFunction),
 		  condition(condition),
 		  thisObj(thisObj),
 		  callFnLambdaCtx(callFunction),
 		  condFnLambdaCtx(condition),
+		  flags(static_cast<eFlagVals>(flags)),
 		  args(std::move(args))
 	{
 	}

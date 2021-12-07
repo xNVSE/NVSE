@@ -714,29 +714,35 @@ bool Cmd_CallAfterSeconds_Execute(COMMAND_ARGS)
 std::list<CallWhileInfo> g_callWhileInfos;
 ICriticalSection g_callWhileInfosCS;
 
+bool ExtractCallWhileInfo(ExpressionEvaluator &eval, std::list<CallWhileInfo> &infos)
+{
+	Script* callFunction = eval.Arg(0)->GetUserFunction();
+	Script* conditionFunction = eval.Arg(1)->GetUserFunction();
+	if (!callFunction || !conditionFunction)
+		return false;
+	UInt32 flags = eval.Arg(2)->GetNumber();
+
+	CallArgs args;
+	for (UInt32 i = 3; i < eval.NumArgs(); i++)
+	{
+		if (auto const varVal = eval.Arg(i)->ToVarValue())
+		{
+			args.push_back(*varVal);
+		}
+	}
+
+	ScopedLock lock(g_callWhileInfosCS);
+	infos.emplace_back(callFunction, conditionFunction, eval.m_thisObj, flags, std::move(args));
+	return true;
+}
+
 bool Cmd_CallWhile_Execute(COMMAND_ARGS)
 {
 	*result = false; //bSuccess
 	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 		eval.ExtractArgs())
 	{
-		Script* callFunction = eval.Arg(0)->GetUserFunction();
-		Script* conditionFunction = eval.Arg(1)->GetUserFunction();
-		if (!callFunction || !conditionFunction)
-			return true;
-
-		CallArgs args;
-		for (UInt32 i = 2; i < eval.NumArgs(); i++)
-		{
-			if (auto const varVal = eval.Arg(i)->ToVarValue())
-			{
-				args.push_back(*varVal);
-			}
-		}
-
-		ScopedLock lock(g_callWhileInfosCS);
-		g_callWhileInfos.emplace_back(callFunction, conditionFunction, thisObj, std::move(args));
-		*result = true;
+		*result = ExtractCallWhileInfo(eval, g_callWhileInfos);
 	}
 	return true;
 }
@@ -760,16 +766,12 @@ ICriticalSection g_callWhenInfosCS;
 
 bool Cmd_CallWhen_Execute(COMMAND_ARGS)
 {
-	Script* callFunction;
-	Script* conditionFunction;
-	if (!ExtractArgs(EXTRACT_ARGS, &callFunction, &conditionFunction))
-		return true;
-	for (auto* form : { callFunction, conditionFunction })
-		if (!form || !IS_ID(form, Script))
-			return true;
-
-	ScopedLock lock(g_callWhenInfosCS);
-	g_callWhenInfos.emplace_back(callFunction, conditionFunction, thisObj);
+	*result = false; //bSuccess
+	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+		eval.ExtractArgs())
+	{
+		*result = ExtractCallWhileInfo(eval, g_callWhenInfos);
+	}
 	return true;
 
 }

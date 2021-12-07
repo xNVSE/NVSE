@@ -1510,21 +1510,24 @@ ScriptToken *ScriptToken::ToBasicToken()
 
 std::optional<VarValue> ScriptToken::ToVarValue() const
 {
-	VarValue varVal;
+	VarValue tmp;
 	if (CanConvertTo(kTokenType_String))
-		return { GetString() };
+		return { {GetString()} };
 	if (CanConvertTo(kTokenType_Array))
 	{
-		varVal.emplace<3>(GetArray());	//cannot use default ctor; ArrKey and FormID are conflicting types.
-		return varVal;
+		tmp.emplace<VarValue::kArrayID>(GetArray());	//cannot use default ctor; ArrKey and FormID are conflicting types.
+		return tmp;	
 	}
 	if (CanConvertTo(kTokenType_Form))
 	{
-		varVal.emplace<0>(GetFormID());
-		return varVal;
+		tmp.emplace<VarValue::kFormID>(GetFormID());
+		return tmp;
 	}
 	if (CanConvertTo(kTokenType_Number))
-		return { GetNumber() };
+	{
+		tmp.emplace<VarValue::kNumber>(GetNumber());
+		return tmp;
+	}
 	return {};
 }
 

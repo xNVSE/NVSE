@@ -191,8 +191,34 @@ struct CustomVariableContext
 };
 #endif
 
+
 //ScriptToken but without the extra fields, for long-term storage.
-using VarValue = std::variant<UInt32, double, const char*, ArrayID>;	//formID, num, str, then arrID.
+//Can't seem to use std::in_place_index anymore due to inheritance, should get that re-enabled...
+struct VarValue : std::variant<UInt32, float, const char*, ArrayID>
+{
+	enum eVarVal	//must match with template order for VarValue
+	{
+		kFormID = 0, kNumber, kString, kArrayID
+	};
+
+	[[nodiscard]] void* GetVoidPtr() const {
+		return std::visit(
+			[]<typename T0>(T0 & val) ->void* {
+			using T = std::decay_t<T0>;
+			if constexpr (std::is_same_v<T, float>)
+				return reinterpret_cast<void*>(*(UInt32*)&val);
+			else if constexpr (std::is_same_v<T, UInt32>)	//array or formID
+				return reinterpret_cast<void*>(val);
+			else if constexpr (std::is_same_v<T, const char*>)
+				return reinterpret_cast<void*>(const_cast<char*>(val));
+			else
+				static_assert(false, "non-exhaustive visitor!");
+		}, *this);
+	}
+};
+
+//Helper for std::visit on variants, see https://en.cppreference.com/w/cpp/utility/variant/visit code example.
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
 // slightly less ugly but still cheap polymorphism
 struct ScriptToken

@@ -669,6 +669,21 @@ bool InternalFunctionCaller::vSetArgs(UInt8 numArgs, va_list args)
 	return true;
 }
 
+bool InternalFunctionCaller::SetArgs(const std::vector<VarValue>& args)
+{
+	auto const numArgs = args.size();
+	if (numArgs >= kMaxArgs)
+		return false;
+	m_numArgs = numArgs;
+	size_t i = 0;
+	ra::for_each(args, [&](const VarValue& varVal) 
+	{
+		m_args[i] = varVal.GetVoidPtr();
+		i++;
+	});
+	return true;
+}
+
 namespace PluginAPI
 {
 	bool CallFunctionScript(Script *fnScript, TESObjectREFR *callingObj, TESObjectREFR *container,
