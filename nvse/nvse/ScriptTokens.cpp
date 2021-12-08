@@ -1520,8 +1520,7 @@ std::optional<VarValue> ScriptToken::ToVarValue() const
 	}
 	if (CanConvertTo(kTokenType_Form))
 	{
-		tmp.emplace<VarValue::kFormID>(GetFormID());
-		return tmp;
+		return{ {static_cast<StrongFormID>(GetFormID())} };
 	}
 	if (CanConvertTo(kTokenType_Number))
 	{

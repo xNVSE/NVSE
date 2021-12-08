@@ -97,16 +97,34 @@ static ParamInfo kParams_CallAfter[2] =
 	{	"function",	kParamType_AnyForm,0	},
 };
 
-static ParamInfo kParams_CallWhile[2] =
+static ParamInfo kParams_CallWhile[20] =
 {
-	{	"function",	kParamType_AnyForm,	0	},
-	{	"condition",	kParamType_AnyForm,0	},
+	{	"function",	kNVSEParamType_Form,	0	},
+	{	"condition",	kNVSEParamType_Form,0	},
+	{	"flags",		kNVSEParamType_Number,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
 };
 
 DEFINE_CMD_ALT(CallAfterSeconds, CallAfter, "calls UDF after argument number of seconds", 0, 2, kParams_CallAfter);
-DEFINE_COMMAND(CallWhile, "calls UDF each frame while condition is met", 0, 2, kParams_CallWhile);
+DEFINE_COMMAND_EXP(CallWhile, "calls UDF each frame while condition is met", false, kParams_CallWhile);
 DEFINE_CMD_ALT(CallForSeconds, CallFor, "calls UDF each frame for argument number of seconds", 0, 2, kParams_CallAfter);
-DEFINE_COMMAND(CallWhen, "calls UDF once when a condition is met which is polled each frame", 0, 2, kParams_CallWhile);
+DEFINE_COMMAND_EXP(CallWhen, "calls UDF once when a condition is met which is polled each frame", false, kParams_CallWhile);
 
 using CallArgs = std::vector<VarValue>;
 

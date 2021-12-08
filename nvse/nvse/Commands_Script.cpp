@@ -711,10 +711,7 @@ bool Cmd_CallAfterSeconds_Execute(COMMAND_ARGS)
 	return true;
 }
 
-std::list<CallWhileInfo> g_callWhileInfos;
-ICriticalSection g_callWhileInfosCS;
-
-bool ExtractCallWhileInfo(ExpressionEvaluator &eval, std::list<CallWhileInfo> &infos)
+bool ExtractCallWhileInfo(ExpressionEvaluator &eval, std::list<CallWhileInfo> &infos, ICriticalSection &cs)
 {
 	Script* callFunction = eval.Arg(0)->GetUserFunction();
 	Script* conditionFunction = eval.Arg(1)->GetUserFunction();
@@ -731,10 +728,13 @@ bool ExtractCallWhileInfo(ExpressionEvaluator &eval, std::list<CallWhileInfo> &i
 		}
 	}
 
-	ScopedLock lock(g_callWhileInfosCS);
+	ScopedLock lock(cs);
 	infos.emplace_back(callFunction, conditionFunction, eval.m_thisObj, flags, std::move(args));
 	return true;
 }
+
+std::list<CallWhileInfo> g_callWhileInfos;
+ICriticalSection g_callWhileInfosCS;
 
 bool Cmd_CallWhile_Execute(COMMAND_ARGS)
 {
@@ -742,7 +742,7 @@ bool Cmd_CallWhile_Execute(COMMAND_ARGS)
 	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 		eval.ExtractArgs())
 	{
-		*result = ExtractCallWhileInfo(eval, g_callWhileInfos);
+		*result = ExtractCallWhileInfo(eval, g_callWhileInfos, g_callWhileInfosCS);
 	}
 	return true;
 }
@@ -770,7 +770,7 @@ bool Cmd_CallWhen_Execute(COMMAND_ARGS)
 	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 		eval.ExtractArgs())
 	{
-		*result = ExtractCallWhileInfo(eval, g_callWhenInfos);
+		*result = ExtractCallWhileInfo(eval, g_callWhenInfos, g_callWhenInfosCS);
 	}
 	return true;
 

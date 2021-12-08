@@ -191,34 +191,50 @@ struct CustomVariableContext
 };
 #endif
 
+//to discriminate between ArrayID vs FormID (same underlying type), for std::visit on variants
+enum class StrongFormID : UInt32 { };
+
+//Helper for std::visit on variants, see https://en.cppreference.com/w/cpp/utility/variant/visit code example.
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
 //ScriptToken but without the extra fields, for long-term storage.
 //Can't seem to use std::in_place_index anymore due to inheritance, should get that re-enabled...
-struct VarValue : std::variant<UInt32, float, const char*, ArrayID>
+struct VarValue : std::variant<StrongFormID, float, const char*, ArrayID>
 {
 	enum eVarVal	//must match with template order for VarValue
 	{
 		kFormID = 0, kNumber, kString, kArrayID
 	};
 
+	//Returns the VarValue in the form expected for InternalFunctionCaller's args.
 	[[nodiscard]] void* GetVoidPtr() const {
+		/* todo: keep until tested!
 		return std::visit(
-			[]<typename T0>(T0 & val) ->void* {
+			[]<typename T0>(T0 &val) ->void* {
 			using T = std::decay_t<T0>;
 			if constexpr (std::is_same_v<T, float>)
-				return reinterpret_cast<void*>(*(UInt32*)&val);
-			else if constexpr (std::is_same_v<T, UInt32>)	//array or formID
+				return (UInt32*)&val;
+			else if constexpr (std::is_same_v<T, ArrayID>)
 				return reinterpret_cast<void*>(val);
+			else if constexpr (std::is_same_v<T, StrongFormID>)
+				return LookupFormByID(static_cast<UInt32>(val));
 			else if constexpr (std::is_same_v<T, const char*>)
-				return reinterpret_cast<void*>(const_cast<char*>(val));
+				return const_cast<char*>(val);
 			else
 				static_assert(false, "non-exhaustive visitor!");
+		}, *this);*/
+		return std::visit( overloaded {
+			[](const float& val) ->void* {
+				return (UInt32*)&val; },
+			[](const ArrayID& val) ->void* {
+				return reinterpret_cast<void*>(val); },
+			[](const StrongFormID& val) ->void* {
+				return LookupFormByID(static_cast<UInt32>(val)); },
+			[](const char *val) ->void* {
+				return const_cast<char*>(val); },
 		}, *this);
 	}
 };
-
-//Helper for std::visit on variants, see https://en.cppreference.com/w/cpp/utility/variant/visit code example.
-template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
 // slightly less ugly but still cheap polymorphism
 struct ScriptToken
