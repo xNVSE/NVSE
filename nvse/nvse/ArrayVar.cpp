@@ -3,6 +3,9 @@
 #include "GameForms.h"
 #include <algorithm>
 #include <intrin.h>
+#include <set>
+
+#include "Core_Serialization.h"
 
 #if RUNTIME
 #include "GameAPI.h"
@@ -28,7 +31,10 @@ const char* DataTypeToString(DataType dataType)
 ArrayData::~ArrayData()
 {
 	if ((dataType == kDataType_String) && str)
+	{
 		free(str);
+		str = nullptr;
+	}
 	dataType = kDataType_Invalid;
 }
 
@@ -54,6 +60,11 @@ ArrayData& ArrayData::operator=(const ArrayData& rhs)
 		else num = rhs.num;
 	}
 	return *this;
+}
+
+ArrayElement::~ArrayElement()
+{
+	Unset();
 }
 
 //////////////////
@@ -104,10 +115,11 @@ bool ArrayElement::operator==(const ArrayElement& rhs) const
 	switch (m_data.dataType)
 	{
 	case kDataType_Form:
-	case kDataType_Array:
 		return m_data.formID == rhs.m_data.formID;
 	case kDataType_String:
 		return !StrCompare(m_data.str, rhs.m_data.str);
+	case kDataType_Array:
+		return m_data.arrID == rhs.m_data.arrID;
 	default:
 		return m_data.num == rhs.m_data.num;
 	}
@@ -199,6 +211,13 @@ bool ArrayElement::SetFormID(UInt32 refID)
 
 	m_data.dataType = kDataType_Form;
 	m_data.formID = refID;
+
+	TESForm* form;
+	if ((form = LookupFormByRefID(refID)) && IS_ID(form, Script) && LambdaManager::IsScriptLambda(static_cast<Script*>(form)))
+	{
+		LambdaManager::SaveLambdaVariables(static_cast<Script*>(form));
+	}
+
 	return true;
 }
 
@@ -292,6 +311,34 @@ bool ArrayElement::GetAsString(const char** out) const
 	return true;
 }
 
+// Try to replicate bool ScriptToken::GetBool()
+bool ArrayElement::GetBool() const
+{
+	bool result = false;
+	switch (DataType())
+	{
+	case kDataType_Array:
+		result = m_data.arrID && g_ArrayMap.Get(m_data.arrID);
+		break;
+	case kDataType_Numeric:
+		result = m_data.num != 0.0;
+		break;
+	case kDataType_Form:
+		result = m_data.formID != 0;
+		break;
+	case kDataType_String:
+		if (auto const str = m_data.GetStr())
+		{
+			if (str[0])
+				result = true;
+		}
+		break;
+	default:
+		return false;
+	}
+	return result;
+}
+
 void ArrayElement::Unset()
 {
 	if (m_data.dataType == kDataType_Invalid)
@@ -300,10 +347,20 @@ void ArrayElement::Unset()
 	if (m_data.dataType == kDataType_String)
 	{
 		if (m_data.str)
+		{
 			free(m_data.str);
+			m_data.str = nullptr;
+		}
 	}
-	else if (m_data.dataType == kDataType_Array)
+	else if (m_data.dataType == kDataType_Array && m_data.owningArray)
 		g_ArrayMap.RemoveReference(&m_data.arrID, GetArrayOwningModIndex(m_data.arrID));
+	else if (m_data.dataType == kDataType_Form)
+	{
+		auto* form = LookupFormByRefID(m_data.formID);
+		if (form && IS_ID(form, Script) && LambdaManager::IsScriptLambda(static_cast<Script*>(form)))
+			LambdaManager::UnsaveLambdaVariables(static_cast<Script*>(form));
+		m_data.formID = 0;
+	}
 
 	m_data.dataType = kDataType_Invalid;
 }
@@ -1225,14 +1282,7 @@ void ArrayVar::Dump(const std::function<void(const std::string&)>& output)
 {
 	const char* owningModName = DataHandler::Get()->GetNthModName(m_owningModIndex);
 
-#if _DEBUG
-	auto temp = g_ArrayMap.IsTemporary(m_ID);
-	if (temp) 
-		return;
-	auto str = FormatString("** Dumping Array #%d **\nRefs: %d Owner %02X: %s Temp: %s Name: %s", m_ID, m_refs.Size(), m_owningModIndex, owningModName, temp ? "true" : "false", /*varName.c_str()*/"");
-#else
 	auto str = FormatString("** Dumping Array #%d **\nRefs: %d Owner %02X: %s", m_ID, m_refs.Size(), m_owningModIndex, owningModName);
-#endif
 	output(str);
 	_MESSAGE("%s", str.c_str());
 
@@ -1266,11 +1316,14 @@ void ArrayVar::Dump(const std::function<void(const std::string&)>& output)
 			elementInfo += iter.second()->m_data.GetStr();
 			break;
 		case kDataType_Array:
-			elementInfo += "(Array ID #";
-			snprintf(numBuf, sizeof(numBuf), "%d", iter.second()->m_data.arrID);
-			elementInfo += numBuf;
-			elementInfo += ")";
-			break;
+			{
+				auto* arr = g_ArrayMap.Get(iter.second()->m_data.arrID);
+				if (arr)
+					elementInfo += arr->GetStringRepresentation();
+				else
+					elementInfo += "NULL Array";
+				break;
+			}
 		case kDataType_Form:
 			{
 				UInt32 refID = iter.second()->m_data.formID;
@@ -1369,9 +1422,9 @@ std::string ArrayVar::GetStringRepresentation() const
 			result += '"' + std::string(iter.Key()) + '"' + ": " + iter.Get().GetStringRepresentation();
 			if (iter.Index() != container->Size() - 1)
 				result += ", ";
-			result += "]";
-			return result;
 		}
+		result += "]";
+		return result;
 	}
 	default:
 		return "invalid array";
@@ -1405,6 +1458,65 @@ std::string ArrayVar::GetStringRepresentation() const
 		curIdx += 1;
 	}
 }*/
+
+bool ArrayVar::CompareArrays(ArrayVar* arr2, bool checkDeep)
+{
+	if (this->Size() != arr2->Size())
+		return false;
+
+	if (this->ID() == arr2->ID())
+		return true;
+
+	auto iter2 = arr2->m_elements.begin();
+	for (auto iter1 = this->m_elements.begin(); !iter1.End(); ++iter1, ++iter2)
+	{
+		//== Compare keys.
+		TempObject<ArrayKey> tempKey1(*iter1.first());
+		TempObject<ArrayKey> tempKey2(*iter2.first());
+		// required as iterators pass static objects and this function is recursive   // copied note from ArrayVar::Copy()
+
+		if (tempKey1().KeyType() != tempKey2().KeyType())
+			return false;
+
+		if (tempKey1() != tempKey2())  // Redundant KeyType check, but who knows when that error message might be re-enabled.
+			return false;
+
+		//== Compare elements.
+		const ArrayElement& elem1 = *iter1.second();
+		const ArrayElement& elem2 = *iter2.second();
+
+		if (elem1.DataType() != elem2.DataType())
+			return false;
+
+		if (elem1.DataType() == kDataType_Array && checkDeep)  // recursion case
+		{
+			auto innerArr1 = g_ArrayMap.Get(elem1.m_data.arrID);
+			auto innerArr2 = g_ArrayMap.Get(elem2.m_data.arrID);
+			if (innerArr1 && innerArr2)
+			{
+				if (!innerArr1->CompareArrays(innerArr2, true))  // recursive call
+					return false;
+			}
+			else if (innerArr1 || innerArr2)
+			{
+				return false;  // one of the inner arrays is null while the other is not.
+			}
+		}
+		else if (elem1 != elem2)
+			return false;
+	}
+	return true;
+}
+
+bool ArrayVar::Equals(ArrayVar* arr2)
+{
+	return this->CompareArrays(arr2, false);
+}
+
+bool ArrayVar::DeepEquals(ArrayVar* arr2)
+{
+	return this->CompareArrays(arr2, true);
+}
 
 //////////////////////////
 // ArrayVarMap
@@ -1448,6 +1560,7 @@ std::vector<ArrayVar*> ArrayVarMap::GetArraysContainingArrayID(ArrayID id)
 ArrayVar* ArrayVarMap::Add(UInt32 varID, UInt32 keyType, bool packed, UInt8 modIndex, UInt32 numRefs, UInt8* refs)
 {
 	ArrayVar* var = VarMap::Insert(varID, keyType, packed, modIndex);
+	ScopedLock lock(var->m_cs);
 	availableIDs.Erase(varID);
 	var->m_ID = varID;
 	if (numRefs) // record references to this array
@@ -1474,6 +1587,7 @@ void ArrayVarMap::AddReference(ArrayID* ref, ArrayID toRef, UInt8 referringModIn
 	ArrayVar* arr = Get(toRef);
 	if (arr)
 	{
+		ScopedLock lock(arr->m_cs);
 		arr->m_refs.Append(referringModIndex); // record reference, increment refcount
 		*ref = toRef; // store ref'ed ArrayID in reference
 		MarkTemporary(toRef, false);
@@ -1485,6 +1599,7 @@ void ArrayVarMap::RemoveReference(ArrayID* ref, UInt8 referringModIndex)
 	ArrayVar* var = Get(*ref);
 	if (var)
 	{
+		ScopedLock lock(var->m_cs);
 		// decrement refcount
 		var->m_refs.Remove(referringModIndex);
 
@@ -1601,7 +1716,9 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 
 	Serialization::OpenRecord('ARVE', kVersion);
 }
-
+#if _DEBUG
+std::set<std::string> g_modsWithCosaveVars;
+#endif
 void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 {
 	_MESSAGE("Loading array variables");
@@ -1620,7 +1737,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 	UInt32 lastIndexRead = 0;
 
 	double numKey;
-
+	std::unordered_map<UInt8, UInt32> varCountMap;
 	while (bContinue && Serialization::GetNextRecordInfo(&type, &version, &length))
 	{
 		switch (type)
@@ -1631,7 +1748,10 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 		case 'ARVR':
 			{
 				modIndex = Serialization::ReadRecord8();
-				if (!Serialization::ResolveRefID(modIndex << 24, &tempRefID))
+#if _DEBUG
+				g_modsWithCosaveVars.insert(g_modsLoaded.at(modIndex));
+#endif
+				if (!Serialization::ResolveRefID(modIndex << 24, &tempRefID) || modIndex == 0xFF)
 				{
 					// owning mod was removed, but there may be references to it from other mods
 					// assign ownership to the first mod which refers to it and is still loaded
@@ -1663,6 +1783,11 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 						for (UInt32 i = 0; i < numRefs; i++)
 						{
 							curModIndex = Serialization::ReadRecord8();
+							if (curModIndex == 0xFF)
+								continue;
+#if _DEBUG
+							g_modsWithCosaveVars.insert(g_modsLoaded.at(curModIndex));
+#endif
 							if (!modIndex)
 							{
 								if (Serialization::ResolveRefID(curModIndex << 24, &tempRefID))
@@ -1675,6 +1800,18 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 
 							if (Serialization::ResolveRefID(curModIndex << 24, &tempRefID))
 								buffer[refIdx++] = (tempRefID >> 24);
+
+							bool resolveRefID = true;
+#if !_DEBUG
+							resolveRefID = Serialization::ResolveRefID(curModIndex << 24, nullptr);
+#endif
+							if (g_showFileSizeWarning && resolveRefID)
+							{
+								auto& numVars = varCountMap[curModIndex];
+								numVars++;
+								if (numVars > 2000)
+									g_cosaveWarning.modIndices.insert(curModIndex);
+							}
 						}
 
 						numRefs = refIdx;
@@ -1910,6 +2047,12 @@ namespace PluginAPI
 		return arrVar ? arrVar->m_bPacked : 0;
 	}
 
+	int ArrayAPI::GetContainerType(NVSEArrayVarInterface::Array* arr)
+	{
+		ArrayVar* arrVar = g_ArrayMap.Get((ArrayID)arr);
+		return arrVar ? arrVar->GetContainerType() : -1;
+	}
+
 	NVSEArrayVarInterface::Array* ArrayAPI::LookupArrayByID(UInt32 id)
 	{
 		ArrayVar* arrVar = g_ArrayMap.Get(id);
@@ -1971,6 +2114,19 @@ namespace PluginAPI
 				i++;
 			}
 			return true;
+		}
+		return false;
+	}
+
+	bool ArrayAPI::ArrayHasKey(NVSEArrayVarInterface::Array* arr, const NVSEArrayVarInterface::Element& key)
+	{
+		ArrayVar* var = g_ArrayMap.Get((ArrayID)arr);
+		if (var)
+		{
+			if (key.type == key.kType_String)
+				return var->HasKey(key.str);
+			if (key.type == key.kType_Numeric)
+				return var->HasKey(key.num);
 		}
 		return false;
 	}

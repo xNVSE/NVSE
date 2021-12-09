@@ -1,6 +1,7 @@
 #include "SafeWrite.h"
 #include "Hooks_Script.h"
 
+#include <filesystem>
 #include <ranges>
 
 #include "GameForms.h"
@@ -9,14 +10,24 @@
 #include "CommandTable.h"
 #include <stack>
 #include <string>
+#include <fstream>
+#include <set>
 
 #include "GameAPI.h"
+#include "GameData.h"
+#include "PluginManager.h"
 
 // a size of ~1KB should be enough for a single line of code
 char s_ExpressionParserAltBuffer[0x500] = {0};
 
-#if RUNTIME
+struct ScriptAndScriptBuffer
+{
+	Script* script;
+	ScriptBuffer* scriptBuffer;
+};
 
+#if RUNTIME
+void PatchScriptCompile();
 const UInt32 ExtractStringPatchAddr = 0x005ADDCA; // ExtractArgs: follow first jz inside loop then first case of following switch: last call in case.
 const UInt32 ExtractStringRetnAddr = 0x005ADDE3;
 
@@ -200,6 +211,8 @@ void Hook_Script_Init()
 	}
 	
 	WriteRelJump(0x5949D4, reinterpret_cast<UInt32>(ExpressionEvalRunCommandHook));
+
+	PatchScriptCompile();
 }
 
 #else // CS-stuff
@@ -257,7 +270,10 @@ void PatchEndOfLineCheck(bool bDisableCheck)
 
 void PatchEndOfLineCheck(bool bDisableCheck)
 {
-	// TODO: implement for run-time
+	if (bDisableCheck)
+		SafeWrite8(0x5B3A8D, 0xEB);
+	else
+		SafeWrite8(0x5B3A8D, 0x73);
 }
 
 #endif
@@ -269,17 +285,28 @@ bool ParsingExpression()
 	return s_bParsingExpression;
 }
 
+bool g_patchedEol = false;
+
 bool ParseNestedFunction(CommandInfo *cmd, ScriptLineBuffer *lineBuf, ScriptBuffer *scriptBuf)
 {
+	bool patcher = false;
 	// disable check for end of line
-	PatchEndOfLineCheck(true);
+	if (!g_patchedEol)
+	{
+		g_patchedEol = patcher = true;
+		PatchEndOfLineCheck(true);
+	}
 
 	s_bParsingExpression = true;
 	bool bParsed = cmd->parse(cmd->numParams, cmd->params, lineBuf, scriptBuf);
 	s_bParsingExpression = false;
 
 	// re-enable EOL check
-	PatchEndOfLineCheck(false);
+	if (patcher)
+	{
+		PatchEndOfLineCheck(false);
+		g_patchedEol = false;
+	}
 
 	return bParsed;
 }
@@ -302,6 +329,105 @@ bool HandleLoopEnd(UInt32 offsetToEnd)
 	*((UInt32 *)startPtr) = offsetToEnd;
 	return true;
 }
+
+
+// ScriptBuffer::currentScript not used due to GECK treating it as external ref script
+std::stack<Script*> g_currentScriptStack;
+
+bool __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
+{
+	// empty out the loop stack
+	while (s_loopStartOffsets.size())
+		s_loopStartOffsets.pop();
+
+	// Preprocess the script:
+	//  - check for usage of array variables in Set statements (disallowed)
+	//  - check loop structure integrity
+	//  - check for use of ResetAllVariables on scripts containing string/array vars
+	g_currentScriptStack.push(script);
+
+	bool bResult = PrecompileScript(buf);
+	if (bResult)
+	{
+		ScriptAndScriptBuffer msg{ script, buf };
+		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_Precompile, &msg, sizeof(ScriptAndScriptBuffer), NULL);
+	}
+
+	if (!bResult)
+		buf->errorCode = 1;
+
+	return bResult;
+}
+
+void PostScriptCompile()
+{
+	g_currentScriptStack.pop();
+	g_variableDefinitionsMap.clear();
+}
+
+#if RUNTIME
+
+__declspec(naked) void HookBeginScriptCompile()
+{
+	const static auto retnAddr = 0x5AEB99;
+	__asm
+	{
+		// replaced stuff
+		push ebp
+		mov ebp, esp
+		sub esp, 0x18
+		mov [ebp-0x18], ecx
+		// our stuff
+		mov ecx, [ebp + 0x8] // Script*
+		push ecx
+		mov edx, [ebp+0xC] // ScriptBuffer*
+		push edx
+		call HandleBeginCompile
+		test al, al
+		jnz success
+		// fail
+		mov al, 0
+		mov esp, ebp
+		pop ebp
+		ret 8
+	success:
+		jmp retnAddr
+	}
+}
+
+__declspec(naked) void HookEndScriptCompile()
+{
+	__asm
+	{
+		push eax
+		call PostScriptCompile
+		pop eax
+		mov esp, ebp
+		pop ebp
+		ret 8
+	}
+}
+
+bool __fastcall ScriptCompileHook(void* compiler, void* _EDX, Script* script, ScriptBuffer* scriptBuffer)
+{
+	if (!HandleBeginCompile(scriptBuffer, script))
+		return false;
+	const auto result = ThisStdCall(0x5AEB90, compiler, script, scriptBuffer);
+	if (result)
+	{
+		ScriptAndScriptBuffer data{ script, scriptBuffer };
+		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptCompile, &data, sizeof(ScriptAndScriptBuffer), nullptr);
+	}
+	PostScriptCompile();
+	return result;
+}
+
+void PatchScriptCompile()
+{
+	WriteRelCall(0x5AEE9C, reinterpret_cast<UInt32>(ScriptCompileHook));
+}
+
+#endif
 
 #if EDITOR
 
@@ -597,54 +723,54 @@ namespace CompilerOverride
 	}
 }
 
-// ScriptBuffer::currentScript not used due to GECK treating it as external ref script
-std::stack<Script *> g_currentScriptStack;
-
-bool __stdcall HandleBeginCompile(ScriptBuffer *buf, Script *script)
+void MarkModAsMyMod(Script* script)
 {
-	// empty out the loop stack
-	while (s_loopStartOffsets.size())
-		s_loopStartOffsets.pop();
-
-	// Preprocess the script:
-	//  - check for usage of array variables in Set statements (disallowed)
-	//  - check loop structure integrity
-	//  - check for use of ResetAllVariables on scripts containing string/array vars
-	g_currentScriptStack.push(script);
-
-	bool bResult = PrecompileScript(buf);
-	if (bResult)
+	std::set<std::string> myMods;
+	const auto myModsFileName = "MyGECKMods.txt";
+	if (std::filesystem::exists(myModsFileName))
 	{
-		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_Precompile, buf, sizeof(buf), NULL);
+		std::ifstream is(myModsFileName);
+		std::string curMod;
+		while (std::getline(is, curMod))
+		{
+			myMods.emplace(std::move(curMod));
+		}
 	}
-
-	if (!bResult)
-		buf->errorCode = 1;
-
-	return bResult;
+	std::ofstream os(myModsFileName);
+	std::string esmFileName;
+	if (script->mods.Head() && script->mods.Head()->data && ValidString(script->mods.Head()->data->name))
+	{
+		esmFileName = script->mods.Head()->data->name;
+	}
+	else if (DataHandler::Get()->activeFile && ValidString(DataHandler::Get()->activeFile->name))
+	{
+		esmFileName = DataHandler::Get()->activeFile->name;
+	}
+	myMods.emplace(std::move(esmFileName));
+	for (auto& line : myMods)
+	{
+		os << line << std::endl;
+	}
 }
 
-void __fastcall PostScriptCompileSuccess(Script *script)
+void __fastcall PostScriptCompileSuccess(Script* script, ScriptBuffer* scriptBuffer)
 {
-	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptCompile, script, 4, nullptr);
-}
-
-void PostScriptCompile()
-{
-	g_variableDefinitionsMap.clear();
-	for (const auto &key : g_lambdaParentScriptMap | std::views::keys)
-		Delete<Script, 0x5C5220>(key);
-	g_lambdaParentScriptMap.clear();
-	g_currentScriptStack.pop();
+	ScriptAndScriptBuffer msg{ script, scriptBuffer };
+	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptCompile, &msg, sizeof(ScriptAndScriptBuffer), nullptr);
+#if EDITOR
+	MarkModAsMyMod(script);
+#endif
 }
 
 static __declspec(naked) void CompileScriptHook(void)
 {
 	static bool precompileResult;
 	static Script *script = nullptr;
+	static ScriptBuffer* scriptBuffer = nullptr;
 	__asm {
 		mov [script], eax
 		mov		eax, [esp + 4] // grab the second arg (ScriptBuffer*)
+		mov [scriptBuffer], eax
 		pushad
 		mov ecx, script
 		push ecx
@@ -658,6 +784,7 @@ static __declspec(naked) void CompileScriptHook(void)
 		pop eax
 		test	al, al
 		jz		EndHook // return false if CompileScript() returned false
+		mov edx, scriptBuffer
 		mov ecx, script
 		call PostScriptCompileSuccess
 		mov		al, [precompileResult]								 // else return result of Precompile

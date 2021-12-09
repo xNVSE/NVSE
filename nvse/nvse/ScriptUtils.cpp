@@ -1,6 +1,7 @@
 
 #include "ScriptUtils.h"
 
+#include <optional>
 #include <set>
 
 #include "CommandTable.h"
@@ -17,8 +18,12 @@
 #include "LambdaManager.h"
 #include <regex>
 #include <utility>
+#include <ranges>
 
 #include "ScriptAnalyzer.h"
+
+std::map<std::pair<Script*, std::string>, Script::VariableType> g_variableDefinitionsMap;
+
 #if RUNTIME
 
 #ifdef DBG_EXPR_LEAKS
@@ -52,23 +57,8 @@ static bool ShowWarning(const char *msg)
 #else
 
 #include "GameAPI.h"
+#include <ranges>
 
-extern std::stack<Script *> g_currentScriptStack;
-std::map<std::pair<Script *, std::string>, Script::VariableType> g_variableDefinitionsMap;
-
-Script::VariableType GetSavedVarType(Script *script, const std::string &name)
-{
-	if (!script)
-		return Script::eVarType_Invalid;
-	if (const auto iter = g_variableDefinitionsMap.find(std::make_pair(script, name)); iter != g_variableDefinitionsMap.end())
-		return iter->second;
-	return Script::eVarType_Invalid;
-}
-
-void SaveVarType(Script *script, const std::string &name, Script::VariableType type)
-{
-	g_variableDefinitionsMap.emplace(std::make_pair(script, name), type);
-}
 
 const char *GetEditorID(TESForm *form)
 {
@@ -90,16 +80,37 @@ static bool ShowWarning(const char *msg)
 
 #endif
 
+Script::VariableType GetSavedVarType(Script* script, const std::string& name)
+{
+	if (!script)
+		return Script::eVarType_Invalid;
+	if (const auto iter = g_variableDefinitionsMap.find(std::make_pair(script, name)); iter != g_variableDefinitionsMap.end())
+		return iter->second;
+	return Script::eVarType_Invalid;
+}
+
+void SaveVarType(Script* script, const std::string& name, Script::VariableType type)
+{
+	g_variableDefinitionsMap.emplace(std::make_pair(script, name), type);
+}
+
+
 ErrOutput g_ErrOut(ShowError, ShowWarning);
 
 #if RUNTIME
-UInt32 AddStringVar(const char *data, ScriptToken &lh, ExpressionEvaluator &context)
+UInt32 AddStringVar(const char *data, ScriptToken &lh, ExpressionEvaluator &context, StringVar** svOut)
 {
 	if (!lh.refIdx)
 		AddToGarbageCollection(context.eventList, lh.GetVar(), NVSEVarType::kVarType_String);
-	return g_StringMap.Add(lh.owningScript->GetModIndex(), data, false);
+	return g_StringMap.Add(context.script->GetModIndex(), data, false, svOut);
 }
 
+UInt32 AddStringVar(StringVar&& other, ScriptToken& lh, ExpressionEvaluator& context, StringVar** svOut)
+{
+	if (!lh.refIdx)
+		AddToGarbageCollection(context.eventList, lh.GetVar(), NVSEVarType::kVarType_String);
+	return g_StringMap.Add(std::move(other), false, svOut);
+}
 #endif
 
 #if RUNTIME
@@ -180,12 +191,31 @@ ScriptToken *Eval_Eq_Number(OperatorType op, ScriptToken *lh, ScriptToken *rh, E
 
 ScriptToken *Eval_Eq_Array(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
+	// Instead of comparing arrayIDs, compare the contents of the arrays.
+	// For nested arrays, compare the arrayIDs to save on computing power. Use the Ar_DeepEquals function if needed.
+	bool isEqual;
+	auto lhArr = g_ArrayMap.Get(lh->GetArray());
+	auto rhArr = g_ArrayMap.Get(rh->GetArray());
+
+	if (lhArr && rhArr)
+	{
+		isEqual = lhArr->Equals(rhArr);
+	}
+	else if (lhArr || rhArr)  // one is null while the other is not.
+	{
+		isEqual = false;
+	}
+	else  // both are null.
+	{
+		isEqual = true;
+	}
+	
 	switch (op)
 	{
 	case kOpType_Equals:
-		return ScriptToken::Create(lh->GetArray() == rh->GetArray());
+		return ScriptToken::Create(isEqual);
 	case kOpType_NotEqual:
-		return ScriptToken::Create(lh->GetArray() != rh->GetArray());
+		return ScriptToken::Create(!isEqual);
 	default:
 		context->Error("Unhandled operator %s", OpTypeToSymbol(op));
 		return NULL;
@@ -384,18 +414,31 @@ ScriptToken *Eval_Assign_Numeric(OperatorType op, ScriptToken *lh, ScriptToken *
 
 ScriptToken *Eval_Assign_String(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *var = lh->GetVar();
-	UInt32 strID = (int)var->data;
-	StringVar *strVar = g_StringMap.Get(strID);
-
+	ScriptLocal *lhVar = lh->GetVar();
+	StringVar* lhStrVar = lh->GetStringVar();
+	if (rh->type == kTokenType_StringVar && rh->value.var == nullptr) // nullptr = rvalue returned from a command call
+	{
+		// optimizations
+		auto* rhStrVar = rh->GetStringVar();
+		if (!rhStrVar)
+			return nullptr;
+		// move the string if it's temporary
+		if (!lhStrVar)
+		{
+			lhVar->data = static_cast<int>(AddStringVar(std::move(*rhStrVar), *lh, *context, &lhStrVar));
+		}
+		else
+			lhStrVar->Set(std::move(*rhStrVar));
+		return ScriptToken::Create(lhVar, lhStrVar);
+	}
+	
 	const char *str = rh->GetString();
-
-	if (!strVar)
-		var->data = (int)AddStringVar(str, *lh, *context);
+	if (!lhStrVar)
+		lhVar->data = static_cast<int>(AddStringVar(str, *lh, *context, &lhStrVar));
 	else
-		strVar->Set(str);
+		lhStrVar->Set(str);
 
-	return ScriptToken::Create(str);
+	return ScriptToken::Create(lhVar, lhStrVar);
 }
 
 ScriptToken *Eval_Assign_AssignableString(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
@@ -621,19 +664,19 @@ ScriptToken *Eval_HandleEquals(OperatorType op, ScriptToken *lh, ScriptToken *rh
 ScriptToken *Eval_PlusEquals_Global(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	lh->GetGlobal()->data += rh->GetNumber();
-	return ScriptToken::Create(lh->GetGlobal()->data);
+	return ScriptToken::Create(static_cast<double>(lh->GetGlobal()->data));
 }
 
 ScriptToken *Eval_MinusEquals_Global(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	lh->GetGlobal()->data -= rh->GetNumber();
-	return ScriptToken::Create(lh->GetGlobal()->data);
+	return ScriptToken::Create(static_cast<double>(lh->GetGlobal()->data));
 }
 
 ScriptToken *Eval_TimesEquals_Global(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	lh->GetGlobal()->data *= rh->GetNumber();
-	return ScriptToken::Create(lh->GetGlobal()->data);
+	return ScriptToken::Create(static_cast<double>(lh->GetGlobal()->data));
 }
 
 ScriptToken *Eval_DividedEquals_Global(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
@@ -646,14 +689,14 @@ ScriptToken *Eval_DividedEquals_Global(OperatorType op, ScriptToken *lh, ScriptT
 	}
 
 	lh->GetGlobal()->data /= num;
-	return ScriptToken::Create(lh->GetGlobal()->data);
+	return ScriptToken::Create(static_cast<double>(lh->GetGlobal()->data));
 }
 
 ScriptToken *Eval_ExponentEquals_Global(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	double lhNum = lh->GetGlobal()->data;
 	lh->GetGlobal()->data = pow(lhNum, rh->GetNumber());
-	return ScriptToken::Create(lh->GetGlobal()->data);
+	return ScriptToken::Create(static_cast<double>(lh->GetGlobal()->data));
 }
 
 ScriptToken *Eval_HandleEquals_Global(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
@@ -665,7 +708,7 @@ ScriptToken *Eval_HandleEquals_Global(OperatorType op, ScriptToken *lh, ScriptTo
 	if (!hasError)
 	{
 		lh->GetGlobal()->data = result;
-		return ScriptToken::Create(lh->GetGlobal()->data);
+		return ScriptToken::Create(static_cast<double>(lh->GetGlobal()->data));
 	}
 	return nullptr;
 }
@@ -678,14 +721,14 @@ ScriptToken *Eval_PlusEquals_String(OperatorType op, ScriptToken *lh, ScriptToke
 	if (!strVar)
 	{
 		//strID = g_StringMap.Add(context->script->GetModIndex(), "");
-		strID = AddStringVar("", *lh, *context);
-		var->data = (int)strID;
+		strID = AddStringVar("", *lh, *context, &strVar);
+		var->data = static_cast<int>(strID);
 		strVar = g_StringMap.Get(strID);
 	}
 
 	strVar->StringRef() += rh->GetString();
 
-	return ScriptToken::Create(strVar->GetCString());
+	return ScriptToken::Create(var, strVar);
 }
 
 ScriptToken *Eval_TimesEquals_String(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
@@ -696,7 +739,7 @@ ScriptToken *Eval_TimesEquals_String(OperatorType op, ScriptToken *lh, ScriptTok
 	if (!strVar)
 	{
 		//strID = g_StringMap.Add(context->script->GetModIndex(), "");
-		strID = AddStringVar("", *lh, *context);
+		strID = AddStringVar("", *lh, *context, &strVar);
 		var->data = (int)strID;
 		strVar = g_StringMap.Get(strID);
 	}
@@ -710,7 +753,7 @@ ScriptToken *Eval_TimesEquals_String(OperatorType op, ScriptToken *lh, ScriptTok
 		rhNum--;
 	}
 
-	return ScriptToken::Create(strVar->GetCString());
+	return ScriptToken::Create(var, strVar);
 }
 
 ScriptToken *Eval_Multiply_String_Number(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
@@ -1086,8 +1129,8 @@ ScriptToken *Eval_ToString_String(OperatorType op, ScriptToken *lh, ScriptToken 
 ScriptToken *Eval_ToString_Number(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	char buf[0x20];
-	snprintf(buf, sizeof(buf), "%g", lh->GetNumber());
-	return ScriptToken::Create(buf);
+	snprintf(buf, sizeof buf, "%g", lh->GetNumber());
+	return ScriptToken::Create(static_cast<const char*>(buf));
 }
 
 ScriptToken *Eval_ToString_Form(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
@@ -1130,11 +1173,11 @@ ScriptToken *Eval_In(OperatorType op, ScriptToken *lh, ScriptToken *rh, Expressi
 		if (!sv)
 		{
 			//iterID = g_StringMap.Add(context->script->GetModIndex(), "");
-			iterID = AddStringVar("", *lh, *context);
+			iterID = AddStringVar("", *lh, *context, nullptr);
 			var->data = (int)iterID;
 		}
 
-		UInt32 srcID = g_StringMap.Add(context->script->GetModIndex(), rh->GetString(), true);
+		UInt32 srcID = g_StringMap.Add(context->script->GetModIndex(), rh->GetString(), true, nullptr);
 		ForEachContext con(srcID, iterID, Script::eVarType_String, var);
 		ScriptToken *forEach = ScriptToken::Create(&con);
 		return forEach;
@@ -1142,12 +1185,15 @@ ScriptToken *Eval_In(OperatorType op, ScriptToken *lh, ScriptToken *rh, Expressi
 	case Script::eVarType_Ref:
 	{
 		TESForm *form = rh->GetTESForm();
-		TESObjectREFR *src = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
-		if (!src && form && (form->refID == playerID))
-			src = (TESObjectREFR *)PlayerCharacter::GetSingleton();
-		if (src)
+		if (form && NOT_ID(form, BGSListForm))
 		{
-			ForEachContext con((UInt32)src, 0, Script::eVarType_Ref, lh->GetVar());
+			if (form->refID == playerID)
+				form = PlayerCharacter::GetSingleton();
+			else form = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+		}
+		if (form)
+		{
+			ForEachContext con((UInt32)form, 0, Script::eVarType_Ref, lh->GetVar());
 			ScriptToken *forEach = ScriptToken::Create(&con);
 			return forEach;
 		}
@@ -1774,20 +1820,27 @@ ExpressionParser::ExpressionParser(ScriptBuffer *scriptBuf, ScriptLineBuffer *li
 	ASSERT(s_parserDepth >= 0);
 	s_parserDepth++;
 	memset(m_argTypes, kTokenType_Invalid, sizeof(m_argTypes));
-#if RUNTIME
-	m_script = scriptBuf->currentScript;
-#else
+
 	if (g_currentScriptStack.empty())
+#if EDITOR
 		m_script = nullptr;
+#else
+		m_script = m_scriptBuf->currentScript;
+#endif
 	else
 		m_script = g_currentScriptStack.top();
-#endif
 }
 
 ExpressionParser::~ExpressionParser()
 {
 	ASSERT(s_parserDepth > 0);
 	s_parserDepth--;
+	if (s_parserDepth == 0)
+	{
+		for (const auto& key : g_lambdaParentScriptMap | std::views::keys)
+			key->Delete();
+		g_lambdaParentScriptMap.clear();
+	}
 }
 
 bool ExpressionParser::ParseArgs(ParamInfo *params, UInt32 numParams, bool bUsesNVSEParamTypes, bool parseWholeLine)
@@ -1858,7 +1911,7 @@ bool ExpressionParser::ParseArgs(ParamInfo *params, UInt32 numParams, bool bUses
 			// reached end of args
 			break;
 		// is arg of expected type(s)?
-		if (!ValidateArgType(params[m_numArgsParsed].typeID, argType, bUsesNVSEParamTypes))
+		if (!ValidateArgType(static_cast<ParamType>(params[m_numArgsParsed].typeID), argType, bUsesNVSEParamTypes))
 		{
 #if RUNTIME
 			ShowCompilerError(m_lineBuf, "Invalid expression for parameter %d. Expected %s.", m_numArgsParsed + 1, params[m_numArgsParsed].typeStr);
@@ -1896,7 +1949,7 @@ bool ExpressionParser::ParseArgs(ParamInfo *params, UInt32 numParams, bool bUses
 	return true;
 }
 
-bool ExpressionParser::ValidateArgType(UInt32 paramType, Token_Type argType, bool bIsNVSEParam)
+bool ExpressionParser::ValidateArgType(ParamType paramType, Token_Type argType, bool bIsNVSEParam)
 {
 	if (bIsNVSEParam)
 	{
@@ -1929,7 +1982,7 @@ bool ExpressionParser::ValidateArgType(UInt32 paramType, Token_Type argType, boo
 			// we'll find out at run-time
 			return true;
 		}
-
+		
 		switch (paramType)
 		{
 		case kParamType_String:
@@ -1942,6 +1995,12 @@ bool ExpressionParser::ValidateArgType(UInt32 paramType, Token_Type argType, boo
 		case kParamType_QuestStage:
 		case kParamType_CrimeType:
 			// string var included here b/c old sv_* cmds take strings as integer IDs
+			if (argType != kTokenType_StringVar && CanConvertOperand(argType, kTokenType_String))
+			{
+				auto* cmdInfo = g_scriptCommands.GetByOpcode(m_lineBuf->cmdOpcode);
+				if (cmdInfo && (std::string_view(cmdInfo->longName).starts_with("sv_") || cmdInfo->params == kParams_FormatString || cmdInfo->numParams >= 20)) // only allow this for old sv commands that take int
+					return true;
+			}
 			return CanConvertOperand(argType, kTokenType_Number) || CanConvertOperand(argType, kTokenType_StringVar) ||
 				   CanConvertOperand(argType, kTokenType_Variable);
 		case kParamType_AnimationGroup:
@@ -2021,10 +2080,21 @@ bool GetUserFunctionParamNames(const std::string &scriptText, std::vector<std::s
 	return false;
 }
 
-bool GetUserFunctionParams(const std::vector<std::string> &paramNames, std::vector<UserFunctionParam> &outParams, Script::VarInfoList *varList, const std::string &fullScriptText, Script *script)
+bool ExpressionParser::GetUserFunctionParams(const std::vector<std::string> &paramNames, std::vector<UserFunctionParam> &outParams, Script::VarInfoList *varList, const std::string &fullScriptText, Script *script)
 {
+	auto lastVarType = Script::eVarType_Invalid;
 	for (const auto &token : paramNames)
 	{
+		if (lastVarType != Script::eVarType_Invalid)
+		{
+			CreateVariable(token, lastVarType);
+			lastVarType = Script::eVarType_Invalid;
+		}
+		else if (auto iter = ra::find_if(g_variableTypeNames, _L(const char* typeName, _stricmp(typeName, token.c_str()) == 0)); iter != std::end(g_variableTypeNames))
+		{
+			lastVarType = VariableTypeNameToType(*iter);
+			continue;
+		}
 		VariableInfo *varInfo = varList->GetVariableByName(token.c_str());
 		if (!varInfo)
 			return false;
@@ -2042,6 +2112,8 @@ bool GetUserFunctionParams(const std::vector<std::string> &paramNames, std::vect
 
 		outParams.push_back(UserFunctionParam(varInfo->idx, varType));
 	}
+	if (lastVarType != Script::eVarType_Invalid)
+		return false;
 	return true;
 }
 
@@ -2062,7 +2134,7 @@ DynamicParamInfo::DynamicParamInfo(const std::vector<UserFunctionParam> &params)
 		m_paramInfo[i] = kDynamicParams[params[i].varType];
 }
 
-bool ExpressionParser::ParseUserFunctionParameters(std::vector<UserFunctionParam> &out, const std::string &funcScriptText, Script::VarInfoList *funcScriptVars, Script *script) const
+bool ExpressionParser::ParseUserFunctionParameters(std::vector<UserFunctionParam> &out, const std::string &funcScriptText, Script::VarInfoList *funcScriptVars, Script *script)
 {
 	std::vector<std::string> funcParamNames;
 	if (!GetUserFunctionParamNames(funcScriptText, funcParamNames))
@@ -2389,34 +2461,23 @@ UInt32 ExpressionParser::MatchOpenBracket(Operator *openBracOp)
 
 Token_Type g_lastCommandReturnType = kTokenType_Invalid;
 
-struct SavedScriptLine
-{
-	std::string curExpr;
-	char *curOffset;
-	UInt32 len;
-
-	SavedScriptLine(std::string curExpr, char *gCurOffs, UInt32 len) : curExpr(std::move(curExpr)), curOffset(gCurOffs), len(len)
-	{
-	}
-};
-static std::stack<SavedScriptLine> g_savedScriptLines;
-
 void ExpressionParser::SaveScriptLine()
 {
-	g_savedScriptLines.emplace(CurText(), CurText(), m_len);
+	savedScriptLines.emplace(CurText(), CurText(), m_len);
 }
 
 void ExpressionParser::RestoreScriptLine()
 {
-	const auto &line = g_savedScriptLines.top();
+	const auto &line = savedScriptLines.top();
 	if (_stricmp(line.curOffset, line.curExpr.c_str()) != 0)
 	{
-		strcpy_s(line.curOffset, sizeof m_lineBuf->paramText - line.len, line.curExpr.c_str());
+		const auto offset = line.curOffset - m_lineBuf->paramText + line.curExpr.size();
+		strcpy_s(line.curOffset, sizeof m_lineBuf->paramText - (line.curOffset - m_lineBuf->paramText), line.curExpr.c_str());
 		m_len = line.len;
 		m_lineBuf->paramTextLen = line.len;
-		Offset() = line.curOffset - m_lineBuf->paramText + line.curExpr.size();
+		Offset() = offset;
 	}
-	g_savedScriptLines.pop();
+	savedScriptLines.pop();
 }
 
 Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
@@ -2533,6 +2594,8 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 					operandType = kTokenType_Array;
 				else if (retnType == kRetnType_Form)
 					operandType = kTokenType_Form;
+				else if (retnType == kRetnType_Default)
+					operandType = kTokenType_Number;
 
 				if (operand->useRefFromStack)
 				{
@@ -2665,9 +2728,10 @@ Token_Type ExpressionParser::ParseArgument(UInt32 argsEndPos)
 	return argType;
 }
 
+#if EDITOR
 const void *g_scriptCompiler = reinterpret_cast<void *>(0xECFDF8);
-
-std::unordered_map<Script *, Script *> g_lambdaParentScriptMap;
+#endif
+std::unordered_map<Script*, Script*> g_lambdaParentScriptMap;
 
 Script *GetLambdaParentScript(Script *scriptLambda)
 {
@@ -2678,10 +2742,12 @@ Script *GetLambdaParentScript(Script *scriptLambda)
 
 ScriptToken *ExpressionParser::ParseLambda()
 {
-#if RUNTIME
-	PrintCompileError("Anonymous functions are not supported from console.");
-	return nullptr;
+	bool editor;
+#if EDITOR
+	editor = true;
 #else
+	editor = false;
+#endif
 	const auto *beginData = CurText() - strlen("begin");
 	auto nest = 1;
 	while (nest != 0 && CurText())
@@ -2706,8 +2772,8 @@ ScriptToken *ExpressionParser::ParseLambda()
 	auto *lambdaText = static_cast<char *>(FormHeap_Allocate(textLen));
 	memset(lambdaText, 0, textLen);
 	std::memcpy(lambdaText, beginData, textLen);
-	const auto lambdaScriptBuf = MakeUnique<ScriptBuffer, 0x5C5660, 0x5C8910>();
-	auto scriptLambda = MakeUnique<Script, 0x5C1D60, 0x5C5220>();
+	const auto lambdaScriptBuf = ScriptBuffer::MakeUnique();
+	auto scriptLambda = Script::MakeUnique();
 
 	const auto varCount = m_scriptBuf->info.varCount;
 	const auto numRefs = m_scriptBuf->info.numRefs;
@@ -2744,7 +2810,7 @@ ScriptToken *ExpressionParser::ParseLambda()
 	lambdaScriptBuf->refVars = m_scriptBuf->refVars;
 	lambdaScriptBuf->vars = m_scriptBuf->vars;
 
-	auto *beginEndOffset = reinterpret_cast<UInt32 *>(0xED9D54);
+	auto *beginEndOffset = reinterpret_cast<UInt32 *>(editor ? 0xED9D54 : 0x11CADBC);
 	const auto savedOffset = *beginEndOffset;
 	*beginEndOffset = 0;
 
@@ -2753,7 +2819,7 @@ ScriptToken *ExpressionParser::ParseLambda()
 	// lambdaScriptBuf->currentScript = scriptLambda.get();
 	g_currentScriptStack.push(scriptLambda.get());
 
-	const auto compileResult = ThisStdCall<bool>(0x5C96E0, g_scriptCompiler, scriptLambda.get(), lambdaScriptBuf.get()); // CompileScript
+	const auto compileResult = scriptLambda->Compile(lambdaScriptBuf.get()); // CompileScript
 
 	g_currentScriptStack.pop();
 
@@ -2780,7 +2846,6 @@ ScriptToken *ExpressionParser::ParseLambda()
 	}
 
 	return new ScriptToken(scriptLambda.release());
-#endif
 }
 
 ScriptToken *ExpressionParser::ParseOperand(bool (*pred)(ScriptToken *operand))
@@ -2847,7 +2912,7 @@ ParamParenthResult ExpressionParser::ParseParentheses(ParamInfo *paramInfo, UInt
 	}
 
 	auto &param = paramInfo[paramIndex];
-	if (!ValidateArgType(param.typeID, result, false))
+	if (!ValidateArgType(static_cast<ParamType>(param.typeID), result, false))
 	{
 #if RUNTIME
 		ShowCompilerError(m_lineBuf, "Invalid expression for parameter %d. Expected %s (got %s).", paramIndex + 1, param.typeStr, TokenTypeToString(result));
@@ -2999,25 +3064,23 @@ ScriptToken *ExpressionParser::PeekOperand(UInt32 &outReadLen)
 
 std::vector g_expressionParserMacros =
 	{
-		ScriptLineMacro([&](std::string &line) {
+		ScriptLineMacro([&](std::string &line, ScriptBuffer*, ScriptLineBuffer*) {
 			// Lambda macro
-			const std::regex oneLineLambdaRegex(R"(^\{(.*)\}\s*=>\s*(.*))"); // match {iVar, rRef} => ...
+			const std::regex oneLineLambdaRegex(R"(^\{([^{}]*)\}\s*=>\s*(.*))"); // match {iVar, rRef} => ...
 			if (std::smatch m; std::regex_search(line, m, oneLineLambdaRegex) && m.size() == 3)
 			{
 				line = "begin function {" + m.str(1) + "}\r\nSetFunctionValue " + m.str(2) + "\r\nend";
 				return true;
 			}
 			return false;
-		},
-						MacroType::OneLineLambda),
-
+		}, MacroType::OneLineLambda),
 };
 
 bool ExpressionParser::HandleMacros()
 {
 	for (const auto &macro : g_expressionParserMacros)
 	{
-		const auto result = macro.EvalMacro(m_lineBuf, this);
+		const auto result = macro.EvalMacro(m_lineBuf, m_scriptBuf, this);
 		if (result == ScriptLineMacro::MacroResult::Error)
 			return false;
 		if (result == ScriptLineMacro::MacroResult::Applied)
@@ -3028,56 +3091,57 @@ bool ExpressionParser::HandleMacros()
 
 bool ValidateVariable(const std::string &varName, Script::VariableType varType, Script *script)
 {
-#if EDITOR
 	if (const auto savedVarType = GetSavedVarType(script, varName); savedVarType != varType && savedVarType != Script::eVarType_Invalid)
 	{
 		g_ErrOut.Show("Variable redefinition with a different type (saw first '%s', then '%s')", g_variableTypeNames[savedVarType], g_variableTypeNames[varType]);
 		return false;
 	}
 	SaveVarType(script, varName, varType);
-#endif
 	return true;
 }
 
-VariableInfo *ExpressionParser::CreateVariable(const std::string &varName, Script::VariableType varType)
+VariableInfo* CreateVariable(Script* script, ScriptBuffer* scriptBuf, const std::string& varName, Script::VariableType varType, const std::function<void(const std::string&)>& printCompileError)
 {
-	if (!m_script)
+	if (!script)
 		return nullptr;
-	if (auto *var = m_scriptBuf->vars.FindFirst([&](VariableInfo *v) { return _stricmp(varName.c_str(), v->name.CStr()) == 0; }))
+	if (auto* var = scriptBuf->vars.FindFirst([&](VariableInfo* v) { return _stricmp(varName.c_str(), v->name.CStr()) == 0; }))
 	{
-		if (!ValidateVariable(varName, varType, m_script))
+		if (!ValidateVariable(varName, varType, script))
 			return nullptr;
 		// all good, already exists
 		return var;
 	}
 	if (varName.empty())
 	{
-		PrintCompileError("Got empty string for variable name");
+		printCompileError("Got empty string for variable name");
 		return nullptr;
 	}
 	if (GetFormByID(varName.c_str()))
 	{
-		PrintCompileError("Invalid variable name " + varName + ": Form with that Editor ID already exists.");
+		printCompileError("Invalid variable name " + varName + ": Form with that Editor ID already exists.");
 		return nullptr;
 	}
 	if (g_scriptCommands.GetByName(varName.c_str()))
 	{
-		PrintCompileError("Invalid variable name " + varName + ": Command with that name already exists.");
+		printCompileError("Invalid variable name " + varName + ": Command with that name already exists.");
 		return nullptr;
 	}
-	auto *varInfo = New<VariableInfo>();
-	if (const auto *existingVar = m_script->GetVariableByName(varName.c_str()))
+	auto* varInfo = New<VariableInfo>();
+	if (const auto* existingVar = script->GetVariableByName(varName.c_str()))
 		varInfo->idx = existingVar->idx;
 	else
-		varInfo->idx = ++m_scriptBuf->info.varCount;
+		varInfo->idx = ++scriptBuf->info.varCount;
 	varInfo->name.Set(varName.c_str());
 	varInfo->type = varType;
-	m_scriptBuf->vars.Append(varInfo);
-#if EDITOR
-	SaveVarType(m_script, varName, varType);
-#endif
-	m_scriptBuf->ResolveRef(varName.c_str(), m_script); // ref var
+	scriptBuf->vars.Append(varInfo);
+	SaveVarType(script, varName, varType);
+	scriptBuf->ResolveRef(varName.c_str(), script); // ref var
 	return varInfo;
+}
+
+VariableInfo *ExpressionParser::CreateVariable(const std::string &varName, Script::VariableType varType) const
+{
+	return ::CreateVariable(m_script, m_scriptBuf, varName, varType, _L(const auto& str, PrintCompileError(str)));
 }
 
 void ExpressionParser::SkipSpaces()
@@ -3501,21 +3565,21 @@ ExpressionEvaluator::ExpressionEvaluator(COMMAND_ARGS) : m_opcodeOffsetPtr(opcod
 {
 	m_scriptData = static_cast<UInt8 *>(scriptData);
 	m_data = m_scriptData + *m_opcodeOffsetPtr;
+	m_pushedOnStack = true;
 
 	m_baseOffset = *opcodeOffsetPtr - 4;
 
 	m_flags.Clear();
-
-#if _DEBUG
-	g_lastScriptName = script->GetName();
-#endif
 
 	PushOnStack();
 }
 
 ExpressionEvaluator::~ExpressionEvaluator()
 {
-	PopFromStack();
+	if (moved_) [[unlikely]]
+		return;
+	if (m_pushedOnStack)
+		PopFromStack();
 
 	for (UInt32 i = 0; i < m_numArgsExtracted; i++)
 	{
@@ -3540,6 +3604,19 @@ ExpressionEvaluator::~ExpressionEvaluator()
 		if (m_flags.IsSet(kFlag_StackTraceOnError))
 			PrintStackTrace();
 	}
+}
+
+ExpressionEvaluator::ExpressionEvaluator(UInt8* scriptData, Script* script, UInt32* opcodeOffsetPtr) :
+	m_pushedOnStack(false), m_scriptData(scriptData), m_opcodeOffsetPtr(opcodeOffsetPtr), m_result(nullptr), m_thisObj(nullptr), m_containingObj(nullptr),
+	m_args{},
+	m_params(nullptr),
+	m_numArgsExtracted(0),
+	m_expectedReturnType(),
+	m_baseOffset(0), m_parent(nullptr), localData(ThreadLocalData::Get()), m_inline(false),
+	script(script), eventList(nullptr)
+{
+	m_data = m_scriptData + *m_opcodeOffsetPtr;
+	m_flags.Clear();
 }
 
 bool ExpressionEvaluator::ExtractArgs()
@@ -3693,6 +3770,27 @@ bool ExpressionEvaluator::ExtractFormatStringArgs(va_list varArgs, UInt32 fmtStr
 
 bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, bool bConvertTESForms, va_list &varArgs)
 {
+	const auto handlePrimitiveStringVar = [&]<typename T>()
+	{
+		// handle string_var passed as integer to sv_* cmds
+		if (arg->CanConvertTo(kTokenType_StringVar))
+		{
+			ScriptLocal* var = arg->GetVar();
+			if (var)
+			{
+				T* out = va_arg(varArgs, T*);
+				*out = var->data;
+				return true;
+			}
+		}
+		if (arg->CanConvertTo(kTokenType_String))
+		{
+			T* out = va_arg(varArgs, T*);
+			*out = g_StringMap.Add(script->GetModIndex(), arg->GetString(), true, nullptr);
+			return true;
+		}
+		return false;
+	};
 	// hooray humongous switch statements
 	switch (info->typeID)
 	{
@@ -3705,19 +3803,12 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 	break;
 	case kParamType_Integer:
 	{
-		ScriptLocal *var = arg->GetVar();
-		// handle string_var passed as integer to sv_* cmds
-		if (var && arg->CanConvertTo(kTokenType_StringVar))
-		{
-			UInt32 *out = va_arg(varArgs, UInt32 *);
-			*out = var->data;
+		if (handlePrimitiveStringVar.operator()<UInt32>())
 			break;
-		}
 	}
 	// fall-through intentional
 	case kParamType_QuestStage:
 	case kParamType_CrimeType:
-	case kParamType_AnimationGroup:
 	case kParamType_MiscellaneousStat:
 	case kParamType_FormType:
 	case kParamType_Alignment:
@@ -3735,6 +3826,8 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 
 		break;
 	case kParamType_Float:
+		if (handlePrimitiveStringVar.operator()<float>())
+			break;
 		if (arg->CanConvertTo(kTokenType_Number))
 		{
 			float *out = va_arg(varArgs, float *);
@@ -3746,6 +3839,8 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 		}
 		break;
 	case kParamType_Double:
+		if (handlePrimitiveStringVar.operator()<double> ())
+			break;
 		if (arg->CanConvertTo(kTokenType_Number))
 		{
 			double *out = va_arg(varArgs, double *);
@@ -3808,6 +3903,18 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 		{
 			return false;
 		}
+	}
+	break;
+	case kParamType_AnimationGroup:
+	{
+		UInt32 animGroup = arg->GetAnimationGroup();
+		if (animGroup != TESAnimGroup::kAnimGroup_Max)
+		{
+			UInt32* out = va_arg(varArgs, UInt32*);
+			*out = animGroup;
+		}
+		else
+			return false;
 	}
 	break;
 	case kParamType_Sex:
@@ -4157,6 +4264,9 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 						case kParamType_EncounterZone:
 							typeToMatch = kFormType_BGSEncounterZone;
 							break;
+						case kParamType_IdleForm:
+							typeToMatch = kFormType_TESIdleForm;
+							break;
 						case kParamType_Message:
 							typeToMatch = kFormType_BGSMessage;
 							break;
@@ -4232,6 +4342,7 @@ ScriptToken *ExpressionEvaluator::ExecuteCommandToken(ScriptToken const *token, 
 	CommandInfo *cmdInfo = token->GetCommandInfo();
 	if (!cmdInfo)
 	{
+		Error("Failed to execute command: command info not found.");
 		return nullptr;
 	}
 
@@ -4248,27 +4359,30 @@ ScriptToken *ExpressionEvaluator::ExecuteCommandToken(ScriptToken const *token, 
 				Error("Attempting to call a function on a NULL reference");
 				return nullptr;
 			}
-			if (!callingRef->form->GetIsReference())
+			callingObj = DYNAMIC_CAST(callingRef->form, TESForm, TESObjectREFR);
+			if (!callingObj)
 			{
 				Error("Attempting to call a function on a base object (this must be a reference)");
 				return nullptr;
 			}
-			callingObj = DYNAMIC_CAST(callingRef->form, TESForm, TESObjectREFR);
 		}
 	}
 	else if (stackRef)
 	{
+		// Used in chained dot syntax (https://geckwiki.com/index.php?title=Chained_dot_syntax)
 		callingObj = stackRef;
+	}
+
+	if (cmdInfo->needsParent && !callingObj)
+	{
+		Error("Function %s requires a calling reference but none or NULL was provided", cmdInfo->longName);
+		return nullptr;
 	}
 
 	TESObjectREFR *contObj = callingRef ? NULL : m_containingObj;
 	double cmdResult = 0;
 
-	//UInt32 numBytesRead = 0;
-	//UInt8* scrData = Data();
-	//UInt16 argsLen = Read16();
 
-	//*m_opcodeOffsetPtr = m_data - m_scriptData;
 	UInt32 opcodeOffset = token->cmdOpcodeOffset;
 	CommandReturnType retnType = token->returnType;
 
@@ -4300,11 +4414,12 @@ ScriptToken *ExpressionEvaluator::ExecuteCommandToken(ScriptToken const *token, 
 	{
 		return ScriptToken::CreateForm(*reinterpret_cast<UInt32 *>(&cmdResult));
 	}
-
 	case kRetnType_String:
 	{
 		StringVar *strVar = g_StringMap.Get(cmdResult);
-		return ScriptToken::Create(strVar ? strVar->GetCString() : "");
+		if (!strVar)
+			Error("Failed to resolve string return result (string ID was %g)", cmdResult);
+		return ScriptToken::Create(nullptr, strVar);
 	}
 	case kRetnType_Array:
 	{
@@ -4389,6 +4504,55 @@ void ParseShortCircuit(CachedTokens &cachedTokens)
 	}
 }
 
+ExpressionEvaluator::ExpressionEvaluator(ExpressionEvaluator&& other) noexcept:
+	m_flags(other.m_flags),
+	m_scriptData(other.m_scriptData),
+	m_opcodeOffsetPtr(other.m_opcodeOffsetPtr),
+	m_result(other.m_result),
+	m_thisObj(other.m_thisObj),
+	m_containingObj(other.m_containingObj),
+	m_data(other.m_data),
+	m_params(other.m_params),
+	m_numArgsExtracted(other.m_numArgsExtracted),
+	m_expectedReturnType(other.m_expectedReturnType),
+	m_baseOffset(other.m_baseOffset),
+	m_parent(other.m_parent),
+	localData(other.localData),
+	errorMessages(std::move(other.errorMessages)),
+	m_inline(other.m_inline),
+	script(other.script),
+	eventList(other.eventList)
+{
+	std::memcpy(this->m_args, other.m_args, other.m_numArgsExtracted);
+	other.moved_ = true; // no need to memset other.m_args, moved_ will return from destructor
+}
+
+ExpressionEvaluator& ExpressionEvaluator::operator=(ExpressionEvaluator&& other) noexcept
+{
+	if (this == &other)
+		return *this;
+	other.moved_ = true;
+	std::memcpy(this->m_args, other.m_args, other.m_numArgsExtracted);
+	m_flags = other.m_flags;
+	m_scriptData = other.m_scriptData;
+	m_opcodeOffsetPtr = other.m_opcodeOffsetPtr;
+	m_result = other.m_result;
+	m_thisObj = other.m_thisObj;
+	m_containingObj = other.m_containingObj;
+	m_data = other.m_data;
+	m_params = other.m_params;
+	m_numArgsExtracted = other.m_numArgsExtracted;
+	m_expectedReturnType = other.m_expectedReturnType;
+	m_baseOffset = other.m_baseOffset;
+	m_parent = other.m_parent;
+	localData = other.localData;
+	errorMessages = std::move(other.errorMessages);
+	m_inline = other.m_inline;
+	script = other.script;
+	eventList = other.eventList;
+	return *this;
+}
+
 bool ExpressionEvaluator::ParseBytecode(CachedTokens &cachedTokens)
 {
 	const UInt8 *dataBeforeParsing = m_data;
@@ -4408,12 +4572,12 @@ bool ExpressionEvaluator::ParseBytecode(CachedTokens &cachedTokens)
 
 using OperandStack = FastStack<ScriptToken *>;
 
-void ShortCircuit(OperandStack &operands, CachedTokenIter &iter)
+bool ShortCircuit(OperandStack &operands, CachedTokenIter &iter)
 {
 	ScriptToken *lastToken = operands.Top();
 	const OperatorType type = lastToken->shortCircuitParentType;
 	if (type == g_noShortCircuit)
-		return;
+		return true;
 
 	const bool eval = lastToken->GetBool();
 	if (type == kOpType_LogicalAnd && !eval || type == kOpType_LogicalOr && eval)
@@ -4421,6 +4585,8 @@ void ShortCircuit(OperandStack &operands, CachedTokenIter &iter)
 		iter += lastToken->shortCircuitDistance;
 		for (UInt32 i = 0; i < lastToken->shortCircuitStackOffset; ++i)
 		{
+			if (operands.Empty())
+				return false;
 			// Make sure only one operand is left in RPN stack
 			ScriptToken *operand = operands.Top();
 			if (operand && operand != lastToken)
@@ -4429,6 +4595,7 @@ void ShortCircuit(OperandStack &operands, CachedTokenIter &iter)
 		}
 		operands.Push(lastToken);
 	}
+	return true;
 }
 
 void CopyShortCircuitInfo(ScriptToken *to, ScriptToken *from)
@@ -4444,10 +4611,13 @@ thread_local TokenCache g_tokenCache;
 thread_local std::string g_curLineText;
 #endif
 
-CachedTokens* ExpressionEvaluator::GetTokens()
+CachedTokens* ExpressionEvaluator::GetTokens(std::optional<CachedTokens>* consoleTokens)
 {
-	CachedTokens &cache = g_tokenCache.Get(GetCommandOpcodePosition());
-	if (cache.Empty())
+	const bool isConsole = script->GetModIndex() == 0xFF && consoleTokens;
+	CachedTokens &cache = !isConsole ? g_tokenCache.Get(GetCommandOpcodePosition()) : *(*consoleTokens = CachedTokens());
+	if (isConsole)
+		cache.Clear();
+	if (cache.Empty() || isConsole)
 	{
 		if (!ParseBytecode(cache))
 		{
@@ -4466,11 +4636,12 @@ CachedTokens* ExpressionEvaluator::GetTokens()
 
 ScriptToken *ExpressionEvaluator::Evaluate()
 {
-	CachedTokens* cachePtr = GetTokens();
+	std::optional<CachedTokens> consoleCache;
+	CachedTokens* cachePtr = GetTokens(&consoleCache);
 	if (!cachePtr)
 		return nullptr;
 	auto& cache = *cachePtr;
-#if _DEBUG
+#if _DEBUG && 0
 	g_curLineText = this->GetLineText(cache, nullptr);
 #endif
 	OperandStack operands;
@@ -4557,8 +4728,11 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 			CopyShortCircuitInfo(opResult, curToken);
 			operands.Push(opResult);
 		}
-
-		ShortCircuit(operands, iter);
+		if (!ShortCircuit(operands, iter))
+		{
+			Error("An internal NVSE error occurred (short circuit stack mismatch)");
+			break;
+		}
 	}
 	
 	if (operands.Size() != 1 || this->HasErrors() && !m_flags.IsSet(kFlag_SuppressErrorMessages)) // should have one operand remaining - result of expression
@@ -4596,6 +4770,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 	std::vector<std::string> operands;
 	std::vector<Operator*> operators;
 	std::unordered_set<std::string> composites;
+	auto* cmd = GetCommand();
 	for (auto iter = tokens.Begin(); !iter.End(); ++iter)
 	{
 		auto &token = *iter.Get().token;
@@ -4607,20 +4782,21 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 				operands.push_back(FormatString("%g", token.GetNumber()));
 				break;
 			case kTokenType_String:
-				operands.push_back('"' + std::string(token.GetString()) + '"');
+			{
+				auto str = std::string(token.GetString());
+				UnformatString(str);
+				operands.push_back('"' + str + '"');
 				break;
+			}
 			case kTokenType_Form:
 			{
 				auto *form = token.GetTESForm();
 				if (form)
 				{
-					auto *formName = form->GetName();
+					auto *formName = form->GetEditorID();
 					if (!formName || StrLen(formName) == 0)
 					{
-						if (form->refID == 0x14 || form->refID == 0x7)
-							operands.push_back("Player");
-						else
-							operands.push_back(FormatString("%X", form->refID));
+						operands.push_back(FormatString("<%X>", form->refID));
 					}
 					else
 						operands.push_back(std::string(formName));
@@ -4647,11 +4823,21 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 				auto *cmdInfo = token.GetCommandInfo();
 				if (cmdInfo)
 				{
-					ScriptParsing::CommandCallToken callToken(cmdInfo, script->GetRefFromRefList(token.refIdx));
-					ScriptParsing::ScriptIterator it(script, cmdInfo->opcode, 0, token.refIdx, static_cast<UInt8*>(m_scriptData) + token.cmdOpcodeOffset);
-					callToken.ParseCommandArgs(it);
+					auto callToken = token.GetCallToken(script);
+					if (callToken.error)
+					{
+						operands.push_back("<failed resolve cmd>");
+						break;
+					}
 					operands.push_back(callToken.ToString());
-					if (callToken.expressionEvalArgs.size() > 1)
+					bool appliedParams = false;
+					if (!callToken.expressionEvalArgs.empty() && !(iter+1).End())
+					{
+						appliedParams = true;
+						operands.back() = '(' + operands.back() + ')';
+					}
+					std::span paramInfo {cmdInfo->params, cmdInfo->numParams};
+					if (!appliedParams && std::ranges::any_of(paramInfo, [](auto& p) {return p.isOptional;}) && !(iter+1).End())
 						operands.back() = '(' + operands.back() + ')';
 					break;
 				}
@@ -4663,13 +4849,13 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 			case kTokenType_StringVar:
 			case kTokenType_ArrayVar:
 			{
-				const auto varName = token.GetVariableName();
+				const auto varName = token.GetVariableName(script);
 				if (!varName.empty())
 				{
 					operands.push_back(varName);
 					break;
 				}
-				operands.push_back("<bad variable>");
+				operands.push_back(FormatString("<failed to get var name %d %d>", token.refIdx, token.varIdx));
 				break;
 			}
 			case kTokenType_LambdaScriptData:
@@ -4705,7 +4891,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 			{
 				auto* lastOp = operators.back();
 				operators.pop_back();
-				if (op->Precedes(lastOp))
+				if (lastOp->precedence < op->precedence)
 				{
 					auto& rhOperand = operands.back();
 					if (composites.contains(rhOperand))
@@ -4751,9 +4937,6 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 	{
 		if (m_inline)
 			return "(" + operands.back() + ")";
-		CommandInfo *cmd = GetCommand();
-		if (!cmd || !cmd->longName)
-			return operands.back();
 		return operands.back();
 	}
 	return "";
@@ -4770,7 +4953,7 @@ std::string ExpressionEvaluator::GetVariablesText(CachedTokens &tokens) const
 			continue;
 		if (token.IsVariable())
 		{
-			result += token.GetVariableName() + "=" + token.GetVariableDataAsString();
+			result += token.GetVariableName(script) + "=" + token.GetVariableDataAsString();
 			printedVars.insert(std::make_pair(token.refIdx, token.varIdx));
 			result += ", ";
 		}
@@ -4911,7 +5094,7 @@ bool BasicTokenToElem(ScriptToken *token, ArrayElement &elem)
 	return bResult;
 }
 
-#else // CS only
+#endif
 
 enum BlockType
 {
@@ -4984,6 +5167,7 @@ private:
 
 public:
 	Preprocessor(ScriptBuffer *buf);
+	void RemoveMultiLineComments();
 
 	bool Process(); // returns false if an error is detected
 };
@@ -5008,7 +5192,46 @@ const char *Preprocessor::BlockTypeAsString(BlockType type)
 Preprocessor::Preprocessor(ScriptBuffer *buf) : m_buf(buf), m_loopDepth(0), m_curLineText(""), m_curLineNo(0),
 												m_curBlockStartingLineNo(1), m_scriptText(buf->scriptText), m_scriptTextOffset(0), m_script(g_currentScriptStack.top())
 {
+	RemoveMultiLineComments();
 	AdvanceLine();
+}
+
+void Preprocessor::RemoveMultiLineComments()
+{
+	bool inString = false;
+	bool inComment = false;
+	std::string newScriptText;
+	char curChar;
+	const auto proceed = [&]() { newScriptText += curChar; };
+	for (auto iter = m_scriptText.begin(); iter != m_scriptText.end(); ++iter)
+	{
+		curChar = *iter;
+		auto nextIter = iter + 1;
+		if (nextIter == m_scriptText.end())
+		{
+			proceed();
+			continue;
+		}
+		const auto nextChar = *nextIter;
+		if (curChar == '"')
+			inString = !inString;
+		if (inString)
+		{
+			proceed();
+			continue;
+		}
+		if (curChar == '/' && nextChar == '*')
+			inComment = true;
+		else if (curChar == '*' && nextChar == '/')
+		{
+			++iter;
+			inComment = false;
+			continue;
+		}
+		if (!inComment)
+			proceed();
+	}
+	m_scriptText = newScriptText;
 }
 
 bool Preprocessor::AdvanceLine()
@@ -5019,6 +5242,7 @@ bool Preprocessor::AdvanceLine()
 	m_curLineNo++;
 
 	UInt32 endPos = m_scriptText.find("\r\n", m_scriptTextOffset);
+
 	if (endPos == -1) // last line, no CRLF
 	{
 		m_curLineText = m_scriptText.substr(m_scriptTextOffset, m_scriptText.length() - m_scriptTextOffset);
@@ -5173,10 +5397,11 @@ bool Preprocessor::Process()
 			}
 			else if (const auto type = VariableTypeNameToType(tok); type != Script::eVarType_Invalid)
 			{
-				std::string varToken;
-				if (tokens.NextToken(varToken) != -1)
+				auto line = tokens.ToNewLine();
+				if (ra::all_of(line, _L(char c, isalnum(c) || c == '_' || c == ',' || isspace(c)))) // ignore `int i = 0`
 				{
-					if (!ValidateVariable(varToken, type, m_script))
+					auto varNames = SplitString(line, ",");
+					if (!ra::all_of(varNames, _L(auto & varName, ValidateVariable(StripSpace(std::move(varName)), type, m_script))))
 						return false;
 				}
 			}
@@ -5203,8 +5428,6 @@ bool PrecompileScript(ScriptBuffer *buf)
 	return Preprocessor(buf).Process();
 }
 
-#endif
-
 bool Cmd_Expression_Parse(UInt32 numParams, ParamInfo *paramInfo, ScriptLineBuffer *lineBuf, ScriptBuffer *scriptBuf)
 {
 	ExpressionParser parser(scriptBuf, lineBuf);
@@ -5215,11 +5438,11 @@ ScriptLineMacro::ScriptLineMacro(ModifyFunction modifyFunction, MacroType type) 
 {
 }
 
-ScriptLineMacro::MacroResult ScriptLineMacro::EvalMacro(ScriptLineBuffer *lineBuf, ExpressionParser *parser) const
+ScriptLineMacro::MacroResult ScriptLineMacro::EvalMacro(ScriptLineBuffer *lineBuf, ScriptBuffer* scriptBuf, ExpressionParser *parser) const
 {
 	auto *str = lineBuf->paramText + lineBuf->lineOffset;
 	std::string copy = str;
-	if (!modifyFunction_(copy))
+	if (!modifyFunction_(copy, scriptBuf, lineBuf))
 		return MacroResult::Skipped;
 	const auto charsLeft = sizeof lineBuf->paramText - lineBuf->lineOffset;
 	if (copy.size() > charsLeft)

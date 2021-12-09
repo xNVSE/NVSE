@@ -378,7 +378,7 @@ bool Cmd_ar_Find_Execute(COMMAND_ARGS)
 		if (keyType == kDataType_String)
 		{
 			eval.ExpectReturnType(kRetnType_String);
-			*result = g_StringMap.Add(scriptObj->GetModIndex(), s_arrayErrorCodeStr, true);
+			*result = g_StringMap.Add(scriptObj->GetModIndex(), s_arrayErrorCodeStr, true, nullptr);
 		}
 		else
 		{
@@ -402,7 +402,7 @@ bool Cmd_ar_Find_Execute(COMMAND_ARGS)
 		if (keyType == kDataType_Numeric)
 			*result = idx->key.num;
 		else
-			*result = g_StringMap.Add(scriptObj->GetModIndex(), idx->key.GetStr(), true);
+			*result = g_StringMap.Add(scriptObj->GetModIndex(), idx->key.GetStr(), true, nullptr);
 	}
 
 	return true;
@@ -876,7 +876,7 @@ bool Cmd_ar_FindWhere_Execute(COMMAND_ARGS)
 		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
 		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
 		if (!tokenResult)
-			return true;
+			continue;
 		if (tokenResult->GetBool())
 		{
 			ReturnElement(PASS_COMMAND_ARGS, eval, iter.second());
@@ -900,7 +900,7 @@ bool Cmd_ar_Filter_Execute(COMMAND_ARGS)
 		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
 		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
 		if (!tokenResult)
-			return true;
+			continue;
 		if (tokenResult->GetBool())
 		{
 			returnArray->SetElement(iter.first(), iter.second());
@@ -924,11 +924,245 @@ bool Cmd_ar_MapTo_Execute(COMMAND_ARGS)
 		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
 		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
 		if (!tokenResult)
-			return true;
+			continue;
 		ArrayElement element;
 		if (BasicTokenToElem(tokenResult.get(), element))
 			returnArray->SetElement(iter.first(), &element);
 	}
 	*result = returnArray->ID();
+	return true;
+}
+
+bool Cmd_ar_ForEach_Execute(COMMAND_ARGS)
+{
+	ArrayFunctionContext ctx(PASS_COMMAND_ARGS);
+	*result = 0;
+	if (!ExtractArrayUDF(ctx))
+		return true;
+	auto& [eval, arr, functionScript] = ctx;
+	for (auto iter = arr->Begin(); !iter.End(); ++iter)
+	{
+		InternalFunctionCaller caller(functionScript, thisObj, containingObj);
+		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
+		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+	}
+	*result = 1;
+	return true;
+}
+
+bool Cmd_ar_Any_Execute(COMMAND_ARGS)
+{
+	ArrayFunctionContext ctx(PASS_COMMAND_ARGS);
+	*result = 0;
+	if (!ExtractArrayUDF(ctx))
+		return true;
+	auto& [eval, arr, functionScript] = ctx;
+	for (auto iter = arr->Begin(); !iter.End(); ++iter)
+	{
+		InternalFunctionCaller caller(functionScript, thisObj, containingObj);
+		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
+		const auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		if (!tokenResult)
+			continue;
+		if (static_cast<bool>(tokenResult->GetNumber()))
+		{
+			*result = 1;
+			return true;
+		}
+	}
+	return true;
+}
+
+bool Cmd_ar_All_Execute(COMMAND_ARGS)
+{
+	ArrayFunctionContext ctx(PASS_COMMAND_ARGS);
+	*result = 0;
+	if (!ExtractArrayUDF(ctx))
+		return true;
+	auto& [eval, arr, functionScript] = ctx;
+	for (auto iter = arr->Begin(); !iter.End(); ++iter)
+	{
+		InternalFunctionCaller caller(functionScript, thisObj, containingObj);
+		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
+		const auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		if (!tokenResult)
+			return true; // different from rest here
+		if (!static_cast<bool>(tokenResult->GetNumber()))
+			return true;
+	}
+	*result = 1;
+	return true;
+}
+
+struct Int_OneLambda_OneOptionalLambda_Context
+{
+	ExpressionEvaluator eval;
+	UInt32 integer;
+	Script* valueGenerator;
+	Script* keyGenerator;
+
+	Int_OneLambda_OneOptionalLambda_Context(COMMAND_ARGS) : eval(PASS_COMMAND_ARGS) {}
+};
+
+bool ExtractInt_OneLambda_OneOptionalLambda(Int_OneLambda_OneOptionalLambda_Context& ctx)
+{
+	auto& eval = ctx.eval;
+	if (!eval.ExtractArgs() || eval.NumArgs() < 2)
+		return false;
+	ctx.integer = eval.Arg(0)->GetNumber();
+	ctx.valueGenerator = eval.Arg(1)->GetUserFunction();
+	if (eval.NumArgs() == 3)
+		ctx.keyGenerator = eval.Arg(2)->GetUserFunction();
+	else
+		ctx.keyGenerator = nullptr;
+	if (!ctx.integer ||!ctx.valueGenerator)
+		return false;
+	return true;
+}
+
+bool Cmd_ar_Generate_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	Int_OneLambda_OneOptionalLambda_Context ctx(PASS_COMMAND_ARGS);
+	if (!ExtractInt_OneLambda_OneOptionalLambda(ctx))
+		return true;
+	auto& [eval, numElemsToGenerate, valueGenerator, keyGenerator] = ctx;
+
+	ArrayVar* returnArray = nullptr;
+	bool const isMapArray = keyGenerator;
+	if (!isMapArray)
+		returnArray = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	
+	for (UInt32 i = 0; i < numElemsToGenerate; i++)
+	{
+		InternalFunctionCaller valueCaller(valueGenerator, thisObj, containingObj);
+		valueCaller.SetArgs(0);  //may not be doing anything.
+		auto tokenValResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(valueCaller)));
+		if (!tokenValResult) continue;
+		ArrayElement valElem;
+		if (BasicTokenToElem(tokenValResult.get(), valElem))
+		{
+			if (isMapArray)
+			{
+				InternalFunctionCaller keyCaller(keyGenerator, thisObj, containingObj);
+				keyCaller.SetArgs(0);  //may not be doing anything.
+				auto tokenKeyResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(keyCaller)));
+				if (!tokenKeyResult) continue;
+				ArrayElement keyElem;
+				if (BasicTokenToElem(tokenKeyResult.get(), keyElem))
+				{
+					auto const keyType = keyElem.DataType();
+					if (keyType != kDataType_Numeric && keyType != kDataType_String)
+						return true;
+					
+					// Initialize returnArray as a map array.
+					if (i == 0 && !returnArray)
+						returnArray = g_ArrayMap.Create(keyType, false, scriptObj->GetModIndex());
+					if (!returnArray) return true;  // hopefully redundant safety check.
+
+					// Set the map array key/value pair.
+					const char* str;
+					if (keyElem.GetAsString(&str))
+						returnArray->SetElement(str, &valElem);
+					else
+					{
+						double num;
+						if (keyElem.GetAsNumber(&num))
+							returnArray->SetElement(num, &valElem);
+					}
+				}
+			}
+			else
+				returnArray->Insert(i, &valElem);
+		}
+	}
+	if (returnArray)
+		*result = returnArray->ID();
+	return true;
+}
+
+struct IntAndElemContext
+{
+	ExpressionEvaluator eval;
+	UInt32 integer;
+	ArrayElement elem;
+
+	IntAndElemContext(COMMAND_ARGS) : eval(PASS_COMMAND_ARGS) {}
+};
+
+bool ExtractIntAndElemUDF(IntAndElemContext& ctx)
+{
+	auto& eval = ctx.eval;
+	if (!eval.ExtractArgs() || eval.NumArgs() != 2)
+		return false;
+	ctx.integer = eval.Arg(0)->GetNumber();
+	if (!ctx.integer)
+		return false;
+	if (!BasicTokenToElem(eval.Arg(1), ctx.elem))
+		return false;
+	return true;
+}
+
+bool Cmd_ar_Init_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	IntAndElemContext ctx(PASS_COMMAND_ARGS);
+	if (!ExtractIntAndElemUDF(ctx))
+		return true;
+	auto& [eval, numElemsToInitialize, elem] = ctx;
+	auto* returnArray = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	for (UInt32 i = 0; i < numElemsToInitialize; i++)
+		returnArray->Insert(i, &elem);
+	*result = returnArray->ID();
+	return true;
+}
+
+bool Cmd_ar_DeepEquals_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (eval.ExtractArgs() && eval.NumArgs() == 2)
+	{
+		bool const arg1IsArr = eval.Arg(0)->CanConvertTo(kTokenType_Array);
+		bool const arg2IsArr = eval.Arg(1)->CanConvertTo(kTokenType_Array);
+		if (arg1IsArr && arg2IsArr)
+		{
+			auto arr1 = eval.Arg(0)->GetArrayVar();
+			auto arr2 = eval.Arg(1)->GetArrayVar();
+			if (arr1 && arr2)
+			{
+				*result = arr1->DeepEquals(arr2);
+			}
+			else if (!arr1 && !arr2)
+			{
+				*result = 1;
+			}
+		}
+		else if (!arg1IsArr && !arg2IsArr)
+		{
+			*result = 1;
+		}
+	}
+	return true;
+}
+
+bool Cmd_ar_Unique_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (eval.ExtractArgs() && eval.NumArgs() == 1 && eval.Arg(0)->CanConvertTo(kTokenType_Array))
+	{
+		auto* sourceArray = eval.Arg(0)->GetArrayVar();
+		if (!sourceArray)
+			return true;
+		auto* returnArray = g_ArrayMap.Create(sourceArray->KeyType(), sourceArray->IsPacked(), scriptObj->GetModIndex());
+		for (auto iter = sourceArray->Begin(); !iter.End(); ++iter)
+		{
+			const auto* toFind = iter.second();
+			if (!returnArray->Find(toFind))
+				returnArray->SetElement(iter.first(), toFind);
+		}
+		*result = returnArray->ID();
+	}
 	return true;
 }

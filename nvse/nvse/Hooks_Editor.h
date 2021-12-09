@@ -17,5 +17,6 @@ void PatchIsAlpha(void);
 
 // Handle new param types
 void PatchDefaultCommandParser();
-
+#else
+void PatchGameCommandParser();
 #endif

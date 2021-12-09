@@ -103,9 +103,10 @@ static ParamInfo kParams_CallWhile[2] =
 	{	"condition",	kParamType_AnyForm,0	},
 };
 
-DEFINE_CMD_ALT(CallAfterSeconds, CallAfter, calls UDF after argument number of seconds, 0, 2, kParams_CallAfter);
-DEFINE_COMMAND(CallWhile, calls UDF each frame while condition is met, 0, 2, kParams_CallWhile);
-DEFINE_CMD_ALT(CallForSeconds, CallFor, calls UDF each frame for argument number of seconds, 0, 2, kParams_CallAfter);
+DEFINE_CMD_ALT(CallAfterSeconds, CallAfter, "calls UDF after argument number of seconds", 0, 2, kParams_CallAfter);
+DEFINE_COMMAND(CallWhile, "calls UDF each frame while condition is met", 0, 2, kParams_CallWhile);
+DEFINE_CMD_ALT(CallForSeconds, CallFor, "calls UDF each frame for argument number of seconds", 0, 2, kParams_CallAfter);
+DEFINE_COMMAND(CallWhen, "calls UDF once when a condition is met which is polled each frame", 0, 2, kParams_CallWhile);
 
 struct DelayedCallInfo
 {
@@ -141,8 +142,35 @@ struct CallWhileInfo
 	}
 };
 
-extern std::vector<DelayedCallInfo> g_callForInfos;
-extern std::vector<CallWhileInfo> g_callWhileInfos;
+extern std::list<DelayedCallInfo> g_callForInfos;
+extern std::list<CallWhileInfo> g_callWhileInfos;
+extern std::list<DelayedCallInfo> g_callAfterInfos;
+extern std::list<CallWhileInfo> g_callWhenInfos;
+
+extern ICriticalSection g_callForInfosCS;
+extern ICriticalSection g_callWhileInfosCS;
+extern ICriticalSection g_callAfterInfosCS;
+extern ICriticalSection g_callWhenInfosCS;
 
 
-DEFINE_COMMAND(DecompileScript, decompiles script, false, 2, kParams_OneForm_OneOptionalString);
+
+static ParamInfo kParams_HasScriptCommand[3] =
+{
+	{	"command opcode",	kParamType_Integer,			0	},
+	{	"form",			kParamType_AnyForm,	1	},
+	{	"event block id",			kParamType_Integer,	1	}
+};
+
+
+DEFINE_COMMAND(DecompileScript, decompiles a script to file, false, 2, kParams_OneForm_OneOptionalString);
+DEFINE_COMMAND(HasScriptCommand, returns 1 if script contains call to a command, false, 3, kParams_HasScriptCommand);
+DEFINE_COMMAND(GetCommandOpcode, gets opcode for command name, false, 1, kParams_OneString);
+
+static ParamInfo kParams_Ternary[] =
+{
+	{	"value",			kNVSEParamType_BasicType,	0	},
+	{	"callIfTrue (UDF)",	kNVSEParamType_Form,	0	},
+	{	"callIfFalse (UDF)",	kNVSEParamType_Form,	0	},
+};
+
+DEFINE_COMMAND_EXP(Ternary, "The ternary operator as a function.", false, kParams_Ternary);

@@ -8,6 +8,7 @@
 #include "containers.h"
 #include "GameUI.h"
 #include "GameAPI.h"
+#include "MemoizedMap.h"
 #include "common/ICriticalSection.h"
 
 #define the_VATScamStruct		0x011F2250
@@ -17,9 +18,6 @@
 
 static const float fErrorReturnValue = -999;
 
-bool g_tilesDestroyed = false;
-
-
 enum eUICmdAction {
 	kGetFloat,
 	kSetFloat,
@@ -27,29 +25,14 @@ enum eUICmdAction {
 	kSetFormattedString,
 };
 
-static UnorderedMap<const char*, Tile::Value*> s_cachedTileValues;
-ICriticalSection g_tileCS;
+MemoizedMap<const char*, Tile::Value*> s_memoizedTileValues;
 
 Tile::Value* GetCachedComponentValue(const char* component)
 {
-	ScopedLock lock(g_tileCS);
-	if (g_tilesDestroyed)
+	return s_memoizedTileValues.Get(component, [](const char* component)
 	{
-		g_tilesDestroyed = false;
-		s_cachedTileValues.Clear();
-	}
-	
-	Tile::Value** valPtr;
-	if (s_cachedTileValues.Insert(component, &valPtr))
-		*valPtr = nullptr;
-
-	if (!*valPtr)
-	{
-		auto* tile = InterfaceManager::GetMenuComponentValue(component);
-		if (tile)
-			*valPtr = tile;
-	}
-	return *valPtr;
+		return InterfaceManager::GetMenuComponentValue(component);
+	});
 }
 
 bool GetSetUIValue_Execute(COMMAND_ARGS, eUICmdAction action)
@@ -465,24 +448,10 @@ bool Cmd_ShowLevelUpMenu_Execute (COMMAND_ARGS)
 
 Tile::Value* GetCachedComponentValueAlt(const char* component)
 {
-	ScopedLock lock(g_tileCS);
-	if (g_tilesDestroyed)
+	return s_memoizedTileValues.Get(component, [](const char* component)
 	{
-		g_tilesDestroyed = false;
-		s_cachedTileValues.Clear();
-	}
-
-	Tile::Value** valPtr;
-	if (s_cachedTileValues.Insert(component, &valPtr))
-		*valPtr = nullptr;
-
-	if (!*valPtr)
-	{
-		auto* tile = InterfaceManager::GetMenuComponentValueAlt(component);
-		if (tile)
-			*valPtr = tile;
-	}
-	return *valPtr;
+		return InterfaceManager::GetMenuComponentValueAlt(component);
+	});
 }
 
 bool Cmd_GetUIFloatAlt_Execute(COMMAND_ARGS)
@@ -506,11 +475,15 @@ bool Cmd_SetUIFloatAlt_Execute(COMMAND_ARGS)
 {
 	char component[0x200];
 	float newFloat;
+	*result = 0;
 	if (ExtractArgsEx(EXTRACT_ARGS_EX, &component, &newFloat))
 	{
 		Tile::Value *val = GetCachedComponentValueAlt(component);
 		if (val)
+		{
 			CALL_MEMBER_FN(val->parent, SetFloatValue)(val->id, newFloat, true);
+			*result = 1;
+		}
 	}
 	return true;
 }
@@ -519,11 +492,32 @@ bool Cmd_SetUIStringAlt_Execute(COMMAND_ARGS)
 {
 	char component[0x200];
 	char newStr[kMaxMessageLength];
+	*result = 0;
 	if (ExtractFormatStringArgs(1, newStr, paramInfo, scriptData, opcodeOffsetPtr, scriptObj, eventList, kCommandInfo_SetUIStringAlt.numParams, &component))
 	{
 		Tile::Value *val = GetCachedComponentValueAlt(component);
 		if (val)
+		{
 			CALL_MEMBER_FN(val->parent, SetStringValue)(val->id, newStr, true);
+			*result = 1;
+		}
+	}
+	return true;
+}
+
+bool Cmd_ModUIFloat_Execute(COMMAND_ARGS)
+{
+	char component[0x200];
+	float newFloat;
+	*result = 0;
+	if (ExtractArgsEx(EXTRACT_ARGS_EX, &component, &newFloat))
+	{
+		Tile::Value* val = GetCachedComponentValueAlt(component);
+		if (val)
+		{
+			CALL_MEMBER_FN(val->parent, SetFloatValue)(val->id, val->num + newFloat, true);
+			*result = 1;
+		}
 	}
 	return true;
 }

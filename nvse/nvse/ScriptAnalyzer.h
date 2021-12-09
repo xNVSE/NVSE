@@ -1,20 +1,23 @@
 ﻿#pragma once
-#include <stack>
+#include <optional>
 #include <unordered_set>
-
 #include "GameAPI.h"
 #include "GameObjects.h"
-#include "GameRTTI.h"
 #include "GameScript.h"
 
 class ExpressionEvaluator;
 class CachedTokens;
+CommandInfo* GetEventCommandInfo(UInt16 opcode);
+void UnformatString(std::string& str);
 
 namespace ScriptParsing
 {
 	class ExpressionToken;
 	class CommandCallToken;
 	enum class ExpressionCode : UInt8;
+
+	bool ScriptContainsCommand(Script* script, CommandInfo* info, CommandInfo* eventBlock);
+	bool PluginDecompileScript(Script* script, SInt32 lineNumber, char* buffer, UInt32 bufferSize);
 
 	class ScriptIterator
 	{
@@ -29,7 +32,7 @@ namespace ScriptParsing
 		Script::RefVariable* ReadRefVar();
 		VariableInfo* ReadVariable(TESForm*& refOut, ExpressionCode& typeOut);
 		bool ReadStringLiteral(std::string_view& out);
-		bool ReadNumericConstant(double& result);
+		bool ReadNumericConstant(double& result, UInt8* endData);
 		Script::RefVariable* GetCallingReference() const;
 
 		UInt16 opcode{};
@@ -37,11 +40,13 @@ namespace ScriptParsing
 		UInt16 refIdx{};
 		Script* script;
 		UInt8* curData;
+		UInt8* startData;
 
 		explicit ScriptIterator(Script* script);
 		ScriptIterator(Script* script, UInt8* position);
 		ScriptIterator(Script* script, UInt16 opcode, UInt16 length, UInt16 refIdx, UInt8* data);
-		ScriptIterator() : script(nullptr), curData(nullptr) {}
+		ScriptIterator();
+
 		void operator++();
 		bool End() const;
 	};
@@ -96,7 +101,7 @@ namespace ScriptParsing
 	{
 	public:
 		ScriptIterator context;
-		CommandInfo* statementCmd;
+		CommandInfo* cmdInfo;
 		bool error = false;
 		virtual ~ScriptLine() = default;
 
@@ -246,9 +251,11 @@ namespace ScriptParsing
 
 	class CommandCallToken : public OperandToken
 	{
+		bool ParseGameArgs(ScriptIterator& context, UInt32 numArgs);
 	public:
+		int opcode = -1;
 		CommandInfo* cmdInfo;
-		Script::RefVariable* callingReference;
+		std::unique_ptr<RefToken> callingReference = nullptr;
 		
 		std::vector<std::unique_ptr<OperandToken>> args;
 
@@ -256,7 +263,7 @@ namespace ScriptParsing
 		std::vector<CachedTokens*> expressionEvalArgs;
 
 		CommandCallToken(const ScriptIterator& context);
-		CommandCallToken(CommandInfo* cmdInfo, Script::RefVariable* callingRef);
+		CommandCallToken(CommandInfo* cmdInfo, UInt32 opcode, Script::RefVariable* callingRef, Script* script);
 
 		std::string ToString() override;
 
@@ -266,10 +273,17 @@ namespace ScriptParsing
 
 		bool ReadNumericToken(ScriptIterator& context);
 
-		bool ParseCommandArgs(ScriptIterator context);
+		bool ParseCommandArgs(ScriptIterator context, UInt32 dataLen);
 	};
 
-	class SetToStatement : public ScriptStatement
+	class ExpressionStatement
+	{
+	public:
+		virtual ~ExpressionStatement() = default;
+		virtual Expression& GetExpression() = 0;
+	};
+
+	class SetToStatement : public ScriptStatement, public ExpressionStatement
 	{
 	public:
 		char type = 0;
@@ -279,40 +293,39 @@ namespace ScriptParsing
 		explicit SetToStatement(const ScriptIterator& contextParam);
 
 		std::string ToString() override;
+		Expression& GetExpression() override;
 	};
 
-	class ConditionalStatement : public ScriptStatement
+	class ConditionalStatement : public ScriptStatement, public ExpressionStatement
 	{
 	public:
 		UInt16 numBytesToJumpOnFalse;
 		Expression expression;
 		explicit ConditionalStatement(const ScriptIterator& contextParam);
-		std::string ToString() override
-		{
-			return ScriptLine::ToString() + " " + expression.ToString();
-		}
+		std::string ToString() override;
+		Expression& GetExpression() override;
 	};
 	
 	class ScriptAnalyzer
 	{
-		ScriptIterator iter_;
-		std::vector<std::unique_ptr<ScriptLine>> lines_;
-		template <typename T>
-		void Add()
-		{
-			this->lines_.emplace_back(std::make_unique<T>(this->iter_));
-		}
-		void Parse();
 	public:
+		void Parse();
+		ScriptIterator iter;
+		std::vector<std::unique_ptr<ScriptLine>> lines;
 		bool isLambdaScript = false;
 		bool compilerOverrideEnabled = false;
+		bool error = false;
 		std::unordered_set<VariableInfo*> arrayVariables;
 		std::unordered_set<VariableInfo*> stringVariables;
+		Script* script;
 
-		ScriptAnalyzer(Script* script);
+		bool CallsCommand(CommandInfo* cmd, CommandInfo* eventBlockInfo);
+
+		ScriptAnalyzer(Script* script, bool parse = true);
 		~ScriptAnalyzer();
 
 		static std::unique_ptr<ScriptLine> ParseLine(const ScriptIterator& iter);
+		std::unique_ptr<ScriptParsing::ScriptLine> ParseLine(UInt32 line);
 		std::string DecompileScript();
 	};
 

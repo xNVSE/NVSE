@@ -66,6 +66,11 @@ const char* DataHandler::GetNthModName(UInt32 modIndex)
 		return "";
 }
 
+void DataHandler::DisableAssignFormIDs(bool shouldAsssign)
+{
+	ThisStdCall(0x464D30, this, shouldAsssign);
+}
+
 struct IsModLoaded
 {
 	bool Accept(ModInfo* pModInfo) const {

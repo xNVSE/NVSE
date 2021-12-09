@@ -1,6 +1,9 @@
 #include <set>
 
 #include "Hooks_Gameplay.h"
+
+#include <filesystem>
+
 #include "GameForms.h"
 #include "GameObjects.h"
 #include "SafeWrite.h"
@@ -11,6 +14,7 @@
 #include "StringVar.h"
 #include "ArrayVar.h"
 #include "Commands_Script.h"
+#include "Core_Serialization.h"
 #include "PluginManager.h"
 #include "GameOSDepend.h"
 #include "InventoryReference.h"
@@ -18,6 +22,10 @@
 #include "FunctionScripts.h"
 #include "Hooks_Other.h"
 #include "ScriptTokenCache.h"
+#include <chrono>
+#include <fstream>
+
+#include "GameData.h"
 
 static void HandleMainLoopHook(void);
 
@@ -50,26 +58,24 @@ bool RunCommand_NS(COMMAND_ARGS, Cmd_Execute cmd)
 	return cmdResult;
 }
 
-extern std::vector<DelayedCallInfo> g_callAfterScripts;
-extern ICriticalSection g_callAfterScriptsCS;
 float g_gameSecondsPassed = 0;
 
 // xNVSE 6.1
 void HandleDelayedCall()
 {
-	if (g_callAfterScripts.empty())
+	if (g_callAfterInfos.empty())
 		return; // avoid lock overhead
 	
-	ScopedLock lock(g_callAfterScriptsCS);
+	ScopedLock lock(g_callAfterInfosCS);
 
-	auto iter = g_callAfterScripts.begin();
-	while (iter != g_callAfterScripts.end())
+	auto iter = g_callAfterInfos.begin();
+	while (iter != g_callAfterInfos.end())
 	{
 		if (g_gameSecondsPassed >= iter->time)
 		{
 			InternalFunctionCaller caller(iter->script, iter->thisObj);
 			delete UserFunctionManager::Call(std::move(caller));
-			iter = g_callAfterScripts.erase(iter); // yes, this is valid: https://stackoverflow.com/a/3901380/6741772
+			iter = g_callAfterInfos.erase(iter); // yes, this is valid: https://stackoverflow.com/a/3901380/6741772
 		}
 		else
 		{
@@ -77,9 +83,6 @@ void HandleDelayedCall()
 		}
 	}
 }
-
-extern std::vector<CallWhileInfo> g_callWhileInfos;
-extern ICriticalSection g_callWhileInfosCS;
 
 void HandleCallWhileScripts()
 {
@@ -104,8 +107,28 @@ void HandleCallWhileScripts()
 	}
 }
 
-extern std::vector<DelayedCallInfo> g_callForInfos;
-extern ICriticalSection g_callForInfosCS;
+void HandleCallWhenScripts()
+{
+	if (g_callWhenInfos.empty())
+		return; // avoid lock overhead
+	ScopedLock lock(g_callWhenInfosCS);
+
+	auto iter = g_callWhenInfos.begin();
+	while (iter != g_callWhenInfos.end())
+	{
+		InternalFunctionCaller conditionCaller(iter->condition);
+		if (auto conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); conditionResult && conditionResult->GetBool())
+		{
+			InternalFunctionCaller scriptCaller(iter->callFunction, iter->thisObj);
+			delete UserFunctionManager::Call(std::move(scriptCaller));
+			iter = g_callWhenInfos.erase(iter);
+		}
+		else
+		{
+			++iter;
+		}
+	}
+}
 
 void HandleCallForScripts()
 {
@@ -136,17 +159,76 @@ static const UInt32 kExtraOwnershipDefaultSetting  = 0x00411F78;	//	0040A654 in 
 // Byte array at the end of the sub who is the 4th call in ExtraDataList__RemoveAllCopyableExtra
 //don't see a second array.. static const UInt32 kExtraOwnershipDefaultSetting2 = 0x0041FE0D;	//
 
+void ApplyGECKEditorIDs()
+{
+	// fix inconsistency
+	const auto set = [](UInt32 id, const char* str)
+	{
+		LookupFormByID(id)->SetEditorID(str);
+	};
+	set(0x14, "PlayerRef");
+	set(0xA, "Lockpick");
+	set(0x2D, "MaleAdult01Default");
+	set(0x2E, "FemaleAdult01Default");
+	set(0x33, "RadiationMarker");
+	set(0x3D, "DefaultCombatStyle");
+	set(0x147, "PipBoyLight");
+	set(0x163, "HelpManual");
+	set(0x1F5, "DefaultWaterExplosion");
+	set(0x1F6, "GasTrapDummy");
+}
+
 DWORD g_mainThreadID = 0;
 bool s_recordedMainThreadID = false;
+std::unordered_set<UInt8> g_myMods;
+void DetermineShowScriptErrors()
+{
+	UInt32 iniOpt;
+	if (GetNVSEConfigOption_UInt32("RELEASE", "bWarnScriptErrors", &iniOpt))
+	{
+		g_warnScriptErrors = iniOpt;
+		return;
+	}
+
+	try
+	{
+		const auto* myModsFileName = "MyGECKMods.txt";
+		if (std::filesystem::exists(myModsFileName))
+		{
+			std::ifstream is(myModsFileName);
+			std::string curMod;
+			while (std::getline(is, curMod))
+			{
+				if (curMod.empty())
+					continue;
+				if (const auto idx = DataHandler::Get()->GetModIndex(curMod.c_str()); idx != -1)
+				{
+					g_warnScriptErrors = true;
+					g_myMods.insert(idx);
+				}
+			}
+		}
+	}
+	catch (...)
+	{
+		g_warnScriptErrors = false;
+	}
+#if _DEBUG
+	g_warnScriptErrors = true;
+#endif
+}
+
 static void HandleMainLoopHook(void)
 { 
 	if (!s_recordedMainThreadID)
 	{
+		DetermineShowScriptErrors();
+		ApplyGECKEditorIDs();
 		s_recordedMainThreadID = true;
+		Console_Print("xNVSE %d.%d.%d", NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA);
 		g_mainThreadID = GetCurrentThreadId();
 		
 		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_DeferredInit, NULL, 0, NULL);
-		Console_Print("xNVSE %d.%d.%d", NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA);
 	}
 	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_MainGameLoop, nullptr, 0, nullptr);
 
@@ -160,9 +242,11 @@ static void HandleMainLoopHook(void)
 	// clean up any temp arrays/strings (moved after deffered processing because of array parameter to User Defined Events)
 	g_ArrayMap.Clean();
 	g_StringMap.Clean();
+	LambdaManager::EraseUnusedSavedVariableLists();
 
 	// handle calls from cmd CallWhile
 	HandleCallWhileScripts();
+	HandleCallWhenScripts();
 	
 	const auto isMenuMode = CdeclCall<bool>(0x702360);
 
@@ -176,6 +260,7 @@ static void HandleMainLoopHook(void)
 		// handle calls from cmd CallForSeconds
 		HandleCallForScripts();
 	}
+
 }
 
 #define DEBUG_PRINT_CHANNEL(idx)								\

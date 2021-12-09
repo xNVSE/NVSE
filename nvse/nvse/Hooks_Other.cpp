@@ -6,17 +6,20 @@
 #include "LambdaManager.h"
 #include "PluginManager.h"
 #include "Commands_UI.h"
+#include "FastStack.h"
+#include "GameTiles.h"
+#include "MemoizedMap.h"
 
 #if RUNTIME
-
 namespace OtherHooks
 {
-	thread_local TESObjectREFR* g_lastScriptOwnerRef = nullptr;
+	const static auto ClearCachedTileMap = &MemoizedMap<const char*, Tile::Value*>::Clear;
+	thread_local FastStack<CurrentScriptContext> g_currentScriptContext;
 	__declspec(naked) void TilesDestroyedHook()
 	{
 		__asm
 		{
-			mov g_tilesDestroyed, 1
+			call ClearCachedTileMap // static function
 			// original asm
 			pop ecx
 			mov esp, ebp
@@ -30,7 +33,7 @@ namespace OtherHooks
 		// Eddoursol reported a problem where stagnant deleted tiles got cached
 		__asm
 		{
-			mov g_tilesDestroyed, 1
+			call ClearCachedTileMap // static function
 			pop ecx
 			mov esp, ebp
 			pop ebp
@@ -69,6 +72,7 @@ namespace OtherHooks
 
 	void DeleteEventList(ScriptEventList* eventList)
 	{
+		
 		LambdaManager::MarkParentAsDeleted(eventList); // deletes if exists
 		CleanUpNVSEVars(eventList);
 		ThisStdCall(0x5A8BC0, eventList);
@@ -83,9 +87,59 @@ namespace OtherHooks
 	}
 
 	// Saves last thisObj in effect/object scripts before they get assigned to something else with dot syntax
-	void __fastcall SaveLastScriptOwnerRef(TESObjectREFR* ref)
+	void __fastcall SaveLastScriptOwnerRef(UInt8* ebp, int spot)
 	{
-		g_lastScriptOwnerRef = ref;
+		auto& [script, scriptRunner, lineNumberPtr, scriptOwnerRef, command, curData] = *g_currentScriptContext.Push();
+		command = nullptr; // set in ExtractArgsEx
+		scriptOwnerRef = *reinterpret_cast<TESObjectREFR**>(ebp + 0xC);
+		script = *reinterpret_cast<Script**>(ebp + 0x8);
+		if (spot == 1)
+		{
+			scriptRunner = *reinterpret_cast<ScriptRunner**>(ebp - 0x774);
+			lineNumberPtr = reinterpret_cast<UInt32*>(ebp - 0x40);
+			curData = reinterpret_cast<UInt32*>(ebp - 0x3C);
+		}
+		else if (spot == 2)
+		{
+			// ScriptRunner::Run2
+			scriptRunner = *reinterpret_cast<ScriptRunner**>(ebp - 0x744);
+			lineNumberPtr = reinterpret_cast<UInt32*>(ebp - 0x28);
+			curData = reinterpret_cast<UInt32*>(ebp - 0x24);
+		}
+	}
+
+	void __fastcall PostScriptExecute(Script* script)
+	{
+		if (script)
+			g_currentScriptContext.Pop();
+	}
+
+	__declspec (naked) void PostScriptExecuteHook1()
+	{
+		__asm
+		{
+			push eax
+			mov ecx, [ebp+0x8]
+			call PostScriptExecute
+			pop eax
+			mov esp, ebp
+			pop ebp
+			ret 0x20
+		}
+	}
+
+	__declspec (naked) void PostScriptExecuteHook2()
+	{
+		__asm
+		{
+			push eax
+			mov ecx, [ebp + 0x8]
+			call PostScriptExecute
+			pop eax
+			mov esp, ebp
+			pop ebp
+			ret 0xC
+		}
 	}
 
 	__declspec(naked) void SaveScriptOwnerRefHook()
@@ -94,7 +148,8 @@ namespace OtherHooks
 		const static auto retnAddr = 0x5E0D56;
 		__asm
 		{
-			mov ecx, [ebp+0xC]
+			lea ecx, [ebp]
+			mov edx, 1
 			call SaveLastScriptOwnerRef
 			call hookedCall
 			jmp retnAddr
@@ -108,7 +163,8 @@ namespace OtherHooks
 		__asm
 		{
 			push ecx
-			mov ecx, [ebp+0xC]
+			mov edx, 2
+			lea ecx, [ebp]
 			call SaveLastScriptOwnerRef
 			pop ecx
 			call hookedCall
@@ -124,6 +180,29 @@ namespace OtherHooks
 		
 		WriteRelJump(0x5E0D51, UInt32(SaveScriptOwnerRefHook));
 		WriteRelJump(0x5E119A, UInt32(SaveScriptOwnerRefHook2));
+
+		WriteRelJump(0x5E1137, UInt32(PostScriptExecuteHook1));
+		WriteRelJump(0x5E1392, UInt32(PostScriptExecuteHook2));
+	}
+
+	thread_local CurrentScriptContext emptyCtx{}; // not every command gets run through script runner
+
+	CurrentScriptContext* GetExecutingScriptContext()
+	{
+		if (!g_currentScriptContext.Empty())
+			return &g_currentScriptContext.Top();
+		emptyCtx = {};
+		return &emptyCtx;
+	}
+
+	void PushScriptContext(const CurrentScriptContext& ctx)
+	{
+		g_currentScriptContext.Push(ctx);
+	}
+
+	void PopScriptContext()
+	{
+		g_currentScriptContext.Pop();
 	}
 }
 #endif

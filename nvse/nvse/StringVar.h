@@ -24,7 +24,23 @@ class StringVar
 public:
 	StringVar(const char* in_data, UInt8 modIndex);
 
+	StringVar(const StringVar& other) = delete;
+
+	StringVar(StringVar&& other) noexcept;
+
+	StringVar& operator=(const StringVar& other) = delete;
+
+	StringVar& operator=(StringVar&& other) noexcept
+	{
+		if (this == &other)
+			return *this;
+		data = std::move(other.data);
+		owningModIndex = other.owningModIndex;
+		return *this;
+	}
+
 	void		Set(const char* newString);
+	void        Set(StringVar&& other);
 	SInt32		Compare(char* rhs, bool caseSensitive);
 	void		Insert(const char* subString, UInt32 insertionPos);
 	UInt32		Find(char* subString, UInt32 startPos, UInt32 numChars, bool bCaseSensitive = false);	//returns position of substring
@@ -56,9 +72,12 @@ public:
 	void Save(NVSESerializationInterface* intfc);
 	void Load(NVSESerializationInterface* intfc);
 	void Clean();
-
-	UInt32 Add(UInt8 varModIndex, const char* data, bool bTemp = false);
+	void Reset();
+	UInt32 Add(UInt8 varModIndex, const char* data, bool bTemp = false, StringVar** svOut = nullptr);
+	UInt32 Add(StringVar&& moveVar, bool bTemp, StringVar** svOut);
 	static StringVarMap * GetSingleton(void);
+	void Delete(UInt32 varID);
+	void MarkTemporary(UInt32 varID, bool bTemporary);
 };
 
 extern StringVarMap g_StringMap;
@@ -72,3 +91,12 @@ namespace PluginAPI
 	void SetString(UInt32 stringID, const char* newVal);
 	UInt32 CreateString(const char* strVal, void* owningScript);
 }
+
+struct FunctionResultStringVar
+{
+	StringVar* var = nullptr;
+	int id = -1;
+	bool inUse = false;
+};
+
+__declspec(noinline) FunctionResultStringVar& GetFunctionResultCachedStringVar();

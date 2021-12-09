@@ -297,6 +297,8 @@ public:
 	UInt8 GetActiveModCount() const;
 	const char* GetNthModName(UInt32 modIndex);
 
+	void DisableAssignFormIDs(bool shouldAsssign);
+
 	MEMBER_FN_PREFIX(DataHandler);
 #if RUNTIME
 	DEFINE_MEMBER_FN(DoAddForm, UInt32, 0x004603B0, TESForm * pForm);	// stupid name is because AddForm is redefined in windows header files

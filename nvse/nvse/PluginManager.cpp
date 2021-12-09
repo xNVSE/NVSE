@@ -50,7 +50,9 @@ static NVSEArrayVarInterface g_NVSEArrayVarInterface =
 	PluginAPI::ArrayAPI::LookupArrayByID,
 	PluginAPI::ArrayAPI::GetElement,
 	PluginAPI::ArrayAPI::GetElements,
-	PluginAPI::ArrayAPI::GetArrayPacked
+	PluginAPI::ArrayAPI::GetArrayPacked,
+	PluginAPI::ArrayAPI::GetContainerType,
+	PluginAPI::ArrayAPI::ArrayHasKey
 };
 
 static NVSEScriptInterface g_NVSEScriptInterface =
@@ -429,6 +431,7 @@ void PluginManager::InitExpressionEvaluatorUtils(ExpressionEvaluatorUtils *utils
 	utils->ScriptTokenGetScriptVar = ScriptTokenGetScriptVar;
 	utils->ScriptTokenGetPair = ScriptTokenGetPair;
 	utils->ScriptTokenGetSlice = ScriptTokenGetSlice;
+	utils->ScriptTokenGetAnimationGroup = ScriptTokenGetAnimationGroup;
 #endif
 }
 
@@ -911,6 +914,8 @@ void * PluginManager::GetFunc(UInt32 funcID)
 	case NVSEDataInterface::kNVSEData_LambdaSaveVariableList: result = (void*)&LambdaManager::SaveLambdaVariables; break;
 	case NVSEDataInterface::kNVSEData_LambdaUnsaveVariableList: result = (void*)&LambdaManager::UnsaveLambdaVariables; break;
 	case NVSEDataInterface::kNVSEData_IsScriptLambda: result = (void*)&LambdaManager::IsScriptLambda; break;
+	case NVSEDataInterface::kNVSEData_HasScriptCommand: result = (void*)&ScriptParsing::ScriptContainsCommand; break;
+	case NVSEDataInterface::kNVSEData_DecompileScript: result = (void*)&ScriptParsing::PluginDecompileScript; break;
 	}
 	return result;
 }

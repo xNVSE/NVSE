@@ -532,7 +532,7 @@ public:
 	}
 
 	template <typename F>
-	Item *FindFirst(const F &func) const
+	Item *FindFirst(F &&func) const
 	{
 		for (auto iter = Begin(); !iter.End(); ++iter)
 		{
@@ -541,9 +541,19 @@ public:
 		}
 		return nullptr;
 	}
-	
+
 	template <typename F>
-	bool Contains(const F &func) const
+	void ForEach(F &&func) const
+	{
+		for (auto iter = Begin(); !iter.End(); ++iter)
+		{
+			if (*iter)
+				func(*iter);
+		}
+	}
+
+	template <typename F>
+	bool Contains(F &&func) const
 	{
 		return FindFirst(func) != nullptr;
 	}

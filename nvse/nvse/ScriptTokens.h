@@ -1,5 +1,6 @@
 #pragma once
 #include "LambdaManager.h"
+#include "ScriptAnalyzer.h"
 #include "SmallObjectsAllocator.h"
 
 #if _DEBUG
@@ -177,6 +178,18 @@ struct ForEachContext
 
 #endif
 
+#if RUNTIME
+struct CustomVariableContext
+{
+	ScriptLocal* scriptLocal;
+	union
+	{
+		StringVar* stringVar;
+		ArrayVar* arrayVar;
+	};
+};
+#endif
+
 // slightly less ugly but still cheap polymorphism
 struct ScriptToken
 {
@@ -184,7 +197,6 @@ struct ScriptToken
 
 	Token_Type type;
 	UInt8 variableType;
-	Script *owningScript;
 
 	union Value
 	{
@@ -198,6 +210,7 @@ struct ScriptToken
 		ArrayID arrID;
 		ScriptLocal *var;
 		LambdaManager::ScriptData lambdaScriptData;
+		CustomVariableContext nvseVariable;
 #endif
 		// compile-time only
 		VariableInfo *varInfo;
@@ -205,6 +218,8 @@ struct ScriptToken
 		ScriptToken *token;
 		Script *lambda;
 	} value;
+
+	
 
 	ScriptToken(Token_Type _type, UInt8 _varType, UInt16 _refIdx);
 	ScriptToken(bool boolean);
@@ -218,9 +233,8 @@ struct ScriptToken
 	ScriptToken(Operator *op);
 	ScriptToken(UInt32 data, Token_Type asType); // ArrayID or FormID
 	ScriptToken(Script *script);
-
-	//ScriptToken(const ScriptToken& rhs);	// unimplemented, don't want copy constructor called
 #if RUNTIME
+	ScriptToken(ScriptLocal* scriptLocal, StringVar* stringVar);
 	ScriptToken(ScriptLocal *var);
 #endif
 
@@ -230,21 +244,24 @@ struct ScriptToken
 
 	virtual ~ScriptToken();
 
-	virtual const char *GetString();
-	virtual UInt32 GetFormID();
-	virtual TESForm *GetTESForm();
-	virtual double GetNumber();
+	virtual const char *GetString() const;
+	std::size_t GetStringLength() const;
+	virtual UInt32 GetFormID() const;
+	virtual TESForm *GetTESForm() const;
+	virtual double GetNumber() const;
 	virtual const ArrayKey *GetArrayKey() const { return NULL; }
 	virtual const ForEachContext *GetForEachContext() const { return NULL; }
 	virtual const Slice *GetSlice() const { return NULL; }
-	virtual bool GetBool();
+	virtual bool GetBool() const;
 #if RUNTIME
 	Token_Type ReadFrom(ExpressionEvaluator *context); // reconstitute param from compiled data, return the type
-	virtual ArrayID GetArray();
+	virtual ArrayID GetArray() const;
 	ArrayVar *GetArrayVar();
 	ScriptLocal *GetVar() const;
+	StringVar* GetStringVar() const;
 	bool ResolveVariable();
 	Script* GetUserFunction();
+	ScriptParsing::CommandCallToken GetCallToken(Script* script) const;
 #endif
 	virtual bool CanConvertTo(Token_Type to) const; // behavior varies b/w compile/run-time for ambiguous types
 	virtual ArrayID GetOwningArrayID() const { return 0; }
@@ -259,8 +276,10 @@ struct ScriptToken
 	CommandInfo *GetCommandInfo() const;
 	UInt16 GetRefIndex() const { return IsGood() ? refIdx : 0; }
 	UInt8 GetVariableType() const { return IsVariable() ? variableType : Script::eVarType_Invalid; }
+	std::string GetStringRepresentation();
 
 	UInt32 GetActorValue(); // kActorVal_XXX or kActorVal_NoActorValue if none
+	UInt32 GetAnimationGroup();
 	char GetAxis();			// 'X', 'Y', 'Z', or otherwise -1
 	UInt32 GetSex();		// 0=male, 1=female, otherwise -1
 
@@ -277,9 +296,14 @@ struct ScriptToken
 	bool IsLogicalOperator() const;
 	std::string GetVariableDataAsString();
 	const char *GetVariableTypeString() const;
+	void AssignResult(COMMAND_ARGS, ExpressionEvaluator& eval) const;
 
 	static ScriptToken *Read(ExpressionEvaluator *context);
 
+	// block implicit conversations
+	template <typename T>
+	static ScriptToken* Create(T value) = delete;
+	
 	static ScriptToken *Create(bool boolean) { return new ScriptToken(boolean); }
 	static ScriptToken *Create(double num) { return new ScriptToken(num); }
 	static ScriptToken *Create(Script::RefVariable *refVar, UInt16 refIdx) { return refVar ? new ScriptToken(refVar, refIdx) : NULL; }
@@ -300,9 +324,11 @@ struct ScriptToken
 	static ScriptToken *Create(ArrayElementToken *elem, UInt32 lbound, UInt32 ubound);
 	static ScriptToken *Create(UInt32 bogus); // unimplemented, to block implicit conversion to double
 	static ScriptToken *Create(Script *scriptLambda) { return scriptLambda ? new ScriptToken(scriptLambda) : nullptr; }
-
+#if RUNTIME
+	static ScriptToken* Create(ScriptLocal* local, StringVar* stringVar) { return stringVar ? new ScriptToken(local, stringVar) : nullptr; }
+#endif
 	void SetString(const char *srcStr);
-	std::string GetVariableName() const;
+	std::string GetVariableName(Script* script) const;
 
 	bool useRefFromStack = false; // when eval'ing commands, don't use refIdx but top of stack which is reference
 	UInt16 refIdx;
@@ -312,6 +338,14 @@ struct ScriptToken
 	void operator delete(ScriptToken *token, std::destroying_delete_t);
 	void operator delete(void *p, bool useMemoryPool);
 	void operator delete(void *p); // unimplemented: keeping this here to shut up the compiler warning about non matching delete
+
+	ScriptToken(const ScriptToken& other) = delete;
+
+	ScriptToken(ScriptToken&& other) noexcept;
+
+	ScriptToken& operator=(const ScriptToken& other) = delete;
+
+	ScriptToken& operator=(ScriptToken&& other) noexcept;
 
 	bool cached = false;
 	CommandReturnType returnType;
@@ -384,6 +418,7 @@ struct PluginTokenPair;
 const PluginTokenPair *__fastcall ScriptTokenGetPair(PluginScriptToken *scrToken);
 struct PluginTokenSlice;
 const PluginTokenSlice *__fastcall ScriptTokenGetSlice(PluginScriptToken *scrToken);
+UInt32 __fastcall ScriptTokenGetAnimationGroup(PluginScriptToken* scrToken);
 
 struct ArrayElementToken : ScriptToken
 {
@@ -391,12 +426,12 @@ struct ArrayElementToken : ScriptToken
 
 	ArrayElementToken(ArrayID arr, ArrayKey *_key);
 	const ArrayKey *GetArrayKey() const override { return type == kTokenType_ArrayElement ? &key : NULL; }
-	const char *GetString() override;
-	double GetNumber() override;
-	UInt32 GetFormID() override;
-	ArrayID GetArray() override;
-	TESForm *GetTESForm() override;
-	bool GetBool() override;
+	const char *GetString() const override;
+	double GetNumber() const override;
+	UInt32 GetFormID() const override;
+	ArrayID GetArray() const override;
+	TESForm *GetTESForm() const override;
+	bool GetBool() const override;
 	bool CanConvertTo(Token_Type to) const override;
 	ArrayID GetOwningArrayID() const override { return type == kTokenType_ArrayElement ? value.arrID : 0; }
 	ArrayVar *GetOwningArrayVar() const { return g_ArrayMap.Get(GetOwningArrayID()); }
@@ -431,7 +466,7 @@ struct AssignableSubstringToken : ScriptToken
 	std::string substring;
 
 	AssignableSubstringToken(UInt32 _id, UInt32 lbound, UInt32 ubound);
-	const char *GetString() override { return substring.c_str(); }
+	const char *GetString() const override { return substring.c_str(); }
 	virtual bool Assign(const char *str) = 0;
 
 	void *operator new(size_t size)
@@ -466,7 +501,7 @@ struct AssignableSubstringArrayElementToken : public AssignableSubstringToken
 	ArrayKey key;
 
 	AssignableSubstringArrayElementToken(UInt32 _id, const ArrayKey &_key, UInt32 lbound, UInt32 ubound);
-	ArrayID GetArray() override { return value.arrID; }
+	ArrayID GetArray() const override { return value.arrID; }
 	bool Assign(const char *str) override;
 
 	void *operator new(size_t size)

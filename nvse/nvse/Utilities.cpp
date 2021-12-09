@@ -2,10 +2,11 @@
 #include "SafeWrite.h"
 #include <string>
 #include <algorithm>
-
-
+#include <filesystem>
+#include <tlhelp32.h>
 #include "containers.h"
 #include "GameData.h"
+#include "Hooks_Gameplay.h"
 #include "LambdaManager.h"
 #include "PluginAPI.h"
 #include "PluginManager.h"
@@ -398,6 +399,26 @@ UInt32 Tokenizer::NextToken(std::string& outStr)
 	return -1;
 }
 
+std::string Tokenizer::ToNewLine()
+{
+	if (m_offset == m_data.length())
+		return "";
+
+	size_t start = m_data.find_first_not_of(m_delims, m_offset);
+	if (start != -1)
+	{
+		size_t end = m_data.find_first_of('\n', start);
+		if (end == -1)
+			end = m_data.length();
+
+		m_offset = end;
+		return m_data.substr(start, end - start);
+	}
+
+	return "";
+
+}
+
 UInt32 Tokenizer::PrevToken(std::string& outStr)
 {
 	if (m_offset == 0)
@@ -624,14 +645,16 @@ void ShowErrorMessageBox(const char* message)
 
 UnorderedSet<UInt32> g_warnedScripts;
 
-const char* GetModName(Script* script)
+const char* GetModName(TESForm* form)
 {
-	if (!script)
+	if (!form)
 		return "Unknown or deleted script";
-	const char* modName = "In-game console";
-	if (script->GetModIndex() != 0xFF)
+	const char* modName = IS_ID(form, Script) ? "In-game console" : "Dynamic form";
+	if (form->mods.Head() && form->mods.Head()->data)
+		return form->mods.Head()->Data()->name;
+	if (form->GetModIndex() != 0xFF)
 	{
-		modName = DataHandler::Get()->GetNthModName(script->GetModIndex());
+		modName = DataHandler::Get()->GetNthModName(form->GetModIndex());
 		if (!modName || !modName[0])
 			modName = "Unknown";
 	}
@@ -651,6 +674,7 @@ void ShowRuntimeError(Script* script, const char* fmt, ...)
 	
 	const auto* scriptName = script ? script->GetName() : nullptr; // JohnnyGuitarNVSE allows this
 	auto refId = script ? script->refID : 0;
+	const auto modIdx = script ? script->GetModIndex() : 0;
 	if (script && LambdaManager::IsScriptLambda(script))
 	{
 		Script* parentScript;
@@ -669,11 +693,10 @@ void ShowRuntimeError(Script* script, const char* fmt, ...)
 		sprintf_s(errorHeader, sizeof(errorHeader), "Error in script %08X in mod %s\n%s", refId, modName, errorMsg);
 	}
 
-
-	if (g_warnedScripts.Insert(refId))
+	if (g_warnScriptErrors && g_myMods.contains(modIdx) && g_warnedScripts.Insert(refId))
 	{
 		char message[512];
-		snprintf(message, sizeof(message), "%s: NVSE error (see console print)", GetModName(script));
+		snprintf(message, sizeof(message), "%s: Script error (see console print)", GetModName(script));
 		if (!IsConsoleMode())
 			QueueUIMessage(message, 0, reinterpret_cast<const char*>(0x1049638), nullptr, 2.5F, false);
 	}
@@ -693,8 +716,8 @@ std::string FormatString(const char* fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 
-	char msg[0x400];
-	vsprintf_s(msg, 0x400, fmt, args);
+	char msg[0x800];
+	vsprintf_s(msg, 0x800, fmt, args);
 	return msg;
 }
 
@@ -753,4 +776,108 @@ bool Cmd_Default_Execute(COMMAND_ARGS)
 bool Cmd_Default_Eval(COMMAND_ARGS_EVAL)
 {
 	return true;
+}
+
+void ToWChar(wchar_t* ws, const char* c)
+{
+	swprintf(ws, 100, L"%hs", c);
+}
+
+bool IsProcessRunning(const char* executableName)
+{
+	PROCESSENTRY32 entry;
+	entry.dwSize = sizeof(PROCESSENTRY32);
+
+	const auto snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
+
+	if (!Process32First(snapshot, &entry)) {
+		CloseHandle(snapshot);
+		return false;
+	}
+
+	do {
+		if (!_stricmp(entry.szExeFile, executableName)) {
+			CloseHandle(snapshot);
+			return true;
+		}
+	} while (Process32Next(snapshot, &entry));
+
+	CloseHandle(snapshot);
+	return false;
+}
+#if NVSE_CORE && RUNTIME
+void DisplayMessage(const char* msg)
+{
+	ShowMessageBox(msg, 0, 0, ShowMessageBox_Callback, 0, 0x17, 0.0, 0.0, "Ok", 0);
+}
+#endif
+
+std::string GetCurPath()
+{
+	char buffer[MAX_PATH] = { 0 };
+	GetModuleFileName(NULL, buffer, MAX_PATH);
+	std::string::size_type pos = std::string(buffer).find_last_of("\\/");
+	return std::string(buffer).substr(0, pos);
+}
+
+bool ValidString(const char* str)
+{
+	return str && strlen(str);
+}
+
+#if _DEBUG
+// debugger can't call unused member functions
+const char* GetFormName(TESForm* form)
+{
+	return form ? form->GetName() : "";
+}
+
+const char* GetFormName(UInt32 formId)
+{
+	return GetFormName(LookupFormByID(formId));
+}
+
+#endif
+
+std::string& ToLower(std::string&& data)
+{
+	ra::transform(data, data.begin(), [](const unsigned char c) { return std::tolower(c); });
+	return data;
+}
+
+std::string& StripSpace(std::string&& data)
+{
+	std::erase_if(data, isspace);
+	return data;
+}
+
+bool StartsWith(std::string left, std::string right)
+{
+	return ToLower(std::move(left)).starts_with(ToLower(std::move(right)));
+}
+
+std::vector<std::string> SplitString(std::string s, std::string delimiter)
+{
+	size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+	std::string token;
+	std::vector<std::string> res;
+
+	while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos) {
+		token = s.substr(pos_start, pos_end - pos_start);
+		pos_start = pos_end + delim_len;
+		res.push_back(token);
+	}
+
+	res.push_back(s.substr(pos_start));
+	return res;
+}
+
+UInt8* GetParentBasePtr(void* addressOfReturnAddress, bool lambda)
+{
+	auto* basePtr = static_cast<UInt8*>(addressOfReturnAddress) - 4;
+#if _DEBUG
+	if (lambda) // in debug mode, lambdas are wrapped inside a closure wrapper function, so one more step needed
+		basePtr = *reinterpret_cast<UInt8**>(basePtr);
+#endif
+	return *reinterpret_cast<UInt8**>(basePtr);
 }

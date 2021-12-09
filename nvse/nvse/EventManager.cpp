@@ -505,13 +505,15 @@ struct DeferredRemoveCallback
 typedef Stack<DeferredRemoveCallback> DeferredRemoveList;
 DeferredRemoveList s_deferredRemoveList;
 
+enum class RefState {NotSet, Invalid, Valid};
+
 void __stdcall HandleEvent(UInt32 id, void* arg0, void* arg1)
 {
 	ScopedLock lock(s_criticalSection);
-
 	EventInfo* eventInfo = &s_eventInfos[id];
 	if (eventInfo->callbacks.Empty()) return;
 
+	auto isArg0Valid = RefState::NotSet;
 	for (auto iter = eventInfo->callbacks.Begin(); !iter.End(); ++iter)
 	{
 		EventCallback &callback = iter.Get();
@@ -522,7 +524,9 @@ void __stdcall HandleEvent(UInt32 id, void* arg0, void* arg1)
 		// Check filters
 		if (callback.source && (arg0 != callback.source))
 		{
-			if (!IsValidReference(arg0) || (((TESObjectREFR*)arg0)->baseForm != callback.source))
+			if (isArg0Valid == RefState::NotSet)
+				isArg0Valid = IsValidReference(arg0) ? RefState::Valid : RefState::Invalid;
+			if (isArg0Valid == RefState::Invalid || ((TESObjectREFR*)arg0)->baseForm != callback.source)
 				continue;
 		}
 
@@ -635,8 +639,8 @@ bool SetHandler(const char* eventName, EventCallback& handler)
 				}
 			}
 		}
-
-		info->callbacks.Append(handler);
+		handler.lambdaVariableContext = LambdaManager::LambdaVariableContext(handler.script);
+		info->callbacks.Append(std::move(handler));
 
 		s_eventsInUse |= info->eventMask;
 

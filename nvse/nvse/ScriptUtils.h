@@ -1,5 +1,6 @@
 
 #pragma once
+#include <optional>
 #include <unordered_set>
 
 #include "containers.h"
@@ -37,9 +38,7 @@ extern const char* g_lastScriptName;
 
 extern ErrOutput g_ErrOut;
 extern std::unordered_map<Script*, Script*> g_lambdaParentScriptMap;
-#if EDITOR
 extern std::map<std::pair<Script*, std::string>, Script::VariableType> g_variableDefinitionsMap;
-#endif
 
 Script * GetLambdaParentScript(Script * scriptLambda);
 
@@ -102,6 +101,8 @@ class ExpressionEvaluator
 		kFlag_ErrorOccurred			= 1 << 1,
 		kFlag_StackTraceOnError		= 1 << 2,
 	};
+	bool moved_ = false;
+	bool m_pushedOnStack;
 public:
 	Bitfield<UInt32>	 m_flags;
 	UInt8				* m_scriptData;
@@ -119,12 +120,20 @@ public:
 	ThreadLocalData&	localData;
 	std::vector<std::string> errorMessages;
 
+	ExpressionEvaluator(const ExpressionEvaluator& other) = delete;
+
+	ExpressionEvaluator(ExpressionEvaluator&& other) noexcept;
+
+	ExpressionEvaluator& operator=(const ExpressionEvaluator& other) = delete;
+
+	ExpressionEvaluator& operator=(ExpressionEvaluator&& other) noexcept;
+
 	CommandReturnType GetExpectedReturnType() { CommandReturnType type = m_expectedReturnType; m_expectedReturnType = kRetnType_Default; return type; }
 	bool ParseBytecode(CachedTokens& cachedTokens);
 
 	void PushOnStack();
 	void PopFromStack() const;
-	CachedTokens* GetTokens();
+	CachedTokens* GetTokens(std::optional<CachedTokens>* consoleTokens);
 
 	bool m_inline;
 
@@ -133,6 +142,9 @@ public:
 
 	ExpressionEvaluator(COMMAND_ARGS);
 	~ExpressionEvaluator();
+
+	// script analyzing constructor
+	ExpressionEvaluator(UInt8* scriptData, Script* script, UInt32* opcodeOffsetPtr);
 
 	Script			* script;
 	ScriptEventList	* eventList;
@@ -198,6 +210,8 @@ bool __fastcall ExpressionEvaluatorExtractArgs(void *expEval);
 UInt8 __fastcall ExpressionEvaluatorGetNumArgs(void *expEval);
 PluginScriptToken* __fastcall ExpressionEvaluatorGetNthArg(void *expEval, UInt32 argIdx);
 
+VariableInfo* CreateVariable(Script* script, ScriptBuffer* scriptBuf, const std::string& varName, Script::VariableType varType, const std::function<void(const std::string&)>& printCompileError);
+
 enum ParamParenthResult : UInt8
 {
 	kParamParent_NoParam,
@@ -207,14 +221,25 @@ enum ParamParenthResult : UInt8
 
 enum class MacroType
 {
-	OneLineLambda, AssignmentShortHand, IfEval
+	OneLineLambda, AssignmentShortHand, IfEval, MultipleVariableDeclaration
+};
+
+struct SavedScriptLine
+{
+	std::string curExpr;
+	char *curOffset;
+	UInt32 len;
+
+	SavedScriptLine(std::string curExpr, char *gCurOffs, UInt32 len) : curExpr(std::move(curExpr)), curOffset(gCurOffs), len(len)
+	{
+	}
 };
 
 class ExpressionParser
 {
 	friend ScriptLineMacro;
 	enum { kMaxArgs = NVSE_EXPR_MAX_ARGS };
-
+	std::stack<SavedScriptLine> savedScriptLines;
 	ScriptBuffer		* m_scriptBuf;
 	ScriptLineBuffer	* m_lineBuf;
 	UInt32				m_len;
@@ -275,7 +300,7 @@ class ExpressionParser
 	ScriptToken	*	ParseOperand(Operator* curOp = NULL);
 	ScriptToken *	PeekOperand(UInt32& outReadLen);
 	bool			HandleMacros();
-	VariableInfo* CreateVariable(const std::string& varName, Script::VariableType varType);
+	VariableInfo* CreateVariable(const std::string& varName, Script::VariableType varType) const;
 	void SkipSpaces();
 	bool			ParseFunctionCall(CommandInfo* cmdInfo);
 	Token_Type		PopOperator(std::stack<Operator*> & ops, std::stack<Token_Type> & operands);
@@ -290,9 +315,11 @@ public:
 	~ExpressionParser();
 
 	bool			ParseArgs(ParamInfo* params, UInt32 numParams, bool bUsesNVSEParamTypes = true, bool parseWholeLine = true);
-	bool			ValidateArgType(UInt32 paramType, Token_Type argType, bool bIsNVSEParam);
+	bool			ValidateArgType(ParamType paramType, Token_Type argType, bool bIsNVSEParam);
+	bool GetUserFunctionParams(const std::vector<std::string>& paramNames, std::vector<UserFunctionParam>& outParams,
+	                           Script::VarInfoList* varList, const std::string& fullScriptText, Script* script);
 	bool ParseUserFunctionParameters(std::vector<UserFunctionParam>& out, const std::string& funcScriptText,
-	                                 Script::VarInfoList* funcScriptVars, Script* script) const;
+	                                 Script::VarInfoList* funcScriptVars, Script* script);
 	bool			ParseUserFunctionCall();
 	bool			ParseUserFunctionDefinition();
 	ScriptToken	*	ParseOperand(bool (* pred)(ScriptToken* operand));
@@ -311,7 +338,7 @@ extern Operator s_operators[];
 
 class ScriptLineMacro
 {
-	using ModifyFunction = std::function<bool(std::string&)>;
+	using ModifyFunction = std::function<bool(std::string&, ScriptBuffer*, ScriptLineBuffer*)>;
 	ModifyFunction  modifyFunction_;
 public:
 	MacroType type;
@@ -321,7 +348,7 @@ public:
 		Error, Skipped, Applied 
 	};
 	
-	MacroResult EvalMacro(ScriptLineBuffer* lineBuf, ExpressionParser* parser = nullptr) const;
+	MacroResult EvalMacro(ScriptLineBuffer* lineBuf, ScriptBuffer* scriptBuf, ExpressionParser* parser = nullptr) const;
 };
 
 #if _DEBUG && RUNTIME

@@ -1,4 +1,5 @@
 #pragma once
+#include <stack>
 
 struct CommandInfo;
 struct ScriptLineBuffer;
@@ -87,5 +88,6 @@ namespace ExtractArgsOverride
 	void Init_Hooks();
 };
 
+extern std::stack<Script*> g_currentScriptStack;
 
 	

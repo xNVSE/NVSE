@@ -300,6 +300,8 @@ public:
 	virtual bool		SetEditorID(const char * edid);		// simply returns true at run-time
 	// 4E
 
+	const char* GetEditorID() const;
+	
 	struct EditorData {
 		String		editorID;			// 00
 		UInt32		vcMasterFormID;		// 08 - Version control 1 (looks to be a refID inside the Version Control master)
@@ -4026,19 +4028,34 @@ public:
 
 	// In DialoguePackage, there are 0x58 virtual functions (including 0x4E from TESForm)
 
-	UInt32			procedureArrayIndex;	// 018 index into array of array of eProcedure terminated by 0x2C. 
+	struct PackageAction
+	{
+		TESIdleForm* idle;
+		Script* script;
+		TESTopic* topic;
+		UInt32 type;
+	};
+
+	UInt32 procedureArrayIndex;	// 018 index into array of array of eProcedure terminated by 0x2C. 
 											//	   -1 if no procedure array exists for package type.
-	UInt32				packageFlags;		// 01C
-	UInt8				type;				// 020
-	UInt8				pad021[1];			// 021
-	UInt16				behaviorFlags;		// O22
-	UInt32				specificFlags;		// 024
-	TESPackageData	*	packageData;		// 028
-	LocationData	*	location;			// 02C
-	TargetData		*	target;				// 030	target ?
-	UInt32				unk034;				// 034	idles
-	PackageTime			time;				// 038
-	UInt32 unk040[(0x80 - 0x40) >> 2];		// 040	040 is a tList of Condition, 7C is an Interlocked counter
+	UInt32 packageFlags;		// 01C
+	UInt8 type;				// 020
+	UInt8 pad021[1];			// 021
+	UInt16 behaviorFlags;		// O22
+	UInt32 specificFlags;		// 024
+	TESPackageData*	packageData;		// 028
+	LocationData*	location;			// 02C
+	TargetData*	target;				// 030	target ?
+	UInt32 unk034;				// 034	idles
+	PackageTime	time;				// 038
+	UInt32 unk040;
+	UInt32 unk044;
+	UInt32 unk048;
+	PackageAction onBeginAction;
+	PackageAction onEndAction;
+	PackageAction onChangeAction;
+	UInt32 unk07C;
+	// 040	040 is a tList of Condition, 7C is an Interlocked counter
 		//	048 is a DWord CombatStyle, 
 		//	04C, 05C and 06C are the same 4 DWord struct onBegin onEnd onChange, { TESIdle* idle; EmbeddedScript* script; Topic* topic; UInt32 unk0C; }
 		//	07C is a DWord

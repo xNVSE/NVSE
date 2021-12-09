@@ -1,10 +1,13 @@
 #pragma once
+#include <unordered_set>
+
 #include "CommandTable.h"
 #include "Utilities.h"
 #include "GameObjects.h"
 
 
 class Menu;
+extern std::unordered_set<UInt8> g_myMods;
 
 void Hook_Gameplay_Init(void);
 void ToggleUIMessages(bool enableSpam);

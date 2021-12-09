@@ -318,6 +318,7 @@ class RefMatcherARefr
 {
 	bool m_includeTaken;
 	TESObjectREFR* m_refr;
+
 public:
 	RefMatcherARefr(bool includeTaken, TESObjectREFR* refr) : m_includeTaken(includeTaken), m_refr(refr)
 		{ }
@@ -333,68 +334,128 @@ public:
 	}
 };
 
-class RefMatcherAnyForm
+struct DistanceMatcher
 {
-	bool m_includeTaken;
-public:
-	RefMatcherAnyForm(bool includeTaken) : m_includeTaken(includeTaken)
-		{ }
+	TESObjectREFR* m_distanceRef = nullptr;	//if null, ignore distance check.
+	float m_maxDistance = 0;	//if 0, ignore.
+	
+	DistanceMatcher() = default;
+	DistanceMatcher(TESObjectREFR* distanceRef, float maxDistance):
+		m_distanceRef(distanceRef), m_maxDistance(maxDistance)
+	{}
 
-	bool Accept(const TESObjectREFR* refr)
+	bool MatchDistance(const TESObjectREFR* refr) const
 	{
-		if (m_includeTaken || !(refr->IsTaken()))
-			return true;
-		else
-			return false;
+		if (m_distanceRef && m_maxDistance > 0)
+		{
+			if (GetDistance3D(m_distanceRef, refr) > m_maxDistance)
+			{
+				return false;
+			}
+		}
+		return true;
 	}
 };
 
-class RefMatcherFormType
+struct IncludeTakenMatcher
+{
+	bool m_includeTaken = true;	//if true, ignore.
+
+	IncludeTakenMatcher() = default;
+	IncludeTakenMatcher(bool includeTaken) :
+		m_includeTaken(includeTaken)
+	{}
+
+	bool MatchTakenItems(const TESObjectREFR* refr) const
+	{
+		if (!m_includeTaken && refr->IsTaken())
+			return false;
+		
+		return true;
+	}
+};
+
+struct RefMatcherAnyForm: DistanceMatcher, IncludeTakenMatcher
+{
+	RefMatcherAnyForm(bool includeTaken) :
+	DistanceMatcher(nullptr, 0), IncludeTakenMatcher(includeTaken)
+	{}
+
+	RefMatcherAnyForm(bool includeTaken, TESObjectREFR* distanceRef, float maxDistance):
+	DistanceMatcher(distanceRef, maxDistance), IncludeTakenMatcher(includeTaken)
+	{}
+
+	bool Accept(const TESObjectREFR* refr) const
+	{
+		if (!MatchTakenItems(refr) || !MatchDistance(refr))
+		{
+			return false;
+		}
+		return true;
+	}
+};
+
+struct RefMatcherFormType: DistanceMatcher, IncludeTakenMatcher
 {
 	UInt32 m_formType;
-	bool m_includeTaken;
-public:
-	RefMatcherFormType(UInt32 formType, bool includeTaken) : m_formType(formType), m_includeTaken(includeTaken)
-		{ }
 
-	bool Accept(const TESObjectREFR* refr)
+	RefMatcherFormType(UInt32 formType, bool includeTaken) :
+	IncludeTakenMatcher(includeTaken), m_formType(formType)
+	{}
+
+	RefMatcherFormType(UInt32 formType, bool includeTaken, TESObjectREFR* distanceRef, float maxDistance) :
+	DistanceMatcher(distanceRef, maxDistance), IncludeTakenMatcher(includeTaken), m_formType(formType)
+	{}
+
+	bool Accept(const TESObjectREFR* refr) const
 	{
-		if (!m_includeTaken && refr->IsTaken())
+		if (!MatchTakenItems(refr))
 			return false;
-		else if (refr->baseForm->typeID == m_formType && refr->baseForm->refID != 7)	//exclude player for kFormType_TESNPC
-			return true;
-		else
+		
+		if (refr->baseForm->typeID != m_formType || refr->baseForm->refID == 7)	//exclude player for kFormType_TESNPC
 			return false;
+
+		if (!MatchDistance(refr))
+			return false;
+
+		return true;
 	}
 };
 
-class RefMatcherActor
+struct RefMatcherActor: DistanceMatcher
 {
-public:
-	RefMatcherActor()
-		{ }
-
-	bool Accept(const TESObjectREFR* refr)
+	RefMatcherActor() = default;
+	RefMatcherActor(TESObjectREFR* distanceRef, float maxDistance):
+	DistanceMatcher(distanceRef, maxDistance)
+	{}
+	
+	bool Accept(const TESObjectREFR* refr) const
 	{
-		if (refr->baseForm->typeID == kFormType_TESCreature)
-			return true;
-		else if (refr->baseForm->typeID == kFormType_TESNPC && refr->baseForm->refID != 7) //exclude the player
-			return true;
-		else
+		if (refr->baseForm->typeID != kFormType_TESCreature
+			&& (refr->baseForm->typeID != kFormType_TESNPC || refr->baseForm->refID == 7)) //exclude the player for kFormType_TESNPC
+		{
 			return false;
+		}
+
+		if (!MatchDistance(refr))
+			return false;
+
+		return true;
 	}
 };
 
-class RefMatcherItem
+struct RefMatcherItem: IncludeTakenMatcher, DistanceMatcher
 {
-	bool m_includeTaken;
-public:
-	RefMatcherItem(bool includeTaken) : m_includeTaken(includeTaken)
-		{ }
+	RefMatcherItem(bool includeTaken) : IncludeTakenMatcher(includeTaken)
+	{ }
 
-	bool Accept(const TESObjectREFR* refr)
+	RefMatcherItem(bool includeTaken, TESObjectREFR* distanceRef, float maxDistance) :
+	IncludeTakenMatcher(includeTaken), DistanceMatcher(distanceRef, maxDistance)
+	{ }
+
+	bool Accept(const TESObjectREFR* refr) const
 	{
-		if (!m_includeTaken && refr->IsTaken())
+		if (!MatchTakenItems(refr))
 			return false;
 
 		switch (refr->baseForm->typeID)
@@ -409,15 +470,20 @@ public:
 			case kFormType_TESKey:
 			case kFormType_AlchemyItem:
 			case kFormType_TESObjectARMA:
-				return true;
+				break;
 
 			case kFormType_TESObjectLIGH:
-				TESObjectLIGH* light = DYNAMIC_CAST(refr->baseForm, TESForm, TESObjectLIGH);
-				if (light)
+				if (TESObjectLIGH* light = DYNAMIC_CAST(refr->baseForm, TESForm, TESObjectLIGH))
 					if (light->icon.ddsPath.m_dataLen)	//temp hack until I find canCarry flag on TESObjectLIGH
-						return true;
+						break;
+			default:
+				return false;
 		}
-		return false;
+
+		if (!MatchDistance(refr))
+			return false;
+		
+		return true;
 	}
 };
 
@@ -605,6 +671,7 @@ static bool GetNumRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	SInt32 cellDepth = -127;
 	UInt32 includeTakenRefs = 0;
 	double uGrid = 0;
+	float maxDistance = 0;
 
 	PlayerCharacter* pc = PlayerCharacter::GetSingleton();
 	if (!pc || !(pc->parentCell))
@@ -612,18 +679,18 @@ static bool GetNumRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 
 	TESObjectCELL* cell = NULL;
 	if (bUsePlayerCell)
-		if (ExtractArgs(EXTRACT_ARGS, &formType, &cellDepth, &includeTakenRefs))
+		if (ExtractArgs(EXTRACT_ARGS, &formType, &cellDepth, &includeTakenRefs, &maxDistance))
 			cell = pc->parentCell;
 		else
 			return true;
 	else
-		if (!ExtractArgs(EXTRACT_ARGS, &cell, &formType, &cellDepth, &includeTakenRefs))
+		if (!ExtractArgs(EXTRACT_ARGS, &cell, &formType, &cellDepth, &includeTakenRefs, &maxDistance))
 			return true;
 
 	if (!cell)
 		return true;
 
-	bool bIncludeTakenRefs = includeTakenRefs ? true : false;
+	bool const bIncludeTakenRefs = includeTakenRefs ? true : false;
 	if (cellDepth == -127)
 		cellDepth = 0;
 	else if (cellDepth == -1)
@@ -635,22 +702,28 @@ static bool GetNumRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	CellScanInfo info(cellDepth, formType, bIncludeTakenRefs, cell);
 	info.FirstCell();
 
+	auto const anyFormMatcher = RefMatcherAnyForm(bIncludeTakenRefs, thisObj, maxDistance);
+	auto const actorMatcher = RefMatcherActor(thisObj, maxDistance);
+	auto const itemMatcher = RefMatcherItem(bIncludeTakenRefs, thisObj, maxDistance);
+	auto const formTypeMatcher = RefMatcherFormType(formType, bIncludeTakenRefs, thisObj, maxDistance);
+
 	while (info.curCell)
 	{
 		const TESObjectCELL::RefList& refList = info.curCell->objectList;
+		
 		switch (formType)
 		{
 		case 0:
-			*result += refList.CountIf(RefMatcherAnyForm(bIncludeTakenRefs));
+			*result += refList.CountIf(anyFormMatcher);
 			break;
 		case 200:
-			*result += refList.CountIf(RefMatcherActor());
+			*result += refList.CountIf(actorMatcher);
 			break;
 		case 201:
-			*result += refList.CountIf(RefMatcherItem(bIncludeTakenRefs));
+			*result += refList.CountIf(itemMatcher);
 			break;
 		default:
-			*result += refList.CountIf(RefMatcherFormType(formType, bIncludeTakenRefs));
+			*result += refList.CountIf(formTypeMatcher);
 		}
 		info.NextCell();
 	}
@@ -678,6 +751,7 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	UInt32 includeTakenRefs = 0;
 	double uGrid = 0;
 	double arrIndex = 0;
+	float maxDistance = 0;
 
 	PlayerCharacter* pc = PlayerCharacter::GetSingleton();
 	if (!pc || !(pc->parentCell))
@@ -685,18 +759,18 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 
 	TESObjectCELL* cell = NULL;
 	if (bUsePlayerCell)
-		if (ExtractArgs(EXTRACT_ARGS, &formType, &cellDepth, &includeTakenRefs))
+		if (ExtractArgs(EXTRACT_ARGS, &formType, &cellDepth, &includeTakenRefs, &maxDistance))
 			cell = pc->parentCell;
 		else
 			return true;
 	else
-		if (!ExtractArgs(EXTRACT_ARGS, &cell, &formType, &cellDepth, &includeTakenRefs))
+		if (!ExtractArgs(EXTRACT_ARGS, &cell, &formType, &cellDepth, &includeTakenRefs, &maxDistance))
 			return true;
 
 	if (!cell)
 		return true;
 
-	bool bIncludeTakenRefs = includeTakenRefs ? true : false;
+	bool const bIncludeTakenRefs = includeTakenRefs ? true : false;
 	if (cellDepth == -127)
 		cellDepth = 0;
 	else if (cellDepth == -1)
@@ -708,43 +782,49 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	CellScanInfo info(cellDepth, formType, bIncludeTakenRefs, cell);
 	info.FirstCell();
 
+	auto const anyFormMatcher = RefMatcherAnyForm(bIncludeTakenRefs, thisObj, maxDistance);
+	auto const actorMatcher = RefMatcherActor(thisObj, maxDistance);
+	auto const itemMatcher = RefMatcherItem(bIncludeTakenRefs, thisObj, maxDistance);
+	auto const formTypeMatcher = RefMatcherFormType(formType, bIncludeTakenRefs, thisObj, maxDistance);
+
 	while (info.curCell)
 	{
 		const TESObjectCELL::RefList& refList = info.curCell->objectList;
 		for (TESObjectCELL::RefList::Iterator iter = refList.Begin(); !iter.End(); ++iter)
 		{
-			TESObjectREFR * pRefr = iter.Get();
-			if (pRefr)
+			if (TESObjectREFR* const pRefr = iter.Get())
+			{
 				switch (formType)
 				{
 				case 0:
-					if (RefMatcherAnyForm(bIncludeTakenRefs).Accept(pRefr))
+					if (anyFormMatcher.Accept(pRefr))
 					{
 						arr->SetElementFormID(arrIndex, pRefr->refID);
 						arrIndex += 1;
 					}
 					break;
 				case 200:
-					if (RefMatcherActor().Accept(pRefr))
+					if (actorMatcher.Accept(pRefr))
 					{
 						arr->SetElementFormID(arrIndex, pRefr->refID);
 						arrIndex += 1;
 					}
 					break;
 				case 201:
-					if (RefMatcherItem(bIncludeTakenRefs).Accept(pRefr))
+					if (itemMatcher.Accept(pRefr))
 					{
 						arr->SetElementFormID(arrIndex, pRefr->refID);
 						arrIndex += 1;
 					}
 					break;
 				default:
-					if (RefMatcherFormType(formType, bIncludeTakenRefs).Accept(pRefr))
+					if (formTypeMatcher.Accept(pRefr))
 					{
 						arr->SetElementFormID(arrIndex, pRefr->refID);
 						arrIndex += 1;
 					}
 				}
+			}
 		}
 		info.NextCell();
 	}

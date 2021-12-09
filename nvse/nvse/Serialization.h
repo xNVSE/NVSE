@@ -1,36 +1,50 @@
 #pragma once
 
+#include <memory>
+#include <unordered_set>
+
 #include "PluginAPI.h"
 
 extern NVSESerializationInterface	g_NVSESerializationInterface;
+extern bool g_showFileSizeWarning;
+
+struct CosaveWarning
+{
+	std::unordered_set<UInt8> modIndices;
+};
+
+extern CosaveWarning g_cosaveWarning;
 
 namespace Serialization
 {
 
 struct SerializationTask
 {
-	UInt8		*bufferStart;
+private:
+	std::unique_ptr<UInt8[]> bufferStart;
 	UInt8		*bufferPtr;
-	UInt32		length;
 	UInt32		bufferSize;
+	UInt32      length;
+public:
+	SerializationTask() : bufferStart(nullptr), bufferPtr(nullptr), bufferSize(0), length(0) {}
 
-	void Reset();
-
-	SerializationTask(UInt8* buffer, UInt32 bufferSize) : bufferStart(buffer), bufferPtr(NULL), length(0), bufferSize(bufferSize) {}
-
+	void PrepareSave();
 	bool Save();
 	bool Load();
+	void Unload();
 
 	UInt32 GetOffset() const;
 	void SetOffset(UInt32 offset);
 
-	void Skip(UInt32 size);
+	void Skip(UInt32 size, bool read);
 
 	void Write8(UInt8 inData);
 	void Write16(UInt16 inData);
 	void Write32(UInt32 inData);
 	void Write64(const void *inData);
 	void WriteBuf(const void *inData, UInt32 size);
+	void Resize(UInt32 size);
+	void CheckResize(UInt32 size);
 
 	UInt8 Read8();
 	UInt16 Read16();
@@ -41,6 +55,7 @@ struct SerializationTask
 	void PeekBuf(void *outData, UInt32 size);
 
 	UInt32 GetRemain() const {return length - GetOffset();}
+	void ValidateOffset(UInt32 size) const;
 };
 
 struct PluginCallbacks

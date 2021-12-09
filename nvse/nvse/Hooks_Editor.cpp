@@ -6,6 +6,8 @@
 #include "richedit.h"
 #include "ScriptUtils.h"
 #include <regex>
+
+#include "Hooks_Script.h"
 #if EDITOR
 
 static char s_InfixToPostfixBuf[0x800];
@@ -458,13 +460,13 @@ __declspec(naked) void CommandParserScriptVarHook()
 		jmp		eax
 	}
 }
-
+#endif
 ParamParenthResult __fastcall HandleParameterParenthesis(ScriptLineBuffer* scriptLineBuffer, ScriptBuffer* scriptBuffer, ParamInfo* paramInfo, UInt32 paramIndex)
 {
 	auto parser = ExpressionParser(scriptBuffer, scriptLineBuffer);
 	return parser.ParseParentheses(paramInfo, paramIndex);
 }
-
+#if EDITOR
 __declspec(naked) void ParameterParenthesisHook()
 {
 	const static auto stackOffset = 0x264;
@@ -510,7 +512,7 @@ __declspec(naked) void ParameterParenthesisHook()
 		jmp returnAddress
 	}
 }
-
+#endif
 std::string ReplaceAll(std::string str, const std::string& from, const std::string& to) {
 	size_t start_pos = 0;
 	while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
@@ -527,7 +529,7 @@ bool StrContains(const std::string& str, const std::string& subStr)
 
 std::vector g_lineMacros =
 {
-	ScriptLineMacro([&](std::string& line)
+	ScriptLineMacro([&](std::string& line, ScriptBuffer*, ScriptLineBuffer*)
 	{
 		static const std::vector<std::pair<std::string, std::string>> s_shortHandMacros =
 		{
@@ -544,7 +546,7 @@ std::vector g_lineMacros =
 		std::string optVarTypeDecl; // int, ref etc in int iVar = 10 for example
 		for (auto& varType : g_variableTypeNames)
 		{
-			if (line.starts_with(varType))
+			if (_stricmp(line.substr(0, strlen(varType)).c_str(), varType) == 0 && isspace(line[strlen(varType)]))
 			{
 				optVarTypeDecl = varType;
 				line.erase(0, optVarTypeDecl.size());
@@ -554,22 +556,36 @@ std::vector g_lineMacros =
 				break;
 			}
 		}
+
+		const auto arrLeftBracketPos = line.find_first_of('[');
+		if (arrLeftBracketPos != std::string::npos)
+		{
+			const auto arrRightBracketPos = line.find_first_of(']');
+			if (arrRightBracketPos > arrLeftBracketPos)
+			{
+				const auto end =line.begin() + arrRightBracketPos;
+				line.erase(std::remove_if(line.begin() + arrLeftBracketPos, end, isspace), end);
+			}
+		}
 		
 		for (const auto& [realOp, regexOp] : s_shortHandMacros)
 		{
-			
 			// VARIABLE = VALUE macro 
-			const std::regex assignmentExpr(R"(([a-zA-Z\_\.0-9\[\]\"]+)\s*)" + regexOp + R"(([a-zA-Z\_\s\.\$\!0-9\-\(\{][.\s\S]*))"); // match int ivar = 4
+			const std::regex assignmentExpr(R"(([a-zA-Z\_\.0-9\[\]\"\-\+\=\*\/]+)\s*)" + regexOp + R"(([a-zA-Z\_\s\.\$\!0-9\-\(\{][.\s\S]*))"); // match int ivar = 4
 			if (std::smatch m; std::regex_search(line, m, assignmentExpr, std::regex_constants::match_continuous) && m.size() == 3)
 			{
-				line = "let " + optVarTypeDecl + m.str(1) + " " + realOp + " " + m.str(2);
+				auto varName = m.str(1);
+				std::erase_if(varName, isspace);
+				if (!std::ranges::any_of(varName, isalpha))
+					return false;
+				line = "let " + optVarTypeDecl + varName + " " + realOp + " " + m.str(2);
 				return true;
 			}
 		}
 		return false;
 	}, MacroType::AssignmentShortHand),
 #if 0
-	ScriptLineMacro([&](std::string& line)
+	ScriptLineMacro([&](std::string& line, ScriptBuffer*, ScriptLineBuffer*)
 	{
 		for (auto [match, toReplace] : {std::make_pair("ife", "if eval "), std::make_pair("elseife", "elseif eval ")})
 		{
@@ -583,11 +599,37 @@ std::vector g_lineMacros =
 		return false;
 	}, MacroType::IfEval)
 #endif
+	ScriptLineMacro([&](std::string& line, ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
+	{
+		if (auto iter = ra::find_if(g_variableTypeNames, _L(const char* typeName, StartsWith(line, std::string(typeName) + " "))); iter != std::end(g_variableTypeNames))
+		{
+			const auto* typeName = *iter;
+			const auto str = std::string(line).substr(strlen(typeName)+1);
+			auto tokens = SplitString(str, ",");
+			if (tokens.size() <= 1)
+				return false;
+			ra::for_each(tokens, _L(auto& token, token = StripSpace(std::string(token))));
+			if (!ra::all_of(tokens, _L(auto& token, ra::all_of(token, _L(char c, isalnum(c) || c == '_')))))
+				return false;
+			const auto firstVar = tokens.at(0);
+			tokens.erase(tokens.begin()); 
+			line = std::string(typeName) + ' ' + firstVar;
+			auto* currentScript = g_currentScriptStack.top();
+#if EDITOR
+			auto* errorBuf = scriptBuf;
+#else
+			auto* errorBuf = lineBuf;
+#endif
+			ra::for_each(tokens, _L(auto& varName, CreateVariable(currentScript, scriptBuf, varName, VariableTypeNameToType(typeName), _L(auto& msg, ShowCompilerError(errorBuf, "%s", msg.c_str())))));
+		}
+		return false;
+	}, MacroType::MultipleVariableDeclaration)
 };
-bool HandleLineBufMacros(ScriptLineBuffer* buf)
+
+bool HandleLineBufMacros(ScriptLineBuffer* line, ScriptBuffer* buffer)
 {
 	for (const auto& macro : g_lineMacros)
-		if (macro.EvalMacro(buf) == ScriptLineMacro::MacroResult::Error)
+		if (macro.EvalMacro(line, buffer) == ScriptLineMacro::MacroResult::Error)
 			return false;
 	return true;
 }
@@ -595,6 +637,18 @@ bool HandleLineBufMacros(ScriptLineBuffer* buf)
 // Expand ScriptLineBuffer to allow multiline expressions with parenthesis
 int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 {
+#if EDITOR
+	auto* errorBuf = scriptBuf;
+#else
+	auto* errorBuf = lineBuf;
+#endif
+	const auto lineError = [&](const char* str)
+	{
+		scriptBuf->curLineNumber = lineBuf->lineNumber;
+		ShowCompilerError(errorBuf, "%s", str);
+		lineBuf->errorCode = 1;
+		return 0;
+	};
 	lineBuf->paramTextLen = 0;
 	memset(lineBuf->paramText, '\0', sizeof lineBuf->paramText);
 	
@@ -605,6 +659,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 	auto capturedNonSpace = false;
 	auto numNewLinesInParenthesis = 0;
 	auto inStringLiteral = false;
+	auto inMultilineComment = false;
 
 	// skip all spaces and tabs in the beginning
 	while (isspace(*curScriptText))
@@ -617,7 +672,30 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 	unsigned char lastChar = '\0';
 	while (true)
 	{
+		const auto curTwoChars = *reinterpret_cast<const UInt16*>(curScriptText);
+		if (curTwoChars == '*/' && !inStringLiteral && !inMultilineComment)
+		{
+			inMultilineComment = true;
+			curScriptText += 2;
+			continue;
+		}
+		if (curTwoChars == '/*' && !inStringLiteral && inMultilineComment)
+		{
+			inMultilineComment = false;
+			curScriptText += 2;
+			continue;
+
+		}
 		const auto curChar = *curScriptText++;
+		if (curChar == 0)
+		{
+			if (inMultilineComment)
+				return lineError("Mismatched comment block (missing '*/' for a present '/*')");
+			if (inStringLiteral)
+				return lineError("Mismatched quotes. A string literal was not closed.");
+		}
+		if (inMultilineComment)
+			continue;
 		switch (curChar)
 		{
 			case '(':
@@ -632,12 +710,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 				{
 					--numBrackets;
 					if (numBrackets < 0)
-					{
-						scriptBuf->curLineNumber = lineBuf->lineNumber;
-						ShowCompilerError(scriptBuf, "Mismatched parenthesis");
-						lineBuf->errorCode = 1;
-						return 0;
-					}
+						return lineError("Mismatched parenthesis");
 				}
 				break;
 			}
@@ -650,12 +723,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 			{
 				--curScriptText;
 				if (numBrackets)
-				{
-					scriptBuf->curLineNumber = lineBuf->lineNumber;
-					ShowCompilerError(scriptBuf, "Mismatched parenthesis");
-					lineBuf->errorCode = 1;
-					return 0;
-				}
+					return lineError("Mismatched parenthesis");
 				if (!capturedNonSpace)
 					return 0;
 				// fallback intentional
@@ -672,7 +740,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 					}
 					lineBuf->paramText[lineBuf->paramTextLen] = '\0';
 					lineBuf->lineNumber += numNewLinesInParenthesis;
-					if (!HandleLineBufMacros(lineBuf))
+					if (!HandleLineBufMacros(lineBuf, scriptBuf))
 						return 0;
 					return curScriptText - oldScriptText;
 				}
@@ -698,9 +766,9 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 		if (const auto maxLen = sizeof lineBuf->paramText; lineBuf->paramTextLen >= maxLen)
 		{
 			if (numBrackets)
-				ShowCompilerError(scriptBuf, "Max script expression length inside parenthesis (%d characters) exceeded.", maxLen);
+				ShowCompilerError(errorBuf, "Max script expression length inside parenthesis (%d characters) exceeded.", maxLen);
 			else
-				ShowCompilerError(scriptBuf, "Max script line length (%d characters) exceeded.", maxLen);
+				ShowCompilerError(errorBuf, "Max script line length (%d characters) exceeded.", maxLen);
 			lineBuf->errorCode = 16;
 			return 0;
 		}
@@ -711,7 +779,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 		lastChar = curChar;
 	}
 }
-
+#if EDITOR
 void PatchDefaultCommandParser()
 {
 	//	Handle kParamType_Double
@@ -730,6 +798,55 @@ void PatchDefaultCommandParser()
 
 	// Allow multiline expressions with parenthesis
 	WriteRelJump(0x5C5830, UInt32(ParseNextLine));
+}
+#else
+
+const auto* g_arrayVar = "array_var";
+const auto* g_stringVar = "string_var";
+
+__declspec(naked) void InlineExpressionHook()
+{
+	const static auto fnParseScriptWord = 0x5AF5F0;
+	const static auto continueLoop = 0x5B1BFD;
+	const static auto returnAddress = 0x5B1C6A;
+	const static auto prematureReturn = 0x5B3AB4;
+
+	__asm
+	{
+		movzx edx, word ptr [ebp - 0x8] // index
+		push edx
+		mov ecx, [ebp+0xC] // paramInfo
+		push ecx
+		mov edx, [ebp+0x14] // scriptBuffer
+		mov ecx, [ebp+0x10] // lineBuf
+		call HandleParameterParenthesis
+
+		cmp al, [kParamParent_NoParam]
+		je notParenthesis
+		add esp, 0x18
+		cmp al, [kParamParent_SyntaxError]
+		je syntaxError
+		jmp continueLoop
+	syntaxError:
+		mov al, 0
+		jmp	prematureReturn
+	notParenthesis:
+		call fnParseScriptWord
+		jmp returnAddress
+	}
+}
+
+void PatchGameCommandParser()
+{
+	// Allow multiline expressions with parenthesis
+	WriteRelJump(0x5AF3F0, reinterpret_cast<UInt32>(ParseNextLine));
+
+	const auto tokenAliasFloat = 0x118CBF4;
+	const auto tokenAliasLong = 0x118CBCC;
+	SafeWrite32(tokenAliasFloat, reinterpret_cast<UInt32>(g_arrayVar));
+	SafeWrite32(tokenAliasLong, reinterpret_cast<UInt32>(g_stringVar));
+	WriteRelJump(0x5B1C65, reinterpret_cast<UInt32>(InlineExpressionHook));
+
 }
 
 #endif

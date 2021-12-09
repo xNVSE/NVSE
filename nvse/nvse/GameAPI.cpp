@@ -4,6 +4,7 @@
 #include "GameObjects.h"
 #include "GameTypes.h"
 #include "GameScript.h"
+#include "MemoizedMap.h"
 #include "StringVar.h"
 #include "printf.h"
 #include "ScriptAnalyzer.h"
@@ -14,6 +15,7 @@
 #include "Hooks_Other.h"
 #endif
 
+NiTMap<const char*, TESForm*>** g_formEditorIDsMap = reinterpret_cast<NiTMap<const char*, TESForm*>**>(0x11C54C8);
 TimeGlobal *g_timeGlobal = reinterpret_cast<TimeGlobal *>(0x11F6394);
 float *g_globalTimeMult = reinterpret_cast<float *>(0x11AC3A0);
 
@@ -146,6 +148,7 @@ const UInt8 kParamFlagsTable[] =
 		0, 1, 1, 2, 2, 0, 2, 2, 0, 2, 0, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 0, 1, 2, 2, 2, 2, 0, 2, 2, 2, 0, 2, 2,
 		2, 2, 2, 2, 2, 2, 0, 2, 2, 1, 1, 2, 2, 2, 2, 2, 0, 0, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2};
 
+#if NVSE_CORE
 ParamParenthResult __fastcall HandleParameterParenthesis(ScriptLineBuffer *scriptLineBuffer, ScriptBuffer *scriptBuffer, ParamInfo *paramInfo, UInt32 paramIndex);
 
 bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineBuffer *lineBuffer, ScriptBuffer *scriptBuffer)
@@ -744,7 +747,7 @@ compileError:
 }
 
 #endif
-
+#endif
 #if RUNTIME
 
 struct TLSData
@@ -935,13 +938,28 @@ ScriptEventList *ScriptEventList::Copy()
 			switch (type)
 			{
 			case NVSEVarType::kVarType_Array:
-				g_ArrayMap.AddReference(&newVar->data, var->data, m_script->GetModIndex());
-				AddToGarbageCollection(this, newVar, NVSEVarType::kVarType_Array);
-				continue;
+				{
+					if (var->data)
+					{
+						g_ArrayMap.AddReference(&newVar->data, var->data, m_script->GetModIndex());
+						AddToGarbageCollection(this, newVar, NVSEVarType::kVarType_Array);
+					}
+					else // ar_Null'ed
+						newVar->data = 0.0;
+					continue;
+				}
 			case NVSEVarType::kVarType_String:
-				newVar->data = g_StringMap.Add(m_script->GetModIndex(), g_StringMap.Get(var->data)->GetCString(), false);
-				AddToGarbageCollection(this, newVar, NVSEVarType::kVarType_String);
-				continue;
+				{
+					auto* stringVar = g_StringMap.Get(var->data);
+					if (stringVar)
+					{
+						newVar->data = g_StringMap.Add(m_script->GetModIndex(), stringVar->GetCString(), false, nullptr);
+						AddToGarbageCollection(this, newVar, NVSEVarType::kVarType_String);
+					}
+					else // Sv_Destructed
+						newVar->data = 0.0;
+					continue;
+				}
 			default:
 				break;
 			}
@@ -958,7 +976,7 @@ bool vExtractExpression(ParamInfo *paramInfo, UInt8 *&scriptData, Script *script
 	scriptData += sizeof(UInt16);
 	double unusedResult = 0;
 	UInt32 offset = scriptData - static_cast<UInt8 *>(scriptDataIn);
-	ExpressionEvaluator evaluator(paramInfo, scriptDataIn, nullptr, nullptr, scriptObj, eventList, &unusedResult, &offset);
+	ExpressionEvaluator evaluator(paramInfo, scriptDataIn, OtherHooks::GetExecutingScriptContext()->scriptOwnerRef, nullptr, scriptObj, eventList, &unusedResult, &offset);
 	evaluator.m_inline = true;
 	auto *token = evaluator.Evaluate();
 	scriptData += offset - (scriptData - static_cast<UInt8 *>(scriptDataIn));
@@ -1189,7 +1207,7 @@ const UInt8 kClassifyParamExtract[70] =
 		7,
 		8,
 		6,
-		8,
+		6,
 		6,
 		6,
 		2,
@@ -1475,6 +1493,10 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 				if NOT_ID (form, BGSEncounterZone)
 					return false;
 				break;
+			case kParamType_IdleForm:
+				if NOT_ID (form, TESIdleForm)
+					return false;
+				break;
 			case kParamType_Message:
 				if NOT_ID (form, BGSMessage)
 					return false;
@@ -1729,6 +1751,7 @@ bool ExtractArgsRaw(ParamInfo *paramInfo, void *scriptDataIn, UInt32 *scriptData
 		case kParamType_ImageSpaceModifier:
 		case kParamType_ImageSpace:
 		case kParamType_EncounterZone:
+		case kParamType_IdleForm:
 		case kParamType_Message:
 		case kParamType_InvObjOrFormList:
 		case kParamType_NonFormList:
@@ -1812,6 +1835,11 @@ bool vExtractArgsEx(ParamInfo *paramInfo, void *scriptDataIn, UInt32 *scriptData
 	UInt8 *scriptData = (UInt8 *)scriptDataIn + *scriptDataOffset;
 	UInt32 numArgs = *(UInt16 *)scriptData;
 	scriptData += 2;
+	auto* opcodePtr = reinterpret_cast<UInt16*>(static_cast<UInt8*>(scriptDataIn) + (*scriptDataOffset - 4));
+	OtherHooks::GetExecutingScriptContext()->command = g_scriptCommands.GetByOpcode(*opcodePtr);
+#if _DEBUG
+	g_lastCommand = g_scriptCommands.GetByOpcode(*opcodePtr);
+#endif
 
 	//DEBUG_MESSAGE("scriptData:%08x numArgs:%d paramInfo:%08x scriptObj:%08x eventList:%08x", scriptData, numArgs, paramInfo, scriptObj, eventList);
 
@@ -1834,10 +1862,6 @@ bool vExtractArgsEx(ParamInfo *paramInfo, void *scriptDataIn, UInt32 *scriptData
 	else if (v_ExtractArgsEx(numArgs, paramInfo, scriptData, scriptObj, eventList, args, scriptDataIn))
 		bExtracted = true;
 
-#if _DEBUG
-	auto *opcodePtr = reinterpret_cast<UInt16 *>(static_cast<UInt8 *>(scriptDataIn) + (*scriptDataOffset - 4));
-	g_lastCommand = g_scriptCommands.GetByOpcode(*opcodePtr);
-#endif
 	if (incrementOffsetPtr && bExtracted)
 	{
 		*scriptDataOffset += scriptData - (static_cast<UInt8 *>(scriptDataIn) + *scriptDataOffset);
@@ -2352,11 +2376,11 @@ bool ExtractFormatStringArgs(UInt32 fmtStringPos, char *buffer, ParamInfo *param
 
 #endif
 
+#if NVSE_CORE
 bool ExtractSetStatementVar(Script *script, ScriptEventList *eventList, void *scriptDataIn, double *outVarData, bool *makeTemporary, const UInt32 *opcodeOffsetPtr, UInt8 *outModIndex, TESObjectREFR* refr)
 {
 	auto *scriptData = static_cast<UInt8 *>(scriptDataIn) + *opcodeOffsetPtr;
 	auto* backPtr = scriptData - 5;
-
 	if (*backPtr != 'X')
 		return false;
 
@@ -2397,6 +2421,7 @@ bool ExtractSetStatementVar(Script *script, ScriptEventList *eventList, void *sc
 	*makeTemporary = false;
 	return true;
 }
+#endif
 
 // g_baseActorValueNames is only filled in after oblivion's global initializers run
 const char *GetActorValueString(UInt32 actorValue)
@@ -2410,30 +2435,19 @@ const char *GetActorValueString(UInt32 actorValue)
 	return name;
 }
 
-UInt32 GetActorValueForScript(const char *avStr)
+MemoizedMap<const char*, UInt32> s_avNameMap;
+
+UInt32 GetActorValueForString(const char *strActorVal)
 {
-	for (UInt32 i = 0; i <= eActorVal_FalloutMax; i++)
+	return s_avNameMap.Get(strActorVal, [](const char* strActorVal) -> UInt32
 	{
-		char *name = GetActorValueName(i);
-		if (_stricmp(avStr, name) == 0)
-			return i;
-	}
-
-	return eActorVal_NoActorValue;
-}
-
-UInt32 GetActorValueForString(const char *strActorVal, bool bForScript)
-{
-	if (bForScript)
-		return GetActorValueForScript(strActorVal);
-
-	for (UInt32 n = 0; n <= eActorVal_FalloutMax; n++)
-	{
-		char *name = GetActorValueName(n);
-		if (_stricmp(strActorVal, name) == 0)
-			return n;
-	}
-	return eActorVal_NoActorValue;
+		if (const auto iter = ra::find_if(g_actorValues, _L(ActorValueInfo* info, _stricmp(info->infoName, strActorVal) == 0)); 
+			iter != g_actorValues.end())
+		{
+			return iter - g_actorValues.begin();
+		}
+		return eActorVal_NoActorValue;
+	});
 }
 #if NVSE_CORE
 ScriptFormatStringArgs::ScriptFormatStringArgs(UInt32 _numArgs, UInt8 *_scriptData, Script *_scriptObj, ScriptEventList *_eventList, void *scriptDataIn)

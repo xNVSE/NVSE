@@ -19,7 +19,7 @@ const char *g_variableTypeNames[6] =
 std::span<CommandInfo> g_eventBlockCommandInfos = {reinterpret_cast<CommandInfo*>(0x118E2F0), 38};
 std::span<CommandInfo> g_scriptStatementCommandInfos = {reinterpret_cast<CommandInfo*>(0x118CB50), 16};
 std::span<ScriptOperator> g_gameScriptOperators = {reinterpret_cast<ScriptOperator*>(0x118CAD0), 16};
-ActorValueInfo **g_actorValueInfoArray = reinterpret_cast<ActorValueInfo**>(0x11D61C8);
+std::span<ActorValueInfo*> g_actorValues = { reinterpret_cast<ActorValueInfo**>(0x11D61C8), eActorVal_FalloutMax };
 #else
 std::span<CommandInfo> g_eventBlockCommandInfos = {reinterpret_cast<CommandInfo*>(0xE9D598), 38};
 std::span<CommandInfo> g_scriptStatementCommandInfos = {reinterpret_cast<CommandInfo*>(0xE9BDF8), 16};
@@ -44,7 +44,7 @@ Script::VariableType VariableTypeNameToType(const char *name)
 
 UInt32 GetDeclaredVariableType(const char *varName, const char *scriptText, Script *script)
 {
-#if EDITOR
+#if NVSE_CORE
 	if (const auto savedVarType = GetSavedVarType(script, varName); savedVarType != Script::eVarType_Invalid)
 		return savedVarType;
 #endif
@@ -60,7 +60,7 @@ UInt32 GetDeclaredVariableType(const char *varName, const char *scriptText, Scri
 			const auto varType = VariableTypeNameToType(curToken.c_str());
 			if (varType != Script::eVarType_Invalid && tokens.NextToken(curToken) != -1 && !StrCompare(curToken.c_str(), varName))
 			{
-#if EDITOR
+#if NVSE_CORE
 				SaveVarType(script, varName, varType);
 #endif
 				return varType;
@@ -132,6 +132,36 @@ tList<Script::RefVariable> *Script::GetRefList()
 	return reinterpret_cast<tList<RefVariable> *>(&this->refList);
 }
 
+void Script::Delete()
+{
+#if EDITOR
+	::Delete<Script, 0x5C5220>(this);
+#else
+	::Delete<Script, 0x5AA1A0>(this);
+#endif
+}
+
+game_unique_ptr<Script> Script::MakeUnique()
+{
+#if EDITOR
+	return ::MakeUnique<Script, 0x5C1D60, 0x5C5220>();
+#else
+	return ::MakeUnique<Script, 0x5AA0F0, 0x5AA1A0>();
+#endif
+}
+
+bool Script::Compile(ScriptBuffer* buffer)
+{
+#if EDITOR
+	const auto address = 0x5C96E0;
+	auto* scriptCompiler = (void*)0xECFDF8;
+#else
+	const auto address = 0x5AEB90;
+	auto* scriptCompiler = ConsoleManager::GetSingleton()->scriptContext;
+#endif
+	return ThisStdCall<bool>(address, scriptCompiler, this, buffer); // CompileScript
+}
+
 #if RUNTIME
 
 void Script::RefVariable::Resolve(ScriptEventList *eventList)
@@ -200,16 +230,17 @@ Script::RefVariable *ScriptBuffer::ResolveRef(const char *refName, Script *scrip
 	Script::RefVariable *newRef = NULL;
 
 	// see if it's already in the refList
-	auto *match = refVars.FindFirst([&](Script::RefVariable *cur) { return cur->name.m_data && !_stricmp(cur->name.m_data, refName); });
-	if (match)
-		return match;
+	auto *foundRef = refVars.FindFirst([&](Script::RefVariable *cur) { return cur->name.m_data && !_stricmp(cur->name.m_data, refName); });
+	if (foundRef)
+		newRef = foundRef;
 	// not in list
 
 	// is it a local ref variable?
 	VariableInfo *varInfo = vars.GetVariableByName(refName);
 	if (varInfo && GetVariableType(varInfo, NULL, script) == Script::eVarType_Ref)
 	{
-		newRef = New<Script::RefVariable>();
+		if (!newRef)
+			newRef = New<Script::RefVariable>();
 		newRef->varIdx = varInfo->idx;
 	}
 	else // is it a form or global?
@@ -229,20 +260,19 @@ Script::RefVariable *ScriptBuffer::ResolveRef(const char *refName, Script *scrip
 			TESObjectREFR *refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
 			if (refr && !refr->IsPersistent()) // only persistent refs can be used in scripts
 				return NULL;
-
-			newRef = New<Script::RefVariable>();
+			if (!newRef)
+				newRef = New<Script::RefVariable>();
 			newRef->form = form;
 		}
 	}
 
-	if (newRef) // got it, add to refList
+	if (!foundRef && newRef) // got it, add to refList
 	{
 		newRef->name.Set(refName);
 		refVars.Append(newRef);
 		info.numRefs++;
-		return newRef;
 	}
-	return NULL;
+	return newRef;
 }
 
 UInt32 ScriptBuffer::GetRefIdx(Script::RefVariable *ref)

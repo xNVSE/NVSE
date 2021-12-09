@@ -588,9 +588,7 @@
     </ClCompile>
     <ClCompile Include="Hooks_Editor.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug ng|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release ng|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_DBG|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Hooks_Gameplay.cpp">
@@ -713,6 +711,7 @@
     <ClInclude Include="InventoryReference.h" />
     <ClInclude Include="LambdaManager.h" />
     <ClInclude Include="Loops.h" />
+    <ClInclude Include="MemoizedMap.h" />
     <ClInclude Include="MemoryPool.h" />
     <ClInclude Include="NiNodes.h" />
     <ClInclude Include="NiTypes.h" />

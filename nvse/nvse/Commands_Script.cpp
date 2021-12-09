@@ -4,6 +4,7 @@
 
 #include "ParamInfos.h"
 #include "GameScript.h"
+#include "MemoizedMap.h"
 #include "ScriptUtils.h"
 #include "PluginManager.h"
 #include "ScriptAnalyzer.h"
@@ -696,8 +697,8 @@ bool Cmd_DispatchEvent_Execute(COMMAND_ARGS)
 
 extern float g_gameSecondsPassed;
 
-std::vector<DelayedCallInfo> g_callAfterScripts;
-ICriticalSection g_callAfterScriptsCS;
+std::list<DelayedCallInfo> g_callAfterInfos;
+ICriticalSection g_callAfterInfosCS;
 
 bool Cmd_CallAfterSeconds_Execute(COMMAND_ARGS)
 {
@@ -705,12 +706,12 @@ bool Cmd_CallAfterSeconds_Execute(COMMAND_ARGS)
 	Script *callFunction;
 	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction) || !callFunction || !IS_ID(callFunction, Script))
 		return true;
-	ScopedLock lock(g_callAfterScriptsCS);
-	g_callAfterScripts.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj);
+	ScopedLock lock(g_callAfterInfosCS);
+	g_callAfterInfos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj);
 	return true;
 }
 
-std::vector<CallWhileInfo> g_callWhileInfos;
+std::list<CallWhileInfo> g_callWhileInfos;
 ICriticalSection g_callWhileInfosCS;
 
 bool Cmd_CallWhile_Execute(COMMAND_ARGS)
@@ -728,7 +729,7 @@ bool Cmd_CallWhile_Execute(COMMAND_ARGS)
 	return true;
 }
 
-std::vector<DelayedCallInfo> g_callForInfos;
+std::list<DelayedCallInfo> g_callForInfos;
 ICriticalSection g_callForInfosCS;
 
 bool Cmd_CallForSeconds_Execute(COMMAND_ARGS)
@@ -737,36 +738,161 @@ bool Cmd_CallForSeconds_Execute(COMMAND_ARGS)
 	Script *callFunction;
 	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction) || !callFunction || !IS_ID(callFunction, Script))
 		return true;
-	ScopedLock lock(g_callAfterScriptsCS);
+	ScopedLock lock(g_callAfterInfosCS);
 	g_callForInfos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj);
 	return true;
 }
 
+std::list<CallWhileInfo> g_callWhenInfos;
+ICriticalSection g_callWhenInfosCS;
+
+bool Cmd_CallWhen_Execute(COMMAND_ARGS)
+{
+	Script* callFunction;
+	Script* conditionFunction;
+	if (!ExtractArgs(EXTRACT_ARGS, &callFunction, &conditionFunction))
+		return true;
+	for (auto* form : { callFunction, conditionFunction })
+		if (!form || !IS_ID(form, Script))
+			return true;
+
+	ScopedLock lock(g_callWhenInfosCS);
+	g_callWhenInfos.emplace_back(callFunction, conditionFunction, thisObj);
+	return true;
+
+}
+
+void DecompileScriptToFolder(const std::string& scriptName, Script* script, const std::string& fileExtension, const std::string_view& modName)
+{
+	ScriptParsing::ScriptAnalyzer analyzer(script);
+	const auto* dirName = "DecompiledScripts";
+	if (!std::filesystem::exists(dirName))
+		std::filesystem::create_directory(dirName);
+	const auto modDirName = FormatString("%s/%s", dirName, modName.data());
+	if (!std::filesystem::exists(modDirName))
+		std::filesystem::create_directory(modDirName);
+	const auto filePath = modDirName + '/' + scriptName + '.' + fileExtension;
+	std::ofstream os(filePath);
+	os << analyzer.DecompileScript();
+	if (IsConsoleMode())
+		Console_Print("Decompiled script to '%s'", filePath.c_str());
+}
+
 bool Cmd_DecompileScript_Execute(COMMAND_ARGS)
 {
-	Script* script;
+	TESForm* form;
 	*result = 0;
 	char fileExtensionArg[0x100]{};
-	if (!ExtractArgs(EXTRACT_ARGS, &script, &fileExtensionArg) || !IS_ID(script, Script))
+	if (!ExtractArgs(EXTRACT_ARGS, &form, &fileExtensionArg))
 		return true;
 	std::string fileExtension;
 	if (fileExtensionArg[0])
 		fileExtension = std::string(fileExtensionArg);
 	else
 		fileExtension = "gek";
-	ScriptParsing::ScriptAnalyzer analyzer(script);
-	const auto* dirName = "DecompiledScripts";
-	if (!std::filesystem::exists(dirName))
-		std::filesystem::create_directory(dirName);
-	const auto modDirName = FormatString("%s/%s", dirName, GetModName(script));
-	if (!std::filesystem::exists(modDirName))
-		std::filesystem::create_directory(modDirName);
-	const auto filePath = modDirName + '/' + std::string(script->GetName()) + '.' + fileExtension;
-	std::ofstream os(filePath);
-	os << analyzer.DecompileScript();
-	Console_Print("Decompiled script to '%s'", filePath.c_str());
+	if (IS_ID(form, Script))
+	{
+		auto* script = static_cast<Script*>(form);
+		std::string name = script->GetName();
+		if (name.empty())
+			name = FormatString("%X", script->refID & 0x00FFFFFF);
+		DecompileScriptToFolder(name, script, fileExtension, GetModName(script));
+	}
+	else if (IS_ID(form, TESPackage))
+	{
+		auto* package = static_cast<TESPackage*>(form);
+		for (auto& packageEvent : {std::make_pair("OnBegin", &package->onBeginAction), std::make_pair("OnEnd", &package->onEndAction), std::make_pair("OnChange", &package->onChangeAction)})
+		{
+			auto& [name, action] = packageEvent;
+			if (action->script)
+				DecompileScriptToFolder(std::string(package->GetName()) + name, action->script, fileExtension, GetModName(package));
+		}
+	}
+	else
+		return true;
 	*result = 1;
 	return true;
+}
+
+bool Cmd_HasScriptCommand_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	UInt32 commandOpcode;
+	TESForm* form;
+	UInt32 eventOpcode = -1;
+	Script* script = nullptr;
+	if (!ExtractArgs(EXTRACT_ARGS, &commandOpcode, &form, &eventOpcode))
+		return true;
+	if (!form)
+		form = thisObj;
+	if (!form)
+		return true;
+	if (IS_ID(form, Script))
+		script = static_cast<Script*>(form);
+	else if (form->GetIsReference())
+	{
+		auto* ref = static_cast<TESObjectREFR*>(form);
+		if (auto* extraScript = ref->GetExtraScript())
+			script = extraScript->script;
+	}
+	if (!script)
+		return true;
+	auto* cmdInfo = g_scriptCommands.GetByOpcode(commandOpcode);
+	if (!cmdInfo)
+		return true;
+	CommandInfo* eventCmd = nullptr;
+	if (eventOpcode != -1)
+		eventCmd = GetEventCommandInfo(eventOpcode);
+	if (ScriptParsing::ScriptContainsCommand(script, cmdInfo, eventCmd))
+		*result = 1;
+	return true;
+}
+
+static MemoizedMap<const char*, UInt32> s_opcodeMap;
+
+bool Cmd_GetCommandOpcode_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	char buf[0x400];
+	if (!ExtractArgs(EXTRACT_ARGS, buf))
+		return true;
+	*result = s_opcodeMap.Get(buf, [](const char* buf)
+	{
+		auto* cmd = g_scriptCommands.GetByName(buf);
+		if (!cmd)
+			return 0u;
+		return static_cast<unsigned>(cmd->opcode);
+	});
+	return true;
+}
+
+bool Cmd_Ternary_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+		eval.ExtractArgs())
+	{
+		ScriptToken* value = eval.Arg(0)->ToBasicToken();
+		if (!value)
+			return true;	// should never happen, could cause weird behavior otherwise.
+
+		Script* call_udf = nullptr;
+		if (value->GetBool()) {
+			call_udf = eval.Arg(1)->GetUserFunction();
+		}
+		else {
+			call_udf = eval.Arg(2)->GetUserFunction();
+		}
+		if (!call_udf)
+			return true;
+		
+		InternalFunctionCaller caller(call_udf, thisObj, containingObj);
+		caller.SetArgs(0);
+		if (auto const tokenValResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller))))
+			tokenValResult->AssignResult(PASS_COMMAND_ARGS, eval);
+	}
+	return true;
+
 }
 
 #endif

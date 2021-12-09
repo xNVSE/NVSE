@@ -27,7 +27,12 @@ Vector<TokenCacheEntry>::Iterator CachedTokens::Begin()
 	return container_.Begin();
 }
 
-TokenCacheEntry* CachedTokens::DataEnd()
+TokenCacheEntry* CachedTokens::DataBegin() const
+{
+	return container_.Data();
+}
+
+TokenCacheEntry* CachedTokens::DataEnd() const
 {
 	return container_.Data() + container_.Size();
 }

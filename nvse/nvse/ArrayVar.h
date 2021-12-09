@@ -93,6 +93,8 @@ struct ArrayElement
 	friend class ArrayVar;
 	friend class ArrayVarMap;
 
+	~ArrayElement();
+
 	ArrayData	m_data;
 
 	void  Unset();
@@ -103,6 +105,7 @@ struct ArrayElement
 	bool GetAsString(const char **out) const;
 	bool GetAsFormID(UInt32* out) const;
 	bool GetAsArray(ArrayID* out) const;
+	bool GetBool() const;
 
 	bool SetForm(const TESForm* form);
 	bool SetFormID(UInt32 refID);
@@ -258,7 +261,10 @@ class ArrayVar
 	bool				m_bPacked;
 	Vector<UInt8>		m_refs;		// data is modIndex of referring object; size() is number of references
 
+	bool CompareArrays(ArrayVar* arr2, bool checkDeep);
+
 public:
+	ICriticalSection m_cs;
 #if _DEBUG
 	std::string varName;
 #endif
@@ -346,6 +352,9 @@ public:
 	ArrayVarElementContainer::iterator Begin();
 
 	std::string GetStringRepresentation() const;
+
+	bool Equals(ArrayVar* arr2);
+	bool DeepEquals(ArrayVar* arr2);
 };
 
 class ArrayVarMap : public VarMap<ArrayVar>
@@ -401,11 +410,13 @@ namespace PluginAPI
 
 		static UInt32 GetArraySize(NVSEArrayVarInterface::Array* arr);
 		static UInt32 GetArrayPacked(NVSEArrayVarInterface::Array* arr);
+		static int GetContainerType(NVSEArrayVarInterface::Array* arr);
 		static NVSEArrayVarInterface::Array* LookupArrayByID(UInt32 id);
 		static bool GetElement(NVSEArrayVarInterface::Array* arr, const NVSEArrayVarInterface::Element& key,
 			NVSEArrayVarInterface::Element& out);
 		static bool GetElements(NVSEArrayVarInterface::Array* arr, NVSEArrayVarInterface::Element* elements,
 			NVSEArrayVarInterface::Element* keys);
+		static bool ArrayHasKey(NVSEArrayVarInterface::Array* arr, const NVSEArrayVarInterface::Element& key);
 
 		// helper fns
 		static bool InternalElemToPluginElem(const ArrayElement* src, NVSEArrayVarInterface::Element* out);

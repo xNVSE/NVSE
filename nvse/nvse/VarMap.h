@@ -74,7 +74,7 @@ protected:
 	_VarIDs				availableIDs;	// IDs < greatest used ID available as IDs for new vars
 	VarCache			cache;
 	ICriticalSection	cs;				// trying to avoid what looks like concurrency issues
-
+	ICriticalSection    tempIdsCs;
 
 	void SetIDAvailable(UInt32 id)
 	{
@@ -166,9 +166,9 @@ public:
 		availableIDs.Clear();
 	}
 
-
 	void MarkTemporary(UInt32 varID, bool bTemporary)
 	{
+		ScopedLock lock(tempIdsCs);
 		if (bTemporary)
 		{
 			tempIDs.Insert(varID);

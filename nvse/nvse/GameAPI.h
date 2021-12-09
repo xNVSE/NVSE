@@ -54,7 +54,7 @@ bool GetConsoleEcho();
 void SetConsoleEcho(bool doEcho);
 const char *GetFullName(TESForm *baseForm);
 const char *GetActorValueString(UInt32 actorValue); // should work now
-UInt32 GetActorValueForString(const char *strActorVal, bool bForScript = false);
+UInt32 GetActorValueForString(const char *strActorVal);
 
 typedef char *(*_GetActorValueName)(UInt32 actorValueCode);
 extern const _GetActorValueName GetActorValueName;
@@ -130,7 +130,11 @@ struct ScriptLocal
 {
 	UInt32 id;
 	ScriptLocal *nextEntry;
-	double data;
+	union
+	{
+		double data;
+		UInt32 formId;
+	};
 
 	UInt32 GetFormId();
 };
@@ -674,6 +678,8 @@ public:
 	~NiTMap();
 };
 
+extern NiTMap<const char*, TESForm*>** g_formEditorIDsMap;
+
 class BGSCellNumericIDArrayMap;
 class BGSLoadGameSubBuffer;
 class BGSReconstructFormsInFileMap;
@@ -1034,47 +1040,6 @@ class NavMeshInfoMap: public TESForm
 };
 
 */
-
-template <typename T, const UInt32 ConstructorPtr = 0, typename... Args>
-T *New(Args &&... args)
-{
-	auto *alloc = FormHeap_Allocate(sizeof(T));
-	if constexpr (ConstructorPtr)
-	{
-		ThisStdCall(ConstructorPtr, alloc, std::forward<Args>(args)...);
-	}
-	else
-	{
-		memset(alloc, 0, sizeof(T));
-	}
-	return static_cast<T *>(alloc);
-}
-
-template <typename T, const UInt32 DestructorPtr = 0, typename... Args>
-void Delete(T *t, Args &&... args)
-{
-	if constexpr (DestructorPtr)
-	{
-		ThisStdCall(DestructorPtr, t, std::forward<Args>(args)...);
-	}
-	FormHeap_Free(t);
-}
-
-template <typename T>
-using game_unique_ptr = std::unique_ptr<T, std::function<void(T *)>>;
-
-template <typename T, const UInt32 DestructorPtr=0>
-game_unique_ptr<T> MakeUnique(T* t)
-{
-	return game_unique_ptr<T>(t, [](T *t2) { Delete<T, DestructorPtr>(t2); });
-}
-
-template <typename T, const UInt32 ConstructorPtr = 0, const UInt32 DestructorPtr = 0, typename... ConstructorArgs>
-game_unique_ptr<T> MakeUnique(ConstructorArgs &&... args)
-{
-	auto *obj = New<T, ConstructorPtr>(std::forward(args)...);
-	return MakeUnique<T, DestructorPtr>(obj);
-}
 
 UInt32 GetNextFreeFormID(UInt32 formId);
 

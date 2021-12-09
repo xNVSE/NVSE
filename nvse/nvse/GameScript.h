@@ -1,7 +1,6 @@
 #pragma once
 
 #include <span>
-
 #include "Utilities.h"
 #include "GameForms.h"
 #include "common/ICriticalSection.h"
@@ -13,7 +12,8 @@ struct ScriptOperator;
 extern std::span<CommandInfo> g_eventBlockCommandInfos;
 extern std::span<CommandInfo> g_scriptStatementCommandInfos;
 extern std::span<ScriptOperator> g_gameScriptOperators;
-extern ActorValueInfo **g_actorValueInfoArray;
+extern std::span<ActorValueInfo*> g_actorValues;
+
 #if RUNTIME
 #define SCRIPT_SIZE 0x54
 static const UInt32 kScript_ExecuteFnAddr = 0x005AC1E0;
@@ -142,6 +142,12 @@ public:
 
 	tList<VariableInfo>* GetVars();
 	tList<RefVariable>* GetRefList();
+
+	void Delete();
+
+	static game_unique_ptr<Script> MakeUnique();
+
+	bool Compile(ScriptBuffer* buffer);
 };
 
 STATIC_ASSERT(sizeof(Script) == SCRIPT_SIZE);
@@ -227,7 +233,7 @@ struct ScriptBuffer
 	String			scriptName;			// 00C
 	UInt32			errorCode;			// 014
 	bool			partialScript;		// 018
-	UInt8			pad019[3];			// 018
+	UInt8			pad019[3];			// 019
 	UInt32			curLineNumber;		// 01C
 	UInt8			* scriptData;		// 020 pointer to 0x4000-byte array
 	UInt32			dataOffset;			// 024
@@ -243,6 +249,15 @@ struct ScriptBuffer
 	UInt32	GetRefIdx(Script::RefVariable* ref);
 	VariableInfo* GetVariableByName(const char* name);
 	UInt32	GetVariableType(VariableInfo* varInfo, Script::RefVariable* refVar, Script* script);
+
+	static game_unique_ptr<ScriptBuffer> MakeUnique()
+	{
+#if EDITOR
+		return ::MakeUnique<ScriptBuffer, 0x5C5660, 0x5C8910>();
+#else
+		return ::MakeUnique<ScriptBuffer, 0x5AE490, 0x5AE5C0>();
+#endif
+	}
 };
 static_assert(sizeof(ScriptBuffer) == 0x58);
 

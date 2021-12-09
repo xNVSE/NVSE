@@ -1,3 +1,5 @@
+#include <filesystem>
+
 #include "CommandTable.h"
 #include "Hooks_DirectInput8Create.h"
 #include "Hooks_SaveLoad.h"
@@ -42,6 +44,8 @@ UInt32 waitForDebugger;
 UInt32 createHookWindow;
 UInt32 et;
 UInt32 au3D;
+bool g_warnScriptErrors = false;
+bool g_noSaveWarnings = false;
 
 void WaitForDebugger(void)
 {
@@ -53,6 +57,8 @@ void WaitForDebugger(void)
 	Sleep(1000 * 2);
 }
 
+
+
 void NVSE_Initialize(void)
 {
 #ifndef _DEBUG
@@ -62,10 +68,14 @@ void NVSE_Initialize(void)
 		GetSystemTimeAsFileTime(&now);
 
 #if RUNTIME
-		UInt32 bMousePatch;
+		UInt32 bMousePatch = 0;
 		if (GetNVSEConfigOption_UInt32("DEBUG", "EscapeMouse", &bMousePatch) && bMousePatch)
 			PatchCoopLevel();
 		
+		UInt32 noFileWarning = 0;
+		if (GetNVSEConfigOption_UInt32("RELEASE", "bNoSaveWarnings", &noFileWarning) && noFileWarning)
+			g_noSaveWarnings = true;
+
 		_MESSAGE("NVSE runtime: initialize (version = %d.%d.%d %08X %08X%08X)",
 			NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA, RUNTIME_VERSION,
 			now.dwHighDateTime, now.dwLowDateTime);
@@ -122,6 +132,7 @@ void NVSE_Initialize(void)
 		EventManager::Init();
 
 		Hook_Dialog_Init();
+		PatchGameCommandParser();
 #endif
 
 #if EDITOR
