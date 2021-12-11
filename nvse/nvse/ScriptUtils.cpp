@@ -4641,7 +4641,7 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 	if (!cachePtr)
 		return nullptr;
 	auto& cache = *cachePtr;
-#if _DEBUG && 0
+#if _DEBUG
 	g_curLineText = this->GetLineText(cache, nullptr);
 #endif
 	OperandStack operands;
