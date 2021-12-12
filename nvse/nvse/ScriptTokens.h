@@ -225,7 +225,7 @@ struct VarValue : std::variant<StrongFormID, float, const char*, ArrayID>
 		}, *this);*/
 		return std::visit( overloaded {
 			[](const float& val) ->void* {
-				return (UInt32*)&val; },
+				return reinterpret_cast<void*>(*(UInt32*)&val); },	//Does not work if UDF expects int arg! (only float)
 			[](const ArrayID& val) ->void* {
 				return reinterpret_cast<void*>(val); },
 			[](const StrongFormID& val) ->void* {

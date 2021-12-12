@@ -122,10 +122,14 @@ void HandleCallWhenScripts()
 	while (iter != g_callWhenInfos.end())
 	{
 		InternalFunctionCaller conditionCaller(iter->condition);
+		if (iter->flags & CallWhileInfo::kPassArgs_ToConditionFunc)
+			conditionCaller.SetArgs(iter->args);
 		if (auto const conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); 
 			conditionResult && conditionResult->GetBool())
 		{
 			InternalFunctionCaller scriptCaller(iter->callFunction, iter->thisObj);
+			if (iter->flags & CallWhileInfo::kPassArgs_ToCallFunc)
+				scriptCaller.SetArgs(iter->args);
 			delete UserFunctionManager::Call(std::move(scriptCaller));
 			iter = g_callWhenInfos.erase(iter);
 		}
