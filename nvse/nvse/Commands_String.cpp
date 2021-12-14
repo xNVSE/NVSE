@@ -889,10 +889,9 @@ bool Cmd_NumToHex_Execute(COMMAND_ARGS)
 	UInt32 padToWidth = 8;	//add leading zeros until it reaches this width.
 	UInt32 bAddPrefix = false; 
 	ExtractArgs(EXTRACT_ARGS, &num, &padToWidth, &bAddPrefix);
-	std::string hexStr = std::format("{:0{}x}", num, padToWidth);
-	MakeUpper(hexStr);	//for consistent behavior with legacy.
+	std::string hexStr = std::format("{:0{}X}", num, padToWidth);
 	if (bAddPrefix) hexStr = "0x" + hexStr;
-	AssignToStringVar(PASS_COMMAND_ARGS, hexStr.c_str());
+	AssignToStringVar(PASS_COMMAND_ARGS, hexStr.c_str()); 
 	return true;
 }
 
