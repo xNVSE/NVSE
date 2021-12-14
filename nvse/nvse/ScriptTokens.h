@@ -208,21 +208,6 @@ struct VarValue : std::variant<StrongFormID, float, const char*, ArrayID>
 
 	//Returns the VarValue in the form expected for InternalFunctionCaller's args.
 	[[nodiscard]] void* GetVoidPtr() const {
-		/* todo: keep until tested!
-		return std::visit(
-			[]<typename T0>(T0 &val) ->void* {
-			using T = std::decay_t<T0>;
-			if constexpr (std::is_same_v<T, float>)
-				return (UInt32*)&val;
-			else if constexpr (std::is_same_v<T, ArrayID>)
-				return reinterpret_cast<void*>(val);
-			else if constexpr (std::is_same_v<T, StrongFormID>)
-				return LookupFormByID(static_cast<UInt32>(val));
-			else if constexpr (std::is_same_v<T, const char*>)
-				return const_cast<char*>(val);
-			else
-				static_assert(false, "non-exhaustive visitor!");
-		}, *this);*/
 		return std::visit( overloaded {
 			[](const float& val) ->void* {
 				return reinterpret_cast<void*>(*(UInt32*)&val); },	//Does not work if UDF expects int arg! (only float)
