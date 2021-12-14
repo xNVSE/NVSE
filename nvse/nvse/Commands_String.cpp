@@ -7,6 +7,7 @@
 #include "GameObjects.h"
 #include "GameSettings.h"
 #include "Utilities.h"
+#include <format>
 
 //////////////////////////
 // Utility commands
@@ -885,17 +886,25 @@ bool Cmd_GetRawFormIDString_Execute(COMMAND_ARGS)
 bool Cmd_NumToHex_Execute(COMMAND_ARGS)
 {
 	UInt32 num = 0;
-	UInt32 width = 8;
-	ExtractArgs(EXTRACT_ARGS, &num, &width);
+	UInt32 padToWidth = 8;	//add leading zeros until it reaches this width.
+	UInt32 bAddPrefix = false; 
+	ExtractArgs(EXTRACT_ARGS, &num, &padToWidth, &bAddPrefix);
+	std::string hexStr = std::format("{:0{}x}", num, padToWidth);
+	MakeUpper(hexStr);	//for consistent behavior with legacy.
+	if (bAddPrefix) hexStr = "0x" + hexStr;
+	AssignToStringVar(PASS_COMMAND_ARGS, hexStr.c_str());
+	return true;
+}
 
-	char fmtStr[0x20];
-	width = width <= 8 ? width : 8;
-	snprintf(fmtStr, sizeof(fmtStr), "%%0%dX", width);
-
-	char hexStr[0x20];
-	snprintf(hexStr, sizeof(hexStr), fmtStr, num);
-
-	AssignToStringVar(PASS_COMMAND_ARGS, hexStr);
+bool Cmd_NumToBin_Execute(COMMAND_ARGS)
+{
+	UInt32 num;
+	UInt32 padToWidth = 32;	//add leading zeros until it reaches this width.
+	UInt32 bAddPrefix = false;
+	ExtractArgs(EXTRACT_ARGS, &num, &padToWidth, &bAddPrefix);
+	std::string binStr = std::format("{:0{}b}", num, padToWidth);
+	if (bAddPrefix) binStr = "0b" + binStr;
+	AssignToStringVar(PASS_COMMAND_ARGS, binStr.c_str());
 	return true;
 }
 

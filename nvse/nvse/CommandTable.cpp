@@ -1822,7 +1822,8 @@ void CommandTable::AddCommandsV6()
 	// 6.2 beta 05
 	ADD_CMD(ForEachInList);
 	ADD_CMD_RET(Ternary, kRetnType_Ambiguous);
-  ADD_CMD(ModUIFloat);
+	ADD_CMD(ModUIFloat);
+	ADD_CMD_RET(NumToBin, kRetnType_String);
 }
 
 namespace PluginAPI

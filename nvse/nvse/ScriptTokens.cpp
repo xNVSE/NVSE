@@ -1518,24 +1518,36 @@ double ScriptToken::GetNumericRepresentation(bool bFromHex)
 	else if (CanConvertTo(kTokenType_String))
 	{
 		const char *str = GetString();
-
+		bool bFromBin = false;
 		if (!bFromHex)
 		{
 			// if string begins with "0x", interpret as hex
+			// if it begins with "0b", interpret as binary
 			Tokenizer tok(str, " \t\r\n");
 			std::string pre;
-			if (tok.NextToken(pre) != -1 && pre.length() >= 2 && !StrCompare(pre.substr(0, 2).c_str(), "0x"))
-				bFromHex = true;
+			if (tok.NextToken(pre) != -1 && pre.length() >= 2)
+			{
+				if (!StrCompare(pre.substr(0, 2).c_str(), "0x"))
+					bFromHex = true;
+				else if (!StrCompare(pre.substr(0, 2).c_str(), "0b"))
+					bFromBin = true;
+			}
 		}
 
-		if (!bFromHex)
-			result = strtod(str, NULL);
-		else
+		if (bFromHex)
 		{
 			UInt32 hexInt = 0;
 			sscanf_s(str, "%x", &hexInt);
 			result = (double)hexInt;
 		}
+		else if (bFromBin)
+		{
+			UInt32 binInt = 0;
+			sscanf_s(str, "%b", &binInt);
+			result = (double)binInt;
+		}
+		else
+			result = strtod(str, NULL);
 	}
 
 	return result;
