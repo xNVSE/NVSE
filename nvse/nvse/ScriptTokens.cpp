@@ -1524,13 +1524,16 @@ double ScriptToken::GetNumericRepresentation(bool bFromHex)
 			// if string begins with "0x", interpret as hex
 			// if it begins with "0b", interpret as binary
 			Tokenizer tok(str, " \t\r\n");
-			std::string pre;
-			if (tok.NextToken(pre) != -1 && pre.length() >= 2)
+			if (std::string pre;
+				tok.NextToken(pre) != -1 && pre.length() >= 2)
 			{
 				if (!StrCompare(pre.substr(0, 2).c_str(), "0x"))
 					bFromHex = true;
 				else if (!StrCompare(pre.substr(0, 2).c_str(), "0b"))
+				{
+					str += 2;	//ignore first two characters, otherwise strtol breaks.
 					bFromBin = true;
+				}
 			}
 		}
 
@@ -1542,9 +1545,7 @@ double ScriptToken::GetNumericRepresentation(bool bFromHex)
 		}
 		else if (bFromBin)
 		{
-			UInt32 binInt = 0;
-			sscanf_s(str, "%b", &binInt);
-			result = (double)binInt;
+			result = static_cast<double>(strtol(str, nullptr, 2));
 		}
 		else
 			result = strtod(str, NULL);
