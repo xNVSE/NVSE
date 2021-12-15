@@ -1827,6 +1827,8 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(GetQuestObjectiveCount);
 	ADD_CMD(GetNthQuestObjective);
 	ADD_CMD(GetCurrentObjective);
+	ADD_CMD(PrintActiveTile);
+	ADD_CMD(SetCurrentQuest);
 }
 
 namespace PluginAPI

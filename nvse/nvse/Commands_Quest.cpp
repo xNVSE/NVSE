@@ -51,3 +51,15 @@ bool Cmd_GetCurrentObjective_Execute(COMMAND_ARGS)
 
 	return true;
 }
+
+bool Cmd_SetCurrentQuest_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+
+	TESQuest* pQuest = NULL;
+	if (ExtractArgs(EXTRACT_ARGS, &pQuest)) {
+		PlayerCharacter* pPC = PlayerCharacter::GetSingleton();
+		pPC->quest = pQuest;
+	}
+	return true;
+}

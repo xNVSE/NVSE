@@ -521,3 +521,23 @@ bool Cmd_ModUIFloat_Execute(COMMAND_ARGS)
 	}
 	return true;
 }
+
+bool Cmd_PrintActiveTile_Execute(COMMAND_ARGS)
+{
+	InterfaceManager* intfc = InterfaceManager::GetSingleton();
+	if (intfc && intfc->activeTile)
+	{
+		std::string name = intfc->activeTile->GetQualifiedName();
+		if (name.length() < 0x200)
+			Console_Print("%s", name.c_str());
+		else
+		{
+			Console_Print("Name too long to print in console, sending to nvse.log");
+			_MESSAGE("%s", name.c_str());
+		}
+	}
+	else
+		Console_Print("Could not read active tile");
+
+	return true;
+}
