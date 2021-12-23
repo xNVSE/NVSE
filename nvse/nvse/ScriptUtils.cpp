@@ -1805,6 +1805,11 @@ PluginScriptToken *__fastcall ExpressionEvaluatorGetNthArg(void *expEval, UInt32
 {
 	return reinterpret_cast<PluginScriptToken *>(reinterpret_cast<ExpressionEvaluator *>(expEval)->Arg(argIdx));
 }
+
+void __fastcall ExpressionEvaluatorSetExpectedReturnType(void* expEval, UInt8 retnType)
+{
+	reinterpret_cast<ExpressionEvaluator*>(expEval)->ExpectReturnType(static_cast<CommandReturnType>(retnType));
+}
 #endif
 
 // ExpressionParser
