@@ -282,7 +282,10 @@ ScriptToken *Eval_Logical(OperatorType op, ScriptToken *lh, ScriptToken *rh, Exp
 	switch (op)
 	{
 	case kOpType_LogicalAnd:
-		return ScriptToken::Create(lh->GetBool() && rh->GetBool());
+	{
+		auto const rhNum = rh->GetNumber();
+		return ScriptToken::Create(lh->GetBool() && rhNum ? rhNum : false);
+	}
 	case kOpType_LogicalOr:
 		return ScriptToken::Create(lh->GetBool() || rh->GetBool());
 	default:
