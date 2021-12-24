@@ -793,11 +793,12 @@ struct ExpressionEvaluatorUtils
 	const char*				(__fastcall *ScriptTokenGetString)(PluginScriptToken *scrToken);
 	UInt32					(__fastcall *ScriptTokenGetArrayID)(PluginScriptToken *scrToken);
 	UInt32					(__fastcall *ScriptTokenGetActorValue)(PluginScriptToken *scrToken);
-	ScriptLocal*	(__fastcall *ScriptTokenGetScriptVar)(PluginScriptToken *scrToken);
+	ScriptLocal*			(__fastcall *ScriptTokenGetScriptVar)(PluginScriptToken *scrToken);
 	const PluginTokenPair*	(__fastcall *ScriptTokenGetPair)(PluginScriptToken *scrToken);
 	const PluginTokenSlice*	(__fastcall *ScriptTokenGetSlice)(PluginScriptToken *scrToken);
 	UInt32                  (__fastcall* ScriptTokenGetAnimationGroup)(PluginScriptToken* scrToken);
 
+	void					(__fastcall* SetExpectedReturnType)(void* expEval, UInt8 type);
 #endif
 };
 
@@ -831,6 +832,11 @@ public:
 	PluginScriptToken *GetNthArg(UInt32 argIdx)
 	{
 		return s_expEvalUtils.GetNthArg(expEval, argIdx);
+	}
+
+	void SetExpectedReturnType(CommandReturnType type)
+	{
+		s_expEvalUtils.SetExpectedReturnType(expEval, type);
 	}
 #endif
 };
