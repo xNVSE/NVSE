@@ -434,6 +434,7 @@ void PluginManager::InitExpressionEvaluatorUtils(ExpressionEvaluatorUtils *utils
 	utils->ScriptTokenGetAnimationGroup = ScriptTokenGetAnimationGroup;
 
 	utils->SetExpectedReturnType = ExpressionEvaluatorSetExpectedReturnType;
+	utils->ScriptTokenGetElement = ScriptTokenGetArrayElement;
 #endif
 }
 

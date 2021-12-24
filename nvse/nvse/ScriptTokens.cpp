@@ -1216,6 +1216,22 @@ UInt32 __fastcall ScriptTokenGetAnimationGroup(PluginScriptToken* scrToken)
 	return reinterpret_cast<ScriptToken*>(scrToken)->GetAnimationGroup();
 }
 
+NVSEArrayVarInterface::Element __fastcall ScriptTokenGetArrayElement(PluginScriptToken* scrToken)
+{
+	if (auto const token = reinterpret_cast<ScriptToken*>(scrToken);
+		token->CanConvertTo(kTokenType_String))
+	{
+		return token->GetString();	//TODO: verify string is fine!
+	}
+	else if (token->CanConvertTo(kTokenType_Array))
+		return token->GetArray();
+	else if (token->CanConvertTo(kTokenType_Form))
+		return token->GetFormID();
+	else if (token->CanConvertTo(kTokenType_Number))
+		return token->GetNumber();
+	return {};
+}
+
 ScriptToken *ScriptToken::Read(ExpressionEvaluator *context)
 {
 	auto *newToken = new (false) ScriptToken(); // false allocates the token on heap instead of memory pool

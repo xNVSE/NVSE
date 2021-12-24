@@ -799,6 +799,7 @@ struct ExpressionEvaluatorUtils
 	UInt32                  (__fastcall* ScriptTokenGetAnimationGroup)(PluginScriptToken* scrToken);
 
 	void					(__fastcall* SetExpectedReturnType)(void* expEval, UInt8 type);
+	NVSEArrayVarInterface::Element	(__fastcall* ScriptTokenGetElement)(PluginScriptToken* scrToken);
 #endif
 };
 
@@ -907,6 +908,11 @@ struct PluginScriptToken
 	const PluginTokenSlice *GetSlice()
 	{
 		return s_expEvalUtils.ScriptTokenGetSlice(this);
+	}
+
+	NVSEArrayVarInterface::Element GetElement()
+	{
+		return s_expEvalUtils.ScriptTokenGetElement(this);
 	}
 #endif
 };

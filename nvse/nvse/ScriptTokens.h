@@ -419,6 +419,8 @@ const PluginTokenPair *__fastcall ScriptTokenGetPair(PluginScriptToken *scrToken
 struct PluginTokenSlice;
 const PluginTokenSlice *__fastcall ScriptTokenGetSlice(PluginScriptToken *scrToken);
 UInt32 __fastcall ScriptTokenGetAnimationGroup(PluginScriptToken* scrToken);
+NVSEArrayVarInterface::Element __fastcall ScriptTokenGetArrayElement(PluginScriptToken* scrToken);
+
 
 struct ArrayElementToken : ScriptToken
 {
