@@ -1,4 +1,6 @@
 #include "Commands_Quest.h"
+
+#if _RUNTIME
 #include "GameForms.h"
 #include "GameObjects.h"
 #include "GameAPI.h"
@@ -63,3 +65,4 @@ bool Cmd_SetCurrentQuest_Execute(COMMAND_ARGS)
 	}
 	return true;
 }
+#endif
