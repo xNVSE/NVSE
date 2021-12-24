@@ -204,12 +204,15 @@ public:
 
 bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem);
 
+#if RUNTIME
 void* __stdcall ExpressionEvaluatorCreate(COMMAND_ARGS);
 void __fastcall ExpressionEvaluatorDestroy(void *expEval);
 bool __fastcall ExpressionEvaluatorExtractArgs(void *expEval);
 UInt8 __fastcall ExpressionEvaluatorGetNumArgs(void *expEval);
 PluginScriptToken* __fastcall ExpressionEvaluatorGetNthArg(void *expEval, UInt32 argIdx);
 void __fastcall ExpressionEvaluatorSetExpectedReturnType(void* expEval, UInt8 retnType);
+void __fastcall ExpressionEvaluatorAssignCommandResultFromElement(void* expEval, NVSEArrayVarInterface::Element &result);
+#endif
 
 
 VariableInfo* CreateVariable(Script* script, ScriptBuffer* scriptBuf, const std::string& varName, Script::VariableType varType, const std::function<void(const std::string&)>& printCompileError);

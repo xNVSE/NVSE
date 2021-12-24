@@ -431,7 +431,7 @@ bool Cmd_Call_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (auto const funcResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(&eval)))
 	{
-		funcResult->AssignResult(PASS_COMMAND_ARGS, eval);
+		funcResult->AssignResult(eval);
 	}
 	return true;
 }

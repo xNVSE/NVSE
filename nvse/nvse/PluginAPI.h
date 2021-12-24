@@ -342,7 +342,6 @@ struct NVSEArrayVarInterface
 
 		friend class PluginAPI::ArrayAPI;
 		friend class ArrayVar;
-		void Reset() { if (type == kType_String) { FormHeap_Free(str); type = kType_Invalid; str = NULL; } }
 	public:
 		enum
 		{
@@ -354,6 +353,7 @@ struct NVSEArrayVarInterface
 			kType_Array,
 		};
 
+		void Reset() { if (type == kType_String) { FormHeap_Free(str); type = kType_Invalid; str = NULL; } }
 		~Element() { Reset(); }
 
 		Element() : type(kType_Invalid) { }
@@ -371,15 +371,14 @@ struct NVSEArrayVarInterface
 			}
 			return *this;
 		}
-
 		bool IsValid() const { return type != kType_Invalid; }
 		UInt8 GetType() const { return type; }
 
-		const char* String() { return type == kType_String ? str : NULL; }
-		Array * Array() { return type == kType_Array ? arr : NULL; }
-		TESForm * Form() { return type == kType_Form ? form : NULL; }
-		double Number() { return type == kType_Numeric ? num : 0.0; }
-		bool Bool()
+		const char* String() const  { return type == kType_String ? str : NULL; }
+		Array * Array() const  { return type == kType_Array ? arr : NULL; }
+		TESForm * Form() const  { return type == kType_Form ? form : NULL; }
+		double Number() const  { return type == kType_Numeric ? num : 0.0; }
+		bool Bool() const
 		{
 			switch (type)
 			{
@@ -799,7 +798,8 @@ struct ExpressionEvaluatorUtils
 	UInt32                  (__fastcall* ScriptTokenGetAnimationGroup)(PluginScriptToken* scrToken);
 
 	void					(__fastcall* SetExpectedReturnType)(void* expEval, UInt8 type);
-	NVSEArrayVarInterface::Element	(__fastcall* ScriptTokenGetElement)(PluginScriptToken* scrToken);
+	void					(__fastcall* AssignCommandResultFromElement)(void* expEval, NVSEArrayVarInterface::Element &result);
+	void					(__fastcall* ScriptTokenGetElement)(PluginScriptToken* scrToken, NVSEArrayVarInterface::Element &outElem);
 #endif
 };
 
@@ -838,6 +838,13 @@ public:
 	void SetExpectedReturnType(CommandReturnType type)
 	{
 		s_expEvalUtils.SetExpectedReturnType(expEval, type);
+	}
+
+	//Will set the expected return type on its own.
+	//If the Element is invalid, will throw an NVSE error in console about unexpected return type.
+	void AssignCommandResult(NVSEArrayVarInterface::Element& result)
+	{
+		s_expEvalUtils.AssignCommandResultFromElement(expEval, result);
 	}
 #endif
 };
@@ -910,9 +917,9 @@ struct PluginScriptToken
 		return s_expEvalUtils.ScriptTokenGetSlice(this);
 	}
 
-	NVSEArrayVarInterface::Element GetElement()
+	void GetElement(NVSEArrayVarInterface::Element &outElem)
 	{
-		return s_expEvalUtils.ScriptTokenGetElement(this);
+		s_expEvalUtils.ScriptTokenGetElement(this, outElem);
 	}
 #endif
 };

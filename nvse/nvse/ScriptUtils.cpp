@@ -1813,6 +1813,13 @@ void __fastcall ExpressionEvaluatorSetExpectedReturnType(void* expEval, UInt8 re
 {
 	reinterpret_cast<ExpressionEvaluator*>(expEval)->ExpectReturnType(static_cast<CommandReturnType>(retnType));
 }
+
+void __fastcall ExpressionEvaluatorAssignCommandResultFromElement(void* expEval, NVSEArrayVarInterface::Element& result)
+{
+	auto const eval = reinterpret_cast<ExpressionEvaluator*>(expEval);
+	ScriptToken const resultTok = result;
+	resultTok.AssignResult(*eval);
+}
 #endif
 
 // ExpressionParser

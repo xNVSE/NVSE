@@ -236,10 +236,10 @@ struct ScriptToken
 #if RUNTIME
 	ScriptToken(ScriptLocal* scriptLocal, StringVar* stringVar);
 	ScriptToken(ScriptLocal *var);
+	ScriptToken(NVSEArrayVarInterface::Element &elem);
 #endif
 
 	ScriptToken();
-
 	ScriptToken(ExpressionEvaluator &evaluator);
 
 	virtual ~ScriptToken();
@@ -296,7 +296,7 @@ struct ScriptToken
 	bool IsLogicalOperator() const;
 	std::string GetVariableDataAsString();
 	const char *GetVariableTypeString() const;
-	void AssignResult(COMMAND_ARGS, ExpressionEvaluator& eval) const;
+	void AssignResult(ExpressionEvaluator& eval) const;
 
 	static ScriptToken *Read(ExpressionEvaluator *context);
 
@@ -419,7 +419,7 @@ const PluginTokenPair *__fastcall ScriptTokenGetPair(PluginScriptToken *scrToken
 struct PluginTokenSlice;
 const PluginTokenSlice *__fastcall ScriptTokenGetSlice(PluginScriptToken *scrToken);
 UInt32 __fastcall ScriptTokenGetAnimationGroup(PluginScriptToken* scrToken);
-NVSEArrayVarInterface::Element __fastcall ScriptTokenGetArrayElement(PluginScriptToken* scrToken);
+void __fastcall ScriptTokenGetArrayElement(PluginScriptToken* scrToken, NVSEArrayVarInterface::Element& outElem);
 
 
 struct ArrayElementToken : ScriptToken

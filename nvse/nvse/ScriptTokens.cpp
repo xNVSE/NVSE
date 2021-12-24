@@ -275,6 +275,38 @@ ScriptToken::ScriptToken(ScriptLocal *var) : refIdx(0), type(kTokenType_Variable
 	value.var = var;
 }
 
+ScriptToken::ScriptToken(NVSEArrayVarInterface::Element& elem) : refIdx(0), variableType(Script::eVarType_Invalid)
+{
+	switch (elem.GetType())
+	{
+	case NVSEArrayVarInterface::Element::kType_Numeric:
+		type = kTokenType_Number;
+		value.num = elem.Number();
+		break;
+	case NVSEArrayVarInterface::Element::kType_String:
+	{
+		type = kTokenType_String;
+		auto str_ = elem.String();
+		value.str = (str_ && *str_) ? CopyCString(str_) : nullptr;
+		break;
+	}
+	case NVSEArrayVarInterface::Element::kType_Array:
+		value.arrID = reinterpret_cast<ArrayID>(elem.Array());
+		type = (!value.arrID || g_ArrayMap.Get(value.arrID)) ? kTokenType_Array : kTokenType_Invalid;
+		break;
+	case NVSEArrayVarInterface::Element::kType_Form:
+	{
+		type = kTokenType_Form;
+		auto const form = elem.Form();
+		value.formID = form ? form->refID : 0;
+		break;
+	}
+	default:
+		type = kTokenType_Invalid;
+		value.num = 0;
+	}
+}
+
 ForEachContextToken::ForEachContextToken(UInt32 srcID, UInt32 iterID, UInt32 varType, ScriptLocal *var)
 	: ScriptToken(kTokenType_ForEachContext, Script::eVarType_Invalid, 0), context(srcID, iterID, varType, var)
 {
@@ -901,29 +933,30 @@ StringVar* ScriptToken::GetStringVar() const
 	return nullptr;
 }
 
-void ScriptToken::AssignResult(COMMAND_ARGS, ExpressionEvaluator &eval) const
+void ScriptToken::AssignResult(ExpressionEvaluator &eval) const
 {
 	if (CanConvertTo(kTokenType_Number)) {
-		*result = GetNumber();
+		*eval.m_result = GetNumber();
 	}
 	else if (CanConvertTo(kTokenType_String))
 	{
-		AssignToStringVar(PASS_COMMAND_ARGS, GetString());
+		AssignToStringVar(eval.m_params, eval.m_scriptData, eval.ThisObj(), eval.ContainingObj(), eval.script,
+		                  eval.eventList, eval.m_result, eval.m_opcodeOffsetPtr, GetString());
 		eval.ExpectReturnType(kRetnType_String);
 	}
 	else if (CanConvertTo(kTokenType_Form))
 	{
-		UInt32* refResult = (UInt32*)result;
+		UInt32* refResult = (UInt32*)eval.m_result;
 		*refResult = GetFormID();
 		eval.ExpectReturnType(kRetnType_Form);
 	}
 	else if (CanConvertTo(kTokenType_Array))
 	{
-		*result = GetArray();
+		*eval.m_result = GetArray();
 		eval.ExpectReturnType(kRetnType_Array);
 	}
 	else
-		ShowRuntimeError(scriptObj, "Function call returned unexpected token type %d", Type());
+		ShowRuntimeError(eval.script, "Function call returned unexpected token type %d", Type());
 }
 
 bool ScriptToken::ResolveVariable()
@@ -1216,20 +1249,23 @@ UInt32 __fastcall ScriptTokenGetAnimationGroup(PluginScriptToken* scrToken)
 	return reinterpret_cast<ScriptToken*>(scrToken)->GetAnimationGroup();
 }
 
-NVSEArrayVarInterface::Element __fastcall ScriptTokenGetArrayElement(PluginScriptToken* scrToken)
+void __fastcall ScriptTokenGetArrayElement(PluginScriptToken* scrToken, NVSEArrayVarInterface::Element& outElem)
 {
 	if (auto const token = reinterpret_cast<ScriptToken*>(scrToken);
 		token->CanConvertTo(kTokenType_String))
 	{
-		return token->GetString();	//TODO: verify string is fine!
+		outElem = token->GetString();	//TODO: verify string is fine!
 	}
 	else if (token->CanConvertTo(kTokenType_Array))
-		return token->GetArray();
+		outElem = NVSEArrayVarInterface::Element(reinterpret_cast<NVSEArrayVarInterface::Array*>(token->GetArray()));
 	else if (token->CanConvertTo(kTokenType_Form))
-		return token->GetFormID();
+		outElem = LookupFormByID(token->GetFormID());
 	else if (token->CanConvertTo(kTokenType_Number))
-		return token->GetNumber();
-	return {};
+		outElem = token->GetNumber();
+	else
+	{
+		outElem.Reset();
+	}
 }
 
 ScriptToken *ScriptToken::Read(ExpressionEvaluator *context)
