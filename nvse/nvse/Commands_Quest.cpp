@@ -1,6 +1,6 @@
 #include "Commands_Quest.h"
 
-#if _RUNTIME
+#if RUNTIME
 #include "GameForms.h"
 #include "GameObjects.h"
 #include "GameAPI.h"
