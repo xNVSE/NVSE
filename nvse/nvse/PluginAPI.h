@@ -917,6 +917,8 @@ struct PluginScriptToken
 		return s_expEvalUtils.ScriptTokenGetSlice(this);
 	}
 
+	//If a string-type elem is returned, its c-string will be allocated on the FormHeap.
+	//To properly destroy it, FormHeap_Free must be called.
 	void GetElement(NVSEArrayVarInterface::Element &outElem)
 	{
 		s_expEvalUtils.ScriptTokenGetElement(this, outElem);
