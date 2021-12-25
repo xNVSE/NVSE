@@ -1254,7 +1254,7 @@ void __fastcall ScriptTokenGetArrayElement(PluginScriptToken* scrToken, NVSEArra
 	if (auto const token = reinterpret_cast<ScriptToken*>(scrToken);
 		token->CanConvertTo(kTokenType_String))
 	{
-		outElem = token->GetString();	//TODO: verify string is fine!
+		outElem = token->GetString();
 	}
 	else if (token->CanConvertTo(kTokenType_Array))
 		outElem = NVSEArrayVarInterface::Element(reinterpret_cast<NVSEArrayVarInterface::Array*>(token->GetArray()));
