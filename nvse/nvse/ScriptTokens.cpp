@@ -287,7 +287,7 @@ ScriptToken::ScriptToken(NVSEArrayVarInterface::Element& elem) : refIdx(0), vari
 	{
 		type = kTokenType_String;
 		auto str_ = elem.String();
-		value.str = (str_ && *str_) ? CopyCString(str_) : nullptr;
+		value.str = (str_ && *str_) ? CopyString(str_) : nullptr;
 		break;
 	}
 	case NVSEArrayVarInterface::Element::kType_Array:
