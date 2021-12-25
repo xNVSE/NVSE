@@ -353,7 +353,7 @@ struct NVSEArrayVarInterface
 			kType_Array,
 		};
 
-		void Reset() { if (type == kType_String) { FormHeap_Free(str); type = kType_Invalid; str = NULL; } }
+		void Reset() { if (type == kType_String) { FormHeap_Free(str); } type = kType_Invalid; str = NULL; }
 		~Element() { Reset(); }
 
 		Element() : type(kType_Invalid) { }
