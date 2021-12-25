@@ -151,7 +151,7 @@ public:
 			case Script::eVarType_Array:
 				if (arg->CanConvertTo(kTokenType_Array))
 				{
-					g_ArrayMap.AddReference(&var->data, arg->GetArray(), info->GetScript()->GetModIndex());
+					g_ArrayMap.AddReference(&var->data, arg->GetArrayID(), info->GetScript()->GetModIndex());
 					AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_Array);
 				}
 				break;
@@ -694,7 +694,7 @@ namespace PluginAPI
 						*result = ret->GetTESForm();
 						break;
 					case kTokenType_Array:
-						*result = ArrayAPI::LookupArrayByID(ret->GetArray());
+						*result = ArrayAPI::LookupArrayByID(ret->GetArrayID());
 						break;
 					case kTokenType_String:
 						*result = ret->GetString();

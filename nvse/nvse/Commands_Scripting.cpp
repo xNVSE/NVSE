@@ -406,7 +406,7 @@ bool Cmd_TypeOf_Execute(COMMAND_ARGS)
 			typeStr = "Form";
 		else if (eval.Arg(0)->CanConvertTo(kTokenType_Array))
 		{
-			ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+			ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 			if (!arr) typeStr = "<Bad Array>";
 			else if (arr->KeyType() == kDataType_Numeric)
 				typeStr = arr->IsPacked() ? "Array" : "Map";

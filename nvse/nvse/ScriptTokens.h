@@ -255,7 +255,7 @@ struct ScriptToken
 	virtual bool GetBool() const;
 #if RUNTIME
 	Token_Type ReadFrom(ExpressionEvaluator *context); // reconstitute param from compiled data, return the type
-	virtual ArrayID GetArray() const;
+	virtual ArrayID GetArrayID() const;
 	ArrayVar *GetArrayVar();
 	ScriptLocal *GetVar() const;
 	StringVar* GetStringVar() const;
@@ -296,6 +296,7 @@ struct ScriptToken
 	bool IsLogicalOperator() const;
 	std::string GetVariableDataAsString();
 	const char *GetVariableTypeString() const;
+	CommandReturnType GetReturnType() const;
 	void AssignResult(ExpressionEvaluator& eval) const;
 
 	static ScriptToken *Read(ExpressionEvaluator *context);
@@ -431,7 +432,7 @@ struct ArrayElementToken : ScriptToken
 	const char *GetString() const override;
 	double GetNumber() const override;
 	UInt32 GetFormID() const override;
-	ArrayID GetArray() const override;
+	ArrayID GetArrayID() const override;
 	TESForm *GetTESForm() const override;
 	bool GetBool() const override;
 	bool CanConvertTo(Token_Type to) const override;
@@ -503,7 +504,7 @@ struct AssignableSubstringArrayElementToken : public AssignableSubstringToken
 	ArrayKey key;
 
 	AssignableSubstringArrayElementToken(UInt32 _id, const ArrayKey &_key, UInt32 lbound, UInt32 ubound);
-	ArrayID GetArray() const override { return value.arrID; }
+	ArrayID GetArrayID() const override { return value.arrID; }
 	bool Assign(const char *str) override;
 
 	void *operator new(size_t size)

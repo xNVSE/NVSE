@@ -374,10 +374,12 @@ struct NVSEArrayVarInterface
 		bool IsValid() const { return type != kType_Invalid; }
 		UInt8 GetType() const { return type; }
 
-		const char* String() const  { return type == kType_String ? str : NULL; }
-		Array * Array() const  { return type == kType_Array ? arr : NULL; }
-		TESForm * Form() const  { return type == kType_Form ? form : NULL; }
-		double Number() const  { return type == kType_Numeric ? num : 0.0; }
+		const char* GetString() const  { return type == kType_String ? str : NULL; }
+		Array* GetArray() const  { return type == kType_Array ? arr : NULL; }
+		UInt32 GetArrayID() const { return type == kType_Array ? reinterpret_cast<UInt32>(arr) : 0; }
+		TESForm * GetTESForm() const  { return type == kType_Form ? form : NULL; }
+		UInt32 GetFormID() const { return type == kType_Form ? form->refID : 0; }
+		double GetNumber() const  { return type == kType_Numeric ? num : 0.0; }
 		bool Bool() const
 		{
 			switch (type)
@@ -392,6 +394,23 @@ struct NVSEArrayVarInterface
 				return str && str[0];
 			default:
 				return false;
+			}
+		}
+
+		CommandReturnType GetReturnType() const
+		{
+			switch (GetType())
+			{
+			case kType_Numeric:
+				return kRetnType_Default;
+			case kType_Form:
+				return kRetnType_Form;
+			case kType_Array:
+				return kRetnType_Array;
+			case kType_String:
+				return kRetnType_String;
+			default:
+				return kRetnType_Ambiguous;
 			}
 		}
 	};

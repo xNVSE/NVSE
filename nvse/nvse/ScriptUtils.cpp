@@ -194,8 +194,8 @@ ScriptToken *Eval_Eq_Array(OperatorType op, ScriptToken *lh, ScriptToken *rh, Ex
 	// Instead of comparing arrayIDs, compare the contents of the arrays.
 	// For nested arrays, compare the arrayIDs to save on computing power. Use the Ar_DeepEquals function if needed.
 	bool isEqual;
-	auto lhArr = g_ArrayMap.Get(lh->GetArray());
-	auto rhArr = g_ArrayMap.Get(rh->GetArray());
+	auto lhArr = g_ArrayMap.Get(lh->GetArrayID());
+	auto rhArr = g_ArrayMap.Get(rh->GetArrayID());
 
 	if (lhArr && rhArr)
 	{
@@ -476,7 +476,7 @@ ScriptToken *Eval_Assign_Global(OperatorType op, ScriptToken *lh, ScriptToken *r
 ScriptToken *Eval_Assign_Array(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	ScriptLocal *var = lh->GetVar();
-	g_ArrayMap.AddReference(&var->data, rh->GetArray(), context->script->GetModIndex());
+	g_ArrayMap.AddReference(&var->data, rh->GetArrayID(), context->script->GetModIndex());
 	if (!lh->refIdx)
 		AddToGarbageCollection(context->eventList, var, NVSEVarType::kVarType_Array);
 #if _DEBUG
@@ -594,7 +594,7 @@ ScriptToken *Eval_Assign_Elem_Array(OperatorType op, ScriptToken *lh, ScriptToke
 		return nullptr;
 	}
 
-	ArrayID rhArrID = rh->GetArray();
+	ArrayID rhArrID = rh->GetArrayID();
 	if (key->KeyType() == kDataType_Numeric)
 	{
 		if (!arr->SetElementArray(key->key.num, rhArrID))
@@ -925,7 +925,7 @@ ScriptToken *Eval_LogicalNot(OperatorType op, ScriptToken *lh, ScriptToken *rh, 
 
 ScriptToken *Eval_Subscript_Array_Number(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ArrayID arrID = lh->GetArray();
+	ArrayID arrID = lh->GetArrayID();
 	ArrayVar *arr = arrID ? g_ArrayMap.Get(arrID) : NULL;
 
 	if (!arr)
@@ -969,7 +969,7 @@ ScriptToken *Eval_Subscript_Elem_Slice(OperatorType op, ScriptToken *lh, ScriptT
 
 ScriptToken *Eval_Subscript_Array_String(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ArrayID arrID = lh->GetArray();
+	ArrayID arrID = lh->GetArrayID();
 	ArrayVar *arr = arrID ? g_ArrayMap.Get(arrID) : NULL;
 
 	if (!arr)
@@ -989,7 +989,7 @@ ScriptToken *Eval_Subscript_Array_String(OperatorType op, ScriptToken *lh, Scrip
 
 ScriptToken *Eval_Subscript_Array_Slice(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ArrayVar *srcArr = g_ArrayMap.Get(lh->GetArray());
+	ArrayVar *srcArr = g_ArrayMap.Get(lh->GetArrayID());
 	if (srcArr)
 	{
 		ArrayVar *sliceArr = srcArr->MakeSlice(rh->GetSlice(), context->script->GetModIndex());
@@ -1095,7 +1095,7 @@ ScriptToken *Eval_Subscript_String_Slice(OperatorType op, ScriptToken *lh, Scrip
 
 ScriptToken *Eval_MemberAccess(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ArrayID arrID = lh->GetArray();
+	ArrayID arrID = lh->GetArrayID();
 	ArrayVar *arr = arrID ? g_ArrayMap.Get(arrID) : NULL;
 
 	if (!arr)
@@ -1143,7 +1143,7 @@ ScriptToken *Eval_ToString_Form(OperatorType op, ScriptToken *lh, ScriptToken *r
 
 ScriptToken *Eval_ToString_Array(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	const auto arrayId = lh->GetArray();
+	const auto arrayId = lh->GetArrayID();
 	const auto *arrayVar = g_ArrayMap.Get(arrayId);
 	if (arrayVar)
 		return ScriptToken::Create(arrayVar->GetStringRepresentation());
@@ -1163,7 +1163,7 @@ ScriptToken *Eval_In(OperatorType op, ScriptToken *lh, ScriptToken *rh, Expressi
 	{
 		UInt32 iterID = g_ArrayMap.Create(kDataType_String, false, context->script->GetModIndex())->ID();
 
-		ForEachContext con(rh->GetArray(), iterID, Script::eVarType_Array, lh->GetVar());
+		ForEachContext con(rh->GetArrayID(), iterID, Script::eVarType_Array, lh->GetVar());
 		ScriptToken *forEach = ScriptToken::Create(&con);
 
 		return forEach;
@@ -1219,7 +1219,7 @@ ScriptToken *Eval_Dereference(OperatorType op, ScriptToken *lh, ScriptToken *rh,
 	// in other contexts, returns the first element of the array
 	// useful for people using array variables to hold a single value of undetermined type
 
-	ArrayID arrID = lh->GetArray();
+	ArrayID arrID = lh->GetArrayID();
 	if (!arrID)
 	{
 		context->Error("Invalid array access - the array was not initialized. 3");
@@ -1272,7 +1272,7 @@ ScriptToken *Eval_Box_Form(OperatorType op, ScriptToken *lh, ScriptToken *rh, Ex
 ScriptToken *Eval_Box_Array(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, context->script->GetModIndex());
-	arr->SetElementArray(0.0, lh->GetArray());
+	arr->SetElementArray(0.0, lh->GetArrayID());
 	return ScriptToken::CreateArray(arr->ID());
 }
 
@@ -1817,8 +1817,7 @@ void __fastcall ExpressionEvaluatorSetExpectedReturnType(void* expEval, UInt8 re
 void __fastcall ExpressionEvaluatorAssignCommandResultFromElement(void* expEval, NVSEArrayVarInterface::Element& result)
 {
 	auto const eval = reinterpret_cast<ExpressionEvaluator*>(expEval);
-	ScriptToken const resultTok = result;
-	resultTok.AssignResult(*eval);
+	eval->AssignAmbiguousResult(result, result.GetReturnType());
 }
 #endif
 
@@ -3812,7 +3811,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 	case kParamType_Array:
 	{
 		UInt32 *out = va_arg(varArgs, UInt32 *);
-		*out = arg->GetArray();
+		*out = arg->GetArrayID();
 	}
 
 	break;
@@ -5101,7 +5100,7 @@ bool BasicTokenToElem(ScriptToken *token, ArrayElement &elem)
 	else if (basicToken->CanConvertTo(kTokenType_Form))
 		elem.SetFormID(basicToken->GetFormID());
 	else if (basicToken->CanConvertTo(kTokenType_Array))
-		elem.SetArray(basicToken->GetArray());
+		elem.SetArray(basicToken->GetArrayID());
 	else
 		bResult = false;
 

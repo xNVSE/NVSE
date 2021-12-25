@@ -181,6 +181,10 @@ public:
 	UInt8			NumArgs() { return m_numArgsExtracted; }
 	void			SetParams(ParamInfo* newParams)	{	m_params = newParams;	}
 	void			ExpectReturnType(CommandReturnType type) { m_expectedReturnType = type; }
+	
+	template <typename T>
+	void			AssignAmbiguousResult(T &result, CommandReturnType type);
+	
 	void			ToggleErrorSuppression(bool bSuppress);
 	void			PrintStackTrace();
 
@@ -201,6 +205,36 @@ public:
 	UInt8* GetCommandOpcodePosition() const;
 	CommandInfo* GetCommand() const;
 };
+
+template <typename T>
+void ExpressionEvaluator::AssignAmbiguousResult(T &result, CommandReturnType type)
+{
+	switch (type)
+	{
+	case kRetnType_Default:
+		*m_result = result.GetNumber();
+		//should already expect default result.
+		break;
+	case kRetnType_String:
+		AssignToStringVar(m_params, m_scriptData, ThisObj(), ContainingObj(), script,
+			eventList, m_result, m_opcodeOffsetPtr, result.GetString());
+		ExpectReturnType(kRetnType_String);
+		break;
+	case kRetnType_Form:
+	{
+		UInt32* refResult = (UInt32*)m_result;
+		*refResult = result.GetFormID();
+		ExpectReturnType(kRetnType_Form);
+		break;
+	}
+	case kRetnType_Array:
+		*m_result = result.GetArrayID();
+		ExpectReturnType(kRetnType_Array);
+		break;
+	default:
+		ShowRuntimeError(script, "Function call returned unexpected token type %d", type);
+	}
+}
 
 bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem);
 

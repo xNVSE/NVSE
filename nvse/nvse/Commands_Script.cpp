@@ -685,7 +685,7 @@ bool Cmd_DispatchEvent_Execute(COMMAND_ARGS)
 	{
 		if (!eval.Arg(1)->CanConvertTo(kTokenType_Array))
 			return true;
-		argsArrayId = eval.Arg(1)->GetArray();
+		argsArrayId = eval.Arg(1)->GetArrayID();
 
 		if (eval.NumArgs() > 2)
 			senderName = eval.Arg(2)->GetString();

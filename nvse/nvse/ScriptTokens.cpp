@@ -281,23 +281,23 @@ ScriptToken::ScriptToken(NVSEArrayVarInterface::Element& elem) : refIdx(0), vari
 	{
 	case NVSEArrayVarInterface::Element::kType_Numeric:
 		type = kTokenType_Number;
-		value.num = elem.Number();
+		value.num = elem.GetNumber();
 		break;
 	case NVSEArrayVarInterface::Element::kType_String:
 	{
 		type = kTokenType_String;
-		auto str_ = elem.String();
+		auto str_ = elem.GetString();
 		value.str = (str_ && *str_) ? CopyString(str_) : nullptr;
 		break;
 	}
 	case NVSEArrayVarInterface::Element::kType_Array:
-		value.arrID = reinterpret_cast<ArrayID>(elem.Array());
+		value.arrID = reinterpret_cast<ArrayID>(elem.GetArray());
 		type = (!value.arrID || g_ArrayMap.Get(value.arrID)) ? kTokenType_Array : kTokenType_Invalid;
 		break;
 	case NVSEArrayVarInterface::Element::kType_Form:
 	{
 		type = kTokenType_Form;
-		auto const form = elem.Form();
+		auto const form = elem.GetTESForm();
 		value.formID = form ? form->refID : 0;
 		break;
 	}
@@ -895,7 +895,7 @@ Operator *ScriptToken::GetOperator() const
 }
 
 #if RUNTIME
-ArrayID ScriptToken::GetArray() const
+ArrayID ScriptToken::GetArrayID() const
 {
 	if (type == kTokenType_Array)
 		return value.arrID;
@@ -912,7 +912,7 @@ ArrayID ScriptToken::GetArray() const
 
 ArrayVar *ScriptToken::GetArrayVar()
 {
-	return g_ArrayMap.Get(GetArray());
+	return g_ArrayMap.Get(GetArrayID());
 }
 
 ScriptLocal *ScriptToken::GetVar() const
@@ -933,30 +933,30 @@ StringVar* ScriptToken::GetStringVar() const
 	return nullptr;
 }
 
-void ScriptToken::AssignResult(ExpressionEvaluator &eval) const
+CommandReturnType ScriptToken::GetReturnType() const
 {
 	if (CanConvertTo(kTokenType_Number)) {
-		*eval.m_result = GetNumber();
+		return kRetnType_Default;
 	}
-	else if (CanConvertTo(kTokenType_String))
+	if (CanConvertTo(kTokenType_String))
 	{
-		AssignToStringVar(eval.m_params, eval.m_scriptData, eval.ThisObj(), eval.ContainingObj(), eval.script,
-		                  eval.eventList, eval.m_result, eval.m_opcodeOffsetPtr, GetString());
-		eval.ExpectReturnType(kRetnType_String);
+		return kRetnType_String;
 	}
-	else if (CanConvertTo(kTokenType_Form))
+	if (CanConvertTo(kTokenType_Form))
 	{
-		UInt32* refResult = (UInt32*)eval.m_result;
-		*refResult = GetFormID();
-		eval.ExpectReturnType(kRetnType_Form);
+		return kRetnType_Form;
 	}
-	else if (CanConvertTo(kTokenType_Array))
+	if (CanConvertTo(kTokenType_Array))
 	{
-		*eval.m_result = GetArray();
-		eval.ExpectReturnType(kRetnType_Array);
+		return kRetnType_Array;
 	}
-	else
-		ShowRuntimeError(eval.script, "Function call returned unexpected token type %d", Type());
+	return kRetnType_Ambiguous;
+}
+
+void ScriptToken::AssignResult(ExpressionEvaluator &eval) const
+{
+	eval.AssignAmbiguousResult(*this, GetReturnType());
+
 }
 
 bool ScriptToken::ResolveVariable()
@@ -1221,7 +1221,7 @@ const char *__fastcall ScriptTokenGetString(PluginScriptToken *scrToken)
 
 UInt32 __fastcall ScriptTokenGetArrayID(PluginScriptToken *scrToken)
 {
-	return reinterpret_cast<ScriptToken *>(scrToken)->GetArray();
+	return reinterpret_cast<ScriptToken *>(scrToken)->GetArrayID();
 }
 
 UInt32 __fastcall ScriptTokenGetActorValue(PluginScriptToken *scrToken)
@@ -1257,7 +1257,7 @@ void __fastcall ScriptTokenGetArrayElement(PluginScriptToken* scrToken, NVSEArra
 		outElem = token->GetString();
 	}
 	else if (token->CanConvertTo(kTokenType_Array))
-		outElem = NVSEArrayVarInterface::Element(reinterpret_cast<NVSEArrayVarInterface::Array*>(token->GetArray()));
+		outElem = NVSEArrayVarInterface::Element(reinterpret_cast<NVSEArrayVarInterface::Array*>(token->GetArrayID()));
 	else if (token->CanConvertTo(kTokenType_Form))
 		outElem = LookupFormByID(token->GetFormID());
 	else if (token->CanConvertTo(kTokenType_Number))
@@ -1552,7 +1552,7 @@ ScriptToken *ScriptToken::ToBasicToken()
 	if (CanConvertTo(kTokenType_String))
 		return Create(GetString());
 	else if (CanConvertTo(kTokenType_Array))
-		return CreateArray(GetArray());
+		return CreateArray(GetArrayID());
 	else if (CanConvertTo(kTokenType_Form))
 		return CreateForm(GetFormID());
 	else if (CanConvertTo(kTokenType_Number))
@@ -1699,7 +1699,7 @@ bool ArrayElementToken::GetBool() const
 	return false;
 }
 
-ArrayID ArrayElementToken::GetArray() const
+ArrayID ArrayElementToken::GetArrayID() const
 {
 	ArrayID out = 0;
 	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
