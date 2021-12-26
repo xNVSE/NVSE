@@ -4713,6 +4713,8 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 				operands.Pop();
 			}
 
+			//todo: fix bug with ambiguous return types: .eval function must NOT be cached for those.
+	
 			ScriptToken *opResult;
 			if (entry.eval == nullptr)
 			{
@@ -5035,6 +5037,22 @@ ScriptToken *Operator::Evaluate(ScriptToken *lhs, ScriptToken *rhs, ExpressionEv
 			{
 				shouldCache = false;
 			}
+
+			auto const isOperandResultOfAmbiguousFunction = [](ScriptToken* operand) -> bool
+			{
+				if (!operand) return false;
+				if (!operand->context) return false;
+				if (auto const func = operand->context->GetCommand())
+				{
+					return g_scriptCommands.GetReturnType(func) == kRetnType_Ambiguous;
+				}
+				return false;
+			};
+
+			//Cannot cache eval for ambiguous return types; function can return new type, 
+			if (isOperandResultOfAmbiguousFunction(lhs) || isOperandResultOfAmbiguousFunction(rhs))
+				shouldCache = false;
+			
 			if (shouldCache)
 			{
 				cacheEval = rule->eval;
