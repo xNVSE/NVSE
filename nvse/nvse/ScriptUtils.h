@@ -206,6 +206,7 @@ public:
 	CommandInfo* GetCommand() const;
 };
 
+#if RUNTIME
 template <typename T>
 void ExpressionEvaluator::AssignAmbiguousResult(T &result, CommandReturnType type)
 {
@@ -235,6 +236,7 @@ void ExpressionEvaluator::AssignAmbiguousResult(T &result, CommandReturnType typ
 		ShowRuntimeError(script, "Function call returned unexpected token type %d", type);
 	}
 }
+#endif
 
 bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem);
 
