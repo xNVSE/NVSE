@@ -4731,8 +4731,6 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 				lhOperand = operands.Top();
 				operands.Pop();
 			}
-
-			//todo: fix bug with ambiguous return types: .eval function must NOT be cached for those.
 	
 			ScriptToken *opResult;
 			if (entry.eval == nullptr)
