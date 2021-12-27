@@ -349,7 +349,7 @@ struct ScriptToken
 	ScriptToken& operator=(ScriptToken&& other) noexcept;
 
 	bool cached = false;
-	CommandReturnType returnType;
+	CommandReturnType returnType = kRetnType_Default;
 	UInt32 cmdOpcodeOffset;
 	ExpressionEvaluator *context = nullptr;
 	UInt16 varIdx;

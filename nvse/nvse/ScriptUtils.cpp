@@ -4409,46 +4409,59 @@ ScriptToken *ExpressionEvaluator::ExecuteCommandToken(ScriptToken const *token, 
 		return nullptr;
 	}
 
-	if (retnType == kRetnType_Ambiguous || retnType == kRetnType_ArrayIndex) // return type ambiguous, cmd will inform us of type to expect
+
+	bool const retnTypeAmb = retnType == kRetnType_Ambiguous || retnType == kRetnType_ArrayIndex;
+	if (retnTypeAmb) // return type ambiguous, cmd will inform us of type to expect
 	{
 		retnType = GetExpectedReturnType();
 	}
-
+	
+	ScriptToken* tokRes = nullptr;
 	switch (retnType)
 	{
 	case kRetnType_Default:
 	{
-		auto *tokenResult = ScriptToken::Create(cmdResult);
+		tokRes = ScriptToken::Create(cmdResult);
 		// since there are no return types in most commands, we check if it's possible that it returned a form
 		if (*(reinterpret_cast<UInt32 *>(&cmdResult) + 1) == 0 && LookupFormByID((*reinterpret_cast<UInt32 *>(&cmdResult))))
-			tokenResult->formOrNumber = true; // Can be either
-		return tokenResult;
+			tokRes->formOrNumber = true; // Can be either
+		break;
 	}
 	case kRetnType_Form:
 	{
-		return ScriptToken::CreateForm(*reinterpret_cast<UInt32 *>(&cmdResult));
+		tokRes = ScriptToken::CreateForm(*reinterpret_cast<UInt32 *>(&cmdResult));
+		break;
 	}
 	case kRetnType_String:
 	{
 		StringVar *strVar = g_StringMap.Get(cmdResult);
 		if (!strVar)
 			Error("Failed to resolve string return result (string ID was %g)", cmdResult);
-		return ScriptToken::Create(nullptr, strVar);
+		tokRes = ScriptToken::Create(nullptr, strVar);
+		break;
 	}
 	case kRetnType_Array:
 	{
 		// ###TODO: cmds can return arrayID '0', not necessarily an error, does this support that?
 		if (g_ArrayMap.Get(cmdResult) || !cmdResult)
 		{
-			return ScriptToken::CreateArray(cmdResult);
+			tokRes = ScriptToken::CreateArray(cmdResult);
 		}
-		Error("A command returned an invalid array");
+		else
+			Error("A command returned an invalid array");
 		break;
 	}
 	default:
 		Error("Unknown command return type %d while executing command in ExpressionEvaluator::Evaluate()", retnType);
 	}
-	return nullptr;
+
+	if (tokRes && retnTypeAmb)
+	{
+		//Inform that this ScriptToken is the result of an ambiguous function call.
+		tokRes->returnType = kRetnType_Ambiguous;	
+	}
+	
+	return tokRes;
 }
 
 using CachedTokenIter = Vector<TokenCacheEntry>::Iterator;
@@ -5047,12 +5060,7 @@ ScriptToken *Operator::Evaluate(ScriptToken *lhs, ScriptToken *rhs, ExpressionEv
 			auto const isOperandResultOfAmbiguousFunction = [](ScriptToken* operand) -> bool
 			{
 				if (!operand) return false;
-				if (!operand->context) return false;
-				if (auto const func = operand->context->GetCommand())
-				{
-					return g_scriptCommands.GetReturnType(func) == kRetnType_Ambiguous;
-				}
-				return false;
+				return operand->returnType == kRetnType_Ambiguous;
 			};
 
 			//Cannot cache eval for ambiguous return types; function can return new type, requiring new eval function overload.
