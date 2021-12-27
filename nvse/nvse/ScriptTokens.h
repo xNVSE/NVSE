@@ -350,7 +350,7 @@ struct ScriptToken
 	bool cached = false;
 	CommandReturnType returnType;
 	UInt32 cmdOpcodeOffset;
-	ExpressionEvaluator *context;
+	ExpressionEvaluator *context = nullptr;
 	UInt16 varIdx;
 	OperatorType shortCircuitParentType;
 	UInt8 shortCircuitDistance;

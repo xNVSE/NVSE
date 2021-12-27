@@ -5049,7 +5049,7 @@ ScriptToken *Operator::Evaluate(ScriptToken *lhs, ScriptToken *rhs, ExpressionEv
 				return false;
 			};
 
-			//Cannot cache eval for ambiguous return types; function can return new type, 
+			//Cannot cache eval for ambiguous return types; function can return new type, requiring new eval function overload.
 			if (isOperandResultOfAmbiguousFunction(lhs) || isOperandResultOfAmbiguousFunction(rhs))
 				shouldCache = false;
 			
