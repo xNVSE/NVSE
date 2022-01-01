@@ -4479,13 +4479,15 @@ void ParseShortCircuit(CachedTokens &cachedTokens)
 		ScriptToken &token = *curr->token;
 		TokenCacheEntry *grandparent = curr;
 		TokenCacheEntry *furthestParent;
-
+		TokenCacheEntry* nextNeighbor;
 		do
 		{
 			// Find last "parent" operator of same type. E.g `0 1 && 1 && 1 &&` should jump straight to end of expression.
 			furthestParent = grandparent;
 			grandparent = GetOperatorParent(grandparent, end);
-		} while (grandparent < end && grandparent->token->IsLogicalOperator() && (furthestParent == curr || grandparent->token->GetOperator() == furthestParent->token->GetOperator()));
+			nextNeighbor = furthestParent + 1;
+		} while (grandparent < end && grandparent->token->IsLogicalOperator() && (furthestParent == curr || 
+			grandparent->token->GetOperator() == furthestParent->token->GetOperator() && (nextNeighbor == end || !nextNeighbor->token->IsOperator())));
 
 		if (furthestParent != curr && furthestParent->token->IsLogicalOperator())
 		{
