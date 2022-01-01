@@ -3704,7 +3704,8 @@ public:
 	tList<StageInfo>			stages;						// 044
 	tList<LocalVariableOrObjectivePtr>	lVarOrObjectives;	// 04C	So: this list would contain both Objectives and LocalVariables !
 		// That seems very strange but still, looking at Get/SetObjective... and ShowQuestVars there's no doubt.
-	tList<Condition*>			conditions;					// 054
+	
+	tList<Condition*>			conditions;					// 054					
 	ScriptEventList*			scriptEventList;			// 05C
 	UInt8						currentStage;				// 060
 	UInt8						pad061[3];					// 061

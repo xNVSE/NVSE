@@ -282,7 +282,10 @@ ScriptToken *Eval_Logical(OperatorType op, ScriptToken *lh, ScriptToken *rh, Exp
 	switch (op)
 	{
 	case kOpType_LogicalAnd:
-		return ScriptToken::Create(lh->GetBool() && rh->GetBool());
+	{
+		auto const rhNum = rh->GetNumber();
+		return ScriptToken::Create(lh->GetBool() && rhNum ? rhNum : false);
+	}
 	case kOpType_LogicalOr:
 		return ScriptToken::Create(lh->GetBool() || rh->GetBool());
 	default:
@@ -1804,6 +1807,11 @@ UInt8 __fastcall ExpressionEvaluatorGetNumArgs(void *expEval)
 PluginScriptToken *__fastcall ExpressionEvaluatorGetNthArg(void *expEval, UInt32 argIdx)
 {
 	return reinterpret_cast<PluginScriptToken *>(reinterpret_cast<ExpressionEvaluator *>(expEval)->Arg(argIdx));
+}
+
+void __fastcall ExpressionEvaluatorSetExpectedReturnType(void* expEval, UInt8 retnType)
+{
+	reinterpret_cast<ExpressionEvaluator*>(expEval)->ExpectReturnType(static_cast<CommandReturnType>(retnType));
 }
 #endif
 
