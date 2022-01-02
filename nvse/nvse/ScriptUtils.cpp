@@ -2796,8 +2796,16 @@ ScriptToken *ExpressionParser::ParseLambda()
 	lambdaScriptBuf->info.unusedVariableCount = varCount;
 	lambdaScriptBuf->info.numRefs = numRefs;
 
-	lambdaScriptBuf->scriptName.Set(FormatString("%sLambdaAtLine%d", m_scriptBuf->scriptName.CStr(), m_lineBuf->lineNumber).c_str());
-	lambdaScriptBuf->curLineNumber = m_lineBuf->lineNumber;
+	// count number of new lines before lambda for accurate line number
+	const auto textBefore = std::string(m_lineBuf->paramText, beginData - m_lineBuf->paramText);
+	auto numNewLines = ra::count(textBefore, '\n');
+	if (!this->appliedMacros_.contains(MacroType::OneLineLambda))
+		numNewLines--;
+
+	lambdaScriptBuf->curLineNumber = m_lineBuf->lineNumber + numNewLines;
+	lambdaScriptBuf->scriptName.Set(
+		FormatString("%sLambdaAtLine%d", m_scriptBuf->scriptName.CStr(), lambdaScriptBuf->curLineNumber).c_str()
+	);
 
 	if (const auto iter = appliedMacros_.find(MacroType::OneLineLambda); iter != appliedMacros_.end())
 	{

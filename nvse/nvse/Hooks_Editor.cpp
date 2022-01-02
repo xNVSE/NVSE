@@ -634,6 +634,8 @@ bool HandleLineBufMacros(ScriptLineBuffer* line, ScriptBuffer* buffer)
 	return true;
 }
 
+static UInt32 g_nextLineNumberIncrement = 0;
+
 // Expand ScriptLineBuffer to allow multiline expressions with parenthesis
 int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 {
@@ -660,6 +662,11 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 	auto numNewLinesInParenthesis = 0;
 	auto inStringLiteral = false;
 	auto inMultilineComment = false;
+
+	// in GECK code: `scriptLineBuf->lineNumber = scriptBuf->curLineNumber + 1;` before this function is called
+	// must be done here for the last line due to that.
+	lineBuf->lineNumber += g_nextLineNumberIncrement;
+	g_nextLineNumberIncrement = 0;
 
 	// skip all spaces and tabs in the beginning
 	while (isspace(*curScriptText))
@@ -739,7 +746,8 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 						--lineBuf->paramTextLen;
 					}
 					lineBuf->paramText[lineBuf->paramTextLen] = '\0';
-					lineBuf->lineNumber += numNewLinesInParenthesis;
+					//lineBuf->lineNumber += numNewLinesInParenthesis;
+					g_nextLineNumberIncrement = numNewLinesInParenthesis;
 					if (!HandleLineBufMacros(lineBuf, scriptBuf))
 						return 0;
 					return curScriptText - oldScriptText;
