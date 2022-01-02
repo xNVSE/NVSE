@@ -352,9 +352,9 @@ struct ScriptToken
 	UInt32 cmdOpcodeOffset;
 	ExpressionEvaluator *context;
 	UInt16 varIdx;
-	OperatorType shortCircuitParentType;
-	UInt8 shortCircuitDistance;
-	UInt8 shortCircuitStackOffset;
+	OperatorType shortCircuitParentType = kOpType_Max;
+	UInt8 shortCircuitDistance = 0;
+	UInt8 shortCircuitStackOffset = 0;
 	bool formOrNumber = false;
 
 #if _DEBUG

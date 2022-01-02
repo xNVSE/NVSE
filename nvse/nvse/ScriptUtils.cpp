@@ -4505,12 +4505,6 @@ void ParseShortCircuit(CachedTokens &cachedTokens)
 			auto *parent = GetOperatorParent(curr, end);
 			token.shortCircuitStackOffset = curr + 1 == parent ? 2 : 1;
 		}
-		else
-		{
-			token.shortCircuitParentType = g_noShortCircuit;
-			token.shortCircuitDistance = 0;
-			token.shortCircuitStackOffset = 0;
-		}
 	}
 }
 
