@@ -691,8 +691,8 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 			inMultilineComment = false;
 			curScriptText += 2;
 			continue;
-
 		}
+
 		const auto curChar = *curScriptText++;
 		if (curChar == 0)
 		{
@@ -702,7 +702,11 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 				return lineError("Mismatched quotes. A string literal was not closed.");
 		}
 		if (inMultilineComment)
+		{
+			if (curChar == '\n')
+				++lineBuf->lineNumber;
 			continue;
+		}
 		switch (curChar)
 		{
 			case '(':
