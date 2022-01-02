@@ -811,6 +811,7 @@ void PatchDefaultCommandParser()
 	// Allow multiline expressions with parenthesis
 	WriteRelJump(0x5C5830, UInt32(ParseNextLine));
 }
+
 #else
 
 const auto* g_arrayVar = "array_var";
@@ -862,3 +863,29 @@ void PatchGameCommandParser()
 }
 
 #endif
+
+constexpr bool isEditor()
+{
+#if EDITOR
+	return true;
+#else
+	return false;
+#endif
+}
+
+bool __fastcall retnTrue()
+{
+	return true;
+}
+
+void PatchDisable_ScriptBufferValidateRefVars(bool disable)
+{
+	if (disable)
+	{
+		WriteRelCall(isEditor() ? 0x5C97CF : 0x5AED78, retnTrue);
+	}
+	else
+	{
+		WriteRelCall(isEditor() ? 0x5C97CF : 0x5AED78, isEditor() ? 0x5C5980 : 0x5AFA50);
+	}
+}

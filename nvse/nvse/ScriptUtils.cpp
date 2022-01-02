@@ -20,6 +20,7 @@
 #include <utility>
 #include <ranges>
 
+#include "Hooks_Editor.h"
 #include "ScriptAnalyzer.h"
 
 std::map<std::pair<Script*, std::string>, Script::VariableType> g_variableDefinitionsMap;
@@ -2834,9 +2835,9 @@ ScriptToken *ExpressionParser::ParseLambda()
 
 	// lambdaScriptBuf->currentScript = scriptLambda.get();
 	g_currentScriptStack.push(scriptLambda.get());
-
+	PatchDisable_ScriptBufferValidateRefVars(true);
 	const auto compileResult = scriptLambda->Compile(lambdaScriptBuf.get()); // CompileScript
-
+	PatchDisable_ScriptBufferValidateRefVars(false);
 	g_currentScriptStack.pop();
 
 	*beginEndOffset = savedOffset;
@@ -3116,7 +3117,8 @@ bool ValidateVariable(const std::string &varName, Script::VariableType varType, 
 	return true;
 }
 
-VariableInfo* CreateVariable(Script* script, ScriptBuffer* scriptBuf, const std::string& varName, Script::VariableType varType, const std::function<void(const std::string&)>& printCompileError)
+VariableInfo* CreateVariable(Script* script, ScriptBuffer* scriptBuf, const std::string& varName, Script::VariableType varType, 
+	const std::function<void(const std::string&)>& printCompileError)
 {
 	if (!script)
 		return nullptr;
