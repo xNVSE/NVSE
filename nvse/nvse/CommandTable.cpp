@@ -33,6 +33,7 @@
 #include "Commands_Array.h"
 #include "Commands_String.h"
 #include "Commands_Algohol.h"
+#include "Commands_Quest.h"
 
 CommandTable g_consoleCommands;
 CommandTable g_scriptCommands;
@@ -607,6 +608,8 @@ const char *SimpleStringForParamType(UInt32 paramType)
 	case kParamType_ImageSpace:
 		return "ref";
 	case kParamType_EncounterZone:
+		return "ref";
+	case kParamType_IdleForm:
 		return "ref";
 	case kParamType_Message:
 		return "ref";
@@ -1820,7 +1823,12 @@ void CommandTable::AddCommandsV6()
 	// 6.2 beta 05
 	ADD_CMD(ForEachInList);
 	ADD_CMD_RET(Ternary, kRetnType_Ambiguous);
-  ADD_CMD(ModUIFloat);
+	ADD_CMD(ModUIFloat);
+	ADD_CMD(GetQuestObjectiveCount);
+	ADD_CMD_RET(GetNthQuestObjective, kRetnType_Form);
+	ADD_CMD_RET(GetCurrentObjective, kRetnType_Form);
+	ADD_CMD(PrintActiveTile);
+	ADD_CMD(SetCurrentQuest);
 }
 
 namespace PluginAPI

@@ -209,6 +209,8 @@ void __fastcall ExpressionEvaluatorDestroy(void *expEval);
 bool __fastcall ExpressionEvaluatorExtractArgs(void *expEval);
 UInt8 __fastcall ExpressionEvaluatorGetNumArgs(void *expEval);
 PluginScriptToken* __fastcall ExpressionEvaluatorGetNthArg(void *expEval, UInt32 argIdx);
+void __fastcall ExpressionEvaluatorSetExpectedReturnType(void* expEval, UInt8 retnType);
+
 
 VariableInfo* CreateVariable(Script* script, ScriptBuffer* scriptBuf, const std::string& varName, Script::VariableType varType, const std::function<void(const std::string&)>& printCompileError);
 

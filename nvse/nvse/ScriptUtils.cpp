@@ -20,6 +20,7 @@
 #include <utility>
 #include <ranges>
 
+#include "Hooks_Editor.h"
 #include "ScriptAnalyzer.h"
 
 std::map<std::pair<Script*, std::string>, Script::VariableType> g_variableDefinitionsMap;
@@ -282,7 +283,10 @@ ScriptToken *Eval_Logical(OperatorType op, ScriptToken *lh, ScriptToken *rh, Exp
 	switch (op)
 	{
 	case kOpType_LogicalAnd:
-		return ScriptToken::Create(lh->GetBool() && rh->GetBool());
+	{
+		auto const rhNum = rh->GetNumber();
+		return ScriptToken::Create(lh->GetBool() && rhNum ? rhNum : false);
+	}
 	case kOpType_LogicalOr:
 		return ScriptToken::Create(lh->GetBool() || rh->GetBool());
 	default:
@@ -1805,6 +1809,11 @@ PluginScriptToken *__fastcall ExpressionEvaluatorGetNthArg(void *expEval, UInt32
 {
 	return reinterpret_cast<PluginScriptToken *>(reinterpret_cast<ExpressionEvaluator *>(expEval)->Arg(argIdx));
 }
+
+void __fastcall ExpressionEvaluatorSetExpectedReturnType(void* expEval, UInt8 retnType)
+{
+	reinterpret_cast<ExpressionEvaluator*>(expEval)->ExpectReturnType(static_cast<CommandReturnType>(retnType));
+}
 #endif
 
 // ExpressionParser
@@ -2788,8 +2797,16 @@ ScriptToken *ExpressionParser::ParseLambda()
 	lambdaScriptBuf->info.unusedVariableCount = varCount;
 	lambdaScriptBuf->info.numRefs = numRefs;
 
-	lambdaScriptBuf->scriptName.Set(FormatString("%sLambdaAtLine%d", m_scriptBuf->scriptName.CStr(), m_lineBuf->lineNumber).c_str());
-	lambdaScriptBuf->curLineNumber = m_lineBuf->lineNumber;
+	// count number of new lines before lambda for accurate line number
+	const auto textBefore = std::string(m_lineBuf->paramText, beginData - m_lineBuf->paramText);
+	auto numNewLines = ra::count(textBefore, '\n');
+	if (!this->appliedMacros_.contains(MacroType::OneLineLambda))
+		numNewLines--;
+
+	lambdaScriptBuf->curLineNumber = m_lineBuf->lineNumber + numNewLines;
+	lambdaScriptBuf->scriptName.Set(
+		FormatString("%sLambdaAtLine%d", m_scriptBuf->scriptName.CStr(), lambdaScriptBuf->curLineNumber).c_str()
+	);
 
 	if (const auto iter = appliedMacros_.find(MacroType::OneLineLambda); iter != appliedMacros_.end())
 	{
@@ -2818,9 +2835,9 @@ ScriptToken *ExpressionParser::ParseLambda()
 
 	// lambdaScriptBuf->currentScript = scriptLambda.get();
 	g_currentScriptStack.push(scriptLambda.get());
-
+	PatchDisable_ScriptBufferValidateRefVars(true);
 	const auto compileResult = scriptLambda->Compile(lambdaScriptBuf.get()); // CompileScript
-
+	PatchDisable_ScriptBufferValidateRefVars(false);
 	g_currentScriptStack.pop();
 
 	*beginEndOffset = savedOffset;
@@ -3100,7 +3117,8 @@ bool ValidateVariable(const std::string &varName, Script::VariableType varType, 
 	return true;
 }
 
-VariableInfo* CreateVariable(Script* script, ScriptBuffer* scriptBuf, const std::string& varName, Script::VariableType varType, const std::function<void(const std::string&)>& printCompileError)
+VariableInfo* CreateVariable(Script* script, ScriptBuffer* scriptBuf, const std::string& varName, Script::VariableType varType, 
+	const std::function<void(const std::string&)>& printCompileError)
 {
 	if (!script)
 		return nullptr;
@@ -4264,6 +4282,9 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 						case kParamType_EncounterZone:
 							typeToMatch = kFormType_BGSEncounterZone;
 							break;
+						case kParamType_IdleForm:
+							typeToMatch = kFormType_TESIdleForm;
+							break;
 						case kParamType_Message:
 							typeToMatch = kFormType_BGSMessage;
 							break;
@@ -4356,27 +4377,30 @@ ScriptToken *ExpressionEvaluator::ExecuteCommandToken(ScriptToken const *token, 
 				Error("Attempting to call a function on a NULL reference");
 				return nullptr;
 			}
-			if (!callingRef->form->GetIsReference())
+			callingObj = DYNAMIC_CAST(callingRef->form, TESForm, TESObjectREFR);
+			if (!callingObj)
 			{
 				Error("Attempting to call a function on a base object (this must be a reference)");
 				return nullptr;
 			}
-			callingObj = DYNAMIC_CAST(callingRef->form, TESForm, TESObjectREFR);
 		}
 	}
 	else if (stackRef)
 	{
+		// Used in chained dot syntax (https://geckwiki.com/index.php?title=Chained_dot_syntax)
 		callingObj = stackRef;
+	}
+
+	if (cmdInfo->needsParent && !callingObj)
+	{
+		Error("Function %s requires a calling reference but none or NULL was provided", cmdInfo->longName);
+		return nullptr;
 	}
 
 	TESObjectREFR *contObj = callingRef ? NULL : m_containingObj;
 	double cmdResult = 0;
 
-	//UInt32 numBytesRead = 0;
-	//UInt8* scrData = Data();
-	//UInt16 argsLen = Read16();
 
-	//*m_opcodeOffsetPtr = m_data - m_scriptData;
 	UInt32 opcodeOffset = token->cmdOpcodeOffset;
 	CommandReturnType retnType = token->returnType;
 
@@ -4473,13 +4497,15 @@ void ParseShortCircuit(CachedTokens &cachedTokens)
 		ScriptToken &token = *curr->token;
 		TokenCacheEntry *grandparent = curr;
 		TokenCacheEntry *furthestParent;
-
+		TokenCacheEntry* nextNeighbor;
 		do
 		{
 			// Find last "parent" operator of same type. E.g `0 1 && 1 && 1 &&` should jump straight to end of expression.
 			furthestParent = grandparent;
 			grandparent = GetOperatorParent(grandparent, end);
-		} while (grandparent < end && grandparent->token->IsLogicalOperator() && (furthestParent == curr || grandparent->token->GetOperator() == furthestParent->token->GetOperator()));
+			nextNeighbor = furthestParent + 1;
+		} while (grandparent < end && grandparent->token->IsLogicalOperator() && (furthestParent == curr || 
+			grandparent->token->GetOperator() == furthestParent->token->GetOperator() && (nextNeighbor == end || !nextNeighbor->token->IsOperator())));
 
 		if (furthestParent != curr && furthestParent->token->IsLogicalOperator())
 		{
@@ -4488,12 +4514,6 @@ void ParseShortCircuit(CachedTokens &cachedTokens)
 
 			auto *parent = GetOperatorParent(curr, end);
 			token.shortCircuitStackOffset = curr + 1 == parent ? 2 : 1;
-		}
-		else
-		{
-			token.shortCircuitParentType = g_noShortCircuit;
-			token.shortCircuitDistance = 0;
-			token.shortCircuitStackOffset = 0;
 		}
 	}
 }
@@ -4635,7 +4655,7 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 	if (!cachePtr)
 		return nullptr;
 	auto& cache = *cachePtr;
-#if _DEBUG && 0
+#if _DEBUG
 	g_curLineText = this->GetLineText(cache, nullptr);
 #endif
 	OperandStack operands;

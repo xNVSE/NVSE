@@ -245,3 +245,15 @@ const char * TraitIDToName(int id)
 
 void Debug_DumpTileImages(void) {};
 
+
+std::string Tile::GetQualifiedName()
+{
+	std::string qualifiedName;
+	//if (parent && !parent->GetFloatValue(kTileValue_class, &parentClass))	// i.e., parent is not a menu
+	if (parent)
+		qualifiedName = parent->GetQualifiedName() + "\\";
+
+	qualifiedName += name.m_data;
+
+	return qualifiedName;
+}
