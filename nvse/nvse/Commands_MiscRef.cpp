@@ -469,12 +469,17 @@ struct RefMatcherItem: IncludeTakenMatcher, DistanceMatcher
 			case kFormType_TESAmmo:
 			case kFormType_TESKey:
 			case kFormType_AlchemyItem:
+			case kFormType_BGSNote:
 			case kFormType_TESObjectARMA:
+			case kFormType_TESObjectIMOD:
+			case kFormType_TESCasinoChips:
+			case kFormType_TESCaravanCard:
+			case kFormType_TESCaravanMoney:
 				break;
 
 			case kFormType_TESObjectLIGH:
 				if (TESObjectLIGH* light = DYNAMIC_CAST(refr->baseForm, TESForm, TESObjectLIGH))
-					if (light->icon.ddsPath.m_dataLen)	//temp hack until I find canCarry flag on TESObjectLIGH
+					if (light->lightFlags & 2)
 						break;
 			default:
 				return false;
