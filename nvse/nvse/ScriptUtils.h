@@ -233,7 +233,7 @@ void ExpressionEvaluator::AssignAmbiguousResult(T &result, CommandReturnType typ
 		ExpectReturnType(kRetnType_Array);
 		break;
 	default:
-		ShowRuntimeError(script, "Function call returned unexpected token type %d", type);
+		Error("Function call returned unexpected return type %d", type);
 	}
 }
 #endif
