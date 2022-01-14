@@ -181,6 +181,10 @@ public:
 	UInt8			NumArgs() { return m_numArgsExtracted; }
 	void			SetParams(ParamInfo* newParams)	{	m_params = newParams;	}
 	void			ExpectReturnType(CommandReturnType type) { m_expectedReturnType = type; }
+	
+	template <typename T>
+	void			AssignAmbiguousResult(T &result, CommandReturnType type);
+	
 	void			ToggleErrorSuppression(bool bSuppress);
 	void			PrintStackTrace();
 
@@ -202,14 +206,49 @@ public:
 	CommandInfo* GetCommand() const;
 };
 
+#if RUNTIME
+template <typename T>
+void ExpressionEvaluator::AssignAmbiguousResult(T &result, CommandReturnType type)
+{
+	switch (type)
+	{
+	case kRetnType_Default:
+		*m_result = result.GetNumber();
+		//should already expect default result.
+		break;
+	case kRetnType_String:
+		AssignToStringVar(m_params, m_scriptData, ThisObj(), ContainingObj(), script,
+			eventList, m_result, m_opcodeOffsetPtr, result.GetString());
+		ExpectReturnType(kRetnType_String);
+		break;
+	case kRetnType_Form:
+	{
+		UInt32* refResult = (UInt32*)m_result;
+		*refResult = result.GetFormID();
+		ExpectReturnType(kRetnType_Form);
+		break;
+	}
+	case kRetnType_Array:
+		*m_result = result.GetArrayID();
+		ExpectReturnType(kRetnType_Array);
+		break;
+	default:
+		Error("Function call returned unexpected return type %d", type);
+	}
+}
+#endif
+
 bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem);
 
+#if RUNTIME
 void* __stdcall ExpressionEvaluatorCreate(COMMAND_ARGS);
 void __fastcall ExpressionEvaluatorDestroy(void *expEval);
 bool __fastcall ExpressionEvaluatorExtractArgs(void *expEval);
 UInt8 __fastcall ExpressionEvaluatorGetNumArgs(void *expEval);
 PluginScriptToken* __fastcall ExpressionEvaluatorGetNthArg(void *expEval, UInt32 argIdx);
 void __fastcall ExpressionEvaluatorSetExpectedReturnType(void* expEval, UInt8 retnType);
+void __fastcall ExpressionEvaluatorAssignCommandResultFromElement(void* expEval, NVSEArrayVarInterface::Element &result);
+#endif
 
 
 VariableInfo* CreateVariable(Script* script, ScriptBuffer* scriptBuf, const std::string& varName, Script::VariableType varType, const std::function<void(const std::string&)>& printCompileError);
