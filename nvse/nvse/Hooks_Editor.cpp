@@ -561,7 +561,7 @@ std::vector g_lineMacros =
 		if (arrLeftBracketPos != std::string::npos)
 		{
 			const auto arrRightBracketPos = line.find_first_of(']');
-			if (arrRightBracketPos > arrLeftBracketPos)
+			if (arrRightBracketPos != std::string::npos && arrRightBracketPos > arrLeftBracketPos)
 			{
 				const auto end =line.begin() + arrRightBracketPos;
 				line.erase(std::remove_if(line.begin() + arrLeftBracketPos, end, isspace), end);
