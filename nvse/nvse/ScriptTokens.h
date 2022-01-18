@@ -236,10 +236,10 @@ struct ScriptToken
 #if RUNTIME
 	ScriptToken(ScriptLocal* scriptLocal, StringVar* stringVar);
 	ScriptToken(ScriptLocal *var);
+	ScriptToken(NVSEArrayVarInterface::Element &elem);
 #endif
 
 	ScriptToken();
-
 	ScriptToken(ExpressionEvaluator &evaluator);
 
 	virtual ~ScriptToken();
@@ -255,7 +255,7 @@ struct ScriptToken
 	virtual bool GetBool() const;
 #if RUNTIME
 	Token_Type ReadFrom(ExpressionEvaluator *context); // reconstitute param from compiled data, return the type
-	virtual ArrayID GetArray() const;
+	virtual ArrayID GetArrayID() const;
 	ArrayVar *GetArrayVar();
 	ScriptLocal *GetVar() const;
 	StringVar* GetStringVar() const;
@@ -296,7 +296,8 @@ struct ScriptToken
 	bool IsLogicalOperator() const;
 	std::string GetVariableDataAsString();
 	const char *GetVariableTypeString() const;
-	void AssignResult(COMMAND_ARGS, ExpressionEvaluator& eval) const;
+	CommandReturnType GetReturnType() const;
+	void AssignResult(ExpressionEvaluator& eval) const;
 
 	static ScriptToken *Read(ExpressionEvaluator *context);
 
@@ -348,13 +349,13 @@ struct ScriptToken
 	ScriptToken& operator=(ScriptToken&& other) noexcept;
 
 	bool cached = false;
-	CommandReturnType returnType;
+	CommandReturnType returnType = kRetnType_Default;
 	UInt32 cmdOpcodeOffset;
-	ExpressionEvaluator *context;
+	ExpressionEvaluator *context = nullptr;
 	UInt16 varIdx;
-	OperatorType shortCircuitParentType;
-	UInt8 shortCircuitDistance;
-	UInt8 shortCircuitStackOffset;
+	OperatorType shortCircuitParentType = kOpType_Max;
+	UInt8 shortCircuitDistance = 0;
+	UInt8 shortCircuitStackOffset = 0;
 	bool formOrNumber = false;
 
 #if _DEBUG
@@ -419,6 +420,8 @@ const PluginTokenPair *__fastcall ScriptTokenGetPair(PluginScriptToken *scrToken
 struct PluginTokenSlice;
 const PluginTokenSlice *__fastcall ScriptTokenGetSlice(PluginScriptToken *scrToken);
 UInt32 __fastcall ScriptTokenGetAnimationGroup(PluginScriptToken* scrToken);
+void __fastcall ScriptTokenGetArrayElement(PluginScriptToken* scrToken, NVSEArrayVarInterface::Element& outElem);
+
 
 struct ArrayElementToken : ScriptToken
 {
@@ -429,7 +432,7 @@ struct ArrayElementToken : ScriptToken
 	const char *GetString() const override;
 	double GetNumber() const override;
 	UInt32 GetFormID() const override;
-	ArrayID GetArray() const override;
+	ArrayID GetArrayID() const override;
 	TESForm *GetTESForm() const override;
 	bool GetBool() const override;
 	bool CanConvertTo(Token_Type to) const override;
@@ -501,7 +504,7 @@ struct AssignableSubstringArrayElementToken : public AssignableSubstringToken
 	ArrayKey key;
 
 	AssignableSubstringArrayElementToken(UInt32 _id, const ArrayKey &_key, UInt32 lbound, UInt32 ubound);
-	ArrayID GetArray() const override { return value.arrID; }
+	ArrayID GetArrayID() const override { return value.arrID; }
 	bool Assign(const char *str) override;
 
 	void *operator new(size_t size)

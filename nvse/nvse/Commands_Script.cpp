@@ -685,7 +685,7 @@ bool Cmd_DispatchEvent_Execute(COMMAND_ARGS)
 	{
 		if (!eval.Arg(1)->CanConvertTo(kTokenType_Array))
 			return true;
-		argsArrayId = eval.Arg(1)->GetArray();
+		argsArrayId = eval.Arg(1)->GetArrayID();
 
 		if (eval.NumArgs() > 2)
 			senderName = eval.Arg(2)->GetString();
@@ -889,7 +889,7 @@ bool Cmd_Ternary_Execute(COMMAND_ARGS)
 		InternalFunctionCaller caller(call_udf, thisObj, containingObj);
 		caller.SetArgs(0);
 		if (auto const tokenValResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller))))
-			tokenValResult->AssignResult(PASS_COMMAND_ARGS, eval);
+			tokenValResult->AssignResult(eval);
 	}
 	return true;
 

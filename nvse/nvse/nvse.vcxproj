@@ -495,6 +495,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="Commands_Quest.cpp" />
     <ClCompile Include="Commands_Script.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
@@ -589,7 +590,7 @@
     <ClCompile Include="Hooks_Editor.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug ng|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release ng|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_DBG|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_DBG|Win32'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Hooks_Gameplay.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
@@ -671,6 +672,7 @@
     <ClInclude Include="Commands_MiscRef.h" />
     <ClInclude Include="Commands_NetImmerse.h" />
     <ClInclude Include="Commands_Packages.h" />
+    <ClInclude Include="Commands_Quest.h" />
     <ClInclude Include="Commands_Script.h" />
     <ClInclude Include="Commands_Scripting.h" />
     <ClInclude Include="Commands_String.h" />

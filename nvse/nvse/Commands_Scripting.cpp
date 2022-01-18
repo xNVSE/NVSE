@@ -406,7 +406,7 @@ bool Cmd_TypeOf_Execute(COMMAND_ARGS)
 			typeStr = "Form";
 		else if (eval.Arg(0)->CanConvertTo(kTokenType_Array))
 		{
-			ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+			ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 			if (!arr) typeStr = "<Bad Array>";
 			else if (arr->KeyType() == kDataType_Numeric)
 				typeStr = arr->IsPacked() ? "Array" : "Map";
@@ -431,7 +431,7 @@ bool Cmd_Call_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (auto const funcResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(&eval)))
 	{
-		funcResult->AssignResult(PASS_COMMAND_ARGS, eval);
+		funcResult->AssignResult(eval);
 	}
 	return true;
 }

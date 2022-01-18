@@ -252,7 +252,8 @@ static void HandleMainLoopHook(void)
 
 	if (!isMenuMode)
 	{
-		g_gameSecondsPassed += *g_globalTimeMult * g_timeGlobal->secondsPassed;
+		const auto vatsTimeMult = ThisStdCall<double>(0x9C8CC0, reinterpret_cast<void*>(0x11F2250));
+		g_gameSecondsPassed += g_timeGlobal->secondsPassed * vatsTimeMult;
 		
 		// handle calls from cmd CallAfterSeconds
 		HandleDelayedCall();

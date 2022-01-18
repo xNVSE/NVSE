@@ -15,6 +15,17 @@ const char *g_variableTypeNames[6] =
 		"ref",
 		"invalid"};
 
+const char* g_validVariableTypeNames[8] =
+{
+	"float",
+	"int",
+	"string_var",
+	"array_var",
+	"ref",
+	"short",
+	"long",
+	"reference"};
+
 #if RUNTIME
 std::span<CommandInfo> g_eventBlockCommandInfos = {reinterpret_cast<CommandInfo*>(0x118E2F0), 38};
 std::span<CommandInfo> g_scriptStatementCommandInfos = {reinterpret_cast<CommandInfo*>(0x118CB50), 16};
