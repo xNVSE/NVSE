@@ -4521,9 +4521,13 @@ public:
 		return list.GetNthItem(n);
 	}
 
-	UInt32 AddAt(TESForm* pForm, SInt32 n) {
-		SInt32	result = list.AddAt(pForm, n);
+	SInt32 AddAt(TESForm* pForm, SInt32 n, bool const checkDupes = false) {
 
+		if (checkDupes) {
+			if (GetIndexOf(pForm) != eListInvalid)
+				return eListInvalid;
+		}
+		auto const result = list.AddAt(pForm, n);
 		if(result >= 0 && IsAddedObject(n))
 			numAddedObjects++;
 

@@ -378,6 +378,8 @@ public:
 
 SInt32 BGSListForm::GetIndexOf(TESForm *pForm)
 {
+	if (!pForm)
+		return eListInvalid;
 	return list.GetIndexOf(FindByForm(pForm));
 }
 
