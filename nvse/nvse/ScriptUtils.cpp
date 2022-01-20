@@ -284,7 +284,7 @@ ScriptToken *Eval_Logical(OperatorType op, ScriptToken *lh, ScriptToken *rh, Exp
 	{
 	case kOpType_LogicalAnd:
 	{
-		auto const rhNum = rh->GetNumber();
+		auto const rhNum = rh->CanConvertTo(kTokenType_Number) ? rh->GetNumber() : rh->GetBool();
 		return ScriptToken::Create(lh->GetBool() && rhNum ? rhNum : false);
 	}
 	case kOpType_LogicalOr:
