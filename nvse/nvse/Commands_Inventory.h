@@ -115,7 +115,7 @@ DEFINE_SET_INV_FLOAT(SetWeaponMinRange, SetMinRange, sets the weapon min range);
 DEFINE_SET_INV_FLOAT(SetWeaponMaxRange, SetMaxRange, sets the weapon max range.);
 DEFINE_SET_INV_INT(SetWeaponAmmoUse, SetAmmoUse, sets the weapon ammo use);
 DEFINE_SET_INV_FLOAT(SetWeaponActionPoints, SetAP, sets the weapon number of action pointer per shot);
-DEFINE_SET_INV_INT(SetWeaponCritDamage, SetWeaponCritDamage, sets the weapon critical hit damage.);
+DEFINE_SET_INV_INT(SetWeaponCritDamage, SetCritDam, sets the weapon critical hit damage.);
 DEFINE_SET_INV_FLOAT(SetWeaponCritChance, SetCritPerc, sets the weapon critical hit chance);
 DEFINE_SET_INV_MAGIC(SetWeaponCritEffect, SetCritEffect, sets the weapon critical hit effect);
 DEFINE_SET_INV_FLOAT(SetWeaponFireRate, SetFireRate, sets the weapon fire rate);
