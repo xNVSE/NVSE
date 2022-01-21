@@ -37,14 +37,14 @@ InventoryReference::~InventoryReference()
 	}
 
 	// remove unnecessary extra data, consolidate identical stacks
-	if (m_containerRef)
+	/*if (m_containerRef)
 	{
 		ExtraContainerChanges* xChanges = (ExtraContainerChanges*)m_containerRef->extraDataList.GetByType(kExtraData_ContainerChanges);
 		if (xChanges)
 		{
 			xChanges->Cleanup();
 		}
-	}
+	}*/
 }
 
 void InventoryReference::Release()
