@@ -672,7 +672,10 @@ bool Cmd_PrintVar_Execute(COMMAND_ARGS)
 		break;
 	}
 	const auto toPrint = std::string(GetVariableName(token->GetVar(), scriptObj, eventList, token->refIdx)) + ": " + variableValue;
-	Console_Print("%s", toPrint.c_str());
+	if (toPrint.size() < 512)
+		Console_Print("%s", toPrint.c_str());
+	else
+		Console_Print_Long(toPrint);
 	return true;
 }
 
