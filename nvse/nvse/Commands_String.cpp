@@ -286,6 +286,24 @@ bool Cmd_sv_GetChar_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_sv_Trim_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (!eval.ExtractArgs())
+		return true;
+
+	auto* token = eval.Arg(0);
+	if (!token)
+		return true;
+	auto* strVar = token->GetStringVar();
+	if (!strVar)
+		return true;
+	strVar->Trim();
+	*result = 1;
+	return true;
+}
+
 bool MatchCharType_Execute(COMMAND_ARGS, UInt32 mask)
 {
 	UInt32 charCode = 0;

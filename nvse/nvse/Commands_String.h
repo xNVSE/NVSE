@@ -84,6 +84,11 @@ static ParamInfo kParams_sv_Replace[26] =
 	{	"howMany",		kParamType_Integer,		1	},
 };
 
+static ParamInfo kParams_sv_Trim[] =
+{
+	{"stringVar", kNVSEParamType_StringVar, 0}
+};
+
 DEFINE_CMD(sv_Replace, replaces 1 or more occurences of a substring within a string variable, 0, kParams_sv_Replace);
 
 DEFINE_CMD(IsLetter, returns 1 if the character is an alphabetic character, 0, kParams_OneInt);
@@ -97,6 +102,8 @@ DEFINE_CMD(IsPunctuation, returns 1 if the character is a punctuation character,
 DEFINE_CMD(IsUpperCase, returns 1 if the character is an uppercase letter, 0, kParams_OneInt);
 
 DEFINE_CMD(sv_GetChar, returns the ASCII code of the character at the specified position in a string variable, 0, kParams_TwoInts);
+
+DEFINE_COMMAND_EXP(sv_Trim, "Trims the beginning and the end of a string variable", 0, kParams_sv_Trim);
 
 DEFINE_CMD(CharToAscii, converts a single character to its equivalent ASCII code, 0, kParams_OneString);
 

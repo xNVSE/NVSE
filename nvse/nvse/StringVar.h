@@ -50,6 +50,7 @@ public:
 	std::string	SubString(UInt32 startPos, UInt32 numChars);
 	char		At(UInt32 charPos);
 	static UInt32	GetCharType(char ch);
+	void Trim();
 
 	std::string String()					{	return data;	}
 	std::string& StringRef() {return data;}

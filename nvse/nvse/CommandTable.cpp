@@ -1829,6 +1829,9 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD_RET(GetCurrentObjective, kRetnType_Form);
 	ADD_CMD(PrintActiveTile);
 	ADD_CMD(SetCurrentQuest);
+
+	// 6.2 beta 06
+	ADD_CMD(sv_Trim);
 }
 
 namespace PluginAPI

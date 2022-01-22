@@ -646,6 +646,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 #endif
 	const auto lineError = [&](const char* str)
 	{
+		g_nextLineNumberIncrement = 0;
 		scriptBuf->curLineNumber = lineBuf->lineNumber;
 		ShowCompilerError(errorBuf, "%s", str);
 		lineBuf->errorCode = 1;
@@ -700,6 +701,8 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 				return lineError("Mismatched comment block (missing '*/' for a present '/*')");
 			if (inStringLiteral)
 				return lineError("Mismatched quotes. A string literal was not closed.");
+			if (numBrackets)
+				return lineError("Mismatched parentheses. Parentheses were not closed.");
 		}
 		if (inMultilineComment)
 		{

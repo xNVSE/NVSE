@@ -238,6 +238,20 @@ UInt32 StringVar::GetCharType(char ch)
 	return charType;
 }
 
+// Trims whitespace at beginning and end of string
+void StringVar::Trim()
+{
+	// ltrim
+	data.erase(data.begin(), ra::find_if(data, [](unsigned char ch) {
+		return !std::isspace(ch);
+	}));
+
+	// rtrim
+	data.erase(std::find_if(data.rbegin(), data.rend(), [](unsigned char ch) {
+		return !std::isspace(ch);
+	}).base(), data.end());
+}
+
 char StringVar::At(UInt32 charPos)
 {
 	if (charPos < GetLength())
