@@ -84,6 +84,7 @@ public:
 extern StringVarMap g_StringMap;
 
 bool AssignToStringVar(COMMAND_ARGS, const char* newValue);
+bool IsFunctionResultCacheString(UInt32 strId);
 bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue);	// Increase the call count in the stack
 
 namespace PluginAPI

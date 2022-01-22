@@ -29,9 +29,9 @@ StringVarMap* StringVarMap::GetSingleton()
 
 void StringVarMap::Delete(UInt32 varID)
 {
-	if (varID != GetFunctionResultCachedStringVar().id)
+	if (!IsFunctionResultCacheString(varID))
 		VarMap<StringVar>::Delete(varID);
-#if _DEBUG
+#if _DEBUG && 0
 	else
 		DebugBreak();
 #endif
@@ -402,6 +402,13 @@ __declspec(noinline) FunctionResultStringVar& GetFunctionResultCachedStringVar()
 	return s_functionResultStringVar;
 }
 
+std::unordered_set<UInt32> g_funcResultStringIds;
+
+bool IsFunctionResultCacheString(UInt32 strId)
+{
+	return g_funcResultStringIds.contains(strId);
+}
+
 bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 {
 	double strID = 0;
@@ -441,7 +448,10 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 		{
 			// optimizations, creating a new string var is slow
 			if (!functionResult.var)
+			{
 				functionResult.id = static_cast<int>(g_StringMap.Add(0xFF, newValue, false, &functionResult.var));
+				g_funcResultStringIds.emplace(functionResult.id);
+			}
 			else
 				functionResult.var->Set(newValue);
 

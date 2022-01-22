@@ -296,9 +296,11 @@ bool Cmd_sv_Trim_Execute(COMMAND_ARGS)
 	auto* token = eval.Arg(0);
 	if (!token)
 		return true;
+
 	auto* strVar = token->GetStringVar();
 	if (!strVar)
 		return true;
+
 	strVar->Trim();
 	*result = 1;
 	return true;
