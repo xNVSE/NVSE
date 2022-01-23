@@ -233,7 +233,11 @@ static void HandleMainLoopHook(void)
 		DetermineShowScriptErrors();
 		ApplyGECKEditorIDs();
 		s_recordedMainThreadID = true;
+#if ALPHA_MODE
+		Console_Print("xNVSE %d.%d.%d Beta Build %s", NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA, __TIME__);
+#else
 		Console_Print("xNVSE %d.%d.%d", NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA);
+#endif
 		g_mainThreadID = GetCurrentThreadId();
 		
 		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_DeferredInit, NULL, 0, NULL);
