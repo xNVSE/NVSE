@@ -31,6 +31,13 @@ void StringVarMap::Delete(UInt32 varID)
 {
 	if (!IsFunctionResultCacheString(varID))
 		VarMap<StringVar>::Delete(varID);
+	else
+	{
+#if _DEBUG
+		DebugBreak();
+#endif
+		tempIDs.Erase(varID);
+	}
 #if _DEBUG && 0
 	else
 		DebugBreak();
@@ -40,7 +47,7 @@ void StringVarMap::Delete(UInt32 varID)
 void StringVarMap::MarkTemporary(UInt32 varID, bool bTemporary)
 {
 #if _DEBUG
-	if (varID == GetFunctionResultCachedStringVar().id && bTemporary)
+	if (IsFunctionResultCacheString(varID) && bTemporary)
 		DebugBreak();
 #endif
 	VarMap<StringVar>::MarkTemporary(varID, bTemporary);
