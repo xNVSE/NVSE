@@ -2767,7 +2767,14 @@ ScriptToken *ExpressionParser::ParseLambda()
 	auto nest = 1;
 	while (nest != 0 && CurText())
 	{
-		auto token = GetCurToken();
+		std::string token;
+		try { token = GetCurToken(); }
+		catch (OffsetOutOfBoundsError&)
+		{
+			PrintCompileError("Lambda function syntax error");
+			return nullptr;
+		}
+		
 		if (token.empty())
 		{
 			++Offset();
@@ -3206,7 +3213,13 @@ ScriptToken *ExpressionParser::ParseOperand(Operator *curOp)
 		Offset()++;
 	}
 
-	std::string token = GetCurToken();
+	std::string token;
+	try { token = GetCurToken(); }
+	catch (OffsetOutOfBoundsError&)
+	{
+		PrintCompileError("Failed to read script line; reached out of bounds");
+		return nullptr;
+	}
 	std::string refToken = token;
 
 	if (!bExpectStringVar)
@@ -3218,7 +3231,13 @@ ScriptToken *ExpressionParser::ParseOperand(Operator *curOp)
 		if (const auto varType = VariableTypeNameToType(token.c_str()); varType != Script::eVarType_Invalid)
 		{
 			SkipSpaces();
-			const auto varName = GetCurToken();
+			std::string varName;
+			try { varName = GetCurToken(); }
+			catch (OffsetOutOfBoundsError&)
+			{
+				PrintCompileError("Failed to read variable name; line out of bounds");
+				return nullptr;
+			}
 			auto *varInfo = CreateVariable(varName, varType);
 			if (!varInfo)
 				return nullptr;
@@ -3285,7 +3304,14 @@ ScriptToken *ExpressionParser::ParseOperand(Operator *curOp)
 		++Offset();
 		hasDot = true;
 		refToken = std::move(token);
-		token = GetCurToken();
+
+		try { token = GetCurToken(); }
+		catch (OffsetOutOfBoundsError&)
+		{
+			PrintCompileError("Failed to read token; line out of bounds 2");
+			return nullptr;
+		}
+
 	}
 
 	// before we go any further, check for local variable in case of name collisions between vars and other objects
@@ -3460,8 +3486,11 @@ std::string ExpressionParser::GetCurToken()
 		if (!isdigit(ch))
 			numeric = false;
 	}
+	auto result = std::string(tokStart, CurText() - tokStart);
+	if (ch == 0 && result.empty())
+		throw OffsetOutOfBoundsError();
 
-	return std::string(tokStart, CurText() - tokStart);
+	return result;
 }
 
 // error routines

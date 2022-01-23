@@ -23,6 +23,8 @@ struct UserFunctionParam;
 struct FunctionInfo;
 struct FunctionContext;
 class FunctionCaller;
+class OffsetOutOfBoundsError : public std::exception {};
+
 
 #include "ScriptTokens.h"
 #include <stack>
