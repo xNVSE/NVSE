@@ -61,16 +61,20 @@ bool RunCommand_NS(COMMAND_ARGS, Cmd_Execute cmd)
 float g_gameSecondsPassed = 0;
 
 // xNVSE 6.1
-void HandleDelayedCall()
+void HandleDelayedCall(float timeDelta, bool isMenuMode)
 {
 	if (g_callAfterInfos.empty())
 		return; // avoid lock overhead
-	
+
 	ScopedLock lock(g_callAfterInfosCS);
 
 	auto iter = g_callAfterInfos.begin();
 	while (iter != g_callAfterInfos.end())
 	{
+		if (!iter->runInMenuMode && isMenuMode)
+		{
+			iter->time += timeDelta;
+		}
 		if (g_gameSecondsPassed >= iter->time)
 		{
 			InternalFunctionCaller caller(iter->script, iter->thisObj);
@@ -130,7 +134,7 @@ void HandleCallWhenScripts()
 	}
 }
 
-void HandleCallForScripts()
+void HandleCallForScripts(float timeDelta, bool isMenuMode)
 {
 	if (g_callForInfos.empty())
 		return; // avoid lock overhead
@@ -139,6 +143,10 @@ void HandleCallForScripts()
 	auto iter = g_callForInfos.begin();
 	while (iter != g_callForInfos.end())
 	{
+		if (!iter->runInMenuMode && isMenuMode)
+		{
+			iter->time += timeDelta;
+		}
 		if (g_gameSecondsPassed < iter->time)
 		{
 			InternalFunctionCaller caller(iter->script, iter->thisObj);
@@ -248,19 +256,17 @@ static void HandleMainLoopHook(void)
 	HandleCallWhileScripts();
 	HandleCallWhenScripts();
 	
+	const auto vatsTimeMult = ThisStdCall<double>(0x9C8CC0, reinterpret_cast<void*>(0x11F2250));
+	const float timeDelta = g_timeGlobal->secondsPassed * static_cast<float>(vatsTimeMult);
 	const auto isMenuMode = CdeclCall<bool>(0x702360);
+	g_gameSecondsPassed += timeDelta;
 
-	if (!isMenuMode)
-	{
-		const auto vatsTimeMult = ThisStdCall<double>(0x9C8CC0, reinterpret_cast<void*>(0x11F2250));
-		g_gameSecondsPassed += g_timeGlobal->secondsPassed * vatsTimeMult;
-		
-		// handle calls from cmd CallAfterSeconds
-		HandleDelayedCall();
+	// handle calls from cmd CallAfterSeconds
+	HandleDelayedCall(timeDelta, isMenuMode);
 
-		// handle calls from cmd CallForSeconds
-		HandleCallForScripts();
-	}
+	// handle calls from cmd CallForSeconds
+	HandleCallForScripts(timeDelta, isMenuMode);
+
 
 }
 

@@ -91,10 +91,11 @@ static ParamInfo kNVSEParams_DispatchEvent[3] =
 
 DEFINE_COMMAND_EXP(DispatchEvent, dispatches a user-defined event to any registered listeners, 0, kNVSEParams_DispatchEvent);
 
-static ParamInfo kParams_CallAfter[2] =
+static ParamInfo kParams_CallAfter[3] =
 {
 	{	"seconds",	kParamType_Float,	0	},
 	{	"function",	kParamType_AnyForm,0	},
+	{ "runs in menumode", kParamType_Integer, 1}
 };
 
 static ParamInfo kParams_CallWhile[2] =
@@ -103,9 +104,9 @@ static ParamInfo kParams_CallWhile[2] =
 	{	"condition",	kParamType_AnyForm,0	},
 };
 
-DEFINE_CMD_ALT(CallAfterSeconds, CallAfter, "calls UDF after argument number of seconds", 0, 2, kParams_CallAfter);
+DEFINE_CMD_ALT(CallAfterSeconds, CallAfter, "calls UDF after argument number of seconds", 0, sizeof kParams_CallAfter / sizeof (ParamInfo), kParams_CallAfter);
 DEFINE_COMMAND(CallWhile, "calls UDF each frame while condition is met", 0, 2, kParams_CallWhile);
-DEFINE_CMD_ALT(CallForSeconds, CallFor, "calls UDF each frame for argument number of seconds", 0, 2, kParams_CallAfter);
+DEFINE_CMD_ALT(CallForSeconds, CallFor, "calls UDF each frame for argument number of seconds", 0, sizeof kParams_CallAfter / sizeof(ParamInfo), kParams_CallAfter);
 DEFINE_COMMAND(CallWhen, "calls UDF once when a condition is met which is polled each frame", 0, 2, kParams_CallWhile);
 
 struct DelayedCallInfo
@@ -114,12 +115,13 @@ struct DelayedCallInfo
 	float time;
 	TESObjectREFR* thisObj;
 	LambdaManager::LambdaVariableContext lambdaVariableContext;
+	bool runInMenuMode;
 
-	DelayedCallInfo(Script* script, float time, TESObjectREFR* thisObj)
+	DelayedCallInfo(Script* script, float time, TESObjectREFR* thisObj, bool runInMenuMode)
 		: script(script),
 		  time(time),
 		  thisObj(thisObj),
-		  lambdaVariableContext(script)
+		  lambdaVariableContext(script), runInMenuMode(runInMenuMode)
 	{
 	}
 };

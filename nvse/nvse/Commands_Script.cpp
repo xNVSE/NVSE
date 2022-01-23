@@ -704,10 +704,11 @@ bool Cmd_CallAfterSeconds_Execute(COMMAND_ARGS)
 {
 	float time;
 	Script *callFunction;
-	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction) || !callFunction || !IS_ID(callFunction, Script))
+	UInt32 runInMenuMode = false;
+	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction, &runInMenuMode) || !callFunction || !IS_ID(callFunction, Script))
 		return true;
 	ScopedLock lock(g_callAfterInfosCS);
-	g_callAfterInfos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj);
+	g_callAfterInfos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj, runInMenuMode);
 	return true;
 }
 
@@ -736,10 +737,11 @@ bool Cmd_CallForSeconds_Execute(COMMAND_ARGS)
 {
 	float time;
 	Script *callFunction;
-	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction) || !callFunction || !IS_ID(callFunction, Script))
+	UInt32 runInMenuMode = false;
+	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction, &runInMenuMode) || !callFunction || !IS_ID(callFunction, Script))
 		return true;
 	ScopedLock lock(g_callAfterInfosCS);
-	g_callForInfos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj);
+	g_callForInfos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj, runInMenuMode);
 	return true;
 }
 
