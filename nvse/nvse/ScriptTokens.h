@@ -406,7 +406,7 @@ struct PairToken : ScriptToken
 
 struct PluginScriptToken;
 UInt8 __fastcall ScriptTokenGetType(PluginScriptToken *scrToken);
-bool __fastcall ScriptTokenCanConvertTo(PluginScriptToken *scrToken, Token_Type toType);
+bool __fastcall ScriptTokenCanConvertTo(PluginScriptToken *scrToken, UInt8 toType);
 double __fastcall ScriptTokenGetFloat(PluginScriptToken *scrToken);
 bool __fastcall ScriptTokenGetBool(PluginScriptToken *scrToken);
 UInt32 __fastcall ScriptTokenGetFormID(PluginScriptToken *scrToken);
