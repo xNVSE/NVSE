@@ -877,6 +877,11 @@ struct PluginScriptToken
 		return s_expEvalUtils.ScriptTokenGetType(this);
 	}
 
+	bool CanConvertTo(UInt8 toType)
+	{
+		return s_expEvalUtils.ScriptTokenCanConvertTo(this, toType);
+	}
+	
 	double GetFloat()
 	{
 		return s_expEvalUtils.ScriptTokenGetFloat(this);
