@@ -52,15 +52,26 @@ private:
 		_NVSEPlugin_Query	query;
 		_NVSEPlugin_Load	load;
 
-		char path[MAX_PATH];			// Added version 4.5 Beta 7
+		char path[MAX_PATH]{};			// Added version 4.5 Beta 7
+	};
+
+	struct PluginLoadState
+	{
+		LoadedPlugin plugin{};
+		std::string loadStatus;
+		bool querySuccess = false;
+		bool loadSuccess = false;
+
+		~PluginLoadState();
 	};
 
 	bool	FindPluginDirectory(void);
-	bool	InstallPlugin(std::string pluginPath);
+	bool	InstallPlugins(const std::vector<std::string>& pluginPaths);
 	void	InstallPlugins(void);
 
-	const char *	SafeCallQueryPlugin(LoadedPlugin * plugin, const NVSEInterface * nvse, char* errorBuffer);
-	const char *	SafeCallLoadPlugin(LoadedPlugin * plugin, const NVSEInterface * nvse, char* errorBuffer);
+	static const char* SafeCallPluginExport(LoadedPlugin* plugin, const NVSEInterface* nvse, bool query, char* errorOut);
+	static std::string SafeCallQueryPlugin(LoadedPlugin* plugin, const NVSEInterface* nvse);
+	static std::string	SafeCallLoadPlugin(LoadedPlugin * plugin, const NVSEInterface * nvse);
 
 	const char *	CheckPluginCompatibility(LoadedPlugin * plugin);
 
