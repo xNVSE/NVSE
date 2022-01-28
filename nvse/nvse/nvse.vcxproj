@@ -191,8 +191,7 @@
     </Link>
     <PostBuildEvent>
       <Message>Installing DLL...</Message>
-      <Command>copy "$(TargetPath)" "$(FalloutNVPath)\nvse_1_4.dll"
-call "$(SolutionDir)dxvk_post_build.bat" runtime</Command>
+      <Command>copy "$(TargetPath)" "$(FalloutNVPath)\nvse_1_4.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -313,8 +312,7 @@ call "$(SolutionDir)dxvk_post_build.bat" runtime</Command>
     </Link>
     <PostBuildEvent>
       <Message>Installing DLL...</Message>
-      <Command>copy "$(TargetPath)" "$(FalloutNVPath)\nvse_editor_1_4.dll"
-call "$(SolutionDir)dxvk_post_build.bat" editor</Command>
+      <Command>copy "$(TargetPath)" "$(FalloutNVPath)\nvse_editor_1_4.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">
