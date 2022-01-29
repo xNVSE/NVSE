@@ -701,7 +701,10 @@ void ShowRuntimeError(Script* script, const char* fmt, ...)
 			QueueUIMessage(message, 0, reinterpret_cast<const char*>(0x1049638), nullptr, 2.5F, false);
 	}
 
-	Console_Print("%s", errorHeader);
+	if (strlen(errorHeader) < 512)
+		Console_Print("%s", errorHeader);
+	else
+		Console_Print_Long(errorHeader);
 	_MESSAGE("%s", errorHeader);
 
 	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_RuntimeScriptError, errorMsg, 4, NULL);

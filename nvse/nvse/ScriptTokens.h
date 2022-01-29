@@ -131,6 +131,10 @@ enum Token_Type : UInt8
 	kTokenType_Lambda,
 	kTokenType_LambdaScriptData,
 
+	// For operators to be able to work "dynamically" and inherit the return type of one of the tokens (ex: 1 && "str" returns String with RightToken)
+	kTokenType_LeftToken,
+	kTokenType_RightToken,
+
 	kTokenType_Invalid,
 	kTokenType_Max = kTokenType_Invalid,
 
@@ -304,7 +308,7 @@ struct ScriptToken
 	// block implicit conversations
 	template <typename T>
 	static ScriptToken* Create(T value) = delete;
-	
+
 	static ScriptToken *Create(bool boolean) { return new ScriptToken(boolean); }
 	static ScriptToken *Create(double num) { return new ScriptToken(num); }
 	static ScriptToken *Create(Script::RefVariable *refVar, UInt16 refIdx) { return refVar ? new ScriptToken(refVar, refIdx) : NULL; }
@@ -325,6 +329,7 @@ struct ScriptToken
 	static ScriptToken *Create(ArrayElementToken *elem, UInt32 lbound, UInt32 ubound);
 	static ScriptToken *Create(UInt32 bogus); // unimplemented, to block implicit conversion to double
 	static ScriptToken *Create(Script *scriptLambda) { return scriptLambda ? new ScriptToken(scriptLambda) : nullptr; }
+	static ScriptToken* Create(ScriptToken&& scriptToken) { return new ScriptToken(std::move(scriptToken)); }
 #if RUNTIME
 	static ScriptToken* Create(ScriptLocal* local, StringVar* stringVar) { return stringVar ? new ScriptToken(local, stringVar) : nullptr; }
 #endif
@@ -357,7 +362,14 @@ struct ScriptToken
 	UInt8 shortCircuitDistance = 0;
 	UInt8 shortCircuitStackOffset = 0;
 	bool formOrNumber = false;
+	bool forwardResult = false;
 
+	// prevents token from being deleted after evaluation, should only be called in Eval_* statements where it is the operation result
+	ScriptToken* ForwardEvalResult()
+	{
+		forwardResult = true;
+		return this;
+	}
 #if _DEBUG
 	std::string varName;
 #endif
@@ -373,6 +385,7 @@ struct SliceToken : ScriptToken
 
 	SliceToken(Slice *_slice);
 	virtual const Slice *GetSlice() const { return type == kTokenType_Slice ? &slice : NULL; }
+	bool GetBool() const override { return true; }
 
 	void *operator new(size_t size)
 	{
@@ -480,6 +493,11 @@ struct AssignableSubstringToken : ScriptToken
 	void operator delete(void *p)
 	{
 		::operator delete(p);
+	}
+
+	bool GetBool() const override
+	{
+		return true;
 	}
 };
 

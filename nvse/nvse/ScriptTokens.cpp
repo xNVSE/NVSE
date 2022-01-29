@@ -478,6 +478,11 @@ void ScriptToken::operator delete(ScriptToken *token, std::destroying_delete_t)
 {
 	if (!token || token->cached)
 		return;
+	if (token->forwardResult)
+	{
+		token->forwardResult = false;
+		return;
+	}
 	token->~ScriptToken();
 
 	if (token->memoryPooled)
@@ -882,6 +887,10 @@ bool ScriptToken::GetBool() const
 			return false;
 		}
 		return value.var->data ? true : false;
+	}
+	case kTokenType_String:
+	{
+		return value.str ? true : false;
 	}
 #endif
 	default:
@@ -1717,8 +1726,13 @@ Token_Type kConversions_Number[] =
 };
 
 Token_Type kConversions_Boolean[] =
-	{
+{
 		kTokenType_Number,
+};
+
+Token_Type kConversions_String[] =
+{
+	kTokenType_Boolean
 };
 
 Token_Type kConversions_Command[] =
@@ -1777,7 +1791,7 @@ Token_Type kConversions_RefVar[] =
 };
 
 Token_Type kConversions_StringVar[] =
-	{
+{
 		kTokenType_String,
 		kTokenType_Variable,
 		kTokenType_Boolean,
@@ -1791,18 +1805,19 @@ Token_Type kConversions_ArrayVar[] =
 };
 
 Token_Type kConversions_Array[] =
-	{
+{
 		kTokenType_Boolean, // true if arrayID != 0, false if 0
 };
 
 Token_Type kConversions_AssignableString[] =
-	{
+{
 		kTokenType_String,
 };
 
 Token_Type kConversions_Lambda[] =
-	{
-		kTokenType_Form};
+{
+		kTokenType_Form
+};
 
 // just an array of the types to which a given token type can be converted
 struct Operand
@@ -1818,7 +1833,7 @@ static Operand s_operands[] =
 	{
 		{OPERAND(Number)},
 		{OPERAND(Boolean)},
-		{NULL, 0}, // string has no conversions
+		{OPERAND(String)}, // string has no conversions
 		{OPERAND(Form)},
 		{OPERAND(Ref)},
 		{OPERAND(Global)},
@@ -1840,7 +1855,9 @@ static Operand s_operands[] =
 		{NULL, 0}, // pair
 		{OPERAND(AssignableString)},
 		{OPERAND(Lambda)},
-		{NULL, 0}
+		{NULL, 0}, // LeftToken
+		{NULL, 0}, // RightToken
+		{NULL, 0} // Max
 };
 
 STATIC_ASSERT(SIZEOF_ARRAY(s_operands, Operand) == kTokenType_Max);
@@ -1855,7 +1872,7 @@ bool CanConvertOperand(Token_Type from, Token_Type to)
 	Operand *op = &s_operands[from];
 	for (UInt32 i = 0; i < op->numRules; i++)
 	{
-		auto &rule = op->rules[i];
+		const auto rule = op->rules[i];
 		if (rule == to)
 			return true;
 	}
@@ -1866,13 +1883,22 @@ bool CanConvertOperand(Token_Type from, Token_Type to)
 // Operator
 Token_Type Operator::GetResult(Token_Type lhs, Token_Type rhs)
 {
+	Token_Type result = kTokenType_Invalid;
 	for (UInt32 i = 0; i < numRules; i++)
 	{
 		OperationRule *rule = &rules[i];
 		if (CanConvertOperand(lhs, rule->lhs) && CanConvertOperand(rhs, rule->rhs))
-			return rule->result;
-		else if (!rule->bAsymmetric && CanConvertOperand(lhs, rule->rhs) && CanConvertOperand(rhs, rule->lhs))
-			return rule->result;
+			result = rule->result;
+		if (!rule->bAsymmetric && CanConvertOperand(lhs, rule->rhs) && CanConvertOperand(rhs, rule->lhs))
+			result = rule->result;
+
+		if (result == kTokenType_LeftToken)
+			result = lhs;
+		else if (result == kTokenType_RightToken)
+			result = rhs;
+
+		if (result != kTokenType_Invalid)
+			return result;
 	}
 
 	return kTokenType_Invalid;
