@@ -862,19 +862,29 @@ bool Cmd_GetRefCount_Execute(COMMAND_ARGS)
 
 bool Cmd_SetRefCount_Execute(COMMAND_ARGS)
 {
-	UInt32 newCount = 0;
-	if (!ExtractArgs(EXTRACT_ARGS, &newCount))
-		return true;
-	else if (!thisObj || newCount > 32767 || newCount < 1)
-		return true;
-
-	ExtraCount* pXCount = GetByTypeCast(thisObj->extraDataList, Count);
-	if (!pXCount) {
-		pXCount = ExtraCount::Create();
-		thisObj->extraDataList.Add(pXCount);
+	UInt32 newCount;
+	if (ExtractArgs(EXTRACT_ARGS, &newCount) && newCount && (newCount <= 0x7FFF))
+	{
+		InventoryReference *invRefr = s_invRefMap.GetPtr(thisObj->refID);
+		if (invRefr)
+		{
+			if (invRefr->m_data.xData)
+			{
+				ExtraCount *xCount = (ExtraCount*)invRefr->m_data.xData->GetByType(kExtraData_Count);
+				if (xCount) xCount->count = newCount;
+			}
+			invRefr->m_data.entry->countDelta = newCount;
+		}
+		else
+		{
+			ExtraCount *xCount = (ExtraCount*)thisObj->extraDataList.GetByType(kExtraData_Count);
+			if (xCount)
+				xCount->count = newCount;
+			else
+				thisObj->extraDataList.Add(ExtraCount::Create(newCount));
+			thisObj->MarkAsModified(0x400);
+		}
 	}
-	pXCount->count = newCount;
-
 	return true;
 }
 

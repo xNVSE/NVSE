@@ -20,12 +20,14 @@ InventoryReference::~InventoryReference()
 {
 	if (m_data.type)
 	{
-		Release();	
+		DoDeferredActions();
 	}
 
 	// note: TESObjectREFR::Destroy() frees up the formID for reuse
 	if (m_tempRef)
 	{
+		m_tempRef->baseForm = nullptr;
+		memset(&m_tempRef->extraDataList.m_data, 0, 0x1C);
 		m_tempRef->Destroy(true);
 	}
 
@@ -228,32 +230,6 @@ bool InventoryReference::DeferredAction::Execute(InventoryReference* iref)
 		}
 		default:
 			return false;
-	}
-}
-
-void InventoryReference::Data::CreateForUnextendedEntry(ExtraContainerChanges::EntryData* entry, SInt32 totalCount, Vector<Data> &dataOut)
-{
-	if (totalCount < 1) {
-		return;
-	}
-
-	ExtraDataList* xDL;
-
-	// create stacks of max 32767 as that's the max ExtraCount::count can hold
-	while (totalCount > 32767)
-	{
-		xDL = ExtraDataList::Create(ExtraCount::Create(32767));
-		dataOut.Append(entry->type, entry, xDL);
-		totalCount -= 32767;
-	}
-
-	if (totalCount > 0)
-	{
-		if (totalCount > 1) 
-			xDL = ExtraDataList::Create(ExtraCount::Create(totalCount));
-		else
-			xDL = NULL;
-		dataOut.Append(entry->type, entry, xDL);
 	}
 }
 
