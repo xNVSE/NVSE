@@ -25,7 +25,7 @@ static const UInt32 kNewGamePatchAddr =			0x007D33CE;		// overwrite call to does
 static const UInt32 kDeleteGamePatchAddr =		0x00850398;		// DeleteFile() call	// third call to DeleteFileA, like FO3
 static const UInt32 kRenameGamePatchAddr =		0x0085762B;		// call to rename()		//
 
-static const UInt32 kPreLoadGamePatchAddr =     0x8507E0;
+static const UInt32 kPreLoadGamePatchAddr =     0x847FD9;
 static const UInt32 kPreLoadGameRetnAddr =		0x00847ED1;
 static const UInt32 kPostLoadGamePatchAddr =	0x00848C83;
 static const UInt32 kPostLoadGameRetnAddr =		0x00848C89;
@@ -59,19 +59,14 @@ static void __stdcall DoPreLoadGameHook(const char* saveFilePath)
 	Serialization::HandlePreLoadGame(saveFilePath);
 }
 
-static bool __cdecl PreLoadGameHook()
+static void __fastcall PreLoadGameHook(void* _this)
 {
 	// hooked game code
-	const auto result = CdeclCall<bool>(0x703D50);
+	ThisStdCall(0x852B60, _this);
 	// our code
 	auto* _ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
-	const auto displaysMissingContentBox = !*reinterpret_cast<bool*>(_ebp + 0x14);
-	if (displaysMissingContentBox) // prevent PreLoadGame from running before missing content dialog
-		return result;
-	const char* name = *reinterpret_cast<const char**>(_ebp + 0x8);
-	const auto path = std::string(name) + ".fos";
-	DoPreLoadGameHook(path.c_str());
-	return result;
+	const auto* path = reinterpret_cast<const char*>(_ebp - 0x22C);
+	DoPreLoadGameHook(path);
 }
 
 static void __stdcall DispatchLoadGameEventToScripts(const char* saveFilePath)
