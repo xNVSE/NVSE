@@ -122,22 +122,6 @@ TESForm *TESForm::CloneForm(bool persist) const
 	return result;
 }
 
-#if NVSE_CORE
-extern std::unordered_set<UInt32> s_clonedFormsWithInheritedModIdx;
-#endif
-
-bool TESForm::IsCloned() const
-{
-	const auto isCloned = GetModIndex() == 0xff;
-#if NVSE_CORE
-	if (isCloned)
-		return true;
-	return s_clonedFormsWithInheritedModIdx.contains(refID);
-#else
-	return isCloned;
-#endif
-}
-
 std::string TESForm::GetStringRepresentation() const
 {
 	return FormatString(R"([id: %X, edid: "%s", name: "%s"])", refID, GetName() ? GetName() : "", GetFullName() ? GetFullName()->name.CStr() : "<no name>");

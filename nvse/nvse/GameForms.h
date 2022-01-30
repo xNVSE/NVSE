@@ -339,7 +339,6 @@ public:
 	UInt8			GetModIndex() const;
 	TESFullName*	GetFullName() const;
 	const char*		GetTheName();
-	bool			IsCloned() const;
 	std::string		GetStringRepresentation() const;
 
 	bool IsWeapon() { return typeID == kFormType_TESObjectWEAP; }

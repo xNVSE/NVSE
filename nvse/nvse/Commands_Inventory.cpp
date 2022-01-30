@@ -2718,6 +2718,8 @@ bool Cmd_SetNameEx_Execute(COMMAND_ARGS)
 	return true;
 }
 
+extern std::unordered_set<UInt32> s_clonedFormsWithInheritedModIdx;
+
 bool Cmd_IsClonedForm_Execute(COMMAND_ARGS)
 {
 	*result = 0;
@@ -2730,7 +2732,10 @@ bool Cmd_IsClonedForm_Execute(COMMAND_ARGS)
 		form = thisObj->baseForm;
 	}
 
-	*result = form->IsCloned() ? 1 : 0;
+	if (form->GetModIndex() == 0xFF)
+		*result = 1;
+	else if (s_clonedFormsWithInheritedModIdx.contains(form->refID))
+		*result = 1;
 	return true;
 }
 
