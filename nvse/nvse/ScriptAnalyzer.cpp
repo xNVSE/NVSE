@@ -431,7 +431,8 @@ std::string ScriptParsing::InlineExpressionToken::ToString()
 	return eval->GetLineText(*this->tokens, nullptr);
 }
 
-ScriptParsing::CommandCallToken::CommandCallToken(CommandInfo* cmdInfo, UInt32 opcode, Script::RefVariable* callingRef, Script* script) : cmdInfo(cmdInfo), opcode(opcode)
+ScriptParsing::CommandCallToken::CommandCallToken(CommandInfo* cmdInfo, UInt32 opcode, Script::RefVariable* callingRef, Script* script) :
+	opcode(opcode), cmdInfo(cmdInfo)
 {
 	if (!cmdInfo)
 		error = true;

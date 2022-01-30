@@ -1,4 +1,7 @@
 #include "Commands_Inventory.h"
+
+#include <unordered_set>
+
 #include "InventoryInfo.h"
 #include "InventoryReference.h"
 
@@ -2731,18 +2734,30 @@ bool Cmd_IsClonedForm_Execute(COMMAND_ARGS)
 	return true;
 }
 
+std::unordered_set<UInt32> s_clonedFormsWithInheritedModIdx;
+
 bool CloneForm_Execute(COMMAND_ARGS, bool bPersist)
 {
 	*result = 0;
 	UInt32* refResult = (UInt32*)result;
 	TESForm* form = NULL;
-	ExtractArgsEx(EXTRACT_ARGS_EX, &form);
+	int inheritModIndexFromCallingScript = false;
+	ExtractArgsEx(EXTRACT_ARGS_EX, &form, &inheritModIndexFromCallingScript);
 	if (!form) {
 		if (!thisObj) return true;
 		form = thisObj->baseForm;
 	}
 
-	TESForm* clonedForm = form->CloneForm(bPersist); 
+	TESForm* clonedForm = form->CloneForm(bPersist);
+	if (inheritModIndexFromCallingScript)
+	{
+		const auto nextFormId = GetNextFreeFormID(scriptObj->refID);
+		if (nextFormId >> 24 == scriptObj->GetModIndex())
+		{
+			clonedForm->SetRefID(nextFormId, true);
+			s_clonedFormsWithInheritedModIdx.insert(nextFormId);
+		}
+	}
 	if (clonedForm) {
 		*refResult = clonedForm->refID;
 		if (IsConsoleMode())

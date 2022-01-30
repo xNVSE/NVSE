@@ -1,5 +1,7 @@
 #include "GameForms.h"
 
+#include <unordered_set>
+
 #include "GameAPI.h"
 #include "GameRTTI.h"
 #include "GameObjects.h"
@@ -92,7 +94,6 @@ void TESForm::DoAddForm(TESForm *newForm, bool persist, bool record) const
 		if (package)
 			canSave = true;
 		// ... more ?
-
 		if (canSave)
 			CALL_MEMBER_FN(TESSaveLoadGame::Get(), AddCreatedForm)
 			(newForm);
@@ -118,13 +119,23 @@ TESForm *TESForm::CloneForm(bool persist) const
 		}
 		DoAddForm(result, persist);
 	}
-
 	return result;
 }
 
+#if NVSE_CORE
+extern std::unordered_set<UInt32> s_clonedFormsWithInheritedModIdx;
+#endif
+
 bool TESForm::IsCloned() const
 {
-	return GetModIndex() == 0xff;
+	const auto isCloned = GetModIndex() == 0xff;
+#if NVSE_CORE
+	if (isCloned)
+		return true;
+	return s_clonedFormsWithInheritedModIdx.contains(refID);
+#else
+	return isCloned;
+#endif
 }
 
 std::string TESForm::GetStringRepresentation() const
