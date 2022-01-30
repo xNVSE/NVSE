@@ -882,10 +882,5 @@ UInt8* GetParentBasePtr(void* addressOfReturnAddress, bool lambda)
 	if (lambda) // in debug mode, lambdas are wrapped inside a closure wrapper function, so one more step needed
 		basePtr = *reinterpret_cast<UInt8**>(basePtr);
 #endif
-#if _DEBUG
 	return *reinterpret_cast<UInt8**>(basePtr);
-#else
-	// omit frame pointers is set to true in Release configurations
-	return basePtr;
-#endif
 }
