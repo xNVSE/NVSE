@@ -2732,9 +2732,7 @@ bool Cmd_IsClonedForm_Execute(COMMAND_ARGS)
 		form = thisObj->baseForm;
 	}
 
-	if (form->GetModIndex() == 0xFF)
-		*result = 1;
-	else if (s_clonedFormsWithInheritedModIdx.contains(form->refID))
+	if (form->GetModIndex() == 0xFF || s_clonedFormsWithInheritedModIdx.contains(form->refID))
 		*result = 1;
 	return true;
 }
