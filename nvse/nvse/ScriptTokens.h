@@ -362,14 +362,9 @@ struct ScriptToken
 	UInt8 shortCircuitDistance = 0;
 	UInt8 shortCircuitStackOffset = 0;
 	bool formOrNumber = false;
-	bool forwardResult = false;
 
 	// prevents token from being deleted after evaluation, should only be called in Eval_* statements where it is the operation result
-	ScriptToken* ForwardEvalResult()
-	{
-		forwardResult = true;
-		return this;
-	}
+	ScriptToken* ForwardEvalResult();
 #if _DEBUG
 	std::string varName;
 #endif

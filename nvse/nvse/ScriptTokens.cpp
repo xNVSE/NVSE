@@ -478,11 +478,6 @@ void ScriptToken::operator delete(ScriptToken *token, std::destroying_delete_t)
 {
 	if (!token || token->cached)
 		return;
-	if (token->forwardResult)
-	{
-		token->forwardResult = false;
-		return;
-	}
 	token->~ScriptToken();
 
 	if (token->memoryPooled)
@@ -603,6 +598,13 @@ bool AssignableSubstringArrayElementToken::Assign(const char *str)
 }
 
 #endif
+
+ScriptToken* ScriptToken::ForwardEvalResult()
+{
+	if (type == kTokenType_Number || type == kTokenType_Boolean) [[likely]]
+		return Create(GetNumber());
+	return ToBasicToken();
+}
 
 SliceToken::SliceToken(Slice *_slice) : ScriptToken(kTokenType_Slice, Script::eVarType_Invalid, 0), slice(_slice)
 {
