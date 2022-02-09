@@ -3635,9 +3635,6 @@ ExpressionEvaluator::~ExpressionEvaluator()
 
 	for (UInt32 i = 0; i < m_numArgsExtracted; i++)
 	{
-		auto* arg = m_args[i];
-		if (arg->forwardResult)
-			arg->forwardResult = false;
 		delete m_args[i];
 	}
 
