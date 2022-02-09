@@ -2752,16 +2752,17 @@ bool CloneForm_Execute(COMMAND_ARGS, bool bPersist)
 	}
 
 	TESForm* clonedForm = form->CloneForm(bPersist);
-	if (inheritModIndexFromCallingScript)
+	if (clonedForm) 
 	{
-		const auto nextFormId = GetNextFreeFormID(scriptObj->refID);
-		if (nextFormId >> 24 == scriptObj->GetModIndex())
+		if (inheritModIndexFromCallingScript)
 		{
-			clonedForm->SetRefID(nextFormId, true);
-			s_clonedFormsWithInheritedModIdx.insert(nextFormId);
+			const auto nextFormId = GetNextFreeFormID(scriptObj->refID);
+			if (nextFormId >> 24 == scriptObj->GetModIndex())
+			{
+				clonedForm->SetRefID(nextFormId, true);
+				s_clonedFormsWithInheritedModIdx.insert(nextFormId);
+			}
 		}
-	}
-	if (clonedForm) {
 		*refResult = clonedForm->refID;
 		if (IsConsoleMode())
 			Console_Print("Created cloned form: %08x", *refResult);
