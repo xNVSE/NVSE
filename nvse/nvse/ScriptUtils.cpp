@@ -284,11 +284,10 @@ ScriptToken *Eval_Logical(OperatorType op, ScriptToken *lh, ScriptToken *rh, Exp
 	{
 	case kOpType_LogicalAnd:
 	{
-		auto const rhNum = rh->CanConvertTo(kTokenType_Number) ? rh->GetNumber() : rh->GetBool();
-		return ScriptToken::Create(lh->GetBool() && rhNum ? rhNum : false);
+		return lh->GetBool() && rh->GetBool() ? rh->ForwardEvalResult() : ScriptToken::Create(false);
 	}
 	case kOpType_LogicalOr:
-		return ScriptToken::Create(lh->GetBool() || rh->GetBool());
+		return lh->GetBool() || rh->GetBool() ? rh->ForwardEvalResult() : ScriptToken::Create(false);
 	default:
 		context->Error("Unhandled operator %s", OpTypeToSymbol(op));
 		return NULL;
@@ -1340,7 +1339,7 @@ OperationRule kOpRule_Logical[] =
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Boolean},
 		{kTokenType_Ambiguous, kTokenType_Boolean, kTokenType_Boolean},
 #endif
-		{kTokenType_Boolean, kTokenType_Boolean, kTokenType_Boolean, OP_HANDLER(Eval_Logical)},
+		{kTokenType_Boolean, kTokenType_Boolean, kTokenType_RightToken, OP_HANDLER(Eval_Logical)},
 };
 
 OperationRule kOpRule_Addition[] =

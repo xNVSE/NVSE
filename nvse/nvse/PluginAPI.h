@@ -241,6 +241,7 @@ struct NVSEMessagingInterface
 		kMessage_MainGameLoop,			// called each game loop
 		kMessage_ScriptCompile,   // EDITOR: called after successful script compilation in GECK. data: pointer to Script
 		kMessage_EventListDestroyed, // called before a script event list is destroyed, dataLen: 4, data: ScriptEventList* ptr
+		kMessage_PostQueryPlugins // called after all plugins have been queried
 	};
 
 	UInt32	version;
