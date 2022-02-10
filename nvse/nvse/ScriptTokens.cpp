@@ -1200,9 +1200,10 @@ UInt8 __fastcall ScriptTokenGetType(PluginScriptToken *scrToken)
 	return reinterpret_cast<ScriptToken *>(scrToken)->Type();
 }
 
-bool __fastcall ScriptTokenCanConvertTo(PluginScriptToken *scrToken, Token_Type toType)
+bool __fastcall ScriptTokenCanConvertTo(PluginScriptToken *scrToken, UInt8 toType)
 {
-	return reinterpret_cast<ScriptToken *>(scrToken)->CanConvertTo(toType);
+	auto const tok = reinterpret_cast<ScriptToken*>(scrToken);
+	return tok->CanConvertTo(static_cast<Token_Type>(toType));
 }
 
 double __fastcall ScriptTokenGetFloat(PluginScriptToken *scrToken)
