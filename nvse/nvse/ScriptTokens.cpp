@@ -597,14 +597,14 @@ bool AssignableSubstringArrayElementToken::Assign(const char *str)
 	return false;
 }
 
-#endif
-
 ScriptToken* ScriptToken::ForwardEvalResult()
 {
 	if (type == kTokenType_Number || type == kTokenType_Boolean) [[likely]]
 		return Create(GetNumber());
 	return ToBasicToken();
 }
+
+#endif
 
 SliceToken::SliceToken(Slice *_slice) : ScriptToken(kTokenType_Slice, Script::eVarType_Invalid, 0), slice(_slice)
 {
