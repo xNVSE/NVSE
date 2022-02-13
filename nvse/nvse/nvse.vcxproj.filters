@@ -485,6 +485,9 @@
     <ClInclude Include="Commands_Quest.h">
       <Filter>commands</Filter>
     </ClInclude>
+    <ClInclude Include="StackVector.h">
+      <Filter>lib</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">

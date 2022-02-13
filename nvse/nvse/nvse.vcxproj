@@ -734,6 +734,7 @@
     <ClInclude Include="ScriptTokens.h" />
     <ClInclude Include="ScriptUtils.h" />
     <ClInclude Include="Serialization.h" />
+    <ClInclude Include="StackVector.h" />
     <ClInclude Include="StringVar.h" />
     <ClInclude Include="ThreadLocal.h" />
     <ClInclude Include="Utilities.h" />

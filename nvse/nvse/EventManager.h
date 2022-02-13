@@ -2,12 +2,14 @@
 #include <string>
 
 #include "LambdaManager.h"
+#include "PluginAPI.h"
 
 class Script;
 class TESForm;
 class TESObjectREFR;
 class BGSListForm;
 class Actor;
+typedef void (*EventHookInstaller)();
 
 // For dispatching events to scripts.
 // Scripts can register an event handler for any of the supported events.
@@ -18,6 +20,8 @@ class Actor;
 
 namespace EventManager
 {
+	using EventHandler = NVSEEventManagerInterface::EventHandler;
+
 	enum eEventID {
 		// correspond to ScriptEventList event masks
 		kEventID_OnAdd,
@@ -81,9 +85,9 @@ namespace EventManager
 	// Represents an event handler registered for an event.
 	struct EventCallback
 	{
-		EventCallback() : script(NULL), source(NULL), object(NULL), removed(false), pendingRemove(false), lambdaVariableContext(nullptr) {}
+		EventCallback() {}
 		EventCallback(Script* funcScript, TESForm* sourceFilter = NULL, TESForm* objectFilter = NULL)
-			: script(funcScript), source(sourceFilter), object(objectFilter), removed(false), pendingRemove(false), lambdaVariableContext(funcScript) {}
+			: script(funcScript), source(sourceFilter), object(objectFilter), lambdaVariableContext(funcScript) {}
 
 		EventCallback(const EventCallback& other) = delete;
 
@@ -93,9 +97,12 @@ namespace EventManager
 			  object(other.object),
 			  removed(other.removed),
 			  pendingRemove(other.pendingRemove),
-			  lambdaVariableContext(std::move(other.lambdaVariableContext))
-		{
-		}
+			  lambdaVariableContext(std::move(other.lambdaVariableContext)),
+		      eventFunction(other.eventFunction)
+		{}
+
+		EventCallback(EventHandler func, TESForm* sourceFilter = nullptr, TESForm* objectFilter = nullptr)
+			: source(sourceFilter), object(objectFilter), eventFunction(func) {}
 
 		EventCallback& operator=(const EventCallback& other) = delete;
 
@@ -109,15 +116,17 @@ namespace EventManager
 			removed = other.removed;
 			pendingRemove = other.pendingRemove;
 			lambdaVariableContext = std::move(other.lambdaVariableContext);
+			eventFunction = other.eventFunction;
 			return *this;
 		}
 
-		Script			*script;
-		TESForm			*source;				// first arg to handler (reference or base form or form list)
-		TESForm			*object;				// second arg to handler
-		bool			removed;
-		bool			pendingRemove;
-		LambdaManager::LambdaVariableContext lambdaVariableContext;
+		Script			*script{};
+		TESForm			*source{};				// first arg to handler (reference or base form or form list)
+		TESForm			*object{};				// second arg to handler
+		bool			removed{};
+		bool			pendingRemove{};
+		LambdaManager::LambdaVariableContext lambdaVariableContext = nullptr;
+		EventHandler       eventFunction{};          // The function for handling the event, used in a plugin. If this is valid, then script is NULL the reverse is also valid
 
 		bool IsRemoved() const { return removed; }
 		void SetRemoved(bool bSet) { removed = bSet; }
@@ -142,6 +151,14 @@ namespace EventManager
 	void Tick();
 
 	void Init();
+
+	bool RegisterEventEx(const char* name, UInt8 numParams, UInt8* paramTypes, UInt32 eventMask, EventHookInstaller* hookInstaller);
+
+	bool RegisterEvent(const char* name, UInt8 numParams, UInt8* paramTypes);
+	bool SetNativeEventHandler(const char* eventName, EventHandler func, TESForm* sourceFilter, TESForm* objectFilter);
+	bool RemoveNativeEventHandler(const char* eventName, EventHandler func, TESForm* sourceFilter, TESForm* objectFilter);
+
+	bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...);
 
 	// dispatch a user-defined event from a script
 	bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 argsArrayId, const char* senderName);
