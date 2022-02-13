@@ -130,6 +130,16 @@ static const NVSEDataInterface g_NVSEDataInterface =
 };
 #endif
 
+#ifdef RUNTIME
+static const NVSEEventManagerInterface g_NVSEEventManagerInterface =
+{
+	EventManager::RegisterEvent,
+	EventManager::DispatchEvent,
+	EventManager::SetNativeEventHandler,
+	EventManager::RemoveNativeEventHandler
+};
+#endif
+
 PluginManager::PluginManager()
 {
 	//
@@ -381,15 +391,17 @@ void * PluginManager::QueryInterface(UInt32 id)
 		result = (void *)&g_NVSEDataInterface;
 		break;
 #endif
-
 	case kInterface_Messaging:
 		result = (void *)&g_NVSEMessagingInterface;
 		break;
-
 	case kInterface_CommandTable:
 		result = (void*)&g_NVSECommandTableInterface;
 		break;
-
+#if RUNTIME
+	case kInterface_EventManager:
+		result = (void*)&g_NVSEEventManagerInterface;
+		break;
+#endif
 	default:
 		_WARNING("unknown QueryInterface %08X", id);
 		break;

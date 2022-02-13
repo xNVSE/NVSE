@@ -593,7 +593,7 @@ bool InternalFunctionCaller::PopulateArgs(ScriptEventList *eventList, FunctionIn
 		UserFunctionParam *param = info->GetParam(i);
 		if (!ValidateParam(param, i))
 		{
-			ShowRuntimeError(m_script, "Failed to extract arg %d", i);
+			ShowRuntimeError(m_script, "Failed to extract parameter %d. Please verify the number of parameters in function script match those required for event.", i);
 			return false;
 		}
 

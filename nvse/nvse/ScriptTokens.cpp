@@ -599,7 +599,7 @@ bool AssignableSubstringArrayElementToken::Assign(const char *str)
 
 ScriptToken* ScriptToken::ForwardEvalResult()
 {
-	if (type == kTokenType_Number || type == kTokenType_Boolean) [[likely]]
+	if (CanConvertTo(kTokenType_Number)) [[likely]]
 		return Create(GetNumber());
 	return ToBasicToken();
 }

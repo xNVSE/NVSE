@@ -45,6 +45,8 @@ enum
 
 	// Added v0005 - version bumped to 3
 	kInterface_Data,
+	// Added v0006
+	kInterface_EventManager,
 
 	kInterface_Max
 };
@@ -716,6 +718,48 @@ struct NVSESerializationInterface
 	void	(*ReadRecord64)(void *outData);
 
 	void	(*SkipNBytes)(UInt32 byteNum);
+};
+
+/**** Event API docs  *******************************************************************************************
+ *  This interface allows you to
+ *	- Register a new event type which can be dispatched with parameters
+ *	- Dispatch an event from code to scripts (and plugins with this interface) with parameters and calling ref.
+ *	    - If the first two parameters are forms, the source and object filters can be applied, which are specified
+ *	    to the call to SetEventHandler in either script or plugin
+ *	- Set an event handler for any NVSE events registered with SetEventHandler which will be called back.
+ *
+ *	PluginEventInfo::paramTypes needs to be statically defined
+ *	(i.e. the pointer to it may never become invalid).
+ *  For example, a good way to define it is to make a global variable like this:
+ *
+ *	    static UInt8 s_MyEventParams[] = { Script::eVarType_Ref, Script::eVarType_String };
+ *
+ *	Then you can pass it into PluginEventInfo like this:
+ *
+ *  Which can be registered like this:
+ *
+ *	    s_EventInterface->RegisterEvent("MyEvent", 2, s_MyEventParams);
+ *
+ *  Then, from your code, you can dispatch the event like this:
+ *
+ *	    s_EventInterface->DispatchEvent("MyEvent", callingRef, someForm, someString);
+ *
+ */
+struct NVSEEventManagerInterface
+{
+	typedef void (*EventHandler)(TESObjectREFR* thisObj, void* parameters);
+
+	// Registers a new event which can be dispatched to scripts and plugins. Returns false if event with name already exists
+	bool (*RegisterEvent)(const char* name, UInt8 numParams, UInt8* paramTypes);
+
+	// Dispatch an event that has been registered with RegisterEvent - variadic arguments are passed as parameters to script / function
+	bool (*DispatchEvent)(const char* eventName, TESObjectREFR* thisObj, ...);
+
+	// Similar to script function SetEventHandler, allows you to set a native function that gets called back on events
+	bool (*SetNativeEventHandler)(const char* eventName, EventHandler func, TESForm* sourceFilter, TESForm* objectFilter);
+
+	// Same as script function RemoveEventHandler but for native functions
+	bool (*RemoveNativeEventHandler)(const char* eventName, EventHandler func, TESForm* sourceFilter, TESForm* objectFilter);
 };
 
 struct PluginInfo

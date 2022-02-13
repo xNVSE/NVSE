@@ -15,6 +15,7 @@
 //#include "InventoryReference.h"
 #include "GameData.h"
 #include "GameRTTI.h"
+#include "StackVector.h"
 
 namespace EventManager {
 
@@ -33,12 +34,13 @@ enum {
 	kEventMask_OnActivate		= 0x01000000,		// special case as OnActivate has no event mask
 };
 
-typedef void (* EventHookInstaller)();
-
 typedef LinkedList<EventCallback>	CallbackList;
 
+#if _DEBUG
+Map<const char*, UInt32> s_eventNameToID(0x40);
+#else
 UnorderedMap<const char*, UInt32> s_eventNameToID(0x40);
-
+#endif
 UInt32 EventIDForString(const char* eventStr)
 {
 	UInt32 *idPtr = s_eventNameToID.GetPtr(eventStr);
@@ -49,15 +51,12 @@ struct EventInfo
 {
 	EventInfo (const char *name_, UInt8* params_, UInt8 nParams_, UInt32 eventMask_, EventHookInstaller* installer_)
 		: evName(name_), paramTypes(params_), numParams(nParams_), eventMask(eventMask_), installHook(installer_)
-	{
-		UInt32 eventID = s_eventNameToID.Size(), *idPtr;
-		if (s_eventNameToID.Insert(evName, &idPtr))
-			*idPtr = eventID;
-	}
-	EventInfo (const char *name_, UInt8 * params_, UInt8 numParams_) : evName(name_), paramTypes(params_), numParams(numParams_), eventMask(0), installHook(NULL)
-		{ }
-	EventInfo () : evName(""), paramTypes(NULL), numParams(0), eventMask(0), installHook(NULL)
-		{ ; }
+	{}
+
+	EventInfo (const char *name_, UInt8 * params_, UInt8 numParams_) : evName(name_), paramTypes(params_), numParams(numParams_), eventMask(0), installHook(NULL){}
+
+	EventInfo () : evName(""), paramTypes(NULL), numParams(0), eventMask(0), installHook(NULL){}
+
 	EventInfo (const EventInfo& other) :
 		evName(other.evName), 
 		paramTypes(other.paramTypes),
@@ -65,9 +64,10 @@ struct EventInfo
 		callbacks(other.callbacks),
 		eventMask(other.eventMask), 
 		installHook(other.installHook)
-		{ 
-		}
-	EventInfo& operator=(const EventInfo& other) {
+		{}
+
+	EventInfo& operator=(const EventInfo& other)
+	{
 		evName = other.evName;
 		paramTypes = other.paramTypes;
 		numParams = other.numParams;
@@ -75,7 +75,7 @@ struct EventInfo
 		eventMask = other.eventMask;
 		installHook = other.installHook;
 		return *this;
-	};
+	}
 
 	const char			*evName;			// must be lowercase
 	UInt8				*paramTypes;
@@ -507,6 +507,7 @@ DeferredRemoveList s_deferredRemoveList;
 
 enum class RefState {NotSet, Invalid, Valid};
 
+// Deprecated in favor of EventManager::DispatchEvent
 void __stdcall HandleEvent(UInt32 id, void* arg0, void* arg1)
 {
 	ScopedLock lock(s_criticalSection);
@@ -522,7 +523,7 @@ void __stdcall HandleEvent(UInt32 id, void* arg0, void* arg1)
 			continue;
 
 		// Check filters
-		if (callback.source && (arg0 != callback.source))
+		if (callback.source && arg0 != callback.source && eventInfo->numParams && eventInfo->paramTypes[0] == Script::eVarType_Ref)
 		{
 			if (isArg0Valid == RefState::NotSet)
 				isArg0Valid = IsValidReference(arg0) ? RefState::Valid : RefState::Invalid;
@@ -540,13 +541,19 @@ void __stdcall HandleEvent(UInt32 id, void* arg0, void* arg1)
 		}
 		else
 		{
-			// handle immediately
-			s_eventStack.Push(eventInfo->evName);
-			ScriptToken* result = UserFunctionManager::Call(EventHandlerCaller(callback.script, eventInfo, arg0, arg1));
-			s_eventStack.Pop();
-
-			// result is unused
-			if (result)	delete result;
+			if (callback.eventFunction)
+			{
+				// native plugin event handlers
+				void* params[] = { arg0, arg1 };
+				callback.eventFunction(nullptr, params);
+			}
+			else if (callback.script)
+			{
+				// handle immediately
+				s_eventStack.Push(eventInfo->evName);
+				delete UserFunctionManager::Call(EventHandlerCaller(callback.script, eventInfo, arg0, arg1));
+				s_eventStack.Pop();
+			}
 		}
 	}
 }
@@ -569,7 +576,7 @@ bool SetHandler(const char* eventName, EventCallback& handler)
 	UInt32 setted = 0;
 
 	// trying to use a FormList to specify the source filter
-	if (handler.source && handler.source->GetTypeID()==0x055 && recursiveLevel < 100)
+	if (handler.source && handler.source->GetTypeID() == 0x055 && recursiveLevel < 100)
 	{
 		BGSListForm* formList = (BGSListForm*)handler.source;
 		for (tList<TESForm>::Iterator iter = formList->list.Begin(); !iter.End(); ++iter)
@@ -583,7 +590,7 @@ bool SetHandler(const char* eventName, EventCallback& handler)
 	}
 
 	// trying to use a FormList to specify the object filter
-	if (handler.object && handler.object->GetTypeID()==0x055 && recursiveLevel < 100)
+	if (handler.object && handler.object->GetTypeID() == 0x055 && recursiveLevel < 100)
 	{
 		BGSListForm* formList = (BGSListForm*)handler.object;
 		for (tList<TESForm>::Iterator iter = formList->list.Begin(); !iter.End(); ++iter)
@@ -616,11 +623,10 @@ bool SetHandler(const char* eventName, EventCallback& handler)
 		// is hook installed for this event type?
 		if (info->installHook)
 		{
-			if (*(info->installHook))
+			if (*info->installHook)
 			{
 				// if this hook is used by more than one event type, prevent it being installed a second time
 				(*info->installHook)();
-				*(info->installHook) = NULL;
 			}
 			// mark event as having had its hook installed
 			info->installHook = NULL;
@@ -639,7 +645,8 @@ bool SetHandler(const char* eventName, EventCallback& handler)
 				}
 			}
 		}
-		handler.lambdaVariableContext = LambdaManager::LambdaVariableContext(handler.script);
+		if (handler.script)
+			handler.lambdaVariableContext = LambdaManager::LambdaVariableContext(handler.script);
 		info->callbacks.Append(std::move(handler));
 
 		s_eventsInUse |= info->eventMask;
@@ -698,6 +705,9 @@ bool RemoveHandler(const char* id, EventCallback& handler)
 				if (handler.script != callback.script)
 					continue;
 
+				if (handler.eventFunction != callback.eventFunction)
+					continue;
+
 				if (handler.source && (handler.source != callback.source))
 					continue;
 
@@ -749,6 +759,7 @@ void __stdcall HandleGameEvent(UInt32 eventMask, TESObjectREFR* source, TESForm*
 			if (source != s_lastOnHitWithActor || object != s_lastOnHitWithWeapon)
 			{
 				s_lastOnHitWithActor = source;
+
 				s_lastOnHitWithWeapon = object;
 				HandleEvent(eventID, source, object);
 			}
@@ -772,6 +783,70 @@ void HandleNVSEMessage(UInt32 msgID, void* data)
 	UInt32 eventID = EventIDForMessage(msgID);
 	if (eventID != kEventID_INVALID)
 		HandleEvent(eventID, data, NULL);
+}
+
+bool DoesFormMatchFilter(TESForm* form, TESForm* filter, const UInt32 recursionLevel = 0)
+{
+	if (!filter || filter == form)
+		return true;
+	if (recursionLevel > 100) [[unlikely]]
+		return false;
+	if (IS_ID(filter, BGSListForm))
+	{
+		const auto* list = static_cast<BGSListForm*>(filter);
+		for (auto* listForm : list->list)
+		{
+			if (DoesFormMatchFilter(form, listForm, recursionLevel + 1))
+				return true;
+		}
+	}
+	return false;
+}
+
+bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
+{
+	const auto eventId = EventIDForString(eventName);
+	if (eventId == static_cast<UInt32>(kEventID_INVALID))
+		return false;
+	EventInfo& eventInfo = s_eventInfos[eventId];
+
+	va_list paramList, filterList;
+	va_start(paramList, thisObj);
+	va_copy(filterList, paramList);
+
+	TESForm* sourceForm{};
+	TESForm* objectForm{};
+	if (eventInfo.numParams > 0 && eventInfo.paramTypes[0] == Script::eVarType_Ref)
+		sourceForm = va_arg(filterList, TESForm*);
+	if (eventInfo.numParams > 1 && eventInfo.paramTypes[1] == Script::eVarType_Ref)
+		objectForm = va_arg(filterList, TESForm*);
+
+	for (auto iter = eventInfo.callbacks.Begin(); !iter.End(); ++iter)
+	{
+		const auto& callback = iter.Get();
+		if (callback.IsRemoved())
+			continue;
+		if (!DoesFormMatchFilter(sourceForm, callback.source) || !DoesFormMatchFilter(objectForm, callback.object))
+			continue;
+		if (callback.script) [[likely]]
+		{
+			InternalFunctionCaller caller(callback.script, thisObj);
+			caller.vSetArgs(eventInfo.numParams, paramList);
+			delete UserFunctionManager::Call(std::move(caller));
+		}
+		else if (callback.eventFunction)
+		{
+			StackVector<void*, 0x20> params;
+			for (int i = 0; i < eventInfo.numParams; ++i)
+			{
+				params->push_back(va_arg(paramList, void*));
+			}
+			callback.eventFunction(thisObj, params->data());
+		}
+	}
+	va_end(paramList);
+	va_end(filterList);
+	return true;	
 }
 
 bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 argsArrayId, const char* senderName)
@@ -835,9 +910,8 @@ void Tick()
 
 void Init()
 {
-#define EVENT_INFO(name, params, hookInstaller, eventMask) s_eventInfos.Append(name, params, params ? sizeof(params) : 0, eventMask, hookInstaller)
-
-
+#define EVENT_INFO(name, params, hookInstaller, eventMask) EventManager::RegisterEventEx(name, params ? sizeof(params) : 0, params, eventMask, hookInstaller)
+	
 	EVENT_INFO("onadd", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnAdd);
 	EVENT_INFO("onactorequip", kEventParams_GameEvent, &s_ActorEquipHook, ScriptEventList::kEvent_OnEquip);
 	EVENT_INFO("ondrop", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnDrop);
@@ -895,6 +969,52 @@ void Init()
 
 }
 
+bool RegisterEventEx(const char* name, UInt8 numParams, UInt8* paramTypes, UInt32 eventMask = 0, EventHookInstaller* hookInstaller = nullptr)
+{
+	UInt32* idPtr;
+	if (!s_eventNameToID.Insert(name, &idPtr))
+		return false; // event with this name already exists
+	*idPtr = s_eventInfos.Size();
+	const auto event = EventInfo(name, paramTypes, numParams, eventMask, hookInstaller);
+	s_eventInfos.Append(event);
+	return true;
+}
 
-};	// namespace
+bool RegisterEvent(const char* name, UInt8 numParams, UInt8* paramTypes)
+{
+	return RegisterEventEx(name, numParams, paramTypes);
+}
 
+bool SetNativeEventHandler(const char* eventName, EventHandler func, TESForm* sourceFilter,
+	TESForm* objectFilter)
+{
+	EventCallback event(func, sourceFilter, objectFilter);
+	return SetHandler(eventName, event);
+}
+
+bool RemoveNativeEventHandler(const char* eventName, EventHandler func, TESForm* sourceFilter, TESForm* objectFilter)
+{
+	EventCallback event(func, sourceFilter, objectFilter);
+	return RemoveHandler(eventName, event);
+}
+
+bool EventHandlerExist(const char* ev, const EventCallback& handler)
+{
+	ScopedLock lock(s_criticalSection);
+	const UInt32 eventType = EventIDForString(ev);
+	if (eventType < s_eventInfos.Size()) 
+	{
+		CallbackList& callbacks = s_eventInfos[eventType].callbacks;
+		for (auto iter = callbacks.Begin(); !iter.End(); ++iter) 
+		{
+			if (iter.Get().Equals(handler)) 
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+
+}
