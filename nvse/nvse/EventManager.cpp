@@ -905,10 +905,10 @@ bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCall
 	{
 		if (paramType != DataTypeToVarType(iter.DataType()))
 			continue;
-		if (!DoesFilterMatch(iter, param))
-			return false;
+		if (DoesFilterMatch(iter, param))
+			return true;
 	}
-	return true;
+	return false;
 }
 
 bool DoFiltersMatch(const EventInfo& eventInfo, const EventCallback& callback, const StackVector<void*, 0x20>& params)
