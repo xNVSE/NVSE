@@ -397,9 +397,11 @@ void * PluginManager::QueryInterface(UInt32 id)
 	case kInterface_CommandTable:
 		result = (void*)&g_NVSECommandTableInterface;
 		break;
+#if RUNTIME
 	case kInterface_EventManager:
 		result = (void*)&g_NVSEEventManagerInterface;
 		break;
+#endif
 	default:
 		_WARNING("unknown QueryInterface %08X", id);
 		break;
