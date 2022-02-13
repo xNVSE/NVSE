@@ -264,6 +264,7 @@ static_assert(sizeof(ScriptBuffer) == 0x58);
 
 
 Script::VariableType VariableTypeNameToType(const char* name);
+const char* VariableTypeToName(Script::VariableType type);
 
 UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText, Script* script);	// parses scriptText to determine var type
 Script* GetScriptFromForm(TESForm* form);

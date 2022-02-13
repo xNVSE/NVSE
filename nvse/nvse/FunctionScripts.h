@@ -143,6 +143,7 @@ public:
 	
 	bool SetArgs(UInt8 numArgs, ...);
 	bool vSetArgs(UInt8 numArgs, va_list args);
+	bool SetArgsRaw(UInt8 numArgs, const void* args);
 
 protected:
 	enum { kMaxArgs = 10 };	
