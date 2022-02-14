@@ -724,8 +724,8 @@ struct NVSESerializationInterface
  *  This interface allows you to
  *	- Register a new event type which can be dispatched with parameters
  *	- Dispatch an event from code to scripts (and plugins with this interface) with parameters and calling ref.
- *	    - If the first two parameters are forms, the source and object filters can be applied, which are specified
- *	    to the call to SetEventHandler in either script or plugin
+ *	   - SetEventHandler supports any number of filters in script calls in the syntax of 1::myFilter
+ *	   (1st argument will receive this filter for example)
  *	- Set an event handler for any NVSE events registered with SetEventHandler which will be called back.
  *
  *	PluginEventInfo::paramTypes needs to be statically defined
@@ -744,6 +744,11 @@ struct NVSESerializationInterface
  *
  *	    s_EventInterface->DispatchEvent("MyEvent", callingRef, someForm, someString);
  *
+ *	When passing numeric types to DispatchEvent you MUST pack them in a float, which then needs to be
+ *  cast as a void* pointer. This is due to the nature of variadic arguments in C/C++. Example
+ *      float number = 10;
+ *	    void* numberArg = *(void**) &number;
+ *	    s_EventInterface->DispatchEvent("MyEvent", callingRef, numberArg);
  */
 struct NVSEEventManagerInterface
 {
@@ -756,10 +761,10 @@ struct NVSEEventManagerInterface
 	bool (*DispatchEvent)(const char* eventName, TESObjectREFR* thisObj, ...);
 
 	// Similar to script function SetEventHandler, allows you to set a native function that gets called back on events
-	bool (*SetNativeEventHandler)(const char* eventName, EventHandler func, TESForm* sourceFilter, TESForm* objectFilter);
+	bool (*SetNativeEventHandler)(const char* eventName, EventHandler func);
 
 	// Same as script function RemoveEventHandler but for native functions
-	bool (*RemoveNativeEventHandler)(const char* eventName, EventHandler func, TESForm* sourceFilter, TESForm* objectFilter);
+	bool (*RemoveNativeEventHandler)(const char* eventName, EventHandler func);
 };
 
 struct PluginInfo

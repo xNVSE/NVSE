@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 
+#include "ArrayVar.h"
 #include "LambdaManager.h"
 #include "PluginAPI.h"
 
@@ -16,7 +17,6 @@ typedef void (*EventHookInstaller)();
 // Can optionally specify filters to match against the event arguments.
 // Event handler is a function script which must take the expected number and types of arguments associated with the event.
 // Supporting hooks only installed if at least one handler is registered for a particular event.
-// ###TODO: at present only supports 0-2 arguments per event. All we need for now, but would be nice to support arbitrary # of args.
 
 namespace EventManager
 {
@@ -98,7 +98,8 @@ namespace EventManager
 			  removed(other.removed),
 			  pendingRemove(other.pendingRemove),
 			  lambdaVariableContext(std::move(other.lambdaVariableContext)),
-		      eventFunction(other.eventFunction)
+		      eventFunction(other.eventFunction),
+              filters(std::move(other.filters))
 		{}
 
 		EventCallback(EventHandler func, TESForm* sourceFilter = nullptr, TESForm* objectFilter = nullptr)
@@ -117,6 +118,7 @@ namespace EventManager
 			pendingRemove = other.pendingRemove;
 			lambdaVariableContext = std::move(other.lambdaVariableContext);
 			eventFunction = other.eventFunction;
+			filters = std::move(other.filters);
 			return *this;
 		}
 
@@ -127,6 +129,13 @@ namespace EventManager
 		bool			pendingRemove{};
 		LambdaManager::LambdaVariableContext lambdaVariableContext = nullptr;
 		EventHandler       eventFunction{};          // The function for handling the event, used in a plugin. If this is valid, then script is NULL the reverse is also valid
+
+		struct BaseFilter
+		{
+			UInt32 index;
+			ArrayElement source;
+		};
+		std::vector<BaseFilter> filters;
 
 		bool IsRemoved() const { return removed; }
 		void SetRemoved(bool bSet) { removed = bSet; }
@@ -155,8 +164,8 @@ namespace EventManager
 	bool RegisterEventEx(const char* name, UInt8 numParams, UInt8* paramTypes, UInt32 eventMask, EventHookInstaller* hookInstaller);
 
 	bool RegisterEvent(const char* name, UInt8 numParams, UInt8* paramTypes);
-	bool SetNativeEventHandler(const char* eventName, EventHandler func, TESForm* sourceFilter, TESForm* objectFilter);
-	bool RemoveNativeEventHandler(const char* eventName, EventHandler func, TESForm* sourceFilter, TESForm* objectFilter);
+	bool SetNativeEventHandler(const char* eventName, EventHandler func);
+	bool RemoveNativeEventHandler(const char* eventName, EventHandler func);
 
 	bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...);
 

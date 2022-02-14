@@ -28,6 +28,17 @@ const char* DataTypeToString(DataType dataType)
 	}
 }
 
+Script::VariableType DataTypeToVarType(DataType dataType)
+{
+	switch (dataType) { case kDataType_Invalid: return Script::eVarType_Invalid;
+	case kDataType_Numeric: return Script::eVarType_Float;
+	case kDataType_Form: return Script::eVarType_Ref;
+	case kDataType_String: return Script::eVarType_String;
+	case kDataType_Array: return Script::eVarType_Array;
+	default: return Script::eVarType_Invalid;
+	}
+}
+
 ArrayData::~ArrayData()
 {
 	if ((dataType == kDataType_String) && str)
@@ -52,7 +63,7 @@ ArrayData& ArrayData::operator=(const ArrayData& rhs)
 {
 	if (this != &rhs)
 	{
-		if ((dataType == kDataType_String) && str)
+		if (dataType == kDataType_String && str)
 			free(str);
 		dataType = rhs.dataType;
 		if (dataType == kDataType_String)
@@ -1516,6 +1527,11 @@ bool ArrayVar::Equals(ArrayVar* arr2)
 bool ArrayVar::DeepEquals(ArrayVar* arr2)
 {
 	return this->CompareArrays(arr2, true);
+}
+
+ArrayVarElementContainer* ArrayVar::GetRawContainer()
+{
+	return &m_elements;
 }
 
 //////////////////////////

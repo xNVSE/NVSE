@@ -13,6 +13,8 @@
 #include "Hooks_Gameplay.h"
 #include "GameOSDepend.h"
 //#include "InventoryReference.h"
+#include "EventManager.h"
+
 #include "GameData.h"
 #include "GameRTTI.h"
 #include "StackVector.h"
@@ -803,6 +805,151 @@ bool DoesFormMatchFilter(TESForm* form, TESForm* filter, const UInt32 recursionL
 	return false;
 }
 
+bool DoDeprecatedFiltersMatch(const EventInfo& eventInfo, const EventCallback& callback, const StackVector<void*, 0x20>& params)
+{
+	if (!callback.source && !callback.object)
+		return true;
+	// old filter system
+	TESForm* sourceForm{};
+	TESForm* objectForm{};
+	if (eventInfo.numParams > 0 && eventInfo.paramTypes[0] == Script::eVarType_Ref)
+		sourceForm = static_cast<TESForm*>(params->at(0));
+	if (eventInfo.numParams > 1 && eventInfo.paramTypes[1] == Script::eVarType_Ref)
+		objectForm = static_cast<TESForm*>(params->at(1));
+	if (!DoesFormMatchFilter(sourceForm, callback.source) || !DoesFormMatchFilter(objectForm, callback.object))
+		return false;
+	return true;
+}
+
+
+bool DoesFilterMatch(const ArrayElement& sourceFilter, void* param)
+{
+	const auto filterDataType = sourceFilter.DataType();
+
+	switch (filterDataType) {
+	case kDataType_Numeric:
+	{
+		double filterNumber{};
+		sourceFilter.GetAsNumber(&filterNumber);
+		const auto inputNumber = *reinterpret_cast<float*>(&param);
+		if (!FloatEqual(inputNumber, static_cast<float>(filterNumber)))
+			return false;
+		break;
+	}
+	case kDataType_Form:
+	{
+		UInt32 filterFormId{};
+		sourceFilter.GetAsFormID(&filterFormId);
+		auto* inputForm = static_cast<TESForm*>(param);
+		if (!inputForm)
+			return false;
+		auto* filterForm = LookupFormByID(filterFormId);
+		if (!filterForm || !DoesFormMatchFilter(inputForm, filterForm))
+			return false;
+		break;
+	}
+	case kDataType_String:
+	{
+		const char* filterStr{};
+		sourceFilter.GetAsString(&filterStr);
+		const auto inputStr = static_cast<const char*>(param);
+		if (inputStr == filterStr)
+			return true;
+		if (!filterStr || !inputStr || StrCompare(filterStr, inputStr) != 0)
+			return false;
+		break;
+	}
+	case kDataType_Array:
+	{
+		ArrayID filterArrayId{};
+		sourceFilter.GetAsArray(&filterArrayId);
+		const auto inputArrayId = *reinterpret_cast<ArrayID*>(&param);
+		if (!inputArrayId)
+			return false;
+		const auto inputArray = g_ArrayMap.Get(inputArrayId);
+		const auto filterArray = g_ArrayMap.Get(filterArrayId);
+		if (!inputArray || !filterArray || !inputArray->Equals(filterArray))
+			return false;
+		break;
+	}
+	case kDataType_Invalid:
+	default: break;
+	}
+	return true;
+}
+
+bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCallback::BaseFilter& filter, Script::VariableType paramType, void* param)
+{
+
+	ArrayID arrayFiltersId{};
+	filter.source.GetAsArray(&arrayFiltersId);
+	const auto invalidArrayError = _L(, ShowRuntimeError(callback.script, "Array passed to SetEventHandler as filter is invalid (array id: %d)", arrayFiltersId));
+	if (!arrayFiltersId)
+	{
+		invalidArrayError();
+		return false;
+	}
+	auto* arrayFilters = g_ArrayMap.Get(arrayFiltersId);
+	if (!arrayFilters)
+	{
+		invalidArrayError();
+		return false;
+	}
+	if (arrayFilters->GetContainerType() != kContainer_Array)
+	{
+		ShowRuntimeError(callback.script, "Maps may not be passed as filter array in SetEventHandler");
+		return false;
+	}
+	auto& elementVector = *arrayFilters->GetRawContainer()->getArrayPtr();
+	for (auto& iter : elementVector)
+	{
+		if (paramType != DataTypeToVarType(iter.DataType()))
+			continue;
+		if (DoesFilterMatch(iter, param))
+			return true;
+	}
+	return false;
+}
+
+bool DoFiltersMatch(const EventInfo& eventInfo, const EventCallback& callback, const StackVector<void*, 0x20>& params)
+{
+	for (auto& filter : callback.filters)
+	{
+		if (filter.index == 0)
+		{
+			ShowRuntimeError(callback.script, "Invalid index %d passed to SetEventHandler (indices start from 1)", filter.index);
+			continue;
+		}
+		const auto index = filter.index - 1;
+		if (index > params->size() - 1)
+		{
+			ShowRuntimeError(callback.script, "Index %d passed to SetEventHandler exceeds number of arguments provided by event %s (number of args: %d)",
+				filter.index, eventInfo.evName, params->size());
+			continue;
+		}
+		const auto filterDataType = filter.source.DataType();
+		const auto filterVarType = DataTypeToVarType(filterDataType);
+		const auto paramVarType = static_cast<Script::VariableType>(eventInfo.paramTypes[index]);
+		void* param = params->at(index);
+		if (filterVarType != paramVarType)
+		{
+			if (filterDataType != kDataType_Array)
+			{
+				ShowRuntimeError(callback.script, "Filter passed to SetEventHandler does not match type passed to event at index %d (%s != %s)",
+					filter.index, DataTypeToString(filterDataType), VariableTypeToName(paramVarType));
+				continue;
+			}
+			// assume elements of array are filters
+			if (!DoesParamMatchFiltersInArray(callback, filter, paramVarType, param))
+				return false;
+			continue;
+		}
+		if (!DoesFilterMatch(filter.source, param))
+			return false;
+	}
+	return true;
+}
+
 bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
 {
 	const auto eventId = EventIDForString(eventName);
@@ -810,42 +957,40 @@ bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
 		return false;
 	EventInfo& eventInfo = s_eventInfos[eventId];
 
-	va_list paramList, filterList;
+	va_list paramList;
 	va_start(paramList, thisObj);
-	va_copy(filterList, paramList);
 
-	TESForm* sourceForm{};
-	TESForm* objectForm{};
-	if (eventInfo.numParams > 0 && eventInfo.paramTypes[0] == Script::eVarType_Ref)
-		sourceForm = va_arg(filterList, TESForm*);
-	if (eventInfo.numParams > 1 && eventInfo.paramTypes[1] == Script::eVarType_Ref)
-		objectForm = va_arg(filterList, TESForm*);
+	if (eventInfo.numParams > 0x20)
+		return false;
+
+	StackVector<void*, 0x20> params;
+	for (int i = 0; i < eventInfo.numParams; ++i)
+		params->push_back(va_arg(paramList, void*));
+	
 
 	for (auto iter = eventInfo.callbacks.Begin(); !iter.End(); ++iter)
 	{
 		const auto& callback = iter.Get();
 		if (callback.IsRemoved())
 			continue;
-		if (!DoesFormMatchFilter(sourceForm, callback.source) || !DoesFormMatchFilter(objectForm, callback.object))
+
+		if (!DoDeprecatedFiltersMatch(eventInfo, callback, params))
 			continue;
+		if (!DoFiltersMatch(eventInfo, callback, params))
+			continue;
+
 		if (callback.script) [[likely]]
 		{
 			InternalFunctionCaller caller(callback.script, thisObj);
-			caller.vSetArgs(eventInfo.numParams, paramList);
+			caller.SetArgsRaw(eventInfo.numParams, params->data());
 			delete UserFunctionManager::Call(std::move(caller));
 		}
 		else if (callback.eventFunction)
 		{
-			StackVector<void*, 0x20> params;
-			for (int i = 0; i < eventInfo.numParams; ++i)
-			{
-				params->push_back(va_arg(paramList, void*));
-			}
 			callback.eventFunction(thisObj, params->data());
 		}
 	}
 	va_end(paramList);
-	va_end(filterList);
 	return true;	
 }
 
@@ -985,16 +1130,15 @@ bool RegisterEvent(const char* name, UInt8 numParams, UInt8* paramTypes)
 	return RegisterEventEx(name, numParams, paramTypes);
 }
 
-bool SetNativeEventHandler(const char* eventName, EventHandler func, TESForm* sourceFilter,
-	TESForm* objectFilter)
+bool SetNativeEventHandler(const char* eventName, EventHandler func)
 {
-	EventCallback event(func, sourceFilter, objectFilter);
+	EventCallback event(func);
 	return SetHandler(eventName, event);
 }
 
-bool RemoveNativeEventHandler(const char* eventName, EventHandler func, TESForm* sourceFilter, TESForm* objectFilter)
+bool RemoveNativeEventHandler(const char* eventName, EventHandler func)
 {
-	EventCallback event(func, sourceFilter, objectFilter);
+	EventCallback event(func);
 	return RemoveHandler(eventName, event);
 }
 

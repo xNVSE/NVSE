@@ -53,6 +53,18 @@ Script::VariableType VariableTypeNameToType(const char *name)
 	return varType;
 }
 
+const char* VariableTypeToName(Script::VariableType type)
+{
+	switch (type) { case Script::eVarType_Float: return "float";
+	case Script::eVarType_Integer: return "int";
+	case Script::eVarType_String: return "string";
+	case Script::eVarType_Array: return "array";
+	case Script::eVarType_Ref: return "ref";
+	case Script::eVarType_Invalid: 
+	default: return "invalid";;
+	}
+}
+
 UInt32 GetDeclaredVariableType(const char *varName, const char *scriptText, Script *script)
 {
 #if NVSE_CORE

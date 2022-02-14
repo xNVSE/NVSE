@@ -604,7 +604,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 				if (pair && pair->left && pair->right)
 				{
 					const char *key = pair->left->GetString();
-					if (key)
+					if (key && StrLen(key))
 					{
 						if (!StrCompare(key, "ref") || !StrCompare(key, "first"))
 						{
@@ -613,6 +613,17 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 						else if (!StrCompare(key, "object") || !StrCompare(key, "second"))
 						{
 							outCallback->object = pair->right->GetTESForm();
+						}
+					}
+					// new system, above preserved for backwards compatibility
+					else if (const auto index = pair->left->GetNumber())
+					{
+						const auto basicToken = std::unique_ptr<ScriptToken>(pair->right->ToBasicToken());
+						ArrayElement element;
+						if (basicToken && BasicTokenToElem(basicToken.get(), element))
+						{
+							auto baseFilter = EventManager::EventCallback::BaseFilter{ static_cast<UInt32>(index),element };
+							outCallback->filters.push_back(std::move(baseFilter));
 						}
 					}
 				}

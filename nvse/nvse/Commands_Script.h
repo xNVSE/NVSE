@@ -70,10 +70,24 @@ DEFINE_COMMAND(RunScript, debug, 0, 1, kParams_OneForm);
 DEFINE_COMMAND(GetCurrentScript, returns the calling script, 0, 0, NULL);
 DEFINE_COMMAND(GetCallingScript, returns the script that called the executing function script, 0, 0, NULL);
 
-static ParamInfo kNVSEParams_SetEventHandler[4] =
+static ParamInfo kNVSEParams_SetEventHandler[20] =
 {
 	{ "event name",			kNVSEParamType_String,	0 },
 	{ "function script",	kNVSEParamType_Form,	0 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
 	{ "filter",				kNVSEParamType_Pair,	1 },
 	{ "filter",				kNVSEParamType_Pair,	1 },
 };

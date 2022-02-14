@@ -669,6 +669,15 @@ bool InternalFunctionCaller::vSetArgs(UInt8 numArgs, va_list args)
 	return true;
 }
 
+bool InternalFunctionCaller::SetArgsRaw(UInt8 numArgs, const void* args)
+{
+	if (numArgs >= kMaxArgs)
+		return false;
+	m_numArgs = numArgs;
+	memcpy_s(m_args, sizeof m_args, args, numArgs * sizeof(void*));
+	return true;
+}
+
 namespace PluginAPI
 {
 	bool CallFunctionScript(Script *fnScript, TESObjectREFR *callingObj, TESObjectREFR *container,

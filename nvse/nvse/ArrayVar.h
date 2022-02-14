@@ -67,6 +67,7 @@ enum DataType : UInt8
 };
 
 const char* DataTypeToString(DataType dataType);
+Script::VariableType DataTypeToVarType(DataType dataType);
 
 struct ArrayData
 {
@@ -355,6 +356,8 @@ public:
 
 	bool Equals(ArrayVar* arr2);
 	bool DeepEquals(ArrayVar* arr2);
+
+	ArrayVarElementContainer* GetRawContainer();
 };
 
 class ArrayVarMap : public VarMap<ArrayVar>
