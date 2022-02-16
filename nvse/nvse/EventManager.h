@@ -21,6 +21,8 @@ typedef void (*EventHookInstaller)();
 
 namespace EventManager
 {
+	static constexpr auto numMaxFilters = 0x20;
+
 	using EventHandler = NVSEEventManagerInterface::EventHandler;
 
 	enum eEventID {

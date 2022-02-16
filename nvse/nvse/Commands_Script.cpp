@@ -586,6 +586,8 @@ bool Cmd_GetCallingScript_Execute(COMMAND_ARGS)
 	return true;
 }
 
+static constexpr auto maxEventNameLen = 0x20;
+
 bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback &outCallback, char *outName)
 {
 	if (eval.ExtractArgs() && eval.NumArgs() >= 2)
@@ -595,7 +597,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 		if (eventName && script)
 		{
 			outCallback.toCall = script;
-			strcpy_s(outName, 0x20, eventName);
+			strcpy_s(outName, maxEventNameLen, eventName);
 
 			// any filters?
 			for (UInt32 i = 2; i < eval.NumArgs(); i++)
@@ -661,7 +663,7 @@ bool Cmd_SetEventHandler_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
-	char eventName[0x20];
+	char eventName[maxEventNameLen];
 	if (ExtractEventCallback(eval, callback, eventName) && ProcessEventHandler(eventName, callback, true))
 		*result = 1.0;
 
@@ -672,7 +674,7 @@ bool Cmd_RemoveEventHandler_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
-	char eventName[0x20];
+	char eventName[maxEventNameLen];
 	if (ExtractEventCallback(eval, callback, eventName) && ProcessEventHandler(eventName, callback, false))
 		*result = 1.0;
 

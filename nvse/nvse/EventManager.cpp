@@ -21,6 +21,8 @@
 
 namespace EventManager {
 
+using FilterStack = StackVector<void*, numMaxFilters>;
+
 static ICriticalSection s_criticalSection;
 
 //////////////////////
@@ -857,7 +859,7 @@ bool DoesFormMatchFilter(TESForm* form, TESForm* filter, const UInt32 recursionL
 	return false;
 }
 
-bool DoDeprecatedFiltersMatch(const EventInfo& eventInfo, const EventCallback& callback, const StackVector<void*, 0x20>& params)
+bool DoDeprecatedFiltersMatch(const EventInfo& eventInfo, const EventCallback& callback, const FilterStack& params)
 {
 	if (!callback.source && !callback.object)
 		return true;
@@ -963,7 +965,7 @@ bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCall
 	return false;
 }
 
-bool DoFiltersMatch(const EventInfo& eventInfo, const EventCallback& callback, const StackVector<void*, 0x20>& params)
+bool DoFiltersMatch(const EventInfo& eventInfo, const EventCallback& callback, const FilterStack& params)
 {
 	for (auto& [index, filter] : callback.filters)
 	{
@@ -1012,10 +1014,10 @@ bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
 	va_list paramList;
 	va_start(paramList, thisObj);
 
-	if (eventInfo.numParams > 0x20)
+	if (eventInfo.numParams > numMaxFilters)
 		return false;
 
-	StackVector<void*, 0x20> params;
+	FilterStack params;
 	for (int i = 0; i < eventInfo.numParams; ++i)
 		params->push_back(va_arg(paramList, void*));
 	
