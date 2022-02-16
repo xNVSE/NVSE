@@ -460,12 +460,12 @@ public:
 		SetArgs(numArgs, arg0, arg1);
 	}
 
-	virtual bool ValidateParam(UserFunctionParam* param, UInt8 paramIndex)
+	bool ValidateParam(UserFunctionParam* param, UInt8 paramIndex) override
 	{
 		return param->varType == m_eventInfo->paramTypes[paramIndex];
 	}
 
-	virtual bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info) {
+	bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info) override {
 		// make sure we've got the same # of args as expected by event handler
 		DynamicParamInfo& dParams = info->ParamInfo();
 		if (dParams.NumParams() != m_eventInfo->numParams || dParams.NumParams() > 2) {
@@ -477,8 +477,32 @@ public:
 	}
 
 private:
-	EventInfo		* m_eventInfo;
+	EventInfo* m_eventInfo;
 };
+
+
+std::unique_ptr<ScriptToken> EventCallback::Invoke(EventInfo* eventInfo, void* arg0, void* arg1)
+{
+	ScriptToken* res = std::visit(overloaded
+		{
+			[=](const LambdaManager::Maybe_Lambda& script)
+			{
+			// handle immediately
+			s_eventStack.Push(eventInfo->evName);
+			auto const ret = UserFunctionManager::Call(EventHandlerCaller(script.Get(), eventInfo, arg0, arg1));
+			s_eventStack.Pop();
+			return ret;
+		},
+		[=](const EventHandler& handler) -> ScriptToken*
+		{
+			// native plugin event handlers
+			void* params[] = { arg0, arg1 };
+			handler(nullptr, params);
+			return nullptr;
+		}
+		}, this->toCall);
+	return std::make_unique<ScriptToken>(res);
+}
 
 bool IsValidReference(void* refr)
 {
@@ -500,8 +524,9 @@ bool IsValidReference(void* refr)
 // used by GetCurrentEventName
 Stack<const char*> s_eventStack;
 
-// some events are best deferred until Tick() invoked rather than being handled immediately
-// this stores info about such an event.
+// Some events are best deferred until Tick() invoked rather than being handled immediately.
+// This stores info about such an event.
+// Only used in the deprecated HandleEvent.
 struct DeferredCallback
 {
 	EventCallback		*callback;	//assume this contains a Script* CallbackFunc.
@@ -514,11 +539,10 @@ struct DeferredCallback
 
 	~DeferredCallback()
 	{
-		if (callback->removed) return;
+		if (callback->removed)
+			return;
 
-		s_eventStack.Push(eventInfo->evName);
-		delete UserFunctionManager::Call(EventHandlerCaller(callback->TryGetScript(), eventInfo, arg0, arg1));
-		s_eventStack.Pop();
+		callback->Invoke(eventInfo, arg0, arg1);
 	}
 };
 
@@ -583,21 +607,7 @@ void __stdcall HandleEvent(UInt32 id, void* arg0, void* arg1)
 		}
 		else
 		{
-			std::visit(overloaded{
-				[=] (const LambdaManager::Maybe_Lambda& script)
-				{
-					// handle immediately
-					s_eventStack.Push(eventInfo->evName);
-					delete UserFunctionManager::Call(EventHandlerCaller(script.Get(), eventInfo, arg0, arg1));
-					s_eventStack.Pop();
-				},
-				[=](const EventHandler& handler)
-				{
-					// native plugin event handlers
-					void* params[] = { arg0, arg1 };
-					handler(nullptr, params);
-				}
-			}, callback.toCall);
+			callback.Invoke(eventInfo, arg0, arg1);
 		}
 	}
 }

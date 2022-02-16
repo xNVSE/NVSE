@@ -19,8 +19,12 @@ typedef void (*EventHookInstaller)();
 // Event handler is a function script which must take the expected number and types of arguments associated with the event.
 // Supporting hooks only installed if at least one handler is registered for a particular event.
 
+
 namespace EventManager
 {
+	extern Stack<const char*> s_eventStack;
+
+	struct EventInfo;
 	static constexpr auto numMaxFilters = 0x20;
 
 	using EventHandler = NVSEEventManagerInterface::EventHandler;
@@ -132,6 +136,9 @@ namespace EventManager
 
 		//If the EventCallback is confirmed to stay, then call this to wrap up loose ends, e.g save lambda var context.
 		void Confirm();
+
+		//Call the callback...
+		std::unique_ptr<ScriptToken> Invoke(EventInfo* eventInfo, void* arg0, void* arg1);
 	};
 
 	bool SetHandler(const char* eventName, EventCallback& handler);
