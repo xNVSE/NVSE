@@ -66,6 +66,45 @@ void SetLambdaParent(ScriptLambda* scriptLambda, ScriptEventList* parentEventLis
 	SetLambdaParent(g_lambdas[scriptLambda], parentEventList);
 }
 
+LambdaManager::Maybe_Lambda::Maybe_Lambda(Maybe_Lambda&& other) noexcept
+	: m_script(other.m_script), m_triedToSaveContext(other.m_triedToSaveContext)
+{
+	other.m_script = nullptr;	//in case "other" saved context; prevent it from being freed when "other" dies.
+}
+
+LambdaManager::Maybe_Lambda& LambdaManager::Maybe_Lambda::operator=(Maybe_Lambda&& other) noexcept
+{
+	if (this == &other)
+		return *this;
+	if (this->m_script && this->m_triedToSaveContext)
+		UnsaveLambdaVariables(this->m_script);
+	m_script = std::exchange(other.m_script, nullptr);
+	m_triedToSaveContext = other.m_triedToSaveContext;
+	return *this;
+}
+
+bool LambdaManager::Maybe_Lambda::operator==(const Maybe_Lambda& other) const
+{
+	return m_script == other.m_script;
+}
+
+void LambdaManager::Maybe_Lambda::TrySaveContext()
+{
+	if (m_script)
+	{
+		SaveLambdaVariables(m_script);
+		m_triedToSaveContext = true;
+	}
+}
+
+LambdaManager::Maybe_Lambda::~Maybe_Lambda()
+{
+	if (m_script && m_triedToSaveContext)
+	{
+		UnsaveLambdaVariables(m_script);
+	}
+}
+
 Script* LambdaManager::CreateLambdaScript(const LambdaManager::ScriptData& scriptData, const Script* parentScript)
 {
 	DataHandler::Get()->DisableAssignFormIDs(true);

@@ -586,7 +586,9 @@ bool Cmd_GetCallingScript_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback *outCallback, char *outName)
+static constexpr auto maxEventNameLen = 0x20;
+
+bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback &outCallback, char *outName)
 {
 	if (eval.ExtractArgs() && eval.NumArgs() >= 2)
 	{
@@ -594,8 +596,8 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 		Script *script = DYNAMIC_CAST(eval.Arg(1)->GetTESForm(), TESForm, Script);
 		if (eventName && script)
 		{
-			outCallback->script = script;
-			strcpy_s(outName, 0x20, eventName);
+			outCallback.toCall = script;
+			strcpy_s(outName, maxEventNameLen, eventName);
 
 			// any filters?
 			for (UInt32 i = 2; i < eval.NumArgs(); i++)
@@ -608,11 +610,11 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 					{
 						if (!StrCompare(key, "ref") || !StrCompare(key, "first"))
 						{
-							outCallback->source = pair->right->GetTESForm();
+							outCallback.source = pair->right->GetTESForm();
 						}
 						else if (!StrCompare(key, "object") || !StrCompare(key, "second"))
 						{
-							outCallback->object = pair->right->GetTESForm();
+							outCallback.object = pair->right->GetTESForm();
 						}
 					}
 					// new system, above preserved for backwards compatibility
@@ -622,8 +624,13 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 						ArrayElement element;
 						if (basicToken && BasicTokenToElem(basicToken.get(), element))
 						{
-							auto baseFilter = EventManager::EventCallback::BaseFilter{ static_cast<UInt32>(index),element };
-							outCallback->filters.push_back(std::move(baseFilter));
+							auto const mapIndex = static_cast<UInt32>(index);
+							if (outCallback.filters.contains(mapIndex))
+							{
+								eval.Error("Event filter index %u appears more than once in Set/RemoveEventHandler call.", mapIndex);
+								continue;
+							}
+							outCallback.filters.insert({ mapIndex, element });
 						}
 					}
 				}
@@ -645,8 +652,8 @@ bool ProcessEventHandler(char *eventName, EventManager::EventCallback &callback,
 		UInt32 eventMask = GetLNEventMask(eventName);
 		if (eventMask)
 		{
-			UInt32 numFilter = (colon && *colon) ? atoi(colon) : 0;
-			return ProcessLNEventHandler(eventMask, callback.script, addEvt, callback.source, numFilter);
+			UInt32 const numFilter = (colon && *colon) ? atoi(colon) : 0;
+			return ProcessLNEventHandler(eventMask, callback.TryGetScript(), addEvt, callback.source, numFilter);
 		}
 	}
 	return addEvt ? EventManager::SetHandler(eventName, callback) : EventManager::RemoveHandler(eventName, callback);
@@ -656,8 +663,8 @@ bool Cmd_SetEventHandler_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
-	char eventName[0x20];
-	if (ExtractEventCallback(eval, &callback, eventName) && ProcessEventHandler(eventName, callback, true))
+	char eventName[maxEventNameLen];
+	if (ExtractEventCallback(eval, callback, eventName) && ProcessEventHandler(eventName, callback, true))
 		*result = 1.0;
 
 	return true;
@@ -667,8 +674,8 @@ bool Cmd_RemoveEventHandler_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
-	char eventName[0x20];
-	if (ExtractEventCallback(eval, &callback, eventName) && ProcessEventHandler(eventName, callback, false))
+	char eventName[maxEventNameLen];
+	if (ExtractEventCallback(eval, callback, eventName) && ProcessEventHandler(eventName, callback, false))
 		*result = 1.0;
 
 	return true;
