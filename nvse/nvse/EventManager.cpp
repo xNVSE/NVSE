@@ -487,19 +487,21 @@ std::unique_ptr<ScriptToken> EventCallback::Invoke(EventInfo* eventInfo, void* a
 		{
 			[=](const LambdaManager::Maybe_Lambda& script)
 			{
-			// handle immediately
-			s_eventStack.Push(eventInfo->evName);
-			auto const ret = UserFunctionManager::Call(EventHandlerCaller(script.Get(), eventInfo, arg0, arg1));
-			s_eventStack.Pop();
-			return ret;
-		},
-		[=](const EventHandler& handler) -> ScriptToken*
-		{
-			// native plugin event handlers
-			void* params[] = { arg0, arg1 };
-			handler(nullptr, params);
-			return nullptr;
-		}
+				ScopedLock lock(s_criticalSection);	//for event stack
+
+				// handle immediately
+				s_eventStack.Push(eventInfo->evName);
+				auto const ret = UserFunctionManager::Call(EventHandlerCaller(script.Get(), eventInfo, arg0, arg1));
+				s_eventStack.Pop();
+				return ret;
+			},
+			[=](const EventHandler& handler) -> ScriptToken*
+			{
+				// native plugin event handlers
+				void* params[] = { arg0, arg1 };
+				handler(nullptr, params);
+				return nullptr;
+			}
 		}, this->toCall);
 	return std::make_unique<ScriptToken>(res);
 }
@@ -541,6 +543,9 @@ struct DeferredCallback
 	{
 		if (callback->removed)
 			return;
+
+		// assume callback is owned by a global; prevent data race.
+		ScopedLock lock(s_criticalSection);
 
 		callback->Invoke(eventInfo, arg0, arg1);
 	}
