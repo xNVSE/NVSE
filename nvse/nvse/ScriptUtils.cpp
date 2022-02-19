@@ -1790,33 +1790,33 @@ void *__stdcall ExpressionEvaluatorCreate(COMMAND_ARGS)
 
 void __fastcall ExpressionEvaluatorDestroy(void *expEval)
 {
-	reinterpret_cast<ExpressionEvaluator *>(expEval)->~ExpressionEvaluator();
+	static_cast<ExpressionEvaluator *>(expEval)->~ExpressionEvaluator();
 	g_pluginExpEvalAllocator.Free(expEval);
 }
 
 bool __fastcall ExpressionEvaluatorExtractArgs(void *expEval)
 {
-	return reinterpret_cast<ExpressionEvaluator *>(expEval)->ExtractArgs();
+	return static_cast<ExpressionEvaluator *>(expEval)->ExtractArgs();
 }
 
 UInt8 __fastcall ExpressionEvaluatorGetNumArgs(void *expEval)
 {
-	return reinterpret_cast<ExpressionEvaluator *>(expEval)->NumArgs();
+	return static_cast<ExpressionEvaluator *>(expEval)->NumArgs();
 }
 
 PluginScriptToken *__fastcall ExpressionEvaluatorGetNthArg(void *expEval, UInt32 argIdx)
 {
-	return reinterpret_cast<PluginScriptToken *>(reinterpret_cast<ExpressionEvaluator *>(expEval)->Arg(argIdx));
+	return reinterpret_cast<PluginScriptToken *>(static_cast<ExpressionEvaluator *>(expEval)->Arg(argIdx));
 }
 
 void __fastcall ExpressionEvaluatorSetExpectedReturnType(void* expEval, UInt8 retnType)
 {
-	reinterpret_cast<ExpressionEvaluator*>(expEval)->ExpectReturnType(static_cast<CommandReturnType>(retnType));
+	static_cast<ExpressionEvaluator*>(expEval)->ExpectReturnType(static_cast<CommandReturnType>(retnType));
 }
 
 void __fastcall ExpressionEvaluatorAssignCommandResultFromElement(void* expEval, NVSEArrayVarInterface::Element& result)
 {
-	auto const eval = reinterpret_cast<ExpressionEvaluator*>(expEval);
+	auto const eval = static_cast<ExpressionEvaluator*>(expEval);
 	eval->AssignAmbiguousResult(result, result.GetReturnType());
 }
 #endif
