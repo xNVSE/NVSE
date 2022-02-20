@@ -302,3 +302,7 @@ std::vector<std::string> SplitString(std::string s, std::string delimiter);
 #define INLINE_HOOK(retnType, callingConv, ...) static_cast<retnType(callingConv*)(__VA_ARGS__)>([](__VA_ARGS__) [[msvc::forceinline]] -> retnType
 
 UInt8* GetParentBasePtr(void* addressOfReturnAddress, bool lambda = false);
+
+//Example in https://en.cppreference.com/w/cpp/utility/variant/visit
+//Allows function overloading with c++ lambdas.
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };

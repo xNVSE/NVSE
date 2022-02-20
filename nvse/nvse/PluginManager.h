@@ -8,7 +8,7 @@
 class PluginManager
 {
 public:
-	PluginManager();
+	PluginManager() = default;
 	~PluginManager();
 
 	bool	Init(void);

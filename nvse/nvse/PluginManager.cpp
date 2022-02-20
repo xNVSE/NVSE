@@ -140,10 +140,6 @@ static const NVSEEventManagerInterface g_NVSEEventManagerInterface =
 };
 #endif
 
-PluginManager::PluginManager()
-{
-	//
-}
 
 PluginManager::~PluginManager()
 {
