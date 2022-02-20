@@ -121,12 +121,14 @@
     <ClInclude Include="..\nvse\nvse\CommandTable.h">
       <Filter>nvse</Filter>
     </ClInclude>
-    <ClInclude Include="..\nvse\nvse\GameScript.h" />
     <ClInclude Include="fn_intro_to_script_functions.h">
       <Filter>functions</Filter>
     </ClInclude>
     <ClInclude Include="fn_typed_functions.h">
       <Filter>functions</Filter>
+    </ClInclude>
+    <ClInclude Include="..\nvse\nvse\GameScript.h">
+      <Filter>nvse</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
