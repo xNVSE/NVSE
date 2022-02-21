@@ -95,6 +95,13 @@ void* ArrayData::GetAsVoidArg() const
 	return nullptr;
 }
 
+ArrayData::ArrayData(const ArrayData& from) : dataType(from.dataType), owningArray(from.owningArray)
+{
+	if (dataType == kDataType_String)
+		SetStr(from.str);
+	else num = from.num;
+}
+
 //////////////////
 // ArrayElement
 /////////////////
@@ -113,6 +120,15 @@ ArrayElement::ArrayElement(const ArrayElement& from)
 	if (m_data.dataType == kDataType_String)
 		m_data.SetStr(from.m_data.str);
 	else m_data.num = from.m_data.num;
+}
+
+ArrayElement::ArrayElement(ArrayElement&& from) noexcept : m_data(from.m_data)
+{
+	from.m_data.dataType = kDataType_Invalid;
+
+	//for extra safety; likely redundant
+	from.m_data.owningArray = 0;
+	from.m_data.str = nullptr;
 }
 
 bool ArrayElement::operator<(const ArrayElement& rhs) const

@@ -82,13 +82,15 @@ struct ArrayData
 	};
 
 	~ArrayData();
-	const char *GetStr() const;
+	ArrayData() = default;
+	[[nodiscard]] const char *GetStr() const;
 	void SetStr(const char *srcStr);
 
 	//Casts the data in the form InternalFunctionCaller::PopulateArgs() understands.
 	[[nodiscard]] void* GetAsVoidArg() const;
 
 	ArrayData& operator=(const ArrayData &rhs);
+	ArrayData(const ArrayData &from);
 };
 STATIC_ASSERT(sizeof(ArrayData) == 0x10);
 
@@ -98,18 +100,19 @@ struct ArrayElement
 	friend class ArrayVarMap;
 
 	~ArrayElement();
+	ArrayElement();
 
 	ArrayData	m_data;
 
 	void  Unset();
 
-	DataType DataType() const {return m_data.dataType;}
+	[[nodiscard]] DataType DataType() const {return m_data.dataType;}
 
 	bool GetAsNumber(double* out) const;
 	bool GetAsString(const char **out) const;
 	bool GetAsFormID(UInt32* out) const;
 	bool GetAsArray(ArrayID* out) const;
-	bool GetBool() const;
+	[[nodiscard]] bool GetBool() const;
 
 	bool SetForm(const TESForm* form);
 	bool SetFormID(UInt32 refID);
@@ -118,8 +121,11 @@ struct ArrayElement
 	bool SetNumber(double num);
 	bool Set(const ArrayElement* elem);
 
-	ArrayElement();
+	//WARNING: Does not increment the reference count for a copied array;
+	//consider move ctor or calling SetArray.
 	ArrayElement(const ArrayElement& from);
+
+	ArrayElement(ArrayElement&& from) noexcept;
 
 	static bool CompareNames(const ArrayElement& lhs, const ArrayElement& rhs);
 	static bool CompareNamesDescending(const ArrayElement& lhs, const ArrayElement& rhs) {return !CompareNames(lhs, rhs);}
@@ -128,9 +134,9 @@ struct ArrayElement
 	bool operator==(const ArrayElement& rhs) const;
 	bool operator!=(const ArrayElement& rhs) const;
 
-	bool IsGood() {return m_data.dataType != kDataType_Invalid;}
+	[[nodiscard]] bool IsGood() const {return m_data.dataType != kDataType_Invalid;}
 
-	std::string GetStringRepresentation() const;
+	[[nodiscard]] std::string GetStringRepresentation() const;
 	[[nodiscard]] void* GetAsVoidArg() const { return m_data.GetAsVoidArg(); }
 };
 

@@ -737,7 +737,7 @@ bool ExtractCallAfterInfo(ExpressionEvaluator& eval, std::list<DelayedCallInfo>&
 			{
 				ArrayElement elem;
 				BasicTokenToElem(tok, elem);
-				args.push_back(elem);
+				args.emplace_back(std::move(elem));
 			}
 			else [[unlikely]]
 				break;
@@ -799,7 +799,7 @@ bool ExtractCallWhileInfo(ExpressionEvaluator &eval, std::list<CallWhileInfo> &i
 			{
 				ArrayElement elem;
 				BasicTokenToElem(tok, elem);
-				args.push_back(elem);
+				args.emplace_back(std::move(elem));
 			}
 			else [[unlikely]]
 				break;
