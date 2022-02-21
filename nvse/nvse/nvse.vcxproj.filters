@@ -238,6 +238,9 @@
     <ClCompile Include="ScriptAnalyzer.cpp">
       <Filter>internals</Filter>
     </ClCompile>
+    <ClCompile Include="Commands_Quest.cpp">
+      <Filter>commands</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
@@ -477,6 +480,12 @@
       <Filter>internals</Filter>
     </ClInclude>
     <ClInclude Include="MemoizedMap.h">
+      <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="Commands_Quest.h">
+      <Filter>commands</Filter>
+    </ClInclude>
+    <ClInclude Include="StackVector.h">
       <Filter>lib</Filter>
     </ClInclude>
   </ItemGroup>

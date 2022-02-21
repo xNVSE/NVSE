@@ -339,7 +339,6 @@ public:
 	UInt8			GetModIndex() const;
 	TESFullName*	GetFullName() const;
 	const char*		GetTheName();
-	bool			IsCloned() const;
 	std::string		GetStringRepresentation() const;
 
 	bool IsWeapon() { return typeID == kFormType_TESObjectWEAP; }
@@ -3704,7 +3703,8 @@ public:
 	tList<StageInfo>			stages;						// 044
 	tList<LocalVariableOrObjectivePtr>	lVarOrObjectives;	// 04C	So: this list would contain both Objectives and LocalVariables !
 		// That seems very strange but still, looking at Get/SetObjective... and ShowQuestVars there's no doubt.
-	tList<Condition*>			conditions;					// 054
+	
+	tList<Condition*>			conditions;					// 054					
 	ScriptEventList*			scriptEventList;			// 05C
 	UInt8						currentStage;				// 060
 	UInt8						pad061[3];					// 061
@@ -4520,9 +4520,13 @@ public:
 		return list.GetNthItem(n);
 	}
 
-	UInt32 AddAt(TESForm* pForm, SInt32 n) {
-		SInt32	result = list.AddAt(pForm, n);
+	SInt32 AddAt(TESForm* pForm, SInt32 n, bool const checkDupes = false) {
 
+		if (checkDupes) {
+			if (GetIndexOf(pForm) != eListInvalid)
+				return eListInvalid;
+		}
+		auto const result = list.AddAt(pForm, n);
 		if(result >= 0 && IsAddedObject(n))
 			numAddedObjects++;
 

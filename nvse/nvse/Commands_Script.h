@@ -70,10 +70,24 @@ DEFINE_COMMAND(RunScript, debug, 0, 1, kParams_OneForm);
 DEFINE_COMMAND(GetCurrentScript, returns the calling script, 0, 0, NULL);
 DEFINE_COMMAND(GetCallingScript, returns the script that called the executing function script, 0, 0, NULL);
 
-static ParamInfo kNVSEParams_SetEventHandler[4] =
+static ParamInfo kNVSEParams_SetEventHandler[20] =
 {
 	{ "event name",			kNVSEParamType_String,	0 },
 	{ "function script",	kNVSEParamType_Form,	0 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
 	{ "filter",				kNVSEParamType_Pair,	1 },
 	{ "filter",				kNVSEParamType_Pair,	1 },
 };
@@ -91,10 +105,11 @@ static ParamInfo kNVSEParams_DispatchEvent[3] =
 
 DEFINE_COMMAND_EXP(DispatchEvent, dispatches a user-defined event to any registered listeners, 0, kNVSEParams_DispatchEvent);
 
-static ParamInfo kParams_CallAfter[2] =
+static ParamInfo kParams_CallAfter[3] =
 {
 	{	"seconds",	kParamType_Float,	0	},
 	{	"function",	kParamType_AnyForm,0	},
+	{ "runs in menumode", kParamType_Integer, 1}
 };
 
 static ParamInfo kParams_CallWhile[20] =
@@ -134,14 +149,14 @@ struct DelayedCallInfo
 	float time;
 	TESObjectREFR* thisObj;
 	LambdaManager::LambdaVariableContext lambdaVariableContext;
+	bool runInMenuMode;
 	CallArgs args;
 
-	DelayedCallInfo(Script* script, float time, TESObjectREFR* thisObj, CallArgs args = {})
+	DelayedCallInfo(Script* script, float time, TESObjectREFR* thisObj, bool runInMenuMode)
 		: script(script),
 		  time(time),
 		  thisObj(thisObj),
-		  lambdaVariableContext(script),
-		  args(std::move(args))
+		  lambdaVariableContext(script), runInMenuMode(runInMenuMode)
 	{
 	}
 };

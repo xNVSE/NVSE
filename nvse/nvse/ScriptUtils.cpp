@@ -20,6 +20,7 @@
 #include <utility>
 #include <ranges>
 
+#include "Hooks_Editor.h"
 #include "ScriptAnalyzer.h"
 
 std::map<std::pair<Script*, std::string>, Script::VariableType> g_variableDefinitionsMap;
@@ -194,8 +195,8 @@ ScriptToken *Eval_Eq_Array(OperatorType op, ScriptToken *lh, ScriptToken *rh, Ex
 	// Instead of comparing arrayIDs, compare the contents of the arrays.
 	// For nested arrays, compare the arrayIDs to save on computing power. Use the Ar_DeepEquals function if needed.
 	bool isEqual;
-	auto lhArr = g_ArrayMap.Get(lh->GetArray());
-	auto rhArr = g_ArrayMap.Get(rh->GetArray());
+	auto lhArr = g_ArrayMap.Get(lh->GetArrayID());
+	auto rhArr = g_ArrayMap.Get(rh->GetArrayID());
 
 	if (lhArr && rhArr)
 	{
@@ -282,9 +283,11 @@ ScriptToken *Eval_Logical(OperatorType op, ScriptToken *lh, ScriptToken *rh, Exp
 	switch (op)
 	{
 	case kOpType_LogicalAnd:
-		return ScriptToken::Create(lh->GetBool() && rh->GetBool());
+	{
+		return lh->GetBool() && rh->GetBool() ? rh->ForwardEvalResult() : ScriptToken::Create(false);
+	}
 	case kOpType_LogicalOr:
-		return ScriptToken::Create(lh->GetBool() || rh->GetBool());
+		return lh->GetBool() || rh->GetBool() ? rh->ForwardEvalResult() : ScriptToken::Create(false);
 	default:
 		context->Error("Unhandled operator %s", OpTypeToSymbol(op));
 		return NULL;
@@ -473,7 +476,7 @@ ScriptToken *Eval_Assign_Global(OperatorType op, ScriptToken *lh, ScriptToken *r
 ScriptToken *Eval_Assign_Array(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	ScriptLocal *var = lh->GetVar();
-	g_ArrayMap.AddReference(&var->data, rh->GetArray(), context->script->GetModIndex());
+	g_ArrayMap.AddReference(&var->data, rh->GetArrayID(), context->script->GetModIndex());
 	if (!lh->refIdx)
 		AddToGarbageCollection(context->eventList, var, NVSEVarType::kVarType_Array);
 #if _DEBUG
@@ -591,7 +594,7 @@ ScriptToken *Eval_Assign_Elem_Array(OperatorType op, ScriptToken *lh, ScriptToke
 		return nullptr;
 	}
 
-	ArrayID rhArrID = rh->GetArray();
+	ArrayID rhArrID = rh->GetArrayID();
 	if (key->KeyType() == kDataType_Numeric)
 	{
 		if (!arr->SetElementArray(key->key.num, rhArrID))
@@ -922,7 +925,7 @@ ScriptToken *Eval_LogicalNot(OperatorType op, ScriptToken *lh, ScriptToken *rh, 
 
 ScriptToken *Eval_Subscript_Array_Number(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ArrayID arrID = lh->GetArray();
+	ArrayID arrID = lh->GetArrayID();
 	ArrayVar *arr = arrID ? g_ArrayMap.Get(arrID) : NULL;
 
 	if (!arr)
@@ -966,7 +969,7 @@ ScriptToken *Eval_Subscript_Elem_Slice(OperatorType op, ScriptToken *lh, ScriptT
 
 ScriptToken *Eval_Subscript_Array_String(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ArrayID arrID = lh->GetArray();
+	ArrayID arrID = lh->GetArrayID();
 	ArrayVar *arr = arrID ? g_ArrayMap.Get(arrID) : NULL;
 
 	if (!arr)
@@ -986,7 +989,7 @@ ScriptToken *Eval_Subscript_Array_String(OperatorType op, ScriptToken *lh, Scrip
 
 ScriptToken *Eval_Subscript_Array_Slice(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ArrayVar *srcArr = g_ArrayMap.Get(lh->GetArray());
+	ArrayVar *srcArr = g_ArrayMap.Get(lh->GetArrayID());
 	if (srcArr)
 	{
 		ArrayVar *sliceArr = srcArr->MakeSlice(rh->GetSlice(), context->script->GetModIndex());
@@ -1092,7 +1095,7 @@ ScriptToken *Eval_Subscript_String_Slice(OperatorType op, ScriptToken *lh, Scrip
 
 ScriptToken *Eval_MemberAccess(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ArrayID arrID = lh->GetArray();
+	ArrayID arrID = lh->GetArrayID();
 	ArrayVar *arr = arrID ? g_ArrayMap.Get(arrID) : NULL;
 
 	if (!arr)
@@ -1140,7 +1143,7 @@ ScriptToken *Eval_ToString_Form(OperatorType op, ScriptToken *lh, ScriptToken *r
 
 ScriptToken *Eval_ToString_Array(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	const auto arrayId = lh->GetArray();
+	const auto arrayId = lh->GetArrayID();
 	const auto *arrayVar = g_ArrayMap.Get(arrayId);
 	if (arrayVar)
 		return ScriptToken::Create(arrayVar->GetStringRepresentation());
@@ -1160,7 +1163,7 @@ ScriptToken *Eval_In(OperatorType op, ScriptToken *lh, ScriptToken *rh, Expressi
 	{
 		UInt32 iterID = g_ArrayMap.Create(kDataType_String, false, context->script->GetModIndex())->ID();
 
-		ForEachContext con(rh->GetArray(), iterID, Script::eVarType_Array, lh->GetVar());
+		ForEachContext con(rh->GetArrayID(), iterID, Script::eVarType_Array, lh->GetVar());
 		ScriptToken *forEach = ScriptToken::Create(&con);
 
 		return forEach;
@@ -1216,7 +1219,7 @@ ScriptToken *Eval_Dereference(OperatorType op, ScriptToken *lh, ScriptToken *rh,
 	// in other contexts, returns the first element of the array
 	// useful for people using array variables to hold a single value of undetermined type
 
-	ArrayID arrID = lh->GetArray();
+	ArrayID arrID = lh->GetArrayID();
 	if (!arrID)
 	{
 		context->Error("Invalid array access - the array was not initialized. 3");
@@ -1269,7 +1272,7 @@ ScriptToken *Eval_Box_Form(OperatorType op, ScriptToken *lh, ScriptToken *rh, Ex
 ScriptToken *Eval_Box_Array(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, context->script->GetModIndex());
-	arr->SetElementArray(0.0, lh->GetArray());
+	arr->SetElementArray(0.0, lh->GetArrayID());
 	return ScriptToken::CreateArray(arr->ID());
 }
 
@@ -1336,7 +1339,7 @@ OperationRule kOpRule_Logical[] =
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Boolean},
 		{kTokenType_Ambiguous, kTokenType_Boolean, kTokenType_Boolean},
 #endif
-		{kTokenType_Boolean, kTokenType_Boolean, kTokenType_Boolean, OP_HANDLER(Eval_Logical)},
+		{kTokenType_Boolean, kTokenType_Boolean, kTokenType_RightToken, OP_HANDLER(Eval_Logical)},
 };
 
 OperationRule kOpRule_Addition[] =
@@ -1804,6 +1807,17 @@ UInt8 __fastcall ExpressionEvaluatorGetNumArgs(void *expEval)
 PluginScriptToken *__fastcall ExpressionEvaluatorGetNthArg(void *expEval, UInt32 argIdx)
 {
 	return reinterpret_cast<PluginScriptToken *>(reinterpret_cast<ExpressionEvaluator *>(expEval)->Arg(argIdx));
+}
+
+void __fastcall ExpressionEvaluatorSetExpectedReturnType(void* expEval, UInt8 retnType)
+{
+	reinterpret_cast<ExpressionEvaluator*>(expEval)->ExpectReturnType(static_cast<CommandReturnType>(retnType));
+}
+
+void __fastcall ExpressionEvaluatorAssignCommandResultFromElement(void* expEval, NVSEArrayVarInterface::Element& result)
+{
+	auto const eval = reinterpret_cast<ExpressionEvaluator*>(expEval);
+	eval->AssignAmbiguousResult(result, result.GetReturnType());
 }
 #endif
 
@@ -2752,7 +2766,14 @@ ScriptToken *ExpressionParser::ParseLambda()
 	auto nest = 1;
 	while (nest != 0 && CurText())
 	{
-		auto token = GetCurToken();
+		std::string token;
+		try { token = GetCurToken(); }
+		catch (OffsetOutOfBoundsError&)
+		{
+			PrintCompileError("Lambda function syntax error");
+			return nullptr;
+		}
+		
 		if (token.empty())
 		{
 			++Offset();
@@ -2788,8 +2809,16 @@ ScriptToken *ExpressionParser::ParseLambda()
 	lambdaScriptBuf->info.unusedVariableCount = varCount;
 	lambdaScriptBuf->info.numRefs = numRefs;
 
-	lambdaScriptBuf->scriptName.Set(FormatString("%sLambdaAtLine%d", m_scriptBuf->scriptName.CStr(), m_lineBuf->lineNumber).c_str());
-	lambdaScriptBuf->curLineNumber = m_lineBuf->lineNumber;
+	// count number of new lines before lambda for accurate line number
+	const auto textBefore = std::string(m_lineBuf->paramText, beginData - m_lineBuf->paramText);
+	auto numNewLines = ra::count(textBefore, '\n');
+	if (!this->appliedMacros_.contains(MacroType::OneLineLambda))
+		numNewLines--;
+
+	lambdaScriptBuf->curLineNumber = m_lineBuf->lineNumber + numNewLines;
+	lambdaScriptBuf->scriptName.Set(
+		FormatString("%sLambdaAtLine%d", m_scriptBuf->scriptName.CStr(), lambdaScriptBuf->curLineNumber).c_str()
+	);
 
 	if (const auto iter = appliedMacros_.find(MacroType::OneLineLambda); iter != appliedMacros_.end())
 	{
@@ -2818,9 +2847,9 @@ ScriptToken *ExpressionParser::ParseLambda()
 
 	// lambdaScriptBuf->currentScript = scriptLambda.get();
 	g_currentScriptStack.push(scriptLambda.get());
-
+	PatchDisable_ScriptBufferValidateRefVars(true);
 	const auto compileResult = scriptLambda->Compile(lambdaScriptBuf.get()); // CompileScript
-
+	PatchDisable_ScriptBufferValidateRefVars(false);
 	g_currentScriptStack.pop();
 
 	*beginEndOffset = savedOffset;
@@ -3100,7 +3129,8 @@ bool ValidateVariable(const std::string &varName, Script::VariableType varType, 
 	return true;
 }
 
-VariableInfo* CreateVariable(Script* script, ScriptBuffer* scriptBuf, const std::string& varName, Script::VariableType varType, const std::function<void(const std::string&)>& printCompileError)
+VariableInfo* CreateVariable(Script* script, ScriptBuffer* scriptBuf, const std::string& varName, Script::VariableType varType, 
+	const std::function<void(const std::string&)>& printCompileError)
 {
 	if (!script)
 		return nullptr;
@@ -3182,7 +3212,13 @@ ScriptToken *ExpressionParser::ParseOperand(Operator *curOp)
 		Offset()++;
 	}
 
-	std::string token = GetCurToken();
+	std::string token;
+	try { token = GetCurToken(); }
+	catch (OffsetOutOfBoundsError&)
+	{
+		PrintCompileError("Failed to read script line; reached out of bounds");
+		return nullptr;
+	}
 	std::string refToken = token;
 
 	if (!bExpectStringVar)
@@ -3194,7 +3230,13 @@ ScriptToken *ExpressionParser::ParseOperand(Operator *curOp)
 		if (const auto varType = VariableTypeNameToType(token.c_str()); varType != Script::eVarType_Invalid)
 		{
 			SkipSpaces();
-			const auto varName = GetCurToken();
+			std::string varName;
+			try { varName = GetCurToken(); }
+			catch (OffsetOutOfBoundsError&)
+			{
+				PrintCompileError("Failed to read variable name; line out of bounds");
+				return nullptr;
+			}
 			auto *varInfo = CreateVariable(varName, varType);
 			if (!varInfo)
 				return nullptr;
@@ -3261,7 +3303,14 @@ ScriptToken *ExpressionParser::ParseOperand(Operator *curOp)
 		++Offset();
 		hasDot = true;
 		refToken = std::move(token);
-		token = GetCurToken();
+
+		try { token = GetCurToken(); }
+		catch (OffsetOutOfBoundsError&)
+		{
+			PrintCompileError("Failed to read token; line out of bounds 2");
+			return nullptr;
+		}
+
 	}
 
 	// before we go any further, check for local variable in case of name collisions between vars and other objects
@@ -3436,8 +3485,11 @@ std::string ExpressionParser::GetCurToken()
 		if (!isdigit(ch))
 			numeric = false;
 	}
+	auto result = std::string(tokStart, CurText() - tokStart);
+	if (ch == 0 && result.empty())
+		throw OffsetOutOfBoundsError();
 
-	return std::string(tokStart, CurText() - tokStart);
+	return result;
 }
 
 // error routines
@@ -3797,7 +3849,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 	case kParamType_Array:
 	{
 		UInt32 *out = va_arg(varArgs, UInt32 *);
-		*out = arg->GetArray();
+		*out = arg->GetArrayID();
 	}
 
 	break;
@@ -4395,46 +4447,59 @@ ScriptToken *ExpressionEvaluator::ExecuteCommandToken(ScriptToken const *token, 
 		return nullptr;
 	}
 
-	if (retnType == kRetnType_Ambiguous || retnType == kRetnType_ArrayIndex) // return type ambiguous, cmd will inform us of type to expect
+
+	bool const retnTypeAmb = retnType == kRetnType_Ambiguous || retnType == kRetnType_ArrayIndex;
+	if (retnTypeAmb) // return type ambiguous, cmd will inform us of type to expect
 	{
 		retnType = GetExpectedReturnType();
 	}
-
+	
+	ScriptToken* tokRes = nullptr;
 	switch (retnType)
 	{
 	case kRetnType_Default:
 	{
-		auto *tokenResult = ScriptToken::Create(cmdResult);
+		tokRes = ScriptToken::Create(cmdResult);
 		// since there are no return types in most commands, we check if it's possible that it returned a form
 		if (*(reinterpret_cast<UInt32 *>(&cmdResult) + 1) == 0 && LookupFormByID((*reinterpret_cast<UInt32 *>(&cmdResult))))
-			tokenResult->formOrNumber = true; // Can be either
-		return tokenResult;
+			tokRes->formOrNumber = true; // Can be either
+		break;
 	}
 	case kRetnType_Form:
 	{
-		return ScriptToken::CreateForm(*reinterpret_cast<UInt32 *>(&cmdResult));
+		tokRes = ScriptToken::CreateForm(*reinterpret_cast<UInt32 *>(&cmdResult));
+		break;
 	}
 	case kRetnType_String:
 	{
 		StringVar *strVar = g_StringMap.Get(cmdResult);
 		if (!strVar)
 			Error("Failed to resolve string return result (string ID was %g)", cmdResult);
-		return ScriptToken::Create(nullptr, strVar);
+		tokRes = ScriptToken::Create(nullptr, strVar);
+		break;
 	}
 	case kRetnType_Array:
 	{
 		// ###TODO: cmds can return arrayID '0', not necessarily an error, does this support that?
 		if (g_ArrayMap.Get(cmdResult) || !cmdResult)
 		{
-			return ScriptToken::CreateArray(cmdResult);
+			tokRes = ScriptToken::CreateArray(cmdResult);
 		}
-		Error("A command returned an invalid array");
+		else
+			Error("A command returned an invalid array");
 		break;
 	}
 	default:
 		Error("Unknown command return type %d while executing command in ExpressionEvaluator::Evaluate()", retnType);
 	}
-	return nullptr;
+
+	if (tokRes && retnTypeAmb)
+	{
+		//Inform that this ScriptToken is the result of an ambiguous function call.
+		tokRes->returnType = kRetnType_Ambiguous;	
+	}
+	
+	return tokRes;
 }
 
 using CachedTokenIter = Vector<TokenCacheEntry>::Iterator;
@@ -4479,13 +4544,15 @@ void ParseShortCircuit(CachedTokens &cachedTokens)
 		ScriptToken &token = *curr->token;
 		TokenCacheEntry *grandparent = curr;
 		TokenCacheEntry *furthestParent;
-
+		TokenCacheEntry* nextNeighbor;
 		do
 		{
 			// Find last "parent" operator of same type. E.g `0 1 && 1 && 1 &&` should jump straight to end of expression.
 			furthestParent = grandparent;
 			grandparent = GetOperatorParent(grandparent, end);
-		} while (grandparent < end && grandparent->token->IsLogicalOperator() && (furthestParent == curr || grandparent->token->GetOperator() == furthestParent->token->GetOperator()));
+			nextNeighbor = furthestParent + 1;
+		} while (grandparent < end && grandparent->token->IsLogicalOperator() && (furthestParent == curr || 
+			grandparent->token->GetOperator() == furthestParent->token->GetOperator() && (nextNeighbor == end || !nextNeighbor->token->IsOperator())));
 
 		if (furthestParent != curr && furthestParent->token->IsLogicalOperator())
 		{
@@ -4494,12 +4561,6 @@ void ParseShortCircuit(CachedTokens &cachedTokens)
 
 			auto *parent = GetOperatorParent(curr, end);
 			token.shortCircuitStackOffset = curr + 1 == parent ? 2 : 1;
-		}
-		else
-		{
-			token.shortCircuitParentType = g_noShortCircuit;
-			token.shortCircuitDistance = 0;
-			token.shortCircuitStackOffset = 0;
 		}
 	}
 }
@@ -4641,7 +4702,7 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 	if (!cachePtr)
 		return nullptr;
 	auto& cache = *cachePtr;
-#if _DEBUG && 0
+#if _DEBUG
 	g_curLineText = this->GetLineText(cache, nullptr);
 #endif
 	OperandStack operands;
@@ -4704,7 +4765,7 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 				lhOperand = operands.Top();
 				operands.Pop();
 			}
-
+	
 			ScriptToken *opResult;
 			if (entry.eval == nullptr)
 			{
@@ -5027,6 +5088,17 @@ ScriptToken *Operator::Evaluate(ScriptToken *lhs, ScriptToken *rhs, ExpressionEv
 			{
 				shouldCache = false;
 			}
+
+			auto const isOperandResultOfAmbiguousFunction = [](ScriptToken* operand) -> bool
+			{
+				if (!operand) return false;
+				return operand->returnType == kRetnType_Ambiguous;
+			};
+
+			//Cannot cache eval for ambiguous return types; function can return new type, requiring new eval function overload.
+			if (isOperandResultOfAmbiguousFunction(lhs) || isOperandResultOfAmbiguousFunction(rhs))
+				shouldCache = false;
+			
 			if (shouldCache)
 			{
 				cacheEval = rule->eval;
@@ -5086,7 +5158,7 @@ bool BasicTokenToElem(ScriptToken *token, ArrayElement &elem)
 	else if (basicToken->CanConvertTo(kTokenType_Form))
 		elem.SetFormID(basicToken->GetFormID());
 	else if (basicToken->CanConvertTo(kTokenType_Array))
-		elem.SetArray(basicToken->GetArray());
+		elem.SetArray(basicToken->GetArrayID());
 	else
 		bResult = false;
 

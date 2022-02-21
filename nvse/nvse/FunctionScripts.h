@@ -47,7 +47,7 @@ struct FunctionInfo
 #endif
 	UInt8*				m_singleLineLambdaPosition = nullptr;
 	bool				m_isLambda;
-	
+
 	FunctionInfo() {}
 	FunctionInfo(Script* script);
 	~FunctionInfo();
@@ -99,7 +99,7 @@ class UserFunctionManager
 	UserFunctionManager();
 
 	static const UInt32	kMaxNestDepth = 30;	// arbitrarily low; have seen 180+ nested calls execute w/o problems
-	
+
 	UInt32								m_nestDepth;
 	Stack<FunctionContext*>		m_functionStack;
 	UnorderedMap<Script*, FunctionInfo>	m_functionInfos;
@@ -140,13 +140,13 @@ public:
 	virtual bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info);
 	virtual TESObjectREFR* ThisObj() { return m_thisObj; }
 	virtual TESObjectREFR* ContainingObj() { return m_container; }
-	
+
 	bool SetArgs(UInt8 numArgs, ...);
 	bool vSetArgs(UInt8 numArgs, va_list args);
-	bool SetArgs(const std::vector<VarValue>& args);
+	bool SetArgsRaw(UInt8 numArgs, const void* args);
 
 protected:
-	enum { kMaxArgs = 10 };	
+	enum { kMaxArgs = 10 };
 
 	UInt8			m_callerVersion;
 	UInt8			m_numArgs;
@@ -156,7 +156,7 @@ protected:
 	TESObjectREFR	* m_container;
 
 	virtual bool ValidateParam(UserFunctionParam* param, UInt8 paramIndex) { return param != nullptr; }
-}; 
+};
 
 namespace PluginAPI {
 	bool CallFunctionScript(Script* fnScript, TESObjectREFR* callingObj, TESObjectREFR* container,

@@ -469,12 +469,17 @@ struct RefMatcherItem: IncludeTakenMatcher, DistanceMatcher
 			case kFormType_TESAmmo:
 			case kFormType_TESKey:
 			case kFormType_AlchemyItem:
+			case kFormType_BGSNote:
 			case kFormType_TESObjectARMA:
+			case kFormType_TESObjectIMOD:
+			case kFormType_TESCasinoChips:
+			case kFormType_TESCaravanCard:
+			case kFormType_TESCaravanMoney:
 				break;
 
 			case kFormType_TESObjectLIGH:
 				if (TESObjectLIGH* light = DYNAMIC_CAST(refr->baseForm, TESForm, TESObjectLIGH))
-					if (light->icon.ddsPath.m_dataLen)	//temp hack until I find canCarry flag on TESObjectLIGH
+					if (light->lightFlags & 2)
 						break;
 			default:
 				return false;
@@ -857,19 +862,29 @@ bool Cmd_GetRefCount_Execute(COMMAND_ARGS)
 
 bool Cmd_SetRefCount_Execute(COMMAND_ARGS)
 {
-	UInt32 newCount = 0;
-	if (!ExtractArgs(EXTRACT_ARGS, &newCount))
-		return true;
-	else if (!thisObj || newCount > 32767 || newCount < 1)
-		return true;
-
-	ExtraCount* pXCount = GetByTypeCast(thisObj->extraDataList, Count);
-	if (!pXCount) {
-		pXCount = ExtraCount::Create();
-		thisObj->extraDataList.Add(pXCount);
+	UInt32 newCount;
+	if (ExtractArgs(EXTRACT_ARGS, &newCount) && newCount && (newCount <= 0x7FFF))
+	{
+		InventoryReference *invRefr = s_invRefMap.GetPtr(thisObj->refID);
+		if (invRefr)
+		{
+			if (invRefr->m_data.xData)
+			{
+				ExtraCount *xCount = (ExtraCount*)invRefr->m_data.xData->GetByType(kExtraData_Count);
+				if (xCount) xCount->count = newCount;
+			}
+			invRefr->m_data.entry->countDelta = newCount;
+		}
+		else
+		{
+			ExtraCount *xCount = (ExtraCount*)thisObj->extraDataList.GetByType(kExtraData_Count);
+			if (xCount)
+				xCount->count = newCount;
+			else
+				thisObj->extraDataList.Add(ExtraCount::Create(newCount));
+			thisObj->MarkAsModified(0x400);
+		}
 	}
-	pXCount->count = newCount;
-
 	return true;
 }
 

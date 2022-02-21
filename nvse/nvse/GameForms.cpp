@@ -1,5 +1,7 @@
 #include "GameForms.h"
 
+#include <unordered_set>
+
 #include "GameAPI.h"
 #include "GameRTTI.h"
 #include "GameObjects.h"
@@ -92,7 +94,6 @@ void TESForm::DoAddForm(TESForm *newForm, bool persist, bool record) const
 		if (package)
 			canSave = true;
 		// ... more ?
-
 		if (canSave)
 			CALL_MEMBER_FN(TESSaveLoadGame::Get(), AddCreatedForm)
 			(newForm);
@@ -118,13 +119,7 @@ TESForm *TESForm::CloneForm(bool persist) const
 		}
 		DoAddForm(result, persist);
 	}
-
 	return result;
-}
-
-bool TESForm::IsCloned() const
-{
-	return GetModIndex() == 0xff;
 }
 
 std::string TESForm::GetStringRepresentation() const
@@ -378,6 +373,8 @@ public:
 
 SInt32 BGSListForm::GetIndexOf(TESForm *pForm)
 {
+	if (!pForm)
+		return eListInvalid;
 	return list.GetIndexOf(FindByForm(pForm));
 }
 

@@ -45,6 +45,8 @@ enum
 
 	// Added v0005 - version bumped to 3
 	kInterface_Data,
+	// Added v0006
+	kInterface_EventManager,
 
 	kInterface_Max
 };
@@ -241,6 +243,7 @@ struct NVSEMessagingInterface
 		kMessage_MainGameLoop,			// called each game loop
 		kMessage_ScriptCompile,   // EDITOR: called after successful script compilation in GECK. data: pointer to Script
 		kMessage_EventListDestroyed, // called before a script event list is destroyed, dataLen: 4, data: ScriptEventList* ptr
+		kMessage_PostQueryPlugins // called after all plugins have been queried
 	};
 
 	UInt32	version;
@@ -342,7 +345,6 @@ struct NVSEArrayVarInterface
 
 		friend class PluginAPI::ArrayAPI;
 		friend class ArrayVar;
-		void Reset() { if (type == kType_String) { FormHeap_Free(str); type = kType_Invalid; str = NULL; } }
 	public:
 		enum
 		{
@@ -354,6 +356,7 @@ struct NVSEArrayVarInterface
 			kType_Array,
 		};
 
+		void Reset() { if (type == kType_String) { FormHeap_Free(str); } type = kType_Invalid; str = NULL; }
 		~Element() { Reset(); }
 
 		Element() : type(kType_Invalid) { }
@@ -371,15 +374,16 @@ struct NVSEArrayVarInterface
 			}
 			return *this;
 		}
-
 		bool IsValid() const { return type != kType_Invalid; }
 		UInt8 GetType() const { return type; }
 
-		const char* String() { return type == kType_String ? str : NULL; }
-		Array * Array() { return type == kType_Array ? arr : NULL; }
-		TESForm * Form() { return type == kType_Form ? form : NULL; }
-		double Number() { return type == kType_Numeric ? num : 0.0; }
-		bool Bool()
+		const char* GetString() const  { return type == kType_String ? str : NULL; }
+		Array* GetArray() const  { return type == kType_Array ? arr : NULL; }
+		UInt32 GetArrayID() const { return type == kType_Array ? reinterpret_cast<UInt32>(arr) : 0; }
+		TESForm * GetTESForm() const  { return type == kType_Form ? form : NULL; }
+		UInt32 GetFormID() const { return type == kType_Form ? (form ? form->refID : 0) : 0; }
+		double GetNumber() const  { return type == kType_Numeric ? num : 0.0; }
+		bool Bool() const
 		{
 			switch (type)
 			{
@@ -393,6 +397,23 @@ struct NVSEArrayVarInterface
 				return str && str[0];
 			default:
 				return false;
+			}
+		}
+
+		CommandReturnType GetReturnType() const
+		{
+			switch (GetType())
+			{
+			case kType_Numeric:
+				return kRetnType_Default;
+			case kType_Form:
+				return kRetnType_Form;
+			case kType_Array:
+				return kRetnType_Array;
+			case kType_String:
+				return kRetnType_String;
+			default:
+				return kRetnType_Ambiguous;
 			}
 		}
 	};
@@ -699,6 +720,53 @@ struct NVSESerializationInterface
 	void	(*SkipNBytes)(UInt32 byteNum);
 };
 
+/**** Event API docs  *******************************************************************************************
+ *  This interface allows you to
+ *	- Register a new event type which can be dispatched with parameters
+ *	- Dispatch an event from code to scripts (and plugins with this interface) with parameters and calling ref.
+ *	   - SetEventHandler supports any number of filters in script calls in the syntax of 1::myFilter
+ *	   (1st argument will receive this filter for example)
+ *	- Set an event handler for any NVSE events registered with SetEventHandler which will be called back.
+ *
+ *	PluginEventInfo::paramTypes needs to be statically defined
+ *	(i.e. the pointer to it may never become invalid).
+ *  For example, a good way to define it is to make a global variable like this:
+ *
+ *	    static UInt8 s_MyEventParams[] = { Script::eVarType_Ref, Script::eVarType_String };
+ *
+ *	Then you can pass it into PluginEventInfo like this:
+ *
+ *  Which can be registered like this:
+ *
+ *	    s_EventInterface->RegisterEvent("MyEvent", 2, s_MyEventParams);
+ *
+ *  Then, from your code, you can dispatch the event like this:
+ *
+ *	    s_EventInterface->DispatchEvent("MyEvent", callingRef, someForm, someString);
+ *
+ *	When passing numeric types to DispatchEvent you MUST pack them in a float, which then needs to be
+ *  cast as a void* pointer. This is due to the nature of variadic arguments in C/C++. Example
+ *      float number = 10;
+ *	    void* numberArg = *(void**) &number;
+ *	    s_EventInterface->DispatchEvent("MyEvent", callingRef, numberArg);
+ */
+struct NVSEEventManagerInterface
+{
+	typedef void (*EventHandler)(TESObjectREFR* thisObj, void* parameters);
+
+	// Registers a new event which can be dispatched to scripts and plugins. Returns false if event with name already exists
+	bool (*RegisterEvent)(const char* name, UInt8 numParams, UInt8* paramTypes);
+
+	// Dispatch an event that has been registered with RegisterEvent - variadic arguments are passed as parameters to script / function
+	bool (*DispatchEvent)(const char* eventName, TESObjectREFR* thisObj, ...);
+
+	// Similar to script function SetEventHandler, allows you to set a native function that gets called back on events
+	bool (*SetNativeEventHandler)(const char* eventName, EventHandler func);
+
+	// Same as script function RemoveEventHandler but for native functions
+	bool (*RemoveNativeEventHandler)(const char* eventName, EventHandler func);
+};
+
 struct PluginInfo
 {
 	enum
@@ -793,11 +861,15 @@ struct ExpressionEvaluatorUtils
 	const char*				(__fastcall *ScriptTokenGetString)(PluginScriptToken *scrToken);
 	UInt32					(__fastcall *ScriptTokenGetArrayID)(PluginScriptToken *scrToken);
 	UInt32					(__fastcall *ScriptTokenGetActorValue)(PluginScriptToken *scrToken);
-	ScriptLocal*	(__fastcall *ScriptTokenGetScriptVar)(PluginScriptToken *scrToken);
+	ScriptLocal*			(__fastcall *ScriptTokenGetScriptVar)(PluginScriptToken *scrToken);
 	const PluginTokenPair*	(__fastcall *ScriptTokenGetPair)(PluginScriptToken *scrToken);
 	const PluginTokenSlice*	(__fastcall *ScriptTokenGetSlice)(PluginScriptToken *scrToken);
 	UInt32                  (__fastcall* ScriptTokenGetAnimationGroup)(PluginScriptToken* scrToken);
 
+	void					(__fastcall* SetExpectedReturnType)(void* expEval, UInt8 type);
+	void					(__fastcall* AssignCommandResultFromElement)(void* expEval, NVSEArrayVarInterface::Element &result);
+	void					(__fastcall* ScriptTokenGetElement)(PluginScriptToken* scrToken, NVSEArrayVarInterface::Element &outElem);
+	bool					(__fastcall* ScriptTokenCanConvertTo)(PluginScriptToken* scrToken, UInt8 toType);
 #endif
 };
 
@@ -832,6 +904,18 @@ public:
 	{
 		return s_expEvalUtils.GetNthArg(expEval, argIdx);
 	}
+
+	void SetExpectedReturnType(CommandReturnType type)
+	{
+		s_expEvalUtils.SetExpectedReturnType(expEval, type);
+	}
+
+	//Will set the expected return type on its own.
+	//If the Element is invalid, will throw an NVSE error in console about unexpected return type.
+	void AssignCommandResult(NVSEArrayVarInterface::Element& result)
+	{
+		s_expEvalUtils.AssignCommandResultFromElement(expEval, result);
+	}
 #endif
 };
 
@@ -843,6 +927,11 @@ struct PluginScriptToken
 		return s_expEvalUtils.ScriptTokenGetType(this);
 	}
 
+	bool CanConvertTo(UInt8 toType)
+	{
+		return s_expEvalUtils.ScriptTokenCanConvertTo(this, toType);
+	}
+	
 	double GetFloat()
 	{
 		return s_expEvalUtils.ScriptTokenGetFloat(this);
@@ -901,6 +990,15 @@ struct PluginScriptToken
 	const PluginTokenSlice *GetSlice()
 	{
 		return s_expEvalUtils.ScriptTokenGetSlice(this);
+	}
+
+	//If a string-type elem is returned, its c-string will be allocated on the FormHeap.
+	//To properly destroy it, FormHeap_Free must be called.
+	//If the element already contained a string, then it is assumed to have been allocated on the FormHeap,
+	// and will be cleared as such.
+	void GetElement(NVSEArrayVarInterface::Element &outElem)
+	{
+		s_expEvalUtils.ScriptTokenGetElement(this, outElem);
 	}
 #endif
 };

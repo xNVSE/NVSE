@@ -184,7 +184,7 @@ bool Cmd_ar_Size_Execute(COMMAND_ARGS)
 	{
 		if (eval.Arg(0)->CanConvertTo(kTokenType_Array))
 		{
-			ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+			ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 			if (arr) *result = (int)arr->Size();
 		}
 	}
@@ -200,7 +200,7 @@ bool Cmd_ar_Packed_Execute(COMMAND_ARGS)
 	{
 		if (eval.Arg(0)->CanConvertTo(kTokenType_Array))
 		{
-			ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+			ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 			if (arr && arr->IsPacked())
 				*result = 1;
 		}
@@ -214,7 +214,7 @@ bool Cmd_ar_Dump_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.Arg(0) && eval.Arg(0)->CanConvertTo(kTokenType_Array))
 	{
-		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (arr) arr->Dump();
 	}
 
@@ -228,7 +228,7 @@ bool Cmd_ar_DumpF_Execute(COMMAND_ARGS)
 	{
 		if (eval.Arg(1) && eval.Arg(1)->CanConvertTo(kTokenType_String))
 		{
-			ArrayVar* arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+			ArrayVar* arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 			bool bAppend = true;
 			if (eval.Arg(2) && eval.Arg(2)->CanConvertTo(kTokenType_Boolean))
 				bAppend = eval.Arg(2)->GetBool();
@@ -262,8 +262,8 @@ bool Cmd_ar_Erase_Execute(COMMAND_ARGS)
 	{
 		if (eval.Arg(0)->CanConvertTo(kTokenType_Array))
 		{
-			ArrayID arrID = eval.Arg(0)->GetArray();
-			ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+			ArrayID arrID = eval.Arg(0)->GetArrayID();
+			ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 			if (arr)
 			{
 				if (eval.Arg(1))
@@ -306,7 +306,7 @@ bool Cmd_ar_Sort_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.Arg(0) && eval.Arg(0)->CanConvertTo(kTokenType_Array))
 	{
-		ArrayVar *srcArr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *srcArr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (srcArr && srcArr->Size())
 		{
 			ArrayVar::SortOrder order = ArrayVar::kSort_Ascending;
@@ -325,7 +325,7 @@ bool Cmd_ar_CustomSort_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() >= 2)
 	{
-		ArrayVar *srcArr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *srcArr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (srcArr && srcArr->Size())
 		{
 			Script* compare = DYNAMIC_CAST(eval.Arg(1)->GetTESForm(), TESForm, Script);
@@ -348,7 +348,7 @@ bool Cmd_ar_SortAlpha_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.Arg(0) && eval.Arg(0)->CanConvertTo(kTokenType_Array))
 	{
-		ArrayVar *srcArr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *srcArr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (srcArr && srcArr->Size())
 		{
 			ArrayVar::SortOrder order = ArrayVar::kSort_Ascending;
@@ -371,7 +371,7 @@ bool Cmd_ar_Find_Execute(COMMAND_ARGS)
 		BasicTokenToElem(eval.Arg(0), toFind);
 		
 		// get the array
-		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(1)->GetArray());
+		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(1)->GetArrayID());
 
 		// set result to the default (not found)
 		UInt8 keyType = arr ? arr->KeyType() : kDataType_Invalid;
@@ -449,9 +449,9 @@ bool ArrayIterCommand(COMMAND_ARGS, eIterMode iterMode)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() && eval.Arg(0)->CanConvertTo(kTokenType_Array))
 	{
-		ArrayID arrID = eval.Arg(0)->GetArray();
+		ArrayID arrID = eval.Arg(0)->GetArrayID();
 
-		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (!arr) return true;
 
 		const ArrayKey *foundKey = NULL;
@@ -561,7 +561,7 @@ bool Cmd_ar_Keys_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.Arg(0) && eval.Arg(0)->CanConvertTo(kTokenType_Array))
 	{
-		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (arr) *result = arr->GetKeys(scriptObj->GetModIndex())->ID();
 	}
 
@@ -574,7 +574,7 @@ bool Cmd_ar_HasKey_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() == 2 && eval.Arg(0)->CanConvertTo(kTokenType_Array))
 	{
-		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (arr)
 		{
 			if (arr->KeyType() == kDataType_Numeric)
@@ -609,7 +609,7 @@ bool ArrayCopyCommand(COMMAND_ARGS, bool bDeepCopy)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() == 1 && eval.Arg(0)->CanConvertTo(kTokenType_Array))
 	{
-		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (arr)
 		{
 			ArrayVar *arrCopy = arr->Copy(scriptObj->GetModIndex(), bDeepCopy);
@@ -643,7 +643,7 @@ bool Cmd_ar_Resize_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() >= 2 && eval.Arg(0)->CanConvertTo(kTokenType_Array) && eval.Arg(1)->CanConvertTo(kTokenType_Number))
 	{
-		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (arr)
 		{
 			ArrayElement pad;
@@ -665,7 +665,7 @@ bool Cmd_ar_Append_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() == 2 && eval.Arg(0)->CanConvertTo(kTokenType_Array))
 	{
-		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (arr)
 		{
 			ArrayElement toAppend;
@@ -684,14 +684,14 @@ bool ar_Insert_Execute(COMMAND_ARGS, bool bRange)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() == 3 && eval.Arg(0)->CanConvertTo(kTokenType_Array) && eval.Arg(1)->CanConvertTo(kTokenType_Number))
 	{
-		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (arr)
 		{
 			UInt32 index = (int)eval.Arg(1)->GetNumber();
 			if (bRange)
 			{
 				if (eval.Arg(2)->CanConvertTo(kTokenType_Array))
-					*result = arr->Insert(index, eval.Arg(2)->GetArray());
+					*result = arr->Insert(index, eval.Arg(2)->GetArrayID());
 			}
 			else
 			{

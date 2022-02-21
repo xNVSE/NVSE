@@ -33,6 +33,7 @@
 #include "Commands_Array.h"
 #include "Commands_String.h"
 #include "Commands_Algohol.h"
+#include "Commands_Quest.h"
 
 CommandTable g_consoleCommands;
 CommandTable g_scriptCommands;
@@ -1822,7 +1823,15 @@ void CommandTable::AddCommandsV6()
 	// 6.2 beta 05
 	ADD_CMD(ForEachInList);
 	ADD_CMD_RET(Ternary, kRetnType_Ambiguous);
-  ADD_CMD(ModUIFloat);
+	ADD_CMD(ModUIFloat);
+	ADD_CMD(GetQuestObjectiveCount);
+	ADD_CMD_RET(GetNthQuestObjective, kRetnType_Form);
+	ADD_CMD_RET(GetCurrentObjective, kRetnType_Form);
+	ADD_CMD(PrintActiveTile);
+	ADD_CMD(SetCurrentQuest);
+
+	// 6.2 beta 06
+	ADD_CMD(sv_Trim);
 }
 
 namespace PluginAPI

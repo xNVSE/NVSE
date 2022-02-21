@@ -2199,10 +2199,38 @@ public:
 		T_Data		*pData;
 		UInt32		index;
 
+#if _DEBUG
+		bool IsOutOfBounds() const
+		{
+			return index >= contObj->Size();
+		}
+#endif
+
 	public:
-		Data_Arg Get() const {return *pData;}
-		Data_Arg operator*() const {return *pData;}
-		Data_Arg operator->() const {return *pData;}
+		Data_Arg Get() const
+		{
+#if _DEBUG
+			_ASSERT(!IsOutOfBounds());
+#endif
+			return*pData;
+		}
+
+		Data_Arg operator*() const
+		{
+#if _DEBUG
+			_ASSERT(!IsOutOfBounds());
+#endif
+			return *pData;
+		}
+
+		Data_Arg operator->() const
+		{
+#if _DEBUG
+			_ASSERT(!IsOutOfBounds());
+#endif
+			return *pData;
+		}
+
 		Data_Arg operator()() const {return *pData;}
 		bool End() const {return index >= contObj->numItems;}
 		bool LastElement() const { return index + 1 >= contObj->numItems; }
@@ -2246,6 +2274,16 @@ public:
 			index -= count;
 		}
 
+		bool operator==(const Iterator& other) const
+		{
+			return index == other.index;
+		}
+
+		bool operator!=(const Iterator& other) const
+		{
+			return !this->operator==(other);
+		}
+
 		Iterator operator+(const UInt32 first) const
 		{
 			return Iterator(*contObj, index+first);
@@ -2273,6 +2311,10 @@ public:
 
 	Iterator Begin() {return Iterator(*this);}
 	Iterator BeginAt(UInt32 index) {return Iterator(*this, index);}
+
+	// foreach iterator syntax
+	Iterator begin() { return Begin(); }
+	Iterator end() { return Iterator(*this, this->Size()); }
 };
 
 template <typename T_Data, UInt32 size> class FixedTypeArray

@@ -15,6 +15,17 @@ const char *g_variableTypeNames[6] =
 		"ref",
 		"invalid"};
 
+const char* g_validVariableTypeNames[8] =
+{
+	"float",
+	"int",
+	"string_var",
+	"array_var",
+	"ref",
+	"short",
+	"long",
+	"reference"};
+
 #if RUNTIME
 std::span<CommandInfo> g_eventBlockCommandInfos = {reinterpret_cast<CommandInfo*>(0x118E2F0), 38};
 std::span<CommandInfo> g_scriptStatementCommandInfos = {reinterpret_cast<CommandInfo*>(0x118CB50), 16};
@@ -40,6 +51,18 @@ Script::VariableType VariableTypeNameToType(const char *name)
 	else if (!StrCompare(name, "ref") || !StrCompare(name, "reference"))
 		varType = Script::eVarType_Ref;
 	return varType;
+}
+
+const char* VariableTypeToName(Script::VariableType type)
+{
+	switch (type) { case Script::eVarType_Float: return "float";
+	case Script::eVarType_Integer: return "int";
+	case Script::eVarType_String: return "string";
+	case Script::eVarType_Array: return "array";
+	case Script::eVarType_Ref: return "ref";
+	case Script::eVarType_Invalid: 
+	default: return "invalid";;
+	}
 }
 
 UInt32 GetDeclaredVariableType(const char *varName, const char *scriptText, Script *script)

@@ -275,6 +275,38 @@ ScriptToken::ScriptToken(ScriptLocal *var) : refIdx(0), type(kTokenType_Variable
 	value.var = var;
 }
 
+ScriptToken::ScriptToken(NVSEArrayVarInterface::Element& elem) : refIdx(0), variableType(Script::eVarType_Invalid)
+{
+	switch (elem.GetType())
+	{
+	case NVSEArrayVarInterface::Element::kType_Numeric:
+		type = kTokenType_Number;
+		value.num = elem.GetNumber();
+		break;
+	case NVSEArrayVarInterface::Element::kType_String:
+	{
+		type = kTokenType_String;
+		auto str_ = elem.GetString();
+		value.str = (str_ && *str_) ? CopyString(str_) : nullptr;
+		break;
+	}
+	case NVSEArrayVarInterface::Element::kType_Array:
+		value.arrID = reinterpret_cast<ArrayID>(elem.GetArray());
+		type = (!value.arrID || g_ArrayMap.Get(value.arrID)) ? kTokenType_Array : kTokenType_Invalid;
+		break;
+	case NVSEArrayVarInterface::Element::kType_Form:
+	{
+		type = kTokenType_Form;
+		auto const form = elem.GetTESForm();
+		value.formID = form ? form->refID : 0;
+		break;
+	}
+	default:
+		type = kTokenType_Invalid;
+		value.num = 0;
+	}
+}
+
 ForEachContextToken::ForEachContextToken(UInt32 srcID, UInt32 iterID, UInt32 varType, ScriptLocal *var)
 	: ScriptToken(kTokenType_ForEachContext, Script::eVarType_Invalid, 0), context(srcID, iterID, varType, var)
 {
@@ -565,6 +597,13 @@ bool AssignableSubstringArrayElementToken::Assign(const char *str)
 	return false;
 }
 
+ScriptToken* ScriptToken::ForwardEvalResult()
+{
+	if (CanConvertTo(kTokenType_Number)) [[likely]]
+		return Create(GetNumber());
+	return ToBasicToken();
+}
+
 #endif
 
 SliceToken::SliceToken(Slice *_slice) : ScriptToken(kTokenType_Slice, Script::eVarType_Invalid, 0), slice(_slice)
@@ -851,6 +890,10 @@ bool ScriptToken::GetBool() const
 		}
 		return value.var->data ? true : false;
 	}
+	case kTokenType_String:
+	{
+		return value.str ? true : false;
+	}
 #endif
 	default:
 		return false;
@@ -863,7 +906,7 @@ Operator *ScriptToken::GetOperator() const
 }
 
 #if RUNTIME
-ArrayID ScriptToken::GetArray() const
+ArrayID ScriptToken::GetArrayID() const
 {
 	if (type == kTokenType_Array)
 		return value.arrID;
@@ -880,7 +923,7 @@ ArrayID ScriptToken::GetArray() const
 
 ArrayVar *ScriptToken::GetArrayVar()
 {
-	return g_ArrayMap.Get(GetArray());
+	return g_ArrayMap.Get(GetArrayID());
 }
 
 ScriptLocal *ScriptToken::GetVar() const
@@ -901,29 +944,30 @@ StringVar* ScriptToken::GetStringVar() const
 	return nullptr;
 }
 
-void ScriptToken::AssignResult(COMMAND_ARGS, ExpressionEvaluator &eval) const
+CommandReturnType ScriptToken::GetReturnType() const
 {
 	if (CanConvertTo(kTokenType_Number)) {
-		*result = GetNumber();
+		return kRetnType_Default;
 	}
-	else if (CanConvertTo(kTokenType_String))
+	if (CanConvertTo(kTokenType_String))
 	{
-		AssignToStringVar(PASS_COMMAND_ARGS, GetString());
-		eval.ExpectReturnType(kRetnType_String);
+		return kRetnType_String;
 	}
-	else if (CanConvertTo(kTokenType_Form))
+	if (CanConvertTo(kTokenType_Form))
 	{
-		UInt32* refResult = (UInt32*)result;
-		*refResult = GetFormID();
-		eval.ExpectReturnType(kRetnType_Form);
+		return kRetnType_Form;
 	}
-	else if (CanConvertTo(kTokenType_Array))
+	if (CanConvertTo(kTokenType_Array))
 	{
-		*result = GetArray();
-		eval.ExpectReturnType(kRetnType_Array);
+		return kRetnType_Array;
 	}
-	else
-		ShowRuntimeError(scriptObj, "Function call returned unexpected token type %d", Type());
+	return kRetnType_Ambiguous;
+}
+
+void ScriptToken::AssignResult(ExpressionEvaluator &eval) const
+{
+	eval.AssignAmbiguousResult(*this, GetReturnType());
+
 }
 
 bool ScriptToken::ResolveVariable()
@@ -1122,7 +1166,7 @@ UInt32 ScriptToken::GetSex()
 #endif // RUNTIME
 
 /*************************************************
-	
+
 	ScriptToken methods
 
 *************************************************/
@@ -1156,9 +1200,10 @@ UInt8 __fastcall ScriptTokenGetType(PluginScriptToken *scrToken)
 	return reinterpret_cast<ScriptToken *>(scrToken)->Type();
 }
 
-bool __fastcall ScriptTokenCanConvertTo(PluginScriptToken *scrToken, Token_Type toType)
+bool __fastcall ScriptTokenCanConvertTo(PluginScriptToken *scrToken, UInt8 toType)
 {
-	return reinterpret_cast<ScriptToken *>(scrToken)->CanConvertTo(toType);
+	auto const tok = reinterpret_cast<ScriptToken*>(scrToken);
+	return tok->CanConvertTo(static_cast<Token_Type>(toType));
 }
 
 double __fastcall ScriptTokenGetFloat(PluginScriptToken *scrToken)
@@ -1188,7 +1233,7 @@ const char *__fastcall ScriptTokenGetString(PluginScriptToken *scrToken)
 
 UInt32 __fastcall ScriptTokenGetArrayID(PluginScriptToken *scrToken)
 {
-	return reinterpret_cast<ScriptToken *>(scrToken)->GetArray();
+	return reinterpret_cast<ScriptToken *>(scrToken)->GetArrayID();
 }
 
 UInt32 __fastcall ScriptTokenGetActorValue(PluginScriptToken *scrToken)
@@ -1214,6 +1259,25 @@ const PluginTokenSlice *__fastcall ScriptTokenGetSlice(PluginScriptToken *scrTok
 UInt32 __fastcall ScriptTokenGetAnimationGroup(PluginScriptToken* scrToken)
 {
 	return reinterpret_cast<ScriptToken*>(scrToken)->GetAnimationGroup();
+}
+
+void __fastcall ScriptTokenGetArrayElement(PluginScriptToken* scrToken, NVSEArrayVarInterface::Element& outElem)
+{
+	if (auto const token = reinterpret_cast<ScriptToken*>(scrToken);
+		token->CanConvertTo(kTokenType_String))
+	{
+		outElem = token->GetString();
+	}
+	else if (token->CanConvertTo(kTokenType_Array))
+		outElem = NVSEArrayVarInterface::Element(reinterpret_cast<NVSEArrayVarInterface::Array*>(token->GetArrayID()));
+	else if (token->CanConvertTo(kTokenType_Form))
+		outElem = LookupFormByID(token->GetFormID());
+	else if (token->CanConvertTo(kTokenType_Number))
+		outElem = token->GetNumber();
+	else
+	{
+		outElem.Reset();
+	}
 }
 
 ScriptToken *ScriptToken::Read(ExpressionEvaluator *context)
@@ -1499,9 +1563,9 @@ ScriptToken *ScriptToken::ToBasicToken()
 {
 	if (CanConvertTo(kTokenType_String))
 		return Create(GetString());
-	if (CanConvertTo(kTokenType_Array))
-		return CreateArray(GetArray());
-	if (CanConvertTo(kTokenType_Form))
+	else if (CanConvertTo(kTokenType_Array))
+		return CreateArray(GetArrayID());
+	else if (CanConvertTo(kTokenType_Form))
 		return CreateForm(GetFormID());
 	if (CanConvertTo(kTokenType_Number))
 		return Create(GetNumber());
@@ -1516,7 +1580,7 @@ std::optional<VarValue> ScriptToken::ToVarValue() const
 	if (CanConvertTo(kTokenType_Array))
 	{
 		tmp.emplace<VarValue::kArrayID>(GetArray());	//cannot use default ctor; ArrKey and FormID are conflicting types.
-		return tmp;	
+		return tmp;
 	}
 	if (CanConvertTo(kTokenType_Form))
 	{
@@ -1565,7 +1629,7 @@ double ScriptToken::GetNumericRepresentation(bool bFromHex)
 #endif
 
 /****************************************
-	
+
 	ArrayElementToken
 
 ****************************************/
@@ -1668,7 +1732,7 @@ bool ArrayElementToken::GetBool() const
 	return false;
 }
 
-ArrayID ArrayElementToken::GetArray() const
+ArrayID ArrayElementToken::GetArrayID() const
 {
 	ArrayID out = 0;
 	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
@@ -1686,8 +1750,13 @@ Token_Type kConversions_Number[] =
 };
 
 Token_Type kConversions_Boolean[] =
-	{
+{
 		kTokenType_Number,
+};
+
+Token_Type kConversions_String[] =
+{
+	kTokenType_Boolean
 };
 
 Token_Type kConversions_Command[] =
@@ -1746,7 +1815,7 @@ Token_Type kConversions_RefVar[] =
 };
 
 Token_Type kConversions_StringVar[] =
-	{
+{
 		kTokenType_String,
 		kTokenType_Variable,
 		kTokenType_Boolean,
@@ -1760,18 +1829,19 @@ Token_Type kConversions_ArrayVar[] =
 };
 
 Token_Type kConversions_Array[] =
-	{
+{
 		kTokenType_Boolean, // true if arrayID != 0, false if 0
 };
 
 Token_Type kConversions_AssignableString[] =
-	{
+{
 		kTokenType_String,
 };
 
 Token_Type kConversions_Lambda[] =
-	{
-		kTokenType_Form};
+{
+		kTokenType_Form
+};
 
 // just an array of the types to which a given token type can be converted
 struct Operand
@@ -1787,7 +1857,7 @@ static Operand s_operands[] =
 	{
 		{OPERAND(Number)},
 		{OPERAND(Boolean)},
-		{NULL, 0}, // string has no conversions
+		{OPERAND(String)}, // string has no conversions
 		{OPERAND(Form)},
 		{OPERAND(Ref)},
 		{OPERAND(Global)},
@@ -1809,7 +1879,9 @@ static Operand s_operands[] =
 		{NULL, 0}, // pair
 		{OPERAND(AssignableString)},
 		{OPERAND(Lambda)},
-		{NULL, 0}
+		{NULL, 0}, // LeftToken
+		{NULL, 0}, // RightToken
+		{NULL, 0} // Max
 };
 
 STATIC_ASSERT(SIZEOF_ARRAY(s_operands, Operand) == kTokenType_Max);
@@ -1824,7 +1896,7 @@ bool CanConvertOperand(Token_Type from, Token_Type to)
 	Operand *op = &s_operands[from];
 	for (UInt32 i = 0; i < op->numRules; i++)
 	{
-		auto &rule = op->rules[i];
+		const auto rule = op->rules[i];
 		if (rule == to)
 			return true;
 	}
@@ -1835,13 +1907,22 @@ bool CanConvertOperand(Token_Type from, Token_Type to)
 // Operator
 Token_Type Operator::GetResult(Token_Type lhs, Token_Type rhs)
 {
+	Token_Type result = kTokenType_Invalid;
 	for (UInt32 i = 0; i < numRules; i++)
 	{
 		OperationRule *rule = &rules[i];
 		if (CanConvertOperand(lhs, rule->lhs) && CanConvertOperand(rhs, rule->rhs))
-			return rule->result;
-		else if (!rule->bAsymmetric && CanConvertOperand(lhs, rule->rhs) && CanConvertOperand(rhs, rule->lhs))
-			return rule->result;
+			result = rule->result;
+		if (!rule->bAsymmetric && CanConvertOperand(lhs, rule->rhs) && CanConvertOperand(rhs, rule->lhs))
+			result = rule->result;
+
+		if (result == kTokenType_LeftToken)
+			result = lhs;
+		else if (result == kTokenType_RightToken)
+			result = rhs;
+
+		if (result != kTokenType_Invalid)
+			return result;
 	}
 
 	return kTokenType_Invalid;

@@ -61,16 +61,20 @@ bool RunCommand_NS(COMMAND_ARGS, Cmd_Execute cmd)
 float g_gameSecondsPassed = 0;
 
 // xNVSE 6.1
-void HandleDelayedCall()
+void HandleDelayedCall(float timeDelta, bool isMenuMode)
 {
 	if (g_callAfterInfos.empty())
 		return; // avoid lock overhead
-	
+
 	ScopedLock lock(g_callAfterInfosCS);
 
 	auto iter = g_callAfterInfos.begin();
 	while (iter != g_callAfterInfos.end())
 	{
+		if (!iter->runInMenuMode && isMenuMode)
+		{
+			iter->time += timeDelta;
+		}
 		if (g_gameSecondsPassed >= iter->time)
 		{
 			InternalFunctionCaller caller(iter->script, iter->thisObj);
@@ -140,7 +144,7 @@ void HandleCallWhenScripts()
 	}
 }
 
-void HandleCallForScripts()
+void HandleCallForScripts(float timeDelta, bool isMenuMode)
 {
 	if (g_callForInfos.empty())
 		return; // avoid lock overhead
@@ -149,6 +153,10 @@ void HandleCallForScripts()
 	auto iter = g_callForInfos.begin();
 	while (iter != g_callForInfos.end())
 	{
+		if (!iter->runInMenuMode && isMenuMode)
+		{
+			iter->time += timeDelta;
+		}
 		if (g_gameSecondsPassed < iter->time)
 		{
 			InternalFunctionCaller caller(iter->script, iter->thisObj);
@@ -235,7 +243,11 @@ static void HandleMainLoopHook(void)
 		DetermineShowScriptErrors();
 		ApplyGECKEditorIDs();
 		s_recordedMainThreadID = true;
+#if ALPHA_MODE
+		Console_Print("xNVSE %d.%d.%d Beta Build %s", NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA, __TIME__);
+#else
 		Console_Print("xNVSE %d.%d.%d", NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA);
+#endif
 		g_mainThreadID = GetCurrentThreadId();
 		
 		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_DeferredInit, NULL, 0, NULL);
@@ -258,18 +270,17 @@ static void HandleMainLoopHook(void)
 	HandleCallWhileScripts();
 	HandleCallWhenScripts();
 	
+	const auto vatsTimeMult = ThisStdCall<double>(0x9C8CC0, reinterpret_cast<void*>(0x11F2250));
+	const float timeDelta = g_timeGlobal->secondsPassed * static_cast<float>(vatsTimeMult);
 	const auto isMenuMode = CdeclCall<bool>(0x702360);
+	g_gameSecondsPassed += timeDelta;
 
-	if (!isMenuMode)
-	{
-		g_gameSecondsPassed += *g_globalTimeMult * g_timeGlobal->secondsPassed;
-		
-		// handle calls from cmd CallAfterSeconds
-		HandleDelayedCall();
+	// handle calls from cmd CallAfterSeconds
+	HandleDelayedCall(timeDelta, isMenuMode);
 
-		// handle calls from cmd CallForSeconds
-		HandleCallForScripts();
-	}
+	// handle calls from cmd CallForSeconds
+	HandleCallForScripts(timeDelta, isMenuMode);
+
 
 }
 

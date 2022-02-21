@@ -151,7 +151,7 @@ public:
 			case Script::eVarType_Array:
 				if (arg->CanConvertTo(kTokenType_Array))
 				{
-					g_ArrayMap.AddReference(&var->data, arg->GetArray(), info->GetScript()->GetModIndex());
+					g_ArrayMap.AddReference(&var->data, arg->GetArrayID(), info->GetScript()->GetModIndex());
 					AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_Array);
 				}
 				break;
@@ -593,7 +593,7 @@ bool InternalFunctionCaller::PopulateArgs(ScriptEventList *eventList, FunctionIn
 		UserFunctionParam *param = info->GetParam(i);
 		if (!ValidateParam(param, i))
 		{
-			ShowRuntimeError(m_script, "Failed to extract arg %d", i);
+			ShowRuntimeError(m_script, "Failed to extract parameter %d. Please verify the number of parameters in function script match those required for event.", i);
 			return false;
 		}
 
@@ -669,18 +669,12 @@ bool InternalFunctionCaller::vSetArgs(UInt8 numArgs, va_list args)
 	return true;
 }
 
-bool InternalFunctionCaller::SetArgs(const std::vector<VarValue>& args)
+bool InternalFunctionCaller::SetArgsRaw(UInt8 numArgs, const void* args)
 {
-	auto const numArgs = args.size();
 	if (numArgs >= kMaxArgs)
 		return false;
 	m_numArgs = numArgs;
-	size_t i = 0;
-	ra::for_each(args, [&](const VarValue& varVal) 
-	{
-		m_args[i] = varVal.GetVoidPtr();
-		i++;
-	});
+	memcpy_s(m_args, sizeof m_args, args, numArgs * sizeof(void*));
 	return true;
 }
 
@@ -709,7 +703,7 @@ namespace PluginAPI
 						*result = ret->GetTESForm();
 						break;
 					case kTokenType_Array:
-						*result = ArrayAPI::LookupArrayByID(ret->GetArray());
+						*result = ArrayAPI::LookupArrayByID(ret->GetArrayID());
 						break;
 					case kTokenType_String:
 						*result = ret->GetString();

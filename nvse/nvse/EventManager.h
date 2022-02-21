@@ -1,23 +1,34 @@
 #pragma once
 #include <string>
 
+#include "ArrayVar.h"
 #include "LambdaManager.h"
+#include "PluginAPI.h"
+#include <variant>
 
 class Script;
 class TESForm;
 class TESObjectREFR;
 class BGSListForm;
 class Actor;
+typedef void (*EventHookInstaller)();
 
 // For dispatching events to scripts.
 // Scripts can register an event handler for any of the supported events.
 // Can optionally specify filters to match against the event arguments.
 // Event handler is a function script which must take the expected number and types of arguments associated with the event.
 // Supporting hooks only installed if at least one handler is registered for a particular event.
-// ###TODO: at present only supports 0-2 arguments per event. All we need for now, but would be nice to support arbitrary # of args.
+
 
 namespace EventManager
 {
+	extern Stack<const char*> s_eventStack;
+
+	struct EventInfo;
+	static constexpr auto numMaxFilters = 0x20;
+
+	using EventHandler = NVSEEventManagerInterface::EventHandler;
+
 	enum eEventID {
 		// correspond to ScriptEventList event masks
 		kEventID_OnAdd,
@@ -79,55 +90,61 @@ namespace EventManager
 	};
 
 	// Represents an event handler registered for an event.
-	struct EventCallback
+	class EventCallback
 	{
-		EventCallback() : script(NULL), source(NULL), object(NULL), removed(false), pendingRemove(false), lambdaVariableContext(nullptr) {}
-		EventCallback(Script* funcScript, TESForm* sourceFilter = NULL, TESForm* objectFilter = NULL)
-			: script(funcScript), source(sourceFilter), object(objectFilter), removed(false), pendingRemove(false), lambdaVariableContext(funcScript) {}
+		void TrySaveLambdaContext();
+
+	public:
+
+		//If variant is Maybe_Lambda, must try to capture lambda context once the EventCallback is confirmed to stay. 
+		using CallbackFunc = std::variant<LambdaManager::Maybe_Lambda, EventHandler>;
+
+		EventCallback() = default;
+		~EventCallback() = default;
+		EventCallback(Script* funcScript, TESForm* sourceFilter = nullptr, TESForm* objectFilter = nullptr)
+			: toCall(funcScript), source(sourceFilter), object(objectFilter) {}
+
+		EventCallback(EventHandler func, TESForm* sourceFilter = nullptr, TESForm* objectFilter = nullptr)
+			: toCall(func), source(sourceFilter), object(objectFilter) {}
 
 		EventCallback(const EventCallback& other) = delete;
-
-		EventCallback(EventCallback&& other) noexcept
-			: script(other.script),
-			  source(other.source),
-			  object(other.object),
-			  removed(other.removed),
-			  pendingRemove(other.pendingRemove),
-			  lambdaVariableContext(std::move(other.lambdaVariableContext))
-		{
-		}
-
 		EventCallback& operator=(const EventCallback& other) = delete;
 
-		EventCallback& operator=(EventCallback&& other) noexcept
-		{
-			if (this == &other)
-				return *this;
-			script = other.script;
-			source = other.source;
-			object = other.object;
-			removed = other.removed;
-			pendingRemove = other.pendingRemove;
-			lambdaVariableContext = std::move(other.lambdaVariableContext);
-			return *this;
-		}
+		EventCallback(EventCallback&& other) noexcept;
+		EventCallback& operator=(EventCallback&& other) noexcept;
 
-		Script			*script;
-		TESForm			*source;				// first arg to handler (reference or base form or form list)
-		TESForm			*object;				// second arg to handler
-		bool			removed;
-		bool			pendingRemove;
-		LambdaManager::LambdaVariableContext lambdaVariableContext;
+		CallbackFunc	toCall{};
+		TESForm			*source{};				// first arg to handler (reference or base form or form list)
+		TESForm			*object{};				// second arg to handler
+		bool			removed{};
+		bool			pendingRemove{};
 
-		bool IsRemoved() const { return removed; }
+		using Index = UInt32;
+		using Filter = ArrayElement;
+
+		//Indexes for filters must respect the max amount of BaseFilters for the base event definition.
+		//If no filter is at an index = it is unfiltered for the nth BaseFilter.
+		//Using a map to avoid adding duplicate indexes.
+		std::map<Index, Filter> filters;
+
+		[[nodiscard]] bool IsRemoved() const { return removed; }
 		void SetRemoved(bool bSet) { removed = bSet; }
-		bool Equals(const EventCallback& rhs) const;	// compare, return true if the two handlers are identical
+		[[nodiscard]] bool Equals(const EventCallback& rhs) const;	// compare, return true if the two handlers are identical
+
+		[[nodiscard]] Script* TryGetScript() const;
+		[[nodiscard]] bool HasCallbackFunc() const;
+
+		//If the EventCallback is confirmed to stay, then call this to wrap up loose ends, e.g save lambda var context.
+		void Confirm();
+
+		//Call the callback...
+		std::unique_ptr<ScriptToken> Invoke(EventInfo* eventInfo, void* arg0, void* arg1);
 	};
 
 	bool SetHandler(const char* eventName, EventCallback& handler);
 
 	// removes handler only if all filters match
-	bool RemoveHandler(const char* id, EventCallback& handler);
+	bool RemoveHandler(const char* id, const EventCallback& handler);
 
 	// handle an NVSEMessagingInterface message
 	void HandleNVSEMessage(UInt32 msgID, void* data);
@@ -142,6 +159,14 @@ namespace EventManager
 	void Tick();
 
 	void Init();
+
+	bool RegisterEventEx(const char* name, UInt8 numParams, UInt8* paramTypes, UInt32 eventMask, EventHookInstaller* hookInstaller);
+
+	bool RegisterEvent(const char* name, UInt8 numParams, UInt8* paramTypes);
+	bool SetNativeEventHandler(const char* eventName, EventHandler func);
+	bool RemoveNativeEventHandler(const char* eventName, EventHandler func);
+
+	bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...);
 
 	// dispatch a user-defined event from a script
 	bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 argsArrayId, const char* senderName);

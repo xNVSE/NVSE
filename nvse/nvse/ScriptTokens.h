@@ -132,6 +132,10 @@ enum Token_Type : UInt8
 	kTokenType_Lambda,
 	kTokenType_LambdaScriptData,
 
+	// For operators to be able to work "dynamically" and inherit the return type of one of the tokens (ex: 1 && "str" returns String with RightToken)
+	kTokenType_LeftToken,
+	kTokenType_RightToken,
+
 	kTokenType_Invalid,
 	kTokenType_Max = kTokenType_Invalid,
 
@@ -267,10 +271,10 @@ struct ScriptToken
 #if RUNTIME
 	ScriptToken(ScriptLocal* scriptLocal, StringVar* stringVar);
 	ScriptToken(ScriptLocal *var);
+	ScriptToken(NVSEArrayVarInterface::Element &elem);
 #endif
 
 	ScriptToken();
-
 	ScriptToken(ExpressionEvaluator &evaluator);
 
 	virtual ~ScriptToken();
@@ -286,7 +290,7 @@ struct ScriptToken
 	virtual bool GetBool() const;
 #if RUNTIME
 	Token_Type ReadFrom(ExpressionEvaluator *context); // reconstitute param from compiled data, return the type
-	virtual ArrayID GetArray() const;
+	virtual ArrayID GetArrayID() const;
 	ArrayVar *GetArrayVar();
 	ScriptLocal *GetVar() const;
 	StringVar* GetStringVar() const;
@@ -328,14 +332,15 @@ struct ScriptToken
 	bool IsLogicalOperator() const;
 	std::string GetVariableDataAsString();
 	const char *GetVariableTypeString() const;
-	void AssignResult(COMMAND_ARGS, ExpressionEvaluator& eval) const;
+	CommandReturnType GetReturnType() const;
+	void AssignResult(ExpressionEvaluator& eval) const;
 
 	static ScriptToken *Read(ExpressionEvaluator *context);
 
 	// block implicit conversations
 	template <typename T>
 	static ScriptToken* Create(T value) = delete;
-	
+
 	static ScriptToken *Create(bool boolean) { return new ScriptToken(boolean); }
 	static ScriptToken *Create(double num) { return new ScriptToken(num); }
 	static ScriptToken *Create(Script::RefVariable *refVar, UInt16 refIdx) { return refVar ? new ScriptToken(refVar, refIdx) : NULL; }
@@ -356,6 +361,7 @@ struct ScriptToken
 	static ScriptToken *Create(ArrayElementToken *elem, UInt32 lbound, UInt32 ubound);
 	static ScriptToken *Create(UInt32 bogus); // unimplemented, to block implicit conversion to double
 	static ScriptToken *Create(Script *scriptLambda) { return scriptLambda ? new ScriptToken(scriptLambda) : nullptr; }
+	static ScriptToken* Create(ScriptToken&& scriptToken) { return new ScriptToken(std::move(scriptToken)); }
 #if RUNTIME
 	static ScriptToken* Create(ScriptLocal* local, StringVar* stringVar) { return stringVar ? new ScriptToken(local, stringVar) : nullptr; }
 #endif
@@ -380,15 +386,17 @@ struct ScriptToken
 	ScriptToken& operator=(ScriptToken&& other) noexcept;
 
 	bool cached = false;
-	CommandReturnType returnType;
+	CommandReturnType returnType = kRetnType_Default;
 	UInt32 cmdOpcodeOffset;
-	ExpressionEvaluator *context;
+	ExpressionEvaluator *context = nullptr;
 	UInt16 varIdx;
-	OperatorType shortCircuitParentType;
-	UInt8 shortCircuitDistance;
-	UInt8 shortCircuitStackOffset;
+	OperatorType shortCircuitParentType = kOpType_Max;
+	UInt8 shortCircuitDistance = 0;
+	UInt8 shortCircuitStackOffset = 0;
 	bool formOrNumber = false;
 
+	// prevents token from being deleted after evaluation, should only be called in Eval_* statements where it is the operation result
+	ScriptToken* ForwardEvalResult();
 #if _DEBUG
 	std::string varName;
 #endif
@@ -404,6 +412,7 @@ struct SliceToken : ScriptToken
 
 	SliceToken(Slice *_slice);
 	virtual const Slice *GetSlice() const { return type == kTokenType_Slice ? &slice : NULL; }
+	bool GetBool() const override { return true; }
 
 	void *operator new(size_t size)
 	{
@@ -437,7 +446,7 @@ struct PairToken : ScriptToken
 
 struct PluginScriptToken;
 UInt8 __fastcall ScriptTokenGetType(PluginScriptToken *scrToken);
-bool __fastcall ScriptTokenCanConvertTo(PluginScriptToken *scrToken, Token_Type toType);
+bool __fastcall ScriptTokenCanConvertTo(PluginScriptToken *scrToken, UInt8 toType);
 double __fastcall ScriptTokenGetFloat(PluginScriptToken *scrToken);
 bool __fastcall ScriptTokenGetBool(PluginScriptToken *scrToken);
 UInt32 __fastcall ScriptTokenGetFormID(PluginScriptToken *scrToken);
@@ -451,6 +460,8 @@ const PluginTokenPair *__fastcall ScriptTokenGetPair(PluginScriptToken *scrToken
 struct PluginTokenSlice;
 const PluginTokenSlice *__fastcall ScriptTokenGetSlice(PluginScriptToken *scrToken);
 UInt32 __fastcall ScriptTokenGetAnimationGroup(PluginScriptToken* scrToken);
+void __fastcall ScriptTokenGetArrayElement(PluginScriptToken* scrToken, NVSEArrayVarInterface::Element& outElem);
+
 
 struct ArrayElementToken : ScriptToken
 {
@@ -461,7 +472,7 @@ struct ArrayElementToken : ScriptToken
 	const char *GetString() const override;
 	double GetNumber() const override;
 	UInt32 GetFormID() const override;
-	ArrayID GetArray() const override;
+	ArrayID GetArrayID() const override;
 	TESForm *GetTESForm() const override;
 	bool GetBool() const override;
 	bool CanConvertTo(Token_Type to) const override;
@@ -510,6 +521,11 @@ struct AssignableSubstringToken : ScriptToken
 	{
 		::operator delete(p);
 	}
+
+	bool GetBool() const override
+	{
+		return true;
+	}
 };
 
 struct AssignableSubstringStringVarToken : public AssignableSubstringToken
@@ -533,7 +549,7 @@ struct AssignableSubstringArrayElementToken : public AssignableSubstringToken
 	ArrayKey key;
 
 	AssignableSubstringArrayElementToken(UInt32 _id, const ArrayKey &_key, UInt32 lbound, UInt32 ubound);
-	ArrayID GetArray() const override { return value.arrID; }
+	ArrayID GetArrayID() const override { return value.arrID; }
 	bool Assign(const char *str) override;
 
 	void *operator new(size_t size)

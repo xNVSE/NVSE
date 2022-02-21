@@ -586,7 +586,9 @@ bool Cmd_GetCallingScript_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback *outCallback, char *outName)
+static constexpr auto maxEventNameLen = 0x20;
+
+bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback &outCallback, char *outName)
 {
 	if (eval.ExtractArgs() && eval.NumArgs() >= 2)
 	{
@@ -594,8 +596,8 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 		Script *script = DYNAMIC_CAST(eval.Arg(1)->GetTESForm(), TESForm, Script);
 		if (eventName && script)
 		{
-			outCallback->script = script;
-			strcpy_s(outName, 0x20, eventName);
+			outCallback.toCall = script;
+			strcpy_s(outName, maxEventNameLen, eventName);
 
 			// any filters?
 			for (UInt32 i = 2; i < eval.NumArgs(); i++)
@@ -604,15 +606,31 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 				if (pair && pair->left && pair->right)
 				{
 					const char *key = pair->left->GetString();
-					if (key)
+					if (key && StrLen(key))
 					{
 						if (!StrCompare(key, "ref") || !StrCompare(key, "first"))
 						{
-							outCallback->source = pair->right->GetTESForm();
+							outCallback.source = pair->right->GetTESForm();
 						}
 						else if (!StrCompare(key, "object") || !StrCompare(key, "second"))
 						{
-							outCallback->object = pair->right->GetTESForm();
+							outCallback.object = pair->right->GetTESForm();
+						}
+					}
+					// new system, above preserved for backwards compatibility
+					else if (const auto index = pair->left->GetNumber())
+					{
+						const auto basicToken = std::unique_ptr<ScriptToken>(pair->right->ToBasicToken());
+						ArrayElement element;
+						if (basicToken && BasicTokenToElem(basicToken.get(), element))
+						{
+							auto const mapIndex = static_cast<UInt32>(index);
+							if (outCallback.filters.contains(mapIndex))
+							{
+								eval.Error("Event filter index %u appears more than once in Set/RemoveEventHandler call.", mapIndex);
+								continue;
+							}
+							outCallback.filters.insert({ mapIndex, element });
 						}
 					}
 				}
@@ -634,8 +652,8 @@ bool ProcessEventHandler(char *eventName, EventManager::EventCallback &callback,
 		UInt32 eventMask = GetLNEventMask(eventName);
 		if (eventMask)
 		{
-			UInt32 numFilter = (colon && *colon) ? atoi(colon) : 0;
-			return ProcessLNEventHandler(eventMask, callback.script, addEvt, callback.source, numFilter);
+			UInt32 const numFilter = (colon && *colon) ? atoi(colon) : 0;
+			return ProcessLNEventHandler(eventMask, callback.TryGetScript(), addEvt, callback.source, numFilter);
 		}
 	}
 	return addEvt ? EventManager::SetHandler(eventName, callback) : EventManager::RemoveHandler(eventName, callback);
@@ -645,8 +663,8 @@ bool Cmd_SetEventHandler_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
-	char eventName[0x20];
-	if (ExtractEventCallback(eval, &callback, eventName) && ProcessEventHandler(eventName, callback, true))
+	char eventName[maxEventNameLen];
+	if (ExtractEventCallback(eval, callback, eventName) && ProcessEventHandler(eventName, callback, true))
 		*result = 1.0;
 
 	return true;
@@ -656,8 +674,8 @@ bool Cmd_RemoveEventHandler_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
-	char eventName[0x20];
-	if (ExtractEventCallback(eval, &callback, eventName) && ProcessEventHandler(eventName, callback, false))
+	char eventName[maxEventNameLen];
+	if (ExtractEventCallback(eval, callback, eventName) && ProcessEventHandler(eventName, callback, false))
 		*result = 1.0;
 
 	return true;
@@ -685,7 +703,7 @@ bool Cmd_DispatchEvent_Execute(COMMAND_ARGS)
 	{
 		if (!eval.Arg(1)->CanConvertTo(kTokenType_Array))
 			return true;
-		argsArrayId = eval.Arg(1)->GetArray();
+		argsArrayId = eval.Arg(1)->GetArrayID();
 
 		if (eval.NumArgs() > 2)
 			senderName = eval.Arg(2)->GetString();
@@ -704,10 +722,11 @@ bool Cmd_CallAfterSeconds_Execute(COMMAND_ARGS)
 {
 	float time;
 	Script *callFunction;
-	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction) || !callFunction || !IS_ID(callFunction, Script))
+	UInt32 runInMenuMode = false;
+	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction, &runInMenuMode) || !callFunction || !IS_ID(callFunction, Script))
 		return true;
 	ScopedLock lock(g_callAfterInfosCS);
-	g_callAfterInfos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj);
+	g_callAfterInfos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj, runInMenuMode);
 	return true;
 }
 
@@ -754,10 +773,11 @@ bool Cmd_CallForSeconds_Execute(COMMAND_ARGS)
 {
 	float time;
 	Script *callFunction;
-	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction) || !callFunction || !IS_ID(callFunction, Script))
+	UInt32 runInMenuMode = false;
+	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction, &runInMenuMode) || !callFunction || !IS_ID(callFunction, Script))
 		return true;
 	ScopedLock lock(g_callAfterInfosCS);
-	g_callForInfos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj);
+	g_callForInfos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj, runInMenuMode);
 	return true;
 }
 
@@ -903,7 +923,7 @@ bool Cmd_Ternary_Execute(COMMAND_ARGS)
 		InternalFunctionCaller caller(call_udf, thisObj, containingObj);
 		caller.SetArgs(0);
 		if (auto const tokenValResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller))))
-			tokenValResult->AssignResult(PASS_COMMAND_ARGS, eval);
+			tokenValResult->AssignResult(eval);
 	}
 	return true;
 
