@@ -730,6 +730,7 @@ bool ExtractCallAfterInfo(ExpressionEvaluator& eval, std::list<DelayedCallInfo>&
 	if (numArgs > 2)
 	{
 		flags = static_cast<DelayedCallInfo::eFlags>(eval.Arg(2)->GetNumber());
+		args.reserve(numArgs - 3);
 		for (UInt32 i = 3; i < numArgs; i++)
 		{
 			if (auto const tok = eval.Arg(i))
@@ -791,6 +792,7 @@ bool ExtractCallWhileInfo(ExpressionEvaluator &eval, std::list<CallWhileInfo> &i
 	if (numArgs > 2)
 	{
 		flags = static_cast<CallWhileInfo::eFlags>(eval.Arg(2)->GetNumber());
+		args.reserve(numArgs - 3);
 		for (UInt32 i = 3; i < numArgs; i++)
 		{
 			if (auto const tok = eval.Arg(i))
