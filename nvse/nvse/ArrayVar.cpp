@@ -78,6 +78,23 @@ ArrayElement::~ArrayElement()
 	Unset();
 }
 
+void* ArrayData::GetAsVoidArg() const
+{
+	switch (dataType)
+	{
+	case kDataType_Invalid: return nullptr;
+	case kDataType_Numeric: 
+	{
+		auto res = static_cast<float>(num);
+		return *(void**)(&res);	//conversion: *((float *)&nthArg
+	}
+	case kDataType_Form: return LookupFormByID(formID);
+	case kDataType_String: return str;
+	case kDataType_Array: return reinterpret_cast<void*>(arrID);
+	}
+	return nullptr;
+}
+
 //////////////////
 // ArrayElement
 /////////////////

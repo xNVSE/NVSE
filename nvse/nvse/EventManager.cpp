@@ -13,7 +13,6 @@
 #include "Hooks_Gameplay.h"
 #include "GameOSDepend.h"
 //#include "InventoryReference.h"
-#include "EventManager.h"
 
 #include "GameData.h"
 #include "GameRTTI.h"

@@ -195,36 +195,6 @@ struct CustomVariableContext
 };
 #endif
 
-//to discriminate between ArrayID vs FormID (same underlying type), for std::visit on variants
-enum class StrongFormID : UInt32 { };
-
-//Helper for std::visit on variants, see https://en.cppreference.com/w/cpp/utility/variant/visit code example.
-template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-
-//ScriptToken but without the extra fields, for long-term storage.
-//Can't seem to use std::in_place_index anymore due to inheritance, should get that re-enabled...
-struct VarValue : std::variant<StrongFormID, float, const char*, ArrayID>
-{
-	enum eVarVal	//must match with template order for VarValue
-	{
-		kFormID = 0, kNumber, kString, kArrayID
-	};
-
-	//Returns the VarValue in the form expected for InternalFunctionCaller's args.
-	[[nodiscard]] void* GetVoidPtr() const {
-		return std::visit( overloaded {
-			[](const float& val) ->void* {
-				return reinterpret_cast<void*>(*(UInt32*)&val); },	//Does not work if UDF expects int arg! (only float)
-			[](const ArrayID& val) ->void* {
-				return reinterpret_cast<void*>(val); },
-			[](const StrongFormID& val) ->void* {
-				return LookupFormByID(static_cast<UInt32>(val)); },
-			[](const char *val) ->void* {
-				return const_cast<char*>(val); },
-		}, *this);
-	}
-};
-
 // slightly less ugly but still cheap polymorphism
 struct ScriptToken
 {
@@ -304,7 +274,6 @@ struct ScriptToken
 	virtual const TokenPair *GetPair() const { return NULL; }
 
 	ScriptToken *ToBasicToken(); // return clone as one of string, number, array, form
-	[[nodiscard]] std::optional<VarValue> ToVarValue() const;	// create compact VarValue from this Token's basic value.
 
 	TESGlobal *GetGlobal() const;
 	Operator *GetOperator() const;

@@ -105,11 +105,28 @@ static ParamInfo kNVSEParams_DispatchEvent[3] =
 
 DEFINE_COMMAND_EXP(DispatchEvent, dispatches a user-defined event to any registered listeners, 0, kNVSEParams_DispatchEvent);
 
-static ParamInfo kParams_CallAfter[3] =
+static ParamInfo kParams_CallAfter[20] =
 {
-	{	"seconds",	kParamType_Float,	0	},
-	{	"function",	kParamType_AnyForm,0	},
-	{ "runs in menumode", kParamType_Integer, 1}
+	{	"seconds",	kNVSEParamType_Number,	0	},
+	{	"function",	kNVSEParamType_Form,0	},
+	{ "flags", kNVSEParamType_Number, 1},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
 };
 
 static ParamInfo kParams_CallWhile[20] =
@@ -136,12 +153,13 @@ static ParamInfo kParams_CallWhile[20] =
 	{	"element",	kNVSEParamType_BasicType,	1	},
 };
 
-DEFINE_CMD_ALT(CallAfterSeconds, CallAfter, "calls UDF after argument number of seconds", 0, 2, kParams_CallAfter);
+DEFINE_CMD_ALT_EXP(CallAfterSeconds, CallAfter, "calls UDF after argument number of seconds", false, kParams_CallAfter);
 DEFINE_COMMAND_EXP(CallWhile, "calls UDF each frame while condition is met", false, kParams_CallWhile);
-DEFINE_CMD_ALT(CallForSeconds, CallFor, "calls UDF each frame for argument number of seconds", 0, 2, kParams_CallAfter);
+DEFINE_CMD_ALT_EXP(CallForSeconds, CallFor, "calls UDF each frame for argument number of seconds", false, kParams_CallAfter);
 DEFINE_COMMAND_EXP(CallWhen, "calls UDF once when a condition is met which is polled each frame", false, kParams_CallWhile);
 
-using CallArgs = std::vector<VarValue>;
+#if RUNTIME
+using CallArgs = std::vector<ArrayElement>;
 
 struct DelayedCallInfo
 {
@@ -149,14 +167,20 @@ struct DelayedCallInfo
 	float time;
 	TESObjectREFR* thisObj;
 	LambdaManager::LambdaVariableContext lambdaVariableContext;
-	bool runInMenuMode;
+	enum eFlags : UInt8 {
+		kFlags_None = 0,
+		kFlag_RunInMenuMode = 1 << 0,
+	} flags;
 	CallArgs args;
 
-	DelayedCallInfo(Script* script, float time, TESObjectREFR* thisObj, bool runInMenuMode)
+	[[nodiscard]] bool RunInMenuMode() const { return flags & kFlag_RunInMenuMode; }
+
+	DelayedCallInfo(Script* script, float time, TESObjectREFR* thisObj, eFlags flags, CallArgs &&args = {})
 		: script(script),
 		  time(time),
 		  thisObj(thisObj),
-		  lambdaVariableContext(script), runInMenuMode(runInMenuMode)
+		  lambdaVariableContext(script), flags(flags),
+	      args(std::move(args))
 	{
 	}
 };
@@ -168,19 +192,24 @@ struct CallWhileInfo
 	TESObjectREFR* thisObj;
 	LambdaManager::LambdaVariableContext callFnLambdaCtx;
 	LambdaManager::LambdaVariableContext condFnLambdaCtx;
-	enum eFlagVals : UInt8 {
+	enum eFlags : UInt8 {
+		kFlags_None = 0,
 		kPassArgs_ToCallFunc = 1 << 0,
 		kPassArgs_ToConditionFunc = 1 << 1,
+		kFlag_RunInMenuMode = 1 << 2,
 	} flags;
 	CallArgs args;
 
-	CallWhileInfo(Script* callFunction, Script* condition, TESObjectREFR* thisObj, UInt8 flags, CallArgs args = {})
+	[[nodiscard]] bool PassArgsToCallFunc() const { return flags & kPassArgs_ToCallFunc; }
+	[[nodiscard]] bool PassArgsToCondFunc() const { return flags & kPassArgs_ToConditionFunc; }
+
+	CallWhileInfo(Script* callFunction, Script* condition, TESObjectREFR* thisObj, eFlags flags, CallArgs &&args = {})
 		: callFunction(callFunction),
 		  condition(condition),
 		  thisObj(thisObj),
 		  callFnLambdaCtx(callFunction),
 		  condFnLambdaCtx(condition),
-		  flags(static_cast<eFlagVals>(flags)),
+		  flags(flags),
 		  args(std::move(args))
 	{
 	}
@@ -196,7 +225,7 @@ extern ICriticalSection g_callWhileInfosCS;
 extern ICriticalSection g_callAfterInfosCS;
 extern ICriticalSection g_callWhenInfosCS;
 
-
+#endif
 
 static ParamInfo kParams_HasScriptCommand[3] =
 {

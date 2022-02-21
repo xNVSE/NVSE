@@ -1,4 +1,8 @@
 #pragma once
+
+
+#ifdef RUNTIME
+
 #include <string>
 
 #include "ArrayVar.h"
@@ -171,3 +175,6 @@ namespace EventManager
 	// dispatch a user-defined event from a script
 	bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 argsArrayId, const char* senderName);
 };
+
+
+#endif

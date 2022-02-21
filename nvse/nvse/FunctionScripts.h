@@ -144,9 +144,10 @@ public:
 	bool SetArgs(UInt8 numArgs, ...);
 	bool vSetArgs(UInt8 numArgs, va_list args);
 	bool SetArgsRaw(UInt8 numArgs, const void* args);
+	bool SetArgs(const std::vector<ArrayElement> &elemArgs);
 
 protected:
-	enum { kMaxArgs = 10 };
+	enum { kMaxArgs = 15 };
 
 	UInt8			m_callerVersion;
 	UInt8			m_numArgs;

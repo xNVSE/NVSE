@@ -71,13 +71,14 @@ void HandleDelayedCall(float timeDelta, bool isMenuMode)
 	auto iter = g_callAfterInfos.begin();
 	while (iter != g_callAfterInfos.end())
 	{
-		if (!iter->runInMenuMode && isMenuMode)
+		if (!iter->RunInMenuMode() && isMenuMode)
 		{
 			iter->time += timeDelta;
 		}
 		if (g_gameSecondsPassed >= iter->time)
 		{
 			InternalFunctionCaller caller(iter->script, iter->thisObj);
+			caller.SetArgs(iter->args);
 			delete UserFunctionManager::Call(std::move(caller));
 			iter = g_callAfterInfos.erase(iter); // yes, this is valid: https://stackoverflow.com/a/3901380/6741772
 		}
@@ -98,13 +99,13 @@ void HandleCallWhileScripts()
 	while (iter != g_callWhileInfos.end())
 	{
 		InternalFunctionCaller conditionCaller(iter->condition);
-		if (iter->flags & CallWhileInfo::kPassArgs_ToConditionFunc)
+		if (iter->PassArgsToCondFunc())
 			conditionCaller.SetArgs(iter->args);
 		if (auto const conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); 
 			conditionResult && conditionResult->GetBool())
 		{
 			InternalFunctionCaller scriptCaller(iter->callFunction, iter->thisObj);
-			if (iter->flags & CallWhileInfo::kPassArgs_ToCallFunc)
+			if (iter->PassArgsToCallFunc())
 				scriptCaller.SetArgs(iter->args);
 			delete UserFunctionManager::Call(std::move(scriptCaller));
 			++iter;
@@ -126,13 +127,13 @@ void HandleCallWhenScripts()
 	while (iter != g_callWhenInfos.end())
 	{
 		InternalFunctionCaller conditionCaller(iter->condition);
-		if (iter->flags & CallWhileInfo::kPassArgs_ToConditionFunc)
+		if (iter->PassArgsToCondFunc())
 			conditionCaller.SetArgs(iter->args);
 		if (auto const conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); 
 			conditionResult && conditionResult->GetBool())
 		{
 			InternalFunctionCaller scriptCaller(iter->callFunction, iter->thisObj);
-			if (iter->flags & CallWhileInfo::kPassArgs_ToCallFunc)
+			if (iter->PassArgsToCallFunc())
 				scriptCaller.SetArgs(iter->args);
 			delete UserFunctionManager::Call(std::move(scriptCaller));
 			iter = g_callWhenInfos.erase(iter);
@@ -153,13 +154,14 @@ void HandleCallForScripts(float timeDelta, bool isMenuMode)
 	auto iter = g_callForInfos.begin();
 	while (iter != g_callForInfos.end())
 	{
-		if (!iter->runInMenuMode && isMenuMode)
+		if (!iter->RunInMenuMode() && isMenuMode)
 		{
 			iter->time += timeDelta;
 		}
 		if (g_gameSecondsPassed < iter->time)
 		{
 			InternalFunctionCaller caller(iter->script, iter->thisObj);
+			caller.SetArgs(iter->args);
 			delete UserFunctionManager::Call(std::move(caller));
 			++iter;
 		}

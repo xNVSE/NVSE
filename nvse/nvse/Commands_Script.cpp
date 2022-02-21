@@ -715,18 +715,64 @@ bool Cmd_DispatchEvent_Execute(COMMAND_ARGS)
 
 extern float g_gameSecondsPassed;
 
+bool ExtractCallAfterInfo(ExpressionEvaluator& eval, std::list<DelayedCallInfo>& infos, ICriticalSection& cs)
+{
+	auto const seconds = static_cast<float>(eval.Arg(0)->GetNumber());
+	Script* const callFunction = eval.Arg(1)->GetUserFunction();
+	if (!callFunction)
+		return false;
+
+	//Optional args
+	DelayedCallInfo::eFlags flags = DelayedCallInfo::kFlags_None;
+	CallArgs args{};
+
+	auto const numArgs = eval.NumArgs();
+	if (numArgs > 2)
+	{
+		flags = static_cast<DelayedCallInfo::eFlags>(eval.Arg(2)->GetNumber());
+		for (UInt32 i = 3; i < numArgs; i++)
+		{
+			if (auto const tok = eval.Arg(i))
+			{
+				ArrayElement elem;
+				BasicTokenToElem(tok, elem);
+				args.push_back(elem);
+			}
+			else [[unlikely]]
+				break;
+		}
+	}
+
+	ScopedLock lock(cs);
+	infos.emplace_back(callFunction, g_gameSecondsPassed + seconds, eval.m_thisObj, flags, std::move(args));
+	return true;
+}
+
 std::list<DelayedCallInfo> g_callAfterInfos;
 ICriticalSection g_callAfterInfosCS;
 
 bool Cmd_CallAfterSeconds_Execute(COMMAND_ARGS)
 {
-	float time;
-	Script *callFunction;
-	UInt32 runInMenuMode = false;
-	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction, &runInMenuMode) || !callFunction || !IS_ID(callFunction, Script))
-		return true;
-	ScopedLock lock(g_callAfterInfosCS);
-	g_callAfterInfos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj, runInMenuMode);
+	*result = false; //bSuccess
+	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+		eval.ExtractArgs())
+	{
+		*result = ExtractCallAfterInfo(eval, g_callAfterInfos, g_callAfterInfosCS);
+	}
+	return true;
+}
+
+std::list<DelayedCallInfo> g_callForInfos;
+ICriticalSection g_callForInfosCS;
+
+bool Cmd_CallForSeconds_Execute(COMMAND_ARGS)
+{
+	*result = false; //bSuccess
+	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+		eval.ExtractArgs())
+	{
+		*result = ExtractCallAfterInfo(eval, g_callForInfos, g_callForInfosCS);
+	}
 	return true;
 }
 
@@ -736,14 +782,25 @@ bool ExtractCallWhileInfo(ExpressionEvaluator &eval, std::list<CallWhileInfo> &i
 	Script* conditionFunction = eval.Arg(1)->GetUserFunction();
 	if (!callFunction || !conditionFunction)
 		return false;
-	UInt32 flags = eval.Arg(2)->GetNumber();
 
-	CallArgs args;
-	for (UInt32 i = 3; i < eval.NumArgs(); i++)
+	//Optional args
+	CallWhileInfo::eFlags flags = CallWhileInfo::kFlags_None;
+	CallArgs args{};
+
+	auto const numArgs = eval.NumArgs();
+	if (numArgs > 2)
 	{
-		if (auto const varVal = eval.Arg(i)->ToVarValue())
+		flags = static_cast<CallWhileInfo::eFlags>(eval.Arg(2)->GetNumber());
+		for (UInt32 i = 3; i < numArgs; i++)
 		{
-			args.push_back(*varVal);
+			if (auto const tok = eval.Arg(i))
+			{
+				ArrayElement elem;
+				BasicTokenToElem(tok, elem);
+				args.push_back(elem);
+			}
+			else [[unlikely]]
+				break;
 		}
 	}
 
@@ -763,21 +820,6 @@ bool Cmd_CallWhile_Execute(COMMAND_ARGS)
 	{
 		*result = ExtractCallWhileInfo(eval, g_callWhileInfos, g_callWhileInfosCS);
 	}
-	return true;
-}
-
-std::list<DelayedCallInfo> g_callForInfos;
-ICriticalSection g_callForInfosCS;
-
-bool Cmd_CallForSeconds_Execute(COMMAND_ARGS)
-{
-	float time;
-	Script *callFunction;
-	UInt32 runInMenuMode = false;
-	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction, &runInMenuMode) || !callFunction || !IS_ID(callFunction, Script))
-		return true;
-	ScopedLock lock(g_callAfterInfosCS);
-	g_callForInfos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj, runInMenuMode);
 	return true;
 }
 

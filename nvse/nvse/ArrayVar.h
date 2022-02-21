@@ -85,6 +85,9 @@ struct ArrayData
 	const char *GetStr() const;
 	void SetStr(const char *srcStr);
 
+	//Casts the data in the form InternalFunctionCaller::PopulateArgs() understands.
+	[[nodiscard]] void* GetAsVoidArg() const;
+
 	ArrayData& operator=(const ArrayData &rhs);
 };
 STATIC_ASSERT(sizeof(ArrayData) == 0x10);
@@ -128,6 +131,7 @@ struct ArrayElement
 	bool IsGood() {return m_data.dataType != kDataType_Invalid;}
 
 	std::string GetStringRepresentation() const;
+	[[nodiscard]] void* GetAsVoidArg() const { return m_data.GetAsVoidArg(); }
 };
 
 struct ArrayKey

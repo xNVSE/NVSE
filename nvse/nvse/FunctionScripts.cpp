@@ -678,6 +678,21 @@ bool InternalFunctionCaller::SetArgsRaw(UInt8 numArgs, const void* args)
 	return true;
 }
 
+bool InternalFunctionCaller::SetArgs(const std::vector<ArrayElement>& elemArgs)
+{
+	auto const numArgs = elemArgs.size();
+	if (numArgs >= kMaxArgs)
+		return false;
+
+	m_numArgs = static_cast<UInt8>(numArgs);
+	for (UInt8 i = 0; i < m_numArgs; i++)
+	{
+		m_args[i] = elemArgs[i].GetAsVoidArg();
+	}
+
+	return true;
+}
+
 namespace PluginAPI
 {
 	bool CallFunctionScript(Script *fnScript, TESObjectREFR *callingObj, TESObjectREFR *container,
