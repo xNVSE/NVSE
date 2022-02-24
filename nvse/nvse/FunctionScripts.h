@@ -144,7 +144,7 @@ public:
 	bool SetArgs(UInt8 numArgs, ...);
 	bool vSetArgs(UInt8 numArgs, va_list args);
 	bool SetArgsRaw(UInt8 numArgs, const void* args);
-	bool SetArgs(const std::vector<ArrayElement> &elemArgs);
+	bool SetArgs(UInt8 numArgs, const ArrayElement *elemArgs);
 
 protected:
 	enum { kMaxArgs = 15 };
@@ -153,6 +153,12 @@ protected:
 	UInt8			m_numArgs;
 	Script			* m_script;
 	void			* m_args[kMaxArgs];
+
+	//Points to an array of ArrElems, which retain useful type information.
+	//Used in order to remember if the nth arg was stored as double/int,
+	//since void* loses that info and forces an incorrect conversion if the UDF guessed wrong w/ having a float vs int arg.
+	const ArrayElement	* m_altElemArgs = nullptr;
+
 	TESObjectREFR	* m_thisObj;
 	TESObjectREFR	* m_container;
 

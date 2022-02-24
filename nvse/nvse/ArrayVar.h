@@ -5,7 +5,17 @@ class ArrayVar;
 class ArrayVarMap;
 struct Slice;
 struct ArrayKey;
-struct ArrayElement;
+
+
+template <bool isSelfOwning>
+struct ArrayElement_Templ;
+
+using ArrayElement = ArrayElement_Templ<false>;
+
+//Like ArrayElem, but assumes the data has no owning array.
+//If it contains an array, will extend its lifetime (regular ArrayElement requires an owning arr for that).
+using SelfOwningArrayElement = ArrayElement_Templ<true>;
+
 struct ScriptToken;
 
 #if RUNTIME
@@ -94,13 +104,14 @@ struct ArrayData
 };
 STATIC_ASSERT(sizeof(ArrayData) == 0x10);
 
-struct ArrayElement
+template <bool isSelfOwning = false>
+struct ArrayElement_Templ
 {
 	friend class ArrayVar;
 	friend class ArrayVarMap;
-
-	~ArrayElement();
-	ArrayElement();
+	
+	~ArrayElement_Templ();
+	ArrayElement_Templ();
 
 	ArrayData	m_data;
 
@@ -114,31 +125,32 @@ struct ArrayElement
 	bool GetAsArray(ArrayID* out) const;
 	[[nodiscard]] bool GetBool() const;
 
-	bool SetForm(const TESForm* form);
+	bool SetForm(const TESForm* form);	//unlike SetFormID, will not store lambda info!
 	bool SetFormID(UInt32 refID);
 	bool SetString(const char* str);
 	bool SetArray(ArrayID arr);	
 	bool SetNumber(double num);
-	bool Set(const ArrayElement* elem);
+	bool Set(const ArrayElement_Templ<isSelfOwning>* elem);
 
 	//WARNING: Does not increment the reference count for a copied array;
 	//consider move ctor or calling SetArray.
-	ArrayElement(const ArrayElement& from);
+	ArrayElement_Templ(const ArrayElement_Templ<isSelfOwning>& from);
 
-	ArrayElement(ArrayElement&& from) noexcept;
+	ArrayElement_Templ(ArrayElement_Templ<isSelfOwning>&& from) noexcept;
 
-	static bool CompareNames(const ArrayElement& lhs, const ArrayElement& rhs);
-	static bool CompareNamesDescending(const ArrayElement& lhs, const ArrayElement& rhs) {return !CompareNames(lhs, rhs);}
+	static bool CompareNames(const ArrayElement_Templ<isSelfOwning>& lhs, const ArrayElement_Templ<isSelfOwning>& rhs);
+	static bool CompareNamesDescending(const ArrayElement_Templ<isSelfOwning>& lhs, const ArrayElement_Templ<isSelfOwning>& rhs) {return !CompareNames(lhs, rhs);}
 
-	bool operator<(const ArrayElement& rhs) const;
-	bool operator==(const ArrayElement& rhs) const;
-	bool operator!=(const ArrayElement& rhs) const;
+	bool operator<(const ArrayElement_Templ<isSelfOwning>& rhs) const;
+	bool operator==(const ArrayElement_Templ<isSelfOwning>& rhs) const;
+	bool operator!=(const ArrayElement_Templ<isSelfOwning>& rhs) const;
 
 	[[nodiscard]] bool IsGood() const {return m_data.dataType != kDataType_Invalid;}
 
 	[[nodiscard]] std::string GetStringRepresentation() const;
 	[[nodiscard]] void* GetAsVoidArg() const { return m_data.GetAsVoidArg(); }
 };
+
 
 struct ArrayKey
 {
@@ -259,7 +271,7 @@ typedef ArrayVarElementContainer::iterator ArrayIterator;
 
 class ArrayVar
 {
-	friend struct ArrayElement;
+	friend struct ArrayElement_Templ<false>;
 	friend class ArrayVarMap;
 	friend class Matrix;
 	friend class PluginAPI::ArrayAPI;
@@ -362,7 +374,7 @@ public:
 
 	ArrayVarElementContainer::iterator Begin();
 
-	std::string GetStringRepresentation() const;
+	[[nodiscard]] std::string GetStringRepresentation() const;
 
 	bool Equals(ArrayVar* arr2);
 	bool DeepEquals(ArrayVar* arr2);

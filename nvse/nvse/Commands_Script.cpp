@@ -735,7 +735,7 @@ bool ExtractCallAfterInfo(ExpressionEvaluator& eval, std::list<DelayedCallInfo>&
 		{
 			if (auto const tok = eval.Arg(i))
 			{
-				ArrayElement elem;
+				SelfOwningArrayElement elem;
 				BasicTokenToElem(tok, elem);
 				args.emplace_back(std::move(elem));
 			}
@@ -797,7 +797,7 @@ bool ExtractCallWhileInfo(ExpressionEvaluator &eval, std::list<CallWhileInfo> &i
 		{
 			if (auto const tok = eval.Arg(i))
 			{
-				ArrayElement elem;
+				SelfOwningArrayElement elem;
 				BasicTokenToElem(tok, elem);
 				args.emplace_back(std::move(elem));
 			}

@@ -78,7 +78,7 @@ void HandleDelayedCall(float timeDelta, bool isMenuMode)
 		if (g_gameSecondsPassed >= iter->time)
 		{
 			InternalFunctionCaller caller(iter->script, iter->thisObj);
-			caller.SetArgs(iter->args);
+			//caller.SetArgs(iter->args.size(), iter->args.data());
 			delete UserFunctionManager::Call(std::move(caller));
 			iter = g_callAfterInfos.erase(iter); // yes, this is valid: https://stackoverflow.com/a/3901380/6741772
 		}
@@ -100,13 +100,16 @@ void HandleCallWhileScripts()
 	{
 		InternalFunctionCaller conditionCaller(iter->condition);
 		if (iter->PassArgsToCondFunc())
-			conditionCaller.SetArgs(iter->args);
+		{
+			//conditionCaller.SetArgs(iter->args.size(), iter->args.data());
+		}
+
 		if (auto const conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); 
 			conditionResult && conditionResult->GetBool())
 		{
 			InternalFunctionCaller scriptCaller(iter->callFunction, iter->thisObj);
-			if (iter->PassArgsToCallFunc())
-				scriptCaller.SetArgs(iter->args);
+			//if (iter->PassArgsToCallFunc())
+				//scriptCaller.SetArgs(iter->args.size(), iter->args.data());
 			delete UserFunctionManager::Call(std::move(scriptCaller));
 			++iter;
 		}
@@ -128,13 +131,16 @@ void HandleCallWhenScripts()
 	{
 		InternalFunctionCaller conditionCaller(iter->condition);
 		if (iter->PassArgsToCondFunc())
-			conditionCaller.SetArgs(iter->args);
+		{
+			//conditionCaller.SetArgs(iter->args.size(), iter->args.data());
+		}
+
 		if (auto const conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); 
 			conditionResult && conditionResult->GetBool())
 		{
 			InternalFunctionCaller scriptCaller(iter->callFunction, iter->thisObj);
-			if (iter->PassArgsToCallFunc())
-				scriptCaller.SetArgs(iter->args);
+			//if (iter->PassArgsToCallFunc())
+				//scriptCaller.SetArgs(iter->args.size(), iter->args.data());
 			delete UserFunctionManager::Call(std::move(scriptCaller));
 			iter = g_callWhenInfos.erase(iter);
 		}
@@ -161,7 +167,7 @@ void HandleCallForScripts(float timeDelta, bool isMenuMode)
 		if (g_gameSecondsPassed < iter->time)
 		{
 			InternalFunctionCaller caller(iter->script, iter->thisObj);
-			caller.SetArgs(iter->args);
+			//caller.SetArgs(iter->args.size(), iter->args.data());
 			delete UserFunctionManager::Call(std::move(caller));
 			++iter;
 		}

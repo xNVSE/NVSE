@@ -159,7 +159,7 @@ DEFINE_CMD_ALT_EXP(CallForSeconds, CallFor, "calls UDF each frame for argument n
 DEFINE_COMMAND_EXP(CallWhen, "calls UDF once when a condition is met which is polled each frame", false, kParams_CallWhile);
 
 #if RUNTIME
-using CallArgs = std::vector<ArrayElement>;
+using CallArgs = std::vector<SelfOwningArrayElement>;
 
 struct DelayedCallInfo
 {

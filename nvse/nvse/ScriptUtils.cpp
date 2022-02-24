@@ -5143,7 +5143,8 @@ ScriptToken *Operator::Evaluate(ScriptToken *lhs, ScriptToken *rhs, ExpressionEv
 	return nullptr;
 }
 
-bool BasicTokenToElem(ScriptToken *token, ArrayElement &elem)
+template <bool isSelfOwned>
+bool BasicTokenToElem(ScriptToken *token, ArrayElement_Templ<isSelfOwned> &elem)
 {
 	ScriptToken *basicToken = token->ToBasicToken();
 	if (!basicToken)

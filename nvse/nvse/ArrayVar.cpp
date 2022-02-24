@@ -73,11 +73,6 @@ ArrayData& ArrayData::operator=(const ArrayData& rhs)
 	return *this;
 }
 
-ArrayElement::~ArrayElement()
-{
-	Unset();
-}
-
 void* ArrayData::GetAsVoidArg() const
 {
 	switch (dataType)
@@ -105,15 +100,23 @@ ArrayData::ArrayData(const ArrayData& from) : dataType(from.dataType), owningArr
 //////////////////
 // ArrayElement
 /////////////////
-
-ArrayElement::ArrayElement()
+///
+template <bool isSelfOwning>
+ArrayElement_Templ<isSelfOwning>::ArrayElement_Templ()
 {
 	m_data.dataType = kDataType_Invalid;
 	m_data.owningArray = 0;
 	m_data.arrID = 0;
 }
 
-ArrayElement::ArrayElement(const ArrayElement& from)
+template <bool isSelfOwning>
+ArrayElement_Templ<isSelfOwning>::~ArrayElement_Templ()
+{
+	Unset();
+}
+
+template <bool isSelfOwning>
+ArrayElement_Templ<isSelfOwning>::ArrayElement_Templ(const ArrayElement_Templ<isSelfOwning>& from)
 {
 	m_data.dataType = from.m_data.dataType;
 	m_data.owningArray = from.m_data.owningArray;
@@ -122,7 +125,8 @@ ArrayElement::ArrayElement(const ArrayElement& from)
 	else m_data.num = from.m_data.num;
 }
 
-ArrayElement::ArrayElement(ArrayElement&& from) noexcept : m_data(from.m_data)
+template <bool isSelfOwning>
+ArrayElement_Templ<isSelfOwning>::ArrayElement_Templ(ArrayElement_Templ<isSelfOwning>&& from) noexcept : m_data(from.m_data)
 {
 	from.m_data.dataType = kDataType_Invalid;
 
@@ -131,7 +135,8 @@ ArrayElement::ArrayElement(ArrayElement&& from) noexcept : m_data(from.m_data)
 	from.m_data.str = nullptr;
 }
 
-bool ArrayElement::operator<(const ArrayElement& rhs) const
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::operator<(const ArrayElement_Templ<isSelfOwning>& rhs) const
 {
 	// if we ever try to compare 2 elems of differing types (i.e. string and number) we violate strict weak
 	// no reason to do that
@@ -151,7 +156,8 @@ bool ArrayElement::operator<(const ArrayElement& rhs) const
 	}
 }
 
-bool ArrayElement::operator==(const ArrayElement& rhs) const
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::operator==(const ArrayElement_Templ<isSelfOwning>& rhs) const
 {
 	if (m_data.dataType != rhs.m_data.dataType)
 		return false;
@@ -169,12 +175,14 @@ bool ArrayElement::operator==(const ArrayElement& rhs) const
 	}
 }
 
-bool ArrayElement::operator!=(const ArrayElement& rhs) const
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::operator!=(const ArrayElement_Templ<isSelfOwning>& rhs) const
 {
 	return !(*this == rhs);
 }
 
-std::string ArrayElement::GetStringRepresentation() const
+template <bool isSelfOwning>
+std::string ArrayElement_Templ<isSelfOwning>::GetStringRepresentation() const
 {
 	switch (this->DataType())
 	{
@@ -221,7 +229,8 @@ UInt8 __fastcall GetArrayOwningModIndex(ArrayID arrID)
 	return arr ? arr->OwningModIndex() : 0;
 }
 
-bool ArrayElement::CompareNames(const ArrayElement& lhs, const ArrayElement& rhs)
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::CompareNames(const ArrayElement_Templ<isSelfOwning>& lhs, const ArrayElement_Templ<isSelfOwning>& rhs)
 {
 	TESForm* lform = LookupFormByID(lhs.m_data.formID);
 	if (lform)
@@ -240,7 +249,8 @@ bool ArrayElement::CompareNames(const ArrayElement& lhs, const ArrayElement& rhs
 	return lhs.m_data.formID < rhs.m_data.formID;
 }
 
-bool ArrayElement::SetForm(const TESForm* form)
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::SetForm(const TESForm* form)
 {
 	Unset();
 
@@ -249,7 +259,8 @@ bool ArrayElement::SetForm(const TESForm* form)
 	return true;
 }
 
-bool ArrayElement::SetFormID(UInt32 refID)
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::SetFormID(UInt32 refID)
 {
 	Unset();
 
@@ -265,7 +276,8 @@ bool ArrayElement::SetFormID(UInt32 refID)
 	return true;
 }
 
-bool ArrayElement::SetString(const char* str)
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::SetString(const char* str)
 {
 	Unset();
 
@@ -274,20 +286,29 @@ bool ArrayElement::SetString(const char* str)
 	return true;
 }
 
-bool ArrayElement::SetArray(ArrayID arr)
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::SetArray(ArrayID arr)
 {
 	Unset();
 
 	m_data.dataType = kDataType_Array;
-	if (m_data.owningArray)
+	if constexpr (isSelfOwning)	//don't care about having an owning array.
+	{
 		g_ArrayMap.AddReference(&m_data.arrID, arr, GetArrayOwningModIndex(m_data.owningArray));
-	else // this element is not inside any array, so it's just a temporary
-		m_data.arrID = arr;
+	}
+	else
+	{
+		if (m_data.owningArray)
+			g_ArrayMap.AddReference(&m_data.arrID, arr, GetArrayOwningModIndex(m_data.owningArray));
+		else // this element is not inside any array, so it's just a temporary
+			m_data.arrID = arr;
+	}
 
 	return true;
 }
 
-bool ArrayElement::SetNumber(double num)
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::SetNumber(double num)
 {
 	Unset();
 
@@ -296,7 +317,8 @@ bool ArrayElement::SetNumber(double num)
 	return true;
 }
 
-bool ArrayElement::Set(const ArrayElement* elem)
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::Set(const ArrayElement_Templ<isSelfOwning>* elem)
 {
 	switch (elem->m_data.dataType)
 	{
@@ -320,7 +342,8 @@ bool ArrayElement::Set(const ArrayElement* elem)
 	return true;
 }
 
-bool ArrayElement::GetAsArray(ArrayID* out) const
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::GetAsArray(ArrayID* out) const
 {
 	if (m_data.dataType != kDataType_Array)
 		return false;
@@ -331,7 +354,8 @@ bool ArrayElement::GetAsArray(ArrayID* out) const
 	return true;
 }
 
-bool ArrayElement::GetAsFormID(UInt32* out) const
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::GetAsFormID(UInt32* out) const
 {
 	if (m_data.dataType != kDataType_Form)
 		return false;
@@ -339,7 +363,8 @@ bool ArrayElement::GetAsFormID(UInt32* out) const
 	return true;
 }
 
-bool ArrayElement::GetAsNumber(double* out) const
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::GetAsNumber(double* out) const
 {
 	if (m_data.dataType != kDataType_Numeric)
 		return false;
@@ -347,7 +372,8 @@ bool ArrayElement::GetAsNumber(double* out) const
 	return true;
 }
 
-bool ArrayElement::GetAsString(const char** out) const
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::GetAsString(const char** out) const
 {
 	if (m_data.dataType != kDataType_String)
 		return false;
@@ -356,9 +382,10 @@ bool ArrayElement::GetAsString(const char** out) const
 }
 
 // Try to replicate bool ScriptToken::GetBool()
-bool ArrayElement::GetBool() const
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::GetBool() const
 {
-	bool result = false;
+	bool result;
 	switch (DataType())
 	{
 	case kDataType_Array:
@@ -371,11 +398,7 @@ bool ArrayElement::GetBool() const
 		result = m_data.formID != 0;
 		break;
 	case kDataType_String:
-		if (auto const str = m_data.GetStr())
-		{
-			if (str[0])
-				result = true;
-		}
+		result = m_data.str && m_data.str[0];
 		break;
 	default:
 		return false;
@@ -383,7 +406,8 @@ bool ArrayElement::GetBool() const
 	return result;
 }
 
-void ArrayElement::Unset()
+template <bool isSelfOwning>
+void ArrayElement_Templ<isSelfOwning>::Unset()
 {
 	if (m_data.dataType == kDataType_Invalid)
 		return;
@@ -396,8 +420,10 @@ void ArrayElement::Unset()
 			m_data.str = nullptr;
 		}
 	}
-	else if (m_data.dataType == kDataType_Array && m_data.owningArray)
+	else if (m_data.dataType == kDataType_Array && (isSelfOwning || m_data.owningArray))
+	{
 		g_ArrayMap.RemoveReference(&m_data.arrID, GetArrayOwningModIndex(m_data.arrID));
+	}
 	else if (m_data.dataType == kDataType_Form)
 	{
 		auto* form = LookupFormByRefID(m_data.formID);

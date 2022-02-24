@@ -604,27 +604,89 @@ bool InternalFunctionCaller::PopulateArgs(ScriptEventList *eventList, FunctionIn
 			return false;
 		}
 
+		constexpr char altElemExtractionErrorMsg[] = "Cached argument #%u for function script is not %s type, yet the UDF expects that type.";
 		switch (param->varType)
 		{
 		case Script::eVarType_Integer:
-			var->data = (SInt32)m_args[i];
+			if (m_altElemArgs)
+			{
+				if (!m_altElemArgs[i].GetAsNumber(&var->data))
+				{
+					ShowRuntimeError(m_script, altElemExtractionErrorMsg, i, "Number");
+				}
+				var->data = static_cast<SInt32>(var->data);
+			}
+			else
+			{
+				var->data = reinterpret_cast<SInt32>(m_args[i]);
+			}
 			break;
 		case Script::eVarType_Float:
-			var->data = *((float *)&m_args[i]);
+			if (m_altElemArgs)
+			{
+				if (!m_altElemArgs[i].GetAsNumber(&var->data))
+				{
+					ShowRuntimeError(m_script, altElemExtractionErrorMsg, i, "Number");
+				}
+			}
+			else
+			{
+				var->data = *((float*)&m_args[i]);
+			}
 			break;
 		case Script::eVarType_Ref:
 		{
-			TESForm *form = (TESForm *)m_args[i];
-			*((UInt32 *)&var->data) = form ? form->refID : 0;
+			UInt32 formID = 0;
+			if (m_altElemArgs)
+			{
+				if (!m_altElemArgs[i].GetAsFormID(&formID))
+				{
+					ShowRuntimeError(m_script, altElemExtractionErrorMsg, i, "Form");
+				}
+			}
+			else
+			{
+				if (auto const form = static_cast<TESForm*>(m_args[i]))
+				{
+					formID = form->refID;
+				}
+			}
+			*((UInt32*)&var->data) = formID;
 		}
 		break;
 		case Script::eVarType_String:
-			var->data = g_StringMap.Add(info->GetScript()->GetModIndex(), (const char *)m_args[i], true);
+		{
+			const char* str = nullptr;
+			if (m_altElemArgs)
+			{
+				if (!m_altElemArgs[i].GetAsString(&str))
+				{
+					ShowRuntimeError(m_script, altElemExtractionErrorMsg, i, "String");
+				}
+			}
+			else
+			{
+				str = static_cast<const char*>(m_args[i]);
+			}
+			var->data = g_StringMap.Add(info->GetScript()->GetModIndex(), str, true);
 			AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_String);
 			break;
+		}
 		case Script::eVarType_Array:
 		{
-			ArrayID arrID = (ArrayID)m_args[i];
+			ArrayID arrID = 0;
+			if (m_altElemArgs)
+			{
+				if (!m_altElemArgs[i].GetAsArray(&arrID))
+				{
+					ShowRuntimeError(m_script, altElemExtractionErrorMsg, i, "Array");
+				}
+			}
+			else
+			{
+				arrID = (ArrayID)m_args[i];
+			}
+
 			if (g_ArrayMap.Get(arrID))
 			{
 				g_ArrayMap.AddReference(&var->data, arrID, info->GetScript()->GetModIndex());
@@ -678,17 +740,13 @@ bool InternalFunctionCaller::SetArgsRaw(UInt8 numArgs, const void* args)
 	return true;
 }
 
-bool InternalFunctionCaller::SetArgs(const std::vector<ArrayElement>& elemArgs)
+bool InternalFunctionCaller::SetArgs(UInt8 numArgs, const ArrayElement* elemArgs)
 {
-	auto const numArgs = elemArgs.size();
 	if (numArgs >= kMaxArgs)
 		return false;
 
-	m_numArgs = static_cast<UInt8>(numArgs);
-	for (UInt8 i = 0; i < m_numArgs; i++)
-	{
-		m_args[i] = elemArgs[i].GetAsVoidArg();
-	}
+	m_numArgs = numArgs;
+	m_altElemArgs = elemArgs;
 
 	return true;
 }

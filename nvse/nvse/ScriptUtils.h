@@ -240,7 +240,8 @@ void ExpressionEvaluator::AssignAmbiguousResult(T &result, CommandReturnType typ
 }
 #endif
 
-bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem);
+template <bool isSelfOwned>
+bool BasicTokenToElem(ScriptToken* token, ArrayElement_Templ<isSelfOwned> & elem);
 
 #if RUNTIME
 void* __stdcall ExpressionEvaluatorCreate(COMMAND_ARGS);
