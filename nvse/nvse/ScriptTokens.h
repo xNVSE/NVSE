@@ -443,7 +443,24 @@ struct ArrayElementToken : ScriptToken
 	UInt32 GetFormID() const override;
 	ArrayID GetArrayID() const override;
 	TESForm *GetTESForm() const override;
-	bool GetBool() const override;
+	bool GetBool() const override
+	{
+		ArrayVar* arr = g_ArrayMap.Get(GetOwningArrayID());
+		if (!arr)
+			return false;
+
+		ArrayElement* elem = arr->Get(&key, false);
+		if (!elem)
+			return false;
+
+		if (elem->DataType() == kDataType_Numeric)
+			return elem->m_data.num != 0;
+		else if (elem->DataType() == kDataType_Form)
+			return elem->m_data.formID != 0;
+
+		return false;
+		
+	};
 	bool CanConvertTo(Token_Type to) const override;
 	ArrayID GetOwningArrayID() const override { return type == kTokenType_ArrayElement ? value.arrID : 0; }
 	ArrayVar *GetOwningArrayVar() const { return g_ArrayMap.Get(GetOwningArrayID()); }
@@ -519,7 +536,24 @@ struct AssignableSubstringArrayElementToken : public AssignableSubstringToken
 
 	AssignableSubstringArrayElementToken(UInt32 _id, const ArrayKey &_key, UInt32 lbound, UInt32 ubound);
 	ArrayID GetArrayID() const override { return value.arrID; }
-	bool Assign(const char *str) override;
+	bool Assign(const char *str) override
+	{
+		ArrayElement* elem = g_ArrayMap.GetElement(value.arrID, &key);
+		const char* pElemStr;
+		if (elem && elem->GetAsString(&pElemStr) && (lower <= upper) && (upper < StrLen(pElemStr)))
+		{
+			std::string elemStr(pElemStr);
+			elemStr.erase(lower, upper - lower + 1);
+			if (str)
+			{
+				elemStr.insert(lower, str);
+				elem->SetString(elemStr.c_str());
+				substring = elemStr;
+			}
+			return true;
+		}
+		return false;
+	};
 
 	void *operator new(size_t size)
 	{

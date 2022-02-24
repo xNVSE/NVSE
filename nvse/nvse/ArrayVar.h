@@ -27,6 +27,7 @@ struct ScriptToken;
 #include <memory>
 #include <vector>
 #include <map>
+#include "LambdaManager.h"
 
 // NVSE array datatype, represented by std::map<ArrayKey, ArrayElement>
 // Data elements can be of mixed types (string, UInt32/formID, float)
@@ -150,6 +151,7 @@ struct ArrayElement_Templ
 	[[nodiscard]] std::string GetStringRepresentation() const;
 	[[nodiscard]] void* GetAsVoidArg() const { return m_data.GetAsVoidArg(); }
 };
+
 
 
 struct ArrayKey
@@ -447,5 +449,335 @@ namespace PluginAPI
 		static bool InternalElemToPluginElem(const ArrayElement* src, NVSEArrayVarInterface::Element* out);
 	};
 }
+
+
+template <bool isSelfOwning>
+ArrayElement_Templ<isSelfOwning>::ArrayElement_Templ()
+{
+	m_data.dataType = kDataType_Invalid;
+	m_data.owningArray = 0;
+	m_data.arrID = 0;
+}
+
+template <bool isSelfOwning>
+ArrayElement_Templ<isSelfOwning>::~ArrayElement_Templ()
+{
+	Unset();
+}
+
+template <bool isSelfOwning>
+ArrayElement_Templ<isSelfOwning>::ArrayElement_Templ(const ArrayElement_Templ<isSelfOwning>& from)
+{
+	m_data.dataType = from.m_data.dataType;
+	m_data.owningArray = from.m_data.owningArray;
+	if (m_data.dataType == kDataType_String)
+		m_data.SetStr(from.m_data.str);
+	else m_data.num = from.m_data.num;
+}
+
+template <bool isSelfOwning>
+ArrayElement_Templ<isSelfOwning>::ArrayElement_Templ(ArrayElement_Templ<isSelfOwning>&& from) noexcept : m_data(from.m_data)
+{
+	from.m_data.dataType = kDataType_Invalid;
+
+	//for extra safety; likely redundant
+	from.m_data.owningArray = 0;
+	from.m_data.str = nullptr;
+}
+
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::operator<(const ArrayElement_Templ<isSelfOwning>& rhs) const
+{
+	// if we ever try to compare 2 elems of differing types (i.e. string and number) we violate strict weak
+	// no reason to do that
+
+	if (m_data.dataType != rhs.m_data.dataType)
+		return false;
+
+	switch (m_data.dataType)
+	{
+	case kDataType_Form:
+	case kDataType_Array:
+		return m_data.formID < rhs.m_data.formID;
+	case kDataType_String:
+		return StrCompare(m_data.str, rhs.m_data.str) < 0;
+	default:
+		return m_data.num < rhs.m_data.num;
+	}
+}
+
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::operator==(const ArrayElement_Templ<isSelfOwning>& rhs) const
+{
+	if (m_data.dataType != rhs.m_data.dataType)
+		return false;
+
+	switch (m_data.dataType)
+	{
+	case kDataType_Form:
+		return m_data.formID == rhs.m_data.formID;
+	case kDataType_String:
+		return !StrCompare(m_data.str, rhs.m_data.str);
+	case kDataType_Array:
+		return m_data.arrID == rhs.m_data.arrID;
+	default:
+		return m_data.num == rhs.m_data.num;
+	}
+}
+
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::operator!=(const ArrayElement_Templ<isSelfOwning>& rhs) const
+{
+	return !(*this == rhs);
+}
+
+template <bool isSelfOwning>
+std::string ArrayElement_Templ<isSelfOwning>::GetStringRepresentation() const
+{
+	switch (this->DataType())
+	{
+	case kDataType_Invalid:
+		return "invalid";
+	case kDataType_Numeric:
+	{
+		double numeric;
+		this->GetAsNumber(&numeric);
+		return FormatString("%g", numeric);
+	}
+	case kDataType_Form:
+	{
+		UInt32 formId;
+		this->GetAsFormID(&formId);
+		auto* form = LookupFormByID(formId);
+		if (form)
+			return form->GetStringRepresentation();
+		return "null";
+	}
+	case kDataType_String:
+	{
+		const char* str;
+		this->GetAsString(&str);
+		return '"' + std::string(str) + '"';
+	}
+	case kDataType_Array:
+	{
+		ArrayID id;
+		this->GetAsArray(&id);
+		const auto* arr = g_ArrayMap.Get(id);
+		if (arr)
+			return arr->GetStringRepresentation();
+		return "invalid array";
+	}
+	default:
+		return "unknown";
+	}
+}
+
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::CompareNames(const ArrayElement_Templ<isSelfOwning>& lhs, const ArrayElement_Templ<isSelfOwning>& rhs)
+{
+	TESForm* lform = LookupFormByID(lhs.m_data.formID);
+	if (lform)
+	{
+		TESForm* rform = LookupFormByID(rhs.m_data.formID);
+		if (rform)
+		{
+			const char* lName = lform->GetTheName();
+			if (*lName)
+			{
+				const char* rName = rform->GetTheName();
+				if (*rName) return StrCompare(lName, rName) < 0;
+			}
+		}
+	}
+	return lhs.m_data.formID < rhs.m_data.formID;
+}
+
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::SetForm(const TESForm* form)
+{
+	Unset();
+
+	m_data.dataType = kDataType_Form;
+	m_data.formID = form ? form->refID : 0;
+	return true;
+}
+
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::SetFormID(UInt32 refID)
+{
+	Unset();
+
+	m_data.dataType = kDataType_Form;
+	m_data.formID = refID;
+
+	TESForm* form;
+	if ((form = LookupFormByRefID(refID)) && IS_ID(form, Script) && LambdaManager::IsScriptLambda(static_cast<Script*>(form)))
+	{
+		LambdaManager::SaveLambdaVariables(static_cast<Script*>(form));
+	}
+
+	return true;
+}
+
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::SetString(const char* str)
+{
+	Unset();
+
+	m_data.dataType = kDataType_String;
+	m_data.SetStr(str);
+	return true;
+}
+
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::SetArray(ArrayID arr)
+{
+	Unset();
+
+	m_data.dataType = kDataType_Array;
+	if constexpr (isSelfOwning)	//don't care about having an owning array.
+	{
+		g_ArrayMap.AddReference(&m_data.arrID, arr, GetArrayOwningModIndex(m_data.owningArray));
+	}
+	else
+	{
+		if (m_data.owningArray)
+			g_ArrayMap.AddReference(&m_data.arrID, arr, GetArrayOwningModIndex(m_data.owningArray));
+		else // this element is not inside any array, so it's just a temporary
+			m_data.arrID = arr;
+	}
+
+	return true;
+}
+
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::SetNumber(double num)
+{
+	Unset();
+
+	m_data.dataType = kDataType_Numeric;
+	m_data.num = num;
+	return true;
+}
+
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::Set(const ArrayElement_Templ<isSelfOwning>* elem)
+{
+	switch (elem->m_data.dataType)
+	{
+	case kDataType_String:
+		SetString(elem->m_data.str);
+		break;
+	case kDataType_Array:
+		SetArray(elem->m_data.arrID);
+		break;
+	case kDataType_Numeric:
+		SetNumber(elem->m_data.num);
+		break;
+	case kDataType_Form:
+		SetFormID(elem->m_data.formID);
+		break;
+	default:
+		Unset();
+		return false;
+	}
+
+	return true;
+}
+
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::GetAsArray(ArrayID* out) const
+{
+	if (m_data.dataType != kDataType_Array)
+		return false;
+	if (m_data.arrID && !g_ArrayMap.Get(m_data.arrID)) // it's okay for arrayID to be 0, otherwise check if array exists
+		return false;
+
+	*out = m_data.arrID;
+	return true;
+}
+
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::GetAsFormID(UInt32* out) const
+{
+	if (m_data.dataType != kDataType_Form)
+		return false;
+	*out = m_data.formID;
+	return true;
+}
+
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::GetAsNumber(double* out) const
+{
+	if (m_data.dataType != kDataType_Numeric)
+		return false;
+	*out = m_data.num;
+	return true;
+}
+
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::GetAsString(const char** out) const
+{
+	if (m_data.dataType != kDataType_String)
+		return false;
+	*out = m_data.GetStr();
+	return true;
+}
+
+// Try to replicate bool ScriptToken::GetBool()
+template <bool isSelfOwning>
+bool ArrayElement_Templ<isSelfOwning>::GetBool() const
+{
+	bool result;
+	switch (DataType())
+	{
+	case kDataType_Array:
+		result = m_data.arrID && g_ArrayMap.Get(m_data.arrID);
+		break;
+	case kDataType_Numeric:
+		result = m_data.num != 0.0;
+		break;
+	case kDataType_Form:
+		result = m_data.formID != 0;
+		break;
+	case kDataType_String:
+		result = m_data.str && m_data.str[0];
+		break;
+	default:
+		return false;
+	}
+	return result;
+}
+
+template <bool isSelfOwning>
+void ArrayElement_Templ<isSelfOwning>::Unset()
+{
+	if (m_data.dataType == kDataType_Invalid)
+		return;
+
+	if (m_data.dataType == kDataType_String)
+	{
+		if (m_data.str)
+		{
+			free(m_data.str);
+			m_data.str = nullptr;
+		}
+	}
+	else if (m_data.dataType == kDataType_Array && (isSelfOwning || m_data.owningArray))
+	{
+		g_ArrayMap.RemoveReference(&m_data.arrID, GetArrayOwningModIndex(m_data.arrID));
+	}
+	else if (m_data.dataType == kDataType_Form)
+	{
+		auto* form = LookupFormByRefID(m_data.formID);
+		if (form && IS_ID(form, Script) && LambdaManager::IsScriptLambda(static_cast<Script*>(form)))
+			LambdaManager::UnsaveLambdaVariables(static_cast<Script*>(form));
+		m_data.formID = 0;
+	}
+
+	m_data.dataType = kDataType_Invalid;
+}
+
 
 #endif

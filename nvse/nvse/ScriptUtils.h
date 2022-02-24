@@ -238,10 +238,32 @@ void ExpressionEvaluator::AssignAmbiguousResult(T &result, CommandReturnType typ
 		Error("Function call returned unexpected return type %d", type);
 	}
 }
-#endif
 
 template <bool isSelfOwned>
-bool BasicTokenToElem(ScriptToken* token, ArrayElement_Templ<isSelfOwned> & elem);
+bool BasicTokenToElem(ScriptToken* token, ArrayElement_Templ<isSelfOwned>& elem)
+{
+	ScriptToken* basicToken = token->ToBasicToken();
+	if (!basicToken)
+		return false;
+
+	bool bResult = true;
+
+	if (basicToken->CanConvertTo(kTokenType_Number))
+		elem.SetNumber(basicToken->GetNumber());
+	else if (basicToken->CanConvertTo(kTokenType_String))
+		elem.SetString(basicToken->GetString());
+	else if (basicToken->CanConvertTo(kTokenType_Form))
+		elem.SetFormID(basicToken->GetFormID());
+	else if (basicToken->CanConvertTo(kTokenType_Array))
+		elem.SetArray(basicToken->GetArrayID());
+	else
+		bResult = false;
+
+	delete basicToken;
+	return bResult;
+}
+#endif
+
 
 #if RUNTIME
 void* __stdcall ExpressionEvaluatorCreate(COMMAND_ARGS);

@@ -578,25 +578,6 @@ bool AssignableSubstringStringVarToken::Assign(const char *str)
 	return false;
 }
 
-bool AssignableSubstringArrayElementToken::Assign(const char *str)
-{
-	ArrayElement *elem = g_ArrayMap.GetElement(value.arrID, &key);
-	const char *pElemStr;
-	if (elem && elem->GetAsString(&pElemStr) && (lower <= upper) && (upper < StrLen(pElemStr)))
-	{
-		std::string elemStr(pElemStr);
-		elemStr.erase(lower, upper - lower + 1);
-		if (str)
-		{
-			elemStr.insert(lower, str);
-			elem->SetString(elemStr.c_str());
-			substring = elemStr;
-		}
-		return true;
-	}
-	return false;
-}
-
 ScriptToken* ScriptToken::ForwardEvalResult()
 {
 	if (CanConvertTo(kTokenType_Number)) [[likely]]
@@ -1690,24 +1671,6 @@ TESForm *ArrayElementToken::GetTESForm() const
 	if (arr)
 		arr->GetElementForm(&key, &out);
 	return out;
-}
-
-bool ArrayElementToken::GetBool() const
-{
-	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
-	if (!arr)
-		return false;
-
-	ArrayElement *elem = arr->Get(&key, false);
-	if (!elem)
-		return false;
-
-	if (elem->DataType() == kDataType_Numeric)
-		return elem->m_data.num != 0;
-	else if (elem->DataType() == kDataType_Form)
-		return elem->m_data.formID != 0;
-
-	return false;
 }
 
 ArrayID ArrayElementToken::GetArrayID() const
