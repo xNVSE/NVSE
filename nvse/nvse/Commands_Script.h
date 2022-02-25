@@ -105,52 +105,57 @@ static ParamInfo kNVSEParams_DispatchEvent[3] =
 
 DEFINE_COMMAND_EXP(DispatchEvent, dispatches a user-defined event to any registered listeners, 0, kNVSEParams_DispatchEvent);
 
-static ParamInfo kParams_CallAfter[20] =
+static ParamInfo kParams_CallAfter[18] =
 {
 	{	"seconds",	kNVSEParamType_Number,	0	},
 	{	"function",	kNVSEParamType_Form,0	},
 	{ "flags", kNVSEParamType_Number, 1},
+
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
+
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
+
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
-	{	"element",	kNVSEParamType_BasicType,	1	},
-	{	"element",	kNVSEParamType_BasicType,	1	},
+	//max args for UDF is 15
 };
 
-static ParamInfo kParams_CallWhile[20] =
+static ParamInfo kParams_CallWhile[18] =
 {
 	{	"function",	kNVSEParamType_Form,	0	},
 	{	"condition",	kNVSEParamType_Form,0	},
 	{	"flags",		kNVSEParamType_Number,	1	},
+
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
+
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
+
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
-	{	"element",	kNVSEParamType_BasicType,	1	},
-	{	"element",	kNVSEParamType_BasicType,	1	},
+	//max args for UDF is 15
+	
 };
 
 DEFINE_CMD_ALT_EXP(CallAfterSeconds, CallAfter, "calls UDF after argument number of seconds", false, kParams_CallAfter);
@@ -196,7 +201,7 @@ struct CallWhileInfo
 		kFlags_None = 0,
 		kPassArgs_ToCallFunc = 1 << 0,
 		kPassArgs_ToConditionFunc = 1 << 1,
-		kFlag_RunInMenuMode = 1 << 2,
+		kFlag_RunInMenuMode = 1 << 2,	//todo: make use (?)
 	} flags;
 	CallArgs args;
 
