@@ -97,19 +97,15 @@ ArrayData::ArrayData(const ArrayData& from) : dataType(from.dataType), owningArr
 	else num = from.num;
 }
 
-//////////////////
-// ArrayElement
-/////////////////
+///////////////////////
+// ArrayKey
+//////////////////////
 
 UInt8 __fastcall GetArrayOwningModIndex(ArrayID arrID)
 {
 	ArrayVar* arr = g_ArrayMap.Get(arrID);
 	return arr ? arr->OwningModIndex() : 0;
 }
-
-///////////////////////
-// ArrayKey
-//////////////////////
 
 ArrayKey::ArrayKey()
 {

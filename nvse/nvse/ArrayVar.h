@@ -451,6 +451,11 @@ namespace PluginAPI
 }
 
 
+//////////////////
+// ArrayElement_Templ implementation
+// (Template impls must be done in header file)
+/////////////////
+
 template <bool isSelfOwning>
 ArrayElement_Templ<isSelfOwning>::ArrayElement_Templ()
 {

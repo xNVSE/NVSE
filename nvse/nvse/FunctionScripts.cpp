@@ -579,138 +579,18 @@ bool FunctionContext::Return(ExpressionEvaluator *eval)
 	InternalFunctionCaller
 *******************************/
 
-bool InternalFunctionCaller::PopulateArgs(ScriptEventList *eventList, FunctionInfo *info)
+bool InternalFunctionCaller::PopulateArgs(ScriptEventList* eventList, FunctionInfo* info)
 {
-	DynamicParamInfo &dParams = info->ParamInfo();
-	if (dParams.NumParams() >= kMaxArgs)
-	{
-		return false;
-	}
-
-	// populate the args in the event list
-	for (UInt32 i = 0; i < m_numArgs; i++)
-	{
-		UserFunctionParam *param = info->GetParam(i);
-		if (!ValidateParam(param, i))
-		{
-			ShowRuntimeError(m_script, "Failed to extract parameter %d. Please verify the number of parameters in function script match those required for event.", i);
-			return false;
-		}
-
-		ScriptLocal *var = eventList->GetVariable(param->varIdx);
-		if (!var)
-		{
-			ShowRuntimeError(m_script, "Could not look up argument variable for function script");
-			return false;
-		}
-
-		constexpr char altElemExtractionErrorMsg[] = "Cached argument #%u for function script is not %s type, yet the UDF expects that type.";
-		switch (param->varType)
-		{
-		case Script::eVarType_Integer:
-			if (m_altElemArgs)
-			{
-				if (!m_altElemArgs[i].GetAsNumber(&var->data))
-				{
-					ShowRuntimeError(m_script, altElemExtractionErrorMsg, i, "Number");
-				}
-				var->data = static_cast<SInt32>(var->data);
-			}
-			else
-			{
-				var->data = reinterpret_cast<SInt32>(m_args[i]);
-			}
-			break;
-		case Script::eVarType_Float:
-			if (m_altElemArgs)
-			{
-				if (!m_altElemArgs[i].GetAsNumber(&var->data))
-				{
-					ShowRuntimeError(m_script, altElemExtractionErrorMsg, i, "Number");
-				}
-			}
-			else
-			{
-				var->data = *((float*)&m_args[i]);
-			}
-			break;
-		case Script::eVarType_Ref:
-		{
-			UInt32 formID = 0;
-			if (m_altElemArgs)
-			{
-				if (!m_altElemArgs[i].GetAsFormID(&formID))
-				{
-					ShowRuntimeError(m_script, altElemExtractionErrorMsg, i, "Form");
-				}
-			}
-			else
-			{
-				if (auto const form = static_cast<TESForm*>(m_args[i]))
-				{
-					formID = form->refID;
-				}
-			}
-			*((UInt32*)&var->data) = formID;
-		}
-		break;
-		case Script::eVarType_String:
-		{
-			const char* str = nullptr;
-			if (m_altElemArgs)
-			{
-				if (!m_altElemArgs[i].GetAsString(&str))
-				{
-					ShowRuntimeError(m_script, altElemExtractionErrorMsg, i, "String");
-				}
-			}
-			else
-			{
-				str = static_cast<const char*>(m_args[i]);
-			}
-			var->data = g_StringMap.Add(info->GetScript()->GetModIndex(), str, true);
-			AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_String);
-			break;
-		}
-		case Script::eVarType_Array:
-		{
-			ArrayID arrID = 0;
-			if (m_altElemArgs)
-			{
-				if (!m_altElemArgs[i].GetAsArray(&arrID))
-				{
-					ShowRuntimeError(m_script, altElemExtractionErrorMsg, i, "Array");
-				}
-			}
-			else
-			{
-				arrID = (ArrayID)m_args[i];
-			}
-
-			if (g_ArrayMap.Get(arrID))
-			{
-				g_ArrayMap.AddReference(&var->data, arrID, info->GetScript()->GetModIndex());
-				AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_Array);
-			}
-			else
-				var->data = 0;
-		}
-		break;
-		default:
-			// wtf?
-			ShowRuntimeError(m_script, "Unexpected param type %02X in internal function call", param->varType);
-			return false;
-		}
-	}
-
-	return true;
+	return std::visit(
+		[=, this](auto altElemArgs) { return this->PopulateArgs_Templ(eventList, info, altElemArgs); },
+		m_altElemArgs);
 }
 
 bool InternalFunctionCaller::SetArgs(UInt8 numArgs, ...)
 {
 	va_list args;
 	va_start(args, numArgs);
-	bool result = vSetArgs(numArgs, args);
+	bool const result = vSetArgs(numArgs, args);
 	va_end(args);
 	return result;
 }
@@ -737,17 +617,6 @@ bool InternalFunctionCaller::SetArgsRaw(UInt8 numArgs, const void* args)
 		return false;
 	m_numArgs = numArgs;
 	memcpy_s(m_args, sizeof m_args, args, numArgs * sizeof(void*));
-	return true;
-}
-
-bool InternalFunctionCaller::SetArgs(UInt8 numArgs, const ArrayElement* elemArgs)
-{
-	if (numArgs >= kMaxArgs)
-		return false;
-
-	m_numArgs = numArgs;
-	m_altElemArgs = elemArgs;
-
 	return true;
 }
 

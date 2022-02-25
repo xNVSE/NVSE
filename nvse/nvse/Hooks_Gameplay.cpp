@@ -101,15 +101,15 @@ void HandleCallWhileScripts()
 		InternalFunctionCaller conditionCaller(iter->condition);
 		if (iter->PassArgsToCondFunc())
 		{
-			//conditionCaller.SetArgs(iter->args.size(), iter->args.data());
+			conditionCaller.SetArgs(iter->args.size(), iter->args.data());
 		}
 
 		if (auto const conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); 
 			conditionResult && conditionResult->GetBool())
 		{
 			InternalFunctionCaller scriptCaller(iter->callFunction, iter->thisObj);
-			//if (iter->PassArgsToCallFunc())
-				//scriptCaller.SetArgs(iter->args.size(), iter->args.data());
+			if (iter->PassArgsToCallFunc())
+				scriptCaller.SetArgs(iter->args.size(), iter->args.data());
 			delete UserFunctionManager::Call(std::move(scriptCaller));
 			++iter;
 		}
@@ -132,15 +132,15 @@ void HandleCallWhenScripts()
 		InternalFunctionCaller conditionCaller(iter->condition);
 		if (iter->PassArgsToCondFunc())
 		{
-			//conditionCaller.SetArgs(iter->args.size(), iter->args.data());
+			conditionCaller.SetArgs(iter->args.size(), iter->args.data());
 		}
 
 		if (auto const conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); 
 			conditionResult && conditionResult->GetBool())
 		{
 			InternalFunctionCaller scriptCaller(iter->callFunction, iter->thisObj);
-			//if (iter->PassArgsToCallFunc())
-				//scriptCaller.SetArgs(iter->args.size(), iter->args.data());
+			if (iter->PassArgsToCallFunc())
+				scriptCaller.SetArgs(iter->args.size(), iter->args.data());
 			delete UserFunctionManager::Call(std::move(scriptCaller));
 			iter = g_callWhenInfos.erase(iter);
 		}
@@ -167,7 +167,7 @@ void HandleCallForScripts(float timeDelta, bool isMenuMode)
 		if (g_gameSecondsPassed < iter->time)
 		{
 			InternalFunctionCaller caller(iter->script, iter->thisObj);
-			//caller.SetArgs(iter->args.size(), iter->args.data());
+			caller.SetArgs(iter->args.size(), iter->args.data());
 			delete UserFunctionManager::Call(std::move(caller));
 			++iter;
 		}
