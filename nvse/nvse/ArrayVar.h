@@ -481,13 +481,11 @@ ArrayElement_Templ<isSelfOwning>::ArrayElement_Templ(const ArrayElement_Templ<is
 }
 
 template <bool isSelfOwning>
-ArrayElement_Templ<isSelfOwning>::ArrayElement_Templ(ArrayElement_Templ<isSelfOwning>&& from) noexcept : m_data(from.m_data)
+ArrayElement_Templ<isSelfOwning>::ArrayElement_Templ(ArrayElement_Templ<isSelfOwning>&& from) noexcept
 {
-	from.m_data.dataType = kDataType_Invalid;
-
-	//for extra safety; likely redundant
-	from.m_data.owningArray = 0;
-	from.m_data.str = nullptr;
+	m_data.dataType = std::exchange(from.m_data.dataType, kDataType_Invalid);
+	m_data.owningArray = std::exchange(from.m_data.owningArray, 0);
+	m_data.num = std::exchange(from.m_data.num, 0);
 }
 
 template <bool isSelfOwning>

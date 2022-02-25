@@ -78,7 +78,7 @@ void HandleDelayedCall(float timeDelta, bool isMenuMode)
 		if (g_gameSecondsPassed >= iter->time)
 		{
 			InternalFunctionCaller caller(iter->script, iter->thisObj);
-			//caller.SetArgs(iter->args.size(), iter->args.data());
+			caller.SetArgs(iter->args.size(), iter->args.data());
 			delete UserFunctionManager::Call(std::move(caller));
 			iter = g_callAfterInfos.erase(iter); // yes, this is valid: https://stackoverflow.com/a/3901380/6741772
 		}

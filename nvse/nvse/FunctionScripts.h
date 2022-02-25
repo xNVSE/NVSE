@@ -130,19 +130,19 @@ public:
 // allows us to call function scripts directly
 class InternalFunctionCaller : public FunctionCaller
 {
+	template <bool isSelfOwning>
+	bool PopulateArgs_Templ(ScriptEventList* eventList, FunctionInfo* info,
+		const ArrayElement_Templ<isSelfOwning>* altElemArgs);
+
 public:
 	InternalFunctionCaller(Script* script, TESObjectREFR* callingObj = NULL, TESObjectREFR* container = NULL)
 		: m_callerVersion(UserFunctionManager::kVersion), m_numArgs(0), m_script(script), m_thisObj(callingObj), m_container(container) { }
 
 	~InternalFunctionCaller() override = default;
 	UInt8 ReadCallerVersion() override { return m_callerVersion; }
-	Script* ReadScript() override { return m_script; };
+	Script* ReadScript() override { return m_script; }
 
 	bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info) override;
-
-	template <bool isSelfOwning>
-	bool PopulateArgs_Templ(ScriptEventList* eventList, FunctionInfo* info,
-		const ArrayElement_Templ<isSelfOwning>* altElemArgs);
 
 	TESObjectREFR* ThisObj() override { return m_thisObj; }
 	TESObjectREFR* ContainingObj() override { return m_container; }
