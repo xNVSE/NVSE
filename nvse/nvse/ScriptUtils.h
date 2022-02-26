@@ -74,13 +74,14 @@ enum {
 
 #define NVSE_EXPR_MAX_ARGS 20		// max # of args we'll accept to a commmand
 
+static constexpr UInt32 kMaxUdfParams = 15;
+static_assert(kMaxUdfParams <= NVSE_EXPR_MAX_ARGS);
+
 // wraps a dynamic ParamInfo array
 struct DynamicParamInfo
 {
 private:
-	static const UInt32 kMaxParams = 15;	// Should be linked to NVSE_EXPR_MAX_ARGS ?
-
-	ParamInfo	m_paramInfo[kMaxParams];
+	ParamInfo	m_paramInfo[kMaxUdfParams];
 	UInt32		m_numParams;
 
 public:

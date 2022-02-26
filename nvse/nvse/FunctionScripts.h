@@ -98,7 +98,7 @@ class UserFunctionManager
 
 	UserFunctionManager();
 
-	static const UInt32	kMaxNestDepth = 30;	// arbitrarily low; have seen 180+ nested calls execute w/o problems
+	static constexpr UInt32	kMaxNestDepth = 30;	// arbitrarily low; have seen 180+ nested calls execute w/o problems
 
 	UInt32								m_nestDepth;
 	Stack<FunctionContext*>		m_functionStack;
@@ -155,12 +155,11 @@ public:
 	bool SetArgs(UInt8 numArgs, const ArrayElement_Templ<isSelfOwning> *elemArgs);
 
 protected:
-	enum { kMaxArgs = 15 };
 
 	UInt8			m_callerVersion;
 	UInt8			m_numArgs;
 	Script			* m_script;
-	void			* m_args[kMaxArgs];
+	void			* m_args[kMaxUdfParams];
 
 	//Points to an array of ArrElems, which retain useful type information.
 	//Used in order to remember if the nth arg was stored as double/int,
@@ -187,7 +186,7 @@ namespace PluginAPI {
 template <bool isSelfOwning>
 bool InternalFunctionCaller::SetArgs(UInt8 numArgs, const ArrayElement_Templ<isSelfOwning>* elemArgs)
 {
-	if (numArgs >= kMaxArgs)
+	if (numArgs > kMaxUdfParams)
 		return false;
 
 	m_numArgs = numArgs;
@@ -201,7 +200,7 @@ bool InternalFunctionCaller::PopulateArgs_Templ(ScriptEventList* eventList, Func
 	const ArrayElement_Templ<isSelfOwning>* altElemArgs)
 {
 	DynamicParamInfo& dParams = info->ParamInfo();
-	if (dParams.NumParams() >= kMaxArgs)
+	if (dParams.NumParams() > kMaxUdfParams)
 	{
 		return false;
 	}

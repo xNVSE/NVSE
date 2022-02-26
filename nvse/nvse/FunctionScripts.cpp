@@ -597,7 +597,7 @@ bool InternalFunctionCaller::SetArgs(UInt8 numArgs, ...)
 
 bool InternalFunctionCaller::vSetArgs(UInt8 numArgs, va_list args)
 {
-	if (numArgs >= kMaxArgs)
+	if (numArgs > kMaxUdfParams)
 	{
 		return false;
 	}
@@ -613,7 +613,7 @@ bool InternalFunctionCaller::vSetArgs(UInt8 numArgs, va_list args)
 
 bool InternalFunctionCaller::SetArgsRaw(UInt8 numArgs, const void* args)
 {
-	if (numArgs >= kMaxArgs)
+	if (numArgs > kMaxUdfParams)
 		return false;
 	m_numArgs = numArgs;
 	memcpy_s(m_args, sizeof m_args, args, numArgs * sizeof(void*));
@@ -673,9 +673,7 @@ namespace PluginAPI
 		va_start(args, numArgs);
 		if (caller.vSetArgs(numArgs, args))
 		{
-			ScriptToken *ret = UserFunctionManager::Call(std::move(caller));
-			if (ret)
-				delete ret;
+			delete UserFunctionManager::Call(std::move(caller));
 			return true;
 		}
 		return false;
