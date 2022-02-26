@@ -2124,7 +2124,7 @@ bool ExpressionParser::GetUserFunctionParams(const std::vector<std::string> &par
 			if (outParams[i].varIdx == varInfo->idx)
 				return false;
 
-		outParams.push_back(UserFunctionParam(varInfo->idx, varType));
+		outParams.emplace_back(UserFunctionParam(varInfo->idx, varType));
 	}
 	if (lastVarType != Script::eVarType_Invalid)
 		return false;

@@ -486,11 +486,14 @@ struct NVSECommandTableInterface
  *	CallFunction() attempts to execute a script defined as a user-defined function.
  *	A calling object and containing object can be specified, or passed as NULL.
  *	If successful, it returns true, and the result is passed back from the script
- *	as an NVSEArrayVarInterface::Element. If the script returned nothing, the result
- *	is of type kType_Invalid. Up to 10 arguments can be passed in, of type
+ *	as an NVSEArrayVarInterface::Element.
+ *	If the script returned nothing, the result is of type kType_Invalid.
+ *
+ *	Up to 15 arguments can be passed in, of type
  *	int, float, or char*; support for passing arrays will be implemented later.
  *	To pass a float, it must be cast like so: *(UInt32*)&myFloat.
- *	Prior to xNVSE 6.1.2, only 5 args could be passed.
+ *	(xNVSE 6.1.2 raised the max args from 5 -> 10)
+ *	(xNVSE 6.1.6 raised the max args from 10 -> 15)
  *
  *	GetFunctionParams() returns the number of parameters expected by a function
  *	script. Returns -1 if the script is not a valid function script. Otherwise, if
