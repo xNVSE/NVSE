@@ -130,9 +130,9 @@ public:
 // allows us to call function scripts directly
 class InternalFunctionCaller : public FunctionCaller
 {
-	template <bool isSelfOwning>
+	template <bool IsSelfOwning>
 	bool PopulateArgs_Templ(ScriptEventList* eventList, FunctionInfo* info,
-		const ArrayElement_Templ<isSelfOwning>* altElemArgs);
+		const ArrayElement_Templ<IsSelfOwning>* altElemArgs);
 
 public:
 	InternalFunctionCaller(Script* script, TESObjectREFR* callingObj = NULL, TESObjectREFR* container = NULL)
@@ -151,8 +151,16 @@ public:
 	bool vSetArgs(UInt8 numArgs, va_list args);
 	bool SetArgsRaw(UInt8 numArgs, const void* args);
 
-	template <bool isSelfOwning>
-	bool SetArgs(UInt8 numArgs, const ArrayElement_Templ<isSelfOwning> *elemArgs);
+	template <bool IsSelfOwning>
+	bool SetArgs(UInt8 numArgs, const ArrayElement_Templ<IsSelfOwning> *elemArgs);
+
+	template <bool IsSelfOwning>
+	void GetPopulateArgFunctions(const ArrayElement_Templ<IsSelfOwning>* altElemArgs,
+		std::function<void(UInt32, UInt32&)>& formFunc,
+		std::function<void(UInt32, double&)>& floatFunc,
+		std::function<void(UInt32, double&)>& intFunc,
+		std::function<void(UInt32, const char*&)>& strFunc,
+		std::function<void(UInt32, ArrayID&)>& arrFunc) const;
 
 protected:
 
@@ -185,8 +193,8 @@ namespace PluginAPI {
 ///// InternalFunctionCaller ///////
 /// (since template funcs must be defined in header) ///
 
-template <bool isSelfOwning>
-bool InternalFunctionCaller::SetArgs(UInt8 numArgs, const ArrayElement_Templ<isSelfOwning>* elemArgs)
+template <bool IsSelfOwning>
+bool InternalFunctionCaller::SetArgs(UInt8 numArgs, const ArrayElement_Templ<IsSelfOwning>* elemArgs)
 {
 	if (numArgs > kMaxUdfParams)
 		return false;
@@ -197,15 +205,115 @@ bool InternalFunctionCaller::SetArgs(UInt8 numArgs, const ArrayElement_Templ<isS
 	return true;
 }
 
-template <bool isSelfOwning>
+template <bool IsSelfOwning>
+void InternalFunctionCaller::GetPopulateArgFunctions(const ArrayElement_Templ<IsSelfOwning>* altElemArgs,
+	std::function<void(UInt32, UInt32&)> &formFunc,
+	std::function<void(UInt32, double&)> &floatFunc,
+	std::function<void(UInt32, double&)> &intFunc,
+	std::function<void(UInt32, const char*&)> &strFunc,
+	std::function<void(UInt32, ArrayID&)> &arrFunc) const
+{
+
+	constexpr char altElemExtractionErrorMsg[] = "Cached argument #%u for function script is not %s type, yet the UDF expects that type.";
+
+	// Define lambdas that will be used to define the funcs.
+
+	auto const populateFormArg = [this](UInt32 i, UInt32& formId_out)
+	{
+		if (auto const form = static_cast<TESForm*>(m_args[i]))
+		{
+			formId_out = form->refID;
+		}
+	};
+	auto const populateFormArg_Alt = [altElemArgs, this](UInt32 i, UInt32& formId_out)
+	{
+		if (!altElemArgs[i].GetAsFormID(&formId_out))
+		{
+			ShowRuntimeError(m_script, altElemExtractionErrorMsg, i, "Form");
+		}
+	};
+
+	auto const populateFloatArg = [this](UInt32 i, double& varData_out)
+	{
+		varData_out = *((float*)&m_args[i]);
+	};
+	auto const populateFloatArg_Alt = [altElemArgs, this](UInt32 i, double& varData_out)
+	{
+		if (!altElemArgs[i].GetAsNumber(&varData_out))
+		{
+			ShowRuntimeError(m_script, altElemExtractionErrorMsg, i, "Number");
+		}
+	};
+
+	auto const populateIntArg = [this](UInt32 i, double& varData_out)
+	{
+		varData_out = reinterpret_cast<SInt32>(m_args[i]);
+	};
+	auto const populateIntArg_Alt = [&](UInt32 i, double& varData_out)
+	{
+		populateFloatArg_Alt(i, varData_out);
+		varData_out = static_cast<SInt32>(varData_out);	//floor
+	};
+
+	auto const populateStrArg = [this](UInt32 i, const char*& str_out)
+	{
+		str_out = static_cast<const char*>(m_args[i]);
+	};
+	auto const populateStrArg_Alt = [altElemArgs, this](UInt32 i, const char*& str_out)
+	{
+		if (!altElemArgs[i].GetAsString(&str_out))
+		{
+			ShowRuntimeError(m_script, altElemExtractionErrorMsg, i, "String");
+		}
+	};
+
+	auto const populateArrArg = [this](UInt32 i, ArrayID& arr_out)
+	{
+		arr_out = reinterpret_cast<ArrayID>(m_args[i]);
+	};
+	auto const populateArrArg_Alt = [altElemArgs, this](UInt32 i, ArrayID& arr_out)
+	{
+		if (!altElemArgs[i].GetAsArray(&arr_out))
+		{
+			ShowRuntimeError(m_script, altElemExtractionErrorMsg, i, "Array");
+		}
+	};
+
+	// Define the passed funcs with our lambdas.
+	if (altElemArgs)
+	{
+		formFunc = populateFormArg_Alt;
+		floatFunc = populateFloatArg_Alt;
+		intFunc = populateIntArg_Alt;
+		strFunc = populateStrArg_Alt;
+		arrFunc = populateArrArg_Alt;
+	}
+	else
+	{
+		formFunc = populateFormArg;
+		floatFunc = populateFloatArg;
+		intFunc = populateIntArg;
+		strFunc = populateStrArg;
+		arrFunc = populateArrArg;
+	}
+}
+
+template <bool IsSelfOwning>
 bool InternalFunctionCaller::PopulateArgs_Templ(ScriptEventList* eventList, FunctionInfo* info,
-	const ArrayElement_Templ<isSelfOwning>* altElemArgs)
+	const ArrayElement_Templ<IsSelfOwning>* altElemArgs)
 {
 	DynamicParamInfo& dParams = info->ParamInfo();
 	if (dParams.NumParams() > kMaxUdfParams)
 	{
 		return false;
 	}
+
+	std::function<void(UInt32, UInt32&)> populateFormArgFunc;
+	std::function<void(UInt32, double&)> populateFloatArgFunc;
+	std::function<void(UInt32, double&)> populateIntArgFunc;
+	std::function<void(UInt32, const char*&)> populateStrArgFunc;
+	std::function<void(UInt32, ArrayID&)> populateArrArgFunc;
+	GetPopulateArgFunctions(altElemArgs, populateFormArgFunc, populateFloatArgFunc, populateIntArgFunc, populateStrArgFunc, populateArrArgFunc);
 
 	// populate the args in the event list
 	for (UInt32 i = 0; i < m_numArgs; i++)
@@ -224,70 +332,25 @@ bool InternalFunctionCaller::PopulateArgs_Templ(ScriptEventList* eventList, Func
 			return false;
 		}
 
-		constexpr char altElemExtractionErrorMsg[] = "Cached argument #%u for function script is not %s type, yet the UDF expects that type.";
 		switch (param->varType)
 		{
 		case Script::eVarType_Integer:
-			if (altElemArgs)
-			{
-				if (!altElemArgs[i].GetAsNumber(&var->data))
-				{
-					ShowRuntimeError(m_script, altElemExtractionErrorMsg, i, "Number");
-				}
-				var->data = static_cast<SInt32>(var->data);
-			}
-			else
-			{
-				var->data = reinterpret_cast<SInt32>(m_args[i]);
-			}
+			populateIntArgFunc(i, var->data);
 			break;
 		case Script::eVarType_Float:
-			if (altElemArgs)
-			{
-				if (!altElemArgs[i].GetAsNumber(&var->data))
-				{
-					ShowRuntimeError(m_script, altElemExtractionErrorMsg, i, "Number");
-				}
-			}
-			else
-			{
-				var->data = *((float*)&m_args[i]);
-			}
+			populateFloatArgFunc(i, var->data);
 			break;
 		case Script::eVarType_Ref:
 		{
 			UInt32 formID = 0;
-			if (altElemArgs)
-			{
-				if (!altElemArgs[i].GetAsFormID(&formID))
-				{
-					ShowRuntimeError(m_script, altElemExtractionErrorMsg, i, "Form");
-				}
-			}
-			else
-			{
-				if (auto const form = static_cast<TESForm*>(m_args[i]))
-				{
-					formID = form->refID;
-				}
-			}
+			populateFormArgFunc(i, formID);
 			*((UInt32*)&var->data) = formID;
 		}
 		break;
 		case Script::eVarType_String:
 		{
 			const char* str = nullptr;
-			if (altElemArgs)
-			{
-				if (!altElemArgs[i].GetAsString(&str))
-				{
-					ShowRuntimeError(m_script, altElemExtractionErrorMsg, i, "String");
-				}
-			}
-			else
-			{
-				str = static_cast<const char*>(m_args[i]);
-			}
+			populateStrArgFunc(i, str);
 			var->data = g_StringMap.Add(info->GetScript()->GetModIndex(), str, true);
 			AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_String);
 			break;
@@ -295,18 +358,7 @@ bool InternalFunctionCaller::PopulateArgs_Templ(ScriptEventList* eventList, Func
 		case Script::eVarType_Array:
 		{
 			ArrayID arrID = 0;
-			if (altElemArgs)
-			{
-				if (!altElemArgs[i].GetAsArray(&arrID))
-				{
-					ShowRuntimeError(m_script, altElemExtractionErrorMsg, i, "Array");
-				}
-			}
-			else
-			{
-				arrID = (ArrayID)m_args[i];
-			}
-
+			populateArrArgFunc(i, arrID);
 			if (g_ArrayMap.Get(arrID))
 			{
 				g_ArrayMap.AddReference(&var->data, arrID, info->GetScript()->GetModIndex());
