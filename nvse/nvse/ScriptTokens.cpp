@@ -1540,20 +1540,20 @@ bool ScriptToken::Write(ScriptLineBuffer *buf) const
 }
 
 #if RUNTIME
-ScriptToken *ScriptToken::ToBasicToken()
+ScriptToken *ScriptToken::ToBasicToken() const
 {
 	if (CanConvertTo(kTokenType_String))
 		return Create(GetString());
-	else if (CanConvertTo(kTokenType_Array))
+	if (CanConvertTo(kTokenType_Array))
 		return CreateArray(GetArrayID());
-	else if (CanConvertTo(kTokenType_Form))
+	if (CanConvertTo(kTokenType_Form))
 		return CreateForm(GetFormID());
 	if (CanConvertTo(kTokenType_Number))
 		return Create(GetNumber());
 	return nullptr;
 }
 
-double ScriptToken::GetNumericRepresentation(bool bFromHex)
+double ScriptToken::GetNumericRepresentation(bool bFromHex) const
 {
 	double result = 0.0;
 

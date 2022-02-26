@@ -160,10 +160,12 @@ protected:
 	UInt8			m_numArgs;
 	Script			* m_script;
 	void			* m_args[kMaxUdfParams];
-
-	//Points to an array of ArrElems, which retain useful type information.
-	//Used in order to remember if the nth arg was stored as double/int,
-	//since void* loses that info and forces an incorrect conversion if the UDF guessed wrong w/ having a float vs int arg.
+	
+	//Used because for number-type args, the arrElem always contains a double, which can easily be cast to int if needed.
+	//In contrast, the SetArgs funcs that fill m_args depend on casting either an int or float value to void*,
+	//and we lose track of if it was an int or float.
+	//The above causes a bug where the data can be wrongly interpreted if the UDF numeric arg to be populated is
+	//of the opposite type (float/int) as what we stored in m_args.
 	std::variant<const ArrayElement*, const SelfOwningArrayElement*>
 	m_altElemArgs = static_cast<ArrayElement*>(nullptr);
 
