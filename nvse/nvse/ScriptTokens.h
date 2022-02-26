@@ -273,7 +273,7 @@ struct ScriptToken
 	virtual const ScriptToken *GetToken() const { return NULL; }
 	virtual const TokenPair *GetPair() const { return NULL; }
 
-	ScriptToken *ToBasicToken(); // return clone as one of string, number, array, form
+	ScriptToken *ToBasicToken() const; // return clone as one of string, number, array, form
 
 	TESGlobal *GetGlobal() const;
 	Operator *GetOperator() const;
@@ -294,7 +294,7 @@ struct ScriptToken
 	bool IsGood() const { return type != kTokenType_Invalid; }
 	bool IsVariable() const { return type >= kTokenType_NumericVar && type <= kTokenType_ArrayVar; }
 
-	double GetNumericRepresentation(bool bFromHex); // attempts to convert string to number
+	double GetNumericRepresentation(bool bFromHex) const; // attempts to convert string to number
 	char *DebugPrint() const;
 	bool IsInvalid() const;
 	bool IsOperator() const;

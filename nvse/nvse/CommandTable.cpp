@@ -1785,9 +1785,9 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(SetUIStringAlt);
 
 	// 6.1 beta 00
-	ADD_CMD(CallAfterSeconds);
-	ADD_CMD(CallWhile);
-	ADD_CMD(CallForSeconds);
+	ADD_CMD(CallAfterSeconds_OLD);
+	ADD_CMD(CallWhile_OLD);
+	ADD_CMD(CallForSeconds_OLD);
 	ADD_CMD(ar_DumpF);
 
 	// 6.1 beta 03
@@ -1818,7 +1818,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(CallFunctionCond);
 
 	// 6.2 beta 04
-	ADD_CMD(CallWhen);
+	ADD_CMD(CallWhen_OLD);
 
 	// 6.2 beta 05
 	ADD_CMD(ForEachInList);
@@ -1832,6 +1832,10 @@ void CommandTable::AddCommandsV6()
 
 	// 6.2 beta 06
 	ADD_CMD(sv_Trim);
+	ADD_CMD(CallAfterSeconds);
+	ADD_CMD(CallForSeconds);
+	ADD_CMD(CallWhile);
+	ADD_CMD(CallWhen);
 }
 
 namespace PluginAPI

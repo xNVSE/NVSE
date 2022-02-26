@@ -105,7 +105,14 @@ static ParamInfo kNVSEParams_DispatchEvent[3] =
 
 DEFINE_COMMAND_EXP(DispatchEvent, dispatches a user-defined event to any registered listeners, 0, kNVSEParams_DispatchEvent);
 
-static ParamInfo kParams_CallAfter[18] =
+static ParamInfo kParams_CallAfter_OLD[3] =
+{
+	{	"seconds",	kParamType_Float,	0	},
+	{	"function",	kParamType_AnyForm,0	},
+	{ "runs in menumode", kParamType_Integer, 1}
+};
+
+static ParamInfo kNVSEParams_CallAfter[18] =
 {
 	{	"seconds",	kNVSEParamType_Number,	0	},
 	{	"function",	kNVSEParamType_Form,0	},
@@ -128,10 +135,16 @@ static ParamInfo kParams_CallAfter[18] =
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
-	//max args for UDF is 15
+	//#elems should not exceed max # of UDF args.
 };
 
-static ParamInfo kParams_CallWhile[18] =
+static ParamInfo kParams_CallWhile_OLD[2] =
+{
+	{	"function",	kParamType_AnyForm,	0	},
+	{	"condition",	kParamType_AnyForm,0	},
+};
+
+static ParamInfo kNVSEParams_CallWhile[18] =
 {
 	{	"function",	kNVSEParamType_Form,	0	},
 	{	"condition",	kNVSEParamType_Form,0	},
@@ -154,14 +167,18 @@ static ParamInfo kParams_CallWhile[18] =
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
 	{	"element",	kNVSEParamType_BasicType,	1	},
-	//max args for UDF is 15
-	
+	//#elems should not exceed max # of UDF args.
 };
 
-DEFINE_CMD_ALT_EXP(CallAfterSeconds, CallAfter, "calls UDF after argument number of seconds", false, kParams_CallAfter);
-DEFINE_COMMAND_EXP(CallWhile, "calls UDF each frame while condition is met", false, kParams_CallWhile);
-DEFINE_CMD_ALT_EXP(CallForSeconds, CallFor, "calls UDF each frame for argument number of seconds", false, kParams_CallAfter);
-DEFINE_COMMAND_EXP(CallWhen, "calls UDF once when a condition is met which is polled each frame", false, kParams_CallWhile);
+DEFINE_CMD_ALT(CallAfterSeconds_OLD, CallAfter_OLD, "deprecated", 0, std::size(kParams_CallAfter_OLD), kParams_CallAfter_OLD);
+DEFINE_CMD_ALT(CallForSeconds_OLD, CallFor_OLD, "deprecated", 0, std::size(kParams_CallAfter_OLD), kParams_CallAfter_OLD);
+DEFINE_COMMAND(CallWhile_OLD, "deprecated", 0, std::size(kParams_CallWhile_OLD), kParams_CallWhile_OLD);
+DEFINE_COMMAND(CallWhen_OLD, "deprecated", 0, std::size(kParams_CallWhile_OLD), kParams_CallWhile_OLD);
+
+DEFINE_CMD_ALT_EXP(CallAfterSeconds, CallAfter, "calls UDF after argument number of seconds", false, kNVSEParams_CallAfter);
+DEFINE_CMD_ALT_EXP(CallForSeconds, CallFor, "calls UDF each frame for argument number of seconds", false, kNVSEParams_CallAfter);
+DEFINE_COMMAND_EXP(CallWhile, "calls UDF each frame while condition is met", false, kNVSEParams_CallWhile);
+DEFINE_COMMAND_EXP(CallWhen, "calls UDF once when a condition is met which is polled each frame", false, kNVSEParams_CallWhile);
 
 #if RUNTIME
 using CallArgs = std::vector<SelfOwningArrayElement>;

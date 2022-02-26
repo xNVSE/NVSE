@@ -749,6 +749,19 @@ bool ExtractCallAfterInfo(ExpressionEvaluator& eval, std::list<DelayedCallInfo>&
 	return true;
 }
 
+bool ExtractCallAfterInfo_OLD(COMMAND_ARGS, std::list<DelayedCallInfo>& infos, ICriticalSection& cs)
+{
+	float time;
+	Script* callFunction;
+	UInt32 runInMenuMode = false;
+	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction, &runInMenuMode) || !callFunction || !IS_ID(callFunction, Script))
+		return false;
+
+	ScopedLock lock(cs);
+	infos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj, runInMenuMode ? DelayedCallInfo::kFlag_RunInMenuMode : DelayedCallInfo::kFlags_None);
+	return true;
+}
+
 std::list<DelayedCallInfo> g_callAfterInfos;
 ICriticalSection g_callAfterInfosCS;
 
@@ -760,6 +773,11 @@ bool Cmd_CallAfterSeconds_Execute(COMMAND_ARGS)
 	{
 		*result = ExtractCallAfterInfo(eval, g_callAfterInfos, g_callAfterInfosCS);
 	}
+	return true;
+}
+bool Cmd_CallAfterSeconds_OLD_Execute(COMMAND_ARGS)
+{
+	*result = ExtractCallAfterInfo_OLD(PASS_COMMAND_ARGS, g_callAfterInfos, g_callAfterInfosCS);
 	return true;
 }
 
@@ -774,6 +792,11 @@ bool Cmd_CallForSeconds_Execute(COMMAND_ARGS)
 	{
 		*result = ExtractCallAfterInfo(eval, g_callForInfos, g_callForInfosCS);
 	}
+	return true;
+}
+bool Cmd_CallForSeconds_OLD_Execute(COMMAND_ARGS)
+{
+	*result = ExtractCallAfterInfo_OLD(PASS_COMMAND_ARGS, g_callForInfos, g_callForInfosCS);
 	return true;
 }
 
@@ -810,6 +833,21 @@ bool ExtractCallWhileInfo(ExpressionEvaluator &eval, std::list<CallWhileInfo> &i
 	infos.emplace_back(callFunction, conditionFunction, eval.m_thisObj, flags, std::move(args));
 	return true;
 }
+bool ExtractCallWhileInfo_OLD(COMMAND_ARGS, std::list<CallWhileInfo>& infos, ICriticalSection& cs)
+{
+	Script* callFunction;
+	Script* conditionFunction;
+	if (!ExtractArgs(EXTRACT_ARGS, &callFunction, &conditionFunction))
+		return false;
+
+	for (auto* form : { callFunction, conditionFunction })
+		if (!form || !IS_ID(form, Script))
+			return false;
+
+	ScopedLock lock(cs);
+	infos.emplace_back(callFunction, conditionFunction, thisObj, CallWhileInfo::kFlags_None);
+	return true;
+}
 
 std::list<CallWhileInfo> g_callWhileInfos;
 ICriticalSection g_callWhileInfosCS;
@@ -824,6 +862,12 @@ bool Cmd_CallWhile_Execute(COMMAND_ARGS)
 	}
 	return true;
 }
+bool Cmd_CallWhile_OLD_Execute(COMMAND_ARGS)
+{
+	*result = ExtractCallWhileInfo_OLD(PASS_COMMAND_ARGS, g_callWhileInfos, g_callWhileInfosCS);
+	return true;
+}
+
 
 std::list<CallWhileInfo> g_callWhenInfos;
 ICriticalSection g_callWhenInfosCS;
@@ -837,7 +881,11 @@ bool Cmd_CallWhen_Execute(COMMAND_ARGS)
 		*result = ExtractCallWhileInfo(eval, g_callWhenInfos, g_callWhenInfosCS);
 	}
 	return true;
-
+}
+bool Cmd_CallWhen_OLD_Execute(COMMAND_ARGS)
+{
+	*result = ExtractCallWhileInfo_OLD(PASS_COMMAND_ARGS, g_callWhenInfos, g_callWhenInfosCS);
+	return true;
 }
 
 void DecompileScriptToFolder(const std::string& scriptName, Script* script, const std::string& fileExtension, const std::string_view& modName)
