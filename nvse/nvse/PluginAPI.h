@@ -870,6 +870,8 @@ struct ExpressionEvaluatorUtils
 	void					(__fastcall* AssignCommandResultFromElement)(void* expEval, NVSEArrayVarInterface::Element &result);
 	void					(__fastcall* ScriptTokenGetElement)(PluginScriptToken* scrToken, NVSEArrayVarInterface::Element &outElem);
 	bool					(__fastcall* ScriptTokenCanConvertTo)(PluginScriptToken* scrToken, UInt8 toType);
+
+	bool					(__fastcall* ExtractArgsV)(void* expEval, va_list list);
 #endif
 };
 
@@ -915,6 +917,15 @@ public:
 	void AssignCommandResult(NVSEArrayVarInterface::Element& result)
 	{
 		s_expEvalUtils.AssignCommandResultFromElement(expEval, result);
+	}
+
+	bool ExtractArgsV(void* null, ...)
+	{
+		va_list list;
+		va_start(list, null);
+		const auto result = s_expEvalUtils.ExtractArgsV(expEval, list);
+		va_end(list);
+		return result;
 	}
 #endif
 };
