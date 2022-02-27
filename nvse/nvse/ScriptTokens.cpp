@@ -1673,6 +1673,24 @@ TESForm *ArrayElementToken::GetTESForm() const
 	return out;
 }
 
+bool ArrayElementToken::GetBool() const
+{
+	ArrayVar* arr = g_ArrayMap.Get(GetOwningArrayID());
+	if (!arr)
+		return false;
+
+	ArrayElement* elem = arr->Get(&key, false);
+	if (!elem)
+		return false;
+
+	if (elem->DataType() == kDataType_Numeric)
+		return elem->m_data.num != 0;
+	if (elem->DataType() == kDataType_Form)
+		return elem->m_data.formID != 0;
+
+	return false;
+}
+
 ArrayID ArrayElementToken::GetArrayID() const
 {
 	ArrayID out = 0;

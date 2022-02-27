@@ -443,24 +443,7 @@ struct ArrayElementToken : ScriptToken
 	UInt32 GetFormID() const override;
 	ArrayID GetArrayID() const override;
 	TESForm *GetTESForm() const override;
-	bool GetBool() const override
-	{
-		ArrayVar* arr = g_ArrayMap.Get(GetOwningArrayID());
-		if (!arr)
-			return false;
-
-		ArrayElement* elem = arr->Get(&key, false);
-		if (!elem)
-			return false;
-
-		if (elem->DataType() == kDataType_Numeric)
-			return elem->m_data.num != 0;
-		else if (elem->DataType() == kDataType_Form)
-			return elem->m_data.formID != 0;
-
-		return false;
-		
-	};
+	bool GetBool() const override;
 	bool CanConvertTo(Token_Type to) const override;
 	ArrayID GetOwningArrayID() const override { return type == kTokenType_ArrayElement ? value.arrID : 0; }
 	ArrayVar *GetOwningArrayVar() const { return g_ArrayMap.Get(GetOwningArrayID()); }
