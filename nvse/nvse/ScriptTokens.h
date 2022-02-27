@@ -518,25 +518,8 @@ struct AssignableSubstringArrayElementToken : public AssignableSubstringToken
 	ArrayKey key;
 
 	AssignableSubstringArrayElementToken(UInt32 _id, const ArrayKey &_key, UInt32 lbound, UInt32 ubound);
-	ArrayID GetArrayID() const override { return value.arrID; }
-	bool Assign(const char *str) override
-	{
-		ArrayElement* elem = g_ArrayMap.GetElement(value.arrID, &key);
-		const char* pElemStr;
-		if (elem && elem->GetAsString(&pElemStr) && (lower <= upper) && (upper < StrLen(pElemStr)))
-		{
-			std::string elemStr(pElemStr);
-			elemStr.erase(lower, upper - lower + 1);
-			if (str)
-			{
-				elemStr.insert(lower, str);
-				elem->SetString(elemStr.c_str());
-				substring = elemStr;
-			}
-			return true;
-		}
-		return false;
-	};
+	[[nodiscard]] ArrayID GetArrayID() const override { return value.arrID; }
+	bool Assign(const char* str) override;
 
 	void *operator new(size_t size)
 	{

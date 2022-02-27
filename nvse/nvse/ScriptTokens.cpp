@@ -558,6 +558,25 @@ AssignableSubstringArrayElementToken::AssignableSubstringArrayElementToken(UInt3
 	}
 }
 
+bool AssignableSubstringArrayElementToken::Assign(const char* str)
+{
+	ArrayElement* elem = g_ArrayMap.GetElement(value.arrID, &key);
+	const char* pElemStr;
+	if (elem && elem->GetAsString(&pElemStr) && (lower <= upper) && (upper < StrLen(pElemStr)))
+	{
+		std::string elemStr(pElemStr);
+		elemStr.erase(lower, upper - lower + 1);
+		if (str)
+		{
+			elemStr.insert(lower, str);
+			elem->SetString(elemStr.c_str());
+			substring = elemStr;
+		}
+		return true;
+	}
+	return false;
+}
+
 bool AssignableSubstringStringVarToken::Assign(const char *str)
 {
 	StringVar *strVar = g_StringMap.Get(value.arrID);
