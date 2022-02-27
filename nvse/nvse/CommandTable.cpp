@@ -1083,6 +1083,7 @@ void CommandTable::AddCommandsV1()
 	g_scriptCommands.SetReturnType(0x11CF, kRetnType_Form); // GetPlayerGrabbedRef
 	g_scriptCommands.SetReturnType(0x124E, kRetnType_Form); // GetOwnerLastTarget
 	g_scriptCommands.SetReturnType(0x1265, kRetnType_Form); // ObjectUnderTheReticule
+	g_scriptCommands.SetReturnType(0x11D1, kRetnType_Form); // PlaceLeveledActorAtMe
 
 	RecordReleaseVersion();
 
