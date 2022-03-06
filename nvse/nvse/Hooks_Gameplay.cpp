@@ -77,8 +77,7 @@ void HandleDelayedCall(float timeDelta, bool isMenuMode)
 		}
 		if (g_gameSecondsPassed >= iter->time)
 		{
-			InternalFunctionCaller caller(iter->script, iter->thisObj);
-			caller.SetArgs(iter->args.size(), iter->args.data());
+			ArrayElementArgFunctionCaller caller(iter->script, iter->args, iter->thisObj);
 			delete UserFunctionManager::Call(std::move(caller));
 			iter = g_callAfterInfos.erase(iter); // yes, this is valid: https://stackoverflow.com/a/3901380/6741772
 		}
@@ -98,18 +97,18 @@ void HandleCallWhileScripts()
 	auto iter = g_callWhileInfos.begin();
 	while (iter != g_callWhileInfos.end())
 	{
-		InternalFunctionCaller conditionCaller(iter->condition);
+		ArrayElementArgFunctionCaller conditionCaller(iter->condition);
 		if (iter->PassArgsToCondFunc())
 		{
-			conditionCaller.SetArgs(iter->args.size(), iter->args.data());
+			conditionCaller.SetArgs(iter->args);
 		}
 
 		if (auto const conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); 
 			conditionResult && conditionResult->GetBool())
 		{
-			InternalFunctionCaller scriptCaller(iter->callFunction, iter->thisObj);
+			ArrayElementArgFunctionCaller scriptCaller(iter->callFunction, iter->thisObj);
 			if (iter->PassArgsToCallFunc())
-				scriptCaller.SetArgs(iter->args.size(), iter->args.data());
+				scriptCaller.SetArgs(iter->args);
 			delete UserFunctionManager::Call(std::move(scriptCaller));
 			++iter;
 		}
@@ -129,18 +128,18 @@ void HandleCallWhenScripts()
 	auto iter = g_callWhenInfos.begin();
 	while (iter != g_callWhenInfos.end())
 	{
-		InternalFunctionCaller conditionCaller(iter->condition);
+		ArrayElementArgFunctionCaller conditionCaller(iter->condition, iter->args);
 		if (iter->PassArgsToCondFunc())
 		{
-			conditionCaller.SetArgs(iter->args.size(), iter->args.data());
+			conditionCaller.SetArgs(iter->args);
 		}
 
 		if (auto const conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); 
 			conditionResult && conditionResult->GetBool())
 		{
-			InternalFunctionCaller scriptCaller(iter->callFunction, iter->thisObj);
+			ArrayElementArgFunctionCaller scriptCaller(iter->callFunction, iter->thisObj);
 			if (iter->PassArgsToCallFunc())
-				scriptCaller.SetArgs(iter->args.size(), iter->args.data());
+				scriptCaller.SetArgs(iter->args);
 			delete UserFunctionManager::Call(std::move(scriptCaller));
 			iter = g_callWhenInfos.erase(iter);
 		}
@@ -166,8 +165,7 @@ void HandleCallForScripts(float timeDelta, bool isMenuMode)
 		}
 		if (g_gameSecondsPassed < iter->time)
 		{
-			InternalFunctionCaller caller(iter->script, iter->thisObj);
-			caller.SetArgs(iter->args.size(), iter->args.data());
+			ArrayElementArgFunctionCaller caller(iter->script, iter->args, iter->thisObj);
 			delete UserFunctionManager::Call(std::move(caller));
 			++iter;
 		}

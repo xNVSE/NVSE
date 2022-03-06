@@ -205,7 +205,7 @@ ScriptEventList *EventListFromForm(TESForm *form);
 
 Script *GetParentScript(Script *script, ScriptEventList *eventList, UInt16 refIdx);
 
-const char *GetVariableName(ScriptLocal *var, Script *script, ScriptEventList *eventList, UInt16 refIdx);
+const char *GetVariableName(ScriptLocal *var, Script *script, ScriptEventList *eventList, UInt16 refIdx = 0);
 
 typedef bool (*_MarkBaseExtraListScriptEvent)(TESForm *target, BaseExtraList *extraList, UInt32 eventMask);
 extern const _MarkBaseExtraListScriptEvent MarkBaseExtraListScriptEvent;

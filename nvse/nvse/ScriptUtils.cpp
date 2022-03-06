@@ -1780,6 +1780,29 @@ void ExpressionEvaluator::PrintStackTrace()
 #if RUNTIME
 thread_local SmallObjectsAllocator::FastAllocator<ExpressionEvaluator, 4> g_pluginExpEvalAllocator;
 
+bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem)
+{
+	ScriptToken* basicToken = token->ToBasicToken();
+	if (!basicToken)
+		return false;
+
+	bool bResult = true;
+
+	if (basicToken->CanConvertTo(kTokenType_Number))
+		elem.SetNumber(basicToken->GetNumber());
+	else if (basicToken->CanConvertTo(kTokenType_String))
+		elem.SetString(basicToken->GetString());
+	else if (basicToken->CanConvertTo(kTokenType_Form))
+		elem.SetFormID(basicToken->GetFormID());
+	else if (basicToken->CanConvertTo(kTokenType_Array))
+		elem.SetArray(basicToken->GetArrayID());
+	else
+		bResult = false;
+
+	delete basicToken;
+	return bResult;
+}
+
 void *__stdcall ExpressionEvaluatorCreate(COMMAND_ARGS)
 {
 	ExpressionEvaluator *expEval = g_pluginExpEvalAllocator.Allocate();
