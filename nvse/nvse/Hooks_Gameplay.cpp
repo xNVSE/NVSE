@@ -97,7 +97,7 @@ void HandleCallWhileScripts()
 	auto iter = g_callWhileInfos.begin();
 	while (iter != g_callWhileInfos.end())
 	{
-		ArrayElementArgFunctionCaller conditionCaller(iter->condition);
+		ArrayElementArgFunctionCaller<SelfOwningArrayElement> conditionCaller(iter->condition);
 		if (iter->PassArgsToCondFunc())
 		{
 			conditionCaller.SetArgs(iter->args);
@@ -106,7 +106,7 @@ void HandleCallWhileScripts()
 		if (auto const conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); 
 			conditionResult && conditionResult->GetBool())
 		{
-			ArrayElementArgFunctionCaller scriptCaller(iter->callFunction, iter->thisObj);
+			ArrayElementArgFunctionCaller<SelfOwningArrayElement> scriptCaller(iter->callFunction, iter->thisObj);
 			if (iter->PassArgsToCallFunc())
 				scriptCaller.SetArgs(iter->args);
 			delete UserFunctionManager::Call(std::move(scriptCaller));
@@ -137,7 +137,7 @@ void HandleCallWhenScripts()
 		if (auto const conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); 
 			conditionResult && conditionResult->GetBool())
 		{
-			ArrayElementArgFunctionCaller scriptCaller(iter->callFunction, iter->thisObj);
+			ArrayElementArgFunctionCaller<SelfOwningArrayElement> scriptCaller(iter->callFunction, iter->thisObj);
 			if (iter->PassArgsToCallFunc())
 				scriptCaller.SetArgs(iter->args);
 			delete UserFunctionManager::Call(std::move(scriptCaller));

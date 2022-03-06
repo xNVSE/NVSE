@@ -678,7 +678,8 @@ bool InternalFunctionCaller::SetArgsRaw(UInt8 numArgs, const void* args)
 	return true;
 }
 
-bool ArrayElementArgFunctionCaller::PopulateArgs(ScriptEventList* eventList, FunctionInfo* info)
+template <BaseOfArrayElement T>
+bool ArrayElementArgFunctionCaller<T>::PopulateArgs(ScriptEventList* eventList, FunctionInfo* info)
 {
 	if (!m_args)
 		return true;
@@ -749,10 +750,13 @@ bool ArrayElementArgFunctionCaller::PopulateArgs(ScriptEventList* eventList, Fun
 	return true;
 }
 
-void ArrayElementArgFunctionCaller::SetArgs(const std::vector<SelfOwningArrayElement>& args)
+template <BaseOfArrayElement T>
+void ArrayElementArgFunctionCaller<T>::SetArgs(const std::vector<T>& args)
 {
 	m_args = &args;
 }
+
+template class ArrayElementArgFunctionCaller<SelfOwningArrayElement>;
 
 namespace PluginAPI
 {

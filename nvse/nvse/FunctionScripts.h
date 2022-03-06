@@ -159,10 +159,14 @@ protected:
 	virtual bool ValidateParam(UserFunctionParam* param, UInt8 paramIndex) { return param != nullptr; }
 };
 
+template <typename T>
+concept BaseOfArrayElement = std::is_base_of_v<ArrayElement, T>;
+
+template <BaseOfArrayElement T>
 class ArrayElementArgFunctionCaller : public FunctionCaller
 {
 public:
-	ArrayElementArgFunctionCaller(Script* script, const std::vector<SelfOwningArrayElement>& args, TESObjectREFR* callingObj = nullptr, TESObjectREFR* container = nullptr)
+	ArrayElementArgFunctionCaller(Script* script, const std::vector<T>& args, TESObjectREFR* callingObj = nullptr, TESObjectREFR* container = nullptr)
 		: m_script(script), m_thisObj(callingObj), m_container(container), m_args(&args) {}
 	ArrayElementArgFunctionCaller(Script* script, TESObjectREFR* callingObj = nullptr, TESObjectREFR* container = nullptr)
 		: m_script(script), m_thisObj(callingObj), m_container(container) {}
@@ -173,12 +177,12 @@ public:
 	TESObjectREFR* ContainingObj() override { return m_container; }
 
 	bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info) override;
-	void SetArgs(const std::vector<SelfOwningArrayElement>& args);
+	void SetArgs(const std::vector<T>& args);
 protected:
 	Script* m_script;
 	TESObjectREFR* m_thisObj;
 	TESObjectREFR* m_container;
-	const std::vector<SelfOwningArrayElement>* m_args{};
+	const std::vector<T>* m_args{};
 };
 
 namespace PluginAPI {
