@@ -1813,34 +1813,40 @@ void *__stdcall ExpressionEvaluatorCreate(COMMAND_ARGS)
 
 void __fastcall ExpressionEvaluatorDestroy(void *expEval)
 {
-	reinterpret_cast<ExpressionEvaluator *>(expEval)->~ExpressionEvaluator();
+	static_cast<ExpressionEvaluator *>(expEval)->~ExpressionEvaluator();
 	g_pluginExpEvalAllocator.Free(expEval);
 }
 
 bool __fastcall ExpressionEvaluatorExtractArgs(void *expEval)
 {
-	return reinterpret_cast<ExpressionEvaluator *>(expEval)->ExtractArgs();
+	return static_cast<ExpressionEvaluator *>(expEval)->ExtractArgs();
 }
 
 UInt8 __fastcall ExpressionEvaluatorGetNumArgs(void *expEval)
 {
-	return reinterpret_cast<ExpressionEvaluator *>(expEval)->NumArgs();
+	return static_cast<ExpressionEvaluator *>(expEval)->NumArgs();
 }
 
 PluginScriptToken *__fastcall ExpressionEvaluatorGetNthArg(void *expEval, UInt32 argIdx)
 {
-	return reinterpret_cast<PluginScriptToken *>(reinterpret_cast<ExpressionEvaluator *>(expEval)->Arg(argIdx));
+	return reinterpret_cast<PluginScriptToken *>(static_cast<ExpressionEvaluator *>(expEval)->Arg(argIdx));
 }
 
 void __fastcall ExpressionEvaluatorSetExpectedReturnType(void* expEval, UInt8 retnType)
 {
-	reinterpret_cast<ExpressionEvaluator*>(expEval)->ExpectReturnType(static_cast<CommandReturnType>(retnType));
+	static_cast<ExpressionEvaluator*>(expEval)->ExpectReturnType(static_cast<CommandReturnType>(retnType));
 }
 
 void __fastcall ExpressionEvaluatorAssignCommandResultFromElement(void* expEval, NVSEArrayVarInterface::Element& result)
 {
-	auto const eval = reinterpret_cast<ExpressionEvaluator*>(expEval);
+	auto const eval = static_cast<ExpressionEvaluator*>(expEval);
 	eval->AssignAmbiguousResult(result, result.GetReturnType());
+}
+
+bool __fastcall ExpressionEvaluatorExtractArgsV(void* expEval, va_list list)
+{
+	auto const eval = static_cast<ExpressionEvaluator*>(expEval);
+	return eval->ExtractArgsV(list);
 }
 #endif
 
@@ -3591,7 +3597,7 @@ double ExpressionEvaluator::ReadFloat()
 	return data;
 }
 
-char *ExpressionEvaluator::ReadString(UInt32 &incrData)
+char *ExpressionEvaluator::ReadString(UInt32& incrData)
 {
 	UInt16 len = Read16();
 	incrData = 2 + len;
@@ -3714,6 +3720,78 @@ bool ExpressionEvaluator::ExtractArgs()
 	}
 	else
 		return false;
+}
+
+bool ExpressionEvaluator::ExtractArgsV(void* null, ...)
+{
+
+	va_list list;
+	va_start(list, null);
+	const auto result = ExtractArgsV(list);
+	va_end(list);
+	return result;
+}
+
+bool ExpressionEvaluator::ExtractArgsV(va_list list)
+{
+	if (!ExtractArgs())
+		return false;
+	for (int i = 0; i < NumArgs(); ++i)
+	{
+		auto* arg = Arg(i);
+		if (!arg)
+			return false;
+		switch (arg->type) {
+		case kTokenType_Number:
+		case kTokenType_Boolean:
+		case kTokenType_NumericVar:
+		case kTokenType_Global:
+		{
+			*va_arg(list, double*) = arg->GetNumber();
+			break;
+		}
+		case kTokenType_StringVar:
+		case kTokenType_String:
+		{
+			*va_arg(list, const char**) = arg->GetString();
+			break;
+		}
+		case kTokenType_Form:
+		case kTokenType_Ref:
+		case kTokenType_Lambda:
+		case kTokenType_RefVar:
+		{
+			*va_arg(list, TESForm**) = arg->GetTESForm();
+			break;
+		}
+		case kTokenType_Array:
+		case kTokenType_ArrayVar:
+		{
+			*va_arg(list, ArrayVar**) = arg->GetArrayVar();
+			break;
+		}
+		case kTokenType_Slice:
+		{
+			*va_arg(list, const Slice**) = arg->GetSlice();
+			break;
+		}
+		default:
+		{
+			if (arg->CanConvertTo(kTokenType_Number))
+				*va_arg(list, double*) = arg->GetNumber();
+			else if (arg->CanConvertTo(kTokenType_Form))
+				*va_arg(list, TESForm**) = arg->GetTESForm();
+			else if (arg->CanConvertTo(kTokenType_String))
+				*va_arg(list, const char**) = arg->GetString();
+			else if (arg->CanConvertTo(kTokenType_Array))
+				*va_arg(list, ArrayVar**) = arg->GetArrayVar();
+			else
+				*va_arg(list, void**) = nullptr;
+			break;
+		}
+		}
+	}
+	return true;
 }
 
 bool ExpressionEvaluator::ExtractDefaultArgs(va_list varArgs, bool bConvertTESForms)

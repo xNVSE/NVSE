@@ -424,54 +424,6 @@ void ScriptToken::operator delete(void *p, bool useMemoryPool)
 		::operator delete(p);
 }
 
-ScriptToken::ScriptToken(ScriptToken&& other) noexcept: type(other.type),
-	variableType(other.variableType),
-	value(other.value),
-	useRefFromStack(other.useRefFromStack),
-	refIdx(other.refIdx),
-	cached(other.cached),
-	returnType(other.returnType),
-	cmdOpcodeOffset(other.cmdOpcodeOffset),
-	context(other.context),
-	varIdx(other.varIdx),
-	shortCircuitParentType(other.shortCircuitParentType),
-	shortCircuitDistance(other.shortCircuitDistance),
-	shortCircuitStackOffset(other.shortCircuitStackOffset),
-	formOrNumber(other.formOrNumber),
-#if _DEBUG
-	varName(std::move(other.varName)),
-#endif
-	memoryPooled(other.memoryPooled)
-{
-	other.value.num = 0;
-}
-
-ScriptToken& ScriptToken::operator=(ScriptToken&& other) noexcept
-{
-	if (this == &other)
-		return *this;
-	type = other.type;
-	variableType = other.variableType;
-	value = other.value;
-	useRefFromStack = other.useRefFromStack;
-	refIdx = other.refIdx;
-	cached = other.cached;
-	returnType = other.returnType;
-	cmdOpcodeOffset = other.cmdOpcodeOffset;
-	context = other.context;
-	varIdx = other.varIdx;
-	shortCircuitParentType = other.shortCircuitParentType;
-	shortCircuitDistance = other.shortCircuitDistance;
-	shortCircuitStackOffset = other.shortCircuitStackOffset;
-	formOrNumber = other.formOrNumber;
-#if _DEBUG
-	varName = std::move(other.varName);
-#endif
-	memoryPooled = other.memoryPooled;
-	other.value.num = 0;
-	return *this;
-}
-
 // C++20 destroying delete can avoid calling destructor if we don't want the object deleted
 // derived classes will not call this delete (tested), they will continue using their own non-destroying operator delete overload
 void ScriptToken::operator delete(ScriptToken *token, std::destroying_delete_t)

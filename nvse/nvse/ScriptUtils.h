@@ -92,6 +92,9 @@ public:
 	UInt32 NumParams()	{ return m_numParams;	}
 };
 
+template <typename T>
+concept ArrayElementOrScriptToken = std::is_base_of_v<ArrayElement, T> || std::is_base_of_v<NVSEArrayVarInterface::Element, T> || std::is_base_of_v<ScriptToken, T>;
+
 struct PluginScriptToken;
 
 class ExpressionEvaluator
@@ -157,6 +160,8 @@ public:
 
 	// extract args compiled by ExpressionParser
 	bool			ExtractArgs();
+	bool			ExtractArgsV(void*, ...);
+	bool			ExtractArgsV(va_list list);
 
 	// extract args to function which normally uses Cmd_Default_Parse but has been compiled instead by ExpressionParser
 	// bConvertTESForms will be true if invoked from ExtractArgs(), false if from ExtractArgsEx()
@@ -184,8 +189,8 @@ public:
 	UInt8			NumArgs() { return m_numArgsExtracted; }
 	void			SetParams(ParamInfo* newParams)	{	m_params = newParams;	}
 	void			ExpectReturnType(CommandReturnType type) { m_expectedReturnType = type; }
-	
-	template <typename T>
+
+	template		<ArrayElementOrScriptToken T>
 	void			AssignAmbiguousResult(T &result, CommandReturnType type);
 	
 	void			ToggleErrorSuppression(bool bSuppress);
@@ -209,8 +214,10 @@ public:
 	CommandInfo* GetCommand() const;
 };
 
+
 #if RUNTIME
-template <typename T>
+
+template <ArrayElementOrScriptToken T>
 void ExpressionEvaluator::AssignAmbiguousResult(T &result, CommandReturnType type)
 {
 	switch (type)
@@ -252,6 +259,7 @@ UInt8 __fastcall ExpressionEvaluatorGetNumArgs(void *expEval);
 PluginScriptToken* __fastcall ExpressionEvaluatorGetNthArg(void *expEval, UInt32 argIdx);
 void __fastcall ExpressionEvaluatorSetExpectedReturnType(void* expEval, UInt8 retnType);
 void __fastcall ExpressionEvaluatorAssignCommandResultFromElement(void* expEval, NVSEArrayVarInterface::Element &result);
+bool __fastcall ExpressionEvaluatorExtractArgsV(void* expEval, va_list list);
 #endif
 
 
