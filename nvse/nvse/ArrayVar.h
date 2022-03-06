@@ -101,15 +101,18 @@ STATIC_ASSERT(sizeof(ArrayData) == 0x10);
 
 struct ArrayElement
 {
+private:
+	void Unset_Regular();	//to avoid calling virtual func in dtor.
+public:
 	friend class ArrayVar;
 	friend class ArrayVarMap;
 	
-	~ArrayElement();
+	virtual ~ArrayElement();
 	ArrayElement();
 
 	ArrayData	m_data;
 
-	void  Unset();
+	virtual void  Unset();
 
 	[[nodiscard]] DataType DataType() const {return m_data.dataType;}
 
@@ -129,7 +132,7 @@ struct ArrayElement
 	}	//unlike SetFormID, will not store lambda info!
 	bool SetFormID(UInt32 refID);
 	bool SetString(const char* str);
-	bool SetArray(ArrayID arr);	
+	virtual bool SetArray(ArrayID arr);	
 	bool SetNumber(double num);
 	bool Set(const ArrayElement* elem);
 
@@ -152,11 +155,15 @@ struct ArrayElement
 	[[nodiscard]] void* GetAsVoidArg() const { return m_data.GetAsVoidArg(); }
 };
 
+//Assumes owningArray is always null.
+//Unlike ArrayElement, will increase ref counter for an array value even though owningArray is null.
 class SelfOwningArrayElement : public ArrayElement
 {
+	void Unset_SelfOwning();	//to avoid calling virtual func in dtor.
 public:
-	bool SetArray(ArrayID arr);
-	void Unset();
+	~SelfOwningArrayElement() override;
+	bool SetArray(ArrayID arr) override;
+	void Unset() override;
 };
 
 struct ArrayKey

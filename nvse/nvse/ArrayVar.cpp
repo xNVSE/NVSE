@@ -50,7 +50,7 @@ ArrayElement::ArrayElement()
 
 ArrayElement::~ArrayElement()
 {
-	Unset();
+	Unset_Regular();
 }
 
 
@@ -321,7 +321,7 @@ bool ArrayElement::GetBool() const
 }
 
 
-void ArrayElement::Unset()
+void ArrayElement::Unset_Regular()
 {
 	if (m_data.dataType == kDataType_Invalid)
 		return;
@@ -347,6 +347,11 @@ void ArrayElement::Unset()
 	}
 
 	m_data.dataType = kDataType_Invalid;
+}
+
+void ArrayElement::Unset()
+{
+	Unset_Regular();
 }
 
 
@@ -411,6 +416,36 @@ ArrayData::ArrayData(const ArrayData& from) : dataType(from.dataType), owningArr
 }
 
 ///////////////////////
+// SelfOwningArrayElement
+//////////////////////
+
+void SelfOwningArrayElement::Unset_SelfOwning()
+{
+	if (m_data.dataType == kDataType_Array && !m_data.owningArray)
+		g_ArrayMap.RemoveReference(&m_data.arrID, 0xFF);
+	ArrayElement::Unset();
+}
+
+SelfOwningArrayElement::~SelfOwningArrayElement()
+{
+	Unset_SelfOwning();
+}
+
+bool SelfOwningArrayElement::SetArray(ArrayID arr)
+{
+	if (!ArrayElement::SetArray(arr))
+		return false;
+	if (!m_data.owningArray) //should always be true.
+		g_ArrayMap.AddReference(&m_data.arrID, arr, 0xFF);
+	return true;
+}
+
+void SelfOwningArrayElement::Unset()
+{
+	Unset_SelfOwning();
+}
+
+///////////////////////
 // ArrayKey
 //////////////////////
 
@@ -418,22 +453,6 @@ UInt8 __fastcall GetArrayOwningModIndex(ArrayID arrID)
 {
 	ArrayVar* arr = g_ArrayMap.Get(arrID);
 	return arr ? arr->OwningModIndex() : 0;
-}
-
-bool SelfOwningArrayElement::SetArray(ArrayID arr)
-{
-	if (!ArrayElement::SetArray(arr))
-		return false;
-	if (!m_data.owningArray)
-		g_ArrayMap.AddReference(&m_data.arrID, arr, 0xFF);
-	return true;
-}
-
-void SelfOwningArrayElement::Unset()
-{
-	ArrayElement::Unset();
-	if (m_data.dataType == kDataType_Array && !m_data.owningArray)
-		g_ArrayMap.RemoveReference(&m_data.arrID, 0xFF);
 }
 
 ArrayKey::ArrayKey()
