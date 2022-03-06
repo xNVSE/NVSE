@@ -101,7 +101,7 @@ STATIC_ASSERT(sizeof(ArrayData) == 0x10);
 
 struct ArrayElement
 {
-private:
+protected:
 	void Unset_Regular();	//to avoid calling virtual func in dtor.
 public:
 	friend class ArrayVar;
@@ -159,6 +159,7 @@ public:
 //Unlike ArrayElement, will increase ref counter for an array value even though owningArray is null.
 class SelfOwningArrayElement : public ArrayElement
 {
+protected:
 	void Unset_SelfOwning();	//to avoid calling virtual func in dtor.
 public:
 	~SelfOwningArrayElement() override;

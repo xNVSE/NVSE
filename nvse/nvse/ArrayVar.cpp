@@ -423,7 +423,7 @@ void SelfOwningArrayElement::Unset_SelfOwning()
 {
 	if (m_data.dataType == kDataType_Array && !m_data.owningArray)
 		g_ArrayMap.RemoveReference(&m_data.arrID, 0xFF);
-	ArrayElement::Unset();
+	ArrayElement::Unset_Regular();
 }
 
 SelfOwningArrayElement::~SelfOwningArrayElement()
