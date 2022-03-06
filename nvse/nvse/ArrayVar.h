@@ -278,7 +278,6 @@ typedef ArrayVarElementContainer::iterator ArrayIterator;
 
 class ArrayVar
 {
-	friend struct ArrayElement_Templ;
 	friend class ArrayVarMap;
 	friend class Matrix;
 	friend class PluginAPI::ArrayAPI;
