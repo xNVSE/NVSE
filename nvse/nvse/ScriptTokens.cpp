@@ -186,7 +186,7 @@ bool ScriptToken::IsLogicalOperator() const
 }
 
 #if RUNTIME
-std::string ScriptToken::GetVariableDataAsString()
+std::string ScriptToken::GetVariableDataAsString() const
 {
 	switch (Type())
 	{
@@ -327,69 +327,65 @@ void ForEachContextToken::operator delete(void *p)
 	g_forEachTokenAllocator.Free(p);
 }
 
-ScriptToken *ScriptToken::Create(ForEachContext *forEach)
+std::unique_ptr<ScriptToken> ScriptToken::Create(ForEachContext *forEach)
 {
 	if (!forEach)
-		return NULL;
+		return nullptr;
 
 	if (forEach->variableType == Script::eVarType_String)
 	{
 		if (!g_StringMap.Get(forEach->iteratorID) || !g_StringMap.Get(forEach->sourceID))
-			return NULL;
+			return nullptr;
 	}
 	else if (forEach->variableType == Script::eVarType_Array)
 	{
 		if (!g_ArrayMap.Get(forEach->sourceID) || !g_ArrayMap.Get(forEach->iteratorID))
-			return NULL;
+			return nullptr;
 	}
 	else if (forEach->variableType == Script::eVarType_Ref)
 	{
-		auto form = (TESForm *)forEach->sourceID;
-		TESObjectREFR *target = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+		auto const form = (TESForm *)forEach->sourceID;
+		auto const target = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
 		if (!target && NOT_ID(form, BGSListForm))
-			return NULL;
+			return nullptr;
 	}
 	else
-		return NULL;
+		return nullptr;
 
-	return new ForEachContextToken(forEach->sourceID, forEach->iteratorID, forEach->variableType, forEach->var);
+	return std::make_unique<ForEachContextToken>(forEach->sourceID, forEach->iteratorID, forEach->variableType, forEach->var);
 }
 
-ScriptToken *ScriptToken::Create(ArrayID arrID, ArrayKey *key)
+std::unique_ptr<ScriptToken> ScriptToken::Create(ArrayID arrID, ArrayKey *key)
 {
 	if (key)
-		return new ArrayElementToken(arrID, key);
-	else
-		return NULL;
+		return std::make_unique<ArrayElementToken>(arrID, key);
+	return nullptr;
 }
 
-ScriptToken *ScriptToken::Create(Slice *slice)
+std::unique_ptr<ScriptToken> ScriptToken::Create(Slice *slice)
 {
 	if (slice)
-		return new SliceToken(slice);
-	else
-		return NULL;
+		return std::make_unique<SliceToken>(slice);
+	return nullptr;
 }
 
-ScriptToken *ScriptToken::Create(ScriptToken *l, ScriptToken *r)
+std::unique_ptr<ScriptToken> ScriptToken::Create(ScriptToken *l, ScriptToken *r)
 {
-	return new PairToken(l, r);
+	return std::make_unique<PairToken>(l, r);
 }
 
-ScriptToken *ScriptToken::Create(UInt32 varID, UInt32 lbound, UInt32 ubound)
+std::unique_ptr<ScriptToken> ScriptToken::Create(UInt32 varID, UInt32 lbound, UInt32 ubound)
 {
-	return new AssignableSubstringStringVarToken(varID, lbound, ubound);
+	return std::make_unique<AssignableSubstringStringVarToken>(varID, lbound, ubound);
 }
 
-ScriptToken *ScriptToken::Create(ArrayElementToken *elem, UInt32 lbound, UInt32 ubound)
+std::unique_ptr<ScriptToken> ScriptToken::Create(ArrayElementToken *elem, UInt32 lbound, UInt32 ubound)
 {
-
 	if (elem && elem->GetString())
 	{
-		return new AssignableSubstringArrayElementToken(elem->GetOwningArrayID(), *elem->GetArrayKey(), lbound, ubound);
+		return std::make_unique<AssignableSubstringArrayElementToken>(elem->GetOwningArrayID(), *elem->GetArrayKey(), lbound, ubound);
 	}
-
-	return NULL;
+	return nullptr;
 }
 
 void *ScriptToken::operator new(size_t size)
@@ -445,7 +441,7 @@ ArrayElementToken::ArrayElementToken(ArrayID arr, ArrayKey *_key)
 	key = *_key;
 }
 
-TokenPair::TokenPair(ScriptToken *l, ScriptToken *r) : left(NULL), right(NULL)
+TokenPair::TokenPair(ScriptToken *l, ScriptToken *r) : left(nullptr), right(nullptr)
 {
 	if (l && r)
 	{
@@ -455,18 +451,12 @@ TokenPair::TokenPair(ScriptToken *l, ScriptToken *r) : left(NULL), right(NULL)
 			right = r->ToBasicToken();
 			if (!right)
 			{
-				delete left;
-				left = NULL;
+				left = nullptr;
 			}
 		}
 	}
 }
 
-TokenPair::~TokenPair()
-{
-	delete left;
-	delete right;
-}
 
 PairToken::PairToken(ScriptToken *l, ScriptToken *r) : ScriptToken(kTokenType_Pair, Script::eVarType_Invalid, 0), pair(l, r)
 {
@@ -549,7 +539,7 @@ bool AssignableSubstringStringVarToken::Assign(const char *str)
 	return false;
 }
 
-ScriptToken* ScriptToken::ForwardEvalResult()
+std::unique_ptr<ScriptToken> ScriptToken::ForwardEvalResult() const
 {
 	if (CanConvertTo(kTokenType_Number)) [[likely]]
 		return Create(GetNumber());
@@ -873,7 +863,7 @@ ArrayID ScriptToken::GetArrayID() const
 	return 0;
 }
 
-ArrayVar *ScriptToken::GetArrayVar()
+ArrayVar *ScriptToken::GetArrayVar() const
 {
 	return g_ArrayMap.Get(GetArrayID());
 }
@@ -970,7 +960,7 @@ bool ScriptToken::ResolveVariable()
 	return true;
 }
 
-Script* ScriptToken::GetUserFunction()
+Script* ScriptToken::GetUserFunction() const
 {
 	auto* form = GetTESForm();
 	if (!form)
@@ -1026,7 +1016,7 @@ CommandInfo *ScriptToken::GetCommandInfo() const
 
 #if RUNTIME
 
-std::string ScriptToken::GetStringRepresentation()
+std::string ScriptToken::GetStringRepresentation() const
 {
 	if (CanConvertTo(kTokenType_String))
 		return GetString();
@@ -1039,7 +1029,7 @@ std::string ScriptToken::GetStringRepresentation()
 	return "";
 }
 
-UInt32 ScriptToken::GetActorValue()
+UInt32 ScriptToken::GetActorValue() const
 {
 	UInt32 actorVal = eActorVal_NoActorValue;
 	if (CanConvertTo(kTokenType_Number))
@@ -1062,7 +1052,7 @@ UInt32 ScriptToken::GetActorValue()
 	return actorVal;
 }
 
-UInt32 ScriptToken::GetAnimationGroup()
+UInt32 ScriptToken::GetAnimationGroup() const
 {
 	if (CanConvertTo(kTokenType_Number))
 		return GetNumber();
@@ -1071,7 +1061,7 @@ UInt32 ScriptToken::GetAnimationGroup()
 	return TESAnimGroup::kAnimGroup_Max;
 }
 
-char ScriptToken::GetAxis()
+char ScriptToken::GetAxis() const
 {
 	char axis = -1;
 	const char *str = GetString();
@@ -1097,7 +1087,7 @@ char ScriptToken::GetAxis()
 	return axis;
 }
 
-UInt32 ScriptToken::GetSex()
+UInt32 ScriptToken::GetSex() const
 {
 	const char *str = GetString();
 	if (str)
@@ -1511,7 +1501,7 @@ bool ScriptToken::Write(ScriptLineBuffer *buf) const
 }
 
 #if RUNTIME
-ScriptToken *ScriptToken::ToBasicToken() const
+std::unique_ptr<ScriptToken> ScriptToken::ToBasicToken() const
 {
 	if (CanConvertTo(kTokenType_String))
 		return Create(GetString());
@@ -1835,7 +1825,7 @@ bool CanConvertOperand(Token_Type from, Token_Type to)
 }
 
 // Operator
-Token_Type Operator::GetResult(Token_Type lhs, Token_Type rhs)
+Token_Type Operator::GetResult(Token_Type lhs, Token_Type rhs) const
 {
 	Token_Type result = kTokenType_Invalid;
 	for (UInt32 i = 0; i < numRules; i++)

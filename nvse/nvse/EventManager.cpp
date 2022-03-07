@@ -482,7 +482,7 @@ private:
 
 std::unique_ptr<ScriptToken> EventCallback::Invoke(EventInfo* eventInfo, void* arg0, void* arg1)
 {
-	ScriptToken* res = std::visit(overloaded
+	return std::visit(overloaded
 		{
 			[=](const LambdaManager::Maybe_Lambda& script)
 			{
@@ -490,11 +490,11 @@ std::unique_ptr<ScriptToken> EventCallback::Invoke(EventInfo* eventInfo, void* a
 
 				// handle immediately
 				s_eventStack.Push(eventInfo->evName);
-				auto const ret = UserFunctionManager::Call(EventHandlerCaller(script.Get(), eventInfo, arg0, arg1));
+				auto ret = UserFunctionManager::Call(EventHandlerCaller(script.Get(), eventInfo, arg0, arg1));
 				s_eventStack.Pop();
 				return ret;
 			},
-			[=](const EventHandler& handler) -> ScriptToken*
+			[=](const EventHandler& handler) -> std::unique_ptr<ScriptToken>
 			{
 				// native plugin event handlers
 				void* params[] = { arg0, arg1 };
@@ -502,7 +502,6 @@ std::unique_ptr<ScriptToken> EventCallback::Invoke(EventInfo* eventInfo, void* a
 				return nullptr;
 			}
 		}, this->toCall);
-	return std::make_unique<ScriptToken>(res);
 }
 
 bool IsValidReference(void* refr)
@@ -1052,7 +1051,7 @@ bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
 			{
 				InternalFunctionCaller caller(script.Get(), thisObj);
 				caller.SetArgsRaw(eventInfo.numParams, params->data());
-				delete UserFunctionManager::Call(std::move(caller));
+				UserFunctionManager::Call(std::move(caller));
 			},
 			[&params, thisObj](EventHandler handler)
 			{

@@ -21,8 +21,8 @@ public:
 	[[nodiscard]] std::size_t Size() const;
 	[[nodiscard]] bool Empty() const;
 	Vector<TokenCacheEntry>::Iterator Begin();
-	TokenCacheEntry *DataBegin() const;
-	TokenCacheEntry *DataEnd() const;
+	[[nodiscard]] TokenCacheEntry *DataBegin() const;
+	[[nodiscard]] TokenCacheEntry *DataEnd() const;
 	void Clear();
 };
 
@@ -35,6 +35,6 @@ public:
 	CachedTokens& Get(UInt8* key);
 	void Clear();
 	[[nodiscard]] std::size_t Size() const;
-	bool Empty() const;
+	[[nodiscard]] bool Empty() const;
 	static void MarkForClear();
 };

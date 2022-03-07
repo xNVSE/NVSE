@@ -89,7 +89,7 @@ public:
 	DynamicParamInfo() : m_numParams(0) { }
 
 	ParamInfo* Params()	{	return m_paramInfo;	}
-	UInt32 NumParams()	{ return m_numParams;	}
+	[[nodiscard]] UInt32 NumParams() const { return m_numParams;	}
 };
 
 #if RUNTIME
@@ -160,7 +160,7 @@ public:
 	ScriptEventList	* eventList;
 
 	void			Error(const char* fmt, ...);
-	bool			HasErrors() { return m_flags.IsSet(kFlag_ErrorOccurred); }
+	[[nodiscard]] bool			HasErrors() const { return m_flags.IsSet(kFlag_ErrorOccurred); }
 
 	// extract args compiled by ExpressionParser
 	bool			ExtractArgs();
@@ -172,17 +172,17 @@ public:
 	bool			ExtractDefaultArgs(va_list varArgs, bool bConvertTESForms);
 
 	// convert an extracted argument to type expected by ExtractArgs/Ex() and store in varArgs
-	bool			ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, bool bConvertTESForms, va_list& varArgs);
+	bool			ConvertDefaultArg(ScriptToken* arg, ParamInfo* info, bool bConvertTESForms, va_list& varArgs) const;
 
 	// extract formatted string args compiled with compiler override
 	bool ExtractFormatStringArgs(va_list varArgs, UInt32 fmtStringPos, char* fmtStringOut, UInt32 maxParams);
 
-	ScriptToken*	ExecuteCommandToken(ScriptToken const* token, TESObjectREFR* stackRef);
+	std::unique_ptr<ScriptToken> ExecuteCommandToken(ScriptToken const* token, TESObjectREFR* stackRef);
 	ScriptToken*	Evaluate();			// evaluates a single argument/token
 	std::string GetLineText(CachedTokens& tokens, ScriptToken* faultingToken) const;
 	std::string GetVariablesText(CachedTokens& tokens) const;
 
-	ScriptToken*	Arg(UInt32 idx)
+	[[nodiscard]] ScriptToken*	Arg(UInt32 idx) const
 	{
 		if (idx >= m_numArgsExtracted)
 		{
@@ -190,7 +190,8 @@ public:
 		}
 		return m_args[idx];
 	}
-	UInt8			NumArgs() { return m_numArgsExtracted; }
+
+	[[nodiscard]] UInt8			NumArgs() const { return m_numArgsExtracted; }
 	void			SetParams(ParamInfo* newParams)	{	m_params = newParams;	}
 	void			ExpectReturnType(CommandReturnType type) { m_expectedReturnType = type; }
 
@@ -202,8 +203,8 @@ public:
 	void			ToggleErrorSuppression(bool bSuppress);
 	void			PrintStackTrace();
 
-	TESObjectREFR*	ThisObj() { return m_thisObj; }
-	TESObjectREFR*	ContainingObj() { return m_containingObj; }
+	[[nodiscard]] TESObjectREFR*	ThisObj() const { return m_thisObj; }
+	[[nodiscard]] TESObjectREFR*	ContainingObj() const { return m_containingObj; }
 
 	UInt8*&		Data() { return m_data; }
 	UInt8		ReadByte();
@@ -216,8 +217,8 @@ public:
 	SInt32		ReadSigned32();
 	void ReadBuf(UInt32 len, UInt8* data);
 
-	UInt8* GetCommandOpcodePosition() const;
-	CommandInfo* GetCommand() const;
+	[[nodiscard]] UInt8* GetCommandOpcodePosition() const;
+	[[nodiscard]] CommandInfo* GetCommand() const;
 };
 
 
@@ -338,14 +339,15 @@ class ExpressionParser
 
 	static ErrOutput::Message	* s_Messages;
 
-	char	Peek(UInt32 idx = -1) const
+	[[nodiscard]] char	Peek(UInt32 idx = -1) const
 	{
 		if (idx == -1)	idx = m_lineBuf->lineOffset;
 		return (idx < m_len) ? m_lineBuf->paramText[idx] : 0;
 	}
-	UInt32&	Offset() const { return m_lineBuf->lineOffset; }
-	char* Text() const { return m_lineBuf->paramText; }
-	char* CurText() { return Text() + Offset(); }
+
+	[[nodiscard]] UInt32&	Offset() const { return m_lineBuf->lineOffset; }
+	[[nodiscard]] char* Text() const { return m_lineBuf->paramText; }
+	[[nodiscard]] char* CurText() const { return Text() + Offset(); }
 
 	void	Message(ScriptLineError errorCode, ...) const;
 
@@ -355,34 +357,34 @@ class ExpressionParser
 	void SaveScriptLine();
 	void RestoreScriptLine();
 	Token_Type		ParseSubExpression(UInt32 exprLen);
-	Operator *		ParseOperator(bool bExpectBinaryOperator, bool bConsumeIfFound = true);
-	ScriptToken	*	ParseOperand(Operator* curOp = NULL);
-	ScriptToken *	PeekOperand(UInt32& outReadLen);
+	[[nodiscard]] Operator *		ParseOperator(bool bExpectBinaryOperator, bool bConsumeIfFound = true) const;
+	std::unique_ptr<ScriptToken>	ParseOperand(Operator* curOp = nullptr);
+	std::unique_ptr<ScriptToken>	PeekOperand(UInt32& outReadLen);
 	bool			HandleMacros();
-	VariableInfo* CreateVariable(const std::string& varName, Script::VariableType varType) const;
-	void SkipSpaces();
-	bool			ParseFunctionCall(CommandInfo* cmdInfo);
-	Token_Type		PopOperator(std::stack<Operator*> & ops, std::stack<Token_Type> & operands);
-	ScriptToken* ParseLambda();
+	[[nodiscard]] VariableInfo* CreateVariable(const std::string& varName, Script::VariableType varType) const;
+	void SkipSpaces() const;
+	bool			ParseFunctionCall(CommandInfo* cmdInfo) const;
+	Token_Type		PopOperator(std::stack<Operator*> & ops, std::stack<Token_Type> & operands) const;
+	std::unique_ptr<ScriptToken> ParseLambda();
 
-	UInt32	MatchOpenBracket(Operator* openBracOp);
-	std::string GetCurToken();
-	VariableInfo* LookupVariable(const char* varName, Script::RefVariable* refVar = NULL);
+	UInt32	MatchOpenBracket(Operator* openBracOp) const;
+	[[nodiscard]] std::string GetCurToken() const;
+	VariableInfo* LookupVariable(const char* varName, Script::RefVariable* refVar = nullptr) const;
 
 public:
 	ExpressionParser(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf);
 	~ExpressionParser();
 
 	bool			ParseArgs(ParamInfo* params, UInt32 numParams, bool bUsesNVSEParamTypes = true, bool parseWholeLine = true);
-	bool			ValidateArgType(ParamType paramType, Token_Type argType, bool bIsNVSEParam);
+	[[nodiscard]] bool			ValidateArgType(ParamType paramType, Token_Type argType, bool bIsNVSEParam) const;
 	bool GetUserFunctionParams(const std::vector<std::string>& paramNames, std::vector<UserFunctionParam>& outParams,
-	                           Script::VarInfoList* varList, const std::string& fullScriptText, Script* script);
+	                           Script::VarInfoList* varList, const std::string& fullScriptText, Script* script) const;
 	bool ParseUserFunctionParameters(std::vector<UserFunctionParam>& out, const std::string& funcScriptText,
-	                                 Script::VarInfoList* funcScriptVars, Script* script);
-	bool			ParseUserFunctionCall();
-	bool			ParseUserFunctionDefinition();
-	ScriptToken	*	ParseOperand(bool (* pred)(ScriptToken* operand));
-	Token_Type		ArgType(UInt32 idx) { return idx < kMaxArgs ? m_argTypes[idx] : kTokenType_Invalid; }
+	                                 Script::VarInfoList* funcScriptVars, Script* script) const;
+	bool ParseUserFunctionCall();
+	bool ParseUserFunctionDefinition() const;
+	std::unique_ptr<ScriptToken>	ParseOperand(bool (* pred)(ScriptToken* operand));
+	[[nodiscard]] Token_Type		ArgType(UInt32 idx) const { return idx < kMaxArgs ? m_argTypes[idx] : kTokenType_Invalid; }
 	Token_Type ParseArgument(UInt32 argsEndPos);
 	ParamParenthResult ParseParentheses(ParamInfo* paramInfo, UInt32 paramIndex);
 };
