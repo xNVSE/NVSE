@@ -1780,6 +1780,29 @@ void ExpressionEvaluator::PrintStackTrace()
 #if RUNTIME
 thread_local SmallObjectsAllocator::FastAllocator<ExpressionEvaluator, 4> g_pluginExpEvalAllocator;
 
+bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem)
+{
+	ScriptToken* basicToken = token->ToBasicToken();
+	if (!basicToken)
+		return false;
+
+	bool bResult = true;
+
+	if (basicToken->CanConvertTo(kTokenType_Number))
+		elem.SetNumber(basicToken->GetNumber());
+	else if (basicToken->CanConvertTo(kTokenType_String))
+		elem.SetString(basicToken->GetString());
+	else if (basicToken->CanConvertTo(kTokenType_Form))
+		elem.SetFormID(basicToken->GetFormID());
+	else if (basicToken->CanConvertTo(kTokenType_Array))
+		elem.SetArray(basicToken->GetArrayID());
+	else
+		bResult = false;
+
+	delete basicToken;
+	return bResult;
+}
+
 void *__stdcall ExpressionEvaluatorCreate(COMMAND_ARGS)
 {
 	ExpressionEvaluator *expEval = g_pluginExpEvalAllocator.Allocate();
@@ -1818,6 +1841,12 @@ void __fastcall ExpressionEvaluatorAssignCommandResultFromElement(void* expEval,
 {
 	auto const eval = static_cast<ExpressionEvaluator*>(expEval);
 	eval->AssignAmbiguousResult(result, result.GetReturnType());
+}
+
+bool __fastcall ExpressionEvaluatorExtractArgsV(void* expEval, va_list list)
+{
+	auto const eval = static_cast<ExpressionEvaluator*>(expEval);
+	return eval->ExtractArgsV(list);
 }
 #endif
 
@@ -2124,7 +2153,7 @@ bool ExpressionParser::GetUserFunctionParams(const std::vector<std::string> &par
 			if (outParams[i].varIdx == varInfo->idx)
 				return false;
 
-		outParams.push_back(UserFunctionParam(varInfo->idx, varType));
+		outParams.emplace_back(UserFunctionParam(varInfo->idx, varType));
 	}
 	if (lastVarType != Script::eVarType_Invalid)
 		return false;
@@ -2143,8 +2172,8 @@ static ParamInfo kDynamicParams[] =
 
 DynamicParamInfo::DynamicParamInfo(const std::vector<UserFunctionParam> &params)
 {
-	m_numParams = params.size() > kMaxParams ? kMaxParams : params.size();
-	for (UInt32 i = 0; i < m_numParams && i < kMaxParams; i++)
+	m_numParams = min(kMaxUdfParams, params.size());
+	for (UInt32 i = 0; i < m_numParams; i++)
 		m_paramInfo[i] = kDynamicParams[params[i].varType];
 }
 
@@ -3568,7 +3597,7 @@ double ExpressionEvaluator::ReadFloat()
 	return data;
 }
 
-char *ExpressionEvaluator::ReadString(UInt32 &incrData)
+char *ExpressionEvaluator::ReadString(UInt32& incrData)
 {
 	UInt16 len = Read16();
 	incrData = 2 + len;
@@ -3691,6 +3720,78 @@ bool ExpressionEvaluator::ExtractArgs()
 	}
 	else
 		return false;
+}
+
+bool ExpressionEvaluator::ExtractArgsV(void* null, ...)
+{
+
+	va_list list;
+	va_start(list, null);
+	const auto result = ExtractArgsV(list);
+	va_end(list);
+	return result;
+}
+
+bool ExpressionEvaluator::ExtractArgsV(va_list list)
+{
+	if (!ExtractArgs())
+		return false;
+	for (int i = 0; i < NumArgs(); ++i)
+	{
+		auto* arg = Arg(i);
+		if (!arg)
+			return false;
+		switch (arg->type) {
+		case kTokenType_Number:
+		case kTokenType_Boolean:
+		case kTokenType_NumericVar:
+		case kTokenType_Global:
+		{
+			*va_arg(list, double*) = arg->GetNumber();
+			break;
+		}
+		case kTokenType_StringVar:
+		case kTokenType_String:
+		{
+			*va_arg(list, const char**) = arg->GetString();
+			break;
+		}
+		case kTokenType_Form:
+		case kTokenType_Ref:
+		case kTokenType_Lambda:
+		case kTokenType_RefVar:
+		{
+			*va_arg(list, TESForm**) = arg->GetTESForm();
+			break;
+		}
+		case kTokenType_Array:
+		case kTokenType_ArrayVar:
+		{
+			*va_arg(list, ArrayVar**) = arg->GetArrayVar();
+			break;
+		}
+		case kTokenType_Slice:
+		{
+			*va_arg(list, const Slice**) = arg->GetSlice();
+			break;
+		}
+		default:
+		{
+			if (arg->CanConvertTo(kTokenType_Number))
+				*va_arg(list, double*) = arg->GetNumber();
+			else if (arg->CanConvertTo(kTokenType_Form))
+				*va_arg(list, TESForm**) = arg->GetTESForm();
+			else if (arg->CanConvertTo(kTokenType_String))
+				*va_arg(list, const char**) = arg->GetString();
+			else if (arg->CanConvertTo(kTokenType_Array))
+				*va_arg(list, ArrayVar**) = arg->GetArrayVar();
+			else
+				*va_arg(list, void**) = nullptr;
+			break;
+		}
+		}
+	}
+	return true;
 }
 
 bool ExpressionEvaluator::ExtractDefaultArgs(va_list varArgs, bool bConvertTESForms)
@@ -5141,29 +5242,6 @@ ScriptToken *Operator::Evaluate(ScriptToken *lhs, ScriptToken *rhs, ExpressionEv
 	}
 
 	return nullptr;
-}
-
-bool BasicTokenToElem(ScriptToken *token, ArrayElement &elem)
-{
-	ScriptToken *basicToken = token->ToBasicToken();
-	if (!basicToken)
-		return false;
-
-	bool bResult = true;
-
-	if (basicToken->CanConvertTo(kTokenType_Number))
-		elem.SetNumber(basicToken->GetNumber());
-	else if (basicToken->CanConvertTo(kTokenType_String))
-		elem.SetString(basicToken->GetString());
-	else if (basicToken->CanConvertTo(kTokenType_Form))
-		elem.SetFormID(basicToken->GetFormID());
-	else if (basicToken->CanConvertTo(kTokenType_Array))
-		elem.SetArray(basicToken->GetArrayID());
-	else
-		bResult = false;
-
-	delete basicToken;
-	return bResult;
 }
 
 #endif

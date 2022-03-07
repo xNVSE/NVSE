@@ -424,54 +424,6 @@ void ScriptToken::operator delete(void *p, bool useMemoryPool)
 		::operator delete(p);
 }
 
-ScriptToken::ScriptToken(ScriptToken&& other) noexcept: type(other.type),
-	variableType(other.variableType),
-	value(other.value),
-	useRefFromStack(other.useRefFromStack),
-	refIdx(other.refIdx),
-	cached(other.cached),
-	returnType(other.returnType),
-	cmdOpcodeOffset(other.cmdOpcodeOffset),
-	context(other.context),
-	varIdx(other.varIdx),
-	shortCircuitParentType(other.shortCircuitParentType),
-	shortCircuitDistance(other.shortCircuitDistance),
-	shortCircuitStackOffset(other.shortCircuitStackOffset),
-	formOrNumber(other.formOrNumber),
-#if _DEBUG
-	varName(std::move(other.varName)),
-#endif
-	memoryPooled(other.memoryPooled)
-{
-	other.value.num = 0;
-}
-
-ScriptToken& ScriptToken::operator=(ScriptToken&& other) noexcept
-{
-	if (this == &other)
-		return *this;
-	type = other.type;
-	variableType = other.variableType;
-	value = other.value;
-	useRefFromStack = other.useRefFromStack;
-	refIdx = other.refIdx;
-	cached = other.cached;
-	returnType = other.returnType;
-	cmdOpcodeOffset = other.cmdOpcodeOffset;
-	context = other.context;
-	varIdx = other.varIdx;
-	shortCircuitParentType = other.shortCircuitParentType;
-	shortCircuitDistance = other.shortCircuitDistance;
-	shortCircuitStackOffset = other.shortCircuitStackOffset;
-	formOrNumber = other.formOrNumber;
-#if _DEBUG
-	varName = std::move(other.varName);
-#endif
-	memoryPooled = other.memoryPooled;
-	other.value.num = 0;
-	return *this;
-}
-
 // C++20 destroying delete can avoid calling destructor if we don't want the object deleted
 // derived classes will not call this delete (tested), they will continue using their own non-destroying operator delete overload
 void ScriptToken::operator delete(ScriptToken *token, std::destroying_delete_t)
@@ -558,6 +510,25 @@ AssignableSubstringArrayElementToken::AssignableSubstringArrayElementToken(UInt3
 	}
 }
 
+bool AssignableSubstringArrayElementToken::Assign(const char* str)
+{
+	ArrayElement* elem = g_ArrayMap.GetElement(value.arrID, &key);
+	const char* pElemStr;
+	if (elem && elem->GetAsString(&pElemStr) && (lower <= upper) && (upper < StrLen(pElemStr)))
+	{
+		std::string elemStr(pElemStr);
+		elemStr.erase(lower, upper - lower + 1);
+		if (str)
+		{
+			elemStr.insert(lower, str);
+			elem->SetString(elemStr.c_str());
+			substring = elemStr;
+		}
+		return true;
+	}
+	return false;
+}
+
 bool AssignableSubstringStringVarToken::Assign(const char *str)
 {
 	StringVar *strVar = g_StringMap.Get(value.arrID);
@@ -574,25 +545,6 @@ bool AssignableSubstringStringVarToken::Assign(const char *str)
 			}
 			return true;
 		}
-	}
-	return false;
-}
-
-bool AssignableSubstringArrayElementToken::Assign(const char *str)
-{
-	ArrayElement *elem = g_ArrayMap.GetElement(value.arrID, &key);
-	const char *pElemStr;
-	if (elem && elem->GetAsString(&pElemStr) && (lower <= upper) && (upper < StrLen(pElemStr)))
-	{
-		std::string elemStr(pElemStr);
-		elemStr.erase(lower, upper - lower + 1);
-		if (str)
-		{
-			elemStr.insert(lower, str);
-			elem->SetString(elemStr.c_str());
-			substring = elemStr;
-		}
-		return true;
 	}
 	return false;
 }
@@ -1166,7 +1118,7 @@ UInt32 ScriptToken::GetSex()
 #endif // RUNTIME
 
 /*************************************************
-	
+
 	ScriptToken methods
 
 *************************************************/
@@ -1559,21 +1511,20 @@ bool ScriptToken::Write(ScriptLineBuffer *buf) const
 }
 
 #if RUNTIME
-ScriptToken *ScriptToken::ToBasicToken()
+ScriptToken *ScriptToken::ToBasicToken() const
 {
 	if (CanConvertTo(kTokenType_String))
 		return Create(GetString());
-	else if (CanConvertTo(kTokenType_Array))
+	if (CanConvertTo(kTokenType_Array))
 		return CreateArray(GetArrayID());
-	else if (CanConvertTo(kTokenType_Form))
+	if (CanConvertTo(kTokenType_Form))
 		return CreateForm(GetFormID());
-	else if (CanConvertTo(kTokenType_Number))
+	if (CanConvertTo(kTokenType_Number))
 		return Create(GetNumber());
-	else
-		return NULL;
+	return nullptr;
 }
 
-double ScriptToken::GetNumericRepresentation(bool bFromHex)
+double ScriptToken::GetNumericRepresentation(bool bFromHex) const
 {
 	double result = 0.0;
 
@@ -1608,7 +1559,7 @@ double ScriptToken::GetNumericRepresentation(bool bFromHex)
 #endif
 
 /****************************************
-	
+
 	ArrayElementToken
 
 ****************************************/
@@ -1695,17 +1646,17 @@ TESForm *ArrayElementToken::GetTESForm() const
 
 bool ArrayElementToken::GetBool() const
 {
-	ArrayVar *arr = g_ArrayMap.Get(GetOwningArrayID());
+	ArrayVar* arr = g_ArrayMap.Get(GetOwningArrayID());
 	if (!arr)
 		return false;
 
-	ArrayElement *elem = arr->Get(&key, false);
+	ArrayElement* elem = arr->Get(&key, false);
 	if (!elem)
 		return false;
 
 	if (elem->DataType() == kDataType_Numeric)
 		return elem->m_data.num != 0;
-	else if (elem->DataType() == kDataType_Form)
+	if (elem->DataType() == kDataType_Form)
 		return elem->m_data.formID != 0;
 
 	return false;

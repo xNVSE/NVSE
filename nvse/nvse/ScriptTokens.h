@@ -19,6 +19,7 @@ extern SInt32 FUNCTION_CONTEXT_COUNT;
 #include "StringVar.h"
 #include "GameAPI.h"
 #endif
+#include <variant>
 
 enum class NVSEVarType
 {
@@ -272,7 +273,7 @@ struct ScriptToken
 	virtual const ScriptToken *GetToken() const { return NULL; }
 	virtual const TokenPair *GetPair() const { return NULL; }
 
-	ScriptToken *ToBasicToken(); // return clone as one of string, number, array, form
+	ScriptToken *ToBasicToken() const; // return clone as one of string, number, array, form
 
 	TESGlobal *GetGlobal() const;
 	Operator *GetOperator() const;
@@ -293,7 +294,7 @@ struct ScriptToken
 	bool IsGood() const { return type != kTokenType_Invalid; }
 	bool IsVariable() const { return type >= kTokenType_NumericVar && type <= kTokenType_ArrayVar; }
 
-	double GetNumericRepresentation(bool bFromHex); // attempts to convert string to number
+	double GetNumericRepresentation(bool bFromHex) const; // attempts to convert string to number
 	char *DebugPrint() const;
 	bool IsInvalid() const;
 	bool IsOperator() const;
@@ -363,7 +364,6 @@ struct ScriptToken
 	UInt8 shortCircuitStackOffset = 0;
 	bool formOrNumber = false;
 
-	// prevents token from being deleted after evaluation, should only be called in Eval_* statements where it is the operation result
 	ScriptToken* ForwardEvalResult();
 #if _DEBUG
 	std::string varName;
@@ -517,8 +517,8 @@ struct AssignableSubstringArrayElementToken : public AssignableSubstringToken
 	ArrayKey key;
 
 	AssignableSubstringArrayElementToken(UInt32 _id, const ArrayKey &_key, UInt32 lbound, UInt32 ubound);
-	ArrayID GetArrayID() const override { return value.arrID; }
-	bool Assign(const char *str) override;
+	[[nodiscard]] ArrayID GetArrayID() const override { return value.arrID; }
+	bool Assign(const char* str) override;
 
 	void *operator new(size_t size)
 	{

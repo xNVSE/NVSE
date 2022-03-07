@@ -105,23 +105,83 @@ static ParamInfo kNVSEParams_DispatchEvent[3] =
 
 DEFINE_COMMAND_EXP(DispatchEvent, dispatches a user-defined event to any registered listeners, 0, kNVSEParams_DispatchEvent);
 
-static ParamInfo kParams_CallAfter[3] =
+static ParamInfo kParams_CallAfter_OLD[3] =
 {
 	{	"seconds",	kParamType_Float,	0	},
 	{	"function",	kParamType_AnyForm,0	},
 	{ "runs in menumode", kParamType_Integer, 1}
 };
 
-static ParamInfo kParams_CallWhile[2] =
+static ParamInfo kNVSEParams_CallAfter[18] =
+{
+	{	"seconds",	kNVSEParamType_Number,	0	},
+	{	"function",	kNVSEParamType_Form,0	},
+	{ "flags", kNVSEParamType_Number, 1},
+
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	//#elems should not exceed max # of UDF args.
+};
+
+static ParamInfo kParams_CallWhile_OLD[2] =
 {
 	{	"function",	kParamType_AnyForm,	0	},
 	{	"condition",	kParamType_AnyForm,0	},
 };
 
-DEFINE_CMD_ALT(CallAfterSeconds, CallAfter, "calls UDF after argument number of seconds", 0, sizeof kParams_CallAfter / sizeof (ParamInfo), kParams_CallAfter);
-DEFINE_COMMAND(CallWhile, "calls UDF each frame while condition is met", 0, 2, kParams_CallWhile);
-DEFINE_CMD_ALT(CallForSeconds, CallFor, "calls UDF each frame for argument number of seconds", 0, sizeof kParams_CallAfter / sizeof(ParamInfo), kParams_CallAfter);
-DEFINE_COMMAND(CallWhen, "calls UDF once when a condition is met which is polled each frame", 0, 2, kParams_CallWhile);
+static ParamInfo kNVSEParams_CallWhile[18] =
+{
+	{	"function",	kNVSEParamType_Form,	0	},
+	{	"condition",	kNVSEParamType_Form,0	},
+	{	"flags",		kNVSEParamType_Number,	1	},
+
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	//#elems should not exceed max # of UDF args.
+};
+
+DEFINE_CMD_ALT(CallAfterSeconds_OLD, CallAfter_OLD, "deprecated", 0, std::size(kParams_CallAfter_OLD), kParams_CallAfter_OLD);
+DEFINE_CMD_ALT(CallForSeconds_OLD, CallFor_OLD, "deprecated", 0, std::size(kParams_CallAfter_OLD), kParams_CallAfter_OLD);
+DEFINE_COMMAND(CallWhile_OLD, "deprecated", 0, std::size(kParams_CallWhile_OLD), kParams_CallWhile_OLD);
+DEFINE_COMMAND(CallWhen_OLD, "deprecated", 0, std::size(kParams_CallWhile_OLD), kParams_CallWhile_OLD);
+
+DEFINE_CMD_ALT_EXP(CallAfterSeconds, CallAfter, "calls UDF after argument number of seconds", false, kNVSEParams_CallAfter);
+DEFINE_CMD_ALT_EXP(CallForSeconds, CallFor, "calls UDF each frame for argument number of seconds", false, kNVSEParams_CallAfter);
+DEFINE_COMMAND_EXP(CallWhile, "calls UDF each frame while condition is met", false, kNVSEParams_CallWhile);
+DEFINE_COMMAND_EXP(CallWhen, "calls UDF once when a condition is met which is polled each frame", false, kNVSEParams_CallWhile);
+
+#if RUNTIME
+using CallArgs = std::vector<SelfOwningArrayElement>;
 
 struct DelayedCallInfo
 {
@@ -129,13 +189,20 @@ struct DelayedCallInfo
 	float time;
 	TESObjectREFR* thisObj;
 	LambdaManager::LambdaVariableContext lambdaVariableContext;
-	bool runInMenuMode;
+	enum eFlags : UInt8 {
+		kFlags_None = 0,
+		kFlag_RunInMenuMode = 1 << 0,
+	} flags;
+	CallArgs args;
 
-	DelayedCallInfo(Script* script, float time, TESObjectREFR* thisObj, bool runInMenuMode)
+	[[nodiscard]] bool RunInMenuMode() const { return flags & kFlag_RunInMenuMode; }
+
+	DelayedCallInfo(Script* script, float time, TESObjectREFR* thisObj, eFlags flags, CallArgs &&args = {})
 		: script(script),
 		  time(time),
 		  thisObj(thisObj),
-		  lambdaVariableContext(script), runInMenuMode(runInMenuMode)
+		  lambdaVariableContext(script), flags(flags),
+	      args(std::move(args))
 	{
 	}
 };
@@ -147,13 +214,25 @@ struct CallWhileInfo
 	TESObjectREFR* thisObj;
 	LambdaManager::LambdaVariableContext callFnLambdaCtx;
 	LambdaManager::LambdaVariableContext condFnLambdaCtx;
+	enum eFlags : UInt8 {
+		kFlags_None = 0,
+		kPassArgs_ToCallFunc = 1 << 0,
+		kPassArgs_ToConditionFunc = 1 << 1,
+		kFlag_RunInMenuMode = 1 << 2,	//todo: make use (?)
+	} flags;
+	CallArgs args;
 
-	CallWhileInfo(Script* callFunction, Script* condition, TESObjectREFR* thisObj)
+	[[nodiscard]] bool PassArgsToCallFunc() const { return flags & kPassArgs_ToCallFunc; }
+	[[nodiscard]] bool PassArgsToCondFunc() const { return flags & kPassArgs_ToConditionFunc; }
+
+	CallWhileInfo(Script* callFunction, Script* condition, TESObjectREFR* thisObj, eFlags flags, CallArgs &&args = {})
 		: callFunction(callFunction),
 		  condition(condition),
 		  thisObj(thisObj),
 		  callFnLambdaCtx(callFunction),
-		  condFnLambdaCtx(condition)
+		  condFnLambdaCtx(condition),
+		  flags(flags),
+		  args(std::move(args))
 	{
 	}
 };
@@ -168,7 +247,7 @@ extern ICriticalSection g_callWhileInfosCS;
 extern ICriticalSection g_callAfterInfosCS;
 extern ICriticalSection g_callWhenInfosCS;
 
-
+#endif
 
 static ParamInfo kParams_HasScriptCommand[3] =
 {

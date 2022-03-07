@@ -1,3 +1,4 @@
+
 #include "GameAPI.h"
 #include "GameRTTI.h"
 #include "GameForms.h"
@@ -1952,7 +1953,7 @@ Script *GetParentScript(Script *script, ScriptEventList *eventList, UInt16 refId
 	return parentEventList->m_script;
 }
 
-const char *GetVariableName(ScriptLocal *var, Script *script, ScriptEventList *eventList, UInt16 refIdx = 0)
+const char *GetVariableName(ScriptLocal *var, Script *script, ScriptEventList *eventList, UInt16 refIdx)
 {
 	if (auto *parent = GetParentScript(script, eventList, refIdx))
 		script = parent;

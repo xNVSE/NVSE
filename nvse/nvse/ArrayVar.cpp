@@ -39,6 +39,324 @@ Script::VariableType DataTypeToVarType(DataType dataType)
 	}
 }
 
+// ArrayElement
+ArrayElement::ArrayElement()
+{
+	m_data.dataType = kDataType_Invalid;
+	m_data.owningArray = 0;
+	m_data.arrID = 0;
+}
+
+
+ArrayElement::~ArrayElement()
+{
+	UnsetDefault();
+}
+
+
+ArrayElement::ArrayElement(const ArrayElement& from)
+{
+	m_data.dataType = from.m_data.dataType;
+	m_data.owningArray = from.m_data.owningArray;
+	if (m_data.dataType == kDataType_String)
+		m_data.SetStr(from.m_data.str);
+	else m_data.num = from.m_data.num;
+}
+
+
+ArrayElement::ArrayElement(ArrayElement&& from) noexcept
+{
+	m_data.dataType = std::exchange(from.m_data.dataType, kDataType_Invalid);
+	m_data.owningArray = std::exchange(from.m_data.owningArray, 0);
+	m_data.num = std::exchange(from.m_data.num, 0);
+}
+
+
+bool ArrayElement::operator<(const ArrayElement& rhs) const
+{
+	// if we ever try to compare 2 elems of differing types (i.e. string and number) we violate strict weak
+	// no reason to do that
+
+	if (m_data.dataType != rhs.m_data.dataType)
+		return false;
+
+	switch (m_data.dataType)
+	{
+	case kDataType_Form:
+	case kDataType_Array:
+		return m_data.formID < rhs.m_data.formID;
+	case kDataType_String:
+		return StrCompare(m_data.str, rhs.m_data.str) < 0;
+	default:
+		return m_data.num < rhs.m_data.num;
+	}
+}
+
+
+bool ArrayElement::operator==(const ArrayElement& rhs) const
+{
+	if (m_data.dataType != rhs.m_data.dataType)
+		return false;
+
+	switch (m_data.dataType)
+	{
+	case kDataType_Form:
+		return m_data.formID == rhs.m_data.formID;
+	case kDataType_String:
+		return !StrCompare(m_data.str, rhs.m_data.str);
+	case kDataType_Array:
+		return m_data.arrID == rhs.m_data.arrID;
+	default:
+		return m_data.num == rhs.m_data.num;
+	}
+}
+
+
+bool ArrayElement::operator!=(const ArrayElement& rhs) const
+{
+	return !(*this == rhs);
+}
+
+
+std::string ArrayElement::GetStringRepresentation() const
+{
+	switch (this->DataType())
+	{
+	case kDataType_Invalid:
+		return "invalid";
+	case kDataType_Numeric:
+	{
+		double numeric;
+		this->GetAsNumber(&numeric);
+		return FormatString("%g", numeric);
+	}
+	case kDataType_Form:
+	{
+		UInt32 formId;
+		this->GetAsFormID(&formId);
+		auto* form = LookupFormByID(formId);
+		if (form)
+			return form->GetStringRepresentation();
+		return "null";
+	}
+	case kDataType_String:
+	{
+		const char* str;
+		this->GetAsString(&str);
+		return '"' + std::string(str) + '"';
+	}
+	case kDataType_Array:
+	{
+		ArrayID id;
+		this->GetAsArray(&id);
+		const auto* arr = g_ArrayMap.Get(id);
+		if (arr)
+			return arr->GetStringRepresentation();
+		return "invalid array";
+	}
+	default:
+		return "unknown";
+	}
+}
+
+
+bool ArrayElement::CompareNames(const ArrayElement& lhs, const ArrayElement& rhs)
+{
+	TESForm* lform = LookupFormByID(lhs.m_data.formID);
+	if (lform)
+	{
+		TESForm* rform = LookupFormByID(rhs.m_data.formID);
+		if (rform)
+		{
+			const char* lName = lform->GetTheName();
+			if (*lName)
+			{
+				const char* rName = rform->GetTheName();
+				if (*rName) return StrCompare(lName, rName) < 0;
+			}
+		}
+	}
+	return lhs.m_data.formID < rhs.m_data.formID;
+}
+
+
+bool ArrayElement::SetFormID(UInt32 refID)
+{
+	Unset();
+
+	m_data.dataType = kDataType_Form;
+	m_data.formID = refID;
+
+	TESForm* form;
+	if ((form = LookupFormByRefID(refID)) && IS_ID(form, Script) && LambdaManager::IsScriptLambda(static_cast<Script*>(form)))
+	{
+		LambdaManager::SaveLambdaVariables(static_cast<Script*>(form));
+	}
+
+	return true;
+}
+
+
+bool ArrayElement::SetString(const char* str)
+{
+	Unset();
+
+	m_data.dataType = kDataType_String;
+	m_data.SetStr(str);
+	return true;
+}
+
+
+bool ArrayElement::SetArray(ArrayID arr)
+{
+	Unset();
+
+	m_data.dataType = kDataType_Array;
+
+	if (m_data.owningArray)
+		g_ArrayMap.AddReference(&m_data.arrID, arr, GetArrayOwningModIndex(m_data.owningArray));
+	else // this element is not inside any array, so it's just a temporary
+		m_data.arrID = arr;
+
+	return true;
+}
+
+
+bool ArrayElement::SetNumber(double num)
+{
+	Unset();
+
+	m_data.dataType = kDataType_Numeric;
+	m_data.num = num;
+	return true;
+}
+
+
+bool ArrayElement::Set(const ArrayElement* elem)
+{
+	switch (elem->m_data.dataType)
+	{
+	case kDataType_String:
+		SetString(elem->m_data.str);
+		break;
+	case kDataType_Array:
+		SetArray(elem->m_data.arrID);
+		break;
+	case kDataType_Numeric:
+		SetNumber(elem->m_data.num);
+		break;
+	case kDataType_Form:
+		SetFormID(elem->m_data.formID);
+		break;
+	default:
+		Unset();
+		return false;
+	}
+
+	return true;
+}
+
+
+bool ArrayElement::GetAsArray(ArrayID* out) const
+{
+	if (m_data.dataType != kDataType_Array)
+		return false;
+	if (m_data.arrID && !g_ArrayMap.Get(m_data.arrID)) // it's okay for arrayID to be 0, otherwise check if array exists
+		return false;
+
+	*out = m_data.arrID;
+	return true;
+}
+
+
+bool ArrayElement::GetAsFormID(UInt32* out) const
+{
+	if (m_data.dataType != kDataType_Form)
+		return false;
+	*out = m_data.formID;
+	return true;
+}
+
+
+bool ArrayElement::GetAsNumber(double* out) const
+{
+	if (m_data.dataType != kDataType_Numeric)
+		return false;
+	*out = m_data.num;
+	return true;
+}
+
+
+bool ArrayElement::GetAsString(const char** out) const
+{
+	if (m_data.dataType != kDataType_String)
+		return false;
+	*out = m_data.GetStr();
+	return true;
+}
+
+// Try to replicate bool ScriptToken::GetBool()
+
+bool ArrayElement::GetBool() const
+{
+	bool result;
+	switch (DataType())
+	{
+	case kDataType_Array:
+		result = m_data.arrID && g_ArrayMap.Get(m_data.arrID);
+		break;
+	case kDataType_Numeric:
+		result = m_data.num != 0.0;
+		break;
+	case kDataType_Form:
+		result = m_data.formID != 0;
+		break;
+	case kDataType_String:
+		result = m_data.str && m_data.str[0];
+		break;
+	default:
+		return false;
+	}
+	return result;
+}
+
+
+void ArrayElement::UnsetDefault()
+{
+	if (m_data.dataType == kDataType_Invalid)
+		return;
+
+	if (m_data.dataType == kDataType_String)
+	{
+		if (m_data.str)
+		{
+			free(m_data.str);
+			m_data.str = nullptr;
+		}
+	}
+	else if (m_data.dataType == kDataType_Array && m_data.owningArray)
+	{
+		g_ArrayMap.RemoveReference(&m_data.arrID, GetArrayOwningModIndex(m_data.arrID));
+	}
+	else if (m_data.dataType == kDataType_Form)
+	{
+		auto* form = LookupFormByRefID(m_data.formID);
+		if (form && IS_ID(form, Script) && LambdaManager::IsScriptLambda(static_cast<Script*>(form)))
+			LambdaManager::UnsaveLambdaVariables(static_cast<Script*>(form));
+		m_data.formID = 0;
+	}
+
+	m_data.dataType = kDataType_Invalid;
+}
+
+void ArrayElement::Unset()
+{
+	UnsetDefault();
+}
+
+
+// ArrayData
+
 ArrayData::~ArrayData()
 {
 	if ((dataType == kDataType_String) && str)
@@ -73,312 +391,69 @@ ArrayData& ArrayData::operator=(const ArrayData& rhs)
 	return *this;
 }
 
-ArrayElement::~ArrayElement()
+void* ArrayData::GetAsVoidArg() const
 {
-	Unset();
+	switch (dataType)
+	{
+	case kDataType_Invalid: return nullptr;
+	case kDataType_Numeric: 
+	{
+		auto res = static_cast<float>(num);
+		return *(void**)(&res);	//conversion: *((float *)&nthArg
+	}
+	case kDataType_Form: return LookupFormByID(formID);
+	case kDataType_String: return str;
+	case kDataType_Array: return reinterpret_cast<void*>(arrID);
+	}
+	return nullptr;
 }
 
-//////////////////
-// ArrayElement
-/////////////////
-
-ArrayElement::ArrayElement()
+ArrayData::ArrayData(const ArrayData& from) : dataType(from.dataType), owningArray(from.owningArray)
 {
-	m_data.dataType = kDataType_Invalid;
-	m_data.owningArray = 0;
-	m_data.arrID = 0;
+	if (dataType == kDataType_String)
+		SetStr(from.str);
+	else num = from.num;
 }
 
-ArrayElement::ArrayElement(const ArrayElement& from)
+///////////////////////
+// SelfOwningArrayElement
+//////////////////////
+
+void SelfOwningArrayElement::UnsetSelfOwning()
 {
-	m_data.dataType = from.m_data.dataType;
-	m_data.owningArray = from.m_data.owningArray;
-	if (m_data.dataType == kDataType_String)
-		m_data.SetStr(from.m_data.str);
-	else m_data.num = from.m_data.num;
+	if (m_data.dataType == kDataType_Array && !m_data.owningArray)
+		g_ArrayMap.RemoveReference(&m_data.arrID, 0xFF);
+	UnsetDefault();
 }
 
-bool ArrayElement::operator<(const ArrayElement& rhs) const
+SelfOwningArrayElement::~SelfOwningArrayElement()
 {
-	// if we ever try to compare 2 elems of differing types (i.e. string and number) we violate strict weak
-	// no reason to do that
+	UnsetSelfOwning();
+}
 
-	if (m_data.dataType != rhs.m_data.dataType)
+bool SelfOwningArrayElement::SetArray(ArrayID arr)
+{
+	if (!ArrayElement::SetArray(arr))
 		return false;
-
-	switch (m_data.dataType)
-	{
-	case kDataType_Form:
-	case kDataType_Array:
-		return m_data.formID < rhs.m_data.formID;
-	case kDataType_String:
-		return StrCompare(m_data.str, rhs.m_data.str) < 0;
-	default:
-		return m_data.num < rhs.m_data.num;
-	}
+	if (!m_data.owningArray) //should always be true.
+		g_ArrayMap.AddReference(&m_data.arrID, arr, 0xFF);
+	return true;
 }
 
-bool ArrayElement::operator==(const ArrayElement& rhs) const
+void SelfOwningArrayElement::Unset()
 {
-	if (m_data.dataType != rhs.m_data.dataType)
-		return false;
-
-	switch (m_data.dataType)
-	{
-	case kDataType_Form:
-		return m_data.formID == rhs.m_data.formID;
-	case kDataType_String:
-		return !StrCompare(m_data.str, rhs.m_data.str);
-	case kDataType_Array:
-		return m_data.arrID == rhs.m_data.arrID;
-	default:
-		return m_data.num == rhs.m_data.num;
-	}
+	UnsetSelfOwning();
 }
 
-bool ArrayElement::operator!=(const ArrayElement& rhs) const
-{
-	return !(*this == rhs);
-}
-
-std::string ArrayElement::GetStringRepresentation() const
-{
-	switch (this->DataType())
-	{
-	case kDataType_Invalid:
-		return "invalid";
-	case kDataType_Numeric:
-		{
-			double numeric;
-			this->GetAsNumber(&numeric);
-			return FormatString("%g", numeric);
-		}
-	case kDataType_Form:
-		{
-			UInt32 formId;
-			this->GetAsFormID(&formId);
-			auto* form = LookupFormByID(formId);
-			if (form)
-				return form->GetStringRepresentation();
-			return "null";
-		}
-	case kDataType_String:
-		{
-			const char* str;
-			this->GetAsString(&str);
-			return '"' + std::string(str) + '"';
-		}
-	case kDataType_Array:
-		{
-			ArrayID id;
-			this->GetAsArray(&id);
-			const auto* arr = g_ArrayMap.Get(id);
-			if (arr)
-				return arr->GetStringRepresentation();
-			return "invalid array";
-		}
-	default:
-		return "unknown";
-	}
-}
+///////////////////////
+// ArrayKey
+//////////////////////
 
 UInt8 __fastcall GetArrayOwningModIndex(ArrayID arrID)
 {
 	ArrayVar* arr = g_ArrayMap.Get(arrID);
 	return arr ? arr->OwningModIndex() : 0;
 }
-
-bool ArrayElement::CompareNames(const ArrayElement& lhs, const ArrayElement& rhs)
-{
-	TESForm* lform = LookupFormByID(lhs.m_data.formID);
-	if (lform)
-	{
-		TESForm* rform = LookupFormByID(rhs.m_data.formID);
-		if (rform)
-		{
-			const char* lName = lform->GetTheName();
-			if (*lName)
-			{
-				const char* rName = rform->GetTheName();
-				if (*rName) return StrCompare(lName, rName) < 0;
-			}
-		}
-	}
-	return lhs.m_data.formID < rhs.m_data.formID;
-}
-
-bool ArrayElement::SetForm(const TESForm* form)
-{
-	Unset();
-
-	m_data.dataType = kDataType_Form;
-	m_data.formID = form ? form->refID : 0;
-	return true;
-}
-
-bool ArrayElement::SetFormID(UInt32 refID)
-{
-	Unset();
-
-	m_data.dataType = kDataType_Form;
-	m_data.formID = refID;
-
-	TESForm* form;
-	if ((form = LookupFormByRefID(refID)) && IS_ID(form, Script) && LambdaManager::IsScriptLambda(static_cast<Script*>(form)))
-	{
-		LambdaManager::SaveLambdaVariables(static_cast<Script*>(form));
-	}
-
-	return true;
-}
-
-bool ArrayElement::SetString(const char* str)
-{
-	Unset();
-
-	m_data.dataType = kDataType_String;
-	m_data.SetStr(str);
-	return true;
-}
-
-bool ArrayElement::SetArray(ArrayID arr)
-{
-	Unset();
-
-	m_data.dataType = kDataType_Array;
-	if (m_data.owningArray)
-		g_ArrayMap.AddReference(&m_data.arrID, arr, GetArrayOwningModIndex(m_data.owningArray));
-	else // this element is not inside any array, so it's just a temporary
-		m_data.arrID = arr;
-
-	return true;
-}
-
-bool ArrayElement::SetNumber(double num)
-{
-	Unset();
-
-	m_data.dataType = kDataType_Numeric;
-	m_data.num = num;
-	return true;
-}
-
-bool ArrayElement::Set(const ArrayElement* elem)
-{
-	switch (elem->m_data.dataType)
-	{
-	case kDataType_String:
-		SetString(elem->m_data.str);
-		break;
-	case kDataType_Array:
-		SetArray(elem->m_data.arrID);
-		break;
-	case kDataType_Numeric:
-		SetNumber(elem->m_data.num);
-		break;
-	case kDataType_Form:
-		SetFormID(elem->m_data.formID);
-		break;
-	default:
-		Unset();
-		return false;
-	}
-
-	return true;
-}
-
-bool ArrayElement::GetAsArray(ArrayID* out) const
-{
-	if (m_data.dataType != kDataType_Array)
-		return false;
-	if (m_data.arrID && !g_ArrayMap.Get(m_data.arrID)) // it's okay for arrayID to be 0, otherwise check if array exists
-		return false;
-
-	*out = m_data.arrID;
-	return true;
-}
-
-bool ArrayElement::GetAsFormID(UInt32* out) const
-{
-	if (m_data.dataType != kDataType_Form)
-		return false;
-	*out = m_data.formID;
-	return true;
-}
-
-bool ArrayElement::GetAsNumber(double* out) const
-{
-	if (m_data.dataType != kDataType_Numeric)
-		return false;
-	*out = m_data.num;
-	return true;
-}
-
-bool ArrayElement::GetAsString(const char** out) const
-{
-	if (m_data.dataType != kDataType_String)
-		return false;
-	*out = m_data.GetStr();
-	return true;
-}
-
-// Try to replicate bool ScriptToken::GetBool()
-bool ArrayElement::GetBool() const
-{
-	bool result = false;
-	switch (DataType())
-	{
-	case kDataType_Array:
-		result = m_data.arrID && g_ArrayMap.Get(m_data.arrID);
-		break;
-	case kDataType_Numeric:
-		result = m_data.num != 0.0;
-		break;
-	case kDataType_Form:
-		result = m_data.formID != 0;
-		break;
-	case kDataType_String:
-		if (auto const str = m_data.GetStr())
-		{
-			if (str[0])
-				result = true;
-		}
-		break;
-	default:
-		return false;
-	}
-	return result;
-}
-
-void ArrayElement::Unset()
-{
-	if (m_data.dataType == kDataType_Invalid)
-		return;
-
-	if (m_data.dataType == kDataType_String)
-	{
-		if (m_data.str)
-		{
-			free(m_data.str);
-			m_data.str = nullptr;
-		}
-	}
-	else if (m_data.dataType == kDataType_Array && m_data.owningArray)
-		g_ArrayMap.RemoveReference(&m_data.arrID, GetArrayOwningModIndex(m_data.arrID));
-	else if (m_data.dataType == kDataType_Form)
-	{
-		auto* form = LookupFormByRefID(m_data.formID);
-		if (form && IS_ID(form, Script) && LambdaManager::IsScriptLambda(static_cast<Script*>(form)))
-			LambdaManager::UnsaveLambdaVariables(static_cast<Script*>(form));
-		m_data.formID = 0;
-	}
-
-	m_data.dataType = kDataType_Invalid;
-}
-
-///////////////////////
-// ArrayKey
-//////////////////////
 
 ArrayKey::ArrayKey()
 {

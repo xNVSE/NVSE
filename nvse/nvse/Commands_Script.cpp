@@ -715,36 +715,69 @@ bool Cmd_DispatchEvent_Execute(COMMAND_ARGS)
 
 extern float g_gameSecondsPassed;
 
+bool ExtractCallAfterInfo(ExpressionEvaluator& eval, std::list<DelayedCallInfo>& infos, ICriticalSection& cs)
+{
+	auto const seconds = static_cast<float>(eval.Arg(0)->GetNumber());
+	Script* const callFunction = eval.Arg(1)->GetUserFunction();
+	if (!callFunction)
+		return false;
+
+	//Optional args
+	DelayedCallInfo::eFlags flags = DelayedCallInfo::kFlags_None;
+	CallArgs args{};
+
+	auto const numArgs = eval.NumArgs();
+	if (numArgs > 2)
+	{
+		flags = static_cast<DelayedCallInfo::eFlags>(eval.Arg(2)->GetNumber());
+		args.reserve(numArgs - 3);
+		for (UInt32 i = 3; i < numArgs; i++)
+		{
+			if (auto const tok = eval.Arg(i))
+			{
+				SelfOwningArrayElement elem;
+				BasicTokenToElem(tok, elem);
+				args.emplace_back(std::move(elem));
+			}
+			else [[unlikely]]
+				break;
+		}
+	}
+
+	ScopedLock lock(cs);
+	infos.emplace_back(callFunction, g_gameSecondsPassed + seconds, eval.m_thisObj, flags, std::move(args));
+	return true;
+}
+
+bool ExtractCallAfterInfo_OLD(COMMAND_ARGS, std::list<DelayedCallInfo>& infos, ICriticalSection& cs)
+{
+	float time;
+	Script* callFunction;
+	UInt32 runInMenuMode = false;
+	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction, &runInMenuMode) || !callFunction || !IS_ID(callFunction, Script))
+		return false;
+
+	ScopedLock lock(cs);
+	infos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj, runInMenuMode ? DelayedCallInfo::kFlag_RunInMenuMode : DelayedCallInfo::kFlags_None);
+	return true;
+}
+
 std::list<DelayedCallInfo> g_callAfterInfos;
 ICriticalSection g_callAfterInfosCS;
 
 bool Cmd_CallAfterSeconds_Execute(COMMAND_ARGS)
 {
-	float time;
-	Script *callFunction;
-	UInt32 runInMenuMode = false;
-	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction, &runInMenuMode) || !callFunction || !IS_ID(callFunction, Script))
-		return true;
-	ScopedLock lock(g_callAfterInfosCS);
-	g_callAfterInfos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj, runInMenuMode);
+	*result = false; //bSuccess
+	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+		eval.ExtractArgs())
+	{
+		*result = ExtractCallAfterInfo(eval, g_callAfterInfos, g_callAfterInfosCS);
+	}
 	return true;
 }
-
-std::list<CallWhileInfo> g_callWhileInfos;
-ICriticalSection g_callWhileInfosCS;
-
-bool Cmd_CallWhile_Execute(COMMAND_ARGS)
+bool Cmd_CallAfterSeconds_OLD_Execute(COMMAND_ARGS)
 {
-	Script *callFunction;
-	Script *conditionFunction;
-	if (!ExtractArgs(EXTRACT_ARGS, &callFunction, &conditionFunction))
-		return true;
-	for (auto *form : {callFunction, conditionFunction})
-		if (!form || !IS_ID(form, Script))
-			return true;
-
-	ScopedLock lock(g_callWhileInfosCS);
-	g_callWhileInfos.emplace_back(callFunction, conditionFunction, thisObj);
+	*result = ExtractCallAfterInfo_OLD(PASS_COMMAND_ARGS, g_callAfterInfos, g_callAfterInfosCS);
 	return true;
 }
 
@@ -753,33 +786,106 @@ ICriticalSection g_callForInfosCS;
 
 bool Cmd_CallForSeconds_Execute(COMMAND_ARGS)
 {
-	float time;
-	Script *callFunction;
-	UInt32 runInMenuMode = false;
-	if (!ExtractArgs(EXTRACT_ARGS, &time, &callFunction, &runInMenuMode) || !callFunction || !IS_ID(callFunction, Script))
-		return true;
-	ScopedLock lock(g_callAfterInfosCS);
-	g_callForInfos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj, runInMenuMode);
+	*result = false; //bSuccess
+	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+		eval.ExtractArgs())
+	{
+		*result = ExtractCallAfterInfo(eval, g_callForInfos, g_callForInfosCS);
+	}
 	return true;
 }
+bool Cmd_CallForSeconds_OLD_Execute(COMMAND_ARGS)
+{
+	*result = ExtractCallAfterInfo_OLD(PASS_COMMAND_ARGS, g_callForInfos, g_callForInfosCS);
+	return true;
+}
+
+bool ExtractCallWhileInfo(ExpressionEvaluator &eval, std::list<CallWhileInfo> &infos, ICriticalSection &cs)
+{
+	Script* callFunction = eval.Arg(0)->GetUserFunction();
+	Script* conditionFunction = eval.Arg(1)->GetUserFunction();
+	if (!callFunction || !conditionFunction)
+		return false;
+
+	//Optional args
+	CallWhileInfo::eFlags flags = CallWhileInfo::kFlags_None;
+	CallArgs args{};
+
+	auto const numArgs = eval.NumArgs();
+	if (numArgs > 2)
+	{
+		flags = static_cast<CallWhileInfo::eFlags>(eval.Arg(2)->GetNumber());
+		args.reserve(numArgs - 3);
+		for (UInt32 i = 3; i < numArgs; i++)
+		{
+			if (auto const tok = eval.Arg(i))
+			{
+				SelfOwningArrayElement elem;
+				BasicTokenToElem(tok, elem);
+				args.emplace_back(std::move(elem));
+			}
+			else [[unlikely]]
+				break;
+		}
+	}
+
+	ScopedLock lock(cs);
+	infos.emplace_back(callFunction, conditionFunction, eval.m_thisObj, flags, std::move(args));
+	return true;
+}
+bool ExtractCallWhileInfo_OLD(COMMAND_ARGS, std::list<CallWhileInfo>& infos, ICriticalSection& cs)
+{
+	Script* callFunction;
+	Script* conditionFunction;
+	if (!ExtractArgs(EXTRACT_ARGS, &callFunction, &conditionFunction))
+		return false;
+
+	for (auto* form : { callFunction, conditionFunction })
+		if (!form || !IS_ID(form, Script))
+			return false;
+
+	ScopedLock lock(cs);
+	infos.emplace_back(callFunction, conditionFunction, thisObj, CallWhileInfo::kFlags_None);
+	return true;
+}
+
+std::list<CallWhileInfo> g_callWhileInfos;
+ICriticalSection g_callWhileInfosCS;
+
+bool Cmd_CallWhile_Execute(COMMAND_ARGS)
+{
+	*result = false; //bSuccess
+	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+		eval.ExtractArgs())
+	{
+		*result = ExtractCallWhileInfo(eval, g_callWhileInfos, g_callWhileInfosCS);
+	}
+	return true;
+}
+bool Cmd_CallWhile_OLD_Execute(COMMAND_ARGS)
+{
+	*result = ExtractCallWhileInfo_OLD(PASS_COMMAND_ARGS, g_callWhileInfos, g_callWhileInfosCS);
+	return true;
+}
+
 
 std::list<CallWhileInfo> g_callWhenInfos;
 ICriticalSection g_callWhenInfosCS;
 
 bool Cmd_CallWhen_Execute(COMMAND_ARGS)
 {
-	Script* callFunction;
-	Script* conditionFunction;
-	if (!ExtractArgs(EXTRACT_ARGS, &callFunction, &conditionFunction))
-		return true;
-	for (auto* form : { callFunction, conditionFunction })
-		if (!form || !IS_ID(form, Script))
-			return true;
-
-	ScopedLock lock(g_callWhenInfosCS);
-	g_callWhenInfos.emplace_back(callFunction, conditionFunction, thisObj);
+	*result = false; //bSuccess
+	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+		eval.ExtractArgs())
+	{
+		*result = ExtractCallWhileInfo(eval, g_callWhenInfos, g_callWhenInfosCS);
+	}
 	return true;
-
+}
+bool Cmd_CallWhen_OLD_Execute(COMMAND_ARGS)
+{
+	*result = ExtractCallWhileInfo_OLD(PASS_COMMAND_ARGS, g_callWhenInfos, g_callWhenInfosCS);
+	return true;
 }
 
 void DecompileScriptToFolder(const std::string& scriptName, Script* script, const std::string& fileExtension, const std::string_view& modName)
@@ -892,7 +998,7 @@ bool Cmd_Ternary_Execute(COMMAND_ARGS)
 	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 		eval.ExtractArgs())
 	{
-		ScriptToken* value = eval.Arg(0)->ToBasicToken();
+		auto const value = std::unique_ptr<ScriptToken>(eval.Arg(0)->ToBasicToken());
 		if (!value)
 			return true;	// should never happen, could cause weird behavior otherwise.
 

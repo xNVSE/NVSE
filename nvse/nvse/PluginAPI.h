@@ -486,11 +486,14 @@ struct NVSECommandTableInterface
  *	CallFunction() attempts to execute a script defined as a user-defined function.
  *	A calling object and containing object can be specified, or passed as NULL.
  *	If successful, it returns true, and the result is passed back from the script
- *	as an NVSEArrayVarInterface::Element. If the script returned nothing, the result
- *	is of type kType_Invalid. Up to 10 arguments can be passed in, of type
+ *	as an NVSEArrayVarInterface::Element.
+ *	If the script returned nothing, the result is of type kType_Invalid.
+ *
+ *	Up to 15 arguments can be passed in, of type
  *	int, float, or char*; support for passing arrays will be implemented later.
  *	To pass a float, it must be cast like so: *(UInt32*)&myFloat.
- *	Prior to xNVSE 6.1.2, only 5 args could be passed.
+ *	(xNVSE 6.1.2 raised the max args from 5 -> 10)
+ *	(xNVSE 6.1.6 raised the max args from 10 -> 15)
  *
  *	GetFunctionParams() returns the number of parameters expected by a function
  *	script. Returns -1 if the script is not a valid function script. Otherwise, if
@@ -870,6 +873,8 @@ struct ExpressionEvaluatorUtils
 	void					(__fastcall* AssignCommandResultFromElement)(void* expEval, NVSEArrayVarInterface::Element &result);
 	void					(__fastcall* ScriptTokenGetElement)(PluginScriptToken* scrToken, NVSEArrayVarInterface::Element &outElem);
 	bool					(__fastcall* ScriptTokenCanConvertTo)(PluginScriptToken* scrToken, UInt8 toType);
+
+	bool					(__fastcall* ExtractArgsV)(void* expEval, va_list list);
 #endif
 };
 
@@ -915,6 +920,15 @@ public:
 	void AssignCommandResult(NVSEArrayVarInterface::Element& result)
 	{
 		s_expEvalUtils.AssignCommandResultFromElement(expEval, result);
+	}
+
+	bool ExtractArgsV(void* null, ...)
+	{
+		va_list list;
+		va_start(list, null);
+		const auto result = s_expEvalUtils.ExtractArgsV(expEval, list);
+		va_end(list);
+		return result;
 	}
 #endif
 };

@@ -74,13 +74,14 @@ enum {
 
 #define NVSE_EXPR_MAX_ARGS 20		// max # of args we'll accept to a commmand
 
+static constexpr UInt32 kMaxUdfParams = 15;
+static_assert(kMaxUdfParams <= NVSE_EXPR_MAX_ARGS);
+
 // wraps a dynamic ParamInfo array
 struct DynamicParamInfo
 {
 private:
-	static const UInt32 kMaxParams = 15;	// Should be linked to NVSE_EXPR_MAX_ARGS ?
-
-	ParamInfo	m_paramInfo[kMaxParams];
+	ParamInfo	m_paramInfo[kMaxUdfParams];
 	UInt32		m_numParams;
 
 public:
@@ -91,8 +92,12 @@ public:
 	UInt32 NumParams()	{ return m_numParams;	}
 };
 
+#if RUNTIME
+
 template <typename T>
 concept ArrayElementOrScriptToken = std::is_base_of_v<ArrayElement, T> || std::is_base_of_v<NVSEArrayVarInterface::Element, T> || std::is_base_of_v<ScriptToken, T>;
+
+#endif
 
 struct PluginScriptToken;
 
@@ -159,6 +164,8 @@ public:
 
 	// extract args compiled by ExpressionParser
 	bool			ExtractArgs();
+	bool			ExtractArgsV(void*, ...);
+	bool			ExtractArgsV(va_list list);
 
 	// extract args to function which normally uses Cmd_Default_Parse but has been compiled instead by ExpressionParser
 	// bConvertTESForms will be true if invoked from ExtractArgs(), false if from ExtractArgsEx()
@@ -187,9 +194,11 @@ public:
 	void			SetParams(ParamInfo* newParams)	{	m_params = newParams;	}
 	void			ExpectReturnType(CommandReturnType type) { m_expectedReturnType = type; }
 
+#if RUNTIME
 	template		<ArrayElementOrScriptToken T>
 	void			AssignAmbiguousResult(T &result, CommandReturnType type);
-	
+#endif
+
 	void			ToggleErrorSuppression(bool bSuppress);
 	void			PrintStackTrace();
 
@@ -243,9 +252,10 @@ void ExpressionEvaluator::AssignAmbiguousResult(T &result, CommandReturnType typ
 		Error("Function call returned unexpected return type %d", type);
 	}
 }
-#endif
 
 bool BasicTokenToElem(ScriptToken* token, ArrayElement& elem);
+#endif
+
 
 #if RUNTIME
 void* __stdcall ExpressionEvaluatorCreate(COMMAND_ARGS);
@@ -255,6 +265,7 @@ UInt8 __fastcall ExpressionEvaluatorGetNumArgs(void *expEval);
 PluginScriptToken* __fastcall ExpressionEvaluatorGetNthArg(void *expEval, UInt32 argIdx);
 void __fastcall ExpressionEvaluatorSetExpectedReturnType(void* expEval, UInt8 retnType);
 void __fastcall ExpressionEvaluatorAssignCommandResultFromElement(void* expEval, NVSEArrayVarInterface::Element &result);
+bool __fastcall ExpressionEvaluatorExtractArgsV(void* expEval, va_list list);
 #endif
 
 

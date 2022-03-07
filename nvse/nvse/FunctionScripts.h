@@ -24,12 +24,13 @@ public:
 	virtual ~FunctionCaller() { }
 
 	virtual UInt8 ReadCallerVersion() = 0;
-	virtual Script * ReadScript() = 0;
+	virtual Script* ReadScript() = 0;
 	virtual bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info) = 0;
 
 	virtual TESObjectREFR* ThisObj() = 0;
 	virtual TESObjectREFR* ContainingObj() = 0;
 	virtual Script* GetInvokingScript() { return NULL; }
+
 };
 
 // stores info about function script (params, etc). generated once per function script and cached
@@ -37,22 +38,22 @@ struct FunctionInfo
 {
 	DynamicParamInfo	m_dParamInfo;
 	std::vector<UserFunctionParam> m_userFunctionParams;
-	Script				* m_script;			// function script
+	Script* m_script;			// function script
 	UInt8				m_functionVersion;	// bytecode version of Function statement
 	bool				m_bad;
 	UInt8				m_instanceCount;
-	ScriptEventList		* m_eventList;		// cached for quicker construction of function script, but requires care when dealing with recursive function calls
+	ScriptEventList* m_eventList;		// cached for quicker construction of function script, but requires care when dealing with recursive function calls
 #if _DEBUG
-	const char*			editorID;
+	const char* editorID;
 #endif
-	UInt8*				m_singleLineLambdaPosition = nullptr;
+	UInt8* m_singleLineLambdaPosition = nullptr;
 	bool				m_isLambda;
-	
+
 	FunctionInfo() {}
 	FunctionInfo(Script* script);
 	~FunctionInfo();
 
-	FunctionContext	* CreateContext(UInt8 version, Script* invokingScript);
+	FunctionContext* CreateContext(UInt8 version, Script* invokingScript);
 	bool IsGood() { return !m_bad; }
 	bool IsActive() { return m_instanceCount ? true : false; }
 	Script* GetScript() { return m_script; }
@@ -68,10 +69,10 @@ struct FunctionInfo
 struct FunctionContext
 {
 private:
-	FunctionInfo	* m_info;
-	ScriptEventList	* m_eventList;		// temporary eventlist generated for function script
-	ScriptToken		* m_result;
-	Script			* m_invokingScript;
+	FunctionInfo* m_info;
+	ScriptEventList* m_eventList;		// temporary eventlist generated for function script
+	ScriptToken* m_result;
+	Script* m_invokingScript;
 	UInt8			m_callerVersion;
 	bool			m_bad;
 	bool m_lambdaBackupEventList; // if parent event list can't be retrieved, us
@@ -79,10 +80,10 @@ public:
 	FunctionContext(FunctionInfo* info, UInt8 version, Script* invokingScript);
 	~FunctionContext();
 
-	bool Execute(FunctionCaller & caller);
+	bool Execute(FunctionCaller& caller);
 	bool Return(ExpressionEvaluator* eval);
 	bool IsGood() { return !m_bad; }
-	ScriptToken*  Result() { return m_result; }
+	ScriptToken* Result() { return m_result; }
 	FunctionInfo* Info() { return m_info; }
 	Script* InvokingScript() { return m_invokingScript; }
 	void* operator new(size_t size);
@@ -94,12 +95,12 @@ public:
 // Function args in Call bytecode. FunctionInfo encoded in Begin Function data. Return value from SetFunctionValue.
 class UserFunctionManager
 {
-	static UserFunctionManager	* GetSingleton();
+	static UserFunctionManager* GetSingleton();
 
 	UserFunctionManager();
 
 	static const UInt32	kMaxNestDepth = 30;	// arbitrarily low; have seen 180+ nested calls execute w/o problems
-	
+
 	UInt32								m_nestDepth;
 	Stack<FunctionContext*>		m_functionStack;
 	UnorderedMap<Script*, FunctionInfo>	m_functionInfos;
@@ -135,33 +136,59 @@ public:
 		: m_callerVersion(UserFunctionManager::kVersion), m_numArgs(0), m_script(script), m_thisObj(callingObj), m_container(container) { }
 
 	virtual ~InternalFunctionCaller() { }
-	virtual UInt8 ReadCallerVersion() {	return m_callerVersion; }
-	virtual Script * ReadScript() {	return m_script; }
+	virtual UInt8 ReadCallerVersion() { return m_callerVersion; }
+	virtual Script* ReadScript() { return m_script; }
 	virtual bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info);
 	virtual TESObjectREFR* ThisObj() { return m_thisObj; }
 	virtual TESObjectREFR* ContainingObj() { return m_container; }
-	
+
 	bool SetArgs(UInt8 numArgs, ...);
 	bool vSetArgs(UInt8 numArgs, va_list args);
 	bool SetArgsRaw(UInt8 numArgs, const void* args);
 
 protected:
-	enum { kMaxArgs = 10 };	
+	enum { kMaxArgs = 10 };
 
 	UInt8			m_callerVersion;
 	UInt8			m_numArgs;
-	Script			* m_script;
-	void			* m_args[kMaxArgs];
-	TESObjectREFR	* m_thisObj;
-	TESObjectREFR	* m_container;
+	Script* m_script;
+	void* m_args[kMaxArgs];
+	TESObjectREFR* m_thisObj;
+	TESObjectREFR* m_container;
 
 	virtual bool ValidateParam(UserFunctionParam* param, UInt8 paramIndex) { return param != nullptr; }
-}; 
+};
+
+template <typename T>
+concept BaseOfArrayElement = std::is_base_of_v<ArrayElement, T>;
+
+template <BaseOfArrayElement T>
+class ArrayElementArgFunctionCaller : public FunctionCaller
+{
+public:
+	ArrayElementArgFunctionCaller(Script* script, const std::vector<T>& args, TESObjectREFR* callingObj = nullptr, TESObjectREFR* container = nullptr)
+		: m_script(script), m_thisObj(callingObj), m_container(container), m_args(&args) {}
+	ArrayElementArgFunctionCaller(Script* script, TESObjectREFR* callingObj = nullptr, TESObjectREFR* container = nullptr)
+		: m_script(script), m_thisObj(callingObj), m_container(container) {}
+
+	UInt8 ReadCallerVersion() override { return UserFunctionManager::kVersion; }
+	Script* ReadScript() override { return m_script; }
+	TESObjectREFR* ThisObj() override { return m_thisObj; }
+	TESObjectREFR* ContainingObj() override { return m_container; }
+
+	bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info) override;
+	void SetArgs(const std::vector<T>& args);
+protected:
+	Script* m_script;
+	TESObjectREFR* m_thisObj;
+	TESObjectREFR* m_container;
+	const std::vector<T>* m_args{};
+};
 
 namespace PluginAPI {
 	bool CallFunctionScript(Script* fnScript, TESObjectREFR* callingObj, TESObjectREFR* container,
 		NVSEArrayVarInterface::Element* result, UInt8 numArgs, ...);
-	bool CallFunctionScriptAlt(Script *fnScript, TESObjectREFR *callingObj, UInt8 numArgs, ...);
+	bool CallFunctionScriptAlt(Script* fnScript, TESObjectREFR* callingObj, UInt8 numArgs, ...);
 }
 
 #endif
