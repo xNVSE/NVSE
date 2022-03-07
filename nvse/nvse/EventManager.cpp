@@ -466,7 +466,7 @@ public:
 
 	bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info) override {
 		// make sure we've got the same # of args as expected by event handler
-		DynamicParamInfo& dParams = info->ParamInfo();
+		const DynamicParamInfo& dParams = info->ParamInfo();
 		if (dParams.NumParams() != m_eventInfo->numParams || dParams.NumParams() > 2) {
 			ShowRuntimeError(m_script, "Number of arguments to function script does not match those expected for event");
 			return false;
@@ -509,7 +509,7 @@ bool IsValidReference(void* refr)
 	bool bIsRefr = false;
 	__try
 	{
-		if ((*(UInt8*)refr & 4) && ((((UInt16*)refr)[1] == 0x108) || (*(UInt32*)refr == 0x102F55C)))
+		if ((*static_cast<UInt8*>(refr) & 4) && ((static_cast<UInt16*>(refr)[1] == 0x108) || (*static_cast<UInt32*>(refr) == 0x102F55C)))
 			bIsRefr = true;
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
@@ -596,7 +596,7 @@ void __stdcall HandleEvent(UInt32 id, void* arg0, void* arg1)
 		{
 			if (isArg0Valid == RefState::NotSet)
 				isArg0Valid = IsValidReference(arg0) ? RefState::Valid : RefState::Invalid;
-			if (isArg0Valid == RefState::Invalid || ((TESObjectREFR*)arg0)->baseForm != callback.source)
+			if (isArg0Valid == RefState::Invalid || static_cast<TESObjectREFR*>(arg0)->baseForm != callback.source)
 				continue;
 		}
 
@@ -641,7 +641,7 @@ bool SetHandler(const char* eventName, EventCallback& handler)
 		// trying to use a FormList to specify the source filter
 		if (handler.source && handler.source->GetTypeID() == 0x055 && recursiveLevel < 100)
 		{
-			BGSListForm* formList = (BGSListForm*)handler.source;
+			const auto formList = static_cast<BGSListForm*>(handler.source);
 			for (tList<TESForm>::Iterator iter = formList->list.Begin(); !iter.End(); ++iter)
 			{
 				EventCallback listHandler(script, iter.Get(), handler.object);
@@ -655,7 +655,7 @@ bool SetHandler(const char* eventName, EventCallback& handler)
 		// trying to use a FormList to specify the object filter
 		if (handler.object && handler.object->GetTypeID() == 0x055 && recursiveLevel < 100)
 		{
-			BGSListForm* formList = (BGSListForm*)handler.object;
+			const auto formList = static_cast<BGSListForm*>(handler.object);
 			for (tList<TESForm>::Iterator iter = formList->list.Begin(); !iter.End(); ++iter)
 			{
 				EventCallback listHandler(script, handler.source, iter.Get());
@@ -733,7 +733,7 @@ bool RemoveHandler(const char* id, const EventCallback& handler)
 		// trying to use a FormList to specify the source filter
 		if (handler.source && handler.source->GetTypeID() == 0x055 && recursiveLevel < 100)
 		{
-			BGSListForm* formList = (BGSListForm*)handler.source;
+			const auto formList = static_cast<BGSListForm*>(handler.source);
 			for (tList<TESForm>::Iterator iter = formList->list.Begin(); !iter.End(); ++iter)
 			{
 
@@ -748,7 +748,7 @@ bool RemoveHandler(const char* id, const EventCallback& handler)
 		// trying to use a FormList to specify the object filter
 		if (handler.object && handler.object->GetTypeID() == 0x055 && recursiveLevel < 100)
 		{
-			BGSListForm* formList = (BGSListForm*)handler.object;
+			const auto formList = static_cast<BGSListForm*>(handler.object);
 			for (tList<TESForm>::Iterator iter = formList->list.Begin(); !iter.End(); ++iter)
 			{
 				EventCallback listHandler(script, handler.source, iter.Get());
@@ -819,7 +819,7 @@ void __stdcall HandleGameEvent(UInt32 eventMask, TESObjectREFR* source, TESForm*
 		return;
 	}
 
-	UInt32 eventID = EventIDForMask(eventMask);
+	const UInt32 eventID = EventIDForMask(eventMask);
 	if (eventID != kEventID_INVALID)
 	{
 		if (eventID == kEventID_OnHitWith)
@@ -849,7 +849,7 @@ void __stdcall HandleGameEvent(UInt32 eventMask, TESObjectREFR* source, TESForm*
 
 void HandleNVSEMessage(UInt32 msgID, void* data)
 {
-	UInt32 eventID = EventIDForMessage(msgID);
+	const UInt32 eventID = EventIDForMessage(msgID);
 	if (eventID != kEventID_INVALID)
 		HandleEvent(eventID, data, NULL);
 }
@@ -1068,7 +1068,7 @@ bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 arg
 	ScopedLock lock(s_criticalSection);
 
 	// does an EventInfo entry already exist for this event?
-	UInt32 eventID = EventIDForString (eventName);
+	const UInt32 eventID = EventIDForString (eventName);
 	if (kEventID_INVALID == eventID)
 		return true;
 
@@ -1207,7 +1207,7 @@ bool SetNativeEventHandler(const char* eventName, EventHandler func)
 
 bool RemoveNativeEventHandler(const char* eventName, EventHandler func)
 {
-	EventCallback event(func);
+	const EventCallback event(func);
 	return RemoveHandler(eventName, event);
 }
 
