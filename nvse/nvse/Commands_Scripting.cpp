@@ -699,7 +699,7 @@ bool Cmd_Let_Parse(UInt32 numParams, ParamInfo* paramInfo, ScriptLineBuffer* lin
 		return false;
 
 	// verify that assignment operator is last data recorded
-	UInt8 lastData = lineBuf->dataBuf[lineBuf->dataOffset - 1];
+	const UInt8 lastData = lineBuf->dataBuf[lineBuf->dataOffset - 1];
 	switch (lastData)
 	{
 	case kOpType_Assignment:
@@ -734,7 +734,7 @@ bool Cmd_BeginLoop_Parse(UInt32 numParams, ParamInfo* paramInfo, ScriptLineBuffe
 bool Cmd_Loop_Parse(UInt32 numParams, ParamInfo* paramInfo, ScriptLineBuffer* lineBuf, ScriptBuffer* scriptBuf)
 {
 	UInt8* endPtr = scriptBuf->scriptData + scriptBuf->dataOffset + lineBuf->dataOffset + 4;
-	UInt32 offset = endPtr - scriptBuf->scriptData;		// num bytes between beginning of script and instruction following Loop
+	const UInt32 offset = endPtr - scriptBuf->scriptData;		// num bytes between beginning of script and instruction following Loop
 
 	if (!HandleLoopEnd(offset))
 	{
@@ -755,7 +755,7 @@ bool Cmd_Null_Parse(UInt32 numParams, ParamInfo* paramInfo, ScriptLineBuffer* li
 
 bool Cmd_Function_Parse(UInt32 numParams, ParamInfo* paramInfo, ScriptLineBuffer* lineBuf, ScriptBuffer* scriptBuf)
 {
-	ExpressionParser parser(scriptBuf, lineBuf);
+	const ExpressionParser parser(scriptBuf, lineBuf);
 	return parser.ParseUserFunctionDefinition();
 }
 

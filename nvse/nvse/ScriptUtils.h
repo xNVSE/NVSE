@@ -361,7 +361,7 @@ class ExpressionParser
 	std::unique_ptr<ScriptToken>	ParseOperand(Operator* curOp = nullptr);
 	std::unique_ptr<ScriptToken>	PeekOperand(UInt32& outReadLen);
 	bool			HandleMacros();
-	[[nodiscard]] VariableInfo* CreateVariable(const std::string& varName, Script::VariableType varType) const;
+	VariableInfo* CreateVariable(const std::string& varName, Script::VariableType varType) const;
 	void SkipSpaces() const;
 	bool			ParseFunctionCall(CommandInfo* cmdInfo) const;
 	Token_Type		PopOperator(std::stack<Operator*> & ops, std::stack<Token_Type> & operands) const;
