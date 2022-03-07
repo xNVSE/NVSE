@@ -102,7 +102,7 @@ STATIC_ASSERT(sizeof(ArrayData) == 0x10);
 struct ArrayElement
 {
 protected:
-	void Unset_Regular();	//to avoid calling virtual func in dtor.
+	void UnsetDefault();	//to avoid calling virtual func in dtor.
 public:
 	friend class ArrayVar;
 	friend class ArrayVarMap;
@@ -160,7 +160,7 @@ public:
 class SelfOwningArrayElement : public ArrayElement
 {
 protected:
-	void Unset_SelfOwning();	//to avoid calling virtual func in dtor.
+	void UnsetSelfOwning();	//to avoid calling virtual func in dtor.
 public:
 	~SelfOwningArrayElement() override;
 	bool SetArray(ArrayID arr) override;

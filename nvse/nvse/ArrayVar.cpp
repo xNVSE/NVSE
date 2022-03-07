@@ -50,7 +50,7 @@ ArrayElement::ArrayElement()
 
 ArrayElement::~ArrayElement()
 {
-	Unset_Regular();
+	UnsetDefault();
 }
 
 
@@ -321,7 +321,7 @@ bool ArrayElement::GetBool() const
 }
 
 
-void ArrayElement::Unset_Regular()
+void ArrayElement::UnsetDefault()
 {
 	if (m_data.dataType == kDataType_Invalid)
 		return;
@@ -351,7 +351,7 @@ void ArrayElement::Unset_Regular()
 
 void ArrayElement::Unset()
 {
-	Unset_Regular();
+	UnsetDefault();
 }
 
 
@@ -419,16 +419,16 @@ ArrayData::ArrayData(const ArrayData& from) : dataType(from.dataType), owningArr
 // SelfOwningArrayElement
 //////////////////////
 
-void SelfOwningArrayElement::Unset_SelfOwning()
+void SelfOwningArrayElement::UnsetSelfOwning()
 {
 	if (m_data.dataType == kDataType_Array && !m_data.owningArray)
 		g_ArrayMap.RemoveReference(&m_data.arrID, 0xFF);
-	ArrayElement::Unset_Regular();
+	UnsetDefault();
 }
 
 SelfOwningArrayElement::~SelfOwningArrayElement()
 {
-	Unset_SelfOwning();
+	UnsetSelfOwning();
 }
 
 bool SelfOwningArrayElement::SetArray(ArrayID arr)
@@ -442,7 +442,7 @@ bool SelfOwningArrayElement::SetArray(ArrayID arr)
 
 void SelfOwningArrayElement::Unset()
 {
-	Unset_SelfOwning();
+	UnsetSelfOwning();
 }
 
 ///////////////////////
