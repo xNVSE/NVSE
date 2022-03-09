@@ -374,7 +374,7 @@ const char* ArrayData::GetStr() const
 
 void ArrayData::SetStr(const char* srcStr)
 {
-	str = (srcStr && *srcStr) ? CopyString(srcStr) : NULL;
+	str = (srcStr && *srcStr) ? CopyString(srcStr) : nullptr;
 }
 
 ArrayData& ArrayData::operator=(const ArrayData& rhs)
@@ -560,7 +560,7 @@ ArrayVar::~ArrayVar()
 ArrayElement* ArrayVar::Get(const ArrayKey* key, bool bCanCreateNew)
 {
 	if (m_keyType != key->KeyType())
-		return NULL;
+		return nullptr;
 
 	switch (GetContainerType())
 	{
@@ -607,7 +607,7 @@ ArrayElement* ArrayVar::Get(const ArrayKey* key, bool bCanCreateNew)
 ArrayElement* ArrayVar::Get(double key, bool bCanCreateNew)
 {
 	if (m_keyType != kDataType_Numeric)
-		return NULL;
+		return nullptr;
 
 	switch (GetContainerType())
 	{
@@ -643,7 +643,7 @@ ArrayElement* ArrayVar::Get(double key, bool bCanCreateNew)
 ArrayElement* ArrayVar::Get(const char* key, bool bCanCreateNew)
 {
 	if ((m_keyType != kDataType_String) || (GetContainerType() != kContainer_StringMap))
-		return NULL;
+		return nullptr;
 
 	auto* pMap = m_elements.getStrMapPtr();
 	if (bCanCreateNew)
@@ -657,17 +657,17 @@ ArrayElement* ArrayVar::Get(const char* key, bool bCanCreateNew)
 
 bool ArrayVar::HasKey(double key)
 {
-	return Get(key, false) != NULL;
+	return Get(key, false) != nullptr;
 }
 
 bool ArrayVar::HasKey(const char* key)
 {
-	return Get(key, false) != NULL;
+	return Get(key, false) != nullptr;
 }
 
 bool ArrayVar::HasKey(const ArrayKey* key)
 {
-	return Get(key, false) != NULL;
+	return Get(key, false) != nullptr;
 }
 
 bool ArrayVar::SetElementNumber(double key, double num)
@@ -866,7 +866,7 @@ DataType ArrayVar::GetElementType(const ArrayKey* key)
 const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 {
 	if (Empty()) 
-		return NULL;
+		return nullptr;
 
 	switch (GetContainerType())
 	{
@@ -878,13 +878,13 @@ const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 			if (range)
 			{
 				if (range->bIsString)
-					return NULL;
+					return nullptr;
 				iLow = (int)range->m_lower;
 				iHigh = (int)range->m_upper;
 				if (iHigh >= arrSize)
 					iHigh = arrSize - 1;
 				if ((iLow >= arrSize) || (iLow > iHigh))
-					return NULL;
+					return nullptr;
 			}
 			else
 			{
@@ -898,7 +898,7 @@ const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 				s_arrNumKey.key.num = idx;
 				return &s_arrNumKey;
 			}
-			return NULL;
+			return nullptr;
 		}
 	case kContainer_NumericMap:
 		{
@@ -906,7 +906,7 @@ const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 			if (range)
 			{
 				if (range->bIsString)
-					return NULL;
+					return nullptr;
 				bool inRange = false;
 				for (; !iter.End(); ++iter)
 				{
@@ -917,7 +917,7 @@ const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 						else continue;
 					}
 					if (iter.Key() > range->m_upper)
-						return NULL;
+						return nullptr;
 					if (iter.Get() == *toFind) break;
 				}
 			}
@@ -931,7 +931,7 @@ const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 				s_arrNumKey.key.num = iter.Key();
 				return &s_arrNumKey;
 			}
-			return NULL;
+			return nullptr;
 		}
 	case kContainer_StringMap:
 		{
@@ -939,7 +939,7 @@ const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 			if (range)
 			{
 				if (!range->bIsString)
-					return NULL;
+					return nullptr;
 				const char *sLow = range->m_lowerStr.c_str(), *sHigh = range->m_upperStr.c_str();
 				bool inRange = false;
 				for (; !iter.End(); ++iter)
@@ -951,7 +951,7 @@ const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 						else continue;
 					}
 					if (StrCompare(iter.Key(), sHigh) > 0)
-						return NULL;
+						return nullptr;
 					if (iter.Get() == *toFind) break;
 				}
 			}
@@ -965,7 +965,7 @@ const ArrayKey* ArrayVar::Find(const ArrayElement* toFind, const Slice* range)
 				s_arrStrKey.key.str = const_cast<char*>(iter.Key());
 				return &s_arrStrKey;
 			}
-			return NULL;
+			return nullptr;
 		}
 	}
 }
@@ -1233,7 +1233,7 @@ class SortFunctionCaller : public FunctionCaller
 	bool descending;
 
 public:
-	SortFunctionCaller(Script* comparator, bool _descending) : m_comparator(comparator), m_lhs(NULL), m_rhs(NULL),
+	SortFunctionCaller(Script* comparator, bool _descending) : m_comparator(comparator), m_lhs(nullptr), m_rhs(nullptr),
 	                                                           descending(_descending)
 	{
 		if (comparator)
@@ -1243,14 +1243,14 @@ public:
 		}
 	}
 
-	virtual ~SortFunctionCaller()
+	~SortFunctionCaller() override
 	{
 	}
 
-	virtual UInt8 ReadCallerVersion() { return UserFunctionManager::kVersion; }
-	virtual Script* ReadScript() { return m_comparator; }
+	UInt8 ReadCallerVersion() override { return UserFunctionManager::kVersion; }
+	Script* ReadScript() override { return m_comparator; }
 
-	virtual bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info)
+	bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info) override
 	{
 		DynamicParamInfo& dParams = info->ParamInfo();
 		if (dParams.NumParams() == 2)
@@ -1283,18 +1283,16 @@ public:
 		return false;
 	}
 
-	virtual TESObjectREFR* ThisObj() { return NULL; }
-	virtual TESObjectREFR* ContainingObj() { return NULL; }
+	TESObjectREFR* ThisObj() override { return nullptr; }
+	TESObjectREFR* ContainingObj() override { return nullptr; }
 
 	bool operator()(const ArrayElement& lhs, const ArrayElement& rhs)
 	{
 		m_lhs->SetElement(0.0, &lhs);
 		m_rhs->SetElement(0.0, &rhs);
-		ScriptToken* result = UserFunctionManager::Call(std::move(*this));
-		if (result)
+		if (auto const result = UserFunctionManager::Call(std::move(*this)))
 		{
-			bool bResult = result->GetBool();
-			delete result;
+			bool const bResult = result->GetBool();
 			return descending ? !bResult : bResult;
 		}
 		return false;
@@ -1727,7 +1725,7 @@ void ArrayVarMap::RemoveReference(double* ref, UInt8 referringModIndex)
 ArrayElement* ArrayVarMap::GetElement(ArrayID id, const ArrayKey* key)
 {
 	ArrayVar* arr = Get(id);
-	return arr ? arr->Get(key, false) : NULL;
+	return arr ? arr->Get(key, false) : nullptr;
 }
 
 void ArrayVarMap::Save(NVSESerializationInterface* intfc)
@@ -2007,7 +2005,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 								strVal[strLength] = 0;
 								elem->m_data.str = strVal;
 							}
-							else elem->m_data.str = NULL;
+							else elem->m_data.str = nullptr;
 							break;
 						}
 					case kDataType_Array:
@@ -2061,7 +2059,7 @@ namespace PluginAPI
 	                                                    Script* callingScript)
 	{
 		ArrayVar* arr = g_ArrayMap.Create(kDataType_Numeric, true, callingScript->GetModIndex());
-		if (!arr) return NULL;
+		if (!arr) return nullptr;
 		double elemIdx = 0;
 		for (UInt32 i = 0; i < size; i++)
 		{
@@ -2076,7 +2074,7 @@ namespace PluginAPI
 	                                                        Script* callingScript)
 	{
 		ArrayVar* arr = g_ArrayMap.Create(kDataType_String, false, callingScript->GetModIndex());
-		if (!arr) return NULL;
+		if (!arr) return nullptr;
 		for (UInt32 i = 0; i < size; i++)
 			arr->SetElementFromAPI(keys[i], &values[i]);
 		return (NVSEArrayVarInterface::Array*)arr->m_ID;
@@ -2086,7 +2084,7 @@ namespace PluginAPI
 	                                                  UInt32 size, Script* callingScript)
 	{
 		ArrayVar* arr = g_ArrayMap.Create(kDataType_Numeric, false, callingScript->GetModIndex());
-		if (!arr) return NULL;
+		if (!arr) return nullptr;
 		for (UInt32 i = 0; i < size; i++)
 			arr->SetElementFromAPI(keys[i], &values[i]);
 		return (NVSEArrayVarInterface::Array*)arr->m_ID;
@@ -2147,7 +2145,7 @@ namespace PluginAPI
 	NVSEArrayVarInterface::Array* ArrayAPI::LookupArrayByID(UInt32 id)
 	{
 		ArrayVar* arrVar = g_ArrayMap.Get(id);
-		return arrVar ? (NVSEArrayVarInterface::Array*)id : 0;
+		return arrVar ? (NVSEArrayVarInterface::Array*)id : nullptr;
 	}
 
 	bool ArrayAPI::GetElement(NVSEArrayVarInterface::Array* arr, const NVSEArrayVarInterface::Element& key,
@@ -2156,7 +2154,7 @@ namespace PluginAPI
 		ArrayVar* var = g_ArrayMap.Get((ArrayID)arr);
 		if (var)
 		{
-			ArrayElement* data = NULL;
+			ArrayElement* data = nullptr;
 			switch (key.type)
 			{
 			case key.kType_String:

@@ -54,7 +54,7 @@ FunctionContext* UserFunctionManager::Top(Script* funcScript)
 	if (m_functionStack.Size() && m_functionStack.Top()->Info()->GetScript() == funcScript)
 		return m_functionStack.Top();
 
-	return NULL;
+	return nullptr;
 }
 
 bool UserFunctionManager::Pop(Script* funcScript)
@@ -82,7 +82,7 @@ bool UserFunctionManager::Pop(Script* funcScript)
 class ScriptFunctionCaller : public FunctionCaller
 {
 public:
-	ScriptFunctionCaller(ExpressionEvaluator& context) : m_eval(context), m_callerVersion(-1), m_funcScript(NULL)
+	ScriptFunctionCaller(ExpressionEvaluator& context) : m_eval(context), m_callerVersion(-1), m_funcScript(nullptr)
 	{
 	}
 	virtual ~ScriptFunctionCaller() {}
@@ -98,7 +98,7 @@ public:
 		if (m_funcScript)
 			return m_funcScript;
 
-		ScriptToken* scrToken = NULL;
+		ScriptToken* scrToken = nullptr;
 		switch (m_callerVersion)
 		{
 		case 0:
@@ -109,7 +109,7 @@ public:
 			break;
 		default:
 			m_eval.Error("Unknown bytecode version %d encountered in Call statement", m_callerVersion);
-			return NULL;
+			return nullptr;
 		}
 
 		if (scrToken)
@@ -130,7 +130,7 @@ public:
 		// populate event list variables
 		for (UInt32 i = 0; i < m_eval.NumArgs(); i++)
 		{
-			ScriptToken* arg = m_eval.Arg(i);
+			const ScriptToken* arg = m_eval.Arg(i);
 
 			UserFunctionParam* param = info->GetParam(i);
 			if (!param)
@@ -190,30 +190,30 @@ private:
 	Script* m_funcScript;
 };
 
-ScriptToken* UserFunctionManager::Call(ExpressionEvaluator* eval)
+std::unique_ptr<ScriptToken> UserFunctionManager::Call(ExpressionEvaluator* eval)
 {
 	ScriptFunctionCaller caller(*eval);
 	return Call(std::move(caller));
 }
 
-ScriptToken* UserFunctionManager::Call(FunctionCaller&& caller)
+std::unique_ptr<ScriptToken> UserFunctionManager::Call(FunctionCaller&& caller)
 {
 	UserFunctionManager* funcMan = GetSingleton();
 
 	if (funcMan->m_nestDepth >= kMaxNestDepth)
 	{
-		ShowRuntimeError(NULL, "Max nest depth %d exceeded in function call.", kMaxNestDepth);
-		return NULL;
+		ShowRuntimeError(nullptr, "Max nest depth %d exceeded in function call.", kMaxNestDepth);
+		return nullptr;
 	}
 
 	// extract version and script
-	UInt8 callerVersion = caller.ReadCallerVersion();
+	const UInt8 callerVersion = caller.ReadCallerVersion();
 	Script* funcScript = caller.ReadScript();
 
 	if (!funcScript)
 	{
-		ShowRuntimeError(NULL, "Could not extract function script.");
-		return NULL;
+		ShowRuntimeError(nullptr, "Could not extract function script.");
+		return nullptr;
 	}
 
 	if (!funcScript->data)
@@ -224,7 +224,7 @@ ScriptToken* UserFunctionManager::Call(FunctionCaller&& caller)
 	if (!info)
 	{
 		ShowRuntimeError(funcScript, "Could not parse function info for function script");
-		return NULL;
+		return nullptr;
 	}
 
 	// create a function context for execution
@@ -232,11 +232,11 @@ ScriptToken* UserFunctionManager::Call(FunctionCaller&& caller)
 	if (!context)
 	{
 		ShowRuntimeError(funcScript, "Could not create function context for function script");
-		return NULL;
+		return nullptr;
 	}
 
 	// push and execute on stack
-	ScriptToken* funcResult = NULL;
+	std::unique_ptr<ScriptToken> funcResult = nullptr;
 	funcMan->Push(context);
 
 	funcMan->m_nestDepth++;
@@ -270,7 +270,7 @@ bool UserFunctionManager::Return(ExpressionEvaluator* eval)
 FunctionInfo* UserFunctionManager::GetFunctionInfo(Script* funcScript)
 {
 	FunctionInfo* funcInfo = m_functionInfos.Emplace(funcScript, funcScript);
-	return (funcInfo->IsGood()) ? funcInfo : NULL;
+	return (funcInfo->IsGood()) ? funcInfo : nullptr;
 }
 
 UInt32 UserFunctionManager::GetFunctionParamTypes(Script* fnScript, UInt8* typesOut)
@@ -288,7 +288,7 @@ UInt32 UserFunctionManager::GetFunctionParamTypes(Script* fnScript, UInt8* types
 Script* UserFunctionManager::GetInvokingScript(Script* fnScript)
 {
 	FunctionContext* context = GetSingleton()->Top(fnScript);
-	return context ? context->InvokingScript() : NULL;
+	return context ? context->InvokingScript() : nullptr;
 }
 
 void UserFunctionManager::ClearInfos()
@@ -310,7 +310,7 @@ bool IsSingleLineLambda(Script* script, UInt8*& setFunctionValuePos)
 		static_cast<UInt16>(ScriptParsing::ScriptStatementCode::End)
 	};
 	ScriptParsing::ScriptIterator iter(script);
-	for (auto opcode : matchingCodes)
+	for (const auto opcode : matchingCodes)
 	{
 		if (opcode != iter.opcode)
 		{
@@ -409,13 +409,13 @@ FunctionInfo::~FunctionInfo()
 FunctionContext* FunctionInfo::CreateContext(UInt8 version, Script* invokingScript)
 {
 	if (!IsGood())
-		return NULL;
+		return nullptr;
 
 	FunctionContext* context = new FunctionContext(this, version, invokingScript);
 	if (!context->IsGood())
 	{
 		delete context;
-		return NULL;
+		return nullptr;
 	}
 
 	return context;
@@ -424,14 +424,14 @@ FunctionContext* FunctionInfo::CreateContext(UInt8 version, Script* invokingScri
 UserFunctionParam* FunctionInfo::GetParam(UInt32 paramIndex)
 {
 	if (paramIndex >= m_userFunctionParams.size())
-		return NULL;
+		return nullptr;
 
 	return &m_userFunctionParams[paramIndex];
 }
 
 UInt32 FunctionInfo::GetParamVarTypes(UInt8* out) const
 {
-	UInt32 count = m_userFunctionParams.size();
+	const UInt32 count = m_userFunctionParams.size();
 	if (count)
 	{
 		for (UInt32 i = 0; i < count; i++)
@@ -449,7 +449,7 @@ bool FunctionInfo::Execute(FunctionCaller& caller, FunctionContext* context)
 	ASSERT(m_instanceCount < 0xFF);
 	m_instanceCount++;
 
-	bool bResult = context->Execute(caller);
+	const bool bResult = context->Execute(caller);
 
 	m_instanceCount--;
 	return bResult;
@@ -459,8 +459,8 @@ bool FunctionInfo::Execute(FunctionCaller& caller, FunctionContext* context)
 	FunctionContext
 ******************************/
 
-FunctionContext::FunctionContext(FunctionInfo* info, UInt8 version, Script* invokingScript) : m_info(info), m_eventList(NULL),
-m_result(NULL), m_invokingScript(invokingScript), m_callerVersion(version),
+FunctionContext::FunctionContext(FunctionInfo* info, UInt8 version, Script* invokingScript) : m_info(info), m_eventList(nullptr),
+m_result(nullptr), m_invokingScript(invokingScript), m_callerVersion(version),
 m_bad(true), m_lambdaBackupEventList(false)
 {
 #ifdef DBG_EXPR_LEAKS
@@ -530,7 +530,7 @@ FunctionContext::~FunctionContext()
 		}
 	}
 
-	delete m_result;
+	m_result = nullptr;
 }
 
 void ExecuteSingleLineLambda(FunctionInfo* info, FunctionCaller& caller, ScriptEventList* eventList)
@@ -561,18 +561,13 @@ bool FunctionContext::Execute(FunctionCaller& caller)
 
 bool FunctionContext::Return(ExpressionEvaluator* eval)
 {
-	delete m_result;
-
 	if (!eval->ExtractArgs() || eval->NumArgs() != 1)
 	{
-		m_result = NULL;
+		m_result = nullptr;
 		return false;
 	}
-	else
-	{
-		m_result = eval->Arg(0)->ToBasicToken();
-		return true;
-	}
+	m_result = eval->Arg(0)->ToBasicToken();
+	return true;
 }
 
 /*******************************
@@ -624,7 +619,7 @@ bool InternalFunctionCaller::PopulateArgs(ScriptEventList* eventList, FunctionIn
 			break;
 		case Script::eVarType_Array:
 		{
-			ArrayID arrID = (ArrayID)m_args[i];
+			const ArrayID arrID = (ArrayID)m_args[i];
 			if (g_ArrayMap.Get(arrID))
 			{
 				g_ArrayMap.AddReference(&var->data, arrID, info->GetScript()->GetModIndex());
@@ -648,7 +643,7 @@ bool InternalFunctionCaller::SetArgs(UInt8 numArgs, ...)
 {
 	va_list args;
 	va_start(args, numArgs);
-	bool result = vSetArgs(numArgs, args);
+	const bool result = vSetArgs(numArgs, args);
 	va_end(args);
 	return result;
 }
@@ -769,8 +764,7 @@ namespace PluginAPI
 		bool success = caller.vSetArgs(numArgs, args);
 		if (success)
 		{
-			ScriptToken* ret = UserFunctionManager::Call(std::move(caller));
-			if (ret)
+			if (auto ret = UserFunctionManager::Call(std::move(caller)))
 			{
 				if (result)
 				{
@@ -794,7 +788,7 @@ namespace PluginAPI
 						success = false;
 					}
 				}
-				delete ret;
+				ret = nullptr;
 			}
 			else if (result)
 			{
@@ -806,14 +800,12 @@ namespace PluginAPI
 
 	bool CallFunctionScriptAlt(Script* fnScript, TESObjectREFR* callingObj, UInt8 numArgs, ...)
 	{
-		InternalFunctionCaller caller(fnScript, callingObj, NULL);
+		InternalFunctionCaller caller(fnScript, callingObj, nullptr);
 		va_list args;
 		va_start(args, numArgs);
 		if (caller.vSetArgs(numArgs, args))
 		{
-			ScriptToken* ret = UserFunctionManager::Call(std::move(caller));
-			if (ret)
-				delete ret;
+			UserFunctionManager::Call(std::move(caller));
 			return true;
 		}
 		return false;

@@ -31,10 +31,10 @@ enum EScriptMode
 static bool GetScript_Execute(COMMAND_ARGS, EScriptMode eMode)
 {
 	*result = 0;
-	TESForm *form = NULL;
+	TESForm *form = nullptr;
 
 	ExtractArgsEx(EXTRACT_ARGS_EX, &form);
-	bool parmForm = form ? true : false;
+	const bool parmForm = form ? true : false;
 
 	form = form->TryGetREFRParent();
 	if (!form)
@@ -44,9 +44,9 @@ static bool GetScript_Execute(COMMAND_ARGS, EScriptMode eMode)
 		form = thisObj->baseForm;
 	}
 
-	TESScriptableForm *scriptForm = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
-	Script *script = NULL;
-	EffectSetting *effect = NULL;
+	const auto scriptForm = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
+	Script *script = nullptr;
+	EffectSetting *effect = nullptr;
 	if (!scriptForm) // Let's try for a MGEF
 	{
 		effect = DYNAMIC_CAST(form, TESForm, EffectSetting);
@@ -54,20 +54,20 @@ static bool GetScript_Execute(COMMAND_ARGS, EScriptMode eMode)
 			script = effect->GetScript();
 	}
 	else
-		script = (scriptForm) ? scriptForm->script : NULL;
+		script = (scriptForm) ? scriptForm->script : nullptr;
 
 	switch (eMode)
 	{
 	case eScript_HasScript:
 	{
-		*result = (script != NULL) ? 1 : 0;
+		*result = (script != nullptr) ? 1 : 0;
 		break;
 	}
 	case eScript_Get:
 	{
 		if (script)
 		{
-			UInt32 *refResult = (UInt32 *)result;
+			const auto refResult = (UInt32 *)result;
 			*refResult = script->refID;
 		}
 		break;
@@ -77,11 +77,11 @@ static bool GetScript_Execute(COMMAND_ARGS, EScriptMode eMode)
 		// simply forget about the script
 		if (script)
 		{
-			UInt32 *refResult = (UInt32 *)result;
+			const auto refResult = (UInt32 *)result;
 			*refResult = script->refID;
 		}
 		if (scriptForm)
-			scriptForm->script = NULL;
+			scriptForm->script = nullptr;
 		else if (effect)
 			effect->RemoveScript();
 		if (!parmForm && thisObj)
@@ -113,14 +113,14 @@ bool Cmd_RemoveScript_Execute(COMMAND_ARGS)
 bool Cmd_SetScript_Execute(COMMAND_ARGS)
 {
 	*result = 0;
-	UInt32 *refResult = (UInt32 *)result;
+	const auto refResult = (UInt32 *)result;
 
-	TESForm *form = NULL;
-	TESForm *pForm = NULL;
-	TESForm *scriptArg = NULL;
+	TESForm *form = nullptr;
+	TESForm *pForm = nullptr;
+	TESForm *scriptArg = nullptr;
 
 	ExtractArgsEx(EXTRACT_ARGS_EX, &scriptArg, &form);
-	bool parmForm = form ? true : false;
+	const bool parmForm = form ? true : false;
 
 	form = form->TryGetREFRParent();
 	if (!form)
@@ -130,9 +130,9 @@ bool Cmd_SetScript_Execute(COMMAND_ARGS)
 		form = thisObj->baseForm;
 	}
 
-	TESScriptableForm *scriptForm = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
-	Script *oldScript = NULL;
-	EffectSetting *effect = NULL;
+	const auto scriptForm = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
+	Script *oldScript = nullptr;
+	EffectSetting *effect = nullptr;
 	if (!scriptForm) // Let's try for a MGEF
 	{
 		effect = DYNAMIC_CAST(form, TESForm, EffectSetting);
@@ -144,7 +144,7 @@ bool Cmd_SetScript_Execute(COMMAND_ARGS)
 	else
 		oldScript = scriptForm->script;
 
-	Script *script = DYNAMIC_CAST(scriptArg, TESForm, Script);
+	const auto script = DYNAMIC_CAST(scriptArg, TESForm, Script);
 	if (!script)
 		return true;
 
@@ -198,7 +198,7 @@ bool Cmd_SetScript_Execute(COMMAND_ARGS)
 
 bool Cmd_IsFormValid_Execute(COMMAND_ARGS)
 {
-	TESForm *pForm = NULL;
+	TESForm *pForm = nullptr;
 	*result = 0;
 	if (ExtractArgsEx(EXTRACT_ARGS_EX, &pForm))
 	{
@@ -221,7 +221,7 @@ bool Cmd_IsFormValid_Execute(COMMAND_ARGS)
 
 bool Cmd_IsReference_Execute(COMMAND_ARGS)
 {
-	TESObjectREFR *refr = NULL;
+	TESObjectREFR *refr = nullptr;
 	*result = 0;
 	if (ExtractArgs(EXTRACT_ARGS, &refr))
 		*result = 1;
@@ -241,22 +241,22 @@ enum
 bool GetVariable_Execute(COMMAND_ARGS, UInt32 whichAction)
 {
 	char varName[256];
-	TESQuest *quest = NULL;
-	Script *targetScript = NULL;
-	ScriptEventList *targetEventList = NULL;
+	TESQuest *quest = nullptr;
+	Script *targetScript = nullptr;
+	ScriptEventList *targetEventList = nullptr;
 	*result = 0;
 
 	if (!ExtractArgs(EXTRACT_ARGS, &varName, &quest))
 		return true;
 	if (quest)
 	{
-		TESScriptableForm *scriptable = DYNAMIC_CAST(quest, TESQuest, TESScriptableForm);
+		const auto scriptable = DYNAMIC_CAST(quest, TESQuest, TESScriptableForm);
 		targetScript = scriptable->script;
 		targetEventList = quest->scriptEventList;
 	}
 	else if (thisObj)
 	{
-		TESScriptableForm *scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm);
+		const auto scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm);
 		if (scriptable)
 		{
 			targetScript = scriptable->script;
@@ -280,7 +280,7 @@ bool GetVariable_Execute(COMMAND_ARGS, UInt32 whichAction)
 						*result = var->data;
 					else if (whichAction == eScriptVar_GetRef)
 					{
-						UInt32 *refResult = (UInt32 *)result;
+						const auto refResult = (UInt32 *)result;
 						*refResult = (*(UInt64 *)&var->data);
 					}
 				}
@@ -294,9 +294,9 @@ bool GetVariable_Execute(COMMAND_ARGS, UInt32 whichAction)
 bool Cmd_SetVariable_Execute(COMMAND_ARGS)
 {
 	char varName[256];
-	TESQuest *quest = NULL;
-	Script *targetScript = NULL;
-	ScriptEventList *targetEventList = NULL;
+	TESQuest *quest = nullptr;
+	Script *targetScript = nullptr;
+	ScriptEventList *targetEventList = nullptr;
 	float value = 0;
 	*result = 0;
 
@@ -304,13 +304,13 @@ bool Cmd_SetVariable_Execute(COMMAND_ARGS)
 		return true;
 	if (quest)
 	{
-		TESScriptableForm *scriptable = DYNAMIC_CAST(quest, TESQuest, TESScriptableForm);
+		const auto scriptable = DYNAMIC_CAST(quest, TESQuest, TESScriptableForm);
 		targetScript = scriptable->script;
 		targetEventList = quest->scriptEventList;
 	}
 	else if (thisObj)
 	{
-		TESScriptableForm *scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm);
+		const auto scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm);
 		if (scriptable)
 		{
 			targetScript = scriptable->script;
@@ -335,23 +335,23 @@ bool Cmd_SetVariable_Execute(COMMAND_ARGS)
 bool Cmd_SetRefVariable_Execute(COMMAND_ARGS)
 {
 	char varName[256];
-	TESQuest *quest = NULL;
-	Script *targetScript = NULL;
-	ScriptEventList *targetEventList = NULL;
-	TESForm *value = NULL;
+	TESQuest *quest = nullptr;
+	Script *targetScript = nullptr;
+	ScriptEventList *targetEventList = nullptr;
+	TESForm *value = nullptr;
 	*result = 0;
 
 	if (!ExtractArgs(EXTRACT_ARGS, &varName, &value, &quest))
 		return true;
 	if (quest)
 	{
-		TESScriptableForm *scriptable = DYNAMIC_CAST(quest, TESQuest, TESScriptableForm);
+		const auto scriptable = DYNAMIC_CAST(quest, TESQuest, TESScriptableForm);
 		targetScript = scriptable->script;
 		targetEventList = quest->scriptEventList;
 	}
 	else if (thisObj)
 	{
-		TESScriptableForm *scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm);
+		const auto scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm);
 		if (scriptable)
 		{
 			targetScript = scriptable->script;
@@ -367,7 +367,7 @@ bool Cmd_SetRefVariable_Execute(COMMAND_ARGS)
 			ScriptLocal *var = targetEventList->GetVariable(varInfo->idx);
 			if (var)
 			{
-				UInt32 *refResult = (UInt32 *)result;
+				auto refResult = (UInt32 *)result;
 				(*(UInt64 *)&var->data) = value ? value->refID : 0;
 			}
 		}
@@ -408,8 +408,8 @@ bool Cmd_GetArrayVariable_Execute(COMMAND_ARGS)
 
 bool Cmd_CompareScripts_Execute(COMMAND_ARGS)
 {
-	Script *script1 = NULL;
-	Script *script2 = NULL;
+	Script *script1 = nullptr;
+	Script *script2 = nullptr;
 	*result = 0;
 
 	if (!ExtractArgsEx(EXTRACT_ARGS_EX, &script1, &script2))
@@ -457,13 +457,12 @@ public:
 
 Script *GetScriptArg(TESObjectREFR *thisObj, TESForm *form)
 {
-	Script *targetScript = NULL;
+	Script *targetScript = nullptr;
 	if (form)
 		targetScript = DYNAMIC_CAST(form, TESForm, Script);
 	else if (thisObj)
 	{
-		TESScriptableForm *scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm);
-		if (scriptable)
+		if (const auto scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm))
 			targetScript = scriptable->script;
 	}
 
@@ -472,8 +471,8 @@ Script *GetScriptArg(TESObjectREFR *thisObj, TESForm *form)
 
 bool Cmd_GetNumExplicitRefs_Execute(COMMAND_ARGS)
 {
-	TESForm *form = NULL;
-	Script *targetScript = NULL;
+	TESForm *form = nullptr;
+	Script *targetScript = nullptr;
 	*result = 0;
 
 	if (ExtractArgsEx(EXTRACT_ARGS_EX, &form))
@@ -491,18 +490,17 @@ bool Cmd_GetNumExplicitRefs_Execute(COMMAND_ARGS)
 
 bool Cmd_GetNthExplicitRef_Execute(COMMAND_ARGS)
 {
-	TESForm *form = NULL;
+	TESForm *form = nullptr;
 	UInt32 refIdx = 0;
-	UInt32 *refResult = (UInt32 *)result;
+	const auto refResult = reinterpret_cast<UInt32*>(result);
 	*refResult = 0;
 
 	if (ExtractArgsEx(EXTRACT_ARGS_EX, &refIdx, &form))
 	{
-		Script *targetScript = GetScriptArg(thisObj, form);
-		if (targetScript)
+		if (const Script *targetScript = GetScriptArg(thisObj, form))
 		{
 			UInt32 count = 0;
-			const Script::RefVariable *entry = NULL;
+			const Script::RefVariable *entry = nullptr;
 			while (count <= refIdx)
 			{
 				entry = targetScript->refList.Find(ExplicitRefFinder());
@@ -526,7 +524,7 @@ bool Cmd_GetNthExplicitRef_Execute(COMMAND_ARGS)
 
 bool Cmd_RunScript_Execute(COMMAND_ARGS)
 {
-	TESForm *form = NULL;
+	TESForm *form = nullptr;
 
 	if (ExtractArgsEx(EXTRACT_ARGS_EX, &form))
 	{
@@ -539,9 +537,9 @@ bool Cmd_RunScript_Execute(COMMAND_ARGS)
 			form = thisObj->baseForm;
 		}
 
-		TESScriptableForm *scriptForm = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
-		Script *script = NULL;
-		EffectSetting *effect = NULL;
+		const auto scriptForm = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
+		Script *script = nullptr;
+		EffectSetting *effect = nullptr;
 		if (!scriptForm) // Let's try for a MGEF
 		{
 			effect = DYNAMIC_CAST(form, TESForm, EffectSetting);
@@ -557,7 +555,7 @@ bool Cmd_RunScript_Execute(COMMAND_ARGS)
 
 		if (script)
 		{
-			bool runResult = CALL_MEMBER_FN(script, Execute)(thisObj, 0, 0, 0);
+			const bool runResult = CALL_MEMBER_FN(script, Execute)(thisObj, nullptr, nullptr, 0);
 			Console_Print("ran script, returned %s", runResult ? "true" : "false");
 		}
 	}
@@ -568,14 +566,14 @@ bool Cmd_RunScript_Execute(COMMAND_ARGS)
 bool Cmd_GetCurrentScript_Execute(COMMAND_ARGS)
 {
 	// apparently this is useful
-	UInt32 *refResult = (UInt32 *)result;
+	const auto refResult = (UInt32 *)result;
 	*refResult = scriptObj->refID;
 	return true;
 }
 
 bool Cmd_GetCallingScript_Execute(COMMAND_ARGS)
 {
-	UInt32 *refResult = (UInt32 *)result;
+	const auto refResult = (UInt32 *)result;
 	*refResult = 0;
 	Script *caller = UserFunctionManager::GetInvokingScript(scriptObj);
 	if (caller)
@@ -593,7 +591,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 	if (eval.ExtractArgs() && eval.NumArgs() >= 2)
 	{
 		const char *eventName = eval.Arg(0)->GetString();
-		Script *script = DYNAMIC_CAST(eval.Arg(1)->GetTESForm(), TESForm, Script);
+		auto script = DYNAMIC_CAST(eval.Arg(1)->GetTESForm(), TESForm, Script);
 		if (eventName && script)
 		{
 			outCallback.toCall = script;
@@ -620,7 +618,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 					// new system, above preserved for backwards compatibility
 					else if (const auto index = pair->left->GetNumber())
 					{
-						const auto basicToken = std::unique_ptr<ScriptToken>(pair->right->ToBasicToken());
+						const auto basicToken = pair->right->ToBasicToken();
 						ArrayElement element;
 						if (basicToken && BasicTokenToElem(basicToken.get(), element))
 						{
@@ -649,7 +647,7 @@ bool ProcessEventHandler(char *eventName, EventManager::EventCallback &callback,
 		char *colon = strchr(eventName, ':');
 		if (colon)
 			*colon++ = 0;
-		UInt32 eventMask = GetLNEventMask(eventName);
+		const UInt32 eventMask = GetLNEventMask(eventName);
 		if (eventMask)
 		{
 			UInt32 const numFilter = (colon && *colon) ? atoi(colon) : 0;
@@ -698,7 +696,7 @@ bool Cmd_DispatchEvent_Execute(COMMAND_ARGS)
 		return true;
 
 	ArrayID argsArrayId = 0;
-	const char *senderName = NULL;
+	const char *senderName = nullptr;
 	if (eval.NumArgs() > 1)
 	{
 		if (!eval.Arg(1)->CanConvertTo(kTokenType_Array))
@@ -957,8 +955,8 @@ bool Cmd_HasScriptCommand_Execute(COMMAND_ARGS)
 		script = static_cast<Script*>(form);
 	else if (form->GetIsReference())
 	{
-		auto* ref = static_cast<TESObjectREFR*>(form);
-		if (auto* extraScript = ref->GetExtraScript())
+		const auto* ref = static_cast<TESObjectREFR*>(form);
+		if (const auto* extraScript = ref->GetExtraScript())
 			script = extraScript->script;
 	}
 	if (!script)
@@ -998,7 +996,7 @@ bool Cmd_Ternary_Execute(COMMAND_ARGS)
 	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 		eval.ExtractArgs())
 	{
-		auto const value = std::unique_ptr<ScriptToken>(eval.Arg(0)->ToBasicToken());
+		auto const value = eval.Arg(0)->ToBasicToken();
 		if (!value)
 			return true;	// should never happen, could cause weird behavior otherwise.
 

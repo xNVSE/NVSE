@@ -21,7 +21,7 @@ struct FunctionContext;
 class FunctionCaller
 {
 public:
-	virtual ~FunctionCaller() { }
+	virtual ~FunctionCaller() = default;
 
 	virtual UInt8 ReadCallerVersion() = 0;
 	virtual Script* ReadScript() = 0;
@@ -29,7 +29,7 @@ public:
 
 	virtual TESObjectREFR* ThisObj() = 0;
 	virtual TESObjectREFR* ContainingObj() = 0;
-	virtual Script* GetInvokingScript() { return NULL; }
+	virtual Script* GetInvokingScript() { return nullptr; }
 
 };
 
@@ -49,19 +49,19 @@ struct FunctionInfo
 	UInt8* m_singleLineLambdaPosition = nullptr;
 	bool				m_isLambda;
 
-	FunctionInfo() {}
+	FunctionInfo() = default;
 	FunctionInfo(Script* script);
 	~FunctionInfo();
 
 	FunctionContext* CreateContext(UInt8 version, Script* invokingScript);
-	bool IsGood() { return !m_bad; }
-	bool IsActive() { return m_instanceCount ? true : false; }
-	Script* GetScript() { return m_script; }
+	[[nodiscard]] bool IsGood() const { return !m_bad; }
+	[[nodiscard]] bool IsActive() const { return m_instanceCount ? true : false; }
+	[[nodiscard]] Script* GetScript() const { return m_script; }
 	ParamInfo* Params() { return m_dParamInfo.Params(); }
 	DynamicParamInfo& ParamInfo() { return m_dParamInfo; }
 	UserFunctionParam* GetParam(UInt32 paramIndex);
 	bool Execute(FunctionCaller& caller, FunctionContext* context);
-	ScriptEventList* GetEventList() { return m_eventList; }
+	[[nodiscard]] ScriptEventList* GetEventList() const { return m_eventList; }
 	UInt32 GetParamVarTypes(UInt8* out) const;	// returns count, if > 0 returns types as array
 };
 
@@ -71,7 +71,7 @@ struct FunctionContext
 private:
 	FunctionInfo* m_info;
 	ScriptEventList* m_eventList;		// temporary eventlist generated for function script
-	ScriptToken* m_result;
+	std::unique_ptr<ScriptToken> m_result;
 	Script* m_invokingScript;
 	UInt8			m_callerVersion;
 	bool			m_bad;
@@ -82,10 +82,10 @@ public:
 
 	bool Execute(FunctionCaller& caller);
 	bool Return(ExpressionEvaluator* eval);
-	bool IsGood() { return !m_bad; }
-	ScriptToken* Result() { return m_result; }
-	FunctionInfo* Info() { return m_info; }
-	Script* InvokingScript() { return m_invokingScript; }
+	[[nodiscard]] bool IsGood() const { return !m_bad; }
+	[[nodiscard]] ScriptToken* Result() const { return m_result.get(); }
+	[[nodiscard]] FunctionInfo* Info() const { return m_info; }
+	[[nodiscard]] Script* InvokingScript() const { return m_invokingScript; }
 	void* operator new(size_t size);
 	void operator delete(void* p);
 };
@@ -116,10 +116,10 @@ public:
 
 	enum { kVersion = 1 };	// increment when bytecode representation changes
 
-	static ScriptToken* Call(ExpressionEvaluator* eval);
 	static bool	Return(ExpressionEvaluator* eval);
 	static bool Enter(Script* funcScript);
-	static ScriptToken* Call(FunctionCaller&& caller);
+	static std::unique_ptr<ScriptToken> Call(ExpressionEvaluator* eval);
+	static std::unique_ptr<ScriptToken> Call(FunctionCaller&& caller);
 	static UInt32 GetFunctionParamTypes(Script* fnScript, UInt8* typesOut);
 
 	// return script that called fnScript
@@ -132,10 +132,10 @@ public:
 class InternalFunctionCaller : public FunctionCaller
 {
 public:
-	InternalFunctionCaller(Script* script, TESObjectREFR* callingObj = NULL, TESObjectREFR* container = NULL)
+	InternalFunctionCaller(Script* script, TESObjectREFR* callingObj = nullptr, TESObjectREFR* container = nullptr)
 		: m_callerVersion(UserFunctionManager::kVersion), m_numArgs(0), m_script(script), m_thisObj(callingObj), m_container(container) { }
 
-	virtual ~InternalFunctionCaller() { }
+	virtual ~InternalFunctionCaller() = default;
 	virtual UInt8 ReadCallerVersion() { return m_callerVersion; }
 	virtual Script* ReadScript() { return m_script; }
 	virtual bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info);

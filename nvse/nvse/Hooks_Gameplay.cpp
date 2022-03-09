@@ -78,7 +78,7 @@ void HandleDelayedCall(float timeDelta, bool isMenuMode)
 		if (g_gameSecondsPassed >= iter->time)
 		{
 			ArrayElementArgFunctionCaller caller(iter->script, iter->args, iter->thisObj);
-			delete UserFunctionManager::Call(std::move(caller));
+			UserFunctionManager::Call(std::move(caller));
 			iter = g_callAfterInfos.erase(iter); // yes, this is valid: https://stackoverflow.com/a/3901380/6741772
 		}
 		else
@@ -109,7 +109,7 @@ void HandleCallWhileScripts()
 			ArrayElementArgFunctionCaller<SelfOwningArrayElement> scriptCaller(iter->callFunction, iter->thisObj);
 			if (iter->PassArgsToCallFunc())
 				scriptCaller.SetArgs(iter->args);
-			delete UserFunctionManager::Call(std::move(scriptCaller));
+			UserFunctionManager::Call(std::move(scriptCaller));
 			++iter;
 		}
 		else
@@ -140,7 +140,7 @@ void HandleCallWhenScripts()
 			ArrayElementArgFunctionCaller<SelfOwningArrayElement> scriptCaller(iter->callFunction, iter->thisObj);
 			if (iter->PassArgsToCallFunc())
 				scriptCaller.SetArgs(iter->args);
-			delete UserFunctionManager::Call(std::move(scriptCaller));
+			UserFunctionManager::Call(std::move(scriptCaller));
 			iter = g_callWhenInfos.erase(iter);
 		}
 		else
@@ -166,7 +166,7 @@ void HandleCallForScripts(float timeDelta, bool isMenuMode)
 		if (g_gameSecondsPassed < iter->time)
 		{
 			ArrayElementArgFunctionCaller caller(iter->script, iter->args, iter->thisObj);
-			delete UserFunctionManager::Call(std::move(caller));
+			UserFunctionManager::Call(std::move(caller));
 			++iter;
 		}
 		else
