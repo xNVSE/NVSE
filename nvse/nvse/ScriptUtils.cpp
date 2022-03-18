@@ -2219,7 +2219,7 @@ bool ExpressionParser::ParseUserFunctionCall()
 	UInt32 peekLen = 0;
 	bool foundFunc = false;
 	Script *funcScript = nullptr;
-	const auto funcForm = std::unique_ptr<ScriptToken>(PeekOperand(peekLen));
+	const auto funcForm = PeekOperand(peekLen);
 	auto savedLenPtr = (UInt16 *)(m_lineBuf->dataBuf + m_lineBuf->dataOffset);
 	const UInt16 startingOffset = m_lineBuf->dataOffset;
 	m_lineBuf->dataOffset += 2;
@@ -2594,7 +2594,7 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 			break;
 		else // must be an operand (or a syntax error)
 		{
-			const auto operand = std::unique_ptr<ScriptToken>(ParseOperand(ops.size() ? ops.top() : nullptr));
+			const auto operand = ParseOperand(ops.size() ? ops.top() : nullptr);
 			if (!operand || operand->type == kTokenType_Invalid)
 				return kTokenType_Invalid;
 
