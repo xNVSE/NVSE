@@ -919,7 +919,7 @@ bool Cmd_ar_MapTo_Execute(COMMAND_ARGS)
 	{
 		InternalFunctionCaller caller(transformScript, thisObj, containingObj);
 		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
-		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		auto tokenResult = UserFunctionManager::Call(std::move(caller));
 		if (!tokenResult)
 			continue;
 		ArrayElement element;
@@ -941,7 +941,7 @@ bool Cmd_ar_ForEach_Execute(COMMAND_ARGS)
 	{
 		InternalFunctionCaller caller(functionScript, thisObj, containingObj);
 		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
-		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		auto tokenResult = UserFunctionManager::Call(std::move(caller));
 	}
 	*result = 1;
 	return true;
@@ -958,7 +958,7 @@ bool Cmd_ar_Any_Execute(COMMAND_ARGS)
 	{
 		InternalFunctionCaller caller(functionScript, thisObj, containingObj);
 		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
-		const auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		const auto tokenResult = UserFunctionManager::Call(std::move(caller));
 		if (!tokenResult)
 			continue;
 		if (static_cast<bool>(tokenResult->GetNumber()))
@@ -981,7 +981,7 @@ bool Cmd_ar_All_Execute(COMMAND_ARGS)
 	{
 		InternalFunctionCaller caller(functionScript, thisObj, containingObj);
 		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
-		const auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		const auto tokenResult = UserFunctionManager::Call(std::move(caller));
 		if (!tokenResult)
 			return true; // different from rest here
 		if (!static_cast<bool>(tokenResult->GetNumber()))
@@ -1034,7 +1034,7 @@ bool Cmd_ar_Generate_Execute(COMMAND_ARGS)
 	{
 		InternalFunctionCaller valueCaller(valueGenerator, thisObj, containingObj);
 		valueCaller.SetArgs(0);  //may not be doing anything.
-		auto tokenValResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(valueCaller)));
+		auto tokenValResult = UserFunctionManager::Call(std::move(valueCaller));
 		if (!tokenValResult) continue;
 		ArrayElement valElem;
 		if (BasicTokenToElem(tokenValResult.get(), valElem))
@@ -1043,7 +1043,7 @@ bool Cmd_ar_Generate_Execute(COMMAND_ARGS)
 			{
 				InternalFunctionCaller keyCaller(keyGenerator, thisObj, containingObj);
 				keyCaller.SetArgs(0);  //may not be doing anything.
-				auto tokenKeyResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(keyCaller)));
+				auto tokenKeyResult = UserFunctionManager::Call(std::move(keyCaller));
 				if (!tokenKeyResult) continue;
 				ArrayElement keyElem;
 				if (BasicTokenToElem(tokenKeyResult.get(), keyElem))

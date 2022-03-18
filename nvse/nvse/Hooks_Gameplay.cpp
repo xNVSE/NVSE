@@ -103,7 +103,7 @@ void HandleCallWhileScripts()
 			conditionCaller.SetArgs(iter->args);
 		}
 
-		if (auto const conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); 
+		if (auto const conditionResult = UserFunctionManager::Call(std::move(conditionCaller)); 
 			conditionResult && conditionResult->GetBool())
 		{
 			ArrayElementArgFunctionCaller<SelfOwningArrayElement> scriptCaller(iter->callFunction, iter->thisObj);
@@ -134,7 +134,7 @@ void HandleCallWhenScripts()
 			conditionCaller.SetArgs(iter->args);
 		}
 
-		if (auto const conditionResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(conditionCaller))); 
+		if (auto const conditionResult = UserFunctionManager::Call(std::move(conditionCaller)); 
 			conditionResult && conditionResult->GetBool())
 		{
 			ArrayElementArgFunctionCaller<SelfOwningArrayElement> scriptCaller(iter->callFunction, iter->thisObj);

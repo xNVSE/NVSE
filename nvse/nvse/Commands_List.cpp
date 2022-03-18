@@ -421,7 +421,7 @@ bool Cmd_ForEachInList_Execute(COMMAND_ARGS)
 	{
 		InternalFunctionCaller caller(functionScript, thisObj, containingObj);
 		caller.SetArgs(1, iter.Get());
-		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		auto tokenResult = UserFunctionManager::Call(std::move(caller));
 	}
 	*result = true;
 	return true;
