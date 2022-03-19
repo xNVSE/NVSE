@@ -366,6 +366,7 @@ struct ScriptToken
 	UInt8 shortCircuitStackOffset = 0;
 	bool formOrNumber = false;
 
+	// prevents token from being deleted after evaluation, should only be called in Eval_* statements where it is the operation result
 	[[nodiscard]] std::unique_ptr<ScriptToken> ForwardEvalResult() const;
 #if _DEBUG
 	std::string varName;
