@@ -429,7 +429,7 @@ bool Cmd_Call_Execute(COMMAND_ARGS)
 {
 	*result = 0;
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	if (auto const funcResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(&eval)))
+	if (auto const funcResult = UserFunctionManager::Call(&eval))
 	{
 		funcResult->AssignResult(eval);
 	}
@@ -456,7 +456,7 @@ bool Cmd_CallFunctionCond_Eval(COMMAND_ARGS_EVAL)
 			{
 				InternalFunctionCaller caller(scriptIter, thisObj, nullptr);
 				caller.SetArgs(0);
-				if (tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller))))
+				if (tokenResult = UserFunctionManager::Call(std::move(caller)))
 				{
 					if (bBreakIfFalse && !tokenResult->GetBool())
 						return true;
