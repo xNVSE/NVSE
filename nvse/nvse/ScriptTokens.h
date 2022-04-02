@@ -369,6 +369,8 @@ struct ScriptToken
 	[[nodiscard]] std::unique_ptr<ScriptToken> ForwardEvalResult() const;
 #if _DEBUG
 	std::string varName;
+	ArrayVar* arrayVar{};
+
 #endif
 private:
 	bool memoryPooled = true;

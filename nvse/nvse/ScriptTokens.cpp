@@ -912,21 +912,27 @@ void ScriptToken::AssignResult(ExpressionEvaluator &eval) const
 
 }
 
-bool ScriptToken::ResolveVariable()
+ScriptLocal* GetScriptLocal(UInt32 varIdx, UInt32 refIdx, Script* script, ScriptEventList* eventList)
 {
-	auto *eventList = context->eventList;
 	if (refIdx)
 	{
-		Script::RefVariable *refVar = context->script->GetRefFromRefList(refIdx);
+		Script::RefVariable* refVar = script->GetRefFromRefList(refIdx);
 		if (refVar)
 		{
-			refVar->Resolve(context->eventList);
+			refVar->Resolve(eventList);
 			if (refVar->form)
 				eventList = EventListFromForm(refVar->form);
 		}
 	}
 	if (eventList)
-		value.var = eventList->GetVariable(varIdx);
+		return eventList->GetVariable(varIdx);
+	return nullptr;
+}
+
+bool ScriptToken::ResolveVariable()
+{
+	auto* eventList = context->eventList;
+	value.var = GetScriptLocal(varIdx, refIdx, context->script, eventList);
 	if (!value.var)
 		return false;
 	// to be deleted on event list destruction, see Hooks_Other.cpp#CleanUpNVSEVars
@@ -945,13 +951,14 @@ bool ScriptToken::ResolveVariable()
 	{
 		auto *script = context->script;
 		if (refIdx)
-			script = GetReferencedQuestScript(refIdx, context->eventList);
+			script = GetReferencedQuestScript(refIdx, eventList);
 		if (auto *var = g_ArrayMap.Get(value.var->data))
 		{
 			if (auto *varInfo = script->GetVariableInfo(value.var->id))
 				var->varName = std::string(script->GetName()) + "." + std::string(varInfo->name.CStr());
 			else
 				var->varName = "<no var info>";
+			this->arrayVar = var;
 		}
 	}
 #endif
