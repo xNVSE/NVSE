@@ -422,7 +422,11 @@ ArrayData::ArrayData(const ArrayData& from) : dataType(from.dataType), owningArr
 void SelfOwningArrayElement::UnsetSelfOwning()
 {
 	if (m_data.dataType == kDataType_Array && !m_data.owningArray)
-		g_ArrayMap.RemoveReference(&m_data.arrID, 0xFF);
+	{
+		g_ArrayMap.RemoveReference(&m_data.arrID, GetArrayOwningModIndex(m_data.arrID));
+		m_data.dataType = kDataType_Invalid;
+		return;
+	}
 	UnsetDefault();
 }
 
@@ -433,10 +437,11 @@ SelfOwningArrayElement::~SelfOwningArrayElement()
 
 bool SelfOwningArrayElement::SetArray(ArrayID arr)
 {
-	if (!ArrayElement::SetArray(arr))
-		return false;
-	if (!m_data.owningArray) //should always be true.
-		g_ArrayMap.AddReference(&m_data.arrID, arr, 0xFF);
+	if (m_data.owningArray)
+		return ArrayElement::SetArray(arr);
+	Unset();
+	m_data.dataType = kDataType_Array;
+	g_ArrayMap.AddReference(&m_data.arrID, arr, GetArrayOwningModIndex(m_data.arrID));
 	return true;
 }
 
@@ -531,7 +536,7 @@ thread_local ArrayKey s_arrNumKey(kDataType_Numeric), s_arrStrKey(kDataType_Stri
 ///////////////////////
 // ArrayVar
 //////////////////////
-#if _DEBUG
+#if _DEBUG && 0
 MemoryLeakDebugCollector<ArrayVar> s_arrayDebugCollector;
 #endif
 ArrayVar::ArrayVar(UInt32 _keyType, bool _packed, UInt8 modIndex) : m_ID(0), m_keyType(_keyType), m_bPacked(_packed),
@@ -544,7 +549,7 @@ ArrayVar::ArrayVar(UInt32 _keyType, bool _packed, UInt8 modIndex) : m_ID(0), m_k
 	else
 		m_elements.m_type = kContainer_NumericMap;
 
-#if _DEBUG
+#if _DEBUG && 0
 	s_arrayDebugCollector.Add(this);
 #endif
 
@@ -552,7 +557,7 @@ ArrayVar::ArrayVar(UInt32 _keyType, bool _packed, UInt8 modIndex) : m_ID(0), m_k
 
 ArrayVar::~ArrayVar()
 {
-#if _DEBUG
+#if _DEBUG && 0
 	s_arrayDebugCollector.Remove(this);
 #endif
 }
