@@ -1,4 +1,5 @@
 #pragma once
+#include "MemoryTracker.h"
 
 typedef UInt32 ArrayID;
 class ArrayVar;
@@ -219,12 +220,7 @@ class ArrayVarElementContainer
 	ElementStrMap& AsStrMap() const {return *(ElementStrMap*)&m_container;}
 
 public:
-	ArrayVarElementContainer() : m_type(kContainer_Array)
-	{
-		m_container.data = NULL;
-		m_container.numItems = 0;
-		m_container.numAlloc = 2;
-	}
+	ArrayVarElementContainer();
 
 	~ArrayVarElementContainer();
 
@@ -260,20 +256,23 @@ public:
 		iterator(ArrayVarElementContainer& container);
 		iterator(ArrayVarElementContainer& container, bool reverse);
 		iterator(ArrayVarElementContainer& container, const ArrayKey* key);
+		iterator(ContainerType type, const GenericIterator& iterator);
 
 		bool End() {return m_iter.index >= m_iter.contObj->numItems;}
 
 		void operator++();
 		void operator--();
 		bool operator!=(const iterator& other) const;
+		ArrayElement* operator*();
 
 		const ArrayKey* first();
 
 		ArrayElement* second();
 	};
 
-	iterator begin() {return iterator(*this);}
-	iterator rbegin() {return iterator(*this, true);}
+	iterator begin();
+	iterator rbegin();
+	iterator end() const;
 
 	iterator find(const ArrayKey* key) {return iterator(*this, key);}
 
@@ -307,6 +306,7 @@ public:
 #endif
 	ArrayVar(UInt32 keyType, bool packed, UInt8 modIndex);
 	~ArrayVar();
+
 	enum SortOrder
 	{
 		kSort_Ascending,
@@ -394,6 +394,10 @@ public:
 	bool DeepEquals(ArrayVar* arr2);
 
 	ArrayVarElementContainer* GetRawContainer();
+
+	_ElementMap::iterator begin();
+
+	_ElementMap::iterator end() const;
 };
 
 class ArrayVarMap : public VarMap<ArrayVar>

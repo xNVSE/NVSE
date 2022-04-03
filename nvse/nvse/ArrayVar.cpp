@@ -6,6 +6,7 @@
 #include <set>
 
 #include "Core_Serialization.h"
+#include "MemoryTracker.h"
 
 #if RUNTIME
 #include "GameAPI.h"
@@ -46,7 +47,6 @@ ArrayElement::ArrayElement()
 	m_data.owningArray = 0;
 	m_data.arrID = 0;
 }
-
 
 ArrayElement::~ArrayElement()
 {
@@ -1610,6 +1610,16 @@ bool ArrayVar::DeepEquals(ArrayVar* arr2)
 ArrayVarElementContainer* ArrayVar::GetRawContainer()
 {
 	return &m_elements;
+}
+
+ArrayVarElementContainer::iterator ArrayVar::begin()
+{
+	return m_elements.begin();
+}
+
+ArrayVarElementContainer::iterator ArrayVar::end() const
+{
+	return m_elements.end();
 }
 
 //////////////////////////
