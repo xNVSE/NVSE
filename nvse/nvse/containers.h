@@ -1803,8 +1803,8 @@ public:
 		}
 		else if (numAlloc < newSize)
 		{
-			newSize = AlignNumAlloc<T_Data>(newSize);
-			POOL_REALLOC(data, numAlloc, newSize, T_Data);
+			UInt32 newAlloc = AlignNumAlloc<T_Data>(newSize);
+			POOL_REALLOC(data, numAlloc, newAlloc, T_Data);
 			numAlloc = newSize;
 		}
 		T_Data *pData = data + index;
