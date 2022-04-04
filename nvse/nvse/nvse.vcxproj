@@ -205,7 +205,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ForcedIncludeFiles>nvse/prefix.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <OmitFramePointers>false</OmitFramePointers>
+      <OmitFramePointers>true</OmitFramePointers>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
@@ -718,6 +718,7 @@
     <ClInclude Include="Loops.h" />
     <ClInclude Include="MemoizedMap.h" />
     <ClInclude Include="MemoryPool.h" />
+    <ClInclude Include="MemoryTracker.h" />
     <ClInclude Include="NiNodes.h" />
     <ClInclude Include="NiTypes.h" />
     <ClInclude Include="nvse_version.h" />

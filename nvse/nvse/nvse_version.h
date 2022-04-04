@@ -2,7 +2,7 @@
 #define __NVSE_VERSION_H__
 
 // these have to be macros so they can be used in the .rc
-#define ALPHA_MODE 0
+#define ALPHA_MODE 1
 #define NVSE_VERSION_INTEGER		6
 #define NVSE_VERSION_INTEGER_MINOR	2
 #define NVSE_VERSION_INTEGER_BETA	6
