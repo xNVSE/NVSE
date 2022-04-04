@@ -441,7 +441,7 @@ bool SelfOwningArrayElement::SetArray(ArrayID arr)
 		return ArrayElement::SetArray(arr);
 	Unset();
 	m_data.dataType = kDataType_Array;
-	g_ArrayMap.AddReference(&m_data.arrID, arr, GetArrayOwningModIndex(m_data.arrID));
+	g_ArrayMap.AddReference(&m_data.arrID, arr, GetArrayOwningModIndex(arr));
 	return true;
 }
 
