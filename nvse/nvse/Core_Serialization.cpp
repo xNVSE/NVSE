@@ -6,6 +6,7 @@
 #include "StringVar.h"
 #include "ArrayVar.h"
 #include "Commands_Script.h"
+#include "EventManager.h"
 #include "ScriptTokens.h"
 
 /*************************
@@ -121,6 +122,21 @@ void Core_PreLoadCallback(void * reserved)
 	g_callForInfos.clear();
 	g_callAfterInfos.clear();
 	g_callWhenInfos.clear();
+
+	for (auto iter = EventManager::s_eventInfos.begin(); iter != EventManager::s_eventInfos.end(); ++iter)
+	{
+		EventManager::EventInfo& info = iter.Get();
+		if (info.FlushesOnLoad())
+		{
+			//remove all callbacks
+			//TODO: unsure if this is correct. Do we even need to delay the callback removal here?
+			for (auto callbackIter = info.callbacks.Begin(); !callbackIter.End(); ++callbackIter)
+			{
+				auto& callback = callbackIter.Get();
+				callback.Remove(&info, callbackIter);
+			}
+		}
+	}
 	
 	g_ArrayMap.Reset();
 	g_StringMap.Reset();

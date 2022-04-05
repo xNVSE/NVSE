@@ -586,7 +586,7 @@ bool Cmd_GetCallingScript_Execute(COMMAND_ARGS)
 
 static constexpr auto maxEventNameLen = 0x20;
 
-bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback &outCallback, char *outName)
+bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallbackInfo &outCallback, char *outName, const char* funcName)
 {
 	if (eval.ExtractArgs() && eval.NumArgs() >= 2)
 	{
@@ -619,16 +619,20 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 					else if (const auto index = pair->left->GetNumber())
 					{
 						const auto basicToken = pair->right->ToBasicToken();
-						ArrayElement element;
+						SelfOwningArrayElement element;
 						if (basicToken && BasicTokenToElem(basicToken.get(), element))
 						{
 							auto const mapIndex = static_cast<UInt32>(index);
-							if (outCallback.filters.contains(mapIndex))
+							if (mapIndex == 0) [[unlikely]]
 							{
-								eval.Error("Event filter index %u appears more than once in Set/RemoveEventHandler call.", mapIndex);
+								eval.Error("Invalid index 0 passed to %s (indices start from 1)", funcName);
 								continue;
 							}
-							outCallback.filters.insert({ mapIndex, element });
+							if (const auto [it, success] = outCallback.filters.insert({ mapIndex, std::move(element) }); 
+								!success) [[unlikely]]
+							{
+								eval.Error("Event filter index %u appears more than once in %s call.", mapIndex, funcName);
+							}
 						}
 					}
 				}
@@ -640,15 +644,14 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 	return false;
 }
 
-bool ProcessEventHandler(char *eventName, EventManager::EventCallback &callback, bool addEvt)
+bool ProcessEventHandler(char *eventName, EventManager::EventCallbackInfo &callback, bool addEvt)
 {
 	if (GetLNEventMask)
 	{
 		char *colon = strchr(eventName, ':');
 		if (colon)
 			*colon++ = 0;
-		const UInt32 eventMask = GetLNEventMask(eventName);
-		if (eventMask)
+		if (const UInt32 eventMask = GetLNEventMask(eventName))
 		{
 			UInt32 const numFilter = (colon && *colon) ? atoi(colon) : 0;
 			return ProcessLNEventHandler(eventMask, callback.TryGetScript(), addEvt, callback.source, numFilter);
@@ -660,22 +663,20 @@ bool ProcessEventHandler(char *eventName, EventManager::EventCallback &callback,
 bool Cmd_SetEventHandler_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	EventManager::EventCallback callback;
+	EventManager::EventCallbackInfo callback;
 	char eventName[maxEventNameLen];
-	if (ExtractEventCallback(eval, callback, eventName) && ProcessEventHandler(eventName, callback, true))
-		*result = 1.0;
-
+	*result = (ExtractEventCallback(eval, callback, eventName, "SetEventHandler") 
+		&& ProcessEventHandler(eventName, callback, true));
 	return true;
 }
 
 bool Cmd_RemoveEventHandler_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	EventManager::EventCallback callback;
+	EventManager::EventCallbackInfo callback;
 	char eventName[maxEventNameLen];
-	if (ExtractEventCallback(eval, callback, eventName) && ProcessEventHandler(eventName, callback, false))
-		*result = 1.0;
-
+	*result = (ExtractEventCallback(eval, callback, eventName, "RemoveEventHandler")
+		&& ProcessEventHandler(eventName, callback, false));
 	return true;
 }
 

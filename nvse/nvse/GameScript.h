@@ -50,7 +50,7 @@ public:
 		UInt32 GetIndex(Script::RefVariable* refVar);
 	};
 
-	enum VariableType
+	enum VariableType : UInt8
 	{
 		eVarType_Float = 0,			//ref is also zero
 		eVarType_Integer,

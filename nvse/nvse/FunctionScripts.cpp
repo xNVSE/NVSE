@@ -755,6 +755,30 @@ template class ArrayElementArgFunctionCaller<SelfOwningArrayElement>;
 
 namespace PluginAPI
 {
+	bool BasicTokenToPluginElem(const ScriptToken* tok, NVSEArrayVarInterface::Element& outElem, Script* fnScript)
+	{
+		switch (tok->Type())
+		{
+		case kTokenType_Number:
+			outElem = tok->GetNumber();
+			break;
+		case kTokenType_Form:
+			outElem = tok->GetTESForm();
+			break;
+		case kTokenType_Array:
+			outElem = ArrayAPI::LookupArrayByID(tok->GetArrayID());
+			break;
+		case kTokenType_String:
+			outElem = tok->GetString();
+			break;
+		default:
+			outElem = NVSEArrayVarInterface::Element();
+			ShowRuntimeError(fnScript, "Function script called from plugin returned unexpected type %02X", tok->Type());
+			return false;
+		}
+		return true;
+	}
+
 	bool CallFunctionScript(Script* fnScript, TESObjectREFR* callingObj, TESObjectREFR* container,
 		NVSEArrayVarInterface::Element* result, UInt8 numArgs, ...)
 	{
@@ -768,25 +792,8 @@ namespace PluginAPI
 			{
 				if (result)
 				{
-					switch (ret->Type())
-					{
-					case kTokenType_Number:
-						*result = ret->GetNumber();
-						break;
-					case kTokenType_Form:
-						*result = ret->GetTESForm();
-						break;
-					case kTokenType_Array:
-						*result = ArrayAPI::LookupArrayByID(ret->GetArrayID());
-						break;
-					case kTokenType_String:
-						*result = ret->GetString();
-						break;
-					default:
-						*result = NVSEArrayVarInterface::Element();
-						ShowRuntimeError(fnScript, "Function script called from plugin returned unexpected type %02X", ret->Type());
+					if (!BasicTokenToPluginElem(ret.get(), *result, fnScript))
 						success = false;
-					}
 				}
 				ret = nullptr;
 			}

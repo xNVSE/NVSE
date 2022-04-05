@@ -723,6 +723,7 @@ struct NVSESerializationInterface
 	void	(*SkipNBytes)(UInt32 byteNum);
 };
 
+#ifdef RUNTIME
 /**** Event API docs  *******************************************************************************************
  *  This interface allows you to
  *	- Register a new event type which can be dispatched with parameters
@@ -731,11 +732,11 @@ struct NVSESerializationInterface
  *	   (1st argument will receive this filter for example)
  *	- Set an event handler for any NVSE events registered with SetEventHandler which will be called back.
  *
- *	PluginEventInfo::paramTypes needs to be statically defined
+ *	For RegisterEvent, paramTypes needs to be statically defined
  *	(i.e. the pointer to it may never become invalid).
  *  For example, a good way to define it is to make a global variable like this:
  *
- *	    static UInt8 s_MyEventParams[] = { Script::eVarType_Ref, Script::eVarType_String };
+ *	    static Script::VariableType s_MyEventParams[] = { Script::eVarType_Ref, Script::eVarType_String };
  *
  *	Then you can pass it into PluginEventInfo like this:
  *
@@ -756,12 +757,32 @@ struct NVSESerializationInterface
 struct NVSEEventManagerInterface
 {
 	typedef void (*EventHandler)(TESObjectREFR* thisObj, void* parameters);
+	typedef bool (*DispatchCallback)(NVSEArrayVarInterface::Element& result);
 
-	// Registers a new event which can be dispatched to scripts and plugins. Returns false if event with name already exists
-	bool (*RegisterEvent)(const char* name, UInt8 numParams, UInt8* paramTypes);
+	enum EventFlags : UInt32
+	{
+		kFlags_None = 0,
 
-	// Dispatch an event that has been registered with RegisterEvent - variadic arguments are passed as parameters to script / function
-	bool (*DispatchEvent)(const char* eventName, TESObjectREFR* thisObj, ...);
+		//If on, will remove all set handlers for the event every game load.
+		kFlag_FlushOnLoad = 1 << 0,
+	};
+
+	enum DispatchReturn : int8_t
+	{
+		kRetn_Error = -1,
+		kRetn_Normal = 0,
+		kRetn_EarlyBreak,
+	};
+
+	// Registers a new event which can be dispatched to scripts and plugins. Returns false if event with name already exists.
+	// Assumes size of Script::VariableType enum members = UInt8.
+	bool (*RegisterEvent)(const char* name, UInt8 numParams, Script::VariableType* paramTypes, EventFlags flags);
+
+	// Dispatch an event that has been registered with RegisterEvent.
+	// Variadic arguments are passed as parameters to script / function.
+	// If callback is not null, then it is called for each event handler that is dispatched, which allows checking the result of each dispatch.
+	// If the callback returns false, then dispatching for the event will end prematurely.
+	DispatchReturn (*DispatchEvent)(const char* eventName, DispatchCallback resultCallback, TESObjectREFR* thisObj, ...);
 
 	// Similar to script function SetEventHandler, allows you to set a native function that gets called back on events
 	bool (*SetNativeEventHandler)(const char* eventName, EventHandler func);
@@ -769,6 +790,7 @@ struct NVSEEventManagerInterface
 	// Same as script function RemoveEventHandler but for native functions
 	bool (*RemoveNativeEventHandler)(const char* eventName, EventHandler func);
 };
+#endif
 
 struct PluginInfo
 {
@@ -978,7 +1000,7 @@ struct PluginScriptToken
 
 	NVSEArrayVarInterface::Array *GetArrayVar()
 	{
-		return (NVSEArrayVarInterface::Array*)s_expEvalUtils.ScriptTokenGetArrayID(this);
+		return reinterpret_cast<NVSEArrayVarInterface::Array*>(s_expEvalUtils.ScriptTokenGetArrayID(this));
 	}
 
 	UInt32 GetActorValue()

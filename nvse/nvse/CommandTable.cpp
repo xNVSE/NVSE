@@ -1837,6 +1837,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(CallForSeconds);
 	ADD_CMD(CallWhile);
 	ADD_CMD(CallWhen);
+	ADD_CMD(DumpNVSEEventHandlers);
 }
 
 namespace PluginAPI
