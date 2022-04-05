@@ -6,7 +6,6 @@
 #include <set>
 
 #include "Core_Serialization.h"
-#include "MemoryTracker.h"
 
 #if RUNTIME
 #include "GameAPI.h"
