@@ -397,6 +397,7 @@ StringVarMap g_StringMap;
 thread_local FunctionResultStringVar s_functionResultStringVar;
 static thread_local int svMapClearLocalToken = 0;
 static std::atomic<int> svMapClearGlobalToken = 0;
+std::unordered_set<UInt32> g_funcResultStringIds;
 
 // no compiler optimizations on thread_local in msvc
 __declspec(noinline) FunctionResultStringVar& GetFunctionResultCachedStringVar()
@@ -409,7 +410,11 @@ __declspec(noinline) FunctionResultStringVar& GetFunctionResultCachedStringVar()
 	return s_functionResultStringVar;
 }
 
-std::unordered_set<UInt32> g_funcResultStringIds;
+void ResetFunctionResultStringCache()
+{
+	++svMapClearGlobalToken;
+	g_funcResultStringIds.clear();
+}
 
 bool IsFunctionResultCacheString(UInt32 strId)
 {
@@ -498,7 +503,7 @@ void StringVarMap::Clean()		// clean up any temporary vars
 void StringVarMap::Reset()
 {
 	VarMap<StringVar>::Reset();
-	++svMapClearGlobalToken;
+	ResetFunctionResultStringCache();
 }
 
 namespace PluginAPI
