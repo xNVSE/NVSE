@@ -31,12 +31,8 @@ namespace EventManager
 	struct EventInfo;
 	typedef Vector<EventInfo> EventInfoList;
 	extern EventInfoList s_eventInfos;
-
-#if _DEBUG
-	extern Map<const char*, UInt32> s_eventNameToID;
-#else
 	extern UnorderedMap<const char*, UInt32> s_eventNameToID;
-#endif
+
 	UInt32 EventIDForString(const char* eventStr);
 
 	static constexpr auto numMaxFilters = 0x20;

@@ -37,11 +37,8 @@ enum {
 	kEventMask_OnActivate		= 0x01000000,		// special case as OnActivate has no event mask
 };
 
-#if _DEBUG
-	Map<const char*, UInt32> s_eventNameToID(0x40);
-#else
-	UnorderedMap<const char*, UInt32> s_eventNameToID(0x40);
-#endif
+UnorderedMap<const char*, UInt32> s_eventNameToID(0x40);
+
 UInt32 EventIDForString(const char* eventStr)
 {
 	UInt32 *idPtr = s_eventNameToID.GetPtr(eventStr);
@@ -1008,7 +1005,12 @@ DispatchReturn DispatchEventAlt(const char* eventName, DispatchCallback resultCa
 {
 	const auto eventId = EventIDForString(eventName);
 	if (eventId == static_cast<UInt32>(kEventID_INVALID))
+	{
+#if _DEBUG
+		Console_Print("DispatchEventAlt >> Event with name %s not found.", eventName);
+#endif
 		return DispatchReturn::kRetn_Error;
+	}
 
 	EventInfo& eventInfo = s_eventInfos[eventId];
 	if (eventInfo.numParams > numMaxFilters)
@@ -1162,7 +1164,7 @@ bool RegisterEventEx(const char* name, UInt8 numParams, EventParamType* paramTyp
 
 bool RegisterEvent(const char* name, UInt8 numParams, EventParamType* paramTypes, EventFlags flags)
 {
-	return RegisterEventEx(name, numParams, paramTypes, flags);
+	return RegisterEventEx(name, numParams, paramTypes, 0, nullptr, flags);
 }
 
 bool SetNativeEventHandler(const char* eventName, EventHandler func)
