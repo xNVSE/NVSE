@@ -133,7 +133,7 @@ void Core_PreLoadCallback(void * reserved)
 			for (auto callbackIter = info.callbacks.Begin(); !callbackIter.End(); ++callbackIter)
 			{
 				auto& callback = callbackIter.Get();
-				callback.Remove(&info, callbackIter);
+				//TODO callback.Remove(&info, callbackIter);
 			}
 		}
 	}

@@ -37,8 +37,6 @@ enum {
 	kEventMask_OnActivate		= 0x01000000,		// special case as OnActivate has no event mask
 };
 
-typedef LinkedList<EventCallback>	CallbackList;
-
 #if _DEBUG
 Map<const char*, UInt32> s_eventNameToID(0x40);
 #else
@@ -49,45 +47,6 @@ UInt32 EventIDForString(const char* eventStr)
 	UInt32 *idPtr = s_eventNameToID.GetPtr(eventStr);
 	return idPtr ? *idPtr : kEventID_INVALID;
 }
-
-struct EventInfo
-{
-	EventInfo (const char *name_, ParamType* params_, UInt8 nParams_, UInt32 eventMask_ = 0, 
-		EventHookInstaller* installer_ = nullptr, 
-		EventFlags flags = EventFlags::kFlags_None)
-		: evName(name_), paramTypes(params_), numParams(nParams_), eventMask(eventMask_), installHook(installer_), flags(flags)
-	{}
-
-	EventInfo (const char *name_, ParamType* params_, UInt8 numParams_, EventFlags flags = EventFlags::kFlags_None)
-	: evName(name_), paramTypes(params_), numParams(numParams_), flags(flags) {}
-
-	EventInfo () : evName(""), paramTypes(nullptr){}
-
-	EventInfo(const EventInfo& other) = default;
-
-	EventInfo& operator=(const EventInfo& other)
-	{
-		if (this == &other)
-			return *this;
-		evName = other.evName;
-		paramTypes = other.paramTypes;
-		numParams = other.numParams;
-		callbacks = other.callbacks;
-		eventMask = other.eventMask;
-		installHook = other.installHook;
-		return *this;
-	}
-
-	const char			*evName;			// must be lowercase
-	ParamType			*paramTypes;
-	UInt8				numParams = 0;
-	UInt32				eventMask = 0;
-	CallbackList		callbacks;
-	EventHookInstaller	*installHook{};	// if a hook is needed for this event type, this will be non-null. 
-										// install it once and then set *installHook to NULL. Allows multiple events
-										// to use the same hook, installing it only once.
-	EventFlags			flags = EventFlags::kFlags_None;
-};
 
 // hook installers
 static EventHookInstaller s_MainEventHook = InstallHook;
@@ -395,8 +354,7 @@ UInt32 EventIDForMessage(UInt32 msgID)
 	}
 }
 
-typedef Vector<EventInfo> EventInfoList;
-static EventInfoList s_eventInfos(0x30);
+EventInfoList s_eventInfos(0x30);
 
 bool EventCallback::Equals(const EventCallback& rhs) const
 {

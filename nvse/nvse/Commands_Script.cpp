@@ -586,7 +586,7 @@ bool Cmd_GetCallingScript_Execute(COMMAND_ARGS)
 
 static constexpr auto maxEventNameLen = 0x20;
 
-bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallbackInfo &outCallback, char *outName, const char* funcName)
+bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback &outCallback, char *outName, const char* funcName)
 {
 	if (eval.ExtractArgs() && eval.NumArgs() >= 2)
 	{
@@ -644,7 +644,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 	return false;
 }
 
-bool ProcessEventHandler(char *eventName, EventManager::EventCallbackInfo &callback, bool addEvt)
+bool ProcessEventHandler(char *eventName, EventManager::EventCallback &callback, bool addEvt)
 {
 	if (GetLNEventMask)
 	{
@@ -663,7 +663,7 @@ bool ProcessEventHandler(char *eventName, EventManager::EventCallbackInfo &callb
 bool Cmd_SetEventHandler_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	EventManager::EventCallbackInfo callback;
+	EventManager::EventCallback callback;
 	char eventName[maxEventNameLen];
 	*result = (ExtractEventCallback(eval, callback, eventName, "SetEventHandler") 
 		&& ProcessEventHandler(eventName, callback, true));
@@ -673,7 +673,7 @@ bool Cmd_SetEventHandler_Execute(COMMAND_ARGS)
 bool Cmd_RemoveEventHandler_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	EventManager::EventCallbackInfo callback;
+	EventManager::EventCallback callback;
 	char eventName[maxEventNameLen];
 	*result = (ExtractEventCallback(eval, callback, eventName, "RemoveEventHandler")
 		&& ProcessEventHandler(eventName, callback, false));
@@ -1017,7 +1017,17 @@ bool Cmd_Ternary_Execute(COMMAND_ARGS)
 			tokenValResult->AssignResult(eval);
 	}
 	return true;
+}
 
+bool Cmd_DumpNVSEEventHandlers_Execute(COMMAND_ARGS)
+{
+	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+		eval.ExtractArgs())
+	{
+
+		//TODO
+	}
+	return true;
 }
 
 #endif

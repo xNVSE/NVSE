@@ -29,6 +29,10 @@ namespace EventManager
 	extern Stack<const char*> s_eventStack;
 
 	struct EventInfo;
+
+	typedef Vector<EventInfo> EventInfoList;
+	extern EventInfoList s_eventInfos;
+
 	static constexpr auto numMaxFilters = 0x20;
 
 	using EventHandler = NVSEEventManagerInterface::EventHandler;
@@ -147,6 +151,51 @@ namespace EventManager
 
 		//Call the callback...
 		std::unique_ptr<ScriptToken> Invoke(EventInfo* eventInfo, void* arg0, void* arg1);
+	};
+
+	typedef LinkedList<EventCallback>	CallbackList;
+
+	struct EventInfo
+	{
+		EventInfo(const char* name_, ParamType* params_, UInt8 nParams_, UInt32 eventMask_, EventHookInstaller* installer_,
+			EventFlags flags = EventFlags::kFlags_None)
+			: evName(name_), paramTypes(params_), numParams(nParams_), eventMask(eventMask_), installHook(installer_), flags(flags)
+		{}
+
+		EventInfo(const char* name_, ParamType* params_, UInt8 numParams_, EventFlags flags = EventFlags::kFlags_None)
+			: evName(name_), paramTypes(params_), numParams(numParams_), flags(flags) {}
+
+		EventInfo() : evName(""), paramTypes(nullptr) {}
+
+		EventInfo(const EventInfo& other) = default;
+
+		EventInfo& operator=(const EventInfo& other)
+		{
+			if (this == &other)
+				return *this;
+			evName = other.evName;
+			paramTypes = other.paramTypes;
+			numParams = other.numParams;
+			callbacks = other.callbacks;
+			eventMask = other.eventMask;
+			installHook = other.installHook;
+			return *this;
+		}
+
+		const char* evName;			// must be lowercase
+		ParamType* paramTypes;
+		UInt8				numParams = 0;
+		UInt32				eventMask = 0;
+		CallbackList		callbacks;
+		EventHookInstaller* installHook{};	// if a hook is needed for this event type, this will be non-null. 
+											// install it once and then set *installHook to NULL. Allows multiple events
+											// to use the same hook, installing it only once.
+		EventFlags			flags = EventFlags::kFlags_None;
+
+		[[nodiscard]] bool FlushesOnLoad() const
+		{
+			return flags & EventFlags::kFlag_FlushOnLoad;
+		}
 	};
 
 	bool SetHandler(const char* eventName, EventCallback& handler);

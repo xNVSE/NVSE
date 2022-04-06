@@ -772,7 +772,7 @@ public:
 			do
 			{
 				pEntry->Clear();
-				pEntry++;
+				++pEntry;
 			}
 			while (pEntry != pEnd);
 		}
@@ -821,12 +821,12 @@ public:
 
 		void operator++()
 		{
-			pEntry++;
+			++pEntry;
 			index++;
 		}
 		void operator--()
 		{
-			pEntry--;
+			--pEntry;
 			index--;
 		}
 
@@ -841,13 +841,13 @@ public:
 
 		void Remove(bool frwrd = true)
 		{
-			table->numEntries--;
+			--table->numEntries;
 			pEntry->Clear();
 			UInt32 size = (UInt32)table->End() - (UInt32)pEntry;
 			if (size) memmove(pEntry, pEntry + 1, size);
 			if (frwrd)
 			{
-				pEntry--;
+				--pEntry;
 				index--;
 			}
 		}
@@ -968,7 +968,7 @@ public:
 			do
 			{
 				pKey->Clear();
-				pKey++;
+				++pKey;
 			}
 			while (pKey != pEnd);
 		}
@@ -994,12 +994,12 @@ public:
 
 		void operator++()
 		{
-			pKey++;
+			++pKey;
 			index++;
 		}
 		void operator--()
 		{
-			pKey--;
+			--pKey;
 			index--;
 		}
 
@@ -1013,13 +1013,13 @@ public:
 
 		void Remove(bool frwrd = true)
 		{
-			table->numKeys--;
+			--table->numKeys;
 			pKey->Clear();
 			UInt32 size = (UInt32)table->End() - (UInt32)pKey;
 			if (size) memmove(pKey, pKey + 1, size);
 			if (frwrd)
 			{
-				pKey--;
+				--pKey;
 				index--;
 			}
 		}
@@ -1175,7 +1175,7 @@ template <typename T_Key, typename T_Data> class UnorderedMap
 				pEntry = pEntry->next;
 				newBuckets[pTemp->key.GetHash() & newCount].Insert(pTemp);
 			}
-			pBucket++;
+			++pBucket;
 		}
 		while (pBucket != pEnd);
 		Pool_Free(buckets, numBuckets * sizeof(Bucket));
@@ -1370,7 +1370,7 @@ public:
 
 		void FindNonEmpty()
 		{
-			for (Bucket *pEnd = table->End(); bucket != pEnd; bucket++)
+			for (Bucket *pEnd = table->End(); bucket != pEnd; ++bucket)
 				if (entry = bucket->entries) return;
 		}
 
@@ -1420,7 +1420,7 @@ public:
 			else entry = bucket->entries;
 			if (!entry && table->numEntries)
 			{
-				bucket++;
+				++bucket;
 				FindNonEmpty();
 			}
 		}
@@ -1445,7 +1445,7 @@ public:
 				prev = curr;
 			}
 			while (curr = curr->next);
-			table->numEntries--;
+			--table->numEntries;
 			bucket->Remove(entry, prev);
 			entry = prev;
 		}
@@ -1535,7 +1535,7 @@ template <typename T_Key> class UnorderedSet
 				pEntry = pEntry->next;
 				newBuckets[pTemp->key.GetHash() & newCount].Insert(pTemp);
 			}
-			pBucket++;
+			++pBucket;
 		}
 		while (pBucket != pEnd);
 		Pool_Free(buckets, numBuckets * sizeof(Bucket));
@@ -1638,7 +1638,7 @@ public:
 		do
 		{
 			pBucket->Clear();
-			pBucket++;
+			++pBucket;
 		}
 		while (pBucket != pEnd);
 		numEntries = 0;
@@ -1654,7 +1654,7 @@ public:
 
 		void FindNonEmpty()
 		{
-			for (Bucket *pEnd = table->End(); bucket != pEnd; bucket++)
+			for (Bucket *pEnd = table->End(); bucket != pEnd; ++bucket)
 				if (entry = bucket->entries) return;
 		}
 
@@ -1681,7 +1681,7 @@ public:
 		{
 			if ((entry = entry->next) || !table->numEntries)
 				return;
-			bucket++;
+			++bucket;
 			FindNonEmpty();
 		}
 
@@ -1814,7 +1814,7 @@ public:
 		do
 		{
 			new (pData) T_Data();
-			pData++;
+			++pData;
 		}
 		while (--count);
 	}
@@ -1935,7 +1935,7 @@ public:
 			{
 				if (*pData == item)
 					return pData - data;
-				pData++;
+				++pData;
 			}
 			while (pData != pEnd);
 		}
@@ -1952,7 +1952,7 @@ public:
 			{
 				if (finder(*pData))
 					return pData - data;
-				pData++;
+				++pData;
 			}
 			while (pData != pEnd);
 		}
@@ -1977,7 +1977,7 @@ public:
 			T_Data *pData = End(), *pEnd = data;
 			do
 			{
-				pData--;
+				--pData;
 				if (*pData != item) continue;
 				numItems--;
 				pData->~T_Data();
@@ -1999,7 +1999,7 @@ public:
 			UInt32 removed = 0, size;
 			do
 			{
-				pData--;
+				--pData;
 				if (!finder(*pData)) continue;
 				numItems--;
 				pData->~T_Data();
@@ -2022,7 +2022,7 @@ public:
 		do
 		{
 			pData->~T_Data();
-			pData++;
+			++pData;
 		}
 		while (pData != pEnd);
 		UInt32 size = (UInt32)End() - (UInt32)pData;
@@ -2053,7 +2053,7 @@ public:
 			do
 			{
 				new (pData) T_Data();
-				pData++;
+				++pData;
 			}
 			while (pData != pEnd);
 		}
@@ -2064,7 +2064,7 @@ public:
 			do
 			{
 				pData->~T_Data();
-				pData++;
+				++pData;
 			}
 			while (pData != pEnd);
 		}
@@ -2087,7 +2087,7 @@ public:
 			do
 			{
 				pData->~T_Data();
-				pData++;
+				++pData;
 			}
 			while (pData != pEnd);
 		}
@@ -2253,12 +2253,12 @@ public:
 
 		void operator++()
 		{
-			pData++;
+			++pData;
 			index++;
 		}
 		void operator--()
 		{
-			pData--;
+			--pData;
 			index--;
 		}
 
@@ -2291,13 +2291,13 @@ public:
 
 		void Remove(bool frwrd = true)
 		{
-			contObj->numItems--;
+			--contObj->numItems;
 			pData->~T_Data();
 			UInt32 size = (UInt32)contObj->End() - (UInt32)pData;
 			if (size) memmove(pData, pData + 1, size);
 			if (frwrd)
 			{
-				pData--;
+				--pData;
 				index--;
 			}
 		}
@@ -2356,7 +2356,7 @@ public:
 	public:
 		bool End() const {return pData >= pEnd;}
 		explicit operator bool() const {return pData < pEnd;}
-		void operator++() {pData++;}
+		void operator++() {++pData;}
 
 		Data_Arg operator*() const {return *pData;}
 		Data_Arg operator->() const {return *pData;}
