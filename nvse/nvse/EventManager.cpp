@@ -53,46 +53,6 @@ static EventHookInstaller s_MainEventHook = InstallHook;
 static EventHookInstaller s_ActivateHook = InstallActivateHook;
 static EventHookInstaller s_ActorEquipHook = InstallOnActorEquipHook;
 
-// event handler param lists
-static EventParamType kEventParams_GameEvent[2] =
-{
-	EventParamType::eParamType_AnyForm, EventParamType::eParamType_AnyForm
-};
-
-static EventParamType kEventParams_OneRef[1] =
-{
-	EventParamType::eParamType_AnyForm,
-};
-
-static EventParamType kEventParams_OneString[1] =
-{
-	EventParamType::eParamType_String
-};
-
-static EventParamType kEventParams_OneInteger[1] =
-{
-	EventParamType::eParamType_Integer
-};
-
-static EventParamType kEventParams_TwoIntegers[2] =
-{
-	EventParamType::eParamType_Integer, EventParamType::eParamType_Integer
-};
-
-static EventParamType kEventParams_OneFloat_OneRef[2] =
-{
-	 EventParamType::eParamType_Float, EventParamType::eParamType_AnyForm
-};
-
-static EventParamType kEventParams_OneRef_OneInt[2] =
-{
-	EventParamType::eParamType_AnyForm, EventParamType::eParamType_Integer
-};
-
-static EventParamType kEventParams_OneArray[1] =
-{
-	EventParamType::eParamType_Array
-};
 
 ///////////////////////////
 // internal functions
@@ -628,22 +588,11 @@ bool SetHandler(const char* eventName, EventCallback& handler)
 		}
 	}
 
-	ScopedLock lock(s_criticalSection);
-
-	UInt32 *idPtr;
-	if (s_eventNameToID.Insert(eventName, &idPtr))
+	if (auto const idPtr = s_eventNameToID.GetPtr(eventName))
 	{
-		// have to assume registering for a user-defined event which has not been used before this point
-		*idPtr = s_eventInfos.Size();
-		char *nameCopy = CopyString(eventName);
-		StrToLower(nameCopy);
-		s_eventInfos.Append(nameCopy, kEventParams_OneArray, 1);
-	}
+		ScopedLock lock(s_criticalSection);
 
-	if (UInt32 const id = *idPtr;
-		id < s_eventInfos.Size())
-	{
-		EventInfo* info = &s_eventInfos[id];
+		EventInfo* info = &s_eventInfos[*idPtr];
 		// is hook installed for this event type?
 		if (info->installHook)
 		{
@@ -961,24 +910,20 @@ bool DoFiltersMatch(const EventInfo& eventInfo, const EventCallback& callback, c
 	for (auto& [index, filter] : callback.filters)
 	{
 		auto const zeroBasedIndex = index - 1;
-		if (zeroBasedIndex > params->size() - 1) [[unlikely]]
-		{
-			ShowRuntimeError(callback.TryGetScript(), "Index %d passed to SetEventHandler exceeds number of arguments provided by event %s (number of args: %d)",
-				index, eventInfo.evName, params->size());
-			continue;
-		}
 		const auto filterDataType = filter.DataType();
 		const auto filterVarType = DataTypeToVarType(filterDataType);
 		const auto paramVarType = ParamTypeToVarType(eventInfo.paramTypes[zeroBasedIndex]);
 		void* param = params->at(zeroBasedIndex);
 		if (filterVarType != paramVarType)
 		{
+#if _DEBUG	//Probably no longer required thanks to preemptive checks in ExtractEventCallback (from SetEventHandler)
 			if (filterDataType != kDataType_Array)
 			{
 				ShowRuntimeError(callback.TryGetScript(), "Filter passed to SetEventHandler does not match type passed to event at index %d (%s != %s)",
 					index, DataTypeToString(filterDataType), VariableTypeToName(paramVarType));
 				continue;
 			}
+#endif
 			// assume elements of array are filters
 			if (!DoesParamMatchFiltersInArray(callback, filter, paramVarType, param))
 				return false;

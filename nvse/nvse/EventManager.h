@@ -32,6 +32,11 @@ namespace EventManager
 	typedef Vector<EventInfo> EventInfoList;
 	extern EventInfoList s_eventInfos;
 
+#if _DEBUG
+	extern Map<const char*, UInt32> s_eventNameToID;
+#else
+	extern UnorderedMap<const char*, UInt32> s_eventNameToID;
+#endif
 	UInt32 EventIDForString(const char* eventStr);
 
 	static constexpr auto numMaxFilters = 0x20;
@@ -44,7 +49,7 @@ namespace EventManager
 
 	inline bool IsParamForm(EventParamType pType)
 	{
-		return NVSEEventManagerInterface::IsParamForm(pType);
+		return NVSEEventManagerInterface::IsFormParam(pType);
 	}
 	Script::VariableType ParamTypeToVarType(EventParamType pType);
 
@@ -239,6 +244,49 @@ namespace EventManager
 
 	// dispatch a user-defined event from a script
 	bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 argsArrayId, const char* senderName);
+
+
+
+	// event handler param lists
+	static EventParamType kEventParams_GameEvent[2] =
+	{
+		EventParamType::eParamType_AnyForm, EventParamType::eParamType_AnyForm
+	};
+
+	static EventParamType kEventParams_OneRef[1] =
+	{
+		EventParamType::eParamType_AnyForm,
+	};
+
+	static EventParamType kEventParams_OneString[1] =
+	{
+		EventParamType::eParamType_String
+	};
+
+	static EventParamType kEventParams_OneInteger[1] =
+	{
+		EventParamType::eParamType_Integer
+	};
+
+	static EventParamType kEventParams_TwoIntegers[2] =
+	{
+		EventParamType::eParamType_Integer, EventParamType::eParamType_Integer
+	};
+
+	static EventParamType kEventParams_OneFloat_OneRef[2] =
+	{
+		 EventParamType::eParamType_Float, EventParamType::eParamType_AnyForm
+	};
+
+	static EventParamType kEventParams_OneRef_OneInt[2] =
+	{
+		EventParamType::eParamType_AnyForm, EventParamType::eParamType_Integer
+	};
+
+	static EventParamType kEventParams_OneArray[1] =
+	{
+		EventParamType::eParamType_Array
+	};
 };
 
 

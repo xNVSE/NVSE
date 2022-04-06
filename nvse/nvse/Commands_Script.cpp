@@ -585,6 +585,7 @@ bool Cmd_GetCallingScript_Execute(COMMAND_ARGS)
 }
 
 static constexpr auto maxEventNameLen = 0x20;
+static ICriticalSection s_EventLock;
 
 bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback &outCallback, char *outName, bool addEvt)
 {
@@ -597,95 +598,114 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 			outCallback.toCall = script;
 			strcpy_s(outName, maxEventNameLen, eventName);
 
-			EventManager::EventInfo* info = nullptr;
-			if (auto const id = EventManager::EventIDForString(eventName);
-				id != EventManager::kEventID_INVALID)
+			UInt32* idPtr;
 			{
-				info = &EventManager::s_eventInfos[id];
-			}
-
-			const char* funcName = addEvt ? "SetEventHandler" : "RemoveEventHandler";
-
-			// any filters?
-			UInt8 constexpr filterStartIdx = 2;
-			auto numFilters = eval.NumArgs() - filterStartIdx;
-			if (info)
-			{
-				numFilters = min(info->numParams, numFilters);
-			}
-			for (auto i = filterStartIdx; i < numFilters + filterStartIdx; i++)
-			{
-				const TokenPair *pair = eval.Arg(i)->GetPair();
-				if (pair && pair->left && pair->right)
+				ScopedLock lock(s_EventLock);
+				if (EventManager::s_eventNameToID.Insert(eventName, &idPtr))
 				{
-					if (info && addEvt)	//Prevent filters of the wrong type from being added.
-						//Inconsequential for trying to remove events, so we can skip this block in that case.
-					{
-						auto const expectedParamType = info->paramTypes[i - filterStartIdx];
-						auto const expectedVarType = EventManager::ParamTypeToVarType(expectedParamType);
-						if (auto const varType = static_cast<Script::VariableType>(pair->right->GetVariableType());
-							varType != expectedVarType)
-						{
-							eval.Error("%s: Invalid type for filter (arg #%u): expected %s, got %s.", funcName, i,  
-								VariableTypeToName(expectedVarType), VariableTypeToName(varType));
-							continue;
-						}
+					// have to assume registering for a user-defined event which has not been used before this point
+					*idPtr = EventManager::s_eventInfos.Size();
+					char* nameCopy = CopyString(eventName);
+					StrToLower(nameCopy);
+					EventManager::s_eventInfos.Append(nameCopy, EventManager::kEventParams_OneArray, 1);
+				}
+			}
 
-						if (auto const form = pair->right->GetTESForm())
+
+			// We should have a defined event to work with now.
+			// This allows us to report errors about wrong filters immediately.
+			if (UInt32 const id = *idPtr;
+				id < EventManager::s_eventInfos.Size())
+			{
+				auto const &info = EventManager::s_eventInfos[id];
+				const char* funcName = addEvt ? "SetEventHandler" : "RemoveEventHandler";
+
+				// any filters?
+				UInt8 constexpr filterStartIdx = 2;
+				auto numFilters = eval.NumArgs() - filterStartIdx;
+				numFilters = min(info.numParams, numFilters);	//ignore excess filter args
+				for (auto i = filterStartIdx; i < numFilters + filterStartIdx; i++)
+				{
+					const TokenPair* pair = eval.Arg(i)->GetPair();
+					if (pair && pair->left && pair->right) [[likely]]
+					{
+						//Prevent filters of the wrong type from being added.
+						//Inconsequential for trying to remove events, so we can skip this block in that case.
+						if (auto const expectedParamType = info.paramTypes[i - filterStartIdx];
+							addEvt && expectedParamType != EventManager::EventParamType::eParamType_Array)	//Array filters get a free pass.
 						{
-							if (expectedParamType == EventManager::EventParamType::eParamType_BaseForm)
+							auto const expectedVarType = EventManager::ParamTypeToVarType(expectedParamType);
+							if (auto const varType = static_cast<Script::VariableType>(pair->right->GetVariableType());
+								varType != expectedVarType) [[unlikely]]
 							{
-								if (form->GetIsReference())
+								eval.Error("%s: Invalid type for filter (arg #%u): expected %s, got %s.", funcName, i,
+									VariableTypeToName(expectedVarType), VariableTypeToName(varType));
+								continue;
+							}
+
+							if (auto const form = pair->right->GetTESForm(); 
+								form && form->GetTypeID() != 0x055)	//(formlist exception)	
+							{
+								if (expectedParamType == EventManager::EventParamType::eParamType_BaseForm)
 								{
-									eval.Error("%s: Expected BaseForm-type filter (arg #%u), got Reference.", funcName, i);
+									if (form->GetIsReference()) [[unlikely]]
+									{
+										eval.Error("%s: Expected BaseForm-type filter (arg #%u), got Reference.", funcName, i);
+										continue;
+									}
+								}
+								else if (expectedParamType == EventManager::EventParamType::eParamType_Reference
+									&& !form->GetIsReference()) [[unlikely]]
+								{
+									eval.Error("%s: Expected Reference-type filter (arg #%u), got BaseForm.", funcName, i);
 									continue;
 								}
-							}
-							else if (expectedParamType == EventManager::EventParamType::eParamType_Reference
-								&& !form->GetIsReference())
-							{
-								eval.Error("%s: Expected Reference-type filter (arg #%u), got BaseForm.", funcName, i);
-								continue;
-							}
-						}	//allow null forms to go through, in case that would be a desired filter.
-					}
+							}	//allow null forms to go through, in case that would be a desired filter.
+						}
 
-					const char *key = pair->left->GetString();
-					if (key && StrLen(key))
-					{
-						if (!StrCompare(key, "ref") || !StrCompare(key, "first"))
+						const char* key = pair->left->GetString();
+						if (key && StrLen(key))
 						{
-							outCallback.source = pair->right->GetTESForm();
-						}
-						else if (!StrCompare(key, "object") || !StrCompare(key, "second"))
-						{
-							outCallback.object = pair->right->GetTESForm();
-						}
-					}
-					// new system, above preserved for backwards compatibility
-					else if (const auto index = pair->left->GetNumber())
-					{
-						const auto basicToken = pair->right->ToBasicToken();
-						SelfOwningArrayElement element;
-						if (basicToken && BasicTokenToElem(basicToken.get(), element))
-						{
-							auto const mapIndex = static_cast<UInt32>(index);
-							if (mapIndex == 0) [[unlikely]]
+							if (!StrCompare(key, "ref") || !StrCompare(key, "first"))
 							{
-								eval.Error("Invalid index 0 passed to %s (indices start from 1)", funcName);
-								continue;
+								outCallback.source = pair->right->GetTESForm();
 							}
-							if (const auto [it, success] = outCallback.filters.insert({ mapIndex, std::move(element) }); 
-								!success) [[unlikely]]
+							else if (!StrCompare(key, "object") || !StrCompare(key, "second"))
 							{
-								eval.Error("Event filter index %u appears more than once in %s call.", mapIndex, funcName);
+								outCallback.object = pair->right->GetTESForm();
+							}
+						}
+						// new system, above preserved for backwards compatibility
+						else if (const auto index = pair->left->GetNumber())
+						{
+							const auto basicToken = pair->right->ToBasicToken();
+							SelfOwningArrayElement element;
+							if (basicToken && BasicTokenToElem(basicToken.get(), element))
+							{
+								auto const mapIndex = static_cast<int>(index);
+								if (mapIndex <= 0) [[unlikely]]
+								{
+									eval.Error("Invalid index 0 (or below) passed to %s (indices start from 1)", funcName);
+									continue;
+								}
+
+								if (mapIndex > info.numParams) [[unlikely]]
+								{
+									eval.Error("%s: Index %u passed exceeds max number of args for function (%u)", funcName, mapIndex, info.numParams);
+									continue;
+								}
+
+								if (const auto [it, success] = outCallback.filters.insert({ mapIndex, std::move(element) });
+									!success) [[unlikely]]
+								{
+									eval.Error("Event filter index %u appears more than once in %s call.", mapIndex, funcName);
+								}
 							}
 						}
 					}
 				}
+				return true;
 			}
-
-			return true;
 		}
 	}
 

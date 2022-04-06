@@ -776,7 +776,7 @@ struct NVSEEventManagerInterface
 
 		eParamType_Invalid = -1
 	};
-	static bool IsParamForm(ParamType pType)
+	static bool IsFormParam(ParamType pType)
 	{
 		return pType == eParamType_RefVar || pType == eParamType_Reference || pType == eParamType_BaseForm;
 	}
