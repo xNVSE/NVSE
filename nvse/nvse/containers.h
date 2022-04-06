@@ -564,20 +564,20 @@ public:
 	__forceinline void Set(Key_Arg inKey)
 	{
 		if (std::is_same_v<T_Key, char*>)
-			*static_cast<char**>(&key) = CopyString(*static_cast<const char**>(&inKey));
+			*(char**)&key = CopyString(*(const char**)&inKey);
 		else key = inKey;
 	}
 	__forceinline char Compare(Key_Arg inKey) const
 	{
 		if (std::is_same_v<T_Key, char*> || std::is_same_v<T_Key, const char*>)
-			return StrCompare(*static_cast<const char**>(&inKey), *static_cast<const char**>(&key));
+			return StrCompare(*(const char**)&inKey, *(const char**)&key);
 		if (inKey < key) return -1;
 		return (key < inKey) ? 1 : 0;
 	}
 	__forceinline void Clear()
 	{
 		if (std::is_same_v<T_Key, char*>)
-			free(*static_cast<char**>(&key));
+			free(*(char**)&key);
 		else key.~T_Key();
 	}
 };
@@ -670,7 +670,7 @@ template <typename T_Key, typename T_Data> class Map
 		}
 		else if (numAlloc <= numEntries)
 		{
-			const UInt32 newAlloc = numAlloc << 1;
+			UInt32 newAlloc = numAlloc << 1;
 			POOL_REALLOC(entries, numAlloc, newAlloc, Entry);
 			numAlloc = newAlloc;
 		}
@@ -772,7 +772,7 @@ public:
 			do
 			{
 				pEntry->Clear();
-				++pEntry;
+				pEntry++;
 			}
 			while (pEntry != pEnd);
 		}
@@ -821,12 +821,12 @@ public:
 
 		void operator++()
 		{
-			++pEntry;
+			pEntry++;
 			index++;
 		}
 		void operator--()
 		{
-			--pEntry;
+			pEntry--;
 			index--;
 		}
 
@@ -841,13 +841,13 @@ public:
 
 		void Remove(bool frwrd = true)
 		{
-			--table->numEntries;
+			table->numEntries--;
 			pEntry->Clear();
-			const UInt32 size = static_cast<UInt32>(table->End()) - static_cast<UInt32>(pEntry);
+			UInt32 size = (UInt32)table->End() - (UInt32)pEntry;
 			if (size) memmove(pEntry, pEntry + 1, size);
 			if (frwrd)
 			{
-				--pEntry;
+				pEntry--;
 				index--;
 			}
 		}
@@ -924,7 +924,7 @@ public:
 		}
 		else if (numAlloc <= numKeys)
 		{
-			const UInt32 newAlloc = numAlloc << 1;
+			UInt32 newAlloc = numAlloc << 1;
 			POOL_REALLOC(keys, numAlloc, newAlloc, M_Key);
 			numAlloc = newAlloc;
 		}
@@ -968,7 +968,7 @@ public:
 			do
 			{
 				pKey->Clear();
-				++pKey;
+				pKey++;
 			}
 			while (pKey != pEnd);
 		}
@@ -994,12 +994,12 @@ public:
 
 		void operator++()
 		{
-			++pKey;
+			pKey++;
 			index++;
 		}
 		void operator--()
 		{
-			--pKey;
+			pKey--;
 			index--;
 		}
 
@@ -1013,13 +1013,13 @@ public:
 
 		void Remove(bool frwrd = true)
 		{
-			--table->numKeys;
+			table->numKeys--;
 			pKey->Clear();
-			const UInt32 size = static_cast<UInt32>(table->End()) - static_cast<UInt32>(pKey);
+			UInt32 size = (UInt32)table->End() - (UInt32)pKey;
 			if (size) memmove(pKey, pKey + 1, size);
 			if (frwrd)
 			{
-				--pKey;
+				pKey--;
 				index--;
 			}
 		}
@@ -1035,17 +1035,17 @@ public:
 template <typename T_Key> __forceinline UInt32 HashKey(T_Key inKey)
 {
 	if (std::is_same_v<T_Key, char*> || std::is_same_v<T_Key, const char*>)
-		return StrHashCI(*static_cast<const char**>(&inKey));
+		return StrHashCI(*(const char**)&inKey);
 	UInt32 uKey;
 	if (sizeof(T_Key) == 1)
-		uKey = *static_cast<UInt8*>(&inKey);
+		uKey = *(UInt8*)&inKey;
 	else if (sizeof(T_Key) == 2)
-		uKey = *static_cast<UInt16*>(&inKey);
+		uKey = *(UInt16*)&inKey;
 	else
 	{
-		uKey = *static_cast<UInt32*>(&inKey);
+		uKey = *(UInt32*)&inKey;
 		if (sizeof(T_Key) > 4)
-			uKey += uKey ^ static_cast<UInt32*>(&inKey)[1];
+			uKey += uKey ^ ((UInt32*)&inKey)[1];
 	}
 	return (uKey * 0xD) ^ (uKey >> 0xF);
 }
@@ -1163,7 +1163,7 @@ template <typename T_Key, typename T_Data> class UnorderedMap
 
 	__declspec(noinline) void ResizeTable(UInt32 newCount)
 	{
-		Bucket *pBucket = buckets, *pEnd = End(), *newBuckets = static_cast<Bucket*>(Pool_Alloc_Buckets(newCount));
+		Bucket *pBucket = buckets, *pEnd = End(), *newBuckets = (Bucket*)Pool_Alloc_Buckets(newCount);
 		Entry *pEntry, *pTemp;
 		newCount--;
 		do
@@ -1175,7 +1175,7 @@ template <typename T_Key, typename T_Data> class UnorderedMap
 				pEntry = pEntry->next;
 				newBuckets[pTemp->key.GetHash() & newCount].Insert(pTemp);
 			}
-			++pBucket;
+			pBucket++;
 		}
 		while (pBucket != pEnd);
 		Pool_Free(buckets, numBuckets * sizeof(Bucket));
@@ -1199,7 +1199,7 @@ template <typename T_Key, typename T_Data> class UnorderedMap
 		if (!buckets)
 		{
 			numBuckets = AlignBucketCount(numBuckets);
-			buckets = static_cast<Bucket*>(Pool_Alloc_Buckets(numBuckets));
+			buckets = (Bucket*)Pool_Alloc_Buckets(numBuckets);
 		}
 		else if ((numEntries > numBuckets) && (numBuckets < MAP_MAX_BUCKET_COUNT))
 			ResizeTable(numBuckets << 1);
@@ -1246,7 +1246,7 @@ public:
 		else numBuckets = newCount;
 	}
 
-	float LoadFactor() const {return static_cast<float>(numEntries) / static_cast<float>(numBuckets);}
+	float LoadFactor() const {return (float)numEntries / (float)numBuckets;}
 
 	bool Insert(Key_Arg key, T_Data **outData)
 	{
@@ -1370,7 +1370,7 @@ public:
 
 		void FindNonEmpty()
 		{
-			for (Bucket *pEnd = table->End(); bucket != pEnd; ++bucket)
+			for (Bucket *pEnd = table->End(); bucket != pEnd; bucket++)
 				if (entry = bucket->entries) return;
 		}
 
@@ -1420,7 +1420,7 @@ public:
 			else entry = bucket->entries;
 			if (!entry && table->numEntries)
 			{
-				++bucket;
+				bucket++;
 				FindNonEmpty();
 			}
 		}
@@ -1445,7 +1445,7 @@ public:
 				prev = curr;
 			}
 			while (curr = curr->next);
-			--table->numEntries;
+			table->numEntries--;
 			bucket->Remove(entry, prev);
 			entry = prev;
 		}
@@ -1523,7 +1523,7 @@ template <typename T_Key> class UnorderedSet
 
 	__declspec(noinline) void ResizeTable(UInt32 newCount)
 	{
-		Bucket *pBucket = buckets, *pEnd = End(), *newBuckets = static_cast<Bucket*>(Pool_Alloc_Buckets(newCount));
+		Bucket *pBucket = buckets, *pEnd = End(), *newBuckets = (Bucket*)Pool_Alloc_Buckets(newCount);
 		Entry *pEntry, *pTemp;
 		newCount--;
 		do
@@ -1535,7 +1535,7 @@ template <typename T_Key> class UnorderedSet
 				pEntry = pEntry->next;
 				newBuckets[pTemp->key.GetHash() & newCount].Insert(pTemp);
 			}
-			++pBucket;
+			pBucket++;
 		}
 		while (pBucket != pEnd);
 		Pool_Free(buckets, numBuckets * sizeof(Bucket));
@@ -1570,14 +1570,14 @@ public:
 		else numBuckets = newCount;
 	}
 
-	float LoadFactor() const {return static_cast<float>(numEntries) / static_cast<float>(numBuckets);}
+	float LoadFactor() const {return (float)numEntries / (float)numBuckets;}
 
 	bool Insert(Key_Arg key)
 	{
 		if (!buckets)
 		{
 			numBuckets = AlignBucketCount(numBuckets);
-			buckets = static_cast<Bucket*>(Pool_Alloc_Buckets(numBuckets));
+			buckets = (Bucket*)Pool_Alloc_Buckets(numBuckets);
 		}
 		else if ((numEntries > numBuckets) && (numBuckets < MAP_MAX_BUCKET_COUNT))
 			ResizeTable(numBuckets << 1);
@@ -1638,7 +1638,7 @@ public:
 		do
 		{
 			pBucket->Clear();
-			++pBucket;
+			pBucket++;
 		}
 		while (pBucket != pEnd);
 		numEntries = 0;
@@ -1654,7 +1654,7 @@ public:
 
 		void FindNonEmpty()
 		{
-			for (Bucket *pEnd = table->End(); bucket != pEnd; ++bucket)
+			for (Bucket *pEnd = table->End(); bucket != pEnd; bucket++)
 				if (entry = bucket->entries) return;
 		}
 
@@ -1681,7 +1681,7 @@ public:
 		{
 			if ((entry = entry->next) || !table->numEntries)
 				return;
-			++bucket;
+			bucket++;
 			FindNonEmpty();
 		}
 
@@ -1709,7 +1709,7 @@ template <typename T_Data> class Vector
 		}
 		else if (numAlloc <= numItems)
 		{
-			const UInt32 newAlloc = numAlloc << 1;
+			UInt32 newAlloc = numAlloc << 1;
 			POOL_REALLOC(data, numAlloc, newAlloc, T_Data);
 			numAlloc = newAlloc;
 		}
@@ -1765,7 +1765,7 @@ public:
 	{
 		if (index > numItems)
 			return nullptr;
-		const UInt32 size = numItems - index;
+		UInt32 size = numItems - index;
 		T_Data *pData = AllocateData();
 		if (size)
 		{
@@ -1781,7 +1781,7 @@ public:
 	{
 		if (index > numItems)
 			return nullptr;
-		const UInt32 size = numItems - index;
+		UInt32 size = numItems - index;
 		T_Data *pData = AllocateData();
 		if (size)
 		{
@@ -1814,7 +1814,7 @@ public:
 		do
 		{
 			new (pData) T_Data();
-			++pData;
+			pData++;
 		}
 		while (--count);
 	}
@@ -1935,7 +1935,7 @@ public:
 			{
 				if (*pData == item)
 					return pData - data;
-				++pData;
+				pData++;
 			}
 			while (pData != pEnd);
 		}
@@ -1952,7 +1952,7 @@ public:
 			{
 				if (finder(*pData))
 					return pData - data;
-				++pData;
+				pData++;
 			}
 			while (pData != pEnd);
 		}
@@ -1977,11 +1977,11 @@ public:
 			T_Data *pData = End(), *pEnd = data;
 			do
 			{
-				--pData;
+				pData--;
 				if (*pData != item) continue;
 				numItems--;
 				pData->~T_Data();
-				const UInt32 size = static_cast<UInt32>(End()) - static_cast<UInt32>(pData);
+				UInt32 size = (UInt32)End() - (UInt32)pData;
 				if (size) memmove(pData, pData + 1, size);
 				return true;
 			}
@@ -1999,11 +1999,11 @@ public:
 			UInt32 removed = 0, size;
 			do
 			{
-				--pData;
+				pData--;
 				if (!finder(*pData)) continue;
 				numItems--;
 				pData->~T_Data();
-				size = static_cast<UInt32>(End()) - static_cast<UInt32>(pData);
+				size = (UInt32)End() - (UInt32)pData;
 				if (size) memmove(pData, pData + 1, size);
 				removed++;
 			}
@@ -2022,10 +2022,10 @@ public:
 		do
 		{
 			pData->~T_Data();
-			++pData;
+			pData++;
 		}
 		while (pData != pEnd);
-		const UInt32 size = static_cast<UInt32>(End()) - static_cast<UInt32>(pData);
+		UInt32 size = (UInt32)End() - (UInt32)pData;
 		if (size) memmove(pBgn, pData, size);
 		numItems -= count;
 	}
@@ -2053,7 +2053,7 @@ public:
 			do
 			{
 				new (pData) T_Data();
-				++pData;
+				pData++;
 			}
 			while (pData != pEnd);
 		}
@@ -2064,7 +2064,7 @@ public:
 			do
 			{
 				pData->~T_Data();
-				++pData;
+				pData++;
 			}
 			while (pData != pEnd);
 		}
@@ -2087,7 +2087,7 @@ public:
 			do
 			{
 				pData->~T_Data();
-				++pData;
+				pData++;
 			}
 			while (pData != pEnd);
 		}
@@ -2253,12 +2253,12 @@ public:
 
 		void operator++()
 		{
-			++pData;
+			pData++;
 			index++;
 		}
 		void operator--()
 		{
-			--pData;
+			pData--;
 			index--;
 		}
 
@@ -2291,13 +2291,13 @@ public:
 
 		void Remove(bool frwrd = true)
 		{
-			--contObj->numItems;
+			contObj->numItems--;
 			pData->~T_Data();
-			const UInt32 size = static_cast<UInt32>(contObj->End()) - static_cast<UInt32>(pData);
+			UInt32 size = (UInt32)contObj->End() - (UInt32)pData;
 			if (size) memmove(pData, pData + 1, size);
 			if (frwrd)
 			{
-				--pData;
+				pData--;
 				index--;
 			}
 		}
@@ -2356,7 +2356,7 @@ public:
 	public:
 		bool End() const {return pData >= pEnd;}
 		explicit operator bool() const {return pData < pEnd;}
-		void operator++() {++pData;}
+		void operator++() {pData++;}
 
 		Data_Arg operator*() const {return *pData;}
 		Data_Arg operator->() const {return *pData;}
