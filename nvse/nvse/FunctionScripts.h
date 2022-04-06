@@ -6,9 +6,9 @@
 struct UserFunctionParam
 {
 	UInt16	varIdx;
-	UInt8	varType;
+	Script::VariableType	varType;
 
-	UserFunctionParam(UInt16 _idx, UInt16 _type) : varIdx(_idx), varType(_type) { }
+	UserFunctionParam(UInt16 _idx, Script::VariableType _type) : varIdx(_idx), varType(_type) { }
 	UserFunctionParam() : varIdx(-1), varType(Script::eVarType_Invalid) { }
 };
 

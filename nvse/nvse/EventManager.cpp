@@ -56,12 +56,12 @@ static EventHookInstaller s_ActorEquipHook = InstallOnActorEquipHook;
 // event handler param lists
 static ParamType kEventParams_GameEvent[2] =
 {
-	ParamType::eParamType_Ref, ParamType::eParamType_Ref
+	ParamType::eParamType_AnyForm, ParamType::eParamType_AnyForm
 };
 
 static ParamType kEventParams_OneRef[1] =
 {
-	ParamType::eParamType_Ref,
+	ParamType::eParamType_AnyForm,
 };
 
 static ParamType kEventParams_OneString[1] =
@@ -81,12 +81,12 @@ static ParamType kEventParams_TwoIntegers[2] =
 
 static ParamType kEventParams_OneFloat_OneRef[2] =
 {
-	 ParamType::eParamType_Float, ParamType::eParamType_Ref
+	 ParamType::eParamType_Float, ParamType::eParamType_AnyForm
 };
 
 static ParamType kEventParams_OneRef_OneInt[2] =
 {
-	ParamType::eParamType_Ref, ParamType::eParamType_Integer
+	ParamType::eParamType_AnyForm, ParamType::eParamType_Integer
 };
 
 static ParamType kEventParams_OneArray[1] =
@@ -422,7 +422,7 @@ public:
 
 	bool ValidateParam(UserFunctionParam* param, UInt8 paramIndex) override
 	{
-		return param->varType == m_eventInfo->paramTypes[paramIndex];
+		return param->varType == ParamTypeToVarType(m_eventInfo->paramTypes[paramIndex]);
 	}
 
 	bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info) override {
@@ -553,7 +553,7 @@ void __stdcall HandleEvent(UInt32 id, void* arg0, void* arg1)
 			continue;
 
 		// Check filters
-		if (callback.source && arg0 != callback.source && eventInfo->numParams && eventInfo->paramTypes[0] == ParamType::eParamType_Ref)
+		if (callback.source && arg0 != callback.source && eventInfo->numParams && eventInfo->paramTypes[0] == ParamType::eParamType_RefVar)
 		{
 			if (isArg0Valid == RefState::NotSet)
 				isArg0Valid = IsValidReference(arg0) ? RefState::Valid : RefState::Invalid;
@@ -840,9 +840,9 @@ bool DoDeprecatedFiltersMatch(const EventInfo& eventInfo, const EventCallback& c
 	// old filter system
 	TESForm* sourceForm{};
 	TESForm* objectForm{};
-	if (eventInfo.numParams > 0 && eventInfo.paramTypes[0] == ParamType::eParamType_Ref)
+	if (eventInfo.numParams > 0 && IsParamForm(eventInfo.paramTypes[0]))
 		sourceForm = static_cast<TESForm*>(params->at(0));
-	if (eventInfo.numParams > 1 && eventInfo.paramTypes[1] == ParamType::eParamType_Ref)
+	if (eventInfo.numParams > 1 && IsParamForm(eventInfo.paramTypes[1]))
 		objectForm = static_cast<TESForm*>(params->at(1));
 	if (!DoesFormMatchFilter(sourceForm, callback.source) || !DoesFormMatchFilter(objectForm, callback.object))
 		return false;
@@ -939,12 +939,29 @@ bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCall
 	return false;
 }
 
+Script::VariableType ParamTypeToVarType(ParamType pType)
+{
+	switch (pType)
+	{
+	case ParamType::eParamType_Float: return Script::VariableType::eVarType_Float;
+	case ParamType::eParamType_Integer: return Script::VariableType::eVarType_Integer;
+	case ParamType::eParamType_String: return Script::VariableType::eVarType_String;
+	case ParamType::eParamType_Array: return Script::VariableType::eVarType_Array;
+	case ParamType::eParamType_RefVar:
+	case ParamType::eParamType_Reference:
+	case ParamType::eParamType_BaseForm:
+		return Script::VariableType::eVarType_Ref;
+	case ParamType::eParamType_Invalid: return Script::VariableType::eVarType_Invalid;
+	}
+	return Script::VariableType::eVarType_Invalid;
+}
+
 bool DoFiltersMatch(const EventInfo& eventInfo, const EventCallback& callback, const FilterStack& params)
 {
 	for (auto& [index, filter] : callback.filters)
 	{
 		auto const zeroBasedIndex = index - 1;
-		if (zeroBasedIndex > params->size() - 1)
+		if (zeroBasedIndex > params->size() - 1) [[unlikely]]
 		{
 			ShowRuntimeError(callback.TryGetScript(), "Index %d passed to SetEventHandler exceeds number of arguments provided by event %s (number of args: %d)",
 				index, eventInfo.evName, params->size());
@@ -952,7 +969,7 @@ bool DoFiltersMatch(const EventInfo& eventInfo, const EventCallback& callback, c
 		}
 		const auto filterDataType = filter.DataType();
 		const auto filterVarType = DataTypeToVarType(filterDataType);
-		const auto paramVarType = static_cast<Script::VariableType>(eventInfo.paramTypes[zeroBasedIndex]);
+		const auto paramVarType = ParamTypeToVarType(eventInfo.paramTypes[zeroBasedIndex]);
 		void* param = params->at(zeroBasedIndex);
 		if (filterVarType != paramVarType)
 		{
@@ -1003,6 +1020,7 @@ DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, Fi
 					}
 					return DispatchReturn::kRetn_Error;
 				}
+				return DispatchReturn::kRetn_Normal;
 			},
 			[&params, thisObj](EventHandler handler)-> DispatchReturn
 			{

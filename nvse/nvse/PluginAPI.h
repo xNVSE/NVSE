@@ -766,14 +766,19 @@ struct NVSEEventManagerInterface
 
 		eParamType_String,
 		eParamType_Array,
-		eParamType_Ref,
-		eParamType_AnyForm = eParamType_Ref,
-		/*
-		 * TODO: add Reference and BaseForm types
-		 */
+
+		eParamType_RefVar,
+		eParamType_AnyForm = eParamType_RefVar,
+		//TODO: ADD SUPPORTING CODE
+		eParamType_Reference,
+		eParamType_BaseForm,
 
 		eParamType_Invalid = -1
 	};
+	static bool IsParamForm(ParamType pType)
+	{
+		return pType == eParamType_RefVar || pType == eParamType_Reference || pType == eParamType_BaseForm;
+	}
 
 	enum EventFlags : UInt32
 	{

@@ -120,7 +120,7 @@ public:
 	bool			IsUnkScript() const { return info.type == eType_Unk; }
 
 	VariableInfo*	GetVariableByName(const char* varName);
-	UInt32			GetVariableType(VariableInfo* var);
+	Script::VariableType GetVariableType(VariableInfo* var);
 
 	bool			IsUserDefinedFunction() const;
 
@@ -249,7 +249,7 @@ struct ScriptBuffer
 	Script::RefVariable* ResolveRef(const char* refName, Script* script);
 	UInt32	GetRefIdx(Script::RefVariable* ref);
 	VariableInfo* GetVariableByName(const char* name);
-	UInt32	GetVariableType(VariableInfo* varInfo, Script::RefVariable* refVar, Script* script);
+	Script::VariableType GetVariableType(VariableInfo* varInfo, Script::RefVariable* refVar, Script* script);
 
 	static game_unique_ptr<ScriptBuffer> MakeUnique()
 	{
@@ -266,7 +266,7 @@ static_assert(sizeof(ScriptBuffer) == 0x58);
 Script::VariableType VariableTypeNameToType(const char* name);
 const char* VariableTypeToName(Script::VariableType type);
 
-UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText, Script* script);	// parses scriptText to determine var type
+Script::VariableType GetDeclaredVariableType(const char* varName, const char* scriptText, Script* script);	// parses scriptText to determine var type
 Script* GetScriptFromForm(TESForm* form);
 
 enum class ScriptOperatorCode

@@ -41,6 +41,12 @@ namespace EventManager
 	using DispatchReturn = NVSEEventManagerInterface::DispatchReturn;
 	using DispatchCallback = NVSEEventManagerInterface::DispatchCallback;
 
+	inline bool IsParamForm(ParamType pType)
+	{
+		return NVSEEventManagerInterface::IsParamForm(pType);
+	}
+	Script::VariableType ParamTypeToVarType(ParamType pType);
+
 	enum eEventID {
 		// correspond to ScriptEventList event masks
 		kEventID_OnAdd,

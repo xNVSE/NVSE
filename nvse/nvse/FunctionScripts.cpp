@@ -371,7 +371,7 @@ FunctionInfo::FunctionInfo(Script* script)
 		const UInt16 idx = *((UInt16*)data);
 		data += 2;
 		const UInt8 type = *data++;
-		params.emplace_back(idx, type);
+		params.emplace_back(idx, static_cast<Script::VariableType>(type));
 	}
 
 	m_dParamInfo = DynamicParamInfo(params);
@@ -694,7 +694,7 @@ bool ArrayElementArgFunctionCaller<T>::PopulateArgs(ScriptEventList* eventList, 
 			return false;
 		}
 		const auto& arg = (*m_args)[i];
-		const auto varType = static_cast<Script::VariableType>(param->varType);
+		const auto varType = param->varType;
 		if (DataTypeToVarType(arg.DataType()) != varType)
 		{
 			ShowRuntimeError(m_script, "Wrong type passed for parameter %d (%s). Cannot assign %s to %s.", i, GetVariableName(var, m_script, eventList),
