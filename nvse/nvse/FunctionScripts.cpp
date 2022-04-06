@@ -773,7 +773,8 @@ namespace PluginAPI
 			break;
 		default:
 			outElem = NVSEArrayVarInterface::Element();
-			ShowRuntimeError(fnScript, "Function script called from plugin returned unexpected type %02X", tok->Type());
+			if (fnScript)
+				ShowRuntimeError(fnScript, "Function script called from plugin returned unexpected type %02X", tok->Type());
 			return false;
 		}
 		return true;

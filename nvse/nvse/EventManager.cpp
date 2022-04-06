@@ -52,13 +52,16 @@ UInt32 EventIDForString(const char* eventStr)
 
 struct EventInfo
 {
-	EventInfo (const char *name_, UInt8* params_, UInt8 nParams_, UInt32 eventMask_, EventHookInstaller* installer_)
-		: evName(name_), paramTypes(params_), numParams(nParams_), eventMask(eventMask_), installHook(installer_)
+	EventInfo (const char *name_, ParamType* params_, UInt8 nParams_, UInt32 eventMask_ = 0, 
+		EventHookInstaller* installer_ = nullptr, 
+		EventFlags flags = EventFlags::kFlags_None)
+		: evName(name_), paramTypes(params_), numParams(nParams_), eventMask(eventMask_), installHook(installer_), flags(flags)
 	{}
 
-	EventInfo (const char *name_, UInt8 * params_, UInt8 numParams_) : evName(name_), paramTypes(params_), numParams(numParams_), eventMask(0), installHook(NULL){}
+	EventInfo (const char *name_, ParamType* params_, UInt8 numParams_, EventFlags flags = EventFlags::kFlags_None)
+	: evName(name_), paramTypes(params_), numParams(numParams_), flags(flags) {}
 
-	EventInfo () : evName(""), paramTypes(NULL), numParams(0), eventMask(0), installHook(NULL){}
+	EventInfo () : evName(""), paramTypes(nullptr){}
 
 	EventInfo(const EventInfo& other) = default;
 
@@ -76,14 +79,14 @@ struct EventInfo
 	}
 
 	const char			*evName;			// must be lowercase
-	UInt8				*paramTypes;
-	UInt8				numParams;
-	UInt32				eventMask;
+	ParamType			*paramTypes;
+	UInt8				numParams = 0;
+	UInt32				eventMask = 0;
 	CallbackList		callbacks;
-	EventHookInstaller	*installHook;	// if a hook is needed for this event type, this will be non-null. 
+	EventHookInstaller	*installHook{};	// if a hook is needed for this event type, this will be non-null. 
 										// install it once and then set *installHook to NULL. Allows multiple events
 										// to use the same hook, installing it only once.
-	
+	EventFlags			flags = EventFlags::kFlags_None;
 };
 
 // hook installers
@@ -92,44 +95,44 @@ static EventHookInstaller s_ActivateHook = InstallActivateHook;
 static EventHookInstaller s_ActorEquipHook = InstallOnActorEquipHook;
 
 // event handler param lists
-static UInt8 kEventParams_GameEvent[2] =
+static ParamType kEventParams_GameEvent[2] =
 {
-	Script::eVarType_Ref, Script::eVarType_Ref
+	ParamType::eParamType_Ref, ParamType::eParamType_Ref
 };
 
-static UInt8 kEventParams_OneRef[1] =
+static ParamType kEventParams_OneRef[1] =
 {
-	Script::eVarType_Ref,
+	ParamType::eParamType_Ref,
 };
 
-static UInt8 kEventParams_OneString[1] =
+static ParamType kEventParams_OneString[1] =
 {
-	Script::eVarType_String
+	ParamType::eParamType_String
 };
 
-static UInt8 kEventParams_OneInteger[1] =
+static ParamType kEventParams_OneInteger[1] =
 {
-	Script::eVarType_Integer
+	ParamType::eParamType_Integer
 };
 
-static UInt8 kEventParams_TwoIntegers[2] =
+static ParamType kEventParams_TwoIntegers[2] =
 {
-	Script::eVarType_Integer, Script::eVarType_Integer
+	ParamType::eParamType_Integer, ParamType::eParamType_Integer
 };
 
-static UInt8 kEventParams_OneFloat_OneRef[2] =
+static ParamType kEventParams_OneFloat_OneRef[2] =
 {
-	 Script::eVarType_Float, Script::eVarType_Ref
+	 ParamType::eParamType_Float, ParamType::eParamType_Ref
 };
 
-static UInt8 kEventParams_OneRef_OneInt[2] =
+static ParamType kEventParams_OneRef_OneInt[2] =
 {
-	Script::eVarType_Ref, Script::eVarType_Integer
+	ParamType::eParamType_Ref, ParamType::eParamType_Integer
 };
 
-static UInt8 kEventParams_OneArray[1] =
+static ParamType kEventParams_OneArray[1] =
 {
-	Script::eVarType_Array
+	ParamType::eParamType_Array
 };
 
 ///////////////////////////
@@ -160,19 +163,19 @@ static const UInt32 kDestroyCIOS_RetnAddr = 0x008232EF;
 
 // cheap check to prevent duplicate events being processed in immediate succession
 // (e.g. game marks OnHitWith twice per event, this way we only process it once)
-static TESObjectREFR* s_lastObj = NULL;
-static TESForm* s_lastTarget = NULL;
+static TESObjectREFR* s_lastObj = nullptr;
+static TESForm* s_lastTarget = nullptr;
 static UInt32 s_lastEvent = NULL;
 
 // OnHitWith often gets marked twice per event. If weapon enchanted, may see:
 //  OnHitWith >> OnMGEFHit >> ... >> OnHitWith. 
 // Prevent OnHitWith being reported more than once by recording OnHitWith events processed
-static TESObjectREFR* s_lastOnHitWithActor = NULL;
-static TESForm* s_lastOnHitWithWeapon = NULL;
+static TESObjectREFR* s_lastOnHitWithActor = nullptr;
+static TESForm* s_lastOnHitWithWeapon = nullptr;
 
 // And it turns out OnHit is annoyingly marked several times per frame for spells/enchanted weapons
-static TESObjectREFR* s_lastOnHitVictim = NULL;
-static TESForm* s_lastOnHitAttacker = NULL;
+static TESObjectREFR* s_lastOnHitVictim = nullptr;
+static TESForm* s_lastOnHitAttacker = nullptr;
 
 //////////////////////////////////
 // Hooks
@@ -259,7 +262,7 @@ static void InstallOnActorEquipHook()
 		// OnActorEquip event also (unreliably) passes through main hook, so install that
 		s_MainEventHook();
 		// since it's installed, prevent it from being installed again
-		s_MainEventHook = NULL;
+		s_MainEventHook = nullptr;
 	}
 
 	// additional hook to overcome game's failure to consistently mark this event type
@@ -448,7 +451,7 @@ void EventCallback::Confirm()
 class EventHandlerCaller : public InternalFunctionCaller
 {
 public:
-	EventHandlerCaller(Script* script, EventInfo* eventInfo, void* arg0, void* arg1) : InternalFunctionCaller(script, NULL), m_eventInfo(eventInfo)
+	EventHandlerCaller(Script* script, EventInfo* eventInfo, void* arg0, void* arg1) : InternalFunctionCaller(script, nullptr), m_eventInfo(eventInfo)
 	{
 		UInt8 numArgs = 2;
 		if (!arg1)
@@ -592,7 +595,7 @@ void __stdcall HandleEvent(UInt32 id, void* arg0, void* arg1)
 			continue;
 
 		// Check filters
-		if (callback.source && arg0 != callback.source && eventInfo->numParams && eventInfo->paramTypes[0] == Script::eVarType_Ref)
+		if (callback.source && arg0 != callback.source && eventInfo->numParams && eventInfo->paramTypes[0] == ParamType::eParamType_Ref)
 		{
 			if (isArg0Valid == RefState::NotSet)
 				isArg0Valid = IsValidReference(arg0) ? RefState::Valid : RefState::Invalid;
@@ -692,7 +695,7 @@ bool SetHandler(const char* eventName, EventCallback& handler)
 				(*info->installHook)();
 			}
 			// mark event as having had its hook installed
-			info->installHook = NULL;
+			info->installHook = nullptr;
 		}
 
 		if (!info->callbacks.Empty())
@@ -851,7 +854,7 @@ void HandleNVSEMessage(UInt32 msgID, void* data)
 {
 	const UInt32 eventID = EventIDForMessage(msgID);
 	if (eventID != kEventID_INVALID)
-		HandleEvent(eventID, data, NULL);
+		HandleEvent(eventID, data, nullptr);
 }
 
 bool DoesFormMatchFilter(TESForm* form, TESForm* filter, const UInt32 recursionLevel = 0)
@@ -879,9 +882,9 @@ bool DoDeprecatedFiltersMatch(const EventInfo& eventInfo, const EventCallback& c
 	// old filter system
 	TESForm* sourceForm{};
 	TESForm* objectForm{};
-	if (eventInfo.numParams > 0 && eventInfo.paramTypes[0] == Script::eVarType_Ref)
+	if (eventInfo.numParams > 0 && eventInfo.paramTypes[0] == ParamType::eParamType_Ref)
 		sourceForm = static_cast<TESForm*>(params->at(0));
-	if (eventInfo.numParams > 1 && eventInfo.paramTypes[1] == Script::eVarType_Ref)
+	if (eventInfo.numParams > 1 && eventInfo.paramTypes[1] == ParamType::eParamType_Ref)
 		objectForm = static_cast<TESForm*>(params->at(1));
 	if (!DoesFormMatchFilter(sourceForm, callback.source) || !DoesFormMatchFilter(objectForm, callback.object))
 		return false;
@@ -1017,24 +1020,10 @@ bool DoFiltersMatch(const EventInfo& eventInfo, const EventCallback& callback, c
 	return true;
 }
 
-bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
+DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, FilterStack& params,
+	DispatchCallback resultCallback = nullptr, void* anyData = nullptr)
 {
-	const auto eventId = EventIDForString(eventName);
-	if (eventId == static_cast<UInt32>(kEventID_INVALID))
-		return false;
-	EventInfo& eventInfo = s_eventInfos[eventId];
-
-	va_list paramList;
-	va_start(paramList, thisObj);
-
-	if (eventInfo.numParams > numMaxFilters)
-		return false;
-
-	FilterStack params;
-	for (int i = 0; i < eventInfo.numParams; ++i)
-		params->push_back(va_arg(paramList, void*));
-	
-
+	DispatchReturn result = DispatchReturn::kRetn_Normal;
 	for (auto iter = eventInfo.callbacks.Begin(); !iter.End(); ++iter)
 	{
 		const auto& callback = iter.Get();
@@ -1046,21 +1035,80 @@ bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
 		if (!DoFiltersMatch(eventInfo, callback, params))
 			continue;
 
-		std::visit(overloaded{
-			[&params, &eventInfo, thisObj](const LambdaManager::Maybe_Lambda &script)
+		result = std::visit(overloaded{
+			[=, &params, &eventInfo](const LambdaManager::Maybe_Lambda& script) -> DispatchReturn
 			{
 				InternalFunctionCaller caller(script.Get(), thisObj);
 				caller.SetArgsRaw(eventInfo.numParams, params->data());
-				UserFunctionManager::Call(std::move(caller));
+				auto const res = UserFunctionManager::Call(std::move(caller));
+				if (resultCallback)
+				{
+					NVSEArrayVarInterface::Element elem;
+					if (PluginAPI::BasicTokenToPluginElem(res.get(), elem))
+					{
+						return resultCallback(elem, anyData) ? DispatchReturn::kRetn_Normal : DispatchReturn::kRetn_EarlyBreak;
+					}
+					return DispatchReturn::kRetn_Error;
+				}
 			},
-			[&params, thisObj](EventHandler handler)
+			[&params, thisObj](EventHandler handler)-> DispatchReturn
 			{
 				handler(thisObj, params->data());
+				return DispatchReturn::kRetn_Normal;
 			},
-		}, callback.toCall);
+			}, callback.toCall);
+
+		if (result != DispatchReturn::kRetn_Normal)
+			break;
 	}
+	return result;
+}
+
+
+bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
+{
+	const auto eventId = EventIDForString(eventName);
+	if (eventId == static_cast<UInt32>(kEventID_INVALID))
+		return false;
+
+	EventInfo& eventInfo = s_eventInfos[eventId];
+	if (eventInfo.numParams > numMaxFilters)
+		return false;
+
+	va_list paramList;
+	va_start(paramList, thisObj);
+
+	FilterStack params;
+	for (int i = 0; i < eventInfo.numParams; ++i)
+		params->push_back(va_arg(paramList, void*));
+
+	bool const result = DispatchEventRaw(thisObj, eventInfo, params) != DispatchReturn::kRetn_Error;
+	
 	va_end(paramList);
-	return true;	
+	return result;
+}
+
+DispatchReturn DispatchEventAlt(const char* eventName, DispatchCallback resultCallback, void* anyData, TESObjectREFR* thisObj, ...)
+{
+	const auto eventId = EventIDForString(eventName);
+	if (eventId == static_cast<UInt32>(kEventID_INVALID))
+		return DispatchReturn::kRetn_Error;
+
+	EventInfo& eventInfo = s_eventInfos[eventId];
+	if (eventInfo.numParams > numMaxFilters)
+		return DispatchReturn::kRetn_Error;
+
+	va_list paramList;
+	va_start(paramList, thisObj);
+
+	FilterStack params;
+	for (int i = 0; i < eventInfo.numParams; ++i)
+		params->push_back(va_arg(paramList, void*));
+
+	auto const result = DispatchEventRaw(thisObj, eventInfo, params, resultCallback, anyData);
+
+	va_end(paramList);
+	return result;
 }
 
 bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 argsArrayId, const char* senderName)
@@ -1088,7 +1136,7 @@ bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 arg
 
 	// populate args array
 	arr->SetElementString("eventName", eventName);
-	if (senderName == NULL)
+	if (senderName == nullptr)
 	{
 		if (sender)
 			senderName = DataHandler::Get()->GetNthModName (sender->GetModIndex ());
@@ -1099,7 +1147,7 @@ bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 arg
 	arr->SetElementString("eventSender", senderName);
 
 	// dispatch
-	HandleEvent(eventID, (void*)argsArrayId, NULL);
+	HandleEvent(eventID, (void*)argsArrayId, nullptr);
 	return true;
 }
 
@@ -1113,18 +1161,19 @@ void Tick()
 	// Clear callbacks pending removal.
 	s_deferredRemoveList.Clear();
 
-	s_lastObj = NULL;
-	s_lastTarget = NULL;
+	s_lastObj = nullptr;
+	s_lastTarget = nullptr;
 	s_lastEvent = NULL;
-	s_lastOnHitWithActor = NULL;
-	s_lastOnHitWithWeapon = NULL;
-	s_lastOnHitVictim = NULL;
-	s_lastOnHitAttacker = NULL;
+	s_lastOnHitWithActor = nullptr;
+	s_lastOnHitWithWeapon = nullptr;
+	s_lastOnHitVictim = nullptr;
+	s_lastOnHitAttacker = nullptr;
 }
 
 void Init()
 {
-#define EVENT_INFO(name, params, hookInstaller, eventMask) EventManager::RegisterEventEx(name, params ? sizeof(params) : 0, params, eventMask, hookInstaller)
+#define EVENT_INFO(name, params, hookInstaller, eventMask) \
+	EventManager::RegisterEventEx(name, params ? sizeof(params) : 0, params, eventMask, hookInstaller)
 	
 	EVENT_INFO("onadd", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnAdd);
 	EVENT_INFO("onactorequip", kEventParams_GameEvent, &s_ActorEquipHook, ScriptEventList::kEvent_OnEquip);
@@ -1183,20 +1232,21 @@ void Init()
 
 }
 
-bool RegisterEventEx(const char* name, UInt8 numParams, UInt8* paramTypes, UInt32 eventMask = 0, EventHookInstaller* hookInstaller = nullptr)
+bool RegisterEventEx(const char* name, UInt8 numParams, ParamType* paramTypes, 
+	UInt32 eventMask, EventHookInstaller* hookInstaller, EventFlags flags)
 {
 	UInt32* idPtr;
 	if (!s_eventNameToID.Insert(name, &idPtr))
 		return false; // event with this name already exists
 	*idPtr = s_eventInfos.Size();
-	const auto event = EventInfo(name, paramTypes, numParams, eventMask, hookInstaller);
+	const auto event = EventInfo(name, paramTypes, numParams, eventMask, hookInstaller, flags);
 	s_eventInfos.Append(event);
 	return true;
 }
 
-bool RegisterEvent(const char* name, UInt8 numParams, UInt8* paramTypes)
+bool RegisterEvent(const char* name, UInt8 numParams, ParamType* paramTypes, EventFlags flags)
 {
-	return RegisterEventEx(name, numParams, paramTypes);
+	return RegisterEventEx(name, numParams, paramTypes, flags);
 }
 
 bool SetNativeEventHandler(const char* eventName, EventHandler func)

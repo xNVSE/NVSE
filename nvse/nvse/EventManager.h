@@ -32,6 +32,10 @@ namespace EventManager
 	static constexpr auto numMaxFilters = 0x20;
 
 	using EventHandler = NVSEEventManagerInterface::EventHandler;
+	using ParamType = NVSEEventManagerInterface::ParamType;
+	using EventFlags = NVSEEventManagerInterface::EventFlags;
+	using DispatchReturn = NVSEEventManagerInterface::DispatchReturn;
+	using DispatchCallback = NVSEEventManagerInterface::DispatchCallback;
 
 	enum eEventID {
 		// correspond to ScriptEventList event masks
@@ -164,13 +168,18 @@ namespace EventManager
 
 	void Init();
 
-	bool RegisterEventEx(const char* name, UInt8 numParams, UInt8* paramTypes, UInt32 eventMask, EventHookInstaller* hookInstaller);
+	bool RegisterEventEx(const char* name, UInt8 numParams, ParamType* paramTypes, 
+		UInt32 eventMask = 0, EventHookInstaller* hookInstaller = nullptr, 
+		EventFlags flags = EventFlags::kFlags_None);
 
-	bool RegisterEvent(const char* name, UInt8 numParams, UInt8* paramTypes);
+	bool RegisterEvent(const char* name, UInt8 numParams, ParamType* paramTypes, 
+		EventFlags flags = EventFlags::kFlags_None);
+
 	bool SetNativeEventHandler(const char* eventName, EventHandler func);
 	bool RemoveNativeEventHandler(const char* eventName, EventHandler func);
 
 	bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...);
+	DispatchReturn DispatchEventAlt(const char* eventName, DispatchCallback resultCallback, void* anyData, TESObjectREFR* thisObj, ...);
 
 	// dispatch a user-defined event from a script
 	bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 argsArrayId, const char* senderName);

@@ -736,7 +736,7 @@ struct NVSESerializationInterface
  *	(i.e. the pointer to it may never become invalid).
  *  For example, a good way to define it is to make a global variable like this:
  *
- *	    static Script::VariableType s_MyEventParams[] = { Script::eVarType_Ref, Script::eVarType_String };
+ *	    static ParamType s_MyEventParams[] = { Script::eVarType_Ref, Script::eVarType_String };
  *
  *	Then you can pass it into PluginEventInfo like this:
  *
@@ -757,7 +757,23 @@ struct NVSESerializationInterface
 struct NVSEEventManagerInterface
 {
 	typedef void (*EventHandler)(TESObjectREFR* thisObj, void* parameters);
-	typedef bool (*DispatchCallback)(NVSEArrayVarInterface::Element& result);
+
+	//May be expanded later...
+	enum ParamType : int8_t
+	{
+		eParamType_Float = 0,			//ref is also zero
+		eParamType_Integer,
+
+		eParamType_String,
+		eParamType_Array,
+		eParamType_Ref,
+		eParamType_AnyForm = eParamType_Ref,
+		/*
+		 * TODO: add Reference and BaseForm types
+		 */
+
+		eParamType_Invalid = -1
+	};
 
 	enum EventFlags : UInt32
 	{
@@ -767,22 +783,26 @@ struct NVSEEventManagerInterface
 		kFlag_FlushOnLoad = 1 << 0,
 	};
 
+	// Registers a new event which can be dispatched to scripts and plugins. Returns false if event with name already exists.
+	bool (*RegisterEvent)(const char* name, UInt8 numParams, ParamType* paramTypes, EventFlags flags);
+
+	// Dispatch an event that has been registered with RegisterEvent.
+	// Variadic arguments are passed as parameters to script / function.
+	// Returns false if an error occurred.
+	bool (*DispatchEvent)(const char* eventName, TESObjectREFR* thisObj, ...);
+
 	enum DispatchReturn : int8_t
 	{
 		kRetn_Error = -1,
 		kRetn_Normal = 0,
 		kRetn_EarlyBreak,
 	};
+	typedef bool (*DispatchCallback)(NVSEArrayVarInterface::Element& result, void* anyData);
 
-	// Registers a new event which can be dispatched to scripts and plugins. Returns false if event with name already exists.
-	// Assumes size of Script::VariableType enum members = UInt8.
-	bool (*RegisterEvent)(const char* name, UInt8 numParams, Script::VariableType* paramTypes, EventFlags flags);
-
-	// Dispatch an event that has been registered with RegisterEvent.
-	// Variadic arguments are passed as parameters to script / function.
-	// If callback is not null, then it is called for each event handler that is dispatched, which allows checking the result of each dispatch.
-	// If the callback returns false, then dispatching for the event will end prematurely.
-	DispatchReturn (*DispatchEvent)(const char* eventName, DispatchCallback resultCallback, TESObjectREFR* thisObj, ...);
+	// If resultCallback is not null, then it is called for each event handler that is dispatched, which allows checking the result of each dispatch.
+	// If the callback returns false, then dispatching for the event will end prematurely, and this returns kRetn_EarlyBreak.
+	// anyData arg is passed to the callbacks.
+	DispatchReturn (*DispatchEventAlt)(const char* eventName, DispatchCallback resultCallback, void* anyData, TESObjectREFR* thisObj, ...);
 
 	// Similar to script function SetEventHandler, allows you to set a native function that gets called back on events
 	bool (*SetNativeEventHandler)(const char* eventName, EventHandler func);
