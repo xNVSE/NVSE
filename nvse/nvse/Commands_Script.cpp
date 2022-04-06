@@ -1019,15 +1019,4 @@ bool Cmd_Ternary_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool Cmd_DumpNVSEEventHandlers_Execute(COMMAND_ARGS)
-{
-	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-		eval.ExtractArgs())
-	{
-
-		//TODO
-	}
-	return true;
-}
-
 #endif

@@ -180,35 +180,6 @@ DEFINE_CMD_ALT_EXP(CallForSeconds, CallFor, "calls UDF each frame for argument n
 DEFINE_COMMAND_EXP(CallWhile, "calls UDF each frame while condition is met", false, kNVSEParams_CallWhile);
 DEFINE_COMMAND_EXP(CallWhen, "calls UDF once when a condition is met which is polled each frame", false, kNVSEParams_CallWhile);
 
-static ParamInfo kNVSEParams_DumpEventHandlers[18] =
-{
-	{ "event name",			kNVSEParamType_String,	1 },
-	{ "function script",	kNVSEParamType_Form,	1 },
-	{	"flags",		kNVSEParamType_Number,	1	},
-
-	{	"element",	kNVSEParamType_BasicType,	1	},
-	{	"element",	kNVSEParamType_BasicType,	1	},
-	{	"element",	kNVSEParamType_BasicType,	1	},
-	{	"element",	kNVSEParamType_BasicType,	1	},
-	{	"element",	kNVSEParamType_BasicType,	1	},
-
-	{	"element",	kNVSEParamType_BasicType,	1	},
-	{	"element",	kNVSEParamType_BasicType,	1	},
-	{	"element",	kNVSEParamType_BasicType,	1	},
-	{	"element",	kNVSEParamType_BasicType,	1	},
-	{	"element",	kNVSEParamType_BasicType,	1	},
-
-	{	"element",	kNVSEParamType_BasicType,	1	},
-	{	"element",	kNVSEParamType_BasicType,	1	},
-	{	"element",	kNVSEParamType_BasicType,	1	},
-	{	"element",	kNVSEParamType_BasicType,	1	},
-	{	"element",	kNVSEParamType_BasicType,	1	},
-	//#elems should not exceed max # of UDF args.
-};
-
-DEFINE_COMMAND_EXP(DumpNVSEEventHandlers, "Dumps all registered NVSE event handlers in console, optionally filtered by event name, script callback and event filters",
-	false, kNVSEParams_DumpEventHandlers);
-
 #if RUNTIME
 using CallArgs = std::vector<SelfOwningArrayElement>;
 
