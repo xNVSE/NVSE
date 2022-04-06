@@ -29,23 +29,24 @@ namespace EventManager
 	extern Stack<const char*> s_eventStack;
 
 	struct EventInfo;
-
 	typedef Vector<EventInfo> EventInfoList;
 	extern EventInfoList s_eventInfos;
+
+	UInt32 EventIDForString(const char* eventStr);
 
 	static constexpr auto numMaxFilters = 0x20;
 
 	using EventHandler = NVSEEventManagerInterface::EventHandler;
-	using ParamType = NVSEEventManagerInterface::ParamType;
+	using EventParamType = NVSEEventManagerInterface::ParamType;
 	using EventFlags = NVSEEventManagerInterface::EventFlags;
 	using DispatchReturn = NVSEEventManagerInterface::DispatchReturn;
 	using DispatchCallback = NVSEEventManagerInterface::DispatchCallback;
 
-	inline bool IsParamForm(ParamType pType)
+	inline bool IsParamForm(EventParamType pType)
 	{
 		return NVSEEventManagerInterface::IsParamForm(pType);
 	}
-	Script::VariableType ParamTypeToVarType(ParamType pType);
+	Script::VariableType ParamTypeToVarType(EventParamType pType);
 
 	enum eEventID {
 		// correspond to ScriptEventList event masks
@@ -163,12 +164,12 @@ namespace EventManager
 
 	struct EventInfo
 	{
-		EventInfo(const char* name_, ParamType* params_, UInt8 nParams_, UInt32 eventMask_, EventHookInstaller* installer_,
+		EventInfo(const char* name_, EventParamType* params_, UInt8 nParams_, UInt32 eventMask_, EventHookInstaller* installer_,
 			EventFlags flags = EventFlags::kFlags_None)
 			: evName(name_), paramTypes(params_), numParams(nParams_), eventMask(eventMask_), installHook(installer_), flags(flags)
 		{}
 
-		EventInfo(const char* name_, ParamType* params_, UInt8 numParams_, EventFlags flags = EventFlags::kFlags_None)
+		EventInfo(const char* name_, EventParamType* params_, UInt8 numParams_, EventFlags flags = EventFlags::kFlags_None)
 			: evName(name_), paramTypes(params_), numParams(numParams_), flags(flags) {}
 
 		EventInfo() : evName(""), paramTypes(nullptr) {}
@@ -189,7 +190,7 @@ namespace EventManager
 		}
 
 		const char* evName;			// must be lowercase
-		ParamType* paramTypes;
+		EventParamType* paramTypes;
 		UInt8				numParams = 0;
 		UInt32				eventMask = 0;
 		CallbackList		callbacks;
@@ -223,11 +224,11 @@ namespace EventManager
 
 	void Init();
 
-	bool RegisterEventEx(const char* name, UInt8 numParams, ParamType* paramTypes, 
+	bool RegisterEventEx(const char* name, UInt8 numParams, EventParamType* paramTypes, 
 		UInt32 eventMask = 0, EventHookInstaller* hookInstaller = nullptr, 
 		EventFlags flags = EventFlags::kFlags_None);
 
-	bool RegisterEvent(const char* name, UInt8 numParams, ParamType* paramTypes, 
+	bool RegisterEvent(const char* name, UInt8 numParams, EventParamType* paramTypes, 
 		EventFlags flags = EventFlags::kFlags_None);
 
 	bool SetNativeEventHandler(const char* eventName, EventHandler func);

@@ -586,7 +586,7 @@ bool Cmd_GetCallingScript_Execute(COMMAND_ARGS)
 
 static constexpr auto maxEventNameLen = 0x20;
 
-bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback &outCallback, char *outName, const char* funcName)
+bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback &outCallback, char *outName, bool addEvt)
 {
 	if (eval.ExtractArgs() && eval.NumArgs() >= 2)
 	{
@@ -597,12 +597,59 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 			outCallback.toCall = script;
 			strcpy_s(outName, maxEventNameLen, eventName);
 
+			EventManager::EventInfo* info = nullptr;
+			if (auto const id = EventManager::EventIDForString(eventName);
+				id != EventManager::kEventID_INVALID)
+			{
+				info = &EventManager::s_eventInfos[id];
+			}
+
+			const char* funcName = addEvt ? "SetEventHandler" : "RemoveEventHandler";
+
 			// any filters?
-			for (UInt32 i = 2; i < eval.NumArgs(); i++)
+			UInt8 constexpr filterStartIdx = 2;
+			auto numFilters = eval.NumArgs() - filterStartIdx;
+			if (info)
+			{
+				numFilters = min(info->numParams, numFilters);
+			}
+			for (auto i = filterStartIdx; i < numFilters + filterStartIdx; i++)
 			{
 				const TokenPair *pair = eval.Arg(i)->GetPair();
 				if (pair && pair->left && pair->right)
 				{
+					if (info && addEvt)	//Prevent filters of the wrong type from being added.
+						//Inconsequential for trying to remove events, so we can skip this block in that case.
+					{
+						auto const expectedParamType = info->paramTypes[i - filterStartIdx];
+						auto const expectedVarType = EventManager::ParamTypeToVarType(expectedParamType);
+						if (auto const varType = static_cast<Script::VariableType>(pair->right->GetVariableType());
+							varType != expectedVarType)
+						{
+							eval.Error("%s: Invalid type for filter (arg #%u): expected %s, got %s.", funcName, i,  
+								VariableTypeToName(expectedVarType), VariableTypeToName(varType));
+							continue;
+						}
+
+						if (auto const form = pair->right->GetTESForm())
+						{
+							if (expectedParamType == EventManager::EventParamType::eParamType_BaseForm)
+							{
+								if (form->GetIsReference())
+								{
+									eval.Error("%s: Expected BaseForm-type filter (arg #%u), got Reference.", funcName, i);
+									continue;
+								}
+							}
+							else if (expectedParamType == EventManager::EventParamType::eParamType_Reference
+								&& !form->GetIsReference())
+							{
+								eval.Error("%s: Expected Reference-type filter (arg #%u), got BaseForm.", funcName, i);
+								continue;
+							}
+						}	//allow null forms to go through, in case that would be a desired filter.
+					}
+
 					const char *key = pair->left->GetString();
 					if (key && StrLen(key))
 					{
@@ -637,6 +684,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 					}
 				}
 			}
+
 			return true;
 		}
 	}
@@ -665,7 +713,7 @@ bool Cmd_SetEventHandler_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
 	char eventName[maxEventNameLen];
-	*result = (ExtractEventCallback(eval, callback, eventName, "SetEventHandler") 
+	*result = (ExtractEventCallback(eval, callback, eventName, true) 
 		&& ProcessEventHandler(eventName, callback, true));
 	return true;
 }
@@ -675,7 +723,7 @@ bool Cmd_RemoveEventHandler_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
 	char eventName[maxEventNameLen];
-	*result = (ExtractEventCallback(eval, callback, eventName, "RemoveEventHandler")
+	*result = (ExtractEventCallback(eval, callback, eventName, false)
 		&& ProcessEventHandler(eventName, callback, false));
 	return true;
 }

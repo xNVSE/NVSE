@@ -38,9 +38,9 @@ enum {
 };
 
 #if _DEBUG
-Map<const char*, UInt32> s_eventNameToID(0x40);
+	Map<const char*, UInt32> s_eventNameToID(0x40);
 #else
-UnorderedMap<const char*, UInt32> s_eventNameToID(0x40);
+	UnorderedMap<const char*, UInt32> s_eventNameToID(0x40);
 #endif
 UInt32 EventIDForString(const char* eventStr)
 {
@@ -54,44 +54,44 @@ static EventHookInstaller s_ActivateHook = InstallActivateHook;
 static EventHookInstaller s_ActorEquipHook = InstallOnActorEquipHook;
 
 // event handler param lists
-static ParamType kEventParams_GameEvent[2] =
+static EventParamType kEventParams_GameEvent[2] =
 {
-	ParamType::eParamType_AnyForm, ParamType::eParamType_AnyForm
+	EventParamType::eParamType_AnyForm, EventParamType::eParamType_AnyForm
 };
 
-static ParamType kEventParams_OneRef[1] =
+static EventParamType kEventParams_OneRef[1] =
 {
-	ParamType::eParamType_AnyForm,
+	EventParamType::eParamType_AnyForm,
 };
 
-static ParamType kEventParams_OneString[1] =
+static EventParamType kEventParams_OneString[1] =
 {
-	ParamType::eParamType_String
+	EventParamType::eParamType_String
 };
 
-static ParamType kEventParams_OneInteger[1] =
+static EventParamType kEventParams_OneInteger[1] =
 {
-	ParamType::eParamType_Integer
+	EventParamType::eParamType_Integer
 };
 
-static ParamType kEventParams_TwoIntegers[2] =
+static EventParamType kEventParams_TwoIntegers[2] =
 {
-	ParamType::eParamType_Integer, ParamType::eParamType_Integer
+	EventParamType::eParamType_Integer, EventParamType::eParamType_Integer
 };
 
-static ParamType kEventParams_OneFloat_OneRef[2] =
+static EventParamType kEventParams_OneFloat_OneRef[2] =
 {
-	 ParamType::eParamType_Float, ParamType::eParamType_AnyForm
+	 EventParamType::eParamType_Float, EventParamType::eParamType_AnyForm
 };
 
-static ParamType kEventParams_OneRef_OneInt[2] =
+static EventParamType kEventParams_OneRef_OneInt[2] =
 {
-	ParamType::eParamType_AnyForm, ParamType::eParamType_Integer
+	EventParamType::eParamType_AnyForm, EventParamType::eParamType_Integer
 };
 
-static ParamType kEventParams_OneArray[1] =
+static EventParamType kEventParams_OneArray[1] =
 {
-	ParamType::eParamType_Array
+	EventParamType::eParamType_Array
 };
 
 ///////////////////////////
@@ -553,7 +553,7 @@ void __stdcall HandleEvent(UInt32 id, void* arg0, void* arg1)
 			continue;
 
 		// Check filters
-		if (callback.source && arg0 != callback.source && eventInfo->numParams && eventInfo->paramTypes[0] == ParamType::eParamType_RefVar)
+		if (callback.source && arg0 != callback.source && eventInfo->numParams && IsParamForm(eventInfo->paramTypes[0]))
 		{
 			if (isArg0Valid == RefState::NotSet)
 				isArg0Valid = IsValidReference(arg0) ? RefState::Valid : RefState::Invalid;
@@ -939,19 +939,19 @@ bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCall
 	return false;
 }
 
-Script::VariableType ParamTypeToVarType(ParamType pType)
+Script::VariableType ParamTypeToVarType(EventParamType pType)
 {
 	switch (pType)
 	{
-	case ParamType::eParamType_Float: return Script::VariableType::eVarType_Float;
-	case ParamType::eParamType_Integer: return Script::VariableType::eVarType_Integer;
-	case ParamType::eParamType_String: return Script::VariableType::eVarType_String;
-	case ParamType::eParamType_Array: return Script::VariableType::eVarType_Array;
-	case ParamType::eParamType_RefVar:
-	case ParamType::eParamType_Reference:
-	case ParamType::eParamType_BaseForm:
+	case EventParamType::eParamType_Float: return Script::VariableType::eVarType_Float;
+	case EventParamType::eParamType_Integer: return Script::VariableType::eVarType_Integer;
+	case EventParamType::eParamType_String: return Script::VariableType::eVarType_String;
+	case EventParamType::eParamType_Array: return Script::VariableType::eVarType_Array;
+	case EventParamType::eParamType_RefVar:
+	case EventParamType::eParamType_Reference:
+	case EventParamType::eParamType_BaseForm:
 		return Script::VariableType::eVarType_Ref;
-	case ParamType::eParamType_Invalid: return Script::VariableType::eVarType_Invalid;
+	case EventParamType::eParamType_Invalid: return Script::VariableType::eVarType_Invalid;
 	}
 	return Script::VariableType::eVarType_Invalid;
 }
@@ -1203,7 +1203,7 @@ void Init()
 
 }
 
-bool RegisterEventEx(const char* name, UInt8 numParams, ParamType* paramTypes, 
+bool RegisterEventEx(const char* name, UInt8 numParams, EventParamType* paramTypes, 
 	UInt32 eventMask, EventHookInstaller* hookInstaller, EventFlags flags)
 {
 	UInt32* idPtr;
@@ -1215,7 +1215,7 @@ bool RegisterEventEx(const char* name, UInt8 numParams, ParamType* paramTypes,
 	return true;
 }
 
-bool RegisterEvent(const char* name, UInt8 numParams, ParamType* paramTypes, EventFlags flags)
+bool RegisterEvent(const char* name, UInt8 numParams, EventParamType* paramTypes, EventFlags flags)
 {
 	return RegisterEventEx(name, numParams, paramTypes, flags);
 }

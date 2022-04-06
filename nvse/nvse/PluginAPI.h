@@ -769,7 +769,8 @@ struct NVSEEventManagerInterface
 
 		eParamType_RefVar,
 		eParamType_AnyForm = eParamType_RefVar,
-		//TODO: ADD SUPPORTING CODE
+		// With these, when attempting to set an event handler with the wrong kind of form (with SetEventHandler),
+		// will prevent that handler from being set.
 		eParamType_Reference,
 		eParamType_BaseForm,
 
