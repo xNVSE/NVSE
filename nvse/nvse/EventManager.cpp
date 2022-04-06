@@ -943,11 +943,6 @@ bool DoFiltersMatch(const EventInfo& eventInfo, const EventCallback& callback, c
 {
 	for (auto& [index, filter] : callback.filters)
 	{
-		if (index == 0)
-		{
-			ShowRuntimeError(callback.TryGetScript(), "Invalid index 0 passed to SetEventHandler (indices start from 1)");
-			continue;
-		}
 		auto const zeroBasedIndex = index - 1;
 		if (zeroBasedIndex > params->size() - 1)
 		{
