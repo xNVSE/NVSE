@@ -587,6 +587,41 @@ bool Cmd_GetCallingScript_Execute(COMMAND_ARGS)
 static constexpr auto maxEventNameLen = 0x20;
 static ICriticalSection s_EventLock;
 
+// Prevent filters of the wrong type from being added to an Event Handler instance.
+// Only needs to be called for SetEventHandler, to filter out most user weirdness.
+bool IsPotentialFilterCorrect(EventManager::EventFilterType const expectedParamType, ExpressionEvaluator& eval, 
+	const ScriptToken* potentialFilter, int argPos)
+{
+	if (expectedParamType == EventManager::EventFilterType::eParamType_Array)
+		return true;
+
+	auto const expectedVarType = EventManager::ParamTypeToVarType(expectedParamType);
+	//If both are number-type filters, then we should be comparing two Float variable types.
+	if (auto const varType = potentialFilter->GetTokenTypeAsVariableType();
+		varType != expectedVarType) [[unlikely]]
+	{
+		eval.Error("SetEventHandler: Invalid type for filter (arg #%u): expected %s, got %s.", argPos + 1,
+			VariableTypeToName(expectedVarType), VariableTypeToName(varType));
+		return false;
+	}
+
+	// Allow null forms to go through, in case that would be a desired filter.
+	if (auto const form = potentialFilter->GetTESForm())
+	{
+		if (expectedParamType == EventManager::EventFilterType::eParamType_BaseForm
+			&& form->GetIsReference()) [[unlikely]]
+		{
+			//Prefer not to sneakily convert the user's reference to its baseform, lessons must be learned.
+			eval.Error("SetEventHandler: Expected BaseForm-type filter (arg #%u), got Reference.", argPos + 1);
+			return false;
+		}
+		// Allow passing a baseform to a Reference-type filter.
+		// When the event is dispatched, it will check if the passed reference belongs to the baseform.
+	}	
+
+	return true;
+}
+
 bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback &outCallback, char *outName, bool addEvt)
 {
 	if (eval.ExtractArgs() && eval.NumArgs() >= 2)
@@ -611,7 +646,6 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 				}
 			}
 
-
 			// We should have a defined event to work with now.
 			// This allows us to report errors about wrong filters immediately.
 			if (UInt32 const id = *idPtr;
@@ -629,76 +663,52 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 					const TokenPair* pair = eval.Arg(i)->GetPair();
 					if (pair && pair->left && pair->right) [[likely]]
 					{
-						//Prevent filters of the wrong type from being added.
-						//Inconsequential for trying to remove events, so we can skip this block in that case.
-						if (auto const expectedParamType = info.paramTypes[i - filterStartIdx];
-							addEvt && expectedParamType != EventManager::EventParamType::eParamType_Array)	//Array filters get a free pass.
-						{
-							auto const expectedVarType = EventManager::ParamTypeToVarType(expectedParamType);
-							if (auto const varType = static_cast<Script::VariableType>(pair->right->GetVariableType());
-								varType != expectedVarType) [[unlikely]]
-							{
-								eval.Error("%s: Invalid type for filter (arg #%u): expected %s, got %s.", funcName, i,
-									VariableTypeToName(expectedVarType), VariableTypeToName(varType));
-								continue;
-							}
-
-							if (auto const form = pair->right->GetTESForm(); 
-								form && form->GetTypeID() != 0x055)	//(formlist exception)	
-							{
-								if (expectedParamType == EventManager::EventParamType::eParamType_BaseForm)
-								{
-									if (form->GetIsReference()) [[unlikely]]
-									{
-										eval.Error("%s: Expected BaseForm-type filter (arg #%u), got Reference.", funcName, i);
-										continue;
-									}
-								}
-								else if (expectedParamType == EventManager::EventParamType::eParamType_Reference
-									&& !form->GetIsReference()) [[unlikely]]
-								{
-									eval.Error("%s: Expected Reference-type filter (arg #%u), got BaseForm.", funcName, i);
-									continue;
-								}
-							}	//allow null forms to go through, in case that would be a desired filter.
-						}
-
 						const char* key = pair->left->GetString();
 						if (key && StrLen(key))
 						{
 							if (!StrCompare(key, "ref") || !StrCompare(key, "first"))
 							{
+								if (addEvt && !IsPotentialFilterCorrect(info.paramTypes[0], eval, pair->right.get(), i)) [[unlikely]]
+									continue;
 								outCallback.source = pair->right->GetTESForm();
 							}
 							else if (!StrCompare(key, "object") || !StrCompare(key, "second"))
 							{
+								if (!IsPotentialFilterCorrect(info.paramTypes[1], eval, pair->right.get(), i)) [[unlikely]]
+									continue;
 								outCallback.object = pair->right->GetTESForm();
 							}
 						}
 						// new system, above preserved for backwards compatibility
-						else if (const auto index = pair->left->GetNumber())
+						else if (const auto index = static_cast<int>(pair->left->GetNumber()))
 						{
+							if (index < 0) [[unlikely]]
+							{
+								eval.Error("Invalid index %d passed to %s (arg indices start from 1, and callingReference is filter #0).", funcName);
+								continue;
+							}
+							if (index > info.numParams) [[unlikely]]
+							{
+								eval.Error("%s: Index %d passed exceeds max number of args for function (%u)", funcName, index, info.numParams);
+								continue;
+							}
+
+							if (addEvt)
+							{
+								//Index #0 is reserved for callingReference filter.
+								auto const filterType = index == 0 ? EventManager::EventFilterType::eParamType_Reference : info.paramTypes[index];
+								if (!IsPotentialFilterCorrect(filterType, eval, pair->right.get(), i)) [[unlikely]]
+									continue;
+							}
+
 							const auto basicToken = pair->right->ToBasicToken();
 							SelfOwningArrayElement element;
-							if (basicToken && BasicTokenToElem(basicToken.get(), element))
+							if (basicToken && BasicTokenToElem(basicToken.get(), element)) [[likely]]
 							{
-								auto const mapIndex = static_cast<int>(index);
-								if (mapIndex <= 0) [[unlikely]]
-								{
-									eval.Error("Invalid index 0 (or below) passed to %s (indices start from 1)", funcName);
-									continue;
-								}
-
-								if (mapIndex > info.numParams) [[unlikely]]
-								{
-									eval.Error("%s: Index %u passed exceeds max number of args for function (%u)", funcName, mapIndex, info.numParams);
-									continue;
-								}
-
-								if (const auto [it, success] = outCallback.filters.insert({ mapIndex, std::move(element) });
+								if (const auto [it, success] = outCallback.filters.insert({ index, std::move(element) });
 									!success) [[unlikely]]
 								{
-									eval.Error("Event filter index %u appears more than once in %s call.", mapIndex, funcName);
+									eval.Error("Event filter index %u appears more than once in %s call.", index, funcName);
 								}
 							}
 						}

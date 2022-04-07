@@ -758,12 +758,9 @@ struct NVSEEventManagerInterface
 {
 	typedef void (*EventHandler)(TESObjectREFR* thisObj, void* parameters);
 
-	//May be expanded later...
-	enum ParamType : int8_t
+	enum ParamType : int8_t	//todo: rename to ParamFilterType?
 	{
-		eParamType_Float = 0,			//ref is also zero
-		eParamType_Integer,
-
+		eParamType_Number,
 		eParamType_String,
 		eParamType_Array,
 
@@ -805,7 +802,7 @@ struct NVSEEventManagerInterface
 	};
 	typedef bool (*DispatchCallback)(NVSEArrayVarInterface::Element& result, void* anyData);
 
-	// If resultCallback is not null, then it is called for each event handler that is dispatched, which allows checking the result of each dispatch.
+	// If resultCallback is not null, then it is called for each SCRIPT event handler that is dispatched, which allows checking the result of each dispatch.
 	// If the callback returns false, then dispatching for the event will end prematurely, and this returns kRetn_EarlyBreak.
 	// anyData arg is passed to the callbacks.
 	DispatchReturn (*DispatchEventAlt)(const char* eventName, DispatchCallback resultCallback, void* anyData, TESObjectREFR* thisObj, ...);

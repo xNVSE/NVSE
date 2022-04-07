@@ -38,16 +38,16 @@ namespace EventManager
 	static constexpr auto numMaxFilters = 0x20;
 
 	using EventHandler = NVSEEventManagerInterface::EventHandler;
-	using EventParamType = NVSEEventManagerInterface::ParamType;
+	using EventFilterType = NVSEEventManagerInterface::ParamType;
 	using EventFlags = NVSEEventManagerInterface::EventFlags;
 	using DispatchReturn = NVSEEventManagerInterface::DispatchReturn;
 	using DispatchCallback = NVSEEventManagerInterface::DispatchCallback;
 
-	inline bool IsParamForm(EventParamType pType)
+	inline bool IsParamForm(EventFilterType pType)
 	{
 		return NVSEEventManagerInterface::IsFormParam(pType);
 	}
-	Script::VariableType ParamTypeToVarType(EventParamType pType);
+	Script::VariableType ParamTypeToVarType(EventFilterType pType);
 
 	enum eEventID {
 		// correspond to ScriptEventList event masks
@@ -140,7 +140,7 @@ namespace EventManager
 		bool			pendingRemove{};
 
 		using Index = UInt32;
-		using Filter = ArrayElement;
+		using Filter = SelfOwningArrayElement;
 
 		//Indexes for filters must respect the max amount of BaseFilters for the base event definition.
 		//If no filter is at an index = it is unfiltered for the nth BaseFilter.
@@ -165,12 +165,12 @@ namespace EventManager
 
 	struct EventInfo
 	{
-		EventInfo(const char* name_, EventParamType* params_, UInt8 nParams_, UInt32 eventMask_, EventHookInstaller* installer_,
+		EventInfo(const char* name_, EventFilterType* params_, UInt8 nParams_, UInt32 eventMask_, EventHookInstaller* installer_,
 			EventFlags flags = EventFlags::kFlags_None)
 			: evName(name_), paramTypes(params_), numParams(nParams_), eventMask(eventMask_), installHook(installer_), flags(flags)
 		{}
 
-		EventInfo(const char* name_, EventParamType* params_, UInt8 numParams_, EventFlags flags = EventFlags::kFlags_None)
+		EventInfo(const char* name_, EventFilterType* params_, UInt8 numParams_, EventFlags flags = EventFlags::kFlags_None)
 			: evName(name_), paramTypes(params_), numParams(numParams_), flags(flags) {}
 
 		EventInfo() : evName(""), paramTypes(nullptr) {}
@@ -191,7 +191,7 @@ namespace EventManager
 		}
 
 		const char* evName;			// must be lowercase
-		EventParamType* paramTypes;
+		EventFilterType* paramTypes;
 		UInt8				numParams = 0;
 		UInt32				eventMask = 0;
 		CallbackList		callbacks;
@@ -225,11 +225,11 @@ namespace EventManager
 
 	void Init();
 
-	bool RegisterEventEx(const char* name, UInt8 numParams, EventParamType* paramTypes, 
+	bool RegisterEventEx(const char* name, UInt8 numParams, EventFilterType* paramTypes, 
 		UInt32 eventMask = 0, EventHookInstaller* hookInstaller = nullptr, 
 		EventFlags flags = EventFlags::kFlags_None);
 
-	bool RegisterEvent(const char* name, UInt8 numParams, EventParamType* paramTypes, 
+	bool RegisterEvent(const char* name, UInt8 numParams, EventFilterType* paramTypes, 
 		EventFlags flags = EventFlags::kFlags_None);
 
 	bool SetNativeEventHandler(const char* eventName, EventHandler func);
@@ -244,44 +244,44 @@ namespace EventManager
 
 
 	// event handler param lists
-	static EventParamType kEventParams_GameEvent[2] =
+	static EventFilterType kEventParams_GameEvent[2] =
 	{
-		EventParamType::eParamType_AnyForm, EventParamType::eParamType_AnyForm
+		EventFilterType::eParamType_AnyForm, EventFilterType::eParamType_AnyForm
 	};
 
-	static EventParamType kEventParams_OneRef[1] =
+	static EventFilterType kEventParams_OneRef[1] =
 	{
-		EventParamType::eParamType_AnyForm,
+		EventFilterType::eParamType_AnyForm,
 	};
 
-	static EventParamType kEventParams_OneString[1] =
+	static EventFilterType kEventParams_OneString[1] =
 	{
-		EventParamType::eParamType_String
+		EventFilterType::eParamType_String
 	};
 
-	static EventParamType kEventParams_OneInteger[1] =
+	static EventFilterType kEventParams_OneNum[1] =
 	{
-		EventParamType::eParamType_Integer
+		EventFilterType::eParamType_Number
 	};
 
-	static EventParamType kEventParams_TwoIntegers[2] =
+	static EventFilterType kEventParams_TwoNums[2] =
 	{
-		EventParamType::eParamType_Integer, EventParamType::eParamType_Integer
+		EventFilterType::eParamType_Number, EventFilterType::eParamType_Number
 	};
 
-	static EventParamType kEventParams_OneFloat_OneRef[2] =
+	static EventFilterType kEventParams_OneNum_OneRef[2] =
 	{
-		 EventParamType::eParamType_Float, EventParamType::eParamType_AnyForm
+		 EventFilterType::eParamType_Number, EventFilterType::eParamType_AnyForm
 	};
 
-	static EventParamType kEventParams_OneRef_OneInt[2] =
+	static EventFilterType kEventParams_OneRef_OneNum[2] =
 	{
-		EventParamType::eParamType_AnyForm, EventParamType::eParamType_Integer
+		EventFilterType::eParamType_AnyForm, EventFilterType::eParamType_Number
 	};
 
-	static EventParamType kEventParams_OneArray[1] =
+	static EventFilterType kEventParams_OneArray[1] =
 	{
-		EventParamType::eParamType_Array
+		EventFilterType::eParamType_Array
 	};
 };
 

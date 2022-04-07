@@ -304,6 +304,8 @@ struct ScriptToken
 	[[nodiscard]] std::string GetVariableDataAsString() const;
 	[[nodiscard]] const char *GetVariableTypeString() const;
 	[[nodiscard]] CommandReturnType GetReturnType() const;
+	[[nodiscard]] Script::VariableType GetTokenTypeAsVariableType() const;
+
 	void AssignResult(ExpressionEvaluator& eval) const;
 
 	static ScriptToken *Read(ExpressionEvaluator *context);

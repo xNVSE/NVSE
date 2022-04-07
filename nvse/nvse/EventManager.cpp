@@ -885,19 +885,18 @@ bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCall
 	return false;
 }
 
-Script::VariableType ParamTypeToVarType(EventParamType pType)
+Script::VariableType ParamTypeToVarType(EventFilterType pType)
 {
 	switch (pType)
 	{
-	case EventParamType::eParamType_Float: return Script::VariableType::eVarType_Float;
-	case EventParamType::eParamType_Integer: return Script::VariableType::eVarType_Integer;
-	case EventParamType::eParamType_String: return Script::VariableType::eVarType_String;
-	case EventParamType::eParamType_Array: return Script::VariableType::eVarType_Array;
-	case EventParamType::eParamType_RefVar:
-	case EventParamType::eParamType_Reference:
-	case EventParamType::eParamType_BaseForm:
+	case EventFilterType::eParamType_Number: return Script::VariableType::eVarType_Float;
+	case EventFilterType::eParamType_String: return Script::VariableType::eVarType_String;
+	case EventFilterType::eParamType_Array: return Script::VariableType::eVarType_Array;
+	case EventFilterType::eParamType_RefVar:
+	case EventFilterType::eParamType_Reference:
+	case EventFilterType::eParamType_BaseForm:
 		return Script::VariableType::eVarType_Ref;
-	case EventParamType::eParamType_Invalid: return Script::VariableType::eVarType_Invalid;
+	case EventFilterType::eParamType_Invalid: return Script::VariableType::eVarType_Invalid;
 	}
 	return Script::VariableType::eVarType_Invalid;
 }
@@ -1127,7 +1126,7 @@ void Init()
 	EVENT_INFO("loadgame", kEventParams_OneString, nullptr, 0);
 	EVENT_INFO("savegame", kEventParams_OneString, nullptr, 0);
 	EVENT_INFO("qqq", nullptr, nullptr, 0);
-	EVENT_INFO("postloadgame", kEventParams_OneInteger, nullptr, 0);
+	EVENT_INFO("postloadgame", kEventParams_OneNum, nullptr, 0);
 	EVENT_INFO("runtimescripterror", kEventParams_OneString, nullptr, 0);
 	EVENT_INFO("deletegame", kEventParams_OneString, nullptr, 0);
 	EVENT_INFO("renamegame", kEventParams_OneString, nullptr, 0);
@@ -1150,7 +1149,7 @@ void Init()
 
 }
 
-bool RegisterEventEx(const char* name, UInt8 numParams, EventParamType* paramTypes, 
+bool RegisterEventEx(const char* name, UInt8 numParams, EventFilterType* paramTypes, 
 	UInt32 eventMask, EventHookInstaller* hookInstaller, EventFlags flags)
 {
 	UInt32* idPtr;
@@ -1162,7 +1161,7 @@ bool RegisterEventEx(const char* name, UInt8 numParams, EventParamType* paramTyp
 	return true;
 }
 
-bool RegisterEvent(const char* name, UInt8 numParams, EventParamType* paramTypes, EventFlags flags)
+bool RegisterEvent(const char* name, UInt8 numParams, EventFilterType* paramTypes, EventFlags flags)
 {
 	return RegisterEventEx(name, numParams, paramTypes, 0, nullptr, flags);
 }

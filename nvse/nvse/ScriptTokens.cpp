@@ -954,6 +954,26 @@ CommandReturnType ScriptToken::GetReturnType() const
 	return kRetnType_Ambiguous;
 }
 
+Script::VariableType ScriptToken::GetTokenTypeAsVariableType() const
+{
+	if (CanConvertTo(kTokenType_Number)) {
+		return Script::VariableType::eVarType_Float;
+	}
+	if (CanConvertTo(kTokenType_String))
+	{
+		return Script::VariableType::eVarType_String;
+	}
+	if (CanConvertTo(kTokenType_Form))
+	{
+		return Script::VariableType::eVarType_Ref;
+	}
+	if (CanConvertTo(kTokenType_Array))
+	{
+		return Script::VariableType::eVarType_Array;
+	}
+	return Script::VariableType::eVarType_Invalid;
+}
+
 void ScriptToken::AssignResult(ExpressionEvaluator &eval) const
 {
 	eval.AssignAmbiguousResult(*this, GetReturnType());
