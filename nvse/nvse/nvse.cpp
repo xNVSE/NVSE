@@ -117,6 +117,11 @@ void NVSE_Initialize(void)
 		gLog.SetLogLevel((IDebugLog::LogLevel)logLevel);
 
 		MersenneTwister::init_genrand(GetTickCount());
+
+#if RUNTIME
+		// Runs before CommandTable::Init to prevent plugins from being able to register events before ours (breaks assert).
+		EventManager::Init();	
+#endif
 		CommandTable::Init();
 
 #if RUNTIME
@@ -129,7 +134,6 @@ void NVSE_Initialize(void)
 		Hook_Script_Init();
 		Hook_Animation_Init();
 		OtherHooks::Hooks_Other_Init();
-		EventManager::Init();
 
 		Hook_Dialog_Init();
 		PatchGameCommandParser();
