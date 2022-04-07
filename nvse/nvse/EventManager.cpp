@@ -761,10 +761,12 @@ void HandleNVSEMessage(UInt32 msgID, void* data)
 		HandleEvent(eventID, data, nullptr);
 }
 
-bool DoesFormMatchFilter(TESForm* form, TESForm* filter, const UInt32 recursionLevel = 0)
+bool DoesFormMatchFilter(TESForm* form, TESForm* filter, bool expectReference, const UInt32 recursionLevel = 0)
 {
-	if (!filter || filter == form)
+	if (filter == form)	//filter and form could both be null, and that's okay.
 		return true;
+	if (!filter || !form)
+		return false;
 	if (recursionLevel > 100) [[unlikely]]
 		return false;
 	if (IS_ID(filter, BGSListForm))
@@ -772,9 +774,14 @@ bool DoesFormMatchFilter(TESForm* form, TESForm* filter, const UInt32 recursionL
 		const auto* list = static_cast<BGSListForm*>(filter);
 		for (auto* listForm : list->list)
 		{
-			if (DoesFormMatchFilter(form, listForm, recursionLevel + 1))
+			if (DoesFormMatchFilter(form, listForm, expectReference, recursionLevel + 1))
 				return true;
 		}
+	}
+	else if (expectReference) //filter may be a baseForm, in which case, match form (a reference) to its baseform.
+	{
+		if (filter == form->TryGetREFRParent())
+			return true;
 	}
 	return false;
 }
@@ -790,17 +797,14 @@ bool DoDeprecatedFiltersMatch(const EventInfo& eventInfo, const EventCallback& c
 		sourceForm = static_cast<TESForm*>(params->at(0));
 	if (eventInfo.numParams > 1 && IsParamForm(eventInfo.paramTypes[1]))
 		objectForm = static_cast<TESForm*>(params->at(1));
-	if (!DoesFormMatchFilter(sourceForm, callback.source) || !DoesFormMatchFilter(objectForm, callback.object))
+	if (!DoesFormMatchFilter(sourceForm, callback.source, false) || !DoesFormMatchFilter(objectForm, callback.object, false))
 		return false;
 	return true;
 }
 
-
-bool DoesFilterMatch(const ArrayElement& sourceFilter, void* param)
+bool DoesFilterMatch(const ArrayElement& sourceFilter, void* param, EventFilterType filterType)
 {
-	const auto filterDataType = sourceFilter.DataType();
-
-	switch (filterDataType) {
+	switch (sourceFilter.DataType()) {
 	case kDataType_Numeric:
 	{
 		double filterNumber{};
@@ -815,10 +819,9 @@ bool DoesFilterMatch(const ArrayElement& sourceFilter, void* param)
 		UInt32 filterFormId{};
 		sourceFilter.GetAsFormID(&filterFormId);
 		auto* inputForm = static_cast<TESForm*>(param);
-		if (!inputForm)
-			return false;
 		auto* filterForm = LookupFormByID(filterFormId);
-		if (!filterForm || !DoesFormMatchFilter(inputForm, filterForm))
+		// Allow matching a null form filter with a null input.
+		if (!DoesFormMatchFilter(inputForm, filterForm, filterType == EventFilterType::eParamType_Reference))
 			return false;
 		break;
 	}
@@ -847,14 +850,13 @@ bool DoesFilterMatch(const ArrayElement& sourceFilter, void* param)
 		break;
 	}
 	case kDataType_Invalid:
-	default: break;
+		break;
 	}
 	return true;
 }
 
-bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCallback::Filter& filter, Script::VariableType paramType, void* param)
+bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCallback::Filter& filter, EventFilterType paramType, void* param)
 {
-
 	ArrayID arrayFiltersId{};
 	filter.GetAsArray(&arrayFiltersId);
 	const auto invalidArrayError = _L(, ShowRuntimeError(callback.TryGetScript(), "Array passed to SetEventHandler as filter is invalid (array id: %d)", arrayFiltersId));
@@ -877,9 +879,9 @@ bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCall
 	auto& elementVector = *arrayFilters->GetRawContainer()->getArrayPtr();
 	for (auto& iter : elementVector)
 	{
-		if (paramType != DataTypeToVarType(iter.DataType()))
+		if (ParamTypeToVarType(paramType) != DataTypeToVarType(iter.DataType()))
 			continue;
-		if (DoesFilterMatch(iter, param))
+		if (DoesFilterMatch(iter, param, paramType))
 			return true;
 	}
 	return false;
@@ -905,11 +907,15 @@ bool DoFiltersMatch(const EventInfo& eventInfo, const EventCallback& callback, c
 {
 	for (auto& [index, filter] : callback.filters)
 	{
+		bool const isCallingRefFilter = index == 0;
 		auto const zeroBasedIndex = index - 1;
+		auto const paramType = isCallingRefFilter ? EventFilterType::eParamType_Reference : eventInfo.paramTypes[zeroBasedIndex];
+
 		const auto filterDataType = filter.DataType();
 		const auto filterVarType = DataTypeToVarType(filterDataType);
-		const auto paramVarType = ParamTypeToVarType(eventInfo.paramTypes[zeroBasedIndex]);
+		const auto paramVarType = ParamTypeToVarType(paramType);
 		void* param = params->at(zeroBasedIndex);
+
 		if (filterVarType != paramVarType)
 		{
 #if _DEBUG	//Probably no longer required thanks to preemptive checks in ExtractEventCallback (from SetEventHandler)
@@ -921,11 +927,11 @@ bool DoFiltersMatch(const EventInfo& eventInfo, const EventCallback& callback, c
 			}
 #endif
 			// assume elements of array are filters
-			if (!DoesParamMatchFiltersInArray(callback, filter, paramVarType, param))
+			if (!DoesParamMatchFiltersInArray(callback, filter, paramType, param))
 				return false;
 			continue;
 		}
-		if (!DoesFilterMatch(filter, param))
+		if (!DoesFilterMatch(filter, param, paramType))
 			return false;
 	}
 	return true;
