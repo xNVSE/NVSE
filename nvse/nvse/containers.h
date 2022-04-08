@@ -1805,7 +1805,7 @@ public:
 		{
 			UInt32 newAlloc = AlignNumAlloc<T_Data>(newSize);
 			POOL_REALLOC(data, numAlloc, newAlloc, T_Data);
-			numAlloc = newSize;
+			numAlloc = newAlloc;
 		}
 		T_Data *pData = data + index;
 		if (index < numItems)
