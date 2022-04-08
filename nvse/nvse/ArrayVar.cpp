@@ -5,6 +5,7 @@
 #include <intrin.h>
 #include <set>
 
+#include "MemoryTracker.h"
 #include "Core_Serialization.h"
 
 #if RUNTIME
