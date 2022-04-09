@@ -129,11 +129,10 @@ void Core_PreLoadCallback(void * reserved)
 		if (info.FlushesOnLoad())
 		{
 			//remove all callbacks
-			//TODO: unsure if this is correct. Do we even need to delay the callback removal here?
+			//TODO: unsure if this is correct. Do we need to delay the callback removal here?
 			for (auto callbackIter = info.callbacks.Begin(); !callbackIter.End(); ++callbackIter)
 			{
-				auto& callback = callbackIter.Get();
-				//TODO callback.Remove(&info, callbackIter);
+				callbackIter.Remove(info.callbacks);
 			}
 		}
 	}
