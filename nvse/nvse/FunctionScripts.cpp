@@ -676,8 +676,8 @@ bool InternalFunctionCaller::SetArgsRaw(ParamSize_t numArgs, const void* args)
 template <BaseOfArrayElement T>
 bool ArrayElementArgFunctionCaller<T>::PopulateArgs(ScriptEventList* eventList, FunctionInfo* info)
 {
-	if (!m_args)
-		return true;
+	if (!m_args || m_args->size() > kMaxUdfParams)
+		return false;
 	// populate the args in the event list
 	for (UInt32 i = 0; i < m_args->size(); i++)
 	{
