@@ -899,7 +899,6 @@ Script::VariableType ParamTypeToVarType(EventFilterType pType)
 	case EventFilterType::eParamType_Reference:
 	case EventFilterType::eParamType_BaseForm:
 		return Script::VariableType::eVarType_Ref;
-	case EventFilterType::eParamType_Invalid: return Script::VariableType::eVarType_Invalid;
 	}
 	return Script::VariableType::eVarType_Invalid;
 }
