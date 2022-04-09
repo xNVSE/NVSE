@@ -363,10 +363,10 @@ void EventCallback::Confirm()
 	TrySaveLambdaContext();
 }
 
-class EventHandlerCaller : public InternalFunctionCaller
+class ClassicEventHandlerCaller : public InternalFunctionCaller
 {
 public:
-	EventHandlerCaller(Script* script, EventInfo* eventInfo, void* arg0, void* arg1) : InternalFunctionCaller(script, nullptr), m_eventInfo(eventInfo)
+	ClassicEventHandlerCaller(Script* script, EventInfo* eventInfo, void* arg0, void* arg1) : InternalFunctionCaller(script, nullptr), m_eventInfo(eventInfo)
 	{
 		UInt8 numArgs = 2;
 		if (!arg1)
@@ -408,7 +408,7 @@ std::unique_ptr<ScriptToken> EventCallback::Invoke(EventInfo* eventInfo, void* a
 
 				// handle immediately
 				s_eventStack.Push(eventInfo->evName);
-				auto ret = UserFunctionManager::Call(EventHandlerCaller(script.Get(), eventInfo, arg0, arg1));
+				auto ret = UserFunctionManager::Call(ClassicEventHandlerCaller(script.Get(), eventInfo, arg0, arg1));
 				s_eventStack.Pop();
 				return ret;
 			},
