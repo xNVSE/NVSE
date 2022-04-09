@@ -35,8 +35,6 @@ namespace EventManager
 
 	UInt32 EventIDForString(const char* eventStr);
 
-	static constexpr auto numMaxFilters = 0x20;
-
 	using EventHandler = NVSEEventManagerInterface::EventHandler;
 	using EventFilterType = NVSEEventManagerInterface::ParamType;
 	using EventFlags = NVSEEventManagerInterface::EventFlags;

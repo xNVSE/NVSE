@@ -20,6 +20,7 @@
 
 namespace EventManager {
 
+static constexpr auto numMaxFilters = kMaxUdfParams;
 using FilterStack = StackVector<void*, numMaxFilters>;
 
 static ICriticalSection s_criticalSection;
