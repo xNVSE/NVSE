@@ -435,10 +435,10 @@ void ScriptToken::operator delete(ScriptToken *token, std::destroying_delete_t)
 }
 
 ArrayElementToken::ArrayElementToken(ArrayID arr, ArrayKey *_key)
-	: ScriptToken(kTokenType_ArrayElement, Script::eVarType_Invalid, 0)
+	: ScriptToken(kTokenType_ArrayElement, Script::eVarType_Invalid, 0),
+		key(*_key)
 {
 	value.arrID = arr;
-	key = *_key;
 }
 
 TokenPair::TokenPair(ScriptToken *l, ScriptToken *r) : left(nullptr), right(nullptr)
