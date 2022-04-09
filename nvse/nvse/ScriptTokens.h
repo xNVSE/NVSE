@@ -351,12 +351,7 @@ struct ScriptToken
 	void operator delete(void *p); // unimplemented: keeping this here to shut up the compiler warning about non matching delete
 
 	ScriptToken(const ScriptToken& other) = delete;
-
-	ScriptToken(ScriptToken&& other) noexcept;
-
 	ScriptToken& operator=(const ScriptToken& other) = delete;
-
-	ScriptToken& operator=(ScriptToken&& other) noexcept;
 
 	bool cached = false;
 	CommandReturnType returnType = kRetnType_Default;
