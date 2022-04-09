@@ -74,7 +74,8 @@ enum {
 
 #define NVSE_EXPR_MAX_ARGS 20		// max # of args we'll accept to a commmand
 
-static constexpr UInt32 kMaxUdfParams = 15;
+using ParamSize_t = UInt8;
+static constexpr ParamSize_t kMaxUdfParams = 15;
 static_assert(kMaxUdfParams <= NVSE_EXPR_MAX_ARGS);
 
 // wraps a dynamic ParamInfo array
@@ -82,14 +83,14 @@ struct DynamicParamInfo
 {
 private:
 	ParamInfo	m_paramInfo[kMaxUdfParams];
-	UInt32		m_numParams;
+	ParamSize_t	m_numParams;
 
 public:
 	DynamicParamInfo(const std::vector<UserFunctionParam> &params);
 	DynamicParamInfo() : m_numParams(0) { }
 
 	ParamInfo* Params()	{	return m_paramInfo;	}
-	[[nodiscard]] UInt32 NumParams() const { return m_numParams;	}
+	[[nodiscard]] ParamSize_t NumParams() const { return m_numParams;	}
 };
 
 #if RUNTIME

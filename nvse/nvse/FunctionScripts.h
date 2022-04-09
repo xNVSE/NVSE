@@ -142,21 +142,19 @@ public:
 	virtual TESObjectREFR* ThisObj() { return m_thisObj; }
 	virtual TESObjectREFR* ContainingObj() { return m_container; }
 
-	bool SetArgs(UInt8 numArgs, ...);
-	bool vSetArgs(UInt8 numArgs, va_list args);
-	bool SetArgsRaw(UInt8 numArgs, const void* args);
+	bool SetArgs(ParamSize_t numArgs, ...);
+	bool vSetArgs(ParamSize_t numArgs, va_list args);
+	bool SetArgsRaw(ParamSize_t numArgs, const void* args);
 
 protected:
-	enum { kMaxArgs = 10 };
-
 	UInt8			m_callerVersion;
-	UInt8			m_numArgs;
+	ParamSize_t			m_numArgs;
 	Script* m_script;
-	void* m_args[kMaxArgs];
+	void* m_args[kMaxUdfParams];
 	TESObjectREFR* m_thisObj;
 	TESObjectREFR* m_container;
 
-	virtual bool ValidateParam(UserFunctionParam* param, UInt8 paramIndex) { return param != nullptr; }
+	virtual bool ValidateParam(UserFunctionParam* param, ParamSize_t paramIndex) { return param != nullptr; }
 };
 
 template <typename T>

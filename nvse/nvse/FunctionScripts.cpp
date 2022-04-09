@@ -577,13 +577,13 @@ bool FunctionContext::Return(ExpressionEvaluator* eval)
 bool InternalFunctionCaller::PopulateArgs(ScriptEventList* eventList, FunctionInfo* info)
 {
 	DynamicParamInfo& dParams = info->ParamInfo();
-	if (dParams.NumParams() >= kMaxArgs)
+	if (dParams.NumParams() > kMaxUdfParams)
 	{
 		return false;
 	}
 
 	// populate the args in the event list
-	for (UInt32 i = 0; i < m_numArgs; i++)
+	for (ParamSize_t i = 0; i < m_numArgs; i++)
 	{
 		UserFunctionParam* param = info->GetParam(i);
 		if (!ValidateParam(param, i))
@@ -639,7 +639,7 @@ bool InternalFunctionCaller::PopulateArgs(ScriptEventList* eventList, FunctionIn
 	return true;
 }
 
-bool InternalFunctionCaller::SetArgs(UInt8 numArgs, ...)
+bool InternalFunctionCaller::SetArgs(ParamSize_t numArgs, ...)
 {
 	va_list args;
 	va_start(args, numArgs);
@@ -648,9 +648,9 @@ bool InternalFunctionCaller::SetArgs(UInt8 numArgs, ...)
 	return result;
 }
 
-bool InternalFunctionCaller::vSetArgs(UInt8 numArgs, va_list args)
+bool InternalFunctionCaller::vSetArgs(ParamSize_t numArgs, va_list args)
 {
-	if (numArgs >= kMaxArgs)
+	if (numArgs > kMaxUdfParams)
 	{
 		return false;
 	}
@@ -664,9 +664,9 @@ bool InternalFunctionCaller::vSetArgs(UInt8 numArgs, va_list args)
 	return true;
 }
 
-bool InternalFunctionCaller::SetArgsRaw(UInt8 numArgs, const void* args)
+bool InternalFunctionCaller::SetArgsRaw(ParamSize_t numArgs, const void* args)
 {
-	if (numArgs >= kMaxArgs)
+	if (numArgs > kMaxUdfParams)
 		return false;
 	m_numArgs = numArgs;
 	memcpy_s(m_args, sizeof m_args, args, numArgs * sizeof(void*));

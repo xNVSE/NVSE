@@ -2165,7 +2165,7 @@ static ParamInfo kDynamicParams[] =
 DynamicParamInfo::DynamicParamInfo(const std::vector<UserFunctionParam> &params)
 {
 	m_numParams = min(kMaxUdfParams, params.size());
-	for (UInt32 i = 0; i < m_numParams; i++)
+	for (ParamSize_t i = 0; i < m_numParams; i++)
 		m_paramInfo[i] = kDynamicParams[params[i].varType];
 }
 
