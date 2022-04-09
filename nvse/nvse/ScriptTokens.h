@@ -334,7 +334,6 @@ struct ScriptToken
 	[[nodiscard]] static std::unique_ptr<ScriptToken> Create(ArrayElementToken *elem, UInt32 lbound, UInt32 ubound);
 	[[nodiscard]] static std::unique_ptr<ScriptToken> Create(UInt32 bogus); // unimplemented, to block implicit conversion to double
 	[[nodiscard]] static std::unique_ptr<ScriptToken> Create(Script *scriptLambda) { return scriptLambda ? std::make_unique<ScriptToken>(scriptLambda) : nullptr; }
-	[[nodiscard]] static std::unique_ptr<ScriptToken> Create(ScriptToken&& scriptToken) { return std::make_unique<ScriptToken>(std::move(scriptToken)); }
 #if RUNTIME
 	[[nodiscard]] static std::unique_ptr<ScriptToken> Create(ScriptLocal* local, StringVar* stringVar) { return stringVar ? std::make_unique<ScriptToken>(local, stringVar) : nullptr; }
 #endif
