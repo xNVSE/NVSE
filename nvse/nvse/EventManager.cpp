@@ -990,8 +990,10 @@ bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
 		return false;
 
 	EventInfo& eventInfo = s_eventInfos[eventId];
+#if _DEBUG //shouldn't need to be checked normally; RegisterEvent verifies numParams.
 	if (eventInfo.numParams > numMaxFilters)
 		return false;
+#endif
 
 	va_list paramList;
 	va_start(paramList, thisObj);
@@ -1018,8 +1020,6 @@ DispatchReturn DispatchEventAlt(const char* eventName, DispatchCallback resultCa
 	}
 
 	EventInfo& eventInfo = s_eventInfos[eventId];
-	if (eventInfo.numParams > numMaxFilters)
-		return DispatchReturn::kRetn_Error;
 
 	va_list paramList;
 	va_start(paramList, thisObj);
@@ -1158,6 +1158,9 @@ void Init()
 bool RegisterEventEx(const char* name, UInt8 numParams, EventFilterType* paramTypes, 
 	UInt32 eventMask, EventHookInstaller* hookInstaller, EventFlags flags)
 {
+	if (numParams > numMaxFilters)
+		return false;
+
 	UInt32* idPtr;
 	if (!s_eventNameToID.Insert(name, &idPtr))
 		return false; // event with this name already exists
