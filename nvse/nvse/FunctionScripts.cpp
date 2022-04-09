@@ -676,10 +676,13 @@ bool InternalFunctionCaller::SetArgsRaw(ParamSize_t numArgs, const void* args)
 template <BaseOfArrayElement T>
 bool ArrayElementArgFunctionCaller<T>::PopulateArgs(ScriptEventList* eventList, FunctionInfo* info)
 {
-	if (!m_args || m_args->size() > kMaxUdfParams)
+	if (!m_args)
+		return true;	//interpret as there being no args to populate; success.
+	auto const numArgs = m_args->size();
+	if (numArgs > kMaxUdfParams)
 		return false;
 	// populate the args in the event list
-	for (UInt32 i = 0; i < m_args->size(); i++)
+	for (UInt32 i = 0; i < numArgs; i++)
 	{
 		UserFunctionParam* param = info->GetParam(i);
 		if (!param)
