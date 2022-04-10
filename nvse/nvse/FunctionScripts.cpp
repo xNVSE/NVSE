@@ -371,7 +371,7 @@ FunctionInfo::FunctionInfo(Script* script)
 		const UInt16 idx = *((UInt16*)data);
 		data += 2;
 		const UInt8 type = *data++;
-		params.emplace_back(idx, type);
+		params.emplace_back(idx, static_cast<Script::VariableType>(type));
 	}
 
 	m_dParamInfo = DynamicParamInfo(params);
@@ -577,13 +577,13 @@ bool FunctionContext::Return(ExpressionEvaluator* eval)
 bool InternalFunctionCaller::PopulateArgs(ScriptEventList* eventList, FunctionInfo* info)
 {
 	DynamicParamInfo& dParams = info->ParamInfo();
-	if (dParams.NumParams() >= kMaxArgs)
+	if (dParams.NumParams() > kMaxUdfParams)
 	{
 		return false;
 	}
 
 	// populate the args in the event list
-	for (UInt32 i = 0; i < m_numArgs; i++)
+	for (ParamSize_t i = 0; i < m_numArgs; i++)
 	{
 		UserFunctionParam* param = info->GetParam(i);
 		if (!ValidateParam(param, i))
@@ -639,7 +639,7 @@ bool InternalFunctionCaller::PopulateArgs(ScriptEventList* eventList, FunctionIn
 	return true;
 }
 
-bool InternalFunctionCaller::SetArgs(UInt8 numArgs, ...)
+bool InternalFunctionCaller::SetArgs(ParamSize_t numArgs, ...)
 {
 	va_list args;
 	va_start(args, numArgs);
@@ -648,9 +648,9 @@ bool InternalFunctionCaller::SetArgs(UInt8 numArgs, ...)
 	return result;
 }
 
-bool InternalFunctionCaller::vSetArgs(UInt8 numArgs, va_list args)
+bool InternalFunctionCaller::vSetArgs(ParamSize_t numArgs, va_list args)
 {
-	if (numArgs >= kMaxArgs)
+	if (numArgs > kMaxUdfParams)
 	{
 		return false;
 	}
@@ -664,9 +664,9 @@ bool InternalFunctionCaller::vSetArgs(UInt8 numArgs, va_list args)
 	return true;
 }
 
-bool InternalFunctionCaller::SetArgsRaw(UInt8 numArgs, const void* args)
+bool InternalFunctionCaller::SetArgsRaw(ParamSize_t numArgs, const void* args)
 {
-	if (numArgs >= kMaxArgs)
+	if (numArgs > kMaxUdfParams)
 		return false;
 	m_numArgs = numArgs;
 	memcpy_s(m_args, sizeof m_args, args, numArgs * sizeof(void*));
@@ -677,9 +677,12 @@ template <BaseOfArrayElement T>
 bool ArrayElementArgFunctionCaller<T>::PopulateArgs(ScriptEventList* eventList, FunctionInfo* info)
 {
 	if (!m_args)
-		return true;
+		return true;	//interpret as there being no args to populate; success.
+	auto const numArgs = m_args->size();
+	if (numArgs > kMaxUdfParams)
+		return false;
 	// populate the args in the event list
-	for (UInt32 i = 0; i < m_args->size(); i++)
+	for (UInt32 i = 0; i < numArgs; i++)
 	{
 		UserFunctionParam* param = info->GetParam(i);
 		if (!param)
@@ -694,7 +697,7 @@ bool ArrayElementArgFunctionCaller<T>::PopulateArgs(ScriptEventList* eventList, 
 			return false;
 		}
 		const auto& arg = (*m_args)[i];
-		const auto varType = static_cast<Script::VariableType>(param->varType);
+		const auto varType = param->varType;
 		if (DataTypeToVarType(arg.DataType()) != varType)
 		{
 			ShowRuntimeError(m_script, "Wrong type passed for parameter %d (%s). Cannot assign %s to %s.", i, GetVariableName(var, m_script, eventList),
@@ -755,6 +758,31 @@ template class ArrayElementArgFunctionCaller<SelfOwningArrayElement>;
 
 namespace PluginAPI
 {
+	bool BasicTokenToPluginElem(const ScriptToken* tok, NVSEArrayVarInterface::Element& outElem, Script* fnScript)
+	{
+		switch (tok->Type())
+		{
+		case kTokenType_Number:
+			outElem = tok->GetNumber();
+			break;
+		case kTokenType_Form:
+			outElem = tok->GetTESForm();
+			break;
+		case kTokenType_Array:
+			outElem = ArrayAPI::LookupArrayByID(tok->GetArrayID());
+			break;
+		case kTokenType_String:
+			outElem = tok->GetString();
+			break;
+		default:
+			outElem = NVSEArrayVarInterface::Element();
+			if (fnScript)
+				ShowRuntimeError(fnScript, "Function script called from plugin returned unexpected type %02X", tok->Type());
+			return false;
+		}
+		return true;
+	}
+
 	bool CallFunctionScript(Script* fnScript, TESObjectREFR* callingObj, TESObjectREFR* container,
 		NVSEArrayVarInterface::Element* result, UInt8 numArgs, ...)
 	{
@@ -768,25 +796,8 @@ namespace PluginAPI
 			{
 				if (result)
 				{
-					switch (ret->Type())
-					{
-					case kTokenType_Number:
-						*result = ret->GetNumber();
-						break;
-					case kTokenType_Form:
-						*result = ret->GetTESForm();
-						break;
-					case kTokenType_Array:
-						*result = ArrayAPI::LookupArrayByID(ret->GetArrayID());
-						break;
-					case kTokenType_String:
-						*result = ret->GetString();
-						break;
-					default:
-						*result = NVSEArrayVarInterface::Element();
-						ShowRuntimeError(fnScript, "Function script called from plugin returned unexpected type %02X", ret->Type());
+					if (!BasicTokenToPluginElem(ret.get(), *result, fnScript))
 						success = false;
-					}
 				}
 				ret = nullptr;
 			}

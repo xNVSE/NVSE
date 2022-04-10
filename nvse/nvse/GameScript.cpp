@@ -66,7 +66,7 @@ const char* VariableTypeToName(Script::VariableType type)
 	}
 }
 
-UInt32 GetDeclaredVariableType(const char *varName, const char *scriptText, Script *script)
+Script::VariableType GetDeclaredVariableType(const char* varName, const char* scriptText, Script* script)
 {
 #if NVSE_CORE
 	if (const auto savedVarType = GetSavedVarType(script, varName); savedVarType != Script::eVarType_Invalid)
@@ -108,7 +108,7 @@ Script *GetScriptFromForm(TESForm *form)
 	return scriptable ? scriptable->script : NULL;
 }
 
-UInt32 Script::GetVariableType(VariableInfo *varInfo)
+Script::VariableType Script::GetVariableType(VariableInfo* varInfo)
 {
 	if (text)
 		return GetDeclaredVariableType(varInfo->name.m_data, text, this);
@@ -117,7 +117,7 @@ UInt32 Script::GetVariableType(VariableInfo *varInfo)
 		// if it's a ref var a matching varIdx will appear in RefList
 		if (refList.Contains([&](const RefVariable *ref) { return ref->varIdx == varInfo->idx; }))
 			return eVarType_Ref;
-		return varInfo->type;
+		return static_cast<Script::VariableType>(varInfo->type);
 	}
 }
 
@@ -361,7 +361,7 @@ VariableInfo *ScriptBuffer::GetVariableByName(const char *name)
 	return nullptr;
 }
 
-UInt32 ScriptBuffer::GetVariableType(VariableInfo *varInfo, Script::RefVariable *refVar, Script *script)
+Script::VariableType ScriptBuffer::GetVariableType(VariableInfo* varInfo, Script::RefVariable* refVar, Script* script)
 {
 	const char *scrText = scriptText;
 	if (refVar)

@@ -1,6 +1,5 @@
 #pragma once
 
-
 #ifdef RUNTIME
 
 #include <string>
@@ -23,17 +22,31 @@ typedef void (*EventHookInstaller)();
 // Event handler is a function script which must take the expected number and types of arguments associated with the event.
 // Supporting hooks only installed if at least one handler is registered for a particular event.
 
-
 namespace EventManager
 {
-	extern Stack<const char*> s_eventStack;
+	extern Stack<const char *> s_eventStack;
 
 	struct EventInfo;
-	static constexpr auto numMaxFilters = 0x20;
+	typedef Vector<EventInfo> EventInfoList;
+	extern EventInfoList s_eventInfos;
+	extern UnorderedMap<const char *, UInt32> s_eventNameToID;
+
+	UInt32 EventIDForString(const char *eventStr);
 
 	using EventHandler = NVSEEventManagerInterface::EventHandler;
+	using EventFilterType = NVSEEventManagerInterface::ParamType;
+	using EventFlags = NVSEEventManagerInterface::EventFlags;
+	using DispatchReturn = NVSEEventManagerInterface::DispatchReturn;
+	using DispatchCallback = NVSEEventManagerInterface::DispatchCallback;
 
-	enum eEventID {
+	inline bool IsParamForm(EventFilterType pType)
+	{
+		return NVSEEventManagerInterface::IsFormParam(pType);
+	}
+	Script::VariableType ParamTypeToVarType(EventFilterType pType);
+
+	enum eEventID
+	{
 		// correspond to ScriptEventList event masks
 		kEventID_OnAdd,
 		kEventID_OnActorEquip,
@@ -99,82 +112,165 @@ namespace EventManager
 		void TrySaveLambdaContext();
 
 	public:
-
-		//If variant is Maybe_Lambda, must try to capture lambda context once the EventCallback is confirmed to stay. 
+		// If variant is Maybe_Lambda, must try to capture lambda context once the EventCallback is confirmed to stay.
 		using CallbackFunc = std::variant<LambdaManager::Maybe_Lambda, EventHandler>;
 
 		EventCallback() = default;
 		~EventCallback() = default;
-		EventCallback(Script* funcScript, TESForm* sourceFilter = nullptr, TESForm* objectFilter = nullptr)
+		EventCallback(Script *funcScript, TESForm *sourceFilter = nullptr, TESForm *objectFilter = nullptr)
 			: toCall(funcScript), source(sourceFilter), object(objectFilter) {}
 
-		EventCallback(EventHandler func, TESForm* sourceFilter = nullptr, TESForm* objectFilter = nullptr)
+		EventCallback(EventHandler func, TESForm *sourceFilter = nullptr, TESForm *objectFilter = nullptr)
 			: toCall(func), source(sourceFilter), object(objectFilter) {}
 
-		EventCallback(const EventCallback& other) = delete;
-		EventCallback& operator=(const EventCallback& other) = delete;
+		EventCallback(const EventCallback &other) = delete;
+		EventCallback &operator=(const EventCallback &other) = delete;
 
-		EventCallback(EventCallback&& other) noexcept;
-		EventCallback& operator=(EventCallback&& other) noexcept;
+		EventCallback(EventCallback &&other) noexcept;
+		EventCallback &operator=(EventCallback &&other) noexcept;
 
-		CallbackFunc	toCall{};
-		TESForm			*source{};				// first arg to handler (reference or base form or form list)
-		TESForm			*object{};				// second arg to handler
-		bool			removed{};
-		bool			pendingRemove{};
+		CallbackFunc toCall{};
+		TESForm *source{}; // first arg to handler (reference or base form or form list)
+		TESForm *object{}; // second arg to handler
+		bool removed{};
+		bool pendingRemove{};
 
 		using Index = UInt32;
-		using Filter = ArrayElement;
+		using Filter = SelfOwningArrayElement;
 
-		//Indexes for filters must respect the max amount of BaseFilters for the base event definition.
-		//If no filter is at an index = it is unfiltered for the nth BaseFilter.
-		//Using a map to avoid adding duplicate indexes.
+		// Indexes for filters must respect the max amount of BaseFilters for the base event definition.
+		// If no filter is at an index = it is unfiltered for the nth BaseFilter.
+		// Using a map to avoid adding duplicate indexes.
 		std::map<Index, Filter> filters;
 
 		[[nodiscard]] bool IsRemoved() const { return removed; }
 		void SetRemoved(bool bSet) { removed = bSet; }
-		[[nodiscard]] bool Equals(const EventCallback& rhs) const;	// compare, return true if the two handlers are identical
+		[[nodiscard]] bool Equals(const EventCallback &rhs) const; // compare, return true if the two handlers are identical
 
-		[[nodiscard]] Script* TryGetScript() const;
+		[[nodiscard]] Script *TryGetScript() const;
 		[[nodiscard]] bool HasCallbackFunc() const;
 
-		//If the EventCallback is confirmed to stay, then call this to wrap up loose ends, e.g save lambda var context.
+		// If the EventCallback is confirmed to stay, then call this to wrap up loose ends, e.g save lambda var context.
 		void Confirm();
 
-		//Call the callback...
-		std::unique_ptr<ScriptToken> Invoke(EventInfo* eventInfo, void* arg0, void* arg1);
+		// Call the callback...
+		std::unique_ptr<ScriptToken> Invoke(EventInfo *eventInfo, void *arg0, void *arg1);
 	};
 
-	bool SetHandler(const char* eventName, EventCallback& handler);
+	typedef LinkedList<EventCallback> CallbackList;
+
+	struct EventInfo
+	{
+		EventInfo(const char *name_, EventFilterType *params_, UInt8 nParams_, UInt32 eventMask_, EventHookInstaller *installer_,
+				  EventFlags flags = EventFlags::kFlags_None)
+			: evName(name_), paramTypes(params_), numParams(nParams_), eventMask(eventMask_), installHook(installer_), flags(flags)
+		{
+		}
+
+		EventInfo(const char *name_, EventFilterType *params_, UInt8 numParams_, EventFlags flags = EventFlags::kFlags_None)
+			: evName(name_), paramTypes(params_), numParams(numParams_), flags(flags) {}
+
+		EventInfo() : evName(""), paramTypes(nullptr) {}
+
+		EventInfo(const EventInfo &other) = default;
+
+		EventInfo &operator=(const EventInfo &other)
+		{
+			if (this == &other)
+				return *this;
+			evName = other.evName;
+			paramTypes = other.paramTypes;
+			numParams = other.numParams;
+			callbacks = other.callbacks;
+			eventMask = other.eventMask;
+			installHook = other.installHook;
+			return *this;
+		}
+
+		const char *evName; // must be lowercase
+		EventFilterType *paramTypes;
+		UInt8 numParams = 0;
+		UInt32 eventMask = 0;
+		CallbackList callbacks;
+		EventHookInstaller *installHook{}; // if a hook is needed for this event type, this will be non-null.
+										   // install it once and then set *installHook to NULL. Allows multiple events
+										   // to use the same hook, installing it only once.
+		EventFlags flags = EventFlags::kFlags_None;
+
+		[[nodiscard]] bool FlushesOnLoad() const
+		{
+			return flags & EventFlags::kFlag_FlushOnLoad;
+		}
+	};
+
+	bool SetHandler(const char *eventName, EventCallback &handler);
 
 	// removes handler only if all filters match
-	bool RemoveHandler(const char* id, const EventCallback& handler);
+	bool RemoveHandler(const char *id, const EventCallback &handler);
 
 	// handle an NVSEMessagingInterface message
-	void HandleNVSEMessage(UInt32 msgID, void* data);
+	void HandleNVSEMessage(UInt32 msgID, void *data);
 
 	// handle an eventID directly
-	void __stdcall HandleEvent(UInt32 id, void * arg0, void * arg1);
+	void __stdcall HandleEvent(UInt32 id, void *arg0, void *arg1);
 
 	// name of whatever event is currently being handled, empty string if none
-	const char* GetCurrentEventName();
+	const char *GetCurrentEventName();
 
 	// called each frame to update internal state
 	void Tick();
 
 	void Init();
 
-	bool RegisterEventEx(const char* name, UInt8 numParams, UInt8* paramTypes, UInt32 eventMask, EventHookInstaller* hookInstaller);
+	bool RegisterEventEx(const char *name, UInt8 numParams, EventFilterType *paramTypes,
+						 UInt32 eventMask = 0, EventHookInstaller *hookInstaller = nullptr,
+						 EventFlags flags = EventFlags::kFlags_None);
 
-	bool RegisterEvent(const char* name, UInt8 numParams, UInt8* paramTypes);
-	bool SetNativeEventHandler(const char* eventName, EventHandler func);
-	bool RemoveNativeEventHandler(const char* eventName, EventHandler func);
+	bool RegisterEvent(const char *name, UInt8 numParams, EventFilterType *paramTypes,
+					   EventFlags flags = EventFlags::kFlags_None);
 
-	bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...);
+	bool SetNativeEventHandler(const char *eventName, EventHandler func);
+	bool RemoveNativeEventHandler(const char *eventName, EventHandler func);
+
+	bool DispatchEvent(const char *eventName, TESObjectREFR *thisObj, ...);
+	DispatchReturn DispatchEventAlt(const char *eventName, DispatchCallback resultCallback, void *anyData, TESObjectREFR *thisObj, ...);
 
 	// dispatch a user-defined event from a script
-	bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 argsArrayId, const char* senderName);
-};
+	bool DispatchUserDefinedEvent(const char *eventName, Script *sender, UInt32 argsArrayId, const char *senderName);
 
+	// event handler param lists
+	static EventFilterType kEventParams_GameEvent[2] =
+		{
+			EventFilterType::eParamType_AnyForm, EventFilterType::eParamType_AnyForm};
+
+	static EventFilterType kEventParams_OneRef[1] =
+		{
+			EventFilterType::eParamType_AnyForm,
+	};
+
+	static EventFilterType kEventParams_OneString[1] =
+		{
+			EventFilterType::eParamType_String};
+
+	static EventFilterType kEventParams_OneNum[1] =
+		{
+			EventFilterType::eParamType_Number};
+
+	static EventFilterType kEventParams_TwoNums[2] =
+		{
+			EventFilterType::eParamType_Number, EventFilterType::eParamType_Number};
+
+	static EventFilterType kEventParams_OneNum_OneRef[2] =
+		{
+			EventFilterType::eParamType_Number, EventFilterType::eParamType_AnyForm};
+
+	static EventFilterType kEventParams_OneRef_OneNum[2] =
+		{
+			EventFilterType::eParamType_AnyForm, EventFilterType::eParamType_Number};
+
+	static EventFilterType kEventParams_OneArray[1] =
+		{
+			EventFilterType::eParamType_Array};
+};
 
 #endif

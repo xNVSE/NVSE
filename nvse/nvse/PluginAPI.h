@@ -739,6 +739,7 @@ struct NVSESerializationInterface
 	void	(*SkipNBytes)(UInt32 byteNum);
 };
 
+#ifdef RUNTIME
 /**** Event API docs  *******************************************************************************************
  *  This interface allows you to
  *	- Register a new event type which can be dispatched with parameters
@@ -747,11 +748,11 @@ struct NVSESerializationInterface
  *	   (1st argument will receive this filter for example)
  *	- Set an event handler for any NVSE events registered with SetEventHandler which will be called back.
  *
- *	PluginEventInfo::paramTypes needs to be statically defined
+ *	For RegisterEvent, paramTypes needs to be statically defined
  *	(i.e. the pointer to it may never become invalid).
  *  For example, a good way to define it is to make a global variable like this:
  *
- *	    static UInt8 s_MyEventParams[] = { Script::eVarType_Ref, Script::eVarType_String };
+ *	    static ParamType s_MyEventParams[] = { Script::eVarType_Ref, Script::eVarType_String };
  *
  *	Then you can pass it into PluginEventInfo like this:
  *
@@ -773,11 +774,59 @@ struct NVSEEventManagerInterface
 {
 	typedef void (*EventHandler)(TESObjectREFR* thisObj, void* parameters);
 
-	// Registers a new event which can be dispatched to scripts and plugins. Returns false if event with name already exists
-	bool (*RegisterEvent)(const char* name, UInt8 numParams, UInt8* paramTypes);
+	// Mostly just used for filtering information (setup in SetEventHandler).
+	enum ParamType : int8_t
+	{
+		eParamType_Number,
+		eParamType_String,
+		eParamType_Array,
 
-	// Dispatch an event that has been registered with RegisterEvent - variadic arguments are passed as parameters to script / function
+		// All the form-type ParamTypes support formlist filters, which will check if the dispatched form matches with any of the forms in the list.
+		eParamType_RefVar,
+		eParamType_AnyForm = eParamType_RefVar,
+
+		// Behaves normally if a reference filter is set up for a param of Reference Type.
+		// Otherwise, if a regular baseform is the filter, will match the dispatched reference arg's baseform to the filter.
+		// Else, if the filter is a formlist, will do the above but for each element in the list.
+		eParamType_Reference,
+
+		// When attempting to set an event handler, if the filter-to-set is a reference the paramType is BaseForm, will reject that filter.
+		// Otherwise, behaves the same as eParamType_RefVar.
+		eParamType_BaseForm,
+	};
+	static bool IsFormParam(ParamType pType)
+	{
+		return pType == eParamType_RefVar || pType == eParamType_Reference || pType == eParamType_BaseForm;
+	}
+
+	enum EventFlags : UInt32
+	{
+		kFlags_None = 0,
+
+		//If on, will remove all set handlers for the event every game load.
+		kFlag_FlushOnLoad = 1 << 0,
+	};
+
+	// Registers a new event which can be dispatched to scripts and plugins. Returns false if event with name already exists.
+	bool (*RegisterEvent)(const char* name, UInt8 numParams, ParamType* paramTypes, EventFlags flags);
+
+	// Dispatch an event that has been registered with RegisterEvent.
+	// Variadic arguments are passed as parameters to script / function.
+	// Returns false if an error occurred.
 	bool (*DispatchEvent)(const char* eventName, TESObjectREFR* thisObj, ...);
+
+	enum DispatchReturn : int8_t
+	{
+		kRetn_Error = -1,
+		kRetn_Normal = 0,
+		kRetn_EarlyBreak,
+	};
+	typedef bool (*DispatchCallback)(NVSEArrayVarInterface::Element& result, void* anyData);
+
+	// If resultCallback is not null, then it is called for each SCRIPT event handler that is dispatched, which allows checking the result of each dispatch.
+	// If the callback returns false, then dispatching for the event will end prematurely, and this returns kRetn_EarlyBreak.
+	// anyData arg is passed to the callbacks.
+	DispatchReturn (*DispatchEventAlt)(const char* eventName, DispatchCallback resultCallback, void* anyData, TESObjectREFR* thisObj, ...);
 
 	// Similar to script function SetEventHandler, allows you to set a native function that gets called back on events
 	bool (*SetNativeEventHandler)(const char* eventName, EventHandler func);
@@ -785,6 +834,7 @@ struct NVSEEventManagerInterface
 	// Same as script function RemoveEventHandler but for native functions
 	bool (*RemoveNativeEventHandler)(const char* eventName, EventHandler func);
 };
+#endif
 
 struct PluginInfo
 {
@@ -994,7 +1044,7 @@ struct PluginScriptToken
 
 	NVSEArrayVarInterface::Array *GetArrayVar()
 	{
-		return (NVSEArrayVarInterface::Array*)s_expEvalUtils.ScriptTokenGetArrayID(this);
+		return reinterpret_cast<NVSEArrayVarInterface::Array*>(s_expEvalUtils.ScriptTokenGetArrayID(this));
 	}
 
 	UInt32 GetActorValue()

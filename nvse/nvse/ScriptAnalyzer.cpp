@@ -750,7 +750,7 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context, U
 		for (auto& param : info.m_userFunctionParams)
 		{
 			auto* varInfo = context.script->GetVariableInfo(param.varIdx);
-			RegisterNVSEVar(varInfo, static_cast<Script::VariableType>(param.varType));
+			RegisterNVSEVar(varInfo, param.varType);
 			args.push_back(std::make_unique<ScriptVariableToken>(context.script, ExpressionCode::None, varInfo));
 			if (args.back()->error)
 				return false;
