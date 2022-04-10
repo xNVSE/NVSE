@@ -1889,3 +1889,14 @@ bool Cmd_HasEffectShader_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_SetEditorID_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	TESForm* form{};
+	char editorId[0x200];
+	if (!ExtractArgs(EXTRACT_ARGS, &form, &editorId))
+		return true;
+	form->SetEditorID(editorId);
+	*result = 1;
+	return true;
+}
