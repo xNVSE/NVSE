@@ -16,6 +16,7 @@
 
 #include "GameData.h"
 #include "GameRTTI.h"
+#include "GameScript.h"
 #include "StackVector.h"
 
 namespace EventManager {
@@ -380,7 +381,8 @@ public:
 
 	bool ValidateParam(UserFunctionParam* param, UInt8 paramIndex) override
 	{
-		return param->varType == ParamTypeToVarType(m_eventInfo->paramTypes[paramIndex]);
+		const auto paramType = VarTypeToParamType(param->varType);
+		return ParamTypeMatches(paramType, m_eventInfo->paramTypes[paramIndex]);
 	}
 
 	bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info) override {
@@ -901,6 +903,35 @@ Script::VariableType ParamTypeToVarType(EventFilterType pType)
 		return Script::VariableType::eVarType_Ref;
 	}
 	return Script::VariableType::eVarType_Invalid;
+}
+
+EventFilterType VarTypeToParamType(Script::VariableType varType)
+{
+	switch (varType) {
+	case Script::eVarType_Float: // fallback intentional
+	case Script::eVarType_Integer: return EventFilterType::eParamType_Number;
+	case Script::eVarType_String: return EventFilterType::eParamType_String;
+	case Script::eVarType_Array: return EventFilterType::eParamType_Array;
+	case Script::eVarType_Ref: return EventFilterType::eParamType_AnyForm;
+	case Script::eVarType_Invalid: // fallback intentional
+	default: return EventFilterType::eParamType_Invalid;
+	}
+}
+
+bool ParamTypeMatches(EventFilterType from, EventFilterType to)
+{
+	if (from == to)
+		return true;
+	if (from == EventFilterType::eParamType_AnyForm)
+	{
+		switch (to) {
+		case NVSEEventManagerInterface::eParamType_RefVar: 
+		case NVSEEventManagerInterface::eParamType_Reference: 
+		case NVSEEventManagerInterface::eParamType_BaseForm: return true;
+		default: break;
+		}
+	}
+	return false;
 }
 
 bool DoFiltersMatch(const EventInfo& eventInfo, const EventCallback& callback, const FilterStack& params)

@@ -44,6 +44,9 @@ namespace EventManager
 		return NVSEEventManagerInterface::IsFormParam(pType);
 	}
 	Script::VariableType ParamTypeToVarType(EventFilterType pType);
+	EventFilterType VarTypeToParamType(Script::VariableType varType);
+
+	bool ParamTypeMatches(EventFilterType from, EventFilterType to);
 
 	enum eEventID
 	{
