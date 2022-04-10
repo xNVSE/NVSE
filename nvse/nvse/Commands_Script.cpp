@@ -968,6 +968,12 @@ bool Cmd_CallWhen_OLD_Execute(COMMAND_ARGS)
 void DecompileScriptToFolder(const std::string& scriptName, Script* script, const std::string& fileExtension, const std::string_view& modName)
 {
 	ScriptParsing::ScriptAnalyzer analyzer(script);
+	if (analyzer.error)
+	{
+		if (IsConsoleMode())
+			Console_Print("Script %s is not compiled", scriptName.c_str());
+		return;
+	}
 	const auto* dirName = "DecompiledScripts";
 	if (!std::filesystem::exists(dirName))
 		std::filesystem::create_directory(dirName);

@@ -92,6 +92,8 @@ bool ScriptParsing::ScriptContainsCommand(Script* script, CommandInfo* info, Com
 bool ScriptParsing::PluginDecompileScript(Script* script, SInt32 lineNumber, char* buffer, UInt32 bufferSize)
 {
 	ScriptAnalyzer analyzer(script);
+	if (analyzer.error)
+		return false;
 	if (lineNumber != -1)
 	{
 		if (lineNumber >= analyzer.lines.size())
@@ -142,6 +144,8 @@ double ScriptParsing::ScriptIterator::ReadDouble()
 
 void ScriptParsing::ScriptIterator::ReadLine()
 {
+	if (!script->data)
+		return;
 	opcode = Read16();
 	if (opcode == static_cast<UInt16>(ScriptStatementCode::ReferenceFunction))
 	{
@@ -1126,10 +1130,9 @@ ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script, bool parse) : iter
 	if (!script->data)
 	{
 		this->error = true;
-		return;
 	}
 	g_analyzerStack.push(this);
-	if (parse)
+	if (parse && !this->error)
 	{
 		Parse();
 	}
@@ -1137,7 +1140,8 @@ ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script, bool parse) : iter
 
 ScriptParsing::ScriptAnalyzer::~ScriptAnalyzer()
 {
-	g_analyzerStack.pop();
+	if (!g_analyzerStack.empty())
+		g_analyzerStack.pop();
 }
 
 
