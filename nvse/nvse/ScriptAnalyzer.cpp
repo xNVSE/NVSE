@@ -1123,6 +1123,11 @@ bool ScriptParsing::ScriptAnalyzer::CallsCommand(CommandInfo* cmd, CommandInfo* 
 
 ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script, bool parse) : iter(script), script(script)
 {
+	if (!script->data)
+	{
+		this->error = true;
+		return;
+	}
 	g_analyzerStack.push(this);
 	if (parse)
 	{
@@ -1212,6 +1217,8 @@ auto GetNVSEVersionString()
 
 std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 {
+	if (this->error)
+		return "";
 	auto* script = this->iter.script;
 	std::string scriptText;
 	auto numTabs = 0;
