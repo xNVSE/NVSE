@@ -269,6 +269,12 @@ const char* VariableTypeToName(Script::VariableType type);
 UInt32 GetDeclaredVariableType(const char* varName, const char* scriptText, Script* script);	// parses scriptText to determine var type
 Script* GetScriptFromForm(TESForm* form);
 
+#if NVSE_CORE && RUNTIME
+// available through plugin api
+Script* CompileScript(const char* scriptText);
+Script* CompileExpression(const char* scriptText);
+#endif
+
 enum class ScriptOperatorCode
 {
 	kOp_LeftBracket = 0x0,

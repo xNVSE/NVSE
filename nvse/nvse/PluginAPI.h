@@ -542,6 +542,22 @@ struct NVSEScriptInterface
 		UInt32 * scriptDataOffset, Script * scriptObj, ScriptEventList * eventList, UInt32 maxParams, ...);
 
 	bool	(*CallFunctionAlt)(Script *funcScript, TESObjectREFR *callingObj, UInt8 numArgs, ...);
+
+	// Compile a partial script without a script name
+	// Example:
+	//   Script* script = g_scriptInterface->CompileScript("PlaceAtMe Explosion");
+	//   g_scriptInterface->CallFunctionAlt(script, *g_thePlayer, 0);
+	Script* (*CompileScript)(const char* scriptText);
+
+	// Compile one line* script that returns a result utilizing the NVSE expression evaluator
+	// Example:
+	//   Script* condition = g_scriptInterface->CompileExpression("GetAV Health > 10");
+	//   g_scriptInterface->CallFunction(condition, *g_thePlayer, nullptr, &result, 0);
+	//   if (!result.GetNumber()) return;
+	// Script can then be passed to CallFunction which will set the passed Element* result with the result of the script function call
+	//
+	// *if expression contains SetFunctionValue and %R for line breaks it can be multiline as well
+	Script* (*CompileExpression)(const char* expression);
 };
 
 #endif

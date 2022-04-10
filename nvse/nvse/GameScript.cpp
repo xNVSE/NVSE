@@ -3,6 +3,7 @@
 #include "GameForms.h"
 #include "GameObjects.h"
 #include "CommandTable.h"
+#include "GameData.h"
 #include "GameRTTI.h"
 #include "ScriptUtils.h"
 
@@ -184,6 +185,48 @@ bool Script::Compile(ScriptBuffer* buffer)
 #endif
 	return ThisStdCall<bool>(address, scriptCompiler, this, buffer); // CompileScript
 }
+
+#if NVSE_CORE && RUNTIME
+static UInt32 g_partialScriptCount = 0;
+
+Script* CompileScript(const char* scriptText)
+{
+	const auto buffer = MakeUnique<ScriptBuffer, 0x5AE490, 0x5AE5C0>();
+	DataHandler::Get()->DisableAssignFormIDs(true);
+	auto script = MakeUnique<Script, 0x5AA0F0, 0x5AA1A0>();
+	DataHandler::Get()->DisableAssignFormIDs(false);
+	buffer->scriptName.Set(FormatString("nvse_partial_script_%d", ++g_partialScriptCount).c_str());
+	buffer->scriptText = const_cast<char*>(scriptText);
+	buffer->partialScript = true;
+	*buffer->scriptData = 0x1D;
+	buffer->dataOffset = 4;
+	buffer->currentScript = script.get();
+	const auto result = script->Compile(buffer.get());
+	buffer->scriptText = nullptr;
+	script->text = nullptr;
+	if (!result)
+		return nullptr;
+	return script.release();
+}
+
+Script* CompileExpression(const char* scriptText)
+{
+	std::string condString = scriptText;
+	std::string scriptSource;
+	if (!FindStringCI(condString, "SetFunctionValue"))
+	{
+		scriptSource = FormatString("begin function{}\nSetFunctionValue (%s)\nend\n", condString.c_str());
+	}
+	else
+	{
+		ReplaceAll(condString, "%r", "\n");
+		ReplaceAll(condString, "%R", "\n");
+		scriptSource = FormatString("begin function{}\n%s\nend\n", condString.c_str());
+	}
+	return CompileScript(scriptSource.c_str());
+}
+
+#endif
 
 #if RUNTIME
 

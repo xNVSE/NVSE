@@ -61,7 +61,9 @@ static NVSEScriptInterface g_NVSEScriptInterface =
 	UserFunctionManager::GetFunctionParamTypes,
 	ExtractArgsEx,
 	ExtractFormatStringArgs,
-	PluginAPI::CallFunctionScriptAlt
+	PluginAPI::CallFunctionScriptAlt,
+	CompileScript,
+	CompileExpression
 };
 
 #endif
