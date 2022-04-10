@@ -11,7 +11,6 @@ ArrayVarElementContainer::ArrayVarElementContainer(): m_type(kContainer_Array)
 
 ArrayVarElementContainer::~ArrayVarElementContainer()
 {
-	clear();
 	switch (m_type)
 	{
 		case kContainer_Array:
