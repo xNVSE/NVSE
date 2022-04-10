@@ -304,6 +304,8 @@ struct ScriptToken
 	[[nodiscard]] std::string GetVariableDataAsString() const;
 	[[nodiscard]] const char *GetVariableTypeString() const;
 	[[nodiscard]] CommandReturnType GetReturnType() const;
+	[[nodiscard]] Script::VariableType GetTokenTypeAsVariableType() const;
+
 	void AssignResult(ExpressionEvaluator& eval) const;
 
 	static ScriptToken *Read(ExpressionEvaluator *context);
@@ -332,7 +334,6 @@ struct ScriptToken
 	[[nodiscard]] static std::unique_ptr<ScriptToken> Create(ArrayElementToken *elem, UInt32 lbound, UInt32 ubound);
 	[[nodiscard]] static std::unique_ptr<ScriptToken> Create(UInt32 bogus); // unimplemented, to block implicit conversion to double
 	[[nodiscard]] static std::unique_ptr<ScriptToken> Create(Script *scriptLambda) { return scriptLambda ? std::make_unique<ScriptToken>(scriptLambda) : nullptr; }
-	[[nodiscard]] static std::unique_ptr<ScriptToken> Create(ScriptToken&& scriptToken) { return std::make_unique<ScriptToken>(std::move(scriptToken)); }
 #if RUNTIME
 	[[nodiscard]] static std::unique_ptr<ScriptToken> Create(ScriptLocal* local, StringVar* stringVar) { return stringVar ? std::make_unique<ScriptToken>(local, stringVar) : nullptr; }
 #endif
@@ -349,12 +350,7 @@ struct ScriptToken
 	void operator delete(void *p); // unimplemented: keeping this here to shut up the compiler warning about non matching delete
 
 	ScriptToken(const ScriptToken& other) = delete;
-
-	ScriptToken(ScriptToken&& other) noexcept;
-
 	ScriptToken& operator=(const ScriptToken& other) = delete;
-
-	ScriptToken& operator=(ScriptToken&& other) noexcept;
 
 	bool cached = false;
 	CommandReturnType returnType = kRetnType_Default;
@@ -366,6 +362,7 @@ struct ScriptToken
 	UInt8 shortCircuitStackOffset = 0;
 	bool formOrNumber = false;
 
+	// prevents token from being deleted after evaluation, should only be called in Eval_* statements where it is the operation result
 	[[nodiscard]] std::unique_ptr<ScriptToken> ForwardEvalResult() const;
 #if _DEBUG
 	std::string varName;

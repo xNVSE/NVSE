@@ -585,8 +585,44 @@ bool Cmd_GetCallingScript_Execute(COMMAND_ARGS)
 }
 
 static constexpr auto maxEventNameLen = 0x20;
+static ICriticalSection s_EventLock;
 
-bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback &outCallback, char *outName)
+// Prevent filters of the wrong type from being added to an Event Handler instance.
+// Only needs to be called for SetEventHandler, to filter out most user weirdness.
+bool IsPotentialFilterCorrect(EventManager::EventFilterType const expectedParamType, ExpressionEvaluator& eval, 
+	const ScriptToken* potentialFilter, int argPos)
+{
+	if (expectedParamType == EventManager::EventFilterType::eParamType_Array)
+		return true;
+
+	auto const expectedVarType = EventManager::ParamTypeToVarType(expectedParamType);
+	//If both are number-type filters, then we should be comparing two Float variable types.
+	if (auto const varType = potentialFilter->GetTokenTypeAsVariableType();
+		varType != expectedVarType) [[unlikely]]
+	{
+		eval.Error("SetEventHandler: Invalid type for filter (arg #%u): expected %s, got %s.", argPos + 1,
+			VariableTypeToName(expectedVarType), VariableTypeToName(varType));
+		return false;
+	}
+
+	// Allow null forms to go through, in case that would be a desired filter.
+	if (auto const form = potentialFilter->GetTESForm())
+	{
+		if (expectedParamType == EventManager::EventFilterType::eParamType_BaseForm
+			&& form->GetIsReference()) [[unlikely]]
+		{
+			//Prefer not to sneakily convert the user's reference to its baseform, lessons must be learned.
+			eval.Error("SetEventHandler: Expected BaseForm-type filter (arg #%u), got Reference.", argPos + 1);
+			return false;
+		}
+		// Allow passing a baseform to a Reference-type filter.
+		// When the event is dispatched, it will check if the passed reference belongs to the baseform.
+	}	
+
+	return true;
+}
+
+bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback &outCallback, char *outName, bool addEvt)
 {
 	if (eval.ExtractArgs() && eval.NumArgs() >= 2)
 	{
@@ -597,43 +633,89 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 			outCallback.toCall = script;
 			strcpy_s(outName, maxEventNameLen, eventName);
 
-			// any filters?
-			for (UInt32 i = 2; i < eval.NumArgs(); i++)
+			UInt32* idPtr;
 			{
-				const TokenPair *pair = eval.Arg(i)->GetPair();
-				if (pair && pair->left && pair->right)
+				ScopedLock lock(s_EventLock);
+				if (EventManager::s_eventNameToID.Insert(eventName, &idPtr))
 				{
-					const char *key = pair->left->GetString();
-					if (key && StrLen(key))
+					// have to assume registering for a user-defined event which has not been used before this point
+					*idPtr = EventManager::s_eventInfos.Size();
+					char* nameCopy = CopyString(eventName);
+					StrToLower(nameCopy);
+					EventManager::s_eventInfos.Append(nameCopy, EventManager::kEventParams_OneArray, 1);
+				}
+			}
+
+			// We should have a defined event to work with now.
+			// This allows us to report errors about wrong filters immediately.
+			if (UInt32 const id = *idPtr;
+				id < EventManager::s_eventInfos.Size())
+			{
+				auto const &info = EventManager::s_eventInfos[id];
+				const char* funcName = addEvt ? "SetEventHandler" : "RemoveEventHandler";
+
+				// any filters?
+				UInt8 constexpr filterStartIdx = 2;
+				auto numFilters = eval.NumArgs() - filterStartIdx;
+				numFilters = min(info.numParams, numFilters);	//ignore excess filter args
+				for (auto i = filterStartIdx; i < numFilters + filterStartIdx; i++)
+				{
+					const TokenPair* pair = eval.Arg(i)->GetPair();
+					if (pair && pair->left && pair->right) [[likely]]
 					{
-						if (!StrCompare(key, "ref") || !StrCompare(key, "first"))
+						const char* key = pair->left->GetString();
+						if (key && StrLen(key))
 						{
-							outCallback.source = pair->right->GetTESForm();
-						}
-						else if (!StrCompare(key, "object") || !StrCompare(key, "second"))
-						{
-							outCallback.object = pair->right->GetTESForm();
-						}
-					}
-					// new system, above preserved for backwards compatibility
-					else if (const auto index = pair->left->GetNumber())
-					{
-						const auto basicToken = pair->right->ToBasicToken();
-						ArrayElement element;
-						if (basicToken && BasicTokenToElem(basicToken.get(), element))
-						{
-							auto const mapIndex = static_cast<UInt32>(index);
-							if (outCallback.filters.contains(mapIndex))
+							if (!StrCompare(key, "ref") || !StrCompare(key, "first"))
 							{
-								eval.Error("Event filter index %u appears more than once in Set/RemoveEventHandler call.", mapIndex);
+								if (addEvt && !IsPotentialFilterCorrect(info.paramTypes[0], eval, pair->right.get(), i)) [[unlikely]]
+									continue;
+								outCallback.source = pair->right->GetTESForm();
+							}
+							else if (!StrCompare(key, "object") || !StrCompare(key, "second"))
+							{
+								if (!IsPotentialFilterCorrect(info.paramTypes[1], eval, pair->right.get(), i)) [[unlikely]]
+									continue;
+								outCallback.object = pair->right->GetTESForm();
+							}
+						}
+						// new system, above preserved for backwards compatibility
+						else if (const auto index = static_cast<int>(pair->left->GetNumber()))
+						{
+							if (index < 0) [[unlikely]]
+							{
+								eval.Error("Invalid index %d passed to %s (arg indices start from 1, and callingReference is filter #0).", funcName);
 								continue;
 							}
-							outCallback.filters.insert({ mapIndex, element });
+							if (index > info.numParams) [[unlikely]]
+							{
+								eval.Error("%s: Index %d passed exceeds max number of args for function (%u)", funcName, index, info.numParams);
+								continue;
+							}
+
+							if (addEvt)
+							{
+								//Index #0 is reserved for callingReference filter.
+								auto const filterType = index == 0 ? EventManager::EventFilterType::eParamType_Reference : info.paramTypes[index];
+								if (!IsPotentialFilterCorrect(filterType, eval, pair->right.get(), i)) [[unlikely]]
+									continue;
+							}
+
+							const auto basicToken = pair->right->ToBasicToken();
+							SelfOwningArrayElement element;
+							if (basicToken && BasicTokenToElem(basicToken.get(), element)) [[likely]]
+							{
+								if (const auto [it, success] = outCallback.filters.insert({ index, std::move(element) });
+									!success) [[unlikely]]
+								{
+									eval.Error("Event filter index %u appears more than once in %s call.", index, funcName);
+								}
+							}
 						}
 					}
 				}
+				return true;
 			}
-			return true;
 		}
 	}
 
@@ -647,8 +729,7 @@ bool ProcessEventHandler(char *eventName, EventManager::EventCallback &callback,
 		char *colon = strchr(eventName, ':');
 		if (colon)
 			*colon++ = 0;
-		const UInt32 eventMask = GetLNEventMask(eventName);
-		if (eventMask)
+		if (const UInt32 eventMask = GetLNEventMask(eventName))
 		{
 			UInt32 const numFilter = (colon && *colon) ? atoi(colon) : 0;
 			return ProcessLNEventHandler(eventMask, callback.TryGetScript(), addEvt, callback.source, numFilter);
@@ -662,9 +743,8 @@ bool Cmd_SetEventHandler_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
 	char eventName[maxEventNameLen];
-	if (ExtractEventCallback(eval, callback, eventName) && ProcessEventHandler(eventName, callback, true))
-		*result = 1.0;
-
+	*result = (ExtractEventCallback(eval, callback, eventName, true) 
+		&& ProcessEventHandler(eventName, callback, true));
 	return true;
 }
 
@@ -673,9 +753,8 @@ bool Cmd_RemoveEventHandler_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
 	char eventName[maxEventNameLen];
-	if (ExtractEventCallback(eval, callback, eventName) && ProcessEventHandler(eventName, callback, false))
-		*result = 1.0;
-
+	*result = (ExtractEventCallback(eval, callback, eventName, false)
+		&& ProcessEventHandler(eventName, callback, false));
 	return true;
 }
 
@@ -1016,7 +1095,6 @@ bool Cmd_Ternary_Execute(COMMAND_ARGS)
 			tokenValResult->AssignResult(eval);
 	}
 	return true;
-
 }
 
 #endif

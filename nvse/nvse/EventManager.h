@@ -29,9 +29,23 @@ namespace EventManager
 	extern Stack<const char*> s_eventStack;
 
 	struct EventInfo;
-	static constexpr auto numMaxFilters = 0x20;
+	typedef Vector<EventInfo> EventInfoList;
+	extern EventInfoList s_eventInfos;
+	extern UnorderedMap<const char*, UInt32> s_eventNameToID;
+
+	UInt32 EventIDForString(const char* eventStr);
 
 	using EventHandler = NVSEEventManagerInterface::EventHandler;
+	using EventFilterType = NVSEEventManagerInterface::ParamType;
+	using EventFlags = NVSEEventManagerInterface::EventFlags;
+	using DispatchReturn = NVSEEventManagerInterface::DispatchReturn;
+	using DispatchCallback = NVSEEventManagerInterface::DispatchCallback;
+
+	inline bool IsParamForm(EventFilterType pType)
+	{
+		return NVSEEventManagerInterface::IsFormParam(pType);
+	}
+	Script::VariableType ParamTypeToVarType(EventFilterType pType);
 
 	enum eEventID {
 		// correspond to ScriptEventList event masks
@@ -124,7 +138,7 @@ namespace EventManager
 		bool			pendingRemove{};
 
 		using Index = UInt32;
-		using Filter = ArrayElement;
+		using Filter = SelfOwningArrayElement;
 
 		//Indexes for filters must respect the max amount of BaseFilters for the base event definition.
 		//If no filter is at an index = it is unfiltered for the nth BaseFilter.
@@ -143,6 +157,51 @@ namespace EventManager
 
 		//Call the callback...
 		std::unique_ptr<ScriptToken> Invoke(EventInfo* eventInfo, void* arg0, void* arg1);
+	};
+
+	typedef LinkedList<EventCallback>	CallbackList;
+
+	struct EventInfo
+	{
+		EventInfo(const char* name_, EventFilterType* params_, UInt8 nParams_, UInt32 eventMask_, EventHookInstaller* installer_,
+			EventFlags flags = EventFlags::kFlags_None)
+			: evName(name_), paramTypes(params_), numParams(nParams_), eventMask(eventMask_), installHook(installer_), flags(flags)
+		{}
+
+		EventInfo(const char* name_, EventFilterType* params_, UInt8 numParams_, EventFlags flags = EventFlags::kFlags_None)
+			: evName(name_), paramTypes(params_), numParams(numParams_), flags(flags) {}
+
+		EventInfo() : evName(""), paramTypes(nullptr) {}
+
+		EventInfo(const EventInfo& other) = default;
+
+		EventInfo& operator=(const EventInfo& other)
+		{
+			if (this == &other)
+				return *this;
+			evName = other.evName;
+			paramTypes = other.paramTypes;
+			numParams = other.numParams;
+			callbacks = other.callbacks;
+			eventMask = other.eventMask;
+			installHook = other.installHook;
+			return *this;
+		}
+
+		const char* evName;			// must be lowercase
+		EventFilterType* paramTypes;
+		UInt8				numParams = 0;
+		UInt32				eventMask = 0;
+		CallbackList		callbacks;
+		EventHookInstaller* installHook{};	// if a hook is needed for this event type, this will be non-null. 
+											// install it once and then set *installHook to NULL. Allows multiple events
+											// to use the same hook, installing it only once.
+		EventFlags			flags = EventFlags::kFlags_None;
+
+		[[nodiscard]] bool FlushesOnLoad() const
+		{
+			return flags & EventFlags::kFlag_FlushOnLoad;
+		}
 	};
 
 	bool SetHandler(const char* eventName, EventCallback& handler);
@@ -164,16 +223,64 @@ namespace EventManager
 
 	void Init();
 
-	bool RegisterEventEx(const char* name, UInt8 numParams, UInt8* paramTypes, UInt32 eventMask, EventHookInstaller* hookInstaller);
+	bool RegisterEventEx(const char* name, UInt8 numParams, EventFilterType* paramTypes, 
+		UInt32 eventMask = 0, EventHookInstaller* hookInstaller = nullptr, 
+		EventFlags flags = EventFlags::kFlags_None);
 
-	bool RegisterEvent(const char* name, UInt8 numParams, UInt8* paramTypes);
+	bool RegisterEvent(const char* name, UInt8 numParams, EventFilterType* paramTypes, 
+		EventFlags flags = EventFlags::kFlags_None);
+
 	bool SetNativeEventHandler(const char* eventName, EventHandler func);
 	bool RemoveNativeEventHandler(const char* eventName, EventHandler func);
 
 	bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...);
+	DispatchReturn DispatchEventAlt(const char* eventName, DispatchCallback resultCallback, void* anyData, TESObjectREFR* thisObj, ...);
 
 	// dispatch a user-defined event from a script
 	bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 argsArrayId, const char* senderName);
+
+
+
+	// event handler param lists
+	static EventFilterType kEventParams_GameEvent[2] =
+	{
+		EventFilterType::eParamType_AnyForm, EventFilterType::eParamType_AnyForm
+	};
+
+	static EventFilterType kEventParams_OneRef[1] =
+	{
+		EventFilterType::eParamType_AnyForm,
+	};
+
+	static EventFilterType kEventParams_OneString[1] =
+	{
+		EventFilterType::eParamType_String
+	};
+
+	static EventFilterType kEventParams_OneNum[1] =
+	{
+		EventFilterType::eParamType_Number
+	};
+
+	static EventFilterType kEventParams_TwoNums[2] =
+	{
+		EventFilterType::eParamType_Number, EventFilterType::eParamType_Number
+	};
+
+	static EventFilterType kEventParams_OneNum_OneRef[2] =
+	{
+		 EventFilterType::eParamType_Number, EventFilterType::eParamType_AnyForm
+	};
+
+	static EventFilterType kEventParams_OneRef_OneNum[2] =
+	{
+		EventFilterType::eParamType_AnyForm, EventFilterType::eParamType_Number
+	};
+
+	static EventFilterType kEventParams_OneArray[1] =
+	{
+		EventFilterType::eParamType_Array
+	};
 };
 
 
