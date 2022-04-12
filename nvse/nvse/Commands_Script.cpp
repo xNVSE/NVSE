@@ -592,13 +592,27 @@ static ICriticalSection s_EventLock;
 bool IsPotentialFilterCorrect(EventManager::EventFilterType const expectedParamType, ExpressionEvaluator& eval, 
 	const ScriptToken* potentialFilter, int argPos)
 {
-	if (expectedParamType == EventManager::EventFilterType::eParamType_Array)
-		return true;
+	auto const varType = potentialFilter->GetTokenTypeAsVariableType();
+	if (varType == Script::eVarType_Array)
+	{
+		auto const arrID = potentialFilter->GetArrayID();
+		auto const arrPtr = g_ArrayMap.Get(arrID);
+		if (!arrPtr)
+		{
+			eval.Error("SetEventHandler: Invalid/unitialized array filter was passed (arg #%u, array id %u).", argPos + 1, arrID);
+			return false;
+		}
+		if (arrPtr->GetContainerType() != kContainer_Array)
+		{
+			eval.Error("SetEventHandler: Filter array with invalid Map-type was passed (arg #%u, array id: %d).", argPos + 1, arrID);
+			return false;
+		}
+		return true; // Assume that every element in the array is of the expected type.
+	}
 
 	auto const expectedVarType = EventManager::ParamTypeToVarType(expectedParamType);
 	//If both are number-type filters, then we should be comparing two Float variable types.
-	if (auto const varType = potentialFilter->GetTokenTypeAsVariableType();
-		varType != expectedVarType) [[unlikely]]
+	if (varType != expectedVarType) [[unlikely]]
 	{
 		eval.Error("SetEventHandler: Invalid type for filter (arg #%u): expected %s, got %s.", argPos + 1,
 			VariableTypeToName(expectedVarType), VariableTypeToName(varType));
@@ -617,6 +631,8 @@ bool IsPotentialFilterCorrect(EventManager::EventFilterType const expectedParamT
 		}
 		// Allow passing a baseform to a Reference-type filter.
 		// When the event is dispatched, it will check if the passed reference belongs to the baseform.
+		// (The above assumes the baseform is not a formlist. If it is, then it'll repeat the above check for each form in the list until a match is found).
+		// (We are not checking the validity of each form in a formlist filter for performance concerns).
 	}	
 
 	return true;
@@ -699,14 +715,14 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 								//Index #0 is reserved for callingReference filter.
 								auto const filterType = index == 0 ? EventManager::EventFilterType::eParamType_Reference : info.paramTypes[index - 1];
 								if (!IsPotentialFilterCorrect(filterType, eval, pair->right.get(), i)) [[unlikely]]
-									continue;
+									return false;	//grave error; cancel the event-setting.
 							}
 
 							const auto basicToken = pair->right->ToBasicToken();
 							SelfOwningArrayElement element;
 							if (basicToken && BasicTokenToElem(basicToken.get(), element)) [[likely]]
 							{
-								if (const auto [it, success] = outCallback.filters.insert({ index, std::move(element) });
+								if (const auto [it, success] = outCallback.filters.emplace(index, std::move(element));
 									!success) [[unlikely]]
 								{
 									eval.Error("Event filter index %u appears more than once in %s call.", index, funcName);
