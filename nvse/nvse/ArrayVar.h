@@ -138,7 +138,7 @@ public:
 
 	//WARNING: Does not increment the reference count for a copied array;
 	//consider move ctor or calling SetArray.
-	ArrayElement(const ArrayElement& from);
+	ArrayElement(ArrayElement& from);
 
 	ArrayElement(ArrayElement&& from) noexcept;
 
@@ -165,6 +165,10 @@ public:
 	~SelfOwningArrayElement() override;
 	bool SetArray(ArrayID arr) override;
 	void Unset() override;
+	SelfOwningArrayElement() = default;
+	SelfOwningArrayElement(ArrayElement&& from) noexcept
+		: ArrayElement(std::forward<ArrayElement&&>(from))
+	{}
 };
 
 struct ArrayKey

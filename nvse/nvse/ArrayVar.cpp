@@ -54,7 +54,7 @@ ArrayElement::~ArrayElement()
 }
 
 
-ArrayElement::ArrayElement(const ArrayElement& from)
+ArrayElement::ArrayElement(ArrayElement& from)
 {
 	m_data.dataType = from.m_data.dataType;
 	m_data.owningArray = from.m_data.owningArray;
