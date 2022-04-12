@@ -934,18 +934,17 @@ bool ParamTypeMatches(EventFilterType from, EventFilterType to)
 	return false;
 }
 
-bool DoFiltersMatch(const EventInfo& eventInfo, const EventCallback& callback, const FilterStack& params)
+bool DoFiltersMatch(TESObjectREFR* thisObj, const EventInfo& eventInfo, const EventCallback& callback, const FilterStack& params)
 {
 	for (auto& [index, filter] : callback.filters)
 	{
 		bool const isCallingRefFilter = index == 0;
-		auto const zeroBasedIndex = index - 1;
-		auto const paramType = isCallingRefFilter ? EventFilterType::eParamType_Reference : eventInfo.paramTypes[zeroBasedIndex];
+		auto const paramType = isCallingRefFilter ? EventFilterType::eParamType_Reference : eventInfo.paramTypes[index - 1];
+		void* param = isCallingRefFilter ? thisObj : params->at(index - 1);
 
 		const auto filterDataType = filter.DataType();
 		const auto filterVarType = DataTypeToVarType(filterDataType);
 		const auto paramVarType = ParamTypeToVarType(paramType);
-		void* param = params->at(zeroBasedIndex);
 
 		if (filterVarType != paramVarType)
 		{
@@ -980,7 +979,7 @@ DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, Fi
 
 		if (!DoDeprecatedFiltersMatch(eventInfo, callback, params))
 			continue;
-		if (!DoFiltersMatch(eventInfo, callback, params))
+		if (!DoFiltersMatch(thisObj, eventInfo, callback, params))
 			continue;
 
 		result = std::visit(overloaded{
