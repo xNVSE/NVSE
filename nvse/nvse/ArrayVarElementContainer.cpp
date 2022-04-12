@@ -35,6 +35,7 @@ void ArrayVarElementContainer::clear()
 		{
 			for (auto iter = AsArray().Begin(); !iter.End(); ++iter)
 				iter.Get().Unset();
+			AsArray().Clear();
 			break;
 		}
 		case kContainer_NumericMap:
