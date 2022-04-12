@@ -680,8 +680,9 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 							}
 						}
 						// new system, above preserved for backwards compatibility
-						else if (const auto index = static_cast<int>(pair->left->GetNumber()))
+						else
 						{
+							const auto index = static_cast<int>(pair->left->GetNumber());
 							if (index < 0) [[unlikely]]
 							{
 								eval.Error("Invalid index %d passed to %s (arg indices start from 1, and callingReference is filter #0).", funcName);
