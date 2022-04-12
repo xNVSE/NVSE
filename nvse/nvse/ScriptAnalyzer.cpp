@@ -92,6 +92,8 @@ bool ScriptParsing::ScriptContainsCommand(Script* script, CommandInfo* info, Com
 bool ScriptParsing::PluginDecompileScript(Script* script, SInt32 lineNumber, char* buffer, UInt32 bufferSize)
 {
 	ScriptAnalyzer analyzer(script);
+	if (analyzer.error)
+		return false;
 	if (lineNumber != -1)
 	{
 		if (lineNumber >= analyzer.lines.size())
@@ -142,6 +144,8 @@ double ScriptParsing::ScriptIterator::ReadDouble()
 
 void ScriptParsing::ScriptIterator::ReadLine()
 {
+	if (!script->data)
+		return;
 	opcode = Read16();
 	if (opcode == static_cast<UInt16>(ScriptStatementCode::ReferenceFunction))
 	{
@@ -750,7 +754,7 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context, U
 		for (auto& param : info.m_userFunctionParams)
 		{
 			auto* varInfo = context.script->GetVariableInfo(param.varIdx);
-			RegisterNVSEVar(varInfo, static_cast<Script::VariableType>(param.varType));
+			RegisterNVSEVar(varInfo, param.varType);
 			args.push_back(std::make_unique<ScriptVariableToken>(context.script, ExpressionCode::None, varInfo));
 			if (args.back()->error)
 				return false;
@@ -1123,8 +1127,12 @@ bool ScriptParsing::ScriptAnalyzer::CallsCommand(CommandInfo* cmd, CommandInfo* 
 
 ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script, bool parse) : iter(script), script(script)
 {
+	if (!script->data)
+	{
+		this->error = true;
+	}
 	g_analyzerStack.push(this);
-	if (parse)
+	if (parse && !this->error)
 	{
 		Parse();
 	}
@@ -1132,7 +1140,8 @@ ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script, bool parse) : iter
 
 ScriptParsing::ScriptAnalyzer::~ScriptAnalyzer()
 {
-	g_analyzerStack.pop();
+	if (!g_analyzerStack.empty())
+		g_analyzerStack.pop();
 }
 
 
@@ -1212,6 +1221,8 @@ auto GetNVSEVersionString()
 
 std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 {
+	if (this->error)
+		return "";
 	auto* script = this->iter.script;
 	std::string scriptText;
 	auto numTabs = 0;

@@ -2134,7 +2134,7 @@ bool ExpressionParser::GetUserFunctionParams(const std::vector<std::string> &par
 		if (!varInfo)
 			return false;
 
-		const UInt32 varType = GetDeclaredVariableType(token.c_str(), fullScriptText.c_str(), script);
+		const auto varType = GetDeclaredVariableType(token.c_str(), fullScriptText.c_str(), script);
 		if (varType == Script::eVarType_Invalid)
 		{
 			return false;
@@ -2165,7 +2165,7 @@ static ParamInfo kDynamicParams[] =
 DynamicParamInfo::DynamicParamInfo(const std::vector<UserFunctionParam> &params)
 {
 	m_numParams = min(kMaxUdfParams, params.size());
-	for (UInt32 i = 0; i < m_numParams; i++)
+	for (ParamSize_t i = 0; i < m_numParams; i++)
 		m_paramInfo[i] = kDynamicParams[params[i].varType];
 }
 
@@ -3399,7 +3399,7 @@ std::unique_ptr<ScriptToken> ExpressionParser::ParseOperand(Operator *curOp)
 	}
 	if (varInfo)
 	{
-		const UInt8 theVarType = m_scriptBuf->GetVariableType(varInfo, refVar, m_script);
+		const auto theVarType = m_scriptBuf->GetVariableType(varInfo, refVar, m_script);
 		if (bExpectStringVar && theVarType != Script::eVarType_String)
 		{
 			Message(kError_ExpectedStringVariable);
@@ -5513,7 +5513,7 @@ bool Preprocessor::Process()
 
 					if (scriptText)
 					{
-						UInt32 varType = GetDeclaredVariableType(varName.c_str(), scriptText, m_buf->currentScript);
+						auto const varType = GetDeclaredVariableType(varName.c_str(), scriptText, m_buf->currentScript);
 						if (varType == Script::eVarType_Array)
 						{
 							g_ErrOut.Show("Error line %d:\nSet may not be used to assign to an array variable", m_curLineNo);

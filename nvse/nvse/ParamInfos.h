@@ -360,6 +360,12 @@ static ParamInfo kParams_OneStringOneOptionalForm[2] =
 	{	"form",		kParamType_AnyForm,	1	},
 };
 
+static ParamInfo kParams_OneString_OneForm[2] =
+{
+	{	"string",	kParamType_String,	0	},
+	{	"form",		kParamType_AnyForm,	0	},
+};
+
 static ParamInfo kParams_OneSpellItem[1] =
 {
 	{	"spell", kParamType_SpellItem, 0 }, 
@@ -370,6 +376,13 @@ static ParamInfo kParams_OneForm_OneOptionalString[2] =
 	{	"form",	kParamType_AnyForm,	0	},
 	{	"string",	kParamType_String,	1	},
 };
+
+static ParamInfo kParams_OneForm_OneString[2] =
+{
+	{	"form",	kParamType_AnyForm,	0	},
+	{	"string",	kParamType_String,	0	},
+};
+
 
 static ParamInfo kParams_OneForm_TwoInts[3] =
 {

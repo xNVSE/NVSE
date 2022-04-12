@@ -61,7 +61,9 @@ static NVSEScriptInterface g_NVSEScriptInterface =
 	UserFunctionManager::GetFunctionParamTypes,
 	ExtractArgsEx,
 	ExtractFormatStringArgs,
-	PluginAPI::CallFunctionScriptAlt
+	PluginAPI::CallFunctionScriptAlt,
+	CompileScript,
+	CompileExpression
 };
 
 #endif
@@ -135,6 +137,7 @@ static const NVSEEventManagerInterface g_NVSEEventManagerInterface =
 {
 	EventManager::RegisterEvent,
 	EventManager::DispatchEvent,
+	EventManager::DispatchEventAlt,
 	EventManager::SetNativeEventHandler,
 	EventManager::RemoveNativeEventHandler
 };

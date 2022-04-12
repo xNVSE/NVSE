@@ -228,3 +228,5 @@ static ParamInfo kParams_OneEffectShader[1] =
 };
 
 DEFINE_COMMAND(HasEffectShader, returns 1 if the reference is playing the effect shader, 1, 1, kParams_OneEffectShader);
+
+DEFINE_CMD(SetEditorID, "sets editor id of form", 0, kParams_OneForm_OneString);

@@ -74,6 +74,7 @@ static ParamInfo kNVSEParams_SetEventHandler[20] =
 {
 	{ "event name",			kNVSEParamType_String,	0 },
 	{ "function script",	kNVSEParamType_Form,	0 },
+
 	{ "filter",				kNVSEParamType_Pair,	1 },
 	{ "filter",				kNVSEParamType_Pair,	1 },
 	{ "filter",				kNVSEParamType_Pair,	1 },
@@ -90,6 +91,7 @@ static ParamInfo kNVSEParams_SetEventHandler[20] =
 	{ "filter",				kNVSEParamType_Pair,	1 },
 	{ "filter",				kNVSEParamType_Pair,	1 },
 	{ "filter",				kNVSEParamType_Pair,	1 },
+	// 1 filter for thisObj, 15 for the rest.
 };
 
 DEFINE_COMMAND_EXP(SetEventHandler, defines a function script to serve as a callback for game events, 0, kNVSEParams_SetEventHandler);

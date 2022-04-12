@@ -718,6 +718,7 @@
     <ClInclude Include="Loops.h" />
     <ClInclude Include="MemoizedMap.h" />
     <ClInclude Include="MemoryPool.h" />
+    <ClInclude Include="MemoryTracker.h" />
     <ClInclude Include="NiNodes.h" />
     <ClInclude Include="NiTypes.h" />
     <ClInclude Include="nvse_version.h" />
