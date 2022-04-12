@@ -595,9 +595,16 @@ bool IsPotentialFilterCorrect(EventManager::EventFilterType const expectedParamT
 	auto const varType = potentialFilter->GetTokenTypeAsVariableType();
 	if (varType == Script::eVarType_Array)
 	{
-		if (!potentialFilter->GetArrayVar())
+		auto const arrID = potentialFilter->GetArrayID();
+		auto const arrPtr = g_ArrayMap.Get(arrID);
+		if (!arrPtr)
 		{
-			eval.Error("SetEventHandler: Invalid/unitialized array filter was passed (arg #%u).", argPos + 1);
+			eval.Error("SetEventHandler: Invalid/unitialized array filter was passed (arg #%u, array id %u).", argPos + 1, arrID);
+			return false;
+		}
+		if (arrPtr->GetContainerType() != kContainer_Array)
+		{
+			eval.Error("SetEventHandler: Filter array with invalid Map-type was passed (arg #%u, array id: %d).", argPos + 1, arrID);
 			return false;
 		}
 		return true; // Assume that every element in the array is of the expected type.
@@ -715,7 +722,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 							SelfOwningArrayElement element;
 							if (basicToken && BasicTokenToElem(basicToken.get(), element)) [[likely]]
 							{
-								if (const auto [it, success] = outCallback.filters.insert({ index, std::move(element) });
+								if (const auto [it, success] = outCallback.filters.emplace(index, std::move(element));
 									!success) [[unlikely]]
 								{
 									eval.Error("Event filter index %u appears more than once in %s call.", index, funcName);

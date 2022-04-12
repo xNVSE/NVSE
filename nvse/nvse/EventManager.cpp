@@ -858,25 +858,19 @@ bool DoesFilterMatch(const ArrayElement& sourceFilter, void* param, EventFilterT
 	return true;
 }
 
-bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCallback::Filter& filter, EventFilterType paramType, void* param)
+bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCallback::Filter& filter, EventFilterType paramType, void* param, int index)
 {
 	ArrayID arrayFiltersId{};
 	filter.GetAsArray(&arrayFiltersId);
-	const auto invalidArrayError = _L(, ShowRuntimeError(callback.TryGetScript(), "Array passed to SetEventHandler as filter is invalid (array id: %d)", arrayFiltersId));
-	if (!arrayFiltersId)
-	{
-		invalidArrayError();
-		return false;
-	}
 	auto* arrayFilters = g_ArrayMap.Get(arrayFiltersId);
 	if (!arrayFilters)
 	{
-		invalidArrayError();
+		ShowRuntimeError(callback.TryGetScript(), "While dispatching an event, found an invalid/unitialized filter array at index %d (array id: %d).", index, arrayFiltersId);
 		return false;
 	}
 	if (arrayFilters->GetContainerType() != kContainer_Array)
 	{
-		ShowRuntimeError(callback.TryGetScript(), "Maps may not be passed as filter array in SetEventHandler");
+		ShowRuntimeError(callback.TryGetScript(), "While dispatching an event, found a filter array with invalid Map-type index %d (array id: %d).", index, arrayFiltersId);
 		return false;
 	}
 	auto& elementVector = *arrayFilters->GetRawContainer()->getArrayPtr();
@@ -946,18 +940,10 @@ bool DoFiltersMatch(TESObjectREFR* thisObj, const EventInfo& eventInfo, const Ev
 		const auto filterVarType = DataTypeToVarType(filterDataType);
 		const auto paramVarType = ParamTypeToVarType(paramType);
 
-		if (filterVarType != paramVarType)
+		if (filterVarType != paramVarType) //if true, can assume that the filterVar's type is Array (if it isn't, should have been reported in SetEventHandler).
 		{
-#if _DEBUG	//Probably no longer required thanks to preemptive checks in ExtractEventCallback (from SetEventHandler)
-			if (filterDataType != kDataType_Array)
-			{
-				ShowRuntimeError(callback.TryGetScript(), "Filter passed to SetEventHandler does not match type passed to event at index %d (%s != %s)",
-					index, DataTypeToString(filterDataType), VariableTypeToName(paramVarType));
-				continue;
-			}
-#endif
 			// assume elements of array are filters
-			if (!DoesParamMatchFiltersInArray(callback, filter, paramType, param))
+			if (!DoesParamMatchFiltersInArray(callback, filter, paramType, param, index))
 				return false;
 			continue;
 		}
