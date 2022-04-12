@@ -592,13 +592,20 @@ static ICriticalSection s_EventLock;
 bool IsPotentialFilterCorrect(EventManager::EventFilterType const expectedParamType, ExpressionEvaluator& eval, 
 	const ScriptToken* potentialFilter, int argPos)
 {
-	if (expectedParamType == EventManager::EventFilterType::eParamType_Array)
-		return true;
+	auto const varType = potentialFilter->GetTokenTypeAsVariableType();
+	if (varType == Script::eVarType_Array)
+	{
+		if (!potentialFilter->GetArrayVar())
+		{
+			eval.Error("SetEventHandler: Invalid/unitialized array filter was passed (arg #%u).", argPos + 1);
+			return false;
+		}
+		return true; // Assume that every element in the array is of the expected type.
+	}
 
 	auto const expectedVarType = EventManager::ParamTypeToVarType(expectedParamType);
 	//If both are number-type filters, then we should be comparing two Float variable types.
-	if (auto const varType = potentialFilter->GetTokenTypeAsVariableType();
-		varType != expectedVarType) [[unlikely]]
+	if (varType != expectedVarType) [[unlikely]]
 	{
 		eval.Error("SetEventHandler: Invalid type for filter (arg #%u): expected %s, got %s.", argPos + 1,
 			VariableTypeToName(expectedVarType), VariableTypeToName(varType));
@@ -617,6 +624,8 @@ bool IsPotentialFilterCorrect(EventManager::EventFilterType const expectedParamT
 		}
 		// Allow passing a baseform to a Reference-type filter.
 		// When the event is dispatched, it will check if the passed reference belongs to the baseform.
+		// (The above assumes the baseform is not a formlist. If it is, then it'll repeat the above check for each form in the list until a match is found).
+		// (We are not checking the validity of each form in a formlist filter for performance concerns).
 	}	
 
 	return true;
