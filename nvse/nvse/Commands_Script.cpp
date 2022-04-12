@@ -715,7 +715,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 								//Index #0 is reserved for callingReference filter.
 								auto const filterType = index == 0 ? EventManager::EventFilterType::eParamType_Reference : info.paramTypes[index - 1];
 								if (!IsPotentialFilterCorrect(filterType, eval, pair->right.get(), i)) [[unlikely]]
-									continue;
+									return false;	//grave error; cancel the event-setting.
 							}
 
 							const auto basicToken = pair->right->ToBasicToken();
