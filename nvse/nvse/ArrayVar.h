@@ -1,5 +1,4 @@
 #pragma once
-#include "MemoryTracker.h"
 
 typedef UInt32 ArrayID;
 class ArrayVar;
