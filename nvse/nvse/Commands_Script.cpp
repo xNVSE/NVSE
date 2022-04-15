@@ -652,9 +652,10 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 			UInt32* idPtr;
 			{
 				ScopedLock lock(s_EventLock);
-				if (EventManager::s_eventNameToID.Insert(eventName, &idPtr))
+				if (EventManager::s_eventNameToID.Insert(eventName, &idPtr) 
+					&& addEvt)
 				{
-					// have to assume registering for a user-defined event which has not been used before this point
+					// have to assume registering for a user-defined event (for DispatchEvent) which has not been used before this point
 					*idPtr = EventManager::s_eventInfos.Size();
 					char* nameCopy = CopyString(eventName);
 					StrToLower(nameCopy);
@@ -671,10 +672,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 				const char* funcName = addEvt ? "SetEventHandler" : "RemoveEventHandler";
 
 				// any filters?
-				UInt8 constexpr filterStartIdx = 2;
-				auto numFilters = eval.NumArgs() - filterStartIdx;
-				numFilters = min(info.numParams, numFilters);	//ignore excess filter args
-				for (auto i = filterStartIdx; i < numFilters + filterStartIdx; i++)
+				for (auto i = 2; i < eval.NumArgs(); i++)
 				{
 					const TokenPair* pair = eval.Arg(i)->GetPair();
 					if (pair && pair->left && pair->right) [[likely]]
