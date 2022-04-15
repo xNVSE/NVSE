@@ -589,7 +589,7 @@ static ICriticalSection s_EventLock;
 
 // Prevent filters of the wrong type from being added to an Event Handler instance.
 // Only needs to be called for SetEventHandler, to filter out most user weirdness.
-bool IsPotentialFilterCorrect(EventManager::EventFilterType const expectedParamType, ExpressionEvaluator& eval, 
+bool IsPotentialFilterCorrect(EventManager::EventFilterType const expectedParamType, ExpressionEvaluator& eval,
 	const ScriptToken* potentialFilter, int argPos)
 {
 	auto const varType = potentialFilter->GetTokenTypeAsVariableType();
@@ -632,7 +632,7 @@ bool IsPotentialFilterCorrect(EventManager::EventFilterType const expectedParamT
 		// When the event is dispatched, it will check if the passed reference belongs to the baseform.
 		// (The above assumes the baseform is not a formlist. If it is, then it'll repeat the above check for each form in the list until a match is found).
 		// (We are not checking the validity of each form in a formlist filter for performance concerns).
-	}	
+	}
 
 	return true;
 }
@@ -651,7 +651,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 			UInt32* idPtr;
 			{
 				ScopedLock lock(s_EventLock);
-				if (EventManager::s_eventNameToID.Insert(eventName, &idPtr) 
+				if (EventManager::s_eventNameToID.Insert(eventName, &idPtr)
 					&& addEvt)
 				{
 					// have to assume registering for a user-defined event (for DispatchEvent) which has not been used before this point
@@ -762,7 +762,7 @@ bool Cmd_SetEventHandler_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
 	char eventName[maxEventNameLen];
-	*result = (ExtractEventCallback(eval, callback, eventName, true) 
+	*result = (ExtractEventCallback(eval, callback, eventName, true)
 		&& ProcessEventHandler(eventName, callback, true));
 	return true;
 }
@@ -1113,7 +1113,7 @@ bool Cmd_Ternary_Execute(COMMAND_ARGS)
 		}
 		if (!call_udf)
 			return true;
-		
+
 		InternalFunctionCaller caller(call_udf, thisObj, containingObj);
 		caller.SetArgs(0);
 		if (auto const tokenValResult = UserFunctionManager::Call(std::move(caller)))
