@@ -777,7 +777,8 @@ struct NVSEEventManagerInterface
 	// Mostly just used for filtering information (setup in SetEventHandler).
 	enum ParamType : int8_t
 	{
-		eParamType_Number,
+		eParamType_Float = 0,
+		eParamType_Int,
 		eParamType_String,
 		eParamType_Array,
 
