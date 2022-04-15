@@ -888,6 +888,7 @@ bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCall
 	return false;
 }
 
+// Meant for use to validate param types, not much else.
 Script::VariableType ParamTypeToVarType(EventFilterType pType)
 {
 	switch (pType)
@@ -910,7 +911,7 @@ EventFilterType VarTypeToParamType(Script::VariableType varType)
 {
 	switch (varType) {
 	case Script::eVarType_Float: return EventFilterType::eParamType_Float;
-	case Script::eVarType_Integer: return EventFilterType::eParamType_Int;
+	case Script::eVarType_Integer:	return EventFilterType::eParamType_Int;
 	case Script::eVarType_String: return EventFilterType::eParamType_String;
 	case Script::eVarType_Array: return EventFilterType::eParamType_Array;
 	case Script::eVarType_Ref: return EventFilterType::eParamType_AnyForm;
@@ -927,7 +928,7 @@ bool ParamTypeMatches(EventFilterType from, EventFilterType to)
 	if (from == EventFilterType::eParamType_AnyForm)
 	{
 		switch (to) {
-		case NVSEEventManagerInterface::eParamType_RefVar:
+		case NVSEEventManagerInterface::eParamType_AnyForm:
 		case NVSEEventManagerInterface::eParamType_Reference:
 		case NVSEEventManagerInterface::eParamType_BaseForm: return true;
 		default: break;
