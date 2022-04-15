@@ -593,6 +593,15 @@ bool IsPotentialFilterCorrect(EventManager::EventFilterType const expectedParamT
 	const ScriptToken* potentialFilter, int argPos)
 {
 	auto const varType = potentialFilter->GetTokenTypeAsVariableType();
+	auto const expectedVarType = EventManager::ParamTypeToVarType(expectedParamType);
+	//If both are number-type filters, then we should be comparing two Float variable types.
+	if (varType != expectedVarType) [[unlikely]]
+	{
+		eval.Error("SetEventHandler: Invalid type for filter (arg #%u): expected %s, got %s.", argPos + 1,
+			VariableTypeToName(expectedVarType), VariableTypeToName(varType));
+		return false;
+	}
+
 	if (varType == Script::eVarType_Array)
 	{
 		auto const arrID = potentialFilter->GetArrayID();
@@ -607,20 +616,10 @@ bool IsPotentialFilterCorrect(EventManager::EventFilterType const expectedParamT
 			eval.Error("SetEventHandler: Filter array with invalid Map-type was passed (arg #%u, array id: %d).", argPos + 1, arrID);
 			return false;
 		}
-		return true; // Assume that every element in the array is of the expected type.
+		// Assume that every element in the array is of the expected type.
 	}
-
-	auto const expectedVarType = EventManager::ParamTypeToVarType(expectedParamType);
-	//If both are number-type filters, then we should be comparing two Float variable types.
-	if (varType != expectedVarType) [[unlikely]]
-	{
-		eval.Error("SetEventHandler: Invalid type for filter (arg #%u): expected %s, got %s.", argPos + 1,
-			VariableTypeToName(expectedVarType), VariableTypeToName(varType));
-		return false;
-	}
-
-	// Allow null forms to go through, in case that would be a desired filter.
-	if (auto const form = potentialFilter->GetTESForm())
+		// Allow null forms to go through, in case that would be a desired filter.
+	else if (auto const form = potentialFilter->GetTESForm())
 	{
 		if (expectedParamType == EventManager::EventFilterType::eParamType_BaseForm
 			&& form->GetIsReference()) [[unlikely]]
