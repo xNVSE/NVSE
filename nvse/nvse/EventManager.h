@@ -255,21 +255,21 @@ namespace EventManager
 		{
 			EventFilterType::eParamType_String};
 
-	static EventFilterType kEventParams_OneNum[1] =
+	static EventFilterType kEventParams_OneInt[1] =
 		{
-			EventFilterType::eParamType_Number};
+			EventFilterType::eParamType_Int};
 
-	static EventFilterType kEventParams_TwoNums[2] =
+	static EventFilterType kEventParams_TwoInts[2] =
 		{
-			EventFilterType::eParamType_Number, EventFilterType::eParamType_Number};
+			EventFilterType::eParamType_Int, EventFilterType::eParamType_Int };
 
-	static EventFilterType kEventParams_OneNum_OneRef[2] =
+	static EventFilterType kEventParams_OneInt_OneRef[2] =
 		{
-			EventFilterType::eParamType_Number, EventFilterType::eParamType_AnyForm};
+			EventFilterType::eParamType_Int, EventFilterType::eParamType_AnyForm};
 
-	static EventFilterType kEventParams_OneRef_OneNum[2] =
+	static EventFilterType kEventParams_OneRef_OneInt[2] =
 		{
-			EventFilterType::eParamType_AnyForm, EventFilterType::eParamType_Number};
+			EventFilterType::eParamType_AnyForm, EventFilterType::eParamType_Int };
 
 	static EventFilterType kEventParams_OneArray[1] =
 		{

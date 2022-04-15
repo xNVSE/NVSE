@@ -707,10 +707,10 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 								continue;
 							}
 
+							// Index #0 is reserved for callingReference filter.
+							auto const filterType = index == 0 ? EventManager::EventFilterType::eParamType_Reference : info.paramTypes[index - 1];
 							if (addEvt)
 							{
-								//Index #0 is reserved for callingReference filter.
-								auto const filterType = index == 0 ? EventManager::EventFilterType::eParamType_Reference : info.paramTypes[index - 1];
 								if (!IsPotentialFilterCorrect(filterType, eval, pair->right.get(), i)) [[unlikely]]
 									return false;	//grave error; cancel the event-setting.
 							}
@@ -719,6 +719,11 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 							SelfOwningArrayElement element;
 							if (basicToken && BasicTokenToElem(basicToken.get(), element)) [[likely]]
 							{
+								if (filterType == EventManager::EventFilterType::eParamType_Int)
+								{
+									element.m_data.num = floor(element.m_data.num);
+								}
+
 								if (const auto [it, success] = outCallback.filters.emplace(index, std::move(element));
 									!success) [[unlikely]]
 								{

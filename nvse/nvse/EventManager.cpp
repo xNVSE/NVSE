@@ -693,6 +693,8 @@ bool RemoveHandler(const char* id, const EventCallback& handler)
 				if (handler.object && (handler.object != callback.object))
 					continue;
 
+				//TODO: Compare the filter maps!
+
 				callback.SetRemoved(true);
 
 				if (!callback.pendingRemove)
@@ -811,8 +813,10 @@ bool DoesFilterMatch(const ArrayElement& sourceFilter, void* param, EventFilterT
 	case kDataType_Numeric:
 	{
 		double filterNumber{};
-		sourceFilter.GetAsNumber(&filterNumber);
-		const auto inputNumber = *reinterpret_cast<float*>(&param);
+		sourceFilter.GetAsNumber(&filterNumber);	//if the Event's paramType was Int, then this should be already Floored.
+		const auto inputNumber = (filterType == EventFilterType::eParamType_Float)
+			? *reinterpret_cast<float*>(&param)
+			: static_cast<float>(*reinterpret_cast<UInt32*>(&param));
 		if (!FloatEqual(inputNumber, static_cast<float>(filterNumber)))
 			return false;
 		break;
@@ -888,13 +892,16 @@ Script::VariableType ParamTypeToVarType(EventFilterType pType)
 {
 	switch (pType)
 	{
-	case EventFilterType::eParamType_Number: return Script::VariableType::eVarType_Float;
+	case EventFilterType::eParamType_Int: // Int filter type is only different from Float when Dispatching (number is floored).
+	case EventFilterType::eParamType_Float: return Script::VariableType::eVarType_Float;
 	case EventFilterType::eParamType_String: return Script::VariableType::eVarType_String;
 	case EventFilterType::eParamType_Array: return Script::VariableType::eVarType_Array;
 	case EventFilterType::eParamType_RefVar:
 	case EventFilterType::eParamType_Reference:
 	case EventFilterType::eParamType_BaseForm:
 		return Script::VariableType::eVarType_Ref;
+	case NVSEEventManagerInterface::eParamType_Invalid: 
+		return Script::VariableType::eVarType_Invalid;
 	}
 	return Script::VariableType::eVarType_Invalid;
 }
@@ -902,14 +909,15 @@ Script::VariableType ParamTypeToVarType(EventFilterType pType)
 EventFilterType VarTypeToParamType(Script::VariableType varType)
 {
 	switch (varType) {
-	case Script::eVarType_Float: // fallback intentional
-	case Script::eVarType_Integer: return EventFilterType::eParamType_Number;
+	case Script::eVarType_Float: return EventFilterType::eParamType_Float;
+	case Script::eVarType_Integer: return EventFilterType::eParamType_Int;
 	case Script::eVarType_String: return EventFilterType::eParamType_String;
 	case Script::eVarType_Array: return EventFilterType::eParamType_Array;
 	case Script::eVarType_Ref: return EventFilterType::eParamType_AnyForm;
-	case Script::eVarType_Invalid: // fallback intentional
-	default: return EventFilterType::eParamType_Invalid;
+	case Script::eVarType_Invalid:
+		return EventFilterType::eParamType_Invalid;
 	}
+	return EventFilterType::eParamType_Invalid;
 }
 
 bool ParamTypeMatches(EventFilterType from, EventFilterType to)
@@ -919,8 +927,8 @@ bool ParamTypeMatches(EventFilterType from, EventFilterType to)
 	if (from == EventFilterType::eParamType_AnyForm)
 	{
 		switch (to) {
-		case NVSEEventManagerInterface::eParamType_RefVar: 
-		case NVSEEventManagerInterface::eParamType_Reference: 
+		case NVSEEventManagerInterface::eParamType_RefVar:
+		case NVSEEventManagerInterface::eParamType_Reference:
 		case NVSEEventManagerInterface::eParamType_BaseForm: return true;
 		default: break;
 		}
@@ -1148,7 +1156,7 @@ void Init()
 	EVENT_INFO("loadgame", kEventParams_OneString, nullptr, 0);
 	EVENT_INFO("savegame", kEventParams_OneString, nullptr, 0);
 	EVENT_INFO("qqq", nullptr, nullptr, 0);
-	EVENT_INFO("postloadgame", kEventParams_OneNum, nullptr, 0);
+	EVENT_INFO("postloadgame", kEventParams_OneInt, nullptr, 0);
 	EVENT_INFO("runtimescripterror", kEventParams_OneString, nullptr, 0);
 	EVENT_INFO("deletegame", kEventParams_OneString, nullptr, 0);
 	EVENT_INFO("renamegame", kEventParams_OneString, nullptr, 0);
