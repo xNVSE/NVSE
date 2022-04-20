@@ -549,23 +549,23 @@ const char* GetCurrentEventName()
 
 static UInt32 recursiveLevel = 0;
 
-bool SetHandler(const char* eventName, EventCallback& handler)
+bool SetHandler(const char* eventName, EventCallback& toSet)
 {
-	if (!handler.HasCallbackFunc())
+	if (!toSet.HasCallbackFunc())
 		return false;
 
 	// Only handles script callbacks, since this is only kept for legacy purposes anyways.
-	if (auto const script = handler.TryGetScript())
+	if (auto const script = toSet.TryGetScript())
 	{
 		UInt32 setted = 0;
 
 		// trying to use a FormList to specify the source filter
-		if (handler.source && handler.source->GetTypeID() == 0x055 && recursiveLevel < 100)
+		if (toSet.source && toSet.source->GetTypeID() == 0x055 && recursiveLevel < 100)
 		{
-			const auto formList = static_cast<BGSListForm*>(handler.source);
+			const auto formList = static_cast<BGSListForm*>(toSet.source);
 			for (tList<TESForm>::Iterator iter = formList->list.Begin(); !iter.End(); ++iter)
 			{
-				EventCallback listHandler(script, iter.Get(), handler.object);
+				EventCallback listHandler(script, iter.Get(), toSet.object);
 				recursiveLevel++;
 				if (SetHandler(eventName, listHandler)) setted++;
 				recursiveLevel--;
@@ -574,12 +574,12 @@ bool SetHandler(const char* eventName, EventCallback& handler)
 		}
 
 		// trying to use a FormList to specify the object filter
-		if (handler.object && handler.object->GetTypeID() == 0x055 && recursiveLevel < 100)
+		if (toSet.object && toSet.object->GetTypeID() == 0x055 && recursiveLevel < 100)
 		{
-			const auto formList = static_cast<BGSListForm*>(handler.object);
+			const auto formList = static_cast<BGSListForm*>(toSet.object);
 			for (tList<TESForm>::Iterator iter = formList->list.Begin(); !iter.End(); ++iter)
 			{
-				EventCallback listHandler(script, handler.source, iter.Get());
+				EventCallback listHandler(script, toSet.source, iter.Get());
 				recursiveLevel++;
 				if (SetHandler(eventName, listHandler)) setted++;
 				recursiveLevel--;
@@ -610,7 +610,7 @@ bool SetHandler(const char* eventName, EventCallback& handler)
 			// if an existing handler matches this one exactly, don't duplicate it
 			for (auto iter = info->callbacks.Begin(); !iter.End(); ++iter)
 			{
-				if (iter.Get().Equals(handler))
+				if (iter.Get().Equals(toSet))
 				{
 					// may be re-adding a previously removed handler, so clear the Removed flag
 					iter.Get().SetRemoved(false);
@@ -619,8 +619,8 @@ bool SetHandler(const char* eventName, EventCallback& handler)
 			}
 		}
 
-		handler.Confirm();
-		info->callbacks.Append(std::move(handler));
+		toSet.Confirm();
+		info->callbacks.Append(std::move(toSet));
 
 		s_eventsInUse |= info->eventMask;
 
@@ -630,24 +630,27 @@ bool SetHandler(const char* eventName, EventCallback& handler)
 	return false; 
 }
 
-bool RemoveHandler(const char* id, const EventCallback& handler)
+// If the passed Callback is more or equally generic filter-wise than some already-set events, will remove those events.
+// Ex: Callback with "SunnyREF" filter is already set.
+//	   Calling this with a Callback with no filters will lead to the "SunnyREF"-filtered callback being removed.	
+bool RemoveHandler(const char* id, const EventCallback& toRemove)
 {
-	if (!handler.HasCallbackFunc())
+	if (!toRemove.HasCallbackFunc())
 		return false;
 
 	// Only handles script callbacks, since this is only kept for legacy purposes anyways.
-	if (auto const script = handler.TryGetScript())
+	if (auto const script = toRemove.TryGetScript())
 	{
 		UInt32 removed = 0;
 
 		// trying to use a FormList to specify the source filter
-		if (handler.source && handler.source->GetTypeID() == 0x055 && recursiveLevel < 100)
+		if (toRemove.source && toRemove.source->GetTypeID() == 0x055 && recursiveLevel < 100)
 		{
-			const auto formList = static_cast<BGSListForm*>(handler.source);
+			const auto formList = static_cast<BGSListForm*>(toRemove.source);
 			for (tList<TESForm>::Iterator iter = formList->list.Begin(); !iter.End(); ++iter)
 			{
 
-				EventCallback listHandler(script, iter.Get(), handler.object);
+				EventCallback listHandler(script, iter.Get(), toRemove.object);
 				recursiveLevel++;
 				if (RemoveHandler(id, listHandler)) removed++;
 				recursiveLevel--;
@@ -656,12 +659,12 @@ bool RemoveHandler(const char* id, const EventCallback& handler)
 		}
 
 		// trying to use a FormList to specify the object filter
-		if (handler.object && handler.object->GetTypeID() == 0x055 && recursiveLevel < 100)
+		if (toRemove.object && toRemove.object->GetTypeID() == 0x055 && recursiveLevel < 100)
 		{
-			const auto formList = static_cast<BGSListForm*>(handler.object);
+			const auto formList = static_cast<BGSListForm*>(toRemove.object);
 			for (tList<TESForm>::Iterator iter = formList->list.Begin(); !iter.End(); ++iter)
 			{
-				EventCallback listHandler(script, handler.source, iter.Get());
+				EventCallback listHandler(script, toRemove.source, iter.Get());
 				recursiveLevel++;
 				if (RemoveHandler(id, listHandler)) removed++;
 				recursiveLevel--;
@@ -677,30 +680,25 @@ bool RemoveHandler(const char* id, const EventCallback& handler)
 	bool bRemovedAtLeastOne = false;
 	if (eventType < s_eventInfos.Size())
 	{
-		EventInfo *eventInfo = &s_eventInfos[eventType];
-		if (!eventInfo->callbacks.Empty())
+		EventInfo &eventInfo = s_eventInfos[eventType];
+		if (!eventInfo.callbacks.Empty())
 		{
-			for (auto iter = eventInfo->callbacks.Begin(); !iter.End(); ++iter)
+			for (auto iter = eventInfo.callbacks.Begin(); !iter.End(); ++iter)
 			{
-				EventCallback &callback = iter.Get();
+				EventCallback &nthCallback = iter.Get();
 
-				if (handler.toCall != callback.toCall)
+				if (toRemove.toCall != nthCallback.toCall)
 					continue;
 
-				if (handler.source && (handler.source != callback.source))
+				if (!toRemove.ShouldRemoveCallback(nthCallback, eventInfo))
 					continue;
+				
+				nthCallback.SetRemoved(true);
 
-				if (handler.object && (handler.object != callback.object))
-					continue;
-
-				//TODO: Compare the filter maps!
-
-				callback.SetRemoved(true);
-
-				if (!callback.pendingRemove)
+				if (!nthCallback.pendingRemove)
 				{
-					callback.pendingRemove = true;
-					s_deferredRemoveList.Push(eventInfo, iter);
+					nthCallback.pendingRemove = true;
+					s_deferredRemoveList.Push(&eventInfo, iter);
 				}
 
 				bRemovedAtLeastOne = true;
@@ -869,12 +867,12 @@ bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCall
 	auto* arrayFilters = g_ArrayMap.Get(arrayFiltersId);
 	if (!arrayFilters)
 	{
-		ShowRuntimeError(callback.TryGetScript(), "While dispatching an event, found an invalid/unitialized filter array at index %d (array id: %d).", index, arrayFiltersId);
+		ShowRuntimeError(callback.TryGetScript(), "While checking event filters in array at index %d, the array was invalid/unitialized (array id: %d).", index, arrayFiltersId);
 		return false;
 	}
 	if (arrayFilters->GetContainerType() != kContainer_Array)
 	{
-		ShowRuntimeError(callback.TryGetScript(), "While dispatching an event, found a filter array with invalid Map-type index %d (array id: %d).", index, arrayFiltersId);
+		ShowRuntimeError(callback.TryGetScript(), "While checking event filters in array at index %d, the array had non-'Array' type (array id: %d).", index, arrayFiltersId);
 		return false;
 	}
 	auto& elementVector = *arrayFilters->GetRawContainer()->getArrayPtr();
@@ -957,6 +955,62 @@ bool DoFiltersMatch(TESObjectREFR* thisObj, const EventInfo& eventInfo, const Ev
 			continue;
 		}
 		if (!DoesFilterMatch(filter, param, paramType))
+			return false;
+	}
+	return true;
+}
+
+bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const EventInfo& evInfo) const
+{
+	if (source && (source != toCheck.source))
+		return false;
+
+	if (object && (object != toCheck.object))
+		return false;
+
+	if (filters.empty())
+		return true;
+
+	if (filters.size() > toCheck.filters.size())
+		return false; // "this" is less generic than the arg callback.
+
+	for (auto const& [index, toRemoveFilter] : filters)
+	{
+		if (auto const search = toCheck.filters.find(index);
+			search != toCheck.filters.end())
+		{
+			auto const& existingFilter = search->second;
+
+			EventFilterType paramType;
+			if (index == 0)
+			{
+				paramType = EventFilterType::eParamType_Reference;
+			}
+			else
+			{
+				paramType = evInfo.paramTypes[index - 1];
+				if (paramType == EventFilterType::eParamType_Int)
+					paramType = EventFilterType::eParamType_Float;	// if numeric, void* param will always be float-type, so avoid wrong cast in DoesFilterMatch.
+			}
+			
+			if (void* param = toRemoveFilter.GetAsVoidArg(); 
+				toRemoveFilter.DataType() == existingFilter.DataType())
+			{
+				if (!DoesFilterMatch(existingFilter, param, paramType))
+					return false;
+			}
+			else if (toRemoveFilter.DataType() == kDataType_Array)
+			{
+				// assume elements of array are filters
+				if (!DoesParamMatchFiltersInArray(*this, existingFilter, paramType, param, index))
+					return false;
+			}
+			else [[unlikely]]
+			{
+				return false;	// Encountered weird type mismatch.
+			}
+		}
+		else // toCheck does not have a filter at this index, thus "this" has a more specific filter.
 			return false;
 	}
 	return true;

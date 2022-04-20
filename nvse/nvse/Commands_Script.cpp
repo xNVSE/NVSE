@@ -658,7 +658,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 					*idPtr = EventManager::s_eventInfos.Size();
 					char* nameCopy = CopyString(eventName);
 					StrToLower(nameCopy);
-					EventManager::s_eventInfos.Append(nameCopy, EventManager::kEventParams_OneArray, 1);
+					EventManager::s_eventInfos.Append(nameCopy, nullptr, 0, EventManager::EventFlags::kFlag_IsUserDefined);
 				}
 			}
 

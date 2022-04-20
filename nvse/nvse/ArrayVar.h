@@ -149,6 +149,9 @@ public:
 	bool operator==(const ArrayElement& rhs) const;
 	bool operator!=(const ArrayElement& rhs) const;
 
+	// Unlike ==/!=, if both elems are Arrays, will cmp their contents instead of their IDs.
+	bool Equals(const ArrayElement& rhs, bool deepCmpArr = false) const;
+
 	[[nodiscard]] bool IsGood() const {return m_data.dataType != kDataType_Invalid;}
 
 	[[nodiscard]] std::string GetStringRepresentation() const;
@@ -300,8 +303,6 @@ class ArrayVar
 	bool				m_bPacked;
 	Vector<UInt8>		m_refs;		// data is modIndex of referring object; size() is number of references
 
-	bool CompareArrays(ArrayVar* arr2, bool checkDeep);
-
 public:
 	ICriticalSection m_cs;
 #if _DEBUG
@@ -393,6 +394,7 @@ public:
 
 	[[nodiscard]] std::string GetStringRepresentation() const;
 
+	bool CompareArrays(ArrayVar* arr2, bool checkDeep);
 	bool Equals(ArrayVar* arr2);
 	bool DeepEquals(ArrayVar* arr2);
 

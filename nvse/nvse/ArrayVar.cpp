@@ -117,6 +117,32 @@ bool ArrayElement::operator!=(const ArrayElement& rhs) const
 	return !(*this == rhs);
 }
 
+bool ArrayElement::Equals(const ArrayElement& rhs, bool deepCmpArr) const
+{
+	if (m_data.dataType != rhs.m_data.dataType)
+		return false;
+
+	switch (m_data.dataType)
+	{
+	case kDataType_Form:
+		return m_data.formID == rhs.m_data.formID;
+	case kDataType_String:
+		return !StrCompare(m_data.str, rhs.m_data.str);
+	case kDataType_Array:
+	{
+		auto const lArrPtr = g_ArrayMap.Get(m_data.arrID);
+		auto const rArrPtr = g_ArrayMap.Get(rhs.m_data.arrID);
+		if (lArrPtr == rArrPtr) //two invalid arrays are considered equal.
+			return true;
+		if (!lArrPtr || !rArrPtr)
+			return false;
+		return lArrPtr->CompareArrays(rArrPtr, deepCmpArr);
+	}
+	default:
+		return m_data.num == rhs.m_data.num;
+	}
+}
+
 
 std::string ArrayElement::GetStringRepresentation() const
 {

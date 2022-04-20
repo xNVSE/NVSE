@@ -156,7 +156,10 @@ namespace EventManager
 		// If the EventCallback is confirmed to stay, then call this to wrap up loose ends, e.g save lambda var context.
 		void Confirm();
 
-		// Call the callback...
+		// If "this" is has more or equally generic filters than the arg Callback, return true.
+		// Assumes both have the same callbacks.
+		[[nodiscard]] bool ShouldRemoveCallback(const EventCallback& toCheck, const EventInfo& evInfo) const;
+
 		std::unique_ptr<ScriptToken> Invoke(EventInfo *eventInfo, void *arg0, void *arg1);
 	};
 
@@ -204,12 +207,16 @@ namespace EventManager
 		{
 			return flags & EventFlags::kFlag_FlushOnLoad;
 		}
+		[[nodiscard]] bool IsUserDefined() const
+		{
+			return flags & EventFlags::kFlag_IsUserDefined;
+		}
 	};
 
-	bool SetHandler(const char *eventName, EventCallback &handler);
+	bool SetHandler(const char *eventName, EventCallback &toSet);
 
 	// removes handler only if all filters match
-	bool RemoveHandler(const char *id, const EventCallback &handler);
+	bool RemoveHandler(const char *id, const EventCallback &toRemove);
 
 	// handle an NVSEMessagingInterface message
 	void HandleNVSEMessage(UInt32 msgID, void *data);
