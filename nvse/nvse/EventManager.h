@@ -1,4 +1,6 @@
 #pragma once
+#include "ScriptUtils.h"
+#include "StackVector.h"
 
 #ifdef RUNTIME
 
@@ -241,6 +243,12 @@ namespace EventManager
 
 	bool SetNativeEventHandler(const char *eventName, EventHandler func);
 	bool RemoveNativeEventHandler(const char *eventName, EventHandler func);
+
+	static constexpr auto numMaxFilters = kMaxUdfParams;
+	using FilterStack = StackVector<void*, numMaxFilters>;
+
+	DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, FilterStack& params,
+		DispatchCallback resultCallback = nullptr, void* anyData = nullptr);
 
 	bool DispatchEvent(const char *eventName, TESObjectREFR *thisObj, ...);
 	DispatchReturn DispatchEventAlt(const char *eventName, DispatchCallback resultCallback, void *anyData, TESObjectREFR *thisObj, ...);

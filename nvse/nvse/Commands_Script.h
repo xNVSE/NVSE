@@ -104,8 +104,31 @@ static ParamInfo kNVSEParams_DispatchEvent[3] =
 	{	"args",					kNVSEParamType_Array,	1	},
 	{	"sender",				kNVSEParamType_String,	1	}
 };
+static ParamInfo kNVSEParams_DispatchEventAlt[16] =
+{
+	{	"eventName",			kNVSEParamType_String,	0	},
+
+	{ "arg1",				kNVSEParamType_Pair,	1 },
+	{ "arg2",				kNVSEParamType_Pair,	1 },
+	{ "arg3",				kNVSEParamType_Pair,	1 },
+	{ "arg4",				kNVSEParamType_Pair,	1 },
+	{ "arg5",				kNVSEParamType_Pair,	1 },
+
+	{ "arg6",				kNVSEParamType_Pair,	1 },
+	{ "arg7",				kNVSEParamType_Pair,	1 },
+	{ "arg8",				kNVSEParamType_Pair,	1 },
+	{ "arg9",				kNVSEParamType_Pair,	1 },
+	{ "arg10",				kNVSEParamType_Pair,	1 },
+
+	{ "arg11",				kNVSEParamType_Pair,	1 },
+	{ "arg12",				kNVSEParamType_Pair,	1 },
+	{ "arg13",				kNVSEParamType_Pair,	1 },
+	{ "arg14",				kNVSEParamType_Pair,	1 },
+	{ "arg15",				kNVSEParamType_Pair,	1 }
+};
 
 DEFINE_COMMAND_EXP(DispatchEvent, dispatches a user-defined event to any registered listeners, 0, kNVSEParams_DispatchEvent);
+DEFINE_COMMAND_EXP(DispatchEventAlt, dispatches a user-defined event to any registered listeners, 0, kNVSEParams_DispatchEventAlt);
 
 static ParamInfo kParams_CallAfter_OLD[3] =
 {

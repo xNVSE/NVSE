@@ -809,6 +809,42 @@ bool Cmd_DispatchEvent_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
+{
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (!eval.ExtractArgs() || eval.NumArgs() == 0)
+		return true;
+
+	const char* eventName = eval.Arg(0)->GetString();
+	if (!eventName)
+		return true;
+
+	// does an EventInfo entry already exist for this event?
+	const UInt32 eventID = EventManager::EventIDForString(eventName);
+	if (EventManager::kEventID_INVALID == eventID)
+		return true;
+
+	auto& eventInfo = EventManager::s_eventInfos[eventID];
+	if (!eventInfo.IsUserDefined())
+		return true;
+
+	EventManager::FilterStack params;
+	if (eval.NumArgs() > 1)
+	{
+		auto const numArgs = eval.NumArgs();
+		for (size_t i = 1; i < numArgs; i++)
+		{
+			SelfOwningArrayElement elem;
+			BasicTokenToElem(eval.Arg(i), elem);
+			void* const arg = elem.GetAsVoidArg();
+			params->push_back(arg);
+		}
+	}
+
+	*result = EventManager::DispatchEventRaw(thisObj, eventInfo, params);
+	return true;
+}
+
 extern float g_gameSecondsPassed;
 
 bool ExtractCallAfterInfo(ExpressionEvaluator& eval, std::list<DelayedCallInfo>& infos, ICriticalSection& cs)

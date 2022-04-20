@@ -4,7 +4,6 @@
 #include "PluginAPI.h"
 #include "GameAPI.h"
 #include "Utilities.h"
-#include "ScriptUtils.h"
 #include "SafeWrite.h"
 #include "FunctionScripts.h"
 #include "GameObjects.h"
@@ -17,12 +16,8 @@
 #include "GameData.h"
 #include "GameRTTI.h"
 #include "GameScript.h"
-#include "StackVector.h"
 
 namespace EventManager {
-
-static constexpr auto numMaxFilters = kMaxUdfParams;
-using FilterStack = StackVector<void*, numMaxFilters>;
 
 static ICriticalSection s_criticalSection;
 
@@ -805,6 +800,7 @@ bool DoDeprecatedFiltersMatch(const EventInfo& eventInfo, const EventCallback& c
 	return true;
 }
 
+// eParamType_Invalid is treated as "use default param type" (for User-Defined Event).
 bool DoesFilterMatch(const ArrayElement& sourceFilter, void* param, EventFilterType filterType)
 {
 	switch (sourceFilter.DataType()) {
@@ -812,9 +808,9 @@ bool DoesFilterMatch(const ArrayElement& sourceFilter, void* param, EventFilterT
 	{
 		double filterNumber{};
 		sourceFilter.GetAsNumber(&filterNumber);	//if the Event's paramType was Int, then this should be already Floored.
-		const auto inputNumber = (filterType == EventFilterType::eParamType_Float)
-			? *reinterpret_cast<float*>(&param)
-			: static_cast<float>(*reinterpret_cast<UInt32*>(&param));
+		const auto inputNumber = (filterType == EventFilterType::eParamType_Int)
+			? static_cast<float>(*reinterpret_cast<UInt32*>(&param))
+			: *reinterpret_cast<float*>(&param);
 		if (!FloatEqual(inputNumber, static_cast<float>(filterNumber)))
 			return false;
 		break;
@@ -940,22 +936,31 @@ bool DoFiltersMatch(TESObjectREFR* thisObj, const EventInfo& eventInfo, const Ev
 	for (auto& [index, filter] : callback.filters)
 	{
 		bool const isCallingRefFilter = index == 0;
-		auto const paramType = isCallingRefFilter ? EventFilterType::eParamType_Reference : eventInfo.paramTypes[index - 1];
 		void* param = isCallingRefFilter ? thisObj : params->at(index - 1);
 
-		const auto filterDataType = filter.DataType();
-		const auto filterVarType = DataTypeToVarType(filterDataType);
-		const auto paramVarType = ParamTypeToVarType(paramType);
-
-		if (filterVarType != paramVarType) //if true, can assume that the filterVar's type is Array (if it isn't, should have been reported in SetEventHandler).
+		if (eventInfo.IsUserDefined()) // Skip filter type checking.
 		{
-			// assume elements of array are filters
-			if (!DoesParamMatchFiltersInArray(callback, filter, paramType, param, index))
+			if (!DoesFilterMatch(filter, param, EventFilterType::eParamType_Invalid))
 				return false;
-			continue;
 		}
-		if (!DoesFilterMatch(filter, param, paramType))
-			return false;
+		else
+		{
+			auto const paramType = isCallingRefFilter ? EventFilterType::eParamType_Reference : eventInfo.paramTypes[index - 1];
+
+			const auto filterDataType = filter.DataType();
+			const auto filterVarType = DataTypeToVarType(filterDataType);
+			const auto paramVarType = ParamTypeToVarType(paramType);
+
+			if (filterVarType != paramVarType) //if true, can assume that the filterVar's type is Array (if it isn't, should have been reported in SetEventHandler).
+			{
+				// assume elements of array are filters
+				if (!DoesParamMatchFiltersInArray(callback, filter, paramType, param, index))
+					return false;
+				continue;
+			}
+			if (!DoesFilterMatch(filter, param, paramType))
+				return false;
+		}
 	}
 	return true;
 }
@@ -1017,7 +1022,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 }
 
 DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, FilterStack& params,
-	DispatchCallback resultCallback = nullptr, void* anyData = nullptr)
+	DispatchCallback resultCallback, void* anyData)
 {
 	DispatchReturn result = DispatchReturn::kRetn_Normal;
 	for (auto iter = eventInfo.callbacks.Begin(); !iter.End(); ++iter)
