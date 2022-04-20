@@ -829,16 +829,13 @@ bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 		return true;
 
 	EventManager::FilterStack params;
-	if (eval.NumArgs() > 1)
+	auto const numArgs = eval.NumArgs();
+	for (size_t i = 1; i < numArgs; i++)
 	{
-		auto const numArgs = eval.NumArgs();
-		for (size_t i = 1; i < numArgs; i++)
-		{
-			SelfOwningArrayElement elem;
-			BasicTokenToElem(eval.Arg(i), elem);
-			void* const arg = elem.GetAsVoidArg();
-			params->push_back(arg);
-		}
+		SelfOwningArrayElement elem;
+		BasicTokenToElem(eval.Arg(i), elem);
+		void* const arg = elem.GetAsVoidArg();
+		params->push_back(arg);
 	}
 
 	*result = EventManager::DispatchEventRaw(thisObj, eventInfo, params);

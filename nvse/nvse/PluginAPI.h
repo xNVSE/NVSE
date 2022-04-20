@@ -808,7 +808,7 @@ struct NVSEEventManagerInterface
 		//If on, will remove all set handlers for the event every game load.
 		kFlag_FlushOnLoad = 1 << 0,
 
-		//Identifies script-created events, for the DispatchEvent script function.
+		//Identifies script-created events, for the DispatchEvent(Alt) script functions.
 		kFlag_IsUserDefined = 1 << 1,
 	};
 

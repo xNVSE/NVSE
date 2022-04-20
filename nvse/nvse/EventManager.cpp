@@ -1037,10 +1037,10 @@ DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, Fi
 			continue;
 
 		result = std::visit(overloaded{
-			[=, &params, &eventInfo](const LambdaManager::Maybe_Lambda& script) -> DispatchReturn
+			[=, &params](const LambdaManager::Maybe_Lambda& script) -> DispatchReturn
 			{
 				InternalFunctionCaller caller(script.Get(), thisObj);
-				caller.SetArgsRaw(eventInfo.numParams, params->data());
+				caller.SetArgsRaw(params->size(), params->data());
 				auto const res = UserFunctionManager::Call(std::move(caller));
 				if (resultCallback)
 				{
@@ -1097,9 +1097,6 @@ DispatchReturn DispatchEventAlt(const char* eventName, DispatchCallback resultCa
 	const auto eventId = EventIDForString(eventName);
 	if (eventId == static_cast<UInt32>(kEventID_INVALID))
 	{
-#if _DEBUG
-		Console_Print("DispatchEventAlt >> Event with name %s not found.", eventName);
-#endif
 		return DispatchReturn::kRetn_Error;
 	}
 
