@@ -822,7 +822,9 @@ bool DoesFilterMatch(const ArrayElement& sourceFilter, void* param, EventFilterT
 		auto* inputForm = static_cast<TESForm*>(param);
 		auto* filterForm = LookupFormByID(filterFormId);
 		// Allow matching a null form filter with a null input.
-		if (!DoesFormMatchFilter(inputForm, filterForm, filterType == EventFilterType::eParamType_Reference))
+		bool const expectReference = (filterType != EventFilterType::eParamType_BaseForm)
+			&& (filterType != EventFilterType::eParamType_AnyForm);
+		if (!DoesFormMatchFilter(inputForm, filterForm, expectReference))
 			return false;
 		break;
 	}

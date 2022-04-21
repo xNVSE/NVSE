@@ -832,13 +832,59 @@ bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 	auto const numArgs = eval.NumArgs();
 	for (size_t i = 1; i < numArgs; i++)
 	{
-		SelfOwningArrayElement elem;
-		BasicTokenToElem(eval.Arg(i), elem);
-		void* const arg = elem.GetAsVoidArg();
+		auto const arg = eval.Arg(i)->GetAsVoidArg();
 		params->push_back(arg);
 	}
 
 	*result = EventManager::DispatchEventRaw(thisObj, eventInfo, params);
+	return true;
+}
+
+bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
+{
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (!eval.ExtractArgs())
+		return true;
+	auto const numArgs = eval.NumArgs();
+
+	UInt32 eventID = EventManager::kEventID_INVALID;
+	Script* callbackScript = nullptr;
+	if (numArgs >= 1)
+	{
+		if (const char* eventName = eval.Arg(0)->GetString();
+			eventName && eventName[0])
+		{
+			eventID = EventManager::EventIDForString(eventName);
+		}
+
+		if (numArgs >= 2)
+		{
+			callbackScript = eval.Arg(1)->GetUserFunction();
+		}
+	}
+
+	EventManager::FilterStack filters{};
+	for (size_t i = 2; i < numArgs; i++)
+	{
+		auto const arg = eval.Arg(i)->GetAsVoidArg();
+		filters->push_back(arg);
+	}
+
+	if (eventID == EventManager::kEventID_INVALID)
+	{
+		// loop through all eventInfo callbacks, filtering by script + filters
+		for (auto eventInfoIter = EventManager::s_eventInfos.Begin();
+			!eventInfoIter.End(); ++eventInfoIter)
+		{
+			//todo...
+		}
+	}
+	else //filtered by eventID
+	{
+		auto const& eventInfo = EventManager::s_eventInfos[eventID];
+		//todo...
+	}
+
 	return true;
 }
 
