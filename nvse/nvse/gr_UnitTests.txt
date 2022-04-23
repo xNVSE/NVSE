@@ -1,0 +1,41 @@
+array_var aVar = ar_list 1 2 3 4
+Assert ((ar_Size aVar) == 4)
+
+ar_append aVar 5
+Assert ((ar_Size aVar) == 5)
+Assert (aVar == (Ar_List 1 2 3 4 5))
+Assert ((aVar[0]) == 1)
+Assert ((aVar[4]) == 5)
+
+ar_erase avar 0:5
+Assert ((ar_Size aVar) == 0)
+Assert !(testexpr aVar[0])
+Assert !(testexpr aVar[4])
+
+aVar = ar_list 1 2 3
+ar_erase avar 0
+Assert (aVar == (ar_list 2 3))
+
+ar_resize avar 1
+Assert (avar == (ar_list 2))
+
+ar_insertRange avar 0 (ar_list 0 1)
+Assert (avar == (ar_list 0 1 2))
+
+CallAfter 0 (begin function {int iArg, float fArg, string_var sArg, array_var aArg}
+	Assert iArg == 10
+	Assert fArg == 5.5
+	Assert sArg == "Hello World"
+	Assert aArg == (ar_list 1 5 10)
+end) 1 10 5.5 "Hello World" (ar_list 1 5 10)
+
+ref TestUdfScript = (begin function {int iArg0, float fArg0, string_var sArg0, array_var aArg0}
+	Assert iArg0 == 2
+	Assert fArg0 == 3.5
+    Assert sArg0 == "Jingle Bells"
+    Assert aArg0 == (ar_map "Key"::"Value")
+end)
+
+call TestUdfScript 2 3.5 "Jingle Bells" (ar_map "Key"::"Value")
+
+print "Finished running xNVSE script unit tests"
