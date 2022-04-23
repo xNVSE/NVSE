@@ -68,4 +68,10 @@ static ParamInfo kParams_OneNVSEVariable[] =
 	{"variable", kNVSEParamType_Variable, 0}
 };
 
+static ParamInfo kParams_OneBoolean[] =
+{
+	{	"boolean expression",	kNVSEParamType_Boolean,	0	},
+};
+
 DEFINE_CMD_ALT_EXP(PrintVar, PrintV, , false, kParams_OneNVSEVariable);
+DEFINE_CMD_ALT_EXP(Assert, AssertTrue, , false, kParams_OneBoolean);

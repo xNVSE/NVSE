@@ -1838,6 +1838,9 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(CallWhile);
 	ADD_CMD(CallWhen);
 	ADD_CMD(SetEditorID);
+
+	// 6.2 beta 07
+	ADD_CMD(Assert);
 }
 
 namespace PluginAPI

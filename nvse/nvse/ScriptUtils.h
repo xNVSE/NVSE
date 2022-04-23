@@ -102,6 +102,31 @@ concept ArrayElementOrScriptToken = std::is_base_of_v<ArrayElement, T> || std::i
 
 struct PluginScriptToken;
 
+// If an ExpressionEvaluator is moved, we want to skip some logic in the destructor
+// This struct avoids having to create a custom move constructor and move assignment operator
+// in Expression Evaluator by having this struct define it's own move operations
+struct MoveContainer
+{
+	bool moved = false;
+
+	MoveContainer() = default;
+
+	MoveContainer(const MoveContainer& other) = delete;
+
+	MoveContainer(MoveContainer&& other) noexcept
+	{
+		other.moved = true;
+	}
+
+	MoveContainer& operator=(const MoveContainer& other) = delete;
+
+	MoveContainer& operator=(MoveContainer&& other) noexcept
+	{
+		other.moved = true;
+		return *this;
+	}
+};
+
 class ExpressionEvaluator
 {
 	friend ScriptToken;
@@ -112,7 +137,7 @@ class ExpressionEvaluator
 		kFlag_ErrorOccurred			= 1 << 1,
 		kFlag_StackTraceOnError		= 1 << 2,
 	};
-	bool moved_ = false;
+	MoveContainer moved_;
 	bool m_pushedOnStack;
 public:
 	Bitfield<UInt32>	 m_flags;
@@ -132,19 +157,14 @@ public:
 	std::vector<std::string> errorMessages;
 
 	ExpressionEvaluator(const ExpressionEvaluator& other) = delete;
-
-	ExpressionEvaluator(ExpressionEvaluator&& other) noexcept;
-
 	ExpressionEvaluator& operator=(const ExpressionEvaluator& other) = delete;
-
-	ExpressionEvaluator& operator=(ExpressionEvaluator&& other) noexcept;
 
 	CommandReturnType GetExpectedReturnType() { CommandReturnType type = m_expectedReturnType; m_expectedReturnType = kRetnType_Default; return type; }
 	bool ParseBytecode(CachedTokens& cachedTokens);
 
 	void PushOnStack();
 	void PopFromStack() const;
-	CachedTokens* GetTokens(std::optional<CachedTokens>* consoleTokens);
+	CachedTokens* GetTokens(std::optional<CachedTokens>* consoleTokensContainer);
 
 	bool m_inline;
 
@@ -180,8 +200,13 @@ public:
 
 	std::unique_ptr<ScriptToken> ExecuteCommandToken(ScriptToken const* token, TESObjectREFR* stackRef);
 	ScriptToken*	Evaluate();			// evaluates a single argument/token
+
+	std::string GetLineText();
 	std::string GetLineText(CachedTokens& tokens, ScriptToken* faultingToken) const;
 	std::string GetVariablesText(CachedTokens& tokens) const;
+	std::string GetVariablesText();
+
+	void ResetCursor();
 
 	[[nodiscard]] ScriptToken*	Arg(UInt32 idx) const
 	{
@@ -218,7 +243,7 @@ public:
 	SInt32		ReadSigned32();
 	void ReadBuf(UInt32 len, UInt8* data);
 
-	[[nodiscard]] UInt8* GetCommandOpcodePosition() const;
+	[[nodiscard]] UInt8* GetCommandOpcodePosition(UInt32* opcodeOffsetPtr) const;
 	[[nodiscard]] CommandInfo* GetCommand() const;
 };
 
