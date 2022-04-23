@@ -698,7 +698,7 @@ bool ArrayElementArgFunctionCaller<T>::PopulateArgs(ScriptEventList* eventList, 
 		}
 		const auto& arg = (*m_args)[i];
 		const auto varType = param->varType;
-		if (DataTypeToVarType(arg.DataType()) != varType)
+		if (arg.DataType() != VarTypeToDataType(varType))
 		{
 			ShowRuntimeError(m_script, "Wrong type passed for parameter %d (%s). Cannot assign %s to %s.", i, GetVariableName(var, m_script, eventList),
 			                 VariableTypeToName(varType), DataTypeToString(arg.DataType()));

@@ -1,4 +1,5 @@
 #pragma once
+#include "GameScript.h"
 
 typedef UInt32 ArrayID;
 class ArrayVar;
@@ -73,6 +74,7 @@ enum DataType : UInt8
 
 const char* DataTypeToString(DataType dataType);
 Script::VariableType DataTypeToVarType(DataType dataType);
+DataType VarTypeToDataType(Script::VariableType variableType);
 
 struct ArrayData
 {

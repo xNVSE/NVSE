@@ -40,6 +40,24 @@ Script::VariableType DataTypeToVarType(DataType dataType)
 	}
 }
 
+DataType VarTypeToDataType(Script::VariableType variableType)
+{
+	switch (variableType) {
+	case Script::eVarType_Float: [[fallthrough]];
+	case Script::eVarType_Integer:
+		return DataType::kDataType_Numeric;
+	case Script::eVarType_String:
+		return DataType::kDataType_String;
+	case Script::eVarType_Array:
+		return DataType::kDataType_Array;
+	case Script::eVarType_Ref:
+		return DataType::kDataType_Form;
+	case Script::eVarType_Invalid: [[fallthrough]];
+	default:
+		return DataType::kDataType_Invalid;
+	}
+}
+
 // ArrayElement
 ArrayElement::ArrayElement()
 {
