@@ -172,6 +172,13 @@ namespace OtherHooks
 		}
 	}
 
+	void __fastcall ScriptDestructorHook(Script* script)
+	{
+		// hooked call
+		ThisStdCall(0x483630, script);
+		LambdaManager::MarkScriptAsDeleted(script);
+	}
+
 	void Hooks_Other_Init()
 	{
 		WriteRelJump(0x9FF5FB, UInt32(TilesDestroyedHook));
@@ -183,6 +190,8 @@ namespace OtherHooks
 
 		WriteRelJump(0x5E1137, UInt32(PostScriptExecuteHook1));
 		WriteRelJump(0x5E1392, UInt32(PostScriptExecuteHook2));
+
+		WriteRelCall(0x5AA206, ScriptDestructorHook);
 	}
 
 	thread_local CurrentScriptContext emptyCtx{}; // not every command gets run through script runner
