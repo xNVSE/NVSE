@@ -679,16 +679,16 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 						const char* key = pair->left->GetString();
 						if (key && StrLen(key))
 						{
+							//Assume form
+							if (addEvt && !IsPotentialFilterCorrect(EventManager::EventFilterType::eParamType_AnyForm, eval, pair->right.get(), i)) [[unlikely]]
+								continue;
+
 							if (!StrCompare(key, "ref") || !StrCompare(key, "first"))
 							{
-								if (addEvt && !IsPotentialFilterCorrect(info.paramTypes[0], eval, pair->right.get(), i)) [[unlikely]]
-									continue;
 								outCallback.source = pair->right->GetTESForm();
 							}
 							else if (!StrCompare(key, "object") || !StrCompare(key, "second"))
 							{
-								if (!IsPotentialFilterCorrect(info.paramTypes[1], eval, pair->right.get(), i)) [[unlikely]]
-									continue;
 								outCallback.object = pair->right->GetTESForm();
 							}
 						}
