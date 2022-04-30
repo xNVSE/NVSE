@@ -1,4 +1,8 @@
 array_var aVar = ar_list 1 2 3 4
+ar_Erase aVar
+Assert (ar_Size aVar) == 0
+
+aVar = ar_list 1 2 3 4
 Assert ((ar_Size aVar) == 4)
 
 ar_append aVar 5
