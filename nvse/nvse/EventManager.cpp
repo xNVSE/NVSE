@@ -345,23 +345,17 @@ ArrayVar* EventCallback::GetFiltersAsArray(const Script* scriptObj) const
 {
 	ArrayVar* arr = g_ArrayMap.Create(kDataType_String, false, scriptObj->GetModIndex());
 
-	ArrayElement elem;
 	if (source)
 	{
-		elem.SetTESForm(source);
-		arr->SetElement("first", &elem);
+		arr->SetElementFormID("first", source->refID);
 	}
-
 	if (object)
 	{
-		elem.SetTESForm(object);
-		arr->SetElement("second", &elem);
+		arr->SetElementFormID("second", object->refID);
 	}
-
 	for (auto const& [index, filter] : filters)
 	{
-		elem = filter;
-		arr->SetElement(std::to_string(index).c_str(), &elem);
+		arr->SetElement(std::to_string(index).c_str(), &filter);
 	}
 
 	return arr;

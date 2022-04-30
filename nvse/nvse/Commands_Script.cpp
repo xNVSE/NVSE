@@ -883,8 +883,8 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 			for (auto i = range.first; i != range.second; ++i)
 			{
 				auto const& eventCallback = i->second;
-				if (argsToFilter->empty() ||
-					EventManager::DoFiltersMatch(thisObj, info, eventCallback, argsToFilter))
+				if (!eventCallback.pendingRemove && (argsToFilter->empty() ||
+					EventManager::DoFiltersMatch(thisObj, info, eventCallback, argsToFilter)))
 				{
 					std::string toPrint = FormatString(">> Handler: %s, filters: %s", eventCallback.GetCallbackFuncAsStr().c_str(),
 						eventCallback.GetFiltersAsStr().c_str());
@@ -896,8 +896,8 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 		{
 			for (auto const &[key, eventCallback] : info.callbacks)
 			{
-				if (argsToFilter->empty() 
-					|| EventManager::DoFiltersMatch(thisObj, info, eventCallback, argsToFilter))
+				if (!eventCallback.pendingRemove && (argsToFilter->empty()
+					|| EventManager::DoFiltersMatch(thisObj, info, eventCallback, argsToFilter)))
 				{
 					std::string toPrint = FormatString(">> Handler: %s, filters: %s", eventCallback.GetCallbackFuncAsStr().c_str(),
 						eventCallback.GetFiltersAsStr().c_str());
@@ -995,8 +995,8 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 			for (auto i = range.first; i != range.second; ++i)
 			{
 				auto const& eventCallback = i->second;
-				if (argsToFilter->empty() ||
-					EventManager::DoFiltersMatch(thisObj, info, eventCallback, argsToFilter))
+				if (!eventCallback.pendingRemove && (argsToFilter->empty() ||
+					EventManager::DoFiltersMatch(thisObj, info, eventCallback, argsToFilter)))
 				{
 					handlersForEventArray->SetElementArray(key, GetHandlerArr(eventCallback, scriptObj)->ID());
 					key++;
@@ -1008,8 +1008,8 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 			double key = 0;
 			for (auto const& [callbackFuncKey, eventCallback] : info.callbacks)
 			{
-				if (argsToFilter->empty()
-					|| EventManager::DoFiltersMatch(thisObj, info, eventCallback, argsToFilter))
+				if (!eventCallback.pendingRemove && (argsToFilter->empty()
+					|| EventManager::DoFiltersMatch(thisObj, info, eventCallback, argsToFilter)))
 				{
 					handlersForEventArray->SetElementArray(key, GetHandlerArr(eventCallback, scriptObj)->ID());
 					key++;
