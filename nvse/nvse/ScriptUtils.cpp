@@ -2217,39 +2217,29 @@ bool ExpressionParser::ParseUserFunctionCall()
 	}
 
 	UInt32 peekLen = 0;
-	bool foundFunc = false;
-	Script *funcScript = nullptr;
 	const auto funcForm = PeekOperand(peekLen);
-	auto savedLenPtr = (UInt16 *)(m_lineBuf->dataBuf + m_lineBuf->dataOffset);
-	const UInt16 startingOffset = m_lineBuf->dataOffset;
-	m_lineBuf->dataOffset += 2;
 
-	if (!funcForm)
-		return false;
-	else if (funcForm->Type() == kTokenType_ArrayVar)
+	TESForm* form;
+	Script* funcScript{};
+	if (funcForm && (form = funcForm->GetTESForm()) && (funcScript = DYNAMIC_CAST(form, TESForm, Script)))
 	{
-		foundFunc = CanConvertOperand(ParseSubExpression(paramLen - Offset()), kTokenType_Form);
-	}
-	else
-	{
-		TESForm *form = funcForm->GetTESForm();
-		funcScript = DYNAMIC_CAST(form, TESForm, Script);
-		if (!(!funcScript && (form || !funcForm->CanConvertTo(kTokenType_Form))))
-		{
-			foundFunc = true;
-			funcForm->Write(m_lineBuf);
-			Offset() += peekLen;
-		}
-	}
-
-	if (!foundFunc)
-	{
-		Message(kError_ExpectedUserFunction);
-		return false;
-	}
-	else
-	{
+		// Script editor ID or lambda
+		auto* savedLenPtr = reinterpret_cast<UInt16*>(m_lineBuf->dataBuf + m_lineBuf->dataOffset);
+		const UInt16 startingOffset = m_lineBuf->dataOffset;
+		m_lineBuf->dataOffset += 2;
+		funcForm->Write(m_lineBuf);
+		Offset() += peekLen;
 		*savedLenPtr = m_lineBuf->dataOffset - startingOffset;
+	}
+	else
+	{
+		// array element, result of function call or ref var
+		const auto type = ParseArgument(m_len);
+		if (!CanConvertOperand(type, kTokenType_Form))
+		{
+			Message(kError_ExpectedUserFunction);
+			return false;
+		}
 	}
 
 	// skip any commas between function name and args
@@ -2258,8 +2248,6 @@ bool ExpressionParser::ParseUserFunctionCall()
 		Offset()++;
 
 	// determine paramInfo for function and parse the args
-	bool bParsed = false;
-
 	// lookup paramInfo from Script
 	// if recursive call, look up from ScriptBuffer instead
 	if (funcScript && funcScript->text)
@@ -2281,17 +2269,15 @@ bool ExpressionParser::ParseUserFunctionCall()
 		DynamicParamInfo dynamicParams(funcParams);
 
 		ExpressionParser parser(m_scriptBuf, m_lineBuf); // created a new one instead of using this since since m_numArgsParsed is > 0 in Cmd_CallAfter_Parse
-		bParsed = parser.ParseArgs(dynamicParams.Params(), dynamicParams.NumParams());
-	}
-	else // using refVar as function pointer, use default params OR NOT EDITOR
-	{
-		ParamInfo *params = kParams_DefaultUserFunctionParams;
-		const UInt32 numParams = NUM_PARAMS(kParams_DefaultUserFunctionParams);
-
-		bParsed = ParseArgs(params, numParams);
+		return parser.ParseArgs(dynamicParams.Params(), dynamicParams.NumParams());
 	}
 
-	return bParsed;
+	// using refVar as function pointer, use default params
+	// or in-game console, array elem or function result
+	ParamInfo *params = kParams_DefaultUserFunctionParams;
+	constexpr UInt32 numParams = NUM_PARAMS(kParams_DefaultUserFunctionParams);
+
+	return ParseArgs(params, numParams);
 }
 
 bool ExpressionParser::ParseUserFunctionDefinition() const

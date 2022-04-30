@@ -42,4 +42,21 @@ end)
 
 call TestUdfScript 2 3.5 "Jingle Bells" (ar_map "Key"::"Value")
 
+ref TestUdfScript2 = ({int iArg0, int iArg1} => iArg0 + iArg1)
+
+; test Call on array element
+aVar = ar_list TestUdfScript2
+int iResult = call aVar[0] 5 5
+Assert iResult == 10
+
+; test Call on function that returns script
+SetModLocalData "Func" TestUdfScript2
+int iResult2 = call (GetModLocalData "Func") 10 10
+Assert iResult2 == 20
+
+; test Call on inline lambda
+int iResult3 = call ({int iArg0} => iArg0) 98
+Assert iResult3 == 98
+
+
 print "Finished running xNVSE script unit tests"
