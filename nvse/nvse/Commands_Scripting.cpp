@@ -690,6 +690,23 @@ bool Cmd_Internal_PopExecutionContext_Execute(COMMAND_ARGS)
 	return ExtractArgsOverride::PopContext();
 }
 
+
+bool Cmd_Assert_Execute(COMMAND_ARGS)
+{
+	ExpressionEvaluator evaluator(PASS_COMMAND_ARGS);
+	if (!evaluator.ExtractArgs() || !evaluator.Arg(0)->GetNumber())
+	{
+		const auto lineText = evaluator.GetLineText();
+		const auto varText = evaluator.GetVariablesText();
+		Console_Print("Assertion failed!");
+		if (!lineText.empty())
+			Console_Print("\t%s", lineText.c_str());
+		if (!varText.empty())
+			Console_Print("\tWhere %s", varText.c_str());
+	}
+	return true;
+}
+
 #endif
 
 bool Cmd_Let_Parse(UInt32 numParams, ParamInfo* paramInfo, ScriptLineBuffer* lineBuf, ScriptBuffer* scriptBuf)
@@ -765,7 +782,6 @@ bool Cmd_Call_Parse(UInt32 numParams, ParamInfo* paramInfo, ScriptLineBuffer* li
 	return parser.ParseUserFunctionCall();
 }
 
-
 static ParamInfo kParams_OneBasicType[] =
 {
 	{	"expression",	kNVSEParamType_BasicType,	0	},
@@ -784,11 +800,6 @@ CommandInfo kCommandInfo_Let =
 	Cmd_Let_Parse,
 	NULL,
 	0
-};
-
-static ParamInfo kParams_OneBoolean[] =
-{
-	{	"boolean expression",	kNVSEParamType_Boolean,	0	},
 };
 
 CommandInfo kCommandInfo_eval =

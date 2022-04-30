@@ -2217,39 +2217,29 @@ bool ExpressionParser::ParseUserFunctionCall()
 	}
 
 	UInt32 peekLen = 0;
-	bool foundFunc = false;
-	Script *funcScript = nullptr;
 	const auto funcForm = PeekOperand(peekLen);
-	auto savedLenPtr = (UInt16 *)(m_lineBuf->dataBuf + m_lineBuf->dataOffset);
-	const UInt16 startingOffset = m_lineBuf->dataOffset;
-	m_lineBuf->dataOffset += 2;
 
-	if (!funcForm)
-		return false;
-	else if (funcForm->Type() == kTokenType_ArrayVar)
+	TESForm* form;
+	Script* funcScript{};
+	if (funcForm && (form = funcForm->GetTESForm()) && (funcScript = DYNAMIC_CAST(form, TESForm, Script)))
 	{
-		foundFunc = CanConvertOperand(ParseSubExpression(paramLen - Offset()), kTokenType_Form);
-	}
-	else
-	{
-		TESForm *form = funcForm->GetTESForm();
-		funcScript = DYNAMIC_CAST(form, TESForm, Script);
-		if (!(!funcScript && (form || !funcForm->CanConvertTo(kTokenType_Form))))
-		{
-			foundFunc = true;
-			funcForm->Write(m_lineBuf);
-			Offset() += peekLen;
-		}
-	}
-
-	if (!foundFunc)
-	{
-		Message(kError_ExpectedUserFunction);
-		return false;
-	}
-	else
-	{
+		// Script editor ID or lambda
+		auto* savedLenPtr = reinterpret_cast<UInt16*>(m_lineBuf->dataBuf + m_lineBuf->dataOffset);
+		const UInt16 startingOffset = m_lineBuf->dataOffset;
+		m_lineBuf->dataOffset += 2;
+		funcForm->Write(m_lineBuf);
+		Offset() += peekLen;
 		*savedLenPtr = m_lineBuf->dataOffset - startingOffset;
+	}
+	else
+	{
+		// array element, result of function call or ref var
+		const auto type = ParseArgument(m_len);
+		if (!CanConvertOperand(type, kTokenType_Form))
+		{
+			Message(kError_ExpectedUserFunction);
+			return false;
+		}
 	}
 
 	// skip any commas between function name and args
@@ -2258,8 +2248,6 @@ bool ExpressionParser::ParseUserFunctionCall()
 		Offset()++;
 
 	// determine paramInfo for function and parse the args
-	bool bParsed = false;
-
 	// lookup paramInfo from Script
 	// if recursive call, look up from ScriptBuffer instead
 	if (funcScript && funcScript->text)
@@ -2281,17 +2269,15 @@ bool ExpressionParser::ParseUserFunctionCall()
 		DynamicParamInfo dynamicParams(funcParams);
 
 		ExpressionParser parser(m_scriptBuf, m_lineBuf); // created a new one instead of using this since since m_numArgsParsed is > 0 in Cmd_CallAfter_Parse
-		bParsed = parser.ParseArgs(dynamicParams.Params(), dynamicParams.NumParams());
-	}
-	else // using refVar as function pointer, use default params OR NOT EDITOR
-	{
-		ParamInfo *params = kParams_DefaultUserFunctionParams;
-		const UInt32 numParams = NUM_PARAMS(kParams_DefaultUserFunctionParams);
-
-		bParsed = ParseArgs(params, numParams);
+		return parser.ParseArgs(dynamicParams.Params(), dynamicParams.NumParams());
 	}
 
-	return bParsed;
+	// using refVar as function pointer, use default params
+	// or in-game console, array elem or function result
+	ParamInfo *params = kParams_DefaultUserFunctionParams;
+	constexpr UInt32 numParams = NUM_PARAMS(kParams_DefaultUserFunctionParams);
+
+	return ParseArgs(params, numParams);
 }
 
 bool ExpressionParser::ParseUserFunctionDefinition() const
@@ -3566,9 +3552,9 @@ void ExpressionEvaluator::ReadBuf(UInt32 len, UInt8 *data)
 	Data() += len;
 }
 
-UInt8 *ExpressionEvaluator::GetCommandOpcodePosition() const
+UInt8 *ExpressionEvaluator::GetCommandOpcodePosition(UInt32* opcodeOffsetPtr) const
 {
-	return script->data + *m_opcodeOffsetPtr;
+	return script->data + *opcodeOffsetPtr;
 }
 
 CommandInfo *ExpressionEvaluator::GetCommand() const
@@ -3630,10 +3616,10 @@ void ExpressionEvaluator::PopFromStack() const
 const char *g_lastScriptName = nullptr;
 #endif
 ExpressionEvaluator::ExpressionEvaluator(COMMAND_ARGS) : m_opcodeOffsetPtr(opcodeOffsetPtr), m_result(result),
-														 m_thisObj(thisObj), m_containingObj(containingObj), m_params(paramInfo), m_numArgsExtracted(0), m_expectedReturnType(kRetnType_Default), m_baseOffset(0),
-														 localData(ThreadLocalData::Get()), script(scriptObj), eventList(eventList), m_inline(false)
+	m_thisObj(thisObj), m_containingObj(containingObj), m_params(paramInfo), m_numArgsExtracted(0), m_expectedReturnType(kRetnType_Default), m_baseOffset(0),
+	localData(ThreadLocalData::Get()), m_inline(false), script(scriptObj), eventList(eventList)
 {
-	m_scriptData = static_cast<UInt8 *>(scriptData);
+	m_scriptData = static_cast<UInt8*>(scriptData);
 	m_data = m_scriptData + *m_opcodeOffsetPtr;
 	m_pushedOnStack = true;
 
@@ -3646,7 +3632,7 @@ ExpressionEvaluator::ExpressionEvaluator(COMMAND_ARGS) : m_opcodeOffsetPtr(opcod
 
 ExpressionEvaluator::~ExpressionEvaluator()
 {
-	if (moved_) [[unlikely]]
+	if (moved_.moved) [[unlikely]]
 		return;
 	if (m_pushedOnStack)
 		PopFromStack();
@@ -4654,55 +4640,6 @@ void ParseShortCircuit(CachedTokens &cachedTokens)
 	}
 }
 
-ExpressionEvaluator::ExpressionEvaluator(ExpressionEvaluator&& other) noexcept:
-	m_flags(other.m_flags),
-	m_scriptData(other.m_scriptData),
-	m_opcodeOffsetPtr(other.m_opcodeOffsetPtr),
-	m_result(other.m_result),
-	m_thisObj(other.m_thisObj),
-	m_containingObj(other.m_containingObj),
-	m_data(other.m_data),
-	m_params(other.m_params),
-	m_numArgsExtracted(other.m_numArgsExtracted),
-	m_expectedReturnType(other.m_expectedReturnType),
-	m_baseOffset(other.m_baseOffset),
-	m_parent(other.m_parent),
-	localData(other.localData),
-	errorMessages(std::move(other.errorMessages)),
-	m_inline(other.m_inline),
-	script(other.script),
-	eventList(other.eventList)
-{
-	std::memcpy(this->m_args, other.m_args, other.m_numArgsExtracted);
-	other.moved_ = true; // no need to memset other.m_args, moved_ will return from destructor
-}
-
-ExpressionEvaluator& ExpressionEvaluator::operator=(ExpressionEvaluator&& other) noexcept
-{
-	if (this == &other)
-		return *this;
-	other.moved_ = true;
-	std::memcpy(this->m_args, other.m_args, other.m_numArgsExtracted);
-	m_flags = other.m_flags;
-	m_scriptData = other.m_scriptData;
-	m_opcodeOffsetPtr = other.m_opcodeOffsetPtr;
-	m_result = other.m_result;
-	m_thisObj = other.m_thisObj;
-	m_containingObj = other.m_containingObj;
-	m_data = other.m_data;
-	m_params = other.m_params;
-	m_numArgsExtracted = other.m_numArgsExtracted;
-	m_expectedReturnType = other.m_expectedReturnType;
-	m_baseOffset = other.m_baseOffset;
-	m_parent = other.m_parent;
-	localData = other.localData;
-	errorMessages = std::move(other.errorMessages);
-	m_inline = other.m_inline;
-	script = other.script;
-	eventList = other.eventList;
-	return *this;
-}
-
 bool ExpressionEvaluator::ParseBytecode(CachedTokens &cachedTokens)
 {
 	const UInt8 *dataBeforeParsing = m_data;
@@ -4761,10 +4698,11 @@ thread_local TokenCache g_tokenCache;
 thread_local std::string g_curLineText;
 #endif
 
-CachedTokens* ExpressionEvaluator::GetTokens(std::optional<CachedTokens>* consoleTokens)
+CachedTokens* ExpressionEvaluator::GetTokens(std::optional<CachedTokens>* consoleTokensContainer)
 {
-	const bool isConsole = script->GetModIndex() == 0xFF && consoleTokens;
-	CachedTokens &cache = !isConsole ? g_tokenCache.Get(GetCommandOpcodePosition()) : *(*consoleTokens = CachedTokens());
+	// consoleTokensContainer serves as storage for CachedTokens if scriptData is not permanent memory
+	const bool isConsole = script->GetModIndex() == 0xFF && consoleTokensContainer;
+	CachedTokens &cache = !isConsole ? g_tokenCache.Get(GetCommandOpcodePosition(m_opcodeOffsetPtr)) : *(*consoleTokensContainer = CachedTokens());
 	if (isConsole)
 		cache.Clear();
 	if (cache.Empty() || isConsole)
@@ -4823,7 +4761,7 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 			{
 				// There needs to be a unique lambda per script event list so that variables can have the correct values
 				// curToken needs not be deleted since it's always cached
-				auto *script = CreateLambdaScript(GetCommandOpcodePosition(), curToken->value.lambdaScriptData, *this);
+				auto *script = CreateLambdaScript(GetCommandOpcodePosition(m_opcodeOffsetPtr), curToken->value.lambdaScriptData, *this);
 				if (!script)
 				{
 					Error("Failed to create lambda script");
@@ -4915,12 +4853,35 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 	return operands.Top();
 }
 
+std::string ExpressionEvaluator::GetLineText()
+{
+	ResetCursor();
+	const UInt32 numArgs = ReadByte();
+	std::string lineText;
+	if (const auto* command = GetCommand())
+	{
+		lineText += std::string(command->longName) + " ";
+	}
+	for (int i = 0; i < numArgs; ++i)
+	{
+		std::optional<CachedTokens> consoleTokens;
+		const auto tokens = this->GetTokens(&consoleTokens);
+		const auto arg = this->GetLineText(*tokens, nullptr);
+		if (numArgs != 1 && tokens->Size() > 1) // if multiple args, separate args with brackets
+			lineText += '(' + arg + ')';
+		else
+			lineText += arg;
+		if (i != numArgs - 1)
+			lineText += ' ';
+	}
+	return lineText;
+}
+
 std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *faultingToken) const
 {
 	std::vector<std::string> operands;
 	std::vector<Operator*> operators;
 	std::unordered_set<std::string> composites;
-	auto* cmd = GetCommand();
 	for (auto iter = tokens.Begin(); !iter.End(); ++iter)
 	{
 		auto &token = *iter.Get().token;
@@ -5135,6 +5096,29 @@ std::string ExpressionEvaluator::GetVariablesText(CachedTokens &tokens) const
 	for (auto i = 0; i < 2 && !result.empty(); ++i)
 		result.pop_back(); // remove ", "
 	return result;
+}
+
+std::string ExpressionEvaluator::GetVariablesText()
+{
+	ResetCursor();
+	const auto numArgs = ReadByte();
+	std::string varText;
+	for (int i = 0; i < numArgs; ++i)
+	{
+		std::optional<CachedTokens> consoleTokens;
+		const auto tokens = this->GetTokens(&consoleTokens);
+		varText += this->GetVariablesText(*tokens);
+		if (i != numArgs - 1)
+			varText += '\n';
+	}
+	return varText;
+}
+
+// Resets position of data pointer and opcode offset pointer
+void ExpressionEvaluator::ResetCursor()
+{
+	*m_opcodeOffsetPtr = m_baseOffset + 4;
+	m_data = m_scriptData + *m_opcodeOffsetPtr;
 }
 
 //	Pop required operand(s)

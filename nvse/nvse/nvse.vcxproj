@@ -191,7 +191,9 @@
     </Link>
     <PostBuildEvent>
       <Message>Installing DLL...</Message>
-      <Command>copy "$(TargetPath)" "$(FalloutNVPath)\nvse_1_4.dll"</Command>
+      <Command>copy "$(TargetPath)" "$(FalloutNVPath)\nvse_1_4.dll"
+copy "$(ProjectDir)gr_UnitTests.txt" "$(FalloutNVPath)\Data\NVSE\Plugins\scripts\gr_UnitTests.txt"
+</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -756,6 +758,9 @@
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="DebuggerVisualizations.natvis" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="gr_UnitTests.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -6,7 +6,7 @@ typedef void* (*memcpy_t)(void*, const void*, size_t);
 extern memcpy_t _memcpy, _memmove;
 
 //	Workaround for bypassing the compiler calling the d'tor on function-scope objects.
-template <typename T> class TempObject
+template <typename T, bool InitConstructor = true> class TempObject
 {
 	friend T;
 
@@ -17,7 +17,11 @@ template <typename T> class TempObject
 	objData;
 
 public:
-	TempObject() {Reset();}
+	TempObject()
+	{
+		if constexpr (InitConstructor)
+			Reset();
+	}
 	TempObject(const T &src) {objData = *(Buffer*)&src;}
 
 	void Reset() {new ((T*)&objData) T();}

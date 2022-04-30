@@ -510,4 +510,7 @@
   <ItemGroup>
     <Natvis Include="DebuggerVisualizations.natvis" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="gr_UnitTests.txt" />
+  </ItemGroup>
 </Project>
