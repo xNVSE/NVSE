@@ -870,19 +870,22 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 		filters->push_back(arg);
 	}
 
+	//auto constexpr 
+
 	if (eventID == EventManager::kEventID_INVALID)
 	{
 		// loop through all eventInfo callbacks, filtering by script + filters
 		for (auto eventInfoIter = EventManager::s_eventInfos.Begin();
 			!eventInfoIter.End(); ++eventInfoIter)
 		{
-			//todo...
+			auto const& eventInfo = eventInfoIter.Get();
+
 		}
 	}
 	else //filtered by eventID
 	{
 		auto const& eventInfo = EventManager::s_eventInfos[eventID];
-		//todo...
+		
 	}
 
 	return true;

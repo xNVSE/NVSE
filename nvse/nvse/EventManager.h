@@ -27,6 +27,7 @@ typedef void (*EventHookInstaller)();
 namespace EventManager
 {
 	extern Stack<const char *> s_eventStack;
+	extern UInt32 s_eventsInUse;
 
 	struct EventInfo;
 	typedef Vector<EventInfo> EventInfoList;
@@ -150,7 +151,7 @@ namespace EventManager
 
 		[[nodiscard]] bool IsRemoved() const { return removed; }
 		void SetRemoved(bool bSet) { removed = bSet; }
-		[[nodiscard]] bool Equals(const EventCallback &rhs) const; // compare, return true if the two handlers are identical
+		[[nodiscard]] bool EqualFilters(const EventCallback &rhs) const; // compare, return true if the two handlers are identical
 
 		[[nodiscard]] Script *TryGetScript() const;
 		[[nodiscard]] bool HasCallbackFunc() const;
@@ -165,7 +166,13 @@ namespace EventManager
 		std::unique_ptr<ScriptToken> Invoke(EventInfo *eventInfo, void *arg0, void *arg1);
 	};
 
-	typedef LinkedList<EventCallback> CallbackList;
+	//Does not attempt to store lambda info for Script*.
+	using BasicCallbackFunc = std::variant<Script*, EventHandler>;
+
+	BasicCallbackFunc GetBasicCallback(const EventCallback::CallbackFunc& func);
+
+	//Each callback function can have multiple EventCallbacks.
+	using CallbackMap = std::multimap<BasicCallbackFunc, EventCallback>;
 
 	struct EventInfo
 	{
@@ -180,26 +187,20 @@ namespace EventManager
 
 		EventInfo() : evName(""), paramTypes(nullptr) {}
 
-		EventInfo(const EventInfo &other) = default;
+		EventInfo(const EventInfo &other) = delete;
+		EventInfo& operator=(const EventInfo& other) = delete;
 
-		EventInfo &operator=(const EventInfo &other)
+		EventInfo(EventInfo&& other) noexcept :
+			evName(other.evName), paramTypes(other.paramTypes), numParams(other.numParams),
+			eventMask(other.eventMask), callbacks(std::move(other.callbacks)), installHook(other.installHook), flags(other.flags)
 		{
-			if (this == &other)
-				return *this;
-			evName = other.evName;
-			paramTypes = other.paramTypes;
-			numParams = other.numParams;
-			callbacks = other.callbacks;
-			eventMask = other.eventMask;
-			installHook = other.installHook;
-			return *this;
 		}
 
 		const char *evName; // must be lowercase
 		EventFilterType *paramTypes;
 		UInt8 numParams = 0;
 		UInt32 eventMask = 0;
-		CallbackList callbacks;
+		CallbackMap callbacks;
 		EventHookInstaller *installHook{}; // if a hook is needed for this event type, this will be non-null.
 										   // install it once and then set *installHook to NULL. Allows multiple events
 										   // to use the same hook, installing it only once.

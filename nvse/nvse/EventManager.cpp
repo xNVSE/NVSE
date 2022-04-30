@@ -310,10 +310,9 @@ UInt32 EventIDForMessage(UInt32 msgID)
 
 EventInfoList s_eventInfos(0x30);
 
-bool EventCallback::Equals(const EventCallback& rhs) const
+bool EventCallback::EqualFilters(const EventCallback& rhs) const
 {
-	return (toCall == rhs.toCall) && (object == rhs.object) && (source == rhs.source)
-	&& (filters == rhs.filters);
+	return (object == rhs.object) && (source == rhs.source) && (filters == rhs.filters);
 }
 
 Script* EventCallback::TryGetScript() const
@@ -420,6 +419,21 @@ std::unique_ptr<ScriptToken> EventCallback::Invoke(EventInfo* eventInfo, void* a
 		}, this->toCall);
 }
 
+BasicCallbackFunc GetBasicCallback(const EventCallback::CallbackFunc& func)
+{
+	return std::visit(overloaded
+		{
+			[=](const LambdaManager::Maybe_Lambda& script) -> BasicCallbackFunc
+			{
+				return script.Get();
+			},
+			[=](const EventHandler& handler) -> BasicCallbackFunc
+			{
+				return handler;
+			}
+		}, func);
+}
+
 bool IsValidReference(void* refr)
 {
 	bool bIsRefr = false;
@@ -471,19 +485,19 @@ DeferredCallbackList s_deferredCallbacks;
 struct DeferredRemoveCallback
 {
 	EventInfo				*eventInfo;
-	CallbackList::Iterator	iterator;
+	CallbackMap::iterator	iterator;
 
-	DeferredRemoveCallback(EventInfo *pEventInfo, const CallbackList::Iterator &iter) : eventInfo(pEventInfo), iterator(iter) {}
+	DeferredRemoveCallback(EventInfo *pEventInfo, const CallbackMap::iterator &iter) : eventInfo(pEventInfo), iterator(iter) {}
 
 	~DeferredRemoveCallback()
 	{
-		if (iterator.Get().removed)
+		if (iterator->second.removed)
 		{
-			eventInfo->callbacks.Remove(iterator);
-			if (eventInfo->callbacks.Empty() && eventInfo->eventMask)
+			eventInfo->callbacks.erase(iterator);
+			if (eventInfo->callbacks.empty() && eventInfo->eventMask)
 				s_eventsInUse &= ~eventInfo->eventMask;
 		}
-		else iterator.Get().pendingRemove = false;
+		else iterator->second.pendingRemove = false;
 	}
 };
 
@@ -497,12 +511,13 @@ void __stdcall HandleEvent(UInt32 id, void* arg0, void* arg1)
 {
 	ScopedLock lock(s_criticalSection);
 	EventInfo* eventInfo = &s_eventInfos[id];
-	if (eventInfo->callbacks.Empty()) return;
+	if (eventInfo->callbacks.empty()) 
+		return;
 
 	auto isArg0Valid = RefState::NotSet;
-	for (auto iter = eventInfo->callbacks.Begin(); !iter.End(); ++iter)
+	for (auto& iter : eventInfo->callbacks)
 	{
-		EventCallback &callback = iter.Get();
+		EventCallback &callback = iter.second;
 
 		if (callback.IsRemoved())
 			continue;
@@ -600,22 +615,26 @@ bool SetHandler(const char* eventName, EventCallback& toSet)
 			info->installHook = nullptr;
 		}
 
-		if (!info->callbacks.Empty())
+		auto const basicCallback = GetBasicCallback(toSet.toCall);
+
+		if (!info->callbacks.empty())
 		{
 			// if an existing handler matches this one exactly, don't duplicate it
-			for (auto iter = info->callbacks.Begin(); !iter.End(); ++iter)
+			auto const range = info->callbacks.equal_range(basicCallback);
+			// loop over all EventCallbacks with the same callback script/function.
+			for (auto i = range.first; i != range.second; ++i)
 			{
-				if (iter.Get().Equals(toSet))
+				if (i->second.EqualFilters(toSet))
 				{
 					// may be re-adding a previously removed handler, so clear the Removed flag
-					iter.Get().SetRemoved(false);
+					i->second.SetRemoved(false);
 					return false;
 				}
 			}
 		}
 
 		toSet.Confirm();
-		info->callbacks.Append(std::move(toSet));
+		//info->callbacks.emplace(basicCallback, std::move(toSet));
 
 		s_eventsInUse |= info->eventMask;
 
@@ -676,14 +695,14 @@ bool RemoveHandler(const char* id, const EventCallback& toRemove)
 	if (eventType < s_eventInfos.Size())
 	{
 		EventInfo &eventInfo = s_eventInfos[eventType];
-		if (!eventInfo.callbacks.Empty())
+		if (!eventInfo.callbacks.empty())
 		{
-			for (auto iter = eventInfo.callbacks.Begin(); !iter.End(); ++iter)
+			auto const basicCallback = GetBasicCallback(toRemove.toCall);
+			auto const range = eventInfo.callbacks.equal_range(basicCallback);
+			// loop over all EventCallbacks with the same callback script/function.
+			for (auto i = range.first; i != range.second; ++i)
 			{
-				EventCallback &nthCallback = iter.Get();
-
-				if (toRemove.toCall != nthCallback.toCall)
-					continue;
+				EventCallback &nthCallback = i->second;
 
 				if (!toRemove.ShouldRemoveCallback(nthCallback, eventInfo))
 					continue;
@@ -693,7 +712,7 @@ bool RemoveHandler(const char* id, const EventCallback& toRemove)
 				if (!nthCallback.pendingRemove)
 				{
 					nthCallback.pendingRemove = true;
-					s_deferredRemoveList.Push(&eventInfo, iter);
+					s_deferredRemoveList.Push(&eventInfo, i);
 				}
 
 				bRemovedAtLeastOne = true;
@@ -1027,9 +1046,8 @@ DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, Fi
 	DispatchCallback resultCallback, void* anyData)
 {
 	DispatchReturn result = DispatchReturn::kRetn_Normal;
-	for (auto iter = eventInfo.callbacks.Begin(); !iter.End(); ++iter)
+	for (auto & [funcKey, callback] : eventInfo.callbacks)
 	{
-		const auto& callback = iter.Get();
 		if (callback.IsRemoved())
 			continue;
 
@@ -1248,8 +1266,7 @@ bool RegisterEventEx(const char* name, UInt8 numParams, EventFilterType* paramTy
 	if (!s_eventNameToID.Insert(name, &idPtr))
 		return false; // event with this name already exists
 	*idPtr = s_eventInfos.Size();
-	const auto event = EventInfo(name, paramTypes, numParams, eventMask, hookInstaller, flags);
-	s_eventInfos.Append(event);
+	s_eventInfos.Append(EventInfo(name, paramTypes, numParams, eventMask, hookInstaller, flags));
 	return true;
 }
 
@@ -1276,10 +1293,13 @@ bool EventHandlerExist(const char* ev, const EventCallback& handler)
 	const UInt32 eventType = EventIDForString(ev);
 	if (eventType < s_eventInfos.Size()) 
 	{
-		CallbackList& callbacks = s_eventInfos[eventType].callbacks;
-		for (auto iter = callbacks.Begin(); !iter.End(); ++iter) 
+		CallbackMap& callbacks = s_eventInfos[eventType].callbacks;
+		auto const basicCallback = GetBasicCallback(handler.toCall);
+		auto const range = callbacks.equal_range(basicCallback);
+		// loop over all EventCallbacks with the same callback script/function.
+		for (auto i = range.first; i != range.second; ++i)
 		{
-			if (iter.Get().Equals(handler)) 
+			if (i->second.EqualFilters(handler)) 
 			{
 				return true;
 			}
