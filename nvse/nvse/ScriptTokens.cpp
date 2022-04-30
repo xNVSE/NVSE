@@ -853,8 +853,10 @@ void* ScriptToken::GetAsVoidArg() const
 		return const_cast<char*>(GetString());
 	if (CanConvertTo(kTokenType_Form))
 		return LookupFormByID(GetFormID());
+#if RUNTIME
 	if (CanConvertTo(kTokenType_Array))
 		return reinterpret_cast<void*>(GetArrayID());
+#endif
 	return nullptr;
 }
 

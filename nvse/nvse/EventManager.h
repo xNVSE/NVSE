@@ -149,6 +149,9 @@ namespace EventManager
 		// Using a map to avoid adding duplicate indexes.
 		std::map<Index, Filter> filters;
 
+		[[nodiscard]] std::string GetFiltersAsStr() const;
+		[[nodiscard]] std::string GetCallbackFuncAsStr() const;
+
 		[[nodiscard]] bool IsRemoved() const { return removed; }
 		void SetRemoved(bool bSet) { removed = bSet; }
 		[[nodiscard]] bool EqualFilters(const EventCallback &rhs) const; // compare, return true if the two handlers are identical
@@ -196,7 +199,7 @@ namespace EventManager
 		{
 		}
 
-		const char *evName; // must be lowercase
+		const char *evName; // must be lowercase (??)
 		EventFilterType *paramTypes;
 		UInt8 numParams = 0;
 		UInt32 eventMask = 0;
@@ -215,6 +218,11 @@ namespace EventManager
 			return flags & EventFlags::kFlag_IsUserDefined;
 		}
 	};
+
+	using ArgStack = StackVector<void*, kMaxUdfParams>;
+	static constexpr auto numMaxFilters = kMaxUdfParams;
+
+	bool DoFiltersMatch(TESObjectREFR* thisObj, const EventInfo& eventInfo, const EventCallback& callback, const ArgStack& params);
 
 	bool SetHandler(const char *eventName, EventCallback &toSet);
 
@@ -245,10 +253,7 @@ namespace EventManager
 	bool SetNativeEventHandler(const char *eventName, EventHandler func);
 	bool RemoveNativeEventHandler(const char *eventName, EventHandler func);
 
-	static constexpr auto numMaxFilters = kMaxUdfParams;
-	using FilterStack = StackVector<void*, numMaxFilters>;
-
-	DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, FilterStack& params,
+	DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params,
 		DispatchCallback resultCallback = nullptr, void* anyData = nullptr);
 
 	bool DispatchEvent(const char *eventName, TESObjectREFR *thisObj, ...);

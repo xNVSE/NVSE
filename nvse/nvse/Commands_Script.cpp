@@ -828,7 +828,7 @@ bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 	if (!eventInfo.IsUserDefined())
 		return true;
 
-	EventManager::FilterStack params;
+	EventManager::ArgStack params;
 	auto const numArgs = eval.NumArgs();
 	for (size_t i = 1; i < numArgs; i++)
 	{
@@ -848,7 +848,7 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 	auto const numArgs = eval.NumArgs();
 
 	UInt32 eventID = EventManager::kEventID_INVALID;
-	Script* callbackScript = nullptr;
+	Script* script = nullptr;
 	if (numArgs >= 1)
 	{
 		if (const char* eventName = eval.Arg(0)->GetString();
@@ -859,18 +859,53 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 
 		if (numArgs >= 2)
 		{
-			callbackScript = eval.Arg(1)->GetUserFunction();
+			script = eval.Arg(1)->GetUserFunction();
 		}
 	}
 
-	EventManager::FilterStack filters{};
+	EventManager::ArgStack argsToFilter{};
 	for (size_t i = 2; i < numArgs; i++)
 	{
 		auto const arg = eval.Arg(i)->GetAsVoidArg();
-		filters->push_back(arg);
+		argsToFilter->push_back(arg);
 	}
 
-	//auto constexpr 
+	Console_Print("DumpEventHandlers >> Beginning dump.");
+
+	// Dumps all (matching) callbacks of the EventInfo
+	auto const DumpEventInfo = [&argsToFilter, script, thisObj](const EventManager::EventInfo &info)
+	{
+		Console_Print("== Dumping for event %s ==", info.evName);
+
+		if (script)
+		{
+			auto const range = info.callbacks.equal_range(script);
+			for (auto i = range.first; i != range.second; ++i)
+			{
+				auto const& eventCallback = i->second;
+				if (argsToFilter->empty() ||
+					EventManager::DoFiltersMatch(thisObj, info, eventCallback, argsToFilter))
+				{
+					std::string toPrint = FormatString(">> Handler: %s, filters: %s", eventCallback.GetCallbackFuncAsStr().c_str(),
+						eventCallback.GetFiltersAsStr().c_str());
+					Console_Print(toPrint);
+				}
+			}
+		}
+		else
+		{
+			for (auto const &[key, eventCallback] : info.callbacks)
+			{
+				if (argsToFilter->empty() 
+					|| EventManager::DoFiltersMatch(thisObj, info, eventCallback, argsToFilter))
+				{
+					std::string toPrint = FormatString(">> Handler: %s, filters: %s", eventCallback.GetCallbackFuncAsStr().c_str(),
+						eventCallback.GetFiltersAsStr().c_str());
+					Console_Print(toPrint);
+				}
+			}
+		}
+	};
 
 	if (eventID == EventManager::kEventID_INVALID)
 	{
@@ -879,13 +914,13 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 			!eventInfoIter.End(); ++eventInfoIter)
 		{
 			auto const& eventInfo = eventInfoIter.Get();
-
+			DumpEventInfo(eventInfo);
 		}
 	}
 	else //filtered by eventID
 	{
 		auto const& eventInfo = EventManager::s_eventInfos[eventID];
-		
+		DumpEventInfo(eventInfo);
 	}
 
 	return true;

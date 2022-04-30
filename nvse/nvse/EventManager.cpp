@@ -310,6 +310,52 @@ UInt32 EventIDForMessage(UInt32 msgID)
 
 EventInfoList s_eventInfos(0x30);
 
+std::string EventCallback::GetFiltersAsStr() const
+{
+	std::string result;
+
+	if (source)
+	{
+		result += std::string{ R"("first"::)" } + source->GetStringRepresentation();
+	}
+
+	if (object)
+	{
+		if (!result.empty())
+			result += ", ";
+		result += R"("second"::)" + object->GetStringRepresentation();
+	}
+
+	for (auto const &[index, filter] : filters)
+	{
+		if (!result.empty())
+			result += ", ";
+		result += std::to_string(index) + "::" + filter.GetStringRepresentation();
+	}
+
+	if (result.empty())
+	{
+		result = "(None)";
+	}
+
+	return result;
+}
+
+std::string EventCallback::GetCallbackFuncAsStr() const
+{
+	return std::visit(overloaded
+		{
+			[=](const LambdaManager::Maybe_Lambda& script) -> std::string
+			{
+				return script.Get()->GetStringRepresentation();
+			},
+			[=](const EventHandler& handler) -> std::string
+			{
+				return FormatString("[addr: %X]", handler);
+			}
+		}, this->toCall);
+}
+
 bool EventCallback::EqualFilters(const EventCallback& rhs) const
 {
 	return (object == rhs.object) && (source == rhs.source) && (filters == rhs.filters);
@@ -634,7 +680,7 @@ bool SetHandler(const char* eventName, EventCallback& toSet)
 		}
 
 		toSet.Confirm();
-		//info->callbacks.emplace(basicCallback, std::move(toSet));
+		info->callbacks.emplace(basicCallback, std::move(toSet));
 
 		s_eventsInUse |= info->eventMask;
 
@@ -803,7 +849,7 @@ bool DoesFormMatchFilter(TESForm* form, TESForm* filter, bool expectReference, c
 	return false;
 }
 
-bool DoDeprecatedFiltersMatch(const EventInfo& eventInfo, const EventCallback& callback, const FilterStack& params)
+bool DoDeprecatedFiltersMatch(const EventInfo& eventInfo, const EventCallback& callback, const ArgStack& params)
 {
 	if (!callback.source && !callback.object)
 		return true;
@@ -952,11 +998,15 @@ bool ParamTypeMatches(EventFilterType from, EventFilterType to)
 	return false;
 }
 
-bool DoFiltersMatch(TESObjectREFR* thisObj, const EventInfo& eventInfo, const EventCallback& callback, const FilterStack& params)
+bool DoFiltersMatch(TESObjectREFR* thisObj, const EventInfo& eventInfo, const EventCallback& callback, const ArgStack& params)
 {
 	for (auto& [index, filter] : callback.filters)
 	{
 		bool const isCallingRefFilter = index == 0;
+
+		if (index > params->size())
+			return false; // insufficient params to match that filter.
+
 		void* param = isCallingRefFilter ? thisObj : params->at(index - 1);
 
 		if (eventInfo.IsUserDefined()) // Skip filter type checking.
@@ -1042,7 +1092,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 	return true;
 }
 
-DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, FilterStack& params,
+DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params,
 	DispatchCallback resultCallback, void* anyData)
 {
 	DispatchReturn result = DispatchReturn::kRetn_Normal;
@@ -1102,7 +1152,7 @@ bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
 	va_list paramList;
 	va_start(paramList, thisObj);
 
-	FilterStack params;
+	ArgStack params;
 	for (int i = 0; i < eventInfo.numParams; ++i)
 		params->push_back(va_arg(paramList, void*));
 
@@ -1125,7 +1175,7 @@ DispatchReturn DispatchEventAlt(const char* eventName, DispatchCallback resultCa
 	va_list paramList;
 	va_start(paramList, thisObj);
 
-	FilterStack params;
+	ArgStack params;
 	for (int i = 0; i < eventInfo.numParams; ++i)
 		params->push_back(va_arg(paramList, void*));
 
