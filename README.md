@@ -38,6 +38,6 @@ The original NVSE was created and maintained by *Ian Patterson*,
 *Stephen Abel*, *Paul Connelly*, and *Hugues LE PORS*
 (ianpatt, behippo, scruggsywuggsy the ferret, and hlp)
 
-xNVSE is developed by *korri123* (Kormákur) and *jazzisparis*.
+xNVSE is developed by *korri123* (Kormákur), *jazzisparis*, and *Demorome*.
 
-xNVSE has contributions from *Demorome*, *lStewieAl*, *c6* and *carxt*
+xNVSE has contributions from *lStewieAl*, *c6* and *carxt*
