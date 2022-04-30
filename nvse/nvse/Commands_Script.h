@@ -158,7 +158,7 @@ static ParamInfo kNVSEParams_DumpEventHandlers[17] =
 };
 
 DEFINE_COMMAND_EXP(DumpEventHandlers, "dumps event handlers, optionally filtered by eventName, script and args.", 0, kNVSEParams_DumpEventHandlers);
-
+DEFINE_COMMAND_EXP(GetEventHandlers, "returns a multi-dimensional array of event handlers, optionally filtered by eventName, script and args.", 0, kNVSEParams_DumpEventHandlers);
 
 
 static ParamInfo kParams_CallAfter_OLD[3] =

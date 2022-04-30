@@ -926,6 +926,119 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 	return true;
 }
 
+
+bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
+{
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	*result = 0;
+	if (!eval.ExtractArgs())
+		return true;
+	auto const numArgs = eval.NumArgs();
+
+	UInt32 eventID = EventManager::kEventID_INVALID;
+	Script* script = nullptr;
+	if (numArgs >= 1)
+	{
+		if (const char* eventName = eval.Arg(0)->GetString();
+			eventName && eventName[0])
+		{
+			eventID = EventManager::EventIDForString(eventName);
+		}
+
+		if (numArgs >= 2)
+		{
+			script = eval.Arg(1)->GetUserFunction();
+		}
+	}
+
+	EventManager::ArgStack argsToFilter{};
+	for (size_t i = 2; i < numArgs; i++)
+	{
+		auto const arg = eval.Arg(i)->GetAsVoidArg();
+		argsToFilter->push_back(arg);
+	}
+
+	// keys = event handler names, values = an array containing arrays that have [0] = callbackFunc, [1] = filters string map.
+	ArrayVar* eventsMap = g_ArrayMap.Create(kDataType_String, false, scriptObj->GetModIndex());
+	*result = eventsMap->ID();
+
+	// Dumps all (matching) callbacks of the EventInfo
+	auto const GetEventInfoHandlers = [=, &argsToFilter](const EventManager::EventInfo& info) -> ArrayVar*
+	{
+		ArrayVar* handlersForEventArray = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+
+		auto constexpr GetHandlerArr = [](const EventManager::EventCallback& callback, const Script* scriptObj) -> ArrayVar*
+		{
+			// [0] = callbackFunc (script for udf, or int for func ptr), [1] = filters string map.
+			ArrayVar* handlerArr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+
+			std::visit(overloaded
+				{
+					[=](const LambdaManager::Maybe_Lambda& maybeLambda)
+					{
+						handlerArr->SetElementFormID(0.0, maybeLambda.Get()->refID);
+					},
+					[=](const EventManager::EventHandler& handler)
+					{
+						handlerArr->SetElementNumber(0.0, reinterpret_cast<UInt32>(handler));
+					}
+				}, callback.toCall);
+
+			handlerArr->SetElementArray(1.0, callback.GetFiltersAsArray(scriptObj)->ID());
+			return handlerArr;
+		};
+
+		if (script)
+		{
+			auto const range = info.callbacks.equal_range(script);
+			double key = 0;
+			for (auto i = range.first; i != range.second; ++i)
+			{
+				auto const& eventCallback = i->second;
+				if (argsToFilter->empty() ||
+					EventManager::DoFiltersMatch(thisObj, info, eventCallback, argsToFilter))
+				{
+					handlersForEventArray->SetElementArray(key, GetHandlerArr(eventCallback, scriptObj)->ID());
+					key++;
+				}
+			}
+		}
+		else // no script filter
+		{
+			double key = 0;
+			for (auto const& [callbackFuncKey, eventCallback] : info.callbacks)
+			{
+				if (argsToFilter->empty()
+					|| EventManager::DoFiltersMatch(thisObj, info, eventCallback, argsToFilter))
+				{
+					handlersForEventArray->SetElementArray(key, GetHandlerArr(eventCallback, scriptObj)->ID());
+					key++;
+				}
+			}
+		}
+
+		return handlersForEventArray;
+	};
+
+	if (eventID == EventManager::kEventID_INVALID)
+	{
+		// loop through all eventInfo callbacks, filtering by script + filters
+		for (auto eventInfoIter = EventManager::s_eventInfos.Begin();
+			!eventInfoIter.End(); ++eventInfoIter)
+		{
+			auto const& eventInfo = eventInfoIter.Get();
+			eventsMap->SetElementArray(eventInfo.evName, GetEventInfoHandlers(eventInfo)->ID());
+		}
+	}
+	else //filtered by eventID
+	{
+		auto const& eventInfo = EventManager::s_eventInfos[eventID];
+		eventsMap->SetElementArray(eventInfo.evName, GetEventInfoHandlers(eventInfo)->ID());
+	}
+
+	return true;
+}
+
 extern float g_gameSecondsPassed;
 
 bool ExtractCallAfterInfo(ExpressionEvaluator& eval, std::list<DelayedCallInfo>& infos, ICriticalSection& cs)

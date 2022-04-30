@@ -150,6 +150,7 @@ namespace EventManager
 		std::map<Index, Filter> filters;
 
 		[[nodiscard]] std::string GetFiltersAsStr() const;
+		[[nodiscard]] ArrayVar* GetFiltersAsArray(const Script* scriptObj) const;
 		[[nodiscard]] std::string GetCallbackFuncAsStr() const;
 
 		[[nodiscard]] bool IsRemoved() const { return removed; }

@@ -341,6 +341,33 @@ std::string EventCallback::GetFiltersAsStr() const
 	return result;
 }
 
+ArrayVar* EventCallback::GetFiltersAsArray(const Script* scriptObj) const
+{
+	ArrayVar* arr = g_ArrayMap.Create(kDataType_String, false, scriptObj->GetModIndex());
+
+	ArrayElement elem;
+	if (source)
+	{
+		elem.SetTESForm(source);
+		arr->SetElement("first", &elem);
+	}
+
+	if (object)
+	{
+		elem.SetTESForm(object);
+		arr->SetElement("second", &elem);
+	}
+
+	for (auto const& [index, filter] : filters)
+	{
+		elem = filter;
+		arr->SetElement(std::to_string(index).c_str(), &elem);
+	}
+
+	return arr;
+}
+
+
 std::string EventCallback::GetCallbackFuncAsStr() const
 {
 	return std::visit(overloaded

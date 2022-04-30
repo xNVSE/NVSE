@@ -122,7 +122,7 @@ public:
 	bool GetAsArray(ArrayID* out) const;
 	[[nodiscard]] bool GetBool() const;
 
-	bool SetForm(const TESForm* form)
+	bool SetTESForm(const TESForm* form)
 	{
 		Unset();
 
@@ -139,6 +139,19 @@ public:
 	//WARNING: Does not increment the reference count for a copied array;
 	//consider move ctor or calling SetArray.
 	ArrayElement(ArrayElement& from);
+
+	ArrayElement& operator=(const ArrayElement& from)
+	{
+		if (this != &from)
+		{
+			m_data.dataType = from.m_data.dataType;
+			m_data.owningArray = from.m_data.owningArray;
+			if (m_data.dataType == kDataType_String)
+				m_data.SetStr(from.m_data.str);
+			else m_data.num = from.m_data.num;
+		}
+		return *this;
+	}
 
 	ArrayElement(ArrayElement&& from) noexcept;
 
