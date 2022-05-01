@@ -686,10 +686,10 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 									if (!info.numParams)
 									{
 										Console_Print(R"(SetEventHandler: Cannot use "first" filter; event has 0 args.)");
-										continue;
+										return false;
 									}
 									if (!IsPotentialFilterCorrect(info.paramTypes[0], eval, pair->right.get(), i)) [[unlikely]]
-										continue;
+										return false;
 								}
 								outCallback.source = pair->right->GetTESForm();
 							}
@@ -700,10 +700,10 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 									if (info.numParams < 2)
 									{
 										Console_Print(R"(SetEventHandler: Cannot use "second" filter; event only has %u args.)", info.numParams);
-										continue;
+										return false;
 									}
 									if (!IsPotentialFilterCorrect(info.paramTypes[1], eval, pair->right.get(), i)) [[unlikely]]
-										continue;
+										return false;
 								}
 								outCallback.object = pair->right->GetTESForm();
 							}
@@ -715,12 +715,12 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 							if (index < 0) [[unlikely]]
 							{
 								eval.Error("Invalid index %d passed to %s (arg indices start from 1, and callingReference is filter #0).", funcName);
-								continue;
+								return false;
 							}
 							if (index > info.numParams) [[unlikely]]
 							{
 								eval.Error("%s: Index %d passed exceeds max number of args for function (%u)", funcName, index, info.numParams);
-								continue;
+								return false;
 							}
 
 							// Index #0 is reserved for callingReference filter.
@@ -728,7 +728,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 							if (addEvt)
 							{
 								if (!IsPotentialFilterCorrect(filterType, eval, pair->right.get(), i)) [[unlikely]]
-									return false;	//grave error; cancel the event-setting.
+									return false;
 							}
 
 							const auto basicToken = pair->right->ToBasicToken();
