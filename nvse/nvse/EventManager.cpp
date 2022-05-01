@@ -554,7 +554,9 @@ struct DeferredRemoveCallback
 	EventInfo				*eventInfo;
 	CallbackMap::iterator	iterator;
 
-	DeferredRemoveCallback(EventInfo *pEventInfo, const CallbackMap::iterator &iter) : eventInfo(pEventInfo), iterator(iter) {}
+	DeferredRemoveCallback(EventInfo *pEventInfo, CallbackMap::iterator iter)
+	: eventInfo(pEventInfo), iterator(std::move(iter))
+	{}
 
 	~DeferredRemoveCallback()
 	{
@@ -695,6 +697,7 @@ bool SetHandler(const char* eventName, EventCallback& toSet)
 				{
 					// may be re-adding a previously removed handler, so clear the Removed flag
 					i->second.SetRemoved(false);
+
 					return false;
 				}
 			}
