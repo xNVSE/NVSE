@@ -597,7 +597,7 @@ bool IsPotentialFilterCorrect(EventManager::EventFilterType const expectedParamT
 	//If both are number-type filters, then we should be comparing two Float variable types.
 	if (varType != expectedVarType) [[unlikely]]
 	{
-		eval.Error("SetEventHandler: Invalid type for filter (arg #%u): expected %s, got %s.", argPos + 1,
+		eval.Error("Invalid type for filter (arg #%u): expected %s, got %s.", argPos + 1,
 			VariableTypeToName(expectedVarType), VariableTypeToName(varType));
 		return false;
 	}
@@ -608,12 +608,12 @@ bool IsPotentialFilterCorrect(EventManager::EventFilterType const expectedParamT
 		auto const arrPtr = g_ArrayMap.Get(arrID);
 		if (!arrPtr)
 		{
-			eval.Error("SetEventHandler: Invalid/unitialized array filter was passed (arg #%u, array id %u).", argPos + 1, arrID);
+			eval.Error("Invalid/uninitialized array filter was passed (arg #%u, array id %u).", argPos + 1, arrID);
 			return false;
 		}
 		if (arrPtr->GetContainerType() != kContainer_Array)
 		{
-			eval.Error("SetEventHandler: Filter array with invalid Map-type was passed (arg #%u, array id: %d).", argPos + 1, arrID);
+			eval.Error("Filter array with invalid Map-type was passed (arg #%u, array id: %d).", argPos + 1, arrID);
 			return false;
 		}
 		// Assume that every element in the array is of the expected type.
@@ -625,7 +625,7 @@ bool IsPotentialFilterCorrect(EventManager::EventFilterType const expectedParamT
 			&& form->GetIsReference()) [[unlikely]]
 		{
 			//Prefer not to sneakily convert the user's reference to its baseform, lessons must be learned.
-			eval.Error("SetEventHandler: Expected BaseForm-type filter (arg #%u), got Reference.", argPos + 1);
+			eval.Error("Expected BaseForm-type filter (arg #%u), got Reference.", argPos + 1);
 			return false;
 		}
 		// Allow passing a baseform to a Reference-type filter.
@@ -685,7 +685,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 								{
 									if (!info.numParams)
 									{
-										Console_Print(R"(SetEventHandler: Cannot use "first" filter; event has 0 args.)");
+										eval.Error(R"(Cannot use "first" filter; event has 0 args.)");
 										return false;
 									}
 									if (!IsPotentialFilterCorrect(info.paramTypes[0], eval, pair->right.get(), i)) [[unlikely]]
@@ -699,7 +699,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 								{
 									if (info.numParams < 2)
 									{
-										Console_Print(R"(SetEventHandler: Cannot use "second" filter; event only has %u args.)", info.numParams);
+										eval.Error(R"(Cannot use "second" filter; event only has %u args.)", info.numParams);
 										return false;
 									}
 									if (!IsPotentialFilterCorrect(info.paramTypes[1], eval, pair->right.get(), i)) [[unlikely]]
