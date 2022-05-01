@@ -679,16 +679,32 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 						const char* key = pair->left->GetString();
 						if (key && StrLen(key))
 						{
-							//Assume form
-							if (addEvt && !IsPotentialFilterCorrect(EventManager::EventFilterType::eParamType_AnyForm, eval, pair->right.get(), i)) [[unlikely]]
-								continue;
-
 							if (!StrCompare(key, "ref") || !StrCompare(key, "first"))
 							{
+								if (addEvt)
+								{
+									if (!info.numParams)
+									{
+										Console_Print(R"(SetEventHandler: Cannot use "first" filter; event has 0 args.)");
+										continue;
+									}
+									if (!IsPotentialFilterCorrect(info.paramTypes[0], eval, pair->right.get(), i)) [[unlikely]]
+										continue;
+								}
 								outCallback.source = pair->right->GetTESForm();
 							}
 							else if (!StrCompare(key, "object") || !StrCompare(key, "second"))
 							{
+								if (addEvt)
+								{
+									if (info.numParams < 2)
+									{
+										Console_Print(R"(SetEventHandler: Cannot use "second" filter; event only has %u args.)", info.numParams);
+										continue;
+									}
+									if (!IsPotentialFilterCorrect(info.paramTypes[1], eval, pair->right.get(), i)) [[unlikely]]
+										continue;
+								}
 								outCallback.object = pair->right->GetTESForm();
 							}
 						}
