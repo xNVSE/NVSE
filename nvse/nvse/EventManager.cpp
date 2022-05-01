@@ -310,6 +310,121 @@ UInt32 EventIDForMessage(UInt32 msgID)
 
 EventInfoList s_eventInfos(0x30);
 
+
+// Prevent filters of the wrong type from being added to an Event Handler instance.
+// Only needs to be called for SetEventHandler, to filter out most user weirdness.
+bool IsPotentialFilterCorrect(EventFilterType const expectedParamType, std::string& outErrorMsg,
+	const EventCallback::Filter &potentialFilter, size_t const filterNum)
+{
+	if (expectedParamType == EventFilterType::eParamType_Anything)
+		return true;
+
+	auto const dataType = potentialFilter.DataType();
+	auto const expectedDataType = ParamTypeToDataType(expectedParamType);
+	//If both are number-type filters, then we should be comparing two Float variable types.
+	if (dataType != expectedDataType) [[unlikely]]
+	{
+		outErrorMsg = FormatString("Invalid type for filter #%u: expected %s, got %s.",filterNum, 
+			DataTypeToString(expectedDataType), DataTypeToString(dataType));
+		return false;
+	}
+
+	if (dataType == kDataType_Array)
+	{
+		ArrayID arrID;
+		potentialFilter.GetAsArray(&arrID);
+		auto const arrPtr = g_ArrayMap.Get(arrID);
+		if (!arrPtr) [[unlikely]]
+		{
+			outErrorMsg = FormatString("Invalid/uninitialized array filter was passed for filter #%u (array id %u).", filterNum, arrID);
+			return false;
+		}
+		if (arrPtr->GetContainerType() != kContainer_Array) [[unlikely]] //todo: support other array types (need to change how event filters are handled while dispatching)
+		{
+			outErrorMsg = FormatString("Filter array with invalid Map-type was passed for filter #%u (array id: %d).", filterNum, arrID);
+			return false;
+		}
+		// Assume that every element in the array is of the expected type.
+	}
+	else
+	{
+		TESForm* form;
+		// Allow null forms to go through, in case that would be a desired filter.
+		if (UInt32 refID; potentialFilter.GetAsFormID(&refID) && (form = LookupFormByID(refID)))
+		{
+			if (expectedParamType == EventFilterType::eParamType_BaseForm
+				&& form->GetIsReference()) [[unlikely]]
+			{
+				//Prefer not to sneakily convert the user's reference to its baseform, lessons must be learned.
+				outErrorMsg = FormatString("Expected BaseForm-type filter for filter #%u, got Reference.", filterNum);
+				return false;
+			}
+			// Allow passing a baseform to a Reference-type filter.
+			// When the event is dispatched, it will check if the passed reference belongs to the baseform.
+			// (The above assumes the baseform is not a formlist. If it is, then it'll repeat the above check for each form in the list until a match is found).
+			// (We are not checking the validity of each form in a formlist filter for performance concerns).
+		}
+	}
+
+	return true;
+}
+
+bool EventCallback::ValidateFilters(std::string& outErrorMsg, const EventInfo& parent)
+{
+	if (parent.IsUserDefined())
+		return true;	// User-Defined events have no preset filters.
+
+	if (source)
+	{
+		if (!parent.numParams) [[unlikely]]
+		{
+			outErrorMsg = R"(Cannot use "first"/"source" filter; event has 0 args.)";
+			return false;
+		}
+		EventCallback::Filter elem;
+		elem.SetTESForm(source);
+		if (!IsPotentialFilterCorrect(parent.paramTypes[0], outErrorMsg, elem, 1)) [[unlikely]]
+			return false;
+	}
+
+	if (object)
+	{
+		if (parent.numParams < 2) [[unlikely]]
+		{
+			outErrorMsg = FormatString(R"(Cannot use "second"/"object" filter; event has %u args.)", parent.numParams);
+			return false;
+		}
+		EventCallback::Filter elem;
+		elem.SetTESForm(object);
+		if (!IsPotentialFilterCorrect(parent.paramTypes[1], outErrorMsg, elem, 2)) [[unlikely]]
+			return false;
+	}
+
+	for (auto &[index, filter] : filters)
+	{
+		if (index > parent.numParams) [[unlikely]]
+		{
+			outErrorMsg = FormatString("Index %d exceeds max number of args for event (%u)", index, parent.numParams);
+			return false;
+		}
+
+		// Index #0 is reserved for callingReference filter.
+		bool const isCallingRefFilter = index == 0;
+		auto const filterType = isCallingRefFilter ? EventFilterType::eParamType_Reference
+			: parent.TryGetNthParamType(index - 1);
+
+		if (!IsPotentialFilterCorrect(filterType, outErrorMsg, filter, index)) [[unlikely]]
+			return false;
+
+		if (filterType == EventFilterType::eParamType_Int)
+		{
+			filter.m_data.num = floor(filter.m_data.num);
+		}
+	}
+
+	return true;
+}
+
 std::string EventCallback::GetFiltersAsStr() const
 {
 	std::string result;
@@ -628,14 +743,13 @@ const char* GetCurrentEventName()
 
 static UInt32 recursiveLevel = 0;
 
-bool SetHandler(const char* eventName, EventCallback& toSet)
+// Avoid constantly looking up the eventName for potentially recursive calls.
+bool DoSetHandler(EventInfo &info, EventCallback& toSet)
 {
-	if (!toSet.HasCallbackFunc())
-		return false;
-
-	// Only handles script callbacks, since this is only kept for legacy purposes anyways.
 	if (auto const script = toSet.TryGetScript())
 	{
+		// Use recursion over formlists to Set the handler for each form.
+		// Only kept for legacy purposes.
 		UInt32 setted = 0;
 
 		// trying to use a FormList to specify the source filter
@@ -646,7 +760,7 @@ bool SetHandler(const char* eventName, EventCallback& toSet)
 			{
 				EventCallback listHandler(script, iter.Get(), toSet.object);
 				recursiveLevel++;
-				if (SetHandler(eventName, listHandler)) setted++;
+				if (DoSetHandler(info, listHandler)) setted++;
 				recursiveLevel--;
 			}
 			return setted > 0;
@@ -660,63 +774,91 @@ bool SetHandler(const char* eventName, EventCallback& toSet)
 			{
 				EventCallback listHandler(script, toSet.source, iter.Get());
 				recursiveLevel++;
-				if (SetHandler(eventName, listHandler)) setted++;
+				if (DoSetHandler(info, listHandler)) setted++;
 				recursiveLevel--;
 			}
 			return setted > 0;
 		}
 	}
 
-	if (auto const idPtr = s_eventNameToID.GetPtr(eventName))
+	ScopedLock lock(s_criticalSection);
+
+	// is hook installed for this event type?
+	if (info.installHook)
 	{
-		ScopedLock lock(s_criticalSection);
-
-		EventInfo* info = &s_eventInfos[*idPtr];
-		// is hook installed for this event type?
-		if (info->installHook)
+		if (*info.installHook)
 		{
-			if (*info->installHook)
-			{
-				// if this hook is used by more than one event type, prevent it being installed a second time
-				(*info->installHook)();
-			}
-			// mark event as having had its hook installed
-			info->installHook = nullptr;
+			// if this hook is used by more than one event type, prevent it being installed a second time
+			(*info.installHook)();
 		}
-
-		auto const basicCallback = GetBasicCallback(toSet.toCall);
-
-		if (!info->callbacks.empty())
-		{
-			// if an existing handler matches this one exactly, don't duplicate it
-			auto const range = info->callbacks.equal_range(basicCallback);
-			// loop over all EventCallbacks with the same callback script/function.
-			for (auto i = range.first; i != range.second; ++i)
-			{
-				if (i->second.EqualFilters(toSet))
-				{
-					// may be re-adding a previously removed handler, so clear the Removed flag
-					i->second.SetRemoved(false);
-
-					return false;
-				}
-			}
-		}
-
-		toSet.Confirm();
-		info->callbacks.emplace(basicCallback, std::move(toSet));
-
-		s_eventsInUse |= info->eventMask;
-
-		return true;
+		// mark event as having had its hook installed
+		info.installHook = nullptr;
 	}
 
-	return false; 
+	auto const basicCallback = GetBasicCallback(toSet.toCall);
+
+	if (!info.callbacks.empty())
+	{
+		// if an existing handler matches this one exactly, don't duplicate it
+		auto const range = info.callbacks.equal_range(basicCallback);
+		// loop over all EventCallbacks with the same callback script/function.
+		for (auto i = range.first; i != range.second; ++i)
+		{
+			if (i->second.EqualFilters(toSet))
+			{
+				// may be re-adding a previously removed handler, so clear the Removed flag
+				i->second.SetRemoved(false);
+
+				return false;
+			}
+		}
+	}
+
+	toSet.Confirm();
+	info.callbacks.emplace(basicCallback, std::move(toSet));
+
+	s_eventsInUse |= info.eventMask;
+	return true;
+}
+
+bool SetHandler(const char* eventName, EventCallback& toSet, ExpressionEvaluator* eval)
+{
+	if (!toSet.HasCallbackFunc())
+		return false;
+
+	UInt32* idPtr = nullptr;
+	{
+		ScopedLock lock(s_criticalSection);
+		if (s_eventNameToID.Insert(eventName, &idPtr))
+		{
+			// have to assume registering for a user-defined event (for DispatchEvent) which has not been used before this point
+			*idPtr = s_eventInfos.Size();
+			char* nameCopy = CopyString(eventName);
+			StrToLower(nameCopy);
+			s_eventInfos.Append(nameCopy, nullptr, 0, EventFlags::kFlag_IsUserDefined);
+		}
+	}
+	if (!idPtr || *idPtr >= s_eventInfos.Size())
+		return false;
+
+	EventInfo &info = s_eventInfos[*idPtr];
+
+	{ // nameless scope
+		std::string errMsg;
+		if (!toSet.ValidateFilters(errMsg, info))
+		{
+			if (eval)
+				eval->Error(errMsg.c_str());
+			return false;
+		}
+	}
+
+	return DoSetHandler(info, toSet);
 }
 
 // If the passed Callback is more or equally generic filter-wise than some already-set events, will remove those events.
 // Ex: Callback with "SunnyREF" filter is already set.
-//	   Calling this with a Callback with no filters will lead to the "SunnyREF"-filtered callback being removed.	
+// Calling this with a Callback with no filters will lead to the "SunnyREF"-filtered callback being removed.	
 bool RemoveHandler(const char* id, const EventCallback& toRemove)
 {
 	if (!toRemove.HasCallbackFunc())
@@ -733,7 +875,6 @@ bool RemoveHandler(const char* id, const EventCallback& toRemove)
 			const auto formList = static_cast<BGSListForm*>(toRemove.source);
 			for (tList<TESForm>::Iterator iter = formList->list.Begin(); !iter.End(); ++iter)
 			{
-
 				EventCallback listHandler(script, iter.Get(), toRemove.object);
 				recursiveLevel++;
 				if (RemoveHandler(id, listHandler)) removed++;
@@ -756,7 +897,6 @@ bool RemoveHandler(const char* id, const EventCallback& toRemove)
 			return removed > 0;
 		}
 	}
-	
 
 	ScopedLock lock(s_criticalSection);
 
@@ -1002,6 +1142,24 @@ EventFilterType VarTypeToParamType(Script::VariableType varType)
 		return EventFilterType::eParamType_Invalid;
 	}
 	return EventFilterType::eParamType_Invalid;
+}
+
+DataType ParamTypeToDataType(EventFilterType pType)
+{
+	switch (pType)
+	{
+	case EventFilterType::eParamType_Int:
+	case EventFilterType::eParamType_Float: return kDataType_Numeric;
+	case EventFilterType::eParamType_String: return kDataType_String;
+	case EventFilterType::eParamType_Array: return kDataType_Array;
+	case EventFilterType::eParamType_RefVar:
+	case EventFilterType::eParamType_Reference:
+	case EventFilterType::eParamType_BaseForm:
+		return kDataType_Form;
+	case NVSEEventManagerInterface::eParamType_Invalid:
+		return kDataType_Invalid;
+	}
+	return kDataType_Invalid;
 }
 
 bool ParamTypeMatches(EventFilterType from, EventFilterType to)

@@ -48,6 +48,7 @@ namespace EventManager
 	}
 	Script::VariableType ParamTypeToVarType(EventFilterType pType);
 	EventFilterType VarTypeToParamType(Script::VariableType varType);
+	DataType ParamTypeToDataType(EventFilterType pType);
 
 	bool ParamTypeMatches(EventFilterType from, EventFilterType to);
 
@@ -149,6 +150,8 @@ namespace EventManager
 		// Using a map to avoid adding duplicate indexes.
 		std::map<Index, Filter> filters;
 
+		[[nodiscard]] bool ValidateFilters(std::string& outErrorMsg, const EventInfo& parent);
+
 		[[nodiscard]] std::string GetFiltersAsStr() const;
 		[[nodiscard]] ArrayVar* GetFiltersAsArray(const Script* scriptObj) const;
 		[[nodiscard]] std::string GetCallbackFuncAsStr() const;
@@ -230,7 +233,7 @@ namespace EventManager
 
 	bool DoFiltersMatch(TESObjectREFR* thisObj, const EventInfo& eventInfo, const EventCallback& callback, const ArgStack& params);
 
-	bool SetHandler(const char *eventName, EventCallback &toSet);
+	bool SetHandler(const char *eventName, EventCallback &toSet, ExpressionEvaluator* eval = nullptr);
 
 	// removes handler only if all filters match
 	bool RemoveHandler(const char *id, const EventCallback &toRemove);
