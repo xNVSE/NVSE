@@ -681,7 +681,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 						{
 							if (!StrCompare(key, "ref") || !StrCompare(key, "first"))
 							{
-								if (addEvt)
+								if (addEvt && !info.IsUserDefined())
 								{
 									if (!info.numParams)
 									{
@@ -695,7 +695,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 							}
 							else if (!StrCompare(key, "object") || !StrCompare(key, "second"))
 							{
-								if (addEvt)
+								if (addEvt && !info.IsUserDefined())
 								{
 									if (info.numParams < 2)
 									{
@@ -717,15 +717,18 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 								eval.Error("Invalid index %d passed to %s (arg indices start from 1, and callingReference is filter #0).", funcName);
 								return false;
 							}
-							if (index > info.numParams) [[unlikely]]
+							if (!info.IsUserDefined() && index > info.numParams) [[unlikely]]
 							{
 								eval.Error("%s: Index %d passed exceeds max number of args for function (%u)", funcName, index, info.numParams);
 								return false;
 							}
 
 							// Index #0 is reserved for callingReference filter.
-							auto const filterType = index == 0 ? EventManager::EventFilterType::eParamType_Reference : info.paramTypes[index - 1];
-							if (addEvt)
+							bool const isCallingRefFilter = index == 0;
+							auto const filterType = isCallingRefFilter ? EventManager::EventFilterType::eParamType_Reference
+								: info.TryGetNthParamType(index - 1);
+
+							if (addEvt && filterType != EventManager::EventFilterType::eParamType_Anything)
 							{
 								if (!IsPotentialFilterCorrect(filterType, eval, pair->right.get(), i)) [[unlikely]]
 									return false;

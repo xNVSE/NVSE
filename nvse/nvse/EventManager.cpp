@@ -592,7 +592,7 @@ void __stdcall HandleEvent(UInt32 id, void* arg0, void* arg1)
 			continue;
 
 		// Check filters
-		if (callback.source && arg0 != callback.source && eventInfo->numParams && IsParamForm(eventInfo->paramTypes[0]))
+		if (callback.source && arg0 != callback.source)
 		{
 			if (isArg0Valid == RefState::NotSet)
 				isArg0Valid = IsValidReference(arg0) ? RefState::Valid : RefState::Invalid;
@@ -875,21 +875,19 @@ bool DoesFormMatchFilter(TESForm* form, TESForm* filter, bool expectReference, c
 
 bool DoDeprecatedFiltersMatch(const EventInfo& eventInfo, const EventCallback& callback, const ArgStack& params)
 {
-	if (!callback.source && !callback.object)
-		return true;
 	// old filter system
-	TESForm* sourceForm{};
-	TESForm* objectForm{};
-	if (eventInfo.numParams > 0 && IsParamForm(eventInfo.paramTypes[0]))
-		sourceForm = static_cast<TESForm*>(params->at(0));
-	if (eventInfo.numParams > 1 && IsParamForm(eventInfo.paramTypes[1]))
-		objectForm = static_cast<TESForm*>(params->at(1));
-	if (!DoesFormMatchFilter(sourceForm, callback.source, false) || !DoesFormMatchFilter(objectForm, callback.object, false))
+	if (callback.source && !DoesFormMatchFilter(static_cast<TESForm*>(params->at(0)), callback.source, false))
+	{
 		return false;
+	}
+	if (callback.object && !DoesFormMatchFilter(static_cast<TESForm*>(params->at(1)), callback.object, false))
+	{
+		return false;
+	}
 	return true;
 }
 
-// eParamType_Invalid is treated as "use default param type" (for User-Defined Event).
+// eParamType_Anything is treated as "use default param type" (usually for a User-Defined Event).
 bool DoesFilterMatch(const ArrayElement& sourceFilter, void* param, EventFilterType filterType)
 {
 	switch (sourceFilter.DataType()) {
@@ -1035,7 +1033,7 @@ bool DoFiltersMatch(TESObjectREFR* thisObj, const EventInfo& eventInfo, const Ev
 
 		if (eventInfo.IsUserDefined()) // Skip filter type checking.
 		{
-			if (!DoesFilterMatch(filter, param, EventFilterType::eParamType_Invalid))
+			if (!DoesFilterMatch(filter, param, EventFilterType::eParamType_Anything))
 				return false;
 		}
 		else
@@ -1088,7 +1086,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 			}
 			else
 			{
-				paramType = evInfo.paramTypes[index - 1];
+				paramType = evInfo.TryGetNthParamType(index - 1);
 				if (paramType == EventFilterType::eParamType_Int)
 					paramType = EventFilterType::eParamType_Float;	// if numeric, void* param will always be float-type, so avoid wrong cast in DoesFilterMatch.
 			}

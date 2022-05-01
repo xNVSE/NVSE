@@ -794,7 +794,9 @@ struct NVSEEventManagerInterface
 		// When attempting to set an event handler, if the filter-to-set is a reference the paramType is BaseForm, will reject that filter.
 		// Otherwise, behaves the same as eParamType_RefVar.
 		eParamType_BaseForm,
-		eParamType_Invalid
+
+		eParamType_Invalid,
+		eParamType_Anything
 	};
 	static bool IsFormParam(ParamType pType)
 	{

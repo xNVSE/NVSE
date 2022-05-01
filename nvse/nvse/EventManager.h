@@ -218,6 +218,11 @@ namespace EventManager
 		{
 			return flags & EventFlags::kFlag_IsUserDefined;
 		}
+		// n is 0-based
+		[[nodiscard]] EventFilterType TryGetNthParamType(size_t n) const
+		{
+			return !IsUserDefined() ? paramTypes[n] : EventFilterType::eParamType_Anything;
+		}
 	};
 
 	using ArgStack = StackVector<void*, kMaxUdfParams>;
