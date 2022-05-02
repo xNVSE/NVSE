@@ -861,6 +861,8 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 			eventName && eventName[0])
 		{
 			eventID = EventManager::EventIDForString(eventName);
+			if (eventID == EventManager::kEventID_INVALID)
+				return true; //trying to filter by invalid eventName
 		}
 
 		if (numArgs >= 2)
@@ -875,10 +877,6 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 		auto const arg = eval.Arg(i)->GetAsVoidArg();
 		argsToFilter->push_back(arg);
 	}
-
-	// keys = event handler names, values = an array containing arrays that have [0] = callbackFunc, [1] = filters string map.
-	ArrayVar* eventsMap = g_ArrayMap.Create(kDataType_String, false, scriptObj->GetModIndex());
-	*result = eventsMap->ID();
 
 	// Dumps all (matching) callbacks of the EventInfo
 	auto const GetEventInfoHandlers = [=, &argsToFilter](const EventManager::EventInfo& info) -> ArrayVar*
@@ -940,6 +938,10 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 
 	if (eventID == EventManager::kEventID_INVALID)
 	{
+		// keys = event handler names, values = an array containing arrays that have [0] = callbackFunc, [1] = filters string map.
+		ArrayVar* eventsMap = g_ArrayMap.Create(kDataType_String, false, scriptObj->GetModIndex());
+		*result = eventsMap->ID();
+
 		// loop through all eventInfo callbacks, filtering by script + filters
 		for (auto eventInfoIter = EventManager::s_eventInfos.Begin();
 			!eventInfoIter.End(); ++eventInfoIter)
@@ -951,7 +953,8 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 	else //filtered by eventID
 	{
 		auto const& eventInfo = EventManager::s_eventInfos[eventID];
-		eventsMap->SetElementArray(eventInfo.evName, GetEventInfoHandlers(eventInfo)->ID());
+		// return an array containing arrays that have [0] = callbackFunc, [1] = filters string map.
+		*result = GetEventInfoHandlers(eventInfo)->ID();
 	}
 
 	return true;

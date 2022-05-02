@@ -117,8 +117,8 @@ namespace EventManager
 	class EventCallback
 	{
 		void TrySaveLambdaContext();
-		bool IsFirstOrSecondFilterValid(bool isFirst, const EventInfo& parent, std::string& outErrorMsg) const;
-		bool IsFirstAndSecondFilterValid(const EventInfo& parent, std::string& outErrorMsg) const;
+		bool ValidateFirstOrSecondFilter(bool isFirst, const EventInfo& parent, std::string& outErrorMsg) const;
+		bool ValidateFirstAndSecondFilter(const EventInfo& parent, std::string& outErrorMsg) const;
 
 	public:
 		// If variant is Maybe_Lambda, must try to capture lambda context once the EventCallback is confirmed to stay.
