@@ -367,36 +367,55 @@ bool IsPotentialFilterValid(EventFilterType const expectedParamType, std::string
 	return true;
 }
 
+bool EventCallback::IsFirstOrSecondFilterValid(bool isFirst, const EventInfo& parent, std::string &outErrorMsg) const
+{
+	const TESForm* filter = isFirst ? source : object;
+	if (!filter) // unfiltered
+		return true;
+	auto const filterName = isFirst ? R"("first"/"source")" : R"("second"/"object")";
+
+	if (isFirst && !parent.numParams) [[unlikely]]
+	{
+		outErrorMsg = R"(Cannot use "first"/"source" filter; event has 0 args.)";
+		return false;
+	}
+	if (!isFirst && parent.numParams < 2) [[unlikely]]
+	{
+		outErrorMsg = FormatString(R"(Cannot use "second"/"object" filter; event has %u args.)", parent.numParams);
+		return false;
+	}
+	auto const expectedType = parent.paramTypes[isFirst ? 0 : 1];
+
+	if (!IsParamForm(expectedType)) [[unlikely]]
+	{
+		outErrorMsg = FormatString("Cannot set a non-Form type filter for %s.", filterName);
+		return false;
+	}
+
+	if (expectedType == EventFilterType::eParamType_BaseForm 
+		&& filter->GetIsReference()) [[unlikely]]
+	{
+		//Prefer not to sneakily convert the user's reference to its baseform, lessons must be learned.
+		outErrorMsg = FormatString("Expected BaseForm-type filter for filter %s, got Reference.", filterName);
+		return false;
+	}
+
+	return true;
+}
+
+bool EventCallback::IsFirstAndSecondFilterValid(const EventInfo& parent, std::string& outErrorMsg) const
+{
+	return IsFirstOrSecondFilterValid(true, parent, outErrorMsg)
+		&& IsFirstOrSecondFilterValid(false, parent, outErrorMsg);
+}
+
 bool EventCallback::ValidateFilters(std::string& outErrorMsg, const EventInfo& parent)
 {
 	if (parent.IsUserDefined())
 		return true;	// User-Defined events have no preset filters.
 
-	if (source)
-	{
-		if (!parent.numParams) [[unlikely]]
-		{
-			outErrorMsg = R"(Cannot use "first"/"source" filter; event has 0 args.)";
-			return false;
-		}
-		EventCallback::Filter elem;
-		elem.SetTESForm(source);
-		if (!IsPotentialFilterValid(parent.paramTypes[0], outErrorMsg, elem, 1)) [[unlikely]]
-			return false;
-	}
-
-	if (object)
-	{
-		if (parent.numParams < 2) [[unlikely]]
-		{
-			outErrorMsg = FormatString(R"(Cannot use "second"/"object" filter; event has %u args.)", parent.numParams);
-			return false;
-		}
-		EventCallback::Filter elem;
-		elem.SetTESForm(object);
-		if (!IsPotentialFilterValid(parent.paramTypes[1], outErrorMsg, elem, 2)) [[unlikely]]
-			return false;
-	}
+	if (!IsFirstAndSecondFilterValid(parent, outErrorMsg))
+		return false;
 
 	for (auto &[index, filter] : filters)
 	{
