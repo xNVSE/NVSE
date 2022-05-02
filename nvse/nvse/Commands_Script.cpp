@@ -670,6 +670,8 @@ bool ProcessEventHandler(char *eventName, EventManager::EventCallback &callback,
 
 			return ProcessLNEventHandler(eventMask, callback.TryGetScript(), addEvt, formFilter, numFilter);
 		}
+		//else, re-add ':'
+		*(--colon) = ':';
 	}
 	return addEvt ? EventManager::SetHandler(eventName, callback, &eval)
 		: EventManager::RemoveHandler(eventName, callback);
