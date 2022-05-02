@@ -313,24 +313,16 @@ EventInfoList s_eventInfos(0x30);
 
 // Prevent filters of the wrong type from being added to an Event Handler instance.
 // Only needs to be called for SetEventHandler, to filter out most user weirdness.
-bool IsPotentialFilterCorrect(EventFilterType const expectedParamType, std::string& outErrorMsg,
+bool IsPotentialFilterValid(EventFilterType const expectedParamType, std::string& outErrorMsg,
 	const EventCallback::Filter &potentialFilter, size_t const filterNum)
 {
 	if (expectedParamType == EventFilterType::eParamType_Anything)
 		return true;
 
 	auto const dataType = potentialFilter.DataType();
-	auto const expectedDataType = ParamTypeToDataType(expectedParamType);
-	//If both are number-type filters, then we should be comparing two Float variable types.
-	if (dataType != expectedDataType) [[unlikely]]
-	{
-		outErrorMsg = FormatString("Invalid type for filter #%u: expected %s, got %s.",filterNum, 
-			DataTypeToString(expectedDataType), DataTypeToString(dataType));
-		return false;
-	}
-
 	if (dataType == kDataType_Array)
 	{
+		// Could be an array of filters, or just a filter array.
 		ArrayID arrID;
 		potentialFilter.GetAsArray(&arrID);
 		auto const arrPtr = g_ArrayMap.Get(arrID);
@@ -339,14 +331,20 @@ bool IsPotentialFilterCorrect(EventFilterType const expectedParamType, std::stri
 			outErrorMsg = FormatString("Invalid/uninitialized array filter was passed for filter #%u (array id %u).", filterNum, arrID);
 			return false;
 		}
-		if (arrPtr->GetContainerType() != kContainer_Array) [[unlikely]] //todo: support other array types (need to change how event filters are handled while dispatching)
-		{
-			outErrorMsg = FormatString("Filter array with invalid Map-type was passed for filter #%u (array id: %d).", filterNum, arrID);
-			return false;
-		}
-		// Assume that every element in the array is of the expected type.
+		// If array of filters, assume that every element in the array is of the expected type.
+		// If it's a (String)Map, then its keys will simply be ignored.
+		return true;
 	}
-	else
+
+	auto const expectedDataType = ParamTypeToDataType(expectedParamType);
+	if (dataType != expectedDataType) [[unlikely]]
+	{
+		outErrorMsg = FormatString("Invalid type for filter #%u: expected %s, got %s.", filterNum, 
+			DataTypeToString(expectedDataType), DataTypeToString(dataType));
+		return false;
+	}
+
+	if (dataType == kDataType_Form)
 	{
 		TESForm* form;
 		// Allow null forms to go through, in case that would be a desired filter.
@@ -383,7 +381,7 @@ bool EventCallback::ValidateFilters(std::string& outErrorMsg, const EventInfo& p
 		}
 		EventCallback::Filter elem;
 		elem.SetTESForm(source);
-		if (!IsPotentialFilterCorrect(parent.paramTypes[0], outErrorMsg, elem, 1)) [[unlikely]]
+		if (!IsPotentialFilterValid(parent.paramTypes[0], outErrorMsg, elem, 1)) [[unlikely]]
 			return false;
 	}
 
@@ -396,7 +394,7 @@ bool EventCallback::ValidateFilters(std::string& outErrorMsg, const EventInfo& p
 		}
 		EventCallback::Filter elem;
 		elem.SetTESForm(object);
-		if (!IsPotentialFilterCorrect(parent.paramTypes[1], outErrorMsg, elem, 2)) [[unlikely]]
+		if (!IsPotentialFilterValid(parent.paramTypes[1], outErrorMsg, elem, 2)) [[unlikely]]
 			return false;
 	}
 
@@ -413,7 +411,7 @@ bool EventCallback::ValidateFilters(std::string& outErrorMsg, const EventInfo& p
 		auto const filterType = isCallingRefFilter ? EventFilterType::eParamType_Reference
 			: parent.TryGetNthParamType(index - 1);
 
-		if (!IsPotentialFilterCorrect(filterType, outErrorMsg, filter, index)) [[unlikely]]
+		if (!IsPotentialFilterValid(filterType, outErrorMsg, filter, index)) [[unlikely]]
 			return false;
 
 		if (filterType == EventFilterType::eParamType_Int)
@@ -1013,7 +1011,7 @@ bool DoesFormMatchFilter(TESForm* form, TESForm* filter, bool expectReference, c
 	return false;
 }
 
-bool DoDeprecatedFiltersMatch(const EventInfo& eventInfo, const EventCallback& callback, const ArgStack& params)
+bool DoDeprecatedFiltersMatch(const EventCallback& callback, const ArgStack& params)
 {
 	// old filter system
 	if (callback.source && !DoesFormMatchFilter(static_cast<TESForm*>(params->at(0)), callback.source, false))
@@ -1095,17 +1093,14 @@ bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCall
 		ShowRuntimeError(callback.TryGetScript(), "While checking event filters in array at index %d, the array was invalid/unitialized (array id: %d).", index, arrayFiltersId);
 		return false;
 	}
-	if (arrayFilters->GetContainerType() != kContainer_Array)
+	// If array of filters is non-"array" type, then ignore the keys.
+	for (auto iter = arrayFilters->GetRawContainer()->begin();
+		iter != arrayFilters->GetRawContainer()->end(); ++iter)
 	{
-		ShowRuntimeError(callback.TryGetScript(), "While checking event filters in array at index %d, the array had non-'Array' type (array id: %d).", index, arrayFiltersId);
-		return false;
-	}
-	auto& elementVector = *arrayFilters->GetRawContainer()->getArrayPtr();
-	for (auto& iter : elementVector)
-	{
-		if (ParamTypeToVarType(paramType) != DataTypeToVarType(iter.DataType()))
+		auto const& elem = *iter.second();
+		if (ParamTypeToVarType(paramType) != DataTypeToVarType(elem.DataType()))
 			continue;
-		if (DoesFilterMatch(iter, param, paramType))
+		if (DoesFilterMatch(elem, param, paramType))
 			return true;
 	}
 	return false;
@@ -1124,7 +1119,8 @@ Script::VariableType ParamTypeToVarType(EventFilterType pType)
 	case EventFilterType::eParamType_Reference:
 	case EventFilterType::eParamType_BaseForm:
 		return Script::VariableType::eVarType_Ref;
-	case NVSEEventManagerInterface::eParamType_Invalid: 
+	case NVSEEventManagerInterface::eParamType_Invalid:
+	case NVSEEventManagerInterface::eParamType_Anything:
 		return Script::VariableType::eVarType_Invalid;
 	}
 	return Script::VariableType::eVarType_Invalid;
@@ -1157,6 +1153,7 @@ DataType ParamTypeToDataType(EventFilterType pType)
 	case EventFilterType::eParamType_BaseForm:
 		return kDataType_Form;
 	case NVSEEventManagerInterface::eParamType_Invalid:
+	case NVSEEventManagerInterface::eParamType_Anything:
 		return kDataType_Invalid;
 	}
 	return kDataType_Invalid;
@@ -1276,12 +1273,12 @@ DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, Ar
 	DispatchCallback resultCallback, void* anyData)
 {
 	DispatchReturn result = DispatchReturn::kRetn_Normal;
-	for (auto & [funcKey, callback] : eventInfo.callbacks)
+	for (auto &[funcKey, callback] : eventInfo.callbacks)
 	{
 		if (callback.IsRemoved())
 			continue;
 
-		if (!DoDeprecatedFiltersMatch(eventInfo, callback, params))
+		if (!DoDeprecatedFiltersMatch(callback, params))
 			continue;
 		if (!DoFiltersMatch(thisObj, eventInfo, callback, params))
 			continue;
