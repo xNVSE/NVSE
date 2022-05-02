@@ -730,21 +730,30 @@ bool Cmd_DispatchEvent_Execute(COMMAND_ARGS)
 bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	if (!eval.ExtractArgs() || eval.NumArgs() == 0)
+	if (!eval.ExtractArgs() || eval.NumArgs() == 0) [[unlikely]]
 		return true;
 
 	const char* eventName = eval.Arg(0)->GetString();
-	if (!eventName)
+	if (!eventName) [[unlikely]]
 		return true;
 
 	// does an EventInfo entry already exist for this event?
 	const UInt32 eventID = EventManager::EventIDForString(eventName);
-	if (EventManager::kEventID_INVALID == eventID)
+	if (EventManager::kEventID_INVALID == eventID) [[unlikely]]
 		return true;
 
 	auto& eventInfo = EventManager::s_eventInfos[eventID];
-	if (!eventInfo.IsUserDefined())
+#if _DEBUG
+	if (!eventInfo.IsUserDefined() && eventID != EventManager::kEventID_DebugEvent) [[unlikely]]
+	{
 		return true;
+	}
+#elif
+	if (!eventInfo.IsUserDefined()) [[unlikely]]
+	{
+		return true;
+	}
+#endif
 
 	EventManager::ArgStack params;
 	auto const numArgs = eval.NumArgs();

@@ -106,8 +106,9 @@ namespace EventManager
 		kEventID_RenameNewGameName,
 
 		kEventID_InternalMAX,
+		kEventID_DebugEvent = kEventID_InternalMAX, //only used in debug mode, for unit tests
 
-		// user-defined
+		// user or plugin defined
 		kEventID_UserDefinedMIN = kEventID_InternalMAX,
 
 		kEventID_INVALID = 0xFFFFFFFF
@@ -275,37 +276,55 @@ namespace EventManager
 
 	// event handler param lists
 	static EventFilterType kEventParams_GameEvent[2] =
-		{
-			EventFilterType::eParamType_AnyForm, EventFilterType::eParamType_AnyForm};
+	{
+		EventFilterType::eParamType_AnyForm, EventFilterType::eParamType_AnyForm
+	};
 
 	static EventFilterType kEventParams_OneRef[1] =
-		{
-			EventFilterType::eParamType_AnyForm,
+	{
+		EventFilterType::eParamType_AnyForm,
 	};
 
 	static EventFilterType kEventParams_OneString[1] =
-		{
-			EventFilterType::eParamType_String};
+	{
+		EventFilterType::eParamType_String
+	};
 
 	static EventFilterType kEventParams_OneInt[1] =
-		{
-			EventFilterType::eParamType_Int};
+	{
+		EventFilterType::eParamType_Int
+	};
 
 	static EventFilterType kEventParams_TwoInts[2] =
-		{
-			EventFilterType::eParamType_Int, EventFilterType::eParamType_Int };
+	{
+		EventFilterType::eParamType_Int, EventFilterType::eParamType_Int
+	};
 
 	static EventFilterType kEventParams_OneInt_OneRef[2] =
-		{
-			EventFilterType::eParamType_Int, EventFilterType::eParamType_AnyForm};
+	{
+		EventFilterType::eParamType_Int, EventFilterType::eParamType_AnyForm
+	};
 
 	static EventFilterType kEventParams_OneRef_OneInt[2] =
-		{
-			EventFilterType::eParamType_AnyForm, EventFilterType::eParamType_Int };
+	{
+		EventFilterType::eParamType_AnyForm, EventFilterType::eParamType_Int
+	};
 
 	static EventFilterType kEventParams_OneArray[1] =
-		{
-			EventFilterType::eParamType_Array};
+	{
+		EventFilterType::eParamType_Array
+	};
+
+	static EventFilterType kEventParams_OneInt_OneFloat_OneArray_OneString_OneForm_OneReference_OneBaseform[] =
+	{
+		EventFilterType::eParamType_Int,
+		EventFilterType::eParamType_Float,
+		EventFilterType::eParamType_Array,
+		EventFilterType::eParamType_String,
+		EventFilterType::eParamType_AnyForm,
+		EventFilterType::eParamType_Reference,
+		EventFilterType::eParamType_BaseForm,
+	};
 };
 
 #endif

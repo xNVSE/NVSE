@@ -1495,6 +1495,11 @@ void Init()
 
 	ASSERT (kEventID_InternalMAX == s_eventInfos.Size());
 
+#if _DEBUG
+	EVENT_INFO("nvsetestevent", kEventParams_OneInt_OneFloat_OneArray_OneString_OneForm_OneReference_OneBaseform, 
+		nullptr, 0); // dispatched via DispatchEventAlt, for unit tests
+#endif
+
 #undef EVENT_INFO
 
 	InstallDestroyCIOSHook();	// handle a missing parameter value check.
