@@ -825,8 +825,7 @@ bool DoSetHandler(EventInfo &info, EventCallback& toSet)
 			{
 				// may be re-adding a previously removed handler, so clear the Removed flag
 				i->second.SetRemoved(false);
-
-				return false;
+				return true;
 			}
 		}
 	}
