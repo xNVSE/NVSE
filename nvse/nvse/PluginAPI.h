@@ -800,7 +800,8 @@ struct NVSEEventManagerInterface
 	};
 	static bool IsFormParam(ParamType pType)
 	{
-		return pType == eParamType_RefVar || pType == eParamType_Reference || pType == eParamType_BaseForm;
+		return pType == eParamType_RefVar || pType == eParamType_Reference || pType == eParamType_BaseForm
+		 || pType == eParamType_Anything;
 	}
 
 	enum EventFlags : UInt32

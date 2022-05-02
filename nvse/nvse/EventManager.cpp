@@ -367,7 +367,7 @@ bool IsPotentialFilterValid(EventFilterType const expectedParamType, std::string
 	return true;
 }
 
-bool EventCallback::IsFirstOrSecondFilterValid(bool isFirst, const EventInfo& parent, std::string &outErrorMsg) const
+bool EventCallback::ValidateFirstOrSecondFilter(bool isFirst, const EventInfo& parent, std::string &outErrorMsg) const
 {
 	const TESForm* filter = isFirst ? source : object;
 	if (!filter) // unfiltered
@@ -403,10 +403,10 @@ bool EventCallback::IsFirstOrSecondFilterValid(bool isFirst, const EventInfo& pa
 	return true;
 }
 
-bool EventCallback::IsFirstAndSecondFilterValid(const EventInfo& parent, std::string& outErrorMsg) const
+bool EventCallback::ValidateFirstAndSecondFilter(const EventInfo& parent, std::string& outErrorMsg) const
 {
-	return IsFirstOrSecondFilterValid(true, parent, outErrorMsg)
-		&& IsFirstOrSecondFilterValid(false, parent, outErrorMsg);
+	return ValidateFirstOrSecondFilter(true, parent, outErrorMsg)
+		&& ValidateFirstOrSecondFilter(false, parent, outErrorMsg);
 }
 
 bool EventCallback::ValidateFilters(std::string& outErrorMsg, const EventInfo& parent)
@@ -414,7 +414,7 @@ bool EventCallback::ValidateFilters(std::string& outErrorMsg, const EventInfo& p
 	if (parent.IsUserDefined())
 		return true;	// User-Defined events have no preset filters.
 
-	if (!IsFirstAndSecondFilterValid(parent, outErrorMsg))
+	if (!ValidateFirstAndSecondFilter(parent, outErrorMsg))
 		return false;
 
 	for (auto &[index, filter] : filters)
