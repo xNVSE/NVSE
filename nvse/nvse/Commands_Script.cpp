@@ -704,6 +704,7 @@ bool Cmd_GetCurrentEventName_Execute(COMMAND_ARGS)
 bool Cmd_DispatchEvent_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	*result = 0;
 	if (!eval.ExtractArgs() || eval.NumArgs() == 0)
 		return true;
 
@@ -723,13 +724,14 @@ bool Cmd_DispatchEvent_Execute(COMMAND_ARGS)
 			senderName = eval.Arg(2)->GetString();
 	}
 
-	*result = EventManager::DispatchUserDefinedEvent(eventName, scriptObj, argsArrayId, senderName) ? 1.0 : 0.0;
+	*result = EventManager::DispatchUserDefinedEvent(eventName, scriptObj, argsArrayId, senderName);
 	return true;
 }
 
 bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	*result = 0;
 	if (!eval.ExtractArgs() || eval.NumArgs() == 0) [[unlikely]]
 		return true;
 
