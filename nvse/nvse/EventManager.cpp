@@ -820,11 +820,16 @@ bool DoSetHandler(EventInfo &info, EventCallback& toSet)
 		// loop over all EventCallbacks with the same callback script/function.
 		for (auto i = range.first; i != range.second; ++i)
 		{
-			if (i->second.EqualFilters(toSet))
+			auto& existingCallback = i->second;
+			if (existingCallback.EqualFilters(toSet))
 			{
 				// may be re-adding a previously removed handler, so clear the Removed flag
-				i->second.SetRemoved(false);
-				return true;
+				if (existingCallback.IsRemoved())
+				{
+					existingCallback.SetRemoved(false);
+					return true;
+				}
+				return false; //attempting to add a duplicate handler.
 			}
 		}
 	}
