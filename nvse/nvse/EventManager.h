@@ -271,7 +271,10 @@ namespace EventManager
 
 	template <class FunctionCaller>
 	DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params,
-		DispatchCallback resultCallback = nullptr, void* anyData = nullptr);
+		DispatchCallback resultCallback, void* anyData = nullptr);
+
+	template <class FunctionCaller>
+	bool DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params);
 
 	bool DispatchEvent(const char *eventName, TESObjectREFR *thisObj, ...);
 	DispatchReturn DispatchEventAlt(const char *eventName, DispatchCallback resultCallback, void *anyData, TESObjectREFR *thisObj, ...);
@@ -380,6 +383,13 @@ namespace EventManager
 				break;
 		}
 		return result;
+	}
+
+	template <class FunctionCaller>
+	bool DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params)
+	{
+		return DispatchEventRaw<FunctionCaller>(thisObj, eventInfo, params, nullptr, nullptr)
+			!= DispatchReturn::kRetn_Error;
 	}
 };
 

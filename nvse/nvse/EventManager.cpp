@@ -1305,7 +1305,7 @@ bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
 	for (int i = 0; i < eventInfo.numParams; ++i)
 		params->push_back(va_arg(paramList, void*));
 
-	bool const result = DispatchEventRaw<InternalFunctionCaller>(thisObj, eventInfo, params) != DispatchReturn::kRetn_Error;
+	bool const result = DispatchEventRaw<InternalFunctionCaller>(thisObj, eventInfo, params);
 	
 	va_end(paramList);
 	return result;
