@@ -237,9 +237,6 @@ namespace EventManager
 	using ArgStack = StackVector<void*, kMaxUdfParams>;
 	static constexpr auto numMaxFilters = kMaxUdfParams;
 
-	bool DoDeprecatedFiltersMatch(const EventCallback& callback, const ArgStack& params);
-	bool DoFiltersMatch(TESObjectREFR* thisObj, const EventInfo& eventInfo, const EventCallback& callback, const ArgStack& params);
-
 	bool SetHandler(const char *eventName, EventCallback &toSet, ExpressionEvaluator* eval = nullptr);
 
 	// removes handler only if all filters match
@@ -269,17 +266,19 @@ namespace EventManager
 	bool SetNativeEventHandler(const char *eventName, EventHandler func);
 	bool RemoveNativeEventHandler(const char *eventName, EventHandler func);
 
-	template <class FunctionCaller>
+	template <bool ExtractIntTypeAsFloat>
 	DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params,
 		DispatchCallback resultCallback, void* anyData = nullptr);
 
-	template <class FunctionCaller>
+	template <bool ExtractIntTypeAsFloat>
 	bool DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params);
 
+	//For plugins
 	bool DispatchEvent(const char *eventName, TESObjectREFR *thisObj, ...);
 	DispatchReturn DispatchEventAlt(const char *eventName, DispatchCallback resultCallback, void *anyData, TESObjectREFR *thisObj, ...);
 
-	// dispatch a user-defined event from a script
+	// dispatch a user-defined event from a script (for Cmd_DispatchEvent)
+	// Cmd_DispatchEventAlt provides more flexibility with how args are passed.
 	bool DispatchUserDefinedEvent(const char *eventName, Script *sender, UInt32 argsArrayId, const char *senderName);
 
 	// event handler param lists
@@ -340,10 +339,152 @@ namespace EventManager
 
 	// template definitions
 
-	template <class FunctionCaller>
+	bool DoesFormMatchFilter(TESForm* form, TESForm* filter, bool expectReference, const UInt32 recursionLevel = 0);
+	bool DoDeprecatedFiltersMatch(const EventCallback& callback, const ArgStack& params);
+
+	// eParamType_Anything is treated as "use default param type" (usually for a User-Defined Event).
+	template<bool ExtractIntTypeAsFloat>
+	bool DoesFilterMatch(const ArrayElement& sourceFilter, void* param, EventFilterType filterType)
+	{
+		switch (sourceFilter.DataType()) {
+		case kDataType_Numeric:
+		{
+			double filterNumber{};
+			sourceFilter.GetAsNumber(&filterNumber);	//if the Event's paramType was Int, then this should be already Floored.
+			float inputNumber;
+			if constexpr (ExtractIntTypeAsFloat)
+			{
+				// this function could be being called by a function, where even ints are passed as floats.
+				// Alternatively, it could be called by some internal function that got the param from an ArrayElement 
+				inputNumber = *reinterpret_cast<float*>(&param);
+				if (filterType == EventFilterType::eParamType_Int)
+					inputNumber = floor(inputNumber);
+			}
+			else  
+			{
+				// this function is being called internally, via a va_arg-using function, so expect ints to be packed like ints.
+				inputNumber = (filterType == EventFilterType::eParamType_Int)
+					? static_cast<float>(*reinterpret_cast<UInt32*>(&param))
+					: *reinterpret_cast<float*>(&param);
+			}
+			
+			if (!FloatEqual(inputNumber, static_cast<float>(filterNumber)))
+				return false;
+			break;
+		}
+		case kDataType_Form:
+		{
+			UInt32 filterFormId{};
+			sourceFilter.GetAsFormID(&filterFormId);
+			auto* inputForm = static_cast<TESForm*>(param);
+			auto* filterForm = LookupFormByID(filterFormId);
+			// Allow matching a null form filter with a null input.
+			bool const expectReference = (filterType != EventFilterType::eParamType_BaseForm)
+				&& (filterType != EventFilterType::eParamType_AnyForm);
+			if (!DoesFormMatchFilter(inputForm, filterForm, expectReference))
+				return false;
+			break;
+		}
+		case kDataType_String:
+		{
+			const char* filterStr{};
+			sourceFilter.GetAsString(&filterStr);
+			const auto inputStr = static_cast<const char*>(param);
+			if (inputStr == filterStr)
+				return true;
+			if (!filterStr || !inputStr || StrCompare(filterStr, inputStr) != 0)
+				return false;
+			break;
+		}
+		case kDataType_Array:
+		{
+			ArrayID filterArrayId{};
+			sourceFilter.GetAsArray(&filterArrayId);
+			const auto inputArrayId = *reinterpret_cast<ArrayID*>(&param);
+			if (!inputArrayId)
+				return false;
+			const auto inputArray = g_ArrayMap.Get(inputArrayId);
+			const auto filterArray = g_ArrayMap.Get(filterArrayId);
+			if (!inputArray || !filterArray || !inputArray->Equals(filterArray))
+				return false;
+			break;
+		}
+		case kDataType_Invalid:
+			break;
+		}
+		return true;
+	}
+
+	template<bool ExtractIntTypeAsFloat>
+	bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCallback::Filter& filter, EventFilterType paramType, void* param, int index)
+	{
+		ArrayID arrayFiltersId{};
+		filter.GetAsArray(&arrayFiltersId);
+		auto* arrayFilters = g_ArrayMap.Get(arrayFiltersId);
+		if (!arrayFilters)
+		{
+			ShowRuntimeError(callback.TryGetScript(), "While checking event filters in array at index %d, the array was invalid/unitialized (array id: %d).", index, arrayFiltersId);
+			return false;
+		}
+		// If array of filters is non-"array" type, then ignore the keys.
+		for (auto iter = arrayFilters->GetRawContainer()->begin();
+			iter != arrayFilters->GetRawContainer()->end(); ++iter)
+		{
+			auto const& elem = *iter.second();
+			if (ParamTypeToVarType(paramType) != DataTypeToVarType(elem.DataType()))
+				continue;
+			if (DoesFilterMatch<ExtractIntTypeAsFloat>(elem, param, paramType))
+				return true;
+		}
+		return false;
+	}
+
+	template<bool ExtractIntTypeAsFloat>
+	bool DoFiltersMatch(TESObjectREFR* thisObj, const EventInfo& eventInfo, const EventCallback& callback, const ArgStack& params)
+	{
+		for (auto& [index, filter] : callback.filters)
+		{
+			bool const isCallingRefFilter = index == 0;
+
+			if (index > params->size())
+				return false; // insufficient params to match that filter.
+
+			void* param = isCallingRefFilter ? thisObj : params->at(index - 1);
+
+			if (eventInfo.IsUserDefined()) // Skip filter type checking.
+			{
+				if (!DoesFilterMatch<ExtractIntTypeAsFloat>(filter, param, EventFilterType::eParamType_Anything))
+					return false;
+				//TODO: add support for array of filters
+			}
+			else
+			{
+				auto const paramType = isCallingRefFilter ? EventFilterType::eParamType_Reference : eventInfo.paramTypes[index - 1];
+
+				const auto filterDataType = filter.DataType();
+				const auto filterVarType = DataTypeToVarType(filterDataType);
+				const auto paramVarType = ParamTypeToVarType(paramType);
+
+				if (filterVarType != paramVarType) //if true, can assume that the filterVar's type is Array (if it isn't, type mismatch should have been reported in SetEventHandler).
+				{
+					// assume elements of array are filters
+					if (!DoesParamMatchFiltersInArray<ExtractIntTypeAsFloat>(callback, filter, paramType, param, index))
+						return false;
+					continue;
+				}
+				if (!DoesFilterMatch<ExtractIntTypeAsFloat>(filter, param, paramType))
+					return false;
+			}
+		}
+		return true;
+	}
+
+	template <bool ExtractIntTypeAsFloat>
 	DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params,
 		DispatchCallback resultCallback, void* anyData)
 	{
+		using FunctionCaller = std::conditional_t<ExtractIntTypeAsFloat, InternalFunctionCallerAlt, InternalFunctionCaller>;
+
 		DispatchReturn result = DispatchReturn::kRetn_Normal;
 		for (auto& [funcKey, callback] : eventInfo.callbacks)
 		{
@@ -352,7 +493,7 @@ namespace EventManager
 
 			if (!DoDeprecatedFiltersMatch(callback, params))
 				continue;
-			if (!DoFiltersMatch(thisObj, eventInfo, callback, params))
+			if (!DoFiltersMatch<ExtractIntTypeAsFloat>(thisObj, eventInfo, callback, params))
 				continue;
 
 			result = std::visit(overloaded{
@@ -372,7 +513,7 @@ namespace EventManager
 					}
 					return DispatchReturn::kRetn_Normal;
 				},
-				[&params, thisObj](EventHandler handler)-> DispatchReturn
+				[&params, thisObj](EventHandler const handler) -> DispatchReturn
 				{
 					handler(thisObj, params->data());
 					return DispatchReturn::kRetn_Normal;
@@ -385,10 +526,10 @@ namespace EventManager
 		return result;
 	}
 
-	template <class FunctionCaller>
+	template <bool ExtractIntTypeAsFloat>
 	bool DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params)
 	{
-		return DispatchEventRaw<FunctionCaller>(thisObj, eventInfo, params, nullptr, nullptr)
+		return DispatchEventRaw<ExtractIntTypeAsFloat>(thisObj, eventInfo, params, nullptr, nullptr)
 			!= DispatchReturn::kRetn_Error;
 	}
 };

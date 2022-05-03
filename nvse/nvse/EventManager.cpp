@@ -1003,7 +1003,7 @@ void HandleNVSEMessage(UInt32 msgID, void* data)
 		HandleEvent(eventID, data, nullptr);
 }
 
-bool DoesFormMatchFilter(TESForm* form, TESForm* filter, bool expectReference, const UInt32 recursionLevel = 0)
+bool DoesFormMatchFilter(TESForm* form, TESForm* filter, bool expectReference, const UInt32 recursionLevel)
 {
 	if (filter == form)	//filter and form could both be null, and that's okay.
 		return true;
@@ -1040,87 +1040,6 @@ bool DoDeprecatedFiltersMatch(const EventCallback& callback, const ArgStack& par
 		return false;
 	}
 	return true;
-}
-
-// eParamType_Anything is treated as "use default param type" (usually for a User-Defined Event).
-bool DoesFilterMatch(const ArrayElement& sourceFilter, void* param, EventFilterType filterType)
-{
-	switch (sourceFilter.DataType()) {
-	case kDataType_Numeric:
-	{
-		double filterNumber{};
-		sourceFilter.GetAsNumber(&filterNumber);	//if the Event's paramType was Int, then this should be already Floored.
-		const auto inputNumber = (filterType == EventFilterType::eParamType_Int)
-			? static_cast<float>(*reinterpret_cast<UInt32*>(&param))
-			: *reinterpret_cast<float*>(&param);
-		if (!FloatEqual(inputNumber, static_cast<float>(filterNumber)))
-			return false;
-		break;
-	}
-	case kDataType_Form:
-	{
-		UInt32 filterFormId{};
-		sourceFilter.GetAsFormID(&filterFormId);
-		auto* inputForm = static_cast<TESForm*>(param);
-		auto* filterForm = LookupFormByID(filterFormId);
-		// Allow matching a null form filter with a null input.
-		bool const expectReference = (filterType != EventFilterType::eParamType_BaseForm)
-			&& (filterType != EventFilterType::eParamType_AnyForm);
-		if (!DoesFormMatchFilter(inputForm, filterForm, expectReference))
-			return false;
-		break;
-	}
-	case kDataType_String:
-	{
-		const char* filterStr{};
-		sourceFilter.GetAsString(&filterStr);
-		const auto inputStr = static_cast<const char*>(param);
-		if (inputStr == filterStr)
-			return true;
-		if (!filterStr || !inputStr || StrCompare(filterStr, inputStr) != 0)
-			return false;
-		break;
-	}
-	case kDataType_Array:
-	{
-		ArrayID filterArrayId{};
-		sourceFilter.GetAsArray(&filterArrayId);
-		const auto inputArrayId = *reinterpret_cast<ArrayID*>(&param);
-		if (!inputArrayId)
-			return false;
-		const auto inputArray = g_ArrayMap.Get(inputArrayId);
-		const auto filterArray = g_ArrayMap.Get(filterArrayId);
-		if (!inputArray || !filterArray || !inputArray->Equals(filterArray))
-			return false;
-		break;
-	}
-	case kDataType_Invalid:
-		break;
-	}
-	return true;
-}
-
-bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCallback::Filter& filter, EventFilterType paramType, void* param, int index)
-{
-	ArrayID arrayFiltersId{};
-	filter.GetAsArray(&arrayFiltersId);
-	auto* arrayFilters = g_ArrayMap.Get(arrayFiltersId);
-	if (!arrayFilters)
-	{
-		ShowRuntimeError(callback.TryGetScript(), "While checking event filters in array at index %d, the array was invalid/unitialized (array id: %d).", index, arrayFiltersId);
-		return false;
-	}
-	// If array of filters is non-"array" type, then ignore the keys.
-	for (auto iter = arrayFilters->GetRawContainer()->begin();
-		iter != arrayFilters->GetRawContainer()->end(); ++iter)
-	{
-		auto const& elem = *iter.second();
-		if (ParamTypeToVarType(paramType) != DataTypeToVarType(elem.DataType()))
-			continue;
-		if (DoesFilterMatch(elem, param, paramType))
-			return true;
-	}
-	return false;
 }
 
 // Meant for use to validate param types, not much else.
@@ -1192,44 +1111,6 @@ bool ParamTypeMatches(EventFilterType from, EventFilterType to)
 	return false;
 }
 
-bool DoFiltersMatch(TESObjectREFR* thisObj, const EventInfo& eventInfo, const EventCallback& callback, const ArgStack& params)
-{
-	for (auto& [index, filter] : callback.filters)
-	{
-		bool const isCallingRefFilter = index == 0;
-
-		if (index > params->size())
-			return false; // insufficient params to match that filter.
-
-		void* param = isCallingRefFilter ? thisObj : params->at(index - 1);
-
-		if (eventInfo.IsUserDefined()) // Skip filter type checking.
-		{
-			if (!DoesFilterMatch(filter, param, EventFilterType::eParamType_Anything))
-				return false;
-		}
-		else
-		{
-			auto const paramType = isCallingRefFilter ? EventFilterType::eParamType_Reference : eventInfo.paramTypes[index - 1];
-
-			const auto filterDataType = filter.DataType();
-			const auto filterVarType = DataTypeToVarType(filterDataType);
-			const auto paramVarType = ParamTypeToVarType(paramType);
-
-			if (filterVarType != paramVarType) //if true, can assume that the filterVar's type is Array (if it isn't, should have been reported in SetEventHandler).
-			{
-				// assume elements of array are filters
-				if (!DoesParamMatchFiltersInArray(callback, filter, paramType, param, index))
-					return false;
-				continue;
-			}
-			if (!DoesFilterMatch(filter, param, paramType))
-				return false;
-		}
-	}
-	return true;
-}
-
 bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const EventInfo& evInfo) const
 {
 	if (source && (source != toCheck.source))
@@ -1266,13 +1147,15 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 			if (void* param = toRemoveFilter.GetAsVoidArg(); 
 				toRemoveFilter.DataType() == existingFilter.DataType())
 			{
-				if (!DoesFilterMatch(existingFilter, param, paramType))
+				if (!DoesFilterMatch<false>(existingFilter, param, paramType))
 					return false;
 			}
 			else if (toRemoveFilter.DataType() == kDataType_Array)
 			{
 				// assume elements of array are filters
-				if (!DoesParamMatchFiltersInArray(*this, existingFilter, paramType, param, index))
+				// If the paramType is numeric (int or float), make sure our param void* is always read as a float.
+				// (Since ArrayElements don't contain int-type values, they just store floats, floored or not.)
+				if (!DoesParamMatchFiltersInArray<true>(*this, existingFilter, paramType, param, index))
 					return false;
 			}
 			else [[unlikely]]
@@ -1305,7 +1188,7 @@ bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
 	for (int i = 0; i < eventInfo.numParams; ++i)
 		params->push_back(va_arg(paramList, void*));
 
-	bool const result = DispatchEventRaw<InternalFunctionCaller>(thisObj, eventInfo, params);
+	bool const result = DispatchEventRaw <false> (thisObj, eventInfo, params);
 	
 	va_end(paramList);
 	return result;
@@ -1328,7 +1211,7 @@ DispatchReturn DispatchEventAlt(const char* eventName, DispatchCallback resultCa
 	for (int i = 0; i < eventInfo.numParams; ++i)
 		params->push_back(va_arg(paramList, void*));
 
-	auto const result = DispatchEventRaw<InternalFunctionCaller>(thisObj, eventInfo, params, resultCallback, anyData);
+	auto const result = DispatchEventRaw<false>(thisObj, eventInfo, params, resultCallback, anyData);
 
 	va_end(paramList);
 	return result;

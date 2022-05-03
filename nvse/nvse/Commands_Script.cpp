@@ -765,7 +765,7 @@ bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 		params->push_back(arg);
 	}
 
-	*result = EventManager::DispatchEventRaw<InternalFunctionCallerAlt>(thisObj, eventInfo, params);
+	*result = EventManager::DispatchEventRaw<true>(thisObj, eventInfo, params);
 	return true;
 }
 
@@ -813,7 +813,7 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 			{
 				auto const& eventCallback = i->second;
 				if (!eventCallback.IsRemoved() && (argsToFilter->empty() ||
-					EventManager::DoFiltersMatch(thisObj, info, eventCallback, argsToFilter)))
+					EventManager::DoFiltersMatch<true>(thisObj, info, eventCallback, argsToFilter)))
 				{
 					std::string toPrint = FormatString(">> Handler: %s, filters: %s", eventCallback.GetCallbackFuncAsStr().c_str(),
 						eventCallback.GetFiltersAsStr().c_str());
@@ -826,7 +826,7 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 			for (auto const &[key, eventCallback] : info.callbacks)
 			{
 				if (!eventCallback.IsRemoved() && (argsToFilter->empty()
-					|| EventManager::DoFiltersMatch(thisObj, info, eventCallback, argsToFilter)))
+					|| EventManager::DoFiltersMatch<true>(thisObj, info, eventCallback, argsToFilter)))
 				{
 					std::string toPrint = FormatString(">> Handler: %s, filters: %s", eventCallback.GetCallbackFuncAsStr().c_str(),
 						eventCallback.GetFiltersAsStr().c_str());
@@ -885,7 +885,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 	EventManager::ArgStack argsToFilter{};
 	for (size_t i = 2; i < numArgs; i++)
 	{
-		auto const arg = eval.Arg(i)->GetAsVoidArg();
+		auto const arg = eval.Arg(i)->GetAsVoidArg(); //numeric args will always be packed as floats
 		argsToFilter->push_back(arg);
 	}
 
@@ -923,7 +923,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 			{
 				auto const& eventCallback = i->second;
 				if (!eventCallback.IsRemoved() && (argsToFilter->empty() ||
-					EventManager::DoFiltersMatch(thisObj, info, eventCallback, argsToFilter)))
+					EventManager::DoFiltersMatch<true>(thisObj, info, eventCallback, argsToFilter)))
 				{
 					handlersForEventArray->SetElementArray(key, GetHandlerArr(eventCallback, scriptObj)->ID());
 					key++;
@@ -936,7 +936,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 			for (auto const& [callbackFuncKey, eventCallback] : info.callbacks)
 			{
 				if (!eventCallback.IsRemoved() && (argsToFilter->empty()
-					|| EventManager::DoFiltersMatch(thisObj, info, eventCallback, argsToFilter)))
+					|| EventManager::DoFiltersMatch<true>(thisObj, info, eventCallback, argsToFilter)))
 				{
 					handlersForEventArray->SetElementArray(key, GetHandlerArr(eventCallback, scriptObj)->ID());
 					key++;
