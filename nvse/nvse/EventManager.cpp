@@ -1226,6 +1226,12 @@ bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 arg
 	if (kEventID_INVALID == eventID)
 		return true;
 
+	{
+		const EventInfo& eventInfo = s_eventInfos[eventID];
+		if (!eventInfo.IsUserDefined())
+			return false;
+	}
+
 	// get or create args array
 	ArrayVar *arr;
 	if (argsArrayId)

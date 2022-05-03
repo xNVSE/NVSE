@@ -709,7 +709,7 @@ bool Cmd_DispatchEvent_Execute(COMMAND_ARGS)
 		return true;
 
 	const char *eventName = eval.Arg(0)->GetString();
-	if (!eventName)
+	if (!eventName) [[unlikely]]
 		return true;
 
 	ArrayID argsArrayId = 0;
