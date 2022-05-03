@@ -763,7 +763,7 @@ bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 		params->push_back(arg);
 	}
 
-	*result = EventManager::DispatchEventRaw(thisObj, eventInfo, params);
+	*result = EventManager::DispatchEventRaw<InternalFunctionCallerAlt>(thisObj, eventInfo, params);
 	return true;
 }
 

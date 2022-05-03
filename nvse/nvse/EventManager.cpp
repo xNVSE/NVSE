@@ -1,11 +1,10 @@
 #include <stdarg.h>
 #include "EventManager.h"
+
 #include "ArrayVar.h"
-#include "PluginAPI.h"
 #include "GameAPI.h"
 #include "Utilities.h"
 #include "SafeWrite.h"
-#include "FunctionScripts.h"
 #include "GameObjects.h"
 #include "ThreadLocal.h"
 #include "common/ICriticalSection.h"
@@ -1287,51 +1286,6 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 	return true;
 }
 
-DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params,
-	DispatchCallback resultCallback, void* anyData)
-{
-	DispatchReturn result = DispatchReturn::kRetn_Normal;
-	for (auto &[funcKey, callback] : eventInfo.callbacks)
-	{
-		if (callback.IsRemoved())
-			continue;
-
-		if (!DoDeprecatedFiltersMatch(callback, params))
-			continue;
-		if (!DoFiltersMatch(thisObj, eventInfo, callback, params))
-			continue;
-
-		result = std::visit(overloaded{
-			[=, &params](const LambdaManager::Maybe_Lambda& script) -> DispatchReturn
-			{
-				InternalFunctionCaller caller(script.Get(), thisObj);
-				caller.SetArgsRaw(params->size(), params->data());
-				auto const res = UserFunctionManager::Call(std::move(caller));
-				if (resultCallback)
-				{
-					NVSEArrayVarInterface::Element elem;
-					if (PluginAPI::BasicTokenToPluginElem(res.get(), elem))
-					{
-						return resultCallback(elem, anyData) ? DispatchReturn::kRetn_Normal : DispatchReturn::kRetn_EarlyBreak;
-					}
-					return DispatchReturn::kRetn_Error;
-				}
-				return DispatchReturn::kRetn_Normal;
-			},
-			[&params, thisObj](EventHandler handler)-> DispatchReturn
-			{
-				handler(thisObj, params->data());
-				return DispatchReturn::kRetn_Normal;
-			},
-			}, callback.toCall);
-
-		if (result != DispatchReturn::kRetn_Normal)
-			break;
-	}
-	return result;
-}
-
-
 bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
 {
 	const auto eventId = EventIDForString(eventName);
@@ -1351,7 +1305,7 @@ bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
 	for (int i = 0; i < eventInfo.numParams; ++i)
 		params->push_back(va_arg(paramList, void*));
 
-	bool const result = DispatchEventRaw(thisObj, eventInfo, params) != DispatchReturn::kRetn_Error;
+	bool const result = DispatchEventRaw<InternalFunctionCaller>(thisObj, eventInfo, params) != DispatchReturn::kRetn_Error;
 	
 	va_end(paramList);
 	return result;
@@ -1374,7 +1328,7 @@ DispatchReturn DispatchEventAlt(const char* eventName, DispatchCallback resultCa
 	for (int i = 0; i < eventInfo.numParams; ++i)
 		params->push_back(va_arg(paramList, void*));
 
-	auto const result = DispatchEventRaw(thisObj, eventInfo, params, resultCallback, anyData);
+	auto const result = DispatchEventRaw<InternalFunctionCaller>(thisObj, eventInfo, params, resultCallback, anyData);
 
 	va_end(paramList);
 	return result;

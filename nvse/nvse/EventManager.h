@@ -11,6 +11,9 @@
 #include "PluginAPI.h"
 #include <variant>
 
+#include "FunctionScripts.h"
+
+
 class Script;
 class TESForm;
 class TESObjectREFR;
@@ -234,6 +237,7 @@ namespace EventManager
 	using ArgStack = StackVector<void*, kMaxUdfParams>;
 	static constexpr auto numMaxFilters = kMaxUdfParams;
 
+	bool DoDeprecatedFiltersMatch(const EventCallback& callback, const ArgStack& params);
 	bool DoFiltersMatch(TESObjectREFR* thisObj, const EventInfo& eventInfo, const EventCallback& callback, const ArgStack& params);
 
 	bool SetHandler(const char *eventName, EventCallback &toSet, ExpressionEvaluator* eval = nullptr);
@@ -265,6 +269,7 @@ namespace EventManager
 	bool SetNativeEventHandler(const char *eventName, EventHandler func);
 	bool RemoveNativeEventHandler(const char *eventName, EventHandler func);
 
+	template <class FunctionCaller>
 	DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params,
 		DispatchCallback resultCallback = nullptr, void* anyData = nullptr);
 
@@ -325,6 +330,57 @@ namespace EventManager
 		EventFilterType::eParamType_Reference,
 		EventFilterType::eParamType_BaseForm,
 	};
+
+
+
+
+
+	// template definitions
+
+	template <class FunctionCaller>
+	DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params,
+		DispatchCallback resultCallback, void* anyData)
+	{
+		DispatchReturn result = DispatchReturn::kRetn_Normal;
+		for (auto& [funcKey, callback] : eventInfo.callbacks)
+		{
+			if (callback.IsRemoved())
+				continue;
+
+			if (!DoDeprecatedFiltersMatch(callback, params))
+				continue;
+			if (!DoFiltersMatch(thisObj, eventInfo, callback, params))
+				continue;
+
+			result = std::visit(overloaded{
+				[=, &params](const LambdaManager::Maybe_Lambda& script) -> DispatchReturn
+				{
+					FunctionCaller caller(script.Get(), thisObj);
+					caller.SetArgsRaw(params->size(), params->data());
+					auto const res = UserFunctionManager::Call(std::move(caller));
+					if (resultCallback)
+					{
+						NVSEArrayVarInterface::Element elem;
+						if (PluginAPI::BasicTokenToPluginElem(res.get(), elem))
+						{
+							return resultCallback(elem, anyData) ? DispatchReturn::kRetn_Normal : DispatchReturn::kRetn_EarlyBreak;
+						}
+						return DispatchReturn::kRetn_Error;
+					}
+					return DispatchReturn::kRetn_Normal;
+				},
+				[&params, thisObj](EventHandler handler)-> DispatchReturn
+				{
+					handler(thisObj, params->data());
+					return DispatchReturn::kRetn_Normal;
+				},
+				}, callback.toCall);
+
+			if (result != DispatchReturn::kRetn_Normal)
+				break;
+		}
+		return result;
+	}
 };
 
 #endif
