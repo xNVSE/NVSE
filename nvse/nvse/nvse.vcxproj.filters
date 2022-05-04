@@ -520,5 +520,14 @@
     <Text Include="UnitTests.h">
       <Filter>unit tests</Filter>
     </Text>
+    <Text Include="unit_tests\array_functions.txt">
+      <Filter>unit tests</Filter>
+    </Text>
+    <Text Include="unit_tests\event_handler_functions.txt">
+      <Filter>unit tests</Filter>
+    </Text>
+    <Text Include="unit_tests\udf_functions.txt">
+      <Filter>unit tests</Filter>
+    </Text>
   </ItemGroup>
 </Project>
