@@ -373,12 +373,15 @@ bool EventCallback::ValidateFirstOrSecondFilter(bool isFirst, const EventInfo& p
 		return true;
 	auto const filterName = isFirst ? R"("first"/"source")" : R"("second"/"object")";
 
-	if (isFirst && !parent.numParams) [[unlikely]]
+	if (isFirst )
 	{
-		outErrorMsg = R"(Cannot use "first"/"source" filter; event has 0 args.)";
-		return false;
+		if (!parent.numParams) [[unlikely]]
+		{
+			outErrorMsg = R"(Cannot use "first"/"source" filter; event has 0 args.)";
+			return false;
+		}
 	}
-	if (!isFirst && parent.numParams < 2) [[unlikely]]
+	else if (parent.numParams < 2) [[unlikely]]
 	{
 		outErrorMsg = FormatString(R"(Cannot use "second"/"object" filter; event has %u args.)", parent.numParams);
 		return false;
