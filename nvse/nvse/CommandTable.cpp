@@ -1826,8 +1826,8 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD_RET(Ternary, kRetnType_Ambiguous);
 	ADD_CMD(ModUIFloat);
 	ADD_CMD(GetQuestObjectiveCount);
-	ADD_CMD_RET(GetNthQuestObjective, kRetnType_Form);
-	ADD_CMD_RET(GetCurrentObjective, kRetnType_Form);
+	ADD_CMD(GetNthQuestObjective);
+	ADD_CMD(GetCurrentObjective);
 	ADD_CMD(PrintActiveTile);
 	ADD_CMD(SetCurrentQuest);
 
