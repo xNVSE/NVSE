@@ -751,8 +751,12 @@ bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 
 	// does an EventInfo entry already exist for this event?
 	const UInt32 eventID = EventManager::EventIDForString(eventName);
-	if (EventManager::kEventID_INVALID == eventID) [[unlikely]]
+	if (EventManager::kEventID_INVALID == eventID)
+	{
+		*result = 1;	// assume the event may not have any handlers Set.
+		// Sucks we can't warn users about having a potentially invalid eventName, though.
 		return true;
+	}
 
 	auto& eventInfo = EventManager::s_eventInfos[eventID];
 #if _DEBUG
