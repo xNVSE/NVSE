@@ -164,7 +164,7 @@ namespace EventManager
 
 		[[nodiscard]] bool IsRemoved() const { return removed; }
 		void SetRemoved(bool bSet) { removed = bSet; }
-		[[nodiscard]] bool EqualFilters(const EventCallback &rhs) const; // compare, return true if the two handlers are identical
+		[[nodiscard]] bool EqualFilters(const EventCallback &rhs) const; // return true if the two handlers have matching filters.
 
 		[[nodiscard]] Script *TryGetScript() const;
 		[[nodiscard]] bool HasCallbackFunc() const;
