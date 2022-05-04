@@ -191,9 +191,7 @@
     </Link>
     <PostBuildEvent>
       <Message>Installing DLL...</Message>
-      <Command>copy "$(TargetPath)" "$(FalloutNVPath)\nvse_1_4.dll"
-copy "$(ProjectDir)gr_UnitTests.txt" "$(FalloutNVPath)\Data\NVSE\Plugins\scripts\gr_UnitTests.txt"
-</Command>
+      <Command>copy "$(TargetPath)" "$(FalloutNVPath)\nvse_1_4.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -652,6 +650,7 @@ copy "$(ProjectDir)gr_UnitTests.txt" "$(FalloutNVPath)\Data\NVSE\Plugins\scripts
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="UnitTests.cpp" />
     <ClCompile Include="Utilities.cpp" />
     <ClCompile Include="utility.cpp" />
   </ItemGroup>
@@ -760,7 +759,7 @@ copy "$(ProjectDir)gr_UnitTests.txt" "$(FalloutNVPath)\Data\NVSE\Plugins\scripts
     <Natvis Include="DebuggerVisualizations.natvis" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="gr_UnitTests.txt" />
+    <Text Include="UnitTests.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

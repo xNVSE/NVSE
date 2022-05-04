@@ -545,7 +545,9 @@ struct NVSEScriptInterface
 
 	// Compile a partial script without a script name
 	// Example:
-	//   Script* script = g_scriptInterface->CompileScript("PlaceAtMe Explosion");
+	//   Script* script = g_scriptInterface->CompileScript(R"(Begin Function{ }
+	//		PlaceAtMe Explosion
+	//	 end)");
 	//   g_scriptInterface->CallFunctionAlt(script, *g_thePlayer, 0);
 	Script* (*CompileScript)(const char* scriptText);
 

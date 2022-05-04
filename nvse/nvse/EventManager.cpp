@@ -827,7 +827,7 @@ bool DoSetHandler(EventInfo &info, EventCallback& toSet)
 				if (existingCallback.IsRemoved())
 				{
 					existingCallback.SetRemoved(false);
-					return true;
+					return true; 
 				}
 				return false; //attempting to add a duplicate handler.
 			}
@@ -936,16 +936,18 @@ bool RemoveHandler(const char* id, const EventCallback& toRemove)
 
 				if (!toRemove.ShouldRemoveCallback(nthCallback, eventInfo))
 					continue;
-				
-				nthCallback.SetRemoved(true);
+
+				if (!nthCallback.IsRemoved())
+				{
+					nthCallback.SetRemoved(true);
+					bRemovedAtLeastOne = true;
+				}
 
 				if (!nthCallback.pendingRemove)
 				{
 					nthCallback.pendingRemove = true;
 					s_deferredRemoveList.Push(&eventInfo, i);
 				}
-
-				bRemovedAtLeastOne = true;
 			}
 		}
 	}

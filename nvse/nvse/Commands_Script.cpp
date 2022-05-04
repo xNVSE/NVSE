@@ -652,8 +652,12 @@ bool ProcessEventHandler(char *eventName, EventManager::EventCallback &callback,
 	if (GetLNEventMask)
 	{
 		char *colon = strchr(eventName, ':');
+		bool separatedStr = false;
 		if (colon)
-			++colon;
+		{
+			*(colon++) = 0;
+			separatedStr = true;
+		}
 		if (const UInt32 eventMask = GetLNEventMask(eventName))
 		{
 			UInt32 const numFilter = (colon && *colon) ? atoi(colon) : 0;
@@ -669,6 +673,12 @@ bool ProcessEventHandler(char *eventName, EventManager::EventCallback &callback,
 			}
 
 			return ProcessLNEventHandler(eventMask, callback.TryGetScript(), addEvt, formFilter, numFilter);
+		}
+		if (separatedStr)
+		{
+			//restore string back to how it was.
+			--colon;
+			*colon = ':';
 		}
 	}
 	return addEvt ? EventManager::SetHandler(eventName, callback, &eval)
