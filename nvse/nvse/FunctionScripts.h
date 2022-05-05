@@ -80,7 +80,7 @@ public:
 	FunctionContext(FunctionInfo* info, UInt8 version, Script* invokingScript);
 	~FunctionContext();
 
-	bool Execute(FunctionCaller& caller);
+	bool Execute(FunctionCaller& caller) const;
 	bool Return(ExpressionEvaluator* eval);
 	[[nodiscard]] bool IsGood() const { return !m_bad; }
 	[[nodiscard]] ScriptToken* Result() const { return m_result.get(); }
@@ -155,6 +155,22 @@ protected:
 	TESObjectREFR* m_container;
 
 	virtual bool ValidateParam(UserFunctionParam* param, ParamSize_t paramIndex) { return param != nullptr; }
+};
+
+// Unlike InternalFunctionCaller, expects numeric args to always be passed as floats.
+class InternalFunctionCallerAlt : public InternalFunctionCaller
+{
+public:
+	InternalFunctionCallerAlt(Script* script, TESObjectREFR* callingObj = nullptr, TESObjectREFR* container = nullptr)
+		: InternalFunctionCaller(script, callingObj, container) { }
+
+	~InternalFunctionCallerAlt() override = default;
+
+	bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info) override;
+
+	bool SetArgs(ParamSize_t numArgs, ...) = delete;
+	bool vSetArgs(ParamSize_t numArgs, va_list args) = delete;
+	//can only use SetArgsRaw, since otherwise it's easier to trip up with va_args and pass an int.
 };
 
 template <typename T>

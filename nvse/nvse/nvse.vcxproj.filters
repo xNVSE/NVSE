@@ -22,6 +22,9 @@
     <Filter Include="lib\jip">
       <UniqueIdentifier>{93d93604-5010-4ad9-9342-49286858e435}</UniqueIdentifier>
     </Filter>
+    <Filter Include="unit tests">
+      <UniqueIdentifier>{6fe89cb8-43d0-475d-828b-a97c69bc1e06}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Algohol\algMath.cpp">
@@ -240,6 +243,9 @@
     </ClCompile>
     <ClCompile Include="Commands_Quest.cpp">
       <Filter>commands</Filter>
+    </ClCompile>
+    <ClCompile Include="UnitTests.cpp">
+      <Filter>unit tests</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -511,6 +517,17 @@
     <Natvis Include="DebuggerVisualizations.natvis" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="gr_UnitTests.txt" />
+    <Text Include="UnitTests.h">
+      <Filter>unit tests</Filter>
+    </Text>
+    <Text Include="unit_tests\array_functions.txt">
+      <Filter>unit tests</Filter>
+    </Text>
+    <Text Include="unit_tests\event_handler_functions.txt">
+      <Filter>unit tests</Filter>
+    </Text>
+    <Text Include="unit_tests\udf_functions.txt">
+      <Filter>unit tests</Filter>
+    </Text>
   </ItemGroup>
 </Project>

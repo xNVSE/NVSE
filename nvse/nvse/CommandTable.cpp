@@ -1841,6 +1841,9 @@ void CommandTable::AddCommandsV6()
 
 	// 6.2 beta 07
 	ADD_CMD(Assert);
+	ADD_CMD(DispatchEventAlt);
+	ADD_CMD(DumpEventHandlers);
+	ADD_CMD_RET(GetEventHandlers, kRetnType_Array);
 }
 
 namespace PluginAPI

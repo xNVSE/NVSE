@@ -3606,8 +3606,10 @@ void ExpressionEvaluator::PopFromStack() const
 {
 	if (m_parent)
 	{
-		// propogate info to parent
+		// propagate info to parent
 		m_parent->m_expectedReturnType = m_expectedReturnType;
+		if (m_parent->m_flags.Get(kFlag_SuppressErrorMessages))
+			m_parent->m_flags.Set(m_flags.Get(kFlag_ErrorOccurred));
 	}
 	localData.expressionEvaluator = m_parent;
 }
@@ -4823,7 +4825,7 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 		}
 	}
 	
-	if (operands.Size() != 1 || this->HasErrors() && !m_flags.IsSet(kFlag_SuppressErrorMessages)) // should have one operand remaining - result of expression
+	if (operands.Size() != 1 || (this->HasErrors() && !m_flags.IsSet(kFlag_SuppressErrorMessages))) // should have one operand remaining - result of expression
 	{
 		const auto currentLine = this->GetLineText(cache, iter.Get().token);
 		if (!currentLine.empty())

@@ -1,0 +1,34 @@
+begin Function { }
+
+	; === Test array functions ===
+	array_var aVar = ar_list 1 2 3 4
+	ar_Erase aVar
+	Assert (ar_Size aVar) == 0
+
+	aVar = ar_list 1 2 3 4
+	Assert ((ar_Size aVar) == 4)
+
+	ar_append aVar 5
+	Assert ((ar_Size aVar) == 5)
+	Assert (aVar == (Ar_List 1 2 3 4 5))
+	Assert ((aVar[0]) == 1)
+	Assert ((aVar[4]) == 5)
+
+	ar_erase avar 0:5
+	Assert ((ar_Size aVar) == 0)
+	Assert !(testexpr aVar[0])
+	Assert !(testexpr aVar[4])
+
+	aVar = ar_list 1 2 3
+	ar_erase avar 0
+	Assert (aVar == (ar_list 2 3))
+
+	ar_resize avar 1
+	Assert (avar == (ar_list 2))
+
+	ar_insertRange avar 0 (ar_list 0 1)
+	Assert (avar == (ar_list 0 1 2))
+
+	print "Finished running xNVSE Array Unit Tests."
+	
+end

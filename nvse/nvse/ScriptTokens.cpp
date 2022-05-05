@@ -842,6 +842,24 @@ bool ScriptToken::GetBool() const
 	}
 }
 
+void* ScriptToken::GetAsVoidArg() const
+{
+	if (CanConvertTo(kTokenType_Number))
+	{
+		auto res = static_cast<float>(GetNumber());
+		return *(void**)(&res);	//conversion: *((float *)&nthArgGetNumber();
+	}
+	if (CanConvertTo(kTokenType_String))
+		return const_cast<char*>(GetString());
+	if (CanConvertTo(kTokenType_Form))
+		return LookupFormByID(GetFormID());
+#if RUNTIME
+	if (CanConvertTo(kTokenType_Array))
+		return reinterpret_cast<void*>(GetArrayID());
+#endif
+	return nullptr;
+}
+
 Operator *ScriptToken::GetOperator() const
 {
 	return type == kTokenType_Operator ? value.op : NULL;

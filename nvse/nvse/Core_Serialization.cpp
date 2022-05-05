@@ -128,11 +128,11 @@ void Core_PreLoadCallback(void * reserved)
 		EventManager::EventInfo& info = iter.Get();
 		if (info.FlushesOnLoad())
 		{
-			//remove all callbacks
-			//TODO: unsure if this is correct. Do we need to delay the callback removal here?
-			for (auto callbackIter = info.callbacks.Begin(); !callbackIter.End(); ++callbackIter)
+			info.callbacks.clear(); //warning: may invalidate iterators in DeferredRemoveCallbacks.
+			// assume there are no callbacks being remove-deferred while loading.
+			if (info.eventMask)
 			{
-				callbackIter.Remove(info.callbacks);
+				EventManager::s_eventsInUse &= ~info.eventMask;
 			}
 		}
 	}
