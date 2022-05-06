@@ -764,7 +764,7 @@ bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 	{
 		return true;
 	}
-#elif
+#else
 	if (!eventInfo.IsUserDefined()) [[unlikely]]
 	{
 		return true;
