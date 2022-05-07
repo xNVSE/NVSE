@@ -505,7 +505,7 @@ namespace EventManager
 					if (resultCallback)
 					{
 						NVSEArrayVarInterface::Element elem;
-						if (PluginAPI::BasicTokenToPluginElem(res.get(), elem))
+						if (PluginAPI::BasicTokenToPluginElem(res.get(), elem, script.Get()))
 						{
 							return resultCallback(elem, anyData) ? DispatchReturn::kRetn_Normal : DispatchReturn::kRetn_EarlyBreak;
 						}

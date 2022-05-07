@@ -825,6 +825,14 @@ namespace PluginAPI
 {
 	bool BasicTokenToPluginElem(const ScriptToken* tok, NVSEArrayVarInterface::Element& outElem, Script* fnScript)
 	{
+		if (!tok) [[unlikely]]
+		{
+			outElem = NVSEArrayVarInterface::Element();
+			if (fnScript)
+				ShowRuntimeError(fnScript, "Function script called from plugin failed to return a value");
+			return false;
+		}
+
 		switch (tok->Type())
 		{
 		case kTokenType_Number:
