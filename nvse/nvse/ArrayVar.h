@@ -124,7 +124,7 @@ public:
 	bool GetAsArray(ArrayID* out) const;
 	[[nodiscard]] bool GetBool() const;
 
-	bool SetForm(const TESForm* form)
+	bool SetTESForm(const TESForm* form)
 	{
 		Unset();
 
@@ -142,6 +142,19 @@ public:
 	//consider move ctor or calling SetArray.
 	ArrayElement(ArrayElement& from);
 
+	ArrayElement& operator=(const ArrayElement& from)
+	{
+		if (this != &from)
+		{
+			m_data.dataType = from.m_data.dataType;
+			m_data.owningArray = from.m_data.owningArray;
+			if (m_data.dataType == kDataType_String)
+				m_data.SetStr(from.m_data.str);
+			else m_data.num = from.m_data.num;
+		}
+		return *this;
+	}
+
 	ArrayElement(ArrayElement&& from) noexcept;
 
 	static bool CompareNames(const ArrayElement& lhs, const ArrayElement& rhs);
@@ -150,6 +163,9 @@ public:
 	bool operator<(const ArrayElement& rhs) const;
 	bool operator==(const ArrayElement& rhs) const;
 	bool operator!=(const ArrayElement& rhs) const;
+
+	// Unlike ==/!=, if both elems are Arrays, will cmp their contents instead of their IDs.
+	bool Equals(const ArrayElement& rhs, bool deepCmpArr = false) const;
 
 	[[nodiscard]] bool IsGood() const {return m_data.dataType != kDataType_Invalid;}
 
@@ -302,8 +318,6 @@ class ArrayVar
 	bool				m_bPacked;
 	Vector<UInt8>		m_refs;		// data is modIndex of referring object; size() is number of references
 
-	bool CompareArrays(ArrayVar* arr2, bool checkDeep);
-
 public:
 	ICriticalSection m_cs;
 #if _DEBUG
@@ -395,6 +409,7 @@ public:
 
 	[[nodiscard]] std::string GetStringRepresentation() const;
 
+	bool CompareArrays(ArrayVar* arr2, bool checkDeep);
 	bool Equals(ArrayVar* arr2);
 	bool DeepEquals(ArrayVar* arr2);
 

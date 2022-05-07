@@ -26,6 +26,7 @@
 #include <fstream>
 
 #include "GameData.h"
+#include "UnitTests.h"
 
 static void HandleMainLoopHook(void);
 
@@ -257,6 +258,10 @@ static void HandleMainLoopHook(void)
 		g_mainThreadID = GetCurrentThreadId();
 		
 		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_DeferredInit, NULL, 0, NULL);
+
+#if _DEBUG && RUNTIME
+		RunUnitTests();
+#endif
 	}
 	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_MainGameLoop, nullptr, 0, nullptr);
 
