@@ -1,0 +1,42 @@
+begin Function { }
+
+	int iArg = 0
+
+
+; === Test lambda and UDF functions ===
+
+	CallAfter 0 (begin function{ iArg, float fArg, string_var sArg, array_var aArg }
+		Assert iArg == 10
+		Assert fArg == 5.5
+		Assert sArg == "Hello World"
+		Assert aArg == (ar_list 1 5 10)
+	end) 1 10 5.5 "Hello World" (ar_list 1 5 10)
+
+	ref TestUdfScript = (begin function{ int iArg0, float fArg0, string_var sArg0, array_var aArg0 }
+		Assert iArg0 == 2
+		Assert fArg0 == 3.5
+		Assert sArg0 == "Jingle Bells"
+		Assert aArg0 == (ar_map "Key"::"Value")
+	end)
+
+	call TestUdfScript 2 3.5 "Jingle Bells" (ar_map "Key"::"Value")
+
+	ref TestUdfScript2 = ({ int iArg0, int iArg1 } => iArg0 + iArg1)
+
+	; test Call on array element
+	array_Var aVar = ar_list TestUdfScript2
+	int iResult = call aVar[0] 5 5
+	Assert iResult == 10
+
+	; test Call on function that returns script
+	SetModLocalData "Func" TestUdfScript2
+	int iResult2 = call(GetModLocalData "Func") 10 10
+	Assert iResult2 == 20
+
+	; test Call on inline lambda
+	int iResult3 = call ({ int iArg0 } => iArg0) 98
+	Assert iResult3 == 98
+
+	print "Finished running xNVSE UDF and Lambda Unit Tests."
+
+end

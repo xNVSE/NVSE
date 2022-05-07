@@ -545,7 +545,9 @@ struct NVSEScriptInterface
 
 	// Compile a partial script without a script name
 	// Example:
-	//   Script* script = g_scriptInterface->CompileScript("PlaceAtMe Explosion");
+	//   Script* script = g_scriptInterface->CompileScript(R"(Begin Function{ }
+	//		PlaceAtMe Explosion
+	//	 end)");
 	//   g_scriptInterface->CallFunctionAlt(script, *g_thePlayer, 0);
 	Script* (*CompileScript)(const char* scriptText);
 
@@ -794,11 +796,14 @@ struct NVSEEventManagerInterface
 		// When attempting to set an event handler, if the filter-to-set is a reference the paramType is BaseForm, will reject that filter.
 		// Otherwise, behaves the same as eParamType_RefVar.
 		eParamType_BaseForm,
-		eParamType_Invalid
+
+		eParamType_Invalid,
+		eParamType_Anything
 	};
 	static bool IsFormParam(ParamType pType)
 	{
-		return pType == eParamType_RefVar || pType == eParamType_Reference || pType == eParamType_BaseForm;
+		return pType == eParamType_RefVar || pType == eParamType_Reference || pType == eParamType_BaseForm
+		 || pType == eParamType_Anything;
 	}
 
 	enum EventFlags : UInt32
@@ -807,6 +812,9 @@ struct NVSEEventManagerInterface
 
 		//If on, will remove all set handlers for the event every game load.
 		kFlag_FlushOnLoad = 1 << 0,
+
+		//Identifies script-created events, for the DispatchEvent(Alt) script functions.
+		kFlag_IsUserDefined = 1 << 1,
 	};
 
 	// Registers a new event which can be dispatched to scripts and plugins. Returns false if event with name already exists.

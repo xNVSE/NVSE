@@ -542,7 +542,7 @@ void ExecuteSingleLineLambda(FunctionInfo* info, FunctionCaller& caller, ScriptE
 	OtherHooks::PopScriptContext();
 }
 
-bool FunctionContext::Execute(FunctionCaller& caller)
+bool FunctionContext::Execute(FunctionCaller& caller) const
 {
 	if (!IsGood())
 		return false;
@@ -673,6 +673,71 @@ bool InternalFunctionCaller::SetArgsRaw(ParamSize_t numArgs, const void* args)
 	return true;
 }
 
+bool InternalFunctionCallerAlt::PopulateArgs(ScriptEventList* eventList, FunctionInfo* info)
+{
+	DynamicParamInfo& dParams = info->ParamInfo();
+	if (dParams.NumParams() > kMaxUdfParams)
+	{
+		return false;
+	}
+
+	// populate the args in the event list
+	for (ParamSize_t i = 0; i < m_numArgs; i++)
+	{
+		UserFunctionParam* param = info->GetParam(i);
+		if (!ValidateParam(param, i))
+		{
+			ShowRuntimeError(m_script, "Failed to extract parameter %d. Please verify the number of parameters in function script match those required for event.", i);
+			return false;
+		}
+
+		ScriptLocal* var = eventList->GetVariable(param->varIdx);
+		if (!var)
+		{
+			ShowRuntimeError(m_script, "Could not look up argument variable for function script");
+			return false;
+		}
+
+		switch (param->varType)
+		{
+		case Script::eVarType_Integer:
+			var->data = floor(*((float*)&m_args[i]));  //NOTE: the ONLY difference between this and PopulateArgs() from the regular InternalFunctionCaller
+			break;
+		case Script::eVarType_Float:
+			var->data = *((float*)&m_args[i]);
+			break;
+		case Script::eVarType_Ref:
+		{
+			TESForm* form = (TESForm*)m_args[i];
+			*((UInt32*)&var->data) = form ? form->refID : 0;
+		}
+		break;
+		case Script::eVarType_String:
+			var->data = g_StringMap.Add(info->GetScript()->GetModIndex(), (const char*)m_args[i], true);
+			AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_String);
+			break;
+		case Script::eVarType_Array:
+		{
+			const ArrayID arrID = (ArrayID)m_args[i];
+			if (g_ArrayMap.Get(arrID))
+			{
+				g_ArrayMap.AddReference(&var->data, arrID, info->GetScript()->GetModIndex());
+				AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_Array);
+			}
+			else
+				var->data = 0;
+		}
+		break;
+		default:
+			// wtf?
+			ShowRuntimeError(m_script, "Unexpected param type %02X in internal function call", param->varType);
+			return false;
+		}
+	}
+
+	return true;
+}
+
 template <BaseOfArrayElement T>
 bool ArrayElementArgFunctionCaller<T>::PopulateArgs(ScriptEventList* eventList, FunctionInfo* info)
 {
@@ -760,6 +825,14 @@ namespace PluginAPI
 {
 	bool BasicTokenToPluginElem(const ScriptToken* tok, NVSEArrayVarInterface::Element& outElem, Script* fnScript)
 	{
+		if (!tok) [[unlikely]]
+		{
+			outElem = NVSEArrayVarInterface::Element();
+			if (fnScript)
+				ShowRuntimeError(fnScript, "Function script called from plugin failed to return a value");
+			return false;
+		}
+
 		switch (tok->Type())
 		{
 		case kTokenType_Number:
