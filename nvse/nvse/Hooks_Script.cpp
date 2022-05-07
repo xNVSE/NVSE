@@ -166,6 +166,15 @@ __declspec(naked) void ExpressionEvalRunCommandHook()
 	}
 }
 
+__declspec(naked) void GetSelfSkipThisObjValidation()
+{
+	const static auto skipValidationAddr = 0x5CE426;
+	__asm
+	{
+		jmp skipValidationAddr
+	}
+}
+
 void Hook_Script_Init()
 {
 	WriteRelJump(ExtractStringPatchAddr, (UInt32)&ExtractStringHook);
@@ -211,6 +220,9 @@ void Hook_Script_Init()
 	}
 	
 	WriteRelJump(0x5949D4, reinterpret_cast<UInt32>(ExpressionEvalRunCommandHook));
+
+	// Patch GetSelf script function to always return thisObj (skip check for IsPersistent || IsNotClutter).
+	WriteRelJump(0x5CE3FB, reinterpret_cast<UInt32>(GetSelfSkipThisObjValidation));
 
 	PatchScriptCompile();
 }
