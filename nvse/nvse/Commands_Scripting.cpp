@@ -707,6 +707,13 @@ bool Cmd_Assert_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_GetSelfAlt_Execute(COMMAND_ARGS)
+{
+	UInt32* refResult = (UInt32*)result;
+	*refResult = thisObj ? thisObj->refID : 0;
+	return true;
+}
+
 #endif
 
 bool Cmd_Let_Parse(UInt32 numParams, ParamInfo* paramInfo, ScriptLineBuffer* lineBuf, ScriptBuffer* scriptBuf)
