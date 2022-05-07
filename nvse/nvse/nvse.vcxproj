@@ -192,7 +192,7 @@
     <PostBuildEvent>
       <Message>Installing DLL...</Message>
       <Command>copy "$(TargetPath)" "$(FalloutNVPath)\nvse_1_4.dll"
-xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y</Command>
+xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
