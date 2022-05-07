@@ -28,7 +28,7 @@ DEFINE_GET_FORM_COND(GetType, GetObjectType, returns the type of the specified b
 DEFINE_GET_INV(GetRepairList, grl, returns the repair list for the inventory object);
 DEFINE_GET_INV_COND(GetEquipType,  , returns the equipment type of the inventory object);
 DEFINE_CMD_ALT(CompareNames,  , compares one name to another, 0, 2, kParams_OneObject_OneOptionalObject);
-DEFINE_CMD_ALT(SetName,  , sets the name of the object., 0, 2, kParams_OneString_OneOptionalObject);
+DEFINE_CMD_ALT(SetName, IThinkIllCallThisThing, sets the name of the object., 0, 2, kParams_OneString_OneOptionalObject);
 DEFINE_CMD_COND(GetCurrentHealth, returns the current health of the calling ref, 1, NULL);
 DEFINE_COMMAND(SetCurrentHealth, sets the current health of the calling ref, 1, 1, kParams_OneFloat);
 DEFINE_CMD_ALT(SetRepairList,  , sets the repair list for the specified item., 0, 2, kParams_OneFormList_OneOptionalObjectID);
@@ -149,14 +149,14 @@ DEFINE_COMMAND(GetWeaponItemModValue2, returns the specified item mod value2 of 
 DEFINE_GET_INV_COND(GetArmorAR, GetArmorArmorRating, returns the armor rating of the specified armor.);
 DEFINE_GET_INV_COND(IsPowerArmor, IsPA, returns whether the biped form is considered power armor.);
 DEFINE_GET_INV_COND(GetArmorDT, GetArmorDamageThreshold, returns the damage threshold of the armor.);
-DEFINE_GET_INV(IsPlayable, , returns whether the biped form is usable by the player.);
+DEFINE_GET_INV(IsPlayable, CanIUseThisThing, returns whether the biped form is usable by the player.);
 DEFINE_GET_INV(GetEquipmentSlotsMask, GetESM, returns the slots used by the biped form as a bitmask.);
 DEFINE_GET_INV(GetEquipmentBipedMask, GetEBM, gets the flags used by the biped form as a bitmask.);
 
 DEFINE_SET_INV_INT(SetIsPowerArmor, SetIsPA, sets whether the armor is power armor or not.);
 DEFINE_SET_INV_INT(SetArmorAR, SetArmorArmorRating, sets the armor rating of the armor.);
 DEFINE_SET_INV_FLOAT(SetArmorDT, SetArmorDamageThreshold, sets the damage threshold of the armor);
-DEFINE_SET_INV_INT(SetIsPlayable, , sets whether the armor is usable by the player or not.);
+DEFINE_SET_INV_INT(SetIsPlayable, IWantToUseThisThing, sets whether the armor is usable by the player or not.);
 DEFINE_SET_INV_INT(SetEquipmentSlotsMask, SetESM, sets the slots used by the biped form from a bitmask.);
 DEFINE_SET_INV_INT(SetEquipmentBipedMask, SetEBM, sets the flags used by the biped form from a bitmask.);
 
