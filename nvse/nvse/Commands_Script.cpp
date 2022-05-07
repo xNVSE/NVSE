@@ -666,10 +666,13 @@ bool ProcessEventHandler(char *eventName, EventManager::EventCallback &callback,
 			if (!formFilter)
 			{
 				// Support for using 1::SomeFilter instead of "source"::SomeFilter.
-				auto const iter = callback.filters.find(1);
-				UInt32 outRefID;
-				if (iter->second.GetAsFormID(&outRefID))
-					formFilter = LookupFormByID(outRefID);
+				if (auto const iter = callback.filters.find(1);
+					iter != callback.filters.end())
+				{
+					UInt32 outRefID;
+					if (iter->second.GetAsFormID(&outRefID))
+						formFilter = LookupFormByID(outRefID);
+				}
 			}
 
 			return ProcessLNEventHandler(eventMask, callback.TryGetScript(), addEvt, formFilter, numFilter);
