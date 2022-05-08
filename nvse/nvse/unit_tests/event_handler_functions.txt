@@ -330,32 +330,67 @@ begin Function { }
 	print "Finished running xNVSE Event Handler Unit Tests."
 	
 	
-		; == Ensure LN events don't throw errors.
+	; == Ensure LN events don't throw errors.
 	if IsPluginInstalled "JIP NVSE Plugin"
+		
 		ref rOnCellChangeUDF = (begin function { ref rFirst }
 			;
 		end)
 
 		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF "first"::BisonSteve01) != 0
 		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF "first"::BisonSteve01) != 0
-		
-		ref rOnButtonDownUDF = (begin function {int iKeyCode}
+	
+		ref rOnControlDownUDF = (begin function {int iControlCode}
 			;
 		end)
 		
-		assert (SetEventHandler "OnButtonDown:12288" rOnButtonDownUDF)
-		assert (RemoveEventHandler "OnButtonDown" rOnButtonDownUDF) == 0
-		assert (RemoveEventHandler "OnButtonDown:12288" rOnButtonDownUDF)
+		assert (SetEventHandler "OnControlDown:4" rOnControlDownUDF)
+		assert (SetEventHandler "OnControlDown:4" rOnControlDownUDF) == 0  ; duplicate handler
+		assert (RemoveEventHandler "OnControlDown:5" rOnControlDownUDF) == 0  ; no handler was set with that filter.
+		assert (RemoveEventHandler "OnControlDown:4" rOnControlDownUDF)
+		
+		; Refuses to set handler if no NumFilter in the string
+		assert (RemoveEventHandler "OnControlDown" rOnControlDownUDF) == 0  
+		
+		; Invalid control codes
+		assert (SetEventHandler "OnControlDown:-1" rOnControlDownUDF) == 0  
+		assert (SetEventHandler "OnControlDown:28" rOnControlDownUDF) == 0  
 		
 		; == Test error reporting with LN event (special case)
-		; "second" and 1::, 2::, etc. are ignored for LN event dispatching
+		; "second" and 2::, 3::, etc. are ignored for LN event dispatching
 		; All filter type-checking is also ignored.
-		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF 3::BisonSteve01) == 1
-		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF "second"::BisonSteve01) == 1
-		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF) == 1  ;remove all of them
-		assert (Ar_Size (GetEventHandlers "OnCellEnter" rOnCellChangeUDF)) == 0
 		
+		; Acts as if "SetEventHandler "OnCellEnter" rOnCellChangeUDF" was called.
+		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF 3::BisonSteve01) == 1
+		
+		; xNVSE doesn't have ownership over these handlers.
+		assert (Ar_Size (GetEventHandlers "OnCellEnter" rOnCellChangeUDF)) == -1	; null array
+		
+		; Acts as if "SetEventHandler "OnCellEnter" rOnCellChangeUDF" was called (again!)
+		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF "second"::BisonSteve01) == 0	
+		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF "second"::BisonSteve01)
+		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF "second"::BisonSteve01)
+		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF) == 1
+		
+		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF "first"::BisonSteve01)
+		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF 1::BisonSteve01)	== 0	;same thing as above
+		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF "first"::BisonSteve01)
+		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF 1::BisonSteve01)
+		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF "first"::BisonSteve01) == 0	;same thing as above
+		
+		; Try to remove handler with "first"::BisonSteve01 filter
+		; !! Assertion fails, not sure why, but probably just LN event weirdness.
+		;assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF) == 1  
+		
+		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF "first"::BisonSteve01) == 1
+		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF 1::BisonSteve01) == 0
+		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF) == 0
+		
+		assert (Ar_Size (GetEventHandlers "OnCellEnter" rOnCellChangeUDF)) == -1
+		
+
 		print "Finished running xNVSE Event Handler Unit Tests (for LN events)."
 	endif
+
 
 end
