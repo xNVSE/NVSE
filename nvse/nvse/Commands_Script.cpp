@@ -762,17 +762,10 @@ bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 	}
 
 	auto& eventInfo = EventManager::s_eventInfos[eventID];
-#if _DEBUG
 	if (!eventInfo.IsUserDefined() && eventID != EventManager::kEventID_DebugEvent) [[unlikely]]
 	{
 		return true;
 	}
-#else
-	if (!eventInfo.IsUserDefined()) [[unlikely]]
-	{
-		return true;
-	}
-#endif
 
 	EventManager::ArgStack params;
 	auto const numArgs = eval.NumArgs();

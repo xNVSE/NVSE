@@ -107,9 +107,9 @@ namespace EventManager
 		kEventID_DeleteGameName,
 		kEventID_RenameGameName,
 		kEventID_RenameNewGameName,
+		kEventID_DebugEvent, // for unit tests
 
 		kEventID_InternalMAX,
-		kEventID_DebugEvent = kEventID_InternalMAX, //only used in debug mode, for unit tests
 
 		// user or plugin defined
 		kEventID_UserDefinedMIN = kEventID_InternalMAX,

@@ -1,4 +1,4 @@
-﻿#if _DEBUG && RUNTIME
+﻿#if RUNTIME
 
 #include "UnitTests.h"
 #include "GameAPI.h"
@@ -10,7 +10,7 @@
 
 namespace fs = std::filesystem;
 
-void RunUnitTests()
+void RunScriptUnitTests()
 {
 	for (const auto& entry : fs::directory_iterator(fs::current_path() / "data/nvse/unit_tests"))
 	{

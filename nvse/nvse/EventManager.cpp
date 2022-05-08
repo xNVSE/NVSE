@@ -1346,12 +1346,11 @@ void Init()
 	s_eventNameToID["on0x0080000"] = kEventID_OnGrab;
 	s_eventNameToID["on0x00400000"] = kEventID_OnFire;
 
+	EVENT_INFO("nvsetestevent", kEventParams_OneInt_OneFloat_OneArray_OneString_OneForm_OneReference_OneBaseform,
+		nullptr, 0); // dispatched via DispatchEventAlt, for unit tests
+
 	ASSERT (kEventID_InternalMAX == s_eventInfos.Size());
 
-#if _DEBUG
-	EVENT_INFO("nvsetestevent", kEventParams_OneInt_OneFloat_OneArray_OneString_OneForm_OneReference_OneBaseform, 
-		nullptr, 0); // dispatched via DispatchEventAlt, for unit tests
-#endif
 
 #undef EVENT_INFO
 
