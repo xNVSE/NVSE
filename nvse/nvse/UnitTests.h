@@ -2,6 +2,6 @@
 
 #if RUNTIME
 
-void RunScriptUnitTests();
+void ExecuteRuntimeUnitTests();
 
 #endif

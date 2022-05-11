@@ -99,6 +99,7 @@ void NVSE_Initialize(void)
 		if (GetNVSEConfigOption_UInt32("RUNTIME DEBUG", "WaitForDebugger", &waitForDebugger) && waitForDebugger)
 			WaitForDebugger();
 		GetNVSEConfigOption_UInt32("FIXES", "EnablePrintDuringOnEquip", &s_CheckInsideOnActorEquipHook);
+		GetNVSEConfigOption_UInt32("TESTS", "EnableRuntimeTests", &s_AreRuntimeTestsEnabled);
 #else
 		if (GetNVSEConfigOption_UInt32("EDITOR DEBUG", "WaitForDebugger", &waitForDebugger) && waitForDebugger)
 			WaitForDebugger();

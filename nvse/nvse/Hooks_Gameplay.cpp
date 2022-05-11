@@ -260,7 +260,7 @@ static void HandleMainLoopHook(void)
 		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_DeferredInit, NULL, 0, NULL);
 
 #if RUNTIME
-		RunScriptUnitTests();
+		ExecuteRuntimeUnitTests();
 #endif
 	}
 	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_MainGameLoop, nullptr, 0, nullptr);
