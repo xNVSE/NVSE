@@ -123,9 +123,8 @@ void Core_PreLoadCallback(void * reserved)
 	g_callAfterInfos.clear();
 	g_callWhenInfos.clear();
 
-	for (auto iter = EventManager::s_eventInfos.begin(); iter != EventManager::s_eventInfos.end(); ++iter)
+	for (auto &info : EventManager::s_eventInfos)
 	{
-		EventManager::EventInfo& info = iter.Get();
 		if (info.FlushesOnLoad())
 		{
 			info.callbacks.clear(); //warning: may invalidate iterators in DeferredRemoveCallbacks.

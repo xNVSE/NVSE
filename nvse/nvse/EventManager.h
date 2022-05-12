@@ -33,27 +33,15 @@ namespace EventManager
 	extern UInt32 s_eventsInUse;
 
 	struct EventInfo;
-	typedef Vector<EventInfo> EventInfoList;
-	extern EventInfoList s_eventInfos;
-	extern UnorderedMap<const char *, UInt32> s_eventNameToID;
+	// Contains a stable list of references to EventInfos.
+	// Assumption: no EventInfos will be removed from this list.
+	extern std::list<EventInfo> s_eventInfos; 
+	
+	using EventInfoMap = UnorderedMap<const char*, EventInfo*>;
+	// Links event names (and aliases) to their matching eventInfo.
+	extern EventInfoMap s_eventInfoMap;
 
-	UInt32 EventIDForString(const char *eventStr);
-
-	using EventHandler = NVSEEventManagerInterface::EventHandler;
-	using EventFilterType = NVSEEventManagerInterface::ParamType;
-	using EventFlags = NVSEEventManagerInterface::EventFlags;
-	using DispatchReturn = NVSEEventManagerInterface::DispatchReturn;
-	using DispatchCallback = NVSEEventManagerInterface::DispatchCallback;
-
-	inline bool IsParamForm(EventFilterType pType)
-	{
-		return NVSEEventManagerInterface::IsFormParam(pType);
-	}
-	Script::VariableType ParamTypeToVarType(EventFilterType pType);
-	EventFilterType VarTypeToParamType(Script::VariableType varType);
-	DataType ParamTypeToDataType(EventFilterType pType);
-
-	bool ParamTypeMatches(EventFilterType from, EventFilterType to);
+	EventInfo* TryGetEventInfoForName(const char* eventName);
 
 	enum eEventID
 	{
@@ -110,12 +98,33 @@ namespace EventManager
 		kEventID_DebugEvent, // for unit tests
 
 		kEventID_InternalMAX,
+		kEventID_ExternalEvent = kEventID_InternalMAX, // could be user or plugin-defined.
 
-		// user or plugin defined
-		kEventID_UserDefinedMIN = kEventID_InternalMAX,
+		// User/plugin-defined events don't get an ID assigned
 
 		kEventID_INVALID = 0xFFFFFFFF
 	};
+
+	// Gives fast access to EventInfos for internal events, whose existence we know in advance.
+	// Each index in the vector represents an eventID.
+	using InternalEventVec = Vector<EventInfo*>;
+	extern InternalEventVec s_internalEventInfos;
+
+	using EventHandler = NVSEEventManagerInterface::EventHandler;
+	using EventFilterType = NVSEEventManagerInterface::ParamType;
+	using EventFlags = NVSEEventManagerInterface::EventFlags;
+	using DispatchReturn = NVSEEventManagerInterface::DispatchReturn;
+	using DispatchCallback = NVSEEventManagerInterface::DispatchCallback;
+
+	inline bool IsParamForm(EventFilterType pType)
+	{
+		return NVSEEventManagerInterface::IsFormParam(pType);
+	}
+	Script::VariableType ParamTypeToVarType(EventFilterType pType);
+	EventFilterType VarTypeToParamType(Script::VariableType varType);
+	DataType ParamTypeToDataType(EventFilterType pType);
+
+	bool ParamTypeMatches(EventFilterType from, EventFilterType to);
 
 	// Represents an event handler registered for an event.
 	class EventCallback
@@ -176,7 +185,7 @@ namespace EventManager
 		// Assumes both have the same callbacks.
 		[[nodiscard]] bool ShouldRemoveCallback(const EventCallback& toCheck, const EventInfo& evInfo) const;
 
-		std::unique_ptr<ScriptToken> Invoke(EventInfo *eventInfo, void *arg0, void *arg1);
+		std::unique_ptr<ScriptToken> Invoke(EventInfo &eventInfo, void *arg0, void *arg1);
 	};
 
 	//Does not attempt to store lambda info for Script*.
@@ -192,24 +201,29 @@ namespace EventManager
 		EventInfo(const char *name_, EventFilterType *params_, UInt8 nParams_, UInt32 eventMask_, EventHookInstaller *installer_,
 				  EventFlags flags = EventFlags::kFlags_None)
 			: evName(name_), paramTypes(params_), numParams(nParams_), eventMask(eventMask_), installHook(installer_), flags(flags)
-		{
-		}
+		{}
+		// ctor w/ alias
+		EventInfo(const char* name_, const char* alias_, EventFilterType* params_, UInt8 nParams_, UInt32 eventMask_, EventHookInstaller* installer_,
+			EventFlags flags = EventFlags::kFlags_None)
+			: evName(name_), alias(alias_), paramTypes(params_), numParams(nParams_), eventMask(eventMask_), installHook(installer_), flags(flags)
+		{}
 
 		EventInfo(const char *name_, EventFilterType *params_, UInt8 numParams_, EventFlags flags = EventFlags::kFlags_None)
 			: evName(name_), paramTypes(params_), numParams(numParams_), flags(flags) {}
-
-		EventInfo() : evName(""), paramTypes(nullptr) {}
+		// ctor w/ alias
+		EventInfo(const char* name_, const char* alias_, EventFilterType* params_, UInt8 numParams_, EventFlags flags = EventFlags::kFlags_None)
+			: evName(name_), alias(alias_), paramTypes(params_), numParams(numParams_), flags(flags) {}
 
 		EventInfo(const EventInfo &other) = delete;
 		EventInfo& operator=(const EventInfo& other) = delete;
 
 		EventInfo(EventInfo&& other) noexcept :
-			evName(other.evName), paramTypes(other.paramTypes), numParams(other.numParams),
+			evName(other.evName), alias(other.alias), paramTypes(other.paramTypes), numParams(other.numParams),
 			eventMask(other.eventMask), callbacks(std::move(other.callbacks)), installHook(other.installHook), flags(other.flags)
-		{
-		}
+		{}
 
-		const char *evName; // must be lowercase (??)
+		const char *evName; //should never be nullptr
+		const char *alias{}; //could be nullptr (unused)
 		EventFilterType *paramTypes;
 		UInt8 numParams = 0;
 		UInt32 eventMask = 0;
@@ -228,6 +242,7 @@ namespace EventManager
 			return flags & EventFlags::kFlag_IsUserDefined;
 		}
 		// n is 0-based
+		// Assumes that the index was already checked as valid (i.e numParams was checked).
 		[[nodiscard]] EventFilterType TryGetNthParamType(size_t n) const
 		{
 			return !IsUserDefined() ? paramTypes[n] : EventFilterType::eParamType_Anything;
@@ -240,13 +255,17 @@ namespace EventManager
 	bool SetHandler(const char *eventName, EventCallback &toSet, ExpressionEvaluator* eval = nullptr);
 
 	// removes handler only if all filters match
-	bool RemoveHandler(const char *id, const EventCallback &toRemove);
+	bool RemoveHandler(const char *eventName, const EventCallback &toRemove);
 
 	// handle an NVSEMessagingInterface message
 	void HandleNVSEMessage(UInt32 msgID, void *data);
 
+	// Deprecated in favor of EventManager::DispatchEvent
+	void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1);
+
 	// handle an eventID directly
-	void __stdcall HandleEvent(UInt32 id, void *arg0, void *arg1);
+	// Deprecated in favor of EventManager::DispatchEvent
+	void __stdcall HandleEvent(eEventID id, void *arg0, void *arg1);
 
 	// name of whatever event is currently being handled, empty string if none
 	const char *GetCurrentEventName();
@@ -256,12 +275,17 @@ namespace EventManager
 
 	void Init();
 
-	bool RegisterEventEx(const char *name, UInt8 numParams, EventFilterType *paramTypes,
-						 UInt32 eventMask = 0, EventHookInstaller *hookInstaller = nullptr,
-						 EventFlags flags = EventFlags::kFlags_None);
+	bool RegisterEventEx(const char *name, const char* alias, bool isInternal, UInt8 numParams, EventFilterType *paramTypes,
+	                     UInt32 eventMask = 0, EventHookInstaller *hookInstaller = nullptr,
+	                     EventFlags flags = EventFlags::kFlags_None);
 
+	// Exported
 	bool RegisterEvent(const char *name, UInt8 numParams, EventFilterType *paramTypes,
 					   EventFlags flags = EventFlags::kFlags_None);
+
+	// Exported
+	bool RegisterEventWithAlias(const char* name, const char* alias, UInt8 numParams, EventFilterType* paramTypes,
+		EventFlags flags = EventFlags::kFlags_None);
 
 	bool SetNativeEventHandler(const char *eventName, EventHandler func);
 	bool RemoveNativeEventHandler(const char *eventName, EventHandler func);
@@ -280,6 +304,10 @@ namespace EventManager
 	// dispatch a user-defined event from a script (for Cmd_DispatchEvent)
 	// Cmd_DispatchEventAlt provides more flexibility with how args are passed.
 	bool DispatchUserDefinedEvent(const char *eventName, Script *sender, UInt32 argsArrayId, const char *senderName);
+
+
+
+
 
 	// event handler param lists
 	static EventFilterType kEventParams_GameEvent[2] =
@@ -332,8 +360,6 @@ namespace EventManager
 		EventFilterType::eParamType_Reference,
 		EventFilterType::eParamType_BaseForm,
 	};
-
-
 
 
 
