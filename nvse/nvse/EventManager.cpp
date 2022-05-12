@@ -898,7 +898,7 @@ bool RemoveHandler(const char* eventName, const EventCallback& toRemove)
 			{
 				EventCallback listHandler(script, iter.Get(), toRemove.object);
 				recursiveLevel++;
-				if (RemoveHandler(name, listHandler)) removed++;
+				if (RemoveHandler(eventName, listHandler)) removed++;
 				recursiveLevel--;
 			}
 			return removed > 0;
@@ -912,7 +912,7 @@ bool RemoveHandler(const char* eventName, const EventCallback& toRemove)
 			{
 				EventCallback listHandler(script, toRemove.source, iter.Get());
 				recursiveLevel++;
-				if (RemoveHandler(name, listHandler)) removed++;
+				if (RemoveHandler(eventName, listHandler)) removed++;
 				recursiveLevel--;
 			}
 			return removed > 0;
@@ -921,7 +921,7 @@ bool RemoveHandler(const char* eventName, const EventCallback& toRemove)
 
 	ScopedLock lock(s_criticalSection);
 
-	EventInfo** info = s_eventInfoMap.GetPtr(name);
+	EventInfo** info = s_eventInfoMap.GetPtr(eventName);
 	bool bRemovedAtLeastOne = false;
 	if (info)
 	{
