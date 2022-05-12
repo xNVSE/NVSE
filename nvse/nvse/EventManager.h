@@ -255,7 +255,7 @@ namespace EventManager
 	bool SetHandler(const char *eventName, EventCallback &toSet, ExpressionEvaluator* eval = nullptr);
 
 	// removes handler only if all filters match
-	bool RemoveHandler(const char *id, const EventCallback &toRemove);
+	bool RemoveHandler(const char *eventName, const EventCallback &toRemove);
 
 	// handle an NVSEMessagingInterface message
 	void HandleNVSEMessage(UInt32 msgID, void *data);

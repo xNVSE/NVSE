@@ -880,7 +880,7 @@ bool SetHandler(const char* eventName, EventCallback& toSet, ExpressionEvaluator
 // If the passed Callback is more or equally generic filter-wise than some already-set events, will remove those events.
 // Ex: Callback with "SunnyREF" filter is already set.
 // Calling this with a Callback with no filters will lead to the "SunnyREF"-filtered callback being removed.	
-bool RemoveHandler(const char* name, const EventCallback& toRemove)
+bool RemoveHandler(const char* eventName, const EventCallback& toRemove)
 {
 	if (!toRemove.HasCallbackFunc())
 		return false;
