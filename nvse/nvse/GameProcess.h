@@ -5,6 +5,9 @@
 #include "GameForms.h"
 #include "GameTasks.h"
 
+class MagicTarget;
+class bhkCharacterController;
+struct AnimData;
 struct CombatActors;
 class TESAmmo;
 class TESObjectWEAP;
@@ -44,6 +47,60 @@ public:
 
 extern ActorProcessManager * g_actorProcessManager;
 
+class Projectile;
+class Explosion;
+class DetectionData;
+
+// 64
+struct ActorHitData
+{
+	enum
+	{
+		kHitData_IsCritical = 0x4,
+		kHitData_IsFatal = 0x10,
+		kHitData_ExplodePart = 0x40,
+		kHitData_DismemberPart = 0x20,
+		kHitData_CripplePart = 0x80,
+		kHitData_IsSneakAttackCritical = 0x400,
+	};
+
+	Actor* source;		// 00
+	Actor* target;		// 04
+	union								// 08
+	{
+		Projectile* projectile;
+		Explosion* explosion;
+	};
+	UInt32				unk0C;			// 0C
+	SInt32				hitLocation;	// 10
+	float				healthDmg;		// 14
+	float				wpnBaseDmg;		// 18	Skill and weapon condition modifiers included
+	float				fatigueDmg;		// 1C
+	float				limbDmg;		// 20
+	float				blockDTMod;		// 24
+	float				armorDmg;		// 28
+	float				flt2C;			// 2C
+	TESObjectWEAP* weapon;		// 30
+	float				healthPerc;		// 34
+	NiVector3			impactPos;		// 38
+	NiVector3			impactAngle;	// 44
+	UInt32				unk50;			// 50
+	UInt32				unk54;			// 54
+	UInt32				flags;			// 58
+	float				dmgMult;		// 5C
+	UInt32				unk60;			// 60	Unused
+};
+
+struct PackageInfo
+{
+	TESPackage* package;		// 00
+	TESPackageData* packageData;	// 04
+	TESObjectREFR* targetRef;		// 08
+	UInt32			unk0C;			// 0C	Initialized to 0FFFFFFFFh, set to 0 on start
+	float			unk10;			// 10	Initialized to -1.0	. Set to GameHour on start so some time
+	UInt32			flags;			// 14	Flags, bit0 would be not created and initialized
+};
+
 class BaseProcess
 {
 public:
@@ -71,6 +128,7 @@ public:
 		UInt32	unk40;	// 40
 		TESObjectWEAP* weapon;	// 44
 	};
+
 	struct WeaponInfo
 	{
 		ExtraDataList	**xData;
@@ -92,26 +150,58 @@ public:
 		UInt32			flags;			// 014	Flags, bit0 would be not created and initialized
 	};	// 018
 
-	struct	Data02C {
-		float	flt000;
-		float	flt004;
-		float	flt008;
-		float	flt00C;
-		float	flt010;
-		float	flt014;
-		float	flt018;
-		float	flt01C;
-		float	flt020;
-		float	flt024;
-		float	flt028;
-		float	flt02C;
-		UInt32	unk030;
-		UInt32	unk034;
-		float	flt038;
-		float	flt03C;
-		UInt8	byt040;
-		UInt8	fil041[3];
-		UInt32	unk044;			// 044	flags, bit28 = IsGhostn
+	struct Data2C
+	{
+		enum
+		{
+			kCached_Radius = 0x1,
+			kCached_WidthX = 0x2,
+			kCached_WidthY = 0x4,
+			kCached_DPS = 0x8,
+			kCached_MedicineSkillMult = 0x10,
+			kCached_Paralysis = 0x20,
+			kCached_HealRate = 0x40,
+			kCached_FatigueReturnRate = 0x80,
+			kCached_PerceptionCondition = 0x100,
+			kCached_EyeHeight = 0x200,
+			kCached_SomethingShouldAttack = 0x400,
+			kCached_WalkSpeed = 0x1000,
+			kCached_RunSpeed = 0x2000,
+			kCached_NoCrippledLegs = 0x4000,
+			kCached_Height = 0x8000,
+			kCached_IsGhost = 0x10000000,
+			kCached_Health = 0x20000000,
+			kCached_Fatigue = 0x40000000,
+			kCached_SurvivalSkillMult = 0x80000000
+		};
+
+		float	radius;
+		float	widthX;
+		float	widthY;
+		float	height;
+		float	DPS;
+		float	medicineSkillMult;
+		float	survivalSkillMult;
+		float	paralysis;
+		float	healRate;
+		float	fatigueReturnRate;
+		float	perceptionCondition;
+		float	eyeHeight;
+		SInt32	unk30;
+		SInt32	unk34;
+		float	walkSpeed;
+		float	runSpeedMult;
+		UInt8	hasNoCrippledLegs;
+		UInt8	pad41[3];
+		UInt32	flags;
+	};
+
+	enum
+	{
+		kProcessLevel_High = 0,
+		kProcessLevel_MiddleHigh = 1,
+		kProcessLevel_MiddleLow = 2,
+		kProcessLevel_Low = 3
 	};
 
 	virtual void	Destroy(bool noDealloc);
@@ -182,13 +272,13 @@ public:
 	virtual void	Unk_41(void);
 	virtual void	Unk_42(void);
 	virtual void	Unk_43(void);
-	virtual void	Unk_44(void);
+	virtual bool	HasCaughtPlayerPickpocketting(void);
 	virtual void	Unk_45(void);
 	virtual void	Unk_46(void);
 	virtual void	Unk_47(void);
 	virtual void	Unk_48(void);
 	virtual void	Unk_49(void);
-	virtual void	Unk_4A(void);		// Due to context, could be GetCombatTarget
+	virtual TESForm* GetLowProcess40();
 	virtual void	Unk_4B(void);
 	virtual void	Unk_4C(void);
 	virtual void	Unk_4D(void);
@@ -196,25 +286,24 @@ public:
 	virtual void	Unk_4F(void);
 	virtual void	Unk_50(void);
 	virtual void	Unk_51(void);
-	virtual WeaponInfo	*GetWeaponInfo();	// unk0114
-	virtual AmmoInfo*	GetAmmoInfo();	// unk0118
+	virtual WeaponInfo* GetWeaponInfo();
+	virtual AmmoInfo* GetAmmoInfo();
 	virtual void	Unk_54(void);
 	virtual void	Unk_55(void);
 	virtual void	Unk_56(void);
 	virtual void	Unk_57(void);
 	virtual void	Unk_58(void);
 	virtual void	Unk_59(void);
-	virtual void	Unk_5A(void);
+	virtual void	UpdateAmmoInfo(AmmoInfo*);
 	virtual void	Unk_5B(void);
 	virtual void	Unk_5C(void);
 	virtual void	Unk_5D(void);	// Called by 5E with count itemExtraList item
 	virtual void	Unk_5E(void);	// EquipItem and UnEquipItem doEquip item count itemExtraList bytes = [equipArgC lockUnequip unk unEquipArcC lockEquip arg14 ] (arg as from Actor::(Un)EquipItem)
 	virtual void	Unk_5F(void);
 	virtual void	Unk_60(void);
-	virtual void	Unk_61(void);
-	virtual void	Unk_62(void);
+	virtual NiNode* GetProjectileNode();
+	virtual void	SetProjectileNode(NiNode* node);
 	virtual void	Unk_63(void);
-
 	virtual void	Unk_64(void);
 	virtual void	Unk_65(void);
 	virtual void	Unk_66(void);
@@ -225,7 +314,7 @@ public:
 	virtual void	Unk_6B(void);
 	virtual void	Unk_6C(void);
 	virtual void	Unk_6D(void);
-	virtual void	Unk_6E(void);
+	virtual AnimData* GetAnimData(void);
 	virtual void	Unk_6F(void);
 	virtual void	Unk_70(void);
 	virtual void	Unk_71(void);
@@ -246,17 +335,17 @@ public:
 	virtual void	Unk_80(void);
 	virtual void	Unk_81(void);
 	virtual void	Unk_82(void);
-	virtual void	Unk_83(void);	// 083 - GetInterruptPackage
-	virtual void	Unk_84(void);	// 084 - SetInterruptPackage
-	virtual void	Unk_85(void);	// 085 - StopInterruptPackage
+	virtual TESPackage* GetRunOncePackage();
+	virtual void	SetInterruptPackage(TESPackage* package, Actor* onActor);
+	virtual void	StopInterruptPackage();
 	virtual void	Unk_86(void);	// 086 - SetInterruptPackageTargetRef
 	virtual void	Unk_87(void);	// 087 - SetInterruptPackageTargetRef
 	virtual void	Unk_88(void);	// 088 - IncreaseInterruptPackageUnk00C
 	virtual void	Unk_89(void);
 	virtual void	Unk_8A(void);
-	virtual void	Unk_8B(void);	// 08B - GetStablePackage
-	virtual void	Unk_8C(void);	// 08C - SetStablePackage
-	virtual void	Unk_8D(void);	// 08D - StopStablePackage
+	virtual TESPackage* GetStablePackage();
+	virtual void	SetStablePackage(TESPackage* package, Actor* onActor);
+	virtual void	StopStablePackage();
 	virtual void	Unk_8E(void);
 	virtual void	Unk_8F(void);
 	virtual void	Unk_90(void);
@@ -271,15 +360,15 @@ public:
 	virtual void	Unk_99(void);
 	virtual void	Unk_9A(void);
 	virtual void	Unk_9B(void);
-	virtual void	Unk_9C(void);
-	virtual void	Unk_9D(void);
+	virtual TESPackageData* GetRunOncePackageData();
+	virtual TESPackageData* GetPackageData();
 	virtual void	Unk_9E(void);
-	virtual TESPackage*	GetCurrentPackage(void);
-	virtual void	Unk_A0(void);	// returns Interrupt package TargetRef or Data004::Unk00C
+	virtual TESPackage* GetCurrentPackage();
+	virtual UInt32	GetPackageInfo0C();
 	virtual void	Unk_A1();
 	virtual void	Unk_A2();
-	virtual void	Unk_A3();		// returns the current animation from Unk0138 aparently.
-	virtual void	Unk_A4();
+	virtual bhkCharacterController* GetCharacterController();
+	virtual void	SetCharacterController(bhkCharacterController* charCtrl);
 	virtual void	Unk_A5();
 	virtual void	Unk_A6();
 	virtual void	Unk_A7();
@@ -306,16 +395,16 @@ public:
 	virtual void	Unk_BC();
 	virtual void	Unk_BD();
 	virtual void	Unk_BE();
-	virtual void	Unk_BF();
-	virtual void	Unk_C0();
+	virtual void	SetDiveBreath(float breath);
+	virtual float	GetDiveBreath();
 	virtual void	Unk_C1();
 	virtual void	Unk_C2();
 	virtual void	Unk_C3();
 	virtual void	Unk_C4();
 	virtual void	Unk_C5();
 	virtual void	Unk_C6();
-	virtual void	Unk_C7();
-	virtual void	Unk_C8();
+	virtual bool	GetAlerted();
+	virtual void	SetAlert(bool alert);
 	virtual void	Unk_C9();
 	virtual void	Unk_CA();
 	virtual void	Unk_CB();
@@ -342,16 +431,16 @@ public:
 	virtual void	Unk_E0();
 	virtual void	Unk_E1();
 	virtual void	Unk_E2();
-	virtual void	Unk_E3();
-	virtual void	Unk_E4();
-	virtual void	Unk_E5();
+	virtual TESIdleForm* GetIdleForm10C();
+	virtual void	SetIdleForm10C(TESIdleForm* idleForm);
+	virtual void	StopIdle();
 	virtual void	Unk_E6();
 	virtual void	Unk_E7();	// float GetActorValue
 	virtual void	Unk_E8();
 	virtual void	Unk_E9();
 	virtual void	Unk_EA();
 	virtual void	Unk_EB();
-	virtual void	Unk_EC();
+	virtual void	Unk_EC(UInt32 avCode);
 	virtual void	Unk_ED();
 	virtual void	Unk_EE();
 	virtual void	Unk_EF();
@@ -364,20 +453,20 @@ public:
 	virtual void	Unk_F6();
 	virtual void	Unk_F7();
 	virtual void	Unk_F8();
-	virtual void	Unk_F9();
-	virtual void	Unk_FA();
+	virtual SInt16	GetCurrentAnimAction();
+	virtual SInt16	GetCurrentSequence();
 	virtual void	Unk_FB();
 	virtual void	Unk_FC();
-	virtual void	Unk_FD();
-	virtual void	Unk_FE();
+	virtual void	Unk_FD(char);
+	virtual bool	IsReadyForAnim();
 	virtual void	Unk_FF();
-	virtual void	Unk_100();
-	virtual void	Unk_101();
+	virtual void	SetIsAiming(bool isAiming);
+	virtual bool	IsAiming();
 	virtual void	Unk_102();
-	virtual void	Unk_103();
-	virtual void	Unk_104();
+	virtual SInt32	GetKnockedState();
+	virtual void	SetKnockedState(char state);
 	virtual void	Unk_105();
-	virtual void	Unk_106();
+	virtual void	PushActorAway(Actor* pushed, float posX, float posY, float posZ, float force);
 	virtual void	Unk_107();
 	virtual void	Unk_108();
 	virtual void	Unk_109();
@@ -392,15 +481,15 @@ public:
 	virtual void	Unk_112();
 	virtual void	Unk_113();
 	virtual void	Unk_114();
-	virtual void	Unk_115();
-	virtual void	Unk_116();
+	virtual bool	IsWeaponOut();
+	virtual void	SetWeaponOut(Actor* actor, bool weaponOut);
 	virtual void	Unk_117();
 	virtual void	Unk_118();
-	virtual void	Unk_119();
-	virtual void	Unk_11A();
+	virtual void	Unk_119(Actor* actor);
+	virtual void	Unk_11A(UInt32 unk);
 	virtual void	Unk_11B();
 	virtual void	Unk_11C();
-	virtual void	Unk_11D();
+	virtual bool	Unk_11D(UInt32 arg);
 	virtual void	Unk_11E();
 	virtual void	Unk_11F();
 	virtual void	Unk_120();
@@ -418,7 +507,7 @@ public:
 	virtual void	Unk_12C();
 	virtual void	Unk_12D();
 	virtual void	Unk_12E();
-	virtual void	Unk_12F();
+	virtual int		GetSitSleepState();
 	virtual void	Unk_130();
 	virtual void	Unk_131();
 	virtual void	Unk_132();
@@ -434,9 +523,9 @@ public:
 	virtual void	Unk_13C();
 	virtual void	Unk_13D();
 	virtual void	Unk_13E();
-	virtual void	Unk_13F();
+	virtual void	Unk_13F(UInt32 unk);
 	virtual void	Unk_140();
-	virtual void	Unk_141();
+	virtual DetectionData* GetDetectionData(Actor* target, UInt32 detecting);
 	virtual void	Unk_142();
 	virtual void	Unk_143();
 	virtual void	Unk_144();
@@ -478,8 +567,8 @@ public:
 	virtual void	Unk_168();
 	virtual void	Unk_169();
 	virtual void	Unk_16A();
-	virtual void	Unk_16B();
-	virtual void	Unk_16C();
+	virtual float	GetActorAlpha();
+	virtual void	SetActorAlpha(float alpha);
 	virtual void	Unk_16D();
 	virtual void	Unk_16E();
 	virtual void	Unk_16F();
@@ -504,12 +593,12 @@ public:
 	virtual void	Unk_182();
 	virtual void	Unk_183();
 	virtual void	Unk_184();
-	virtual void	Unk_185();
-	virtual void	Unk_186();
+	virtual void	SetQueuedIdleFlags(UInt32 flags);
+	virtual UInt32	GetQueuedIdleFlags();
 	virtual void	Unk_187();
 	virtual void	Unk_188();
 	virtual void	Unk_189();
-	virtual void	Unk_18A();
+	virtual void	Unk_18A(Actor* actor);
 	virtual void	Unk_18B();
 	virtual void	Unk_18C();
 	virtual void	Unk_18D();
@@ -517,7 +606,7 @@ public:
 	virtual void	Unk_18F();
 	virtual void	Unk_190();
 	virtual void	Unk_191();
-	virtual void	Unk_192();
+	virtual void	Unk_192(UInt8 unk);
 	virtual void	Unk_193();
 	virtual void	Unk_194();
 	virtual void	Unk_195();
@@ -558,9 +647,9 @@ public:
 	virtual void	Unk_1B8();
 	virtual void	Unk_1B9();
 	virtual void	Unk_1BA();
-	virtual void	Unk_1BB();
-	virtual void	Unk_1BC();
-	virtual void	Unk_1BD();
+	virtual bool	IsWearingPowerArmorTorso();
+	virtual bool	IsWearingPowerArmorHelmet();
+	virtual bool	IsWearingBackpack();
 	virtual void	Unk_1BE();
 	virtual void	Unk_1BF();
 	virtual void	Unk_1C0();
@@ -569,15 +658,15 @@ public:
 	virtual void	Unk_1C3();
 	virtual void	Unk_1C4();
 	virtual void	Unk_1C5();
-	virtual void	Unk_1C6();
-	virtual void	Unk_1C7();
+	virtual TESIdleForm* GetIdleForm350();
+	virtual void	SetIdleForm350(TESIdleForm* idleForm);
 	virtual void	Unk_1C8();
 	virtual void	Unk_1C9();
 	virtual void	Unk_1CA();
 	virtual void	Unk_1CB();
 	virtual void	Unk_1CC();
-	virtual void	Unk_1CD();
-	virtual void	Unk_1CE();
+	virtual float	GetLightAmount();
+	virtual void	SetLightAmount(float lightAmount);
 	virtual void	Unk_1CF();
 	virtual void	Unk_1D0();
 	virtual void	Unk_1D1();
@@ -590,13 +679,13 @@ public:
 	virtual void	Unk_1D8();
 	virtual void	Unk_1D9();
 	virtual void	Unk_1DA();
-	virtual void	Unk_1DB();
-	virtual void	Unk_1DC();
-	virtual void	Unk_1DD();
-	virtual void	Unk_1DE();
-	virtual void	Unk_1DF();
-	virtual void	Unk_1E0();
-	virtual void	Unk_1E1();
+	virtual float	GetRadsSec();
+	virtual ActorHitData* GetHitData();
+	virtual void	CopyHitData(ActorHitData* hitData);
+	virtual void	ResetHitData();
+	virtual ActorHitData* GetHitData254();
+	virtual void	CopyHitData254(ActorHitData* hitData);
+	virtual void	ResetHitData254();
 	virtual void	Unk_1E2();
 	virtual void	Unk_1E3();
 	virtual void	Unk_1E4();
@@ -612,12 +701,13 @@ public:
 
 	// data
 
-	Data004		data004;		// current package ?
-	float		flt01C;			// not initialized, only by descendant!
-	float		flt020;			// not initialized, only by descendant to -1.0! flt020 gets set to GameHour minus one on package evaluation
-	UInt32		unk024;			// not initialized, only by descendant!
-	UInt32		processLevel;	// not initialized, only by descendant to 3 for Low, 2 for MidlleLow, 1 MiddleHighProcess and 0 for HigProcess
-	Data02C*	unk02C;
+	PackageInfo		currentPackage;	// 04
+	float			unk1C;			// 1C	not initialized, only by descendant!
+	float			unk20;			// 20	not initialized, only by descendant to -1.0! flt020 gets set to GameHour minus one on package evaluation
+	UInt32			unk24;			// 24	not initialized, only by descendant!
+	UInt32			processLevel;	// 28	not initialized, only by descendant to 3 for Low, 2 for MiddleLow, 1 MiddleHighProcess and 0 for HighProcess
+	Data2C* unk2C;			// 2C
+
 };
 
 class LowProcess : public BaseProcess
@@ -673,36 +763,32 @@ public:
 	virtual void	Unk_206();
 	virtual void	Unk_207();
 
-	UInt8		byt030;		// Flags, used before being initialized . Ok, the initial value is zeroed out by a "and 0" but ???
-	UInt8		pad031[3];
-	UInt32		unk034;
-	FloatPair	unk038;
-	UInt32		unk03C;		// not initialized!
-	UInt32		unk040;		// not initialized!	refr, expected actor, might be CombatTarget
-	UInt32		unk044;
-	UInt32		unk048;
-	UInt32		unk04C;
-	UInt32		unk050;		// not initialized!
-	UInt32		unk054;
-	UInt32		unk058;
-	tList<UInt32>	unk05C;		// List
-	UInt32		unk064;
-	UInt32		unk068;
-	tList<TESForm>	unk06C;
-	tList<UInt32>	unk074;
-	tList<UInt32>	unk07C;
-	UInt32		unk084;
-	UInt32		unk088;
-	UInt32		unk08C;
-	UInt32		unk090;
+	UInt8				byte30;		// 8 = IsAlerted
+	UInt8				pad31[3];
+	UInt32				unk34;
+	FloatPair			unk38;
+	TESForm*			unk40;		// Used when picking idle anims.
+	UInt32				unk44;		// not initialized!	refr, expected actor, might be CombatTarget
+	UInt32				unk48;
+	UInt32				unk4C;
+	UInt32				unk50;
+	UInt32				unk54;		// not initialized!
+	UInt32				unk58;
+	UInt32				unk5C;
+	tList<UInt32>		unk60;		// List
+	UInt32				unk68;
+	UInt32				unk6C;
+	tList<TESForm>		unk70;
+	tList<UInt32>		unk78;
+	tList<UInt32>		unk80;
+	UInt32				unk88;
+	UInt32				unk8C;
+	UInt32				unk90;
+	UInt32				unk94;
 	ActorValueModifiers	damageModifiers;
-	UInt32		unk098;		// not initialized!
-	UInt32		unk0A0;		// not initialized!
-	UInt32		unk0A4;		// not initialized!
-	float		flt0A8;
-	float		flt0AC;
-	UInt8		byt0B0;
-	UInt8		pad0B1[3];	// Filler
+	float				gameDayDied;
+	float				playerDamageDealt; // not initialized!
+	UInt32				unkB0;		// not initialized!
 };
 // LowProcess has 207 virtual func
 
@@ -770,86 +856,83 @@ public:
 	virtual void	Unk_21A();
 	virtual void	Unk_21B();
 
-	tList<TESForm*>			unk0C8;			// 0C8
-	tList<UInt32>			unk0D0;			// 0D0
-	UInt32					unk0D8[(0xE4-0xD8) >> 2];
-	BaseProcess::Data004	unk0E4;			// 0E4	I suspect interrupt package
-
-	UInt8					unk0FC[0x0C];	// 0FC	Saved as one, might be Pos/Rot given size
-
-	UInt32					unk108;			// 108
-	TESIdleForm				*idleForm;		// 10C
-	UInt32					unk110;			// 110  EntryData, also handled as part of weapon code. AmmoInfo.
-	WeaponInfo*				weaponInfo;		// 114
-	AmmoInfo*				ammoInfo;		// 118
-	QueuedFile*				unk11C;			// 11C
-	RefNiRefObject			unk120;			// 120
-	UInt8					byt124;			// 124	OneHandGrenade equipped
-	UInt8					byt125;			// 125	OneHandMine equipped
-	UInt8					byt126;			// 126	OneHandThrown equipped
-	UInt8					byt127;			// 127
-	UInt8					byt128;			// 128
-	UInt8					byt129;			// 129
-	UInt8					byt12A;			// 12A
-	UInt8					fil12B;			// 12B
-	UInt32					unk12C;			// 12C
-	UInt32					unk130;			// 130 Gets copied over during TESNPC.CopyFromBase
-	UInt8					byt134;			// 134
-	UInt8					byt135;			// 135
-	UInt8					byt136;			// 136
-	UInt8					byt137;			// 137
-
-	RefNiObject				unk138;			// 138	its an animation/bhkCharacterController. Current Animation?
-
-	UInt8					byt13C;			// 13C
-	UInt8					byt13D;			// 13D
-
-	UInt8					unk13E[(0x148-0x13E)];
-
-	Unk148					unk148;			// 148
-	
-	UInt32					unk150[8];		// 150
-	//UInt32				unk158;			
-	//UInt32				unk15C;
-	//UInt32				unk160;		// get/set.
-	//UInt8					byt168;
-
-	float					actorAlpha;		// 170
-	UInt32					unk174;			// 174
-	BSFaceGenAnimationData	*unk178;		// 178
-	UInt32					unk17C[24];		// 17C
-	//UInt8					byt18C;
-	//tList<UInt32>			unk1B0;
-	//tList<UInt32>			* unk1B8;		// get.
-	//UInt32				animation;	// 1C0
-	//UInt8					unk1C4[12];	// Cleared at the same time as the animation
-	//UInt32				unk1DA;
-
-	NiNode					*unk1DC;		// 1DC
-	NiNode					*unk1E0;		// 1E0
-	UInt32					unk1E4;			// 1E4
-	NiNode					*unk1E8;		// 1E8
-	UInt32					unk1EC;			// 1EC
-	NiNode					*unk1F0;		// 1F0
-	UInt32					unk1F4;			// 1F4
-	NiNode					*unk1F8;		// 1F8
-	UInt32					unk1FC[2];		// 1FC
-	NiNode					*unk204;		// 204
-	UInt32					unk208[4];		// 208
-	NiNode					*unk218;		// 218
-	NiNode					*unk21C;		// 21C
-	RefNiObject				unk220;			// 220
-	BSBound					*boundingBox;	// 224
-	UInt32					unk228[8];		// 228
-	BSFaceGenNiNode			*unk248;		// 248
-	BSFaceGenNiNode			*unk24C;		// 24C
-	NiTriShape				*unk250;		// 250
-	UInt32					unk254[2];		// 254
-
-	//TESPackage*			unk224;	// Set during StartConversation, package used by subject.
-
-	//Unk0254*				contains lastTarget at 0x04;	// 0254
+	tList<TESForm>						unk0C8;				// 0C8
+	tList<UInt32>						unk0D0;				// 0D0
+	UInt32								unk0D8[3];			// 0D8
+	PackageInfo							interruptPackage;	// 0E4
+	UInt8								unk0FC[12];			// 0FC	Saved as one, might be Pos/Rot given size
+	UInt32								unk108;				// 108
+	TESIdleForm							*idleForm10C;		// 10C
+	UInt32								unk110;				// 110  EntryData, also handled as part of weapon code. AmmoInfo.
+	WeaponInfo							*weaponInfo;		// 114
+	AmmoInfo							*ammoInfo;			// 118
+	QueuedFile							*unk11C;			// 11C
+	UInt8								byt120;				// 120
+	UInt8								byt121;				// 121
+	UInt8								byt122;				// 122
+	UInt8								fil123;				// 123
+	UInt8								isUsingOneHandGrenade;
+	UInt8								isUsingOneHandMine;
+	UInt8								isUsingOneHandThrown;
+	UInt8								isWearingHeavyArmor;
+	UInt8								isWearingPowerArmorTorso;
+	UInt8								isWearingPowerArmorHelmet;
+	UInt8								isWearingBackpack;
+	UInt8								gap12B;
+	NiNode								*node12C;			// 12C
+	NiNode								*projectileNode;	// 130
+	UInt8								byt134;				// 134
+	bool								isWeaponOut;		// 135
+	UInt8								byt136;				// 136
+	UInt8								byt137;				// 137
+	bhkCharacterController				*charCtrl;			// 138
+	UInt8								knockedState;		// 13C
+	UInt8								unk13D[3];			// 13D
+	UInt32								unk140[8];			// 140
+	MagicItem							*magicItem160;		// 160
+	UInt32								unk164[3];			// 164
+	float								actorAlpha;			// 170
+	UInt32								unk174;				// 174
+	BSFaceGenAnimationData				*unk178;			// 178
+	UInt8								byte17C;			// 17C
+	UInt8								byte17D;			// 17D
+	UInt8								byte17E;			// 17E
+	UInt8								byte17F;			// 17F
+	UInt32								unk180[3];			// 180
+	UInt8								byte18C;			// 18C
+	UInt8								byte18D[3];			// 18D
+	UInt32								unk190[10];			// 190
+	void								*unk1B8;			// 1B8
+	MagicTarget							*magicTarget1BC;	// 1BC
+	AnimData							*animData;			// 1C0
+	BSAnimGroupSequence					*animSequence[3];	// 1C4
+	float								unk1D0;				// 1D0
+	float								unk1D4;				// 1D4
+	UInt8								byte1D8;			// 1D8
+	UInt8								byte1D9;			// 1D9
+	UInt8								gap1DA[2];			// 1DA
+	NiNode								*limbNodes[15];		// 1DC
+	NiNode								*unk218;			// 218
+	NiNode								*weaponNode;		// 21C
+	void								*ptr220;			// 220
+	BSBound								*boundingBox;		// 224
+	UInt8								isAiming;			// 228
+	UInt8								byte229;			// 229
+	UInt16								byte22A;			// 22A
+	UInt32								unk22C;				// 22C
+	tList<void>							queuedEquipItems;	// 230
+	float								rads238;			// 238
+	float								waterRadsSec;		// 23C
+	ActorHitData						*lastHitData;		// 240 - last damage taken by actor
+	UInt32								unk244;				// 244
+	BSFaceGenNiNode						*unk248;			// 248
+	BSFaceGenNiNode						*unk24C;			// 24C
+	NiTriShape							*unk250;			// 250
+	ActorHitData						*lastTargetHitData; // 254 - last damage dealt by actor
+	UInt32								unk258;				// 258
 };
+STATIC_ASSERT(sizeof(MiddleHighProcess) == 0x25C);
+
 // MiddleHighProcess has 21B virtual func
 
 // HighProcess: 	// something in wrd2EC and unk2F0, Unk039C count the actor targeting the player (in the player process).
@@ -857,6 +940,178 @@ public:
 
 	////virtual void	Unk_21C();
 	////virtual void	Unk_21D();
+
+class bhkShapePhantom;
+class ProjectileData;
+class DetectionEvent;
+class NiBSplineCompTransformInterpolator;
+class NiBSBoneLODController;
+
+// 46C
+class HighProcess : public MiddleHighProcess
+{
+public:
+	HighProcess();
+	~HighProcess();
+
+	enum
+	{
+		kAnimAction_None = -1,
+		kAnimAction_Equip_Weapon,
+		kAnimAction_Unequip_Weapon,
+		kAnimAction_Attack,
+		kAnimAction_Attack_Follow_Through,
+		kAnimAction_Attack_Latency,
+		kAnimAction_Attack_Throw_Attach,
+		kAnimAction_Attack_Throw_Release,
+		kAnimAction_Block,
+		kAnimAction_Stagger,
+		kAnimAction_Reload,
+		kAnimAction_Dodge,
+		kAnimAction_Wait_For_Lower_Body_Anim,
+		kAnimAction_Wait_For_Special_Idle,
+		kAnimAction_Force_Script_Anim
+	};
+
+	enum
+	{
+		kSitSleepState_Normal = 0x0,
+		kSitSleepState_LoadSitIdle = 0x1,
+		kSitSleepState_WantToSit = 0x2,
+		kSitSleepState_WaitingForSitAnim = 0x3,
+		kSitSleepState_Sitting = 0x4,
+		kSitSleepState_WantToStand = 0x5,
+		kSitSleepState_LoadingSleepIdle = 0x6,
+		kSitSleepState_WantToSleep = 0x7,
+		kSitSleepState_WaitingForSleepAnim = 0x8,
+		kSitSleepState_Sleeping = 0x9,
+		kSitSleepState_WantToWake = 0xA,
+	};
+
+	struct ActorValueArray
+	{
+		struct Value
+		{
+			UInt8 isModified;
+			UInt8 gap01[3];
+			float value;
+		};
+
+		Value avs[77];
+	};
+
+	tList<DetectionData>* detectedActors;	// 25C
+	tList<DetectionData>* detectingActors;	// 260
+	void* ptr264;			// 264
+	void* ptr268;			// 268
+	void* ptr26C;			// 26C
+	UInt32								unk270;				// 270
+	tList<void>					combatTargetList274;			// 274
+	tList<void>							list27C;			// 27C
+	tList<void>							list284;			// 284
+	tList<void>							list28C;			// 28C
+	float								flt294;				// 294
+	float								flt298;				// 298
+	UInt32								unk29C;				// 29C
+	float								flt2A0;				// 2A0
+	UInt32								unk2A4;				// 2A4
+	float								flt2A8;				// 2A8
+	UInt32								unk2AC;				// 2AC
+	float								alpha;				// 2B0
+	float								flt2B4;				// 2B4
+	float								flt2B8;				// 2B8
+	float								flt2BC;				// 2BC
+	UInt32								unk2C0;				// 2C0
+	UInt8								byte2C4;			// 2C4
+	UInt8								byte2C5;			// 2C5
+	UInt8								byte2C6;			// 2C6
+	UInt8								byte2C7;			// 2C7
+	float								flt2C8;				// 2C8
+	UInt32								unk2CC;				// 2CC
+	float								flt2D0;				// 2D0
+	float								flt2D4;				// 2D4
+	float								flt2D8;				// 2D8
+	UInt32								unk2DC;				// 2DC
+	float								flt2E0;				// 2E0
+	NiBSBoneLODController* ptr2E4;			// 2E4
+	UInt32								unk2E8;				// 2E8
+	SInt16								currentAction;		// 2EC
+	UInt8								pad2EE[2];			// 2EE
+	BSAnimGroupSequence* currentSequence;	// 2F0
+	UInt8 forceFireWeapon;
+	UInt8 gap2F5[3];
+	float								flt2F8;				// 2F8
+	UInt32								unk2FC[5];			// 2FC
+	float								flt310;				// 310
+	UInt32								unk314[7];			// 314
+	float								flt330;				// 330
+	float								flt334;				// 334
+	float								flt338;				// 338
+	float								diveBreath;			// 33C
+	UInt32								unk340;				// 340
+	float								flt344;				// 344
+	UInt8								byte348;			// 348
+	UInt8								bWeaponAlertDrawn;	// 349
+	UInt8								gap34A;				// 34A
+	UInt8								gap34B;				// 34B
+	float								fAwarePlayerTimer;	// 34C
+	TESIdleForm							*idleForm350;		// 350
+	UInt32								unk354[4];			// 354
+	NiBSplineCompTransformInterpolator** ptr364;			// 364
+	UInt32 unk368;
+	UInt32 unk36C;
+	UInt32 unk370;
+	UInt8 isContinuingPackagePCNear;
+	UInt8 gap375[3];
+	float								flt378;				// 378
+	float								flt37C;				// 37C
+	UInt32								unk380;				// 380
+	float								flt384;				// 384
+	float								flt388;				// 388
+	tList<void>							list38C;			// 38C
+	tList<void>							list394;			// 394
+	UInt32								unk39C;				// 39C
+	UInt32								unk3A0;				// 3A0
+	float								flt3A4;				// 3A4
+	UInt32								unk3A8[5];			// 3A8
+	float								flt3BC;				// 3BC
+	float								flt3C0;				// 3C0
+	float								lightAmount;		// 3C4
+	float								flt3C8;				// 3C8
+	UInt32								unk3CC;				// 3CC
+	UInt32								unk3D0;				// 3D0
+	ProjectileData* projData;			// 3D4
+	UInt32								unk3D8;				// 3D8
+	DetectionEvent* detectionEvent;	// 3DC
+	UInt32								unk3E0;				// 3E0
+	UInt32								unk3E4;				// 3E4
+	UInt32								fadeType;			// 3E8
+	float								delayTime;			// 3EC
+	UInt32								unk3F0;				// 3F0
+	UInt32								unk3F4;				// 3F4
+	UInt32								unk3F8[3];			// 3F8
+	Actor* combatTarget;		// 404
+	UInt32								unk408[4];			// 408
+	float								flt418;				// 418
+	TESObjectREFR* packageTarget;		// 41C
+	UInt32								unk420;				// 420
+	UInt32								queuedIdleFlags;	// 424
+	UInt32								unk428;				// 428
+	float								flt42C;				// 42C
+	UInt32								unk430;				// 430
+	bhkShapePhantom* ptr434;			// 434
+	UInt32								unk438;				// 438
+	float								unk43C;				// 43C
+	float								radsSec440;			// 440
+	UInt8								plantedExplosive;	// 444
+	UInt8								pad445[3];			// 445
+	float								flt448;				// 448
+	UInt32								unk44C;				// 44C
+	float								flt450;				// 450
+	UInt32								unk454[6];			// 454
+};
+STATIC_ASSERT(sizeof(HighProcess) == 0x46C);
+
 class AnimSequenceBase;
 
 // 100+
