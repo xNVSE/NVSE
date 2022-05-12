@@ -843,6 +843,8 @@ struct NVSEEventManagerInterface
 
 	// Same as script function RemoveEventHandler but for native functions
 	bool (*RemoveNativeEventHandler)(const char* eventName, EventHandler func);
+
+	bool (*RegisterEventWithAlias)(const char* name, const char* alias, UInt8 numParams, ParamType* paramTypes, EventFlags flags);
 };
 #endif
 

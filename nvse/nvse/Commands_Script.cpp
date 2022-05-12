@@ -752,17 +752,18 @@ bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 	if (!eventName) [[unlikely]]
 		return true;
 
-	// does an EventInfo entry already exist for this event?
-	const UInt32 eventID = EventManager::EventIDForString(eventName);
-	if (EventManager::kEventID_INVALID == eventID)
+	// has this event been defined?
+	auto const eventInfoPtr = EventManager::TryGetEventInfoForName(eventName);
+	if (!eventInfoPtr)
 	{
 		*result = 1;	// assume the event may not have any handlers Set.
 		// Sucks we can't warn users about having a potentially invalid eventName, though.
 		return true;
 	}
 
-	auto& eventInfo = EventManager::s_eventInfos[eventID];
-	if (!eventInfo.IsUserDefined() && eventID != EventManager::kEventID_DebugEvent) [[unlikely]]
+	auto& eventInfo = *eventInfoPtr;
+	// Special case for TestEvent, to trigger the event in a script for runtime tests.
+	if (!eventInfo.IsUserDefined() && StrCompare(eventName, "nvsetestevent") != 0) [[unlikely]]
 	{
 		return true;
 	}
@@ -786,14 +787,16 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 		return true;
 	auto const numArgs = eval.NumArgs();
 
-	UInt32 eventID = EventManager::kEventID_INVALID;
+	EventManager::EventInfo* eventInfoPtr = nullptr;
 	Script* script = nullptr;
 	if (numArgs >= 1)
 	{
 		if (const char* eventName = eval.Arg(0)->GetString();
 			eventName && eventName[0])
 		{
-			eventID = EventManager::EventIDForString(eventName);
+			eventInfoPtr = EventManager::TryGetEventInfoForName(eventName);
+			if (!eventInfoPtr) //filtering by invalid eventName
+				return true;
 		}
 
 		if (numArgs >= 2)
@@ -846,20 +849,17 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 		}
 	};
 
-	if (eventID == EventManager::kEventID_INVALID)
+	if (!eventInfoPtr)
 	{
 		// loop through all eventInfo callbacks, filtering by script + filters
-		for (auto eventInfoIter = EventManager::s_eventInfos.Begin();
-			!eventInfoIter.End(); ++eventInfoIter)
+		for (auto const &eventInfo : EventManager::s_eventInfos)
 		{
-			auto const& eventInfo = eventInfoIter.Get();
 			DumpEventInfo(eventInfo);
 		}
 	}
-	else //filtered by eventID
+	else //filtered by eventName
 	{
-		auto const& eventInfo = EventManager::s_eventInfos[eventID];
-		DumpEventInfo(eventInfo);
+		DumpEventInfo(*eventInfoPtr);
 	}
 
 	return true;
@@ -874,15 +874,15 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 		return true;
 	auto const numArgs = eval.NumArgs();
 
-	UInt32 eventID = EventManager::kEventID_INVALID;
+	EventManager::EventInfo* eventInfoPtr = nullptr;
 	Script* script = nullptr;
 	if (numArgs >= 1)
 	{
 		if (const char* eventName = eval.Arg(0)->GetString();
 			eventName && eventName[0])
 		{
-			eventID = EventManager::EventIDForString(eventName);
-			if (eventID == EventManager::kEventID_INVALID)
+			eventInfoPtr = EventManager::TryGetEventInfoForName(eventName);
+			if (!eventInfoPtr)
 				return true; //trying to filter by invalid eventName
 		}
 
@@ -957,25 +957,22 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 		return handlersForEventArray;
 	};
 
-	if (eventID == EventManager::kEventID_INVALID)
+	if (!eventInfoPtr)
 	{
 		// keys = event handler names, values = an array containing arrays that have [0] = callbackFunc, [1] = filters string map.
 		ArrayVar* eventsMap = g_ArrayMap.Create(kDataType_String, false, scriptObj->GetModIndex());
 		*result = eventsMap->ID();
 
 		// loop through all eventInfo callbacks, filtering by script + filters
-		for (auto eventInfoIter = EventManager::s_eventInfos.Begin();
-			!eventInfoIter.End(); ++eventInfoIter)
+		for (auto const &eventInfo : EventManager::s_eventInfos)
 		{
-			auto const& eventInfo = eventInfoIter.Get();
 			eventsMap->SetElementArray(eventInfo.evName, GetEventInfoHandlers(eventInfo)->ID());
 		}
 	}
-	else //filtered by eventID
+	else //filtered by eventName
 	{
-		auto const& eventInfo = EventManager::s_eventInfos[eventID];
 		// return an array containing arrays that have [0] = callbackFunc, [1] = filters string map.
-		*result = GetEventInfoHandlers(eventInfo)->ID();
+		*result = GetEventInfoHandlers(*eventInfoPtr)->ID();
 	}
 
 	return true;
