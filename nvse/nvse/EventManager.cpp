@@ -1161,7 +1161,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 			if (void* param = toRemoveFilter.GetAsVoidArg(); 
 				toRemoveFilter.DataType() == existingFilter.DataType())
 			{
-				if (!DoesFilterMatch<false>(existingFilter, param, paramType))
+				if (!DoesFilterMatch<true>(existingFilter, param, paramType))
 					return false;
 			}
 			else if (toRemoveFilter.DataType() == kDataType_Array)
