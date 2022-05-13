@@ -719,7 +719,7 @@ void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1)
 		{
 			if (isArg0Valid == RefState::NotSet)
 				isArg0Valid = IsValidReference(arg0) ? RefState::Valid : RefState::Invalid;
-			if (isArg0Valid == RefState::Invalid || static_cast<TESObjectREFR*>(arg0)->baseForm != callback.source)
+			if (isArg0Valid == RefState::Invalid || GetPermanentBaseForm(static_cast<TESObjectREFR*>(arg0)) != callback.source)
 				continue;
 		}
 
