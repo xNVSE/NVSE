@@ -273,7 +273,7 @@ struct CallWhileInfo
 		kFlags_None = 0,
 		kPassArgs_ToCallFunc = 1 << 0,
 		kPassArgs_ToConditionFunc = 1 << 1,
-		kFlag_RunInMenuMode = 1 << 2,	//todo: make use (?)
+		kFlag_RunInMenuMode = 1 << 2,
 	} flags;
 	CallArgs args;
 
