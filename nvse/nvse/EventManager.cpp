@@ -1011,11 +1011,11 @@ void HandleNVSEMessage(UInt32 msgID, void* data)
 		HandleEvent(eventID, data, nullptr);
 }
 
-bool DoesFormMatchFilter(TESForm* form, TESForm* filter, bool expectReference, const UInt32 recursionLevel)
+bool DoesFormMatchFilter(TESForm* inputForm, TESForm* filter, bool expectReference, const UInt32 recursionLevel)
 {
-	if (filter == form)	//filter and form could both be null, and that's okay.
+	if (filter == inputForm)	//filter and form could both be null, and that's okay.
 		return true;
-	if (!filter || !form)
+	if (!filter || !inputForm)
 		return false;
 	if (recursionLevel > 100) [[unlikely]]
 		return false;
@@ -1024,13 +1024,14 @@ bool DoesFormMatchFilter(TESForm* form, TESForm* filter, bool expectReference, c
 		const auto* list = static_cast<BGSListForm*>(filter);
 		for (auto* listForm : list->list)
 		{
-			if (DoesFormMatchFilter(form, listForm, expectReference, recursionLevel + 1))
+			if (DoesFormMatchFilter(inputForm, listForm, expectReference, recursionLevel + 1))
 				return true;
 		}
 	}
-	else if (expectReference) //filter may be a baseForm, in which case, match form (a reference) to its baseform.
+	// If input form is a reference, then try matching its baseForm to the filter.
+	else if (expectReference && inputForm->GetIsReference())
 	{
-		if (filter == form->TryGetREFRParent())
+		if (filter == GetPermanentBaseForm(static_cast<TESObjectREFR*>(inputForm)))
 			return true;
 	}
 	return false;
@@ -1155,8 +1156,6 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 			else
 			{
 				paramType = evInfo.TryGetNthParamType(index - 1);
-				if (paramType == EventFilterType::eParamType_Int)
-					paramType = EventFilterType::eParamType_Float;	// if numeric, void* param will always be float-type, so avoid wrong cast in DoesFilterMatch.
 			}
 			
 			if (void* param = toRemoveFilter.GetAsVoidArg(); 
