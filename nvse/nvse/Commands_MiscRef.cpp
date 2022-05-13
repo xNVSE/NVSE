@@ -1057,7 +1057,7 @@ bool Cmd_SetActorBaseFlagsLow_Execute(COMMAND_ARGS)
 		obj = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESActorBase);
 
 	if(obj)
-		obj->baseData.flags = (data & 0x0000FFFF) | (obj->flags & 0xFFFF0000);
+		obj->baseData.flags = (data & 0x0000FFFF) | (obj->baseData.flags & 0xFFFF0000);
 
 	return true;
 }
