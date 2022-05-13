@@ -279,6 +279,7 @@ struct CallWhileInfo
 
 	[[nodiscard]] bool PassArgsToCallFunc() const { return flags & kPassArgs_ToCallFunc; }
 	[[nodiscard]] bool PassArgsToCondFunc() const { return flags & kPassArgs_ToConditionFunc; }
+	[[nodiscard]] bool RunInMenuMode() const { return flags & kFlag_RunInMenuMode; }
 
 	CallWhileInfo(Script* callFunction, Script* condition, TESObjectREFR* thisObj, eFlags flags, CallArgs &&args = {})
 		: callFunction(callFunction),

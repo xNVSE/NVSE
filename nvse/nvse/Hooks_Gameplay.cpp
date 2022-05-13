@@ -89,7 +89,7 @@ void HandleDelayedCall(float timeDelta, bool isMenuMode)
 	}
 }
 
-void HandleCallWhileScripts()
+void HandleCallWhileScripts(bool isMenuMode)
 {
 	if (g_callWhileInfos.empty())
 		return; // avoid lock overhead
@@ -98,6 +98,9 @@ void HandleCallWhileScripts()
 	auto iter = g_callWhileInfos.begin();
 	while (iter != g_callWhileInfos.end())
 	{
+		if (isMenuMode && !iter->RunInMenuMode())
+			continue;
+
 		ArrayElementArgFunctionCaller<SelfOwningArrayElement> conditionCaller(iter->condition);
 		if (iter->PassArgsToCondFunc())
 		{
@@ -120,7 +123,7 @@ void HandleCallWhileScripts()
 	}
 }
 
-void HandleCallWhenScripts()
+void HandleCallWhenScripts(bool isMenuMode)
 {
 	if (g_callWhenInfos.empty())
 		return; // avoid lock overhead
@@ -129,6 +132,9 @@ void HandleCallWhenScripts()
 	auto iter = g_callWhenInfos.begin();
 	while (iter != g_callWhenInfos.end())
 	{
+		if (isMenuMode && !iter->RunInMenuMode())
+			continue;
+
 		ArrayElementArgFunctionCaller conditionCaller(iter->condition, iter->args);
 		if (iter->PassArgsToCondFunc())
 		{
@@ -284,15 +290,15 @@ static void HandleMainLoopHook(void)
 	g_ArrayMap.Clean();
 	g_StringMap.Clean();
 	LambdaManager::EraseUnusedSavedVariableLists();
-
-	// handle calls from cmd CallWhile
-	HandleCallWhileScripts();
-	HandleCallWhenScripts();
 	
 	const auto vatsTimeMult = ThisStdCall<double>(0x9C8CC0, reinterpret_cast<void*>(0x11F2250));
 	const float timeDelta = g_timeGlobal->secondsPassed * static_cast<float>(vatsTimeMult);
 	const auto isMenuMode = CdeclCall<bool>(0x702360);
 	g_gameSecondsPassed += timeDelta;
+
+	// handle calls from cmd CallWhile
+	HandleCallWhileScripts(isMenuMode);
+	HandleCallWhenScripts(isMenuMode);
 
 	// handle calls from cmd CallAfterSeconds
 	HandleDelayedCall(timeDelta, isMenuMode);
