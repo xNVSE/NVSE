@@ -764,6 +764,7 @@ xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</C
     <Text Include="UnitTests.h" />
     <Text Include="unit_tests\array_functions.txt" />
     <Text Include="unit_tests\event_handler_functions.txt" />
+    <Text Include="unit_tests\TestExpr.txt" />
     <Text Include="unit_tests\udf_functions.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

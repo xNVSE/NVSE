@@ -529,5 +529,8 @@
     <Text Include="unit_tests\udf_functions.txt">
       <Filter>unit tests</Filter>
     </Text>
+    <Text Include="unit_tests\TestExpr.txt">
+      <Filter>unit tests</Filter>
+    </Text>
   </ItemGroup>
 </Project>
