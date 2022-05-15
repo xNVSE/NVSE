@@ -586,10 +586,14 @@ bool InternalFunctionCaller::PopulateArgs(ScriptEventList* eventList, FunctionIn
 	for (ParamSize_t i = 0; i < m_numArgs; i++)
 	{
 		UserFunctionParam* param = info->GetParam(i);
-		if (!ValidateParam(param, i))
+		if (!ValidateParam(param, i)) [[unlikely]]
 		{
-			ShowRuntimeError(m_script, "Failed to extract parameter %d. Please verify the number of parameters in function script match those required for event.", i);
-			return false;
+			if (!m_allowSurplusDispatchArgs) [[unlikely]]
+			{
+				ShowRuntimeError(m_script, "Failed to extract parameter %d. Please verify the number of parameters in function script match those required for event.", i);
+				return false;
+			}
+			return true;
 		}
 
 		ScriptLocal* var = eventList->GetVariable(param->varIdx);
@@ -685,10 +689,14 @@ bool InternalFunctionCallerAlt::PopulateArgs(ScriptEventList* eventList, Functio
 	for (ParamSize_t i = 0; i < m_numArgs; i++)
 	{
 		UserFunctionParam* param = info->GetParam(i);
-		if (!ValidateParam(param, i))
+		if (!ValidateParam(param, i)) [[unlikely]]
 		{
-			ShowRuntimeError(m_script, "Failed to extract parameter %d. Please verify the number of parameters in function script match those required for event.", i);
-			return false;
+			if (!m_allowSurplusDispatchArgs) [[unlikely]]
+			{
+				ShowRuntimeError(m_script, "Failed to extract parameter %d. Please verify the number of parameters in function script match those required for event.", i);
+				return false;
+			}
+			return true;
 		}
 
 		ScriptLocal* var = eventList->GetVariable(param->varIdx);
