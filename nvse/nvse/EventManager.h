@@ -525,7 +525,7 @@ namespace EventManager
 			result = std::visit(overloaded{
 				[=, &params](const LambdaManager::Maybe_Lambda& script) -> DispatchReturn
 				{
-					FunctionCaller caller(script.Get(), thisObj);
+					FunctionCaller caller(script.Get(), thisObj, nullptr, true); // don't report errors if passing more args to a UDF than it can absorb.
 					caller.SetArgsRaw(params->size(), params->data());
 					auto const res = UserFunctionManager::Call(std::move(caller));
 					if (resultCallback)
