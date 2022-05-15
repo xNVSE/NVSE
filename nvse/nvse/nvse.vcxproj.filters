@@ -497,6 +497,9 @@
     <ClInclude Include="MemoryTracker.h">
       <Filter>lib</Filter>
     </ClInclude>
+    <ClInclude Include="NiPoint.h">
+      <Filter>internals</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">
