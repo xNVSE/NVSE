@@ -723,6 +723,7 @@ xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</C
     <ClInclude Include="MemoryPool.h" />
     <ClInclude Include="MemoryTracker.h" />
     <ClInclude Include="NiNodes.h" />
+    <ClInclude Include="NiPoint.h" />
     <ClInclude Include="NiTypes.h" />
     <ClInclude Include="nvse_version.h" />
     <ClInclude Include="ParamInfos.h" />
