@@ -766,11 +766,11 @@ struct NVSESerializationInterface
  *
  *	    s_EventInterface->DispatchEvent("MyEvent", callingRef, someForm, someString);
  *
- *	When passing numeric types to DispatchEvent you MUST pack them in a float, which then needs to be
- *  cast as a void* pointer. This is due to the nature of variadic arguments in C/C++. Example
+ *	When passing float types to DispatchEvent you MUST pack them in a float, which then needs to be
+ *  cast as a void* pointer. This is due to the nature of variadic arguments in C/C++. Example:
  *      float number = 10;
- *	    void* numberArg = *(void**) &number;
- *	    s_EventInterface->DispatchEvent("MyEvent", callingRef, numberArg);
+ *	    void* floatArg = *(void**) &number;
+ *	    s_EventInterface->DispatchEvent("MyEvent", callingRef, floatArg);
  */
 struct NVSEEventManagerInterface
 {
