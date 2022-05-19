@@ -12,7 +12,7 @@
 #include <variant>
 
 #include "FunctionScripts.h"
-
+#include "Hooks_Gameplay.h"
 
 class Script;
 class TESForm;
@@ -292,74 +292,21 @@ namespace EventManager
 
 	template <bool ExtractIntTypeAsFloat>
 	DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params,
-		DispatchCallback resultCallback, void* anyData = nullptr);
+		DispatchCallback resultCallback, void* anyData, bool deferIfOutsideMainThread);
 
 	template <bool ExtractIntTypeAsFloat>
-	bool DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params);
+	bool DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params, bool deferIfOutsideMainThread);
 
-	//For plugins
-	bool DispatchEvent(const char *eventName, TESObjectREFR *thisObj, ...);
+	template <bool ThreadSafe>
+	bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...);
+
+	template <bool ThreadSafe>
 	DispatchReturn DispatchEventAlt(const char *eventName, DispatchCallback resultCallback, void *anyData, TESObjectREFR *thisObj, ...);
 
 	// dispatch a user-defined event from a script (for Cmd_DispatchEvent)
 	// Cmd_DispatchEventAlt provides more flexibility with how args are passed.
 	bool DispatchUserDefinedEvent(const char *eventName, Script *sender, UInt32 argsArrayId, const char *senderName);
 
-
-
-
-
-	// event handler param lists
-	static EventFilterType kEventParams_GameEvent[2] =
-	{
-		EventFilterType::eParamType_AnyForm, EventFilterType::eParamType_AnyForm
-	};
-
-	static EventFilterType kEventParams_OneRef[1] =
-	{
-		EventFilterType::eParamType_AnyForm,
-	};
-
-	static EventFilterType kEventParams_OneString[1] =
-	{
-		EventFilterType::eParamType_String
-	};
-
-	static EventFilterType kEventParams_OneInt[1] =
-	{
-		EventFilterType::eParamType_Int
-	};
-
-	static EventFilterType kEventParams_TwoInts[2] =
-	{
-		EventFilterType::eParamType_Int, EventFilterType::eParamType_Int
-	};
-
-	static EventFilterType kEventParams_OneInt_OneRef[2] =
-	{
-		EventFilterType::eParamType_Int, EventFilterType::eParamType_AnyForm
-	};
-
-	static EventFilterType kEventParams_OneRef_OneInt[2] =
-	{
-		EventFilterType::eParamType_AnyForm, EventFilterType::eParamType_Int
-	};
-
-	static EventFilterType kEventParams_OneArray[1] =
-	{
-		EventFilterType::eParamType_Array
-	};
-
-	static EventFilterType kEventParams_OneInt_OneFloat_OneArray_OneString_OneForm_OneReference_OneBaseform[] =
-	{
-		EventFilterType::eParamType_Int,
-		EventFilterType::eParamType_Float,
-		EventFilterType::eParamType_Array,
-		EventFilterType::eParamType_String,
-		EventFilterType::eParamType_AnyForm,
-		EventFilterType::eParamType_Reference,
-		EventFilterType::eParamType_BaseForm,
-	};
 
 
 
@@ -505,13 +452,51 @@ namespace EventManager
 		return true;
 	}
 
+	// For events that are best deferred until Tick(), usually to avoid multithreading issues.
+	template <bool ExtractIntTypeAsFloat>
+	struct DeferredCallback
+	{
+		EventInfo& eventInfo;
+		TESObjectREFR* thisObj;
+		ArgStack params;
+		DispatchCallback resultCallback;
+		void* callbackData;
+
+		DeferredCallback(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack &&params,
+			DispatchCallback resultCallback, void* callbackData) :
+			eventInfo(eventInfo), thisObj(thisObj), params(std::move(params)),
+			resultCallback(resultCallback), callbackData(callbackData)
+		{}
+
+		~DeferredCallback()
+		{
+			DispatchEventRaw<ExtractIntTypeAsFloat>(thisObj, eventInfo, params, resultCallback, callbackData, false);
+		}
+	};
+	extern Stack<DeferredCallback<false>> s_deferredCallbacksDefault;
+	extern Stack<DeferredCallback<true>> s_deferredCallbacksWithIntsPackedAsFloats;
+
 	template <bool ExtractIntTypeAsFloat>
 	DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params,
-		DispatchCallback resultCallback, void* anyData)
+		DispatchCallback resultCallback, void* anyData, bool deferIfOutsideMainThread)
 	{
 		using FunctionCaller = std::conditional_t<ExtractIntTypeAsFloat, InternalFunctionCallerAlt, InternalFunctionCaller>;
 
+		if (deferIfOutsideMainThread && GetCurrentThreadId() != g_mainThreadID)
+		{
+			if constexpr (ExtractIntTypeAsFloat)
+			{
+				s_deferredCallbacksWithIntsPackedAsFloats.Push(thisObj, eventInfo, std::move(params), resultCallback, anyData);
+			}
+			else
+			{
+				s_deferredCallbacksDefault.Push(thisObj, eventInfo, std::move(params), resultCallback, anyData);
+			}
+			return DispatchReturn::kRetn_Normal;
+		}
+
 		DispatchReturn result = DispatchReturn::kRetn_Normal;
+
 		for (auto& [funcKey, callback] : eventInfo.callbacks)
 		{
 			if (callback.IsRemoved())
@@ -535,7 +520,7 @@ namespace EventManager
 						{
 							return resultCallback(elem, anyData) ? DispatchReturn::kRetn_Normal : DispatchReturn::kRetn_EarlyBreak;
 						}
-						return DispatchReturn::kRetn_Error;
+						return DispatchReturn::kRetn_GenericError;
 					}
 					return DispatchReturn::kRetn_Normal;
 				},
@@ -553,10 +538,39 @@ namespace EventManager
 	}
 
 	template <bool ExtractIntTypeAsFloat>
-	bool DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params)
+	bool DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params, bool deferIfOutsideMainThread)
 	{
-		return DispatchEventRaw<ExtractIntTypeAsFloat>(thisObj, eventInfo, params, nullptr, nullptr)
-			!= DispatchReturn::kRetn_Error;
+		return DispatchEventRaw<ExtractIntTypeAsFloat>(thisObj, eventInfo, params, nullptr, nullptr, deferIfOutsideMainThread)
+			> DispatchReturn::kRetn_GenericError;
+	}
+
+	DispatchReturn vDispatchEvent(const char* eventName, DispatchCallback resultCallback, void* anyData,
+		TESObjectREFR* thisObj, va_list args, bool deferIfOutsideMainThread);
+
+	template <bool ThreadSafe>
+	bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
+	{
+		va_list paramList;
+		va_start(paramList, thisObj);
+
+		DispatchReturn const result = vDispatchEvent(eventName, nullptr, nullptr,
+			thisObj, paramList, ThreadSafe);
+
+		va_end(paramList);
+		return result > DispatchReturn::kRetn_GenericError;
+	}
+
+	template <bool ThreadSafe>
+	DispatchReturn DispatchEventAlt(const char* eventName, DispatchCallback resultCallback, void* anyData, TESObjectREFR* thisObj, ...)
+	{
+		va_list paramList;
+		va_start(paramList, thisObj);
+
+		auto const result = vDispatchEvent(eventName, resultCallback, anyData,
+			thisObj, paramList, ThreadSafe);
+
+		va_end(paramList);
+		return result;
 	}
 };
 

@@ -66,8 +66,12 @@ public:
     StackVector(const StackVector& other) :
         allocator_(resource_),
         internalVector_(other.internalVector_, allocator_)
-    {
-    }
+    {}
+
+    StackVector(StackVector&& other) noexcept :
+        allocator_(resource_),
+        internalVector_(std::move(other.internalVector_))
+    {}
 
     StackVector& operator=(const StackVector& other)
     {

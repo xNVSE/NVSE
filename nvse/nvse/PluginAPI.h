@@ -754,7 +754,7 @@ struct NVSESerializationInterface
  *	(i.e. the pointer to it may never become invalid).
  *  For example, a good way to define it is to make a global variable like this:
  *
- *	    static ParamType s_MyEventParams[] = { Script::eVarType_Ref, Script::eVarType_String };
+ *	    static ParamType s_MyEventParams[] = { ParamType::eParamType_AnyForm, ParamType::eParamType_String };
  *
  *	Then you can pass it into PluginEventInfo like this:
  *
@@ -827,7 +827,8 @@ struct NVSEEventManagerInterface
 
 	enum DispatchReturn : int8_t
 	{
-		kRetn_Error = -1,
+		kRetn_UnknownEvent = -2,  // for plugins, events are supposed to be pre-defined.
+		kRetn_GenericError = -1,  // anything > -1 is a good result.
 		kRetn_Normal = 0,
 		kRetn_EarlyBreak,
 	};
@@ -845,6 +846,14 @@ struct NVSEEventManagerInterface
 	bool (*RemoveNativeEventHandler)(const char* eventName, EventHandler func);
 
 	bool (*RegisterEventWithAlias)(const char* name, const char* alias, UInt8 numParams, ParamType* paramTypes, EventFlags flags);
+
+	// Same as DispatchEvent, but if attempting to dispatch outside of the game's main thread, the dispatch will be deferred.
+	// Recommended to avoid potential multithreaded crashes, usually related to Console_Print.
+	bool (*DispatchEventThreadSafe)(const char* eventName, TESObjectREFR* thisObj, ...);
+
+	// Same as DispatchEventAlt, but if attempting to dispatch outside of the game's main thread, the dispatch will be deferred.
+	// Recommended to avoid potential multithreaded crashes, usually related to Console_Print.
+	DispatchReturn (*DispatchEventAltThreadSafe)(const char* eventName, DispatchCallback resultCallback, void* anyData, TESObjectREFR* thisObj, ...);
 };
 #endif
 
