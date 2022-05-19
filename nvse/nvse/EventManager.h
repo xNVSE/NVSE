@@ -113,8 +113,6 @@ namespace EventManager
 	using EventHandler = NVSEEventManagerInterface::EventHandler;
 	using EventFilterType = NVSEEventManagerInterface::ParamType;
 	using EventFlags = NVSEEventManagerInterface::EventFlags;
-	using DispatchReturn = NVSEEventManagerInterface::DispatchReturn;
-	using DispatchCallback = NVSEEventManagerInterface::DispatchCallback;
 
 	inline bool IsParamForm(EventFilterType pType)
 	{
@@ -290,18 +288,24 @@ namespace EventManager
 	bool SetNativeEventHandler(const char *eventName, EventHandler func);
 	bool RemoveNativeEventHandler(const char *eventName, EventHandler func);
 
+	using DispatchReturn = NVSEEventManagerInterface::DispatchReturn;
+	using DispatchCallback = NVSEEventManagerInterface::DispatchCallback;
+	using PostDispatchCallback = NVSEEventManagerInterface::PostDispatchCallback;
+
 	template <bool ExtractIntTypeAsFloat>
 	DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params,
-		DispatchCallback resultCallback, void* anyData, bool deferIfOutsideMainThread);
+		DispatchCallback resultCallback, void* anyData, bool deferIfOutsideMainThread, PostDispatchCallback postCallback);
 
 	template <bool ExtractIntTypeAsFloat>
-	bool DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params, bool deferIfOutsideMainThread);
+	bool DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params, 
+		bool deferIfOutsideMainThread, PostDispatchCallback postCallback);
 
-	template <bool ThreadSafe>
 	bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...);
-
-	template <bool ThreadSafe>
 	DispatchReturn DispatchEventAlt(const char *eventName, DispatchCallback resultCallback, void *anyData, TESObjectREFR *thisObj, ...);
+
+	bool DispatchEventThreadSafe(const char* eventName, PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...);
+	DispatchReturn DispatchEventAltThreadSafe(const char* eventName, DispatchCallback resultCallback, void* anyData, 
+		PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...);
 
 	// dispatch a user-defined event from a script (for Cmd_DispatchEvent)
 	// Cmd_DispatchEventAlt provides more flexibility with how args are passed.
@@ -461,16 +465,19 @@ namespace EventManager
 		ArgStack params;
 		DispatchCallback resultCallback;
 		void* callbackData;
+		PostDispatchCallback postCallback;
 
 		DeferredCallback(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack &&params,
-			DispatchCallback resultCallback, void* callbackData) :
+			DispatchCallback resultCallback, void* callbackData, PostDispatchCallback postCallback) :
 			eventInfo(eventInfo), thisObj(thisObj), params(std::move(params)),
-			resultCallback(resultCallback), callbackData(callbackData)
+			resultCallback(resultCallback), callbackData(callbackData), postCallback(postCallback)
 		{}
 
 		~DeferredCallback()
 		{
-			DispatchEventRaw<ExtractIntTypeAsFloat>(thisObj, eventInfo, params, resultCallback, callbackData, false);
+			auto const result = DispatchEventRaw<ExtractIntTypeAsFloat>(thisObj, eventInfo, params, resultCallback, callbackData,
+				false, nullptr);
+			postCallback(callbackData, result);
 		}
 	};
 	extern Stack<DeferredCallback<false>> s_deferredCallbacksDefault;
@@ -478,7 +485,7 @@ namespace EventManager
 
 	template <bool ExtractIntTypeAsFloat>
 	DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params,
-		DispatchCallback resultCallback, void* anyData, bool deferIfOutsideMainThread)
+		DispatchCallback resultCallback, void* anyData, bool deferIfOutsideMainThread, PostDispatchCallback postCallback)
 	{
 		using FunctionCaller = std::conditional_t<ExtractIntTypeAsFloat, InternalFunctionCallerAlt, InternalFunctionCaller>;
 
@@ -486,13 +493,13 @@ namespace EventManager
 		{
 			if constexpr (ExtractIntTypeAsFloat)
 			{
-				s_deferredCallbacksWithIntsPackedAsFloats.Push(thisObj, eventInfo, std::move(params), resultCallback, anyData);
+				s_deferredCallbacksWithIntsPackedAsFloats.Push(thisObj, eventInfo, std::move(params), resultCallback, anyData, postCallback);
 			}
 			else
 			{
-				s_deferredCallbacksDefault.Push(thisObj, eventInfo, std::move(params), resultCallback, anyData);
+				s_deferredCallbacksDefault.Push(thisObj, eventInfo, std::move(params), resultCallback, anyData, postCallback);
 			}
-			return DispatchReturn::kRetn_Normal;
+			return DispatchReturn::kRetn_Deferred;
 		}
 
 		DispatchReturn result = DispatchReturn::kRetn_Normal;
@@ -538,39 +545,11 @@ namespace EventManager
 	}
 
 	template <bool ExtractIntTypeAsFloat>
-	bool DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params, bool deferIfOutsideMainThread)
+	bool DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params, 
+		bool deferIfOutsideMainThread, PostDispatchCallback postCallback)
 	{
-		return DispatchEventRaw<ExtractIntTypeAsFloat>(thisObj, eventInfo, params, nullptr, nullptr, deferIfOutsideMainThread)
+		return DispatchEventRaw<ExtractIntTypeAsFloat>(thisObj, eventInfo, params, nullptr, nullptr, deferIfOutsideMainThread, postCallback)
 			> DispatchReturn::kRetn_GenericError;
-	}
-
-	DispatchReturn vDispatchEvent(const char* eventName, DispatchCallback resultCallback, void* anyData,
-		TESObjectREFR* thisObj, va_list args, bool deferIfOutsideMainThread);
-
-	template <bool ThreadSafe>
-	bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
-	{
-		va_list paramList;
-		va_start(paramList, thisObj);
-
-		DispatchReturn const result = vDispatchEvent(eventName, nullptr, nullptr,
-			thisObj, paramList, ThreadSafe);
-
-		va_end(paramList);
-		return result > DispatchReturn::kRetn_GenericError;
-	}
-
-	template <bool ThreadSafe>
-	DispatchReturn DispatchEventAlt(const char* eventName, DispatchCallback resultCallback, void* anyData, TESObjectREFR* thisObj, ...)
-	{
-		va_list paramList;
-		va_start(paramList, thisObj);
-
-		auto const result = vDispatchEvent(eventName, resultCallback, anyData,
-			thisObj, paramList, ThreadSafe);
-
-		va_end(paramList);
-		return result;
 	}
 };
 

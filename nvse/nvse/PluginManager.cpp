@@ -136,13 +136,13 @@ static const NVSEDataInterface g_NVSEDataInterface =
 static const NVSEEventManagerInterface g_NVSEEventManagerInterface =
 {
 	EventManager::RegisterEvent,
-	EventManager::DispatchEvent<false>,
-	EventManager::DispatchEventAlt<false>,
+	EventManager::DispatchEvent,
+	EventManager::DispatchEventAlt,
 	EventManager::SetNativeEventHandler,
 	EventManager::RemoveNativeEventHandler,
 	EventManager::RegisterEventWithAlias,
-	EventManager::DispatchEvent<true>,
-	EventManager::DispatchEventAlt<true>
+	EventManager::DispatchEventThreadSafe,
+	EventManager::DispatchEventAltThreadSafe
 };
 #endif
 

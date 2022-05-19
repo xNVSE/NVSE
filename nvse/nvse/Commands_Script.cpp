@@ -777,7 +777,7 @@ bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 	}
 
 	// allow (risky) dispatching outside main thread
-	*result = EventManager::DispatchEventRaw<true>(thisObj, eventInfo, params, false);
+	*result = EventManager::DispatchEventRaw<true>(thisObj, eventInfo, params, false, nullptr);
 	return true;
 }
 

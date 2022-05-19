@@ -1124,6 +1124,8 @@ bool ParamTypeMatches(EventFilterType from, EventFilterType to)
 		default: break;
 		}
 	}
+	if (to == NVSEEventManagerInterface::eParamType_Anything)
+		return true;
 	return false;
 }
 
@@ -1185,7 +1187,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 
 
 DispatchReturn vDispatchEvent(const char* eventName, DispatchCallback resultCallback, void* anyData,
-	TESObjectREFR* thisObj, va_list args, bool deferIfOutsideMainThread)
+	TESObjectREFR* thisObj, va_list args, bool deferIfOutsideMainThread, PostDispatchCallback postCallback)
 {
 	const auto eventPtr = TryGetEventInfoForName(eventName);
 	if (!eventPtr)
@@ -1201,7 +1203,56 @@ DispatchReturn vDispatchEvent(const char* eventName, DispatchCallback resultCall
 	for (int i = 0; i < eventInfo.numParams; ++i)
 		params->push_back(va_arg(args, void*));
 
-	return DispatchEventRaw<false>(thisObj, eventInfo, params, nullptr, nullptr, deferIfOutsideMainThread);
+	return DispatchEventRaw<false>(thisObj, eventInfo, params, nullptr, nullptr, 
+		deferIfOutsideMainThread, postCallback);
+}
+
+
+bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
+{
+	va_list paramList;
+	va_start(paramList, thisObj);
+
+	DispatchReturn const result = vDispatchEvent(eventName, nullptr, nullptr,
+		thisObj, paramList, false, nullptr);
+
+	va_end(paramList);
+	return result > DispatchReturn::kRetn_GenericError;
+}
+bool DispatchEventThreadSafe(const char* eventName, PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...)
+{
+	va_list paramList;
+	va_start(paramList, thisObj);
+
+	DispatchReturn const result = vDispatchEvent(eventName, nullptr, nullptr,
+		thisObj, paramList, true, postCallback);
+
+	va_end(paramList);
+	return result > DispatchReturn::kRetn_GenericError;
+}
+
+DispatchReturn DispatchEventAlt(const char* eventName, DispatchCallback resultCallback, void* anyData, TESObjectREFR* thisObj, ...)
+{
+	va_list paramList;
+	va_start(paramList, thisObj);
+
+	auto const result = vDispatchEvent(eventName, resultCallback, anyData,
+		thisObj, paramList, false, nullptr);
+
+	va_end(paramList);
+	return result;
+}
+DispatchReturn DispatchEventAltThreadSafe(const char* eventName, DispatchCallback resultCallback, void* anyData, 
+	PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...)
+{
+	va_list paramList;
+	va_start(paramList, thisObj);
+
+	auto const result = vDispatchEvent(eventName, resultCallback, anyData,
+		thisObj, paramList, true, postCallback);
+
+	va_end(paramList);
+	return result;
 }
 
 bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 argsArrayId, const char* senderName)

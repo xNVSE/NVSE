@@ -831,6 +831,7 @@ struct NVSEEventManagerInterface
 		kRetn_GenericError = -1,  // anything > -1 is a good result.
 		kRetn_Normal = 0,
 		kRetn_EarlyBreak,
+		kRetn_Deferred,	//for the "ThreadSafe" DispatchEvent functions.
 	};
 	typedef bool (*DispatchCallback)(NVSEArrayVarInterface::Element& result, void* anyData);
 
@@ -847,13 +848,21 @@ struct NVSEEventManagerInterface
 
 	bool (*RegisterEventWithAlias)(const char* name, const char* alias, UInt8 numParams, ParamType* paramTypes, EventFlags flags);
 
+	// If passed as non-null, will be called after all handlers have been dispatched.
+	// The "ThreadSafe" dispatch functions can delay the dispatch by a frame, hence why this callback is needed.
+	// Useful to potentially clear heap-allocated memory for the dispatch.
+	typedef void (*PostDispatchCallback)(void* anyData, DispatchReturn retn);
+
 	// Same as DispatchEvent, but if attempting to dispatch outside of the game's main thread, the dispatch will be deferred.
+	// WARNING: must ensure data will not be invalid if the dispatch is deferred.
 	// Recommended to avoid potential multithreaded crashes, usually related to Console_Print.
-	bool (*DispatchEventThreadSafe)(const char* eventName, TESObjectREFR* thisObj, ...);
+	bool (*DispatchEventThreadSafe)(const char* eventName, PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...);
 
 	// Same as DispatchEventAlt, but if attempting to dispatch outside of the game's main thread, the dispatch will be deferred.
+	// WARNING: must ensure data will not be invalid if the dispatch is deferred.
 	// Recommended to avoid potential multithreaded crashes, usually related to Console_Print.
-	DispatchReturn (*DispatchEventAltThreadSafe)(const char* eventName, DispatchCallback resultCallback, void* anyData, TESObjectREFR* thisObj, ...);
+	DispatchReturn (*DispatchEventAltThreadSafe)(const char* eventName, DispatchCallback resultCallback, void* anyData, 
+		PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...);
 };
 #endif
 
