@@ -18,7 +18,7 @@
 
 namespace EventManager {
 
-static ICriticalSection s_criticalSection;
+ICriticalSection s_criticalSection;
 
 std::list<EventInfo> s_eventInfos;
 
@@ -1299,8 +1299,8 @@ bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 arg
 	return true;
 }
 
-Stack<DeferredCallback<false>> s_deferredCallbacksDefault;
-Stack<DeferredCallback<true>> s_deferredCallbacksWithIntsPackedAsFloats;
+std::deque<DeferredCallback<false>> s_deferredCallbacksDefault;
+std::deque<DeferredCallback<true>> s_deferredCallbacksWithIntsPackedAsFloats;
 
 void Tick()
 {
@@ -1308,8 +1308,8 @@ void Tick()
 
 	// handle deferred events
 	s_deferredDeprecatedCallbacks.Clear();
-	s_deferredCallbacksDefault.Clear();
-	s_deferredCallbacksWithIntsPackedAsFloats.Clear();
+	s_deferredCallbacksDefault.clear();
+	s_deferredCallbacksWithIntsPackedAsFloats.clear();
 
 	// Clear callbacks pending removal.
 	s_deferredRemoveList.Clear();

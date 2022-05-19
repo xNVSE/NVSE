@@ -469,36 +469,35 @@ namespace EventManager
 
 		DeferredCallback(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack &&params,
 			DispatchCallback resultCallback, void* callbackData, PostDispatchCallback postCallback) :
-			eventInfo(eventInfo), thisObj(thisObj), params(std::move(params)),
+			eventInfo(eventInfo), thisObj(thisObj), params(params),
 			resultCallback(resultCallback), callbackData(callbackData), postCallback(postCallback)
 		{}
 
 		~DeferredCallback()
 		{
-			auto const result = DispatchEventRaw<ExtractIntTypeAsFloat>(thisObj, eventInfo, params, resultCallback, callbackData,
-				false, nullptr);
-			if (postCallback)
-				postCallback(callbackData, result);
+			DispatchEventRaw<ExtractIntTypeAsFloat>(thisObj, eventInfo, params, resultCallback, callbackData,
+				false, postCallback);
 		}
 	};
-	extern Stack<DeferredCallback<false>> s_deferredCallbacksDefault;
-	extern Stack<DeferredCallback<true>> s_deferredCallbacksWithIntsPackedAsFloats;
+	extern std::deque<DeferredCallback<false>> s_deferredCallbacksDefault;
+	extern std::deque<DeferredCallback<true>> s_deferredCallbacksWithIntsPackedAsFloats;
+
+	extern ICriticalSection s_criticalSection;
 
 	template <bool ExtractIntTypeAsFloat>
 	DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params,
 		DispatchCallback resultCallback, void* anyData, bool deferIfOutsideMainThread, PostDispatchCallback postCallback)
 	{
-		using FunctionCaller = std::conditional_t<ExtractIntTypeAsFloat, InternalFunctionCallerAlt, InternalFunctionCaller>;
-
 		if (deferIfOutsideMainThread && GetCurrentThreadId() != g_mainThreadID)
 		{
+			ScopedLock lock(s_criticalSection);
 			if constexpr (ExtractIntTypeAsFloat)
 			{
-				s_deferredCallbacksWithIntsPackedAsFloats.Push(thisObj, eventInfo, std::move(params), resultCallback, anyData, postCallback);
+				s_deferredCallbacksWithIntsPackedAsFloats.emplace_back(thisObj, eventInfo, std::move(params), resultCallback, anyData, postCallback);
 			}
 			else
 			{
-				s_deferredCallbacksDefault.Push(thisObj, eventInfo, std::move(params), resultCallback, anyData, postCallback);
+				s_deferredCallbacksDefault.emplace_back(thisObj, eventInfo, std::move(params), resultCallback, anyData, postCallback);
 			}
 			return DispatchReturn::kRetn_Deferred;
 		}
@@ -518,6 +517,8 @@ namespace EventManager
 			result = std::visit(overloaded{
 				[=, &params](const LambdaManager::Maybe_Lambda& script) -> DispatchReturn
 				{
+					using FunctionCaller = std::conditional_t<ExtractIntTypeAsFloat, InternalFunctionCallerAlt, InternalFunctionCaller>;
+
 					FunctionCaller caller(script.Get(), thisObj, nullptr, true); // don't report errors if passing more args to a UDF than it can absorb.
 					caller.SetArgsRaw(params->size(), params->data());
 					auto const res = UserFunctionManager::Call(std::move(caller));
@@ -542,6 +543,10 @@ namespace EventManager
 			if (result != DispatchReturn::kRetn_Normal)
 				break;
 		}
+
+		if (postCallback)
+			postCallback(anyData, result);
+
 		return result;
 	}
 
