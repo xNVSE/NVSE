@@ -477,7 +477,8 @@ namespace EventManager
 		{
 			auto const result = DispatchEventRaw<ExtractIntTypeAsFloat>(thisObj, eventInfo, params, resultCallback, callbackData,
 				false, nullptr);
-			postCallback(callbackData, result);
+			if (postCallback)
+				postCallback(callbackData, result);
 		}
 	};
 	extern Stack<DeferredCallback<false>> s_deferredCallbacksDefault;
