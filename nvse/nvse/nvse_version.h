@@ -5,8 +5,8 @@
 #define ALPHA_MODE 0
 #define NVSE_VERSION_INTEGER		6
 #define NVSE_VERSION_INTEGER_MINOR	2
-#define NVSE_VERSION_INTEGER_BETA	7
-#define NVSE_VERSION_VERSTRING		"0, 6, 2, 7"
+#define NVSE_VERSION_INTEGER_BETA	8
+#define NVSE_VERSION_VERSTRING		"0, 6, 2, 8"
 #define NVSE_VERSION_PADDEDSTRING	"0006"
 
 // build numbers do not appear to follow the same format as with oblivion
