@@ -8,17 +8,17 @@
 #include "GameObjects.h"
 #include "ThreadLocal.h"
 #include "common/ICriticalSection.h"
-#include "Hooks_Gameplay.h"
 #include "GameOSDepend.h"
 //#include "InventoryReference.h"
 
 #include "GameData.h"
 #include "GameRTTI.h"
 #include "GameScript.h"
+#include "EventParams.h"
 
 namespace EventManager {
 
-static ICriticalSection s_criticalSection;
+ICriticalSection s_criticalSection;
 
 std::list<EventInfo> s_eventInfos;
 
@@ -49,7 +49,6 @@ static EventHookInstaller s_ActorEquipHook = InstallOnActorEquipHook;
 // internal functions
 //////////////////////////
 
-void __stdcall HandleEvent(eEventID id, void * arg0, void * arg1);
 void __stdcall HandleGameEvent(UInt32 eventMask, TESObjectREFR* source, TESForm* object);
 
 static const UInt32 kVtbl_PlayerCharacter = 0x0108AA3C;
@@ -653,17 +652,17 @@ Stack<const char*> s_eventStack;
 // Some events are best deferred until Tick() invoked rather than being handled immediately.
 // This stores info about such an event.
 // Only used in the deprecated HandleEvent.
-struct DeferredCallback
+struct DeferredDeprecatedCallback
 {
 	EventCallback		&callback;	//assume this contains a Script* CallbackFunc.
 	void				*arg0;
 	void				*arg1;
 	EventInfo			&eventInfo;
 
-	DeferredCallback(EventCallback &pCallback, void *_arg0, void *_arg1, EventInfo &_eventInfo) :
+	DeferredDeprecatedCallback(EventCallback &pCallback, void *_arg0, void *_arg1, EventInfo &_eventInfo) :
 		callback(pCallback), arg0(_arg0), arg1(_arg1), eventInfo(_eventInfo) {}
 
-	~DeferredCallback()
+	~DeferredDeprecatedCallback()
 	{
 		if (callback.removed)
 			return;
@@ -675,8 +674,8 @@ struct DeferredCallback
 	}
 };
 
-typedef Stack<DeferredCallback> DeferredCallbackList;
-DeferredCallbackList s_deferredCallbacks;
+typedef Stack<DeferredDeprecatedCallback> DeferredCallbackList;
+DeferredCallbackList s_deferredDeprecatedCallbacks;
 
 struct DeferredRemoveCallback
 {
@@ -704,6 +703,7 @@ DeferredRemoveList s_deferredRemoveList;
 
 enum class RefState {NotSet, Invalid, Valid};
 
+// Deprecated
 void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1)
 {
 	auto isArg0Valid = RefState::NotSet;
@@ -729,7 +729,7 @@ void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1)
 		if (GetCurrentThreadId() != g_mainThreadID)
 		{
 			// avoid potential issues with invoking handlers outside of main thread by deferring event handling
-			s_deferredCallbacks.Push(callback, arg0, arg1, eventInfo);
+			s_deferredDeprecatedCallbacks.Push(callback, arg0, arg1, eventInfo);
 		}
 		else
 		{
@@ -1124,6 +1124,8 @@ bool ParamTypeMatches(EventFilterType from, EventFilterType to)
 		default: break;
 		}
 	}
+	if (to == NVSEEventManagerInterface::eParamType_Anything)
+		return true;
 	return false;
 }
 
@@ -1183,45 +1185,71 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 	return true;
 }
 
-bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
+
+DispatchReturn vDispatchEvent(const char* eventName, DispatchCallback resultCallback, void* anyData,
+	TESObjectREFR* thisObj, va_list args, bool deferIfOutsideMainThread, PostDispatchCallback postCallback)
 {
 	const auto eventPtr = TryGetEventInfoForName(eventName);
 	if (!eventPtr)
-		return false;
+		return DispatchReturn::kRetn_UnknownEvent;
 	EventInfo& eventInfo = *eventPtr;
+
 #if _DEBUG //shouldn't need to be checked normally; RegisterEvent verifies numParams.
 	if (eventInfo.numParams > numMaxFilters)
-		return false;
+		return DispatchReturn::kRetn_GenericError;
 #endif
-
-	va_list paramList;
-	va_start(paramList, thisObj);
 
 	ArgStack params;
 	for (int i = 0; i < eventInfo.numParams; ++i)
-		params->push_back(va_arg(paramList, void*));
+		params->push_back(va_arg(args, void*));
 
-	bool const result = DispatchEventRaw <false> (thisObj, eventInfo, params);
-	
+	return DispatchEventRaw<false>(thisObj, eventInfo, params, nullptr, nullptr, 
+		deferIfOutsideMainThread, postCallback);
+}
+
+
+bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
+{
+	va_list paramList;
+	va_start(paramList, thisObj);
+
+	DispatchReturn const result = vDispatchEvent(eventName, nullptr, nullptr,
+		thisObj, paramList, false, nullptr);
+
 	va_end(paramList);
-	return result;
+	return result > DispatchReturn::kRetn_GenericError;
+}
+bool DispatchEventThreadSafe(const char* eventName, PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...)
+{
+	va_list paramList;
+	va_start(paramList, thisObj);
+
+	DispatchReturn const result = vDispatchEvent(eventName, nullptr, nullptr,
+		thisObj, paramList, true, postCallback);
+
+	va_end(paramList);
+	return result > DispatchReturn::kRetn_GenericError;
 }
 
 DispatchReturn DispatchEventAlt(const char* eventName, DispatchCallback resultCallback, void* anyData, TESObjectREFR* thisObj, ...)
 {
-	const auto eventPtr = TryGetEventInfoForName(eventName);
-	if (!eventPtr)
-		return DispatchReturn::kRetn_Error; //TODO: return a unique code to specify that event could not be found.
-	EventInfo& eventInfo = *eventPtr;
-
 	va_list paramList;
 	va_start(paramList, thisObj);
 
-	ArgStack params;
-	for (int i = 0; i < eventInfo.numParams; ++i)
-		params->push_back(va_arg(paramList, void*));
+	auto const result = vDispatchEvent(eventName, resultCallback, anyData,
+		thisObj, paramList, false, nullptr);
 
-	auto const result = DispatchEventRaw<false>(thisObj, eventInfo, params, resultCallback, anyData);
+	va_end(paramList);
+	return result;
+}
+DispatchReturn DispatchEventAltThreadSafe(const char* eventName, DispatchCallback resultCallback, void* anyData, 
+	PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...)
+{
+	va_list paramList;
+	va_start(paramList, thisObj);
+
+	auto const result = vDispatchEvent(eventName, resultCallback, anyData,
+		thisObj, paramList, true, postCallback);
 
 	va_end(paramList);
 	return result;
@@ -1271,12 +1299,17 @@ bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 arg
 	return true;
 }
 
+std::deque<DeferredCallback<false>> s_deferredCallbacksDefault;
+std::deque<DeferredCallback<true>> s_deferredCallbacksWithIntsPackedAsFloats;
+
 void Tick()
 {
 	ScopedLock lock(s_criticalSection);
 
 	// handle deferred events
-	s_deferredCallbacks.Clear();
+	s_deferredDeprecatedCallbacks.Clear();
+	s_deferredCallbacksDefault.clear();
+	s_deferredCallbacksWithIntsPackedAsFloats.clear();
 
 	// Clear callbacks pending removal.
 	s_deferredRemoveList.Clear();

@@ -140,7 +140,9 @@ static const NVSEEventManagerInterface g_NVSEEventManagerInterface =
 	EventManager::DispatchEventAlt,
 	EventManager::SetNativeEventHandler,
 	EventManager::RemoveNativeEventHandler,
-	EventManager::RegisterEventWithAlias
+	EventManager::RegisterEventWithAlias,
+	EventManager::DispatchEventThreadSafe,
+	EventManager::DispatchEventAltThreadSafe
 };
 #endif
 

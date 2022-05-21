@@ -12,7 +12,7 @@
 #include <variant>
 
 #include "FunctionScripts.h"
-
+#include "Hooks_Gameplay.h"
 
 class Script;
 class TESForm;
@@ -113,8 +113,6 @@ namespace EventManager
 	using EventHandler = NVSEEventManagerInterface::EventHandler;
 	using EventFilterType = NVSEEventManagerInterface::ParamType;
 	using EventFlags = NVSEEventManagerInterface::EventFlags;
-	using DispatchReturn = NVSEEventManagerInterface::DispatchReturn;
-	using DispatchCallback = NVSEEventManagerInterface::DispatchCallback;
 
 	inline bool IsParamForm(EventFilterType pType)
 	{
@@ -290,76 +288,29 @@ namespace EventManager
 	bool SetNativeEventHandler(const char *eventName, EventHandler func);
 	bool RemoveNativeEventHandler(const char *eventName, EventHandler func);
 
+	using DispatchReturn = NVSEEventManagerInterface::DispatchReturn;
+	using DispatchCallback = NVSEEventManagerInterface::DispatchCallback;
+	using PostDispatchCallback = NVSEEventManagerInterface::PostDispatchCallback;
+
 	template <bool ExtractIntTypeAsFloat>
 	DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params,
-		DispatchCallback resultCallback, void* anyData = nullptr);
+		DispatchCallback resultCallback, void* anyData, bool deferIfOutsideMainThread, PostDispatchCallback postCallback);
 
 	template <bool ExtractIntTypeAsFloat>
-	bool DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params);
+	bool DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params, 
+		bool deferIfOutsideMainThread, PostDispatchCallback postCallback);
 
-	//For plugins
-	bool DispatchEvent(const char *eventName, TESObjectREFR *thisObj, ...);
+	bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...);
 	DispatchReturn DispatchEventAlt(const char *eventName, DispatchCallback resultCallback, void *anyData, TESObjectREFR *thisObj, ...);
+
+	bool DispatchEventThreadSafe(const char* eventName, PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...);
+	DispatchReturn DispatchEventAltThreadSafe(const char* eventName, DispatchCallback resultCallback, void* anyData, 
+		PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...);
 
 	// dispatch a user-defined event from a script (for Cmd_DispatchEvent)
 	// Cmd_DispatchEventAlt provides more flexibility with how args are passed.
 	bool DispatchUserDefinedEvent(const char *eventName, Script *sender, UInt32 argsArrayId, const char *senderName);
 
-
-
-
-
-	// event handler param lists
-	static EventFilterType kEventParams_GameEvent[2] =
-	{
-		EventFilterType::eParamType_AnyForm, EventFilterType::eParamType_AnyForm
-	};
-
-	static EventFilterType kEventParams_OneRef[1] =
-	{
-		EventFilterType::eParamType_AnyForm,
-	};
-
-	static EventFilterType kEventParams_OneString[1] =
-	{
-		EventFilterType::eParamType_String
-	};
-
-	static EventFilterType kEventParams_OneInt[1] =
-	{
-		EventFilterType::eParamType_Int
-	};
-
-	static EventFilterType kEventParams_TwoInts[2] =
-	{
-		EventFilterType::eParamType_Int, EventFilterType::eParamType_Int
-	};
-
-	static EventFilterType kEventParams_OneInt_OneRef[2] =
-	{
-		EventFilterType::eParamType_Int, EventFilterType::eParamType_AnyForm
-	};
-
-	static EventFilterType kEventParams_OneRef_OneInt[2] =
-	{
-		EventFilterType::eParamType_AnyForm, EventFilterType::eParamType_Int
-	};
-
-	static EventFilterType kEventParams_OneArray[1] =
-	{
-		EventFilterType::eParamType_Array
-	};
-
-	static EventFilterType kEventParams_OneInt_OneFloat_OneArray_OneString_OneForm_OneReference_OneBaseform[] =
-	{
-		EventFilterType::eParamType_Int,
-		EventFilterType::eParamType_Float,
-		EventFilterType::eParamType_Array,
-		EventFilterType::eParamType_String,
-		EventFilterType::eParamType_AnyForm,
-		EventFilterType::eParamType_Reference,
-		EventFilterType::eParamType_BaseForm,
-	};
 
 
 
@@ -505,13 +456,54 @@ namespace EventManager
 		return true;
 	}
 
+	// For events that are best deferred until Tick(), usually to avoid multithreading issues.
+	template <bool ExtractIntTypeAsFloat>
+	struct DeferredCallback
+	{
+		EventInfo& eventInfo;
+		TESObjectREFR* thisObj;
+		ArgStack params;
+		DispatchCallback resultCallback;
+		void* callbackData;
+		PostDispatchCallback postCallback;
+
+		DeferredCallback(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack &&params,
+			DispatchCallback resultCallback, void* callbackData, PostDispatchCallback postCallback) :
+			eventInfo(eventInfo), thisObj(thisObj), params(params),
+			resultCallback(resultCallback), callbackData(callbackData), postCallback(postCallback)
+		{}
+
+		~DeferredCallback()
+		{
+			DispatchEventRaw<ExtractIntTypeAsFloat>(thisObj, eventInfo, params, resultCallback, callbackData,
+				false, postCallback);
+		}
+	};
+	extern std::deque<DeferredCallback<false>> s_deferredCallbacksDefault;
+	extern std::deque<DeferredCallback<true>> s_deferredCallbacksWithIntsPackedAsFloats;
+
+	extern ICriticalSection s_criticalSection;
+
 	template <bool ExtractIntTypeAsFloat>
 	DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params,
-		DispatchCallback resultCallback, void* anyData)
+		DispatchCallback resultCallback, void* anyData, bool deferIfOutsideMainThread, PostDispatchCallback postCallback)
 	{
-		using FunctionCaller = std::conditional_t<ExtractIntTypeAsFloat, InternalFunctionCallerAlt, InternalFunctionCaller>;
+		if (deferIfOutsideMainThread && GetCurrentThreadId() != g_mainThreadID)
+		{
+			ScopedLock lock(s_criticalSection);
+			if constexpr (ExtractIntTypeAsFloat)
+			{
+				s_deferredCallbacksWithIntsPackedAsFloats.emplace_back(thisObj, eventInfo, std::move(params), resultCallback, anyData, postCallback);
+			}
+			else
+			{
+				s_deferredCallbacksDefault.emplace_back(thisObj, eventInfo, std::move(params), resultCallback, anyData, postCallback);
+			}
+			return DispatchReturn::kRetn_Deferred;
+		}
 
 		DispatchReturn result = DispatchReturn::kRetn_Normal;
+
 		for (auto& [funcKey, callback] : eventInfo.callbacks)
 		{
 			if (callback.IsRemoved())
@@ -525,6 +517,8 @@ namespace EventManager
 			result = std::visit(overloaded{
 				[=, &params](const LambdaManager::Maybe_Lambda& script) -> DispatchReturn
 				{
+					using FunctionCaller = std::conditional_t<ExtractIntTypeAsFloat, InternalFunctionCallerAlt, InternalFunctionCaller>;
+
 					FunctionCaller caller(script.Get(), thisObj, nullptr, true); // don't report errors if passing more args to a UDF than it can absorb.
 					caller.SetArgsRaw(params->size(), params->data());
 					auto const res = UserFunctionManager::Call(std::move(caller));
@@ -535,7 +529,7 @@ namespace EventManager
 						{
 							return resultCallback(elem, anyData) ? DispatchReturn::kRetn_Normal : DispatchReturn::kRetn_EarlyBreak;
 						}
-						return DispatchReturn::kRetn_Error;
+						return DispatchReturn::kRetn_GenericError;
 					}
 					return DispatchReturn::kRetn_Normal;
 				},
@@ -549,14 +543,19 @@ namespace EventManager
 			if (result != DispatchReturn::kRetn_Normal)
 				break;
 		}
+
+		if (postCallback)
+			postCallback(anyData, result);
+
 		return result;
 	}
 
 	template <bool ExtractIntTypeAsFloat>
-	bool DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params)
+	bool DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params, 
+		bool deferIfOutsideMainThread, PostDispatchCallback postCallback)
 	{
-		return DispatchEventRaw<ExtractIntTypeAsFloat>(thisObj, eventInfo, params, nullptr, nullptr)
-			!= DispatchReturn::kRetn_Error;
+		return DispatchEventRaw<ExtractIntTypeAsFloat>(thisObj, eventInfo, params, nullptr, nullptr, deferIfOutsideMainThread, postCallback)
+			> DispatchReturn::kRetn_GenericError;
 	}
 };
 

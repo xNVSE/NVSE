@@ -754,7 +754,7 @@ struct NVSESerializationInterface
  *	(i.e. the pointer to it may never become invalid).
  *  For example, a good way to define it is to make a global variable like this:
  *
- *	    static ParamType s_MyEventParams[] = { Script::eVarType_Ref, Script::eVarType_String };
+ *	    static ParamType s_MyEventParams[] = { ParamType::eParamType_AnyForm, ParamType::eParamType_String };
  *
  *	Then you can pass it into PluginEventInfo like this:
  *
@@ -827,9 +827,11 @@ struct NVSEEventManagerInterface
 
 	enum DispatchReturn : int8_t
 	{
-		kRetn_Error = -1,
+		kRetn_UnknownEvent = -2,  // for plugins, events are supposed to be pre-defined.
+		kRetn_GenericError = -1,  // anything > -1 is a good result.
 		kRetn_Normal = 0,
 		kRetn_EarlyBreak,
+		kRetn_Deferred,	//for the "ThreadSafe" DispatchEvent functions.
 	};
 	typedef bool (*DispatchCallback)(NVSEArrayVarInterface::Element& result, void* anyData);
 
@@ -845,6 +847,22 @@ struct NVSEEventManagerInterface
 	bool (*RemoveNativeEventHandler)(const char* eventName, EventHandler func);
 
 	bool (*RegisterEventWithAlias)(const char* name, const char* alias, UInt8 numParams, ParamType* paramTypes, EventFlags flags);
+
+	// If passed as non-null, will be called after all handlers have been dispatched.
+	// The "ThreadSafe" dispatch functions can delay the dispatch by a frame, hence why this callback is needed.
+	// Useful to potentially clear heap-allocated memory for the dispatch.
+	typedef void (*PostDispatchCallback)(void* anyData, DispatchReturn retn);
+
+	// Same as DispatchEvent, but if attempting to dispatch outside of the game's main thread, the dispatch will be deferred.
+	// WARNING: must ensure data will not be invalid if the dispatch is deferred.
+	// Recommended to avoid potential multithreaded crashes, usually related to Console_Print.
+	bool (*DispatchEventThreadSafe)(const char* eventName, PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...);
+
+	// Same as DispatchEventAlt, but if attempting to dispatch outside of the game's main thread, the dispatch will be deferred.
+	// WARNING: must ensure data will not be invalid if the dispatch is deferred.
+	// Recommended to avoid potential multithreaded crashes, usually related to Console_Print.
+	DispatchReturn (*DispatchEventAltThreadSafe)(const char* eventName, DispatchCallback resultCallback, void* anyData, 
+		PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...);
 };
 #endif
 

@@ -66,8 +66,7 @@ public:
     StackVector(const StackVector& other) :
         allocator_(resource_),
         internalVector_(other.internalVector_, allocator_)
-    {
-    }
+    {}
 
     StackVector& operator=(const StackVector& other)
     {
