@@ -584,9 +584,7 @@ bool Cmd_GetCallingScript_Execute(COMMAND_ARGS)
 	return true;
 }
 
-static constexpr auto maxEventNameLen = 0x20;
-
-bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback &outCallback, char *outName, bool addEvt)
+bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback &outCallback, std::string &outName, bool addEvt)
 {
 	if (eval.ExtractArgs() && eval.NumArgs() >= 2)
 	{
@@ -595,7 +593,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 		if (eventName && script)
 		{
 			outCallback.toCall = script;
-			strcpy_s(outName, maxEventNameLen, eventName);
+			outName = eventName;
 
 			const char* funcName = addEvt ? "SetEventHandler" : "RemoveEventHandler";
 
@@ -647,18 +645,19 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 	return false;
 }
 
-bool ProcessEventHandler(char *eventName, EventManager::EventCallback &callback, bool addEvt, ExpressionEvaluator &eval)
+bool ProcessEventHandler(std::string &eventName, EventManager::EventCallback &callback, bool addEvt, ExpressionEvaluator &eval)
 {
 	if (GetLNEventMask)
 	{
-		char *colon = strchr(eventName, ':');
+		char* eventNameRaw = eventName.data();
+		char *colon = strchr(eventNameRaw, ':');
 		bool separatedStr = false;
 		if (colon)
 		{
 			*(colon++) = 0;
 			separatedStr = true;
 		}
-		if (const UInt32 eventMask = GetLNEventMask(eventName))
+		if (const UInt32 eventMask = GetLNEventMask(eventNameRaw))
 		{
 			UInt32 const numFilter = (colon && *colon) ? atoi(colon) : 0;
 
@@ -684,15 +683,15 @@ bool ProcessEventHandler(char *eventName, EventManager::EventCallback &callback,
 			*colon = ':';
 		}
 	}
-	return addEvt ? EventManager::SetHandler(eventName, callback, &eval)
-		: EventManager::RemoveHandler(eventName, callback);
+	return addEvt ? EventManager::SetHandler(eventName.c_str(), callback, &eval)
+		: EventManager::RemoveHandler(eventName.c_str(), callback);
 }
 
 bool Cmd_SetEventHandler_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
-	char eventName[maxEventNameLen];
+	std::string eventName;
 	*result = (ExtractEventCallback(eval, callback, eventName, true)
 		&& ProcessEventHandler(eventName, callback, true, eval));
 	return true;
@@ -702,7 +701,7 @@ bool Cmd_RemoveEventHandler_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
-	char eventName[maxEventNameLen];
+	std::string eventName;
 	*result = (ExtractEventCallback(eval, callback, eventName, false)
 		&& ProcessEventHandler(eventName, callback, false, eval));
 	return true;
