@@ -2,15 +2,17 @@ begin Function { }
 
 	ref rOnHitUDF = ({ref rFirst, ref rSecond} => print "ran")
 
-	Assert (TestExpr (SetEventHandler "OnHit" rOnHitUDF 0::"badFilter")) == 0  ; error should occur
+	Assert (TestExpr (SetEventHandlerAlt "OnHit" rOnHitUDF 0::"badFilter")) == 0  ; error should occur
 
 	; Test assignement inside TestExpr statement
 	int iTest
-	Assert (TestExpr (iTest := SetEventHandler "OnHit" rOnHitUDF 0::"badFilter")) == 0
+	Assert (TestExpr (iTest := SetEventHandlerAlt "OnHit" rOnHitUDF 0::"badFilter")) == 0
 
 	; Test with boxing operator
 	array_var aTest
-	Assert (TestExpr (aTest := &(SetEventHandler "OnHit" rOnHitUDF 0::"badFilter"))) == 0
+	Assert (TestExpr (aTest := &(SetEventHandlerAlt "OnHit" rOnHitUDF 0::"badFilter"))) == 0
+
+	Assert (Ar_Size (GetEventHandlers  "OnHit" rOnHitUDF)) == 0
 
 	; Test array bounds-checking
 	aTest = Ar_Null  ;invalid array
