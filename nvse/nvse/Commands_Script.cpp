@@ -586,7 +586,7 @@ bool Cmd_GetCallingScript_Execute(COMMAND_ARGS)
 
 template <bool AllowOldFilters, bool AllowNewFilters>
 bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback &outCallback, 
-	std::string &outName, const char* funcName)
+	std::string &outName)
 {
 	static_assert(AllowNewFilters || AllowOldFilters, "Must allow at least one filter type for extraction.");
 
@@ -627,7 +627,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 
 						if constexpr (!AllowNewFilters)
 						{
-							eval.Error("%s: Invalid string filter key %s passed, ignoring it.", funcName, key ? key : "NULL");
+							eval.Error("Invalid string filter key %s passed, ignoring it.", key ? key : "NULL");
 							continue;  // don't return false, in case previous mods would be broken by that change.
 						}
 					}
@@ -639,7 +639,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 							const char* key = pair->left->GetString();
 							if (key && key[0])
 							{
-								eval.Error("%s: String filter keys are not allowed for this function; use int codes.", funcName);
+								eval.Error("String filter keys are not allowed for this function; use int codes.");
 								return false;
 							}
 						}
@@ -647,7 +647,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 						const auto index = static_cast<int>(pair->left->GetNumber());
 						if (index < 0) [[unlikely]]
 						{
-							eval.Error("Invalid index %d passed to %s (arg indices start from 1, and callingReference is filter #0).", funcName);
+							eval.Error("Invalid index %d passed (arg indices start from 1, and callingReference is filter #0).", index);
 							return false;
 						}
 
@@ -658,14 +658,14 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 							if (const auto [it, success] = outCallback.filters.emplace(index, std::move(element));
 								!success) [[unlikely]]
 							{
-								eval.Error("Event filter index %u appears more than once in %s call.", index, funcName);
+								eval.Error("Event filter index %u appears more than once.", index);
 							}
 						}
 					}
 				}
 				else
 				{
-					eval.Error("%s: Received invalid pair for arg %u somehow.", funcName, i);
+					eval.Error("Received invalid pair for arg %u somehow.", i);
 				}
 			}
 			return true;
@@ -722,7 +722,7 @@ bool Cmd_SetEventHandler_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
 	std::string eventName;
-	*result = (ExtractEventCallback<true, false>(eval, callback, eventName, "SetEventHandler")
+	*result = (ExtractEventCallback<true, false>(eval, callback, eventName)
 		&& ProcessEventHandler(eventName, callback, true, eval));
 	return true;
 }
@@ -732,7 +732,7 @@ bool Cmd_SetEventHandlerAlt_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
 	std::string eventName;
-	*result = (ExtractEventCallback<false, true>(eval, callback, eventName, "SetEventHandlerAlt")
+	*result = (ExtractEventCallback<false, true>(eval, callback, eventName)
 		&& ProcessEventHandler(eventName, callback, true, eval));
 	return true;
 }
@@ -742,7 +742,7 @@ bool Cmd_RemoveEventHandler_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
 	std::string eventName;
-	*result = (ExtractEventCallback<true, true>(eval, callback, eventName, "RemoveEventHandler")
+	*result = (ExtractEventCallback<true, true>(eval, callback, eventName)
 		&& ProcessEventHandler(eventName, callback, false, eval));
 	return true;
 }
