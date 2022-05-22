@@ -1845,6 +1845,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(DumpEventHandlers);
 	ADD_CMD_RET(GetEventHandlers, kRetnType_Array);
 	ADD_CMD_RET(GetSelfAlt, kRetnType_Form);
+	ADD_CMD(SetEventHandlerAlt);
 }
 
 namespace PluginAPI

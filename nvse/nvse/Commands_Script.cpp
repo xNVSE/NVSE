@@ -584,8 +584,12 @@ bool Cmd_GetCallingScript_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback &outCallback, std::string &outName, bool addEvt)
+template <bool AllowOldFilters, bool AllowNewFilters>
+bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback &outCallback, 
+	std::string &outName, const char* funcName)
 {
+	static_assert(AllowNewFilters || AllowOldFilters, "Must allow at least one filter type for extraction.");
+
 	if (eval.ExtractArgs() && eval.NumArgs() >= 2)
 	{
 		const char *eventName = eval.Arg(0)->GetString();
@@ -594,8 +598,9 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 		{
 			outCallback.toCall = script;
 			outName = eventName;
-
-			const char* funcName = addEvt ? "SetEventHandler" : "RemoveEventHandler";
+			// Must flush handlers with new filters on load, since save-baked arrays can be filters.
+			// Loading back to before this handler was set could result in the stored array being invalid, hence this workaround.
+			outCallback.flushOnLoad = AllowNewFilters;
 
 			// any filters?
 			for (auto i = 2; i < eval.NumArgs(); i++)
@@ -603,20 +608,25 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 				const TokenPair* pair = eval.Arg(i)->GetPair();
 				if (pair && pair->left && pair->right) [[likely]]
 				{
-					const char* key = pair->left->GetString();
-					if (key && StrLen(key))
+					if constexpr (AllowOldFilters)
 					{
-						if (!StrCompare(key, "ref") || !StrCompare(key, "first"))
+						const char* key = pair->left->GetString();
+						if (key && StrLen(key))
 						{
-							outCallback.source = pair->right->GetTESForm();
-						}
-						else if (!StrCompare(key, "object") || !StrCompare(key, "second"))
-						{
-							outCallback.object = pair->right->GetTESForm();
+							if (!StrCompare(key, "ref") || !StrCompare(key, "first"))
+							{
+								outCallback.source = pair->right->GetTESForm();
+								continue;
+							}
+							if (!StrCompare(key, "object") || !StrCompare(key, "second"))
+							{
+								outCallback.object = pair->right->GetTESForm();
+								continue;
+							}
 						}
 					}
-					// new system, above preserved for backwards compatibility
-					else
+
+					if constexpr (AllowNewFilters)
 					{
 						const auto index = static_cast<int>(pair->left->GetNumber());
 						if (index < 0) [[unlikely]]
@@ -692,7 +702,17 @@ bool Cmd_SetEventHandler_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
 	std::string eventName;
-	*result = (ExtractEventCallback(eval, callback, eventName, true)
+	*result = (ExtractEventCallback<true, false>(eval, callback, eventName, "SetEventHandler")
+		&& ProcessEventHandler(eventName, callback, true, eval));
+	return true;
+}
+
+bool Cmd_SetEventHandlerAlt_Execute(COMMAND_ARGS)
+{
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	EventManager::EventCallback callback;
+	std::string eventName;
+	*result = (ExtractEventCallback<false, true>(eval, callback, eventName, "SetEventHandlerAlt")
 		&& ProcessEventHandler(eventName, callback, true, eval));
 	return true;
 }
@@ -702,7 +722,7 @@ bool Cmd_RemoveEventHandler_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
 	std::string eventName;
-	*result = (ExtractEventCallback(eval, callback, eventName, false)
+	*result = (ExtractEventCallback<true, true>(eval, callback, eventName, "RemoveEventHandler")
 		&& ProcessEventHandler(eventName, callback, false, eval));
 	return true;
 }

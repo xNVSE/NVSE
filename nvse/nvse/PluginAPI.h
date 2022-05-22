@@ -746,9 +746,9 @@ struct NVSESerializationInterface
  *  This interface allows you to
  *	- Register a new event type which can be dispatched with parameters
  *	- Dispatch an event from code to scripts (and plugins with this interface) with parameters and calling ref.
- *	   - SetEventHandler supports any number of filters in script calls in the syntax of 1::myFilter
+ *	   - SetEventHandlerAlt supports up to 15 filters in script calls in the syntax of 1::myFilter
  *	   (1st argument will receive this filter for example)
- *	- Set an event handler for any NVSE events registered with SetEventHandler which will be called back.
+ *	- Set an event handler for any NVSE events registered with SetEventHandler(Alt) which will be called back.
  *
  *	For RegisterEvent, paramTypes needs to be statically defined
  *	(i.e. the pointer to it may never become invalid).
@@ -776,7 +776,7 @@ struct NVSEEventManagerInterface
 {
 	typedef void (*EventHandler)(TESObjectREFR* thisObj, void* parameters);
 
-	// Mostly just used for filtering information (setup in SetEventHandler).
+	// Mostly just used for filtering information.
 	enum ParamType : int8_t
 	{
 		eParamType_Float = 0,
