@@ -70,35 +70,49 @@ DEFINE_COMMAND(RunScript, debug, 0, 1, kParams_OneForm);
 DEFINE_COMMAND(GetCurrentScript, returns the calling script, 0, 0, NULL);
 DEFINE_COMMAND(GetCallingScript, returns the script that called the executing function script, 0, 0, NULL);
 
-static ParamInfo kNVSEParams_SetEventHandler[20] =
+static ParamInfo kNVSEParams_SetEventHandler[4] =
 {
 	{ "event name",			kNVSEParamType_String,	0 },
-	{ "function script",	kNVSEParamType_Form,	0 },
-
+	{ "function script",		kNVSEParamType_Form,	0 },
 	{ "filter",				kNVSEParamType_Pair,	1 },
 	{ "filter",				kNVSEParamType_Pair,	1 },
-	{ "filter",				kNVSEParamType_Pair,	1 },
-	{ "filter",				kNVSEParamType_Pair,	1 },
-	{ "filter",				kNVSEParamType_Pair,	1 },
-
-	{ "filter",				kNVSEParamType_Pair,	1 },
-	{ "filter",				kNVSEParamType_Pair,	1 },
-	{ "filter",				kNVSEParamType_Pair,	1 },
-	{ "filter",				kNVSEParamType_Pair,	1 },
-	{ "filter",				kNVSEParamType_Pair,	1 },
-
-	{ "filter",				kNVSEParamType_Pair,	1 },
-	{ "filter",				kNVSEParamType_Pair,	1 },
-	{ "filter",				kNVSEParamType_Pair,	1 },
-	{ "filter",				kNVSEParamType_Pair,	1 },
-	{ "filter",				kNVSEParamType_Pair,	1 },
-
-	{ "filter",				kNVSEParamType_Pair,	1 },
-	// 1 filter for thisObj, 15 for the rest.
 };
 
-DEFINE_COMMAND_EXP(SetEventHandler, defines a function script to serve as a callback for game events, 0, kNVSEParams_SetEventHandler);
-DEFINE_COMMAND_EXP(RemoveEventHandler, "removes event handlers matching the event, script, and optional filters specified", 0, kNVSEParams_SetEventHandler);
+static ParamInfo kNVSEParams_SetEventHandlerAlt[20] =
+{
+	{ "event name",			kNVSEParamType_String,	0 },
+	{ "function script",		kNVSEParamType_Form,	0 },
+
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	// 1 filter for thisObj (0::SomeFilter), 15 for the rest.
+};
+
+
+DEFINE_COMMAND_EXP(SetEventHandler, "defines a function script to serve as a callback for game events",
+	0, kNVSEParams_SetEventHandler);
+DEFINE_COMMAND_EXP(SetEventHandlerAlt, "Uses the new event filtering system.",
+	0, kNVSEParams_SetEventHandlerAlt);
+
+DEFINE_COMMAND_EXP(RemoveEventHandler, "removes event handlers matching the event, script, and optional filters specified", 
+	0, kNVSEParams_SetEventHandler);
 DEFINE_CMD(GetCurrentEventName, returns the name of the event currently being processed by an event handler, 0, NULL);
 
 static ParamInfo kNVSEParams_DispatchEvent[3] =
@@ -297,6 +311,8 @@ extern std::list<DelayedCallInfo> g_callForInfos;
 extern std::list<CallWhileInfo> g_callWhileInfos;
 extern std::list<DelayedCallInfo> g_callAfterInfos;
 extern std::list<CallWhileInfo> g_callWhenInfos;
+
+void ClearDelayedCalls();
 
 extern ICriticalSection g_callForInfosCS;
 extern ICriticalSection g_callWhileInfosCS;

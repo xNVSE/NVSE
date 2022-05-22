@@ -154,6 +154,7 @@ namespace EventManager
 		TESForm *object{}; // second arg to handler
 		bool removed{};
 		bool pendingRemove{};
+		bool flushOnLoad = false;
 
 		using Index = UInt32;
 		using Filter = SelfOwningArrayElement;
@@ -171,6 +172,7 @@ namespace EventManager
 
 		[[nodiscard]] bool IsRemoved() const { return removed; }
 		void SetRemoved(bool bSet) { removed = bSet; }
+		[[nodiscard]] bool FlushesOnLoad() const { return flushOnLoad; }
 		[[nodiscard]] bool EqualFilters(const EventCallback &rhs) const; // return true if the two handlers have matching filters.
 
 		[[nodiscard]] Script *TryGetScript() const;
@@ -247,6 +249,19 @@ namespace EventManager
 		}
 	};
 
+	struct DeferredRemoveCallback
+	{
+		EventInfo* eventInfo;
+		CallbackMap::iterator	iterator;
+
+		DeferredRemoveCallback(EventInfo* pEventInfo, CallbackMap::iterator iter)
+			: eventInfo(pEventInfo), iterator(std::move(iter))
+		{}
+		~DeferredRemoveCallback();
+	};
+	typedef Stack<DeferredRemoveCallback> DeferredRemoveList;
+	extern DeferredRemoveList s_deferredRemoveList;
+
 	using ArgStack = StackVector<void*, kMaxUdfParams>;
 	static constexpr auto numMaxFilters = kMaxUdfParams;
 
@@ -264,6 +279,8 @@ namespace EventManager
 	// handle an eventID directly
 	// Deprecated in favor of EventManager::DispatchEvent
 	void __stdcall HandleEvent(eEventID id, void *arg0, void *arg1);
+
+	void ClearFlushOnLoadEvents();
 
 	// name of whatever event is currently being handled, empty string if none
 	const char *GetCurrentEventName();

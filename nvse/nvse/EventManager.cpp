@@ -305,7 +305,7 @@ eEventID EventIDForMessage(UInt32 msgID)
 }
 
 // Prevent filters of the wrong type from being added to an Event Handler instance.
-// Only needs to be called for SetEventHandler, to filter out most user weirdness.
+// Only needs to be called for SetEventHandlerAlt, to filter out most user weirdness.
 bool IsPotentialFilterValid(EventFilterType const expectedParamType, std::string& outErrorMsg,
 	const EventCallback::Filter &potentialFilter, size_t const filterNum)
 {
@@ -677,28 +677,6 @@ struct DeferredDeprecatedCallback
 typedef Stack<DeferredDeprecatedCallback> DeferredCallbackList;
 DeferredCallbackList s_deferredDeprecatedCallbacks;
 
-struct DeferredRemoveCallback
-{
-	EventInfo				*eventInfo;
-	CallbackMap::iterator	iterator;
-
-	DeferredRemoveCallback(EventInfo *pEventInfo, CallbackMap::iterator iter)
-	: eventInfo(pEventInfo), iterator(std::move(iter))
-	{}
-
-	~DeferredRemoveCallback()
-	{
-		if (iterator->second.removed)
-		{
-			eventInfo->callbacks.erase(iterator);
-			if (eventInfo->callbacks.empty() && eventInfo->eventMask)
-				s_eventsInUse &= ~eventInfo->eventMask;
-		}
-		else iterator->second.pendingRemove = false;
-	}
-};
-
-typedef Stack<DeferredRemoveCallback> DeferredRemoveList;
 DeferredRemoveList s_deferredRemoveList;
 
 enum class RefState {NotSet, Invalid, Valid};
@@ -841,6 +819,17 @@ bool DoSetHandler(EventInfo &info, EventCallback& toSet)
 
 	s_eventsInUse |= info.eventMask;
 	return true;
+}
+
+DeferredRemoveCallback::~DeferredRemoveCallback()
+{
+	if (iterator->second.removed)
+	{
+		eventInfo->callbacks.erase(iterator);
+		if (eventInfo->callbacks.empty() && eventInfo->eventMask)
+			s_eventsInUse &= ~eventInfo->eventMask;
+	}
+	else iterator->second.pendingRemove = false;
 }
 
 bool SetHandler(const char* eventName, EventCallback& toSet, ExpressionEvaluator* eval)
@@ -1009,6 +998,41 @@ void HandleNVSEMessage(UInt32 msgID, void* data)
 	const eEventID eventID = EventIDForMessage(msgID);
 	if (eventID != kEventID_INVALID)
 		HandleEvent(eventID, data, nullptr);
+}
+
+void ClearFlushOnLoadEvents()
+{
+	s_deferredRemoveList.Clear();
+
+	for (auto& info : s_eventInfos)
+	{
+		if (info.FlushesOnLoad())
+		{
+			info.callbacks.clear(); //warning: may invalidate iterators in DeferredRemoveCallbacks.
+			// Thus, ensure that list is cleared before this code is reached.
+			if (info.eventMask)
+			{
+				s_eventsInUse &= ~info.eventMask;
+			}
+		}
+		else
+		{
+			// Remove individual callbacks.
+			for (auto iter = info.callbacks.begin(); iter != info.callbacks.end(); )
+			{
+				auto& callback = iter->second;
+				if (callback.FlushesOnLoad())
+				{
+					iter = info.callbacks.erase(iter);
+				}
+				else
+					++iter;
+			}
+
+			if (info.callbacks.empty() && info.eventMask)
+				s_eventsInUse &= ~info.eventMask;
+		}
+	}
 }
 
 bool DoesFormMatchFilter(TESForm* inputForm, TESForm* filter, bool expectReference, const UInt32 recursionLevel)
