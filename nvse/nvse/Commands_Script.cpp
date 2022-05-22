@@ -594,7 +594,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 	{
 		const char *eventName = eval.Arg(0)->GetString();
 		auto script = DYNAMIC_CAST(eval.Arg(1)->GetTESForm(), TESForm, Script);
-		if (eventName && script)
+		if (eventName && script) [[likely]]
 		{
 			outCallback.toCall = script;
 			outName = eventName;
@@ -624,6 +624,9 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 								continue;
 							}
 						}
+
+						if constexpr (!AllowNewFilters)
+							eval.Error("%s: Invalid string filter key %s passed.", funcName, key ? key : "NULL");
 					}
 
 					if constexpr (AllowNewFilters)
@@ -646,6 +649,10 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 							}
 						}
 					}
+				}
+				else
+				{
+					eval.Error("%s: Received invalid pair for arg %u somehow.", funcName, i);
 				}
 			}
 			return true;
