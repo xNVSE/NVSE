@@ -101,7 +101,7 @@ void Core_NewGameCallback(void * reserved)
 		s_ModFixupTable[i] = mods[i];
 
 	ClearDelayedCalls();
-	EventManager::ClearEventsOnLoad();
+	EventManager::ClearFlushOnLoadEvents();
 	g_ArrayMap.Clean();
 	g_StringMap.Clean();
 	LambdaManager::ClearSavedDeletedEventLists();
@@ -121,7 +121,7 @@ void Core_PreLoadCallback(void * reserved)
 	g_gcCriticalSection.Leave();
 
 	ClearDelayedCalls();
-	EventManager::ClearEventsOnLoad();
+	EventManager::ClearFlushOnLoadEvents();
 	
 	g_ArrayMap.Reset();
 	g_StringMap.Reset();

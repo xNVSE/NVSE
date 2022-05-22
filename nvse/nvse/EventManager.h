@@ -280,7 +280,7 @@ namespace EventManager
 	// Deprecated in favor of EventManager::DispatchEvent
 	void __stdcall HandleEvent(eEventID id, void *arg0, void *arg1);
 
-	void ClearEventsOnLoad();
+	void ClearFlushOnLoadEvents();
 
 	// name of whatever event is currently being handled, empty string if none
 	const char *GetCurrentEventName();
