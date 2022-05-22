@@ -626,11 +626,24 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 						}
 
 						if constexpr (!AllowNewFilters)
-							eval.Error("%s: Invalid string filter key %s passed.", funcName, key ? key : "NULL");
+						{
+							eval.Error("%s: Invalid string filter key %s passed, ignoring it.", funcName, key ? key : "NULL");
+							continue;  // don't return false, in case previous mods would be broken by that change.
+						}
 					}
 
 					if constexpr (AllowNewFilters)
 					{
+						if constexpr (!AllowOldFilters)
+						{
+							const char* key = pair->left->GetString();
+							if (key && key[0])
+							{
+								eval.Error("%s: String filter keys are not allowed for this function; use int codes.", funcName);
+								return false;
+							}
+						}
+
 						const auto index = static_cast<int>(pair->left->GetNumber());
 						if (index < 0) [[unlikely]]
 						{
