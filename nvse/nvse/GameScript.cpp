@@ -197,10 +197,11 @@ Script* CompileScript(const char* scriptText)
 	DataHandler::Get()->DisableAssignFormIDs(false);
 	buffer->scriptName.Set(FormatString("nvse_partial_script_%d", ++g_partialScriptCount).c_str());
 	buffer->scriptText = const_cast<char*>(scriptText);
-	script->text = const_cast<char*>(scriptText);;
+	script->text = const_cast<char*>(scriptText);
 	buffer->partialScript = true;
 	*buffer->scriptData = 0x1D;
 	buffer->dataOffset = 4;
+	buffer->runtimeMode = ScriptBuffer::kGameConsole;
 	buffer->currentScript = script.get();
 	const auto result = script->Compile(buffer.get());
 	buffer->scriptText = nullptr;

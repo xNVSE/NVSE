@@ -340,6 +340,44 @@ begin Function { }
 	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::"test")
 	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF_AllArgsPassed)) == 0
 
+
+	; == Test array-of-filters filter.
+	
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_List "notAMatch", "test"))
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 1)
+	iRan = 0
+
+	; Array elements do not all match, so filters don't match.
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_List "notAMatch")) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_List "test")) == 0
+
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_List "notAMatch", "test"))
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_List "notAMatch", "testAlsoNotAMatchtest"))
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 0)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_List "notAMatch", "testAlsoNotAMatchtest"))
+
+
+	; For (string)Maps, the keys are ignored.
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_Map "key"::"notAMatch", "key2"::"testAlsoNotAMatchtest"))
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 0)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_Map "key"::"notAMatch", "key2"::"testAlsoNotAMatchtest"))
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_Map "key"::"test", "key2"::"testAlsoNotAMatchtest"))
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 1)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_Map "key"::"test", "key2"::"testAlsoNotAMatchtest"))
+
+	; Nested arrays are not fully supported, currently...
+
+
 	print "Finished running xNVSE Event Handler Unit Tests."
 
 	

@@ -10,6 +10,8 @@
 
 namespace fs = std::filesystem;
 
+std::string get_stem(const fs::path& p) { return p.stem().string(); }
+
 namespace ScriptFunctionTests
 {
 	void RunTests()
@@ -26,8 +28,14 @@ namespace ScriptFunctionTests
 			ss << f.rdbuf();
 			const std::string& str = ss.str();
 
-			auto const script = CompileScript(str.c_str());
-			PluginAPI::CallFunctionScriptAlt(script, nullptr, 0);
+			if (auto const script = CompileScript(str.c_str())) [[likely]]
+			{
+				PluginAPI::CallFunctionScriptAlt(script, nullptr, 0);
+			}
+			else
+			{
+				Console_Print("Error in xNVSE unit test file %s: script failed to compile. Verify if it is too large.", get_stem(entry).c_str());
+			}
 		}
 		Console_Print("Finished running xNVSE script unit tests.");
 	}

@@ -425,6 +425,9 @@ bool __fastcall ScriptCompileHook(void* compiler, void* _EDX, Script* script, Sc
 void PatchScriptCompile()
 {
 	WriteRelCall(0x5AEE9C, reinterpret_cast<UInt32>(ScriptCompileHook));
+
+	// Replace Console_PrintIfOpen with non-conditional print, in PrintScriptCompileError. 
+	WriteRelCall(0x5AEB36, (UInt32)Console_Print);
 }
 
 #endif

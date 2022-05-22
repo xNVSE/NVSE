@@ -45,7 +45,7 @@ bool GetNVSEConfigOption_UInt32(const char * section, const char * key, UInt32 *
 void Console_Print_Long(const std::string& str);
 
 // Calls Print_Long or Print depending on the size of the string.
-void Console_Print(const std::string& str);
+void Console_Print_Str(const std::string& str);
 
 // Macro for debug output to console at runtime
 #if RUNTIME

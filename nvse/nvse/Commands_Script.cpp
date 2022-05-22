@@ -870,7 +870,7 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 				{
 					std::string toPrint = FormatString(">> Handler: %s, filters: %s", eventCallback.GetCallbackFuncAsStr().c_str(),
 						eventCallback.GetFiltersAsStr().c_str());
-					Console_Print(toPrint);
+					Console_Print_Str(toPrint);
 				}
 			}
 		}
@@ -883,7 +883,7 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 				{
 					std::string toPrint = FormatString(">> Handler: %s, filters: %s", eventCallback.GetCallbackFuncAsStr().c_str(),
 						eventCallback.GetFiltersAsStr().c_str());
-					Console_Print(toPrint);
+					Console_Print_Str(toPrint);
 				}
 			}
 		}

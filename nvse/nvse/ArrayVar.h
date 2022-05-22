@@ -402,7 +402,7 @@ public:
 
 	void Sort(ArrayVar *result, SortOrder order, SortType type, Script* comparator = NULL);
 
-	void Dump(const std::function<void(const std::string&)>& output = [&](const std::string& input){ Console_Print(input); });
+	void Dump(const std::function<void(const std::string&)>& output = [&](const std::string& input){ Console_Print_Str(input); });
 	void DumpToFile(const char* filePath, bool append);
 
 	ArrayVarElementContainer::iterator Begin();
