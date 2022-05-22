@@ -1000,6 +1000,41 @@ void HandleNVSEMessage(UInt32 msgID, void* data)
 		HandleEvent(eventID, data, nullptr);
 }
 
+void ClearEventsOnLoad()
+{
+	s_deferredRemoveList.Clear();
+
+	for (auto& info : s_eventInfos)
+	{
+		if (info.FlushesOnLoad())
+		{
+			info.callbacks.clear(); //warning: may invalidate iterators in DeferredRemoveCallbacks.
+			// Thus, ensure that list is cleared before this code is reached.
+			if (info.eventMask)
+			{
+				s_eventsInUse &= ~info.eventMask;
+			}
+		}
+		else
+		{
+			// Remove individual callbacks.
+			for (auto iter = info.callbacks.begin(); iter != info.callbacks.end(); )
+			{
+				auto& callback = iter->second;
+				if (callback.FlushesOnLoad())
+				{
+					iter = info.callbacks.erase(iter);
+				}
+				else
+					++iter;
+			}
+
+			if (info.callbacks.empty() && info.eventMask)
+				s_eventsInUse &= ~info.eventMask;
+		}
+	}
+}
+
 bool DoesFormMatchFilter(TESForm* inputForm, TESForm* filter, bool expectReference, const UInt32 recursionLevel)
 {
 	if (filter == inputForm)	//filter and form could both be null, and that's okay.

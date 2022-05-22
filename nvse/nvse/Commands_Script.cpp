@@ -1193,6 +1193,14 @@ bool Cmd_CallWhen_OLD_Execute(COMMAND_ARGS)
 	return true;
 }
 
+void ClearDelayedCalls()
+{
+	g_callForInfos.clear();
+	g_callWhileInfos.clear();
+	g_callAfterInfos.clear();
+	g_callWhenInfos.clear();
+}
+
 void DecompileScriptToFolder(const std::string& scriptName, Script* script, const std::string& fileExtension, const std::string_view& modName)
 {
 	ScriptParsing::ScriptAnalyzer analyzer(script);

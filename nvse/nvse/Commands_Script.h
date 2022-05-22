@@ -312,6 +312,8 @@ extern std::list<CallWhileInfo> g_callWhileInfos;
 extern std::list<DelayedCallInfo> g_callAfterInfos;
 extern std::list<CallWhileInfo> g_callWhenInfos;
 
+void ClearDelayedCalls();
+
 extern ICriticalSection g_callForInfosCS;
 extern ICriticalSection g_callWhileInfosCS;
 extern ICriticalSection g_callAfterInfosCS;
