@@ -232,7 +232,8 @@ xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</C
     </Link>
     <PostBuildEvent>
       <Message>Installing DLL...</Message>
-      <Command>copy "$(TargetPath)" "$(FalloutNVPath)\nvse_1_4.dll"</Command>
+      <Command>copy "$(TargetPath)" "$(FalloutNVPath)\nvse_1_4.dll"
+xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_DBG|Win32'">
@@ -686,6 +687,7 @@ xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</C
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
     </ClInclude>
+    <ClInclude Include="EventParams.h" />
     <ClInclude Include="FastStack.h" />
     <ClInclude Include="FunctionScripts.h" />
     <ClInclude Include="GameAPI.h" />
@@ -722,6 +724,7 @@ xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</C
     <ClInclude Include="MemoryPool.h" />
     <ClInclude Include="MemoryTracker.h" />
     <ClInclude Include="NiNodes.h" />
+    <ClInclude Include="NiPoint.h" />
     <ClInclude Include="NiTypes.h" />
     <ClInclude Include="nvse_version.h" />
     <ClInclude Include="ParamInfos.h" />
@@ -763,6 +766,7 @@ xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</C
     <Text Include="UnitTests.h" />
     <Text Include="unit_tests\array_functions.txt" />
     <Text Include="unit_tests\event_handler_functions.txt" />
+    <Text Include="unit_tests\TestExpr.txt" />
     <Text Include="unit_tests\udf_functions.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

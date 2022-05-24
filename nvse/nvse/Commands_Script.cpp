@@ -584,20 +584,23 @@ bool Cmd_GetCallingScript_Execute(COMMAND_ARGS)
 	return true;
 }
 
-static constexpr auto maxEventNameLen = 0x20;
-
-bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback &outCallback, char *outName, bool addEvt)
+template <bool AllowOldFilters, bool AllowNewFilters>
+bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback &outCallback, 
+	std::string &outName)
 {
+	static_assert(AllowNewFilters || AllowOldFilters, "Must allow at least one filter type for extraction.");
+
 	if (eval.ExtractArgs() && eval.NumArgs() >= 2)
 	{
 		const char *eventName = eval.Arg(0)->GetString();
 		auto script = DYNAMIC_CAST(eval.Arg(1)->GetTESForm(), TESForm, Script);
-		if (eventName && script)
+		if (eventName && script) [[likely]]
 		{
 			outCallback.toCall = script;
-			strcpy_s(outName, maxEventNameLen, eventName);
-
-			const char* funcName = addEvt ? "SetEventHandler" : "RemoveEventHandler";
+			outName = eventName;
+			// Must flush handlers with new filters on load, since save-baked arrays can be filters.
+			// Loading back to before this handler was set could result in the stored array being invalid, hence this workaround.
+			outCallback.flushOnLoad = AllowNewFilters;
 
 			// any filters?
 			for (auto i = 2; i < eval.NumArgs(); i++)
@@ -605,25 +608,46 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 				const TokenPair* pair = eval.Arg(i)->GetPair();
 				if (pair && pair->left && pair->right) [[likely]]
 				{
-					const char* key = pair->left->GetString();
-					if (key && StrLen(key))
+					if constexpr (AllowOldFilters)
 					{
-						if (!StrCompare(key, "ref") || !StrCompare(key, "first"))
+						const char* key = pair->left->GetString();
+						if (key && StrLen(key))
 						{
-							outCallback.source = pair->right->GetTESForm();
+							if (!StrCompare(key, "ref") || !StrCompare(key, "first"))
+							{
+								outCallback.source = pair->right->GetTESForm();
+								continue;
+							}
+							if (!StrCompare(key, "object") || !StrCompare(key, "second"))
+							{
+								outCallback.object = pair->right->GetTESForm();
+								continue;
+							}
 						}
-						else if (!StrCompare(key, "object") || !StrCompare(key, "second"))
+
+						if constexpr (!AllowNewFilters)
 						{
-							outCallback.object = pair->right->GetTESForm();
+							eval.Error("Invalid string filter key %s passed, ignoring it.", key ? key : "NULL");
+							continue;  // don't return false, in case previous mods would be broken by that change.
 						}
 					}
-					// new system, above preserved for backwards compatibility
-					else
+
+					if constexpr (AllowNewFilters)
 					{
+						if constexpr (!AllowOldFilters)
+						{
+							const char* key = pair->left->GetString();
+							if (key && key[0])
+							{
+								eval.Error("String filter keys are not allowed for this function; use int codes.");
+								return false;
+							}
+						}
+
 						const auto index = static_cast<int>(pair->left->GetNumber());
 						if (index < 0) [[unlikely]]
 						{
-							eval.Error("Invalid index %d passed to %s (arg indices start from 1, and callingReference is filter #0).", funcName);
+							eval.Error("Invalid index %d passed (arg indices start from 1, and callingReference is filter #0).", index);
 							return false;
 						}
 
@@ -634,10 +658,14 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 							if (const auto [it, success] = outCallback.filters.emplace(index, std::move(element));
 								!success) [[unlikely]]
 							{
-								eval.Error("Event filter index %u appears more than once in %s call.", index, funcName);
+								eval.Error("Event filter index %u appears more than once.", index);
 							}
 						}
 					}
+				}
+				else
+				{
+					eval.Error("Received invalid pair for arg %u somehow.", i);
 				}
 			}
 			return true;
@@ -647,18 +675,19 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 	return false;
 }
 
-bool ProcessEventHandler(char *eventName, EventManager::EventCallback &callback, bool addEvt, ExpressionEvaluator &eval)
+bool ProcessEventHandler(std::string &eventName, EventManager::EventCallback &callback, bool addEvt, ExpressionEvaluator &eval)
 {
 	if (GetLNEventMask)
 	{
-		char *colon = strchr(eventName, ':');
+		char* eventNameRaw = eventName.data();
+		char *colon = strchr(eventNameRaw, ':');
 		bool separatedStr = false;
 		if (colon)
 		{
 			*(colon++) = 0;
 			separatedStr = true;
 		}
-		if (const UInt32 eventMask = GetLNEventMask(eventName))
+		if (const UInt32 eventMask = GetLNEventMask(eventNameRaw))
 		{
 			UInt32 const numFilter = (colon && *colon) ? atoi(colon) : 0;
 
@@ -666,10 +695,13 @@ bool ProcessEventHandler(char *eventName, EventManager::EventCallback &callback,
 			if (!formFilter)
 			{
 				// Support for using 1::SomeFilter instead of "source"::SomeFilter.
-				auto const iter = callback.filters.find(1);
-				UInt32 outRefID;
-				if (iter->second.GetAsFormID(&outRefID))
-					formFilter = LookupFormByID(outRefID);
+				if (auto const iter = callback.filters.find(1);
+					iter != callback.filters.end())
+				{
+					UInt32 outRefID;
+					if (iter->second.GetAsFormID(&outRefID))
+						formFilter = LookupFormByID(outRefID);
+				}
 			}
 
 			return ProcessLNEventHandler(eventMask, callback.TryGetScript(), addEvt, formFilter, numFilter);
@@ -681,16 +713,26 @@ bool ProcessEventHandler(char *eventName, EventManager::EventCallback &callback,
 			*colon = ':';
 		}
 	}
-	return addEvt ? EventManager::SetHandler(eventName, callback, &eval)
-		: EventManager::RemoveHandler(eventName, callback);
+	return addEvt ? EventManager::SetHandler(eventName.c_str(), callback, &eval)
+		: EventManager::RemoveHandler(eventName.c_str(), callback);
 }
 
 bool Cmd_SetEventHandler_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
-	char eventName[maxEventNameLen];
-	*result = (ExtractEventCallback(eval, callback, eventName, true)
+	std::string eventName;
+	*result = (ExtractEventCallback<true, false>(eval, callback, eventName)
+		&& ProcessEventHandler(eventName, callback, true, eval));
+	return true;
+}
+
+bool Cmd_SetEventHandlerAlt_Execute(COMMAND_ARGS)
+{
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	EventManager::EventCallback callback;
+	std::string eventName;
+	*result = (ExtractEventCallback<false, true>(eval, callback, eventName)
 		&& ProcessEventHandler(eventName, callback, true, eval));
 	return true;
 }
@@ -699,8 +741,8 @@ bool Cmd_RemoveEventHandler_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
-	char eventName[maxEventNameLen];
-	*result = (ExtractEventCallback(eval, callback, eventName, false)
+	std::string eventName;
+	*result = (ExtractEventCallback<true, true>(eval, callback, eventName)
 		&& ProcessEventHandler(eventName, callback, false, eval));
 	return true;
 }
@@ -749,27 +791,21 @@ bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 	if (!eventName) [[unlikely]]
 		return true;
 
-	// does an EventInfo entry already exist for this event?
-	const UInt32 eventID = EventManager::EventIDForString(eventName);
-	if (EventManager::kEventID_INVALID == eventID)
+	// has this event been defined?
+	auto const eventInfoPtr = EventManager::TryGetEventInfoForName(eventName);
+	if (!eventInfoPtr)
 	{
 		*result = 1;	// assume the event may not have any handlers Set.
 		// Sucks we can't warn users about having a potentially invalid eventName, though.
 		return true;
 	}
 
-	auto& eventInfo = EventManager::s_eventInfos[eventID];
-#if _DEBUG
-	if (!eventInfo.IsUserDefined() && eventID != EventManager::kEventID_DebugEvent) [[unlikely]]
+	auto& eventInfo = *eventInfoPtr;
+	// Special case for TestEvent, to trigger the event in a script for runtime tests.
+	if (!eventInfo.IsUserDefined() && StrCompare(eventName, "nvsetestevent") != 0) [[unlikely]]
 	{
 		return true;
 	}
-#else
-	if (!eventInfo.IsUserDefined()) [[unlikely]]
-	{
-		return true;
-	}
-#endif
 
 	EventManager::ArgStack params;
 	auto const numArgs = eval.NumArgs();
@@ -779,7 +815,8 @@ bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 		params->push_back(arg);
 	}
 
-	*result = EventManager::DispatchEventRaw<true>(thisObj, eventInfo, params);
+	// allow (risky) dispatching outside main thread
+	*result = EventManager::DispatchEventRaw<true>(thisObj, eventInfo, params, false, nullptr);
 	return true;
 }
 
@@ -790,14 +827,16 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 		return true;
 	auto const numArgs = eval.NumArgs();
 
-	UInt32 eventID = EventManager::kEventID_INVALID;
+	EventManager::EventInfo* eventInfoPtr = nullptr;
 	Script* script = nullptr;
 	if (numArgs >= 1)
 	{
 		if (const char* eventName = eval.Arg(0)->GetString();
 			eventName && eventName[0])
 		{
-			eventID = EventManager::EventIDForString(eventName);
+			eventInfoPtr = EventManager::TryGetEventInfoForName(eventName);
+			if (!eventInfoPtr) //filtering by invalid eventName
+				return true;
 		}
 
 		if (numArgs >= 2)
@@ -831,7 +870,7 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 				{
 					std::string toPrint = FormatString(">> Handler: %s, filters: %s", eventCallback.GetCallbackFuncAsStr().c_str(),
 						eventCallback.GetFiltersAsStr().c_str());
-					Console_Print(toPrint);
+					Console_Print_Str(toPrint);
 				}
 			}
 		}
@@ -844,26 +883,23 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 				{
 					std::string toPrint = FormatString(">> Handler: %s, filters: %s", eventCallback.GetCallbackFuncAsStr().c_str(),
 						eventCallback.GetFiltersAsStr().c_str());
-					Console_Print(toPrint);
+					Console_Print_Str(toPrint);
 				}
 			}
 		}
 	};
 
-	if (eventID == EventManager::kEventID_INVALID)
+	if (!eventInfoPtr)
 	{
 		// loop through all eventInfo callbacks, filtering by script + filters
-		for (auto eventInfoIter = EventManager::s_eventInfos.Begin();
-			!eventInfoIter.End(); ++eventInfoIter)
+		for (auto const &eventInfo : EventManager::s_eventInfos)
 		{
-			auto const& eventInfo = eventInfoIter.Get();
 			DumpEventInfo(eventInfo);
 		}
 	}
-	else //filtered by eventID
+	else //filtered by eventName
 	{
-		auto const& eventInfo = EventManager::s_eventInfos[eventID];
-		DumpEventInfo(eventInfo);
+		DumpEventInfo(*eventInfoPtr);
 	}
 
 	return true;
@@ -878,15 +914,15 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 		return true;
 	auto const numArgs = eval.NumArgs();
 
-	UInt32 eventID = EventManager::kEventID_INVALID;
+	EventManager::EventInfo* eventInfoPtr = nullptr;
 	Script* script = nullptr;
 	if (numArgs >= 1)
 	{
 		if (const char* eventName = eval.Arg(0)->GetString();
 			eventName && eventName[0])
 		{
-			eventID = EventManager::EventIDForString(eventName);
-			if (eventID == EventManager::kEventID_INVALID)
+			eventInfoPtr = EventManager::TryGetEventInfoForName(eventName);
+			if (!eventInfoPtr)
 				return true; //trying to filter by invalid eventName
 		}
 
@@ -961,25 +997,22 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 		return handlersForEventArray;
 	};
 
-	if (eventID == EventManager::kEventID_INVALID)
+	if (!eventInfoPtr)
 	{
 		// keys = event handler names, values = an array containing arrays that have [0] = callbackFunc, [1] = filters string map.
 		ArrayVar* eventsMap = g_ArrayMap.Create(kDataType_String, false, scriptObj->GetModIndex());
 		*result = eventsMap->ID();
 
 		// loop through all eventInfo callbacks, filtering by script + filters
-		for (auto eventInfoIter = EventManager::s_eventInfos.Begin();
-			!eventInfoIter.End(); ++eventInfoIter)
+		for (auto const &eventInfo : EventManager::s_eventInfos)
 		{
-			auto const& eventInfo = eventInfoIter.Get();
 			eventsMap->SetElementArray(eventInfo.evName, GetEventInfoHandlers(eventInfo)->ID());
 		}
 	}
-	else //filtered by eventID
+	else //filtered by eventName
 	{
-		auto const& eventInfo = EventManager::s_eventInfos[eventID];
 		// return an array containing arrays that have [0] = callbackFunc, [1] = filters string map.
-		*result = GetEventInfoHandlers(eventInfo)->ID();
+		*result = GetEventInfoHandlers(*eventInfoPtr)->ID();
 	}
 
 	return true;
@@ -1158,6 +1191,14 @@ bool Cmd_CallWhen_OLD_Execute(COMMAND_ARGS)
 {
 	*result = ExtractCallWhileInfo_OLD(PASS_COMMAND_ARGS, g_callWhenInfos, g_callWhenInfosCS);
 	return true;
+}
+
+void ClearDelayedCalls()
+{
+	g_callForInfos.clear();
+	g_callWhileInfos.clear();
+	g_callAfterInfos.clear();
+	g_callWhenInfos.clear();
 }
 
 void DecompileScriptToFolder(const std::string& scriptName, Script* script, const std::string& fileExtension, const std::string_view& modName)

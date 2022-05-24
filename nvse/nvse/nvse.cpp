@@ -79,6 +79,8 @@ void NVSE_Initialize(void)
 		_MESSAGE("NVSE runtime: initialize (version = %d.%d.%d %08X %08X%08X)",
 			NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA, RUNTIME_VERSION,
 			now.dwHighDateTime, now.dwLowDateTime);
+
+		GetNVSEConfigOption_UInt32("TESTS", "EnableRuntimeTests", &s_AreRuntimeTestsEnabled);
 #else
 		_MESSAGE("NVSE editor: initialize (version = %d.%d.%d %08X %08X%08X)",
 			NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA, EDITOR_VERSION,

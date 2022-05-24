@@ -12,7 +12,7 @@
 #include <variant>
 
 #include "FunctionScripts.h"
-
+#include "Hooks_Gameplay.h"
 
 class Script;
 class TESForm;
@@ -33,27 +33,15 @@ namespace EventManager
 	extern UInt32 s_eventsInUse;
 
 	struct EventInfo;
-	typedef Vector<EventInfo> EventInfoList;
-	extern EventInfoList s_eventInfos;
-	extern UnorderedMap<const char *, UInt32> s_eventNameToID;
+	// Contains a stable list of references to EventInfos.
+	// Assumption: no EventInfos will be removed from this list.
+	extern std::list<EventInfo> s_eventInfos; 
+	
+	using EventInfoMap = UnorderedMap<const char*, EventInfo*>;
+	// Links event names (and aliases) to their matching eventInfo.
+	extern EventInfoMap s_eventInfoMap;
 
-	UInt32 EventIDForString(const char *eventStr);
-
-	using EventHandler = NVSEEventManagerInterface::EventHandler;
-	using EventFilterType = NVSEEventManagerInterface::ParamType;
-	using EventFlags = NVSEEventManagerInterface::EventFlags;
-	using DispatchReturn = NVSEEventManagerInterface::DispatchReturn;
-	using DispatchCallback = NVSEEventManagerInterface::DispatchCallback;
-
-	inline bool IsParamForm(EventFilterType pType)
-	{
-		return NVSEEventManagerInterface::IsFormParam(pType);
-	}
-	Script::VariableType ParamTypeToVarType(EventFilterType pType);
-	EventFilterType VarTypeToParamType(Script::VariableType varType);
-	DataType ParamTypeToDataType(EventFilterType pType);
-
-	bool ParamTypeMatches(EventFilterType from, EventFilterType to);
+	EventInfo* TryGetEventInfoForName(const char* eventName);
 
 	enum eEventID
 	{
@@ -107,15 +95,34 @@ namespace EventManager
 		kEventID_DeleteGameName,
 		kEventID_RenameGameName,
 		kEventID_RenameNewGameName,
+		kEventID_DebugEvent, // for unit tests
 
 		kEventID_InternalMAX,
-		kEventID_DebugEvent = kEventID_InternalMAX, //only used in debug mode, for unit tests
+		kEventID_ExternalEvent = kEventID_InternalMAX, // could be user or plugin-defined.
 
-		// user or plugin defined
-		kEventID_UserDefinedMIN = kEventID_InternalMAX,
+		// User/plugin-defined events don't get an ID assigned
 
 		kEventID_INVALID = 0xFFFFFFFF
 	};
+
+	// Gives fast access to EventInfos for internal events, whose existence we know in advance.
+	// Each index in the vector represents an eventID.
+	using InternalEventVec = Vector<EventInfo*>;
+	extern InternalEventVec s_internalEventInfos;
+
+	using EventHandler = NVSEEventManagerInterface::EventHandler;
+	using EventFilterType = NVSEEventManagerInterface::ParamType;
+	using EventFlags = NVSEEventManagerInterface::EventFlags;
+
+	inline bool IsParamForm(EventFilterType pType)
+	{
+		return NVSEEventManagerInterface::IsFormParam(pType);
+	}
+	Script::VariableType ParamTypeToVarType(EventFilterType pType);
+	EventFilterType VarTypeToParamType(Script::VariableType varType);
+	DataType ParamTypeToDataType(EventFilterType pType);
+
+	bool ParamTypeMatches(EventFilterType from, EventFilterType to);
 
 	// Represents an event handler registered for an event.
 	class EventCallback
@@ -147,6 +154,7 @@ namespace EventManager
 		TESForm *object{}; // second arg to handler
 		bool removed{};
 		bool pendingRemove{};
+		bool flushOnLoad = false;
 
 		using Index = UInt32;
 		using Filter = SelfOwningArrayElement;
@@ -164,6 +172,7 @@ namespace EventManager
 
 		[[nodiscard]] bool IsRemoved() const { return removed; }
 		void SetRemoved(bool bSet) { removed = bSet; }
+		[[nodiscard]] bool FlushesOnLoad() const { return flushOnLoad; }
 		[[nodiscard]] bool EqualFilters(const EventCallback &rhs) const; // return true if the two handlers have matching filters.
 
 		[[nodiscard]] Script *TryGetScript() const;
@@ -176,7 +185,7 @@ namespace EventManager
 		// Assumes both have the same callbacks.
 		[[nodiscard]] bool ShouldRemoveCallback(const EventCallback& toCheck, const EventInfo& evInfo) const;
 
-		std::unique_ptr<ScriptToken> Invoke(EventInfo *eventInfo, void *arg0, void *arg1);
+		std::unique_ptr<ScriptToken> Invoke(EventInfo &eventInfo, void *arg0, void *arg1);
 	};
 
 	//Does not attempt to store lambda info for Script*.
@@ -192,24 +201,29 @@ namespace EventManager
 		EventInfo(const char *name_, EventFilterType *params_, UInt8 nParams_, UInt32 eventMask_, EventHookInstaller *installer_,
 				  EventFlags flags = EventFlags::kFlags_None)
 			: evName(name_), paramTypes(params_), numParams(nParams_), eventMask(eventMask_), installHook(installer_), flags(flags)
-		{
-		}
+		{}
+		// ctor w/ alias
+		EventInfo(const char* name_, const char* alias_, EventFilterType* params_, UInt8 nParams_, UInt32 eventMask_, EventHookInstaller* installer_,
+			EventFlags flags = EventFlags::kFlags_None)
+			: evName(name_), alias(alias_), paramTypes(params_), numParams(nParams_), eventMask(eventMask_), installHook(installer_), flags(flags)
+		{}
 
 		EventInfo(const char *name_, EventFilterType *params_, UInt8 numParams_, EventFlags flags = EventFlags::kFlags_None)
 			: evName(name_), paramTypes(params_), numParams(numParams_), flags(flags) {}
-
-		EventInfo() : evName(""), paramTypes(nullptr) {}
+		// ctor w/ alias
+		EventInfo(const char* name_, const char* alias_, EventFilterType* params_, UInt8 numParams_, EventFlags flags = EventFlags::kFlags_None)
+			: evName(name_), alias(alias_), paramTypes(params_), numParams(numParams_), flags(flags) {}
 
 		EventInfo(const EventInfo &other) = delete;
 		EventInfo& operator=(const EventInfo& other) = delete;
 
 		EventInfo(EventInfo&& other) noexcept :
-			evName(other.evName), paramTypes(other.paramTypes), numParams(other.numParams),
+			evName(other.evName), alias(other.alias), paramTypes(other.paramTypes), numParams(other.numParams),
 			eventMask(other.eventMask), callbacks(std::move(other.callbacks)), installHook(other.installHook), flags(other.flags)
-		{
-		}
+		{}
 
-		const char *evName; // must be lowercase (??)
+		const char *evName; //should never be nullptr
+		const char *alias{}; //could be nullptr (unused)
 		EventFilterType *paramTypes;
 		UInt8 numParams = 0;
 		UInt32 eventMask = 0;
@@ -228,11 +242,25 @@ namespace EventManager
 			return flags & EventFlags::kFlag_IsUserDefined;
 		}
 		// n is 0-based
+		// Assumes that the index was already checked as valid (i.e numParams was checked).
 		[[nodiscard]] EventFilterType TryGetNthParamType(size_t n) const
 		{
 			return !IsUserDefined() ? paramTypes[n] : EventFilterType::eParamType_Anything;
 		}
 	};
+
+	struct DeferredRemoveCallback
+	{
+		EventInfo* eventInfo;
+		CallbackMap::iterator	iterator;
+
+		DeferredRemoveCallback(EventInfo* pEventInfo, CallbackMap::iterator iter)
+			: eventInfo(pEventInfo), iterator(std::move(iter))
+		{}
+		~DeferredRemoveCallback();
+	};
+	typedef Stack<DeferredRemoveCallback> DeferredRemoveList;
+	extern DeferredRemoveList s_deferredRemoveList;
 
 	using ArgStack = StackVector<void*, kMaxUdfParams>;
 	static constexpr auto numMaxFilters = kMaxUdfParams;
@@ -240,13 +268,19 @@ namespace EventManager
 	bool SetHandler(const char *eventName, EventCallback &toSet, ExpressionEvaluator* eval = nullptr);
 
 	// removes handler only if all filters match
-	bool RemoveHandler(const char *id, const EventCallback &toRemove);
+	bool RemoveHandler(const char *eventName, const EventCallback &toRemove);
 
 	// handle an NVSEMessagingInterface message
 	void HandleNVSEMessage(UInt32 msgID, void *data);
 
+	// Deprecated in favor of EventManager::DispatchEvent
+	void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1);
+
 	// handle an eventID directly
-	void __stdcall HandleEvent(UInt32 id, void *arg0, void *arg1);
+	// Deprecated in favor of EventManager::DispatchEvent
+	void __stdcall HandleEvent(eEventID id, void *arg0, void *arg1);
+
+	void ClearFlushOnLoadEvents();
 
 	// name of whatever event is currently being handled, empty string if none
 	const char *GetCurrentEventName();
@@ -256,90 +290,50 @@ namespace EventManager
 
 	void Init();
 
-	bool RegisterEventEx(const char *name, UInt8 numParams, EventFilterType *paramTypes,
-						 UInt32 eventMask = 0, EventHookInstaller *hookInstaller = nullptr,
-						 EventFlags flags = EventFlags::kFlags_None);
+	bool RegisterEventEx(const char *name, const char* alias, bool isInternal, UInt8 numParams, EventFilterType *paramTypes,
+	                     UInt32 eventMask = 0, EventHookInstaller *hookInstaller = nullptr,
+	                     EventFlags flags = EventFlags::kFlags_None);
 
+	// Exported
 	bool RegisterEvent(const char *name, UInt8 numParams, EventFilterType *paramTypes,
 					   EventFlags flags = EventFlags::kFlags_None);
+
+	// Exported
+	bool RegisterEventWithAlias(const char* name, const char* alias, UInt8 numParams, EventFilterType* paramTypes,
+		EventFlags flags = EventFlags::kFlags_None);
 
 	bool SetNativeEventHandler(const char *eventName, EventHandler func);
 	bool RemoveNativeEventHandler(const char *eventName, EventHandler func);
 
+	using DispatchReturn = NVSEEventManagerInterface::DispatchReturn;
+	using DispatchCallback = NVSEEventManagerInterface::DispatchCallback;
+	using PostDispatchCallback = NVSEEventManagerInterface::PostDispatchCallback;
+
 	template <bool ExtractIntTypeAsFloat>
 	DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params,
-		DispatchCallback resultCallback, void* anyData = nullptr);
+		DispatchCallback resultCallback, void* anyData, bool deferIfOutsideMainThread, PostDispatchCallback postCallback);
 
 	template <bool ExtractIntTypeAsFloat>
-	bool DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params);
+	bool DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params, 
+		bool deferIfOutsideMainThread, PostDispatchCallback postCallback);
 
-	//For plugins
-	bool DispatchEvent(const char *eventName, TESObjectREFR *thisObj, ...);
+	bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...);
 	DispatchReturn DispatchEventAlt(const char *eventName, DispatchCallback resultCallback, void *anyData, TESObjectREFR *thisObj, ...);
+
+	bool DispatchEventThreadSafe(const char* eventName, PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...);
+	DispatchReturn DispatchEventAltThreadSafe(const char* eventName, DispatchCallback resultCallback, void* anyData, 
+		PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...);
 
 	// dispatch a user-defined event from a script (for Cmd_DispatchEvent)
 	// Cmd_DispatchEventAlt provides more flexibility with how args are passed.
 	bool DispatchUserDefinedEvent(const char *eventName, Script *sender, UInt32 argsArrayId, const char *senderName);
-
-	// event handler param lists
-	static EventFilterType kEventParams_GameEvent[2] =
-	{
-		EventFilterType::eParamType_AnyForm, EventFilterType::eParamType_AnyForm
-	};
-
-	static EventFilterType kEventParams_OneRef[1] =
-	{
-		EventFilterType::eParamType_AnyForm,
-	};
-
-	static EventFilterType kEventParams_OneString[1] =
-	{
-		EventFilterType::eParamType_String
-	};
-
-	static EventFilterType kEventParams_OneInt[1] =
-	{
-		EventFilterType::eParamType_Int
-	};
-
-	static EventFilterType kEventParams_TwoInts[2] =
-	{
-		EventFilterType::eParamType_Int, EventFilterType::eParamType_Int
-	};
-
-	static EventFilterType kEventParams_OneInt_OneRef[2] =
-	{
-		EventFilterType::eParamType_Int, EventFilterType::eParamType_AnyForm
-	};
-
-	static EventFilterType kEventParams_OneRef_OneInt[2] =
-	{
-		EventFilterType::eParamType_AnyForm, EventFilterType::eParamType_Int
-	};
-
-	static EventFilterType kEventParams_OneArray[1] =
-	{
-		EventFilterType::eParamType_Array
-	};
-
-	static EventFilterType kEventParams_OneInt_OneFloat_OneArray_OneString_OneForm_OneReference_OneBaseform[] =
-	{
-		EventFilterType::eParamType_Int,
-		EventFilterType::eParamType_Float,
-		EventFilterType::eParamType_Array,
-		EventFilterType::eParamType_String,
-		EventFilterType::eParamType_AnyForm,
-		EventFilterType::eParamType_Reference,
-		EventFilterType::eParamType_BaseForm,
-	};
-
 
 
 
 
 	// template definitions
 
-	bool DoesFormMatchFilter(TESForm* form, TESForm* filter, bool expectReference, const UInt32 recursionLevel = 0);
+	bool DoesFormMatchFilter(TESForm* inputForm, TESForm* filter, bool expectReference, const UInt32 recursionLevel = 0);
 	bool DoDeprecatedFiltersMatch(const EventCallback& callback, const ArgStack& params);
 
 	// eParamType_Anything is treated as "use default param type" (usually for a User-Defined Event).
@@ -479,13 +473,54 @@ namespace EventManager
 		return true;
 	}
 
+	// For events that are best deferred until Tick(), usually to avoid multithreading issues.
+	template <bool ExtractIntTypeAsFloat>
+	struct DeferredCallback
+	{
+		EventInfo& eventInfo;
+		TESObjectREFR* thisObj;
+		ArgStack params;
+		DispatchCallback resultCallback;
+		void* callbackData;
+		PostDispatchCallback postCallback;
+
+		DeferredCallback(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack &&params,
+			DispatchCallback resultCallback, void* callbackData, PostDispatchCallback postCallback) :
+			eventInfo(eventInfo), thisObj(thisObj), params(params),
+			resultCallback(resultCallback), callbackData(callbackData), postCallback(postCallback)
+		{}
+
+		~DeferredCallback()
+		{
+			DispatchEventRaw<ExtractIntTypeAsFloat>(thisObj, eventInfo, params, resultCallback, callbackData,
+				false, postCallback);
+		}
+	};
+	extern std::deque<DeferredCallback<false>> s_deferredCallbacksDefault;
+	extern std::deque<DeferredCallback<true>> s_deferredCallbacksWithIntsPackedAsFloats;
+
+	extern ICriticalSection s_criticalSection;
+
 	template <bool ExtractIntTypeAsFloat>
 	DispatchReturn DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params,
-		DispatchCallback resultCallback, void* anyData)
+		DispatchCallback resultCallback, void* anyData, bool deferIfOutsideMainThread, PostDispatchCallback postCallback)
 	{
-		using FunctionCaller = std::conditional_t<ExtractIntTypeAsFloat, InternalFunctionCallerAlt, InternalFunctionCaller>;
+		if (deferIfOutsideMainThread && GetCurrentThreadId() != g_mainThreadID)
+		{
+			ScopedLock lock(s_criticalSection);
+			if constexpr (ExtractIntTypeAsFloat)
+			{
+				s_deferredCallbacksWithIntsPackedAsFloats.emplace_back(thisObj, eventInfo, std::move(params), resultCallback, anyData, postCallback);
+			}
+			else
+			{
+				s_deferredCallbacksDefault.emplace_back(thisObj, eventInfo, std::move(params), resultCallback, anyData, postCallback);
+			}
+			return DispatchReturn::kRetn_Deferred;
+		}
 
 		DispatchReturn result = DispatchReturn::kRetn_Normal;
+
 		for (auto& [funcKey, callback] : eventInfo.callbacks)
 		{
 			if (callback.IsRemoved())
@@ -499,7 +534,9 @@ namespace EventManager
 			result = std::visit(overloaded{
 				[=, &params](const LambdaManager::Maybe_Lambda& script) -> DispatchReturn
 				{
-					FunctionCaller caller(script.Get(), thisObj);
+					using FunctionCaller = std::conditional_t<ExtractIntTypeAsFloat, InternalFunctionCallerAlt, InternalFunctionCaller>;
+
+					FunctionCaller caller(script.Get(), thisObj, nullptr, true); // don't report errors if passing more args to a UDF than it can absorb.
 					caller.SetArgsRaw(params->size(), params->data());
 					auto const res = UserFunctionManager::Call(std::move(caller));
 					if (resultCallback)
@@ -509,7 +546,7 @@ namespace EventManager
 						{
 							return resultCallback(elem, anyData) ? DispatchReturn::kRetn_Normal : DispatchReturn::kRetn_EarlyBreak;
 						}
-						return DispatchReturn::kRetn_Error;
+						return DispatchReturn::kRetn_GenericError;
 					}
 					return DispatchReturn::kRetn_Normal;
 				},
@@ -523,14 +560,19 @@ namespace EventManager
 			if (result != DispatchReturn::kRetn_Normal)
 				break;
 		}
+
+		if (postCallback)
+			postCallback(anyData, result);
+
 		return result;
 	}
 
 	template <bool ExtractIntTypeAsFloat>
-	bool DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params)
+	bool DispatchEventRaw(TESObjectREFR* thisObj, EventInfo& eventInfo, ArgStack& params, 
+		bool deferIfOutsideMainThread, PostDispatchCallback postCallback)
 	{
-		return DispatchEventRaw<ExtractIntTypeAsFloat>(thisObj, eventInfo, params, nullptr, nullptr)
-			!= DispatchReturn::kRetn_Error;
+		return DispatchEventRaw<ExtractIntTypeAsFloat>(thisObj, eventInfo, params, nullptr, nullptr, deferIfOutsideMainThread, postCallback)
+			> DispatchReturn::kRetn_GenericError;
 	}
 };
 

@@ -8,17 +8,23 @@
 #include "GameObjects.h"
 #include "ThreadLocal.h"
 #include "common/ICriticalSection.h"
-#include "Hooks_Gameplay.h"
 #include "GameOSDepend.h"
 //#include "InventoryReference.h"
 
 #include "GameData.h"
 #include "GameRTTI.h"
 #include "GameScript.h"
+#include "EventParams.h"
 
 namespace EventManager {
 
-static ICriticalSection s_criticalSection;
+ICriticalSection s_criticalSection;
+
+std::list<EventInfo> s_eventInfos;
+
+EventInfoMap s_eventInfoMap(0x40);
+
+InternalEventVec s_internalEventInfos(kEventID_InternalMAX);
 
 //////////////////////
 // Event definitions
@@ -33,14 +39,6 @@ enum {
 	kEventMask_OnActivate		= 0x01000000,		// special case as OnActivate has no event mask
 };
 
-UnorderedMap<const char*, UInt32> s_eventNameToID(0x40);
-
-UInt32 EventIDForString(const char* eventStr)
-{
-	UInt32 *idPtr = s_eventNameToID.GetPtr(eventStr);
-	return idPtr ? *idPtr : kEventID_INVALID;
-}
-
 // hook installers
 static EventHookInstaller s_MainEventHook = InstallHook;
 static EventHookInstaller s_ActivateHook = InstallActivateHook;
@@ -51,7 +49,6 @@ static EventHookInstaller s_ActorEquipHook = InstallOnActorEquipHook;
 // internal functions
 //////////////////////////
 
-void __stdcall HandleEvent(UInt32 id, void * arg0, void * arg1);
 void __stdcall HandleGameEvent(UInt32 eventMask, TESObjectREFR* source, TESForm* object);
 
 static const UInt32 kVtbl_PlayerCharacter = 0x0108AA3C;
@@ -211,7 +208,7 @@ void InstallActivateHook()
 	WriteRelJump(kActivate_HookAddr, (UInt32)&TESObjectREFR_ActivateHook);
 }
 
-UInt32 EventIDForMask(UInt32 eventMask)
+eEventID EventIDForMask(UInt32 eventMask)
 {
 	switch (eventMask) {
 		case ScriptEventList::kEvent_OnAdd:
@@ -271,7 +268,7 @@ UInt32 EventIDForMask(UInt32 eventMask)
 	}
 }
 
-UInt32 EventIDForMessage(UInt32 msgID)
+eEventID EventIDForMessage(UInt32 msgID)
 {
 	switch (msgID) {
 		case NVSEMessagingInterface::kMessage_ExitGame:
@@ -307,11 +304,8 @@ UInt32 EventIDForMessage(UInt32 msgID)
 	}
 }
 
-EventInfoList s_eventInfos(0x30);
-
-
 // Prevent filters of the wrong type from being added to an Event Handler instance.
-// Only needs to be called for SetEventHandler, to filter out most user weirdness.
+// Only needs to be called for SetEventHandlerAlt, to filter out most user weirdness.
 bool IsPotentialFilterValid(EventFilterType const expectedParamType, std::string& outErrorMsg,
 	const EventCallback::Filter &potentialFilter, size_t const filterNum)
 {
@@ -500,11 +494,11 @@ std::string EventCallback::GetCallbackFuncAsStr() const
 {
 	return std::visit(overloaded
 		{
-			[=](const LambdaManager::Maybe_Lambda& script) -> std::string
+			[](const LambdaManager::Maybe_Lambda& script) -> std::string
 			{
 				return script.Get()->GetStringRepresentation();
 			},
-			[=](const EventHandler& handler) -> std::string
+			[](const EventHandler& handler) -> std::string
 			{
 				return FormatString("[addr: %X]", handler);
 			}
@@ -596,17 +590,17 @@ private:
 };
 
 
-std::unique_ptr<ScriptToken> EventCallback::Invoke(EventInfo* eventInfo, void* arg0, void* arg1)
+std::unique_ptr<ScriptToken> EventCallback::Invoke(EventInfo &eventInfo, void* arg0, void* arg1)
 {
 	return std::visit(overloaded
 		{
-			[=](const LambdaManager::Maybe_Lambda& script)
+			[=, &eventInfo](const LambdaManager::Maybe_Lambda& script)
 			{
 				ScopedLock lock(s_criticalSection);	//for event stack
 
 				// handle immediately
-				s_eventStack.Push(eventInfo->evName);
-				auto ret = UserFunctionManager::Call(ClassicEventHandlerCaller(script.Get(), eventInfo, arg0, arg1));
+				s_eventStack.Push(eventInfo.evName);
+				auto ret = UserFunctionManager::Call(ClassicEventHandlerCaller(script.Get(), &eventInfo, arg0, arg1));
 				s_eventStack.Pop();
 				return ret;
 			},
@@ -624,11 +618,11 @@ BasicCallbackFunc GetBasicCallback(const EventCallback::CallbackFunc& func)
 {
 	return std::visit(overloaded
 		{
-			[=](const LambdaManager::Maybe_Lambda& script) -> BasicCallbackFunc
+			[](const LambdaManager::Maybe_Lambda& script) -> BasicCallbackFunc
 			{
 				return script.Get();
 			},
-			[=](const EventHandler& handler) -> BasicCallbackFunc
+			[](const EventHandler& handler) -> BasicCallbackFunc
 			{
 				return handler;
 			}
@@ -658,69 +652,42 @@ Stack<const char*> s_eventStack;
 // Some events are best deferred until Tick() invoked rather than being handled immediately.
 // This stores info about such an event.
 // Only used in the deprecated HandleEvent.
-struct DeferredCallback
+struct DeferredDeprecatedCallback
 {
-	EventCallback		*callback;	//assume this contains a Script* CallbackFunc.
+	EventCallback		&callback;	//assume this contains a Script* CallbackFunc.
 	void				*arg0;
 	void				*arg1;
-	EventInfo			*eventInfo;
+	EventInfo			&eventInfo;
 
-	DeferredCallback(EventCallback *pCallback, void *_arg0, void *_arg1, EventInfo *_eventInfo) :
+	DeferredDeprecatedCallback(EventCallback &pCallback, void *_arg0, void *_arg1, EventInfo &_eventInfo) :
 		callback(pCallback), arg0(_arg0), arg1(_arg1), eventInfo(_eventInfo) {}
 
-	~DeferredCallback()
+	~DeferredDeprecatedCallback()
 	{
-		if (callback->removed)
+		if (callback.removed)
 			return;
 
 		// assume callback is owned by a global; prevent data race.
 		ScopedLock lock(s_criticalSection);
 
-		callback->Invoke(eventInfo, arg0, arg1);
+		callback.Invoke(eventInfo, arg0, arg1);
 	}
 };
 
-typedef Stack<DeferredCallback> DeferredCallbackList;
-DeferredCallbackList s_deferredCallbacks;
+typedef Stack<DeferredDeprecatedCallback> DeferredCallbackList;
+DeferredCallbackList s_deferredDeprecatedCallbacks;
 
-struct DeferredRemoveCallback
-{
-	EventInfo				*eventInfo;
-	CallbackMap::iterator	iterator;
-
-	DeferredRemoveCallback(EventInfo *pEventInfo, CallbackMap::iterator iter)
-	: eventInfo(pEventInfo), iterator(std::move(iter))
-	{}
-
-	~DeferredRemoveCallback()
-	{
-		if (iterator->second.removed)
-		{
-			eventInfo->callbacks.erase(iterator);
-			if (eventInfo->callbacks.empty() && eventInfo->eventMask)
-				s_eventsInUse &= ~eventInfo->eventMask;
-		}
-		else iterator->second.pendingRemove = false;
-	}
-};
-
-typedef Stack<DeferredRemoveCallback> DeferredRemoveList;
 DeferredRemoveList s_deferredRemoveList;
 
 enum class RefState {NotSet, Invalid, Valid};
 
-// Deprecated in favor of EventManager::DispatchEvent
-void __stdcall HandleEvent(UInt32 id, void* arg0, void* arg1)
+// Deprecated
+void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1)
 {
-	ScopedLock lock(s_criticalSection);
-	EventInfo* eventInfo = &s_eventInfos[id];
-	if (eventInfo->callbacks.empty()) 
-		return;
-
 	auto isArg0Valid = RefState::NotSet;
-	for (auto& iter : eventInfo->callbacks)
+	for (auto& iter : eventInfo.callbacks)
 	{
-		EventCallback &callback = iter.second;
+		EventCallback& callback = iter.second;
 
 		if (callback.IsRemoved())
 			continue;
@@ -730,7 +697,7 @@ void __stdcall HandleEvent(UInt32 id, void* arg0, void* arg1)
 		{
 			if (isArg0Valid == RefState::NotSet)
 				isArg0Valid = IsValidReference(arg0) ? RefState::Valid : RefState::Invalid;
-			if (isArg0Valid == RefState::Invalid || static_cast<TESObjectREFR*>(arg0)->baseForm != callback.source)
+			if (isArg0Valid == RefState::Invalid || GetPermanentBaseForm(static_cast<TESObjectREFR*>(arg0)) != callback.source)
 				continue;
 		}
 
@@ -740,13 +707,23 @@ void __stdcall HandleEvent(UInt32 id, void* arg0, void* arg1)
 		if (GetCurrentThreadId() != g_mainThreadID)
 		{
 			// avoid potential issues with invoking handlers outside of main thread by deferring event handling
-			s_deferredCallbacks.Push(&callback, arg0, arg1, eventInfo);
+			s_deferredDeprecatedCallbacks.Push(callback, arg0, arg1, eventInfo);
 		}
 		else
 		{
 			callback.Invoke(eventInfo, arg0, arg1);
 		}
 	}
+}
+
+// Deprecated in favor of EventManager::DispatchEvent
+void __stdcall HandleEvent(eEventID id, void* arg0, void* arg1)
+{
+	ScopedLock lock(s_criticalSection);
+	EventInfo* eventInfo = s_internalEventInfos[id]; //assume ID is valid
+	if (eventInfo->callbacks.empty()) 
+		return;
+	HandleEvent(*eventInfo, arg0, arg1);
 }
 
 ////////////////
@@ -844,27 +821,37 @@ bool DoSetHandler(EventInfo &info, EventCallback& toSet)
 	return true;
 }
 
+DeferredRemoveCallback::~DeferredRemoveCallback()
+{
+	if (iterator->second.removed)
+	{
+		eventInfo->callbacks.erase(iterator);
+		if (eventInfo->callbacks.empty() && eventInfo->eventMask)
+			s_eventsInUse &= ~eventInfo->eventMask;
+	}
+	else iterator->second.pendingRemove = false;
+}
+
 bool SetHandler(const char* eventName, EventCallback& toSet, ExpressionEvaluator* eval)
 {
 	if (!toSet.HasCallbackFunc())
 		return false;
 
-	UInt32* idPtr = nullptr;
+	EventInfo** eventInfoPtr = nullptr;
 	{
 		ScopedLock lock(s_criticalSection);
-		if (s_eventNameToID.Insert(eventName, &idPtr))
+		if (s_eventInfoMap.Insert(eventName, &eventInfoPtr))
 		{
 			// have to assume registering for a user-defined event (for DispatchEvent) which has not been used before this point
-			*idPtr = s_eventInfos.Size();
 			char* nameCopy = CopyString(eventName);
 			StrToLower(nameCopy);
-			s_eventInfos.Append(nameCopy, nullptr, 0, EventFlags::kFlag_IsUserDefined);
+			*eventInfoPtr = &s_eventInfos.emplace_back(nameCopy, nullptr, 0, EventFlags::kFlag_IsUserDefined);
 		}
 	}
-	if (!idPtr || *idPtr >= s_eventInfos.Size())
+	if (!eventInfoPtr)
 		return false;
-
-	EventInfo &info = s_eventInfos[*idPtr];
+	//else, assume ptr is valid
+	EventInfo &info = **eventInfoPtr;
 
 	{ // nameless scope
 		std::string errMsg;
@@ -882,7 +869,7 @@ bool SetHandler(const char* eventName, EventCallback& toSet, ExpressionEvaluator
 // If the passed Callback is more or equally generic filter-wise than some already-set events, will remove those events.
 // Ex: Callback with "SunnyREF" filter is already set.
 // Calling this with a Callback with no filters will lead to the "SunnyREF"-filtered callback being removed.	
-bool RemoveHandler(const char* id, const EventCallback& toRemove)
+bool RemoveHandler(const char* eventName, const EventCallback& toRemove)
 {
 	if (!toRemove.HasCallbackFunc())
 		return false;
@@ -900,7 +887,7 @@ bool RemoveHandler(const char* id, const EventCallback& toRemove)
 			{
 				EventCallback listHandler(script, iter.Get(), toRemove.object);
 				recursiveLevel++;
-				if (RemoveHandler(id, listHandler)) removed++;
+				if (RemoveHandler(eventName, listHandler)) removed++;
 				recursiveLevel--;
 			}
 			return removed > 0;
@@ -914,7 +901,7 @@ bool RemoveHandler(const char* id, const EventCallback& toRemove)
 			{
 				EventCallback listHandler(script, toRemove.source, iter.Get());
 				recursiveLevel++;
-				if (RemoveHandler(id, listHandler)) removed++;
+				if (RemoveHandler(eventName, listHandler)) removed++;
 				recursiveLevel--;
 			}
 			return removed > 0;
@@ -923,11 +910,11 @@ bool RemoveHandler(const char* id, const EventCallback& toRemove)
 
 	ScopedLock lock(s_criticalSection);
 
-	UInt32 const eventType = EventIDForString(id);
+	EventInfo** info = s_eventInfoMap.GetPtr(eventName);
 	bool bRemovedAtLeastOne = false;
-	if (eventType < s_eventInfos.Size())
+	if (info)
 	{
-		EventInfo &eventInfo = s_eventInfos[eventType];
+		EventInfo &eventInfo = **info;
 		if (!eventInfo.callbacks.empty())
 		{
 			auto const basicCallback = GetBasicCallback(toRemove.toCall);
@@ -978,7 +965,7 @@ void __stdcall HandleGameEvent(UInt32 eventMask, TESObjectREFR* source, TESForm*
 		return;
 	}
 
-	const UInt32 eventID = EventIDForMask(eventMask);
+	const eEventID eventID = EventIDForMask(eventMask);
 	if (eventID != kEventID_INVALID)
 	{
 		if (eventID == kEventID_OnHitWith)
@@ -1008,16 +995,51 @@ void __stdcall HandleGameEvent(UInt32 eventMask, TESObjectREFR* source, TESForm*
 
 void HandleNVSEMessage(UInt32 msgID, void* data)
 {
-	const UInt32 eventID = EventIDForMessage(msgID);
+	const eEventID eventID = EventIDForMessage(msgID);
 	if (eventID != kEventID_INVALID)
 		HandleEvent(eventID, data, nullptr);
 }
 
-bool DoesFormMatchFilter(TESForm* form, TESForm* filter, bool expectReference, const UInt32 recursionLevel)
+void ClearFlushOnLoadEvents()
 {
-	if (filter == form)	//filter and form could both be null, and that's okay.
+	s_deferredRemoveList.Clear();
+
+	for (auto& info : s_eventInfos)
+	{
+		if (info.FlushesOnLoad())
+		{
+			info.callbacks.clear(); //warning: may invalidate iterators in DeferredRemoveCallbacks.
+			// Thus, ensure that list is cleared before this code is reached.
+			if (info.eventMask)
+			{
+				s_eventsInUse &= ~info.eventMask;
+			}
+		}
+		else
+		{
+			// Remove individual callbacks.
+			for (auto iter = info.callbacks.begin(); iter != info.callbacks.end(); )
+			{
+				auto& callback = iter->second;
+				if (callback.FlushesOnLoad())
+				{
+					iter = info.callbacks.erase(iter);
+				}
+				else
+					++iter;
+			}
+
+			if (info.callbacks.empty() && info.eventMask)
+				s_eventsInUse &= ~info.eventMask;
+		}
+	}
+}
+
+bool DoesFormMatchFilter(TESForm* inputForm, TESForm* filter, bool expectReference, const UInt32 recursionLevel)
+{
+	if (filter == inputForm)	//filter and form could both be null, and that's okay.
 		return true;
-	if (!filter || !form)
+	if (!filter || !inputForm)
 		return false;
 	if (recursionLevel > 100) [[unlikely]]
 		return false;
@@ -1026,13 +1048,14 @@ bool DoesFormMatchFilter(TESForm* form, TESForm* filter, bool expectReference, c
 		const auto* list = static_cast<BGSListForm*>(filter);
 		for (auto* listForm : list->list)
 		{
-			if (DoesFormMatchFilter(form, listForm, expectReference, recursionLevel + 1))
+			if (DoesFormMatchFilter(inputForm, listForm, expectReference, recursionLevel + 1))
 				return true;
 		}
 	}
-	else if (expectReference) //filter may be a baseForm, in which case, match form (a reference) to its baseform.
+	// If input form is a reference, then try matching its baseForm to the filter.
+	else if (expectReference && inputForm->GetIsReference())
 	{
-		if (filter == form->TryGetREFRParent())
+		if (filter == GetPermanentBaseForm(static_cast<TESObjectREFR*>(inputForm)))
 			return true;
 	}
 	return false;
@@ -1050,6 +1073,13 @@ bool DoDeprecatedFiltersMatch(const EventCallback& callback, const ArgStack& par
 		return false;
 	}
 	return true;
+}
+
+EventInfo* TryGetEventInfoForName(const char* eventName)
+{
+	if (EventInfo** infoPtr = s_eventInfoMap.GetPtr(eventName))
+		return *infoPtr;
+	return nullptr;
 }
 
 // Meant for use to validate param types, not much else.
@@ -1118,6 +1148,8 @@ bool ParamTypeMatches(EventFilterType from, EventFilterType to)
 		default: break;
 		}
 	}
+	if (to == NVSEEventManagerInterface::eParamType_Anything)
+		return true;
 	return false;
 }
 
@@ -1150,14 +1182,12 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 			else
 			{
 				paramType = evInfo.TryGetNthParamType(index - 1);
-				if (paramType == EventFilterType::eParamType_Int)
-					paramType = EventFilterType::eParamType_Float;	// if numeric, void* param will always be float-type, so avoid wrong cast in DoesFilterMatch.
 			}
 			
 			if (void* param = toRemoveFilter.GetAsVoidArg(); 
 				toRemoveFilter.DataType() == existingFilter.DataType())
 			{
-				if (!DoesFilterMatch<false>(existingFilter, param, paramType))
+				if (!DoesFilterMatch<true>(existingFilter, param, paramType))
 					return false;
 			}
 			else if (toRemoveFilter.DataType() == kDataType_Array)
@@ -1179,49 +1209,71 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 	return true;
 }
 
-bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
-{
-	const auto eventId = EventIDForString(eventName);
-	if (eventId == static_cast<UInt32>(kEventID_INVALID))
-		return false;
 
-	EventInfo& eventInfo = s_eventInfos[eventId];
+DispatchReturn vDispatchEvent(const char* eventName, DispatchCallback resultCallback, void* anyData,
+	TESObjectREFR* thisObj, va_list args, bool deferIfOutsideMainThread, PostDispatchCallback postCallback)
+{
+	const auto eventPtr = TryGetEventInfoForName(eventName);
+	if (!eventPtr)
+		return DispatchReturn::kRetn_UnknownEvent;
+	EventInfo& eventInfo = *eventPtr;
+
 #if _DEBUG //shouldn't need to be checked normally; RegisterEvent verifies numParams.
 	if (eventInfo.numParams > numMaxFilters)
-		return false;
+		return DispatchReturn::kRetn_GenericError;
 #endif
-
-	va_list paramList;
-	va_start(paramList, thisObj);
 
 	ArgStack params;
 	for (int i = 0; i < eventInfo.numParams; ++i)
-		params->push_back(va_arg(paramList, void*));
+		params->push_back(va_arg(args, void*));
 
-	bool const result = DispatchEventRaw <false> (thisObj, eventInfo, params);
-	
+	return DispatchEventRaw<false>(thisObj, eventInfo, params, nullptr, nullptr, 
+		deferIfOutsideMainThread, postCallback);
+}
+
+
+bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
+{
+	va_list paramList;
+	va_start(paramList, thisObj);
+
+	DispatchReturn const result = vDispatchEvent(eventName, nullptr, nullptr,
+		thisObj, paramList, false, nullptr);
+
 	va_end(paramList);
-	return result;
+	return result > DispatchReturn::kRetn_GenericError;
+}
+bool DispatchEventThreadSafe(const char* eventName, PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...)
+{
+	va_list paramList;
+	va_start(paramList, thisObj);
+
+	DispatchReturn const result = vDispatchEvent(eventName, nullptr, nullptr,
+		thisObj, paramList, true, postCallback);
+
+	va_end(paramList);
+	return result > DispatchReturn::kRetn_GenericError;
 }
 
 DispatchReturn DispatchEventAlt(const char* eventName, DispatchCallback resultCallback, void* anyData, TESObjectREFR* thisObj, ...)
 {
-	const auto eventId = EventIDForString(eventName);
-	if (eventId == static_cast<UInt32>(kEventID_INVALID))
-	{
-		return DispatchReturn::kRetn_Error;
-	}
-
-	EventInfo& eventInfo = s_eventInfos[eventId];
-
 	va_list paramList;
 	va_start(paramList, thisObj);
 
-	ArgStack params;
-	for (int i = 0; i < eventInfo.numParams; ++i)
-		params->push_back(va_arg(paramList, void*));
+	auto const result = vDispatchEvent(eventName, resultCallback, anyData,
+		thisObj, paramList, false, nullptr);
 
-	auto const result = DispatchEventRaw<false>(thisObj, eventInfo, params, resultCallback, anyData);
+	va_end(paramList);
+	return result;
+}
+DispatchReturn DispatchEventAltThreadSafe(const char* eventName, DispatchCallback resultCallback, void* anyData, 
+	PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...)
+{
+	va_list paramList;
+	va_start(paramList, thisObj);
+
+	auto const result = vDispatchEvent(eventName, resultCallback, anyData,
+		thisObj, paramList, true, postCallback);
 
 	va_end(paramList);
 	return result;
@@ -1232,15 +1284,13 @@ bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 arg
 	ScopedLock lock(s_criticalSection);
 
 	// does an EventInfo entry already exist for this event?
-	const UInt32 eventID = EventIDForString (eventName);
-	if (kEventID_INVALID == eventID)
-		return true;
+	const auto eventPtr = TryGetEventInfoForName(eventName);
+	if (!eventPtr)
+		return true; //don't signal an error, it just means no one has registered for this event yet.
 
-	{
-		const EventInfo& eventInfo = s_eventInfos[eventID];
-		if (!eventInfo.IsUserDefined())
-			return false;
-	}
+	EventInfo& eventInfo = *eventPtr;
+	if (!eventInfo.IsUserDefined())
+		return false;
 
 	// get or create args array
 	ArrayVar *arr;
@@ -1269,16 +1319,21 @@ bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 arg
 	arr->SetElementString("eventSender", senderName);
 
 	// dispatch
-	HandleEvent(eventID, (void*)argsArrayId, nullptr);
+	HandleEvent(eventInfo, (void*)argsArrayId, nullptr);
 	return true;
 }
+
+std::deque<DeferredCallback<false>> s_deferredCallbacksDefault;
+std::deque<DeferredCallback<true>> s_deferredCallbacksWithIntsPackedAsFloats;
 
 void Tick()
 {
 	ScopedLock lock(s_criticalSection);
 
 	// handle deferred events
-	s_deferredCallbacks.Clear();
+	s_deferredDeprecatedCallbacks.Clear();
+	s_deferredCallbacksDefault.clear();
+	s_deferredCallbacksWithIntsPackedAsFloats.clear();
 
 	// Clear callbacks pending removal.
 	s_deferredRemoveList.Clear();
@@ -1294,13 +1349,20 @@ void Tick()
 
 void Init()
 {
+	// Registering internal events.
 #define EVENT_INFO(name, params, hookInstaller, eventMask) \
-	EventManager::RegisterEventEx(name, params ? sizeof(params) : 0, params, eventMask, hookInstaller)
-	
+	EventManager::RegisterEventEx(name, nullptr, true, (params ? sizeof(params) : 0), \
+		params, eventMask, hookInstaller)
+
+#define EVENT_INFO_WITH_ALIAS(name, alias, params, hookInstaller, eventMask) \
+	EventManager::RegisterEventEx(name, alias, true, (params ? sizeof(params) : 0), \
+		params, eventMask, hookInstaller)
+
+	// Must define the events in the same order for their eEventID.
 	EVENT_INFO("onadd", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnAdd);
-	EVENT_INFO("onactorequip", kEventParams_GameEvent, &s_ActorEquipHook, ScriptEventList::kEvent_OnEquip);
+	EVENT_INFO_WITH_ALIAS("onactorequip", "onequip", kEventParams_GameEvent, &s_ActorEquipHook, ScriptEventList::kEvent_OnEquip);
 	EVENT_INFO("ondrop", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnDrop);
-	EVENT_INFO("onactorunequip", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnUnequip);
+	EVENT_INFO_WITH_ALIAS("onactorunequip", "onunequip", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnUnequip);
 	EVENT_INFO("ondeath", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnDeath);
 	EVENT_INFO("onmurder", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnMurder);
 	EVENT_INFO("oncombatend", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnCombatEnd);
@@ -1314,10 +1376,10 @@ void Init()
 	EVENT_INFO("onsell", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnSell);
 	EVENT_INFO("onstartcombat", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnStartCombat);
 	EVENT_INFO("saytodone", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_SayToDone);
-	EVENT_INFO("ongrab", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnGrab);
+	EVENT_INFO_WITH_ALIAS("ongrab", "on0x0080000", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnGrab);
 	EVENT_INFO("onopen", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnOpen);
 	EVENT_INFO("onclose", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnClose);
-	EVENT_INFO("onfire", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnFire);
+	EVENT_INFO_WITH_ALIAS("onfire", "on0x00400000", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnFire);
 	EVENT_INFO("ontrigger", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnTrigger);
 	EVENT_INFO("ontriggerenter", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnTriggerEnter);
 	EVENT_INFO("ontriggerleave", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnTriggerLeave);
@@ -1341,17 +1403,11 @@ void Init()
 	EVENT_INFO("renamegamename", kEventParams_OneString, nullptr, 0);
 	EVENT_INFO("renamenewgamename", kEventParams_OneString, nullptr, 0);
 
-	s_eventNameToID["onequip"] = kEventID_OnActorEquip;
-	s_eventNameToID["onunequip"] = kEventID_OnActorUnequip;
-	s_eventNameToID["on0x0080000"] = kEventID_OnGrab;
-	s_eventNameToID["on0x00400000"] = kEventID_OnFire;
-
-	ASSERT (kEventID_InternalMAX == s_eventInfos.Size());
-
-#if _DEBUG
-	EVENT_INFO("nvsetestevent", kEventParams_OneInt_OneFloat_OneArray_OneString_OneForm_OneReference_OneBaseform, 
+	EVENT_INFO("nvsetestevent", kEventParams_OneInt_OneFloat_OneArray_OneString_OneForm_OneReference_OneBaseform,
 		nullptr, 0); // dispatched via DispatchEventAlt, for unit tests
-#endif
+
+	ASSERT (kEventID_InternalMAX == s_eventInfos.size());
+
 
 #undef EVENT_INFO
 
@@ -1359,23 +1415,42 @@ void Init()
 
 }
 
-bool RegisterEventEx(const char* name, UInt8 numParams, EventFilterType* paramTypes, 
-	UInt32 eventMask, EventHookInstaller* hookInstaller, EventFlags flags)
+bool RegisterEventEx(const char* name, const char* alias, bool isInternal, UInt8 numParams, EventFilterType* paramTypes,
+                     UInt32 eventMask, EventHookInstaller* hookInstaller, EventFlags flags)
 {
-	if (numParams > numMaxFilters)
+	if (numParams > numMaxFilters) [[unlikely]]
+		return false;
+	if (!name) [[unlikely]]
 		return false;
 
-	UInt32* idPtr;
-	if (!s_eventNameToID.Insert(name, &idPtr))
+	EventInfo** infoPtr;
+	if (!s_eventInfoMap.Insert(name, &infoPtr))
 		return false; // event with this name already exists
-	*idPtr = s_eventInfos.Size();
-	s_eventInfos.Append(EventInfo(name, paramTypes, numParams, eventMask, hookInstaller, flags));
+	*infoPtr = &s_eventInfos.emplace_back(name, alias, paramTypes, numParams, eventMask, hookInstaller, flags);
+
+	EventInfo& info = **infoPtr;
+	if (alias && s_eventInfoMap.Insert(alias, &infoPtr))
+	{
+		*infoPtr = &info;
+	}
+
+	if (isInternal)
+	{
+		// provide fast access for internal events.
+		s_internalEventInfos.Append(&info);
+	}
+
 	return true;
 }
 
 bool RegisterEvent(const char* name, UInt8 numParams, EventFilterType* paramTypes, EventFlags flags)
 {
-	return RegisterEventEx(name, numParams, paramTypes, 0, nullptr, flags);
+	return RegisterEventEx(name, nullptr, false, numParams, paramTypes, 0, nullptr, flags);
+}
+
+bool RegisterEventWithAlias(const char* name, const char* alias, UInt8 numParams, EventFilterType* paramTypes, EventFlags flags)
+{
+	return RegisterEventEx(name, alias, false, numParams, paramTypes, 0, nullptr, flags);
 }
 
 bool SetNativeEventHandler(const char* eventName, EventHandler func)
@@ -1393,10 +1468,9 @@ bool RemoveNativeEventHandler(const char* eventName, EventHandler func)
 bool EventHandlerExist(const char* ev, const EventCallback& handler)
 {
 	ScopedLock lock(s_criticalSection);
-	const UInt32 eventType = EventIDForString(ev);
-	if (eventType < s_eventInfos.Size()) 
+	if (EventInfo* infoPtr = TryGetEventInfoForName(ev))
 	{
-		CallbackMap& callbacks = s_eventInfos[eventType].callbacks;
+		CallbackMap& callbacks = infoPtr->callbacks;
 		auto const basicCallback = GetBasicCallback(handler.toCall);
 		auto const range = callbacks.equal_range(basicCallback);
 		// loop over all EventCallbacks with the same callback script/function.

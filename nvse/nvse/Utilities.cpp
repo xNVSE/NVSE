@@ -476,7 +476,7 @@ void Console_Print_Long(const std::string& str)
 	Console_Print("%s", str.substr(numLines*500, str.length() - numLines*500).c_str());
 }
 
-void Console_Print(const std::string& str)
+void Console_Print_Str(const std::string& str)
 {
 	if (str.size() < 512)
 		Console_Print("%s", str.c_str());

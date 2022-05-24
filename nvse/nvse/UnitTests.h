@@ -1,7 +1,7 @@
 #pragma once
 
-#if _DEBUG && RUNTIME
+#if RUNTIME
 
-void RunUnitTests();
+void ExecuteRuntimeUnitTests();
 
 #endif

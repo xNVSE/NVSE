@@ -497,6 +497,12 @@
     <ClInclude Include="MemoryTracker.h">
       <Filter>lib</Filter>
     </ClInclude>
+    <ClInclude Include="NiPoint.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="EventParams.h">
+      <Filter>internals</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">
@@ -527,6 +533,9 @@
       <Filter>unit tests</Filter>
     </Text>
     <Text Include="unit_tests\udf_functions.txt">
+      <Filter>unit tests</Filter>
+    </Text>
+    <Text Include="unit_tests\TestExpr.txt">
       <Filter>unit tests</Filter>
     </Text>
   </ItemGroup>

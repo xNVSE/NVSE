@@ -132,8 +132,10 @@ public:
 class InternalFunctionCaller : public FunctionCaller
 {
 public:
-	InternalFunctionCaller(Script* script, TESObjectREFR* callingObj = nullptr, TESObjectREFR* container = nullptr)
-		: m_callerVersion(UserFunctionManager::kVersion), m_numArgs(0), m_script(script), m_thisObj(callingObj), m_container(container) { }
+	InternalFunctionCaller(Script* script, TESObjectREFR* callingObj = nullptr, TESObjectREFR* container = nullptr, bool allowSurplusDispatchArgs = false)
+		: m_callerVersion(UserFunctionManager::kVersion), m_numArgs(0), m_script(script), m_thisObj(callingObj),
+			m_container(container), m_allowSurplusDispatchArgs(allowSurplusDispatchArgs)
+	{ }
 
 	virtual ~InternalFunctionCaller() = default;
 	virtual UInt8 ReadCallerVersion() { return m_callerVersion; }
@@ -147,12 +149,13 @@ public:
 	bool SetArgsRaw(ParamSize_t numArgs, const void* args);
 
 protected:
-	UInt8			m_callerVersion;
+	UInt8				m_callerVersion;
 	ParamSize_t			m_numArgs;
-	Script* m_script;
-	void* m_args[kMaxUdfParams];
-	TESObjectREFR* m_thisObj;
-	TESObjectREFR* m_container;
+	Script*				m_script;
+	void*				m_args[kMaxUdfParams];
+	TESObjectREFR*		m_thisObj;
+	TESObjectREFR*		m_container;
+	bool				m_allowSurplusDispatchArgs;
 
 	virtual bool ValidateParam(UserFunctionParam* param, ParamSize_t paramIndex) { return param != nullptr; }
 };
@@ -161,8 +164,8 @@ protected:
 class InternalFunctionCallerAlt : public InternalFunctionCaller
 {
 public:
-	InternalFunctionCallerAlt(Script* script, TESObjectREFR* callingObj = nullptr, TESObjectREFR* container = nullptr)
-		: InternalFunctionCaller(script, callingObj, container) { }
+	InternalFunctionCallerAlt(Script* script, TESObjectREFR* callingObj = nullptr, TESObjectREFR* container = nullptr, bool allowSurplusDispatchArgs = false)
+		: InternalFunctionCaller(script, callingObj, container, allowSurplusDispatchArgs) { }
 
 	~InternalFunctionCallerAlt() override = default;
 

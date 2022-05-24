@@ -746,15 +746,15 @@ struct NVSESerializationInterface
  *  This interface allows you to
  *	- Register a new event type which can be dispatched with parameters
  *	- Dispatch an event from code to scripts (and plugins with this interface) with parameters and calling ref.
- *	   - SetEventHandler supports any number of filters in script calls in the syntax of 1::myFilter
+ *	   - SetEventHandlerAlt supports up to 15 filters in script calls in the syntax of 1::myFilter
  *	   (1st argument will receive this filter for example)
- *	- Set an event handler for any NVSE events registered with SetEventHandler which will be called back.
+ *	- Set an event handler for any NVSE events registered with SetEventHandler(Alt) which will be called back.
  *
  *	For RegisterEvent, paramTypes needs to be statically defined
  *	(i.e. the pointer to it may never become invalid).
  *  For example, a good way to define it is to make a global variable like this:
  *
- *	    static ParamType s_MyEventParams[] = { Script::eVarType_Ref, Script::eVarType_String };
+ *	    static ParamType s_MyEventParams[] = { ParamType::eParamType_AnyForm, ParamType::eParamType_String };
  *
  *	Then you can pass it into PluginEventInfo like this:
  *
@@ -766,17 +766,17 @@ struct NVSESerializationInterface
  *
  *	    s_EventInterface->DispatchEvent("MyEvent", callingRef, someForm, someString);
  *
- *	When passing numeric types to DispatchEvent you MUST pack them in a float, which then needs to be
- *  cast as a void* pointer. This is due to the nature of variadic arguments in C/C++. Example
+ *	When passing float types to DispatchEvent you MUST pack them in a float, which then needs to be
+ *  cast as a void* pointer. This is due to the nature of variadic arguments in C/C++. Example:
  *      float number = 10;
- *	    void* numberArg = *(void**) &number;
- *	    s_EventInterface->DispatchEvent("MyEvent", callingRef, numberArg);
+ *	    void* floatArg = *(void**) &number;
+ *	    s_EventInterface->DispatchEvent("MyEvent", callingRef, floatArg);
  */
 struct NVSEEventManagerInterface
 {
 	typedef void (*EventHandler)(TESObjectREFR* thisObj, void* parameters);
 
-	// Mostly just used for filtering information (setup in SetEventHandler).
+	// Mostly just used for filtering information.
 	enum ParamType : int8_t
 	{
 		eParamType_Float = 0,
@@ -827,9 +827,11 @@ struct NVSEEventManagerInterface
 
 	enum DispatchReturn : int8_t
 	{
-		kRetn_Error = -1,
+		kRetn_UnknownEvent = -2,  // for plugins, events are supposed to be pre-defined.
+		kRetn_GenericError = -1,  // anything > -1 is a good result.
 		kRetn_Normal = 0,
 		kRetn_EarlyBreak,
+		kRetn_Deferred,	//for the "ThreadSafe" DispatchEvent functions.
 	};
 	typedef bool (*DispatchCallback)(NVSEArrayVarInterface::Element& result, void* anyData);
 
@@ -843,6 +845,24 @@ struct NVSEEventManagerInterface
 
 	// Same as script function RemoveEventHandler but for native functions
 	bool (*RemoveNativeEventHandler)(const char* eventName, EventHandler func);
+
+	bool (*RegisterEventWithAlias)(const char* name, const char* alias, UInt8 numParams, ParamType* paramTypes, EventFlags flags);
+
+	// If passed as non-null, will be called after all handlers have been dispatched.
+	// The "ThreadSafe" dispatch functions can delay the dispatch by a frame, hence why this callback is needed.
+	// Useful to potentially clear heap-allocated memory for the dispatch.
+	typedef void (*PostDispatchCallback)(void* anyData, DispatchReturn retn);
+
+	// Same as DispatchEvent, but if attempting to dispatch outside of the game's main thread, the dispatch will be deferred.
+	// WARNING: must ensure data will not be invalid if the dispatch is deferred.
+	// Recommended to avoid potential multithreaded crashes, usually related to Console_Print.
+	bool (*DispatchEventThreadSafe)(const char* eventName, PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...);
+
+	// Same as DispatchEventAlt, but if attempting to dispatch outside of the game's main thread, the dispatch will be deferred.
+	// WARNING: must ensure data will not be invalid if the dispatch is deferred.
+	// Recommended to avoid potential multithreaded crashes, usually related to Console_Print.
+	DispatchReturn (*DispatchEventAltThreadSafe)(const char* eventName, DispatchCallback resultCallback, void* anyData, 
+		PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...);
 };
 #endif
 

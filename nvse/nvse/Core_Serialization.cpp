@@ -100,6 +100,8 @@ void Core_NewGameCallback(void * reserved)
 	for (UInt32 i = 0; i < modCount; i++)
 		s_ModFixupTable[i] = mods[i];
 
+	ClearDelayedCalls();
+	EventManager::ClearFlushOnLoadEvents();
 	g_ArrayMap.Clean();
 	g_StringMap.Clean();
 	LambdaManager::ClearSavedDeletedEventLists();
@@ -118,24 +120,8 @@ void Core_PreLoadCallback(void * reserved)
 	g_nvseVarGarbageCollectionMap.Clear();
 	g_gcCriticalSection.Leave();
 
-	g_callWhileInfos.clear();
-	g_callForInfos.clear();
-	g_callAfterInfos.clear();
-	g_callWhenInfos.clear();
-
-	for (auto iter = EventManager::s_eventInfos.begin(); iter != EventManager::s_eventInfos.end(); ++iter)
-	{
-		EventManager::EventInfo& info = iter.Get();
-		if (info.FlushesOnLoad())
-		{
-			info.callbacks.clear(); //warning: may invalidate iterators in DeferredRemoveCallbacks.
-			// assume there are no callbacks being remove-deferred while loading.
-			if (info.eventMask)
-			{
-				EventManager::s_eventsInUse &= ~info.eventMask;
-			}
-		}
-	}
+	ClearDelayedCalls();
+	EventManager::ClearFlushOnLoadEvents();
 	
 	g_ArrayMap.Reset();
 	g_StringMap.Reset();

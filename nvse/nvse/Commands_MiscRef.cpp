@@ -334,25 +334,48 @@ public:
 	}
 };
 
-struct DistanceMatcher
+struct DistanceAngleMatcher
 {
 	TESObjectREFR* m_distanceRef = nullptr;	//if null, ignore distance check.
-	float m_maxDistance = 0;	//if 0, ignore.
+	float m_maxDistance = 0;	//if 0 or below, ignore.
+	float m_maxHeadingAngle = 0;	//An absolute value. If below 0, ignore.
 	
-	DistanceMatcher() = default;
-	DistanceMatcher(TESObjectREFR* distanceRef, float maxDistance):
-		m_distanceRef(distanceRef), m_maxDistance(maxDistance)
+	DistanceAngleMatcher() = default;
+	DistanceAngleMatcher(TESObjectREFR* distanceRef, float maxDistance, float maxHeadingAngle) :
+		m_distanceRef(distanceRef), m_maxDistance(maxDistance), m_maxHeadingAngle(maxHeadingAngle)
 	{}
 
-	bool MatchDistance(const TESObjectREFR* refr) const
+	bool MatchDistanceAndAngle(const TESObjectREFR* refr) const
 	{
-		if (m_distanceRef && m_maxDistance > 0)
+		if (!m_distanceRef)
+			return true;
+
+		if (m_maxDistance > 0)
 		{
 			if (GetDistance3D(m_distanceRef, refr) > m_maxDistance)
 			{
 				return false;
 			}
 		}
+
+		if (m_maxHeadingAngle >= 0)
+		{
+#if _DEBUG
+			if (s_AreRuntimeTestsEnabled) // test if GetHeadingAngle has same result as Cmd_GetHeadingAngle
+			{
+				double cmdResult;
+				CdeclCall(0x5A0410, m_distanceRef, refr, 0, &cmdResult); // call Cmd_GetHeadingAngle
+				double result = m_distanceRef->GetHeadingAngle(refr);
+				ASSERT(FloatEqual(result, cmdResult));
+			}
+#endif
+
+			if (abs(m_distanceRef->GetHeadingAngle(refr)) > m_maxHeadingAngle)
+			{
+				return false;
+			}
+		}
+
 		return true;
 	}
 };
@@ -375,19 +398,19 @@ struct IncludeTakenMatcher
 	}
 };
 
-struct RefMatcherAnyForm: DistanceMatcher, IncludeTakenMatcher
+struct RefMatcherAnyForm: DistanceAngleMatcher, IncludeTakenMatcher
 {
 	RefMatcherAnyForm(bool includeTaken) :
-	DistanceMatcher(nullptr, 0), IncludeTakenMatcher(includeTaken)
+	DistanceAngleMatcher(nullptr, 0, -1), IncludeTakenMatcher(includeTaken)
 	{}
 
-	RefMatcherAnyForm(bool includeTaken, TESObjectREFR* distanceRef, float maxDistance):
-	DistanceMatcher(distanceRef, maxDistance), IncludeTakenMatcher(includeTaken)
+	RefMatcherAnyForm(bool includeTaken, TESObjectREFR* distanceRef, float maxDistance, float maxHeadingAngle):
+	DistanceAngleMatcher(distanceRef, maxDistance, maxHeadingAngle), IncludeTakenMatcher(includeTaken)
 	{}
 
 	bool Accept(const TESObjectREFR* refr) const
 	{
-		if (!MatchTakenItems(refr) || !MatchDistance(refr))
+		if (!MatchTakenItems(refr) || !MatchDistanceAndAngle(refr))
 		{
 			return false;
 		}
@@ -395,7 +418,7 @@ struct RefMatcherAnyForm: DistanceMatcher, IncludeTakenMatcher
 	}
 };
 
-struct RefMatcherFormType: DistanceMatcher, IncludeTakenMatcher
+struct RefMatcherFormType: DistanceAngleMatcher, IncludeTakenMatcher
 {
 	UInt32 m_formType;
 
@@ -403,8 +426,8 @@ struct RefMatcherFormType: DistanceMatcher, IncludeTakenMatcher
 	IncludeTakenMatcher(includeTaken), m_formType(formType)
 	{}
 
-	RefMatcherFormType(UInt32 formType, bool includeTaken, TESObjectREFR* distanceRef, float maxDistance) :
-	DistanceMatcher(distanceRef, maxDistance), IncludeTakenMatcher(includeTaken), m_formType(formType)
+	RefMatcherFormType(UInt32 formType, bool includeTaken, TESObjectREFR* distanceRef, float maxDistance, float maxHeadingAngle) :
+	DistanceAngleMatcher(distanceRef, maxDistance, maxHeadingAngle), IncludeTakenMatcher(includeTaken), m_formType(formType)
 	{}
 
 	bool Accept(const TESObjectREFR* refr) const
@@ -415,18 +438,18 @@ struct RefMatcherFormType: DistanceMatcher, IncludeTakenMatcher
 		if (refr->baseForm->typeID != m_formType || refr->baseForm->refID == 7)	//exclude player for kFormType_TESNPC
 			return false;
 
-		if (!MatchDistance(refr))
+		if (!MatchDistanceAndAngle(refr))
 			return false;
 
 		return true;
 	}
 };
 
-struct RefMatcherActor: DistanceMatcher
+struct RefMatcherActor: DistanceAngleMatcher
 {
 	RefMatcherActor() = default;
-	RefMatcherActor(TESObjectREFR* distanceRef, float maxDistance):
-	DistanceMatcher(distanceRef, maxDistance)
+	RefMatcherActor(TESObjectREFR* distanceRef, float maxDistance, float maxHeadingAngle):
+	DistanceAngleMatcher(distanceRef, maxDistance, maxHeadingAngle)
 	{}
 	
 	bool Accept(const TESObjectREFR* refr) const
@@ -437,20 +460,20 @@ struct RefMatcherActor: DistanceMatcher
 			return false;
 		}
 
-		if (!MatchDistance(refr))
+		if (!MatchDistanceAndAngle(refr))
 			return false;
 
 		return true;
 	}
 };
 
-struct RefMatcherItem: IncludeTakenMatcher, DistanceMatcher
+struct RefMatcherItem: IncludeTakenMatcher, DistanceAngleMatcher
 {
 	RefMatcherItem(bool includeTaken) : IncludeTakenMatcher(includeTaken)
 	{ }
 
-	RefMatcherItem(bool includeTaken, TESObjectREFR* distanceRef, float maxDistance) :
-	IncludeTakenMatcher(includeTaken), DistanceMatcher(distanceRef, maxDistance)
+	RefMatcherItem(bool includeTaken, TESObjectREFR* distanceRef, float maxDistance, float maxHeadingAngle) :
+	IncludeTakenMatcher(includeTaken), DistanceAngleMatcher(distanceRef, maxDistance, maxHeadingAngle)
 	{ }
 
 	bool Accept(const TESObjectREFR* refr) const
@@ -485,7 +508,7 @@ struct RefMatcherItem: IncludeTakenMatcher, DistanceMatcher
 				return false;
 		}
 
-		if (!MatchDistance(refr))
+		if (!MatchDistanceAndAngle(refr))
 			return false;
 		
 		return true;
@@ -677,6 +700,7 @@ static bool GetNumRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	UInt32 includeTakenRefs = 0;
 	double uGrid = 0;
 	float maxDistance = 0;
+	float maxHeadingAngle = -1; // compared against abs(GetHeadingAngle)
 
 	PlayerCharacter* pc = PlayerCharacter::GetSingleton();
 	if (!pc || !(pc->parentCell))
@@ -684,12 +708,12 @@ static bool GetNumRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 
 	TESObjectCELL* cell = NULL;
 	if (bUsePlayerCell)
-		if (ExtractArgs(EXTRACT_ARGS, &formType, &cellDepth, &includeTakenRefs, &maxDistance))
+		if (ExtractArgs(EXTRACT_ARGS, &formType, &cellDepth, &includeTakenRefs, &maxDistance, &maxHeadingAngle))
 			cell = pc->parentCell;
 		else
 			return true;
 	else
-		if (!ExtractArgs(EXTRACT_ARGS, &cell, &formType, &cellDepth, &includeTakenRefs, &maxDistance))
+		if (!ExtractArgs(EXTRACT_ARGS, &cell, &formType, &cellDepth, &includeTakenRefs, &maxDistance, &maxHeadingAngle))
 			return true;
 
 	if (!cell)
@@ -707,10 +731,10 @@ static bool GetNumRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	CellScanInfo info(cellDepth, formType, bIncludeTakenRefs, cell);
 	info.FirstCell();
 
-	auto const anyFormMatcher = RefMatcherAnyForm(bIncludeTakenRefs, thisObj, maxDistance);
-	auto const actorMatcher = RefMatcherActor(thisObj, maxDistance);
-	auto const itemMatcher = RefMatcherItem(bIncludeTakenRefs, thisObj, maxDistance);
-	auto const formTypeMatcher = RefMatcherFormType(formType, bIncludeTakenRefs, thisObj, maxDistance);
+	auto const anyFormMatcher = RefMatcherAnyForm(bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle);
+	auto const actorMatcher = RefMatcherActor(thisObj, maxDistance, maxHeadingAngle);
+	auto const itemMatcher = RefMatcherItem(bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle);
+	auto const formTypeMatcher = RefMatcherFormType(formType, bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle);
 
 	while (info.curCell)
 	{
@@ -757,6 +781,7 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	double uGrid = 0;
 	double arrIndex = 0;
 	float maxDistance = 0;
+	float maxHeadingAngle = -1; // compared against abs(GetHeadingAngle)
 
 	PlayerCharacter* pc = PlayerCharacter::GetSingleton();
 	if (!pc || !(pc->parentCell))
@@ -764,12 +789,12 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 
 	TESObjectCELL* cell = NULL;
 	if (bUsePlayerCell)
-		if (ExtractArgs(EXTRACT_ARGS, &formType, &cellDepth, &includeTakenRefs, &maxDistance))
+		if (ExtractArgs(EXTRACT_ARGS, &formType, &cellDepth, &includeTakenRefs, &maxDistance, &maxHeadingAngle))
 			cell = pc->parentCell;
 		else
 			return true;
 	else
-		if (!ExtractArgs(EXTRACT_ARGS, &cell, &formType, &cellDepth, &includeTakenRefs, &maxDistance))
+		if (!ExtractArgs(EXTRACT_ARGS, &cell, &formType, &cellDepth, &includeTakenRefs, &maxDistance, &maxHeadingAngle))
 			return true;
 
 	if (!cell)
@@ -787,10 +812,10 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	CellScanInfo info(cellDepth, formType, bIncludeTakenRefs, cell);
 	info.FirstCell();
 
-	auto const anyFormMatcher = RefMatcherAnyForm(bIncludeTakenRefs, thisObj, maxDistance);
-	auto const actorMatcher = RefMatcherActor(thisObj, maxDistance);
-	auto const itemMatcher = RefMatcherItem(bIncludeTakenRefs, thisObj, maxDistance);
-	auto const formTypeMatcher = RefMatcherFormType(formType, bIncludeTakenRefs, thisObj, maxDistance);
+	auto const anyFormMatcher = RefMatcherAnyForm(bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle);
+	auto const actorMatcher = RefMatcherActor(thisObj, maxDistance, maxHeadingAngle);
+	auto const itemMatcher = RefMatcherItem(bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle);
+	auto const formTypeMatcher = RefMatcherFormType(formType, bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle);
 
 	while (info.curCell)
 	{
@@ -1057,7 +1082,7 @@ bool Cmd_SetActorBaseFlagsLow_Execute(COMMAND_ARGS)
 		obj = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESActorBase);
 
 	if(obj)
-		obj->baseData.flags = (data & 0x0000FFFF) | (obj->flags & 0xFFFF0000);
+		obj->baseData.flags = (data & 0x0000FFFF) | (obj->baseData.flags & 0xFFFF0000);
 
 	return true;
 }

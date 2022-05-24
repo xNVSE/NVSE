@@ -843,6 +843,7 @@ bool ConsoleManager::HasConsoleOutputFilename(void)
 
 bool s_InsideOnActorEquipHook = false;
 UInt32 s_CheckInsideOnActorEquipHook = 1;
+UInt32 s_AreRuntimeTestsEnabled = false;
 
 #if NVSE_CORE
 extern bool s_recordedMainThreadID;

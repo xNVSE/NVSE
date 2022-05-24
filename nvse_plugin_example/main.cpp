@@ -9,16 +9,19 @@
 IDebugLog		gLog("nvse_plugin_example.log");
 PluginHandle	g_pluginHandle = kPluginHandle_Invalid;
 
-NVSEMessagingInterface* g_messagingInterface;
-NVSEInterface* g_nvseInterface;
-NVSECommandTableInterface* g_cmdTable;
-const CommandInfo* g_TFC;
+NVSEMessagingInterface* g_messagingInterface{};
+NVSEInterface* g_nvseInterface{};
+NVSECommandTableInterface* g_cmdTableInterface{};
 
 // RUNTIME = Is not being compiled as a GECK plugin.
 #if RUNTIME
-NVSEScriptInterface* g_script;
-NVSEStringVarInterface* g_stringInterface;
-NVSEArrayVarInterface* g_arrayInterface;
+NVSEScriptInterface* g_script{};
+NVSEStringVarInterface* g_stringInterface{};
+NVSEArrayVarInterface* g_arrayInterface{};
+NVSEDataInterface* g_dataInterface{};
+NVSESerializationInterface* g_serializationInterface{};
+NVSEConsoleInterface* g_consoleInterface{};
+NVSEEventManagerInterface* g_eventInterface{};
 bool (*ExtractArgsEx)(COMMAND_ARGS_EX, ...);
 #endif
 
@@ -50,41 +53,33 @@ void MessageHandler(NVSEMessagingInterface::Message* msg)
 {
 	switch (msg->type)
 	{
-	case NVSEMessagingInterface::kMessage_LoadGame:
-		_MESSAGE("Received load game message with file path %s", msg->data);
-		break;
-	case NVSEMessagingInterface::kMessage_SaveGame:
-		_MESSAGE("Received save game message with file path %s", msg->data);
-		break;
-	case NVSEMessagingInterface::kMessage_PreLoadGame:
-		_MESSAGE("Received pre load game message with file path %s", msg->data);
-		break;
-	case NVSEMessagingInterface::kMessage_PostLoadGame:
-		_MESSAGE("Received post load game message", msg->data ? "Error/Unkwown" : "OK");
-		break;
-	case NVSEMessagingInterface::kMessage_PostLoad:
-		_MESSAGE("Received post load plugins message");
-		break;
-	case NVSEMessagingInterface::kMessage_PostPostLoad:
-		_MESSAGE("Received post post load plugins message");
-		break;
-	case NVSEMessagingInterface::kMessage_ExitGame:
-		_MESSAGE("Received exit game message");
-		break;
-	case NVSEMessagingInterface::kMessage_ExitGame_Console:
-		_MESSAGE("Received exit game via console qqq command message");
-		break;
-	case NVSEMessagingInterface::kMessage_ExitToMainMenu:
-		_MESSAGE("Received exit game to main menu message");
-		break;
-	case NVSEMessagingInterface::kMessage_Precompile:
-		_MESSAGE("Received precompile message with script");
-		break;
-	case NVSEMessagingInterface::kMessage_RuntimeScriptError:
-		_MESSAGE("Received runtime script error message %s", msg->data);
-		break;
-	default:
-		break;
+	case NVSEMessagingInterface::kMessage_PostLoad: break;
+	case NVSEMessagingInterface::kMessage_ExitGame: break;
+	case NVSEMessagingInterface::kMessage_ExitToMainMenu: break;
+	case NVSEMessagingInterface::kMessage_LoadGame: break;
+	case NVSEMessagingInterface::kMessage_SaveGame: break;
+	case NVSEMessagingInterface::kMessage_Precompile: break;
+	case NVSEMessagingInterface::kMessage_PreLoadGame: break;
+	case NVSEMessagingInterface::kMessage_ExitGame_Console: break;
+	case NVSEMessagingInterface::kMessage_PostLoadGame: break;
+	case NVSEMessagingInterface::kMessage_PostPostLoad: break;
+	case NVSEMessagingInterface::kMessage_RuntimeScriptError: break;
+	case NVSEMessagingInterface::kMessage_DeleteGame: break;
+	case NVSEMessagingInterface::kMessage_RenameGame: break;
+	case NVSEMessagingInterface::kMessage_RenameNewGame: break;
+	case NVSEMessagingInterface::kMessage_NewGame: break;
+	case NVSEMessagingInterface::kMessage_DeleteGameName: break;
+	case NVSEMessagingInterface::kMessage_RenameGameName: break;
+	case NVSEMessagingInterface::kMessage_RenameNewGameName: break;
+	case NVSEMessagingInterface::kMessage_DeferredInit: break;
+	case NVSEMessagingInterface::kMessage_ClearScriptDataCache: break;
+	case NVSEMessagingInterface::kMessage_MainGameLoop: break;
+#if EDITOR
+	case NVSEMessagingInterface::kMessage_ScriptCompile: break;
+#endif
+	case NVSEMessagingInterface::kMessage_EventListDestroyed: break;
+	case NVSEMessagingInterface::kMessage_PostQueryPlugins: break;
+	default: break;
 	}
 }
 
@@ -132,26 +127,30 @@ bool NVSEPlugin_Query(const NVSEInterface* nvse, PluginInfo* info)
 	return true;
 }
 
-bool NVSEPlugin_Load(const NVSEInterface* nvse)
+bool NVSEPlugin_Load(NVSEInterface* nvse)
 {
 	_MESSAGE("load");
 
 	g_pluginHandle = nvse->GetPluginHandle();
 
-	// save the NVSEinterface in cas we need it later
-	g_nvseInterface = (NVSEInterface*)nvse;
+	// save the NVSE interface in case we need it later
+	g_nvseInterface = nvse;
 
 	// register to receive messages from NVSE
-	g_messagingInterface = (NVSEMessagingInterface*)nvse->QueryInterface(kInterface_Messaging);
+	g_messagingInterface = static_cast<NVSEMessagingInterface*>(nvse->QueryInterface(kInterface_Messaging));
 	g_messagingInterface->RegisterListener(g_pluginHandle, "NVSE", MessageHandler);
 
 	if (!nvse->isEditor)
 	{
 #if RUNTIME
 		// script and function-related interfaces
-		g_script = (NVSEScriptInterface*)nvse->QueryInterface(kInterface_Script);
-		g_stringInterface = (NVSEStringVarInterface*)nvse->QueryInterface(kInterface_StringVar);
-		g_arrayInterface = (NVSEArrayVarInterface*)nvse->QueryInterface(kInterface_ArrayVar);
+		g_script = static_cast<NVSEScriptInterface*>(nvse->QueryInterface(kInterface_Script));
+		g_stringInterface = static_cast<NVSEStringVarInterface*>(nvse->QueryInterface(kInterface_StringVar));
+		g_arrayInterface = static_cast<NVSEArrayVarInterface*>(nvse->QueryInterface(kInterface_ArrayVar));
+		g_dataInterface = static_cast<NVSEDataInterface*>(nvse->QueryInterface(kInterface_Data));
+		g_eventInterface = static_cast<NVSEEventManagerInterface*>(nvse->QueryInterface(kInterface_EventManager));
+		g_serializationInterface = static_cast<NVSESerializationInterface*>(nvse->QueryInterface(kInterface_Serialization));
+		g_consoleInterface = static_cast<NVSEConsoleInterface*>(nvse->QueryInterface(kInterface_Console));
 		ExtractArgsEx = g_script->ExtractArgsEx;
 #endif
 	}

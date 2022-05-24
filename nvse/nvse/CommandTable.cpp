@@ -1839,12 +1839,13 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(CallWhen);
 	ADD_CMD(SetEditorID);
 
-	// 6.2 beta 07
+	// 6.2 beta 08
 	ADD_CMD(Assert);
 	ADD_CMD(DispatchEventAlt);
 	ADD_CMD(DumpEventHandlers);
 	ADD_CMD_RET(GetEventHandlers, kRetnType_Array);
 	ADD_CMD_RET(GetSelfAlt, kRetnType_Form);
+	ADD_CMD(SetEventHandlerAlt);
 }
 
 namespace PluginAPI

@@ -28,6 +28,7 @@ extern bool extraTraces;
 extern bool alternateUpdate3D;
 extern bool s_InsideOnActorEquipHook;
 extern UInt32 s_CheckInsideOnActorEquipHook;
+extern UInt32 s_AreRuntimeTestsEnabled;
 
 void Console_Print(const char *fmt, ...);
 

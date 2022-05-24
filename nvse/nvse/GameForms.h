@@ -283,7 +283,7 @@ public:
 #endif
 	virtual bool		Unk_3D(void);
 	virtual bool		Unk_3E(void);
-	virtual bool		Unk_3F(void);	// returnTrue for refr whose baseForm is a TESActorBase
+	virtual bool		Unk_3F(void) const;	// returnTrue for refr whose baseForm is a TESActorBase
 	virtual bool		IsActor(void);
 	virtual UInt32		Unk_41(void);
 	virtual void		CopyFrom(const TESForm * form);
