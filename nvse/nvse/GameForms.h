@@ -4564,6 +4564,8 @@ public:
 	{
 		return (idx >= 0) && (idx < numAddedObjects);
 	}
+
+	[[nodiscard]] static game_unique_ptr<BGSListForm> MakeUnique();
 };
 
 STATIC_ASSERT(sizeof(BGSListForm) == 0x024);

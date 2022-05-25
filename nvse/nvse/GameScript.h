@@ -270,8 +270,9 @@ Script::VariableType GetDeclaredVariableType(const char *varName, const char *sc
 Script *GetScriptFromForm(TESForm *form);
 
 #if NVSE_CORE && RUNTIME
+Script *CompileScriptEx(const char *scriptText, const char* scriptName = nullptr);
 // available through plugin api
-Script *CompileScript(const char *scriptText);
+Script* CompileScript(const char* scriptText);
 Script *CompileExpression(const char *scriptText);
 #endif
 

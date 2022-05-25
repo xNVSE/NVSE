@@ -2,6 +2,7 @@
 
 #include "CommandTable.h"
 #include "ParamInfos.h"
+#include "ScriptUtils.h"
 
 DEFINE_CMD_ALT(GetBaseObject, gbo, returns the base object id of the reference, 1, 0, NULL);
 DEFINE_CMD_ALT(GetBaseForm, gbf, returns the permanent base object id of the reference, 1, 0, NULL);
@@ -232,3 +233,12 @@ static ParamInfo kParams_OneEffectShader[1] =
 DEFINE_COMMAND(HasEffectShader, returns 1 if the reference is playing the effect shader, 1, 1, kParams_OneEffectShader);
 
 DEFINE_CMD(SetEditorID, "sets editor id of form", 0, kParams_OneForm_OneString);
+
+static ParamInfo kNVSEParams_OneOptionalString_OneOptionalArray[2] =
+{
+	{	"string",	kNVSEParamType_String,	1	},
+	{	"array",	kNVSEParamType_Array,	1	}
+};
+
+DEFINE_COMMAND_EXP(CreateFormList, "creates a formList, optionally set with an editorID and filled by an array.", 
+	0, kNVSEParams_OneOptionalString_OneOptionalArray);

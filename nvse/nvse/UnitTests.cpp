@@ -27,14 +27,16 @@ namespace ScriptFunctionTests
 			std::ostringstream ss;
 			ss << f.rdbuf();
 			const std::string& str = ss.str();
+			std::string fileName = get_stem(entry);
 
-			if (auto const script = CompileScript(str.c_str())) [[likely]]
+			if (auto const script = CompileScriptEx(str.c_str(), fileName.c_str())) [[likely]]
 			{
 				PluginAPI::CallFunctionScriptAlt(script, nullptr, 0);
 			}
 			else
 			{
-				Console_Print("Error in xNVSE unit test file %s: script failed to compile. Verify if it is too large.", get_stem(entry).c_str());
+				Console_Print("Error in xNVSE unit test file %s: script failed to compile. Verify if it is too large.", 
+					fileName.c_str());
 			}
 		}
 		Console_Print("Finished running xNVSE script unit tests.");
