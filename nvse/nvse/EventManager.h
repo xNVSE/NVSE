@@ -423,8 +423,8 @@ namespace EventManager
 			return false;
 		}
 		// If array of filters is (string)map, then ignore the keys.
-		for (auto iter = arrayFilters->GetRawContainer()->begin();
-			iter != arrayFilters->GetRawContainer()->end(); ++iter)
+		for (auto iter = arrayFilters->Begin();
+			!iter.End(); ++iter)
 		{
 			auto const& elem = *iter.second();
 			if (ParamTypeToVarType(paramType) != DataTypeToVarType(elem.DataType()))

@@ -1189,6 +1189,21 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 	if (filters.size() > toCheck.filters.size())
 		return false; // "this" is more specific; it won't cover all the cases where toCheck would run.
 
+	auto const TryGetArray = [this, eval](const Filter& filter, size_t filterIndex) -> ArrayVar*
+	{
+		ArrayID id;
+		filter.GetAsArray(&id);
+		auto* arr = g_ArrayMap.Get(id);
+		if (!arr)
+		{
+			std::string const err = FormatString("While checking event filters in array at index %d, the array was invalid/uninitialized (array id: %u).",
+				filterIndex, id);
+			if (eval) eval->Error(err.c_str());
+			else ShowRuntimeError(this->TryGetScript(), err.c_str());
+		}
+		return arr;
+	};
+
 	for (auto const& [index, toRemoveFilter] : filters)
 	{
 		if (auto const search = toCheck.filters.find(index);
@@ -1218,34 +1233,43 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 					// 4) Opposite of the above.
 					// ParamType won't help us fully determine what case it is.
 
-					if (evInfo.IsUserDefined())
-					{
-						// Can't take advantage of paramType to narrow down options; have to brute-force.
+					// NOTE: multidimensional array filters currently aren't supported, including array-of-filters of array filters.
 
+					// if false, skip to case #2
+					if (evInfo.IsUserDefined() || paramType == EventFilterType::eParamType_Array) 
+					{
 						// Check if arrays are exactly equal.
 						// Covers case #1
 						if (DoesFilterMatch<true>(toRemoveFilter, existingFilter.GetAsVoidArg(), paramType))
 							continue;
+					}
 
-						//else, check if
-
-
-
+					// Cover case #2
+					// Loop over existingFilter as params, call DoesParamMatchFiltersInArray on them.
+					auto const existingFilters = TryGetArray(existingFilter, index);
+					if (!existingFilters)
 						return false;
-					}
-					// else, can use paramType to narrow down options.
 
-					// TODO
-
-					// Covers case #2
-					if (paramType != EventFilterType::eParamType_Array)
+					bool filtersMatch = true;
+					//for (auto const elem : *existingFilters)  //todo: fix broken range-based for loop (runs less times than expected)
+					for (auto iter = existingFilters->Begin(); !iter.End(); ++iter)
 					{
-						//todo: loop over existingFilter as params, call DoesParamMatchFiltersInArray
+						if (!DoesParamMatchFiltersInArray<true>(*this, toRemoveFilter, paramType, iter.second()->GetAsVoidArg(), index))
+						{
+							filtersMatch = false;
+							break;
+						}
 					}
-					
+
+					if (filtersMatch)
+						continue;
+
+					// Not sure how to support cases #3-4, so it's unsupported for now.
+
+					return false;
 				}
 				// else, must be a simple filter
-				else if (!DoesFilterMatch<true>(toRemoveFilter, existingFilter.GetAsVoidArg(), paramType))
+				if (!DoesFilterMatch<true>(toRemoveFilter, existingFilter.GetAsVoidArg(), paramType))
 				{
 					return false;
 				}
@@ -1264,18 +1288,14 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 			{
 				// Case #2: if existingFilter is an array with effectively just one filter (it can be repeated),
 				// and that filter matches the basic toRemoveFilter, then toRemoveFilter is just as generic as existingFilter.
-				ArrayID id;
-				existingFilter.GetAsArray(&id);
-				auto* existingFilters = g_ArrayMap.Get(id);
+
+				auto const existingFilters = TryGetArray(existingFilter, index);
 				if (!existingFilters)
-				{
-					ShowRuntimeError(this->TryGetScript(), "While checking event filters in array at index %d, the array was invalid/uninitialized (array id: %u).", index, id);
 					return false;
-				}
 
 				// If array of filters is (string)map, then ignore the keys.
 				for (auto iter = existingFilters->GetRawContainer()->begin();
-					iter != existingFilters->GetRawContainer()->end(); ++iter)
+					!iter.End(); ++iter)
 				{
 					if (!DoesFilterMatch<true>(toRemoveFilter, iter.second()->GetAsVoidArg(), paramType))
 						return false;
@@ -1284,16 +1304,10 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 			else
 			{
 				// Case #3: weird type mismatch
-				if (eval)
-				{
-					eval->Error("While comparing event filters at index %d, encountered a type mismatch (to-remove filter type: %s, existing filter type: %s).", 
-						index, DataTypeToString(toRemoveFilter.DataType()), DataTypeToString(existingFilter.DataType()));
-				}
-				else
-				{
-					ShowRuntimeError(this->TryGetScript(), "While comparing event filters at index %d, encountered a type mismatch (to-remove filter type: %s, existing filter type: %s).",
-						index, DataTypeToString(toRemoveFilter.DataType()), DataTypeToString(existingFilter.DataType()));
-				}
+				std::string const err = FormatString("While comparing event filters at index %d, encountered a type mismatch (to-remove filter type: %s, existing filter type: %s).",
+					index, DataTypeToString(toRemoveFilter.DataType()), DataTypeToString(existingFilter.DataType()));
+				if (eval) eval->Error(err.c_str());
+				else ShowRuntimeError(this->TryGetScript(), err.c_str());
 				return false; 
 			}
 		}

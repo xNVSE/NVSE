@@ -341,6 +341,10 @@ begin Function { }
 	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF_AllArgsPassed)) == 0
 
 
+	; TODO: Test removing filters via formlists, and removing reference filter via baseform
+
+
+
 	; == Test array-of-filters filter.
 	
 	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_List "notAMatch", "test"))
@@ -367,6 +371,31 @@ begin Function { }
 	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::"test")
 	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_List "testFail")) == 0
 	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_List "notAMatch", "test"))
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF_AllArgsPassed)) == 0
+
+	; Allow removing an array containing effectively just one filter by a single filter.
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_List "test", "Test", "tEsT"))  ; all the same filter, since non-case-sensitive
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::"test")
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_List "test", "Test", "tEsT"))
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::"testFail") == 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_List "test", "Test"))
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_List "test", "Test", "tEsT"))
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_List "tEsT"))
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_List "test", "Test", "tEsT"))
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::"tEsT")
+
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF_AllArgsPassed)) == 0
+
+
+	; Same tests as above, but with forms. So we have to also test matching a refr's baseForm to a baseform filter, formlists, etc.
+	; TODO
+
+
+
+
 
 	; For (string)Maps, the keys are ignored.
 	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_Map "key"::"notAMatch", "key2"::"testAlsoNotAMatchtest"))
@@ -375,13 +404,17 @@ begin Function { }
 	iRan = 0
 	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_Map "key"::"notAMatch", "key2"::"testAlsoNotAMatchtest"))
 
-	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_Map "key"::"test", "key2"::"notAMatch"))
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_Map "key"::"test", "key2"::"secondFilter"))
 	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
 	assert (iRan == 1)
 	iRan = 0
 	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_Map "key"::"test", "key2"::"testDifferentFilter")) == 0
-	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_Map "key"::"test", "key2"::"notAMatch"))
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_Map "key"::"test", "key2"::"secondFilter"))
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF_AllArgsPassed)) == 0
 
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_Map "key"::"test"))
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_Map "key"::"test", "key2"::"secondFilter"))
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF_AllArgsPassed)) == 0
 
 
 	; Nested array filters are not currently supported...
