@@ -181,9 +181,11 @@ namespace EventManager
 		// If the EventCallback is confirmed to stay, then call this to wrap up loose ends, e.g save lambda var context.
 		void Confirm();
 
-		// If "this" is has more or equally generic filters than the arg Callback, return true.
+		// If "this" would run anytime toCheck would run or more, return true (toCheck should be removed; "this" has more or equally generic filters).
+		// The above rule is used to remove redundant callbacks in one fell swoop.
 		// Assumes both have the same callbacks.
-		[[nodiscard]] bool ShouldRemoveCallback(const EventCallback& toCheck, const EventInfo& evInfo) const;
+		// Eval is passed to report errors.
+		[[nodiscard]] bool ShouldRemoveCallback(const EventCallback& toCheck, const EventInfo& evInfo, ExpressionEvaluator* eval = {}) const;
 
 		std::unique_ptr<ScriptToken> Invoke(EventInfo &eventInfo, void *arg0, void *arg1);
 	};
@@ -268,7 +270,7 @@ namespace EventManager
 	bool SetHandler(const char *eventName, EventCallback &toSet, ExpressionEvaluator* eval = nullptr);
 
 	// removes handler only if all filters match
-	bool RemoveHandler(const char *eventName, const EventCallback &toRemove);
+	bool RemoveHandler(const char *eventName, EventCallback& toRemove, ExpressionEvaluator* eval = nullptr);
 
 	// handle an NVSEMessagingInterface message
 	void HandleNVSEMessage(UInt32 msgID, void *data);
@@ -344,7 +346,7 @@ namespace EventManager
 		case kDataType_Numeric:
 		{
 			double filterNumber{};
-			sourceFilter.GetAsNumber(&filterNumber);	//if the Event's paramType was Int, then this should be already Floored.
+			sourceFilter.GetAsNumber(&filterNumber); //if the Event's paramType was Int, then this should be already Floored.
 			float inputNumber;
 			if constexpr (ExtractIntTypeAsFloat)
 			{
@@ -410,17 +412,17 @@ namespace EventManager
 	}
 
 	template<bool ExtractIntTypeAsFloat>
-	bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCallback::Filter& filter, EventFilterType paramType, void* param, int index)
+	bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCallback::Filter& arrayFilter, EventFilterType paramType, void* param, int index)
 	{
 		ArrayID arrayFiltersId{};
-		filter.GetAsArray(&arrayFiltersId);
+		arrayFilter.GetAsArray(&arrayFiltersId);
 		auto* arrayFilters = g_ArrayMap.Get(arrayFiltersId);
 		if (!arrayFilters)
 		{
-			ShowRuntimeError(callback.TryGetScript(), "While checking event filters in array at index %d, the array was invalid/unitialized (array id: %d).", index, arrayFiltersId);
+			ShowRuntimeError(callback.TryGetScript(), "While checking event filters in array at index %d, the array was invalid/uninitialized (array id: %u).", index, arrayFiltersId);
 			return false;
 		}
-		// If array of filters is non-"array" type, then ignore the keys.
+		// If array of filters is (string)map, then ignore the keys.
 		for (auto iter = arrayFilters->GetRawContainer()->begin();
 			iter != arrayFilters->GetRawContainer()->end(); ++iter)
 		{

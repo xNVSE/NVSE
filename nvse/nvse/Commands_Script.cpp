@@ -714,7 +714,7 @@ bool ProcessEventHandler(std::string &eventName, EventManager::EventCallback &ca
 		}
 	}
 	return addEvt ? EventManager::SetHandler(eventName.c_str(), callback, &eval)
-		: EventManager::RemoveHandler(eventName.c_str(), callback);
+		: EventManager::RemoveHandler(eventName.c_str(), callback, &eval);
 }
 
 bool Cmd_SetEventHandler_Execute(COMMAND_ARGS)

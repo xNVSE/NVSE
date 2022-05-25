@@ -866,15 +866,12 @@ bool SetHandler(const char* eventName, EventCallback& toSet, ExpressionEvaluator
 	return DoSetHandler(info, toSet);
 }
 
-// If the passed Callback is more or equally generic filter-wise than some already-set events, will remove those events.
-// Ex: Callback with "SunnyREF" filter is already set.
-// Calling this with a Callback with no filters will lead to the "SunnyREF"-filtered callback being removed.	
-bool RemoveHandler(const char* eventName, const EventCallback& toRemove)
+// Avoid constantly looking up the eventName for potentially recursive calls.
+bool DoRemoveHandler(EventInfo& info, const EventCallback& toRemove, ExpressionEvaluator* eval)
 {
-	if (!toRemove.HasCallbackFunc())
-		return false;
+	bool bRemovedAtLeastOne = false;
 
-	// Only handles script callbacks, since this is only kept for legacy purposes anyways.
+	// Only kept for legacy purposes.
 	if (auto const script = toRemove.TryGetScript())
 	{
 		UInt32 removed = 0;
@@ -887,7 +884,7 @@ bool RemoveHandler(const char* eventName, const EventCallback& toRemove)
 			{
 				EventCallback listHandler(script, iter.Get(), toRemove.object);
 				recursiveLevel++;
-				if (RemoveHandler(eventName, listHandler)) removed++;
+				if (DoRemoveHandler(info, listHandler, eval)) removed++;
 				recursiveLevel--;
 			}
 			return removed > 0;
@@ -901,7 +898,7 @@ bool RemoveHandler(const char* eventName, const EventCallback& toRemove)
 			{
 				EventCallback listHandler(script, toRemove.source, iter.Get());
 				recursiveLevel++;
-				if (RemoveHandler(eventName, listHandler)) removed++;
+				if (DoRemoveHandler(info, listHandler, eval)) removed++;
 				recursiveLevel--;
 			}
 			return removed > 0;
@@ -910,38 +907,60 @@ bool RemoveHandler(const char* eventName, const EventCallback& toRemove)
 
 	ScopedLock lock(s_criticalSection);
 
-	EventInfo** info = s_eventInfoMap.GetPtr(eventName);
-	bool bRemovedAtLeastOne = false;
-	if (info)
+	if (!info.callbacks.empty())
 	{
-		EventInfo &eventInfo = **info;
-		if (!eventInfo.callbacks.empty())
+		auto const basicCallback = GetBasicCallback(toRemove.toCall);
+		auto const range = info.callbacks.equal_range(basicCallback);
+		// loop over all EventCallbacks with the same callback script/function.
+		for (auto i = range.first; i != range.second; ++i)
 		{
-			auto const basicCallback = GetBasicCallback(toRemove.toCall);
-			auto const range = eventInfo.callbacks.equal_range(basicCallback);
-			// loop over all EventCallbacks with the same callback script/function.
-			for (auto i = range.first; i != range.second; ++i)
+			EventCallback& nthCallback = i->second;
+
+			if (!toRemove.ShouldRemoveCallback(nthCallback, info, eval))
+				continue;
+
+			if (!nthCallback.IsRemoved())
 			{
-				EventCallback &nthCallback = i->second;
+				nthCallback.SetRemoved(true);
+				bRemovedAtLeastOne = true;
+			}
 
-				if (!toRemove.ShouldRemoveCallback(nthCallback, eventInfo))
-					continue;
-
-				if (!nthCallback.IsRemoved())
-				{
-					nthCallback.SetRemoved(true);
-					bRemovedAtLeastOne = true;
-				}
-
-				if (!nthCallback.pendingRemove)
-				{
-					nthCallback.pendingRemove = true;
-					s_deferredRemoveList.Push(&eventInfo, i);
-				}
+			if (!nthCallback.pendingRemove)
+			{
+				nthCallback.pendingRemove = true;
+				s_deferredRemoveList.Push(&info, i);
 			}
 		}
 	}
-	
+
+	return bRemovedAtLeastOne;
+}
+
+// If the passed Callback is more or equally generic filter-wise than some already-set events, will remove those events.
+// Ex: Callback with "SunnyREF" filter is already set.
+// Calling this with a Callback with no filters will lead to the "SunnyREF"-filtered callback being removed.	
+bool RemoveHandler(const char* eventName, EventCallback& toRemove, ExpressionEvaluator* eval)
+{
+	if (!toRemove.HasCallbackFunc())
+		return false;
+
+	EventInfo** infoPtr = s_eventInfoMap.GetPtr(eventName);
+	bool bRemovedAtLeastOne = false;
+	if (infoPtr)
+	{
+		EventInfo &info = **infoPtr;
+
+		std::string errMsg;
+		if (!toRemove.ValidateFilters(errMsg, info))
+		{
+			if (eval)
+				eval->Error(errMsg.c_str());
+			return false;
+		}
+
+		bRemovedAtLeastOne = DoRemoveHandler(info, toRemove, eval);
+	}
+
 	return bRemovedAtLeastOne;
 }
 
@@ -1153,8 +1172,11 @@ bool ParamTypeMatches(EventFilterType from, EventFilterType to)
 	return false;
 }
 
-bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const EventInfo& evInfo) const
+
+bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const EventInfo& evInfo, ExpressionEvaluator* eval) const
 {
+	// Would be nice if it would try matching reference's baseforms to the filter-to-remove.
+	// Can't do that now though, due to backwards compatibility.
 	if (source && (source != toCheck.source))
 		return false;
 
@@ -1165,7 +1187,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 		return true;
 
 	if (filters.size() > toCheck.filters.size())
-		return false; // "this" is less generic than the arg callback.
+		return false; // "this" is more specific; it won't cover all the cases where toCheck would run.
 
 	for (auto const& [index, toRemoveFilter] : filters)
 	{
@@ -1183,24 +1205,96 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 			{
 				paramType = evInfo.TryGetNthParamType(index - 1);
 			}
-			
-			if (void* param = toRemoveFilter.GetAsVoidArg(); 
-				toRemoveFilter.DataType() == existingFilter.DataType())
+
+			if (toRemoveFilter.DataType() == existingFilter.DataType())
 			{
-				if (!DoesFilterMatch<true>(existingFilter, param, paramType))
+				//todo: fix what happens if both are arrays (one can contain refs, other bases, and fail!)
+				if (toRemoveFilter.DataType() == kDataType_Array)
+				{
+					// Cases:
+					// 1) Both are array filters
+					// 2) Both are array-of-filters filters
+					// 3) One is an array filter, other is an array-of-filters filter containing array(s).
+					// 4) Opposite of the above.
+					// ParamType won't help us fully determine what case it is.
+
+					if (evInfo.IsUserDefined())
+					{
+						// Can't take advantage of paramType to narrow down options; have to brute-force.
+
+						// Check if arrays are exactly equal.
+						// Covers case #1
+						if (DoesFilterMatch<true>(toRemoveFilter, existingFilter.GetAsVoidArg(), paramType))
+							continue;
+
+						//else, check if
+
+
+
+						return false;
+					}
+					// else, can use paramType to narrow down options.
+
+					// TODO
+
+					// Covers case #2
+					if (paramType != EventFilterType::eParamType_Array)
+					{
+						//todo: loop over existingFilter as params, call DoesParamMatchFiltersInArray
+					}
+					
+				}
+				// else, must be a simple filter
+				else if (!DoesFilterMatch<true>(toRemoveFilter, existingFilter.GetAsVoidArg(), paramType))
+				{
 					return false;
+				}
 			}
+			// Cases left:
+			// 1) toRemoveFilter is a filter-of-arrays filter, and existingFilter is basic type (non-array).
+			// 2) Opposite of the above.
+			// 3) Type mismatch (error) - should only be possible for User-Defined Event handlers.
 			else if (toRemoveFilter.DataType() == kDataType_Array)
 			{
-				// assume elements of array are filters
-				// If the paramType is numeric (int or float), make sure our param void* is always read as a float.
-				// (Since ArrayElements don't contain int-type values, they just store floats, floored or not.)
-				if (!DoesParamMatchFiltersInArray<true>(*this, existingFilter, paramType, param, index))
+				// Case #1: check if any of the elements in the array match existingFilter.
+				if (!DoesParamMatchFiltersInArray<true>(*this, toRemoveFilter, paramType, existingFilter.GetAsVoidArg(), index))
 					return false;
 			}
-			else [[unlikely]]
+			else if (existingFilter.DataType() == kDataType_Array)
 			{
-				return false;	// Encountered weird type mismatch.
+				// Case #2: if existingFilter is an array with effectively just one filter (it can be repeated),
+				// and that filter matches the basic toRemoveFilter, then toRemoveFilter is just as generic as existingFilter.
+				ArrayID id;
+				existingFilter.GetAsArray(&id);
+				auto* existingFilters = g_ArrayMap.Get(id);
+				if (!existingFilters)
+				{
+					ShowRuntimeError(this->TryGetScript(), "While checking event filters in array at index %d, the array was invalid/uninitialized (array id: %u).", index, id);
+					return false;
+				}
+
+				// If array of filters is (string)map, then ignore the keys.
+				for (auto iter = existingFilters->GetRawContainer()->begin();
+					iter != existingFilters->GetRawContainer()->end(); ++iter)
+				{
+					if (!DoesFilterMatch<true>(toRemoveFilter, iter.second()->GetAsVoidArg(), paramType))
+						return false;
+				}
+			}
+			else
+			{
+				// Case #3: weird type mismatch
+				if (eval)
+				{
+					eval->Error("While comparing event filters at index %d, encountered a type mismatch (to-remove filter type: %s, existing filter type: %s).", 
+						index, DataTypeToString(toRemoveFilter.DataType()), DataTypeToString(existingFilter.DataType()));
+				}
+				else
+				{
+					ShowRuntimeError(this->TryGetScript(), "While comparing event filters at index %d, encountered a type mismatch (to-remove filter type: %s, existing filter type: %s).",
+						index, DataTypeToString(toRemoveFilter.DataType()), DataTypeToString(existingFilter.DataType()));
+				}
+				return false; 
 			}
 		}
 		else // toCheck does not have a filter at this index, thus "this" has a more specific filter.
@@ -1461,8 +1555,8 @@ bool SetNativeEventHandler(const char* eventName, EventHandler func)
 
 bool RemoveNativeEventHandler(const char* eventName, EventHandler func)
 {
-	const EventCallback event(func);
-	return RemoveHandler(eventName, event);
+	EventCallback event(func);
+	return RemoveHandler(eventName, event, nullptr);
 }
 
 bool EventHandlerExist(const char* ev, const EventCallback& handler)
