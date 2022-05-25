@@ -785,6 +785,7 @@ struct NVSEEventManagerInterface
 		eParamType_Array,
 
 		// All the form-type ParamTypes support formlist filters, which will check if the dispatched form matches with any of the forms in the list.
+		// In case a reference is dispatched, it can be filtered by a baseForm.
 		eParamType_RefVar,
 		eParamType_AnyForm = eParamType_RefVar,
 

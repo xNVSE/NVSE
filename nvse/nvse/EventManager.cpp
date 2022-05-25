@@ -1251,7 +1251,6 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 						return false;
 
 					bool filtersMatch = true;
-					//for (auto const elem : *existingFilters)  //todo: fix broken range-based for loop (runs less times than expected)
 					for (auto iter = existingFilters->Begin(); !iter.End(); ++iter)
 					{
 						if (!DoesParamMatchFiltersInArray<true>(*this, toRemoveFilter, paramType, iter.second()->GetAsVoidArg(), index))

@@ -374,9 +374,8 @@ namespace EventManager
 			sourceFilter.GetAsFormID(&filterFormId);
 			auto* inputForm = static_cast<TESForm*>(param);
 			auto* filterForm = LookupFormByID(filterFormId);
+			bool const expectReference = filterType != EventFilterType::eParamType_BaseForm;
 			// Allow matching a null form filter with a null input.
-			bool const expectReference = (filterType != EventFilterType::eParamType_BaseForm)
-				&& (filterType != EventFilterType::eParamType_AnyForm);
 			if (!DoesFormMatchFilter(inputForm, filterForm, expectReference))
 				return false;
 			break;

@@ -693,11 +693,11 @@ bool Cmd_Internal_PopExecutionContext_Execute(COMMAND_ARGS)
 
 bool Cmd_Assert_Execute(COMMAND_ARGS)
 {
-	ExpressionEvaluator evaluator(PASS_COMMAND_ARGS);
-	if (!evaluator.ExtractArgs() || !evaluator.Arg(0)->GetNumber())
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (!eval.ExtractArgs() || !eval.Arg(0)->GetNumber())
 	{
-		const auto lineText = evaluator.GetLineText();
-		const auto varText = evaluator.GetVariablesText();
+		const auto lineText = eval.GetLineText();
+		const auto varText = eval.GetVariablesText();
 		Console_Print("Assertion failed!");
 		if (!lineText.empty())
 			Console_Print("\t%s", lineText.c_str());

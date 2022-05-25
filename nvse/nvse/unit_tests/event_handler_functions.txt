@@ -266,13 +266,6 @@ begin Function { }
 	iRan = 0
 	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 5::Player)
 
-	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 5::GSSunnySmiles)  ; shouldn't match the refr arg to its baseform
-	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
-	assert (iRan == 0)
-	iRan = 0
-	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 5::GSSunnySmiles)
-
-
 	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 6::Player)
 	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
 	assert (iRan == 1)
@@ -341,8 +334,22 @@ begin Function { }
 	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF_AllArgsPassed)) == 0
 
 
-	; TODO: Test removing filters via formlists, and removing reference filter via baseform
+	; Test removing reference filter via baseform
+	; 5::AnyFormFilter - should be equivalent to ReferenceFilter?
+	; 6::ReferenceFilter
+	; 7::BaseFormFilter
 
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 5::SunnyREF)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 5::GSSunnySmiles)
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF_AllArgsPassed)) == 0
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 5::GSSunnySmiles)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 5::SunnyREF) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 5::GSSunnySmiles)
+
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF_AllArgsPassed)) == 0
+
+	; TODO: test with formlists
 
 
 	; == Test array-of-filters filter.
@@ -357,6 +364,7 @@ begin Function { }
 	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_List "test")) == 0
 
 	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_List "notAMatch", "test"))
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF_AllArgsPassed)) == 0
 
 	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_List "notAMatch", "testAlsoNotAMatchtest"))
 	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
@@ -391,11 +399,34 @@ begin Function { }
 
 
 	; Same tests as above, but with forms. So we have to also test matching a refr's baseForm to a baseform filter, formlists, etc.
-	; TODO
+	
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 5::SunnyREF)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 5::(Ar_List GSSunnySmiles))
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF_AllArgsPassed)) == 0
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 6::SunnyREF)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 6::(Ar_List GSSunnySmiles))
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 5::(Ar_List SunnyREF, SunnyREF))
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 5::(Ar_List GSSunnySmiles))
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 6::(Ar_List SunnyREF, SunnyREF))
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 6::(Ar_List GSSunnySmiles))
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 6::(Ar_List SunnyREF, SunnyREF))
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 6::(Ar_List GSSunnySmiles, SunnyREF))
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 6::GSSunnySmiles)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 6::GSSunnySmiles)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 6::(Ar_List GSSunnySmiles))
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 6::(Ar_List SunnyREF)) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 6::(Ar_List GSSunnySmiles))
 
 
+	; TODO: with formlist
 
-
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF_AllArgsPassed)) == 0
 
 	; For (string)Maps, the keys are ignored.
 	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 4::(Ar_Map "key"::"notAMatch", "key2"::"testAlsoNotAMatchtest"))
