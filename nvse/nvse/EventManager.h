@@ -164,7 +164,7 @@ namespace EventManager
 		// Using a map to avoid adding duplicate indexes.
 		std::map<Index, Filter> filters;
 
-		[[nodiscard]] bool ValidateFilters(std::string& outErrorMsg, const EventInfo& parent);
+		[[nodiscard]] bool ValidateFilters(std::string& outErrorMsg, const EventInfo& parent) const;
 
 		[[nodiscard]] std::string GetFiltersAsStr() const;
 		[[nodiscard]] ArrayVar* GetFiltersAsArray(const Script* scriptObj) const;
@@ -346,14 +346,18 @@ namespace EventManager
 		case kDataType_Numeric:
 		{
 			double filterNumber{};
-			sourceFilter.GetAsNumber(&filterNumber); //if the Event's paramType was Int, then this should be already Floored.
+			sourceFilter.GetAsNumber(&filterNumber);
+			// This filter could be inside an array, so we can't be sure if the number is floored.
+			if (filterType == EventFilterType::eParamType_Int)
+				filterNumber = floor(filterNumber);
+
 			float inputNumber;
 			if constexpr (ExtractIntTypeAsFloat)
 			{
 				// this function could be being called by a function, where even ints are passed as floats.
 				// Alternatively, it could be called by some internal function that got the param from an ArrayElement 
 				inputNumber = *reinterpret_cast<float*>(&param);
-				if (filterType == EventFilterType::eParamType_Int)
+				if (filterType == EventFilterType::eParamType_Int)  // mostly for if IsParamExistingFilter
 					inputNumber = floor(inputNumber);
 			}
 			else  

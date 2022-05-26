@@ -405,7 +405,7 @@ bool EventCallback::ValidateFirstAndSecondFilter(const EventInfo& parent, std::s
 		&& ValidateFirstOrSecondFilter(false, parent, outErrorMsg);
 }
 
-bool EventCallback::ValidateFilters(std::string& outErrorMsg, const EventInfo& parent)
+bool EventCallback::ValidateFilters(std::string& outErrorMsg, const EventInfo& parent) const
 {
 	if (parent.IsUserDefined())
 		return true;	// User-Defined events have no preset filters.
@@ -428,11 +428,6 @@ bool EventCallback::ValidateFilters(std::string& outErrorMsg, const EventInfo& p
 
 		if (!IsPotentialFilterValid(filterType, outErrorMsg, filter, index)) [[unlikely]]
 			return false;
-
-		if (filterType == EventFilterType::eParamType_Int)
-		{
-			filter.m_data.num = floor(filter.m_data.num);
-		}
 	}
 
 	return true;
@@ -939,7 +934,7 @@ bool DoRemoveHandler(EventInfo& info, const EventCallback& toRemove, ExpressionE
 // If the passed Callback is more or equally generic filter-wise than some already-set events, will remove those events.
 // Ex: Callback with "SunnyREF" filter is already set.
 // Calling this with a Callback with no filters will lead to the "SunnyREF"-filtered callback being removed.	
-bool RemoveHandler(const char* eventName, EventCallback& toRemove, ExpressionEvaluator* eval)
+bool RemoveHandler(const char* eventName, const EventCallback& toRemove, ExpressionEvaluator* eval)
 {
 	if (!toRemove.HasCallbackFunc())
 		return false;
