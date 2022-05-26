@@ -1223,7 +1223,6 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 
 			if (toRemoveFilter.DataType() == existingFilter.DataType())
 			{
-				//todo: fix what happens if both are arrays (one can contain refs, other bases, and fail!)
 				if (toRemoveFilter.DataType() == kDataType_Array)
 				{
 					// Cases:
