@@ -349,7 +349,25 @@ begin Function { }
 
 	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF_AllArgsPassed)) == 0
 
-	; TODO: test with formlists
+	; Test with formlist
+	ref rFormList = CreateFormList "EventHandlerTestList" (Ar_List SunnyREF)
+	; TODO: Make this assert passs (editorID is not being properly changed)
+	;Assert (GetEditorID rFormList) == "EventHandlerTestList"						;* REQUIRES JG
+	Assert (GetListForms rFormList) == (Ar_List SunnyREF)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 5::rFormList)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 5::GSSunnySmiles)
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 5::rFormList)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 5::SunnyREF)
+
+	ref rFormList2 = CreateFormList "EventHandlerTestList2" (Ar_List GSSunnySmiles)
+	; TODO: Make this assert passs (editorID is not being properly changed)
+	;Assert (GetEditorID rFormList) == "EventHandlerTestList2"						;* REQUIRES JG
+	Assert (GetListForms rFormList2) == (Ar_List GSSunnySmiles)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_AllArgsPassed 5::GSSunnySmiles)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 5::rFormList) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_AllArgsPassed 5::rFormList2)
 
 
 	; == Test array-of-filters filter.

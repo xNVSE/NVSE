@@ -339,7 +339,7 @@ namespace EventManager
 	bool DoDeprecatedFiltersMatch(const EventCallback& callback, const ArgStack& params);
 
 	// eParamType_Anything is treated as "use default param type" (usually for a User-Defined Event).
-	template<bool ExtractIntTypeAsFloat>
+	template<bool ExtractIntTypeAsFloat, bool isParamExistingFilter>
 	bool DoesFilterMatch(const ArrayElement& sourceFilter, void* param, EventFilterType filterType)
 	{
 		switch (sourceFilter.DataType()) {
@@ -372,12 +372,30 @@ namespace EventManager
 		{
 			UInt32 filterFormId{};
 			sourceFilter.GetAsFormID(&filterFormId);
+
+			// Allow matching a null form filter with a null input.
 			auto* inputForm = static_cast<TESForm*>(param);
 			auto* filterForm = LookupFormByID(filterFormId);
 			bool const expectReference = filterType != EventFilterType::eParamType_BaseForm;
-			// Allow matching a null form filter with a null input.
+
+			if constexpr (isParamExistingFilter)
+			{
+				if (inputForm && IS_ID(inputForm, BGSListForm))
+				{
+					// Multiple form filters
+					auto const existingFilters = static_cast<BGSListForm*>(inputForm);
+					for (auto const nthExistingFilterForm : existingFilters->list)
+					{
+						if (!DoesFormMatchFilter(nthExistingFilterForm, filterForm, expectReference))
+							return false;
+					}
+					return true;
+				}
+			}
 			if (!DoesFormMatchFilter(inputForm, filterForm, expectReference))
+			{
 				return false;
+			}
 			break;
 		}
 		case kDataType_String:
@@ -410,7 +428,7 @@ namespace EventManager
 		return true;
 	}
 
-	template<bool ExtractIntTypeAsFloat>
+	template<bool ExtractIntTypeAsFloat, bool IsParamExistingFilter>
 	bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCallback::Filter& arrayFilter, EventFilterType paramType, void* param, int index)
 	{
 		ArrayID arrayFiltersId{};
@@ -428,7 +446,7 @@ namespace EventManager
 			auto const& elem = *iter.second();
 			if (ParamTypeToVarType(paramType) != DataTypeToVarType(elem.DataType()))
 				continue;
-			if (DoesFilterMatch<ExtractIntTypeAsFloat>(elem, param, paramType))
+			if (DoesFilterMatch<ExtractIntTypeAsFloat, IsParamExistingFilter>(elem, param, paramType))
 				return true;
 		}
 		return false;
@@ -448,7 +466,7 @@ namespace EventManager
 
 			if (eventInfo.IsUserDefined()) // Skip filter type checking.
 			{
-				if (!DoesFilterMatch<ExtractIntTypeAsFloat>(filter, param, EventFilterType::eParamType_Anything))
+				if (!DoesFilterMatch<ExtractIntTypeAsFloat, false>(filter, param, EventFilterType::eParamType_Anything))
 					return false;
 				//TODO: add support for array of filters
 			}
@@ -463,11 +481,11 @@ namespace EventManager
 				if (filterVarType != paramVarType) //if true, can assume that the filterVar's type is Array (if it isn't, type mismatch should have been reported in SetEventHandler).
 				{
 					// assume elements of array are filters
-					if (!DoesParamMatchFiltersInArray<ExtractIntTypeAsFloat>(callback, filter, paramType, param, index))
+					if (!DoesParamMatchFiltersInArray<ExtractIntTypeAsFloat, false>(callback, filter, paramType, param, index))
 						return false;
 					continue;
 				}
-				if (!DoesFilterMatch<ExtractIntTypeAsFloat>(filter, param, paramType))
+				if (!DoesFilterMatch<ExtractIntTypeAsFloat, false>(filter, param, paramType))
 					return false;
 			}
 		}

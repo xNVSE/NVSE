@@ -1240,7 +1240,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 					{
 						// Check if arrays are exactly equal.
 						// Covers case #1
-						if (DoesFilterMatch<true>(toRemoveFilter, existingFilter.GetAsVoidArg(), paramType))
+						if (DoesFilterMatch<true, true>(toRemoveFilter, existingFilter.GetAsVoidArg(), paramType))
 							continue;
 					}
 
@@ -1253,7 +1253,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 					bool filtersMatch = true;
 					for (auto iter = existingFilters->Begin(); !iter.End(); ++iter)
 					{
-						if (!DoesParamMatchFiltersInArray<true>(*this, toRemoveFilter, paramType, iter.second()->GetAsVoidArg(), index))
+						if (!DoesParamMatchFiltersInArray<true, true>(*this, toRemoveFilter, paramType, iter.second()->GetAsVoidArg(), index))
 						{
 							filtersMatch = false;
 							break;
@@ -1268,7 +1268,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 					return false;
 				}
 				// else, must be a simple filter
-				if (!DoesFilterMatch<true>(toRemoveFilter, existingFilter.GetAsVoidArg(), paramType))
+				if (!DoesFilterMatch<true, true>(toRemoveFilter, existingFilter.GetAsVoidArg(), paramType))
 				{
 					return false;
 				}
@@ -1280,7 +1280,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 			else if (toRemoveFilter.DataType() == kDataType_Array)
 			{
 				// Case #1: check if any of the elements in the array match existingFilter.
-				if (!DoesParamMatchFiltersInArray<true>(*this, toRemoveFilter, paramType, existingFilter.GetAsVoidArg(), index))
+				if (!DoesParamMatchFiltersInArray<true, true>(*this, toRemoveFilter, paramType, existingFilter.GetAsVoidArg(), index))
 					return false;
 			}
 			else if (existingFilter.DataType() == kDataType_Array)
@@ -1296,7 +1296,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 				for (auto iter = existingFilters->GetRawContainer()->begin();
 					!iter.End(); ++iter)
 				{
-					if (!DoesFilterMatch<true>(toRemoveFilter, iter.second()->GetAsVoidArg(), paramType))
+					if (!DoesFilterMatch<true, true>(toRemoveFilter, iter.second()->GetAsVoidArg(), paramType))
 						return false;
 				}
 			}

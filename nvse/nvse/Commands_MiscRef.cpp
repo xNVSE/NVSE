@@ -1932,7 +1932,7 @@ bool Cmd_CreateFormList_Execute(COMMAND_ARGS)
 	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 		eval.ExtractArgs())
 	{
-		auto const formList = BGSListForm::MakeUnique().release();
+		BGSListForm* const formList = BGSListForm::MakeUnique().release();
 		if (!formList)
 			return true;
 		UInt32* refResult = (UInt32*)result;
@@ -1941,12 +1941,13 @@ bool Cmd_CreateFormList_Execute(COMMAND_ARGS)
 		auto const numArgs = eval.NumArgs();
 		if (numArgs >= 1)
 		{
-			formList->SetEditorID(eval.Arg(0)->GetString());
+			if (auto const edID = eval.Arg(0)->GetString())
+				formList->SetEditorID(edID);
 
 			if (numArgs >= 2)
 			{
 				//Fill the list with contents of array.
-				if (auto const array = eval.Arg(0)->GetArrayVar())
+				if (auto const array = eval.Arg(1)->GetArrayVar())
 				{
 					for (auto const elem : *array)
 					{
