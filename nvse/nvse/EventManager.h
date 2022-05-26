@@ -339,7 +339,7 @@ namespace EventManager
 	bool DoDeprecatedFiltersMatch(const EventCallback& callback, const ArgStack& params);
 
 	// eParamType_Anything is treated as "use default param type" (usually for a User-Defined Event).
-	template<bool ExtractIntTypeAsFloat, bool isParamExistingFilter>
+	template<bool ExtractIntTypeAsFloat, bool IsParamExistingFilter>
 	bool DoesFilterMatch(const ArrayElement& sourceFilter, void* param, EventFilterType filterType)
 	{
 		switch (sourceFilter.DataType()) {
@@ -378,7 +378,7 @@ namespace EventManager
 			auto* filterForm = LookupFormByID(filterFormId);
 			bool const expectReference = filterType != EventFilterType::eParamType_BaseForm;
 
-			if constexpr (isParamExistingFilter)
+			if constexpr (IsParamExistingFilter)
 			{
 				if (inputForm && IS_ID(inputForm, BGSListForm))
 				{
@@ -418,7 +418,9 @@ namespace EventManager
 				return false;
 			const auto inputArray = g_ArrayMap.Get(inputArrayId);
 			const auto filterArray = g_ArrayMap.Get(filterArrayId);
-			if (!inputArray || !filterArray || !inputArray->Equals(filterArray))
+			if (!inputArray || !filterArray)
+				return false;
+			if (!inputArray->Equals(filterArray))
 				return false;
 			break;
 		}

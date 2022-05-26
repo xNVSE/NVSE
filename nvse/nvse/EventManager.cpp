@@ -1228,11 +1228,10 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 					// Cases:
 					// 1) Both are array filters
 					// 2) Both are array-of-filters filters
-					// 3) One is an array filter, other is an array-of-filters filter containing array(s).
+					// 3) ToRemoveFilter is an array filter, ExistingFilter is an array-of-filters filter containing array(s).
 					// 4) Opposite of the above.
-					// ParamType won't help us fully determine what case it is.
 
-					// NOTE: multidimensional array filters currently aren't supported, including array-of-filters of array filters.
+					// TODO: multidimensional array filters currently aren't supported
 
 					// if false, skip to case #2
 					if (evInfo.IsUserDefined() || paramType == EventFilterType::eParamType_Array) 
@@ -1252,17 +1251,38 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 					bool filtersMatch = true;
 					for (auto iter = existingFilters->Begin(); !iter.End(); ++iter)
 					{
-						if (!DoesParamMatchFiltersInArray<true, true>(*this, toRemoveFilter, paramType, iter.second()->GetAsVoidArg(), index))
+						if (!DoesParamMatchFiltersInArray<true, true>(*this, toRemoveFilter, paramType, 
+							iter.second()->GetAsVoidArg(), index))
 						{
 							filtersMatch = false;
 							break;
 						}
 					}
-
 					if (filtersMatch)
 						continue;
 
-					// Not sure how to support cases #3-4, so it's unsupported for now.
+					// Cases 3-4 are only possible if the filter type is array.
+					if (!evInfo.IsUserDefined() && paramType != EventFilterType::eParamType_Array)
+						return false;
+
+					// Cover case #3
+					// ToRemoveFilter array must match with all of the arrays in existingFilters.
+					filtersMatch = true;
+					for (auto iter = existingFilters->Begin(); !iter.End(); ++iter)
+					{
+						if (!DoesFilterMatch<true, true>(toRemoveFilter, iter.second()->GetAsVoidArg(), paramType))
+						{
+							filtersMatch = false;
+							break;
+						}
+					}
+					if (filtersMatch)
+						continue;
+
+					// Cover case #4
+					// ToRemoveFilter array could hold many array filters, so try matching existingFilter array to any of those arrays.
+					if (DoesParamMatchFiltersInArray<true, true>(*this, toRemoveFilter, paramType, existingFilter.GetAsVoidArg(), index))
+						continue;
 
 					return false;
 				}
