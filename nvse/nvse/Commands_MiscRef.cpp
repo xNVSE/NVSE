@@ -1925,3 +1925,41 @@ bool Cmd_SetEditorID_Execute(COMMAND_ARGS)
 	*result = 1;
 	return true;
 }
+
+bool Cmd_CreateFormList_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+		eval.ExtractArgs())
+	{
+		BGSListForm* const formList = BGSListForm::MakeUnique().release();
+		if (!formList)
+			return true;
+		UInt32* refResult = (UInt32*)result;
+		*refResult = formList->refID;
+
+		auto const numArgs = eval.NumArgs();
+		if (numArgs >= 1)
+		{
+			if (auto const edID = eval.Arg(0)->GetString())
+				formList->SetEditorID(edID);
+
+			if (numArgs >= 2)
+			{
+				//Fill the list with contents of array.
+				if (auto const array = eval.Arg(1)->GetArrayVar())
+				{
+					for (auto const elem : *array)
+					{
+						UInt32 formId;
+						if (elem->GetAsFormID(&formId))
+						{
+							formList->AddAt(LookupFormByID(formId), eListEnd);
+						}
+					}
+				}
+			}
+		}
+	}
+	return true;
+}

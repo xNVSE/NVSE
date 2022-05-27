@@ -164,7 +164,7 @@ namespace EventManager
 		// Using a map to avoid adding duplicate indexes.
 		std::map<Index, Filter> filters;
 
-		[[nodiscard]] bool ValidateFilters(std::string& outErrorMsg, const EventInfo& parent);
+		[[nodiscard]] bool ValidateFilters(std::string& outErrorMsg, const EventInfo& parent) const;
 
 		[[nodiscard]] std::string GetFiltersAsStr() const;
 		[[nodiscard]] ArrayVar* GetFiltersAsArray(const Script* scriptObj) const;
@@ -181,9 +181,11 @@ namespace EventManager
 		// If the EventCallback is confirmed to stay, then call this to wrap up loose ends, e.g save lambda var context.
 		void Confirm();
 
-		// If "this" is has more or equally generic filters than the arg Callback, return true.
+		// If "this" would run anytime toCheck would run or more, return true (toCheck should be removed; "this" has more or equally generic filters).
+		// The above rule is used to remove redundant callbacks in one fell swoop.
 		// Assumes both have the same callbacks.
-		[[nodiscard]] bool ShouldRemoveCallback(const EventCallback& toCheck, const EventInfo& evInfo) const;
+		// Eval is passed to report errors.
+		[[nodiscard]] bool ShouldRemoveCallback(const EventCallback& toCheck, const EventInfo& evInfo, ExpressionEvaluator* eval = {}) const;
 
 		std::unique_ptr<ScriptToken> Invoke(EventInfo &eventInfo, void *arg0, void *arg1);
 	};
@@ -268,7 +270,7 @@ namespace EventManager
 	bool SetHandler(const char *eventName, EventCallback &toSet, ExpressionEvaluator* eval = nullptr);
 
 	// removes handler only if all filters match
-	bool RemoveHandler(const char *eventName, const EventCallback &toRemove);
+	bool RemoveHandler(const char *eventName, const EventCallback& toRemove, ExpressionEvaluator* eval = nullptr);
 
 	// handle an NVSEMessagingInterface message
 	void HandleNVSEMessage(UInt32 msgID, void *data);
@@ -337,21 +339,25 @@ namespace EventManager
 	bool DoDeprecatedFiltersMatch(const EventCallback& callback, const ArgStack& params);
 
 	// eParamType_Anything is treated as "use default param type" (usually for a User-Defined Event).
-	template<bool ExtractIntTypeAsFloat>
+	template<bool ExtractIntTypeAsFloat, bool IsParamExistingFilter>
 	bool DoesFilterMatch(const ArrayElement& sourceFilter, void* param, EventFilterType filterType)
 	{
 		switch (sourceFilter.DataType()) {
 		case kDataType_Numeric:
 		{
 			double filterNumber{};
-			sourceFilter.GetAsNumber(&filterNumber);	//if the Event's paramType was Int, then this should be already Floored.
+			sourceFilter.GetAsNumber(&filterNumber);
+			// This filter could be inside an array, so we can't be sure if the number is floored.
+			if (filterType == EventFilterType::eParamType_Int)
+				filterNumber = floor(filterNumber);
+
 			float inputNumber;
 			if constexpr (ExtractIntTypeAsFloat)
 			{
 				// this function could be being called by a function, where even ints are passed as floats.
 				// Alternatively, it could be called by some internal function that got the param from an ArrayElement 
 				inputNumber = *reinterpret_cast<float*>(&param);
-				if (filterType == EventFilterType::eParamType_Int)
+				if (filterType == EventFilterType::eParamType_Int)  // mostly for if IsParamExistingFilter
 					inputNumber = floor(inputNumber);
 			}
 			else  
@@ -370,13 +376,30 @@ namespace EventManager
 		{
 			UInt32 filterFormId{};
 			sourceFilter.GetAsFormID(&filterFormId);
+
+			// Allow matching a null form filter with a null input.
 			auto* inputForm = static_cast<TESForm*>(param);
 			auto* filterForm = LookupFormByID(filterFormId);
-			// Allow matching a null form filter with a null input.
-			bool const expectReference = (filterType != EventFilterType::eParamType_BaseForm)
-				&& (filterType != EventFilterType::eParamType_AnyForm);
+			bool const expectReference = filterType != EventFilterType::eParamType_BaseForm;
+
+			if constexpr (IsParamExistingFilter)
+			{
+				if (inputForm && IS_ID(inputForm, BGSListForm))
+				{
+					// Multiple form filters
+					auto const existingFilters = static_cast<BGSListForm*>(inputForm);
+					for (auto const nthExistingFilterForm : existingFilters->list)
+					{
+						if (!DoesFormMatchFilter(nthExistingFilterForm, filterForm, expectReference))
+							return false;
+					}
+					return true;
+				}
+			}
 			if (!DoesFormMatchFilter(inputForm, filterForm, expectReference))
+			{
 				return false;
+			}
 			break;
 		}
 		case kDataType_String:
@@ -399,7 +422,9 @@ namespace EventManager
 				return false;
 			const auto inputArray = g_ArrayMap.Get(inputArrayId);
 			const auto filterArray = g_ArrayMap.Get(filterArrayId);
-			if (!inputArray || !filterArray || !inputArray->Equals(filterArray))
+			if (!inputArray || !filterArray)
+				return false;
+			if (!inputArray->Equals(filterArray))
 				return false;
 			break;
 		}
@@ -409,32 +434,32 @@ namespace EventManager
 		return true;
 	}
 
-	template<bool ExtractIntTypeAsFloat>
-	bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCallback::Filter& filter, EventFilterType paramType, void* param, int index)
+	template<bool ExtractIntTypeAsFloat, bool IsParamExistingFilter>
+	bool DoesParamMatchFiltersInArray(const EventCallback& callback, const EventCallback::Filter& arrayFilter, EventFilterType paramType, void* param, int index)
 	{
 		ArrayID arrayFiltersId{};
-		filter.GetAsArray(&arrayFiltersId);
+		arrayFilter.GetAsArray(&arrayFiltersId);
 		auto* arrayFilters = g_ArrayMap.Get(arrayFiltersId);
 		if (!arrayFilters)
 		{
-			ShowRuntimeError(callback.TryGetScript(), "While checking event filters in array at index %d, the array was invalid/unitialized (array id: %d).", index, arrayFiltersId);
+			ShowRuntimeError(callback.TryGetScript(), "While checking event filters in array at index %d, the array was invalid/uninitialized (array id: %u).", index, arrayFiltersId);
 			return false;
 		}
-		// If array of filters is non-"array" type, then ignore the keys.
-		for (auto iter = arrayFilters->GetRawContainer()->begin();
-			iter != arrayFilters->GetRawContainer()->end(); ++iter)
+		// If array of filters is (string)map, then ignore the keys.
+		for (auto iter = arrayFilters->Begin();
+			!iter.End(); ++iter)
 		{
 			auto const& elem = *iter.second();
 			if (ParamTypeToVarType(paramType) != DataTypeToVarType(elem.DataType()))
 				continue;
-			if (DoesFilterMatch<ExtractIntTypeAsFloat>(elem, param, paramType))
+			if (DoesFilterMatch<ExtractIntTypeAsFloat, IsParamExistingFilter>(elem, param, paramType))
 				return true;
 		}
 		return false;
 	}
 
 	template<bool ExtractIntTypeAsFloat>
-	bool DoFiltersMatch(TESObjectREFR* thisObj, const EventInfo& eventInfo, const EventCallback& callback, const ArgStack& params)
+	bool DoNewFiltersMatch(TESObjectREFR* thisObj, const EventInfo& eventInfo, const EventCallback& callback, const ArgStack& params)
 	{
 		for (auto& [index, filter] : callback.filters)
 		{
@@ -447,7 +472,7 @@ namespace EventManager
 
 			if (eventInfo.IsUserDefined()) // Skip filter type checking.
 			{
-				if (!DoesFilterMatch<ExtractIntTypeAsFloat>(filter, param, EventFilterType::eParamType_Anything))
+				if (!DoesFilterMatch<ExtractIntTypeAsFloat, false>(filter, param, EventFilterType::eParamType_Anything))
 					return false;
 				//TODO: add support for array of filters
 			}
@@ -462,11 +487,11 @@ namespace EventManager
 				if (filterVarType != paramVarType) //if true, can assume that the filterVar's type is Array (if it isn't, type mismatch should have been reported in SetEventHandler).
 				{
 					// assume elements of array are filters
-					if (!DoesParamMatchFiltersInArray<ExtractIntTypeAsFloat>(callback, filter, paramType, param, index))
+					if (!DoesParamMatchFiltersInArray<ExtractIntTypeAsFloat, false>(callback, filter, paramType, param, index))
 						return false;
 					continue;
 				}
-				if (!DoesFilterMatch<ExtractIntTypeAsFloat>(filter, param, paramType))
+				if (!DoesFilterMatch<ExtractIntTypeAsFloat, false>(filter, param, paramType))
 					return false;
 			}
 		}
@@ -528,7 +553,7 @@ namespace EventManager
 
 			if (!DoDeprecatedFiltersMatch(callback, params))
 				continue;
-			if (!DoFiltersMatch<ExtractIntTypeAsFloat>(thisObj, eventInfo, callback, params))
+			if (!DoNewFiltersMatch<ExtractIntTypeAsFloat>(thisObj, eventInfo, callback, params))
 				continue;
 
 			result = std::visit(overloaded{

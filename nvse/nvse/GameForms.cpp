@@ -398,6 +398,13 @@ SInt32 BGSListForm::ReplaceForm(TESForm *pForm, TESForm *pReplaceWith)
 	return index;
 }
 
+#if RUNTIME
+game_unique_ptr<BGSListForm> BGSListForm::MakeUnique()
+{
+	return ::MakeUnique<BGSListForm, 0x58F9D0, 0x58FA90>();
+}
+#endif
+
 bool TESForm::IsInventoryObject() const
 {
 	typedef bool (*_IsInventoryObjectType)(UInt32 formType);
