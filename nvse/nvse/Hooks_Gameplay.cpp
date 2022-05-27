@@ -99,7 +99,10 @@ void HandleCallWhileScripts(bool isMenuMode)
 	while (iter != g_callWhileInfos.end())
 	{
 		if (isMenuMode && !iter->RunInMenuMode())
+		{
+			++iter;
 			continue;
+		}
 
 		ArrayElementArgFunctionCaller<SelfOwningArrayElement> conditionCaller(iter->condition);
 		if (iter->PassArgsToCondFunc())
