@@ -287,13 +287,17 @@ struct CallWhileInfo
 		kFlags_None = 0,
 		kPassArgs_ToCallFunc = 1 << 0,
 		kPassArgs_ToConditionFunc = 1 << 1,
-		kFlag_RunInMenuMode = 1 << 2,
+
+		// Runs in both MenuMode and GameMode by default.
+		kFlag_DontRunInMenuMode = 1 << 2,
+		kFlag_DontRunInGameMode = 1 << 3,
 	} flags;
 	CallArgs args;
 
 	[[nodiscard]] bool PassArgsToCallFunc() const { return flags & kPassArgs_ToCallFunc; }
 	[[nodiscard]] bool PassArgsToCondFunc() const { return flags & kPassArgs_ToConditionFunc; }
-	[[nodiscard]] bool RunInMenuMode() const { return flags & kFlag_RunInMenuMode; }
+	[[nodiscard]] bool RunInMenuMode() const { return (flags & kFlag_DontRunInMenuMode) == 0; }
+	[[nodiscard]] bool RunInGameMode() const { return (flags & kFlag_DontRunInGameMode) == 0; }
 
 	CallWhileInfo(Script* callFunction, Script* condition, TESObjectREFR* thisObj, eFlags flags, CallArgs &&args = {})
 		: callFunction(callFunction),

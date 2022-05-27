@@ -98,7 +98,8 @@ void HandleCallWhileScripts(bool isMenuMode)
 	auto iter = g_callWhileInfos.begin();
 	while (iter != g_callWhileInfos.end())
 	{
-		if (isMenuMode && !iter->RunInMenuMode())
+		if ((isMenuMode && !iter->RunInMenuMode())
+			|| (!isMenuMode && !iter->RunInGameMode()))
 		{
 			++iter;
 			continue;
@@ -135,7 +136,8 @@ void HandleCallWhenScripts(bool isMenuMode)
 	auto iter = g_callWhenInfos.begin();
 	while (iter != g_callWhenInfos.end())
 	{
-		if (isMenuMode && !iter->RunInMenuMode())
+		if ((isMenuMode && !iter->RunInMenuMode())
+			|| (!isMenuMode && !iter->RunInGameMode()))
 		{
 			++iter;
 			continue;
