@@ -133,7 +133,10 @@ void HandleCallWhenScripts(bool isMenuMode)
 	while (iter != g_callWhenInfos.end())
 	{
 		if (isMenuMode && !iter->RunInMenuMode())
+		{
+			++iter;
 			continue;
+		}
 
 		ArrayElementArgFunctionCaller conditionCaller(iter->condition, iter->args);
 		if (iter->PassArgsToCondFunc())
