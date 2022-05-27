@@ -866,7 +866,7 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 			{
 				auto const& eventCallback = i->second;
 				if (!eventCallback.IsRemoved() && (argsToFilter->empty() ||
-					EventManager::DoFiltersMatch<true>(thisObj, info, eventCallback, argsToFilter)))
+					EventManager::DoNewFiltersMatch<true>(thisObj, info, eventCallback, argsToFilter)))
 				{
 					std::string toPrint = FormatString(">> Handler: %s, filters: %s", eventCallback.GetCallbackFuncAsStr().c_str(),
 						eventCallback.GetFiltersAsStr().c_str());
@@ -879,7 +879,7 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 			for (auto const &[key, eventCallback] : info.callbacks)
 			{
 				if (!eventCallback.IsRemoved() && (argsToFilter->empty()
-					|| EventManager::DoFiltersMatch<true>(thisObj, info, eventCallback, argsToFilter)))
+					|| EventManager::DoNewFiltersMatch<true>(thisObj, info, eventCallback, argsToFilter)))
 				{
 					std::string toPrint = FormatString(">> Handler: %s, filters: %s", eventCallback.GetCallbackFuncAsStr().c_str(),
 						eventCallback.GetFiltersAsStr().c_str());
@@ -973,7 +973,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 			{
 				auto const& eventCallback = i->second;
 				if (!eventCallback.IsRemoved() && (argsToFilter->empty() ||
-					EventManager::DoFiltersMatch<true>(thisObj, info, eventCallback, argsToFilter)))
+					EventManager::DoNewFiltersMatch<true>(thisObj, info, eventCallback, argsToFilter)))
 				{
 					handlersForEventArray->SetElementArray(key, GetHandlerArr(eventCallback, scriptObj)->ID());
 					key++;
@@ -986,7 +986,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 			for (auto const& [callbackFuncKey, eventCallback] : info.callbacks)
 			{
 				if (!eventCallback.IsRemoved() && (argsToFilter->empty()
-					|| EventManager::DoFiltersMatch<true>(thisObj, info, eventCallback, argsToFilter)))
+					|| EventManager::DoNewFiltersMatch<true>(thisObj, info, eventCallback, argsToFilter)))
 				{
 					handlersForEventArray->SetElementArray(key, GetHandlerArr(eventCallback, scriptObj)->ID());
 					key++;

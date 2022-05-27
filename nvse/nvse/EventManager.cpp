@@ -679,6 +679,11 @@ enum class RefState {NotSet, Invalid, Valid};
 // Deprecated
 void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1)
 {
+	// For filtering via new filters
+	ArgStack params;
+	params->push_back(arg0);
+	params->push_back(arg1);
+
 	auto isArg0Valid = RefState::NotSet;
 	for (auto& iter : eventInfo.callbacks)
 	{
@@ -697,6 +702,9 @@ void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1)
 		}
 
 		if (callback.object && (callback.object != arg1))
+			continue;
+
+		if (!DoNewFiltersMatch<false>(nullptr, eventInfo, callback, params))
 			continue;
 
 		if (GetCurrentThreadId() != g_mainThreadID)

@@ -459,7 +459,7 @@ namespace EventManager
 	}
 
 	template<bool ExtractIntTypeAsFloat>
-	bool DoFiltersMatch(TESObjectREFR* thisObj, const EventInfo& eventInfo, const EventCallback& callback, const ArgStack& params)
+	bool DoNewFiltersMatch(TESObjectREFR* thisObj, const EventInfo& eventInfo, const EventCallback& callback, const ArgStack& params)
 	{
 		for (auto& [index, filter] : callback.filters)
 		{
@@ -553,7 +553,7 @@ namespace EventManager
 
 			if (!DoDeprecatedFiltersMatch(callback, params))
 				continue;
-			if (!DoFiltersMatch<ExtractIntTypeAsFloat>(thisObj, eventInfo, callback, params))
+			if (!DoNewFiltersMatch<ExtractIntTypeAsFloat>(thisObj, eventInfo, callback, params))
 				continue;
 
 			result = std::visit(overloaded{
