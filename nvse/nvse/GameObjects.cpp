@@ -325,23 +325,14 @@ ExtraDroppedItemList* TESObjectREFR::GetDroppedItems()
 	return static_cast<ExtraDroppedItemList*>(extraDataList.GetByType(kExtraData_DroppedItemList));
 }
 
-double TESObjectREFR::GetHeadingAngle(const TESObjectREFR* target) const
+// Code by JIP
+double TESObjectREFR::GetHeadingAngle(const TESObjectREFR* to) const
 {
-	// Copied 0x5A0410 (Cmd_GetHeadingAngle)
-	if (!target || !this->Unk_3F())
-		return 0.0;
-
-	NiPoint3 diff;
-	diff.Init(target->GetPos());
-	diff.Subtract(this->GetPos());
-	auto result = CdeclCall<double>(0x4B13C0, &diff);
-
-	for (result = result - ((MobileObject*)this)->AdjustRot(0); result < -3.141592741012573; result += 6.283185482025146)
-	{
-		//loop...
-	}
-	while (result >= 3.141592741012573)
-		result -= 6.283185482025146;
-	result *= 57.2957763671875;
+	auto const from = this;
+	double result = (atan2(to->posX - from->posX, to->posY - from->posY) - from->rotZ) * 57.29577951308232;
+	if (result < -180)
+		result += 360;
+	else if (result > 180)
+		result -= 360;
 	return result;
 }

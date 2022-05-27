@@ -338,7 +338,7 @@ struct DistanceAngleMatcher
 {
 	TESObjectREFR* m_distanceRef = nullptr;	//if null, ignore distance check.
 	float m_maxDistance = 0;	//if 0 or below, ignore.
-	float m_maxHeadingAngle = 0;	//An absolute value. If below 0, ignore.
+	float m_maxHeadingAngle = -1;	//An absolute value. If below 0, ignore.
 	
 	DistanceAngleMatcher() = default;
 	DistanceAngleMatcher(TESObjectREFR* distanceRef, float maxDistance, float maxHeadingAngle) :
@@ -347,7 +347,7 @@ struct DistanceAngleMatcher
 
 	bool MatchDistanceAndAngle(const TESObjectREFR* refr) const
 	{
-		if (!m_distanceRef)
+		if (!m_distanceRef || refr == m_distanceRef)
 			return true;
 
 		if (m_maxDistance > 0)
@@ -361,12 +361,18 @@ struct DistanceAngleMatcher
 		if (m_maxHeadingAngle >= 0)
 		{
 #if _DEBUG
-			if (s_AreRuntimeTestsEnabled) // test if GetHeadingAngle has same result as Cmd_GetHeadingAngle
+			// test if GetHeadingAngle has same result as Cmd_GetHeadingAngle
+			// Cmd_GetHeadingAngle only works on actor calling refs, so only enable the test for that case.
+			if (s_AreRuntimeTestsEnabled && m_distanceRef->Unk_3F())
 			{
 				double cmdResult;
 				CdeclCall(0x5A0410, m_distanceRef, refr, 0, &cmdResult); // call Cmd_GetHeadingAngle
-				double result = m_distanceRef->GetHeadingAngle(refr);
-				ASSERT(FloatEqual(result, cmdResult));
+				const double result = m_distanceRef->GetHeadingAngle(refr);
+				if (!FloatEqual(result, cmdResult))
+				{
+					Console_Print("ERROR in NVSE's GetHeadingAngle - Expected %f, got %f. Target ref: %s", 
+						cmdResult, result, refr->GetStringRepresentation().c_str());
+				}
 			}
 #endif
 

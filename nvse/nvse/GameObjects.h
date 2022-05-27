@@ -161,7 +161,7 @@ public:
 	bool GetInventoryItems(InventoryItemsMap &invItems);
 	ExtraDroppedItemList* GetDroppedItems();
 
-	double GetHeadingAngle(const TESObjectREFR* target) const;
+	double GetHeadingAngle(const TESObjectREFR* to) const;
 
 	static TESObjectREFR* Create(bool bTemp = false);
 
