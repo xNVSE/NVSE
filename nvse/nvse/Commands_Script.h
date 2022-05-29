@@ -245,6 +245,7 @@ DEFINE_COMMAND(CallWhile_OLD, "deprecated", 0, std::size(kParams_CallWhile_OLD),
 DEFINE_COMMAND(CallWhen_OLD, "deprecated", 0, std::size(kParams_CallWhile_OLD), kParams_CallWhile_OLD);
 
 DEFINE_CMD_ALT_EXP(CallAfterSeconds, CallAfter, "calls UDF after argument number of seconds", false, kNVSEParams_CallAfter);
+DEFINE_COMMAND_EXP(CallAfterFrames, "calls UDF after argument number of frame", false, kNVSEParams_CallAfter);
 DEFINE_CMD_ALT_EXP(CallForSeconds, CallFor, "calls UDF each frame for argument number of seconds", false, kNVSEParams_CallAfter);
 DEFINE_COMMAND_EXP(CallWhile, "calls UDF each frame while condition is met", false, kNVSEParams_CallWhile);
 DEFINE_COMMAND_EXP(CallWhen, "calls UDF once when a condition is met which is polled each frame", false, kNVSEParams_CallWhile);
@@ -372,6 +373,7 @@ extern std::list<CallWhileInfo> g_callWhileInfos;
 extern std::list<DelayedCallInfo> g_callAfterInfos;
 extern std::list<CallWhileInfo> g_callWhenInfos;
 extern std::list<DelayedCallWhileInfo> g_callWhilePerSecondsInfos;
+extern std::list<DelayedCallInfo> g_callAfterFramesInfos;
 
 void ClearDelayedCalls();
 
@@ -380,6 +382,7 @@ extern ICriticalSection g_callWhileInfosCS;
 extern ICriticalSection g_callAfterInfosCS;
 extern ICriticalSection g_callWhenInfosCS;
 extern ICriticalSection g_callWhilePerSecondsInfosCS;
+extern ICriticalSection g_callAfterFramesInfosCS;
 
 #endif
 

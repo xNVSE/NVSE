@@ -1848,6 +1848,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(SetEventHandlerAlt);
 	ADD_CMD_RET(CreateFormList, kRetnType_Form);
 	ADD_CMD(CallWhilePerSeconds);
+	ADD_CMD(CallAfterFrames);
 }
 
 namespace PluginAPI

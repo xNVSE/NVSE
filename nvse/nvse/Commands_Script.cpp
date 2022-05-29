@@ -1020,9 +1020,10 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 
 extern float g_gameSecondsPassed;
 
+template <bool PerSecondOrPerFrame>  //if false, then it's PerFrame
 bool ExtractCallAfterInfo(ExpressionEvaluator& eval, std::list<DelayedCallInfo>& infos, ICriticalSection& cs)
 {
-	auto const seconds = static_cast<float>(eval.Arg(0)->GetNumber());
+	auto const time = static_cast<float>(eval.Arg(0)->GetNumber());
 	Script* const callFunction = eval.Arg(1)->GetUserFunction();
 	if (!callFunction)
 		return false;
@@ -1050,7 +1051,15 @@ bool ExtractCallAfterInfo(ExpressionEvaluator& eval, std::list<DelayedCallInfo>&
 	}
 
 	ScopedLock lock(cs);
-	infos.emplace_back(callFunction, g_gameSecondsPassed + seconds, eval.m_thisObj, flags, std::move(args));
+	if constexpr (PerSecondOrPerFrame)
+	{
+		infos.emplace_back(callFunction, g_gameSecondsPassed + time, eval.m_thisObj, flags, std::move(args));
+	}
+	else
+	{
+		// time = frame count
+		infos.emplace_back(callFunction, time, eval.m_thisObj, flags, std::move(args));
+	}
 	return true;
 }
 
@@ -1076,13 +1085,27 @@ bool Cmd_CallAfterSeconds_Execute(COMMAND_ARGS)
 	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 		eval.ExtractArgs())
 	{
-		*result = ExtractCallAfterInfo(eval, g_callAfterInfos, g_callAfterInfosCS);
+		*result = ExtractCallAfterInfo<true>(eval, g_callAfterInfos, g_callAfterInfosCS);
 	}
 	return true;
 }
 bool Cmd_CallAfterSeconds_OLD_Execute(COMMAND_ARGS)
 {
 	*result = ExtractCallAfterInfo_OLD(PASS_COMMAND_ARGS, g_callAfterInfos, g_callAfterInfosCS);
+	return true;
+}
+
+std::list<DelayedCallInfo> g_callAfterFramesInfos;
+ICriticalSection g_callAfterFramesInfosCS;
+
+bool Cmd_CallAfterFrames_Execute(COMMAND_ARGS)
+{
+	*result = false; //bSuccess
+	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+		eval.ExtractArgs())
+	{
+		*result = ExtractCallAfterInfo<false>(eval, g_callAfterFramesInfos, g_callAfterFramesInfosCS);
+	}
 	return true;
 }
 
@@ -1095,7 +1118,7 @@ bool Cmd_CallForSeconds_Execute(COMMAND_ARGS)
 	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 		eval.ExtractArgs())
 	{
-		*result = ExtractCallAfterInfo(eval, g_callForInfos, g_callForInfosCS);
+		*result = ExtractCallAfterInfo<true>(eval, g_callForInfos, g_callForInfosCS);
 	}
 	return true;
 }

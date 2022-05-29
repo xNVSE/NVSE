@@ -89,6 +89,36 @@ void HandleDelayedCall(float timeDelta, bool isMenuMode)
 	}
 }
 
+void HandleCallAfterFramesScripts(bool isMenuMode)
+{
+	if (g_callAfterFramesInfos.empty())
+		return; // avoid lock overhead
+
+	ScopedLock lock(g_callAfterFramesInfosCS);
+
+	auto iter = g_callAfterFramesInfos.begin();
+	while (iter != g_callAfterFramesInfos.end())
+	{
+		auto& framesLeft = iter->time; //alias for clarification
+		if (!iter->RunInMenuMode() && isMenuMode)
+		{
+			++iter;
+			continue;
+		}
+
+		if (--framesLeft <= 0)
+		{
+			ArrayElementArgFunctionCaller caller(iter->script, iter->args, iter->thisObj);
+			UserFunctionManager::Call(std::move(caller));
+			iter = g_callAfterFramesInfos.erase(iter); // yes, this is valid: https://stackoverflow.com/a/3901380/6741772
+		}
+		else
+		{
+			++iter;
+		}
+	}
+}
+
 void HandleCallWhileScripts(bool isMenuMode)
 {
 	if (g_callWhileInfos.empty())
@@ -359,6 +389,8 @@ static void HandleMainLoopHook(void)
 	HandleCallForScripts(timeDelta, isMenuMode);
 
 	HandleCallWhilePerSecondsScripts(timeDelta, isMenuMode);
+
+	HandleCallAfterFramesScripts(isMenuMode);
 }
 
 #define DEBUG_PRINT_CHANNEL(idx)								\
