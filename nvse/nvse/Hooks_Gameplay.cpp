@@ -191,6 +191,50 @@ void HandleCallForScripts(float timeDelta, bool isMenuMode)
 	}
 }
 
+void HandleCallWhilePerSecondsScripts(float timeDelta, bool isMenuMode)
+{
+	if (g_callWhilePerSecondsInfos.empty())
+		return; // avoid lock overhead
+	ScopedLock lock(g_callWhilePerSecondsInfosCS);
+
+	auto iter = g_callWhilePerSecondsInfos.begin();
+	while (iter != g_callWhilePerSecondsInfos.end())
+	{
+		if ((isMenuMode && !iter->RunInMenuMode())
+			|| (!isMenuMode && !iter->RunInGameMode()))
+		{
+			iter->oldTime += timeDelta;
+			++iter;
+			continue;
+		}
+
+		if (g_gameSecondsPassed - iter->oldTime >= iter->interval)
+		{
+			ArrayElementArgFunctionCaller<SelfOwningArrayElement> conditionCaller(iter->condition);
+			if (iter->PassArgsToCondFunc())
+			{
+				conditionCaller.SetArgs(iter->args);
+			}
+
+			if (auto const conditionResult = UserFunctionManager::Call(std::move(conditionCaller));
+				conditionResult && conditionResult->GetBool())
+			{
+				ArrayElementArgFunctionCaller<SelfOwningArrayElement> scriptCaller(iter->callFunction, iter->thisObj);
+				if (iter->PassArgsToCallFunc())
+					scriptCaller.SetArgs(iter->args);
+				UserFunctionManager::Call(std::move(scriptCaller));
+				iter->oldTime = g_gameSecondsPassed;
+			}
+			else
+			{
+				iter = g_callWhilePerSecondsInfos.erase(iter);
+				continue;
+			}
+		}
+		++iter;
+	}
+}
+
 // boolean, used by ExtraDataList::IsExtraDefaultForContainer() to determine if ExtraOwnership should be treated
 // as 'non-default' for an inventory object. Is 0 in vanilla, set to 1 to make ownership NOT treated as default
 // Might be those addresses, used to decide if can be copied
@@ -314,7 +358,7 @@ static void HandleMainLoopHook(void)
 	// handle calls from cmd CallForSeconds
 	HandleCallForScripts(timeDelta, isMenuMode);
 
-
+	HandleCallWhilePerSecondsScripts(timeDelta, isMenuMode);
 }
 
 #define DEBUG_PRINT_CHANNEL(idx)								\

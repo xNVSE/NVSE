@@ -1193,12 +1193,62 @@ bool Cmd_CallWhen_OLD_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool ExtractDelayedCallWhileInfo(ExpressionEvaluator& eval, std::list<DelayedCallWhileInfo>& infos, ICriticalSection& cs)
+{
+	float interval = eval.Arg(0)->GetNumber();
+	Script* callFunction = eval.Arg(1)->GetUserFunction();
+	Script* conditionFunction = eval.Arg(2)->GetUserFunction();
+	if (!callFunction || !conditionFunction)
+		return false;
+
+	//Optional args
+	DelayedCallWhileInfo::eFlags flags = DelayedCallWhileInfo::kFlags_None;
+	CallArgs args{};
+
+	auto const numArgs = eval.NumArgs();
+	if (numArgs >= 4)
+	{
+		flags = static_cast<DelayedCallWhileInfo::eFlags>(eval.Arg(3)->GetNumber());
+		args.reserve(numArgs - 4);
+		for (UInt32 i = 4; i < numArgs; i++)
+		{
+			if (auto const tok = eval.Arg(i))
+			{
+				SelfOwningArrayElement elem;
+				BasicTokenToElem(tok, elem);
+				args.emplace_back(std::move(elem));
+			}
+			else [[unlikely]]
+				break;
+		}
+	}
+
+	ScopedLock lock(cs);
+	infos.emplace_back(interval, g_gameSecondsPassed, callFunction, conditionFunction, eval.m_thisObj, flags, std::move(args));
+	return true;
+}
+
+std::list<DelayedCallWhileInfo> g_callWhilePerSecondsInfos;
+ICriticalSection g_callWhilePerSecondsInfosCS;
+
+bool Cmd_CallWhilePerSeconds_Execute(COMMAND_ARGS)
+{
+	*result = false; //bSuccess
+	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+		eval.ExtractArgs())
+	{
+		*result = ExtractDelayedCallWhileInfo(eval, g_callWhilePerSecondsInfos, g_callWhilePerSecondsInfosCS);
+	}
+	return true;
+}
+
 void ClearDelayedCalls()
 {
 	g_callForInfos.clear();
 	g_callWhileInfos.clear();
 	g_callAfterInfos.clear();
 	g_callWhenInfos.clear();
+	g_callWhilePerSecondsInfos.clear();
 }
 
 void DecompileScriptToFolder(const std::string& scriptName, Script* script, const std::string& fileExtension, const std::string_view& modName)

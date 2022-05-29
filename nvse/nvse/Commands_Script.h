@@ -249,6 +249,36 @@ DEFINE_CMD_ALT_EXP(CallForSeconds, CallFor, "calls UDF each frame for argument n
 DEFINE_COMMAND_EXP(CallWhile, "calls UDF each frame while condition is met", false, kNVSEParams_CallWhile);
 DEFINE_COMMAND_EXP(CallWhen, "calls UDF once when a condition is met which is polled each frame", false, kNVSEParams_CallWhile);
 
+static ParamInfo kNVSEParams_DelayedCallWhile[19] =
+{
+	{	"seconds",	kNVSEParamType_Number,	0	},
+	{	"function",	kNVSEParamType_Form,	0	},
+	{	"condition",	kNVSEParamType_Form,0	},
+	{	"flags",		kNVSEParamType_Number,	1	},
+
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	{	"element",	kNVSEParamType_BasicType,	1	},
+	//#elems should not exceed max # of UDF args.
+};
+
+DEFINE_COMMAND_EXP(CallWhilePerSeconds, "calls UDF every couple of seconds, until the condition UDF returns false.", false, kNVSEParams_DelayedCallWhile);
+
+
 #if RUNTIME
 using CallArgs = std::vector<SelfOwningArrayElement>;
 
@@ -267,9 +297,7 @@ struct DelayedCallInfo
 	[[nodiscard]] bool RunInMenuMode() const { return flags & kFlag_RunInMenuMode; }
 
 	DelayedCallInfo(Script* script, float time, TESObjectREFR* thisObj, eFlags flags, CallArgs &&args = {})
-		: script(script),
-		  time(time),
-		  thisObj(thisObj),
+		: script(script), time(time), thisObj(thisObj),
 		  lambdaVariableContext(script), flags(flags),
 	      args(std::move(args))
 	{
@@ -300,13 +328,41 @@ struct CallWhileInfo
 	[[nodiscard]] bool RunInGameMode() const { return (flags & kFlag_DontRunInGameMode) == 0; }
 
 	CallWhileInfo(Script* callFunction, Script* condition, TESObjectREFR* thisObj, eFlags flags, CallArgs &&args = {})
-		: callFunction(callFunction),
-		  condition(condition),
-		  thisObj(thisObj),
-		  callFnLambdaCtx(callFunction),
-		  condFnLambdaCtx(condition),
-		  flags(flags),
+		: callFunction(callFunction), condition(condition), thisObj(thisObj),
+		  callFnLambdaCtx(callFunction), condFnLambdaCtx(condition), flags(flags),
 		  args(std::move(args))
+	{
+	}
+};
+
+struct DelayedCallWhileInfo
+{
+	float interval, oldTime;
+	Script* callFunction;
+	Script* condition;
+	TESObjectREFR* thisObj;
+	LambdaManager::LambdaVariableContext callFnLambdaCtx;
+	LambdaManager::LambdaVariableContext condFnLambdaCtx;
+	enum eFlags : UInt8 {
+		kFlags_None = 0,
+		kPassArgs_ToCallFunc = 1 << 0,
+		kPassArgs_ToConditionFunc = 1 << 1,
+
+		// Runs in both MenuMode and GameMode by default.
+		kFlag_DontRunInMenuMode = 1 << 2,
+		kFlag_DontRunInGameMode = 1 << 3,
+	} flags;
+	CallArgs args;
+
+	[[nodiscard]] bool PassArgsToCallFunc() const { return flags & kPassArgs_ToCallFunc; }
+	[[nodiscard]] bool PassArgsToCondFunc() const { return flags & kPassArgs_ToConditionFunc; }
+	[[nodiscard]] bool RunInMenuMode() const { return (flags & kFlag_DontRunInMenuMode) == 0; }
+	[[nodiscard]] bool RunInGameMode() const { return (flags & kFlag_DontRunInGameMode) == 0; }
+
+	DelayedCallWhileInfo(float interval, float oldTime, Script* callFunction, Script* condition, TESObjectREFR* thisObj, eFlags flags, CallArgs&& args = {})
+		: interval(interval), oldTime(oldTime), callFunction(callFunction), condition(condition),
+		thisObj(thisObj), callFnLambdaCtx(callFunction), condFnLambdaCtx(condition),
+		flags(flags), args(std::move(args))
 	{
 	}
 };
@@ -315,6 +371,7 @@ extern std::list<DelayedCallInfo> g_callForInfos;
 extern std::list<CallWhileInfo> g_callWhileInfos;
 extern std::list<DelayedCallInfo> g_callAfterInfos;
 extern std::list<CallWhileInfo> g_callWhenInfos;
+extern std::list<DelayedCallWhileInfo> g_callWhilePerSecondsInfos;
 
 void ClearDelayedCalls();
 
@@ -322,6 +379,7 @@ extern ICriticalSection g_callForInfosCS;
 extern ICriticalSection g_callWhileInfosCS;
 extern ICriticalSection g_callAfterInfosCS;
 extern ICriticalSection g_callWhenInfosCS;
+extern ICriticalSection g_callWhilePerSecondsInfosCS;
 
 #endif
 
