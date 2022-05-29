@@ -474,8 +474,13 @@ void PatchScriptCompile()
 
 	RemoveScriptDataLimit::WriteHook();
 
-	// Replace Console_PrintIfOpen with non-conditional print, in PrintScriptCompileError. 
-	WriteRelCall(0x5AEB36, (UInt32)Console_Print);
+	UInt32 bAlwaysPrintScriptCompilationError = false;
+	GetNVSEConfigOption_UInt32("RELEASE", "bAlwaysPrintScriptCompilationError", &bAlwaysPrintScriptCompilationError);
+	if (bAlwaysPrintScriptCompilationError)
+	{
+		// Replace Console_PrintIfOpen with non-conditional print, in PrintScriptCompileError. 
+		WriteRelCall(0x5AEB36, (UInt32)Console_Print);
+	}
 }
 
 #endif
