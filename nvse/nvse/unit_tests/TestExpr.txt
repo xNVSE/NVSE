@@ -50,6 +50,19 @@ begin Function { }
 	rTest = GSSunnySmiles  ; baseform
 	Assert (TestExpr (rTest.GetAV Health)) == 0
 
+	; Ensure variables don't get assigned to anything if expression failed.
+	iTest = 0
+	Assert (TestExpr iTest = (ar_list 1)[2]) == 0
+	assert (iTest == 0)
+	
+	iTest = 5
+	Assert (TestExpr iTest = (ar_list 1)[2]) == 0
+	assert (iTest == 5)
+	
+	iTest = 10
+	Assert (TestExpr (iTest = *(ar_list SunnyREF))) == 0
+	assert (iTest == 10)
+
 
 	print "Finished running xNVSE TestExpr unit tests."
 
