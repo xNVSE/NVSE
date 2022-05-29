@@ -166,6 +166,52 @@ __declspec(naked) void ExpressionEvalRunCommandHook()
 	}
 }
 
+void* g_heapManager = reinterpret_cast<void*>(0x11F6238);
+
+size_t Heap_MemorySize(void* memory)
+{
+	return ThisStdCall<size_t>(0xAA44C0, g_heapManager, memory);
+}
+
+namespace RemoveScriptDataLimit
+{
+	void __fastcall RemoveScriptDataSizeLimit(const ScriptLineBuffer* lineBuffer, ScriptBuffer* scriptBuffer)
+	{
+		const size_t dataSize = Heap_MemorySize(scriptBuffer->scriptData);
+		if (scriptBuffer->dataOffset + lineBuffer->dataOffset + 10 < dataSize)
+			return;
+		const size_t newMemSize = dataSize * 2;
+		void* newMem = FormHeap_Allocate(newMemSize);
+		memset(newMem, 0, newMemSize);
+		memcpy(newMem, scriptBuffer->scriptData, scriptBuffer->dataOffset);
+		FormHeap_Free(scriptBuffer->scriptData);
+		scriptBuffer->scriptData = static_cast<UInt8*>(newMem);
+	}
+
+	__declspec(naked) void Hook()
+	{
+		static UInt32 const skipReturn = 0x5B0FB4;
+		__asm
+		{
+			// edx already contains scriptBuffer
+			mov		ecx, [ebp + 0x10]  // ecx = lineBuffer
+			call	RemoveScriptDataSizeLimit
+
+			// No need to set up any registers.
+			jmp		skipReturn
+		}
+	}
+
+	// Remove script data size limit at runtime.
+	// Based off Kormakur's fix for GECK.
+	// https://github.com/lStewieAl/Geck-Extender/commit/57753e9c8bc6695c02a6b9a3a06e86fd16ea589d
+	void WriteHook()
+	{
+		WriteRelJump(0x5B0F68, UInt32(Hook));
+	}
+}
+
+
 void Hook_Script_Init()
 {
 	WriteRelJump(ExtractStringPatchAddr, (UInt32)&ExtractStringHook);
@@ -425,6 +471,8 @@ bool __fastcall ScriptCompileHook(void* compiler, void* _EDX, Script* script, Sc
 void PatchScriptCompile()
 {
 	WriteRelCall(0x5AEE9C, reinterpret_cast<UInt32>(ScriptCompileHook));
+
+	RemoveScriptDataLimit::WriteHook();
 
 	// Replace Console_PrintIfOpen with non-conditional print, in PrintScriptCompileError. 
 	WriteRelCall(0x5AEB36, (UInt32)Console_Print);
