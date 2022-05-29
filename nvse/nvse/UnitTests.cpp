@@ -35,7 +35,7 @@ namespace ScriptFunctionTests
 			}
 			else
 			{
-				Console_Print("Error in xNVSE unit test file %s: script failed to compile. Verify if it is too large.", 
+				Console_Print("Error in xNVSE unit test file %s: script failed to compile.", 
 					fileName.c_str());
 			}
 		}
