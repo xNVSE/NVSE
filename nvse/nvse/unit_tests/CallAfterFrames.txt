@@ -1,0 +1,17 @@
+begin Function { }
+
+	print "Started running xNVSE CallAfterFrames unit tests."
+
+	int iCount = 0
+	CallAfterFrames 2 ({} => assert (iCount += 1) == 2) 1
+	CallAfterFrames 1 ({} => assert (iCount += 1) == 1) 1
+	
+	
+	ref rFinalUDF = (begin Function{} 
+		assert (iCount += 1) == 3
+		print "Finished running xNVSE CallAfterFrames unit tests."
+	end)
+	
+	CallAfterFrames 3 rFinalUDF 1
+
+end
