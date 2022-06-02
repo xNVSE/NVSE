@@ -1,5 +1,8 @@
 begin Function { }
 
+	print "Started running xNVSE Event Handler Unit Tests."
+
+
 	; === Test NVSE event handler functions ===
 
 	let ref rOnHitUDF = (begin function { ref rFirst, ref rSecond }
@@ -468,9 +471,58 @@ begin Function { }
 
 	; Nested array filters are not currently supported...
 
+	print "Starting DispatchEventAlt / SetEventHandlerAlt unit tests with a User-Defined event."
+
+	iRan = 0
+	iArg_Expected = 1
+	fArg_Expected = 2.5
+	aArg_Expected = Ar_Map "key"::"test"
+	sArg_Expected = "test"
+	rFormArg_Expected = Player
+	rReferenceArg_Expected = SunnyREF
+	rBaseFormArg_Expected = GSSunnySmiles
+	ref rTestCustomEventUDF = (begin Function {int iArg, float fArg, array_var aArg, string_var sArg, ref rFormArg, ref rReferenceArg, ref rBaseFormArg }
+		assert (GetSelf == EasyPeteREF)
+		assert (iArg == iArg_Expected)
+		assert (fArg == fArg_Expected)
+		assert (aArg == aArg_Expected)
+		assert (sArg == sArg_Expected)
+		assert (rFormArg == rFormArg_Expected)
+		assert (rReferenceArg == rReferenceArg_Expected)
+		assert (rBaseFormArg == rBaseFormArg_Expected)
+		iRan += 1
+	end)
+
+	assert (SetEventHandlerAlt "nvseTestCustomEvent" rTestCustomEventUDF 4::"test")
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestCustomEvent" 1, 2.5, (Ar_Map "key"::"test"), "test", Player, SunnyREF, GSSunnySmiles)
+	assert (iRan == 1)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestCustomEvent" rTestCustomEventUDF 4::"test")
+
+	assert (SetEventHandlerAlt "nvseTestCustomEvent" rTestCustomEventUDF 4::"notAMatch")
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestCustomEvent" 1, 2.5, (Ar_Map "key"::"test"), "test", Player, SunnyREF, GSSunnySmiles)
+	assert (iRan == 0)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestCustomEvent" rTestCustomEventUDF 4::"notAMatch")
+
+	assert (SetEventHandlerAlt "nvseTestCustomEvent" rTestCustomEventUDF 3::(Ar_Map "key"::"test"))
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestCustomEvent" 1, 2.5, (Ar_Map "key"::"test"), "test", Player, SunnyREF, GSSunnySmiles)
+	assert (iRan == 1)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestCustomEvent" rTestCustomEventUDF 3::(Ar_Map "key"::"test"))
+
+	; Array-of-filters with multiple arrays
+	assert (SetEventHandlerAlt "nvseTestCustomEvent" rTestCustomEventUDF 3::((Ar_Map "key"::"test"), (Ar_Map "key"::"notAMatch"))
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestCustomEvent" 1, 2.5, (Ar_Map "key"::"test"), "test", Player, SunnyREF, GSSunnySmiles)
+	assert (iRan == 1)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestCustomEvent" rTestCustomEventUDF 3::((Ar_Map "key"::"test"), (Ar_Map "key"::"notAMatch"))
+
+
+	print "Finished DispatchEventAlt / SetEventHandlerAlt unit tests with a User-Defined event."
+
 	print "Finished running xNVSE Event Handler Unit Tests."
 
-	
 	; == Ensure LN events don't throw errors.
 	if IsPluginInstalled "JIP NVSE Plugin"
 		

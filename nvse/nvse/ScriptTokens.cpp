@@ -860,6 +860,25 @@ void* ScriptToken::GetAsVoidArg() const
 	return nullptr;
 }
 
+std::pair<void*, Script::VariableType> ScriptToken::GetAsVoidArgAndVarType() const
+{
+	if (CanConvertTo(kTokenType_Number))
+	{
+		auto num = static_cast<float>(GetNumber());
+		void* rawNum = *(void**)(&num);	//conversion: *((float*)&nthArgGetNumber();
+		return std::make_pair(rawNum, Script::VariableType::eVarType_Float);
+	}
+	if (CanConvertTo(kTokenType_String))
+		return std::make_pair(const_cast<char*>(GetString()), Script::VariableType::eVarType_String);
+	if (CanConvertTo(kTokenType_Form))
+		return std::make_pair(LookupFormByID(GetFormID()), Script::VariableType::eVarType_Ref);
+#if RUNTIME
+	if (CanConvertTo(kTokenType_Array))
+		return std::make_pair(reinterpret_cast<void*>(GetArrayID()), Script::VariableType::eVarType_Array);
+#endif
+	return std::make_pair(nullptr, Script::VariableType::eVarType_Invalid);
+}
+
 Operator *ScriptToken::GetOperator() const
 {
 	return type == kTokenType_Operator ? value.op : NULL;
