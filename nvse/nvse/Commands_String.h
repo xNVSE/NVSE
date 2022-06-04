@@ -113,7 +113,7 @@ DEFINE_CMD(ToLower, converts a character to lowercase, 0, kParams_OneInt);
 
 DEFINE_CMD(GetNthModName, returns the name of the nth active mod, 0, kParams_OneInt);
 
-DEFINE_CMD(GetName, returns the name of an object, 0, kParams_OneOptionalForm);
+DEFINE_CMD_ALT(GetName, WhatDoYouCallThisThing, returns the name of an object, false, 1, kParams_OneOptionalForm);
 
 DEFINE_CMD(GetStringGameSetting, returns the value of a string game setting, 0, kParams_OneString);
 
