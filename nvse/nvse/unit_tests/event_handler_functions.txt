@@ -118,6 +118,7 @@ begin Function { }
 	end)
 
 	assert (SetEventHandler "nvseTestEvent" rTestEventUDF_NoArgsPassed)
+	; Dispatching without specifying all args is risky, but this time it's allowed since no filters were set for the other values.
 	assert (DispatchEventAlt "nvseTestEvent" rTestEventUDF_NoArgsPassed)
 	assert (iRan == 1)
 	iRan = 0
@@ -142,13 +143,15 @@ begin Function { }
 	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF_NoArgsPassed 0::rNullRef)
 	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF_NoArgsPassed)) == 0
 
+	; Test int-type filter rounding the value.
 	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF_NoArgsPassed 1::0)
 	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF_NoArgsPassed)) == 1
 	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF_NoArgsPassed 0)) == 1
 	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF_NoArgsPassed 99)) == 0
 	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF_NoArgsPassed 0.5)) == 1
 	;
-	assert (DispatchEventAlt "nvseTestEvent" rTestEventUDF_NoArgsPassed)
+	; Dispatching without specifying all args is risky, but this time it's allowed since no filters were set for the other values.
+	assert (DispatchEventAlt "nvseTestEvent" rTestEventUDF_NoArgsPassed 0)
 	assert (iRan == 1)	
 	iRan = 0
 	;
@@ -473,7 +476,6 @@ begin Function { }
 
 	print "Starting DispatchEventAlt / SetEventHandlerAlt unit tests with a User-Defined event."
 
-	iRan = 0
 	iArg_Expected = 1
 	fArg_Expected = 2.5
 	aArg_Expected = Ar_Map "key"::"test"
@@ -492,6 +494,8 @@ begin Function { }
 		assert (rBaseFormArg == rBaseFormArg_Expected)
 		iRan += 1
 	end)
+
+	iRan = 0
 
 	assert (SetEventHandlerAlt "nvseTestCustomEvent" rTestCustomEventUDF 4::"test")
 	assert (EasyPeteREF.DispatchEventAlt "nvseTestCustomEvent" 1, 2.5, (Ar_Map "key"::"test"), "test", Player, SunnyREF, GSSunnySmiles)
@@ -512,11 +516,11 @@ begin Function { }
 	assert (RemoveEventHandler "nvseTestCustomEvent" rTestCustomEventUDF 3::(Ar_Map "key"::"test"))
 
 	; Array-of-filters with multiple arrays
-	assert (SetEventHandlerAlt "nvseTestCustomEvent" rTestCustomEventUDF 3::((Ar_Map "key"::"test"), (Ar_Map "key"::"notAMatch"))
+	assert (SetEventHandlerAlt "nvseTestCustomEvent" rTestCustomEventUDF 3::(Ar_List (Ar_Map "key"::"test"), (Ar_Map "key"::"notAMatch")))
 	assert (EasyPeteREF.DispatchEventAlt "nvseTestCustomEvent" 1, 2.5, (Ar_Map "key"::"test"), "test", Player, SunnyREF, GSSunnySmiles)
 	assert (iRan == 1)
 	iRan = 0
-	assert (RemoveEventHandler "nvseTestCustomEvent" rTestCustomEventUDF 3::((Ar_Map "key"::"test"), (Ar_Map "key"::"notAMatch"))
+	assert (RemoveEventHandler "nvseTestCustomEvent" rTestCustomEventUDF 3::(Ar_List (Ar_Map "key"::"test"), (Ar_Map "key"::"notAMatch")))
 
 
 	print "Finished DispatchEventAlt / SetEventHandlerAlt unit tests with a User-Defined event."

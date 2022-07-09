@@ -14,6 +14,7 @@
 #include "FunctionScripts.h"
 #include "Hooks_Gameplay.h"
 #include <stdexcept>
+#include <array>
 
 class Script;
 class TESForm;
@@ -145,7 +146,7 @@ namespace EventManager
 
 	using RawArgStack = StackVector<void*, kMaxUdfParams>;
 	using ArgTypeStack = StackVector<EventArgType, kMaxUdfParams>;
-	static constexpr auto numMaxFilters = kMaxUdfParams;
+	static constexpr auto kNumMaxFilters = kMaxUdfParams;
 
 	// Represents an event handler registered for an event.
 	class EventCallback
@@ -202,6 +203,14 @@ namespace EventManager
 
 		[[nodiscard]] bool DoDeprecatedFiltersMatch(const RawArgStack& args, const ArgTypeStack* argTypes = nullptr) const;
 
+		// 1. Must have the same # of Args and ArgTypes.
+		// 2. A filter for User-Defined Events will automatically fail to match if that filter's index is > # of args dispatched.
+		// ^ While we could assume that a 0 was dispatched for that arg, we don't know the type of that null value.
+		// ^^ We would encounter an ambiguity while comparing this non-typed null value to an array filter containing 0;
+		//	  is that null value an int, meaning it should match since the array contains 0?
+		//	  Or is it a null array, meaning it should not match with the valid (non-null) array?
+		// ^^^ Thus, to avoid this situation, I opted to simply not allow filtering values that aren't dispatched.
+		// -Demorome
 		template<bool ExtractIntTypeAsFloat>
 		[[nodiscard]] bool DoNewFiltersMatch(TESObjectREFR* thisObj, const RawArgStack& args, const ArgTypeStack& argTypes) const;
 
@@ -372,7 +381,7 @@ namespace EventManager
 
 	// eParamType_Anything is treated as "use default param type" (usually for a User-Defined Event).
 	template<bool ExtractIntTypeAsFloat, bool IsParamExistingFilter>
-	bool DoesFilterMatch(const ArrayElement& sourceFilter, void* param, EventArgType argType)
+	bool DoesFilterMatch(const ArrayElement& sourceFilter, void* arg, EventArgType argType)
 	{
 		switch (sourceFilter.DataType()) {
 		case kDataType_Numeric:
@@ -388,7 +397,7 @@ namespace EventManager
 			{
 				// this function could be being called by a function, where even ints are passed as floats.
 				// Alternatively, it could be called by some internal function that got the param from an ArrayElement 
-				inputNumber = *reinterpret_cast<float*>(&param);
+				inputNumber = *reinterpret_cast<float*>(&arg);
 				if (argType == EventArgType::eParamType_Int)  // mostly for if IsParamExistingFilter
 					inputNumber = floor(inputNumber);
 			}
@@ -396,8 +405,8 @@ namespace EventManager
 			{
 				// this function is being called internally, via a va_arg-using function, so expect ints to be packed like ints.
 				inputNumber = (argType == EventArgType::eParamType_Int)
-					? static_cast<float>(*reinterpret_cast<UInt32*>(&param))
-					: *reinterpret_cast<float*>(&param);
+					? static_cast<float>(*reinterpret_cast<UInt32*>(&arg))
+					: *reinterpret_cast<float*>(&arg);
 			}
 			
 			if (!FloatEqual(inputNumber, static_cast<float>(filterNumber)))
@@ -410,7 +419,7 @@ namespace EventManager
 			sourceFilter.GetAsFormID(&filterFormId);
 
 			// Allow matching a null form filter with a null input.
-			auto* inputForm = static_cast<TESForm*>(param);
+			auto* inputForm = static_cast<TESForm*>(arg);
 			auto* filterForm = LookupFormByID(filterFormId);
 			bool const expectReference = argType != EventArgType::eParamType_BaseForm;
 
@@ -438,7 +447,7 @@ namespace EventManager
 		{
 			const char* filterStr{};
 			sourceFilter.GetAsString(&filterStr);
-			const auto inputStr = static_cast<const char*>(param);
+			const auto inputStr = static_cast<const char*>(arg);
 			if (inputStr == filterStr)
 				return true;
 			if (!filterStr || !inputStr || StrCompare(filterStr, inputStr) != 0)
@@ -449,7 +458,7 @@ namespace EventManager
 		{
 			ArrayID filterArrayId{};
 			sourceFilter.GetAsArray(&filterArrayId);
-			const auto inputArrayId = *reinterpret_cast<ArrayID*>(&param);
+			const auto inputArrayId = *reinterpret_cast<ArrayID*>(&arg);
 			if (!inputArrayId)
 				return false;
 			const auto inputArray = g_ArrayMap.Get(inputArrayId);
@@ -478,8 +487,7 @@ namespace EventManager
 			return false;
 		}
 		// If array of filters is (string)map, then ignore the keys.
-		for (auto iter = arrayFilters->Begin();
-			!iter.End(); ++iter)
+		for (auto iter = arrayFilters->Begin(); !iter.End(); ++iter)
 		{
 			auto const& elem = *iter.second();
 			if (ParamTypeToVarType(paramType) != DataTypeToVarType(elem.DataType()) 
@@ -491,38 +499,57 @@ namespace EventManager
 				return true;
 		}
 		return false;
-	} 
+	}
 
 	template<bool ExtractIntTypeAsFloat>
 	bool EventCallback::DoNewFiltersMatch(TESObjectREFR* thisObj, const RawArgStack& args, const ArgTypeStack& argTypes) const
 	{
-		//TODO: report errors
-		auto const numParams = args->size();
-		if (numParams != argTypes->size())
+		auto const numParams = argTypes->size();
+		if (args->size() != numParams) [[unlikely]]
+		{
+			//Can only occur with the test event; trying to dispatch the event without passing all the necessary args (since the ArgTypes are known beforehand).
+			//todo: report error
 			return false;
+		}
+
+#if 0	// Commented out so that errors with having a filter for an arg that isn't explicitly dispatched are reported.
+		if (!numParams) //no args to filter
+			return true;
+#endif
 
 		for (auto& [index, filter] : filters)
 		{
 			bool const isCallingRefFilter = index == 0;
 
 			if (index > numParams)
-				return false; // insufficient params to match that filter.
+			{
+				// insufficient params to match that filter (see comment #2 at the function declaration).
+				//todo: report error
+				return false; 
+			}
 
-			void* param = isCallingRefFilter ? thisObj : args->at(index - 1);
-
-			//TODO: add support for array-of-filters
+			void* arg = isCallingRefFilter ? thisObj : args->at(index - 1);
 			auto const argType = isCallingRefFilter ? EventArgType::eParamType_Reference : argTypes->at(index - 1);
 			const auto filterVarType = DataTypeToVarType(filter.DataType());
 			const auto paramVarType = ParamTypeToVarType(argType);
 
-			if (filterVarType != paramVarType) //if true, can assume that the filterVar's type is Array (if it isn't, type mismatch should have been reported in SetEventHandler).
+			//TODO: Support array-of-filters that contains arrays
+			if (filterVarType != paramVarType) 
 			{
-				// assume elements of array are filters
-				if (!DoesParamMatchFiltersInArray<ExtractIntTypeAsFloat, false>(filter, argType, param, index))
+				// Check if it's an array-of-filters containing non-arrays.
+				if (filterVarType != Script::eVarType_Array)
+				{
+					// Should be impossible, unless types weren't checked against known types, or for User-Defined Events, user error.
+					//todo: report error
+					return false;
+				}
+
+				// elements of array are filters
+				if (!DoesParamMatchFiltersInArray<ExtractIntTypeAsFloat, false>(filter, argType, arg, index))
 					return false;
 				continue;
 			}
-			if (!DoesFilterMatch<ExtractIntTypeAsFloat, false>(filter, param, argType))
+			if (!DoesFilterMatch<ExtractIntTypeAsFloat, false>(filter, arg, argType))
 				return false;
 		}
 		return true;
@@ -549,7 +576,7 @@ namespace EventManager
 		DispatchCallback resultCallback, void* anyData, bool deferIfOutsideMainThread, PostDispatchCallback postCallback)
 	{
 		if (eventInfo.IsUserDefined()) [[unlikely]]
-			throw std::logic_error("DispatchInternalEventRaw was called on an user-defined event.");
+			throw std::logic_error("DispatchInternalEventRaw was called on a user-defined event.");
 
 		ArgTypeStack argTypes = eventInfo.GetArgTypesAsStackVector();
 		return DispatchEventRaw<ExtractIntTypeAsFloat>(eventInfo, thisObj, args, argTypes,

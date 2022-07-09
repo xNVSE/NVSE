@@ -1396,8 +1396,11 @@ DispatchReturn vDispatchInternalEvent(const char* eventName, DispatchCallback re
 	EventInfo& eventInfo = *eventPtr;
 
 #if _DEBUG //shouldn't need to be checked normally; RegisterEvent verifies numParams.
-	if (eventInfo.numParams > numMaxFilters)
-		return DispatchReturn::kRetn_GenericError;
+	if (eventInfo.numParams > kNumMaxFilters)
+	{
+		throw std::logic_error("NumParams is greater than kNumMaxFilters; how did we get here?.");
+		//return DispatchReturn::kRetn_GenericError;
+	}
 #endif
 
 	RawArgStack params;
@@ -1601,7 +1604,7 @@ void Init()
 bool RegisterEventEx(const char* name, const char* alias, bool isInternal, UInt8 numParams, EventArgType* paramTypes,
                      UInt32 eventMask, EventHookInstaller* hookInstaller, ExtendedEventFlags flags)
 {
-	if (numParams > numMaxFilters) [[unlikely]]
+	if (numParams > kNumMaxFilters) [[unlikely]]
 		return false;
 	if (!name) [[unlikely]]
 		return false;

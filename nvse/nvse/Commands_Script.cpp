@@ -780,6 +780,22 @@ bool Cmd_DispatchEvent_Execute(COMMAND_ARGS)
 	return true;
 }
 
+auto ExtractArgsAndArgTypes(const ExpressionEvaluator &eval, UInt8 argStart)
+{
+	EventManager::RawArgStack args;
+	EventManager::ArgTypeStack argTypes;
+	auto const numArgs = eval.NumArgs();
+	for (size_t i = argStart; i < numArgs; i++)
+	{
+		auto const [rawArg, varType] = eval.Arg(i)->GetAsVoidArgAndVarType();
+		auto const argType = EventManager::VarTypeToParamType(varType);
+		args->push_back(rawArg);
+		argTypes->push_back(argType);
+	}
+	return std::make_pair(args, argTypes);
+}
+
+
 bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
@@ -808,21 +824,8 @@ bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 		return true;
 	}
 
-	EventManager::RawArgStack args;
-	EventManager::ArgTypeStack argTypes;
-	auto const numArgs = eval.NumArgs();
-	for (size_t i = 1; i < numArgs; i++)
-	{
-		auto const [rawArg, varType] = eval.Arg(i)->GetAsVoidArgAndVarType();
-		auto const argType = EventManager::VarTypeToParamType(varType);
-		if (argType == EventManager::EventArgType::eParamType_Invalid) [[unlikely]]
-		{
-			eval.Error("For event %s, encountered an invalid parameter while dispatching.", eventName);
-			return true;
-		}
-		args->push_back(rawArg);
-		argTypes->push_back(argType);
-	}
+	auto [args, argTypes] = ExtractArgsAndArgTypes(eval, 1);
+	//For the NVSE Test event, scripter could be passing the wrong argTypes (and wrong # of args), but I won't bother checking.
 
 	// allow (risky) dispatching outside main thread
 	*result = EventManager::DispatchUserDefinedEventRaw<true>(eventInfo, thisObj, args, argTypes);
@@ -854,20 +857,7 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 		}
 	}
 
-	EventManager::RawArgStack argsToFilter{};
-	EventManager::ArgTypeStack argTypes{};
-	for (size_t i = 2; i < numArgs; i++)
-	{
-		auto const [rawArg, varType] = eval.Arg(i)->GetAsVoidArgAndVarType();
-		auto const argType = EventManager::VarTypeToParamType(varType);
-		if (argType == EventManager::EventArgType::eParamType_Invalid) [[unlikely]]
-		{
-			eval.Error("Encountered an invalid parameter.");
-			return true;
-		}
-		argsToFilter->push_back(rawArg);
-		argTypes->push_back(argType);
-	}
+	auto [argsToFilter, argTypes] = ExtractArgsAndArgTypes(eval, 2);
 
 	Console_Print("DumpEventHandlers >> Beginning dump.");
 
@@ -949,20 +939,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 		}
 	}
 
-	EventManager::RawArgStack argsToFilter{};
-	EventManager::ArgTypeStack argTypes{};
-	for (size_t i = 2; i < numArgs; i++)
-	{
-		auto const [rawArg, varType] = eval.Arg(i)->GetAsVoidArgAndVarType();
-		auto const argType = EventManager::VarTypeToParamType(varType);
-		if (argType == EventManager::EventArgType::eParamType_Invalid) [[unlikely]]
-		{
-			eval.Error("Encountered an invalid parameter.");
-			return true;
-		}
-		argsToFilter->push_back(rawArg);
-		argTypes->push_back(argType);
-	}
+	auto [argsToFilter, argTypes] = ExtractArgsAndArgTypes(eval, 2);
 
 	// Dumps all (matching) callbacks of the EventInfo
 	auto const GetEventInfoHandlers = [=, &argsToFilter, &argTypes](const EventManager::EventInfo& info) -> ArrayVar*
