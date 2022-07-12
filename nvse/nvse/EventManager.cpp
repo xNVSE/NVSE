@@ -676,19 +676,20 @@ DeferredRemoveList s_deferredRemoveList;
 
 enum class RefState {NotSet, Invalid, Valid};
 
+
 // Deprecated
-void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1)
+void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1, ArgTypeStack const &argTypes, ExpressionEvaluator* eval = nullptr)
 {
 	// For filtering via new filters
 	RawArgStack args{};
-	args->push_back(arg0);
-	args->push_back(arg1);
 
-	ArgTypeStack const argTypes = eventInfo.GetArgTypesAsStackVector();
-	if (argTypes->empty() && arg0)
-		throw std::logic_error("Trying to call HandleEvent with arg0 for an event with no args.");
-	if (argTypes->size() < 2 && arg1)
-		throw std::logic_error("Trying to call HandleEvent with arg1 for an event with less than 2 args.");
+	//Ensure Args and ArgTypes are equal size.
+	if (!argTypes->empty())
+	{
+		args->push_back(arg0);
+		if (argTypes->size() >= 2)
+			args->push_back(arg1);
+	}
 
 	auto isArg0Valid = RefState::NotSet;
 	for (auto& iter : eventInfo.callbacks)
@@ -710,7 +711,7 @@ void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1)
 		if (callback.object && (callback.object != arg1))
 			continue;
 
-		if (!callback.DoNewFiltersMatch<false>(nullptr, args, argTypes))
+		if (!callback.DoNewFiltersMatch<false>(nullptr, args, argTypes, eventInfo, eval))
 			continue;
 
 		if (GetCurrentThreadId() != g_mainThreadID)
@@ -725,6 +726,18 @@ void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1)
 	}
 }
 
+void HandleInternalEvent(EventInfo& eventInfo, void* arg0, void* arg1)
+{
+	HandleEvent(eventInfo, arg0, arg1, eventInfo.GetArgTypesAsStackVector());
+}
+
+void HandleUserDefinedEvent(EventInfo& eventInfo, void* arg0, void* arg1, ExpressionEvaluator *eval)
+{
+	ArgTypeStack argTypes;
+	argTypes->push_back(EventArgType::eParamType_Array);
+	HandleEvent(eventInfo, arg0, arg1, argTypes, eval);
+}
+
 // Deprecated in favor of EventManager::DispatchEvent
 void __stdcall HandleEvent(eEventID id, void* arg0, void* arg1)
 {
@@ -732,7 +745,7 @@ void __stdcall HandleEvent(eEventID id, void* arg0, void* arg1)
 	EventInfo* eventInfo = s_internalEventInfos[id]; //assume ID is valid
 	if (eventInfo->callbacks.empty()) 
 		return;
-	HandleEvent(*eventInfo, arg0, arg1);
+	HandleInternalEvent(*eventInfo, arg0, arg1);
 }
 
 ////////////////
@@ -838,6 +851,75 @@ ArgTypeStack EventInfo::GetArgTypesAsStackVector() const
 		argTypes->push_back(paramTypes[i]);
 	}
 	return argTypes;
+}
+
+bool EventInfo::ValidateDispatchedArgTypes(const ArgTypeStack& argTypes, ExpressionEvaluator* eval) const
+{
+	if (this->IsUserDefined())
+		return true;  // We have insufficient information to validate.
+
+	if (argTypes->size() != this->numParams)
+	{
+		ShowRuntimeScriptError(nullptr, eval, "While validating (pseudo?)-dispatched args for event %s, # of expected args (%u) != # of args passed (%u)",
+			this->evName, this->numParams, argTypes->size());
+		return false;
+	}
+
+	auto const ReportTypeMismatch = [eval, this](EventArgType expected, EventArgType received)
+	{
+		ShowRuntimeScriptError(nullptr, eval, "While validating (pseudo?)-dispatched args for event %s, encountered invalid ArgType #%u (expected %s).",
+			this->evName, received, DataTypeToString(ParamTypeToDataType(expected)));
+	};
+
+	for (UInt8 i = 0; auto const argType : *argTypes)
+	{
+		// Check if the basic argType (extracted from script function call) respects the expected type.
+		switch (auto const expected = this->paramTypes[i])
+		{
+		case EventArgType::eParamType_Reference:
+		case EventArgType::eParamType_AnyForm:
+		case EventArgType::eParamType_BaseForm:
+			if (argType != EventArgType::eParamType_AnyForm)
+			{
+				ReportTypeMismatch(expected, argType);
+				return false;
+			}
+			break;
+
+		case EventArgType::eParamType_Array:
+			if (argType != EventArgType::eParamType_Array)
+			{
+				ReportTypeMismatch(expected, argType);
+				return false;
+			}
+			break;
+
+		case EventArgType::eParamType_Int:
+		case EventArgType::eParamType_Float:
+			if (argType != EventArgType::eParamType_Float)
+			{
+				ReportTypeMismatch(expected, argType);
+				return false;
+			}
+			break;
+
+		case EventArgType::eParamType_String:
+			if (argType != EventArgType::eParamType_String)
+			{
+				ReportTypeMismatch(expected, argType);
+				return false;
+			}
+			break;
+
+		case EventArgType::eParamType_Invalid:
+		default:
+			ShowRuntimeScriptError(nullptr, eval, "While validating (pseudo?)-dispatched args for event %s, encountered invalid ArgType.",
+				this->evName);
+			return false;
+		}
+		i++;
+	}
+	return true;
 }
 
 DeferredRemoveCallback::~DeferredRemoveCallback()
@@ -1099,28 +1181,34 @@ bool DoesFormMatchFilter(TESForm* inputForm, TESForm* filter, bool expectReferen
 	return false;
 }
 
-// argTypes should only be null for Plugin-Defined Events.
-// For plugin-defined events, filters are already checked during SetEventHandler.
-bool EventCallback::DoDeprecatedFiltersMatch(const RawArgStack& args, const ArgTypeStack* argTypes) const
+// ArgTypes should only be null for Plugin-Defined Events, since filters are already checked during SetEventHandler.
+// If not null, then check if filters are valid (for User-Defined Events).
+bool EventCallback::DoDeprecatedFiltersMatch(const RawArgStack& args, const ArgTypeStack* argTypes, const EventInfo& eventInfo, ExpressionEvaluator* eval) const
 {
 	auto const numParams = args->size();
-	//TODO: report errors
 	if (argTypes && numParams != (*argTypes)->size())
+	{
+		ShowRuntimeScriptError(this->TryGetScript(), eval, "While checking if first/second filters match for event %s, there was a different # of ArgTypes vs. Args", 
+			eventInfo.evName);
 		return false;
+	}
 
 	// old filter system
 	if (source)
 	{
 		if (argTypes)
 		{
+			// Check if filters are valid, given what we now know about what args are dispatched for this event.
 			if (!numParams)
 			{
-				//TODO: report error about trying to filter an event that did not dispatch anything.
+				ShowRuntimeScriptError(this->TryGetScript(), eval, "While checking if first/second filters match for User-Defined event %s, saw a filter for an event that did not dispatch anything.", 
+					eventInfo.evName);
 				return false;
 			}
 			if (!IsParamForm((*argTypes)->at(0)))  // Shouldn't encounter param type "Anything" here.
 			{
-				//TODO: report error
+				ShowRuntimeScriptError(this->TryGetScript(), eval, "While checking if first/second filters match for User-Defined event %s, saw a form filter for 'first' arg when a non-form was dispatched.",
+					eventInfo.evName);
 				return false;
 			}
 		}
@@ -1133,15 +1221,17 @@ bool EventCallback::DoDeprecatedFiltersMatch(const RawArgStack& args, const ArgT
 	{
 		if (argTypes)
 		{
+			// Check if filters are valid, given what we now know about what args are dispatched for this event.
 			if (numParams < 2)
 			{
-				//TODO: report error about trying to filter an event that did not dispatch a 2nd arg.
+				ShowRuntimeScriptError(this->TryGetScript(), eval, "While checking if first/second filters match for User-Defined event %s, saw a filter for 'second' arg when no 2nd arg was dispatched.",
+					eventInfo.evName);
 				return false;
 			}
-
 			if (!IsParamForm((*argTypes)->at(0)))  // Shouldn't encounter param type "Anything" here.
 			{
-				//TODO: report error
+				ShowRuntimeScriptError(this->TryGetScript(), eval, "While checking if first/second filters match for User-Defined event %s, saw a form filter for 'second' arg when a non-form was dispatched.",
+					eventInfo.evName);
 				return false;
 			}
 		}
@@ -1459,14 +1549,15 @@ DispatchReturn DispatchInternalEventAltThreadSafe(const char* eventName, Dispatc
 	return result;
 }
 
-bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 argsArrayId, const char* senderName)
+bool DispatchUserDefinedEvent(const char* eventName, Script* sender, UInt32 argsArrayId, const char* senderName, 
+	ExpressionEvaluator* eval)
 {
 	ScopedLock lock(s_criticalSection);
 
 	// does an EventInfo entry already exist for this event?
 	const auto eventPtr = TryGetEventInfoForName(eventName);
 	if (!eventPtr)
-		return true; //don't signal an error, it just means no one has registered for this event yet.
+		return true; //don't signal an error, it just means no handlers are registered for this event yet.
 
 	EventInfo& eventInfo = *eventPtr;
 	if (!eventInfo.IsUserDefined())
@@ -1482,7 +1573,7 @@ bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 arg
 	}
 	else
 	{
-		arr = g_ArrayMap.Create (kDataType_String, false, sender->GetModIndex ());
+		arr = g_ArrayMap.Create(kDataType_String, false, sender->GetModIndex());
 		argsArrayId = arr->ID();
 	}
 
@@ -1491,7 +1582,7 @@ bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 arg
 	if (senderName == nullptr)
 	{
 		if (sender)
-			senderName = DataHandler::Get()->GetNthModName (sender->GetModIndex ());
+			senderName = DataHandler::Get()->GetNthModName(sender->GetModIndex());
 		else
 			senderName = "NVSE";
 	}
@@ -1499,7 +1590,7 @@ bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 arg
 	arr->SetElementString("eventSender", senderName);
 
 	// dispatch
-	HandleEvent(eventInfo, (void*)argsArrayId, nullptr);
+	HandleUserDefinedEvent(eventInfo, (void*)argsArrayId, nullptr, eval);
 	return true;
 }
 
@@ -1666,9 +1757,7 @@ bool EventHandlerExist(const char* ev, const EventCallback& handler)
 		for (auto i = range.first; i != range.second; ++i)
 		{
 			if (i->second.EqualFilters(handler)) 
-			{
 				return true;
-			}
 		}
 	}
 	return false;
