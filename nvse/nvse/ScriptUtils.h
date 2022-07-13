@@ -415,7 +415,11 @@ public:
 	ParamParenthResult ParseParentheses(ParamInfo* paramInfo, UInt32 paramIndex);
 };
 
-void ShowRuntimeError(Script* script, const char* fmt, ...);
+// If eval is null, will call ShowRuntimeError().
+// Otherwise reports the error via eval.Error().
+// Less efficient, but easier to write.
+void ShowRuntimeScriptError(Script* script, ExpressionEvaluator* eval, const char* fmt, ...);
+
 bool PrecompileScript(ScriptBuffer* buf);
 
 // NVSE analogue for Cmd_Default_Parse, accepts expressions as args

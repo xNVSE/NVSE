@@ -776,9 +776,25 @@ bool Cmd_DispatchEvent_Execute(COMMAND_ARGS)
 			senderName = eval.Arg(2)->GetString();
 	}
 
-	*result = EventManager::DispatchUserDefinedEvent(eventName, scriptObj, argsArrayId, senderName);
+	*result = EventManager::DispatchUserDefinedEvent(eventName, scriptObj, argsArrayId, senderName, &eval);
 	return true;
 }
+
+auto ExtractArgsAndArgTypes(const ExpressionEvaluator &eval, UInt8 argStart)
+{
+	EventManager::RawArgStack args;
+	EventManager::ArgTypeStack argTypes;
+	auto const numArgs = eval.NumArgs();
+	for (size_t i = argStart; i < numArgs; i++)
+	{
+		auto const [rawArg, varType] = eval.Arg(i)->GetAsVoidArgAndVarType();
+		auto const argType = EventManager::VarTypeToParamType(varType);
+		args->push_back(rawArg);
+		argTypes->push_back(argType);
+	}
+	return std::make_pair(args, argTypes);
+}
+
 
 bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 {
@@ -795,28 +811,30 @@ bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 	auto const eventInfoPtr = EventManager::TryGetEventInfoForName(eventName);
 	if (!eventInfoPtr)
 	{
-		*result = 1;	// assume the event may not have any handlers Set.
+		*result = 1; // assume the event may not have any handlers Set.
 		// Sucks we can't warn users about having a potentially invalid eventName, though.
 		return true;
 	}
 
 	auto& eventInfo = *eventInfoPtr;
 	// Special case for TestEvent, to trigger the event in a script for runtime tests.
-	if (!eventInfo.IsUserDefined() && StrCompare(eventName, "nvsetestevent") != 0) [[unlikely]]
+	if (!eventInfo.IsUserDefined() && !eventInfo.IsTestEvent()) [[unlikely]]
 	{
+		eval.Error("Event %s is internally defined; only user-defined events can be dispatched with this function.", eventName);
 		return true;
 	}
 
-	EventManager::ArgStack params;
-	auto const numArgs = eval.NumArgs();
-	for (size_t i = 1; i < numArgs; i++)
+	auto [args, argTypes] = ExtractArgsAndArgTypes(eval, 1);
+
+	// For the NVSE Test event, scripter could be passing the wrong argTypes (or wrong # of args)
+	if (!eventInfo.ValidateDispatchedArgTypes(argTypes, &eval))
 	{
-		auto const arg = eval.Arg(i)->GetAsVoidArg();
-		params->push_back(arg);
+		eval.Error("Caught attempt to dispatch the NVSE Test Event with invalid args.");
+		return true;
 	}
 
 	// allow (risky) dispatching outside main thread
-	*result = EventManager::DispatchEventRaw<true>(thisObj, eventInfo, params, false, nullptr);
+	*result = EventManager::DispatchUserDefinedEventRaw<true>(eventInfo, thisObj, args, argTypes, &eval);
 	return true;
 }
 
@@ -832,7 +850,7 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 	if (numArgs >= 1)
 	{
 		if (const char* eventName = eval.Arg(0)->GetString();
-			eventName && eventName[0])
+			eventName && eventName[0]) //can pass null string to avoid filtering by eventName
 		{
 			eventInfoPtr = EventManager::TryGetEventInfoForName(eventName);
 			if (!eventInfoPtr) //filtering by invalid eventName
@@ -845,19 +863,18 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 		}
 	}
 
-	EventManager::ArgStack argsToFilter{};
-	for (size_t i = 2; i < numArgs; i++)
-	{
-		auto const arg = eval.Arg(i)->GetAsVoidArg();
-		argsToFilter->push_back(arg);
-	}
+	auto [argsToFilter, argTypes] = ExtractArgsAndArgTypes(eval, 2);
 
 	Console_Print("DumpEventHandlers >> Beginning dump.");
 
 	// Dumps all (matching) callbacks of the EventInfo
-	auto const DumpEventInfo = [&argsToFilter, script, thisObj](const EventManager::EventInfo &info)
+	auto const DumpEventInfo = [&argsToFilter, &argTypes, &eval, script, thisObj](const EventManager::EventInfo &info)
 	{
 		Console_Print("== Dumping for event %s ==", info.evName);
+
+		if (!argTypes->empty() && !info.ValidateDispatchedArgTypes(argTypes, &eval))
+			return;
+		auto const accurateArgTypes = info.IsUserDefined() ? argTypes : info.GetArgTypesAsStackVector();
 
 		if (script)
 		{
@@ -866,7 +883,7 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 			{
 				auto const& eventCallback = i->second;
 				if (!eventCallback.IsRemoved() && (argsToFilter->empty() ||
-					EventManager::DoNewFiltersMatch<true>(thisObj, info, eventCallback, argsToFilter)))
+					eventCallback.DoNewFiltersMatch<true>(thisObj, argsToFilter, accurateArgTypes, info, &eval)))
 				{
 					std::string toPrint = FormatString(">> Handler: %s, filters: %s", eventCallback.GetCallbackFuncAsStr().c_str(),
 						eventCallback.GetFiltersAsStr().c_str());
@@ -879,7 +896,7 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 			for (auto const &[key, eventCallback] : info.callbacks)
 			{
 				if (!eventCallback.IsRemoved() && (argsToFilter->empty()
-					|| EventManager::DoNewFiltersMatch<true>(thisObj, info, eventCallback, argsToFilter)))
+					|| eventCallback.DoNewFiltersMatch<true>(thisObj, argsToFilter, accurateArgTypes, info, &eval)))
 				{
 					std::string toPrint = FormatString(">> Handler: %s, filters: %s", eventCallback.GetCallbackFuncAsStr().c_str(),
 						eventCallback.GetFiltersAsStr().c_str());
@@ -889,8 +906,14 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 		}
 	};
 
-	if (!eventInfoPtr)
+	if (!eventInfoPtr)  // no eventName filter
 	{
+		if (!argsToFilter->empty()) //if there are pseudo-args...
+		{
+			eval.Error("Args were passed to get filtered, but no eventName was passed; halting the function to prevent potential error message spam due to passing invalidly typed args for some events.");
+			return true;
+		}
+
 		// loop through all eventInfo callbacks, filtering by script + filters
 		for (auto const &eventInfo : EventManager::s_eventInfos)
 		{
@@ -919,7 +942,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 	if (numArgs >= 1)
 	{
 		if (const char* eventName = eval.Arg(0)->GetString();
-			eventName && eventName[0])
+			eventName && eventName[0]) //can pass null string to avoid filtering by eventName
 		{
 			eventInfoPtr = EventManager::TryGetEventInfoForName(eventName);
 			if (!eventInfoPtr)
@@ -932,15 +955,10 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 		}
 	}
 
-	EventManager::ArgStack argsToFilter{};
-	for (size_t i = 2; i < numArgs; i++)
-	{
-		auto const arg = eval.Arg(i)->GetAsVoidArg(); //numeric args will always be packed as floats
-		argsToFilter->push_back(arg);
-	}
+	auto [argsToFilter, argTypes] = ExtractArgsAndArgTypes(eval, 2);
 
 	// Dumps all (matching) callbacks of the EventInfo
-	auto const GetEventInfoHandlers = [=, &argsToFilter](const EventManager::EventInfo& info) -> ArrayVar*
+	auto const GetEventInfoHandlers = [=, &argsToFilter, &argTypes, &eval](const EventManager::EventInfo& info) -> ArrayVar*
 	{
 		ArrayVar* handlersForEventArray = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
 
@@ -965,6 +983,10 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 			return handlerArr;
 		};
 
+		if (!argTypes->empty() && !info.ValidateDispatchedArgTypes(argTypes, &eval))
+			return handlersForEventArray;
+		auto const accurateArgTypes = info.IsUserDefined() ? argTypes : info.GetArgTypesAsStackVector();
+
 		if (script)
 		{
 			auto const range = info.callbacks.equal_range(script);
@@ -973,7 +995,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 			{
 				auto const& eventCallback = i->second;
 				if (!eventCallback.IsRemoved() && (argsToFilter->empty() ||
-					EventManager::DoNewFiltersMatch<true>(thisObj, info, eventCallback, argsToFilter)))
+					eventCallback.DoNewFiltersMatch<true>(thisObj, argsToFilter, accurateArgTypes, info, &eval)))
 				{
 					handlersForEventArray->SetElementArray(key, GetHandlerArr(eventCallback, scriptObj)->ID());
 					key++;
@@ -986,7 +1008,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 			for (auto const& [callbackFuncKey, eventCallback] : info.callbacks)
 			{
 				if (!eventCallback.IsRemoved() && (argsToFilter->empty()
-					|| EventManager::DoNewFiltersMatch<true>(thisObj, info, eventCallback, argsToFilter)))
+					|| eventCallback.DoNewFiltersMatch<true>(thisObj, argsToFilter, accurateArgTypes, info, &eval)))
 				{
 					handlersForEventArray->SetElementArray(key, GetHandlerArr(eventCallback, scriptObj)->ID());
 					key++;
@@ -999,6 +1021,12 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 
 	if (!eventInfoPtr)
 	{
+		if (!argsToFilter->empty()) //if there are pseudo-args...
+		{
+			eval.Error("Args were passed to get filtered, but no eventName was passed; halting the function to prevent potential error message spam due to passing invalidly typed args for some events.");
+			return true;
+		}
+
 		// keys = event handler names, values = an array containing arrays that have [0] = callbackFunc, [1] = filters string map.
 		ArrayVar* eventsMap = g_ArrayMap.Create(kDataType_String, false, scriptObj->GetModIndex());
 		*result = eventsMap->ID();

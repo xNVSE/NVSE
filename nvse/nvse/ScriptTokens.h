@@ -260,6 +260,7 @@ struct ScriptToken
 	[[nodiscard]] virtual const Slice *GetSlice() const { return nullptr; }
 	[[nodiscard]] virtual bool GetBool() const;
 	[[nodiscard]] void* GetAsVoidArg() const;
+	[[nodiscard]] std::pair<void*, Script::VariableType> GetAsVoidArgAndVarType() const;
 #if RUNTIME
 	Token_Type ReadFrom(ExpressionEvaluator *context); // reconstitute param from compiled data, return the type
 	[[nodiscard]] virtual ArrayID GetArrayID() const;

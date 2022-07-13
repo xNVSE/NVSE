@@ -2959,6 +2959,22 @@ ParamParenthResult ExpressionParser::ParseParentheses(ParamInfo *paramInfo, UInt
 	return kParamParent_Success;
 }
 
+void ShowRuntimeScriptError(Script* script, ExpressionEvaluator* eval, const char* fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+
+	char errorMsg[0x800];
+	vsprintf_s(errorMsg, sizeof(errorMsg), fmt, args);
+
+	if (eval)
+		eval->Error(errorMsg);
+	else
+		ShowRuntimeError(script, errorMsg);
+
+	va_end(args);
+}
+
 Operator *ExpressionParser::ParseOperator(bool bExpectBinaryOperator, bool bConsumeIfFound) const
 {
 	// if bExpectBinary true, we expect a binary operator or a closing paren

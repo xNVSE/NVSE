@@ -306,10 +306,10 @@ eEventID EventIDForMessage(UInt32 msgID)
 
 // Prevent filters of the wrong type from being added to an Event Handler instance.
 // Only needs to be called for SetEventHandlerAlt, to filter out most user weirdness.
-bool IsPotentialFilterValid(EventFilterType const expectedParamType, std::string& outErrorMsg,
+bool IsPotentialFilterValid(EventArgType const expectedParamType, std::string& outErrorMsg,
 	const EventCallback::Filter &potentialFilter, size_t const filterNum)
 {
-	if (expectedParamType == EventFilterType::eParamType_Anything)
+	if (expectedParamType == EventArgType::eParamType_Anything)
 		return true;
 
 	auto const dataType = potentialFilter.DataType();
@@ -343,7 +343,7 @@ bool IsPotentialFilterValid(EventFilterType const expectedParamType, std::string
 		// Allow null forms to go through, in case that would be a desired filter.
 		if (UInt32 refID; potentialFilter.GetAsFormID(&refID) && (form = LookupFormByID(refID)))
 		{
-			if (expectedParamType == EventFilterType::eParamType_BaseForm
+			if (expectedParamType == EventArgType::eParamType_BaseForm
 				&& form->GetIsReference()) [[unlikely]]
 			{
 				//Prefer not to sneakily convert the user's reference to its baseform, lessons must be learned.
@@ -388,7 +388,7 @@ bool EventCallback::ValidateFirstOrSecondFilter(bool isFirst, const EventInfo& p
 		return false;
 	}
 
-	if (expectedType == EventFilterType::eParamType_BaseForm 
+	if (expectedType == EventArgType::eParamType_BaseForm 
 		&& filter->GetIsReference()) [[unlikely]]
 	{
 		//Prefer not to sneakily convert the user's reference to its baseform, lessons must be learned.
@@ -423,7 +423,7 @@ bool EventCallback::ValidateFilters(std::string& outErrorMsg, const EventInfo& p
 
 		// Index #0 is reserved for callingReference filter.
 		bool const isCallingRefFilter = index == 0;
-		auto const filterType = isCallingRefFilter ? EventFilterType::eParamType_Reference
+		auto const filterType = isCallingRefFilter ? EventArgType::eParamType_Reference
 			: parent.TryGetNthParamType(index - 1);
 
 		if (!IsPotentialFilterValid(filterType, outErrorMsg, filter, index)) [[unlikely]]
@@ -676,13 +676,20 @@ DeferredRemoveList s_deferredRemoveList;
 
 enum class RefState {NotSet, Invalid, Valid};
 
+
 // Deprecated
-void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1)
+void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1, ArgTypeStack const &argTypes, ExpressionEvaluator* eval = nullptr)
 {
 	// For filtering via new filters
-	ArgStack params;
-	params->push_back(arg0);
-	params->push_back(arg1);
+	RawArgStack args{};
+
+	//Ensure Args and ArgTypes are equal size.
+	if (!argTypes->empty())
+	{
+		args->push_back(arg0);
+		if (argTypes->size() >= 2)
+			args->push_back(arg1);
+	}
 
 	auto isArg0Valid = RefState::NotSet;
 	for (auto& iter : eventInfo.callbacks)
@@ -704,7 +711,7 @@ void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1)
 		if (callback.object && (callback.object != arg1))
 			continue;
 
-		if (!DoNewFiltersMatch<false>(nullptr, eventInfo, callback, params))
+		if (!callback.DoNewFiltersMatch<false>(nullptr, args, argTypes, eventInfo, eval))
 			continue;
 
 		if (GetCurrentThreadId() != g_mainThreadID)
@@ -719,6 +726,18 @@ void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1)
 	}
 }
 
+void HandleInternalEvent(EventInfo& eventInfo, void* arg0, void* arg1)
+{
+	HandleEvent(eventInfo, arg0, arg1, eventInfo.GetArgTypesAsStackVector());
+}
+
+void HandleUserDefinedEvent(EventInfo& eventInfo, void* arg0, void* arg1, ExpressionEvaluator *eval)
+{
+	ArgTypeStack argTypes;
+	argTypes->push_back(EventArgType::eParamType_Array);
+	HandleEvent(eventInfo, arg0, arg1, argTypes, eval);
+}
+
 // Deprecated in favor of EventManager::DispatchEvent
 void __stdcall HandleEvent(eEventID id, void* arg0, void* arg1)
 {
@@ -726,7 +745,7 @@ void __stdcall HandleEvent(eEventID id, void* arg0, void* arg1)
 	EventInfo* eventInfo = s_internalEventInfos[id]; //assume ID is valid
 	if (eventInfo->callbacks.empty()) 
 		return;
-	HandleEvent(*eventInfo, arg0, arg1);
+	HandleInternalEvent(*eventInfo, arg0, arg1);
 }
 
 ////////////////
@@ -824,6 +843,85 @@ bool DoSetHandler(EventInfo &info, EventCallback& toSet)
 	return true;
 }
 
+ArgTypeStack EventInfo::GetArgTypesAsStackVector() const
+{
+	ArgTypeStack argTypes;
+	for (decltype(numParams) i = 0; i < numParams; i++)
+	{
+		argTypes->push_back(paramTypes[i]);
+	}
+	return argTypes;
+}
+
+bool EventInfo::ValidateDispatchedArgTypes(const ArgTypeStack& argTypes, ExpressionEvaluator* eval) const
+{
+	if (this->IsUserDefined())
+		return true;  // We have insufficient information to validate.
+
+	if (argTypes->size() != this->numParams)
+	{
+		ShowRuntimeScriptError(nullptr, eval, "While validating (pseudo?)-dispatched args for event %s, # of expected args (%u) != # of args passed (%u)",
+			this->evName, this->numParams, argTypes->size());
+		return false;
+	}
+
+	auto const ReportTypeMismatch = [eval, this](EventArgType expected, EventArgType received)
+	{
+		ShowRuntimeScriptError(nullptr, eval, "While validating (pseudo?)-dispatched args for event %s, encountered invalid ArgType #%u (expected %s).",
+			this->evName, received, DataTypeToString(ParamTypeToDataType(expected)));
+	};
+
+	for (UInt8 i = 0; auto const argType : *argTypes)
+	{
+		// Check if the basic argType (extracted from script function call) respects the expected type.
+		switch (auto const expected = this->paramTypes[i])
+		{
+		case EventArgType::eParamType_Reference:
+		case EventArgType::eParamType_AnyForm:
+		case EventArgType::eParamType_BaseForm:
+			if (argType != EventArgType::eParamType_AnyForm)
+			{
+				ReportTypeMismatch(expected, argType);
+				return false;
+			}
+			break;
+
+		case EventArgType::eParamType_Array:
+			if (argType != EventArgType::eParamType_Array)
+			{
+				ReportTypeMismatch(expected, argType);
+				return false;
+			}
+			break;
+
+		case EventArgType::eParamType_Int:
+		case EventArgType::eParamType_Float:
+			if (argType != EventArgType::eParamType_Float)
+			{
+				ReportTypeMismatch(expected, argType);
+				return false;
+			}
+			break;
+
+		case EventArgType::eParamType_String:
+			if (argType != EventArgType::eParamType_String)
+			{
+				ReportTypeMismatch(expected, argType);
+				return false;
+			}
+			break;
+
+		case EventArgType::eParamType_Invalid:
+		default:
+			ShowRuntimeScriptError(nullptr, eval, "While validating (pseudo?)-dispatched args for event %s, encountered invalid ArgType.",
+				this->evName);
+			return false;
+		}
+		i++;
+	}
+	return true;
+}
+
 DeferredRemoveCallback::~DeferredRemoveCallback()
 {
 	if (iterator->second.removed)
@@ -848,7 +946,7 @@ bool SetHandler(const char* eventName, EventCallback& toSet, ExpressionEvaluator
 			// have to assume registering for a user-defined event (for DispatchEvent) which has not been used before this point
 			char* nameCopy = CopyString(eventName);
 			StrToLower(nameCopy);
-			*eventInfoPtr = &s_eventInfos.emplace_back(nameCopy, nullptr, 0, EventFlags::kFlag_IsUserDefined);
+			*eventInfoPtr = &s_eventInfos.emplace_back(nameCopy, nullptr, 0, ExtendedEventFlags::kFlag_IsUserDefined);
 		}
 	}
 	if (!eventInfoPtr)
@@ -1067,12 +1165,27 @@ bool DoesFormMatchFilter(TESForm* inputForm, TESForm* filter, bool expectReferen
 		return false;
 	if (IS_ID(filter, BGSListForm))
 	{
-		const auto* list = static_cast<BGSListForm*>(filter);
-		for (auto* listForm : list->list)
+		const auto* listFilter = static_cast<BGSListForm*>(filter);
+		if (IS_ID(inputForm, BGSListForm))
 		{
-			if (DoesFormMatchFilter(inputForm, listForm, expectReference, recursionLevel + 1))
+			// Compare the contents of two lists (which could be recursive).
+			const auto* listArg = static_cast<BGSListForm*>(inputForm);
+			auto listArgForm = listArg->list.Begin();
+			for (auto* listFilterForm : listFilter->list)
+			{
+				if (!DoesFormMatchFilter(listArgForm.Get(), listFilterForm, expectReference, recursionLevel + 1))
+					return false;
+				++listArgForm;
+			}
+			return true;
+		}
+		// try matching the inputForm with a Form from the filter list
+		for (auto* listFilterForm : listFilter->list)
+		{
+			if (DoesFormMatchFilter(inputForm, listFilterForm, expectReference, recursionLevel + 1))
 				return true;
 		}
+
 	}
 	// If input form is a reference, then try matching its baseForm to the filter.
 	else if (expectReference && inputForm->GetIsReference())
@@ -1083,16 +1196,63 @@ bool DoesFormMatchFilter(TESForm* inputForm, TESForm* filter, bool expectReferen
 	return false;
 }
 
-bool DoDeprecatedFiltersMatch(const EventCallback& callback, const ArgStack& params)
+// ArgTypes should only be null for Plugin-Defined Events, since filters are already checked during SetEventHandler.
+// If not null, then check if filters are valid (for User-Defined Events).
+bool EventCallback::DoDeprecatedFiltersMatch(const RawArgStack& args, const ArgTypeStack* argTypes, const EventInfo& eventInfo, ExpressionEvaluator* eval) const
 {
-	// old filter system
-	if (callback.source && !DoesFormMatchFilter(static_cast<TESForm*>(params->at(0)), callback.source, false))
+	auto const numParams = args->size();
+	if (argTypes && numParams != (*argTypes)->size())
 	{
+		ShowRuntimeScriptError(this->TryGetScript(), eval, "While checking if first/second filters match for event %s, there was a different # of ArgTypes vs. Args", 
+			eventInfo.evName);
 		return false;
 	}
-	if (callback.object && !DoesFormMatchFilter(static_cast<TESForm*>(params->at(1)), callback.object, false))
+
+	// old filter system
+	if (source)
 	{
-		return false;
+		if (argTypes)
+		{
+			// Check if filters are valid, given what we now know about what args are dispatched for this event.
+			if (!numParams)
+			{
+				ShowRuntimeScriptError(this->TryGetScript(), eval, "While checking if first/second filters match for User-Defined event %s, saw a filter for an event that did not dispatch anything.", 
+					eventInfo.evName);
+				return false;
+			}
+			if (!IsParamForm((*argTypes)->at(0)))  // Shouldn't encounter param type "Anything" here.
+			{
+				ShowRuntimeScriptError(this->TryGetScript(), eval, "While checking if first/second filters match for User-Defined event %s, saw a form filter for 'first' arg when a non-form was dispatched.",
+					eventInfo.evName);
+				return false;
+			}
+		}
+
+		if (!DoesFormMatchFilter(static_cast<TESForm*>(args->at(0)), source, true))
+			return false;
+	}
+
+	if (object)
+	{
+		if (argTypes)
+		{
+			// Check if filters are valid, given what we now know about what args are dispatched for this event.
+			if (numParams < 2)
+			{
+				ShowRuntimeScriptError(this->TryGetScript(), eval, "While checking if first/second filters match for User-Defined event %s, saw a filter for 'second' arg when no 2nd arg was dispatched.",
+					eventInfo.evName);
+				return false;
+			}
+			if (!IsParamForm((*argTypes)->at(0)))  // Shouldn't encounter param type "Anything" here.
+			{
+				ShowRuntimeScriptError(this->TryGetScript(), eval, "While checking if first/second filters match for User-Defined event %s, saw a form filter for 'second' arg when a non-form was dispatched.",
+					eventInfo.evName);
+				return false;
+			}
+		}
+
+		if (!DoesFormMatchFilter(static_cast<TESForm*>(args->at(1)), object, true))
+			return false;
 	}
 	return true;
 }
@@ -1105,17 +1265,17 @@ EventInfo* TryGetEventInfoForName(const char* eventName)
 }
 
 // Meant for use to validate param types, not much else.
-Script::VariableType ParamTypeToVarType(EventFilterType pType)
+Script::VariableType ParamTypeToVarType(EventArgType pType)
 {
 	switch (pType)
 	{
-	case EventFilterType::eParamType_Int: // Int filter type is only different from Float when Dispatching (number is floored).
-	case EventFilterType::eParamType_Float: return Script::VariableType::eVarType_Float;
-	case EventFilterType::eParamType_String: return Script::VariableType::eVarType_String;
-	case EventFilterType::eParamType_Array: return Script::VariableType::eVarType_Array;
-	case EventFilterType::eParamType_RefVar:
-	case EventFilterType::eParamType_Reference:
-	case EventFilterType::eParamType_BaseForm:
+	case EventArgType::eParamType_Int: // Int filter type is only different from Float when Dispatching (number is floored).
+	case EventArgType::eParamType_Float: return Script::VariableType::eVarType_Float;
+	case EventArgType::eParamType_String: return Script::VariableType::eVarType_String;
+	case EventArgType::eParamType_Array: return Script::VariableType::eVarType_Array;
+	case EventArgType::eParamType_RefVar:
+	case EventArgType::eParamType_Reference:
+	case EventArgType::eParamType_BaseForm:
 		return Script::VariableType::eVarType_Ref;
 	case NVSEEventManagerInterface::eParamType_Invalid:
 	case NVSEEventManagerInterface::eParamType_Anything:
@@ -1124,31 +1284,31 @@ Script::VariableType ParamTypeToVarType(EventFilterType pType)
 	return Script::VariableType::eVarType_Invalid;
 }
 
-EventFilterType VarTypeToParamType(Script::VariableType varType)
+EventArgType VarTypeToParamType(Script::VariableType varType)
 {
 	switch (varType) {
-	case Script::eVarType_Float: return EventFilterType::eParamType_Float;
-	case Script::eVarType_Integer:	return EventFilterType::eParamType_Int;
-	case Script::eVarType_String: return EventFilterType::eParamType_String;
-	case Script::eVarType_Array: return EventFilterType::eParamType_Array;
-	case Script::eVarType_Ref: return EventFilterType::eParamType_AnyForm;
+	case Script::eVarType_Float: return EventArgType::eParamType_Float;
+	case Script::eVarType_Integer:	return EventArgType::eParamType_Int;
+	case Script::eVarType_String: return EventArgType::eParamType_String;
+	case Script::eVarType_Array: return EventArgType::eParamType_Array;
+	case Script::eVarType_Ref: return EventArgType::eParamType_AnyForm;
 	case Script::eVarType_Invalid:
-		return EventFilterType::eParamType_Invalid;
+		return EventArgType::eParamType_Invalid;
 	}
-	return EventFilterType::eParamType_Invalid;
+	return EventArgType::eParamType_Invalid;
 }
 
-DataType ParamTypeToDataType(EventFilterType pType)
+DataType ParamTypeToDataType(EventArgType pType)
 {
 	switch (pType)
 	{
-	case EventFilterType::eParamType_Int:
-	case EventFilterType::eParamType_Float: return kDataType_Numeric;
-	case EventFilterType::eParamType_String: return kDataType_String;
-	case EventFilterType::eParamType_Array: return kDataType_Array;
-	case EventFilterType::eParamType_RefVar:
-	case EventFilterType::eParamType_Reference:
-	case EventFilterType::eParamType_BaseForm:
+	case EventArgType::eParamType_Int:
+	case EventArgType::eParamType_Float: return kDataType_Numeric;
+	case EventArgType::eParamType_String: return kDataType_String;
+	case EventArgType::eParamType_Array: return kDataType_Array;
+	case EventArgType::eParamType_RefVar:
+	case EventArgType::eParamType_Reference:
+	case EventArgType::eParamType_BaseForm:
 		return kDataType_Form;
 	case NVSEEventManagerInterface::eParamType_Invalid:
 	case NVSEEventManagerInterface::eParamType_Anything:
@@ -1157,11 +1317,11 @@ DataType ParamTypeToDataType(EventFilterType pType)
 	return kDataType_Invalid;
 }
 
-bool ParamTypeMatches(EventFilterType from, EventFilterType to)
+bool ParamTypeMatches(EventArgType from, EventArgType to)
 {
 	if (from == to)
 		return true;
-	if (from == EventFilterType::eParamType_AnyForm)
+	if (from == EventArgType::eParamType_AnyForm)
 	{
 		switch (to) {
 		case NVSEEventManagerInterface::eParamType_AnyForm:
@@ -1214,15 +1374,8 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 		{
 			auto const& existingFilter = search->second;
 
-			EventFilterType paramType;
-			if (index == 0)
-			{
-				paramType = EventFilterType::eParamType_Reference;
-			}
-			else
-			{
-				paramType = evInfo.TryGetNthParamType(index - 1);
-			}
+			EventArgType const paramType = (index == 0) ? EventArgType::eParamType_Reference
+				: evInfo.TryGetNthParamType(index - 1);
 
 			if (toRemoveFilter.DataType() == existingFilter.DataType())
 			{
@@ -1237,7 +1390,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 					// TODO: multidimensional array filters currently aren't supported
 
 					// if false, skip to case #2
-					if (evInfo.IsUserDefined() || paramType == EventFilterType::eParamType_Array) 
+					if (paramType == EventArgType::eParamType_Anything || paramType == EventArgType::eParamType_Array)
 					{
 						// Check if arrays are exactly equal.
 						// Covers case #1
@@ -1254,7 +1407,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 					bool filtersMatch = true;
 					for (auto iter = existingFilters->Begin(); !iter.End(); ++iter)
 					{
-						if (!DoesParamMatchFiltersInArray<true, true>(*this, toRemoveFilter, paramType, 
+						if (!DoesParamMatchFiltersInArray<true, true>(toRemoveFilter, paramType, 
 							iter.second()->GetAsVoidArg(), index))
 						{
 							filtersMatch = false;
@@ -1265,7 +1418,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 						continue;
 
 					// Cases 3-4 are only possible if the filter type is array.
-					if (!evInfo.IsUserDefined() && paramType != EventFilterType::eParamType_Array)
+					if (paramType != EventArgType::eParamType_Anything && paramType != EventArgType::eParamType_Array)
 						return false;
 
 					// Cover case #3
@@ -1284,7 +1437,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 
 					// Cover case #4
 					// ToRemoveFilter array could hold many array filters, so try matching existingFilter array to any of those arrays.
-					if (DoesParamMatchFiltersInArray<true, true>(*this, toRemoveFilter, paramType, existingFilter.GetAsVoidArg(), index))
+					if (DoesParamMatchFiltersInArray<true, true>(toRemoveFilter, paramType, existingFilter.GetAsVoidArg(), index))
 						continue;
 
 					return false;
@@ -1302,7 +1455,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 			else if (toRemoveFilter.DataType() == kDataType_Array)
 			{
 				// Case #1: check if any of the elements in the array match existingFilter.
-				if (!DoesParamMatchFiltersInArray<true, true>(*this, toRemoveFilter, paramType, existingFilter.GetAsVoidArg(), index))
+				if (!DoesParamMatchFiltersInArray<true, true>(toRemoveFilter, paramType, existingFilter.GetAsVoidArg(), index))
 					return false;
 			}
 			else if (existingFilter.DataType() == kDataType_Array)
@@ -1339,7 +1492,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 }
 
 
-DispatchReturn vDispatchEvent(const char* eventName, DispatchCallback resultCallback, void* anyData,
+DispatchReturn vDispatchInternalEvent(const char* eventName, DispatchCallback resultCallback, void* anyData,
 	TESObjectREFR* thisObj, va_list args, bool deferIfOutsideMainThread, PostDispatchCallback postCallback)
 {
 	const auto eventPtr = TryGetEventInfoForName(eventName);
@@ -1348,74 +1501,78 @@ DispatchReturn vDispatchEvent(const char* eventName, DispatchCallback resultCall
 	EventInfo& eventInfo = *eventPtr;
 
 #if _DEBUG //shouldn't need to be checked normally; RegisterEvent verifies numParams.
-	if (eventInfo.numParams > numMaxFilters)
-		return DispatchReturn::kRetn_GenericError;
+	if (eventInfo.numParams > kNumMaxFilters)
+	{
+		throw std::logic_error("NumParams is greater than kNumMaxFilters; how did we get here?.");
+		//return DispatchReturn::kRetn_GenericError;
+	}
 #endif
 
-	ArgStack params;
+	RawArgStack params;
 	for (int i = 0; i < eventInfo.numParams; ++i)
 		params->push_back(va_arg(args, void*));
 
-	return DispatchEventRaw<false>(thisObj, eventInfo, params, nullptr, nullptr, 
+	return DispatchInternalEventRaw<false>(eventInfo, thisObj, params, resultCallback, anyData,
 		deferIfOutsideMainThread, postCallback);
 }
 
 
-bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
+bool DispatchInternalEvent(const char* eventName, TESObjectREFR* thisObj, ...)
 {
 	va_list paramList;
 	va_start(paramList, thisObj);
 
-	DispatchReturn const result = vDispatchEvent(eventName, nullptr, nullptr,
+	DispatchReturn const result = vDispatchInternalEvent(eventName, nullptr, nullptr,
 		thisObj, paramList, false, nullptr);
 
 	va_end(paramList);
 	return result > DispatchReturn::kRetn_GenericError;
 }
-bool DispatchEventThreadSafe(const char* eventName, PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...)
+bool DispatchInternalEventThreadSafe(const char* eventName, PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...)
 {
 	va_list paramList;
 	va_start(paramList, thisObj);
 
-	DispatchReturn const result = vDispatchEvent(eventName, nullptr, nullptr,
+	DispatchReturn const result = vDispatchInternalEvent(eventName, nullptr, nullptr,
 		thisObj, paramList, true, postCallback);
 
 	va_end(paramList);
 	return result > DispatchReturn::kRetn_GenericError;
 }
 
-DispatchReturn DispatchEventAlt(const char* eventName, DispatchCallback resultCallback, void* anyData, TESObjectREFR* thisObj, ...)
+DispatchReturn DispatchInternalEventAlt(const char* eventName, DispatchCallback resultCallback, void* anyData, TESObjectREFR* thisObj, ...)
 {
 	va_list paramList;
 	va_start(paramList, thisObj);
 
-	auto const result = vDispatchEvent(eventName, resultCallback, anyData,
+	auto const result = vDispatchInternalEvent(eventName, resultCallback, anyData,
 		thisObj, paramList, false, nullptr);
 
 	va_end(paramList);
 	return result;
 }
-DispatchReturn DispatchEventAltThreadSafe(const char* eventName, DispatchCallback resultCallback, void* anyData, 
+DispatchReturn DispatchInternalEventAltThreadSafe(const char* eventName, DispatchCallback resultCallback, void* anyData, 
 	PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...)
 {
 	va_list paramList;
 	va_start(paramList, thisObj);
 
-	auto const result = vDispatchEvent(eventName, resultCallback, anyData,
+	auto const result = vDispatchInternalEvent(eventName, resultCallback, anyData,
 		thisObj, paramList, true, postCallback);
 
 	va_end(paramList);
 	return result;
 }
 
-bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 argsArrayId, const char* senderName)
+bool DispatchUserDefinedEvent(const char* eventName, Script* sender, UInt32 argsArrayId, const char* senderName, 
+	ExpressionEvaluator* eval)
 {
 	ScopedLock lock(s_criticalSection);
 
 	// does an EventInfo entry already exist for this event?
 	const auto eventPtr = TryGetEventInfoForName(eventName);
 	if (!eventPtr)
-		return true; //don't signal an error, it just means no one has registered for this event yet.
+		return true; //don't signal an error, it just means no handlers are registered for this event yet.
 
 	EventInfo& eventInfo = *eventPtr;
 	if (!eventInfo.IsUserDefined())
@@ -1431,7 +1588,7 @@ bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 arg
 	}
 	else
 	{
-		arr = g_ArrayMap.Create (kDataType_String, false, sender->GetModIndex ());
+		arr = g_ArrayMap.Create(kDataType_String, false, sender->GetModIndex());
 		argsArrayId = arr->ID();
 	}
 
@@ -1440,7 +1597,7 @@ bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 arg
 	if (senderName == nullptr)
 	{
 		if (sender)
-			senderName = DataHandler::Get()->GetNthModName (sender->GetModIndex ());
+			senderName = DataHandler::Get()->GetNthModName(sender->GetModIndex());
 		else
 			senderName = "NVSE";
 	}
@@ -1448,7 +1605,7 @@ bool DispatchUserDefinedEvent (const char* eventName, Script* sender, UInt32 arg
 	arr->SetElementString("eventSender", senderName);
 
 	// dispatch
-	HandleEvent(eventInfo, (void*)argsArrayId, nullptr);
+	HandleUserDefinedEvent(eventInfo, (void*)argsArrayId, nullptr, eval);
 	return true;
 }
 
@@ -1482,6 +1639,10 @@ void Init()
 #define EVENT_INFO(name, params, hookInstaller, eventMask) \
 	EventManager::RegisterEventEx(name, nullptr, true, (params ? sizeof(params) : 0), \
 		params, eventMask, hookInstaller)
+
+#define EVENT_INFO_FLAGS(name, params, hookInstaller, eventMask, flags) \
+	EventManager::RegisterEventEx(name, nullptr, true, (params ? sizeof(params) : 0), \
+		params, eventMask, hookInstaller, flags)
 
 #define EVENT_INFO_WITH_ALIAS(name, alias, params, hookInstaller, eventMask) \
 	EventManager::RegisterEventEx(name, alias, true, (params ? sizeof(params) : 0), \
@@ -1532,22 +1693,24 @@ void Init()
 	EVENT_INFO("renamegamename", kEventParams_OneString, nullptr, 0);
 	EVENT_INFO("renamenewgamename", kEventParams_OneString, nullptr, 0);
 
-	EVENT_INFO("nvsetestevent", kEventParams_OneInt_OneFloat_OneArray_OneString_OneForm_OneReference_OneBaseform,
-		nullptr, 0); // dispatched via DispatchEventAlt, for unit tests
+	EVENT_INFO_FLAGS("nvsetestevent", kEventParams_OneInt_OneFloat_OneArray_OneString_OneForm_OneReference_OneBaseform,
+		nullptr, 0, ExtendedEventFlags::kFlag_IsTestEvent); // dispatched via DispatchEventAlt, for unit tests
 
 	ASSERT (kEventID_InternalMAX == s_eventInfos.size());
 
 
 #undef EVENT_INFO
+#undef EVENT_INFO_FLAGS
+#undef EVENT_INFO_WITH_ALIAS
 
 	InstallDestroyCIOSHook();	// handle a missing parameter value check.
 
 }
 
-bool RegisterEventEx(const char* name, const char* alias, bool isInternal, UInt8 numParams, EventFilterType* paramTypes,
-                     UInt32 eventMask, EventHookInstaller* hookInstaller, EventFlags flags)
+bool RegisterEventEx(const char* name, const char* alias, bool isInternal, UInt8 numParams, EventArgType* paramTypes,
+                     UInt32 eventMask, EventHookInstaller* hookInstaller, ExtendedEventFlags flags)
 {
-	if (numParams > numMaxFilters) [[unlikely]]
+	if (numParams > kNumMaxFilters) [[unlikely]]
 		return false;
 	if (!name) [[unlikely]]
 		return false;
@@ -1572,14 +1735,17 @@ bool RegisterEventEx(const char* name, const char* alias, bool isInternal, UInt8
 	return true;
 }
 
-bool RegisterEvent(const char* name, UInt8 numParams, EventFilterType* paramTypes, EventFlags flags)
+bool RegisterEvent(const char* name, UInt8 numParams, EventArgType* paramTypes, NVSEEventManagerInterface::EventFlags flags)
 {
-	return RegisterEventEx(name, nullptr, false, numParams, paramTypes, 0, nullptr, flags);
+	return RegisterEventEx(name, nullptr, false, numParams, paramTypes, 0, nullptr, 
+		static_cast<ExtendedEventFlags>(flags));
 }
 
-bool RegisterEventWithAlias(const char* name, const char* alias, UInt8 numParams, EventFilterType* paramTypes, EventFlags flags)
+bool RegisterEventWithAlias(const char* name, const char* alias, UInt8 numParams, EventArgType* paramTypes, 
+	NVSEEventManagerInterface::EventFlags flags)
 {
-	return RegisterEventEx(name, alias, false, numParams, paramTypes, 0, nullptr, flags);
+	return RegisterEventEx(name, alias, false, numParams, paramTypes, 0, nullptr, 
+		static_cast<ExtendedEventFlags>(flags));
 }
 
 bool SetNativeEventHandler(const char* eventName, EventHandler func)
@@ -1606,9 +1772,7 @@ bool EventHandlerExist(const char* ev, const EventCallback& handler)
 		for (auto i = range.first; i != range.second; ++i)
 		{
 			if (i->second.EqualFilters(handler)) 
-			{
 				return true;
-			}
 		}
 	}
 	return false;
