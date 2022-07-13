@@ -1165,12 +1165,27 @@ bool DoesFormMatchFilter(TESForm* inputForm, TESForm* filter, bool expectReferen
 		return false;
 	if (IS_ID(filter, BGSListForm))
 	{
-		const auto* list = static_cast<BGSListForm*>(filter);
-		for (auto* listForm : list->list)
+		const auto* listFilter = static_cast<BGSListForm*>(filter);
+		if (IS_ID(inputForm, BGSListForm))
 		{
-			if (DoesFormMatchFilter(inputForm, listForm, expectReference, recursionLevel + 1))
+			// Compare the contents of two lists (which could be recursive).
+			const auto* listArg = static_cast<BGSListForm*>(inputForm);
+			auto listArgForm = listArg->list.Begin();
+			for (auto* listFilterForm : listFilter->list)
+			{
+				if (!DoesFormMatchFilter(listArgForm.Get(), listFilterForm, expectReference, recursionLevel + 1))
+					return false;
+				++listArgForm;
+			}
+			return true;
+		}
+		// try matching the inputForm with a Form from the filter list
+		for (auto* listFilterForm : listFilter->list)
+		{
+			if (DoesFormMatchFilter(inputForm, listFilterForm, expectReference, recursionLevel + 1))
 				return true;
 		}
+
 	}
 	// If input form is a reference, then try matching its baseForm to the filter.
 	else if (expectReference && inputForm->GetIsReference())

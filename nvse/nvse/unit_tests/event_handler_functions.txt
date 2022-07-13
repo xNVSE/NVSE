@@ -505,6 +505,28 @@ begin Function { }
 	iRan = 0
 	assert (RemoveEventHandler "nvseTestCustomEvent" rTestCustomEventUDF 3::(Ar_List (Ar_Map "key"::"test"), (Ar_Map "key"::"notAMatch")))
 
+/*  Oops, the tests below won't pass since it's normal array behavior to just compare formIDs instead of the form's contents to determine equality.
+	; Same test as above, but with a formlist
+	ref rFormList3 = CreateFormList "EventHandlerTestList" (Ar_List SunnyREF, EasyPeteREF, PlayerREF)
+
+	; Copy of above list, but with a different formID, so contents will have to be examined.
+	ref rFormList4 = CreateFormList "EventHandlerTestList" (Ar_List SunnyREF, EasyPeteREF, PlayerREF)
+
+	assert (SetEventHandlerAlt "nvseTestCustomEvent" rTestCustomEventUDF 3::(Ar_List (Ar_Map "key"::rFormList3), (Ar_Map "key"::"notAMatch")))
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestCustomEvent" 1, 2.5, (Ar_Map "key"::rFormList4), "test", Player, SunnyREF, GSSunnySmiles)
+	assert (iRan == 1)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestCustomEvent" rTestCustomEventUDF 3::(Ar_List (Ar_Map "key"::rFormList4), (Ar_Map "key"::"notAMatch")))
+
+	; Has less contents, so it should not match with #3/4.
+	ref rFormList5 = CreateFormList "EventHandlerTestList" (Ar_List SunnyREF, EasyPeteREF)
+
+	assert (SetEventHandlerAlt "nvseTestCustomEvent" rTestCustomEventUDF 3::(Ar_List (Ar_Map "key"::rFormList5), (Ar_Map "key"::"notAMatch")))
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestCustomEvent" 1, 2.5, (Ar_Map "key"::rFormList4), "test", Player, SunnyREF, GSSunnySmiles)
+	assert (iRan == 0)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestCustomEvent" rTestCustomEventUDF 3::(Ar_List (Ar_Map "key"::rFormList5), (Ar_Map "key"::"notAMatch")))
+*/
 
 	print "Finished DispatchEventAlt / SetEventHandlerAlt unit tests with a User-Defined event."
 

@@ -826,7 +826,7 @@ bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 
 	auto [args, argTypes] = ExtractArgsAndArgTypes(eval, 1);
 
-	//For the NVSE Test event, scripter could be passing the wrong argTypes (or wrong # of args)
+	// For the NVSE Test event, scripter could be passing the wrong argTypes (or wrong # of args)
 	if (!eventInfo.ValidateDispatchedArgTypes(argTypes, &eval))
 	{
 		eval.Error("Caught attempt to dispatch the NVSE Test Event with invalid args.");

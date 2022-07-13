@@ -550,7 +550,6 @@ namespace EventManager
 			const auto filterVarType = DataTypeToVarType(filter.DataType());
 			const auto argVarType = ParamTypeToVarType(argType);
 
-			//TODO: Support array-of-filters that contains arrays
 			if (filterVarType != argVarType) 
 			{
 				// Check if it's an array-of-filters containing non-arrays.
@@ -567,8 +566,20 @@ namespace EventManager
 					return false;
 				continue;
 			}
-			if (!DoesFilterMatch<ExtractIntTypeAsFloat, false>(filter, arg, argType))
-				return false;
+
+			// Try directly comparing them.
+			if (DoesFilterMatch<ExtractIntTypeAsFloat, false>(filter, arg, argType))
+				continue;
+
+			// If both are arrays, then maybe the filter array contains multiple arrays to match.
+			if (filterVarType == Script::eVarType_Array)
+			{
+				if (DoesParamMatchFiltersInArray<ExtractIntTypeAsFloat, false>(filter, argType, arg, index))
+					continue;
+			}
+
+			// If no matches are found
+			return false;
 		}
 		return true;
 	}
