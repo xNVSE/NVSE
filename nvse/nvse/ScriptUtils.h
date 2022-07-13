@@ -415,10 +415,12 @@ public:
 	ParamParenthResult ParseParentheses(ParamInfo* paramInfo, UInt32 paramIndex);
 };
 
+#if RUNTIME
 // If eval is null, will call ShowRuntimeError().
 // Otherwise reports the error via eval.Error().
 // Less efficient, but easier to write.
 void ShowRuntimeScriptError(Script* script, ExpressionEvaluator* eval, const char* fmt, ...);
+#endif
 
 bool PrecompileScript(ScriptBuffer* buf);
 

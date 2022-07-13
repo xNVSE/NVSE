@@ -2959,6 +2959,7 @@ ParamParenthResult ExpressionParser::ParseParentheses(ParamInfo *paramInfo, UInt
 	return kParamParent_Success;
 }
 
+#if RUNTIME
 void ShowRuntimeScriptError(Script* script, ExpressionEvaluator* eval, const char* fmt, ...)
 {
 	va_list args;
@@ -2974,6 +2975,7 @@ void ShowRuntimeScriptError(Script* script, ExpressionEvaluator* eval, const cha
 
 	va_end(args);
 }
+#endif
 
 Operator *ExpressionParser::ParseOperator(bool bExpectBinaryOperator, bool bConsumeIfFound) const
 {
