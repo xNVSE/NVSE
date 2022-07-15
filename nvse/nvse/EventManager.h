@@ -330,14 +330,14 @@ namespace EventManager
 	void HandleNVSEMessage(UInt32 msgID, void *data);
 
 	// Deprecated in favor of EventManager::DispatchEvent options
-	void HandleInternalEvent(EventInfo& eventInfo, void* arg0, void* arg1);
+	void HandleInternalEvent(EventInfo& eventInfo, void* arg0, void* arg1, void (*cleanupCallback)() = nullptr);
 
 	// Used for the (deprecrated) DispatchEvent_Execute
 	void HandleUserDefinedEvent(EventInfo& eventInfo, void* arg0, void* arg1, ExpressionEvaluator *eval);
 
 	// handle an eventID directly
 	// Deprecated in favor of EventManager::DispatchEvent options
-	void __stdcall HandleEvent(eEventID id, void *arg0, void *arg1);
+	void __stdcall HandleEvent(eEventID id, void *arg0, void *arg1, void (*cleanupCallback)() = nullptr);
 
 	void ClearFlushOnLoadEvents();
 
@@ -706,6 +706,16 @@ namespace EventManager
 			postCallback(anyData, result);
 
 		return result;
+	}
+
+
+
+
+	//== Stuff for specific events.
+
+	namespace OnSell
+	{
+		TESObjectREFR* GetSoldItemInvRef();
 	}
 };
 

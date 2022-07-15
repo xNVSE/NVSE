@@ -1440,4 +1440,16 @@ bool Cmd_Ternary_Execute(COMMAND_ARGS)
 	return true;
 }
 
+// Only works inside OnSell event.
+bool Cmd_GetSoldItemInvRef_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	if (auto const invRef = EventManager::OnSell::GetSoldItemInvRef())
+	{
+		UInt32* refResult = (UInt32*)result;
+		*refResult = invRef->refID;
+	}
+	return true;
+}
+
 #endif

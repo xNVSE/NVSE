@@ -9,7 +9,7 @@
 #include "ThreadLocal.h"
 #include "common/ICriticalSection.h"
 #include "GameOSDepend.h"
-//#include "InventoryReference.h"
+#include "InventoryReference.h"
 
 #include "GameData.h"
 #include "GameRTTI.h"
@@ -34,6 +34,10 @@ InternalEventVec s_internalEventInfos(kEventID_InternalMAX);
 static void  InstallHook();
 static void  InstallActivateHook();
 static void	 InstallOnActorEquipHook();
+namespace OnSell
+{
+	static void InstallOnSellHook();
+}
 
 enum {
 	kEventMask_OnActivate		= 0x01000000,		// special case as OnActivate has no event mask
@@ -43,6 +47,7 @@ enum {
 static EventHookInstaller s_MainEventHook = InstallHook;
 static EventHookInstaller s_ActivateHook = InstallActivateHook;
 static EventHookInstaller s_ActorEquipHook = InstallOnActorEquipHook;
+static EventHookInstaller s_SellHook = OnSell::InstallOnSellHook;
 
 
 ///////////////////////////
@@ -183,6 +188,96 @@ static void InstallOnActorEquipHook()
 	// Fix:
 	// Added s_InsideOnActorEquipHook to neutralize Print during OnEquip events, with an optional s_CheckInsideOnActorEquipHook to bypass it for testing.
 	WriteRelCall(kOnActorEquipHookAddr, (UInt32)&OnActorEquipHook);
+}
+
+namespace OnSell
+{
+	static ExtraContainerChanges::EntryData* g_soldItemData{};
+	static TESObjectREFR* g_sellerRef{};
+
+	// If non-null, use this instead of soldItemData.
+	static TESObjectREFR* g_soldItemInvRef{};
+
+	TESObjectREFR* GetSoldItemInvRef()
+	{
+		if (g_soldItemInvRef)
+			return g_soldItemInvRef;
+		if (!g_soldItemData || !g_sellerRef)
+			return nullptr;
+
+		auto const entry = g_soldItemData;
+		auto const cont = g_sellerRef->GetContainer();
+		
+		// create the invRef (copied code from GetInvRefsForItem)
+		SInt32 xCount = entry->countDelta;
+		auto baseCount = cont->GetCountForForm(entry->type);
+		if (baseCount)
+		{
+			if (entry->HasExtraLeveledItem())
+				baseCount = xCount;
+			else baseCount += xCount;
+		}
+		else baseCount = xCount;
+
+		if (baseCount > 0 && entry->extendData)
+		{
+			// find first valid extraDataList
+			for (auto xdlIter = entry->extendData->Begin(); !xdlIter.End(); ++xdlIter)
+			{
+				ExtraDataList* xData = xdlIter.Get();
+				xCount = GetCountForExtraDataList(xData);
+				if (xCount < 1) continue;
+				if (xCount > baseCount)
+					xCount = baseCount;
+				g_soldItemInvRef = CreateInventoryRefEntry(g_sellerRef, entry->type, xCount, xData);
+				break;
+			}
+
+			if (!g_soldItemInvRef)
+				g_soldItemInvRef = CreateInventoryRefEntry(g_sellerRef, entry->type, xCount, nullptr);
+		}
+		return g_soldItemInvRef;
+	}
+
+	static void PostDispatchCleanup()
+	{
+		g_soldItemData = nullptr;
+		g_sellerRef = nullptr;
+		g_soldItemInvRef = nullptr;
+	}
+
+	template <bool IsPlayerOwner>
+	static SInt32 __fastcall OnSellHook(ExtraContainerChanges::EntryData* contChangesEntry)
+	{
+		if ((s_eventsInUse & ScriptEventList::kEvent_OnSell) != 0)
+		{
+			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress());
+			auto* barterMenu = *reinterpret_cast<Menu**>(ebp - 0x6C);
+			TESForm* item = contChangesEntry->type;
+			TESObjectREFR* seller = IsPlayerOwner ? *g_thePlayer : *reinterpret_cast<TESObjectREFR**>((char*)barterMenu + 0x80);
+
+			if (seller->GetIsReference() && item)
+			{
+				// store the data for an Inventory Ref for a frame, so it can be queried via function during the event.
+				g_soldItemData = contChangesEntry;
+				g_sellerRef = seller;
+
+				// Handle the event directly, since we must have the item as first arg, but HandleGameEvent wants that to be a reference.
+				HandleEvent(kEventID_OnSell, item, seller, PostDispatchCleanup);
+			}
+		}
+		return contChangesEntry->countDelta;
+	}
+
+	static void InstallOnSellHook()
+	{
+		// Main hook does not run reliably for this event, plus we don't handle the data that gets passed properly.
+		// So we make a unique hook.
+
+		// Replace this_1 calls.
+		WriteRelCall(0x72FE3E, (UInt32)&OnSellHook<false>);
+		WriteRelCall(0x72FF20, (UInt32)&OnSellHook<true>);
+	}
 }
 
 static __declspec(naked) void TESObjectREFR_ActivateHook(void)
@@ -653,9 +748,10 @@ struct DeferredDeprecatedCallback
 	void				*arg0;
 	void				*arg1;
 	EventInfo			&eventInfo;
+	void				(*cleanupCallback)();
 
-	DeferredDeprecatedCallback(EventCallback &pCallback, void *_arg0, void *_arg1, EventInfo &_eventInfo) :
-		callback(pCallback), arg0(_arg0), arg1(_arg1), eventInfo(_eventInfo) {}
+	DeferredDeprecatedCallback(EventCallback &pCallback, void *_arg0, void *_arg1, EventInfo &_eventInfo, void (*cleanupCallback)() = {}) :
+		callback(pCallback), arg0(_arg0), arg1(_arg1), eventInfo(_eventInfo), cleanupCallback(cleanupCallback) {}
 
 	~DeferredDeprecatedCallback()
 	{
@@ -666,6 +762,7 @@ struct DeferredDeprecatedCallback
 		ScopedLock lock(s_criticalSection);
 
 		callback.Invoke(eventInfo, arg0, arg1);
+		cleanupCallback();
 	}
 };
 
@@ -678,7 +775,8 @@ enum class RefState {NotSet, Invalid, Valid};
 
 
 // Deprecated
-void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1, ArgTypeStack const &argTypes, ExpressionEvaluator* eval = nullptr)
+void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1, ArgTypeStack const &argTypes, 
+	ExpressionEvaluator* eval = nullptr, void (*cleanupCallback)() = nullptr)
 {
 	// For filtering via new filters
 	RawArgStack args{};
@@ -717,18 +815,19 @@ void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1, ArgTypeStack cons
 		if (GetCurrentThreadId() != g_mainThreadID)
 		{
 			// avoid potential issues with invoking handlers outside of main thread by deferring event handling
-			s_deferredDeprecatedCallbacks.Push(callback, arg0, arg1, eventInfo);
+			s_deferredDeprecatedCallbacks.Push(callback, arg0, arg1, eventInfo, cleanupCallback);
 		}
 		else
 		{
 			callback.Invoke(eventInfo, arg0, arg1);
+			cleanupCallback();
 		}
 	}
 }
 
-void HandleInternalEvent(EventInfo& eventInfo, void* arg0, void* arg1)
+void HandleInternalEvent(EventInfo& eventInfo, void* arg0, void* arg1, void (*cleanupCallback)())
 {
-	HandleEvent(eventInfo, arg0, arg1, eventInfo.GetArgTypesAsStackVector());
+	HandleEvent(eventInfo, arg0, arg1, eventInfo.GetArgTypesAsStackVector(), nullptr, cleanupCallback);
 }
 
 void HandleUserDefinedEvent(EventInfo& eventInfo, void* arg0, void* arg1, ExpressionEvaluator *eval)
@@ -739,13 +838,13 @@ void HandleUserDefinedEvent(EventInfo& eventInfo, void* arg0, void* arg1, Expres
 }
 
 // Deprecated in favor of EventManager::DispatchEvent
-void __stdcall HandleEvent(eEventID id, void* arg0, void* arg1)
+void __stdcall HandleEvent(eEventID id, void* arg0, void* arg1, void (*cleanupCallback)())
 {
 	ScopedLock lock(s_criticalSection);
 	EventInfo* eventInfo = s_internalEventInfos[id]; //assume ID is valid
 	if (eventInfo->callbacks.empty()) 
 		return;
-	HandleInternalEvent(*eventInfo, arg0, arg1);
+	HandleInternalEvent(*eventInfo, arg0, arg1, cleanupCallback);
 }
 
 ////////////////
@@ -1663,7 +1762,7 @@ void Init()
 	EVENT_INFO("onpackagedone", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnPackageDone);
 	EVENT_INFO("onload", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnLoad);
 	EVENT_INFO("onmagiceffecthit", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnMagicEffectHit);
-	EVENT_INFO("onsell", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnSell);
+	EVENT_INFO("onsell", kEventParams_GameEvent, &s_SellHook, ScriptEventList::kEvent_OnSell);
 	EVENT_INFO("onstartcombat", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnStartCombat);
 	EVENT_INFO("saytodone", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_SayToDone);
 	EVENT_INFO_WITH_ALIAS("ongrab", "on0x0080000", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnGrab);

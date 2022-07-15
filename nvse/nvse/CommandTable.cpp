@@ -1849,6 +1849,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD_RET(CreateFormList, kRetnType_Form);
 	ADD_CMD(CallWhilePerSeconds);
 	ADD_CMD(CallAfterFrames);
+	ADD_CMD_RET(GetSoldItemInvRef, kRetnType_Form);
 }
 
 namespace PluginAPI

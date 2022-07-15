@@ -406,3 +406,5 @@ static ParamInfo kParams_Ternary[] =
 };
 
 DEFINE_COMMAND_EXP(Ternary, "The ternary operator as a function.", false, kParams_Ternary);
+
+DEFINE_COMMAND(GetSoldItemInvRef, "Returns the invRef for the currently sold item (in OnSell event)", false, 0, nullptr);
