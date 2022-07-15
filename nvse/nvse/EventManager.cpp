@@ -623,6 +623,7 @@ EventCallback::EventCallback(EventCallback&& other) noexcept: toCall(std::move(o
                                                               object(other.object),
                                                               removed(other.removed),
                                                               pendingRemove(other.pendingRemove),
+															  flushOnLoad(other.flushOnLoad),
                                                               filters(std::move(other.filters))
 {}
 
@@ -635,6 +636,7 @@ EventCallback& EventCallback::operator=(EventCallback&& other) noexcept
 	object = other.object;
 	removed = other.removed;
 	pendingRemove = other.pendingRemove;
+	flushOnLoad = other.flushOnLoad;
 	filters = std::move(other.filters);
 	return *this;
 }
