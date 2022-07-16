@@ -321,6 +321,7 @@ namespace EventManager
 	typedef Stack<DeferredRemoveCallback> DeferredRemoveList;
 	extern DeferredRemoveList s_deferredRemoveList;
 
+	template <bool IsInternalEvent>
 	bool SetHandler(const char *eventName, EventCallback &toSet, ExpressionEvaluator* eval = nullptr);
 
 	// removes handler only if all filters match
@@ -708,7 +709,49 @@ namespace EventManager
 		return result;
 	}
 
+	bool DoSetHandler(EventInfo& info, EventCallback& toSet);
 
+	template <bool IsInternalHandler>
+	bool SetHandler(const char* eventName, EventCallback& toSet, ExpressionEvaluator* eval)
+	{
+		if (!toSet.HasCallbackFunc())
+			return false;
+
+		EventInfo** eventInfoPtr = nullptr;
+		{
+			ScopedLock lock(s_criticalSection);
+			if (s_eventInfoMap.Insert(eventName, &eventInfoPtr))
+			{
+				if constexpr (IsInternalHandler)
+				{
+					ShowRuntimeScriptError(nullptr, eval, "Trying to set an internal handler for unknown event %s. It must be defined before setting handlers.", eventName);
+					return false;
+				}
+				else
+				{
+					// have to assume registering for a user-defined event (for DispatchEvent) which has not been used before this point
+					char* nameCopy = CopyString(eventName);
+					StrToLower(nameCopy);
+					*eventInfoPtr = &s_eventInfos.emplace_back(nameCopy, nullptr, 0, ExtendedEventFlags::kFlag_IsUserDefined);
+				}
+			}
+		}
+		if (!eventInfoPtr)
+			return false;
+		//else, assume ptr is valid
+		EventInfo& info = **eventInfoPtr;
+
+		{ // nameless scope
+			std::string errMsg;
+			if (!toSet.ValidateFilters(errMsg, info))
+			{
+				ShowRuntimeScriptError(nullptr, eval, errMsg.c_str());
+				return false;
+			}
+		}
+
+		return DoSetHandler(info, toSet);
+	}
 
 
 	//== Stuff for specific events.

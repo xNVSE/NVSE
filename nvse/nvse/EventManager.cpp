@@ -764,7 +764,8 @@ struct DeferredDeprecatedCallback
 		ScopedLock lock(s_criticalSection);
 
 		callback.Invoke(eventInfo, arg0, arg1);
-		cleanupCallback();
+		if (cleanupCallback)
+			cleanupCallback();
 	}
 };
 
@@ -822,7 +823,8 @@ void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1, ArgTypeStack cons
 		else
 		{
 			callback.Invoke(eventInfo, arg0, arg1);
-			cleanupCallback();
+			if (cleanupCallback)
+				cleanupCallback();
 		}
 	}
 }
@@ -1032,40 +1034,6 @@ DeferredRemoveCallback::~DeferredRemoveCallback()
 			s_eventsInUse &= ~eventInfo->eventMask;
 	}
 	else iterator->second.pendingRemove = false;
-}
-
-bool SetHandler(const char* eventName, EventCallback& toSet, ExpressionEvaluator* eval)
-{
-	if (!toSet.HasCallbackFunc())
-		return false;
-
-	EventInfo** eventInfoPtr = nullptr;
-	{
-		ScopedLock lock(s_criticalSection);
-		if (s_eventInfoMap.Insert(eventName, &eventInfoPtr))
-		{
-			// have to assume registering for a user-defined event (for DispatchEvent) which has not been used before this point
-			char* nameCopy = CopyString(eventName);
-			StrToLower(nameCopy);
-			*eventInfoPtr = &s_eventInfos.emplace_back(nameCopy, nullptr, 0, ExtendedEventFlags::kFlag_IsUserDefined);
-		}
-	}
-	if (!eventInfoPtr)
-		return false;
-	//else, assume ptr is valid
-	EventInfo &info = **eventInfoPtr;
-
-	{ // nameless scope
-		std::string errMsg;
-		if (!toSet.ValidateFilters(errMsg, info))
-		{
-			if (eval)
-				eval->Error(errMsg.c_str());
-			return false;
-		}
-	}
-
-	return DoSetHandler(info, toSet);
 }
 
 // Avoid constantly looking up the eventName for potentially recursive calls.
@@ -1852,12 +1820,12 @@ bool RegisterEventWithAlias(const char* name, const char* alias, UInt8 numParams
 bool SetNativeEventHandler(const char* eventName, EventHandler func)
 {
 	EventCallback event(func);
-	return SetHandler(eventName, event);
+	return SetHandler<true>(eventName, event);
 }
 
 bool RemoveNativeEventHandler(const char* eventName, EventHandler func)
 {
-	EventCallback event(func);
+	const EventCallback event(func);
 	return RemoveHandler(eventName, event, nullptr);
 }
 

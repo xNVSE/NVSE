@@ -713,7 +713,7 @@ bool ProcessEventHandler(std::string &eventName, EventManager::EventCallback &ca
 			*colon = ':';
 		}
 	}
-	return addEvt ? EventManager::SetHandler(eventName.c_str(), callback, &eval)
+	return addEvt ? EventManager::SetHandler<false>(eventName.c_str(), callback, &eval)
 		: EventManager::RemoveHandler(eventName.c_str(), callback, &eval);
 }
 
