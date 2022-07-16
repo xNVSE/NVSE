@@ -180,7 +180,8 @@ public:
 	Script			* script;
 	ScriptEventList	* eventList;
 
-	void			Error(const char* fmt, ...);
+	void						Error(const char* fmt, ...);
+	void						vError(const char* fmt, va_list fmtArgs);
 	[[nodiscard]] bool			HasErrors() const { return m_flags.IsSet(kFlag_ErrorOccurred); }
 
 	// extract args compiled by ExpressionParser
@@ -293,6 +294,7 @@ PluginScriptToken* __fastcall ExpressionEvaluatorGetNthArg(void *expEval, UInt32
 void __fastcall ExpressionEvaluatorSetExpectedReturnType(void* expEval, UInt8 retnType);
 void __fastcall ExpressionEvaluatorAssignCommandResultFromElement(void* expEval, NVSEArrayVarInterface::Element &result);
 bool __fastcall ExpressionEvaluatorExtractArgsV(void* expEval, va_list list);
+void __fastcall ExpressionEvaluatorReportError(void* expEval, const char* fmt, va_list fmtArgs);
 #endif
 
 

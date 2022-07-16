@@ -1730,22 +1730,29 @@ void ExpressionEvaluator::ToggleErrorSuppression(bool bSuppress)
 
 static UnorderedSet<const char *> s_warnedMods; // show corner message only once per mod script error
 
+
+
 void ExpressionEvaluator::Error(const char *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+
+	this->vError(fmt, args);
+
+	va_end(args);
+}
+
+void ExpressionEvaluator::vError(const char* fmt, va_list fmtArgs)
 {
 	m_flags.Set(kFlag_ErrorOccurred);
 
 	if (m_flags.IsSet(kFlag_SuppressErrorMessages))
 		return;
 
-	va_list args;
-	va_start(args, fmt);
-
 	char errorMsg[0x400];
-	vsprintf_s(errorMsg, 0x400, fmt, args);
+	vsprintf_s(errorMsg, 0x400, fmt, fmtArgs);
 
 	this->errorMessages.emplace_back(errorMsg);
-
-	va_end(args);
 }
 
 void ExpressionEvaluator::PrintStackTrace()
@@ -1839,6 +1846,12 @@ bool __fastcall ExpressionEvaluatorExtractArgsV(void* expEval, va_list list)
 {
 	auto const eval = static_cast<ExpressionEvaluator*>(expEval);
 	return eval->ExtractArgsV(list);
+}
+
+void __fastcall ExpressionEvaluatorReportError(void* expEval, const char* fmt, va_list fmtArgs)
+{
+	auto const eval = static_cast<ExpressionEvaluator*>(expEval);
+	eval->vError(fmt, fmtArgs);
 }
 #endif
 

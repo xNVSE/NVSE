@@ -452,6 +452,8 @@ void PluginManager::InitExpressionEvaluatorUtils(ExpressionEvaluatorUtils *utils
 	utils->ScriptTokenGetElement = ScriptTokenGetArrayElement;
 	utils->ScriptTokenCanConvertTo = ScriptTokenCanConvertTo;
 	utils->ExtractArgsV = ExpressionEvaluatorExtractArgsV;
+
+	utils->ReportError = ExpressionEvaluatorReportError;
 #endif
 }
 

@@ -944,7 +944,7 @@ struct PluginTokenSlice;
 struct ExpressionEvaluatorUtils
 {
 #if RUNTIME
-	void*					(__stdcall *CreateExpressionEvaluator)(COMMAND_ARGS);
+	void*					(__stdcall	*CreateExpressionEvaluator)(COMMAND_ARGS);
 	void					(__fastcall *DestroyExpressionEvaluator)(void *expEval);
 	bool					(__fastcall *ExtractArgsEval)(void *expEval);
 	UInt8					(__fastcall *GetNumArgs)(void *expEval);
@@ -961,14 +961,17 @@ struct ExpressionEvaluatorUtils
 	ScriptLocal*			(__fastcall *ScriptTokenGetScriptVar)(PluginScriptToken *scrToken);
 	const PluginTokenPair*	(__fastcall *ScriptTokenGetPair)(PluginScriptToken *scrToken);
 	const PluginTokenSlice*	(__fastcall *ScriptTokenGetSlice)(PluginScriptToken *scrToken);
-	UInt32                  (__fastcall* ScriptTokenGetAnimationGroup)(PluginScriptToken* scrToken);
+	UInt32                  (__fastcall *ScriptTokenGetAnimationGroup)(PluginScriptToken* scrToken);
 
-	void					(__fastcall* SetExpectedReturnType)(void* expEval, UInt8 type);
-	void					(__fastcall* AssignCommandResultFromElement)(void* expEval, NVSEArrayVarInterface::Element &result);
-	void					(__fastcall* ScriptTokenGetElement)(PluginScriptToken* scrToken, NVSEArrayVarInterface::Element &outElem);
-	bool					(__fastcall* ScriptTokenCanConvertTo)(PluginScriptToken* scrToken, UInt8 toType);
+	void					(__fastcall *SetExpectedReturnType)(void* expEval, UInt8 type);
+	void					(__fastcall *AssignCommandResultFromElement)(void* expEval, NVSEArrayVarInterface::Element &result);
+	void					(__fastcall *ScriptTokenGetElement)(PluginScriptToken* scrToken, NVSEArrayVarInterface::Element &outElem);
+	bool					(__fastcall *ScriptTokenCanConvertTo)(PluginScriptToken* scrToken, UInt8 toType);
 
-	bool					(__fastcall* ExtractArgsV)(void* expEval, va_list list);
+	bool					(__fastcall *ExtractArgsV)(void* expEval, va_list list);
+
+	// Added in 6.2.8
+	void					(__fastcall *ReportError)(void* expEval, const char* fmt, va_list fmtArgs);
 #endif
 };
 
@@ -1023,6 +1026,14 @@ public:
 		const auto result = s_expEvalUtils.ExtractArgsV(expEval, list);
 		va_end(list);
 		return result;
+	}
+
+	void Error(const char* fmt, ...)
+	{
+		va_list fmtArgs;
+		va_start(fmtArgs, fmt);
+		s_expEvalUtils.ReportError(expEval, fmt, fmtArgs);
+		va_end(fmtArgs);
 	}
 #endif
 };
