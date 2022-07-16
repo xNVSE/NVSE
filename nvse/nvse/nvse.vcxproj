@@ -233,6 +233,7 @@ xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</C
     <PostBuildEvent>
       <Message>Installing DLL...</Message>
       <Command>copy "$(TargetPath)" "$(FalloutNVPath)\nvse_1_4.dll"
+copy "$(TargetPath)" "$(FalloutNVPath)\nvse_1_4.pdb"
 xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
