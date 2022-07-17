@@ -671,13 +671,12 @@ public:
 		// make sure we've got the same # of args as expected by event handler
 		const DynamicParamInfo& dParams = info->ParamInfo();
 
-		if (dParams.NumParams() != m_eventInfo->numParams || dParams.NumParams() > 2) {
-			// If User-Defined, numParams is not known in advance.
-			if (!m_eventInfo->IsUserDefined() || dParams.NumParams() > 2)
-			{
-				ShowRuntimeError(m_script, "Number of arguments to function script does not match those expected for event");
-				return false;
-			}
+		if (dParams.NumParams() > 2 ||
+			// If User-Defined, numParams is not known in advance, so no need to check it.
+			(dParams.NumParams() != m_eventInfo->numParams && !m_eventInfo->IsUserDefined())) 
+		{
+			ShowRuntimeError(m_script, "Number of arguments to function script does not match those expected for event");
+			return false;
 		}
 
 		return InternalFunctionCaller::PopulateArgs(eventList, info);
