@@ -649,7 +649,8 @@ void EventCallback::Confirm()
 class ClassicEventHandlerCaller : public InternalFunctionCaller
 {
 public:
-	ClassicEventHandlerCaller(Script* script, EventInfo* eventInfo, void* arg0, void* arg1) : InternalFunctionCaller(script, nullptr), m_eventInfo(eventInfo)
+	ClassicEventHandlerCaller(Script* script, EventInfo* eventInfo, void* arg0, void* arg1)
+	 : InternalFunctionCaller(script, nullptr), m_eventInfo(eventInfo)
 	{
 		UInt8 numArgs = 2;
 		if (!arg1)
@@ -669,9 +670,14 @@ public:
 	bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info) override {
 		// make sure we've got the same # of args as expected by event handler
 		const DynamicParamInfo& dParams = info->ParamInfo();
+
 		if (dParams.NumParams() != m_eventInfo->numParams || dParams.NumParams() > 2) {
-			ShowRuntimeError(m_script, "Number of arguments to function script does not match those expected for event");
-			return false;
+			// If User-Defined, numParams is not known in advance.
+			if (!m_eventInfo->IsUserDefined() || dParams.NumParams() > 2)
+			{
+				ShowRuntimeError(m_script, "Number of arguments to function script does not match those expected for event");
+				return false;
+			}
 		}
 
 		return InternalFunctionCaller::PopulateArgs(eventList, info);
