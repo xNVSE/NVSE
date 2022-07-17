@@ -649,8 +649,8 @@ void EventCallback::Confirm()
 class ClassicEventHandlerCaller : public InternalFunctionCaller
 {
 public:
-	ClassicEventHandlerCaller(Script* script, EventInfo* eventInfo, void* arg0, void* arg1)
-	 : InternalFunctionCaller(script, nullptr), m_eventInfo(eventInfo)
+	ClassicEventHandlerCaller(Script* script, const ClassicArgTypeStack &argTypes, void* arg0, void* arg1)
+	 : InternalFunctionCaller(script, nullptr), m_argTypes(argTypes)
 	{
 		UInt8 numArgs = 2;
 		if (!arg1)
@@ -664,16 +664,15 @@ public:
 	bool ValidateParam(UserFunctionParam* param, UInt8 paramIndex) override
 	{
 		const auto paramType = VarTypeToParamType(param->varType);
-		return ParamTypeMatches(paramType, m_eventInfo->paramTypes[paramIndex]);
+		return ParamTypeMatches(paramType, m_argTypes->at(paramIndex));
 	}
 
-	bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info) override {
+	bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info) override
+	{
 		// make sure we've got the same # of args as expected by event handler
 		const DynamicParamInfo& dParams = info->ParamInfo();
 
-		if (dParams.NumParams() > 2 ||
-			// If User-Defined, numParams is not known in advance, so no need to check it.
-			(dParams.NumParams() != m_eventInfo->numParams && !m_eventInfo->IsUserDefined())) 
+		if (dParams.NumParams() > 2 || dParams.NumParams() != m_argTypes->size())
 		{
 			ShowRuntimeError(m_script, "Number of arguments to function script does not match those expected for event");
 			return false;
@@ -683,11 +682,12 @@ public:
 	}
 
 private:
-	EventInfo* m_eventInfo;
+	// Contains the types expected for event.
+	ClassicArgTypeStack m_argTypes;
 };
 
 
-std::unique_ptr<ScriptToken> EventCallback::Invoke(EventInfo &eventInfo, void* arg0, void* arg1)
+std::unique_ptr<ScriptToken> EventCallback::Invoke(EventInfo &eventInfo, const ClassicArgTypeStack& argTypes, void* arg0, void* arg1)
 {
 	return std::visit(overloaded
 		{
@@ -697,7 +697,7 @@ std::unique_ptr<ScriptToken> EventCallback::Invoke(EventInfo &eventInfo, void* a
 
 				// handle immediately
 				s_eventStack.Push(eventInfo.evName);
-				auto ret = UserFunctionManager::Call(ClassicEventHandlerCaller(script.Get(), &eventInfo, arg0, arg1));
+				auto ret = UserFunctionManager::Call(ClassicEventHandlerCaller(script.Get(), argTypes, arg0, arg1));
 				s_eventStack.Pop();
 				return ret;
 			},
@@ -755,10 +755,12 @@ struct DeferredDeprecatedCallback
 	void				*arg0;
 	void				*arg1;
 	EventInfo			&eventInfo;
+	ClassicArgTypeStack	argTypes;
 	void				(*cleanupCallback)();
 
-	DeferredDeprecatedCallback(EventCallback &pCallback, void *_arg0, void *_arg1, EventInfo &_eventInfo, void (*cleanupCallback)() = {}) :
-		callback(pCallback), arg0(_arg0), arg1(_arg1), eventInfo(_eventInfo), cleanupCallback(cleanupCallback) {}
+	DeferredDeprecatedCallback(EventCallback &pCallback, void *_arg0, void *_arg1, EventInfo &_eventInfo, 
+		const ClassicArgTypeStack& _argTypes, void (*cleanupCallback)() = {})
+	: callback(pCallback), arg0(_arg0), arg1(_arg1), eventInfo(_eventInfo), argTypes(_argTypes), cleanupCallback(cleanupCallback) {}
 
 	~DeferredDeprecatedCallback()
 	{
@@ -768,7 +770,7 @@ struct DeferredDeprecatedCallback
 		// assume callback is owned by a global; prevent data race.
 		ScopedLock lock(s_criticalSection);
 
-		callback.Invoke(eventInfo, arg0, arg1);
+		callback.Invoke(eventInfo, argTypes, arg0, arg1);
 		if (cleanupCallback)
 			cleanupCallback();
 	}
@@ -783,11 +785,11 @@ enum class RefState {NotSet, Invalid, Valid};
 
 
 // Deprecated
-void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1, ArgTypeStack const &argTypes, 
+void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1, ClassicArgTypeStack const &argTypes,
 	ExpressionEvaluator* eval = nullptr, void (*cleanupCallback)() = nullptr)
 {
 	// For filtering via new filters
-	RawArgStack args{};
+	ClassicRawArgStack args{};
 
 	//Ensure Args and ArgTypes are equal size.
 	if (!argTypes->empty())
@@ -823,11 +825,11 @@ void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1, ArgTypeStack cons
 		if (GetCurrentThreadId() != g_mainThreadID)
 		{
 			// avoid potential issues with invoking handlers outside of main thread by deferring event handling
-			s_deferredDeprecatedCallbacks.Push(callback, arg0, arg1, eventInfo, cleanupCallback);
+			s_deferredDeprecatedCallbacks.Push(callback, arg0, arg1, eventInfo, argTypes, cleanupCallback);
 		}
 		else
 		{
-			callback.Invoke(eventInfo, arg0, arg1);
+			callback.Invoke(eventInfo, argTypes, arg0, arg1);
 			if (cleanupCallback)
 				cleanupCallback();
 		}
@@ -836,12 +838,12 @@ void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1, ArgTypeStack cons
 
 void HandleInternalEvent(EventInfo& eventInfo, void* arg0, void* arg1, void (*cleanupCallback)())
 {
-	HandleEvent(eventInfo, arg0, arg1, eventInfo.GetArgTypesAsStackVector(), nullptr, cleanupCallback);
+	HandleEvent(eventInfo, arg0, arg1, eventInfo.GetClassicArgTypesAsStackVector(), nullptr, cleanupCallback);
 }
 
 void HandleUserDefinedEvent(EventInfo& eventInfo, void* arg0, void* arg1, ExpressionEvaluator *eval)
 {
-	ArgTypeStack argTypes;
+	ClassicArgTypeStack argTypes;
 	argTypes->push_back(EventArgType::eParamType_Array);
 	HandleEvent(eventInfo, arg0, arg1, argTypes, eval);
 }
@@ -954,6 +956,19 @@ bool DoSetHandler(EventInfo &info, EventCallback& toSet)
 ArgTypeStack EventInfo::GetArgTypesAsStackVector() const
 {
 	ArgTypeStack argTypes;
+	for (decltype(numParams) i = 0; i < numParams; i++)
+	{
+		argTypes->push_back(paramTypes[i]);
+	}
+	return argTypes;
+}
+
+ClassicArgTypeStack EventInfo::GetClassicArgTypesAsStackVector() const
+{
+	if (numParams > 2)
+		throw std::logic_error("Event has more than 2 params, expected classic-style event.");
+
+	ClassicArgTypeStack argTypes;
 	for (decltype(numParams) i = 0; i < numParams; i++)
 	{
 		argTypes->push_back(paramTypes[i]);

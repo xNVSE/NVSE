@@ -144,9 +144,17 @@ namespace EventManager
 
 	bool ParamTypeMatches(EventArgType from, EventArgType to);
 
-	using RawArgStack = StackVector<void*, kMaxUdfParams>;
-	using ArgTypeStack = StackVector<EventArgType, kMaxUdfParams>;
+	// For classic event handlers, 2 params is the max.
+	static constexpr UInt8 kMaxArgsForClassicEvents = 2;
+	// For newer event handlers, max # of params is tied to how many args can be dispatched via UDF.
 	static constexpr auto kNumMaxFilters = kMaxUdfParams;
+
+	using RawArgStack = StackVector<void*, kMaxUdfParams>;
+	using ClassicRawArgStack = StackVector<void*, kMaxArgsForClassicEvents>;
+
+	using ArgTypeStack = StackVector<EventArgType, kMaxUdfParams>;
+	using ClassicArgTypeStack = StackVector<EventArgType, kMaxArgsForClassicEvents>;
+
 
 	// Represents an event handler registered for an event.
 	class EventCallback
@@ -215,9 +223,13 @@ namespace EventManager
 		//	  Or is it a null array, meaning it should not match with the valid (non-null) array?
 		// ^^^ Thus, to avoid this situation, I opted to simply not allow filtering values that aren't dispatched.
 		// -Demorome
-		template<bool ExtractIntTypeAsFloat>
-		[[nodiscard]] bool DoNewFiltersMatch(TESObjectREFR* thisObj, const RawArgStack& args, const ArgTypeStack& argTypes,
-		                                     const EventInfo& eventInfo, ExpressionEvaluator *eval = nullptr) const;
+		template<bool ExtractIntTypeAsFloat, UInt8 NumMaxArgs>
+		bool DoNewFiltersMatch(
+			TESObjectREFR* thisObj,
+			const StackVector<void*, NumMaxArgs>& args,
+			const StackVector<EventArgType, NumMaxArgs>& argTypes,
+			const EventInfo& eventInfo,
+			ExpressionEvaluator* eval) const;
 
 		template<bool ExtractIntTypeAsFloat, bool IsParamExistingFilter>
 		bool DoesParamMatchFiltersInArray(const Filter& arrayFilter,
@@ -231,7 +243,7 @@ namespace EventManager
 		// Eval is passed to report errors.
 		[[nodiscard]] bool ShouldRemoveCallback(const EventCallback& toCheck, const EventInfo& evInfo, ExpressionEvaluator* eval = {}) const;
 
-		std::unique_ptr<ScriptToken> Invoke(EventInfo &eventInfo, void *arg0, void *arg1);
+		std::unique_ptr<ScriptToken> Invoke(EventInfo &eventInfo, const ClassicArgTypeStack& argTypes, void *arg0, void *arg1);
 
 		// If the EventCallback is confirmed to stay, then call this to wrap up loose ends, e.g save lambda var context.
 		void Confirm();
@@ -301,6 +313,7 @@ namespace EventManager
 			return !IsUserDefined() ? paramTypes[n] : EventArgType::eParamType_Anything;
 		}
 		[[nodiscard]] ArgTypeStack GetArgTypesAsStackVector() const;
+		[[nodiscard]] ClassicArgTypeStack GetClassicArgTypesAsStackVector() const;
 
 		// Useful to double-check the args dispatched via script for the NVSE Test event.
 		// Can also verify args to check which event callbacks would fire with hypothetical args (for GetEventHandlers_Execute).
@@ -517,9 +530,13 @@ namespace EventManager
 		return false;
 	}
 
-	template<bool ExtractIntTypeAsFloat>
-	bool EventCallback::DoNewFiltersMatch(TESObjectREFR* thisObj, const RawArgStack& args, const ArgTypeStack& argTypes,
-	                                      const EventInfo& eventInfo, ExpressionEvaluator* eval) const
+	template<bool ExtractIntTypeAsFloat, UInt8 NumMaxArgs>
+	bool EventCallback::DoNewFiltersMatch(
+		TESObjectREFR* thisObj, 
+		const StackVector<void*, NumMaxArgs>& args, 
+		const StackVector<EventArgType, NumMaxArgs>& argTypes,
+	    const EventInfo& eventInfo, 
+		ExpressionEvaluator* eval) const
 	{
 		auto const numParams = argTypes->size();
 		if (args->size() != numParams) [[unlikely]]  // only possible for internally-defined events, where ArgTypes are known in advance.
