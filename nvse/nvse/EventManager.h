@@ -385,23 +385,6 @@ namespace EventManager
 	DispatchReturn DispatchEventAltThreadSafe(const char* eventName, DispatchCallback resultCallback, void* anyData, 
 		PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...);
 
-	namespace DispatchWithArgTypes
-	{
-		// If kFlag_HasUnknownArgTypes is set, then these function must be called so that ArgTypes are known during dispatch.
-
-		bool DispatchEvent(const char* eventName, UInt8 numParams, EventArgType* paramTypes, TESObjectREFR* thisObj, ...);
-
-		DispatchReturn DispatchEventAlt(const char* eventName, DispatchCallback resultCallback,
-			void* anyData, UInt8 numParams, EventArgType* paramTypes, TESObjectREFR* thisObj, ...);
-
-		bool DispatchEventThreadSafe(const char* eventName, PostDispatchCallback postCallback,
-			UInt8 numParams, EventArgType* paramTypes, TESObjectREFR* thisObj, ...);
-
-		DispatchReturn DispatchEventAltThreadSafe(const char* eventName, DispatchCallback resultCallback, void* anyData,
-			PostDispatchCallback postCallback, UInt8 numParams, EventArgType* paramTypes, TESObjectREFR* thisObj, ...);
-	}
-
-
 	// dispatch a user-defined event from a script (for Cmd_DispatchEvent)
 	// Cmd_DispatchEventAlt provides more flexibility with how args are passed.
 	bool DispatchUserDefinedEvent(const char *eventName, Script *sender, UInt32 argsArrayId, const char *senderName, 

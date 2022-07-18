@@ -1605,28 +1605,6 @@ DispatchReturn vDispatchEvent(const char* eventName, DispatchCallback resultCall
 		deferIfOutsideMainThread, postCallback);
 }
 
-DispatchReturn vDispatchEventWithTypes(const char* eventName, DispatchCallback resultCallback, void* anyData,
-	UInt8 numParams, EventArgType* paramTypes, TESObjectREFR* thisObj, va_list args, 
-	bool deferIfOutsideMainThread, PostDispatchCallback postCallback)
-{
-	const auto eventPtr = TryGetEventInfoForName(eventName);
-	if (!eventPtr)
-		return DispatchReturn::kRetn_UnknownEvent;
-	EventInfo& eventInfo = *eventPtr;
-
-	RawArgStack paramsStack;
-	for (int i = 0; i < numParams; ++i)
-		paramsStack->push_back(va_arg(args, void*));
-
-	ArgTypeStack paramTypesStack;
-	for (int i = 0; i < numParams; ++i)
-		paramTypesStack->push_back(paramTypes[i]);
-
-	return DispatchEventRawWithTypes<false>(eventInfo, thisObj, paramsStack, paramTypesStack, 
-		resultCallback, anyData, deferIfOutsideMainThread, postCallback);
-}
-
-
 bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
 {
 	va_list paramList;
@@ -1674,9 +1652,31 @@ DispatchReturn DispatchEventAltThreadSafe(const char* eventName, DispatchCallbac
 	return result;
 }
 
+#if 0 // not currently recommended for use, since regularly defining and dispatching an event should be safer.
 namespace DispatchWithArgTypes
 {
 	// If kFlag_HasUnknownArgTypes is set, then these function must be called so that ArgTypes are known during dispatch.
+
+	DispatchReturn vDispatchEventWithTypes(const char* eventName, DispatchCallback resultCallback, void* anyData,
+		UInt8 numParams, EventArgType* paramTypes, TESObjectREFR* thisObj, va_list args,
+		bool deferIfOutsideMainThread, PostDispatchCallback postCallback)
+	{
+		const auto eventPtr = TryGetEventInfoForName(eventName);
+		if (!eventPtr)
+			return DispatchReturn::kRetn_UnknownEvent;
+		EventInfo& eventInfo = *eventPtr;
+
+		RawArgStack paramsStack;
+		for (int i = 0; i < numParams; ++i)
+			paramsStack->push_back(va_arg(args, void*));
+
+		ArgTypeStack paramTypesStack;
+		for (int i = 0; i < numParams; ++i)
+			paramTypesStack->push_back(paramTypes[i]);
+
+		return DispatchEventRawWithTypes<false>(eventInfo, thisObj, paramsStack, paramTypesStack,
+			resultCallback, anyData, deferIfOutsideMainThread, postCallback);
+	}
 
 	bool DispatchEvent(const char* eventName, UInt8 numParams, EventArgType* paramTypes, TESObjectREFR* thisObj, ...)
 	{
@@ -1729,6 +1729,7 @@ namespace DispatchWithArgTypes
 		return result;
 	}
 }
+#endif
 
 bool DispatchUserDefinedEvent(const char* eventName, Script* sender, UInt32 argsArrayId, const char* senderName, 
 	ExpressionEvaluator* eval)

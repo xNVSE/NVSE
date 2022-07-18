@@ -818,7 +818,8 @@ struct NVSEEventManagerInterface
 		// Events with this flag do not need to provide ParamTypes when defined.
 		// However, arg types must still be known when dispatching the event.
 		// For scripts, DispatchEventAlt will provide the args + their types.
-		// For plugins, must use DispatchEventWithTypes so that the arg types are known.
+		// For plugins, no method is exposed to dispatch such an event,
+		// since it is recommended to define the event with ParamTypes instead.
 		kFlag_HasUnknownArgTypes = 1 << 1,
 
 		// Allows scripts to dispatch the event.
@@ -877,16 +878,6 @@ struct NVSEEventManagerInterface
 	// Recommended to avoid potential multithreaded crashes, usually related to Console_Print.
 	DispatchReturn (*DispatchEventAltThreadSafe)(const char* eventName, DispatchCallback resultCallback, void* anyData, 
 		PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...);
-
-	// If kFlag_HasUnknownArgTypes is set, then these function must be called so that ArgTypes are known during dispatch.
-	// Otherwise, there's not much point in using these.
-	bool  (*DispatchEventWithTypes)(const char* eventName, UInt8 numParams, ParamType *paramTypes, TESObjectREFR* thisObj, ...);
-	DispatchReturn (*DispatchEventAltWithTypes)(const char* eventName, DispatchCallback resultCallback, void* anyData,
-		UInt8 numParams, ParamType *paramTypes, TESObjectREFR* thisObj, ...);
-	bool (*DispatchEventThreadSafeWithTypes)(const char* eventName, PostDispatchCallback postCallback, UInt8 numParams, 
-		ParamType *paramTypes, TESObjectREFR* thisObj, ...);
-	DispatchReturn (*DispatchEventAltThreadSafeWithTypes)(const char* eventName, DispatchCallback resultCallback, void* anyData,
-		PostDispatchCallback postCallback, UInt8 numParams, ParamType *paramTypes, TESObjectREFR* thisObj, ...);
 };
 #endif
 
