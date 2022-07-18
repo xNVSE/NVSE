@@ -502,8 +502,8 @@ bool EventCallback::ValidateFirstAndSecondFilter(const EventInfo& parent, std::s
 
 bool EventCallback::ValidateFilters(std::string& outErrorMsg, const EventInfo& parent) const
 {
-	if (parent.IsUserDefined())
-		return true;	// User-Defined events have no preset filters.
+	if (parent.HasUnknownArgTypes())
+		return true;
 
 	if (!ValidateFirstAndSecondFilter(parent, outErrorMsg))
 		return false;
@@ -978,7 +978,7 @@ ClassicArgTypeStack EventInfo::GetClassicArgTypesAsStackVector() const
 
 bool EventInfo::ValidateDispatchedArgTypes(const ArgTypeStack& argTypes, ExpressionEvaluator* eval) const
 {
-	if (this->IsUserDefined())
+	if (this->HasUnknownArgTypes())
 		return true;  // We have insufficient information to validate.
 
 	if (argTypes->size() != this->numParams)
@@ -1581,7 +1581,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 }
 
 
-DispatchReturn vDispatchInternalEvent(const char* eventName, DispatchCallback resultCallback, void* anyData,
+DispatchReturn vDispatchEvent(const char* eventName, DispatchCallback resultCallback, void* anyData,
 	TESObjectREFR* thisObj, va_list args, bool deferIfOutsideMainThread, PostDispatchCallback postCallback)
 {
 	const auto eventPtr = TryGetEventInfoForName(eventName);
@@ -1601,56 +1601,133 @@ DispatchReturn vDispatchInternalEvent(const char* eventName, DispatchCallback re
 	for (int i = 0; i < eventInfo.numParams; ++i)
 		params->push_back(va_arg(args, void*));
 
-	return DispatchInternalEventRaw<false>(eventInfo, thisObj, params, resultCallback, anyData,
+	return DispatchEventRaw<false>(eventInfo, thisObj, params, resultCallback, anyData,
 		deferIfOutsideMainThread, postCallback);
 }
 
+DispatchReturn vDispatchEventWithTypes(const char* eventName, DispatchCallback resultCallback, void* anyData,
+	UInt8 numParams, EventArgType* paramTypes, TESObjectREFR* thisObj, va_list args, 
+	bool deferIfOutsideMainThread, PostDispatchCallback postCallback)
+{
+	const auto eventPtr = TryGetEventInfoForName(eventName);
+	if (!eventPtr)
+		return DispatchReturn::kRetn_UnknownEvent;
+	EventInfo& eventInfo = *eventPtr;
 
-bool DispatchInternalEvent(const char* eventName, TESObjectREFR* thisObj, ...)
+	RawArgStack paramsStack;
+	for (int i = 0; i < numParams; ++i)
+		paramsStack->push_back(va_arg(args, void*));
+
+	ArgTypeStack paramTypesStack;
+	for (int i = 0; i < numParams; ++i)
+		paramTypesStack->push_back(paramTypes[i]);
+
+	return DispatchEventRawWithTypes<false>(eventInfo, thisObj, paramsStack, paramTypesStack, 
+		resultCallback, anyData, deferIfOutsideMainThread, postCallback);
+}
+
+
+bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...)
 {
 	va_list paramList;
 	va_start(paramList, thisObj);
 
-	DispatchReturn const result = vDispatchInternalEvent(eventName, nullptr, nullptr,
+	DispatchReturn const result = vDispatchEvent(eventName, nullptr, nullptr,
 		thisObj, paramList, false, nullptr);
 
 	va_end(paramList);
 	return result > DispatchReturn::kRetn_GenericError;
 }
-bool DispatchInternalEventThreadSafe(const char* eventName, PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...)
+bool DispatchEventThreadSafe(const char* eventName, PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...)
 {
 	va_list paramList;
 	va_start(paramList, thisObj);
 
-	DispatchReturn const result = vDispatchInternalEvent(eventName, nullptr, nullptr,
+	DispatchReturn const result = vDispatchEvent(eventName, nullptr, nullptr,
 		thisObj, paramList, true, postCallback);
 
 	va_end(paramList);
 	return result > DispatchReturn::kRetn_GenericError;
 }
 
-DispatchReturn DispatchInternalEventAlt(const char* eventName, DispatchCallback resultCallback, void* anyData, TESObjectREFR* thisObj, ...)
+DispatchReturn DispatchEventAlt(const char* eventName, DispatchCallback resultCallback, void* anyData, TESObjectREFR* thisObj, ...)
 {
 	va_list paramList;
 	va_start(paramList, thisObj);
 
-	auto const result = vDispatchInternalEvent(eventName, resultCallback, anyData,
+	auto const result = vDispatchEvent(eventName, resultCallback, anyData,
 		thisObj, paramList, false, nullptr);
 
 	va_end(paramList);
 	return result;
 }
-DispatchReturn DispatchInternalEventAltThreadSafe(const char* eventName, DispatchCallback resultCallback, void* anyData, 
+DispatchReturn DispatchEventAltThreadSafe(const char* eventName, DispatchCallback resultCallback, void* anyData, 
 	PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...)
 {
 	va_list paramList;
 	va_start(paramList, thisObj);
 
-	auto const result = vDispatchInternalEvent(eventName, resultCallback, anyData,
+	auto const result = vDispatchEvent(eventName, resultCallback, anyData,
 		thisObj, paramList, true, postCallback);
 
 	va_end(paramList);
 	return result;
+}
+
+namespace DispatchWithArgTypes
+{
+	// If kFlag_HasUnknownArgTypes is set, then these function must be called so that ArgTypes are known during dispatch.
+
+	bool DispatchEvent(const char* eventName, UInt8 numParams, EventArgType* paramTypes, TESObjectREFR* thisObj, ...)
+	{
+		va_list paramList;
+		va_start(paramList, thisObj);
+
+		DispatchReturn const result = vDispatchEventWithTypes(eventName, nullptr, nullptr,
+			numParams, paramTypes, thisObj, paramList, false, nullptr);
+
+		va_end(paramList);
+		return result > DispatchReturn::kRetn_GenericError;
+	}
+
+	DispatchReturn DispatchEventAlt(const char* eventName, DispatchCallback resultCallback,
+		void* anyData, UInt8 numParams, EventArgType* paramTypes, TESObjectREFR* thisObj, ...)
+	{
+		va_list paramList;
+		va_start(paramList, thisObj);
+
+		DispatchReturn const result = vDispatchEventWithTypes(eventName, resultCallback, anyData,
+			numParams, paramTypes, thisObj, paramList, false, nullptr);
+
+		va_end(paramList);
+		return result;
+	}
+
+	bool DispatchEventThreadSafe(const char* eventName, PostDispatchCallback postCallback,
+		UInt8 numParams, EventArgType* paramTypes, TESObjectREFR* thisObj, ...)
+	{
+		va_list paramList;
+		va_start(paramList, thisObj);
+
+		DispatchReturn const result = vDispatchEventWithTypes(eventName, nullptr, nullptr,
+			numParams, paramTypes, thisObj, paramList, true, postCallback);
+
+		va_end(paramList);
+		return result > DispatchReturn::kRetn_GenericError;
+	}
+
+	DispatchReturn DispatchEventAltThreadSafe(const char* eventName, DispatchCallback resultCallback, void* anyData,
+		PostDispatchCallback postCallback, UInt8 numParams, EventArgType* paramTypes, TESObjectREFR* thisObj, ...)
+	{
+		va_list paramList;
+		va_start(paramList, thisObj);
+
+		auto const result = vDispatchEventWithTypes(eventName, resultCallback, anyData,
+			numParams, paramTypes, thisObj, paramList, true, postCallback);
+
+		va_end(paramList);
+		return result;
+	}
 }
 
 bool DispatchUserDefinedEvent(const char* eventName, Script* sender, UInt32 argsArrayId, const char* senderName, 
@@ -1783,7 +1860,7 @@ void Init()
 	EVENT_INFO("renamenewgamename", kEventParams_OneString, nullptr, 0);
 
 	EVENT_INFO_FLAGS("nvsetestevent", kEventParams_OneInt_OneFloat_OneArray_OneString_OneForm_OneReference_OneBaseform,
-		nullptr, 0, ExtendedEventFlags::kFlag_IsTestEvent); // dispatched via DispatchEventAlt, for unit tests
+		nullptr, 0, EventFlags::kFlag_AllowScriptDispatch); // dispatched via DispatchEventAlt, for unit tests
 
 	ASSERT (kEventID_InternalMAX == s_eventInfos.size());
 
@@ -1797,7 +1874,7 @@ void Init()
 }
 
 bool RegisterEventEx(const char* name, const char* alias, bool isInternal, UInt8 numParams, EventArgType* paramTypes,
-                     UInt32 eventMask, EventHookInstaller* hookInstaller, ExtendedEventFlags flags)
+                     UInt32 eventMask, EventHookInstaller* hookInstaller, EventFlags flags)
 {
 	if (numParams > kNumMaxFilters) [[unlikely]]
 		return false;
@@ -1827,14 +1904,14 @@ bool RegisterEventEx(const char* name, const char* alias, bool isInternal, UInt8
 bool RegisterEvent(const char* name, UInt8 numParams, EventArgType* paramTypes, NVSEEventManagerInterface::EventFlags flags)
 {
 	return RegisterEventEx(name, nullptr, false, numParams, paramTypes, 0, nullptr, 
-		static_cast<ExtendedEventFlags>(flags));
+		static_cast<EventFlags>(flags));
 }
 
 bool RegisterEventWithAlias(const char* name, const char* alias, UInt8 numParams, EventArgType* paramTypes, 
 	NVSEEventManagerInterface::EventFlags flags)
 {
 	return RegisterEventEx(name, alias, false, numParams, paramTypes, 0, nullptr, 
-		static_cast<ExtendedEventFlags>(flags));
+		static_cast<EventFlags>(flags));
 }
 
 bool SetNativeEventHandler(const char* eventName, EventHandler func)

@@ -114,25 +114,7 @@ namespace EventManager
 
 	using EventHandler = NVSEEventManagerInterface::EventHandler;
 	using EventArgType = NVSEEventManagerInterface::ParamType;
-
-	// Extends NVSEEventManagerInterface::EventFlags
-	enum ExtendedEventFlags : UInt32
-	{
-		kFlags_None = 0,
-
-		//If on, will remove all set handlers for the event every game load.
-		kFlag_FlushOnLoad = 1 << 0,
-
-
-		// == Flags below reserved for internal use; their values can be changed as the exposed EventFlags grows.
-
-		//Identifies script-created events, for the DispatchEvent(Alt) script functions.
-		//Arg types are only known when dispatching the event.
-		kFlag_IsUserDefined = 1 << 1,
-
-		//Identifies xNVSE's unit-testing event, which can be dispatched via DispatchEventAlt, but arg types are known in advance.
-		kFlag_IsTestEvent = 1 << 2,
-	};
+	using EventFlags = NVSEEventManagerInterface::EventFlags;
 
 	inline bool IsParamForm(EventArgType pType)
 	{
@@ -209,7 +191,7 @@ namespace EventManager
 		void SetRemoved(bool bSet) { removed = bSet; }
 		[[nodiscard]] bool FlushesOnLoad() const { return flushOnLoad; }
 
-		[[nodiscard]] Script *TryGetScript() const;
+		[[nodiscard]] Script* TryGetScript() const;
 		[[nodiscard]] bool HasCallbackFunc() const;
 
 		[[nodiscard]] bool DoDeprecatedFiltersMatch(const RawArgStack& args, const ArgTypeStack* argTypes,
@@ -260,19 +242,19 @@ namespace EventManager
 	struct EventInfo
 	{
 		EventInfo(const char *name_, EventArgType *params_, UInt8 nParams_, UInt32 eventMask_, EventHookInstaller *installer_,
-				  ExtendedEventFlags flags = ExtendedEventFlags::kFlags_None)
+				  EventFlags flags = EventFlags::kFlags_None)
 			: evName(name_), paramTypes(params_), numParams(nParams_), eventMask(eventMask_), installHook(installer_), flags(flags)
 		{}
 		// ctor w/ alias
 		EventInfo(const char* name_, const char* alias_, EventArgType* params_, UInt8 nParams_, UInt32 eventMask_, EventHookInstaller* installer_,
-			ExtendedEventFlags flags = ExtendedEventFlags::kFlags_None)
+			EventFlags flags = EventFlags::kFlags_None)
 			: evName(name_), alias(alias_), paramTypes(params_), numParams(nParams_), eventMask(eventMask_), installHook(installer_), flags(flags)
 		{}
 
-		EventInfo(const char *name_, EventArgType *params_, UInt8 numParams_, ExtendedEventFlags flags = ExtendedEventFlags::kFlags_None)
+		EventInfo(const char *name_, EventArgType *params_, UInt8 numParams_, EventFlags flags = EventFlags::kFlags_None)
 			: evName(name_), paramTypes(params_), numParams(numParams_), flags(flags) {}
 		// ctor w/ alias
-		EventInfo(const char* name_, const char* alias_, EventArgType* params_, UInt8 numParams_, ExtendedEventFlags flags = ExtendedEventFlags::kFlags_None)
+		EventInfo(const char* name_, const char* alias_, EventArgType* params_, UInt8 numParams_, EventFlags flags = EventFlags::kFlags_None)
 			: evName(name_), alias(alias_), paramTypes(params_), numParams(numParams_), flags(flags) {}
 
 		EventInfo(const EventInfo &other) = delete;
@@ -292,30 +274,34 @@ namespace EventManager
 		EventHookInstaller *installHook{}; // if a hook is needed for this event type, this will be non-null.
 										   // install it once and then set *installHook to NULL. Allows multiple events
 										   // to use the same hook, installing it only once.
-		ExtendedEventFlags flags = ExtendedEventFlags::kFlags_None;
+		EventFlags flags = EventFlags::kFlags_None;
 
 		[[nodiscard]] bool FlushesOnLoad() const
 		{
-			return flags & ExtendedEventFlags::kFlag_FlushOnLoad;
+			return flags & EventFlags::kFlag_FlushOnLoad;
+		}
+		[[nodiscard]] bool HasUnknownArgTypes() const
+		{
+			return flags & EventFlags::kFlag_HasUnknownArgTypes;
 		}
 		[[nodiscard]] bool IsUserDefined() const
 		{
-			return flags & ExtendedEventFlags::kFlag_IsUserDefined;
+			return flags & EventFlags::kFlag_IsUserDefined;
 		}
-		[[nodiscard]] bool IsTestEvent() const
+		[[nodiscard]] bool AllowsScriptDispatch() const
 		{
-			return flags & ExtendedEventFlags::kFlag_IsTestEvent;
+			return flags & EventFlags::kFlag_AllowScriptDispatch;
 		}
 		// n is 0-based
 		// Assumes that the index was already checked as valid (i.e numParams was checked).
 		[[nodiscard]] EventArgType TryGetNthParamType(size_t n) const
 		{
-			return !IsUserDefined() ? paramTypes[n] : EventArgType::eParamType_Anything;
+			return !HasUnknownArgTypes() ? paramTypes[n] : EventArgType::eParamType_Anything;
 		}
 		[[nodiscard]] ArgTypeStack GetArgTypesAsStackVector() const;
 		[[nodiscard]] ClassicArgTypeStack GetClassicArgTypesAsStackVector() const;
 
-		// Useful to double-check the args dispatched via script for the NVSE Test event.
+		// Useful to double-check the args dispatched via script for an internally-defined event.
 		// Can also verify args to check which event callbacks would fire with hypothetical args (for GetEventHandlers_Execute).
 		// Only useful for Plugin-Defined Events.
 		[[nodiscard]] bool ValidateDispatchedArgTypes(const ArgTypeStack& argTypes, ExpressionEvaluator* eval = nullptr) const;
@@ -365,7 +351,7 @@ namespace EventManager
 
 	bool RegisterEventEx(const char *name, const char* alias, bool isInternal, UInt8 numParams, EventArgType *paramTypes,
 	                     UInt32 eventMask = 0, EventHookInstaller *hookInstaller = nullptr,
-	                     ExtendedEventFlags flags = ExtendedEventFlags::kFlags_None);
+	                     EventFlags flags = EventFlags::kFlags_None);
 
 	// Exported
 	bool RegisterEvent(const char *name, UInt8 numParams, EventArgType *paramTypes, NVSEEventManagerInterface::EventFlags flags);
@@ -382,19 +368,39 @@ namespace EventManager
 	using PostDispatchCallback = NVSEEventManagerInterface::PostDispatchCallback;
 
 	template <bool ExtractIntTypeAsFloat>
-	DispatchReturn DispatchInternalEventRaw(EventInfo& eventInfo, TESObjectREFR* thisObj, RawArgStack& args,
+	DispatchReturn DispatchEventRaw(EventInfo& eventInfo, TESObjectREFR* thisObj, RawArgStack& args,
 		DispatchCallback resultCallback, void* anyData, bool deferIfOutsideMainThread, PostDispatchCallback postCallback);
 
+	// Eval can be passed for better error reporting.
 	template <bool ExtractIntTypeAsFloat>
-	bool DispatchUserDefinedEventRaw(EventInfo& eventInfo, TESObjectREFR* thisObj, RawArgStack& args, ArgTypeStack& argTypes, 
-		ExpressionEvaluator* eval = nullptr);
+	DispatchReturn DispatchEventRawWithTypes(EventInfo& eventInfo, TESObjectREFR* thisObj, RawArgStack& args, ArgTypeStack& argTypes,
+		DispatchCallback resultCallback, void* anyData, bool deferIfOutsideMainThread, 
+		PostDispatchCallback postCallback, ExpressionEvaluator* eval = nullptr);
 
-	bool DispatchInternalEvent(const char* eventName, TESObjectREFR* thisObj, ...);
-	DispatchReturn DispatchInternalEventAlt(const char *eventName, DispatchCallback resultCallback, void *anyData, TESObjectREFR *thisObj, ...);
+	bool DispatchEvent(const char* eventName, TESObjectREFR* thisObj, ...);
+	DispatchReturn DispatchEventAlt(const char *eventName, DispatchCallback resultCallback, 
+		void *anyData, TESObjectREFR *thisObj, ...);
 
-	bool DispatchInternalEventThreadSafe(const char* eventName, PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...);
-	DispatchReturn DispatchInternalEventAltThreadSafe(const char* eventName, DispatchCallback resultCallback, void* anyData, 
+	bool DispatchEventThreadSafe(const char* eventName, PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...);
+	DispatchReturn DispatchEventAltThreadSafe(const char* eventName, DispatchCallback resultCallback, void* anyData, 
 		PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...);
+
+	namespace DispatchWithArgTypes
+	{
+		// If kFlag_HasUnknownArgTypes is set, then these function must be called so that ArgTypes are known during dispatch.
+
+		bool DispatchEvent(const char* eventName, UInt8 numParams, EventArgType* paramTypes, TESObjectREFR* thisObj, ...);
+
+		DispatchReturn DispatchEventAlt(const char* eventName, DispatchCallback resultCallback,
+			void* anyData, UInt8 numParams, EventArgType* paramTypes, TESObjectREFR* thisObj, ...);
+
+		bool DispatchEventThreadSafe(const char* eventName, PostDispatchCallback postCallback,
+			UInt8 numParams, EventArgType* paramTypes, TESObjectREFR* thisObj, ...);
+
+		DispatchReturn DispatchEventAltThreadSafe(const char* eventName, DispatchCallback resultCallback, void* anyData,
+			PostDispatchCallback postCallback, UInt8 numParams, EventArgType* paramTypes, TESObjectREFR* thisObj, ...);
+	}
+
 
 	// dispatch a user-defined event from a script (for Cmd_DispatchEvent)
 	// Cmd_DispatchEventAlt provides more flexibility with how args are passed.
@@ -610,22 +616,26 @@ namespace EventManager
 		ExpressionEvaluator* eval = nullptr);
 
 	template <bool ExtractIntTypeAsFloat>
-	bool DispatchUserDefinedEventRaw(EventInfo& eventInfo, TESObjectREFR* thisObj, RawArgStack& args, ArgTypeStack& argTypes,
-		ExpressionEvaluator* eval)
+	DispatchReturn DispatchEventRawWithTypes(EventInfo& eventInfo, TESObjectREFR* thisObj, RawArgStack& args, ArgTypeStack& argTypes,
+		DispatchCallback resultCallback, void* anyData, bool deferIfOutsideMainThread,
+		PostDispatchCallback postCallback, ExpressionEvaluator* eval)
 	{
-		if (!eventInfo.IsUserDefined() && !eventInfo.IsTestEvent()) [[unlikely]]
-			throw std::logic_error("DispatchUserDefinedEventRaw was called on an internally-defined event.");
-
+		// For internally-defined events with known argTypes, scripter could be passing the wrong argTypes (or wrong # of args)
+		if (!eventInfo.ValidateDispatchedArgTypes(argTypes, eval)) [[unlikely]]
+		{
+			ShowRuntimeScriptError(nullptr, eval, "Caught attempt to dispatch event %s with invalid args.", eventInfo.evName);
+			return DispatchReturn::kRetn_GenericError;
+		}
 		return DispatchEventRaw<ExtractIntTypeAsFloat>(eventInfo, thisObj, args, argTypes, 
-			nullptr, nullptr, false, nullptr, eval) > DispatchReturn::kRetn_GenericError;
+			resultCallback, anyData, deferIfOutsideMainThread, postCallback, eval);
 	}
 
 	template <bool ExtractIntTypeAsFloat>
-	DispatchReturn DispatchInternalEventRaw(EventInfo& eventInfo, TESObjectREFR* thisObj, RawArgStack& args, 
+	DispatchReturn DispatchEventRaw(EventInfo& eventInfo, TESObjectREFR* thisObj, RawArgStack& args, 
 		DispatchCallback resultCallback, void* anyData, bool deferIfOutsideMainThread, PostDispatchCallback postCallback)
 	{
-		if (eventInfo.IsUserDefined()) [[unlikely]]
-			throw std::logic_error("DispatchInternalEventRaw was called on a user-defined event.");
+		if (eventInfo.HasUnknownArgTypes()) [[unlikely]]
+			throw std::logic_error("DispatchEventRaw was called on an event that has unknown types.");
 
 		ArgTypeStack argTypes = eventInfo.GetArgTypesAsStackVector();
 		return DispatchEventRaw<ExtractIntTypeAsFloat>(eventInfo, thisObj, args, argTypes,
@@ -685,7 +695,7 @@ namespace EventManager
 			if (callback.IsRemoved())
 				continue;
 
-			if (!callback.DoDeprecatedFiltersMatch(args, eventInfo.IsUserDefined() ? &argTypes : nullptr, eventInfo, eval))
+			if (!callback.DoDeprecatedFiltersMatch(args, eventInfo.HasUnknownArgTypes() ? &argTypes : nullptr, eventInfo, eval))
 				continue;
 			if (!callback.DoNewFiltersMatch<ExtractIntTypeAsFloat>(thisObj, args, argTypes, eventInfo, eval))
 				continue;
@@ -749,7 +759,7 @@ namespace EventManager
 					// have to assume registering for a user-defined event (for DispatchEvent) which has not been used before this point
 					char* nameCopy = CopyString(eventName);
 					StrToLower(nameCopy);
-					*eventInfoPtr = &s_eventInfos.emplace_back(nameCopy, nullptr, 0, ExtendedEventFlags::kFlag_IsUserDefined);
+					*eventInfoPtr = &s_eventInfos.emplace_back(nameCopy, nullptr, 0, EventFlags::kFlag_IsUserDefined);
 				}
 			}
 		}

@@ -748,6 +748,7 @@ struct NVSESerializationInterface
  *	- Dispatch an event from code to scripts (and plugins with this interface) with parameters and calling ref.
  *	   - SetEventHandlerAlt supports up to 15 filters in script calls in the syntax of 1::myFilter
  *	   (1st argument will receive this filter for example)
+ *	   - 0::myFilter is used to filter the calling reference.
  *	- Set an event handler for any NVSE events registered with SetEventHandler(Alt) which will be called back.
  *
  *	For RegisterEvent, paramTypes needs to be statically defined
@@ -776,8 +777,8 @@ struct NVSEEventManagerInterface
 {
 	typedef void (*EventHandler)(TESObjectREFR* thisObj, void* parameters);
 
-	// Mostly just used for filtering information.
-	enum ParamType : int8_t
+	// Mostly used for filtering information.
+	enum ParamType : UInt8
 	{
 		eParamType_Float = 0,
 		eParamType_Int,
@@ -811,11 +812,25 @@ struct NVSEEventManagerInterface
 	{
 		kFlags_None = 0,
 
-		//If on, will remove all set handlers for the event every game load.
+		// If on, will remove all set handlers for the event every game load.
 		kFlag_FlushOnLoad = 1 << 0,
+
+		// Events with this flag do not need to provide ParamTypes when defined.
+		// However, arg types must still be known when dispatching the event.
+		// For scripts, DispatchEventAlt will provide the args + their types.
+		// For plugins, must use DispatchEventWithTypes so that the arg types are known.
+		kFlag_HasUnknownArgTypes = 1 << 1,
+
+		// Allows scripts to dispatch the event.
+		// This comes at the risk of not knowing if some other scripted mod is dispatching your event.
+		kFlag_AllowScriptDispatch = 1 << 2,
+
+		// When implicitly creating a new event via the script function SetEventHandler(Alt), these flags are set.
+		kFlag_IsUserDefined = kFlag_HasUnknownArgTypes | kFlag_AllowScriptDispatch,
 	};
 
-	// Registers a new event which can be dispatched to scripts and plugins. Returns false if event with name already exists.
+	// Registers a new event which can be dispatched to scripts and plugins.
+	// Returns false if event with name already exists.
 	bool (*RegisterEvent)(const char* name, UInt8 numParams, ParamType* paramTypes, EventFlags flags);
 
 	// Dispatch an event that has been registered with RegisterEvent.
@@ -835,10 +850,11 @@ struct NVSEEventManagerInterface
 
 	// If resultCallback is not null, then it is called for each SCRIPT event handler that is dispatched, which allows checking the result of each dispatch.
 	// If the callback returns false, then dispatching for the event will end prematurely, and this returns kRetn_EarlyBreak.
-	// anyData arg is passed to the callbacks.
+	// 'anyData' arg is passed to the callbacks.
 	DispatchReturn (*DispatchEventAlt)(const char* eventName, DispatchCallback resultCallback, void* anyData, TESObjectREFR* thisObj, ...);
 
 	// Similar to script function SetEventHandler, allows you to set a native function that gets called back on events
+	// Unlike SetEventHandler, the event must already be defined before this function is called.
 	bool (*SetNativeEventHandler)(const char* eventName, EventHandler func);
 
 	// Same as script function RemoveEventHandler but for native functions
@@ -861,6 +877,16 @@ struct NVSEEventManagerInterface
 	// Recommended to avoid potential multithreaded crashes, usually related to Console_Print.
 	DispatchReturn (*DispatchEventAltThreadSafe)(const char* eventName, DispatchCallback resultCallback, void* anyData, 
 		PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...);
+
+	// If kFlag_HasUnknownArgTypes is set, then these function must be called so that ArgTypes are known during dispatch.
+	// Otherwise, there's not much point in using these.
+	bool  (*DispatchEventWithTypes)(const char* eventName, UInt8 numParams, ParamType *paramTypes, TESObjectREFR* thisObj, ...);
+	DispatchReturn (*DispatchEventAltWithTypes)(const char* eventName, DispatchCallback resultCallback, void* anyData,
+		UInt8 numParams, ParamType *paramTypes, TESObjectREFR* thisObj, ...);
+	bool (*DispatchEventThreadSafeWithTypes)(const char* eventName, PostDispatchCallback postCallback, UInt8 numParams, 
+		ParamType *paramTypes, TESObjectREFR* thisObj, ...);
+	DispatchReturn (*DispatchEventAltThreadSafeWithTypes)(const char* eventName, DispatchCallback resultCallback, void* anyData,
+		PostDispatchCallback postCallback, UInt8 numParams, ParamType *paramTypes, TESObjectREFR* thisObj, ...);
 };
 #endif
 

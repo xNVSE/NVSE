@@ -817,24 +817,17 @@ bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 	}
 
 	auto& eventInfo = *eventInfoPtr;
-	// Special case for TestEvent, to trigger the event in a script for runtime tests.
-	if (!eventInfo.IsUserDefined() && !eventInfo.IsTestEvent()) [[unlikely]]
+	if (!eventInfo.AllowsScriptDispatch()) [[unlikely]]
 	{
-		eval.Error("Event %s is internally defined; only user-defined events can be dispatched with this function.", eventName);
+		eval.Error("Event %s is internally defined and is set up to not allow script dispatch.", eventName);
 		return true;
 	}
 
 	auto [args, argTypes] = ExtractArgsAndArgTypes(eval, 1);
 
-	// For the NVSE Test event, scripter could be passing the wrong argTypes (or wrong # of args)
-	if (!eventInfo.ValidateDispatchedArgTypes(argTypes, &eval))
-	{
-		eval.Error("Caught attempt to dispatch the NVSE Test Event with invalid args.");
-		return true;
-	}
-
 	// allow (risky) dispatching outside main thread
-	*result = EventManager::DispatchUserDefinedEventRaw<true>(eventInfo, thisObj, args, argTypes, &eval);
+	*result = EventManager::DispatchEventRawWithTypes<true>(eventInfo, thisObj, args, argTypes,
+		nullptr, nullptr, false, nullptr, &eval) > EventManager::DispatchReturn::kRetn_GenericError;
 	return true;
 }
 
@@ -874,7 +867,7 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 
 		if (!argTypes->empty() && !info.ValidateDispatchedArgTypes(argTypes, &eval))
 			return;
-		auto const accurateArgTypes = info.IsUserDefined() ? argTypes : info.GetArgTypesAsStackVector();
+		auto const accurateArgTypes = info.HasUnknownArgTypes() ? argTypes : info.GetArgTypesAsStackVector();
 
 		if (script)
 		{
@@ -985,7 +978,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 
 		if (!argTypes->empty() && !info.ValidateDispatchedArgTypes(argTypes, &eval))
 			return handlersForEventArray;
-		auto const accurateArgTypes = info.IsUserDefined() ? argTypes : info.GetArgTypesAsStackVector();
+		auto const accurateArgTypes = info.HasUnknownArgTypes() ? argTypes : info.GetArgTypesAsStackVector();
 
 		if (script)
 		{
