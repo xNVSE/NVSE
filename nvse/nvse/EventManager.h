@@ -213,7 +213,7 @@ namespace EventManager
 			const EventInfo& eventInfo,
 			ExpressionEvaluator* eval) const;
 
-		template<bool ExtractIntTypeAsFloat, bool IsParamExistingFilter>
+		template<bool ExtractIntTypeAsFloat>
 		bool DoesParamMatchFiltersInArray(const Filter& arrayFilter,
 			EventArgType paramType, void* param, int index) const;
 
@@ -395,10 +395,10 @@ namespace EventManager
 
 	// == Template definitions
 
-	bool DoesFormMatchFilter(TESForm* inputForm, TESForm* filter, bool expectReference, const UInt32 recursionLevel = 0);
+	bool DoesFormMatchFilter(TESForm* inputForm, TESForm* filterForm, bool expectReference, const UInt32 recursionLevel = 0);
 
 	// eParamType_Anything is treated as "use default param type" (usually for a User-Defined Event).
-	template<bool ExtractIntTypeAsFloat, bool IsParamExistingFilter>
+	template<bool ExtractIntTypeAsFloat>
 	bool DoesFilterMatch(const ArrayElement& sourceFilter, void* arg, EventArgType argType)
 	{
 		switch (sourceFilter.DataType()) {
@@ -441,24 +441,8 @@ namespace EventManager
 			auto* filterForm = LookupFormByID(filterFormId);
 			bool const expectReference = argType != EventArgType::eParamType_BaseForm;
 
-			if constexpr (IsParamExistingFilter)
-			{
-				if (inputForm && IS_ID(inputForm, BGSListForm))
-				{
-					// Multiple form filters
-					auto const existingFilters = static_cast<BGSListForm*>(inputForm);
-					for (auto const nthExistingFilterForm : existingFilters->list)
-					{
-						if (!DoesFormMatchFilter(nthExistingFilterForm, filterForm, expectReference))
-							return false;
-					}
-					return true;
-				}
-			}
 			if (!DoesFormMatchFilter(inputForm, filterForm, expectReference))
-			{
 				return false;
-			}
 			break;
 		}
 		case kDataType_String:
@@ -493,7 +477,7 @@ namespace EventManager
 		return true;
 	}
 
-	template<bool ExtractIntTypeAsFloat, bool IsParamExistingFilter>
+	template<bool ExtractIntTypeAsFloat>
 	bool EventCallback::DoesParamMatchFiltersInArray(const Filter& arrayFilter, EventArgType paramType, void* param, int index) const
 	{
 		ArrayID arrayFiltersId{};
@@ -513,7 +497,7 @@ namespace EventManager
 			{
 				continue;
 			}
-			if (DoesFilterMatch<ExtractIntTypeAsFloat, IsParamExistingFilter>(elem, param, paramType))
+			if (DoesFilterMatch<ExtractIntTypeAsFloat>(elem, param, paramType))
 				return true;
 		}
 		return false;
@@ -569,19 +553,19 @@ namespace EventManager
 				}
 
 				// elements of array are filters
-				if (!DoesParamMatchFiltersInArray<ExtractIntTypeAsFloat, false>(filter, argType, arg, index))
+				if (!DoesParamMatchFiltersInArray<ExtractIntTypeAsFloat>(filter, argType, arg, index))
 					return false;
 				continue;
 			}
 
 			// Try directly comparing them.
-			if (DoesFilterMatch<ExtractIntTypeAsFloat, false>(filter, arg, argType))
+			if (DoesFilterMatch<ExtractIntTypeAsFloat>(filter, arg, argType))
 				continue;
 
 			// If both are arrays, then maybe the filter array contains multiple arrays to match.
 			if (filterVarType == Script::eVarType_Array)
 			{
-				if (DoesParamMatchFiltersInArray<ExtractIntTypeAsFloat, false>(filter, argType, arg, index))
+				if (DoesParamMatchFiltersInArray<ExtractIntTypeAsFloat>(filter, argType, arg, index))
 					continue;
 			}
 

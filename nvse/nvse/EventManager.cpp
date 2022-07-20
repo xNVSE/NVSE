@@ -1244,43 +1244,70 @@ void ClearFlushOnLoadEvents()
 	}
 }
 
-bool DoesFormMatchFilter(TESForm* inputForm, TESForm* filter, bool expectReference, const UInt32 recursionLevel)
+bool DoesFormMatchFilter(TESForm* inputForm, TESForm* filterForm, bool expectReference, const UInt32 recursionLevel)
 {
-	if (filter == inputForm)	//filter and form could both be null, and that's okay.
+	if (filterForm == inputForm)	//filter and form could both be null, and that's okay.
 		return true;
-	if (!filter || !inputForm)
+	if (!filterForm || !inputForm)
 		return false;
 	if (recursionLevel > 100) [[unlikely]]
 		return false;
-	if (IS_ID(filter, BGSListForm))
+	if (IS_ID(filterForm, BGSListForm))
 	{
-		const auto* listFilter = static_cast<BGSListForm*>(filter);
+		const auto* filterList = static_cast<BGSListForm*>(filterForm);
 		if (IS_ID(inputForm, BGSListForm))
 		{
+			const auto* inputList = static_cast<BGSListForm*>(inputForm);
+
 			// Compare the contents of two lists (which could be recursive).
-			const auto* listArg = static_cast<BGSListForm*>(inputForm);
-			auto listArgForm = listArg->list.Begin();
-			for (auto* listFilterForm : listFilter->list)
+			// The order of the contents does not matter.
+			// Everything in the inputList must be matched with a form in the filterList.
+			for (auto* inputListForm : inputList->list)
 			{
-				if (!DoesFormMatchFilter(listArgForm.Get(), listFilterForm, expectReference, recursionLevel + 1))
+				bool foundMatch = false;
+				for (auto* filterListForm : filterList->list)
+				{
+					if (DoesFormMatchFilter(inputListForm, filterListForm, expectReference, recursionLevel + 1))
+					{
+						foundMatch = true;
+						break;
+					}
+				}
+				if (!foundMatch)
 					return false;
-				++listArgForm;
 			}
 			return true;
 		}
+		//inputForm is not a formlist.
+
 		// try matching the inputForm with a Form from the filter list
-		for (auto* listFilterForm : listFilter->list)
+		for (auto* filterListForm : filterList->list)
 		{
-			if (DoesFormMatchFilter(inputForm, listFilterForm, expectReference, recursionLevel + 1))
+			if (DoesFormMatchFilter(inputForm, filterListForm, expectReference, recursionLevel + 1))
 				return true;
 		}
-
 	}
-	// If input form is a reference, then try matching its baseForm to the filter.
-	else if (expectReference && inputForm->GetIsReference())
+	else //filterForm is not a formlist.
 	{
-		if (filter == GetPermanentBaseForm(static_cast<TESObjectREFR*>(inputForm)))
+		// Allow matching a single form with a formlist if the formlist effectively only contains that form.
+		if (IS_ID(inputForm, BGSListForm))
+		{
+			auto const inputList = static_cast<BGSListForm*>(inputForm);
+			for (auto const inputListForm : inputList->list)
+			{
+				if (!DoesFormMatchFilter(inputListForm, filterForm, expectReference))
+					return false;
+			}
 			return true;
+		}
+		//inputForm is not a formlist.
+
+		// If input form is a reference, then try matching its baseForm to the filter.
+		if (expectReference && inputForm->GetIsReference())
+		{
+			if (filterForm == GetPermanentBaseForm(static_cast<TESObjectREFR*>(inputForm)))
+				return true;
+		}
 	}
 	return false;
 }
@@ -1483,7 +1510,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 					{
 						// Check if arrays are exactly equal.
 						// Covers case #1
-						if (DoesFilterMatch<true, true>(toRemoveFilter, existingFilter.GetAsVoidArg(), paramType))
+						if (DoesFilterMatch<true>(toRemoveFilter, existingFilter.GetAsVoidArg(), paramType))
 							continue;
 					}
 
@@ -1496,7 +1523,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 					bool filtersMatch = true;
 					for (auto iter = existingFilters->Begin(); !iter.End(); ++iter)
 					{
-						if (!DoesParamMatchFiltersInArray<true, true>(toRemoveFilter, paramType, 
+						if (!DoesParamMatchFiltersInArray<true>(toRemoveFilter, paramType, 
 							iter.second()->GetAsVoidArg(), index))
 						{
 							filtersMatch = false;
@@ -1515,7 +1542,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 					filtersMatch = true;
 					for (auto iter = existingFilters->Begin(); !iter.End(); ++iter)
 					{
-						if (!DoesFilterMatch<true, true>(toRemoveFilter, iter.second()->GetAsVoidArg(), paramType))
+						if (!DoesFilterMatch<true>(toRemoveFilter, iter.second()->GetAsVoidArg(), paramType))
 						{
 							filtersMatch = false;
 							break;
@@ -1526,13 +1553,13 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 
 					// Cover case #4
 					// ToRemoveFilter array could hold many array filters, so try matching existingFilter array to any of those arrays.
-					if (DoesParamMatchFiltersInArray<true, true>(toRemoveFilter, paramType, existingFilter.GetAsVoidArg(), index))
+					if (DoesParamMatchFiltersInArray<true>(toRemoveFilter, paramType, existingFilter.GetAsVoidArg(), index))
 						continue;
 
 					return false;
 				}
 				// else, must be a simple filter
-				if (!DoesFilterMatch<true, true>(toRemoveFilter, existingFilter.GetAsVoidArg(), paramType))
+				if (!DoesFilterMatch<true>(toRemoveFilter, existingFilter.GetAsVoidArg(), paramType))
 				{
 					return false;
 				}
@@ -1544,7 +1571,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 			else if (toRemoveFilter.DataType() == kDataType_Array)
 			{
 				// Case #1: check if any of the elements in the array match existingFilter.
-				if (!DoesParamMatchFiltersInArray<true, true>(toRemoveFilter, paramType, existingFilter.GetAsVoidArg(), index))
+				if (!DoesParamMatchFiltersInArray<true>(toRemoveFilter, paramType, existingFilter.GetAsVoidArg(), index))
 					return false;
 			}
 			else if (existingFilter.DataType() == kDataType_Array)
@@ -1560,7 +1587,7 @@ bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const Eve
 				for (auto iter = existingFilters->GetRawContainer()->begin();
 					!iter.End(); ++iter)
 				{
-					if (!DoesFilterMatch<true, true>(toRemoveFilter, iter.second()->GetAsVoidArg(), paramType))
+					if (!DoesFilterMatch<true>(toRemoveFilter, iter.second()->GetAsVoidArg(), paramType))
 						return false;
 				}
 			}

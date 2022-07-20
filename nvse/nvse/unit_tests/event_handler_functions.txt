@@ -358,6 +358,37 @@ begin Function { }
 	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::rFormList) == 0
 	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::rFormList2)
 
+	ref rFormList3 = CreateFormList "" (Ar_List SunnyREF, EasyPeteREF, PlayerREF)
+	ref rFormList4 = CreateFormList "" (Ar_List SunnyREF, EasyPeteREF)
+	ref rFormList5 = CreateFormList "" (Ar_List EasyPeteREF, SunnyREF, GSChetREF, PlayerREF)
+	ref rFormList6 = CreateFormList "" (Ar_List PlayerREF, SunnyREF, EasyPeteREF)
+	ref rFormList7 = CreateFormList "" (Ar_List PlayerREF, SunnyREF, GSChetREF)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::rFormList3)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::rFormList4) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::rFormList3)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::rFormList3)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::rFormList6)  ; same contents, but different order, which we ignore.
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::rFormList3)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::rFormList7) == 0  ; different contents
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::rFormList3)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::rFormList3)
+	; rFormList5 contains everything rFormList3 has and more, so it encompasses 3, 
+	; so it should be able to remove the handler with that filter.
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::rFormList5)
+
+	ref rFormList8 = CreateFormList "" (Ar_List GSChetREF, GSChetREF, GSChetREF, GSChetREF, GSChetREF)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::rFormList8)
+	; We allow removing a formlist filter by a single form if the formlist effectively just contains that form.
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::GSChetREF) 
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::GSChetREF)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::rFormList8)
+
 
 	; == Test array-of-filters filter.
 	
