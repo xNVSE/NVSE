@@ -144,10 +144,10 @@ struct ScriptEventList
 {
 	enum
 	{
-		kEvent_OnAdd = 0x00000001,
+		kEvent_OnAdd = 0x00000001,			  // 0x57506B, 0x574AFA, 0x574C28, 0x574D00, 0x574F03, 
 		kEvent_OnEquip = 0x00000002,		  // Called on Item and on Refr
 		kEvent_OnActorEquip = kEvent_OnEquip, // presumably the game checks the type of the object
-		kEvent_OnDrop = 0x00000004,
+		kEvent_OnDrop = 0x00000004,			  // 0x57510E, 0x4C41DC, 0x4C42B2
 		kEvent_OnUnequip = 0x00000008,
 		kEvent_OnActorUnequip = kEvent_OnUnequip,
 		kEvent_OnDeath = 0x00000010,
@@ -160,7 +160,7 @@ struct ScriptEventList
 		kEvent_OnPackageChange = 0x00000800,
 		kEvent_OnLoad = 0x00001000,
 		kEvent_OnMagicEffectHit = 0x00002000, // EffectSetting* 0x0082326F
-		kEvent_OnSell = 0x00004000,			  // 0x0072FE29 and 0x0072FF05, linked to 'Barter Amount Traded' Misc Stat
+		kEvent_OnSell = 0x00004000,			  // 0x0072FE29 and 0x0072FF05, linked to 'Barter Amount Traded' Misc Stat. ALso 0x8E5D85, 0x8E5DD7, 0x91FAD1
 		kEvent_OnStartCombat = 0x00008000,
 
 		kEvent_OnOpen = 0x00010000,					  // while opening some container, not all
