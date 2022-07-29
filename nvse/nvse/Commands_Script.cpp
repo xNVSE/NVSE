@@ -525,10 +525,9 @@ bool Cmd_GetNthExplicitRef_Execute(COMMAND_ARGS)
 bool Cmd_RunScript_Execute(COMMAND_ARGS)
 {
 	TESForm *form = nullptr;
-
+	*result = 0;
 	if (ExtractArgsEx(EXTRACT_ARGS_EX, &form))
 	{
-
 		form = form->TryGetREFRParent();
 		if (!form)
 		{
@@ -539,24 +538,19 @@ bool Cmd_RunScript_Execute(COMMAND_ARGS)
 
 		const auto scriptForm = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
 		Script *script = nullptr;
-		EffectSetting *effect = nullptr;
 		if (!scriptForm) // Let's try for a MGEF
 		{
-			effect = DYNAMIC_CAST(form, TESForm, EffectSetting);
-			if (effect)
+			if (auto* const effect = DYNAMIC_CAST(form, TESForm, EffectSetting))
 				script = effect->GetScript();
 			else
-			{
 				script = DYNAMIC_CAST(form, TESForm, Script);
-			}
 		}
 		else
 			script = scriptForm->script;
 
 		if (script)
 		{
-			const bool runResult = CALL_MEMBER_FN(script, Execute)(thisObj, nullptr, nullptr, 0);
-			Console_Print("ran script, returned %s", runResult ? "true" : "false");
+			*result = CALL_MEMBER_FN(script, Execute)(thisObj, nullptr, nullptr, 0);
 		}
 	}
 

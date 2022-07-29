@@ -144,7 +144,7 @@ struct ScriptEventList
 {
 	enum
 	{
-		kEvent_OnAdd = 0x00000001,			  // 0x57506B, 0x574AFA, 0x574C28, 0x574D00, 0x574F03, 
+		kEvent_OnAdd = 0x00000001,			  // 0x57506B, 0x574AFA, 0x574C28, 0x574D00, 0x574F03
 		kEvent_OnEquip = 0x00000002,		  // Called on Item and on Refr
 		kEvent_OnActorEquip = kEvent_OnEquip, // presumably the game checks the type of the object
 		kEvent_OnDrop = 0x00000004,			  // 0x57510E, 0x4C41DC, 0x4C42B2
