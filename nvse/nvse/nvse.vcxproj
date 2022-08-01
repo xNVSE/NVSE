@@ -231,9 +231,9 @@ xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</C
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Message>Installing DLL...</Message>
+      <Message>Installing DLL and PDB...</Message>
       <Command>copy "$(TargetPath)" "$(FalloutNVPath)\nvse_1_4.dll"
-copy "$(TargetPath)" "$(FalloutNVPath)\nvse_1_4.pdb"
+copy "$(SolutionDir)Release\$(TargetName).pdb" "$(FalloutNVPath)\nvse_1_4.pdb"
 xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
