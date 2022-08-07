@@ -100,8 +100,6 @@ void Core_NewGameCallback(void * reserved)
 	for (UInt32 i = 0; i < modCount; i++)
 		s_ModFixupTable[i] = mods[i];
 
-	ClearDelayedCalls();
-	EventManager::ClearFlushOnLoadEvents();
 	g_ArrayMap.Clean();
 	g_StringMap.Clean();
 	LambdaManager::ClearSavedDeletedEventLists();

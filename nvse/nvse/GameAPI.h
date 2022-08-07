@@ -147,8 +147,10 @@ struct ScriptEventList
 		kEvent_OnAdd = 0x00000001,			  // 0x57506B, 0x574AFA, 0x574C28, 0x574D00, 0x574F03
 		kEvent_OnEquip = 0x00000002,		  // Called on Item and on Refr
 		kEvent_OnActorEquip = kEvent_OnEquip, // presumably the game checks the type of the object
+								              // 0x88C8A5, 0x88C8BC, 0x88CF32, 0x88D25B, 0x88D272, 0x88D10A
+											  // 0x8C1E5F, 0x8C1E76
 		kEvent_OnDrop = 0x00000004,			  // 0x57510E, 0x4C41DC, 0x4C42B2
-		kEvent_OnUnequip = 0x00000008,
+		kEvent_OnUnequip = 0x00000008,		  // 0x88E162, 0x88E179, 0x5753C9
 		kEvent_OnActorUnequip = kEvent_OnUnequip,
 		kEvent_OnDeath = 0x00000010,
 		kEvent_OnMurder = 0x00000020,

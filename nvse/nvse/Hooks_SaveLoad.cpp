@@ -1,5 +1,7 @@
 #include "SafeWrite.h"
 #include "Hooks_SaveLoad.h"
+
+#include "Commands_Script.h"
 #include "PluginAPI.h"
 #include "PluginManager.h"
 #include "Serialization.h"
@@ -171,6 +173,9 @@ static void NewGameHook(void)
 	g_gameLoaded = true;
 	g_gameStarted = true;
 	s_gameLoadedInformedScripts.Clear();
+	ClearDelayedCalls();
+	EventManager::ClearFlushOnLoadEvents();
+
 	Serialization::HandleNewGame();
 }
 
