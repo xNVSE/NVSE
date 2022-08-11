@@ -800,12 +800,38 @@ struct NVSEEventManagerInterface
 		eParamType_BaseForm,
 
 		eParamType_Invalid,
-		eParamType_Anything
+		eParamType_Anything,
+
+		// The Ptr-type params signify a pointer to a value will be passed, which will be dereferenced between each call.
+		// Otherwise, they work like their regular counterparts.
+		// This is useful if a param needs to have its value updated in-between calls to event handlers.
+		// NOTE: if passing a ptr to a thread-safe dispatch function, it MUST point to a statically-defined value, to avoid using an invalid pointer if the dispatch was delayed.
+		eParamType_FloatPtr,
+		eParamType_IntPtr,
+		eParamType_StringPtr,
+		eParamType_ArrayPtr,
+		eParamType_RefVarPtr,
+		eParamType_AnyFormPtr = eParamType_RefVarPtr,
+		eParamType_ReferencePtr,
+		eParamType_BaseFormPtr
 	};
-	static bool IsFormParam(ParamType pType)
+	static [[nodiscard]] bool IsFormParam(ParamType pType)
 	{
 		return pType == eParamType_RefVar || pType == eParamType_Reference || pType == eParamType_BaseForm
 		 || pType == eParamType_Anything;
+	}
+	static [[nodiscard]] bool IsPtrParam(ParamType pType)
+	{
+		return (pType >= eParamType_FloatPtr) && (pType <= eParamType_BaseFormPtr);
+	}
+	// Gets the regular non-ptr version of the param
+	static [[nodiscard]] ParamType GetNonPtrParamType(ParamType pType)
+	{
+		if (IsPtrParam(pType))
+		{
+			return static_cast<ParamType>(pType - 9);
+		}
+		return pType;
 	}
 
 	enum EventFlags : UInt32

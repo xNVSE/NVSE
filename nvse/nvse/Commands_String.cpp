@@ -930,7 +930,17 @@ bool Cmd_ToNumber_Execute(COMMAND_ARGS)
 		if (eval.Arg(1) && eval.Arg(1)->CanConvertTo(kTokenType_Number))
 			bHex = eval.Arg(1)->GetNumber() ? true : false;
 
-		*result = eval.Arg(0)->GetNumericRepresentation(bHex);
+		bool hasError;
+		*result = eval.Arg(0)->GetNumericRepresentation(bHex, &hasError);
+
+		if (auto const reportErrorArg = eval.Arg(2);
+			reportErrorArg && reportErrorArg->CanConvertTo(kTokenType_Number))
+		{
+			if (reportErrorArg->GetNumber() && hasError)
+			{
+				eval.Error("Error converting string to number.");
+			}
+		}
 	}
 
 	return true;

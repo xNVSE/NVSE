@@ -116,9 +116,17 @@ namespace EventManager
 	using EventArgType = NVSEEventManagerInterface::ParamType;
 	using EventFlags = NVSEEventManagerInterface::EventFlags;
 
-	inline bool IsParamForm(EventArgType pType)
+	inline bool IsFormParam(EventArgType pType)
 	{
 		return NVSEEventManagerInterface::IsFormParam(pType);
+	}
+	inline bool IsPtrParam(EventArgType pType)
+	{
+		return NVSEEventManagerInterface::IsPtrParam(pType);
+	}
+	inline EventArgType GetNonPtrParamType(EventArgType pType)
+	{
+		return NVSEEventManagerInterface::GetNonPtrParamType(pType);
 	}
 	Script::VariableType ParamTypeToVarType(EventArgType pType);
 	EventArgType VarTypeToParamType(Script::VariableType varType);
@@ -244,18 +252,28 @@ namespace EventManager
 		EventInfo(const char *name_, EventArgType *params_, UInt8 nParams_, UInt32 eventMask_, EventHookInstaller *installer_,
 				  EventFlags flags = EventFlags::kFlags_None)
 			: evName(name_), paramTypes(params_), numParams(nParams_), eventMask(eventMask_), installHook(installer_), flags(flags)
-		{}
+		{
+			Init();
+		}
 		// ctor w/ alias
 		EventInfo(const char* name_, const char* alias_, EventArgType* params_, UInt8 nParams_, UInt32 eventMask_, EventHookInstaller* installer_,
 			EventFlags flags = EventFlags::kFlags_None)
 			: evName(name_), alias(alias_), paramTypes(params_), numParams(nParams_), eventMask(eventMask_), installHook(installer_), flags(flags)
-		{}
+		{
+			Init();
+		}
 
 		EventInfo(const char *name_, EventArgType *params_, UInt8 numParams_, EventFlags flags = EventFlags::kFlags_None)
-			: evName(name_), paramTypes(params_), numParams(numParams_), flags(flags) {}
+			: evName(name_), paramTypes(params_), numParams(numParams_), flags(flags)
+		{
+			Init();
+		}
 		// ctor w/ alias
 		EventInfo(const char* name_, const char* alias_, EventArgType* params_, UInt8 numParams_, EventFlags flags = EventFlags::kFlags_None)
-			: evName(name_), alias(alias_), paramTypes(params_), numParams(numParams_), flags(flags) {}
+			: evName(name_), alias(alias_), paramTypes(params_), numParams(numParams_), flags(flags)
+		{
+			Init();
+		}
 
 		EventInfo(const EventInfo &other) = delete;
 		EventInfo& operator=(const EventInfo& other) = delete;
@@ -296,7 +314,7 @@ namespace EventManager
 		// Assumes that the index was already checked as valid (i.e numParams was checked).
 		[[nodiscard]] EventArgType TryGetNthParamType(size_t n) const
 		{
-			return !HasUnknownArgTypes() ? paramTypes[n] : EventArgType::eParamType_Anything;
+			return !HasUnknownArgTypes() ? GetNonPtrParamType(paramTypes[n]) : EventArgType::eParamType_Anything;
 		}
 		[[nodiscard]] ArgTypeStack GetArgTypesAsStackVector() const;
 		[[nodiscard]] ClassicArgTypeStack GetClassicArgTypesAsStackVector() const;
@@ -305,6 +323,24 @@ namespace EventManager
 		// Can also verify args to check which event callbacks would fire with hypothetical args (for GetEventHandlers_Execute).
 		// Only useful for Plugin-Defined Events.
 		[[nodiscard]] bool ValidateDispatchedArgTypes(const ArgTypeStack& argTypes, ExpressionEvaluator* eval = nullptr) const;
+
+		// If any ptr-type values are passed, then this will dereference them.
+		[[nodiscard]] RawArgStack GetEffectiveArgs(RawArgStack &passedArgs);
+
+	private:
+		// Only used for plugin-defined events with known types.
+		// Set up once during event registration.
+		bool hasPtrArg = false;
+
+		void Init() {
+			// Assume numParams == 0 if no paramTypes are passed.
+			for (decltype(numParams) i = 0; i < numParams; i++) {
+				if (IsPtrParam(paramTypes[i])) {
+					hasPtrArg = true;
+					break;
+				}
+			}
+		}
 	};
 
 	struct DeferredRemoveCallback
@@ -578,7 +614,7 @@ namespace EventManager
 	extern ICriticalSection s_criticalSection;
 
 	template <bool ExtractIntTypeAsFloat>
-	DispatchReturn DispatchEventRaw(EventInfo& eventInfo, TESObjectREFR* thisObj, RawArgStack& args, ArgTypeStack& argTypes,
+	DispatchReturn DispatchEventRaw(EventInfo& eventInfo, TESObjectREFR* thisObj, RawArgStack& passedArgs, ArgTypeStack& argTypes,
 		DispatchCallback resultCallback, void* anyData, bool deferIfOutsideMainThread, PostDispatchCallback postCallback,
 		ExpressionEvaluator* eval = nullptr);
 
@@ -637,7 +673,7 @@ namespace EventManager
 	extern std::deque<DeferredCallback<true>> s_deferredCallbacksWithIntsPackedAsFloats;
 
 	template <bool ExtractIntTypeAsFloat>
-	DispatchReturn DispatchEventRaw(EventInfo& eventInfo, TESObjectREFR* thisObj, RawArgStack& args, ArgTypeStack &argTypes,
+	DispatchReturn DispatchEventRaw(EventInfo& eventInfo, TESObjectREFR* thisObj, RawArgStack& passedArgs, ArgTypeStack &argTypes,
 		DispatchCallback resultCallback, void* anyData, bool deferIfOutsideMainThread, PostDispatchCallback postCallback,
 		ExpressionEvaluator* eval)
 	{
@@ -646,11 +682,11 @@ namespace EventManager
 			ScopedLock lock(s_criticalSection);
 			if constexpr (ExtractIntTypeAsFloat)
 			{
-				s_deferredCallbacksWithIntsPackedAsFloats.emplace_back(eventInfo, thisObj, args, argTypes, resultCallback, anyData, postCallback);
+				s_deferredCallbacksWithIntsPackedAsFloats.emplace_back(eventInfo, thisObj, passedArgs, argTypes, resultCallback, anyData, postCallback);
 			}
 			else
 			{
-				s_deferredCallbacksDefault.emplace_back(eventInfo, thisObj, args, argTypes, resultCallback, anyData, postCallback);
+				s_deferredCallbacksDefault.emplace_back(eventInfo, thisObj, passedArgs, argTypes, resultCallback, anyData, postCallback);
 			}
 			return DispatchReturn::kRetn_Deferred;
 		}
@@ -661,6 +697,8 @@ namespace EventManager
 		{
 			if (callback.IsRemoved())
 				continue;
+
+			auto args = eventInfo.GetEffectiveArgs(passedArgs);
 
 			if (!callback.DoDeprecatedFiltersMatch(args, eventInfo.HasUnknownArgTypes() ? &argTypes : nullptr, eventInfo, eval))
 				continue;

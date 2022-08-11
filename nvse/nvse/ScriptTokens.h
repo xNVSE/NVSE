@@ -298,7 +298,7 @@ struct ScriptToken
 	[[nodiscard]] bool IsGood() const { return type != kTokenType_Invalid; }
 	[[nodiscard]] bool IsVariable() const { return type >= kTokenType_NumericVar && type <= kTokenType_ArrayVar; }
 
-	[[nodiscard]] double GetNumericRepresentation(bool bFromHex) const; // attempts to convert string to number
+	[[nodiscard]] double GetNumericRepresentation(bool bFromHex, bool* hasErrorOut = nullptr) const; // attempts to convert string to number
 	[[nodiscard]] char *DebugPrint() const;
 	[[nodiscard]] bool IsInvalid() const;
 	[[nodiscard]] bool IsOperator() const;

@@ -1578,9 +1578,12 @@ std::unique_ptr<ScriptToken> ScriptToken::ToBasicToken() const
 	return nullptr;
 }
 
-double ScriptToken::GetNumericRepresentation(bool bFromHex) const
+double ScriptToken::GetNumericRepresentation(bool bFromHex, bool* hasErrorOut) const
 {
 	double result = 0.0;
+
+	if (hasErrorOut)
+		*hasErrorOut = false;
 
 	if (CanConvertTo(kTokenType_Number))
 		result = GetNumber();
@@ -1598,12 +1601,19 @@ double ScriptToken::GetNumericRepresentation(bool bFromHex) const
 		}
 
 		if (!bFromHex)
-			result = strtod(str, NULL);
+		{
+			char* endPtr;
+			result = std::strtod(str, &endPtr);
+			if (hasErrorOut)
+				*hasErrorOut = endPtr == str || errno == ERANGE;
+		}
 		else
 		{
 			UInt32 hexInt = 0;
-			sscanf_s(str, "%x", &hexInt);
+			int const successes = sscanf_s(str, "%x", &hexInt);
 			result = (double)hexInt;
+			if (hasErrorOut)
+				*hasErrorOut = successes <= 0;
 		}
 	}
 

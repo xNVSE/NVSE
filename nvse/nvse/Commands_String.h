@@ -208,13 +208,14 @@ DEFINE_CMD(AsciiToChar, returns a single character string given an ASCII code, 0
 DEFINE_CMD(GetFormIDString, returns a formID of a form as a hex string, 0, kParams_OneOptionalForm);
 DEFINE_CMD(NumToHex, returns a number as a hex string of the specified width, 0, kParams_OneInt_OneOptionalInt);
 
-static ParamInfo kNVSEParams_OneStringOneOptionalInt[2] =
+static ParamInfo kNVSEParams_OneString_TwoOptionalInts[3] =
 {
 	{	"string",	kNVSEParamType_String,		0	},
 	{	"bHex",		kNVSEParamType_Number,		1	},
+	{	"bReportError",		kNVSEParamType_Number,		1	},
 };
 
-DEFINE_COMMAND_EXP(ToNumber, translates a string to a number, 0, kNVSEParams_OneStringOneOptionalInt);
+DEFINE_COMMAND_EXP(ToNumber, translates a string to a number, 0, kNVSEParams_OneString_TwoOptionalInts);
 
 static ParamInfo kNVSEParams_TwoStrings[2] =
 {

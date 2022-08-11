@@ -475,9 +475,9 @@ bool EventCallback::ValidateFirstOrSecondFilter(bool isFirst, const EventInfo& p
 		outErrorMsg = FormatString(R"(Cannot use "second"/"object" filter; event has %u args.)", parent.numParams);
 		return false;
 	}
-	auto const expectedType = parent.paramTypes[isFirst ? 0 : 1];
+	auto const expectedType = GetNonPtrParamType(parent.paramTypes[isFirst ? 0 : 1]);
 
-	if (!IsParamForm(expectedType)) [[unlikely]]
+	if (!IsFormParam(expectedType)) [[unlikely]]
 	{
 		outErrorMsg = FormatString("Cannot set a non-Form type filter for %s.", filterName);
 		return false;
@@ -519,7 +519,7 @@ bool EventCallback::ValidateFilters(std::string& outErrorMsg, const EventInfo& p
 		// Index #0 is reserved for callingReference filter.
 		bool const isCallingRefFilter = index == 0;
 		auto const filterType = isCallingRefFilter ? EventArgType::eParamType_Reference
-			: parent.TryGetNthParamType(index - 1);
+			: GetNonPtrParamType(parent.paramTypes[index - 1]);
 
 		if (!IsPotentialFilterValid(filterType, outErrorMsg, filter, index)) [[unlikely]]
 			return false;
@@ -958,7 +958,7 @@ ArgTypeStack EventInfo::GetArgTypesAsStackVector() const
 	ArgTypeStack argTypes;
 	for (decltype(numParams) i = 0; i < numParams; i++)
 	{
-		argTypes->push_back(paramTypes[i]);
+		argTypes->push_back(GetNonPtrParamType(paramTypes[i]));
 	}
 	return argTypes;
 }
@@ -971,7 +971,7 @@ ClassicArgTypeStack EventInfo::GetClassicArgTypesAsStackVector() const
 	ClassicArgTypeStack argTypes;
 	for (decltype(numParams) i = 0; i < numParams; i++)
 	{
-		argTypes->push_back(paramTypes[i]);
+		argTypes->push_back(GetNonPtrParamType(paramTypes[i]));
 	}
 	return argTypes;
 }
@@ -997,7 +997,7 @@ bool EventInfo::ValidateDispatchedArgTypes(const ArgTypeStack& argTypes, Express
 	for (UInt8 i = 0; auto const argType : *argTypes)
 	{
 		// Check if the basic argType (extracted from script function call) respects the expected type.
-		switch (auto const expected = this->paramTypes[i])
+		switch (auto const expected = GetNonPtrParamType(this->paramTypes[i]))
 		{
 		case EventArgType::eParamType_Reference:
 		case EventArgType::eParamType_AnyForm:
@@ -1043,6 +1043,22 @@ bool EventInfo::ValidateDispatchedArgTypes(const ArgTypeStack& argTypes, Express
 		i++;
 	}
 	return true;
+}
+
+RawArgStack EventInfo::GetEffectiveArgs(RawArgStack& passedArgs)
+{
+	if (!hasPtrArg)
+		return passedArgs;
+
+	RawArgStack effectiveArgs{};
+	for (decltype(numParams) i = 0; i < numParams; i++) 
+	{
+		if (IsPtrParam(paramTypes[i]))
+			effectiveArgs->emplace_back(*static_cast<void**>(passedArgs->at(i)));  //get the pointer's value
+		else
+			effectiveArgs->emplace_back(passedArgs->at(i));
+	}
+	return effectiveArgs;
 }
 
 DeferredRemoveCallback::~DeferredRemoveCallback()
@@ -1336,7 +1352,7 @@ bool EventCallback::DoDeprecatedFiltersMatch(const RawArgStack& args, const ArgT
 					eventInfo.evName);
 				return false;
 			}
-			if (!IsParamForm((*argTypes)->at(0)))  // Shouldn't encounter param type "Anything" here.
+			if (!IsFormParam((*argTypes)->at(0)))  // Shouldn't encounter param type "Anything" here.
 			{
 				ShowRuntimeScriptError(this->TryGetScript(), eval, "While checking if first/second filters match for User-Defined event %s, saw a form filter for 'first' arg when a non-form was dispatched.",
 					eventInfo.evName);
@@ -1359,7 +1375,7 @@ bool EventCallback::DoDeprecatedFiltersMatch(const RawArgStack& args, const ArgT
 					eventInfo.evName);
 				return false;
 			}
-			if (!IsParamForm((*argTypes)->at(0)))  // Shouldn't encounter param type "Anything" here.
+			if (!IsFormParam((*argTypes)->at(0)))  // Shouldn't encounter param type "Anything" here.
 			{
 				ShowRuntimeScriptError(this->TryGetScript(), eval, "While checking if first/second filters match for User-Defined event %s, saw a form filter for 'second' arg when a non-form was dispatched.",
 					eventInfo.evName);
