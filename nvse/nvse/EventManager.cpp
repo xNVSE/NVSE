@@ -1819,6 +1819,13 @@ bool DispatchUserDefinedEvent(const char* eventName, Script* sender, UInt32 args
 	return true;
 }
 
+NVSEArrayVarInterface::Element* g_NativeHandlerResult = nullptr;
+
+void SetNativeHandlerFunctionValue(NVSEArrayVarInterface::Element& value)
+{
+	g_NativeHandlerResult = &value;
+}
+
 std::deque<DeferredCallback<false>> s_deferredCallbacksDefault;
 std::deque<DeferredCallback<true>> s_deferredCallbacksWithIntsPackedAsFloats;
 

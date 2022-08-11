@@ -426,7 +426,7 @@ namespace EventManager
 	bool DispatchUserDefinedEvent(const char *eventName, Script *sender, UInt32 argsArrayId, const char *senderName, 
 		ExpressionEvaluator* eval = nullptr);
 
-
+	void SetNativeHandlerFunctionValue(NVSEArrayVarInterface::Element& value);
 
 
 	// == Template definitions
@@ -672,6 +672,8 @@ namespace EventManager
 	extern std::deque<DeferredCallback<false>> s_deferredCallbacksDefault;
 	extern std::deque<DeferredCallback<true>> s_deferredCallbacksWithIntsPackedAsFloats;
 
+	extern NVSEArrayVarInterface::Element *g_NativeHandlerResult;
+
 	template <bool ExtractIntTypeAsFloat>
 	DispatchReturn DispatchEventRaw(EventInfo& eventInfo, TESObjectREFR* thisObj, RawArgStack& passedArgs, ArgTypeStack &argTypes,
 		DispatchCallback resultCallback, void* anyData, bool deferIfOutsideMainThread, PostDispatchCallback postCallback,
@@ -724,9 +726,21 @@ namespace EventManager
 					}
 					return DispatchReturn::kRetn_Normal;
 				},
-				[&args, thisObj](EventHandler const handler) -> DispatchReturn
+				[=, &args](EventHandler const handler) -> DispatchReturn
 				{
-					handler(thisObj, args->data());
+					g_NativeHandlerResult = nullptr;
+					handler(thisObj, args->data());  // g_NativeHandlerResult may change
+
+					if (resultCallback)
+					{
+						if (!g_NativeHandlerResult)
+						{
+							ShowRuntimeError(nullptr, "Internal (native) handler called from plugin failed to return a value when one was expected.");
+							return DispatchReturn::kRetn_GenericError;
+						}
+						return resultCallback(*g_NativeHandlerResult, anyData) ? DispatchReturn::kRetn_Normal : DispatchReturn::kRetn_EarlyBreak;
+					}
+
 					return DispatchReturn::kRetn_Normal;
 				},
 				}, callback.toCall);

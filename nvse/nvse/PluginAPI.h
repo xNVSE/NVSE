@@ -904,6 +904,12 @@ struct NVSEEventManagerInterface
 	// Recommended to avoid potential multithreaded crashes, usually related to Console_Print.
 	DispatchReturn (*DispatchEventAltThreadSafe)(const char* eventName, DispatchCallback resultCallback, void* anyData, 
 		PostDispatchCallback postCallback, TESObjectREFR* thisObj, ...);
+
+	// Like the script function SetFunctionValue, but for native handlers.
+	// If never called, then a nullptr element is passed by default.
+	// WARNING: must ensure the pointer remains valid AFTER the native EventHandler function is executed.
+	// The pointer can be invalidated during or after a DispatchCallback.
+	void (*SetNativeHandlerFunctionValue)(NVSEArrayVarInterface::Element& value);
 };
 #endif
 

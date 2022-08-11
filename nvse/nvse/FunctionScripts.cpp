@@ -837,7 +837,7 @@ namespace PluginAPI
 		{
 			outElem = NVSEArrayVarInterface::Element();
 			if (fnScript)
-				ShowRuntimeError(fnScript, "Function script called from plugin failed to return a value");
+				ShowRuntimeError(fnScript, "Function script called from plugin failed to return a value when one was expected.");
 			return false;
 		}
 
