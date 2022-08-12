@@ -578,9 +578,10 @@ bool Cmd_GetCallingScript_Execute(COMMAND_ARGS)
 	return true;
 }
 
+// outPriority is not changed unless it was specified, i.e. if scripter wrote `"priority"::5`.
 template <bool AllowOldFilters, bool AllowNewFilters>
-bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback &outCallback, 
-	std::string &outName)
+bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback &outCallback,
+                          std::string &outName, int& outPriority)
 {
 	static_assert(AllowNewFilters || AllowOldFilters, "Must allow at least one filter type for extraction.");
 
@@ -596,16 +597,22 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 			// Loading back to before this handler was set could result in the stored array being invalid, hence this workaround.
 			outCallback.flushOnLoad = AllowNewFilters;
 
-			// any filters?
+			// any filters? Could also be priority
 			for (auto i = 2; i < eval.NumArgs(); i++)
 			{
 				const TokenPair* pair = eval.Arg(i)->GetPair();
 				if (pair && pair->left && pair->right) [[likely]]
 				{
-					if constexpr (AllowOldFilters)
+					const char* key = pair->left->GetString();
+					if (key && StrLen(key))
 					{
-						const char* key = pair->left->GetString();
-						if (key && StrLen(key))
+						if (!StrCompare(key, "priority"))
+						{
+							outPriority = static_cast<int>(pair->right->GetNumber());
+							continue;
+						}
+
+						if constexpr (AllowOldFilters)
 						{
 							if (!StrCompare(key, "ref") || !StrCompare(key, "first"))
 							{
@@ -617,12 +624,12 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 								outCallback.object = pair->right->GetTESForm();
 								continue;
 							}
-						}
 
-						if constexpr (!AllowNewFilters)
-						{
-							eval.Error("Invalid string filter key %s passed, ignoring it.", key ? key : "NULL");
-							continue;  // don't return false, in case previous mods would be broken by that change.
+							if constexpr (!AllowNewFilters)
+							{
+								eval.Error("Invalid string filter key %s passed, ignoring it.", key ? key : "NULL");
+								continue;  // don't return false, in case previous mods would be broken by that change.
+							}
 						}
 					}
 
@@ -669,7 +676,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 	return false;
 }
 
-bool ProcessEventHandler(std::string &eventName, EventManager::EventCallback &callback, bool addEvt, ExpressionEvaluator &eval)
+bool ProcessEventHandler(std::string &eventName, EventManager::EventCallback &callback, bool addEvt, int priority, ExpressionEvaluator &eval)
 {
 	if (GetLNEventMask)
 	{
@@ -707,8 +714,8 @@ bool ProcessEventHandler(std::string &eventName, EventManager::EventCallback &ca
 			*colon = ':';
 		}
 	}
-	return addEvt ? EventManager::SetHandler<false>(eventName.c_str(), callback, &eval)
-		: EventManager::RemoveHandler(eventName.c_str(), callback, &eval);
+	return addEvt ? EventManager::SetHandler<false>(eventName.c_str(), callback, priority, &eval)
+		: EventManager::RemoveHandler(eventName.c_str(), callback, priority, &eval);
 }
 
 bool Cmd_SetEventHandler_Execute(COMMAND_ARGS)
@@ -716,8 +723,9 @@ bool Cmd_SetEventHandler_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
 	std::string eventName;
-	*result = (ExtractEventCallback<true, false>(eval, callback, eventName)
-		&& ProcessEventHandler(eventName, callback, true, eval));
+	int priority = EventManager::kDefaultHandlerPriority;
+	*result = (ExtractEventCallback<true, false>(eval, callback, eventName, priority)
+		&& ProcessEventHandler(eventName, callback, true, priority, eval));
 	return true;
 }
 
@@ -726,8 +734,9 @@ bool Cmd_SetEventHandlerAlt_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
 	std::string eventName;
-	*result = (ExtractEventCallback<false, true>(eval, callback, eventName)
-		&& ProcessEventHandler(eventName, callback, true, eval));
+	int priority = EventManager::kDefaultHandlerPriority;
+	*result = (ExtractEventCallback<false, true>(eval, callback, eventName, priority)
+		&& ProcessEventHandler(eventName, callback, true, priority, eval));
 	return true;
 }
 
@@ -736,8 +745,9 @@ bool Cmd_RemoveEventHandler_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
 	std::string eventName;
-	*result = (ExtractEventCallback<true, true>(eval, callback, eventName)
-		&& ProcessEventHandler(eventName, callback, false, eval));
+	int priority = EventManager::kInvalidHandlerPriority;
+	*result = (ExtractEventCallback<true, true>(eval, callback, eventName, priority)
+		&& ProcessEventHandler(eventName, callback, false, priority, eval));
 	return true;
 }
 
@@ -830,13 +840,13 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (!eval.ExtractArgs())
 		return true;
-	auto const numArgs = eval.NumArgs();
 
 	EventManager::EventInfo* eventInfoPtr = nullptr;
-	Script* script = nullptr;
-	if (numArgs >= 1)
+	Script* scriptFilter = nullptr;
+	int priorityFilter = EventManager::kInvalidHandlerPriority;
+	if (auto const eventNameArg = eval.Arg(0))
 	{
-		if (const char* eventName = eval.Arg(0)->GetString();
+		if (const char* eventName = eventNameArg->GetString();
 			eventName && eventName[0]) //can pass null string to avoid filtering by eventName
 		{
 			eventInfoPtr = EventManager::TryGetEventInfoForName(eventName);
@@ -844,18 +854,22 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 				return true;
 		}
 
-		if (numArgs >= 2)
+		if (auto const scriptArg = eval.Arg(1))
 		{
-			script = eval.Arg(1)->GetUserFunction();
+			scriptFilter = scriptArg->GetUserFunction();
+			if (auto const priorityArg = eval.Arg(2))
+			{
+				priorityFilter = static_cast<int>(priorityArg->GetNumber());
+			}
 		}
 	}
 
-	auto [argsToFilter, argTypes] = ExtractArgsAndArgTypes(eval, 2);
+	auto [argsToFilter, argTypes] = ExtractArgsAndArgTypes(eval, 3);
 
 	Console_Print("DumpEventHandlers >> Beginning dump.");
 
 	// Dumps all (matching) callbacks of the EventInfo
-	auto const DumpEventInfo = [&argsToFilter, &argTypes, &eval, script, thisObj](const EventManager::EventInfo &info)
+	auto const DumpEventInfo = [&, thisObj, scriptFilter](const EventManager::EventInfo &info)
 	{
 		Console_Print("== Dumping for event %s ==", info.evName);
 
@@ -863,32 +877,31 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 			return;
 		auto const accurateArgTypes = info.HasUnknownArgTypes() ? argTypes : info.GetArgTypesAsStackVector();
 
-		if (script)
+		auto const DumpHandlerInfo = [&, thisObj, scriptFilter](int priority, const EventManager::EventCallback& handler)
 		{
-			auto const range = info.callbacks.equal_range(script);
-			for (auto i = range.first; i != range.second; ++i)
+			if ((!scriptFilter || scriptFilter == handler.TryGetScript()) 
+				&& !handler.IsRemoved() 
+				&& (argsToFilter->empty() || handler.DoNewFiltersMatch<true>(thisObj, argsToFilter, accurateArgTypes, info, &eval)))
 			{
-				auto const& eventCallback = i->second;
-				if (!eventCallback.IsRemoved() && (argsToFilter->empty() ||
-					eventCallback.DoNewFiltersMatch<true>(thisObj, argsToFilter, accurateArgTypes, info, &eval)))
-				{
-					std::string toPrint = FormatString(">> Handler: %s, filters: %s", eventCallback.GetCallbackFuncAsStr().c_str(),
-						eventCallback.GetFiltersAsStr().c_str());
-					Console_Print_Str(toPrint);
-				}
+				std::string const toPrint = FormatString(">> Priority: %i, handler: %s, filters: %s", 
+					priority, 
+					handler.GetCallbackFuncAsStr().c_str(),
+					handler.GetFiltersAsStr().c_str());
+				Console_Print_Str(toPrint);
+			}
+		};
+
+		if (priorityFilter != EventManager::kInvalidHandlerPriority)
+		{
+			auto const range = info.callbacks.equal_range(priorityFilter);
+			for (auto i = range.first; i != range.second; ++i) {
+				DumpHandlerInfo(i->first, i->second);
 			}
 		}
 		else
 		{
-			for (auto const &[key, eventCallback] : info.callbacks)
-			{
-				if (!eventCallback.IsRemoved() && (argsToFilter->empty()
-					|| eventCallback.DoNewFiltersMatch<true>(thisObj, argsToFilter, accurateArgTypes, info, &eval)))
-				{
-					std::string toPrint = FormatString(">> Handler: %s, filters: %s", eventCallback.GetCallbackFuncAsStr().c_str(),
-						eventCallback.GetFiltersAsStr().c_str());
-					Console_Print_Str(toPrint);
-				}
+			for (auto const& i : info.callbacks) {
+				DumpHandlerInfo(i.first, i.second);
 			}
 		}
 	};
@@ -922,88 +935,108 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 	*result = 0;
 	if (!eval.ExtractArgs())
 		return true;
-	auto const numArgs = eval.NumArgs();
-
 	EventManager::EventInfo* eventInfoPtr = nullptr;
-	Script* script = nullptr;
-	if (numArgs >= 1)
+	Script* scriptFilter = nullptr;
+	int priorityFilter = EventManager::kInvalidHandlerPriority;
+	if (auto const eventNameArg = eval.Arg(0))
 	{
-		if (const char* eventName = eval.Arg(0)->GetString();
+		if (const char* eventName = eventNameArg->GetString();
 			eventName && eventName[0]) //can pass null string to avoid filtering by eventName
 		{
 			eventInfoPtr = EventManager::TryGetEventInfoForName(eventName);
-			if (!eventInfoPtr)
-				return true; //trying to filter by invalid eventName
+			if (!eventInfoPtr) //filtering by invalid eventName
+				return true;
 		}
 
-		if (numArgs >= 2)
+		if (auto const scriptArg = eval.Arg(1))
 		{
-			script = eval.Arg(1)->GetUserFunction();
+			scriptFilter = scriptArg->GetUserFunction();
+			if (auto const priorityArg = eval.Arg(2))
+			{
+				priorityFilter = static_cast<int>(priorityArg->GetNumber());
+			}
 		}
 	}
 
-	auto [argsToFilter, argTypes] = ExtractArgsAndArgTypes(eval, 2);
+	auto [argsToFilter, argTypes] = ExtractArgsAndArgTypes(eval, 3);
 
 	// Dumps all (matching) callbacks of the EventInfo
 	auto const GetEventInfoHandlers = [=, &argsToFilter, &argTypes, &eval](const EventManager::EventInfo& info) -> ArrayVar*
 	{
-		ArrayVar* handlersForEventArray = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-
-		auto constexpr GetHandlerArr = [](const EventManager::EventCallback& callback, const Script* scriptObj) -> ArrayVar*
-		{
-			// [0] = callbackFunc (script for udf, or int for func ptr), [1] = filters string map.
-			ArrayVar* handlerArr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-
-			std::visit(overloaded
-				{
-					[=](const LambdaManager::Maybe_Lambda& maybeLambda)
-					{
-						handlerArr->SetElementFormID(0.0, maybeLambda.Get()->refID);
-					},
-					[=](const EventManager::EventHandler& handler)
-					{
-						handlerArr->SetElementNumber(0.0, reinterpret_cast<UInt32>(handler));
-					}
-				}, callback.toCall);
-
-			handlerArr->SetElementArray(1.0, callback.GetFiltersAsArray(scriptObj)->ID());
-			return handlerArr;
-		};
-
 		if (!argTypes->empty() && !info.ValidateDispatchedArgTypes(argTypes, &eval))
-			return handlersForEventArray;
+			return g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+
 		auto const accurateArgTypes = info.HasUnknownArgTypes() ? argTypes : info.GetArgTypesAsStackVector();
 
-		if (script)
+		auto const TryAddHandlerToArray = 
+			[&, scriptFilter, thisObj, scriptObj]
+			(EventManager::CallbackMap::const_iterator i, 
+			int handlerPos,
+			ArrayVar* arrOfHandlers)
 		{
-			auto const range = info.callbacks.equal_range(script);
-			double key = 0;
-			for (auto i = range.first; i != range.second; ++i)
+			auto constexpr GetHandlerArr = [](const EventManager::EventCallback& callback, const Script* scriptObj) -> ArrayVar*
 			{
-				auto const& eventCallback = i->second;
-				if (!eventCallback.IsRemoved() && (argsToFilter->empty() ||
-					eventCallback.DoNewFiltersMatch<true>(thisObj, argsToFilter, accurateArgTypes, info, &eval)))
-				{
-					handlersForEventArray->SetElementArray(key, GetHandlerArr(eventCallback, scriptObj)->ID());
-					key++;
-				}
-			}
-		}
-		else // no script filter
-		{
-			double key = 0;
-			for (auto const& [callbackFuncKey, eventCallback] : info.callbacks)
-			{
-				if (!eventCallback.IsRemoved() && (argsToFilter->empty()
-					|| eventCallback.DoNewFiltersMatch<true>(thisObj, argsToFilter, accurateArgTypes, info, &eval)))
-				{
-					handlersForEventArray->SetElementArray(key, GetHandlerArr(eventCallback, scriptObj)->ID());
-					key++;
-				}
-			}
-		}
+				// [0] = callbackFunc (script for udf, or int for func ptr), [1] = filters string map.
+				ArrayVar* handlerArr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
 
-		return handlersForEventArray;
+				std::visit(overloaded
+					{
+						[=](const LambdaManager::Maybe_Lambda& maybeLambda)
+						{
+							handlerArr->SetElementFormID(0.0, maybeLambda.Get()->refID);
+						},
+						[=](const EventManager::EventHandler& handler)
+						{
+							handlerArr->SetElementNumber(0.0, reinterpret_cast<UInt32>(handler));
+						}
+					}, callback.toCall);
+
+				handlerArr->SetElementArray(1.0, callback.GetFiltersAsArray(scriptObj)->ID());
+				return handlerArr;
+			};
+
+			const auto& handler = i->second;
+			if ((!scriptFilter || scriptFilter == handler.TryGetScript())
+				&& !handler.IsRemoved()
+				&& (argsToFilter->empty() || handler.DoNewFiltersMatch<true>(thisObj, argsToFilter, accurateArgTypes, info, &eval)))
+			{
+				arrOfHandlers->SetElementArray(handlerPos, GetHandlerArr(handler, scriptObj)->ID());
+			}
+		};
+
+		if (priorityFilter != EventManager::kInvalidHandlerPriority)  
+		{
+			// filter by priority
+			auto const priorityRange = info.callbacks.equal_range(priorityFilter);
+			int handlerPos = 0;
+			ArrayVar* arrOfHandlers = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+			for (auto i = priorityRange.first; i != priorityRange.second; ++i) {
+				TryAddHandlerToArray(i, handlerPos, arrOfHandlers);
+				++handlerPos;
+			}
+			return arrOfHandlers;
+		}
+		//else, no priority filter
+
+		// Key = priority of the handler.
+		// Value = array of handlers.
+		ArrayVar* handlersForAllPriorities = g_ArrayMap.Create(kDataType_Numeric, false, scriptObj->GetModIndex());
+
+		// Select the correct type for calling the equal_range function
+		decltype(info.callbacks.equal_range(0)) priorityRange;
+
+		// Copied code from https://stackoverflow.com/a/26528981 for the loop structure.
+		for (auto c = info.callbacks.begin(); c != info.callbacks.end(); c = priorityRange.second) {
+			priorityRange = info.callbacks.equal_range(c->first);
+			int handlerPos = 0;
+			ArrayVar* arrOfHandlers = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+			for (auto i = priorityRange.first; i != priorityRange.second; ++i) {
+				TryAddHandlerToArray(i, handlerPos, arrOfHandlers);
+				++handlerPos;
+			}
+			handlersForAllPriorities->SetElementArray(c->first, arrOfHandlers->ID());
+		}
+		return handlersForAllPriorities;
 	};
 
 	if (!eventInfoPtr)
@@ -1014,7 +1047,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 			return true;
 		}
 
-		// keys = event handler names, values = an array containing arrays that have [0] = callbackFunc, [1] = filters string map.
+		// keys = event names, values = a map-type array (keys = priority) containing arrays that have [0] = callbackFunc, [1] = filters string map.
 		ArrayVar* eventsMap = g_ArrayMap.Create(kDataType_String, false, scriptObj->GetModIndex());
 		*result = eventsMap->ID();
 

@@ -882,6 +882,7 @@ struct NVSEEventManagerInterface
 
 	// Similar to script function SetEventHandler, allows you to set a native function that gets called back on events
 	// Unlike SetEventHandler, the event must already be defined before this function is called.
+	// Default priority is given for the handler (TODO: document??????????)
 	bool (*SetNativeEventHandler)(const char* eventName, EventHandler func);
 
 	// Same as script function RemoveEventHandler but for native functions

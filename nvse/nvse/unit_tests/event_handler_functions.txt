@@ -10,7 +10,7 @@ begin Function { }
 	end)
 
 
-	; ==  No filters
+	; ==  No filters, default priority (1)
 	assert (SetEventHandler "OnHit" rOnHitUDF) == 1
 	assert (SetEventHandlerAlt "OnHit" rOnHitUDF) == 0
 
