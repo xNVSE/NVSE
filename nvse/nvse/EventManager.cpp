@@ -1059,8 +1059,6 @@ DeferredRemoveCallback::~DeferredRemoveCallback()
 // Avoid constantly looking up the eventName for potentially recursive calls.
 bool DoRemoveHandler(EventInfo& info, const EventCallback& toRemove, int priority, ExpressionEvaluator* eval)
 {
-	bool bRemovedAtLeastOne = false;
-
 	// Only kept for legacy purposes.
 	if (auto const script = toRemove.TryGetScript())
 	{
@@ -1094,8 +1092,9 @@ bool DoRemoveHandler(EventInfo& info, const EventCallback& toRemove, int priorit
 			return removed > 0;
 		}
 	}
-
+	
 	ScopedLock lock(s_criticalSection);
+	bool bRemovedAtLeastOne = false;
 
 	if (!info.callbacks.empty())
 	{
@@ -1132,10 +1131,7 @@ bool DoRemoveHandler(EventInfo& info, const EventCallback& toRemove, int priorit
 			{
 				TryRemoveNthHandler(i);
 			}
-			
 		}
-
-		
 	}
 
 	return bRemovedAtLeastOne;

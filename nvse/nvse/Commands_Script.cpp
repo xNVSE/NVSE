@@ -600,11 +600,11 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 			// any filters? Could also be priority
 			for (auto i = 2; i < eval.NumArgs(); i++)
 			{
-				const TokenPair* pair = eval.Arg(i)->GetPair();
-				if (pair && pair->left && pair->right) [[likely]]
+				if (const TokenPair* pair = eval.Arg(i)->GetPair(); 
+					pair && pair->left && pair->right) [[likely]]
 				{
 					const char* key = pair->left->GetString();
-					if (key && StrLen(key))
+					if (key && key[0])
 					{
 						if (!StrCompare(key, "priority"))
 						{
@@ -624,27 +624,16 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 								outCallback.object = pair->right->GetTESForm();
 								continue;
 							}
-
-							if constexpr (!AllowNewFilters)
-							{
-								eval.Error("Invalid string filter key %s passed, ignoring it.", key ? key : "NULL");
-								continue;  // don't return false, in case previous mods would be broken by that change.
-							}
+							eval.Error("Invalid string filter key %s passed, ignoring it.", key ? key : "NULL");
+							continue;  // don't return false, in case previous mods would be broken by that change.
 						}
+						//else, assume AllowNewFilters is true
+						eval.Error("String filter keys are not allowed for this function; use int codes.");
+						return false;
 					}
 
-					if constexpr (AllowNewFilters)
+					if constexpr (AllowNewFilters) // assume number-type key
 					{
-						if constexpr (!AllowOldFilters)
-						{
-							const char* key = pair->left->GetString();
-							if (key && key[0])
-							{
-								eval.Error("String filter keys are not allowed for this function; use int codes.");
-								return false;
-							}
-						}
-
 						const auto index = static_cast<int>(pair->left->GetNumber());
 						if (index < 0) [[unlikely]]
 						{
@@ -662,6 +651,11 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 								eval.Error("Event filter index %u appears more than once.", index);
 							}
 						}
+					}
+					else // assume OldFilters are allowed
+					{
+						eval.Error("Int filter keys are not allowed for this function; use string.");
+						// don't return false, in case previous mods would be broken by that change.
 					}
 				}
 				else
