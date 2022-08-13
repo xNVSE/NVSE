@@ -1824,6 +1824,18 @@ void SetNativeHandlerFunctionValue(NVSEArrayVarInterface::Element& value)
 	g_NativeHandlerResult = &value;
 }
 
+bool SetNativeEventHandlerWithPriority(const char* eventName, EventHandler func, int priority)
+{
+	EventCallback event(func);
+	return SetHandler<true>(eventName, event, priority);
+}	
+
+bool RemoveNativeEventHandlerWithPriority(const char* eventName, EventHandler func, int priority)
+{
+	const EventCallback event(func);
+	return RemoveHandler(eventName, event, priority, nullptr);
+}
+
 std::deque<DeferredCallback<false>> s_deferredCallbacksDefault;
 std::deque<DeferredCallback<true>> s_deferredCallbacksWithIntsPackedAsFloats;
 
@@ -1972,7 +1984,7 @@ bool SetNativeEventHandler(const char* eventName, EventHandler func)
 bool RemoveNativeEventHandler(const char* eventName, EventHandler func)
 {
 	const EventCallback event(func);
-	return RemoveHandler(eventName, event, kDefaultHandlerPriority, nullptr);
+	return RemoveHandler(eventName, event, kInvalidHandlerPriority, nullptr);
 }
 
 bool EventHandlerExists(const char* ev, const EventCallback& handler, int priority)

@@ -240,10 +240,10 @@ namespace EventManager
 	};
 
 	// Used as a special case when searching through handlers; invalid priority = unfiltered for priority.
-	constexpr int kInvalidHandlerPriority = 0;
+	constexpr int kInvalidHandlerPriority = NVSEEventManagerInterface::kPriority_Invalid;
 
 	// Used by SetEventHandler(Alt) if no priority is specified.
-	constexpr int kDefaultHandlerPriority = 1;
+	constexpr int kDefaultHandlerPriority = NVSEEventManagerInterface::kPriority_Default;
 
 	// Ordered by priority; a single priority can have multiple associated callbacks.
 	// Greatest priority = will run first.
@@ -430,6 +430,8 @@ namespace EventManager
 
 	void SetNativeHandlerFunctionValue(NVSEArrayVarInterface::Element& value);
 
+	bool SetNativeEventHandlerWithPriority(const char* eventName, EventHandler func, int priority);
+	bool RemoveNativeEventHandlerWithPriority(const char* eventName, EventHandler func, int priority);
 
 	// == Template definitions
 
