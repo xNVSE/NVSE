@@ -225,7 +225,7 @@ namespace EventManager
 		bool DoesParamMatchFiltersInArray(const Filter& arrayFilter,
 			EventArgType paramType, void* param, int index) const;
 
-		[[nodiscard]] bool EqualFilters(const EventCallback& rhs) const; // return true if the two handlers have matching filters.
+		[[nodiscard]] bool operator==(const EventCallback& rhs) const;
 
 		// If "this" would run anytime toCheck would run or more, return true (toCheck should be removed; "this" has more or equally generic filters).
 		// The above rule is used to remove redundant callbacks in one fell swoop.
@@ -239,13 +239,15 @@ namespace EventManager
 		void Confirm();
 	};
 
-	//Does not attempt to store lambda info for Script*.
-	using BasicCallbackFunc = std::variant<Script*, EventHandler>;
+	// Used as a special case when searching through handlers; invalid priority = unfiltered for priority.
+	constexpr int kInvalidHandlerPriority = NVSEEventManagerInterface::kPriority_Invalid;
 
-	BasicCallbackFunc GetBasicCallback(const EventCallback::CallbackFunc& func);
+	// Used by SetEventHandler(Alt) if no priority is specified.
+	constexpr int kDefaultHandlerPriority = NVSEEventManagerInterface::kPriority_Default;
 
-	//Each callback function can have multiple EventCallbacks.
-	using CallbackMap = std::multimap<BasicCallbackFunc, EventCallback>;
+	// Ordered by priority; a single priority can have multiple associated callbacks.
+	// Greatest priority = will run first.
+	using CallbackMap = std::multimap<int, EventCallback, std::greater<>>;
 
 	struct EventInfo
 	{
@@ -357,10 +359,10 @@ namespace EventManager
 	extern DeferredRemoveList s_deferredRemoveList;
 
 	template <bool IsInternalEvent>
-	bool SetHandler(const char *eventName, EventCallback &toSet, ExpressionEvaluator* eval = nullptr);
+	bool SetHandler(const char *eventName, EventCallback &toSet, int priority, ExpressionEvaluator* eval = nullptr);
 
 	// removes handler only if all filters match
-	bool RemoveHandler(const char *eventName, const EventCallback& toRemove, ExpressionEvaluator* eval = nullptr);
+	bool RemoveHandler(const char *eventName, const EventCallback& toRemove, int priority, ExpressionEvaluator* eval = nullptr);
 
 	// handle an NVSEMessagingInterface message
 	void HandleNVSEMessage(UInt32 msgID, void *data);
@@ -428,6 +430,8 @@ namespace EventManager
 
 	void SetNativeHandlerFunctionValue(NVSEArrayVarInterface::Element& value);
 
+	bool SetNativeEventHandlerWithPriority(const char* eventName, EventHandler func, int priority);
+	bool RemoveNativeEventHandlerWithPriority(const char* eventName, EventHandler func, int priority);
 
 	// == Template definitions
 
@@ -695,7 +699,7 @@ namespace EventManager
 
 		DispatchReturn result = DispatchReturn::kRetn_Normal;
 
-		for (auto& [funcKey, callback] : eventInfo.callbacks)
+		for (auto& [priority, callback] : eventInfo.callbacks)
 		{
 			if (callback.IsRemoved())
 				continue;
@@ -755,13 +759,19 @@ namespace EventManager
 		return result;
 	}
 
-	bool DoSetHandler(EventInfo& info, EventCallback& toSet);
+	bool DoSetHandler(EventInfo& info, EventCallback& toSet, int priority);
 
 	template <bool IsInternalHandler>
-	bool SetHandler(const char* eventName, EventCallback& toSet, ExpressionEvaluator* eval)
+	bool SetHandler(const char* eventName, EventCallback& toSet, int priority, ExpressionEvaluator* eval)
 	{
 		if (!toSet.HasCallbackFunc())
 			return false;
+
+		if (priority == kInvalidHandlerPriority)
+		{
+			ShowRuntimeScriptError(toSet.TryGetScript(), eval, "Can't set event handler with invalid priority 0 (below 0 is allowed). Default priority = %u.", kDefaultHandlerPriority);
+			return false;
+		}
 
 		EventInfo** eventInfoPtr = nullptr;
 		{
@@ -791,12 +801,12 @@ namespace EventManager
 			std::string errMsg;
 			if (!toSet.ValidateFilters(errMsg, info))
 			{
-				ShowRuntimeScriptError(nullptr, eval, errMsg.c_str());
+				ShowRuntimeScriptError(toSet.TryGetScript(), eval, errMsg.c_str());
 				return false;
 			}
 		}
 
-		return DoSetHandler(info, toSet);
+		return DoSetHandler(info, toSet, priority);
 	}
 
 

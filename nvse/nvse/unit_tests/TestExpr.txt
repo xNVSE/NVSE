@@ -1,5 +1,7 @@
 begin Function { }
 
+	print "Started running xNVSE TestExpr unit tests."
+
 	ref rOnHitUDF = ({ref rFirst, ref rSecond} => print "ran")
 
 	Assert (TestExpr (SetEventHandlerAlt "OnHit" rOnHitUDF 0::"badFilter")) == 0  ; error should occur
@@ -12,7 +14,7 @@ begin Function { }
 	array_var aTest
 	Assert (TestExpr (aTest := &(SetEventHandlerAlt "OnHit" rOnHitUDF 0::"badFilter"))) == 0
 
-	Assert (Ar_Size (GetEventHandlers  "OnHit" rOnHitUDF)) == 0
+	Assert (Ar_Size (GetEventHandlers "OnHit" rOnHitUDF 1)) == 0
 
 	; Test array bounds-checking
 	aTest = Ar_Null  ;invalid array

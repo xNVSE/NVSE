@@ -880,11 +880,27 @@ struct NVSEEventManagerInterface
 	// 'anyData' arg is passed to the callbacks.
 	DispatchReturn (*DispatchEventAlt)(const char* eventName, DispatchCallback resultCallback, void* anyData, TESObjectREFR* thisObj, ...);
 
+	// Special priorities used for the event priority system.
+	// Greatest priority = will run first, lowest = will run last.
+	enum SpecialPriorities : int
+	{
+		// Used as a special case when searching through handlers; invalid priority = unfiltered for priority.
+		// A handler CANNOT be set with this priority.
+		// However, negative priorities ARE allowed to be set.
+		// When removing handlers, this value can be used to remove handlers regardless of priority.
+		kPriority_Invalid = 0,
+
+		// When setting a handler, used if no priority is specified.
+		kPriority_Default = 1
+	};
+
 	// Similar to script function SetEventHandler, allows you to set a native function that gets called back on events
 	// Unlike SetEventHandler, the event must already be defined before this function is called.
+	// Default priority (1) is given for the handler.
 	bool (*SetNativeEventHandler)(const char* eventName, EventHandler func);
 
 	// Same as script function RemoveEventHandler but for native functions
+	// Invalid priority (0) is implicitly passed, so that all handlers for the event, regardless of priority, will be removed.
 	bool (*RemoveNativeEventHandler)(const char* eventName, EventHandler func);
 
 	bool (*RegisterEventWithAlias)(const char* name, const char* alias, UInt8 numParams, ParamType* paramTypes, EventFlags flags);
@@ -910,6 +926,9 @@ struct NVSEEventManagerInterface
 	// WARNING: must ensure the pointer remains valid AFTER the native EventHandler function is executed.
 	// The pointer can be invalidated during or after a DispatchCallback.
 	void (*SetNativeHandlerFunctionValue)(NVSEArrayVarInterface::Element& value);
+
+	bool (*SetNativeEventHandlerWithPriority)(const char* eventName, EventHandler func, int priority);
+	bool (*RemoveNativeEventHandlerWithPriority)(const char* eventName, EventHandler func, int priority);
 };
 #endif
 

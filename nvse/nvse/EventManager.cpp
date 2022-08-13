@@ -595,9 +595,10 @@ std::string EventCallback::GetCallbackFuncAsStr() const
 		}, this->toCall);
 }
 
-bool EventCallback::EqualFilters(const EventCallback& rhs) const
+bool EventCallback::operator==(const EventCallback& rhs) const
 {
-	return (object == rhs.object) && (source == rhs.source) && (filters == rhs.filters);
+	return (toCall == rhs.toCall) &&
+		(object == rhs.object) && (source == rhs.source) && (filters == rhs.filters);
 }
 
 Script* EventCallback::TryGetScript() const
@@ -709,21 +710,6 @@ std::unique_ptr<ScriptToken> EventCallback::Invoke(EventInfo &eventInfo, const C
 				return nullptr;
 			}
 		}, this->toCall);
-}
-
-BasicCallbackFunc GetBasicCallback(const EventCallback::CallbackFunc& func)
-{
-	return std::visit(overloaded
-		{
-			[](const LambdaManager::Maybe_Lambda& script) -> BasicCallbackFunc
-			{
-				return script.Get();
-			},
-			[](const EventHandler& handler) -> BasicCallbackFunc
-			{
-				return handler;
-			}
-		}, func);
 }
 
 bool IsValidReference(void* refr)
@@ -872,7 +858,8 @@ const char* GetCurrentEventName()
 static UInt32 recursiveLevel = 0;
 
 // Avoid constantly looking up the eventName for potentially recursive calls.
-bool DoSetHandler(EventInfo &info, EventCallback& toSet)
+// Assume priority is valid.	
+bool DoSetHandler(EventInfo &info, EventCallback& toSet, int priority)
 {
 	if (auto const script = toSet.TryGetScript())
 	{
@@ -888,7 +875,7 @@ bool DoSetHandler(EventInfo &info, EventCallback& toSet)
 			{
 				EventCallback listHandler(script, iter.Get(), toSet.object);
 				recursiveLevel++;
-				if (DoSetHandler(info, listHandler)) setted++;
+				if (DoSetHandler(info, listHandler, priority)) setted++;
 				recursiveLevel--;
 			}
 			return setted > 0;
@@ -902,7 +889,7 @@ bool DoSetHandler(EventInfo &info, EventCallback& toSet)
 			{
 				EventCallback listHandler(script, toSet.source, iter.Get());
 				recursiveLevel++;
-				if (DoSetHandler(info, listHandler)) setted++;
+				if (DoSetHandler(info, listHandler, priority)) setted++;
 				recursiveLevel--;
 			}
 			return setted > 0;
@@ -923,17 +910,14 @@ bool DoSetHandler(EventInfo &info, EventCallback& toSet)
 		info.installHook = nullptr;
 	}
 
-	auto const basicCallback = GetBasicCallback(toSet.toCall);
-
 	if (!info.callbacks.empty())
 	{
 		// if an existing handler matches this one exactly, don't duplicate it
-		auto const range = info.callbacks.equal_range(basicCallback);
-		// loop over all EventCallbacks with the same callback script/function.
-		for (auto i = range.first; i != range.second; ++i)
+		auto const priorityRange = info.callbacks.equal_range(priority);
+		for (auto i = priorityRange.first; i != priorityRange.second; ++i)
 		{
 			auto& existingCallback = i->second;
-			if (existingCallback.EqualFilters(toSet))
+			if (existingCallback == toSet)
 			{
 				// may be re-adding a previously removed handler, so clear the Removed flag
 				if (existingCallback.IsRemoved())
@@ -947,7 +931,7 @@ bool DoSetHandler(EventInfo &info, EventCallback& toSet)
 	}
 
 	toSet.Confirm();
-	info.callbacks.emplace(basicCallback, std::move(toSet));
+	info.callbacks.emplace(priority, std::move(toSet));
 
 	s_eventsInUse |= info.eventMask;
 	return true;
@@ -1073,10 +1057,8 @@ DeferredRemoveCallback::~DeferredRemoveCallback()
 }
 
 // Avoid constantly looking up the eventName for potentially recursive calls.
-bool DoRemoveHandler(EventInfo& info, const EventCallback& toRemove, ExpressionEvaluator* eval)
+bool DoRemoveHandler(EventInfo& info, const EventCallback& toRemove, int priority, ExpressionEvaluator* eval)
 {
-	bool bRemovedAtLeastOne = false;
-
 	// Only kept for legacy purposes.
 	if (auto const script = toRemove.TryGetScript())
 	{
@@ -1090,7 +1072,7 @@ bool DoRemoveHandler(EventInfo& info, const EventCallback& toRemove, ExpressionE
 			{
 				EventCallback listHandler(script, iter.Get(), toRemove.object);
 				recursiveLevel++;
-				if (DoRemoveHandler(info, listHandler, eval)) removed++;
+				if (DoRemoveHandler(info, listHandler, priority, eval)) removed++;
 				recursiveLevel--;
 			}
 			return removed > 0;
@@ -1104,37 +1086,50 @@ bool DoRemoveHandler(EventInfo& info, const EventCallback& toRemove, ExpressionE
 			{
 				EventCallback listHandler(script, toRemove.source, iter.Get());
 				recursiveLevel++;
-				if (DoRemoveHandler(info, listHandler, eval)) removed++;
+				if (DoRemoveHandler(info, listHandler, priority, eval)) removed++;
 				recursiveLevel--;
 			}
 			return removed > 0;
 		}
 	}
-
+	
 	ScopedLock lock(s_criticalSection);
+	bool bRemovedAtLeastOne = false;
 
 	if (!info.callbacks.empty())
 	{
-		auto const basicCallback = GetBasicCallback(toRemove.toCall);
-		auto const range = info.callbacks.equal_range(basicCallback);
-		// loop over all EventCallbacks with the same callback script/function.
-		for (auto i = range.first; i != range.second; ++i)
+		auto const TryRemoveNthHandler = [&](CallbackMap::iterator i)
 		{
-			EventCallback& nthCallback = i->second;
+			auto& callback = i->second;
+			if (!toRemove.ShouldRemoveCallback(callback, info, eval))
+				return;
 
-			if (!toRemove.ShouldRemoveCallback(nthCallback, info, eval))
-				continue;
-
-			if (!nthCallback.IsRemoved())
+			if (!callback.IsRemoved())
 			{
-				nthCallback.SetRemoved(true);
+				callback.SetRemoved(true);
 				bRemovedAtLeastOne = true;
 			}
 
-			if (!nthCallback.pendingRemove)
+			if (!callback.pendingRemove)
 			{
-				nthCallback.pendingRemove = true;
+				callback.pendingRemove = true;
 				s_deferredRemoveList.Push(&info, i);
+			}
+		};
+
+		if (priority != kInvalidHandlerPriority)
+		{
+			auto const priorityRange = info.callbacks.equal_range(priority);
+			for (auto i = priorityRange.first; i != priorityRange.second; ++i)
+			{
+				TryRemoveNthHandler(i);
+			}
+		}
+		else // unfiltered by priority
+		{
+			for (auto i = info.callbacks.begin(); i != info.callbacks.end(); ++i)
+			{
+				TryRemoveNthHandler(i);
 			}
 		}
 	}
@@ -1145,7 +1140,7 @@ bool DoRemoveHandler(EventInfo& info, const EventCallback& toRemove, ExpressionE
 // If the passed Callback is more or equally generic filter-wise than some already-set events, will remove those events.
 // Ex: Callback with "SunnyREF" filter is already set.
 // Calling this with a Callback with no filters will lead to the "SunnyREF"-filtered callback being removed.	
-bool RemoveHandler(const char* eventName, const EventCallback& toRemove, ExpressionEvaluator* eval)
+bool RemoveHandler(const char* eventName, const EventCallback& toRemove, int priority, ExpressionEvaluator* eval)
 {
 	if (!toRemove.HasCallbackFunc())
 		return false;
@@ -1164,7 +1159,7 @@ bool RemoveHandler(const char* eventName, const EventCallback& toRemove, Express
 			return false;
 		}
 
-		bRemovedAtLeastOne = DoRemoveHandler(info, toRemove, eval);
+		bRemovedAtLeastOne = DoRemoveHandler(info, toRemove, priority, eval);
 	}
 
 	return bRemovedAtLeastOne;
@@ -1233,7 +1228,7 @@ void ClearFlushOnLoadEvents()
 	{
 		if (info.FlushesOnLoad())
 		{
-			info.callbacks.clear(); //warning: may invalidate iterators in DeferredRemoveCallbacks.
+			info.callbacks.clear(); // WARNING: may invalidate iterators in DeferredRemoveCallbacks.
 			// Thus, ensure that list is cleared before this code is reached.
 			if (info.eventMask)
 			{
@@ -1470,6 +1465,9 @@ bool ParamTypeMatches(EventArgType from, EventArgType to)
 
 bool EventCallback::ShouldRemoveCallback(const EventCallback& toCheck, const EventInfo& evInfo, ExpressionEvaluator* eval) const
 {
+	if (toCall != toCheck.toCall)
+		return false;
+
 	// Would be nice if it would try matching reference's baseforms to the filter-to-remove.
 	// Can't do that now though, due to backwards compatibility.
 	if (source && (source != toCheck.source))
@@ -1826,6 +1824,18 @@ void SetNativeHandlerFunctionValue(NVSEArrayVarInterface::Element& value)
 	g_NativeHandlerResult = &value;
 }
 
+bool SetNativeEventHandlerWithPriority(const char* eventName, EventHandler func, int priority)
+{
+	EventCallback event(func);
+	return SetHandler<true>(eventName, event, priority);
+}	
+
+bool RemoveNativeEventHandlerWithPriority(const char* eventName, EventHandler func, int priority)
+{
+	const EventCallback event(func);
+	return RemoveHandler(eventName, event, priority, nullptr);
+}
+
 std::deque<DeferredCallback<false>> s_deferredCallbacksDefault;
 std::deque<DeferredCallback<true>> s_deferredCallbacksWithIntsPackedAsFloats;
 
@@ -1968,27 +1978,25 @@ bool RegisterEventWithAlias(const char* name, const char* alias, UInt8 numParams
 bool SetNativeEventHandler(const char* eventName, EventHandler func)
 {
 	EventCallback event(func);
-	return SetHandler<true>(eventName, event);
+	return SetHandler<true>(eventName, event, kDefaultHandlerPriority);
 }
 
 bool RemoveNativeEventHandler(const char* eventName, EventHandler func)
 {
 	const EventCallback event(func);
-	return RemoveHandler(eventName, event, nullptr);
+	return RemoveHandler(eventName, event, kInvalidHandlerPriority, nullptr);
 }
 
-bool EventHandlerExist(const char* ev, const EventCallback& handler)
+bool EventHandlerExists(const char* ev, const EventCallback& handler, int priority)
 {
 	ScopedLock lock(s_criticalSection);
 	if (EventInfo* infoPtr = TryGetEventInfoForName(ev))
 	{
 		CallbackMap& callbacks = infoPtr->callbacks;
-		auto const basicCallback = GetBasicCallback(handler.toCall);
-		auto const range = callbacks.equal_range(basicCallback);
-		// loop over all EventCallbacks with the same callback script/function.
-		for (auto i = range.first; i != range.second; ++i)
+		auto const priorityRange = callbacks.equal_range(priority);
+		for (auto i = priorityRange.first; i != priorityRange.second; ++i)
 		{
-			if (i->second.EqualFilters(handler)) 
+			if (i->second == handler) 
 				return true;
 		}
 	}

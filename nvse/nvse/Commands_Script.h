@@ -70,15 +70,18 @@ DEFINE_COMMAND(RunScript, debug, 0, 1, kParams_OneForm);
 DEFINE_COMMAND(GetCurrentScript, returns the calling script, 0, 0, NULL);
 DEFINE_COMMAND(GetCallingScript, returns the script that called the executing function script, 0, 0, NULL);
 
-static ParamInfo kNVSEParams_SetEventHandler[4] =
+static ParamInfo kNVSEParams_SetEventHandler[5] =
 {
 	{ "event name",			kNVSEParamType_String,	0 },
 	{ "function script",		kNVSEParamType_Form,	0 },
 	{ "filter",				kNVSEParamType_Pair,	1 },
+	{ "filter",				kNVSEParamType_Pair,	1 },
+
+	// an extra filter for "priority"
 	{ "filter",				kNVSEParamType_Pair,	1 },
 };
 
-static ParamInfo kNVSEParams_SetEventHandlerAlt[20] =
+static ParamInfo kNVSEParams_SetEventHandlerAlt[19] =
 {
 	{ "event name",			kNVSEParamType_String,	0 },
 	{ "function script",		kNVSEParamType_Form,	0 },
@@ -102,7 +105,8 @@ static ParamInfo kNVSEParams_SetEventHandlerAlt[20] =
 	{ "filter",				kNVSEParamType_Pair,	1 },
 
 	{ "filter",				kNVSEParamType_Pair,	1 },
-	// 1 filter for thisObj (0::SomeFilter), 15 for the rest.
+	{ "filter",				kNVSEParamType_Pair,	1 },
+	// 1 filter for thisObj (0::SomeFilter), 1 for "priority", 15 for the rest.
 };
 
 
@@ -147,10 +151,11 @@ static ParamInfo kNVSEParams_DispatchEventAlt[16] =
 DEFINE_COMMAND_EXP(DispatchEvent, dispatches a user-defined event to any registered listeners, 0, kNVSEParams_DispatchEvent);
 DEFINE_COMMAND_EXP(DispatchEventAlt, dispatches a user-defined event to any registered listeners, 0, kNVSEParams_DispatchEventAlt);
 
-static ParamInfo kNVSEParams_DumpEventHandlers[17] =
+static ParamInfo kNVSEParams_DumpEventHandlers[18] =
 {
 	{	"eventName",		kNVSEParamType_String,	1	},
 	{	"script",			kNVSEParamType_Form,	1	},
+	{	"priority",			kNVSEParamType_Number,	1	},
 
 	{ "arg1",				kNVSEParamType_BasicType,	1 },
 	{ "arg2",				kNVSEParamType_BasicType,	1 },
