@@ -174,7 +174,7 @@ static void NewGameHook(void)
 	g_gameStarted = true;
 	s_gameLoadedInformedScripts.Clear();
 	ClearDelayedCalls();
-	EventManager::ClearFlushOnLoadEvents();
+	EventManager::ClearFlushOnLoadEventHandlers();
 
 	Serialization::HandleNewGame();
 }

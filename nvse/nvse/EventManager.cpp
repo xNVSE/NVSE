@@ -1220,7 +1220,7 @@ void HandleNVSEMessage(UInt32 msgID, void* data)
 		HandleEvent(eventID, data, nullptr);
 }
 
-void ClearFlushOnLoadEvents()
+void ClearFlushOnLoadEventHandlers()
 {
 	s_deferredRemoveList.Clear();
 

@@ -119,7 +119,7 @@ void Core_PreLoadCallback(void * reserved)
 	g_gcCriticalSection.Leave();
 
 	ClearDelayedCalls();
-	EventManager::ClearFlushOnLoadEvents();
+	EventManager::ClearFlushOnLoadEventHandlers();
 	
 	g_ArrayMap.Reset();
 	g_StringMap.Reset();
