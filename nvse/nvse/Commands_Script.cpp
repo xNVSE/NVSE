@@ -1028,7 +1028,8 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 				TryAddHandlerToArray(i, handlerPos, arrOfHandlers);
 				++handlerPos;
 			}
-			handlersForAllPriorities->SetElementArray(c->first, arrOfHandlers->ID());
+			if (!arrOfHandlers->Empty())
+				handlersForAllPriorities->SetElementArray(c->first, arrOfHandlers->ID());
 		}
 		return handlersForAllPriorities;
 	};

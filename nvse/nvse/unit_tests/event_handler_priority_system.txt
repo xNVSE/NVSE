@@ -41,5 +41,35 @@ begin Function { }
 	assert (iRan == 3)
 	iRan = 0
 
+
+	; Test removal
+	assert (RemoveEventHandler "nvseTestEvent" rRuns3rd "priority"::-3) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rRuns3rd "priority"::4) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rRuns3rd "priority"::3) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rRuns3rd "priority"::3) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rRuns3rd "priority"::2) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rRuns3rd "priority"::1) == 0
+
+	assert (RemoveEventHandler "nvseTestEvent" rRuns1st "priority"::1)
+	assert (RemoveEventHandler "nvseTestEvent" rRuns2nd "priority"::-1)
+	assert (RemoveEventHandler "nvseTestEvent" rRuns3rd "priority"::-2)
+
+	; Test mass-removal
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rRuns1st)) == 0
+
+	assert (SetEventHandler "nvseTestEvent" rRuns1st "priority"::1)
+	assert (SetEventHandler "nvseTestEvent" rRuns1st "priority"::-1)
+	assert (SetEventHandler "nvseTestEvent" rRuns1st "priority"::-2)
+
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rRuns1st)) == 3
+	assert (Ar_Size ((GetEventHandlers "nvseTestEvent" rRuns1st)[1])) == 1
+	assert (Ar_Size ((GetEventHandlers "nvseTestEvent" rRuns1st)[-1])) == 1
+	assert (Ar_Size ((GetEventHandlers "nvseTestEvent" rRuns1st)[-2])) == 1
+
+	; Remove all
+	assert (RemoveEventHandler "nvseTestEvent" rRuns1st)
+
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rRuns1st)) == 0
+
 	print "Finished running xNVSE Event Handler Priority System Unit Tests."
 end
