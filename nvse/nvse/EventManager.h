@@ -765,6 +765,12 @@ namespace EventManager
 		if (!toSet.HasCallbackFunc())
 			return false;
 
+		if (priority == kInvalidHandlerPriority)
+		{
+			ShowRuntimeScriptError(toSet.TryGetScript(), eval, "Can't set event handler with invalid priority 0 (below 0 is allowed). Default priority = %u.", kDefaultHandlerPriority);
+			return false;
+		}
+
 		EventInfo** eventInfoPtr = nullptr;
 		{
 			ScopedLock lock(s_criticalSection);
@@ -793,7 +799,7 @@ namespace EventManager
 			std::string errMsg;
 			if (!toSet.ValidateFilters(errMsg, info))
 			{
-				ShowRuntimeScriptError(nullptr, eval, errMsg.c_str());
+				ShowRuntimeScriptError(toSet.TryGetScript(), eval, errMsg.c_str());
 				return false;
 			}
 		}

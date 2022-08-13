@@ -541,5 +541,8 @@
     <Text Include="unit_tests\CallAfterFrames.txt">
       <Filter>unit tests</Filter>
     </Text>
+    <Text Include="unit_tests\event_handler_priority_system.txt">
+      <Filter>unit tests</Filter>
+    </Text>
   </ItemGroup>
 </Project>

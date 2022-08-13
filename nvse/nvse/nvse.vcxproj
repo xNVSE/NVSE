@@ -768,6 +768,7 @@ xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</C
     <Text Include="unit_tests\array_functions.txt" />
     <Text Include="unit_tests\CallAfterFrames.txt" />
     <Text Include="unit_tests\event_handler_functions.txt" />
+    <Text Include="unit_tests\event_handler_priority_system.txt" />
     <Text Include="unit_tests\TestExpr.txt" />
     <Text Include="unit_tests\udf_functions.txt" />
   </ItemGroup>
