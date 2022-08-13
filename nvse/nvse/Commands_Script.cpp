@@ -1041,7 +1041,8 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 			return true;
 		}
 
-		// keys = event names, values = a map-type array (keys = priority) containing arrays that have [0] = callbackFunc, [1] = filters string map.
+		// keys = event names, values = a map-type array (keys = priority) containing arrays that contain arrays of handlers that have [0] = callbackFunc, [1] = filters string map.
+		// If priority is specified, map of priority is skipped and the array of handlers is given instead.
 		ArrayVar* eventsMap = g_ArrayMap.Create(kDataType_String, false, scriptObj->GetModIndex());
 		*result = eventsMap->ID();
 
@@ -1054,6 +1055,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 	else //filtered by eventName
 	{
 		// return an array containing arrays that have [0] = callbackFunc, [1] = filters string map.
+		// if priority is not specified, then the parent array is contained in a map-type array (keys = priority)
 		*result = GetEventInfoHandlers(*eventInfoPtr)->ID();
 	}
 
