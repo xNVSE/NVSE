@@ -89,6 +89,10 @@ bool LambdaManager::Maybe_Lambda::operator==(const Maybe_Lambda& other) const
 {
 	return m_script == other.m_script;
 }
+bool LambdaManager::Maybe_Lambda::operator==(const Script* other) const
+{
+	return m_script == other;
+}
 
 void LambdaManager::Maybe_Lambda::TrySaveContext()
 {

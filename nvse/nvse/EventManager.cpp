@@ -588,9 +588,9 @@ std::string EventCallback::GetCallbackFuncAsStr() const
 			{
 				return script.Get()->GetStringRepresentation();
 			},
-			[](const EventHandler& handler) -> std::string
+			[](const NativeEventHandlerInfo& handlerInfo) -> std::string
 			{
-				return FormatString("[addr: %X]", handler);
+				return handlerInfo.GetStringRepresentation();
 			}
 		}, this->toCall);
 }
@@ -702,11 +702,11 @@ std::unique_ptr<ScriptToken> EventCallback::Invoke(EventInfo &eventInfo, const C
 				s_eventStack.Pop();
 				return ret;
 			},
-			[=](const EventHandler& handler) -> std::unique_ptr<ScriptToken>
+			[=](const NativeEventHandlerInfo& handlerInfo) -> std::unique_ptr<ScriptToken>
 			{
 				// native plugin event handlers
 				void* params[] = { arg0, arg1 };
-				handler(nullptr, params);
+				handlerInfo.m_func(nullptr, params);
 				return nullptr;
 			}
 		}, this->toCall);
@@ -1391,6 +1391,36 @@ EventInfo* TryGetEventInfoForName(const char* eventName)
 	return nullptr;
 }
 
+bool NativeEventHandlerInfo::Init(NativeEventHandler func, PluginHandle pluginHandle, const char* handlerName)
+{
+	if (!func)
+		return false;
+	m_func = func;
+
+	if (const auto* pluginInfo = g_pluginManager.GetInfoFromHandle(pluginHandle))
+		m_pluginName = pluginInfo->name;
+	else
+		return false;
+
+	if (handlerName)
+		m_handlerName = handlerName;
+
+	return true;
+}
+
+std::string NativeEventHandlerInfo::GetStringRepresentation() const
+{
+	return FormatString("Internal handler %s (plugin %s)", m_handlerName, m_pluginName);
+}
+
+ArrayVar* NativeEventHandlerInfo::GetArrayRepresentation(UInt8 modIndex) const
+{
+	auto* result = g_ArrayMap.Create(kDataType_String, false, modIndex);
+	result->SetElementString("Plugin", m_pluginName);
+	result->SetElementString("Handler", m_handlerName);
+	return result;
+}
+
 // Meant for use to validate param types, not much else.
 Script::VariableType ParamTypeToVarType(EventArgType pType)
 {
@@ -1824,16 +1854,51 @@ void SetNativeHandlerFunctionValue(NVSEArrayVarInterface::Element& value)
 	g_NativeHandlerResult = &value;
 }
 
-bool SetNativeEventHandlerWithPriority(const char* eventName, EventHandler func, int priority)
+bool ShouldIgnoreHandler(const EventCallback::CallbackFunc &toFilter,
+	TESForm* scriptsToIgnore, NVSEArrayVarInterface::Array* pluginsToIgnore, NVSEArrayVarInterface::Array* pluginHandlersToIgnore)
 {
-	EventCallback event(func);
-	return SetHandler<true>(eventName, event, priority);
+	return std::visit(overloaded{
+		[=](const LambdaManager::Maybe_Lambda& maybe_lambda)
+		{
+			return scriptsToIgnore && scriptsToIgnore->FormMatches(maybe_lambda.Get());
+		},
+		[=](const NativeEventHandlerInfo& handlerInfo)
+		{
+			if (auto pluginsToIgnoreArr = g_ArrayMap.Get((ArrayID)pluginsToIgnore))
+			{
+				for (const auto* elem : *pluginsToIgnoreArr)
+				{
+					if (!StrCompare(handlerInfo.m_pluginName, elem->m_data.GetStr()))
+						return true;
+				}
+			}
+			if (auto pluginHandlersToIgnoreArr = g_ArrayMap.Get((ArrayID)pluginHandlersToIgnore))
+			{
+				for (const auto* elem : *pluginHandlersToIgnoreArr)
+				{
+					if (!StrCompare(handlerInfo.m_handlerName, elem->m_data.GetStr()))
+						return true;
+				}
+			}
+			return false;
+		}
+	}, toFilter);
+}
+
+bool SetNativeEventHandlerWithPriority(const char* eventName, NativeEventHandler func,
+                                       PluginHandle pluginHandle, const char* handlerName, int priority)
+{
+	NativeEventHandlerInfo internalInfo;
+	if (!internalInfo.Init(func, pluginHandle, handlerName))
+		return false;
+	EventCallback callback(internalInfo);
+	return SetHandler<true>(eventName, callback, priority);
 }	
 
-bool RemoveNativeEventHandlerWithPriority(const char* eventName, EventHandler func, int priority)
+bool RemoveNativeEventHandlerWithPriority(const char* eventName, NativeEventHandler func, int priority)
 {
-	const EventCallback event(func);
-	return RemoveHandler(eventName, event, priority, nullptr);
+	const EventCallback callback(NativeEventHandlerInfo{ func });
+	return RemoveHandler(eventName, callback, priority, nullptr);
 }
 
 std::deque<DeferredCallback<false>> s_deferredCallbacksDefault;
@@ -1975,15 +2040,15 @@ bool RegisterEventWithAlias(const char* name, const char* alias, UInt8 numParams
 		static_cast<EventFlags>(flags));
 }
 
-bool SetNativeEventHandler(const char* eventName, EventHandler func)
+bool SetNativeEventHandler(const char* eventName, NativeEventHandler func)
 {
-	EventCallback event(func);
+	EventCallback event(NativeEventHandlerInfo{ func });
 	return SetHandler<true>(eventName, event, kDefaultHandlerPriority);
 }
 
-bool RemoveNativeEventHandler(const char* eventName, EventHandler func)
+bool RemoveNativeEventHandler(const char* eventName, NativeEventHandler func)
 {
-	const EventCallback event(func);
+	const EventCallback event(NativeEventHandlerInfo { func });
 	return RemoveHandler(eventName, event, kInvalidHandlerPriority, nullptr);
 }
 

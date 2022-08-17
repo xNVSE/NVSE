@@ -350,6 +350,8 @@ public:
 	TESForm* CloneForm(bool bPersist = true) const;
 	bool     IsInventoryObject() const;
 
+	bool FormMatches(TESForm* toMatch) const;
+
 	MEMBER_FN_PREFIX(TESForm);
 #if RUNTIME
 	DEFINE_MEMBER_FN(MarkAsTemporary, void, 0x00484490);	// probably a member of TESForm
