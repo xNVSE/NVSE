@@ -591,7 +591,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 		auto script = DYNAMIC_CAST(eval.Arg(1)->GetTESForm(), TESForm, Script);
 		if (eventName && script) [[likely]]
 		{
-			outCallback.toCallInfo = script;
+			outCallback.toCall = script;
 			outName = eventName;
 			// Must flush handlers with new filters on load, since save-baked arrays can be filters.
 			// Loading back to before this handler was set could result in the stored array being invalid, hence this workaround.
@@ -979,11 +979,11 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 						{
 							handlerArr->SetElementFormID(0.0, maybeLambda.Get()->refID);
 						},
-						[=](const EventManager::NativeEventHandlerInternalInfo& handler)
+						[=](const EventManager::NativeEventHandlerInfo& handler)
 						{
 							handlerArr->SetElementArray(0.0, handler.GetArrayRepresentation(scriptObj->GetModIndex())->ID());
 						}
-					}, callback.toCallInfo);
+					}, callback.toCall);
 
 				handlerArr->SetElementArray(1.0, callback.GetFiltersAsArray(scriptObj)->ID());
 				return handlerArr;

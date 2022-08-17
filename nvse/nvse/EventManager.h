@@ -787,6 +787,12 @@ namespace EventManager
 
 		DispatchReturn result = DispatchReturn::kRetn_Normal;
 
+		ScopedLock lock(s_criticalSection);	//for event stack and NativeHandlerResult
+		//TODO: Optimize!
+
+		// handle immediately
+		s_eventStack.Push(eventInfo.evName);
+
 		for (auto& [priority, callback] : eventInfo.callbacks)
 		{
 			if (callback.IsRemoved())
@@ -843,6 +849,8 @@ namespace EventManager
 
 		if (postCallback)
 			postCallback(anyData, result);
+
+		s_eventStack.Pop();
 
 		return result;
 	}

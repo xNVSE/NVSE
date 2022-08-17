@@ -931,6 +931,7 @@ struct NVSEEventManagerInterface
 	// Returns false if providing an invalid PluginHandle (can pass null handlerName, but not recommended).
 	bool (*SetNativeEventHandlerWithPriority)(const char* eventName, NativeEventHandler func, 
 		PluginHandle pluginHandle, const char* handlerName, int priority);
+
 	bool (*RemoveNativeEventHandlerWithPriority)(const char* eventName, NativeEventHandler func, int priority);
 };
 #endif
