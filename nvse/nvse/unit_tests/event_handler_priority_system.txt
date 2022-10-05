@@ -71,5 +71,14 @@ begin Function { }
 
 	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rRuns1st)) == 0
 
+
+
+	print "xNVSE Priority System Subtest: IsEventHandlerFirst/Last."
+
+
+	print "xNVSE Priority System Subtest: GetHigher/LowerPriorityEventHandlers"
+
+
+
 	print "Finished running xNVSE Event Handler Priority System Unit Tests."
 end

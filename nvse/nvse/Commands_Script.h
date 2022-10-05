@@ -179,6 +179,25 @@ static ParamInfo kNVSEParams_DumpEventHandlers[18] =
 DEFINE_COMMAND_EXP(DumpEventHandlers, "dumps event handlers, optionally filtered by eventName, script and args.", 0, kNVSEParams_DumpEventHandlers);
 DEFINE_COMMAND_EXP(GetEventHandlers, "returns a multi-dimensional array of event handlers, optionally filtered by eventName, script and args.", 0, kNVSEParams_DumpEventHandlers);
 
+
+static ParamInfo kNVSEParams_GetHigherOrLowerPriorityEventHandlers[] =
+{
+	{	"eventName",		kNVSEParamType_String,	0	},
+	{	"script",			kNVSEParamType_Form,	0	},
+	{	"priority",			kNVSEParamType_Number,	0	},
+	// optional args
+	{	"scriptsToIgnore",	kNVSEParamType_Form,	1	},
+	{	"pluginsToIgnore",	kNVSEParamType_Array,	1	},
+	{	"pluginHandlersToIgnore",	kNVSEParamType_Array,	1	}
+};
+
+DEFINE_COMMAND_EXP(GetHigherPriorityEventHandlers, "", 0, kNVSEParams_GetHigherOrLowerPriorityEventHandlers);
+DEFINE_COMMAND_EXP(GetLowerPriorityEventHandlers, "", 0, kNVSEParams_GetHigherOrLowerPriorityEventHandlers);
+
+DEFINE_COMMAND_EXP(IsEventHandlerFirst, "", 0, kNVSEParams_GetHigherOrLowerPriorityEventHandlers);
+DEFINE_COMMAND_EXP(IsEventHandlerLast, "", 0, kNVSEParams_GetHigherOrLowerPriorityEventHandlers);
+
+
 static ParamInfo kParams_CallAfter_OLD[3] =
 {
 	{	"seconds",	kParamType_Float,	0	},

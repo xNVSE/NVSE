@@ -452,7 +452,7 @@ namespace EventManager
 
 	struct ScriptHandlerFilters
 	{
-		TESForm* scriptsToIgnore; ArrayVar* pluginsToIgnore; ArrayVar* pluginHandlersToIgnore;
+		TESForm* scriptsToIgnore{}; ArrayVar* pluginsToIgnore{}; ArrayVar* pluginHandlersToIgnore{};
 
 		// 'scriptsToIgnore' can either be nullptr, a script, or a formlist of scripts.
 		// If non-null, 'pluginsToIgnore' and 'internalHandlersToIgnore' must contain string-type name filters.
@@ -461,15 +461,17 @@ namespace EventManager
 
 	struct PluginHandlerFilters
 	{
-		TESForm** scriptsToIgnore; UInt32 numScriptsToIgnore;
-		const char** pluginsToIgnore; UInt32 numPluginsToIgnore;
-		const char** pluginHandlersToIgnore; UInt32 numPluginHandlersToIgnore;
+		TESForm** scriptsToIgnore{}; UInt32 numScriptsToIgnore{};
+		const char** pluginsToIgnore{}; UInt32 numPluginsToIgnore{};
+		const char** pluginHandlersToIgnore{}; UInt32 numPluginHandlersToIgnore{};
 
 		[[nodiscard]] bool ShouldIgnore(const EventCallback& toFilter) const;
 	};
 
 	// A quick way to check for a handler priority conflict, i.e. if a handler is expected to run first/last. 
-	// If any non-excluded handlers are found above/below 'startPriority', returns false.
+	/* If any non - excluded handlers are found above / below 'startPriority', returns false.
+	 * 'startPriority' is assumed to NOT be 0.
+	*/
 	// Returns false if 'func' is not found at 'startPriority'. It can appear elsewhere and will be ignored.
 	/* Returns false upon finding any non-excluded handlers with the same priority as a handler with the 'func' callback.
 	 * This is to report time bombs before they happen, as relying on insertion order within a single priority leads to hard-to-debug conflicts
@@ -743,25 +745,54 @@ namespace EventManager
 		// Parameter callback must be found at least once AT THE STARTING PRIORITY, else return false.
 		bool foundParameterCallbackAtStart = false;
 
-		// See if any handlers are beating it at higher/lower priorities.
-		// Also return false for handlers on the same priority.
-		// (Decrement i to go higher; highest priorities are first in the container).
-		for (auto i = eventInfo.callbacks.find(startPriority); 
-			i != (CheckRunsFirst ? eventInfo.callbacks.rend() : eventInfo.callbacks.end());
-			CheckRunsFirst ? --i : ++i)
+		auto i = eventInfo.callbacks.find(startPriority);
+		if (i == eventInfo.callbacks.end())
+			return false;
+
+		if constexpr (CheckRunsFirst)
 		{
-			auto const priority = i->first;
-			auto const& callback = i->second;
+			// See if any handlers are beating it at HIGHER priorities, or are at the same priority.
 
-			if (filters.ShouldIgnore(callback))
-				continue;
+			// Decrement i to go higher in priority; highest priorities are first in the container.
+			// Thus, increment j to go higher in priority.
+			auto j = std::make_reverse_iterator(i);
 
-			if (callback.toCall != func)
-				return false;
+			for (; j != eventInfo.callbacks.rend(); ++j)
+			{
+				auto const priority = j->first;
+				auto const& callback = j->second;
 
-			if (priority == startPriority)
-				foundParameterCallbackAtStart = true;
+				if (filters.ShouldIgnore(callback))
+					continue;
+
+				if (callback.toCall != func)
+					return false;
+
+				if (priority == startPriority)
+					foundParameterCallbackAtStart = true;
+			}
 		}
+		else
+		{
+			// See if any handlers are beating it at LOWER priorities, or are at the same priority.
+
+			// Increment i to go lower in priority, since higher priorities are ordered first.
+			for (; i != eventInfo.callbacks.end(); ++i)
+			{
+				auto const priority = i->first;
+				auto const& callback = i->second;
+
+				if (filters.ShouldIgnore(callback))
+					continue;
+
+				if (callback.toCall != func)
+					return false;
+
+				if (priority == startPriority)
+					foundParameterCallbackAtStart = true;
+			}
+		}
+		
 		return foundParameterCallbackAtStart;
 	}
 
@@ -769,8 +800,7 @@ namespace EventManager
 	ArrayVar* GetHigherOrLowerPriorityEventHandlers(const char* eventName, EventCallback::CallbackFunc func,
 		int startPriority, Filters_t filters, Script* scriptObj)
 	{
-		auto const modIndex = scriptObj ? scriptObj->GetModIndex() : 0xFF;
-		auto* result = g_ArrayMap.Create(kDataType_Numeric, false, modIndex);
+		auto* result = g_ArrayMap.Create(kDataType_Numeric, false, scriptObj ? scriptObj->GetModIndex() : 0xFF);
 
 		const auto eventPtr = TryGetEventInfoForName(eventName);
 		if (!eventPtr)
@@ -782,22 +812,54 @@ namespace EventManager
 		// Parameter callback must be found at least once AT THE STARTING PRIORITY, else return nullptr (invalid array).
 		bool foundParameterCallbackAtStart = false;
 
-		for (auto i = eventInfo.callbacks.find(startPriority);
-			i != (CheckHigherPriority ? eventInfo.callbacks.rend() : eventInfo.callbacks.end());
-			CheckHigherPriority ? --i : ++i)
+		auto i = eventInfo.callbacks.find(startPriority);
+		if (i == eventInfo.callbacks.end())
+			return nullptr;
+
+		if constexpr (CheckHigherPriority)
 		{
-			auto const priority = i->first;
-			auto const& callback = i->second;
+			// See if any handlers are beating it at HIGHER priorities, or are at the same priority.
 
-			if (filters.ShouldIgnore(callback))
-				continue;
+			// Decrement i to go higher in priority; highest priorities are first in the container.
+			// Thus, increment j to go higher in priority.
+			auto j = std::make_reverse_iterator(i);
 
-			if (callback.toCall != func)
+			for (; j != eventInfo.callbacks.rend(); ++j)
 			{
-				result->SetElementArray(static_cast<double>(priority), callback.GetAsArray(scriptObj)->ID());
+				auto const priority = i->first;
+				auto const& callback = i->second;
+
+				if (filters.ShouldIgnore(callback))
+					continue;
+
+				if (callback.toCall != func)
+				{
+					result->SetElementArray(static_cast<double>(priority), callback.GetAsArray(scriptObj)->ID());
+				}
+				else if (priority == startPriority)
+					foundParameterCallbackAtStart = true;
 			}
-			else if (priority == startPriority)
-				foundParameterCallbackAtStart = true;
+		}
+		else
+		{
+			// See if any handlers are beating it at LOWER priorities, or are at the same priority.
+
+			// Increment i to go lower in priority, since higher priorities are ordered first.
+			for (; i != eventInfo.callbacks.end(); ++i)
+			{
+				auto const priority = i->first;
+				auto const& callback = i->second;
+
+				if (filters.ShouldIgnore(callback))
+					continue;
+
+				if (callback.toCall != func)
+				{
+					result->SetElementArray(static_cast<double>(priority), callback.GetAsArray(scriptObj)->ID());
+				}
+				else if (priority == startPriority)
+					foundParameterCallbackAtStart = true;
+			}
 		}
 
 		return foundParameterCallbackAtStart ? result : nullptr;
