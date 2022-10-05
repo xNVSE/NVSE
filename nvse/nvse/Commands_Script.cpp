@@ -968,33 +968,12 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 			int handlerPos,
 			ArrayVar* arrOfHandlers)
 		{
-			auto constexpr GetHandlerArr = [](const EventManager::EventCallback& callback, const Script* scriptObj) -> ArrayVar*
-			{
-				// [0] = callbackFunc (script for udf, or int for func ptr), [1] = filters string map.
-				ArrayVar* handlerArr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-
-				std::visit(overloaded
-					{
-						[=](const LambdaManager::Maybe_Lambda& maybeLambda)
-						{
-							handlerArr->SetElementFormID(0.0, maybeLambda.Get()->refID);
-						},
-						[=](const EventManager::NativeEventHandlerInfo& handler)
-						{
-							handlerArr->SetElementArray(0.0, handler.GetArrayRepresentation(scriptObj->GetModIndex())->ID());
-						}
-					}, callback.toCall);
-
-				handlerArr->SetElementArray(1.0, callback.GetFiltersAsArray(scriptObj)->ID());
-				return handlerArr;
-			};
-
 			const auto& handler = i->second;
 			if ((!scriptFilter || scriptFilter == handler.TryGetScript())
 				&& !handler.IsRemoved()
 				&& (argsToFilter->empty() || handler.DoNewFiltersMatch<true>(thisObj, argsToFilter, accurateArgTypes, info, &eval)))
 			{
-				arrOfHandlers->SetElementArray(handlerPos, GetHandlerArr(handler, scriptObj)->ID());
+				arrOfHandlers->SetElementArray(handlerPos, handler.GetAsArray(scriptObj)->ID());
 			}
 		};
 

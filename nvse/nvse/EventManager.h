@@ -208,6 +208,9 @@ namespace EventManager
 		[[nodiscard]] ArrayVar* GetFiltersAsArray(const Script* scriptObj) const;
 		[[nodiscard]] std::string GetCallbackFuncAsStr() const;
 
+		// [0] = callbackFunc (script for udf, or int for func ptr), [1] = filters string map.
+		[[nodiscard]] ArrayVar* GetAsArray(const Script* scriptObj) const;
+
 		[[nodiscard]] bool IsRemoved() const { return removed; }
 		void SetRemoved(bool bSet) { removed = bSet; }
 		[[nodiscard]] bool FlushesOnLoad() const { return flushOnLoad; }
@@ -411,8 +414,8 @@ namespace EventManager
 	bool RegisterEventWithAlias(const char* name, const char* alias, UInt8 numParams, EventArgType* paramTypes,
 		NVSEEventManagerInterface::EventFlags flags);
 
-	bool SetNativeEventHandler(const char *eventName, NativeEventHandlerInfo func);
-	bool RemoveNativeEventHandler(const char *eventName, NativeEventHandlerInfo func);
+	bool SetNativeEventHandler(const char *eventName, NativeEventHandler func);
+	bool RemoveNativeEventHandler(const char *eventName, NativeEventHandler func);
 
 	using DispatchReturn = NVSEEventManagerInterface::DispatchReturn;
 	using DispatchCallback = NVSEEventManagerInterface::DispatchCallback;
@@ -443,30 +446,42 @@ namespace EventManager
 
 	void SetNativeHandlerFunctionValue(NVSEArrayVarInterface::Element& value);
 
-	bool SetNativeEventHandlerWithPriority(const char* eventName, NativeEventHandlerInfo func, int priority);
-	bool RemoveNativeEventHandlerWithPriority(const char* eventName, NativeEventHandlerInfo func, int priority);
+	bool SetNativeEventHandlerWithPriority(const char* eventName, NativeEventHandler func,
+		PluginHandle pluginHandle, const char* handlerName, int priority);
+	bool RemoveNativeEventHandlerWithPriority(const char* eventName, NativeEventHandler func, int priority);
 
-	// 'scriptsToIgnore' can either be nullptr, a script, or a formlist of scripts.
-	// If non-null, 'pluginsToIgnore' and 'internalHandlersToIgnore' must contain string-type name filters.
-	bool ShouldIgnoreHandler(const EventCallback::CallbackFunc& toFilter,
-		TESForm* scriptsToIgnore, ArrayVar* pluginsToIgnore, ArrayVar* pluginHandlersToIgnore);
+	struct ScriptHandlerFilters
+	{
+		TESForm* scriptsToIgnore; ArrayVar* pluginsToIgnore; ArrayVar* pluginHandlersToIgnore;
 
-	// Handlers with the same callback as 'func' are automatically ignored
-	// If 'allowSamePriority' is false, will return false if any handlers have the same priority as the handler (regardless of insertion order).
-	template <bool CheckRunFirst>
-	bool IsEventHandlerFirstOrLast(const char* eventName, EventCallback::CallbackFunc func, bool allowSamePriority,
-		TESForm* scriptsToIgnore, ArrayVar* pluginsToIgnore, ArrayVar* pluginHandlersToIgnore);
+		// 'scriptsToIgnore' can either be nullptr, a script, or a formlist of scripts.
+		// If non-null, 'pluginsToIgnore' and 'internalHandlersToIgnore' must contain string-type name filters.
+		[[nodiscard]] bool ShouldIgnore(const EventCallback::CallbackFunc& toFilter) const;
+	};
 
-	// Used after determining that the handler will not run first/last as desired, to list the culprits.
-	template <bool CheckRunBefore>
-	ArrayVar* GetEventHandlersThatRunBeforeOrAfterHandler(const char* eventName, Script* handler, bool allowSamePriority,
-		TESForm* scriptsToIgnore, ArrayVar* pluginsToIgnore, ArrayVar* pluginHandlersToIgnore);
+	struct PluginHandlerFilters
+	{
+		TESForm** scriptsToIgnore; UInt32 numScriptsToIgnore;
+		const char** pluginsToIgnore; UInt32 numPluginsToIgnore;
+		const char** pluginHandlersToIgnore; UInt32 numPluginHandlersToIgnore;
 
-	template <bool CheckRunBefore>
-	ArrayVar* GetEventHandlersThatRunBeforeOrAfterHandler(const char* eventName, NativeEventHandlerInfo handler, bool allowSamePriority,
-		TESForm** scriptsToIgnore, UInt32 numScriptsToIgnore,
-		const char** pluginsToIgnore, UInt32 numPluginsToIgnore, 
-		const char** pluginHandlersToIgnore, UInt32 numPluginHandlersToIgnore);
+		[[nodiscard]] bool ShouldIgnore(const EventCallback::CallbackFunc& toFilter) const;
+	};
+
+	// A quick way to check for a handler priority conflict, i.e. if a handler is expected to run first/last. 
+	// If any non-excluded handlers are found above/below 'startPriority', returns false.
+	// Returns false if 'func' is not found at 'startPriority'. It can appear elsewhere and will be ignored.
+	/* Returns false upon finding any non-excluded handlers with the same priority as a handler with the 'func' callback.
+	 * This is to report time bombs before they happen, as relying on insertion order within a single priority leads to hard-to-debug conflicts
+	*/
+	template <bool CheckRunFirst, class Filters_t>
+	bool IsEventHandlerFirstOrLast(const char* eventName, EventCallback::CallbackFunc func, 
+		int startPriority, Filters_t filters);
+
+	// Used after determining that the handler will not run first/last as desired, to list the conflict culprits.
+	template <bool CheckHigherPriority, class Filters_t>
+	ArrayVar* GetHigherOrLowerPriorityEventHandlers(const char* eventName, EventCallback::CallbackFunc func, 
+		int startPriority, Filters_t filters, Script* scriptObj = nullptr);
 
 
 	// == Template definitions
@@ -714,9 +729,9 @@ namespace EventManager
 
 	extern NVSEArrayVarInterface::Element *g_NativeHandlerResult;
 
-	template <bool CheckRunsFirst>
-	bool IsEventHandlerFirstOrLast(const char* eventName, EventCallback::CallbackFunc func, bool allowSamePriority, 
-		TESForm* scriptsToIgnore,  ArrayVar* pluginsToIgnore, ArrayVar* pluginHandlersToIgnore)
+	template <bool CheckRunsFirst, class Filters_t>
+	bool IsEventHandlerFirstOrLast(const char* eventName, EventCallback::CallbackFunc func, 
+		int startPriority, Filters_t filters)
 	{
 		const auto eventPtr = TryGetEventInfoForName(eventName);
 		if (!eventPtr)
@@ -725,45 +740,67 @@ namespace EventManager
 		if (eventInfo.callbacks.empty())
 			return false;
 
-		decltype(eventInfo.callbacks.equal_range(0)) priorityRange;
-		if constexpr (CheckRunsFirst)
+		// Parameter callback must be found at least once AT THE STARTING PRIORITY, else return false.
+		bool foundParameterCallbackAtStart = false;
+
+		// See if any handlers are beating it at higher/lower priorities.
+		// Also return false for handlers on the same priority.
+		// (Decrement i to go higher; highest priorities are first in the container).
+		for (auto i = eventInfo.callbacks.find(startPriority); 
+			i != (CheckRunsFirst ? eventInfo.callbacks.rend() : eventInfo.callbacks.end());
+			CheckRunsFirst ? --i : ++i)
 		{
-			priorityRange = eventInfo.callbacks.equal_range(eventInfo.callbacks.begin()->first);
-			for (auto i = priorityRange.first; i != priorityRange.second; ++i)
-			{
-				const auto& callback = i->second;
-				if (ShouldIgnoreHandler(callback.toCall, scriptsToIgnore, pluginsToIgnore, pluginHandlersToIgnore))
-					continue;
+			auto const priority = i->first;
+			auto const& callback = i->second;
 
-				if (callback.toCall != func)
-					return false;
+			if (filters.ShouldIgnore(callback.toCall))
+				continue;
 
-				if (allowSamePriority) [[unlikely]]
-					return true;  //no point in further checking.
-				//else, continue checking for a non-matching handler in the same priority
-				// This allows to check for potential conflicts, since the script execution time might vary,
-				// leading to the non-matching function running before the desired function.
-			}
-			return true;
+			if (callback.toCall != func)
+				return false;
+
+			if (priority == startPriority)
+				foundParameterCallbackAtStart = true;
 		}
-		else // see if it runs last
+		return foundParameterCallbackAtStart;
+	}
+
+	template <bool CheckHigherPriority, class Filters_t>
+	ArrayVar* GetHigherOrLowerPriorityEventHandlers(const char* eventName, EventCallback::CallbackFunc func,
+		int startPriority, Filters_t filters, Script* scriptObj)
+	{
+		auto const modIndex = scriptObj ? scriptObj->GetModIndex() : 0xFF;
+		auto* result = g_ArrayMap.Create(kDataType_Numeric, false, modIndex);
+
+		const auto eventPtr = TryGetEventInfoForName(eventName);
+		if (!eventPtr)
+			return result;
+		const EventInfo& eventInfo = *eventPtr;
+		if (eventInfo.callbacks.empty())
+			return result;
+
+		// Parameter callback must be found at least once AT THE STARTING PRIORITY, else return nullptr (invalid array).
+		bool foundParameterCallbackAtStart = false;
+
+		for (auto i = eventInfo.callbacks.find(startPriority);
+			i != (CheckHigherPriority ? eventInfo.callbacks.rend() : eventInfo.callbacks.end());
+			CheckHigherPriority ? --i : ++i)
 		{
-			priorityRange = eventInfo.callbacks.equal_range(eventInfo.callbacks.rbegin()->first);
-			for (auto i = priorityRange.second; i != priorityRange.first; --i)
+			auto const priority = i->first;
+			auto const& callback = i->second;
+
+			if (filters.ShouldIgnore(callback.toCall))
+				continue;
+
+			if (callback.toCall != func)
 			{
-				const auto& callback = i->second;
-				if (ShouldIgnoreHandler(callback.toCall, scriptsToIgnore, pluginsToIgnore, pluginHandlersToIgnore))
-					continue;
-
-				if (callback.toCall != func)
-					return false;
-
-				if (allowSamePriority) [[unlikely]]
-					return true;  //no point in further checking.
-				//else, continue checking for a non-matching handler in the same priority
+				result->SetElementArray(static_cast<double>(priority), callback.GetAsArray(scriptObj)->ID());
 			}
-			return true;
+			else if (priority == startPriority)
+				foundParameterCallbackAtStart = true;
 		}
+
+		return foundParameterCallbackAtStart ? result : nullptr;
 	}
 
 	template <bool ExtractIntTypeAsFloat>
@@ -788,7 +825,7 @@ namespace EventManager
 		DispatchReturn result = DispatchReturn::kRetn_Normal;
 
 		ScopedLock lock(s_criticalSection);	//for event stack and NativeHandlerResult
-		//TODO: Optimize!
+		//TODO: optimize if needed
 
 		// handle immediately
 		s_eventStack.Push(eventInfo.evName);

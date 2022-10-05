@@ -595,6 +595,26 @@ std::string EventCallback::GetCallbackFuncAsStr() const
 		}, this->toCall);
 }
 
+ArrayVar* EventCallback::GetAsArray(const Script* scriptObj) const
+{
+	ArrayVar* handlerArr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+
+	std::visit(overloaded
+		{
+			[=](const LambdaManager::Maybe_Lambda& maybeLambda)
+			{
+				handlerArr->SetElementFormID(0.0, maybeLambda.Get()->refID);
+			},
+			[=](const EventManager::NativeEventHandlerInfo& handler)
+			{
+				handlerArr->SetElementArray(0.0, handler.GetArrayRepresentation(scriptObj->GetModIndex())->ID());
+			}
+		}, toCall);
+
+	handlerArr->SetElementArray(1.0, GetFiltersAsArray(scriptObj)->ID());
+	return handlerArr;
+}
+
 bool EventCallback::operator==(const EventCallback& rhs) const
 {
 	return (toCall == rhs.toCall) &&
@@ -1854,17 +1874,45 @@ void SetNativeHandlerFunctionValue(NVSEArrayVarInterface::Element& value)
 	g_NativeHandlerResult = &value;
 }
 
-bool ShouldIgnoreHandler(const EventCallback::CallbackFunc &toFilter,
-	TESForm* scriptsToIgnore, NVSEArrayVarInterface::Array* pluginsToIgnore, NVSEArrayVarInterface::Array* pluginHandlersToIgnore)
+bool PluginHandlerFilters::ShouldIgnore(const EventCallback::CallbackFunc& toFilter) const
 {
 	return std::visit(overloaded{
-		[=](const LambdaManager::Maybe_Lambda& maybe_lambda)
+		[=, this](const LambdaManager::Maybe_Lambda& maybe_lambda)
+		{
+			for (UInt32 i = 0; i < numScriptsToIgnore; i++)
+			{
+				if (scriptsToIgnore[i] == maybe_lambda.Get())
+					return true;
+			}
+			return false;
+		},
+		[=, this](const NativeEventHandlerInfo& handlerInfo)
+		{
+			for (UInt32 i = 0; i < numPluginsToIgnore; i++)
+			{
+				if (!StrCompare(handlerInfo.m_pluginName, pluginsToIgnore[i]))
+					return true;
+			}
+			for (UInt32 i = 0; i < numPluginHandlersToIgnore; i++)
+			{
+				if (!StrCompare(handlerInfo.m_handlerName, pluginHandlersToIgnore[i]))
+					return true;
+			}
+			return false;
+		}
+	}, toFilter);
+}
+
+bool ScriptHandlerFilters::ShouldIgnore(const EventCallback::CallbackFunc &toFilter) const
+{
+	return std::visit(overloaded{
+		[=, this](const LambdaManager::Maybe_Lambda& maybe_lambda)
 		{
 			return scriptsToIgnore && scriptsToIgnore->FormMatches(maybe_lambda.Get());
 		},
-		[=](const NativeEventHandlerInfo& handlerInfo)
+		[=, this](const NativeEventHandlerInfo& handlerInfo)
 		{
-			if (auto pluginsToIgnoreArr = g_ArrayMap.Get((ArrayID)pluginsToIgnore))
+			if (auto pluginsToIgnoreArr = g_ArrayMap.Get(reinterpret_cast<ArrayID>(pluginsToIgnore)))
 			{
 				for (const auto* elem : *pluginsToIgnoreArr)
 				{
@@ -1872,7 +1920,7 @@ bool ShouldIgnoreHandler(const EventCallback::CallbackFunc &toFilter,
 						return true;
 				}
 			}
-			if (auto pluginHandlersToIgnoreArr = g_ArrayMap.Get((ArrayID)pluginHandlersToIgnore))
+			if (auto pluginHandlersToIgnoreArr = g_ArrayMap.Get(reinterpret_cast<ArrayID>(pluginHandlersToIgnore)))
 			{
 				for (const auto* elem : *pluginHandlersToIgnoreArr)
 				{
