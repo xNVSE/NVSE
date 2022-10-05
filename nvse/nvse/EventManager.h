@@ -456,7 +456,7 @@ namespace EventManager
 
 		// 'scriptsToIgnore' can either be nullptr, a script, or a formlist of scripts.
 		// If non-null, 'pluginsToIgnore' and 'internalHandlersToIgnore' must contain string-type name filters.
-		[[nodiscard]] bool ShouldIgnore(const EventCallback::CallbackFunc& toFilter) const;
+		[[nodiscard]] bool ShouldIgnore(const EventCallback& toFilter) const;
 	};
 
 	struct PluginHandlerFilters
@@ -465,7 +465,7 @@ namespace EventManager
 		const char** pluginsToIgnore; UInt32 numPluginsToIgnore;
 		const char** pluginHandlersToIgnore; UInt32 numPluginHandlersToIgnore;
 
-		[[nodiscard]] bool ShouldIgnore(const EventCallback::CallbackFunc& toFilter) const;
+		[[nodiscard]] bool ShouldIgnore(const EventCallback& toFilter) const;
 	};
 
 	// A quick way to check for a handler priority conflict, i.e. if a handler is expected to run first/last. 
@@ -753,7 +753,7 @@ namespace EventManager
 			auto const priority = i->first;
 			auto const& callback = i->second;
 
-			if (filters.ShouldIgnore(callback.toCall))
+			if (filters.ShouldIgnore(callback))
 				continue;
 
 			if (callback.toCall != func)
@@ -789,7 +789,7 @@ namespace EventManager
 			auto const priority = i->first;
 			auto const& callback = i->second;
 
-			if (filters.ShouldIgnore(callback.toCall))
+			if (filters.ShouldIgnore(callback))
 				continue;
 
 			if (callback.toCall != func)

@@ -1874,9 +1874,9 @@ void SetNativeHandlerFunctionValue(NVSEArrayVarInterface::Element& value)
 	g_NativeHandlerResult = &value;
 }
 
-bool PluginHandlerFilters::ShouldIgnore(const EventCallback::CallbackFunc& toFilter) const
+bool PluginHandlerFilters::ShouldIgnore(const EventCallback& toFilter) const
 {
-	return std::visit(overloaded{
+	return !toFilter.IsRemoved() && std::visit(overloaded{
 		[=, this](const LambdaManager::Maybe_Lambda& maybe_lambda)
 		{
 			for (UInt32 i = 0; i < numScriptsToIgnore; i++)
@@ -1900,12 +1900,12 @@ bool PluginHandlerFilters::ShouldIgnore(const EventCallback::CallbackFunc& toFil
 			}
 			return false;
 		}
-	}, toFilter);
+	}, toFilter.toCall);
 }
 
-bool ScriptHandlerFilters::ShouldIgnore(const EventCallback::CallbackFunc &toFilter) const
+bool ScriptHandlerFilters::ShouldIgnore(const EventCallback &toFilter) const
 {
-	return std::visit(overloaded{
+	return !toFilter.IsRemoved() && std::visit(overloaded{
 		[=, this](const LambdaManager::Maybe_Lambda& maybe_lambda)
 		{
 			return scriptsToIgnore && scriptsToIgnore->FormMatches(maybe_lambda.Get());
@@ -1930,7 +1930,7 @@ bool ScriptHandlerFilters::ShouldIgnore(const EventCallback::CallbackFunc &toFil
 			}
 			return false;
 		}
-	}, toFilter);
+	}, toFilter.toCall);
 }
 
 bool SetNativeEventHandlerWithPriority(const char* eventName, NativeEventHandler func,
