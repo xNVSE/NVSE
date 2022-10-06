@@ -1123,10 +1123,12 @@ bool GetHigherOrLowerPriorityEventHandlers_Call(COMMAND_ARGS)
 			}
 		}
 	}
-	 
-	*result = EventManager::GetHigherOrLowerPriorityEventHandlers<GetHigher>(eventName, udf,
-		startPriority, filters, scriptObj)->ID();
 
+	if (auto resultArr = EventManager::GetHigherOrLowerPriorityEventHandlers<GetHigher>(eventName, udf,
+		startPriority, filters, scriptObj))
+	{
+		*result = resultArr->ID();
+	}
 	return true;
 }
 

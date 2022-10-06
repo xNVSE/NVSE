@@ -81,6 +81,12 @@ begin Function { }
 
 	assert (IsEventHandlerFirst "nvseTestEvent" rRuns1st 1) == 1
 	assert (IsEventHandlerLast "nvseTestEvent" rRuns1st 1) == 0
+
+	; Can't find the UDF at the startingPriority.
+	assert (IsEventHandlerLast "nvseTestEvent" rRuns1st (-1)) == 0
+	assert (IsEventHandlerLast "nvseTestEvent" rRuns1st (-2)) == 0
+	assert (IsEventHandlerFirst "nvseTestEvent" rRuns1st (-1)) == 0
+	assert (IsEventHandlerFirst "nvseTestEvent" rRuns1st (-2)) == 0
 	
 	assert (IsEventHandlerLast "nvseTestEvent" rRuns2nd (-1)) == 0
 	assert (IsEventHandlerFirst "nvseTestEvent" rRuns2nd (-1)) == 0
@@ -89,7 +95,49 @@ begin Function { }
 	assert (IsEventHandlerLast "nvseTestEvent" rRuns3rd (-2)) == 1
 
 ;====
-	print "xNVSE Priority System Subtest: GetHigher/LowerPriorityEventHandlers"
+	print "xNVSE Priority System Subtest: GetHigherPriorityEventHandlers"
+
+	array_var aConflictingHandlers = ar_Null
+
+	aConflictingHandlers = GetHigherPriorityEventHandlers "nvseTestEvent" rRuns1st 1
+	assert (ar_Size aConflictingHandlers) == 0
+
+	; Can't find the UDF at the startingPriority.
+	aConflictingHandlers = GetHigherPriorityEventHandlers "nvseTestEvent" rRuns1st (-1)
+	assert (aConflictingHandlers == ar_Null)
+	aConflictingHandlers = GetHigherPriorityEventHandlers "nvseTestEvent" rRuns1st (-2)
+	assert (aConflictingHandlers == ar_Null)
+
+	aConflictingHandlers = GetHigherPriorityEventHandlers "nvseTestEvent" rRuns2nd (-1)
+	assert (ar_Size aConflictingHandlers) == 1
+	assert (aConflictingHandlers[1][0] == rRuns1st)
+
+	aConflictingHandlers = GetHigherPriorityEventHandlers "nvseTestEvent" rRuns3rd (-2)
+	assert (ar_Size aConflictingHandlers) == 2
+	assert (aConflictingHandlers[1][0] == rRuns1st)
+	assert (aConflictingHandlers[-1][0] == rRuns2nd)
+
+;===
+	print "xNVSE Priority System Subtest: GetLowerPriorityEventHandlers"
+
+	aConflictingHandlers = GetLowerPriorityEventHandlers "nvseTestEvent" rRuns1st 1
+	assert (ar_Size aConflictingHandlers) == 2
+	assert (aConflictingHandlers[-1][0] == rRuns2nd)
+	assert (aConflictingHandlers[-2][0] == rRuns3rd)
+
+	aConflictingHandlers = GetLowerPriorityEventHandlers "nvseTestEvent" rRuns2nd (-1)
+	assert (ar_Size aConflictingHandlers) == 1
+	assert (aConflictingHandlers[-2][0] == rRuns3rd)
+
+	aConflictingHandlers = GetLowerPriorityEventHandlers "nvseTestEvent" rRuns3rd (-2)
+	assert (ar_Size aConflictingHandlers) == 0
+
+
+	assert (RemoveEventHandler "nvseTestEvent" rRuns1st "priority"::1)
+	assert (RemoveEventHandler "nvseTestEvent" rRuns2nd "priority"::-1)
+	assert (RemoveEventHandler "nvseTestEvent" rRuns3rd "priority"::-2)
+
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent")) == 0
 
 
 

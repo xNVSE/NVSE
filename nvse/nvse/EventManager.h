@@ -832,8 +832,8 @@ namespace EventManager
 			// Thus, do opposite for reverse iterator.
 			do
 			{
-				auto const priority = i->first;
-				auto const& callback = i->second;
+				auto const priority = j->first;
+				auto const& callback = j->second;
 
 				if (filters.ShouldIgnore(callback))
 					continue;
