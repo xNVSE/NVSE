@@ -72,10 +72,23 @@ begin Function { }
 	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rRuns1st)) == 0
 
 
-
+;=====
 	print "xNVSE Priority System Subtest: IsEventHandlerFirst/Last."
+	
+	assert (SetEventHandler "nvseTestEvent" rRuns1st "priority"::1)
+	assert (SetEventHandler "nvseTestEvent" rRuns2nd "priority"::-1)
+	assert (SetEventHandler "nvseTestEvent" rRuns3rd "priority"::-2)
 
+	assert (IsEventHandlerFirst "nvseTestEvent" rRuns1st 1) == 1
+	assert (IsEventHandlerLast "nvseTestEvent" rRuns1st 1) == 0
+	
+	assert (IsEventHandlerLast "nvseTestEvent" rRuns2nd (-1)) == 0
+	assert (IsEventHandlerFirst "nvseTestEvent" rRuns2nd (-1)) == 0
+	
+	assert (IsEventHandlerFirst "nvseTestEvent" rRuns3rd (-2)) == 0
+	assert (IsEventHandlerLast "nvseTestEvent" rRuns3rd (-2)) == 1
 
+;====
 	print "xNVSE Priority System Subtest: GetHigher/LowerPriorityEventHandlers"
 
 

@@ -1876,7 +1876,7 @@ void SetNativeHandlerFunctionValue(NVSEArrayVarInterface::Element& value)
 
 bool PluginHandlerFilters::ShouldIgnore(const EventCallback& toFilter) const
 {
-	return !toFilter.IsRemoved() && std::visit(overloaded{
+	return toFilter.IsRemoved() || std::visit(overloaded{
 		[=, this](const LambdaManager::Maybe_Lambda& maybe_lambda)
 		{
 			for (UInt32 i = 0; i < numScriptsToIgnore; i++)
@@ -1905,7 +1905,7 @@ bool PluginHandlerFilters::ShouldIgnore(const EventCallback& toFilter) const
 
 bool ScriptHandlerFilters::ShouldIgnore(const EventCallback &toFilter) const
 {
-	return !toFilter.IsRemoved() && std::visit(overloaded{
+	return toFilter.IsRemoved() || std::visit(overloaded{
 		[=, this](const LambdaManager::Maybe_Lambda& maybe_lambda)
 		{
 			return scriptsToIgnore && scriptsToIgnore->FormMatches(maybe_lambda.Get());

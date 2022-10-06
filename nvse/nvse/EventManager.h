@@ -746,18 +746,21 @@ namespace EventManager
 		bool foundParameterCallbackAtStart = false;
 
 		auto i = eventInfo.callbacks.find(startPriority);
-		if (i == eventInfo.callbacks.end())
-			return false;
 
 		if constexpr (CheckRunsFirst)
 		{
 			// See if any handlers are beating it at HIGHER priorities, or are at the same priority.
 
-			// Decrement i to go higher in priority; highest priorities are first in the container.
-			// Thus, increment j to go higher in priority.
-			auto j = std::make_reverse_iterator(i);
+			if (i == eventInfo.callbacks.end())
+				return false; //else, there must be at least one element in our priority range
 
-			for (; j != eventInfo.callbacks.rend(); ++j)
+			// Move all the way to the end of the priority range, so we can loop backwards starting from the end.
+			i = eventInfo.callbacks.equal_range(i->first).second;  // first iterator past the priority range
+			auto j = std::make_reverse_iterator(i); // reverse iterator will point back to the last element in the range.
+
+			// Decrement i to go higher in priority; highest priorities are first in the container.
+			// Thus, do opposite for reverse iterator.
+			do
 			{
 				auto const priority = j->first;
 				auto const& callback = j->second;
@@ -770,7 +773,7 @@ namespace EventManager
 
 				if (priority == startPriority)
 					foundParameterCallbackAtStart = true;
-			}
+			} while (++j != eventInfo.callbacks.rend());
 		}
 		else
 		{
@@ -813,18 +816,21 @@ namespace EventManager
 		bool foundParameterCallbackAtStart = false;
 
 		auto i = eventInfo.callbacks.find(startPriority);
-		if (i == eventInfo.callbacks.end())
-			return nullptr;
 
 		if constexpr (CheckHigherPriority)
 		{
 			// See if any handlers are beating it at HIGHER priorities, or are at the same priority.
 
-			// Decrement i to go higher in priority; highest priorities are first in the container.
-			// Thus, increment j to go higher in priority.
-			auto j = std::make_reverse_iterator(i);
+			if (i == eventInfo.callbacks.end())
+				return nullptr; //else, there must be at least one element in our priority range
 
-			for (; j != eventInfo.callbacks.rend(); ++j)
+			// Move all the way to the end of the priority range, so we can loop backwards starting from the end.
+			i = eventInfo.callbacks.equal_range(i->first).second;  // first iterator past the priority range
+			auto j = std::make_reverse_iterator(i); // reverse iterator will point back to the last element in the range.
+
+			// Decrement i to go higher in priority; highest priorities are first in the container.
+			// Thus, do opposite for reverse iterator.
+			do
 			{
 				auto const priority = i->first;
 				auto const& callback = i->second;
@@ -838,7 +844,7 @@ namespace EventManager
 				}
 				else if (priority == startPriority)
 					foundParameterCallbackAtStart = true;
-			}
+			} while (++j != eventInfo.callbacks.rend());
 		}
 		else
 		{
