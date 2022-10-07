@@ -485,6 +485,29 @@ namespace EventManager
 	ArrayVar* GetHigherOrLowerPriorityEventHandlers(const char* eventName, EventCallback::CallbackFunc func, 
 		int startPriority, Filters_t filters, Script* scriptObj = nullptr);
 
+	namespace ExportedToPlugins
+	{
+		bool IsEventHandlerFirst(const char* eventName, NativeEventHandler func, int priority,
+			TESForm** scriptsToIgnore, UInt32 numScriptsToIgnore,
+			const char** pluginsToIgnore, UInt32 numPluginsToIgnore,
+			const char** pluginHandlersToIgnore, UInt32 numPluginHandlersToIgnore);
+
+		bool IsEventHandlerLast(const char* eventName, NativeEventHandler func, int priority,
+			TESForm** scriptsToIgnore, UInt32 numScriptsToIgnore,
+			const char** pluginsToIgnore, UInt32 numPluginsToIgnore,
+			const char** pluginHandlersToIgnore, UInt32 numPluginHandlersToIgnore);
+
+		NVSEArrayVarInterface::Array* GetHigherPriorityEventHandlers(const char* eventName, NativeEventHandler func, int priority,
+			TESForm** scriptsToIgnore, UInt32 numScriptsToIgnore,
+			const char** pluginsToIgnore, UInt32 numPluginsToIgnore,
+			const char** pluginHandlersToIgnore, UInt32 numPluginHandlersToIgnore);
+
+		NVSEArrayVarInterface::Array* GetLowerPriorityEventHandlers(const char* eventName, NativeEventHandler func, int priority,
+			TESForm** scriptsToIgnore, UInt32 numScriptsToIgnore,
+			const char** pluginsToIgnore, UInt32 numPluginsToIgnore,
+			const char** pluginHandlersToIgnore, UInt32 numPluginHandlersToIgnore);
+	}
+
 
 	// == Template definitions
 

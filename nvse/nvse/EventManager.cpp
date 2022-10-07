@@ -1949,6 +1949,63 @@ bool RemoveNativeEventHandlerWithPriority(const char* eventName, NativeEventHand
 	return RemoveHandler(eventName, callback, priority, nullptr);
 }
 
+namespace ExportedToPlugins
+{
+	bool IsEventHandlerFirst(const char* eventName, NativeEventHandler func, int priority,
+		TESForm** scriptsToIgnore, UInt32 numScriptsToIgnore,
+		const char** pluginsToIgnore, UInt32 numPluginsToIgnore,
+		const char** pluginHandlersToIgnore, UInt32 numPluginHandlersToIgnore)
+	{
+		return IsEventHandlerFirstOrLast<true>(eventName, NativeEventHandlerInfo{ func }, priority,
+			PluginHandlerFilters{ scriptsToIgnore, numScriptsToIgnore,
+				pluginsToIgnore, numPluginsToIgnore,
+				pluginHandlersToIgnore, numPluginHandlersToIgnore }
+		);
+	}
+
+	bool IsEventHandlerLast(const char* eventName, NativeEventHandler func, int priority,
+		TESForm** scriptsToIgnore, UInt32 numScriptsToIgnore,
+		const char** pluginsToIgnore, UInt32 numPluginsToIgnore,
+		const char** pluginHandlersToIgnore, UInt32 numPluginHandlersToIgnore)
+	{
+		return IsEventHandlerFirstOrLast<false>(eventName, NativeEventHandlerInfo{ func }, priority,
+			PluginHandlerFilters{ scriptsToIgnore, numScriptsToIgnore,
+				pluginsToIgnore, numPluginsToIgnore,
+				pluginHandlersToIgnore, numPluginHandlersToIgnore }
+		);
+	}
+
+	NVSEArrayVarInterface::Array* GetHigherPriorityEventHandlers(const char* eventName, NativeEventHandler func, int priority,
+		TESForm** scriptsToIgnore, UInt32 numScriptsToIgnore,
+		const char** pluginsToIgnore, UInt32 numPluginsToIgnore,
+		const char** pluginHandlersToIgnore, UInt32 numPluginHandlersToIgnore)
+	{
+		if (auto const arr = GetHigherOrLowerPriorityEventHandlers<true>(eventName, NativeEventHandlerInfo{ func }, priority,
+			PluginHandlerFilters{ scriptsToIgnore, numScriptsToIgnore,
+				pluginsToIgnore, numPluginsToIgnore,
+				pluginHandlersToIgnore, numPluginHandlersToIgnore }))
+		{
+			return reinterpret_cast<NVSEArrayVarInterface::Array*>(arr->ID());
+		}
+		return nullptr;
+	}
+
+	NVSEArrayVarInterface::Array* GetLowerPriorityEventHandlers(const char* eventName, NativeEventHandler func, int priority,
+		TESForm** scriptsToIgnore, UInt32 numScriptsToIgnore,
+		const char** pluginsToIgnore, UInt32 numPluginsToIgnore,
+		const char** pluginHandlersToIgnore, UInt32 numPluginHandlersToIgnore)
+	{
+		if (auto const arr = GetHigherOrLowerPriorityEventHandlers<false>(eventName, NativeEventHandlerInfo{ func }, priority,
+			PluginHandlerFilters{ scriptsToIgnore, numScriptsToIgnore,
+				pluginsToIgnore, numPluginsToIgnore,
+				pluginHandlersToIgnore, numPluginHandlersToIgnore }))
+		{
+			return reinterpret_cast<NVSEArrayVarInterface::Array*>(arr->ID());
+		}
+		return nullptr;
+	}
+}
+
 std::deque<DeferredCallback<false>> s_deferredCallbacksDefault;
 std::deque<DeferredCallback<true>> s_deferredCallbacksWithIntsPackedAsFloats;
 

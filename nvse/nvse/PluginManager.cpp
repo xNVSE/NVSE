@@ -145,7 +145,11 @@ static const NVSEEventManagerInterface g_NVSEEventManagerInterface =
 	EventManager::DispatchEventAltThreadSafe,
 	EventManager::SetNativeHandlerFunctionValue,
 	EventManager::SetNativeEventHandlerWithPriority,
-	EventManager::RemoveNativeEventHandlerWithPriority
+	EventManager::RemoveNativeEventHandlerWithPriority,
+	EventManager::ExportedToPlugins::IsEventHandlerFirst,
+	EventManager::ExportedToPlugins::IsEventHandlerLast,
+	EventManager::ExportedToPlugins::GetHigherPriorityEventHandlers,
+	EventManager::ExportedToPlugins::GetLowerPriorityEventHandlers
 };
 #endif
 
