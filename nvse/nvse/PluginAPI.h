@@ -775,7 +775,7 @@ struct NVSESerializationInterface
  */
 struct NVSEEventManagerInterface
 {
-	typedef void (*EventHandler)(TESObjectREFR* thisObj, void* parameters);
+	typedef void (*NativeEventHandler)(TESObjectREFR* thisObj, void* parameters);
 
 	// Mostly used for filtering information.
 	enum ParamType : UInt8
@@ -897,11 +897,11 @@ struct NVSEEventManagerInterface
 	// Similar to script function SetEventHandler, allows you to set a native function that gets called back on events
 	// Unlike SetEventHandler, the event must already be defined before this function is called.
 	// Default priority (1) is given for the handler.
-	bool (*SetNativeEventHandler)(const char* eventName, EventHandler func);
+	bool (*SetNativeEventHandler)(const char* eventName, NativeEventHandler func);
 
 	// Same as script function RemoveEventHandler but for native functions
 	// Invalid priority (0) is implicitly passed, so that all handlers for the event, regardless of priority, will be removed.
-	bool (*RemoveNativeEventHandler)(const char* eventName, EventHandler func);
+	bool (*RemoveNativeEventHandler)(const char* eventName, NativeEventHandler func);
 
 	bool (*RegisterEventWithAlias)(const char* name, const char* alias, UInt8 numParams, ParamType* paramTypes, EventFlags flags);
 
@@ -927,8 +927,12 @@ struct NVSEEventManagerInterface
 	// The pointer can be invalidated during or after a DispatchCallback.
 	void (*SetNativeHandlerFunctionValue)(NVSEArrayVarInterface::Element& value);
 
-	bool (*SetNativeEventHandlerWithPriority)(const char* eventName, EventHandler func, int priority);
-	bool (*RemoveNativeEventHandlerWithPriority)(const char* eventName, EventHandler func, int priority);
+	// 'pluginHandle' and 'handlerName' provide easier debugging, i.e. when dumping handlers.
+	// Returns false if providing an invalid PluginHandle (can pass null handlerName, but not recommended).
+	bool (*SetNativeEventHandlerWithPriority)(const char* eventName, NativeEventHandler func, 
+		PluginHandle pluginHandle, const char* handlerName, int priority);
+
+	bool (*RemoveNativeEventHandlerWithPriority)(const char* eventName, NativeEventHandler func, int priority);
 };
 #endif
 

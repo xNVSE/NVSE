@@ -52,6 +52,7 @@ namespace LambdaManager
 
 		//Only compares the contained scripts.
 		bool operator==(const Maybe_Lambda& other) const;
+		bool operator==(const Script* other) const;
 		operator bool() const { return m_script != nullptr; }
 
 		[[nodiscard]] Script* Get() const { return m_script; }

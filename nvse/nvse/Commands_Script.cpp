@@ -927,7 +927,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	*result = 0;
-	if (!eval.ExtractArgs())
+	if (!eval.ExtractArgs()) [[unlikely]]
 		return true;
 	EventManager::EventInfo* eventInfoPtr = nullptr;
 	Script* scriptFilter = nullptr;
@@ -968,33 +968,12 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 			int handlerPos,
 			ArrayVar* arrOfHandlers)
 		{
-			auto constexpr GetHandlerArr = [](const EventManager::EventCallback& callback, const Script* scriptObj) -> ArrayVar*
-			{
-				// [0] = callbackFunc (script for udf, or int for func ptr), [1] = filters string map.
-				ArrayVar* handlerArr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-
-				std::visit(overloaded
-					{
-						[=](const LambdaManager::Maybe_Lambda& maybeLambda)
-						{
-							handlerArr->SetElementFormID(0.0, maybeLambda.Get()->refID);
-						},
-						[=](const EventManager::EventHandler& handler)
-						{
-							handlerArr->SetElementNumber(0.0, reinterpret_cast<UInt32>(handler));
-						}
-					}, callback.toCall);
-
-				handlerArr->SetElementArray(1.0, callback.GetFiltersAsArray(scriptObj)->ID());
-				return handlerArr;
-			};
-
 			const auto& handler = i->second;
 			if ((!scriptFilter || scriptFilter == handler.TryGetScript())
 				&& !handler.IsRemoved()
 				&& (argsToFilter->empty() || handler.DoNewFiltersMatch<true>(thisObj, argsToFilter, accurateArgTypes, info, &eval)))
 			{
-				arrOfHandlers->SetElementArray(handlerPos, GetHandlerArr(handler, scriptObj)->ID());
+				arrOfHandlers->SetElementArray(handlerPos, handler.GetAsArray(scriptObj)->ID());
 			}
 		};
 
@@ -1062,6 +1041,107 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 
 	return true;
 }
+
+template <bool CheckFirst>
+bool IsEventHandlerFirstOrLast_Call(COMMAND_ARGS)
+{
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	*result = 0;
+	if (!eval.ExtractArgs()) [[unlikely]]
+		return true;
+
+	const auto eventName = eval.Arg(0)->GetString();
+	auto udf = eval.Arg(1)->GetUserFunction();
+	const auto startPriority = static_cast<int>(eval.Arg(2)->GetNumber());
+
+	if (startPriority == EventManager::kInvalidHandlerPriority)
+	{
+		eval.Error("Cannot use reserved priority 0 for this function.");
+		return true;
+	}
+
+	EventManager::ScriptHandlerFilters filters;
+	if (auto const numArgs = eval.NumArgs();
+		numArgs >= 4)
+	{
+		filters.scriptsToIgnore = eval.Arg(3)->GetTESForm();
+
+		if (numArgs >= 5)
+		{
+			filters.pluginsToIgnore = eval.Arg(4)->GetArrayVar();
+			if (numArgs >= 6)
+			{
+				filters.pluginHandlersToIgnore = eval.Arg(5)->GetArrayVar();
+			}
+		}
+	}
+
+	*result = EventManager::IsEventHandlerFirstOrLast<CheckFirst>(eventName, udf, startPriority, filters);
+	return true;
+}
+
+bool Cmd_IsEventHandlerFirst_Execute(COMMAND_ARGS)
+{
+	return IsEventHandlerFirstOrLast_Call<true>(PASS_COMMAND_ARGS);
+}
+bool Cmd_IsEventHandlerLast_Execute(COMMAND_ARGS)
+{
+	return IsEventHandlerFirstOrLast_Call<false>(PASS_COMMAND_ARGS);
+}
+
+
+template <bool GetHigher>
+bool GetHigherOrLowerPriorityEventHandlers_Call(COMMAND_ARGS)
+{
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	*result = 0;
+	if (!eval.ExtractArgs()) [[unlikely]]
+		return true;
+
+	const auto eventName = eval.Arg(0)->GetString();
+	auto udf = eval.Arg(1)->GetUserFunction();
+	const auto startPriority = static_cast<int>(eval.Arg(2)->GetNumber());
+
+	if (startPriority == EventManager::kInvalidHandlerPriority)
+	{
+		eval.Error("Cannot use reserved priority 0 for this function.");
+		return true;
+	}
+
+	EventManager::ScriptHandlerFilters filters;
+	if (auto const numArgs = eval.NumArgs();
+		numArgs >= 4)
+	{
+		filters.scriptsToIgnore = eval.Arg(3)->GetTESForm();
+
+		if (numArgs >= 5)
+		{
+			filters.pluginsToIgnore = eval.Arg(4)->GetArrayVar();
+			if (numArgs >= 6)
+			{
+				filters.pluginHandlersToIgnore = eval.Arg(5)->GetArrayVar();
+			}
+		}
+	}
+
+	if (auto resultArr = EventManager::GetHigherOrLowerPriorityEventHandlers<GetHigher>(eventName, udf,
+		startPriority, filters, scriptObj))
+	{
+		*result = resultArr->ID();
+	}
+	return true;
+}
+
+bool Cmd_GetHigherPriorityEventHandlers_Execute(COMMAND_ARGS)
+{
+	return GetHigherOrLowerPriorityEventHandlers_Call<true>(PASS_COMMAND_ARGS);
+}
+bool Cmd_GetLowerPriorityEventHandlers_Execute(COMMAND_ARGS)
+{
+	return GetHigherOrLowerPriorityEventHandlers_Call<false>(PASS_COMMAND_ARGS);
+}
+
+
 
 extern float g_gameSecondsPassed;
 

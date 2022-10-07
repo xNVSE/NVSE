@@ -416,6 +416,22 @@ bool TESForm::IsInventoryObject() const
 	return IsInventoryObjectType(typeID);
 }
 
+bool TESForm::FormMatches(TESForm* toMatch) const
+{
+	if (this == toMatch)
+		return true;
+	if (IS_ID(this, BGSListForm))
+	{
+		auto& list = static_cast<const BGSListForm*>(this)->list;
+		for (auto i = list.Begin(); !i.End(); ++i)
+		{
+			if (i.Get() == toMatch)
+				return true;
+		}
+	}
+	return false;
+}
+
 const char *TESPackage::TargetData::StringForTargetCode(UInt8 targetCode)
 {
 	switch (targetCode)

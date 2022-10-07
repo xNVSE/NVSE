@@ -1850,6 +1850,12 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(CallWhilePerSeconds);
 	ADD_CMD(CallAfterFrames);
 	ADD_CMD_RET(GetSoldItemInvRef, kRetnType_Form);
+
+	// 6.2 beta 09
+	ADD_CMD(IsEventHandlerFirst);
+	ADD_CMD(IsEventHandlerLast);
+	ADD_CMD_RET(GetHigherPriorityEventHandlers, kRetnType_Array);
+	ADD_CMD_RET(GetLowerPriorityEventHandlers, kRetnType_Array);
 }
 
 namespace PluginAPI
