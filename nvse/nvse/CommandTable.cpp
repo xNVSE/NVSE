@@ -1856,6 +1856,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(IsEventHandlerLast);
 	ADD_CMD_RET(GetHigherPriorityEventHandlers, kRetnType_Array);
 	ADD_CMD_RET(GetLowerPriorityEventHandlers, kRetnType_Array);
+	ADD_CMD(ValidateRegex);
 }
 
 namespace PluginAPI

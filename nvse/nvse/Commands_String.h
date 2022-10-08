@@ -251,3 +251,13 @@ DEFINE_CMD_ALT(ActorValueToStringC, AVStringC, returns the localized string corr
 
 DEFINE_COMMAND(GetScopeModelPath, "Get the path to the scope model of a weapon", 0, 1, kParams_OneOptionalObjectID)
 DEFINE_COMMAND(SetScopeModelPath, "Set the path to the scope model of a weapon", 0, 2, kParams_OneString_OneOptionalObjectID)
+
+static ParamInfo kParams_ValidateRegex[] =
+{
+	{"regexToValidate", kNVSEParamType_String, 0},
+	{"outErrStrVar", kNVSEParamType_StringVar, 1}
+};
+
+DEFINE_COMMAND_EXP(ValidateRegex, "Returns 0 for no errors, otherwise returns int codes indicating the error cause.", 
+	0, kParams_ValidateRegex);
+
