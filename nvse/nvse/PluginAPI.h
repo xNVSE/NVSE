@@ -934,16 +934,31 @@ struct NVSEEventManagerInterface
 
 	bool (*RemoveNativeEventHandlerWithPriority)(const char* eventName, NativeEventHandler func, int priority);
 
-	bool (*IsEventHandlerFirst)(const char* eventName, NativeEventHandler func, int priority,
+	// A quick way to check for a handler priority conflict, i.e. if a handler is expected to run first. 
+	/* If any non-excluded handlers are found above or at 'priority', returns false.
+	 * 'startPriority' is assumed to NOT be 0 (which is an invalid priority).
+	 * 	Returns false if 'func' is not found at 'startPriority'. It can appear elsewhere and will be ignored.
+	*/
+	// All '...ToIgnore' parameters are optional, i.e they can be nullptr and the 'num...' args can be set to 0.
+	// 'scriptsToIgnore' can be nullptr, a Script*, or a formlist.
+	bool (*IsEventHandlerFirst)(const char* eventName, NativeEventHandler func, int startPriority,
 		TESForm** scriptsToIgnore, UInt32 numScriptsToIgnore,
 		const char** pluginsToIgnore, UInt32 numPluginsToIgnore,
 		const char** pluginHandlersToIgnore, UInt32 numPluginHandlersToIgnore);
 
-	bool (*IsEventHandlerLast)(const char* eventName, NativeEventHandler func, int priority,
+	bool (*IsEventHandlerLast)(const char* eventName, NativeEventHandler func, int startPriority,
 		TESForm** scriptsToIgnore, UInt32 numScriptsToIgnore,
 		const char** pluginsToIgnore, UInt32 numPluginsToIgnore,
 		const char** pluginHandlersToIgnore, UInt32 numPluginHandlersToIgnore);
 
+	// Returns a Map-type array with all the priority-conflicting event handlers, i.e the events that will run before the 'func' handler. 
+	// Each key in the map is a priority, and each value is a 2-element array containing:
+	//		[0] = the handler, [1] = a stringmap of filters.
+	/* 'priority' is assumed to NOT be 0 (which is an invalid priority).
+	 * The array includes handlers that are at 'priority', as they can potentially lead to conflicts.
+	*/
+	// All '...ToIgnore' parameters are optional, i.e they can be nullptr and the 'num...' args can be set to 0.
+	// Returns nullptr if 'func' is not found at 'priority'. It can appear elsewhere and will be ignored.
 	NVSEArrayVarInterface::Array* (*GetHigherPriorityEventHandlers)(const char* eventName, NativeEventHandler func, int priority,
 		TESForm** scriptsToIgnore, UInt32 numScriptsToIgnore,
 		const char** pluginsToIgnore, UInt32 numPluginsToIgnore,

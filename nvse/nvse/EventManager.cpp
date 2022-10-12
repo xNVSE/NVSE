@@ -605,7 +605,7 @@ ArrayVar* EventCallback::GetAsArray(const Script* scriptObj) const
 			{
 				handlerArr->SetElementFormID(0.0, maybeLambda.Get()->refID);
 			},
-			[=](const EventManager::NativeEventHandlerInfo& handler)
+			[=](const NativeEventHandlerInfo& handler)
 			{
 				handlerArr->SetElementArray(0.0, handler.GetArrayRepresentation(scriptObj->GetModIndex())->ID());
 			}
@@ -2134,15 +2134,15 @@ bool RegisterEventEx(const char* name, const char* alias, bool isInternal, UInt8
 
 bool RegisterEvent(const char* name, UInt8 numParams, EventArgType* paramTypes, NVSEEventManagerInterface::EventFlags flags)
 {
-	return RegisterEventEx(name, nullptr, false, numParams, paramTypes, 0, nullptr, 
-		static_cast<EventFlags>(flags));
+	return RegisterEventEx(name, nullptr, false, numParams, 
+		paramTypes, 0, nullptr, flags);
 }
 
 bool RegisterEventWithAlias(const char* name, const char* alias, UInt8 numParams, EventArgType* paramTypes, 
 	NVSEEventManagerInterface::EventFlags flags)
 {
-	return RegisterEventEx(name, alias, false, numParams, paramTypes, 0, nullptr, 
-		static_cast<EventFlags>(flags));
+	return RegisterEventEx(name, alias, false, numParams, 
+		paramTypes, 0, nullptr, flags);
 }
 
 bool SetNativeEventHandler(const char* eventName, NativeEventHandler func)
@@ -2157,17 +2157,30 @@ bool RemoveNativeEventHandler(const char* eventName, NativeEventHandler func)
 	return RemoveHandler(eventName, event, kInvalidHandlerPriority, nullptr);
 }
 
-bool EventHandlerExists(const char* ev, const EventCallback& handler, int priority)
+bool EventHandlerExists(const char* ev, const EventCallback& handler, int priority = kInvalidHandlerPriority)
 {
 	ScopedLock lock(s_criticalSection);
 	if (EventInfo* infoPtr = TryGetEventInfoForName(ev))
 	{
 		CallbackMap& callbacks = infoPtr->callbacks;
-		auto const priorityRange = callbacks.equal_range(priority);
-		for (auto i = priorityRange.first; i != priorityRange.second; ++i)
+
+		if (priority == kInvalidHandlerPriority)
 		{
-			if (i->second == handler) 
-				return true;
+			// Don't filter by priority.
+			for (auto const &[priorityKey, nthHandler] : callbacks)
+			{
+				if (handler == nthHandler)
+					return true;
+			}
+		}
+		else
+		{
+			auto const priorityRange = callbacks.equal_range(priority);
+			for (auto i = priorityRange.first; i != priorityRange.second; ++i)
+			{
+				if (i->second == handler)
+					return true;
+			}
 		}
 	}
 	return false;

@@ -39,6 +39,7 @@ public:
 		return *this;
 	}
 
+	// length of newString should respect kMaxMessageLength
 	void		Set(const char* newString);
 	void        Set(StringVar&& other);
 	SInt32		Compare(char* rhs, bool caseSensitive);
