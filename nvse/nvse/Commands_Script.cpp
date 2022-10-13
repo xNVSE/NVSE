@@ -684,12 +684,12 @@ bool ProcessEventHandler(std::string &eventName, EventManager::EventCallback &ca
 		}
 		if (const UInt32 eventMask = GetLNEventMask(eventNameRaw))
 		{
-			if (priority != EventManager::kHandlerPriority_Default)
+			if (priority != EventManager::kHandlerPriority_Default) [[unlikely]]
 			{
 				ShowRuntimeScriptError(callback.TryGetScript(), &eval, "Cannot use non-default priority %i for an LN event.", priority);
 				return false;
 			}
-			if (callback.IsAltRegistered())
+			if (callback.IsAltRegistered()) [[unlikely]]
 			{
 				ShowRuntimeScriptError(callback.TryGetScript(), &eval, "Cannot use SetEventHandlerAlt on LN events; use SetEventHandler instead.");
 				return false;
