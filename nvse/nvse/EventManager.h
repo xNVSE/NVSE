@@ -255,11 +255,7 @@ namespace EventManager
 		void Confirm();
 	};
 
-	// Used as a special case when searching through handlers; invalid priority = unfiltered for priority.
-	constexpr int kInvalidHandlerPriority = NVSEEventManagerInterface::kPriority_Invalid;
-
-	// Used by SetEventHandler(Alt) if no priority is specified.
-	constexpr int kDefaultHandlerPriority = NVSEEventManagerInterface::kPriority_Default;
+	using enum NVSEEventManagerInterface::SpecialHandlerPriorities;
 
 	// Ordered by priority; a single priority can have multiple associated callbacks.
 	// Greatest priority = will run first.
@@ -374,7 +370,7 @@ namespace EventManager
 	typedef Stack<DeferredRemoveCallback> DeferredRemoveList;
 	extern DeferredRemoveList s_deferredRemoveList;
 
-	template <bool IsInternalEvent>
+	template <bool IsInternalHandler>
 	bool SetHandler(const char *eventName, EventCallback &toSet, int priority, ExpressionEvaluator* eval = nullptr);
 
 	// removes handler only if all filters match
@@ -988,26 +984,41 @@ namespace EventManager
 	template <bool IsInternalHandler>
 	bool SetHandler(const char* eventName, EventCallback& toSet, int priority, ExpressionEvaluator* eval)
 	{
-		if (!toSet.HasCallbackFunc())
+		if (!toSet.HasCallbackFunc()) [[unlikely]]
 			return false;
 
-		if (priority == kInvalidHandlerPriority)
+		if (priority == kHandlerPriority_Invalid) [[unlikely]]
 		{
-			ShowRuntimeScriptError(toSet.TryGetScript(), eval, "Can't set event handler with invalid priority 0 (below 0 is allowed). Default priority = %u.", kDefaultHandlerPriority);
+			ShowRuntimeScriptError(toSet.TryGetScript(), eval, "Can't set event handler with invalid priority 0 (below 0 is allowed). Default priority = %u.", kHandlerPriority_Default);
+			return false;
+		}
+		if (priority > kHandlerPriority_Max) [[unlikely]]
+		{
+			ShowRuntimeScriptError(toSet.TryGetScript(), eval, "Can't set event handler with priority above %u.", kHandlerPriority_Max);
+			return false;
+		}
+		if (priority < kHandlerPriority_Min) [[unlikely]]
+		{
+			ShowRuntimeScriptError(toSet.TryGetScript(), eval, "Can't set event handler with priority below %u.", kHandlerPriority_Min);
 			return false;
 		}
 
 		EventInfo** eventInfoPtr = nullptr;
 		{
-			ScopedLock lock(s_criticalSection);
-			if (s_eventInfoMap.Insert(eventName, &eventInfoPtr))
+			if constexpr (IsInternalHandler)
 			{
-				if constexpr (IsInternalHandler)
+				// Only use pre-defined events.
+				if (eventInfoPtr = s_eventInfoMap.GetPtr(eventName); 
+					!eventInfoPtr)
 				{
 					ShowRuntimeScriptError(nullptr, eval, "Trying to set an internal handler for unknown event %s. It must be defined before setting handlers.", eventName);
 					return false;
 				}
-				else
+			}
+			else
+			{
+				ScopedLock lock(s_criticalSection);
+				if (s_eventInfoMap.Insert(eventName, &eventInfoPtr))
 				{
 					// have to assume registering for a user-defined event (for DispatchEvent) which has not been used before this point
 					char* nameCopy = CopyString(eventName);
@@ -1016,14 +1027,14 @@ namespace EventManager
 				}
 			}
 		}
-		if (!eventInfoPtr)
+		if (!eventInfoPtr) [[unlikely]]
 			return false;
 		//else, assume ptr is valid
 		EventInfo& info = **eventInfoPtr;
 
 		{ // nameless scope
 			std::string errMsg;
-			if (!toSet.ValidateFilters(errMsg, info))
+			if (!toSet.ValidateFilters(errMsg, info)) [[unlikely]]
 			{
 				ShowRuntimeScriptError(toSet.TryGetScript(), eval, errMsg.c_str());
 				return false;

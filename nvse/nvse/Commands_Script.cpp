@@ -717,7 +717,7 @@ bool Cmd_SetEventHandler_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
 	std::string eventName;
-	int priority = EventManager::kDefaultHandlerPriority;
+	int priority = EventManager::kHandlerPriority_Default;
 	*result = (ExtractEventCallback<true, false>(eval, callback, eventName, priority)
 		&& ProcessEventHandler(eventName, callback, true, priority, eval));
 	return true;
@@ -728,7 +728,7 @@ bool Cmd_SetEventHandlerAlt_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
 	std::string eventName;
-	int priority = EventManager::kDefaultHandlerPriority;
+	int priority = EventManager::kHandlerPriority_Default;
 	*result = (ExtractEventCallback<false, true>(eval, callback, eventName, priority)
 		&& ProcessEventHandler(eventName, callback, true, priority, eval));
 	return true;
@@ -739,7 +739,7 @@ bool Cmd_RemoveEventHandler_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	EventManager::EventCallback callback;
 	std::string eventName;
-	int priority = EventManager::kInvalidHandlerPriority;
+	int priority = EventManager::kHandlerPriority_Invalid;
 	*result = (ExtractEventCallback<true, true>(eval, callback, eventName, priority)
 		&& ProcessEventHandler(eventName, callback, false, priority, eval));
 	return true;
@@ -837,7 +837,7 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 
 	EventManager::EventInfo* eventInfoPtr = nullptr;
 	Script* scriptFilter = nullptr;
-	int priorityFilter = EventManager::kInvalidHandlerPriority;
+	int priorityFilter = EventManager::kHandlerPriority_Invalid;
 	if (auto const eventNameArg = eval.Arg(0))
 	{
 		if (const char* eventName = eventNameArg->GetString();
@@ -885,7 +885,7 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 			}
 		};
 
-		if (priorityFilter != EventManager::kInvalidHandlerPriority)
+		if (priorityFilter != EventManager::kHandlerPriority_Invalid)
 		{
 			auto const range = info.callbacks.equal_range(priorityFilter);
 			for (auto i = range.first; i != range.second; ++i) {
@@ -931,7 +931,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 		return true;
 	EventManager::EventInfo* eventInfoPtr = nullptr;
 	Script* scriptFilter = nullptr;
-	int priorityFilter = EventManager::kInvalidHandlerPriority;
+	int priorityFilter = EventManager::kHandlerPriority_Invalid;
 	if (auto const eventNameArg = eval.Arg(0))
 	{
 		if (const char* eventName = eventNameArg->GetString();
@@ -977,7 +977,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 			}
 		};
 
-		if (priorityFilter != EventManager::kInvalidHandlerPriority)  
+		if (priorityFilter != EventManager::kHandlerPriority_Invalid)  
 		{
 			// filter by priority
 			auto const priorityRange = info.callbacks.equal_range(priorityFilter);
@@ -1054,7 +1054,7 @@ bool IsEventHandlerFirstOrLast_Call(COMMAND_ARGS)
 	auto udf = eval.Arg(1)->GetUserFunction();
 	const auto startPriority = static_cast<int>(eval.Arg(2)->GetNumber());
 
-	if (startPriority == EventManager::kInvalidHandlerPriority)
+	if (startPriority == EventManager::kHandlerPriority_Invalid)
 	{
 		eval.Error("Cannot use reserved priority 0 for this function.");
 		return true;
@@ -1102,7 +1102,7 @@ bool GetHigherOrLowerPriorityEventHandlers_Call(COMMAND_ARGS)
 	auto udf = eval.Arg(1)->GetUserFunction();
 	const auto startPriority = static_cast<int>(eval.Arg(2)->GetNumber());
 
-	if (startPriority == EventManager::kInvalidHandlerPriority)
+	if (startPriority == EventManager::kHandlerPriority_Invalid)
 	{
 		eval.Error("Cannot use reserved priority 0 for this function.");
 		return true;

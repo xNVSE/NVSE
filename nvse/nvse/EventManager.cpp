@@ -1137,7 +1137,7 @@ bool DoRemoveHandler(EventInfo& info, const EventCallback& toRemove, int priorit
 			}
 		};
 
-		if (priority != kInvalidHandlerPriority)
+		if (priority != kHandlerPriority_Invalid)
 		{
 			auto const priorityRange = info.callbacks.equal_range(priority);
 			for (auto i = priorityRange.first; i != priorityRange.second; ++i)
@@ -1162,17 +1162,28 @@ bool DoRemoveHandler(EventInfo& info, const EventCallback& toRemove, int priorit
 // Calling this with a Callback with no filters will lead to the "SunnyREF"-filtered callback being removed.	
 bool RemoveHandler(const char* eventName, const EventCallback& toRemove, int priority, ExpressionEvaluator* eval)
 {
-	if (!toRemove.HasCallbackFunc())
+	if (!toRemove.HasCallbackFunc()) [[unlikely]]
 		return false;
+
+	if (priority > kHandlerPriority_Max) [[unlikely]]
+	{
+		ShowRuntimeScriptError(toRemove.TryGetScript(), eval, "Can't remove event handler with priority above %u.", kHandlerPriority_Max);
+		return false;
+	}
+	if (priority < kHandlerPriority_Min) [[unlikely]]
+	{
+		ShowRuntimeScriptError(toRemove.TryGetScript(), eval, "Can't remove event handler with priority below %u.", kHandlerPriority_Min);
+		return false;
+	}
 
 	EventInfo** infoPtr = s_eventInfoMap.GetPtr(eventName);
 	bool bRemovedAtLeastOne = false;
-	if (infoPtr)
+	if (infoPtr) [[likely]]
 	{
 		EventInfo &info = **infoPtr;
 
 		std::string errMsg;
-		if (!toRemove.ValidateFilters(errMsg, info))
+		if (!toRemove.ValidateFilters(errMsg, info)) [[unlikely]]
 		{
 			if (eval)
 				eval->Error(errMsg.c_str());
@@ -2148,23 +2159,23 @@ bool RegisterEventWithAlias(const char* name, const char* alias, UInt8 numParams
 bool SetNativeEventHandler(const char* eventName, NativeEventHandler func)
 {
 	EventCallback event(NativeEventHandlerInfo{ func });
-	return SetHandler<true>(eventName, event, kDefaultHandlerPriority);
+	return SetHandler<true>(eventName, event, kHandlerPriority_Default);
 }
 
 bool RemoveNativeEventHandler(const char* eventName, NativeEventHandler func)
 {
 	const EventCallback event(NativeEventHandlerInfo { func });
-	return RemoveHandler(eventName, event, kInvalidHandlerPriority, nullptr);
+	return RemoveHandler(eventName, event, kHandlerPriority_Invalid, nullptr);
 }
 
-bool EventHandlerExists(const char* ev, const EventCallback& handler, int priority = kInvalidHandlerPriority)
+bool EventHandlerExists(const char* ev, const EventCallback& handler, int priority = kHandlerPriority_Invalid)
 {
 	ScopedLock lock(s_criticalSection);
 	if (EventInfo* infoPtr = TryGetEventInfoForName(ev))
 	{
 		CallbackMap& callbacks = infoPtr->callbacks;
 
-		if (priority == kInvalidHandlerPriority)
+		if (priority == kHandlerPriority_Invalid)
 		{
 			// Don't filter by priority.
 			for (auto const &[priorityKey, nthHandler] : callbacks)

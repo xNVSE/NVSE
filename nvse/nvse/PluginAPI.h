@@ -882,16 +882,19 @@ struct NVSEEventManagerInterface
 
 	// Special priorities used for the event priority system.
 	// Greatest priority = will run first, lowest = will run last.
-	enum SpecialPriorities : int
+	enum SpecialHandlerPriorities : int
 	{
 		// Used as a special case when searching through handlers; invalid priority = unfiltered for priority.
 		// A handler CANNOT be set with this priority.
 		// However, negative priorities ARE allowed to be set.
 		// When removing handlers, this value can be used to remove handlers regardless of priority.
-		kPriority_Invalid = 0,
+		kHandlerPriority_Invalid = 0,
 
 		// When setting a handler, used if no priority is specified.
-		kPriority_Default = 1
+		kHandlerPriority_Default = 1,
+
+		kHandlerPriority_Max = 9999,
+		kHandlerPriority_Min = -9999
 	};
 
 	// Similar to script function SetEventHandler, allows you to set a native function that gets called back on events
