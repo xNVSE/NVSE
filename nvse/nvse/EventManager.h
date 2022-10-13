@@ -215,6 +215,9 @@ namespace EventManager
 		void SetRemoved(bool bSet) { removed = bSet; }
 		[[nodiscard]] bool FlushesOnLoad() const { return flushOnLoad; }
 
+		// True if registered by SetEventHandlerAlt.
+		[[nodiscard]] bool IsAltRegistered() const { return flushOnLoad; }
+
 		[[nodiscard]] Script* TryGetScript() const;
 		[[nodiscard]] bool HasCallbackFunc() const;
 

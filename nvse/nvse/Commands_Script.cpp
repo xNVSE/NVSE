@@ -684,23 +684,23 @@ bool ProcessEventHandler(std::string &eventName, EventManager::EventCallback &ca
 		}
 		if (const UInt32 eventMask = GetLNEventMask(eventNameRaw))
 		{
-			UInt32 const numFilter = (colon && *colon) ? atoi(colon) : 0;
-
-			TESForm* formFilter = callback.source;
-			if (!formFilter)
+			if (priority != EventManager::kHandlerPriority_Default)
 			{
-				// Support for using 1::SomeFilter instead of "source"::SomeFilter.
-				if (auto const iter = callback.filters.find(1);
-					iter != callback.filters.end())
-				{
-					UInt32 outRefID;
-					if (iter->second.GetAsFormID(&outRefID))
-						formFilter = LookupFormByID(outRefID);
-				}
+				ShowRuntimeScriptError(callback.TryGetScript(), &eval, "Cannot use non-default priority %i for an LN event.", priority);
+				return false;
 			}
+			if (callback.IsAltRegistered())
+			{
+				ShowRuntimeScriptError(callback.TryGetScript(), &eval, "Cannot use SetEventHandlerAlt on LN events; use SetEventHandler instead.");
+				return false;
+			}
+
+			UInt32 const numFilter = (colon && *colon) ? atoi(colon) : 0;
+			TESForm* formFilter = callback.source;
 
 			return ProcessLNEventHandler(eventMask, callback.TryGetScript(), addEvt, formFilter, numFilter);
 		}
+		// else, it's not an LN event.
 		if (separatedStr)
 		{
 			//restore string back to how it was.
@@ -817,7 +817,7 @@ bool Cmd_DispatchEventAlt_Execute(COMMAND_ARGS)
 	auto& eventInfo = *eventInfoPtr;
 	if (!eventInfo.AllowsScriptDispatch()) [[unlikely]]
 	{
-		eval.Error("Event %s is internally defined and is set up to not allow script dispatch.", eventName);
+		eval.Error("Event %s is set up to not allow script dispatch.", eventName);
 		return true;
 	}
 
