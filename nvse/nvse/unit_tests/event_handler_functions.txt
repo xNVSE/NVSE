@@ -597,9 +597,10 @@ begin Function { }
 		; xNVSE doesn't have ownership over these handlers.
 		assert (Ar_Size (GetEventHandlers "OnCellEnter" rOnCellChangeUDF 1)) == -1	; null array
 		
-		; Will ignore the 5::99 filter, since we can't do out-of-bounds filter checks for LN events.
-		assert (SetEventHandlerAlt "OnCellEnter" rOnCellChangeUDF 5::99)	
+		; Cannot use SetEventHandlerAlt with LN events.
+		assert (TestExpr (SetEventHandlerAlt "OnCellEnter" rOnCellChangeUDF 5::99)) == 0	
 
+		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF "second"::BisonSteve01) == 1	
 		; Acts as if "SetEventHandler "OnCellEnter" rOnCellChangeUDF" was called (again!)
 		; (LN events ignore "second" filter)
 		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF "second"::BisonSteve01) == 0	
@@ -607,18 +608,12 @@ begin Function { }
 		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF "second"::BisonSteve01)
 		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF) == 1
 		
-		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF "first"::BisonSteve01)
-		assert (SetEventHandlerAlt "OnCellEnter" rOnCellChangeUDF 1::BisonSteve01)	== 0	;same thing as above
-		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF "first"::BisonSteve01)
-		assert (SetEventHandlerAlt "OnCellEnter" rOnCellChangeUDF 1::BisonSteve01)
-		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF "first"::BisonSteve01) == 0	;same thing as above
-		
-		; Try to remove handler with "first"::BisonSteve01 filter
-		; !! Assertion fails, not sure why, but probably just LN event weirdness.
-		;assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF) == 1  
-		
+		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF "first"::BisonSteve01) == 1
 		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF "first"::BisonSteve01) == 1
 		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF 1::BisonSteve01) == 0
+
+		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF "first"::BisonSteve01) == 1
+		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF 1::BisonSteve01) == 1
 		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF) == 0
 		
 		assert (Ar_Size (GetEventHandlers "OnCellEnter" rOnCellChangeUDF 1)) == -1

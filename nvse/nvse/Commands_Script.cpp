@@ -684,19 +684,46 @@ bool ProcessEventHandler(std::string &eventName, EventManager::EventCallback &ca
 		}
 		if (const UInt32 eventMask = GetLNEventMask(eventNameRaw))
 		{
-			if (priority != EventManager::kHandlerPriority_Default) [[unlikely]]
-			{
-				ShowRuntimeScriptError(callback.TryGetScript(), &eval, "Cannot use non-default priority %i for an LN event.", priority);
-				return false;
-			}
-			if (callback.IsAltRegistered()) [[unlikely]]
-			{
-				ShowRuntimeScriptError(callback.TryGetScript(), &eval, "Cannot use SetEventHandlerAlt on LN events; use SetEventHandler instead.");
-				return false;
-			}
-
 			UInt32 const numFilter = (colon && *colon) ? atoi(colon) : 0;
 			TESForm* formFilter = callback.source;
+
+			if (addEvt)
+			{
+				if (priority != EventManager::kHandlerPriority_Default) [[unlikely]]
+				{
+					ShowRuntimeScriptError(callback.TryGetScript(), &eval, "Cannot use non-default (non-%i) priority %i for adding an LN event handler.", EventManager::kHandlerPriority_Default, priority);
+					return false;
+				}
+				if (callback.IsAltRegistered()) [[unlikely]]
+				{
+					ShowRuntimeScriptError(callback.TryGetScript(), &eval, "Cannot use SetEventHandlerAlt for LN events; use SetEventHandler instead.");
+					return false;
+				}
+			}
+			else
+			{
+				if (priority != EventManager::kHandlerPriority_Invalid) [[unlikely]]
+				{
+					ShowRuntimeScriptError(callback.TryGetScript(), &eval, "Cannot use non-default (non-%i) priority %i for removing an LN event.", EventManager::kHandlerPriority_Invalid, priority);
+					return false;
+				}
+				if (!formFilter)
+				{
+					// Support for using 1::SomeFilter instead of "source"::SomeFilter.
+					if (auto const iter = callback.filters.find(1);
+						iter != callback.filters.end())
+					{
+						UInt32 outRefID;
+						if (iter->second.GetAsFormID(&outRefID))
+							formFilter = LookupFormByID(outRefID);
+						else
+						{
+							ShowRuntimeScriptError(callback.TryGetScript(), &eval, "Cannot use non-form filter %s for an LN event.", iter->second.GetStringRepresentation().c_str());
+							return false;
+						}
+					}
+				}
+			}
 
 			return ProcessLNEventHandler(eventMask, callback.TryGetScript(), addEvt, formFilter, numFilter);
 		}
