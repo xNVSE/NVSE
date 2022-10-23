@@ -124,6 +124,7 @@ namespace EventManager
 		[[nodiscard]] std::string GetStringRepresentation() const;
 		[[nodiscard]] ArrayVar* GetArrayRepresentation(UInt8 modIndex) const;
 
+		bool operator==(const NativeEventHandlerInfo& other) const { return m_func == other.m_func; }
 		operator bool() const { return m_func != nullptr; }
 	};
 
