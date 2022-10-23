@@ -702,9 +702,10 @@ bool ProcessEventHandler(std::string &eventName, EventManager::EventCallback &ca
 			}
 			else
 			{
-				if (priority != EventManager::kHandlerPriority_Invalid) [[unlikely]]
+				if (priority != EventManager::kHandlerPriority_Default && priority != EventManager::kHandlerPriority_Invalid) [[unlikely]]
 				{
-					ShowRuntimeScriptError(callback.TryGetScript(), &eval, "Cannot use non-default (non-%i) priority %i for removing an LN event.", EventManager::kHandlerPriority_Invalid, priority);
+					ShowRuntimeScriptError(callback.TryGetScript(), &eval, "Cannot use non-default (non-%i) and non-invalid (non-%i) priority %i for removing an LN event.", 
+						EventManager::kHandlerPriority_Default, EventManager::kHandlerPriority_Invalid, priority);
 					return false;
 				}
 				if (!formFilter)
