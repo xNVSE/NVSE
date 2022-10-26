@@ -1109,6 +1109,8 @@ bool ScriptParsing::ScriptAnalyzer::CallsCommand(CommandInfo* cmd, CommandInfo* 
 		ScriptCommandCall* cmdCall; CommandCallToken* argsToken;
 		if ((cmdCall = dynamic_cast<ScriptCommandCall*>(line.get())) && (argsToken = cmdCall->commandCallToken.get()) && DoesTokenCallCmd(*argsToken, cmd))
 			return true;
+		if ((beginStatement = dynamic_cast<BeginStatement*>(line.get())) && beginStatement->eventBlockCmd == cmd)
+			return true;
 		if (auto* expressionStatement = dynamic_cast<ExpressionStatement*>(line.get()))
 		{
 			auto& expression = expressionStatement->GetExpression();
