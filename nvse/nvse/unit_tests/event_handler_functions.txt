@@ -1,0 +1,626 @@
+begin Function { }
+
+	print "Started running xNVSE Event Handler Unit Tests."
+
+
+	; === Test NVSE event handler functions ===
+
+	let ref rOnHitUDF = (begin function { ref rFirst, ref rSecond }
+		;
+	end)
+
+
+	; ==  No filters, default priority (1)
+	assert (SetEventHandler "OnHit" rOnHitUDF) == 1
+	assert (SetEventHandlerAlt "OnHit" rOnHitUDF) == 0
+
+	let array_var aCallbacks := GetEventHandlers "OnHit" rOnHitUDF 1
+	assert (aCallbacks[0][0] == rOnHitUDF)
+	assert ( (Ar_Size aCallbacks[0][1]) == 0)
+
+	assert (RemoveEventHandler "OnHit" rOnHitUDF)
+	let aCallbacks := GetEventHandlers "OnHit" rOnHitUDF 1
+	assert (ar_size aCallbacks) == 0
+
+	; == "first" filter
+	assert (SetEventHandler "OnHit" rOnHitUDF "first"::EasyPeteREF)
+	assert (TestExpr (SetEventHandlerAlt "OnHit" rOnHitUDF "first"::EasyPeteREF)) == 0   ; string filter keys not allowed
+
+	let aCallbacks := GetEventHandlers "OnHit" rOnHitUDF 1
+	assert (aCallbacks[0][0] == rOnHitUDF)
+	assert ( (Ar_Size aCallbacks[0][1]) == 1)
+	assert ( aCallbacks[0][1]["first"] == EasyPeteREF)
+
+	assert (RemoveEventHandler "OnHit" rOnHitUDF "first"::EasyPeteREF)
+	let aCallbacks := GetEventHandlers "OnHit" rOnHitUDF 1
+	assert (ar_size aCallbacks) == 0
+
+
+	; == "second" filter
+	assert (SetEventHandler "OnHit" rOnHitUDF "second"::Player)
+	assert (TestExpr (SetEventHandlerAlt "OnHit" rOnHitUDF "second"::Player)) == 0
+
+	let aCallbacks := GetEventHandlers "OnHit" rOnHitUDF 1
+	assert (aCallbacks[0][0] == rOnHitUDF)
+	assert ( (Ar_Size aCallbacks[0][1]) == 1)
+	assert ( aCallbacks[0][1]["second"] == Player)
+
+	assert (RemoveEventHandler "OnHit" rOnHitUDF "second"::Player)
+	let aCallbacks := GetEventHandlers "OnHit" rOnHitUDF 1
+	assert (ar_size aCallbacks) == 0
+
+
+	; == "first" + "second" filter
+	assert (SetEventHandler "OnHit" rOnHitUDF "first"::EasyPeteREF "second"::Player)
+	assert (TestExpr (SetEventHandlerAlt "OnHit" rOnHitUDF "first"::EasyPeteREF "second"::Player)) == 0   ; string filter keys not allowed
+
+
+	let aCallbacks := GetEventHandlers "OnHit" rOnHitUDF 1
+	assert (aCallbacks[0][0] == rOnHitUDF)
+	assert ( (Ar_Size aCallbacks[0][1]) == 2)
+	assert ( aCallbacks[0][1]["first"] == EasyPeteREF )
+	assert ( aCallbacks[0][1]["second"] == Player)
+
+	assert (RemoveEventHandler "OnHit" rOnHitUDF "first"::EasyPeteREF "second"::Player)
+	let aCallbacks := GetEventHandlers "OnHit" rOnHitUDF 1
+	assert (ar_size aCallbacks) == 0
+
+	; == Having all of the above handlers, then removing them all in one RemoveEventHandler call.
+
+	assert (SetEventHandler "OnHit" rOnHitUDF)
+	let int iCallback := 0
+	let aCallbacks := GetEventHandlers "OnHit" rOnHitUDF 1
+	assert (aCallbacks[iCallback][0] == rOnHitUDF)
+	assert ( (Ar_Size aCallbacks [iCallback][1]) == 0)
+
+	assert (SetEventHandler "OnHit" rOnHitUDF "first"::EasyPeteREF)
+	let iCallback += 1
+	let aCallbacks := GetEventHandlers "OnHit" rOnHitUDF 1
+	assert (aCallbacks[iCallback][0] == rOnHitUDF)
+	assert ( (Ar_Size aCallbacks[iCallback][1]) == 1)
+	assert ( aCallbacks[iCallback][1]["first"] == EasyPeteREF)
+
+	assert (SetEventHandler "OnHit" rOnHitUDF "second"::Player)
+	let iCallback += 1
+	let aCallbacks := GetEventHandlers "OnHit" rOnHitUDF 1
+	assert (aCallbacks[iCallback][0] == rOnHitUDF)
+	assert ( (Ar_Size aCallbacks[iCallback][1]) == 1)
+	assert ( aCallbacks[iCallback][1]["second"] == Player)
+
+	assert (SetEventHandler "OnHit" rOnHitUDF "first"::EasyPeteREF "second"::Player)
+	let iCallback += 1
+	let aCallbacks := GetEventHandlers "OnHit" rOnHitUDF 1
+	assert (aCallbacks [iCallback][0] == rOnHitUDF)
+	assert ( (Ar_Size aCallbacks[iCallback][1]) == 2)
+	assert ( aCallbacks[iCallback][1]["first"] == EasyPeteREF )
+	assert ( aCallbacks[iCallback][1]["second"] == Player)
+
+	; remove all callbacks
+	assert (RemoveEventHandler "OnHit" rOnHitUDF)
+	let aCallbacks := GetEventHandlers "OnHit" rOnHitUDF 1
+	assert (ar_size aCallbacks) == 0
+
+
+	; == Begin testing new event filters (using SetEventHandlerAlt)
+
+	int iArg_Expected = 1
+	float fArg_Expected = 2.5
+	array_var aArg_Expected = ar_List 1, SunnyREF
+	string_var sArg_Expected = "test"
+	ref rFormArg_Expected = SunnyREF
+	ref rReferenceArg_Expected = Player
+	ref rBaseFormArg_Expected = GSEasyPete
+
+	; Filler args to get filtered
+	int iFiller = 0
+	float fFiller = 0
+	array_var aFiller = Ar_Null
+	string_var sFiller = ""
+	ref rFormFiller = 0
+	ref rRefFiller = 0
+	ref rBaseFiller = 0
+
+	int iRan = 0
+
+	ref rTestEventUDF = (begin Function {int iArg, float fArg, array_var aArg, string_var sArg, ref rFormArg, ref rReferenceArg, ref rBaseFormArg }
+		assert (GetSelf == EasyPeteREF)
+		assert (iArg == iArg_Expected)
+		assert (fArg == fArg_Expected)
+		assert (aArg == aArg_Expected)
+		assert (sArg == sArg_Expected)
+		assert (rFormArg == rFormArg_Expected)
+		assert (rReferenceArg == rReferenceArg_Expected)
+		assert (rBaseFormArg == rBaseFormArg_Expected)
+		iRan += 1
+	end)
+
+	; Non-string filter keys are not allowed for SetEventHandler.
+	assert (TestExpr (SetEventHandler "nvseTestEvent" rTestEventUDF 0::0)) == 0 
+	; However, the event handler is still set; the invalid filter was just ignored.
+	; This is because some mods may be relying on this behavior.
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 1
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF)
+
+	; 0::SomeFilter is filtering callingRef, so it expects a reference, not an Int.
+	assert (TestExpr (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 0::0)) == 0 
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 0
+
+	ref rCallingRef = SunnyREF
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 0::SunnyREF)
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 1
+	assert (Ar_Size (rCallingRef.GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 1
+	assert (Ar_Size (rCallingRef.GetEventHandlers "nvseTestEvent" rTestEventUDF 1 iFiller fFiller aFiller sFiller rFormFiller rRefFiller rBaseFiller)) == 1
+	;
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 0::SunnyREF)
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 0
+
+	; Test int-type filter rounding the value.
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 1::0)
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 1
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1 0 fFiller aFiller sFiller rFormFiller rRefFiller rBaseFiller)) == 1
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1 99 fFiller aFiller sFiller rFormFiller rRefFiller rBaseFiller)) == 0
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1 0.5 fFiller aFiller sFiller rFormFiller rRefFiller rBaseFiller)) == 1
+	;
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 1::0)
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 0
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1 0 fFiller aFiller sFiller rFormFiller rRefFiller rBaseFiller)) == 0
+
+	; Trying to dispatch with no handlers.
+	assert (DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 0)
+	iRan = 0
+	; Should fail to remove any, because there aren't any
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF) == 0  
+
+	; Trying to filter a baseform by a reference
+	assert (TestExpr (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 7::EasyPeteREF)) == 0
+
+	; There is no 8th arg to filter
+	assert (TestExpr (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 8::0)) == 0
+
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF) ;unfiltered
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 1)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 0::EasyPeteREF)
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 1)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF  0::EasyPeteREF)
+
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 1::1)
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 1)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 1::1)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 1::99)
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 0)  ; filter shouldn't be matching
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 1::99)
+
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 2::2.5)
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 1)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 2::2.5)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 2::3.99)
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 0)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 2::3.99)
+
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 3::(Ar_List 1, SunnyREF))
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 1)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 3::(Ar_List 1, SunnyREF))
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 3::(Ar_List 2, SunnyREF))
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 0)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 3::(Ar_List 2, SunnyREF))
+
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 4::"test")
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 1)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 4::"test")
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 4::"not a match")
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 0)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 4::"not a match")
+
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::SunnyREF)
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 1)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::SunnyREF)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::Player)
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 0)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::Player)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 6::Player)
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 1)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 6::Player)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 6::EasyPeteREF)
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 0)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 6::EasyPeteREF)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 6::(Player.GBO))  ; should match the refr arg to its baseform
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 1)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 6::(Player.GBO))
+
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 7::GSEasyPete)
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 1)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 7::GSEasyPete)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 7::GSSunnySmiles)
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 0)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 7::GSSunnySmiles)
+
+
+	; == Test mass-removing handlers with less generic filters.
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF)
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 6::Player)
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::SunnyREF)
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 3)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF)
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 0
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 6::Player)
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF)
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 6::Player 5::SunnyREF)
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 3)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 6::Player)
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 1
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF)
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 0
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 4::"test")
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 4::"test" 5::SunnyREF)
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 4::"test" 5::SunnyREF) == 0  ;redundant handler
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 4::"test" 5::SunnyREF 3::(ar_List 1, SunnyREF))
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 3)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 3::(ar_List 1, SunnyREF))
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 2  ; handler with 4::"test" and handler with 4::"test" 5::SunnyREF should be left
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::SunnyREF)
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 1
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 4::"test")
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 0
+
+
+	; Test removing reference filter via baseform
+	; 5::AnyFormFilter - should be equivalent to ReferenceFilter?
+	; 6::ReferenceFilter
+	; 7::BaseFormFilter
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::SunnyREF)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::GSSunnySmiles)
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 0
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::GSSunnySmiles)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::SunnyREF) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::GSSunnySmiles)
+
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 0
+
+	; Test with formlist
+	ref rFormList = CreateFormList "EventHandlerTestList" (Ar_List SunnyREF)
+	; TODO: Make this assert passs (editorID is not being properly changed)
+	;Assert (GetEditorID rFormList) == "EventHandlerTestList"						;* REQUIRES JG
+	Assert (GetListForms rFormList) == (Ar_List SunnyREF)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::rFormList)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::GSSunnySmiles)
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::rFormList)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::SunnyREF)
+
+	ref rFormList2 = CreateFormList "EventHandlerTestList2" (Ar_List GSSunnySmiles)
+	; TODO: Make this assert passs (editorID is not being properly changed)
+	;Assert (GetEditorID rFormList) == "EventHandlerTestList2"						;* REQUIRES JG
+	Assert (GetListForms rFormList2) == (Ar_List GSSunnySmiles)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::GSSunnySmiles)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::rFormList) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::rFormList2)
+
+	ref rFormList3 = CreateFormList "" (Ar_List SunnyREF, EasyPeteREF, PlayerREF)
+	ref rFormList4 = CreateFormList "" (Ar_List SunnyREF, EasyPeteREF)
+	ref rFormList5 = CreateFormList "" (Ar_List EasyPeteREF, SunnyREF, GSChetREF, PlayerREF)
+	ref rFormList6 = CreateFormList "" (Ar_List PlayerREF, SunnyREF, EasyPeteREF)
+	ref rFormList7 = CreateFormList "" (Ar_List PlayerREF, SunnyREF, GSChetREF)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::rFormList3)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::rFormList4) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::rFormList3)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::rFormList3)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::rFormList6)  ; same contents, but different order, which we ignore.
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::rFormList3)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::rFormList7) == 0  ; different contents
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::rFormList3)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::rFormList3)
+	; rFormList5 contains everything rFormList3 has and more, so it encompasses 3, 
+	; so it should be able to remove the handler with that filter.
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::rFormList5)
+
+	ref rFormList8 = CreateFormList "" (Ar_List GSChetREF, GSChetREF, GSChetREF, GSChetREF, GSChetREF)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::rFormList8)
+	; We allow removing a formlist filter by a single form if the formlist effectively just contains that form.
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::GSChetREF) 
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::GSChetREF)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::rFormList8)
+
+
+	; == Test array-of-filters filter.
+	
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 4::(Ar_List "notAMatch", "test"))
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 1)
+	iRan = 0
+
+	; Array elements do not all match, so filters don't match.
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 4::(Ar_List "notAMatch")) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 4::(Ar_List "test")) == 0
+
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 4::(Ar_List "notAMatch", "test"))
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 0
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 4::(Ar_List "notAMatch", "testAlsoNotAMatchtest"))
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 0)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 4::(Ar_List "notAMatch", "testAlsoNotAMatchtest"))
+
+	; Allow mass-removing handlers with filters that match those in an array.
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 4::"test")
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 4::(Ar_List "test"))
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 4::"test")
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 4::(Ar_List "testFail")) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 4::(Ar_List "notAMatch", "test"))
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 0
+
+	; Allow removing an array containing effectively just one filter by a single filter.
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 4::(Ar_List "test", "Test", "tEsT"))  ; all the same filter, since non-case-sensitive
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 4::"test")
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 4::(Ar_List "test", "Test", "tEsT"))
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 4::"testFail") == 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 4::(Ar_List "test", "Test"))
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 4::(Ar_List "test", "Test", "tEsT"))
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 4::(Ar_List "tEsT"))
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 4::(Ar_List "test", "Test", "tEsT"))
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 4::"tEsT")
+
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 0
+
+
+	; Same tests as above, but with forms. So we have to also test matching a refr's baseForm to a baseform filter, formlists, etc.
+	
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::SunnyREF)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::(Ar_List GSSunnySmiles))
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 0
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 6::SunnyREF)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 6::(Ar_List GSSunnySmiles))
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 5::(Ar_List SunnyREF, SunnyREF))
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 5::(Ar_List GSSunnySmiles))
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 6::(Ar_List SunnyREF, SunnyREF))
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 6::(Ar_List GSSunnySmiles))
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 6::(Ar_List SunnyREF, SunnyREF))
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 6::(Ar_List GSSunnySmiles, SunnyREF))
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 6::GSSunnySmiles)
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 6::GSSunnySmiles)
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 6::(Ar_List GSSunnySmiles))
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 6::(Ar_List SunnyREF)) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 6::(Ar_List GSSunnySmiles))
+
+
+	; TODO: with formlist
+
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 0
+
+	; For (string)Maps, the keys are ignored.
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 4::(Ar_Map "key"::"notAMatch", "key2"::"testAlsoNotAMatchtest"))
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 0)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 4::(Ar_Map "key"::"notAMatch", "key2"::"testAlsoNotAMatchtest"))
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 4::(Ar_Map "key"::"test", "key2"::"secondFilter"))
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestEvent" iArg_Expected, fArg_Expected, aArg_Expected, sArg_Expected, rFormArg_Expected, rReferenceArg_Expected, rBaseFormArg_Expected)
+	assert (iRan == 1)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 4::(Ar_Map "key"::"test", "key2"::"testDifferentFilter")) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 4::(Ar_Map "key"::"test", "key2"::"secondFilter"))
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 0
+
+	assert (SetEventHandlerAlt "nvseTestEvent" rTestEventUDF 4::(Ar_Map "key"::"test"))
+	assert (RemoveEventHandler "nvseTestEvent" rTestEventUDF 4::(Ar_Map "key"::"test", "key2"::"secondFilter"))
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rTestEventUDF 1)) == 0
+
+
+	; Nested array filters are not currently supported...
+
+	print "Starting DispatchEventAlt / SetEventHandlerAlt unit tests with a User-Defined event."
+
+	iArg_Expected = 1
+	fArg_Expected = 2.5
+	aArg_Expected = Ar_Map "key"::"test"
+	sArg_Expected = "test"
+	rFormArg_Expected = Player
+	rReferenceArg_Expected = SunnyREF
+	rBaseFormArg_Expected = GSSunnySmiles
+	ref rTestCustomEventUDF = (begin Function {int iArg, float fArg, array_var aArg, string_var sArg, ref rFormArg, ref rReferenceArg, ref rBaseFormArg }
+		assert (GetSelf == EasyPeteREF)
+		assert (iArg == iArg_Expected)
+		assert (fArg == fArg_Expected)
+		assert (aArg == aArg_Expected)
+		assert (sArg == sArg_Expected)
+		assert (rFormArg == rFormArg_Expected)
+		assert (rReferenceArg == rReferenceArg_Expected)
+		assert (rBaseFormArg == rBaseFormArg_Expected)
+		iRan += 1
+	end)
+
+	iRan = 0
+
+	assert (SetEventHandlerAlt "nvseTestCustomEvent" rTestCustomEventUDF 4::"test")
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestCustomEvent" 1, 2.5, (Ar_Map "key"::"test"), "test", Player, SunnyREF, GSSunnySmiles)
+	assert (iRan == 1)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestCustomEvent" rTestCustomEventUDF 4::"test")
+
+	assert (SetEventHandlerAlt "nvseTestCustomEvent" rTestCustomEventUDF 4::"notAMatch")
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestCustomEvent" 1, 2.5, (Ar_Map "key"::"test"), "test", Player, SunnyREF, GSSunnySmiles)
+	assert (iRan == 0)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestCustomEvent" rTestCustomEventUDF 4::"notAMatch")
+
+	assert (SetEventHandlerAlt "nvseTestCustomEvent" rTestCustomEventUDF 3::(Ar_Map "key"::"test"))
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestCustomEvent" 1, 2.5, (Ar_Map "key"::"test"), "test", Player, SunnyREF, GSSunnySmiles)
+	assert (iRan == 1)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestCustomEvent" rTestCustomEventUDF 3::(Ar_Map "key"::"test"))
+
+	; Array-of-filters with multiple arrays
+	assert (SetEventHandlerAlt "nvseTestCustomEvent" rTestCustomEventUDF 3::(Ar_List (Ar_Map "key"::"test"), (Ar_Map "key"::"notAMatch")))
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestCustomEvent" 1, 2.5, (Ar_Map "key"::"test"), "test", Player, SunnyREF, GSSunnySmiles)
+	assert (iRan == 1)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestCustomEvent" rTestCustomEventUDF 3::(Ar_List (Ar_Map "key"::"test"), (Ar_Map "key"::"notAMatch")))
+
+/*  Oops, the tests below won't pass since it's normal array behavior to just compare formIDs instead of the form's contents to determine equality.
+	; Same test as above, but with a formlist
+	ref rFormList3 = CreateFormList "EventHandlerTestList" (Ar_List SunnyREF, EasyPeteREF, PlayerREF)
+
+	; Copy of above list, but with a different formID, so contents will have to be examined.
+	ref rFormList4 = CreateFormList "EventHandlerTestList" (Ar_List SunnyREF, EasyPeteREF, PlayerREF)
+
+	assert (SetEventHandlerAlt "nvseTestCustomEvent" rTestCustomEventUDF 3::(Ar_List (Ar_Map "key"::rFormList3), (Ar_Map "key"::"notAMatch")))
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestCustomEvent" 1, 2.5, (Ar_Map "key"::rFormList4), "test", Player, SunnyREF, GSSunnySmiles)
+	assert (iRan == 1)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestCustomEvent" rTestCustomEventUDF 3::(Ar_List (Ar_Map "key"::rFormList4), (Ar_Map "key"::"notAMatch")))
+
+	; Has less contents, so it should not match with #3/4.
+	ref rFormList5 = CreateFormList "EventHandlerTestList" (Ar_List SunnyREF, EasyPeteREF)
+
+	assert (SetEventHandlerAlt "nvseTestCustomEvent" rTestCustomEventUDF 3::(Ar_List (Ar_Map "key"::rFormList5), (Ar_Map "key"::"notAMatch")))
+	assert (EasyPeteREF.DispatchEventAlt "nvseTestCustomEvent" 1, 2.5, (Ar_Map "key"::rFormList4), "test", Player, SunnyREF, GSSunnySmiles)
+	assert (iRan == 0)
+	iRan = 0
+	assert (RemoveEventHandler "nvseTestCustomEvent" rTestCustomEventUDF 3::(Ar_List (Ar_Map "key"::rFormList5), (Ar_Map "key"::"notAMatch")))
+*/
+
+	print "Finished DispatchEventAlt / SetEventHandlerAlt unit tests with a User-Defined event."
+
+	print "Finished running xNVSE Event Handler Unit Tests."
+
+	; == Ensure LN events don't throw errors.
+	if IsPluginInstalled "JIP NVSE Plugin"
+		
+		ref rOnCellChangeUDF = (begin function { ref rFirst }
+			;
+		end)
+
+		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF "first"::BisonSteve01) != 0
+		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF "first"::BisonSteve01) != 0
+	
+		ref rOnControlDownUDF = (begin function {int iControlCode}
+			;
+		end)
+		
+		assert (SetEventHandler "OnControlDown:4" rOnControlDownUDF)
+		assert (SetEventHandler "OnControlDown:4" rOnControlDownUDF) == 0  ; duplicate handler
+		assert (RemoveEventHandler "OnControlDown:5" rOnControlDownUDF) == 0  ; no handler was set with that filter.
+		assert (RemoveEventHandler "OnControlDown:4" rOnControlDownUDF)
+		
+		; Refuses to set handler if no NumFilter in the string
+		assert (RemoveEventHandler "OnControlDown" rOnControlDownUDF) == 0  
+		
+		; Invalid control codes
+		assert (SetEventHandler "OnControlDown:-1" rOnControlDownUDF) == 0  
+		assert (SetEventHandler "OnControlDown:28" rOnControlDownUDF) == 0  
+		
+		; == Test error reporting with LN event (special case)
+		; "second" and 2::, 3::, etc. are ignored for LN event dispatching
+		; All filter type-checking is also ignored.
+		
+		; xNVSE doesn't have ownership over these handlers.
+		assert (Ar_Size (GetEventHandlers "OnCellEnter" rOnCellChangeUDF 1)) == -1	; null array
+		
+		; Cannot use SetEventHandlerAlt with LN events.
+		assert (TestExpr (SetEventHandlerAlt "OnCellEnter" rOnCellChangeUDF 5::99)) == 0	
+
+		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF "second"::BisonSteve01) == 1	
+		; Acts as if "SetEventHandler "OnCellEnter" rOnCellChangeUDF" was called (again!)
+		; (LN events ignore "second" filter)
+		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF "second"::BisonSteve01) == 0	
+		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF "second"::BisonSteve01)
+		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF "second"::BisonSteve01)
+		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF) == 1
+		
+		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF "first"::BisonSteve01) == 1
+		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF "first"::BisonSteve01) == 1
+		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF 1::BisonSteve01) == 0
+
+		assert (SetEventHandler "OnCellEnter" rOnCellChangeUDF "first"::BisonSteve01) == 1
+		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF 1::BisonSteve01) == 1
+		assert (RemoveEventHandler "OnCellEnter" rOnCellChangeUDF) == 0
+		
+		assert (Ar_Size (GetEventHandlers "OnCellEnter" rOnCellChangeUDF 1)) == -1
+		
+
+		print "Finished running xNVSE Event Handler Unit Tests (for LN events)."
+	endif
+
+
+end

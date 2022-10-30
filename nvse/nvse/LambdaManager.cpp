@@ -23,6 +23,8 @@ struct VariableListContext
 {
 	std::unordered_map<ScriptLambda*, LambdaRefCount> lambdas;
 	bool isCopy = false;
+	// if script was deleted
+	std::unique_ptr<TempObject<Script, false>> scriptCopy = nullptr;
 };
 
 // used for memoizing scripts and prevent endless allocation of scripts
@@ -64,6 +66,49 @@ void SetLambdaParent(LambdaContext& ctx, ScriptEventList* parentEventList)
 void SetLambdaParent(ScriptLambda* scriptLambda, ScriptEventList* parentEventList)
 {
 	SetLambdaParent(g_lambdas[scriptLambda], parentEventList);
+}
+
+LambdaManager::Maybe_Lambda::Maybe_Lambda(Maybe_Lambda&& other) noexcept
+	: m_script(other.m_script), m_triedToSaveContext(other.m_triedToSaveContext)
+{
+	other.m_script = nullptr;	//in case "other" saved context; prevent it from being freed when "other" dies.
+}
+
+LambdaManager::Maybe_Lambda& LambdaManager::Maybe_Lambda::operator=(Maybe_Lambda&& other) noexcept
+{
+	if (this == &other)
+		return *this;
+	if (this->m_script && this->m_triedToSaveContext)
+		UnsaveLambdaVariables(this->m_script);
+	m_script = std::exchange(other.m_script, nullptr);
+	m_triedToSaveContext = other.m_triedToSaveContext;
+	return *this;
+}
+
+bool LambdaManager::Maybe_Lambda::operator==(const Maybe_Lambda& other) const
+{
+	return m_script == other.m_script;
+}
+bool LambdaManager::Maybe_Lambda::operator==(const Script* other) const
+{
+	return m_script == other;
+}
+
+void LambdaManager::Maybe_Lambda::TrySaveContext()
+{
+	if (m_script)
+	{
+		SaveLambdaVariables(m_script);
+		m_triedToSaveContext = true;
+	}
+}
+
+LambdaManager::Maybe_Lambda::~Maybe_Lambda()
+{
+	if (m_script && m_triedToSaveContext)
+	{
+		UnsaveLambdaVariables(m_script);
+	}
 }
 
 Script* LambdaManager::CreateLambdaScript(const LambdaManager::ScriptData& scriptData, const Script* parentScript)
@@ -277,6 +322,39 @@ void LambdaManager::MarkParentAsDeleted(ScriptEventList* parentEventList)
 	}
 }
 
+void LambdaManager::MarkScriptAsDeleted(Script* script)
+{
+	for (auto& iter : g_savedVarLists)
+	{
+		auto* copiedScriptEventList = iter.first;
+		auto& ctx = iter.second;
+		if (copiedScriptEventList->m_script == script)
+		{
+			auto& scriptCopy = ctx.scriptCopy;
+			// can happen in jip script runner when console script is deleted
+			if (!scriptCopy)
+			{
+				// ugly hack but can't set script as nullptr since script is accessed in CleanUpNVSEVars
+				scriptCopy = std::make_unique_for_overwrite<TempObject<Script, false>>();
+				memcpy(scriptCopy.get(), script, sizeof(Script));
+
+				// erase stuff that is going to be freed with memory anyway - no dangling pointers
+				(*scriptCopy)().data = nullptr;
+				(*scriptCopy)().text = nullptr;
+				(*scriptCopy)().refList = {};
+				(*scriptCopy)().varList = {};
+			}
+			copiedScriptEventList->m_script = &(*scriptCopy)();
+		}
+
+		// rest is probably unnecessary but done just in case
+		ctx.lambdas.erase(script);
+	}
+	g_lambdas.erase(script);
+	std::erase_if(g_lambdaScriptPosMap, _L(auto& p, p.second == script));
+
+}
+
 void CaptureChildLambdas(ScriptLambda* scriptLambda, LambdaContext& ctx)
 {
 	// save any children lambda's variable lists
@@ -342,14 +420,6 @@ void SaveLambdaVariables(Script* scriptLambda, std::optional<LambdaCtxPair> pare
 void LambdaManager::SaveLambdaVariables(Script* scriptLambda)
 {
 	::SaveLambdaVariables(scriptLambda, std::nullopt);
-}
-
-
-void DeleteLambdaScript(auto& iter)
-{
-	Script* scriptLambda = iter->first;
-	g_lambdas.erase(scriptLambda);
-	scriptLambda->Destroy(true);
 }
 
 void UnsaveLambdaVariables(Script* scriptLambda, Script* parentScript)

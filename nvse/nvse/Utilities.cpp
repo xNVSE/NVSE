@@ -476,6 +476,14 @@ void Console_Print_Long(const std::string& str)
 	Console_Print("%s", str.substr(numLines*500, str.length() - numLines*500).c_str());
 }
 
+void Console_Print_Str(const std::string& str)
+{
+	if (str.size() < 512)
+		Console_Print("%s", str.c_str());
+	else
+		Console_Print_Long(str);
+}
+
 #endif
 
 struct ControlName
@@ -701,7 +709,10 @@ void ShowRuntimeError(Script* script, const char* fmt, ...)
 			QueueUIMessage(message, 0, reinterpret_cast<const char*>(0x1049638), nullptr, 2.5F, false);
 	}
 
-	Console_Print("%s", errorHeader);
+	if (strlen(errorHeader) < 512)
+		Console_Print("%s", errorHeader);
+	else
+		Console_Print_Long(errorHeader);
 	_MESSAGE("%s", errorHeader);
 
 	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_RuntimeScriptError, errorMsg, 4, NULL);

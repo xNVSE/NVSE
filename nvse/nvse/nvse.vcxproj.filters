@@ -22,6 +22,9 @@
     <Filter Include="lib\jip">
       <UniqueIdentifier>{93d93604-5010-4ad9-9342-49286858e435}</UniqueIdentifier>
     </Filter>
+    <Filter Include="unit tests">
+      <UniqueIdentifier>{6fe89cb8-43d0-475d-828b-a97c69bc1e06}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Algohol\algMath.cpp">
@@ -237,6 +240,12 @@
     </ClCompile>
     <ClCompile Include="ScriptAnalyzer.cpp">
       <Filter>internals</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands_Quest.cpp">
+      <Filter>commands</Filter>
+    </ClCompile>
+    <ClCompile Include="UnitTests.cpp">
+      <Filter>unit tests</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -479,6 +488,21 @@
     <ClInclude Include="MemoizedMap.h">
       <Filter>lib</Filter>
     </ClInclude>
+    <ClInclude Include="Commands_Quest.h">
+      <Filter>commands</Filter>
+    </ClInclude>
+    <ClInclude Include="StackVector.h">
+      <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="MemoryTracker.h">
+      <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="NiPoint.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="EventParams.h">
+      <Filter>internals</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">
@@ -497,5 +521,28 @@
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="DebuggerVisualizations.natvis" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="UnitTests.h">
+      <Filter>unit tests</Filter>
+    </Text>
+    <Text Include="unit_tests\array_functions.txt">
+      <Filter>unit tests</Filter>
+    </Text>
+    <Text Include="unit_tests\event_handler_functions.txt">
+      <Filter>unit tests</Filter>
+    </Text>
+    <Text Include="unit_tests\udf_functions.txt">
+      <Filter>unit tests</Filter>
+    </Text>
+    <Text Include="unit_tests\TestExpr.txt">
+      <Filter>unit tests</Filter>
+    </Text>
+    <Text Include="unit_tests\CallAfterFrames.txt">
+      <Filter>unit tests</Filter>
+    </Text>
+    <Text Include="unit_tests\event_handler_priority_system.txt">
+      <Filter>unit tests</Filter>
+    </Text>
   </ItemGroup>
 </Project>

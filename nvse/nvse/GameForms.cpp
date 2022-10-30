@@ -1,5 +1,7 @@
 #include "GameForms.h"
 
+#include <unordered_set>
+
 #include "GameAPI.h"
 #include "GameRTTI.h"
 #include "GameObjects.h"
@@ -92,7 +94,6 @@ void TESForm::DoAddForm(TESForm *newForm, bool persist, bool record) const
 		if (package)
 			canSave = true;
 		// ... more ?
-
 		if (canSave)
 			CALL_MEMBER_FN(TESSaveLoadGame::Get(), AddCreatedForm)
 			(newForm);
@@ -118,13 +119,7 @@ TESForm *TESForm::CloneForm(bool persist) const
 		}
 		DoAddForm(result, persist);
 	}
-
 	return result;
-}
-
-bool TESForm::IsCloned() const
-{
-	return GetModIndex() == 0xff;
 }
 
 std::string TESForm::GetStringRepresentation() const
@@ -378,6 +373,8 @@ public:
 
 SInt32 BGSListForm::GetIndexOf(TESForm *pForm)
 {
+	if (!pForm)
+		return eListInvalid;
 	return list.GetIndexOf(FindByForm(pForm));
 }
 
@@ -401,6 +398,13 @@ SInt32 BGSListForm::ReplaceForm(TESForm *pForm, TESForm *pReplaceWith)
 	return index;
 }
 
+#if RUNTIME
+game_unique_ptr<BGSListForm> BGSListForm::MakeUnique()
+{
+	return ::MakeUnique<BGSListForm, 0x58F9D0, 0x58FA90>();
+}
+#endif
+
 bool TESForm::IsInventoryObject() const
 {
 	typedef bool (*_IsInventoryObjectType)(UInt32 formType);
@@ -410,6 +414,22 @@ bool TESForm::IsInventoryObject() const
 	static _IsInventoryObjectType IsInventoryObjectType = (_IsInventoryObjectType)0x004F4100; // first call from first case of main switch in Cmd_DefaultParse
 #endif
 	return IsInventoryObjectType(typeID);
+}
+
+bool TESForm::FormMatches(TESForm* toMatch) const
+{
+	if (this == toMatch)
+		return true;
+	if (IS_ID(this, BGSListForm))
+	{
+		auto& list = static_cast<const BGSListForm*>(this)->list;
+		for (auto i = list.Begin(); !i.End(); ++i)
+		{
+			if (i.Get() == toMatch)
+				return true;
+		}
+	}
+	return false;
 }
 
 const char *TESPackage::TargetData::StringForTargetCode(UInt8 targetCode)

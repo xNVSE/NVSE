@@ -92,6 +92,8 @@ bool ScriptParsing::ScriptContainsCommand(Script* script, CommandInfo* info, Com
 bool ScriptParsing::PluginDecompileScript(Script* script, SInt32 lineNumber, char* buffer, UInt32 bufferSize)
 {
 	ScriptAnalyzer analyzer(script);
+	if (analyzer.error)
+		return false;
 	if (lineNumber != -1)
 	{
 		if (lineNumber >= analyzer.lines.size())
@@ -142,6 +144,8 @@ double ScriptParsing::ScriptIterator::ReadDouble()
 
 void ScriptParsing::ScriptIterator::ReadLine()
 {
+	if (!script->data)
+		return;
 	opcode = Read16();
 	if (opcode == static_cast<UInt16>(ScriptStatementCode::ReferenceFunction))
 	{
@@ -431,7 +435,8 @@ std::string ScriptParsing::InlineExpressionToken::ToString()
 	return eval->GetLineText(*this->tokens, nullptr);
 }
 
-ScriptParsing::CommandCallToken::CommandCallToken(CommandInfo* cmdInfo, UInt32 opcode, Script::RefVariable* callingRef, Script* script) : cmdInfo(cmdInfo), opcode(opcode)
+ScriptParsing::CommandCallToken::CommandCallToken(CommandInfo* cmdInfo, UInt32 opcode, Script::RefVariable* callingRef, Script* script) :
+	opcode(opcode), cmdInfo(cmdInfo)
 {
 	if (!cmdInfo)
 		error = true;
@@ -749,7 +754,7 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context, U
 		for (auto& param : info.m_userFunctionParams)
 		{
 			auto* varInfo = context.script->GetVariableInfo(param.varIdx);
-			RegisterNVSEVar(varInfo, static_cast<Script::VariableType>(param.varType));
+			RegisterNVSEVar(varInfo, param.varType);
 			args.push_back(std::make_unique<ScriptVariableToken>(context.script, ExpressionCode::None, varInfo));
 			if (args.back()->error)
 				return false;
@@ -1104,6 +1109,8 @@ bool ScriptParsing::ScriptAnalyzer::CallsCommand(CommandInfo* cmd, CommandInfo* 
 		ScriptCommandCall* cmdCall; CommandCallToken* argsToken;
 		if ((cmdCall = dynamic_cast<ScriptCommandCall*>(line.get())) && (argsToken = cmdCall->commandCallToken.get()) && DoesTokenCallCmd(*argsToken, cmd))
 			return true;
+		if ((beginStatement = dynamic_cast<BeginStatement*>(line.get())) && beginStatement->eventBlockCmd == cmd)
+			return true;
 		if (auto* expressionStatement = dynamic_cast<ExpressionStatement*>(line.get()))
 		{
 			auto& expression = expressionStatement->GetExpression();
@@ -1122,8 +1129,12 @@ bool ScriptParsing::ScriptAnalyzer::CallsCommand(CommandInfo* cmd, CommandInfo* 
 
 ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script, bool parse) : iter(script), script(script)
 {
+	if (!script->data)
+	{
+		this->error = true;
+	}
 	g_analyzerStack.push(this);
-	if (parse)
+	if (parse && !this->error)
 	{
 		Parse();
 	}
@@ -1131,7 +1142,8 @@ ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script, bool parse) : iter
 
 ScriptParsing::ScriptAnalyzer::~ScriptAnalyzer()
 {
-	g_analyzerStack.pop();
+	if (!g_analyzerStack.empty())
+		g_analyzerStack.pop();
 }
 
 
@@ -1211,8 +1223,10 @@ auto GetNVSEVersionString()
 
 std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 {
+	if (this->error)
+		return "";
 	auto* script = this->iter.script;
-	std::string scriptText = g_analyzerStack.size() == 1 ? "; Decompiled with xNVSE " + GetNVSEVersionString() + " at " + GetTimeString() + "\n; Author of decompiler: https://github.com/korri123 (Kormakur)\n" : "";
+	std::string scriptText;
 	auto numTabs = 0;
 	const auto nestAddOpcodes = {static_cast<UInt32>(ScriptStatementCode::If), static_cast<UInt32>(ScriptStatementCode::Begin), kCommandInfo_While.opcode, kCommandInfo_ForEach.opcode};
 	const auto nestMinOpcodes = {static_cast<UInt32>(ScriptStatementCode::EndIf), static_cast<UInt32>(ScriptStatementCode::End), kCommandInfo_Loop.opcode};

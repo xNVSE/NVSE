@@ -1,0 +1,145 @@
+begin Function { }
+
+	print "Started running xNVSE Event Handler Priority System Unit Tests."
+
+	; Default (non-specified) priority == 1
+	; Invalid priority == 0 (below 0 is valid, if you want to run last)
+
+	int iRan = 0
+
+	ref rRuns3rd = (begin Function {}  ;* Choosing to not take any args is valid
+		iRan += 1
+		assert (iRan == 3)
+	end)
+
+	ref rRuns1st = (begin Function {}
+		iRan += 1
+		assert (iRan == 1)
+	end)
+
+	ref rRuns2nd = (begin Function {}
+		iRan += 1
+		assert (iRan == 2)
+	end)
+
+	; Invalid priority
+	assert (TestExpr (SetEventHandler "nvseTestEvent" rRuns1st "priority"::0)) == 0 
+
+	assert (SetEventHandler "nvseTestEvent" rRuns1st "priority"::1)
+	
+	; Redundant handlers; same priority and filters
+	assert (SetEventHandler "nvseTestEvent" rRuns1st "priority"::1) == 0   
+	assert (SetEventHandlerAlt "nvseTestEvent" rRuns1st "priority"::1) == 0
+	; Default priority = 1, so these lines are equivalent to the two above.
+	assert (SetEventHandlerAlt "nvseTestEvent" rRuns1st) == 0
+	assert (SetEventHandler "nvseTestEvent" rRuns1st) == 0
+
+	assert (SetEventHandler "nvseTestEvent" rRuns2nd "priority"::-1)
+	assert (SetEventHandler "nvseTestEvent" rRuns3rd "priority"::-2)
+	
+	assert (DispatchEventAlt "nvseTestEvent" 0, 0.5, Ar_Null, "test", SunnyREF, Player, GSSunnySmiles)
+	assert (iRan == 3)
+	iRan = 0
+
+
+	; Test removal
+	assert (RemoveEventHandler "nvseTestEvent" rRuns3rd "priority"::-3) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rRuns3rd "priority"::4) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rRuns3rd "priority"::3) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rRuns3rd "priority"::3) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rRuns3rd "priority"::2) == 0
+	assert (RemoveEventHandler "nvseTestEvent" rRuns3rd "priority"::1) == 0
+
+	assert (RemoveEventHandler "nvseTestEvent" rRuns1st "priority"::1)
+	assert (RemoveEventHandler "nvseTestEvent" rRuns2nd "priority"::-1)
+	assert (RemoveEventHandler "nvseTestEvent" rRuns3rd "priority"::-2)
+
+	; Test mass-removal
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rRuns1st)) == 0
+
+	assert (SetEventHandler "nvseTestEvent" rRuns1st "priority"::1)
+	assert (SetEventHandler "nvseTestEvent" rRuns1st "priority"::-1)
+	assert (SetEventHandler "nvseTestEvent" rRuns1st "priority"::-2)
+
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rRuns1st)) == 3
+	assert (Ar_Size ((GetEventHandlers "nvseTestEvent" rRuns1st)[1])) == 1
+	assert (Ar_Size ((GetEventHandlers "nvseTestEvent" rRuns1st)[-1])) == 1
+	assert (Ar_Size ((GetEventHandlers "nvseTestEvent" rRuns1st)[-2])) == 1
+
+	; Remove all
+	assert (RemoveEventHandler "nvseTestEvent" rRuns1st)
+
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent" rRuns1st)) == 0
+
+
+;=====
+	print "xNVSE Priority System Subtest: IsEventHandlerFirst/Last."
+	
+	assert (SetEventHandler "nvseTestEvent" rRuns1st "priority"::1)
+	assert (SetEventHandler "nvseTestEvent" rRuns2nd "priority"::-1)
+	assert (SetEventHandler "nvseTestEvent" rRuns3rd "priority"::-2)
+
+	assert (IsEventHandlerFirst "nvseTestEvent" rRuns1st 1) == 1
+	assert (IsEventHandlerLast "nvseTestEvent" rRuns1st 1) == 0
+
+	; Can't find the UDF at the startingPriority.
+	assert (IsEventHandlerLast "nvseTestEvent" rRuns1st (-1)) == 0
+	assert (IsEventHandlerLast "nvseTestEvent" rRuns1st (-2)) == 0
+	assert (IsEventHandlerFirst "nvseTestEvent" rRuns1st (-1)) == 0
+	assert (IsEventHandlerFirst "nvseTestEvent" rRuns1st (-2)) == 0
+	
+	assert (IsEventHandlerLast "nvseTestEvent" rRuns2nd (-1)) == 0
+	assert (IsEventHandlerFirst "nvseTestEvent" rRuns2nd (-1)) == 0
+	
+	assert (IsEventHandlerFirst "nvseTestEvent" rRuns3rd (-2)) == 0
+	assert (IsEventHandlerLast "nvseTestEvent" rRuns3rd (-2)) == 1
+
+;====
+	print "xNVSE Priority System Subtest: GetHigherPriorityEventHandlers"
+
+	array_var aConflictingHandlers = ar_Null
+
+	aConflictingHandlers = GetHigherPriorityEventHandlers "nvseTestEvent" rRuns1st 1
+	assert (ar_Size aConflictingHandlers) == 0
+
+	; Can't find the UDF at the startingPriority.
+	aConflictingHandlers = GetHigherPriorityEventHandlers "nvseTestEvent" rRuns1st (-1)
+	assert (aConflictingHandlers == ar_Null)
+	aConflictingHandlers = GetHigherPriorityEventHandlers "nvseTestEvent" rRuns1st (-2)
+	assert (aConflictingHandlers == ar_Null)
+
+	aConflictingHandlers = GetHigherPriorityEventHandlers "nvseTestEvent" rRuns2nd (-1)
+	assert (ar_Size aConflictingHandlers) == 1
+	assert (aConflictingHandlers[1][0] == rRuns1st)
+
+	aConflictingHandlers = GetHigherPriorityEventHandlers "nvseTestEvent" rRuns3rd (-2)
+	assert (ar_Size aConflictingHandlers) == 2
+	assert (aConflictingHandlers[1][0] == rRuns1st)
+	assert (aConflictingHandlers[-1][0] == rRuns2nd)
+
+;===
+	print "xNVSE Priority System Subtest: GetLowerPriorityEventHandlers"
+
+	aConflictingHandlers = GetLowerPriorityEventHandlers "nvseTestEvent" rRuns1st 1
+	assert (ar_Size aConflictingHandlers) == 2
+	assert (aConflictingHandlers[-1][0] == rRuns2nd)
+	assert (aConflictingHandlers[-2][0] == rRuns3rd)
+
+	aConflictingHandlers = GetLowerPriorityEventHandlers "nvseTestEvent" rRuns2nd (-1)
+	assert (ar_Size aConflictingHandlers) == 1
+	assert (aConflictingHandlers[-2][0] == rRuns3rd)
+
+	aConflictingHandlers = GetLowerPriorityEventHandlers "nvseTestEvent" rRuns3rd (-2)
+	assert (ar_Size aConflictingHandlers) == 0
+
+
+	assert (RemoveEventHandler "nvseTestEvent" rRuns1st "priority"::1)
+	assert (RemoveEventHandler "nvseTestEvent" rRuns2nd "priority"::-1)
+	assert (RemoveEventHandler "nvseTestEvent" rRuns3rd "priority"::-2)
+
+	assert (Ar_Size (GetEventHandlers "nvseTestEvent")) == 0
+
+
+
+	print "Finished running xNVSE Event Handler Priority System Unit Tests."
+end

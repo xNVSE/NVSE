@@ -44,6 +44,9 @@ bool GetNVSEConfigOption_UInt32(const char * section, const char * key, UInt32 *
 // ConsolePrint() limited to 512 chars; use this to print longer strings to console
 void Console_Print_Long(const std::string& str);
 
+// Calls Print_Long or Print depending on the size of the string.
+void Console_Print_Str(const std::string& str);
+
 // Macro for debug output to console at runtime
 #if RUNTIME
 #ifdef _DEBUG
@@ -302,3 +305,7 @@ std::vector<std::string> SplitString(std::string s, std::string delimiter);
 #define INLINE_HOOK(retnType, callingConv, ...) static_cast<retnType(callingConv*)(__VA_ARGS__)>([](__VA_ARGS__) [[msvc::forceinline]] -> retnType
 
 UInt8* GetParentBasePtr(void* addressOfReturnAddress, bool lambda = false);
+
+//Example in https://en.cppreference.com/w/cpp/utility/variant/visit
+//Allows function overloading with c++ lambdas.
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };

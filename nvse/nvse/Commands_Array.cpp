@@ -171,8 +171,8 @@ bool Cmd_ar_Construct_Execute(COMMAND_ARGS)
 	else if (StrCompare(arType, "Map") != 0)
 		bPacked = true;
 
-	ArrayVar *newArr = g_ArrayMap.Create(keyType, bPacked, scriptObj->GetModIndex());
-	*result = (int)newArr->ID();
+	const ArrayVar *newArr = g_ArrayMap.Create(keyType, bPacked, scriptObj->GetModIndex());
+	*result = static_cast<int>(newArr->ID());
 	return true;
 }
 
@@ -184,8 +184,8 @@ bool Cmd_ar_Size_Execute(COMMAND_ARGS)
 	{
 		if (eval.Arg(0)->CanConvertTo(kTokenType_Array))
 		{
-			ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
-			if (arr) *result = (int)arr->Size();
+			ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
+			if (arr) *result = static_cast<int>(arr->Size());
 		}
 	}
 
@@ -200,7 +200,7 @@ bool Cmd_ar_Packed_Execute(COMMAND_ARGS)
 	{
 		if (eval.Arg(0)->CanConvertTo(kTokenType_Array))
 		{
-			ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+			ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 			if (arr && arr->IsPacked())
 				*result = 1;
 		}
@@ -214,7 +214,7 @@ bool Cmd_ar_Dump_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.Arg(0) && eval.Arg(0)->CanConvertTo(kTokenType_Array))
 	{
-		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (arr) arr->Dump();
 	}
 
@@ -228,7 +228,7 @@ bool Cmd_ar_DumpF_Execute(COMMAND_ARGS)
 	{
 		if (eval.Arg(1) && eval.Arg(1)->CanConvertTo(kTokenType_String))
 		{
-			ArrayVar* arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+			ArrayVar* arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 			bool bAppend = true;
 			if (eval.Arg(2) && eval.Arg(2)->CanConvertTo(kTokenType_Boolean))
 				bAppend = eval.Arg(2)->GetBool();
@@ -262,8 +262,8 @@ bool Cmd_ar_Erase_Execute(COMMAND_ARGS)
 	{
 		if (eval.Arg(0)->CanConvertTo(kTokenType_Array))
 		{
-			ArrayID arrID = eval.Arg(0)->GetArray();
-			ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+			ArrayID arrID = eval.Arg(0)->GetArrayID();
+			ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 			if (arr)
 			{
 				if (eval.Arg(1))
@@ -276,12 +276,12 @@ bool Cmd_ar_Erase_Execute(COMMAND_ARGS)
 					{
 						if (eval.Arg(1)->CanConvertTo(kTokenType_String))
 						{
-							ArrayKey toErase(eval.Arg(1)->GetString());
+							const ArrayKey toErase(eval.Arg(1)->GetString());
 							numErased = arr->EraseElement(&toErase);
 						}
 						else if (eval.Arg(1)->CanConvertTo(kTokenType_Number))
 						{
-							ArrayKey toErase(eval.Arg(1)->GetNumber());
+							const ArrayKey toErase(eval.Arg(1)->GetNumber());
 							numErased = arr->EraseElement(&toErase);
 						}
 					}
@@ -306,7 +306,7 @@ bool Cmd_ar_Sort_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.Arg(0) && eval.Arg(0)->CanConvertTo(kTokenType_Array))
 	{
-		ArrayVar *srcArr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *srcArr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (srcArr && srcArr->Size())
 		{
 			ArrayVar::SortOrder order = ArrayVar::kSort_Ascending;
@@ -325,7 +325,7 @@ bool Cmd_ar_CustomSort_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() >= 2)
 	{
-		ArrayVar *srcArr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *srcArr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (srcArr && srcArr->Size())
 		{
 			Script* compare = DYNAMIC_CAST(eval.Arg(1)->GetTESForm(), TESForm, Script);
@@ -348,7 +348,7 @@ bool Cmd_ar_SortAlpha_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.Arg(0) && eval.Arg(0)->CanConvertTo(kTokenType_Array))
 	{
-		ArrayVar *srcArr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *srcArr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (srcArr && srcArr->Size())
 		{
 			ArrayVar::SortOrder order = ArrayVar::kSort_Ascending;
@@ -371,10 +371,10 @@ bool Cmd_ar_Find_Execute(COMMAND_ARGS)
 		BasicTokenToElem(eval.Arg(0), toFind);
 		
 		// get the array
-		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(1)->GetArray());
+		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(1)->GetArrayID());
 
 		// set result to the default (not found)
-		UInt8 keyType = arr ? arr->KeyType() : kDataType_Invalid;
+		const UInt8 keyType = arr ? arr->KeyType() : kDataType_Invalid;
 		if (keyType == kDataType_String)
 		{
 			eval.ExpectReturnType(kRetnType_String);
@@ -449,9 +449,9 @@ bool ArrayIterCommand(COMMAND_ARGS, eIterMode iterMode)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() && eval.Arg(0)->CanConvertTo(kTokenType_Array))
 	{
-		ArrayID arrID = eval.Arg(0)->GetArray();
+		ArrayID arrID = eval.Arg(0)->GetArrayID();
 
-		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (!arr) return true;
 
 		const ArrayKey *foundKey = NULL;
@@ -468,7 +468,7 @@ bool ArrayIterCommand(COMMAND_ARGS, eIterMode iterMode)
 					arr->GetLastElement(&foundElem, &foundKey);
 				else if (eval.NumArgs() == 2 && eval.Arg(1)->CanConvertTo(kTokenType_Number))
 				{
-					ArrayKey curKey(eval.Arg(1)->GetNumber());
+					const ArrayKey curKey(eval.Arg(1)->GetNumber());
 					switch (iterMode)
 					{
 						case kIterMode_Next:
@@ -495,7 +495,7 @@ bool ArrayIterCommand(COMMAND_ARGS, eIterMode iterMode)
 					arr->GetLastElement(&foundElem, &foundKey);
 				else if (eval.NumArgs() == 2 && eval.Arg(1)->CanConvertTo(kTokenType_String))
 				{
-					ArrayKey curKey(eval.Arg(1)->GetString());
+					const ArrayKey curKey(eval.Arg(1)->GetString());
 					switch (iterMode)
 					{
 						case kIterMode_Next:
@@ -561,7 +561,7 @@ bool Cmd_ar_Keys_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.Arg(0) && eval.Arg(0)->CanConvertTo(kTokenType_Array))
 	{
-		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (arr) *result = arr->GetKeys(scriptObj->GetModIndex())->ID();
 	}
 
@@ -574,7 +574,7 @@ bool Cmd_ar_HasKey_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() == 2 && eval.Arg(0)->CanConvertTo(kTokenType_Array))
 	{
-		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (arr)
 		{
 			if (arr->KeyType() == kDataType_Numeric)
@@ -609,7 +609,7 @@ bool ArrayCopyCommand(COMMAND_ARGS, bool bDeepCopy)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() == 1 && eval.Arg(0)->CanConvertTo(kTokenType_Array))
 	{
-		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (arr)
 		{
 			ArrayVar *arrCopy = arr->Copy(scriptObj->GetModIndex(), bDeepCopy);
@@ -643,7 +643,7 @@ bool Cmd_ar_Resize_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() >= 2 && eval.Arg(0)->CanConvertTo(kTokenType_Array) && eval.Arg(1)->CanConvertTo(kTokenType_Number))
 	{
-		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (arr)
 		{
 			ArrayElement pad;
@@ -652,7 +652,7 @@ bool Cmd_ar_Resize_Execute(COMMAND_ARGS)
 			else
 				pad.SetNumber(0.0);
 
-			*result = arr->SetSize((int)eval.Arg(1)->GetNumber(), &pad);
+			*result = arr->SetSize(static_cast<int>(eval.Arg(1)->GetNumber()), &pad);
 		}
 	}
 
@@ -665,7 +665,7 @@ bool Cmd_ar_Append_Execute(COMMAND_ARGS)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() == 2 && eval.Arg(0)->CanConvertTo(kTokenType_Array))
 	{
-		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (arr)
 		{
 			ArrayElement toAppend;
@@ -684,14 +684,14 @@ bool ar_Insert_Execute(COMMAND_ARGS, bool bRange)
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() == 3 && eval.Arg(0)->CanConvertTo(kTokenType_Array) && eval.Arg(1)->CanConvertTo(kTokenType_Number))
 	{
-		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArray());
+		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (arr)
 		{
-			UInt32 index = (int)eval.Arg(1)->GetNumber();
+			const UInt32 index = static_cast<int>(eval.Arg(1)->GetNumber());
 			if (bRange)
 			{
 				if (eval.Arg(2)->CanConvertTo(kTokenType_Array))
-					*result = arr->Insert(index, eval.Arg(2)->GetArray());
+					*result = arr->Insert(index, eval.Arg(2)->GetArrayID());
 			}
 			else
 			{
@@ -718,7 +718,7 @@ bool Cmd_ar_InsertRange_Execute(COMMAND_ARGS)
 bool Cmd_ar_List_Execute(COMMAND_ARGS)
 {
 	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = (int)arr->ID();
+	*result = static_cast<int>(arr->ID());
 
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs())
@@ -728,16 +728,15 @@ bool Cmd_ar_List_Execute(COMMAND_ARGS)
 
 		for (UInt32 i = 0; i < eval.NumArgs(); i++)
 		{
-			ScriptToken* tok = eval.Arg(i)->ToBasicToken();
+			auto tok = eval.Arg(i)->ToBasicToken();
 			ArrayElement elem;
-			if (BasicTokenToElem(tok, elem))
+			if (BasicTokenToElem(tok.get(), elem))
 			{
 				arr->SetElement(elemIdx, &elem);
 				elemIdx += 1;
 			}
 			else bContinue = false;
 
-			delete tok;
 			if (!bContinue)
 				break;
 		}
@@ -770,7 +769,7 @@ bool Cmd_ar_Map_Execute(COMMAND_ARGS)
 
 		// create the array and populate it
 		ArrayVar *arr = g_ArrayMap.Create(keyType, false, scriptObj->GetModIndex());
-		*result = (int)arr->ID();
+		*result = static_cast<int>(arr->ID());
 
 		for (UInt32 i = 0; i < eval.NumArgs(); i++)
 		{
@@ -778,9 +777,9 @@ bool Cmd_ar_Map_Execute(COMMAND_ARGS)
 			if (pair)
 			{
 				// get the value first
-				ScriptToken* val = pair->right->ToBasicToken();
+				auto val = pair->right->ToBasicToken();
 				ArrayElement elem;
-				if (BasicTokenToElem(val, elem))
+				if (BasicTokenToElem(val.get(), elem))
 				{
 					if (keyType == kDataType_String)
 					{
@@ -790,8 +789,6 @@ bool Cmd_ar_Map_Execute(COMMAND_ARGS)
 					else if (pair->left->CanConvertTo(kTokenType_Number))
 						arr->SetElement(pair->left->GetNumber(), &elem);
 				}
-
-				delete val;
 			}
 		}
 	}
@@ -802,7 +799,7 @@ bool Cmd_ar_Map_Execute(COMMAND_ARGS)
 bool Cmd_ar_Range_Execute(COMMAND_ARGS)
 {
 	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	*result = (int)arr->ID();
+	*result = static_cast<int>(arr->ID());
 
 	SInt32 start = 0;
 	SInt32 end = 0;
@@ -874,7 +871,7 @@ bool Cmd_ar_FindWhere_Execute(COMMAND_ARGS)
 	{
 		InternalFunctionCaller caller(conditionScript, thisObj, containingObj);
 		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
-		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		const auto tokenResult = UserFunctionManager::Call(std::move(caller));
 		if (!tokenResult)
 			continue;
 		if (tokenResult->GetBool())
@@ -898,7 +895,7 @@ bool Cmd_ar_Filter_Execute(COMMAND_ARGS)
 	{
 		InternalFunctionCaller caller(conditionScript, thisObj, containingObj);
 		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
-		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		auto const tokenResult = UserFunctionManager::Call(std::move(caller));
 		if (!tokenResult)
 			continue;
 		if (tokenResult->GetBool())
@@ -922,7 +919,7 @@ bool Cmd_ar_MapTo_Execute(COMMAND_ARGS)
 	{
 		InternalFunctionCaller caller(transformScript, thisObj, containingObj);
 		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
-		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		auto tokenResult = UserFunctionManager::Call(std::move(caller));
 		if (!tokenResult)
 			continue;
 		ArrayElement element;
@@ -944,7 +941,7 @@ bool Cmd_ar_ForEach_Execute(COMMAND_ARGS)
 	{
 		InternalFunctionCaller caller(functionScript, thisObj, containingObj);
 		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
-		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		auto tokenResult = UserFunctionManager::Call(std::move(caller));
 	}
 	*result = 1;
 	return true;
@@ -961,7 +958,7 @@ bool Cmd_ar_Any_Execute(COMMAND_ARGS)
 	{
 		InternalFunctionCaller caller(functionScript, thisObj, containingObj);
 		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
-		const auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		const auto tokenResult = UserFunctionManager::Call(std::move(caller));
 		if (!tokenResult)
 			continue;
 		if (static_cast<bool>(tokenResult->GetNumber()))
@@ -984,7 +981,7 @@ bool Cmd_ar_All_Execute(COMMAND_ARGS)
 	{
 		InternalFunctionCaller caller(functionScript, thisObj, containingObj);
 		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
-		const auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		const auto tokenResult = UserFunctionManager::Call(std::move(caller));
 		if (!tokenResult)
 			return true; // different from rest here
 		if (!static_cast<bool>(tokenResult->GetNumber()))
@@ -1037,7 +1034,7 @@ bool Cmd_ar_Generate_Execute(COMMAND_ARGS)
 	{
 		InternalFunctionCaller valueCaller(valueGenerator, thisObj, containingObj);
 		valueCaller.SetArgs(0);  //may not be doing anything.
-		auto tokenValResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(valueCaller)));
+		auto tokenValResult = UserFunctionManager::Call(std::move(valueCaller));
 		if (!tokenValResult) continue;
 		ArrayElement valElem;
 		if (BasicTokenToElem(tokenValResult.get(), valElem))
@@ -1046,7 +1043,7 @@ bool Cmd_ar_Generate_Execute(COMMAND_ARGS)
 			{
 				InternalFunctionCaller keyCaller(keyGenerator, thisObj, containingObj);
 				keyCaller.SetArgs(0);  //may not be doing anything.
-				auto tokenKeyResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(keyCaller)));
+				auto tokenKeyResult = UserFunctionManager::Call(std::move(keyCaller));
 				if (!tokenKeyResult) continue;
 				ArrayElement keyElem;
 				if (BasicTokenToElem(tokenKeyResult.get(), keyElem))
@@ -1127,8 +1124,8 @@ bool Cmd_ar_DeepEquals_Execute(COMMAND_ARGS)
 		bool const arg2IsArr = eval.Arg(1)->CanConvertTo(kTokenType_Array);
 		if (arg1IsArr && arg2IsArr)
 		{
-			auto arr1 = eval.Arg(0)->GetArrayVar();
-			auto arr2 = eval.Arg(1)->GetArrayVar();
+			const auto arr1 = eval.Arg(0)->GetArrayVar();
+			const auto arr2 = eval.Arg(1)->GetArrayVar();
 			if (arr1 && arr2)
 			{
 				*result = arr1->DeepEquals(arr2);

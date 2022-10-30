@@ -4,6 +4,7 @@
 #include "GameBSExtraData.h"
 #include "GameExtraData.h"
 #include "GameProcess.h"
+#include "NiPoint.h"
 
 class TESObjectCELL;
 struct ScriptEventList;
@@ -81,7 +82,7 @@ public:
 	virtual ValidBip01Names * GetValidBip01Names(void);	// 007A	Character only
 	virtual ValidBip01Names * CallGetValidBip01Names(void);
 	virtual void		SetValidBip01Names(ValidBip01Names validBip01Names);
-	virtual void		GetPos(void);				// GetPos or GetDistance
+	virtual NiPoint3*	GetPos(void) const;				// GetPos or GetDistance
 	virtual void		Unk_7E(UInt32 arg0);
 	virtual void		Unk_7F(void);
 	virtual void		Unk_80(UInt32 arg0);
@@ -160,6 +161,8 @@ public:
 	bool GetInventoryItems(InventoryItemsMap &invItems);
 	ExtraDroppedItemList* GetDroppedItems();
 
+	double GetHeadingAngle(const TESObjectREFR* to) const;
+
 	static TESObjectREFR* Create(bool bTemp = false);
 
 	MEMBER_FN_PREFIX(TESObjectREFR);
@@ -218,7 +221,7 @@ public:
 	virtual void		Unk_AC(void);
 	virtual void		Unk_AD(void);
 	virtual void		Unk_AE(void);
-	virtual void		Unk_AF(void);
+	virtual float		AdjustRot(UInt32 arg1);
 	virtual void		Unk_B0(void);
 	virtual void		Unk_B1(void);
 	virtual void		Unk_B2(void);

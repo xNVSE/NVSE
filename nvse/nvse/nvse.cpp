@@ -79,6 +79,8 @@ void NVSE_Initialize(void)
 		_MESSAGE("NVSE runtime: initialize (version = %d.%d.%d %08X %08X%08X)",
 			NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA, RUNTIME_VERSION,
 			now.dwHighDateTime, now.dwLowDateTime);
+
+		GetNVSEConfigOption_UInt32("TESTS", "EnableRuntimeTests", &s_AreRuntimeTestsEnabled);
 #else
 		_MESSAGE("NVSE editor: initialize (version = %d.%d.%d %08X %08X%08X)",
 			NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA, EDITOR_VERSION,
@@ -117,6 +119,11 @@ void NVSE_Initialize(void)
 		gLog.SetLogLevel((IDebugLog::LogLevel)logLevel);
 
 		MersenneTwister::init_genrand(GetTickCount());
+
+#if RUNTIME
+		// Runs before CommandTable::Init to prevent plugins from being able to register events before ours (breaks assert).
+		EventManager::Init();	
+#endif
 		CommandTable::Init();
 
 #if RUNTIME
@@ -129,7 +136,6 @@ void NVSE_Initialize(void)
 		Hook_Script_Init();
 		Hook_Animation_Init();
 		OtherHooks::Hooks_Other_Init();
-		EventManager::Init();
 
 		Hook_Dialog_Init();
 		PatchGameCommandParser();

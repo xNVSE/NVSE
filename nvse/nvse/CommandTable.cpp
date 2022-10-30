@@ -33,6 +33,7 @@
 #include "Commands_Array.h"
 #include "Commands_String.h"
 #include "Commands_Algohol.h"
+#include "Commands_Quest.h"
 
 CommandTable g_consoleCommands;
 CommandTable g_scriptCommands;
@@ -1082,6 +1083,7 @@ void CommandTable::AddCommandsV1()
 	g_scriptCommands.SetReturnType(0x11CF, kRetnType_Form); // GetPlayerGrabbedRef
 	g_scriptCommands.SetReturnType(0x124E, kRetnType_Form); // GetOwnerLastTarget
 	g_scriptCommands.SetReturnType(0x1265, kRetnType_Form); // ObjectUnderTheReticule
+	g_scriptCommands.SetReturnType(0x11D1, kRetnType_Form); // PlaceLeveledActorAtMe
 
 	RecordReleaseVersion();
 
@@ -1559,7 +1561,7 @@ void CommandTable::AddCommandsV4()
 	ADD_CMD(ToUpper);
 	ADD_CMD(ToLower);
 	ADD_CMD_RET(AsciiToChar, kRetnType_String);
-	ADD_CMD_RET(NumToHex, kRetnType_String);
+	ADD_CMD_RET(NumToHex_OLD, kRetnType_String);
 	ADD_CMD(ToNumber);
 
 	ADD_CMD_RET(GetNthModName, kRetnType_String);
@@ -1784,9 +1786,9 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(SetUIStringAlt);
 
 	// 6.1 beta 00
-	ADD_CMD(CallAfterSeconds);
-	ADD_CMD(CallWhile);
-	ADD_CMD(CallForSeconds);
+	ADD_CMD(CallAfterSeconds_OLD);
+	ADD_CMD(CallWhile_OLD);
+	ADD_CMD(CallForSeconds_OLD);
 	ADD_CMD(ar_DumpF);
 
 	// 6.1 beta 03
@@ -1817,13 +1819,46 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(CallFunctionCond);
 
 	// 6.2 beta 04
-	ADD_CMD(CallWhen);
+	ADD_CMD(CallWhen_OLD);
 
 	// 6.2 beta 05
 	ADD_CMD(ForEachInList);
 	ADD_CMD_RET(Ternary, kRetnType_Ambiguous);
 	ADD_CMD(ModUIFloat);
+	ADD_CMD(GetQuestObjectiveCount);
+	ADD_CMD(GetNthQuestObjective);
+	ADD_CMD(GetCurrentObjective);
+	ADD_CMD(PrintActiveTile);
+	ADD_CMD(SetCurrentQuest);
+
+	// 6.2 beta 06
+	ADD_CMD(sv_Trim);
+	ADD_CMD(CallAfterSeconds);
+	ADD_CMD(CallForSeconds);
+	ADD_CMD(CallWhile);
+	ADD_CMD(CallWhen);
+	ADD_CMD(SetEditorID);
+
+	// 6.2 beta 08
+	ADD_CMD(Assert);
+	ADD_CMD(DispatchEventAlt);
+	ADD_CMD(DumpEventHandlers);
+	ADD_CMD_RET(GetEventHandlers, kRetnType_Array);
+	ADD_CMD_RET(GetSelfAlt, kRetnType_Form);
+	ADD_CMD(SetEventHandlerAlt);
+	ADD_CMD_RET(CreateFormList, kRetnType_Form);
+	ADD_CMD(CallWhilePerSeconds);
+	ADD_CMD(CallAfterFrames);
+	ADD_CMD_RET(GetSoldItemInvRef, kRetnType_Form);
+
+	// 6.2 beta 09
+	ADD_CMD(IsEventHandlerFirst);
+	ADD_CMD(IsEventHandlerLast);
+	ADD_CMD_RET(GetHigherPriorityEventHandlers, kRetnType_Array);
+	ADD_CMD_RET(GetLowerPriorityEventHandlers, kRetnType_Array);
+	ADD_CMD(ValidateRegex);
 	ADD_CMD_RET(NumToBin, kRetnType_String);
+	ADD_CMD_RET(NumToHex, kRetnType_String);
 }
 
 namespace PluginAPI

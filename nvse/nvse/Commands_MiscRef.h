@@ -2,6 +2,7 @@
 
 #include "CommandTable.h"
 #include "ParamInfos.h"
+#include "ScriptUtils.h"
 
 DEFINE_CMD_ALT(GetBaseObject, gbo, returns the base object id of the reference, 1, 0, NULL);
 DEFINE_CMD_ALT(GetBaseForm, gbf, returns the permanent base object id of the reference, 1, 0, NULL);
@@ -22,18 +23,19 @@ static ParamInfo kParams_GetFirstRef[3] =
 	{	"include taken refs",	kParamType_Integer,	1	},
 };
 
-static ParamInfo kParams_GetRefs[4] =
+static ParamInfo kParams_GetRefs[5] =
 {
 	{	"form type",			kParamType_Integer,	1	},
 	{	"cell depth",			kParamType_Integer,	1	},
 	{	"include taken refs",	kParamType_Integer,	1	},
 	{	"max distance",	kParamType_Float,			1	},
+	{	"max angle",	kParamType_Float,			1	},
 };
 
 DEFINE_COMMAND(GetFirstRef, returns the first reference of the specified type in the current cell, 0, 3, kParams_GetFirstRef);
 DEFINE_COMMAND(GetNextRef, returns the next reference of a given type in the current cell, 0, 0, NULL);
-DEFINE_COMMAND(GetNumRefs, returns the number of references of a given type in the current cell, 0, 4, kParams_GetRefs);
-DEFINE_COMMAND(GetRefs, returns an array of references of a given type in the current cell, 0, 4, kParams_GetRefs);
+DEFINE_COMMAND(GetNumRefs, returns the number of references of a given type in the current cell, 0, 5, kParams_GetRefs);
+DEFINE_COMMAND(GetRefs, returns an array of references of a given type in the current cell, 0, 5, kParams_GetRefs);
 
 static ParamInfo kParams_GetInGrid[3] =
 {
@@ -52,18 +54,19 @@ static ParamInfo kParams_GetFirstRefInCell[4] =
 	{	"include taken refs",	kParamType_Integer,	1	},
 };
 
-static ParamInfo kParams_GetRefsInCell[5] =
+static ParamInfo kParams_GetRefsInCell[6] =
 {
 	{	"cell",					kParamType_Cell,	0	},
 	{	"form type",			kParamType_Integer,	1	},
 	{	"cell depth",			kParamType_Integer,	1	},
 	{	"include taken refs",	kParamType_Integer,	1	},
 	{	"max distance",	kParamType_Float,			1	},
+	{	"max angle",	kParamType_Float,			1	},
 };
 
 DEFINE_COMMAND(GetFirstRefInCell, returns the first reference of the specified type in the specified cell, 0, 4, kParams_GetFirstRefInCell);
-DEFINE_COMMAND(GetNumRefsInCell, returns the number of references of a given type in the specified cell, 0, 5, kParams_GetRefsInCell);
-DEFINE_COMMAND(GetRefsInCell, returns an array of references of a given type in the specified cell, 0, 5, kParams_GetRefsInCell);
+DEFINE_COMMAND(GetNumRefsInCell, returns the number of references of a given type in the specified cell, 0, 6, kParams_GetRefsInCell);
+DEFINE_COMMAND(GetRefsInCell, returns an array of references of a given type in the specified cell, 0, 6, kParams_GetRefsInCell);
 
 static ParamInfo kParams_GetInGridInCell[4] =
 {
@@ -228,3 +231,14 @@ static ParamInfo kParams_OneEffectShader[1] =
 };
 
 DEFINE_COMMAND(HasEffectShader, returns 1 if the reference is playing the effect shader, 1, 1, kParams_OneEffectShader);
+
+DEFINE_CMD(SetEditorID, "sets editor id of form", 0, kParams_OneForm_OneString);
+
+static ParamInfo kNVSEParams_OneOptionalString_OneOptionalArray[2] =
+{
+	{	"string",	kNVSEParamType_String,	1	},
+	{	"array",	kNVSEParamType_Array,	1	}
+};
+
+DEFINE_COMMAND_EXP(CreateFormList, "creates a formList, optionally set with an editorID and filled by an array.", 
+	0, kNVSEParams_OneOptionalString_OneOptionalArray);

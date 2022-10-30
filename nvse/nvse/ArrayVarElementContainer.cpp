@@ -2,9 +2,15 @@
 
 #if RUNTIME
 
+ArrayVarElementContainer::ArrayVarElementContainer(): m_type(kContainer_Array)
+{
+	m_container.data = NULL;
+	m_container.numItems = 0;
+	m_container.numAlloc = 2;
+}
+
 ArrayVarElementContainer::~ArrayVarElementContainer()
 {
-	clear();
 	switch (m_type)
 	{
 		case kContainer_Array:
@@ -29,7 +35,7 @@ void ArrayVarElementContainer::clear()
 		{
 			for (auto iter = AsArray().Begin(); !iter.End(); ++iter)
 				iter.Get().Unset();
-			m_container.numItems = 0;
+			AsArray().Clear();
 			break;
 		}
 		case kContainer_NumericMap:
@@ -184,6 +190,10 @@ ArrayVarElementContainer::iterator::iterator(ArrayVarElementContainer& container
 	}
 }
 
+ArrayVarElementContainer::iterator::iterator(ContainerType type, const GenericIterator& iterator): m_iter(iterator), m_type(type)
+{
+}
+
 void ArrayVarElementContainer::iterator::operator++()
 {
 	switch (m_type)
@@ -221,6 +231,11 @@ bool ArrayVarElementContainer::iterator::operator!=(const iterator& other) const
 	return this->m_iter.pData != other.m_iter.pData;
 }
 
+ArrayElement* ArrayVarElementContainer::iterator::operator*()
+{
+	return second();
+}
+
 const ArrayKey* ArrayVarElementContainer::iterator::first()
 {
 	switch (m_type)
@@ -250,6 +265,35 @@ ArrayElement* ArrayVarElementContainer::iterator::second()
 		case kContainer_StringMap:
 			return &AsStrMap().Get();
 	}
+}
+
+ArrayVarElementContainer::iterator ArrayVarElementContainer::begin(){return iterator(*this);}
+
+ArrayVarElementContainer::iterator ArrayVarElementContainer::rbegin(){return iterator(*this, true);}
+
+ArrayVarElementContainer::iterator ArrayVarElementContainer::end() const
+{
+	switch (this->m_type) {
+	case kContainer_Array:
+		{
+			auto iter = ElementVector::Iterator(AsArray(), AsArray().Size());
+			return iterator(m_type, *reinterpret_cast<iterator::GenericIterator*>(&iter));
+		}
+	case kContainer_NumericMap:
+		{
+			auto iter = ElementNumMap::Iterator();
+			iter.Last(AsNumMap());
+			return iterator(m_type, *reinterpret_cast<iterator::GenericIterator*>(&iter));
+
+		}
+	case kContainer_StringMap:
+		{
+			auto iter = ElementStrMap::Iterator();
+			iter.Last(AsStrMap());
+			return iterator(m_type, *reinterpret_cast<iterator::GenericIterator*>(&iter));
+		}
+	}
+	throw FormatString("Invalid container type %d", m_type);
 }
 
 #endif

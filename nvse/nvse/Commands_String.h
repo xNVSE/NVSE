@@ -84,6 +84,11 @@ static ParamInfo kParams_sv_Replace[26] =
 	{	"howMany",		kParamType_Integer,		1	},
 };
 
+static ParamInfo kParams_sv_Trim[] =
+{
+	{"stringVar", kNVSEParamType_StringVar, 0}
+};
+
 DEFINE_CMD(sv_Replace, replaces 1 or more occurences of a substring within a string variable, 0, kParams_sv_Replace);
 
 DEFINE_CMD(IsLetter, returns 1 if the character is an alphabetic character, 0, kParams_OneInt);
@@ -97,6 +102,8 @@ DEFINE_CMD(IsPunctuation, returns 1 if the character is a punctuation character,
 DEFINE_CMD(IsUpperCase, returns 1 if the character is an uppercase letter, 0, kParams_OneInt);
 
 DEFINE_CMD(sv_GetChar, returns the ASCII code of the character at the specified position in a string variable, 0, kParams_TwoInts);
+
+DEFINE_COMMAND_EXP(sv_Trim, "Trims the beginning and the end of a string variable", 0, kParams_sv_Trim);
 
 DEFINE_CMD(CharToAscii, converts a single character to its equivalent ASCII code, 0, kParams_OneString);
 
@@ -203,13 +210,14 @@ DEFINE_CMD(NumToHex_OLD, returns a number as a hex string of the specified width
 DEFINE_CMD(NumToHex, returns a number as a hex string of the specified width, 0, kParams_OneInt_TwoOptionalInts);
 DEFINE_CMD(NumToBin, returns a number as a binary string of the specified width, 0, kParams_OneInt_TwoOptionalInts); 
 
-static ParamInfo kNVSEParams_OneStringOneOptionalInt[2] =
+static ParamInfo kNVSEParams_OneString_TwoOptionalInts[3] =
 {
 	{	"string",	kNVSEParamType_String,		0	},
 	{	"bHex",		kNVSEParamType_Number,		1	},
+	{	"bReportError",		kNVSEParamType_Number,		1	},
 };
 
-DEFINE_COMMAND_EXP(ToNumber, translates a string to a number, 0, kNVSEParams_OneStringOneOptionalInt);
+DEFINE_COMMAND_EXP(ToNumber, translates a string to a number, 0, kNVSEParams_OneString_TwoOptionalInts);
 
 static ParamInfo kNVSEParams_TwoStrings[2] =
 {
@@ -245,3 +253,13 @@ DEFINE_CMD_ALT(ActorValueToStringC, AVStringC, returns the localized string corr
 
 DEFINE_COMMAND(GetScopeModelPath, "Get the path to the scope model of a weapon", 0, 1, kParams_OneOptionalObjectID)
 DEFINE_COMMAND(SetScopeModelPath, "Set the path to the scope model of a weapon", 0, 2, kParams_OneString_OneOptionalObjectID)
+
+static ParamInfo kParams_ValidateRegex[] =
+{
+	{"regexToValidate", kNVSEParamType_String, 0},
+	{"outErrStrVar", kNVSEParamType_StringVar, 1}
+};
+
+DEFINE_COMMAND_EXP(ValidateRegex, "Returns 0 for no errors, otherwise returns int codes indicating the error cause.", 
+	0, kParams_ValidateRegex);
+

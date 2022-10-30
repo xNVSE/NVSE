@@ -283,7 +283,7 @@ public:
 #endif
 	virtual bool		Unk_3D(void);
 	virtual bool		Unk_3E(void);
-	virtual bool		Unk_3F(void);	// returnTrue for refr whose baseForm is a TESActorBase
+	virtual bool		Unk_3F(void) const;	// returnTrue for refr whose baseForm is a TESActorBase
 	virtual bool		IsActor(void);
 	virtual UInt32		Unk_41(void);
 	virtual void		CopyFrom(const TESForm * form);
@@ -339,7 +339,6 @@ public:
 	UInt8			GetModIndex() const;
 	TESFullName*	GetFullName() const;
 	const char*		GetTheName();
-	bool			IsCloned() const;
 	std::string		GetStringRepresentation() const;
 
 	bool IsWeapon() { return typeID == kFormType_TESObjectWEAP; }
@@ -350,6 +349,8 @@ public:
 	// return a new base form which is the clone of this form
 	TESForm* CloneForm(bool bPersist = true) const;
 	bool     IsInventoryObject() const;
+
+	bool FormMatches(TESForm* toMatch) const;
 
 	MEMBER_FN_PREFIX(TESForm);
 #if RUNTIME
@@ -3704,7 +3705,8 @@ public:
 	tList<StageInfo>			stages;						// 044
 	tList<LocalVariableOrObjectivePtr>	lVarOrObjectives;	// 04C	So: this list would contain both Objectives and LocalVariables !
 		// That seems very strange but still, looking at Get/SetObjective... and ShowQuestVars there's no doubt.
-	tList<Condition*>			conditions;					// 054
+	
+	tList<Condition*>			conditions;					// 054					
 	ScriptEventList*			scriptEventList;			// 05C
 	UInt8						currentStage;				// 060
 	UInt8						pad061[3];					// 061
@@ -4520,9 +4522,13 @@ public:
 		return list.GetNthItem(n);
 	}
 
-	UInt32 AddAt(TESForm* pForm, SInt32 n) {
-		SInt32	result = list.AddAt(pForm, n);
+	SInt32 AddAt(TESForm* pForm, SInt32 n, bool const checkDupes = false) {
 
+		if (checkDupes) {
+			if (GetIndexOf(pForm) != eListInvalid)
+				return eListInvalid;
+		}
+		auto const result = list.AddAt(pForm, n);
 		if(result >= 0 && IsAddedObject(n))
 			numAddedObjects++;
 
@@ -4560,6 +4566,10 @@ public:
 	{
 		return (idx >= 0) && (idx < numAddedObjects);
 	}
+
+#if RUNTIME
+	[[nodiscard]] static game_unique_ptr<BGSListForm> MakeUnique();
+#endif
 };
 
 STATIC_ASSERT(sizeof(BGSListForm) == 0x024);

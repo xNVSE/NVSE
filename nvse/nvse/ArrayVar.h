@@ -1,11 +1,16 @@
 #pragma once
+#include "GameScript.h"
 
 typedef UInt32 ArrayID;
 class ArrayVar;
 class ArrayVarMap;
 struct Slice;
 struct ArrayKey;
+
+
+
 struct ArrayElement;
+
 struct ScriptToken;
 
 #if RUNTIME
@@ -17,6 +22,7 @@ struct ScriptToken;
 #include <memory>
 #include <vector>
 #include <map>
+#include "LambdaManager.h"
 
 // NVSE array datatype, represented by std::map<ArrayKey, ArrayElement>
 // Data elements can be of mixed types (string, UInt32/formID, float)
@@ -67,6 +73,8 @@ enum DataType : UInt8
 };
 
 const char* DataTypeToString(DataType dataType);
+Script::VariableType DataTypeToVarType(DataType dataType);
+DataType VarTypeToDataType(Script::VariableType variableType);
 
 struct ArrayData
 {
@@ -81,41 +89,73 @@ struct ArrayData
 	};
 
 	~ArrayData();
-	const char *GetStr() const;
+	ArrayData() = default;
+	[[nodiscard]] const char *GetStr() const;
 	void SetStr(const char *srcStr);
 
+	//Casts the data in the form InternalFunctionCaller::PopulateArgs() understands.
+	[[nodiscard]] void* GetAsVoidArg() const;
+
 	ArrayData& operator=(const ArrayData &rhs);
+	ArrayData(const ArrayData &from);
 };
 STATIC_ASSERT(sizeof(ArrayData) == 0x10);
 
 struct ArrayElement
 {
+protected:
+	void UnsetDefault();	//to avoid calling virtual func in dtor.
+public:
 	friend class ArrayVar;
 	friend class ArrayVarMap;
-
-	~ArrayElement();
+	
+	virtual ~ArrayElement();
+	ArrayElement();
 
 	ArrayData	m_data;
 
-	void  Unset();
+	virtual void  Unset();
 
-	DataType DataType() const {return m_data.dataType;}
+	[[nodiscard]] DataType DataType() const {return m_data.dataType;}
 
 	bool GetAsNumber(double* out) const;
 	bool GetAsString(const char **out) const;
 	bool GetAsFormID(UInt32* out) const;
 	bool GetAsArray(ArrayID* out) const;
-	bool GetBool() const;
+	[[nodiscard]] bool GetBool() const;
 
-	bool SetForm(const TESForm* form);
+	bool SetTESForm(const TESForm* form)
+	{
+		Unset();
+
+		m_data.dataType = kDataType_Form;
+		m_data.formID = form ? form->refID : 0;
+		return true;
+	}	//unlike SetFormID, will not store lambda info!
 	bool SetFormID(UInt32 refID);
 	bool SetString(const char* str);
-	bool SetArray(ArrayID arr);	
+	virtual bool SetArray(ArrayID arr);	
 	bool SetNumber(double num);
 	bool Set(const ArrayElement* elem);
 
-	ArrayElement();
-	ArrayElement(const ArrayElement& from);
+	//WARNING: Does not increment the reference count for a copied array;
+	//consider move ctor or calling SetArray.
+	ArrayElement(ArrayElement& from);
+
+	ArrayElement& operator=(const ArrayElement& from)
+	{
+		if (this != &from)
+		{
+			m_data.dataType = from.m_data.dataType;
+			m_data.owningArray = from.m_data.owningArray;
+			if (m_data.dataType == kDataType_String)
+				m_data.SetStr(from.m_data.str);
+			else m_data.num = from.m_data.num;
+		}
+		return *this;
+	}
+
+	ArrayElement(ArrayElement&& from) noexcept;
 
 	static bool CompareNames(const ArrayElement& lhs, const ArrayElement& rhs);
 	static bool CompareNamesDescending(const ArrayElement& lhs, const ArrayElement& rhs) {return !CompareNames(lhs, rhs);}
@@ -124,9 +164,29 @@ struct ArrayElement
 	bool operator==(const ArrayElement& rhs) const;
 	bool operator!=(const ArrayElement& rhs) const;
 
-	bool IsGood() {return m_data.dataType != kDataType_Invalid;}
+	// Unlike ==/!=, if both elems are Arrays, will cmp their contents instead of their IDs.
+	bool Equals(const ArrayElement& rhs, bool deepCmpArr = false) const;
 
-	std::string GetStringRepresentation() const;
+	[[nodiscard]] bool IsGood() const {return m_data.dataType != kDataType_Invalid;}
+
+	[[nodiscard]] std::string GetStringRepresentation() const;
+	[[nodiscard]] void* GetAsVoidArg() const { return m_data.GetAsVoidArg(); }
+};
+
+//Assumes owningArray is always null.
+//Unlike ArrayElement, will increase ref counter for an array value even though owningArray is null.
+class SelfOwningArrayElement : public ArrayElement
+{
+protected:
+	void UnsetSelfOwning();	//to avoid calling virtual func in dtor.
+public:
+	~SelfOwningArrayElement() override;
+	bool SetArray(ArrayID arr) override;
+	void Unset() override;
+	SelfOwningArrayElement() = default;
+	SelfOwningArrayElement(ArrayElement&& from) noexcept
+		: ArrayElement(std::forward<ArrayElement&&>(from))
+	{}
 };
 
 struct ArrayKey
@@ -181,12 +241,7 @@ class ArrayVarElementContainer
 	ElementStrMap& AsStrMap() const {return *(ElementStrMap*)&m_container;}
 
 public:
-	ArrayVarElementContainer() : m_type(kContainer_Array)
-	{
-		m_container.data = NULL;
-		m_container.numItems = 0;
-		m_container.numAlloc = 2;
-	}
+	ArrayVarElementContainer();
 
 	~ArrayVarElementContainer();
 
@@ -222,20 +277,23 @@ public:
 		iterator(ArrayVarElementContainer& container);
 		iterator(ArrayVarElementContainer& container, bool reverse);
 		iterator(ArrayVarElementContainer& container, const ArrayKey* key);
+		iterator(ContainerType type, const GenericIterator& iterator);
 
 		bool End() {return m_iter.index >= m_iter.contObj->numItems;}
 
 		void operator++();
 		void operator--();
 		bool operator!=(const iterator& other) const;
+		ArrayElement* operator*();
 
 		const ArrayKey* first();
 
 		ArrayElement* second();
 	};
 
-	iterator begin() {return iterator(*this);}
-	iterator rbegin() {return iterator(*this, true);}
+	iterator begin();
+	iterator rbegin();
+	iterator end() const;
 
 	iterator find(const ArrayKey* key) {return iterator(*this, key);}
 
@@ -248,7 +306,6 @@ typedef ArrayVarElementContainer::iterator ArrayIterator;
 
 class ArrayVar
 {
-	friend struct ArrayElement;
 	friend class ArrayVarMap;
 	friend class Matrix;
 	friend class PluginAPI::ArrayAPI;
@@ -261,8 +318,6 @@ class ArrayVar
 	bool				m_bPacked;
 	Vector<UInt8>		m_refs;		// data is modIndex of referring object; size() is number of references
 
-	bool CompareArrays(ArrayVar* arr2, bool checkDeep);
-
 public:
 	ICriticalSection m_cs;
 #if _DEBUG
@@ -270,6 +325,7 @@ public:
 #endif
 	ArrayVar(UInt32 keyType, bool packed, UInt8 modIndex);
 	~ArrayVar();
+
 	enum SortOrder
 	{
 		kSort_Ascending,
@@ -346,15 +402,22 @@ public:
 
 	void Sort(ArrayVar *result, SortOrder order, SortType type, Script* comparator = NULL);
 
-	void Dump(const std::function<void(const std::string&)>& output = [&](const std::string& input){ Console_Print("%s", input.c_str()); });
+	void Dump(const std::function<void(const std::string&)>& output = [&](const std::string& input){ Console_Print_Str(input); });
 	void DumpToFile(const char* filePath, bool append);
 
 	ArrayVarElementContainer::iterator Begin();
 
-	std::string GetStringRepresentation() const;
+	[[nodiscard]] std::string GetStringRepresentation() const;
 
+	bool CompareArrays(ArrayVar* arr2, bool checkDeep);
 	bool Equals(ArrayVar* arr2);
 	bool DeepEquals(ArrayVar* arr2);
+
+	ArrayVarElementContainer* GetRawContainer();
+
+	_ElementMap::iterator begin();
+
+	_ElementMap::iterator end() const;
 };
 
 class ArrayVarMap : public VarMap<ArrayVar>
