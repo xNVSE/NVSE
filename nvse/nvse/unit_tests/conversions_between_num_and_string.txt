@@ -1,0 +1,25 @@
+begin Function { }
+
+	print "Started running xNVSE Num-String Conversion Unit Tests."
+	
+	;== Num-To-HexString tests
+	string_var sHexOld = NumToHex_OLD 42, 2
+	string_var sHexNew = NumToHex 42, 2
+	assert (sHex == sHexNew)
+	
+	string_var sHexOld = NumToHex_OLD 42
+	string_var sHexNew = NumToHex 42
+	assert (sHex == sHexNew)
+	
+	string_var sHexOld = NumToHex_OLD 42, 9
+	string_var sHexNew = NumToHex 42, 9
+	assert (sHex == sHexNew)
+	assert (sv_length sHexOld == 8)
+	
+	
+	;== Num-To-Binary tests
+	
+	
+	print "Finished running xNVSE Num-String Conversion Unit Tests."
+
+end
