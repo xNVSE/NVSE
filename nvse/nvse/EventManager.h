@@ -120,11 +120,13 @@ namespace EventManager
 		const char* m_pluginName = "[UNKNOWN PLUGIN]";
 		const char* m_handlerName = "[NO NAME]";
 
-		[[nodiscard]] bool Init(NativeEventHandler func, PluginHandle pluginHandle, const char* handlerName);
+		NativeEventHandlerInfo() = default;
+		NativeEventHandlerInfo(NativeEventHandler func) : m_func(func) {}
+		[[nodiscard]] bool InitWithPluginInfo(NativeEventHandler func, PluginHandle pluginHandle, const char* handlerName);
 		[[nodiscard]] std::string GetStringRepresentation() const;
 		[[nodiscard]] ArrayVar* GetArrayRepresentation(UInt8 modIndex) const;
 
-		bool operator==(const NativeEventHandlerInfo& other) const { return m_func == other.m_func; }
+		bool operator==(const NativeEventHandlerInfo& rhs) const { return m_func == rhs.m_func; }
 		operator bool() const { return m_func != nullptr; }
 	};
 
@@ -169,15 +171,12 @@ namespace EventManager
 		bool ValidateFirstAndSecondFilter(const EventInfo& parent, std::string& outErrorMsg) const;
 
 	public:
-		// If variant is Maybe_Lambda, must try to capture lambda context once the EventCallback is confirmed to stay.
-		using CallbackFunc = std::variant<LambdaManager::Maybe_Lambda, NativeEventHandlerInfo>;
-
 		EventCallback() = default;
 		~EventCallback() = default;
 		EventCallback(Script *funcScript, TESForm *sourceFilter = nullptr, TESForm *objectFilter = nullptr)
 			: toCall(funcScript), source(sourceFilter), object(objectFilter) {}
 
-		EventCallback(NativeEventHandlerInfo funcInfo) : toCall(funcInfo) {}
+		EventCallback(const NativeEventHandlerInfo &funcInfo) : toCall(funcInfo) {}
 
 		EventCallback(const EventCallback &other) = delete;
 		EventCallback &operator=(const EventCallback &other) = delete;
@@ -185,6 +184,10 @@ namespace EventManager
 		EventCallback(EventCallback &&other) noexcept;
 		EventCallback &operator=(EventCallback &&other) noexcept;
 
+		[[nodiscard]] bool operator==(const EventCallback& rhs) const;
+
+		// If variant is Maybe_Lambda, must try to capture lambda context once the EventCallback is confirmed to stay.
+		using CallbackFunc = std::variant<LambdaManager::Maybe_Lambda, NativeEventHandlerInfo>;
 		CallbackFunc toCall{};
 
 		TESForm *source{}; // first arg to handler (reference or base form or form list)
@@ -244,8 +247,6 @@ namespace EventManager
 		template<bool ExtractIntTypeAsFloat>
 		bool DoesParamMatchFiltersInArray(const Filter& arrayFilter,
 			EventArgType paramType, void* param, int index) const;
-
-		[[nodiscard]] bool operator==(const EventCallback& rhs) const;
 
 		// If "this" would run anytime toCheck would run or more, return true (toCheck should be removed; "this" has more or equally generic filters).
 		// The above rule is used to remove redundant callbacks in one fell swoop.

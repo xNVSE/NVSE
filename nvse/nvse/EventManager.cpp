@@ -1422,7 +1422,7 @@ EventInfo* TryGetEventInfoForName(const char* eventName)
 	return nullptr;
 }
 
-bool NativeEventHandlerInfo::Init(NativeEventHandler func, PluginHandle pluginHandle, const char* handlerName)
+bool NativeEventHandlerInfo::InitWithPluginInfo(NativeEventHandler func, PluginHandle pluginHandle, const char* handlerName)
 {
 	if (!func)
 		return false;
@@ -1948,7 +1948,7 @@ bool SetNativeEventHandlerWithPriority(const char* eventName, NativeEventHandler
                                        PluginHandle pluginHandle, const char* handlerName, int priority)
 {
 	NativeEventHandlerInfo internalInfo;
-	if (!internalInfo.Init(func, pluginHandle, handlerName))
+	if (!internalInfo.InitWithPluginInfo(func, pluginHandle, handlerName))
 		return false;
 	EventCallback callback(internalInfo);
 	return SetHandler<true>(eventName, callback, priority);
