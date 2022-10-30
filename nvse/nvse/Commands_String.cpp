@@ -905,6 +905,7 @@ bool Cmd_GetRawFormIDString_Execute(COMMAND_ARGS)
 	return true;
 }
 
+// Kept for unit test purposes, to compare with newer iterations.
 bool Cmd_NumToHex_OLD_Execute(COMMAND_ARGS)
 {
 	UInt32 num = 0;
