@@ -34,18 +34,18 @@ begin Function { }
 	assert (sHexNew == "0x02A")
 	
 ;== Num-To-Binary tests
-	string_var sBinary = NumToBin 42
+	string_var sBinary = IntToBin 42
 	assert (sBinary == "00000000000000000000000000101010")  ;* Padded to 32 bits by default
 	
 	;* Trying to represent "101010" with just 2 bits
 	;* Will use minimum width to represent the number.
-	sBinary = NumToBin 42, 2  
+	sBinary = IntToBin 42, 2  
 	assert (sBinary == "101010")
 	
-	sBinary = NumToBin 42, 10, 1
+	sBinary = IntToBin 42, 10, 1
 	assert (sBinary == "0b0000101010")
 	
-	sBinary = NumToBin 42, 6, 1
+	sBinary = IntToBin 42, 6, 1
 	assert (sBinary == "0b101010")
 	
 	
