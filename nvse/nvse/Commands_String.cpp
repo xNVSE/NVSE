@@ -936,7 +936,7 @@ bool Cmd_NumToHex_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool Cmd_NumToBin_Execute(COMMAND_ARGS)
+bool Cmd_IntToBin_Execute(COMMAND_ARGS)
 {
 	UInt32 num;
 	UInt32 padToWidth = 32;	//add leading zeros until it reaches this width.

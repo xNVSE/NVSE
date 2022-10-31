@@ -1857,7 +1857,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD_RET(GetHigherPriorityEventHandlers, kRetnType_Array);
 	ADD_CMD_RET(GetLowerPriorityEventHandlers, kRetnType_Array);
 	ADD_CMD(ValidateRegex);
-	ADD_CMD_RET(NumToBin, kRetnType_String);
+	ADD_CMD_RET(IntToBin, kRetnType_String);
 	ADD_CMD_RET(NumToHex, kRetnType_String);
 }
 
