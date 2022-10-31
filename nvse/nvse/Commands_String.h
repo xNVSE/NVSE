@@ -206,7 +206,9 @@ DEFINE_CMD(SetNthFactionRankNameEX, sets the name of the nth faction rank, 0, kP
 DEFINE_CMD(GetKeyName, returns the name of a key given a scan code, 0, kParams_OneInt);
 DEFINE_CMD(AsciiToChar, returns a single character string given an ASCII code, 0, kParams_OneInt);
 DEFINE_CMD(GetFormIDString, returns a formID of a form as a hex string, 0, kParams_OneOptionalForm);
-DEFINE_CMD(NumToHex, returns a number as a hex string of the specified width, 0, kParams_OneInt_OneOptionalInt);
+DEFINE_CMD(NumToHex_OLD, returns an int as a hex string of the specified width, 0, kParams_OneInt_OneOptionalInt);
+DEFINE_CMD_ALT(NumToHex, IntToHex, returns an int as a hex string of the specified width, false, 3, kParams_OneInt_TwoOptionalInts);
+DEFINE_CMD(IntToBin, returns an int as a binary string of the specified width, false, kParams_OneInt_TwoOptionalInts); 
 
 static ParamInfo kNVSEParams_OneString_TwoOptionalInts[3] =
 {

@@ -1561,7 +1561,7 @@ void CommandTable::AddCommandsV4()
 	ADD_CMD(ToUpper);
 	ADD_CMD(ToLower);
 	ADD_CMD_RET(AsciiToChar, kRetnType_String);
-	ADD_CMD_RET(NumToHex, kRetnType_String);
+	ADD_CMD_RET(NumToHex_OLD, kRetnType_String);
 	ADD_CMD(ToNumber);
 
 	ADD_CMD_RET(GetNthModName, kRetnType_String);
@@ -1857,6 +1857,8 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD_RET(GetHigherPriorityEventHandlers, kRetnType_Array);
 	ADD_CMD_RET(GetLowerPriorityEventHandlers, kRetnType_Array);
 	ADD_CMD(ValidateRegex);
+	ADD_CMD_RET(IntToBin, kRetnType_String);
+	ADD_CMD_RET(NumToHex, kRetnType_String);
 }
 
 namespace PluginAPI

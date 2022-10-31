@@ -831,6 +831,7 @@ template class ArrayElementArgFunctionCaller<SelfOwningArrayElement>;
 
 namespace PluginAPI
 {
+	// Sends an error message if the token is invalid and the function script is not nullptr.
 	bool BasicTokenToPluginElem(const ScriptToken* tok, NVSEArrayVarInterface::Element& outElem, Script* fnScript)
 	{
 		if (!tok) [[unlikely]]

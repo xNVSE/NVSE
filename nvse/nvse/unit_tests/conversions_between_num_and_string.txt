@@ -1,0 +1,54 @@
+begin Function { }
+
+	print "Started running xNVSE Num-String Conversion Unit Tests."
+	
+;== Num-To-HexString tests
+	string_var sHexOld = NumToHex_OLD 42, 2
+	string_var sHexNew = NumToHex 42, 2
+	assert (sHexOld == sHexNew)
+	
+	; Using default width of 8
+	sHexOld = NumToHex_OLD 42
+	sHexNew = NumToHex 42
+	assert (sHexOld == sHexNew)
+	assert (sHexOld == "0000002A")
+	
+	;* Trying to go over max width of 8
+	sHexOld = NumToHex_OLD 42, 9
+	sHexNew = NumToHex 42, 9
+	assert (sHexOld == sHexNew)
+	assert (sv_length sHexOld == 8)
+	
+	;* Trying to represent "2A" with just width 1
+	;* Will use minimum width to represent the number.
+	sHexOld = NumToHex_OLD 42, 1
+	sHexNew = NumToHex 42, 1
+	assert (sHexOld == sHexNew)
+	assert (sHexOld == "2A")
+	assert (sv_length sHexOld == 2)
+	
+	sHexNew = NumToHex 42, 2, 1
+	assert (sHexNew == "0x2A")
+	
+	sHexNew = NumToHex 42, 3, 1
+	assert (sHexNew == "0x02A")
+	
+;== Num-To-Binary tests
+	string_var sBinary = IntToBin 42
+	assert (sBinary == "00000000000000000000000000101010")  ;* Padded to 32 bits by default
+	
+	;* Trying to represent "101010" with just 2 bits
+	;* Will use minimum width to represent the number.
+	sBinary = IntToBin 42, 2  
+	assert (sBinary == "101010")
+	
+	sBinary = IntToBin 42, 10, 1
+	assert (sBinary == "0b0000101010")
+	
+	sBinary = IntToBin 42, 6, 1
+	assert (sBinary == "0b101010")
+	
+	
+	print "Finished running xNVSE Num-String Conversion Unit Tests."
+
+end

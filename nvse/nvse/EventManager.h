@@ -120,10 +120,13 @@ namespace EventManager
 		const char* m_pluginName = "[UNKNOWN PLUGIN]";
 		const char* m_handlerName = "[NO NAME]";
 
-		[[nodiscard]] bool Init(NativeEventHandler func, PluginHandle pluginHandle, const char* handlerName);
+		NativeEventHandlerInfo() = default;
+		NativeEventHandlerInfo(NativeEventHandler func) : m_func(func) {}
+		[[nodiscard]] bool InitWithPluginInfo(NativeEventHandler func, PluginHandle pluginHandle, const char* handlerName);
 		[[nodiscard]] std::string GetStringRepresentation() const;
 		[[nodiscard]] ArrayVar* GetArrayRepresentation(UInt8 modIndex) const;
 
+		bool operator==(const NativeEventHandlerInfo& rhs) const { return m_func == rhs.m_func; }
 		operator bool() const { return m_func != nullptr; }
 	};
 
@@ -168,15 +171,12 @@ namespace EventManager
 		bool ValidateFirstAndSecondFilter(const EventInfo& parent, std::string& outErrorMsg) const;
 
 	public:
-		// If variant is Maybe_Lambda, must try to capture lambda context once the EventCallback is confirmed to stay.
-		using CallbackFunc = std::variant<LambdaManager::Maybe_Lambda, NativeEventHandlerInfo>;
-
 		EventCallback() = default;
 		~EventCallback() = default;
 		EventCallback(Script *funcScript, TESForm *sourceFilter = nullptr, TESForm *objectFilter = nullptr)
 			: toCall(funcScript), source(sourceFilter), object(objectFilter) {}
 
-		EventCallback(NativeEventHandlerInfo funcInfo) : toCall(funcInfo) {}
+		EventCallback(const NativeEventHandlerInfo &funcInfo) : toCall(funcInfo) {}
 
 		EventCallback(const EventCallback &other) = delete;
 		EventCallback &operator=(const EventCallback &other) = delete;
@@ -184,6 +184,10 @@ namespace EventManager
 		EventCallback(EventCallback &&other) noexcept;
 		EventCallback &operator=(EventCallback &&other) noexcept;
 
+		[[nodiscard]] bool operator==(const EventCallback& rhs) const;
+
+		// If variant is Maybe_Lambda, must try to capture lambda context once the EventCallback is confirmed to stay.
+		using CallbackFunc = std::variant<LambdaManager::Maybe_Lambda, NativeEventHandlerInfo>;
 		CallbackFunc toCall{};
 
 		TESForm *source{}; // first arg to handler (reference or base form or form list)
@@ -243,8 +247,6 @@ namespace EventManager
 		template<bool ExtractIntTypeAsFloat>
 		bool DoesParamMatchFiltersInArray(const Filter& arrayFilter,
 			EventArgType paramType, void* param, int index) const;
-
-		[[nodiscard]] bool operator==(const EventCallback& rhs) const;
 
 		// If "this" would run anytime toCheck would run or more, return true (toCheck should be removed; "this" has more or equally generic filters).
 		// The above rule is used to remove redundant callbacks in one fell swoop.
@@ -311,21 +313,20 @@ namespace EventManager
 										   // to use the same hook, installing it only once.
 		EventFlags flags = EventFlags::kFlags_None;
 
-		[[nodiscard]] bool FlushesOnLoad() const
-		{
+		[[nodiscard]] bool FlushesOnLoad() const {
 			return flags & EventFlags::kFlag_FlushOnLoad;
 		}
-		[[nodiscard]] bool HasUnknownArgTypes() const
-		{
+		[[nodiscard]] bool HasUnknownArgTypes() const {
 			return flags & EventFlags::kFlag_HasUnknownArgTypes;
 		}
-		[[nodiscard]] bool IsUserDefined() const
-		{
+		[[nodiscard]] bool IsUserDefined() const {
 			return flags & EventFlags::kFlag_IsUserDefined;
 		}
-		[[nodiscard]] bool AllowsScriptDispatch() const
-		{
+		[[nodiscard]] bool AllowsScriptDispatch() const {
 			return flags & EventFlags::kFlag_AllowScriptDispatch;
+		}
+		[[nodiscard]] bool ReportErrorIfNoResultGiven() const {
+			return flags & EventFlags::kFlag_ReportErrorIfNoResultGiven;
 		}
 		// n is 0-based
 		// Assumes that the index was already checked as valid (i.e numParams was checked).
@@ -913,6 +914,7 @@ namespace EventManager
 		}
 
 		DispatchReturn result = DispatchReturn::kRetn_Normal;
+		bool const reportErrorIfNoResultGiven = eventInfo.ReportErrorIfNoResultGiven();
 
 		ScopedLock lock(s_criticalSection);	//for event stack and NativeHandlerResult
 		//TODO: optimize if needed
@@ -943,8 +945,10 @@ namespace EventManager
 					if (resultCallback)
 					{
 						NVSEArrayVarInterface::Element elem;
-						if (PluginAPI::BasicTokenToPluginElem(res.get(), elem, script.Get()))
+						if (PluginAPI::BasicTokenToPluginElem(res.get(), elem, reportErrorIfNoResultGiven ? script.Get() : nullptr)
+							|| !reportErrorIfNoResultGiven)
 						{
+							// Will pass an invalid elem if there is no result and reportErrorIfNoResultGiven is false.
 							return resultCallback(elem, anyData) ? DispatchReturn::kRetn_Normal : DispatchReturn::kRetn_EarlyBreak;
 						}
 						return DispatchReturn::kRetn_GenericError;
@@ -954,18 +958,24 @@ namespace EventManager
 				[=, &args](NativeEventHandlerInfo const handlerInfo) -> DispatchReturn
 				{
 					g_NativeHandlerResult = nullptr;
-					handlerInfo.m_func(thisObj, args->data());  // g_NativeHandlerResult may change
+					handlerInfo.m_func(thisObj, args->data());  // g_NativeHandlerResult may change, needs a lock
 
 					if (resultCallback)
 					{
 						if (!g_NativeHandlerResult)
 						{
-							ShowRuntimeError(nullptr, "Internal (native) handler called from plugin failed to return a value when one was expected.");
+							if (!reportErrorIfNoResultGiven)
+							{
+								NVSEArrayVarInterface::Element elem{};
+								return resultCallback(elem, anyData) ? DispatchReturn::kRetn_Normal : DispatchReturn::kRetn_EarlyBreak;
+							}
+
+							ShowRuntimeError(nullptr, "Internal (native) handler (%s) called from plugin %s failed to return a value when one was expected.",
+								handlerInfo.m_handlerName, handlerInfo.m_pluginName);
 							return DispatchReturn::kRetn_GenericError;
 						}
 						return resultCallback(*g_NativeHandlerResult, anyData) ? DispatchReturn::kRetn_Normal : DispatchReturn::kRetn_EarlyBreak;
 					}
-
 					return DispatchReturn::kRetn_Normal;
 				},
 				}, callback.toCall);
