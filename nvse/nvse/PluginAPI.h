@@ -854,6 +854,12 @@ struct NVSEEventManagerInterface
 
 		// When implicitly creating a new event via the script function SetEventHandler(Alt), these flags are set.
 		kFlag_IsUserDefined = kFlag_HasUnknownArgTypes | kFlag_AllowScriptDispatch,
+
+		// If on, for events with a DispatchCallback, will report an error if no callback result is passed by an event handler.
+		// (This happens if SetFunctionValue isn't used anywhere during a script callback, for example).
+		// (Reporting an error will also prevent other handlers from executing).
+		// Otherwise, the callback will be sent an ArrayElement with Invalid type. 
+		kFlag_ReportErrorIfNoResultGiven = 1 << 3
 	};
 
 	// Registers a new event which can be dispatched to scripts and plugins.
