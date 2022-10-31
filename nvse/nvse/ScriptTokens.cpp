@@ -1590,30 +1590,51 @@ double ScriptToken::GetNumericRepresentation(bool bFromHex, bool* hasErrorOut) c
 	else if (CanConvertTo(kTokenType_String))
 	{
 		const char *str = GetString();
-
+		bool bFromBin = false;
 		if (!bFromHex)
 		{
 			// if string begins with "0x", interpret as hex
+			// if it begins with "0b", interpret as binary
 			Tokenizer tok(str, " \t\r\n");
-			std::string pre;
-			if (tok.NextToken(pre) != -1 && pre.length() >= 2 && !StrCompare(pre.substr(0, 2).c_str(), "0x"))
-				bFromHex = true;
+			if (std::string pre;
+				tok.NextToken(pre) != -1 && pre.length() >= 2)
+			{
+				if (!StrCompare(pre.substr(0, 2).c_str(), "0x"))
+					bFromHex = true;
+				else if (!StrCompare(pre.substr(0, 2).c_str(), "0b"))
+				{
+					str += 2;	//ignore first two characters, otherwise strtol breaks.
+					bFromBin = true;
+				}
+			}
 		}
 
-		if (!bFromHex)
-		{
-			char* endPtr;
-			result = std::strtod(str, &endPtr);
-			if (hasErrorOut)
-				*hasErrorOut = endPtr == str || errno == ERANGE;
-		}
-		else
+		// errno can be set to any non-zero value by a library function call
+		// regardless of whether there was an error, so it needs to be cleared
+		// in order to check the error set by strtol / strtod
+		errno = 0;
+
+		if (bFromHex)
 		{
 			UInt32 hexInt = 0;
 			int const successes = sscanf_s(str, "%x", &hexInt);
 			result = (double)hexInt;
 			if (hasErrorOut)
 				*hasErrorOut = successes <= 0;
+		}
+		else if (bFromBin)
+		{
+			char* endPtr;
+			result = static_cast<double>(strtol(str, &endPtr, 2));
+			if (hasErrorOut)
+				*hasErrorOut = endPtr == str || errno == ERANGE;
+		}
+		else
+		{
+			char* endPtr;
+			result = std::strtod(str, &endPtr);
+			if (hasErrorOut)
+				*hasErrorOut = endPtr == str || errno == ERANGE;
 		}
 	}
 
