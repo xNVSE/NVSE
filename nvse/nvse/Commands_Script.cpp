@@ -640,6 +640,11 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 							eval.Error("Invalid index %d passed (arg indices start from 1, and callingReference is filter #0).", index);
 							return false;
 						}
+						if (index > EventManager::kNumMaxFilters) [[unlikely]]
+						{
+							eval.Error("Invalid index %d passed (max filter index is %d).", index, static_cast<int>(EventManager::kNumMaxFilters));
+							return false;
+						}
 
 						const auto basicToken = pair->right->ToBasicToken();
 						SelfOwningArrayElement element;
