@@ -13,7 +13,7 @@
 
 Changelogs and all releases are provided in the releases section. Do not try to install using the Code .zip source code button GitHub shows.
 
-Releases are also available on [Nexus Mods](https://www.nexusmods.com/newvegas/mods/67883)
+Releases are also available on [Nexus Mods](https://www.nexusmods.com/newvegas/mods/67883).
 
 ## Installation
 
