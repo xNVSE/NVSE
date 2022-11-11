@@ -547,5 +547,8 @@
     <Text Include="unit_tests\conversions_between_num_and_string.txt">
       <Filter>unit tests</Filter>
     </Text>
+    <Text Include="unit_tests\variable_declarations.txt">
+      <Filter>unit tests</Filter>
+    </Text>
   </ItemGroup>
 </Project>
