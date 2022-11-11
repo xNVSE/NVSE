@@ -366,7 +366,7 @@ void RegisterLoopStart(UInt8 *offsetPtr)
 
 bool HandleLoopEnd(UInt32 offsetToEnd)
 {
-	if (!s_loopStartOffsets.size())
+	if (s_loopStartOffsets.empty())
 		return false;
 
 	UInt8 *startPtr = s_loopStartOffsets.top();
@@ -383,7 +383,7 @@ std::stack<Script*> g_currentScriptStack;
 bool __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 {
 	// empty out the loop stack
-	while (s_loopStartOffsets.size())
+	while (!s_loopStartOffsets.empty())
 		s_loopStartOffsets.pop();
 
 	// Preprocess the script:
@@ -392,17 +392,21 @@ bool __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 	//  - check for use of ResetAllVariables on scripts containing string/array vars
 	g_currentScriptStack.push(script);
 
-	bool bResult = PrecompileScript(buf);
+#if EDITOR // Avoid the precompile checker overhead for runtime script compilation.
+	const bool bResult = PrecompileScript(buf);
 	if (bResult)
 	{
 		ScriptAndScriptBuffer msg{ script, buf };
-		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_Precompile, &msg, sizeof(ScriptAndScriptBuffer), NULL);
+		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptEditorPrecompile, &msg, sizeof(ScriptAndScriptBuffer), NULL);
 	}
 
 	if (!bResult)
 		buf->errorCode = 1;
 
 	return bResult;
+#else
+	return true;
+#endif
 }
 
 void PostScriptCompile()
@@ -441,6 +445,7 @@ __declspec(naked) void HookBeginScriptCompile()
 	}
 }
 
+#if 0
 __declspec(naked) void HookEndScriptCompile()
 {
 	__asm
@@ -453,6 +458,7 @@ __declspec(naked) void HookEndScriptCompile()
 		ret 8
 	}
 }
+#endif
 
 bool __fastcall ScriptCompileHook(void* compiler, void* _EDX, Script* script, ScriptBuffer* scriptBuffer)
 {

@@ -5472,9 +5472,9 @@ bool Preprocessor::Process()
 				bIsBlockKeyword = true;
 				if (cur->IsTerminator())
 				{
-					if (!blockStack.size() || blockStack.top() != cur->type)
+					if (blockStack.empty() || blockStack.top() != cur->type)
 					{
-						const char *blockStr = BlockTypeAsString(blockStack.size() ? blockStack.top() : cur->type);
+						const char *blockStr = BlockTypeAsString(!blockStack.empty() ? blockStack.top() : cur->type);
 						g_ErrOut.Show("Invalid %s block structure on line %d.", blockStr, m_curLineNo);
 						return false;
 					}

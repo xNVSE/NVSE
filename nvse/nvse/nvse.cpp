@@ -46,6 +46,7 @@ UInt32 et;
 UInt32 au3D;
 bool g_warnScriptErrors = false;
 bool g_noSaveWarnings = false;
+std::filesystem::path g_pluginLogPath;
 
 void WaitForDebugger(void)
 {
@@ -115,6 +116,10 @@ void NVSE_Initialize(void)
 #endif
 		_memcpy = memcpy;
 		_memmove = memmove;
+
+		g_pluginLogPath = GetNVSEConfigOption("LOGGING", "sPluginPath");
+		if (g_pluginLogPath.has_extension() || g_pluginLogPath.has_filename()) [[unlikely]]
+			g_pluginLogPath = "";
 
 		gLog.SetLogLevel((IDebugLog::LogLevel)logLevel);
 

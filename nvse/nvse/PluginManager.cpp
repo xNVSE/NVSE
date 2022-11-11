@@ -1,4 +1,5 @@
 #include "PluginManager.h"
+
 #include "CommandTable.h"
 #include "common/IDirectoryIterator.h"
 #include "ParamInfos.h"
@@ -21,6 +22,9 @@
 #else
 #include "Hooks_Script.h"
 #endif
+
+#include <filesystem>
+extern std::filesystem::path g_pluginLogPath;
 
 PluginManager	g_pluginManager;
 
@@ -153,6 +157,10 @@ static const NVSEEventManagerInterface g_NVSEEventManagerInterface =
 };
 #endif
 
+static const NVSELoggingInterface g_NVSELoggingInterface =
+{
+	g_pluginLogPath.c_str()
+};
 
 PluginManager::~PluginManager()
 {
@@ -411,6 +419,9 @@ void * PluginManager::QueryInterface(UInt32 id)
 		result = (void*)&g_NVSEEventManagerInterface;
 		break;
 #endif
+	case kInterface_LoggingInterface:
+		result = (void*)&g_NVSELoggingInterface;
+		break;
 	default:
 		_WARNING("unknown QueryInterface %08X", id);
 		break;
