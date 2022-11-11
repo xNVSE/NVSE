@@ -27,7 +27,7 @@ struct ScriptAndScriptBuffer
 };
 
 #if RUNTIME
-void PatchScriptCompile();
+void PatchRuntimeScriptCompile();
 const UInt32 ExtractStringPatchAddr = 0x005ADDCA; // ExtractArgs: follow first jz inside loop then first case of following switch: last call in case.
 const UInt32 ExtractStringRetnAddr = 0x005ADDE3;
 
@@ -258,7 +258,7 @@ void Hook_Script_Init()
 	
 	WriteRelJump(0x5949D4, reinterpret_cast<UInt32>(ExpressionEvalRunCommandHook));
 
-	PatchScriptCompile();
+	PatchRuntimeScriptCompile();
 }
 
 #else // CS-stuff
@@ -386,97 +386,107 @@ bool __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 	while (!s_loopStartOffsets.empty())
 		s_loopStartOffsets.pop();
 
+	g_currentScriptStack.push(script);
+
 	// Preprocess the script:
 	//  - check for usage of array variables in Set statements (disallowed)
 	//  - check loop structure integrity
 	//  - check for use of ResetAllVariables on scripts containing string/array vars
-	g_currentScriptStack.push(script);
-
-#if EDITOR // Avoid the precompile checker overhead for runtime script compilation.
 	const bool bResult = PrecompileScript(buf);
 	if (bResult)
 	{
 		ScriptAndScriptBuffer msg{ script, buf };
-		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptEditorPrecompile, &msg, sizeof(ScriptAndScriptBuffer), NULL);
+		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptEditorPrecompile, 
+			&msg, sizeof(ScriptAndScriptBuffer), NULL);
 	}
 
 	if (!bResult)
 		buf->errorCode = 1;
 
 	return bResult;
-#else
-	return true;
-#endif
 }
 
 void PostScriptCompile()
 {
-	g_currentScriptStack.pop();
-	g_variableDefinitionsMap.clear();
+	if (!g_currentScriptStack.empty())
+	{
+		g_currentScriptStack.pop();
+	}
+	else
+	{
+		// Avoid clearing the variables map after parsing a lambda script that belongs to a parent script.
+		g_variableDefinitionsMap.clear();
+	}
 }
 
 #if RUNTIME
 
-__declspec(naked) void HookBeginScriptCompile()
+namespace Runtime // double-clarify
 {
-	const static auto retnAddr = 0x5AEB99;
-	__asm
+	bool __fastcall HandleBeginCompile_SetNotCompiled(Script* script, ScriptBuffer* buf, bool isCompiled)
 	{
-		// replaced stuff
-		push ebp
-		mov ebp, esp
-		sub esp, 0x18
-		mov [ebp-0x18], ecx
-		// our stuff
-		mov ecx, [ebp + 0x8] // Script*
-		push ecx
-		mov edx, [ebp+0xC] // ScriptBuffer*
-		push edx
-		call HandleBeginCompile
-		test al, al
-		jnz success
-		// fail
-		mov al, 0
-		mov esp, ebp
-		pop ebp
-		ret 8
-	success:
-		jmp retnAddr
+		script->info.compiled = isCompiled; // will be false.
+		return HandleBeginCompile(buf, script);
+	}
+
+	__declspec(naked) void HookBeginScriptCompile()
+	{
+		const static auto retnAddr = 0x5AEBB6;
+		const static auto failAddr = 0x5AEDA0;
+		__asm
+		{
+			mov edx, [ebp + 0xC] //scriptBuffer
+			call HandleBeginCompile_SetNotCompiled
+			test al, al
+			jnz success
+			// fail
+			jmp failAddr //jump here to land in HookEndScriptCompile.
+
+			success:
+			jmp retnAddr
+		}
+	}
+
+	bool __fastcall HookEndScriptCompile_Call(UInt32 success, void* edx)
+	{
+		if (success)
+		{
+			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress());
+			auto* buf = *reinterpret_cast<ScriptBuffer**>(ebp + 0xC);
+
+			ScriptAndScriptBuffer data{ g_currentScriptStack.top(), buf };
+			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptCompile, 
+				&data, sizeof(ScriptAndScriptBuffer), nullptr);
+		}
+		PostScriptCompile();
+		return success;
+	}
+
+	__declspec(naked) void HookEndScriptCompile()
+	{
+		__asm
+		{
+			// pass the result, al.
+			movzx ecx, al
+			call HookEndScriptCompile_Call
+			// al still contains the result since the function returns it.
+
+			// do what we overwrote
+			mov esp, ebp
+			pop ebp
+			ret 8
+		}
 	}
 }
 
-#if 0
-__declspec(naked) void HookEndScriptCompile()
-{
-	__asm
-	{
-		push eax
-		call PostScriptCompile
-		pop eax
-		mov esp, ebp
-		pop ebp
-		ret 8
-	}
-}
-#endif
 
-bool __fastcall ScriptCompileHook(void* compiler, void* _EDX, Script* script, ScriptBuffer* scriptBuffer)
+void PatchRuntimeScriptCompile()
 {
-	if (!HandleBeginCompile(scriptBuffer, script))
-		return false;
-	const auto result = ThisStdCall(0x5AEB90, compiler, script, scriptBuffer);
-	if (result)
-	{
-		ScriptAndScriptBuffer data{ script, scriptBuffer };
-		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptCompile, &data, sizeof(ScriptAndScriptBuffer), nullptr);
-	}
-	PostScriptCompile();
-	return result;
-}
+	// Hooks a Script::SetIsCompiled call at the start of the function.
+	WriteRelCall(0x5AEBB1, reinterpret_cast<UInt32>(Runtime::HookBeginScriptCompile));
 
-void PatchScriptCompile()
-{
-	WriteRelCall(0x5AEE9C, reinterpret_cast<UInt32>(ScriptCompileHook));
+	// Hooks the end (epilogue) of the function.
+	WriteRelCall(0x5AEDA0, reinterpret_cast<UInt32>(Runtime::HookEndScriptCompile));
 
 	RemoveScriptDataLimit::WriteHook();
 

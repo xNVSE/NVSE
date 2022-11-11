@@ -686,7 +686,8 @@ void ShowRuntimeError(Script* script, const char* fmt, ...)
 	if (script && LambdaManager::IsScriptLambda(script))
 	{
 		Script* parentScript;
-		if (auto* parentEventList = LambdaManager::GetParentEventList(script); parentEventList && ((parentScript = parentEventList->m_script)))
+		if (auto* parentEventList = LambdaManager::GetParentEventList(script); 
+			parentEventList && ((parentScript = parentEventList->m_script)))
 		{
 			refId = parentScript->refID;
 			scriptName = parentScript->GetName();

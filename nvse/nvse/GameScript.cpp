@@ -180,7 +180,7 @@ bool Script::Compile(ScriptBuffer* buffer)
 	const auto address = 0x5C96E0;
 	auto* scriptCompiler = (void*)0xECFDF8;
 #else
-	const auto address = 0x5AEB90;
+	constexpr auto address = 0x5AEB90;
 	auto* scriptCompiler = ConsoleManager::GetSingleton()->scriptContext;
 #endif
 	return ThisStdCall<bool>(address, scriptCompiler, this, buffer); // CompileScript
