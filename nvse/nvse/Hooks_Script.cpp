@@ -408,14 +408,13 @@ bool __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 
 void PostScriptCompile()
 {
-	if (!g_currentScriptStack.empty())
+	if (!g_currentScriptStack.empty()) // could be empty here at runtime if the ScriptBuffer or Script are nullptr.
 	{
 		g_currentScriptStack.pop();
-	}
-	else
-	{
+
 		// Avoid clearing the variables map after parsing a lambda script that belongs to a parent script.
-		g_variableDefinitionsMap.clear();
+		if (g_currentScriptStack.empty())
+			g_variableDefinitionsMap.clear(); // must be the parent script we just removed.
 	}
 }
 
