@@ -553,5 +553,8 @@
     <Text Include="unit_tests\multiple_variable_declarations_macro.txt">
       <Filter>unit tests</Filter>
     </Text>
+    <Text Include="unit_tests\short_and_long_param_types_in_UDF.txt">
+      <Filter>unit tests</Filter>
+    </Text>
   </ItemGroup>
 </Project>

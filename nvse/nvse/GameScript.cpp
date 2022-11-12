@@ -7,6 +7,7 @@
 #include "GameRTTI.h"
 #include "ScriptUtils.h"
 
+// Does NOT list synonyms, only the base types.
 const char *g_variableTypeNames[6] =
 	{
 		"float",
@@ -16,6 +17,7 @@ const char *g_variableTypeNames[6] =
 		"ref",
 		"invalid"};
 
+// Lists all valid variable names, some of which may be synonyms.
 const char* g_validVariableTypeNames[8] =
 {
 	"float",
