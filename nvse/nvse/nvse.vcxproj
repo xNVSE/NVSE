@@ -770,9 +770,10 @@ xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</C
     <Text Include="unit_tests\conversions_between_num_and_string.txt" />
     <Text Include="unit_tests\event_handler_functions.txt" />
     <Text Include="unit_tests\event_handler_priority_system.txt" />
+    <Text Include="unit_tests\let_macro.txt" />
+    <Text Include="unit_tests\multiple_variable_declarations_macro.txt" />
     <Text Include="unit_tests\TestExpr.txt" />
     <Text Include="unit_tests\udf_functions.txt" />
-    <Text Include="unit_tests\variable_declarations.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

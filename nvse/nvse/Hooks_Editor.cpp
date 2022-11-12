@@ -544,7 +544,7 @@ std::vector g_lineMacros =
 			std::make_pair("%=", R"(\%\=)"),
 		};
 		std::string optVarTypeDecl; // int, ref etc in int iVar = 10 for example
-		for (auto& varType : g_variableTypeNames)
+		for (auto& varType : g_validVariableTypeNames)
 		{
 			if (_stricmp(line.substr(0, strlen(varType)).c_str(), varType) == 0 && isspace(line[strlen(varType)]))
 			{
@@ -621,7 +621,11 @@ std::vector g_lineMacros =
 #else
 			auto* errorBuf = lineBuf;
 #endif
-			ra::for_each(tokens, _L(auto& varName, CreateVariable(currentScript, scriptBuf, varName, VariableTypeNameToType(typeName), _L(auto& msg, ShowCompilerError(errorBuf, "%s", msg.c_str())))));
+
+			ra::for_each(tokens,
+			_L(auto &varName,
+				CreateVariable(currentScript, scriptBuf, varName, VariableTypeNameToType(typeName),
+					_L(auto &msg, ShowCompilerError(errorBuf, "%s", msg.c_str())))));
 		}
 		return false;
 	}, MacroType::MultipleVariableDeclaration)

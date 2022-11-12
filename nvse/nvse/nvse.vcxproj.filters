@@ -547,7 +547,10 @@
     <Text Include="unit_tests\conversions_between_num_and_string.txt">
       <Filter>unit tests</Filter>
     </Text>
-    <Text Include="unit_tests\variable_declarations.txt">
+    <Text Include="unit_tests\let_macro.txt">
+      <Filter>unit tests</Filter>
+    </Text>
+    <Text Include="unit_tests\multiple_variable_declarations_macro.txt">
       <Filter>unit tests</Filter>
     </Text>
   </ItemGroup>
