@@ -58,7 +58,13 @@ void WaitForDebugger(void)
 	Sleep(1000 * 2);
 }
 
-
+// Moved to a separate function, since strings can throw, and NVSE_Initialize has a __try block which doesn't allow that.
+void ReadNVSEPluginLogPath()
+{
+	g_pluginLogPath = GetNVSEConfigOption("LOGGING", "sPluginPath");
+	if (g_pluginLogPath.has_extension() || g_pluginLogPath.has_filename()) [[unlikely]]
+		g_pluginLogPath = "";
+}
 
 void NVSE_Initialize(void)
 {
@@ -117,9 +123,7 @@ void NVSE_Initialize(void)
 		_memcpy = memcpy;
 		_memmove = memmove;
 
-		g_pluginLogPath = GetNVSEConfigOption("LOGGING", "sPluginPath");
-		if (g_pluginLogPath.has_extension() || g_pluginLogPath.has_filename()) [[unlikely]]
-			g_pluginLogPath = "";
+		ReadNVSEPluginLogPath();
 
 		gLog.SetLogLevel((IDebugLog::LogLevel)logLevel);
 
