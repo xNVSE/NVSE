@@ -61,7 +61,7 @@ void WaitForDebugger(void)
 // Moved to a separate function, since strings can throw, and NVSE_Initialize has a __try block which doesn't allow that.
 void ReadNVSEPluginLogPath()
 {
-	g_pluginLogPath = GetNVSEConfigOption("LOGGING", "sPluginPath");
+	g_pluginLogPath = GetNVSEConfigOption("LOGGING", "sPluginLogPath");
 	if (g_pluginLogPath.has_extension() || g_pluginLogPath.has_filename()) [[unlikely]]
 		g_pluginLogPath = "";
 }
