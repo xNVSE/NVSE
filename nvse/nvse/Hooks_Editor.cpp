@@ -557,28 +557,46 @@ std::vector g_lineMacros =
 			}
 		}
 
+#if 0   // code to remove unnecessary spaces from inside array brackets.
+		// TODO: Needs refinement, as currently it removes needed spaces for an inline expression inside brackets.
+		// Ex: it mangles "aTest[(Rand 1, 3)] = 1" into "aTest[(Rand1,3)] = 1", which no longer compiles.
 		const auto arrLeftBracketPos = line.find_first_of('[');
 		if (arrLeftBracketPos != std::string::npos)
 		{
 			const auto arrRightBracketPos = line.find_first_of(']');
 			if (arrRightBracketPos != std::string::npos && arrRightBracketPos > arrLeftBracketPos)
 			{
-				const auto end =line.begin() + arrRightBracketPos;
+				const auto end = line.begin() + arrRightBracketPos;
 				line.erase(std::remove_if(line.begin() + arrLeftBracketPos, end, isspace), end);
 			}
 		}
+#endif
 		
 		for (const auto& [realOp, regexOp] : s_shortHandMacros)
 		{
-			// VARIABLE = VALUE macro 
-			const std::regex assignmentExpr(R"(([a-zA-Z\_\.0-9\[\]\"\-\+\=\*\/\\]+)\s*)" + regexOp + R"(([a-zA-Z\_\s\.\$\!0-9\-\(\{][.\s\S]*))"); // match int ivar = 4
-			if (std::smatch m; std::regex_search(line, m, assignmentExpr, std::regex_constants::match_continuous) && m.size() == 3)
+			// VARIABLE = VALUE macro
+			// Variable type isn't considered for the regex.
+			// Unit tests for the full regex here: https://regex101.com/r/ybBkK8
+
+			// Ex1: Match "ivar = 4"
+			// Ex2: Match "SomeQuest.aTest[(Rand 1, 3)] = "SomeString"
+
+			// Right-side value will be matched in regex group #3
+			// This string composes the majority of groups #2 and #3.
+			std::string matchAnyNVSEExpression =
+				R"([a-zA-Z\_\s\$\!0-9\-\(\{][\.\s\S]*)";
+
+			// Left-side variable/array element will be matched in regex group #1
+			// Allow any NVSE expression to go inside array "[]" operator - this is group #2.
+			std::string regExGroup1And2 = 
+				R"(([a-zA-Z]|[a-zA-Z\_0-9][a-zA-Z\_0-9\.]*[a-zA-Z\_0-9](\[)"
+				+ matchAnyNVSEExpression + R"(\])*)\s*)";
+
+			const std::regex assignmentExpr(regExGroup1And2 + regexOp + '(' + matchAnyNVSEExpression + ')');
+			if (std::smatch m; std::regex_search(line, m, assignmentExpr, std::regex_constants::match_continuous) 
+				&& m.size() == 4)
 			{
-				auto varName = m.str(1);
-				std::erase_if(varName, isspace);
-				if (!std::ranges::any_of(varName, isalpha))
-					return false;
-				line = "let " + optVarTypeDecl + varName + " " + realOp + " " + m.str(2);
+				line = "let " + optVarTypeDecl + m.str(1) + " " + realOp + " " + m.str(3);
 				return true;
 			}
 		}
@@ -745,7 +763,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 					return lineError("Mismatched parenthesis");
 				if (!capturedNonSpace)
 					return 0;
-				// fallback intentional
+				[[fallthrough]];
 			}
 			case '\n':
 			{

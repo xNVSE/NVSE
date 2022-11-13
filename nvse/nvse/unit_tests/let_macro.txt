@@ -26,6 +26,18 @@ print "Starting xNVSE let macro unit tests."
 	int iTest6 = 6
 	assert (iTest6 == 6)
 	
+	
+	;== Test having an inline expression and using array [] operator
+	
+	array_var aTest = ar_Init 5 0  ; create array with 5 0s
+	aTest[(Rand 1, 2)] = 1  ; should generate 1 every time
+	assert (aTest[1] == 1)
+
+	ref rReturnAdd = ({ int iArg0, int iArg1 } => iArg0 + iArg1)
+	aTest[(call rReturnAdd 1, 2)] = 1
+	assert (aTest[3] == 1)
+	
+	
 print "Finished xNVSE let macro unit tests."
 
 
