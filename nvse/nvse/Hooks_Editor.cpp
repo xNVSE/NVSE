@@ -584,12 +584,12 @@ std::vector g_lineMacros =
 			// Right-side value will be matched in regex group #3
 			// This string composes the majority of groups #2 and #3.
 			std::string matchAnyNVSEExpression =
-				R"([a-zA-Z\_\s\$\!0-9\-\(\{][\.\s\S]*)";
+				R"([\w\s\$\!\-\(\{][\.\s\S]*)";
 
 			// Left-side variable/array element will be matched in regex group #1
 			// Allow any NVSE expression to go inside array "[]" operator - this is group #2.
 			std::string regExGroup1And2 = 
-				R"(([a-zA-Z]|[a-zA-Z\_0-9][a-zA-Z\_0-9\.]*[a-zA-Z\_0-9](\[)"
+				R"(([a-zA-Z]|\w[\w\.]*[\w](\[)"
 				+ matchAnyNVSEExpression + R"(\])*)\s*)";
 
 			const std::regex assignmentExpr(regExGroup1And2 + regexOp + '(' + matchAnyNVSEExpression + ')');
