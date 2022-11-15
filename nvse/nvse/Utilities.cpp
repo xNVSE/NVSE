@@ -441,7 +441,8 @@ ScriptTokenizer::ScriptTokenizer(std::string_view scriptText) : m_scriptText(scr
 bool ScriptTokenizer::TryLoadNextLine()
 {
 	m_loadedLineTokens = {};
-	if (m_offset == m_scriptText.length())
+	m_tokenOffset = 0;
+	if (m_scriptOffset == m_scriptText.length())
 		return false;
 
 	auto GetLineEndPos = [this](size_t startPos) -> size_t
@@ -469,12 +470,12 @@ bool ScriptTokenizer::TryLoadNextLine()
 	};
 
 	// Ignore spaces and newlines at the start - find the start of a REAL line.
-	if (auto lineStart = m_scriptText.find_first_not_of(" \t\n\r", m_offset);
-		lineStart != std::string_view::npos)
+	if (auto linePos = m_scriptText.find_first_not_of(" \t\n\r", m_scriptOffset);
+		linePos != std::string_view::npos)
 	{
 		if (m_inMultilineComment)
 		{
-			auto const multilineCommentEndStartPos = m_scriptText.find("*/", lineStart);
+			auto const multilineCommentEndStartPos = m_scriptText.find("*/", linePos);
 			if (multilineCommentEndStartPos == std::string_view::npos)
 				return false; // unable to find an end to the multiline comment (xEdit shenanigans?)
 			m_inMultilineComment = false;
@@ -483,30 +484,29 @@ bool ScriptTokenizer::TryLoadNextLine()
 
 			// If there was a ';' comment inside of the multiline comment on the line where it ended,
 			// .. it will still comment out the rest of the line.
-			if (auto const simpleCommentStart = m_scriptText.find_first_of(";", lineStart, multilineCommentEndStartPos - 1);
+			if (auto const simpleCommentStart = m_scriptText.find_first_of(";", linePos, multilineCommentEndStartPos - 1);
 				simpleCommentStart != std::string_view::npos)
 			{
 				// Line is commented out; ignore it and try loading the next one.
-				m_offset = GetNextLineStartPos(multilineCommentEndStartPos + 2);
+				m_scriptOffset = GetNextLineStartPos(multilineCommentEndStartPos + 2);
 				return TryLoadNextLine();
 			}
 			//else, there might be something left in this line.
-			lineStart = multilineCommentEndStartPos + 2;
+			linePos = multilineCommentEndStartPos + 2;
 		}
 
 		// If line is empty, skip to a new line.
-		lineStart = m_scriptText.find_first_not_of(" \t\n\r", lineStart);
-		if (lineStart == std::string_view::npos)
-			return false;
+		linePos = m_scriptText.find_first_not_of(" \t\n\r", linePos);
+		if (linePos == std::string_view::npos)
+			return false; // rest of file is empty
 
 		// Handle comments and load tokens within a line.
-		for (auto const lineEnd = GetLineEndPos(lineStart); lineStart != lineEnd; 
-			lineStart = m_scriptText.find_first_not_of(" \t", lineStart /* +1 ?*/))
+		for (auto const lineEndPos = GetLineEndPos(linePos); true; )
 		{
 			// Check if the rest of the line is commented out via ';'.
-			if (m_scriptText.at(lineStart) == ';')
+			if (m_scriptText.at(linePos) == ';')
 			{
-				m_offset = GetNextLineStartPos(lineStart + 1);
+				m_scriptOffset = GetNextLineStartPos(linePos + 1);
 				if (m_loadedLineTokens.empty())
 				{
 					// Line is fully commented out; ignore it and try loading the next one.
@@ -516,37 +516,39 @@ bool ScriptTokenizer::TryLoadNextLine()
 				return true;
 			}
 
-			if (auto const multilineCommentStart = m_scriptText.find("/*", lineStart);
-				multilineCommentStart != std::string_view::npos)
+			if (m_scriptText.find("/*", linePos) != std::string_view::npos)
 			{
-				lineStart += 2; // skip the "/*" chars
-				if (auto const multilineCommentEnd = m_scriptText.find("*/", lineStart, lineEnd - lineStart);
-					multilineCommentEnd == std::string_view::npos)
+				linePos += 2; // skip the "/*" chars
+				if (auto const endMultilineCommentStartPos = m_scriptText.find("*/", linePos, lineEndPos - linePos);
+					endMultilineCommentStartPos == std::string_view::npos)
 				{
-					// unable to find an end to the multiline comment (xEdit shenanigans?)
-					return false;
-				}
-				else if (multilineCommentEnd < lineEnd)
-				{
-					// Multiline comment ends early in the line.
-					//TODO
-					//What if pos are equal??
+					// Couldn't find the end of the multiline comment on this line.
+					// Handle multiline comment that spans multiple lines.
+					m_inMultilineComment = true;
+					m_scriptOffset = m_scriptText.find_first_not_of(" \t\n\r", lineEndPos);
+					return TryLoadNextLine();
 				}
 				else
 				{
-					// Handle multiline comment that spans multiple lines.
-					m_inMultilineComment = true;
-					m_offset = m_scriptText.find_first_not_of(" \t\n\r", lineEnd);
-					return TryLoadNextLine();
+					// else, multiline comment ends in this line.
+					// There might be tokens left in this line; if not, skip to the next.
+					linePos = m_scriptText.find_first_not_of(" \t\n\r", endMultilineCommentStartPos + 2);
+					if (linePos == std::string_view::npos)
+						return false; // rest of file is empty
 				}
 			}
 
-			m_loadedLine = m_scriptText.substr(lineStart, nextLineStartPos - lineStart - 1);
+			// linePos should now point to the start of a token.
+			auto const endOfTokenPos = m_scriptText.find_last_not_of(" \t\n\r", linePos);
+			m_loadedLineTokens.emplace_back(m_scriptText.substr(linePos, endOfTokenPos));
 
+			linePos = m_scriptText.find_first_not_of(" \t", endOfTokenPos + 1);
+			if (linePos == lineEndPos)
+				break;
 		}
 
-		m_offset = GetNextLineStartPos(lineStart);
-		return true;
+		m_scriptOffset = GetNextLineStartPos(linePos);
+		return !m_loadedLineTokens.empty();
 	}
 	// else, rest of script is just spaces
 	return false;
@@ -554,9 +556,9 @@ bool ScriptTokenizer::TryLoadNextLine()
 
 std::string_view ScriptTokenizer::GetNextLineToken()
 {
-	if (m_loadedLineTokens.empty())
+	if (m_loadedLineTokens.empty() || m_tokenOffset >= m_loadedLineTokens.size())
 		return "";
-
+	return m_loadedLineTokens.at(++m_tokenOffset);
 }
 
 #if RUNTIME

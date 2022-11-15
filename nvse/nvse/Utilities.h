@@ -139,8 +139,9 @@ public:
 
 private:
 	std::string_view m_scriptText;
+	size_t			 m_scriptOffset = 0;
 	std::vector<std::string_view> m_loadedLineTokens;
-	size_t			 m_offset = 0;
+	size_t			 m_tokenOffset = 0;
 	bool			 m_inMultilineComment = false;
 };
 
