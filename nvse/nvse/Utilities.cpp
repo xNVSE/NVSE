@@ -539,10 +539,15 @@ bool ScriptTokenizer::TryLoadNextLine()
 			}
 
 			// linePos should now point to the start of a token.
-			auto const endOfTokenPos = m_scriptText.find_last_not_of(" \t\n\r", linePos);
+
+			// this var contain
+			// s the post-the-end character position for the token.
+			auto endOfTokenPos = m_scriptText.find_first_of(" \t\n\r", linePos);
+			if (endOfTokenPos == std::string_view::npos)
+				endOfTokenPos = m_scriptText.size();
 			m_loadedLineTokens.emplace_back(m_scriptText.substr(linePos, endOfTokenPos - linePos));
 
-			linePos = m_scriptText.find_first_not_of(" \t", endOfTokenPos + 1);
+			linePos = m_scriptText.find_first_not_of(" \t", endOfTokenPos);
 			if (linePos == lineEndPos)
 				break;
 		}
@@ -558,7 +563,7 @@ std::string_view ScriptTokenizer::GetNextLineToken()
 {
 	if (m_loadedLineTokens.empty() || m_tokenOffset >= m_loadedLineTokens.size())
 		return "";
-	return m_loadedLineTokens.at(++m_tokenOffset);
+	return m_loadedLineTokens.at(m_tokenOffset++);
 }
 
 #if RUNTIME
