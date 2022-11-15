@@ -540,8 +540,7 @@ bool ScriptTokenizer::TryLoadNextLine()
 
 			// linePos should now point to the start of a token.
 
-			// this var contain
-			// s the post-the-end character position for the token.
+			// this var contains the post-the-end character position for the token.
 			auto endOfTokenPos = m_scriptText.find_first_of(" \t\n\r", linePos);
 			if (endOfTokenPos == std::string_view::npos)
 				endOfTokenPos = m_scriptText.size();
