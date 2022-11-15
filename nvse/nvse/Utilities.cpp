@@ -540,7 +540,7 @@ bool ScriptTokenizer::TryLoadNextLine()
 
 			// linePos should now point to the start of a token.
 			auto const endOfTokenPos = m_scriptText.find_last_not_of(" \t\n\r", linePos);
-			m_loadedLineTokens.emplace_back(m_scriptText.substr(linePos, endOfTokenPos));
+			m_loadedLineTokens.emplace_back(m_scriptText.substr(linePos, endOfTokenPos - linePos));
 
 			linePos = m_scriptText.find_first_not_of(" \t", endOfTokenPos + 1);
 			if (linePos == lineEndPos)

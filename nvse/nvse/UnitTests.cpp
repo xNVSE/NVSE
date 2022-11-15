@@ -81,6 +81,28 @@ namespace JIPContainerTests
 	}
 }
 
+namespace ScriptTokenizerTests
+{
+	void RunTests()
+	{
+		std::string scriptText1 = "; /*\n; This is NOT counted as a multiline comment! Needed ';' just to compile.\n\n; */\n";
+		scriptText1 += "I_am_the_first_valid_token, I'm_the_second\n";
+		ScriptTokenizer tokenizer1(scriptText1);
+
+		ASSERT(tokenizer1.TryLoadNextLine() == true);
+
+		auto tokenView = tokenizer1.GetNextLineToken();
+		ASSERT(tokenView == "I_am_the_first_valid_token,");
+
+		tokenView = tokenizer1.GetNextLineToken();
+		ASSERT(tokenView == "I'm_the_second");
+
+		ASSERT(tokenizer1.TryLoadNextLine() == false);
+
+		Console_Print("Finished running xNVSE ScriptTokenizer unit tests.");
+	}
+}
+
 void ExecuteRuntimeUnitTests()
 {
 	if (!s_AreRuntimeTestsEnabled)
