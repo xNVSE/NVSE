@@ -64,7 +64,7 @@ const char* VariableTypeToName(Script::VariableType type)
 	case Script::eVarType_Array: return "array";
 	case Script::eVarType_Ref: return "ref";
 	case Script::eVarType_Invalid: 
-	default: return "invalid";;
+	default: return "invalid";
 	}
 }
 
@@ -84,7 +84,8 @@ Script::VariableType GetDeclaredVariableType(const char* varName, const char* sc
 		if (tokens.NextToken(curToken) != -1)
 		{
 			const auto varType = VariableTypeNameToType(curToken.c_str());
-			if (varType != Script::eVarType_Invalid && tokens.NextToken(curToken) != -1 && !StrCompare(curToken.c_str(), varName))
+			if (varType != Script::eVarType_Invalid && tokens.NextToken(curToken) != -1 
+				&& !StrCompare(curToken.c_str(), varName))
 			{
 #if NVSE_CORE
 				SaveVarType(script, varName, varType);

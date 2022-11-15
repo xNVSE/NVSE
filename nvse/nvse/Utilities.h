@@ -108,7 +108,7 @@ class Tokenizer
 {
 public:
 	Tokenizer(const char* src, const char* delims);
-	~Tokenizer();
+	~Tokenizer() = default;
 
 	// these return the offset of token in src, or -1 if no token
 	UInt32 NextToken(std::string& outStr);
@@ -119,6 +119,29 @@ private:
 	std::string m_delims;
 	size_t		m_offset;
 	std::string m_data;
+};
+
+
+// For parsing lexical tokens inside script text line-by-line, while skipping over those inside comments.
+class ScriptTokenizer
+{
+public:
+	ScriptTokenizer(std::string_view scriptText);
+	~ScriptTokenizer() = default;
+
+	// Returns true if a new line could be read, false at the end of the script.
+	// Skips over commented-out lines.
+	[[nodiscard]] bool TryLoadNextLine();
+
+	// Gets the next space-separated token from the loaded line, ignoring tokens placed inside comments.
+	// Returns an empty string_view if no line is loaded / end-of-line is reached.
+	std::string_view GetNextLineToken();
+
+private:
+	std::string_view m_scriptText;
+	std::vector<std::string_view> m_loadedLineTokens;
+	size_t			 m_offset = 0;
+	bool			 m_inMultilineComment = false;
 };
 
 #if RUNTIME
