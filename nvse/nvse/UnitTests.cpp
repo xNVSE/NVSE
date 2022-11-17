@@ -151,6 +151,25 @@ namespace ScriptTokenizerTests
 			ASSERT(tokenView == "I_am_the_first_valid_token_on_line_2");
 		}
 
+		{
+			std::string scriptText = "\n\tI_am_the_first_valid_token_on_line_1,\t  I'm_the_second\t \t \n";
+			scriptText += "\n\n\t   \t\nI_am_the_first_valid_token_on_line_2  ";
+			ScriptTokenizer tokenizer(scriptText);
+
+			ASSERT(tokenizer.TryLoadNextLine() == true);
+
+			auto tokenView = tokenizer.GetNextLineToken();
+			ASSERT(tokenView == "I_am_the_first_valid_token_on_line_1,");
+
+			tokenView = tokenizer.GetNextLineToken();
+			ASSERT(tokenView == "I'm_the_second");
+
+			ASSERT(tokenizer.TryLoadNextLine() == true);
+
+			tokenView = tokenizer.GetNextLineToken();
+			ASSERT(tokenView == "I_am_the_first_valid_token_on_line_2");
+		}
+
 		// Test two lines, with comments in-between: 1st has 2 tokens, 2nd has 1.
 		{
 			std::string scriptText = "/* */ \tI_am_the_first_valid_token_on_line_1,/* */\t /* */  I'm_the_second /* */ \n";
@@ -208,7 +227,7 @@ namespace ScriptTokenizerTests
 			ASSERT(tokenView == "\" ;I am a complete and valid token! \"");
 		}
 
-		// Same as above, but tweaked end of script text.
+		// Same as above, but with tweaked end of script text.
 		{
 			std::string scriptText = "\" ;I am a complete and valid token! \"";
 			ScriptTokenizer tokenizer(scriptText);
@@ -216,6 +235,90 @@ namespace ScriptTokenizerTests
 			ASSERT(tokenizer.TryLoadNextLine() == true);
 			auto tokenView = tokenizer.GetNextLineToken();
 			ASSERT(tokenView == "\" ;I am a complete and valid token! \"");
+		}
+
+		// Same as above, but with more tokens.
+		{
+			std::string scriptText = "\" ;I am a complete and valid token! \" \" I /* am */ the 2nd token!\"\n";
+			scriptText += "/* */ 1 + 1;";
+			ScriptTokenizer tokenizer(scriptText);
+
+			ASSERT(tokenizer.TryLoadNextLine() == true);
+
+			auto tokenView = tokenizer.GetNextLineToken();
+			ASSERT(tokenView == "\" ;I am a complete and valid token! \"");
+
+			tokenView = tokenizer.GetNextLineToken();
+			ASSERT(tokenView == "\" I /* am */ the 2nd token!\"");
+
+			tokenView = tokenizer.GetNextLineToken();
+			ASSERT(tokenView.empty());
+
+			// 2nd line
+			ASSERT(tokenizer.TryLoadNextLine() == true);
+
+			tokenView = tokenizer.GetNextLineToken();
+			ASSERT(tokenView == "1");
+
+			tokenView = tokenizer.GetNextLineToken();
+			ASSERT(tokenView == "+");
+
+			tokenView = tokenizer.GetNextLineToken();
+			ASSERT(tokenView == "1");
+
+			tokenView = tokenizer.GetNextLineToken();
+			ASSERT(tokenView.empty());
+		}
+
+		// Test no tokens
+		{
+			std::string const scriptText = "\n \t   ;";
+			ScriptTokenizer tokenizer(scriptText);
+
+			ASSERT(tokenizer.TryLoadNextLine() == false);
+
+			auto tokenView = tokenizer.GetNextLineToken();
+			ASSERT(tokenView.empty());
+		}
+
+		{
+			std::string const scriptText = "";
+			ScriptTokenizer tokenizer(scriptText);
+
+			ASSERT(tokenizer.TryLoadNextLine() == false);
+
+			auto tokenView = tokenizer.GetNextLineToken();
+			ASSERT(tokenView.empty());
+		}
+
+		{
+			std::string const scriptText = "  ";
+			ScriptTokenizer tokenizer(scriptText);
+
+			ASSERT(tokenizer.TryLoadNextLine() == false);
+
+			auto tokenView = tokenizer.GetNextLineToken();
+			ASSERT(tokenView.empty());
+		}
+
+		{
+			std::string const scriptText = "/*  */";
+			ScriptTokenizer tokenizer(scriptText);
+
+			ASSERT(tokenizer.TryLoadNextLine() == false);
+
+			auto tokenView = tokenizer.GetNextLineToken();
+			ASSERT(tokenView.empty());
+		}
+
+		{
+			std::string const scriptText = "/* \n \t \t  \n */ \n";
+			ScriptTokenizer tokenizer(scriptText);
+
+			ASSERT(tokenizer.TryLoadNextLine() == false);
+
+			auto tokenView = tokenizer.GetNextLineToken();
+			ASSERT(tokenView.empty());
 		}
 
 		Console_Print("Finished running xNVSE ScriptTokenizer unit tests.");
