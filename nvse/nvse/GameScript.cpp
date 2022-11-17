@@ -64,7 +64,7 @@ const char* VariableTypeToName(Script::VariableType type)
 	case Script::eVarType_Array: return "array";
 	case Script::eVarType_Ref: return "ref";
 	case Script::eVarType_Invalid: 
-	default: return "invalid";;
+	default: return "invalid";
 	}
 }
 
@@ -74,24 +74,40 @@ Script::VariableType GetDeclaredVariableType(const char* varName, const char* sc
 	if (const auto savedVarType = GetSavedVarType(script, varName); savedVarType != Script::eVarType_Invalid)
 		return savedVarType;
 #endif
-	Tokenizer scriptLines(scriptText, "\n\r");
-	std::string curLine;
-	while (scriptLines.NextToken(curLine) != -1)
+	ScriptTokenizer tokenizer(scriptText);
+	while (tokenizer.TryLoadNextLine())
 	{
-		Tokenizer tokens(curLine.c_str(), " \t\n\r;");
-		std::string curToken;
+		auto token1View = tokenizer.GetNextLineToken();
+		if (token1View.empty())
+			continue;
 
-		if (tokens.NextToken(curToken) != -1)
+		auto token2View = tokenizer.GetNextLineToken();
+		if (token2View.empty())
+			continue;
+
+		// Need a C-string w/ null terminator - hence std::string conversion.
+		const auto varType = VariableTypeNameToType(std::string(token1View).c_str());
+		if (varType == Script::eVarType_Invalid)
+			continue;
+
+		// Handle possible multiple variable declarations on one line.
+		auto existingVarName = std::string(token2View);
+		bool prevVarHadComma;
+		do
 		{
-			const auto varType = VariableTypeNameToType(curToken.c_str());
-			if (varType != Script::eVarType_Invalid && tokens.NextToken(curToken) != -1 && !StrCompare(curToken.c_str(), varName))
+			if (prevVarHadComma = existingVarName.back() == ',')
+				existingVarName.pop_back(); // remove comma from name
+			if (!StrCompare(existingVarName.c_str(), varName))
 			{
-#if NVSE_CORE
+			#if NVSE_CORE
 				SaveVarType(script, varName, varType);
-#endif
+			#endif
 				return varType;
 			}
+			
+			existingVarName = std::string(tokenizer.GetNextLineToken());
 		}
+		while (!existingVarName.empty() && prevVarHadComma);
 	}
 #if NVSE_CORE
 	if (auto *parent = GetLambdaParentScript(script))

@@ -2109,8 +2109,8 @@ bool GetUserFunctionParamNames(const std::string &scriptText, std::vector<std::s
 		{
 			if (!StrCompare(token.c_str(), "begin"))
 			{
-				UInt32 argStartPos = lineText.find("{");
-				UInt32 argEndPos = lineText.find("}");
+				UInt32 argStartPos = lineText.find('{');
+				UInt32 argEndPos = lineText.find('}');
 				if (argStartPos == -1 || argEndPos == -1 || (argStartPos > argEndPos))
 					return false;
 
