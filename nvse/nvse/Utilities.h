@@ -123,6 +123,8 @@ private:
 
 
 // For parsing lexical tokens inside script text line-by-line, while skipping over those inside comments.
+// Comments are passed as a single token (including the '"' characters).
+// Everything else will have to be manually handled.
 class ScriptTokenizer
 {
 public:
