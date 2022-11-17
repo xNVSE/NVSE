@@ -74,25 +74,30 @@ Script::VariableType GetDeclaredVariableType(const char* varName, const char* sc
 	if (const auto savedVarType = GetSavedVarType(script, varName); savedVarType != Script::eVarType_Invalid)
 		return savedVarType;
 #endif
-	Tokenizer scriptLines(scriptText, "\n\r");
-	std::string curLine;
-	while (scriptLines.NextToken(curLine) != -1)
+	ScriptTokenizer tokenizer(scriptText);
+	while (tokenizer.TryLoadNextLine())
 	{
-		Tokenizer tokens(curLine.c_str(), " \t\n\r;");
-		std::string curToken;
+		auto token1View = tokenizer.GetNextLineToken();
+		if (token1View.empty())
+			continue;
 
-		if (tokens.NextToken(curToken) != -1)
+		auto token2View = tokenizer.GetNextLineToken();
+		if (token2View.empty())
+			continue;
+
+		// Need a C-string w/ null terminator.
+		auto token1 = std::string(token1View);
+		auto token2 = std::string(token2View);
+
+		const auto varType = VariableTypeNameToType(token1.c_str());
+		if (varType != Script::eVarType_Invalid && !StrCompare(token2.c_str(), varName))
 		{
-			const auto varType = VariableTypeNameToType(curToken.c_str());
-			if (varType != Script::eVarType_Invalid && tokens.NextToken(curToken) != -1 
-				&& !StrCompare(curToken.c_str(), varName))
-			{
 #if NVSE_CORE
-				SaveVarType(script, varName, varType);
+			SaveVarType(script, varName, varType);
 #endif
-				return varType;
-			}
+			return varType;
 		}
+		
 	}
 #if NVSE_CORE
 	if (auto *parent = GetLambdaParentScript(script))

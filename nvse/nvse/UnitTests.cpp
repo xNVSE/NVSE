@@ -190,9 +190,26 @@ namespace ScriptTokenizerTests
 			ASSERT(tokenView == "I_am_the_first_valid_token_on_line_2");
 		}
 
+		// Test one line with 1 valid token, but ending with a multiline comment.
+		{
+			std::string scriptText = "/* *//* */  /* */ Finally,_I_Am_A_Real_Token. /* \n */\n";
+			ScriptTokenizer tokenizer(scriptText);
+
+			ASSERT(tokenizer.TryLoadNextLine() == true);
+
+			auto tokenView = tokenizer.GetNextLineToken();
+			ASSERT(tokenView == "Finally,_I_Am_A_Real_Token.");
+
+			tokenView = tokenizer.GetNextLineToken();
+			ASSERT(tokenView.empty());
+
+			ASSERT(tokenizer.TryLoadNextLine() == false);
+			tokenView = tokenizer.GetNextLineToken();
+			ASSERT(tokenView.empty());
+		}
+
 		// Test two valid lines (with the rest empty), with comments in-between: 1st has 2 tokens, 2nd has 1.
 		{
-
 			std::string scriptText = "\n\n\t\r/* */ \tI_am_the_first_valid_token_on_line_1,/* */\t /* */  I'm_the_second /* */ \n";
 			scriptText += ";I am commented out\n";
 			scriptText += "\n\t   ; As am I!\n";
@@ -303,6 +320,16 @@ namespace ScriptTokenizerTests
 
 		{
 			std::string const scriptText = "/*  */";
+			ScriptTokenizer tokenizer(scriptText);
+
+			ASSERT(tokenizer.TryLoadNextLine() == false);
+
+			auto tokenView = tokenizer.GetNextLineToken();
+			ASSERT(tokenView.empty());
+		}
+
+		{
+			std::string const scriptText = "/*  */\n/* */\t";
 			ScriptTokenizer tokenizer(scriptText);
 
 			ASSERT(tokenizer.TryLoadNextLine() == false);
