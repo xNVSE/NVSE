@@ -85,19 +85,29 @@ Script::VariableType GetDeclaredVariableType(const char* varName, const char* sc
 		if (token2View.empty())
 			continue;
 
-		// Need a C-string w/ null terminator.
-		auto token1 = std::string(token1View);
-		auto token2 = std::string(token2View);
+		// Need a C-string w/ null terminator - hence std::string conversion.
+		const auto varType = VariableTypeNameToType(std::string(token1View).c_str());
+		if (varType == Script::eVarType_Invalid)
+			continue;
 
-		const auto varType = VariableTypeNameToType(token1.c_str());
-		if (varType != Script::eVarType_Invalid && !StrCompare(token2.c_str(), varName))
+		// Handle possible multiple variable declarations on one line.
+		auto existingVarName = std::string(token2View);
+		bool prevVarHadComma;
+		do
 		{
-#if NVSE_CORE
-			SaveVarType(script, varName, varType);
-#endif
-			return varType;
+			if (prevVarHadComma = existingVarName.back() == ',')
+				existingVarName.pop_back(); // remove comma from name
+			if (!StrCompare(existingVarName.c_str(), varName))
+			{
+			#if NVSE_CORE
+				SaveVarType(script, varName, varType);
+			#endif
+				return varType;
+			}
+			
+			existingVarName = std::string(tokenizer.GetNextLineToken());
 		}
-		
+		while (!existingVarName.empty() && prevVarHadComma);
 	}
 #if NVSE_CORE
 	if (auto *parent = GetLambdaParentScript(script))
