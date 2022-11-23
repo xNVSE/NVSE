@@ -982,7 +982,7 @@ ScriptLocal* GetScriptLocal(UInt32 varIdx, UInt32 refIdx, Script* script, Script
 		}
 	}
 	if (eventList)
-		return eventList->GetVariable(varIdx);
+		return eventList->GetVariable(varIdx); // TODO: fix lambda w/ var capture crashing during runtime here
 	return nullptr;
 }
 
