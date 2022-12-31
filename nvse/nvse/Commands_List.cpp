@@ -53,7 +53,7 @@ bool Cmd_ListGetNthForm_Execute(COMMAND_ARGS)
 {
 	*result = 0;
 	BGSListForm* pListForm = NULL;
-	UInt32 n = 0;
+	SInt32 n = 0;
 
 #if REPORT_BAD_FORMLISTS
 	__try {
@@ -92,18 +92,17 @@ bool Cmd_ListAddForm_Execute(COMMAND_ARGS)
 	*result = eListInvalid;
 	BGSListForm* pListForm = NULL;
 	TESForm* pForm = NULL;
-	UInt32 n = eListEnd;
+	SInt32 n = eListEnd;
+	UInt32 bCheckForDupes = false;
 
 #if REPORT_BAD_FORMLISTS
 	__try {
 #endif
 
-	ExtractArgsEx(EXTRACT_ARGS_EX, &pListForm, &pForm, &n);
+	ExtractArgsEx(EXTRACT_ARGS_EX, &pListForm, &pForm, &n, &bCheckForDupes);
 	if (pListForm && pForm) {
-		UInt32 index = pListForm->AddAt(pForm, n);
-		if (index != eListInvalid) {
-			*result = index;
-		}
+		auto const index = pListForm->AddAt(pForm, n, bCheckForDupes);
+		*result = index;
 		if (IsConsoleMode()) {
 			Console_Print("Index: %d", index);
 		}
@@ -122,20 +121,19 @@ bool Cmd_ListAddForm_Execute(COMMAND_ARGS)
 bool Cmd_ListAddReference_Execute(COMMAND_ARGS)
 {
 	*result = eListInvalid;
-	BGSListForm* pListForm = NULL;
-	UInt32 n = eListEnd;
-
+	BGSListForm* pListForm = nullptr;
+	SInt32 n = eListEnd;
+	UInt32 bCheckForDupes = false;
+	
 #if REPORT_BAD_FORMLISTS
 	__try {
 #endif
 
-	if (ExtractArgs(EXTRACT_ARGS, &pListForm, &n)) {
+	if (ExtractArgs(EXTRACT_ARGS, &pListForm, &n, &bCheckForDupes)) {
 		if (!pListForm || !thisObj) return true;
 
-		UInt32 index = pListForm->AddAt(thisObj, n);
-		if (index != eListInvalid) {
-			*result = index;
-		}
+		auto const index = pListForm->AddAt(thisObj, n, bCheckForDupes);
+		*result = index;
 		if (IsConsoleMode()) {
 			Console_Print("Index: %d", index);
 		}
@@ -156,8 +154,8 @@ bool Cmd_ListRemoveNthForm_Execute(COMMAND_ARGS)
 	UInt32* refResult = (UInt32*)result;
 	*refResult = 0;
 
-	BGSListForm* pListForm = NULL;
-	UInt32 n = eListEnd;
+	BGSListForm* pListForm = nullptr;
+	SInt32 n = eListEnd;
 
 #if REPORT_BAD_FORMLISTS
 	__try {
@@ -189,7 +187,7 @@ bool Cmd_ListReplaceNthForm_Execute(COMMAND_ARGS)
 
 	BGSListForm* pListForm = NULL;
 	TESForm* pReplaceWith = NULL;
-	UInt32 n = eListEnd;
+	SInt32 n = eListEnd;
 
 #if REPORT_BAD_FORMLISTS
 	__try {
@@ -423,7 +421,7 @@ bool Cmd_ForEachInList_Execute(COMMAND_ARGS)
 	{
 		InternalFunctionCaller caller(functionScript, thisObj, containingObj);
 		caller.SetArgs(1, iter.Get());
-		auto tokenResult = std::unique_ptr<ScriptToken>(UserFunctionManager::Call(std::move(caller)));
+		auto tokenResult = UserFunctionManager::Call(std::move(caller));
 	}
 	*result = true;
 	return true;

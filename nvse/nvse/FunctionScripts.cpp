@@ -21,26 +21,26 @@ UserFunctionManager::~UserFunctionManager()
 {
 	while (!m_functionStack.Empty())
 	{
-		FunctionContext **context = &m_functionStack.Top();
-		delete *context;
+		FunctionContext** context = &m_functionStack.Top();
+		delete* context;
 	}
 }
 
 static SmallObjectsAllocator::LockBasedAllocator<FunctionContext, 5> g_functionContextAllocator;
 
-void *FunctionContext::operator new(size_t size)
+void* FunctionContext::operator new(size_t size)
 {
 	return g_functionContextAllocator.Allocate();
 }
 
-void FunctionContext::operator delete(void *p)
+void FunctionContext::operator delete(void* p)
 {
 	g_functionContextAllocator.Free(p);
 }
 
-UserFunctionManager *UserFunctionManager::GetSingleton()
+UserFunctionManager* UserFunctionManager::GetSingleton()
 {
-	ThreadLocalData &data = ThreadLocalData::Get();
+	ThreadLocalData& data = ThreadLocalData::Get();
 	if (!data.userFunctionManager)
 	{
 		data.userFunctionManager = new UserFunctionManager();
@@ -49,17 +49,17 @@ UserFunctionManager *UserFunctionManager::GetSingleton()
 	return data.userFunctionManager;
 }
 
-FunctionContext *UserFunctionManager::Top(Script *funcScript)
+FunctionContext* UserFunctionManager::Top(Script* funcScript)
 {
 	if (m_functionStack.Size() && m_functionStack.Top()->Info()->GetScript() == funcScript)
 		return m_functionStack.Top();
 
-	return NULL;
+	return nullptr;
 }
 
-bool UserFunctionManager::Pop(Script *funcScript)
+bool UserFunctionManager::Pop(Script* funcScript)
 {
-	FunctionContext *context = Top(funcScript);
+	FunctionContext* context = Top(funcScript);
 	if (context)
 	{
 		m_functionStack.Pop();
@@ -71,8 +71,8 @@ bool UserFunctionManager::Pop(Script *funcScript)
 	if (FUNCTION_CONTEXT_COUNT != m_functionStack.Size())
 	{
 		DEBUG_PRINT("UserFunctionManager::Pop() detects leak - %d FunctionContext exist, %d expected",
-					FUNCTION_CONTEXT_COUNT,
-					m_functionStack.Size());
+			FUNCTION_CONTEXT_COUNT,
+			m_functionStack.Size());
 	}
 #endif
 
@@ -82,7 +82,7 @@ bool UserFunctionManager::Pop(Script *funcScript)
 class ScriptFunctionCaller : public FunctionCaller
 {
 public:
-	ScriptFunctionCaller(ExpressionEvaluator &context) : m_eval(context), m_callerVersion(-1), m_funcScript(NULL)
+	ScriptFunctionCaller(ExpressionEvaluator& context) : m_eval(context), m_callerVersion(-1), m_funcScript(nullptr)
 	{
 	}
 	virtual ~ScriptFunctionCaller() {}
@@ -93,12 +93,12 @@ public:
 		return m_callerVersion;
 	}
 
-	virtual Script *ReadScript()
+	virtual Script* ReadScript()
 	{
 		if (m_funcScript)
 			return m_funcScript;
 
-		ScriptToken *scrToken = NULL;
+		ScriptToken* scrToken = nullptr;
 		switch (m_callerVersion)
 		{
 		case 0:
@@ -109,7 +109,7 @@ public:
 			break;
 		default:
 			m_eval.Error("Unknown bytecode version %d encountered in Call statement", m_callerVersion);
-			return NULL;
+			return nullptr;
 		}
 
 		if (scrToken)
@@ -121,7 +121,7 @@ public:
 		return m_funcScript;
 	}
 
-	virtual bool PopulateArgs(ScriptEventList *eventList, FunctionInfo *info)
+	virtual bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info)
 	{
 		m_eval.SetParams(info->Params());
 		if (!m_eval.ExtractArgs())
@@ -130,16 +130,16 @@ public:
 		// populate event list variables
 		for (UInt32 i = 0; i < m_eval.NumArgs(); i++)
 		{
-			ScriptToken *arg = m_eval.Arg(i);
+			const ScriptToken* arg = m_eval.Arg(i);
 
-			UserFunctionParam *param = info->GetParam(i);
+			UserFunctionParam* param = info->GetParam(i);
 			if (!param)
 			{
 				ShowRuntimeError(info->GetScript(), "Param index %02X out of bounds", i);
 				return false;
 			}
 
-			ScriptLocal *var = eventList->GetVariable(param->varIdx);
+			ScriptLocal* var = eventList->GetVariable(param->varIdx);
 			if (!var)
 			{
 				ShowRuntimeError(info->GetScript(), "Param variable not found. Function definition may be out of sync with function call. Recomplie the scripts and try again.");
@@ -151,7 +151,7 @@ public:
 			case Script::eVarType_Array:
 				if (arg->CanConvertTo(kTokenType_Array))
 				{
-					g_ArrayMap.AddReference(&var->data, arg->GetArray(), info->GetScript()->GetModIndex());
+					g_ArrayMap.AddReference(&var->data, arg->GetArrayID(), info->GetScript()->GetModIndex());
 					AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_Array);
 				}
 				break;
@@ -164,7 +164,7 @@ public:
 				break;
 			case Script::eVarType_Ref:
 				if (arg->CanConvertTo(kTokenType_Form))
-					*((UInt32 *)&var->data) = arg->GetFormID();
+					*((UInt32*)&var->data) = arg->GetFormID();
 				break;
 			case Script::eVarType_Integer:
 			case Script::eVarType_Float:
@@ -180,63 +180,63 @@ public:
 		return true;
 	}
 
-	virtual TESObjectREFR *ThisObj() { return m_eval.ThisObj(); }
-	virtual TESObjectREFR *ContainingObj() { return m_eval.ContainingObj(); }
-	virtual Script *GetInvokingScript() { return m_eval.script; }
+	virtual TESObjectREFR* ThisObj() { return m_eval.ThisObj(); }
+	virtual TESObjectREFR* ContainingObj() { return m_eval.ContainingObj(); }
+	virtual Script* GetInvokingScript() { return m_eval.script; }
 
 private:
-	ExpressionEvaluator &m_eval;
+	ExpressionEvaluator& m_eval;
 	UInt8 m_callerVersion;
-	Script *m_funcScript;
+	Script* m_funcScript;
 };
 
-ScriptToken *UserFunctionManager::Call(ExpressionEvaluator *eval)
+std::unique_ptr<ScriptToken> UserFunctionManager::Call(ExpressionEvaluator* eval)
 {
 	ScriptFunctionCaller caller(*eval);
 	return Call(std::move(caller));
 }
 
-ScriptToken *UserFunctionManager::Call(FunctionCaller &&caller)
+std::unique_ptr<ScriptToken> UserFunctionManager::Call(FunctionCaller&& caller)
 {
-	UserFunctionManager *funcMan = GetSingleton();
+	UserFunctionManager* funcMan = GetSingleton();
 
 	if (funcMan->m_nestDepth >= kMaxNestDepth)
 	{
-		ShowRuntimeError(NULL, "Max nest depth %d exceeded in function call.", kMaxNestDepth);
-		return NULL;
+		ShowRuntimeError(nullptr, "Max nest depth %d exceeded in function call.", kMaxNestDepth);
+		return nullptr;
 	}
 
 	// extract version and script
-	UInt8 callerVersion = caller.ReadCallerVersion();
-	Script *funcScript = caller.ReadScript();
+	const UInt8 callerVersion = caller.ReadCallerVersion();
+	Script* funcScript = caller.ReadScript();
 
 	if (!funcScript)
 	{
-		ShowRuntimeError(NULL, "Could not extract function script.");
-		return NULL;
+		ShowRuntimeError(nullptr, "Could not extract function script.");
+		return nullptr;
 	}
 
 	if (!funcScript->data)
 		return nullptr;
 
 	// get function info for script
-	FunctionInfo *info = funcMan->GetFunctionInfo(funcScript);
+	FunctionInfo* info = funcMan->GetFunctionInfo(funcScript);
 	if (!info)
 	{
 		ShowRuntimeError(funcScript, "Could not parse function info for function script");
-		return NULL;
+		return nullptr;
 	}
 
 	// create a function context for execution
-	FunctionContext *context = info->CreateContext(callerVersion, caller.GetInvokingScript());
+	FunctionContext* context = info->CreateContext(callerVersion, caller.GetInvokingScript());
 	if (!context)
 	{
 		ShowRuntimeError(funcScript, "Could not create function context for function script");
-		return NULL;
+		return nullptr;
 	}
 
 	// push and execute on stack
-	ScriptToken *funcResult = NULL;
+	std::unique_ptr<ScriptToken> funcResult = nullptr;
 	funcMan->Push(context);
 
 	funcMan->m_nestDepth++;
@@ -251,31 +251,31 @@ ScriptToken *UserFunctionManager::Call(FunctionCaller &&caller)
 	return funcResult;
 }
 
-bool UserFunctionManager::Enter(Script *funcScript)
+bool UserFunctionManager::Enter(Script* funcScript)
 {
-	FunctionInfo *info = GetSingleton()->GetFunctionInfo(funcScript);
+	FunctionInfo* info = GetSingleton()->GetFunctionInfo(funcScript);
 	return info ? info->IsGood() : false;
 }
 
-bool UserFunctionManager::Return(ExpressionEvaluator *eval)
+bool UserFunctionManager::Return(ExpressionEvaluator* eval)
 {
-	UserFunctionManager *funcMan = GetSingleton();
-	FunctionContext *context = funcMan->Top(eval->script);
+	UserFunctionManager* funcMan = GetSingleton();
+	FunctionContext* context = funcMan->Top(eval->script);
 	if (!context)
 		return false;
 
 	return context->Return(eval);
 }
 
-FunctionInfo *UserFunctionManager::GetFunctionInfo(Script *funcScript)
+FunctionInfo* UserFunctionManager::GetFunctionInfo(Script* funcScript)
 {
-	FunctionInfo *funcInfo = m_functionInfos.Emplace(funcScript, funcScript);
-	return (funcInfo->IsGood()) ? funcInfo : NULL;
+	FunctionInfo* funcInfo = m_functionInfos.Emplace(funcScript, funcScript);
+	return (funcInfo->IsGood()) ? funcInfo : nullptr;
 }
 
-UInt32 UserFunctionManager::GetFunctionParamTypes(Script *fnScript, UInt8 *typesOut)
+UInt32 UserFunctionManager::GetFunctionParamTypes(Script* fnScript, UInt8* typesOut)
 {
-	FunctionInfo *info = GetSingleton()->GetFunctionInfo(fnScript);
+	FunctionInfo* info = GetSingleton()->GetFunctionInfo(fnScript);
 	UInt32 numParams = -1;
 	if (info)
 	{
@@ -285,10 +285,10 @@ UInt32 UserFunctionManager::GetFunctionParamTypes(Script *fnScript, UInt8 *types
 	return numParams;
 }
 
-Script *UserFunctionManager::GetInvokingScript(Script *fnScript)
+Script* UserFunctionManager::GetInvokingScript(Script* fnScript)
 {
-	FunctionContext *context = GetSingleton()->Top(fnScript);
-	return context ? context->InvokingScript() : NULL;
+	FunctionContext* context = GetSingleton()->Top(fnScript);
+	return context ? context->InvokingScript() : nullptr;
 }
 
 void UserFunctionManager::ClearInfos()
@@ -310,7 +310,7 @@ bool IsSingleLineLambda(Script* script, UInt8*& setFunctionValuePos)
 		static_cast<UInt16>(ScriptParsing::ScriptStatementCode::End)
 	};
 	ScriptParsing::ScriptIterator iter(script);
-	for (auto opcode : matchingCodes)
+	for (const auto opcode : matchingCodes)
 	{
 		if (opcode != iter.opcode)
 		{
@@ -324,7 +324,7 @@ bool IsSingleLineLambda(Script* script, UInt8*& setFunctionValuePos)
 	return result;
 }
 
-FunctionInfo::FunctionInfo(Script *script)
+FunctionInfo::FunctionInfo(Script* script)
 	: m_script(script), m_functionVersion(-1), m_bad(false), m_instanceCount(0), m_eventList(nullptr), m_isLambda(LambdaManager::IsScriptLambda(script))
 {
 	if (!script || !script->data)
@@ -337,7 +337,7 @@ FunctionInfo::FunctionInfo(Script *script)
 	if (script->info.dataLength < 15)
 		return;
 
-	auto *data = (UInt8 *)script->data;
+	auto* data = (UInt8*)script->data;
 	if (*(data + 8) != 0x0D) // not a 'Begin Function' block
 	{
 		ShowRuntimeError(script, "Begin Function block not found in compiled script data");
@@ -368,10 +368,10 @@ FunctionInfo::FunctionInfo(Script *script)
 
 	for (UInt32 i = 0; i < numParams; i++)
 	{
-		const UInt16 idx = *((UInt16 *)data);
+		const UInt16 idx = *((UInt16*)data);
 		data += 2;
 		const UInt8 type = *data++;
-		params.emplace_back(idx, type);
+		params.emplace_back(idx, static_cast<Script::VariableType>(type));
 	}
 
 	m_dParamInfo = DynamicParamInfo(params);
@@ -406,32 +406,32 @@ FunctionInfo::~FunctionInfo()
 		OtherHooks::DeleteEventList(m_eventList);
 }
 
-FunctionContext *FunctionInfo::CreateContext(UInt8 version, Script *invokingScript)
+FunctionContext* FunctionInfo::CreateContext(UInt8 version, Script* invokingScript)
 {
 	if (!IsGood())
-		return NULL;
+		return nullptr;
 
-	FunctionContext *context = new FunctionContext(this, version, invokingScript);
+	FunctionContext* context = new FunctionContext(this, version, invokingScript);
 	if (!context->IsGood())
 	{
 		delete context;
-		return NULL;
+		return nullptr;
 	}
 
 	return context;
 }
 
-UserFunctionParam *FunctionInfo::GetParam(UInt32 paramIndex)
+UserFunctionParam* FunctionInfo::GetParam(UInt32 paramIndex)
 {
 	if (paramIndex >= m_userFunctionParams.size())
-		return NULL;
+		return nullptr;
 
 	return &m_userFunctionParams[paramIndex];
 }
 
-UInt32 FunctionInfo::GetParamVarTypes(UInt8 *out) const
+UInt32 FunctionInfo::GetParamVarTypes(UInt8* out) const
 {
-	UInt32 count = m_userFunctionParams.size();
+	const UInt32 count = m_userFunctionParams.size();
 	if (count)
 	{
 		for (UInt32 i = 0; i < count; i++)
@@ -443,13 +443,13 @@ UInt32 FunctionInfo::GetParamVarTypes(UInt8 *out) const
 	return count;
 }
 
-bool FunctionInfo::Execute(FunctionCaller &caller, FunctionContext *context)
+bool FunctionInfo::Execute(FunctionCaller& caller, FunctionContext* context)
 {
 	// this should never happen as max function call depth is capped at 30
 	ASSERT(m_instanceCount < 0xFF);
 	m_instanceCount++;
 
-	bool bResult = context->Execute(caller);
+	const bool bResult = context->Execute(caller);
 
 	m_instanceCount--;
 	return bResult;
@@ -459,9 +459,9 @@ bool FunctionInfo::Execute(FunctionCaller &caller, FunctionContext *context)
 	FunctionContext
 ******************************/
 
-FunctionContext::FunctionContext(FunctionInfo *info, UInt8 version, Script *invokingScript) : m_info(info), m_eventList(NULL),
-																							  m_result(NULL), m_invokingScript(invokingScript), m_callerVersion(version),
-																							  m_bad(true), m_lambdaBackupEventList(false)
+FunctionContext::FunctionContext(FunctionInfo* info, UInt8 version, Script* invokingScript) : m_info(info), m_eventList(nullptr),
+m_result(nullptr), m_invokingScript(invokingScript), m_callerVersion(version),
+m_bad(true), m_lambdaBackupEventList(false)
 {
 #ifdef DBG_EXPR_LEAKS
 	FUNCTION_CONTEXT_COUNT++;
@@ -530,19 +530,21 @@ FunctionContext::~FunctionContext()
 		}
 	}
 
-	delete m_result;
+	m_result = nullptr;
 }
 
 void ExecuteSingleLineLambda(FunctionInfo* info, FunctionCaller& caller, ScriptEventList* eventList)
 {
 	double result;
 	UInt32 opcodeOffset = info->m_singleLineLambdaPosition - info->GetScript()->data;
-	OtherHooks::PushScriptContext({ info->GetScript(), nullptr, nullptr, caller.ThisObj(), &kCommandInfo_SetFunctionValue, nullptr });
-	kCommandInfo_SetFunctionValue.execute(kCommandInfo_SetFunctionValue.params, info->GetScript()->data, caller.ThisObj(), caller.ContainingObj(), info->GetScript(), eventList, &result, &opcodeOffset);
+	OtherHooks::PushScriptContext({ info->GetScript(), nullptr, nullptr, 
+		caller.ThisObj(), &kCommandInfo_SetFunctionValue, nullptr });
+	kCommandInfo_SetFunctionValue.execute(kCommandInfo_SetFunctionValue.params, info->GetScript()->data, caller.ThisObj(), 
+		caller.ContainingObj(), info->GetScript(), eventList, &result, &opcodeOffset);
 	OtherHooks::PopScriptContext();
 }
 
-bool FunctionContext::Execute(FunctionCaller &caller)
+bool FunctionContext::Execute(FunctionCaller& caller) const
 {
 	if (!IsGood())
 		return false;
@@ -559,45 +561,44 @@ bool FunctionContext::Execute(FunctionCaller &caller)
 	return true;
 }
 
-bool FunctionContext::Return(ExpressionEvaluator *eval)
+bool FunctionContext::Return(ExpressionEvaluator* eval)
 {
-	delete m_result;
-
 	if (!eval->ExtractArgs() || eval->NumArgs() != 1)
 	{
-		m_result = NULL;
+		m_result = nullptr;
 		return false;
 	}
-	else
-	{
-		m_result = eval->Arg(0)->ToBasicToken();
-		return true;
-	}
+	m_result = eval->Arg(0)->ToBasicToken();
+	return true;
 }
 
 /*******************************
 	InternalFunctionCaller
 *******************************/
 
-bool InternalFunctionCaller::PopulateArgs(ScriptEventList *eventList, FunctionInfo *info)
+bool InternalFunctionCaller::PopulateArgs(ScriptEventList* eventList, FunctionInfo* info)
 {
-	DynamicParamInfo &dParams = info->ParamInfo();
-	if (dParams.NumParams() >= kMaxArgs)
+	DynamicParamInfo& dParams = info->ParamInfo();
+	if (dParams.NumParams() > kMaxUdfParams)
 	{
 		return false;
 	}
 
 	// populate the args in the event list
-	for (UInt32 i = 0; i < m_numArgs; i++)
+	for (ParamSize_t i = 0; i < m_numArgs; i++)
 	{
-		UserFunctionParam *param = info->GetParam(i);
-		if (!ValidateParam(param, i))
+		UserFunctionParam* param = info->GetParam(i);
+		if (!ValidateParam(param, i)) [[unlikely]]
 		{
-			ShowRuntimeError(m_script, "Failed to extract arg %d", i);
-			return false;
+			if (!m_allowSurplusDispatchArgs) [[unlikely]]
+			{
+				ShowRuntimeError(m_script, "Failed to extract parameter %d. Please verify the number of parameters in function script match those required for event.", i);
+				return false;
+			}
+			return true;
 		}
 
-		ScriptLocal *var = eventList->GetVariable(param->varIdx);
+		ScriptLocal* var = eventList->GetVariable(param->varIdx);
 		if (!var)
 		{
 			ShowRuntimeError(m_script, "Could not look up argument variable for function script");
@@ -610,21 +611,21 @@ bool InternalFunctionCaller::PopulateArgs(ScriptEventList *eventList, FunctionIn
 			var->data = (SInt32)m_args[i];
 			break;
 		case Script::eVarType_Float:
-			var->data = *((float *)&m_args[i]);
+			var->data = *((float*)&m_args[i]);
 			break;
 		case Script::eVarType_Ref:
 		{
-			TESForm *form = (TESForm *)m_args[i];
-			*((UInt32 *)&var->data) = form ? form->refID : 0;
+			TESForm* form = (TESForm*)m_args[i];
+			*((UInt32*)&var->data) = form ? form->refID : 0;
 		}
 		break;
 		case Script::eVarType_String:
-			var->data = g_StringMap.Add(info->GetScript()->GetModIndex(), (const char *)m_args[i], true);
+			var->data = g_StringMap.Add(info->GetScript()->GetModIndex(), (const char*)m_args[i], true);
 			AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_String);
 			break;
 		case Script::eVarType_Array:
 		{
-			ArrayID arrID = (ArrayID)m_args[i];
+			const ArrayID arrID = (ArrayID)m_args[i];
 			if (g_ArrayMap.Get(arrID))
 			{
 				g_ArrayMap.AddReference(&var->data, arrID, info->GetScript()->GetModIndex());
@@ -644,18 +645,18 @@ bool InternalFunctionCaller::PopulateArgs(ScriptEventList *eventList, FunctionIn
 	return true;
 }
 
-bool InternalFunctionCaller::SetArgs(UInt8 numArgs, ...)
+bool InternalFunctionCaller::SetArgs(ParamSize_t numArgs, ...)
 {
 	va_list args;
 	va_start(args, numArgs);
-	bool result = vSetArgs(numArgs, args);
+	const bool result = vSetArgs(numArgs, args);
 	va_end(args);
 	return result;
 }
 
-bool InternalFunctionCaller::vSetArgs(UInt8 numArgs, va_list args)
+bool InternalFunctionCaller::vSetArgs(ParamSize_t numArgs, va_list args)
 {
-	if (numArgs >= kMaxArgs)
+	if (numArgs > kMaxUdfParams)
 	{
 		return false;
 	}
@@ -663,16 +664,211 @@ bool InternalFunctionCaller::vSetArgs(UInt8 numArgs, va_list args)
 	m_numArgs = numArgs;
 	for (UInt8 i = 0; i < numArgs; i++)
 	{
-		m_args[i] = va_arg(args, void *);
+		m_args[i] = va_arg(args, void*);
 	}
 
 	return true;
 }
 
+bool InternalFunctionCaller::SetArgsRaw(ParamSize_t numArgs, const void* args)
+{
+	if (numArgs > kMaxUdfParams)
+		return false;
+	m_numArgs = numArgs;
+	memcpy_s(m_args, sizeof m_args, args, numArgs * sizeof(void*));
+	return true;
+}
+
+bool InternalFunctionCallerAlt::PopulateArgs(ScriptEventList* eventList, FunctionInfo* info)
+{
+	DynamicParamInfo& dParams = info->ParamInfo();
+	if (dParams.NumParams() > kMaxUdfParams)
+	{
+		return false;
+	}
+
+	// populate the args in the event list
+	for (ParamSize_t i = 0; i < m_numArgs; i++)
+	{
+		UserFunctionParam* param = info->GetParam(i);
+		if (!ValidateParam(param, i)) [[unlikely]]
+		{
+			if (!m_allowSurplusDispatchArgs) [[unlikely]]
+			{
+				ShowRuntimeError(m_script, "Failed to extract parameter %d. Please verify the number of parameters in function script match those required for event.", i);
+				return false;
+			}
+			return true;
+		}
+
+		ScriptLocal* var = eventList->GetVariable(param->varIdx);
+		if (!var)
+		{
+			ShowRuntimeError(m_script, "Could not look up argument variable for function script");
+			return false;
+		}
+
+		switch (param->varType)
+		{
+		case Script::eVarType_Integer:
+			var->data = floor(*((float*)&m_args[i]));  //NOTE: the ONLY difference between this and PopulateArgs() from the regular InternalFunctionCaller
+			break;
+		case Script::eVarType_Float:
+			var->data = *((float*)&m_args[i]);
+			break;
+		case Script::eVarType_Ref:
+		{
+			TESForm* form = (TESForm*)m_args[i];
+			*((UInt32*)&var->data) = form ? form->refID : 0;
+		}
+		break;
+		case Script::eVarType_String:
+			var->data = g_StringMap.Add(info->GetScript()->GetModIndex(), (const char*)m_args[i], true);
+			AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_String);
+			break;
+		case Script::eVarType_Array:
+		{
+			const ArrayID arrID = (ArrayID)m_args[i];
+			if (g_ArrayMap.Get(arrID))
+			{
+				g_ArrayMap.AddReference(&var->data, arrID, info->GetScript()->GetModIndex());
+				AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_Array);
+			}
+			else
+				var->data = 0;
+		}
+		break;
+		default:
+			// wtf?
+			ShowRuntimeError(m_script, "Unexpected param type %02X in internal function call", param->varType);
+			return false;
+		}
+	}
+
+	return true;
+}
+
+template <BaseOfArrayElement T>
+bool ArrayElementArgFunctionCaller<T>::PopulateArgs(ScriptEventList* eventList, FunctionInfo* info)
+{
+	if (!m_args)
+		return true;	//interpret as there being no args to populate; success.
+	auto const numArgs = m_args->size();
+	if (numArgs > kMaxUdfParams)
+		return false;
+	// populate the args in the event list
+	for (UInt32 i = 0; i < numArgs; i++)
+	{
+		UserFunctionParam* param = info->GetParam(i);
+		if (!param)
+		{
+			ShowRuntimeError(m_script, "Failed to extract parameter %d. Please verify the number of parameters in function script match those required for event.", i);
+			return false;
+		}
+		ScriptLocal* var = eventList->GetVariable(param->varIdx);
+		if (!var)
+		{
+			ShowRuntimeError(m_script, "Could not look up argument variable for function script");
+			return false;
+		}
+		const auto& arg = (*m_args)[i];
+		const auto varType = param->varType;
+		if (arg.DataType() != VarTypeToDataType(varType))
+		{
+			ShowRuntimeError(m_script, "Wrong type passed for parameter %d (%s). Cannot assign %s to %s.", i, GetVariableName(var, m_script, eventList),
+			                 VariableTypeToName(varType), DataTypeToString(arg.DataType()));
+			return false;
+		}
+		switch (param->varType)
+		{
+		case Script::eVarType_Integer:
+			arg.GetAsNumber(&var->data);
+			var->data = static_cast<SInt32>(var->data);
+			break;
+		case Script::eVarType_Float:
+			arg.GetAsNumber(&var->data);
+			break;
+		case Script::eVarType_Ref:
+		{
+			arg.GetAsFormID(reinterpret_cast<UInt32*>(&var->data));
+			break;
+		}
+		case Script::eVarType_String:
+		{
+			const char* out;
+			arg.GetAsString(&out);
+			var->data = g_StringMap.Add(info->GetScript()->GetModIndex(), out, true);
+			AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_String);
+			break;
+		}
+		case Script::eVarType_Array:
+		{
+			ArrayID arrID;
+			arg.GetAsArray(&arrID);
+			if (g_ArrayMap.Get(arrID))
+			{
+				g_ArrayMap.AddReference(&var->data, arrID, info->GetScript()->GetModIndex());
+				AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_Array);
+			}
+			else
+				var->data = 0;
+			break;
+		}
+		default:
+			ShowRuntimeError(m_script, "Unexpected param type %02X in internal function call", param->varType);
+			return false;
+		}
+	}
+
+	return true;
+}
+
+template <BaseOfArrayElement T>
+void ArrayElementArgFunctionCaller<T>::SetArgs(const std::vector<T>& args)
+{
+	m_args = &args;
+}
+
+template class ArrayElementArgFunctionCaller<SelfOwningArrayElement>;
+
 namespace PluginAPI
 {
-	bool CallFunctionScript(Script *fnScript, TESObjectREFR *callingObj, TESObjectREFR *container,
-							NVSEArrayVarInterface::Element *result, UInt8 numArgs, ...)
+	// Sends an error message if the token is invalid and the function script is not nullptr.
+	bool BasicTokenToPluginElem(const ScriptToken* tok, NVSEArrayVarInterface::Element& outElem, Script* fnScript)
+	{
+		if (!tok) [[unlikely]]
+		{
+			outElem = NVSEArrayVarInterface::Element();
+			if (fnScript)
+				ShowRuntimeError(fnScript, "Function script called from plugin failed to return a value when one was expected.");
+			return false;
+		}
+
+		switch (tok->Type())
+		{
+		case kTokenType_Number:
+			outElem = tok->GetNumber();
+			break;
+		case kTokenType_Form:
+			outElem = tok->GetTESForm();
+			break;
+		case kTokenType_Array:
+			outElem = ArrayAPI::LookupArrayByID(tok->GetArrayID());
+			break;
+		case kTokenType_String:
+			outElem = tok->GetString();
+			break;
+		default:
+			outElem = NVSEArrayVarInterface::Element();
+			if (fnScript)
+				ShowRuntimeError(fnScript, "Function script called from plugin returned unexpected type %02X", tok->Type());
+			return false;
+		}
+		return true;
+	}
+
+	bool CallFunctionScript(Script* fnScript, TESObjectREFR* callingObj, TESObjectREFR* container,
+		NVSEArrayVarInterface::Element* result, UInt8 numArgs, ...)
 	{
 		InternalFunctionCaller caller(fnScript, callingObj, container);
 		va_list args;
@@ -680,32 +876,14 @@ namespace PluginAPI
 		bool success = caller.vSetArgs(numArgs, args);
 		if (success)
 		{
-			ScriptToken *ret = UserFunctionManager::Call(std::move(caller));
-			if (ret)
+			if (auto ret = UserFunctionManager::Call(std::move(caller)))
 			{
 				if (result)
 				{
-					switch (ret->Type())
-					{
-					case kTokenType_Number:
-						*result = ret->GetNumber();
-						break;
-					case kTokenType_Form:
-						*result = ret->GetTESForm();
-						break;
-					case kTokenType_Array:
-						*result = ArrayAPI::LookupArrayByID(ret->GetArray());
-						break;
-					case kTokenType_String:
-						*result = ret->GetString();
-						break;
-					default:
-						*result = NVSEArrayVarInterface::Element();
-						ShowRuntimeError(fnScript, "Function script called from plugin returned unexpected type %02X", ret->Type());
+					if (!BasicTokenToPluginElem(ret.get(), *result, fnScript))
 						success = false;
-					}
 				}
-				delete ret;
+				ret = nullptr;
 			}
 			else if (result)
 			{
@@ -715,16 +893,14 @@ namespace PluginAPI
 		return success;
 	}
 
-	bool CallFunctionScriptAlt(Script *fnScript, TESObjectREFR *callingObj, UInt8 numArgs, ...)
+	bool CallFunctionScriptAlt(Script* fnScript, TESObjectREFR* callingObj, UInt8 numArgs, ...)
 	{
-		InternalFunctionCaller caller(fnScript, callingObj, NULL);
+		InternalFunctionCaller caller(fnScript, callingObj, nullptr);
 		va_list args;
 		va_start(args, numArgs);
 		if (caller.vSetArgs(numArgs, args))
 		{
-			ScriptToken *ret = UserFunctionManager::Call(std::move(caller));
-			if (ret)
-				delete ret;
+			UserFunctionManager::Call(std::move(caller));
 			return true;
 		}
 		return false;

@@ -1,4 +1,7 @@
 #include "Commands_Inventory.h"
+
+#include <unordered_set>
+
 #include "InventoryInfo.h"
 #include "InventoryReference.h"
 
@@ -2715,6 +2718,8 @@ bool Cmd_SetNameEx_Execute(COMMAND_ARGS)
 	return true;
 }
 
+extern std::unordered_set<UInt32> s_clonedFormsWithInheritedModIdx;
+
 bool Cmd_IsClonedForm_Execute(COMMAND_ARGS)
 {
 	*result = 0;
@@ -2727,23 +2732,37 @@ bool Cmd_IsClonedForm_Execute(COMMAND_ARGS)
 		form = thisObj->baseForm;
 	}
 
-	*result = form->IsCloned() ? 1 : 0;
+	if (form->GetModIndex() == 0xFF || s_clonedFormsWithInheritedModIdx.contains(form->refID))
+		*result = 1;
 	return true;
 }
+
+std::unordered_set<UInt32> s_clonedFormsWithInheritedModIdx;
 
 bool CloneForm_Execute(COMMAND_ARGS, bool bPersist)
 {
 	*result = 0;
 	UInt32* refResult = (UInt32*)result;
 	TESForm* form = NULL;
-	ExtractArgsEx(EXTRACT_ARGS_EX, &form);
+	int inheritModIndexFromCallingScript = false;
+	ExtractArgsEx(EXTRACT_ARGS_EX, &form, &inheritModIndexFromCallingScript);
 	if (!form) {
 		if (!thisObj) return true;
 		form = thisObj->baseForm;
 	}
 
-	TESForm* clonedForm = form->CloneForm(bPersist); 
-	if (clonedForm) {
+	TESForm* clonedForm = form->CloneForm(bPersist);
+	if (clonedForm) 
+	{
+		if (inheritModIndexFromCallingScript)
+		{
+			const auto nextFormId = GetNextFreeFormID(scriptObj->refID);
+			if (nextFormId >> 24 == scriptObj->GetModIndex())
+			{
+				clonedForm->SetRefID(nextFormId, true);
+				s_clonedFormsWithInheritedModIdx.insert(nextFormId);
+			}
+		}
 		*refResult = clonedForm->refID;
 		if (IsConsoleMode())
 			Console_Print("Created cloned form: %08x", *refResult);

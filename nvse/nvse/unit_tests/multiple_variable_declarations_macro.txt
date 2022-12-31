@@ -1,0 +1,27 @@
+begin Function { }
+	;== Test comma-separated variable declarations
+
+print "Starting xNVSE multiple variable declarations macro."
+
+	short iTest1, iTest2, iTest3
+
+	iTest1 = 1
+	assert (iTest1 == 1)
+
+	iTest2 = 2
+	assert (iTest2 == 2)
+
+	iTest3 = 3
+	assert (iTest3 == 3)
+
+	long iTest4, iTest5
+
+	iTest4 = 4
+	assert (iTest4 == 4)
+
+	iTest5 = 5
+	assert (iTest5 == 5)
+	
+print "Finished xNVSE multiple variable declarations macro."
+
+end

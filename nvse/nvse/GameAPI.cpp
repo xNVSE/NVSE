@@ -1,3 +1,4 @@
+
 #include "GameAPI.h"
 #include "GameRTTI.h"
 #include "GameForms.h"
@@ -6,7 +7,6 @@
 #include "GameScript.h"
 #include "MemoizedMap.h"
 #include "StringVar.h"
-#include "printf.h"
 #include "ScriptAnalyzer.h"
 
 #if NVSE_CORE
@@ -843,6 +843,7 @@ bool ConsoleManager::HasConsoleOutputFilename(void)
 
 bool s_InsideOnActorEquipHook = false;
 UInt32 s_CheckInsideOnActorEquipHook = 1;
+UInt32 s_AreRuntimeTestsEnabled = false;
 
 #if NVSE_CORE
 extern bool s_recordedMainThreadID;
@@ -942,7 +943,7 @@ ScriptEventList *ScriptEventList::Copy()
 					if (var->data)
 					{
 						g_ArrayMap.AddReference(&newVar->data, var->data, m_script->GetModIndex());
-						AddToGarbageCollection(this, newVar, NVSEVarType::kVarType_Array);
+						AddToGarbageCollection(newEventList, newVar, NVSEVarType::kVarType_Array);
 					}
 					else // ar_Null'ed
 						newVar->data = 0.0;
@@ -954,7 +955,7 @@ ScriptEventList *ScriptEventList::Copy()
 					if (stringVar)
 					{
 						newVar->data = g_StringMap.Add(m_script->GetModIndex(), stringVar->GetCString(), false, nullptr);
-						AddToGarbageCollection(this, newVar, NVSEVarType::kVarType_String);
+						AddToGarbageCollection(newEventList, newVar, NVSEVarType::kVarType_String);
 					}
 					else // Sv_Destructed
 						newVar->data = 0.0;
@@ -1952,7 +1953,7 @@ Script *GetParentScript(Script *script, ScriptEventList *eventList, UInt16 refId
 	return parentEventList->m_script;
 }
 
-const char *GetVariableName(ScriptLocal *var, Script *script, ScriptEventList *eventList, UInt16 refIdx = 0)
+const char *GetVariableName(ScriptLocal *var, Script *script, ScriptEventList *eventList, UInt16 refIdx)
 {
 	if (auto *parent = GetParentScript(script, eventList, refIdx))
 		script = parent;
@@ -2301,7 +2302,7 @@ bool ExtractFormattedString(FormatStringArgs &args, char *buffer)
 	if (fmtBuffer[0])
 	{
 		if (argIdx || noArgFormat)
-			sprintf_s(buffer, kMaxMessageLength - 2, fmtBuffer, f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8], f[9], f[10], f[11], f[12], f[13], f[14], f[15], f[16], f[17], f[18], f[19]);
+			snprintf(buffer, kMaxMessageLength - 2, fmtBuffer, f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8], f[9], f[10], f[11], f[12], f[13], f[14], f[15], f[16], f[17], f[18], f[19]);
 		else
 			memcpy(buffer, fmtBuffer, (resPtr - fmtBuffer) + 1);
 	}

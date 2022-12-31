@@ -29,9 +29,16 @@ StringVarMap* StringVarMap::GetSingleton()
 
 void StringVarMap::Delete(UInt32 varID)
 {
-	if (varID != GetFunctionResultCachedStringVar().id)
+	if (!IsFunctionResultCacheString(varID))
 		VarMap<StringVar>::Delete(varID);
+	else
+	{
 #if _DEBUG
+		DebugBreak();
+#endif
+		tempIDs.Erase(varID);
+	}
+#if _DEBUG && 0
 	else
 		DebugBreak();
 #endif
@@ -40,7 +47,7 @@ void StringVarMap::Delete(UInt32 varID)
 void StringVarMap::MarkTemporary(UInt32 varID, bool bTemporary)
 {
 #if _DEBUG
-	if (varID == GetFunctionResultCachedStringVar().id && bTemporary)
+	if (IsFunctionResultCacheString(varID) && bTemporary)
 		DebugBreak();
 #endif
 	VarMap<StringVar>::MarkTemporary(varID, bTemporary);
@@ -238,6 +245,20 @@ UInt32 StringVar::GetCharType(char ch)
 	return charType;
 }
 
+// Trims whitespace at beginning and end of string
+void StringVar::Trim()
+{
+	// ltrim
+	data.erase(data.begin(), ra::find_if(data, [](unsigned char ch) {
+		return !std::isspace(ch);
+	}));
+
+	// rtrim
+	data.erase(std::find_if(data.rbegin(), data.rend(), [](unsigned char ch) {
+		return !std::isspace(ch);
+	}).base(), data.end());
+}
+
 char StringVar::At(UInt32 charPos)
 {
 	if (charPos < GetLength())
@@ -376,6 +397,7 @@ StringVarMap g_StringMap;
 thread_local FunctionResultStringVar s_functionResultStringVar;
 static thread_local int svMapClearLocalToken = 0;
 static std::atomic<int> svMapClearGlobalToken = 0;
+std::unordered_set<UInt32> g_funcResultStringIds;
 
 // no compiler optimizations on thread_local in msvc
 __declspec(noinline) FunctionResultStringVar& GetFunctionResultCachedStringVar()
@@ -386,6 +408,17 @@ __declspec(noinline) FunctionResultStringVar& GetFunctionResultCachedStringVar()
 		svMapClearLocalToken = svMapClearGlobalToken;
 	}
 	return s_functionResultStringVar;
+}
+
+void ResetFunctionResultStringCache()
+{
+	++svMapClearGlobalToken;
+	g_funcResultStringIds.clear();
+}
+
+bool IsFunctionResultCacheString(UInt32 strId)
+{
+	return g_funcResultStringIds.contains(strId);
 }
 
 bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
@@ -427,7 +460,10 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 		{
 			// optimizations, creating a new string var is slow
 			if (!functionResult.var)
+			{
 				functionResult.id = static_cast<int>(g_StringMap.Add(0xFF, newValue, false, &functionResult.var));
+				g_funcResultStringIds.emplace(functionResult.id);
+			}
 			else
 				functionResult.var->Set(newValue);
 
@@ -467,7 +503,7 @@ void StringVarMap::Clean()		// clean up any temporary vars
 void StringVarMap::Reset()
 {
 	VarMap<StringVar>::Reset();
-	++svMapClearGlobalToken;
+	ResetFunctionResultStringCache();
 }
 
 namespace PluginAPI

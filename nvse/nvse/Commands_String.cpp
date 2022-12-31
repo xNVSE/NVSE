@@ -1,5 +1,7 @@
 #include "nvse/Commands_String.h"
 
+#include <regex>
+
 #include "GameAPI.h"
 #include "GameRTTI.h"
 #include "StringVar.h"
@@ -7,6 +9,7 @@
 #include "GameObjects.h"
 #include "GameSettings.h"
 #include "Utilities.h"
+#include <format>
 
 //////////////////////////
 // Utility commands
@@ -283,6 +286,26 @@ bool Cmd_sv_GetChar_Execute(COMMAND_ARGS)
 	if (strVar)
 		*result = strVar->At(charPos);
 
+	return true;
+}
+
+bool Cmd_sv_Trim_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (!eval.ExtractArgs())
+		return true;
+
+	auto* token = eval.Arg(0);
+	if (!token)
+		return true;
+
+	auto* strVar = token->GetStringVar();
+	if (!strVar)
+		return true;
+
+	strVar->Trim();
+	*result = 1;
 	return true;
 }
 
@@ -882,20 +905,48 @@ bool Cmd_GetRawFormIDString_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool Cmd_NumToHex_Execute(COMMAND_ARGS)
+// Kept for unit test purposes, to compare with newer iterations.
+bool Cmd_NumToHex_OLD_Execute(COMMAND_ARGS)
 {
 	UInt32 num = 0;
 	UInt32 width = 8;
 	ExtractArgs(EXTRACT_ARGS, &num, &width);
 
 	char fmtStr[0x20];
-	width = width <= 8 ? width : 8;
+	width = min(width, 8);
 	snprintf(fmtStr, sizeof(fmtStr), "%%0%dX", width);
 
 	char hexStr[0x20];
 	snprintf(hexStr, sizeof(hexStr), fmtStr, num);
-
 	AssignToStringVar(PASS_COMMAND_ARGS, hexStr);
+	return true;
+}
+
+bool Cmd_NumToHex_Execute(COMMAND_ARGS)
+{
+	UInt32 num = 0;
+	UInt32 padToWidth = 8;	//add leading zeros until it reaches this width.
+	UInt32 bAddPrefix = false; 
+	ExtractArgs(EXTRACT_ARGS, &num, &padToWidth, &bAddPrefix);
+
+	padToWidth = min(padToWidth, 8);
+	std::string hexStr = std::format("{:0{}X}", num, padToWidth);
+	if (bAddPrefix) hexStr = "0x" + hexStr;
+	AssignToStringVar(PASS_COMMAND_ARGS, hexStr.c_str()); 
+	return true;
+}
+
+bool Cmd_IntToBin_Execute(COMMAND_ARGS)
+{
+	UInt32 num;
+	UInt32 padToWidth = 32;	//add leading zeros until it reaches this width.
+	UInt32 bAddPrefix = false;
+	ExtractArgs(EXTRACT_ARGS, &num, &padToWidth, &bAddPrefix);
+
+	padToWidth = min(padToWidth, 32);
+	std::string binStr = std::format("{:0{}b}", num, padToWidth);
+	if (bAddPrefix) binStr = "0b" + binStr;
+	AssignToStringVar(PASS_COMMAND_ARGS, binStr.c_str());
 	return true;
 }
 
@@ -910,7 +961,17 @@ bool Cmd_ToNumber_Execute(COMMAND_ARGS)
 		if (eval.Arg(1) && eval.Arg(1)->CanConvertTo(kTokenType_Number))
 			bHex = eval.Arg(1)->GetNumber() ? true : false;
 
-		*result = eval.Arg(0)->GetNumericRepresentation(bHex);
+		bool hasError;
+		*result = eval.Arg(0)->GetNumericRepresentation(bHex, &hasError);
+
+		if (auto const reportErrorArg = eval.Arg(2);
+			reportErrorArg && reportErrorArg->CanConvertTo(kTokenType_Number))
+		{
+			if (reportErrorArg->GetNumber() && hasError)
+			{
+				eval.Error("Error converting string to number.");
+			}
+		}
 	}
 
 	return true;
@@ -1050,3 +1111,74 @@ bool Cmd_SetScopeModelPath_Execute(COMMAND_ARGS)
 
 	return true;
 }
+
+
+enum class RegexError
+{
+	FailedToExtractArgs = -1,
+	NoErrors = 0,
+
+	Collate,
+	Ctype,
+	Escape,
+	Backref,
+	Brack,
+	Paren,
+	Brace,
+	Badbrace,
+	Range,
+	Space,
+	Badrepeat,
+	Complexity,
+	Stack,
+	Unknown
+};
+
+// error_type has no defined values in the C++ standard, so we define our own.
+RegexError GetValue(std::regex_constants::error_type err)
+{
+	switch (err)
+	{
+	case std::regex_constants::error_collate: return RegexError::Collate;
+	case std::regex_constants::error_ctype: return RegexError::Ctype;
+	case std::regex_constants::error_escape: return RegexError::Escape;
+	case std::regex_constants::error_backref: return RegexError::Backref;
+	case std::regex_constants::error_brack: return RegexError::Brack;
+	case std::regex_constants::error_paren: return RegexError::Paren;
+	case std::regex_constants::error_brace: return RegexError::Brace;
+	case std::regex_constants::error_badbrace: return RegexError::Badbrace;
+	case std::regex_constants::error_range: return RegexError::Range;
+	case std::regex_constants::error_space: return RegexError::Space;
+	case std::regex_constants::error_badrepeat: return RegexError::Badrepeat;
+	case std::regex_constants::error_complexity: return RegexError::Complexity;
+	case std::regex_constants::error_stack: return RegexError::Stack;
+	default: return RegexError::Unknown;
+	}
+}
+
+bool Cmd_ValidateRegex_Execute(COMMAND_ARGS)
+{
+	*result = static_cast<double>(RegexError::FailedToExtractArgs);
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (!eval.ExtractArgs())
+		return true;
+
+	const auto regexStr = eval.Arg(0)->GetString();
+	try
+	{
+		auto rgx = std::regex(regexStr);
+		*result = static_cast<double>(RegexError::NoErrors);
+	}
+	catch (std::regex_error &e)
+	{
+		*result = static_cast<double>(GetValue(e.code()));
+		if (const auto* token = eval.Arg(1))
+		{
+			if (auto* strVar = token->GetStringVar())
+				strVar->Set(e.what());
+		}
+	}
+
+	return true;
+}
+

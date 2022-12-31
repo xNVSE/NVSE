@@ -20,3 +20,5 @@ void PatchDefaultCommandParser();
 #else
 void PatchGameCommandParser();
 #endif
+
+void PatchDisable_ScriptBufferValidateRefVars(bool disable);

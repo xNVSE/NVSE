@@ -22,9 +22,9 @@ static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
 	auto* scriptContext = OtherHooks::GetExecutingScriptContext();
 	const auto retnAddress = reinterpret_cast<UInt32>(_ReturnAddress());
 
-	if (scriptContext && scriptContext->command && scriptContext->command->opcode == 4418 && retnAddress == 0x5E2383) // shut up Dispel
+	if (scriptContext && scriptContext->command && (scriptContext->command->opcode == 4418 || scriptContext->command->opcode == 4261) && retnAddress == 0x5E2383) // shut up Dispel and RemoveMe
 	{
-		// context: Dispel returns false deliberately if called within own script effect to act as a "Return" statement
+		// context: Dispel and RemoveMe return false deliberately if called within own script effect to act as a "Return" statement
 		return 0;
 	}
 	va_list	args;

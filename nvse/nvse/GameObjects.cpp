@@ -324,3 +324,15 @@ ExtraDroppedItemList* TESObjectREFR::GetDroppedItems()
 {
 	return static_cast<ExtraDroppedItemList*>(extraDataList.GetByType(kExtraData_DroppedItemList));
 }
+
+// Code by JIP
+double TESObjectREFR::GetHeadingAngle(const TESObjectREFR* to) const
+{
+	auto const from = this;
+	double result = (atan2(to->posX - from->posX, to->posY - from->posY) - from->rotZ) * 57.29577951308232;
+	if (result < -180)
+		result += 360;
+	else if (result > 180)
+		result -= 360;
+	return result;
+}

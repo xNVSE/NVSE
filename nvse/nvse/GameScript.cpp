@@ -3,9 +3,11 @@
 #include "GameForms.h"
 #include "GameObjects.h"
 #include "CommandTable.h"
+#include "GameData.h"
 #include "GameRTTI.h"
 #include "ScriptUtils.h"
 
+// Does NOT list synonyms, only the base types.
 const char *g_variableTypeNames[6] =
 	{
 		"float",
@@ -14,6 +16,18 @@ const char *g_variableTypeNames[6] =
 		"array_var",
 		"ref",
 		"invalid"};
+
+// Lists all valid variable names, some of which may be synonyms.
+const char* g_validVariableTypeNames[8] =
+{
+	"float",
+	"int",
+	"string_var",
+	"array_var",
+	"ref",
+	"short",
+	"long",
+	"reference"};
 
 #if RUNTIME
 std::span<CommandInfo> g_eventBlockCommandInfos = {reinterpret_cast<CommandInfo*>(0x118E2F0), 38};
@@ -42,30 +56,58 @@ Script::VariableType VariableTypeNameToType(const char *name)
 	return varType;
 }
 
-UInt32 GetDeclaredVariableType(const char *varName, const char *scriptText, Script *script)
+const char* VariableTypeToName(Script::VariableType type)
+{
+	switch (type) { case Script::eVarType_Float: return "float";
+	case Script::eVarType_Integer: return "int";
+	case Script::eVarType_String: return "string";
+	case Script::eVarType_Array: return "array";
+	case Script::eVarType_Ref: return "ref";
+	case Script::eVarType_Invalid: 
+	default: return "invalid";
+	}
+}
+
+Script::VariableType GetDeclaredVariableType(const char* varName, const char* scriptText, Script* script)
 {
 #if NVSE_CORE
 	if (const auto savedVarType = GetSavedVarType(script, varName); savedVarType != Script::eVarType_Invalid)
 		return savedVarType;
 #endif
-	Tokenizer scriptLines(scriptText, "\n\r");
-	std::string curLine;
-	while (scriptLines.NextToken(curLine) != -1)
+	ScriptTokenizer tokenizer(scriptText);
+	while (tokenizer.TryLoadNextLine())
 	{
-		Tokenizer tokens(curLine.c_str(), " \t\n\r;");
-		std::string curToken;
+		auto token1View = tokenizer.GetNextLineToken();
+		if (token1View.empty())
+			continue;
 
-		if (tokens.NextToken(curToken) != -1)
+		auto token2View = tokenizer.GetNextLineToken();
+		if (token2View.empty())
+			continue;
+
+		// Need a C-string w/ null terminator - hence std::string conversion.
+		const auto varType = VariableTypeNameToType(std::string(token1View).c_str());
+		if (varType == Script::eVarType_Invalid)
+			continue;
+
+		// Handle possible multiple variable declarations on one line.
+		auto existingVarName = std::string(token2View);
+		bool prevVarHadComma;
+		do
 		{
-			const auto varType = VariableTypeNameToType(curToken.c_str());
-			if (varType != Script::eVarType_Invalid && tokens.NextToken(curToken) != -1 && !StrCompare(curToken.c_str(), varName))
+			if (prevVarHadComma = existingVarName.back() == ',')
+				existingVarName.pop_back(); // remove comma from name
+			if (!StrCompare(existingVarName.c_str(), varName))
 			{
-#if NVSE_CORE
+			#if NVSE_CORE
 				SaveVarType(script, varName, varType);
-#endif
+			#endif
 				return varType;
 			}
+			
+			existingVarName = std::string(tokenizer.GetNextLineToken());
 		}
+		while (!existingVarName.empty() && prevVarHadComma);
 	}
 #if NVSE_CORE
 	if (auto *parent = GetLambdaParentScript(script))
@@ -84,7 +126,7 @@ Script *GetScriptFromForm(TESForm *form)
 	return scriptable ? scriptable->script : NULL;
 }
 
-UInt32 Script::GetVariableType(VariableInfo *varInfo)
+Script::VariableType Script::GetVariableType(VariableInfo* varInfo)
 {
 	if (text)
 		return GetDeclaredVariableType(varInfo->name.m_data, text, this);
@@ -93,7 +135,7 @@ UInt32 Script::GetVariableType(VariableInfo *varInfo)
 		// if it's a ref var a matching varIdx will appear in RefList
 		if (refList.Contains([&](const RefVariable *ref) { return ref->varIdx == varInfo->idx; }))
 			return eVarType_Ref;
-		return varInfo->type;
+		return static_cast<Script::VariableType>(varInfo->type);
 	}
 }
 
@@ -156,11 +198,60 @@ bool Script::Compile(ScriptBuffer* buffer)
 	const auto address = 0x5C96E0;
 	auto* scriptCompiler = (void*)0xECFDF8;
 #else
-	const auto address = 0x5AEB90;
+	constexpr auto address = 0x5AEB90;
 	auto* scriptCompiler = ConsoleManager::GetSingleton()->scriptContext;
 #endif
 	return ThisStdCall<bool>(address, scriptCompiler, this, buffer); // CompileScript
 }
+
+#if NVSE_CORE && RUNTIME
+static UInt32 g_partialScriptCount = 0;
+
+Script* CompileScriptEx(const char* scriptText, const char* scriptName)
+{
+	const auto buffer = MakeUnique<ScriptBuffer, 0x5AE490, 0x5AE5C0>();
+	DataHandler::Get()->DisableAssignFormIDs(true);
+	auto script = MakeUnique<Script, 0x5AA0F0, 0x5AA1A0>();
+	DataHandler::Get()->DisableAssignFormIDs(false);
+	buffer->scriptName.Set(scriptName ? scriptName : FormatString("nvse_partial_script_%d", ++g_partialScriptCount).c_str());
+	buffer->scriptText = const_cast<char*>(scriptText);
+	script->text = const_cast<char*>(scriptText);
+	buffer->partialScript = true;
+	*buffer->scriptData = 0x1D;
+	buffer->dataOffset = 4;
+	buffer->runtimeMode = ScriptBuffer::kGameConsole;
+	buffer->currentScript = script.get();
+	const auto result = script->Compile(buffer.get());
+	buffer->scriptText = nullptr;
+	script->text = nullptr;
+	if (!result)
+		return nullptr;
+	return script.release();
+}
+
+Script* CompileScript(const char* scriptText)
+{
+	return CompileScriptEx(scriptText);
+}
+
+Script* CompileExpression(const char* scriptText)
+{
+	std::string condString = scriptText;
+	std::string scriptSource;
+	if (!FindStringCI(condString, "SetFunctionValue"))
+	{
+		scriptSource = FormatString("begin function{}\nSetFunctionValue (%s)\nend\n", condString.c_str());
+	}
+	else
+	{
+		ReplaceAll(condString, "%r", "\n");
+		ReplaceAll(condString, "%R", "\n");
+		scriptSource = FormatString("begin function{}\n%s\nend\n", condString.c_str());
+	}
+	return CompileScript(scriptSource.c_str());
+}
+
+#endif
 
 #if RUNTIME
 
@@ -295,7 +386,7 @@ VariableInfo *ScriptBuffer::GetVariableByName(const char *name)
 	return nullptr;
 }
 
-UInt32 ScriptBuffer::GetVariableType(VariableInfo *varInfo, Script::RefVariable *refVar, Script *script)
+Script::VariableType ScriptBuffer::GetVariableType(VariableInfo* varInfo, Script::RefVariable* refVar, Script* script)
 {
 	const char *scrText = scriptText;
 	if (refVar)

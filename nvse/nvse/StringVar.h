@@ -39,6 +39,7 @@ public:
 		return *this;
 	}
 
+	// length of newString should respect kMaxMessageLength
 	void		Set(const char* newString);
 	void        Set(StringVar&& other);
 	SInt32		Compare(char* rhs, bool caseSensitive);
@@ -50,6 +51,7 @@ public:
 	std::string	SubString(UInt32 startPos, UInt32 numChars);
 	char		At(UInt32 charPos);
 	static UInt32	GetCharType(char ch);
+	void Trim();
 
 	std::string String()					{	return data;	}
 	std::string& StringRef() {return data;}
@@ -83,6 +85,7 @@ public:
 extern StringVarMap g_StringMap;
 
 bool AssignToStringVar(COMMAND_ARGS, const char* newValue);
+bool IsFunctionResultCacheString(UInt32 strId);
 bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue);	// Increase the call count in the stack
 
 namespace PluginAPI

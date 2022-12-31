@@ -68,4 +68,11 @@ static ParamInfo kParams_OneNVSEVariable[] =
 	{"variable", kNVSEParamType_Variable, 0}
 };
 
+static ParamInfo kParams_OneBoolean[] =
+{
+	{	"boolean expression",	kNVSEParamType_Boolean,	0	},
+};
+
 DEFINE_CMD_ALT_EXP(PrintVar, PrintV, , false, kParams_OneNVSEVariable);
+DEFINE_CMD_ALT_EXP(Assert, AssertTrue, , false, kParams_OneBoolean);
+DEFINE_CMD_ALT_EXP(GetSelfAlt, ThisAlt, "Unlike GetSelf, will return ThisObj even if it isn't Persistent and is clutter.", false, nullptr);

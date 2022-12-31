@@ -46,6 +46,7 @@ UInt32 et;
 UInt32 au3D;
 bool g_warnScriptErrors = false;
 bool g_noSaveWarnings = false;
+std::filesystem::path g_pluginLogPath;
 
 void WaitForDebugger(void)
 {
@@ -57,7 +58,13 @@ void WaitForDebugger(void)
 	Sleep(1000 * 2);
 }
 
-
+// Moved to a separate function, since strings can throw, and NVSE_Initialize has a __try block which doesn't allow that.
+void ReadNVSEPluginLogPath()
+{
+	g_pluginLogPath = GetNVSEConfigOption("LOGGING", "sPluginLogPath");
+	if (g_pluginLogPath.has_extension() || g_pluginLogPath.has_filename()) [[unlikely]]
+		g_pluginLogPath = "";
+}
 
 void NVSE_Initialize(void)
 {
@@ -79,6 +86,8 @@ void NVSE_Initialize(void)
 		_MESSAGE("NVSE runtime: initialize (version = %d.%d.%d %08X %08X%08X)",
 			NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA, RUNTIME_VERSION,
 			now.dwHighDateTime, now.dwLowDateTime);
+
+		GetNVSEConfigOption_UInt32("TESTS", "EnableRuntimeTests", &s_AreRuntimeTestsEnabled);
 #else
 		_MESSAGE("NVSE editor: initialize (version = %d.%d.%d %08X %08X%08X)",
 			NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA, EDITOR_VERSION,
@@ -114,9 +123,16 @@ void NVSE_Initialize(void)
 		_memcpy = memcpy;
 		_memmove = memmove;
 
+		ReadNVSEPluginLogPath();
+
 		gLog.SetLogLevel((IDebugLog::LogLevel)logLevel);
 
 		MersenneTwister::init_genrand(GetTickCount());
+
+#if RUNTIME
+		// Runs before CommandTable::Init to prevent plugins from being able to register events before ours (breaks assert).
+		EventManager::Init();	
+#endif
 		CommandTable::Init();
 
 #if RUNTIME
@@ -129,7 +145,6 @@ void NVSE_Initialize(void)
 		Hook_Script_Init();
 		Hook_Animation_Init();
 		OtherHooks::Hooks_Other_Init();
-		EventManager::Init();
 
 		Hook_Dialog_Init();
 		PatchGameCommandParser();

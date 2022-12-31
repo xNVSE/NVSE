@@ -61,6 +61,7 @@ namespace SmallObjectsAllocator
 	template <class T, std::size_t C>
 	class FastAllocator
 	{
+#define TRACK_ALLOCATIONS 0
 #if _DEBUG
 		std::size_t count_ = 0;
 
@@ -69,7 +70,9 @@ namespace SmallObjectsAllocator
 			T* t;
 			std::vector<UInt32> stack;
 		};
+#if TRACK_ALLOCATIONS
 		std::list<MemLeakDebugInfo> allocatedBlocks_;
+#endif
 #endif
 		using MemPool = MemoryPool<T, sizeof(T)* C>;
 		MemPool pool_;
@@ -84,12 +87,14 @@ namespace SmallObjectsAllocator
 				Console_Print("Warning, possible memory leak");
 			}
 			auto* alloc = static_cast<T*>(operator new(sizeof(T)));
+#if TRACK_ALLOCATIONS
 			UInt32 trace[12] = { 0 };
 			CaptureStackBackTrace(0, 12, reinterpret_cast<PVOID*>(trace), nullptr);
 			std::vector<UInt32> vecTrace(trace, trace + 12);
 
 			MemLeakDebugInfo info{ alloc, vecTrace };
 			allocatedBlocks_.push_back(info);
+#endif
 			return alloc;
 #else
 			return pool_.allocate();
@@ -100,7 +105,9 @@ namespace SmallObjectsAllocator
 		{
 #if _DEBUG
 			--count_;
+#if TRACK_ALLOCATIONS
 			allocatedBlocks_.remove_if([ptr](auto& info) {return info.t == ptr; });
+#endif
 			::operator delete(ptr);
 #else
 			pool_.deallocate(static_cast<T*>(ptr));

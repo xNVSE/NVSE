@@ -19,8 +19,6 @@ public:
 		Data(TESForm* t, ExtraContainerChanges::EntryData* en, ExtraDataList* ex) : type(t), entry(en), xData(ex) { }
 		Data(const Data& rhs) : type(rhs.type), entry(rhs.entry), xData(rhs.xData) { }
 		Data() : type(NULL), entry(NULL), xData(NULL) { }
-
-		static void CreateForUnextendedEntry(ExtraContainerChanges::EntryData* entry, SInt32 totalCount, Vector<Data> &dataOut);
 	};
 
 	~InventoryReference();

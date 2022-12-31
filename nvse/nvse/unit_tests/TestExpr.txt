@@ -1,0 +1,71 @@
+begin Function { }
+
+	print "Started running xNVSE TestExpr unit tests."
+
+	ref rOnHitUDF = ({ref rFirst, ref rSecond} => print "ran")
+
+	Assert (TestExpr (SetEventHandlerAlt "OnHit" rOnHitUDF 0::"badFilter")) == 0  ; error should occur
+
+	; Test assignement inside TestExpr statement
+	int iTest
+	Assert (TestExpr (iTest := SetEventHandlerAlt "OnHit" rOnHitUDF 0::"badFilter")) == 0
+
+	; Test with boxing operator
+	array_var aTest
+	Assert (TestExpr (aTest := &(SetEventHandlerAlt "OnHit" rOnHitUDF 0::"badFilter"))) == 0
+
+	Assert (Ar_Size (GetEventHandlers "OnHit" rOnHitUDF 1)) == 0
+
+	; Test array bounds-checking
+	aTest = Ar_Null  ;invalid array
+	Assert (TestExpr (aTest[0])) == 0  ;invalid array index access
+	
+	aTest = ar_List 5
+	Assert (TestExpr (aTest[0])) == 1
+
+	aTest = ar_List (ar_list 5) (ar_List 3)
+	Assert (TestExpr (aTest[0][0])) == 1
+	Assert (TestExpr (aTest[1][0])) == 1
+	Assert (TestExpr (aTest[0][1])) == 0
+	Assert (TestExpr (aTest[1][1])) == 0
+
+
+	; Test division by 0
+	Assert (TestExpr (1 / 0)) == 0  
+	Assert (TestExpr (1 / 2)) == 1
+
+
+	; Test unbox operator
+	Assert (TestExpr (iTest = *(ar_list 1))) == 1
+	Assert iTest == 1
+
+	Assert (TestExpr (iTest = *(ar_list SunnyREF))) == 0  ;assigning ref to int
+	Assert (TestExpr (iTest = *(ar_list (ar_List 1)))) == 0
+	Assert (TestExpr (iTest = *(ar_list "test"))) == 0
+
+	
+	; Test function call with an invalid reference
+	ref rTest = 0
+	Assert (TestExpr (rTest.GetAV Health)) == 0
+	rTest = player
+	Assert (TestExpr (rTest.GetAV Health)) == 1
+	rTest = GSSunnySmiles  ; baseform
+	Assert (TestExpr (rTest.GetAV Health)) == 0
+
+	; Ensure variables don't get assigned to anything if expression failed.
+	iTest = 0
+	Assert (TestExpr iTest = (ar_list 1)[2]) == 0
+	assert (iTest == 0)
+	
+	iTest = 5
+	Assert (TestExpr iTest = (ar_list 1)[2]) == 0
+	assert (iTest == 5)
+	
+	iTest = 10
+	Assert (TestExpr (iTest = *(ar_list SunnyREF))) == 0
+	assert (iTest == 10)
+
+
+	print "Finished running xNVSE TestExpr unit tests."
+
+end
