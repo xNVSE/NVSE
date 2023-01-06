@@ -1,27 +1,24 @@
 #pragma once
 #include "ScriptUtils.h"
-#include <unordered_map>
 #include "FastStack.h"
 
-struct UserFunctionParam
-{
+struct UserFunctionParam {
 	UInt16	varIdx;
 	Script::VariableType	varType;
 
-	UserFunctionParam(UInt16 _idx, Script::VariableType _type) : varIdx(_idx), varType(_type) { }
+	UserFunctionParam(const UInt16 _idx, const Script::VariableType _type) : varIdx(_idx), varType(_type) { }
 	UserFunctionParam() : varIdx(-1), varType(Script::eVarType_Invalid) { }
 };
 
 #if RUNTIME
-
 struct FunctionContext;
 
 // base class for Template Method-ish objects to execute function scripts
 // derive from it to allow function scripts to be invoked from script or internal code
-class FunctionCaller
-{
+class FunctionCaller {
 public:
-	virtual ~FunctionCaller() = default;
+	FunctionCaller();
+	virtual ~FunctionCaller();
 
 	virtual UInt8 ReadCallerVersion() = 0;
 	virtual Script* ReadScript() = 0;
@@ -34,8 +31,7 @@ public:
 };
 
 // stores info about function script (params, etc). generated once per function script and cached
-struct FunctionInfo
-{
+struct FunctionInfo {
 	DynamicParamInfo	m_dParamInfo;
 	std::vector<UserFunctionParam> m_userFunctionParams;
 	Script* m_script;			// function script
@@ -50,7 +46,7 @@ struct FunctionInfo
 	bool				m_isLambda;
 
 	FunctionInfo() = default;
-	FunctionInfo(Script* script);
+	explicit FunctionInfo(Script* script);
 	~FunctionInfo();
 
 	FunctionContext* CreateContext(UInt8 version, Script* invokingScript);
@@ -60,14 +56,13 @@ struct FunctionInfo
 	ParamInfo* Params() { return m_dParamInfo.Params(); }
 	DynamicParamInfo& ParamInfo() { return m_dParamInfo; }
 	UserFunctionParam* GetParam(UInt32 paramIndex);
-	bool Execute(FunctionCaller& caller, FunctionContext* context);
+	bool Execute(FunctionCaller& caller, const FunctionContext* context);
 	[[nodiscard]] ScriptEventList* GetEventList() const { return m_eventList; }
 	UInt32 GetParamVarTypes(UInt8* out) const;	// returns count, if > 0 returns types as array
 };
 
 // represents a function executing on the stack
-struct FunctionContext
-{
+struct FunctionContext {
 private:
 	FunctionInfo* m_info;
 	ScriptEventList* m_eventList;		// temporary eventlist generated for function script
@@ -93,21 +88,19 @@ public:
 // controls user function calls.
 // Manages a stack of function contexts
 // Function args in Call bytecode. FunctionInfo encoded in Begin Function data. Return value from SetFunctionValue.
-class UserFunctionManager
-{
+class UserFunctionManager {
 	static UserFunctionManager* GetSingleton();
 
 	UserFunctionManager();
-
-	static const UInt32	kMaxNestDepth = 30;	// arbitrarily low; have seen 180+ nested calls execute w/o problems
+	static constexpr UInt32	kMaxNestDepth = 30; // arbitrarily low; have seen 180+ nested calls execute w/o problems
 
 	UInt32								m_nestDepth;
 	Stack<FunctionContext*>		m_functionStack;
 	UnorderedMap<Script*, FunctionInfo>	m_functionInfos;
 
 	// these take a ptr to the function script to check that it matches executing script
-	FunctionContext* Top(Script* funcScript);
-	bool Pop(Script* funcScript);
+	FunctionContext* Top(const Script* funcScript);
+	bool Pop(const Script* funcScript);
 	void Push(FunctionContext* context) { m_functionStack.Push(context); }
 	FunctionInfo* GetFunctionInfo(Script* funcScript);
 
@@ -123,29 +116,27 @@ public:
 	static UInt32 GetFunctionParamTypes(Script* fnScript, UInt8* typesOut);
 
 	// return script that called fnScript
-	static Script* GetInvokingScript(Script* fnScript);
+	static Script* GetInvokingScript(const Script* fnScript);
 
 	static void ClearInfos();
 };
 
 // allows us to call function scripts directly
-class InternalFunctionCaller : public FunctionCaller
-{
+class InternalFunctionCaller : public FunctionCaller {
 public:
-	InternalFunctionCaller(Script* script, TESObjectREFR* callingObj = nullptr, TESObjectREFR* container = nullptr, bool allowSurplusDispatchArgs = false)
-		: m_callerVersion(UserFunctionManager::kVersion), m_numArgs(0), m_script(script), m_thisObj(callingObj),
+	InternalFunctionCaller(Script* script, TESObjectREFR* callingObj = nullptr, TESObjectREFR* container = nullptr, const bool allowSurplusDispatchArgs = false)
+		: m_callerVersion(UserFunctionManager::kVersion), m_numArgs(0), m_script(script), m_args{}, m_thisObj(callingObj),
 			m_container(container), m_allowSurplusDispatchArgs(allowSurplusDispatchArgs)
 	{ }
 
-	virtual ~InternalFunctionCaller() = default;
 	virtual UInt8 ReadCallerVersion() { return m_callerVersion; }
 	virtual Script* ReadScript() { return m_script; }
 	virtual bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info);
 	virtual TESObjectREFR* ThisObj() { return m_thisObj; }
 	virtual TESObjectREFR* ContainingObj() { return m_container; }
 
-	bool SetArgs(ParamSize_t numArgs, ...);
-	bool vSetArgs(ParamSize_t numArgs, va_list args);
+	virtual bool SetArgs(ParamSize_t numArgs, ...);
+	virtual bool vSetArgs(ParamSize_t numArgs, va_list args);
 	bool SetArgsRaw(ParamSize_t numArgs, const void* args);
 
 protected:
@@ -161,18 +152,15 @@ protected:
 };
 
 // Unlike InternalFunctionCaller, expects numeric args to always be passed as floats.
-class InternalFunctionCallerAlt : public InternalFunctionCaller
-{
+class InternalFunctionCallerAlt : public InternalFunctionCaller {
 public:
-	InternalFunctionCallerAlt(Script* script, TESObjectREFR* callingObj = nullptr, TESObjectREFR* container = nullptr, bool allowSurplusDispatchArgs = false)
+	InternalFunctionCallerAlt(Script* script, TESObjectREFR* callingObj = nullptr, TESObjectREFR* container = nullptr, const bool allowSurplusDispatchArgs = false)
 		: InternalFunctionCaller(script, callingObj, container, allowSurplusDispatchArgs) { }
-
-	~InternalFunctionCallerAlt() override = default;
 
 	bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info) override;
 
-	bool SetArgs(ParamSize_t numArgs, ...) = delete;
-	bool vSetArgs(ParamSize_t numArgs, va_list args) = delete;
+	bool SetArgs(ParamSize_t numArgs, ...) override = 0; // delete
+	bool vSetArgs(ParamSize_t numArgs, va_list args) override = 0; // delete
 	//can only use SetArgsRaw, since otherwise it's easier to trip up with va_args and pass an int.
 };
 
@@ -180,7 +168,7 @@ template <typename T>
 concept BaseOfArrayElement = std::is_base_of_v<ArrayElement, T>;
 
 template <BaseOfArrayElement T>
-class ArrayElementArgFunctionCaller : public FunctionCaller
+class ArrayElementArgFunctionCaller final : public FunctionCaller
 {
 public:
 	ArrayElementArgFunctionCaller(Script* script, const std::vector<T>& args, TESObjectREFR* callingObj = nullptr, TESObjectREFR* container = nullptr)

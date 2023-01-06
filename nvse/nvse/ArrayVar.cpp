@@ -204,8 +204,7 @@ std::string ArrayElement::GetStringRepresentation() const
 }
 
 
-bool ArrayElement::CompareNames(const ArrayElement& lhs, const ArrayElement& rhs)
-{
+bool ArrayElement::CompareNames(const ArrayElement& lhs, const ArrayElement& rhs) {
 	TESForm* lform = LookupFormByID(lhs.m_data.formID);
 	if (lform)
 	{

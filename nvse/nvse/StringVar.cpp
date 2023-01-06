@@ -369,20 +369,15 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 	}
 }
 
-UInt32	StringVarMap::Add(UInt8 varModIndex, const char* data, bool bTemp, StringVar** svOut)
-{
-	UInt32 varID = GetUnusedID();
+UInt32	StringVarMap::Add(UInt8 varModIndex, const char* data, const bool bTemp, StringVar** svOut) {
+	const UInt32 varID = GetUnusedID();
 	auto* sv = Insert(varID, data, varModIndex);
-	if (svOut)
-		*svOut = sv;
-	if (bTemp)
-		MarkTemporary(varID, true);
-
+	if (svOut) { *svOut = sv; }
+	if (bTemp) { MarkTemporary(varID, true); }
 	return varID;
 }
 
-UInt32 StringVarMap::Add(StringVar&& moveVar, bool bTemp, StringVar** svOut)
-{
+UInt32 StringVarMap::Add(StringVar&& moveVar, const bool bTemp, StringVar** svOut) {
 	const auto varID = GetUnusedID();
 	auto* sv = Insert(varID, std::move(moveVar));
 	if (svOut)

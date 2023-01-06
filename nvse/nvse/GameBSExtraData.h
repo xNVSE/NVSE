@@ -1,16 +1,15 @@
 #pragma once
+#ifndef GAMEBSEXTRADATA_H
+#define GAMEBSEXTRADATA_H
 
 // Added to remove a cyclic dependency between GameForms.h and GameExtraData.h
 #include "Utilities.h"
 
-class TESForm;
-
 // C+?
-class BSExtraData
-{
+class BSExtraData {
 public:
-	BSExtraData();
-	virtual ~BSExtraData();
+	BSExtraData() = default;
+	virtual ~BSExtraData() = default;
 
 	virtual bool Differs(BSExtraData* extra);	// 001
 
@@ -25,41 +24,23 @@ public:
 // 020
 struct BaseExtraList
 {
-	bool HasType(UInt32 type) const;
-
-	__forceinline BSExtraData *GetByType(UInt8 type) const
-	{
-		return ThisStdCall<BSExtraData*>(0x410220, this, type);
-	}
+	[[nodiscard]] bool HasType(UInt32 type) const;
 
 	void MarkType(UInt32 type, bool bCleared);
 
-	__forceinline void Remove(BSExtraData *toRemove, bool doFree)
-	{
-		ThisStdCall(0x410020, this, toRemove, doFree);
-	}
+	__forceinline BSExtraData *GetByType(UInt8 type) const { return ThisStdCall<BSExtraData*>(0x410220, this, type); }
 
-	__forceinline void RemoveByType(UInt32 type)
-	{
-		ThisStdCall(0x410140, this, type);
-	}
+	__forceinline void Remove(BSExtraData *toRemove, const bool doFree) const { ThisStdCall(0x410020, this, toRemove, doFree); }
 
-	__forceinline BSExtraData *Add(BSExtraData *toAdd)
-	{
-		return ThisStdCall<BSExtraData*>(0x40FF60, this, toAdd);
-	}
+	__forceinline void RemoveByType(const UInt32 type) const { ThisStdCall(0x410140, this, type); }
 
-	__forceinline void RemoveAll(bool doFree)
-	{
-		ThisStdCall(0x40FAE0, this, doFree);
-	}
+	__forceinline BSExtraData *Add(BSExtraData *toAdd) const { return ThisStdCall<BSExtraData*>(0x40FF60, this, toAdd); }
+
+	__forceinline void RemoveAll( const bool doFree) const { ThisStdCall(0x40FAE0, this, doFree); }
+
+	__forceinline void Copy(BaseExtraList *from) const { ThisStdCall(0x411EC0, this, from); }
 
 	bool MarkScriptEvent(UInt32 eventMask, TESForm* eventTarget);
-
-	__forceinline void Copy(BaseExtraList *from)
-	{
-		ThisStdCall(0x411EC0, this, from);
-	}
 
 	void DebugDump() const;
 
@@ -72,11 +53,9 @@ struct BaseExtraList
 	UInt8		pad1D[3];					// 01D
 };
 
-struct ExtraDataList : public BaseExtraList
-{
-	static ExtraDataList * Create(BSExtraData* xBSData = NULL);
-};
+struct ExtraDataList : BaseExtraList { static ExtraDataList * Create(BSExtraData* xBSData = nullptr); };
 
 STATIC_ASSERT(offsetof(BaseExtraList, m_presenceBitfield) == 0x008);
 STATIC_ASSERT(sizeof(ExtraDataList) == 0x020);
 
+#endif

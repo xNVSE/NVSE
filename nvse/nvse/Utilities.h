@@ -1,14 +1,18 @@
 #pragma once
+#ifndef UTILITIES_H
+#define UTILITIES_H
+
 #include <algorithm>
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
 class Script;
 
-void DumpClass(void * theClassPtr, UInt32 nIntsToDump = 512);
-const char * GetObjectClassName(void * obj);
-const std::string & GetFalloutDirectory(void);
+void DumpClass(void *theClassPtr, UInt32 nIntsToDump = 512);
+const char * GetObjectClassName(void *objBase);
+const std::string & GetFalloutDirectory();
 std::string GetNVSEConfigOption(const char * section, const char * key);
 bool GetNVSEConfigOption_UInt32(const char * section, const char * key, UInt32 * dataOut);
 
@@ -68,46 +72,31 @@ void Console_Print_Str(const std::string& str);
 
 class TESForm;
 
-class FormMatcher
-{
+class FormMatcher {
 public:
 	virtual bool Matches(TESForm* pForm) const = 0;
+	virtual ~FormMatcher() = default;
 };
 
-namespace MersenneTwister
-{
+namespace MersenneTwister {
+	void init_genrand(unsigned long s); /* initializes mt[N] with a seed */
 
-	/* initializes mt[N] with a seed */
-	void init_genrand(unsigned long s);
+	void init_by_array(unsigned long init_key[], int key_length); /* initialize by an array with array-length */
 
-	/* initialize by an array with array-length */
-	void init_by_array(unsigned long init_key[], int key_length);
+	unsigned long genrand_int32(); /* generates a random number on [0,0xffffffff]-interval */
+	long genrand_int31(); /* generates a random number on [0,0x7fffffff]-interval */
 
-	/* generates a random number on [0,0xffffffff]-interval */
-	unsigned long genrand_int32(void);
-
-	/* generates a random number on [0,0x7fffffff]-interval */
-	long genrand_int31(void);
-
-	/* generates a random number on [0,1]-real-interval */
-	double genrand_real1(void);
-
-	/* generates a random number on [0,1)-real-interval */
-	double genrand_real2(void);
-
-	/* generates a random number on (0,1)-real-interval */
-	double genrand_real3(void);
-
-	/* generates a random number on [0,1) with 53-bit resolution*/
-	double genrand_res53(void);
+	double genrand_real1(); /* generates a random number on [0,1]-real-interval */
+	double genrand_real2(); /* generates a random number on [0,1)-real-interval */
+	double genrand_real3(); /* generates a random number on (0,1)-real-interval */
+	double genrand_res53(); /* generates a random number on [0,1) with 53-bit resolution*/
 
 };
 
 // alternative to strtok; doesn't modify src string, supports forward/backward iteration
-class Tokenizer
-{
+class Tokenizer {
 public:
-	Tokenizer(const char* src, const char* delims);
+	Tokenizer(const char* src, const char* delimiters);
 	~Tokenizer() = default;
 
 	// these return the offset of token in src, or -1 if no token
@@ -125,8 +114,7 @@ private:
 // For parsing lexical tokens inside script text line-by-line, while skipping over those inside comments.
 // Comments are passed as a single token (including the '"' characters).
 // Everything else will have to be manually handled.
-class ScriptTokenizer
-{
+class ScriptTokenizer {
 public:
 	ScriptTokenizer(std::string_view scriptText);
 	~ScriptTokenizer() = default;
@@ -148,13 +136,11 @@ private:
 };
 
 #if RUNTIME
-
 const char GetSeparatorChar(Script * script);
-const char * GetSeparatorChars(Script * script);
-
+const char *GetSeparatorChars(Script * script);
 #endif
 
-const char * GetDXDescription(UInt32 keycode);
+const char *GetDXDescription(UInt32 keycode);
 
 bool ci_equal(char ch1, char ch2);
 bool ci_less(const char* lh, const char* rh);
@@ -185,10 +171,10 @@ public:
 		bool			bDisabled;
 	};
 
-	void Show(Message msg, ...);
-	void Show(const char* msg, ...);
-	void vShow(Message& msg, va_list args);
-	void vShow(const char* msg, va_list args);
+	void Show(Message msg, ...) const;
+	void Show(const char* msg, ...) const;
+	void vShow(Message& msg, va_list args) const;
+	void vShow(const char* msg, va_list args) const;
 };
 
 // thread-safe template versions of ThisStdCall()
@@ -235,24 +221,14 @@ void ReplaceAll(std::string &str, const std::string& from, const std::string& to
 extern bool g_warnScriptErrors;
 
 template <typename L, typename T>
-bool Contains(const L& list, T t)
-{
-	for (auto i : list)
-	{
-		if (i == t)
-			return true;
-	}
+bool Contains(const L& list, T t) {
+	for (auto i : list) { if (i == t) { return true; } }
 	return false;
 }
 
 template <typename T>
-bool Contains(std::initializer_list<T> list, const T& t)
-{
-	for (auto i : list)
-	{
-		if (i == t)
-			return true;
-	}
+bool Contains(std::initializer_list<T> list, const T& t) {
+	for (auto i : list) { if (i == t) { return true; } }
 	return false;
 }
 
@@ -267,30 +243,16 @@ std::string GetCurPath();
 
 bool ValidString(const char* str);
 
-#if _DEBUG
 
-
-const char* GetFormName(TESForm* form);
-const char* GetFormName(UInt32 formId);
-
-
-#endif
 
 typedef void* (*_FormHeap_Allocate)(UInt32 size);
 extern const _FormHeap_Allocate FormHeap_Allocate;
 
 template <typename T, const UInt32 ConstructorPtr = 0, typename... Args>
-T* New(Args &&... args)
-{
+T* New(Args &&... args) {
 	auto* alloc = FormHeap_Allocate(sizeof(T));
-	if constexpr (ConstructorPtr)
-	{
-		ThisStdCall(ConstructorPtr, alloc, std::forward<Args>(args)...);
-	}
-	else
-	{
-		memset(alloc, 0, sizeof(T));
-	}
+	if constexpr (ConstructorPtr) { ThisStdCall(ConstructorPtr, alloc, std::forward<Args>(args)...); }
+	else { memset(alloc, 0, sizeof(T)); }
 	return static_cast<T*>(alloc);
 }
 
@@ -319,7 +281,7 @@ game_unique_ptr<T> MakeUnique(T* t)
 template <typename T, const UInt32 ConstructorPtr = 0, const UInt32 DestructorPtr = 0, typename... ConstructorArgs>
 game_unique_ptr<T> MakeUnique(ConstructorArgs &&... args)
 {
-	auto* obj = New<T, ConstructorPtr>(std::forward(args)...);
+	auto* obj = New<T, ConstructorPtr>(std::forward<decltype(args)>(args)...);
 	return MakeUnique<T, DestructorPtr>(obj);
 }
 
@@ -335,3 +297,5 @@ UInt8* GetParentBasePtr(void* addressOfReturnAddress, bool lambda = false);
 //Example in https://en.cppreference.com/w/cpp/utility/variant/visit
 //Allows function overloading with c++ lambdas.
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+
+#endif

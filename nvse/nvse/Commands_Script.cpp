@@ -67,7 +67,7 @@ static bool GetScript_Execute(COMMAND_ARGS, EScriptMode eMode)
 	{
 		if (script)
 		{
-			const auto refResult = (UInt32 *)result;
+			const auto refResult = reinterpret_cast<UInt32 *>(result); // const auto refResult = (UInt32 *)result;
 			*refResult = script->refID;
 		}
 		break;
@@ -77,7 +77,7 @@ static bool GetScript_Execute(COMMAND_ARGS, EScriptMode eMode)
 		// simply forget about the script
 		if (script)
 		{
-			const auto refResult = (UInt32 *)result;
+			const auto refResult = reinterpret_cast<UInt32 *>(result); // const auto refResult = (UInt32 *)result;
 			*refResult = script->refID;
 		}
 		if (scriptForm)
@@ -113,7 +113,7 @@ bool Cmd_RemoveScript_Execute(COMMAND_ARGS)
 bool Cmd_SetScript_Execute(COMMAND_ARGS)
 {
 	*result = 0;
-	const auto refResult = (UInt32 *)result;
+	const auto refResult = reinterpret_cast<UInt32 *>(result); // const auto refResult = (UInt32 *)result;
 
 	TESForm *form = nullptr;
 	TESForm *pForm = nullptr;
@@ -131,7 +131,7 @@ bool Cmd_SetScript_Execute(COMMAND_ARGS)
 	}
 
 	const auto scriptForm = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
-	Script *oldScript = nullptr;
+	const Script *oldScript = nullptr;
 	EffectSetting *effect = nullptr;
 	if (!scriptForm) // Let's try for a MGEF
 	{
@@ -238,7 +238,7 @@ enum
 	eScriptVar_Has,
 };
 
-bool GetVariable_Execute(COMMAND_ARGS, UInt32 whichAction)
+bool GetVariable_Execute(COMMAND_ARGS, const UInt32 whichAction)
 {
 	char varName[256];
 	TESQuest *quest = nullptr;
@@ -266,8 +266,7 @@ bool GetVariable_Execute(COMMAND_ARGS, UInt32 whichAction)
 
 	if (targetScript && targetEventList)
 	{
-		VariableInfo *varInfo = targetScript->GetVariableByName(varName);
-		if (varInfo)
+		if (VariableInfo *varInfo = targetScript->GetVariableByName(varName))
 		{
 			if (whichAction == eScriptVar_Has)
 				*result = 1;
@@ -280,8 +279,8 @@ bool GetVariable_Execute(COMMAND_ARGS, UInt32 whichAction)
 						*result = var->data;
 					else if (whichAction == eScriptVar_GetRef)
 					{
-						const auto refResult = (UInt32 *)result;
-						*refResult = (*(UInt64 *)&var->data);
+						const auto refResult = reinterpret_cast<UInt32 *>(result); // const auto refResult = (UInt32 *)result;
+						*refResult = *reinterpret_cast<UInt64 *>(&var->data);
 					}
 				}
 			}
@@ -320,12 +319,9 @@ bool Cmd_SetVariable_Execute(COMMAND_ARGS)
 
 	if (targetScript && targetEventList)
 	{
-		VariableInfo *varInfo = targetScript->GetVariableByName(varName);
-		if (varInfo)
+		if (const VariableInfo *varInfo = targetScript->GetVariableByName(varName))
 		{
-			ScriptLocal *var = targetEventList->GetVariable(varInfo->idx);
-			if (var)
-				var->data = value;
+			if (ScriptLocal *var = targetEventList->GetVariable(varInfo->idx)) { var->data = value; }
 		}
 	}
 
@@ -361,14 +357,12 @@ bool Cmd_SetRefVariable_Execute(COMMAND_ARGS)
 
 	if (targetScript && targetEventList)
 	{
-		VariableInfo *varInfo = targetScript->GetVariableByName(varName);
-		if (varInfo)
+		if (const VariableInfo *varInfo = targetScript->GetVariableByName(varName))
 		{
-			ScriptLocal *var = targetEventList->GetVariable(varInfo->idx);
-			if (var)
+			if (ScriptLocal *var = targetEventList->GetVariable(varInfo->idx))
 			{
-				auto refResult = (UInt32 *)result;
-				(*(UInt64 *)&var->data) = value ? value->refID : 0;
+				auto refResult = reinterpret_cast<UInt32>(result); // auto refResult = (UInt32 *)result;
+				*reinterpret_cast<UInt64 *>(&var->data) = value ? value->refID : 0;
 			}
 		}
 	}
@@ -412,17 +406,15 @@ bool Cmd_CompareScripts_Execute(COMMAND_ARGS)
 	Script *script2 = nullptr;
 	*result = 0;
 
-	if (!ExtractArgsEx(EXTRACT_ARGS_EX, &script1, &script2))
-		return true;
+	if (!ExtractArgsEx(EXTRACT_ARGS_EX, &script1, &script2)) { return true; }
+
 	script1 = DYNAMIC_CAST(script1, TESForm, Script);
 	script2 = DYNAMIC_CAST(script2, TESForm, Script);
 
 	if (script1 && script2 && script1->info.dataLength == script2->info.dataLength)
 	{
-		if (script1 == script2)
-			*result = 1;
-		else if (!memcmp(script1->data, script2->data, script1->info.dataLength))
-			*result = 1;
+		if (script1 == script2) { *result = 1; }
+		if (!memcmp(script1->data, script2->data, script1->info.dataLength)) { *result = 1; }
 	}
 
 	return true;
@@ -455,7 +447,7 @@ public:
 	}
 };
 
-Script *GetScriptArg(TESObjectREFR *thisObj, TESForm *form)
+Script *GetScriptArg(const TESObjectREFR *thisObj, TESForm *form)
 {
 	Script *targetScript = nullptr;
 	if (form)
@@ -472,13 +464,11 @@ Script *GetScriptArg(TESObjectREFR *thisObj, TESForm *form)
 bool Cmd_GetNumExplicitRefs_Execute(COMMAND_ARGS)
 {
 	TESForm *form = nullptr;
-	Script *targetScript = nullptr;
 	*result = 0;
 
 	if (ExtractArgsEx(EXTRACT_ARGS_EX, &form))
 	{
-		targetScript = GetScriptArg(thisObj, form);
-		if (targetScript)
+		if (const Script *targetScript = GetScriptArg(thisObj, form))
 			*result = targetScript->refList.CountIf(ExplicitRefFinder());
 	}
 
@@ -550,7 +540,7 @@ bool Cmd_RunScript_Execute(COMMAND_ARGS)
 
 		if (script)
 		{
-			*result = CALL_MEMBER_FN(script, Execute)(thisObj, nullptr, nullptr, 0);
+			*result = CALL_MEMBER_FN(script, Execute)(thisObj, nullptr, nullptr, false);
 		}
 	}
 
@@ -560,20 +550,16 @@ bool Cmd_RunScript_Execute(COMMAND_ARGS)
 bool Cmd_GetCurrentScript_Execute(COMMAND_ARGS)
 {
 	// apparently this is useful
-	const auto refResult = (UInt32 *)result;
+	const auto refResult = reinterpret_cast<UInt32 *>(result); // const auto refResult = (UInt32 *)result;
 	*refResult = scriptObj->refID;
 	return true;
 }
 
 bool Cmd_GetCallingScript_Execute(COMMAND_ARGS)
 {
-	const auto refResult = (UInt32 *)result;
+	const auto refResult = reinterpret_cast<UInt32 *>(result); // const auto refResult = (UInt32 *)result;
 	*refResult = 0;
-	Script *caller = UserFunctionManager::GetInvokingScript(scriptObj);
-	if (caller)
-	{
-		*refResult = caller->refID;
-	}
+	if (const Script *caller = UserFunctionManager::GetInvokingScript(scriptObj)) { *refResult = caller->refID; }
 
 	return true;
 }
@@ -603,8 +589,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 				if (const TokenPair* pair = eval.Arg(i)->GetPair(); 
 					pair && pair->left && pair->right) [[likely]]
 				{
-					const char* key = pair->left->GetString();
-					if (key && key[0])
+					if (const char* key = pair->left->GetString(); key[0])
 					{
 						if (!StrCompare(key, "priority"))
 						{
@@ -689,7 +674,7 @@ bool ProcessEventHandler(std::string &eventName, EventManager::EventCallback &ca
 		}
 		if (const UInt32 eventMask = GetLNEventMask(eventNameRaw))
 		{
-			UInt32 const numFilter = (colon && *colon) ? atoi(colon) : 0;
+			UInt32 const numFilter = (colon && *colon) ? strtol(colon, nullptr, 0) : 0; // Was atoi(colon)
 			TESForm* formFilter = callback.source;
 
 			if (addEvt)
@@ -868,7 +853,7 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 	if (!eval.ExtractArgs())
 		return true;
 
-	EventManager::EventInfo* eventInfoPtr = nullptr;
+	const EventManager::EventInfo* eventInfoPtr = nullptr;
 	Script* scriptFilter = nullptr;
 	int priorityFilter = EventManager::kHandlerPriority_Invalid;
 	if (auto const eventNameArg = eval.Arg(0))
@@ -904,7 +889,7 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 			return;
 		auto const accurateArgTypes = info.HasUnknownArgTypes() ? argTypes : info.GetArgTypesAsStackVector();
 
-		auto const DumpHandlerInfo = [&, thisObj, scriptFilter](int priority, const EventManager::EventCallback& handler)
+		auto const DumpHandlerInfo = [&, thisObj, scriptFilter](const int priority, const EventManager::EventCallback& handler)
 		{
 			if ((!scriptFilter || scriptFilter == handler.TryGetScript()) 
 				&& !handler.IsRemoved() 
@@ -962,7 +947,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 	*result = 0;
 	if (!eval.ExtractArgs()) [[unlikely]]
 		return true;
-	EventManager::EventInfo* eventInfoPtr = nullptr;
+	const EventManager::EventInfo* eventInfoPtr = nullptr;
 	Script* scriptFilter = nullptr;
 	int priorityFilter = EventManager::kHandlerPriority_Invalid;
 	if (auto const eventNameArg = eval.Arg(0))

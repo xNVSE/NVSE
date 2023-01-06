@@ -1,6 +1,7 @@
 #include <tlhelp32.h>
 #include <direct.h>
 #include <string>
+#include "common/IDebugLog.h"
 #include "common/IFileStream.h"
 #include "loader_common/IdentifyEXE.h"
 #include "loader_common/Error.h"
@@ -8,14 +9,14 @@
 #include "Inject.h"
 #include "nvse/nvse_version.h"
 
-IDebugLog	gLog("nvse_loader.log");
+IDebugLog gLog("nvse_loader.log");
 
-static bool InjectDLL(PROCESS_INFORMATION * info, const char * dllPath, ProcHookInfo * hookInfo);
-static bool InjectDLLThread(PROCESS_INFORMATION * info, const char * dllPath, bool sync);
-static bool DoInjectDLLThread(PROCESS_INFORMATION * info, const char * dllPath, bool sync);
+static bool InjectDLL(PROCESS_INFORMATION * info, const char *dllPath, ProcHookInfo * hookInfo);
+static bool InjectDLLThread(const PROCESS_INFORMATION * info, const char *dllPath, bool sync);
+static bool DoInjectDLLThread(const PROCESS_INFORMATION * info, const char *dllPath, bool sync);
 static void PrintModuleInfo(UInt32 procID);
 
-int main(int argc, char ** argv)
+int main(const int argc, char ** argv)
 {
 	gLog.SetPrintLevel(IDebugLog::kLevel_FatalError);
 	gLog.SetLogLevel(IDebugLog::kLevel_DebugMessage);
@@ -56,7 +57,7 @@ int main(int argc, char ** argv)
 
 	std::string procPath = std::string(currentWorkingDirectory) + "\\" + std::string(procName);
 
-	if(g_options.m_altEXE.size())
+	if(!g_options.m_altEXE.empty())
 	{
 		procPath = g_options.m_altEXE;
 		_MESSAGE("launching alternate exe (%s)", procPath.c_str());
@@ -65,8 +66,7 @@ int main(int argc, char ** argv)
 	_MESSAGE("procPath = %s", procPath.c_str());
 
 	{
-		IFileStream	fileCheck;
-		if(!fileCheck.Open(procPath.c_str()))
+		if(IFileStream	fileCheck; !fileCheck.Open(procPath.c_str()))
 		{
 			PrintLoaderError("Couldn't find %s.", procName);
 			return 1;
@@ -75,7 +75,7 @@ int main(int argc, char ** argv)
 
 	_MESSAGE("launching: %s (%s)", procName, procPath.c_str());
 
-	if(g_options.m_altDLL.size())
+	if(!g_options.m_altDLL.empty())
 	{
 		baseDllName = g_options.m_altDLL.c_str();
 		_MESSAGE("launching alternate dll (%s)", baseDllName);
@@ -84,10 +84,9 @@ int main(int argc, char ** argv)
 	}
 
 	std::string		dllSuffix;
-	ProcHookInfo	procHookInfo;
+	ProcHookInfo	procHookInfo = { };
 
-	if(!IdentifyEXE(procPath.c_str(), g_options.m_launchCS, &dllSuffix, &procHookInfo))
-	{
+	if(!IdentifyEXE(procPath.c_str(), g_options.m_launchCS, &dllSuffix, &procHookInfo)) {
 		_ERROR("unknown exe");
 		return 1;
 	}
@@ -100,49 +99,32 @@ int main(int argc, char ** argv)
 
 	// build dll path
 	std::string	dllPath;
-	if(dllHasFullPath)
-	{
-		dllPath = baseDllName;
-	}
-	else
-	{
-		dllPath = std::string(currentWorkingDirectory) + "\\" + baseDllName + "_" + dllSuffix + ".dll";
-	}
+	if (dllHasFullPath) { dllPath = baseDllName; }
+	else { dllPath = std::string(currentWorkingDirectory) + "\\" + baseDllName + "_" + dllSuffix + ".dll"; }
 
 	_MESSAGE("dll = %s", dllPath.c_str());
 
 	// check to make sure the dll exists
-	{
-		IFileStream	tempFile;
-
-		if(!tempFile.Open(dllPath.c_str()))
-		{
-			PrintLoaderError("Couldn't find NVSE DLL (%s). Please make sure you have installed NVSE correctly and are running it from your Fallout folder.", dllPath.c_str());
-			return 1;
-		}
+	if (IFileStream	tempFile; !tempFile.Open(dllPath.c_str())) {
+		PrintLoaderError("Couldn't find NVSE DLL (%s). Please make sure you have installed NVSE correctly and are running it from your Fallout folder.", dllPath.c_str());
+		return 1;
 	}
 
-	if(procHookInfo.procType == kProcType_Steam)
-	{
+	if (procHookInfo.procType == kProcType_Steam) {
 		// same for standard and nogore
 		char appIDStr[128];
 		UInt32 appID = 22380;
 
-		if(g_options.m_appID)
-		{
+		if(g_options.m_appID) {
 			_MESSAGE("using alternate appid %d", g_options.m_appID);
 			appID = g_options.m_appID;
 		}
 
 		sprintf_s(appIDStr, sizeof(appIDStr), "%d", appID);
 
-		// set this no matter what to work around launch issues
-		SetEnvironmentVariable("SteamGameId", appIDStr);
+		SetEnvironmentVariable("SteamGameId", appIDStr); // set this no matter what to work around launch issues
 
-		if(g_options.m_skipLauncher)
-		{
-			SetEnvironmentVariable("SteamAppID", appIDStr);
-		}
+		if(g_options.m_skipLauncher) { SetEnvironmentVariable("SteamAppID", appIDStr); }
 	}
 
 	STARTUPINFO			startupInfo = { 0 };
@@ -150,15 +132,15 @@ int main(int argc, char ** argv)
 
 	startupInfo.cb = sizeof(startupInfo);
 
-	if(!CreateProcess(
+	if (!CreateProcess(
 		procPath.c_str(),
-		NULL,	// no args
-		NULL,	// default process security
-		NULL,	// default thread security
+		nullptr,	// no args
+		nullptr,	// default process security
+		nullptr,	// default thread security
 		TRUE,	// don't inherit handles
 		CREATE_SUSPENDED,
-		NULL,	// no new environment
-		NULL,	// no new cwd
+		nullptr,	// no new environment
+		nullptr,	// no new cwd
 		&startupInfo, &procInfo))
 	{
 		PrintLoaderError("Launching %s failed (%d).", procPath.c_str(), GetLastError());
@@ -169,58 +151,46 @@ int main(int argc, char ** argv)
 
 	bool	injectionSucceeded = false;
 
-	switch(procHookInfo.procType)
-	{
+	switch (procHookInfo.procType) {
 		case kProcType_Steam:
-			if(g_options.m_skipLauncher)
-			{
-				std::string	steamHookDllPath = std::string(currentWorkingDirectory) + "\\nvse_steam_loader.dll";
+			if(g_options.m_skipLauncher) {
+				const std::string	steamHookDllPath = std::string(currentWorkingDirectory) + "\\nvse_steam_loader.dll";
 
-				if(InjectDLLThread(&procInfo, steamHookDllPath.c_str(), true))
-				{
+				if(InjectDLLThread(&procInfo, steamHookDllPath.c_str(), true)) {
 					injectionSucceeded = true;
 				}
 			}
-			else
-			{
+			else {
 				injectionSucceeded = true;
 			}
 			break;
 
 		case kProcType_Normal:
-			if(InjectDLL(&procInfo, dllPath.c_str(), &procHookInfo))
-			{
-				injectionSucceeded = true;
-			}
+			if(InjectDLL(&procInfo, dllPath.c_str(), &procHookInfo)) { injectionSucceeded = true; }
 			break;
 
 		default:
 			HALT("impossible");
 	}
 
-	if(!injectionSucceeded)
-	{
+	if(!injectionSucceeded) {
 		PrintLoaderError("Couldn't inject DLL.");
 
 		_ERROR("terminating process");
 
 		TerminateProcess(procInfo.hProcess, 0);
 	}
-	else
-	{
+	else {
 		_MESSAGE("launching");
 
 		ResumeThread(procInfo.hThread);
 
-		if(g_options.m_moduleInfo)
-		{
+		if(g_options.m_moduleInfo) {
 			Sleep(1000 * 3);	// wait 3 seconds
-
 			PrintModuleInfo(procInfo.dwProcessId);
 		}
 
-		if(g_options.m_waitForClose)
-			WaitForSingleObject(procInfo.hProcess, INFINITE);
+		if(g_options.m_waitForClose) { WaitForSingleObject(procInfo.hProcess, INFINITE); }
 	}
 
 	CloseHandle(procInfo.hProcess);
@@ -229,14 +199,11 @@ int main(int argc, char ** argv)
 	return 0;
 }
 
-static bool InjectDLL(PROCESS_INFORMATION * info, const char * dllPath, ProcHookInfo * hookInfo)
-{
+static bool InjectDLL(PROCESS_INFORMATION * info, const char * dllPath, ProcHookInfo * hookInfo) {
 	bool	result = false;
 
 	// wrap DLL injection in SEH, if it crashes print a message
-	__try {
-		result = DoInjectDLL(info, dllPath, hookInfo);
-	}
+	__try { result = DoInjectDLL(info, dllPath, hookInfo); }
 	__except(EXCEPTION_EXECUTE_HANDLER)
 	{
 		PrintLoaderError("DLL injection failed. In most cases, this is caused by an overly paranoid software firewall or antivirus package. Disabling either of these may solve the problem.");
@@ -246,44 +213,28 @@ static bool InjectDLL(PROCESS_INFORMATION * info, const char * dllPath, ProcHook
 	return result;
 }
 
-static void PrintModuleInfo(UInt32 procID)
-{
-	HANDLE	snap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, procID);
-	if(snap != INVALID_HANDLE_VALUE)
-	{
+static void PrintModuleInfo(const UInt32 procID) {
+	if (const HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, procID); snap != INVALID_HANDLE_VALUE) {
 		MODULEENTRY32	module;
 
 		module.dwSize = sizeof(module);
 
-		if(Module32First(snap, &module))
-		{
-			do 
-			{
+		if(Module32First(snap, &module)) {
+			do {
 				_MESSAGE("%08Xx%08X %08X %s %s", module.modBaseAddr, module.modBaseSize, module.hModule, module.szModule, module.szExePath);
-			}
-			while(Module32Next(snap, &module));
+			} while(Module32Next(snap, &module));
 		}
-		else
-		{
-			_ERROR("PrintModuleInfo: Module32First failed (%d)", GetLastError());
-		}
-
+		else { _ERROR("PrintModuleInfo: Module32First failed (%d)", GetLastError()); }
 		CloseHandle(snap);
 	}
-	else
-	{
-		_ERROR("PrintModuleInfo: CreateToolhelp32Snapshot failed (%d)", GetLastError());
-	}
+	else { _ERROR("PrintModuleInfo: CreateToolhelp32Snapshot failed (%d)", GetLastError()); }
 }
 
-static bool InjectDLLThread(PROCESS_INFORMATION * info, const char * dllPath, bool sync)
-{
+static bool InjectDLLThread(const PROCESS_INFORMATION * info, const char * dllPath, const bool sync) {
 	bool	result = false;
 
 	// wrap DLL injection in SEH, if it crashes print a message
-	__try {
-		result = DoInjectDLLThread(info, dllPath, sync);
-	}
+	__try { result = DoInjectDLLThread(info, dllPath, sync); }
 	__except(EXCEPTION_EXECUTE_HANDLER)
 	{
 		PrintLoaderError("DLL injection failed. In most cases, this is caused by an overly paranoid software firewall or antivirus package. Disabling either of these may solve the problem.");
@@ -293,67 +244,54 @@ static bool InjectDLLThread(PROCESS_INFORMATION * info, const char * dllPath, bo
 	return result;
 }
 
-static bool DoInjectDLLThread(PROCESS_INFORMATION * info, const char * dllPath, bool sync)
-{
+static bool DoInjectDLLThread(const PROCESS_INFORMATION * info, const char * dllPath, const bool sync) {
 	bool	result = false;
 
-	HANDLE	process = OpenProcess(
-		PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ, FALSE, info->dwProcessId);
-	if(process)
-	{
-		UInt32	hookBase = (UInt32)VirtualAllocEx(process, NULL, 8192, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-		if(hookBase)
-		{
+	if(const HANDLE process = OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ, FALSE, info->dwProcessId)) {
+		if(const auto hookBase = reinterpret_cast<UInt32>(VirtualAllocEx(process, nullptr, 8192, MEM_COMMIT, PAGE_EXECUTE_READWRITE))) {
 			// safe because kernel32 is loaded at the same address in all processes
 			// (can change across restarts)
-			UInt32	loadLibraryAAddr = (UInt32)GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryA");
+			auto loadLibraryAAddr = reinterpret_cast<UInt32>(GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryA"));
 
 			_MESSAGE("hookBase = %08X", hookBase);
 			_MESSAGE("loadLibraryAAddr = %08X", loadLibraryAAddr);
 
 			UInt32	bytesWritten;
-			WriteProcessMemory(process, (LPVOID)(hookBase + 5), dllPath, strlen(dllPath) + 1, &bytesWritten);
+			WriteProcessMemory(process, reinterpret_cast<LPVOID>(hookBase + 5), dllPath, strlen(dllPath) + 1, &bytesWritten);
 
 			UInt8	hookCode[5];
 
 			hookCode[0] = 0xE9;
-			*((UInt32 *)&hookCode[1]) = loadLibraryAAddr - (hookBase + 5);
+			*reinterpret_cast<UInt32 *> (&hookCode[1]) = loadLibraryAAddr - (hookBase + 5); // *((UInt32 *) &hookCode[1]) = loadLibraryAAddr - (hookBase + 5);
 
-			WriteProcessMemory(process, (LPVOID)(hookBase), hookCode, sizeof(hookCode), &bytesWritten);
+			WriteProcessMemory(process, reinterpret_cast<LPVOID>(hookBase), hookCode, sizeof(hookCode), &bytesWritten);
 
-			HANDLE	thread = CreateRemoteThread(process, NULL, 0, (LPTHREAD_START_ROUTINE)hookBase, (void *)(hookBase + 5), 0, NULL);
-			if(thread)
-			{
-				if(sync)
-				{
-					switch(WaitForSingleObject(thread, 1000 * 60))	// timeout = one minute
-					{
+			if(const HANDLE thread = CreateRemoteThread(process, nullptr, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(hookBase), reinterpret_cast<void *>(hookBase + 5), 0, nullptr)) {
+				if (sync) {
+					switch (WaitForSingleObject(thread, 1000 * 60)) 	{ // timeout = one minute
 						case WAIT_OBJECT_0:
 							_MESSAGE("hook thread complete");
 							result = true;
 							break;
-
 						case WAIT_ABANDONED:
 							_ERROR("Process::InstallHook: waiting for thread = WAIT_ABANDONED");
 							break;
-
 						case WAIT_TIMEOUT:
 							_ERROR("Process::InstallHook: waiting for thread = WAIT_TIMEOUT");
 							break;
+						default:
+							break;
 					}
 				}
-				else
-					result = true;
+				else { result = true; }
 
 				CloseHandle(thread);
 			}
-			else
-				_ERROR("CreateRemoteThread failed (%d)", GetLastError());
-
-			VirtualFreeEx(process, (LPVOID)hookBase, 0, MEM_RELEASE);
+			else { _ERROR("CreateRemoteThread failed (%d)", GetLastError()); }
+			VirtualFreeEx(process, reinterpret_cast<LPVOID>(hookBase), 0, MEM_RELEASE);
 		}
-		else
-			_ERROR("Process::InstallHook: couldn't allocate memory in target process");
+		else { _ERROR("Process::InstallHook: couldn't allocate memory in target process"); }
+			
 
 		CloseHandle(process);
 	}

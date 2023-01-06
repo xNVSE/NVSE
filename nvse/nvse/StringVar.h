@@ -77,7 +77,7 @@ public:
 	void Reset();
 	UInt32 Add(UInt8 varModIndex, const char* data, bool bTemp = false, StringVar** svOut = nullptr);
 	UInt32 Add(StringVar&& moveVar, bool bTemp, StringVar** svOut);
-	static StringVarMap * GetSingleton(void);
+	static StringVarMap * GetSingleton();
 	void Delete(UInt32 varID);
 	void MarkTemporary(UInt32 varID, bool bTemporary);
 };

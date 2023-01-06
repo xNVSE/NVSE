@@ -33,10 +33,10 @@ enum
 };
 
 typedef void *(*_FormHeap_Allocate)(UInt32 size);
-extern const _FormHeap_Allocate FormHeap_Allocate;
+//extern const _FormHeap_Allocate FormHeap_Allocate;
 
 typedef void (*_FormHeap_Free)(void *ptr);
-extern const _FormHeap_Free FormHeap_Free;
+//extern const _FormHeap_Free FormHeap_Free;
 
 #if RUNTIME
 TESForm *__stdcall LookupFormByID(UInt32 refID);
@@ -50,8 +50,8 @@ struct ListNode
 	T_Data *data;
 	ListNode *next;
 
-	ListNode() : data(NULL), next(NULL) {}
-	ListNode(T_Data *_data) : data(_data), next(NULL) {}
+	ListNode() : data(nullptr), next(nullptr) {}
+	ListNode(T_Data *_data) : data(_data), next(nullptr) {}
 
 	T_Data *Data() const { return data; }
 	ListNode *Next() const { return next; }

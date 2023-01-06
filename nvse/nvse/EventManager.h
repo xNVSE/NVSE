@@ -114,14 +114,13 @@ namespace EventManager
 	extern InternalEventVec s_internalEventInfos;
 
 	using NativeEventHandler = NVSEEventManagerInterface::NativeEventHandler;
-	struct NativeEventHandlerInfo
-	{
+	struct NativeEventHandlerInfo {
 		NativeEventHandler m_func{};
 		const char* m_pluginName = "[UNKNOWN PLUGIN]";
 		const char* m_handlerName = "[NO NAME]";
 
 		NativeEventHandlerInfo() = default;
-		NativeEventHandlerInfo(NativeEventHandler func) : m_func(func) {}
+		NativeEventHandlerInfo(const NativeEventHandler func) : m_func(func) {}
 		[[nodiscard]] bool InitWithPluginInfo(NativeEventHandler func, PluginHandle pluginHandle, const char* handlerName);
 		[[nodiscard]] std::string GetStringRepresentation() const;
 		[[nodiscard]] ArrayVar* GetArrayRepresentation(UInt8 modIndex) const;
@@ -133,18 +132,9 @@ namespace EventManager
 	using EventArgType = NVSEEventManagerInterface::ParamType;
 	using EventFlags = NVSEEventManagerInterface::EventFlags;
 
-	inline bool IsFormParam(EventArgType pType)
-	{
-		return NVSEEventManagerInterface::IsFormParam(pType);
-	}
-	inline bool IsPtrParam(EventArgType pType)
-	{
-		return NVSEEventManagerInterface::IsPtrParam(pType);
-	}
-	inline EventArgType GetNonPtrParamType(EventArgType pType)
-	{
-		return NVSEEventManagerInterface::GetNonPtrParamType(pType);
-	}
+	inline bool IsFormParam(EventArgType pType) { return NVSEEventManagerInterface::IsFormParam(pType); }
+	inline bool IsPtrParam(EventArgType pType) { return NVSEEventManagerInterface::IsPtrParam(pType); }
+	inline EventArgType GetNonPtrParamType(EventArgType pType) { return NVSEEventManagerInterface::GetNonPtrParamType(pType); }
 	Script::VariableType ParamTypeToVarType(EventArgType pType);
 	EventArgType VarTypeToParamType(Script::VariableType varType);
 	DataType ParamTypeToDataType(EventArgType pType);
@@ -164,8 +154,7 @@ namespace EventManager
 
 
 	// Represents an event handler registered for an event.
-	class EventCallback
-	{
+	class EventCallback {
 		void TrySaveLambdaContext();
 		bool ValidateFirstOrSecondFilter(bool isFirst, const EventInfo& parent, std::string& outErrorMsg) const;
 		bool ValidateFirstAndSecondFilter(const EventInfo& parent, std::string& outErrorMsg) const;
@@ -266,33 +255,24 @@ namespace EventManager
 	// Greatest priority = will run first.
 	using CallbackMap = std::multimap<int, EventCallback, std::greater<>>;
 
-	struct EventInfo
-	{
+	struct EventInfo {
 		EventInfo(const char *name_, EventArgType *params_, UInt8 nParams_, UInt32 eventMask_, EventHookInstaller *installer_,
 				  EventFlags flags = EventFlags::kFlags_None)
 			: evName(name_), paramTypes(params_), numParams(nParams_), eventMask(eventMask_), installHook(installer_), flags(flags)
-		{
-			Init();
-		}
+		{ Init(); }
 		// ctor w/ alias
 		EventInfo(const char* name_, const char* alias_, EventArgType* params_, UInt8 nParams_, UInt32 eventMask_, EventHookInstaller* installer_,
 			EventFlags flags = EventFlags::kFlags_None)
 			: evName(name_), alias(alias_), paramTypes(params_), numParams(nParams_), eventMask(eventMask_), installHook(installer_), flags(flags)
-		{
-			Init();
-		}
+		{ Init(); }
 
 		EventInfo(const char *name_, EventArgType *params_, UInt8 numParams_, EventFlags flags = EventFlags::kFlags_None)
 			: evName(name_), paramTypes(params_), numParams(numParams_), flags(flags)
-		{
-			Init();
-		}
+		{ Init(); }
 		// ctor w/ alias
 		EventInfo(const char* name_, const char* alias_, EventArgType* params_, UInt8 numParams_, EventFlags flags = EventFlags::kFlags_None)
 			: evName(name_), alias(alias_), paramTypes(params_), numParams(numParams_), flags(flags)
-		{
-			Init();
-		}
+		{ Init(); }
 
 		EventInfo(const EventInfo &other) = delete;
 		EventInfo& operator=(const EventInfo& other) = delete;
@@ -330,7 +310,7 @@ namespace EventManager
 		}
 		// n is 0-based
 		// Assumes that the index was already checked as valid (i.e numParams was checked).
-		[[nodiscard]] EventArgType TryGetNthParamType(size_t n) const
+		[[nodiscard]] EventArgType TryGetNthParamType(const size_t n) const
 		{
 			return !HasUnknownArgTypes() ? GetNonPtrParamType(paramTypes[n]) : EventArgType::eParamType_Anything;
 		}
@@ -896,20 +876,13 @@ namespace EventManager
 
 	template <bool ExtractIntTypeAsFloat>
 	DispatchReturn DispatchEventRaw(EventInfo& eventInfo, TESObjectREFR* thisObj, RawArgStack& passedArgs, ArgTypeStack &argTypes,
-		DispatchCallback resultCallback, void* anyData, bool deferIfOutsideMainThread, PostDispatchCallback postCallback,
+		DispatchCallback resultCallback, void* anyData, const bool deferIfOutsideMainThread, PostDispatchCallback postCallback,
 		ExpressionEvaluator* eval)
 	{
-		if (deferIfOutsideMainThread && GetCurrentThreadId() != g_mainThreadID)
-		{
+		if (deferIfOutsideMainThread && GetCurrentThreadId() != g_mainThreadID) {
 			ScopedLock lock(s_criticalSection);
-			if constexpr (ExtractIntTypeAsFloat)
-			{
-				s_deferredCallbacksWithIntsPackedAsFloats.emplace_back(eventInfo, thisObj, passedArgs, argTypes, resultCallback, anyData, postCallback);
-			}
-			else
-			{
-				s_deferredCallbacksDefault.emplace_back(eventInfo, thisObj, passedArgs, argTypes, resultCallback, anyData, postCallback);
-			}
+			if constexpr (ExtractIntTypeAsFloat) { s_deferredCallbacksWithIntsPackedAsFloats.emplace_back(eventInfo, thisObj, passedArgs, argTypes, resultCallback, anyData, postCallback); }
+			else { s_deferredCallbacksDefault.emplace_back(eventInfo, thisObj, passedArgs, argTypes, resultCallback, anyData, postCallback); }
 			return DispatchReturn::kRetn_Deferred;
 		}
 
@@ -921,51 +894,38 @@ namespace EventManager
 
 		// handle immediately
 		s_eventStack.Push(eventInfo.evName);
-
-		for (auto& [priority, callback] : eventInfo.callbacks)
-		{
-			if (callback.IsRemoved())
-				continue;
+		// for (auto& [priority, callback] : eventInfo.callbacks) // priority unused in scope. 
+		for (auto& callback : std::views::values(eventInfo.callbacks)) {
+			if (callback.IsRemoved()) { continue; }
 
 			auto args = eventInfo.GetEffectiveArgs(passedArgs);
 
-			if (!callback.DoDeprecatedFiltersMatch(args, eventInfo.HasUnknownArgTypes() ? &argTypes : nullptr, eventInfo, eval))
-				continue;
-			if (!callback.DoNewFiltersMatch<ExtractIntTypeAsFloat>(thisObj, args, argTypes, eventInfo, eval))
-				continue;
+			if (!callback.DoDeprecatedFiltersMatch(args, eventInfo.HasUnknownArgTypes() ? &argTypes : nullptr, eventInfo, eval)) { continue; }
+			if (!callback.DoNewFiltersMatch<ExtractIntTypeAsFloat>(thisObj, args, argTypes, eventInfo, eval)) { continue; }
 
 			result = std::visit(overloaded{
-				[=, &args](const LambdaManager::Maybe_Lambda& script) -> DispatchReturn
-				{
+				[=, &args](const LambdaManager::Maybe_Lambda& script) -> DispatchReturn {
 					using FunctionCaller = std::conditional_t<ExtractIntTypeAsFloat, InternalFunctionCallerAlt, InternalFunctionCaller>;
 
 					FunctionCaller caller(script.Get(), thisObj, nullptr, true); // don't report errors if passing more args to a UDF than it can absorb.
-					caller.SetArgsRaw(args->size(), args->data());
+					caller.SetArgsRaw(static_cast<unsigned char>(args->size()), args->data());
 					auto const res = UserFunctionManager::Call(std::move(caller));
-					if (resultCallback)
-					{
-						NVSEArrayVarInterface::Element elem;
-						if (PluginAPI::BasicTokenToPluginElem(res.get(), elem, reportErrorIfNoResultGiven ? script.Get() : nullptr)
-							|| !reportErrorIfNoResultGiven)
-						{
-							// Will pass an invalid elem if there is no result and reportErrorIfNoResultGiven is false.
-							return resultCallback(elem, anyData) ? DispatchReturn::kRetn_Normal : DispatchReturn::kRetn_EarlyBreak;
+					if (resultCallback) {
+						if (NVSEArrayVarInterface::Element elem; PluginAPI::BasicTokenToPluginElem(res.get(), elem, reportErrorIfNoResultGiven ? script.Get() : nullptr)
+							|| !reportErrorIfNoResultGiven) {
+							return resultCallback(elem, anyData) ? DispatchReturn::kRetn_Normal : DispatchReturn::kRetn_EarlyBreak; // Will pass an invalid elem if there is no result and reportErrorIfNoResultGiven is false.
 						}
 						return DispatchReturn::kRetn_GenericError;
 					}
 					return DispatchReturn::kRetn_Normal;
 				},
-				[=, &args](NativeEventHandlerInfo const handlerInfo) -> DispatchReturn
-				{
+				[=, &args](NativeEventHandlerInfo const handlerInfo) -> DispatchReturn {
 					g_NativeHandlerResult = nullptr;
 					handlerInfo.m_func(thisObj, args->data());  // g_NativeHandlerResult may change, needs a lock
 
-					if (resultCallback)
-					{
-						if (!g_NativeHandlerResult)
-						{
-							if (!reportErrorIfNoResultGiven)
-							{
+					if (resultCallback) {
+						if (!g_NativeHandlerResult) {
+							if (!reportErrorIfNoResultGiven) {
 								NVSEArrayVarInterface::Element elem{};
 								return resultCallback(elem, anyData) ? DispatchReturn::kRetn_Normal : DispatchReturn::kRetn_EarlyBreak;
 							}
@@ -980,59 +940,45 @@ namespace EventManager
 				},
 				}, callback.toCall);
 
-			if (result != DispatchReturn::kRetn_Normal)
-				break;
+			if (result != DispatchReturn::kRetn_Normal) { break; }
 		}
 
-		if (postCallback)
-			postCallback(anyData, result);
-
+		if (postCallback) { postCallback(anyData, result); }
 		s_eventStack.Pop();
-
 		return result;
 	}
 
 	bool DoSetHandler(EventInfo& info, EventCallback& toSet, int priority);
 
 	template <bool IsInternalHandler>
-	bool SetHandler(const char* eventName, EventCallback& toSet, int priority, ExpressionEvaluator* eval)
-	{
-		if (!toSet.HasCallbackFunc()) [[unlikely]]
-			return false;
+	bool SetHandler(const char* eventName, EventCallback& toSet, const int priority, ExpressionEvaluator* eval) {
+		if (!toSet.HasCallbackFunc()) [[unlikely]] { return false; }
 
-		if (priority == kHandlerPriority_Invalid) [[unlikely]]
-		{
+		if (priority == kHandlerPriority_Invalid) [[unlikely]] {
 			ShowRuntimeScriptError(toSet.TryGetScript(), eval, "Can't set event handler with invalid priority 0 (below 0 is allowed). Default priority = %u.", kHandlerPriority_Default);
 			return false;
 		}
-		if (priority > kHandlerPriority_Max) [[unlikely]]
-		{
+		if (priority > kHandlerPriority_Max) [[unlikely]] {
 			ShowRuntimeScriptError(toSet.TryGetScript(), eval, "Can't set event handler with priority above %u.", kHandlerPriority_Max);
 			return false;
 		}
-		if (priority < kHandlerPriority_Min) [[unlikely]]
-		{
+		if (priority < kHandlerPriority_Min) [[unlikely]] {
 			ShowRuntimeScriptError(toSet.TryGetScript(), eval, "Can't set event handler with priority below %u.", kHandlerPriority_Min);
 			return false;
 		}
 
 		EventInfo** eventInfoPtr = nullptr;
 		{
-			if constexpr (IsInternalHandler)
-			{
+			if constexpr (IsInternalHandler) {
 				// Only use pre-defined events.
-				if (eventInfoPtr = s_eventInfoMap.GetPtr(eventName); 
-					!eventInfoPtr)
-				{
+				if (eventInfoPtr = s_eventInfoMap.GetPtr(eventName); !eventInfoPtr) {
 					ShowRuntimeScriptError(nullptr, eval, "Trying to set an internal handler for unknown event %s. It must be defined before setting handlers.", eventName);
 					return false;
 				}
 			}
-			else
-			{
+			else {
 				ScopedLock lock(s_criticalSection);
-				if (s_eventInfoMap.Insert(eventName, &eventInfoPtr))
-				{
+				if (s_eventInfoMap.Insert(eventName, &eventInfoPtr)) {
 					// have to assume registering for a user-defined event (for DispatchEvent) which has not been used before this point
 					char* nameCopy = CopyString(eventName);
 					StrToLower(nameCopy);
@@ -1040,20 +986,17 @@ namespace EventManager
 				}
 			}
 		}
-		if (!eventInfoPtr) [[unlikely]]
-			return false;
+		if (!eventInfoPtr) [[unlikely]] { return false; }
 		//else, assume ptr is valid
 		EventInfo& info = **eventInfoPtr;
 
 		{ // nameless scope
 			std::string errMsg;
-			if (!toSet.ValidateFilters(errMsg, info)) [[unlikely]]
-			{
+			if (!toSet.ValidateFilters(errMsg, info)) [[unlikely]] {
 				ShowRuntimeScriptError(toSet.TryGetScript(), eval, errMsg.c_str());
 				return false;
 			}
 		}
-
 		return DoSetHandler(info, toSet, priority);
 	}
 

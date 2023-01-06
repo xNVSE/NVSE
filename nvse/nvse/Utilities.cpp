@@ -1,9 +1,9 @@
 #include "Utilities.h"
-#include "SafeWrite.h"
 #include <string>
 #include <algorithm>
 #include <filesystem>
 #include <tlhelp32.h>
+#include "common/IDebugLog.h"
 #include "containers.h"
 #include "GameData.h"
 #include "Hooks_Gameplay.h"
@@ -13,39 +13,34 @@
 
 #if RUNTIME
 #include "GameAPI.h"
-#include "GameForms.h"
 #endif
 
-void DumpClass(void * theClassPtr, UInt32 nIntsToDump)
-{
+#if _DEBUG // debugger can't call unused member functions
+const char *GetFormName(const TESForm *form) { return form ? form->GetName() : ""; }
+const char *GetFormName(const UInt32 formId) { return GetFormName(LookupFormByID(formId)); }
+#endif
+
+void DumpClass(void * theClassPtr, UInt32 nIntsToDump) {
 	_MESSAGE("DumpClass:");
-	UInt32* basePtr = (UInt32*)theClassPtr;
-
+	if (!theClassPtr) { _MESSAGE("No ClassPtr"); return; }
+	auto *basePtr = static_cast<UInt32 *>(theClassPtr); // UInt32* basePtr = (UInt32*) theClassPtr;
+	
 	gLog.Indent();
-
-	if (!theClassPtr) return;
-	for (UInt32 ix = 0; ix < nIntsToDump; ix++ ) {
-		UInt32* curPtr = basePtr+ix;
-		const char* curPtrName = NULL;
+	for (UInt32 ix = 0; ix < nIntsToDump; ix++){
+		UInt32* curPtr = basePtr + ix;
+		const char* curPtrName = nullptr;
 		UInt32 otherPtr = 0;
-		float otherFloat = 0.0;
-		const char* otherPtrName = NULL;
+		float otherFloat = 0.0f;
+		const char* otherPtrName = nullptr;
 		if (curPtr) {
-			curPtrName = GetObjectClassName((void*)curPtr);
+			curPtrName = GetObjectClassName(curPtr);
 
-			__try
-			{
+			__try {
 				otherPtr = *curPtr;
-				otherFloat = *(float*)(curPtr);
+				otherFloat = std::bit_cast<float>(*curPtr); // otherFloat = *(float*)(curPtr); // <- undefined behavior
 			}
-			__except(EXCEPTION_EXECUTE_HANDLER)
-			{
-				//
-			}
-
-			if (otherPtr) {
-				otherPtrName = GetObjectClassName((void*)otherPtr);
-			}
+			__except(EXCEPTION_EXECUTE_HANDLER) { }
+			if (otherPtr) { otherPtrName = GetObjectClassName(reinterpret_cast<void *>(otherPtr)); } // otherPtrName = GetObjectClassName((void *) otherPtr);
 		}
 
 		_MESSAGE("%3d +%03X ptr: 0x%08X: %32s *ptr: 0x%08x | %f: %32s", ix, ix*4, curPtr, curPtrName, otherPtr, otherFloat, otherPtrName);
@@ -56,139 +51,100 @@ void DumpClass(void * theClassPtr, UInt32 nIntsToDump)
 
 #pragma warning (push)
 #pragma warning (disable : 4200)
-struct RTTIType
-{
+struct RTTIType {
 	void	* typeInfo;
 	UInt32	pad;
 	char	name[0];
 };
 
-struct RTTILocator
-{
+struct RTTILocator {
 	UInt32		sig, offset, cdOffset;
 	RTTIType	* type;
 };
 #pragma warning (pop)
 
 // use the RTTI information to return an object's class name
-const char * GetObjectClassName(void * objBase)
-{
-	const char	* result = "<no rtti>";
+const char * GetObjectClassName(void * objBase) {
+	const auto *result = "<no rtti>";
 
-	__try
-	{
-		void		** obj = (void **)objBase;
-		RTTILocator	** vtbl = (RTTILocator **)obj[0];
-		RTTILocator	* rtti = vtbl[-1];
-		RTTIType	* type = rtti->type;
+	__try {
+		auto **obj = static_cast<void **>(objBase); // void **obj = (void **) objBase;
+		auto **vtbl = static_cast<RTTILocator **>(obj[0]); // RTTILocator **vtbl = (RTTILocator **)obj[0];
+		const RTTILocator	*rtti = vtbl[-1];
 
-		// starts with ,?
-		if((type->name[0] == '.') && (type->name[1] == '?'))
-		{
-			// is at most 100 chars long
-			for(UInt32 i = 0; i < 100; i++)
-			{
-				if(type->name[i] == 0)
-				{
-					// remove the .?AV
-					result = type->name + 4;
+		// starts with ,? // is at most 100 chars long
+		if(const RTTIType	*type = rtti->type; type->name[0] == '.' && type->name[1] == '?') {
+			for (UInt32 i = 0; i < 100; i++) {
+				if(type->name[i] == 0) {
+					result = type->name + 4; // remove the .?AV
 					break;
 				}
 			}
 		}
 	}
-	__except(EXCEPTION_EXECUTE_HANDLER)
-	{
-		// return the default
-	}
+	__except(EXCEPTION_EXECUTE_HANDLER) { } // return the default
 
 	return result;
 }
 
-const std::string & GetFalloutDirectory(void)
-{
+const std::string & GetFalloutDirectory() {
 	static std::string s_falloutDirectory;
 
-	if(s_falloutDirectory.empty())
-	{
+	if(s_falloutDirectory.empty()) {
 		// can't determine how many bytes we'll need, hope it's not more than MAX_PATH
 		char	falloutPathBuf[MAX_PATH];
-		UInt32	falloutPathLength = GetModuleFileName(GetModuleHandle(NULL), falloutPathBuf, sizeof(falloutPathBuf));
+		const UInt32 falloutPathLength = GetModuleFileName(GetModuleHandle(nullptr), falloutPathBuf, sizeof(falloutPathBuf));
 
 		if(falloutPathLength && (falloutPathLength < sizeof(falloutPathBuf)))
 		{
-			std::string	falloutPath(falloutPathBuf, falloutPathLength);
+			const std::string	falloutPath(falloutPathBuf, falloutPathLength);
 
 			// truncate at last slash
-			std::string::size_type	lastSlash = falloutPath.rfind('\\');
-			if(lastSlash != std::string::npos)	// if we don't find a slash something is VERY WRONG
-			{
-				s_falloutDirectory = falloutPath.substr(0, lastSlash + 1);
-
+			
+			if (const std::string::size_type lastSlash = falloutPath.rfind('\\'); lastSlash != std::string::npos) {
+				s_falloutDirectory = falloutPath.substr(0, lastSlash + 1); // if we don't find a slash something is VERY WRONG
 				_DMESSAGE("fallout root = %s", s_falloutDirectory.c_str());
 			}
-			else
-			{
-				_WARNING("no slash in fallout path? (%s)", falloutPath.c_str());
-			}
+			else { _WARNING("no slash in fallout path? (%s)", falloutPath.c_str()); }
 		}
-		else
-		{
-			_WARNING("couldn't find fallout path (len = %d, err = %08X)", falloutPathLength, GetLastError());
-		}
+		else { _WARNING("couldn't find fallout path (len = %d, err = %08X)", falloutPathLength, GetLastError()); }
 	}
 
 	return s_falloutDirectory;
 }
 
-static const std::string & GetNVSEConfigPath(void)
-{
+static const std::string &GetNVSEConfigPath() {
 	static std::string s_configPath;
 
-	if(s_configPath.empty())
-	{
-		std::string	falloutPath = GetFalloutDirectory();
-		if(!falloutPath.empty())
-		{
+	if (s_configPath.empty()) {
+		if (const std::string &falloutPath = GetFalloutDirectory(); !falloutPath.empty()) {
 			s_configPath = falloutPath + "Data\\NVSE\\nvse_config.ini";
-
 			_MESSAGE("config path = %s", s_configPath.c_str());
 		}
 	}
-
 	return s_configPath;
 }
 
-std::string GetNVSEConfigOption(const char * section, const char * key)
-{
-	std::string	result;
+std::string GetNVSEConfigOption(const char * section, const char * key) {
+	std::string result;
 
 	const std::string & configPath = GetNVSEConfigPath();
-	if(!configPath.empty())
-	{
-		char	resultBuf[256];
-		resultBuf[0] = 0;
-
-		UInt32	resultLen = GetPrivateProfileString(section, key, NULL, resultBuf, 255, configPath.c_str());
-
+	if(!configPath.empty()) {
+		char resultBuf[256] = { 0 };
+		UInt32 resultLen = GetPrivateProfileString(section, key, nullptr, resultBuf, 255, configPath.c_str()); // Unused variable resultLen
 		result = resultBuf;
 	}
-
 	return result;
 }
 
-bool GetNVSEConfigOption_UInt32(const char * section, const char * key, UInt32 * dataOut)
-{
-	std::string	data = GetNVSEConfigOption(section, key);
-	if(data.empty())
-		return false;
-
-	return (sscanf(data.c_str(), "%lu", dataOut) == 1);
+bool GetNVSEConfigOption_UInt32(const char * section, const char * key, UInt32 * dataOut) {
+	const std::string data = GetNVSEConfigOption(section, key);
+	if(data.empty()) { return false; }
+	*dataOut = strtoul(data.c_str(), nullptr, 10);
+	return *dataOut ? true : false;
 }
 
-namespace MersenneTwister
-{
-
+namespace MersenneTwister {
 /* 
    A C-program for MT19937, with initialization improved 2002/1/26.
    Coded by Takuji Nishimura and Makoto Matsumoto.
@@ -243,9 +199,8 @@ static unsigned long mt[N]; /* the array for the state vector  */
 static int mti=N+1; /* mti==N+1 means mt[N] is not initialized */
 
 /* initializes mt[N] with a seed */
-void init_genrand(unsigned long s)
-{
-    mt[0]= s & 0xffffffffUL;
+void init_genrand(unsigned long seed) {
+    mt[0]= seed & 0xffffffffUL;
     for (mti=1; mti<N; mti++) {
         mt[mti] = 
 	    (1812433253UL * (mt[mti-1] ^ (mt[mti-1] >> 30)) + mti); 
@@ -262,12 +217,9 @@ void init_genrand(unsigned long s)
 /* init_key is the array for initializing keys */
 /* key_length is its length */
 /* slight change for C++, 2004/2/26 */
-void init_by_array(unsigned long init_key[], int key_length)
-{
-    int i, j, k;
+void init_by_array(const unsigned long init_key[], const int key_length) {
     init_genrand(19650218UL);
-    i=1; j=0;
-    k = (N>key_length ? N : key_length);
+    int i = 1, j = 0, k = N > key_length ? N : key_length;
     for (; k; k--) {
         mt[i] = (mt[i] ^ ((mt[i-1] ^ (mt[i-1] >> 30)) * 1664525UL))
           + init_key[j] + j; /* non linear */
@@ -283,24 +235,20 @@ void init_by_array(unsigned long init_key[], int key_length)
         i++;
         if (i>=N) { mt[0] = mt[N-1]; i=1; }
     }
-
     mt[0] = 0x80000000UL; /* MSB is 1; assuring non-zero initial array */ 
 }
 
 /* generates a random number on [0,0xffffffff]-interval */
-unsigned long genrand_int32(void)
-{
+unsigned long genrand_int32() {
     unsigned long y;
     static unsigned long mag01[2]={0x0UL, MATRIX_A};
     /* mag01[x] = x * MATRIX_A  for x=0,1 */
 
     if (mti >= N) { /* generate N words at one time */
-        int kk;
-
         if (mti == N+1)   /* if init_genrand() has not been called, */
             init_genrand(5489UL); /* a default initial seed is used */
-
-        for (kk=0;kk<N-M;kk++) {
+		int kk=0;
+        for (;kk<N-M;kk++) {
             y = (mt[kk]&UPPER_MASK)|(mt[kk+1]&LOWER_MASK);
             mt[kk] = mt[kk+M] ^ (y >> 1) ^ mag01[y & 0x1UL];
         }
@@ -326,38 +274,22 @@ unsigned long genrand_int32(void)
 }
 
 /* generates a random number on [0,0x7fffffff]-interval */
-long genrand_int31(void)
-{
-    return (long)(genrand_int32()>>1);
-}
+long genrand_int31() { return static_cast<long>(genrand_int32()>>1); }
 
 /* generates a random number on [0,1]-real-interval */
-double genrand_real1(void)
-{
-    return genrand_int32()*(1.0/4294967295.0); 
-    /* divided by 2^32-1 */ 
-}
+double genrand_real1() { return genrand_int32()*(1.0/4294967295.0); } /* divided by 2^32-1 */ 
 
 /* generates a random number on [0,1)-real-interval */
-double genrand_real2(void)
-{
-    return genrand_int32()*(1.0/4294967296.0); 
-    /* divided by 2^32 */
-}
+double genrand_real2() { return genrand_int32()*(1.0/4294967296.0); } /* divided by 2^32 */
 
 /* generates a random number on (0,1)-real-interval */
-double genrand_real3(void)
-{
-    return (((double)genrand_int32()) + 0.5)*(1.0/4294967296.0); 
-    /* divided by 2^32 */
-}
+double genrand_real3() {  return (static_cast<double>(genrand_int32()) + 0.5)*(1.0/4294967296.0); } /* divided by 2^32 */
 
 /* generates a random number on [0,1) with 53-bit resolution*/
-double genrand_res53(void) 
-{ 
-    unsigned long a=genrand_int32()>>5, b=genrand_int32()>>6; 
-    return(a*67108864.0+b)*(1.0/9007199254740992.0); 
-} 
+double genrand_res53() { 
+	const unsigned long a=genrand_int32()>>5, b=genrand_int32()>>6; 
+	return(a*67108864.0+b)*(1.0/9007199254740992.0); 
+}
 /* These real versions are due to Isaku Wada, 2002/01/09 added */
 
 #undef N
@@ -365,26 +297,17 @@ double genrand_res53(void)
 #undef MATRIX_A
 #undef UPPER_MASK
 #undef LOWER_MASK
-
 };
 
-Tokenizer::Tokenizer(const char* src, const char* delims)
-: m_offset(0), m_delims(delims), m_data(src)
-{
-	//
-}
+Tokenizer::Tokenizer(const char* src, const char* delimiters)
+: m_delims(delimiters), m_offset(0), m_data(src) { }
 
-UInt32 Tokenizer::NextToken(std::string& outStr)
-{
-	if (m_offset == m_data.length())
-		return -1;
-
-	size_t const start = m_data.find_first_not_of(m_delims, m_offset);
-	if (start != -1)
-	{
+UInt32 Tokenizer::NextToken(std::string& outStr) {
+	if (m_offset == m_data.length()) { return -1; }
+	
+	if (size_t const start = m_data.find_first_not_of(m_delims, m_offset); start != -1) {
 		size_t end = m_data.find_first_of(m_delims, start);
-		if (end == -1)
-			end = m_data.length();
+		if (end == -1) { end = m_data.length(); }
 
 		m_offset = end;
 		outStr = m_data.substr(start, end - start);
@@ -394,17 +317,12 @@ UInt32 Tokenizer::NextToken(std::string& outStr)
 	return -1;
 }
 
-std::string Tokenizer::ToNewLine()
-{
-	if (m_offset == m_data.length())
-		return "";
+std::string Tokenizer::ToNewLine() {
+	if (m_offset == m_data.length()) { return ""; }
 
-	size_t const start = m_data.find_first_not_of(m_delims, m_offset);
-	if (start != -1)
-	{
+	if (size_t const start = m_data.find_first_not_of(m_delims, m_offset);start != -1) {
 		size_t end = m_data.find_first_of('\n', start);
-		if (end == -1)
-			end = m_data.length();
+		if (end == -1) { end = m_data.length(); }
 
 		m_offset = end;
 		return m_data.substr(start, end - start);
@@ -413,82 +331,61 @@ std::string Tokenizer::ToNewLine()
 	return "";
 }
 
-UInt32 Tokenizer::PrevToken(std::string& outStr)
-{
-	if (m_offset == 0)
-		return -1;
+UInt32 Tokenizer::PrevToken(std::string& outStr) {
+	if (m_offset == 0) { return -1; }
 
-	size_t searchStart = m_data.find_last_of(m_delims, m_offset - 1);
-	if (searchStart == -1)
-		return -1;
+	const size_t searchStart = m_data.find_last_of(m_delims, m_offset - 1);
+	if (searchStart == -1) { return -1; }
 
-	size_t end = m_data.find_last_not_of(m_delims, searchStart);
-	if (end == -1)
-		return -1;
+	const size_t end = m_data.find_last_not_of(m_delims, searchStart);
+	if (end == -1) { return -1; }
 
-	size_t start = m_data.find_last_of(m_delims, end);	// okay if start == -1 here
+	const size_t start = m_data.find_last_of(m_delims, end);	// okay if start == -1 here
 
 	m_offset = end + 1;
 	outStr = m_data.substr(start + 1, end - start);
 	return start + 1;
 }
 
-ScriptTokenizer::ScriptTokenizer(std::string_view scriptText) : m_scriptText(scriptText)
-{
-	//
-}
+ScriptTokenizer::ScriptTokenizer(const std::string_view scriptText) : m_scriptText(scriptText) { }
 
-bool ScriptTokenizer::TryLoadNextLine()
-{
+bool ScriptTokenizer::TryLoadNextLine() {
 	m_loadedLineTokens = {};
 	m_tokenOffset = 0;
-	if (m_scriptOffset == m_scriptText.length())
-		return false;
+	if (m_scriptOffset == m_scriptText.length()) { return false; }
 
 #if _DEBUG
 	ASSERT(m_scriptOffset <= m_scriptText.length());
 #endif
 
-	auto GetLineEndPos = [this](size_t startPos) -> size_t
-	{
+	auto GetLineEndPos = [this](const size_t startPos) -> size_t {
 		auto result = m_scriptText.find_first_of("\n\r", startPos);
-		if (result == std::string_view::npos)
-			result = m_scriptText.length();
+		if (result == std::string_view::npos) { result = m_scriptText.length(); }
 		return result;
 	};
 
 	// Finds the pos of the the start of a valid token on a new line, if any.
-	auto GetNextLineStartPos = [this](size_t startPos) -> size_t
-	{
+	auto GetNextLineStartPos = [this](const size_t startPos) -> size_t {
 		auto result = m_scriptText.find_first_of("\n\r", startPos);
-		if (result == std::string_view::npos)
-			result = m_scriptText.length();
-		else
-		{
-			// Skip over consecutive empty lines.
-			result = m_scriptText.find_first_not_of(" \t\n\r", result + 1);
-			if (result == std::string_view::npos)
-				result = m_scriptText.length();
+		if (result == std::string_view::npos) { result = m_scriptText.length(); }
+		else {
+			result = m_scriptText.find_first_not_of(" \t\n\r", result + 1); // Skip over consecutive empty lines.
+			if (result == std::string_view::npos) { result = m_scriptText.length(); }
 		}
 		return result;
 	};
 
 	// Ignore spaces and newlines at the start - find the start of a REAL line.
 	// Line pos is relative to the entire script text.
-	if (auto linePos = m_scriptText.find_first_not_of(" \t\n\r", m_scriptOffset);
-		linePos != std::string_view::npos)
-	{
-		if (m_inMultilineComment)
-		{
+	if (auto linePos = m_scriptText.find_first_not_of(" \t\n\r", m_scriptOffset); linePos != std::string_view::npos)	{
+		if (m_inMultilineComment) {
 			auto const multilineCommentEndStartPos = m_scriptText.find("*/", linePos);
-			if (multilineCommentEndStartPos == std::string_view::npos)
-			{
+			if (multilineCommentEndStartPos == std::string_view::npos) {
 				m_scriptOffset = m_scriptText.size();
 				return false; // unable to find an end to the multiline comment (xEdit shenanigans?)
 			}
 			m_inMultilineComment = false;
-			if (multilineCommentEndStartPos + 2 == m_scriptText.length())
-			{
+			if (multilineCommentEndStartPos + 2 == m_scriptText.length()) {
 				m_scriptOffset = m_scriptText.size();
 				return false;
 			}
@@ -496,8 +393,7 @@ bool ScriptTokenizer::TryLoadNextLine()
 			// If there was a ';' comment inside of the multiline comment on the line where it ended,
 			// .. it will still comment out the rest of the line.
 			if (std::string_view const insideOfMultilineCommentOnThisLine(&m_scriptText.at(linePos), multilineCommentEndStartPos - linePos);
-				insideOfMultilineCommentOnThisLine.find_first_of(';') != std::string_view::npos)
-			{
+				insideOfMultilineCommentOnThisLine.find_first_of(';') != std::string_view::npos) {
 				// Line is commented out; ignore it and try loading the next one.
 				m_scriptOffset = GetNextLineStartPos(multilineCommentEndStartPos + 2);
 				return TryLoadNextLine();
@@ -508,21 +404,17 @@ bool ScriptTokenizer::TryLoadNextLine()
 
 		// If line is empty, skip to a new line.
 		linePos = m_scriptText.find_first_not_of(" \t\n\r", linePos);
-		if (linePos == std::string_view::npos)
-		{
+		if (linePos == std::string_view::npos) {
 			m_scriptOffset = m_scriptText.size();
 			return false; // rest of file is empty
 		}
 
 		// Handle comments and try loading tokens that are on the same line.
-		for (auto const lineEndPos = GetLineEndPos(linePos); true; )
-		{
+		for (auto const lineEndPos = GetLineEndPos(linePos); true; ) {
 			// Check if the rest of the line is commented out via ';'.
-			if (m_scriptText.at(linePos) == ';')
-			{
+			if (m_scriptText.at(linePos) == ';') {
 				m_scriptOffset = GetNextLineStartPos(linePos + 1);
-				if (m_loadedLineTokens.empty())
-				{
+				if (m_loadedLineTokens.empty()) {
 					// Line is fully commented out; ignore it and try loading the next one.
 					return TryLoadNextLine();
 				}
@@ -536,37 +428,29 @@ bool ScriptTokenizer::TryLoadNextLine()
 				lineView.size() >= 2 && lineView.front() == '/' && lineView.at(1) == '*';
 				lineView = { &m_scriptText.at(linePos), lineEndPos - linePos })
 			{
-				auto HandleCommentSpanningMultipleLines = [this, lineEndPos]() -> bool
-				{
+				auto HandleCommentSpanningMultipleLines = [this, lineEndPos]() -> bool {
 					// Line ended; assume multiline comment that spans multiple lines.
 					m_inMultilineComment = true;
 					m_scriptOffset = m_scriptText.find_first_not_of(" \t\n\r", lineEndPos);
-					if (m_scriptOffset == std::string_view::npos)
-						m_scriptOffset = m_scriptText.size();
-					if (!m_loadedLineTokens.empty())
-						return true;
+					if (m_scriptOffset == std::string_view::npos) { m_scriptOffset = m_scriptText.size(); }
+					if (!m_loadedLineTokens.empty()) { return true; }
 					return TryLoadNextLine();
 				};
 
 				// ignore the "/*" chars
-				if (linePos + 2 == lineEndPos)
-					return HandleCommentSpanningMultipleLines();
+				if (linePos + 2 == lineEndPos) { return HandleCommentSpanningMultipleLines(); }
 
 				// Check if the multiline comment ends on this line.
 				if (auto endMultilineCommentStartPos = lineView.find("*/");
 					endMultilineCommentStartPos == std::string_view::npos)
-				{
-					return HandleCommentSpanningMultipleLines();
-				}
-				else
-				{
+				{ return HandleCommentSpanningMultipleLines(); }
+				else {
 					// else, multiline comment ends in this line.
 					// There might be tokens left in this line; if not, skip to the next if this line was empty.
 
 					// Make pos relative to the entire script text.
 					endMultilineCommentStartPos += linePos;
-					if (endMultilineCommentStartPos + 2 == m_scriptText.size())
-					{
+					if (endMultilineCommentStartPos + 2 == m_scriptText.size()) {
 						m_scriptOffset = m_scriptText.size();
 						return false;
 					}
@@ -578,30 +462,25 @@ bool ScriptTokenizer::TryLoadNextLine()
 					{
 						// Line is commented out; IF we didn't get tokens, ignore it and try loading the next one.
 						m_scriptOffset = GetNextLineStartPos(endMultilineCommentStartPos + 2);
-						if (!m_loadedLineTokens.empty())
-							return true;
+						if (!m_loadedLineTokens.empty()) { return true; }
 						return TryLoadNextLine();
 					}
 
 					// Handle multiline comment that ends in-line, but is followed by end-of-line.
 					m_scriptOffset = m_scriptText.find_first_not_of(" \t", endMultilineCommentStartPos + 2);
-					if (m_scriptOffset == std::string_view::npos)
-					{
+					if (m_scriptOffset == std::string_view::npos) {
 						m_scriptOffset = m_scriptText.size();
 						return !m_loadedLineTokens.empty();
 					}
-					if (m_scriptOffset == lineEndPos)
-					{
-						if (!m_loadedLineTokens.empty())
-							return true;
+					if (m_scriptOffset == lineEndPos) {
+						if (!m_loadedLineTokens.empty()) { return true; }
 						// Line is commented out; ignore it and try loading the next one.
 						return TryLoadNextLine();
 					}
 
 					// Else, line goes on.
 					linePos = m_scriptText.find_first_not_of(" \t\n\r", endMultilineCommentStartPos + 2);
-					if (linePos == std::string_view::npos)
-					{
+					if (linePos == std::string_view::npos) {
 						m_scriptOffset = m_scriptText.size();
 						return !m_loadedLineTokens.empty();
 					}
@@ -609,11 +488,9 @@ bool ScriptTokenizer::TryLoadNextLine()
 			}
 
 			// Handle ';' comment right after 1-line /* */ comment(s)
-			if (m_scriptText.at(linePos) == ';')
-			{
+			if (m_scriptText.at(linePos) == ';') {
 				m_scriptOffset = GetNextLineStartPos(linePos + 1);
-				if (m_loadedLineTokens.empty())
-				{
+				if (m_loadedLineTokens.empty()) {
 					// Line is fully commented out; ignore it and try loading the next one.
 					return TryLoadNextLine();
 				}
@@ -624,258 +501,174 @@ bool ScriptTokenizer::TryLoadNextLine()
 			// Line pos should now point to the start of a token.
 			// Get the post-the-end character position for the token.
 			size_t endOfTokenPos;
-			if (m_scriptText.at(linePos) == '"')
-			{
+			if (m_scriptText.at(linePos) == '"') {
 				// Get the full string as a single token.
 				endOfTokenPos = m_scriptText.find_first_of('"', linePos + 1);
-				if (endOfTokenPos == std::string_view::npos)
-					endOfTokenPos = m_scriptText.size();
-				else
-					++endOfTokenPos; // include '"' char at the end.
+				if (endOfTokenPos == std::string_view::npos) { endOfTokenPos = m_scriptText.size(); }
+				else { ++endOfTokenPos; } // include '"' char at the end.
 			}
-			else
-			{
+			else {
 				endOfTokenPos = m_scriptText.find_first_of(" \t\n\r", linePos);
-				if (endOfTokenPos == std::string_view::npos)
-					endOfTokenPos = m_scriptText.size();
+				if (endOfTokenPos == std::string_view::npos) { endOfTokenPos = m_scriptText.size(); }
 			}
 
 			auto tokenView = m_scriptText.substr(linePos, endOfTokenPos - linePos);
 
 			// trim comments off of the end of the token
-			if (tokenView.back() == ';')
-			{
-				--endOfTokenPos;
-			}
+			if (tokenView.back() == ';') { --endOfTokenPos; }
 			else if (tokenView.size() > 2 && 
 				tokenView.at(tokenView.size() - 2) == '/' && tokenView.back() == '*')
-			{
-				endOfTokenPos -= 2;
-			}
+			{ endOfTokenPos -= 2; }
 			tokenView = m_scriptText.substr(linePos, endOfTokenPos - linePos);
 
 			m_loadedLineTokens.push_back(tokenView);
-			if (endOfTokenPos == m_scriptText.size())
-				break;
+			if (endOfTokenPos == m_scriptText.size()) { break; }
 
 			linePos = m_scriptText.find_first_not_of(" \t", endOfTokenPos);
-			if (linePos == std::string_view::npos)
-			{
+			if (linePos == std::string_view::npos) {
 				linePos = m_scriptText.size();
 				break;
 			}
-			if (linePos == lineEndPos)
-				break;
+			if (linePos == lineEndPos) { break; }
 		}
 
 		m_scriptOffset = GetNextLineStartPos(linePos);
 		return !m_loadedLineTokens.empty();
 	}
-	// else, rest of script is just spaces
-	m_scriptOffset = m_scriptText.size();
+	m_scriptOffset = m_scriptText.size(); // else, rest of script is just spaces
 	return false;
 }
 
-std::string_view ScriptTokenizer::GetNextLineToken()
-{
-	if (m_loadedLineTokens.empty() || m_tokenOffset >= m_loadedLineTokens.size())
-		return "";
+std::string_view ScriptTokenizer::GetNextLineToken() {
+	if (m_loadedLineTokens.empty() || m_tokenOffset >= m_loadedLineTokens.size()) { return ""; }
 	return m_loadedLineTokens.at(m_tokenOffset++);
 }
 
 #if RUNTIME
-
-const char GetSeparatorChar(Script * script)
-{
-	if(IsConsoleMode())
-	{
-		if(script && script->GetModIndex() != 0xFF)
-			return '|';
-		else
-			return '@';
+char GetSeparatorChar(const Script *script) {
+	if(IsConsoleMode()) {
+		if(script && script->GetModIndex() != 0xFF) { return '|'; }
+		return '@';
 	}
-	else
-		return '|';
+	return '|';
 }
 
-const char * GetSeparatorChars(Script * script)
-{
-	if(IsConsoleMode())
-	{
-		if(script && script->GetModIndex() != 0xFF)
-			return "|";
-		else
-			return "@";
+const char * GetSeparatorChars(const Script *script) {
+	if(IsConsoleMode()) {
+		if(script && script->GetModIndex() != 0xFF) { return "|"; }
+		return "@";
 	}
-	else
-		return "|";
+	return "|";
 }
 
-void Console_Print_Long(const std::string& str)
-{
-	UInt32 numLines = str.length() / 500;
-	for (UInt32 i = 0; i < numLines; i++)
-		Console_Print("%s ...", str.substr(i*500, 500).c_str());
-
+void Console_Print_Long(const std::string& str){
+	const UInt32 numLines = str.length() / 500;
+	for (UInt32 i = 0; i < numLines; i++) { Console_Print("%s ...", str.substr(i*500, 500).c_str()); }
 	Console_Print("%s", str.substr(numLines*500, str.length() - numLines*500).c_str());
 }
 
-void Console_Print_Str(const std::string& str)
-{
-	if (str.size() < 512)
-		Console_Print("%s", str.c_str());
-	else
-		Console_Print_Long(str);
+void Console_Print_Str(const std::string& str) {
+	if (str.size() < 512) { Console_Print("%s", str.c_str()); }
+	else { Console_Print_Long(str); }
 }
-
 #endif
 
-struct ControlName
-{
+struct ControlName {
 	UInt32		unk0;
 	const char	* name;
 	UInt32		unkC;
 };
 
-ControlName ** g_keyNames = (ControlName **)0x011D52F0;
-ControlName ** g_mouseButtonNames = (ControlName **)0x011D5240;
-ControlName ** g_joystickNames = (ControlName **)0x011D51B0;
+ControlName **g_keyNames = reinterpret_cast<ControlName **>(0x011D52F0);
+ControlName **g_mouseButtonNames = reinterpret_cast<ControlName **>(0x011D5240);
+ControlName **g_joystickNames = reinterpret_cast<ControlName **>(0x011D51B0);
 
-const char * GetDXDescription(UInt32 keycode)
-{
-	const char * keyName = "<no key>";
+const char *GetDXDescription(UInt32 keycode) {
+	const auto *keyName = "<no key>";
 
-	if(keycode <= 220)
-	{
-		if(g_keyNames[keycode])
-			keyName = g_keyNames[keycode]->name;
+	if (keycode <= 220) { if(g_keyNames[keycode]) { keyName = g_keyNames[keycode]->name; } }
+	else if(255 <= keycode && keycode <= 263) {
+		if (keycode == 255) { keycode = 256; }
+		if(g_mouseButtonNames[keycode - 256]) { keyName = g_mouseButtonNames[keycode - 256]->name; }
 	}
-	else if(255 <= keycode && keycode <= 263)
-	{
-		if(keycode == 255)
-			keycode = 256;
-		if(g_mouseButtonNames[keycode - 256])
-			keyName = g_mouseButtonNames[keycode - 256]->name;
-	}
-	else if (keycode == 264)
-		keyName = "WheelUp";
-	else if (keycode == 265)
-		keyName = "WheelDown";
+	else if (keycode == 264) { keyName = "WheelUp"; }
+	else if (keycode == 265) { keyName = "WheelDown"; }
 
 	return keyName;
 }
 
-bool ci_equal(char ch1, char ch2)
-{
-	return tolower((unsigned char)ch1) == tolower((unsigned char)ch2);
-}
+bool ci_equal(const char ch1, const char ch2) { return tolower(static_cast<unsigned char>(ch1)) == tolower(static_cast<unsigned char>(ch2)); }
 
-bool ci_less(const char* lh, const char* rh)
-{
+bool ci_less(const char* lh, const char* rh) {
 	ASSERT(lh && rh);
 	while (*lh && *rh) {
-		char l = toupper(*lh);
-		char r = toupper(*rh);
-		if (l < r) {
-			return true;
-		}
-		else if (l > r) {
-			return false;
-		}
-		lh++;
-		rh++;
+		const int l = toupper(*lh); // Int to signed char conversion removed
+		const int r = toupper(*rh); // Int to signed char conversion removed
+		if (l < r) { return true; }
+		if (l > r) { return false; }
+		lh++, rh++;
 	}
-
 	return toupper(*lh) < toupper(*rh);
 }
 
-void MakeUpper(std::string& str)
-{
-	std::transform(str.begin(), str.end(), str.begin(), toupper);
-}
-
-void MakeLower(std::string& str)
-{
-	std::transform(str.begin(), str.end(), str.begin(), tolower);
-}
+void MakeUpper(std::string& str) { std::ranges::transform(str.begin(), str.end(), str.begin(), toupper); }
+void MakeLower(std::string& str) { std::ranges::transform(str.begin(), str.end(), str.begin(), tolower); }
 
 #if RUNTIME
-
-char* CopyCString(const char* src)
-{
-	UInt32 size = src ? strlen(src) : 0;
-	char* result = (char*)FormHeap_Allocate(size+1);
+char *CopyCString(const char* src) {
+	const UInt32 size = src ? strlen(src) : 0;
+	auto* result = static_cast<char *>(FormHeap_Allocate(size+1));
 	result[size] = 0;
-	if (size) {
-		strcpy_s(result, size+1, src);
-	}
-
+	if (size) { strcpy_s(result, size+1, src); }
 	return result;
 }
-
 #endif
 
 #pragma warning(push)
 #pragma warning(disable: 4996)	// warning about std::transform()
 
-void MakeUpper(char* str)
-{
+void MakeUpper(char* str) {
 	if (str) {
-		UInt32 len = strlen(str);
-		std::transform(str, str + len, str, toupper);
+		const UInt32 len = strlen(str);
+		std::ranges::transform(str, str + len, str, toupper);
 	}
 }
 
-void MakeLower(char* str)
-{
+void MakeLower(char* str){
 	if (str) {
-		UInt32 len = strlen(str);
-		std::transform(str, str + len, str, tolower);
+		const UInt32 len = strlen(str);
+		std::ranges::transform(str, str + len, str, tolower);
 	}
 }
 
 #pragma warning(pop)
-
 // ErrOutput
-ErrOutput::ErrOutput(_ShowError errorFunc, _ShowWarning warningFunc)
-{
+ErrOutput::ErrOutput(const _ShowError errorFunc, const _ShowWarning warningFunc) {
 	ShowWarning = warningFunc;
 	ShowError = errorFunc;
 }
 
-void ErrOutput::vShow(ErrOutput::Message& msg, va_list args)
-{
+void ErrOutput::vShow(Message& msg, const va_list args) const {
 	char msgText[0x400];
 	vsprintf_s(msgText, sizeof(msgText), msg.fmt, args);
-	if (msg.bCanDisable)
-	{
-		if (!msg.bDisabled)
-			if (ShowWarning(msgText))
-				msg.bDisabled = true;
-	}
-	else
-		ShowError(msgText);
+	if (msg.bCanDisable && !msg.bDisabled && ShowWarning(msgText)) { msg.bDisabled = true; }
+	else { ShowError(msgText); }
 }
 
-void ErrOutput::Show(ErrOutput::Message msg, ...)
-{
+void ErrOutput::Show(Message msg, ...) const {
 	va_list args;
 	va_start(args, msg);
-
 	vShow(msg, args);
 }
 
-void ErrOutput::Show(const char* msg, ...)
-{
+void ErrOutput::Show(const char* msg, ...) const {
 	va_list args;
 	va_start(args, msg);
-
 	vShow(msg, args);
 }
 
-void ErrOutput::vShow(const char* msg, va_list args)
-{
-	Message tempMsg;
+void ErrOutput::vShow(const char* msg, const va_list args) const {
+	Message tempMsg = { };
 	tempMsg.fmt = msg;
 	tempMsg.bCanDisable = false;
 	tempMsg.bDisabled = false;
@@ -883,10 +676,9 @@ void ErrOutput::vShow(const char* msg, va_list args)
 	vShow(tempMsg, args);
 }
 
-void ShowErrorMessageBox(const char* message)
-{
-	int msgboxID = MessageBox(
-		NULL,
+void ShowErrorMessageBox(const char* message) {
+	MessageBox(
+		nullptr,
 		message,
 		"Error",
 		MB_ICONWARNING | MB_OK
@@ -894,27 +686,20 @@ void ShowErrorMessageBox(const char* message)
 }
 
 #if RUNTIME
-
 UnorderedSet<UInt32> g_warnedScripts;
 
-const char* GetModName(TESForm* form)
-{
-	if (!form)
-		return "Unknown or deleted script";
-	const char* modName = IS_ID(form, Script) ? "In-game console" : "Dynamic form";
-	if (form->mods.Head() && form->mods.Head()->data)
-		return form->mods.Head()->Data()->name;
-	if (form->GetModIndex() != 0xFF)
-	{
+const char* GetModName(const TESForm *form) {
+	if (!form) { return "Unknown or deleted script"; }
+	const char *modName = IS_ID(form, Script) ? "In-game console" : "Dynamic form";
+	if (form->mods.Head() && form->mods.Head()->data) { return form->mods.Head()->Data()->name; }
+	if (form->GetModIndex() != 0xFF) {
 		modName = DataHandler::Get()->GetNthModName(form->GetModIndex());
-		if (!modName || !modName[0])
-			modName = "Unknown";
+		if (!modName || !modName[0]) { modName = "Unknown"; }
 	}
 	return modName;
 }
 #if NVSE_CORE
-void ShowRuntimeError(Script* script, const char* fmt, ...)
-{
+void ShowRuntimeError(Script* script, const char* fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
 
@@ -927,48 +712,38 @@ void ShowRuntimeError(Script* script, const char* fmt, ...)
 	const auto* scriptName = script ? script->GetName() : nullptr; // JohnnyGuitarNVSE allows this
 	auto refId = script ? script->refID : 0;
 	const auto modIdx = script ? script->GetModIndex() : 0;
-	if (script && LambdaManager::IsScriptLambda(script))
-	{
+	if (script && LambdaManager::IsScriptLambda(script)) {
 		Script* parentScript;
-		if (auto* parentEventList = LambdaManager::GetParentEventList(script); 
+		if (const auto* parentEventList = LambdaManager::GetParentEventList(script); 
 			parentEventList && ((parentScript = parentEventList->m_script)))
 		{
 			refId = parentScript->refID;
 			scriptName = parentScript->GetName();
 		}
 	}
-	if (scriptName && strlen(scriptName) != 0)
-	{
-		sprintf_s(errorHeader, sizeof(errorHeader), "Error in script %08X (%s) in mod %s\n%s", refId, scriptName, modName, errorMsg);
-	}
-	else
-	{
-		sprintf_s(errorHeader, sizeof(errorHeader), "Error in script %08X in mod %s\n%s", refId, modName, errorMsg);
-	}
+	if (scriptName && strlen(scriptName) != 0) { sprintf_s(errorHeader, sizeof(errorHeader), "Error in script %08X (%s) in mod %s\n%s", refId, scriptName, modName, errorMsg); }
+	else { sprintf_s(errorHeader, sizeof(errorHeader), "Error in script %08X in mod %s\n%s", refId, modName, errorMsg); }
 
-	if (g_warnScriptErrors && g_myMods.contains(modIdx) && g_warnedScripts.Insert(refId))
-	{
+	if (g_warnScriptErrors && g_myMods.contains(modIdx) && g_warnedScripts.Insert(refId)) {
 		char message[512];
 		snprintf(message, sizeof(message), "%s: Script error (see console print)", GetModName(script));
 		if (!IsConsoleMode())
 			QueueUIMessage(message, 0, reinterpret_cast<const char*>(0x1049638), nullptr, 2.5F, false);
 	}
 
-	if (strlen(errorHeader) < 512)
-		Console_Print("%s", errorHeader);
-	else
-		Console_Print_Long(errorHeader);
+	if (strlen(errorHeader) < 512) { Console_Print("%s", errorHeader); }
+	else { Console_Print_Long(errorHeader); }
+
 	_MESSAGE("%s", errorHeader);
 
-	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_RuntimeScriptError, errorMsg, 4, NULL);
+	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_RuntimeScriptError, errorMsg, 4, nullptr);
 
 	va_end(args);
 }
 #endif
 #endif
 
-std::string FormatString(const char* fmt, ...)
-{
+std::string FormatString(const char* fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
 
@@ -977,42 +752,35 @@ std::string FormatString(const char* fmt, ...)
 	return msg;
 }
 
-std::vector<void*> GetCallStack(int i)
-{
+std::vector<void*> GetCallStack(const int i) {
 	std::vector<void*> vecTrace(i, nullptr);
 	CaptureStackBackTrace(1, i, reinterpret_cast<PVOID*>(vecTrace.data()), nullptr);
 	return vecTrace;
 }
 
-bool FindStringCI(const std::string& strHaystack, const std::string& strNeedle)
-{
-	auto it = std::search(
-		strHaystack.begin(), strHaystack.end(),
-		strNeedle.begin(), strNeedle.end(),
-		[](char ch1, char ch2) { return std::toupper(ch1) == std::toupper(ch2); }
+bool FindStringCI(const std::string& strHaystack, const std::string& strNeedle) {
+	auto it = std::ranges::search(
+		strHaystack.begin(), strHaystack.end(), strNeedle.begin(), strNeedle.end(), 
+		[](const char ch1, const char ch2) { return std::toupper(ch1) == std::toupper(ch2); }
 	);
-	return (it != strHaystack.end());
+
+	return false; // return it != strHaystack.end(); - John
 }
 
-void ReplaceAll(std::string &str, const std::string& from, const std::string& to)
-{
+void ReplaceAll(std::string &str, const std::string& from, const std::string& to) {
     size_t startPos = 0;
-    while((startPos = str.find(from, startPos)) != std::string::npos) 
-	{
+    while((startPos = str.find(from, startPos)) != std::string::npos) {
         str.replace(startPos, from.length(), to);
         startPos += to.length(); // Handles case where 'to' is a substring of 'from'
     }
-
 }
 
-void GeckExtenderMessageLog(const char* fmt, ...)
-{
+void GeckExtenderMessageLog(const char* fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
 
 	auto* window = FindWindow("RTEDITLOG", nullptr);
-	if (!window)
-	{
+	if (!window) {
 		_MESSAGE("Failed to find GECK Extender Message Log window");
 		return;
 	}
@@ -1024,23 +792,13 @@ void GeckExtenderMessageLog(const char* fmt, ...)
 	SendMessage(window, 0x8004, 0, reinterpret_cast<LPARAM>(buffer));
 }
 
-bool Cmd_Default_Execute(COMMAND_ARGS)
-{
-	return true;
-}
+bool Cmd_Default_Execute(COMMAND_ARGS) { return true; }
 
-bool Cmd_Default_Eval(COMMAND_ARGS_EVAL)
-{
-	return true;
-}
+bool Cmd_Default_Eval(COMMAND_ARGS_EVAL) { return true; }
 
-void ToWChar(wchar_t* ws, const char* c)
-{
-	swprintf(ws, 100, L"%hs", c);
-}
+void ToWChar(wchar_t* ws, const char* c) { swprintf(ws, 100, L"%hs", c); }
 
-bool IsProcessRunning(const char* executableName)
-{
+bool IsProcessRunning(const char* processName) {
 	PROCESSENTRY32 entry;
 	entry.dwSize = sizeof(PROCESSENTRY32);
 
@@ -1052,7 +810,7 @@ bool IsProcessRunning(const char* executableName)
 	}
 
 	do {
-		if (!_stricmp(entry.szExeFile, executableName)) {
+		if (!_stricmp(entry.szExeFile, processName)) {
 			CloseHandle(snapshot);
 			return true;
 		}
@@ -1068,72 +826,46 @@ void DisplayMessage(const char* msg)
 }
 #endif
 
-std::string GetCurPath()
-{
+std::string GetCurPath() {
 	char buffer[MAX_PATH] = { 0 };
-	GetModuleFileName(NULL, buffer, MAX_PATH);
-	std::string::size_type pos = std::string(buffer).find_last_of("\\/");
+	GetModuleFileName(nullptr, buffer, MAX_PATH);
+	const std::string::size_type pos = std::string(buffer).find_last_of("\\/");
 	return std::string(buffer).substr(0, pos);
 }
 
-bool ValidString(const char* str)
-{
-	return str && strlen(str);
-}
+bool ValidString(const char* str) { return str && strlen(str); }
 
-#if _DEBUG
-// debugger can't call unused member functions
-const char* GetFormName(TESForm* form)
-{
-	return form ? form->GetName() : "";
-}
-
-const char* GetFormName(UInt32 formId)
-{
-	return GetFormName(LookupFormByID(formId));
-}
-
-#endif
-
-std::string& ToLower(std::string&& data)
-{
+std::string& ToLower(std::string&& data) {
 	ra::transform(data, data.begin(), [](const unsigned char c) { return std::tolower(c); });
 	return data;
 }
 
-std::string& StripSpace(std::string&& data)
-{
+std::string& StripSpace(std::string&& data) {
 	std::erase_if(data, isspace);
 	return data;
 }
 
-bool StartsWith(std::string left, std::string right)
-{
-	return ToLower(std::move(left)).starts_with(ToLower(std::move(right)));
-}
+bool StartsWith(std::string left, std::string right) { return ToLower(std::move(left)).starts_with(ToLower(std::move(right))); }
 
-std::vector<std::string> SplitString(std::string s, std::string delimiter)
-{
-	size_t pos_start = 0, pos_end, delim_len = delimiter.length();
-	std::string token;
+std::vector<std::string> SplitString(const std::string &s, const std::string &delimiter) {
+	size_t posStart = 0, posEnd;
+	const size_t delimiterLen = delimiter.length();
 	std::vector<std::string> res;
 
-	while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos) {
-		token = s.substr(pos_start, pos_end - pos_start);
-		pos_start = pos_end + delim_len;
+	while ((posEnd = s.find(delimiter, posStart)) != std::string::npos) {
+		std::string token = s.substr(posStart, posEnd - posStart);
+		posStart = posEnd + delimiterLen;
 		res.push_back(token);
 	}
 
-	res.push_back(s.substr(pos_start));
+	res.push_back(s.substr(posStart));
 	return res;
 }
 
-UInt8* GetParentBasePtr(void* addressOfReturnAddress, bool lambda)
-{
+UInt8* GetParentBasePtr(void *addressOfReturnAddress, const bool lambda) {
 	auto* basePtr = static_cast<UInt8*>(addressOfReturnAddress) - 4;
-#if _DEBUG
-	if (lambda) // in debug mode, lambdas are wrapped inside a closure wrapper function, so one more step needed
-		basePtr = *reinterpret_cast<UInt8**>(basePtr);
+#if _DEBUG // in debug mode, lambdas are wrapped inside a closure wrapper function, so one more step needed
+	if (lambda) { basePtr = *reinterpret_cast<UInt8**>(basePtr); }
 #endif
 	return *reinterpret_cast<UInt8**>(basePtr);
 }

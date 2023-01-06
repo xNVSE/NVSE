@@ -1,13 +1,11 @@
 #include "nvse/containers.h"
 #include "utility.h"
 
-#define MAX_BLOCK_SIZE		0x400
-#define MEMORY_POOL_SIZE	0x1000
+constexpr auto MAX_BLOCK_SIZE = 0x400;
+constexpr auto MEMORY_POOL_SIZE = 0x1000;
 
-struct MemoryPool
-{
-	struct BlockNode
-	{
+struct MemoryPool {
+	struct BlockNode {
 		BlockNode	*m_next;
 		//	Data
 	};
@@ -19,10 +17,8 @@ struct MemoryPool
 alignas(16) MemoryPool s_memoryPool;
 
 #if !_DEBUG
-__declspec(naked) void* __fastcall Pool_Alloc(UInt32 size)
-{
-	__asm
-	{
+__declspec(naked) void* __fastcall Pool_Alloc(UInt32 size) {
+	__asm {
 		cmp		ecx, 0x10
 		jbe		minSize
 		test	cl, 0xF
@@ -128,10 +124,8 @@ __declspec(naked) void __fastcall Pool_Free(void *pBlock, UInt32 size)
 	}
 }
 
-__declspec(naked) void* __fastcall Pool_Realloc(void *pBlock, UInt32 curSize, UInt32 reqSize)
-{
-	__asm
-	{
+__declspec(naked) void* __fastcall Pool_Realloc(void *pBlock, UInt32 curSize, UInt32 reqSize) {
+	__asm {
 		mov		eax, ecx
 		mov		ecx, [esp+4]
 		test	eax, eax
@@ -167,10 +161,8 @@ __declspec(naked) void* __fastcall Pool_Realloc(void *pBlock, UInt32 curSize, UI
 	}
 }
 
-__declspec(naked) void* __fastcall Pool_Alloc_Buckets(UInt32 numBuckets)
-{
-	__asm
-	{
+__declspec(naked) void* __fastcall Pool_Alloc_Buckets(UInt32 numBuckets) {
+	__asm {
 		push	ecx
 		shl		ecx, 2
 		call	Pool_Alloc
@@ -190,36 +182,25 @@ __declspec(naked) void* __fastcall Pool_Alloc_Buckets(UInt32 numBuckets)
 
 // doing this to track memory related issues, debug mode new operator will memset the data
 
-void* Pool_Alloc(UInt32 size)
-{
-	return ::operator new(size);
-}
+void* Pool_Alloc(UInt32 size) { return ::operator new(size); }
+void Pool_Free(void *pBlock, UInt32 size) { ::operator delete(pBlock); }
 
-void Pool_Free(void *pBlock, UInt32 size)
-{
-	::operator delete(pBlock);
-}
-
-void* Pool_Realloc(void *pBlock, UInt32 curSize, UInt32 reqSize)
-{
+void* Pool_Realloc(void *pBlock, UInt32 curSize, UInt32 reqSize) {
 	void* data = Pool_Alloc(reqSize);
 	std::memcpy(data, pBlock, curSize);
 	Pool_Free(pBlock, curSize);
 	return data;
 }
 
-void* Pool_Alloc_Buckets(UInt32 numBuckets)
-{
+void* Pool_Alloc_Buckets(UInt32 numBuckets) {
 	void* data = Pool_Alloc(numBuckets * 4);
 	std::memset(data, 0, numBuckets * 4);
 	return data;
 }
 #endif
 
-__declspec(naked) UInt32 __fastcall AlignBucketCount(UInt32 count)
-{
-	__asm
-	{
+__declspec(naked) UInt32 __fastcall AlignBucketCount(UInt32 count) {
+	__asm {
 		cmp		ecx, MAP_DEFAULT_BUCKET_COUNT
 		ja		gtMin
 		mov		eax, MAP_DEFAULT_BUCKET_COUNT
