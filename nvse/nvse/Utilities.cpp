@@ -5,11 +5,9 @@
 #include <tlhelp32.h>
 #include "common/IDebugLog.h"
 #include "containers.h"
-#include "GameData.h"
 #include "Hooks_Gameplay.h"
 #include "LambdaManager.h"
 #include "PluginAPI.h"
-#include "PluginManager.h"
 
 #if RUNTIME
 #include "GameAPI.h"
@@ -43,7 +41,7 @@ void DumpClass(void * theClassPtr, UInt32 nIntsToDump) {
 			if (otherPtr) { otherPtrName = GetObjectClassName(reinterpret_cast<void *>(otherPtr)); } // otherPtrName = GetObjectClassName((void *) otherPtr);
 		}
 
-		_MESSAGE("%3d +%03X ptr: 0x%08X: %32s *ptr: 0x%08x | %f: %32s", ix, ix*4, curPtr, curPtrName, otherPtr, otherFloat, otherPtrName);
+		_MESSAGE("%3d +%03X ptr: 0x%08X: %32s *ptr: 0x%08x | %f: %32s", ix, ix*4, curPtr, curPtrName, otherPtr, static_cast<double>(otherFloat), otherPtrName);
 	}
 
 	gLog.Outdent();

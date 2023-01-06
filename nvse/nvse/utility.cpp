@@ -2,10 +2,8 @@
 
 memcpy_t _memcpy = memcpy, _memmove = memmove;
 
-__declspec(naked) PrimitiveCS *PrimitiveCS::Enter()
-{
-	__asm
-	{
+__declspec(naked) PrimitiveCS *PrimitiveCS::Enter() {
+	__asm {
 		push	ebx
 		mov		ebx, ecx
 		call	GetCurrentThreadId
@@ -44,10 +42,8 @@ __declspec(naked) PrimitiveCS *PrimitiveCS::Enter()
 	}
 }
 
-__declspec(naked) TESForm* __stdcall LookupFormByRefID(UInt32 refID)
-{
-	__asm
-	{
+__declspec(naked) TESForm* __stdcall LookupFormByRefID(UInt32 refID) {
+	__asm {
 		mov		ecx, ds:[0x11C54C0]
 		mov		eax, [esp+4]
 		xor		edx, edx
@@ -72,10 +68,8 @@ __declspec(naked) TESForm* __stdcall LookupFormByRefID(UInt32 refID)
 	}
 }
 
-__declspec(naked) int __vectorcall ifloor(float value)
-{
-	__asm
-	{
+__declspec(naked) int __vectorcall ifloor(float value) {
+	__asm {
 		movd	eax, xmm0
 		test	eax, eax
 		jns		isPos
@@ -92,10 +86,8 @@ __declspec(naked) int __vectorcall ifloor(float value)
 	}
 }
 
-__declspec(naked) int __vectorcall iceil(float value)
-{
-	__asm
-	{
+__declspec(naked) int __vectorcall iceil(float value) {
+	__asm {
 		movd	eax, xmm0
 		test	eax, eax
 		js		isNeg
@@ -112,10 +104,8 @@ __declspec(naked) int __vectorcall iceil(float value)
 	}
 }
 
-__declspec(naked) UInt32 __fastcall StrLen(const char *str)
-{
-	__asm
-	{
+__declspec(naked) UInt32 __fastcall StrLen(const char *str) {
+	__asm {
 		test	ecx, ecx
 		jnz		proceed
 		xor		eax, eax
@@ -173,10 +163,8 @@ __declspec(naked) UInt32 __fastcall StrLen(const char *str)
 	}
 }
 
-__declspec(naked) void __fastcall MemZero(void *dest, UInt32 bsize)
-{
-	__asm
-	{
+__declspec(naked) void __fastcall MemZero(void *dest, UInt32 bsize) {
+	__asm {
 		push	edi
 		test	ecx, ecx
 		jz		done
@@ -197,10 +185,8 @@ __declspec(naked) void __fastcall MemZero(void *dest, UInt32 bsize)
 	}
 }
 
-__declspec(naked) char* __fastcall StrCopy(char *dest, const char *src)
-{
-	__asm
-	{
+__declspec(naked) char* __fastcall StrCopy(char *dest, const char *src) {
+	__asm {
 		mov		eax, ecx
 		test	ecx, ecx
 		jz		done
@@ -227,10 +213,8 @@ __declspec(naked) char* __fastcall StrCopy(char *dest, const char *src)
 	}
 }
 
-__declspec(naked) char* __fastcall StrNCopy(char *dest, const char *src, UInt32 length)
-{
-	__asm
-	{
+__declspec(naked) char* __fastcall StrNCopy(char *dest, const char *src, UInt32 length) {
+	__asm {
 		mov		eax, ecx
 		test	ecx, ecx
 		jz		done
@@ -260,10 +244,8 @@ __declspec(naked) char* __fastcall StrNCopy(char *dest, const char *src, UInt32 
 	}
 }
 
-__declspec(naked) char* __fastcall StrCat(char *dest, const char *src)
-{
-	__asm
-	{
+__declspec(naked) char* __fastcall StrCat(char *dest, const char *src) {
+	__asm {
 		test	ecx, ecx
 		jnz		proceed
 		mov		eax, ecx
@@ -277,8 +259,7 @@ __declspec(naked) char* __fastcall StrCat(char *dest, const char *src)
 	}
 }
 
-__declspec(align(16)) const UInt8 kCaseConverter[] =
-{
+__declspec(align(16)) const UInt8 kCaseConverter[] = {
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
 	0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
 	0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F,
@@ -298,79 +279,62 @@ __declspec(align(16)) const UInt8 kCaseConverter[] =
 };
 
 // Returns 0 if both strings are equal.
-char __fastcall StrCompare(const char *lstr, const char *rstr)
-{
+char __fastcall StrCompare(const char *lstr, const char *rstr) {
 	if (!lstr) return rstr ? -1 : 0;
 	if (!rstr) return 1;
 	UInt8 lchr, rchr;
-	while (*lstr)
-	{
-		lchr = kCaseConverter[*(UInt8*)lstr];
-		rchr = kCaseConverter[*(UInt8*)rstr];
-		if (lchr == rchr)
-		{
+	while (*lstr) {
+		lchr = kCaseConverter[*reinterpret_cast<const UInt8 *>(lstr)];
+		rchr = kCaseConverter[*reinterpret_cast<const UInt8 *>(rstr)];
+		if (lchr == rchr) {
 			lstr++;
 			rstr++;
 			continue;
 		}
-		return (lchr < rchr) ? -1 : 1;
+		return lchr < rchr ? -1 : 1;
 	}
 	return *rstr ? -1 : 0;
 }
 
-void __fastcall StrToLower(char *str)
-{
-	if (!str) return;
+void __fastcall StrToLower(char *str) {
+	if (!str) { return; }
 	UInt8 curr;
-	while (curr = *str)
-	{
-		*str = kCaseConverter[curr];
+	while ((curr = *str)) {
+		*str = static_cast<const char>(kCaseConverter[curr]);
 		str++;
 	}
 }
 
-char* __fastcall SubStrCI(const char *srcStr, const char *subStr)
-{
-	int srcLen = StrLen(srcStr);
-	if (!srcLen) return NULL;
-	int subLen = StrLen(subStr);
-	if (!subLen) return NULL;
+char* __fastcall SubStrCI(const char *srcStr, const char *subStr) {
+	int srcLen = static_cast<int>(StrLen(srcStr));
+	if (!srcLen) { return nullptr; }
+	const UInt32 subLen = StrLen(subStr);
+	if (!subLen) { return nullptr; }
 	srcLen -= subLen;
-	if (srcLen < 0) return NULL;
-	int index;
-	do
-	{
-		index = 0;
-		while (true)
-		{
-			if (kCaseConverter[*(UInt8*)(srcStr + index)] != kCaseConverter[*(UInt8*)(subStr + index)])
-				break;
-			if (++index == subLen)
-				return const_cast<char*>(srcStr);
+	if (srcLen < 0) { return nullptr; }
+	do {
+		int index = 0;
+		while (true) {
+			if (kCaseConverter[*reinterpret_cast<const UInt8 *>(srcStr + index)] != kCaseConverter[*reinterpret_cast<const UInt8 *>(subStr + index)]) { break; }
+			if (++index == subLen) { return const_cast<char*>(srcStr); }
 		}
 		srcStr++;
-	}
-	while (--srcLen >= 0);
-	return NULL;
+	} while (--srcLen >= 0);
+	return nullptr;
 }
 
-char* __fastcall SlashPos(const char *str)
-{
-	if (!str) return NULL;
+char* __fastcall SlashPos(const char *str) {
+	if (!str) return nullptr;
 	char curr;
-	while (curr = *str)
-	{
-		if ((curr == '/') || (curr == '\\'))
-			return const_cast<char*>(str);
+	while ((curr = *str)) {
+		if (curr == '/' || curr == '\\') { return const_cast<char*>(str); }
 		str++;
 	}
-	return NULL;
+	return nullptr;
 }
 
-__declspec(naked) char* __fastcall CopyString(const char *key)
-{
-	__asm
-	{
+__declspec(naked) char* __fastcall CopyString(const char *key) {
+	__asm {
 		call	StrLen
 		inc		eax
 		push	eax
@@ -389,10 +353,8 @@ __declspec(naked) char* __fastcall CopyString(const char *key)
 	}
 }
 
-__declspec(naked) char* __fastcall IntToStr(char *str, int num)
-{
-	__asm
-	{
+__declspec(naked) char* __fastcall IntToStr(char *str, int num) {
+	__asm {
 		push	esi
 		push	edi
 		test	edx, edx
@@ -432,10 +394,8 @@ __declspec(naked) char* __fastcall IntToStr(char *str, int num)
 	}
 }
 
-__declspec(naked) UInt32 __fastcall StrHashCS(const char *inKey)
-{
-	__asm
-	{
+__declspec(naked) UInt32 __fastcall StrHashCS(const char *inKey) {
+	__asm {
 		push	esi
 		mov		eax, 0x1505
 		test	ecx, ecx
@@ -459,10 +419,8 @@ __declspec(naked) UInt32 __fastcall StrHashCS(const char *inKey)
 	}
 }
 
-__declspec(naked) UInt32 __fastcall StrHashCI(const char *inKey)
-{
-	__asm
-	{
+__declspec(naked) UInt32 __fastcall StrHashCI(const char *inKey) {
+	__asm {
 		push	esi
 		mov		eax, 0x1505
 		test	ecx, ecx
@@ -487,33 +445,27 @@ __declspec(naked) UInt32 __fastcall StrHashCI(const char *inKey)
 	}
 }
 
-void SpinLock::Enter()
-{
-	UInt32 threadID = GetCurrentThreadId();
-	if (owningThread == threadID)
-	{
+void SpinLock::Enter() {
+	const UInt32 threadID = GetCurrentThreadId();
+	if (owningThread == threadID) {
 		enterCount++;
 		return;
 	}
-	while (InterlockedCompareExchange(&owningThread, threadID, 0));
+	while (InterlockedCompareExchange(&owningThread, threadID, 0)) {};
 	enterCount = 1;
 }
 
-#define FAST_SLEEP_COUNT 10000UL
+constexpr unsigned long FAST_SLEEP_COUNT = 10000UL; // #define FAST_SLEEP_COUNT 10000UL
 
-void SpinLock::EnterSleep()
-{
-	UInt32 threadID = GetCurrentThreadId();
-	if (owningThread == threadID)
-	{
+void SpinLock::EnterSleep() {
+	const UInt32 threadID = GetCurrentThreadId();
+	if (owningThread == threadID) {
 		enterCount++;
 		return;
 	}
 	UInt32 fastIdx = FAST_SLEEP_COUNT;
-	while (InterlockedCompareExchange(&owningThread, threadID, 0))
-	{
-		if (fastIdx)
-		{
+	while (InterlockedCompareExchange(&owningThread, threadID, 0)) {
+		if (fastIdx) {
 			fastIdx--;
 			Sleep(0);
 		}
@@ -522,8 +474,6 @@ void SpinLock::EnterSleep()
 	enterCount = 1;
 }
 
-void SpinLock::Leave()
-{
-	if (owningThread && !--enterCount)
-		owningThread = 0;
+void SpinLock::Leave() {
+	if (owningThread && !--enterCount) { owningThread = 0; }
 }

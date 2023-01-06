@@ -3,6 +3,7 @@
 #define UTILITY_H
 
 #include <intrin.h>
+#include "Utilities.h"
 
 typedef void* (*memcpy_t)(void*, const void*, size_t);
 extern memcpy_t _memcpy, _memmove;
@@ -65,7 +66,7 @@ class PrimitiveCS
 public:
 	PrimitiveCS() : m_owningThread(0) {}
 
-	PrimitiveCS *Enter();
+	static PrimitiveCS *Enter();
 	__forceinline void Leave() {m_owningThread = 0;}
 };
 

@@ -1,4 +1,6 @@
 #pragma once
+#ifndef SAFEWRITE_H
+#define SAFEWRITE_H
 
 void SafeWrite8(UInt32 addr, UInt32 data);
 void SafeWrite16(UInt32 addr, UInt32 data);
@@ -16,13 +18,8 @@ void WriteRelJle(UInt32 jumpSrc, UInt32 jumpTgt);
 void PatchMemoryNop(ULONG_PTR Address, SIZE_T Size);
 
 template <typename T>
-void WriteRelCall(UInt32 jumpSrc, T jumpTgt)
-{
-	WriteRelCall(jumpSrc, (UInt32)jumpTgt);
-}
+void WriteRelCall(const UInt32 jumpSrc, T jumpTgt) { WriteRelCall(jumpSrc,static_cast<UInt32>(jumpTgt)); }
 
 template <typename T>
-void WriteRelJump(UInt32 jumpSrc, T jumpTgt)
-{
-	WriteRelJump(jumpSrc, (UInt32)jumpTgt);
-}
+void WriteRelJump(const UInt32 jumpSrc, T jumpTgt) { WriteRelJump(jumpSrc, static_cast<UInt32>(jumpTgt)); }
+#endif
