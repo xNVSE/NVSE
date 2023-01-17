@@ -392,7 +392,13 @@ bool __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 	//  - check for usage of array variables in Set statements (disallowed)
 	//  - check loop structure integrity
 	//  - check for use of ResetAllVariables on scripts containing string/array vars
-	const bool bResult = PrecompileScript(buf);
+	bool bResult = true;
+	if (g_currentScriptStack.size() == 1)
+	{
+		// Avoid preprocessing a lambda inside a script, since the lambda should already be preprocessed.
+		bResult = PrecompileScript(buf);
+	}
+		
 	if (bResult)
 	{
 		ScriptAndScriptBuffer msg{ script, buf };

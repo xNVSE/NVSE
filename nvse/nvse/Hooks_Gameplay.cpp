@@ -372,7 +372,7 @@ static void HandleMainLoopHook(void)
 	g_ArrayMap.Clean();
 	g_StringMap.Clean();
 	LambdaManager::EraseUnusedSavedVariableLists();
-	
+
 	const auto vatsTimeMult = ThisStdCall<double>(0x9C8CC0, reinterpret_cast<void*>(0x11F2250));
 	const float timeDelta = g_timeGlobal->secondsPassed * static_cast<float>(vatsTimeMult);
 	const auto isMenuMode = CdeclCall<bool>(0x702360);

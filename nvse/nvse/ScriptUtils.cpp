@@ -2866,11 +2866,10 @@ std::unique_ptr<ScriptToken> ExpressionParser::ParseLambda()
 	g_lambdaParentScriptMap.emplace(scriptLambda.get(), m_script);
 
 	// lambdaScriptBuf->currentScript = scriptLambda.get();
-	g_currentScriptStack.push(scriptLambda.get());
+	// g_currentScriptStack will be updated inside a CompileScript hook.
 	PatchDisable_ScriptBufferValidateRefVars(true);
 	const auto compileResult = scriptLambda->Compile(lambdaScriptBuf.get()); // CompileScript
 	PatchDisable_ScriptBufferValidateRefVars(false);
-	g_currentScriptStack.pop();
 
 	*beginEndOffset = savedOffset;
 
