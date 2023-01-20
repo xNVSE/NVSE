@@ -58,7 +58,7 @@ void MessageHandler(NVSEMessagingInterface::Message* msg)
 	case NVSEMessagingInterface::kMessage_ExitToMainMenu: break;
 	case NVSEMessagingInterface::kMessage_LoadGame: break;
 	case NVSEMessagingInterface::kMessage_SaveGame: break;
-	case NVSEMessagingInterface::kMessage_Precompile: break;
+	case NVSEMessagingInterface::kMessage_ScriptEditorPrecompile: break;
 	case NVSEMessagingInterface::kMessage_PreLoadGame: break;
 	case NVSEMessagingInterface::kMessage_ExitGame_Console: break;
 	case NVSEMessagingInterface::kMessage_PostLoadGame: break;
