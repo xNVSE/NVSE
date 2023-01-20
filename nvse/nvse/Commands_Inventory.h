@@ -169,11 +169,17 @@ DEFINE_COMMAND(GetPlayerCurrentAmmoRounds, returns the current number of rounds 
 DEFINE_COMMAND(SetPlayerCurrentAmmoRounds, sets the current number of rounds in the clip of the player, 0, 1, kParams_OneInt);
 DEFINE_COMMAND(GetPlayerCurrentAmmo, returns the current ammo in the weapon held by the player, 0, 0, NULL);
 
-DEFINE_CMD_COND(HasAmmoEquipped, "returns if a specific ammo or ammo in a list is currently equipped",
+DEFINE_CMD_ALT_COND(HasAmmoEquipped, IsAmmoEquipped, 
+	"returns if a specific ammo is equipped by the calling ref",
 	true, kParams_OneObjectID);
+DEFINE_CMD_COND(IsEquippedAmmoInList, "returns if any ammo in a list is currently equipped by the calling ref",
+	true, kParams_OneFormList);
 DEFINE_CMD_COND(GetEquippedWeaponCanUseAmmo,
-	"returns if the equipped weapon can use the specified ammo, or uses a specific list of ammo",
+	"returns if the equipped weapon can use the specified ammo",
 	true, kParams_OneObjectID);
+DEFINE_CMD_COND(GetEquippedWeaponUsesAmmoList,
+	"returns if the equipped weapon uses a specific list of ammo",
+	true, kParams_OneFormList);
 
 DEFINE_GET_FORM(CloneForm, , clones the specified form and returns a new base form which will not be saved in the save game.);
 DEFINE_GET_FORM(IsClonedForm, IsCloned, returns whether the specified form is a created object or not.);

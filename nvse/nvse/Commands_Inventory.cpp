@@ -2687,8 +2687,7 @@ bool Cmd_GetPlayerCurrentAmmo_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool Cmd_HasAmmoEquipped_Eval(COMMAND_ARGS_EVAL)
-{
+bool Cmd_HasAmmoEquipped_Eval(COMMAND_ARGS_EVAL) {
 	*result = 0;
 	if (thisObj) {
 		BaseProcess* pBaseProc = static_cast<Actor*>(thisObj)->baseProcess;
@@ -2701,8 +2700,7 @@ bool Cmd_HasAmmoEquipped_Eval(COMMAND_ARGS_EVAL)
 	}
 	return true;
 }
-bool Cmd_HasAmmoEquipped_Execute(COMMAND_ARGS)
-{
+bool Cmd_HasAmmoEquipped_Execute(COMMAND_ARGS) {
 	*result = 0;
 	TESForm* ammoOrList;
 	if (!ExtractArgsEx(EXTRACT_ARGS_EX, &ammoOrList))
@@ -2710,23 +2708,44 @@ bool Cmd_HasAmmoEquipped_Execute(COMMAND_ARGS)
 	return Cmd_HasAmmoEquipped_Eval(thisObj, ammoOrList, nullptr, result);
 }
 
-bool Cmd_GetEquippedWeaponCanUseAmmo_Eval(COMMAND_ARGS_EVAL)
-{
+bool Cmd_IsEquippedAmmoInList_Eval(COMMAND_ARGS_EVAL) {
+	return Cmd_HasAmmoEquipped_Eval(thisObj, arg1, arg2, result);
+}
+bool Cmd_IsEquippedAmmoInList_Execute(COMMAND_ARGS) {
+	return Cmd_HasAmmoEquipped_Execute(PASS_COMMAND_ARGS);
+}
+
+bool Cmd_GetEquippedWeaponCanUseAmmo_Eval(COMMAND_ARGS_EVAL) {
 	*result = 0;
 	if (thisObj) {
+		auto* ammoOrList = static_cast<TESForm*>(arg1);
 		if (const auto* weap = static_cast<Actor*>(thisObj)->GetEquippedWeapon()) {
-			*result = weap->ammo.ammo == static_cast<TESForm*>(arg1);
+			*result = weap->ammo.ammo == ammoOrList;
+			if (!*result)
+			{
+				if (auto* pAmmoList = DYNAMIC_CAST(weap->ammo.ammo, TESForm, BGSListForm);
+					pAmmoList && ammoOrList->typeID == kFormType_TESAmmo)
+				{
+					*result = pAmmoList->GetIndexOf(ammoOrList) != eListInvalid;
+				}
+			}
 		}
 	}
 	return true;
 }
-bool Cmd_GetEquippedWeaponCanUseAmmo_Execute(COMMAND_ARGS)
-{
+bool Cmd_GetEquippedWeaponCanUseAmmo_Execute(COMMAND_ARGS) {
 	*result = 0;
 	TESForm* ammoOrList;
 	if (!ExtractArgsEx(EXTRACT_ARGS_EX, &ammoOrList))
 		return true;
 	return Cmd_GetEquippedWeaponCanUseAmmo_Eval(thisObj, ammoOrList, nullptr, result);
+}
+
+bool Cmd_GetEquippedWeaponUsesAmmoList_Eval(COMMAND_ARGS_EVAL) {
+	return Cmd_GetEquippedWeaponCanUseAmmo_Eval(thisObj, arg1, arg2, result);
+}
+bool Cmd_GetEquippedWeaponUsesAmmoList_Execute(COMMAND_ARGS) {
+	return Cmd_GetEquippedWeaponCanUseAmmo_Execute(PASS_COMMAND_ARGS);
 }
 
 bool Cmd_SetNameEx_Execute(COMMAND_ARGS)

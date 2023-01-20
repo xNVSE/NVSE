@@ -1863,6 +1863,8 @@ void CommandTable::AddCommandsV6()
 	// 6.3 beta 00
 	ADD_CMD(HasAmmoEquipped);
 	ADD_CMD(GetEquippedWeaponCanUseAmmo);
+	ADD_CMD(IsEquippedAmmoInList);
+	ADD_CMD(GetEquippedWeaponUsesAmmoList);
 }
 
 namespace PluginAPI
