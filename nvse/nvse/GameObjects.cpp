@@ -270,11 +270,21 @@ ExtraContainerExtendDataArray	Actor::GetEquippedExtendDataList()
 	ExtraContainerDataArray itemArray;
 	ExtraContainerExtendDataArray outExtendData;
 
-	ExtraContainerChanges	* xChanges = static_cast <ExtraContainerChanges *>(extraDataList.GetByType(kExtraData_ContainerChanges));
+	ExtraContainerChanges* xChanges = static_cast<ExtraContainerChanges*>(extraDataList.GetByType(kExtraData_ContainerChanges));
 	if(xChanges)
 		xChanges->GetAllEquipped(itemArray, outExtendData);
 
 	return outExtendData;
+}
+
+// Copied from JIP
+TESObjectWEAP* Actor::GetEquippedWeapon() const
+{
+	if (baseProcess) {
+		ExtraContainerChanges::EntryData* weaponInfo = baseProcess->GetWeaponInfo();
+		if (weaponInfo) return (TESObjectWEAP*)weaponInfo->type;
+	}
+	return NULL;
 }
 
 bool TESObjectREFR::GetInventoryItems(InventoryItemsMap &invItems)

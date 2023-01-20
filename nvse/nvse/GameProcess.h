@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "GameExtraData.h"
 #include "NiNodes.h"
 #include "GameForms.h"
 #include "GameTasks.h"
@@ -286,7 +287,7 @@ public:
 	virtual void	Unk_4F(void);
 	virtual void	Unk_50(void);
 	virtual void	Unk_51(void);
-	virtual WeaponInfo* GetWeaponInfo();
+	virtual ExtraContainerChanges::EntryData* GetWeaponInfo(); /* WeaponInfo* ? */
 	virtual AmmoInfo* GetAmmoInfo();
 	virtual void	Unk_54(void);
 	virtual void	Unk_55(void);

@@ -1859,6 +1859,10 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(ValidateRegex);
 	ADD_CMD_RET(IntToBin, kRetnType_String);
 	ADD_CMD_RET(NumToHex, kRetnType_String);
+
+	// 6.3 beta 00
+	ADD_CMD(HasAmmoEquipped);
+	ADD_CMD(GetEquippedWeaponCanUseAmmo);
 }
 
 namespace PluginAPI
