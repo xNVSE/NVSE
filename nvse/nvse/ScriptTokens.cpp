@@ -1044,7 +1044,7 @@ ScriptParsing::CommandCallToken ScriptToken::GetCallToken(Script* script) const
 	UInt16 length = *reinterpret_cast<UInt16*>(data - 2);
 	const ScriptParsing::ScriptIterator it(script, cmdInfo ? cmdInfo->opcode : -1, length, refIdx, script->data + cmdOpcodeOffset);
 	callToken.ParseCommandArgs(it, it.length);
-	return callToken;
+	return std::move(callToken); // otherwise tries to call deleted copy ctor.
 
 }
 #endif
