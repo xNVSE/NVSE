@@ -154,9 +154,9 @@ struct Slice // a range used for indexing into a string or array, expressed as a
 	std::string m_upperStr;
 
 	Slice(const Slice *_slice);
-	Slice(const std::string &l, const std::string &u) : bIsString(true), m_lowerStr(l), m_upperStr(u), m_lower(0.0), m_upper(0.0) {}
-	Slice(double l, double u) : bIsString(false), m_lower(l), m_upper(u) {}
-	Slice(const char *l, const char *u) : bIsString(true), m_lowerStr(l), m_upperStr(u), m_lower(0.0), m_upper(0.0) {}
+	Slice(std::string &l, std::string &u) : bIsString(true), m_upper(0.0), m_lower(0.0), m_lowerStr(std::move(l)), m_upperStr(std::move(u)) {}
+	Slice(double l, double u) : bIsString(false), m_upper(u), m_lower(l) {}
+	Slice(const char *l, const char *u) : bIsString(true), m_upper(0.0), m_lower(0.0), m_lowerStr(l), m_upperStr(u) {}
 	void GetArrayBounds(ArrayKey &lo, ArrayKey &hi) const;
 };
 
@@ -505,7 +505,7 @@ struct AssignableSubstringStringVarToken : public AssignableSubstringToken
 	AssignableSubstringStringVarToken(UInt32 _id, UInt32 lbound, UInt32 ubound);
 	bool Assign(const char *str) override;
 
-	void *operator new(size_t size)
+	void *operator new(const size_t size)
 	{
 		return ::operator new(size);
 	}
@@ -557,7 +557,7 @@ struct Operator
 	UInt8 numRules;
 	OperationRule *rules;
 
-	bool Precedes(Operator *op) const
+	bool Precedes(const Operator *op) const
 	{
 		if (!IsRightAssociative())
 			return op->precedence <= precedence;

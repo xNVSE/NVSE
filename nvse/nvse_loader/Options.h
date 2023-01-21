@@ -1,4 +1,7 @@
 #pragma once
+#ifndef OPTIONS_H
+#define OPTIONS_H
+
 #include <string>
 
 class Options
@@ -9,7 +12,7 @@ public:
 
 	bool	Read(int argc, char ** argv);
 
-	void	PrintUsage(void);
+	static void	PrintUsage();
 
 	bool	m_launchCS;
 
@@ -31,7 +34,9 @@ public:
 	UInt32	m_appID;
 
 private:
-	bool	Verify(void);
+	static bool Verify();
 };
 
 extern Options g_options;
+
+#endif

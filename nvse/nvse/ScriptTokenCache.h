@@ -8,15 +8,15 @@ struct TokenCacheEntry
 	Op_Eval			eval;
 	bool			swapOrder;
 
-	TokenCacheEntry(ScriptToken* scriptToken) : token(scriptToken), eval(nullptr), swapOrder(false) {}
+	explicit TokenCacheEntry(ScriptToken* scriptToken) : token(scriptToken), eval(nullptr), swapOrder(false) {}
 };
 
 class CachedTokens
 {
 	Vector<TokenCacheEntry> container_;
 public:
-	std::size_t incrementData;
-	[[nodiscard]] TokenCacheEntry& Get(std::size_t key);
+	std::size_t incrementData = 0;
+	[[nodiscard]] TokenCacheEntry& Get(std::size_t key) const;
 	TokenCacheEntry* Append(ScriptToken* scriptToken);
 	[[nodiscard]] std::size_t Size() const;
 	[[nodiscard]] bool Empty() const;

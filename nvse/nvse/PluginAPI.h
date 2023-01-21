@@ -19,18 +19,15 @@ struct PluginInfo;
 
 typedef UInt32	PluginHandle;	// treat this as an opaque type
 
-enum
-{
+enum {
 	kPluginHandle_Invalid = 0xFFFFFFFF,
 };
 
-enum
-{
+enum {
 	kPluginOpcode_Debug = kNVSEOpcodeTest,
 };
 
-enum
-{
+enum {
 	kInterface_Serialization = 0,
 	kInterface_Console,
 
@@ -54,15 +51,14 @@ enum
 
 struct ExpressionEvaluatorUtils;
 
-struct NVSEInterface
-{
+struct NVSEInterface {
 	UInt32	nvseVersion;
 	UInt32	runtimeVersion;
 	UInt32	editorVersion;
 	UInt32	isEditor;
-	bool	(* RegisterCommand)(CommandInfo * info);	// returns true for success, false for failure
-	void	(* SetOpcodeBase)(UInt32 opcode);
-	void *	(* QueryInterface)(UInt32 id);
+	bool	(*RegisterCommand)(CommandInfo * info);	// returns true for success, false for failure
+	void	(*SetOpcodeBase)(UInt32 opcode);
+	void *	(*QueryInterface)(UInt32 id);
 
 	// call during your Query or Load functions to get a PluginHandle uniquely identifying your plugin
 	// invalid if called at any other time, so call it once and save the result
@@ -324,32 +320,27 @@ struct NVSEMessagingInterface
 *********************************************************************************************/
 
 #if RUNTIME
-
-struct NVSEArrayVarInterface
-{
+struct NVSEArrayVarInterface {
 	enum {
 		kVersion = 2
 	};
 
 	struct Array;
 
-	struct Element
-	{
+	struct Element {
 	protected:
-		union
-		{
-			char	* str;
-			Array		* arr;
-			TESForm		* form;
-			double		num;
+		union {
+			char *str;
+			Array *arr;
+			TESForm *form;
+			double num;
 		};
-		UInt8		type;
+		UInt8 type;
 
 		friend class PluginAPI::ArrayAPI;
 		friend class ArrayVar;
 	public:
-		enum
-		{
+		enum {
 			kType_Invalid,
 
 			kType_Numeric,
@@ -358,14 +349,14 @@ struct NVSEArrayVarInterface
 			kType_Array,
 		};
 
-		void Reset() { if (type == kType_String) { FormHeap_Free(str); } type = kType_Invalid; str = NULL; }
+		void Reset() { if (type == kType_String) { FormHeap_Free(str); } type = kType_Invalid; str = nullptr; }
 		~Element() { Reset(); }
 
+		explicit Element(Array* _array) : arr(_array), type(kType_Array) { }
+		explicit Element(const char* _str) : type(kType_String) { str = CopyCString(_str); }
+		explicit Element(TESForm* _form) : form(_form), type(kType_Form) { }
+		explicit Element(const double _num) : num(_num), type(kType_Numeric) { }
 		Element() : type(kType_Invalid) { }
-		Element(const char* _str) : type(kType_String) { str = CopyCString(_str); }
-		Element(double _num) : num(_num), type(kType_Numeric) { }
-		Element(TESForm* _form) : form(_form), type(kType_Form) { }
-		Element(Array* _array) : arr(_array), type(kType_Array) { }
 		Element(const Element& rhs) { if (rhs.type == kType_String) { str = CopyCString(rhs.str); } else { num = rhs.num; } type = rhs.type; }
 		Element& operator=(const Element& rhs) {
 			if (this != &rhs) {
@@ -376,76 +367,61 @@ struct NVSEArrayVarInterface
 			}
 			return *this;
 		}
-		bool IsValid() const { return type != kType_Invalid; }
-		UInt8 GetType() const { return type; }
+		[[nodiscard]] bool IsValid() const { return type != kType_Invalid; }
+		[[nodiscard]] UInt8 GetType() const { return type; }
 
-		const char* GetString() const  { return type == kType_String ? str : NULL; }
-		Array* GetArray() const  { return type == kType_Array ? arr : NULL; }
-		UInt32 GetArrayID() const { return type == kType_Array ? reinterpret_cast<UInt32>(arr) : 0; }
-		TESForm * GetTESForm() const  { return type == kType_Form ? form : NULL; }
-		UInt32 GetFormID() const { return type == kType_Form ? (form ? form->refID : 0) : 0; }
-		double GetNumber() const  { return type == kType_Numeric ? num : 0.0; }
-		bool Bool() const
-		{
-			switch (type)
-			{
-			case kType_Numeric:
-				return num;
-			case kType_Form:
-				return form;
-			case kType_Array:
-				return arr;
-			case kType_String:
-				return str && str[0];
-			default:
-				return false;
+		[[nodiscard]] const char* GetString() const  { return type == kType_String ? str : nullptr; }
+		[[nodiscard]] Array* GetArray() const  { return type == kType_Array ? arr : nullptr; }
+		[[nodiscard]] UInt32 GetArrayID() const { return type == kType_Array ? reinterpret_cast<UInt32>(arr) : 0; }
+		[[nodiscard]] TESForm * GetTESForm() const  { return type == kType_Form ? form : nullptr; }
+		[[nodiscard]] UInt32 GetFormID() const { return type == kType_Form ? (form ? form->refID : 0) : 0; }
+		[[nodiscard]] double GetNumber() const  { return type == kType_Numeric ? num : 0.0; }
+		[[nodiscard]] bool Bool() const {
+			switch (type) {
+			case kType_Numeric: return num;
+			case kType_Form: return form;
+			case kType_Array: return arr;
+			case kType_String: return str && str[0];
+			default: return false;
 			}
 		}
 
-		CommandReturnType GetReturnType() const
-		{
-			switch (GetType())
-			{
-			case kType_Numeric:
-				return kRetnType_Default;
-			case kType_Form:
-				return kRetnType_Form;
-			case kType_Array:
-				return kRetnType_Array;
-			case kType_String:
-				return kRetnType_String;
-			default:
-				return kRetnType_Ambiguous;
+		[[nodiscard]] CommandReturnType GetReturnType() const {
+			switch (GetType()) {
+			case kType_Numeric: return kRetnType_Default;
+			case kType_Form: return kRetnType_Form;
+			case kType_Array: return kRetnType_Array;
+			case kType_String: return kRetnType_String;
+			default: return kRetnType_Ambiguous;
 			}
 		}
 	};
 
-	Array* (* CreateArray)(const Element* data, UInt32 size, Script* callingScript);
-	Array* (* CreateStringMap)(const char** keys, const NVSEArrayVarInterface::Element* values, UInt32 size, Script* callingScript);
-	Array* (* CreateMap)(const double* keys, const NVSEArrayVarInterface::Element* values, UInt32 size, Script* callingScript);
+	Array* (*CreateArray)(const Element* data, UInt32 size, Script* callingScript);
+	Array* (*CreateStringMap)(const char** keys, const Element* values, UInt32 size, Script* callingScript);
+	Array* (*CreateMap)(const double* keys, const Element* values, UInt32 size, Script* callingScript);
 
-	bool	(* AssignCommandResult)(Array* arr, double* dest);
-	void	(* SetElement)(Array* arr, const Element& key, const Element& value);
-	void	(* AppendElement)(Array* arr, const Element& value);
+	bool	(*AssignCommandResult)(Array* arr, double* dest);
+	void	(*SetElement)(Array* arr, const Element& key, const Element& value);
+	void	(*AppendElement)(Array* arr, const Element& value);
 
-	UInt32	(* GetArraySize)(Array* arr);
-	Array*	(* LookupArrayByID)(UInt32 id);
-	bool	(* GetElement)(Array* arr, const Element& key, Element& outElement);
-	bool	(* GetElements)(Array* arr, Element* elements, Element* keys);
+	UInt32	(*GetArraySize)(Array* arr);
+	Array*	(*LookupArrayByID)(UInt32 id);
+	bool	(*GetElement)(Array* arr, const Element& key, Element& outElement);
+	bool	(*GetElements)(Array* arr, Element* elements, Element* keys);
 
 	// version 2
-	UInt32	(* GetArrayPacked)(Array* arr);
+	UInt32	(*GetArrayPacked)(Array* arr);
 
-	enum ContainerTypes
-	{
+	enum ContainerTypes {
 		kArrType_Invalid = -1,
 		kArrType_Array = 0,
 		kArrType_Map,
 		kArrType_StringMap
 	};
 	
-	int		(* GetContainerType)(Array* arr);
-	bool	(* ArrayHasKey)(Array* arr, const Element& key);
+	int		(*GetContainerType)(Array* arr);
+	bool	(*ArrayHasKey)(Array* arr, const Element& key);
 };
 
 #endif
@@ -464,21 +440,20 @@ struct NVSEArrayVarInterface
 *
 ************************************************************************************/
 
-struct NVSECommandTableInterface
-{
+struct NVSECommandTableInterface {
 	enum {
 		kVersion = 1
 	};
 
 	UInt32	version;
-	const CommandInfo*	(* Start)(void);
-	const CommandInfo*	(* End)(void);
-	const CommandInfo*	(* GetByOpcode)(UInt32 opcode);
-	const CommandInfo*	(* GetByName)(const char* name);
-	UInt32				(* GetReturnType)(const CommandInfo* cmd);		// return type enum defined in CommandTable.h
-	UInt32				(* GetRequiredNVSEVersion)(const CommandInfo* cmd);
-	const PluginInfo*	(* GetParentPlugin)(const CommandInfo* cmd);	// returns a pointer to the PluginInfo of the NVSE plugin that adds the command, if any. returns NULL otherwise
-	const PluginInfo*	(* GetPluginInfoByName)(const char *pluginName);	// Returns a pointer to the PluginInfo of the NVSE plugin of the specified name; returns NULL is the plugin is not loaded.
+	const CommandInfo*	(*Start)();
+	const CommandInfo*	(*End)();
+	const CommandInfo*	(*GetByOpcode)(UInt32 opcode);
+	const CommandInfo*	(*GetByName)(const char* name);
+	UInt32				(*GetReturnType)(const CommandInfo* cmd);		// return type enum defined in CommandTable.h
+	UInt32				(*GetRequiredNVSEVersion)(const CommandInfo* cmd);
+	const PluginInfo*	(*GetParentPlugin)(const CommandInfo* cmd);	// returns a pointer to the PluginInfo of the NVSE plugin that adds the command, if any. returns NULL otherwise
+	const PluginInfo*	(*GetPluginInfoByName)(const char *pluginName);	// Returns a pointer to the PluginInfo of the NVSE plugin of the specified name; returns NULL is the plugin is not loaded.
 };
 
 /**** script API docs **********************************************************
@@ -528,19 +503,18 @@ struct NVSECommandTableInterface
 
 #if RUNTIME
 
-struct NVSEScriptInterface
-{
+struct NVSEScriptInterface {
 	enum {
 		kVersion = 1
 	};
 
-	bool	(* CallFunction)(Script* funcScript, TESObjectREFR* callingObj, TESObjectREFR* container,
+	bool	(*CallFunction)(Script* funcScript, TESObjectREFR* callingObj, TESObjectREFR* container,
 		NVSEArrayVarInterface::Element * result, UInt8 numArgs, ...);
 
-	UInt32	(* GetFunctionParams)(Script* funcScript, UInt8* paramTypesOut);
-	bool	(* ExtractArgsEx)(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptDataOffset, Script * scriptObj,
+	UInt32	(*GetFunctionParams)(Script* funcScript, UInt8* paramTypesOut);
+	bool	(*ExtractArgsEx)(ParamInfo * paramInfo, void * scriptDataIn, UInt32 * scriptDataOffset, Script * scriptObj,
 		ScriptEventList * eventList, ...);
-	bool	(* ExtractFormatStringArgs)(UInt32 fmtStringPos, char* buffer, ParamInfo * paramInfo, void * scriptDataIn, 
+	bool	(*ExtractFormatStringArgs)(UInt32 fmtStringPos, char* buffer, ParamInfo * paramInfo, void * scriptDataIn, 
 		UInt32 * scriptDataOffset, Script * scriptObj, ScriptEventList * eventList, UInt32 maxParams, ...);
 
 	bool	(*CallFunctionAlt)(Script *funcScript, TESObjectREFR *callingObj, UInt8 numArgs, ...);
@@ -567,15 +541,13 @@ struct NVSEScriptInterface
 #endif
 
 #if RUNTIME
-
 // Gives access to internal data without reverse engineering NVSE
-struct NVSEDataInterface
-{
+struct NVSEDataInterface {
 	enum {
 		kVersion = 3
 	};
 
-	UInt32		version;
+	UInt32 version;
 	enum {
 		kNVSEData_DIHookControl = 1,
 		kNVSEData_ArrayMap,
@@ -584,7 +556,7 @@ struct NVSEDataInterface
 
 		kNVSEData_SingletonMax,
 	};
-	void * (* GetSingleton)(UInt32 singletonID);
+	void * (*GetSingleton)(UInt32 singletonID);
 	enum  {
 		kNVSEData_InventoryReferenceCreate = 1,
 		kNVSEData_InventoryReferenceGetForRefID,
@@ -608,13 +580,13 @@ struct NVSEDataInterface
 		
 		kNVSEData_FuncMax,
 	};
-	void * (* GetFunc)(UInt32 funcID);
+	void * (*GetFunc)(UInt32 funcID);
 	enum  {
 		kNVSEData_NumPreloadMods = 1,
 
 		kNVSEData_DataMax,
 	};
-	void * (* GetData)(UInt32 dataID);
+	void * (*GetData)(UInt32 dataID);
 	// v2: xNVSE caches script data for additional performance and short circuit evaluation, if you are manipulating script data then you can clear the cache 
 	void (*ClearScriptDataCache)();
 	// v3
@@ -695,40 +667,38 @@ struct NVSEDataInterface
  *
  ******************************************************************************/
 
-struct NVSESerializationInterface
-{
-	enum
-	{
+struct NVSESerializationInterface {
+	enum {
 		kVersion = 2,
 	};
 
 	typedef void (* EventCallback)(void * reserved);
 
 	UInt32	version;
-	void	(* SetSaveCallback)(PluginHandle plugin, EventCallback callback);
-	void	(* SetLoadCallback)(PluginHandle plugin, EventCallback callback);
-	void	(* SetNewGameCallback)(PluginHandle plugin, EventCallback callback);
+	void	(*SetSaveCallback)(PluginHandle plugin, EventCallback callback);
+	void	(*SetLoadCallback)(PluginHandle plugin, EventCallback callback);
+	void	(*SetNewGameCallback)(PluginHandle plugin, EventCallback callback);
 
-	bool	(* WriteRecord)(UInt32 type, UInt32 version, const void * buf, UInt32 length);
-	bool	(* OpenRecord)(UInt32 type, UInt32 version);
-	bool	(* WriteRecordData)(const void * buf, UInt32 length);
+	bool	(*WriteRecord)(UInt32 type, UInt32 version, const void * buf, UInt32 length);
+	bool	(*OpenRecord)(UInt32 type, UInt32 version);
+	bool	(*WriteRecordData)(const void * buf, UInt32 length);
 
-	bool	(* GetNextRecordInfo)(UInt32 * type, UInt32 * version, UInt32 * length);
-	UInt32	(* ReadRecordData)(void * buf, UInt32 length);
+	bool	(*GetNextRecordInfo)(UInt32 * type, UInt32 * version, UInt32 * length);
+	UInt32	(*ReadRecordData)(void * buf, UInt32 length);
 
 	// take a refid as stored in the loaded save file and resolve it using the currently
 	// loaded list of mods. All refids stored in a save file must be run through this
 	// function to account for changing mod lists. This returns true on success, and false
 	// if the mod owning the RefID was unloaded.
-	bool	(* ResolveRefID)(UInt32 refID, UInt32 * outRefID);
+	bool	(*ResolveRefID)(UInt32 refID, UInt32 * outRefID);
 
-	void	(* SetPreLoadCallback)(PluginHandle plugin, EventCallback callback);
+	void	(*SetPreLoadCallback)(PluginHandle plugin, EventCallback callback);
 
 	// returns a full path to the last loaded save game
-	const char* (* GetSavePath)();
+	const char* (*GetSavePath)();
 
 	// Peeks at the data without interfiring with the current position
-	UInt32	(* PeekRecordData)(void * buf, UInt32 length);
+	UInt32	(*PeekRecordData)(void * buf, UInt32 length);
 
 	void	(*WriteRecord8)(UInt8 inData);
 	void	(*WriteRecord16)(UInt16 inData);
@@ -775,13 +745,11 @@ struct NVSESerializationInterface
  *	    void* floatArg = *(void**) &number;
  *	    s_EventInterface->DispatchEvent("MyEvent", callingRef, floatArg);
  */
-struct NVSEEventManagerInterface
-{
+struct NVSEEventManagerInterface {
 	typedef void (*NativeEventHandler)(TESObjectREFR* thisObj, void* parameters);
 
 	// Mostly used for filtering information.
-	enum ParamType : UInt8
-	{
+	enum ParamType : UInt8 {
 		eParamType_Float = 0,
 		eParamType_Int,
 		eParamType_String,
@@ -817,18 +785,15 @@ struct NVSEEventManagerInterface
 		eParamType_ReferencePtr,
 		eParamType_BaseFormPtr
 	};
-	static [[nodiscard]] bool IsFormParam(ParamType pType)
-	{
+	static [[nodiscard]] bool IsFormParam(ParamType pType) {
 		return pType == eParamType_RefVar || pType == eParamType_Reference || pType == eParamType_BaseForm
 		 || pType == eParamType_Anything;
 	}
-	static [[nodiscard]] bool IsPtrParam(ParamType pType)
-	{
+	static [[nodiscard]] bool IsPtrParam(ParamType pType) {
 		return (pType >= eParamType_FloatPtr) && (pType <= eParamType_BaseFormPtr);
 	}
 	// Gets the regular non-ptr version of the param
-	static [[nodiscard]] ParamType GetNonPtrParamType(ParamType pType)
-	{
+	static [[nodiscard]] ParamType GetNonPtrParamType(ParamType pType) {
 		if (IsPtrParam(pType))
 		{
 			return static_cast<ParamType>(pType - 9);
@@ -836,8 +801,7 @@ struct NVSEEventManagerInterface
 		return pType;
 	}
 
-	enum EventFlags : UInt32
-	{
+	enum EventFlags : UInt32 {
 		kFlags_None = 0,
 
 		// If on, will remove all set handlers for the event every game load.
@@ -873,8 +837,7 @@ struct NVSEEventManagerInterface
 	// Returns false if an error occurred.
 	bool (*DispatchEvent)(const char* eventName, TESObjectREFR* thisObj, ...);
 
-	enum DispatchReturn : int8_t
-	{
+	enum DispatchReturn : int8_t {
 		kRetn_UnknownEvent = -2,  // for plugins, events are supposed to be pre-defined.
 		kRetn_GenericError = -1,  // anything > -1 is a good result.
 		kRetn_Normal = 0,
@@ -890,8 +853,7 @@ struct NVSEEventManagerInterface
 
 	// Special priorities used for the event priority system.
 	// Greatest priority = will run first, lowest = will run last.
-	enum SpecialHandlerPriorities : int
-	{
+	enum SpecialHandlerPriorities : int {
 		// Used as a special case when searching through handlers; invalid priority = unfiltered for priority.
 		// A handler CANNOT be set with this priority.
 		// However, negative priorities ARE allowed to be set.
@@ -982,10 +944,8 @@ struct NVSEEventManagerInterface
 };
 #endif
 
-struct PluginInfo
-{
-	enum
-	{
+struct PluginInfo {
+	enum {
 		kInfoVersion = 1
 	};
 
@@ -994,8 +954,8 @@ struct PluginInfo
 	UInt32			version;
 };
 
-typedef bool (* _NVSEPlugin_Query)(const NVSEInterface * nvse, PluginInfo * info);
-typedef bool (* _NVSEPlugin_Load)(const NVSEInterface * nvse);
+typedef bool (* _NVSEPlugin_Query)(const NVSEInterface *nvse, PluginInfo * info);
+typedef bool (* _NVSEPlugin_Load)(const NVSEInterface *nvse);
 
 /**** plugin API docs **********************************************************
  *	
@@ -1059,8 +1019,7 @@ struct PluginScriptToken;
 struct PluginTokenPair;
 struct PluginTokenSlice;
 
-struct ExpressionEvaluatorUtils
-{
+struct ExpressionEvaluatorUtils {
 #if RUNTIME
 	void*					(__stdcall	*CreateExpressionEvaluator)(COMMAND_ARGS);
 	void					(__fastcall *DestroyExpressionEvaluator)(void *expEval);
@@ -1095,50 +1054,25 @@ struct ExpressionEvaluatorUtils
 
 extern ExpressionEvaluatorUtils s_expEvalUtils;
 
-class PluginExpressionEvaluator
-{
+class PluginExpressionEvaluator {
 	void		*expEval;
 
 public:
 #if RUNTIME
-	PluginExpressionEvaluator(COMMAND_ARGS)
-	{
-		expEval = s_expEvalUtils.CreateExpressionEvaluator(PASS_COMMAND_ARGS);
-	}
-	~PluginExpressionEvaluator()
-	{
-		if (expEval) s_expEvalUtils.DestroyExpressionEvaluator(expEval);
-	}
+	PluginExpressionEvaluator(COMMAND_ARGS) { expEval = s_expEvalUtils.CreateExpressionEvaluator(PASS_COMMAND_ARGS); }
+	~PluginExpressionEvaluator() { if (expEval) s_expEvalUtils.DestroyExpressionEvaluator(expEval); }
 
-	bool ExtractArgs()
-	{
-		return expEval && s_expEvalUtils.ExtractArgsEval(expEval);
-	}
+	[[nodiscard]] bool ExtractArgs() const { return expEval && s_expEvalUtils.ExtractArgsEval(expEval); }
+	[[nodiscard]] UInt8 NumArgs() const { return s_expEvalUtils.GetNumArgs(expEval); }
+	[[nodiscard]] PluginScriptToken *GetNthArg(const UInt32 argIdx) const { return s_expEvalUtils.GetNthArg(expEval, argIdx); }
 
-	UInt8 NumArgs()
-	{
-		return s_expEvalUtils.GetNumArgs(expEval);
-	}
-
-	PluginScriptToken *GetNthArg(UInt32 argIdx)
-	{
-		return s_expEvalUtils.GetNthArg(expEval, argIdx);
-	}
-
-	void SetExpectedReturnType(CommandReturnType type)
-	{
-		s_expEvalUtils.SetExpectedReturnType(expEval, type);
-	}
+	void SetExpectedReturnType(const CommandReturnType type) const { s_expEvalUtils.SetExpectedReturnType(expEval, type); }
 
 	//Will set the expected return type on its own.
 	//If the Element is invalid, will throw an NVSE error in console about unexpected return type.
-	void AssignCommandResult(NVSEArrayVarInterface::Element& result)
-	{
-		s_expEvalUtils.AssignCommandResultFromElement(expEval, result);
-	}
+	void AssignCommandResult(NVSEArrayVarInterface::Element& result) const { s_expEvalUtils.AssignCommandResultFromElement(expEval, result); }
 
-	bool ExtractArgsV(void* null, ...)
-	{
+	bool ExtractArgsV(void* null, ...) const {
 		va_list list;
 		va_start(list, null);
 		const auto result = s_expEvalUtils.ExtractArgsV(expEval, list);
@@ -1146,8 +1080,7 @@ public:
 		return result;
 	}
 
-	void Error(const char* fmt, ...)
-	{
+	void Error(const char* fmt, ...) const {
 		va_list fmtArgs;
 		va_start(fmtArgs, fmt);
 		s_expEvalUtils.ReportError(expEval, fmt, fmtArgs);
@@ -1156,98 +1089,43 @@ public:
 #endif
 };
 
-struct PluginScriptToken
-{
+struct PluginScriptToken {
 #if RUNTIME
-	UInt8 GetType()
-	{
-		return s_expEvalUtils.ScriptTokenGetType(this);
-	}
+	bool CanConvertTo(const UInt8 toType) { return s_expEvalUtils.ScriptTokenCanConvertTo(this, toType); }
+	UInt8 GetType() { return s_expEvalUtils.ScriptTokenGetType(this); }
+	double GetFloat() { return s_expEvalUtils.ScriptTokenGetFloat(this); }
+	int GetInt() { return static_cast<int>(s_expEvalUtils.ScriptTokenGetFloat(this)); }
+	bool GetBool() { return s_expEvalUtils.ScriptTokenGetBool(this); }
+	UInt32 GetFormID() { return s_expEvalUtils.ScriptTokenGetFormID(this); }
+	TESForm *GetTESForm() { return s_expEvalUtils.ScriptTokenGetTESForm(this); }
+	const char *GetString() { return s_expEvalUtils.ScriptTokenGetString(this); }
 
-	bool CanConvertTo(UInt8 toType)
-	{
-		return s_expEvalUtils.ScriptTokenCanConvertTo(this, toType);
-	}
-	
-	double GetFloat()
-	{
-		return s_expEvalUtils.ScriptTokenGetFloat(this);
-	}
+	NVSEArrayVarInterface::Array *GetArrayVar() { return reinterpret_cast<NVSEArrayVarInterface::Array*>(s_expEvalUtils.ScriptTokenGetArrayID(this)); }
 
-	int GetInt()
-	{
-		return int(s_expEvalUtils.ScriptTokenGetFloat(this));
-	}
+	UInt32 GetActorValue() { return s_expEvalUtils.ScriptTokenGetActorValue(this); }
 
-	bool GetBool()
-	{
-		return s_expEvalUtils.ScriptTokenGetBool(this);
-	}
+	UInt32 GetAnimationGroup() { return s_expEvalUtils.ScriptTokenGetAnimationGroup(this); }
 
-	UInt32 GetFormID()
-	{
-		return s_expEvalUtils.ScriptTokenGetFormID(this);
-	}
+	ScriptLocal *GetScriptVar() { return s_expEvalUtils.ScriptTokenGetScriptVar(this); }
 
-	TESForm *GetTESForm()
-	{
-		return s_expEvalUtils.ScriptTokenGetTESForm(this);
-	}
+	const PluginTokenPair *GetPair() { return s_expEvalUtils.ScriptTokenGetPair(this); }
 
-	const char *GetString()
-	{
-		return s_expEvalUtils.ScriptTokenGetString(this);
-	}
-
-	NVSEArrayVarInterface::Array *GetArrayVar()
-	{
-		return reinterpret_cast<NVSEArrayVarInterface::Array*>(s_expEvalUtils.ScriptTokenGetArrayID(this));
-	}
-
-	UInt32 GetActorValue()
-	{
-		return s_expEvalUtils.ScriptTokenGetActorValue(this);
-	}
-
-	UInt32 GetAnimationGroup()
-	{
-		return s_expEvalUtils.ScriptTokenGetAnimationGroup(this);
-	}
-
-	ScriptLocal *GetScriptVar()
-	{
-		return s_expEvalUtils.ScriptTokenGetScriptVar(this);
-	}
-
-	const PluginTokenPair *GetPair()
-	{
-		return s_expEvalUtils.ScriptTokenGetPair(this);
-	}
-
-	const PluginTokenSlice *GetSlice()
-	{
-		return s_expEvalUtils.ScriptTokenGetSlice(this);
-	}
+	const PluginTokenSlice *GetSlice() { return s_expEvalUtils.ScriptTokenGetSlice(this); }
 
 	//If a string-type elem is returned, its c-string will be allocated on the FormHeap.
 	//To properly destroy it, FormHeap_Free must be called.
 	//If the element already contained a string, then it is assumed to have been allocated on the FormHeap,
 	// and will be cleared as such.
-	void GetElement(NVSEArrayVarInterface::Element &outElem)
-	{
-		s_expEvalUtils.ScriptTokenGetElement(this, outElem);
-	}
+	void GetElement(NVSEArrayVarInterface::Element &outElem) { s_expEvalUtils.ScriptTokenGetElement(this, outElem); }
 #endif
 };
 
-struct PluginTokenPair
-{
+struct PluginTokenPair {
 	PluginScriptToken	*left;
 	PluginScriptToken	*right;
 };
 
-struct PluginTokenSlice
-{
+struct PluginTokenSlice {
 	bool			bIsString;
 	double			m_upper;
 	double			m_lower;
@@ -1256,8 +1134,7 @@ struct PluginTokenSlice
 };
 
 // Added in 6.3.0
-struct NVSELoggingInterface
-{
+struct NVSELoggingInterface {
 	enum {
 		kVersion = 1
 	};

@@ -1,5 +1,7 @@
-
 #pragma once
+#ifndef GAMEFORMS_H
+#define GAMEFORMS_H
+
 
 #include <vector>
 
@@ -207,20 +209,19 @@ struct PermanentClonedForm {
 typedef tList<EffectItem> EffectList;
 
 // 018
-class TESForm : public BaseFormComponent
-{
+class TESForm : public BaseFormComponent {
 public:
 	TESForm();
 	~TESForm();
 
 	virtual void *		Destroy(bool doFree);			// func_00C in GECK ?? I think ??
-	virtual void		Unk_05(void);						// Might be set default value (called from constructor)
-	virtual void		Unk_06(void);						// Might be clear values
-	virtual bool		Unk_07(void);
+	virtual void		Unk_05();						// Might be set default value (called from constructor)
+	virtual void		Unk_06();						// Might be clear values
+	virtual bool		Unk_07();
 	virtual bool		LoadForm(ModInfo * modInfo);		// func_010 in GECK
 	virtual bool		Unk_09(void * arg);					// points to LoadForm on TESForm
 	virtual bool		AppendForm(ModInfo* modInfo);		// (ie SaveForm + append to modInfo)
-	virtual void		SaveForm(void);						// saves in same format as in .esp	//	func_013 in GECK
+	virtual void		SaveForm();							// saves in same format as in .esp	//	func_013 in GECK
 															// data buffer and buffer size stored in globals when done, doesn't return anything
 	virtual bool		LoadForm2(ModInfo * modInfo);		// just calls LoadForm
 	virtual void		WriteFormInfo(ModInfo* modInfo);	// does some saving stuff, then calls Fn0A
@@ -3665,9 +3666,9 @@ struct VariableInfo
 	UInt32			unk14;		// 14
 	String			name;		// 18
 
-	ScriptLocal* Resolve(ScriptEventList* eventList);
+	ScriptLocal* Resolve(const ScriptEventList* eventList) const;
 	TESForm* GetTESForm();
-	bool IsReferenceType(Script* parentScript);
+	bool IsReferenceType(const Script* parentScript);
 };
 
 // TESQuest (6C)
@@ -3787,8 +3788,7 @@ public:
 		kPackageFlag_Unk31 =					1 << 31
 	};
 
-	enum	// From OBSE and FNVEdit. Runtimes has 0x24 types!
-	{
+	enum {	// From OBSE and FNVEdit. Runtimes has 0x24 types!
 		kPackageType_Find =	0,		// 00
 		kPackageType_Follow,
 		kPackageType_Escort,
@@ -3941,7 +3941,7 @@ public:
 
 		static LocationData* Create();
 		static const char* StringForLocationCode(UInt8 locCode);
-		const char* StringForLocationCodeAndData(void);
+		const char* StringForLocationCodeAndData() const;
 		static UInt8 LocationCodeForString(const char* locStr);
 		static bool IsValidLocationType(UInt8 locCode) { return locCode < kPackLocation_Max; }
 	};
@@ -3965,7 +3965,7 @@ public:
 
 		static TargetData* Create();
 		static const char* StringForTargetCode(UInt8 targetCode);
-		const char* StringForTargetCodeAndData(void);
+		const char* StringForTargetCodeAndData() const;
 		static UInt8 TargetCodeForString(const char* targetStr);
 		static bool IsValidTargetCode(UInt8 c) { return c < TESPackage::kTargetType_Max; }
 	};
@@ -5178,3 +5178,4 @@ enum EWhichListForm
 	eWhichListForm_Max,
 };
 
+#endif

@@ -6,213 +6,130 @@ Options::Options()
 :m_launchCS(false)
 ,m_setPriority(false)
 ,m_priority(0)
-,m_crcOnly(false)
 ,m_optionsOnly(false)
+,m_crcOnly(false)
 ,m_waitForClose(false)
 ,m_verbose(false)
 ,m_moduleInfo(false)
 ,m_skipLauncher(true)
 ,m_fpsLimit(0)
-,m_appID(0)
-{
-	//
-}
+,m_appID(0) { }
 
-Options::~Options()
-{
-	//
-}
+Options::~Options() = default;
 
 // disable "switch statement contains 'default' but no 'case' labels"
 #pragma warning (push)
 #pragma warning (disable : 4065)
 
-bool Options::Read(int argc, char ** argv)
-{
-	if(argc >= 1)
-	{
-		// remove app name
-		argc--;
+bool Options::Read(int argc, char ** argv) {
+	if(argc >= 1) {
+		argc--; // remove app name
 		argv++;
 
-		int	freeArgCount = 0;
-
-		while(argc > 0)
-		{
-			char	* arg = *argv++;
+		while (argc > 0) {
+			char	*arg = *argv++;
 			argc--;
 
-			if(arg[0] == '-')
-			{
-				// switch
-				arg++;
-
-				if(!_stricmp(arg, "editor"))
-				{
-					m_launchCS = true;
-				}
-				else if(!_stricmp(arg, "priority"))
-				{
-					if(argc >= 1)
-					{
+			if (arg[0] == '-') {
+				arg++; // switch
+				if (!_stricmp(arg, "editor")) { m_launchCS = true; }
+				else if (!_stricmp(arg, "priority")) {
+					if (argc >= 1) {
 						arg = *argv++;
 						argc--;
 
 						m_setPriority = true;
 
-						if(!_stricmp(arg, "above_normal"))
-						{
-							m_priority = ABOVE_NORMAL_PRIORITY_CLASS;
-						}
-						else if(!_stricmp(arg, "below_normal"))
-						{
-							m_priority = BELOW_NORMAL_PRIORITY_CLASS;
-						}
-						else if(!_stricmp(arg, "high"))
-						{
-							m_priority = HIGH_PRIORITY_CLASS;
-						}
-						else if(!_stricmp(arg, "idle"))
-						{
-							m_priority = IDLE_PRIORITY_CLASS;
-						}
-						else if(!_stricmp(arg, "normal"))
-						{
-							m_priority = NORMAL_PRIORITY_CLASS;
-						}
-						else if(!_stricmp(arg, "realtime"))
-						{
-							m_priority = REALTIME_PRIORITY_CLASS;
-						}
-						else
-						{
+						if(!_stricmp(arg, "above_normal"))		{ m_priority = ABOVE_NORMAL_PRIORITY_CLASS; }
+						else if(!_stricmp(arg, "below_normal")) { m_priority = BELOW_NORMAL_PRIORITY_CLASS; }
+						else if(!_stricmp(arg, "high"))			{ m_priority = HIGH_PRIORITY_CLASS; }
+						else if(!_stricmp(arg, "idle"))			{ m_priority = IDLE_PRIORITY_CLASS; }
+						else if(!_stricmp(arg, "normal"))		{ m_priority = NORMAL_PRIORITY_CLASS; }
+						else if(!_stricmp(arg, "realtime"))		{ m_priority = REALTIME_PRIORITY_CLASS; }
+						else {
 							m_setPriority = false;
-
 							_ERROR("couldn't read priority argument (%s)", arg);
 							return false;
 						}
 					}
-					else
-					{
+					else {
 						_ERROR("priority not specified");
 						return false;
 					}
 				}
-				else if(!_stricmp(arg, "altexe"))
-				{
-					if(argc >= 1)
-					{
+				else if(!_stricmp(arg, "altexe")) {
+					if(argc >= 1) {
 						m_altEXE = *argv++;
 						argc--;
 					}
-					else
-					{
+					else {
 						_ERROR("exe path not specified");
 						return false;
 					}
 				}
-				else if(!_stricmp(arg, "altdll"))
-				{
-					if(argc >= 1)
-					{
+				else if(!_stricmp(arg, "altdll")) {
+					if(argc >= 1) {
 						m_altDLL = *argv++;
 						argc--;
 					}
-					else
-					{
+					else {
 						_ERROR("dll path not specified");
 						return false;
 					}
 				}
-				else if(!_stricmp(arg, "crconly"))
-				{
-					m_crcOnly = true;
-				}
-				else if(!_stricmp(arg, "h") || !_stricmp(arg, "help"))
-				{
-					m_optionsOnly = true;
-				}
-				else if(!_stricmp(arg, "waitforclose"))
-				{
-					m_waitForClose = true;
-				}
-				else if(!_stricmp(arg, "fpslimit"))
-				{
-					if(argc >= 1)
-					{
+				else if(!_stricmp(arg, "crconly")) { m_crcOnly = true; }
+				else if(!_stricmp(arg, "h") || !_stricmp(arg, "help")) { m_optionsOnly = true; }
+				else if(!_stricmp(arg, "waitforclose")) { m_waitForClose = true; }
+				else if(!_stricmp(arg, "fpslimit")) {
+					if(argc >= 1) {
 						const char	* fpsLimitStr = *argv++;
 						argc--;
 
-						if(sscanf_s(fpsLimitStr, "%d", &m_fpsLimit) != 1)
-						{
+						if(sscanf_s(fpsLimitStr, "%d", &m_fpsLimit) != 1) {
 							_ERROR("couldn't read fps limit as an integer (%s)", fpsLimitStr);
 							return false;
 						}
 					}
-					else
-					{
+					else {
 						_ERROR("fps limit not specified");
 						return false;
 					}
 				}
-				else if(!_stricmp(arg, "v"))
-				{
-					m_verbose = true;
-				}
-				else if(!_stricmp(arg, "minfo"))
-				{
-					m_moduleInfo = true;
-				}
-				else if(!_stricmp(arg, "noskiplauncher"))
-				{
-					m_skipLauncher = false;
-				}
-				else if(!_stricmp(arg, "appid"))
-				{
-					if(argc >= 1)
-					{
-						const char	* appIDStr = *argv++;
+				else if(!_stricmp(arg, "v")) { m_verbose = true; }
+				else if(!_stricmp(arg, "minfo")) { m_moduleInfo = true; }
+				else if(!_stricmp(arg, "noskiplauncher")) { m_skipLauncher = false; }
+				else if(!_stricmp(arg, "appid")) {
+					if(argc >= 1) {
+						const char *appIDStr = *argv++;
 						argc--;
 
-						if(sscanf_s(appIDStr, "%d", &m_appID) != 1)
-						{
+						if(sscanf_s(appIDStr, "%d", &m_appID) != 1) {
 							_ERROR("couldn't read appID as an integer (%s)", appIDStr);
 							return false;
 						}
 					}
-					else
-					{
+					else {
 						_ERROR("appID not specified");
 						return false;
 					}
 				}
-				else
-				{
+				else {
 					_ERROR("unknown switch (%s)", arg);
 					return false;
 				}
 			}
-			else
-			{
-				// free arg
-
-				switch(freeArgCount)
-				{
-					default:
-						_ERROR("too many free args (%s)", arg);
-						return false;
-				}
+			else {
+				_ERROR("too many free args (%s)", arg);
+				return false;
 			}
 		}
 	}
-
 	return Verify();
 }
 
 #pragma warning (pop)
 
-void Options::PrintUsage(void)
-{
+void Options::PrintUsage() {
 	gLog.SetPrintLevel(IDebugLog::kLevel_VerboseMessage);
 
 	_MESSAGE("usage: nvse_loader [options]");
@@ -242,9 +159,5 @@ void Options::PrintUsage(void)
 	_MESSAGE("  -appid <id> - choose a different steam appid (use 22490 for enplczru)");
 }
 
-bool Options::Verify(void)
-{
-	// nothing to verify currently
-
-	return true;
-}
+ // nothing to verify currently
+bool Options::Verify() { return true; }

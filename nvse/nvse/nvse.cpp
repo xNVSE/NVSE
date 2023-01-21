@@ -31,8 +31,7 @@ UInt32 logLevel = IDebugLog::kLevel_Message;
 // fix dinput code so it doesn't acquire the keyboard/mouse in exclusive mode
 // bBackground Mouse works on startup, but when gaining focus that setting is ignored
 // there's probably a better way to fix the bug but this is good enough
-void PatchCoopLevel(void)
-{
+void PatchCoopLevel() {
 	SafeWrite8(0x00A227A1 + 1, 0x16);
 	SafeWrite8(0x00A229CB + 1, 0x06);
 	SafeWrite8(0x00A23CAD + 1, 0x06);
@@ -83,6 +82,10 @@ void NVSE_Initialize(void)
 		if (GetNVSEConfigOption_UInt32("RELEASE", "bNoSaveWarnings", &noFileWarning) && noFileWarning)
 			g_noSaveWarnings = true;
 
+		UInt32 bLogToFolder = false;
+		if (GetNVSEConfigOption_UInt32("LOGGING", "bLogToFolder", &bLogToFolder) && bLogToFolder)
+			gLog.SetLogFolderOption(true);
+
 		_MESSAGE("NVSE runtime: initialize (version = %d.%d.%d %08X %08X%08X)",
 			NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA, RUNTIME_VERSION,
 			now.dwHighDateTime, now.dwLowDateTime);
@@ -93,13 +96,14 @@ void NVSE_Initialize(void)
 			NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA, EDITOR_VERSION,
 			now.dwHighDateTime, now.dwLowDateTime);
 #endif
-		_MESSAGE("imagebase = %08X", GetModuleHandle(NULL));
+		_MESSAGE("imagebase = %08X", GetModuleHandle(nullptr));
 
 #ifdef _DEBUG
 		logLevel = IDebugLog::kLevel_DebugMessage;
 		if (GetNVSEConfigOption_UInt32("DEBUG", "LogLevel", &logLevel) && logLevel)
 			if (logLevel>IDebugLog::kLevel_DebugMessage)
 				logLevel = IDebugLog::kLevel_DebugMessage;
+		
 		if (GetNVSEConfigOption_UInt32("DEBUG", "AlternateUpdate3D", &au3D) && au3D)
 			alternateUpdate3D = true;
 		// SetPriorityClass(GetCurrentProcess(), IDLE_PRIORITY_CLASS);
@@ -125,9 +129,9 @@ void NVSE_Initialize(void)
 
 		ReadNVSEPluginLogPath();
 
-		gLog.SetLogLevel((IDebugLog::LogLevel)logLevel);
+		gLog.SetLogLevel(static_cast<IDebugLog::LogLevel>(logLevel));
 
-		MersenneTwister::init_genrand(GetTickCount());
+		MersenneTwister::init_genrand(static_cast<unsigned long>(GetTickCount64())); // GetTickCount overflows every 49 days according to C28159
 
 #if RUNTIME
 		// Runs before CommandTable::Init to prevent plugins from being able to register events before ours (breaks assert).
@@ -173,7 +177,7 @@ void NVSE_Initialize(void)
 			CreateHookWindow();
 #endif
 #endif
-		FlushInstructionCache(GetCurrentProcess(), NULL, 0);
+		FlushInstructionCache(GetCurrentProcess(), nullptr, 0);
 
 #ifndef _DEBUG
 	}

@@ -61,7 +61,7 @@ public:
 struct PluginCallbacks
 {
 	PluginCallbacks()
-		:save(NULL), load(NULL), newGame(NULL), preLoad(NULL) { }
+		: save(nullptr), load(nullptr), newGame(nullptr), preLoad(nullptr), hadData(false) { }
 
 	NVSESerializationInterface::EventCallback	save;
 	NVSESerializationInterface::EventCallback	load;

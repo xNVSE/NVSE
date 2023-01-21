@@ -87,10 +87,10 @@ private:
 
 public:
 	DynamicParamInfo(const std::vector<UserFunctionParam> &params);
-	DynamicParamInfo() : m_numParams(0) { }
+	DynamicParamInfo() : m_numParams(0), m_paramInfo{} { }
 
-	ParamInfo* Params()	{	return m_paramInfo;	}
-	[[nodiscard]] ParamSize_t NumParams() const { return m_numParams;	}
+	ParamInfo* Params()	{	return m_paramInfo; }
+	[[nodiscard]] ParamSize_t NumParams() const { return m_numParams; }
 };
 
 #if RUNTIME
@@ -228,7 +228,7 @@ public:
 #endif
 
 	void			ToggleErrorSuppression(bool bSuppress);
-	void			PrintStackTrace();
+	void			PrintStackTrace() const;
 
 	[[nodiscard]] TESObjectREFR*	ThisObj() const { return m_thisObj; }
 	[[nodiscard]] TESObjectREFR*	ContainingObj() const { return m_containingObj; }

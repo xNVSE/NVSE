@@ -1,57 +1,44 @@
 #pragma once
+#ifndef UTILITY_H
+#define UTILITY_H
 
 #include <intrin.h>
+#include "Utilities.h"
 
 typedef void* (*memcpy_t)(void*, const void*, size_t);
 extern memcpy_t _memcpy, _memmove;
 
 //	Workaround for bypassing the compiler calling the d'tor on function-scope objects.
-template <typename T, bool InitConstructor = true> class TempObject
-{
+template <typename T, bool InitConstructor = true> class TempObject {
 	friend T;
 
-	struct Buffer
-	{
-		UInt8	bytes[sizeof(T)];
-	}
+	struct Buffer { UInt8	bytes[sizeof(T)]; }
 	objData;
 
 public:
-	TempObject()
-	{
-		if constexpr (InitConstructor)
-			Reset();
-	}
-	TempObject(const T &src) {objData = *(Buffer*)&src;}
+	TempObject() { if constexpr (InitConstructor) { Reset(); } }
+	TempObject(const T &src) { objData = *reinterpret_cast<const Buffer *>(&src); }
 
-	void Reset() {new ((T*)&objData) T();}
+	void Reset() {new (reinterpret_cast<T*>(&objData)) T();}
 
-	T& operator()() {return *(T*)&objData;}
+	T& operator()() {return *reinterpret_cast<T*>(&objData);}
 
-	TempObject& operator=(const T &rhs) {objData = *(Buffer*)&rhs;}
-	TempObject& operator=(const TempObject &rhs) {objData = rhs.objData;}
+	TempObject& operator=(const T &rhs) { objData = *reinterpret_cast<Buffer *>(&rhs); return &objData; }
+	TempObject& operator=(const TempObject &rhs) { objData = rhs.objData; return &objData; }
 };
 
 //	Assign rhs to lhs, bypassing operator=
-template <typename T> __forceinline void RawAssign(const T &lhs, const T &rhs)
-{
-	struct Helper
-	{
-		UInt8	bytes[sizeof(T)];
-	};
-	*(Helper*)&lhs = *(Helper*)&rhs;
+template <typename T> __forceinline void RawAssign(T &lhs, T &rhs) {
+	struct Helper { UInt8	bytes[sizeof(T)]; };
+	*reinterpret_cast<Helper *>(&lhs) = *reinterpret_cast<Helper *>(&rhs); // *(Helper*)&lhs = *(Helper*)&rhs;
 }
 
 //	Swap lhs and rhs, bypassing operator=
-template <typename T> __forceinline void RawSwap(const T &lhs, const T &rhs)
-{
-	struct Helper
-	{
-		UInt8	bytes[sizeof(T)];
-	}
-	temp = *(Helper*)&lhs;
-	*(Helper*)&lhs = *(Helper*)&rhs;
-	*(Helper*)&rhs = temp;
+template <typename T> __forceinline void RawSwap(T &lhs, T &rhs) {
+	struct Helper { UInt8	bytes[sizeof(T)]; }
+	temp = *reinterpret_cast<Helper *>(&lhs);
+	*reinterpret_cast<Helper *>(&lhs) = *reinterpret_cast<Helper *>(&rhs);
+	*reinterpret_cast<Helper *>(&rhs) = temp;
 }
 
 // These are used for 10h aligning segments in ASM code (massive performance gain, particularly with loops).
@@ -79,12 +66,11 @@ class PrimitiveCS
 public:
 	PrimitiveCS() : m_owningThread(0) {}
 
-	PrimitiveCS *Enter();
+	static PrimitiveCS *Enter();
 	__forceinline void Leave() {m_owningThread = 0;}
 };
 
-class PrimitiveScopedLock
-{
+class PrimitiveScopedLock {
 	PrimitiveCS		*m_cs;
 
 public:
@@ -139,3 +125,5 @@ public:
 };
 
 #define GetRandomUInt(n) ThisStdCall<UInt32, UInt32>(0xAA5230, (void*)0x11C4180, n)
+
+#endif

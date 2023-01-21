@@ -1,4 +1,6 @@
 #pragma once
+#ifndef IERRORS_H
+#define IERRORS_H
 
 void _AssertionFailed(const char * file, unsigned long line, const char * desc);
 void _AssertionFailed_ErrCode(const char * file, unsigned long line, const char * desc, unsigned long long code);
@@ -31,3 +33,5 @@ template <int x> struct static_assert_test { };
 
 //#define STATIC_ASSERT(a)	typedef static_assert_test <sizeof(StaticAssertFailure<(bool)(a)>)> __MACRO_JOIN__(static_assert_typedef_, __COUNTER__)
 #define STATIC_ASSERT(a) static_assert(a)
+
+#endif

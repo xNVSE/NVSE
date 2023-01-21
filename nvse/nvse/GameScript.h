@@ -125,8 +125,8 @@ public:
 
 	bool IsUserDefinedFunction() const;
 
-	static bool RunScriptLine(const char *text, TESObjectREFR *object = NULL);
-	static bool RunScriptLine2(const char *text, TESObjectREFR *object = NULL, bool bSuppressOutput = true);
+	static bool RunScriptLine(const char *text, TESObjectREFR *object = nullptr);
+	static bool RunScriptLine2(const char *text, TESObjectREFR *object = nullptr, bool bSuppressOutput = true);
 
 	// no changed flags (TESForm flags)
 	MEMBER_FN_PREFIX(Script);

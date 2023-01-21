@@ -1,25 +1,19 @@
 #include "Commands_Scripting.h"
 #include "GameForms.h"
 #include "GameAPI.h"
-#include <intrin.h>
 #include "GameScript.h"
 #include "utilities.h"
-
 #include "ScriptUtils.h"
 #include "Hooks_Script.h"
-
 #include "Commands_Console.h"
+#include "FunctionScripts.h"
 
 #if RUNTIME
-
-#include "GameAPI.h"
 #include "GameObjects.h"
 #include "InventoryReference.h"
-#include "FunctionScripts.h"
 #include "Loops.h"
 
-static const void * kOpHandlerRetnAddr = (void *)0x005E234B;
-
+static const void * kOpHandlerRetnAddr = reinterpret_cast<void *>(0x005E234B);
 #endif
 
 //static SavedIPInfo s_savedIPTable[kMaxSavedIPs] = { { 0 } };
@@ -28,75 +22,62 @@ static UnorderedMap<UInt32, MapSavedIPInfo> s_savedIPTable;
 
 // ### stack abuse! get a pointer to the parent's stack frame
 // ### valid when parent is called from kOpHandlerRetnAddr
-ScriptRunner * GetScriptRunner(UInt32 * opcodeOffsetPtr)
-{
-	UInt8			* scriptRunnerEBP = ((UInt8 *)opcodeOffsetPtr) + 0x10;
-	ScriptRunner	** scriptRunnerPtr = (ScriptRunner **)(scriptRunnerEBP - 0xED0);	// this
-	ScriptRunner	* scriptRunner = *scriptRunnerPtr;
-
+ScriptRunner *GetScriptRunner(UInt32 * opcodeOffsetPtr) {
+	auto *scriptRunnerEBP = reinterpret_cast<UInt8 *>(opcodeOffsetPtr) + 0x10;
+	auto **scriptRunnerPtr = reinterpret_cast<ScriptRunner **>(scriptRunnerEBP - 0xED0);	// this
+	ScriptRunner *scriptRunner = *scriptRunnerPtr;
 	return scriptRunner;
 }
 
-SInt32 * GetCalculatedOpLength(UInt32 * opcodeOffsetPtr)
-{
-	UInt8	* scriptRunnerEBP = ((UInt8 *)opcodeOffsetPtr) + 0x10;
-	UInt8	* parentEBP = scriptRunnerEBP + 0x7B0;
-	SInt32	* opLengthPtr = (SInt32 *)(parentEBP - 0x14);
-
+SInt32 *GetCalculatedOpLength(UInt32 *opcodeOffsetPtr) {
+	auto *scriptRunnerEBP = reinterpret_cast<UInt8 *>(opcodeOffsetPtr) + 0x10;
+	UInt8 *parentEBP = scriptRunnerEBP + 0x7B0;
+	auto	* opLengthPtr = reinterpret_cast<SInt32 *>(parentEBP - 0x14);
 	return opLengthPtr;
 }
 
 #if RUNTIME
-
-bool Cmd_Label_Execute(COMMAND_ARGS)
-{
-	UInt32	idx = 0;
-
-	if (!ExtractArgs(EXTRACT_ARGS, &idx)) return true;
+bool Cmd_Label_Execute(COMMAND_ARGS) {
+	UInt32 idx = 0;
+	if (!ExtractArgs(EXTRACT_ARGS, &idx)) { return true; }
 
 #if USE_EXTRACT_ARGS_EX
-	*opcodeOffsetPtr += *(UInt16*)((UInt8*)scriptData + *opcodeOffsetPtr - 2);
+	*opcodeOffsetPtr += *reinterpret_cast<UInt16*>(static_cast<UInt8 *>(scriptData) + *opcodeOffsetPtr - 2);
 #endif
 
-	SavedIPInfo		* info = &s_savedIPTable[scriptObj->refID][idx];
-	ScriptRunner	* scriptRunner = GetScriptRunner(opcodeOffsetPtr);
+	SavedIPInfo *info = &s_savedIPTable[scriptObj->refID][idx];
+	const ScriptRunner *scriptRunner = GetScriptRunner(opcodeOffsetPtr);
 
-	// save ip
-	info->ip = *opcodeOffsetPtr;
+	info->ip = *opcodeOffsetPtr; // save ip
 
-	// save if/else/endif stack
-	info->stackDepth = scriptRunner->ifStackDepth;
+	info->stackDepth = scriptRunner->ifStackDepth; // save if/else/endif stack
 	ASSERT((info->stackDepth + 1) < kMaxSavedIPStack);
 
 	memcpy(info->stack, scriptRunner->ifStack, (info->stackDepth + 1) * sizeof(UInt32));
-
 	return true;
 }
 
-bool Cmd_Goto_Execute(COMMAND_ARGS)
-{
+bool Cmd_Goto_Execute(COMMAND_ARGS) {
 	UInt32	idx = 0;
 
-	if (!ExtractArgs(EXTRACT_ARGS, &idx)) return true;
+	if (!ExtractArgs(EXTRACT_ARGS, &idx)) { return true; }
 
 	MapSavedIPInfo *savedIPInfo = s_savedIPTable.GetPtr(scriptObj->refID);
-	if (!savedIPInfo) return true;
+	if (!savedIPInfo) { return true; }
 
-	SavedIPInfo *info = savedIPInfo->GetPtr(idx);
-	if (!info) return true;
+	const SavedIPInfo *info = savedIPInfo->GetPtr(idx);
+	if (!info) { return true; }
 
 #if USE_EXTRACT_ARGS_EX
-	*opcodeOffsetPtr += *(UInt16*)((UInt8*)scriptData + *opcodeOffsetPtr - 2);
+	*opcodeOffsetPtr += *reinterpret_cast<UInt16 *>(static_cast<UInt8 *>(scriptData) + *opcodeOffsetPtr - 2);
 #endif
 
-	ScriptRunner	* scriptRunner = GetScriptRunner(opcodeOffsetPtr);
-	SInt32			* calculatedOpLength = GetCalculatedOpLength(opcodeOffsetPtr);
+	ScriptRunner *scriptRunner = GetScriptRunner(opcodeOffsetPtr);
+	SInt32 *calculatedOpLength = GetCalculatedOpLength(opcodeOffsetPtr);
+	
+	*calculatedOpLength += info->ip - *opcodeOffsetPtr; // restore ip
 
-	// restore ip
-	*calculatedOpLength += info->ip - *opcodeOffsetPtr;
-
-	// restore the if/else/endif stack
-	scriptRunner->ifStackDepth = info->stackDepth;
+	scriptRunner->ifStackDepth = info->stackDepth; // restore the if/else/endif stack
 	memcpy(scriptRunner->ifStack, info->stack, (info->stackDepth + 1) * sizeof(UInt32));
 
 	return true;
@@ -104,88 +85,71 @@ bool Cmd_Goto_Execute(COMMAND_ARGS)
 
 // *********** commands
 
-bool Cmd_Let_Execute(COMMAND_ARGS)
-{
+bool Cmd_Let_Execute(COMMAND_ARGS) {
 	ExpressionEvaluator evaluator(PASS_COMMAND_ARGS);
-
 	evaluator.ExtractArgs();
-
 	return true;
 }
 
 // used to evaluate NVSE expressions within 'if' statements
 // i.e. if eval (array[idx] == someThing)
-bool Cmd_eval_Execute(COMMAND_ARGS)
-{
+bool Cmd_eval_Execute(COMMAND_ARGS) {
 	*result = 0;
-	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-
-	if (eval.ExtractArgs() && eval.Arg(0))
-		*result = eval.Arg(0)->GetBool() ? 1 : 0;
-
+	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS); eval.ExtractArgs() && eval.Arg(0)) { *result = eval.Arg(0)->GetBool() ? 1 : 0; }
 	return true;
 }
 
 // attempts to evaluate an expression. Returns false if error occurs, true otherwise. Suppresses error messages
-bool Cmd_testexpr_Execute(COMMAND_ARGS)
-{
+bool Cmd_testexpr_Execute(COMMAND_ARGS) {
 	*result = 0;
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	eval.ToggleErrorSuppression(true);
 
-	if (eval.ExtractArgs() && eval.Arg(0) && eval.Arg(0)->IsGood() && !eval.HasErrors())
-	{
-		if (eval.Arg(0)->Type() == kTokenType_ArrayElement)		// is it an array elem with valid index?
-		{
-			ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetOwningArrayID());
-			if (arr) *result = arr->HasKey(eval.Arg(0)->GetArrayKey());
+	if (eval.ExtractArgs() && eval.Arg(0) && eval.Arg(0)->IsGood() && !eval.HasErrors()) {
+		if (eval.Arg(0)->Type() == kTokenType_ArrayElement) 	{ // is it an array elem with valid index?
+			
+			if (ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetOwningArrayID()); arr) { *result = arr->HasKey(eval.Arg(0)->GetArrayKey()); }
 		}
-		else
-			*result = 1;
+		else { *result = 1; }
 	}
 	return true;
 }
 
-bool Cmd_While_Execute(COMMAND_ARGS)
-{
-	ScriptRunner	* scriptRunner = GetScriptRunner(opcodeOffsetPtr);
-
-	// read offset to end of loop
-	UInt8* data = (UInt8*)scriptData + *opcodeOffsetPtr;
-	UInt32 offsetToEnd = *(UInt32*)data;
+bool Cmd_While_Execute(COMMAND_ARGS) {
+	ScriptRunner *scriptRunner = GetScriptRunner(opcodeOffsetPtr);
+	
+	UInt8 *data = static_cast<UInt8 *>(scriptData) + *opcodeOffsetPtr; // read offset to end of loop
+	const UInt32 offsetToEnd = *reinterpret_cast<UInt32 *>(data);
 
 	// calc offset of first instruction following this While expression
 	data += 5;		// UInt32 offset + UInt8 numArgs
-	UInt16 exprLen = *((UInt16*)data);
-	UInt32 startOffset = *opcodeOffsetPtr + 5 + exprLen;
+	const auto exprLen = *reinterpret_cast<UInt16*>(data);
+	const UInt32 startOffset = *opcodeOffsetPtr + 5 + exprLen;
 
 	// create the loop and add it to loop manager
-	WhileLoop* loop = new WhileLoop(*opcodeOffsetPtr + 4);
+	auto *loop = new WhileLoop(*opcodeOffsetPtr + 4);
 	LoopManager* mgr = LoopManager::GetSingleton();
 	mgr->Add(loop, scriptRunner, startOffset, offsetToEnd, PASS_COMMAND_ARGS);
 
 	// test condition, break immediately if false
 	*opcodeOffsetPtr = startOffset;		// need to update to point to _next_ instruction before calling loop->Update()
-	if (!loop->Update(PASS_COMMAND_ARGS))
-		mgr->Break(scriptRunner, PASS_COMMAND_ARGS);
+	if (!loop->Update(PASS_COMMAND_ARGS)) { mgr->Break(scriptRunner, PASS_COMMAND_ARGS); }
 
 	return true;
 }
 
-bool Cmd_ForEach_Execute(COMMAND_ARGS)
-{
+bool Cmd_ForEach_Execute(COMMAND_ARGS) {
 	ScriptRunner	* scriptRunner = GetScriptRunner(opcodeOffsetPtr);
 
-	// get offset to end of loop
-	UInt8* data = (UInt8*)scriptData + *opcodeOffsetPtr;
-	UInt32 offsetToEnd = *(UInt32*)data;
+	UInt8* data = static_cast<UInt8 *>(scriptData) + *opcodeOffsetPtr; // get offset to end of loop
+	const UInt32 offsetToEnd = *reinterpret_cast<UInt32 *>(data);
 
 	// calc offset to first instruction within loop
 	data += 5;
-	UInt16 exprLen = *((UInt16*)data);
-	UInt32 startOffset = *opcodeOffsetPtr + 5 + exprLen;
+	const UInt16 exprLen = *reinterpret_cast<UInt16 *>(data);
+	const UInt32 startOffset = *opcodeOffsetPtr + 5 + exprLen;
 
-	ForEachLoop* loop = NULL;
+	ForEachLoop* loop = nullptr;
 
 	// evaluate the expression to get the context
 	*opcodeOffsetPtr += 4;				// set to start of expression
@@ -193,46 +157,36 @@ bool Cmd_ForEach_Execute(COMMAND_ARGS)
 		// ExpressionEvaluator enclosed in this scope so that it's lock is released once we've extracted the args.
 		// This eliminates potential for deadlock when adding loop to LoopManager
 		ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-		bool bExtracted = eval.ExtractArgs();
 		*opcodeOffsetPtr -= 4;				// restore
 
-		if (!bExtracted || !eval.Arg(0))
-		{
+		if (!eval.ExtractArgs() || !eval.Arg(0)) {
 			ShowRuntimeError(scriptObj, "ForEach expression failed to return a value");
 			return false;
 		}
 
-		const ForEachContext* context = eval.Arg(0)->GetForEachContext();
-		if (!context)
-			ShowRuntimeError(scriptObj, "Cmd_ForEach: Expression does not evaluate to a ForEach context");
-		else		// construct the loop
-		{
-			if (context->variableType == Script::eVarType_Array)
-			{
-				ArrayIterLoop* arrayLoop = new ArrayIterLoop(context, scriptObj->GetModIndex());
+		
+		if (const ForEachContext* context = eval.Arg(0)->GetForEachContext(); !context) { ShowRuntimeError(scriptObj, "Cmd_ForEach: Expression does not evaluate to a ForEach context"); }
+		else { // construct the loop
+			if (context->variableType == Script::eVarType_Array) {
+				auto *arrayLoop = new ArrayIterLoop(context, scriptObj->GetModIndex());
 				AddToGarbageCollection(eventList, arrayLoop->m_iterVar, NVSEVarType::kVarType_Array);
 				loop = arrayLoop;
 			}
-			else if (context->variableType == Script::eVarType_String)
-			{
-				StringIterLoop* stringLoop = new StringIterLoop(context);
+			else if (context->variableType == Script::eVarType_String) {
+				auto *stringLoop = new StringIterLoop(context);
 				loop = stringLoop;
 			}
-			else if (context->variableType == Script::eVarType_Ref)
-			{
-				if IS_ID(((TESForm*)context->sourceID), BGSListForm)
-					loop = new FormListIterLoop(context);
-				else loop = new ContainerIterLoop(context);
+			else if (context->variableType == Script::eVarType_Ref) {
+				if IS_ID(reinterpret_cast<TESForm *>(context->sourceID), BGSListForm) { loop = new FormListIterLoop(context); }
+				else { loop = new ContainerIterLoop(context); }
 			}
 		}
 	}
 
-	if (loop)
-	{
+	if (loop) {
 		LoopManager* mgr = LoopManager::GetSingleton();
 		mgr->Add(loop, scriptRunner, startOffset, offsetToEnd, PASS_COMMAND_ARGS);
-		if (loop->IsEmpty())
-		{
+		if (loop->IsEmpty()) {
 			*opcodeOffsetPtr = startOffset;
 			mgr->Break(scriptRunner, PASS_COMMAND_ARGS);
 		}
@@ -241,41 +195,26 @@ bool Cmd_ForEach_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool Cmd_Break_Execute(COMMAND_ARGS)
-{
+bool Cmd_Break_Execute(COMMAND_ARGS) {
 	ScriptRunner	* scriptRunner = GetScriptRunner(opcodeOffsetPtr);
-
-	LoopManager* mgr = LoopManager::GetSingleton();
-	if (mgr->Break(scriptRunner, PASS_COMMAND_ARGS))
-		return true;
-
+	if (LoopManager* mgr = LoopManager::GetSingleton(); mgr->Break(scriptRunner, PASS_COMMAND_ARGS)) { return true; }
 	ShowRuntimeError(scriptObj, "Break called outside of a valid loop context.");
 	return false;
 }
 
-bool Cmd_Continue_Execute(COMMAND_ARGS)
-{
+bool Cmd_Continue_Execute(COMMAND_ARGS) {
 	ScriptRunner	* scriptRunner = GetScriptRunner(opcodeOffsetPtr);
-
-	LoopManager* mgr = LoopManager::GetSingleton();
-	if (mgr->Continue(scriptRunner, PASS_COMMAND_ARGS))
-	{
+	if (LoopManager* mgr = LoopManager::GetSingleton(); mgr->Continue(scriptRunner, PASS_COMMAND_ARGS)) {
 		*opcodeOffsetPtr += 4;
 		return true;
 	}
-
 	ShowRuntimeError(scriptObj, "Continue called outside of a valid loop context.");
 	return false;
 }
 
-bool Cmd_Loop_Execute(COMMAND_ARGS)
-{
+bool Cmd_Loop_Execute(COMMAND_ARGS) {
 	ScriptRunner	* scriptRunner = GetScriptRunner(opcodeOffsetPtr);
-
-	LoopManager* mgr = LoopManager::GetSingleton();
-	if (mgr->Continue(scriptRunner, PASS_COMMAND_ARGS))
-		return true;
-
+	if (LoopManager* mgr = LoopManager::GetSingleton(); mgr->Continue(scriptRunner, PASS_COMMAND_ARGS)) { return true; }
 	ShowRuntimeError(scriptObj, "Loop called outside of a valid loop context.");
 	return false;
 }

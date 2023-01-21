@@ -1,4 +1,7 @@
 #pragma once
+#ifndef IDENTIFYEXE_H
+#define IDENTIFYEXE_H
+
 #include <string>
 
 enum
@@ -11,8 +14,7 @@ enum
 	kProcType_Unknown
 };
 
-struct ProcHookInfo
-{
+struct ProcHookInfo {
 	UInt64	version;
 	UInt32	procType;
 	UInt32	hookCallAddr;
@@ -20,4 +22,6 @@ struct ProcHookInfo
 	bool	noGore;
 };
 
-bool IdentifyEXE(const char * procName, bool isEditor, std::string * dllSuffix, ProcHookInfo * hookInfo);
+bool IdentifyEXE(const char * procName, bool isEditor, std::string *dllSuffix, ProcHookInfo *hookInfo);
+
+#endif

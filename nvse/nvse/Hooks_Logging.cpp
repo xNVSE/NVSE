@@ -1,5 +1,4 @@
 #include "Hooks_Logging.h"
-#include "SafeWrite.h"
 #include <cstdarg>
 #include <unordered_set>
 
@@ -9,27 +8,26 @@
 #include "Hooks_Other.h"
 #include "ScriptAnalyzer.h"
 #include "Utilities.h"
+#include "SafeWrite.h"
+#include "ScriptUtils.h"
 
 #if RUNTIME
+constexpr auto kPatchSCOF = 0x0071DE73; // #define kPatchSCOF 0x0071DE73
+constexpr auto kStrCRLF = 0x0101F520; // #define kStrCRLF 0x0101F520
+constexpr auto kBufferSCOF = 0x0071DE11; // #define kBufferSCOF 0x0071DE11 // Unused Macro
 
-#define kPatchSCOF 0x0071DE73
-#define kStrCRLF 0x0101F520
-#define kBufferSCOF 0x0071DE11
-
-static FILE * s_errorLog = NULL;
-static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
-{
-	auto* scriptContext = OtherHooks::GetExecutingScriptContext();
+static FILE * s_errorLog = nullptr;
+static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...) {
+	const auto* scriptContext = OtherHooks::GetExecutingScriptContext();
 	const auto retnAddress = reinterpret_cast<UInt32>(_ReturnAddress());
 
 	if (scriptContext && scriptContext->command && (scriptContext->command->opcode == 4418 || scriptContext->command->opcode == 4261) && retnAddress == 0x5E2383) // shut up Dispel and RemoveMe
 	{
-		// context: Dispel and RemoveMe return false deliberately if called within own script effect to act as a "Return" statement
-		return 0;
+		return 0; // context: Dispel and RemoveMe return false deliberately if called within own script effect to act as a "Return" statement
 	}
 	va_list	args;
 	bool alt;
-	if(0xFFFF < (UInt32)fmt)
+	if (0xFFFF < reinterpret_cast<UInt32>(fmt)) // if(0xFFFF < (UInt32)fmt)
 	{
 		va_start(args, fmt);
 		alt = false;
@@ -57,7 +55,7 @@ static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
 		vsnprintf(buf, sizeof buf, fmt, args);
 	else
 		vsnprintf(buf, sizeof buf, fmt_alt, args);
-	auto intRep = *(UInt32*)buf;
+	const auto intRep = *reinterpret_cast<UInt32 *>(buf); // const auto intRep = *(UInt32*)buf;
 	if (intRep == 'IRCS' || intRep == 'ssiM' || intRep == 'liaF' || intRep == 'avnI')
 	{
 		int breakpointHere = 0;
@@ -75,12 +73,10 @@ static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
 		const auto inRunLine = _L(, retnAddress >= 0x5E1550 && retnAddress <= 0x5E23A4);
 		if (inRunLine() || *reinterpret_cast<UInt32*>(buf) == 'IRCS')
 		{
-			const auto modName = DataHandler::Get()->GetNthModName(scriptContext->script->GetModIndex());
-			if (modName)
+			if (const auto modName = DataHandler::Get()->GetNthModName(scriptContext->script->GetModIndex()))
 			{
-				const static auto noWarnModules = { "FalloutNV.esm", "DeadMoney.esm", "HonestHearts.esm", "CaravanPack.esm", "OldWorldBlues.esm", "LonesomeRoad.esm", "GunRunnersArsenal.esm", "MercenaryPack.esm", "ClassicPack.esm", "TribalPack.esm" };
-				const auto isOfficial = ra::any_of(noWarnModules, _L(const char* name, _stricmp(name, modName) == 0));
-				if (!isOfficial)
+				constexpr static auto noWarnModules = { "FalloutNV.esm", "DeadMoney.esm", "HonestHearts.esm", "CaravanPack.esm", "OldWorldBlues.esm", "LonesomeRoad.esm", "GunRunnersArsenal.esm", "MercenaryPack.esm", "ClassicPack.esm", "TribalPack.esm" };
+				if (const auto isOfficial = ra::any_of(noWarnModules, _L(const char* name, _stricmp(name, modName) == 0)); !isOfficial)
 				{
 					ScriptParsing::ScriptIterator iter;
 					auto* lineDataStart = scriptContext->script->data + *scriptContext->curDataPtr - 4;
@@ -102,8 +98,7 @@ static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
 					}
 					if (iter.curData)
 					{
-						const auto line = ScriptParsing::ScriptAnalyzer::ParseLine(iter);
-						if (line)
+						if (const auto line = ScriptParsing::ScriptAnalyzer::ParseLine(iter))
 						{
 							ShowRuntimeError(scriptContext->script, "%s\nDecompiled Line: %s", buf, line->ToString().c_str());
 						}
@@ -118,7 +113,7 @@ static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
 	return 0;
 }
 
-static FILE * s_havokErrorLog = NULL;
+static FILE * s_havokErrorLog = nullptr;
 static int HavokErrorLogHook(int severity, const char * fmt, ...)
 {
 	va_list	args;
@@ -148,17 +143,17 @@ void Hook_Logging_Init(void)
 		fopen_s(&s_havokErrorLog, "falloutnv_havok.log", filemode.c_str());
 		if (bAppendErrorLogs)
 		{
-			time_t my_time = time(nullptr);
+			const time_t my_time = time(nullptr);
 			//format: Day Month Date hh : mm:ss Year
 			printf("\n%s", ctime(&my_time));
 		}
 
-		WriteRelJump(0x005B5E40, (UInt32)ErrorLogHook);
+		WriteRelJump(0x005B5E40, reinterpret_cast<UInt32>(ErrorLogHook)); // WriteRelJump(0x005B5E40, (UInt32)ErrorLogHook);
 
-		WriteRelCall(0x006259D3, (UInt32)HavokErrorLogHook);
-		WriteRelCall(0x00625A23, (UInt32)HavokErrorLogHook);
-		WriteRelCall(0x00625A63, (UInt32)HavokErrorLogHook);
-		WriteRelCall(0x00625A92, (UInt32)HavokErrorLogHook);
+		WriteRelCall(0x006259D3, reinterpret_cast<UInt32>(HavokErrorLogHook));
+		WriteRelCall(0x00625A23, reinterpret_cast<UInt32>(HavokErrorLogHook));
+		WriteRelCall(0x00625A63, reinterpret_cast<UInt32>(HavokErrorLogHook));
+		WriteRelCall(0x00625A92, reinterpret_cast<UInt32>(HavokErrorLogHook));
 	}
 
 	if(!GetNVSEConfigOption_UInt32("FIXES", "DisableSCOFfixes", &disableSCOFfixes) || !disableSCOFfixes)

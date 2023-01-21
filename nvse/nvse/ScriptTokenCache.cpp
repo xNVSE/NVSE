@@ -1,9 +1,8 @@
-#include "ScriptTokenCache.h"
-
 #include <atomic>
+#include "ScriptTokenCache.h"
+#include "ScriptUtils.h"
 
-TokenCacheEntry& CachedTokens::Get(std::size_t key)
-{
+TokenCacheEntry& CachedTokens::Get(const std::size_t key) const {
 	return this->container_[key];
 }
 
@@ -79,8 +78,7 @@ bool TokenCache::Empty() const
 
 void TokenCache::MarkForClear()
 {
-	// Required since cache is thread_local and needs to be cleared on each thread
-	++tlsClearAllCookie_;
+	++tlsClearAllCookie_; // Required since cache is thread_local and needs to be cleared on each thread
 }
 
 std::atomic<int> TokenCache::tlsClearAllCookie_ = 0;

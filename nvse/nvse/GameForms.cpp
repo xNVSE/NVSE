@@ -654,46 +654,29 @@ static const char *TESPackage_ProcedureStrings[] = {
 	"CANIBAL FEED",
 };
 
-const char *TESPackage::StringForPackageType(UInt32 pkgType)
-{
-	if (pkgType < kPackType_MAX)
-	{
-		return TESPackage_TypeStrings[pkgType];
-	}
-	else
-	{
-		return "";
-	}
-}
-
-const char *TESPackage::StringForObjectCode(UInt8 objCode)
-{
-	if (objCode < kObjectType_Max)
-		return TESPackage_ObjectTypeStrings[objCode];
-
+const char *TESPackage::StringForPackageType(const UInt32 pkgType) {
+	if (pkgType < kPackType_MAX - 1) { return TESPackage_TypeStrings[pkgType]; } // Array range 0-15, variable kPackType_Max 17 - John
 	return "";
 }
 
-UInt8 TESPackage::ObjectCodeForString(const char *objString)
-{
-	for (UInt32 i = 0; i < kObjectType_Max; i++)
-	{
-		if (!_stricmp(objString, TESPackage_ObjectTypeStrings[i]))
-			return i;
-	}
+const char *TESPackage::StringForObjectCode(const UInt8 objCode) {
+	if (objCode < kObjectType_Max) { return TESPackage_ObjectTypeStrings[objCode]; }
+	return "";
+}
 
+UInt8 TESPackage::ObjectCodeForString(const char *objString) {
+	for (UInt32 i = 0; i < kObjectType_Max; i++) {
+		if (!_stricmp(objString, TESPackage_ObjectTypeStrings[i])) { return i; }
+	}
 	return kObjectType_Max;
 }
 
 #if RUNTIME
-static const char **s_procNames = (const char **)0x011A3CC0;
+static const char **s_procNames = reinterpret_cast<const char **>(0x011A3CC0);
 #endif
 
-const char *TESPackage::StringForProcedureCode(eProcedure proc)
-{
-	if (proc < kProcedure_MAX)
-		return TESPackage_ProcedureStrings[proc];
-
+const char *TESPackage::StringForProcedureCode(const eProcedure proc) {
+	if (proc > kProcedure_TRAVEL && proc < kProcedure_MAX) { return TESPackage_ProcedureStrings[proc]; }
 	return "";
 }
 
@@ -716,93 +699,64 @@ const char *TESPackage::StringForProcedureCode(eProcedure proc)
 //
 //	return name;
 //}
-
-const char *TESPackage::PackageTime::DayForCode(UInt8 dayCode)
-{
+// Fixed some array bugs - John
+const char *TESPackage::PackageTime::DayForCode(UInt8 dayCode) {
 	dayCode += 1;
-	if (dayCode >= sizeof(TESPackage_DayStrings))
-		return "";
-	return TESPackage_DayStrings[dayCode];
-}
-
-ScriptLocal *VariableInfo::Resolve(ScriptEventList *eventList)
-{
-	return eventList->m_vars->FindFirst([&](ScriptLocal *var) {
-		return var->id != idx;
-	});
-}
-
-TESForm *VariableInfo::GetTESForm()
-{
-	return LookupFormByID(*(UInt32 *)&data);
-}
-
-bool VariableInfo::IsReferenceType(Script* parentScript)
-{
-	return std::find_if(parentScript->refList.begin(), parentScript->refList.end(), [&](auto it) {return it && it->varIdx == this->idx;}) != parentScript->refList.end();
-}
-
-const char *TESPackage::PackageTime::MonthForCode(UInt8 monthCode)
-{
-	monthCode += 1;
-	if (monthCode >= sizeof(TESPackage_MonthString))
-		return "";
-	return TESPackage_MonthString[monthCode];
-}
-
-UInt8 TESPackage::PackageTime::CodeForDay(const char *dayStr)
-{
-	for (UInt8 i = 0; i < sizeof(TESPackage_DayStrings); i++)
-	{
-		if (!_stricmp(dayStr, TESPackage_DayStrings[i]))
-		{
-			return i - 1;
-		}
-	}
-
-	return kWeekday_Any;
-}
-
-UInt8 TESPackage::PackageTime::CodeForMonth(const char *monthStr)
-{
-	for (UInt8 i = 0; i < sizeof(TESPackage_MonthString); i++)
-	{
-		if (!_stricmp(monthStr, TESPackage_MonthString[i]))
-		{
-			return i - 1;
-		}
-	}
-
-	return kMonth_Any;
-}
-
-const char *TESPackage::LocationData::StringForLocationCode(UInt8 locCode)
-{
-	if (locCode < kPackLocation_Max)
-		return TESPackage_LocationStrings[locCode];
+	if (dayCode < sizeof TESPackage_DayStrings >> 2) { return TESPackage_DayStrings[dayCode]; } // sizeof const char *[] -> 48 >> 2 = 12
 	return "";
 }
 
-const char *TESPackage::LocationData::StringForLocationCodeAndData(void)
-{
+ScriptLocal *VariableInfo::Resolve(const ScriptEventList *eventList) const {
+	return eventList->m_vars->FindFirst([&](const ScriptLocal *var) { return var->id != idx; });
+}
+
+TESForm *VariableInfo::GetTESForm() { return LookupFormByID(*reinterpret_cast<UInt32 *>(&data)); }
+
+bool VariableInfo::IsReferenceType(const Script* parentScript) {
+	return std::find_if(parentScript->refList.begin(), parentScript->refList.end(), [&](auto it) {return it && it->varIdx == this->idx;}) != parentScript->refList.end();
+}
+
+const char *TESPackage::PackageTime::MonthForCode(UInt8 monthCode) {
+	monthCode += 1;
+	if (monthCode < sizeof TESPackage_MonthString >> 2) { return TESPackage_MonthString[monthCode]; }
+	return "";
+}
+
+UInt8 TESPackage::PackageTime::CodeForDay(const char *dayStr) {
+	for (UInt8 i = 0; i < sizeof TESPackage_DayStrings >> 2; i++) {
+		if (!_stricmp(dayStr, TESPackage_DayStrings[i])) { return i - 1; }
+	}
+	return kWeekday_Any;
+}
+
+UInt8 TESPackage::PackageTime::CodeForMonth(const char *monthStr) {
+	for (UInt8 i = 0; i < sizeof(TESPackage_MonthString); i++) {
+		if (!_stricmp(monthStr, TESPackage_MonthString[i])) { return i - 1; }
+	}
+	return kMonth_Any;
+}
+
+const char *TESPackage::LocationData::StringForLocationCode(const UInt8 locCode) {
+	if (locCode < kPackLocation_Max - 1) { return TESPackage_LocationStrings[locCode]; }
+	return "";
+}
+
+const char *TESPackage::LocationData::StringForLocationCodeAndData() const {
 #define resultSize 256
-	static char result[resultSize];
-	if (locationType < kPackLocation_Max)
-	{
-		switch (locationType)
-		{
+	if (locationType < kPackLocation_Max - 1) {
+		static char result[resultSize];
+		switch (locationType) {
 		case kPackLocation_NearReference:
 		case kPackLocation_InCell:
 		case kPackLocation_ObjectID:
 			if (object.form)
-				sprintf_s(result, resultSize, "%s \"%s\" [%08X] with a radius of %u", TESPackage_LocationStrings[locationType], object.form->GetTheName(),
-						  object.form->refID, radius);
-			else
-				sprintf_s(result, resultSize, "%s \"\" [%08X] with a radius of %u", TESPackage_LocationStrings[locationType], 0, radius);
+				sprintf_s(result, resultSize, "%s \"%s\" [%08X] with a radius of %u", 
+					TESPackage_LocationStrings[locationType], object.form->GetTheName(), object.form->refID, radius);
+			else { sprintf_s(result, resultSize, "%s \"\" [%08X] with a radius of %u", TESPackage_LocationStrings[locationType], 0, radius); }
 			break;
 		case kPackLocation_ObjectType:
-			sprintf_s(result, resultSize, "%s \"%s\" [%04X] with a radius of %u", TESPackage_LocationStrings[locationType], StringForObjectCode(object.objectCode),
-					  object.objectCode, radius);
+			sprintf_s(result, resultSize, "%s \"%s\" [%04X] with a radius of %u", TESPackage_LocationStrings[locationType], 
+				StringForObjectCode(static_cast<UInt8>(object.objectCode)), object.objectCode, radius);
 			break;
 		default:
 			sprintf_s(result, resultSize, "%s with a radius of %u", TESPackage_LocationStrings[locationType], radius);
@@ -813,20 +767,16 @@ const char *TESPackage::LocationData::StringForLocationCodeAndData(void)
 	return "";
 }
 
-const char *TESPackage::TargetData::StringForTargetCodeAndData(void)
-{
+const char *TESPackage::TargetData::StringForTargetCodeAndData() const {
 #define resultSize 256
-	static char result[resultSize];
-	if (targetType < kTargetType_Max)
-	{
-		switch (targetType)
-		{
+	if (targetType < kTargetType_Max) {
+		static char result[resultSize];
+		switch (targetType) {
 		case kTargetType_Refr:
 			if (target.refr)
-				sprintf_s(result, resultSize, "%s \"%s\" [%08X] with a distance of %u", StringForTargetCode(targetType), target.refr->GetTheName(),
-						  target.refr->refID, count);
-			else
-				sprintf_s(result, resultSize, "%s [%08X] with a distance of %u", StringForTargetCode(targetType), 0, count);
+				sprintf_s(result, resultSize, "%s \"%s\" [%08X] with a distance of %u", StringForTargetCode(targetType), 
+					target.refr->GetTheName(), target.refr->refID, count);
+			else { sprintf_s(result, resultSize, "%s [%08X] with a distance of %u", StringForTargetCode(targetType), 0, count); }
 			break;
 		case kTargetType_BaseObject:
 			if (target.form)

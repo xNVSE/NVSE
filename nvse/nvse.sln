@@ -1,7 +1,6 @@
-
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30523.141
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33205.214
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nvse_loader", "nvse_loader\nvse_loader.vcxproj", "{48AC56E6-868A-473A-9B30-28B9E970CDCC}"
 EndProject
@@ -24,6 +23,7 @@ Global
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{48AC56E6-868A-473A-9B30-28B9E970CDCC}.Debug CS|Win32.ActiveCfg = Debug|Win32
 		{48AC56E6-868A-473A-9B30-28B9E970CDCC}.Debug|Win32.ActiveCfg = Debug|Win32
+		{48AC56E6-868A-473A-9B30-28B9E970CDCC}.Debug|Win32.Build.0 = Debug|Win32
 		{48AC56E6-868A-473A-9B30-28B9E970CDCC}.Release CS|Win32.ActiveCfg = Release|Win32
 		{48AC56E6-868A-473A-9B30-28B9E970CDCC}.Release_DBG|Win32.ActiveCfg = Release_DBG|Win32
 		{48AC56E6-868A-473A-9B30-28B9E970CDCC}.Release_DBG|Win32.Build.0 = Release_DBG|Win32
@@ -51,6 +51,7 @@ Global
 		{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}.Release|Win32.Build.0 = Release|Win32
 		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Debug CS|Win32.ActiveCfg = Debug|Win32
 		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Debug|Win32.ActiveCfg = Debug|Win32
+		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Debug|Win32.Build.0 = Debug|Win32
 		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Release CS|Win32.ActiveCfg = Release|Win32
 		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Release_DBG|Win32.ActiveCfg = Release_DBG|Win32
 		{C918838C-8E6F-4452-8591-A2E09EBA609D}.Release_DBG|Win32.Build.0 = Release_DBG|Win32
@@ -59,6 +60,7 @@ Global
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Debug CS|Win32.ActiveCfg = Debug|Win32
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Debug CS|Win32.Build.0 = Debug|Win32
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Debug|Win32.ActiveCfg = Debug|Win32
+		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Debug|Win32.Build.0 = Debug|Win32
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Release CS|Win32.ActiveCfg = Release|Win32
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Release CS|Win32.Build.0 = Release|Win32
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Release_DBG|Win32.ActiveCfg = Release_DBG|Win32

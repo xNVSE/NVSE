@@ -8,11 +8,10 @@
 #include "GameObjects.h"
 #include "ThreadLocal.h"
 #include "common/ICriticalSection.h"
-#include "GameOSDepend.h"
 #include "InventoryReference.h"
+#include "FunctionScripts.h"
 
 #include "GameData.h"
-#include "GameRTTI.h"
 #include "GameScript.h"
 #include "EventParams.h"
 
