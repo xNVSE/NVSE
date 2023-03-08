@@ -61,19 +61,24 @@ bool RunCommand_NS(COMMAND_ARGS, Cmd_Execute cmd)
 
 float g_gameSecondsPassed = 0;
 
+bool IsGamePaused()
+{
+	return IsConsoleMode() || *(Menu**)0x11DAAC0; // g_startMenu (credits to Stewie)
+}
+
 // xNVSE 6.1
 void HandleDelayedCall(float timeDelta, bool isMenuMode)
 {
 	if (g_callAfterInfos.empty())
 		return; // avoid lock overhead
 
+	const bool isGamePaused = IsGamePaused();
 	ScopedLock lock(g_callAfterInfosCS);
 
 	auto iter = g_callAfterInfos.begin();
 	while (iter != g_callAfterInfos.end())
 	{
-		if ((!iter->RunInMenuMode() && isMenuMode) 
-			|| (iter->DontRunWhilePaused() && (IsConsoleMode() || *(Menu**)0x11DAAC0))) // g_startMenu (credits to Stewie)
+		if (!iter->ShouldRun(isMenuMode, isGamePaused))
 		{
 			iter->time += timeDelta;
 		}
@@ -95,14 +100,14 @@ void HandleCallAfterFramesScripts(bool isMenuMode)
 	if (g_callAfterFramesInfos.empty())
 		return; // avoid lock overhead
 
+	const bool isGamePaused = IsGamePaused();
 	ScopedLock lock(g_callAfterFramesInfosCS);
 
 	auto iter = g_callAfterFramesInfos.begin();
 	while (iter != g_callAfterFramesInfos.end())
 	{
 		auto& framesLeft = iter->time; //alias for clarification
-		if ((!iter->RunInMenuMode() && isMenuMode) 
-			|| (iter->DontRunWhilePaused() && (IsConsoleMode() || *(Menu**)0x11DAAC0))) // g_startMenu (credits to Stewie)
+		if (!iter->ShouldRun(isMenuMode, isGamePaused))
 		{
 			++iter;
 			continue;
@@ -125,13 +130,14 @@ void HandleCallWhileScripts(bool isMenuMode)
 {
 	if (g_callWhileInfos.empty())
 		return; // avoid lock overhead
+
+	const bool isGamePaused = IsGamePaused();
 	ScopedLock lock(g_callWhileInfosCS);
 
 	auto iter = g_callWhileInfos.begin();
 	while (iter != g_callWhileInfos.end())
 	{
-		if ((isMenuMode && !iter->RunInMenuMode())
-			|| (!isMenuMode && !iter->RunInGameMode()))
+		if (!iter->ShouldRun(isMenuMode, isGamePaused))
 		{
 			++iter;
 			continue;
@@ -163,13 +169,14 @@ void HandleCallWhenScripts(bool isMenuMode)
 {
 	if (g_callWhenInfos.empty())
 		return; // avoid lock overhead
+
+	const bool isGamePaused = IsGamePaused();
 	ScopedLock lock(g_callWhenInfosCS);
 
 	auto iter = g_callWhenInfos.begin();
 	while (iter != g_callWhenInfos.end())
 	{
-		if ((isMenuMode && !iter->RunInMenuMode())
-			|| (!isMenuMode && !iter->RunInGameMode()))
+		if (!iter->ShouldRun(isMenuMode, isGamePaused))
 		{
 			++iter;
 			continue;
@@ -201,12 +208,14 @@ void HandleCallForScripts(float timeDelta, bool isMenuMode)
 {
 	if (g_callForInfos.empty())
 		return; // avoid lock overhead
+
+	const bool isGamePaused = IsGamePaused();
 	ScopedLock lock(g_callForInfosCS);
 
 	auto iter = g_callForInfos.begin();
 	while (iter != g_callForInfos.end())
 	{
-		if (!iter->RunInMenuMode() && isMenuMode)
+		if (!iter->ShouldRun(isMenuMode, isGamePaused))
 		{
 			iter->time += timeDelta;
 		}
@@ -227,13 +236,14 @@ void HandleCallWhilePerSecondsScripts(float timeDelta, bool isMenuMode)
 {
 	if (g_callWhilePerSecondsInfos.empty())
 		return; // avoid lock overhead
+
+	const bool isGamePaused = IsGamePaused();
 	ScopedLock lock(g_callWhilePerSecondsInfosCS);
 
 	auto iter = g_callWhilePerSecondsInfos.begin();
 	while (iter != g_callWhilePerSecondsInfos.end())
 	{
-		if ((isMenuMode && !iter->RunInMenuMode())
-			|| (!isMenuMode && !iter->RunInGameMode()))
+		if (!iter->ShouldRun(isMenuMode, isGamePaused))
 		{
 			iter->oldTime += timeDelta;
 			++iter;

@@ -320,8 +320,14 @@ struct DelayedCallInfo
 	} mode;
 	CallArgs args;
 
-	[[nodiscard]] bool RunInMenuMode() const { return mode == kMode_AlsoRunInMenuMode || mode == kMode_AlsoDontRunWhilePaused; }
-	[[nodiscard]] bool DontRunWhilePaused() const { return mode == kMode_AlsoDontRunWhilePaused; }
+	[[nodiscard]] bool ShouldRun(bool isMenuMode, bool isPaused)
+	{
+		if (isMenuMode && kMode_RunInGameModeOnly)
+			return false;
+		if (isPaused && kMode_AlsoDontRunWhilePaused)
+			return false;
+		return true;
+	}
 
 	DelayedCallInfo(Script* script, float time, TESObjectREFR* thisObj, Mode mode, CallArgs &&args = {})
 		: script(script), time(time), thisObj(thisObj),
@@ -346,13 +352,25 @@ struct CallWhileInfo
 		// Runs in both MenuMode and GameMode by default.
 		kFlag_DontRunInMenuMode = 1 << 2,
 		kFlag_DontRunInGameMode = 1 << 3,
+
+		// Runs while paused by default
+		kFlag_DontRunWhilePaused = 1 << 4,
 	} flags;
 	CallArgs args;
 
 	[[nodiscard]] bool PassArgsToCallFunc() const { return flags & kPassArgs_ToCallFunc; }
 	[[nodiscard]] bool PassArgsToCondFunc() const { return flags & kPassArgs_ToConditionFunc; }
-	[[nodiscard]] bool RunInMenuMode() const { return (flags & kFlag_DontRunInMenuMode) == 0; }
-	[[nodiscard]] bool RunInGameMode() const { return (flags & kFlag_DontRunInGameMode) == 0; }
+
+	[[nodiscard]] bool ShouldRun(bool isMenuMode, bool isPaused)
+	{
+		if (isMenuMode && (flags & kFlag_DontRunInMenuMode))
+			return false;
+		if (!isMenuMode && (flags & kFlag_DontRunInGameMode))
+			return false;
+		if (isPaused && (flags & kFlag_DontRunWhilePaused))
+			return false;
+		return true;
+	}
 
 	CallWhileInfo(Script* callFunction, Script* condition, TESObjectREFR* thisObj, eFlags flags, CallArgs &&args = {})
 		: callFunction(callFunction), condition(condition), thisObj(thisObj),
@@ -378,13 +396,25 @@ struct DelayedCallWhileInfo
 		// Runs in both MenuMode and GameMode by default.
 		kFlag_DontRunInMenuMode = 1 << 2,
 		kFlag_DontRunInGameMode = 1 << 3,
+
+		// Runs while paused by default
+		kFlag_DontRunWhilePaused = 1 << 4,
 	} flags;
 	CallArgs args;
 
 	[[nodiscard]] bool PassArgsToCallFunc() const { return flags & kPassArgs_ToCallFunc; }
 	[[nodiscard]] bool PassArgsToCondFunc() const { return flags & kPassArgs_ToConditionFunc; }
-	[[nodiscard]] bool RunInMenuMode() const { return (flags & kFlag_DontRunInMenuMode) == 0; }
-	[[nodiscard]] bool RunInGameMode() const { return (flags & kFlag_DontRunInGameMode) == 0; }
+
+	[[nodiscard]] bool ShouldRun(bool isMenuMode, bool isPaused)
+	{
+		if (isMenuMode && (flags & kFlag_DontRunInMenuMode))
+			return false;
+		if (!isMenuMode && (flags & kFlag_DontRunInGameMode))
+			return false;
+		if (isPaused && (flags & kFlag_DontRunWhilePaused))
+			return false;
+		return true;
+	}
 
 	DelayedCallWhileInfo(float interval, float oldTime, Script* callFunction, Script* condition, TESObjectREFR* thisObj, eFlags flags, CallArgs&& args = {})
 		: interval(interval), oldTime(oldTime), callFunction(callFunction), condition(condition),
