@@ -124,7 +124,7 @@ private:
 
 
 // For parsing lexical tokens inside script text line-by-line, while skipping over those inside comments.
-// Comments are passed as a single token (including the '"' characters).
+// Strings are passed as a single token (including the '"' characters).
 // Everything else will have to be manually handled.
 class ScriptTokenizer
 {
@@ -133,12 +133,16 @@ public:
 	~ScriptTokenizer() = default;
 
 	// Returns true if a new line could be read, false at the end of the script.
-	// Skips over commented-out lines.
+	// Skips over commented-out lines and empty lines.
 	[[nodiscard]] bool TryLoadNextLine();
 
 	// Gets the next space-separated token from the loaded line, ignoring tokens placed inside comments.
 	// Returns an empty string_view if no line is loaded / end-of-line is reached.
 	std::string_view GetNextLineToken();
+
+	// Gets the entire line, for manual tokenizing.
+	// Returns an empty string_view if no line is loaded.
+	std::string_view GetLineText();
 
 private:
 	std::string_view m_scriptText;

@@ -683,6 +683,29 @@ std::string_view ScriptTokenizer::GetNextLineToken()
 	return m_loadedLineTokens.at(m_tokenOffset++);
 }
 
+std::string_view ScriptTokenizer::GetLineText()
+{
+	if (!m_loadedLineTokens.empty())
+	{
+		if (m_loadedLineTokens.size() > 1)
+		{
+			const char* startAddr = m_loadedLineTokens[0].data();
+			std::string_view lastToken = m_loadedLineTokens[m_loadedLineTokens.size() - 1];
+			// assume lastToken isn't empty
+			const char* endAddr = &lastToken.at(lastToken.size() - 1);
+
+			size_t count = endAddr - startAddr + 1;
+			size_t startPos = startAddr - m_scriptText.data();
+			return m_scriptText.substr(startPos, count);
+		}
+		else // only 1 token
+		{
+			return m_loadedLineTokens[0];
+		}
+	}
+	return "";
+}
+
 #if RUNTIME
 
 const char GetSeparatorChar(Script * script)

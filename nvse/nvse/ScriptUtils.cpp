@@ -2098,37 +2098,40 @@ static const UInt8 kUserFunction_Version = 1;
 
 bool GetUserFunctionParamNames(const std::string &scriptText, std::vector<std::string> &out)
 {
-	std::string lineText;
-	Tokenizer lines(scriptText.c_str(), "\r\n");
-	while (lines.NextToken(lineText) != -1)
+	ScriptTokenizer tokenizer(scriptText);
+	while (tokenizer.TryLoadNextLine())
 	{
-		Tokenizer tokens(lineText.c_str(), " \t\r\n\0;");
-
-		std::string token;
-		if (tokens.NextToken(token) != -1)
+		auto lineText = tokenizer.GetLineText();
+		if (lineText.size() <= 7) continue;
+		auto lineToken = std::string(tokenizer.GetNextLineToken()); // get the first token in the line
+		// use std::string for null terminator
+		if (!StrCompare(lineToken.c_str(), "begin"))
 		{
-			if (!StrCompare(token.c_str(), "begin"))
-			{
-				UInt32 argStartPos = lineText.find('{');
-				UInt32 argEndPos = lineText.find('}');
-				if (argStartPos == -1 || argEndPos == -1 || (argStartPos > argEndPos))
-					return false;
+			UInt32 argStartPos = lineText.find('{');
+			UInt32 argEndPos = lineText.find('}');
+			if (argStartPos == -1 || argEndPos == -1 || (argStartPos > argEndPos))
+				return false;
 
-				std::string argStr = lineText.substr(argStartPos + 1, argEndPos - argStartPos - 1);
-				Tokenizer argTokens(argStr.c_str(), "\t ,");
-				while (argTokens.NextToken(token) != -1)
-				{
-					out.push_back(token);
-				}
-				return true;
+			std::string_view argStrView = lineText.substr(argStartPos + 1, argEndPos - argStartPos - 1);
+			auto argStr = std::string(argStrView);
+			Tokenizer argTokens(argStr.c_str(), "\t ,");
+			std::string argToken;
+			while (argTokens.NextToken(argToken) != -1)
+			{
+				out.push_back(argToken);
 			}
+			return true;
 		}
 	}
-
 	return false;
 }
 
-bool ExpressionParser::GetUserFunctionParams(const std::vector<std::string> &paramNames, std::vector<UserFunctionParam> &outParams, Script::VarInfoList *varList, const std::string &fullScriptText, Script *script) const
+bool ExpressionParser::GetUserFunctionParams(
+	const std::vector<std::string> &paramNames, 
+	std::vector<UserFunctionParam> &outParams, 
+	Script::VarInfoList *varList, 
+	const std::string &fullScriptText, 
+	Script *script) const
 {
 	auto lastVarType = Script::eVarType_Invalid;
 	for (const auto &token : paramNames)
