@@ -72,7 +72,8 @@ void HandleDelayedCall(float timeDelta, bool isMenuMode)
 	auto iter = g_callAfterInfos.begin();
 	while (iter != g_callAfterInfos.end())
 	{
-		if (!iter->RunInMenuMode() && isMenuMode)
+		if ((!iter->RunInMenuMode() && isMenuMode) 
+			|| (iter->DontRunWhilePaused() && (IsConsoleMode() || *(Menu**)0x11DAAC0))) // g_startMenu (credits to Stewie)
 		{
 			iter->time += timeDelta;
 		}
@@ -100,7 +101,8 @@ void HandleCallAfterFramesScripts(bool isMenuMode)
 	while (iter != g_callAfterFramesInfos.end())
 	{
 		auto& framesLeft = iter->time; //alias for clarification
-		if (!iter->RunInMenuMode() && isMenuMode)
+		if ((!iter->RunInMenuMode() && isMenuMode) 
+			|| (iter->DontRunWhilePaused() && (IsConsoleMode() || *(Menu**)0x11DAAC0))) // g_startMenu (credits to Stewie)
 		{
 			++iter;
 			continue;

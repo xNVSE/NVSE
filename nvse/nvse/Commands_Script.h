@@ -313,17 +313,19 @@ struct DelayedCallInfo
 	float time;
 	TESObjectREFR* thisObj;
 	LambdaManager::LambdaVariableContext lambdaVariableContext;
-	enum eFlags : UInt8 {
-		kFlags_None = 0,
-		kFlag_RunInMenuMode = 1 << 0,
-	} flags;
+	enum Mode : UInt8 {
+		kMode_RunInGameModeOnly = 0,
+		kMode_AlsoRunInMenuMode = 1,
+		kMode_AlsoDontRunWhilePaused = 2, // won't run when paused (main menu, pause menu, console menu).
+	} mode;
 	CallArgs args;
 
-	[[nodiscard]] bool RunInMenuMode() const { return flags & kFlag_RunInMenuMode; }
+	[[nodiscard]] bool RunInMenuMode() const { return mode == kMode_AlsoRunInMenuMode || mode == kMode_AlsoDontRunWhilePaused; }
+	[[nodiscard]] bool DontRunWhilePaused() const { return mode == kMode_AlsoDontRunWhilePaused; }
 
-	DelayedCallInfo(Script* script, float time, TESObjectREFR* thisObj, eFlags flags, CallArgs &&args = {})
+	DelayedCallInfo(Script* script, float time, TESObjectREFR* thisObj, Mode mode, CallArgs &&args = {})
 		: script(script), time(time), thisObj(thisObj),
-		  lambdaVariableContext(script), flags(flags),
+		  lambdaVariableContext(script), mode(mode),
 	      args(std::move(args))
 	{
 	}
