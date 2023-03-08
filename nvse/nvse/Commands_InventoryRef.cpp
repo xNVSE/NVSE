@@ -233,4 +233,13 @@ bool Cmd_GetInvRefsForItem_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_IsInventoryRef_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	if (thisObj) {
+		*result = InventoryReference::GetForRefID(thisObj->refID) != nullptr;
+	}
+	return true;
+}
+
 #endif
