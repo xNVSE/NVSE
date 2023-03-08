@@ -77,16 +77,46 @@ Script::VariableType GetDeclaredVariableType(const char* varName, const char* sc
 	ScriptTokenizer tokenizer(scriptText);
 	while (tokenizer.TryLoadNextLine())
 	{
-		auto token1View = tokenizer.GetNextLineToken();
+		// Need a C-string w/ null terminator - hence std::string conversion.
+		auto token1View = std::string(tokenizer.GetNextLineToken());
 		if (token1View.empty())
 			continue;
 
+		// Check if var is declared in UDF parameters
+		if (!StrCompare(token1View.c_str(), "begin")) [[unlikely]]
+		{
+			// assume the next token is "Function"
+			std::vector<std::string> paramTokens;
+			GetUserFunctionParamTokensFromLine(tokenizer.GetLineText(), paramTokens);
+			if (paramTokens.size() <= 1)
+				continue;
+
+			// Find the varName, then check if the token before it is a varType.
+			// Assume the varName can only appear once in the param list.
+			auto strEqual = [varName](std::string &val) { return !StrCompare(val.c_str(), varName); };
+
+			auto iter = ra::find_if(paramTokens, strEqual);
+			if (iter != paramTokens.end() && iter != paramTokens.begin())
+			{
+				auto prevIter = iter - 1;
+				const auto varType = VariableTypeNameToType(prevIter->c_str());
+				if (varType != Script::eVarType_Invalid)
+				{
+				#if NVSE_CORE
+					SaveVarType(script, varName, varType);
+				#endif
+					return varType;
+				}
+			}
+			continue; // line began with "begin", so we can't find any var declarations outside of stuff in UDF params
+		}
+
+		// else, try matching w/ token1 = varType, token2 = varName.
 		auto token2View = tokenizer.GetNextLineToken();
 		if (token2View.empty())
 			continue;
 
-		// Need a C-string w/ null terminator - hence std::string conversion.
-		const auto varType = VariableTypeNameToType(std::string(token1View).c_str());
+		const auto varType = VariableTypeNameToType(token1View.c_str());
 		if (varType == Script::eVarType_Invalid)
 			continue;
 
