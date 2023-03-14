@@ -47,7 +47,7 @@ enum
 	kInterface_Data,
 	// Added v0006
 	kInterface_EventManager,
-	kInterface_LoggingInterface,
+	kInterface_Logging,
 
 	kInterface_Max
 };
@@ -1262,10 +1262,13 @@ struct NVSELoggingInterface
 		kVersion = 1
 	};
 
-	// Use this string to determine where to output plugin logs.
-	// Value is determined in nvse_config.ini.
+	// Use the returned string to determine where to output plugin logs.
+	// Value is determined in nvse_config.ini, under [Logging]: "sPluginLogPath".
 	// The path is relative to base game folder.
 	// If empty string (logPath[0] == 0), use the base game folder.
-	// xNVSE ensures this isn't passed as nullptr.
-	const wchar_t* logPath;
+	// The returned string will never be nullptr.
+	// If non-empty, ends with a slash, so the file name can easily be concatenated to the path string.
+	// Example result "Data\NVSE\Plugins\Logs\"
+	// The path is guaranteed to exist; xNVSE creates it at init if needed.
+	const char* (__fastcall* GetPluginLogPath)();
 };

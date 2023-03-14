@@ -24,7 +24,11 @@
 #endif
 
 #include <filesystem>
-extern std::filesystem::path g_pluginLogPath;
+
+namespace ExportedToPlugins
+{
+	const char* __fastcall GetPluginLogPath();
+}
 
 PluginManager	g_pluginManager;
 
@@ -159,7 +163,7 @@ static const NVSEEventManagerInterface g_NVSEEventManagerInterface =
 
 static const NVSELoggingInterface g_NVSELoggingInterface =
 {
-	g_pluginLogPath.c_str()
+	ExportedToPlugins::GetPluginLogPath
 };
 
 PluginManager::~PluginManager()
@@ -419,7 +423,7 @@ void * PluginManager::QueryInterface(UInt32 id)
 		result = (void*)&g_NVSEEventManagerInterface;
 		break;
 #endif
-	case kInterface_LoggingInterface:
+	case kInterface_Logging:
 		result = (void*)&g_NVSELoggingInterface;
 		break;
 	default:

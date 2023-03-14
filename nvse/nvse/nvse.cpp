@@ -46,7 +46,7 @@ UInt32 et;
 UInt32 au3D;
 bool g_warnScriptErrors = false;
 bool g_noSaveWarnings = false;
-std::filesystem::path g_pluginLogPath;
+std::string g_pluginLogPath;
 
 void WaitForDebugger(void)
 {
@@ -58,12 +58,31 @@ void WaitForDebugger(void)
 	Sleep(1000 * 2);
 }
 
+namespace ExportedToPlugins
+{
+	const char* __fastcall GetPluginLogPath()
+	{
+		return g_pluginLogPath.c_str();
+	}
+}
+
 // Moved to a separate function, since strings can throw, and NVSE_Initialize has a __try block which doesn't allow that.
 void ReadNVSEPluginLogPath()
 {
 	g_pluginLogPath = GetNVSEConfigOption("LOGGING", "sPluginLogPath");
-	if (g_pluginLogPath.has_extension() || g_pluginLogPath.has_filename()) [[unlikely]]
+	std::filesystem::path tentativePath = g_pluginLogPath;
+	if (tentativePath.has_extension()) [[unlikely]]
+	{
 		g_pluginLogPath = "";
+	}
+
+	if (!g_pluginLogPath.empty())
+	{
+		// Create the folders if need be.
+		std::filesystem::create_directories(GetFalloutDirectory() + g_pluginLogPath);
+		// add a convenient backslash so the string can be easily used in concatenation.
+		g_pluginLogPath += '\\';
+	}
 }
 
 void NVSE_Initialize(void)
