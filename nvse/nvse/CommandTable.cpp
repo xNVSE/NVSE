@@ -1866,6 +1866,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(IsEquippedAmmoInList);
 	ADD_CMD(GetEquippedWeaponUsesAmmoList);
 	ADD_CMD(IsInventoryRef);
+	ADD_CMD(DebugPrintVar);
 }
 
 namespace PluginAPI

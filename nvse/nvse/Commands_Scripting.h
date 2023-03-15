@@ -74,5 +74,7 @@ static ParamInfo kParams_OneBoolean[] =
 };
 
 DEFINE_CMD_ALT_EXP(PrintVar, PrintV, , false, kParams_OneNVSEVariable);
+DEFINE_CMD_ALT_EXP(DebugPrintVar, DPrintV, , false, kParams_OneNVSEVariable);
+
 DEFINE_CMD_ALT_EXP(Assert, AssertTrue, , false, kParams_OneBoolean);
 DEFINE_CMD_ALT_EXP(GetSelfAlt, ThisAlt, "Unlike GetSelf, will return ThisObj even if it isn't Persistent and is clutter.", false, nullptr);

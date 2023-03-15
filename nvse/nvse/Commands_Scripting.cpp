@@ -642,7 +642,7 @@ bool Cmd_GetAllModLocalData_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool Cmd_PrintVar_Execute(COMMAND_ARGS)
+bool PrintVar_Call(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (!eval.ExtractArgs() || !eval.Arg(0) || !eval.Arg(0)->GetVar())
@@ -671,11 +671,24 @@ bool Cmd_PrintVar_Execute(COMMAND_ARGS)
 	default:
 		break;
 	}
-	const auto toPrint = std::string(GetVariableName(token->GetVar(), scriptObj, eventList, token->refIdx)) + ": " + variableValue;
+	const auto toPrint = std::string(GetVariableName(token->GetVar(), scriptObj, eventList, token->refIdx)) 
+		+ ": " + variableValue;
 	if (toPrint.size() < 512)
 		Console_Print("%s", toPrint.c_str());
 	else
 		Console_Print_Long(toPrint);
+	return true;
+}
+
+bool Cmd_PrintVar_Execute(COMMAND_ARGS)
+{
+	return PrintVar_Call(PASS_COMMAND_ARGS);
+}
+
+bool Cmd_DebugPrintVar_Execute(COMMAND_ARGS)
+{
+	if (ModDebugState(scriptObj))
+		return PrintVar_Call(PASS_COMMAND_ARGS);
 	return true;
 }
 
