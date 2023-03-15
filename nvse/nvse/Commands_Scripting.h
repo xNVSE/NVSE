@@ -46,7 +46,8 @@ static ParamInfo kParams_CallFunctionCond[2] =
 	{	"bBreakIfFalse", kParamType_Integer,	1		},
 };
 
-DEFINE_CMD_COND(CallFunctionCond, "calls every UDF in a formlist and returns the result of the last one.", false, kParams_CallFunctionCond);
+DEFINE_CMD_COND(CallFunctionCond, "calls every UDF in a formlist and returns the result of the last one.", 
+	false, kParams_CallFunctionCond);
 
 extern CommandInfo kCommandInfo_SetFunctionValue;
 
@@ -63,9 +64,26 @@ extern CommandInfo kCommandInfo_GetAllModLocalData;
 extern CommandInfo kCommandInfo_Internal_PushExecutionContext;
 extern CommandInfo kCommandInfo_Internal_PopExecutionContext;
 
-static ParamInfo kParams_OneNVSEVariable[] =
+// Up to 15 variables
+static ParamInfo kParams_OneNVSEVariable_OptionalNVSEVariables[] =
 {
-	{"variable", kNVSEParamType_Variable, 0}
+	{"variable", kNVSEParamType_Variable, 0},
+	{"variable", kNVSEParamType_Variable, 1},
+	{"variable", kNVSEParamType_Variable, 1},
+	{"variable", kNVSEParamType_Variable, 1},
+	{"variable", kNVSEParamType_Variable, 1},
+
+	{"variable", kNVSEParamType_Variable, 1},
+	{"variable", kNVSEParamType_Variable, 1},
+	{"variable", kNVSEParamType_Variable, 1},
+	{"variable", kNVSEParamType_Variable, 1},
+	{"variable", kNVSEParamType_Variable, 1},
+
+	{"variable", kNVSEParamType_Variable, 1},
+	{"variable", kNVSEParamType_Variable, 1},
+	{"variable", kNVSEParamType_Variable, 1},
+	{"variable", kNVSEParamType_Variable, 1},
+	{"variable", kNVSEParamType_Variable, 1},
 };
 
 static ParamInfo kParams_OneBoolean[] =
@@ -73,8 +91,10 @@ static ParamInfo kParams_OneBoolean[] =
 	{	"boolean expression",	kNVSEParamType_Boolean,	0	},
 };
 
-DEFINE_CMD_ALT_EXP(PrintVar, PrintV, , false, kParams_OneNVSEVariable);
-DEFINE_CMD_ALT_EXP(DebugPrintVar, DPrintV, , false, kParams_OneNVSEVariable);
+DEFINE_CMD_ALT_EXP(PrintVar, PrintV, , false, kParams_OneNVSEVariable_OptionalNVSEVariables);
+DEFINE_CMD_ALT_EXP(DebugPrintVar, DPrintV, , false, kParams_OneNVSEVariable_OptionalNVSEVariables);
 
 DEFINE_CMD_ALT_EXP(Assert, AssertTrue, , false, kParams_OneBoolean);
-DEFINE_CMD_ALT_EXP(GetSelfAlt, ThisAlt, "Unlike GetSelf, will return ThisObj even if it isn't Persistent and is clutter.", false, nullptr);
+DEFINE_CMD_ALT_EXP(GetSelfAlt, ThisAlt, 
+	"Unlike GetSelf, will return ThisObj even if it isn't Persistent and is clutter.",
+	false, nullptr);
