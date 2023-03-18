@@ -143,7 +143,7 @@ void HandleCallWhileScripts(bool isMenuMode)
 			continue;
 		}
 
-		ArrayElementArgFunctionCaller<SelfOwningArrayElement> conditionCaller(iter->condition);
+		ArrayElementArgFunctionCaller<SelfOwningArrayElement> conditionCaller(iter->condition, iter->thisObj);
 		if (iter->PassArgsToCondFunc())
 		{
 			conditionCaller.SetArgs(iter->args);
@@ -182,11 +182,9 @@ void HandleCallWhenScripts(bool isMenuMode)
 			continue;
 		}
 
-		ArrayElementArgFunctionCaller conditionCaller(iter->condition, iter->args);
+		ArrayElementArgFunctionCaller<SelfOwningArrayElement> conditionCaller(iter->condition, iter->thisObj);
 		if (iter->PassArgsToCondFunc())
-		{
 			conditionCaller.SetArgs(iter->args);
-		}
 
 		if (auto const conditionResult = UserFunctionManager::Call(std::move(conditionCaller)); 
 			conditionResult && conditionResult->GetBool())
@@ -252,7 +250,7 @@ void HandleCallWhilePerSecondsScripts(float timeDelta, bool isMenuMode)
 
 		if (g_gameSecondsPassed - iter->oldTime >= iter->interval)
 		{
-			ArrayElementArgFunctionCaller<SelfOwningArrayElement> conditionCaller(iter->condition);
+			ArrayElementArgFunctionCaller<SelfOwningArrayElement> conditionCaller(iter->condition, iter->thisObj);
 			if (iter->PassArgsToCondFunc())
 			{
 				conditionCaller.SetArgs(iter->args);
