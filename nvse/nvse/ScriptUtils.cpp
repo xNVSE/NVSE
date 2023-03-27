@@ -2096,49 +2096,60 @@ static ParamInfo kParams_DefaultUserFunctionParams[] =
 // records version of bytecode representation to avoid problems if representation changes later
 static const UInt8 kUserFunction_Version = 1;
 
+bool GetUserFunctionParamTokensFromLine(std::string_view lineText, std::vector<std::string>& out)
+{
+	UInt32 argStartPos = lineText.find('{');
+	UInt32 argEndPos = lineText.find('}');
+	if (argStartPos == -1 || argEndPos == -1 || (argStartPos > argEndPos))
+		return false;
+
+	std::string_view argStrView = lineText.substr(argStartPos + 1, argEndPos - argStartPos - 1);
+	auto argStr = std::string(argStrView);
+	Tokenizer argTokens(argStr.c_str(), "\t ,");
+	std::string argToken;
+	while (argTokens.NextToken(argToken) != -1)
+	{
+		out.push_back(argToken);
+	}
+	return true;
+}
+
+// Also returns param types if a variable was declared inside the param list.
 bool GetUserFunctionParamNames(const std::string &scriptText, std::vector<std::string> &out)
 {
-	std::string lineText;
-	Tokenizer lines(scriptText.c_str(), "\r\n");
-	while (lines.NextToken(lineText) != -1)
+	ScriptTokenizer tokenizer(scriptText);
+	while (tokenizer.TryLoadNextLine())
 	{
-		Tokenizer tokens(lineText.c_str(), " \t\r\n\0;");
-
-		std::string token;
-		if (tokens.NextToken(token) != -1)
+		auto lineText = tokenizer.GetLineText();
+		if (lineText.size() <= 7) continue;
+		auto lineToken = std::string(tokenizer.GetNextLineToken()); // get the first token in the line
+		// use std::string for null terminator
+		if (!StrCompare(lineToken.c_str(), "begin"))
 		{
-			if (!StrCompare(token.c_str(), "begin"))
-			{
-				UInt32 argStartPos = lineText.find("{");
-				UInt32 argEndPos = lineText.find("}");
-				if (argStartPos == -1 || argEndPos == -1 || (argStartPos > argEndPos))
-					return false;
-
-				std::string argStr = lineText.substr(argStartPos + 1, argEndPos - argStartPos - 1);
-				Tokenizer argTokens(argStr.c_str(), "\t ,");
-				while (argTokens.NextToken(token) != -1)
-				{
-					out.push_back(token);
-				}
-				return true;
-			}
+			return GetUserFunctionParamTokensFromLine(lineText, out);
 		}
 	}
-
 	return false;
 }
 
-bool ExpressionParser::GetUserFunctionParams(const std::vector<std::string> &paramNames, std::vector<UserFunctionParam> &outParams, Script::VarInfoList *varList, const std::string &fullScriptText, Script *script) const
+bool ExpressionParser::GetUserFunctionParams(
+	const std::vector<std::string> &paramNames, 
+	std::vector<UserFunctionParam> &outParams, 
+	Script::VarInfoList *varList, 
+	const std::string &fullScriptText, 
+	Script *script) const
 {
 	auto lastVarType = Script::eVarType_Invalid;
 	for (const auto &token : paramNames)
 	{
+		bool wasTypeFoundInParamList = false;
 		if (lastVarType != Script::eVarType_Invalid)
 		{
 			CreateVariable(token, lastVarType);
-			lastVarType = Script::eVarType_Invalid;
+			wasTypeFoundInParamList = true;
 		}
-		else if (const auto iter = ra::find_if(g_variableTypeNames, _L(const char* typeName, _stricmp(typeName, token.c_str()) == 0)); iter != std::end(g_variableTypeNames))
+		else if (const auto iter = ra::find_if(g_validVariableTypeNames, _L(const char* typeName, _stricmp(typeName, token.c_str()) == 0));
+			iter != std::end(g_validVariableTypeNames))
 		{
 			lastVarType = VariableTypeNameToType(*iter);
 			continue;
@@ -2147,10 +2158,19 @@ bool ExpressionParser::GetUserFunctionParams(const std::vector<std::string> &par
 		if (!varInfo)
 			return false;
 
-		const auto varType = GetDeclaredVariableType(token.c_str(), fullScriptText.c_str(), script);
-		if (varType == Script::eVarType_Invalid)
+		Script::VariableType varType;
+		if (!wasTypeFoundInParamList) // optimization
 		{
-			return false;
+			varType = GetDeclaredVariableType(token.c_str(), fullScriptText.c_str(), script);
+			if (varType == Script::eVarType_Invalid)
+			{
+				return false;
+			}
+		}
+		else
+		{
+			varType = lastVarType;
+			lastVarType = Script::eVarType_Invalid;
 		}
 
 		// make sure user isn't trying to use a var more than once as a param
@@ -2865,11 +2885,10 @@ std::unique_ptr<ScriptToken> ExpressionParser::ParseLambda()
 	g_lambdaParentScriptMap.emplace(scriptLambda.get(), m_script);
 
 	// lambdaScriptBuf->currentScript = scriptLambda.get();
-	g_currentScriptStack.push(scriptLambda.get());
+	// g_currentScriptStack will be updated inside a CompileScript hook.
 	PatchDisable_ScriptBufferValidateRefVars(true);
 	const auto compileResult = scriptLambda->Compile(lambdaScriptBuf.get()); // CompileScript
 	PatchDisable_ScriptBufferValidateRefVars(false);
-	g_currentScriptStack.pop();
 
 	*beginEndOffset = savedOffset;
 

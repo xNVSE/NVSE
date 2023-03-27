@@ -1821,7 +1821,7 @@ bool Cmd_IsPlayerSwimming_Execute(COMMAND_ARGS)
 
 bool Cmd_GetTFC_Eval(COMMAND_ARGS_EVAL)
 {
-	*result = (*g_osGlobals)->unk06;
+	*result = (*g_osGlobals)->isFlycam;
 	if(IsConsoleMode())
 		Console_Print("GetTFC: %f", *result);
 	return true;

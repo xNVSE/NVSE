@@ -1,0 +1,17 @@
+begin Function { }
+
+print "Starting xNVSE UDF tests for short and long param types."
+
+	int iRan = 0
+	let ref rTestUDF = (begin function { short iTest1, long iTest2 }
+		assert (iTest1 == 1)
+		assert (iTest2 == 2)
+		iRan = 1
+	end)
+
+	call rTestUDF 1, 2
+	assert (iRan == 1)
+
+print "Finished xNVSE UDF tests for short and long param types."
+
+end

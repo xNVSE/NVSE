@@ -522,6 +522,9 @@ public:
 	EquippedItemsList	GetEquippedItems();
 	ExtraContainerDataArray	GetEquippedEntryDataList();
 	ExtraContainerExtendDataArray GetEquippedExtendDataList();
+
+	// Copied from JIP.
+	TESObjectWEAP* GetEquippedWeapon() const;
 };
 
 STATIC_ASSERT(offsetof(Actor, magicCaster) == 0x088);

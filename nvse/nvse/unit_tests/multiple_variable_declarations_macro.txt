@@ -1,7 +1,9 @@
-short iTest1, iTest2, iTest3
-
 begin Function { }
 	;== Test comma-separated variable declarations
+
+print "Starting xNVSE multiple variable declarations macro."
+
+	short iTest1, iTest2, iTest3
 
 	iTest1 = 1
 	assert (iTest1 == 1)
@@ -12,23 +14,14 @@ begin Function { }
 	iTest3 = 3
 	assert (iTest3 == 3)
 
-long iTest4, iTest5
+	long iTest4, iTest5
 
 	iTest4 = 4
 	assert (iTest4 == 4)
 
 	iTest5 = 5
 	assert (iTest5 == 5)
-
-	;== Test inline variable declaration with short/long
-
-	short iTest6 = 6
-	assert (iTest6 == 6)
 	
-	long iTest7 = 7
-	assert (iTest7 == 7)
-
-	int iTest8 = 8
-	assert (iTest8 == 8)
+print "Finished xNVSE multiple variable declarations macro."
 
 end

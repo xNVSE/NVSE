@@ -908,10 +908,6 @@ public:
 		ePart_BodyAddon3
 	};
 
-	enum EPartBitMask {
-		ePartBitMask_Full = 0x07FFFF,
-	};
-
 	enum ESlot {
 		eSlot_Head =		0x1 << ePart_Head,
 		eSlot_Hair =		0x1 << ePart_Hair,
@@ -932,7 +928,10 @@ public:
 		eSlot_MouthObject=	0x1 << ePart_MouthObject,
 		eSlot_BodyAddon1 =	0x1 << ePart_BodyAddon1,
 		eSlot_BodyAddon2 =	0x1 << ePart_BodyAddon2,
-		eSlot_BodyAddon3 =	0x1 << ePart_BodyAddon3
+		eSlot_BodyAddon3 =	0x1 << ePart_BodyAddon3,
+
+		// The first 20 bits are on (nothing else is used).
+		eSlot_Full = 0xFFFFF
 	};
 
 	enum EBipedFlags {

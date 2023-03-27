@@ -323,6 +323,8 @@ struct SavedScriptLine
 	}
 };
 
+bool GetUserFunctionParamTokensFromLine(std::string_view lineText, std::vector<std::string>& out);
+
 class ExpressionParser
 {
 	friend ScriptLineMacro;

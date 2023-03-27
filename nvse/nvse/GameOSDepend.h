@@ -229,7 +229,7 @@ public:
 	UInt8			unk03;				// 03
 	UInt8			unk04;				// 04
 	UInt8			unk05;				// 05
-	UInt8			unk06;				// 06	// This looks promising as TFC bool byte
+	UInt8			isFlycam;				// 06	// This looks promising as TFC bool byte
 	UInt8			unk07;				// 07
 	HWND			window;				// 08
 	HINSTANCE		procInstance;		// 0C

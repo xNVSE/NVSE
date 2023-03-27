@@ -61,18 +61,24 @@ bool RunCommand_NS(COMMAND_ARGS, Cmd_Execute cmd)
 
 float g_gameSecondsPassed = 0;
 
+bool IsGamePaused()
+{
+	return IsConsoleMode() || *(Menu**)0x11DAAC0; // g_startMenu (credits to Stewie)
+}
+
 // xNVSE 6.1
 void HandleDelayedCall(float timeDelta, bool isMenuMode)
 {
 	if (g_callAfterInfos.empty())
 		return; // avoid lock overhead
 
+	const bool isGamePaused = IsGamePaused();
 	ScopedLock lock(g_callAfterInfosCS);
 
 	auto iter = g_callAfterInfos.begin();
 	while (iter != g_callAfterInfos.end())
 	{
-		if (!iter->RunInMenuMode() && isMenuMode)
+		if (!iter->ShouldRun(isMenuMode, isGamePaused))
 		{
 			iter->time += timeDelta;
 		}
@@ -94,13 +100,14 @@ void HandleCallAfterFramesScripts(bool isMenuMode)
 	if (g_callAfterFramesInfos.empty())
 		return; // avoid lock overhead
 
+	const bool isGamePaused = IsGamePaused();
 	ScopedLock lock(g_callAfterFramesInfosCS);
 
 	auto iter = g_callAfterFramesInfos.begin();
 	while (iter != g_callAfterFramesInfos.end())
 	{
 		auto& framesLeft = iter->time; //alias for clarification
-		if (!iter->RunInMenuMode() && isMenuMode)
+		if (!iter->ShouldRun(isMenuMode, isGamePaused))
 		{
 			++iter;
 			continue;
@@ -123,19 +130,20 @@ void HandleCallWhileScripts(bool isMenuMode)
 {
 	if (g_callWhileInfos.empty())
 		return; // avoid lock overhead
+
+	const bool isGamePaused = IsGamePaused();
 	ScopedLock lock(g_callWhileInfosCS);
 
 	auto iter = g_callWhileInfos.begin();
 	while (iter != g_callWhileInfos.end())
 	{
-		if ((isMenuMode && !iter->RunInMenuMode())
-			|| (!isMenuMode && !iter->RunInGameMode()))
+		if (!iter->ShouldRun(isMenuMode, isGamePaused))
 		{
 			++iter;
 			continue;
 		}
 
-		ArrayElementArgFunctionCaller<SelfOwningArrayElement> conditionCaller(iter->condition);
+		ArrayElementArgFunctionCaller<SelfOwningArrayElement> conditionCaller(iter->condition, iter->thisObj);
 		if (iter->PassArgsToCondFunc())
 		{
 			conditionCaller.SetArgs(iter->args);
@@ -161,23 +169,22 @@ void HandleCallWhenScripts(bool isMenuMode)
 {
 	if (g_callWhenInfos.empty())
 		return; // avoid lock overhead
+
+	const bool isGamePaused = IsGamePaused();
 	ScopedLock lock(g_callWhenInfosCS);
 
 	auto iter = g_callWhenInfos.begin();
 	while (iter != g_callWhenInfos.end())
 	{
-		if ((isMenuMode && !iter->RunInMenuMode())
-			|| (!isMenuMode && !iter->RunInGameMode()))
+		if (!iter->ShouldRun(isMenuMode, isGamePaused))
 		{
 			++iter;
 			continue;
 		}
 
-		ArrayElementArgFunctionCaller conditionCaller(iter->condition, iter->args);
+		ArrayElementArgFunctionCaller<SelfOwningArrayElement> conditionCaller(iter->condition, iter->thisObj);
 		if (iter->PassArgsToCondFunc())
-		{
 			conditionCaller.SetArgs(iter->args);
-		}
 
 		if (auto const conditionResult = UserFunctionManager::Call(std::move(conditionCaller)); 
 			conditionResult && conditionResult->GetBool())
@@ -199,12 +206,14 @@ void HandleCallForScripts(float timeDelta, bool isMenuMode)
 {
 	if (g_callForInfos.empty())
 		return; // avoid lock overhead
+
+	const bool isGamePaused = IsGamePaused();
 	ScopedLock lock(g_callForInfosCS);
 
 	auto iter = g_callForInfos.begin();
 	while (iter != g_callForInfos.end())
 	{
-		if (!iter->RunInMenuMode() && isMenuMode)
+		if (!iter->ShouldRun(isMenuMode, isGamePaused))
 		{
 			iter->time += timeDelta;
 		}
@@ -225,13 +234,14 @@ void HandleCallWhilePerSecondsScripts(float timeDelta, bool isMenuMode)
 {
 	if (g_callWhilePerSecondsInfos.empty())
 		return; // avoid lock overhead
+
+	const bool isGamePaused = IsGamePaused();
 	ScopedLock lock(g_callWhilePerSecondsInfosCS);
 
 	auto iter = g_callWhilePerSecondsInfos.begin();
 	while (iter != g_callWhilePerSecondsInfos.end())
 	{
-		if ((isMenuMode && !iter->RunInMenuMode())
-			|| (!isMenuMode && !iter->RunInGameMode()))
+		if (!iter->ShouldRun(isMenuMode, isGamePaused))
 		{
 			iter->oldTime += timeDelta;
 			++iter;
@@ -240,7 +250,7 @@ void HandleCallWhilePerSecondsScripts(float timeDelta, bool isMenuMode)
 
 		if (g_gameSecondsPassed - iter->oldTime >= iter->interval)
 		{
-			ArrayElementArgFunctionCaller<SelfOwningArrayElement> conditionCaller(iter->condition);
+			ArrayElementArgFunctionCaller<SelfOwningArrayElement> conditionCaller(iter->condition, iter->thisObj);
 			if (iter->PassArgsToCondFunc())
 			{
 				conditionCaller.SetArgs(iter->args);
@@ -372,7 +382,7 @@ static void HandleMainLoopHook(void)
 	g_ArrayMap.Clean();
 	g_StringMap.Clean();
 	LambdaManager::EraseUnusedSavedVariableLists();
-	
+
 	const auto vatsTimeMult = ThisStdCall<double>(0x9C8CC0, reinterpret_cast<void*>(0x11F2250));
 	const float timeDelta = g_timeGlobal->secondsPassed * static_cast<float>(vatsTimeMult);
 	const auto isMenuMode = CdeclCall<bool>(0x702360);

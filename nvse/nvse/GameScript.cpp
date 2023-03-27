@@ -7,6 +7,7 @@
 #include "GameRTTI.h"
 #include "ScriptUtils.h"
 
+// Does NOT list synonyms, only the base types.
 const char *g_variableTypeNames[6] =
 	{
 		"float",
@@ -16,6 +17,7 @@ const char *g_variableTypeNames[6] =
 		"ref",
 		"invalid"};
 
+// Lists all valid variable names, some of which may be synonyms.
 const char* g_validVariableTypeNames[8] =
 {
 	"float",
@@ -62,7 +64,7 @@ const char* VariableTypeToName(Script::VariableType type)
 	case Script::eVarType_Array: return "array";
 	case Script::eVarType_Ref: return "ref";
 	case Script::eVarType_Invalid: 
-	default: return "invalid";;
+	default: return "invalid";
 	}
 }
 
@@ -72,24 +74,70 @@ Script::VariableType GetDeclaredVariableType(const char* varName, const char* sc
 	if (const auto savedVarType = GetSavedVarType(script, varName); savedVarType != Script::eVarType_Invalid)
 		return savedVarType;
 #endif
-	Tokenizer scriptLines(scriptText, "\n\r");
-	std::string curLine;
-	while (scriptLines.NextToken(curLine) != -1)
+	ScriptTokenizer tokenizer(scriptText);
+	while (tokenizer.TryLoadNextLine())
 	{
-		Tokenizer tokens(curLine.c_str(), " \t\n\r;");
-		std::string curToken;
+		// Need a C-string w/ null terminator - hence std::string conversion.
+		auto token1View = std::string(tokenizer.GetNextLineToken());
+		if (token1View.empty())
+			continue;
 
-		if (tokens.NextToken(curToken) != -1)
+		// Check if var is declared in UDF parameters
+		if (!StrCompare(token1View.c_str(), "begin")) [[unlikely]]
 		{
-			const auto varType = VariableTypeNameToType(curToken.c_str());
-			if (varType != Script::eVarType_Invalid && tokens.NextToken(curToken) != -1 && !StrCompare(curToken.c_str(), varName))
+			// assume the next token is "Function"
+			std::vector<std::string> paramTokens;
+			GetUserFunctionParamTokensFromLine(tokenizer.GetLineText(), paramTokens);
+			if (paramTokens.size() <= 1)
+				continue;
+
+			// Find the varName, then check if the token before it is a varType.
+			// Assume the varName can only appear once in the param list.
+			auto strEqual = [varName](std::string &val) { return !StrCompare(val.c_str(), varName); };
+
+			auto iter = ra::find_if(paramTokens, strEqual);
+			if (iter != paramTokens.end() && iter != paramTokens.begin())
 			{
-#if NVSE_CORE
+				auto prevIter = iter - 1;
+				const auto varType = VariableTypeNameToType(prevIter->c_str());
+				if (varType != Script::eVarType_Invalid)
+				{
+				#if NVSE_CORE
+					SaveVarType(script, varName, varType);
+				#endif
+					return varType;
+				}
+			}
+			continue; // line began with "begin", so we can't find any var declarations outside of stuff in UDF params
+		}
+
+		// else, try matching w/ token1 = varType, token2 = varName.
+		auto token2View = tokenizer.GetNextLineToken();
+		if (token2View.empty())
+			continue;
+
+		const auto varType = VariableTypeNameToType(token1View.c_str());
+		if (varType == Script::eVarType_Invalid)
+			continue;
+
+		// Handle possible multiple variable declarations on one line.
+		auto existingVarName = std::string(token2View);
+		bool prevVarHadComma;
+		do
+		{
+			if (prevVarHadComma = existingVarName.back() == ',')
+				existingVarName.pop_back(); // remove comma from name
+			if (!StrCompare(existingVarName.c_str(), varName))
+			{
+			#if NVSE_CORE
 				SaveVarType(script, varName, varType);
-#endif
+			#endif
 				return varType;
 			}
+			
+			existingVarName = std::string(tokenizer.GetNextLineToken());
 		}
+		while (!existingVarName.empty() && prevVarHadComma);
 	}
 #if NVSE_CORE
 	if (auto *parent = GetLambdaParentScript(script))
@@ -180,7 +228,7 @@ bool Script::Compile(ScriptBuffer* buffer)
 	const auto address = 0x5C96E0;
 	auto* scriptCompiler = (void*)0xECFDF8;
 #else
-	const auto address = 0x5AEB90;
+	constexpr auto address = 0x5AEB90;
 	auto* scriptCompiler = ConsoleManager::GetSingleton()->scriptContext;
 #endif
 	return ThisStdCall<bool>(address, scriptCompiler, this, buffer); // CompileScript

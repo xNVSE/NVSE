@@ -26,3 +26,5 @@ DEFINE_COMMAND(GetNextRefForItem, returns the next entry in the array of temp re
 
 DEFINE_COMMAND(GetInvRefsForItem, returns an array of temp refs to objects of the specified type in the calling container,
 			   1, 1, kParams_OneObjectID);
+
+DEFINE_COMMAND(IsInventoryRef, "", true, 0, nullptr);

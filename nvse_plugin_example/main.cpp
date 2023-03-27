@@ -58,7 +58,9 @@ void MessageHandler(NVSEMessagingInterface::Message* msg)
 	case NVSEMessagingInterface::kMessage_ExitToMainMenu: break;
 	case NVSEMessagingInterface::kMessage_LoadGame: break;
 	case NVSEMessagingInterface::kMessage_SaveGame: break;
-	case NVSEMessagingInterface::kMessage_Precompile: break;
+#if EDITOR
+	case NVSEMessagingInterface::kMessage_ScriptEditorPrecompile: break;
+#endif
 	case NVSEMessagingInterface::kMessage_PreLoadGame: break;
 	case NVSEMessagingInterface::kMessage_ExitGame_Console: break;
 	case NVSEMessagingInterface::kMessage_PostLoadGame: break;
@@ -74,9 +76,7 @@ void MessageHandler(NVSEMessagingInterface::Message* msg)
 	case NVSEMessagingInterface::kMessage_DeferredInit: break;
 	case NVSEMessagingInterface::kMessage_ClearScriptDataCache: break;
 	case NVSEMessagingInterface::kMessage_MainGameLoop: break;
-#if EDITOR
 	case NVSEMessagingInterface::kMessage_ScriptCompile: break;
-#endif
 	case NVSEMessagingInterface::kMessage_EventListDestroyed: break;
 	case NVSEMessagingInterface::kMessage_PostQueryPlugins: break;
 	default: break;

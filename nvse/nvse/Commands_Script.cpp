@@ -1187,13 +1187,13 @@ bool ExtractCallAfterInfo(ExpressionEvaluator& eval, std::list<DelayedCallInfo>&
 		return false;
 
 	//Optional args
-	DelayedCallInfo::eFlags flags = DelayedCallInfo::kFlags_None;
+	DelayedCallInfo::Mode mode = DelayedCallInfo::kMode_RunInGameModeOnly;
 	CallArgs args{};
 
 	auto const numArgs = eval.NumArgs();
 	if (numArgs > 2)
 	{
-		flags = static_cast<DelayedCallInfo::eFlags>(eval.Arg(2)->GetNumber());
+		mode = static_cast<DelayedCallInfo::Mode>(eval.Arg(2)->GetNumber());
 		args.reserve(numArgs - 3);
 		for (UInt32 i = 3; i < numArgs; i++)
 		{
@@ -1211,12 +1211,12 @@ bool ExtractCallAfterInfo(ExpressionEvaluator& eval, std::list<DelayedCallInfo>&
 	ScopedLock lock(cs);
 	if constexpr (PerSecondOrPerFrame)
 	{
-		infos.emplace_back(callFunction, g_gameSecondsPassed + time, eval.m_thisObj, flags, std::move(args));
+		infos.emplace_back(callFunction, g_gameSecondsPassed + time, eval.m_thisObj, mode, std::move(args));
 	}
 	else
 	{
 		// time = frame count
-		infos.emplace_back(callFunction, time, eval.m_thisObj, flags, std::move(args));
+		infos.emplace_back(callFunction, time, eval.m_thisObj, mode, std::move(args));
 	}
 	return true;
 }
@@ -1230,7 +1230,7 @@ bool ExtractCallAfterInfo_OLD(COMMAND_ARGS, std::list<DelayedCallInfo>& infos, I
 		return false;
 
 	ScopedLock lock(cs);
-	infos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj, runInMenuMode ? DelayedCallInfo::kFlag_RunInMenuMode : DelayedCallInfo::kFlags_None);
+	infos.emplace_back(callFunction, g_gameSecondsPassed + time, thisObj, runInMenuMode ? DelayedCallInfo::kMode_AlsoRunInMenuMode : DelayedCallInfo::kMode_RunInGameModeOnly);
 	return true;
 }
 

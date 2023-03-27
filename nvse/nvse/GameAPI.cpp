@@ -7,9 +7,9 @@
 #include "GameScript.h"
 #include "MemoizedMap.h"
 #include "StringVar.h"
-#include "ScriptAnalyzer.h"
 
 #if NVSE_CORE
+#include "ScriptAnalyzer.h"
 #include "Hooks_Script.h"
 #include "ScriptUtils.h"
 #include "Hooks_Other.h"

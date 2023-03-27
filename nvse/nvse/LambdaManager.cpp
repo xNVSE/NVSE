@@ -53,7 +53,7 @@ ICriticalSection LambdaManager::g_lambdaCs;
 
 LambdaContext* GetLambdaContext(ScriptLambda* scriptLambda)
 {
-	if (auto iter = g_lambdas.find(scriptLambda); iter != g_lambdas.end())
+	if (const auto iter = g_lambdas.find(scriptLambda); iter != g_lambdas.end())
 		return &iter->second;
 	return nullptr;
 }

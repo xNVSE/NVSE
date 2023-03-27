@@ -1,6 +1,7 @@
 #pragma once
 
 #include <intrin.h>
+#include "Utilities.h" // for ThisStdCall
 
 typedef void* (*memcpy_t)(void*, const void*, size_t);
 extern memcpy_t _memcpy, _memmove;

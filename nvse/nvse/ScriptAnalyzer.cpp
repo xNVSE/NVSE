@@ -414,6 +414,8 @@ std::string ScriptParsing::GlobalVariableToken::ToString()
 	return global->name.CStr();
 }
 
+ScriptParsing::InlineExpressionToken::~InlineExpressionToken() = default;
+
 ScriptParsing::InlineExpressionToken::InlineExpressionToken(ScriptIterator& context)
 {
 	UInt32 offset = context.curData - context.script->data;
@@ -697,6 +699,8 @@ bool ScriptParsing::CommandCallToken::ParseGameArgs(ScriptIterator& context, UIn
 	}
 	return true;
 }
+
+ScriptParsing::CommandCallToken::~CommandCallToken() = default;
 
 bool ScriptParsing::ScriptIterator::ReadStringLiteral(std::string_view& out)
 {

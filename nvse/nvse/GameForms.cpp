@@ -184,7 +184,7 @@ UInt32 TESBipedModelForm::GetSlotsMask() const
 
 void TESBipedModelForm::SetSlotsMask(UInt32 mask)
 {
-	partMask = (mask & ePartBitMask_Full);
+	partMask = (mask & eSlot_Full);
 }
 
 UInt32 TESBipedModelForm::GetBipedMask() const

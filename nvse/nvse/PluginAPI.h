@@ -47,7 +47,7 @@ enum
 	kInterface_Data,
 	// Added v0006
 	kInterface_EventManager,
-	kInterface_LoggingInterface,
+	kInterface_Logging,
 
 	kInterface_Max
 };
@@ -202,7 +202,7 @@ struct NVSEMessagingInterface
 
 		kMessage_SaveGame,				// as above
 	
-		kMessage_Precompile,			// EDITOR: Dispatched when the user attempts to save a script in the script editor.
+		kMessage_ScriptEditorPrecompile,// EDITOR: Dispatched when the user attempts to save a script in the script editor.
 										// NVSE first does its pre-compile checks; if these pass the message is dispatched before
 										// the vanilla compiler does its own checks. 
 										// data: ScriptBuffer* to the buffer representing the script under compilation
@@ -243,6 +243,7 @@ struct NVSEMessagingInterface
 		kMessage_ClearScriptDataCache,
 		kMessage_MainGameLoop,			// called each game loop
 		kMessage_ScriptCompile,   // EDITOR: called after successful script compilation in GECK. data: pointer to Script
+								// RUNTIME: also gets called after successful script compilation at runtime via functions.
 		kMessage_EventListDestroyed, // called before a script event list is destroyed, dataLen: 4, data: ScriptEventList* ptr
 		kMessage_PostQueryPlugins // called after all plugins have been queried
 	};
@@ -1261,10 +1262,13 @@ struct NVSELoggingInterface
 		kVersion = 1
 	};
 
-	// Use this string to determine where to output plugin logs.
-	// Value is determined in nvse_config.ini.
+	// Use the returned string to determine where to output plugin logs.
+	// Value is determined in nvse_config.ini, under [Logging]: "sPluginLogPath".
 	// The path is relative to base game folder.
 	// If empty string (logPath[0] == 0), use the base game folder.
-	// xNVSE ensures this isn't passed as nullptr.
-	const wchar_t* logPath;
+	// The returned string will never be nullptr.
+	// If non-empty, ends with a slash, so the file name can easily be concatenated to the path string.
+	// Example result "Data\NVSE\Plugins\Logs\"
+	// The path is guaranteed to exist; xNVSE creates it at init if needed.
+	const char* (__fastcall* GetPluginLogPath)();
 };
