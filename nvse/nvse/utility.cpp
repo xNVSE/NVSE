@@ -305,8 +305,8 @@ char __fastcall StrCompare(const char *lstr, const char *rstr)
 	UInt8 lchr, rchr;
 	while (*lstr)
 	{
-		lchr = kCaseConverter[*(UInt8*)lstr];
-		rchr = kCaseConverter[*(UInt8*)rstr];
+		lchr = game_toupper(*(UInt8*)lstr);
+		rchr = game_toupper(*(UInt8*)rstr);
 		if (lchr == rchr)
 		{
 			lstr++;
@@ -324,7 +324,7 @@ void __fastcall StrToLower(char *str)
 	UInt8 curr;
 	while (curr = *str)
 	{
-		*str = kCaseConverter[curr];
+		*str = game_tolower(curr);
 		str++;
 	}
 }
@@ -343,7 +343,7 @@ char* __fastcall SubStrCI(const char *srcStr, const char *subStr)
 		index = 0;
 		while (true)
 		{
-			if (kCaseConverter[*(UInt8*)(srcStr + index)] != kCaseConverter[*(UInt8*)(subStr + index)])
+			if (game_tolower(*(UInt8*)(srcStr + index)) != game_tolower(*(UInt8*)(subStr + index)))
 				break;
 			if (++index == subLen)
 				return const_cast<char*>(srcStr);

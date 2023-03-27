@@ -192,6 +192,8 @@ namespace OtherHooks
 		WriteRelJump(0x5E1392, UInt32(PostScriptExecuteHook2));
 
 		WriteRelCall(0x5AA206, ScriptDestructorHook);
+
+		*(UInt32*)0x0126FDF4 = 1; // locale fix
 	}
 
 	thread_local CurrentScriptContext emptyCtx{}; // not every command gets run through script runner

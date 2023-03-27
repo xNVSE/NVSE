@@ -340,3 +340,7 @@ UInt8* GetParentBasePtr(void* addressOfReturnAddress, bool lambda = false);
 //Example in https://en.cppreference.com/w/cpp/utility/variant/visit
 //Allows function overloading with c++ lambdas.
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+
+
+inline int __cdecl game_toupper(int _C) { return CdeclCall<int>(0xECA7F4, _C); }
+inline int __cdecl game_tolower(int _C) { return CdeclCall<int>(0xEC67AA, _C); }
