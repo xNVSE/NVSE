@@ -2096,24 +2096,6 @@ static ParamInfo kParams_DefaultUserFunctionParams[] =
 // records version of bytecode representation to avoid problems if representation changes later
 static const UInt8 kUserFunction_Version = 1;
 
-bool GetUserFunctionParamTokensFromLine(std::string_view lineText, std::vector<std::string>& out)
-{
-	UInt32 argStartPos = lineText.find('{');
-	UInt32 argEndPos = lineText.find('}');
-	if (argStartPos == -1 || argEndPos == -1 || (argStartPos > argEndPos))
-		return false;
-
-	std::string_view argStrView = lineText.substr(argStartPos + 1, argEndPos - argStartPos - 1);
-	auto argStr = std::string(argStrView);
-	Tokenizer argTokens(argStr.c_str(), "\t ,");
-	std::string argToken;
-	while (argTokens.NextToken(argToken) != -1)
-	{
-		out.push_back(argToken);
-	}
-	return true;
-}
-
 // Also returns param types if a variable was declared inside the param list.
 bool GetUserFunctionParamNames(const std::string &scriptText, std::vector<std::string> &out)
 {

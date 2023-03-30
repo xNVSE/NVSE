@@ -269,6 +269,8 @@ const char *VariableTypeToName(Script::VariableType type);
 Script::VariableType GetDeclaredVariableType(const char *varName, const char *scriptText, Script *script); // parses scriptText to determine var type
 Script *GetScriptFromForm(TESForm *form);
 
+bool GetUserFunctionParamTokensFromLine(std::string_view lineText, std::vector<std::string>& out);
+
 #if NVSE_CORE && RUNTIME
 Script *CompileScriptEx(const char *scriptText, const char* scriptName = nullptr);
 // available through plugin api

@@ -156,6 +156,24 @@ Script *GetScriptFromForm(TESForm *form)
 	return scriptable ? scriptable->script : NULL;
 }
 
+bool GetUserFunctionParamTokensFromLine(std::string_view lineText, std::vector<std::string>& out)
+{
+	UInt32 argStartPos = lineText.find('{');
+	UInt32 argEndPos = lineText.find('}');
+	if (argStartPos == -1 || argEndPos == -1 || (argStartPos > argEndPos))
+		return false;
+
+	std::string_view argStrView = lineText.substr(argStartPos + 1, argEndPos - argStartPos - 1);
+	auto argStr = std::string(argStrView);
+	Tokenizer argTokens(argStr.c_str(), "\t ,");
+	std::string argToken;
+	while (argTokens.NextToken(argToken) != -1)
+	{
+		out.push_back(argToken);
+	}
+	return true;
+}
+
 Script::VariableType Script::GetVariableType(VariableInfo* varInfo)
 {
 	if (text)
