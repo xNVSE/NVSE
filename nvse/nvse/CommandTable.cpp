@@ -1589,7 +1589,7 @@ void CommandTable::AddCommandsV4()
 	ADD_CMD(SetNthFactionRankNameEX);
 
 	ADD_CMD_RET(GetStringGameSetting, kRetnType_String);
-	ADD_CMD(SetStringGameSettingEX);
+	ADD_CMD(SetStringGameSettingEX_DEPRECATED);
 
 	// 4.2 beta 02
 	ADD_CMD_RET(GetRace, kRetnType_Form);

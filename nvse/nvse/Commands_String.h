@@ -119,7 +119,7 @@ DEFINE_CMD(GetStringGameSetting, returns the value of a string game setting, 0, 
 
 DEFINE_CMD(GetStringIniSetting, returns the value of a string ini setting, 0, kParams_OneString);
 
-DEFINE_CMD(SetStringGameSettingEX, sets a string game setting, 0, kParams_FormatString);
+DEFINE_CMD(SetStringGameSettingEX_DEPRECATED, sets a string game setting, 0, kParams_FormatString);
 
 DEFINE_CMD(SetStringIniSetting_DEPRECATED, sets a string ini setting, 0, kParams_FormatString);
 DEFINE_CMD(SetStringIniSetting, sets a string ini setting, 0, kParams_TwoStrings);

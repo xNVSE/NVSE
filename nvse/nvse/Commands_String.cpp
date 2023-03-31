@@ -462,12 +462,12 @@ bool Cmd_GetStringIniSetting_Execute(COMMAND_ARGS)
 
 // setting name included in format string i.e. "sSomeSetting|newSettingValue"
 // Deprecated because it sets INI settings instead of gamesettings
-bool Cmd_SetStringGameSettingEX_Execute(COMMAND_ARGS)
+bool Cmd_SetStringGameSettingEX_DEPRECATED_Execute(COMMAND_ARGS)
 {
 	char fmtString[kMaxMessageLength];
 	*result = 0;
 
-	if (ExtractFormatStringArgs(0, fmtString, PASS_FMTSTR_ARGS, kCommandInfo_SetStringGameSettingEX.numParams))
+	if (ExtractFormatStringArgs(0, fmtString, PASS_FMTSTR_ARGS, kCommandInfo_SetStringGameSettingEX_DEPRECATED.numParams))
 	{
 		UInt32 pipePos = std::string(fmtString).find(GetSeparatorChar(scriptObj));
 		if (pipePos != -1)
