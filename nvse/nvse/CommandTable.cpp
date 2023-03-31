@@ -1651,7 +1651,7 @@ void CommandTable::AddCommandsV4()
 	ADD_CMD(SetRefVariable);
 	ImportConsoleCommand("ShowVars"); // requires ConsoleEcho to be turned on!
 	ADD_CMD_RET(GetStringIniSetting, kRetnType_String);
-	ADD_CMD(SetStringIniSetting);
+	ADD_CMD(SetStringIniSetting_DEPRECATED);
 
 	// 4.5 beta 07
 
@@ -1867,6 +1867,9 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(GetEquippedWeaponUsesAmmoList);
 	ADD_CMD(IsInventoryRef);
 	ADD_CMD(DebugPrintVar);
+
+	// 6.3 beta 01
+	ADD_CMD(SetStringIniSetting); // fixed version
 }
 
 namespace PluginAPI

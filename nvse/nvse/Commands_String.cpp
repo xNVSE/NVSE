@@ -461,6 +461,7 @@ bool Cmd_GetStringIniSetting_Execute(COMMAND_ARGS)
 }
 
 // setting name included in format string i.e. "sSomeSetting|newSettingValue"
+// Deprecated because it sets INI settings instead of gamesettings
 bool Cmd_SetStringGameSettingEX_Execute(COMMAND_ARGS)
 {
 	char fmtString[kMaxMessageLength];
@@ -488,7 +489,8 @@ bool Cmd_SetStringGameSettingEX_Execute(COMMAND_ARGS)
 }
 
 // setting name included in format string i.e. "sSomeSetting|newSettingValue"
-bool Cmd_SetStringIniSetting_Execute(COMMAND_ARGS)
+// Deprecated because it sets GameSettings instead of INI settings.
+bool Cmd_SetStringIniSetting_DEPRECATED_Execute(COMMAND_ARGS)
 {
 	char fmtString[kMaxMessageLength];
 	*result = 0;
@@ -503,13 +505,40 @@ bool Cmd_SetStringIniSetting_Execute(COMMAND_ARGS)
 
 			Setting *setting = NULL;
 			GameSettingCollection *gmsts = GameSettingCollection::GetSingleton();
-			if (gmsts && gmsts->GetGameSetting(fmtString, &setting) && setting && setting->GetType() == Setting::kSetting_String)
+			if (gmsts && gmsts->GetGameSetting(fmtString, &setting))
+			{
+				if (setting && setting->GetType() == Setting::kSetting_String)
+				{
+					setting->Set(newValue);
+					*result = 1;
+				}
+
+			}
+		}
+	}
+
+	return true;
+}
+
+bool Cmd_SetStringIniSetting_Execute(COMMAND_ARGS)
+{
+	char settingName[kMaxMessageLength];
+	char newValue[kMaxMessageLength];
+	*result = 0;
+
+	if (ExtractArgs(EXTRACT_ARGS, &settingName, &newValue))
+	{
+		Setting* setting;
+		if (GetIniSetting(settingName, &setting))
+		{
+			if (setting->GetType() == Setting::kSetting_String)
 			{
 				setting->Set(newValue);
-				;
 				*result = 1;
 			}
 		}
+		else if (IsConsoleMode())
+			Console_Print("SetStringIniSetting >> SETTING NOT FOUND");
 	}
 
 	return true;

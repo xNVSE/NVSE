@@ -121,7 +121,8 @@ DEFINE_CMD(GetStringIniSetting, returns the value of a string ini setting, 0, kP
 
 DEFINE_CMD(SetStringGameSettingEX, sets a string game setting, 0, kParams_FormatString);
 
-DEFINE_CMD(SetStringIniSetting, sets a string ini setting, 0, kParams_FormatString);
+DEFINE_CMD(SetStringIniSetting_DEPRECATED, sets a string ini setting, 0, kParams_FormatString);
+DEFINE_CMD(SetStringIniSetting, sets a string ini setting, 0, kParams_TwoStrings);
 
 DEFINE_CMD(GetModelPath, returns the model path of an object, 0, kParams_OneOptionalForm);
 
