@@ -495,7 +495,7 @@ bool Cmd_SetStringIniSetting_DEPRECATED_Execute(COMMAND_ARGS)
 	char fmtString[kMaxMessageLength];
 	*result = 0;
 
-	if (ExtractFormatStringArgs(0, fmtString, PASS_FMTSTR_ARGS, kCommandInfo_SetStringGameSettingEX.numParams))
+	if (ExtractFormatStringArgs(0, fmtString, PASS_FMTSTR_ARGS, kCommandInfo_SetStringIniSetting_DEPRECATED.numParams))
 	{
 		UInt32 pipePos = std::string(fmtString).find(GetSeparatorChar(scriptObj));
 		if (pipePos != -1)
