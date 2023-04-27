@@ -459,30 +459,68 @@ __declspec(naked) UInt32 __fastcall StrHashCS(const char *inKey)
 	}
 }
 
-__declspec(naked) UInt32 __fastcall StrHashCI(const char *inKey)
+// By JazzIsParis
+// "only < 0.008% collisions"
+__declspec(naked) UInt32 __fastcall StrHashCI(const char* inKey)
 {
 	__asm
 	{
-		push	esi
-		mov		eax, 0x1505
-		test	ecx, ecx
-		jz		done
-		mov		esi, ecx
-		xor		ecx, ecx
+		push    esi
+		mov     eax, 0x6B49D20B
+		test    ecx, ecx
+		jz      done
+		mov     esi, ecx
+		xor ecx, ecx
 		ALIGN 16
 	iterHead:
-		mov		cl, [esi]
-		test	cl, cl
-		jz		done
-		mov		edx, eax
-		shl		edx, 5
-		add		eax, edx
-		movzx	edx, kCaseConverter[ecx]
-		add		eax, edx
-		inc		esi
-		jmp		iterHead
-	done:
-		pop		esi
+		mov     cl, [esi]
+		test    cl, cl
+		jz      done
+		movzx   edx, kCaseConverter[ecx]
+		add     eax, edx
+		mov     edx, eax
+		shl     eax, 0xA
+		add     eax, edx
+		mov     edx, eax
+		shr     edx, 6
+		xor eax, edx
+		mov     cl, [esi + 1]
+		test    cl, cl
+		jz      done
+		movzx   edx, kCaseConverter[ecx]
+		add     eax, edx
+		mov     edx, eax
+		shl     eax, 0xA
+		add     eax, edx
+		mov     edx, eax
+		shr     edx, 6
+		xor eax, edx
+		mov     cl, [esi + 2]
+		test    cl, cl
+		jz      done
+		movzx   edx, kCaseConverter[ecx]
+		add     eax, edx
+		mov     edx, eax
+		shl     eax, 0xA
+		add     eax, edx
+		mov     edx, eax
+		shr     edx, 6
+		xor eax, edx
+		mov     cl, [esi + 3]
+		test    cl, cl
+		jz      done
+		movzx   edx, kCaseConverter[ecx]
+		add     eax, edx
+		mov     edx, eax
+		shl     eax, 0xA
+		add     eax, edx
+		mov     edx, eax
+		shr     edx, 6
+		xor eax, edx
+		add     esi, 4
+		jmp     iterHead
+	done :
+		pop     esi
 		retn
 	}
 }
