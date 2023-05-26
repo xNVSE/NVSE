@@ -369,7 +369,7 @@ bool IdentifyEXE(const char * procName, bool isEditor, std::string * dllSuffix, 
 				break;
 
 			default:
-				PrintLoaderError("You have an unknown version of the CS. Please check http://nvse.silverlock.org to make sure you're using the latest version of NVSE. (version = %016I64X)", version);
+				PrintLoaderError("You have an unknown version of the GECK. Please check https://github.com/xNVSE/NVSE to make sure you're using the latest version of xNVSE. (version = %016I64X)", version);
 				break;
 		}
 	}
@@ -406,7 +406,7 @@ bool IdentifyEXE(const char * procName, bool isEditor, std::string * dllSuffix, 
 			}
 			else
 			{
-				PrintLoaderError("You are using a newer version of Fallout than this version of NVSE supports. If the patch to this version just came out, please be patient while we update our code. In the meantime, please check http://nvse.silverlock.org to make sure you're using the latest version of NVSE. (version = %016I64X %08X)", version, PACKED_NVSE_VERSION);
+				PrintLoaderError("You are using a newer version of Fallout than this version of xNVSE supports. If the patch to this version just came out, please be patient while we update our code. In the meantime, please check https://github.com/xNVSE/NVSE to make sure you're using the latest version of xNVSE. (version = %016I64X %08X)", version, PACKED_NVSE_VERSION);
 			}
 		}
 	}
