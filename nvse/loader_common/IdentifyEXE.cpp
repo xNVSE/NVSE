@@ -382,6 +382,7 @@ bool IdentifyEXE(const char * procName, bool isEditor, std::string * dllSuffix, 
 		else
 		{
 			const UInt64 kCurVersion = 0x000100040000020D;	// 1.4.0.525
+			const UInt64 kEpicVersion = 0x000100040000053A;	// 1.4.0.1338
 
 			if(version < kCurVersion)
 			{
@@ -403,6 +404,10 @@ bool IdentifyEXE(const char * procName, bool isEditor, std::string * dllSuffix, 
 					*dllSuffix = "1_4";
 					result = true;
 				}
+			}
+			else if (version == kEpicVersion)
+			{
+				PrintLoaderError("You are using the Epic Games Store version of Fallout which is unsupported by xNVSE. Please use a Steam or GOG version of Fallout.");
 			}
 			else
 			{
