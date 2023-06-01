@@ -117,7 +117,7 @@ int main(int argc, char ** argv)
 
 		if(!tempFile.Open(dllPath.c_str()))
 		{
-			PrintLoaderError("Couldn't find NVSE DLL (%s). Please make sure you have installed NVSE correctly and are running it from your Fallout folder.", dllPath.c_str());
+			PrintLoaderError("Couldn't find xNVSE DLL (%s). Please make sure you have installed xNVSE correctly and are running it from your game folder.", dllPath.c_str());
 			return 1;
 		}
 	}
