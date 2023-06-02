@@ -34,6 +34,9 @@ For support, contact us in the [xNVSE Discord server](https://discord.gg/EebN93s
 
 For documentation on how to write scripts utilizing NVSE, see [GECK Wiki](https://geckwiki.com/index.php?title=Main_Page).
 
+## Making a Plugin, and/or Contributing
+See [DEVELOPMENT.md](https://github.com/xNVSE/NVSE/blob/master/DEVELOPMENT.md).
+
 ## Credits
 
 The original NVSE was created and maintained by *Ian Patterson*,
