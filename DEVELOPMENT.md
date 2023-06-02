@@ -38,14 +38,14 @@ To open up the project, find and open the `nvse.sln` file in the `nvse` folder.
 
 ## Building an xNVSE Project
 xNVSE uses a couple of build solution configurations: "Debug", "Debug GECK", "Release", and "Release GECK".
-"Debug" means the code will be compiled with very little optimizations enabled, so that stepping through the code while in a debugger will more closely match the written source code, making for a better debugging environment.
-"Release" is the opposite of "Debug"; it will optimize the build as much as possible to benefit the users.
-"(...) GECK" build configurations are for compiling a separate plugin that will run exclusively when the GECK is open.
+* "Debug" means the code will be compiled with very little optimizations enabled, so that stepping through the code while in a debugger will more closely match the written source code, making for a better debugging environment.
+* "Release" is the opposite of "Debug"; it will optimize the build as much as possible to benefit the users.
+* "(...) GECK" build configurations are for compiling a separate plugin that will run exclusively when the GECK is open.
 Conversely, non-"GECK" build configs are for compiling a plugin that will run at runtime (when the game is running).
 
 NOTE: Most xNVSE *plugins* only use two build configurations: Debug and Release. They are set up to compile code to run both when the GECK and the game is running.
-To further explain, you may run across the "RUNTIME" and "EDITOR" macro definitions being used in "#if" checks or similar.
-"#if RUNTIME" is a preprocessor operation stating that the code encapsulated in the "#if" directive should only be compiled when building a non-"GECK" build.
-Likewise, "#if EDITOR" will only allow the encapsulated code from being included in a build when using a "GECK" build configuration.
+To further explain, you may run across the `RUNTIME` and `EDITOR` macro definitions being used in `#if` checks or similar.
+`#if RUNTIME` is a preprocessor operation stating that the code encapsulated in the "#if" directive should only be compiled when building a non-"GECK" build.
+Likewise, `#if EDITOR` will only allow the encapsulated code from being included in a build when using a "GECK" build configuration.
 
-For plugins that want to run both in GECK and at runtime with a single DLL plugin, simply never use "#if EDITOR" checks, and you may safely ignore/remove "#if RUNTIME" checks. You may use any build configuration, except for the "GECK" configurations.
+For plugins that want to run both in GECK and at runtime with a single DLL plugin, simply never use `#if EDITOR` checks, and you may safely ignore/remove `#if RUNTIME` checks. You may use any build configuration, except for the "GECK" configurations.
