@@ -44,7 +44,7 @@ bool Cmd_GetAgeClass_Eval(COMMAND_ARGS_EVAL)
 			//DEBUG_MESSAGE("\t\tGAC Actor:%x Race:%x Name:%x\n", pActor, pRace, name);
 			if (name) {
 				for (int i=0; i<=strlen(name); i++)
-					upperName[i] = toupper(pRace->fullName.name.m_data[i]);
+					upperName[i] = game_toupper(pRace->fullName.name.m_data[i]);
 				//DEBUG_MESSAGE("\t\tGAC Actor:%x Race:%x Name:%s\n", pActor, pRace, upperName);
 				if (strstr(upperName, "CHILD"))
 					*result = 0;

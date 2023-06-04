@@ -790,15 +790,15 @@ const char * GetDXDescription(UInt32 keycode)
 
 bool ci_equal(char ch1, char ch2)
 {
-	return tolower((unsigned char)ch1) == tolower((unsigned char)ch2);
+	return game_tolower((unsigned char)ch1) == game_tolower((unsigned char)ch2);
 }
 
 bool ci_less(const char* lh, const char* rh)
 {
 	ASSERT(lh && rh);
 	while (*lh && *rh) {
-		char l = toupper(*lh);
-		char r = toupper(*rh);
+		char l = game_toupper(*lh);
+		char r = game_toupper(*rh);
 		if (l < r) {
 			return true;
 		}
@@ -809,17 +809,17 @@ bool ci_less(const char* lh, const char* rh)
 		rh++;
 	}
 
-	return toupper(*lh) < toupper(*rh);
+	return game_toupper(*lh) < game_toupper(*rh);
 }
 
 void MakeUpper(std::string& str)
 {
-	std::transform(str.begin(), str.end(), str.begin(), toupper);
+	std::transform(str.begin(), str.end(), str.begin(), game_toupper);
 }
 
 void MakeLower(std::string& str)
 {
-	std::transform(str.begin(), str.end(), str.begin(), tolower);
+	std::transform(str.begin(), str.end(), str.begin(), game_tolower);
 }
 
 #if RUNTIME
@@ -845,7 +845,7 @@ void MakeUpper(char* str)
 {
 	if (str) {
 		UInt32 len = strlen(str);
-		std::transform(str, str + len, str, toupper);
+		std::transform(str, str + len, str, game_toupper);
 	}
 }
 
@@ -853,7 +853,7 @@ void MakeLower(char* str)
 {
 	if (str) {
 		UInt32 len = strlen(str);
-		std::transform(str, str + len, str, tolower);
+		std::transform(str, str + len, str, game_tolower);
 	}
 }
 
@@ -1012,7 +1012,7 @@ bool FindStringCI(const std::string& strHaystack, const std::string& strNeedle)
 	auto it = std::search(
 		strHaystack.begin(), strHaystack.end(),
 		strNeedle.begin(), strNeedle.end(),
-		[](char ch1, char ch2) { return std::toupper(ch1) == std::toupper(ch2); }
+		[](char ch1, char ch2) { return game_toupper(ch1) == game_toupper(ch2); }
 	);
 	return (it != strHaystack.end());
 }
@@ -1120,7 +1120,7 @@ const char* GetFormName(UInt32 formId)
 
 std::string& ToLower(std::string&& data)
 {
-	ra::transform(data, data.begin(), [](const unsigned char c) { return std::tolower(c); });
+	ra::transform(data, data.begin(), [](const unsigned char c) { return game_tolower(c); });
 	return data;
 }
 

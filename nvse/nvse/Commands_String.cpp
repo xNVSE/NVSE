@@ -351,7 +351,7 @@ bool Cmd_ToUpper_Execute(COMMAND_ARGS)
 	UInt32 character = 0;
 	*result = 0;
 	if (ExtractArgs(EXTRACT_ARGS, &character))
-		*result = toupper(character);
+		*result = game_toupper(character);
 
 	return true;
 }
@@ -361,7 +361,7 @@ bool Cmd_ToLower_Execute(COMMAND_ARGS)
 	UInt32 character = 0;
 	*result = 0;
 	if (ExtractArgs(EXTRACT_ARGS, &character))
-		*result = tolower(character);
+		*result = game_tolower(character);
 
 	return true;
 }
