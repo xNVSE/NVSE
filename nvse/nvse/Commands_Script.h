@@ -322,9 +322,9 @@ struct DelayedCallInfo
 
 	[[nodiscard]] bool ShouldRun(bool isMenuMode, bool isPaused)
 	{
-		if (isMenuMode && kMode_RunInGameModeOnly)
+		if (isMenuMode && mode == kMode_RunInGameModeOnly)
 			return false;
-		if (isPaused && kMode_AlsoDontRunWhilePaused)
+		if (isPaused && mode >= kMode_AlsoDontRunWhilePaused)
 			return false;
 		return true;
 	}
