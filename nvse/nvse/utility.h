@@ -140,3 +140,60 @@ public:
 };
 
 #define GetRandomUInt(n) ThisStdCall<UInt32, UInt32>(0xAA5230, (void*)0x11C4180, n)
+
+// From JIP
+#define PS_DUP_1(a)	a, 0UL, 0UL, 0UL
+#define PS_DUP_2(a)	a, a, 0UL, 0UL
+#define PS_DUP_3(a)	a, a, a, 0UL
+#define PS_DUP_4(a)	a, a, a, a
+
+// From JIP
+#define HEX(a) std::bit_cast<UInt32>(a)
+#define UBYT(a) *((UInt8*)&a)
+#define USHT(a) *((UInt16*)&a)
+#define ULNG(a) *((UInt32*)&a)
+
+// From JIP
+extern const UInt32 kPackedValues[];
+
+// From JIP
+#define GET_PS(i)	((const __m128*)kPackedValues)[i]
+#define GET_SS(i)	((const float*)kPackedValues)[i << 2]
+
+// From JIP
+#define PS_AbsMask			kPackedValues
+#define PS_AbsMask0			kPackedValues+0x10
+#define PS_FlipSignMask		kPackedValues+0x20
+#define PS_FlipSignMask0	kPackedValues+0x30
+#define PS_XYZ0Mask			kPackedValues+0x40
+#define PD_AbsMask			kPackedValues+0x50
+#define PD_FlipSignMask		kPackedValues+0x60
+
+// From JIP
+#define PS_Epsilon			kPackedValues+0x70
+#define PS_V3_PId180		kPackedValues+0x80
+#define PS_V3_180dPI		kPackedValues+0x90
+#define PS_V3_PId2			kPackedValues+0xA0
+#define PS_V3_PI			kPackedValues+0xB0
+#define PS_V3_PIx2			kPackedValues+0xC0
+#define PS_V3_Half			kPackedValues+0xD0
+#define PS_V3_One			kPackedValues+0xE0
+#define PS_HKUnitCnvrt		kPackedValues+0xF0
+
+// From JIP
+#define SS_1d1K				kPackedValues+0x100
+#define SS_1d100			kPackedValues+0x104
+#define SS_1d10				kPackedValues+0x108
+#define SS_1d4				kPackedValues+0x10C
+#define SS_3				kPackedValues+0x110
+#define SS_10				kPackedValues+0x114
+#define SS_100				kPackedValues+0x118
+
+// From JIP
+#define FltPId2		1.570796371F
+#define FltPI		3.141592741F
+#define FltPIx2		6.283185482F
+#define FltPId180	0.01745329238F
+#define Flt180dPI	57.29578018F
+#define DblPId180	0.017453292519943295
+#define Dbl180dPI	57.29577951308232

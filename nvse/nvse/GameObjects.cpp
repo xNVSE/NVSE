@@ -346,3 +346,68 @@ double TESObjectREFR::GetHeadingAngle(const TESObjectREFR* to) const
 		result -= 360;
 	return result;
 }
+
+// Code by JIP
+__declspec(naked) bool __fastcall TESObjectREFR::GetInSameCellOrWorld(TESObjectREFR* target) const
+{
+	__asm
+	{
+		mov		eax, [ecx + 0x40]
+		test	eax, eax
+		jnz		hasCell1
+		push	edx
+		push	kExtraData_PersistentCell
+		add		ecx, 0x44
+		call	BaseExtraList::GetByType
+		pop		edx
+		test	eax, eax
+		jz		done
+		mov		eax, [eax + 0xC]
+	hasCell1:
+		mov		ecx, [edx + 0x40]
+		test	ecx, ecx
+		jnz		hasCell2
+		push	eax
+		push	kExtraData_PersistentCell
+		lea		ecx, [edx + 0x44]
+		call	BaseExtraList::GetByType
+		pop		edx
+		test	eax, eax
+		jz		done
+		mov		ecx, [eax + 0xC]
+		mov		eax, edx
+	hasCell2 :
+		cmp		eax, ecx
+		jz		retnTrue
+		mov		eax, [eax + 0xC0]
+		test	eax, eax
+		jz		done
+		cmp		eax, [ecx + 0xC0]
+	retnTrue:
+		setz	al
+	done :
+		retn
+	}
+}
+
+// Code by JIP
+__declspec(naked) float __vectorcall TESObjectREFR::GetDistance(TESObjectREFR* target) const
+{
+	__asm
+	{
+		push	ecx
+		push	edx
+		call	TESObjectREFR::GetInSameCellOrWorld
+		pop		edx
+		pop		ecx
+		test	al, al
+		jz		fltMax
+		add		ecx, 0x30
+		add		edx, 0x30
+		jmp		Point3Distance
+	fltMax :
+		mov		eax, 0x7F7FFFFF
+		movd	xmm0, eax
+		retn
+	}
+}

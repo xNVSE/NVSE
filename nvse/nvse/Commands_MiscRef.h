@@ -242,3 +242,6 @@ static ParamInfo kNVSEParams_OneOptionalString_OneOptionalArray[2] =
 
 DEFINE_COMMAND_EXP(CreateFormList, "creates a formList, optionally set with an editorID and filled by an array.", 
 	0, kNVSEParams_OneOptionalString_OneOptionalArray);
+
+DEFINE_CMD(GetHeadingAngleX, "Gets the up/down angle the calling reference is relative to a target.", 
+	1, kParams_OneObjectRef);

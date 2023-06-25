@@ -565,3 +565,26 @@ void SpinLock::Leave()
 	if (owningThread && !--enterCount)
 		owningThread = 0;
 }
+
+// From JIP
+alignas(16) const UInt32 kPackedValues[] =
+{
+	PS_DUP_4(0x7FFFFFFF),
+	PS_DUP_1(0x7FFFFFFF),
+	PS_DUP_4(0x80000000),
+	PS_DUP_1(0x80000000),
+	PS_DUP_3(0xFFFFFFFF),
+	0xFFFFFFFF, 0x7FFFFFFF, 0xFFFFFFFF, 0x7FFFFFFF,
+	0, 0x80000000, 0, 0x80000000,
+	PS_DUP_4(HEX(FLT_EPSILON)),
+	PS_DUP_3(HEX(FltPId180)),
+	PS_DUP_3(HEX(Flt180dPI)),
+	PS_DUP_3(HEX(FltPId2)),
+	PS_DUP_3(HEX(FltPI)),
+	PS_DUP_3(HEX(FltPIx2)),
+	PS_DUP_3(HEX(0.5F)),
+	PS_DUP_3(HEX(1.0F)),
+	PS_DUP_3(0x40DFF8D6),
+	HEX(0.001F), HEX(0.01F), HEX(0.1F), HEX(0.25F),
+	HEX(3.0F), HEX(10.0F), HEX(100.0F), 0
+};

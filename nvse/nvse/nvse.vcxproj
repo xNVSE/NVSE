@@ -626,6 +626,7 @@ xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</C
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="NiNodes.cpp" />
+    <ClCompile Include="NiTypes.cpp" />
     <ClCompile Include="nvse.cpp" />
     <ClCompile Include="OverloadsGlobal.cpp" />
     <ClCompile Include="PluginManager.cpp" />

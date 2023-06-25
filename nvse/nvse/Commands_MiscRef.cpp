@@ -1969,3 +1969,20 @@ bool Cmd_CreateFormList_Execute(COMMAND_ARGS)
 	}
 	return true;
 }
+
+// Copied code from here: https://forums.nexusmods.com/index.php?/topic/1715964-getheadingangle-equivalent-for-x-axis/
+// (Basic pythagorian theorem being applied)
+bool Cmd_GetHeadingAngleX_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	TESObjectREFR* targetRef{};
+	if (!ExtractArgs(EXTRACT_ARGS, &targetRef) || !thisObj || !thisObj->IsActor())
+		return true;
+	
+	float opposite = thisObj->posZ - targetRef->posZ;
+	float hypotenuse = thisObj->GetDistance(targetRef);
+	float fraction = opposite / hypotenuse;
+	*result = asin(fraction);
+
+	return true;
+}

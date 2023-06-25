@@ -247,6 +247,9 @@
     <ClCompile Include="UnitTests.cpp">
       <Filter>unit tests</Filter>
     </ClCompile>
+    <ClCompile Include="NiTypes.cpp">
+      <Filter>api\NetImmerse</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">

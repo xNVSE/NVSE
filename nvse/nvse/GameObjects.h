@@ -162,6 +162,8 @@ public:
 	ExtraDroppedItemList* GetDroppedItems();
 
 	double GetHeadingAngle(const TESObjectREFR* to) const;
+	bool __fastcall GetInSameCellOrWorld(TESObjectREFR* target) const;
+	float __vectorcall GetDistance(TESObjectREFR* target) const;
 
 	static TESObjectREFR* Create(bool bTemp = false);
 

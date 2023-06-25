@@ -450,3 +450,5 @@ public:
 	UInt32	unk0C;		// 0C
 	UInt32	unk10;		// 10
 };
+
+float __vectorcall Point3Distance(const NiVector3& pt1, const NiVector3& pt2);

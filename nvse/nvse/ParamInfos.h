@@ -241,6 +241,11 @@ static ParamInfo kParams_OneOptionalObjectRef[1] =
 	{	"ref", kParamType_ObjectRef, 1},
 };
 
+static ParamInfo kParams_OneObjectRef[1] =
+{
+	{	"ref", kParamType_ObjectRef, 0},
+};
+
 static ParamInfo kParams_OneIntOneOptionalObjectRef[2] =
 {
 	{	"flag",		kParamType_Integer,	0	},

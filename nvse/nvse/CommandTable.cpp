@@ -1870,6 +1870,7 @@ void CommandTable::AddCommandsV6()
 
 	// 6.3 beta 01
 	ADD_CMD(SetStringIniSetting); // fixed version
+	ADD_CMD(GetHeadingAngleX);
 }
 
 namespace PluginAPI
