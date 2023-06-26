@@ -478,6 +478,7 @@ __declspec(naked) UInt32 __fastcall StrHashCS(const char *inKey)
 		jmp		iterHead
 	done :
 		ret
+	}
 }
 
 // By JazzIsParis
