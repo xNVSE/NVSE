@@ -1303,23 +1303,21 @@ std::unique_ptr<ScriptToken> Eval_DotSyntax(OperatorType op, ScriptToken *lh, Sc
 // Operator Rules
 OperationRule kOpRule_Comparison[] =
 	{
-#if !RUNTIME
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Boolean, NULL},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Boolean, NULL},
 		{kTokenType_Ambiguous, kTokenType_String, kTokenType_Boolean, NULL},
-#endif
+
 		{kTokenType_Number, kTokenType_Number, kTokenType_Boolean, OP_HANDLER(Eval_Comp_Number_Number)},
 		{kTokenType_String, kTokenType_String, kTokenType_Boolean, OP_HANDLER(Eval_Comp_String_String)},
 };
 
 OperationRule kOpRule_Equality[] =
 	{
-#if !RUNTIME
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Boolean},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Boolean},
 		{kTokenType_Ambiguous, kTokenType_Form, kTokenType_Boolean},
 		{kTokenType_Ambiguous, kTokenType_String, kTokenType_Boolean},
-#endif
+
 		{kTokenType_Number, kTokenType_Number, kTokenType_Boolean, OP_HANDLER(Eval_Eq_Number)},
 		{kTokenType_String, kTokenType_String, kTokenType_Boolean, OP_HANDLER(Eval_Eq_String)},
 		{kTokenType_Form, kTokenType_Form, kTokenType_Boolean, OP_HANDLER(Eval_Eq_Form)},
@@ -1328,67 +1326,60 @@ OperationRule kOpRule_Equality[] =
 
 OperationRule kOpRule_Logical[] =
 	{
-#if !RUNTIME
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Boolean},
 		{kTokenType_Ambiguous, kTokenType_Boolean, kTokenType_Boolean},
-#endif
+
 		{kTokenType_Boolean, kTokenType_Boolean, kTokenType_RightToken, OP_HANDLER(Eval_Logical)},
 };
 
 OperationRule kOpRule_Addition[] =
 	{
-#if !RUNTIME
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Ambiguous},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Number},
 		{kTokenType_Ambiguous, kTokenType_String, kTokenType_String},
-#endif
+
 		{kTokenType_Number, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_Add_Number)},
 		{kTokenType_String, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_Add_String)},
 };
 
 OperationRule kOpRule_Arithmetic[] =
 	{
-#if !RUNTIME
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Number},
 		{kTokenType_Number, kTokenType_Ambiguous, kTokenType_Number},
-#endif
+
 		{kTokenType_Number, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_Arithmetic)}};
 
 OperationRule kOpRule_Multiply[] =
 	{
-#if !RUNTIME
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Ambiguous},
 		{kTokenType_String, kTokenType_Ambiguous, kTokenType_String},
 		{kTokenType_Number, kTokenType_Ambiguous, kTokenType_Ambiguous},
-#endif
+
 		{kTokenType_Number, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_Arithmetic)},
 		{kTokenType_String, kTokenType_Number, kTokenType_String, OP_HANDLER(Eval_Multiply_String_Number)},
 };
 
 OperationRule kOpRule_Integer[] =
 	{
-#if !RUNTIME
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Number},
 		{kTokenType_Number, kTokenType_Ambiguous, kTokenType_Number},
-#endif
+
 		{kTokenType_Number, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_Integer)},
 };
 
 OperationRule kOpRule_Assignment[] =
 	{
-#if !RUNTIME
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Ambiguous, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_String, kTokenType_String, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Number, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Array, kTokenType_Array, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Form, kTokenType_Form, NULL, true},
-
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_RefVar, kTokenType_Ambiguous, kTokenType_Form, NULL, true},
 		{kTokenType_StringVar, kTokenType_Ambiguous, kTokenType_String, NULL, true},
 		{kTokenType_ArrayVar, kTokenType_Ambiguous, kTokenType_Array, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Ambiguous, NULL, true},
-#endif
+
 		{kTokenType_AssignableString, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_Assign_AssignableString), true},
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_Assign_Numeric), true},
 		{kTokenType_StringVar, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_Assign_String), true},
@@ -1403,7 +1394,6 @@ OperationRule kOpRule_Assignment[] =
 
 OperationRule kOpRule_PlusEquals[] =
 	{
-#if !RUNTIME
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_StringVar, kTokenType_Ambiguous, kTokenType_String, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Ambiguous, NULL, true},
@@ -1411,7 +1401,7 @@ OperationRule kOpRule_PlusEquals[] =
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Ambiguous, NULL, false},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Number, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_String, kTokenType_String, NULL, true},
-#endif
+
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_PlusEquals_Number), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_PlusEquals_Elem_Number), true},
 		{kTokenType_StringVar, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_PlusEquals_String), true},
@@ -1421,13 +1411,12 @@ OperationRule kOpRule_PlusEquals[] =
 
 OperationRule kOpRule_MinusEquals[] =
 	{
-#if !RUNTIME
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Global, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Number, NULL, false},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Number, NULL, true},
-#endif
+
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_MinusEquals_Number), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_MinusEquals_Elem_Number), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_MinusEquals_Global), true},
@@ -1435,13 +1424,12 @@ OperationRule kOpRule_MinusEquals[] =
 
 OperationRule kOpRule_TimesEquals[] =
 	{
-#if !RUNTIME
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Global, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Number, NULL, false},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Number, NULL, true},
-#endif
+
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_TimesEquals), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_TimesEquals_Elem), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_TimesEquals_Global), true},
@@ -1449,13 +1437,12 @@ OperationRule kOpRule_TimesEquals[] =
 
 OperationRule kOpRule_DividedEquals[] =
 	{
-#if !RUNTIME
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Global, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Number, NULL, false},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Number, NULL, true},
-#endif
+
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_DividedEquals), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_DividedEquals_Elem), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_DividedEquals_Global), true},
@@ -1463,13 +1450,12 @@ OperationRule kOpRule_DividedEquals[] =
 
 OperationRule kOpRule_ExponentEquals[] =
 	{
-#if !RUNTIME
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Global, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Number, NULL, false},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Number, NULL, true},
-#endif
+
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_ExponentEquals), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_ExponentEquals_Elem), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_ExponentEquals_Global), true},
@@ -1477,13 +1463,12 @@ OperationRule kOpRule_ExponentEquals[] =
 
 OperationRule kOpRule_HandleEquals[] =
 	{
-#if !RUNTIME
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Global, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Number, NULL, false},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Number, NULL, true},
-#endif
+
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_HandleEquals), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_HandleEquals_Elem), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_HandleEquals_Global), true},
@@ -1491,30 +1476,27 @@ OperationRule kOpRule_HandleEquals[] =
 
 OperationRule kOpRule_Negation[] =
 	{
-#if !RUNTIME
 		{kTokenType_Ambiguous, kTokenType_Invalid, kTokenType_Number, NULL, true},
-#endif
+
 		{kTokenType_Number, kTokenType_Invalid, kTokenType_Number, OP_HANDLER(Eval_Negation), true},
 };
 
 OperationRule kOpRule_LogicalNot[] =
 	{
-#if !RUNTIME
 		{kTokenType_Ambiguous, kTokenType_Invalid, kTokenType_Boolean, NULL, true},
-#endif
+
 		{kTokenType_Boolean, kTokenType_Invalid, kTokenType_Boolean, OP_HANDLER(Eval_LogicalNot), true},
 };
 
 OperationRule kOpRule_LeftBracket[] =
 	{
-#if !RUNTIME
 		{kTokenType_Array, kTokenType_Ambiguous, kTokenType_ArrayElement, NULL, true},
 		{kTokenType_String, kTokenType_Ambiguous, kTokenType_String, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_String, kTokenType_ArrayElement, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Ambiguous, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Ambiguous, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Slice, kTokenType_Ambiguous, NULL, true},
-#endif
+
 		{kTokenType_Array, kTokenType_Number, kTokenType_ArrayElement, OP_HANDLER(Eval_Subscript_Array_Number), true},
 		{kTokenType_Array, kTokenType_String, kTokenType_ArrayElement, OP_HANDLER(Eval_Subscript_Array_String), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_AssignableString, OP_HANDLER(Eval_Subscript_Elem_Number), true},
@@ -1527,29 +1509,26 @@ OperationRule kOpRule_LeftBracket[] =
 
 OperationRule kOpRule_MemberAccess[] =
 	{
-#if !RUNTIME
 		{kTokenType_Array, kTokenType_Ambiguous, kTokenType_ArrayElement, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_String, kTokenType_ArrayElement, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_ArrayElement, NULL, true},
-#endif
+
 		{kTokenType_Array, kTokenType_String, kTokenType_ArrayElement, OP_HANDLER(Eval_MemberAccess), true}};
 
 OperationRule kOpRule_Slice[] =
 	{
-#if !RUNTIME
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Slice},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Slice},
 		{kTokenType_Ambiguous, kTokenType_String, kTokenType_Slice},
-#endif
+
 		{kTokenType_String, kTokenType_String, kTokenType_Slice, OP_HANDLER(Eval_Slice_String)},
 		{kTokenType_Number, kTokenType_Number, kTokenType_Slice, OP_HANDLER(Eval_Slice_Number)},
 };
 
 OperationRule kOpRule_In[] =
 	{
-#if !RUNTIME
 		{kTokenType_ArrayVar, kTokenType_Ambiguous, kTokenType_ForEachContext, NULL, true},
-#endif
+
 		{kTokenType_ArrayVar, kTokenType_Array, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
 		{kTokenType_StringVar, kTokenType_String, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
 		{kTokenType_RefVar, kTokenType_Form, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
@@ -1557,9 +1536,8 @@ OperationRule kOpRule_In[] =
 
 OperationRule kOpRule_ToString[] =
 	{
-#if !RUNTIME
 		{kTokenType_Ambiguous, kTokenType_Invalid, kTokenType_String, NULL, true},
-#endif
+
 		{kTokenType_String, kTokenType_Invalid, kTokenType_String, OP_HANDLER(Eval_ToString_String), true},
 		{kTokenType_Number, kTokenType_Invalid, kTokenType_String, OP_HANDLER(Eval_ToString_Number), true},
 		{kTokenType_Form, kTokenType_Invalid, kTokenType_String, OP_HANDLER(Eval_ToString_Form), true},
@@ -1568,26 +1546,22 @@ OperationRule kOpRule_ToString[] =
 
 OperationRule kOpRule_ToNumber[] =
 	{
-#if !RUNTIME
 		{kTokenType_Ambiguous, kTokenType_Invalid, kTokenType_Number, NULL, true},
-#endif
+
 		{kTokenType_String, kTokenType_Invalid, kTokenType_Number, OP_HANDLER(Eval_ToNumber), true},
 		{kTokenType_Number, kTokenType_Invalid, kTokenType_Number, OP_HANDLER(Eval_ToNumber), true},
 };
 
 OperationRule kOpRule_Dereference[] =
 	{
-#if !RUNTIME
 		{kTokenType_Ambiguous, kTokenType_Invalid, kTokenType_ArrayElement, NULL, true},
-#endif
+
 		{kTokenType_Array, kTokenType_Invalid, kTokenType_ArrayElement, OP_HANDLER(Eval_Dereference), true},
 };
 
 OperationRule kOpRule_Box[] =
 	{
-#if !RUNTIME
 		{kTokenType_Ambiguous, kTokenType_Invalid, kTokenType_Array, NULL, true},
-#endif
 
 		{kTokenType_Number, kTokenType_Invalid, kTokenType_Array, OP_HANDLER(Eval_Box_Number), true},
 		{kTokenType_String, kTokenType_Invalid, kTokenType_Array, OP_HANDLER(Eval_Box_String), true},
@@ -1597,7 +1571,6 @@ OperationRule kOpRule_Box[] =
 
 OperationRule kOpRule_MakePair[] =
 	{
-#if !RUNTIME
 		{kTokenType_String, kTokenType_Ambiguous, kTokenType_Pair, NULL, true},
 		{kTokenType_Number, kTokenType_Ambiguous, kTokenType_Pair, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Pair, NULL, true},
@@ -1605,7 +1578,7 @@ OperationRule kOpRule_MakePair[] =
 		{kTokenType_Ambiguous, kTokenType_Array, kTokenType_Pair, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Form, kTokenType_Pair, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Pair, NULL, true},
-#endif
+
 		{kTokenType_String, kTokenType_Number, kTokenType_Pair, OP_HANDLER(Eval_Pair), true},
 		{kTokenType_String, kTokenType_String, kTokenType_Pair, OP_HANDLER(Eval_Pair), true},
 		{kTokenType_String, kTokenType_Form, kTokenType_Pair, OP_HANDLER(Eval_Pair), true},

@@ -1776,9 +1776,7 @@ Token_Type kConversions_String[] =
 
 Token_Type kConversions_Command[] =
 	{
-#if !RUNTIME
 		kTokenType_Ambiguous,
-#endif
 
 		kTokenType_Number,
 		kTokenType_Form,
