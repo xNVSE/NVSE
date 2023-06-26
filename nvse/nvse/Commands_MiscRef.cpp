@@ -1982,7 +1982,7 @@ bool Cmd_GetHeadingAngleX_Execute(COMMAND_ARGS)
 	float opposite = thisObj->posZ - targetRef->posZ;
 	float hypotenuse = thisObj->GetDistance(targetRef);
 	float fraction = opposite / hypotenuse;
-	*result = (asin(fraction) * Flt180dPI) - thisObj->rotX;
+	*result = (asin(fraction) - thisObj->rotX) * Flt180dPI;
 
 	return true;
 }
