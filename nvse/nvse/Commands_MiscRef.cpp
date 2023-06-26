@@ -1975,14 +1975,14 @@ bool Cmd_CreateFormList_Execute(COMMAND_ARGS)
 bool Cmd_GetHeadingAngleX_Execute(COMMAND_ARGS)
 {
 	*result = 0;
-	TESObjectREFR* targetRef{};
-	if (!ExtractArgs(EXTRACT_ARGS, &targetRef) || !thisObj || !thisObj->IsActor())
+	TESObjectREFR* targetRef;
+	if (!ExtractArgs(EXTRACT_ARGS, &targetRef) || !thisObj)
 		return true;
 	
 	float opposite = thisObj->posZ - targetRef->posZ;
 	float hypotenuse = thisObj->GetDistance(targetRef);
 	float fraction = opposite / hypotenuse;
-	*result = asin(fraction);
+	*result = (asin(fraction) * Flt180dPI) - thisObj->rotX;
 
 	return true;
 }
