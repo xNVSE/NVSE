@@ -407,7 +407,7 @@ bool IdentifyEXE(const char * procName, bool isEditor, std::string * dllSuffix, 
 			}
 			else if (version == kEpicVersion)
 			{
-				PrintLoaderError("You are using the Epic Games Store version of the game which is unsupported by xNVSE. Please use a Steam or GOG copy.");
+				PrintLoaderError("You are using the Epic Games Store version of the game which is unsupported by xNVSE. You may use this patcher to make your exe compatible: https://www.nexusmods.com/newvegas/mods/81281");
 			}
 			else
 			{
