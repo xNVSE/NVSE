@@ -174,6 +174,9 @@ DEFINE_CMD_ALT_COND(HasAmmoEquipped, IsAmmoEquipped,
 	true, kParams_OneObjectID);
 DEFINE_CMD_COND(IsEquippedAmmoInList, "returns if any ammo in a list is currently equipped by the calling ref",
 	true, kParams_OneFormList);
+DEFINE_CMD_COND(GetWeaponCanUseAmmo,
+	"returns if the weapon can use the specified ammo",
+	false, kParams_OneObjectID_OneOptionalObjectID);
 DEFINE_CMD_COND(GetEquippedWeaponCanUseAmmo,
 	"returns if the equipped weapon can use the specified ammo",
 	true, kParams_OneObjectID);

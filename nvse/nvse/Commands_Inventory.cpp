@@ -2715,21 +2715,42 @@ bool Cmd_IsEquippedAmmoInList_Execute(COMMAND_ARGS) {
 	return Cmd_HasAmmoEquipped_Execute(PASS_COMMAND_ARGS);
 }
 
+bool Cmd_GetWeaponCanUseAmmo_Eval(COMMAND_ARGS_EVAL) {
+	*result = 0;
+	TESObjectWEAP* weap = nullptr;
+	if (arg2)
+		weap = static_cast<TESObjectWEAP*>(arg2);
+	else if (thisObj)
+		weap = static_cast<TESObjectWEAP*>(thisObj->baseForm);
+
+	if (weap) {
+		auto* ammoOrList = static_cast<TESForm*>(arg1);
+		*result = weap->ammo.ammo == ammoOrList;
+		if (!*result)
+		{
+			if (auto* pAmmoList = DYNAMIC_CAST(weap->ammo.ammo, TESForm, BGSListForm);
+				pAmmoList && ammoOrList->typeID == kFormType_TESAmmo)
+			{
+				*result = pAmmoList->GetIndexOf(ammoOrList) != eListInvalid;
+			}
+		}
+	}
+
+	return true;
+}
+bool Cmd_GetWeaponCanUseAmmo_Execute(COMMAND_ARGS) {
+	*result = 0;
+	TESForm* ammoOrList;
+	TESObjectWEAP* baseWeapon = nullptr;
+	if (!ExtractArgsEx(EXTRACT_ARGS_EX, &ammoOrList, &baseWeapon))
+		return true;
+	return Cmd_GetWeaponCanUseAmmo_Eval(thisObj, ammoOrList, baseWeapon, result);
+}
+
 bool Cmd_GetEquippedWeaponCanUseAmmo_Eval(COMMAND_ARGS_EVAL) {
 	*result = 0;
 	if (thisObj) {
-		auto* ammoOrList = static_cast<TESForm*>(arg1);
-		if (const auto* weap = static_cast<Actor*>(thisObj)->GetEquippedWeapon()) {
-			*result = weap->ammo.ammo == ammoOrList;
-			if (!*result)
-			{
-				if (auto* pAmmoList = DYNAMIC_CAST(weap->ammo.ammo, TESForm, BGSListForm);
-					pAmmoList && ammoOrList->typeID == kFormType_TESAmmo)
-				{
-					*result = pAmmoList->GetIndexOf(ammoOrList) != eListInvalid;
-				}
-			}
-		}
+		return Cmd_GetWeaponCanUseAmmo_Eval(nullptr, arg1, static_cast<Actor*>(thisObj)->GetEquippedWeapon(), result);
 	}
 	return true;
 }
