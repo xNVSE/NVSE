@@ -220,13 +220,14 @@ static ParamInfo kNVSEParams_OneString_TwoOptionalInts[3] =
 
 DEFINE_COMMAND_EXP(ToNumber, translates a string to a number, 0, kNVSEParams_OneString_TwoOptionalInts);
 
-static ParamInfo kNVSEParams_TwoStrings[2] =
+static ParamInfo kNVSEParams_TwoStrings_OneOptionalBool[3] =
 {
 	{	"string",		kNVSEParamType_String,	0	},
 	{	"string",		kNVSEParamType_String,	0	},
+	{	"bool",			kNVSEParamType_Boolean,	1	},
 };
 
-DEFINE_COMMAND_EXP(sv_Split, split a string into substrings returning an array, 0, kNVSEParams_TwoStrings);
+DEFINE_COMMAND_EXP(sv_Split, "split a string into substrings returning an array", 0, kNVSEParams_TwoStrings_OneOptionalBool);
 
 DEFINE_CMD_ALT_EXP(GetFalloutDirectory, GetFalloutDir, returns the path to the Fallout directory, 0, NULL);
 

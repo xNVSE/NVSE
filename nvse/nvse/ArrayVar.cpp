@@ -240,7 +240,6 @@ bool ArrayElement::SetFormID(UInt32 refID)
 	return true;
 }
 
-
 bool ArrayElement::SetString(const char* str)
 {
 	Unset();
@@ -250,6 +249,14 @@ bool ArrayElement::SetString(const char* str)
 	return true;
 }
 
+bool ArrayElement::SetString(std::string_view str)
+{
+	Unset();
+
+	m_data.dataType = kDataType_String;
+	m_data.SetStr(str);
+	return true;
+}
 
 bool ArrayElement::SetArray(ArrayID arr)
 {
@@ -419,6 +426,11 @@ const char* ArrayData::GetStr() const
 void ArrayData::SetStr(const char* srcStr)
 {
 	str = (srcStr && *srcStr) ? CopyString(srcStr) : nullptr;
+}
+
+void ArrayData::SetStr(std::string_view srcStr)
+{
+	str = (!srcStr.empty() && srcStr[0]) ? CopyString(srcStr.data(), srcStr.length()) : nullptr;
 }
 
 ArrayData& ArrayData::operator=(const ArrayData& rhs)
@@ -738,6 +750,15 @@ bool ArrayVar::SetElementNumber(const char* key, double num)
 }
 
 bool ArrayVar::SetElementString(double key, const char* str)
+{
+	ArrayElement* elem = Get(key, true);
+	if (!elem)
+		return false;
+	elem->SetString(str);
+	return true;
+}
+
+bool ArrayVar::SetElementString(double key, std::string_view str)
 {
 	ArrayElement* elem = Get(key, true);
 	if (!elem)

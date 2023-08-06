@@ -23,6 +23,7 @@ struct ScriptToken;
 #include <vector>
 #include <map>
 #include "LambdaManager.h"
+#include <string_view>
 
 // NVSE array datatype, represented by std::map<ArrayKey, ArrayElement>
 // Data elements can be of mixed types (string, UInt32/formID, float)
@@ -92,6 +93,7 @@ struct ArrayData
 	ArrayData() = default;
 	[[nodiscard]] const char *GetStr() const;
 	void SetStr(const char *srcStr);
+	void SetStr(std::string_view srcStr);
 
 	//Casts the data in the form InternalFunctionCaller::PopulateArgs() understands.
 	[[nodiscard]] void* GetAsVoidArg() const;
@@ -134,6 +136,7 @@ public:
 	}	//unlike SetFormID, will not store lambda info!
 	bool SetFormID(UInt32 refID);
 	bool SetString(const char* str);
+	bool SetString(std::string_view str);
 	virtual bool SetArray(ArrayID arr);	
 	bool SetNumber(double num);
 	bool Set(const ArrayElement* elem);
@@ -360,6 +363,7 @@ public:
 
 	bool SetElementString(double key, const char* str);
 	bool SetElementString(const char* key, const char* str);
+	bool SetElementString(double key, std::string_view str);
 
 	bool SetElementFormID(double key, UInt32 refID);
 	bool SetElementFormID(const char* key, UInt32 refID);
