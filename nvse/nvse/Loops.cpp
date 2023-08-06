@@ -200,15 +200,20 @@ ContainerIterLoop::~ContainerIterLoop()
 
 bool FormListIterLoop::GetNext()
 {
+	// Go to the next valid value, skipping over what our m_iter was pointing to (should already have been used).
+	if (m_iter)
+		m_iter = m_iter->next;
+	else
+		return false;
+
 	while (m_iter)
 	{
-		TESForm *element = m_iter->data;
-		m_iter = m_iter->next;
-		if (element)
+		if (TESForm* element = m_iter->data)
 		{
 			m_refVar->formId = element->refID;
 			return true;
 		}
+		m_iter = m_iter->next;
 	}
 	return false;
 }
@@ -217,7 +222,17 @@ FormListIterLoop::FormListIterLoop(const ForEachContext *context)
 {
 	m_iter = ((BGSListForm*)context->sourceID)->list.Head();
 	m_refVar = context->var;
-	GetNext();
+
+	// Move m_iter to first valid value, and save that as the first loop element.
+	while (m_iter)
+	{
+		if (TESForm* element = m_iter->data)
+		{
+			m_refVar->formId = element->refID;
+			break;
+		}
+		m_iter = m_iter->next;
+	}
 }
 
 bool FormListIterLoop::Update(COMMAND_ARGS)
