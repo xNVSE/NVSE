@@ -344,8 +344,8 @@ template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 #if RUNTIME
 inline int __cdecl game_toupper(int _C) { return CdeclCall<int>(0xECA7F4, _C); }
 inline int __cdecl game_tolower(int _C) { return CdeclCall<int>(0xEC67AA, _C); }
-#elif EDITOR
-// GECK code probably doesn't need localized stuff...?
+#else 
+// GECK and other non-runtime code (ex: steam_loader) probably don't need localized stuff...?
 inline int __cdecl game_toupper(int _C) { return toupper(_C); }
 inline int __cdecl game_tolower(int _C) { return tolower(_C); }
 #endif

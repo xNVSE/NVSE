@@ -390,6 +390,28 @@ __declspec(naked) char* __fastcall CopyString(const char *key)
 	}
 }
 
+__declspec(naked) char* __fastcall CopyString(const char* key, UInt32 length)
+{
+	__asm
+	{
+		mov		eax, edx // length
+		inc		eax
+		push	eax
+		push	ecx
+		push	eax
+#if !_DEBUG
+		call    _malloc_base
+#else
+		call	malloc
+#endif
+		pop		ecx
+		push	eax
+		call	_memcpy
+		add		esp, 0xC
+		retn
+	}
+}
+
 __declspec(naked) char* __fastcall IntToStr(char *str, int num)
 {
 	__asm

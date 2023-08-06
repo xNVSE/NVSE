@@ -119,6 +119,7 @@ char* __fastcall SubStrCI(const char *srcStr, const char *subStr);
 char* __fastcall SlashPos(const char *str);
 
 char* __fastcall CopyString(const char* key);
+char* __fastcall CopyString(const char* key, UInt32 length);
 
 char* __fastcall IntToStr(char *str, int num);
 
