@@ -224,6 +224,8 @@ FormListIterLoop::FormListIterLoop(const ForEachContext *context)
 	m_refVar = context->var;
 
 	// Move m_iter to first valid value, and save that as the first loop element.
+	// Do NOT call GetNext here, since it will move m_iter, 
+	// ...which will make the IsEmpty() check mistakenly fail when ForEach is first called on a formlist w/ only 1 element.
 	while (m_iter)
 	{
 		if (TESForm* element = m_iter->data)

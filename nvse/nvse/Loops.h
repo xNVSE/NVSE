@@ -44,6 +44,7 @@ class ForEachLoop : public Loop
 {
 public:
 	virtual bool Update(COMMAND_ARGS) = 0;
+	// Is executed at the start of the ForEach loop to check if the loop should be breaked early to save time.
 	virtual bool IsEmpty() = 0;
 };
 
