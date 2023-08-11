@@ -1901,6 +1901,11 @@ bool ExpressionParser::ParseArgs(ParamInfo *params, UInt32 numParams, bool bUses
 					Message(kError_MismatchedBrackets);
 					return false;
 				}
+				else if (bracketEndPos == -2)
+				{
+					Message(kError_MismatchedQuotes);
+					return false;
+				}
 				else
 					Offset() = bracketEndPos;
 			}
@@ -2456,7 +2461,26 @@ UInt32 ExpressionParser::MatchOpenBracket(Operator *openBracOp) const
 	UInt32 i;
 	for (i = Offset(); i < m_len && text[i]; i++)
 	{
-		if (text[i] == openBrac)
+		if (text[i] == '"')
+		{
+			// Try to skip to the end of the quotes.
+			// This way, we ignore brackets inside quotes.
+			++i;
+			bool foundMatchingEndQuote = false;
+			for (; i < m_len && text[i]; i++)
+			{
+				if (text[i] == '"')
+				{
+					foundMatchingEndQuote = true;
+					break;
+				}
+			}
+			if (foundMatchingEndQuote)
+				continue;
+			// Else, couldn't find a matching end quote.
+			return -2;
+		}
+		else if (text[i] == openBrac)
 			openBracCount++;
 		else if (text[i] == closingBrac)
 			openBracCount--;
@@ -2534,6 +2558,11 @@ Token_Type ExpressionParser::ParseSubExpression(UInt32 exprLen)
 				if (endBracPos == -1)
 				{
 					Message(kError_MismatchedBrackets);
+					return kTokenType_Invalid;
+				}
+				else if (endBracPos == -2)
+				{
+					Message(kError_MismatchedQuotes);
 					return kTokenType_Invalid;
 				}
 
@@ -2910,6 +2939,11 @@ ParamParenthResult ExpressionParser::ParseParentheses(ParamInfo *paramInfo, UInt
 		Message(kError_MismatchedBrackets);
 		return kParamParent_SyntaxError;
 	}
+	else if (endIdx == -2)
+	{
+		Message(kError_MismatchedQuotes);
+		return kParamParent_SyntaxError;
+	}
 
 	m_lineBuf->Write16(0xFFFF);
 
@@ -3085,6 +3119,11 @@ std::unique_ptr<ScriptToken> ExpressionParser::PeekOperand(UInt32 &outReadLen)
 		if (endBracketPos == -1)
 		{
 			Message(kError_MismatchedBrackets);
+			return nullptr;
+		}
+		else if (endBracketPos == -2)
+		{
+			Message(kError_MismatchedQuotes);
 			return nullptr;
 		}
 		m_lineBuf->paramText[endBracketPos] = 0;

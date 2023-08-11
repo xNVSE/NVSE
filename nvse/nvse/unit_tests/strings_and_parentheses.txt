@@ -1,0 +1,27 @@
+begin Function { }
+
+	print "Started running xNVSE Parentheses & Strings unit tests."
+
+	string_var myString = "test("
+
+	let myString := ")(test("
+
+	Assert (sv_Find ")(" myString) > -1
+
+	Assert eval sv_Find ")(" myString > -1
+
+	Assert  sv_Find ")" myString > -1
+
+	Assert ((sv_Find ")" myString > -1))
+  
+	Assert eval sv_Find ")" myString > -1 
+
+	if eval sv_Find "(" myString > -1
+		Assert 1
+	else
+		assert 0
+	endif
+	
+	print "Finished running xNVSE Parentheses & Strings unit tests."
+
+end

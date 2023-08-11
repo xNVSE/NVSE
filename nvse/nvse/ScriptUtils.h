@@ -395,6 +395,7 @@ class ExpressionParser
 	Token_Type		PopOperator(std::stack<Operator*> & ops, std::stack<Token_Type> & operands) const;
 	std::unique_ptr<ScriptToken> ParseLambda();
 
+	// Returns -1 for non-match, -2 if a quote inside brackets was somehow missing a closing quote ('"' chars).
 	UInt32	MatchOpenBracket(Operator* openBracOp) const;
 	[[nodiscard]] std::string GetCurToken() const;
 	VariableInfo* LookupVariable(const char* varName, Script::RefVariable* refVar = nullptr) const;

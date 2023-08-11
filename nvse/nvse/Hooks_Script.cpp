@@ -26,6 +26,18 @@ struct ScriptAndScriptBuffer
 	ScriptBuffer* scriptBuffer;
 };
 
+// Skip code checking for mismatched parenthesis, since: 
+// 1) it can be faulty (can't handle "(" strings or similar)
+// 2) the custom NVSE script processing parts should already be handling this fine (did a few quick tests).
+void PatchMismatchedParenthesisCheck()
+{
+#if EDITOR
+	WriteRelJump(0x5C933C, 0x5C934A);
+#elif RUNTIME
+	WriteRelJump(0x5B0A3F, 0x5B0A91);
+#endif
+}
+
 #if RUNTIME
 void PatchRuntimeScriptCompile();
 const UInt32 ExtractStringPatchAddr = 0x005ADDCA; // ExtractArgs: follow first jz inside loop then first case of following switch: last call in case.
@@ -259,6 +271,8 @@ void Hook_Script_Init()
 	WriteRelJump(0x5949D4, reinterpret_cast<UInt32>(ExpressionEvalRunCommandHook));
 
 	PatchRuntimeScriptCompile();
+
+	PatchMismatchedParenthesisCheck();
 }
 
 #else // CS-stuff
@@ -312,7 +326,7 @@ void PatchEndOfLineCheck(bool bDisableCheck)
 		SafeWrite8(kEndOfLineCheckPatchAddr, 0x73); // conditional jnb (short)
 }
 
-#else
+#elif RUNTIME
 
 void PatchEndOfLineCheck(bool bDisableCheck)
 {
@@ -965,6 +979,8 @@ void Hook_Compiler_Init()
 	WriteRelJump(kExpressionParserBufferOverflowHookAddr_2, (UInt32)&ExpressionParserBufferOverflowHook_2);
 
 	CompilerOverride::InitHooks();
+
+	PatchMismatchedParenthesisCheck();
 }
 
 #else // run-time
