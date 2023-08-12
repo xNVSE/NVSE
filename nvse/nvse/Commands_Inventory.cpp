@@ -2657,23 +2657,6 @@ bool Cmd_GetAmmoCasing_Execute(COMMAND_ARGS)
 	}
 	return true;
 }
-bool Cmd_SetAmmoCasing_Execute(COMMAND_ARGS)
-{
-	TESForm* casingForm;
-	TESForm* ammoForm = NULL;
-	ExtractArgsEx(EXTRACT_ARGS_EX, &casingForm, &ammoForm);
-	if (!ammoForm) {
-		if (!thisObj) return true;
-		ammoForm = thisObj->baseForm;
-	}
-
-	TESAmmo* pAmmo = DYNAMIC_CAST(ammoForm, TESForm, TESAmmo);
-	if (pAmmo && pAmmo->casing) {
-		if (casingForm && IS_ID(casingForm, TESObjectMISC))
-			pAmmo->casing = static_cast<TESObjectMISC*>(casingForm);
-	}
-	return true;
-}
 
 bool Cmd_GetPlayerCurrentAmmoRounds_Execute(COMMAND_ARGS)
 {
