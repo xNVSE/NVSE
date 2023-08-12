@@ -163,7 +163,9 @@ DEFINE_SET_INV_INT(SetEquipmentBipedMask, SetEBM, sets the flags used by the bip
 // Ammo functions
 DEFINE_GET_INV_COND(GetAmmoSpeed, , returns the speed of the specified ammo.);
 DEFINE_GET_INV_COND(GetAmmoConsumedPercent, , returns the percentage of ammo consumed for the specified ammo.);
+DEFINE_CMD(SetAmmoConsumedPercent, "", false, kParams_OneFloat_OneOptionalObjectID);
 DEFINE_GET_INV(GetAmmoCasing, , returns the casing of the specified ammo);
+DEFINE_CMD(SetAmmoCasing, "", false, kParams_OneObjectID_OneOptionalObjectID);
 
 DEFINE_COMMAND(GetPlayerCurrentAmmoRounds, returns the current number of rounds in the clip of the player, 0, 0, NULL);
 DEFINE_COMMAND(SetPlayerCurrentAmmoRounds, sets the current number of rounds in the clip of the player, 0, 1, kParams_OneInt);

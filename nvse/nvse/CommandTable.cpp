@@ -1872,6 +1872,8 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(SetStringIniSetting); // fixed version
 	ADD_CMD(GetHeadingAngleX);
 	ADD_CMD(GetWeaponCanUseAmmo);
+	ADD_CMD(SetAmmoConsumedPercent);
+	ADD_CMD(SetAmmoCasing);
 }
 
 namespace PluginAPI

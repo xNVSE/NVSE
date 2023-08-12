@@ -2623,6 +2623,23 @@ bool Cmd_GetAmmoConsumedPercent_Eval(COMMAND_ARGS_EVAL)
 	return true;
 }
 
+bool Cmd_SetAmmoConsumedPercent_Execute(COMMAND_ARGS)
+{
+	float fNewPerc;
+	TESForm* form = NULL;
+	ExtractArgsEx(EXTRACT_ARGS_EX, &fNewPerc, &form);
+	if (!form) {
+		if (!thisObj) return true;
+		form = thisObj->baseForm;
+	}
+
+	TESAmmo* pAmmo = DYNAMIC_CAST(form, TESForm, TESAmmo);
+	if (pAmmo) {
+		pAmmo->ammoPercentConsumed = fNewPerc;
+	}
+	return true;
+}
+
 bool Cmd_GetAmmoCasing_Execute(COMMAND_ARGS)
 {
 	*result = 0;
@@ -2637,6 +2654,23 @@ bool Cmd_GetAmmoCasing_Execute(COMMAND_ARGS)
 	TESAmmo* pAmmo = DYNAMIC_CAST(form, TESForm, TESAmmo);
 	if (pAmmo && pAmmo->casing) {
 		*refResult = pAmmo->casing->refID;
+	}
+	return true;
+}
+bool Cmd_SetAmmoCasing_Execute(COMMAND_ARGS)
+{
+	TESForm* casingForm;
+	TESForm* ammoForm = NULL;
+	ExtractArgsEx(EXTRACT_ARGS_EX, &casingForm, &ammoForm);
+	if (!ammoForm) {
+		if (!thisObj) return true;
+		ammoForm = thisObj->baseForm;
+	}
+
+	TESAmmo* pAmmo = DYNAMIC_CAST(ammoForm, TESForm, TESAmmo);
+	if (pAmmo && pAmmo->casing) {
+		if (casingForm && IS_ID(casingForm, TESObjectMISC))
+			pAmmo->casing = static_cast<TESObjectMISC*>(casingForm);
 	}
 	return true;
 }
