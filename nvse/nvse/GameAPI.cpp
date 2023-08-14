@@ -784,10 +784,10 @@ static TLSData *GetTLSData()
 __declspec(naked) bool IsConsoleMode()
 {
 	__asm {
-		mov		al, byte ptr ds:[0x11DEA2E]
+		mov		al, byte ptr ds:[0x11DEA2E] // g_consoleOpen
 		test	al, al
 		jz		done
-		mov		eax, dword ptr ds:[0x126FD98]
+		mov		eax, dword ptr ds:[0x126FD98] // TlsIndex
 		mov		edx, fs:[0x2C]
 		mov		eax, [edx+eax*4]
 		test	eax, eax

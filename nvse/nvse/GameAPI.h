@@ -50,7 +50,10 @@ extern const _ExtractArgs ExtractArgs;
 typedef TESForm *(*_CreateFormInstance)(UInt8 type);
 extern const _CreateFormInstance CreateFormInstance;
 
+// Checks TLS value that is set to true and false when ConsoleManager executes a function 
+// Meaning: only use this to check if a function is being executed from console, NOT if console is generally open. 
 bool IsConsoleMode();
+
 bool GetConsoleEcho();
 void SetConsoleEcho(bool doEcho);
 const char *GetFullName(TESForm *baseForm);
@@ -372,6 +375,10 @@ public:
 	char COFileName[260];				 // 810
 
 	static ConsoleManager *GetSingleton(void);
+	bool IsConsoleOpen()
+	{
+		return ThisStdCall<bool>(0x4A4020, this);
+	}
 
 	static char *GetConsoleOutputFilename(void);
 	static bool HasConsoleOutputFilename(void);

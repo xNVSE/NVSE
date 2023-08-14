@@ -1972,6 +1972,7 @@ bool Cmd_CreateFormList_Execute(COMMAND_ARGS)
 
 // Copied code from here: https://forums.nexusmods.com/index.php?/topic/1715964-getheadingangle-equivalent-for-x-axis/
 // (Basic pythagorian theorem being applied)
+// TODO: If passing player as thisObj, use the camera pos instead for more accurate results (?)
 bool Cmd_GetHeadingAngleX_Execute(COMMAND_ARGS)
 {
 	*result = 0;

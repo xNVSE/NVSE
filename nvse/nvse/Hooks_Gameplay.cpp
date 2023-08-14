@@ -33,6 +33,9 @@ static void HandleMainLoopHook(void);
 static const UInt32 kMainLoopHookPatchAddr	= 0x0086B386;	// 7th call BEFORE first call to Sleep in oldWinMain	// 006EEC15 looks best for FO3
 static const UInt32 kMainLoopHookRetnAddr	= 0x0086B38B;
 
+static constexpr UInt32 kConsoleOpenGlobalAddr = 0x11DEA2E;
+static constexpr UInt32 kIsInPauseFadeGlobalAddr = 0x11DEA2D;
+
 __declspec(naked) void MainLoopHook()
 {
 	__asm
@@ -63,7 +66,10 @@ float g_gameSecondsPassed = 0;
 
 bool IsGamePaused()
 {
-	return IsConsoleMode() || *(Menu**)0x11DAAC0; // g_startMenu (credits to Stewie)
+	bool isMainOrPauseMenuOpen = *(Menu**)0x11DAAC0; // g_startMenu, credits to lStewieAl
+	auto* console = ConsoleManager::GetSingleton();
+
+	return isMainOrPauseMenuOpen|| console->IsConsoleOpen();
 }
 
 // xNVSE 6.1
@@ -81,7 +87,9 @@ void HandleDelayedCall(float timeDelta, bool isMenuMode)
 		if (!iter->ShouldRun(isMenuMode, isGamePaused))
 		{
 			iter->time += timeDelta;
+			// intentional fallthrough in case the delay was 0
 		}
+
 		if (g_gameSecondsPassed >= iter->time)
 		{
 			ArrayElementArgFunctionCaller caller(iter->script, iter->args, iter->thisObj);
@@ -110,7 +118,7 @@ void HandleCallAfterFramesScripts(bool isMenuMode)
 		if (!iter->ShouldRun(isMenuMode, isGamePaused))
 		{
 			++iter;
-			continue;
+			continue; // ignore the possibility of callback setup to wait 0 frames (just use regular Call)
 		}
 
 		if (--framesLeft <= 0)
@@ -216,7 +224,9 @@ void HandleCallForScripts(float timeDelta, bool isMenuMode)
 		if (!iter->ShouldRun(isMenuMode, isGamePaused))
 		{
 			iter->time += timeDelta;
+			// intentional fallthrough in case the delay was 0
 		}
+
 		if (g_gameSecondsPassed < iter->time)
 		{
 			ArrayElementArgFunctionCaller caller(iter->script, iter->args, iter->thisObj);
