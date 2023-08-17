@@ -366,6 +366,31 @@ static ParamInfo kParams_OneIntOneForm[2] =
 	{	"form",		kParamType_AnyForm,	0	},
 };
 
+static ParamInfo kParams_EightOptionalInts[8] =
+{
+	{	"int",		kParamType_Integer, 1	},
+	{	"int",		kParamType_Integer, 1	},
+	{	"int",		kParamType_Integer, 1	},
+	{	"int",		kParamType_Integer, 1	},
+	{	"int",		kParamType_Integer, 1	},
+	{	"int",		kParamType_Integer, 1	},
+	{	"int",		kParamType_Integer, 1	},
+	{	"int",		kParamType_Integer, 1	},
+};
+
+static ParamInfo kParams_NineOptionalInts[9] =
+{
+	{	"int",		kParamType_Integer, 1	},
+	{	"int",		kParamType_Integer, 1	},
+	{	"int",		kParamType_Integer, 1	},
+	{	"int",		kParamType_Integer, 1	},
+	{	"int",		kParamType_Integer, 1	},
+	{	"int",		kParamType_Integer, 1	},
+	{	"int",		kParamType_Integer, 1	},
+	{	"int",		kParamType_Integer, 1	},
+	{	"int",		kParamType_Integer, 1	},
+};
+
 static ParamInfo kParams_OneIntOneOptionalForm[2] =
 {
 	{	"index",	kParamType_Integer, 0	}, 

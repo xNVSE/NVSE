@@ -21,3 +21,57 @@ UInt32 GetPCLastDroppedItemRef();
 TESForm* GetPCLastDroppedItem();		// returns the base object
 
 void SetRetainExtraOwnership(bool bRetain);
+
+namespace DisablePlayerControlsAlt
+{
+	using ModID = UInt8;
+	using flags_t = UInt16;
+	extern std::map<ModID, flags_t> g_disabledFlagsPerMod;
+
+	enum DisabledControlsFlags : flags_t
+	{
+		//== Vanilla flags
+		// Order is different than the order which DisablePlayerControls receives its args
+		kFlag_Movement = 1 << 0,
+		kFlag_Looking = 1 << 1,
+		kFlag_Pipboy = 1 << 2,
+		kFlag_Fighting = 1 << 3,
+		kFlag_POV = 1 << 4,
+		kFlag_RolloverText = 1 << 5,
+		kFlag_Sneaking = 1 << 6,
+		kVanillaFlags = kFlag_Movement | kFlag_Looking | kFlag_Pipboy | kFlag_Fighting | kFlag_POV | kFlag_RolloverText | kFlag_Sneaking,
+		//== New custom flags
+		kFlag_Attacking = 1 << 7,
+
+		kAllFlags = kVanillaFlags | kFlag_Attacking
+	};
+	extern flags_t g_disabledControls;
+
+	inline flags_t CondenseFlagArgs(UInt32 movementFlag, UInt32 pipboyFlag, UInt32 fightingFlag, UInt32 POVFlag,
+		UInt32 lookingFlag, UInt32 rolloverTextFlag, UInt32 sneakingFlag, UInt32 attackingFlag);
+
+	template <bool IsEnable>
+	std::pair<bool, flags_t> ExtractArgsForEnableOrDisablePlayerControls(COMMAND_ARGS)
+	{
+		UInt32 movementFlag = 1, pipboyFlag = 1, fightingFlag = 1, POVFlag = 1,
+			lookingFlag = IsEnable ? 1 : 0, rolloverTextFlag = IsEnable ? 1 : 0, sneakingFlag = IsEnable ? 1 : 0,
+			// new args
+			attackingFlag = IsEnable ? 1 : 0;
+
+		if (!ExtractArgsEx(EXTRACT_ARGS_EX, &movementFlag, &pipboyFlag, &fightingFlag, &POVFlag,
+			&lookingFlag, &rolloverTextFlag, &sneakingFlag, &attackingFlag))
+		{
+			return std::pair<bool, flags_t>(false, 0);
+		}
+
+		auto newFlagsForMod = CondenseFlagArgs(movementFlag, pipboyFlag, fightingFlag, POVFlag, 
+			lookingFlag, rolloverTextFlag, sneakingFlag, attackingFlag);
+
+		return std::pair<bool, flags_t>(true, newFlagsForMod);
+	}
+
+	void ApplyImmediateDisablingEffects(flags_t changedFlagsForMod);
+	void ApplyImmediateEnablingEffects(flags_t changedFlagsForMod);
+
+	void ResetOnLoad();
+}

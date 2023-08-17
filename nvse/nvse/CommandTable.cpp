@@ -1873,6 +1873,11 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(GetHeadingAngleX);
 	ADD_CMD(GetWeaponCanUseAmmo);
 	ADD_CMD(SetAmmoConsumedPercent);
+
+	// 6.3 beta 02
+	ADD_CMD(DisablePlayerControlsAlt);
+	ADD_CMD(EnablePlayerControlsAlt);
+	ADD_CMD(GetPlayerControlsDisabledAlt);
 }
 
 namespace PluginAPI

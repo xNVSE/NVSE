@@ -27,6 +27,7 @@
 
 #include "GameData.h"
 #include "UnitTests.h"
+#include "GameUI.h"
 
 static void HandleMainLoopHook(void);
 
@@ -282,6 +283,126 @@ void HandleCallWhilePerSecondsScripts(float timeDelta, bool isMenuMode)
 			}
 		}
 		++iter;
+	}
+}
+
+namespace DisablePlayerControlsAlt
+{
+	std::map<ModID, flags_t> g_disabledFlagsPerMod;
+	flags_t g_disabledControls = 0;
+
+	flags_t CondenseFlagArgs(UInt32 movementFlag, UInt32 pipboyFlag, UInt32 fightingFlag, 
+		UInt32 POVFlag, UInt32 lookingFlag, UInt32 rolloverTextFlag, UInt32 sneakingFlag, 
+		UInt32 attackingFlag)
+	{
+		// Copy the order that flags are arranged from vanilla (doesn't 100% match the order of args passed to the func).
+		return static_cast<flags_t>(
+			  (movementFlag << 0)
+			| (lookingFlag << 1)
+			| (pipboyFlag << 2)
+			| (fightingFlag << 3)
+			| (POVFlag << 4)
+			| (rolloverTextFlag << 5)
+			| (sneakingFlag << 6)
+			| (attackingFlag << 7)
+			);
+	}
+
+	void ApplyImmediateDisablingEffects(flags_t changedFlagsForMod)
+	{
+		auto* player = PlayerCharacter::GetSingleton();
+
+		// Check if the changed (re-enabled controls) flags are actually changing current flags.
+		flags_t realFlagChanges = changedFlagsForMod & (g_disabledControls | player->disabledControlFlags);
+		if (!realFlagChanges)
+			return;
+
+		// Copy code at 0x95F590 to force out of sneak etc
+		if ((realFlagChanges & kFlag_Movement) != 0)
+		{
+			HUDMainMenu::UpdateVisibilityState(HUDMainMenu::kHUDState_PlayerDisabledControls);
+		}
+		else
+		{
+			// important for updating RolloverText and such at 0x771972
+			HUDMainMenu::UpdateVisibilityState(HUDMainMenu::kHUDState_RECALCULATE);
+		}
+
+		if ((realFlagChanges & kFlag_Fighting) != 0)
+			player->SetWantsWeaponOut(0);
+
+		if ((realFlagChanges & kFlag_POV) != 0)
+		{
+			player->bThirdPerson = false;
+			if (player->playerNode)
+				player->UpdateCamera(0, 0);
+			else
+			{
+				float& g_fThirdPersonZoomHeight = *reinterpret_cast<float*>(0x11E0768);
+				g_fThirdPersonZoomHeight = 0.0;
+			}
+		}
+
+		if ((realFlagChanges & kFlag_Sneaking) != 0)
+		{
+			// force out of sneak by removing sneak movement flag
+			ThisStdCall(0x9EA3E0, PlayerCharacter::GetSingleton()->actorMover, (player->GetMovementFlags() & ~0x400));
+		}
+	}
+
+	void ApplyImmediateEnablingEffects(flags_t changedFlagsForMod)
+	{
+		// changedFlagsForMod = the disabled flags that will be removed, aka controls being re-enabled
+		flags_t realFlagChanges = changedFlagsForMod & ~g_disabledControls;
+		realFlagChanges &= ~PlayerCharacter::GetSingleton()->disabledControlFlags;
+		if ((realFlagChanges & kFlag_POV) != 0)
+			HUDMainMenu::UpdateVisibilityState(HUDMainMenu::kHUDState_RECALCULATE);
+	}
+
+	void ResetOnLoad()
+	{
+		g_disabledFlagsPerMod.clear();
+		g_disabledControls = 0;
+		ApplyImmediateEnablingEffects(kAllFlags);
+	}
+
+	__HOOK MaybePreventPlayerAttacking()
+	{
+		static const UInt32 NormalRetnAddr = 0x893A6F,
+			PreventAttackingAddr = 0x8948ED;
+		_asm
+		{
+			movzx	eax, g_disabledControls
+			AND		eax, kFlag_Attacking
+			test	eax, eax
+			jz		DoRegular
+			// prevent activation
+			jmp		PreventAttackingAddr
+		DoRegular :
+			mov		[ebp - 0xB4], ecx
+			jmp		NormalRetnAddr
+		}
+	}
+
+	// Logical OR the vanilla flags with ours
+	__HOOK ModifyPlayerControlFlags()
+	{
+		static const UInt32 ContinueFuncAddr = 0x5A0401;
+		_asm
+		{
+			mov     eax, [ebp - 4]
+			movzx   ecx, byte ptr [eax + 0x680]
+			movzx   edx, g_disabledControls
+			AND		edx, kVanillaFlags // prevent our custom flags from being added to vanilla pcControlFlags here.
+			OR		ecx, edx
+			jmp		ContinueFuncAddr
+		}
+	}
+
+	void WriteHooks()
+	{
+		WriteRelJump(0x893A69, (UInt32)MaybePreventPlayerAttacking);
+		WriteRelJump(0x5A03F7, (UInt32)ModifyPlayerControlFlags);
 	}
 }
 
@@ -575,6 +696,8 @@ void Hook_Gameplay_Init(void)
 	if (GetNVSEConfigOption_UInt32("DEBUG", "Print", &print) && print)
 		Hook_DebugPrint();
 #endif
+
+	DisablePlayerControlsAlt::WriteHooks();
 }
 
 void SetRetainExtraOwnership(bool bRetain)

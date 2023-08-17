@@ -352,6 +352,9 @@ public:
 
 	bool FormMatches(TESForm* toMatch) const;
 
+	// Credits to Jazzisparis
+	UInt8 GetOverridingModIdx() const;
+
 	MEMBER_FN_PREFIX(TESForm);
 #if RUNTIME
 	DEFINE_MEMBER_FN(MarkAsTemporary, void, 0x00484490);	// probably a member of TESForm

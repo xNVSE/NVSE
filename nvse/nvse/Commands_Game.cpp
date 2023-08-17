@@ -372,3 +372,112 @@ bool Cmd_AddSpellNS_Execute(COMMAND_ARGS)
 	return RunCommand_NS(PASS_COMMAND_ARGS, Cmd_AddSpell_Execute);
 }
 
+bool Cmd_DisablePlayerControlsAlt_Execute(COMMAND_ARGS)
+{
+	using namespace DisablePlayerControlsAlt;
+
+	auto [success, flagsToAddForMod] = ExtractArgsForEnableOrDisablePlayerControls<false>(PASS_COMMAND_ARGS);
+	if (!success || !flagsToAddForMod)
+		return true;
+
+	ModID modId = scriptObj->GetOverridingModIdx();
+
+	if (auto iter = g_disabledFlagsPerMod.find(modId);
+		iter != g_disabledFlagsPerMod.end())
+	{
+		auto flagsModHad = iter->second;
+		flags_t realFlagChanges = flagsToAddForMod & ~flagsModHad;
+		ApplyImmediateDisablingEffects(realFlagChanges);
+
+		// update disabled flags (might just be re-applying the same disabled flags)
+		iter->second |= flagsToAddForMod;
+	}
+	else
+	{
+		ApplyImmediateDisablingEffects(flagsToAddForMod);
+		g_disabledFlagsPerMod.emplace(modId, flagsToAddForMod);
+	}
+
+	g_disabledControls |= flagsToAddForMod;
+
+	return true;
+}
+
+bool Cmd_EnablePlayerControlsAlt_Execute(COMMAND_ARGS)
+{
+	using namespace DisablePlayerControlsAlt;
+
+	auto [success, flagsToRemoveForMod] = ExtractArgsForEnableOrDisablePlayerControls<true>(PASS_COMMAND_ARGS);
+	if (!success || !flagsToRemoveForMod)
+		return true;
+
+	ModID modId = scriptObj->GetOverridingModIdx();
+
+	if (auto foundIter = g_disabledFlagsPerMod.find(modId);
+		foundIter != g_disabledFlagsPerMod.end())
+	{
+		auto flagsModHad = foundIter->second;
+		ApplyImmediateEnablingEffects(flagsModHad);
+
+		// update disabled flags (might just be re-applying the same disabled flags)
+		foundIter->second &= ~flagsToRemoveForMod;
+		if (!foundIter->second)
+			g_disabledFlagsPerMod.erase(foundIter);
+
+		g_disabledControls = 0;
+
+		// Re-form g_disabledControls based on all the chached per-mod disabled flags 
+		for (auto const& loopIter : g_disabledFlagsPerMod)
+		{
+			g_disabledControls |= loopIter.second;
+		}
+	}
+	return true;
+}
+
+bool Cmd_GetPlayerControlsDisabledAlt_Execute(COMMAND_ARGS)
+{
+	using namespace DisablePlayerControlsAlt;
+
+	*result = 0;
+
+	// If 0, check if it's disabled by calling mod
+	// If 1, ... by any mod (DisablePlayerControls*ALT* only)
+	// If 2, ... by any mod OR disabled by vanilla DisablePlayerControls
+	UInt32 disabledHow = 0;
+
+	UInt32 movementFlag = 1, pipboyFlag = 1, fightingFlag = 1, POVFlag = 1,
+		lookingFlag = 1, rolloverTextFlag = 1, sneakingFlag = 1,
+		// new args
+		attackingFlag = 1;
+
+	if (!ExtractArgsEx(EXTRACT_ARGS_EX, &disabledHow, &movementFlag, &pipboyFlag, &fightingFlag, &POVFlag,
+		&lookingFlag, &rolloverTextFlag, &sneakingFlag, &attackingFlag))
+	{
+		return true;
+	}
+
+	auto flagsToCheck = CondenseFlagArgs(movementFlag, pipboyFlag, fightingFlag, POVFlag,
+		lookingFlag, rolloverTextFlag, sneakingFlag, attackingFlag);
+
+	ModID modId = scriptObj->GetOverridingModIdx();
+
+	// Check if any of the specified player controls are currently disabled by calling mod
+	if (disabledHow == 0)
+	{
+		if (auto foundIter = g_disabledFlagsPerMod.find(modId);
+			foundIter != g_disabledFlagsPerMod.end())
+		{
+			auto flagsModHas = foundIter->second;
+			*result = (flagsModHas & flagsToCheck) != 0;
+		}
+	}
+	else
+	{
+		*result = (g_disabledControls & flagsToCheck) != 0;
+		if (disabledHow == 2)
+			*result = *result || (PlayerCharacter::GetSingleton()->disabledControlFlags & flagsToCheck) != 0;
+	}
+
+	return true;
+}

@@ -175,6 +175,7 @@ static void NewGameHook(void)
 	s_gameLoadedInformedScripts.Clear();
 	ClearDelayedCalls();
 	EventManager::ClearFlushOnLoadEventHandlers();
+	DisablePlayerControlsAlt::ResetOnLoad();
 
 	Serialization::HandleNewGame();
 }

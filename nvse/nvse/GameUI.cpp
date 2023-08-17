@@ -119,3 +119,8 @@ void RaceSexMenu::UpdatePlayerHead(void)
 {
 	ThisStdCall(s_RaceSexMenu__UpdatePlayerHead, this);
 }
+
+void __cdecl HUDMainMenu::UpdateVisibilityState(signed int hudState)
+{
+	return CdeclCall(0x771700, hudState);
+}

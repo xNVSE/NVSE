@@ -28,3 +28,7 @@ DEFINE_CMD_ALT(OutputLocalMapPicturesOverride, OLMPOR, "identical to the OutputL
 DEFINE_CMD_ALT(SetOutputLocalMapPicturesGrids, SetOLMPGrids, sets the value with which to override uGridsToLoad when generating local maps with OLMPOR, 0, 1, kParams_OneInt);
 
 DEFINE_COMMAND(AddSpellNS, identical to AddSpell but without the UI message, 0, 1, kParams_OneSpellItem);
+
+DEFINE_CMD(DisablePlayerControlsAlt, "Per-mod version with added args", false, kParams_EightOptionalInts);
+DEFINE_CMD(EnablePlayerControlsAlt, "Per-mod version with added args", false, kParams_EightOptionalInts);
+DEFINE_CMD(GetPlayerControlsDisabledAlt, "", false, kParams_NineOptionalInts);

@@ -1,4 +1,5 @@
 #include "GameForms.h"
+#include "GameForms.h"
 
 #include <unordered_set>
 
@@ -430,6 +431,12 @@ bool TESForm::FormMatches(TESForm* toMatch) const
 		}
 	}
 	return false;
+}
+
+UInt8 TESForm::GetOverridingModIdx() const
+{
+	ModInfo* info = mods.GetLastItem();
+	return info ? info->modIndex : 0xFF;
 }
 
 const char *TESPackage::TargetData::StringForTargetCode(UInt8 targetCode)

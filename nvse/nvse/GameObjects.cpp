@@ -411,3 +411,13 @@ __declspec(naked) float __vectorcall TESObjectREFR::GetDistance(TESObjectREFR* t
 		retn
 	}
 }
+
+void Actor::SetWantsWeaponOut(bool wantsWeaponOut)
+{
+	ThisStdCall(0x8A6840, this, (UInt8)wantsWeaponOut);
+}
+
+void PlayerCharacter::UpdateCamera(bool isCalledFromFunc21, bool _zero_skipUpdateLOD)
+{
+	ThisStdCall(0x94AE40, this, (UInt8)isCalledFromFunc21, (UInt8)_zero_skipUpdateLOD);
+}

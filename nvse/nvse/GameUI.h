@@ -168,3 +168,41 @@ public:
 	void UpdatePlayerHead(void);
 };
 
+// 278, credits to lStewieAl
+class HUDMainMenu : public Menu			// 1004
+{
+public:
+	HUDMainMenu();
+	~HUDMainMenu();
+
+	enum HUDStates
+	{
+		kHUDState_RECALCULATE = 0x1,
+		kHUDState_Normal = 0x2,
+		kHUDState_PipBoy = 0x3,
+		kHUDState_Pause = 0x4,
+		kHUDState_Loading = 0x5,
+		kHUDState_Dialog = 0x6,
+		kHUDState_VATSMenu = 0x7,
+		kHUDState_VATSPlayback = 0x8,
+		kHUDState_Container = 0x9,
+		kHUDState_BeginSit = 0xA,
+		kHUDState_SleepWait = 0xB,
+		kHUDState_PlayerDisabledControls = 0xC,
+		kHUDState_D = 0xD,
+		kHUDState_LevelUpMenu = 0xE,
+		kHUDState_Hacking = 0xF,
+		kHUDState_Computers = 0x10,
+		kHUDState_Message = 0x11,
+		kHUDState_SpecialBook = 0x12,
+		kHUDState_LoveTester = 0x13,
+		kHUDState_VanityCam = 0x14,
+		kHUDState_15 = 0x15,
+		kHUDState_Aiming = 0x16,
+		kHUDState_AimingScope = 0x17,
+		kHUDState_IntroMovie = 0x18,
+		kHUDState_Gambling = 0x19,
+	};
+
+	static void __cdecl UpdateVisibilityState(signed int hudState);
+};

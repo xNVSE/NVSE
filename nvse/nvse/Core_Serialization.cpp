@@ -120,6 +120,7 @@ void Core_PreLoadCallback(void * reserved)
 
 	ClearDelayedCalls();
 	EventManager::ClearFlushOnLoadEventHandlers();
+	DisablePlayerControlsAlt::ResetOnLoad();
 	
 	g_ArrayMap.Reset();
 	g_StringMap.Reset();

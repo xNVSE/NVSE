@@ -527,6 +527,9 @@ public:
 
 	// Copied from JIP.
 	TESObjectWEAP* GetEquippedWeapon() const;
+
+	// Credits to lStewieAl
+	void SetWantsWeaponOut(bool wantsWeaponOut);
 };
 
 STATIC_ASSERT(offsetof(Actor, magicCaster) == 0x088);
@@ -643,6 +646,8 @@ public:
 	bool SetSkeletonPath_v1c(const char* newPath);	// Less worse version as used by some modders
 	static void UpdateHead(void);
 	QuestObjectiveTargets* GetCurrentQuestObjectiveTargets();
+
+	void UpdateCamera(bool isCalledFromFunc21, bool _zero_skipUpdateLOD);
 };
 
 extern PlayerCharacter** g_thePlayer;
