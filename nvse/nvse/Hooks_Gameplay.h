@@ -47,7 +47,7 @@ namespace DisablePlayerControlsAlt
 	};
 	extern flags_t g_disabledControls;
 
-	inline flags_t CondenseFlagArgs(UInt32 movementFlag, UInt32 pipboyFlag, UInt32 fightingFlag, UInt32 POVFlag,
+	flags_t CondenseFlagArgs(UInt32 movementFlag, UInt32 pipboyFlag, UInt32 fightingFlag, UInt32 POVFlag,
 		UInt32 lookingFlag, UInt32 rolloverTextFlag, UInt32 sneakingFlag, UInt32 attackingFlag);
 
 	template <bool IsEnable>

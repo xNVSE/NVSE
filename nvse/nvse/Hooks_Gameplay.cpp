@@ -366,24 +366,6 @@ namespace DisablePlayerControlsAlt
 		ApplyImmediateEnablingEffects(kAllFlags);
 	}
 
-	__HOOK MaybePreventPlayerAttacking()
-	{
-		static const UInt32 NormalRetnAddr = 0x893A6F,
-			PreventAttackingAddr = 0x8948ED;
-		_asm
-		{
-			movzx	eax, g_disabledControls
-			AND		eax, kFlag_Attacking
-			test	eax, eax
-			jz		DoRegular
-			// prevent activation
-			jmp		PreventAttackingAddr
-		DoRegular :
-			mov		[ebp - 0xB4], ecx
-			jmp		NormalRetnAddr
-		}
-	}
-
 	// Logical OR the vanilla flags with ours
 	__HOOK ModifyPlayerControlFlags()
 	{
@@ -399,10 +381,29 @@ namespace DisablePlayerControlsAlt
 		}
 	}
 
+	__HOOK MaybePreventPlayerAttacking()
+	{
+		static const UInt32 NormalRetnAddr = 0x893A6F,
+			PreventAttackingAddr = 0x8948ED;
+		_asm
+		{
+			movzx	eax, g_disabledControls
+			AND		eax, kFlag_Attacking
+			test	eax, eax
+			jz		DoRegular
+			// prevent activation
+			XOR		al, al  // al = 0
+			jmp		PreventAttackingAddr
+		DoRegular :
+			mov		[ebp - 0xB4], ecx
+			jmp		NormalRetnAddr
+		}
+	}
+
 	void WriteHooks()
 	{
-		WriteRelJump(0x893A69, (UInt32)MaybePreventPlayerAttacking);
 		WriteRelJump(0x5A03F7, (UInt32)ModifyPlayerControlFlags);
+		WriteRelJump(0x893A69, (UInt32)MaybePreventPlayerAttacking);
 	}
 }
 
