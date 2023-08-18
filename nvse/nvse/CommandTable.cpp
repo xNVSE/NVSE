@@ -1878,6 +1878,9 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(DisablePlayerControlsAlt);
 	ADD_CMD(EnablePlayerControlsAlt);
 	ADD_CMD(GetPlayerControlsDisabledAlt);
+	ADD_CMD(DisablePlayerControlsAltEx);
+	ADD_CMD(EnablePlayerControlsAltEx);
+	ADD_CMD(GetPlayerControlsDisabledAltEx);
 }
 
 namespace PluginAPI

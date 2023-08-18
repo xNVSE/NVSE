@@ -76,3 +76,8 @@ void PatchMemoryNop(ULONG_PTR Address, SIZE_T Size)
 
 	FlushInstructionCache(GetCurrentProcess(), (LPVOID)Address, Size);
 }
+
+UInt32 GetRelJumpAddr(UInt32 jumpSrc)
+{
+	return *(UInt32*)(jumpSrc + 1) + jumpSrc + 5;
+}

@@ -28,3 +28,24 @@ void WriteRelJump(UInt32 jumpSrc, T jumpTgt)
 {
 	WriteRelJump(jumpSrc, (UInt32)jumpTgt);
 }
+
+// From lStewieAl
+// Returns the address of the jump/called function, assuming there is one.
+UInt32 GetRelJumpAddr(UInt32 jumpSrc);
+
+// Stores the function-to-call before overwriting it, to allow calling the overwritten function after our hook is over.
+class CallDetour
+{
+	UInt32 overwritten_addr = 0;
+public:
+	void WriteRelCall(UInt32 jumpSrc, UInt32 jumpTgt)
+	{
+		if (*reinterpret_cast<UInt8*>(jumpSrc) != 0xE8) {
+			_ERROR("Cannot write detour; jumpSrc is not a function call.");
+			return;
+		}
+		overwritten_addr = GetRelJumpAddr(jumpSrc);
+		::WriteRelCall(jumpSrc, jumpTgt);
+	}
+	[[nodiscard]] UInt32 GetOverwrittenAddr() const { return overwritten_addr; }
+};

@@ -18,6 +18,12 @@ static ParamInfo kParams_OneOptionalInt[1] =
 	{	"int", kParamType_Integer, 1 }, 
 };
 
+static ParamInfo kParams_TwoOptionalInts[2] =
+{
+	{	"int", kParamType_Integer, 1 },
+	{	"int", kParamType_Integer, 1 },
+};
+
 static ParamInfo kParams_OneInt_OneOptionalInt[2] =
 {
 	{	"int", kParamType_Integer, 0 },
@@ -366,28 +372,34 @@ static ParamInfo kParams_OneIntOneForm[2] =
 	{	"form",		kParamType_AnyForm,	0	},
 };
 
-static ParamInfo kParams_EightOptionalInts[8] =
+static ParamInfo kParams_ElevenOptionalInts[11] =
 {
+		{	"int",		kParamType_Integer, 1	},
 	{	"int",		kParamType_Integer, 1	},
+		{	"int",		kParamType_Integer, 1	},
 	{	"int",		kParamType_Integer, 1	},
+		{	"int",		kParamType_Integer, 1	},
 	{	"int",		kParamType_Integer, 1	},
+		{	"int",		kParamType_Integer, 1	},
 	{	"int",		kParamType_Integer, 1	},
+		{	"int",		kParamType_Integer, 1	},
 	{	"int",		kParamType_Integer, 1	},
-	{	"int",		kParamType_Integer, 1	},
-	{	"int",		kParamType_Integer, 1	},
-	{	"int",		kParamType_Integer, 1	},
+		{	"int",		kParamType_Integer, 1	},
 };
 
-static ParamInfo kParams_NineOptionalInts[9] =
+static ParamInfo kParams_TwelveOptionalInts[12] =
 {
+		{	"int",		kParamType_Integer, 1	},
 	{	"int",		kParamType_Integer, 1	},
+		{	"int",		kParamType_Integer, 1	},
 	{	"int",		kParamType_Integer, 1	},
+		{	"int",		kParamType_Integer, 1	},
 	{	"int",		kParamType_Integer, 1	},
+		{	"int",		kParamType_Integer, 1	},
 	{	"int",		kParamType_Integer, 1	},
+		{	"int",		kParamType_Integer, 1	},
 	{	"int",		kParamType_Integer, 1	},
-	{	"int",		kParamType_Integer, 1	},
-	{	"int",		kParamType_Integer, 1	},
-	{	"int",		kParamType_Integer, 1	},
+		{	"int",		kParamType_Integer, 1	},
 	{	"int",		kParamType_Integer, 1	},
 };
 
