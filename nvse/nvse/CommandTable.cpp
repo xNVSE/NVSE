@@ -1595,7 +1595,7 @@ void CommandTable::AddCommandsV4()
 	ADD_CMD_RET(GetRace, kRetnType_Form);
 	ADD_CMD_RET(GetRaceName, kRetnType_String);
 	ImportConsoleCommand("SCOF");
-	ADD_CMD(PickOneOf);
+	ADD_CMD_RET(PickOneOf, kRetnType_Form);
 
 	// 4.2 beta 03 alpha 5
 	ADD_CMD(IsPlayerSwimming);

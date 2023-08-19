@@ -3267,7 +3267,6 @@ bool Cmd_PickOneOf_Execute(COMMAND_ARGS) {
 	UInt32* refResult = (UInt32*)result;
 	*refResult = 0;
 	BGSListForm* pFormList = NULL;
-	tList<TESForm> present;
 	Actor* pActor = NULL;
 	SInt32 count;
 	UInt32 random;
@@ -3277,22 +3276,22 @@ bool Cmd_PickOneOf_Execute(COMMAND_ARGS) {
 	if (!pActor)
 		return true;
 	if (ExtractArgs(EXTRACT_ARGS, &pFormList)) {
-		present.Init();
+		std::vector<TESForm*> present;
 		for (int i = 0; i < pFormList->Count(); i++) {
 			GetItemByRefID(thisObj, pFormList->GetNthForm(i)->refID, &count);
 			if (count > 0)
-				present.AddAt(pFormList->GetNthForm(i), 0);
+				present.push_back(pFormList->GetNthForm(i));
 		}
-		switch (present.Count())
+		switch (present.size())
 		{
 			case 0:
 				break;
 			case 1:
-				*refResult = present.GetNthItem(0)->refID;
+				*refResult = present.at(0)->refID;
 				break;
 			default:
-				random = MersenneTwister::genrand_real2() * (present.Count());
-				*refResult = present.GetNthItem(random)->refID;
+				random = MersenneTwister::genrand_real2() * (present.size());
+				*refResult = present.at(random)->refID;
 		}
 	}
 	return true;
