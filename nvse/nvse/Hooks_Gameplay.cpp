@@ -311,6 +311,7 @@ namespace DisablePlayerControlsAlt
 		auto* player = PlayerCharacter::GetSingleton();
 
 		// Check if the changed (re-enabled controls) flags are actually changing current flags.
+		// Thus, remove the control-disabling bits that are already on.
 		flags_t realFlagChanges = changedFlagsForMod & ~(g_disabledControls | static_cast<flags_t>(player->disabledControlFlags));
 		if (!realFlagChanges)
 			return;
@@ -350,10 +351,15 @@ namespace DisablePlayerControlsAlt
 
 	void ApplyImmediateEnablingEffects(flags_t changedFlagsForMod)
 	{
-		// changedFlagsForMod = the disabled flags that will be removed, aka controls being re-enabled
-		flags_t realFlagChanges = changedFlagsForMod & ~g_disabledControls;
-		realFlagChanges &= ~PlayerCharacter::GetSingleton()->disabledControlFlags;
-		if ((realFlagChanges & kFlag_POV) != 0)
+		// changedFlagsForMod = the control-disabling flags that will be removed, aka controls being re-enabled.
+		// Thus, only keep a control-disabling bit if the bit was on.
+		flags_t realFlagChanges = changedFlagsForMod & g_disabledControls;
+
+		// Vanilla disabled control flags won't be overwritten, so if vanilla still has it disabled it'll stay that way.
+		realFlagChanges &= ~static_cast<flags_t>(PlayerCharacter::GetSingleton()->disabledControlFlags);
+
+		// If re-enabling movement control...
+		if ((realFlagChanges & kFlag_Movement) != 0)
 			HUDMainMenu::UpdateVisibilityState(HUDMainMenu::kHUDState_RECALCULATE);
 	}
 
