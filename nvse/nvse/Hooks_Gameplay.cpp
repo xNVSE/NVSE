@@ -311,7 +311,7 @@ namespace DisablePlayerControlsAlt
 		auto* player = PlayerCharacter::GetSingleton();
 
 		// Check if the changed (re-enabled controls) flags are actually changing current flags.
-		flags_t realFlagChanges = changedFlagsForMod & (g_disabledControls | player->disabledControlFlags);
+		flags_t realFlagChanges = changedFlagsForMod & ~(g_disabledControls | static_cast<flags_t>(player->disabledControlFlags));
 		if (!realFlagChanges)
 			return;
 
