@@ -459,7 +459,7 @@ std::unique_ptr<ScriptToken> Eval_Assign_Form(OperatorType op, ScriptToken *lh, 
 
 std::unique_ptr<ScriptToken> Eval_Assign_Form_Number(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	const auto formID = static_cast<UInt32>(rh->GetNumber());
+	const UInt32 formID = rh->GetFormID();
 	auto const outRefID = reinterpret_cast<UInt64*>(&(lh->GetVar()->data));
 	*outRefID = formID;
 	return ScriptToken::CreateForm(formID);
