@@ -291,9 +291,8 @@ namespace DisablePlayerControlsAlt
 	std::map<ModID, flags_t> g_disabledFlagsPerMod;
 	flags_t g_disabledControls = 0;
 
-	flags_t CondenseFlagArgs(UInt32 movementFlag, UInt32 pipboyFlag, UInt32 fightingFlag, 
-		UInt32 POVFlag, UInt32 lookingFlag, UInt32 rolloverTextFlag, UInt32 sneakingFlag, 
-		UInt32 attackingFlag, UInt32 VATSFlag, UInt32 jumpingFlag, UInt32 aimingFlag)
+	flags_t CondenseVanillaFlagArgs(UInt32 movementFlag, UInt32 pipboyFlag, UInt32 fightingFlag, 
+		UInt32 POVFlag, UInt32 lookingFlag, UInt32 rolloverTextFlag, UInt32 sneakingFlag)
 	{
 		// Copy the order that flags are arranged from vanilla (doesn't 100% match the order of args passed to the func).
 		return static_cast<flags_t>(
@@ -304,10 +303,6 @@ namespace DisablePlayerControlsAlt
 			| (POVFlag << 4)
 			| (rolloverTextFlag << 5)
 			| (sneakingFlag << 6)
-			| (attackingFlag << 7)
-			| (VATSFlag << 8)
-			| (jumpingFlag << 9)
-			| (aimingFlag << 10)
 			);
 	}
 
@@ -406,17 +401,19 @@ namespace DisablePlayerControlsAlt
 	CallDetour g_PreventVATSDetour;
 	signed int __fastcall GetControlState_VATSHook(OSInputGlobals* self, void* edx, int key, int state)
 	{
+		auto defaultResult = ThisStdCall<signed int>(g_PreventVATSDetour.GetOverwrittenAddr(), self, key, state);
 		if ((g_disabledControls & kFlag_EnterVATS) != 0)
 			return 0;
-		return ThisStdCall<signed int>(g_PreventVATSDetour.GetOverwrittenAddr(), self, key, state);
+		return defaultResult;
 	}
 
 	CallDetour g_PreventJumpingDetour;
 	signed int __fastcall GetControlState_JumpingHook(OSInputGlobals* self, void* edx, int key, int state)
 	{
+		auto defaultResult = ThisStdCall<signed int>(g_PreventJumpingDetour.GetOverwrittenAddr(), self, key, state);
 		if ((g_disabledControls & kFlag_Jumping) != 0)
 			return 0;
-		return ThisStdCall<signed int>(g_PreventJumpingDetour.GetOverwrittenAddr(), self, key, state);
+		return defaultResult;
 	}
 
 	// To prevent aiming/blocking, need 2 detours to handle 2 function calls:
@@ -424,17 +421,52 @@ namespace DisablePlayerControlsAlt
 	CallDetour g_PreventAimingOrBlockingDetour_IsPressed;
 	signed int __fastcall GetControlState_Aiming_IsPressedHook(OSInputGlobals* self, void* edx, int key, int state)
 	{
+		auto defaultResult = ThisStdCall<signed int>(g_PreventAimingOrBlockingDetour_IsPressed.GetOverwrittenAddr(), self, key, state);
 		if ((g_disabledControls & kFlag_AimingOrBlocking) != 0)
 			return 0;
-		return ThisStdCall<signed int>(g_PreventAimingOrBlockingDetour_IsPressed.GetOverwrittenAddr(), self, key, state);
+		return defaultResult;
 	}
 
 	CallDetour g_PreventAimingOrBlockingDetour_IsHeld;
 	signed int __fastcall GetControlState_Aiming_IsHeldHook(OSInputGlobals* self, void* edx, int key, int state)
 	{
+		auto defaultResult = ThisStdCall<signed int>(g_PreventAimingOrBlockingDetour_IsHeld.GetOverwrittenAddr(), self, key, state);
 		if ((g_disabledControls & kFlag_AimingOrBlocking) != 0)
 			return 0;
-		return ThisStdCall<signed int>(g_PreventAimingOrBlockingDetour_IsHeld.GetOverwrittenAddr(), self, key, state);
+		return defaultResult;
+	}
+
+	__HOOK MaybePreventRunningForControllers()
+	{
+		static const UInt32 NormalRetnAddr = 0x941708,
+			PreventRunningAddr = 0x941792;
+		_asm
+		{
+			movzx	eax, g_disabledControls
+			AND		eax, kFlag_Running
+			test	eax, eax
+			jz		DoRegular
+			// prevent activation
+			jmp		PreventRunningAddr
+		DoRegular :
+			// go back to the code we jumped from and slightly overwrote
+			mov     edx, [ebp - 0x18]
+			mov     eax, [edx + 0x68]
+			jmp		NormalRetnAddr
+		}
+	}
+
+	CallDetour g_PreventRunningForNonController;
+	double __fastcall MaybePreventRunningForNonController(Actor* self, void* edx)
+	{
+		auto* _ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
+		auto& moveFlags = *reinterpret_cast<UInt16*>(_ebp - 0x6C);
+
+		if ((g_disabledControls & kFlag_Running) != 0)
+			moveFlags &= ~0x200; // remove kMoveFlag_Running
+
+		auto result = ThisStdCall<double>(g_PreventRunningForNonController.GetOverwrittenAddr(), self);
+		return result;
 	}
 
 	void WriteHooks()
@@ -447,6 +479,11 @@ namespace DisablePlayerControlsAlt
 		g_PreventJumpingDetour.WriteRelCall(0x94215F, (UInt32)GetControlState_JumpingHook);
 		g_PreventAimingOrBlockingDetour_IsPressed.WriteRelCall(0x941F4F, (UInt32)GetControlState_Aiming_IsPressedHook);
 		g_PreventAimingOrBlockingDetour_IsHeld.WriteRelCall(0x941F5F, (UInt32)GetControlState_Aiming_IsHeldHook);
+
+		WriteRelJump(0x941702, (UInt32)MaybePreventRunningForControllers);
+
+		// hooks Actor::GetMovementSpeed() call
+		g_PreventRunningForNonController.WriteRelCall(0x941B60, (UInt32)MaybePreventRunningForNonController);
 
 		// todo: maybe add hook+flag to disable grabbing @ 0x95F6DE
 		// todo: maybe add hook+flag to disable AmmoSwap at 0x94098B

@@ -49,35 +49,31 @@ namespace DisablePlayerControlsAlt
 		kFlag_EnterVATS = 1 << 8,
 		kFlag_Jumping = 1 << 9,
 		kFlag_AimingOrBlocking = 1 << 10,
-		kNewFlags = kFlag_Attacking | kFlag_EnterVATS | kFlag_Jumping | kFlag_AimingOrBlocking,
+		kFlag_Running = 1 << 11,
+		kNewFlags = kFlag_Attacking | kFlag_EnterVATS | kFlag_Jumping | kFlag_AimingOrBlocking
+			| kFlag_Running,
 
 		kAllFlags = kVanillaFlags | kNewFlags
 	};
 	extern flags_t g_disabledControls;
 
-	flags_t CondenseFlagArgs(UInt32 movementFlag, UInt32 pipboyFlag, UInt32 fightingFlag, UInt32 POVFlag,
-		UInt32 lookingFlag, UInt32 rolloverTextFlag, UInt32 sneakingFlag, 
-		UInt32 attackingFlag, UInt32 VATSFlag, UInt32 jumpingFlag, UInt32 aimingFlag);
+	flags_t CondenseVanillaFlagArgs(UInt32 movementFlag, UInt32 pipboyFlag, UInt32 fightingFlag, UInt32 POVFlag,
+		UInt32 lookingFlag, UInt32 rolloverTextFlag, UInt32 sneakingFlag);
 
 	template <bool IsEnable>
 	std::pair<bool, flags_t> ExtractArgsForEnableOrDisablePlayerControls(COMMAND_ARGS)
 	{
 		UInt32 movementFlag = 1, pipboyFlag = 1, fightingFlag = 1, POVFlag = 1,
-			lookingFlag = IsEnable ? 1 : 0, rolloverTextFlag = IsEnable ? 1 : 0, sneakingFlag = IsEnable ? 1 : 0,
-			// new args
-			attackingFlag = IsEnable ? 1 : 0, VATSFlag = IsEnable ? 1 : 0, jumpingFlag = IsEnable ? 1 : 0, 
-			aimingFlag = IsEnable ? 1 : 0;
+			lookingFlag = IsEnable ? 1 : 0, rolloverTextFlag = IsEnable ? 1 : 0, sneakingFlag = IsEnable ? 1 : 0;
 
 		if (!ExtractArgsEx(EXTRACT_ARGS_EX, &movementFlag, &pipboyFlag, &fightingFlag, &POVFlag,
-			&lookingFlag, &rolloverTextFlag, &sneakingFlag, 
-			&attackingFlag, &VATSFlag, &jumpingFlag, &aimingFlag))
+			&lookingFlag, &rolloverTextFlag, &sneakingFlag))
 		{
 			return std::pair<bool, flags_t>(false, 0);
 		}
 
-		auto newFlagsForMod = CondenseFlagArgs(movementFlag, pipboyFlag, fightingFlag, 
-			POVFlag, lookingFlag, rolloverTextFlag, sneakingFlag, 
-			attackingFlag, VATSFlag, jumpingFlag, aimingFlag);
+		auto newFlagsForMod = CondenseVanillaFlagArgs(movementFlag, pipboyFlag, fightingFlag,
+			POVFlag, lookingFlag, rolloverTextFlag, sneakingFlag);
 
 		return std::pair<bool, flags_t>(true, newFlagsForMod);
 	}

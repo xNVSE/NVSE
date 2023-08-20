@@ -506,20 +506,16 @@ bool Cmd_GetPlayerControlsDisabledAlt_Execute(COMMAND_ARGS)
 	UInt32 disabledHow = 0;
 
 	UInt32 movementFlag = 1, pipboyFlag = 1, fightingFlag = 1, POVFlag = 1,
-		lookingFlag = 1, rolloverTextFlag = 1, sneakingFlag = 1,
-		// new args
-		attackingFlag = 1, VATSFlag = 1, jumpingFlag = 1, aimingFlag = 1;
+		lookingFlag = 1, rolloverTextFlag = 1, sneakingFlag = 1;
 
 	if (!ExtractArgsEx(EXTRACT_ARGS_EX, &disabledHow, &movementFlag, &pipboyFlag, &fightingFlag, &POVFlag,
-		&lookingFlag, &rolloverTextFlag, &sneakingFlag, 
-		&attackingFlag, &VATSFlag, &jumpingFlag, &aimingFlag))
+		&lookingFlag, &rolloverTextFlag, &sneakingFlag))
 	{
 		return true;
 	}
 
-	auto flagsToCheck = CondenseFlagArgs(movementFlag, pipboyFlag, fightingFlag, POVFlag,
-		lookingFlag, rolloverTextFlag, sneakingFlag, 
-		attackingFlag, VATSFlag, jumpingFlag, aimingFlag);
+	auto flagsToCheck = CondenseVanillaFlagArgs(movementFlag, pipboyFlag, fightingFlag, POVFlag,
+		lookingFlag, rolloverTextFlag, sneakingFlag);
 
 	ModID modId = scriptObj->GetOverridingModIdx();
 	Cmd_GetPlayerControlsDisabledAlt_Call(disabledHow, flagsToCheck, modId, result);
