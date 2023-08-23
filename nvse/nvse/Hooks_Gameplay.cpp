@@ -385,23 +385,14 @@ namespace DisablePlayerControlsAlt
 		}
 	}
 
-	__HOOK MaybePreventPlayerAttacking()
+	CallDetour g_PreventAttackDetour;
+	bool __fastcall MaybePreventPlayerAttacking(Actor* player, void* edx, UInt32 animGroupId)
 	{
-		static const UInt32 NormalRetnAddr = 0x893A6F,
-			PreventAttackingAddr = 0x8948ED;
-		_asm
-		{
-			movzx	eax, g_disabledControls
-			AND		eax, kFlag_Attacking
-			test	eax, eax
-			jz		DoRegular
-			// prevent activation
-			XOR		al, al  // al = 0
-			jmp		PreventAttackingAddr
-		DoRegular :
-			mov		[ebp - 0xB4], ecx
-			jmp		NormalRetnAddr
-		}
+		if ((g_disabledControls & kFlag_Attacking) != 0)
+			return false;
+
+		// actually fire the weapon
+		return ThisStdCall<bool>(g_PreventAttackDetour.GetOverwrittenAddr(), player, animGroupId);
 	}
 
 	CallDetour g_PreventVATSDetour;
@@ -478,7 +469,7 @@ namespace DisablePlayerControlsAlt
 	void WriteHooks()
 	{
 		WriteRelJump(0x5A03F7, (UInt32)ModifyPlayerControlFlags);
-		WriteRelJump(0x893A69, (UInt32)MaybePreventPlayerAttacking);
+		WriteRelCall(0x949CF1, (UInt32)MaybePreventPlayerAttacking);
 
 		// Use detour since "GetControlState" funcs could be popular hook spots
 		g_PreventVATSDetour.WriteRelCall(0x942884, (UInt32)GetControlState_VATSHook);
