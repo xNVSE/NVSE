@@ -469,7 +469,7 @@ namespace DisablePlayerControlsAlt
 	void WriteHooks()
 	{
 		WriteRelJump(0x5A03F7, (UInt32)ModifyPlayerControlFlags);
-		WriteRelCall(0x949CF1, (UInt32)MaybePreventPlayerAttacking);
+		g_PreventAttackDetour.WriteRelCall(0x949CF1, (UInt32)MaybePreventPlayerAttacking);
 
 		// Use detour since "GetControlState" funcs could be popular hook spots
 		g_PreventVATSDetour.WriteRelCall(0x942884, (UInt32)GetControlState_VATSHook);
