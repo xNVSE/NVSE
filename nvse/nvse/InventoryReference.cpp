@@ -162,7 +162,7 @@ bool InventoryReference::MoveToContainer(TESObjectREFR* dest)
 	return false;
 }
 
-bool InventoryReference::CopyToContainer(TESObjectREFR* dest)
+bool InventoryReference::CopyToContainer(TESObjectREFR* dest, InventoryReference** outInvRef)
 {
 	ExtraContainerChanges* xChanges = ExtraContainerChanges::GetForRef(dest);
 	if (xChanges && Validate() && m_tempRef)
@@ -173,8 +173,16 @@ bool InventoryReference::CopyToContainer(TESObjectREFR* dest)
 		// if worn, mark as unequipped
 		newDataList->RemoveByType(kExtraData_Worn);
 
-		if (xChanges->Add(m_tempRef->baseForm, newDataList))
+		ExtraContainerChanges::EntryData* entryData;
+		if (xChanges->Add(m_tempRef->baseForm, newDataList, &entryData))
+		{
+			if (outInvRef)
+			{
+				InventoryReference::Data data(m_tempRef->baseForm, entryData, newDataList);
+				*outInvRef = CreateInventoryRef(dest, data, false);
+			}
 			return true;
+		}
 	}
 	return false;
 }

@@ -1881,6 +1881,9 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(DisablePlayerControlsAltEx);
 	ADD_CMD(EnablePlayerControlsAltEx);
 	ADD_CMD(GetPlayerControlsDisabledAltEx);
+
+	// 6.3 beta 03
+	ADD_CMD_RET(CopyIRAlt, kRetnType_Form);
 }
 
 namespace PluginAPI

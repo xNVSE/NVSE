@@ -32,7 +32,7 @@ public:
 	bool WriteRefDataToContainer();
 	bool RemoveFromContainer();			// removes and frees Data pointers
 	bool MoveToContainer(TESObjectREFR* dest);
-	bool CopyToContainer(TESObjectREFR* dest);
+	bool CopyToContainer(TESObjectREFR* dest, InventoryReference** outInvRef = nullptr);
 	bool SetEquipped(bool bEquipped);
 	void SetRemoved() { m_bRemoved = true; }
 	void Release();

@@ -382,7 +382,7 @@ public:
 
 	void DebugDump();
 	void Cleanup();	// clean up unneeded extra data from each EntryData
-	ExtendDataList * Add(TESForm* form, ExtraDataList* dataList = NULL);
+	ExtendDataList * Add(TESForm* form, ExtraDataList* dataList = NULL, EntryData** outEntryData = nullptr);
 	bool Remove(TESForm* form, ExtraDataList* dataList = NULL, bool bFree = false);
 	ExtraDataList* SetEquipped(TESForm* obj, bool bEquipped, bool bForce = false);
 

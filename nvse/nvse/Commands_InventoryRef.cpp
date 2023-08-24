@@ -49,6 +49,25 @@ bool Cmd_CopyIR_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_CopyIRAlt_Execute(COMMAND_ARGS)
+{
+	UInt32* refResult = (UInt32*)result;
+	*refResult = 0;
+	if (thisObj) {
+		InventoryReference* iref = InventoryReference::GetForRefID(thisObj->refID);
+		if (iref) {
+			TESObjectREFR* dest = NULL;
+			if (ExtractArgs(EXTRACT_ARGS, &dest) && dest) {
+				InventoryReference* invRefResult;
+				iref->CopyToContainer(dest, &invRefResult);
+				*refResult = invRefResult ? invRefResult->GetRef()->refID : 0;
+			}
+		}
+	}
+
+	return true;
+}
+
 bool Cmd_CreateTempRef_Execute(COMMAND_ARGS)
 {
 	UInt32* refResult = (UInt32*)result;

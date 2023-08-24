@@ -325,7 +325,8 @@ void ExtraContainerChangesEntryDataListFree(ExtraContainerChanges::EntryDataList
 	}
 }
 
-ExtraContainerChanges::ExtendDataList* ExtraContainerChanges::Add(TESForm* form, ExtraDataList* dataList)
+ExtraContainerChanges::ExtendDataList* ExtraContainerChanges::Add(TESForm* form, ExtraDataList* dataList, 
+	EntryData** outEntryData)
 {
 	if (!data) {
 		// wtf
@@ -344,6 +345,8 @@ ExtraContainerChanges::ExtendDataList* ExtraContainerChanges::Add(TESForm* form,
 		found = EntryData::Create(form, 0);
 		data->objList->AddAt(found, eListEnd);
 	}
+	if (outEntryData)
+		*outEntryData = found;
 
 	return found->Add(dataList);
 }
