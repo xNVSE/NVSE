@@ -146,17 +146,22 @@ struct ParamInfo
 	0 \
 	};
 
+// Deprecated, use DEFINE_CMD_ALIAS instead.
 #define DEFINE_CMD_ALT(name, altName, description, refRequired, numParams, paramInfo) \
 	DEFINE_CMD_FULL(name, altName, description, refRequired, numParams, paramInfo, Cmd_Default_Parse)	
+
+#define DEFINE_CMD_ALIAS(name, altName, description, refRequired, paramInfo) \
+	DEFINE_CMD_FULL(name, altName, description, refRequired, (sizeof(paramInfo) / sizeof(ParamInfo)), paramInfo, Cmd_Default_Parse)	
 
 #define DEFINE_CMD_ALT_EXP(name, altName, description, refRequired, paramInfo) \
 	DEFINE_CMD_FULL(name, altName, description, refRequired, (sizeof(paramInfo) / sizeof(ParamInfo)), paramInfo, Cmd_Expression_Parse)	
 
+// Deprecated, use DEFINE_CMD instead.
 #define DEFINE_COMMAND(name, description, refRequired, numParams, paramInfo) \
 	DEFINE_CMD_FULL(name, , description, refRequired, numParams, paramInfo, Cmd_Default_Parse)	
 
 #define DEFINE_CMD(name, description, refRequired, paramInfo) \
-	DEFINE_COMMAND(name, description, refRequired, (sizeof(paramInfo) / sizeof(ParamInfo)), paramInfo)
+	DEFINE_CMD_FULL(name, , description, refRequired, (sizeof(paramInfo) / sizeof(ParamInfo)), paramInfo, Cmd_Default_Parse)
 
 #define DEFINE_COMMAND_EXP(name, description, refRequired, paramInfo) \
 	DEFINE_CMD_ALT_EXP(name, , description, refRequired, paramInfo)

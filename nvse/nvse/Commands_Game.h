@@ -29,11 +29,11 @@ DEFINE_CMD_ALT(SetOutputLocalMapPicturesGrids, SetOLMPGrids, sets the value with
 
 DEFINE_COMMAND(AddSpellNS, identical to AddSpell but without the UI message, 0, 1, kParams_OneSpellItem);
 
-DEFINE_CMD(DisablePlayerControlsAlt, "Per-mod version with added args", false, kParams_SevenOptionalInts);
-DEFINE_CMD(EnablePlayerControlsAlt, "Per-mod version with added args", false, kParams_SevenOptionalInts);
-DEFINE_CMD(GetPlayerControlsDisabledAlt, "", false, kParams_EightOptionalInts);
+DEFINE_CMD_ALIAS(DisablePlayerControlsAlt, DPCAlt, "Per-mod version with added args", false, kParams_SevenOptionalInts);
+DEFINE_CMD_ALIAS(EnablePlayerControlsAlt, EPCAlt, "Per-mod version with added args", false, kParams_SevenOptionalInts);
+DEFINE_CMD_ALIAS(GetPlayerControlsDisabledAlt, GPCDAlt, "", false, kParams_EightOptionalInts);
 
 // Ex versions simply extracts a bitfield instead of multiple args
-DEFINE_CMD(DisablePlayerControlsAltEx, "Per-mod version with added args", false, kParams_OneOptionalInt);
-DEFINE_CMD(EnablePlayerControlsAltEx, "Per-mod version with added args", false, kParams_OneOptionalInt);
-DEFINE_CMD(GetPlayerControlsDisabledAltEx, "", false, kParams_TwoOptionalInts);
+DEFINE_CMD_ALIAS(DisablePlayerControlsAltEx, DPCEx, "Per-mod version with added args", false, kParams_OneOptionalInt);
+DEFINE_CMD_ALIAS(EnablePlayerControlsAltEx, EPCEx, "Per-mod version with added args", false, kParams_OneOptionalInt);
+DEFINE_CMD_ALIAS(GetPlayerControlsDisabledAltEx, GPCDEx, "", false, kParams_TwoOptionalInts);
