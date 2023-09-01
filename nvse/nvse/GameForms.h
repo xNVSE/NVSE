@@ -1633,9 +1633,14 @@ public:
 	UInt32				speechChallenge;	// 44
 	UInt32				unk48;				// 48
 	UInt32				modInfoFileOffset;	// 4C	during LoadForm
+
+	__forceinline Script* GetResultScript(UInt32 onEnd)
+	{
+		return ThisStdCall<Script*>(0x61EB60, this, onEnd);
+	}
 };
 
-typedef NiTArray<TESTopicInfo*> TopicInfoArray;
+typedef NiTLargeArray<TESTopicInfo*> TopicInfoArray;
 typedef void* INFO_LINK_ELEMENT;
 
 // 40
@@ -2303,6 +2308,8 @@ class BGSTalkingActivator;
 
 class BGSNote;
 
+struct TerminalEntry;
+
 // BGSTerminal (9C)
 class BGSTerminal : public TESObjectACTI
 {
@@ -2331,21 +2338,10 @@ public:
 		UInt8 type;             // 0-9, corresponds to GECK types 1-10
 	};
 
-	struct MenuEntry
-	{
-		String				entryText;
-		String				resultText;
-		UInt8				entryFlags;
-		BGSNote*			displayNote;
-		BGSTerminal*		subMenu;
-		ScriptEventList*	scriptEventList;
-		tList<Condition*>	conditions;	
-	};
-
-	String				desc;			// 090	DESC
-	tList<MenuEntry>	menuEntries;	// 098
-	BGSNote*			password;		// 0A0	PNAM
-	TermData			data;			// 0A4	DNAM
+	String					desc;			// 090	DESC
+	tList<TerminalEntry>	menuEntries;	// 098
+	BGSNote*				password;		// 0A0	PNAM
+	TermData				data;			// 0A4	DNAM
 };
 
 // 180

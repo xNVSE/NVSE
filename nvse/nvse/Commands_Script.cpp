@@ -1466,34 +1466,53 @@ bool Cmd_DecompileScript_Execute(COMMAND_ARGS)
 		fileExtension = std::string(fileExtensionArg);
 	else
 		fileExtension = "gek";
+
+	std::string formName = form->GetName();
+	if (formName.empty())
+		formName = FormatString("%08X", form->refID & 0x00FFFFFF);
+
 	if (IS_ID(form, Script))
 	{
-		auto* script = static_cast<Script*>(form);
-		std::string name = script->GetName();
-		if (name.empty())
-			name = FormatString("%X", script->refID & 0x00FFFFFF);
-		DecompileScriptToFolder(name, script, fileExtension, GetModName(script));
-	}
-	else if (IS_ID(form, TESPackage))
-	{
-		auto* package = static_cast<TESPackage*>(form);
-		for (auto& packageEvent : {std::make_pair("OnBegin", &package->onBeginAction), std::make_pair("OnEnd", &package->onEndAction), std::make_pair("OnChange", &package->onChangeAction)})
-		{
-			auto& [name, action] = packageEvent;
-			if (action->script)
-				DecompileScriptToFolder(std::string(package->GetName()) + name, action->script, fileExtension, GetModName(package));
-		}
+		auto script = static_cast<Script*>(form);
+		DecompileScriptToFolder(formName, script, fileExtension, GetModName(script));
 	}
 	else if (IS_ID(form, TESQuest))
 	{
-		auto* quest = static_cast<TESQuest*>(form);
-		std::string name = quest->GetName();
-		if (name.empty())
-			name = FormatString("%08X", quest->refID & 0x00FFFFFF);
+		auto quest = static_cast<TESQuest*>(form);
 		for (auto stageIter = quest->stages.Begin(); !stageIter.End(); ++stageIter)
 			if (*stageIter)
 				if (auto logEntry = stageIter->logEntries.GetFirstItem(); logEntry && logEntry->resultScript.info.dataLength)
-					DecompileScriptToFolder(name + FormatString(" #%d", stageIter->stage), &logEntry->resultScript, fileExtension, GetModName(quest));
+					DecompileScriptToFolder(FormatString("%s #%d", formName.c_str(), stageIter->stage), &logEntry->resultScript, fileExtension, GetModName(quest));
+	}
+	else if (IS_ID(form, TESPackage))
+	{
+		auto package = static_cast<TESPackage*>(form);
+		for (auto& packageEvent : { std::make_pair(" OnBegin", &package->onBeginAction), std::make_pair(" OnEnd", &package->onEndAction), std::make_pair(" OnChange", &package->onChangeAction) })
+		{
+			auto& [evntName, action] = packageEvent;
+			if (action->script)
+				DecompileScriptToFolder(formName + evntName, action->script, fileExtension, GetModName(package));
+		}
+	}
+	else if (IS_ID(form, TESTopicInfo))
+	{
+		auto topicInfo = static_cast<TESTopicInfo*>(form);
+		if (auto bgnScript = topicInfo->GetResultScript(0))
+			DecompileScriptToFolder(formName + " Begin", bgnScript, fileExtension, GetModName(topicInfo));
+		if (auto endScript = topicInfo->GetResultScript(1))
+			DecompileScriptToFolder(formName + " End", endScript, fileExtension, GetModName(topicInfo));
+	}
+	else if (IS_ID(form, BGSTerminal))
+	{
+		auto terminal = static_cast<BGSTerminal*>(form);
+		int entryIdx = 0;
+		for (auto entryIter = terminal->menuEntries.Begin(); !entryIter.End(); ++entryIter)
+			if (*entryIter)
+			{
+				entryIdx++;
+				if (entryIter->resultScript.info.dataLength)
+					DecompileScriptToFolder(FormatString("%s #%d", formName.c_str(), entryIdx), &entryIter->resultScript, fileExtension, GetModName(terminal));
+			}
 	}
 	else
 		return true;

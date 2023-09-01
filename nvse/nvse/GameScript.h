@@ -193,6 +193,19 @@ struct QuestStageItem
 STATIC_ASSERT(sizeof(QuestStageItem) == (SCRIPT_SIZE + 0x1C));
 #endif
 
+// 78
+struct TerminalEntry
+{
+	String			entryText;		// 00
+	String			resultText;		// 08
+	Script			resultScript;	// 10
+	ConditionEntry	conditions;		// 64
+	BGSNote			*displayNote;	// 6C
+	BGSTerminal		*subMenu;		// 70
+	UInt8			byte74;			// 74
+	UInt8			pad75[3];		// 75
+};
+
 // 41C
 struct ScriptLineBuffer
 {

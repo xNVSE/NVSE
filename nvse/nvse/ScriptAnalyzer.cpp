@@ -1299,3 +1299,22 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 	}
 	return scriptText;
 }
+
+bool __stdcall ScriptParsing::DecompileToBuffer(Script* pScript, FILE* pStream, char* pBuffer)
+{
+	if (ScriptAnalyzer analyzer(pScript); !analyzer.error)
+	{
+		auto compiledSrc = analyzer.DecompileScript();
+		if (pStream)
+		{
+			fputs(compiledSrc.c_str(), pStream);
+			fflush(pStream);
+		}
+		if (pBuffer)
+			strcpy(pBuffer, compiledSrc.c_str());
+		return true;
+	}
+	if (pBuffer)
+		*pBuffer = 0;
+	return false;
+}
