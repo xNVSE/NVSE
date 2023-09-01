@@ -3673,6 +3673,8 @@ struct VariableInfo
 	bool IsReferenceType(Script* parentScript);
 };
 
+struct QuestStageItem;
+
 // TESQuest (6C)
 class TESQuest : public TESForm
 {
@@ -3689,9 +3691,9 @@ public:
 
 	struct StageInfo {
 		UInt8			stage;	// 00 stageID
-		UInt8			unk001;	// 01 status ?
+		UInt8			isDone;	// 01 status ?
 		UInt8			pad[2];	// 02
-		tList<void*>	unk004;	// 04 log entries
+		tList<QuestStageItem>	logEntries;	// 04 log entries
 	};	// 00C
 
 	union LocalVariableOrObjectivePtr

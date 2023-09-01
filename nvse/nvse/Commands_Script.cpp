@@ -1484,6 +1484,17 @@ bool Cmd_DecompileScript_Execute(COMMAND_ARGS)
 				DecompileScriptToFolder(std::string(package->GetName()) + name, action->script, fileExtension, GetModName(package));
 		}
 	}
+	else if (IS_ID(form, TESQuest))
+	{
+		auto* quest = static_cast<TESQuest*>(form);
+		std::string name = quest->GetName();
+		if (name.empty())
+			name = FormatString("%08X", quest->refID & 0x00FFFFFF);
+		for (auto stageIter = quest->stages.Begin(); !stageIter.End(); ++stageIter)
+			if (*stageIter)
+				if (auto logEntry = stageIter->logEntries.GetFirstItem(); logEntry && logEntry->resultScript.info.dataLength)
+					DecompileScriptToFolder(name + FormatString(" #%d", stageIter->stage), &logEntry->resultScript, fileExtension, GetModName(quest));
+	}
 	else
 		return true;
 	*result = 1;

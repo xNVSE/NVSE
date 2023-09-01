@@ -29,9 +29,6 @@ extern const char *g_validVariableTypeNames[8];
 class Script : public TESForm
 {
 public:
-	Script();
-	~Script();
-
 	// members
 
 	struct RefVariable
