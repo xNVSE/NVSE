@@ -1593,4 +1593,77 @@ bool Cmd_GetSoldItemInvRef_Execute(COMMAND_ARGS)
 	return true;
 }
 
+std::unordered_map<std::string, Script*> cachedFileUDFs;
+ICriticalSection g_cachedUdfCS;
+
+UInt32 g_numCachedScripts = 0;
+
+bool Cmd_CompileScript_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+		eval.ExtractArgs())
+	{
+		auto const path = eval.Arg(0)->GetString();
+		if (!path || !path[0])
+			return true;
+
+		UInt32* refResult = (UInt32*)result;
+
+		// Try to get the cached result
+		{
+			ScopedLock lock(g_cachedUdfCS);
+			if (auto iter = cachedFileUDFs.find(path);
+				iter != cachedFileUDFs.end())
+			{
+				*refResult = iter->second->refID;
+				return true;
+			}
+		}
+
+		// Pretend this is only for UDFs, since for 99% of use cases that's all this will be used for.
+		std::filesystem::path fullPath = std::string("data/nvse/user_defined_functions/") + path;
+		if (!std::filesystem::exists(fullPath))
+			return true;
+
+		if (!fullPath.has_extension())
+			return true;
+
+		std::ifstream ifs(fullPath);
+		if (!ifs)
+			return true;
+
+		std::ostringstream ss;
+		ss << ifs.rdbuf();
+
+		std::string udfName;
+		{
+			ScopedLock lock(g_cachedUdfCS);
+			udfName = fullPath.stem().string()
+				+ std::to_string(g_numCachedScripts); // lock due to accessing this global
+		}
+
+		auto* script = CompileScriptEx(ss.str().c_str(), udfName.c_str());
+		if (!script)
+			return true;
+
+		const auto nextFormId = GetNextFreeFormID(scriptObj->refID);
+		if (nextFormId >> 24 == scriptObj->GetModIndex())
+		{
+			script->SetRefID(nextFormId, true);
+		}
+		script->SetEditorID(udfName.c_str());
+
+		// Cache result
+		{
+			ScopedLock lock(g_cachedUdfCS);
+			cachedFileUDFs.emplace(path, script);
+			++g_numCachedScripts;
+		}
+
+		*refResult = script->refID;
+	}
+	return true;
+}
+
 #endif
