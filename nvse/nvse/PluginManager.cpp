@@ -71,7 +71,8 @@ static NVSEScriptInterface g_NVSEScriptInterface =
 	ExtractFormatStringArgs,
 	PluginAPI::CallFunctionScriptAlt,
 	CompileScript,
-	CompileExpression
+	CompileExpression,
+	ScriptParsing::DecompileToBuffer
 };
 
 #endif
