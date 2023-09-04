@@ -1615,8 +1615,6 @@ bool Cmd_GetSoldItemInvRef_Execute(COMMAND_ARGS)
 std::unordered_map<std::string, Script*> cachedFileUDFs;
 ICriticalSection g_cachedUdfCS;
 
-UInt32 g_numCachedScripts = 0;
-
 bool Cmd_CompileScript_Execute(COMMAND_ARGS)
 {
 	*result = 0;
@@ -1644,6 +1642,7 @@ bool Cmd_CompileScript_Execute(COMMAND_ARGS)
 				return true;
 			}
 		}
+		// Code below = compile and cache the result.
 
 		// Pretend this is only for UDFs, since for 99% of use cases that's all this will be used for.
 		std::filesystem::path fullPath = std::string("data/nvse/user_defined_functions/") + path;
@@ -1663,8 +1662,9 @@ bool Cmd_CompileScript_Execute(COMMAND_ARGS)
 		std::string udfName;
 		{
 			ScopedLock lock(g_cachedUdfCS);
-			udfName = fullPath.stem().string()
-				+ std::to_string(g_numCachedScripts); // lock due to accessing this global
+			udfName = "nvseRuntimeScript"
+				+ std::to_string(cachedFileUDFs.size()) // lock due to accessing this global
+				+ fullPath.stem().string();
 		}
 
 		auto* script = CompileScriptEx(ss.str().c_str(), udfName.c_str());
@@ -1681,8 +1681,7 @@ bool Cmd_CompileScript_Execute(COMMAND_ARGS)
 		// Cache result
 		{
 			ScopedLock lock(g_cachedUdfCS);
-			cachedFileUDFs.emplace(path, script);
-			++g_numCachedScripts;
+			cachedFileUDFs[path] = script;
 		}
 
 		*refResult = script->refID;
