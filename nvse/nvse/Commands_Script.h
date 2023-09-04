@@ -454,15 +454,22 @@ DEFINE_COMMAND(DecompileScript, decompiles a script to file, false, 2, kParams_O
 DEFINE_COMMAND(HasScriptCommand, returns 1 if script contains call to a command, false, 3, kParams_HasScriptCommand);
 DEFINE_COMMAND(GetCommandOpcode, gets opcode for command name, false, 1, kParams_OneString);
 
-static ParamInfo kParams_Ternary[] =
+static ParamInfo kNVSEParams_Ternary[] =
 {
 	{	"value",			kNVSEParamType_BasicType,	0	},
 	{	"callIfTrue (UDF)",	kNVSEParamType_Form,	0	},
 	{	"callIfFalse (UDF)",	kNVSEParamType_Form,	0	},
 };
 
-DEFINE_COMMAND_EXP(Ternary, "The ternary operator as a function.", false, kParams_Ternary);
+DEFINE_COMMAND_EXP(Ternary, "The ternary operator as a function.", false, kNVSEParams_Ternary);
 
 DEFINE_COMMAND(GetSoldItemInvRef, "Returns the invRef for the currently sold item (in OnSell event)", false, 0, nullptr);
 
-DEFINE_CMD_ALT_EXP(CompileScript, GetUDFFromFile, "Returns a compiled script from a file, to call as a UDF.", false, kParams_OneString);
+static ParamInfo kNVSEParams_OneString_OneOptionalBool[] =
+{
+	{	"string",	kNVSEParamType_String,	0	},
+	{	"bool",		kNVSEParamType_Boolean,		1	},
+};
+
+DEFINE_CMD_ALT_EXP(CompileScript, GetUDFFromFile, "Returns a compiled script from a file, to call as a UDF.", 
+	false, kNVSEParams_OneString_OneOptionalBool);

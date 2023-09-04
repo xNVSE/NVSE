@@ -1627,10 +1627,15 @@ bool Cmd_CompileScript_Execute(COMMAND_ARGS)
 		if (!path || !path[0])
 			return true;
 
+		bool forceRecompile = false;
+		if (eval.NumArgs() > 1)
+			forceRecompile = eval.Arg(1)->GetBool();
+
 		UInt32* refResult = (UInt32*)result;
 
-		// Try to get the cached result
+		if (!forceRecompile)
 		{
+			// Try to get the cached result
 			ScopedLock lock(g_cachedUdfCS);
 			if (auto iter = cachedFileUDFs.find(path);
 				iter != cachedFileUDFs.end())
