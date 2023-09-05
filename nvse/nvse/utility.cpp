@@ -395,7 +395,7 @@ __declspec(naked) char* __fastcall CopyString(const char* key, UInt32 length)
 	__asm
 	{
 		mov		eax, edx // length
-		inc		eax
+		inc		eax // length++ to account for null terminator
 		push	eax
 		push	ecx
 		push	eax
@@ -405,9 +405,15 @@ __declspec(naked) char* __fastcall CopyString(const char* key, UInt32 length)
 		call	malloc
 #endif
 		pop		ecx
-		push	eax
+		push	eax // dest = malloc's new ptr
 		call	_memcpy
-		add		esp, 0xC
+		// eax is now memcpy's new string
+		add		esp, 8
+		pop		edx // get pushed eax back (length + 1)
+		dec		edx
+		// add null terminator to copied string in case string arg didn't have one
+		add		edx, eax  // advance to last char of string (where null terminator should be)
+		mov		byte ptr[edx], 0
 		retn
 	}
 }
