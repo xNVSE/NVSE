@@ -1300,21 +1300,19 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 	return scriptText;
 }
 
-bool __stdcall ScriptParsing::DecompileToBuffer(Script* pScript, FILE* pStream, char* pBuffer)
+size_t __stdcall ScriptParsing::DecompileToBuffer(Script* pScript, FILE* pStream, char* pBuffer)
 {
 	if (ScriptAnalyzer analyzer(pScript); !analyzer.error)
-	{
-		auto compiledSrc = analyzer.DecompileScript();
-		if (pStream)
+		if (auto compiledSrc = analyzer.DecompileScript(); !compiledSrc.empty())
 		{
-			fputs(compiledSrc.c_str(), pStream);
-			fflush(pStream);
+			compiledSrc += '\n';
+			if (pStream)
+				fwrite(compiledSrc.c_str(), compiledSrc.length(), 1, pStream);
+			if (pBuffer)
+				memcpy(pBuffer, compiledSrc.c_str(), compiledSrc.length() + 1);
+			return compiledSrc.length();
 		}
-		if (pBuffer)
-			strcpy(pBuffer, compiledSrc.c_str());
-		return true;
-	}
 	if (pBuffer)
 		*pBuffer = 0;
-	return false;
+	return 0;
 }

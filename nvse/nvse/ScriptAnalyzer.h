@@ -333,5 +333,5 @@ namespace ScriptParsing
 		std::string DecompileScript();
 	};
 
-	bool __stdcall DecompileToBuffer(Script* pScript, FILE* pStream, char* pBuffer);
+	size_t __stdcall DecompileToBuffer(Script* pScript, FILE* pStream, char* pBuffer);
 }

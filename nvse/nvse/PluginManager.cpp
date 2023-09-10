@@ -306,7 +306,10 @@ bool PluginManager::RegisterCommand(CommandInfo * _info)
 	if(!info.shortName) info.shortName = "";
 	if(!info.helpText) info.helpText = "";
 
-	_MESSAGE("RegisterCommand %s (%04X)", info.longName, g_scriptCommands.GetCurID());
+	if (info.shortName[0])
+		_MESSAGE("RegisterCommand  [%04X]  %s (%s)", g_scriptCommands.GetCurID(), info.longName, info.shortName);
+	else
+		_MESSAGE("RegisterCommand  [%04X]  %s", g_scriptCommands.GetCurID(), info.longName);
 
 	g_scriptCommands.Add(&info, kRetnType_Default, s_currentLoadingPlugin->baseOpcode);
 
@@ -336,7 +339,10 @@ bool PluginManager::RegisterTypedCommand(CommandInfo * _info, CommandReturnType 
 	if(!info.shortName) info.shortName = "";
 	if(!info.helpText) info.helpText = "";
 
-	_MESSAGE("RegisterTypedCommand %s (%04X)", info.longName, g_scriptCommands.GetCurID());
+	if (info.shortName[0])
+		_MESSAGE("RegTypedCommand  [%04X]  %s (%s)", g_scriptCommands.GetCurID(), info.longName, info.shortName);
+	else
+		_MESSAGE("RegTypedCommand  [%04X]  %s", g_scriptCommands.GetCurID(), info.longName);
 
 	if (retnType >= kRetnType_Max)
 		retnType = kRetnType_Default;

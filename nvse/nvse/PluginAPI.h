@@ -564,7 +564,7 @@ struct NVSEScriptInterface
 	Script* (*CompileExpression)(const char* expression);
 
 	// Outputs the decompiled source code text of a script into a stream and/or a buffer.
-	bool	(__stdcall *DecompileToBuffer)(Script* pScript, FILE* pStream, char* pBuffer);
+	size_t	(__stdcall *DecompileToBuffer)(Script* pScript, FILE* pStream, char* pBuffer);
 };
 
 #endif
