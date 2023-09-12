@@ -407,7 +407,20 @@ bool IdentifyEXE(const char * procName, bool isEditor, std::string * dllSuffix, 
 			}
 			else if (version == kEpicVersion)
 			{
-				PrintLoaderError("You are using the Epic Games Store version of the game which is unsupported by xNVSE. You may use this patcher to make your exe compatible: https://www.nexusmods.com/newvegas/mods/81281");
+				// Could use other adresses, just picked this one out of many.
+				UInt32 constexpr addrToCheckForPatch = 0x00000290;
+				if (*reinterpret_cast<UInt8*>(addrToCheckForPatch) == 0x4C)
+				{
+					result = true;
+				}
+				else if (*reinterpret_cast<UInt8*>(addrToCheckForPatch) == 0xA0)
+				{
+					PrintLoaderError("You are using the Epic Games Store version of the game, which is unsupported by xNVSE. You may use this patcher to make your exe compatible: https://www.nexusmods.com/newvegas/mods/81281");
+				}
+				else
+				{
+					PrintLoaderError("You are likely using an unknown Epic Games Store version. Let us know about it by writing a report on any xNVSE report channel.");
+				}
 			}
 			else
 			{
