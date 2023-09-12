@@ -1428,6 +1428,7 @@ void ClearDelayedCalls()
 	g_callForInfos.clear();
 	g_callWhileInfos.clear();
 	g_callAfterInfos.clear();
+	g_callAfterFramesInfos.clear();
 	g_callWhenInfos.clear();
 	g_callWhilePerSecondsInfos.clear();
 }
