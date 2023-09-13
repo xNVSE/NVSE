@@ -2817,26 +2817,34 @@ bool Cmd_SetNameEx_Execute(COMMAND_ARGS)
 	return true;
 }
 
-extern std::unordered_set<UInt32> s_clonedFormsWithInheritedModIdx;
+std::unordered_set<UInt32> s_clonedFormsWithInheritedModIdx; // kept for backwards compat
+std::unordered_set<UInt32> s_clonedForms;
 
 bool Cmd_IsClonedForm_Execute(COMMAND_ARGS)
 {
 	*result = 0;
 	TESForm* form = NULL;
+	UInt32 bCheckForTrueClone = 0;
 
-	ExtractArgsEx(EXTRACT_ARGS_EX, &form);
+	ExtractArgsEx(EXTRACT_ARGS_EX, &form, &bCheckForTrueClone);
 	form = form->TryGetREFRParent(); 
 	if (!form) {
 		if (!thisObj) return true;
 		form = thisObj->baseForm;
 	}
 
-	if (form->GetModIndex() == 0xFF || s_clonedFormsWithInheritedModIdx.contains(form->refID))
-		*result = 1;
+	if (bCheckForTrueClone)
+	{
+		if (s_clonedForms.contains(form->refID))
+			*result = 1;
+	}
+	else {
+		// Do the old code.
+		if (form->GetModIndex() == 0xFF || s_clonedFormsWithInheritedModIdx.contains(form->refID))
+			*result = 1;
+	}
 	return true;
 }
-
-std::unordered_set<UInt32> s_clonedFormsWithInheritedModIdx;
 
 bool CloneForm_Execute(COMMAND_ARGS, bool bPersist)
 {
@@ -2863,6 +2871,7 @@ bool CloneForm_Execute(COMMAND_ARGS, bool bPersist)
 			}
 		}
 		*refResult = clonedForm->refID;
+		s_clonedForms.insert(clonedForm->refID);
 		if (IsConsoleMode())
 			Console_Print("Created cloned form: %08x", *refResult);
 	}
@@ -2878,6 +2887,26 @@ bool Cmd_TempCloneForm_Execute(COMMAND_ARGS)
 bool Cmd_CloneForm_Execute(COMMAND_ARGS)
 {
 	return CloneForm_Execute(PASS_COMMAND_ARGS, true);
+}
+
+bool Cmd_DeleteClonedForm_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	UInt32* refResult = (UInt32*)result;
+	TESForm* form = NULL;
+	ExtractArgsEx(EXTRACT_ARGS_EX, &form);
+	if (!form) {
+		if (!thisObj) return true;
+		form = thisObj->baseForm;
+	}
+
+	if (s_clonedForms.contains(form->refID))
+	{
+		s_clonedForms.erase(form->refID);
+		form->Destroy(true);
+		*result = 1;
+	}
+	return true;
 }
 
 void GetEquippedWeaponModFlags_Call(TESObjectREFR* thisObj, double *result)
@@ -3267,21 +3296,18 @@ bool Cmd_PickOneOf_Execute(COMMAND_ARGS) {
 	UInt32* refResult = (UInt32*)result;
 	*refResult = 0;
 	BGSListForm* pFormList = NULL;
-	Actor* pActor = NULL;
-	SInt32 count;
-	UInt32 random;
 
-	//DEBUG_MESSAGE("\n\tCI PickOneOf Called");
-	pActor = DYNAMIC_CAST(thisObj, TESForm, Actor);
-	if (!pActor)
+	if (!thisObj || !thisObj->IsActor())
 		return true;
 	if (ExtractArgs(EXTRACT_ARGS, &pFormList)) {
 		std::vector<TESForm*> present;
-		for (int i = 0; i < pFormList->Count(); i++) {
-			GetItemByRefID(thisObj, pFormList->GetNthForm(i)->refID, &count);
+		for (auto* nthForm : pFormList->list) {
+			SInt32 count;
+			GetItemByRefID(thisObj, nthForm->refID, &count);
 			if (count > 0)
-				present.push_back(pFormList->GetNthForm(i));
+				present.push_back(nthForm);
 		}
+
 		switch (present.size())
 		{
 			case 0:
@@ -3290,7 +3316,7 @@ bool Cmd_PickOneOf_Execute(COMMAND_ARGS) {
 				*refResult = present.at(0)->refID;
 				break;
 			default:
-				random = MersenneTwister::genrand_real2() * (present.size());
+				UInt32 random = MersenneTwister::genrand_real2() * (present.size());
 				*refResult = present.at(random)->refID;
 		}
 	}
