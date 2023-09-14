@@ -185,27 +185,16 @@ DEFINE_CMD_COND(GetEquippedWeaponUsesAmmoList,
 	"returns if the equipped weapon uses a specific list of ammo",
 	true, kParams_OneFormList);
 
-static ParamInfo kParams_IsClonedForm[2] =
-{
-	{	"form",	kParamType_AnyForm,	1	},
-	{	"bCheckForTrueClone",	kParamType_Integer,	1	},
-};
+DEFINE_GET_FORM(CloneForm, , clones the specified form and returns a new base form which will not be saved in the save game.);
+DEFINE_GET_FORM(IsClonedForm, IsCloned, returns whether the specified form is a created object or not.);
 
-DEFINE_CMD_ALIAS(IsClonedForm, IsCloned, "returns whether the specified form is a created object or not.", 
-	false, kParams_IsClonedForm);
-
-static ParamInfo kParamsCloneForm[2] =
+static ParamInfo kParamsTempCloneForm[2] =
 {
 	{	"form",	kParamType_AnyForm,	0	},
 	{	"bInheritModIndex",	kParamType_Integer,	1	},
 };
 
-DEFINE_CMD(TempCloneForm, "clones the specified form and returns a new base form which will be saved in the save game.", 
-	false, kParamsCloneForm);
-DEFINE_CMD(CloneForm, "clones the specified form and returns a new base form which will not be saved in the save game.",
-	false, kParamsCloneForm);
-
-DEFINE_GET_FORM(DeleteClonedForm, , "");
+DEFINE_CMD(TempCloneForm, "clones the specified form and returns a new base form which will be saved in the save game.", false, kParamsTempCloneForm);
 
 #undef DEFINE_GET_INV
 #undef DEFINE_SET_INV_INT
