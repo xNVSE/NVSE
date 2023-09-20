@@ -456,6 +456,7 @@ xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</C
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="ArrayVarElementContainer.cpp" />
+    <ClCompile Include="CachedScripts.cpp" />
     <ClCompile Include="commands_Algohol.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
@@ -677,6 +678,7 @@ xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</C
     <ClInclude Include="..\Algohol\algTypes.h" />
     <ClInclude Include="..\Algohol\paramTypes.h" />
     <ClInclude Include="ArrayVar.h" />
+    <ClInclude Include="CachedScripts.h" />
     <ClInclude Include="commands_Algohol.h" />
     <ClInclude Include="Commands_Array.h" />
     <ClInclude Include="Commands_Console.h" />

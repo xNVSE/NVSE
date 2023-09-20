@@ -918,8 +918,6 @@ void ShowErrorMessageBox(const char* message)
 
 #if RUNTIME
 
-UnorderedSet<UInt32> g_warnedScripts;
-
 const char* GetModName(TESForm* form)
 {
 	if (!form)
@@ -936,6 +934,8 @@ const char* GetModName(TESForm* form)
 	return modName;
 }
 #if NVSE_CORE
+UnorderedSet<UInt32> g_warnedScripts;
+
 void ShowRuntimeError(Script* script, const char* fmt, ...)
 {
 	va_list args;

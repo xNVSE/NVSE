@@ -19,6 +19,7 @@
 #include "EventManager.h"
 #include "FunctionScripts.h"
 #include <fstream>
+#include "CachedScripts.h"
 //#include "ModTable.h"
 
 enum EScriptMode
@@ -1613,9 +1614,6 @@ bool Cmd_GetSoldItemInvRef_Execute(COMMAND_ARGS)
 	return true;
 }
 
-std::unordered_map<std::string, Script*> cachedFileUDFs;
-ICriticalSection g_cachedUdfCS;
-
 bool Cmd_CompileScript_Execute(COMMAND_ARGS)
 {
 	*result = 0;
@@ -1632,7 +1630,12 @@ bool Cmd_CompileScript_Execute(COMMAND_ARGS)
 
 		UInt32* refResult = (UInt32*)result;
 
-		if (!forceRecompile)
+		if (forceRecompile)
+		{
+			if (auto* script = CompileAndCacheScript(path, scriptObj))
+				*refResult = script->refID;
+		}
+		else // assume it was previously cached, since we compile + cache all at startup
 		{
 			// Try to get the cached result
 			ScopedLock lock(g_cachedUdfCS);
@@ -1643,49 +1646,6 @@ bool Cmd_CompileScript_Execute(COMMAND_ARGS)
 				return true;
 			}
 		}
-		// Code below = compile and cache the result.
-
-		// Pretend this is only for UDFs, since for 99% of use cases that's all this will be used for.
-		std::filesystem::path fullPath = std::string("data/nvse/user_defined_functions/") + path;
-		if (!std::filesystem::exists(fullPath))
-			return true;
-
-		if (!fullPath.has_extension())
-			return true;
-
-		std::ifstream ifs(fullPath);
-		if (!ifs)
-			return true;
-
-		std::ostringstream ss;
-		ss << ifs.rdbuf();
-
-		std::string udfName;
-		{
-			ScopedLock lock(g_cachedUdfCS);
-			udfName = "nvseRuntimeScript"
-				+ std::to_string(cachedFileUDFs.size()) // lock due to accessing this global
-				+ fullPath.stem().string();
-		}
-
-		auto* script = CompileScriptEx(ss.str().c_str(), udfName.c_str());
-		if (!script)
-			return true;
-
-		const auto nextFormId = GetNextFreeFormID(scriptObj->refID);
-		if (nextFormId >> 24 == scriptObj->GetModIndex())
-		{
-			script->SetRefID(nextFormId, true);
-		}
-		script->SetEditorID(udfName.c_str());
-
-		// Cache result
-		{
-			ScopedLock lock(g_cachedUdfCS);
-			cachedFileUDFs[path] = script;
-		}
-
-		*refResult = script->refID;
 	}
 	return true;
 }

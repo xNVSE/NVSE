@@ -250,6 +250,9 @@
     <ClCompile Include="NiTypes.cpp">
       <Filter>api\NetImmerse</Filter>
     </ClCompile>
+    <ClCompile Include="CachedScripts.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
@@ -504,6 +507,9 @@
       <Filter>internals</Filter>
     </ClInclude>
     <ClInclude Include="EventParams.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="CachedScripts.h">
       <Filter>internals</Filter>
     </ClInclude>
   </ItemGroup>
