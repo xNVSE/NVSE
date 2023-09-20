@@ -1844,7 +1844,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(DispatchEventAlt);
 	ADD_CMD(DumpEventHandlers);
 	ADD_CMD_RET(GetEventHandlers, kRetnType_Array);
-	ADD_CMD_RET(GetSelfAlt, kRetnType_Form);
+	ADD_CMD_RET(GetSelfAlt_OLD, kRetnType_Form); // broken in certain contexts due to using expression parser with 0 args
 	ADD_CMD(SetEventHandlerAlt);
 	ADD_CMD_RET(CreateFormList, kRetnType_Form);
 	ADD_CMD(CallWhilePerSeconds);
@@ -1885,6 +1885,9 @@ void CommandTable::AddCommandsV6()
 	// 6.3 beta 03
 	ADD_CMD_RET(CopyIRAlt, kRetnType_Form);
 	ADD_CMD_RET(CompileScript, kRetnType_Form);
+
+	// 6.3 beta 04
+	ADD_CMD_RET(GetSelfAlt, kRetnType_Form);
 }
 
 namespace PluginAPI

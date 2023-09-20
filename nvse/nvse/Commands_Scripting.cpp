@@ -728,6 +728,11 @@ bool Cmd_GetSelfAlt_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_GetSelfAlt_OLD_Execute(COMMAND_ARGS)
+{
+	return Cmd_GetSelfAlt_Execute(PASS_COMMAND_ARGS);
+}
+
 #endif
 
 bool Cmd_Let_Parse(UInt32 numParams, ParamInfo* paramInfo, ScriptLineBuffer* lineBuf, ScriptBuffer* scriptBuf)
