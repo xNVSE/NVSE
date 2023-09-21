@@ -473,6 +473,25 @@ struct RefMatcherActor: DistanceAngleMatcher
 	}
 };
 
+struct RefMatcherMapMarker : DistanceAngleMatcher
+{
+	RefMatcherMapMarker() = default;
+	RefMatcherMapMarker(TESObjectREFR* distanceRef, float maxDistance, float maxHeadingAngle) :
+		DistanceAngleMatcher(distanceRef, maxDistance, maxHeadingAngle)
+	{}
+
+	bool Accept(const TESObjectREFR* refr) const
+	{
+		if (refr->baseForm->refID != 0x10) // copied from JIP's IsMapMarker
+			return false;
+
+		if (!MatchDistanceAndAngle(refr))
+			return false;
+
+		return true;
+	}
+};
+
 struct RefMatcherItem: IncludeTakenMatcher, DistanceAngleMatcher
 {
 	RefMatcherItem(bool includeTaken) : IncludeTakenMatcher(includeTaken)
@@ -521,28 +540,41 @@ struct RefMatcherItem: IncludeTakenMatcher, DistanceAngleMatcher
 	}
 };
 
+enum CustomFormTypeFilters
+{
+	kFormTypeFilter_AnyType = 0,
+	kFormTypeFilter_Actor = 200,
+	kFormTypeFilter_InventoryItem,
+	kFormTypeFilter_Projectile, // currently unused
+	kFormTypeFilter_SpecificReference, // used for GetInGrid, GetInGridInCell
+	kFormTypeFilter_MapMarker
+};
+
 static const TESObjectCELL::RefList::Iterator GetCellRefEntry(const TESObjectCELL::RefList& refList, UInt32 formType, TESObjectCELL::RefList::Iterator prev,
 															  bool includeTaken /*, ProjectileFinder* projFinder = NULL*/, TESObjectREFR* refr = NULL)
 {
 	TESObjectCELL::RefList::Iterator entry;
 	switch(formType)
 	{
-	case 0:		//Any type
+	case kFormTypeFilter_AnyType:
 		entry = refList.Find(RefMatcherAnyForm(includeTaken), prev);
 		break;
-	case 200:	//Actor
+	case kFormTypeFilter_Actor:
 		entry = refList.Find(RefMatcherActor(), prev);
 		break;
-	case 201:	//Inventory Item
+	case kFormTypeFilter_InventoryItem:
 		entry = refList.Find(RefMatcherItem(includeTaken), prev);
 		break;
-	//case 202:	//Owned Projectile
+	//case kFormTypeFilter_Projectile:	//Owned Projectile
 	//	if (projFinder)
 	//		entry = visitor.Find(*projFinder, prev);
 	//	break;
-	case 203:	//A specific reference
+	case kFormTypeFilter_SpecificReference:
 		if (refr)
 			entry = refList.Find(RefMatcherARefr(includeTaken, refr), prev);
+		break;
+	case kFormTypeFilter_MapMarker:
+		entry = refList.Find(RefMatcherMapMarker(), prev);
 		break;
 	default:
 		entry = refList.Find(RefMatcherFormType(formType, includeTaken), prev);
@@ -591,7 +623,7 @@ static TESObjectREFR* CellScan(Script* scriptObj, TESObjectCELL* cellToScan = NU
 
 static bool GetFirstRef_Execute(COMMAND_ARGS, bool bUsePlayerCell = true, bool bUseRefr = false)
 {
-	UInt32 formType = 0;
+	UInt32 formType = kFormTypeFilter_AnyType;
 	SInt32 cellDepth = -127;
 	UInt32 bIncludeTakenRefs = 0;
 	UInt32* refResult = (UInt32*)result;
@@ -608,7 +640,7 @@ static bool GetFirstRef_Execute(COMMAND_ARGS, bool bUsePlayerCell = true, bool b
 	{
 		if (bUseRefr)
 		{
-			formType = 203;
+			formType = kFormTypeFilter_SpecificReference;
 			if (ExtractArgs(EXTRACT_ARGS, &refr, &cellDepth, &bIncludeTakenRefs))
 				cell = pc->parentCell;
 			else
@@ -623,7 +655,7 @@ static bool GetFirstRef_Execute(COMMAND_ARGS, bool bUsePlayerCell = true, bool b
 	else
 		if (bUseRefr)
 		{
-			formType = 203;
+			formType = kFormTypeFilter_SpecificReference;
 			if (!ExtractArgs(EXTRACT_ARGS, &cell, &refr, &cellDepth, &bIncludeTakenRefs))
 				return true;
 		}
@@ -680,7 +712,6 @@ bool Cmd_GetInGridInCell_Execute(COMMAND_ARGS)
 
 bool Cmd_GetNextRef_Execute(COMMAND_ARGS)
 {
-	
 	PlayerCharacter* pc = PlayerCharacter::GetSingleton();
 	if (!pc || !(pc->parentCell))
 		return true;						//avoid crash when these functions called in main menu before parentCell instantiated
@@ -701,7 +732,7 @@ bool Cmd_GetNextRef_Execute(COMMAND_ARGS)
 static bool GetNumRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 {
 	*result = 0;
-	UInt32 formType = 0;
+	UInt32 formType = kFormTypeFilter_AnyType;
 	SInt32 cellDepth = -127;
 	UInt32 includeTakenRefs = 0;
 	double uGrid = 0;
@@ -741,6 +772,7 @@ static bool GetNumRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	auto const actorMatcher = RefMatcherActor(thisObj, maxDistance, maxHeadingAngle);
 	auto const itemMatcher = RefMatcherItem(bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle);
 	auto const formTypeMatcher = RefMatcherFormType(formType, bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle);
+	auto const mapMarkerMatcher = RefMatcherMapMarker(thisObj, maxDistance, maxHeadingAngle);
 
 	while (info.curCell)
 	{
@@ -748,14 +780,17 @@ static bool GetNumRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 		
 		switch (formType)
 		{
-		case 0:
+		case kFormTypeFilter_AnyType:
 			*result += refList.CountIf(anyFormMatcher);
 			break;
-		case 200:
+		case kFormTypeFilter_Actor:
 			*result += refList.CountIf(actorMatcher);
 			break;
-		case 201:
+		case kFormTypeFilter_InventoryItem:
 			*result += refList.CountIf(itemMatcher);
+			break;
+		case kFormTypeFilter_MapMarker:
+			*result += refList.CountIf(mapMarkerMatcher);
 			break;
 		default:
 			*result += refList.CountIf(formTypeMatcher);
@@ -781,7 +816,7 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	// returns an array of references formID in the specified cell(s)
 	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
 	*result = arr->ID();
-	UInt32 formType = 0;
+	UInt32 formType = kFormTypeFilter_AnyType;
 	SInt32 cellDepth = -127;
 	UInt32 includeTakenRefs = 0;
 	double uGrid = 0;
@@ -822,6 +857,7 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	auto const actorMatcher = RefMatcherActor(thisObj, maxDistance, maxHeadingAngle);
 	auto const itemMatcher = RefMatcherItem(bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle);
 	auto const formTypeMatcher = RefMatcherFormType(formType, bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle);
+	auto const mapMarkerMatcher = RefMatcherMapMarker(thisObj, maxDistance, maxHeadingAngle);
 
 	while (info.curCell)
 	{
@@ -832,22 +868,29 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 			{
 				switch (formType)
 				{
-				case 0:
+				case kFormTypeFilter_AnyType:
 					if (anyFormMatcher.Accept(pRefr))
 					{
 						arr->SetElementFormID(arrIndex, pRefr->refID);
 						arrIndex += 1;
 					}
 					break;
-				case 200:
+				case kFormTypeFilter_Actor:
 					if (actorMatcher.Accept(pRefr))
 					{
 						arr->SetElementFormID(arrIndex, pRefr->refID);
 						arrIndex += 1;
 					}
 					break;
-				case 201:
+				case kFormTypeFilter_InventoryItem:
 					if (itemMatcher.Accept(pRefr))
+					{
+						arr->SetElementFormID(arrIndex, pRefr->refID);
+						arrIndex += 1;
+					}
+					break;
+				case kFormTypeFilter_MapMarker:
+					if (mapMarkerMatcher.Accept(pRefr))
 					{
 						arr->SetElementFormID(arrIndex, pRefr->refID);
 						arrIndex += 1;
