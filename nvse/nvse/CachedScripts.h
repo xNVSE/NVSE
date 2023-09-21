@@ -15,5 +15,5 @@ extern ICriticalSection g_cachedUdfCS;
 Script* CompileAndCacheScript(const char* path, Script* scriptObj);
 
 // Also checks in nested sub-folders in the path.
-void CacheAllScriptsInPath(std::string_view path);
+void CacheAllScriptsInPath(std::string_view pathStr);
 #endif

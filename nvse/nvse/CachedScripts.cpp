@@ -71,14 +71,19 @@ Script* CompileAndCacheScript(const char* path, Script* scriptObj)
 	return CompileAndCacheScript(fullPath, scriptObj, true);
 }
 
-void CacheAllScriptsInPath(std::string_view path)
+void CacheAllScriptsInPath(std::string_view pathStr)
 {
-	for (auto const& dir_entry : std::filesystem::recursive_directory_iterator(path))
+	std::filesystem::path path = pathStr;
+	if (std::filesystem::exists(path) && std::filesystem::is_directory(path))
 	{
-		if (dir_entry.is_regular_file())
+		for (auto const& dir_entry : std::filesystem::recursive_directory_iterator(path))
 		{
-			CompileAndCacheScript(dir_entry.path(), nullptr, false);
+			if (dir_entry.is_regular_file())
+			{
+				CompileAndCacheScript(dir_entry.path(), nullptr, false);
+			}
 		}
 	}
+
 }
 #endif
