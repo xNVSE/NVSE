@@ -48,6 +48,11 @@ void CachedTokens::Clear()
 	this->container_.Clear();
 }
 
+CachedTokens::~CachedTokens()
+{
+	Clear();
+}
+
 CachedTokens& TokenCache::Get(UInt8* key)
 {
 	if (tlsClearAllCookie_ != tlsClearAllToken_)

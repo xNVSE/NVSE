@@ -24,6 +24,7 @@ public:
 	[[nodiscard]] TokenCacheEntry *DataBegin() const;
 	[[nodiscard]] TokenCacheEntry *DataEnd() const;
 	void Clear();
+	~CachedTokens();
 };
 
 class TokenCache
