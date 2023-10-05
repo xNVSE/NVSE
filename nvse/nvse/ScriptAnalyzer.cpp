@@ -502,20 +502,22 @@ std::string StringForNumericParam(ParamType typeID, int value)
 std::string ScriptParsing::CommandCallToken::ToString()
 {
 	if (!cmdInfo)
-		return FormatString("<MISSING COMMAND OPCODE %X>", this->opcode);
+		return FormatString("UNK_OPCODE_%04X", this->opcode);
 	std::string refStr;
 	if (callingReference)
 		refStr = callingReference->ToString() + '.';
+	std::string cmdName = cmdInfo->longName[0] ? cmdInfo->longName : FormatString("UNK_OPCODE_%04X", this->opcode);
 	if (this->cmdInfo->execute == kCommandInfo_Function.execute)
 	{
-		return std::string(cmdInfo->longName) + " {" + TokenListToString(this->args, [&](auto& token, UInt32 i)
+		return cmdName + " {" + TokenListToString(this->args, [&](auto& token, UInt32 i)
 		{
 			return token->ToString() + (i != args.size() - 1 ? "," : "");
 		}) + " }";
 	}
+	refStr += cmdName;
 	if (this->expressionEvaluator)
 	{
-		return refStr + cmdInfo->longName + TokenListToString(this->expressionEvalArgs, [&](CachedTokens* t, UInt32 callCount)
+		return refStr + TokenListToString(this->expressionEvalArgs, [&](CachedTokens* t, UInt32 callCount)
 		{
 			auto text = this->expressionEvaluator->GetLineText(*t, nullptr);
 			//if (expressionEvalArgs.size() > 1 && t->Size() > 1)
@@ -523,7 +525,7 @@ std::string ScriptParsing::CommandCallToken::ToString()
 			return text;
 		});
 	}
-	return refStr + cmdInfo->longName + TokenListToString(this->args, [&](auto& token, UInt32 i)
+	return refStr + TokenListToString(this->args, [&](auto& token, UInt32 i)
 	{
 		auto& arg = *token;
 		const auto typeID = static_cast<ParamType>(cmdInfo->params[i].typeID);
@@ -1263,38 +1265,38 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 		// adjust lambda script indent
 		auto tabStr = std::string(numTabs, '\t');
 		ReplaceAll(nextLine, "\n", '\n' + tabStr);
+		scriptText += tabStr;
 
-		scriptText += tabStr + nextLine + '\n';
-		if (isNeutral || isAdd)
-			++numTabs;
-		
-		if (opcode == static_cast<UInt16>(ScriptStatementCode::ScriptName) && !script->varList.Empty())
+		if (!lastOpcode && !script->varList.Empty())
 		{
-			scriptText += '\n';
+			if (opcode == static_cast<UInt16>(ScriptStatementCode::ScriptName))
+				scriptText += nextLine + '\n' + '\n';
 			for (auto* var : script->varList)
 			{
 				if (!var)
 					continue;
 				ScriptVariableToken token(script, ExpressionCode::None, var, nullptr);
-				auto varName = token.ToString();
 				if (arrayVariables.contains(var))
-					scriptText += "Array_var " + varName;
+					scriptText += "Array_var ";
 				else if (stringVariables.contains(var))
-					scriptText += "String_var " + varName;
+					scriptText += "String_var ";
+				else if (var->IsReferenceType(script))
+					scriptText += "Ref ";
+				else if (var->type == Script::VariableType::eVarType_Float)
+					scriptText += "Float ";
 				else
-				{
-					if (var->IsReferenceType(script))
-						scriptText += "Ref " + varName;
-					else if (var->type == Script::VariableType::eVarType_Float)
-						scriptText += "Float " + varName;
-					else
-						scriptText += "Int " + varName;
-				}
-				
-				scriptText += '\n';
+					scriptText += "Int ";
+				scriptText += token.ToString() + '\n';
 			}
 			scriptText += '\n';
+			if (opcode != static_cast<UInt16>(ScriptStatementCode::ScriptName))
+				scriptText += nextLine + '\n';
 		}
+		else scriptText += nextLine + '\n';
+
+		if (isNeutral || isAdd)
+			++numTabs;
+		
 		lastOpcode = opcode;
 	}
 	return scriptText;

@@ -155,6 +155,7 @@ public:
 	ExpressionEvaluator	* m_parent;
 	ThreadLocalData&	localData;
 	std::vector<std::string> errorMessages;
+	std::optional<CachedTokens> consoleTokens;
 
 	ExpressionEvaluator(const ExpressionEvaluator& other) = delete;
 	ExpressionEvaluator& operator=(const ExpressionEvaluator& other) = delete;

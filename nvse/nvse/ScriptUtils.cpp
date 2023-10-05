@@ -4770,12 +4770,11 @@ CachedTokens* ExpressionEvaluator::GetTokens(std::optional<CachedTokens>* consol
 
 ScriptToken *ExpressionEvaluator::Evaluate()
 {
-	std::optional<CachedTokens> consoleCache;
-	CachedTokens* cachePtr = GetTokens(&consoleCache);
+	CachedTokens* cachePtr = GetTokens(&this->consoleTokens);
 	if (!cachePtr)
 		return nullptr;
 	auto& cache = *cachePtr;
-#if _DEBUG
+#if _DEBUG && 0
 	g_curLineText = this->GetLineText(cache, nullptr);
 #endif
 	OperandStack operands;
