@@ -282,7 +282,7 @@ Script *GetScriptFromForm(TESForm *form);
 bool GetUserFunctionParamTokensFromLine(std::string_view lineText, std::vector<std::string>& out);
 
 #if NVSE_CORE && RUNTIME
-Script *CompileScriptEx(const char *scriptText, const char* scriptName = nullptr);
+Script *CompileScriptEx(const char *scriptText, const char* scriptName = nullptr, bool assignFormID = false);
 // available through plugin api
 Script* CompileScript(const char* scriptText);
 Script *CompileExpression(const char *scriptText);

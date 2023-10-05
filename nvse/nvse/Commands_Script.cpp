@@ -1632,10 +1632,10 @@ bool Cmd_CompileScript_Execute(COMMAND_ARGS)
 
 		if (forceRecompile)
 		{
-			if (auto* script = CompileAndCacheScript(path, scriptObj))
+			if (auto* script = CompileAndCacheScript(path))
 				*refResult = script->refID;
 		}
-		else // assume it was previously cached, since we compile + cache all at startup
+		else
 		{
 			// Try to get the cached result
 			ScopedLock lock(g_cachedUdfCS);
@@ -1643,7 +1643,12 @@ bool Cmd_CompileScript_Execute(COMMAND_ARGS)
 				iter != cachedFileUDFs.end())
 			{
 				*refResult = iter->second->refID;
-				return true;
+			}
+			else
+			{
+				// No cached result, so create & cache
+				if (auto* script = CompileAndCacheScript(path))
+					*refResult = script->refID;
 			}
 		}
 	}

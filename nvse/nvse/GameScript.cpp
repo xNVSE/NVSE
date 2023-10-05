@@ -255,12 +255,14 @@ bool Script::Compile(ScriptBuffer* buffer)
 #if NVSE_CORE && RUNTIME
 static UInt32 g_partialScriptCount = 0;
 
-Script* CompileScriptEx(const char* scriptText, const char* scriptName)
+Script* CompileScriptEx(const char* scriptText, const char* scriptName, bool assignFormID)
 {
 	const auto buffer = MakeUnique<ScriptBuffer, 0x5AE490, 0x5AE5C0>();
-	DataHandler::Get()->DisableAssignFormIDs(true);
+	if (!assignFormID)
+		DataHandler::Get()->DisableAssignFormIDs(true);
 	auto script = MakeUnique<Script, 0x5AA0F0, 0x5AA1A0>();
-	DataHandler::Get()->DisableAssignFormIDs(false);
+	if (!assignFormID)
+		DataHandler::Get()->DisableAssignFormIDs(false);
 	buffer->scriptName.Set(scriptName ? scriptName : FormatString("nvse_partial_script_%d", ++g_partialScriptCount).c_str());
 	buffer->scriptText = const_cast<char*>(scriptText);
 	script->text = const_cast<char*>(scriptText);

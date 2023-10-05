@@ -8,7 +8,7 @@
 std::unordered_map<std::string, Script*> cachedFileUDFs;
 ICriticalSection g_cachedUdfCS;
 
-Script* CompileAndCacheScript(std::filesystem::path fullPath, Script* scriptObj, bool useLocks)
+Script* CompileAndCacheScript(std::filesystem::path fullPath, bool useLocks)
 {
 	if (!fullPath.has_extension())
 		return nullptr;
@@ -33,18 +33,9 @@ Script* CompileAndCacheScript(std::filesystem::path fullPath, Script* scriptObj,
 			g_cachedUdfCS.Leave();
 	}
 
-	auto* script = CompileScriptEx(ss.str().c_str(), udfName.c_str());
+	auto* script = CompileScriptEx(ss.str().c_str(), udfName.c_str(), true);
 	if (!script)
 		return nullptr;
-
-	if (scriptObj && scriptObj->GetModIndex() != 0xFF)
-	{
-		const auto nextFormId = GetNextFreeFormID(scriptObj->refID);
-		if (nextFormId >> 24 == scriptObj->GetModIndex())
-		{
-			script->SetRefID(nextFormId, true);
-		}
-	}
 
 	script->SetEditorID(udfName.c_str());
 
@@ -53,7 +44,8 @@ Script* CompileAndCacheScript(std::filesystem::path fullPath, Script* scriptObj,
 		if (useLocks)
 			g_cachedUdfCS.Enter();
 
-		cachedFileUDFs[fullPath.string()] = script;
+		auto relPath = std::filesystem::relative(fullPath, ScriptFilesPath);
+		cachedFileUDFs[relPath.string()] = script;
 
 		if (useLocks)
 			g_cachedUdfCS.Leave();
@@ -61,14 +53,14 @@ Script* CompileAndCacheScript(std::filesystem::path fullPath, Script* scriptObj,
 	return script;
 }
 
-Script* CompileAndCacheScript(const char* path, Script* scriptObj)
+Script* CompileAndCacheScript(const char* relPath)
 {
 	// Pretend this is only for UDFs, since for 99% of use cases that's all this will be used for.
-	std::filesystem::path fullPath = std::string(ScriptFilesPath) + path;
+	std::filesystem::path fullPath = std::string(ScriptFilesPath) + relPath;
 	if (!std::filesystem::exists(fullPath))
 		return nullptr;
 
-	return CompileAndCacheScript(fullPath, scriptObj, true);
+	return CompileAndCacheScript(fullPath, true);
 }
 
 void CacheAllScriptsInPath(std::string_view pathStr)
@@ -80,7 +72,7 @@ void CacheAllScriptsInPath(std::string_view pathStr)
 		{
 			if (dir_entry.is_regular_file())
 			{
-				CompileAndCacheScript(dir_entry.path(), nullptr, false);
+				CompileAndCacheScript(dir_entry.path(), false);
 			}
 		}
 	}
