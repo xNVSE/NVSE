@@ -334,6 +334,21 @@ public:
 	}
 };
 
+struct BaseFormMatcher
+{
+	TESForm* m_baseForm = nullptr;
+
+	BaseFormMatcher() = default;
+	BaseFormMatcher(TESForm* baseForm) : m_baseForm(baseForm) { }
+
+	bool MatchBaseForms(const TESObjectREFR* refr) const
+	{
+		if (!m_baseForm)
+			return true;
+		return refr->baseForm == m_baseForm;
+	}
+};
+
 struct DistanceAngleMatcher
 {
 	TESObjectREFR* m_distanceRef = nullptr;	//if null, ignore distance check.
@@ -404,19 +419,21 @@ struct IncludeTakenMatcher
 	}
 };
 
-struct RefMatcherAnyForm: DistanceAngleMatcher, IncludeTakenMatcher
+struct RefMatcherAnyForm: DistanceAngleMatcher, IncludeTakenMatcher, BaseFormMatcher
 {
 	RefMatcherAnyForm(bool includeTaken) :
-	DistanceAngleMatcher(nullptr, 0, -1), IncludeTakenMatcher(includeTaken)
+		DistanceAngleMatcher(), IncludeTakenMatcher(includeTaken), BaseFormMatcher()
 	{}
 
-	RefMatcherAnyForm(bool includeTaken, TESObjectREFR* distanceRef, float maxDistance, float maxHeadingAngle):
-	DistanceAngleMatcher(distanceRef, maxDistance, maxHeadingAngle), IncludeTakenMatcher(includeTaken)
+	RefMatcherAnyForm(bool includeTaken, TESObjectREFR* distanceRef, float maxDistance, float maxHeadingAngle, TESForm* baseForm):
+		DistanceAngleMatcher(distanceRef, maxDistance, maxHeadingAngle), 
+		IncludeTakenMatcher(includeTaken),
+		BaseFormMatcher(baseForm)
 	{}
 
 	bool Accept(const TESObjectREFR* refr) const
 	{
-		if (!MatchTakenItems(refr) || !MatchDistanceAndAngle(refr))
+		if (!MatchTakenItems(refr) || !MatchBaseForms(refr) || !MatchDistanceAndAngle(refr))
 		{
 			return false;
 		}
@@ -424,7 +441,7 @@ struct RefMatcherAnyForm: DistanceAngleMatcher, IncludeTakenMatcher
 	}
 };
 
-struct RefMatcherFormType: DistanceAngleMatcher, IncludeTakenMatcher
+struct RefMatcherFormType: DistanceAngleMatcher, IncludeTakenMatcher, BaseFormMatcher
 {
 	UInt32 m_formType;
 
@@ -432,13 +449,21 @@ struct RefMatcherFormType: DistanceAngleMatcher, IncludeTakenMatcher
 	IncludeTakenMatcher(includeTaken), m_formType(formType)
 	{}
 
-	RefMatcherFormType(UInt32 formType, bool includeTaken, TESObjectREFR* distanceRef, float maxDistance, float maxHeadingAngle) :
-	DistanceAngleMatcher(distanceRef, maxDistance, maxHeadingAngle), IncludeTakenMatcher(includeTaken), m_formType(formType)
+	RefMatcherFormType(UInt32 formType, bool includeTaken, 
+		TESObjectREFR* distanceRef, float maxDistance, float maxHeadingAngle,
+		TESForm* baseForm) :
+		m_formType(formType), 
+		IncludeTakenMatcher(includeTaken),
+		DistanceAngleMatcher(distanceRef, maxDistance, maxHeadingAngle), 
+		BaseFormMatcher(baseForm)
 	{}
 
 	bool Accept(const TESObjectREFR* refr) const
 	{
 		if (!MatchTakenItems(refr))
+			return false;
+
+		if (!MatchBaseForms(refr))
 			return false;
 		
 		if (refr->baseForm->typeID != m_formType || refr->baseForm->refID == 7)	//exclude player for kFormType_TESNPC
@@ -451,15 +476,19 @@ struct RefMatcherFormType: DistanceAngleMatcher, IncludeTakenMatcher
 	}
 };
 
-struct RefMatcherActor: DistanceAngleMatcher
+struct RefMatcherActor: DistanceAngleMatcher, BaseFormMatcher
 {
 	RefMatcherActor() = default;
-	RefMatcherActor(TESObjectREFR* distanceRef, float maxDistance, float maxHeadingAngle):
-	DistanceAngleMatcher(distanceRef, maxDistance, maxHeadingAngle)
+	RefMatcherActor(TESObjectREFR* distanceRef, float maxDistance, float maxHeadingAngle, TESForm* baseForm):
+		DistanceAngleMatcher(distanceRef, maxDistance, maxHeadingAngle),
+		BaseFormMatcher(baseForm)
 	{}
 	
 	bool Accept(const TESObjectREFR* refr) const
 	{
+		if (!MatchBaseForms(refr))
+			return false;
+
 		if (refr->baseForm->typeID != kFormType_TESCreature
 			&& (refr->baseForm->typeID != kFormType_TESNPC || refr->baseForm->refID == 7)) //exclude the player for kFormType_TESNPC
 		{
@@ -473,37 +502,25 @@ struct RefMatcherActor: DistanceAngleMatcher
 	}
 };
 
-struct RefMatcherMapMarker : DistanceAngleMatcher
-{
-	RefMatcherMapMarker() = default;
-	RefMatcherMapMarker(TESObjectREFR* distanceRef, float maxDistance, float maxHeadingAngle) :
-		DistanceAngleMatcher(distanceRef, maxDistance, maxHeadingAngle)
-	{}
-
-	bool Accept(const TESObjectREFR* refr) const
-	{
-		if (refr->baseForm->refID != 0x10) // copied from JIP's IsMapMarker
-			return false;
-
-		if (!MatchDistanceAndAngle(refr))
-			return false;
-
-		return true;
-	}
-};
-
-struct RefMatcherItem: IncludeTakenMatcher, DistanceAngleMatcher
+struct RefMatcherItem: IncludeTakenMatcher, DistanceAngleMatcher, BaseFormMatcher
 {
 	RefMatcherItem(bool includeTaken) : IncludeTakenMatcher(includeTaken)
 	{ }
 
-	RefMatcherItem(bool includeTaken, TESObjectREFR* distanceRef, float maxDistance, float maxHeadingAngle) :
-	IncludeTakenMatcher(includeTaken), DistanceAngleMatcher(distanceRef, maxDistance, maxHeadingAngle)
+	RefMatcherItem(bool includeTaken, 
+		TESObjectREFR* distanceRef, float maxDistance, float maxHeadingAngle, 
+		TESForm* baseForm) :
+		IncludeTakenMatcher(includeTaken), 
+		DistanceAngleMatcher(distanceRef, maxDistance, maxHeadingAngle),
+		BaseFormMatcher(baseForm)
 	{ }
 
 	bool Accept(const TESObjectREFR* refr) const
 	{
 		if (!MatchTakenItems(refr))
+			return false;
+
+		if (!MatchBaseForms(refr))
 			return false;
 
 		switch (refr->baseForm->typeID)
@@ -546,8 +563,7 @@ enum CustomFormTypeFilters
 	kFormTypeFilter_Actor = 200,
 	kFormTypeFilter_InventoryItem,
 	kFormTypeFilter_Projectile, // currently unused
-	kFormTypeFilter_SpecificReference, // used for GetInGrid, GetInGridInCell
-	kFormTypeFilter_MapMarker
+	kFormTypeFilter_SpecificReference // used for GetInGrid, GetInGridInCell
 };
 
 static const TESObjectCELL::RefList::Iterator GetCellRefEntry(const TESObjectCELL::RefList& refList, UInt32 formType, TESObjectCELL::RefList::Iterator prev,
@@ -572,9 +588,6 @@ static const TESObjectCELL::RefList::Iterator GetCellRefEntry(const TESObjectCEL
 	case kFormTypeFilter_SpecificReference:
 		if (refr)
 			entry = refList.Find(RefMatcherARefr(includeTaken, refr), prev);
-		break;
-	case kFormTypeFilter_MapMarker:
-		entry = refList.Find(RefMatcherMapMarker(), prev);
 		break;
 	default:
 		entry = refList.Find(RefMatcherFormType(formType, includeTaken), prev);
@@ -738,6 +751,7 @@ static bool GetNumRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	double uGrid = 0;
 	float maxDistance = 0;
 	float maxHeadingAngle = -1; // compared against abs(GetHeadingAngle)
+	TESForm* baseForm = nullptr;
 
 	PlayerCharacter* pc = PlayerCharacter::GetSingleton();
 	if (!pc || !(pc->parentCell))
@@ -745,12 +759,12 @@ static bool GetNumRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 
 	TESObjectCELL* cell = NULL;
 	if (bUsePlayerCell)
-		if (ExtractArgs(EXTRACT_ARGS, &formType, &cellDepth, &includeTakenRefs, &maxDistance, &maxHeadingAngle))
+		if (ExtractArgs(EXTRACT_ARGS, &formType, &cellDepth, &includeTakenRefs, &maxDistance, &maxHeadingAngle, &baseForm))
 			cell = pc->parentCell;
 		else
 			return true;
 	else
-		if (!ExtractArgs(EXTRACT_ARGS, &cell, &formType, &cellDepth, &includeTakenRefs, &maxDistance, &maxHeadingAngle))
+		if (!ExtractArgs(EXTRACT_ARGS, &cell, &formType, &cellDepth, &includeTakenRefs, &maxDistance, &maxHeadingAngle, &baseForm))
 			return true;
 
 	if (!cell)
@@ -768,11 +782,10 @@ static bool GetNumRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	CellScanInfo info(cellDepth, formType, bIncludeTakenRefs, cell);
 	info.FirstCell();
 
-	auto const anyFormMatcher = RefMatcherAnyForm(bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle);
-	auto const actorMatcher = RefMatcherActor(thisObj, maxDistance, maxHeadingAngle);
-	auto const itemMatcher = RefMatcherItem(bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle);
-	auto const formTypeMatcher = RefMatcherFormType(formType, bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle);
-	auto const mapMarkerMatcher = RefMatcherMapMarker(thisObj, maxDistance, maxHeadingAngle);
+	auto const anyFormMatcher = RefMatcherAnyForm(bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle, baseForm);
+	auto const actorMatcher = RefMatcherActor(thisObj, maxDistance, maxHeadingAngle, baseForm);
+	auto const itemMatcher = RefMatcherItem(bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle, baseForm);
+	auto const formTypeMatcher = RefMatcherFormType(formType, bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle, baseForm);
 
 	while (info.curCell)
 	{
@@ -788,9 +801,6 @@ static bool GetNumRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 			break;
 		case kFormTypeFilter_InventoryItem:
 			*result += refList.CountIf(itemMatcher);
-			break;
-		case kFormTypeFilter_MapMarker:
-			*result += refList.CountIf(mapMarkerMatcher);
 			break;
 		default:
 			*result += refList.CountIf(formTypeMatcher);
@@ -823,6 +833,7 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	double arrIndex = 0;
 	float maxDistance = 0;
 	float maxHeadingAngle = -1; // compared against abs(GetHeadingAngle)
+	TESForm* baseForm = nullptr;
 
 	PlayerCharacter* pc = PlayerCharacter::GetSingleton();
 	if (!pc || !(pc->parentCell))
@@ -830,12 +841,12 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 
 	TESObjectCELL* cell = NULL;
 	if (bUsePlayerCell)
-		if (ExtractArgs(EXTRACT_ARGS, &formType, &cellDepth, &includeTakenRefs, &maxDistance, &maxHeadingAngle))
+		if (ExtractArgs(EXTRACT_ARGS, &formType, &cellDepth, &includeTakenRefs, &maxDistance, &maxHeadingAngle, &baseForm))
 			cell = pc->parentCell;
 		else
 			return true;
 	else
-		if (!ExtractArgs(EXTRACT_ARGS, &cell, &formType, &cellDepth, &includeTakenRefs, &maxDistance, &maxHeadingAngle))
+		if (!ExtractArgs(EXTRACT_ARGS, &cell, &formType, &cellDepth, &includeTakenRefs, &maxDistance, &maxHeadingAngle, &baseForm))
 			return true;
 
 	if (!cell)
@@ -853,11 +864,10 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 	CellScanInfo info(cellDepth, formType, bIncludeTakenRefs, cell);
 	info.FirstCell();
 
-	auto const anyFormMatcher = RefMatcherAnyForm(bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle);
-	auto const actorMatcher = RefMatcherActor(thisObj, maxDistance, maxHeadingAngle);
-	auto const itemMatcher = RefMatcherItem(bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle);
-	auto const formTypeMatcher = RefMatcherFormType(formType, bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle);
-	auto const mapMarkerMatcher = RefMatcherMapMarker(thisObj, maxDistance, maxHeadingAngle);
+	auto const anyFormMatcher = RefMatcherAnyForm(bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle, baseForm);
+	auto const actorMatcher = RefMatcherActor(thisObj, maxDistance, maxHeadingAngle, baseForm);
+	auto const itemMatcher = RefMatcherItem(bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle, baseForm);
+	auto const formTypeMatcher = RefMatcherFormType(formType, bIncludeTakenRefs, thisObj, maxDistance, maxHeadingAngle, baseForm);
 
 	while (info.curCell)
 	{
@@ -884,13 +894,6 @@ bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 					break;
 				case kFormTypeFilter_InventoryItem:
 					if (itemMatcher.Accept(pRefr))
-					{
-						arr->SetElementFormID(arrIndex, pRefr->refID);
-						arrIndex += 1;
-					}
-					break;
-				case kFormTypeFilter_MapMarker:
-					if (mapMarkerMatcher.Accept(pRefr))
 					{
 						arr->SetElementFormID(arrIndex, pRefr->refID);
 						arrIndex += 1;
