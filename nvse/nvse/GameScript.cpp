@@ -258,11 +258,13 @@ static UInt32 g_partialScriptCount = 0;
 Script* CompileScriptEx(const char* scriptText, const char* scriptName, bool assignFormID)
 {
 	const auto buffer = MakeUnique<ScriptBuffer, 0x5AE490, 0x5AE5C0>();
-	if (!assignFormID)
-		DataHandler::Get()->DisableAssignFormIDs(true);
+
+	// For some reason, calling SetRefID seems to behave slightly differently than allowing game to auto-assign formID, so...
+	// Otherwise I encountered a bug where the refID of the script got swapped with another on load. -Demorome
+	DataHandler::Get()->DisableAssignFormIDs(true);
 	auto script = MakeUnique<Script, 0x5AA0F0, 0x5AA1A0>();
-	if (!assignFormID)
-		DataHandler::Get()->DisableAssignFormIDs(false);
+	DataHandler::Get()->DisableAssignFormIDs(false);
+
 	buffer->scriptName.Set(scriptName ? scriptName : FormatString("nvse_partial_script_%d", ++g_partialScriptCount).c_str());
 	buffer->scriptText = const_cast<char*>(scriptText);
 	script->text = const_cast<char*>(scriptText);
@@ -276,6 +278,13 @@ Script* CompileScriptEx(const char* scriptText, const char* scriptName, bool ass
 	script->text = nullptr;
 	if (!result)
 		return nullptr;
+
+	if (assignFormID)
+		script->SetRefID(GetNextFreeFormID(), true);
+/*
+	if (assignFormID) // prevent refID from getting shuffled around (?)
+		script->DoAddForm(script.get(), false, true);
+*/
 	return script.release();
 }
 

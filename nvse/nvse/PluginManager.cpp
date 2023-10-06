@@ -525,7 +525,7 @@ PluginManager::PluginLoadState::~PluginLoadState()
 		loadStatus = "loaded correctly";
 	if (loadStatus.empty())
 		loadStatus = "was not loaded for an unknown reason"; // shouldn't happen
-	_MESSAGE("plugin %s (%s; version %u; infoVersion (only useful to plugin dev); %u) %s",
+	_MESSAGE("plugin %s (%s; version %u; infoVersion %u) %s",
 		plugin.path,
 		plugin.info.name ? plugin.info.name : "<NULL>",
 		plugin.info.version,

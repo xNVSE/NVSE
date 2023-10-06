@@ -1051,6 +1051,11 @@ class NavMeshInfoMap: public TESForm
 
 */
 
+// Credits to lStewieAl
+UInt32 GetNextFreeFormID();
+
+// Useful for trying to get formID w/ a certain modID.
+// TODO: double-check if we need to account for BGSSaveLoad map that may have reserved a non-0xFF refID.
 UInt32 GetNextFreeFormID(UInt32 formId);
 
 struct Timer

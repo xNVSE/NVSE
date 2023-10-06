@@ -158,12 +158,25 @@ Script* LambdaManager::CreateLambdaScript(UInt8* position, const ScriptData& scr
 		return scriptLambda;
 	}
 	auto* scriptLambda = CreateLambdaScript(scriptData, parentScript);
-	g_lambdaScriptPosMap[key] = scriptLambda;
-	const auto nextFormId = GetNextFreeFormID(parentScript->refID);
-	if (nextFormId >> 24 == parentScript->GetModIndex())
+	if (parentScript->GetModIndex() == 0xFF)
 	{
-		scriptLambda->SetRefID(nextFormId, true);
+		scriptLambda->SetRefID(GetNextFreeFormID(), true);
 	}
+	else
+	{
+		const auto nextFormId = GetNextFreeFormID(parentScript->refID);
+		if (nextFormId >> 24 == parentScript->GetModIndex())
+		{
+			scriptLambda->SetRefID(nextFormId, true);
+		}
+		else
+		{
+			_ERROR("CreateLambdaScript: Failed to assign a proper formID for the lambda. This should probably never happen.");
+			scriptLambda->Delete();
+			return nullptr;
+		}
+	}
+	g_lambdaScriptPosMap[key] = scriptLambda;
 	auto iter = g_lambdas.emplace(scriptLambda, LambdaContext());
 	auto& ctx = iter.first->second;
 	SetLambdaParent(ctx, parentEventList);

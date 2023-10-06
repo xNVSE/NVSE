@@ -7,6 +7,7 @@
 #include "GameScript.h"
 #include "MemoizedMap.h"
 #include "StringVar.h"
+#include "GameData.h"
 
 #if NVSE_CORE
 #include "ScriptAnalyzer.h"
@@ -2899,6 +2900,11 @@ void Debug_DumpFontNames(void)
 
 	for (UInt32 i = 0; i < FontArraySize; i++)
 		_MESSAGE("Font %d is named %s", i + 1, fonts[i]->path);
+}
+
+UInt32 GetNextFreeFormID()
+{
+	return ThisStdCall<UInt32>(0x469800, DataHandler::Get());
 }
 
 UInt32 GetNextFreeFormID(UInt32 formId)

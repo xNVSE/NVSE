@@ -576,13 +576,10 @@ static void HandleMainLoopHook(void)
 #endif
 		g_mainThreadID = GetCurrentThreadId();
 		
-#if RUNTIME
-		CacheAllScriptsInPath(ScriptFilesPath);
-#endif
-
 		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_DeferredInit, NULL, 0, NULL);
 
 #if RUNTIME
+		CacheAllScriptsInPath(ScriptFilesPath);
 		ExecuteRuntimeUnitTests();
 #endif
 	}
