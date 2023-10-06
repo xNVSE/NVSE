@@ -5,7 +5,7 @@
 #include "GameAPI.h"
 
 #if NVSE_CORE
-std::unordered_map<std::string, Script*> cachedFileUDFs;
+UnorderedMap<char*, Script*> cachedFileUDFs;
 ICriticalSection g_cachedUdfCS;
 
 Script* CompileAndCacheScript(std::filesystem::path fullPath, bool useLocks)
@@ -26,7 +26,7 @@ Script* CompileAndCacheScript(std::filesystem::path fullPath, bool useLocks)
 			g_cachedUdfCS.Enter();
 
 		udfName = "nvseRuntimeScript"
-			+ std::to_string(cachedFileUDFs.size()) // lock due to accessing this global
+			+ std::to_string(cachedFileUDFs.Size()) // lock due to accessing this global
 			+ fullPath.stem().string();
 
 		if (useLocks)
@@ -45,7 +45,7 @@ Script* CompileAndCacheScript(std::filesystem::path fullPath, bool useLocks)
 			g_cachedUdfCS.Enter();
 
 		auto relPath = std::filesystem::relative(fullPath, ScriptFilesPath);
-		cachedFileUDFs[relPath.string()] = script;
+		cachedFileUDFs[const_cast<char*>(relPath.string().c_str())] = script;
 
 		if (useLocks)
 			g_cachedUdfCS.Leave();

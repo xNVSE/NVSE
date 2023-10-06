@@ -1639,14 +1639,15 @@ bool Cmd_CompileScript_Execute(COMMAND_ARGS)
 		{
 			// Try to get the cached result
 			ScopedLock lock(g_cachedUdfCS);
-			if (auto iter = cachedFileUDFs.find(path);
-				iter != cachedFileUDFs.end())
+			if (auto iter = cachedFileUDFs.Find(const_cast<char*>(path));
+				!iter.End())
 			{
-				*refResult = iter->second->refID;
+				*refResult = iter.Get()->refID;
 			}
 			else
 			{
 				// No cached result, so create & cache
+				// Should only happen if file wasn't pre-cached at startup, i.e it didn't exist and was created mid-game.
 				if (auto* script = CompileAndCacheScript(path))
 					*refResult = script->refID;
 			}
