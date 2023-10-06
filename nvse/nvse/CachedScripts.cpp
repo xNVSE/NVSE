@@ -72,7 +72,13 @@ void CacheAllScriptsInPath(std::string_view pathStr)
 		{
 			if (dir_entry.is_regular_file())
 			{
-				CompileAndCacheScript(dir_entry.path(), false);
+				if (!CompileAndCacheScript(dir_entry.path(), false))
+				{
+					std::string errMsg = std::format("xNVSE: Failed to precompile script file {}", 
+						dir_entry.path().string());
+					Console_Print(errMsg.c_str());
+					_ERROR(errMsg.c_str());
+				}
 			}
 		}
 	}

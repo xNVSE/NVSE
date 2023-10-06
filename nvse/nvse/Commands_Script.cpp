@@ -1620,9 +1620,14 @@ bool Cmd_CompileScript_Execute(COMMAND_ARGS)
 	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 		eval.ExtractArgs())
 	{
-		auto const path = eval.Arg(0)->GetString();
-		if (!path || !path[0])
-			return true;
+		std::string pathStr;
+		{
+			auto const path = eval.Arg(0)->GetString();
+			if (!path || !path[0])
+				return true;
+			pathStr = path;
+		}
+		ReplaceAll(pathStr, "/", "\\");
 
 		bool forceRecompile = false;
 		if (eval.NumArgs() > 1)
@@ -1632,24 +1637,31 @@ bool Cmd_CompileScript_Execute(COMMAND_ARGS)
 
 		if (forceRecompile)
 		{
-			if (auto* script = CompileAndCacheScript(path))
+			if (auto* script = CompileAndCacheScript(pathStr.c_str()))
 				*refResult = script->refID;
 		}
 		else
 		{
 			// Try to get the cached result
 			ScopedLock lock(g_cachedUdfCS);
-			if (auto iter = cachedFileUDFs.Find(const_cast<char*>(path));
+			if (auto iter = cachedFileUDFs.Find(const_cast<char*>(pathStr.c_str()));
 				!iter.End())
 			{
 				*refResult = iter.Get()->refID;
+
+#if _DEBUG
+				Console_Print("CompileScript >> Got cached script");
+#endif
 			}
 			else
 			{
 				// No cached result, so create & cache
 				// Should only happen if file wasn't pre-cached at startup, i.e it didn't exist and was created mid-game.
-				if (auto* script = CompileAndCacheScript(path))
+				if (auto* script = CompileAndCacheScript(pathStr.c_str()))
 					*refResult = script->refID;
+#if _DEBUG
+				Console_Print("CompileScript >> Had to compile script; couldn't find cached script.");
+#endif
 			}
 		}
 	}
