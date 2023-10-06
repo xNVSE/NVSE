@@ -7,7 +7,7 @@
 
 class Script;
 
-#if NVSE_CORE
+#if NVSE_CORE && RUNTIME
 constexpr std::string_view ScriptFilesPath = "data/nvse/user_defined_functions/";
 
 extern UnorderedMap<char*, Script*> cachedFileUDFs;

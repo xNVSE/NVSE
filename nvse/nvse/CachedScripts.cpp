@@ -4,7 +4,7 @@
 #include "GameScript.h"
 #include "GameAPI.h"
 
-#if NVSE_CORE
+#if NVSE_CORE && RUNTIME
 UnorderedMap<char*, Script*> cachedFileUDFs;
 ICriticalSection g_cachedUdfCS;
 
