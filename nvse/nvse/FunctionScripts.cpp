@@ -114,7 +114,13 @@ public:
 
 		if (scrToken)
 		{
-			m_funcScript = DYNAMIC_CAST(scrToken->GetTESForm(), TESForm, Script);
+			auto* form = scrToken->GetTESForm();
+			m_funcScript = DYNAMIC_CAST(form, TESForm, Script);
+			if (!m_funcScript && form)
+			{
+				m_eval.Error("Call statement received invalid form for the script arg. Said form %s has type %u.", 
+					form->GetStringRepresentation().c_str(), form->GetTypeID());
+			}
 			delete scrToken;
 		}
 
