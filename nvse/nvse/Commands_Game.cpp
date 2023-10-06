@@ -430,7 +430,7 @@ namespace DisablePlayerControlsAlt
 			auto flagsModHad = foundIter->second;
 			ApplyImmediateEnablingEffects(flagsModHad);
 
-			// update disabled flags (might just be re-applying the same disabled flags)
+			// update disabled flags
 			foundIter->second &= ~flagsToRemoveForMod;
 			if (!foundIter->second)
 				g_disabledFlagsPerMod.erase(foundIter);
