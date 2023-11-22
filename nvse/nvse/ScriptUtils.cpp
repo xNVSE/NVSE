@@ -4870,7 +4870,8 @@ ScriptToken *ExpressionEvaluator::Evaluate()
 	
 	if (operands.Size() != 1 || (this->HasErrors() && !m_flags.IsSet(kFlag_SuppressErrorMessages))) // should have one operand remaining - result of expression
 	{
-		const auto currentLine = this->GetLineText(cache, iter.Get().token);
+		auto* faultingToken = !iter.End() ? iter.Get().token : nullptr;
+		const auto currentLine = this->GetLineText(cache, faultingToken);
 		if (!currentLine.empty())
 		{
 			auto* cmd = GetCommand();
