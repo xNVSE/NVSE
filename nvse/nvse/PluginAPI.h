@@ -1275,3 +1275,42 @@ struct NVSELoggingInterface
 	// The path is guaranteed to exist; xNVSE creates it at init if needed.
 	const char* (__fastcall* GetPluginLogPath)();
 };
+
+/**
+ *  A more straight-forward way to define commands.
+ *  Usage:
+ *	```
+ *  NVSECommandBuilder builder(nvse);
+ *  builder.Create("MyCommand", returnType, { ParamInfo{ "param1", kParamType_Integer, 0 }, ParamInfo{ "param2", kParamType_String, 0 } }, false, Cmd_MyCommand_Execute);
+ *  // or
+ *  builder.Create("MyCommand", returnType, { ParamInfo{ "param1", kParamType_Integer, 0 }, ParamInfo{ "param2", kParamType_String, 0 } }, false, [](COMMAND_ARGS)
+ *  {
+ *     return true;
+ *  });
+ *	```
+ */
+class NVSECommandBuilder
+{
+	const NVSEInterface* scriptInterface;
+public:
+	explicit NVSECommandBuilder(const NVSEInterface* scriptInterface) : scriptInterface(scriptInterface) {}
+
+	void Create(const char* name, CommandReturnType returnType, std::initializer_list<ParamInfo> params, bool refRequired, Cmd_Execute fn, Cmd_Parse parse = nullptr, const char* altName = "") const
+	{
+		ParamInfo* paramCopy = nullptr;
+		if (params.size())
+		{
+			paramCopy = new ParamInfo[params.size()];
+			int index = 0;
+			for (const auto& param : params)
+			{
+				paramCopy[index++] = param;
+			}
+		}
+
+		auto commandInfo = CommandInfo{
+			name, altName, 0, "", refRequired, static_cast<UInt16>(params.size()), paramCopy, fn, parse, nullptr, 0
+		};
+		scriptInterface->RegisterTypedCommand(&commandInfo, returnType);
+	}
+};
