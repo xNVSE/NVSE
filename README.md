@@ -21,7 +21,7 @@ Releases are also available on [Nexus Mods](https://www.nexusmods.com/newvegas/m
 
 2. Launch NV via running *nvse_loader.exe* or, if you have patched the game using [FNV 4GB Patcher](https://www.nexusmods.com/newvegas/mods/62552/), *FalloutNV.exe*. Enabling the Steam Community option (enabled by default) will allow you to launch the game via Steam's standard UI.
 
-xNVSE is compatible with the Steam and GOG versions of the game. German No Gore, Xbox Gamepass, Epic Games Store, and Bethesda.net versions are not supported.
+xNVSE is compatible with the Steam and GOG versions of the game. German No Gore, Xbox Gamepass, and Bethesda.net versions are not supported. Epic Games Store users can use the [Epic Games Patcher](https://www.nexusmods.com/newvegas/mods/81281).
 
 ## Support
 
