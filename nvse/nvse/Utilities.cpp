@@ -1135,6 +1135,12 @@ bool StartsWith(std::string left, std::string right)
 	return ToLower(std::move(left)).starts_with(ToLower(std::move(right)));
 }
 
+// Taken from https://stackoverflow.com/a/4770992/22891557
+bool StartsWith(const char* pre, const char* str)
+{
+	return strncmp(pre, str, strlen(pre)) == 0;
+}
+
 std::vector<std::string> SplitString(std::string s, std::string delimiter)
 {
 	size_t pos_start = 0, pos_end, delim_len = delimiter.length();

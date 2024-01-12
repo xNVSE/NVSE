@@ -106,6 +106,8 @@ enum CommandReturnType : UInt8
 	kRetnType_Max
 };
 
+const char* CommandReturnTypeToString(CommandReturnType in);
+
 struct ParamInfo
 {
 	const char	* typeStr;
@@ -227,6 +229,17 @@ bool Cmd_Default_Eval(COMMAND_ARGS_EVAL);
 #define HANDLER_EVAL(x)	Cmd_Default_Eval
 #endif
 
+const UInt32 kNVSEOpcodeStart = 0x1400;
+const UInt32 kNVSEOpcodeTest = 0x2000;
+
+struct CommandMetadata
+{
+	CommandMetadata() :parentPlugin(kNVSEOpcodeStart), returnType(kRetnType_Default) { }
+
+	UInt32				parentPlugin;
+	CommandReturnType	returnType;
+};
+
 struct CommandInfo
 {
 	const char	* longName;		// 00
@@ -244,19 +257,8 @@ struct CommandInfo
 
 	UInt32		flags;			// 24		might be more than one field (reference to 25 as a byte)
 
-	void	DumpFunctionDef() const;
-	void	DumpDocs() const;
-};
-
-const UInt32 kNVSEOpcodeStart	= 0x1400;
-const UInt32 kNVSEOpcodeTest	= 0x2000;
-
-struct CommandMetadata
-{
-	CommandMetadata() :parentPlugin(kNVSEOpcodeStart), returnType(kRetnType_Default) { }
-
-	UInt32				parentPlugin;
-	CommandReturnType	returnType;
+	void	DumpFunctionDef(CommandMetadata* metadata = nullptr) const;
+	void	DumpDocs(CommandMetadata* metadata = nullptr) const;
 };
 
 class CommandTable
@@ -284,7 +286,7 @@ public:
 
 	void	Dump(void);
 	void	DumpAlternateCommandNames(void);
-	void	DumpCommandDocumentation(UInt32 startWithID = kNVSEOpcodeStart);
+	void	DumpCommandDocumentation(bool showQuickList, UInt32 startWithID = kNVSEOpcodeStart, bool showIfConditionOnly = false);
 
 	CommandReturnType	GetReturnType(const CommandInfo * cmd);
 	void				SetReturnType(UInt32 opcode, CommandReturnType retnType);

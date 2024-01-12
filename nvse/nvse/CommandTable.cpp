@@ -305,11 +305,18 @@ bool Cmd_GetNVSEBeta_Execute(COMMAND_ARGS)
 
 bool Cmd_DumpDocs_Execute(COMMAND_ARGS)
 {
+	int showQuickList = 0;
+	UInt32 startingOpcode = kNVSEOpcodeStart;
+	int showIfConditionOnly = 0;
+
+	if (!ExtractArgs(EXTRACT_ARGS, &showQuickList, &startingOpcode, &showIfConditionOnly))
+		return true;
+
 	if (IsConsoleMode())
 	{
 		Console_Print("Dumping Command Docs");
 	}
-	g_scriptCommands.DumpCommandDocumentation();
+	g_scriptCommands.DumpCommandDocumentation(showQuickList != 0, startingOpcode, showIfConditionOnly != 0);
 	if (IsConsoleMode())
 	{
 		Console_Print("Done Dumping Command Docs");
@@ -348,7 +355,7 @@ static ParamInfo kTestDumpCommand_Params[] =
 DEFINE_CMD_COND(GetNVSEVersion, returns the installed version of NVSE, 0, NULL);
 DEFINE_CMD_COND(GetNVSERevision, returns the numbered revision of the installed version of NVSE, 0, NULL);
 DEFINE_CMD_COND(GetNVSEBeta, returns the numbered beta of the installed version of NVSE, 0, NULL);
-DEFINE_COMMAND(DumpDocs, , 0, 0, NULL);
+DEFINE_COMMAND(DumpDocs, , false, 3, kParams_ThreeOptionalInts);
 
 #define ADD_CMD(command) Add(&kCommandInfo_##command)
 #define ADD_CMD_RET(command, rtnType) Add(&kCommandInfo_##command, rtnType)
@@ -819,31 +826,76 @@ const char *StringForParamType(UInt32 paramType)
 	}
 }
 
-void CommandTable::DumpCommandDocumentation(UInt32 startWithID)
+const char* CommandReturnTypeToString(CommandReturnType in)
 {
-	_MESSAGE("NVSE Commands from: %#x", startWithID);
-
-	_MESSAGE("<br><b>Function Quick Reference</b>");
-	CommandList::iterator itEnd = m_commands.end();
-	for (CommandList::iterator iter = m_commands.begin(); iter != itEnd; ++iter)
+	switch (in)
 	{
-		if (iter->opcode >= startWithID)
+	case kRetnType_Ambiguous:
+		return "Ambiguous";
+	case kRetnType_Default:
+		return "Float";
+	case kRetnType_Form:
+		return "Form";
+	case kRetnType_String:
+		return "String";
+	case kRetnType_Array:
+		return "Array";
+	case kRetnType_ArrayIndex:
+		return "Array index";
+	default:
+		return "<unknown>";
+	}
+}
+
+void CommandTable::DumpCommandDocumentation(bool showQuickList, UInt32 startWithID, bool showIfConditionOnly)
+{
+	_MESSAGE("%sCommands starting from opcode %#x:", (startWithID == kNVSEOpcodeStart ? "NVSE " : ""), startWithID);
+
+	CommandList::iterator itEnd = m_commands.end();
+	if (showQuickList)
+	{
+		_MESSAGE("<br><b>Function Quick Reference</b>");
+		for (CommandList::iterator iter = m_commands.begin(); iter != itEnd; ++iter)
 		{
-			iter->DumpFunctionDef();
+			if (!iter->longName || !iter->longName[0])
+				continue;
+			if (iter->opcode >= startWithID)
+			{
+				if (iter->execute || showIfConditionOnly) // assume it has eval function if no execute
+				{
+					iter->DumpFunctionDef(&m_metadata[iter->opcode]);
+				}
+			}
 		}
 	}
-
-	_MESSAGE("<hr><br><b>Functions In Detail</b>");
-	for (CommandList::iterator iter = m_commands.begin(); iter != itEnd; ++iter)
+	else
 	{
-		if (iter->opcode >= startWithID)
+		_MESSAGE("<hr><br><b>Functions In Detail</b>");
+		for (CommandList::iterator iter = m_commands.begin(); iter != itEnd; ++iter)
 		{
-			iter->DumpDocs();
+			if (!iter->longName || !iter->longName[0])
+				continue;
+			if (iter->opcode >= startWithID)
+			{
+				if (iter->execute || showIfConditionOnly) // assume it has eval function if no execute
+				{
+					iter->DumpDocs(&m_metadata[iter->opcode]);
+				}
+			}
 		}
 	}
 }
 
-void CommandInfo::DumpDocs() const
+const char* GetReturnTypeStr(const char* funcName, CommandMetadata* metadata)
+{
+	if (StartsWith("Is", funcName) || StartsWith("GetIs", funcName))
+		return "1/0";
+	if (metadata)
+		return CommandReturnTypeToString(metadata->returnType);
+	return "Float"; // assume we have no metadata for vanilla funcs, so default to float
+}
+
+void CommandInfo::DumpDocs(CommandMetadata* metadata) const
 {
 	_MESSAGE("<p><a name=\"%s\"></a><b>%s</b> ", longName, longName);
 	_MESSAGE("<br><b>Alias:</b> %s<br><b>Parameters:</b>%d", (strlen(shortName) != 0) ? shortName : "none", numParams);
@@ -863,12 +915,16 @@ void CommandInfo::DumpDocs() const
 			}
 		}
 	}
-	_MESSAGE("<br><b>Return Type:</b> FixMe<br><b>Opcode:</b> %#4x (%d)<br><b>Condition Function:</b> %s<br><b>Description:</b> %s</p>", opcode, opcode, eval ? "Yes" : "No", helpText);
+
+
+	_MESSAGE("<br><b>Return Type:</b> %s<br><b>Opcode:</b> %#4x (%d)<br><b>Condition Function:</b> %s<br><b>Description:</b> %s</p>", 
+		GetReturnTypeStr(longName, metadata), opcode, opcode, eval ? "Yes" : "No", helpText);
 }
 
-void CommandInfo::DumpFunctionDef() const
+void CommandInfo::DumpFunctionDef(CommandMetadata* metadata) const
 {
-	_MESSAGE("<br>(FixMe) %s<a href=\"#%s\">%s</a> ", needsParent > 0 ? "reference." : "", longName, longName);
+	_MESSAGE("<br>(%s) %s<a href=\"#%s\">%s</a> ", GetReturnTypeStr(longName, metadata),
+		needsParent > 0 ? "reference." : "", longName, longName);
 	if (numParams > 0)
 	{
 		for (UInt32 i = 0; i < numParams; i++)
