@@ -8,7 +8,7 @@
 UnorderedMap<char*, Script*> cachedFileUDFs;
 ICriticalSection g_cachedUdfCS;
 
-Script* CompileAndCacheScript(std::filesystem::path fullPath, bool useLocks)
+Script* CompileAndCacheScript(std::filesystem::path fullPath, bool useLocks, const char* relPath = nullptr)
 {
 	if (!fullPath.has_extension())
 		return nullptr;
@@ -44,8 +44,16 @@ Script* CompileAndCacheScript(std::filesystem::path fullPath, bool useLocks)
 		if (useLocks)
 			g_cachedUdfCS.Enter();
 
-		auto relPath = std::filesystem::relative(fullPath, ScriptFilesPath);
-		cachedFileUDFs[const_cast<char*>(relPath.string().c_str())] = script;
+		if (relPath)
+		{
+			cachedFileUDFs[const_cast<char*>(relPath)] = script;
+		}
+		else
+		{
+			std::string filePath = fullPath.string();
+			filePath.erase(0, ScriptFilesPath.size()); // turn it into a relative path. 
+			cachedFileUDFs[const_cast<char*>(filePath.c_str())] = script;
+		}
 
 		if (useLocks)
 			g_cachedUdfCS.Leave();
@@ -60,7 +68,7 @@ Script* CompileAndCacheScript(const char* relPath)
 	if (!std::filesystem::exists(fullPath))
 		return nullptr;
 
-	return CompileAndCacheScript(fullPath, true);
+	return CompileAndCacheScript(fullPath, true, relPath);
 }
 
 void CacheAllScriptsInPath(std::string_view pathStr)
