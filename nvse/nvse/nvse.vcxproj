@@ -624,6 +624,7 @@ xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</C
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="InventoryRef.cpp" />
     <ClCompile Include="InventoryReference.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
@@ -735,6 +736,7 @@ xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</C
     <ClInclude Include="Hooks_SaveLoad.h" />
     <ClInclude Include="Hooks_Script.h" />
     <ClInclude Include="InventoryInfo.h" />
+    <ClInclude Include="InventoryRef.h" />
     <ClInclude Include="InventoryReference.h" />
     <ClInclude Include="LambdaManager.h" />
     <ClInclude Include="Loops.h" />

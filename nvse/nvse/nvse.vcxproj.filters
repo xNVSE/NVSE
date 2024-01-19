@@ -253,6 +253,7 @@
     <ClCompile Include="CachedScripts.cpp">
       <Filter>internals</Filter>
     </ClCompile>
+    <ClCompile Include="InventoryRef.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
@@ -512,6 +513,7 @@
     <ClInclude Include="CachedScripts.h">
       <Filter>internals</Filter>
     </ClInclude>
+    <ClInclude Include="InventoryRef.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">
