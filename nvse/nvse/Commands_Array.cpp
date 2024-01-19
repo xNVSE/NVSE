@@ -435,7 +435,9 @@ void ReturnElement(COMMAND_ARGS, ExpressionEvaluator& eval, ArrayElement* elemen
 		break;
 	case kDataType_Array: 
 		eval.ExpectReturnType(kRetnType_Array);
-		element->GetAsArray((UInt32*)result);
+		ArrayID tempRes;
+		element->GetAsArray(&tempRes);
+		*result = tempRes;
 		break;
 	default: 
 		*result = 0;
