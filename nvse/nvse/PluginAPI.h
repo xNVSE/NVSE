@@ -628,7 +628,7 @@ struct NVSEDataInterface
 //== Type definitions of function pointers, to easily cast the functions returned by NVSEDataInterface::GetFunc
 
 // Inventory Reference function pointer typedefs:
-typedef InventoryRef* (__stdcall* _InventoryReferenceCreate)(TESObjectREFR* container, TESForm* type, ExtraContainerChanges::EntryData* entry, ExtraDataList* xData, bool bValidate);
+typedef InventoryRef* (__stdcall* _InventoryReferenceCreate)(TESObjectREFR* container, const InventoryRef::Data& data, bool bValidate);
 typedef InventoryRef* (*_InventoryReferenceGetForRefID)(UInt32 refID);
 typedef InventoryRef* (*_InventoryReferenceGetRefBySelf)(InventoryRef* self);
 typedef TESObjectREFR* (__stdcall* _InventoryReferenceCreateEntry)(TESObjectREFR* container, TESForm* itemForm, SInt32 countDelta, ExtraDataList* xData);

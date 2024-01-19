@@ -8,9 +8,12 @@
 // It exists so plugins have limited access to the internal functions.
 struct InventoryRef
 {
-	TESForm* type;			// 00
-	ExtraContainerChanges::EntryData* entry;			// 04
-	ExtraDataList* xData;			// 08
+	struct Data
+	{
+		TESForm* type;	// 00
+		ExtraContainerChanges::EntryData* entry;	// 04
+		ExtraDataList* xData;	// 08
+	} data;
 	TESObjectREFR* containerRef;	// 0C
 	TESObjectREFR* tempRef;		// 10
 	UInt8				pad14[24];		// 14
@@ -18,7 +21,7 @@ struct InventoryRef
 	bool				removed;		// 2D
 	UInt8				pad2E[2];		// 2E
 
-	SInt32 GetCount() const { return entry->countDelta; }
+	SInt32 GetCount() const { return data.entry->countDelta; }
 #if 0
 	// todo: fix these by porting over some functions from JIP
 	ExtraDataList* CreateExtraData();
