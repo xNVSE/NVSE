@@ -23,6 +23,29 @@ NVSESerializationInterface* g_serializationInterface{};
 NVSEConsoleInterface* g_consoleInterface{};
 NVSEEventManagerInterface* g_eventInterface{};
 bool (*ExtractArgsEx)(COMMAND_ARGS_EX, ...);
+
+#define WantInventoryRefFunctions 0 // set to 1 if you want these PluginAPI functions
+#if WantInventoryRefFunctions
+_InventoryReferenceCreate InventoryReferenceCreate{};
+_InventoryReferenceGetForRefID InventoryReferenceGetForRefID{};
+_InventoryReferenceGetRefBySelf InventoryReferenceGetRefBySelf{};
+_InventoryReferenceCreateEntry InventoryReferenceCreateEntry{};
+#endif
+
+#define WantLambdaFunctions 0 // set to 1 if you want these PluginAPI functions
+#if WantLambdaFunctions
+_LambdaDeleteAllForScript LambdaDeleteAllForScript{};
+_LambdaSaveVariableList LambdaSaveVariableList{};
+_LambdaUnsaveVariableList LambdaUnsaveVariableList{};
+_IsScriptLambda IsScriptLambda{};
+#endif
+
+#define WantScriptFunctions 0 // set to 1 if you want these PluginAPI functions
+#if WantScriptFunctions
+_HasScriptCommand HasScriptCommand{};
+_DecompileScript DecompileScript{};
+#endif
+
 #endif
 
 /****************
@@ -152,6 +175,26 @@ bool NVSEPlugin_Load(NVSEInterface* nvse)
 		g_serializationInterface = static_cast<NVSESerializationInterface*>(nvse->QueryInterface(kInterface_Serialization));
 		g_consoleInterface = static_cast<NVSEConsoleInterface*>(nvse->QueryInterface(kInterface_Console));
 		ExtractArgsEx = g_script->ExtractArgsEx;
+
+#if WantInventoryRefFunctions
+		InventoryReferenceCreate = (_InventoryReferenceCreate)g_dataInterface->GetFunc(NVSEDataInterface::kNVSEData_InventoryReferenceCreate);
+		InventoryReferenceGetForRefID = (_InventoryReferenceGetForRefID)g_dataInterface->GetFunc(NVSEDataInterface::kNVSEData_InventoryReferenceGetForRefID);
+		InventoryReferenceGetRefBySelf = (_InventoryReferenceGetRefBySelf)g_dataInterface->GetFunc(NVSEDataInterface::kNVSEData_InventoryReferenceGetRefBySelf);
+		InventoryReferenceCreateEntry = (_InventoryReferenceCreateEntry)g_dataInterface->GetFunc(NVSEDataInterface::kNVSEData_InventoryReferenceCreateEntry);
+#endif
+
+#if WantLambdaFunctions
+		LambdaDeleteAllForScript = (_LambdaDeleteAllForScript)g_dataInterface->GetFunc(NVSEDataInterface::kNVSEData_LambdaDeleteAllForScript);
+		LambdaSaveVariableList = (_LambdaSaveVariableList)g_dataInterface->GetFunc(NVSEDataInterface::kNVSEData_LambdaSaveVariableList);
+		LambdaUnsaveVariableList = (_LambdaUnsaveVariableList)g_dataInterface->GetFunc(NVSEDataInterface::kNVSEData_LambdaUnsaveVariableList);
+		IsScriptLambda = (_IsScriptLambda)g_dataInterface->GetFunc(NVSEDataInterface::kNVSEData_IsScriptLambda);
+#endif
+
+#if WantScriptFunctions
+		HasScriptCommand = (_HasScriptCommand)g_dataInterface->GetFunc(NVSEDataInterface::kNVSEData_HasScriptCommand);
+		DecompileScript = (_DecompileScript)g_dataInterface->GetFunc(NVSEDataInterface::kNVSEData_DecompileScript);
+#endif
+
 #endif
 	}
 	

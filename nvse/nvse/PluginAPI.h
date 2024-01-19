@@ -637,7 +637,7 @@ typedef TESObjectREFR* (__stdcall* _InventoryReferenceCreateEntry)(TESObjectREFR
 typedef void (*_LambdaDeleteAllForScript)(Script* parentScript);
 typedef void (*_LambdaSaveVariableList)(Script* parentScript);
 typedef void (*_LambdaUnsaveVariableList)(Script* parentScript);
-typedef bool (*_LambdaIsScriptLambda)(Script* parentScript);
+typedef bool (*_IsScriptLambda)(Script* parentScript);
 
 // Script-related function pointer typedefs:
 typedef bool (*_HasScriptCommand)(Script* script, CommandInfo* info, CommandInfo* eventBlock);
