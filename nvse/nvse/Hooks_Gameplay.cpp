@@ -467,6 +467,32 @@ namespace DisablePlayerControlsAlt
 		return result;
 	}
 
+	namespace MaybePreventSleepWait
+	{
+		CallDetour g_detour;
+		void* __cdecl Hook()
+		{
+			// NOTE: this trick only works if we aren't being called as a detour ourselves!
+			auto* _ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
+			auto const returnAddr = *reinterpret_cast<UInt32*>(_ebp + 0x4);
+			if (returnAddr != 0x5E00F7) // If it's not Cmd_ShowSleepWaitMenu attempting to open the menu by bypassing preconditions...
+			{
+				auto const isSleep = *reinterpret_cast<UInt8*>(_ebp + 0x8);
+				if (isSleep && (g_disabledControls & kFlag_Sleep) != 0)
+					return nullptr;
+				if (!isSleep && (g_disabledControls & kFlag_Wait) != 0)
+					return nullptr;
+			}
+			// otherwise, we allow the menu to be created
+			return CdeclCall<void*>(g_detour.GetOverwrittenAddr());
+		}
+
+		void WriteHook()
+		{
+			g_detour.WriteRelCall(0x7054F6, (UInt32)Hook);
+		}
+	}
+
 	void WriteHooks()
 	{
 		WriteRelJump(0x5A03F7, (UInt32)ModifyPlayerControlFlags);
@@ -482,6 +508,8 @@ namespace DisablePlayerControlsAlt
 
 		// hooks Actor::GetMovementSpeed() call
 		g_PreventRunningForNonController.WriteRelCall(0x941B60, (UInt32)MaybePreventRunningForNonController);
+
+		MaybePreventSleepWait::WriteHook();
 
 		// todo: maybe add hook+flag to disable grabbing @ 0x95F6DE
 		// todo: maybe add hook+flag to disable AmmoSwap at 0x94098B
