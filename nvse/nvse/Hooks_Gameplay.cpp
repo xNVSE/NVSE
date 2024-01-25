@@ -493,6 +493,24 @@ namespace DisablePlayerControlsAlt
 		}
 	}
 
+	namespace MaybePreventFastTravel
+	{
+		CallDetour g_detour;
+
+		bool __fastcall CheckAllowFastTravel_Hook(PlayerCharacter* player)
+		{
+			auto canFastTravel = ThisStdCall<bool>(g_detour.GetOverwrittenAddr(), player);
+			if ((g_disabledControls & kFlag_FastTravel) != 0)
+				canFastTravel = false;
+			return canFastTravel;
+		}
+
+		void WriteHook()
+		{
+			g_detour.WriteRelCall(0x798026, (UInt32)CheckAllowFastTravel_Hook);
+		}
+	}
+
 	void WriteHooks()
 	{
 		WriteRelJump(0x5A03F7, (UInt32)ModifyPlayerControlFlags);
@@ -510,6 +528,7 @@ namespace DisablePlayerControlsAlt
 		g_PreventRunningForNonController.WriteRelCall(0x941B60, (UInt32)MaybePreventRunningForNonController);
 
 		MaybePreventSleepWait::WriteHook();
+		MaybePreventFastTravel::WriteHook();
 
 		// todo: maybe add hook+flag to disable grabbing @ 0x95F6DE
 		// todo: maybe add hook+flag to disable AmmoSwap at 0x94098B

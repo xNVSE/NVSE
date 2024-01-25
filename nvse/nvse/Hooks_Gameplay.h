@@ -50,10 +50,13 @@ namespace DisablePlayerControlsAlt
 		kFlag_Jumping = 1 << 9,
 		kFlag_AimingOrBlocking = 1 << 10,
 		kFlag_Running = 1 << 11,
+		// Added in v6.35
 		kFlag_Sleep = 1 << 12,
 		kFlag_Wait = 1 << 13,
+		kFlag_FastTravel = 1 << 14,
+
 		kNewFlags = kFlag_Attacking | kFlag_EnterVATS | kFlag_Jumping | kFlag_AimingOrBlocking
-			| kFlag_Running | kFlag_Sleep | kFlag_Wait,
+			| kFlag_Running | kFlag_Sleep | kFlag_Wait | kFlag_FastTravel,
 
 		kAllFlags = kVanillaFlags | kNewFlags
 	};
