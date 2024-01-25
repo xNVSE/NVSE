@@ -444,7 +444,7 @@ namespace DisablePlayerControlsAlt
 			AND		eax, kFlag_Running
 			test	eax, eax
 			jz		DoRegular
-			// prevent activation
+			// else, prevent
 			jmp		PreventRunningAddr
 		DoRegular :
 			// go back to the code we jumped from and slightly overwrote
@@ -469,6 +469,78 @@ namespace DisablePlayerControlsAlt
 
 	namespace MaybePreventSleepWait
 	{
+		namespace WaitMenuControlPress
+		{
+			CallDetour g_detour;
+			UInt8 __fastcall GetPCControlFlags_Hook(PlayerCharacter* player)
+			{
+				auto result = ThisStdCall<UInt8>(g_detour.GetOverwrittenAddr(), player);
+				if ((g_disabledControls & kFlag_Wait) != 0)
+					return 1; // prevent waiting
+				return result;
+			}
+
+			void WriteHook()
+			{
+				g_detour.WriteRelCall(0x94239C, (UInt32)GetPCControlFlags_Hook);
+			}
+		}
+
+		namespace Cmd_ShowSleepWaitMenu
+		{
+			CallDetour g_detour;
+			void __fastcall CheckPreconditions_Hook(PlayerCharacter* player)
+			{
+				// NOTE: this trick only works if we aren't being called as a detour ourselves!
+				// Have to resort to this hack because isSleep isn't passed to the func (it should've been).
+				// (The behavior for isSleep not being passed is fixed by ShowOff; it stores isSleep in a global)
+				auto* ebp = GetParentBasePtr(_AddressOfReturnAddress());
+				auto isSleep = *reinterpret_cast<UInt32*>(ebp - 0x8);
+
+				if (isSleep && (g_disabledControls & kFlag_Sleep) != 0)
+					return; // avoid potentially showing one of the game's precondition fail messages.
+				if (!isSleep && (g_disabledControls & kFlag_Wait) != 0)
+					return;
+
+				ThisStdCall(g_detour.GetOverwrittenAddr(), player);
+			}
+
+			void WriteHook()
+			{
+				g_detour.WriteRelCall(0x5E00E0, (UInt32)CheckPreconditions_Hook);
+			}
+		}
+
+		namespace SleepFromFurniture
+		{
+			__HOOK MaybePreventSleeping()
+			{
+				static const UInt32 NormalRetnAddr = 0x509667,
+					PreventSleepingAddr = 0x509880;
+				_asm
+				{
+					movzx	eax, g_disabledControls
+					AND		eax, kFlag_Sleep
+					test	eax, eax
+					jz		DoRegular
+					// else, prevent
+					xor		al, al  // set result to 0
+					jmp		PreventSleepingAddr
+				DoRegular :
+					// go back to the code we jumped from and slightly overwrote
+					mov     [ebp - 0x19], 0
+					mov		ecx, [ebp + 0x8]
+					jmp		NormalRetnAddr
+				}
+			}
+
+			void WriteHook()
+			{
+				WriteRelJump(0x509660, (UInt32)MaybePreventSleeping);
+			}
+		}
+
+#if 0
 		CallDetour g_detour;
 		void* __cdecl Hook()
 		{
@@ -486,28 +558,45 @@ namespace DisablePlayerControlsAlt
 			// otherwise, we allow the menu to be created
 			return CdeclCall<void*>(g_detour.GetOverwrittenAddr());
 		}
+#endif
 
-		void WriteHook()
+		void WriteHooks()
 		{
-			g_detour.WriteRelCall(0x7054F6, (UInt32)Hook);
+			// We use multiple hooks to prevent the game's normal precondition fail messages from being displayed.
+			// This will make it easier for modders to add their own failure messages without worrying about multiple warnings.
+			WaitMenuControlPress::WriteHook();
+			Cmd_ShowSleepWaitMenu::WriteHook();
+			SleepFromFurniture::WriteHook();
 		}
 	}
 
 	namespace MaybePreventFastTravel
 	{
-		CallDetour g_detour;
-
-		bool __fastcall CheckAllowFastTravel_Hook(PlayerCharacter* player)
+		__HOOK Hook()
 		{
-			auto canFastTravel = ThisStdCall<bool>(g_detour.GetOverwrittenAddr(), player);
-			if ((g_disabledControls & kFlag_FastTravel) != 0)
-				canFastTravel = false;
-			return canFastTravel;
+			static const UInt32 NormalRetnAddr = 0x798026,
+				PreventAddr = 0x798348;
+			_asm
+			{
+				movzx	eax, g_disabledControls
+				AND		eax, kFlag_FastTravel
+				test	eax, eax
+				jz		DoRegular
+				// else, prevent
+				jmp		PreventAddr
+			DoRegular :
+				// go back to the code we jumped from and slightly overwrote
+				mov		ecx, g_thePlayer
+				jmp		NormalRetnAddr
+			}
 		}
 
 		void WriteHook()
 		{
-			g_detour.WriteRelCall(0x798026, (UInt32)CheckAllowFastTravel_Hook);
+			// Reason we don't simply use a detour at 0x798026 is to prevent messages from playing if control is disabled, 
+			// ...even from other plugins.
+			// This will make it easier for modders to add their own failure messages without worrying about multiple warnings.
+			WriteRelJump(0x798020, (UInt32)Hook);
 		}
 	}
 
@@ -527,7 +616,7 @@ namespace DisablePlayerControlsAlt
 		// hooks Actor::GetMovementSpeed() call
 		g_PreventRunningForNonController.WriteRelCall(0x941B60, (UInt32)MaybePreventRunningForNonController);
 
-		MaybePreventSleepWait::WriteHook();
+		MaybePreventSleepWait::WriteHooks();
 		MaybePreventFastTravel::WriteHook();
 
 		// todo: maybe add hook+flag to disable grabbing @ 0x95F6DE
