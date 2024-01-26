@@ -586,7 +586,10 @@ namespace DisablePlayerControlsAlt
 				jmp		PreventAddr
 			DoRegular :
 				// go back to the code we jumped from and slightly overwrote
+				//mov		ecx, [g_thePlayer]	// xNVSE's g_thePlayer is a PlayerCharacter**, so we need to dereference.
+				// For some reason the above code doesn't work, so we have to split it to two instructions.
 				mov		ecx, g_thePlayer
+				mov		ecx, [ecx]
 				jmp		NormalRetnAddr
 			}
 		}
