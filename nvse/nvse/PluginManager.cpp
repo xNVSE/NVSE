@@ -640,7 +640,7 @@ void PluginManager::InstallPlugins(void)
 		ProcessLNEventHandler = (_ProcessLNEventHandler)GetProcAddress(jipln, (LPCSTR)11);
 
 		// Undo JIP's hook for GetBaseObject, since Jazzisparis has been gone for a bit now.
-		// TODO: remove this code when JIP removes the hool
+		// TODO: remove this code when JIP removes the hook
 		auto* cmdInfo = g_scriptCommands.GetByOpcode(0x1403);
 		cmdInfo->execute = Cmd_GetBaseObject_Execute;
 	}
