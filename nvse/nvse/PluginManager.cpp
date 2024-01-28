@@ -604,6 +604,9 @@ _ProcessLNEventHandler ProcessLNEventHandler = nullptr;
 
 #define NO_PLUGINS 0
 
+// Externally defined
+bool Cmd_GetBaseObject_Execute(COMMAND_ARGS);
+
 void PluginManager::InstallPlugins(void)
 {
 #if NO_PLUGINS
@@ -635,6 +638,11 @@ void PluginManager::InstallPlugins(void)
 	{
 		GetLNEventMask = (_GetLNEventMask)GetProcAddress(jipln, (LPCSTR)10);
 		ProcessLNEventHandler = (_ProcessLNEventHandler)GetProcAddress(jipln, (LPCSTR)11);
+
+		// Undo JIP's hook for GetBaseObject, since Jazzisparis has been gone for a bit now.
+		// TODO: remove this code when JIP removes the hool
+		auto* cmdInfo = g_scriptCommands.GetByOpcode(0x1403);
+		cmdInfo->execute = Cmd_GetBaseObject_Execute;
 	}
 #endif
 }
