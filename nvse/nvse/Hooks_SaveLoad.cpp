@@ -11,6 +11,12 @@
 #if RUNTIME
 #include "EventManager.h"
 
+static const UInt32 kIsStartingNewGameAddr = 0x11D8907; // credits to lStewieAl
+static bool IsStartingNewGameNormally()
+{
+	return *reinterpret_cast<bool*>(kIsStartingNewGameAddr);
+}
+
 bool g_gameLoaded = false;
 bool g_gameStarted = false;	// remains true as long as a game is loaded. TBD: Should be cleared when exiting to MainMenu.
 static const char* LoadGameMessage = "---Finished loading game: %s";
@@ -152,6 +158,26 @@ static void NewGameHook(void)
 	Serialization::HandleNewGame();
 }
 
+// For running NewGame event in case player enters a new game by using COC or a similar command.
+namespace NewGameWithNoSaveLoaded
+{
+	CallDetour g_detour;
+	static bool __cdecl Hook()
+	{
+		auto isInStartMenu = CdeclCall<bool>(g_detour.GetOverwrittenAddr()); // IsInStartMenu()
+		if (isInStartMenu && !IsStartingNewGameNormally())
+		{
+			NewGameHook();
+		}
+		return isInStartMenu;
+	}
+
+	void WriteHook()
+	{
+		g_detour.WriteRelCall(0x93C249, (UInt32)Hook);
+	}
+}
+
 static void __stdcall DeleteGameHook(const char * path)
 {
 	_MESSAGE("DeleteGameHook: %s", path);
@@ -175,6 +201,7 @@ void Hook_SaveLoad_Init(void)
 	WriteRelJump(kLoadGamePatchAddr, (UInt32)&LoadGameHook);
 	WriteRelJump(kSaveGamePatchAddr, (UInt32)&SaveGameHook);
 	WriteRelCall(kNewGamePatchAddr, (UInt32)&NewGameHook);
+	NewGameWithNoSaveLoaded::WriteHook();
 	WriteRelCall(kDeleteGamePatchAddr, (UInt32)&DeleteGameHook);
 	SafeWrite8(kDeleteGamePatchAddr + 5, 0x90);		// nop out leftover byte from original instruction
 	WriteRelCall(kRenameGamePatchAddr, (UInt32)&RenameGameHook);
