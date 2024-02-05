@@ -29,8 +29,6 @@ static const UInt32 kRenameGamePatchAddr =		0x0085762B;		// call to rename()		//
 
 static const UInt32 kPreLoadGamePatchAddr =     0x847FD9;
 static const UInt32 kPreLoadGameRetnAddr =		0x00847ED1;
-static const UInt32 kPostLoadGamePatchAddr =	0x00848C83;
-static const UInt32 kPostLoadGameRetnAddr =		0x00848C89;
 static const UInt32 kPostLoadGameFinishedAddr = 0x00848C91;	// exit point for TESSaveLoadGame::LoadGame()
 
 /*
@@ -69,32 +67,6 @@ static void __fastcall PreLoadGameHook(void* _this)
 	auto* _ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
 	const auto* path = reinterpret_cast<const char*>(_ebp - 0x22C);
 	DoPreLoadGameHook(path);
-}
-
-static void __stdcall DispatchLoadGameEventToScripts(const char* saveFilePath)
-{
-	_MESSAGE("NVSE DLL DoPostLoadGameHook: %s", saveFilePath);
-	if (saveFilePath)
-		EventManager::HandleNVSEMessage(NVSEMessagingInterface::kMessage_LoadGame, (void*)saveFilePath);
-}
-
-static __declspec(naked) void PostLoadGameHook(void)
-{
-	__asm {
-		pushad
-
-		mov		eax, [s_saveFilePath]
-		push	eax
-		call	DispatchLoadGameEventToScripts
-
-		popad
-		
-		pop ecx
-		mov     ecx, [ebp - 0x01C]
-		xor     ecx, ebp
-
-		jmp		[kPostLoadGameRetnAddr]
-	}
 }
 
 static void __stdcall DoFinishLoadGame(bool bLoadedSuccessfully)
@@ -207,7 +179,6 @@ void Hook_SaveLoad_Init(void)
 	SafeWrite8(kDeleteGamePatchAddr + 5, 0x90);		// nop out leftover byte from original instruction
 	WriteRelCall(kRenameGamePatchAddr, (UInt32)&RenameGameHook);
 	WriteRelCall(kPreLoadGamePatchAddr, (UInt32)&PreLoadGameHook);
-	WriteRelJump(kPostLoadGamePatchAddr, (UInt32)&PostLoadGameHook);
 	WriteRelJump(kPostLoadGameFinishedAddr, (UInt32)&FinishLoadGameHook);
 	Init_CoreSerialization_Callbacks();
 }

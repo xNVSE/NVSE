@@ -98,8 +98,9 @@ namespace EventManager
 		kEventID_DeleteGameName,
 		kEventID_RenameGameName,
 		kEventID_RenameNewGameName,
-		kEventID_DebugEvent, // for unit tests
+		kEventID_PreLoadGame,
 
+		kEventID_DebugEvent, // for unit tests
 		kEventID_InternalMAX,
 		kEventID_ExternalEvent = kEventID_InternalMAX, // could be user or plugin-defined.
 
