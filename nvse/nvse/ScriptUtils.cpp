@@ -2777,6 +2777,57 @@ Script *GetLambdaParentScript(Script *scriptLambda)
 	return nullptr;
 }
 
+const char* StringForNVSEParamType(NVSEParamType paramType)
+{
+	switch (paramType)
+	{
+	case kNVSEParamType_Number:
+		return "Number";
+	case kNVSEParamType_Boolean:
+		return "Bool";
+	case kNVSEParamType_String:
+		return "String";
+	case kNVSEParamType_Form:
+		return "Form";
+	case kNVSEParamType_Array:
+		return "Array";
+	case kNVSEParamType_ArrayElement:
+		return "ArrayElement";
+	case kNVSEParamType_Slice:
+		return "Slice";
+	case kNVSEParamType_Command:
+		return "Command";
+	case kNVSEParamType_Variable:
+		return "Variable";
+	case kNVSEParamType_NumericVar:
+		return "NumericVar";
+	case kNVSEParamType_RefVar:
+		return "RefVar";
+	case kNVSEParamType_StringVar:
+		return "StringVar";
+	case kNVSEParamType_ArrayVar:
+		return "ArrayVar";
+	case kNVSEParamType_ForEachContext:
+		return "ForEachContext";
+	case kNVSEParamType_Collection:
+		return "Collection";
+	case kNVSEParamType_ArrayVarOrElement:
+		return "ArrayVarOrArrayElement";
+	case kNVSEParamType_BasicType:
+		return "AnyType";
+	case kNVSEParamType_NoTypeCheck:
+		return "AnyType";
+	case kNVSEParamType_FormOrNumber:
+		return "FormOrNumber";
+	case kNVSEParamType_StringOrNumber:
+		return "StringOrNumber";
+	case kNVSEParamType_Pair:
+		return "Pair";
+	default:
+		return "<unknown>";
+	}
+}
+
 std::unique_ptr<ScriptToken> ExpressionParser::ParseLambda()
 {
 	bool editor;

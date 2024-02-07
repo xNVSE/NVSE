@@ -108,11 +108,15 @@ enum CommandReturnType : UInt8
 
 const char* CommandReturnTypeToString(CommandReturnType in);
 
+struct CommandInfo;
+
 struct ParamInfo
 {
 	const char	* typeStr;
 	UInt32		typeID;		// ParamType
 	UInt32		isOptional;	// do other bits do things?
+
+	std::string GetAsString(const CommandInfo& info) const;
 };
 
 #define USE_EXTRACT_ARGS_EX NVSE_CORE
@@ -258,7 +262,7 @@ struct CommandInfo
 	UInt32		flags;			// 24		might be more than one field (reference to 25 as a byte)
 
 	bool	IsDeprecated() const;
-	const char* GetPluginName(CommandMetadata* metadata = nullptr) const;
+	const char* GetOriginName(CommandMetadata* metadata = nullptr) const;
 	void	DumpFunctionDef(CommandMetadata* metadata = nullptr) const;
 	void	DumpDocs(CommandMetadata* metadata = nullptr) const;
 };

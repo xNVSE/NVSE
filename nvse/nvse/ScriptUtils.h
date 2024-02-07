@@ -45,7 +45,7 @@ extern std::map<std::pair<Script*, std::string>, Script::VariableType> g_variabl
 Script * GetLambdaParentScript(Script * scriptLambda);
 
 // these are used in ParamInfo to specify expected Token_Type of args to commands taking NVSE expressions as args
-enum {
+enum NVSEParamType : UInt32 {
 	kNVSEParamType_Number =		(1 << kTokenType_Number) | (1 << kTokenType_Ambiguous),
 	kNVSEParamType_Boolean =	(1 << kTokenType_Boolean) | (1 << kTokenType_Ambiguous),
 	kNVSEParamType_String =		(1 << kTokenType_String) | (1 << kTokenType_Ambiguous),
@@ -71,6 +71,8 @@ enum {
 	kNVSEParamType_StringOrNumber = kNVSEParamType_String | kNVSEParamType_Number,
 	kNVSEParamType_Pair	=	1 << kTokenType_Pair,
 };
+
+const char* StringForNVSEParamType(NVSEParamType paramType);
 
 #define NVSE_EXPR_MAX_ARGS 20		// max # of args we'll accept to a commmand
 

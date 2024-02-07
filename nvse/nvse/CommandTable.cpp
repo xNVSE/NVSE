@@ -896,7 +896,7 @@ bool CommandInfo::IsDeprecated() const
 	auto nameStr = std::string(longName);
 
 	// Based on conventions from JIP, ShowOff and JG.
-	return (nameStr == "EmptyCommand") || nameStr.ends_with("OLD");
+	return (nameStr == "EmptyCommand") || nameStr.ends_with("OLD") || nameStr.ends_with("BROKEN");
 }
 
 const char* CommandInfo::GetOriginName(CommandMetadata* metadata) const
@@ -939,14 +939,13 @@ void CommandInfo::DumpDocs(CommandMetadata* metadata) const
 		for (UInt32 i = 0; i < numParams; i++)
 		{
 			ParamInfo *param = &params[i];
-			const char *paramTypeName = StringForParamType(param->typeID);
 			if (param->isOptional != 0)
 			{
-				_MESSAGE("<br>&nbsp;&nbsp;&nbsp;<i>%s:%s</i> ", param->typeStr, paramTypeName);
+				_MESSAGE("<br>&nbsp;&nbsp;&nbsp;<i>%s</i> ", param->GetAsString(*this).c_str());
 			}
 			else
 			{
-				_MESSAGE("<br>&nbsp;&nbsp;&nbsp;%s:%s ", param->typeStr, paramTypeName);
+				_MESSAGE("<br>&nbsp;&nbsp;&nbsp;%s ", param->GetAsString(*this).c_str());
 			}
 		}
 	}
@@ -970,11 +969,11 @@ void CommandInfo::DumpFunctionDef(CommandMetadata* metadata) const
 			const char *paramTypeName = StringForParamType(param->typeID);
 			if (param->isOptional != 0)
 			{
-				_MESSAGE("<i>%s:%s</i> ", param->typeStr, paramTypeName);
+				_MESSAGE("<i>%s</i> ", param->GetAsString(*this).c_str());
 			}
 			else
 			{
-				_MESSAGE("%s:%s ", param->typeStr, paramTypeName);
+				_MESSAGE("%s", param->GetAsString(*this).c_str());
 			}
 		}
 	}
@@ -1994,4 +1993,18 @@ namespace PluginAPI
 	UInt32 GetReqVersion(const CommandInfo *cmd) { return g_scriptCommands.GetRequiredNVSEVersion(cmd); }
 	const PluginInfo *GetCmdParentPlugin(const CommandInfo *cmd) { return g_scriptCommands.GetParentPlugin(cmd); }
 	const PluginInfo *GetPluginInfoByName(const char *pluginName) { return g_pluginManager.GetInfoByName(pluginName); }
+}
+
+std::string ParamInfo::GetAsString(const CommandInfo& info) const
+{
+	std::string paramTypeStr;
+	if (info.parse == Cmd_Expression_Parse)
+	{
+		paramTypeStr = StringForNVSEParamType(static_cast<NVSEParamType>(typeID));
+	}
+	else
+	{
+		paramTypeStr = StringForParamType(typeID);
+	}
+	return std::string(typeStr) + std::string(":") + paramTypeStr;
 }
