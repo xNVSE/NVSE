@@ -257,6 +257,8 @@ struct CommandInfo
 
 	UInt32		flags;			// 24		might be more than one field (reference to 25 as a byte)
 
+	bool	IsDeprecated() const;
+	const char* GetPluginName(CommandMetadata* metadata = nullptr) const;
 	void	DumpFunctionDef(CommandMetadata* metadata = nullptr) const;
 	void	DumpDocs(CommandMetadata* metadata = nullptr) const;
 };
@@ -286,7 +288,8 @@ public:
 
 	void	Dump(void);
 	void	DumpAlternateCommandNames(void);
-	void	DumpCommandDocumentation(bool showQuickList, UInt32 startWithID = kNVSEOpcodeStart, bool showIfConditionOnly = false);
+	void	DumpCommandDocumentation(bool showQuickList, UInt32 startWithID = kNVSEOpcodeStart, 
+		bool showIfConditionOnly = false, bool showIfDeprecated = false);
 
 	CommandReturnType	GetReturnType(const CommandInfo * cmd);
 	void				SetReturnType(UInt32 opcode, CommandReturnType retnType);

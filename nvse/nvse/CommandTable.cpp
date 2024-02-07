@@ -308,19 +308,20 @@ bool Cmd_DumpDocs_Execute(COMMAND_ARGS)
 	int showQuickList = 0;
 	UInt32 startingOpcode = kNVSEOpcodeStart;
 	int showIfConditionOnly = 0;
+	int showIfDeprecated = 0;
 
-	if (!ExtractArgs(EXTRACT_ARGS, &showQuickList, &startingOpcode, &showIfConditionOnly))
+	if (!ExtractArgs(EXTRACT_ARGS, &showQuickList, &startingOpcode, &showIfConditionOnly, &showIfDeprecated))
 		return true;
 
 	if (IsConsoleMode())
-	{
 		Console_Print("Dumping Command Docs");
-	}
-	g_scriptCommands.DumpCommandDocumentation(showQuickList != 0, startingOpcode, showIfConditionOnly != 0);
+
+	g_scriptCommands.DumpCommandDocumentation(showQuickList != 0, startingOpcode, 
+		showIfConditionOnly != 0, showIfDeprecated != 0);
+
 	if (IsConsoleMode())
-	{
 		Console_Print("Done Dumping Command Docs");
-	}
+
 	return true;
 }
 
@@ -355,7 +356,7 @@ static ParamInfo kTestDumpCommand_Params[] =
 DEFINE_CMD_COND(GetNVSEVersion, returns the installed version of NVSE, 0, NULL);
 DEFINE_CMD_COND(GetNVSERevision, returns the numbered revision of the installed version of NVSE, 0, NULL);
 DEFINE_CMD_COND(GetNVSEBeta, returns the numbered beta of the installed version of NVSE, 0, NULL);
-DEFINE_COMMAND(DumpDocs, , false, 3, kParams_ThreeOptionalInts);
+DEFINE_COMMAND(DumpDocs, , false, 4, kParams_FourOptionalInts);
 
 #define ADD_CMD(command) Add(&kCommandInfo_##command)
 #define ADD_CMD_RET(command, rtnType) Add(&kCommandInfo_##command, rtnType)
@@ -847,7 +848,7 @@ const char* CommandReturnTypeToString(CommandReturnType in)
 	}
 }
 
-void CommandTable::DumpCommandDocumentation(bool showQuickList, UInt32 startWithID, bool showIfConditionOnly)
+void CommandTable::DumpCommandDocumentation(bool showQuickList, UInt32 startWithID, bool showIfConditionOnly, bool showIfDeprecated)
 {
 	_MESSAGE("%sCommands starting from opcode %#x:", (startWithID == kNVSEOpcodeStart ? "NVSE " : ""), startWithID);
 
@@ -858,6 +859,8 @@ void CommandTable::DumpCommandDocumentation(bool showQuickList, UInt32 startWith
 		for (CommandList::iterator iter = m_commands.begin(); iter != itEnd; ++iter)
 		{
 			if (!iter->longName || !iter->longName[0])
+				continue;
+			if (!showIfDeprecated && iter->IsDeprecated())
 				continue;
 			if (iter->opcode >= startWithID)
 			{
@@ -875,6 +878,8 @@ void CommandTable::DumpCommandDocumentation(bool showQuickList, UInt32 startWith
 		{
 			if (!iter->longName || !iter->longName[0])
 				continue;
+			if (!showIfDeprecated && iter->IsDeprecated())
+				continue;
 			if (iter->opcode >= startWithID)
 			{
 				if (iter->execute || showIfConditionOnly) // assume it has eval function if no execute
@@ -884,6 +889,36 @@ void CommandTable::DumpCommandDocumentation(bool showQuickList, UInt32 startWith
 			}
 		}
 	}
+}
+
+bool CommandInfo::IsDeprecated() const
+{
+	auto nameStr = std::string(longName);
+
+	// Based on conventions from JIP, ShowOff and JG.
+	return (nameStr == "EmptyCommand") || nameStr.ends_with("OLD");
+}
+
+const char* CommandInfo::GetOriginName(CommandMetadata* metadata) const
+{
+	if (metadata) {
+		if (auto* info = g_pluginManager.GetInfoFromBase(metadata->parentPlugin))
+		{
+			return info->name;
+		}
+	}
+
+	if (opcode < kNVSEOpcodeStart)
+	{
+		return "Base game";
+	}
+
+	if (opcode >= kNVSEOpcodeStart)
+	{
+		return "NVSE";
+	}
+
+	return "Unknown";
 }
 
 const char* GetReturnTypeStr(const char* funcName, CommandMetadata* metadata)
@@ -916,9 +951,11 @@ void CommandInfo::DumpDocs(CommandMetadata* metadata) const
 		}
 	}
 
+	const char* description = !IsDeprecated() ? helpText : "|DEPRECATED|";
 
-	_MESSAGE("<br><b>Return Type:</b> %s<br><b>Opcode:</b> %#4x (%d)<br><b>Condition Function:</b> %s<br><b>Description:</b> %s</p>", 
-		GetReturnTypeStr(longName, metadata), opcode, opcode, eval ? "Yes" : "No", helpText);
+	_MESSAGE("<br><b>Return Type:</b> %s<br><b>Opcode:</b> %#4x (%d)<br><b>Origin:</b> %s<br><b>Condition Function:</b> %s<br><b>Description:</b> %s</p>",
+		GetReturnTypeStr(longName, metadata), opcode, opcode, GetOriginName(metadata),
+		eval ? "Yes" : "No", description);
 }
 
 void CommandInfo::DumpFunctionDef(CommandMetadata* metadata) const
@@ -1120,8 +1157,6 @@ void CommandTable::AddDebugCommands()
 	ADD_CMD(tcmd);
 	ADD_CMD(tcmd2);
 	ADD_CMD(tcmd3);
-
-	ADD_CMD(DumpDocs);
 }
 
 void CommandTable::AddCommandsV1()
@@ -1944,6 +1979,9 @@ void CommandTable::AddCommandsV6()
 
 	// 6.3 beta 04
 	ADD_CMD_RET(GetSelfAlt, kRetnType_Form);
+
+	// 6.3 beta 06
+	ADD_CMD(DumpDocs);	// used to be debug mode only, but that forced seeing debug functions in the dumped docs.
 }
 
 namespace PluginAPI
