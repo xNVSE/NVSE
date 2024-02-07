@@ -952,9 +952,9 @@ void CommandInfo::DumpDocs(CommandMetadata* metadata) const
 
 	const char* description = !IsDeprecated() ? helpText : "|DEPRECATED|";
 
-	_MESSAGE("<br><b>Return Type:</b> %s<br><b>Opcode:</b> %#4x (%d)<br><b>Origin:</b> %s<br><b>Condition Function:</b> %s<br><b>Description:</b> %s</p>",
+	_MESSAGE("<br><b>Return Type:</b> %s<br><b>Opcode:</b> %#4x (%d)<br><b>Origin:</b> %s<br><b>Condition Function:</b> %s<br><b>Requires calling reference:</b> %s<br><b>Description:</b> %s</p>",
 		GetReturnTypeStr(longName, metadata), opcode, opcode, GetOriginName(metadata),
-		eval ? "Yes" : "No", description);
+		eval ? "Yes" : "No", (needsParent > 0) ? "Yes" : "No", description);
 }
 
 void CommandInfo::DumpFunctionDef(CommandMetadata* metadata) const
@@ -966,14 +966,13 @@ void CommandInfo::DumpFunctionDef(CommandMetadata* metadata) const
 		for (UInt32 i = 0; i < numParams; i++)
 		{
 			ParamInfo *param = &params[i];
-			const char *paramTypeName = StringForParamType(param->typeID);
 			if (param->isOptional != 0)
 			{
 				_MESSAGE("<i>%s</i> ", param->GetAsString(*this).c_str());
 			}
 			else
 			{
-				_MESSAGE("%s", param->GetAsString(*this).c_str());
+				_MESSAGE("%s ", param->GetAsString(*this).c_str());
 			}
 		}
 	}
@@ -2006,5 +2005,10 @@ std::string ParamInfo::GetAsString(const CommandInfo& info) const
 	{
 		paramTypeStr = StringForParamType(typeID);
 	}
-	return std::string(typeStr) + std::string(":") + paramTypeStr;
+
+	if (typeStr && typeStr[0])
+	{
+		return std::string(typeStr) + std::string(":") + paramTypeStr;
+	}
+	return paramTypeStr;
 }
