@@ -126,10 +126,21 @@ struct NVSEStringVarInterface
 	};
 
 	UInt32		version;
+
+	// The returned C-string is valid for as long as the string_var indicated by stringID remains valid.
+	// To be safe, copy the returned C-string.
 	const char* (* GetString)(UInt32 stringID);
+
+	// Passed C-string will be copied, so it is safe to delete it afterwards.
 	void		(* SetString)(UInt32 stringID, const char* newValue);
+
+	// Passed C-string will be copied, so it is safe to delete it afterwards.
 	UInt32		(* CreateString)(const char* value, void* owningScript);
-	void		(* Register)(NVSEStringVarInterface* intfc);			// is RegisterStringVarInterface() in GameAPI.h
+
+	// (is RegisterStringVarInterface() in GameAPI.h)
+	void		(* Register)(NVSEStringVarInterface* intfc);
+
+	// Passed C-string will be copied, so it is safe to delete it afterwards.
 	bool		(* Assign)(COMMAND_ARGS, const char* newValue);
 };
 
