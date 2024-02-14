@@ -1108,6 +1108,8 @@ void CommandInfo::DumpWikiDocs() const
 	_MESSAGE("[[Category:? [Add other relevant categories] ]]");
 	if (IsDeprecated())
 		_MESSAGE("[[Category:Deprecated Functions]]");
+	if (parse == Cmd_Expression_Parse)
+		_MESSAGE("[[Category:NVSE-Aware Functions]]");
 }
 
 void CommandInfo::DumpFunctionDef(CommandMetadata* metadata) const
