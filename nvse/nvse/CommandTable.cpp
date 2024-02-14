@@ -927,10 +927,6 @@ std::string CommandInfo::GetWikiStyleOriginName(bool originOrCategory, CommandMe
 	{
 		return std::string("Base game (cannot guess from which version it was introduced)");
 	}
-	if (opcode >= kNVSEOpcodeStart)
-	{
-		return std::string("NVSE");
-	}
 
 	if (metadata) {
 		if (auto* info = g_pluginManager.GetInfoFromBase(metadata->parentPlugin))
@@ -977,6 +973,11 @@ std::string CommandInfo::GetWikiStyleOriginName(bool originOrCategory, CommandMe
 			
 			return pluginName;
 		}
+	}
+
+	if (opcode >= kNVSEOpcodeStart)
+	{
+		return std::string("NVSE");
 	}
 
 	return "Unknown";
@@ -1062,7 +1063,7 @@ void CommandInfo::DumpWikiDocs() const
 		_MESSAGE("{{Deprecated}}");
 
 	_MESSAGE("{{Function");
-	_MESSAGE(" |origin = %s", GetWikiStyleOriginName(true, metadata));
+	_MESSAGE(" |origin = %s", GetWikiStyleOriginName(true, metadata).c_str());
 	_MESSAGE(" |originVersion = [TO SPECIFY]");
 	_MESSAGE(" |summary = %s", GetDescription());
 	_MESSAGE(" |name = %s", longName);
@@ -1103,7 +1104,7 @@ void CommandInfo::DumpWikiDocs() const
 	}
 	_MESSAGE("}}"); // end "{{Function" template
 
-	_MESSAGE("[[Category:%s]]", GetWikiStyleOriginName(false, metadata));
+	_MESSAGE("[[Category:Functions (%s)]]", GetWikiStyleOriginName(false, metadata).c_str());
 	_MESSAGE("[[Category:? [Add other relevant categories] ]]");
 	if (IsDeprecated())
 		_MESSAGE("[[Category:Deprecated Functions]]");
