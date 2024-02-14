@@ -1085,6 +1085,8 @@ void CommandInfo::DumpWikiDocs() const
 		conditionFuncStr = "Script";
 	_MESSAGE(" |conditionFunc = %s", conditionFuncStr);
 
+	bool hasArrayArg = false;
+	bool hasStringArg = false;
 	if (numParams > 0)
 	{
 		_MESSAGE(" |arguments =");
@@ -1093,7 +1095,13 @@ void CommandInfo::DumpWikiDocs() const
 		{
 			ParamInfo* param = &params[i];
 			_MESSAGE("   |Name = %s", ((param->typeStr && param->typeStr[0]) ? param->typeStr : "[Manually Enter Arg Name]"));
-			_MESSAGE("   |Type = %s", param->GetArgTypeAsString(*this));
+			std::string argTypeStr = param->GetArgTypeAsString(*this);
+			if (argTypeStr.contains("Array"))
+				hasArrayArg = true;
+			if (argTypeStr.contains("String"))
+				hasStringArg = true;
+
+			_MESSAGE("   |Type = %s", argTypeStr.c_str());
 			if (param->isOptional != 0)
 				_MESSAGE("   |Optional = y");
 			if (i + 1 < numParams)
@@ -1110,6 +1118,16 @@ void CommandInfo::DumpWikiDocs() const
 		_MESSAGE("[[Category:Deprecated Functions]]");
 	if (parse == Cmd_Expression_Parse)
 		_MESSAGE("[[Category:NVSE-Aware Functions]]");
+
+	if (hasArrayArg || (metadata && (metadata->returnType == CommandReturnType::kRetnType_Array
+			|| metadata->returnType == CommandReturnType::kRetnType_ArrayIndex)))
+	{
+			_MESSAGE("[[Category:Array Functions]]");
+	}
+	if (hasStringArg || (metadata && metadata->returnType == CommandReturnType::kRetnType_String))
+	{
+		_MESSAGE("[[Category:String Functions]]");
+	}
 }
 
 void CommandInfo::DumpFunctionDef(CommandMetadata* metadata) const
