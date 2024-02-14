@@ -127,8 +127,9 @@ struct NVSEStringVarInterface
 
 	UInt32		version;
 
-	// The returned C-string is valid for as long as the string_var indicated by stringID remains valid.
-	// To be safe, copy the returned C-string if you inted to keep it for a while.
+	// The returned C-string is valid for as long as the string_var indicated by stringID remains unchanged.
+	// For example, the returned string pointer may become invalid if the string_var has to re-allocate when being set to another string value.
+	// To be safe, copy the returned C-string if you intend to keep it for some time.
 	const char* (* GetString)(UInt32 stringID);
 
 	// Passed C-string will be copied, so it is safe to delete it afterwards.
