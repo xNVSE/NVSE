@@ -42,7 +42,7 @@ extern ErrOutput g_ErrOut;
 extern std::unordered_map<Script*, Script*> g_lambdaParentScriptMap;
 extern std::map<std::pair<Script*, std::string>, Script::VariableType> g_variableDefinitionsMap;
 
-Script * GetLambdaParentScript(Script * scriptLambda);
+Script* GetLambdaParentScript(Script * scriptLambda);
 
 // these are used in ParamInfo to specify expected Token_Type of args to commands taking NVSE expressions as args
 enum NVSEParamType : UInt32 {

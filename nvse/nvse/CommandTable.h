@@ -112,11 +112,12 @@ struct CommandInfo;
 
 struct ParamInfo
 {
-	const char	* typeStr;
+	const char	* typeStr;	// can also be used to name the arg
 	UInt32		typeID;		// ParamType
 	UInt32		isOptional;	// do other bits do things?
 
 	std::string GetAsString(const CommandInfo& info) const;
+	const char* GetArgTypeAsString(const CommandInfo& info) const;
 };
 
 #define USE_EXTRACT_ARGS_EX NVSE_CORE
@@ -263,8 +264,17 @@ struct CommandInfo
 
 	bool	IsDeprecated() const;
 	const char* GetOriginName(CommandMetadata* metadata = nullptr) const;
+
+	// Wiki has different styles of using the origin name, hence "originOrCategory" arg.
+	// For example, for Function template, origin can look like: "JohnnyGuitar".
+	// For function categories, it can look like: "Functions (JohnnyGuitar NVSE)".
+	// Plus some inconsistencies, so it'll have to be hardcoded for certain plugins for convenience.
+	std::string GetWikiStyleOriginName(bool originOrCategory, CommandMetadata* metadata = nullptr) const;
+
 	void	DumpFunctionDef(CommandMetadata* metadata = nullptr) const;
 	void	DumpDocs(CommandMetadata* metadata = nullptr) const;
+	void	DumpWikiDocs() const;
+	const char* GetDescription() const;
 };
 
 class CommandTable
@@ -300,6 +310,7 @@ public:
 
 	UInt32				GetRequiredNVSEVersion(const CommandInfo * cmd);
 	PluginInfo *		GetParentPlugin(const CommandInfo * cmd);
+	CommandMetadata &	GetMetaDataForCommand(const CommandInfo* cmd);
 
 private:
 	// add commands for each release (will help keep track of commands)

@@ -1574,6 +1574,24 @@ bool Cmd_GetCommandOpcode_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_DumpCommandWikiDoc_Execute(COMMAND_ARGS)
+{
+	char buf[0x400];
+	if (!ExtractArgs(EXTRACT_ARGS, buf))
+		return true;
+	if (auto* commandInfo = g_scriptCommands.GetByName(buf))
+	{
+		if (IsConsoleMode())
+			Console_Print("Dumping wiki-style documentation for function.");
+
+		commandInfo->DumpWikiDocs();
+
+		if (IsConsoleMode())
+			Console_Print("Finished dumping wiki-style documentation for function.");
+	}
+	return true;
+}
+
 bool Cmd_Ternary_Execute(COMMAND_ARGS)
 {
 	*result = 0;

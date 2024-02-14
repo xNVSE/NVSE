@@ -921,6 +921,67 @@ const char* CommandInfo::GetOriginName(CommandMetadata* metadata) const
 	return "Unknown";
 }
 
+std::string CommandInfo::GetWikiStyleOriginName(bool originOrCategory, CommandMetadata* metadata) const
+{
+	if (opcode < kNVSEOpcodeStart)
+	{
+		return std::string("Base game (cannot guess from which version it was introduced)");
+	}
+	if (opcode >= kNVSEOpcodeStart)
+	{
+		return std::string("NVSE");
+	}
+
+	if (metadata) {
+		if (auto* info = g_pluginManager.GetInfoFromBase(metadata->parentPlugin))
+		{
+			// Basing hardcoded returned names by checking function origin category names https://geckwiki.com/index.php?title=Category:Functions_(All) ,
+			// ...and https://geckwiki.com/index.php?title=Template:Function function origins.
+			std::string pluginName = info->name;
+			if (pluginName.starts_with("JIP"))
+				return std::string("JIP");
+			if (pluginName == "SUP NVSE Plugin")
+			{
+				if (originOrCategory)
+					return std::string("SUP");
+				return pluginName;
+			}
+			if (pluginName.starts_with("kNVSE"))
+				return pluginName;
+
+			if (pluginName.ends_with(" Plugin"))
+				pluginName.erase(pluginName.length() - strlen(" Plugin"));
+
+			if (originOrCategory == true) // if Template:Function-style function origin.
+			{
+				// We just want the plugin name, without any "NVSE" or "Plugin" suffixes.
+				// kNVSE being the only exception thus far, being allowed to include "NVSE".
+				if (pluginName.ends_with("NVSE") || pluginName.ends_with("nvse"))
+					pluginName.erase(pluginName.length() - strlen("NVSE"));
+				if (pluginName.ends_with(" ")) // account for "SomePlugin NVSE" or "SomePlugin_nvse" vs "SomePluginNVSE".
+					pluginName.erase(pluginName.length() - 1);
+			}
+			else // if function category name
+			{
+				// these names are wildly more inconsistent.
+				// They usually never end in " Plugin", except for SUP, which is accounted for at the start.
+				// If they end in "NVSE", they usually have that spaced out, unless it's like ppNVSE, kNVSE, anhNVSE, etc, roughly <= 4 characters before NVSE.
+				if (pluginName.ends_with("NVSE") && !pluginName.ends_with(" NVSE")
+					&& pluginName.length() > strlen("NVSE") + 4)
+				{
+					// Space out the NVSE suffix
+					pluginName.erase(pluginName.length() - strlen("NVSE"));
+					pluginName.append(" NVSE");
+				}
+			}
+			
+			return pluginName;
+		}
+	}
+
+	return "Unknown";
+}
+
 const char* GetReturnTypeStr(const char* funcName, CommandMetadata* metadata)
 {
 	if (StartsWith("Is", funcName) || StartsWith("GetIs", funcName))
@@ -950,11 +1011,102 @@ void CommandInfo::DumpDocs(CommandMetadata* metadata) const
 		}
 	}
 
-	const char* description = !IsDeprecated() ? helpText : "|DEPRECATED|";
-
 	_MESSAGE("<br><b>Return Type:</b> %s<br><b>Opcode:</b> %#4x (%d)<br><b>Origin:</b> %s<br><b>Condition Function:</b> %s<br><b>Requires calling reference:</b> %s<br><b>Description:</b> %s</p>",
 		GetReturnTypeStr(longName, metadata), opcode, opcode, GetOriginName(metadata),
-		eval ? "Yes" : "No", (needsParent > 0) ? "Yes" : "No", description);
+		eval ? "Yes" : "No", (needsParent > 0) ? "Yes" : "No", GetDescription());
+}
+
+const char* CommandInfo::GetDescription() const
+{
+	return !IsDeprecated() ? ((helpText && helpText[0]) ? helpText : "none") : "|DEPRECATED|";
+}
+
+/* Example wiki format (see https://geckwiki.com/index.php?title=Template:Function for full updated syntax):
+ 
+	{{Function
+	 |origin = NVSE
+	 |originVersion = 6.1.6
+	 |summary = Returns true if the specified script at any point calls the specified command.
+	 |name = HasScriptCommand
+	 |alias = ... // HasScriptCommand has no alias, so this isn't specified
+	 |returnVal = success
+	 |returnType = 0/1
+	 |referenceType = ... // HasScriptCommand has no calling ref, so this isn't specified
+	 |conditionFunc = Script   // could also be "Both", or "Condition"
+	 |consoleOnly = ... // could be y, true, or unspecified (false)
+	 |arguments =
+	  {{FunctionArgument
+	   |Name = CommandOpcode
+	   |Type = int
+	  }}{{FunctionArgument
+	   |Name = Script/Form
+	   |Type = form
+	  }}{{FunctionArgument
+	   |Name = EventID
+	   |Type = int
+	   |Optional = y
+	  }}
+	}}
+
+	[[Category:Functions (NVSE)]]
+*/
+void CommandInfo::DumpWikiDocs() const
+{
+	if (!longName || !longName[0])
+		return;
+
+	// Assume it's a script command, not a console-only command.
+	CommandMetadata* metadata = &g_scriptCommands.GetMetaDataForCommand(this);
+
+	if (IsDeprecated())
+		_MESSAGE("{{Deprecated}}");
+
+	_MESSAGE("{{Function");
+	_MESSAGE(" |origin = %s", GetWikiStyleOriginName(true, metadata));
+	_MESSAGE(" |originVersion = [TO SPECIFY]");
+	_MESSAGE(" |summary = %s", GetDescription());
+	_MESSAGE(" |name = %s", longName);
+	if (shortName && shortName[0])
+		_MESSAGE(" |alias = %s", shortName);
+
+	_MESSAGE(" |returnVal = [Insert return val name here, or remove this arg]");
+	_MESSAGE(" |returnType = %s [remove this arg if func returns nothing]", GetReturnTypeStr(longName, metadata));
+
+	if (needsParent > 0)
+		_MESSAGE(" |referenceType = reference");
+
+	const char* conditionFuncStr = "None (should never happen)";
+	if (eval && !execute)
+		conditionFuncStr = "Condition";
+	else if (eval && execute)
+		conditionFuncStr = "Both";
+	else if (!eval && execute)
+		conditionFuncStr = "Script";
+	_MESSAGE(" |conditionFunc = %s", conditionFuncStr);
+
+	if (numParams > 0)
+	{
+		_MESSAGE(" |arguments =");
+		_MESSAGE("  {{FunctionArgument");
+		for (UInt32 i = 0; i < numParams; ++i)
+		{
+			ParamInfo* param = &params[i];
+			_MESSAGE("   |Name = %s", ((param->typeStr && param->typeStr[0]) ? param->typeStr : "[Manually Enter Arg Name]"));
+			_MESSAGE("   |Type = %s", param->GetArgTypeAsString(*this));
+			if (param->isOptional != 0)
+				_MESSAGE("   |Optional = y");
+			if (i + 1 < numParams)
+				_MESSAGE("  }}{{FunctionArgument");
+			else
+				_MESSAGE("  }}");
+		}
+	}
+	_MESSAGE("}}"); // end "{{Function" template
+
+	_MESSAGE("[[Category:%s]]", GetWikiStyleOriginName(false, metadata));
+	_MESSAGE("[[Category:? [Add other relevant categories] ]]");
+	if (IsDeprecated())
+		_MESSAGE("[[Category:Deprecated Functions]]");
 }
 
 void CommandInfo::DumpFunctionDef(CommandMetadata* metadata) const
@@ -1087,6 +1239,11 @@ PluginInfo *CommandTable::GetParentPlugin(const CommandInfo *cmd)
 		return info;
 
 	return NULL;
+}
+
+CommandMetadata& CommandTable::GetMetaDataForCommand(const CommandInfo* cmd)
+{
+	return m_metadata[cmd->opcode];
 }
 
 void ImportConsoleCommand(const char *name)
@@ -1980,6 +2137,7 @@ void CommandTable::AddCommandsV6()
 
 	// 6.3 beta 06
 	ADD_CMD(DumpDocs);	// used to be debug mode only, but that forced seeing debug functions in the dumped docs.
+	ADD_CMD(DumpCommandWikiDoc);
 }
 
 namespace PluginAPI
@@ -1996,19 +2154,22 @@ namespace PluginAPI
 
 std::string ParamInfo::GetAsString(const CommandInfo& info) const
 {
-	std::string paramTypeStr;
-	if (info.parse == Cmd_Expression_Parse)
-	{
-		paramTypeStr = StringForNVSEParamType(static_cast<NVSEParamType>(typeID));
-	}
-	else
-	{
-		paramTypeStr = StringForParamType(typeID);
-	}
-
+	const char* paramTypeStr = GetArgTypeAsString(info);
 	if (typeStr && typeStr[0])
 	{
 		return std::string(typeStr) + std::string(":") + paramTypeStr;
 	}
-	return paramTypeStr;
+	return std::string(paramTypeStr);
+}
+
+const char* ParamInfo::GetArgTypeAsString(const CommandInfo& info) const
+{
+	if (info.parse == Cmd_Expression_Parse)
+	{
+		return StringForNVSEParamType(static_cast<NVSEParamType>(typeID));
+	}
+	else
+	{
+		return StringForParamType(typeID);
+	}
 }
