@@ -1014,16 +1014,33 @@ void CommandInfo::DumpDocs(CommandMetadata* metadata) const
 
 	_MESSAGE("<br><b>Return Type:</b> %s<br><b>Opcode:</b> %#4x (%d)<br><b>Origin:</b> %s<br><b>Condition Function:</b> %s<br><b>Requires calling reference:</b> %s<br><b>Description:</b> %s</p>",
 		GetReturnTypeStr(longName, metadata), opcode, opcode, GetOriginName(metadata),
-		eval ? "Yes" : "No", (needsParent > 0) ? "Yes" : "No", GetDescription());
+		eval ? "Yes" : "No", (needsParent > 0) ? "Yes" : "No", GetDescription(false).c_str());
 }
 
-const char* CommandInfo::GetDescription() const
+std::string CommandInfo::GetDescription(const bool forWiki) const
 {
-	return !IsDeprecated() ? ((helpText && helpText[0]) ? helpText : "none") : "|DEPRECATED|";
+	if (IsDeprecated())
+		return forWiki ? "Deprecated." : "|DEPRECATED|";
+	if (helpText && helpText[0])
+	{
+		// Make the text a bit prettier.
+		std::string desc = helpText;
+
+		if (!desc.ends_with('.'))
+			desc.append(".");
+
+		if (::islower(desc[0]))
+			desc[0] = ::toupper(desc[0]);
+
+		return desc;
+	}
+	if (forWiki)
+		return "[TO DOCUMENT]";
+	return "none";
 }
 
 /* Example wiki format (see https://geckwiki.com/index.php?title=Template:Function for full updated syntax):
- 
+
 	{{Function
 	 |origin = NVSE
 	 |originVersion = 6.1.6
@@ -1065,7 +1082,7 @@ void CommandInfo::DumpWikiDocs() const
 	_MESSAGE("{{Function");
 	_MESSAGE(" |origin = %s", GetWikiStyleOriginName(true, metadata).c_str());
 	_MESSAGE(" |originVersion = [TO SPECIFY]");
-	_MESSAGE(" |summary = %s", GetDescription());
+	_MESSAGE(" |summary = %s", GetDescription(true).c_str());
 	_MESSAGE(" |name = %s", longName);
 	if (shortName && shortName[0])
 		_MESSAGE(" |alias = %s", shortName);
@@ -1094,8 +1111,10 @@ void CommandInfo::DumpWikiDocs() const
 		for (UInt32 i = 0; i < numParams; ++i)
 		{
 			ParamInfo* param = &params[i];
-			_MESSAGE("   |Name = %s", ((param->typeStr && param->typeStr[0]) ? param->typeStr : "[Manually Enter Arg Name]"));
 			std::string argTypeStr = param->GetArgTypeAsString(*this);
+			const char* argName = (param->typeStr && param->typeStr[0] && !StrEqual(argTypeStr.c_str(), param->typeStr))
+				? param->typeStr : "[Enter Arg Name]";
+			_MESSAGE("   |Name = %s", argName);
 			if (argTypeStr.contains("Array"))
 				hasArrayArg = true;
 			if (argTypeStr.contains("String"))

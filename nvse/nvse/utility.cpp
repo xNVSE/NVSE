@@ -319,6 +319,11 @@ char __fastcall StrCompare(const char *lstr, const char *rstr)
 	return *rstr ? -1 : 0;
 }
 
+char __fastcall StrEqual(const char* lstr, const char* rstr)
+{
+	return StrCompare(lstr, rstr) == 0;
+}
+
 void __fastcall StrToLower(char *str)
 {
 	if (!str) return;

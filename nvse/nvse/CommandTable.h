@@ -274,7 +274,7 @@ struct CommandInfo
 	void	DumpFunctionDef(CommandMetadata* metadata = nullptr) const;
 	void	DumpDocs(CommandMetadata* metadata = nullptr) const;
 	void	DumpWikiDocs() const;
-	const char* GetDescription() const;
+	std::string GetDescription(const bool forWiki) const;
 };
 
 class CommandTable
