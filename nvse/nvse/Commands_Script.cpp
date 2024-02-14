@@ -1589,6 +1589,8 @@ bool Cmd_DumpCommandWikiDoc_Execute(COMMAND_ARGS)
 		if (IsConsoleMode())
 			Console_Print("Finished dumping wiki-style documentation for function.");
 	}
+	else if (IsConsoleMode())
+		Console_Print("Unable to find command with that name. Double-check for a spelling error, or if it's being registered.");
 	return true;
 }
 
