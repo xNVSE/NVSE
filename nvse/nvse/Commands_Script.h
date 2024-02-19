@@ -453,7 +453,11 @@ static ParamInfo kParams_HasScriptCommand[3] =
 DEFINE_COMMAND(DecompileScript, decompiles a script to file, false, 2, kParams_OneForm_OneOptionalString);
 DEFINE_COMMAND(HasScriptCommand, returns 1 if script contains call to a command, false, 3, kParams_HasScriptCommand);
 DEFINE_COMMAND(GetCommandOpcode, gets opcode for command name, false, 1, kParams_OneString);
-DEFINE_CMD_ALIAS(DumpCommandWikiDoc, DumpWikiDoc, dumps wiki-style documentation for command, false, kParams_OneString);
+DEFINE_CMD_ALIAS(DumpCommandWikiDoc, DumpWikiDoc, dumps wiki-style documentation for a command, 
+	false, kParams_OneString);
+DEFINE_CMD_ALIAS(DumpCommandWikiDocs, DumpWikiDocs, dumps wiki-style documentation for multiple commands, 
+	false, kParams_TwoInts_OneOptionalString);
+
 
 static ParamInfo kNVSEParams_Ternary[] =
 {

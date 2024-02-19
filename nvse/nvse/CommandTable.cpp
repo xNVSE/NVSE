@@ -1068,7 +1068,7 @@ std::string CommandInfo::GetDescription(const bool forWiki) const
 
 	[[Category:Functions (NVSE)]]
 */
-void CommandInfo::DumpWikiDocs() const
+void CommandInfo::DumpWikiDocs(const char* versionNumberStr) const
 {
 	if (!longName || !longName[0])
 		return;
@@ -1081,7 +1081,7 @@ void CommandInfo::DumpWikiDocs() const
 
 	_MESSAGE("{{Function");
 	_MESSAGE(" |origin = %s", GetWikiStyleOriginName(true, metadata).c_str());
-	_MESSAGE(" |originVersion = [TO SPECIFY]");
+	_MESSAGE(" |originVersion = %s", (versionNumberStr && versionNumberStr[0]) ? versionNumberStr : "[TO SPECIFY]");
 	_MESSAGE(" |summary = %s", GetDescription(true).c_str());
 	_MESSAGE(" |name = %s", longName);
 	if (shortName && shortName[0])
@@ -1147,6 +1147,13 @@ void CommandInfo::DumpWikiDocs() const
 	{
 		_MESSAGE("[[Category:String Functions]]");
 	}
+	_MESSAGE(""); // line break
+
+	if (shortName && shortName[0])
+	{
+		_MESSAGE("!!! Create a page with the name \"%s\" and the following text:", shortName);
+		_MESSAGE("#redirect [[%s]]\n[[Category:Function Alias]]\n", longName);
+	}
 }
 
 void CommandInfo::DumpFunctionDef(CommandMetadata* metadata) const
@@ -1195,6 +1202,32 @@ CommandInfo *CommandTable::GetByOpcode(UInt32 opcode)
 		return nullptr;
 	}
 	return command;
+}
+
+std::vector<CommandInfo*> CommandTable::GetByOpcodeRange(UInt32 opcodeStart, UInt32 opcodeStop)
+{
+	std::vector<CommandInfo*> result;
+	const auto baseOpcode = m_commands.begin()->opcode;
+	const auto lastArrayIndex = opcodeStop - baseOpcode;
+	if (lastArrayIndex >= m_commands.size())
+		return result;
+	if (opcodeStart > opcodeStop)
+		return result;
+	auto numElems = opcodeStop - opcodeStart + 1;
+	if ((m_commands.size() < numElems) || m_commands.begin()->opcode < baseOpcode)
+		return result;
+	for (UInt32 i = opcodeStart - baseOpcode; i <= lastArrayIndex; ++i)
+	{
+		auto* const command = &m_commands[i];
+		if (command->opcode < opcodeStart || command->opcode > opcodeStop)
+		{
+			//_MESSAGE("ERROR: mismatched command opcodes when executing CommandTable::GetByOpcode (opcode: %X base: %X index: %d index opcode: %X)",
+			//	opcode, baseOpcode, arrayIndex, command->opcode);
+			continue;
+		}
+		result.push_back(command);
+	}
+	return result;
 }
 
 CommandReturnType CommandTable::GetReturnType(const CommandInfo *cmd)
@@ -2178,6 +2211,7 @@ void CommandTable::AddCommandsV6()
 	// 6.3 beta 06
 	ADD_CMD(DumpDocs);	// used to be debug mode only, but that forced seeing debug functions in the dumped docs.
 	ADD_CMD(DumpCommandWikiDoc);
+	ADD_CMD(DumpCommandWikiDocs);
 }
 
 namespace PluginAPI

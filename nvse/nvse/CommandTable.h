@@ -273,7 +273,7 @@ struct CommandInfo
 
 	void	DumpFunctionDef(CommandMetadata* metadata = nullptr) const;
 	void	DumpDocs(CommandMetadata* metadata = nullptr) const;
-	void	DumpWikiDocs() const;
+	void	DumpWikiDocs(const char* versionNumberStr = nullptr) const;
 	std::string GetDescription(const bool forWiki) const;
 };
 
@@ -294,6 +294,8 @@ public:
 	CommandInfo *	GetEnd(void)	{ return GetStart() + m_commands.size(); }
 	CommandInfo *	GetByName(const char * name);
 	CommandInfo *	GetByOpcode(UInt32 opcode);
+	// Inclusive start and stop bounds.
+	std::vector<CommandInfo*> GetByOpcodeRange(UInt32 opcodeStart, UInt32 opcodeStop);
 
 	void	SetBaseID(UInt32 id)	{ m_baseID = id; m_curID = id; }
 	UInt32	GetMaxID(void)			{ return m_baseID + m_commands.size(); }

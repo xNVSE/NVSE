@@ -1594,6 +1594,29 @@ bool Cmd_DumpCommandWikiDoc_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_DumpCommandWikiDocs_Execute(COMMAND_ARGS)
+{
+	UInt32 opcodeStart, opcodeEnd;
+	char versionNumBuf[256]{};
+	if (!ExtractArgs(EXTRACT_ARGS, &opcodeStart, &opcodeEnd, &versionNumBuf))
+		return true;
+	if (auto commandInfoVec = g_scriptCommands.GetByOpcodeRange(opcodeStart, opcodeEnd);
+		!commandInfoVec.empty())
+	{
+		if (IsConsoleMode())
+			Console_Print("Dumping wiki-style documentation for functions in opcode range.");
+
+		std::for_each(commandInfoVec.begin(), commandInfoVec.end(), 
+			[&versionNumBuf](CommandInfo* commandInfo) {commandInfo->DumpWikiDocs(versionNumBuf); });
+
+		if (IsConsoleMode())
+			Console_Print("Finished dumping wiki-style documentation for functions.");
+	}
+	else if (IsConsoleMode())
+		Console_Print("Unable to find commands.");
+	return true;
+}
+
 bool Cmd_Ternary_Execute(COMMAND_ARGS)
 {
 	*result = 0;
