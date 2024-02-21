@@ -1121,8 +1121,13 @@ void CommandInfo::DumpWikiDocs(const char* versionNumberStr) const
 				hasStringArg = true;
 
 			_MESSAGE("   |Type = %s", argTypeStr.c_str());
+
 			if (param->isOptional != 0)
+			{
 				_MESSAGE("   |Optional = y");
+				_MESSAGE("   |Value = [INSERT DEFAULT VALUE]");
+			}
+				
 			if (i + 1 < numParams)
 				_MESSAGE("  }}{{FunctionArgument");
 			else
