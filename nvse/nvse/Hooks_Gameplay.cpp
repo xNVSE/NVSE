@@ -386,14 +386,64 @@ namespace DisablePlayerControlsAlt
 		}
 	}
 
-	CallDetour g_PreventAttackDetour;
-	bool __fastcall MaybePreventPlayerAttacking(Actor* player, void* edx, UInt32 animGroupId)
+	namespace MaybePreventPlayerAttacking
 	{
-		if ((g_disabledControls & kFlag_Attacking) != 0)
-			return false;
+		namespace PreventFiring
+		{
+			CallDetour g_PreventAttackDetour;
 
-		// actually fire the weapon
-		return ThisStdCall<bool>(g_PreventAttackDetour.GetOverwrittenAddr(), player, animGroupId);
+			bool __fastcall Hook(Actor* player, void* edx, UInt32 animGroupId)
+			{
+				if ((g_disabledControls & kFlag_Attacking) != 0)
+					return false;
+
+				// actually fire the weapon
+				return ThisStdCall<bool>(g_PreventAttackDetour.GetOverwrittenAddr(), player, animGroupId);
+			}
+
+			void WriteHook()
+			{
+				g_PreventAttackDetour.WriteRelCall(0x949CF1, (UInt32)Hook);
+			}
+		}
+
+		// Fixes bug where automatic weapons when attacks are prevented would set the ForceFireWeapon flag, at 0x948F45.
+		// We do this by essentially pretending g_bPreventNextAttack is set to 1 for checks at 0x948A18 and 0x9491BC, thereby skipping to 0x949676.
+		// We don't want to actually modify it, since that might mess things up if quickly switching from having attacks disabled to enabled.
+		namespace PreventRememberingAttackInputs
+		{
+			__HOOK Hook()
+			{
+				static const UInt32 NormalRetnAddr = 0x948A02,
+					PreventAddr = 0x949676;
+				_asm
+				{
+					movzx	eax, g_disabledControls
+					AND		eax, kFlag_Attacking
+					test	eax, eax
+					jz		DoRegular
+					// else, prevent
+					jmp		PreventAddr
+				DoRegular:
+					// recreate code we overwrote
+					push	1
+					push	4
+					mov     ecx, [ebp - 0xC]
+					jmp		NormalRetnAddr
+				}
+			}
+
+			void WriteHook()
+			{
+				WriteRelJump(0x9489FB, (UInt32)Hook);
+			}
+		}
+
+		void WriteHooks()
+		{
+			PreventFiring::WriteHook();
+			PreventRememberingAttackInputs::WriteHook();
+		}
 	}
 
 	CallDetour g_PreventVATSDetour;
@@ -606,7 +656,7 @@ namespace DisablePlayerControlsAlt
 	void WriteHooks()
 	{
 		WriteRelJump(0x5A03F7, (UInt32)ModifyPlayerControlFlags);
-		g_PreventAttackDetour.WriteRelCall(0x949CF1, (UInt32)MaybePreventPlayerAttacking);
+		MaybePreventPlayerAttacking::WriteHooks();
 
 		// Use detour since "GetControlState" funcs could be popular hook spots
 		g_PreventVATSDetour.WriteRelCall(0x942884, (UInt32)GetControlState_VATSHook);
