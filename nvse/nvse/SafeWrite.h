@@ -29,6 +29,9 @@ void WriteRelJump(UInt32 jumpSrc, T jumpTgt)
 	WriteRelJump(jumpSrc, (UInt32)jumpTgt);
 }
 
+// Credits to lStewieAl
+[[nodiscard]] UInt32 __stdcall DetourVtable(UInt32 addr, UInt32 dst);
+
 // From lStewieAl
 // Returns the address of the jump/called function, assuming there is one.
 UInt32 GetRelJumpAddr(UInt32 jumpSrc);

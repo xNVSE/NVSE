@@ -568,11 +568,42 @@ bool Cmd_GetModelPath_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_SetModelPath_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (eval.ExtractArgs() && eval.NumArgs() > 0)
+	{
+		TESForm* form = NULL;
+		if (eval.NumArgs() == 2)
+		{
+			form = eval.Arg(1)->GetTESForm();
+		}
+		else if (thisObj)
+		{
+			form = thisObj->baseForm;
+		}
+
+		if (TESModel* model = DYNAMIC_CAST(form, TESForm, TESModel))
+		{
+			if (const char* newPath = eval.Arg(0)->GetString())
+			{
+				model->SetPath(newPath);
+				*result = 1;
+			}
+		}
+	}
+
+	return true;
+}
+
+// DEPRECATED; SetModelPath is recommended instead.
 bool Cmd_SetModelPathEX_Execute(COMMAND_ARGS)
 {
 	TESForm *form = NULL;
 	char newPath[kMaxMessageLength];
 
+	// Broken if trying to pass a form arg; if passing an editorID, it fails to compile, and if passing a variable, it fails to extract.
 	if (ExtractFormatStringArgs(0, newPath, PASS_FMTSTR_ARGS, kCommandInfo_SetModelPathEX.numParams, &form))
 	{
 		if (form)

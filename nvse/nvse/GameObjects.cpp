@@ -287,6 +287,16 @@ TESObjectWEAP* Actor::GetEquippedWeapon() const
 	return NULL;
 }
 
+void Actor::AimWeapon(bool shouldAim, bool hasQueuedIdleFlags10000)
+{
+	ThisStdCall(0x8BB650, this, static_cast<UInt8>(shouldAim), hasQueuedIdleFlags10000, static_cast<UInt8>(false));
+}
+
+bool Actor::SetBlocking(bool shouldBlock)
+{
+	return ThisStdCall<bool>(0x894CC0, this, static_cast<UInt8>(shouldBlock));
+}
+
 bool TESObjectREFR::GetInventoryItems(InventoryItemsMap &invItems)
 {
 	TESContainer *container = GetContainer();
@@ -415,6 +425,11 @@ __declspec(naked) float __vectorcall TESObjectREFR::GetDistance(TESObjectREFR* t
 void Actor::SetWantsWeaponOut(bool wantsWeaponOut)
 {
 	ThisStdCall(0x8A6840, this, (UInt8)wantsWeaponOut);
+}
+
+bool Actor::IsWeaponOut()
+{
+	return baseProcess && baseProcess->IsWeaponOut();
 }
 
 void PlayerCharacter::UpdateCamera(bool isCalledFromFunc21, bool _zero_skipUpdateLOD)

@@ -124,6 +124,13 @@ DEFINE_CMD(SetStringGameSettingEX_DEPRECATED, sets a string game setting, 0, kPa
 DEFINE_CMD(SetStringIniSetting_DEPRECATED, sets a string ini setting, 0, kParams_FormatString);
 DEFINE_CMD(SetStringIniSetting, sets a string ini setting, 0, kParams_TwoStrings);
 
+static ParamInfo kNVSEParams_OneString_OneOptionalForm[] =
+{
+	{	"string",	kNVSEParamType_String,	0	},
+	{	"object",	kNVSEParamType_Form,	1	},
+};
+
+DEFINE_COMMAND_EXP(SetModelPath, sets the model path of an object, 0, kNVSEParams_OneString_OneOptionalForm);
 DEFINE_CMD(GetModelPath, returns the model path of an object, 0, kParams_OneOptionalForm);
 
 DEFINE_CMD(GetIconPath, returns the icon path of an object, 0, kParams_OneOptionalForm);
@@ -155,12 +162,6 @@ DEFINE_CMD(SetBipedModelPathEX, sets a biped model path, 0, kParams_SetBipedPath
 
 DEFINE_CMD(GetTexturePath, "returns the texture path of an object. This command is identical to GetIconPath, but also works for other object types such as skills, classes, and miscellaneous objects.",
 			   0, kParams_OneOptionalForm);
-
-static ParamInfo kNVSEParams_OneString_OneOptionalForm[] =
-{
-	{	"string",	kNVSEParamType_String,	0	},
-	{	"object",	kNVSEParamType_Form,	1	},
-};
 
 DEFINE_COMMAND_EXP(SetTexturePath, sets the texture path of an object. This command works for a broader set of objects than SetIconPathEX., 0, kNVSEParams_OneString_OneOptionalForm);
 

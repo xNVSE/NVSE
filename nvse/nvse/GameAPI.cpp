@@ -2929,3 +2929,11 @@ Script *GetReferencedQuestScript(UInt32 refIdx, ScriptEventList *baseEventList)
 }
 
 #endif
+
+void VATSCameraData::Unclick()
+{
+	// Credits to lStewieAl for the out var name
+	UInt32 actionType_out;
+	UInt8 byte_out;
+	ThisStdCall(0x9C88A0, this, &actionType_out, &byte_out);
+}

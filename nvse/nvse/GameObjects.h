@@ -530,6 +530,11 @@ public:
 
 	// Credits to lStewieAl
 	void SetWantsWeaponOut(bool wantsWeaponOut);
+	[[nodiscard]] bool IsWeaponOut();
+
+	// Credits to lStewieAl's decoding work
+	void AimWeapon(bool shouldAim, bool hasQueuedIdleFlags10000 = false);
+	bool SetBlocking(bool shouldBlock);
 };
 
 STATIC_ASSERT(offsetof(Actor, magicCaster) == 0x088);

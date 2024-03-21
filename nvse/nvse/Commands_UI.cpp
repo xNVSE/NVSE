@@ -11,9 +11,6 @@
 #include "MemoizedMap.h"
 #include "common/ICriticalSection.h"
 
-#define the_VATScamStruct		0x011F2250
-#define the_VATSunclick			0x009C88A0
-#define the_VATSexecute			0x00705780
 #define	the_DoShowLevelUpMenu	0x00784C80
 
 static const float fErrorReturnValue = -999;
@@ -398,49 +395,25 @@ bool Cmd_SortUIListBox_Execute(COMMAND_ARGS)
 	return true;
 }
 
-// VATS camera
-
 // End function provided and tested by Queued. Converted from asm to C++
-
-typedef tList<void*>	VATStargetList;
-struct VATScamStruct {
-	VATStargetList *	targets;
-	UInt32				unk004;
-	UInt32				mode;
-	// ...
-	MEMBER_FN_PREFIX(VATScamStruct);
-	DEFINE_MEMBER_FN(VATSunclick, void, the_VATSunclick, UInt32*, UInt32*);
-};
-
-typedef void (__stdcall * _VATSunclick)(UInt32*, UInt32*);
-typedef void (* _VATSexecute)(void);
-
-VATScamStruct* g_VATScamStruct = (VATScamStruct*)the_VATScamStruct;
-//_VATSunclick VATSunclick = (_VATSunclick)the_VATSunclick;
-_VATSexecute VATSexecute = (_VATSexecute)the_VATSexecute;
-
-bool Cmd_EndVATScam_Execute (COMMAND_ARGS)
+bool Cmd_EndVATScam_Execute(COMMAND_ARGS)
 {
-	UInt32 const0;
-	UInt32 value;
+	auto* vatsCam = VATSCameraData::GetSingleton();
 
-//	value = 0x016;
-	for (; g_VATScamStruct->targets; ) {
-		const0 = 0;
-		value = 0x016;
-		CALL_MEMBER_FN(g_VATScamStruct, VATSunclick)(&value, &const0);
-//		VATSunclick(&value, &const0);
+	for (; vatsCam->targets; ) {
+		vatsCam->Unclick();
 	}
-	if (2 == g_VATScamStruct->mode)
-		VATSexecute();
-//		CALL_MEMBER_FN(g_VATScamStruct, VATSexecute)();
+
+	if (VATSCameraData::kVATSMode_LimbSelectOrZoom == vatsCam->mode)
+		VATSCameraData::Accept();
+
 	return true;
 }
 
 typedef Menu* (* _DoShowLevelUpMenu)(void);
 _DoShowLevelUpMenu DoShowLevelUpMenu = (_DoShowLevelUpMenu)the_DoShowLevelUpMenu;
 
-bool Cmd_ShowLevelUpMenu_Execute (COMMAND_ARGS)
+bool Cmd_ShowLevelUpMenu_Execute(COMMAND_ARGS)
 {
 	DoShowLevelUpMenu();
 	return true;

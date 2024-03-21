@@ -2217,6 +2217,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(DumpDocs);	// used to be debug mode only, but that forced seeing debug functions in the dumped docs.
 	ADD_CMD(DumpCommandWikiDoc);
 	ADD_CMD(DumpCommandWikiDocs);
+	ADD_CMD(SetModelPath);
 }
 
 namespace PluginAPI

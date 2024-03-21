@@ -348,6 +348,13 @@ namespace DisablePlayerControlsAlt
 			// force out of sneak by removing sneak movement flag
 			ThisStdCall(0x9EA3E0, PlayerCharacter::GetSingleton()->actorMover, (player->GetMovementFlags() & ~0x400));
 		}
+
+		if ((realFlagChanges & kFlag_AimingOrBlocking) != 0)
+		{
+			// force out of aiming/blocking
+			player->AimWeapon(false);
+			player->SetBlocking(false);
+		}
 	}
 
 	void ApplyImmediateEnablingEffects(flags_t changedFlagsForMod)
@@ -412,15 +419,23 @@ namespace DisablePlayerControlsAlt
 		// We don't want to actually modify it, since that might mess things up if quickly switching from having attacks disabled to enabled.
 		namespace PreventRememberingAttackInputs
 		{
+			bool __fastcall ShouldPrevent()
+			{
+				// Don't swallow inputs if player wants to try to get their weapon out via attack control.
+				if (!PlayerCharacter::GetSingleton()->IsWeaponOut())
+					return false;
+
+				return (g_disabledControls & kFlag_Attacking) != 0;
+			}
+
 			__HOOK Hook()
 			{
 				static const UInt32 NormalRetnAddr = 0x948A02,
 					PreventAddr = 0x949676;
 				_asm
 				{
-					movzx	eax, g_disabledControls
-					AND		eax, kFlag_Attacking
-					test	eax, eax
+					call	ShouldPrevent
+					test	al, al
 					jz		DoRegular
 					// else, prevent
 					jmp		PreventAddr
@@ -653,6 +668,35 @@ namespace DisablePlayerControlsAlt
 		}
 	}
 
+	namespace MaybePreventReload
+	{
+		static UInt32 g_detourAddr{};
+
+		// Credits to lStewieAl for the decoding.
+		bool __fastcall PlayerCharacter_Reload_Hook(PlayerCharacter* player, void* edx, TESObjectWEAP* weap,
+			int animType, UInt8 hasExtendedClip, UInt8 isInstantSwapHotkey)
+		{
+			// Only prevent reloading outside of VATS playback.
+			if (auto* vatsCam = VATSCameraData::GetSingleton();
+				!vatsCam || vatsCam->mode != VATSCameraData::kVATSMode_Playback)
+			{
+				// Needs to be checked since we don't want to prevent "reload" that happens when equipping a weapon that still has ammo loaded.
+				bool const willPlayReloadAnim = animType == 1 || animType == 2;
+
+				if (willPlayReloadAnim && (g_disabledControls & kFlag_Reload) != 0)
+					return false; // prevent reloading
+			}
+
+			return ThisStdCall<bool>(g_detourAddr, player, weap, animType, hasExtendedClip, isInstantSwapHotkey);
+		}
+
+		void WriteHook()
+		{
+			// Detour PlayerCharacter__Reload_
+			g_detourAddr = DetourVtable(0x108AE28, (UInt32)PlayerCharacter_Reload_Hook);
+		}
+	}
+
 	void WriteHooks()
 	{
 		WriteRelJump(0x5A03F7, (UInt32)ModifyPlayerControlFlags);
@@ -671,6 +715,9 @@ namespace DisablePlayerControlsAlt
 
 		MaybePreventSleepWait::WriteHooks();
 		MaybePreventFastTravel::WriteHook();
+
+		// v6.3.6
+		MaybePreventReload::WriteHook();
 
 		// todo: maybe add hook+flag to disable grabbing @ 0x95F6DE
 		// todo: maybe add hook+flag to disable AmmoSwap at 0x94098B

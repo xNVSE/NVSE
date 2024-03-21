@@ -1097,3 +1097,34 @@ enum ExtractParamType
 	kExtractParam_Form = 6,
 	kExtractParam_ScriptVariable = 7,
 };
+
+// 48
+typedef tList<void*>	VATSTargetList;
+struct VATSCameraData {
+	VATSTargetList* targets;
+	UInt32				unk004;
+	UInt32				mode;
+	// ...
+
+	// Credits to lStewieAl
+	enum Mode : UInt32
+	{
+		kVATSMode_None = 0x0,
+		kVATSMode_TargetSelect = 0x1,
+		kVATSMode_LimbSelectOrZoom = 0x2,
+		kVATSMode_3 = 0x3,
+		kVATSMode_Playback = 0x4,
+	};
+
+	void Unclick();
+
+	static void Accept()
+	{
+		StdCall(0x705780);
+	}
+
+	static VATSCameraData* GetSingleton()
+	{
+		return reinterpret_cast<VATSCameraData*>(0x11F2250);
+	}
+};

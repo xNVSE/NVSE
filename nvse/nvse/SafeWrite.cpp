@@ -81,3 +81,10 @@ UInt32 GetRelJumpAddr(UInt32 jumpSrc)
 {
 	return *(UInt32*)(jumpSrc + 1) + jumpSrc + 5;
 }
+
+[[nodiscard]] __declspec(noinline) UInt32 __stdcall DetourVtable(UInt32 addr, UInt32 dst)
+{
+	UInt32 originalFunction = *(UInt32*)addr;
+	SafeWrite32(addr, dst);
+	return originalFunction;
+}
