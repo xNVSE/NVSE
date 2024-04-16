@@ -91,7 +91,6 @@ void CacheAllScriptsInPath(std::string_view pathStr)
 				{
 					std::string compileSuccessMsg = std::format("xNVSE: script file successfully precompiled at {}",
 						dir_entry.path().string());
-					Console_Print(compileSuccessMsg.c_str());
 					_MESSAGE(compileSuccessMsg.c_str());
 				}
 			}
