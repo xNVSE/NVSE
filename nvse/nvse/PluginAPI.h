@@ -1016,6 +1016,63 @@ struct NVSEEventManagerInterface
 };
 #endif
 
+/**** plugin API docs **********************************************************
+ *
+ *	IMPORTANT: Before releasing a plugin, you MUST contact the NVSE team at the
+ *	contact addresses listed in nvse_readme.txt to register a range of opcodes.
+ *	This is required to prevent conflicts between multiple plugins, as each
+ *	command must be assigned a unique opcode.
+ *
+ *	The base API is pretty simple. Create a project based on the
+ *	nvse_plugin_example project included with the NVSE source code, then define
+ *	and export these functions:
+ *
+ *	bool NVSEPlugin_Query(const NVSEInterface * nvse, PluginInfo * info)
+ *
+ *	This primary purposes of this function are to fill out the PluginInfo
+ *	structure, and to perform basic version checks based on the info in the
+ *	NVSEInterface structure. Return false if your plugin is incompatible with
+ *	the version of NVSE or Fallout passed in, otherwise return true. In either
+ *	case, fill out the PluginInfo structure.
+ *
+ *	If the plugin is being loaded in the context of the editor, isEditor will be
+ *	non-zero, editorVersion will contain the current editor version, and
+ *	falloutVersion will be zero. In this case you can probably just return
+ *	true, however if you have multiple DLLs implementing the same behavior, for
+ *	example one for each version of Fallout, only one of them should return
+ *	true.
+ *
+ *	The PluginInfo fields should be filled out as follows:
+ *	- infoVersion should be set to PluginInfo::kInfoVersion
+ *	- name should be a pointer to a null-terminated string uniquely identifying
+ *	  your plugin, it will be used in the plugin querying API
+ *	- version is only used by the plugin query API, and will be returned to
+ *	  scripts requesting the current version of your plugin
+ *
+ *	bool NVSEPlugin_Load(const NVSEInterface * nvse)
+ *
+ *	In this function, use the SetOpcodeBase callback in NVSEInterface to set the
+ *	opcode base to your assigned value, then use RegisterCommand to register all
+ *	of your commands. NVSE will fix up your CommandInfo structure when loaded
+ *	in the context of the editor, and will fill in any NULL callbacks with their
+ *	default values, so don't worry about having a unique 'execute' callback for
+ *	the editor, and don't provide a 'parse' callback unless you're actually
+ *	overriding the default behavior. The opcode field will also be automatically
+ *	updated with the next opcode in the sequence started by SetOpcodeBase.
+ *
+ *	At this time, or at any point forward you can call the QueryInterface
+ *	callback to retrieve an interface structure for the base services provided
+ *	by the NVSE core.
+ *
+ *	You may optionally return false from this function to unload your plugin,
+ *	but make sure that you DO NOT register any commands if you do.
+ *
+ *	Note that all structure versions are backwards-compatible, so you only need
+ *	to check against the latest version that you need. New fields will be only
+ *	added to the end, and all old fields will remain compatible with their
+ *	previous implementations.
+ *
+ ******************************************************************************/
 struct PluginInfo
 {
 	enum
@@ -1031,64 +1088,25 @@ struct PluginInfo
 typedef bool (* _NVSEPlugin_Query)(const NVSEInterface * nvse, PluginInfo * info);
 typedef bool (* _NVSEPlugin_Load)(const NVSEInterface * nvse);
 
-/**** plugin API docs **********************************************************
- *	
- *	IMPORTANT: Before releasing a plugin, you MUST contact the NVSE team at the
- *	contact addresses listed in nvse_readme.txt to register a range of opcodes.
- *	This is required to prevent conflicts between multiple plugins, as each
- *	command must be assigned a unique opcode.
- *	
- *	The base API is pretty simple. Create a project based on the
- *	nvse_plugin_example project included with the NVSE source code, then define
- *	and export these functions:
- *	
- *	bool NVSEPlugin_Query(const NVSEInterface * nvse, PluginInfo * info)
- *	
- *	This primary purposes of this function are to fill out the PluginInfo
- *	structure, and to perform basic version checks based on the info in the
- *	NVSEInterface structure. Return false if your plugin is incompatible with
- *	the version of NVSE or Fallout passed in, otherwise return true. In either
- *	case, fill out the PluginInfo structure.
- *	
- *	If the plugin is being loaded in the context of the editor, isEditor will be
- *	non-zero, editorVersion will contain the current editor version, and
- *	falloutVersion will be zero. In this case you can probably just return
- *	true, however if you have multiple DLLs implementing the same behavior, for
- *	example one for each version of Fallout, only one of them should return
- *	true.
- *	
- *	The PluginInfo fields should be filled out as follows:
- *	- infoVersion should be set to PluginInfo::kInfoVersion
- *	- name should be a pointer to a null-terminated string uniquely identifying
- *	  your plugin, it will be used in the plugin querying API
- *	- version is only used by the plugin query API, and will be returned to
- *	  scripts requesting the current version of your plugin
- *	
- *	bool NVSEPlugin_Load(const NVSEInterface * nvse)
- *	
- *	In this function, use the SetOpcodeBase callback in NVSEInterface to set the
- *	opcode base to your assigned value, then use RegisterCommand to register all
- *	of your commands. NVSE will fix up your CommandInfo structure when loaded
- *	in the context of the editor, and will fill in any NULL callbacks with their
- *	default values, so don't worry about having a unique 'execute' callback for
- *	the editor, and don't provide a 'parse' callback unless you're actually
- *	overriding the default behavior. The opcode field will also be automatically
- *	updated with the next opcode in the sequence started by SetOpcodeBase.
- *	
- *	At this time, or at any point forward you can call the QueryInterface
- *	callback to retrieve an interface structure for the base services provided
- *	by the NVSE core.
- *	
- *	You may optionally return false from this function to unload your plugin,
- *	but make sure that you DO NOT register any commands if you do.
- *	
- *	Note that all structure versions are backwards-compatible, so you only need
- *	to check against the latest version that you need. New fields will be only
- *	added to the end, and all old fields will remain compatible with their
- *	previous implementations.
- *	
- ******************************************************************************/
 
+/**** PluginExpressionEvaluator docs **********************************************************
+ *	This is an alternate interface to extract args for a script function, with better support for more complex tokens.
+ *	For example, it can extract arrays, slices, and strings directly.
+ * 
+ *	To initialize the s_expEvalUtils global that is required for PluginExpressionEvaluator to work, 
+ *	.. call InitExpressionEvaluatorUtils from the NVSEInterface after your plugin is loaded.
+ * 
+ *	When used, it also subtly changes how the parsing will work for the expressions following the function call, 
+ *  ..enabling the use of new NVSE expressions: https://geckwiki.com/index.php?title=NVSE_Expressions
+ *	As such, any script function using this evaluator belongs to the category of NVSE-Aware Functions:
+ *	https://geckwiki.com/index.php?title=Category:NVSE-Aware_Functions
+ *
+ *	A script function using the PluginExpressionEvaluator *MUST* use the Cmd_Expression_Plugin_Parse parser.
+ *	For example, this could mean using the premade DEFINE_COMMAND_PLUGIN_EXP or DEFINE_COMMAND_ALT_PLUGIN_EXP macro definitions.
+ *	
+ *	Also, parameters for the ParamInfo *MUST* be defined using the NVSEParamType enum, NOT the regular ParamType enum.
+ *	For example, using kParamType_Integer is invalid, but kNVSEParamType_Number is valid.
+ ******************************************************************************/
 struct PluginScriptToken;
 struct PluginTokenPair;
 struct PluginTokenSlice;
@@ -1332,7 +1350,7 @@ public:
 		if (params.size())
 		{
 			paramCopy = new ParamInfo[params.size()];
-			int index = 0;
+			size_t index = 0;
 			for (const auto& param : params)
 			{
 				paramCopy[index++] = param;
