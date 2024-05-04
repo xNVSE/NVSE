@@ -194,18 +194,17 @@ TESObjectREFR* TESObjectREFR::Create(bool bTemp)
 
 TESForm* GetPermanentBaseForm(TESObjectREFR* thisObj)	// For LevelledForm, find real baseForm, not temporary one.
 {
-	ExtraLeveledCreature * pXCreatureData = NULL;
-
-	if (thisObj) {
-		pXCreatureData = GetByTypeCast(thisObj->extraDataList, LeveledCreature);
-		if (pXCreatureData && pXCreatureData->baseForm) {
+	if (!thisObj)
+		return nullptr;
+	TESForm *baseForm = thisObj->baseForm;
+	if (baseForm && (baseForm->GetModIndex() == 0xFF))
+	{
+		if (BGSPlaceableWater *plcWater = DYNAMIC_CAST(baseForm, TESForm, BGSPlaceableWater))
+			return plcWater->water;
+		if (ExtraLeveledCreature *pXCreatureData = GetByTypeCast(thisObj->extraDataList, LeveledCreature); pXCreatureData && pXCreatureData->baseForm)
 			return pXCreatureData->baseForm;
-		}
 	}
-	if (thisObj && thisObj->baseForm) {
-		return thisObj->baseForm;
-	}
-	return NULL;
+	return baseForm;
 }
 
 // Taken from JIP LN NVSE.
