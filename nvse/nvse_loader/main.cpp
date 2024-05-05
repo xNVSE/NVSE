@@ -304,9 +304,13 @@ static bool DoInjectDLLThread(PROCESS_INFORMATION * info, const char * dllPath, 
 		UInt32	hookBase = (UInt32)VirtualAllocEx(process, NULL, 8192, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 		if(hookBase)
 		{
-			// safe because kernel32 is loaded at the same address in all processes
-			// (can change across restarts)
-			UInt32	loadLibraryAAddr = (UInt32)GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryA");
+			HMODULE hKernel32 = GetModuleHandleA("kernel32.dll");
+			if (hKernel32 == NULL) {
+				_ERROR("Failed to get module handle for kernel32.dll");
+				return;
+			}
+
+			UInt32 loadLibraryAAddr = (UInt32)GetProcAddress(hKernel32, "LoadLibraryA");
 
 			_MESSAGE("hookBase = %08X", hookBase);
 			_MESSAGE("loadLibraryAAddr = %08X", loadLibraryAAddr);
