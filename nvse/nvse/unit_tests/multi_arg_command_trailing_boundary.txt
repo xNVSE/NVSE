@@ -1,0 +1,48 @@
+Begin Function {}
+	print "Started running xNVSE Multi-arg command trailing comparison operator tests."
+
+    let array_var testArr := Ar_List 2
+
+    ; Should fail to compile with old xNVSE
+    ; Prior state parse: if eval Ar_Find 1 (testArr != ar_BadNumericIndex)
+    ; New state parse: if (eval Ar_Find 1 testArr) != ar_BadNumericIndex
+    if eval Ar_Find 2 testArr != ar_BadNumericIndex
+        print "Success 1"
+    endif
+
+    ; Should fail to compile with old xNVSE
+    ; Prior state parse: if eval Ar_Find 1 (testArr == ar_BadNumericIndex)
+    ; New state parse: if (eval Ar_Find 1 testArr) == ar_BadNumericIndex
+    if eval Ar_Find 1 testArr == ar_BadNumericIndex
+        print "Success 2"
+    endif
+
+    ; Should fail to compile with old xNVSE
+    ; Prior state parse: if eval Ar_Find 4 (testArr == ar_BadNumericIndex)
+    ; New state parse: if (eval Ar_Find 4 testArr) == ar_BadNumericIndex
+    if eval Ar_Find 4 testArr || (1 == 1)
+        print "Success 3"
+    endif
+
+	print "Finished running xNVSE Multi-arg command trailing comparison operator tests."
+End
+
+; Expected decompilation:
+; Begin Function { }
+; 	Print "Started running xNVSE Multi-arg command trailing comparison operator tests."
+; 	Let testArr := (ar_List 2)
+;
+; 	If eval (ar_Find 2 testArr) != ar_BadNumericIndex
+;       print "Success 1"
+; 	EndIf
+;
+; 	If eval (ar_Find 1 testArr) == ar_BadNumericIndex
+;       print "Success 2"
+; 	EndIf
+;
+; 	If eval (ar_Find 4 testArr) || 1 == 1
+;       print "Success 3"
+; 	EndIf
+;
+; 	Print "Finished running xNVSE Multi-arg command trailing comparison operator tests."
+; End
