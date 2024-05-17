@@ -407,7 +407,7 @@ public:
 	ExpressionParser(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf);
 	~ExpressionParser();
 
-	bool			ParseArgs(ParamInfo* params, UInt32 numParams, bool bUsesNVSEParamTypes = true, bool parseWholeLine = true);
+	bool			ParseArgs(ParamInfo* params, UInt32 numParams, bool bUsesNVSEParamTypes = true, bool parseWholeLine = true, bool parseCall = true);
 	[[nodiscard]] bool			ValidateArgType(ParamType paramType, Token_Type argType, bool bIsNVSEParam) const;
 	bool GetUserFunctionParams(const std::vector<std::string>& paramNames, std::vector<UserFunctionParam>& outParams,
 	                           Script::VarInfoList* varList, const std::string& fullScriptText, Script* script) const;
