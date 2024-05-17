@@ -1864,7 +1864,7 @@ ExpressionParser::~ExpressionParser()
 	}
 }
 
-bool ExpressionParser::ParseArgs(ParamInfo *params, UInt32 numParams, bool bUsesNVSEParamTypes, bool parseWholeLine, bool parseCall)
+bool ExpressionParser::ParseArgs(ParamInfo *params, UInt32 numParams, bool bUsesNVSEParamTypes, bool parseWholeLine)
 {
 	// reserve space for UInt8 numargs at beginning of compiled code
 	UInt8 *numArgsPtr = m_lineBuf->dataBuf + m_lineBuf->dataOffset;
@@ -1872,7 +1872,7 @@ bool ExpressionParser::ParseArgs(ParamInfo *params, UInt32 numParams, bool bUses
 
 	char ch;
 	UInt32 argsEndPos = m_len;
-	if (parseCall && numParams > 1) {
+	if (numParams > 1) {
 		// Comparison operators should never be parsed in function params unless they are enclosed in parens
 		// if GetINIFltOrCreateC "Edge Settings:bCharismaAffectsReputationChange" "EDGE TTW Config.ini" == 0
 		//                       |--------------------------------------------------------------------| <- Should be considered for params
@@ -1896,6 +1896,7 @@ bool ExpressionParser::ParseArgs(ParamInfo *params, UInt32 numParams, bool bUses
 				const auto oldOffset = Offset();
 				Offset() = i;
 				const auto op = ParseOperator(true, false);
+				// ==, !=, <=, >=, ||, && - I consider all of these boundaries for parameters and they should never be parsed with parameters
 				if (op != nullptr && ((op->type >= kOpType_Equals && op->type <= kOpType_LessOrEqual) || op->type == kOpType_LogicalAnd || op->type == kOpType_LogicalOr)) {
 					Offset() = oldOffset;
 
@@ -5691,7 +5692,7 @@ bool PrecompileScript(ScriptBuffer *buf)
 bool Cmd_Expression_Parse(UInt32 numParams, ParamInfo *paramInfo, ScriptLineBuffer *lineBuf, ScriptBuffer *scriptBuf)
 {
 	ExpressionParser parser(scriptBuf, lineBuf);
-	return (parser.ParseArgs(paramInfo, numParams, true, true, true));
+	return (parser.ParseArgs(paramInfo, numParams));
 }
 
 ScriptLineMacro::ScriptLineMacro(ModifyFunction modifyFunction, MacroType type) : modifyFunction_(std::move(modifyFunction)), type(type)

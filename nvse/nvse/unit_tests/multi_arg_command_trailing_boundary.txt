@@ -3,46 +3,52 @@ Begin Function {}
 
     let array_var testArr := Ar_List 2
 
-    ; Should fail to compile with old xNVSE
     ; Prior state parse: if eval Ar_Find 1 (testArr != ar_BadNumericIndex)
     ; New state parse: if (eval Ar_Find 1 testArr) != ar_BadNumericIndex
-    if eval Ar_Find 2 testArr != ar_BadNumericIndex
-        print "Success 1"
-    endif
+    Assert Ar_Find 2 testArr != ar_BadNumericIndex
 
-    ; Should fail to compile with old xNVSE
     ; Prior state parse: if eval Ar_Find 1 (testArr == ar_BadNumericIndex)
     ; New state parse: if (eval Ar_Find 1 testArr) == ar_BadNumericIndex
-    if eval Ar_Find 1 testArr == ar_BadNumericIndex
-        print "Success 2"
-    endif
+    Assert Ar_Find 1 testArr == ar_BadNumericIndex
 
-    ; Should fail to compile with old xNVSE
     ; Prior state parse: if eval Ar_Find 4 (testArr == ar_BadNumericIndex)
     ; New state parse: if (eval Ar_Find 4 testArr) == ar_BadNumericIndex
-    if eval Ar_Find 4 testArr || (1 == 1)
-        print "Success 3"
-    endif
+    Assert Ar_Find 4 testArr || (1 == 1)
+
+    ; Lambda test
+    let ref testLambda := (Begin Function {int a1, string_var a2}
+        SetFunctionValue 1
+    End)
+
+    ; Prior state parse: if Call testLambda 1 ("test" == 1)
+    ; New state parse: If (Call testLambda 1 "test") == 1
+    Assert Call testLambda 1 "test" == 1
 
 	print "Finished running xNVSE Multi-arg command trailing comparison operator tests."
 End
 
 ; Expected decompilation:
+; Array_var testArr
+; Ref testLambda
+; Int a1
+; Int a2
+
 ; Begin Function { }
 ; 	Print "Started running xNVSE Multi-arg command trailing comparison operator tests."
 ; 	Let testArr := (ar_List 2)
-;
-; 	If eval (ar_Find 2 testArr) != ar_BadNumericIndex
-;       print "Success 1"
-; 	EndIf
-;
-; 	If eval (ar_Find 1 testArr) == ar_BadNumericIndex
-;       print "Success 2"
-; 	EndIf
-;
-; 	If eval (ar_Find 4 testArr) || 1 == 1
-;       print "Success 3"
-; 	EndIf
-;
+; 	Assert (ar_Find 2 testArr) != ar_BadNumericIndex
+; 	Assert (ar_Find 1 testArr) == ar_BadNumericIndex
+; 	Assert (ar_Find 4 testArr) || 1 == 1
+; 	Let testLambda := Int testArr
+; 	Ref testLambda
+; 	Int a1
+; 	String_var a2
+	
+; 	Begin Function { a1, a2 }
+; 		SetFunctionValue 1
+; 	End
+; 	Assert (Call testLambda 1 "test") == 1
 ; 	Print "Finished running xNVSE Multi-arg command trailing comparison operator tests."
 ; End
+
+
