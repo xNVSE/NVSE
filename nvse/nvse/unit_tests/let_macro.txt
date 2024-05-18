@@ -44,6 +44,9 @@ print "Starting xNVSE let macro unit tests."
 	int iTest8 := aTest2["Saviour"]
 	assert (iTest8 == 2)
 	
+	aTest2["Saviour"] = aTest2["Bestie"]
+	assert (aTest2["Saviour"] == 3)
+	
 	;== Test other operators for let macro (-=, +=, etc.)
 	short iTest9 = 3
 	iTest9 -= 1
