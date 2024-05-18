@@ -1870,10 +1870,53 @@ bool ExpressionParser::ParseArgs(ParamInfo *params, UInt32 numParams, bool bUses
 	UInt8 *numArgsPtr = m_lineBuf->dataBuf + m_lineBuf->dataOffset;
 	m_lineBuf->dataOffset += 1;
 
-	// see if args are enclosed in {braces}, if so don't parse beyond closing brace
-	UInt32 argsEndPos = m_len;
 	char ch;
+	UInt32 argsEndPos = m_len;
+	if (numParams > 1) {
+		// Comparison operators should never be parsed in function params unless they are enclosed in parens
+		// if GetINIFltOrCreateC "Edge Settings:bCharismaAffectsReputationChange" "EDGE TTW Config.ini" == 0
+		//                       |--------------------------------------------------------------------| <- Should be considered for params
+		// or
+		// if GetINIFltOrCreateC "Edge Settings:bCharismaAffectsReputationChange" "EDGE TTW Config.ini" (4 / 2 == 2) == 0
+		//                       |---------------------------------------------------------------------------------|
+		int depth = 0;
+		bool instr = 0;
+		int i = 0;
+		while ((ch = Peek(i++)) && i < argsEndPos) {
+			if (ch == '(' && !instr) {
+				depth++;
+			}
+			else if (ch == ')' && !instr) {
+				depth--;
+			}
+			else if (ch == '"') {
+				instr = !instr;
+			}
+			else if (depth == 0 && !instr) {
+				const auto oldOffset = Offset();
+				Offset() = i;
+				const auto op = ParseOperator(true, false);
+				// ==, !=, <=, >=, ||, && - I consider all of these boundaries for parameters and they should never be parsed with parameters
+				if (op != nullptr && ((op->type >= kOpType_Equals && op->type <= kOpType_LessOrEqual) || op->type == kOpType_LogicalAnd || op->type == kOpType_LogicalOr)) {
+					Offset() = oldOffset;
 
+					argsEndPos = i - 1;
+					while (isspace(static_cast<unsigned char>(Peek(argsEndPos)))) {
+						argsEndPos--;
+					}
+
+					break;
+				}
+				Offset() = oldOffset;
+			}
+			// Left the scope of command
+			else if (depth == -1) {
+				break;
+			}
+		}
+	}
+
+	// see if args are enclosed in {braces}, if so don't parse beyond closing brace
 	while ((ch = Peek(Offset())))
 	{
 		if (!isspace(static_cast<unsigned char>(ch)))
