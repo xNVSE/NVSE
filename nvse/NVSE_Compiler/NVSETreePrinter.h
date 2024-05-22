@@ -6,6 +6,9 @@ class NVSETreePrinter : public NVSEVisitor {
 	void printTabs();
 
 public:
+	void visitFnDeclStmt(const FnDeclStmt* stmt) override;
+	void visitVarDeclStmt(const VarDeclStmt* stmt) override;
+
 	void visitExprStmt(const ExprStmt* stmt) override;
 	void visitForStmt(const ForStmt* stmt) override;
 	void visitIfStmt(const IfStmt* stmt) override;
@@ -27,4 +30,5 @@ public:
 	void visitStringExpr(const StringExpr* expr) override;
 	void visitIdentExpr(const IdentExpr* expr) override;
 	void visitGroupingExpr(const GroupingExpr* expr) override;
+	void visitLambdaExpr(const LambdaExpr* expr) override;
 };

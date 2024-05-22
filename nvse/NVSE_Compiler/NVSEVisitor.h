@@ -1,5 +1,8 @@
 #pragma once
 
+struct FnDeclStmt;
+struct VarDeclStmt;
+
 struct ExprStmt;
 struct ForStmt;
 struct IfStmt;
@@ -20,9 +23,13 @@ struct NumberExpr;
 struct StringExpr;
 struct IdentExpr;
 struct GroupingExpr;
+struct LambdaExpr;
 
 class NVSEVisitor {
 public:
+	virtual void visitFnDeclStmt(const FnDeclStmt* stmt) = 0;
+	virtual void visitVarDeclStmt(const VarDeclStmt* stmt) = 0;
+
 	virtual void visitExprStmt(const ExprStmt* stmt) = 0;
 	virtual void visitForStmt(const ForStmt* stmt) = 0;
 	virtual void visitIfStmt(const IfStmt* stmt) = 0;
@@ -43,4 +50,5 @@ public:
 	virtual void visitStringExpr(const StringExpr* expr) = 0;
 	virtual void visitIdentExpr(const IdentExpr* expr) = 0;
 	virtual void visitGroupingExpr(const GroupingExpr* expr) = 0;
+	virtual void visitLambdaExpr(const LambdaExpr* expr) = 0;
 };

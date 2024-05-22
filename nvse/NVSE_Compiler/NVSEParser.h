@@ -4,6 +4,7 @@
 #include "NVSEVisitor.h"
 
 #include <memory>
+#include <optional>
 #include <unordered_map>
 
 struct Expr;
@@ -16,6 +17,34 @@ struct Stmt {
     virtual ~Stmt() {}
 
     virtual void accept(NVSEVisitor* t) = 0;
+};
+
+struct FnDeclStmt : Stmt {
+    std::optional<NVSEToken> name{};
+    std::optional<NVSEToken> mode{};
+	std::vector<StmtPtr> args;
+    StmtPtr body;
+
+    FnDeclStmt(std::vector<StmtPtr> args, StmtPtr body) : args(std::move(args)), body(std::move(body)) {}
+    FnDeclStmt(NVSEToken name, std::vector<StmtPtr> args, StmtPtr body) : name(name), args(std::move(args)), body(std::move(body)) {}
+    FnDeclStmt(NVSEToken name, NVSEToken mode, std::vector<StmtPtr> args, StmtPtr body) : name(name), mode(mode), args(std::move(args)), body(std::move(body)) {}
+
+    void accept(NVSEVisitor *visitor) override {
+        visitor->visitFnDeclStmt(this);
+    }
+};
+
+struct VarDeclStmt : Stmt {
+    NVSEToken type;
+    NVSEToken name;
+    ExprPtr value{ nullptr };
+
+    VarDeclStmt(NVSEToken type, NVSEToken name) : type(type), name(name) {}
+    VarDeclStmt(NVSEToken type, NVSEToken name, ExprPtr value) : type(type), name(name), value(std::move(value)) {}
+
+    void accept(NVSEVisitor* visitor) override {
+	    visitor->visitVarDeclStmt(this);
+    }
 };
 
 struct ExprStmt : Stmt {
@@ -222,6 +251,17 @@ struct GroupingExpr : Expr {
     }
 };
 
+struct LambdaExpr : Expr {
+    std::vector<StmtPtr> args;
+    StmtPtr body;
+
+    LambdaExpr(std::vector<StmtPtr> args, StmtPtr body) : args(std::move(args)), body(std::move(body)) {}
+
+    void accept(NVSEVisitor* t) {
+        t->visitLambdaExpr(this);
+    }
+};
+
 class NVSEParseError : public std::runtime_error {
 public:
     NVSEParseError(std::string message) : std::runtime_error(message) {};
@@ -239,6 +279,9 @@ private:
     NVSEToken previousToken;
     bool panicMode = false;
     bool hadError = false;
+
+    StmtPtr fnDecl();
+    StmtPtr varDecl();
 
     StmtPtr statement();
     StmtPtr exprStmt();
@@ -259,10 +302,12 @@ private:
     ExprPtr factor();
     ExprPtr unary();
     ExprPtr call();
+    ExprPtr fnExpr();
     ExprPtr primary();
 
     void advance();
     bool match(TokenType type);
+    bool peek(TokenType type);
     void error(NVSEToken token, std::string message);
     NVSEToken expect(TokenType type, std::string message);
     void synchronize();

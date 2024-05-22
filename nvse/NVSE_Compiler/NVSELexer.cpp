@@ -6,7 +6,7 @@ NVSELexer::NVSELexer(const std::string& input) : input(input), pos(0) {
     std::string::size_type prev = 0;
     while ((pos = input.find('\n', prev)) != std::string::npos)
     {
-        lines.push_back(input.substr(prev, pos - prev));
+        lines.push_back(input.substr(prev, pos - prev - 1));
         prev = pos + 1;
     }
     lines.push_back(input.substr(prev));
