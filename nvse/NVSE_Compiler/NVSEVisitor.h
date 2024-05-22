@@ -1,6 +1,7 @@
 #pragma once
 
 struct AssignmentExpr;
+struct TernaryExpr;
 struct LogicalExpr;
 struct BinaryExpr;
 struct UnaryExpr;
@@ -16,6 +17,7 @@ struct GroupingExpr;
 class NVSEVisitor {
 public:
 	virtual void visitAssignmentExpr(const AssignmentExpr* expr) = 0;
+	virtual void visitTernaryExpr(const TernaryExpr* expr) = 0;
 	virtual void visitLogicalExpr(const LogicalExpr* expr) = 0;
 	virtual void visitBinaryExpr(const BinaryExpr* expr) = 0;
 	virtual void visitUnaryExpr(const UnaryExpr* expr) = 0;

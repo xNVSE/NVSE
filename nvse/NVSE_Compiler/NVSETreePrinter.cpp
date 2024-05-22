@@ -23,6 +23,33 @@ void NVSETreePrinter::visitAssignmentExpr(const AssignmentExpr* expr)
 	curTab--;
 }
 
+void NVSETreePrinter::visitTernaryExpr(const TernaryExpr* expr)
+{
+	printTabs();
+	std::cout << "ternary" << std::endl;
+	curTab++;
+
+	printTabs();
+	std::cout << "cond" << std::endl;
+	curTab++;
+	expr->cond->accept(this);
+	curTab--;
+
+	printTabs();
+	std::cout << "lhs" << std::endl;
+	curTab++;
+	expr->left->accept(this);
+	curTab--;
+
+	printTabs();
+	std::cout << "rhs" << std::endl;
+	curTab++;
+	expr->right->accept(this);
+	curTab--;
+
+	curTab--;
+}
+
 void NVSETreePrinter::visitLogicalExpr(const LogicalExpr* expr)
 {
 	printTabs();
@@ -73,13 +100,14 @@ void NVSETreePrinter::visitCallExpr(const CallExpr* expr)
 	printTabs();
 	std::cout << "call" << std::endl;
 	curTab++;
+
 	printTabs();
 	std::cout << "expr" << std::endl;
 	curTab++;
 	expr->left->accept(this);
 	curTab--;
-	printTabs();
 	if (!expr->args.empty()) {
+		printTabs();
 		std::cout << "args" << std::endl;
 		curTab++;
 		for (const auto& exp : expr->args) {
@@ -87,6 +115,7 @@ void NVSETreePrinter::visitCallExpr(const CallExpr* expr)
 		}
 		curTab--;
 	}
+
 	curTab--;
 }
 

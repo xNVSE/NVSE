@@ -4,7 +4,7 @@
 
 int main() {
 	NVSELexer nvl(
-		"1 || 2 || 3"
+		"GetPlayer().name = 1 == 3 ? (10 + 10) : test(1,2,3)"
 	);
 
 	NVSEParser p(nvl);

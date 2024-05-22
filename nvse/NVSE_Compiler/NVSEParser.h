@@ -29,6 +29,18 @@ struct AssignmentExpr : Expr {
     }
 };
 
+struct TernaryExpr : Expr {
+    ExprPtr cond;
+    ExprPtr left;
+    ExprPtr right;
+
+    TernaryExpr(ExprPtr cond, ExprPtr left, ExprPtr right) : cond(std::move(cond)), left(std::move(left)), right(std::move(right)) {}
+
+    void accept(NVSEVisitor* t) {
+        t->visitTernaryExpr(this);
+    }
+};
+
 struct LogicalExpr : Expr {
     ExprPtr left, right;
     NVSEToken op;
@@ -180,7 +192,7 @@ private:
     }
 
     ExprPtr assignment() {
-        ExprPtr left = logicOr();
+        ExprPtr left = ternary();
 
         if (match(TokenType::Eq)) {
             const auto prevTok = previousToken;
@@ -201,6 +213,20 @@ private:
         }
 
         return left;
+    }
+
+    ExprPtr ternary() {
+        ExprPtr cond = logicOr();
+
+        while (match(TokenType::Ternary)) {
+            auto left = logicOr();
+            expect(TokenType::Colon, "Expected ':' in ternary expression.");
+            auto right = logicOr();
+
+            cond = std::make_unique<TernaryExpr>(std::move(cond), std::move(left), std::move(right));
+        }
+
+        return cond;
     }
 
     ExprPtr logicOr() {

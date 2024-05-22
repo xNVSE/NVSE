@@ -8,6 +8,7 @@ class NVSETreePrinter : public NVSEVisitor {
 public:
 	// Inherited via NVSEVisitor
 	void visitAssignmentExpr(const AssignmentExpr* expr) override;
+	void visitTernaryExpr(const TernaryExpr* expr) override;
 	void visitLogicalExpr(const LogicalExpr* expr) override;
 	void visitBinaryExpr(const BinaryExpr* expr) override;
 	void visitUnaryExpr(const UnaryExpr* expr) override;
