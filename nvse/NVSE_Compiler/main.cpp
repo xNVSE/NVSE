@@ -6,8 +6,7 @@
 int main() {
 	NVSELexer lexer(
 		"{						\n"
-		"    x = fn(xxxxx, ref y) {};	\n"
-		"    y = fn(int x, reff y) {};	\n"
+		"    x = fn(int x == 2, ref y) {};	\n"
 		"}   "
 	);
 	NVSEParser parser(lexer);

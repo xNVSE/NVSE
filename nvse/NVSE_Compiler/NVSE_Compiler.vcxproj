@@ -130,6 +130,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="NVSECompiler.cpp" />
     <ClCompile Include="NVSELexer.cpp" />
     <ClCompile Include="NVSELexer.h" />
     <ClCompile Include="NVSEParser.cpp" />
@@ -137,6 +138,7 @@
     <ClCompile Include="NVSETreePrinter.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="NVSECompiler.h" />
     <ClInclude Include="NVSEVisitor.h" />
   </ItemGroup>
   <ItemGroup>
