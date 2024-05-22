@@ -1,4 +1,3 @@
-#include "../nvse/CommandTable.h"
 #include "NVSECompiler.h"
 
 void NVSECompiler::visitFnDeclStmt(const FnDeclStmt* stmt) {}
