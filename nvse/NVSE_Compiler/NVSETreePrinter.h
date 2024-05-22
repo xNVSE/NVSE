@@ -13,6 +13,7 @@ public:
 	void visitUnaryExpr(const UnaryExpr* expr) override;
 	void visitCallExpr(const CallExpr* expr) override;
 	void visitGetExpr(const GetExpr* expr) override;
+	void visitSetExpr(const SetExpr* expr) override;
 	void visitBoolExpr(const BoolExpr* expr) override;
 	void visitNumberExpr(const NumberExpr* expr) override;
 	void visitStringExpr(const StringExpr* expr) override;

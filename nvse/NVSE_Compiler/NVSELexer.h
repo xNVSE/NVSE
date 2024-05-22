@@ -188,6 +188,19 @@ public:
             return makeToken(TokenType::Identifier, identifier);
         }
 
+        if (current == '"') {
+            size_t start = pos++;
+            while (pos < input.size() && (input[pos] != '"' || input[pos - 1] == '\\')) pos++;
+            if (input[pos] != '\"') {
+                throw std::runtime_error("Unexpected EOF");
+            }
+            pos++;
+            const auto len = pos - start;
+            linePos += len;
+            std::string text = input.substr(start + 1, len - 2);
+            return makeToken(TokenType::String, text);
+        }
+
         pos++;
         switch (current) {
         // Operators

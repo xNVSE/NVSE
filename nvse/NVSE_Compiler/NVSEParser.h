@@ -84,6 +84,18 @@ struct GetExpr : Expr {
     }
 };
 
+struct SetExpr : Expr {
+    ExprPtr left;
+    NVSEToken token;
+    ExprPtr right;
+
+    SetExpr(ExprPtr left, NVSEToken token, ExprPtr right) : left(std::move(left)), token(token), right(std::move(right)) {}
+
+    void accept(NVSEVisitor* t) {
+        t->visitSetExpr(this);
+    }
+};
+
 struct BoolExpr : Expr {
     bool value;
 
@@ -170,7 +182,23 @@ private:
     ExprPtr assignment() {
         ExprPtr left = logicOr();
 
-        // todo
+        if (match(TokenType::Eq)) {
+            const auto prevTok = previousToken;
+            ExprPtr value = assignment();
+
+            const auto idExpr = dynamic_cast<IdentExpr*>(left.get());
+            const auto getExpr = dynamic_cast<GetExpr*>(left.get());
+
+            if (idExpr) {
+                return std::make_unique<AssignmentExpr>(idExpr->name, std::move(value));
+            }
+
+            else if (getExpr) {
+                return std::make_unique<SetExpr>(std::move(getExpr->left), getExpr->token, std::move(value));
+            }
+
+            error(prevTok, "Invalid assignment target.");
+        }
 
         return left;
     }

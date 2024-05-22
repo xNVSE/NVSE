@@ -10,6 +10,17 @@ void NVSETreePrinter::printTabs() {
 
 void NVSETreePrinter::visitAssignmentExpr(const AssignmentExpr* expr)
 {
+	printTabs();
+	std::cout << "assignment" << std::endl;
+	curTab++;
+	printTabs();
+	std::cout << "name: " << std::get<std::string>(expr->name.value) << std::endl;
+	printTabs();
+	std::cout << "rhs" << std::endl;
+	curTab++;
+	expr->expr->accept(this);
+	curTab--;
+	curTab--;
 }
 
 void NVSETreePrinter::visitLogicalExpr(const LogicalExpr* expr)
@@ -91,6 +102,28 @@ void NVSETreePrinter::visitGetExpr(const GetExpr* expr)
 	curTab--;
 	printTabs();
 	std::cout << "token: " << std::get<std::string>(expr->token.value) << std::endl;
+	curTab--;
+}
+
+void NVSETreePrinter::visitSetExpr(const SetExpr* expr)
+{
+	printTabs();
+	std::cout << "set" << std::endl;
+	curTab++;
+	printTabs();
+	std::cout << "lhs" << std::endl;
+	curTab++;
+	expr->left->accept(this);
+	curTab--;
+	printTabs();
+	std::cout << "token: " << std::get<std::string>(expr->token.value) << std::endl;
+	curTab--;
+	curTab++;
+	printTabs();
+	std::cout << "rhs" << std::endl;
+	curTab++;
+	expr->right->accept(this);
+	curTab--;
 	curTab--;
 }
 

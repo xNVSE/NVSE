@@ -4,7 +4,7 @@
 
 int main() {
 	NVSELexer nvl(
-		"player.ToString(10, true || false)"
+		"player.name = \"hello\""
 	);
 
 	NVSEParser p(nvl);

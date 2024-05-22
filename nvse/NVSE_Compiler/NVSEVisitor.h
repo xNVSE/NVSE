@@ -6,6 +6,7 @@ struct BinaryExpr;
 struct UnaryExpr;
 struct CallExpr;
 struct GetExpr;
+struct SetExpr;
 struct BoolExpr;
 struct NumberExpr;
 struct StringExpr;
@@ -20,6 +21,7 @@ public:
 	virtual void visitUnaryExpr(const UnaryExpr* expr) = 0;
 	virtual void visitCallExpr(const CallExpr* expr) = 0;
 	virtual void visitGetExpr(const GetExpr* expr) = 0;
+	virtual void visitSetExpr(const SetExpr* expr) = 0;
 	virtual void visitBoolExpr(const BoolExpr* expr) = 0;
 	virtual void visitNumberExpr(const NumberExpr* expr) = 0;
 	virtual void visitStringExpr(const StringExpr* expr) = 0;
