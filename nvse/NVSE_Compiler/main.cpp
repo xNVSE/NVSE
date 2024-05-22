@@ -4,7 +4,7 @@
 
 int main() {
 	NVSELexer nvl(
-		"player.name = \"hello\""
+		"1 || 2 || 3"
 	);
 
 	NVSEParser p(nvl);

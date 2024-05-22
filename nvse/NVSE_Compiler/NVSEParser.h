@@ -209,7 +209,7 @@ private:
         while (match(TokenType::LogicOr)) {
             const auto op = previousToken;
             ExprPtr right = logicAnd();
-            return std::make_unique<LogicalExpr>(std::move(left), std::move(right), op);
+            left = std::make_unique<LogicalExpr>(std::move(left), std::move(right), op);
         }
 
         return left;
@@ -221,7 +221,7 @@ private:
         while (match(TokenType::LogicAnd)) {
             const auto op = previousToken;
             ExprPtr right = equality();
-            return std::make_unique<LogicalExpr>(std::move(left), std::move(right), op);
+            left = std::make_unique<LogicalExpr>(std::move(left), std::move(right), op);
         }
 
         return left;
@@ -233,7 +233,7 @@ private:
         while (match(TokenType::EqEq) || match(TokenType::BangEq)) {
             const auto op = previousToken;
             ExprPtr right = comparison();
-            return std::make_unique<BinaryExpr>(std::move(left), std::move(right), op);
+            left = std::make_unique<BinaryExpr>(std::move(left), std::move(right), op);
         }
 
         return left;
@@ -245,7 +245,7 @@ private:
         while (match(TokenType::Less) || match(TokenType::LessEq) || match(TokenType::Greater) || match(TokenType::GreaterEq)) {
             const auto op = previousToken;
             ExprPtr right = term();
-            return std::make_unique<BinaryExpr>(std::move(left), std::move(right), op);
+            left = std::make_unique<BinaryExpr>(std::move(left), std::move(right), op);
         }
 
         return left;
@@ -258,7 +258,7 @@ private:
         while (match(TokenType::Plus) || match(TokenType::Minus)) {
             const auto op = previousToken;
             ExprPtr right = factor();
-            return std::make_unique<BinaryExpr>(std::move(left), std::move(right), op);
+            left = std::make_unique<BinaryExpr>(std::move(left), std::move(right), op);
         }
 
         return left;
@@ -270,7 +270,7 @@ private:
         while (match(TokenType::Star) || match(TokenType::Slash)) {
             const auto op = previousToken;
             ExprPtr right = unary();
-            return std::make_unique<BinaryExpr>(std::move(left), std::move(right), op);
+            left = std::make_unique<BinaryExpr>(std::move(left), std::move(right), op);
         }
 
         return left;
