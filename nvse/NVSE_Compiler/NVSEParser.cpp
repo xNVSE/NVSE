@@ -378,16 +378,14 @@ bool NVSEParser::peek(TokenType type) {
 void NVSEParser::error(NVSEToken token, std::string message) {
 	panicMode = true;
 	hadError = true;
+
 	std::string msg{};
 	std::string lineInfo = std::format("[line {}:{}] ", token.line, token.linePos);
+
 	msg += lineInfo;
 	msg += lexer.lines[token.line - 1] + '\n';
-	for (int i = 1; i < lineInfo.length() + token.linePos; i++) {
-		msg += " ";
-	}
-	for (int i = 0; i < token.lexeme.length(); i++) {
-		msg += '^';
-	}
+	msg += std::string(lineInfo.length() + token.linePos - 1, ' ');
+	msg += std::string(token.lexeme.length(), '^');
 	msg += " " + message;
 
 	throw NVSEParseError(msg);

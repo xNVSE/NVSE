@@ -4,6 +4,7 @@
 #include "NVSEParser.h"
 #include "NVSEVisitor.h"
 
+class Script;
 constexpr auto MAX_LOCALS = (UINT16_MAX - 1);
 
 class NVSECompiler : NVSEVisitor {
