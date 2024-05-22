@@ -1,10 +1,11 @@
+#include <iostream>
 #include <string>
 #include "NVSEParser.h"
 #include "NVSETreePrinter.h"
 
 int main() {
 	NVSELexer nvl(
-		"GetPlayer().name = 1 == 3 ? (10 + 10);"
+		"GetPlayer().name = 1 == 3 ? (10 + 10) : \"hi\""
 	);
 
 	NVSEParser p(nvl);
