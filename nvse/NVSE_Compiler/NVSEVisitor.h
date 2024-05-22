@@ -1,5 +1,12 @@
 #pragma once
 
+struct ExprStmt;
+struct ForStmt;
+struct IfStmt;
+struct ReturnStmt;
+struct WhileStmt;
+struct BlockStmt;
+
 struct AssignmentExpr;
 struct TernaryExpr;
 struct LogicalExpr;
@@ -16,6 +23,13 @@ struct GroupingExpr;
 
 class NVSEVisitor {
 public:
+	virtual void visitExprStmt(const ExprStmt* stmt) = 0;
+	virtual void visitForStmt(const ForStmt* stmt) = 0;
+	virtual void visitIfStmt(const IfStmt* stmt) = 0;
+	virtual void visitReturnStmt(const ReturnStmt* stmt) = 0;
+	virtual void visitWhileStmt(const WhileStmt* stmt) = 0;
+	virtual void visitBlockStmt(const BlockStmt* stmt) = 0;
+
 	virtual void visitAssignmentExpr(const AssignmentExpr* expr) = 0;
 	virtual void visitTernaryExpr(const TernaryExpr* expr) = 0;
 	virtual void visitLogicalExpr(const LogicalExpr* expr) = 0;

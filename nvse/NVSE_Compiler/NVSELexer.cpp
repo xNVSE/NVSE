@@ -1,6 +1,16 @@
 #include "NVSELexer.h"
 
-NVSELexer::NVSELexer(const std::string& input) : input(input), pos(0) {}
+NVSELexer::NVSELexer(const std::string& input) : input(input), pos(0) {
+	// Messy way of just getting string lines to start for later error reporting
+    std::string::size_type pos = 0;
+    std::string::size_type prev = 0;
+    while ((pos = input.find('\n', prev)) != std::string::npos)
+    {
+        lines.push_back(input.substr(prev, pos - prev));
+        prev = pos + 1;
+    }
+    lines.push_back(input.substr(prev));
+}
 
 NVSEToken NVSELexer::getNextToken() {
     while (pos < input.size() && std::isspace(input[pos])) {
@@ -8,11 +18,12 @@ NVSEToken NVSELexer::getNextToken() {
         linePos++;
         if (input[pos] == '\n') {
             line++;
+            pos++;
             linePos = 1;
         }
     }
 
-    if (pos == input.size()) return makeToken(TokenType::End);
+    if (pos == input.size()) return makeToken(TokenType::End, "");
 
     char current = input[pos];
     if (std::isdigit(current)) {
@@ -23,7 +34,7 @@ NVSEToken NVSELexer::getNextToken() {
         }
         pos += len;
         linePos += len;
-        return makeToken(TokenType::Number, value);
+        return makeToken(TokenType::Number, input.substr(pos - len, len), value);
     }
 
     if (std::isalpha(current) || current == '_') {
@@ -38,6 +49,7 @@ NVSEToken NVSELexer::getNextToken() {
         if (identifier == "while") return makeToken(TokenType::While, identifier);
         if (identifier == "fn") return makeToken(TokenType::Fn, identifier);
         if (identifier == "return") return makeToken(TokenType::Return, identifier);
+        if (identifier == "for") return makeToken(TokenType::For, identifier);
 
         // Types
         if (identifier == "int") return makeToken(TokenType::IntType, identifier);
@@ -47,8 +59,8 @@ NVSEToken NVSELexer::getNextToken() {
         if (identifier == "array") return makeToken(TokenType::ArrayType, identifier);
 
         // Boolean literals
-        if (identifier == "true") return makeToken(TokenType::Bool, 1);
-        if (identifier == "false") return makeToken(TokenType::Bool, 0);
+        if (identifier == "true") return makeToken(TokenType::Bool, identifier, 1);
+        if (identifier == "false") return makeToken(TokenType::Bool, identifier, 0);
 
         return makeToken(TokenType::Identifier, identifier);
     }
@@ -61,9 +73,9 @@ NVSEToken NVSELexer::getNextToken() {
         }
         pos++;
         const auto len = pos - start;
-        linePos += len;
         std::string text = input.substr(start + 1, len - 2);
-        return makeToken(TokenType::String, text);
+        std::string lexeme = '\"' + text + '\"';
+        return makeToken(TokenType::String, lexeme, text);
     }
 
     pos++;
@@ -162,13 +174,6 @@ bool NVSELexer::match(char c) {
     return false;
 }
 
-NVSEToken NVSELexer::makeToken(TokenType type) {
-    NVSEToken t(type);
-    t.line = line;
-    t.linePos = linePos;
-    return t;
-}
-
 NVSEToken NVSELexer::makeToken(TokenType type, std::string lexeme) {
     NVSEToken t(type, lexeme);
     t.line = line;
@@ -177,9 +182,18 @@ NVSEToken NVSELexer::makeToken(TokenType type, std::string lexeme) {
     return t;
 }
 
-NVSEToken NVSELexer::makeToken(TokenType type, double value) {
-    NVSEToken t(type, value);
+NVSEToken NVSELexer::makeToken(TokenType type, std::string lexeme, double value) {
+    NVSEToken t(type, lexeme, value);
     t.line = line;
     t.linePos = linePos;
+    linePos += lexeme.length();
+    return t;
+}
+
+NVSEToken NVSELexer::makeToken(TokenType type, std::string lexeme, std::string value) {
+    NVSEToken t(type, lexeme, value);
+    t.line = line;
+    t.linePos = linePos;
+    linePos += lexeme.length();
     return t;
 }

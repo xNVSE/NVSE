@@ -4,6 +4,7 @@
 #include <cctype>
 #include <stdexcept>
 #include <variant>
+#include <vector>
 
 enum class TokenType {
     // Keywords
@@ -12,6 +13,7 @@ enum class TokenType {
     While,
     Fn,
     Return,
+    For,
 
     // Types
     IntType,
@@ -63,6 +65,7 @@ static const char* TokenTypeStr[]{
     "While",
     "Fn",
     "Return",
+    "For",
 
     // Types
     "IntType",
@@ -123,14 +126,15 @@ static const char* TokenTypeStr[]{
 
 struct NVSEToken {
     TokenType type;
-    std::variant<double, std::string> value;
+    std::variant<std::monostate, double, std::string> value;
     size_t line = 1;
     size_t linePos = 0;
+    std::string lexeme;
 
-    NVSEToken() : type(TokenType::End) {}
-    NVSEToken(TokenType t) : type(t), value(0.0) {}
-    NVSEToken(TokenType t, double v) : type(t), value(v) {}
-    NVSEToken(TokenType t, std::string v) : type(t), value(v) {}
+    NVSEToken() : type(TokenType::End), lexeme(""), value(std::monostate{}) {}
+    NVSEToken(TokenType t, std::string lexeme) : type(t), lexeme(lexeme), value(std::monostate{}) {}
+    NVSEToken(TokenType t, std::string lexeme, double value) : type(t), lexeme(lexeme), value(value) {}
+    NVSEToken(TokenType t, std::string lexeme, std::string value) : type(t), lexeme(lexeme), value(value) {}
 };
 
 class NVSELexer {
@@ -141,15 +145,13 @@ class NVSELexer {
     size_t line = 1;
 
 public:
+    std::vector<std::string> lines{};
+
     NVSELexer(const std::string& input);
 
     NVSEToken getNextToken();
-
     bool match(char c);
-
-    NVSEToken makeToken(TokenType type);
-
     NVSEToken makeToken(TokenType type, std::string lexeme);
-
-    NVSEToken makeToken(TokenType type, double value);
+    NVSEToken makeToken(TokenType type, std::string lexeme, double value);
+    NVSEToken makeToken(TokenType type, std::string lexeme, std::string value);
 };

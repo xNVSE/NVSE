@@ -6,6 +6,13 @@ class NVSETreePrinter : public NVSEVisitor {
 	void printTabs();
 
 public:
+	void visitExprStmt(const ExprStmt* stmt) override;
+	void visitForStmt(const ForStmt* stmt) override;
+	void visitIfStmt(const IfStmt* stmt) override;
+	void visitReturnStmt(const ReturnStmt* stmt) override;
+	void visitWhileStmt(const WhileStmt* stmt) override;
+	void visitBlockStmt(const BlockStmt* stmt) override;
+
 	// Inherited via NVSEVisitor
 	void visitAssignmentExpr(const AssignmentExpr* expr) override;
 	void visitTernaryExpr(const TernaryExpr* expr) override;

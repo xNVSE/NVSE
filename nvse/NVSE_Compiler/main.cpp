@@ -5,7 +5,16 @@
 
 int main() {
 	NVSELexer nvl(
-		"GetPlayer().name = 1 == 3 ? (10 + 10) : \"hi\""
+		""
+		"while (true) {						\n"
+		"  print(true);						\n"
+		"  GetPlayer().name = \"foobar\";	\n"
+		"  if (10 / 2 == 5) {				\n"
+		"     print(\"foo\");               \n"
+		"  } else {                         \n"
+		"     print(\"bar\");               \n"
+		"  }								\n"
+		"}"
 	);
 
 	NVSEParser p(nvl);

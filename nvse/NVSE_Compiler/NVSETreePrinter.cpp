@@ -8,13 +8,101 @@ void NVSETreePrinter::printTabs() {
 	}
 }
 
-void NVSETreePrinter::visitAssignmentExpr(const AssignmentExpr* expr)
-{
+void NVSETreePrinter::visitExprStmt(const ExprStmt* stmt) {
+	printTabs();
+	std::cout << "exprstmt" << std::endl;
+	curTab++;
+	stmt->expr->accept(this);
+	curTab--;
+}
+void NVSETreePrinter::visitForStmt(const ForStmt* stmt) {
+	printTabs();
+	std::cout << "for" << std::endl;
+
+	curTab++;
+
+	printTabs();
+	std::cout << "cond" << std::endl;
+	curTab++;
+	curTab--;
+
+	curTab--;
+}
+void NVSETreePrinter::visitIfStmt(const IfStmt* stmt) {
+	printTabs();
+	std::cout << "if" << std::endl;
+
+	curTab++;
+
+	printTabs();
+	std::cout << "cond" << std::endl;
+	curTab++;
+	stmt->cond->accept(this);
+	curTab--;
+
+	printTabs();
+	std::cout << "block" << std::endl;
+	curTab++;
+	stmt->block->accept(this);
+	curTab--;
+
+	if (stmt->elseBlock) {
+		printTabs();
+		std::cout << "else" << std::endl;
+		curTab++;
+		stmt->elseBlock->accept(this);
+		curTab--;
+	}
+
+	curTab--;
+}
+void NVSETreePrinter::visitReturnStmt(const ReturnStmt* stmt) {
+	printTabs();
+	std::cout << "return" << std::endl;
+
+	if (stmt->expr) {
+		curTab++;
+		printTabs();
+		std::cout << "cond" << std::endl;
+		curTab++;
+		stmt->expr->accept(this);
+		curTab--;
+		curTab--;
+	}
+}
+void NVSETreePrinter::visitWhileStmt(const WhileStmt* stmt) {
+	printTabs();
+	std::cout << "while" << std::endl;
+
+	curTab++;
+
+	printTabs();
+	std::cout << "cond" << std::endl;
+	curTab++;
+	stmt->cond->accept(this);
+	curTab--;
+
+	printTabs();
+	std::cout << "block" << std::endl;
+	curTab++;
+	stmt->block->accept(this);
+	curTab--;
+
+	curTab--;
+}
+
+void NVSETreePrinter::visitBlockStmt(const BlockStmt* stmt) {
+	for (auto &stmt : stmt->statements) {
+		stmt->accept(this);
+	}
+}
+
+void NVSETreePrinter::visitAssignmentExpr(const AssignmentExpr* expr) {
 	printTabs();
 	std::cout << "assignment" << std::endl;
 	curTab++;
 	printTabs();
-	std::cout << "name: " << std::get<std::string>(expr->name.value) << std::endl;
+	std::cout << "name: " << expr->name.lexeme << std::endl;
 	printTabs();
 	std::cout << "rhs" << std::endl;
 	curTab++;
@@ -23,8 +111,7 @@ void NVSETreePrinter::visitAssignmentExpr(const AssignmentExpr* expr)
 	curTab--;
 }
 
-void NVSETreePrinter::visitTernaryExpr(const TernaryExpr* expr)
-{
+void NVSETreePrinter::visitTernaryExpr(const TernaryExpr* expr) {
 	printTabs();
 	std::cout << "ternary" << std::endl;
 	curTab++;
@@ -50,10 +137,9 @@ void NVSETreePrinter::visitTernaryExpr(const TernaryExpr* expr)
 	curTab--;
 }
 
-void NVSETreePrinter::visitLogicalExpr(const LogicalExpr* expr)
-{
+void NVSETreePrinter::visitLogicalExpr(const LogicalExpr* expr) {
 	printTabs();
-	std::cout << "logical: " << std::get<std::string>(expr->op.value) << std::endl;
+	std::cout << "logical: " << expr->op.lexeme << std::endl;
 	curTab++;
 	printTabs();
 	std::cout << "lhs" << std::endl;
@@ -68,10 +154,9 @@ void NVSETreePrinter::visitLogicalExpr(const LogicalExpr* expr)
 	curTab--;
 }
 
-void NVSETreePrinter::visitBinaryExpr(const BinaryExpr* expr)
-{
+void NVSETreePrinter::visitBinaryExpr(const BinaryExpr* expr) {
 	printTabs();
-	std::cout << "binary: " << std::get<std::string>(expr->op.value) << std::endl;
+	std::cout << "binary: " << expr->op.lexeme << std::endl;
 	curTab++;
 	printTabs();
 	std::cout << "lhs" << std::endl;
@@ -86,17 +171,15 @@ void NVSETreePrinter::visitBinaryExpr(const BinaryExpr* expr)
 	curTab--;
 }
 
-void NVSETreePrinter::visitUnaryExpr(const UnaryExpr* expr)
-{
+void NVSETreePrinter::visitUnaryExpr(const UnaryExpr* expr) {
 	printTabs();
-	std::cout << "unary: " << std::get<std::string>(expr->op.value) << std::endl;
+	std::cout << "unary: " << expr->op.lexeme << std::endl;
 	curTab++;
 	expr->expr->accept(this);
 	curTab--;
 }
 
-void NVSETreePrinter::visitCallExpr(const CallExpr* expr)
-{
+void NVSETreePrinter::visitCallExpr(const CallExpr* expr) {
 	printTabs();
 	std::cout << "call" << std::endl;
 	curTab++;
@@ -119,8 +202,7 @@ void NVSETreePrinter::visitCallExpr(const CallExpr* expr)
 	curTab--;
 }
 
-void NVSETreePrinter::visitGetExpr(const GetExpr* expr)
-{
+void NVSETreePrinter::visitGetExpr(const GetExpr* expr) {
 	printTabs();
 	std::cout << "get" << std::endl;
 	curTab++;
@@ -130,12 +212,11 @@ void NVSETreePrinter::visitGetExpr(const GetExpr* expr)
 	expr->left->accept(this);
 	curTab--;
 	printTabs();
-	std::cout << "token: " << std::get<std::string>(expr->token.value) << std::endl;
+	std::cout << "token: " << expr->token.lexeme << std::endl;
 	curTab--;
 }
 
-void NVSETreePrinter::visitSetExpr(const SetExpr* expr)
-{
+void NVSETreePrinter::visitSetExpr(const SetExpr* expr) {
 	printTabs();
 	std::cout << "set" << std::endl;
 	curTab++;
@@ -145,7 +226,7 @@ void NVSETreePrinter::visitSetExpr(const SetExpr* expr)
 	expr->left->accept(this);
 	curTab--;
 	printTabs();
-	std::cout << "token: " << std::get<std::string>(expr->token.value) << std::endl;
+	std::cout << "token: " << expr->token.lexeme << std::endl;
 	curTab--;
 	curTab++;
 	printTabs();
@@ -156,32 +237,27 @@ void NVSETreePrinter::visitSetExpr(const SetExpr* expr)
 	curTab--;
 }
 
-void NVSETreePrinter::visitBoolExpr(const BoolExpr* expr)
-{
+void NVSETreePrinter::visitBoolExpr(const BoolExpr* expr) {
 	printTabs();
 	std::cout << "boolean: " << (expr->value ? "true" : "false") << std::endl;
 }
 
-void NVSETreePrinter::visitNumberExpr(const NumberExpr* expr)
-{
+void NVSETreePrinter::visitNumberExpr(const NumberExpr* expr) {
 	printTabs();
 	std::cout << "number: " << expr->value << std::endl;
 }
 
-void NVSETreePrinter::visitStringExpr(const StringExpr* expr)
-{
+void NVSETreePrinter::visitStringExpr(const StringExpr* expr) {
 	printTabs();
-	std::cout << "string: " << std::get<std::string>(expr->value.value) << std::endl;
+	std::cout << "string: " << expr->value.lexeme << std::endl;
 }
 
-void NVSETreePrinter::visitIdentExpr(const IdentExpr* expr)
-{
+void NVSETreePrinter::visitIdentExpr(const IdentExpr* expr) {
 	printTabs();
-	std::cout << "ident: " << std::get<std::string>(expr->name.value) << std::endl;
+	std::cout << "ident: " << expr->name.lexeme << std::endl;
 }
 
-void NVSETreePrinter::visitGroupingExpr(const GroupingExpr* expr)
-{
+void NVSETreePrinter::visitGroupingExpr(const GroupingExpr* expr) {
 	printTabs();
 	std::cout << "grouping" << std::endl;
 	curTab++;

@@ -12,9 +12,72 @@ struct Stmt;
 using ExprPtr = std::unique_ptr<Expr>;
 using StmtPtr = std::unique_ptr<Stmt>;
 
+struct Stmt {
+    virtual ~Stmt() {}
+
+    virtual void accept(NVSEVisitor* t) = 0;
+};
+
+struct ExprStmt : Stmt {
+    ExprPtr expr;
+
+    ExprStmt(ExprPtr expr) : expr(std::move(expr)) {}
+
+    void accept(NVSEVisitor *visitor) override {
+        visitor->visitExprStmt(this);
+    }
+};
+
+struct ForStmt : Stmt {
+	// Todo
+};
+
+struct IfStmt : Stmt {
+    ExprPtr cond;
+    StmtPtr block;
+    StmtPtr elseBlock;
+
+    IfStmt(ExprPtr cond, StmtPtr block, StmtPtr elseBlock) : cond(std::move(cond)), block(std::move(block)), elseBlock(std::move(elseBlock)) {}
+
+    void accept(NVSEVisitor* visitor) override {
+        visitor->visitIfStmt(this);
+    }
+};
+
+struct ReturnStmt : Stmt {
+    ExprPtr expr;
+
+    ReturnStmt(ExprPtr expr) : expr(std::move(expr)) {}
+
+    void accept(NVSEVisitor* visitor) override {
+        visitor->visitReturnStmt(this);
+    }
+};
+
+struct WhileStmt : Stmt {
+    ExprPtr cond;
+    StmtPtr block;
+
+    WhileStmt(ExprPtr cond, StmtPtr block) : cond(std::move(cond)), block(std::move(block)) {}
+
+    void accept(NVSEVisitor *visitor) override {
+        visitor->visitWhileStmt(this);
+    }
+};
+
+struct BlockStmt : Stmt {
+    std::vector<StmtPtr> statements;
+
+    BlockStmt(std::vector<StmtPtr> statements) : statements(std::move(statements)) {}
+
+    void accept(NVSEVisitor* visitor) override {
+        visitor->visitBlockStmt(this);
+    }
+};
+
 struct Expr {
     // Generate RTTI
-    virtual ~Expr() {};
+    virtual ~Expr() {}
 
     virtual void accept(NVSEVisitor *t) = 0;
 };
@@ -168,7 +231,7 @@ class NVSEParser {
 public:
     NVSEParser(NVSELexer& tokenizer);
 
-    ExprPtr parse();
+    StmtPtr parse();
 
 private:
     NVSELexer& lexer;
@@ -176,6 +239,14 @@ private:
     NVSEToken previousToken;
     bool panicMode = false;
     bool hadError = false;
+
+    StmtPtr statement();
+    StmtPtr exprStmt();
+    StmtPtr forStmt();
+    StmtPtr ifStmt();
+    StmtPtr returnStmt();
+    StmtPtr whileStmt();
+    StmtPtr blockStmt();
 
     ExprPtr expression();
     ExprPtr assignment();
