@@ -141,6 +141,7 @@ public:
     NVSEToken getNextToken() {
         while (pos < input.size() && std::isspace(input[pos])) {
             pos++;
+            linePos++;
             if (input[pos] == '\n') {
                 line++;
                 linePos = 1;
@@ -323,6 +324,6 @@ private:
     std::string input;
     size_t pos;
     
-    size_t linePos = 0;
+    size_t linePos = 1;
     size_t line = 1;
 };

@@ -167,7 +167,7 @@ class NVSEParser {
 public:
     NVSEParser(NVSELexer& tokenizer) : lexer(tokenizer) {
         this->lexer = tokenizer;
-        currentToken = tokenizer.getNextToken();
+        advance();
     }
 
     ExprPtr parse() {
@@ -220,7 +220,7 @@ private:
 
         while (match(TokenType::Ternary)) {
             auto left = logicOr();
-            expect(TokenType::Colon, "Expected ':' in ternary expression.");
+            expect(TokenType::Colon, "Expected ':'.");
             auto right = logicOr();
 
             cond = std::make_unique<TernaryExpr>(std::move(cond), std::move(left), std::move(right));
