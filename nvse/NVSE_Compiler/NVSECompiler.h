@@ -13,8 +13,8 @@ class NVSECompiler : NVSEVisitor {
 
 	// For building SLSD/SCVR/SCRV/SCRO?
 	std::vector<std::string> locals {};
-	std::unordered_map <std::string, size_t> SCRV{};
-	std::unordered_map <std::string, size_t> SCRO{};
+	std::unordered_map <std::string, uint32_t> SCRV{};
+	std::unordered_map <std::string, uint32_t> SCRO{};
 
 	// Look up a local variable, or create it if not already defined
 	uint16_t addLocal(std::string &identifier) {
