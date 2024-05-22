@@ -37,6 +37,38 @@ print "Starting xNVSE let macro unit tests."
 	aTest[(call rReturnAdd 1, 2)] = 1
 	assert (aTest[3] == 1)
 	
+	; Test for stringmaps
+	array_var aTest2 := Ar_Map "Nemesis"::1, "Saviour"::2, "Bestie"::3
+	int iTest7 = aTest2["Nemesis"]
+	assert (iTest7 == 1)
+	int iTest8 := aTest2["Saviour"]
+	assert (iTest8 == 2)
+	
+	aTest2["Saviour"] = aTest2["Bestie"]
+	assert (aTest2["Saviour"] == 3)
+	
+	;== Test other operators for let macro (-=, +=, etc.)
+	short iTest9 = 3
+	iTest9 -= 1
+	assert (iTest9 == 2)
+	iTest9 += 2
+	assert (iTest9 == 4)
+	
+	
+	;== Test multiple assignments in one line
+	array_var aTest3 = ar_list 1, 2
+	array_var aTest4 = ar_list 2, 3
+	aTest3 = aTest4 = ar_Null
+	assert (aTest3 == ar_Null)
+	assert (aTest4 == ar_Null)
+	
+	aTest3 = ar_list 1, 2
+	aTest4 = ar_list 2, 3
+	aTest3 = aTest4 = (call (begin Function{} 
+		SetFunctionValue ar_Null
+	end))
+	assert (aTest3 == ar_Null)
+	assert (aTest4 == ar_Null)
 	
 print "Finished xNVSE let macro unit tests."
 

@@ -576,27 +576,21 @@ std::vector g_lineMacros =
 		{
 			// VARIABLE = VALUE macro
 			// Variable type isn't considered for the regex.
-			// Unit tests for the full regex here: https://regex101.com/r/ybBkK8
+			// Unit tests for the full regex here: https://regex101.com/r/Hh3t4D/
 
 			// Ex1: Match "ivar = 4"
 			// Ex2: Match "SomeQuest.aTest[(Rand 1, 3)] = "SomeString"
+			const std::string startWithOptDotSyntax = R"(^(\w+(\.\w+)*)";
+			const std::string optionalBracketsMatch = R"((\[.*\])*)\s*)";
+			const std::string leftHand = startWithOptDotSyntax + optionalBracketsMatch;
 
-			// Right-side value will be matched in regex group #3
-			// This string composes the majority of groups #2 and #3.
-			std::string matchAnyNVSEExpression =
-				R"([\w\s\$\!\-\(\{][\.\s\S]*)";
-
-			// Left-side variable/array element will be matched in regex group #1
-			// Allow any NVSE expression to go inside array "[]" operator - this is group #2.
-			std::string regExGroup1And2 = 
-				R"(^([a-zA-Z]|\w[\w\.]*[\w](\[)"
-				+ matchAnyNVSEExpression + R"(\])*)\s*)";
-
-			const std::regex assignmentExpr(regExGroup1And2 + regexOp + '(' + matchAnyNVSEExpression + ')');
+			// "[^=]" is there to make sure we aren't accidentally matching with "==" operator.
+			// "[\S\s]" matches any character *including newline*, which is important for lambdas that stretch through multiple.
+			const std::regex assignmentExpr(leftHand + regexOp + R"([^=]([\S\s]*))");
 			if (std::smatch m; std::regex_search(line, m, assignmentExpr, std::regex_constants::match_continuous) 
-				&& m.size() == 4)
+				&& m.size() == 5)
 			{
-				line = "let " + optVarTypeDecl + m.str(1) + " " + realOp + " " + m.str(3);
+				line = "let " + optVarTypeDecl + m.str(1) + " " + realOp + " " + m.str(4);
 				return true;
 			}
 		}
