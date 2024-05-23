@@ -40,7 +40,9 @@ StmtPtr NVSEParser::statement() {
 	}
 
 	if (peek(TokenType::IntType) || peek(TokenType::DoubleType) || peek(TokenType::RefType) || peek(TokenType::ArrayType) || peek(TokenType::StringType)) {
-		auto stmt = varDecl();
+		auto expr = varDecl();
+		expect(TokenType::Semicolon, "Expected ';' at end of statement.");
+		return expr;
 	}
 
 	return exprStmt();

@@ -11,6 +11,7 @@ class NVSECompiler : NVSEVisitor {
 	// Used to hold result of visits
 	// Like if one visit invokes a child visit and needs data from it, such as compiled size
 	int result = 0;
+	bool inNvseExpr = false;
 
 	// For building SLSD/SCVR/SCRV/SCRO?
 	std::vector<std::string> locals {};
@@ -18,7 +19,7 @@ class NVSECompiler : NVSEVisitor {
 	std::unordered_map <std::string, uint32_t> SCRO{};
 
 	// Look up a local variable, or create it if not already defined
-	uint16_t addLocal(std::string &identifier) {
+	uint16_t addLocal(std::string identifier) {
 		auto index = std::ranges::find(locals, identifier);
 		if (index != locals.end()) {
 			return static_cast<uint16_t>(index - locals.begin() + 1);
@@ -35,26 +36,49 @@ class NVSECompiler : NVSEVisitor {
 	// Compiled bytes
 	std::vector<uint8_t> data{};
 
-	void add_u8(uint8_t byte) {
+	size_t add_u8(uint8_t byte) {
 		data.emplace_back(byte);
+
+		return data.size() - 1;
 	}
 
-	void add_u16(uint16_t bytes) {
+	size_t add_u16(uint16_t bytes) {
 		data.emplace_back(bytes & 0xFF);
 		data.emplace_back(bytes >> 8 & 0xFF);
+
+		return data.size() - 2;
 	}
 
-	void add_u32(uint32_t bytes) {
+	size_t add_u32(uint32_t bytes) {
 		data.emplace_back(bytes & 0xFF);
 		data.emplace_back(bytes >> 8 & 0xFF);
 		data.emplace_back(bytes >> 16 & 0xFF);
 		data.emplace_back(bytes >> 24 & 0xFF);
+
+		return data.size() - 4;
+	}
+
+	void set_u8(size_t index, uint8_t byte) {
+		data[index] = byte;
+	}
+
+	void set_u16(size_t index, uint16_t byte) {
+		data[index] = byte & 0xFF;
+		data[index + 1] = byte >> 8 & 0xFF;
+	}
+
+	void set_u32(size_t index, uint32_t byte) {
+		data[index] = byte & 0xFF;
+		data[index + 1] = byte >> 8 & 0xFF;
+		data[index + 2] = byte >> 16 & 0xFF;
+		data[index + 3] = byte >> 24 & 0xFF;
 	}
 
 public:
 	// For initializing SLSD/SCVR/SCRV/SCRO with existing script data?
 	Script compile(Script* existingScript, std::vector<StmtPtr> statements);
 	Script compile(std::vector<StmtPtr> statements);
+	std::vector<uint8_t> compile(StmtPtr &stmt);
 
 	void visitFnDeclStmt(const FnDeclStmt* stmt) override;
 	void visitVarDeclStmt(const VarDeclStmt* stmt) override;
