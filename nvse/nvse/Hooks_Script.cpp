@@ -394,7 +394,13 @@ bool HandleLoopEnd(UInt32 offsetToEnd)
 // ScriptBuffer::currentScript not used due to GECK treating it as external ref script
 std::stack<Script*> g_currentScriptStack;
 
-bool __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
+enum PrecompileResult : uint8_t
+{
+	kPrecompile_Failure,
+	kPrecompile_Success,
+	kPrecompile_SpecialCompile // only occurs if a plugin overtakes the compilation process.
+};
+PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 {
 	// empty out the loop stack
 	while (!s_loopStartOffsets.empty())
@@ -402,28 +408,42 @@ bool __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 
 	g_currentScriptStack.push(script);
 
+	// Initialize these, just in case.
+	buf->errorCode = 0;
+	script->info.compiled = false;
+
+	ScriptAndScriptBuffer msg{ script, buf };
+	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptPrecompile,
+		&msg, sizeof(ScriptAndScriptBuffer), NULL);
+
+	if (buf->errorCode == 1) [[unlikely]] // if plugin reports an error in compiling the script.
+		return PrecompileResult::kPrecompile_Failure;
+
+	if (script->info.compiled) // if plugin compiled the script for us
+	{
+		// Copying some code from Script::FinalizeCompilation (0x5AAF20)
+		// We can't assume ScriptBuffer has extracted anything, since compilation was done via plugin instead.
+		script->InitItem();
+		script->MarkForDeletion(false);
+		script->SetAltered(true);
+
+		return PrecompileResult::kPrecompile_SpecialCompile;
+	}
+
 	// Preprocess the script:
 	//  - check for usage of array variables in Set statements (disallowed)
 	//  - check loop structure integrity
 	//  - check for use of ResetAllVariables on scripts containing string/array vars
-	bool bResult = true;
 	if (g_currentScriptStack.size() == 1)
 	{
 		// Avoid preprocessing a lambda inside a script, since the lambda should already be preprocessed.
-		bResult = PrecompileScript(buf);
+		if (!PrecompileScript(buf)) [[unlikely]]
+		{
+			buf->errorCode = 1;
+			return PrecompileResult::kPrecompile_Failure;
+		}
 	}
-		
-	if (bResult)
-	{
-		ScriptAndScriptBuffer msg{ script, buf };
-		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptEditorPrecompile, 
-			&msg, sizeof(ScriptAndScriptBuffer), NULL);
-	}
-
-	if (!bResult)
-		buf->errorCode = 1;
-
-	return bResult;
+	return PrecompileResult::kPrecompile_Success;
 }
 
 void PostScriptCompile()
@@ -444,22 +464,21 @@ namespace Runtime // double-clarify
 {
 	bool __fastcall HandleBeginCompile_SetNotCompiled(Script* script, ScriptBuffer* buf, bool isCompiled)
 	{
-		script->info.compiled = isCompiled; // will be false.
-		return HandleBeginCompile(buf, script);
+		return HandleBeginCompile(buf, script) == PrecompileResult::kPrecompile_Success;
 	}
 
 	__declspec(naked) void HookBeginScriptCompile()
 	{
 		const static auto retnAddr = 0x5AEBB6;
-		const static auto failAddr = 0x5AEDA0;
+		const static auto failOrSpecialCompileAddr = 0x5AEDA0;
 		__asm
 		{
 			mov edx, [ebp + 0xC] //scriptBuffer
 			call HandleBeginCompile_SetNotCompiled
 			test al, al
 			jnz success
-			// fail
-			jmp failAddr //jump here to land in HookEndScriptCompile.
+			// fail, or a plugin custom-compiled the script
+			jmp failOrSpecialCompileAddr //jump here to land in HookEndScriptCompile.
 
 			success:
 			jmp retnAddr
@@ -855,39 +874,52 @@ void __fastcall PostScriptCompileSuccess(Script* script, ScriptBuffer* scriptBuf
 
 static __declspec(naked) void CompileScriptHook(void)
 {
-	static bool precompileResult;
+	static PrecompileResult precompileResult;
 	static Script *script = nullptr;
 	static ScriptBuffer* scriptBuffer = nullptr;
 	__asm {
-		mov [script], eax
+		mov		[script], eax
 		mov		eax, [esp + 4] // grab the second arg (ScriptBuffer*)
-		mov [scriptBuffer], eax
+		mov		[scriptBuffer], eax
 		pushad
-		mov ecx, script
-		push ecx
+		mov		ecx, script
+		push	ecx
 		push	eax
 		call	HandleBeginCompile // Precompile
-		mov[precompileResult], al // save result
+		mov		[precompileResult], al // save result
+		cmp		al, kPrecompile_Success
 		popad
-		call[kBeginScriptCompileCallAddr] // let the compiler take over
-		push eax
-		call PostScriptCompile
-		pop eax
+		je		DoCompilation
+		// else, need to clear the two args from the stack that were set up for the kBeginScriptCompileCallAddr call.
+		add		esp, 8
+		// return 1 if precompile result was kPrecompile_SpecialCompile
+		mov		al, byte [precompileResult]
+		cmp		al, kPrecompile_SpecialCompile
+		jne		EndHook
+		// else, was equal
+		mov		al, 1
+		jmp		EndHook
+
+		DoCompilation:
+		call	[kBeginScriptCompileCallAddr] // let the compiler take over
+		push	eax
+		call	PostScriptCompile
+		pop		eax
 		test	al, al
 		jz		EndHook // return false if CompileScript() returned false
-		mov edx, scriptBuffer
-		mov ecx, script
-		call PostScriptCompileSuccess
-		mov		al, [precompileResult]								 // else return result of Precompile
+		mov		edx, scriptBuffer
+		mov		ecx, script
+		call	PostScriptCompileSuccess
+		mov		al, [precompileResult]	 // else return result of Precompile
 		
 		EndHook:
-														 // there's a small possibility that the compiler override is still in effect here (e.g. scripter forgot an 'end')
-			// so make sure there's no chance it remains in effect, otherwise potentially could affect result script compilation
+		// there's a small possibility that the compiler override is still in effect here (e.g. scripter forgot an 'end')
+		// so make sure there's no chance it remains in effect, otherwise potentially could affect result script compilation
 		pushad
-			push 0
-			call CompilerOverride::ToggleOverride
-			popad
-			jmp[kBeginScriptCompileRetnAddr] // bye
+		push	0
+		call	CompilerOverride::ToggleOverride
+		popad
+		jmp		[kBeginScriptCompileRetnAddr] // bye
 	}
 }
 
