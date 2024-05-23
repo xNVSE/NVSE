@@ -416,7 +416,7 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptPrecompile,
 		&msg, sizeof(ScriptAndScriptBuffer), NULL);
 
-	if (buf->errorCode == 1) [[unlikely]] // if plugin reports an error in compiling the script.
+	if (buf->errorCode >= 1) [[unlikely]] // if plugin reports an error in compiling the script.
 		return PrecompileResult::kPrecompile_Failure;
 
 	if (script->info.compiled) // if plugin compiled the script for us
