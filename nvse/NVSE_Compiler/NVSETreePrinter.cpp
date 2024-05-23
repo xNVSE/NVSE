@@ -52,7 +52,7 @@ void NVSETreePrinter::visitForStmt(const ForStmt* stmt) {
 
 	curTab--;
 }
-void NVSETreePrinter::visitIfStmt(const IfStmt* stmt) {
+void NVSETreePrinter::visitIfStmt(IfStmt* stmt) {
 	printTabs();
 	std::cout << "if" << std::endl;
 
@@ -291,7 +291,7 @@ void NVSETreePrinter::visitGroupingExpr(const GroupingExpr* expr) {
 	curTab--;
 }
 
-void NVSETreePrinter::visitLambdaExpr(const LambdaExpr* expr) {
+void NVSETreePrinter::visitLambdaExpr(LambdaExpr* expr) {
 	printTabs();
 	std::cout << "lambda" << std::endl;
 	curTab++;

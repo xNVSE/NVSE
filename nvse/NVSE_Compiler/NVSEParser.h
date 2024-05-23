@@ -212,9 +212,10 @@ struct BoolExpr : Expr {
 };
 
 struct NumberExpr : Expr {
-    int value;
+    float value;
+    bool isFp;
 
-    NumberExpr(int value) : value(value) {}
+    NumberExpr(float value, bool isFp) : value(value), isFp(isFp) {}
 
     void accept(NVSEVisitor* t) {
         t->visitNumberExpr(this);
@@ -252,10 +253,10 @@ struct GroupingExpr : Expr {
 };
 
 struct LambdaExpr : Expr {
-    std::vector<StmtPtr> args;
+    std::vector<std::unique_ptr<VarDeclStmt>> args;
     StmtPtr body;
 
-    LambdaExpr(std::vector<StmtPtr> args, StmtPtr body) : args(std::move(args)), body(std::move(body)) {}
+    LambdaExpr(std::vector<std::unique_ptr<VarDeclStmt>> args, StmtPtr body) : args(std::move(args)), body(std::move(body)) {}
 
     void accept(NVSEVisitor* t) {
         t->visitLambdaExpr(this);
@@ -281,7 +282,7 @@ private:
     bool hadError = false;
 
     StmtPtr fnDecl();
-    StmtPtr varDecl();
+    std::unique_ptr<VarDeclStmt> varDecl();
 
     StmtPtr statement();
     StmtPtr exprStmt();

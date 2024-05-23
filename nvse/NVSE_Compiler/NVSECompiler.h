@@ -1,25 +1,40 @@
 #pragma once
+#include <format>
 #include <string>
 
 #include "NVSEParser.h"
 #include "NVSEVisitor.h"
 
+#include "nvse/prefix.h"
+#include "nvse/GameScript.h"
+#include "nvse/GameAPI.h"
+#include "nvse/GameObjects.h"
+
 class Script;
 constexpr auto MAX_LOCALS = (UINT16_MAX - 1);
 
 class NVSECompiler : NVSEVisitor {
+	struct SCRO {
+		std::string identifier;
+		uint32_t refId;
+	};
+
 	// Used to hold result of visits
 	// Like if one visit invokes a child visit and needs data from it, such as compiled size
-	int result = 0;
+	uint32_t result = 0;
 	bool inNvseExpr = false;
 
 	// For building SLSD/SCVR/SCRV/SCRO?
-	std::vector<std::string> locals {};
-	std::unordered_map <std::string, uint32_t> SCRV{};
-	std::unordered_map <std::string, uint32_t> SCRO{};
+	std::vector<std::string> locals{};
+	std::vector<uint8_t> localTypes{};
+
+	std::vector<uint32_t> localRefs{};
+	std::vector<SCRO> objectRefs{};
+
+	Script::RefList refList{};
 
 	// Look up a local variable, or create it if not already defined
-	uint16_t addLocal(std::string identifier) {
+	uint16_t addLocal(std::string identifier, uint8_t type) {
 		auto index = std::ranges::find(locals, identifier);
 		if (index != locals.end()) {
 			return static_cast<uint16_t>(index - locals.begin() + 1);
@@ -30,7 +45,62 @@ class NVSECompiler : NVSEVisitor {
 			throw std::runtime_error("Maximum number of locals defined.");
 		}
 
+		if (type == kParamType_ObjectRef) {
+			localRefs.push_back(locals.size());
+		}
+
 		return static_cast<uint16_t>(locals.size());
+	}
+
+	bool hasLocal(std::string identifier) {
+		return std::ranges::find(locals, identifier) != locals.end();
+	}
+
+	uint8_t getLocalType(std::string identifier) {
+		if (!hasLocal(identifier)) {
+			return 0;
+		}
+
+		auto index = std::ranges::find(locals, identifier);
+		if (index != locals.end()) {
+			return localTypes[index - locals.begin() + 1];
+		}
+
+		return 0;
+	}
+
+	uint16_t resolveObjectReference(std::string identifier) {
+		for (int i = 0; i < objectRefs.size(); i++) {
+			if (objectRefs[i].identifier == identifier) {
+				return i;
+			}
+		}
+
+		TESForm* form;
+		if (_stricmp(identifier.c_str(), "player") == 0) {
+			// PlayerRef (this is how the vanilla compiler handles it so I'm changing it for consistency and to fix issues)
+			form = LookupFormByID(0x14);
+		}
+		else {
+			form = GetFormByID(identifier.c_str());
+		}
+
+		if (form) {
+			TESObjectREFR* refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+
+			// only persistent refs can be used in scripts
+			if (refr && !refr->IsPersistent()) {
+				throw std::runtime_error(std::format("Object reference '{}' must be persistent.", identifier));
+			}
+
+			objectRefs.emplace_back(SCRO{
+				.identifier = identifier,
+				.refId = refr->refID
+			});
+			return static_cast<uint16_t>(objectRefs.size());
+		}
+
+		return 0;
 	}
 
 	// Compiled bytes
@@ -78,16 +148,17 @@ public:
 	// For initializing SLSD/SCVR/SCRV/SCRO with existing script data?
 	Script compile(Script* existingScript, std::vector<StmtPtr> statements);
 	Script compile(std::vector<StmtPtr> statements);
-	std::vector<uint8_t> compile(StmtPtr &stmt);
+	std::vector<uint8_t> compile(StmtPtr& stmt);
 
 	void visitFnDeclStmt(const FnDeclStmt* stmt) override;
 	void visitVarDeclStmt(const VarDeclStmt* stmt) override;
 
 	void visitExprStmt(const ExprStmt* stmt) override;
 	void visitForStmt(const ForStmt* stmt) override;
-	void visitIfStmt(const IfStmt* stmt) override;
+	void visitIfStmt(IfStmt* stmt) override;
 	void visitReturnStmt(const ReturnStmt* stmt) override;
 	void visitWhileStmt(const WhileStmt* stmt) override;
+	uint32_t compileBlock(StmtPtr& stmt, bool incrementCurrent);
 	void visitBlockStmt(const BlockStmt* stmt) override;
 
 	// Inherited via NVSEVisitor
@@ -104,5 +175,5 @@ public:
 	void visitStringExpr(const StringExpr* expr) override;
 	void visitIdentExpr(const IdentExpr* expr) override;
 	void visitGroupingExpr(const GroupingExpr* expr) override;
-	void visitLambdaExpr(const LambdaExpr* expr) override;
+	void visitLambdaExpr(LambdaExpr* expr) override;
 };

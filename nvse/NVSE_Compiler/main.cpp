@@ -7,7 +7,7 @@
 
 int main() {
 	NVSELexer lexer(""
-		"if (57005) { if (100) { 255 + 255; } }"
+		"if (1) { ref x = fn () { 5 + 5; }; 255 * 255; }"
 	);
 	NVSEParser parser(lexer);
 	NVSETreePrinter treePrinter{};
@@ -25,5 +25,6 @@ int main() {
 
 		printf("\nNum compiled bytes: %d\n", bytes.size());
 	}
+
 	return 0;
 }

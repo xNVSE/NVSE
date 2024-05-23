@@ -48,7 +48,7 @@ StmtPtr NVSEParser::statement() {
 	return exprStmt();
 }
 
-StmtPtr NVSEParser::varDecl() {
+std::unique_ptr<VarDeclStmt> NVSEParser::varDecl() {
 	if (!(match(TokenType::IntType) || match(TokenType::DoubleType) || match(TokenType::RefType) || match(TokenType::ArrayType) || match(TokenType::StringType))) {
 		error(currentToken, "Expected type.");
 	}
@@ -285,6 +285,7 @@ ExprPtr NVSEParser::call() {
 				error(currentToken, "Invalid callee.");
 			}
 
+
 			if (match(TokenType::RightParen)) {
 				expr = std::make_unique<CallExpr>(std::move(expr), std::move(std::vector<ExprPtr>{}));
 				continue;
@@ -311,7 +312,14 @@ ExprPtr NVSEParser::primary() {
 	}
 
 	if (match(TokenType::Number)) {
-		return std::make_unique<NumberExpr>(std::get<double>(previousToken.value));
+		// Double literal
+		if (std::ranges::find(previousToken.lexeme, '.') != previousToken.lexeme.end()) {
+			return std::make_unique<NumberExpr>(std::get<double>(previousToken.value), true);
+		}
+		// Int literal
+		else {
+			return std::make_unique<NumberExpr>(std::get<double>(previousToken.value), false);
+		}
 	}
 
 	if (match(TokenType::String)) {
@@ -339,11 +347,11 @@ ExprPtr NVSEParser::primary() {
 ExprPtr NVSEParser::fnExpr() {
 	expect(TokenType::LeftParen, "Expected '(' after 'fn'.");
 
-	std::vector<StmtPtr> args{};
+	std::vector<std::unique_ptr<VarDeclStmt>> args{};
 	if (!match(TokenType::RightParen)) {
 		do {
 			auto decl = varDecl();
-			if (dynamic_cast<VarDeclStmt*>(decl.get())->value != nullptr) {
+			if (decl->value != nullptr) {
 				error(previousToken, "Lambdas cannot have default values specified.");
 			}
 			args.emplace_back(std::move(decl));

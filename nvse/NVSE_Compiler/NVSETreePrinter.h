@@ -11,7 +11,7 @@ public:
 
 	void visitExprStmt(const ExprStmt* stmt) override;
 	void visitForStmt(const ForStmt* stmt) override;
-	void visitIfStmt(const IfStmt* stmt) override;
+	void visitIfStmt(IfStmt* stmt) override;
 	void visitReturnStmt(const ReturnStmt* stmt) override;
 	void visitWhileStmt(const WhileStmt* stmt) override;
 	void visitBlockStmt(const BlockStmt* stmt) override;
@@ -30,5 +30,5 @@ public:
 	void visitStringExpr(const StringExpr* expr) override;
 	void visitIdentExpr(const IdentExpr* expr) override;
 	void visitGroupingExpr(const GroupingExpr* expr) override;
-	void visitLambdaExpr(const LambdaExpr* expr) override;
+	void visitLambdaExpr(LambdaExpr* expr) override;
 };

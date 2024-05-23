@@ -32,7 +32,7 @@ public:
 
 	virtual void visitExprStmt(const ExprStmt* stmt) = 0;
 	virtual void visitForStmt(const ForStmt* stmt) = 0;
-	virtual void visitIfStmt(const IfStmt* stmt) = 0;
+	virtual void visitIfStmt(IfStmt* stmt) = 0;
 	virtual void visitReturnStmt(const ReturnStmt* stmt) = 0;
 	virtual void visitWhileStmt(const WhileStmt* stmt) = 0;
 	virtual void visitBlockStmt(const BlockStmt* stmt) = 0;
@@ -50,5 +50,5 @@ public:
 	virtual void visitStringExpr(const StringExpr* expr) = 0;
 	virtual void visitIdentExpr(const IdentExpr* expr) = 0;
 	virtual void visitGroupingExpr(const GroupingExpr* expr) = 0;
-	virtual void visitLambdaExpr(const LambdaExpr* expr) = 0;
+	virtual void visitLambdaExpr(LambdaExpr* expr) = 0;
 };

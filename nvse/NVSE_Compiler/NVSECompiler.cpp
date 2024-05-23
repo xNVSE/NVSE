@@ -49,6 +49,23 @@ std::unordered_map<std::string, uint8_t> operatorMap {
 	{"%=", 43},
 };
 
+uint8_t getArgType(NVSEToken t) {
+	switch (t.type) {
+	case TokenType::DoubleType:
+		return 0;
+	case TokenType::IntType:
+		return 1;
+	case TokenType::RefType:
+		return 4;
+	case TokenType::ArrayType:
+		return 3;
+	case TokenType::StringType:
+		return 2;
+	}
+
+	return 0;
+}
+
 std::vector<uint8_t> NVSECompiler::compile(StmtPtr &stmt) {
 	stmt->accept(this);
 	return data;
@@ -56,27 +73,9 @@ std::vector<uint8_t> NVSECompiler::compile(StmtPtr &stmt) {
 
 void NVSECompiler::visitFnDeclStmt(const FnDeclStmt* stmt) {}
 void NVSECompiler::visitVarDeclStmt(const VarDeclStmt* stmt) {
+	uint8_t varType = getArgType(stmt->type);
 	const auto token = stmt->name;
-	const auto idx = addLocal(token.lexeme);
-
-	int8_t varType = 0;
-	switch (stmt->type.type) {
-	case TokenType::DoubleType:
-		varType = 0;
-		break;
-	case TokenType::IntType:
-		varType = 1;
-		break;
-	case TokenType::RefType:
-		varType = 4;
-		break;
-	case TokenType::ArrayType:
-		varType = 3;
-		break;
-	case TokenType::StringType:
-		varType = 2;
-		break;
-	}
+	const auto idx = addLocal(token.lexeme, varType);
 
 	// OP_LET
 	add_u16(0x1539);						
@@ -89,8 +88,8 @@ void NVSECompiler::visitVarDeclStmt(const VarDeclStmt* stmt) {
 	add_u8(0x1);
 
 	// Placeholder [arg_len]
-	auto argStart = data.size();
 	auto argPatch = add_u16(0x0);
+	auto argStart = data.size();
 
 	// Add arg to stack
 	add_u8('V');
@@ -99,9 +98,7 @@ void NVSECompiler::visitVarDeclStmt(const VarDeclStmt* stmt) {
 	add_u16(idx);     // SCDA
 
 	// Build expression
-	inNvseExpr = true;
-	stmt->value->accept(this);               
-	inNvseExpr = false;
+	stmt->value->accept(this);    
 
 	// OP_ASSIGN
 	add_u8(0);                             
@@ -127,9 +124,7 @@ void NVSECompiler::visitExprStmt(const ExprStmt* stmt) {
 	auto argPatch = add_u16(0x0);
 
 	// Build expression
-	inNvseExpr = true;
 	stmt->expr->accept(this);
-	inNvseExpr = false;
 
 	// Patch lengths
 	set_u16(argPatch, data.size() - argStart);
@@ -137,7 +132,7 @@ void NVSECompiler::visitExprStmt(const ExprStmt* stmt) {
 }
 
 void NVSECompiler::visitForStmt(const ForStmt* stmt) {}
-void NVSECompiler::visitIfStmt(const IfStmt* stmt) {
+void NVSECompiler::visitIfStmt(IfStmt* stmt) {
 	// OP_IF
 	add_u16(0x16);
 
@@ -173,9 +168,7 @@ void NVSECompiler::visitIfStmt(const IfStmt* stmt) {
 		auto opEvalArgPatch = add_u16(0x0);
 
 		// Compile cond
-		inNvseExpr = true;
 		stmt->cond->accept(this);
-		inNvseExpr = false;
 
 		// Patch OP_EVAL lengths
 		set_u16(opEvalArgPatch, data.size() - opEvalArgStart);
@@ -186,11 +179,8 @@ void NVSECompiler::visitIfStmt(const IfStmt* stmt) {
 	set_u16(compPatch, data.size() - compStart);
 	set_u16(exprPatch, data.size() - exprStart);
 
-	// Compile block
-	stmt->block->accept(this);
-
 	// Patch JMP_OPS
-	set_u16(jmpPatch, result);
+	set_u16(jmpPatch, compileBlock(stmt->block, true));
 
 	// Build OP_ELSE
 	if (stmt->elseBlock) {
@@ -204,8 +194,7 @@ void NVSECompiler::visitIfStmt(const IfStmt* stmt) {
 		auto elsePatch = add_u16(0x0);
 
 		// Compile else block
-		stmt->elseBlock->accept(this);
-		set_u16(elsePatch, result);
+		set_u16(elsePatch, compileBlock(stmt->elseBlock, true));
 	}
 
 	// OP_ENDIF
@@ -213,7 +202,10 @@ void NVSECompiler::visitIfStmt(const IfStmt* stmt) {
 	add_u16(0x0);
 }
 
-void NVSECompiler::visitReturnStmt(const ReturnStmt* stmt) {}
+void NVSECompiler::visitReturnStmt(const ReturnStmt* stmt) {
+	
+}
+
 void NVSECompiler::visitWhileStmt(const WhileStmt* stmt) {
 	// OP_WHILE
 	add_u16(0x153B);
@@ -230,9 +222,7 @@ void NVSECompiler::visitWhileStmt(const WhileStmt* stmt) {
 	// Compile / patch condition
 	auto condStart = data.size();
 	auto condPatch = add_u16(0x0);
-	inNvseExpr = true;
 	stmt->cond->accept(this);
-	inNvseExpr = false;
 	set_u16(condPatch, data.size() - condStart);
 
 	// Patch OP_LEN
@@ -248,6 +238,23 @@ void NVSECompiler::visitWhileStmt(const WhileStmt* stmt) {
 	// Patch jmp
 	set_u32(jmpPatch, data.size());
 }
+
+uint32_t NVSECompiler::compileBlock(StmtPtr &stmt, bool incrementCurrent) {
+	// Store old block size
+	auto temp = result;
+
+	stmt->accept(this);
+
+	auto res = result;
+	if (incrementCurrent) {
+		temp += res;
+	}
+
+	result = temp;
+
+	return res;
+}
+
 void NVSECompiler::visitBlockStmt(const BlockStmt* stmt) {
 	for (auto &statement : stmt->statements) {
 		statement->accept(this);
@@ -260,46 +267,133 @@ void NVSECompiler::visitAssignmentExpr(const AssignmentExpr* expr) {}
 void NVSECompiler::visitTernaryExpr(const TernaryExpr* expr) {}
 void NVSECompiler::visitLogicalExpr(const LogicalExpr* expr) {}
 void NVSECompiler::visitBinaryExpr(const BinaryExpr* expr) {
-	int len = 0;
-
-	if (inNvseExpr) {
-		expr->left->accept(this);
-		len += result;
-
-		expr->right->accept(this);
-		len += result;
-
-		add_u8(operatorMap[expr->op.lexeme]);
-		len++;
-	}
-
-	result = len;
+	expr->left->accept(this);
+	expr->right->accept(this);
+	add_u8(operatorMap[expr->op.lexeme]);
 }
-void NVSECompiler::visitUnaryExpr(const UnaryExpr* expr) {}
-void NVSECompiler::visitCallExpr(const CallExpr* expr) {}
+void NVSECompiler::visitUnaryExpr(const UnaryExpr* expr) {
+	expr->expr->accept(this);
+	add_u8(operatorMap[expr->op.lexeme]);
+}
+
+void NVSECompiler::visitCallExpr(const CallExpr* expr) {
+	bool useStackRef = dynamic_cast<GetExpr*>(expr->left.get());
+}
+
 void NVSECompiler::visitGetExpr(const GetExpr* expr) {}
+
 void NVSECompiler::visitSetExpr(const SetExpr* expr) {}
-void NVSECompiler::visitBoolExpr(const BoolExpr* expr) {}
+
+void NVSECompiler::visitBoolExpr(const BoolExpr* expr) {
+	add_u8('B');
+	add_u8(expr->value);
+}
+
 void NVSECompiler::visitNumberExpr(const NumberExpr* expr) {
-	if (inNvseExpr) {
+	if (expr->isFp) {
+		if (expr->value <= UINT8_MAX) {
+			float value = expr->value;
+			uint8_t* bytes = reinterpret_cast<uint8_t*>(&value);
+
+			add_u8('Z');
+			add_u8(bytes[0]);
+			add_u8(bytes[1]);
+			add_u8(bytes[2]);
+			add_u8(bytes[3]);
+		}
+	}
+	else {
 		if (expr->value <= UINT8_MAX) {
 			add_u8('B');
-			add_u8(expr->value);
-			result = 2;
+			add_u8(static_cast<uint8_t>(expr->value));
 		}
 		else if (expr->value <= UINT16_MAX) {
 			add_u8('I');
-			add_u16(expr->value);
-			result = 3;
+			add_u16(static_cast<uint16_t>(expr->value));
 		}
 		else {
 			add_u8('L');
-			add_u32(expr->value);
-			result = 5;
+			add_u32(static_cast<uint32_t>(expr->value));
 		}
 	}
 }
-void NVSECompiler::visitStringExpr(const StringExpr* expr) {}
-void NVSECompiler::visitIdentExpr(const IdentExpr* expr) {}
-void NVSECompiler::visitGroupingExpr(const GroupingExpr* expr) {}
-void NVSECompiler::visitLambdaExpr(const LambdaExpr* expr) {}
+
+void NVSECompiler::visitStringExpr(const StringExpr* expr) {
+	auto str = std::get<std::string>(expr->value.value);
+
+	add_u8('S');
+	add_u16(str.size());
+	for (char c : str) {
+		add_u8(c);
+	}
+}
+
+void NVSECompiler::visitIdentExpr(const IdentExpr* expr) {
+	
+}
+
+void NVSECompiler::visitGroupingExpr(const GroupingExpr* expr) {
+	expr->expr->accept(this);
+}
+
+void NVSECompiler::visitLambdaExpr(LambdaExpr* expr) {
+	// PARAM_LAMBDA
+	add_u8('F');
+
+	// Arg size
+	auto argSizePatch = add_u32(0x0);
+	auto argStart = data.size();
+
+	// Compile lambda
+	{
+		// SCN
+		add_u32(0x1D);
+
+		// OP_BEGIN
+		add_u16(0x10);
+
+		// OP_MODE_LEN
+		auto opModeLenPatch = add_u16(0x0);
+		auto opModeStart = data.size();
+
+		// OP_MODE
+		add_u16(0x0D);
+
+		// SCRIPT_LEN
+		auto scriptLenPatch = add_u32(0x0);
+
+		// BYTECODE VER
+		add_u8(0x1);
+
+		// arg count
+		add_u8(expr->args.size());
+
+		// add args
+		for (auto i = 0; i < expr->args.size(); i++) {
+			auto& arg = expr->args[i];
+			auto type = getArgType(arg->type);
+			auto localIdx = addLocal(arg->name.lexeme, type);
+
+			add_u16(localIdx);
+			add_u8(type);
+		}
+
+		// NUM_ARRAY_ARGS, always 0
+		add_u8(0x0);
+
+		auto scriptLenStart = data.size();
+
+		// Patch mode len
+		set_u16(opModeLenPatch, data.size() - opModeStart);
+
+		// Compile script
+		compileBlock(expr->body, false);
+
+		set_u32(scriptLenPatch, data.size() - scriptLenStart);
+
+		// OP_END
+		add_u32(0x11);
+	}
+
+	set_u32(argSizePatch, data.size() - argStart);
+}
