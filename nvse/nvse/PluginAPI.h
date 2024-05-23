@@ -215,10 +215,12 @@ struct NVSEMessagingInterface
 
 		kMessage_SaveGame,				// as above
 	
-		kMessage_ScriptEditorPrecompile,// EDITOR: Dispatched when the user attempts to save a script in the script editor.
-										// NVSE first does its pre-compile checks; if these pass the message is dispatched before
-										// the vanilla compiler does its own checks. 
-										// data: ScriptBuffer* to the buffer representing the script under compilation
+		kMessage_ScriptPrecompile,		// EDITOR+RUNTIME: Dispatched when a script is about to be compiled.
+										// To custom-compile the script yourself during this step, set script->info.compiled to true.
+										// Alternatively, scriptBuffer->errorCode can be set to 1 to prevent the script from compiling entirely.
+										// If custom-compiling, certain Script* variables should be set, and SetEditorID should be called if there was a scriptname extracted.
+										// data: ScriptAndScriptBuffer* to the script + scriptBuffer representing the script under compilation
+										// dataLen: sizeof(ScriptAndScriptBuffer)
 		
 		kMessage_PreLoadGame,			// dispatched immediately before savegame is read by Fallout
 										// dataLen: length of file path, data: char* file path of .fos savegame file
@@ -258,7 +260,8 @@ struct NVSEMessagingInterface
 		kMessage_ScriptCompile,   // EDITOR: called after successful script compilation in GECK. data: pointer to Script
 								// RUNTIME: also gets called after successful script compilation at runtime via functions.
 		kMessage_EventListDestroyed, // called before a script event list is destroyed, dataLen: 4, data: ScriptEventList* ptr
-		kMessage_PostQueryPlugins // called after all plugins have been queried
+		kMessage_PostQueryPlugins, // called after all plugins have been queried
+		kMessage_PreScriptCompile // works in editor and runtime, allows hijacking the script compilation process by setting script->info.compiled to true.
 	};
 
 	UInt32	version;

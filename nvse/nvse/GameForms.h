@@ -260,8 +260,8 @@ public:
 	virtual bool		Unk_2E(void);		// 00000200
 	virtual void		Unk_2F(bool set);	// 00000200
 	virtual bool		Unk_30(void);		// returns false
-	virtual void		Unk_31(bool set);	// 00000020 then calls Fn12 MarkAsModified
-	virtual void		Unk_32(bool set);	// 00000002 with a lot of housekeeping
+	virtual void		MarkForDeletion(bool set);	// 00000020 then calls Fn12 MarkAsModified. Credits to lStewieAl for the name.
+	virtual void		SetAltered(bool set);	// 00000002 with a lot of housekeeping. Credits to lStewieAl for the name.
 #if RUNTIME
 	virtual void		SetQuestItem(bool set);	// 00000400 then calls Fn12 MarkAsModified
 #else
