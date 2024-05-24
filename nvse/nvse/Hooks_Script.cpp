@@ -428,6 +428,7 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 		script->MarkForDeletion(false);
 		script->SetAltered(true);
 #else
+		script->Unk_1A();
 		script->Unk_29(false);
 		script->Unk_2A(true);
 #endif
@@ -898,7 +899,7 @@ static __declspec(naked) void CompileScriptHook(void)
 		// else, need to clear the two args from the stack that were set up for the kBeginScriptCompileCallAddr call.
 		add		esp, 8
 		// return 1 if precompile result was kPrecompile_SpecialCompile
-		mov		al, byte [precompileResult]
+		mov		al, precompileResult
 		cmp		al, kPrecompile_SpecialCompile
 		jne		EndHook
 		// else, was equal
