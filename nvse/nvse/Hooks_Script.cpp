@@ -450,27 +450,24 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 			printf("\n==== COMPILER ====\n\n");
 
 			NVSECompiler comp{};
-			auto bytes = comp.compile(ast);
+			comp.compile(script, ast);
 
 			buf->scriptName = String();
 			buf->scriptName.Set(comp.scriptName.c_str());
 
 			printf("\n");
-			for (int i = 0; i < bytes.size(); i++) {
-				printf("%.2X ", bytes[i]);
+			for (int i = 0; i < script->info.dataLength; i++) {
+				printf("%.2X ", script->data[i]);
 			}
 
 			printf("\n");
-			printf("\nNum compiled bytes: %d\n", bytes.size());
+			printf("\nNum compiled bytes: %d\n", script->info.dataLength);
 
 			printf("\n");
 			printf("[Script Locals]\n");
-			for (int i = 0; i < comp.locals.size(); i++) {
-				printf("[%d] %s : %s\n", i + 1, comp.locals[i].c_str(), VariableTypeToName(static_cast<Script::VariableType>(comp.localTypes[i])));
-			}
+		} else {
+			return PrecompileResult::kPrecompile_Failure;
 		}
-
-		return PrecompileResult::kPrecompile_Failure;
 	}
 
 	else {

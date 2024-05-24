@@ -1,11 +1,28 @@
 #include "NVSECompiler.h"
 
+#include "Commands_MiscRef.h"
 #include "NVSECompilerUtils.h"
 #include "NVSEParser.h"
 
-std::vector<uint8_t> NVSECompiler::compile(NVSEScript& script) {
-	script.accept(this);
-	return data;
+bool NVSECompiler::compile(Script* script, NVSEScript& ast) {
+	this->script = script;
+
+	ast.accept(this);
+
+#if EDITOR
+	ThisStdCall(0x4FB450, script, scriptName.c_str());
+#else
+	script->SetEditorID(scriptName.c_str());
+#endif
+	script->info.compiled = true;
+	script->info.dataLength = data.size();
+	script->info.numRefs = script->refList.Count();
+	script->info.varCount = script->varList.Count();
+	script->info.unusedVariableCount = script->info.varCount - usedVars.size();
+	script->data = static_cast<uint8_t*>(FormHeap_Allocate(data.size()));
+	memcpy(script->data, data.data(), data.size());
+
+	return true;
 }
 
 void NVSECompiler::visitNVSEScript(const NVSEScript* script) {
@@ -63,7 +80,8 @@ void NVSECompiler::visitBeginStatement(const BeginStmt* stmt) {
 			// Try to resolve the global ref
 			auto ref = resolveObjectReference(param.lexeme);
 			if (ref) {
-				printf("Resolved ref %s: %08x\n", param.lexeme.c_str(), objectRefs[ref - 1].refId);
+				auto refInfo = script->refList.GetNthItem(ref - 1);
+				printf("Resolved ref %s: %08x\n", param.lexeme.c_str(), refInfo->form->refID);
 				add_u8('R');
 				add_u16(ref);
 			} else {
@@ -111,9 +129,9 @@ void NVSECompiler::visitVarDeclStmt(const VarDeclStmt* stmt) {
 	// Num args
 	add_u8(0x1);
 
-	// Placeholder [arg_len]
-	auto argPatch = add_u16(0x0);
+	// Placeholder [param1_len]
 	auto argStart = data.size();
+	auto argPatch = add_u16(0x0);
 
 	// Add arg to stack
 	add_u8('V');
@@ -133,8 +151,8 @@ void NVSECompiler::visitVarDeclStmt(const VarDeclStmt* stmt) {
 }
 
 void NVSECompiler::visitExprStmt(const ExprStmt* stmt) {
-	// OP_LET
-	add_u16(0x1539);
+	// OP_EVAL
+	add_u16(0x153A);
 
 	// Placeholder OP_LEN
 	auto exprPatch = add_u16(0x0);
@@ -302,10 +320,72 @@ void NVSECompiler::visitUnaryExpr(const UnaryExpr* expr) {
 }
 
 void NVSECompiler::visitCallExpr(const CallExpr* expr) {
-	bool useStackRef = dynamic_cast<GetExpr*>(expr->left.get());
+	// Use stack reference if this is part of a dot expression:
+	// player.GetName();
+	// ______
+
+	auto stackRefExpr = dynamic_cast<GetExpr*>(expr->left.get());
+	auto callExpr = dynamic_cast<CallExpr*>(expr->left.get());
+	auto identExpr = dynamic_cast<IdentExpr*>(expr->left.get());
+	std::string name{};
+	if (stackRefExpr) {
+		name = stackRefExpr->token.lexeme;
+	} else if (callExpr) {
+		// TODO?
+	} else {
+		name = identExpr->name.lexeme;
+	}
+
+	// Try to get the script command by lexeme
+	auto cmd = g_scriptCommands.GetByName(name.c_str());
+	if (!cmd) {
+		throw std::runtime_error("Invalid function '" + identExpr->name.lexeme + "'.");
+	}
+
+	// TODO: Handle lambda
+
+	// Put this on the stack
+	if (stackRefExpr) {
+		stackRefExpr->left->accept(this);
+		add_u8('x');
+	} else if (callExpr) {
+		
+	} else {
+		add_u8('X');
+	}
+	add_u16(0x0); // SCRV
+	add_u16(cmd->opcode);
+
+	// Call size
+	auto callStart = data.size();
+	auto callPatch = add_u16(0x0);
+
+	// Num args
+	if (cmd->parse == Cmd_Default_Parse) {
+		add_u16(expr->args.size());
+	}
+	else {
+		add_u8(expr->args.size());
+	}
+
+	// Args
+	for (int i = 0; i < expr->args.size(); i++) {
+		if (cmd->parse == Cmd_Default_Parse) {
+			add_u16(0xFFFF);
+		}
+
+		auto argStartInner = data.size();
+		auto argPatchInner = add_u16(0x0);
+		expr->args[i]->accept(this);
+		set_u16(argPatchInner, data.size() - argStartInner);
+	}
+
+	set_u16(callPatch, data.size() - callStart);
 }
 
-void NVSECompiler::visitGetExpr(const GetExpr* expr) {}
+void NVSECompiler::visitGetExpr(const GetExpr* expr) {
+
+}
 
 void NVSECompiler::visitSetExpr(const SetExpr* expr) {}
 
@@ -357,18 +437,15 @@ void NVSECompiler::visitIdentExpr(const IdentExpr* expr) {
 	auto name = expr->name.lexeme;
 
 	// Attempt to resolve as variable
-	if (hasLocal(name)) {
-		auto idx = addLocal(name, 0);
-
+	if (auto local = script->varList.GetVariableByName(name.c_str())) {
 		add_u8('V');
-		add_u8(localTypes[idx - 1]);
+		add_u8(local->type);
 		add_u16(0);
-		add_u16(idx);
+		add_u16(local->idx);
 		return;
 	}
 
 	// Try to look up as function
-
 
 	// Try to look up as global
 	auto scrv = resolveObjectReference(name);

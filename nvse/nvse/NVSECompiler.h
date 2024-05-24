@@ -1,5 +1,6 @@
 #pragma once
 #include <format>
+#include <set>
 #include <string>
 
 #include "NVSEParser.h"
@@ -15,69 +16,50 @@ constexpr auto MAX_LOCALS = (UINT16_MAX - 1);
 
 class NVSECompiler : NVSEVisitor {
 public:
-	struct SCRO {
-		std::string identifier;
-		uint32_t refId;
-	};
+	Script* script;
 
 	std::string scriptName{};
 
 	// Used to hold result of visits
 	// Like if one visit invokes a child visit and needs data from it, such as compiled size
 	uint32_t result = 0;
-	bool inNvseExpr = false;
 
-	// For building SLSD/SCVR/SCRV/SCRO?
-	std::vector<std::string> locals{};
-	std::vector<uint8_t> localTypes{};
+	std::set<std::string> usedVars{};
 
-	std::vector<uint32_t> localRefs{};
-	std::vector<SCRO> objectRefs{};
-
-	Script::RefList refList{};
-
-	// Look up a local variable, or create it if not already defined
+		// Look up a local variable, or create it if not already defined
 	uint16_t addLocal(std::string identifier, uint8_t type) {
-		auto index = std::ranges::find(locals, identifier);
-		if (index != locals.end()) {
-			return static_cast<uint16_t>(index - locals.begin() + 1);
+		usedVars.insert(identifier);
+
+		if (auto info = script->GetVariableByName(identifier.c_str())) {
+			return info->idx;
 		}
 
-		locals.emplace_back(identifier);
-		localTypes.emplace_back(type);
-		if (locals.size() > MAX_LOCALS) {
-			throw std::runtime_error("Maximum number of locals defined.");
+		auto varInfo = New<VariableInfo>();
+		varInfo->name = String();
+		varInfo->name.Set(identifier.c_str());
+		varInfo->type = type;
+		varInfo->idx = script->varList.Count() + 1;
+		script->varList.Append(varInfo);
+
+		if (type == Script::eVarType_Ref) {
+			auto ref = New<Script::RefVariable>();
+			ref->name = String();
+			ref->name.Set(identifier.c_str());
+			ref->varIdx = varInfo->idx;
+			script->refList.Append(ref);
 		}
 
-		if (type == kParamType_ObjectRef) {
-			localRefs.push_back(locals.size());
-		}
-
-		return static_cast<uint16_t>(locals.size());
-	}
-
-	bool hasLocal(std::string identifier) {
-		return std::ranges::find(locals, identifier) != locals.end();
-	}
-
-	uint8_t getLocalType(std::string identifier) {
-		if (!hasLocal(identifier)) {
-			return 0;
-		}
-
-		auto index = std::ranges::find(locals, identifier);
-		if (index != locals.end()) {
-			return localTypes[index - locals.begin() + 1];
-		}
-
-		return 0;
+		return static_cast<uint16_t>(varInfo->idx);
 	}
 
 	uint16_t resolveObjectReference(std::string identifier) {
-		for (int i = 0; i < objectRefs.size(); i++) {
-			if (objectRefs[i].identifier == identifier) {
+		uint16_t i = 1;
+		for (auto cur = script->refList.Begin(); !cur.End(); cur.Next()) {
+			if (!_stricmp(cur.Get()->name.CStr(), identifier.c_str())) {
 				return i;
 			}
+
+			i++;
 		}
 
 		TESForm* form;
@@ -101,11 +83,13 @@ public:
 				return 0;
 			}
 
-			objectRefs.emplace_back(SCRO{
-				.identifier = identifier,
-				.refId = refr->refID
-			});
-			return static_cast<uint16_t>(objectRefs.size());
+			auto ref = New<Script::RefVariable>();
+			ref->name = String();
+			ref->name.Set(identifier.c_str());
+			ref->form = refr;
+			script->refList.Append(ref);
+
+			return static_cast<uint16_t>(script->refList.Count());
 		}
 
 		return 0;
@@ -153,7 +137,7 @@ public:
 	}
 
 	// For initializing SLSD/SCVR/SCRV/SCRO with existing script data?
-	std::vector<uint8_t> compile(NVSEScript& script);
+	bool compile(Script* scriptForm, NVSEScript& ast);
 
 	void visitNVSEScript(const NVSEScript* script) override;
 
