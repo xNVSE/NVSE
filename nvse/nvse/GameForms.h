@@ -283,7 +283,11 @@ public:
 #endif
 	virtual bool		Unk_3D(void);
 	virtual bool		Unk_3E(void);
-	virtual bool		Unk_3F(void) const;	// returnTrue for refr whose baseForm is a TESActorBase
+#if RUNTIME
+	virtual bool		Unk_3F(void const);	// Runtime: returnTrue for refr whose baseForm is a TESActorBase. Returns bool(?).
+#else  // Editor: returns EditorID string. Credits to lStewieAl for the name.
+	virtual const char* GetEditorID_InEditor(void) const;
+#endif
 	virtual bool		IsActor(void);
 	virtual UInt32		Unk_41(void);
 	virtual void		CopyFrom(const TESForm * form);

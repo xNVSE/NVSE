@@ -15,9 +15,11 @@ static const _GetActorValueInfo GetActorValueInfo = (_GetActorValueInfo)0x00066E
 BGSDefaultObjectManager **g_defaultObjectManager = (BGSDefaultObjectManager **)0x011CA80C;
 #endif
 
-#if RUNTIME
 const char* TESForm::GetEditorID() const
 {
+#if EDITOR
+	return GetEditorID_InEditor();
+#else
 	if (refID == 0x7)
 		return "Player";
 	if (refID == 0x14)
@@ -41,8 +43,8 @@ const char* TESForm::GetEditorID() const
 	if (refID == 0x1F6)
 		return "GasTrapDummy";
 	return GetName();
-}
 #endif
+}
 
 TESForm *TESForm::TryGetREFRParent(void)
 {
