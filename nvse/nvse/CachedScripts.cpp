@@ -37,7 +37,7 @@ Script* CompileAndCacheScript(std::filesystem::path fullPath, bool useLocks, con
 	if (!script)
 		return nullptr;
 
-	script->SetEditorID(udfName.c_str());
+	script->SetEditorID_AtRuntime(udfName.c_str());
 
 	// Cache result
 	{

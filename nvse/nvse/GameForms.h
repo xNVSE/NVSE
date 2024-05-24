@@ -236,7 +236,7 @@ public:
 	virtual void		LoadGame(void * arg);				// load from BGSLoadFormBuffer arg
 	virtual void		LoadGame2(UInt32 changedFlags);		// load from TESSaveLoadGame
 	virtual void		Unk_19(void * arg);
-	virtual void		Unk_1A(void * arg0, void * arg1);
+	virtual void		Unk_1A();	// Might have 2 args at runtime, but has 0 args in editor.
 	virtual void		Unk_1B(void * arg0, void * arg1);
 	virtual void		Revert(UInt32 changedFlags);		// reset changes in form
 	virtual void		Unk_1D(void * arg);
@@ -252,8 +252,8 @@ public:
 	virtual bool		Unk_26(void);		// 00000040
 	virtual bool		Unk_27(void);		// 00010000
 	virtual bool		Unk_28(void);		// 00010000
-	virtual bool		Unk_29(void);		// 00020000
-	virtual bool		Unk_2A(void);		// 00020000
+	virtual bool		Unk_29(bool set);		// 00020000
+	virtual bool		Unk_2A(bool set);		// 00020000
 	virtual bool		Unk_2B(void);		// 00080000
 	virtual bool		Unk_2C(void);		// 02000000
 	virtual bool		Unk_2D(void);		// 40000000
@@ -297,7 +297,9 @@ public:
 	virtual void		SetRefID(UInt32 refID, bool generateID);
 	virtual char *		GetName2(void);	// GetName as in OBSE ?
 	virtual char *		GetName(void) const;	// GetEditorID as in OBSE ?
-	virtual bool		SetEditorID(const char * edid);		// simply returns true at run-time
+	// simply returns true at run-time, unless JohnnyGuitar NVSE is installed.
+	// It's not SetEditorID in the editor, since it uses a different function for that.
+	virtual bool		SetEditorID_AtRuntime(const char * edid);		
 	// 4E
 
 	const char* GetEditorID() const;
@@ -354,6 +356,8 @@ public:
 
 	// Credits to Jazzisparis
 	UInt8 GetOverridingModIdx() const;
+
+	bool SetEditorID(const char* newID);
 
 	MEMBER_FN_PREFIX(TESForm);
 #if RUNTIME

@@ -475,17 +475,22 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptPrecompile,
 			&msg, sizeof(ScriptAndScriptBuffer), NULL);
 
-		if (buf->errorCode == 1) [[unlikely]] // if plugin reports an error in compiling the script.
+		if (buf->errorCode >= 1) [[unlikely]] // if plugin reports an error in compiling the script.
 			return PrecompileResult::kPrecompile_Failure;
 	}
 
 	if (script->info.compiled) // if plugin compiled the script for us
 	{
-		// Copying some code from Script::FinalizeCompilation (0x5AAF20)
+		// Copying some code from Script::FinalizeCompilation (runtime: 0x5AAF20, editor: 0x5C5100)
 		// We can't assume ScriptBuffer has extracted anything, since compilation was done via plugin instead.
+#if RUNTIME
 		script->InitItem();
 		script->MarkForDeletion(false);
 		script->SetAltered(true);
+#else
+		script->Unk_29(false);
+		script->Unk_2A(true);
+#endif
 
 		return PrecompileResult::kPrecompile_SpecialCompile;
 	}
