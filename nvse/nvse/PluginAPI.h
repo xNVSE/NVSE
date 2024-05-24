@@ -261,7 +261,6 @@ struct NVSEMessagingInterface
 								// RUNTIME: also gets called after successful script compilation at runtime via functions.
 		kMessage_EventListDestroyed, // called before a script event list is destroyed, dataLen: 4, data: ScriptEventList* ptr
 		kMessage_PostQueryPlugins, // called after all plugins have been queried
-		kMessage_PreScriptCompile // works in editor and runtime, allows hijacking the script compilation process by setting script->info.compiled to true.
 	};
 
 	UInt32	version;

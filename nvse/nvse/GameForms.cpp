@@ -439,6 +439,15 @@ UInt8 TESForm::GetOverridingModIdx() const
 	return info ? info->modIndex : 0xFF;
 }
 
+bool TESForm::SetEditorID(const char* newID)
+{
+#if RUNTIME
+	return SetEditorID_AtRuntime(newID);
+#else
+	return ThisStdCall<bool>(0x4FB450, this, newID);
+#endif
+}
+
 const char *TESPackage::TargetData::StringForTargetCode(UInt8 targetCode)
 {
 	switch (targetCode)
