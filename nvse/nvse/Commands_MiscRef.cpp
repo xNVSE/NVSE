@@ -1973,7 +1973,7 @@ bool Cmd_SetEditorID_Execute(COMMAND_ARGS)
 	char editorId[0x200];
 	if (!ExtractArgs(EXTRACT_ARGS, &form, &editorId))
 		return true;
-	form->SetEditorID(editorId);
+	form->SetEditorID_AtRuntime(editorId);
 	*result = 1;
 	return true;
 }
@@ -1994,7 +1994,7 @@ bool Cmd_CreateFormList_Execute(COMMAND_ARGS)
 		if (numArgs >= 1)
 		{
 			if (auto const edID = eval.Arg(0)->GetString())
-				formList->SetEditorID(edID);
+				formList->SetEditorID_AtRuntime(edID);
 
 			if (numArgs >= 2)
 			{
