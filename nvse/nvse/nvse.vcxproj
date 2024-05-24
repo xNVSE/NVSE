@@ -555,8 +555,8 @@ xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</C
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="GameForms.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="GameObjects.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>

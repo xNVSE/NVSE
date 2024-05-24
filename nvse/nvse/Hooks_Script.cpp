@@ -432,6 +432,7 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 		script->Unk_29(false);
 		script->Unk_2A(true);
 #endif
+		script->SetEditorID("Test");
 
 		return PrecompileResult::kPrecompile_SpecialCompile;
 	}

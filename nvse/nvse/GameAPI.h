@@ -56,7 +56,6 @@ bool IsConsoleMode();
 
 bool GetConsoleEcho();
 void SetConsoleEcho(bool doEcho);
-const char *GetFullName(TESForm *baseForm);
 const char *GetActorValueString(UInt32 actorValue); // should work now
 UInt32 GetActorValueForString(const char *strActorVal);
 

@@ -346,10 +346,13 @@ public:
 	bool IsWeapon() { return typeID == kFormType_TESObjectWEAP; }
 	bool IsArmor() { return typeID == kFormType_TESObjectARMO; }
 
+#if RUNTIME
 	// adds a new form to the game (from CloneForm or LoadForm)
 	void DoAddForm(TESForm* newForm, bool bPersist = true, bool record = true) const;
 	// return a new base form which is the clone of this form
 	TESForm* CloneForm(bool bPersist = true) const;
+#endif
+
 	bool     IsInventoryObject() const;
 
 	bool FormMatches(TESForm* toMatch) const;
@@ -365,6 +368,8 @@ public:
 #endif
 
 };
+
+const char* GetFullName(TESForm* baseForm);
 
 class TESObject : public TESForm
 {
@@ -5130,7 +5135,9 @@ public:
 	BGSDefaultObjectManager();
 	~BGSDefaultObjectManager();
 
+#if RUNTIME
 	static BGSDefaultObjectManager* GetSingleton();
+#endif
 
 	enum {
 		kDefaultObject_Max = 34,
