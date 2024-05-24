@@ -2,10 +2,15 @@
 
 class NVSETreePrinter : public NVSEVisitor {
 	int curTab = 0;
-
 	void printTabs();
+	std::function<void(std::string)> printFn;
 
 public:
+	NVSETreePrinter(std::function<void(std::string)> printFn) : printFn(std::move(printFn)) {}
+
+	void visitNVSEScript(const NVSEScript* script) override;
+
+	void visitBeginStatement(const BeginStmt* stmt) override;
 	void visitFnDeclStmt(const FnDeclStmt* stmt) override;
 	void visitVarDeclStmt(const VarDeclStmt* stmt) override;
 

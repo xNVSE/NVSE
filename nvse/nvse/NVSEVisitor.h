@@ -1,5 +1,8 @@
 #pragma once
 
+struct NVSEScript;
+
+struct BeginStmt;
 struct FnDeclStmt;
 struct VarDeclStmt;
 
@@ -27,6 +30,9 @@ struct LambdaExpr;
 
 class NVSEVisitor {
 public:
+	virtual void visitNVSEScript(const NVSEScript* script) = 0;
+
+	virtual void visitBeginStatement(const BeginStmt* stmt) = 0;
 	virtual void visitFnDeclStmt(const FnDeclStmt* stmt) = 0;
 	virtual void visitVarDeclStmt(const VarDeclStmt* stmt) = 0;
 

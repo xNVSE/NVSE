@@ -14,10 +14,13 @@ class Script;
 constexpr auto MAX_LOCALS = (UINT16_MAX - 1);
 
 class NVSECompiler : NVSEVisitor {
+public:
 	struct SCRO {
 		std::string identifier;
 		uint32_t refId;
 	};
+
+	std::string scriptName{};
 
 	// Used to hold result of visits
 	// Like if one visit invokes a child visit and needs data from it, such as compiled size
@@ -41,6 +44,7 @@ class NVSECompiler : NVSEVisitor {
 		}
 
 		locals.emplace_back(identifier);
+		localTypes.emplace_back(type);
 		if (locals.size() > MAX_LOCALS) {
 			throw std::runtime_error("Maximum number of locals defined.");
 		}
@@ -91,6 +95,10 @@ class NVSECompiler : NVSEVisitor {
 			// only persistent refs can be used in scripts
 			if (refr && !refr->IsPersistent()) {
 				throw std::runtime_error(std::format("Object reference '{}' must be persistent.", identifier));
+			}
+
+			if (!refr) {
+				return 0;
 			}
 
 			objectRefs.emplace_back(SCRO{
@@ -144,12 +152,12 @@ class NVSECompiler : NVSEVisitor {
 		data[index + 3] = byte >> 24 & 0xFF;
 	}
 
-public:
 	// For initializing SLSD/SCVR/SCRV/SCRO with existing script data?
-	Script compile(Script* existingScript, std::vector<StmtPtr> statements);
-	Script compile(std::vector<StmtPtr> statements);
-	std::vector<uint8_t> compile(StmtPtr& stmt);
+	std::vector<uint8_t> compile(NVSEScript& script);
 
+	void visitNVSEScript(const NVSEScript* script) override;
+
+	void visitBeginStatement(const BeginStmt* stmt) override;
 	void visitFnDeclStmt(const FnDeclStmt* stmt) override;
 	void visitVarDeclStmt(const VarDeclStmt* stmt) override;
 

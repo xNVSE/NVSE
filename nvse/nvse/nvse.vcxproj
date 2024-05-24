@@ -644,6 +644,10 @@ xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</C
     <ClCompile Include="NiNodes.cpp" />
     <ClCompile Include="NiTypes.cpp" />
     <ClCompile Include="nvse.cpp" />
+    <ClCompile Include="NVSECompiler.cpp" />
+    <ClCompile Include="NVSELexer.cpp" />
+    <ClCompile Include="NVSEParser.cpp" />
+    <ClCompile Include="NVSETreePrinter.cpp" />
     <ClCompile Include="OverloadsGlobal.cpp" />
     <ClCompile Include="PluginManager.cpp" />
     <ClCompile Include="printf.cpp" />
@@ -746,6 +750,12 @@ xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</C
     <ClInclude Include="NiNodes.h" />
     <ClInclude Include="NiPoint.h" />
     <ClInclude Include="NiTypes.h" />
+    <ClInclude Include="NVSECompiler.h" />
+    <ClInclude Include="NVSECompilerUtils.h" />
+    <ClInclude Include="NVSELexer.h" />
+    <ClInclude Include="NVSEParser.h" />
+    <ClInclude Include="NVSETreePrinter.h" />
+    <ClInclude Include="NVSEVisitor.h" />
     <ClInclude Include="nvse_version.h" />
     <ClInclude Include="ParamInfos.h" />
     <ClInclude Include="PluginAPI.h" />

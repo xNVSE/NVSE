@@ -12,8 +12,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "steam_loader", "steam_loade
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "loader_common", "loader_common\loader_common.vcxproj", "{40B84662-4790-4AEE-9AB8-D72DA8771EDC}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NVSE_Compiler", "NVSE_Compiler\NVSE_Compiler.vcxproj", "{F01D6539-906D-4F4B-9E12-CA9F6260AA14}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug CS|Win32 = Debug CS|Win32
@@ -66,16 +64,6 @@ Global
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Release_DBG|Win32.Build.0 = Release_DBG|Win32
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Release|Win32.ActiveCfg = Release|Win32
 		{40B84662-4790-4AEE-9AB8-D72DA8771EDC}.Release|Win32.Build.0 = Release|Win32
-		{F01D6539-906D-4F4B-9E12-CA9F6260AA14}.Debug CS|Win32.ActiveCfg = Debug|Win32
-		{F01D6539-906D-4F4B-9E12-CA9F6260AA14}.Debug CS|Win32.Build.0 = Debug|Win32
-		{F01D6539-906D-4F4B-9E12-CA9F6260AA14}.Debug|Win32.ActiveCfg = Debug|Win32
-		{F01D6539-906D-4F4B-9E12-CA9F6260AA14}.Debug|Win32.Build.0 = Debug|Win32
-		{F01D6539-906D-4F4B-9E12-CA9F6260AA14}.Release CS|Win32.ActiveCfg = Release|Win32
-		{F01D6539-906D-4F4B-9E12-CA9F6260AA14}.Release CS|Win32.Build.0 = Release|Win32
-		{F01D6539-906D-4F4B-9E12-CA9F6260AA14}.Release_DBG|Win32.ActiveCfg = Release|Win32
-		{F01D6539-906D-4F4B-9E12-CA9F6260AA14}.Release_DBG|Win32.Build.0 = Release|Win32
-		{F01D6539-906D-4F4B-9E12-CA9F6260AA14}.Release|Win32.ActiveCfg = Release|Win32
-		{F01D6539-906D-4F4B-9E12-CA9F6260AA14}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

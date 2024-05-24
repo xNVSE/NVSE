@@ -13,10 +13,34 @@ struct Stmt;
 using ExprPtr = std::unique_ptr<Expr>;
 using StmtPtr = std::unique_ptr<Stmt>;
 
+struct NVSEScript {
+    NVSEToken name;
+    std::vector<StmtPtr> globalVars;
+    std::vector<StmtPtr> blocks;
+
+    NVSEScript(NVSEToken name, std::vector<StmtPtr> globalVars, std::vector<StmtPtr> blocks) : name(name), globalVars(std::move(globalVars)), blocks(std::move(blocks)) {}
+
+    void accept(NVSEVisitor* visitor) {
+        visitor->visitNVSEScript(this);
+    }
+};
+
 struct Stmt {
     virtual ~Stmt() {}
 
     virtual void accept(NVSEVisitor* t) = 0;
+};
+
+struct BeginStmt : Stmt {
+    NVSEToken name;
+    std::optional<NVSEToken> param;
+    StmtPtr block;
+
+    BeginStmt(NVSEToken name, std::optional<NVSEToken> param, StmtPtr block) : name(name), param(param), block(std::move(block)) {}
+
+    void accept(NVSEVisitor* visitor) override {
+        visitor->visitBeginStatement(this);
+    }
 };
 
 struct FnDeclStmt : Stmt {
@@ -272,7 +296,8 @@ class NVSEParser {
 public:
     NVSEParser(NVSELexer& tokenizer);
 
-    StmtPtr parse();
+    std::optional<NVSEScript> parse();
+    StmtPtr begin();
 
 private:
     NVSELexer& lexer;
@@ -307,9 +332,9 @@ private:
     ExprPtr primary();
 
     void advance();
-    bool match(TokenType type);
-    bool peek(TokenType type);
+    bool match(NVSETokenType type);
+    bool peek(NVSETokenType type);
     void error(NVSEToken token, std::string message);
-    NVSEToken expect(TokenType type, std::string message);
+    NVSEToken expect(NVSETokenType type, std::string message);
     void synchronize();
 };

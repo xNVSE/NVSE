@@ -15,6 +15,10 @@
 
 #include "GameAPI.h"
 #include "GameData.h"
+#include "NVSECompiler.h"
+#include "NVSELexer.h"
+#include "NVSEParser.h"
+#include "NVSETreePrinter.h"
 #include "PluginManager.h"
 
 // a size of ~1KB should be enough for a single line of code
@@ -400,6 +404,8 @@ enum PrecompileResult : uint8_t
 	kPrecompile_Success,
 	kPrecompile_SpecialCompile // only occurs if a plugin overtakes the compilation process.
 };
+
+static bool compilerConsoleOpened = false;
 PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 {
 	// empty out the loop stack
@@ -412,12 +418,69 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 	buf->errorCode = 0;
 	script->info.compiled = false;
 
-	ScriptAndScriptBuffer msg{ script, buf };
-	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptPrecompile,
-		&msg, sizeof(ScriptAndScriptBuffer), NULL);
+	if (!compilerConsoleOpened) {
+		AllocConsole();
+		freopen("CONOUT$", "w", stdout);
+		compilerConsoleOpened = true;
+	}
 
-	if (buf->errorCode == 1) [[unlikely]] // if plugin reports an error in compiling the script.
+	// See if new compiler should override script compiler
+	// First token on first line should be 'name'
+	if (!strncmp(buf->scriptText, "name", 4)) {
+		system("CLS");
+
+		// Just convert script buffer to a string
+		auto program = std::string(buf->scriptText);
+
+		NVSELexer lexer(program);
+		NVSEParser parser(lexer);
+
+		printf("\n==== PARSER ====\n\n");
+		auto astOpt = parser.parse();
+		if (astOpt.has_value()) {
+			auto ast = std::move(astOpt.value());
+
+			printf("\n==== AST ====\n\n");
+
+			auto tp = NVSETreePrinter{[&] (std::string msg) -> void {
+				printf( "%s", msg.c_str());
+			}};
+			ast.accept(&tp);
+
+			printf("\n==== COMPILER ====\n\n");
+
+			NVSECompiler comp{};
+			auto bytes = comp.compile(ast);
+
+			buf->scriptName = String();
+			buf->scriptName.Set(comp.scriptName.c_str());
+
+			printf("\n");
+			for (int i = 0; i < bytes.size(); i++) {
+				printf("%.2X ", bytes[i]);
+			}
+
+			printf("\n");
+			printf("\nNum compiled bytes: %d\n", bytes.size());
+
+			printf("\n");
+			printf("[Script Locals]\n");
+			for (int i = 0; i < comp.locals.size(); i++) {
+				printf("[%d] %s : %s\n", i + 1, comp.locals[i].c_str(), VariableTypeToName(static_cast<Script::VariableType>(comp.localTypes[i])));
+			}
+		}
+
 		return PrecompileResult::kPrecompile_Failure;
+	}
+
+	else {
+		ScriptAndScriptBuffer msg{ script, buf };
+		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptPrecompile,
+			&msg, sizeof(ScriptAndScriptBuffer), NULL);
+
+		if (buf->errorCode == 1) [[unlikely]] // if plugin reports an error in compiling the script.
+			return PrecompileResult::kPrecompile_Failure;
+	}
 
 	if (script->info.compiled) // if plugin compiled the script for us
 	{
@@ -450,6 +513,13 @@ void PostScriptCompile()
 {
 	if (!g_currentScriptStack.empty()) // could be empty here at runtime if the ScriptBuffer or Script are nullptr.
 	{
+		// Debug print the compiled script
+		system("CLS");
+		auto scr = g_currentScriptStack.top();
+		for (int i = 0; i < scr->info.dataLength; i++) {
+			printf("%.2X ", scr->data[i]);
+		}
+
 		g_currentScriptStack.pop();
 
 		// Avoid clearing the variables map after parsing a lambda script that belongs to a parent script.
@@ -893,7 +963,7 @@ static __declspec(naked) void CompileScriptHook(void)
 		// else, need to clear the two args from the stack that were set up for the kBeginScriptCompileCallAddr call.
 		add		esp, 8
 		// return 1 if precompile result was kPrecompile_SpecialCompile
-		mov		al, byte [precompileResult]
+		mov		al, [precompileResult]
 		cmp		al, kPrecompile_SpecialCompile
 		jne		EndHook
 		// else, was equal

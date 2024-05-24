@@ -1,87 +1,111 @@
 #include "NVSECompiler.h"
+
+#include "NVSECompilerUtils.h"
 #include "NVSEParser.h"
 
-// Define tokens
-std::unordered_map<std::string, uint8_t> operatorMap {
-	{"=", 0},
-	{"||", 1},
-	{"&&", 2},
-	{":", 3},
-	{"==", 4},
-	{"!=", 5},
-	{">", 6},
-	{"<", 7},
-	{">=", 8},
-	{"<=", 9},
-	{"|", 10}, 
-	{"&", 11},
-	{"<<", 12},
-	{">>", 13},
-	{"+", 14},
-	{"-", 15},
-	{"*", 16},
-	{"/", 17},
-	{"%", 18},
-	{"^", 19}, 
-	{"-", 20},
-	{"!", 21},
-	{"(", 22},
-	{")", 23},
-	{"[", 24},
-	{"]", 25},
-	{"<-", 26},
-	{"$", 27}, 
-	{"+=", 28},
-	{"*=", 29},
-	{"/=", 30},
-	{"^=", 31},
-	{"-=", 32},
-	{"#", 33},
-	{"*", 34},
-	{"->", 35},
-	{"::", 36},
-	{"&", 37},
-	{"{", 38},
-	{"}", 39},
-	{".", 40},
-	{"|=", 41},
-	{"&=", 42},
-	{"%=", 43},
-};
-
-uint8_t getArgType(NVSEToken t) {
-	switch (t.type) {
-	case TokenType::DoubleType:
-		return 0;
-	case TokenType::IntType:
-		return 1;
-	case TokenType::RefType:
-		return 4;
-	case TokenType::ArrayType:
-		return 3;
-	case TokenType::StringType:
-		return 2;
-	}
-
-	return 0;
-}
-
-std::vector<uint8_t> NVSECompiler::compile(StmtPtr &stmt) {
-	stmt->accept(this);
+std::vector<uint8_t> NVSECompiler::compile(NVSEScript& script) {
+	script.accept(this);
 	return data;
 }
 
+void NVSECompiler::visitNVSEScript(const NVSEScript* script) {
+	try {
+		// Compile the script name
+		scriptName = script->name.lexeme;
+
+		// TODO: Typecheker
+		if (resolveObjectReference(scriptName)) {
+			printf("Error: Form name '%s' is already in use.\n", scriptName.c_str());
+			return;
+		}
+
+		add_u32(0x1D);
+
+		for (auto& global_var : script->globalVars) {
+			global_var->accept(this);
+		}
+
+		for (auto& block : script->blocks) {
+			block->accept(this);
+		}
+	} catch (std::runtime_error r) {
+		printf("%s\n", r.what());
+	}
+}
+
+void NVSECompiler::visitBeginStatement(const BeginStmt* stmt) {
+	// Get opcode
+	auto beginInfo = mpBeginInfo[stmt->name.lexeme];
+
+	// OP_BEGIN
+	add_u16(0x10);
+
+	auto beginPatch = add_u16(0x0);
+	auto beginStart = data.size();
+
+	add_u16(beginInfo.opcode);
+
+	auto blockPatch = add_u32(0x0);
+
+	// Add param shit here?
+	if (stmt->param.has_value()) {
+		auto param = stmt->param.value();
+
+		add_u16(0xFFFF);
+		auto varStart = data.size();
+		auto varPatch = add_u16(0x0);
+
+		if (beginInfo.argType == ArgType::Int) {
+			add_u8('L');
+			add_u32(static_cast<uint32_t>(std::get<double>(param.value)));
+		}
+		else if (beginInfo.argType == ArgType::Ref) {
+			// Try to resolve the global ref
+			auto ref = resolveObjectReference(param.lexeme);
+			if (ref) {
+				printf("Resolved ref %s: %08x\n", param.lexeme.c_str(), objectRefs[ref - 1].refId);
+				add_u8('R');
+				add_u16(ref);
+			} else {
+				printf("Unable to resolve ref '%s'\n", param.lexeme.c_str());
+			}
+		}
+
+		set_u16(varPatch, data.size() - varStart);
+	}
+
+	set_u16(beginPatch, data.size() - beginStart);
+	auto blockStart = data.size();
+	stmt->block->accept(this);
+
+	// OP_END
+	add_u32(0x11);
+
+	set_u32(blockPatch, data.size() - blockStart);
+}
+
 void NVSECompiler::visitFnDeclStmt(const FnDeclStmt* stmt) {}
+
 void NVSECompiler::visitVarDeclStmt(const VarDeclStmt* stmt) {
 	uint8_t varType = getArgType(stmt->type);
 	const auto token = stmt->name;
+
+	// TODO: Typecheker
+	if (resolveObjectReference(token.lexeme)) {
+		throw std::runtime_error(std::format("Error: Name '{}' is already in use (by form).", token.lexeme));
+	}
+
 	const auto idx = addLocal(token.lexeme, varType);
 
+	if (!stmt->value) {
+		return;
+	}
+
 	// OP_LET
-	add_u16(0x1539);						
+	add_u16(0x1539);
 
 	//  Placeholder [expr_len]
-	auto exprPatch = add_u16(0x0);  
+	auto exprPatch = add_u16(0x0);
 	auto exprStart = data.size();
 
 	// Num args
@@ -95,13 +119,13 @@ void NVSECompiler::visitVarDeclStmt(const VarDeclStmt* stmt) {
 	add_u8('V');
 	add_u8(varType);
 	add_u16(0); // SCRV
-	add_u16(idx);     // SCDA
+	add_u16(idx); // SCDA
 
 	// Build expression
-	stmt->value->accept(this);    
+	stmt->value->accept(this);
 
 	// OP_ASSIGN
-	add_u8(0);                             
+	add_u8(0);
 
 	// Patch lengths
 	set_u16(argPatch, data.size() - argStart);
@@ -132,6 +156,7 @@ void NVSECompiler::visitExprStmt(const ExprStmt* stmt) {
 }
 
 void NVSECompiler::visitForStmt(const ForStmt* stmt) {}
+
 void NVSECompiler::visitIfStmt(IfStmt* stmt) {
 	// OP_IF
 	add_u16(0x16);
@@ -202,9 +227,7 @@ void NVSECompiler::visitIfStmt(IfStmt* stmt) {
 	add_u16(0x0);
 }
 
-void NVSECompiler::visitReturnStmt(const ReturnStmt* stmt) {
-	
-}
+void NVSECompiler::visitReturnStmt(const ReturnStmt* stmt) {}
 
 void NVSECompiler::visitWhileStmt(const WhileStmt* stmt) {
 	// OP_WHILE
@@ -239,7 +262,7 @@ void NVSECompiler::visitWhileStmt(const WhileStmt* stmt) {
 	set_u32(jmpPatch, data.size());
 }
 
-uint32_t NVSECompiler::compileBlock(StmtPtr &stmt, bool incrementCurrent) {
+uint32_t NVSECompiler::compileBlock(StmtPtr& stmt, bool incrementCurrent) {
 	// Store old block size
 	auto temp = result;
 
@@ -256,7 +279,7 @@ uint32_t NVSECompiler::compileBlock(StmtPtr &stmt, bool incrementCurrent) {
 }
 
 void NVSECompiler::visitBlockStmt(const BlockStmt* stmt) {
-	for (auto &statement : stmt->statements) {
+	for (auto& statement : stmt->statements) {
 		statement->accept(this);
 	}
 
@@ -266,11 +289,13 @@ void NVSECompiler::visitBlockStmt(const BlockStmt* stmt) {
 void NVSECompiler::visitAssignmentExpr(const AssignmentExpr* expr) {}
 void NVSECompiler::visitTernaryExpr(const TernaryExpr* expr) {}
 void NVSECompiler::visitLogicalExpr(const LogicalExpr* expr) {}
+
 void NVSECompiler::visitBinaryExpr(const BinaryExpr* expr) {
 	expr->left->accept(this);
 	expr->right->accept(this);
 	add_u8(operatorMap[expr->op.lexeme]);
 }
+
 void NVSECompiler::visitUnaryExpr(const UnaryExpr* expr) {
 	expr->expr->accept(this);
 	add_u8(operatorMap[expr->op.lexeme]);
@@ -329,7 +354,29 @@ void NVSECompiler::visitStringExpr(const StringExpr* expr) {
 }
 
 void NVSECompiler::visitIdentExpr(const IdentExpr* expr) {
-	
+	auto name = expr->name.lexeme;
+
+	// Attempt to resolve as variable
+	if (hasLocal(name)) {
+		auto idx = addLocal(name, 0);
+
+		add_u8('V');
+		add_u8(localTypes[idx - 1]);
+		add_u16(0);
+		add_u16(idx);
+		return;
+	}
+
+	// Try to look up as function
+
+
+	// Try to look up as global
+	auto scrv = resolveObjectReference(name);
+	if (scrv) {
+		add_u8('R');
+		add_u16(scrv);
+		return;
+	}
 }
 
 void NVSECompiler::visitGroupingExpr(const GroupingExpr* expr) {

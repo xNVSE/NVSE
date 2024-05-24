@@ -25,6 +25,9 @@
     <Filter Include="unit tests">
       <UniqueIdentifier>{6fe89cb8-43d0-475d-828b-a97c69bc1e06}</UniqueIdentifier>
     </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{82a8a1e7-f024-4907-b12b-a99cba7535f3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Algohol\algMath.cpp">
@@ -254,6 +257,18 @@
       <Filter>internals</Filter>
     </ClCompile>
     <ClCompile Include="InventoryRef.cpp" />
+    <ClCompile Include="NVSECompiler.cpp">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="NVSELexer.cpp">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="NVSEParser.cpp">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="NVSETreePrinter.cpp">
+      <Filter>compiler</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
@@ -514,6 +529,24 @@
       <Filter>internals</Filter>
     </ClInclude>
     <ClInclude Include="InventoryRef.h" />
+    <ClInclude Include="NVSEVisitor.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="NVSECompiler.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="NVSELexer.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="NVSEParser.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="NVSETreePrinter.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="NVSECompilerUtils.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">

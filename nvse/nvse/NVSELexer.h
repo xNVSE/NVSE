@@ -6,7 +6,7 @@
 #include <variant>
 #include <vector>
 
-enum class TokenType {
+enum class NVSETokenType {
     // Keywords
     If, 
     Else,
@@ -14,6 +14,8 @@ enum class TokenType {
     Fn,
     Return,
     For,
+    Begin,
+    Name,
 
     // Types
     IntType,
@@ -66,6 +68,8 @@ static const char* TokenTypeStr[]{
     "Fn",
     "Return",
     "For",
+    "Begin",
+    "Name",
 
     // Types
     "IntType",
@@ -125,16 +129,16 @@ static const char* TokenTypeStr[]{
 };
 
 struct NVSEToken {
-    TokenType type;
+    NVSETokenType type;
     std::variant<std::monostate, double, std::string> value;
     size_t line = 1;
     size_t linePos = 0;
     std::string lexeme;
 
-    NVSEToken() : type(TokenType::End), lexeme(""), value(std::monostate{}) {}
-    NVSEToken(TokenType t, std::string lexeme) : type(t), lexeme(lexeme), value(std::monostate{}) {}
-    NVSEToken(TokenType t, std::string lexeme, double value) : type(t), lexeme(lexeme), value(value) {}
-    NVSEToken(TokenType t, std::string lexeme, std::string value) : type(t), lexeme(lexeme), value(value) {}
+    NVSEToken() : type(NVSETokenType::End), lexeme(""), value(std::monostate{}) {}
+    NVSEToken(NVSETokenType t, std::string lexeme) : type(t), lexeme(lexeme), value(std::monostate{}) {}
+    NVSEToken(NVSETokenType t, std::string lexeme, double value) : type(t), lexeme(lexeme), value(value) {}
+    NVSEToken(NVSETokenType t, std::string lexeme, std::string value) : type(t), lexeme(lexeme), value(value) {}
 };
 
 class NVSELexer {
@@ -151,7 +155,7 @@ public:
 
     NVSEToken getNextToken();
     bool match(char c);
-    NVSEToken makeToken(TokenType type, std::string lexeme);
-    NVSEToken makeToken(TokenType type, std::string lexeme, double value);
-    NVSEToken makeToken(TokenType type, std::string lexeme, std::string value);
+    NVSEToken makeToken(NVSETokenType type, std::string lexeme);
+    NVSEToken makeToken(NVSETokenType type, std::string lexeme, double value);
+    NVSEToken makeToken(NVSETokenType type, std::string lexeme, std::string value);
 };
