@@ -1,19 +1,17 @@
 #include "NVSECompiler.h"
-
 #include "Commands_MiscRef.h"
+#include "Commands_Scripting.h"
 #include "NVSECompilerUtils.h"
 #include "NVSEParser.h"
 
 bool NVSECompiler::compile(Script* script, NVSEScript& ast) {
 	this->script = script;
 
+	insideNvseExpr.push(false);
 	ast.accept(this);
 
-#if EDITOR
 	ThisStdCall(0x4FB450, script, scriptName.c_str());
-#else
-	script->SetEditorID(scriptName.c_str());
-#endif
+
 	script->info.compiled = true;
 	script->info.dataLength = data.size();
 	script->info.numRefs = script->refList.Count();
@@ -21,6 +19,28 @@ bool NVSECompiler::compile(Script* script, NVSEScript& ast) {
 	script->info.unusedVariableCount = script->info.varCount - usedVars.size();
 	script->data = static_cast<uint8_t*>(FormHeap_Allocate(data.size()));
 	memcpy(script->data, data.data(), data.size());
+
+	// Debug print local info
+	printf("[Locals]\n");
+	for (int i = 0; i < script->varList.Count(); i++) {
+		auto item = script->varList.GetNthItem(i);
+		printf("%d: %s %s\n", item->idx, item->name.CStr(), usedVars.contains(item->name.CStr()) ? "" : "(unused)");
+	}
+	printf("\n");
+
+	// Refs
+	printf("[Refs]\n");
+	printf("\n");
+
+	// Script data
+	printf("[Info]\n");
+	printf("Data: ");
+	for (int i = 0; i < script->info.dataLength; i++) {
+		printf("%.2X ", script->data[i]);
+	}
+	printf("\n");
+
+	printf("\nNum compiled bytes: %d\n", script->info.dataLength);
 
 	return true;
 }
@@ -31,10 +51,10 @@ void NVSECompiler::visitNVSEScript(const NVSEScript* script) {
 		scriptName = script->name.lexeme;
 
 		// TODO: Typecheker
-		if (resolveObjectReference(scriptName)) {
-			printf("Error: Form name '%s' is already in use.\n", scriptName.c_str());
-			return;
-		}
+		// if (resolveObjectReference(scriptName)) {
+		// 	printf("Error: Form name '%s' is already in use.\n", scriptName.c_str());
+		// 	return;
+		// }
 
 		add_u32(0x1D);
 
@@ -102,7 +122,52 @@ void NVSECompiler::visitBeginStatement(const BeginStmt* stmt) {
 	set_u32(blockPatch, data.size() - blockStart);
 }
 
-void NVSECompiler::visitFnDeclStmt(const FnDeclStmt* stmt) {}
+void NVSECompiler::visitFnDeclStmt(FnDeclStmt* stmt) {
+	// OP_BEGIN
+	add_u16(0x10);
+
+	// OP_MODE_LEN
+	auto opModeLenPatch = add_u16(0x0);
+	auto opModeStart = data.size();
+
+	// OP_MODE
+	add_u16(0x0D);
+
+	// SCRIPT_LEN
+	auto scriptLenPatch = add_u32(0x0);
+
+	// BYTECODE VER
+	add_u8(0x1);
+
+	// arg count
+	add_u8(stmt->args.size());
+
+	// add args
+	for (auto i = 0; i < stmt->args.size(); i++) {
+		auto& arg = stmt->args[i];
+		auto type = getArgType(arg->type);
+		auto localIdx = addLocal(arg->name.lexeme, type);
+
+		add_u16(localIdx);
+		add_u8(type);
+	}
+
+	// NUM_ARRAY_ARGS, always 0
+	add_u8(0x0);
+
+	auto scriptLenStart = data.size();
+
+	// Patch mode len
+	set_u16(opModeLenPatch, data.size() - opModeStart);
+
+	// Compile script
+	compileBlock(stmt->body, false);
+
+	// OP_END
+	add_u32(0x11);
+
+	set_u32(scriptLenPatch, data.size() - scriptLenStart);
+}
 
 void NVSECompiler::visitVarDeclStmt(const VarDeclStmt* stmt) {
 	uint8_t varType = getArgType(stmt->type);
@@ -152,25 +217,34 @@ void NVSECompiler::visitVarDeclStmt(const VarDeclStmt* stmt) {
 
 void NVSECompiler::visitExprStmt(const ExprStmt* stmt) {
 	// OP_EVAL
-	add_u16(0x153A);
-
-	// Placeholder OP_LEN
-	auto exprPatch = add_u16(0x0);
-	auto exprStart = data.size();
-
-	// Num args
-	add_u8(0x1);
-
-	// Placeholder [arg_len]
-	auto argStart = data.size();
-	auto argPatch = add_u16(0x0);
+	// add_u16(0x153A);
+	//
+	// // Placeholder OP_LEN
+	// auto exprPatch = add_u16(0x0);
+	// auto exprStart = data.size();
+	//
+	// // Num args
+	// add_u8(0x1);
+	//
+	// // Placeholder [arg_len]
+	// auto argStart = data.size();
+	// auto argPatch = add_u16(0x0);
 
 	// Build expression
-	stmt->expr->accept(this);
+	//stmt->expr->accept(this);
 
-	// Patch lengths
-	set_u16(argPatch, data.size() - argStart);
-	set_u16(exprPatch, data.size() - exprStart);
+	// // Patch lengths
+	// set_u16(argPatch, data.size() - argStart);
+	// set_u16(exprPatch, data.size() - exprStart);
+
+	// Only compile calls and assignments?
+	if (auto callStmt = dynamic_cast<CallExpr*>(stmt->expr.get())) {
+		callStmt->accept(this);
+	}
+
+	if (auto assignmentStmt = dynamic_cast<AssignmentExpr*>(stmt->expr.get())) {
+		assignmentStmt->accept(this);
+	}
 }
 
 void NVSECompiler::visitForStmt(const ForStmt* stmt) {}
@@ -211,7 +285,9 @@ void NVSECompiler::visitIfStmt(IfStmt* stmt) {
 		auto opEvalArgPatch = add_u16(0x0);
 
 		// Compile cond
+		insideNvseExpr.push(true);
 		stmt->cond->accept(this);
+		insideNvseExpr.push(false);
 
 		// Patch OP_EVAL lengths
 		set_u16(opEvalArgPatch, data.size() - opEvalArgStart);
@@ -304,9 +380,44 @@ void NVSECompiler::visitBlockStmt(const BlockStmt* stmt) {
 	result = stmt->statements.size();
 }
 
-void NVSECompiler::visitAssignmentExpr(const AssignmentExpr* expr) {}
+void NVSECompiler::visitAssignmentExpr(const AssignmentExpr* expr) {
+	const auto varInfo = script->varList.GetVariableByName(expr->name.lexeme.c_str());
+	if (!varInfo) {
+		throw std::runtime_error(std::format("Cannot assign to {}. Variable with name not found.", expr->name.lexeme));
+	}
+
+	// OP_LET
+	add_u16(0x1539);
+
+	//  Placeholder [expr_len]
+	auto exprPatch = add_u16(0x0);
+	auto exprStart = data.size();
+
+	// Num args
+	add_u8(0x1);
+
+	// Placeholder [param1_len]
+	auto argStart = data.size();
+	auto argPatch = add_u16(0x0);
+
+	// Add arg to stack
+	add_u8('V');
+	add_u8(varInfo->type);
+	add_u16(0); // SCRV
+	add_u16(varInfo->idx); // SCDA
+
+	// Build expression
+	expr->expr->accept(this);
+
+	// OP_ASSIGN
+	add_u8(0);
+
+	// Patch lengths
+	set_u16(argPatch, data.size() - argStart);
+	set_u16(exprPatch, data.size() - exprStart);
+}
+
 void NVSECompiler::visitTernaryExpr(const TernaryExpr* expr) {}
-void NVSECompiler::visitLogicalExpr(const LogicalExpr* expr) {}
 
 void NVSECompiler::visitBinaryExpr(const BinaryExpr* expr) {
 	expr->left->accept(this);
@@ -320,48 +431,155 @@ void NVSECompiler::visitUnaryExpr(const UnaryExpr* expr) {
 }
 
 void NVSECompiler::visitCallExpr(const CallExpr* expr) {
-	// Use stack reference if this is part of a dot expression:
-	// player.GetName();
-	// ______
-
 	auto stackRefExpr = dynamic_cast<GetExpr*>(expr->left.get());
-	auto callExpr = dynamic_cast<CallExpr*>(expr->left.get());
 	auto identExpr = dynamic_cast<IdentExpr*>(expr->left.get());
+
 	std::string name{};
 	if (stackRefExpr) {
 		name = stackRefExpr->token.lexeme;
-	} else if (callExpr) {
-		// TODO?
 	} else {
 		name = identExpr->name.lexeme;
 	}
 
 	// Try to get the script command by lexeme
 	auto cmd = g_scriptCommands.GetByName(name.c_str());
-	if (!cmd) {
+
+	// Handle lambda NON dot expressions
+	// myLambda(), not player.myLambda();
+	// bool inLambda = false;
+	// if (identExpr){
+	// 	if (auto var = script->varList.GetVariableByName(name.c_str())) {
+	// 		if (var->type == Script::eVarType_Ref) {
+	// 			inLambda = true;
+	//
+	// 			// Wrap in Call
+	// 			add_u8('X');
+	// 			add_u16(0x1545);
+	//
+	// 			// Call size
+	// 			auto callStart = data.size();
+	// 			auto callPatch = add_u16(0x0);
+	//
+	// 			// Add ref
+	// 			add_u8('R');
+	//
+	// 			// Args
+	// 			for (int i = 0; i < expr->args.size(); i++) {
+	// 				auto argStartInner = data.size();
+	// 				auto argPatchInner = add_u16(0x0);
+	// 				expr->args[i]->accept(this);
+	// 				set_u16(argPatchInner, data.size() - argStartInner);
+	// 			}
+	//
+	// 			set_u16(callPatch, data.size() - callStart);
+	// 		}
+	// 	}
+	// }
+
+	// Didn't resolve a ref var or command
+	if (!cmd /*&& !inLambda*/) {
 		throw std::runtime_error("Invalid function '" + identExpr->name.lexeme + "'.");
 	}
 
-	// TODO: Handle lambda
+	auto normalParse = cmd->parse == Cmd_Default_Parse;
+
+	// If call command
+	if (cmd->parse == kCommandInfo_Call.parse) {
+		if (insideNvseExpr.top()) {
+			add_u8('X');
+			add_u16(0x0); // SCRV
+		}
+
+		add_u16(0x1545);
+		auto callLengthStart = data.size();
+		auto callLengthPatch = add_u16(0x0);
+
+		// Compiled differently for some reason inside vs outside of calls
+		if (!insideNvseExpr.top()) {
+			callLengthStart = data.size();
+		}
+		insideNvseExpr.push(true);
+
+		// Bytecode ver
+		add_u8(1);
+
+		auto exprLengthStart = data.size();
+		auto exprLengthPatch = add_u16(0x0);
+
+		// Resolve identifier
+		expr->args[0]->accept(this);
+		set_u16(exprLengthPatch, data.size() - exprLengthStart);
+
+		// Add args
+		add_u8(expr->args.size() - 1);
+		for (int i = 1; i < expr->args.size(); i++) {
+			auto argStartInner = data.size();
+			auto argPatchInner = add_u16(0x0);
+			expr->args[i]->accept(this);
+			set_u16(argPatchInner, data.size() - argStartInner);
+		}
+
+		set_u16(callLengthPatch, data.size() - callLengthStart);
+
+		insideNvseExpr.pop();
+		return;
+	}
+
+	// See if we should wrap inside let
+	// Need to do this in the case of something like
+	// player.AddItem(Caps001, 10) to pass player on stack and use 'x'
+	// annoying but want to keep the way these were passed consistent, especially in case of
+	// Quest.target.AddItem()
+	size_t exprPatch = 0;
+	size_t exprStart = 0;
+	size_t argStart = 0;
+	size_t argPatch = 0;
+	if (normalParse && stackRefExpr) {
+		// OP_EVAL
+		add_u16(0x153A);
+
+		//  Placeholder [expr_len]
+		exprPatch = add_u16(0x0);
+		exprStart = data.size();
+
+		// Num args
+		add_u8(0x1);
+
+		// Placeholder [param1_len]
+		argStart = data.size();
+		argPatch = add_u16(0x0);
+
+		insideNvseExpr.push(true);
+	}
 
 	// Put this on the stack
-	if (stackRefExpr) {
-		stackRefExpr->left->accept(this);
-		add_u8('x');
-	} else if (callExpr) {
-		
-	} else {
-		add_u8('X');
+	if (insideNvseExpr.top()) {
+		if (stackRefExpr) {
+			stackRefExpr->left->accept(this);
+			add_u8('x');
+		}
+		else {
+			add_u8('X');
+		}
+		add_u16(0x0); // SCRV
 	}
-	add_u16(0x0); // SCRV
 	add_u16(cmd->opcode);
 
 	// Call size
 	auto callStart = data.size();
 	auto callPatch = add_u16(0x0);
 
+	// Compiled differently for some reason inside vs outside of calls
+	if (!insideNvseExpr.top()) {
+		callStart = data.size();
+	}
+
+	insideNvseExpr.push(true);
+
 	// Num args
-	if (cmd->parse == Cmd_Default_Parse) {
+	if (cmd->parse != Cmd_Expression_Parse) {
+		// Count bytes after call length for vanilla expression parser
+		//callStart = data.size();
 		add_u16(expr->args.size());
 	}
 	else {
@@ -370,7 +588,7 @@ void NVSECompiler::visitCallExpr(const CallExpr* expr) {
 
 	// Args
 	for (int i = 0; i < expr->args.size(); i++) {
-		if (cmd->parse == Cmd_Default_Parse) {
+		if (cmd->parse != Cmd_Expression_Parse) {
 			add_u16(0xFFFF);
 		}
 
@@ -381,6 +599,21 @@ void NVSECompiler::visitCallExpr(const CallExpr* expr) {
 	}
 
 	set_u16(callPatch, data.size() - callStart);
+
+	// Add '.' token if stack expr
+	if (stackRefExpr) {
+		add_u8(operatorMap["."]);
+	}
+
+	insideNvseExpr.pop();
+
+	// If we wrapped inside of let
+	if (normalParse && stackRefExpr) {
+		// Patch lengths
+		set_u16(argPatch, data.size() - argStart);
+		set_u16(exprPatch, data.size() - exprStart);
+		insideNvseExpr.pop();
+	}
 }
 
 void NVSECompiler::visitGetExpr(const GetExpr* expr) {

@@ -1,4 +1,5 @@
 #pragma once
+#include "ScriptTokens.h"
 
 enum class ArgType {
 	Double, Int, String, Array, Ref
@@ -92,7 +93,7 @@ static std::unordered_map<std::string, uint8_t> operatorMap{
 	{"&", 37},
 	{"{", 38},
 	{"}", 39},
-	{".", 40},
+	{".", kOpType_Dot},
 	{"|=", 41},
 	{"&=", 42},
 	{"%=", 43},

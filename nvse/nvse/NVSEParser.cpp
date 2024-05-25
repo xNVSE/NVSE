@@ -58,12 +58,12 @@ std::optional<NVSEScript> NVSEParser::parse() {
 				blocks.emplace_back(begin());
 				numBegin++;
 			}
-			else if (match(NVSETokenType::Begin)) {
+			else if (match(NVSETokenType::Fn)) {
 				if (numBegin > 0) {
 					error(currentToken, "Cannot have a 'fn' block in same script as a 'Begin' block.");
 				}
 
-				blocks.emplace_back(statement());
+				blocks.emplace_back(fnDecl());
 				numFn++;
 			}
 			else {
@@ -96,7 +96,7 @@ StmtPtr NVSEParser::begin() {
 
 	if (match(NVSETokenType::Colon)) {
 		if (beginInfo.arg == false) {
-			error(currentToken, "Can only specify mode for 'MenuMode' block type.");
+			error(currentToken, "Cannot specify argument for this block type.");
 		}
 
 		if (match(NVSETokenType::Colon)) {
@@ -134,6 +134,26 @@ StmtPtr NVSEParser::begin() {
 	}
 	return std::make_unique<BeginStmt>(ident, mode, blockStmt());
 }
+
+StmtPtr NVSEParser::fnDecl() {
+	expect(NVSETokenType::LeftParen, "Expected '(' after 'fn'.");
+
+	std::vector<std::unique_ptr<VarDeclStmt>> args{};
+	if (!match(NVSETokenType::RightParen)) {
+		do {
+			auto decl = varDecl();
+			if (decl->value != nullptr) {
+				error(previousToken, "Cannot specify default values.");
+			}
+			args.emplace_back(std::move(decl));
+		} while (match(NVSETokenType::Comma));
+
+		expect(NVSETokenType::RightParen, "Expected ')' after arguments.");
+	}
+
+	return std::make_unique<FnDeclStmt>(std::move(args), blockStmt());
+}
+
 
 StmtPtr NVSEParser::statement() {
 	if (peek(NVSETokenType::For)) {
@@ -301,7 +321,7 @@ ExprPtr NVSEParser::logicOr() {
 	while (match(NVSETokenType::LogicOr)) {
 		const auto op = previousToken;
 		ExprPtr right = logicAnd();
-		left = std::make_unique<LogicalExpr>(std::move(left), std::move(right), op);
+		left = std::make_unique<BinaryExpr>(std::move(left), std::move(right), op);
 	}
 
 	return left;
@@ -313,7 +333,7 @@ ExprPtr NVSEParser::logicAnd() {
 	while (match(NVSETokenType::LogicAnd)) {
 		const auto op = previousToken;
 		ExprPtr right = equality();
-		left = std::make_unique<LogicalExpr>(std::move(left), std::move(right), op);
+		left = std::make_unique<BinaryExpr>(std::move(left), std::move(right), op);
 	}
 
 	return left;
@@ -370,7 +390,7 @@ ExprPtr NVSEParser::factor() {
 }
 
 ExprPtr NVSEParser::unary() {
-	if (match(NVSETokenType::Bang) || match(NVSETokenType::Minus)) {
+	if (match(NVSETokenType::Bang) || match(NVSETokenType::Minus) || match(NVSETokenType::Dollar)) {
 		const auto op = previousToken;
 		ExprPtr right = unary();
 		return std::make_unique<UnaryExpr>(std::move(right), op);
@@ -469,7 +489,7 @@ ExprPtr NVSEParser::fnExpr() {
 		do {
 			auto decl = varDecl();
 			if (decl->value != nullptr) {
-				error(previousToken, "Lambdas cannot have default values specified.");
+				error(previousToken, "Cannot specify default values.");
 			}
 			args.emplace_back(std::move(decl));
 		} while (match(NVSETokenType::Comma));

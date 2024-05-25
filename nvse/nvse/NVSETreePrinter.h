@@ -11,7 +11,7 @@ public:
 	void visitNVSEScript(const NVSEScript* script) override;
 
 	void visitBeginStatement(const BeginStmt* stmt) override;
-	void visitFnDeclStmt(const FnDeclStmt* stmt) override;
+	void visitFnDeclStmt(FnDeclStmt* stmt) override;
 	void visitVarDeclStmt(const VarDeclStmt* stmt) override;
 
 	void visitExprStmt(const ExprStmt* stmt) override;
@@ -24,7 +24,6 @@ public:
 	// Inherited via NVSEVisitor
 	void visitAssignmentExpr(const AssignmentExpr* expr) override;
 	void visitTernaryExpr(const TernaryExpr* expr) override;
-	void visitLogicalExpr(const LogicalExpr* expr) override;
 	void visitBinaryExpr(const BinaryExpr* expr) override;
 	void visitUnaryExpr(const UnaryExpr* expr) override;
 	void visitCallExpr(const CallExpr* expr) override;

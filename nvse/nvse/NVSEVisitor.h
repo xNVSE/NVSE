@@ -15,7 +15,6 @@ struct BlockStmt;
 
 struct AssignmentExpr;
 struct TernaryExpr;
-struct LogicalExpr;
 struct BinaryExpr;
 struct UnaryExpr;
 struct CallExpr;
@@ -33,7 +32,7 @@ public:
 	virtual void visitNVSEScript(const NVSEScript* script) = 0;
 
 	virtual void visitBeginStatement(const BeginStmt* stmt) = 0;
-	virtual void visitFnDeclStmt(const FnDeclStmt* stmt) = 0;
+	virtual void visitFnDeclStmt(FnDeclStmt* stmt) = 0;
 	virtual void visitVarDeclStmt(const VarDeclStmt* stmt) = 0;
 
 	virtual void visitExprStmt(const ExprStmt* stmt) = 0;
@@ -45,7 +44,6 @@ public:
 
 	virtual void visitAssignmentExpr(const AssignmentExpr* expr) = 0;
 	virtual void visitTernaryExpr(const TernaryExpr* expr) = 0;
-	virtual void visitLogicalExpr(const LogicalExpr* expr) = 0;
 	virtual void visitBinaryExpr(const BinaryExpr* expr) = 0;
 	virtual void visitUnaryExpr(const UnaryExpr* expr) = 0;
 	virtual void visitCallExpr(const CallExpr* expr) = 0;

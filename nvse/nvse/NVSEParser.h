@@ -44,14 +44,10 @@ struct BeginStmt : Stmt {
 };
 
 struct FnDeclStmt : Stmt {
-    std::optional<NVSEToken> name{};
-    std::optional<NVSEToken> mode{};
-	std::vector<StmtPtr> args;
+    std::vector<std::unique_ptr<VarDeclStmt>> args;
     StmtPtr body;
 
-    FnDeclStmt(std::vector<StmtPtr> args, StmtPtr body) : args(std::move(args)), body(std::move(body)) {}
-    FnDeclStmt(NVSEToken name, std::vector<StmtPtr> args, StmtPtr body) : name(name), args(std::move(args)), body(std::move(body)) {}
-    FnDeclStmt(NVSEToken name, NVSEToken mode, std::vector<StmtPtr> args, StmtPtr body) : name(name), mode(mode), args(std::move(args)), body(std::move(body)) {}
+    FnDeclStmt(std::vector<std::unique_ptr<VarDeclStmt>> args, StmtPtr body) : args(std::move(args)), body(std::move(body)) {}
 
     void accept(NVSEVisitor *visitor) override {
         visitor->visitFnDeclStmt(this);
@@ -155,17 +151,6 @@ struct TernaryExpr : Expr {
 
     void accept(NVSEVisitor* t) {
         t->visitTernaryExpr(this);
-    }
-};
-
-struct LogicalExpr : Expr {
-    ExprPtr left, right;
-    NVSEToken op;
-
-    LogicalExpr(ExprPtr left, ExprPtr right, NVSEToken op) : left(std::move(left)), right(std::move(right)), op(op) {}
-
-    void accept(NVSEVisitor* t) {
-        t->visitLogicalExpr(this);
     }
 };
 

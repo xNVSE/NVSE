@@ -454,17 +454,6 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 
 			buf->scriptName = String();
 			buf->scriptName.Set(comp.scriptName.c_str());
-
-			printf("\n");
-			for (int i = 0; i < script->info.dataLength; i++) {
-				printf("%.2X ", script->data[i]);
-			}
-
-			printf("\n");
-			printf("\nNum compiled bytes: %d\n", script->info.dataLength);
-
-			printf("\n");
-			printf("[Script Locals]\n");
 		} else {
 			return PrecompileResult::kPrecompile_Failure;
 		}

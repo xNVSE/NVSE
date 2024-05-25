@@ -40,7 +40,7 @@ void NVSETreePrinter::visitBeginStatement(const BeginStmt* stmt) {
 	curTab--;
 }
 
-void NVSETreePrinter::visitFnDeclStmt(const FnDeclStmt* stmt) {
+void NVSETreePrinter::visitFnDeclStmt(FnDeclStmt* stmt) {
 	
 }
 
@@ -192,23 +192,6 @@ void NVSETreePrinter::visitTernaryExpr(const TernaryExpr* expr) {
 	expr->right->accept(this);
 	curTab--;
 
-	curTab--;
-}
-
-void NVSETreePrinter::visitLogicalExpr(const LogicalExpr* expr) {
-	printTabs();
-	printFn("logical: " + expr->op.lexeme + '\n');
-	curTab++;
-	printTabs();
-	printFn("lhs\n");
-	curTab++;
-	expr->left->accept(this);
-	curTab--;
-	printTabs();
-	printFn("rhs\n");
-	curTab++;
-	expr->right->accept(this);
-	curTab--;
 	curTab--;
 }
 

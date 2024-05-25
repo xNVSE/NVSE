@@ -1,6 +1,7 @@
 #pragma once
 #include <format>
 #include <set>
+#include <stack>
 #include <string>
 
 #include "NVSEParser.h"
@@ -18,7 +19,10 @@ class NVSECompiler : NVSEVisitor {
 public:
 	Script* script;
 
+	const char* originalScriptName;
 	std::string scriptName{};
+
+	std::stack<bool> insideNvseExpr{};
 
 	// Used to hold result of visits
 	// Like if one visit invokes a child visit and needs data from it, such as compiled size
@@ -53,15 +57,6 @@ public:
 	}
 
 	uint16_t resolveObjectReference(std::string identifier) {
-		uint16_t i = 1;
-		for (auto cur = script->refList.Begin(); !cur.End(); cur.Next()) {
-			if (!_stricmp(cur.Get()->name.CStr(), identifier.c_str())) {
-				return i;
-			}
-
-			i++;
-		}
-
 		TESForm* form;
 		if (_stricmp(identifier.c_str(), "player") == 0) {
 			// PlayerRef (this is how the vanilla compiler handles it so I'm changing it for consistency and to fix issues)
@@ -79,14 +74,20 @@ public:
 				throw std::runtime_error(std::format("Object reference '{}' must be persistent.", identifier));
 			}
 
-			if (!refr) {
-				return 0;
+			// See if form is already registered
+			uint16_t i = 1;
+			for (auto cur = script->refList.Begin(); !cur.End(); cur.Next()) {
+				if (cur->form == form) {
+					return i;
+				}
+
+				i++;
 			}
 
 			auto ref = New<Script::RefVariable>();
 			ref->name = String();
 			ref->name.Set(identifier.c_str());
-			ref->form = refr;
+			ref->form = form;
 			script->refList.Append(ref);
 
 			return static_cast<uint16_t>(script->refList.Count());
@@ -142,7 +143,7 @@ public:
 	void visitNVSEScript(const NVSEScript* script) override;
 
 	void visitBeginStatement(const BeginStmt* stmt) override;
-	void visitFnDeclStmt(const FnDeclStmt* stmt) override;
+	void visitFnDeclStmt(FnDeclStmt* stmt) override;
 	void visitVarDeclStmt(const VarDeclStmt* stmt) override;
 
 	void visitExprStmt(const ExprStmt* stmt) override;
@@ -156,7 +157,6 @@ public:
 	// Inherited via NVSEVisitor
 	void visitAssignmentExpr(const AssignmentExpr* expr) override;
 	void visitTernaryExpr(const TernaryExpr* expr) override;
-	void visitLogicalExpr(const LogicalExpr* expr) override;
 	void visitBinaryExpr(const BinaryExpr* expr) override;
 	void visitUnaryExpr(const UnaryExpr* expr) override;
 	void visitCallExpr(const CallExpr* expr) override;
