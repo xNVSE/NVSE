@@ -6,11 +6,12 @@
 
 bool NVSECompiler::compile(Script* script, NVSEScript& ast) {
 	this->script = script;
+	originalScriptName = script->GetEditorID();
 
 	insideNvseExpr.push(false);
 	ast.accept(this);
 
-	ThisStdCall(0x4FB450, script, scriptName.c_str());
+	script->SetEditorID(scriptName.c_str());
 
 	script->info.compiled = true;
 	script->info.dataLength = data.size();
@@ -46,27 +47,23 @@ bool NVSECompiler::compile(Script* script, NVSEScript& ast) {
 }
 
 void NVSECompiler::visitNVSEScript(const NVSEScript* script) {
-	try {
-		// Compile the script name
-		scriptName = script->name.lexeme;
+	// Compile the script name
+	scriptName = script->name.lexeme;
 
-		// TODO: Typecheker
-		// if (resolveObjectReference(scriptName)) {
-		// 	printf("Error: Form name '%s' is already in use.\n", scriptName.c_str());
-		// 	return;
-		// }
+	// Dont allow naming script the same as another form, unless that form is the script itself
+	auto comp = strcmp(scriptName.c_str(), originalScriptName);
+	if (resolveObjectReference(scriptName) && comp) {
+		throw std::runtime_error(std::format("Error: Form name '{}' is already in use.\n", scriptName.c_str()));
+	}
 
-		add_u32(0x1D);
+	add_u32(0x1D);
 
-		for (auto& global_var : script->globalVars) {
-			global_var->accept(this);
-		}
+	for (auto& global_var : script->globalVars) {
+		global_var->accept(this);
+	}
 
-		for (auto& block : script->blocks) {
-			block->accept(this);
-		}
-	} catch (std::runtime_error r) {
-		printf("%s\n", r.what());
+	for (auto& block : script->blocks) {
+		block->accept(this);
 	}
 }
 
@@ -105,7 +102,7 @@ void NVSECompiler::visitBeginStatement(const BeginStmt* stmt) {
 				add_u8('R');
 				add_u16(ref);
 			} else {
-				printf("Unable to resolve ref '%s'\n", param.lexeme.c_str());
+				throw std::runtime_error(std::format("Unable to resolve form '{}'.", param.lexeme));
 			}
 		}
 
@@ -175,7 +172,7 @@ void NVSECompiler::visitVarDeclStmt(const VarDeclStmt* stmt) {
 
 	// TODO: Typecheker
 	if (resolveObjectReference(token.lexeme)) {
-		throw std::runtime_error(std::format("Error: Name '{}' is already in use (by form).", token.lexeme));
+		throw std::runtime_error(std::format("Error: Name '{}' is already in use by form.", token.lexeme));
 	}
 
 	const auto idx = addLocal(token.lexeme, varType);
@@ -383,7 +380,7 @@ void NVSECompiler::visitBlockStmt(const BlockStmt* stmt) {
 void NVSECompiler::visitAssignmentExpr(const AssignmentExpr* expr) {
 	const auto varInfo = script->varList.GetVariableByName(expr->name.lexeme.c_str());
 	if (!varInfo) {
-		throw std::runtime_error(std::format("Cannot assign to {}. Variable with name not found.", expr->name.lexeme));
+		throw std::runtime_error(std::format("Cannot assign to '{}'. Variable with name not found.", expr->name.lexeme));
 	}
 
 	// OP_LET

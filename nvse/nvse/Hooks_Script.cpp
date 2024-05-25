@@ -450,7 +450,12 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 			printf("\n==== COMPILER ====\n\n");
 
 			NVSECompiler comp{};
-			comp.compile(script, ast);
+			try {
+				comp.compile(script, ast);
+			} catch (std::runtime_error er) {
+				printf("Script compilation failed: %s\n", er.what());
+				return PrecompileResult::kPrecompile_Failure;
+			}
 
 			buf->scriptName = String();
 			buf->scriptName.Set(comp.scriptName.c_str());
