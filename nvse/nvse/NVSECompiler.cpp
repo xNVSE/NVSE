@@ -304,38 +304,45 @@ void NVSECompiler::VisitVarDeclStmt(const VarDeclStmt* stmt) {
 }
 
 void NVSECompiler::VisitExprStmt(const ExprStmt* stmt) {
-	// OP_EVAL
-	// add_u16(0x153A);
-	//
-	// // Placeholder OP_LEN
-	// auto exprPatch = add_u16(0x0);
-	// auto exprStart = data.size();
-	//
-	// // Num args
-	// add_u8(0x1);
-	//
-	// // Placeholder [arg_len]
-	// auto argStart = data.size();
-	// auto argPatch = add_u16(0x0);
+	// These do not need to be wrapped in op_eval
+	if (stmt->expr->IsType<CallExpr>() || stmt->expr->IsType<AssignmentExpr>()) {
+		stmt->expr->Accept(this);
+	} else {
+		// OP_EVAL
+		AddU16(0x153A);
+		
+		// Placeholder OP_LEN
+		auto exprPatch = AddU16(0x0);
+		auto exprStart = data.size();
+	
+		// Num args
+		AddU8(0x1);
+	
+		// Placeholder [arg_len]
+		auto argStart = data.size();
+		auto argPatch = AddU16(0x0);
 
-	// Build expression
-	//stmt->expr->accept(this);
+		//Build expression
+	    stmt->expr->Accept(this);
 
-	// // Patch lengths
-	// set_u16(argPatch, data.size() - argStart);
-	// set_u16(exprPatch, data.size() - exprStart);
-
-	// Only compile calls and assignments?
-	if (auto callStmt = dynamic_cast<CallExpr*>(stmt->expr.get())) {
-		callStmt->Accept(this);
-	}
-
-	if (auto assignmentStmt = dynamic_cast<AssignmentExpr*>(stmt->expr.get())) {
-		assignmentStmt->Accept(this);
+		// Patch lengths
+		SetU16(argPatch, data.size() - argStart);
+		SetU16(exprPatch, data.size() - exprStart);
 	}
 }
 
-void NVSECompiler::VisitForStmt(const ForStmt* stmt) {}
+void NVSECompiler::VisitForStmt(const ForStmt* stmt) {
+	if (stmt->init) {
+		stmt->init->Accept(this);
+	}
+
+	// Convert for into while
+	if (stmt->post) {
+		stmt->block->statements.push_back(std::make_shared<ExprStmt>(stmt->post));
+	}
+	auto whilePtr = std::make_shared<WhileStmt>(stmt->cond, stmt->block);
+	whilePtr->Accept(this);
+}
 
 void NVSECompiler::VisitIfStmt(IfStmt* stmt) {
 	// OP_IF
@@ -392,7 +399,7 @@ void NVSECompiler::VisitIfStmt(IfStmt* stmt) {
 	// Build OP_ELSE
 	if (stmt->elseBlock) {
 		// OP_ELSE
-		AddU16(0x17);
+		AddU16(static_cast<uint16_t>(ScriptParsing::ScriptStatementCode::Else));
 
 		// OP_LEN
 		AddU16(0x02);

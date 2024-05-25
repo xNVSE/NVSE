@@ -152,6 +152,10 @@ StmtPtr NVSEParser::Statement() {
 		return BlockStatement();
 	}
 
+	if (Peek(NVSETokenType::For)) {
+		return ForStatement();
+	}
+
 	if (Peek(NVSETokenType::IntType) || Peek(NVSETokenType::DoubleType) || Peek(NVSETokenType::RefType) || Peek(NVSETokenType::ArrayType) || Peek(NVSETokenType::StringType)) {
 		auto expr = VarDecl();
 		Expect(NVSETokenType::Semicolon, "Expected ';' at end of statement.");
@@ -181,7 +185,32 @@ StmtPtr NVSEParser::ForStatement() {
 	Match(NVSETokenType::For);
 	Expect(NVSETokenType::LeftParen, "Expected '(' after 'for'.");
 
-	return nullptr;
+	// Optional expression
+	StmtPtr init = {nullptr};
+	if (!Peek(NVSETokenType::Semicolon)) {
+		init = Statement();
+		if (!init->IsType<VarDeclStmt>() && !init->IsType<AssignmentExpr>()) {
+			Error(currentToken, "Expected variable declaration or assignment.");
+		}
+
+		// Don't need to Expect() a semicolon here because Statement() does.
+	}
+
+	// Default to true condition
+	ExprPtr cond = std::make_shared<BoolExpr>(true);
+	if (!Peek(NVSETokenType::Semicolon)) {
+		cond = Expression();
+		Expect(NVSETokenType::Semicolon, "Expected ';' after loop condition.");
+	}
+
+	ExprPtr incr = {nullptr};
+	if (!Peek(NVSETokenType::RightParen)) {
+		incr = Expression();
+	}
+	Expect(NVSETokenType::RightParen, "Expected ')'.");
+
+	std::shared_ptr<BlockStmt> block = BlockStatement();
+	return std::make_shared<ForStmt>(std::move(init), std::move(cond), std::move(incr), std::move(block));
 }
 
 StmtPtr NVSEParser::IfStatement() {
@@ -217,7 +246,7 @@ StmtPtr NVSEParser::WhileStatement() {
 	return std::make_shared<WhileStmt>(std::move(cond), std::move(block));
 }
 
-StmtPtr NVSEParser::BlockStatement() {
+std::shared_ptr<BlockStmt> NVSEParser::BlockStatement() {
 	Expect(NVSETokenType::LeftBrace, "Expected '{'.");
 
 	std::vector<StmtPtr> statements{};

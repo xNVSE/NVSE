@@ -82,7 +82,16 @@ struct ExprStmt : Stmt {
 };
 
 struct ForStmt : Stmt {
-	// Todo
+	StmtPtr init;
+    ExprPtr cond;
+    ExprPtr post;
+    std::shared_ptr<BlockStmt> block;
+
+    ForStmt(StmtPtr init, ExprPtr cond, ExprPtr post, std::shared_ptr<BlockStmt> block) : init(std::move(init)), cond(std::move(cond)), post(std::move(post)), block(std::move(block)) {}
+
+    void Accept(NVSEVisitor* visitor) override {
+        visitor->VisitForStmt(this);
+    }
 };
 
 struct IfStmt : Stmt {
@@ -322,7 +331,7 @@ private:
     StmtPtr IfStatement();
     StmtPtr ReturnStatement();
     StmtPtr WhileStatement();
-    StmtPtr BlockStatement();
+    std::shared_ptr<BlockStmt> BlockStatement();
 
     ExprPtr Expression();
     ExprPtr Assignment();
