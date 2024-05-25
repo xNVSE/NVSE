@@ -419,15 +419,11 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 	buf->errorCode = 0;
 	script->info.compiled = false;
 
-	// if (!compilerConsoleOpened) {
-	// 	AllocConsole();
-	// 	freopen("CONOUT$", "w", stdout);
-	// 	compilerConsoleOpened = true;
-	// }
-
 	std::stringstream ss{};
 	std::function<void(std::string)> printFn = [&] (std::string msg) -> void {
+#ifndef RUNTIME
 		std::cout << msg << std::flush;
+#endif
 	};
 
 	// See if new compiler should override script compiler
@@ -516,13 +512,6 @@ void PostScriptCompile()
 {
 	if (!g_currentScriptStack.empty()) // could be empty here at runtime if the ScriptBuffer or Script are nullptr.
 	{
-		// Debug print the compiled script
-		system("CLS");
-		auto scr = g_currentScriptStack.top();
-		for (int i = 0; i < scr->info.dataLength; i++) {
-			printf("%.2X ", scr->data[i]);
-		}
-
 		g_currentScriptStack.pop();
 
 		// Avoid clearing the variables map after parsing a lambda script that belongs to a parent script.
