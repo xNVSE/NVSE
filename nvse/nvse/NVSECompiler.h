@@ -58,7 +58,7 @@ public:
 		return static_cast<uint16_t>(varInfo->idx);
 	}
 
-	uint16_t resolveObjectReference(std::string identifier) {
+	uint16_t resolveObjectReference(std::string identifier, bool add = false) {
 		TESForm* form;
 		if (_stricmp(identifier.c_str(), "player") == 0) {
 			// PlayerRef (this is how the vanilla compiler handles it so I'm changing it for consistency and to fix issues)
@@ -86,13 +86,16 @@ public:
 				i++;
 			}
 
-			auto ref = New<Script::RefVariable>();
-			ref->name = String();
-			ref->name.Set(identifier.c_str());
-			ref->form = form;
-			script->refList.Append(ref);
+			if (add) {
+				auto ref = New<Script::RefVariable>();
+				ref->name = String();
+				ref->name.Set(identifier.c_str());
+				ref->form = form;
+				script->refList.Append(ref);
+				return static_cast<uint16_t>(script->refList.Count());
+			}
 
-			return static_cast<uint16_t>(script->refList.Count());
+			return 1;
 		}
 
 		return 0;
@@ -142,7 +145,7 @@ public:
 	// For initializing SLSD/SCVR/SCRV/SCRO with existing script data?
 	bool compile(Script* script, NVSEScript& ast, std::function<void(std::string)> printFn);
 
-	void visitNVSEScript(const NVSEScript* script) override;
+	void visitNVSEScript(const NVSEScript* nvScript) override;
 
 	void visitBeginStatement(const BeginStmt* stmt) override;
 	void visitFnDeclStmt(FnDeclStmt* stmt) override;

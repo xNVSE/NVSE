@@ -436,6 +436,12 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 		// Just convert script buffer to a string
 		auto program = std::string(buf->scriptText);
 
+		// Replace tabs with 4 spaces
+		size_t it;
+		while ((it = program.find('\t')) != std::string::npos) {
+			program.replace(it, 1, "    ");
+		}
+
 		NVSELexer lexer(program);
 		NVSEParser parser(lexer, printFn);
 

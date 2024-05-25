@@ -231,10 +231,10 @@ struct BoolExpr : Expr {
 };
 
 struct NumberExpr : Expr {
-    float value;
+    double value;
     bool isFp;
 
-    NumberExpr(float value, bool isFp) : value(value), isFp(isFp) {}
+    NumberExpr(double value, bool isFp) : value(value), isFp(isFp) {}
 
     void accept(NVSEVisitor* t) {
         t->visitNumberExpr(this);

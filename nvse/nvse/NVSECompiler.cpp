@@ -54,23 +54,23 @@ bool NVSECompiler::compile(Script* script, NVSEScript& ast, std::function<void(s
 	return true;
 }
 
-void NVSECompiler::visitNVSEScript(const NVSEScript* script) {
+void NVSECompiler::visitNVSEScript(const NVSEScript* nvScript) {
 	// Compile the script name
-	scriptName = script->name.lexeme;
+	scriptName = nvScript->name.lexeme;
 
 	// Dont allow naming script the same as another form, unless that form is the script itself
 	auto comp = strcmp(scriptName.c_str(), originalScriptName);
-	if (resolveObjectReference(scriptName) && comp) {
+	if (resolveObjectReference(scriptName, false) && comp) {
 		throw std::runtime_error(std::format("Error: Form name '{}' is already in use.\n", scriptName.c_str()));
 	}
 
 	add_u32(0x1D);
 
-	for (auto& global_var : script->globalVars) {
+	for (auto& global_var : nvScript->globalVars) {
 		global_var->accept(this);
 	}
 
-	for (auto& block : script->blocks) {
+	for (auto& block : nvScript->blocks) {
 		block->accept(this);
 	}
 }
@@ -635,14 +635,13 @@ void NVSECompiler::visitBoolExpr(const BoolExpr* expr) {
 void NVSECompiler::visitNumberExpr(const NumberExpr* expr) {
 	if (expr->isFp) {
 		if (expr->value <= UINT8_MAX) {
-			float value = expr->value;
+			double value = expr->value;
 			uint8_t* bytes = reinterpret_cast<uint8_t*>(&value);
 
 			add_u8('Z');
-			add_u8(bytes[0]);
-			add_u8(bytes[1]);
-			add_u8(bytes[2]);
-			add_u8(bytes[3]);
+			for (int i = 0; i < 8; i++) {
+				add_u8(bytes[i]);
+			}
 		}
 	}
 	else {
