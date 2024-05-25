@@ -11,6 +11,7 @@
 #include <stack>
 #include <string>
 #include <fstream>
+#include <iostream>
 #include <set>
 
 #include "GameAPI.h"
@@ -426,14 +427,12 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 
 	std::stringstream ss{};
 	std::function<void(std::string)> printFn = [&] (std::string msg) -> void {
-		ss << msg;
+		std::cout << msg << std::flush;
 	};
 
 	// See if new compiler should override script compiler
 	// First token on first line should be 'name'
 	if (!strncmp(buf->scriptText, "name", 4)) {
-		// system("CLS");
-
 		// Just convert script buffer to a string
 		auto program = std::string(buf->scriptText);
 
@@ -453,26 +452,14 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 			NVSECompiler comp{};
 			try {
 				comp.compile(script, ast, printFn);
-				// Flush
-				g_ErrOut.Show(ss.str().c_str());
-
-				// Print out bytes to console for copy/paste
-				std::stringstream ss{};
-				for (auto &b : comp.data) {
-					ss << std::format("{:02x} ", b);
-				}
-				ShowCompilerError(buf, ss.str().c_str());
 			} catch (std::runtime_error &er) {
 				printFn(std::format("Script compilation failed: {}\n", er.what()));
-				// Flush
-				g_ErrOut.Show(ss.str().c_str());
 				return PrecompileResult::kPrecompile_Failure;
 			}
 
 			buf->scriptName = String();
 			buf->scriptName.Set(comp.scriptName.c_str());
 		} else {
-			g_ErrOut.Show(ss.str().c_str());
 			return PrecompileResult::kPrecompile_Failure;
 		}
 	}

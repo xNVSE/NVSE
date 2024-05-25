@@ -35,7 +35,7 @@ bool NVSECompiler::compile(Script* script, NVSEScript& ast, std::function<void(s
 	for (int i = 0; i < script->refList.Count(); i++) {
 		const auto ref = script->refList.GetNthItem(i);
 		if (ref->varIdx) {
-			printFn(std::format("{}: {} (Var {})\n", i, script->varList.GetNthItem(ref->varIdx)->name.CStr(), ref->varIdx));
+			printFn(std::format("{}: (Var {})\n", i, ref->varIdx));
 		} else {
 			printFn(std::format("{}: {}\n", i, ref->form->GetEditorID()));
 		}
@@ -486,7 +486,7 @@ void NVSECompiler::visitCallExpr(const CallExpr* expr) {
 		throw std::runtime_error("Invalid function '" + identExpr->name.lexeme + "'.");
 	}
 
-	auto normalParse = cmd->parse == Cmd_Default_Parse;
+	auto normalParse = cmd->parse != Cmd_Expression_Parse && cmd->parse != kCommandInfo_Call.parse;
 
 	// If call command
 	if (cmd->parse == kCommandInfo_Call.parse) {

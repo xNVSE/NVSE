@@ -121,7 +121,8 @@ StmtPtr NVSEParser::begin() {
 }
 
 StmtPtr NVSEParser::fnDecl() {
-	return std::make_unique<FnDeclStmt>(std::move(parseArgs()), blockStmt());
+	auto args = parseArgs();
+	return std::make_unique<FnDeclStmt>(std::move(args), blockStmt());
 }
 
 StmtPtr NVSEParser::statement() {
@@ -445,7 +446,8 @@ ExprPtr NVSEParser::primary() {
 
 // Only called when 'fn' token is matched
 ExprPtr NVSEParser::fnExpr() {
-	return std::make_unique<LambdaExpr>(std::move(parseArgs()), blockStmt());
+	auto args = parseArgs();
+	return std::make_unique<LambdaExpr>(std::move(args), blockStmt());
 }
 
 std::vector<std::unique_ptr<VarDeclStmt>> NVSEParser::parseArgs() {
