@@ -43,7 +43,6 @@ void NVSETreePrinter::visitBeginStatement(const BeginStmt* stmt) {
 }
 
 void NVSETreePrinter::visitFnDeclStmt(FnDeclStmt* stmt) {
-	
 }
 
 void NVSETreePrinter::visitVarDeclStmt(const VarDeclStmt* stmt) {
@@ -219,6 +218,26 @@ void NVSETreePrinter::visitUnaryExpr(const UnaryExpr* expr) {
 	printFn("unary: " + expr->op.lexeme + '\n');
 	curTab++;
 	expr->expr->accept(this);
+	curTab--;
+}
+
+void NVSETreePrinter::visitSubscriptExpr(SubscriptExpr* expr) {
+	printTabs();
+	printFn("subscript\n");
+
+	curTab++;
+	printTabs();
+	printFn("expr\n");
+	curTab++;
+	expr->left->accept(this);
+	curTab--;
+	
+	printTabs();
+	printFn("[]\n");
+	curTab++;
+	expr->index->accept(this);
+	curTab--;
+	
 	curTab--;
 }
 

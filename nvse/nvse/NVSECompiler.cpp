@@ -183,6 +183,33 @@ void NVSECompiler::visitVarDeclStmt(const VarDeclStmt* stmt) {
 		throw std::runtime_error(std::format("Error: Name '{}' is already in use by form.", token.lexeme));
 	}
 
+	// Compile lambdas differently
+	// Does not affect params as they cannot have value specified
+	if (stmt->value->isType<LambdaExpr>()) {
+		// To do a similar thing on access
+		lambdaVars.insert(stmt->name.lexeme);
+		
+		// <scriptName>__lambdaName
+		const auto name = scriptName + "__" + token.lexeme;
+
+		// Build a call expr
+		NVSEToken callToken{};
+		callToken.lexeme = "SetModLocalData";
+		auto ident = std::make_shared<IdentExpr>(callToken);
+		
+		NVSEToken nameToken{};
+		nameToken.value = name;
+		auto arg = std::make_shared<StringExpr>(nameToken);
+
+		std::vector<ExprPtr> args{};
+		args.emplace_back(arg);
+		args.emplace_back(stmt->value);
+		auto expr = std::make_shared<CallExpr>(ident, std::move(args));
+
+		expr->accept(this);
+		return;
+	}
+
 	const auto idx = addLocal(token.lexeme, varType);
 
 	if (!stmt->value) {
@@ -210,7 +237,9 @@ void NVSECompiler::visitVarDeclStmt(const VarDeclStmt* stmt) {
 	add_u16(idx); // SCDA
 
 	// Build expression
+	insideNvseExpr.push(true);
 	stmt->value->accept(this);
+	insideNvseExpr.pop();
 
 	// OP_ASSIGN
 	add_u8(0);
@@ -422,7 +451,9 @@ void NVSECompiler::visitAssignmentExpr(const AssignmentExpr* expr) {
 	set_u16(exprPatch, data.size() - exprStart);
 }
 
-void NVSECompiler::visitTernaryExpr(const TernaryExpr* expr) {}
+void NVSECompiler::visitTernaryExpr(const TernaryExpr* expr) {
+	
+}
 
 void NVSECompiler::visitBinaryExpr(const BinaryExpr* expr) {
 	expr->left->accept(this);
@@ -431,8 +462,35 @@ void NVSECompiler::visitBinaryExpr(const BinaryExpr* expr) {
 }
 
 void NVSECompiler::visitUnaryExpr(const UnaryExpr* expr) {
-	expr->expr->accept(this);
-	add_u8(operatorMap[expr->op.lexeme]);
+	if (expr->postfix) {
+		expr->expr->accept(this);
+		expr->expr->accept(this);
+		add_u8('B');
+		add_u8(1);
+		if (expr->op.type == NVSETokenType::PlusPlus) {
+			add_u8(operatorMap["+"]);
+		} else {
+			add_u8(operatorMap["-"]);
+		}
+		add_u8(operatorMap[":="]);
+		
+		add_u8('B');
+		add_u8(1);
+		if (expr->op.type == NVSETokenType::PlusPlus) {
+			add_u8(operatorMap["-"]);
+		} else {
+			add_u8(operatorMap["+"]);
+		}
+	} else {
+		expr->expr->accept(this);
+		add_u8(operatorMap[expr->op.lexeme]);
+	}
+}
+
+void NVSECompiler::visitSubscriptExpr(SubscriptExpr* expr) {
+	expr->left->accept(this);
+	expr->index->accept(this);
+	add_u8(operatorMap["["]);
 }
 
 void NVSECompiler::visitCallExpr(const CallExpr* expr) {
@@ -599,6 +657,7 @@ void NVSECompiler::visitCallExpr(const CallExpr* expr) {
 
 		auto argStartInner = data.size();
 		auto argPatchInner = add_u16(0x0);
+		
 		expr->args[i]->accept(this);
 		set_u16(argPatchInner, data.size() - argStartInner);
 	}
@@ -672,6 +731,28 @@ void NVSECompiler::visitStringExpr(const StringExpr* expr) {
 
 void NVSECompiler::visitIdentExpr(const IdentExpr* expr) {
 	auto name = expr->name.lexeme;
+
+	// If this is a lambda var, inline it as a call to GetModLocalData
+	if (lambdaVars.contains(name)) {
+		// <scriptName>__lambdaName
+		const auto lambdaName = scriptName + "__" + name;
+
+		// Build a call expr
+		NVSEToken callToken{};
+		callToken.lexeme = "GetModLocalData";
+		auto ident = std::make_shared<IdentExpr>(callToken);
+		
+		NVSEToken nameToken{};
+		nameToken.value = lambdaName;
+		auto arg = std::make_shared<StringExpr>(nameToken);
+
+		std::vector<ExprPtr> args{};
+		args.emplace_back(arg);
+		auto getMLDCall = std::make_shared<CallExpr>(ident, std::move(args));
+
+		getMLDCall->accept(this);
+		return;
+	}
 
 	// Attempt to resolve as variable
 	if (auto local = script->varList.GetVariableByName(name.c_str())) {
@@ -748,7 +829,9 @@ void NVSECompiler::visitLambdaExpr(LambdaExpr* expr) {
 		set_u16(opModeLenPatch, data.size() - opModeStart);
 
 		// Compile script
+		insideNvseExpr.push(false);
 		compileBlock(expr->body, false);
+		insideNvseExpr.pop();
 
 		set_u32(scriptLenPatch, data.size() - scriptLenStart);
 

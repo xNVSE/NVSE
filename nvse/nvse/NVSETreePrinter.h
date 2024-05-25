@@ -26,6 +26,7 @@ public:
 	void visitTernaryExpr(const TernaryExpr* expr) override;
 	void visitBinaryExpr(const BinaryExpr* expr) override;
 	void visitUnaryExpr(const UnaryExpr* expr) override;
+	void visitSubscriptExpr(SubscriptExpr* expr) override;
 	void visitCallExpr(const CallExpr* expr) override;
 	void visitGetExpr(const GetExpr* expr) override;
 	void visitSetExpr(const SetExpr* expr) override;

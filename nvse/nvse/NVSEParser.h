@@ -10,8 +10,8 @@
 struct Expr;
 struct Stmt;
 
-using ExprPtr = std::unique_ptr<Expr>;
-using StmtPtr = std::unique_ptr<Stmt>;
+using ExprPtr = std::shared_ptr<Expr>;
+using StmtPtr = std::shared_ptr<Stmt>;
 
 struct NVSEScript {
     NVSEToken name;
@@ -49,10 +49,10 @@ struct BeginStmt : Stmt {
 };
 
 struct FnDeclStmt : Stmt {
-    std::vector<std::unique_ptr<VarDeclStmt>> args;
+    std::vector<std::shared_ptr<VarDeclStmt>> args;
     StmtPtr body;
 
-    FnDeclStmt(std::vector<std::unique_ptr<VarDeclStmt>> args, StmtPtr body) : args(std::move(args)), body(std::move(body)) {}
+    FnDeclStmt(std::vector<std::shared_ptr<VarDeclStmt>> args, StmtPtr body) : args(std::move(args)), body(std::move(body)) {}
 
     void accept(NVSEVisitor *visitor) override {
         visitor->visitFnDeclStmt(this);
@@ -178,11 +178,23 @@ struct BinaryExpr : Expr {
 struct UnaryExpr : Expr {
     ExprPtr expr;
     NVSEToken op;
+    bool postfix;
 
-    UnaryExpr(ExprPtr expr, NVSEToken op) : expr(std::move(expr)), op(op) {}
+    UnaryExpr(ExprPtr expr, NVSEToken op, bool postfix) : expr(std::move(expr)), op(op), postfix(postfix) {}
 
     void accept(NVSEVisitor* t) {
         t->visitUnaryExpr(this);
+    }
+};
+
+struct SubscriptExpr : Expr {
+    ExprPtr left;
+    ExprPtr index;
+
+    SubscriptExpr(ExprPtr left, ExprPtr index) : left(std::move(left)), index(std::move(index)) {}
+
+    void accept(NVSEVisitor* visitor) override {
+        visitor->visitSubscriptExpr(this);
     }
 };
 
@@ -272,10 +284,10 @@ struct GroupingExpr : Expr {
 };
 
 struct LambdaExpr : Expr {
-    std::vector<std::unique_ptr<VarDeclStmt>> args;
+    std::vector<std::shared_ptr<VarDeclStmt>> args;
     StmtPtr body;
 
-    LambdaExpr(std::vector<std::unique_ptr<VarDeclStmt>> args, StmtPtr body) : args(std::move(args)), body(std::move(body)) {}
+    LambdaExpr(std::vector<std::shared_ptr<VarDeclStmt>> args, StmtPtr body) : args(std::move(args)), body(std::move(body)) {}
 
     void accept(NVSEVisitor* t) {
         t->visitLambdaExpr(this);
@@ -303,7 +315,7 @@ private:
     bool hadError = false;
 
     StmtPtr fnDecl();
-    std::unique_ptr<VarDeclStmt> varDecl();
+    std::shared_ptr<VarDeclStmt> varDecl();
 
     StmtPtr statement();
     StmtPtr exprStmt();
@@ -323,9 +335,10 @@ private:
     ExprPtr term();
     ExprPtr factor();
     ExprPtr unary();
+    ExprPtr postfix();
     ExprPtr call();
     ExprPtr fnExpr();
-    std::vector<std::unique_ptr<VarDeclStmt>> parseArgs();
+    std::vector<std::shared_ptr<VarDeclStmt>> parseArgs();
     ExprPtr primary();
 
     void advance();

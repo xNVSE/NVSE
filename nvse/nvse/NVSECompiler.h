@@ -32,7 +32,10 @@ public:
 
 	std::set<std::string> usedVars{};
 
-		// Look up a local variable, or create it if not already defined
+	// Keep track of lambda vars as these get inlined
+	std::set<std::string> lambdaVars{};
+
+	// Look up a local variable, or create it if not already defined
 	uint16_t addLocal(std::string identifier, uint8_t type) {
 		usedVars.insert(identifier);
 
@@ -164,6 +167,7 @@ public:
 	void visitTernaryExpr(const TernaryExpr* expr) override;
 	void visitBinaryExpr(const BinaryExpr* expr) override;
 	void visitUnaryExpr(const UnaryExpr* expr) override;
+	void visitSubscriptExpr(SubscriptExpr* expr) override;
 	void visitCallExpr(const CallExpr* expr) override;
 	void visitGetExpr(const GetExpr* expr) override;
 	void visitSetExpr(const SetExpr* expr) override;

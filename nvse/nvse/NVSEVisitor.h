@@ -17,6 +17,7 @@ struct AssignmentExpr;
 struct TernaryExpr;
 struct BinaryExpr;
 struct UnaryExpr;
+struct SubscriptExpr;
 struct CallExpr;
 struct GetExpr;
 struct SetExpr;
@@ -29,6 +30,7 @@ struct LambdaExpr;
 
 class NVSEVisitor {
 public:
+	virtual ~NVSEVisitor() = default;
 	virtual void visitNVSEScript(const NVSEScript* script) = 0;
 
 	virtual void visitBeginStatement(const BeginStmt* stmt) = 0;
@@ -46,6 +48,7 @@ public:
 	virtual void visitTernaryExpr(const TernaryExpr* expr) = 0;
 	virtual void visitBinaryExpr(const BinaryExpr* expr) = 0;
 	virtual void visitUnaryExpr(const UnaryExpr* expr) = 0;
+	virtual void visitSubscriptExpr(SubscriptExpr* expr) = 0;
 	virtual void visitCallExpr(const CallExpr* expr) = 0;
 	virtual void visitGetExpr(const GetExpr* expr) = 0;
 	virtual void visitSetExpr(const SetExpr* expr) = 0;
