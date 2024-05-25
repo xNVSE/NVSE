@@ -34,6 +34,7 @@ const bool kInventoryType[] =
 		1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0};
 
+
 #if RUNTIME
 TESForm *__stdcall LookupFormByID(UInt32 refID)
 {
@@ -807,24 +808,6 @@ bool GetConsoleEcho()
 void SetConsoleEcho(bool doEcho)
 {
 	*bEchoConsole = doEcho ? 1 : 0;
-}
-
-const char *GetFullName(TESForm *baseForm)
-{
-	if (baseForm)
-	{
-		TESFullName *fullName = baseForm->GetFullName();
-		if (fullName && fullName->name.m_data && fullName->name.m_dataLen)
-		{
-			return fullName->name.m_data;
-		}
-		else
-		{
-			return "<no name>";
-		}
-	}
-
-	return "<NULL>";
 }
 
 ConsoleManager *ConsoleManager::GetSingleton(void)

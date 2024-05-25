@@ -283,7 +283,11 @@ public:
 #endif
 	virtual bool		Unk_3D(void);
 	virtual bool		Unk_3E(void);
-	virtual bool		Unk_3F(void) const;	// returnTrue for refr whose baseForm is a TESActorBase
+#if RUNTIME
+	virtual bool		Unk_3F(void const);	// Runtime: returnTrue for refr whose baseForm is a TESActorBase. Returns bool(?).
+#else  // Editor: returns EditorID string. Credits to lStewieAl for the name.
+	virtual const char* GetEditorID_InEditor(void) const;
+#endif
 	virtual bool		IsActor(void);
 	virtual UInt32		Unk_41(void);
 	virtual void		CopyFrom(const TESForm * form);
@@ -346,10 +350,13 @@ public:
 	bool IsWeapon() { return typeID == kFormType_TESObjectWEAP; }
 	bool IsArmor() { return typeID == kFormType_TESObjectARMO; }
 
+#if RUNTIME
 	// adds a new form to the game (from CloneForm or LoadForm)
 	void DoAddForm(TESForm* newForm, bool bPersist = true, bool record = true) const;
 	// return a new base form which is the clone of this form
 	TESForm* CloneForm(bool bPersist = true) const;
+#endif
+
 	bool     IsInventoryObject() const;
 
 	bool FormMatches(TESForm* toMatch) const;
@@ -365,6 +372,8 @@ public:
 #endif
 
 };
+
+const char* GetFullName(TESForm* baseForm);
 
 class TESObject : public TESForm
 {
@@ -5130,7 +5139,9 @@ public:
 	BGSDefaultObjectManager();
 	~BGSDefaultObjectManager();
 
+#if RUNTIME
 	static BGSDefaultObjectManager* GetSingleton();
+#endif
 
 	enum {
 		kDefaultObject_Max = 34,

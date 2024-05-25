@@ -7,6 +7,7 @@
 #include "GameRTTI.h"
 #include "GameObjects.h"
 #include "GameData.h"
+#include "Utilities.h"
 
 #if RUNTIME
 static const ActorValueInfo **ActorValueInfoPointerArray = (const ActorValueInfo **)0x0011D61C8; // See GetActorValueInfo
@@ -14,9 +15,11 @@ static const _GetActorValueInfo GetActorValueInfo = (_GetActorValueInfo)0x00066E
 BGSDefaultObjectManager **g_defaultObjectManager = (BGSDefaultObjectManager **)0x011CA80C;
 #endif
 
-#if RUNTIME
 const char* TESForm::GetEditorID() const
 {
+#if EDITOR
+	return GetEditorID_InEditor();
+#else
 	if (refID == 0x7)
 		return "Player";
 	if (refID == 0x14)
@@ -40,8 +43,8 @@ const char* TESForm::GetEditorID() const
 	if (refID == 0x1F6)
 		return "GasTrapDummy";
 	return GetName();
-}
 #endif
+}
 
 TESForm *TESForm::TryGetREFRParent(void)
 {
@@ -60,6 +63,7 @@ UInt8 TESForm::GetModIndex() const
 	return (refID >> 24);
 }
 
+#if RUNTIME
 TESFullName *TESForm::GetFullName() const
 {
 	if (typeID == kFormType_TESObjectCELL) // some exterior cells inherit name of parent worldspace
@@ -123,10 +127,12 @@ TESForm *TESForm::CloneForm(bool persist) const
 	return result;
 }
 
+
 std::string TESForm::GetStringRepresentation() const
 {
 	return FormatString(R"([id: %X, edid: "%s", name: "%s"])", refID, GetName() ? GetName() : "", GetFullName() ? GetFullName()->name.CStr() : "<no name>");
 }
+#endif
 
 // static
 UInt32 TESBipedModelForm::MaskForSlot(UInt32 slot)
@@ -447,6 +453,26 @@ bool TESForm::SetEditorID(const char* newID)
 	return ThisStdCall<bool>(0x4FB450, this, newID);
 #endif
 }
+
+#if RUNTIME
+const char* GetFullName(TESForm* baseForm)
+{
+	if (baseForm)
+	{
+		TESFullName* fullName = baseForm->GetFullName();
+		if (fullName && fullName->name.m_data && fullName->name.m_dataLen)
+		{
+			return fullName->name.m_data;
+		}
+		else
+		{
+			return "<no name>";
+		}
+	}
+
+	return "<NULL>";
+}
+#endif
 
 const char *TESPackage::TargetData::StringForTargetCode(UInt8 targetCode)
 {
@@ -799,9 +825,10 @@ const char *TESPackage::LocationData::StringForLocationCode(UInt8 locCode)
 	return "";
 }
 
+#if RUNTIME
 const char *TESPackage::LocationData::StringForLocationCodeAndData(void)
 {
-#define resultSize 256
+	static const UInt32 resultSize = 256;
 	static char result[resultSize];
 	if (locationType < kPackLocation_Max)
 	{
@@ -831,7 +858,7 @@ const char *TESPackage::LocationData::StringForLocationCodeAndData(void)
 
 const char *TESPackage::TargetData::StringForTargetCodeAndData(void)
 {
-#define resultSize 256
+	static const UInt32 resultSize = 256;
 	static char result[resultSize];
 	if (targetType < kTargetType_Max)
 	{
@@ -862,6 +889,7 @@ const char *TESPackage::TargetData::StringForTargetCodeAndData(void)
 	}
 	return "";
 }
+#endif
 
 UInt8 TESPackage::LocationData::LocationCodeForString(const char *locStr)
 {
@@ -902,6 +930,7 @@ EffectItem *EffectItemList::ItemAt(UInt32 whichItem)
 	return list.GetNthItem(whichItem);
 }
 
+#if RUNTIME
 const char *EffectItemList::GetNthEIName(UInt32 whichEffect) const
 {
 	EffectItem *effItem = list.GetNthItem(whichEffect);
@@ -915,6 +944,7 @@ BGSDefaultObjectManager *BGSDefaultObjectManager::GetSingleton()
 {
 	return *g_defaultObjectManager;
 }
+#endif
 
 Script *EffectSetting::SetScript(Script *newScript)
 {
