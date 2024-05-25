@@ -2,261 +2,261 @@
 #include <iostream>
 #include "NVSEParser.h"
 
-void NVSETreePrinter::printTabs() {
+void NVSETreePrinter::PrintTabs() {
 	for (int i = 0; i < curTab; i++) {
 		printFn("  ");
 	}
 }
 
-void NVSETreePrinter::visitNVSEScript(const NVSEScript* script) {
+void NVSETreePrinter::VisitNVSEScript(const NVSEScript* script) {
 	printFn("\n==== AST ====\n\n");
 	
-	printTabs();
+	PrintTabs();
 	printFn(std::format("name: {}\n", script->name.lexeme));
-	printTabs();
+	PrintTabs();
 	if (!script->globalVars.empty()) {
 		printFn("globals\n");
 		curTab++;
 		for (auto& g : script->globalVars) {
-			g->accept(this);
+			g->Accept(this);
 		}
 		curTab--;
 	}
 	printFn("blocks\n");
 	curTab++;
 	for (auto &b : script->blocks) {
-		b->accept(this);
+		b->Accept(this);
 	}
 	curTab--;
 }
 
-void NVSETreePrinter::visitBeginStatement(const BeginStmt* stmt) {
-	printTabs();
+void NVSETreePrinter::VisitBeginStmt(const BeginStmt* stmt) {
+	PrintTabs();
 	printFn(std::format("begin {} {}\n", stmt->name.lexeme, stmt->param.has_value() ? stmt->param->lexeme : ""));
 	curTab++;
-	printTabs();
+	PrintTabs();
 	printFn("body\n");
 	curTab++;
-	stmt->block->accept(this);
+	stmt->block->Accept(this);
 	curTab--;
 	curTab--;
 }
 
-void NVSETreePrinter::visitFnDeclStmt(FnDeclStmt* stmt) {
+void NVSETreePrinter::VisitFnStmt(FnDeclStmt* stmt) {
 }
 
-void NVSETreePrinter::visitVarDeclStmt(const VarDeclStmt* stmt) {
-	printTabs();
+void NVSETreePrinter::VisitVarDeclStmt(const VarDeclStmt* stmt) {
+	PrintTabs();
 	printFn("vardecl\n");
 	curTab++;
-	printTabs();
+	PrintTabs();
 	printFn("name: " + stmt->name.lexeme + '\n');
-	printTabs();
+	PrintTabs();
 	printFn("type: " + stmt->type.lexeme + '\n');
 	if (stmt->value) {
-		printTabs();
+		PrintTabs();
 		printFn("value\n");
 		curTab++;
-		stmt->value->accept(this);
+		stmt->value->Accept(this);
 		curTab--;
 	}
 	curTab--;
 }
 
-void NVSETreePrinter::visitExprStmt(const ExprStmt* stmt) {
-	printTabs();
+void NVSETreePrinter::VisitExprStmt(const ExprStmt* stmt) {
+	PrintTabs();
 	printFn("exprstmt\n");
 	curTab++;
 	if (stmt->expr) {
-		stmt->expr->accept(this);
+		stmt->expr->Accept(this);
 	}
 	curTab--;
 }
-void NVSETreePrinter::visitForStmt(const ForStmt* stmt) {
-	printTabs();
+void NVSETreePrinter::VisitForStmt(const ForStmt* stmt) {
+	PrintTabs();
 	printFn("for\n");
 
 	curTab++;
 
-	printTabs();
+	PrintTabs();
 	printFn("cond\n");
 	curTab++;
 	curTab--;
 
 	curTab--;
 }
-void NVSETreePrinter::visitIfStmt(IfStmt* stmt) {
-	printTabs();
+void NVSETreePrinter::VisitIfStmt(IfStmt* stmt) {
+	PrintTabs();
 	printFn("if\n");
 
 	curTab++;
 
-	printTabs();
+	PrintTabs();
 	printFn("cond\n");
 	curTab++;
-	stmt->cond->accept(this);
+	stmt->cond->Accept(this);
 	curTab--;
 
-	printTabs();
+	PrintTabs();
 	printFn("block\n");
 	curTab++;
-	stmt->block->accept(this);
+	stmt->block->Accept(this);
 	curTab--;
 
 	if (stmt->elseBlock) {
-		printTabs();
+		PrintTabs();
 		printFn("else\n");
 		curTab++;
-		stmt->elseBlock->accept(this);
+		stmt->elseBlock->Accept(this);
 		curTab--;
 	}
 
 	curTab--;
 }
-void NVSETreePrinter::visitReturnStmt(const ReturnStmt* stmt) {
-	printTabs();
+void NVSETreePrinter::VisitReturnStmt(const ReturnStmt* stmt) {
+	PrintTabs();
 	printFn("return\n");
 
 	if (stmt->expr) {
 		curTab++;
-		printTabs();
+		PrintTabs();
 		printFn("cond\n");
 		curTab++;
-		stmt->expr->accept(this);
+		stmt->expr->Accept(this);
 		curTab--;
 		curTab--;
 	}
 }
-void NVSETreePrinter::visitWhileStmt(const WhileStmt* stmt) {
-	printTabs();
+void NVSETreePrinter::VisitWhileStmt(const WhileStmt* stmt) {
+	PrintTabs();
 	printFn("while\n");
 
 	curTab++;
 
-	printTabs();
+	PrintTabs();
 	printFn("cond\n");
 	curTab++;
-	stmt->cond->accept(this);
+	stmt->cond->Accept(this);
 	curTab--;
 
-	printTabs();
+	PrintTabs();
 	printFn("block\n");
 	curTab++;
-	stmt->block->accept(this);
+	stmt->block->Accept(this);
 	curTab--;
 
 	curTab--;
 }
 
-void NVSETreePrinter::visitBlockStmt(const BlockStmt* stmt) {
+void NVSETreePrinter::VisitBlockStmt(const BlockStmt* stmt) {
 	for (auto &stmt : stmt->statements) {
-		stmt->accept(this);
+		stmt->Accept(this);
 	}
 }
 
-void NVSETreePrinter::visitAssignmentExpr(const AssignmentExpr* expr) {
-	printTabs();
+void NVSETreePrinter::VisitAssignmentExpr(const AssignmentExpr* expr) {
+	PrintTabs();
 	printFn("assignment\n");
 	curTab++;
-	printTabs();
+	PrintTabs();
 	printFn("name: " + expr->name.lexeme + '\n');
-	printTabs();
+	PrintTabs();
 	printFn("rhs\n");
 	curTab++;
-	expr->expr->accept(this);
+	expr->expr->Accept(this);
 	curTab--;
 	curTab--;
 }
 
-void NVSETreePrinter::visitTernaryExpr(const TernaryExpr* expr) {
-	printTabs();
+void NVSETreePrinter::VisitTernaryExpr(const TernaryExpr* expr) {
+	PrintTabs();
 	printFn("ternary\n");
 	curTab++;
 
-	printTabs();
+	PrintTabs();
 	printFn("cond\n");
 	curTab++;
-	expr->cond->accept(this);
+	expr->cond->Accept(this);
 	curTab--;
 
 	if (expr->left) {
-		printTabs();
+		PrintTabs();
 		printFn("lhs\n");
 		curTab++;
-		expr->left->accept(this);
+		expr->left->Accept(this);
 		curTab--;
 	}
 
-	printTabs();
+	PrintTabs();
 	printFn("rhs\n");
 	curTab++;
-	expr->right->accept(this);
+	expr->right->Accept(this);
 	curTab--;
 
 	curTab--;
 }
 
-void NVSETreePrinter::visitBinaryExpr(const BinaryExpr* expr) {
-	printTabs();
+void NVSETreePrinter::VisitBinaryExpr(const BinaryExpr* expr) {
+	PrintTabs();
 	printFn("binary: " + expr->op.lexeme + '\n');
 	curTab++;
-	printTabs();
+	PrintTabs();
 	printFn("lhs\n");
 	curTab++;
-	expr->left->accept(this);
+	expr->left->Accept(this);
 	curTab--;
-	printTabs();
+	PrintTabs();
 	printFn("rhs\n");
 	curTab++;
-	expr->right->accept(this);
+	expr->right->Accept(this);
 	curTab--;
 	curTab--;
 }
 
-void NVSETreePrinter::visitUnaryExpr(const UnaryExpr* expr) {
-	printTabs();
+void NVSETreePrinter::VisitUnaryExpr(const UnaryExpr* expr) {
+	PrintTabs();
 	printFn("unary: " + expr->op.lexeme + '\n');
 	curTab++;
-	expr->expr->accept(this);
+	expr->expr->Accept(this);
 	curTab--;
 }
 
-void NVSETreePrinter::visitSubscriptExpr(SubscriptExpr* expr) {
-	printTabs();
+void NVSETreePrinter::VisitSubscriptExpr(SubscriptExpr* expr) {
+	PrintTabs();
 	printFn("subscript\n");
 
 	curTab++;
-	printTabs();
+	PrintTabs();
 	printFn("expr\n");
 	curTab++;
-	expr->left->accept(this);
+	expr->left->Accept(this);
 	curTab--;
 	
-	printTabs();
+	PrintTabs();
 	printFn("[]\n");
 	curTab++;
-	expr->index->accept(this);
+	expr->index->Accept(this);
 	curTab--;
 	
 	curTab--;
 }
 
-void NVSETreePrinter::visitCallExpr(const CallExpr* expr) {
-	printTabs();
+void NVSETreePrinter::VisitCallExpr(const CallExpr* expr) {
+	PrintTabs();
 	printFn("call\n");
 	curTab++;
 
-	printTabs();
+	PrintTabs();
 	printFn("expr\n");
 	curTab++;
-	expr->left->accept(this);
+	expr->left->Accept(this);
 	curTab--;
 	if (!expr->args.empty()) {
-		printTabs();
+		PrintTabs();
 		printFn("args\n");
 		curTab++;
 		for (const auto& exp : expr->args) {
-			exp->accept(this);
+			exp->Accept(this);
 		}
 		curTab--;
 	}
@@ -264,43 +264,43 @@ void NVSETreePrinter::visitCallExpr(const CallExpr* expr) {
 	curTab--;
 }
 
-void NVSETreePrinter::visitGetExpr(const GetExpr* expr) {
-	printTabs();
+void NVSETreePrinter::VisitGetExpr(const GetExpr* expr) {
+	PrintTabs();
 	printFn("get\n");
 	curTab++;
-	printTabs();
+	PrintTabs();
 	printFn("expr\n");
 	curTab++;
-	expr->left->accept(this);
+	expr->left->Accept(this);
 	curTab--;
-	printTabs();
+	PrintTabs();
 	printFn("token: " + expr->token.lexeme + '\n');
 	curTab--;
 }
 
-void NVSETreePrinter::visitSetExpr(const SetExpr* expr) {
-	printTabs();
+void NVSETreePrinter::VisitSetExpr(const SetExpr* expr) {
+	PrintTabs();
 	printFn("set\n");
 	curTab++;
-	printTabs();
+	PrintTabs();
 	printFn("lhs\n");
 	curTab++;
-	expr->left->accept(this);
+	expr->left->Accept(this);
 	curTab--;
-	printTabs();
+	PrintTabs();
 	printFn("token: " + expr->token.lexeme + '\n');
 	curTab--;
 	curTab++;
-	printTabs();
+	PrintTabs();
 	printFn("rhs\n");
 	curTab++;
-	expr->right->accept(this);
+	expr->right->Accept(this);
 	curTab--;
 	curTab--;
 }
 
-void NVSETreePrinter::visitBoolExpr(const BoolExpr* expr) {
-	printTabs();
+void NVSETreePrinter::VisitBoolExpr(const BoolExpr* expr) {
+	PrintTabs();
 	if (expr->value) {
 		printFn("boolean: true\n");
 	} else {
@@ -308,48 +308,48 @@ void NVSETreePrinter::visitBoolExpr(const BoolExpr* expr) {
 	}
 }
 
-void NVSETreePrinter::visitNumberExpr(const NumberExpr* expr) {
-	printTabs();
+void NVSETreePrinter::VisitNumberExpr(const NumberExpr* expr) {
+	PrintTabs();
 	printFn("number: " + std::to_string(expr->value) + '\n');
 }
 
-void NVSETreePrinter::visitStringExpr(const StringExpr* expr) {
-	printTabs();
+void NVSETreePrinter::VisitStringExpr(const StringExpr* expr) {
+	PrintTabs();
 	printFn("string: " + expr->value.lexeme + '\n');
 }
 
-void NVSETreePrinter::visitIdentExpr(const IdentExpr* expr) {
-	printTabs();
+void NVSETreePrinter::VisitIdentExpr(const IdentExpr* expr) {
+	PrintTabs();
 	printFn("ident: " + expr->name.lexeme + '\n');
 }
 
-void NVSETreePrinter::visitGroupingExpr(const GroupingExpr* expr) {
-	printTabs();
+void NVSETreePrinter::VisitGroupingExpr(const GroupingExpr* expr) {
+	PrintTabs();
 	printFn("grouping\n");
 	curTab++;
-	expr->expr->accept(this);
+	expr->expr->Accept(this);
 	curTab--;
 }
 
-void NVSETreePrinter::visitLambdaExpr(LambdaExpr* expr) {
-	printTabs();
+void NVSETreePrinter::VisitLambdaExpr(LambdaExpr* expr) {
+	PrintTabs();
 	printFn("lambda\n");
 	curTab++;
 
 	if (!expr->args.empty()) {
-		printTabs();
+		PrintTabs();
 		printFn("args\n");
 		curTab++;
 		for (auto &arg : expr->args) {
-			arg->accept(this);
+			arg->Accept(this);
 		}
 		curTab--;
 	}
 
-	printTabs();
+	PrintTabs();
 	printFn("body\n");
 	curTab++;
-	expr->body->accept(this);
+	expr->body->Accept(this);
 	curTab--;
 
 	curTab--;

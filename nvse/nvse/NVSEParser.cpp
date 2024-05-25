@@ -5,33 +5,33 @@
 #include <iostream>
 
 NVSEParser::NVSEParser(NVSELexer& tokenizer, std::function<void(std::string)> printFn) : lexer(tokenizer), printFn(printFn) {
-	advance();
+	Advance();
 }
 
-std::optional<NVSEScript> NVSEParser::parse() {
+std::optional<NVSEScript> NVSEParser::Parse() {
 	NVSEToken name;
 	std::vector<StmtPtr> globals;
 	std::vector<StmtPtr> blocks;
 
 	try {
-		expect(NVSETokenType::Name, "Expected 'name' as first statement of script.");
-		auto expr = primary();
+		Expect(NVSETokenType::Name, "Expected 'name' as first statement of script.");
+		auto expr = Primary();
 		if (!dynamic_cast<IdentExpr*>(expr.get())) {
-			error(previousToken, "Expected identifier.");
+			Error(previousToken, "Expected identifier.");
 		}
-		expect(NVSETokenType::Semicolon, "Expected ';'.");
+		Expect(NVSETokenType::Semicolon, "Expected ';'.");
 
 		name = dynamic_cast<IdentExpr*>(expr.get())->name;
 
 		while (currentToken.type != NVSETokenType::Eof) {
 			try {
-				if (peek(NVSETokenType::BlockType) || peek(NVSETokenType::Fn)) {
+				if (Peek(NVSETokenType::BlockType) || Peek(NVSETokenType::Fn)) {
 					break;
 				}
 
-				auto stmt = statement();
-				if (!stmt->isType<VarDeclStmt>()) {
-					error(previousToken, "Expected variable declaration.");
+				auto stmt = Statement();
+				if (!stmt->IsType<VarDeclStmt>()) {
+					Error(previousToken, "Expected variable declaration.");
 				}
 
 				globals.emplace_back(std::move(stmt));
@@ -40,24 +40,24 @@ std::optional<NVSEScript> NVSEParser::parse() {
 				printFn(e.what());
 				printFn("\n");
 				
-				synchronize();
+				Synchronize();
 			}
 		}
 
 		// Get event or udf block
-		if (peek(NVSETokenType::BlockType)) {
-			blocks.emplace_back(begin());
+		if (Peek(NVSETokenType::BlockType)) {
+			blocks.emplace_back(Begin());
 		}
-		else if (match(NVSETokenType::Fn)) {
-			blocks.emplace_back(fnDecl());
+		else if (Match(NVSETokenType::Fn)) {
+			blocks.emplace_back(FnDecl());
 		}
 		else {
-			error(currentToken, "Expected block type (GameMode, MenuMode, ...) or 'fn'.");
+			Error(currentToken, "Expected block type (GameMode, MenuMode, ...) or 'fn'.");
 		}
 
 		// Only allow one block for now
-		if (match(NVSETokenType::BlockType) || match(NVSETokenType::Fn)) {
-			error(currentToken, "Cannot have multiple blocks in one script.");
+		if (Match(NVSETokenType::BlockType) || Match(NVSETokenType::Fn)) {
+			Error(currentToken, "Cannot have multiple blocks in one script.");
 		}
 	}
 	catch (NVSEParseError e) {
@@ -72,186 +72,192 @@ std::optional<NVSEScript> NVSEParser::parse() {
 	return NVSEScript(name, std::move(globals), std::move(blocks));
 }
 
-StmtPtr NVSEParser::begin() {
-	match(NVSETokenType::BlockType);
+StmtPtr NVSEParser::Begin() {
+	Match(NVSETokenType::BlockType);
 	auto blockName = previousToken;
+	auto blockNameStr = blockName.lexeme;
 	
 	std::optional<NVSEToken> mode{};
-	auto [opcode, arg, argRequired, argType] = mpBeginInfo[blockName.lexeme];
+	CommandInfo *blockInfo = nullptr;
+	for (auto &info : g_eventBlockCommandInfos) {
+		if (!strcmp(info.longName, blockNameStr.c_str())) {
+			blockInfo = &info;
+		}
+	}
 
-	if (match(NVSETokenType::Colon)) {
-		if (arg == false) {
-			error(currentToken, "Cannot specify argument for this block type.");
+	if (Match(NVSETokenType::Colon)) {
+		if (blockInfo->numParams == 0) {
+			Error(currentToken, "Cannot specify argument for this block type.");
 		}
 
-		if (match(NVSETokenType::Colon)) {
-			if (match(NVSETokenType::Number)) {
-				if (argType != ArgType::Int) {
-					error(currentToken, "Expected integer.");
+		if (Match(NVSETokenType::Colon)) {
+			if (Match(NVSETokenType::Number)) {
+				if (blockInfo->params[0].typeID != kParamType_Integer) {
+					Error(currentToken, "Expected identifier.");
 				}
 
 				auto modeToken = previousToken;
 				if (modeToken.lexeme.contains('.')) {
-					error(currentToken, "Expected integer.");
+					Error(currentToken, "Expected integer.");
 				}
 
 				mode = modeToken;
-			} else if (match(NVSETokenType::Identifier)) {
-				if (argType != ArgType::Ref) {
-					error(currentToken, "Expected identifier.");
+			} else if (Match(NVSETokenType::Identifier)) {
+				if (blockInfo->params[0].typeID == kParamType_Integer) {
+					Error(currentToken, "Expected number.");
 				}
 
 				mode = previousToken;
 			} else {
-				error(currentToken, "Expected identifier or number.");
+				Error(currentToken, "Expected identifier or number.");
 			}
 		} else {
-			error(currentToken, "Expected ':'.");
+			Error(currentToken, "Expected ':'.");
 		}
 	} else {
-		if (argRequired) {
-			error(currentToken, "Missing required parameter for block type '" + blockName.lexeme + "'");
+		if (blockInfo->numParams > 0 && !blockInfo->params[0].isOptional) {
+			Error(currentToken, "Missing required parameter for block type '" + blockName.lexeme + "'");
 		}
 	}
 
-	if (!peek(NVSETokenType::LeftBrace)) {
-		error(currentToken, "Expected '{'.");
+	if (!Peek(NVSETokenType::LeftBrace)) {
+		Error(currentToken, "Expected '{'.");
 	}
-	return std::make_shared<BeginStmt>(blockName, mode, blockStmt());
+	return std::make_shared<BeginStmt>(blockName, mode, BlockStatement());
 }
 
-StmtPtr NVSEParser::fnDecl() {
-	auto args = parseArgs();
-	return std::make_shared<FnDeclStmt>(std::move(args), blockStmt());
+StmtPtr NVSEParser::FnDecl() {
+	auto args = ParseArgs();
+	return std::make_shared<FnDeclStmt>(std::move(args), BlockStatement());
 }
 
-StmtPtr NVSEParser::statement() {
-	if (peek(NVSETokenType::For)) {
-		return forStmt();
+StmtPtr NVSEParser::Statement() {
+	if (Peek(NVSETokenType::For)) {
+		return ForStatement();
 	}
 
-	if (peek(NVSETokenType::If)) {
-		return ifStmt();
+	if (Peek(NVSETokenType::If)) {
+		return IfStatement();
 	}
 
-	if (peek(NVSETokenType::Return)) {
-		return returnStmt();
+	if (Peek(NVSETokenType::Return)) {
+		return ReturnStatement();
 	}
 
-	if (peek(NVSETokenType::While)) {
-		return whileStmt();
+	if (Peek(NVSETokenType::While)) {
+		return WhileStatement();
 	}
 
-	if (peek(NVSETokenType::LeftBrace)) {
-		return blockStmt();
+	if (Peek(NVSETokenType::LeftBrace)) {
+		return BlockStatement();
 	}
 
-	if (peek(NVSETokenType::IntType) || peek(NVSETokenType::DoubleType) || peek(NVSETokenType::RefType) || peek(NVSETokenType::ArrayType) || peek(NVSETokenType::StringType)) {
-		auto expr = varDecl();
-		expect(NVSETokenType::Semicolon, "Expected ';' at end of statement.");
+	if (Peek(NVSETokenType::IntType) || Peek(NVSETokenType::DoubleType) || Peek(NVSETokenType::RefType) || Peek(NVSETokenType::ArrayType) || Peek(NVSETokenType::StringType)) {
+		auto expr = VarDecl();
+		Expect(NVSETokenType::Semicolon, "Expected ';' at end of statement.");
 		return expr;
 	}
 
-	return exprStmt();
+	return ExpressionStatement();
 }
 
-std::shared_ptr<VarDeclStmt> NVSEParser::varDecl() {
-	if (!(match(NVSETokenType::IntType) || match(NVSETokenType::DoubleType) || match(NVSETokenType::RefType) || match(NVSETokenType::ArrayType) || match(NVSETokenType::StringType)) || match(NVSETokenType::Fn)) {
-		error(currentToken, "Expected type.");
+std::shared_ptr<VarDeclStmt> NVSEParser::VarDecl() {
+	if (!(Match(NVSETokenType::IntType) || Match(NVSETokenType::DoubleType) || Match(NVSETokenType::RefType) || Match(NVSETokenType::ArrayType) || Match(NVSETokenType::StringType)) || Match(NVSETokenType::Fn)) {
+		Error(currentToken, "Expected type.");
 	}
 
 	auto varType = previousToken;
-	expect(NVSETokenType::Identifier, "Expected identifier.");
+	Expect(NVSETokenType::Identifier, "Expected identifier.");
 	auto ident = previousToken;
 	ExprPtr value = nullptr;
-	if (match(NVSETokenType::Eq)) {
-		value = expression();
+	if (Match(NVSETokenType::Eq)) {
+		value = Expression();
 	}
 
 	return std::make_shared<VarDeclStmt>(varType, ident, std::move(value));
 }
 
-StmtPtr NVSEParser::forStmt() {
-	match(NVSETokenType::For);
-	expect(NVSETokenType::LeftParen, "Expected '(' after 'for'.");
+StmtPtr NVSEParser::ForStatement() {
+	Match(NVSETokenType::For);
+	Expect(NVSETokenType::LeftParen, "Expected '(' after 'for'.");
 
 	return nullptr;
 }
 
-StmtPtr NVSEParser::ifStmt() {
-	match(NVSETokenType::If);
-	expect(NVSETokenType::LeftParen, "Expected '(' after 'if'.");
-	auto cond = expression();
-	expect(NVSETokenType::RightParen, "Expected ')' after 'if' condition.");
-	auto block = blockStmt();
+StmtPtr NVSEParser::IfStatement() {
+	Match(NVSETokenType::If);
+	Expect(NVSETokenType::LeftParen, "Expected '(' after 'if'.");
+	auto cond = Expression();
+	Expect(NVSETokenType::RightParen, "Expected ')' after 'if' condition.");
+	auto block = BlockStatement();
 	StmtPtr elseBlock = nullptr;
-	if (match(NVSETokenType::Else)) {
-		elseBlock = blockStmt();
+	if (Match(NVSETokenType::Else)) {
+		elseBlock = BlockStatement();
 	}
 
 	return std::make_shared<IfStmt>(std::move(cond), std::move(block), std::move(elseBlock));
 }
 
-StmtPtr NVSEParser::returnStmt() {
-	match(NVSETokenType::Return);
-	if (match(NVSETokenType::Semicolon)) {
+StmtPtr NVSEParser::ReturnStatement() {
+	Match(NVSETokenType::Return);
+	if (Match(NVSETokenType::Semicolon)) {
 		return std::make_shared<ReturnStmt>(nullptr);
 	}
 
-	return std::make_shared<ReturnStmt>(expression());
+	return std::make_shared<ReturnStmt>(Expression());
 }
 
-StmtPtr NVSEParser::whileStmt() {
-	match(NVSETokenType::While);
-	expect(NVSETokenType::LeftParen, "Expected '(' after 'while'.");
-	auto cond = expression();
-	expect(NVSETokenType::RightParen, "Expected ')' after 'while' condition.");
-	auto block = blockStmt();
+StmtPtr NVSEParser::WhileStatement() {
+	Match(NVSETokenType::While);
+	Expect(NVSETokenType::LeftParen, "Expected '(' after 'while'.");
+	auto cond = Expression();
+	Expect(NVSETokenType::RightParen, "Expected ')' after 'while' condition.");
+	auto block = BlockStatement();
 
 	return std::make_shared<WhileStmt>(std::move(cond), std::move(block));
 }
 
-StmtPtr NVSEParser::blockStmt() {
-	expect(NVSETokenType::LeftBrace, "Expected '{'.");
+StmtPtr NVSEParser::BlockStatement() {
+	Expect(NVSETokenType::LeftBrace, "Expected '{'.");
 
 	std::vector<StmtPtr> statements{};
-	while (!match(NVSETokenType::RightBrace)) {
+	while (!Match(NVSETokenType::RightBrace)) {
 		try {
-			statements.emplace_back(statement());
+			statements.emplace_back(Statement());
 		}
 		catch (NVSEParseError e) {
 			printFn(e.what());
 			printFn("\n");
-			synchronize();
+			Synchronize();
 		}
 	}
 
 	return std::make_shared<BlockStmt>(std::move(statements));
 }
 
-StmtPtr NVSEParser::exprStmt() {
+StmtPtr NVSEParser::ExpressionStatement() {
 	// Allow empty expression statements
-	if (match(NVSETokenType::Semicolon)) {
+	if (Match(NVSETokenType::Semicolon)) {
 		return std::make_shared<ExprStmt>(nullptr);
 	}
 
-	auto expr = expression();
-	if (!match(NVSETokenType::Semicolon)) {
-		error(previousToken, "Expected ';' at end of statement.");
+	auto expr = Expression();
+	if (!Match(NVSETokenType::Semicolon)) {
+		Error(previousToken, "Expected ';' at end of statement.");
 	}
 	return std::make_shared<ExprStmt>(std::move(expr));
 }
 
-ExprPtr NVSEParser::expression() {
-	return assignment();
+ExprPtr NVSEParser::Expression() {
+	return Assignment();
 }
 
-ExprPtr NVSEParser::assignment() {
-	ExprPtr left = ternary();
+ExprPtr NVSEParser::Assignment() {
+	ExprPtr left = Ternary();
 
-	if (match(NVSETokenType::Eq)) {
+	if (Match(NVSETokenType::Eq)) {
 		const auto prevTok = previousToken;
-		ExprPtr value = assignment();
+		ExprPtr value = Assignment();
 
 		const auto idExpr = dynamic_cast<IdentExpr*>(left.get());
 		const auto getExpr = dynamic_cast<GetExpr*>(left.get());
@@ -264,71 +270,71 @@ ExprPtr NVSEParser::assignment() {
 			return std::make_shared<SetExpr>(std::move(getExpr->left), getExpr->token, std::move(value));
 		}
 
-		error(prevTok, "Invalid assignment target.");
+		Error(prevTok, "Invalid assignment target.");
 	}
 
 	return left;
 }
 
-ExprPtr NVSEParser::ternary() {
-	ExprPtr cond = logicOr();
+ExprPtr NVSEParser::Ternary() {
+	ExprPtr cond = LogicalOr();
 
-	while (match(NVSETokenType::Ternary)) {
+	while (Match(NVSETokenType::Ternary)) {
 		ExprPtr left = nullptr;
-		if (!match(NVSETokenType::Colon)) {
-			left = logicOr();
-			expect(NVSETokenType::Colon, "Expected ':'.");
+		if (!Match(NVSETokenType::Colon)) {
+			left = LogicalOr();
+			Expect(NVSETokenType::Colon, "Expected ':'.");
 		}
-		auto right = logicOr();
+		auto right = LogicalOr();
 		cond = std::make_shared<TernaryExpr>(std::move(cond), std::move(left), std::move(right));
 	}
 
 	return cond;
 }
 
-ExprPtr NVSEParser::logicOr() {
-	ExprPtr left = logicAnd();
+ExprPtr NVSEParser::LogicalOr() {
+	ExprPtr left = LogicalAnd();
 
-	while (match(NVSETokenType::LogicOr)) {
+	while (Match(NVSETokenType::LogicOr)) {
 		const auto op = previousToken;
-		ExprPtr right = logicAnd();
+		ExprPtr right = LogicalAnd();
 		left = std::make_shared<BinaryExpr>(std::move(left), std::move(right), op);
 	}
 
 	return left;
 }
 
-ExprPtr NVSEParser::logicAnd() {
-	ExprPtr left = equality();
+ExprPtr NVSEParser::LogicalAnd() {
+	ExprPtr left = Equality();
 
-	while (match(NVSETokenType::LogicAnd)) {
+	while (Match(NVSETokenType::LogicAnd)) {
 		const auto op = previousToken;
-		ExprPtr right = equality();
+		ExprPtr right = Equality();
 		left = std::make_shared<BinaryExpr>(std::move(left), std::move(right), op);
 	}
 
 	return left;
 }
 
-ExprPtr NVSEParser::equality() {
-	ExprPtr left = comparison();
+ExprPtr NVSEParser::Equality() {
+	ExprPtr left = Comparison();
 
-	while (match(NVSETokenType::EqEq) || match(NVSETokenType::BangEq)) {
+	while (Match(NVSETokenType::EqEq) || Match(NVSETokenType::BangEq)) {
 		const auto op = previousToken;
-		ExprPtr right = comparison();
+		ExprPtr right = Comparison();
 		left = std::make_shared<BinaryExpr>(std::move(left), std::move(right), op);
 	}
 
 	return left;
 }
 
-ExprPtr NVSEParser::comparison() {
-	ExprPtr left = term();
+ExprPtr NVSEParser::Comparison() {
+	ExprPtr left = Term();
 
-	while (match(NVSETokenType::Less) || match(NVSETokenType::LessEq) || match(NVSETokenType::Greater) || match(
+	while (Match(NVSETokenType::Less) || Match(NVSETokenType::LessEq) || Match(NVSETokenType::Greater) || Match(
 		NVSETokenType::GreaterEq)) {
 		const auto op = previousToken;
-		ExprPtr right = term();
+		ExprPtr right = Term();
 		left = std::make_shared<BinaryExpr>(std::move(left), std::move(right), op);
 	}
 
@@ -336,53 +342,53 @@ ExprPtr NVSEParser::comparison() {
 }
 
 // term -> factor ((+ | -) factor)?;
-ExprPtr NVSEParser::term() {
-	ExprPtr left = factor();
+ExprPtr NVSEParser::Term() {
+	ExprPtr left = Factor();
 
-	while (match(NVSETokenType::Plus) || match(NVSETokenType::Minus)) {
+	while (Match(NVSETokenType::Plus) || Match(NVSETokenType::Minus)) {
 		const auto op = previousToken;
-		ExprPtr right = factor();
+		ExprPtr right = Factor();
 		left = std::make_shared<BinaryExpr>(std::move(left), std::move(right), op);
 	}
 
 	return left;
 }
 
-ExprPtr NVSEParser::factor() {
-	ExprPtr left = unary();
+ExprPtr NVSEParser::Factor() {
+	ExprPtr left = Unary();
 
-	while (match(NVSETokenType::Star) || match(NVSETokenType::Slash)) {
+	while (Match(NVSETokenType::Star) || Match(NVSETokenType::Slash)) {
 		const auto op = previousToken;
-		ExprPtr right = unary();
+		ExprPtr right = Unary();
 		left = std::make_shared<BinaryExpr>(std::move(left), std::move(right), op);
 	}
 
 	return left;
 }
 
-ExprPtr NVSEParser::unary() {
-	if (match(NVSETokenType::Bang) || match(NVSETokenType::Minus) || match(NVSETokenType::Dollar)) {
+ExprPtr NVSEParser::Unary() {
+	if (Match(NVSETokenType::Bang) || Match(NVSETokenType::Minus) || Match(NVSETokenType::Dollar)) {
 		const auto op = previousToken;
-		ExprPtr right = unary();
+		ExprPtr right = Unary();
 		return std::make_shared<UnaryExpr>(std::move(right), op, false);
 	}
 
-	return postfix();
+	return Postfix();
 }
 
-ExprPtr NVSEParser::postfix() {
-	ExprPtr expr = call();
+ExprPtr NVSEParser::Postfix() {
+	ExprPtr expr = Call();
 
-	if (match(NVSETokenType::LeftBracket)) {
-		auto inner = expression();
-		expect(NVSETokenType::RightBracket, "Expected ']'.");
+	if (Match(NVSETokenType::LeftBracket)) {
+		auto inner = Expression();
+		Expect(NVSETokenType::RightBracket, "Expected ']'.");
 
 		return std::make_shared<SubscriptExpr>(std::move(expr), std::move(inner));
 	}
 
-	if (match(NVSETokenType::PlusPlus) || match(NVSETokenType::MinusMinus)) {
-		if (!expr->isType<IdentExpr>() && !expr->isType<GetExpr>()) {
-			error(previousToken, "Invalid operand for '++', expected identifier.");
+	if (Match(NVSETokenType::PlusPlus) || Match(NVSETokenType::MinusMinus)) {
+		if (!expr->IsType<IdentExpr>() && !expr->IsType<GetExpr>()) {
+			Error(previousToken, "Invalid operand for '++', expected identifier.");
 		}
 		
 		auto op = previousToken;
@@ -392,34 +398,34 @@ ExprPtr NVSEParser::postfix() {
 	return expr;
 }
 
-ExprPtr NVSEParser::call() {
-	ExprPtr expr = primary();
+ExprPtr NVSEParser::Call() {
+	ExprPtr expr = Primary();
 
-	while (match(NVSETokenType::Dot) || match(NVSETokenType::LeftParen)) {
+	while (Match(NVSETokenType::Dot) || Match(NVSETokenType::LeftParen)) {
 		if (previousToken.type == NVSETokenType::Dot) {
-			if (!expr->isType<GroupingExpr>() &&
-				!expr->isType<IdentExpr>() &&
-				!expr->isType<CallExpr>() &&
-				!expr->isType<GetExpr>()) {
-				error(currentToken, "Invalid member access.");
+			if (!expr->IsType<GroupingExpr>() &&
+				!expr->IsType<IdentExpr>() &&
+				!expr->IsType<CallExpr>() &&
+				!expr->IsType<GetExpr>()) {
+				Error(currentToken, "Invalid member access.");
 			}
 
-			const auto ident = expect(NVSETokenType::Identifier, "Expected identifier.");
+			const auto ident = Expect(NVSETokenType::Identifier, "Expected identifier.");
 			expr = std::make_shared<GetExpr>(std::move(expr), ident);
 		}
 		else {
 			// Can only call on ident or get expr
-			if (!expr->isType<IdentExpr>() &&
-				!expr->isType<GetExpr>()) {
-				error(currentToken, "Invalid callee.");
+			if (!expr->IsType<IdentExpr>() &&
+				!expr->IsType<GetExpr>()) {
+				Error(currentToken, "Invalid callee.");
 			}
 
 			std::vector<ExprPtr> args{};
-			while (!match(NVSETokenType::RightParen)) {
-				args.emplace_back(std::move(expression()));
+			while (!Match(NVSETokenType::RightParen)) {
+				args.emplace_back(std::move(Expression()));
 
-				if (!peek(NVSETokenType::RightParen) && !match(NVSETokenType::Comma)) {
-					error(currentToken, "Expected ',' or ')'.");
+				if (!Peek(NVSETokenType::RightParen) && !Match(NVSETokenType::Comma)) {
+					Error(currentToken, "Expected ',' or ')'.");
 				}
 			}
 			expr = std::make_shared<CallExpr>(std::move(expr), std::move(args));
@@ -429,12 +435,12 @@ ExprPtr NVSEParser::call() {
 	return expr;
 }
 
-ExprPtr NVSEParser::primary() {
-	if (match(NVSETokenType::Bool)) {
+ExprPtr NVSEParser::Primary() {
+	if (Match(NVSETokenType::Bool)) {
 		return std::make_shared<BoolExpr>(std::get<double>(previousToken.value));
 	}
 
-	if (match(NVSETokenType::Number)) {
+	if (Match(NVSETokenType::Number)) {
 		// Double literal
 		if (std::ranges::find(previousToken.lexeme, '.') != previousToken.lexeme.end()) {
 			return std::make_shared<NumberExpr>(std::get<double>(previousToken.value), true);
@@ -444,68 +450,68 @@ ExprPtr NVSEParser::primary() {
 		return std::make_shared<NumberExpr>(std::get<double>(previousToken.value), false);
 	}
 
-	if (match(NVSETokenType::String)) {
+	if (Match(NVSETokenType::String)) {
 		return std::make_shared<StringExpr>(previousToken);
 	}
 
-	if (match(NVSETokenType::Identifier)) {
+	if (Match(NVSETokenType::Identifier)) {
 		return std::make_shared<IdentExpr>(previousToken);
 	}
 
-	if (match(NVSETokenType::LeftParen)) {
-		ExprPtr expr = expression();
-		expect(NVSETokenType::RightParen, "Expected ')' after expression.");
+	if (Match(NVSETokenType::LeftParen)) {
+		ExprPtr expr = Expression();
+		Expect(NVSETokenType::RightParen, "Expected ')' after expression.");
 		return std::make_shared<GroupingExpr>(std::move(expr));
 	}
 
-	if (match(NVSETokenType::Fn)) {
-		return fnExpr();
+	if (Match(NVSETokenType::Fn)) {
+		return FnExpr();
 	}
 
-	error(currentToken, "Expected expression.");
+	Error(currentToken, "Expected expression.");
 	return ExprPtr{nullptr};
 }
 
 // Only called when 'fn' token is matched
-ExprPtr NVSEParser::fnExpr() {
-	auto args = parseArgs();
-	return std::make_shared<LambdaExpr>(std::move(args), blockStmt());
+ExprPtr NVSEParser::FnExpr() {
+	auto args = ParseArgs();
+	return std::make_shared<LambdaExpr>(std::move(args), BlockStatement());
 }
 
-std::vector<std::shared_ptr<VarDeclStmt>> NVSEParser::parseArgs() {
-	expect(NVSETokenType::LeftParen, "Expected '(' after 'fn'.");
+std::vector<std::shared_ptr<VarDeclStmt>> NVSEParser::ParseArgs() {
+	Expect(NVSETokenType::LeftParen, "Expected '(' after 'fn'.");
 
 	std::vector<std::shared_ptr<VarDeclStmt>> args{};
-	while (!match(NVSETokenType::RightParen)) {
-		auto decl = varDecl();
+	while (!Match(NVSETokenType::RightParen)) {
+		auto decl = VarDecl();
 		if (decl->value) {
-			error(previousToken, "Cannot specify default values.");
+			Error(previousToken, "Cannot specify default values.");
 		}
 		args.emplace_back(std::move(decl));
 
-		if (!peek(NVSETokenType::RightParen) && !match(NVSETokenType::Comma)) {
-			error(currentToken, "Expected ',' or ')'.");
+		if (!Peek(NVSETokenType::RightParen) && !Match(NVSETokenType::Comma)) {
+			Error(currentToken, "Expected ',' or ')'.");
 		}
 	}
 
 	return std::move(args);
 }
 
-void NVSEParser::advance() {
+void NVSEParser::Advance() {
 	previousToken = currentToken;
-	currentToken = lexer.getNextToken();
+	currentToken = lexer.GetNextToken();
 }
 
-bool NVSEParser::match(NVSETokenType type) {
+bool NVSEParser::Match(NVSETokenType type) {
 	if (currentToken.type == type) {
-		advance();
+		Advance();
 		return true;
 	}
 
 	return false;
 }
 
-bool NVSEParser::peek(NVSETokenType type) const {
+bool NVSEParser::Peek(NVSETokenType type) const {
 	if (currentToken.type == type) {
 		return true;
 	}
@@ -513,7 +519,7 @@ bool NVSEParser::peek(NVSETokenType type) const {
 	return false;
 }
 
-void NVSEParser::error(NVSEToken token, std::string message) {
+void NVSEParser::Error(NVSEToken token, std::string message) {
 	panicMode = true;
 	hadError = true;
 
@@ -529,15 +535,15 @@ void NVSEParser::error(NVSEToken token, std::string message) {
 	throw NVSEParseError(msg);
 }
 
-NVSEToken NVSEParser::expect(NVSETokenType type, std::string message) {
-	if (!match(type)) {
-		error(currentToken, message);
+NVSEToken NVSEParser::Expect(NVSETokenType type, std::string message) {
+	if (!Match(type)) {
+		Error(currentToken, message);
 	}
 
 	return previousToken;
 }
 
-void NVSEParser::synchronize() {
+void NVSEParser::Synchronize() {
 	while (currentToken.type != NVSETokenType::Eof) {
 		if (previousToken.type == NVSETokenType::Semicolon) {
 			panicMode = false;
@@ -551,8 +557,9 @@ void NVSEParser::synchronize() {
 		case NVSETokenType::LeftBrace:
 		case NVSETokenType::RightBrace:
 			return;
+		default: ;
 		}
 
-		advance();
+		Advance();
 	}
 }

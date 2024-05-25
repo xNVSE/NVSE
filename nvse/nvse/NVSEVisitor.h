@@ -31,31 +31,31 @@ struct LambdaExpr;
 class NVSEVisitor {
 public:
 	virtual ~NVSEVisitor() = default;
-	virtual void visitNVSEScript(const NVSEScript* script) = 0;
+	virtual void VisitNVSEScript(const NVSEScript* script) = 0;
 
-	virtual void visitBeginStatement(const BeginStmt* stmt) = 0;
-	virtual void visitFnDeclStmt(FnDeclStmt* stmt) = 0;
-	virtual void visitVarDeclStmt(const VarDeclStmt* stmt) = 0;
+	virtual void VisitBeginStmt(const BeginStmt* stmt) = 0;
+	virtual void VisitFnStmt(FnDeclStmt* stmt) = 0;
+	virtual void VisitVarDeclStmt(const VarDeclStmt* stmt) = 0;
 
-	virtual void visitExprStmt(const ExprStmt* stmt) = 0;
-	virtual void visitForStmt(const ForStmt* stmt) = 0;
-	virtual void visitIfStmt(IfStmt* stmt) = 0;
-	virtual void visitReturnStmt(const ReturnStmt* stmt) = 0;
-	virtual void visitWhileStmt(const WhileStmt* stmt) = 0;
-	virtual void visitBlockStmt(const BlockStmt* stmt) = 0;
+	virtual void VisitExprStmt(const ExprStmt* stmt) = 0;
+	virtual void VisitForStmt(const ForStmt* stmt) = 0;
+	virtual void VisitIfStmt(IfStmt* stmt) = 0;
+	virtual void VisitReturnStmt(const ReturnStmt* stmt) = 0;
+	virtual void VisitWhileStmt(const WhileStmt* stmt) = 0;
+	virtual void VisitBlockStmt(const BlockStmt* stmt) = 0;
 
-	virtual void visitAssignmentExpr(const AssignmentExpr* expr) = 0;
-	virtual void visitTernaryExpr(const TernaryExpr* expr) = 0;
-	virtual void visitBinaryExpr(const BinaryExpr* expr) = 0;
-	virtual void visitUnaryExpr(const UnaryExpr* expr) = 0;
-	virtual void visitSubscriptExpr(SubscriptExpr* expr) = 0;
-	virtual void visitCallExpr(const CallExpr* expr) = 0;
-	virtual void visitGetExpr(const GetExpr* expr) = 0;
-	virtual void visitSetExpr(const SetExpr* expr) = 0;
-	virtual void visitBoolExpr(const BoolExpr* expr) = 0;
-	virtual void visitNumberExpr(const NumberExpr* expr) = 0;
-	virtual void visitStringExpr(const StringExpr* expr) = 0;
-	virtual void visitIdentExpr(const IdentExpr* expr) = 0;
-	virtual void visitGroupingExpr(const GroupingExpr* expr) = 0;
-	virtual void visitLambdaExpr(LambdaExpr* expr) = 0;
+	virtual void VisitAssignmentExpr(const AssignmentExpr* expr) = 0;
+	virtual void VisitTernaryExpr(const TernaryExpr* expr) = 0;
+	virtual void VisitBinaryExpr(const BinaryExpr* expr) = 0;
+	virtual void VisitUnaryExpr(const UnaryExpr* expr) = 0;
+	virtual void VisitSubscriptExpr(SubscriptExpr* expr) = 0;
+	virtual void VisitCallExpr(const CallExpr* expr) = 0;
+	virtual void VisitGetExpr(const GetExpr* expr) = 0;
+	virtual void VisitSetExpr(const SetExpr* expr) = 0;
+	virtual void VisitBoolExpr(const BoolExpr* expr) = 0;
+	virtual void VisitNumberExpr(const NumberExpr* expr) = 0;
+	virtual void VisitStringExpr(const StringExpr* expr) = 0;
+	virtual void VisitIdentExpr(const IdentExpr* expr) = 0;
+	virtual void VisitGroupingExpr(const GroupingExpr* expr) = 0;
+	virtual void VisitLambdaExpr(LambdaExpr* expr) = 0;
 };

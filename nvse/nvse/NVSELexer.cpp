@@ -13,7 +13,7 @@ NVSELexer::NVSELexer(const std::string& input) : input(input), pos(0) {
     lines.push_back(input.substr(prev));
 }
 
-NVSEToken NVSELexer::getNextToken() {
+NVSEToken NVSELexer::GetNextToken() {
     while (pos < input.size() && std::isspace(input[pos])) {
         pos++;
         linePos++;
@@ -24,7 +24,7 @@ NVSEToken NVSELexer::getNextToken() {
         }
     }
 
-    if (pos == input.size()) return makeToken(NVSETokenType::Eof, "");
+    if (pos == input.size()) return MakeToken(NVSETokenType::Eof, "");
 
     char current = input[pos];
     if (std::isdigit(current)) {
@@ -35,7 +35,7 @@ NVSEToken NVSELexer::getNextToken() {
         }
         pos += len;
         linePos += len;
-        return makeToken(NVSETokenType::Number, input.substr(pos - len, len), value);
+        return MakeToken(NVSETokenType::Number, input.substr(pos - len, len), value);
     }
 
     if (std::isalpha(current) || current == '_') {
@@ -45,31 +45,33 @@ NVSEToken NVSELexer::getNextToken() {
         std::string identifier = input.substr(start, pos - start);
 
         // Keywords
-        if (identifier == "if") return makeToken(NVSETokenType::If, identifier);
-        if (identifier == "else") return makeToken(NVSETokenType::Else, identifier);
-        if (identifier == "while") return makeToken(NVSETokenType::While, identifier);
-        if (identifier == "fn") return makeToken(NVSETokenType::Fn, identifier);
-        if (identifier == "return") return makeToken(NVSETokenType::Return, identifier);
-        if (identifier == "for") return makeToken(NVSETokenType::For, identifier);
-        if (identifier == "name") return makeToken(NVSETokenType::Name, identifier);
+        if (identifier == "if") return MakeToken(NVSETokenType::If, identifier);
+        if (identifier == "else") return MakeToken(NVSETokenType::Else, identifier);
+        if (identifier == "while") return MakeToken(NVSETokenType::While, identifier);
+        if (identifier == "fn") return MakeToken(NVSETokenType::Fn, identifier);
+        if (identifier == "return") return MakeToken(NVSETokenType::Return, identifier);
+        if (identifier == "for") return MakeToken(NVSETokenType::For, identifier);
+        if (identifier == "name") return MakeToken(NVSETokenType::Name, identifier);
 
         // Types
-        if (identifier == "int") return makeToken(NVSETokenType::IntType, identifier);
-        if (identifier == "double") return makeToken(NVSETokenType::DoubleType, identifier);
-        if (identifier == "ref") return makeToken(NVSETokenType::RefType, identifier);
-        if (identifier == "string") return makeToken(NVSETokenType::StringType, identifier);
-        if (identifier == "array") return makeToken(NVSETokenType::ArrayType, identifier);
+        if (identifier == "int") return MakeToken(NVSETokenType::IntType, identifier);
+        if (identifier == "double") return MakeToken(NVSETokenType::DoubleType, identifier);
+        if (identifier == "ref") return MakeToken(NVSETokenType::RefType, identifier);
+        if (identifier == "string") return MakeToken(NVSETokenType::StringType, identifier);
+        if (identifier == "array") return MakeToken(NVSETokenType::ArrayType, identifier);
 
         // Boolean literals
-        if (identifier == "true") return makeToken(NVSETokenType::Bool, identifier, 1);
-        if (identifier == "false") return makeToken(NVSETokenType::Bool, identifier, 0);
+        if (identifier == "true") return MakeToken(NVSETokenType::Bool, identifier, 1);
+        if (identifier == "false") return MakeToken(NVSETokenType::Bool, identifier, 0);
 
         // See if it is a begin block type
-        if (mpBeginInfo.contains(identifier)) {
-            return makeToken(NVSETokenType::BlockType, identifier);
+        for (auto& g_eventBlockCommandInfo : g_eventBlockCommandInfos) {
+            if (!strcmp(g_eventBlockCommandInfo.longName, identifier.c_str())) {
+                return MakeToken(NVSETokenType::BlockType, identifier);
+            }
         }
 
-        return makeToken(NVSETokenType::Identifier, identifier);
+        return MakeToken(NVSETokenType::Identifier, identifier);
     }
 
     if (current == '"') {
@@ -82,93 +84,93 @@ NVSEToken NVSELexer::getNextToken() {
         const auto len = pos - start;
         std::string text = input.substr(start + 1, len - 2);
         std::string lexeme = '\"' + text + '\"';
-        return makeToken(NVSETokenType::String, lexeme, text);
+        return MakeToken(NVSETokenType::String, lexeme, text);
     }
 
     pos++;
     switch (current) {
         // Operators
     case '+': {
-        if (match('=')) {
-            return makeToken(NVSETokenType::PlusEq, "+=");
+        if (Match('=')) {
+            return MakeToken(NVSETokenType::PlusEq, "+=");
         }
-        else if (match('+')) {
-            return makeToken(NVSETokenType::PlusPlus, "++");
+        else if (Match('+')) {
+            return MakeToken(NVSETokenType::PlusPlus, "++");
         }
-        return makeToken(NVSETokenType::Plus, "+");
+        return MakeToken(NVSETokenType::Plus, "+");
     }
     case '-': {
-        if (match('=')) {
-            return makeToken(NVSETokenType::MinusEq, "-=");
+        if (Match('=')) {
+            return MakeToken(NVSETokenType::MinusEq, "-=");
         }
-        else if (match('-')) {
-            return makeToken(NVSETokenType::MinusMinus, "--");
+        else if (Match('-')) {
+            return MakeToken(NVSETokenType::MinusMinus, "--");
         }
-        return makeToken(NVSETokenType::Minus, "-");
+        return MakeToken(NVSETokenType::Minus, "-");
     }
     case '*':
-        if (match('=')) {
-            return makeToken(NVSETokenType::StarEq, "*=");
+        if (Match('=')) {
+            return MakeToken(NVSETokenType::StarEq, "*=");
         }
-        return makeToken(NVSETokenType::Star, "*");
+        return MakeToken(NVSETokenType::Star, "*");
     case '/':
-        if (match('=')) {
-            return makeToken(NVSETokenType::SlashEq, "/=");
+        if (Match('=')) {
+            return MakeToken(NVSETokenType::SlashEq, "/=");
         }
-        return makeToken(NVSETokenType::Slash, "/");
+        return MakeToken(NVSETokenType::Slash, "/");
     case '=':
-        if (match('=')) {
-            return makeToken(NVSETokenType::EqEq, "==");
+        if (Match('=')) {
+            return MakeToken(NVSETokenType::EqEq, "==");
         }
-        return makeToken(NVSETokenType::Eq, "=");
+        return MakeToken(NVSETokenType::Eq, "=");
     case '!':
-        if (match('=')) {
-            return makeToken(NVSETokenType::BangEq, "!=");
+        if (Match('=')) {
+            return MakeToken(NVSETokenType::BangEq, "!=");
         }
-        return makeToken(NVSETokenType::Bang, "!");
+        return MakeToken(NVSETokenType::Bang, "!");
     case '<':
-        if (match('=')) {
-            return makeToken(NVSETokenType::LessEq, "<=");
+        if (Match('=')) {
+            return MakeToken(NVSETokenType::LessEq, "<=");
         }
-        return makeToken(NVSETokenType::Less, "<");
+        return MakeToken(NVSETokenType::Less, "<");
     case '>':
-        if (match('=')) {
-            return makeToken(NVSETokenType::GreaterEq, ">=");
+        if (Match('=')) {
+            return MakeToken(NVSETokenType::GreaterEq, ">=");
         }
-        return makeToken(NVSETokenType::Greater, ">");
+        return MakeToken(NVSETokenType::Greater, ">");
     case '|':
-        if (match('|')) {
-            return makeToken(NVSETokenType::LogicOr, "||");
+        if (Match('|')) {
+            return MakeToken(NVSETokenType::LogicOr, "||");
         }
-        return makeToken(NVSETokenType::BitwiseOr, "|");
-    case '~': return makeToken(NVSETokenType::Tilde, "~");
+        return MakeToken(NVSETokenType::BitwiseOr, "|");
+    case '~': return MakeToken(NVSETokenType::Tilde, "~");
     case '&':
-        if (match('&')) {
-            return makeToken(NVSETokenType::LogicAnd, "&&");
+        if (Match('&')) {
+            return MakeToken(NVSETokenType::LogicAnd, "&&");
         }
-        return makeToken(NVSETokenType::BitwiseAnd, "&");
-    case '$': return makeToken(NVSETokenType::Dollar, "$");
+        return MakeToken(NVSETokenType::BitwiseAnd, "&");
+    case '$': return MakeToken(NVSETokenType::Dollar, "$");
 
         // Braces
-    case '{': return makeToken(NVSETokenType::LeftBrace, "{");
-    case '}': return makeToken(NVSETokenType::RightBrace, "}");
-    case '[': return makeToken(NVSETokenType::LeftBracket, "[");
-    case ']': return makeToken(NVSETokenType::RightBracket, "]");
-    case '(': return makeToken(NVSETokenType::LeftParen, "(");
-    case ')': return makeToken(NVSETokenType::RightParen, ")");
+    case '{': return MakeToken(NVSETokenType::LeftBrace, "{");
+    case '}': return MakeToken(NVSETokenType::RightBrace, "}");
+    case '[': return MakeToken(NVSETokenType::LeftBracket, "[");
+    case ']': return MakeToken(NVSETokenType::RightBracket, "]");
+    case '(': return MakeToken(NVSETokenType::LeftParen, "(");
+    case ')': return MakeToken(NVSETokenType::RightParen, ")");
 
         // Misc
-    case ',': return makeToken(NVSETokenType::Comma, ",");
-    case ';': return makeToken(NVSETokenType::Semicolon, ";");
-    case '?': return makeToken(NVSETokenType::Ternary, "?");
-    case ':': return makeToken(NVSETokenType::Colon, ":");
-    case '.': return makeToken(NVSETokenType::Dot, ".");
+    case ',': return MakeToken(NVSETokenType::Comma, ",");
+    case ';': return MakeToken(NVSETokenType::Semicolon, ";");
+    case '?': return MakeToken(NVSETokenType::Ternary, "?");
+    case ':': return MakeToken(NVSETokenType::Colon, ":");
+    case '.': return MakeToken(NVSETokenType::Dot, ".");
 
     default: throw std::runtime_error("Unexpected character");
     }
 }
 
-bool NVSELexer::match(char c) {
+bool NVSELexer::Match(char c) {
     if (pos >= input.size()) {
         return false;
     }
@@ -181,7 +183,7 @@ bool NVSELexer::match(char c) {
     return false;
 }
 
-NVSEToken NVSELexer::makeToken(NVSETokenType type, std::string lexeme) {
+NVSEToken NVSELexer::MakeToken(NVSETokenType type, std::string lexeme) {
     NVSEToken t(type, lexeme);
     t.line = line;
     t.linePos = linePos;
@@ -189,7 +191,7 @@ NVSEToken NVSELexer::makeToken(NVSETokenType type, std::string lexeme) {
     return t;
 }
 
-NVSEToken NVSELexer::makeToken(NVSETokenType type, std::string lexeme, double value) {
+NVSEToken NVSELexer::MakeToken(NVSETokenType type, std::string lexeme, double value) {
     NVSEToken t(type, lexeme, value);
     t.line = line;
     t.linePos = linePos;
@@ -197,7 +199,7 @@ NVSEToken NVSELexer::makeToken(NVSETokenType type, std::string lexeme, double va
     return t;
 }
 
-NVSEToken NVSELexer::makeToken(NVSETokenType type, std::string lexeme, std::string value) {
+NVSEToken NVSELexer::MakeToken(NVSETokenType type, std::string lexeme, std::string value) {
     NVSEToken t(type, lexeme, value);
     t.line = line;
     t.linePos = linePos;

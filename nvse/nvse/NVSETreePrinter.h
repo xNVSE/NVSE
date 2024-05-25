@@ -1,39 +1,41 @@
+#pragma once
+
 #include "NVSEVisitor.h"
 
 class NVSETreePrinter : public NVSEVisitor {
 	int curTab = 0;
-	void printTabs();
-	std::function<void(std::string)> &printFn;
+	void PrintTabs();
+	const std::function<void(std::string)> &printFn;
 
 public:
-	NVSETreePrinter(std::function<void(std::string)> &printFn) : printFn(printFn) {}
+	NVSETreePrinter(const std::function<void(std::string)>& printFn) : printFn(printFn) {}
 
-	void visitNVSEScript(const NVSEScript* script) override;
+	void VisitNVSEScript(const NVSEScript* script) override;
 
-	void visitBeginStatement(const BeginStmt* stmt) override;
-	void visitFnDeclStmt(FnDeclStmt* stmt) override;
-	void visitVarDeclStmt(const VarDeclStmt* stmt) override;
+	void VisitBeginStmt(const BeginStmt* stmt) override;
+	void VisitFnStmt(FnDeclStmt* stmt) override;
+	void VisitVarDeclStmt(const VarDeclStmt* stmt) override;
 
-	void visitExprStmt(const ExprStmt* stmt) override;
-	void visitForStmt(const ForStmt* stmt) override;
-	void visitIfStmt(IfStmt* stmt) override;
-	void visitReturnStmt(const ReturnStmt* stmt) override;
-	void visitWhileStmt(const WhileStmt* stmt) override;
-	void visitBlockStmt(const BlockStmt* stmt) override;
+	void VisitExprStmt(const ExprStmt* stmt) override;
+	void VisitForStmt(const ForStmt* stmt) override;
+	void VisitIfStmt(IfStmt* stmt) override;
+	void VisitReturnStmt(const ReturnStmt* stmt) override;
+	void VisitWhileStmt(const WhileStmt* stmt) override;
+	void VisitBlockStmt(const BlockStmt* stmt) override;
 
 	// Inherited via NVSEVisitor
-	void visitAssignmentExpr(const AssignmentExpr* expr) override;
-	void visitTernaryExpr(const TernaryExpr* expr) override;
-	void visitBinaryExpr(const BinaryExpr* expr) override;
-	void visitUnaryExpr(const UnaryExpr* expr) override;
-	void visitSubscriptExpr(SubscriptExpr* expr) override;
-	void visitCallExpr(const CallExpr* expr) override;
-	void visitGetExpr(const GetExpr* expr) override;
-	void visitSetExpr(const SetExpr* expr) override;
-	void visitBoolExpr(const BoolExpr* expr) override;
-	void visitNumberExpr(const NumberExpr* expr) override;
-	void visitStringExpr(const StringExpr* expr) override;
-	void visitIdentExpr(const IdentExpr* expr) override;
-	void visitGroupingExpr(const GroupingExpr* expr) override;
-	void visitLambdaExpr(LambdaExpr* expr) override;
+	void VisitAssignmentExpr(const AssignmentExpr* expr) override;
+	void VisitTernaryExpr(const TernaryExpr* expr) override;
+	void VisitBinaryExpr(const BinaryExpr* expr) override;
+	void VisitUnaryExpr(const UnaryExpr* expr) override;
+	void VisitSubscriptExpr(SubscriptExpr* expr) override;
+	void VisitCallExpr(const CallExpr* expr) override;
+	void VisitGetExpr(const GetExpr* expr) override;
+	void VisitSetExpr(const SetExpr* expr) override;
+	void VisitBoolExpr(const BoolExpr* expr) override;
+	void VisitNumberExpr(const NumberExpr* expr) override;
+	void VisitStringExpr(const StringExpr* expr) override;
+	void VisitIdentExpr(const IdentExpr* expr) override;
+	void VisitGroupingExpr(const GroupingExpr* expr) override;
+	void VisitLambdaExpr(LambdaExpr* expr) override;
 };

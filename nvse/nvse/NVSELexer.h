@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <cctype>
 #include <stdexcept>
 #include <variant>
 #include <vector>
@@ -153,9 +152,9 @@ public:
 
     NVSELexer(const std::string& input);
 
-    NVSEToken getNextToken();
-    bool match(char c);
-    NVSEToken makeToken(NVSETokenType type, std::string lexeme);
-    NVSEToken makeToken(NVSETokenType type, std::string lexeme, double value);
-    NVSEToken makeToken(NVSETokenType type, std::string lexeme, std::string value);
+    NVSEToken GetNextToken();
+    bool Match(char c);
+    NVSEToken MakeToken(NVSETokenType type, std::string lexeme);
+    NVSEToken MakeToken(NVSETokenType type, std::string lexeme, double value);
+    NVSEToken MakeToken(NVSETokenType type, std::string lexeme, std::string value);
 };

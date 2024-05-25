@@ -446,18 +446,18 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 		NVSEParser parser(lexer, printFn);
 
 		printFn("\n==== PARSER ====\n\n");
-		auto astOpt = parser.parse();
+		auto astOpt = parser.Parse();
 		if (astOpt.has_value()) {
 			auto ast = std::move(astOpt.value());
 
 			auto tp = NVSETreePrinter(printFn);
-			ast.accept(&tp);
+			ast.Accept(&tp);
 
 			printFn("\n==== COMPILER ====\n\n");
 
-			NVSECompiler comp{};
+			NVSECompiler comp{script, ast, printFn};
 			try {
-				comp.compile(script, ast, printFn);
+				comp.Compile();
 			} catch (std::runtime_error &er) {
 				printFn(std::format("Script compilation failed: {}\n", er.what()));
 				return PrecompileResult::kPrecompile_Failure;

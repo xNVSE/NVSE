@@ -5,7 +5,6 @@
 
 #include <memory>
 #include <optional>
-#include <unordered_map>
 
 struct Expr;
 struct Stmt;
@@ -20,18 +19,18 @@ struct NVSEScript {
 
     NVSEScript(NVSEToken name, std::vector<StmtPtr> globalVars, std::vector<StmtPtr> blocks) : name(name), globalVars(std::move(globalVars)), blocks(std::move(blocks)) {}
 
-    void accept(NVSEVisitor* visitor) {
-        visitor->visitNVSEScript(this);
+    void Accept(NVSEVisitor* visitor) {
+        visitor->VisitNVSEScript(this);
     }
 };
 
 struct Stmt {
     virtual ~Stmt() {}
 
-    virtual void accept(NVSEVisitor* t) = 0;
+    virtual void Accept(NVSEVisitor* t) = 0;
 
     template <typename T>
-    bool isType() {
+    bool IsType() {
         return dynamic_cast<T*>(this);
     }
 };
@@ -43,8 +42,8 @@ struct BeginStmt : Stmt {
 
     BeginStmt(NVSEToken name, std::optional<NVSEToken> param, StmtPtr block) : name(name), param(param), block(std::move(block)) {}
 
-    void accept(NVSEVisitor* visitor) override {
-        visitor->visitBeginStatement(this);
+    void Accept(NVSEVisitor* visitor) override {
+        visitor->VisitBeginStmt(this);
     }
 };
 
@@ -54,8 +53,8 @@ struct FnDeclStmt : Stmt {
 
     FnDeclStmt(std::vector<std::shared_ptr<VarDeclStmt>> args, StmtPtr body) : args(std::move(args)), body(std::move(body)) {}
 
-    void accept(NVSEVisitor *visitor) override {
-        visitor->visitFnDeclStmt(this);
+    void Accept(NVSEVisitor *visitor) override {
+        visitor->VisitFnStmt(this);
     }
 };
 
@@ -67,8 +66,8 @@ struct VarDeclStmt : Stmt {
     VarDeclStmt(NVSEToken type, NVSEToken name) : type(type), name(name) {}
     VarDeclStmt(NVSEToken type, NVSEToken name, ExprPtr value) : type(type), name(name), value(std::move(value)) {}
 
-    void accept(NVSEVisitor* visitor) override {
-	    visitor->visitVarDeclStmt(this);
+    void Accept(NVSEVisitor* visitor) override {
+	    visitor->VisitVarDeclStmt(this);
     }
 };
 
@@ -77,8 +76,8 @@ struct ExprStmt : Stmt {
 
     ExprStmt(ExprPtr expr) : expr(std::move(expr)) {}
 
-    void accept(NVSEVisitor *visitor) override {
-        visitor->visitExprStmt(this);
+    void Accept(NVSEVisitor *visitor) override {
+        visitor->VisitExprStmt(this);
     }
 };
 
@@ -93,8 +92,8 @@ struct IfStmt : Stmt {
 
     IfStmt(ExprPtr cond, StmtPtr block, StmtPtr elseBlock) : cond(std::move(cond)), block(std::move(block)), elseBlock(std::move(elseBlock)) {}
 
-    void accept(NVSEVisitor* visitor) override {
-        visitor->visitIfStmt(this);
+    void Accept(NVSEVisitor* visitor) override {
+        visitor->VisitIfStmt(this);
     }
 };
 
@@ -103,8 +102,8 @@ struct ReturnStmt : Stmt {
 
     ReturnStmt(ExprPtr expr) : expr(std::move(expr)) {}
 
-    void accept(NVSEVisitor* visitor) override {
-        visitor->visitReturnStmt(this);
+    void Accept(NVSEVisitor* visitor) override {
+        visitor->VisitReturnStmt(this);
     }
 };
 
@@ -114,8 +113,8 @@ struct WhileStmt : Stmt {
 
     WhileStmt(ExprPtr cond, StmtPtr block) : cond(std::move(cond)), block(std::move(block)) {}
 
-    void accept(NVSEVisitor *visitor) override {
-        visitor->visitWhileStmt(this);
+    void Accept(NVSEVisitor *visitor) override {
+        visitor->VisitWhileStmt(this);
     }
 };
 
@@ -124,8 +123,8 @@ struct BlockStmt : Stmt {
 
     BlockStmt(std::vector<StmtPtr> statements) : statements(std::move(statements)) {}
 
-    void accept(NVSEVisitor* visitor) override {
-        visitor->visitBlockStmt(this);
+    void Accept(NVSEVisitor* visitor) override {
+        visitor->VisitBlockStmt(this);
     }
 };
 
@@ -133,10 +132,10 @@ struct Expr {
     // Generate RTTI
     virtual ~Expr() {}
 
-    virtual void accept(NVSEVisitor *t) = 0;
+    virtual void Accept(NVSEVisitor *t) = 0;
     
     template <typename T>
-    bool isType() {
+    bool IsType() {
         return dynamic_cast<T*>(this);
     }
 };
@@ -147,8 +146,8 @@ struct AssignmentExpr : Expr {
 
     AssignmentExpr(NVSEToken name, ExprPtr expr) : name(name), expr(std::move(expr)) {};
 
-    void accept(NVSEVisitor* t) {
-        t->visitAssignmentExpr(this);
+    void Accept(NVSEVisitor* t) override {
+        t->VisitAssignmentExpr(this);
     }
 };
 
@@ -159,8 +158,8 @@ struct TernaryExpr : Expr {
 
     TernaryExpr(ExprPtr cond, ExprPtr left, ExprPtr right) : cond(std::move(cond)), left(std::move(left)), right(std::move(right)) {}
 
-    void accept(NVSEVisitor* t) {
-        t->visitTernaryExpr(this);
+    void Accept(NVSEVisitor* t) override {
+        t->VisitTernaryExpr(this);
     }
 };
 
@@ -170,8 +169,8 @@ struct BinaryExpr : Expr {
 
     BinaryExpr(ExprPtr left, ExprPtr right, NVSEToken op) : left(std::move(left)), right(std::move(right)), op(op) {}
 
-    void accept(NVSEVisitor* t) {
-        t->visitBinaryExpr(this);
+    void Accept(NVSEVisitor* t) override {
+        t->VisitBinaryExpr(this);
     }
 };
 
@@ -182,8 +181,8 @@ struct UnaryExpr : Expr {
 
     UnaryExpr(ExprPtr expr, NVSEToken op, bool postfix) : expr(std::move(expr)), op(op), postfix(postfix) {}
 
-    void accept(NVSEVisitor* t) {
-        t->visitUnaryExpr(this);
+    void Accept(NVSEVisitor* t) override {
+        t->VisitUnaryExpr(this);
     }
 };
 
@@ -193,8 +192,8 @@ struct SubscriptExpr : Expr {
 
     SubscriptExpr(ExprPtr left, ExprPtr index) : left(std::move(left)), index(std::move(index)) {}
 
-    void accept(NVSEVisitor* visitor) override {
-        visitor->visitSubscriptExpr(this);
+    void Accept(NVSEVisitor* visitor) override {
+        visitor->VisitSubscriptExpr(this);
     }
 };
 
@@ -204,8 +203,8 @@ struct CallExpr : Expr {
 
     CallExpr(ExprPtr left, std::vector<ExprPtr> args) : left(std::move(left)), args(std::move(args)) {}
 
-    void accept(NVSEVisitor* t) {
-        t->visitCallExpr(this);
+    void Accept(NVSEVisitor* t) override {
+        t->VisitCallExpr(this);
     }
 };
 
@@ -215,8 +214,8 @@ struct GetExpr : Expr {
 
     GetExpr(ExprPtr left, NVSEToken token) : left(std::move(left)), token(token) {}
 
-    void accept(NVSEVisitor* t) {
-        t->visitGetExpr(this);
+    void Accept(NVSEVisitor* t) override {
+        t->VisitGetExpr(this);
     }
 };
 
@@ -227,8 +226,8 @@ struct SetExpr : Expr {
 
     SetExpr(ExprPtr left, NVSEToken token, ExprPtr right) : left(std::move(left)), token(token), right(std::move(right)) {}
 
-    void accept(NVSEVisitor* t) {
-        t->visitSetExpr(this);
+    void Accept(NVSEVisitor* t) override {
+        t->VisitSetExpr(this);
     }
 };
 
@@ -237,8 +236,8 @@ struct BoolExpr : Expr {
 
     BoolExpr(bool value) : value(value) {}
 
-    void accept(NVSEVisitor* t) {
-        t->visitBoolExpr(this);
+    void Accept(NVSEVisitor* t) override {
+        t->VisitBoolExpr(this);
     }
 };
 
@@ -248,8 +247,8 @@ struct NumberExpr : Expr {
 
     NumberExpr(double value, bool isFp) : value(value), isFp(isFp) {}
 
-    void accept(NVSEVisitor* t) {
-        t->visitNumberExpr(this);
+    void Accept(NVSEVisitor* t) override {
+        t->VisitNumberExpr(this);
     }
 };
 
@@ -258,8 +257,8 @@ struct StringExpr : Expr {
 
     StringExpr(NVSEToken value) : value(value) {}
 
-    void accept(NVSEVisitor* t) {
-        t->visitStringExpr(this);
+    void Accept(NVSEVisitor* t) override {
+        t->VisitStringExpr(this);
     }
 };
 
@@ -268,8 +267,8 @@ struct IdentExpr : Expr {
 
     IdentExpr(NVSEToken name) : name(name) {};
 
-    void accept(NVSEVisitor* t) {
-        t->visitIdentExpr(this);
+    void Accept(NVSEVisitor* t) override {
+        t->VisitIdentExpr(this);
     }
 };
 
@@ -278,8 +277,8 @@ struct GroupingExpr : Expr {
 
     GroupingExpr(ExprPtr expr) : expr(std::move(expr)) {}
 
-    void accept(NVSEVisitor* t) {
-        t->visitGroupingExpr(this);
+    void Accept(NVSEVisitor* t) override {
+        t->VisitGroupingExpr(this);
     }
 };
 
@@ -289,8 +288,8 @@ struct LambdaExpr : Expr {
 
     LambdaExpr(std::vector<std::shared_ptr<VarDeclStmt>> args, StmtPtr body) : args(std::move(args)), body(std::move(body)) {}
 
-    void accept(NVSEVisitor* t) {
-        t->visitLambdaExpr(this);
+    void Accept(NVSEVisitor* t) override {
+        t->VisitLambdaExpr(this);
     }
 };
 
@@ -304,8 +303,8 @@ class NVSEParser {
     
 public:
     NVSEParser(NVSELexer& tokenizer, std::function<void(std::string)> outputfn);
-    std::optional<NVSEScript> parse();
-    StmtPtr begin();
+    std::optional<NVSEScript> Parse();
+    StmtPtr Begin();
 
 private:
     NVSELexer& lexer;
@@ -314,37 +313,37 @@ private:
     bool panicMode = false;
     bool hadError = false;
 
-    StmtPtr fnDecl();
-    std::shared_ptr<VarDeclStmt> varDecl();
+    StmtPtr FnDecl();
+    std::shared_ptr<VarDeclStmt> VarDecl();
 
-    StmtPtr statement();
-    StmtPtr exprStmt();
-    StmtPtr forStmt();
-    StmtPtr ifStmt();
-    StmtPtr returnStmt();
-    StmtPtr whileStmt();
-    StmtPtr blockStmt();
+    StmtPtr Statement();
+    StmtPtr ExpressionStatement();
+    StmtPtr ForStatement();
+    StmtPtr IfStatement();
+    StmtPtr ReturnStatement();
+    StmtPtr WhileStatement();
+    StmtPtr BlockStatement();
 
-    ExprPtr expression();
-    ExprPtr assignment();
-    ExprPtr ternary();
-    ExprPtr logicOr();
-    ExprPtr logicAnd();
-    ExprPtr equality();
-    ExprPtr comparison();
-    ExprPtr term();
-    ExprPtr factor();
-    ExprPtr unary();
-    ExprPtr postfix();
-    ExprPtr call();
-    ExprPtr fnExpr();
-    std::vector<std::shared_ptr<VarDeclStmt>> parseArgs();
-    ExprPtr primary();
+    ExprPtr Expression();
+    ExprPtr Assignment();
+    ExprPtr Ternary();
+    ExprPtr LogicalOr();
+    ExprPtr LogicalAnd();
+    ExprPtr Equality();
+    ExprPtr Comparison();
+    ExprPtr Term();
+    ExprPtr Factor();
+    ExprPtr Unary();
+    ExprPtr Postfix();
+    ExprPtr Call();
+    ExprPtr FnExpr();
+    std::vector<std::shared_ptr<VarDeclStmt>> ParseArgs();
+    ExprPtr Primary();
 
-    void advance();
-    bool match(NVSETokenType type);
-    bool peek(NVSETokenType type) const;
-    void error(NVSEToken token, std::string message);
-    NVSEToken expect(NVSETokenType type, std::string message);
-    void synchronize();
+    void Advance();
+    bool Match(NVSETokenType type);
+    bool Peek(NVSETokenType type) const;
+    void Error(NVSEToken token, std::string message);
+    NVSEToken Expect(NVSETokenType type, std::string message);
+    void Synchronize();
 };
