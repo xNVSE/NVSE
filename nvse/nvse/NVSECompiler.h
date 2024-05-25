@@ -17,6 +17,8 @@ constexpr auto MAX_LOCALS = (UINT16_MAX - 1);
 
 class NVSECompiler : NVSEVisitor {
 public:
+	std::function<void(std::string)> printFn;
+	
 	Script* script;
 
 	const char* originalScriptName;
@@ -138,7 +140,7 @@ public:
 	}
 
 	// For initializing SLSD/SCVR/SCRV/SCRO with existing script data?
-	bool compile(Script* scriptForm, NVSEScript& ast);
+	bool compile(Script* script, NVSEScript& ast, std::function<void(std::string)> printFn);
 
 	void visitNVSEScript(const NVSEScript* script) override;
 

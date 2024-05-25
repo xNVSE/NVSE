@@ -4,9 +4,10 @@
 #include "NVSECompilerUtils.h"
 #include "NVSEParser.h"
 
-bool NVSECompiler::compile(Script* script, NVSEScript& ast) {
+bool NVSECompiler::compile(Script* script, NVSEScript& ast, std::function<void(std::string)> printFn) {
 	this->script = script;
 	originalScriptName = script->GetEditorID();
+	this->printFn = printFn;
 
 	insideNvseExpr.push(false);
 	ast.accept(this);
@@ -22,26 +23,33 @@ bool NVSECompiler::compile(Script* script, NVSEScript& ast) {
 	memcpy(script->data, data.data(), data.size());
 
 	// Debug print local info
-	printf("[Locals]\n");
+	printFn("[Locals]\n");
 	for (int i = 0; i < script->varList.Count(); i++) {
 		auto item = script->varList.GetNthItem(i);
-		printf("%d: %s %s\n", item->idx, item->name.CStr(), usedVars.contains(item->name.CStr()) ? "" : "(unused)");
+		printFn(std::format("{}: {} {}\n", item->idx, item->name.CStr(), usedVars.contains(item->name.CStr()) ? "" : "(unused)"));
 	}
-	printf("\n");
+	printFn("\n");
 
 	// Refs
-	printf("[Refs]\n");
-	printf("\n");
+	printFn("[Refs]\n");
+	for (int i = 0; i < script->refList.Count(); i++) {
+		const auto ref = script->refList.GetNthItem(i);
+		if (ref->varIdx) {
+			printFn(std::format("{}: {} (Var {})\n", i, script->varList.GetNthItem(ref->varIdx)->name.CStr(), ref->varIdx));
+		} else {
+			printFn(std::format("{}: {}\n", i, ref->form->GetEditorID()));
+		}
+	}
+	printFn("\n");
 
 	// Script data
-	printf("[Info]\n");
-	printf("Data: ");
+	printFn("[Data]\n");
 	for (int i = 0; i < script->info.dataLength; i++) {
-		printf("%.2X ", script->data[i]);
+		printFn(std::format("{:02x} ", script->data[i]));
 	}
-	printf("\n");
+	printFn("\n");
 
-	printf("\nNum compiled bytes: %d\n", script->info.dataLength);
+	printFn(std::format("\nNum compiled bytes: {}\n", script->info.dataLength));
 
 	return true;
 }

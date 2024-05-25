@@ -418,48 +418,61 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 	buf->errorCode = 0;
 	script->info.compiled = false;
 
-	if (!compilerConsoleOpened) {
-		AllocConsole();
-		freopen("CONOUT$", "w", stdout);
-		compilerConsoleOpened = true;
-	}
+	// if (!compilerConsoleOpened) {
+	// 	AllocConsole();
+	// 	freopen("CONOUT$", "w", stdout);
+	// 	compilerConsoleOpened = true;
+	// }
+
+	std::stringstream ss{};
+	std::function<void(std::string)> printFn = [&] (std::string msg) -> void {
+		ss << msg;
+	};
 
 	// See if new compiler should override script compiler
 	// First token on first line should be 'name'
 	if (!strncmp(buf->scriptText, "name", 4)) {
-		system("CLS");
+		// system("CLS");
 
 		// Just convert script buffer to a string
 		auto program = std::string(buf->scriptText);
 
 		NVSELexer lexer(program);
-		NVSEParser parser(lexer);
+		NVSEParser parser(lexer, printFn);
 
-		printf("\n==== PARSER ====\n\n");
+		printFn("\n==== PARSER ====\n\n");
 		auto astOpt = parser.parse();
 		if (astOpt.has_value()) {
 			auto ast = std::move(astOpt.value());
 
-			printf("\n==== AST ====\n\n");
-
-			auto tp = NVSETreePrinter{[&] (std::string msg) -> void {
-				printf( "%s", msg.c_str());
-			}};
+			auto tp = NVSETreePrinter(printFn);
 			ast.accept(&tp);
 
-			printf("\n==== COMPILER ====\n\n");
+			printFn("\n==== COMPILER ====\n\n");
 
 			NVSECompiler comp{};
 			try {
-				comp.compile(script, ast);
-			} catch (std::runtime_error er) {
-				printf("Script compilation failed: %s\n", er.what());
+				comp.compile(script, ast, printFn);
+				// Flush
+				g_ErrOut.Show(ss.str().c_str());
+
+				// Print out bytes to console for copy/paste
+				std::stringstream ss{};
+				for (auto &b : comp.data) {
+					ss << std::format("{:02x} ", b);
+				}
+				ShowCompilerError(buf, ss.str().c_str());
+			} catch (std::runtime_error &er) {
+				printFn(std::format("Script compilation failed: {}\n", er.what()));
+				// Flush
+				g_ErrOut.Show(ss.str().c_str());
 				return PrecompileResult::kPrecompile_Failure;
 			}
 
 			buf->scriptName = String();
 			buf->scriptName.Set(comp.scriptName.c_str());
 		} else {
+			g_ErrOut.Show(ss.str().c_str());
 			return PrecompileResult::kPrecompile_Failure;
 		}
 	}

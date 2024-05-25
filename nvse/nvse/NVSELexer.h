@@ -14,7 +14,7 @@ enum class NVSETokenType {
     Fn,
     Return,
     For,
-    Begin,
+    BlockType,
     Name,
 
     // Types
@@ -56,7 +56,7 @@ enum class NVSETokenType {
     Semicolon,
     Ternary,
     Colon,
-    End,
+    Eof,
     Dot,
 };
 
@@ -135,7 +135,7 @@ struct NVSEToken {
     size_t linePos = 0;
     std::string lexeme;
 
-    NVSEToken() : type(NVSETokenType::End), lexeme(""), value(std::monostate{}) {}
+    NVSEToken() : type(NVSETokenType::Eof), lexeme(""), value(std::monostate{}) {}
     NVSEToken(NVSETokenType t, std::string lexeme) : type(t), lexeme(lexeme), value(std::monostate{}) {}
     NVSEToken(NVSETokenType t, std::string lexeme, double value) : type(t), lexeme(lexeme), value(value) {}
     NVSEToken(NVSETokenType t, std::string lexeme, std::string value) : type(t), lexeme(lexeme), value(value) {}

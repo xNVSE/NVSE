@@ -4,8 +4,7 @@
 #include <format>
 #include <iostream>
 
-NVSEParser::NVSEParser(NVSELexer& tokenizer) : lexer(tokenizer) {
-	this->lexer = tokenizer;
+NVSEParser::NVSEParser(NVSELexer& tokenizer, std::function<void(std::string)> printFn) : lexer(tokenizer), printFn(printFn) {
 	advance();
 }
 
@@ -24,57 +23,46 @@ std::optional<NVSEScript> NVSEParser::parse() {
 
 		name = dynamic_cast<IdentExpr*>(expr.get())->name;
 
-		while (currentToken.type != NVSETokenType::End) {
+		while (currentToken.type != NVSETokenType::Eof) {
 			try {
-				if (peek(NVSETokenType::Begin) || peek(NVSETokenType::Fn)) {
+				if (peek(NVSETokenType::BlockType) || peek(NVSETokenType::Fn)) {
 					break;
 				}
 
 				auto stmt = statement();
-				if (!dynamic_cast<VarDeclStmt*>(stmt.get())) {
+				if (!stmt->isType<VarDeclStmt>()) {
 					error(previousToken, "Expected variable declaration.");
 				}
 
 				globals.emplace_back(std::move(stmt));
 			}
 			catch (NVSEParseError e) {
-				std::cout << e.what() << std::endl;
+				printFn(e.what());
+				printFn("\n");
+				
 				synchronize();
 			}
 		}
 
-		if (currentToken.type == NVSETokenType::End) {
-			error(currentToken, "Expected 'begin' or 'fn'.");
+		// Get event or udf block
+		if (peek(NVSETokenType::BlockType)) {
+			blocks.emplace_back(begin());
+		}
+		else if (match(NVSETokenType::Fn)) {
+			blocks.emplace_back(fnDecl());
+		}
+		else {
+			error(currentToken, "Expected block type (GameMode, MenuMode, ...) or 'fn'.");
 		}
 
-		int numBegin = 0;
-		int numFn = 0;
-		while (!peek(NVSETokenType::End)) {
-			if (match(NVSETokenType::Begin)) {
-				if (numFn > 0) {
-					error(currentToken, "Cannot have a 'Begin' block in same script as an 'fn' block.");
-				}
-
-				blocks.emplace_back(begin());
-				numBegin++;
-			}
-			else if (match(NVSETokenType::Fn)) {
-				if (numBegin > 0) {
-					error(currentToken, "Cannot have a 'fn' block in same script as a 'Begin' block.");
-				}
-
-				blocks.emplace_back(fnDecl());
-				numFn++;
-			}
-			else {
-				advance();
-				error(previousToken, "Expected 'begin' or 'fn'.");
-			}
+		// Only allow one block for now
+		if (match(NVSETokenType::BlockType) || match(NVSETokenType::Fn)) {
+			error(currentToken, "Cannot have multiple blocks in one script.");
 		}
 	}
 	catch (NVSEParseError e) {
-		std::cout << e.what() << std::endl;
-		synchronize();
+		printFn(e.what());
+		printFn("\n");
 	}
 
 	if (hadError) {
@@ -85,23 +73,20 @@ std::optional<NVSEScript> NVSEParser::parse() {
 }
 
 StmtPtr NVSEParser::begin() {
-	expect(NVSETokenType::Identifier, "Expected identifier.");
-	auto ident = previousToken;
+	match(NVSETokenType::BlockType);
+	auto blockName = previousToken;
+	
 	std::optional<NVSEToken> mode{};
-
-	if (!mpBeginInfo.contains(ident.lexeme)) {
-		error(previousToken, "Unexpected begin block type.");
-	}
-	auto beginInfo = mpBeginInfo[ident.lexeme];
+	auto [opcode, arg, argRequired, argType] = mpBeginInfo[blockName.lexeme];
 
 	if (match(NVSETokenType::Colon)) {
-		if (beginInfo.arg == false) {
+		if (arg == false) {
 			error(currentToken, "Cannot specify argument for this block type.");
 		}
 
 		if (match(NVSETokenType::Colon)) {
 			if (match(NVSETokenType::Number)) {
-				if (beginInfo.argType != ArgType::Int) {
+				if (argType != ArgType::Int) {
 					error(currentToken, "Expected integer.");
 				}
 
@@ -112,7 +97,7 @@ StmtPtr NVSEParser::begin() {
 
 				mode = modeToken;
 			} else if (match(NVSETokenType::Identifier)) {
-				if (beginInfo.argType != ArgType::Ref) {
+				if (argType != ArgType::Ref) {
 					error(currentToken, "Expected identifier.");
 				}
 
@@ -124,36 +109,20 @@ StmtPtr NVSEParser::begin() {
 			error(currentToken, "Expected ':'.");
 		}
 	} else {
-		if (beginInfo.argRequired) {
-			error(currentToken, "Missing required parameter for block type '" + ident.lexeme + "'");
+		if (argRequired) {
+			error(currentToken, "Missing required parameter for block type '" + blockName.lexeme + "'");
 		}
 	}
 
 	if (!peek(NVSETokenType::LeftBrace)) {
 		error(currentToken, "Expected '{'.");
 	}
-	return std::make_unique<BeginStmt>(ident, mode, blockStmt());
+	return std::make_unique<BeginStmt>(blockName, mode, blockStmt());
 }
 
 StmtPtr NVSEParser::fnDecl() {
-	expect(NVSETokenType::LeftParen, "Expected '(' after 'fn'.");
-
-	std::vector<std::unique_ptr<VarDeclStmt>> args{};
-	if (!match(NVSETokenType::RightParen)) {
-		do {
-			auto decl = varDecl();
-			if (decl->value != nullptr) {
-				error(previousToken, "Cannot specify default values.");
-			}
-			args.emplace_back(std::move(decl));
-		} while (match(NVSETokenType::Comma));
-
-		expect(NVSETokenType::RightParen, "Expected ')' after arguments.");
-	}
-
-	return std::make_unique<FnDeclStmt>(std::move(args), blockStmt());
+	return std::make_unique<FnDeclStmt>(std::move(parseArgs()), blockStmt());
 }
-
 
 StmtPtr NVSEParser::statement() {
 	if (peek(NVSETokenType::For)) {
@@ -250,7 +219,8 @@ StmtPtr NVSEParser::blockStmt() {
 			statements.emplace_back(statement());
 		}
 		catch (NVSEParseError e) {
-			std::cout << e.what() << std::endl;
+			printFn(e.what());
+			printFn("\n");
 			synchronize();
 		}
 	}
@@ -404,10 +374,10 @@ ExprPtr NVSEParser::call() {
 
 	while (match(NVSETokenType::Dot) || match(NVSETokenType::LeftParen)) {
 		if (previousToken.type == NVSETokenType::Dot) {
-			if (!(dynamic_cast<GroupingExpr*>(expr.get())
-				|| dynamic_cast<IdentExpr*>(expr.get())
-				|| dynamic_cast<CallExpr*>(expr.get())
-				|| dynamic_cast<GetExpr*>(expr.get()))) {
+			if (!expr->isType<GroupingExpr>() &&
+				!expr->isType<IdentExpr>() &&
+				!expr->isType<CallExpr>() &&
+				!expr->isType<GetExpr>()) {
 				error(currentToken, "Invalid member access.");
 			}
 
@@ -415,27 +385,20 @@ ExprPtr NVSEParser::call() {
 			expr = std::make_unique<GetExpr>(std::move(expr), ident);
 		}
 		else {
-			if (!(dynamic_cast<GroupingExpr*>(expr.get())
-				|| dynamic_cast<IdentExpr*>(expr.get())
-				|| dynamic_cast<CallExpr*>(expr.get())
-				|| dynamic_cast<GetExpr*>(expr.get()))) {
+			// Can only call on ident or get expr
+			if (!expr->isType<IdentExpr>() &&
+				!expr->isType<GetExpr>()) {
 				error(currentToken, "Invalid callee.");
 			}
 
-
-			if (match(NVSETokenType::RightParen)) {
-				expr = std::make_unique<CallExpr>(std::move(expr), std::move(std::vector<ExprPtr>{}));
-				continue;
-			}
-
 			std::vector<ExprPtr> args{};
-			args.emplace_back(std::move(expression()));
-			while (match(NVSETokenType::Comma)) {
+			while (!match(NVSETokenType::RightParen)) {
 				args.emplace_back(std::move(expression()));
+
+				if (!peek(NVSETokenType::RightParen) && !match(NVSETokenType::Comma)) {
+					error(currentToken, "Expected ',' or ')'.");
+				}
 			}
-
-			expect(NVSETokenType::RightParen, "Expected ')' after args.");
-
 			expr = std::make_unique<CallExpr>(std::move(expr), std::move(args));
 		}
 	}
@@ -453,10 +416,9 @@ ExprPtr NVSEParser::primary() {
 		if (std::ranges::find(previousToken.lexeme, '.') != previousToken.lexeme.end()) {
 			return std::make_unique<NumberExpr>(std::get<double>(previousToken.value), true);
 		}
+		
 		// Int literal
-		else {
-			return std::make_unique<NumberExpr>(std::get<double>(previousToken.value), false);
-		}
+		return std::make_unique<NumberExpr>(std::get<double>(previousToken.value), false);
 	}
 
 	if (match(NVSETokenType::String)) {
@@ -478,26 +440,31 @@ ExprPtr NVSEParser::primary() {
 	}
 
 	error(currentToken, "Expected expression.");
+	return ExprPtr{nullptr};
 }
 
 // Only called when 'fn' token is matched
 ExprPtr NVSEParser::fnExpr() {
+	return std::make_unique<LambdaExpr>(std::move(parseArgs()), blockStmt());
+}
+
+std::vector<std::unique_ptr<VarDeclStmt>> NVSEParser::parseArgs() {
 	expect(NVSETokenType::LeftParen, "Expected '(' after 'fn'.");
 
 	std::vector<std::unique_ptr<VarDeclStmt>> args{};
-	if (!match(NVSETokenType::RightParen)) {
-		do {
-			auto decl = varDecl();
-			if (decl->value != nullptr) {
-				error(previousToken, "Cannot specify default values.");
-			}
-			args.emplace_back(std::move(decl));
-		} while (match(NVSETokenType::Comma));
+	while (!match(NVSETokenType::RightParen)) {
+		auto decl = varDecl();
+		if (decl->value) {
+			error(previousToken, "Cannot specify default values.");
+		}
+		args.emplace_back(std::move(decl));
 
-		expect(NVSETokenType::RightParen, "Expected ')' after arguments.");
+		if (!peek(NVSETokenType::RightParen) && !match(NVSETokenType::Comma)) {
+			error(currentToken, "Expected ',' or ')'.");
+		}
 	}
 
-	return std::make_unique<LambdaExpr>(std::move(args), blockStmt());
+	return std::move(args);
 }
 
 void NVSEParser::advance() {
@@ -514,7 +481,7 @@ bool NVSEParser::match(NVSETokenType type) {
 	return false;
 }
 
-bool NVSEParser::peek(NVSETokenType type) {
+bool NVSEParser::peek(NVSETokenType type) const {
 	if (currentToken.type == type) {
 		return true;
 	}
@@ -547,7 +514,7 @@ NVSEToken NVSEParser::expect(NVSETokenType type, std::string message) {
 }
 
 void NVSEParser::synchronize() {
-	while (currentToken.type != NVSETokenType::End) {
+	while (currentToken.type != NVSETokenType::Eof) {
 		if (previousToken.type == NVSETokenType::Semicolon) {
 			panicMode = false;
 			return;

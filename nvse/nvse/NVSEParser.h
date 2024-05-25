@@ -29,6 +29,11 @@ struct Stmt {
     virtual ~Stmt() {}
 
     virtual void accept(NVSEVisitor* t) = 0;
+
+    template <typename T>
+    bool isType() {
+        return dynamic_cast<T*>(this);
+    }
 };
 
 struct BeginStmt : Stmt {
@@ -129,6 +134,11 @@ struct Expr {
     virtual ~Expr() {}
 
     virtual void accept(NVSEVisitor *t) = 0;
+    
+    template <typename T>
+    bool isType() {
+        return dynamic_cast<T*>(this);
+    }
 };
 
 struct AssignmentExpr : Expr {
@@ -278,9 +288,10 @@ public:
 };
 
 class NVSEParser {
+    std::function<void(std::string)> printFn;
+    
 public:
-    NVSEParser(NVSELexer& tokenizer);
-
+    NVSEParser(NVSELexer& tokenizer, std::function<void(std::string)> outputfn);
     std::optional<NVSEScript> parse();
     StmtPtr begin();
 
@@ -314,11 +325,12 @@ private:
     ExprPtr unary();
     ExprPtr call();
     ExprPtr fnExpr();
+    std::vector<std::unique_ptr<VarDeclStmt>> parseArgs();
     ExprPtr primary();
 
     void advance();
     bool match(NVSETokenType type);
-    bool peek(NVSETokenType type);
+    bool peek(NVSETokenType type) const;
     void error(NVSEToken token, std::string message);
     NVSEToken expect(NVSETokenType type, std::string message);
     void synchronize();

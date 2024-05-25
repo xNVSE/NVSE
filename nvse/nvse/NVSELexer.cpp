@@ -1,4 +1,5 @@
 #include "NVSELexer.h"
+#include "NVSECompilerUtils.h"
 
 NVSELexer::NVSELexer(const std::string& input) : input(input), pos(0) {
 	// Messy way of just getting string lines to start for later error reporting
@@ -23,7 +24,7 @@ NVSEToken NVSELexer::getNextToken() {
         }
     }
 
-    if (pos == input.size()) return makeToken(NVSETokenType::End, "");
+    if (pos == input.size()) return makeToken(NVSETokenType::Eof, "");
 
     char current = input[pos];
     if (std::isdigit(current)) {
@@ -50,7 +51,6 @@ NVSEToken NVSELexer::getNextToken() {
         if (identifier == "fn") return makeToken(NVSETokenType::Fn, identifier);
         if (identifier == "return") return makeToken(NVSETokenType::Return, identifier);
         if (identifier == "for") return makeToken(NVSETokenType::For, identifier);
-        if (identifier == "begin") return makeToken(NVSETokenType::Begin, identifier);
         if (identifier == "name") return makeToken(NVSETokenType::Name, identifier);
 
         // Types
@@ -63,6 +63,11 @@ NVSEToken NVSELexer::getNextToken() {
         // Boolean literals
         if (identifier == "true") return makeToken(NVSETokenType::Bool, identifier, 1);
         if (identifier == "false") return makeToken(NVSETokenType::Bool, identifier, 0);
+
+        // See if it is a begin block type
+        if (mpBeginInfo.contains(identifier)) {
+            return makeToken(NVSETokenType::BlockType, identifier);
+        }
 
         return makeToken(NVSETokenType::Identifier, identifier);
     }

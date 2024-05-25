@@ -9,6 +9,8 @@ void NVSETreePrinter::printTabs() {
 }
 
 void NVSETreePrinter::visitNVSEScript(const NVSEScript* script) {
+	printFn("\n==== AST ====\n\n");
+	
 	printTabs();
 	printFn(std::format("name: {}\n", script->name.lexeme));
 	printTabs();
@@ -30,7 +32,7 @@ void NVSETreePrinter::visitNVSEScript(const NVSEScript* script) {
 
 void NVSETreePrinter::visitBeginStatement(const BeginStmt* stmt) {
 	printTabs();
-	printFn(std::format("begin {}{}\n", stmt->name.lexeme, stmt->param.has_value() ? stmt->param->lexeme : ""));
+	printFn(std::format("begin {} {}\n", stmt->name.lexeme, stmt->param.has_value() ? stmt->param->lexeme : ""));
 	curTab++;
 	printTabs();
 	printFn("body\n");
