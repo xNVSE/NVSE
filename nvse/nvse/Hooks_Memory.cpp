@@ -5,63 +5,57 @@
 // greets to sheson for his work on this
 // it must run before static initializers are run
 
+enum HeapType {
+	kHeapType_Default = 0,
+	kHeapType_File,
+	kHeapType_Max
+};
+
+const char* heapNames[kHeapType_Max] = {
+	"Default",
+	"File",
+};
+
+// In MB
+const UInt32 vanillaHeapSizes[kHeapType_Max] = {
+	200,
+	64,
+};
+
+const UInt32 maxHeapSizes[kHeapType_Max] = {
+	1024,
+	192,
+};
+
+UInt32 userHeapSizes[kHeapType_Max] = {
+	0,
+	0,
+};
+
+constexpr UInt32 heapAddresses[kHeapType_Max] = {
+	0x866EA0,
+	0x866F89,
+};
+
 void Hooks_Memory_PreloadCommit(bool isNoGore)
 {
-	// these are the values used by the game
-	const UInt32 kVanilla_defaultHeapInitialAllocMB = 200;
-	const UInt32 kVanilla_scrapHeapSizeMB = 64;
+	GetNVSEConfigOption_UInt32("Memory", "DefaultHeapInitialAllocMB", &userHeapSizes[kHeapType_Default]);
+	GetNVSEConfigOption_UInt32("Memory", "FileHeapSizeMB", &userHeapSizes[kHeapType_File]);
 
-	// clamp to these values because going over that is stupid
-	const UInt32 kMax_defaultHeapInitialAllocMB = 500;	// issues have been reported while using 500
-	const UInt32 kMax_scrapHeapSizeMB = 128;
-
-	// in megabytes, -256 depending on bInitiallyLoadAllClips:Animation
-	UInt32 defaultHeapInitialAllocMB = kVanilla_defaultHeapInitialAllocMB;
-	UInt32 scrapHeapSizeMB = kVanilla_scrapHeapSizeMB;
-
-	// Debug value defaultHeapInitialAllocMB = 400;
-	GetNVSEConfigOption_UInt32("Memory", "DefaultHeapInitialAllocMB", &defaultHeapInitialAllocMB);
-	GetNVSEConfigOption_UInt32("Memory", "ScrapHeapSizeMB", &scrapHeapSizeMB);
-
-	if(	(defaultHeapInitialAllocMB != kVanilla_defaultHeapInitialAllocMB) ||
-		(scrapHeapSizeMB != kVanilla_scrapHeapSizeMB))
-	{
-		_MESSAGE("overriding memory pool sizes");
-
-		if(defaultHeapInitialAllocMB >= kMax_defaultHeapInitialAllocMB)
-		{
-			_MESSAGE("%dMB default heap is too large, clamping to %dMB. using your value will make the game unstable.", defaultHeapInitialAllocMB, kMax_defaultHeapInitialAllocMB);
-			defaultHeapInitialAllocMB = kMax_defaultHeapInitialAllocMB;
+	// Check if values differ from vanilla
+	for (UInt32 i = 0; i < kHeapType_Max; i++) {
+		if (userHeapSizes[i] > maxHeapSizes[i]) {
+			_MESSAGE("Warning: %s heap size is greater than maximum allowed value. Using maximum value of %i", heapNames[i], maxHeapSizes[i]);
+			userHeapSizes[i] = maxHeapSizes[i];
+		}
+		else if (userHeapSizes[i] < vanillaHeapSizes[i]) {
+			_MESSAGE("Warning: %s heap size is less than vanilla value. Using vanilla value of %i", heapNames[i], vanillaHeapSizes[i]);
+			userHeapSizes[i] = vanillaHeapSizes[i];
 		}
 
-		if(scrapHeapSizeMB >= kMax_scrapHeapSizeMB)
-		{
-			_MESSAGE("%dMB scrap heap is too large, clamping to %dMB. using your value will make the game unstable.", kMax_scrapHeapSizeMB, kMax_defaultHeapInitialAllocMB);
-			scrapHeapSizeMB = kMax_scrapHeapSizeMB;
-		}
-
-		if(defaultHeapInitialAllocMB < kVanilla_defaultHeapInitialAllocMB)
-		{
-			_MESSAGE("%dMB default heap is too small, clamping to %dMB. using your value will make the game unstable.", defaultHeapInitialAllocMB, kVanilla_defaultHeapInitialAllocMB);
-			defaultHeapInitialAllocMB = kVanilla_defaultHeapInitialAllocMB;
-		}
-
-		if(scrapHeapSizeMB < kVanilla_scrapHeapSizeMB)
-		{
-			_MESSAGE("%dMB scrap heap is too small, clamping to %dMB. using your value will make the game unstable.", kMax_scrapHeapSizeMB, kVanilla_scrapHeapSizeMB);
-			scrapHeapSizeMB = kVanilla_scrapHeapSizeMB;
-		}
-
-		_MESSAGE("default heap = %dMB", defaultHeapInitialAllocMB);
-		//_MESSAGE("scrap heap = %dMB", scrapHeapSizeMB);
-
-		if (isNoGore) {
-			SafeWrite32(0x0086696F + 1, defaultHeapInitialAllocMB  * 1024 * 1024); // passed directly to FormHeap_allocate.
-			// SafeWrite32(0x00zzzzz7 + 1, scrapHeapSizeMB * 1024 );
-		}
-		else {
-			SafeWrite32(0x00866E9F + 1, defaultHeapInitialAllocMB  * 1024 * 1024); // passed directly to FormHeap_allocate.
-			// SafeWrite32(0x00AA53F7 + 1, scrapHeapSizeMB * 1024 );
+		if (userHeapSizes[i] != vanillaHeapSizes[i]) {
+			_MESSAGE("Overriding %s heap size: %dMB", heapNames[i], userHeapSizes[i]);
+			SafeWrite32(heapAddresses[i], userHeapSizes[i] * 0x100000);
 		}
 	}
 }
