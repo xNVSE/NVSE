@@ -302,6 +302,10 @@ std::shared_ptr<BlockStmt> NVSEParser::BlockStatement() {
 			printFn(e.what());
 			printFn("\n");
 			Synchronize();
+
+			if (currentToken.type == NVSETokenType::Eof) {
+				break;
+			}
 		}
 	}
 
