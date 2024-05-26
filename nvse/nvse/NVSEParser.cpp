@@ -144,6 +144,16 @@ StmtPtr NVSEParser::Statement() {
 		return ReturnStatement();
 	}
 
+	if (Match(NVSETokenType::Break)) {
+		Expect(NVSETokenType::Semicolon, "Expected ';' at end of statement.");
+		return std::make_shared<BreakStmt>();
+	}
+
+	if (Match(NVSETokenType::Continue)) {
+		Expect(NVSETokenType::Semicolon, "Expected ';' at end of statement.");
+		return std::make_shared<ContinueStmt>();
+	}
+
 	if (Peek(NVSETokenType::While)) {
 		return WhileStatement();
 	}

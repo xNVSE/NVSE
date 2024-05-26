@@ -1,5 +1,4 @@
 #pragma once
-
 struct NVSEScript;
 
 struct BeginStmt;
@@ -10,6 +9,8 @@ struct ExprStmt;
 struct ForStmt;
 struct IfStmt;
 struct ReturnStmt;
+struct ContinueStmt;
+struct BreakStmt;
 struct WhileStmt;
 struct BlockStmt;
 
@@ -40,6 +41,8 @@ public:
 	virtual void VisitForStmt(const ForStmt* stmt) = 0;
 	virtual void VisitIfStmt(IfStmt* stmt) = 0;
 	virtual void VisitReturnStmt(ReturnStmt* stmt) = 0;
+	virtual void VisitContinueStmt(ContinueStmt* stmt) = 0;
+	virtual void VisitBreakStmt(BreakStmt* stmt) = 0;
 	virtual void VisitWhileStmt(const WhileStmt* stmt) = 0;
 	virtual void VisitBlockStmt(BlockStmt* stmt) = 0;
 

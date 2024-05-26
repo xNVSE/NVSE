@@ -103,7 +103,9 @@ void NVSETypeChecker::VisitForStmt(const ForStmt* stmt) {
         stmt->post->Accept(this);
     }
 
+    insideLoop.push(true);
     stmt->block->Accept(this);
+    insideLoop.pop();
 }
 
 void NVSETypeChecker::VisitIfStmt(IfStmt* stmt) {
@@ -134,6 +136,18 @@ void NVSETypeChecker::VisitReturnStmt(ReturnStmt* stmt) {
     }
 }
 
+void NVSETypeChecker::VisitContinueStmt(ContinueStmt* stmt) {
+    if (insideLoop.empty() || !insideLoop.top()) {
+        error(stmt->line, "Keyword 'continue' not valid outside of loops.");
+    }
+}
+
+void NVSETypeChecker::VisitBreakStmt(BreakStmt* stmt) {
+    if (insideLoop.empty() || !insideLoop.top()) {
+        error(stmt->line, "Keyword 'break' not valid outside of loops.");
+    }
+}
+
 void NVSETypeChecker::VisitWhileStmt(const WhileStmt* stmt) {
     stmt->cond->Accept(this);
 
@@ -146,7 +160,9 @@ void NVSETypeChecker::VisitWhileStmt(const WhileStmt* stmt) {
     }
     stmt->cond->detailedType = oType;
 
+    insideLoop.push(true);
     stmt->block->Accept(this);
+    insideLoop.pop();
 }
 
 void NVSETypeChecker::VisitBlockStmt(BlockStmt* stmt) {
@@ -365,7 +381,9 @@ void NVSETypeChecker::VisitLambdaExpr(LambdaExpr* expr) {
         decl->Accept(this);
     }
 
+    insideLoop.push(false);
     expr->body->Accept(this);
+    insideLoop.pop();
 
     expr->detailedType = kTokenType_Lambda;
 }

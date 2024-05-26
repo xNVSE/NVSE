@@ -19,6 +19,8 @@ public:
 	void VisitForStmt(const ForStmt* stmt) override;
 	void VisitIfStmt(IfStmt* stmt) override;
 	void VisitReturnStmt(ReturnStmt* stmt) override;
+	void VisitContinueStmt(ContinueStmt* stmt) override;
+	void VisitBreakStmt(BreakStmt* stmt) override;
 	void VisitWhileStmt(const WhileStmt* stmt) override;
 	void VisitBlockStmt(BlockStmt* stmt) override;
 

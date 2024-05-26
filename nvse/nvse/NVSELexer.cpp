@@ -63,6 +63,8 @@ NVSEToken NVSELexer::GetNextToken() {
         if (identifier == "return") return MakeToken(NVSETokenType::Return, identifier);
         if (identifier == "for") return MakeToken(NVSETokenType::For, identifier);
         if (identifier == "name") return MakeToken(NVSETokenType::Name, identifier);
+        if (identifier == "continue") return MakeToken(NVSETokenType::Continue, identifier);
+        if (identifier == "break") return MakeToken(NVSETokenType::Break, identifier);
 
         // Types
         if (identifier == "int") return MakeToken(NVSETokenType::IntType, identifier);

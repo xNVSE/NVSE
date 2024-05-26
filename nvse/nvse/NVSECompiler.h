@@ -24,6 +24,10 @@ public:
 
 	std::stack<bool> insideNvseExpr{};
 
+	// When we enter a for loop, push the increment condition on the stack
+	// Insert this before any continue / break
+	std::stack<StmtPtr> loopIncrements{};
+
 	// Used to hold result of visits
 	// Like if one visit invokes a child visit and needs data from it, such as compiled size
 	uint32_t statementCount = 0;
@@ -178,6 +182,8 @@ public:
 	void VisitForStmt(const ForStmt* stmt) override;
 	void VisitIfStmt(IfStmt* stmt) override;
 	void VisitReturnStmt(ReturnStmt* stmt) override;
+	void VisitContinueStmt(ContinueStmt* stmt) override;
+	void VisitBreakStmt(BreakStmt* stmt) override;
 	void VisitWhileStmt(const WhileStmt* stmt) override;
 	uint32_t CompileBlock(StmtPtr& stmt, bool incrementCurrent);
 	void VisitBlockStmt(BlockStmt* stmt) override;

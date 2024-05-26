@@ -341,6 +341,10 @@ void NVSECompiler::VisitForStmt(const ForStmt* stmt) {
 		stmt->block->statements.push_back(std::make_shared<ExprStmt>(stmt->post));
 	}
 	auto whilePtr = std::make_shared<WhileStmt>(stmt->cond, stmt->block);
+
+	if (stmt->post) {
+		loopIncrements.push(std::make_shared<ExprStmt>(stmt->post));
+	}
 	whilePtr->Accept(this);
 }
 
@@ -439,6 +443,18 @@ void NVSECompiler::VisitReturnStmt(ReturnStmt* stmt) {
 
 	// Emit op_return
 	AddU32(static_cast<uint32_t>(ScriptParsing::ScriptStatementCode::Return));
+}
+
+void NVSECompiler::VisitContinueStmt(ContinueStmt* stmt) {
+	if (!loopIncrements.empty()) {
+		loopIncrements.top()->Accept(this);
+	}
+	
+	AddU32(0x153E);
+}
+
+void NVSECompiler::VisitBreakStmt(BreakStmt* stmt) {
+	AddU32(0x153F);
 }
 
 void NVSECompiler::VisitWhileStmt(const WhileStmt* stmt) {

@@ -123,6 +123,22 @@ struct ReturnStmt : Stmt {
     }
 };
 
+struct ContinueStmt : Stmt {
+    ContinueStmt() {}
+
+    void Accept(NVSEVisitor* visitor) override {
+        visitor->VisitContinueStmt(this);
+    }
+};
+
+struct BreakStmt : Stmt {
+    BreakStmt() {}
+
+    void Accept(NVSEVisitor* visitor) override {
+        visitor->VisitBreakStmt(this);
+    }
+};
+
 struct WhileStmt : Stmt {
     ExprPtr cond;
     StmtPtr block;

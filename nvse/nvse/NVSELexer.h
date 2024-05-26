@@ -15,6 +15,8 @@ enum class NVSETokenType {
     For,
     BlockType,
     Name,
+    Continue,
+    Break,
 
     // Types
     IntType,
@@ -69,6 +71,8 @@ static const char* TokenTypeStr[]{
     "For",
     "Begin",
     "Name",
+    "Continue",
+    "Break",
 
     // Types
     "IntType",

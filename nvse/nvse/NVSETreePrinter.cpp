@@ -168,6 +168,17 @@ void NVSETreePrinter::VisitReturnStmt(ReturnStmt* stmt) {
 		curTab--;
 	}
 }
+
+void NVSETreePrinter::VisitContinueStmt(ContinueStmt* stmt) {
+	PrintTabs();
+	printFn("continue");
+}
+
+void NVSETreePrinter::VisitBreakStmt(BreakStmt* stmt) {
+	PrintTabs();
+	printFn("break");
+}
+
 void NVSETreePrinter::VisitWhileStmt(const WhileStmt* stmt) {
 	PrintTabs();
 	printFn("while\n");
