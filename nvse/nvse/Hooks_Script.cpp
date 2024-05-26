@@ -424,6 +424,8 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 	std::function<void(std::string)> printFn = [&] (std::string msg) -> void {
 #ifndef RUNTIME
 		std::cout << msg << std::flush;
+#else
+		ShowRuntimeError(script, msg.c_str());
 #endif
 	};
 
@@ -453,12 +455,14 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 				return PrecompileResult::kPrecompile_Failure;
 			}
 
+#ifndef RUNTIME
 			auto tp = NVSETreePrinter(printFn);
 			ast.Accept(&tp);
+#endif
 
 			printFn("\n==== COMPILER ====\n\n");
 
-			NVSECompiler comp{script, ast, printFn};
+			NVSECompiler comp{script, buf->partialScript, ast, printFn};
 			try {
 				comp.Compile();
 			} catch (std::runtime_error &er) {
@@ -466,8 +470,11 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 				return PrecompileResult::kPrecompile_Failure;
 			}
 
-			buf->scriptName = String();
-			buf->scriptName.Set(comp.scriptName.c_str());
+			// Only set script name if not partial
+			if (!buf->partialScript) {
+				buf->scriptName = String();
+				buf->scriptName.Set(comp.scriptName.c_str());
+			}
 		} else {
 			return PrecompileResult::kPrecompile_Failure;
 		}

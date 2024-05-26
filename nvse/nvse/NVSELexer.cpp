@@ -1,5 +1,9 @@
 #include "NVSELexer.h"
+
+#include <sstream>
+
 #include "NVSECompilerUtils.h"
+
 
 NVSELexer::NVSELexer(const std::string& input) : input(input), pos(0) {
 	// Messy way of just getting string lines to start for later error reporting
@@ -88,15 +92,36 @@ NVSEToken NVSELexer::GetNextToken() {
     }
 
     if (current == '"') {
+        std::stringstream buf{};
         size_t start = pos++;
-        while (pos < input.size() && (input[pos] != '"' || input[pos - 1] == '\\')) pos++;
+        while (pos < input.size() && (input[pos] != '"' || input[pos - 1] == '\\')) {
+            if (pos < input.size() - 1 && input[pos] == '\\') {
+                char escape = input[pos + 1];
+                if (escape == 'n') {
+                    buf << '\n';
+                } else if (escape == '"') {
+                    buf << '"';
+                } else if (escape == '\\') {
+                    buf << '\\';
+                } else {
+                    throw std::runtime_error(std::format("Invalid escape sequence '{}{}'.", input[pos], input[pos + 1]));
+                }
+
+                pos++;
+            } else {
+                buf << input[pos];
+            }
+            pos++;
+        }
+        
         if (input[pos] != '\"') {
             throw std::runtime_error("Unexpected EOF");
         }
+        
         pos++;
         const auto len = pos - start;
-        std::string text = input.substr(start + 1, len - 2);
-        std::string lexeme = '\"' + text + '\"';
+        std::string text = buf.str();
+        std::string lexeme = '\"' + input.substr(start, len) + '\"';
         return MakeToken(NVSETokenType::String, lexeme, text);
     }
 

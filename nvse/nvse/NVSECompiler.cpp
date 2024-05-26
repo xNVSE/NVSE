@@ -56,7 +56,9 @@ bool NVSECompiler::Compile() {
 	insideNvseExpr.push(false);
 	ast.Accept(this);
 
-	script->SetEditorID(scriptName.c_str());
+	if (!partial) {
+		script->SetEditorID(scriptName.c_str());
+	}
 
 	script->info.compiled = true;
 	script->info.dataLength = data.size();
@@ -104,12 +106,14 @@ void NVSECompiler::VisitNVSEScript(const NVSEScript* nvScript) {
 
 	// Dont allow naming script the same as another form, unless that form is the script itself
 	auto comp = strcmp(scriptName.c_str(), originalScriptName);
-	if (ResolveObjReference(scriptName, false) && comp) {
+	if (ResolveObjReference(scriptName, false) && comp && !partial) {
 		throw std::runtime_error(std::format("Error: Form name '{}' is already in use.\n", scriptName.c_str()));
 	}
 
 	// SCN
-	AddU32(static_cast<uint32_t>(ScriptParsing::ScriptStatementCode::ScriptName));
+	if (!partial) {
+		AddU32(static_cast<uint32_t>(ScriptParsing::ScriptStatementCode::ScriptName));
+	}
 
 	for (auto& global_var : nvScript->globalVars) {
 		global_var->Accept(this);

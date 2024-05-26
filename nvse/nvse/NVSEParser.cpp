@@ -540,7 +540,12 @@ std::vector<std::shared_ptr<VarDeclStmt>> NVSEParser::ParseArgs() {
 
 void NVSEParser::Advance() {
 	previousToken = currentToken;
-	currentToken = lexer.GetNextToken();
+	// Bubble up lexer errors
+	try {
+		currentToken = lexer.GetNextToken();
+	} catch (std::runtime_error &er) {
+		Error(currentToken, er.what());
+	}
 }
 
 bool NVSEParser::Match(NVSETokenType type) {

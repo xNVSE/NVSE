@@ -16,6 +16,7 @@ class Script;
 class NVSECompiler : NVSEVisitor {
 public:
 	Script* script;
+	bool partial;
 	NVSEScript &ast;
 	const std::function<void(std::string)> &printFn;
 
@@ -168,8 +169,8 @@ public:
 		data[index + 3] = byte >> 24 & 0xFF;
 	}
 
-	NVSECompiler(Script *script, NVSEScript& ast, const std::function<void(std::string)> &printFn)
-	: script(script), ast(ast), printFn(printFn), originalScriptName(script->GetEditorID()) {}
+	NVSECompiler(Script *script, bool partial, NVSEScript& ast, const std::function<void(std::string)> &printFn)
+	: script(script), partial(partial), ast(ast), printFn(printFn), originalScriptName(script->GetEditorID()) {}
 	bool Compile();
 
 	void VisitNVSEScript(const NVSEScript* nvScript) override;
