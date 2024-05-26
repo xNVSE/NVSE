@@ -416,7 +416,9 @@ void NVSECompiler::VisitIfStmt(IfStmt* stmt) {
 	AddU16(0x0);
 }
 
-void NVSECompiler::VisitReturnStmt(const ReturnStmt* stmt) {}
+void NVSECompiler::VisitReturnStmt(const ReturnStmt* stmt) {
+	
+}
 
 void NVSECompiler::VisitWhileStmt(const WhileStmt* stmt) {
 	// OP_WHILE
@@ -452,19 +454,21 @@ void NVSECompiler::VisitWhileStmt(const WhileStmt* stmt) {
 }
 
 uint32_t NVSECompiler::CompileBlock(StmtPtr& stmt, bool incrementCurrent) {
-	// Store old block size
-	auto temp = result;
+	// Store old statement count
+	auto temp = statementCount;
 
+	// Get sub-block statement count
 	stmt->Accept(this);
+	auto newStatementCount = statementCount;
 
-	auto res = result;
+	// This is optional because lambda compilation should
+	//  not be counted in the parent blocks' statement count
 	if (incrementCurrent) {
-		temp += res;
+		temp += newStatementCount;
 	}
 
-	result = temp;
-
-	return res;
+	statementCount = temp;
+	return newStatementCount;
 }
 
 void NVSECompiler::VisitBlockStmt(const BlockStmt* stmt) {
@@ -472,15 +476,10 @@ void NVSECompiler::VisitBlockStmt(const BlockStmt* stmt) {
 		statement->Accept(this);
 	}
 
-	result = stmt->statements.size();
+	statementCount = stmt->statements.size();
 }
 
 void NVSECompiler::VisitAssignmentExpr(const AssignmentExpr* expr) {
-	const auto varInfo = script->varList.GetVariableByName(expr->name.lexeme.c_str());
-	if (!varInfo) {
-		throw std::runtime_error(std::format("Cannot assign to '{}'. Variable with name not found.", expr->name.lexeme));
-	}
-
 	// OP_LET
 	AddU16(0x1539);
 
@@ -495,11 +494,10 @@ void NVSECompiler::VisitAssignmentExpr(const AssignmentExpr* expr) {
 	auto argStart = data.size();
 	auto argPatch = AddU16(0x0);
 
-	// Add arg to stack
-	AddU8('V');
-	AddU8(varInfo->type);
-	AddU16(0); // SCRV
-	AddU16(varInfo->idx); // SCDA
+	// Add LHS to stack
+	insideNvseExpr.push(true);
+	expr->left->Accept(this);
+	insideNvseExpr.push(false);
 
 	// Build expression
 	expr->expr->Accept(this);
@@ -513,7 +511,7 @@ void NVSECompiler::VisitAssignmentExpr(const AssignmentExpr* expr) {
 }
 
 void NVSECompiler::VisitTernaryExpr(const TernaryExpr* expr) {
-	
+	// TODO
 }
 
 void NVSECompiler::VisitBinaryExpr(const BinaryExpr* expr) {
@@ -524,6 +522,7 @@ void NVSECompiler::VisitBinaryExpr(const BinaryExpr* expr) {
 
 void NVSECompiler::VisitUnaryExpr(const UnaryExpr* expr) {
 	if (expr->postfix) {
+		// Slight hack to get postfix operators working
 		expr->expr->Accept(this);
 		expr->expr->Accept(this);
 		AddU8('B');
@@ -605,7 +604,7 @@ void NVSECompiler::VisitCallExpr(const CallExpr* expr) {
 
 	// Didn't resolve a ref var or command
 	if (!cmd /*&& !inLambda*/) {
-		throw std::runtime_error("Invalid function '" + identExpr->name.lexeme + "'.");
+		throw std::runtime_error("Invalid function '" + name + "'.");
 	}
 
 	auto normalParse = cmd->parse != Cmd_Expression_Parse && cmd->parse != kCommandInfo_Call.parse;
@@ -745,10 +744,51 @@ void NVSECompiler::VisitCallExpr(const CallExpr* expr) {
 }
 
 void NVSECompiler::VisitGetExpr(const GetExpr* expr) {
+	// Try to resolve lhs reference
+	const auto ident = dynamic_cast<IdentExpr*>(expr->left.get());
+	if (!ident) {
+		throw std::runtime_error("Left side of a get expression must be an object reference.");
+	}
+	
+	const auto lhsName = ident->name.lexeme;
+	const auto rhsName = expr->token.lexeme;
+	
+	const auto refIdx = ResolveObjReference(lhsName);
+	if (!refIdx) {
+		throw std::runtime_error(std::format("Unable to resolve reference '{}'.", lhsName));
+	}
 
+	// Ensure it is of type quest
+	TESForm *form = script->refList.GetNthItem(refIdx - 1)->form;
+	TESScriptableForm *scriptable = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
+	if (!scriptable) {
+		throw std::runtime_error(std::format("Form '{}' is not referenceable from scripts.", lhsName));
+	}
+
+	// Try to find variable
+	Script *questScript = scriptable->script;
+	if (!questScript) {
+		throw std::runtime_error(std::format("Form '{}' does not have a script.", lhsName));
+	}
+
+	const VariableInfo *info = nullptr;
+	for (int i = 0; i < questScript->varList.Count(); i++) {
+		const auto curVar = questScript->varList.GetNthItem(i);
+		if (!strcmp(curVar->name.CStr(), rhsName.c_str())) {
+			info = curVar;
+		}
+	}
+
+	if (!info) {
+		throw std::runtime_error(std::format("Form '{}' does not have variable with name '{}'.", lhsName, rhsName));
+	}
+
+	// Put ref on stack
+	AddU8('V');
+	AddU8(info->type);
+	AddU16(refIdx);
+	AddU16(info->idx);
 }
-
-void NVSECompiler::VisitSetExpr(const SetExpr* expr) {}
 
 void NVSECompiler::VisitBoolExpr(const BoolExpr* expr) {
 	AddU8('B');
@@ -812,8 +852,6 @@ void NVSECompiler::VisitIdentExpr(const IdentExpr* expr) {
 		AddU16(local->idx);
 		return;
 	}
-
-	// Try to look up as function
 
 	// Try to look up as global
 	auto scrv = ResolveObjReference(name);

@@ -288,15 +288,8 @@ ExprPtr NVSEParser::Assignment() {
 		const auto prevTok = previousToken;
 		ExprPtr value = Assignment();
 
-		const auto idExpr = dynamic_cast<IdentExpr*>(left.get());
-		const auto getExpr = dynamic_cast<GetExpr*>(left.get());
-
-		if (idExpr) {
-			return std::make_shared<AssignmentExpr>(idExpr->name, std::move(value));
-		}
-
-		if (getExpr) {
-			return std::make_shared<SetExpr>(std::move(getExpr->left), getExpr->token, std::move(value));
+		if (left->IsType<IdentExpr>() || left->IsType<GetExpr>() || left->IsType<SubscriptExpr>()) {
+			return std::make_shared<AssignmentExpr>(std::move(left), std::move(value));
 		}
 
 		Error(prevTok, "Invalid assignment target.");
@@ -582,9 +575,10 @@ void NVSEParser::Synchronize() {
 		switch (currentToken.type) {
 		case NVSETokenType::If:
 		case NVSETokenType::While:
+		case NVSETokenType::For:
 		case NVSETokenType::Return:
-		case NVSETokenType::LeftBrace:
 		case NVSETokenType::RightBrace:
+			panicMode = false;
 			return;
 		default: ;
 		}

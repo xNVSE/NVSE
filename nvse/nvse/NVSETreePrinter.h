@@ -11,7 +11,6 @@ public:
 	NVSETreePrinter(const std::function<void(std::string)>& printFn) : printFn(printFn) {}
 
 	void VisitNVSEScript(const NVSEScript* script) override;
-
 	void VisitBeginStmt(const BeginStmt* stmt) override;
 	void VisitFnStmt(FnDeclStmt* stmt) override;
 	void VisitVarDeclStmt(const VarDeclStmt* stmt) override;
@@ -23,7 +22,6 @@ public:
 	void VisitWhileStmt(const WhileStmt* stmt) override;
 	void VisitBlockStmt(const BlockStmt* stmt) override;
 
-	// Inherited via NVSEVisitor
 	void VisitAssignmentExpr(const AssignmentExpr* expr) override;
 	void VisitTernaryExpr(const TernaryExpr* expr) override;
 	void VisitBinaryExpr(const BinaryExpr* expr) override;
@@ -31,7 +29,6 @@ public:
 	void VisitSubscriptExpr(SubscriptExpr* expr) override;
 	void VisitCallExpr(const CallExpr* expr) override;
 	void VisitGetExpr(const GetExpr* expr) override;
-	void VisitSetExpr(const SetExpr* expr) override;
 	void VisitBoolExpr(const BoolExpr* expr) override;
 	void VisitNumberExpr(const NumberExpr* expr) override;
 	void VisitStringExpr(const StringExpr* expr) override;

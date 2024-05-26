@@ -20,7 +20,6 @@ struct UnaryExpr;
 struct SubscriptExpr;
 struct CallExpr;
 struct GetExpr;
-struct SetExpr;
 struct BoolExpr;
 struct NumberExpr;
 struct StringExpr;
@@ -31,8 +30,8 @@ struct LambdaExpr;
 class NVSEVisitor {
 public:
 	virtual ~NVSEVisitor() = default;
+	
 	virtual void VisitNVSEScript(const NVSEScript* script) = 0;
-
 	virtual void VisitBeginStmt(const BeginStmt* stmt) = 0;
 	virtual void VisitFnStmt(FnDeclStmt* stmt) = 0;
 	virtual void VisitVarDeclStmt(const VarDeclStmt* stmt) = 0;
@@ -51,7 +50,6 @@ public:
 	virtual void VisitSubscriptExpr(SubscriptExpr* expr) = 0;
 	virtual void VisitCallExpr(const CallExpr* expr) = 0;
 	virtual void VisitGetExpr(const GetExpr* expr) = 0;
-	virtual void VisitSetExpr(const SetExpr* expr) = 0;
 	virtual void VisitBoolExpr(const BoolExpr* expr) = 0;
 	virtual void VisitNumberExpr(const NumberExpr* expr) = 0;
 	virtual void VisitStringExpr(const StringExpr* expr) = 0;

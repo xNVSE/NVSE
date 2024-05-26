@@ -184,7 +184,10 @@ void NVSETreePrinter::VisitAssignmentExpr(const AssignmentExpr* expr) {
 	printFn("assignment\n");
 	curTab++;
 	PrintTabs();
-	printFn("name: " + expr->name.lexeme + '\n');
+	printFn("lhs:\n");
+	curTab++;
+	expr->left->Accept(this);
+	curTab--;
 	PrintTabs();
 	printFn("rhs\n");
 	curTab++;
@@ -300,27 +303,6 @@ void NVSETreePrinter::VisitGetExpr(const GetExpr* expr) {
 	curTab--;
 	PrintTabs();
 	printFn("token: " + expr->token.lexeme + '\n');
-	curTab--;
-}
-
-void NVSETreePrinter::VisitSetExpr(const SetExpr* expr) {
-	PrintTabs();
-	printFn("set\n");
-	curTab++;
-	PrintTabs();
-	printFn("lhs\n");
-	curTab++;
-	expr->left->Accept(this);
-	curTab--;
-	PrintTabs();
-	printFn("token: " + expr->token.lexeme + '\n');
-	curTab--;
-	curTab++;
-	PrintTabs();
-	printFn("rhs\n");
-	curTab++;
-	expr->right->Accept(this);
-	curTab--;
 	curTab--;
 }
 

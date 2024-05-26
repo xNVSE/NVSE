@@ -26,7 +26,7 @@ public:
 
 	// Used to hold result of visits
 	// Like if one visit invokes a child visit and needs data from it, such as compiled size
-	uint32_t result = 0;
+	uint32_t statementCount = 0;
 
 	std::set<std::string> usedVars{};
 
@@ -190,7 +190,6 @@ public:
 	void VisitSubscriptExpr(SubscriptExpr* expr) override;
 	void VisitCallExpr(const CallExpr* expr) override;
 	void VisitGetExpr(const GetExpr* expr) override;
-	void VisitSetExpr(const SetExpr* expr) override;
 	void VisitBoolExpr(const BoolExpr* expr) override;
 	void VisitNumberExpr(const NumberExpr* expr) override;
 	void VisitStringExpr(const StringExpr* expr) override;

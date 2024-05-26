@@ -150,10 +150,10 @@ struct Expr {
 };
 
 struct AssignmentExpr : Expr {
-    NVSEToken name;
+    ExprPtr left;
     ExprPtr expr;
 
-    AssignmentExpr(NVSEToken name, ExprPtr expr) : name(name), expr(std::move(expr)) {};
+    AssignmentExpr(ExprPtr left, ExprPtr expr) : left(std::move(left)), expr(std::move(expr)) {};
 
     void Accept(NVSEVisitor* t) override {
         t->VisitAssignmentExpr(this);
@@ -225,18 +225,6 @@ struct GetExpr : Expr {
 
     void Accept(NVSEVisitor* t) override {
         t->VisitGetExpr(this);
-    }
-};
-
-struct SetExpr : Expr {
-    ExprPtr left;
-    NVSEToken token;
-    ExprPtr right;
-
-    SetExpr(ExprPtr left, NVSEToken token, ExprPtr right) : left(std::move(left)), token(token), right(std::move(right)) {}
-
-    void Accept(NVSEVisitor* t) override {
-        t->VisitSetExpr(this);
     }
 };
 
