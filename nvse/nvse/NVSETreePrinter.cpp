@@ -126,6 +126,34 @@ void NVSETreePrinter::VisitForStmt(const ForStmt* stmt) {
 	
 	curTab--;
 }
+
+void NVSETreePrinter::VisitForEachStmt(ForEachStmt* stmt) {
+	PrintTabs();
+	printFn("foreach\n");
+
+	curTab++;
+
+	PrintTabs();
+	printFn("elem\n");
+	curTab++;
+	stmt->lhs->Accept(this);
+	curTab--;
+	
+	PrintTabs();
+	printFn("in\n");
+	curTab++;
+	stmt->rhs->Accept(this);
+	curTab--;
+
+	PrintTabs();
+	printFn("block\n");
+	curTab++;
+	stmt->block->Accept(this);
+	curTab--;
+	
+	curTab--;
+}
+
 void NVSETreePrinter::VisitIfStmt(IfStmt* stmt) {
 	PrintTabs();
 	printFn("if\n");

@@ -7,6 +7,7 @@ struct VarDeclStmt;
 
 struct ExprStmt;
 struct ForStmt;
+struct ForEachStmt;
 struct IfStmt;
 struct ReturnStmt;
 struct ContinueStmt;
@@ -39,6 +40,7 @@ public:
 
 	virtual void VisitExprStmt(const ExprStmt* stmt) = 0;
 	virtual void VisitForStmt(const ForStmt* stmt) = 0;
+	virtual void VisitForEachStmt(ForEachStmt* stmt) = 0;
 	virtual void VisitIfStmt(IfStmt* stmt) = 0;
 	virtual void VisitReturnStmt(ReturnStmt* stmt) = 0;
 	virtual void VisitContinueStmt(ContinueStmt* stmt) = 0;

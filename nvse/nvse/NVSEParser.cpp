@@ -196,31 +196,55 @@ StmtPtr NVSEParser::ForStatement() {
 	Expect(NVSETokenType::LeftParen, "Expected '(' after 'for'.");
 
 	// Optional expression
+	bool forEach = false;
 	StmtPtr init = {nullptr};
 	if (!Peek(NVSETokenType::Semicolon)) {
-		init = Statement();
-		if (!init->IsType<VarDeclStmt>() && !init->IsType<AssignmentExpr>()) {
-			Error(currentToken, "Expected variable declaration or assignment.");
+		if (Peek(NVSETokenType::IntType) || Peek(NVSETokenType::DoubleType) || Peek(NVSETokenType::RefType) || Peek(NVSETokenType::ArrayType) || Peek(NVSETokenType::StringType)) {
+			init = VarDecl();
+
+			if (Peek(NVSETokenType::Colon)) {
+				forEach = true;
+			} else {
+				Expect(NVSETokenType::Semicolon, "Expected ';' after loop initializer.");
+			}
+		} else {
+			init = Statement();
+			if (!init->IsType<AssignmentExpr>()) {
+				Error(currentToken, "Expected variable declaration or assignment.");
+			}
+		}
+	}
+
+	if (!forEach) {
+		// Default to true condition
+		ExprPtr cond = std::make_shared<BoolExpr>(true);
+		if (!Peek(NVSETokenType::Semicolon)) {
+			cond = Expression();
+			Expect(NVSETokenType::Semicolon, "Expected ';' after loop condition.");
 		}
 
-		// Don't need to Expect() a semicolon here because Statement() does.
-	}
+		ExprPtr incr = {nullptr};
+		if (!Peek(NVSETokenType::RightParen)) {
+			incr = Expression();
+		}
+		Expect(NVSETokenType::RightParen, "Expected ')'.");
 
-	// Default to true condition
-	ExprPtr cond = std::make_shared<BoolExpr>(true);
-	if (!Peek(NVSETokenType::Semicolon)) {
-		cond = Expression();
-		Expect(NVSETokenType::Semicolon, "Expected ';' after loop condition.");
+		std::shared_ptr<BlockStmt> block = BlockStatement();
+		return std::make_shared<ForStmt>(std::move(init), std::move(cond), std::move(incr), std::move(block));
+	} else {
+		// Don't need to check this
+		auto initStmt = dynamic_cast<VarDeclStmt*>(init.get());
+		if (initStmt->value) {
+			Error(previousToken, "Variable initializer not allowed in for-each loop.");
+		}
+		
+		Match(NVSETokenType::Colon);
+		ExprPtr rhs = Expression();
+		Expect(NVSETokenType::RightParen, "Expected ')'.");
+		
+		std::shared_ptr<BlockStmt> block = BlockStatement();
+		return std::make_shared<ForEachStmt>(std::move(init), std::move(rhs), std::move(block));
 	}
-
-	ExprPtr incr = {nullptr};
-	if (!Peek(NVSETokenType::RightParen)) {
-		incr = Expression();
-	}
-	Expect(NVSETokenType::RightParen, "Expected ')'.");
-
-	std::shared_ptr<BlockStmt> block = BlockStatement();
-	return std::make_shared<ForStmt>(std::move(init), std::move(cond), std::move(incr), std::move(block));
 }
 
 StmtPtr NVSEParser::IfStatement() {

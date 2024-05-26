@@ -101,6 +101,18 @@ struct ForStmt : Stmt {
     }
 };
 
+struct ForEachStmt : Stmt {
+    StmtPtr lhs;
+    ExprPtr rhs;
+    std::shared_ptr<BlockStmt> block;
+
+    ForEachStmt(StmtPtr lhs, ExprPtr rhs, std::shared_ptr<BlockStmt> block) : lhs(std::move(lhs)), rhs(std::move(rhs)), block(std::move(block)) {}
+
+    void Accept(NVSEVisitor* visitor) override {
+        visitor->VisitForEachStmt(this);
+    }
+};
+
 struct IfStmt : Stmt {
     ExprPtr cond;
     StmtPtr block;

@@ -108,6 +108,21 @@ void NVSETypeChecker::VisitForStmt(const ForStmt* stmt) {
     insideLoop.pop();
 }
 
+void NVSETypeChecker::VisitForEachStmt(ForEachStmt* stmt) {
+    stmt->lhs->Accept(this);
+    stmt->rhs->Accept(this);
+
+    // Get type of lhs identifier
+    auto ident = dynamic_cast<VarDeclStmt*>(stmt->lhs.get())->name.lexeme;
+    auto lType = typeCache[ident];
+    auto rType = stmt->rhs->detailedType;
+    if (s_operators[operatorMap["<-"]].GetResult(lType, rType) == kTokenType_Invalid) {
+        error(stmt->line, std::format("Cannot iterate over type '{}'.", TokenTypeToString(rType)));
+    }
+
+    stmt->block->Accept(this);
+}
+
 void NVSETypeChecker::VisitIfStmt(IfStmt* stmt) {
     stmt->cond->Accept(this);
 

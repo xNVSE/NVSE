@@ -352,6 +352,59 @@ void NVSECompiler::VisitForStmt(const ForStmt* stmt) {
 	whilePtr->Accept(this);
 }
 
+void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
+	// Compile initializer
+	stmt->lhs->Accept(this);
+
+	// Get variable info
+	auto varDecl = dynamic_cast<VarDeclStmt*>(stmt->lhs.get());
+	if (!varDecl) {
+		throw std::runtime_error("Unexpected compiler error.");
+	}
+	
+	auto varInfo = script->GetVariableByName(varDecl->name.lexeme.c_str());
+	if (!varInfo) {
+		throw std::runtime_error("Unexpected compiler error.");
+	}
+	
+	// OP_FOREACH
+	AddU16(0x153D);
+		
+	// Placeholder OP_LEN
+	auto exprPatch = AddU16(0x0);
+	auto exprStart = data.size();
+
+	auto jmpPatch = AddU32(0x0);
+
+	// Num args
+	AddU8(0x1);
+
+	// Arg 1 len
+	auto argStart = data.size();
+	auto argPatch = AddU16(0x0);
+
+	insideNvseExpr.push(true);
+	AddU8('V');
+	AddU8(varInfo->type);
+	AddU16(0x0);
+	AddU16(varInfo->idx);
+	stmt->rhs->Accept(this);
+	AddU8(operatorMap["<-"]);
+	insideNvseExpr.pop();
+
+	SetU16(argPatch, data.size() - argStart);
+	SetU16(exprPatch, data.size() - exprStart);
+
+	stmt->block->Accept(this);
+
+	// OP_LOOP
+	AddU16(0x153c);
+	AddU16(0x0);
+
+	// Patch jmp
+	SetU32(jmpPatch, data.size());
+}
+
 void NVSECompiler::VisitIfStmt(IfStmt* stmt) {
 	// OP_IF
 	AddU16(static_cast<uint16_t>(ScriptParsing::ScriptStatementCode::If));

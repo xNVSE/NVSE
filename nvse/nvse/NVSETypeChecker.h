@@ -25,6 +25,7 @@ public:
     void VisitVarDeclStmt(const VarDeclStmt* stmt) override;
     void VisitExprStmt(const ExprStmt* stmt) override;
     void VisitForStmt(const ForStmt* stmt) override;
+	void VisitForEachStmt(ForEachStmt* stmt) override;
     void VisitIfStmt(IfStmt* stmt) override;
     void VisitReturnStmt(ReturnStmt* stmt) override;
     void VisitContinueStmt(ContinueStmt* stmt) override;
