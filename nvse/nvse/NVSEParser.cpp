@@ -435,6 +435,13 @@ ExprPtr NVSEParser::Call() {
 			}
 
 			const auto ident = Expect(NVSETokenType::Identifier, "Expected identifier.");
+
+			if (!expr->IsType<IdentExpr>()) {
+				if (!Peek(NVSETokenType::Dot) && !Peek(NVSETokenType::LeftParen)) {
+					Error(currentToken, "Expected call or '.'.");
+				}
+			}
+			
 			expr = std::make_shared<GetExpr>(std::move(expr), ident);
 		}
 		else {
@@ -568,6 +575,8 @@ NVSEToken NVSEParser::Expect(NVSETokenType type, std::string message) {
 }
 
 void NVSEParser::Synchronize() {
+	Advance();
+	
 	while (currentToken.type != NVSETokenType::Eof) {
 		if (previousToken.type == NVSETokenType::Semicolon) {
 			panicMode = false;

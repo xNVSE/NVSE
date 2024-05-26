@@ -43,6 +43,22 @@ void NVSETreePrinter::VisitBeginStmt(const BeginStmt* stmt) {
 }
 
 void NVSETreePrinter::VisitFnStmt(FnDeclStmt* stmt) {
+	PrintTabs();
+	printFn("fn\n");
+	curTab++;
+	PrintTabs();
+	printFn("args\n");
+	curTab++;
+	for (auto var_decl_stmt : stmt->args) {
+		var_decl_stmt->Accept(this);
+	}
+	curTab--;
+	PrintTabs();
+	printFn("body\n");
+	curTab++;
+	stmt->body->Accept(this);
+	curTab--;
+	curTab--;
 }
 
 void NVSETreePrinter::VisitVarDeclStmt(const VarDeclStmt* stmt) {
@@ -138,14 +154,14 @@ void NVSETreePrinter::VisitIfStmt(IfStmt* stmt) {
 
 	curTab--;
 }
-void NVSETreePrinter::VisitReturnStmt(const ReturnStmt* stmt) {
+void NVSETreePrinter::VisitReturnStmt(ReturnStmt* stmt) {
 	PrintTabs();
 	printFn("return\n");
 
 	if (stmt->expr) {
 		curTab++;
 		PrintTabs();
-		printFn("cond\n");
+		printFn("value\n");
 		curTab++;
 		stmt->expr->Accept(this);
 		curTab--;
@@ -173,7 +189,7 @@ void NVSETreePrinter::VisitWhileStmt(const WhileStmt* stmt) {
 	curTab--;
 }
 
-void NVSETreePrinter::VisitBlockStmt(const BlockStmt* stmt) {
+void NVSETreePrinter::VisitBlockStmt(BlockStmt* stmt) {
 	for (auto &stmt : stmt->statements) {
 		stmt->Accept(this);
 	}
@@ -224,7 +240,7 @@ void NVSETreePrinter::VisitTernaryExpr(const TernaryExpr* expr) {
 	curTab--;
 }
 
-void NVSETreePrinter::VisitBinaryExpr(const BinaryExpr* expr) {
+void NVSETreePrinter::VisitBinaryExpr(BinaryExpr* expr) {
 	PrintTabs();
 	printFn("binary: " + expr->op.lexeme + '\n');
 	curTab++;
@@ -238,14 +254,24 @@ void NVSETreePrinter::VisitBinaryExpr(const BinaryExpr* expr) {
 	curTab++;
 	expr->right->Accept(this);
 	curTab--;
+	
+	PrintTabs();
+	std::string detailedTypeStr = TokenTypeToString(expr->detailedType);
+	printFn("detailed type: " + detailedTypeStr + "\n");
+	
 	curTab--;
 }
 
-void NVSETreePrinter::VisitUnaryExpr(const UnaryExpr* expr) {
+void NVSETreePrinter::VisitUnaryExpr(UnaryExpr* expr) {
 	PrintTabs();
 	printFn("unary: " + expr->op.lexeme + '\n');
 	curTab++;
 	expr->expr->Accept(this);
+	
+	PrintTabs();
+	std::string detailedTypeStr = TokenTypeToString(expr->detailedType);
+	printFn("detailed type: " + detailedTypeStr + "\n");
+	
 	curTab--;
 }
 
@@ -266,10 +292,14 @@ void NVSETreePrinter::VisitSubscriptExpr(SubscriptExpr* expr) {
 	expr->index->Accept(this);
 	curTab--;
 	
+	PrintTabs();
+	std::string detailedTypeStr = TokenTypeToString(expr->detailedType);
+	printFn("detailed type: " + detailedTypeStr + "\n");
+	
 	curTab--;
 }
 
-void NVSETreePrinter::VisitCallExpr(const CallExpr* expr) {
+void NVSETreePrinter::VisitCallExpr(CallExpr* expr) {
 	PrintTabs();
 	printFn("call\n");
 	curTab++;
@@ -288,11 +318,15 @@ void NVSETreePrinter::VisitCallExpr(const CallExpr* expr) {
 		}
 		curTab--;
 	}
+	
+	PrintTabs();
+	std::string detailedTypeStr = TokenTypeToString(expr->detailedType);
+	printFn("detailed type: " + detailedTypeStr + "\n");
 
 	curTab--;
 }
 
-void NVSETreePrinter::VisitGetExpr(const GetExpr* expr) {
+void NVSETreePrinter::VisitGetExpr(GetExpr* expr) {
 	PrintTabs();
 	printFn("get\n");
 	curTab++;
@@ -303,38 +337,73 @@ void NVSETreePrinter::VisitGetExpr(const GetExpr* expr) {
 	curTab--;
 	PrintTabs();
 	printFn("token: " + expr->token.lexeme + '\n');
+	
+	PrintTabs();
+	std::string detailedTypeStr = TokenTypeToString(expr->detailedType);
+	printFn("detailed type: " + detailedTypeStr + "\n");
+	
 	curTab--;
 }
 
-void NVSETreePrinter::VisitBoolExpr(const BoolExpr* expr) {
+void NVSETreePrinter::VisitBoolExpr(BoolExpr* expr) {
 	PrintTabs();
 	if (expr->value) {
 		printFn("boolean: true\n");
 	} else {
 		printFn("boolean: false\n");
 	}
+
+	curTab++;
+	PrintTabs();
+	std::string detailedTypeStr = TokenTypeToString(expr->detailedType);
+	printFn("detailed type: " + detailedTypeStr + "\n");
+	curTab--;
 }
 
-void NVSETreePrinter::VisitNumberExpr(const NumberExpr* expr) {
+void NVSETreePrinter::VisitNumberExpr(NumberExpr* expr) {
 	PrintTabs();
 	printFn("number: " + std::to_string(expr->value) + '\n');
+
+	curTab++;
+	PrintTabs();
+	std::string detailedTypeStr = TokenTypeToString(expr->detailedType);
+	printFn("detailed type: " + detailedTypeStr + "\n");
+	curTab--;
 }
 
-void NVSETreePrinter::VisitStringExpr(const StringExpr* expr) {
+void NVSETreePrinter::VisitStringExpr(StringExpr* expr) {
 	PrintTabs();
 	printFn("string: " + expr->value.lexeme + '\n');
+
+	curTab++;
+	PrintTabs();
+	std::string detailedTypeStr = TokenTypeToString(expr->detailedType);
+	printFn("detailed type: " + detailedTypeStr + "\n");
+	curTab--;
 }
 
-void NVSETreePrinter::VisitIdentExpr(const IdentExpr* expr) {
+void NVSETreePrinter::VisitIdentExpr(IdentExpr* expr) {
 	PrintTabs();
 	printFn("ident: " + expr->name.lexeme + '\n');
+
+	curTab++;
+	PrintTabs();
+	std::string detailedTypeStr = TokenTypeToString(expr->detailedType);
+	printFn("detailed type: " + detailedTypeStr + "\n");
+	curTab--;
 }
 
-void NVSETreePrinter::VisitGroupingExpr(const GroupingExpr* expr) {
+void NVSETreePrinter::VisitGroupingExpr(GroupingExpr* expr) {
 	PrintTabs();
 	printFn("grouping\n");
 	curTab++;
 	expr->expr->Accept(this);
+	curTab--;
+
+	curTab++;
+	PrintTabs();
+	std::string detailedTypeStr = TokenTypeToString(expr->detailedType);
+	printFn("detailed type: " + detailedTypeStr + "\n");
 	curTab--;
 }
 
@@ -359,5 +428,11 @@ void NVSETreePrinter::VisitLambdaExpr(LambdaExpr* expr) {
 	expr->body->Accept(this);
 	curTab--;
 
+	curTab--;
+
+	curTab++;
+	PrintTabs();
+	std::string detailedTypeStr = TokenTypeToString(expr->detailedType);
+	printFn("detailed type: " + detailedTypeStr + "\n");
 	curTab--;
 }

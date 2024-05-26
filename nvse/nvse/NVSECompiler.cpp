@@ -416,7 +416,7 @@ void NVSECompiler::VisitIfStmt(IfStmt* stmt) {
 	AddU16(0x0);
 }
 
-void NVSECompiler::VisitReturnStmt(const ReturnStmt* stmt) {
+void NVSECompiler::VisitReturnStmt(ReturnStmt* stmt) {
 	// Compile SetFunctionValue if we have a return value
 	if (stmt->expr) {
 		AddU16(0x1546);
@@ -457,7 +457,9 @@ void NVSECompiler::VisitWhileStmt(const WhileStmt* stmt) {
 	// Compile / patch condition
 	auto condStart = data.size();
 	auto condPatch = AddU16(0x0);
+	insideNvseExpr.push(true);
 	stmt->cond->Accept(this);
+	insideNvseExpr.pop();
 	SetU16(condPatch, data.size() - condStart);
 
 	// Patch OP_LEN
@@ -492,7 +494,7 @@ uint32_t NVSECompiler::CompileBlock(StmtPtr& stmt, bool incrementCurrent) {
 	return newStatementCount;
 }
 
-void NVSECompiler::VisitBlockStmt(const BlockStmt* stmt) {
+void NVSECompiler::VisitBlockStmt(BlockStmt* stmt) {
 	for (auto& statement : stmt->statements) {
 		statement->Accept(this);
 	}
@@ -535,13 +537,13 @@ void NVSECompiler::VisitTernaryExpr(const TernaryExpr* expr) {
 	// TODO
 }
 
-void NVSECompiler::VisitBinaryExpr(const BinaryExpr* expr) {
+void NVSECompiler::VisitBinaryExpr(BinaryExpr* expr) {
 	expr->left->Accept(this);
 	expr->right->Accept(this);
 	AddU8(operatorMap[expr->op.lexeme]);
 }
 
-void NVSECompiler::VisitUnaryExpr(const UnaryExpr* expr) {
+void NVSECompiler::VisitUnaryExpr(UnaryExpr* expr) {
 	if (expr->postfix) {
 		// Slight hack to get postfix operators working
 		expr->expr->Accept(this);
@@ -574,7 +576,7 @@ void NVSECompiler::VisitSubscriptExpr(SubscriptExpr* expr) {
 	AddU8(operatorMap["["]);
 }
 
-void NVSECompiler::VisitCallExpr(const CallExpr* expr) {
+void NVSECompiler::VisitCallExpr(CallExpr* expr) {
 	auto stackRefExpr = dynamic_cast<GetExpr*>(expr->left.get());
 	auto identExpr = dynamic_cast<IdentExpr*>(expr->left.get());
 
@@ -591,40 +593,8 @@ void NVSECompiler::VisitCallExpr(const CallExpr* expr) {
 	// Try to get the script command by lexeme
 	auto cmd = g_scriptCommands.GetByName(name.c_str());
 
-	// Handle lambda NON dot expressions
-	// myLambda(), not player.myLambda();
-	// bool inLambda = false;
-	// if (identExpr){
-	// 	if (auto var = script->varList.GetVariableByName(name.c_str())) {
-	// 		if (var->type == Script::eVarType_Ref) {
-	// 			inLambda = true;
-	//
-	// 			// Wrap in Call
-	// 			add_u8('X');
-	// 			add_u16(0x1545);
-	//
-	// 			// Call size
-	// 			auto callStart = data.size();
-	// 			auto callPatch = add_u16(0x0);
-	//
-	// 			// Add ref
-	// 			add_u8('R');
-	//
-	// 			// Args
-	// 			for (int i = 0; i < expr->args.size(); i++) {
-	// 				auto argStartInner = data.size();
-	// 				auto argPatchInner = add_u16(0x0);
-	// 				expr->args[i]->accept(this);
-	// 				set_u16(argPatchInner, data.size() - argStartInner);
-	// 			}
-	//
-	// 			set_u16(callPatch, data.size() - callStart);
-	// 		}
-	// 	}
-	// }
-
 	// Didn't resolve a ref var or command
-	if (!cmd /*&& !inLambda*/) {
+	if (!cmd) {
 		throw std::runtime_error("Invalid function '" + name + "'.");
 	}
 
@@ -764,7 +734,7 @@ void NVSECompiler::VisitCallExpr(const CallExpr* expr) {
 	}
 }
 
-void NVSECompiler::VisitGetExpr(const GetExpr* expr) {
+void NVSECompiler::VisitGetExpr(GetExpr* expr) {
 	// Try to resolve lhs reference
 	const auto ident = dynamic_cast<IdentExpr*>(expr->left.get());
 	if (!ident) {
@@ -811,12 +781,12 @@ void NVSECompiler::VisitGetExpr(const GetExpr* expr) {
 	AddU16(info->idx);
 }
 
-void NVSECompiler::VisitBoolExpr(const BoolExpr* expr) {
+void NVSECompiler::VisitBoolExpr(BoolExpr* expr) {
 	AddU8('B');
 	AddU8(expr->value);
 }
 
-void NVSECompiler::VisitNumberExpr(const NumberExpr* expr) {
+void NVSECompiler::VisitNumberExpr(NumberExpr* expr) {
 	if (expr->isFp) {
 		AddF64(expr->value);
 	}
@@ -836,11 +806,11 @@ void NVSECompiler::VisitNumberExpr(const NumberExpr* expr) {
 	}
 }
 
-void NVSECompiler::VisitStringExpr(const StringExpr* expr) {
+void NVSECompiler::VisitStringExpr(StringExpr* expr) {
 	AddString(std::get<std::string>(expr->value.value));
 }
 
-void NVSECompiler::VisitIdentExpr(const IdentExpr* expr) {
+void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
 	auto name = expr->name.lexeme;
 
 	// If this is a lambda var, inline it as a call to GetModLocalData
@@ -883,7 +853,7 @@ void NVSECompiler::VisitIdentExpr(const IdentExpr* expr) {
 	}
 }
 
-void NVSECompiler::VisitGroupingExpr(const GroupingExpr* expr) {
+void NVSECompiler::VisitGroupingExpr(GroupingExpr* expr) {
 	expr->expr->Accept(this);
 }
 

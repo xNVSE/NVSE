@@ -144,6 +144,7 @@ enum Token_Type : UInt8
 };
 
 const char *TokenTypeToString(Token_Type type);
+Token_Type ToTokenType(CommandReturnType type);
 
 struct Slice // a range used for indexing into a string or array, expressed as arr[a:b]
 {
@@ -271,7 +272,7 @@ struct ScriptToken
 	[[nodiscard]] Script* GetUserFunction() const;
 	ScriptParsing::CommandCallToken GetCallToken(Script* script) const;
 #endif
-	[[nodiscard]] virtual bool CanConvertTo(Token_Type to) const; // behavior varies b/w compile/run-time for ambiguous types
+[[nodiscard]] virtual bool CanConvertTo(Token_Type to) const; // behavior varies b/w compile/run-time for ambiguous types
 	[[nodiscard]] virtual ArrayID GetOwningArrayID() const { return 0; }
 	[[nodiscard]] virtual const ScriptToken *GetToken() const { return nullptr; }
 	[[nodiscard]] virtual const TokenPair *GetPair() const { return nullptr; }

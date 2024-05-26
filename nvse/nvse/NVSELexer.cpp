@@ -14,16 +14,27 @@ NVSELexer::NVSELexer(const std::string& input) : input(input), pos(0) {
 }
 
 NVSEToken NVSELexer::GetNextToken() {
-    while (pos < input.size() && std::isspace(input[pos])) {
-        pos++;
-        linePos++;
+    bool inComment = false;
+    while (pos < input.size()) {
+        if (!std::isspace(input[pos]) && !inComment) {
+            if (pos < input.size() - 2 && input[pos] == '/' && input[pos+1] == '/') {
+                inComment = true;
+                pos += 2;
+            } else {
+                break;
+            }
+        }
+        
         if (input[pos] == '\n') {
             line++;
-            pos++;
             linePos = 1;
+            inComment = false;
         }
+        
+        pos++;
+        linePos++;
     }
-
+    
     if (pos == input.size()) return MakeToken(NVSETokenType::Eof, "");
 
     char current = input[pos];

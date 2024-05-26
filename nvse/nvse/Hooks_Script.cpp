@@ -20,6 +20,7 @@
 #include "NVSELexer.h"
 #include "NVSEParser.h"
 #include "NVSETreePrinter.h"
+#include "NVSETypeChecker.h"
 #include "PluginManager.h"
 
 // a size of ~1KB should be enough for a single line of code
@@ -445,6 +446,12 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 		auto astOpt = parser.Parse();
 		if (astOpt.has_value()) {
 			auto ast = std::move(astOpt.value());
+
+			// Run type checking
+			auto tc = NVSETypeChecker(&ast, printFn);
+			if (!tc.check()) {
+				return PrecompileResult::kPrecompile_Failure;
+			}
 
 			auto tp = NVSETreePrinter(printFn);
 			ast.Accept(&tp);

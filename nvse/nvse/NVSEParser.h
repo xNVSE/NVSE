@@ -6,6 +6,8 @@
 #include <memory>
 #include <optional>
 
+#include "ScriptTokens.h"
+
 struct Expr;
 struct Stmt;
 
@@ -25,6 +27,11 @@ struct NVSEScript {
 };
 
 struct Stmt {
+    int line = 0;
+
+    // Some statements store type such as return and block statement
+    Token_Type detailedType = kTokenType_Invalid;
+    
     virtual ~Stmt() {}
 
     virtual void Accept(NVSEVisitor* t) = 0;
@@ -141,7 +148,10 @@ struct Expr {
     // Generate RTTI
     virtual ~Expr() {}
 
+    int line = 0;
+
     virtual void Accept(NVSEVisitor *t) = 0;
+    Token_Type detailedType = kTokenType_Invalid;
     
     template <typename T>
     bool IsType() {
