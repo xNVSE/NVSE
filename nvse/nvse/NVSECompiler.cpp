@@ -417,7 +417,28 @@ void NVSECompiler::VisitIfStmt(IfStmt* stmt) {
 }
 
 void NVSECompiler::VisitReturnStmt(const ReturnStmt* stmt) {
-	
+	// Compile SetFunctionValue if we have a return value
+	if (stmt->expr) {
+		AddU16(0x1546);
+
+		auto opLenPatch = AddU16(0x0);
+		auto opLenStart = data.size();
+
+		AddU8(0x1);
+
+		auto argLenStart = data.size();
+		auto argLenPatch = AddU16(0x0);
+		
+		insideNvseExpr.push(true);
+		stmt->expr->Accept(this);
+		insideNvseExpr.pop();
+
+		SetU16(argLenPatch, data.size() - argLenStart);
+		SetU16(opLenPatch, data.size() - opLenStart);
+	}
+
+	// Emit op_return
+	AddU32(static_cast<uint32_t>(ScriptParsing::ScriptStatementCode::Return));
 }
 
 void NVSECompiler::VisitWhileStmt(const WhileStmt* stmt) {

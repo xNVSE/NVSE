@@ -233,7 +233,9 @@ StmtPtr NVSEParser::ReturnStatement() {
 		return std::make_shared<ReturnStmt>(nullptr);
 	}
 
-	return std::make_shared<ReturnStmt>(Expression());
+	auto expr = std::make_shared<ReturnStmt>(Expression());
+	Expect(NVSETokenType::Semicolon, "Expected ';' at end of statement.");
+	return expr;
 }
 
 StmtPtr NVSEParser::WhileStatement() {
