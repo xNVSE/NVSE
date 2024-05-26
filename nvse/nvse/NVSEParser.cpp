@@ -21,7 +21,7 @@ std::optional<NVSEScript> NVSEParser::Parse() {
 		}
 		Expect(NVSETokenType::Semicolon, "Expected ';'.");
 
-		name = dynamic_cast<IdentExpr*>(expr.get())->name;
+		name = dynamic_cast<IdentExpr*>(expr.get())->token;
 
 		while (currentToken.type != NVSETokenType::Eof) {
 			try {
@@ -127,8 +127,9 @@ StmtPtr NVSEParser::Begin() {
 }
 
 StmtPtr NVSEParser::FnDecl() {
+	auto token = previousToken;
 	auto args = ParseArgs();
-	return std::make_shared<FnDeclStmt>(std::move(args), BlockStatement());
+	return std::make_shared<FnDeclStmt>(token, std::move(args), BlockStatement());
 }
 
 StmtPtr NVSEParser::Statement() {
@@ -145,13 +146,15 @@ StmtPtr NVSEParser::Statement() {
 	}
 
 	if (Match(NVSETokenType::Break)) {
+		auto token = previousToken;
 		Expect(NVSETokenType::Semicolon, "Expected ';' at end of statement.");
-		return std::make_shared<BreakStmt>();
+		return std::make_shared<BreakStmt>(previousToken);
 	}
 
 	if (Match(NVSETokenType::Continue)) {
+		auto token = previousToken;
 		Expect(NVSETokenType::Semicolon, "Expected ';' at end of statement.");
-		return std::make_shared<ContinueStmt>();
+		return std::make_shared<ContinueStmt>(previousToken);
 	}
 
 	if (Peek(NVSETokenType::While)) {
@@ -217,7 +220,7 @@ StmtPtr NVSEParser::ForStatement() {
 
 	if (!forEach) {
 		// Default to true condition
-		ExprPtr cond = std::make_shared<BoolExpr>(true);
+		ExprPtr cond = std::make_shared<BoolExpr>(NVSEToken{NVSETokenType::Bool, "true", 1}, true);
 		if (!Peek(NVSETokenType::Semicolon)) {
 			cond = Expression();
 			Expect(NVSETokenType::Semicolon, "Expected ';' after loop condition.");
@@ -249,6 +252,8 @@ StmtPtr NVSEParser::ForStatement() {
 
 StmtPtr NVSEParser::IfStatement() {
 	Match(NVSETokenType::If);
+	auto token = previousToken;
+	
 	Expect(NVSETokenType::LeftParen, "Expected '(' after 'if'.");
 	auto cond = Expression();
 	Expect(NVSETokenType::RightParen, "Expected ')' after 'if' condition.");
@@ -258,28 +263,31 @@ StmtPtr NVSEParser::IfStatement() {
 		elseBlock = BlockStatement();
 	}
 
-	return std::make_shared<IfStmt>(std::move(cond), std::move(block), std::move(elseBlock));
+	return std::make_shared<IfStmt>(token, std::move(cond), std::move(block), std::move(elseBlock));
 }
 
 StmtPtr NVSEParser::ReturnStatement() {
 	Match(NVSETokenType::Return);
+	auto token = previousToken;
 	if (Match(NVSETokenType::Semicolon)) {
-		return std::make_shared<ReturnStmt>(nullptr);
+		return std::make_shared<ReturnStmt>(token, nullptr);
 	}
 
-	auto expr = std::make_shared<ReturnStmt>(Expression());
+	auto expr = std::make_shared<ReturnStmt>(token, Expression());
 	Expect(NVSETokenType::Semicolon, "Expected ';' at end of statement.");
 	return expr;
 }
 
 StmtPtr NVSEParser::WhileStatement() {
 	Match(NVSETokenType::While);
+	auto token = previousToken;
+	
 	Expect(NVSETokenType::LeftParen, "Expected '(' after 'while'.");
 	auto cond = Expression();
 	Expect(NVSETokenType::RightParen, "Expected ')' after 'while' condition.");
 	auto block = BlockStatement();
 
-	return std::make_shared<WhileStmt>(std::move(cond), std::move(block));
+	return std::make_shared<WhileStmt>(token, std::move(cond), std::move(block));
 }
 
 std::shared_ptr<BlockStmt> NVSEParser::BlockStatement() {
@@ -321,11 +329,13 @@ ExprPtr NVSEParser::Assignment() {
 	ExprPtr left = Ternary();
 
 	if (Match(NVSETokenType::Eq)) {
+		auto token = previousToken;
+		
 		const auto prevTok = previousToken;
 		ExprPtr value = Assignment();
 
 		if (left->IsType<IdentExpr>() || left->IsType<GetExpr>() || left->IsType<SubscriptExpr>()) {
-			return std::make_shared<AssignmentExpr>(std::move(left), std::move(value));
+			return std::make_shared<AssignmentExpr>(token, std::move(left), std::move(value));
 		}
 
 		Error(prevTok, "Invalid assignment target.");
@@ -338,13 +348,15 @@ ExprPtr NVSEParser::Ternary() {
 	ExprPtr cond = LogicalOr();
 
 	while (Match(NVSETokenType::Ternary)) {
+		auto token = previousToken;
+		
 		ExprPtr left = nullptr;
 		if (!Match(NVSETokenType::Colon)) {
 			left = LogicalOr();
 			Expect(NVSETokenType::Colon, "Expected ':'.");
 		}
 		auto right = LogicalOr();
-		cond = std::make_shared<TernaryExpr>(std::move(cond), std::move(left), std::move(right));
+		cond = std::make_shared<TernaryExpr>(token, std::move(cond), std::move(left), std::move(right));
 	}
 
 	return cond;
@@ -354,9 +366,9 @@ ExprPtr NVSEParser::LogicalOr() {
 	ExprPtr left = LogicalAnd();
 
 	while (Match(NVSETokenType::LogicOr)) {
-		const auto op = previousToken;
+		auto op = previousToken;
 		ExprPtr right = LogicalAnd();
-		left = std::make_shared<BinaryExpr>(std::move(left), std::move(right), op);
+		left = std::make_shared<BinaryExpr>(op, std::move(left), std::move(right));
 	}
 
 	return left;
@@ -368,7 +380,7 @@ ExprPtr NVSEParser::LogicalAnd() {
 	while (Match(NVSETokenType::LogicAnd)) {
 		const auto op = previousToken;
 		ExprPtr right = Equality();
-		left = std::make_shared<BinaryExpr>(std::move(left), std::move(right), op);
+		left = std::make_shared<BinaryExpr>(op, std::move(left), std::move(right));
 	}
 
 	return left;
@@ -380,7 +392,7 @@ ExprPtr NVSEParser::Equality() {
 	while (Match(NVSETokenType::EqEq) || Match(NVSETokenType::BangEq)) {
 		const auto op = previousToken;
 		ExprPtr right = Comparison();
-		left = std::make_shared<BinaryExpr>(std::move(left), std::move(right), op);
+		left = std::make_shared<BinaryExpr>(op, std::move(left), std::move(right));
 	}
 
 	return left;
@@ -393,7 +405,7 @@ ExprPtr NVSEParser::Comparison() {
 		NVSETokenType::GreaterEq)) {
 		const auto op = previousToken;
 		ExprPtr right = Term();
-		left = std::make_shared<BinaryExpr>(std::move(left), std::move(right), op);
+		left = std::make_shared<BinaryExpr>(op, std::move(left), std::move(right));
 	}
 
 	return left;
@@ -406,7 +418,7 @@ ExprPtr NVSEParser::Term() {
 	while (Match(NVSETokenType::Plus) || Match(NVSETokenType::Minus)) {
 		const auto op = previousToken;
 		ExprPtr right = Factor();
-		left = std::make_shared<BinaryExpr>(std::move(left), std::move(right), op);
+		left = std::make_shared<BinaryExpr>(op, std::move(left), std::move(right));
 	}
 
 	return left;
@@ -418,7 +430,7 @@ ExprPtr NVSEParser::Factor() {
 	while (Match(NVSETokenType::Star) || Match(NVSETokenType::Slash)) {
 		const auto op = previousToken;
 		ExprPtr right = Unary();
-		left = std::make_shared<BinaryExpr>(std::move(left), std::move(right), op);
+		left = std::make_shared<BinaryExpr>(op, std::move(left), std::move(right));
 	}
 
 	return left;
@@ -428,7 +440,7 @@ ExprPtr NVSEParser::Unary() {
 	if (Match(NVSETokenType::Bang) || Match(NVSETokenType::Minus) || Match(NVSETokenType::Dollar)) {
 		const auto op = previousToken;
 		ExprPtr right = Unary();
-		return std::make_shared<UnaryExpr>(std::move(right), op, false);
+		return std::make_shared<UnaryExpr>(op, std::move(right), false);
 	}
 
 	return Postfix();
@@ -438,10 +450,11 @@ ExprPtr NVSEParser::Postfix() {
 	ExprPtr expr = Call();
 
 	if (Match(NVSETokenType::LeftBracket)) {
+		auto token = previousToken;
 		auto inner = Expression();
 		Expect(NVSETokenType::RightBracket, "Expected ']'.");
 
-		return std::make_shared<SubscriptExpr>(std::move(expr), std::move(inner));
+		return std::make_shared<SubscriptExpr>(token, std::move(expr), std::move(inner));
 	}
 
 	if (Match(NVSETokenType::PlusPlus) || Match(NVSETokenType::MinusMinus)) {
@@ -450,7 +463,7 @@ ExprPtr NVSEParser::Postfix() {
 		}
 		
 		auto op = previousToken;
-		return std::make_shared<UnaryExpr>(std::move(expr), op, true);
+		return std::make_shared<UnaryExpr>(op, std::move(expr), true);
 	}
 
 	return expr;
@@ -468,6 +481,7 @@ ExprPtr NVSEParser::Call() {
 				Error(currentToken, "Invalid member access.");
 			}
 
+			auto token = previousToken;
 			const auto ident = Expect(NVSETokenType::Identifier, "Expected identifier.");
 
 			if (!expr->IsType<IdentExpr>()) {
@@ -476,7 +490,7 @@ ExprPtr NVSEParser::Call() {
 				}
 			}
 			
-			expr = std::make_shared<GetExpr>(std::move(expr), ident);
+			expr = std::make_shared<GetExpr>(token, std::move(expr), ident);
 		}
 		else {
 			// Can only call on ident or get expr
@@ -502,17 +516,17 @@ ExprPtr NVSEParser::Call() {
 
 ExprPtr NVSEParser::Primary() {
 	if (Match(NVSETokenType::Bool)) {
-		return std::make_shared<BoolExpr>(std::get<double>(previousToken.value));
+		return std::make_shared<BoolExpr>(previousToken, std::get<double>(previousToken.value));
 	}
 
 	if (Match(NVSETokenType::Number)) {
 		// Double literal
 		if (std::ranges::find(previousToken.lexeme, '.') != previousToken.lexeme.end()) {
-			return std::make_shared<NumberExpr>(std::get<double>(previousToken.value), true);
+			return std::make_shared<NumberExpr>(previousToken, std::get<double>(previousToken.value), true);
 		}
 		
 		// Int literal
-		return std::make_shared<NumberExpr>(std::get<double>(previousToken.value), false);
+		return std::make_shared<NumberExpr>(previousToken, std::get<double>(previousToken.value), false);
 	}
 
 	if (Match(NVSETokenType::String)) {
@@ -539,8 +553,9 @@ ExprPtr NVSEParser::Primary() {
 
 // Only called when 'fn' token is matched
 ExprPtr NVSEParser::FnExpr() {
+	auto token = previousToken;
 	auto args = ParseArgs();
-	return std::make_shared<LambdaExpr>(std::move(args), BlockStatement());
+	return std::make_shared<LambdaExpr>(token, std::move(args), BlockStatement());
 }
 
 std::vector<std::shared_ptr<VarDeclStmt>> NVSEParser::ParseArgs() {

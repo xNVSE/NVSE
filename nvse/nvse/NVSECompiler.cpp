@@ -344,7 +344,7 @@ void NVSECompiler::VisitForStmt(const ForStmt* stmt) {
 	if (stmt->post) {
 		stmt->block->statements.push_back(std::make_shared<ExprStmt>(stmt->post));
 	}
-	auto whilePtr = std::make_shared<WhileStmt>(stmt->cond, stmt->block);
+	auto whilePtr = std::make_shared<WhileStmt>(NVSEToken{NVSETokenType::While, "while"}, stmt->cond, stmt->block);
 
 	if (stmt->post) {
 		loopIncrements.push(std::make_shared<ExprStmt>(stmt->post));
@@ -655,9 +655,9 @@ void NVSECompiler::VisitCallExpr(CallExpr* expr) {
 
 	std::string name{};
 	if (stackRefExpr) {
-		name = stackRefExpr->token.lexeme;
+		name = stackRefExpr->identifier.lexeme;
 	} else if (identExpr) {
-		name = identExpr->name.lexeme;
+		name = identExpr->token.lexeme;
 	} else {
 		// Shouldn't happen I don't think
 		throw std::runtime_error("Unable to compile call expression, expected stack reference or identifier.");
@@ -814,8 +814,8 @@ void NVSECompiler::VisitGetExpr(GetExpr* expr) {
 		throw std::runtime_error("Left side of a get expression must be an object reference.");
 	}
 	
-	const auto lhsName = ident->name.lexeme;
-	const auto rhsName = expr->token.lexeme;
+	const auto lhsName = ident->token.lexeme;
+	const auto rhsName = expr->identifier.lexeme;
 	
 	const auto refIdx = ResolveObjReference(lhsName);
 	if (!refIdx) {
@@ -880,11 +880,11 @@ void NVSECompiler::VisitNumberExpr(NumberExpr* expr) {
 }
 
 void NVSECompiler::VisitStringExpr(StringExpr* expr) {
-	AddString(std::get<std::string>(expr->value.value));
+	AddString(std::get<std::string>(expr->token.value));
 }
 
 void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
-	auto name = expr->name.lexeme;
+	auto name = expr->token.lexeme;
 
 	// If this is a lambda var, inline it as a call to GetModLocalData
 	if (lambdaVars.contains(name)) {

@@ -375,7 +375,7 @@ void NVSETreePrinter::VisitGetExpr(GetExpr* expr) {
 	expr->left->Accept(this);
 	curTab--;
 	PrintTabs();
-	printFn("token: " + expr->token.lexeme + '\n');
+	printFn("token: " + expr->identifier.lexeme + '\n');
 	
 	PrintTabs();
 	std::string detailedTypeStr = TokenTypeToString(expr->detailedType);
@@ -412,7 +412,7 @@ void NVSETreePrinter::VisitNumberExpr(NumberExpr* expr) {
 
 void NVSETreePrinter::VisitStringExpr(StringExpr* expr) {
 	PrintTabs();
-	printFn("string: " + expr->value.lexeme + '\n');
+	printFn("string: " + expr->token.lexeme + '\n');
 
 	curTab++;
 	PrintTabs();
@@ -423,7 +423,7 @@ void NVSETreePrinter::VisitStringExpr(StringExpr* expr) {
 
 void NVSETreePrinter::VisitIdentExpr(IdentExpr* expr) {
 	PrintTabs();
-	printFn("ident: " + expr->name.lexeme + '\n');
+	printFn("ident: " + expr->token.lexeme + '\n');
 
 	curTab++;
 	PrintTabs();

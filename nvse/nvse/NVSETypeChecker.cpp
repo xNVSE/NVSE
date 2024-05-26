@@ -246,7 +246,7 @@ void NVSETypeChecker::VisitUnaryExpr(UnaryExpr* expr) {
         auto rType = kTokenType_Number;
         auto oType = s_operators[operatorMap[expr->op.lexeme]].GetResult(lType, rType);
         if (oType == kTokenType_Invalid) {
-            error(expr->line, std::format("Invalid operand type '{}' for operator {}.", TokenTypeToString(lType), expr->op.lexeme));
+            error(expr->op.line, std::format("Invalid operand type '{}' for operator {}.", TokenTypeToString(lType), expr->op.lexeme));
         }
         
         expr->detailedType = oType;
@@ -257,7 +257,7 @@ void NVSETypeChecker::VisitUnaryExpr(UnaryExpr* expr) {
         auto rType = kTokenType_Invalid;
         auto oType = s_operators[operatorMap[expr->op.lexeme]].GetResult(lType, rType);
         if (oType == kTokenType_Invalid) {
-            error(expr->line, std::format("Invalid operand type '{}' for operator {}.", TokenTypeToString(lType), expr->op.lexeme));
+            error(expr->op.line, std::format("Invalid operand type '{}' for operator {}.", TokenTypeToString(lType), expr->op.lexeme));
         }
         expr->detailedType = oType;
     }
@@ -269,14 +269,14 @@ void NVSETypeChecker::VisitSubscriptExpr(SubscriptExpr* expr) {
 
     auto lhsType = expr->left->detailedType;
     if (lhsType != kTokenType_ArrayVar && lhsType != kTokenType_Array) {
-        error(expr->line, std::format("Invalid type '{}' for operator [].", TokenTypeToString(lhsType)));
+        error(expr->op.line, std::format("Invalid type '{}' for operator [].", TokenTypeToString(lhsType)));
         return;
     }
 
     auto indexType = expr->index->detailedType;
     auto outputType = s_operators[operatorMap["["]].GetResult(lhsType, indexType);
     if (outputType == kTokenType_Invalid) {
-        error(expr->line, std::format("Expression type '{}' not valid for operator [].", TokenTypeToString(indexType)));
+        error(expr->op.line, std::format("Expression type '{}' not valid for operator [].", TokenTypeToString(indexType)));
         return;
     }
 
@@ -286,13 +286,16 @@ void NVSETypeChecker::VisitSubscriptExpr(SubscriptExpr* expr) {
 void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
     auto stackRefExpr = dynamic_cast<GetExpr*>(expr->left.get());
     auto identExpr = dynamic_cast<IdentExpr*>(expr->left.get());
+    for (auto arg : expr->args) {
+        arg->Accept(this);
+    }
 
     std::string name{};
     if (stackRefExpr) {
-        name = stackRefExpr->token.lexeme;
+        name = stackRefExpr->identifier.lexeme;
     }
     else if (identExpr) {
-        name = identExpr->name.lexeme;
+        name = identExpr->token.lexeme;
     }
     else {
         // Shouldn't happen I don't think
@@ -325,8 +328,8 @@ void NVSETypeChecker::VisitGetExpr(GetExpr* expr) {
     // Should be ident here
     const auto ident = dynamic_cast<IdentExpr*>(expr->left.get());
 
-    const auto lhsName = ident->name.lexeme;
-    const auto rhsName = expr->token.lexeme;
+    const auto lhsName = ident->token.lexeme;
+    const auto rhsName = expr->identifier.lexeme;
 
     // Ensure it is of type quest
     TESForm* form = GetFormByID(lhsName.c_str());
@@ -367,7 +370,7 @@ void NVSETypeChecker::VisitStringExpr(StringExpr* expr) {
 }
 
 void NVSETypeChecker::VisitIdentExpr(IdentExpr* expr) {
-    const auto name = expr->name.lexeme;
+    const auto name = expr->token.lexeme;
 
     // See if we already have a local var with this type
     if (typeCache.contains(name)) {
@@ -383,7 +386,7 @@ void NVSETypeChecker::VisitIdentExpr(IdentExpr* expr) {
     }
 
     expr->detailedType = kTokenType_Invalid;
-    error(expr->name.line, std::format("Unable to resolve identifier '{}'.", name));
+    error(expr->token.line, std::format("Unable to resolve identifier '{}'.", name));
 }
 
 void NVSETypeChecker::VisitGroupingExpr(GroupingExpr* expr) {
