@@ -269,6 +269,9 @@
     <ClCompile Include="NVSETreePrinter.cpp">
       <Filter>compiler</Filter>
     </ClCompile>
+    <ClCompile Include="NVSETypeChecker.cpp">
+      <Filter>compiler</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
@@ -545,6 +548,9 @@
       <Filter>compiler</Filter>
     </ClInclude>
     <ClInclude Include="NVSECompilerUtils.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="NVSETypeChecker.h">
       <Filter>compiler</Filter>
     </ClInclude>
   </ItemGroup>

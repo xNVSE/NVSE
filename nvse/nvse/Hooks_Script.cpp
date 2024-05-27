@@ -465,8 +465,10 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 				return PrecompileResult::kPrecompile_Failure;
 			}
 
+#ifndef RUNTIME
 			auto tp = NVSETreePrinter(printFn);
 			ast.Accept(&tp);
+#endif
 
 			try {
 				NVSECompiler comp{script, buf->partialScript, ast, printFn};
