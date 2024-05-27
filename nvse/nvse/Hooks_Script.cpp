@@ -538,9 +538,9 @@ void PostScriptCompile()
 
 namespace Runtime // double-clarify
 {
-	bool __fastcall HandleBeginCompile_SetNotCompiled(Script* script, ScriptBuffer* buf, bool isCompiled)
+	PrecompileResult __fastcall HandleBeginCompile_SetNotCompiled(Script* script, ScriptBuffer* buf, bool isCompiled)
 	{
-		return HandleBeginCompile(buf, script) == PrecompileResult::kPrecompile_Success;
+		return HandleBeginCompile(buf, script);
 	}
 
 	__declspec(naked) void HookBeginScriptCompile()
@@ -549,10 +549,18 @@ namespace Runtime // double-clarify
 		const static auto failOrSpecialCompileAddr = 0x5AEDA0;
 		__asm
 		{
-			mov edx, [ebp + 0xC] //scriptBuffer
-			call HandleBeginCompile_SetNotCompiled
-			test al, al
-			jnz success
+			mov		edx, [ebp + 0xC] //scriptBuffer
+			call	HandleBeginCompile_SetNotCompiled
+			test	al, al
+			jz		fail
+			cmp		al, kPrecompile_Success
+			je		success
+			// else, special compile success.
+			// We want to prevent regular compilation from happening, hence skipping to the end.
+			// Also need to set result to 1 (success)
+			mov		al, 1
+
+			fail:
 			// fail, or a plugin custom-compiled the script
 			jmp failOrSpecialCompileAddr //jump here to land in HookEndScriptCompile.
 
