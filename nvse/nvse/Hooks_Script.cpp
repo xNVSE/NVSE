@@ -425,7 +425,7 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 #ifndef RUNTIME
 		std::cout << msg << std::flush;
 #else
-		Console_Print_Long(msg);
+		_MESSAGE(msg.c_str());
 #endif
 	};
 
