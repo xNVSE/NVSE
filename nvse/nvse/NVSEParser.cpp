@@ -86,6 +86,7 @@ StmtPtr NVSEParser::Begin() {
     for (auto& info : g_eventBlockCommandInfos) {
         if (!strcmp(info.longName, blockNameStr.c_str())) {
             blockInfo = &info;
+            break;
         }
     }
 
