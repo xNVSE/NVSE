@@ -27,9 +27,11 @@ enum class NVSETokenType {
 
     // Operators
     Plus, PlusEq, PlusPlus,
-    Minus, MinusEq, MinusMinus,
+    Minus, Negate, MinusEq, MinusMinus,
     Star, StarEq,
     Slash, SlashEq,
+    Mod, ModEq,
+    Pow, PowEq,
     Eq, EqEq,
     Less, Greater,
     LessEq,
@@ -39,7 +41,8 @@ enum class NVSETokenType {
     LogicOr, LogicAnd,
     BitwiseOr, BitwiseAnd,
     Tilde, 
-    Dollar,
+    Dollar, Pound,
+    Box, Unbox,
     
     // Braces
     LeftBrace, RightBrace,
@@ -86,12 +89,17 @@ static const char* TokenTypeStr[]{
     "PlusEq",
     "PlusPlus",
     "Minus",
+    "Negate",
     "MinusEq",
     "MinusMinus",
     "Star",
     "StarEq",
     "Slash",
     "SlashEq",
+    "Mod",
+    "ModEq",
+    "Pow",
+    "PowEq",
     "Eq",
     "EqEq",
     "Less",
@@ -107,6 +115,11 @@ static const char* TokenTypeStr[]{
     "BitwiseAnd",
     "Tilde",
     "Dollar",
+    "Pound",
+
+    // These two get set by parser as they are context dependent
+    "Box",
+    "Unbox",
 
     // Braces
     "LeftBrace",

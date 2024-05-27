@@ -156,6 +156,16 @@ NVSEToken NVSELexer::GetNextToken() {
             return MakeToken(NVSETokenType::SlashEq, "/=");
         }
         return MakeToken(NVSETokenType::Slash, "/");
+    case '%':
+        if (Match('=')) {
+            return MakeToken(NVSETokenType::ModEq, "%=");
+        }
+        return MakeToken(NVSETokenType::Mod, "%");
+    case '^':
+        if (Match('=')) {
+            return MakeToken(NVSETokenType::PowEq, "^=");
+        }
+        return MakeToken(NVSETokenType::Pow, "^");
     case '=':
         if (Match('=')) {
             return MakeToken(NVSETokenType::EqEq, "==");
@@ -188,6 +198,7 @@ NVSEToken NVSELexer::GetNextToken() {
         }
         return MakeToken(NVSETokenType::BitwiseAnd, "&");
     case '$': return MakeToken(NVSETokenType::Dollar, "$");
+    case '#': return MakeToken(NVSETokenType::Pound, "#");
 
         // Braces
     case '{': return MakeToken(NVSETokenType::LeftBrace, "{");

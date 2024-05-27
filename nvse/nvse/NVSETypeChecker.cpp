@@ -3,6 +3,7 @@
 #include "ScriptTokens.h"
 
 #include <format>
+#include <sstream>
 
 #include "NVSECompilerUtils.h"
 #include "ScriptUtils.h"
@@ -67,7 +68,7 @@ void NVSETypeChecker::VisitVarDeclStmt(const VarDeclStmt* stmt) {
     if (stmt->value) {
         stmt->value->Accept(this);
         auto rhsType = stmt->value->detailedType;
-        if (s_operators[operatorMap[":="]].GetResult(type, rhsType) == kTokenType_Invalid) {
+        if (s_operators[kOpType_Assignment].GetResult(type, rhsType) == kTokenType_Invalid) {
             error(stmt->name.line, getTypeErrorMsg(rhsType, type));
             return;
         }
@@ -80,7 +81,7 @@ void NVSETypeChecker::VisitExprStmt(const ExprStmt* stmt) {
     stmt->expr->Accept(this);
 }
 
-void NVSETypeChecker::VisitForStmt(const ForStmt* stmt) {
+void NVSETypeChecker::VisitForStmt(ForStmt* stmt) {
     if (stmt->init) {
         stmt->init->Accept(this);
     }
@@ -91,7 +92,7 @@ void NVSETypeChecker::VisitForStmt(const ForStmt* stmt) {
         // Check if condition can evaluate to bool
         auto lType = stmt->cond->detailedType;
         auto rType = kTokenType_Boolean;
-        auto oType = s_operators[operatorMap["=="]].GetResult(lType, rType);
+        auto oType = s_operators[kOpType_Equals].GetResult(lType, rType);
         if (oType != kTokenType_Boolean) {
             error(stmt->line, "Invalid expression type for loop condition.");
         }
@@ -116,8 +117,9 @@ void NVSETypeChecker::VisitForEachStmt(ForEachStmt* stmt) {
     auto ident = dynamic_cast<VarDeclStmt*>(stmt->lhs.get())->name.lexeme;
     auto lType = typeCache[ident];
     auto rType = stmt->rhs->detailedType;
-    if (s_operators[operatorMap["<-"]].GetResult(lType, rType) == kTokenType_Invalid) {
-        error(stmt->line, std::format("Cannot iterate over type '{}'.", TokenTypeToString(rType)));
+    if (s_operators[kOpType_In].GetResult(lType, rType) == kTokenType_Invalid) {
+        error(stmt->line, std::format("Invalid types '{}' and '{}' passed to for-in expression.",
+                                      TokenTypeToString(lType), TokenTypeToString(rType)));
     }
 
     stmt->block->Accept(this);
@@ -132,7 +134,8 @@ void NVSETypeChecker::VisitIfStmt(IfStmt* stmt) {
     if (!CanConvertOperand(lType, rType)) {
         error(stmt->line, "Invalid expression type for if statement.");
         stmt->cond->detailedType = kTokenType_Invalid;
-    } else {
+    }
+    else {
         stmt->cond->detailedType = rType;
     }
 
@@ -146,7 +149,8 @@ void NVSETypeChecker::VisitReturnStmt(ReturnStmt* stmt) {
     if (stmt->expr) {
         stmt->expr->Accept(this);
         stmt->detailedType = stmt->expr->detailedType;
-    } else {
+    }
+    else {
         stmt->detailedType = kTokenType_Empty;
     }
 }
@@ -169,7 +173,7 @@ void NVSETypeChecker::VisitWhileStmt(const WhileStmt* stmt) {
     // Check if condition can evaluate to bool
     auto lType = stmt->cond->detailedType;
     auto rType = kTokenType_Boolean;
-    auto oType = s_operators[operatorMap["=="]].GetResult(lType, rType);
+    auto oType = s_operators[kOpType_Equals].GetResult(lType, rType);
     if (oType != kTokenType_Boolean) {
         error(stmt->line, "Invalid expression type for while loop.");
     }
@@ -208,10 +212,11 @@ void NVSETypeChecker::VisitAssignmentExpr(const AssignmentExpr* expr) {
 
     auto lType = expr->left->detailedType;
     auto rType = expr->expr->detailedType;
-    auto oType = s_operators[operatorMap[":="]].GetResult(lType, rType);
-    if (s_operators[operatorMap[":="]].GetResult(lType, rType) == kTokenType_Invalid) {
-        const auto msg = std::format("Invalid types {} and {} for operator {}.",
-                                     TokenTypeToString(lType), TokenTypeToString(rType), "=");
+    auto oType = s_operators[tokenOpToNVSEOpType[expr->token.type]].GetResult(lType, rType);
+    if (oType == kTokenType_Invalid) {
+        const auto msg = std::format("Invalid types {} and {} for operator {} ({}).",
+                                     TokenTypeToString(lType), TokenTypeToString(rType), expr->token.lexeme,
+                                     TokenTypeStr[static_cast<int>(expr->token.type)]);
         error(expr->line, msg);
         return;
     }
@@ -227,11 +232,12 @@ void NVSETypeChecker::VisitBinaryExpr(BinaryExpr* expr) {
 
     auto lhsType = expr->left->detailedType;
     auto rhsType = expr->right->detailedType;
-    auto outputType = s_operators[operatorMap[expr->op.lexeme]].GetResult(lhsType, rhsType);
+    auto outputType = s_operators[tokenOpToNVSEOpType[expr->op.type]].GetResult(lhsType, rhsType);
     if (outputType == kTokenType_Invalid) {
-        const auto msg = std::format("Invalid types {} and {} for operator {}.",
-                                     TokenTypeToString(lhsType), TokenTypeToString(rhsType), expr->op.lexeme);
-        error(expr->line, msg);
+        const auto msg = std::format("Invalid types {} and {} for operator {} ({}).",
+                                     TokenTypeToString(lhsType), TokenTypeToString(rhsType), expr->op.lexeme,
+                                     TokenTypeStr[static_cast<int>(expr->op.type)]);
+        error(expr->op.line, msg);
         return;
     }
 
@@ -244,20 +250,23 @@ void NVSETypeChecker::VisitUnaryExpr(UnaryExpr* expr) {
     if (expr->postfix) {
         auto lType = expr->expr->detailedType;
         auto rType = kTokenType_Number;
-        auto oType = s_operators[operatorMap[expr->op.lexeme]].GetResult(lType, rType);
+        auto oType = s_operators[tokenOpToNVSEOpType[expr->op.type]].GetResult(lType, rType);
         if (oType == kTokenType_Invalid) {
-            error(expr->op.line, std::format("Invalid operand type '{}' for operator {}.", TokenTypeToString(lType), expr->op.lexeme));
+            error(expr->op.line, std::format("Invalid operand type '{}' for operator {} ({}).",
+                                             TokenTypeToString(lType),
+                                             expr->op.lexeme, TokenTypeStr[static_cast<int>(expr->op.type)]));
         }
-        
+
         expr->detailedType = oType;
     }
     // -/!/$
     else {
         auto lType = expr->expr->detailedType;
         auto rType = kTokenType_Invalid;
-        auto oType = s_operators[operatorMap[expr->op.lexeme]].GetResult(lType, rType);
+        auto oType = s_operators[tokenOpToNVSEOpType[expr->op.type]].GetResult(lType, rType);
         if (oType == kTokenType_Invalid) {
-            error(expr->op.line, std::format("Invalid operand type '{}' for operator {}.", TokenTypeToString(lType), expr->op.lexeme));
+            error(expr->op.line, std::format("Invalid operand type '{}' for operator {} ({}).", TokenTypeToString(lType),
+                                             expr->op.lexeme, TokenTypeStr[static_cast<int>(expr->op.type)]));
         }
         expr->detailedType = oType;
     }
@@ -274,9 +283,10 @@ void NVSETypeChecker::VisitSubscriptExpr(SubscriptExpr* expr) {
     }
 
     auto indexType = expr->index->detailedType;
-    auto outputType = s_operators[operatorMap["["]].GetResult(lhsType, indexType);
+    auto outputType = s_operators[kOpType_LeftBracket].GetResult(lhsType, indexType);
     if (outputType == kTokenType_Invalid) {
-        error(expr->op.line, std::format("Expression type '{}' not valid for operator [].", TokenTypeToString(indexType)));
+        error(expr->op.line,
+              std::format("Expression type '{}' not valid for operator [].", TokenTypeToString(indexType)));
         return;
     }
 
@@ -308,7 +318,37 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
         error(expr->line, std::format("Invalid command '{}'.", name));
         return;
     }
-    
+
+    // Perform basic typechecking on call params
+    int requiredParams = 0;
+    for (int i = 0; i < cmd->numParams; i++) {
+        if (!cmd->params[i].isOptional) {
+            requiredParams++;
+        }
+    }
+
+    // Make sure minimum was passed
+    if (expr->args.size() < requiredParams) {
+        std::stringstream err{};
+        err << std::format(
+            "Number of parameters passed to command {} does not match what was expected. (Expected {}, Got {})\n", name,
+            requiredParams, expr->args.size());
+        error(expr->left->getToken()->line, err.str());
+    }
+
+    // Make sure not too many were passed
+    // TODO: This breaks with at least one command: 'call', only expects 1 although it can support multiple.
+    // if (expr->args.size() > cmd->numParams) {
+    //     std::stringstream err{};
+    //     err << std::format(
+    //         "Number of parameters passed to command {} does not match what was expected. (Expected up to {}, Got {})\n", name,
+    //         requiredParams, expr->args.size());
+    //     error(expr->left->getToken()->line, err.str());
+    // }
+
+    // Basic type checks
+    // TODO: Make this
+
     auto type = ToTokenType(g_scriptCommands.GetReturnType(cmd));
     if (type == kTokenType_Invalid) {
         type = kTokenType_Ambiguous;

@@ -88,7 +88,7 @@ void NVSETreePrinter::VisitExprStmt(const ExprStmt* stmt) {
 	}
 	curTab--;
 }
-void NVSETreePrinter::VisitForStmt(const ForStmt* stmt) {
+void NVSETreePrinter::VisitForStmt(ForStmt* stmt) {
 	PrintTabs();
 	printFn("for\n");
 
@@ -238,6 +238,8 @@ void NVSETreePrinter::VisitAssignmentExpr(const AssignmentExpr* expr) {
 	PrintTabs();
 	printFn("assignment\n");
 	curTab++;
+	PrintTabs();
+	printFn("op: " + expr->token.lexeme + "\n");
 	PrintTabs();
 	printFn("lhs:\n");
 	curTab++;

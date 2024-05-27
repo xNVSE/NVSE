@@ -29,10 +29,13 @@ public:
 	// Insert this before any continue / break
 	std::stack<StmtPtr> loopIncrements{};
 
-	// Used to hold result of visits
-	// Like if one visit invokes a child visit and needs data from it, such as compiled size
-	uint32_t statementCount = 0;
+	// Count number of statements compiled
+	// Certain blocks such as 'if' need to know how many ops to skip
+	// We also inject for loop increment statement before continue in loops
+	// This is to count that
+	std::stack<uint32_t> statementCounter {};
 
+	// To set unused var count at end of script
 	std::set<std::string> usedVars{};
 
 	// Keep track of lambda vars as these get inlined
@@ -40,8 +43,6 @@ public:
 
 	// Look up a local variable, or create it if not already defined
 	uint16_t AddLocal(std::string identifier, uint8_t type) {
-		usedVars.insert(identifier);
-
 		if (auto info = script->GetVariableByName(identifier.c_str())) {
 			return info->idx;
 		}
@@ -180,14 +181,14 @@ public:
 	void VisitVarDeclStmt(const VarDeclStmt* stmt) override;
 
 	void VisitExprStmt(const ExprStmt* stmt) override;
-	void VisitForStmt(const ForStmt* stmt) override;
+	void VisitForStmt(ForStmt* stmt) override;
 	void VisitForEachStmt(ForEachStmt* stmt) override;
 	void VisitIfStmt(IfStmt* stmt) override;
 	void VisitReturnStmt(ReturnStmt* stmt) override;
 	void VisitContinueStmt(ContinueStmt* stmt) override;
 	void VisitBreakStmt(BreakStmt* stmt) override;
 	void VisitWhileStmt(const WhileStmt* stmt) override;
-	uint32_t CompileBlock(StmtPtr& stmt, bool incrementCurrent);
+	uint32_t CompileBlock(StmtPtr stmt, bool incrementCurrent);
 	void VisitBlockStmt(BlockStmt* stmt) override;
 
 	// Inherited via NVSEVisitor

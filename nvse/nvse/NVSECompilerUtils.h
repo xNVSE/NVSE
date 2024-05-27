@@ -2,7 +2,7 @@
 #include "ScriptTokens.h"
 
 // Define tokens
-extern std::unordered_map<std::string, uint8_t> operatorMap;
+extern std::unordered_map<NVSETokenType, OperatorType> tokenOpToNVSEOpType;
 
 inline Script::VariableType GetScriptTypeFromToken(NVSEToken t) {
 	switch (t.type) {
