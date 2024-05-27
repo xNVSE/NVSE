@@ -8,7 +8,7 @@ class NVSETypeChecker : NVSEVisitor {
     std::unordered_map<std::string, Token_Type> typeCache{};
     bool hadError = false;
     
-    std::function<void(std::string)> printFn;
+    std::function<void(std::string, bool)> printFn;
     NVSEScript *script;
 
     std::stack<bool> insideLoop {};
@@ -16,7 +16,7 @@ class NVSETypeChecker : NVSEVisitor {
     void error(size_t line, std::string msg);
     
 public:
-    NVSETypeChecker(NVSEScript* script, std::function<void(std::string)> printFn) : printFn(printFn), script(script) {}
+    NVSETypeChecker(NVSEScript* script, std::function<void(std::string, bool)> printFn) : printFn(printFn), script(script) {}
     bool check();
     
     void VisitNVSEScript(const NVSEScript* script) override;

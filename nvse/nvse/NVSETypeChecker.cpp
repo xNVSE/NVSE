@@ -8,18 +8,16 @@
 #include "NVSECompilerUtils.h"
 #include "ScriptUtils.h"
 
-Token_Type GetDetailedTypeFromNVSEToken(NVSETokenType tt) {
-    switch (tt) {
-    case NVSETokenType::Number:
-        return kTokenType_NumericVar;
+Token_Type GetDetailedTypeFromNVSEToken(NVSETokenType type) {
+    switch (type) {
     case NVSETokenType::String:
         return kTokenType_StringVar;
     case NVSETokenType::ArrayType:
         return kTokenType_ArrayVar;
     case NVSETokenType::RefType:
         return kTokenType_RefVar;
+    case NVSETokenType::Number:
     case NVSETokenType::DoubleType:
-        return kTokenType_NumericVar;
     case NVSETokenType::IntType:
         return kTokenType_NumericVar;
     default:
@@ -32,7 +30,7 @@ std::string getTypeErrorMsg(Token_Type lhs, Token_Type rhs) {
 }
 
 void NVSETypeChecker::error(size_t line, std::string msg) {
-    printFn(std::format("[line {}] {}\n", line, msg));
+    printFn(std::format("[line {}] {}\n", line, msg), false);
     hadError = true;
 }
 
@@ -58,6 +56,9 @@ void NVSETypeChecker::VisitBeginStmt(const BeginStmt* stmt) {
 
 void NVSETypeChecker::VisitFnStmt(FnDeclStmt* stmt) {
     stmt->body->Accept(this);
+    for (auto decl : stmt->args) {
+        decl->Accept(this);
+    }
 }
 
 void NVSETypeChecker::VisitVarDeclStmt(const VarDeclStmt* stmt) {
@@ -318,6 +319,7 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
         error(expr->line, std::format("Invalid command '{}'.", name));
         return;
     }
+    expr->cmdInfo = cmd;
 
     // Perform basic typechecking on call params
     int requiredParams = 0;
@@ -390,6 +392,8 @@ void NVSETypeChecker::VisitGetExpr(GetExpr* expr) {
         const auto curVar = questScript->varList.GetNthItem(i);
         if (!strcmp(curVar->name.CStr(), rhsName.c_str())) {
             expr->detailedType = GetDetailedTypeFromNVSEToken(static_cast<NVSETokenType>(curVar->type));
+            expr->varInfo = curVar;
+            expr->referenceName = form->GetEditorID();
             return;
         }
     }

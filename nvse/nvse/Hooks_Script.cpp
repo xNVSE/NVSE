@@ -420,13 +420,24 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 	buf->errorCode = 0;
 	script->info.compiled = false;
 
-	std::stringstream ss{};
-	std::function<void(std::string)> printFn = [&] (std::string msg) -> void {
-#ifndef RUNTIME
-		std::cout << msg << std::flush;
-#else
-		ShowRuntimeError(script, msg.c_str());
+	std::stringstream outputStream{};
+	std::stringstream debugStream{};
+	
+	std::function<void(std::string, bool)> printFn = [&] (std::string msg, bool debug) -> void {
+		if (!debug) {
+			outputStream << msg;
+		}
+		debugStream << msg;
+	};
+	
+	std::function<void()> flushOutput = [&] () -> void {
+#ifdef _DEBUG
+		std::cout << debugStream.c_str() << std::flush;
 #endif
+#ifndef RUNTIME
+		g_ErrOut.Show(outputStream.str().c_str());
+#endif
+		_MESSAGE(debugStream.str().c_str());
 	};
 
 	// See if new compiler should override script compiler
@@ -444,36 +455,34 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 		NVSELexer lexer(program);
 		NVSEParser parser(lexer, printFn);
 
-		printFn("\n==== PARSER ====\n\n");
-		auto astOpt = parser.Parse();
-		if (astOpt.has_value()) {
+		if (auto astOpt = parser.Parse(); astOpt.has_value()) {
 			auto ast = std::move(astOpt.value());
 
-			// Run type checking
-			auto tc = NVSETypeChecker(&ast, printFn);
-			if (!tc.check()) {
+			if (auto tc = NVSETypeChecker(&ast, printFn); !tc.check()) {
+#if !defined(DEBUG) && !defined(RUNTIME)
+				g_ErrOut.Show(ss.str().c_str());
+#endif
 				return PrecompileResult::kPrecompile_Failure;
 			}
 
-#ifndef RUNTIME
 			auto tp = NVSETreePrinter(printFn);
 			ast.Accept(&tp);
-#endif
 
-			printFn("\n==== COMPILER ====\n\n");
-
-			NVSECompiler comp{script, buf->partialScript, ast, printFn};
 			try {
+				NVSECompiler comp{script, buf->partialScript, ast, printFn};
 				comp.Compile();
-			} catch (std::runtime_error &er) {
-				printFn(std::format("Script compilation failed: {}\n", er.what()));
-				return PrecompileResult::kPrecompile_Failure;
-			}
 
-			// Only set script name if not partial
-			if (!buf->partialScript) {
-				buf->scriptName = String();
-				buf->scriptName.Set(comp.scriptName.c_str());
+				// Only set script name if not partial
+				if (!buf->partialScript) {
+					buf->scriptName = String();
+					buf->scriptName.Set(comp.scriptName.c_str());
+				}
+			} catch (std::runtime_error &er) {
+				printFn(std::format("Script compilation failed: {}\n", er.what()), false);
+#if !defined(DEBUG) && !defined(RUNTIME)
+				g_ErrOut.Show(ss.str().c_str());
+#endif
+				return PrecompileResult::kPrecompile_Failure;
 			}
 		} else {
 			return PrecompileResult::kPrecompile_Failure;

@@ -18,7 +18,7 @@ public:
 	Script* script;
 	bool partial;
 	NVSEScript &ast;
-	const std::function<void(std::string)> &printFn;
+	std::function<void(std::string, bool)> printFn;
 
 	const char* originalScriptName;
 	std::string scriptName{};
@@ -170,7 +170,7 @@ public:
 		data[index + 3] = byte >> 24 & 0xFF;
 	}
 
-	NVSECompiler(Script *script, bool partial, NVSEScript& ast, const std::function<void(std::string)> &printFn)
+	NVSECompiler(Script *script, bool partial, NVSEScript& ast, std::function<void(std::string, bool)> printFn)
 	: script(script), partial(partial), ast(ast), printFn(printFn), originalScriptName(script->GetEditorID()) {}
 	bool Compile();
 

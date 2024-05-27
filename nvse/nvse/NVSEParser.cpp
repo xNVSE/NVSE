@@ -4,7 +4,7 @@
 #include <format>
 #include <iostream>
 
-NVSEParser::NVSEParser(NVSELexer& tokenizer, std::function<void(std::string)> printFn) : lexer(tokenizer),
+NVSEParser::NVSEParser(NVSELexer& tokenizer, std::function<void(std::string, bool)> printFn) : lexer(tokenizer),
     printFn(printFn) {
     Advance();
 }
@@ -13,6 +13,8 @@ std::optional<NVSEScript> NVSEParser::Parse() {
     NVSEToken name;
     std::vector<StmtPtr> globals;
     std::vector<StmtPtr> blocks;
+    
+	printFn("\n==== PARSER ====\n\n", true);
 
     try {
         Expect(NVSETokenType::Name, "Expected 'name' as first statement of script.");
@@ -38,8 +40,8 @@ std::optional<NVSEScript> NVSEParser::Parse() {
                 globals.emplace_back(std::move(stmt));
             }
             catch (NVSEParseError e) {
-                printFn(e.what());
-                printFn("\n");
+                printFn(e.what(), false);
+                printFn("\n", false);
 
                 Synchronize();
             }
@@ -62,8 +64,8 @@ std::optional<NVSEScript> NVSEParser::Parse() {
         }
     }
     catch (NVSEParseError e) {
-        printFn(e.what());
-        printFn("\n");
+        printFn(e.what(), false);
+        printFn("\n", false);
     }
 
     if (hadError) {
@@ -310,8 +312,8 @@ std::shared_ptr<BlockStmt> NVSEParser::BlockStatement() {
             statements.emplace_back(Statement());
         }
         catch (NVSEParseError e) {
-            printFn(e.what());
-            printFn("\n");
+            printFn(e.what(), false);
+            printFn("\n", false);
             Synchronize();
 
             if (currentToken.type == NVSETokenType::Eof) {

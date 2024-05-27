@@ -283,6 +283,9 @@ struct CallExpr : Expr {
     ExprPtr left;
     std::vector<ExprPtr> args;
 
+    // Set by typechecker
+    CommandInfo *cmdInfo;
+
     CallExpr(ExprPtr left, std::vector<ExprPtr> args) : left(std::move(left)), args(std::move(args)) {}
 
     void Accept(NVSEVisitor* t) override {
@@ -294,6 +297,10 @@ struct GetExpr : Expr {
     NVSEToken token;
     ExprPtr left;
     NVSEToken identifier;
+
+    // Resolved in typechecker
+    VariableInfo *varInfo;
+    const char* referenceName;
 
     GetExpr(NVSEToken token, ExprPtr left, NVSEToken identifier) : token(std::move(token)), left(std::move(left)), identifier(std::move(identifier)) {}
 
@@ -397,10 +404,10 @@ public:
 };
 
 class NVSEParser {
-    std::function<void(std::string)> printFn;
+    std::function<void(std::string, bool)> printFn;
     
 public:
-    NVSEParser(NVSELexer& tokenizer, std::function<void(std::string)> outputfn);
+    NVSEParser(NVSELexer& tokenizer, std::function<void(std::string, bool)> outputfn);
     std::optional<NVSEScript> Parse();
     StmtPtr Begin();
 

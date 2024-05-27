@@ -40,6 +40,8 @@ std::unordered_map<NVSETokenType, OperatorType> tokenOpToNVSEOpType{
 };
 
 bool NVSECompiler::Compile() {
+    printFn("\n==== COMPILER ====\n\n", true);
+    
     insideNvseExpr.push(false);
     ast.Accept(this);
 
@@ -56,35 +58,35 @@ bool NVSECompiler::Compile() {
     memcpy(script->data, data.data(), data.size());
 
     // Debug print local info
-    printFn("[Locals]\n");
+    printFn("[Locals]\n", true);
     for (int i = 0; i < script->varList.Count(); i++) {
         auto item = script->varList.GetNthItem(i);
         printFn(std::format("{}: {} {}\n", item->idx, item->name.CStr(),
-                            usedVars.contains(item->name.CStr()) ? "" : "(unused)"));
+                            usedVars.contains(item->name.CStr()) ? "" : "(unused)"), true);
     }
-    printFn("\n");
+    printFn("\n", true);
 
     // Refs
-    printFn("[Refs]\n");
+    printFn("[Refs]\n", true);
     for (int i = 0; i < script->refList.Count(); i++) {
         const auto ref = script->refList.GetNthItem(i);
         if (ref->varIdx) {
-            printFn(std::format("{}: (Var {})\n", i, ref->varIdx));
+            printFn(std::format("{}: (Var {})\n", i, ref->varIdx), true);
         }
         else {
-            printFn(std::format("{}: {}\n", i, ref->form->GetEditorID()));
+            printFn(std::format("{}: {}\n", i, ref->form->GetEditorID()), true);
         }
     }
-    printFn("\n");
+    printFn("\n", true);
 
     // Script data
-    printFn("[Data]\n");
+    printFn("[Data]\n", true);
     for (int i = 0; i < script->info.dataLength; i++) {
-        printFn(std::format("{:02X} ", script->data[i]));
+        printFn(std::format("{:02X} ", script->data[i]), true);
     }
-    printFn("\n");
+    printFn("\n", true);
 
-    printFn(std::format("\nNum compiled bytes: {}\n", script->info.dataLength));
+    printFn(std::format("\nNum compiled bytes: {}\n", script->info.dataLength), true);
 
     return true;
 }
@@ -224,11 +226,6 @@ void NVSECompiler::VisitVarDeclStmt(const VarDeclStmt* stmt) {
     uint8_t varType = GetScriptTypeFromToken(stmt->type);
     const auto token = stmt->name;
 
-    // TODO: Typecheker
-    if (ResolveObjReference(token.lexeme)) {
-        throw std::runtime_error(std::format("Error: Name '{}' is already in use by form.", token.lexeme));
-    }
-
     // Compile lambdas differently
     // Does not affect params as they cannot have value specified
     if (stmt->value->IsType<LambdaExpr>()) {
@@ -259,7 +256,7 @@ void NVSECompiler::VisitVarDeclStmt(const VarDeclStmt* stmt) {
     const auto idx = AddLocal(token.lexeme, varType);
 
     if (!stmt->value) {
-        // Expected to generate statement here, undo that
+        // If just a var declaration but not assignment, do not count as statement
         statementCounter.top()--;
         return;
     }
@@ -598,9 +595,9 @@ void NVSECompiler::VisitWhileStmt(const WhileStmt* stmt) {
 
 uint32_t NVSECompiler::CompileBlock(StmtPtr stmt, bool incrementCurrent) {
     for (int i = 0; i < statementCounter.size(); i++) {
-        printFn("  ");
+        printFn("  ", true);
     }
-    printFn(std::format("Entering block\n"));
+    printFn(std::format("Entering block\n"), true);
     
     // Get sub-block statement count
     statementCounter.push(0);
@@ -615,9 +612,9 @@ uint32_t NVSECompiler::CompileBlock(StmtPtr stmt, bool incrementCurrent) {
     }
 
     for (int i = 0; i < statementCounter.size(); i++) {
-        printFn("  ");
+        printFn("  ", true);
     }
-    printFn(std::format("Block size: {}\n", newStatementCount));
+    printFn(std::format("Block size: {}\n", newStatementCount), true);
 
     return newStatementCount;
 }
@@ -708,28 +705,9 @@ void NVSECompiler::VisitSubscriptExpr(SubscriptExpr* expr) {
 
 void NVSECompiler::VisitCallExpr(CallExpr* expr) {
     auto stackRefExpr = dynamic_cast<GetExpr*>(expr->left.get());
-    auto identExpr = dynamic_cast<IdentExpr*>(expr->left.get());
-
-    std::string name{};
-    if (stackRefExpr) {
-        name = stackRefExpr->identifier.lexeme;
-    }
-    else if (identExpr) {
-        name = identExpr->token.lexeme;
-    }
-    else {
-        // Shouldn't happen I don't think
-        throw std::runtime_error("Unable to compile call expression, expected stack reference or identifier.");
-    }
-
-    // Try to get the script command by lexeme
-    auto cmd = g_scriptCommands.GetByName(name.c_str());
-
-    // Didn't resolve a ref var or command
-    if (!cmd) {
-        throw std::runtime_error("Invalid function '" + name + "'.");
-    }
-
+    
+    auto cmd = expr->cmdInfo;
+    
     auto normalParse = cmd->parse != Cmd_Expression_Parse && cmd->parse != kCommandInfo_Call.parse;
 
     // If call command
@@ -828,7 +806,7 @@ void NVSECompiler::VisitCallExpr(CallExpr* expr) {
     // Num args
     if (cmd->parse != Cmd_Expression_Parse) {
         // Count bytes after call length for vanilla expression parser
-        //callStart = data.size();
+        callStart = data.size();
         AddU16(expr->args.size());
     }
     else {
@@ -867,50 +845,16 @@ void NVSECompiler::VisitCallExpr(CallExpr* expr) {
 }
 
 void NVSECompiler::VisitGetExpr(GetExpr* expr) {
-    // Try to resolve lhs reference
-    const auto ident = dynamic_cast<IdentExpr*>(expr->left.get());
-    if (!ident) {
-        throw std::runtime_error("Left side of a get expression must be an object reference.");
-    }
-
-    const auto lhsName = ident->token.lexeme;
-    const auto rhsName = expr->identifier.lexeme;
-
-    const auto refIdx = ResolveObjReference(lhsName);
+    const auto refIdx = ResolveObjReference(expr->referenceName);
     if (!refIdx) {
-        throw std::runtime_error(std::format("Unable to resolve reference '{}'.", lhsName));
-    }
-
-    // Ensure it is of type quest
-    TESForm* form = script->refList.GetNthItem(refIdx - 1)->form;
-    TESScriptableForm* scriptable = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
-    if (!scriptable) {
-        throw std::runtime_error(std::format("Form '{}' is not referenceable from scripts.", lhsName));
-    }
-
-    // Try to find variable
-    Script* questScript = scriptable->script;
-    if (!questScript) {
-        throw std::runtime_error(std::format("Form '{}' does not have a script.", lhsName));
-    }
-
-    const VariableInfo* info = nullptr;
-    for (int i = 0; i < questScript->varList.Count(); i++) {
-        const auto curVar = questScript->varList.GetNthItem(i);
-        if (!strcmp(curVar->name.CStr(), rhsName.c_str())) {
-            info = curVar;
-        }
-    }
-
-    if (!info) {
-        throw std::runtime_error(std::format("Form '{}' does not have variable with name '{}'.", lhsName, rhsName));
+        throw std::runtime_error(std::format("Unable to resolve reference '{}'.", expr->referenceName));
     }
 
     // Put ref on stack
     AddU8('V');
-    AddU8(info->type);
+    AddU8(expr->varInfo->type);
     AddU16(refIdx);
-    AddU16(info->idx);
+    AddU16(expr->varInfo->idx);
 }
 
 void NVSECompiler::VisitBoolExpr(BoolExpr* expr) {
@@ -977,11 +921,9 @@ void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
     }
 
     // Try to look up as global
-    auto scrv = ResolveObjReference(name);
-    if (scrv) {
+    if (auto refIdx = ResolveObjReference(name)) {
         AddU8('R');
-        AddU16(scrv);
-        return;
+        AddU16(refIdx);
     }
 }
 
@@ -1000,7 +942,9 @@ void NVSECompiler::VisitLambdaExpr(LambdaExpr* expr) {
     // Compile lambda
     {
         // SCN
-        AddU32(static_cast<uint32_t>(ScriptParsing::ScriptStatementCode::ScriptName));
+        if (!partial) {
+            AddU32(static_cast<uint32_t>(ScriptParsing::ScriptStatementCode::ScriptName));
+        }
 
         // OP_BEGIN
         AddU16(0x10);
