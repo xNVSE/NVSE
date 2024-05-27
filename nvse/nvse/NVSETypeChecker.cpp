@@ -105,7 +105,9 @@ void NVSETypeChecker::VisitVarDeclStmt(const VarDeclStmt* stmt) {
 }
 
 void NVSETypeChecker::VisitExprStmt(const ExprStmt* stmt) {
-    stmt->expr->Accept(this);
+    if (stmt->expr) {
+        stmt->expr->Accept(this);
+    }
 }
 
 void NVSETypeChecker::VisitForStmt(ForStmt* stmt) {

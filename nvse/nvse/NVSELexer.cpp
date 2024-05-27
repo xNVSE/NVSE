@@ -1,6 +1,7 @@
 #include "NVSELexer.h"
 
 #include <sstream>
+#include <stack>
 
 #include "NVSECompilerUtils.h"
 
@@ -15,6 +16,72 @@ NVSELexer::NVSELexer(const std::string& input) : input(input), pos(0) {
         prev = pos + 1;
     }
     lines.push_back(input.substr(prev));
+}
+
+// Unused for now, working though
+std::string NVSELexer::lexString() {
+    std::ostringstream result;
+    std::stack<bool> inString{};
+    std::stack<bool> inExpr{};
+
+    inString.push(true);
+    inExpr.push(false);
+
+    int depth = 0;
+
+    while (pos < input.size()) {
+        char c = input[pos++];
+
+        if (c == '\\' && inString.top()) {
+            if (pos >= input.size()) throw std::runtime_error("Unexpected end of input after escape character.");
+            char next = input[pos++];
+            if (inString.top()) {
+                if (next == '\\' || next == 'n' || next == '"') {
+                    if (next == 'n') result << '\n';
+                    else result << next;
+                }
+                else {
+                    throw std::runtime_error("Invalid escape sequence.");
+                }
+            }
+            else {
+                result << '\\' << next;
+            }
+        }
+        else if (c == '"') {
+            if (depth == 0) {
+                return result.str();
+            }
+            result << c;
+            inString.top() = !inString.top();
+        }
+        else if (c == '$' && pos < input.size() && input[pos] == '{' && inString.top()) {
+            pos++;
+            depth++;
+            inString.push(false);
+            inExpr.push(true);
+        }
+        else if (c == '{') {
+            inExpr.push(false);
+            result << c;
+        }
+        else if (c == '}') {
+            if (inExpr.top()) {
+                if (depth == 0) throw std::runtime_error("Unmatched closing brace.");
+                depth--;
+            }
+            result << '}';
+            inExpr.pop();
+        }
+        else {
+            result << c;
+        }
+    }
+
+    if (inString.top()) {
+        throw std::runtime_error("Unexpected end of input in string.");
+    }
+    return result.str();
 }
 
 NVSEToken NVSELexer::GetNextToken() {
@@ -39,7 +106,7 @@ NVSEToken NVSELexer::GetNextToken() {
         linePos++;
     }
     
-    if (pos == input.size()) return MakeToken(NVSETokenType::Eof, "");
+    if (pos >= input.size()) return MakeToken(NVSETokenType::Eof, "");
 
     char current = input[pos];
     if (std::isdigit(current)) {
@@ -111,13 +178,13 @@ NVSEToken NVSELexer::GetNextToken() {
             } else {
                 buf << input[pos];
             }
-            pos++;
+        pos++;
         }
         
         if (input[pos] != '\"') {
             throw std::runtime_error("Unexpected EOF");
         }
-        
+
         pos++;
         const auto len = pos - start;
         std::string text = buf.str();

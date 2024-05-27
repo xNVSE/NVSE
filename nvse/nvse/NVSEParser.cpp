@@ -3,6 +3,9 @@
 
 #include <format>
 #include <iostream>
+#include <regex>
+
+#include "NVSETreePrinter.h"
 
 NVSEParser::NVSEParser(NVSELexer& tokenizer) : lexer(tokenizer) {
     Advance();
@@ -40,6 +43,7 @@ std::optional<NVSEScript> NVSEParser::Parse() {
             }
             catch (NVSEParseError e) {
                 CompErr("%s\n", e.what());
+                hadError = true;
                 Synchronize();
             }
         }
@@ -61,6 +65,7 @@ std::optional<NVSEScript> NVSEParser::Parse() {
         }
     }
     catch (NVSEParseError e) {
+        hadError = true;
         CompErr("%s\n", e.what());
     }
 
@@ -315,6 +320,7 @@ std::shared_ptr<BlockStmt> NVSEParser::BlockStatement() {
             statements.emplace_back(Statement());
         }
         catch (NVSEParseError e) {
+            hadError = true;
             CompErr("%s\n", e.what());
             Synchronize();
 

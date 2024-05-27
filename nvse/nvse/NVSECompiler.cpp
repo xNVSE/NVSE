@@ -271,7 +271,7 @@ void NVSECompiler::VisitExprStmt(const ExprStmt* stmt) {
     if (stmt->expr->IsType<CallExpr>() || stmt->expr->IsType<AssignmentExpr>()) {
         stmt->expr->Accept(this);
     }
-    else {
+    else if (stmt->expr) {
         // OP_EVAL
         AddU16(0x153A);
 
@@ -292,6 +292,9 @@ void NVSECompiler::VisitExprStmt(const ExprStmt* stmt) {
         // Patch lengths
         SetU16(argPatch, data.size() - argStart);
         SetU16(exprPatch, data.size() - exprStart);
+    } else {
+	    // Decrement counter as this is a NOP
+        statementCounter.top()--;
     }
 }
 
@@ -716,17 +719,9 @@ void NVSECompiler::VisitCallExpr(CallExpr* expr) {
         auto argStart = data.size();
         auto argPatch = AddU16(0x0);
 
-        if (stackRefExpr) {
-            stackRefExpr->left->Accept(this);
-        }
-
         insideNvseExpr.push(true);
         VisitCallExpr(expr);
         insideNvseExpr.pop();
-
-        if (stackRefExpr) {
-            AddU8(tokenOpToNVSEOpType[NVSETokenType::Dot]);
-        }
         
         // Patch lengths
         SetU16(argPatch, data.size() - argStart);
@@ -775,7 +770,12 @@ void NVSECompiler::VisitCallExpr(CallExpr* expr) {
         insideNvseExpr.pop();
         return;
     }
-    
+
+    // Handle stack refs
+    if (stackRefExpr) {
+        stackRefExpr->left->Accept(this);
+    }
+
     // Put lhs on stack if its a dot expr
     if (insideNvseExpr.top()) {
         if (stackRefExpr) {
@@ -817,6 +817,11 @@ void NVSECompiler::VisitCallExpr(CallExpr* expr) {
     insideNvseExpr.pop();
 
     SetU16(callPatch, data.size() - callStart);
+
+    // Handle stack refs
+    if (stackRefExpr) {
+        AddU8(tokenOpToNVSEOpType[NVSETokenType::Dot]);
+    }
 }
 
 void NVSECompiler::VisitGetExpr(GetExpr* expr) {

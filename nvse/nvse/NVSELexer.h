@@ -161,13 +161,13 @@ class NVSELexer {
     std::string input;
     size_t pos;
 
+public:
     size_t linePos = 1;
     size_t line = 1;
-
-public:
     std::vector<std::string> lines{};
 
     NVSELexer(const std::string& input);
+    std::string lexString();
 
     NVSEToken GetNextToken();
     bool Match(char c);
