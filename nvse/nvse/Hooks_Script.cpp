@@ -17,6 +17,7 @@
 #include "GameAPI.h"
 #include "GameData.h"
 #include "NVSECompiler.h"
+#include "NVSECompilerUtils.h"
 #include "NVSELexer.h"
 #include "NVSEParser.h"
 #include "NVSETreePrinter.h"
@@ -420,26 +421,6 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 	buf->errorCode = 0;
 	script->info.compiled = false;
 
-	std::stringstream outputStream{};
-	std::stringstream debugStream{};
-	
-	std::function<void(std::string, bool)> printFn = [&] (std::string msg, bool debug) -> void {
-		if (!debug) {
-			outputStream << msg;
-		}
-		debugStream << msg;
-	};
-	
-	std::function<void()> flushOutput = [&] () -> void {
-#ifdef _DEBUG
-		std::cout << debugStream.c_str() << std::flush;
-#endif
-#ifndef RUNTIME
-		g_ErrOut.Show(outputStream.str().c_str());
-#endif
-		_MESSAGE(debugStream.str().c_str());
-	};
-
 	// See if new compiler should override script compiler
 	// First token on first line should be 'name'
 	if (!strncmp(buf->scriptText, "name", 4)) {
@@ -453,25 +434,23 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 		}
 
 		NVSELexer lexer(program);
-		NVSEParser parser(lexer, printFn);
+		NVSEParser parser(lexer);
 
 		if (auto astOpt = parser.Parse(); astOpt.has_value()) {
 			auto ast = std::move(astOpt.value());
 
-			if (auto tc = NVSETypeChecker(&ast, printFn); !tc.check()) {
-#if !defined(DEBUG) && !defined(RUNTIME)
-				g_ErrOut.Show(ss.str().c_str());
-#endif
+			auto tc = NVSETypeChecker(&ast);
+			bool typeCheckerPass = tc.check();
+			
+			auto tp = NVSETreePrinter();
+			ast.Accept(&tp);
+
+			if (!typeCheckerPass) {
 				return PrecompileResult::kPrecompile_Failure;
 			}
 
-#ifndef RUNTIME
-			auto tp = NVSETreePrinter(printFn);
-			ast.Accept(&tp);
-#endif
-
 			try {
-				NVSECompiler comp{script, buf->partialScript, ast, printFn};
+				NVSECompiler comp{script, buf->partialScript, ast};
 				comp.Compile();
 
 				// Only set script name if not partial
@@ -480,10 +459,7 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 					buf->scriptName.Set(comp.scriptName.c_str());
 				}
 			} catch (std::runtime_error &er) {
-				printFn(std::format("Script compilation failed: {}\n", er.what()), false);
-#if !defined(DEBUG) && !defined(RUNTIME)
-				g_ErrOut.Show(ss.str().c_str());
-#endif
+				CompErr("Script compilation failed: %s\n", er.what());
 				return PrecompileResult::kPrecompile_Failure;
 			}
 		} else {
@@ -549,9 +525,9 @@ void PostScriptCompile()
 
 namespace Runtime // double-clarify
 {
-	bool __fastcall HandleBeginCompile_SetNotCompiled(Script* script, ScriptBuffer* buf, bool isCompiled)
+	PrecompileResult __fastcall HandleBeginCompile_SetNotCompiled(Script* script, ScriptBuffer* buf, bool isCompiled)
 	{
-		return HandleBeginCompile(buf, script) == PrecompileResult::kPrecompile_Success;
+		return HandleBeginCompile(buf, script);
 	}
 
 	__declspec(naked) void HookBeginScriptCompile()
@@ -560,14 +536,22 @@ namespace Runtime // double-clarify
 		const static auto failOrSpecialCompileAddr = 0x5AEDA0;
 		__asm
 		{
-			mov edx, [ebp + 0xC] //scriptBuffer
-			call HandleBeginCompile_SetNotCompiled
-			test al, al
-			jnz success
+			mov		edx, [ebp + 0xC] //scriptBuffer
+			call	HandleBeginCompile_SetNotCompiled
+			test	al, al
+			jz		fail
+			cmp		al, kPrecompile_Success
+			je		success
+			// else, special compile success.
+			// We want to prevent regular compilation from happening, hence skipping to the end.
+			// Also need to set result to 1 (success)
+			mov		al, 1
+
+			fail:
 			// fail, or a plugin custom-compiled the script
 			jmp failOrSpecialCompileAddr //jump here to land in HookEndScriptCompile.
 
-			success:
+				success :
 			jmp retnAddr
 		}
 	}

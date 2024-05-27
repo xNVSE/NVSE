@@ -5,6 +5,7 @@
 #include <format>
 #include <sstream>
 
+#include "Commands_Scripting.h"
 #include "NVSECompilerUtils.h"
 #include "ScriptUtils.h"
 
@@ -16,6 +17,7 @@ Token_Type GetDetailedTypeFromNVSEToken(NVSETokenType type) {
         return kTokenType_ArrayVar;
     case NVSETokenType::RefType:
         return kTokenType_RefVar;
+    // Short
     case NVSETokenType::Number:
     case NVSETokenType::DoubleType:
     case NVSETokenType::IntType:
@@ -25,12 +27,29 @@ Token_Type GetDetailedTypeFromNVSEToken(NVSETokenType type) {
     }
 }
 
+Token_Type GetDetailedTypeFromVarType(Script::VariableType type) {
+    switch (type) {
+    case Script::eVarType_Float:
+    case Script::eVarType_Integer:
+        return kTokenType_Number;
+    case Script::eVarType_String:
+        return kTokenType_String;
+    case Script::eVarType_Array:
+        return kTokenType_Array;
+    case Script::eVarType_Ref:
+        return kTokenType_Ref;
+    case Script::eVarType_Invalid:
+    default:
+        return kTokenType_Invalid;
+    }
+}
+
 std::string getTypeErrorMsg(Token_Type lhs, Token_Type rhs) {
     return std::format("Cannot convert from {} to {}", TokenTypeToString(lhs), TokenTypeToString(rhs));
 }
 
 void NVSETypeChecker::error(size_t line, std::string msg) {
-    printFn(std::format("[line {}] {}\n", line, msg), false);
+    CompErr("[line %d] %s\n", line, msg.c_str());
     hadError = true;
 }
 
@@ -43,6 +62,13 @@ bool NVSETypeChecker::check() {
 void NVSETypeChecker::VisitNVSEScript(const NVSEScript* script) {
     for (auto global : script->globalVars) {
         global->Accept(this);
+        
+        // Dont allow initializers in global scope
+        for (auto [name, value] : dynamic_cast<VarDeclStmt*>(global.get())->values) {
+            if (value) {
+                error(name.line, "Variable initializers are not allowed in global scope.");
+            }
+        }
     }
 
     for (auto block : script->blocks) {
@@ -55,27 +81,27 @@ void NVSETypeChecker::VisitBeginStmt(const BeginStmt* stmt) {
 }
 
 void NVSETypeChecker::VisitFnStmt(FnDeclStmt* stmt) {
-    stmt->body->Accept(this);
     for (auto decl : stmt->args) {
         decl->Accept(this);
     }
+    
+    stmt->body->Accept(this);
 }
 
 void NVSETypeChecker::VisitVarDeclStmt(const VarDeclStmt* stmt) {
-    auto name = stmt->name.lexeme;
-    auto type = GetDetailedTypeFromNVSEToken(stmt->type.type);
-
-    // Check rhs
-    if (stmt->value) {
-        stmt->value->Accept(this);
-        auto rhsType = stmt->value->detailedType;
-        if (s_operators[kOpType_Assignment].GetResult(type, rhsType) == kTokenType_Invalid) {
-            error(stmt->name.line, getTypeErrorMsg(rhsType, type));
-            return;
+    auto detailedType = GetDetailedTypeFromNVSEToken(stmt->type.type);
+    for (auto [name, expr] : stmt->values) {
+        if (expr) {
+            expr->Accept(this);
+            auto rhsType = expr->detailedType;
+            if (s_operators[kOpType_Assignment].GetResult(detailedType, rhsType) == kTokenType_Invalid) {
+                error(name.line, getTypeErrorMsg(rhsType, detailedType));
+                return;
+            }
         }
-    }
 
-    typeCache[name] = type;
+        typeCache[name.lexeme] = detailedType;
+    }
 }
 
 void NVSETypeChecker::VisitExprStmt(const ExprStmt* stmt) {
@@ -114,8 +140,9 @@ void NVSETypeChecker::VisitForEachStmt(ForEachStmt* stmt) {
     stmt->lhs->Accept(this);
     stmt->rhs->Accept(this);
 
-    // Get type of lhs identifier
-    auto ident = dynamic_cast<VarDeclStmt*>(stmt->lhs.get())->name.lexeme;
+    // Get type of lhs identifier -- this is way too verbose
+    auto decl = dynamic_cast<VarDeclStmt*>(stmt->lhs.get());
+    auto ident = std::get<0>(decl->values[0]).lexeme;
     auto lType = typeCache[ident];
     auto rType = stmt->rhs->detailedType;
     if (s_operators[kOpType_In].GetResult(lType, rType) == kTokenType_Invalid) {
@@ -133,7 +160,7 @@ void NVSETypeChecker::VisitIfStmt(IfStmt* stmt) {
     auto lType = stmt->cond->detailedType;
     auto rType = kTokenType_Boolean;
     if (!CanConvertOperand(lType, rType)) {
-        error(stmt->line, "Invalid expression type for if statement.");
+        error(stmt->line, std::format("Invalid expression type {} for if statement.", TokenTypeToString(lType)));
         stmt->cond->detailedType = kTokenType_Invalid;
     }
     else {
@@ -207,7 +234,7 @@ void NVSETypeChecker::VisitBlockStmt(BlockStmt* stmt) {
     }
 }
 
-void NVSETypeChecker::VisitAssignmentExpr(const AssignmentExpr* expr) {
+void NVSETypeChecker::VisitAssignmentExpr(AssignmentExpr* expr) {
     expr->left->Accept(this);
     expr->expr->Accept(this);
 
@@ -222,6 +249,7 @@ void NVSETypeChecker::VisitAssignmentExpr(const AssignmentExpr* expr) {
         return;
     }
 
+    expr->detailedType = oType;
     expr->left->detailedType = oType;
 }
 
@@ -340,13 +368,13 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 
     // Make sure not too many were passed
     // TODO: This breaks with at least one command: 'call', only expects 1 although it can support multiple.
-    // if (expr->args.size() > cmd->numParams) {
-    //     std::stringstream err{};
-    //     err << std::format(
-    //         "Number of parameters passed to command {} does not match what was expected. (Expected up to {}, Got {})\n", name,
-    //         requiredParams, expr->args.size());
-    //     error(expr->left->getToken()->line, err.str());
-    // }
+    if (expr->args.size() > cmd->numParams && cmd->parse != kCommandInfo_Call.parse) {
+        std::stringstream err{};
+        err << std::format(
+            "Number of parameters passed to command {} does not match what was expected. (Expected up to {}, Got {})\n", name,
+            requiredParams, expr->args.size());
+        error(expr->left->getToken()->line, err.str());
+    }
 
     // Basic type checks
     // TODO: Make this
@@ -391,7 +419,7 @@ void NVSETypeChecker::VisitGetExpr(GetExpr* expr) {
     for (int i = 0; i < questScript->varList.Count(); i++) {
         const auto curVar = questScript->varList.GetNthItem(i);
         if (!strcmp(curVar->name.CStr(), rhsName.c_str())) {
-            expr->detailedType = GetDetailedTypeFromNVSEToken(static_cast<NVSETokenType>(curVar->type));
+            expr->detailedType = GetDetailedTypeFromVarType(questScript->GetVariableType(curVar));
             expr->varInfo = curVar;
             expr->referenceName = form->GetEditorID();
             return;

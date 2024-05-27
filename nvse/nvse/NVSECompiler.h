@@ -18,7 +18,6 @@ public:
 	Script* script;
 	bool partial;
 	NVSEScript &ast;
-	std::function<void(std::string, bool)> printFn;
 
 	const char* originalScriptName;
 	std::string scriptName{};
@@ -170,8 +169,8 @@ public:
 		data[index + 3] = byte >> 24 & 0xFF;
 	}
 
-	NVSECompiler(Script *script, bool partial, NVSEScript& ast, std::function<void(std::string, bool)> printFn)
-	: script(script), partial(partial), ast(ast), printFn(printFn), originalScriptName(script->GetEditorID()) {}
+	NVSECompiler(Script *script, bool partial, NVSEScript& ast)
+	: script(script), partial(partial), ast(ast), originalScriptName(script->GetEditorID()) {}
 	bool Compile();
 
 	void VisitNVSEScript(const NVSEScript* nvScript) override;
@@ -192,7 +191,7 @@ public:
 	void VisitBlockStmt(BlockStmt* stmt) override;
 
 	// Inherited via NVSEVisitor
-	void VisitAssignmentExpr(const AssignmentExpr* expr) override;
+	void VisitAssignmentExpr(AssignmentExpr* expr) override;
 	void VisitTernaryExpr(const TernaryExpr* expr) override;
 	void VisitBinaryExpr(BinaryExpr* expr) override;
 	void VisitUnaryExpr(UnaryExpr* expr) override;

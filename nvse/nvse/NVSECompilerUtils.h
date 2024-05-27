@@ -1,4 +1,5 @@
 #pragma once
+#include "NVSELexer.h"
 #include "ScriptTokens.h"
 
 // Define tokens
@@ -20,3 +21,6 @@ inline Script::VariableType GetScriptTypeFromToken(NVSEToken t) {
 		return Script::eVarType_Invalid;
 	}
 }
+
+void CompDbg(const char *fmt, ...);
+void CompErr(const char *fmt, ...);

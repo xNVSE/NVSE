@@ -48,7 +48,7 @@ public:
 	virtual void VisitWhileStmt(const WhileStmt* stmt) = 0;
 	virtual void VisitBlockStmt(BlockStmt* stmt) = 0;
 
-	virtual void VisitAssignmentExpr(const AssignmentExpr* expr) = 0;
+	virtual void VisitAssignmentExpr(AssignmentExpr* expr) = 0;
 	virtual void VisitTernaryExpr(const TernaryExpr* expr) = 0;
 	virtual void VisitBinaryExpr(BinaryExpr* expr) = 0;
 	virtual void VisitUnaryExpr(UnaryExpr* expr) = 0;

@@ -4,8 +4,7 @@
 #include <format>
 #include <iostream>
 
-NVSEParser::NVSEParser(NVSELexer& tokenizer, std::function<void(std::string, bool)> printFn) : lexer(tokenizer),
-    printFn(printFn) {
+NVSEParser::NVSEParser(NVSELexer& tokenizer) : lexer(tokenizer) {
     Advance();
 }
 
@@ -14,7 +13,7 @@ std::optional<NVSEScript> NVSEParser::Parse() {
     std::vector<StmtPtr> globals;
     std::vector<StmtPtr> blocks;
     
-	printFn("\n==== PARSER ====\n\n", true);
+    CompDbg("\n==== PARSER ====\n\n");
 
     try {
         Expect(NVSETokenType::Name, "Expected 'name' as first statement of script.");
@@ -40,9 +39,7 @@ std::optional<NVSEScript> NVSEParser::Parse() {
                 globals.emplace_back(std::move(stmt));
             }
             catch (NVSEParseError e) {
-                printFn(e.what(), false);
-                printFn("\n", false);
-
+                CompErr("%s\n", e.what());
                 Synchronize();
             }
         }
@@ -64,8 +61,7 @@ std::optional<NVSEScript> NVSEParser::Parse() {
         }
     }
     catch (NVSEParseError e) {
-        printFn(e.what(), false);
-        printFn("\n", false);
+        CompErr("%s\n", e.what());
     }
 
     if (hadError) {
@@ -193,14 +189,18 @@ std::shared_ptr<VarDeclStmt> NVSEParser::VarDecl() {
     }
 
     auto varType = previousToken;
-    Expect(NVSETokenType::Identifier, "Expected identifier.");
-    auto ident = previousToken;
-    ExprPtr value = nullptr;
-    if (Match(NVSETokenType::Eq)) {
-        value = Expression();
-    }
+    std::vector<std::tuple<NVSEToken, ExprPtr>> declarations{};
+    do {
+        auto name = Expect(NVSETokenType::Identifier, "Expected identifier.");
+        ExprPtr value {nullptr};
+        if (Match(NVSETokenType::Eq)) {
+            value = Expression();
+        }
 
-    return std::make_shared<VarDeclStmt>(varType, ident, std::move(value));
+        declarations.emplace_back(name, value);
+    } while (Match(NVSETokenType::Comma));
+    
+    return std::make_shared<VarDeclStmt>(varType, std::move(declarations));
 }
 
 StmtPtr NVSEParser::ForStatement() {
@@ -211,15 +211,30 @@ StmtPtr NVSEParser::ForStatement() {
     bool forEach = false;
     StmtPtr init = {nullptr};
     if (!Peek(NVSETokenType::Semicolon)) {
-        if (Peek(NVSETokenType::IntType) || Peek(NVSETokenType::DoubleType) || Peek(NVSETokenType::RefType) ||
-            Peek(NVSETokenType::ArrayType) || Peek(NVSETokenType::StringType)) {
-            init = VarDecl();
+        if (Match(NVSETokenType::IntType) || Match(NVSETokenType::DoubleType) || Match(NVSETokenType::RefType) ||
+            Match(NVSETokenType::ArrayType) || Match(NVSETokenType::StringType)) {
+            
+            auto type = previousToken;
+            auto ident = Expect(NVSETokenType::Identifier, "Expected identifier.");
 
             if (Peek(NVSETokenType::Colon)) {
                 forEach = true;
+                init = std::make_shared<VarDeclStmt>(type, ident, nullptr);
+                
+                Match(NVSETokenType::Colon);
+                ExprPtr rhs = Expression();
+                Expect(NVSETokenType::RightParen, "Expected ')'.");
+
+                std::shared_ptr<BlockStmt> block = BlockStatement();
+                return std::make_shared<ForEachStmt>(std::move(init), std::move(rhs), std::move(block));
             }
             else {
+                ExprPtr value {nullptr};
+                if (Match(NVSETokenType::Eq)) {
+                    value = Expression();
+                }
                 Expect(NVSETokenType::Semicolon, "Expected ';' after loop initializer.");
+                init = std::make_shared<VarDeclStmt>(type, ident, value);
             }
         }
         else {
@@ -230,37 +245,21 @@ StmtPtr NVSEParser::ForStatement() {
         }
     }
 
-    if (!forEach) {
-        // Default to true condition
-        ExprPtr cond = std::make_shared<BoolExpr>(NVSEToken{NVSETokenType::Bool, "true", 1}, true);
-        if (!Peek(NVSETokenType::Semicolon)) {
-            cond = Expression();
-            Expect(NVSETokenType::Semicolon, "Expected ';' after loop condition.");
-        }
-
-        ExprPtr incr = {nullptr};
-        if (!Peek(NVSETokenType::RightParen)) {
-            incr = Expression();
-        }
-        Expect(NVSETokenType::RightParen, "Expected ')'.");
-
-        std::shared_ptr<BlockStmt> block = BlockStatement();
-        return std::make_shared<ForStmt>(std::move(init), std::move(cond), std::move(incr), std::move(block));
+    // Default to true condition
+    ExprPtr cond = std::make_shared<BoolExpr>(NVSEToken{NVSETokenType::Bool, "true", 1}, true);
+    if (!Peek(NVSETokenType::Semicolon)) {
+        cond = Expression();
+        Expect(NVSETokenType::Semicolon, "Expected ';' after loop condition.");
     }
-    else {
-        // Don't need to check this
-        auto initStmt = dynamic_cast<VarDeclStmt*>(init.get());
-        if (initStmt->value) {
-            Error(previousToken, "Variable initializer not allowed in for-each loop.");
-        }
 
-        Match(NVSETokenType::Colon);
-        ExprPtr rhs = Expression();
-        Expect(NVSETokenType::RightParen, "Expected ')'.");
-
-        std::shared_ptr<BlockStmt> block = BlockStatement();
-        return std::make_shared<ForEachStmt>(std::move(init), std::move(rhs), std::move(block));
+    ExprPtr incr = {nullptr};
+    if (!Peek(NVSETokenType::RightParen)) {
+        incr = Expression();
     }
+    Expect(NVSETokenType::RightParen, "Expected ')'.");
+
+    std::shared_ptr<BlockStmt> block = BlockStatement();
+    return std::make_shared<ForStmt>(std::move(init), std::move(cond), std::move(incr), std::move(block));
 }
 
 StmtPtr NVSEParser::IfStatement() {
@@ -273,7 +272,11 @@ StmtPtr NVSEParser::IfStatement() {
     auto block = BlockStatement();
     StmtPtr elseBlock = nullptr;
     if (Match(NVSETokenType::Else)) {
-        elseBlock = BlockStatement();
+        if (Peek(NVSETokenType::If)) {
+            elseBlock = IfStatement();
+        } else {
+            elseBlock = BlockStatement();
+        }
     }
 
     return std::make_shared<IfStmt>(token, std::move(cond), std::move(block), std::move(elseBlock));
@@ -312,8 +315,7 @@ std::shared_ptr<BlockStmt> NVSEParser::BlockStatement() {
             statements.emplace_back(Statement());
         }
         catch (NVSEParseError e) {
-            printFn(e.what(), false);
-            printFn("\n", false);
+            CompErr("%s\n", e.what());
             Synchronize();
 
             if (currentToken.type == NVSETokenType::Eof) {
@@ -598,18 +600,22 @@ std::vector<std::shared_ptr<VarDeclStmt>> NVSEParser::ParseArgs() {
 
     std::vector<std::shared_ptr<VarDeclStmt>> args{};
     while (!Match(NVSETokenType::RightParen)) {
-        auto decl = VarDecl();
-        if (decl->value) {
-            Error(previousToken, "Cannot specify default values.");
+        if (!Match(NVSETokenType::IntType) && !Match(NVSETokenType::DoubleType) && !Match(NVSETokenType::RefType) &&
+            !Match(NVSETokenType::ArrayType) && !Match(NVSETokenType::StringType)) {
+            Error(currentToken, "Expected type.");
         }
-        args.emplace_back(std::move(decl));
+        auto type = previousToken;
+        auto ident = Expect(NVSETokenType::Identifier, "Expected identifier.");
+        auto decl = std::make_shared<VarDeclStmt>(type, ident, nullptr);
 
         if (!Peek(NVSETokenType::RightParen) && !Match(NVSETokenType::Comma)) {
             Error(currentToken, "Expected ',' or ')'.");
         }
+        
+        args.emplace_back(std::move(decl));
     }
 
-    return std::move(args);
+    return args;
 }
 
 void NVSEParser::Advance() {

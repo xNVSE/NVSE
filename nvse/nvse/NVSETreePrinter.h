@@ -5,10 +5,9 @@
 class NVSETreePrinter : public NVSEVisitor {
 	int curTab = 0;
 	void PrintTabs();
-	std::function<void(std::string, bool)> printFn;
 
 public:
-	NVSETreePrinter(std::function<void(std::string, bool)> printFn) : printFn(printFn) {}
+	NVSETreePrinter() {}
 
 	void VisitNVSEScript(const NVSEScript* script) override;
 	void VisitBeginStmt(const BeginStmt* stmt) override;
@@ -25,7 +24,7 @@ public:
 	void VisitWhileStmt(const WhileStmt* stmt) override;
 	void VisitBlockStmt(BlockStmt* stmt) override;
 
-	void VisitAssignmentExpr(const AssignmentExpr* expr) override;
+	void VisitAssignmentExpr(AssignmentExpr* expr) override;
 	void VisitTernaryExpr(const TernaryExpr* expr) override;
 	void VisitBinaryExpr(BinaryExpr* expr) override;
 	void VisitUnaryExpr(UnaryExpr* expr) override;

@@ -4,45 +4,13 @@
 #include "NVSECompilerUtils.h"
 #include "NVSEParser.h"
 
-std::unordered_map<NVSETokenType, OperatorType> tokenOpToNVSEOpType{
-    {NVSETokenType::EqEq, kOpType_Equals},
-    {NVSETokenType::LogicOr, kOpType_LogicalOr},
-    {NVSETokenType::LogicAnd, kOpType_LogicalAnd},
-    {NVSETokenType::Greater, kOpType_GreaterThan},
-    {NVSETokenType::GreaterEq, kOpType_GreaterOrEqual},
-    {NVSETokenType::Less, kOpType_LessThan},
-    {NVSETokenType::LessEq, kOpType_LessOrEqual},
-    {NVSETokenType::Bang, kOpType_LogicalNot},
-    {NVSETokenType::BangEq, kOpType_NotEqual},
-
-    {NVSETokenType::Plus, kOpType_Add},
-    {NVSETokenType::Minus, kOpType_Subtract},
-    {NVSETokenType::Star, kOpType_Multiply},
-    {NVSETokenType::Slash, kOpType_Divide},
-    {NVSETokenType::Mod, kOpType_Modulo},
-    {NVSETokenType::Pow, kOpType_Exponent},
-
-    {NVSETokenType::Eq, kOpType_Assignment},
-    {NVSETokenType::PlusEq, kOpType_PlusEquals},
-    {NVSETokenType::MinusEq, kOpType_MinusEquals},
-    {NVSETokenType::StarEq, kOpType_TimesEquals},
-    {NVSETokenType::SlashEq, kOpType_DividedEquals},
-    {NVSETokenType::ModEq, kOpType_ModuloEquals},
-    {NVSETokenType::PowEq, kOpType_ExponentEquals},
-
-    // Unary
-    {NVSETokenType::Minus, kOpType_Negation},
-    {NVSETokenType::Dollar, kOpType_ToString},
-    {NVSETokenType::Pound, kOpType_ToNumber},
-    {NVSETokenType::Box, kOpType_Box},
-    {NVSETokenType::Unbox, kOpType_Dereference},
-    {NVSETokenType::LeftBracket, kOpType_LeftBracket}
-};
-
 bool NVSECompiler::Compile() {
-    printFn("\n==== COMPILER ====\n\n", true);
+    CompDbg("\n==== COMPILER ====\n\n");
     
     insideNvseExpr.push(false);
+    loopIncrements.push(nullptr);
+    statementCounter.push(0);
+    
     ast.Accept(this);
 
     if (!partial) {
@@ -58,35 +26,36 @@ bool NVSECompiler::Compile() {
     memcpy(script->data, data.data(), data.size());
 
     // Debug print local info
-    printFn("[Locals]\n", true);
+    CompDbg("\n[Locals]\n\n");
     for (int i = 0; i < script->varList.Count(); i++) {
         auto item = script->varList.GetNthItem(i);
-        printFn(std::format("{}: {} {}\n", item->idx, item->name.CStr(),
-                            usedVars.contains(item->name.CStr()) ? "" : "(unused)"), true);
+        CompDbg("%i: %s %s\n", item->idx, item->name.CStr(), usedVars.contains(item->name.CStr()) ? "" : "(unused)");
     }
-    printFn("\n", true);
+    
+    CompDbg("\n");
 
     // Refs
-    printFn("[Refs]\n", true);
+    CompDbg("[Refs]\n\n");
     for (int i = 0; i < script->refList.Count(); i++) {
         const auto ref = script->refList.GetNthItem(i);
         if (ref->varIdx) {
-            printFn(std::format("{}: (Var {})\n", i, ref->varIdx), true);
+            CompDbg("%d: (Var %d)\n", i, ref->varIdx);
         }
         else {
-            printFn(std::format("{}: {}\n", i, ref->form->GetEditorID()), true);
+            CompDbg("%d, %s\n", i, ref->form->GetEditorID());
         }
     }
-    printFn("\n", true);
+    
+    CompDbg("\n");
 
     // Script data
-    printFn("[Data]\n", true);
+    CompDbg("[Data]\n");
     for (int i = 0; i < script->info.dataLength; i++) {
-        printFn(std::format("{:02X} ", script->data[i]), true);
+        CompDbg("%02X ", script->data[i]);
     }
-    printFn("\n", true);
-
-    printFn(std::format("\nNum compiled bytes: {}\n", script->info.dataLength), true);
+    
+    CompDbg("\n");
+    CompDbg("\nNum compiled bytes: %d\n", script->info.dataLength);
 
     return true;
 }
@@ -199,7 +168,7 @@ void NVSECompiler::VisitFnStmt(FnDeclStmt* stmt) {
     for (auto i = 0; i < stmt->args.size(); i++) {
         auto& arg = stmt->args[i];
         auto type = GetScriptTypeFromToken(arg->type);
-        auto localIdx = AddLocal(arg->name.lexeme, type);
+        auto localIdx = AddLocal(std::get<0>(arg->values[0]).lexeme, type);
 
         AddU16(localIdx);
         AddU8(type);
@@ -224,74 +193,77 @@ void NVSECompiler::VisitFnStmt(FnDeclStmt* stmt) {
 
 void NVSECompiler::VisitVarDeclStmt(const VarDeclStmt* stmt) {
     uint8_t varType = GetScriptTypeFromToken(stmt->type);
-    const auto token = stmt->name;
+    
+    // Since we are doing multiple declarations at once, manually handle count here
+    statementCounter.top()--;
 
-    // Compile lambdas differently
-    // Does not affect params as they cannot have value specified
-    if (stmt->value->IsType<LambdaExpr>()) {
-        // To do a similar thing on access
-        lambdaVars.insert(stmt->name.lexeme);
+    for (auto [token, value] : stmt->values) {
+        // Compile lambdas differently
+        // Does not affect params as they cannot have value specified
+        if (value->IsType<LambdaExpr>()) {
+            // To do a similar thing on access
+            lambdaVars.insert(token.lexeme);
 
-        // <scriptName>__lambdaName
-        const auto name = scriptName + "__" + token.lexeme;
+            // <scriptName>__lambdaName
+            const auto name = scriptName + "__" + token.lexeme;
 
-        // Build a call expr
-        NVSEToken callToken{};
-        callToken.lexeme = "SetModLocalData";
-        auto ident = std::make_shared<IdentExpr>(callToken);
+            // Build a call expr
+            NVSEToken callToken{};
+            callToken.lexeme = "SetModLocalData";
+            auto ident = std::make_shared<IdentExpr>(callToken);
 
-        NVSEToken nameToken{};
-        nameToken.value = name;
-        auto arg = std::make_shared<StringExpr>(nameToken);
+            NVSEToken nameToken{};
+            nameToken.value = name;
+            auto arg = std::make_shared<StringExpr>(nameToken);
 
-        std::vector<ExprPtr> args{};
-        args.emplace_back(arg);
-        args.emplace_back(stmt->value);
-        auto expr = std::make_shared<CallExpr>(ident, std::move(args));
+            std::vector<ExprPtr> args{};
+            args.emplace_back(arg);
+            args.emplace_back(value);
+            auto expr = std::make_shared<CallExpr>(ident, std::move(args));
 
-        expr->Accept(this);
-        return;
+            expr->Accept(this);
+            continue;
+        }
+
+        const auto idx = AddLocal(token.lexeme, varType);
+        if (!value) {
+            continue;
+        }
+
+        statementCounter.top()++;
+
+        // OP_LET
+        AddU16(0x1539);
+
+        //  Placeholder [expr_len]
+        auto exprPatch = AddU16(0x0);
+        auto exprStart = data.size();
+
+        // Num args
+        AddU8(0x1);
+
+        // Placeholder [param1_len]
+        auto argStart = data.size();
+        auto argPatch = AddU16(0x0);
+
+        // Add arg to stack
+        AddU8('V');
+        AddU8(varType);
+        AddU16(0); // SCRV
+        AddU16(idx); // SCDA
+
+        // Build expression
+        insideNvseExpr.push(true);
+        value->Accept(this);
+        insideNvseExpr.pop();
+
+        // OP_ASSIGN
+        AddU8(0);
+
+        // Patch lengths
+        SetU16(argPatch, data.size() - argStart);
+        SetU16(exprPatch, data.size() - exprStart);
     }
-
-    const auto idx = AddLocal(token.lexeme, varType);
-
-    if (!stmt->value) {
-        // If just a var declaration but not assignment, do not count as statement
-        statementCounter.top()--;
-        return;
-    }
-
-    // OP_LET
-    AddU16(0x1539);
-
-    //  Placeholder [expr_len]
-    auto exprPatch = AddU16(0x0);
-    auto exprStart = data.size();
-
-    // Num args
-    AddU8(0x1);
-
-    // Placeholder [param1_len]
-    auto argStart = data.size();
-    auto argPatch = AddU16(0x0);
-
-    // Add arg to stack
-    AddU8('V');
-    AddU8(varType);
-    AddU16(0); // SCRV
-    AddU16(idx); // SCDA
-
-    // Build expression
-    insideNvseExpr.push(true);
-    stmt->value->Accept(this);
-    insideNvseExpr.pop();
-
-    // OP_ASSIGN
-    AddU8(0);
-
-    // Patch lengths
-    SetU16(argPatch, data.size() - argStart);
-    SetU16(exprPatch, data.size() - exprStart);
 }
 
 void NVSECompiler::VisitExprStmt(const ExprStmt* stmt) {
@@ -396,7 +368,7 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
         throw std::runtime_error("Unexpected compiler error.");
     }
 
-    auto varInfo = script->GetVariableByName(varDecl->name.lexeme.c_str());
+    auto varInfo = script->GetVariableByName(std::get<0>(varDecl->values[0]).lexeme.c_str());
     if (!varInfo) {
         throw std::runtime_error("Unexpected compiler error.");
     }
@@ -480,7 +452,7 @@ void NVSECompiler::VisitIfStmt(IfStmt* stmt) {
         // Compile cond
         insideNvseExpr.push(true);
         stmt->cond->Accept(this);
-        insideNvseExpr.push(false);
+        insideNvseExpr.pop();
 
         // Patch OP_EVAL lengths
         SetU16(opEvalArgPatch, data.size() - opEvalArgStart);
@@ -595,9 +567,9 @@ void NVSECompiler::VisitWhileStmt(const WhileStmt* stmt) {
 
 uint32_t NVSECompiler::CompileBlock(StmtPtr stmt, bool incrementCurrent) {
     for (int i = 0; i < statementCounter.size(); i++) {
-        printFn("  ", true);
+        CompDbg("  ");
     }
-    printFn(std::format("Entering block\n"), true);
+    CompDbg("Entering block\n");
     
     // Get sub-block statement count
     statementCounter.push(0);
@@ -612,9 +584,9 @@ uint32_t NVSECompiler::CompileBlock(StmtPtr stmt, bool incrementCurrent) {
     }
 
     for (int i = 0; i < statementCounter.size(); i++) {
-        printFn("  ", true);
+        CompDbg("  ");
     }
-    printFn(std::format("Block size: {}\n", newStatementCount), true);
+    CompDbg("Exiting Block. Size %d\n", newStatementCount);
 
     return newStatementCount;
 }
@@ -626,35 +598,46 @@ void NVSECompiler::VisitBlockStmt(BlockStmt* stmt) {
     }
 }
 
-void NVSECompiler::VisitAssignmentExpr(const AssignmentExpr* expr) {
-    // OP_LET
-    AddU16(0x1539);
+void NVSECompiler::VisitAssignmentExpr(AssignmentExpr* expr) {
+    // Assignment as standalone statement
+    if (!insideNvseExpr.top()) {
+        // OP_LET
+        AddU16(0x1539);
 
-    //  Placeholder [expr_len]
-    auto exprPatch = AddU16(0x0);
-    auto exprStart = data.size();
+        //  Placeholder [expr_len]
+        auto exprPatch = AddU16(0x0);
+        auto exprStart = data.size();
 
-    // Num args
-    AddU8(0x1);
+        // Num args
+        AddU8(0x1);
 
-    // Placeholder [param1_len]
-    auto argStart = data.size();
-    auto argPatch = AddU16(0x0);
+        // Placeholder [param1_len]
+        auto argStart = data.size();
+        auto argPatch = AddU16(0x0);
 
-    // Add LHS to stack
-    insideNvseExpr.push(true);
-    expr->left->Accept(this);
-    insideNvseExpr.push(false);
+        // Build expression
+        insideNvseExpr.push(true);
+        expr->left->Accept(this);
+        expr->expr->Accept(this);
+        insideNvseExpr.pop();
 
-    // Build expression
-    expr->expr->Accept(this);
+        // Assignment opcode
+        AddU8(tokenOpToNVSEOpType[expr->token.type]);
 
-    // Assignment opcode
-    AddU8(tokenOpToNVSEOpType[expr->token.type]);
+        // Patch lengths
+        SetU16(argPatch, data.size() - argStart);
+        SetU16(exprPatch, data.size() - exprStart);
+    }
 
-    // Patch lengths
-    SetU16(argPatch, data.size() - argStart);
-    SetU16(exprPatch, data.size() - exprStart);
+    // Assignment as an expression
+    else {
+        // Build expression
+        expr->left->Accept(this);
+        expr->expr->Accept(this);
+
+        // Assignment opcode
+        AddU8(tokenOpToNVSEOpType[expr->token.type]);
+    }
 }
 
 void NVSECompiler::VisitTernaryExpr(const TernaryExpr* expr) {
@@ -703,12 +686,53 @@ void NVSECompiler::VisitSubscriptExpr(SubscriptExpr* expr) {
     AddU8(tokenOpToNVSEOpType[NVSETokenType::LeftBracket]);
 }
 
+// Copied for testing from ScriptAnalyzer.cpp
+const UInt32 g_gameParseCommands[] = { 0x5B1BA0, 0x5B3C70, 0x5B3CA0, 0x5B3C40, 0x5B3CD0, reinterpret_cast<UInt32>(Cmd_Default_Parse) };
+const UInt32 g_messageBoxParseCmds[] = { 0x5B3CD0, 0x5B3C40, 0x5B3C70, 0x5B3CA0 };
+
 void NVSECompiler::VisitCallExpr(CallExpr* expr) {
-    auto stackRefExpr = dynamic_cast<GetExpr*>(expr->left.get());
-    
-    auto cmd = expr->cmdInfo;
-    
-    auto normalParse = cmd->parse != Cmd_Expression_Parse && cmd->parse != kCommandInfo_Call.parse;
+    const auto stackRefExpr = dynamic_cast<GetExpr*>(expr->left.get());
+    const auto cmd = expr->cmdInfo;
+
+    auto defaultParse = Contains(g_gameParseCommands, reinterpret_cast<UInt32>(cmd->parse)) || reinterpret_cast<UInt32>(cmd->parse) == 0x005C67E0;
+
+    // See if we should wrap inside let
+    // Need to do this in the case of something like
+    // player.AddItem(Caps001, 10) to pass player on stack and use 'x'
+    // annoying but want to keep the way these were passed consistent, especially in case of
+    // Quest.target.AddItem()
+    if (stackRefExpr && !insideNvseExpr.top()) {
+        // OP_EVAL
+        AddU16(0x153A);
+
+        //  Placeholder [expr_len]
+        auto exprPatch = AddU16(0x0);
+        auto exprStart = data.size();
+
+        // Num args
+        AddU8(0x1);
+
+        // Placeholder [param1_len]
+        auto argStart = data.size();
+        auto argPatch = AddU16(0x0);
+
+        if (stackRefExpr) {
+            stackRefExpr->left->Accept(this);
+        }
+
+        insideNvseExpr.push(true);
+        VisitCallExpr(expr);
+        insideNvseExpr.pop();
+
+        if (stackRefExpr) {
+            AddU8(tokenOpToNVSEOpType[NVSETokenType::Dot]);
+        }
+        
+        // Patch lengths
+        SetU16(argPatch, data.size() - argStart);
+        SetU16(exprPatch, data.size() - exprStart);
+        return;
+    }
 
     // If call command
     if (cmd->parse == kCommandInfo_Call.parse) {
@@ -751,38 +775,10 @@ void NVSECompiler::VisitCallExpr(CallExpr* expr) {
         insideNvseExpr.pop();
         return;
     }
-
-    // See if we should wrap inside let
-    // Need to do this in the case of something like
-    // player.AddItem(Caps001, 10) to pass player on stack and use 'x'
-    // annoying but want to keep the way these were passed consistent, especially in case of
-    // Quest.target.AddItem()
-    size_t exprPatch = 0;
-    size_t exprStart = 0;
-    size_t argStart = 0;
-    size_t argPatch = 0;
-    if (normalParse && stackRefExpr) {
-        // OP_EVAL
-        AddU16(0x153A);
-
-        //  Placeholder [expr_len]
-        exprPatch = AddU16(0x0);
-        exprStart = data.size();
-
-        // Num args
-        AddU8(0x1);
-
-        // Placeholder [param1_len]
-        argStart = data.size();
-        argPatch = AddU16(0x0);
-
-        insideNvseExpr.push(true);
-    }
-
-    // Put this on the stack
+    
+    // Put lhs on stack if its a dot expr
     if (insideNvseExpr.top()) {
         if (stackRefExpr) {
-            stackRefExpr->left->Accept(this);
             AddU8('x');
         }
         else {
@@ -793,55 +789,34 @@ void NVSECompiler::VisitCallExpr(CallExpr* expr) {
     AddU16(cmd->opcode);
 
     // Call size
-    auto callStart = data.size();
+    auto callStart = data.size() + (insideNvseExpr.top() ? 0 : 2);
     auto callPatch = AddU16(0x0);
 
-    // Compiled differently for some reason inside vs outside of calls
-    if (!insideNvseExpr.top()) {
-        callStart = data.size();
-    }
-
-    insideNvseExpr.push(true);
-
     // Num args
-    if (cmd->parse != Cmd_Expression_Parse) {
-        // Count bytes after call length for vanilla expression parser
-        callStart = data.size();
+    if (defaultParse) {
         AddU16(expr->args.size());
-    }
-    else {
+    } else {
         AddU8(expr->args.size());
     }
 
     // Args
+    insideNvseExpr.push(true);
     for (int i = 0; i < expr->args.size(); i++) {
-        if (cmd->parse != Cmd_Expression_Parse) {
+        // Make NVSE aware
+        if (defaultParse) {
             AddU16(0xFFFF);
         }
 
         auto argStartInner = data.size();
         auto argPatchInner = AddU16(0x0);
-
+        
         expr->args[i]->Accept(this);
+        
         SetU16(argPatchInner, data.size() - argStartInner);
     }
-
-    SetU16(callPatch, data.size() - callStart);
-
-    // Add '.' token if stack expr
-    if (stackRefExpr) {
-        AddU8(tokenOpToNVSEOpType[NVSETokenType::Dot]);
-    }
-
     insideNvseExpr.pop();
 
-    // If we wrapped inside of let
-    if (normalParse && stackRefExpr) {
-        // Patch lengths
-        SetU16(argPatch, data.size() - argStart);
-        SetU16(exprPatch, data.size() - exprStart);
-        insideNvseExpr.pop();
-    }
+    SetU16(callPatch, data.size() - callStart);
 }
 
 void NVSECompiler::VisitGetExpr(GetExpr* expr) {
@@ -888,6 +863,7 @@ void NVSECompiler::VisitStringExpr(StringExpr* expr) {
 
 void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
     auto name = expr->token.lexeme;
+    usedVars.emplace(name);
 
     // If this is a lambda var, inline it as a call to GetModLocalData
     if (lambdaVars.contains(name)) {
@@ -942,9 +918,7 @@ void NVSECompiler::VisitLambdaExpr(LambdaExpr* expr) {
     // Compile lambda
     {
         // SCN
-        if (!partial) {
-            AddU32(static_cast<uint32_t>(ScriptParsing::ScriptStatementCode::ScriptName));
-        }
+        AddU32(static_cast<uint32_t>(ScriptParsing::ScriptStatementCode::ScriptName));
 
         // OP_BEGIN
         AddU16(0x10);
@@ -969,7 +943,7 @@ void NVSECompiler::VisitLambdaExpr(LambdaExpr* expr) {
         for (auto i = 0; i < expr->args.size(); i++) {
             auto& arg = expr->args[i];
             auto type = GetScriptTypeFromToken(arg->type);
-            auto localIdx = AddLocal(arg->name.lexeme, type);
+            auto localIdx = AddLocal(std::get<0>(arg->values[0]).lexeme, type);
 
             AddU16(localIdx);
             AddU8(type);

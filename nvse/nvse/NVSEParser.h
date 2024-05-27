@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <optional>
+#include <utility>
 
 #include "ScriptTokens.h"
 
@@ -19,7 +20,8 @@ struct NVSEScript {
     std::vector<StmtPtr> globalVars;
     std::vector<StmtPtr> blocks;
 
-    NVSEScript(NVSEToken name, std::vector<StmtPtr> globalVars, std::vector<StmtPtr> blocks) : name(name), globalVars(std::move(globalVars)), blocks(std::move(blocks)) {}
+    NVSEScript(NVSEToken name, std::vector<StmtPtr> globalVars, std::vector<StmtPtr> blocks) : name(std::move(name)),
+        globalVars(std::move(globalVars)), blocks(std::move(blocks)) {}
 
     void Accept(NVSEVisitor* visitor) {
         visitor->VisitNVSEScript(this);
@@ -31,7 +33,7 @@ struct Stmt {
 
     // Some statements store type such as return and block statement
     Token_Type detailedType = kTokenType_Invalid;
-    
+
     virtual ~Stmt() {}
 
     virtual void Accept(NVSEVisitor* t) = 0;
@@ -47,7 +49,8 @@ struct BeginStmt : Stmt {
     std::optional<NVSEToken> param;
     StmtPtr block;
 
-    BeginStmt(NVSEToken name, std::optional<NVSEToken> param, StmtPtr block) : name(name), param(param), block(std::move(block)) {
+    BeginStmt(const NVSEToken& name, std::optional<NVSEToken> param, StmtPtr block) : name(name),
+        param(std::move(param)), block(std::move(block)) {
         line = name.line;
     }
 
@@ -61,25 +64,29 @@ struct FnDeclStmt : Stmt {
     std::vector<std::shared_ptr<VarDeclStmt>> args;
     StmtPtr body;
 
-    FnDeclStmt(NVSEToken token, std::vector<std::shared_ptr<VarDeclStmt>> args, StmtPtr body) : token(token), args(std::move(args)), body(std::move(body)) {
+    FnDeclStmt(const NVSEToken& token, std::vector<std::shared_ptr<VarDeclStmt>> args, StmtPtr body) : token(token),
+        args(std::move(args)), body(std::move(body)) {
         line = token.line;
     }
 
-    void Accept(NVSEVisitor *visitor) override {
+    void Accept(NVSEVisitor* visitor) override {
         visitor->VisitFnStmt(this);
     }
 };
 
 struct VarDeclStmt : Stmt {
     NVSEToken type;
-    NVSEToken name;
-    ExprPtr value{ nullptr };
+    std::vector<std::tuple<NVSEToken, ExprPtr>> values{};
 
-    VarDeclStmt(NVSEToken type, NVSEToken name) : type(type), name(name) {}
-    VarDeclStmt(NVSEToken type, NVSEToken name, ExprPtr value) : type(type), name(name), value(std::move(value)) {}
+    VarDeclStmt(NVSEToken type, std::vector<std::tuple<NVSEToken, ExprPtr>> values)
+        : type(std::move(type)), values(std::move(values)) {}
+
+    VarDeclStmt(NVSEToken type, NVSEToken name, ExprPtr value) : type(std::move(type)) {
+        values.emplace_back(name, std::move(value));
+    }
 
     void Accept(NVSEVisitor* visitor) override {
-	    visitor->VisitVarDeclStmt(this);
+        visitor->VisitVarDeclStmt(this);
     }
 };
 
@@ -88,18 +95,19 @@ struct ExprStmt : Stmt {
 
     ExprStmt(ExprPtr expr) : expr(std::move(expr)) {}
 
-    void Accept(NVSEVisitor *visitor) override {
+    void Accept(NVSEVisitor* visitor) override {
         visitor->VisitExprStmt(this);
     }
 };
 
 struct ForStmt : Stmt {
-	StmtPtr init;
+    StmtPtr init;
     ExprPtr cond;
     ExprPtr post;
     std::shared_ptr<BlockStmt> block;
 
-    ForStmt(StmtPtr init, ExprPtr cond, ExprPtr post, std::shared_ptr<BlockStmt> block) : init(std::move(init)), cond(std::move(cond)), post(std::move(post)), block(std::move(block)) {}
+    ForStmt(StmtPtr init, ExprPtr cond, ExprPtr post, std::shared_ptr<BlockStmt> block) : init(std::move(init)),
+        cond(std::move(cond)), post(std::move(post)), block(std::move(block)) {}
 
     void Accept(NVSEVisitor* visitor) override {
         visitor->VisitForStmt(this);
@@ -111,7 +119,8 @@ struct ForEachStmt : Stmt {
     ExprPtr rhs;
     std::shared_ptr<BlockStmt> block;
 
-    ForEachStmt(StmtPtr lhs, ExprPtr rhs, std::shared_ptr<BlockStmt> block) : lhs(std::move(lhs)), rhs(std::move(rhs)), block(std::move(block)) {}
+    ForEachStmt(StmtPtr lhs, ExprPtr rhs, std::shared_ptr<BlockStmt> block) : lhs(std::move(lhs)), rhs(std::move(rhs)),
+                                                                              block(std::move(block)) {}
 
     void Accept(NVSEVisitor* visitor) override {
         visitor->VisitForEachStmt(this);
@@ -124,7 +133,10 @@ struct IfStmt : Stmt {
     StmtPtr block;
     StmtPtr elseBlock;
 
-    IfStmt(NVSEToken token, ExprPtr cond, StmtPtr block, StmtPtr elseBlock) : token(token), cond(std::move(cond)), block(std::move(block)), elseBlock(std::move(elseBlock)) {}
+    IfStmt(NVSEToken token, ExprPtr cond, StmtPtr block, StmtPtr elseBlock) : token(std::move(token)),
+                                                                              cond(std::move(cond)),
+                                                                              block(std::move(block)),
+                                                                              elseBlock(std::move(elseBlock)) {}
 
     void Accept(NVSEVisitor* visitor) override {
         visitor->VisitIfStmt(this);
@@ -135,7 +147,7 @@ struct ReturnStmt : Stmt {
     NVSEToken token;
     ExprPtr expr;
 
-    ReturnStmt(NVSEToken token, ExprPtr expr) : token(token), expr(std::move(expr)) {}
+    ReturnStmt(NVSEToken token, ExprPtr expr) : token(std::move(token)), expr(std::move(expr)) {}
 
     void Accept(NVSEVisitor* visitor) override {
         visitor->VisitReturnStmt(this);
@@ -144,7 +156,7 @@ struct ReturnStmt : Stmt {
 
 struct ContinueStmt : Stmt {
     NVSEToken token;
-    ContinueStmt(NVSEToken token) : token(token) {}
+    ContinueStmt(NVSEToken token) : token(std::move(token)) {}
 
     void Accept(NVSEVisitor* visitor) override {
         visitor->VisitContinueStmt(this);
@@ -153,7 +165,7 @@ struct ContinueStmt : Stmt {
 
 struct BreakStmt : Stmt {
     NVSEToken token;
-    BreakStmt(NVSEToken token) : token(token) {}
+    BreakStmt(NVSEToken token) : token(std::move(token)) {}
 
     void Accept(NVSEVisitor* visitor) override {
         visitor->VisitBreakStmt(this);
@@ -165,9 +177,10 @@ struct WhileStmt : Stmt {
     ExprPtr cond;
     StmtPtr block;
 
-    WhileStmt(NVSEToken token, ExprPtr cond, StmtPtr block) : token(token), cond(std::move(cond)), block(std::move(block)) {}
+    WhileStmt(NVSEToken token, ExprPtr cond, StmtPtr block) : token(std::move(token)), cond(std::move(cond)),
+                                                              block(std::move(block)) {}
 
-    void Accept(NVSEVisitor *visitor) override {
+    void Accept(NVSEVisitor* visitor) override {
         visitor->VisitWhileStmt(this);
     }
 };
@@ -185,13 +198,14 @@ struct BlockStmt : Stmt {
 struct Expr {
     int line = 0;
     Token_Type detailedType = kTokenType_Invalid;
-    
+
     virtual ~Expr() = default;
-    virtual void Accept(NVSEVisitor *t) = 0;
-    virtual NVSEToken *getToken() {
+    virtual void Accept(NVSEVisitor* t) = 0;
+
+    virtual NVSEToken* getToken() {
         return nullptr;
     }
-    
+
     template <typename T>
     bool IsType() {
         return dynamic_cast<T*>(this);
@@ -203,13 +217,14 @@ struct AssignmentExpr : Expr {
     ExprPtr left;
     ExprPtr expr;
 
-    AssignmentExpr(NVSEToken token, ExprPtr left, ExprPtr expr) : token(std::move(token)), left(std::move(left)), expr(std::move(expr)) {}
+    AssignmentExpr(NVSEToken token, ExprPtr left, ExprPtr expr) : token(std::move(token)), left(std::move(left)),
+                                                                  expr(std::move(expr)) {}
 
     void Accept(NVSEVisitor* t) override {
         t->VisitAssignmentExpr(this);
     }
 
-    NVSEToken *getToken() override {
+    NVSEToken* getToken() override {
         return &token;
     }
 };
@@ -220,13 +235,16 @@ struct TernaryExpr : Expr {
     ExprPtr left;
     ExprPtr right;
 
-    TernaryExpr(NVSEToken token, ExprPtr cond, ExprPtr left, ExprPtr right) : token(std::move(token)), cond(std::move(cond)), left(std::move(left)), right(std::move(right)) {}
+    TernaryExpr(NVSEToken token, ExprPtr cond, ExprPtr left, ExprPtr right) : token(std::move(token)),
+                                                                              cond(std::move(cond)),
+                                                                              left(std::move(left)),
+                                                                              right(std::move(right)) {}
 
     void Accept(NVSEVisitor* t) override {
         t->VisitTernaryExpr(this);
     }
 
-    NVSEToken *getToken() override {
+    NVSEToken* getToken() override {
         return &token;
     }
 };
@@ -235,13 +253,14 @@ struct BinaryExpr : Expr {
     NVSEToken op;
     ExprPtr left, right;
 
-    BinaryExpr(NVSEToken token, ExprPtr left, ExprPtr right) : op(std::move(token)), left(std::move(left)), right(std::move(right)) {}
+    BinaryExpr(NVSEToken token, ExprPtr left, ExprPtr right) : op(std::move(token)), left(std::move(left)),
+                                                               right(std::move(right)) {}
 
     void Accept(NVSEVisitor* t) override {
         t->VisitBinaryExpr(this);
     }
 
-    NVSEToken *getToken() override {
+    NVSEToken* getToken() override {
         return &op;
     }
 };
@@ -251,30 +270,32 @@ struct UnaryExpr : Expr {
     ExprPtr expr;
     bool postfix;
 
-    UnaryExpr(NVSEToken token, ExprPtr expr, bool postfix) : op(std::move(token)), expr(std::move(expr)), postfix(postfix) {}
+    UnaryExpr(NVSEToken token, ExprPtr expr, bool postfix) : op(std::move(token)), expr(std::move(expr)),
+                                                             postfix(postfix) {}
 
     void Accept(NVSEVisitor* t) override {
         t->VisitUnaryExpr(this);
     }
 
-    NVSEToken *getToken() override {
+    NVSEToken* getToken() override {
         return &op;
     }
 };
 
 struct SubscriptExpr : Expr {
     NVSEToken op;
-    
+
     ExprPtr left;
     ExprPtr index;
 
-    SubscriptExpr(NVSEToken token, ExprPtr left, ExprPtr index) : op(std::move(token)), left(std::move(left)), index(std::move(index)) {}
+    SubscriptExpr(NVSEToken token, ExprPtr left, ExprPtr index) : op(std::move(token)), left(std::move(left)),
+                                                                  index(std::move(index)) {}
 
     void Accept(NVSEVisitor* visitor) override {
         visitor->VisitSubscriptExpr(this);
     }
 
-    NVSEToken *getToken() override {
+    NVSEToken* getToken() override {
         return &op;
     }
 };
@@ -284,7 +305,7 @@ struct CallExpr : Expr {
     std::vector<ExprPtr> args;
 
     // Set by typechecker
-    CommandInfo *cmdInfo;
+    CommandInfo* cmdInfo = nullptr;
 
     CallExpr(ExprPtr left, std::vector<ExprPtr> args) : left(std::move(left)), args(std::move(args)) {}
 
@@ -299,16 +320,17 @@ struct GetExpr : Expr {
     NVSEToken identifier;
 
     // Resolved in typechecker
-    VariableInfo *varInfo;
-    const char* referenceName;
+    VariableInfo* varInfo = nullptr;
+    const char* referenceName = nullptr;
 
-    GetExpr(NVSEToken token, ExprPtr left, NVSEToken identifier) : token(std::move(token)), left(std::move(left)), identifier(std::move(identifier)) {}
+    GetExpr(NVSEToken token, ExprPtr left, NVSEToken identifier) : token(std::move(token)), left(std::move(left)),
+                                                                   identifier(std::move(identifier)) {}
 
     void Accept(NVSEVisitor* t) override {
         t->VisitGetExpr(this);
     }
 
-    NVSEToken *getToken() override {
+    NVSEToken* getToken() override {
         return &identifier;
     }
 };
@@ -323,7 +345,7 @@ struct BoolExpr : Expr {
         t->VisitBoolExpr(this);
     }
 
-    NVSEToken *getToken() override {
+    NVSEToken* getToken() override {
         return &token;
     }
 };
@@ -339,7 +361,7 @@ struct NumberExpr : Expr {
         t->VisitNumberExpr(this);
     }
 
-    NVSEToken *getToken() override {
+    NVSEToken* getToken() override {
         return &token;
     }
 };
@@ -353,7 +375,7 @@ struct StringExpr : Expr {
         t->VisitStringExpr(this);
     }
 
-    NVSEToken *getToken() override {
+    NVSEToken* getToken() override {
         return &token;
     }
 };
@@ -367,7 +389,7 @@ struct IdentExpr : Expr {
         t->VisitIdentExpr(this);
     }
 
-    NVSEToken *getToken() override {
+    NVSEToken* getToken() override {
         return &token;
     }
 };
@@ -387,27 +409,26 @@ struct LambdaExpr : Expr {
     std::vector<std::shared_ptr<VarDeclStmt>> args;
     StmtPtr body;
 
-    LambdaExpr(NVSEToken token, std::vector<std::shared_ptr<VarDeclStmt>> args, StmtPtr body) : token(std::move(token)), args(std::move(args)), body(std::move(body)) {}
+    LambdaExpr(NVSEToken token, std::vector<std::shared_ptr<VarDeclStmt>> args, StmtPtr body) : token(std::move(token)),
+        args(std::move(args)), body(std::move(body)) {}
 
     void Accept(NVSEVisitor* t) override {
         t->VisitLambdaExpr(this);
     }
 
-    NVSEToken *getToken() override {
+    NVSEToken* getToken() override {
         return &token;
     }
 };
 
 class NVSEParseError : public std::runtime_error {
 public:
-    NVSEParseError(std::string message) : std::runtime_error(message) {};
+    NVSEParseError(const std::string& message) : std::runtime_error(message) {};
 };
 
 class NVSEParser {
-    std::function<void(std::string, bool)> printFn;
-    
 public:
-    NVSEParser(NVSELexer& tokenizer, std::function<void(std::string, bool)> outputfn);
+    NVSEParser(NVSELexer& tokenizer);
     std::optional<NVSEScript> Parse();
     StmtPtr Begin();
 
