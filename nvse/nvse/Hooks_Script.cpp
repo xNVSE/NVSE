@@ -425,7 +425,7 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 #ifndef RUNTIME
 		std::cout << msg << std::flush;
 #else
-		ShowRuntimeError(script, msg.c_str());
+		Console_Print_Long(msg);
 #endif
 	};
 
@@ -447,7 +447,7 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 		printFn("\n==== PARSER ====\n\n");
 		auto astOpt = parser.Parse();
 		if (astOpt.has_value()) {
-			auto ast = std::move(astOpt.value());
+			auto &&ast = std::move(astOpt.value());
 
 			// Run type checking
 			auto tc = NVSETypeChecker(&ast, printFn);
