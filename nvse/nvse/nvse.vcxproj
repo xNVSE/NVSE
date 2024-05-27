@@ -645,6 +645,7 @@ xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</C
     <ClCompile Include="NiTypes.cpp" />
     <ClCompile Include="nvse.cpp" />
     <ClCompile Include="NVSECompiler.cpp" />
+    <ClCompile Include="NVSECompilerUtils.cpp" />
     <ClCompile Include="NVSELexer.cpp" />
     <ClCompile Include="NVSEParser.cpp" />
     <ClCompile Include="NVSETreePrinter.cpp" />

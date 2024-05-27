@@ -272,6 +272,9 @@
     <ClCompile Include="NVSETypeChecker.cpp">
       <Filter>compiler</Filter>
     </ClCompile>
+    <ClCompile Include="NVSECompilerUtils.cpp">
+      <Filter>compiler</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
