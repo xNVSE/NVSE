@@ -218,11 +218,11 @@ StmtPtr NVSEParser::ForStatement() {
             auto type = previousToken;
             auto ident = Expect(NVSETokenType::Identifier, "Expected identifier.");
 
-            if (Peek(NVSETokenType::Colon)) {
+            if (Peek(NVSETokenType::Slice)) {
                 forEach = true;
                 init = std::make_shared<VarDeclStmt>(type, ident, nullptr);
                 
-                Match(NVSETokenType::Colon);
+                Match(NVSETokenType::Slice);
                 ExprPtr rhs = Expression();
                 Expect(NVSETokenType::RightParen, "Expected ')'.");
 
@@ -351,7 +351,7 @@ ExprPtr NVSEParser::Assignment() {
 
     if (Match(NVSETokenType::Eq) || Match(NVSETokenType::PlusEq) || Match(NVSETokenType::MinusEq) ||
         Match(NVSETokenType::StarEq) || Match(NVSETokenType::SlashEq) || Match(NVSETokenType::ModEq) || Match(
-            NVSETokenType::PowEq)) {
+            NVSETokenType::PowEq) || Match(NVSETokenType::BitwiseOrEquals) || Match(NVSETokenType::BitwiseAndEquals)) {
         auto token = previousToken;
 
         const auto prevTok = previousToken;
@@ -374,9 +374,9 @@ ExprPtr NVSEParser::Ternary() {
         auto token = previousToken;
 
         ExprPtr left = nullptr;
-        if (!Match(NVSETokenType::Colon)) {
+        if (!Match(NVSETokenType::Slice)) {
             left = Pair();
-            Expect(NVSETokenType::Colon, "Expected ':'.");
+            Expect(NVSETokenType::Slice, "Expected ':'.");
         }
         auto right = Pair();
         cond = std::make_shared<TernaryExpr>(token, std::move(cond), std::move(left), std::move(right));
@@ -410,9 +410,21 @@ ExprPtr NVSEParser::LogicalOr() {
 }
 
 ExprPtr NVSEParser::LogicalAnd() {
-    ExprPtr left = Equality();
+    ExprPtr left = Slice();
 
     while (Match(NVSETokenType::LogicAnd)) {
+        const auto op = previousToken;
+        ExprPtr right = Slice();
+        left = std::make_shared<BinaryExpr>(op, std::move(left), std::move(right));
+    }
+
+    return left;
+}
+
+ExprPtr NVSEParser::Slice() {
+    ExprPtr left = Equality();
+
+    while (Match(NVSETokenType::Slice)) {
         const auto op = previousToken;
         ExprPtr right = Equality();
         left = std::make_shared<BinaryExpr>(op, std::move(left), std::move(right));
@@ -434,10 +446,46 @@ ExprPtr NVSEParser::Equality() {
 }
 
 ExprPtr NVSEParser::Comparison() {
-    ExprPtr left = Term();
+    ExprPtr left = BitwiseOr();
 
     while (Match(NVSETokenType::Less) || Match(NVSETokenType::LessEq) || Match(NVSETokenType::Greater) || Match(
         NVSETokenType::GreaterEq)) {
+        const auto op = previousToken;
+        ExprPtr right = BitwiseOr();
+        left = std::make_shared<BinaryExpr>(op, std::move(left), std::move(right));
+    }
+
+    return left;
+}
+
+ExprPtr NVSEParser::BitwiseOr() {
+    ExprPtr left = BitwiseAnd();
+
+    while (Match(NVSETokenType::BitwiseOr)) {
+        const auto op = previousToken;
+        ExprPtr right = BitwiseAnd();
+        left = std::make_shared<BinaryExpr>(op, std::move(left), std::move(right));
+    }
+
+    return left;
+}
+
+ExprPtr NVSEParser::BitwiseAnd() {
+    ExprPtr left = Shift();
+
+    while (Match(NVSETokenType::BitwiseAnd)) {
+        const auto op = previousToken;
+        ExprPtr right = Shift();
+        left = std::make_shared<BinaryExpr>(op, std::move(left), std::move(right));
+    }
+
+    return left;
+}
+
+ExprPtr NVSEParser::Shift() {
+    ExprPtr left = Term();
+
+    while (Match(NVSETokenType::LeftShift) || Match(NVSETokenType::RightShift)) {
         const auto op = previousToken;
         ExprPtr right = Term();
         left = std::make_shared<BinaryExpr>(op, std::move(left), std::move(right));

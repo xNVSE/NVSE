@@ -67,27 +67,6 @@ Token_Type GetVariableTypeFromNonVarType(Token_Type type) {
 	}
 }
 
-bool ValidateArgType2(ParamType paramType, Token_Type argType) {
-	bool bTypesMatch = false;
-	if (paramType == kNVSEParamType_NoTypeCheck) {
-		bTypesMatch = true;
-	}
-	else // ###TODO: this could probably done with bitwise AND much more efficiently
-	{
-		for (UInt32 i = 0; i < kTokenType_Max; i++) {
-			if (paramType & (1 << i)) {
-				const auto type = static_cast<Token_Type>(i);
-				if (CanConvertOperand(argType, type)) {
-					bTypesMatch = true;
-					break;
-				}
-			}
-		}
-	}
-
-	return bTypesMatch;
-}
-
 std::string getTypeErrorMsg(Token_Type lhs, Token_Type rhs) {
 	return std::format("Cannot convert from {} to {}", TokenTypeToString(lhs), TokenTypeToString(rhs));
 }
@@ -441,10 +420,11 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 
 	// Basic type checks
 	// We already validated number of args, just verify types
+	bool isNvse = !isDefaultParse(cmd->parse);
 	for (int i = 0; i < cmd->numParams && i < expr->args.size(); i++) {
 		auto param = cmd->params[i];
 		auto arg = expr->args[i];
-		if (!ValidateArgType2(static_cast<ParamType>(cmd->params[i].typeID), arg->detailedType)) {
+		if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(cmd->params[i].typeID), arg->detailedType, isNvse, cmd)) {
 			WRAP_ERROR(
 				error(expr->token.line, expr->token.column, std::format("Invalid expression for parameter {}. Expected {} (got {}).", i + 1, param.typeStr, TokenTypeToString(arg->detailedType)));
 			)

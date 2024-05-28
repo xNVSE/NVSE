@@ -67,8 +67,15 @@ std::unordered_map<NVSETokenType, OperatorType> tokenOpToNVSEOpType{
 	{NVSETokenType::PowEq, kOpType_ExponentEquals},
 
 	{NVSETokenType::MakePair, kOpType_MakePair},
+	{NVSETokenType::Slice, kOpType_Slice},
 
 	// Logical
+	{NVSETokenType::BitwiseAnd, kOpType_BitwiseAnd},
+	{NVSETokenType::BitwiseOr, kOpType_BitwiseOr},
+	{NVSETokenType::BitwiseAndEquals, kOpType_BitwiseAndEquals},
+	{NVSETokenType::BitwiseOrEquals, kOpType_BitwiseOrEquals},
+	{NVSETokenType::LeftShift, kOpType_LeftShift},
+	{NVSETokenType::RightShift, kOpType_RightShift},
 
 	// Unary
 	{NVSETokenType::Negate, kOpType_Negation},

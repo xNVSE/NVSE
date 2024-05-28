@@ -41,8 +41,12 @@ private:
     ExprPtr Pair();
     ExprPtr LogicalOr();
     ExprPtr LogicalAnd();
+    ExprPtr Slice();
     ExprPtr Equality();
     ExprPtr Comparison();
+    ExprPtr BitwiseOr();
+    ExprPtr BitwiseAnd();
+    ExprPtr Shift();
     ExprPtr Term();
     ExprPtr Factor();
     ExprPtr Unary();

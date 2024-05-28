@@ -284,10 +284,17 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 			return MakeToken(NVSETokenType::BitwiseOrEquals, "|=");
 		}
 		return MakeToken(NVSETokenType::BitwiseOr, "|");
-	case '~': return MakeToken(NVSETokenType::BitwiseNot, "~");
+	case '~': 
+		if (Match('=')) {
+			return MakeToken(NVSETokenType::BitwiseNotEquals, "~=");
+		}
+		return MakeToken(NVSETokenType::BitwiseNot, "~");
 	case '&':
 		if (Match('&')) {
 			return MakeToken(NVSETokenType::LogicAnd, "&&");
+		}
+		if (Match('=')) {
+			return MakeToken(NVSETokenType::BitwiseAndEquals, "&=");
 		}
 		return MakeToken(NVSETokenType::BitwiseAnd, "&");
 	case '$': return MakeToken(NVSETokenType::Dollar, "$");
@@ -309,7 +316,7 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 		if (Match(':')) {
 			return MakeToken(NVSETokenType::MakePair, "::");
 		}
-		return MakeToken(NVSETokenType::Colon, ":");
+		return MakeToken(NVSETokenType::Slice, ":");
 	case '.': return MakeToken(NVSETokenType::Dot, ".");
 
 	default: throw std::runtime_error("Unexpected character");

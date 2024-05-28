@@ -1980,7 +1980,7 @@ bool ExpressionParser::ParseArgs(ParamInfo *params, UInt32 numParams, bool bUses
 			// reached end of args
 			break;
 		// is arg of expected type(s)?
-		if (!ValidateArgType(static_cast<ParamType>(params[m_numArgsParsed].typeID), argType, bUsesNVSEParamTypes))
+		if (!ValidateArgType(static_cast<ParamType>(params[m_numArgsParsed].typeID), argType, bUsesNVSEParamTypes, g_scriptCommands.GetByOpcode(m_lineBuf->cmdOpcode)))
 		{
 #if RUNTIME
 			ShowCompilerError(m_lineBuf, "Invalid expression for parameter %d. Expected %s.", m_numArgsParsed + 1, params[m_numArgsParsed].typeStr);
@@ -2018,7 +2018,7 @@ bool ExpressionParser::ParseArgs(ParamInfo *params, UInt32 numParams, bool bUses
 	return true;
 }
 
-bool ExpressionParser::ValidateArgType(ParamType paramType, Token_Type argType, bool bIsNVSEParam) const
+bool ExpressionParser::ValidateArgType(ParamType paramType, Token_Type argType, bool bIsNVSEParam, CommandInfo *cmdInfo)
 {
 	if (bIsNVSEParam)
 	{
@@ -2066,7 +2066,7 @@ bool ExpressionParser::ValidateArgType(ParamType paramType, Token_Type argType, 
 			// string var included here b/c old sv_* cmds take strings as integer IDs
 			if (argType != kTokenType_StringVar && CanConvertOperand(argType, kTokenType_String))
 			{
-				auto* cmdInfo = g_scriptCommands.GetByOpcode(m_lineBuf->cmdOpcode);
+				//auto* cmdInfo = g_scriptCommands.GetByOpcode(m_lineBuf->cmdOpcode);
 				if (cmdInfo && (std::string_view(cmdInfo->longName).starts_with("sv_") || cmdInfo->params == kParams_FormatString || cmdInfo->numParams >= 20)) // only allow this for old sv commands that take int
 					return true;
 			}
@@ -3061,7 +3061,7 @@ ParamParenthResult ExpressionParser::ParseParentheses(ParamInfo *paramInfo, UInt
 	}
 
 	auto &param = paramInfo[paramIndex];
-	if (!ValidateArgType(static_cast<ParamType>(param.typeID), result, false))
+	if (!ValidateArgType(static_cast<ParamType>(param.typeID), result, false, g_scriptCommands.GetByOpcode(m_lineBuf->cmdOpcode)))
 	{
 #if RUNTIME
 		ShowCompilerError(m_lineBuf, "Invalid expression for parameter %d. Expected %s (got %s).", paramIndex + 1, param.typeStr, TokenTypeToString(result));
