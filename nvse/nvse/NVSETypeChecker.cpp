@@ -20,14 +20,13 @@
 
 Token_Type GetDetailedTypeFromNVSEToken(NVSETokenType type) {
 	switch (type) {
-	case NVSETokenType::String:
+	case NVSETokenType::StringType:
 		return kTokenType_StringVar;
 	case NVSETokenType::ArrayType:
 		return kTokenType_ArrayVar;
 	case NVSETokenType::RefType:
 		return kTokenType_RefVar;
 	// Short
-	case NVSETokenType::Number:
 	case NVSETokenType::DoubleType:
 	case NVSETokenType::IntType:
 		return kTokenType_NumericVar;

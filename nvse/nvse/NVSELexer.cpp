@@ -216,7 +216,7 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 		if (Match('=')) {
 			return MakeToken(NVSETokenType::PlusEq, "+=");
 		}
-		else if (Match('+')) {
+		if (Match('+')) {
 			return MakeToken(NVSETokenType::PlusPlus, "++");
 		}
 		return MakeToken(NVSETokenType::Plus, "+");
@@ -225,7 +225,7 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 		if (Match('=')) {
 			return MakeToken(NVSETokenType::MinusEq, "-=");
 		}
-		else if (Match('-')) {
+		if (Match('-')) {
 			return MakeToken(NVSETokenType::MinusMinus, "--");
 		}
 		return MakeToken(NVSETokenType::Minus, "-");
@@ -264,18 +264,27 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 		if (Match('=')) {
 			return MakeToken(NVSETokenType::LessEq, "<=");
 		}
+		if (Match('<')) {
+			return MakeToken(NVSETokenType::LeftShift, "<<");
+		}
 		return MakeToken(NVSETokenType::Less, "<");
 	case '>':
 		if (Match('=')) {
 			return MakeToken(NVSETokenType::GreaterEq, ">=");
+		}
+		if (Match('>')) {
+			return MakeToken(NVSETokenType::RightShift, ">>");
 		}
 		return MakeToken(NVSETokenType::Greater, ">");
 	case '|':
 		if (Match('|')) {
 			return MakeToken(NVSETokenType::LogicOr, "||");
 		}
+		if (Match('=')) {
+			return MakeToken(NVSETokenType::BitwiseOrEquals, "|=");
+		}
 		return MakeToken(NVSETokenType::BitwiseOr, "|");
-	case '~': return MakeToken(NVSETokenType::Tilde, "~");
+	case '~': return MakeToken(NVSETokenType::BitwiseNot, "~");
 	case '&':
 		if (Match('&')) {
 			return MakeToken(NVSETokenType::LogicAnd, "&&");

@@ -68,6 +68,8 @@ std::unordered_map<NVSETokenType, OperatorType> tokenOpToNVSEOpType{
 
 	{NVSETokenType::MakePair, kOpType_MakePair},
 
+	// Logical
+
 	// Unary
 	{NVSETokenType::Negate, kOpType_Negation},
 	{NVSETokenType::Dollar, kOpType_ToString},

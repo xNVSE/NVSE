@@ -90,37 +90,32 @@ StmtPtr NVSEParser::Begin() {
         }
     }
 
-    if (Match(NVSETokenType::Colon)) {
+    if (Match(NVSETokenType::MakePair)) {
         if (blockInfo->numParams == 0) {
             Error(currentToken, "Cannot specify argument for this block type.");
         }
 
-        if (Match(NVSETokenType::Colon)) {
-            if (Match(NVSETokenType::Number)) {
-                if (blockInfo->params[0].typeID != kParamType_Integer) {
-                    Error(currentToken, "Expected identifier.");
-                }
-
-                auto modeToken = previousToken;
-                if (modeToken.lexeme.contains('.')) {
-                    Error(currentToken, "Expected integer.");
-                }
-
-                mode = modeToken;
+        if (Match(NVSETokenType::Number)) {
+            if (blockInfo->params[0].typeID != kParamType_Integer) {
+                Error(currentToken, "Expected identifier.");
             }
-            else if (Match(NVSETokenType::Identifier)) {
-                if (blockInfo->params[0].typeID == kParamType_Integer) {
-                    Error(currentToken, "Expected number.");
-                }
 
-                mode = previousToken;
+            auto modeToken = previousToken;
+            if (modeToken.lexeme.contains('.')) {
+                Error(currentToken, "Expected integer.");
             }
-            else {
-                Error(currentToken, "Expected identifier or number.");
+
+            mode = modeToken;
+        }
+        else if (Match(NVSETokenType::Identifier)) {
+            if (blockInfo->params[0].typeID == kParamType_Integer) {
+                Error(currentToken, "Expected number.");
             }
+
+            mode = previousToken;
         }
         else {
-            Error(currentToken, "Expected ':'.");
+            Error(currentToken, "Expected identifier or number.");
         }
     }
     else {
