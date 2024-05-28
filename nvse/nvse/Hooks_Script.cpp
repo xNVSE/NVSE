@@ -458,6 +458,8 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 					buf->scriptName = String();
 					buf->scriptName.Set(comp.scriptName.c_str());
 				}
+
+				printf("Script compiled successfully.\n");
 			} catch (std::runtime_error &er) {
 				CompErr("Script compilation failed: %s\n", er.what());
 				return PrecompileResult::kPrecompile_Failure;

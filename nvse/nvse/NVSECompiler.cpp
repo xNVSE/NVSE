@@ -687,15 +687,11 @@ void NVSECompiler::VisitSubscriptExpr(SubscriptExpr* expr) {
     AddU8(tokenOpToNVSEOpType[NVSETokenType::LeftBracket]);
 }
 
-// Copied for testing from ScriptAnalyzer.cpp
-const UInt32 g_gameParseCommands[] = { 0x5B1BA0, 0x5B3C70, 0x5B3CA0, 0x5B3C40, 0x5B3CD0, reinterpret_cast<UInt32>(Cmd_Default_Parse) };
-const UInt32 g_messageBoxParseCmds[] = { 0x5B3CD0, 0x5B3C40, 0x5B3C70, 0x5B3CA0 };
-
 void NVSECompiler::VisitCallExpr(CallExpr* expr) {
     const auto stackRefExpr = expr->left;
     const auto cmd = expr->cmdInfo;
 
-    auto defaultParse = Contains(g_gameParseCommands, reinterpret_cast<UInt32>(cmd->parse)) || reinterpret_cast<UInt32>(cmd->parse) == 0x005C67E0;
+    auto defaultParse = isDefaultParse(cmd->parse);
 
     // See if we should wrap inside let
     // Need to do this in the case of something like

@@ -1,11 +1,13 @@
 ﻿#pragma once
 #include <stack>
 
+#include "NVSELexer.h"
 #include "NVSEVisitor.h"
 #include "ScriptTokens.h"
 
 class NVSETypeChecker : NVSEVisitor {
     std::unordered_map<std::string, Token_Type> typeCache{};
+    std::unordered_map<std::string, NVSEToken> definedVarCache{};
     bool hadError = false;
     
     NVSEScript *script;

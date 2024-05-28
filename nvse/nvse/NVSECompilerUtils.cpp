@@ -17,12 +17,12 @@ void CompDbg(const char* fmt, ...) {
 
 	va_list argList;
 	va_start(argList, fmt);
-#ifdef EDITOR
+#if defined(EDITOR) && defined(_DEBUG)
 	vprintf(fmt, argList);
 #else
 	char buf[1024];
 	vsprintf(buf, fmt, argList);
-    _MESSAGE(buf, argList);
+    _DMESSAGE(buf, argList);
 #endif
 	va_end(argList);
 }
@@ -66,6 +66,8 @@ std::unordered_map<NVSETokenType, OperatorType> tokenOpToNVSEOpType{
 	{NVSETokenType::ModEq, kOpType_ModuloEquals},
 	{NVSETokenType::PowEq, kOpType_ExponentEquals},
 
+	{NVSETokenType::MakePair, kOpType_MakePair},
+
 	// Unary
 	{NVSETokenType::Negate, kOpType_Negation},
 	{NVSETokenType::Dollar, kOpType_ToString},
@@ -75,3 +77,11 @@ std::unordered_map<NVSETokenType, OperatorType> tokenOpToNVSEOpType{
 	{NVSETokenType::LeftBracket, kOpType_LeftBracket},
 	{NVSETokenType::Dot, kOpType_Dot}
 };
+
+// Copied for testing from ScriptAnalyzer.cpp
+const UInt32 g_gameParseCommands[] = { 0x5B1BA0, 0x5B3C70, 0x5B3CA0, 0x5B3C40, 0x5B3CD0, reinterpret_cast<UInt32>(Cmd_Default_Parse) };
+const UInt32 g_messageBoxParseCmds[] = { 0x5B3CD0, 0x5B3C40, 0x5B3C70, 0x5B3CA0 };
+
+bool isDefaultParse(Cmd_Parse parse) {
+	return Contains(g_gameParseCommands, reinterpret_cast<UInt32>(parse)) || reinterpret_cast<UInt32>(parse) == 0x005C67E0;
+}

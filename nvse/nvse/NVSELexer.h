@@ -65,6 +65,7 @@ enum class NVSETokenType {
     Dot,
     Interp,
     EndInterp,
+    MakePair,
 };
 
 static const char* TokenTypeStr[]{

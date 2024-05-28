@@ -68,6 +68,27 @@ Token_Type GetVariableTypeFromNonVarType(Token_Type type) {
 	}
 }
 
+bool ValidateArgType2(ParamType paramType, Token_Type argType) {
+	bool bTypesMatch = false;
+	if (paramType == kNVSEParamType_NoTypeCheck) {
+		bTypesMatch = true;
+	}
+	else // ###TODO: this could probably done with bitwise AND much more efficiently
+	{
+		for (UInt32 i = 0; i < kTokenType_Max; i++) {
+			if (paramType & (1 << i)) {
+				const auto type = static_cast<Token_Type>(i);
+				if (CanConvertOperand(argType, type)) {
+					bTypesMatch = true;
+					break;
+				}
+			}
+		}
+	}
+
+	return bTypesMatch;
+}
+
 std::string getTypeErrorMsg(Token_Type lhs, Token_Type rhs) {
 	return std::format("Cannot convert from {} to {}", TokenTypeToString(lhs), TokenTypeToString(rhs));
 }
@@ -120,6 +141,14 @@ void NVSETypeChecker::VisitFnStmt(FnDeclStmt* stmt) {
 void NVSETypeChecker::VisitVarDeclStmt(const VarDeclStmt* stmt) {
 	auto detailedType = GetDetailedTypeFromNVSEToken(stmt->type.type);
 	for (auto [name, expr] : stmt->values) {
+		// See if variable has already been declared
+		WRAP_ERROR(
+			if (definedVarCache.contains(name.lexeme)) {
+				auto existing = definedVarCache[name.lexeme];
+				error(name.line, name.column, std::format("Variable with name '{}' has already been defined (at line {}:{})", name.lexeme, existing.line, existing.column));
+			}
+		)
+
 		if (expr) {
 			expr->Accept(this);
 			auto rhsType = expr->detailedType;
@@ -130,6 +159,7 @@ void NVSETypeChecker::VisitVarDeclStmt(const VarDeclStmt* stmt) {
 		}
 
 		typeCache[name.lexeme] = detailedType;
+		definedVarCache[name.lexeme] = name;
 	}
 }
 
@@ -194,14 +224,14 @@ void NVSETypeChecker::VisitIfStmt(IfStmt* stmt) {
 		stmt->cond->Accept(this);
 
 		// Check if condition can evaluate to bool
-		auto lType = stmt->cond->detailedType;
-		auto rType = kTokenType_Boolean;
-		if (!CanConvertOperand(lType, rType)) {
+		const auto lType = stmt->cond->detailedType;
+		const auto oType = s_operators[kOpType_Equals].GetResult(lType, kTokenType_Boolean);
+		if (oType == kTokenType_Invalid) {
 			error(stmt->line, std::format("Invalid expression type {} for if statement.", TokenTypeToString(lType)));
 			stmt->cond->detailedType = kTokenType_Invalid;
 		}
 		else {
-			stmt->cond->detailedType = rType;
+			stmt->cond->detailedType = oType;
 		}
 	)
 
@@ -310,7 +340,7 @@ void NVSETypeChecker::VisitBinaryExpr(BinaryExpr* expr) {
 		return;
 	}
 
-	expr->detailedType = lhsType;
+	expr->detailedType = outputType;
 }
 
 void NVSETypeChecker::VisitUnaryExpr(UnaryExpr* expr) {
@@ -411,7 +441,16 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 	}
 
 	// Basic type checks
-	// TODO: Make this
+	// We already validated number of args, just verify types
+	for (int i = 0; i < cmd->numParams && i < expr->args.size(); i++) {
+		auto param = cmd->params[i];
+		auto arg = expr->args[i];
+		if (!ValidateArgType2(static_cast<ParamType>(cmd->params[i].typeID), arg->detailedType)) {
+			WRAP_ERROR(
+				error(expr->token.line, expr->token.column, std::format("Invalid expression for parameter {}. Expected {} (got {}).", i + 1, param.typeStr, TokenTypeToString(arg->detailedType)));
+			)
+		}
+	}
 
 	auto type = ToTokenType(g_scriptCommands.GetReturnType(cmd));
 	if (type == kTokenType_Invalid) {
@@ -459,7 +498,7 @@ void NVSETypeChecker::VisitGetExpr(GetExpr* expr) {
 
 	if (scriptable) {
 		if (const auto varInfo = scriptable->script->GetVariableByName(rhsName.c_str())) {
-			const auto detailedType = GetDetailedTypeFromVarType(scriptable->script->GetVariableType(varInfo));
+			const auto detailedType = GetDetailedTypeFromVarType(static_cast<Script::VariableType>(varInfo->type));
 			const auto detailedTypeConverted = GetVariableTypeFromNonVarType(detailedType);
 			if (detailedTypeConverted == kTokenType_Invalid) {
 				expr->detailedType = detailedType;

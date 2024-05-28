@@ -296,7 +296,11 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 	case ',': return MakeToken(NVSETokenType::Comma, ",");
 	case ';': return MakeToken(NVSETokenType::Semicolon, ";");
 	case '?': return MakeToken(NVSETokenType::Ternary, "?");
-	case ':': return MakeToken(NVSETokenType::Colon, ":");
+	case ':':
+		if (Match(':')) {
+			return MakeToken(NVSETokenType::MakePair, "::");
+		}
+		return MakeToken(NVSETokenType::Colon, ":");
 	case '.': return MakeToken(NVSETokenType::Dot, ".");
 
 	default: throw std::runtime_error("Unexpected character");

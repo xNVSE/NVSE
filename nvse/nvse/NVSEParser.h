@@ -38,6 +38,7 @@ private:
     ExprPtr Expression();
     ExprPtr Assignment();
     ExprPtr Ternary();
+    ExprPtr Pair();
     ExprPtr LogicalOr();
     ExprPtr LogicalAnd();
     ExprPtr Equality();

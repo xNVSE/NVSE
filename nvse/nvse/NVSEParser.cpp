@@ -373,21 +373,33 @@ ExprPtr NVSEParser::Assignment() {
 }
 
 ExprPtr NVSEParser::Ternary() {
-    ExprPtr cond = LogicalOr();
+    ExprPtr cond = Pair();
 
     while (Match(NVSETokenType::Ternary)) {
         auto token = previousToken;
 
         ExprPtr left = nullptr;
         if (!Match(NVSETokenType::Colon)) {
-            left = LogicalOr();
+            left = Pair();
             Expect(NVSETokenType::Colon, "Expected ':'.");
         }
-        auto right = LogicalOr();
+        auto right = Pair();
         cond = std::make_shared<TernaryExpr>(token, std::move(cond), std::move(left), std::move(right));
     }
 
     return cond;
+}
+
+ExprPtr NVSEParser::Pair() {
+    ExprPtr left = LogicalOr();
+
+    while (Match(NVSETokenType::MakePair)) {
+        auto op = previousToken;
+        ExprPtr right = LogicalOr();
+        left = std::make_shared<BinaryExpr>(op, std::move(left), std::move(right));
+    }
+
+    return left;
 }
 
 ExprPtr NVSEParser::LogicalOr() {
