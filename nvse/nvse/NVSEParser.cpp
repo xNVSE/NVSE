@@ -534,14 +534,27 @@ ExprPtr NVSEParser::Call() {
                 }
             }
 
-            expr = std::make_shared<GetExpr>(token, std::move(expr), ident);
+            if (Match(NVSETokenType::LeftParen)) {
+                std::vector<ExprPtr> args{};
+                while (!Match(NVSETokenType::RightParen)) {
+                    args.emplace_back(std::move(Expression()));
+
+                    if (!Peek(NVSETokenType::RightParen) && !Match(NVSETokenType::Comma)) {
+                        Error(currentToken, "Expected ',' or ')'.");
+                    }
+                }
+                expr = std::make_shared<CallExpr>(std::move(expr), ident, std::move(args));
+            } else {
+                expr = std::make_shared<GetExpr>(token, std::move(expr), ident);
+            }
         }
         else {
             // Can only call on ident or get expr
-            if (!expr->IsType<IdentExpr>() &&
-                !expr->IsType<GetExpr>()) {
+            if (!expr->IsType<IdentExpr>()) {
                 Error(currentToken, "Invalid callee.");
             }
+
+            auto ident = dynamic_cast<IdentExpr*>(expr.get())->token;
 
             std::vector<ExprPtr> args{};
             while (!Match(NVSETokenType::RightParen)) {
@@ -551,7 +564,7 @@ ExprPtr NVSEParser::Call() {
                     Error(currentToken, "Expected ',' or ')'.");
                 }
             }
-            expr = std::make_shared<CallExpr>(std::move(expr), std::move(args));
+            expr = std::make_shared<CallExpr>(nullptr, ident, std::move(args));
         }
     }
 

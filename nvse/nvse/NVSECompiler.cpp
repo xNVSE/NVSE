@@ -208,10 +208,6 @@ void NVSECompiler::VisitVarDeclStmt(const VarDeclStmt* stmt) {
             const auto name = scriptName + "__" + token.lexeme;
 
             // Build a call expr
-            NVSEToken callToken{};
-            callToken.lexeme = "SetModLocalData";
-            auto ident = std::make_shared<IdentExpr>(callToken);
-
             NVSEToken nameToken{};
             nameToken.value = name;
             auto arg = std::make_shared<StringExpr>(nameToken);
@@ -219,7 +215,7 @@ void NVSECompiler::VisitVarDeclStmt(const VarDeclStmt* stmt) {
             std::vector<ExprPtr> args{};
             args.emplace_back(arg);
             args.emplace_back(value);
-            auto expr = std::make_shared<CallExpr>(ident, std::move(args));
+            auto expr = std::make_shared<CallExpr>(nullptr, NVSEToken {NVSETokenType::Identifier, "SetModLocalData" }, std::move(args));
 
             expr->Accept(this);
             continue;
@@ -696,7 +692,7 @@ const UInt32 g_gameParseCommands[] = { 0x5B1BA0, 0x5B3C70, 0x5B3CA0, 0x5B3C40, 0
 const UInt32 g_messageBoxParseCmds[] = { 0x5B3CD0, 0x5B3C40, 0x5B3C70, 0x5B3CA0 };
 
 void NVSECompiler::VisitCallExpr(CallExpr* expr) {
-    const auto stackRefExpr = dynamic_cast<GetExpr*>(expr->left.get());
+    const auto stackRefExpr = expr->left;
     const auto cmd = expr->cmdInfo;
 
     auto defaultParse = Contains(g_gameParseCommands, reinterpret_cast<UInt32>(cmd->parse)) || reinterpret_cast<UInt32>(cmd->parse) == 0x005C67E0;
@@ -775,7 +771,7 @@ void NVSECompiler::VisitCallExpr(CallExpr* expr) {
 
     // Handle stack refs
     if (stackRefExpr) {
-        stackRefExpr->left->Accept(this);
+        stackRefExpr->Accept(this);
     }
 
     // Put lhs on stack if its a dot expr
@@ -878,17 +874,13 @@ void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
         const auto lambdaName = scriptName + "__" + name;
 
         // Build a call expr
-        NVSEToken callToken{};
-        callToken.lexeme = "GetModLocalData";
-        auto ident = std::make_shared<IdentExpr>(callToken);
-
         NVSEToken nameToken{};
         nameToken.value = lambdaName;
         auto arg = std::make_shared<StringExpr>(nameToken);
 
         std::vector<ExprPtr> args{};
         args.emplace_back(arg);
-        auto getMLDCall = std::make_shared<CallExpr>(ident, std::move(args));
+        auto getMLDCall = std::make_shared<CallExpr>(nullptr, NVSEToken{ NVSETokenType::Identifier, "GetModLocalData" }, std::move(args));
 
         getMLDCall->Accept(this);
         return;

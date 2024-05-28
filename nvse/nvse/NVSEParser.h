@@ -302,12 +302,13 @@ struct SubscriptExpr : Expr {
 
 struct CallExpr : Expr {
     ExprPtr left;
+    NVSEToken token;
     std::vector<ExprPtr> args;
 
     // Set by typechecker
     CommandInfo* cmdInfo = nullptr;
 
-    CallExpr(ExprPtr left, std::vector<ExprPtr> args) : left(std::move(left)), args(std::move(args)) {}
+    CallExpr(ExprPtr left, NVSEToken token, std::vector<ExprPtr> args) : left(std::move(left)), token(token), args(std::move(args)) {}
 
     void Accept(NVSEVisitor* t) override {
         t->VisitCallExpr(this);

@@ -342,23 +342,11 @@ void NVSETypeChecker::VisitSubscriptExpr(SubscriptExpr* expr) {
 }
 
 void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
-	auto stackRefExpr = dynamic_cast<GetExpr*>(expr->left.get());
-	auto identExpr = dynamic_cast<IdentExpr*>(expr->left.get());
-	for (auto arg : expr->args) {
-		arg->Accept(this);
+	if (auto left = expr->left) {
+		left->Accept(this);
 	}
 
-	std::string name{};
-	if (stackRefExpr) {
-		name = stackRefExpr->identifier.lexeme;
-	}
-	else if (identExpr) {
-		name = identExpr->token.lexeme;
-	}
-	else {
-		// Shouldn't happen I don't think
-		error(expr->line, "Unable to compile call expression, expected stack reference or identifier.");
-	}
+	std::string name = expr->token.lexeme;
 
 	// Try to get the script command by lexeme
 	auto cmd = g_scriptCommands.GetByName(name.c_str());

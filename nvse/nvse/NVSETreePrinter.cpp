@@ -341,14 +341,17 @@ void NVSETreePrinter::VisitSubscriptExpr(SubscriptExpr* expr) {
 
 void NVSETreePrinter::VisitCallExpr(CallExpr* expr) {
 	PrintTabs();
-	CompDbg("call\n");
+	CompDbg("call : %s\n", expr->token.lexeme.c_str());
 	curTab++;
 
-	PrintTabs();
-	CompDbg("expr\n");
-	curTab++;
-	expr->left->Accept(this);
-	curTab--;
+	if (expr->left) {
+		PrintTabs();
+		CompDbg("expr\n");
+		curTab++;
+		expr->left->Accept(this);
+		curTab--;
+	}
+
 	if (!expr->args.empty()) {
 		PrintTabs();
 		CompDbg("args\n");
