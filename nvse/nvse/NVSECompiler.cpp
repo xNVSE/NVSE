@@ -287,7 +287,9 @@ void NVSECompiler::VisitExprStmt(const ExprStmt* stmt) {
         auto argPatch = AddU16(0x0);
 
         //Build expression
+        insideNvseExpr.push(true);
         stmt->expr->Accept(this);
+        insideNvseExpr.pop();
 
         // Patch lengths
         SetU16(argPatch, data.size() - argStart);
@@ -781,7 +783,7 @@ void NVSECompiler::VisitCallExpr(CallExpr* expr) {
         if (stackRefExpr) {
             AddU8('x');
         }
-        else {
+        else {  
             AddU8('X');
         }
         AddU16(0x0); // SCRV
