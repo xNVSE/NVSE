@@ -2147,7 +2147,7 @@ void CommandTable::AddCommandsV6()
 
 	// 6.2 beta 05
 	ADD_CMD(ForEachInList);
-	ADD_CMD_RET(Ternary, kRetnType_Ambiguous);
+	ADD_CMD_RET(TernaryUDF, kRetnType_Ambiguous);
 	ADD_CMD(ModUIFloat);
 	ADD_CMD(GetQuestObjectiveCount);
 	ADD_CMD(GetNthQuestObjective);
@@ -2218,6 +2218,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(DumpCommandWikiDoc);
 	ADD_CMD(DumpCommandWikiDocs);
 	ADD_CMD(SetModelPath);
+	ADD_CMD_RET(Ternary, kRetnType_Ambiguous);
 }
 
 namespace PluginAPI
