@@ -24,7 +24,7 @@ public:
 	void VisitBlockStmt(BlockStmt* stmt) override;
 
 	void VisitAssignmentExpr(AssignmentExpr* expr) override;
-	void VisitTernaryExpr(const TernaryExpr* expr) override;
+	void VisitTernaryExpr(TernaryExpr* expr) override;
 	void VisitBinaryExpr(BinaryExpr* expr) override;
 	void VisitUnaryExpr(UnaryExpr* expr) override;
 	void VisitSubscriptExpr(SubscriptExpr* expr) override;

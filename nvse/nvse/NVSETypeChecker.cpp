@@ -301,7 +301,31 @@ void NVSETypeChecker::VisitAssignmentExpr(AssignmentExpr* expr) {
 	expr->left->detailedType = oType;
 }
 
-void NVSETypeChecker::VisitTernaryExpr(const TernaryExpr* expr) {}
+void NVSETypeChecker::VisitTernaryExpr(TernaryExpr* expr) {
+	WRAP_ERROR(
+		expr->cond->Accept(this);
+
+		// Check if condition can evaluate to bool
+		const auto lType = expr->cond->detailedType;
+		const auto oType = s_operators[kOpType_Equals].GetResult(lType, kTokenType_Boolean);
+		if (oType == kTokenType_Invalid) {
+			error(expr->line, std::format("Invalid expression type {} for if statement.", TokenTypeToString(lType)));
+			expr->cond->detailedType = kTokenType_Invalid;
+		}
+		else {
+			expr->cond->detailedType = oType;
+		}
+	)
+
+	WRAP_ERROR(expr->left->Accept(this))
+	WRAP_ERROR(expr->right->Accept(this))
+	if (!CanConvertOperand(expr->right->detailedType, expr->left->detailedType)) {
+		error(expr->line, std::format("Incompatible value types ('{}' and '{}') specified for ternary expression.", 
+			TokenTypeToString(expr->left->detailedType), TokenTypeToString(expr->right->detailedType)));
+	}
+
+	expr->detailedType = expr->left->detailedType;
+}
 
 void NVSETypeChecker::VisitBinaryExpr(BinaryExpr* expr) {
 	expr->left->Accept(this);

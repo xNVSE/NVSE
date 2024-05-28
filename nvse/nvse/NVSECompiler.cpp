@@ -641,8 +641,39 @@ void NVSECompiler::VisitAssignmentExpr(AssignmentExpr* expr) {
     }
 }
 
-void NVSECompiler::VisitTernaryExpr(const TernaryExpr* expr) {
-    // TODO
+void NVSECompiler::VisitTernaryExpr(TernaryExpr* expr) {
+    AddU8('X');
+    AddU16(0x0);
+
+    // OP_TERNARY
+    AddU16(0x166E);
+    
+    // Call size
+    auto callStart = data.size();
+    auto callPatch = AddU16(0x0);
+    
+    // Num args
+    AddU8(3);
+    
+    // Args
+    insideNvseExpr.push(true);
+    auto arg1StartInner = data.size();
+    auto arg1PatchInner = AddU16(0x0);
+    expr->cond->Accept(this);
+    SetU16(arg1PatchInner, data.size() - arg1StartInner);
+
+    auto arg2StartInner = data.size();
+    auto arg2PatchInner = AddU16(0x0);
+    expr->left->Accept(this);
+    SetU16(arg2PatchInner, data.size() - arg2StartInner);
+
+    auto arg3StartInner = data.size();
+    auto arg3PatchInner = AddU16(0x0);
+    expr->right->Accept(this);
+    SetU16(arg3PatchInner, data.size() - arg3StartInner);
+    insideNvseExpr.pop();
+    
+    SetU16(callPatch, data.size() - callStart);
 }
 
 void NVSECompiler::VisitBinaryExpr(BinaryExpr* expr) {

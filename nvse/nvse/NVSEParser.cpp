@@ -347,7 +347,7 @@ ExprPtr NVSEParser::Expression() {
 }
 
 ExprPtr NVSEParser::Assignment() {
-    ExprPtr left = Ternary();
+    ExprPtr left = Slice();
 
     if (Match(NVSETokenType::Eq) || Match(NVSETokenType::PlusEq) || Match(NVSETokenType::MinusEq) ||
         Match(NVSETokenType::StarEq) || Match(NVSETokenType::SlashEq) || Match(NVSETokenType::ModEq) || Match(
@@ -367,17 +367,26 @@ ExprPtr NVSEParser::Assignment() {
     return left;
 }
 
+ExprPtr NVSEParser::Slice() {
+    ExprPtr left = Ternary();
+
+    while (Match(NVSETokenType::Slice)) {
+        const auto op = previousToken;
+        ExprPtr right = Ternary();
+        left = std::make_shared<BinaryExpr>(op, std::move(left), std::move(right));
+    }
+
+    return left;
+}
+
 ExprPtr NVSEParser::Ternary() {
     ExprPtr cond = Pair();
 
     while (Match(NVSETokenType::Ternary)) {
         auto token = previousToken;
 
-        ExprPtr left = nullptr;
-        if (!Match(NVSETokenType::Slice)) {
-            left = Pair();
-            Expect(NVSETokenType::Slice, "Expected ':'.");
-        }
+        auto left = Pair();
+        Expect(NVSETokenType::Slice, "Expected ':'.");
         auto right = Pair();
         cond = std::make_shared<TernaryExpr>(token, std::move(cond), std::move(left), std::move(right));
     }
@@ -410,21 +419,9 @@ ExprPtr NVSEParser::LogicalOr() {
 }
 
 ExprPtr NVSEParser::LogicalAnd() {
-    ExprPtr left = Slice();
-
-    while (Match(NVSETokenType::LogicAnd)) {
-        const auto op = previousToken;
-        ExprPtr right = Slice();
-        left = std::make_shared<BinaryExpr>(op, std::move(left), std::move(right));
-    }
-
-    return left;
-}
-
-ExprPtr NVSEParser::Slice() {
     ExprPtr left = Equality();
 
-    while (Match(NVSETokenType::Slice)) {
+    while (Match(NVSETokenType::LogicAnd)) {
         const auto op = previousToken;
         ExprPtr right = Equality();
         left = std::make_shared<BinaryExpr>(op, std::move(left), std::move(right));

@@ -49,7 +49,7 @@ public:
 	virtual void VisitBlockStmt(BlockStmt* stmt) = 0;
 
 	virtual void VisitAssignmentExpr(AssignmentExpr* expr) = 0;
-	virtual void VisitTernaryExpr(const TernaryExpr* expr) = 0;
+	virtual void VisitTernaryExpr(TernaryExpr* expr) = 0;
 	virtual void VisitBinaryExpr(BinaryExpr* expr) = 0;
 	virtual void VisitUnaryExpr(UnaryExpr* expr) = 0;
 	virtual void VisitSubscriptExpr(SubscriptExpr* expr) = 0;

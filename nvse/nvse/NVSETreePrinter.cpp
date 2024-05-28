@@ -255,7 +255,7 @@ void NVSETreePrinter::VisitAssignmentExpr(AssignmentExpr* expr) {
 	curTab--;
 }
 
-void NVSETreePrinter::VisitTernaryExpr(const TernaryExpr* expr) {
+void NVSETreePrinter::VisitTernaryExpr(TernaryExpr* expr) {
 	PrintTabs();
 	CompDbg("ternary\n");
 	curTab++;
