@@ -44,6 +44,21 @@ Token_Type GetDetailedTypeFromVarType(Script::VariableType type) {
     }
 }
 
+Token_Type GetVariableTypeFromNonVarType(Token_Type type) {
+    switch (type) {
+    case kTokenType_Number:
+        return kTokenType_NumericVar;
+    case kTokenType_String:
+        return kTokenType_StringVar;
+    case kTokenType_Ref:
+        return kTokenType_RefVar;
+    case kTokenType_Array:
+        return kTokenType_ArrayVar;
+    default:
+        return kTokenType_Invalid;
+    }
+}
+
 std::string getTypeErrorMsg(Token_Type lhs, Token_Type rhs) {
     return std::format("Cannot convert from {} to {}", TokenTypeToString(lhs), TokenTypeToString(rhs));
 }
@@ -421,7 +436,13 @@ void NVSETypeChecker::VisitGetExpr(GetExpr* expr) {
     for (int i = 0; i < questScript->varList.Count(); i++) {
         const auto curVar = questScript->varList.GetNthItem(i);
         if (!strcmp(curVar->name.CStr(), rhsName.c_str())) {
-            expr->detailedType = GetDetailedTypeFromVarType(questScript->GetVariableType(curVar));
+            auto detailedType = GetDetailedTypeFromVarType(questScript->GetVariableType(curVar));
+            auto detailedTypeConverted = GetVariableTypeFromNonVarType(detailedType);
+            if (detailedTypeConverted == kTokenType_Invalid) {
+                expr->detailedType = detailedType;
+            } else {
+                expr->detailedType = detailedTypeConverted;
+            }
             expr->varInfo = curVar;
             expr->referenceName = form->GetEditorID();
             return;
