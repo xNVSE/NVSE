@@ -1617,7 +1617,7 @@ bool Cmd_DumpCommandWikiDocs_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool Cmd_Ternary_Execute(COMMAND_ARGS)
+bool Cmd_TernaryUDF_Execute(COMMAND_ARGS)
 {
 	*result = 0;
 	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
@@ -1640,6 +1640,55 @@ bool Cmd_Ternary_Execute(COMMAND_ARGS)
 		InternalFunctionCaller caller(call_udf, thisObj, containingObj);
 		caller.SetArgs(0);
 		if (auto const tokenValResult = UserFunctionManager::Call(std::move(caller)))
+			tokenValResult->AssignResult(eval);
+	}
+	return true;
+}
+
+class TernaryEvaluator
+{
+public:
+	TernaryEvaluator(ExpressionEvaluator& context) : m_eval(context)
+	{
+	}
+
+	bool ExtractArgs()
+	{
+		const UInt32 numArgs = m_eval.ReadByte();
+		if (numArgs != 3)
+			return false;
+		auto* cond = m_eval.Evaluate();
+		m_eval.m_args[0] = cond;
+		ScriptToken* res;
+		if (cond->GetBool()) {
+			res = m_eval.Evaluate();
+			m_eval.Data() += *((UInt16*)m_eval.Data());
+		}
+		else {
+			m_eval.Data() += *((UInt16*)m_eval.Data());
+			res = m_eval.Evaluate();
+		}
+		m_eval.m_args[1] = res;
+		return true;
+	}
+
+	ScriptToken* GetResult() const 
+	{
+		return m_eval.m_args[1];
+	}
+private:
+	ExpressionEvaluator& m_eval;
+	UInt8 m_numArgs{};
+};
+
+bool Cmd_Ternary_Execute(COMMAND_ARGS)
+{
+	*result = 0;
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (TernaryEvaluator ternaryEval(eval);
+		ternaryEval.ExtractArgs())
+	{
+		if (auto* const tokenValResult = ternaryEval.GetResult())
 			tokenValResult->AssignResult(eval);
 	}
 	return true;
