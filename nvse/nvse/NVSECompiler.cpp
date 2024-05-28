@@ -203,7 +203,7 @@ void NVSECompiler::VisitVarDeclStmt(const VarDeclStmt* stmt) {
 
             StartCall("SetModLocalData");
             StartManualArg();
-            AddString(scriptName + "__" + token.lexeme);
+            AddString("__" + scriptName + "__" + token.lexeme);
             FinishManualArg();
             FinishCall();
             continue;
@@ -793,12 +793,9 @@ void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
 
     // If this is a lambda var, inline it as a call to GetModLocalData
     if (lambdaVars.contains(name)) {
-        // <scriptName>__lambdaName
-        const auto lambdaName = scriptName + "__" + name;
-
         StartCall("GetModLocalData");
         StartManualArg();
-        AddString(lambdaName);
+        AddString("__" + scriptName + "__" + name);
         FinishManualArg();
         FinishCall();
         return;
