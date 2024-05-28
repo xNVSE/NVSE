@@ -2,10 +2,10 @@
 #include "NVSECompilerUtils.h"
 
 #include <format>
-#include <iostream>
 #include <regex>
 
 #include "NVSETreePrinter.h"
+#include "NVSEAst.h"
 
 NVSEParser::NVSEParser(NVSELexer& tokenizer) : lexer(tokenizer) {
     Advance();
@@ -680,16 +680,7 @@ void NVSEParser::Error(NVSEToken token, std::string message) {
     panicMode = true;
     hadError = true;
 
-    std::string msg{};
-    std::string lineInfo = std::format("[line {}:{}] ", token.line, token.linePos);
-
-    msg += lineInfo;
-    msg += lexer.lines[token.line - 1] + '\n';
-    msg += std::string(lineInfo.length() + token.linePos - 1, ' ');
-    msg += std::string(token.lexeme.length(), '^');
-    msg += " " + message;
-
-    throw NVSEParseError(msg);
+    throw NVSEParseError(std::format("[line {}:{}] {}", token.line, token.column, message));
 }
 
 NVSEToken NVSEParser::Expect(NVSETokenType type, std::string message) {

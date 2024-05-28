@@ -10,6 +10,14 @@
 #include "NVSECompilerUtils.h"
 #include "ScriptUtils.h"
 
+#define WRAP_ERROR(expr)             \
+    try {                            \
+        expr;                        \
+}									 \
+    catch (std::runtime_error& er) { \
+        CompErr("%s\n", er.what());  \
+    }
+
 Token_Type GetDetailedTypeFromNVSEToken(NVSETokenType type) {
 	switch (type) {
 	case NVSETokenType::String:
@@ -65,12 +73,17 @@ std::string getTypeErrorMsg(Token_Type lhs, Token_Type rhs) {
 }
 
 void NVSETypeChecker::error(size_t line, std::string msg) {
-	CompErr("[line %d] %s\n", line, msg.c_str());
 	hadError = true;
+	throw std::runtime_error(std::format("[line {}] {}", line, msg));
+}
+
+void NVSETypeChecker::error(size_t line, size_t column, std::string msg) {
+	hadError = true;
+	throw std::runtime_error(std::format("[line {}:{}] {}", line, column, msg));
 }
 
 bool NVSETypeChecker::check() {
-	script->Accept(this);
+	WRAP_ERROR(script->Accept(this))
 
 	return !hadError;
 }
@@ -128,25 +141,30 @@ void NVSETypeChecker::VisitExprStmt(const ExprStmt* stmt) {
 
 void NVSETypeChecker::VisitForStmt(ForStmt* stmt) {
 	if (stmt->init) {
-		stmt->init->Accept(this);
+		WRAP_ERROR(stmt->init->Accept(this));
 	}
 
 	if (stmt->cond) {
-		stmt->cond->Accept(this);
+		try {
+			stmt->cond->Accept(this);
 
-		// Check if condition can evaluate to bool
-		auto lType = stmt->cond->detailedType;
-		auto rType = kTokenType_Boolean;
-		auto oType = s_operators[kOpType_Equals].GetResult(lType, rType);
-		if (oType != kTokenType_Boolean) {
-			error(stmt->line, "Invalid expression type for loop condition.");
+			// Check if condition can evaluate to bool
+			auto lType = stmt->cond->detailedType;
+			auto rType = kTokenType_Boolean;
+			auto oType = s_operators[kOpType_Equals].GetResult(lType, rType);
+			if (oType != kTokenType_Boolean) {
+				error(stmt->line, "Invalid expression type for loop condition.");
+			}
+
+			stmt->cond->detailedType = oType;
 		}
-
-		stmt->cond->detailedType = oType;
+		catch (std::runtime_error& er) {
+			CompErr("%s\n", er.what());
+		}
 	}
 
 	if (stmt->post) {
-		stmt->post->Accept(this);
+		WRAP_ERROR(stmt->post->Accept(this));
 	}
 
 	insideLoop.push(true);
@@ -172,18 +190,20 @@ void NVSETypeChecker::VisitForEachStmt(ForEachStmt* stmt) {
 }
 
 void NVSETypeChecker::VisitIfStmt(IfStmt* stmt) {
-	stmt->cond->Accept(this);
+	WRAP_ERROR(
+		stmt->cond->Accept(this);
 
-	// Check if condition can evaluate to bool
-	auto lType = stmt->cond->detailedType;
-	auto rType = kTokenType_Boolean;
-	if (!CanConvertOperand(lType, rType)) {
-		error(stmt->line, std::format("Invalid expression type {} for if statement.", TokenTypeToString(lType)));
-		stmt->cond->detailedType = kTokenType_Invalid;
-	}
-	else {
-		stmt->cond->detailedType = rType;
-	}
+		// Check if condition can evaluate to bool
+		auto lType = stmt->cond->detailedType;
+		auto rType = kTokenType_Boolean;
+		if (!CanConvertOperand(lType, rType)) {
+			error(stmt->line, std::format("Invalid expression type {} for if statement.", TokenTypeToString(lType)));
+			stmt->cond->detailedType = kTokenType_Invalid;
+		}
+		else {
+			stmt->cond->detailedType = rType;
+		}
+	)
 
 	stmt->block->Accept(this);
 	if (stmt->elseBlock) {
@@ -214,16 +234,18 @@ void NVSETypeChecker::VisitBreakStmt(BreakStmt* stmt) {
 }
 
 void NVSETypeChecker::VisitWhileStmt(const WhileStmt* stmt) {
-	stmt->cond->Accept(this);
+	WRAP_ERROR(
+		stmt->cond->Accept(this);
 
-	// Check if condition can evaluate to bool
-	auto lType = stmt->cond->detailedType;
-	auto rType = kTokenType_Boolean;
-	auto oType = s_operators[kOpType_Equals].GetResult(lType, rType);
-	if (oType != kTokenType_Boolean) {
-		error(stmt->line, "Invalid expression type for while loop.");
-	}
-	stmt->cond->detailedType = oType;
+		// Check if condition can evaluate to bool
+		auto lType = stmt->cond->detailedType;
+		auto rType = kTokenType_Boolean;
+		auto oType = s_operators[kOpType_Equals].GetResult(lType, rType);
+		if (oType != kTokenType_Boolean) {
+			error(stmt->line, "Invalid expression type for while loop.");
+		}
+		stmt->cond->detailedType = oType;
+	)
 
 	insideLoop.push(true);
 	stmt->block->Accept(this);
@@ -232,7 +254,7 @@ void NVSETypeChecker::VisitWhileStmt(const WhileStmt* stmt) {
 
 void NVSETypeChecker::VisitBlockStmt(BlockStmt* stmt) {
 	for (auto statement : stmt->statements) {
-		statement->Accept(this);
+		WRAP_ERROR(statement->Accept(this))
 
 		// TODO - Rework this
 		// if (statement->IsType<ReturnStmt>()) {
@@ -342,16 +364,20 @@ void NVSETypeChecker::VisitSubscriptExpr(SubscriptExpr* expr) {
 }
 
 void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
-	if (auto left = expr->left) {
+	if (auto &left = expr->left) {
 		left->Accept(this);
+	}
+
+	for (auto &arg : expr->args) {
+		WRAP_ERROR(arg->Accept(this))
 	}
 
 	std::string name = expr->token.lexeme;
 
 	// Try to get the script command by lexeme
-	auto cmd = g_scriptCommands.GetByName(name.c_str());
+	const auto cmd = g_scriptCommands.GetByName(name.c_str());
 	if (!cmd) {
-		error(expr->line, std::format("Invalid command '{}'.", name));
+		error(expr->token.line, expr->token.column, std::format("Invalid command '{}'.", name));
 		return;
 	}
 	expr->cmdInfo = cmd;
@@ -481,17 +507,19 @@ void NVSETypeChecker::VisitIdentExpr(IdentExpr* expr) {
 	}
 
 	expr->detailedType = kTokenType_Invalid;
-	error(expr->token.line, std::format("Unable to resolve identifier '{}'.", name));
+	error(expr->token.line, expr->token.column, std::format("Unable to resolve identifier '{}'.", name));
 }
 
 void NVSETypeChecker::VisitGroupingExpr(GroupingExpr* expr) {
-	expr->expr->Accept(this);
-	expr->detailedType = expr->expr->detailedType;
+	WRAP_ERROR(
+		expr->expr->Accept(this);
+		expr->detailedType = expr->expr->detailedType;
+	)
 }
 
 void NVSETypeChecker::VisitLambdaExpr(LambdaExpr* expr) {
-	for (auto decl : expr->args) {
-		decl->Accept(this);
+	for (auto &decl : expr->args) {
+		WRAP_ERROR(decl->Accept(this))
 	}
 
 	insideLoop.push(false);

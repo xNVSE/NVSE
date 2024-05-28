@@ -13,7 +13,8 @@ class NVSETypeChecker : NVSEVisitor {
     std::stack<bool> insideLoop {};
 
     void error(size_t line, std::string msg);
-    
+    void error(size_t line, size_t column, std::string msg);
+
 public:
     NVSETypeChecker(NVSEScript* script) : script(script) {}
     bool check();

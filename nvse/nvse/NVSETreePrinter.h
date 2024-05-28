@@ -1,5 +1,4 @@
 #pragma once
-
 #include "NVSEVisitor.h"
 
 class NVSETreePrinter : public NVSEVisitor {
