@@ -215,7 +215,8 @@ void NVSECompiler::VisitVarDeclStmt(const VarDeclStmt* stmt) {
             std::vector<ExprPtr> args{};
             args.emplace_back(arg);
             args.emplace_back(value);
-            auto expr = std::make_shared<CallExpr>(nullptr, NVSEToken {NVSETokenType::Identifier, "SetModLocalData" }, std::move(args));
+            std::shared_ptr<CallExpr> expr = std::make_shared<CallExpr>(nullptr, NVSEToken {NVSETokenType::Identifier, "SetModLocalData" }, std::move(args));
+            expr->cmdInfo = g_scriptCommands.GetByName("SetModLocalData");
 
             expr->Accept(this);
             continue;
@@ -907,7 +908,8 @@ void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
 
         std::vector<ExprPtr> args{};
         args.emplace_back(arg);
-        auto getMLDCall = std::make_shared<CallExpr>(nullptr, NVSEToken{ NVSETokenType::Identifier, "GetModLocalData" }, std::move(args));
+		std::shared_ptr<CallExpr> getMLDCall = std::make_shared<CallExpr>(nullptr, NVSEToken{ NVSETokenType::Identifier, "GetModLocalData" }, std::move(args));
+        getMLDCall->cmdInfo = g_scriptCommands.GetByName("GetModLocalData");
 
         getMLDCall->Accept(this);
         return;

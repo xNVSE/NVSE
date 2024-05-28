@@ -228,6 +228,9 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 		if (Match('-')) {
 			return MakeToken(NVSETokenType::MinusMinus, "--");
 		}
+		if (Match('>')) {
+			return MakeToken(NVSETokenType::Arrow, "->");
+		}
 		return MakeToken(NVSETokenType::Minus, "-");
 	}
 	case '*':
