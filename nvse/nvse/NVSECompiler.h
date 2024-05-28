@@ -13,6 +13,18 @@
 
 class Script;
 
+struct CallBuffer {
+	size_t startPos{};
+	size_t startPatch{};
+	size_t argPos{};
+	size_t numArgs{};
+	size_t argStart{};
+	size_t argPatch{};
+	CommandInfo* cmdInfo{};
+	Cmd_Parse* parse{};
+	ExprPtr stackRef;
+};
+
 class NVSECompiler : NVSEVisitor {
 public:
 	Script* script;
@@ -21,6 +33,8 @@ public:
 
 	const char* originalScriptName;
 	std::string scriptName{};
+
+	std::stack<CallBuffer> callBuffers{};
 
 	std::stack<bool> insideNvseExpr{};
 
@@ -196,6 +210,13 @@ public:
 	void VisitBinaryExpr(BinaryExpr* expr) override;
 	void VisitUnaryExpr(UnaryExpr* expr) override;
 	void VisitSubscriptExpr(SubscriptExpr* expr) override;
+	void FinishCall();
+	void StartCall(CommandInfo* cmd, ExprPtr stackRef = nullptr);
+	void StartCall(const std::string&& command, ExprPtr stackRef = nullptr);
+	void StartCall(uint16_t opcode, ExprPtr stackRef = nullptr);
+	void AddCallArg(ExprPtr arg);
+	void StartManualArg();
+	void FinishManualArg();
 	void VisitCallExpr(CallExpr* expr) override;
 	void VisitGetExpr(GetExpr* expr) override;
 	void VisitBoolExpr(BoolExpr* expr) override;
