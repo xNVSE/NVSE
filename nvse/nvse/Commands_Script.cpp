@@ -1678,7 +1678,6 @@ public:
 	}
 private:
 	ExpressionEvaluator& m_eval;
-	UInt8 m_numArgs{};
 };
 
 bool Cmd_Ternary_Execute(COMMAND_ARGS)
