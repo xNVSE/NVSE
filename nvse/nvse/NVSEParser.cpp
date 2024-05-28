@@ -574,7 +574,17 @@ ExprPtr NVSEParser::Primary() {
     }
 
     if (Match(NVSETokenType::String)) {
-        return std::make_shared<StringExpr>(previousToken);
+        ExprPtr expr = std::make_shared<StringExpr>(previousToken);
+        while (Match(NVSETokenType::Interp)) {
+            auto inner = std::make_shared<UnaryExpr>(NVSEToken{ NVSETokenType::Dollar, "$" }, Expression(), false);
+            Expect(NVSETokenType::EndInterp, "Expected '}'");
+            expr = std::make_shared<BinaryExpr>(NVSEToken{ NVSETokenType::Plus, "+" }, expr, inner);
+            if (Match(NVSETokenType::String) && previousToken.lexeme.length() > 2) {
+                auto endStr = std::make_shared<StringExpr>(previousToken);
+                expr = std::make_shared<BinaryExpr>(NVSEToken{ NVSETokenType::Plus, "+" }, expr, endStr);
+            }
+        }
+        return expr;
     }
 
     if (Match(NVSETokenType::Identifier)) {
@@ -629,10 +639,10 @@ void NVSEParser::Advance() {
     previousToken = currentToken;
     // Bubble up lexer errors
     try {
-        currentToken = lexer.GetNextToken();
+        currentToken = lexer.GetNextToken(true);
     }
     catch (std::runtime_error& er) {
-        Error(currentToken, er.what());
+        CompErr("[line %d] %s\n", lexer.line, er.what());
     }
 }
 

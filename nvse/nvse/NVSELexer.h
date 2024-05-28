@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stack>
 #include <string>
 #include <stdexcept>
 #include <variant>
@@ -62,6 +63,8 @@ enum class NVSETokenType {
     Colon,
     Eof,
     Dot,
+    Interp,
+    EndInterp,
 };
 
 static const char* TokenTypeStr[]{
@@ -142,6 +145,8 @@ static const char* TokenTypeStr[]{
     "Colon",
     "End",
     "Dot",
+    "Interp",
+    "EndInterp",
 };
 
 struct NVSEToken {
@@ -161,15 +166,19 @@ class NVSELexer {
     std::string input;
     size_t pos;
 
+    // For string interpolation
+    std::deque<NVSEToken> tokenStack{};
+    int interpDepth = 0;
+
 public:
     size_t linePos = 1;
     size_t line = 1;
     std::vector<std::string> lines{};
 
     NVSELexer(const std::string& input);
-    std::string lexString();
+    std::deque<NVSEToken> lexString();
 
-    NVSEToken GetNextToken();
+    NVSEToken GetNextToken(bool useStack);
     bool Match(char c);
     NVSEToken MakeToken(NVSETokenType type, std::string lexeme);
     NVSEToken MakeToken(NVSETokenType type, std::string lexeme, double value);

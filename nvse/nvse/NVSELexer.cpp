@@ -19,72 +19,76 @@ NVSELexer::NVSELexer(const std::string& input) : input(input), pos(0) {
 }
 
 // Unused for now, working though
-std::string NVSELexer::lexString() {
-    std::ostringstream result;
-    std::stack<bool> inString{};
-    std::stack<bool> inExpr{};
+std::deque<NVSEToken> NVSELexer::lexString() {
+    std::stringstream resultString;
 
-    inString.push(true);
-    inExpr.push(false);
+    int start = pos - 1;
+    int startLine = line;
 
-    int depth = 0;
+    std::deque<NVSEToken> results{};
 
     while (pos < input.size()) {
         char c = input[pos++];
 
-        if (c == '\\' && inString.top()) {
+        if (c == '\\') {
             if (pos >= input.size()) throw std::runtime_error("Unexpected end of input after escape character.");
             char next = input[pos++];
-            if (inString.top()) {
-                if (next == '\\' || next == 'n' || next == '"') {
-                    if (next == 'n') result << '\n';
-                    else result << next;
-                }
-                else {
-                    throw std::runtime_error("Invalid escape sequence.");
-                }
+            if (next == '\\' || next == 'n' || next == '"') {
+                if (next == 'n') resultString << '\n';
+                else resultString << next;
             }
             else {
-                result << '\\' << next;
+                throw std::runtime_error("Invalid escape sequence.");
             }
+        }
+        else if (c == '\n') {
+            throw std::runtime_error("Unexpected end of line.");
         }
         else if (c == '"') {
-            if (depth == 0) {
-                return result.str();
+            if (line != startLine) {
+                throw std::runtime_error("Multiline strings are not allowed.");
             }
-            result << c;
-            inString.top() = !inString.top();
+
+            // Push final result as string
+            results.push_back(MakeToken(NVSETokenType::String, '"' + resultString.str() + '"', resultString.str()));
+            return results;
         }
-        else if (c == '$' && pos < input.size() && input[pos] == '{' && inString.top()) {
-            pos++;
-            depth++;
-            inString.push(false);
-            inExpr.push(true);
-        }
-        else if (c == '{') {
-            inExpr.push(false);
-            result << c;
-        }
-        else if (c == '}') {
-            if (inExpr.top()) {
-                if (depth == 0) throw std::runtime_error("Unmatched closing brace.");
-                depth--;
+        else if (c == '$' && pos < input.size() && input[pos] == '{' && (pos == start + 1 || input[pos - 2] != '\\')) {
+            if (interpDepth > 0) {
+                throw std::runtime_error("Cannot have nested string interpolation.");
             }
-            result << '}';
-            inExpr.pop();
+
+            // Push previous result as string
+            results.push_back(MakeToken(NVSETokenType::String, '"' + resultString.str() + '"', resultString.str()));
+
+            pos += 1;
+            NVSEToken tok;
+            results.push_back(MakeToken(NVSETokenType::Interp, "${"));
+            while ((tok = GetNextToken(false)).type != NVSETokenType::RightBrace) {
+                if (tok.type == NVSETokenType::Eof) {
+                    throw std::runtime_error("Unexpected end of file.");
+                }
+                results.push_back(tok);
+            }
+            results.push_back(MakeToken(NVSETokenType::EndInterp, "}"));
+
+            resultString = {};
         }
         else {
-            result << c;
+            resultString << c;
         }
     }
 
-    if (inString.top()) {
-        throw std::runtime_error("Unexpected end of input in string.");
-    }
-    return result.str();
+    throw std::runtime_error("Unexpected end of input in string.");
 }
 
-NVSEToken NVSELexer::GetNextToken() {
+NVSEToken NVSELexer::GetNextToken(bool useStack) {
+    if (!tokenStack.empty() && useStack) {
+        auto tok = tokenStack.front();
+        tokenStack.pop_front();
+        return tok;
+    }
+
     bool inComment = false;
     while (pos < input.size()) {
         if (!std::isspace(input[pos]) && !inComment) {
@@ -159,37 +163,16 @@ NVSEToken NVSELexer::GetNextToken() {
     }
 
     if (current == '"') {
-        std::stringstream buf{};
-        size_t start = pos++;
-        while (pos < input.size() && (input[pos] != '"' || input[pos - 1] == '\\')) {
-            if (pos < input.size() - 1 && input[pos] == '\\') {
-                char escape = input[pos + 1];
-                if (escape == 'n') {
-                    buf << '\n';
-                } else if (escape == '"') {
-                    buf << '"';
-                } else if (escape == '\\') {
-                    buf << '\\';
-                } else {
-                    throw std::runtime_error(std::format("Invalid escape sequence '{}{}'.", input[pos], input[pos + 1]));
-                }
-
-                pos++;
-            } else {
-                buf << input[pos];
-            }
         pos++;
-        }
-        
-        if (input[pos] != '\"') {
-            throw std::runtime_error("Unexpected EOF");
+        auto results = lexString();
+        auto tok = results.front();
+        results.pop_front();
+
+        for (auto r : results) {
+            tokenStack.push_back(r);
         }
 
-        pos++;
-        const auto len = pos - start;
-        std::string text = buf.str();
-        std::string lexeme = '\"' + input.substr(start, len) + '\"';
-        return MakeToken(NVSETokenType::String, lexeme, text);
+        return tok;
     }
 
     pos++;
