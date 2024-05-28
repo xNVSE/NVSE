@@ -67,7 +67,7 @@ void NVSECompiler::VisitNVSEScript(const NVSEScript* nvScript) {
     // Dont allow naming script the same as another form, unless that form is the script itself
     auto comp = strcmp(scriptName.c_str(), originalScriptName);
     if (ResolveObjReference(scriptName, false) && comp && !partial) {
-        throw std::runtime_error(std::format("Error: Form name '{}' is already in use.\n", scriptName.c_str()));
+        throw std::runtime_error(std::format("Error: Form name '{}' is already in use.\n", scriptName));
     }
 
     // SCN
@@ -119,10 +119,7 @@ void NVSECompiler::VisitBeginStmt(const BeginStmt* stmt) {
         // All other instances use ref?
         else {
             // Try to resolve the global ref
-            auto ref = ResolveObjReference(param.lexeme);
-            if (ref) {
-                auto refInfo = script->refList.GetNthItem(ref - 1);
-                printf("Resolved ref %s: %08x\n", param.lexeme.c_str(), refInfo->form->refID);
+            if (auto ref = ResolveObjReference(param.lexeme)) {
                 AddU8('R');
                 AddU16(ref);
             }
@@ -204,21 +201,11 @@ void NVSECompiler::VisitVarDeclStmt(const VarDeclStmt* stmt) {
             // To do a similar thing on access
             lambdaVars.insert(token.lexeme);
 
-            // <scriptName>__lambdaName
-            const auto name = scriptName + "__" + token.lexeme;
-
-            // Build a call expr
-            NVSEToken nameToken{};
-            nameToken.value = name;
-            auto arg = std::make_shared<StringExpr>(nameToken);
-
-            std::vector<ExprPtr> args{};
-            args.emplace_back(arg);
-            args.emplace_back(value);
-            std::shared_ptr<CallExpr> expr = std::make_shared<CallExpr>(nullptr, NVSEToken {NVSETokenType::Identifier, "SetModLocalData" }, std::move(args));
-            expr->cmdInfo = g_scriptCommands.GetByName("SetModLocalData");
-
-            expr->Accept(this);
+            StartCall("SetModLocalData");
+            StartManualArg();
+            AddString(scriptName + "__" + token.lexeme);
+            FinishManualArg();
+            FinishCall();
             continue;
         }
 
@@ -229,19 +216,8 @@ void NVSECompiler::VisitVarDeclStmt(const VarDeclStmt* stmt) {
 
         statementCounter.top()++;
 
-        // OP_LET
-        AddU16(0x1539);
-
-        //  Placeholder [expr_len]
-        auto exprPatch = AddU16(0x0);
-        auto exprStart = data.size();
-
-        // Num args
-        AddU8(0x1);
-
-        // Placeholder [param1_len]
-        auto argStart = data.size();
-        auto argPatch = AddU16(0x0);
+        StartCall(0x1539);
+        StartManualArg();
 
         // Add arg to stack
         AddU8('V');
@@ -250,16 +226,13 @@ void NVSECompiler::VisitVarDeclStmt(const VarDeclStmt* stmt) {
         AddU16(idx); // SCDA
 
         // Build expression
-        insideNvseExpr.push(true);
         value->Accept(this);
-        insideNvseExpr.pop();
 
         // OP_ASSIGN
         AddU8(0);
 
-        // Patch lengths
-        SetU16(argPatch, data.size() - argStart);
-        SetU16(exprPatch, data.size() - exprStart);
+        FinishManualArg();
+        FinishCall();
     }
 }
 
@@ -269,28 +242,9 @@ void NVSECompiler::VisitExprStmt(const ExprStmt* stmt) {
         stmt->expr->Accept(this);
     }
     else if (stmt->expr) {
-        // OP_EVAL
-        AddU16(0x153A);
-
-        // Placeholder OP_LEN
-        auto exprPatch = AddU16(0x0);
-        auto exprStart = data.size();
-
-        // Num args
-        AddU8(0x1);
-
-        // Placeholder [arg_len]
-        auto argStart = data.size();
-        auto argPatch = AddU16(0x0);
-
-        //Build expression
-        insideNvseExpr.push(true);
-        stmt->expr->Accept(this);
-        insideNvseExpr.pop();
-
-        // Patch lengths
-        SetU16(argPatch, data.size() - argStart);
-        SetU16(exprPatch, data.size() - exprStart);
+        StartCall(0x153A);
+        AddCallArg(stmt->expr);
+        FinishCall();
     } else {
 	    // Decrement counter as this is a NOP
         statementCounter.top()--;
@@ -436,30 +390,9 @@ void NVSECompiler::VisitIfStmt(IfStmt* stmt) {
 
     // Enter NVSE eval
     AddU8(0x58);
-    {
-        // OP_EVAL
-        AddU16(0x153A);
-
-        // Placeholder OP_EVAL_LEN
-        auto opEvalPatch = AddU16(0x0);
-        auto opEvalStart = data.size();
-
-        // OP_EVAL num params
-        AddU8(0x1);
-
-        // Placeholder OP_EVAL_ARG_LEN
-        auto opEvalArgStart = data.size();
-        auto opEvalArgPatch = AddU16(0x0);
-
-        // Compile cond
-        insideNvseExpr.push(true);
-        stmt->cond->Accept(this);
-        insideNvseExpr.pop();
-
-        // Patch OP_EVAL lengths
-        SetU16(opEvalArgPatch, data.size() - opEvalArgStart);
-        SetU16(opEvalPatch, data.size() - opEvalStart);
-    }
+    StartCall(0x153A);
+    AddCallArg(stmt->cond);
+    FinishCall();
 
     // Patch lengths
     SetU16(compPatch, data.size() - compStart);
@@ -494,22 +427,9 @@ void NVSECompiler::VisitIfStmt(IfStmt* stmt) {
 void NVSECompiler::VisitReturnStmt(ReturnStmt* stmt) {
     // Compile SetFunctionValue if we have a return value
     if (stmt->expr) {
-        AddU16(0x1546);
-
-        auto opLenPatch = AddU16(0x0);
-        auto opLenStart = data.size();
-
-        AddU8(0x1);
-
-        auto argLenStart = data.size();
-        auto argLenPatch = AddU16(0x0);
-
-        insideNvseExpr.push(true);
-        stmt->expr->Accept(this);
-        insideNvseExpr.pop();
-
-        SetU16(argLenPatch, data.size() - argLenStart);
-        SetU16(opLenPatch, data.size() - opLenStart);
+        StartCall(0x1546);
+        AddCallArg(stmt->expr);
+        FinishCall();
     }
 
     // Emit op_return
@@ -603,32 +523,13 @@ void NVSECompiler::VisitBlockStmt(BlockStmt* stmt) {
 void NVSECompiler::VisitAssignmentExpr(AssignmentExpr* expr) {
     // Assignment as standalone statement
     if (!insideNvseExpr.top()) {
-        // OP_LET
-        AddU16(0x1539);
-
-        //  Placeholder [expr_len]
-        auto exprPatch = AddU16(0x0);
-        auto exprStart = data.size();
-
-        // Num args
-        AddU8(0x1);
-
-        // Placeholder [param1_len]
-        auto argStart = data.size();
-        auto argPatch = AddU16(0x0);
-
-        // Build expression
-        insideNvseExpr.push(true);
+        StartCall(0x1539);
+        StartManualArg();
         expr->left->Accept(this);
         expr->expr->Accept(this);
-        insideNvseExpr.pop();
-
-        // Assignment opcode
         AddU8(tokenOpToNVSEOpType[expr->token.type]);
-
-        // Patch lengths
-        SetU16(argPatch, data.size() - argStart);
-        SetU16(exprPatch, data.size() - exprStart);
+        FinishManualArg();
+        FinishCall();
     }
 
     // Assignment as an expression
@@ -643,38 +544,11 @@ void NVSECompiler::VisitAssignmentExpr(AssignmentExpr* expr) {
 }
 
 void NVSECompiler::VisitTernaryExpr(TernaryExpr* expr) {
-    AddU8('X');
-    AddU16(0x0);
-
-    // OP_TERNARY
-    AddU16(0x166E);
-    
-    // Call size
-    auto callStart = data.size();
-    auto callPatch = AddU16(0x0);
-    
-    // Num args
-    AddU8(3);
-    
-    // Args
-    insideNvseExpr.push(true);
-    auto arg1StartInner = data.size();
-    auto arg1PatchInner = AddU16(0x0);
-    expr->cond->Accept(this);
-    SetU16(arg1PatchInner, data.size() - arg1StartInner);
-
-    auto arg2StartInner = data.size();
-    auto arg2PatchInner = AddU16(0x0);
-    expr->left->Accept(this);
-    SetU16(arg2PatchInner, data.size() - arg2StartInner);
-
-    auto arg3StartInner = data.size();
-    auto arg3PatchInner = AddU16(0x0);
-    expr->right->Accept(this);
-    SetU16(arg3PatchInner, data.size() - arg3StartInner);
-    insideNvseExpr.pop();
-    
-    SetU16(callPatch, data.size() - callStart);
+    StartCall(0x166E);
+    AddCallArg(expr->cond);
+    AddCallArg(expr->left);
+    AddCallArg(expr->right);
+    FinishCall();
 }
 
 void NVSECompiler::VisitBinaryExpr(BinaryExpr* expr) {
@@ -719,57 +593,111 @@ void NVSECompiler::VisitSubscriptExpr(SubscriptExpr* expr) {
     AddU8(tokenOpToNVSEOpType[NVSETokenType::LeftBracket]);
 }
 
-void NVSECompiler::VisitCallExpr(CallExpr* expr) {
-    const auto stackRefExpr = expr->left;
-    const auto cmd = expr->cmdInfo;
+void NVSECompiler::FinishCall() {
+    auto buf = callBuffers.top();
+    callBuffers.pop();
 
-    auto defaultParse = isDefaultParse(cmd->parse);
+    SetU16(buf.startPatch, data.size() - buf.startPos);
 
-    // See if we should wrap inside let
-    // Need to do this in the case of something like
-    // player.AddItem(Caps001, 10) to pass player on stack and use 'x'
-    // annoying but want to keep the way these were passed consistent, especially in case of
-    // Quest.target.AddItem()
-    if (stackRefExpr && !insideNvseExpr.top()) {
-        // OP_EVAL
-        AddU16(0x153A);
-
-        //  Placeholder [expr_len]
-        auto exprPatch = AddU16(0x0);
-        auto exprStart = data.size();
-
-        // Num args
-        AddU8(0x1);
-
-        // Placeholder [param1_len]
-        auto argStart = data.size();
-        auto argPatch = AddU16(0x0);
-
-        insideNvseExpr.push(true);
-        VisitCallExpr(expr);
-        insideNvseExpr.pop();
-        
-        // Patch lengths
-        SetU16(argPatch, data.size() - argStart);
-        SetU16(exprPatch, data.size() - exprStart);
-        return;
+    if (isDefaultParse(*buf.parse)) {
+        SetU16(buf.argPos, buf.numArgs);
+    }
+    else {
+        SetU8(buf.argPos, buf.numArgs);
     }
 
-    // If call command
-    if (cmd->parse == kCommandInfo_Call.parse) {
+    // Handle stack refs
+    if (buf.stackRef) {
+        AddU8(tokenOpToNVSEOpType[NVSETokenType::Dot]);
+    }
+}
+
+void NVSECompiler::StartCall(CommandInfo* cmd, ExprPtr stackRef) {
+    // Handle stack refs
+    if (stackRef) {
+        stackRef->Accept(this);
+    }
+
+    if (insideNvseExpr.top()) {
+        if (stackRef) {
+            AddU8('x');
+        }
+        else {
+            AddU8('X');
+        }
+        AddU16(0x0); // SCRV
+    }
+    AddU16(cmd->opcode);
+
+    // Call size
+    CallBuffer buf{};
+    buf.parse = &cmd->parse;
+    buf.stackRef = stackRef;
+    buf.startPos = data.size() + (insideNvseExpr.top() ? 0 : 2);
+    buf.startPatch = AddU16(0x0);
+
+    if (isDefaultParse(cmd->parse)) {
+        buf.argPos = AddU16(0x0);
+    } else {
+        buf.argPos = AddU8(0x0);
+    }
+
+    callBuffers.push(buf);
+}
+
+void NVSECompiler::StartCall(const std::string &&command, ExprPtr stackRef) {
+    StartCall(g_scriptCommands.GetByName(command.c_str()), stackRef);
+}
+
+void NVSECompiler::StartCall(uint16_t opcode, ExprPtr stackRef) {
+    StartCall(g_scriptCommands.GetByOpcode(opcode), stackRef);
+}
+
+void NVSECompiler::AddCallArg(ExprPtr arg) {
+    // Make NVSE aware
+    if (isDefaultParse(*callBuffers.top().parse)) {
+        AddU16(0xFFFF);
+    }
+
+    auto argStartInner = data.size();
+    auto argPatchInner = AddU16(0x0);
+
+    insideNvseExpr.push(true);
+    arg->Accept(this);
+    insideNvseExpr.pop();
+
+    SetU16(argPatchInner, data.size() - argStartInner);
+    callBuffers.top().numArgs++;
+}
+
+void NVSECompiler::StartManualArg() {
+    // Make NVSE aware
+    if (isDefaultParse(*callBuffers.top().parse)) {
+        AddU16(0xFFFF);
+    }
+
+    callBuffers.top().argStart = data.size();
+    callBuffers.top().argPatch = AddU16(0x0);
+    insideNvseExpr.push(true);
+}
+
+void NVSECompiler::FinishManualArg() {
+    insideNvseExpr.pop();
+    SetU16(callBuffers.top().argPatch, data.size() - callBuffers.top().argStart);
+    callBuffers.top().numArgs++;
+}
+
+void NVSECompiler::VisitCallExpr(CallExpr* expr) {
+    // Handle call command separately, unique parse function
+    if (expr->cmdInfo->parse == kCommandInfo_Call.parse) {
         if (insideNvseExpr.top()) {
             AddU8('X');
             AddU16(0x0); // SCRV
         }
 
         AddU16(0x1545);
-        auto callLengthStart = data.size();
+        auto callLengthStart = data.size() + (insideNvseExpr.top() ? 0 : 2);
         auto callLengthPatch = AddU16(0x0);
-
-        // Compiled differently for some reason inside vs outside of calls
-        if (!insideNvseExpr.top()) {
-            callLengthStart = data.size();
-        }
         insideNvseExpr.push(true);
 
         // Bytecode ver
@@ -797,57 +725,24 @@ void NVSECompiler::VisitCallExpr(CallExpr* expr) {
         return;
     }
 
-    // Handle stack refs
-    if (stackRefExpr) {
-        stackRefExpr->Accept(this);
+    // See if we should wrap inside let
+    // Need to do this in the case of something like
+    // player.AddItem(Caps001, 10) to pass player on stack and use 'x'
+    // annoying but want to keep the way these were passed consistent, especially in case of
+    // Quest.target.AddItem()
+    if (expr->left && !insideNvseExpr.top()) {
+        // OP_EVAL
+        StartCall(0x153A, expr->left);
+        AddCallArg(static_cast<ExprPtr>(expr));
+        FinishCall();
+        return;
     }
 
-    // Put lhs on stack if its a dot expr
-    if (insideNvseExpr.top()) {
-        if (stackRefExpr) {
-            AddU8('x');
-        }
-        else {  
-            AddU8('X');
-        }
-        AddU16(0x0); // SCRV
+    StartCall(expr->cmdInfo, expr->left);
+    for (auto arg : expr->args) {
+        AddCallArg(arg);
     }
-    AddU16(cmd->opcode);
-
-    // Call size
-    auto callStart = data.size() + (insideNvseExpr.top() ? 0 : 2);
-    auto callPatch = AddU16(0x0);
-
-    // Num args
-    if (defaultParse) {
-        AddU16(expr->args.size());
-    } else {
-        AddU8(expr->args.size());
-    }
-
-    // Args
-    insideNvseExpr.push(true);
-    for (int i = 0; i < expr->args.size(); i++) {
-        // Make NVSE aware
-        if (defaultParse) {
-            AddU16(0xFFFF);
-        }
-
-        auto argStartInner = data.size();
-        auto argPatchInner = AddU16(0x0);
-        
-        expr->args[i]->Accept(this);
-        
-        SetU16(argPatchInner, data.size() - argStartInner);
-    }
-    insideNvseExpr.pop();
-
-    SetU16(callPatch, data.size() - callStart);
-
-    // Handle stack refs
-    if (stackRefExpr) {
-        AddU8(tokenOpToNVSEOpType[NVSETokenType::Dot]);
-    }
+    FinishCall();
 }
 
 void NVSECompiler::VisitGetExpr(GetExpr* expr) {
@@ -901,17 +796,11 @@ void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
         // <scriptName>__lambdaName
         const auto lambdaName = scriptName + "__" + name;
 
-        // Build a call expr
-        NVSEToken nameToken{};
-        nameToken.value = lambdaName;
-        auto arg = std::make_shared<StringExpr>(nameToken);
-
-        std::vector<ExprPtr> args{};
-        args.emplace_back(arg);
-		std::shared_ptr<CallExpr> getMLDCall = std::make_shared<CallExpr>(nullptr, NVSEToken{ NVSETokenType::Identifier, "GetModLocalData" }, std::move(args));
-        getMLDCall->cmdInfo = g_scriptCommands.GetByName("GetModLocalData");
-
-        getMLDCall->Accept(this);
+        StartCall("GetModLocalData");
+        StartManualArg();
+        AddString(lambdaName);
+        FinishManualArg();
+        FinishCall();
         return;
     }
 
