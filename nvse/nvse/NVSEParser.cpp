@@ -581,12 +581,6 @@ ExprPtr NVSEParser::Call() {
 			auto token = previousToken;
 			const auto ident = Expect(NVSETokenType::Identifier, "Expected identifier.");
 
-			if (!expr->IsType<IdentExpr>()) {
-				if (!Peek(NVSETokenType::Dot) && !Peek(NVSETokenType::LeftParen)) {
-					Error(currentToken, "Expected call or '.'.");
-				}
-			}
-
 			if (Match(NVSETokenType::LeftParen)) {
 				std::vector<ExprPtr> args{};
 				while (!Match(NVSETokenType::RightParen)) {
