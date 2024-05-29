@@ -400,10 +400,6 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 		left->Accept(this);
 	}
 
-	for (auto &arg : expr->args) {
-		WRAP_ERROR(arg->Accept(this))
-	}
-
 	std::string name = expr->token.lexeme;
 
 	// Try to get the script command by lexeme
@@ -444,14 +440,53 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 
 	// Basic type checks
 	// We already validated number of args, just verify types
-	bool isNvse = !isDefaultParse(cmd->parse);
-	for (int i = 0; i < cmd->numParams && i < expr->args.size(); i++) {
-		auto param = cmd->params[i];
-		auto arg = expr->args[i];
-		if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(cmd->params[i].typeID), arg->detailedType, isNvse, cmd)) {
-			WRAP_ERROR(
-				error(expr->token.line, expr->token.column, std::format("Invalid expression for parameter {}. Expected {} (got {}).", i + 1, param.typeStr, TokenTypeToString(arg->detailedType)));
-			)
+	if (!isDefaultParse(cmd->parse)) {
+		for (int i = 0; i < cmd->numParams && i < expr->args.size(); i++) {
+			auto param = cmd->params[i];
+			auto arg = expr->args[i];
+			WRAP_ERROR(arg->Accept(this))
+
+			if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(cmd->params[i].typeID), arg->detailedType, true, cmd)) {
+				WRAP_ERROR(
+					error(expr->token.line, expr->token.column, std::format("Invalid expression for parameter {}. Expected {} (got {}).", i + 1, param.typeStr, TokenTypeToString(arg->detailedType)));
+				)
+			}
+		}
+	} else {
+		for (int i = 0; i < cmd->numParams && i < expr->args.size(); i++) {
+			auto param = cmd->params[i];
+			auto arg = expr->args[i];
+
+			// Try to resolve identifiers as vanilla enums
+			auto ident = dynamic_cast<IdentExpr*>(arg.get());
+			uint32_t idx = -1;
+			if (ident) {
+				idx = resolveVanillaEnum(&param, ident->token.lexeme.c_str());
+			}
+			if (idx != -1) {
+				CompDbg("[line %d] INFO: Converting identifier '%s' to enum index %d\n", arg->line, ident->token.lexeme.c_str(), idx);
+				expr->args[i] = std::make_shared<NumberExpr>(NVSEToken{}, static_cast<double>(idx), false);
+				expr->args[i]->detailedType = kTokenType_Number;
+				continue;
+			}
+
+			// If user passed a form, check it
+			WRAP_ERROR(arg->Accept(this))
+			if (ident && arg->detailedType == kTokenType_Form) {
+				// Extract form from param
+				if (!doesFormMatchParamType(formCache[ident->token.lexeme], static_cast<ParamType>(param.typeID))) {
+					WRAP_ERROR(
+						error(expr->token.line, expr->token.column, std::format("Invalid expression for parameter {}. Expected {}.", i + 1, param.typeStr));
+					)
+				}
+			}
+
+			// Try to resolve as NVSE param
+			if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(cmd->params[i].typeID), arg->detailedType, true, cmd)) {
+				WRAP_ERROR(
+					error(expr->token.line, expr->token.column, std::format("Invalid expression for parameter {}. Expected {} (got {}).", i + 1, param.typeStr, TokenTypeToString(arg->detailedType)));
+				)
+			}
 		}
 	}
 
@@ -542,9 +577,10 @@ void NVSETypeChecker::VisitIdentExpr(IdentExpr* expr) {
 	}
 
 	// Try to find form
-	if (GetFormByID(name.c_str())) {
+	if (auto form = GetFormByID(name.c_str())) {
 		expr->detailedType = kTokenType_Form;
 		typeCache[name] = kTokenType_Form;
+		formCache[name] = form;
 		return;
 	}
 

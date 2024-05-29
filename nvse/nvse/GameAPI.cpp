@@ -105,16 +105,7 @@ const _ShowCompilerError ShowCompilerError = (_ShowCompilerError)0x005C5730; // 
 // 0x5C64C0 <- start of huge editor function that IDA can't disassemble.
 
 // 24
-struct AnimGroupInfo
-{
-	const char *name;	 // 00
-	UInt32 unk04;		 // 04
-	UInt32 sequenceType; // 08
-	UInt32 unk0C;		 // 0C
-	UInt32 unk10;		 // 10
-	UInt32 unk14[4];	 // 14
-}
-	*g_animGroupInfos = (AnimGroupInfo *)0xE98290;
+AnimGroupInfo *g_animGroupInfos = (AnimGroupInfo *)0xE98290;
 
 const char **g_formTypeNames = (const char **)0xEA6DB8;
 const char **g_alignmentTypeNames = (const char **)0xE93FF4;

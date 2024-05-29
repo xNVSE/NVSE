@@ -26,3 +26,6 @@ void CompDbg(const char *fmt, ...);
 void CompErr(const char *fmt, ...);
 
 bool isDefaultParse(Cmd_Parse parse);
+
+uint32_t resolveVanillaEnum(const ParamInfo* info, const char* str);
+bool doesFormMatchParamType(TESForm* form, ParamType type);
