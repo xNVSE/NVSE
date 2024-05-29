@@ -631,7 +631,7 @@ ExprPtr NVSEParser::Primary() {
 		}
 
 		// Int literal
-		return std::make_shared<NumberExpr>(previousToken, std::get<double>(previousToken.value), false);
+		return std::make_shared<NumberExpr>(previousToken, floor(std::get<double>(previousToken.value)), false);
 	}
 
 	if (Match(NVSETokenType::String)) {
