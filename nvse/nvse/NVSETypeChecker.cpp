@@ -398,7 +398,8 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 	if (auto &left = expr->left) {
 		left->Accept(this);
 
-		// See if we can match a command
+		// Try to restructure AST in the case of 'array.filter()' or 'string.find()' syntactic sugar
+		// array.filter(filterFn) becomes Ar_Filter(array, filterFn)
 		if (left->detailedType == kTokenType_Array || left->detailedType == kTokenType_ArrayVar || left->detailedType == kTokenType_String || left->detailedType == kTokenType_StringVar) {
 			if (left->detailedType == kTokenType_Array || left->detailedType == kTokenType_ArrayVar) {
 				expr->token.lexeme = "Ar_" + name;
@@ -422,6 +423,10 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 				if (ExpressionParser::ValidateArgType(static_cast<ParamType>(param.typeID), left->detailedType, true, cmd)) {
 					expr->args.insert(expr->args.begin() + i, expr->left);
 					expr->left = nullptr;
+
+					// InsertedIdx is used to ignore the argument in later type checking, as it has already been checked
+					// This is to resolve variable redeclaration errors, as it was declared already when checking LHS
+					// and it will get visited again when compiling the args
 					insertedIdx = i;
 					break;
 				}

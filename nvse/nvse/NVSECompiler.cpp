@@ -5,6 +5,19 @@
 #include "NVSEParser.h"
 #include "PluginAPI.h"
 
+enum OPCodes {
+    OP_LET = 0x1539,
+    OP_EVAL = 0x153A,
+    OP_WHILE = 0x153B,
+    OP_LOOP = 0x153C,
+    OP_FOREACH = 0x153D,
+    OP_TERNARY = 0x166E,
+    OP_CALL = 0x1545,
+    OP_SET_MOD_LOCAL_DATA = 0x1549,
+    OP_GET_MOD_LOCAL_DATA = 0x1548,
+    OP_SET_FUNCTION_VALUE = 0x1546,
+};
+
 bool NVSECompiler::Compile() {
     CompDbg("\n==== COMPILER ====\n\n");
     
@@ -208,7 +221,7 @@ void NVSECompiler::VisitVarDeclStmt(const VarDeclStmt* stmt) {
             // To do a similar thing on access
             lambdaVars.insert(token.lexeme);
 
-            StartCall("SetModLocalData");
+            StartCall(OP_SET_MOD_LOCAL_DATA);
             StartManualArg();
             AddString("__" + scriptName + "__" + token.lexeme);
             FinishManualArg();
@@ -223,7 +236,7 @@ void NVSECompiler::VisitVarDeclStmt(const VarDeclStmt* stmt) {
 
         statementCounter.top()++;
 
-        StartCall(0x1539);
+        StartCall(OP_LET);
         StartManualArg();
 
         // Add arg to stack
@@ -249,7 +262,7 @@ void NVSECompiler::VisitExprStmt(const ExprStmt* stmt) {
         stmt->expr->Accept(this);
     }
     else if (stmt->expr) {
-        StartCall(0x153A);
+        StartCall(OP_EVAL);
         AddCallArg(stmt->expr);
         FinishCall();
     } else {
@@ -275,7 +288,7 @@ void NVSECompiler::VisitForStmt(ForStmt* stmt) {
     // but it does something slightly different with the loopIncrements stack
     
     // OP_WHILE
-    AddU16(0x153B);
+    AddU16(OP_WHILE);
 
     // Placeholder OP_LEN
     auto exprPatch = AddU16(0x0);
@@ -308,7 +321,7 @@ void NVSECompiler::VisitForStmt(ForStmt* stmt) {
     }
     
     // OP_LOOP
-    AddU16(0x153c);
+    AddU16(OP_LOOP);
     AddU16(0x0);
 
     // OP_LOOP is an extra statement
@@ -337,7 +350,7 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
     }
 
     // OP_FOREACH
-    AddU16(0x153D);
+    AddU16(OP_FOREACH);
 
     // Placeholder OP_LEN
     auto exprPatch = AddU16(0x0);
@@ -369,7 +382,7 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
     loopIncrements.pop();
 
     // OP_LOOP
-    AddU16(0x153c);
+    AddU16(OP_LOOP);
     AddU16(0x0);
     statementCounter.top()++;
 
@@ -397,7 +410,7 @@ void NVSECompiler::VisitIfStmt(IfStmt* stmt) {
 
     // Enter NVSE eval
     AddU8(0x58);
-    StartCall(0x153A);
+    StartCall(OP_EVAL);
     AddCallArg(stmt->cond);
     FinishCall();
 
@@ -434,7 +447,7 @@ void NVSECompiler::VisitIfStmt(IfStmt* stmt) {
 void NVSECompiler::VisitReturnStmt(ReturnStmt* stmt) {
     // Compile SetFunctionValue if we have a return value
     if (stmt->expr) {
-        StartCall(0x1546);
+        StartCall(OP_SET_FUNCTION_VALUE);
         AddCallArg(stmt->expr);
         FinishCall();
     }
@@ -458,7 +471,7 @@ void NVSECompiler::VisitBreakStmt(BreakStmt* stmt) {
 
 void NVSECompiler::VisitWhileStmt(const WhileStmt* stmt) {
     // OP_WHILE
-    AddU16(0x153B);
+    AddU16(OP_WHILE);
 
     // Placeholder OP_LEN
     auto exprPatch = AddU16(0x0);
@@ -486,7 +499,7 @@ void NVSECompiler::VisitWhileStmt(const WhileStmt* stmt) {
     loopIncrements.pop();
     
     // OP_LOOP
-    AddU16(0x153c);
+    AddU16(OP_LOOP);
     AddU16(0x0);
     statementCounter.top()++;
 
@@ -530,7 +543,7 @@ void NVSECompiler::VisitBlockStmt(BlockStmt* stmt) {
 void NVSECompiler::VisitAssignmentExpr(AssignmentExpr* expr) {
     // Assignment as standalone statement
     if (!insideNvseExpr.top()) {
-        StartCall(0x1539);
+        StartCall(OP_LET);
         StartManualArg();
         expr->left->Accept(this);
         expr->expr->Accept(this);
@@ -551,7 +564,7 @@ void NVSECompiler::VisitAssignmentExpr(AssignmentExpr* expr) {
 }
 
 void NVSECompiler::VisitTernaryExpr(TernaryExpr* expr) {
-    StartCall(0x166E);
+    StartCall(OP_TERNARY);
     AddCallArg(expr->cond);
     AddCallArg(expr->left);
     AddCallArg(expr->right);
@@ -706,7 +719,7 @@ void NVSECompiler::VisitCallExpr(CallExpr* expr) {
             AddU16(0x0); // SCRV
         }
 
-        AddU16(0x1545);
+        AddU16(OP_CALL);
         auto callLengthStart = data.size() + (insideNvseExpr.top() ? 0 : 2);
         auto callLengthPatch = AddU16(0x0);
         insideNvseExpr.push(true);
@@ -743,7 +756,7 @@ void NVSECompiler::VisitCallExpr(CallExpr* expr) {
     // Quest.target.AddItem()
     if (expr->left && !insideNvseExpr.top()) {
         // OP_EVAL
-        StartCall(0x153A, expr->left);
+        StartCall(OP_EVAL, expr->left);
         AddCallArg(static_cast<ExprPtr>(expr));
         FinishCall();
         return;
@@ -804,7 +817,7 @@ void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
 
     // If this is a lambda var, inline it as a call to GetModLocalData
     if (lambdaVars.contains(name)) {
-        StartCall("GetModLocalData");
+        StartCall(OP_GET_MOD_LOCAL_DATA);
         StartManualArg();
         AddString("__" + scriptName + "__" + name);
         FinishManualArg();
