@@ -194,7 +194,8 @@
     <PostBuildEvent>
       <Message>Installing DLL...</Message>
       <Command>copy "$(TargetPath)" "$(FalloutNVPath)\nvse_1_4.dll"
-xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</Command>
+xcopy "$(ProjectDir)unit_tests\old_compiler" "$(FalloutNVPath)\Data\NVSE\unit_tests\old_compiler" /y /i
+xcopy "$(ProjectDir)unit_tests\new_compiler" "$(FalloutNVPath)\Data\NVSE\unit_tests\new_compiler" /y /i</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -238,7 +239,8 @@ xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</C
       <Message>Installing DLL and PDB...</Message>
       <Command>copy "$(TargetPath)" "$(FalloutNVPath)\nvse_1_4.dll"
 copy "$(SolutionDir)Release\$(TargetName).pdb" "$(FalloutNVPath)\nvse_1_4.pdb"
-xcopy "$(ProjectDir)unit_tests" "$(FalloutNVPath)\Data\NVSE\unit_tests" /y /i</Command>
+xcopy "$(ProjectDir)unit_tests\old_compiler" "$(FalloutNVPath)\Data\NVSE\unit_tests\old_compiler" /y /i
+xcopy "$(ProjectDir)unit_tests\new_compiler" "$(FalloutNVPath)\Data\NVSE\unit_tests\new_compiler" /y /i</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_DBG|Win32'">
