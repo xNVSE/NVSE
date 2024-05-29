@@ -22,7 +22,7 @@ void CompDbg(const char* fmt, ...) {
 #else
 	char buf[1024];
 	vsprintf(buf, fmt, argList);
-    _DMESSAGE(buf, argList);
+	v_DMESSAGE(fmt, argList);
 #endif
 	va_end(argList);
 }
@@ -35,7 +35,7 @@ void CompErr(const char* fmt, ...) {
 #ifdef EDITOR
 	vprintf(fmt, argList);
 #else
-    ShowRuntimeError(nullptr, fmt, argList);
+    vShowRuntimeError(nullptr, fmt, argList);
 #endif
 	va_end(argList);
 }

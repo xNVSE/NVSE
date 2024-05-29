@@ -936,24 +936,21 @@ const char* GetModName(TESForm* form)
 #if NVSE_CORE
 UnorderedSet<UInt32> g_warnedScripts;
 
-void ShowRuntimeError(Script* script, const char* fmt, ...)
+void vShowRuntimeError(Script* script, const char* fmt, va_list args)
 {
-	va_list args;
-	va_start(args, fmt);
-
 	char errorMsg[0x800];
 	vsprintf_s(errorMsg, sizeof(errorMsg), fmt, args);
-	
+
 	char errorHeader[0x900];
 	const auto* modName = GetModName(script);
-	
+
 	const auto* scriptName = script ? script->GetName() : nullptr; // JohnnyGuitarNVSE allows this
 	auto refId = script ? script->refID : 0;
 	const auto modIdx = script ? script->GetModIndex() : 0;
 	if (script && LambdaManager::IsScriptLambda(script))
 	{
 		Script* parentScript;
-		if (auto* parentEventList = LambdaManager::GetParentEventList(script); 
+		if (auto* parentEventList = LambdaManager::GetParentEventList(script);
 			parentEventList && ((parentScript = parentEventList->m_script)))
 		{
 			refId = parentScript->refID;
@@ -984,6 +981,14 @@ void ShowRuntimeError(Script* script, const char* fmt, ...)
 	_MESSAGE("%s", errorHeader);
 
 	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_RuntimeScriptError, errorMsg, 4, NULL);
+}
+
+void ShowRuntimeError(Script* script, const char* fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+
+	vShowRuntimeError(script, fmt, args);
 
 	va_end(args);
 }
