@@ -379,11 +379,6 @@ void NVSETypeChecker::VisitSubscriptExpr(SubscriptExpr* expr) {
 	expr->index->Accept(this);
 
 	auto lhsType = expr->left->detailedType;
-	if (lhsType != kTokenType_ArrayVar && lhsType != kTokenType_Array) {
-		error(expr->op.line, std::format("Invalid type '{}' for operator [].", TokenTypeToString(lhsType)));
-		return;
-	}
-
 	auto indexType = expr->index->detailedType;
 	auto outputType = s_operators[kOpType_LeftBracket].GetResult(lhsType, indexType);
 	if (outputType == kTokenType_Invalid) {
