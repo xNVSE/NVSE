@@ -54,6 +54,8 @@ public:
 	// Keep track of lambda vars as these get inlined
 	std::set<std::string> lambdaVars{};
 
+	std::set<std::string> requirements{};
+
 	// Look up a local variable, or create it if not already defined
 	uint16_t AddLocal(std::string identifier, uint8_t type) {
 		if (auto info = script->GetVariableByName(identifier.c_str())) {

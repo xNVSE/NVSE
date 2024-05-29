@@ -28,40 +28,38 @@ std::optional<NVSEScript> NVSEParser::Parse() {
 
 		name = dynamic_cast<IdentExpr*>(expr.get())->token;
 
+		int numEventBlocks = 0, numFnBlocks = 0;
 		while (currentToken.type != NVSETokenType::Eof) {
 			try {
-				if (Peek(NVSETokenType::BlockType) || Peek(NVSETokenType::Fn)) {
-					break;
+				// Get event or udf block
+				if (Peek(NVSETokenType::BlockType)) {
+					if (numFnBlocks > 0) {
+						Error(currentToken, "Cannot mix event blocks and function blocks in the same script.");
+					}
+					numEventBlocks++;
+					blocks.emplace_back(Begin());
 				}
-
-				auto stmt = Statement();
-				if (!stmt->IsType<VarDeclStmt>()) {
-					Error(previousToken, "Expected variable declaration.");
+				else if (Match(NVSETokenType::Fn)) {
+					if (numEventBlocks > 0) {
+						Error(currentToken, "Cannot mix event blocks and function blocks in the same script.");
+					}
+					numFnBlocks++;
+					blocks.emplace_back(FnDecl());
 				}
-
-				globals.emplace_back(std::move(stmt));
+				else if (Peek(NVSETokenType::IntType) || Peek(NVSETokenType::DoubleType) || Peek(NVSETokenType::RefType) ||
+					Peek(NVSETokenType::ArrayType) || Peek(NVSETokenType::StringType)) {
+					globals.emplace_back(VarDecl());
+					Expect(NVSETokenType::Semicolon, "Expected ';' at end of statement.");
+				}
+				else {
+					Error(currentToken, "Expected variable declaration, block type (GameMode, MenuMode, ...), or 'fn'.");
+				}
 			}
 			catch (NVSEParseError e) {
-				CompErr("%s\n", e.what());
 				hadError = true;
+				CompErr("%s\n", e.what());
 				Synchronize();
 			}
-		}
-
-		// Get event or udf block
-		if (Peek(NVSETokenType::BlockType)) {
-			blocks.emplace_back(Begin());
-		}
-		else if (Match(NVSETokenType::Fn)) {
-			blocks.emplace_back(FnDecl());
-		}
-		else {
-			Error(currentToken, "Expected block type (GameMode, MenuMode, ...) or 'fn'.");
-		}
-
-		// Only allow one block for now
-		if (Match(NVSETokenType::BlockType) || Match(NVSETokenType::Fn)) {
-			Error(currentToken, "Cannot have multiple blocks in one script.");
 		}
 	}
 	catch (NVSEParseError e) {
@@ -764,6 +762,7 @@ void NVSEParser::Synchronize() {
 		case NVSETokenType::For:
 		case NVSETokenType::Return:
 		case NVSETokenType::RightBrace:
+		case NVSETokenType::BlockType:
 			panicMode = false;
 			return;
 		default: ;

@@ -3,6 +3,7 @@
 #include "Commands_Scripting.h"
 #include "NVSECompilerUtils.h"
 #include "NVSEParser.h"
+#include "PluginAPI.h"
 
 bool NVSECompiler::Compile() {
     CompDbg("\n==== COMPILER ====\n\n");
@@ -54,6 +55,12 @@ bool NVSECompiler::Compile() {
         CompDbg("%02X ", script->data[i]);
     }
     
+    CompDbg("\n\n");
+    CompDbg("[Requirements]\n");
+    for (std::string requirement : requirements) {
+        CompDbg("%s\n", requirement.c_str());
+    }
+
     CompDbg("\n");
     CompDbg("\nNum compiled bytes: %d\n", script->info.dataLength);
 
@@ -613,6 +620,10 @@ void NVSECompiler::FinishCall() {
 }
 
 void NVSECompiler::StartCall(CommandInfo* cmd, ExprPtr stackRef) {
+    if (const auto plugin = g_scriptCommands.GetParentPlugin(cmd)->name) {
+        requirements.insert(std::string(g_scriptCommands.GetParentPlugin(cmd)->name));
+    }
+
     // Handle stack refs
     if (stackRef) {
         stackRef->Accept(this);
