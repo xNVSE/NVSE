@@ -14,9 +14,11 @@ std::string get_stem(const fs::path& p) { return p.stem().string(); }
 
 namespace ScriptFunctionTests
 {
-	void RunTests()
+	void RunTestsForCompilerVersion(bool testOldCompiler)
 	{
-		for (const auto& entry : fs::directory_iterator(fs::current_path() / "data/nvse/unit_tests"))
+		const char* path = testOldCompiler ? "data/nvse/unit_tests/old_compiler" : "data/nvse/unit_tests/new_compiler";
+		const char* debugStr = testOldCompiler ? "Old compiler" : "New compiler";
+		for (const auto& entry : fs::directory_iterator(fs::current_path() / path))
 		{
 			if (!entry.is_regular_file())
 				continue;
@@ -35,11 +37,17 @@ namespace ScriptFunctionTests
 			}
 			else
 			{
-				Console_Print("Error in xNVSE unit test file %s: script failed to compile.", 
-					fileName.c_str());
+				Console_Print("%s: Error in xNVSE unit test file %s: script failed to compile.", 
+					debugStr, fileName.c_str());
 			}
 		}
-		Console_Print("Finished running xNVSE script unit tests.");
+		Console_Print("%s: Finished running xNVSE script unit tests.", debugStr);
+	}
+
+	void RunTests()
+	{
+		RunTestsForCompilerVersion(true);
+		RunTestsForCompilerVersion(false);
 	}
 }
 
