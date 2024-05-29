@@ -111,33 +111,64 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 		return tok;
 	}
 
-	bool inComment = false;
-	while (pos < input.size()) {
-		if (!std::isspace(input[pos]) && !inComment) {
-			if (pos < input.size() - 2 && input[pos] == '/' && input[pos + 1] == '/') {
-				inComment = true;
+	// Skip over comments and whitespace in this block.
+	{
+		// Using an enum instead of two bools, since it's impossible to be in a singleline comment and a multiline comment at once.
+		enum class InWhatComment
+		{
+			None = 0,
+			SingleLine,
+			MultiLine
+		} inWhatComment = InWhatComment::None;
+
+		while (pos < input.size()) {
+			if (!std::isspace(input[pos]) && inWhatComment == InWhatComment::None) {
+				if (pos < input.size() - 2 && input[pos] == '/') {
+					if (input[pos + 1] == '/') {
+						inWhatComment = InWhatComment::SingleLine;
+						pos += 2;
+					}
+					else if (input[pos + 1] == '*')
+					{
+						inWhatComment = InWhatComment::MultiLine;
+						pos += 2;
+					}
+				}
+				else {
+					break;
+				}
+			}
+
+			if (inWhatComment == InWhatComment::MultiLine &&
+				(pos < input.size() - 2) && input[pos] == '*' && input[pos + 1] == '/')
+			{
+				inWhatComment = InWhatComment::None;
 				pos += 2;
+				continue; // could be entering another comment right after this one; 
+				// Don't want to reach the end of the loop and increment `pos` before that.
+			}
+
+			if (input[pos] == '\n') {
+				line++;
+				column = 1;
+				if (inWhatComment == InWhatComment::SingleLine) {
+					inWhatComment = InWhatComment::None;
+				}
+			}
+			else if (input[pos] == '\r' && (pos < input.size() - 1) && input[pos + 1] == '\n') {
+				line++;
+				pos++;
+				column = 1;
+				if (inWhatComment == InWhatComment::SingleLine) {
+					inWhatComment = InWhatComment::None;
+				}
 			}
 			else {
-				break;
+				column++;
 			}
-		}
 
-		if (input[pos] == '\n') {
-			line++;
-			column = 1;
-			inComment = false;
-		} else if (input[pos] == '\r' && pos < input.size() - 1 && input[pos + 1] == '\n') {
-			line++;
 			pos++;
-			column = 1;
-			inComment = false;
 		}
-		else {
-			column++;
-		}
-
-		pos++;
 	}
 
 	if (pos >= input.size()) {

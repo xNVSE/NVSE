@@ -582,35 +582,5 @@
     <Text Include="UnitTests.h">
       <Filter>unit tests</Filter>
     </Text>
-    <Text Include="unit_tests\array_functions.txt">
-      <Filter>unit tests</Filter>
-    </Text>
-    <Text Include="unit_tests\event_handler_functions.txt">
-      <Filter>unit tests</Filter>
-    </Text>
-    <Text Include="unit_tests\udf_functions.txt">
-      <Filter>unit tests</Filter>
-    </Text>
-    <Text Include="unit_tests\TestExpr.txt">
-      <Filter>unit tests</Filter>
-    </Text>
-    <Text Include="unit_tests\CallAfterFrames.txt">
-      <Filter>unit tests</Filter>
-    </Text>
-    <Text Include="unit_tests\event_handler_priority_system.txt">
-      <Filter>unit tests</Filter>
-    </Text>
-    <Text Include="unit_tests\conversions_between_num_and_string.txt">
-      <Filter>unit tests</Filter>
-    </Text>
-    <Text Include="unit_tests\let_macro.txt">
-      <Filter>unit tests</Filter>
-    </Text>
-    <Text Include="unit_tests\multiple_variable_declarations_macro.txt">
-      <Filter>unit tests</Filter>
-    </Text>
-    <Text Include="unit_tests\short_and_long_param_types_in_UDF.txt">
-      <Filter>unit tests</Filter>
-    </Text>
   </ItemGroup>
 </Project>
