@@ -379,11 +379,6 @@ void NVSETypeChecker::VisitSubscriptExpr(SubscriptExpr* expr) {
 	expr->index->Accept(this);
 
 	auto lhsType = expr->left->detailedType;
-	if (lhsType != kTokenType_ArrayVar && lhsType != kTokenType_Array) {
-		error(expr->op.line, std::format("Invalid type '{}' for operator [].", TokenTypeToString(lhsType)));
-		return;
-	}
-
 	auto indexType = expr->index->detailedType;
 	auto outputType = s_operators[kOpType_LeftBracket].GetResult(lhsType, indexType);
 	if (outputType == kTokenType_Invalid) {
@@ -396,17 +391,70 @@ void NVSETypeChecker::VisitSubscriptExpr(SubscriptExpr* expr) {
 }
 
 void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
+	std::string name = expr->token.lexeme;
+	auto cmd = g_scriptCommands.GetByName(name.c_str());
+
+	int insertedIdx = -1;
 	if (auto &left = expr->left) {
 		left->Accept(this);
+
+		// See if we can match a command
+		if (left->detailedType == kTokenType_Array || left->detailedType == kTokenType_ArrayVar) {
+			cmd = g_scriptCommands.GetByName(("Ar_" + name).c_str());
+			if (!cmd) {
+				error(expr->token.line, expr->token.column, std::format("Invalid command '{}'.", name));
+			}
+
+			// Rename command
+			expr->token.lexeme = "Ar_" + name;
+			if (expr->args.size() + 1 < cmd->numParams) {
+				error(expr->token.line, expr->token.column, std::format("Invalid number of parameters specified for command {} (Expected '{}', Got {}).", name, cmd->numParams - 1, expr->args.size() + 1));
+			}
+
+			// Scan for replacement index
+			for (int i = 0; i < cmd->numParams; i++) {
+				auto param = cmd->params[i];
+				if (ExpressionParser::ValidateArgType(static_cast<ParamType>(param.typeID), left->detailedType, true, cmd)) {
+					expr->args.insert(expr->args.begin() + i, expr->left);
+					expr->left = nullptr;
+					insertedIdx = i;
+					break;
+				}
+			}
+		}
+
+		// See if we can match a command
+		else if (left->detailedType == kTokenType_String || left->detailedType == kTokenType_StringVar) {
+			cmd = g_scriptCommands.GetByName(("Sv_" + name).c_str());
+			if (!cmd) {
+				error(expr->token.line, expr->token.column, std::format("Invalid command '{}'.", name));
+			}
+
+			expr->token.lexeme = "Sv_" + name;
+			if (expr->args.size() + 1 < cmd->numParams) {
+				error(expr->token.line, expr->token.column, std::format("Invalid number of parameters specified for command (Expected '{}', Got {}).", name, cmd->numParams - 1, expr->args.size() + 1));
+			}
+
+			// Scan for replacement index
+			for (int i = 0; i < cmd->numParams; i++) {
+				auto param = cmd->params[i];
+				if (ExpressionParser::ValidateArgType(static_cast<ParamType>(param.typeID), left->detailedType, true, cmd)) {
+					expr->args.insert(expr->args.begin() + i, expr->left);
+					expr->left = nullptr;
+					insertedIdx = i;
+					break;
+				}
+			}
+		}
 	}
 
-	std::string name = expr->token.lexeme;
-
 	// Try to get the script command by lexeme
-	const auto cmd = g_scriptCommands.GetByName(name.c_str());
 	if (!cmd) {
-		error(expr->token.line, expr->token.column, std::format("Invalid command '{}'.", name));
-		return;
+		cmd = g_scriptCommands.GetByName(name.c_str());
+		if (!cmd) {
+			error(expr->token.line, expr->token.column, std::format("Invalid command '{}'.", name));
+			return;
+		}
 	}
 	expr->cmdInfo = cmd;
 
@@ -444,7 +492,12 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 		for (int i = 0; i < cmd->numParams && i < expr->args.size(); i++) {
 			auto param = cmd->params[i];
 			auto arg = expr->args[i];
-			WRAP_ERROR(arg->Accept(this))
+
+			// If we injected another param for something like array.filter(fn () -> {}) into Ar_Filter(array, fn () -> {})
+			// Revisiting will cause a variable re-declaration exception
+			if (i != insertedIdx) {
+				WRAP_ERROR(arg->Accept(this))
+			}
 
 			if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(cmd->params[i].typeID), arg->detailedType, true, cmd)) {
 				WRAP_ERROR(
