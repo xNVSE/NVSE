@@ -122,6 +122,11 @@ inline void _VMESSAGE(const char * fmt, ...)
 	va_end(args);
 }
 
+inline void v_DMESSAGE(const char* fmt, va_list args)
+{
+	gLog.Log(IDebugLog::kLevel_DebugMessage, fmt, args);
+}
+
 inline void _DMESSAGE(const char * fmt, ...)
 {
 	va_list args;
