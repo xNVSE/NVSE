@@ -609,6 +609,9 @@ std::unique_ptr<ScriptToken> Eval_PlusEquals_Number(OperatorType op, ScriptToken
 {
 	ScriptLocal *var = lh->GetVar();
 	var->data += rh->GetNumber();
+	if (lh->GetVariableType() == Script::eVarType_Integer)
+		var->data = floor(var->data);
+
 	return ScriptToken::Create(var->data);
 }
 
@@ -616,6 +619,8 @@ std::unique_ptr<ScriptToken> Eval_MinusEquals_Number(OperatorType op, ScriptToke
 {
 	ScriptLocal *var = lh->GetVar();
 	var->data -= rh->GetNumber();
+	if (lh->GetVariableType() == Script::eVarType_Integer)
+		var->data = floor(var->data);
 	return ScriptToken::Create(var->data);
 }
 
@@ -623,6 +628,8 @@ std::unique_ptr<ScriptToken> Eval_TimesEquals(OperatorType op, ScriptToken *lh, 
 {
 	ScriptLocal *var = lh->GetVar();
 	var->data *= rh->GetNumber();
+	if (lh->GetVariableType() == Script::eVarType_Integer)
+		var->data = floor(var->data);
 	return ScriptToken::Create(var->data);
 }
 
@@ -636,6 +643,8 @@ std::unique_ptr<ScriptToken> Eval_DividedEquals(OperatorType op, ScriptToken *lh
 	}
 	ScriptLocal *var = lh->GetVar();
 	var->data /= rhNum;
+	if (lh->GetVariableType() == Script::eVarType_Integer)
+		var->data = floor(var->data);
 	return ScriptToken::Create(var->data);
 }
 
@@ -645,6 +654,8 @@ std::unique_ptr<ScriptToken> Eval_ExponentEquals(OperatorType op, ScriptToken *l
 	const double rhNum = rh->GetNumber();
 	const double lhNum = var->data;
 	var->data = pow(lhNum, rhNum);
+	if (lh->GetVariableType() == Script::eVarType_Integer)
+		var->data = floor(var->data);
 	return ScriptToken::Create(var->data);
 }
 
@@ -665,20 +676,29 @@ std::unique_ptr<ScriptToken> Eval_HandleEquals(OperatorType op, ScriptToken *lh,
 
 std::unique_ptr<ScriptToken> Eval_PlusEquals_Global(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	lh->GetGlobal()->data += rh->GetNumber();
-	return ScriptToken::Create(static_cast<double>(lh->GetGlobal()->data));
+	auto* global = lh->GetGlobal();
+	global->data += rh->GetNumber();
+	if (global->type != TESGlobal::kType_Float)
+		global->data = floor(global->data);
+	return ScriptToken::Create(static_cast<double>(global->data));
 }
 
 std::unique_ptr<ScriptToken> Eval_MinusEquals_Global(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	lh->GetGlobal()->data -= rh->GetNumber();
-	return ScriptToken::Create(static_cast<double>(lh->GetGlobal()->data));
+	auto* global = lh->GetGlobal();
+	global->data -= rh->GetNumber();
+	if (global->type != TESGlobal::kType_Float)
+		global->data = floor(global->data);
+	return ScriptToken::Create(static_cast<double>(global->data));
 }
 
 std::unique_ptr<ScriptToken> Eval_TimesEquals_Global(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	lh->GetGlobal()->data *= rh->GetNumber();
-	return ScriptToken::Create(static_cast<double>(lh->GetGlobal()->data));
+	auto* global = lh->GetGlobal();
+	global->data *= rh->GetNumber();
+	if (global->type != TESGlobal::kType_Float)
+		global->data = floor(global->data);
+	return ScriptToken::Create(static_cast<double>(global->data));
 }
 
 std::unique_ptr<ScriptToken> Eval_DividedEquals_Global(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
@@ -690,15 +710,20 @@ std::unique_ptr<ScriptToken> Eval_DividedEquals_Global(OperatorType op, ScriptTo
 		return nullptr;
 	}
 
-	lh->GetGlobal()->data /= num;
-	return ScriptToken::Create(static_cast<double>(lh->GetGlobal()->data));
+	auto* global = lh->GetGlobal();
+	global->data /= num;
+	if (global->type != TESGlobal::kType_Float)
+		global->data = floor(global->data);
+	return ScriptToken::Create(static_cast<double>(global->data));
 }
 
 std::unique_ptr<ScriptToken> Eval_ExponentEquals_Global(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	const double lhNum = lh->GetGlobal()->data;
-	lh->GetGlobal()->data = pow(lhNum, rh->GetNumber());
-	return ScriptToken::Create(static_cast<double>(lh->GetGlobal()->data));
+	auto* global = lh->GetGlobal();
+	global->data = pow(global->data, rh->GetNumber());
+	if (global->type != TESGlobal::kType_Float)
+		global->data = floor(global->data);
+	return ScriptToken::Create(static_cast<double>(global->data));
 }
 
 std::unique_ptr<ScriptToken> Eval_HandleEquals_Global(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
