@@ -399,40 +399,21 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 		left->Accept(this);
 
 		// See if we can match a command
-		if (left->detailedType == kTokenType_Array || left->detailedType == kTokenType_ArrayVar) {
-			cmd = g_scriptCommands.GetByName(("Ar_" + name).c_str());
+		if (left->detailedType == kTokenType_Array || left->detailedType == kTokenType_ArrayVar || left->detailedType == kTokenType_String || left->detailedType == kTokenType_StringVar) {
+			if (left->detailedType == kTokenType_Array || left->detailedType == kTokenType_ArrayVar) {
+				expr->token.lexeme = "Ar_" + name;
+			} else {
+				expr->token.lexeme = "Sv_" + name;
+			}
+
+			cmd = g_scriptCommands.GetByName(expr->token.lexeme.c_str());
 			if (!cmd) {
 				error(expr->token.line, expr->token.column, std::format("Invalid command '{}'.", name));
 			}
 
-			// Rename command
-			expr->token.lexeme = "Ar_" + name;
+			// Check arg count
 			if (expr->args.size() + 1 < cmd->numParams) {
 				error(expr->token.line, expr->token.column, std::format("Invalid number of parameters specified for command {} (Expected '{}', Got {}).", name, cmd->numParams - 1, expr->args.size() + 1));
-			}
-
-			// Scan for replacement index
-			for (int i = 0; i < cmd->numParams; i++) {
-				auto param = cmd->params[i];
-				if (ExpressionParser::ValidateArgType(static_cast<ParamType>(param.typeID), left->detailedType, true, cmd)) {
-					expr->args.insert(expr->args.begin() + i, expr->left);
-					expr->left = nullptr;
-					insertedIdx = i;
-					break;
-				}
-			}
-		}
-
-		// See if we can match a command
-		else if (left->detailedType == kTokenType_String || left->detailedType == kTokenType_StringVar) {
-			cmd = g_scriptCommands.GetByName(("Sv_" + name).c_str());
-			if (!cmd) {
-				error(expr->token.line, expr->token.column, std::format("Invalid command '{}'.", name));
-			}
-
-			expr->token.lexeme = "Sv_" + name;
-			if (expr->args.size() + 1 < cmd->numParams) {
-				error(expr->token.line, expr->token.column, std::format("Invalid number of parameters specified for command (Expected '{}', Got {}).", name, cmd->numParams - 1, expr->args.size() + 1));
 			}
 
 			// Scan for replacement index
