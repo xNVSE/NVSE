@@ -127,12 +127,11 @@ void NVSECompiler::VisitBeginStmt(const BeginStmt* stmt) {
     if (stmt->param.has_value()) {
         auto param = stmt->param.value();
 
-        AddU16(0xFFFF);
-        auto varStart = data.size();
-        auto varPatch = AddU16(0x0);
+        // Num args
+        AddU16(0x1);
 
         if (beginInfo->params[0].typeID == kParamType_Integer) {
-            AddU8('L');
+            AddU8('n');
             AddU32(static_cast<uint32_t>(std::get<double>(param.value)));
         }
 
@@ -140,15 +139,13 @@ void NVSECompiler::VisitBeginStmt(const BeginStmt* stmt) {
         else {
             // Try to resolve the global ref
             if (auto ref = ResolveObjReference(param.lexeme)) {
-                AddU8('R');
+                AddU8('r');
                 AddU16(ref);
             }
             else {
                 throw std::runtime_error(std::format("Unable to resolve form '{}'.", param.lexeme));
             }
         }
-
-        SetU16(varPatch, data.size() - varStart);
     }
 
     SetU16(beginPatch, data.size() - beginStart);
