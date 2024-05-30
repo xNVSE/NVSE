@@ -604,9 +604,9 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 				if (const TokenPair* pair = eval.Arg(i)->GetPair(); 
 					pair && pair->left && pair->right) [[likely]]
 				{
-					const char* key = pair->left->GetString();
-					if (key && key[0])
+					if (pair->left->Type() == kTokenType_String || pair->left->Type() == kTokenType_StringVar)
 					{
+						const char* key = pair->left->GetString();
 						if (!StrCompare(key, "priority"))
 						{
 							outPriority = static_cast<int>(pair->right->GetNumber());
@@ -625,7 +625,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 								outCallback.object = pair->right->GetTESForm();
 								continue;
 							}
-							eval.Error("Invalid string filter key %s passed, ignoring it.", key ? key : "NULL");
+							eval.Error("Invalid string filter key \"%s\" passed, ignoring it.", key ? key : "NULL");
 							continue;  // don't return false, in case previous mods would be broken by that change.
 						}
 						//else, assume AllowNewFilters is true
@@ -633,7 +633,8 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 						return false;
 					}
 
-					if constexpr (AllowNewFilters) // assume number-type key
+					// Else, handle number-key filter
+					if constexpr (AllowNewFilters)
 					{
 						const auto index = static_cast<int>(pair->left->GetNumber());
 						if (index < 0) [[unlikely]]
