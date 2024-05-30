@@ -604,9 +604,9 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 				if (const TokenPair* pair = eval.Arg(i)->GetPair(); 
 					pair && pair->left && pair->right) [[likely]]
 				{
-					const char* key = pair->left->GetString();
-					if (key && key[0])
+					if (pair->left->Type() == kTokenType_String || pair->left->Type() == kTokenType_StringVar)
 					{
+						const char* key = pair->left->GetString();
 						if (!StrCompare(key, "priority"))
 						{
 							outPriority = static_cast<int>(pair->right->GetNumber());
@@ -625,7 +625,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 								outCallback.object = pair->right->GetTESForm();
 								continue;
 							}
-							eval.Error("Invalid string filter key %s passed, ignoring it.", key ? key : "NULL");
+							eval.Error("Invalid string filter key \"%s\" passed, ignoring it.", key ? key : "NULL");
 							continue;  // don't return false, in case previous mods would be broken by that change.
 						}
 						//else, assume AllowNewFilters is true
@@ -633,7 +633,8 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 						return false;
 					}
 
-					if constexpr (AllowNewFilters) // assume number-type key
+					// Else, handle number-key filter
+					if constexpr (AllowNewFilters)
 					{
 						const auto index = static_cast<int>(pair->left->GetNumber());
 						if (index < 0) [[unlikely]]
@@ -1753,6 +1754,60 @@ bool Cmd_CompileScript_Execute(COMMAND_ARGS)
 #if _DEBUG
 				Console_Print("CompileScript >> Had to compile script; couldn't find cached script.");
 #endif
+			}
+		}
+	}
+	return true;
+}
+
+bool Cmd_MatchesAnyOf_Execute(COMMAND_ARGS)
+{
+	*result = false;
+	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+		eval.ExtractArgs())
+	{
+		const auto valTokenToMatch = eval.Arg(0);
+		const auto type = valTokenToMatch->GetTokenTypeAsVariableType();
+
+		for (int i = 1; i < eval.NumArgs(); ++i)
+		{
+			switch (type)
+			{
+			case Script::VariableType::eVarType_Float:
+			case Script::VariableType::eVarType_Integer:
+				if (FloatEqual(valTokenToMatch->GetNumber(), eval.Arg(i)->GetNumber()))
+				{
+					*result = 1;
+					return true;
+				}
+				break;
+
+			case Script::VariableType::eVarType_String:
+				if (StrEqual(valTokenToMatch->GetString(), eval.Arg(i)->GetString()))
+				{
+					*result = 1;
+					return true;
+				}
+				break;
+
+			case Script::VariableType::eVarType_Ref:
+				if (valTokenToMatch->GetFormID() == eval.Arg(i)->GetFormID())
+				{
+					*result = 1;
+					return true;
+				}
+				break;
+
+			case Script::VariableType::eVarType_Array:
+				if (valTokenToMatch->GetArrayVar()->Equals(eval.Arg(i)->GetArrayVar()))
+				{
+					*result = 1;
+					return true;
+				}
+				break;
+
+			default:
+				return true;
 			}
 		}
 	}
