@@ -1861,15 +1861,15 @@ void CommandTable::AddCommandsV4()
 	ADD_CMD_RET(sv_Construct, kRetnType_String);
 	ADD_CMD(sv_Set);
 	ADD_CMD(sv_Compare);
-	ADD_CMD(sv_Length_OLD);
-	ADD_CMD(sv_Erase_OLD);
-	ADD_CMD_RET(sv_SubString_OLD, kRetnType_String);
-	ADD_CMD(sv_ToNumeric_OLD);
+	ADD_CMD(sv_Length);
+	ADD_CMD(sv_Erase);
+	ADD_CMD_RET(sv_SubString, kRetnType_String);
+	ADD_CMD(sv_ToNumeric);
 	ADD_CMD(sv_Insert);
 	ADD_CMD(sv_Count);
 	ADD_CMD(sv_Find);
 	ADD_CMD(sv_Replace);
-	ADD_CMD(sv_GetChar_OLD);
+	ADD_CMD(sv_GetChar);
 	ADD_CMD_RET(sv_Split, kRetnType_Array);
 	ADD_CMD_RET(sv_Percentify, kRetnType_String);
 	ADD_CMD_RET(sv_ToUpper, kRetnType_String);
@@ -2219,21 +2219,6 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(DumpCommandWikiDocs);
 	ADD_CMD(SetModelPath);
 	ADD_CMD_RET(Ternary, kRetnType_Ambiguous);
-	//== Redefine some string_var functions to use Expression Evaluator (to avoid hack of using int-type arg for string_var).
-	ADD_CMD(sv_Length);
-	ADD_CMD(sv_Erase);
-	ADD_CMD_RET(sv_SubString, kRetnType_String);
-	ADD_CMD(sv_ToNumeric);
-	ADD_CMD(sv_GetChar);
-
-	//== Can't quite replace these yet; first need to reimplement FormatString args for ExpressionEvaluator.
-	//ADD_CMD(sv_Compare); 
-	//ADD_CMD(sv_Count);
-	//ADD_CMD(sv_Find);
-	//ADD_CMD(sv_Replace);
-	//ADD_CMD(sv_Insert);
-
-
 }
 
 namespace PluginAPI

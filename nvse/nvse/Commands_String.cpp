@@ -85,7 +85,7 @@ bool Cmd_sv_Destruct_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool Cmd_sv_SubString_OLD_Execute(COMMAND_ARGS)
+bool Cmd_sv_SubString_Execute(COMMAND_ARGS)
 {
 	UInt32 rhStrID = 0;
 	UInt32 startPos = 0;
@@ -102,37 +102,6 @@ bool Cmd_sv_SubString_OLD_Execute(COMMAND_ARGS)
 			howMany = rhVar->GetLength() - startPos;
 
 		subStr = rhVar->SubString(startPos, howMany);
-	}
-
-	AssignToStringVar(PASS_COMMAND_ARGS, subStr.c_str());
-	return true;
-}
-bool Cmd_sv_SubString_Execute(COMMAND_ARGS)
-{
-	std::string subStr{};
-
-	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS); 
-		eval.ExtractArgs() && eval.Arg(0))
-	{
-		if (auto* strVar = eval.Arg(0)->GetStringVar())
-		{
-			UInt32 startPos = 0;
-			UInt32 howMany = -1;
-
-			if (eval.NumArgs() >= 2)
-			{
-				startPos = static_cast<UInt32>(eval.Arg(1)->GetNumber());
-				if (eval.NumArgs() >= 3)
-				{
-					howMany = static_cast<UInt32>(eval.Arg(2)->GetNumber());
-				}
-			}
-
-			if (howMany == -1)
-				howMany = strVar->GetLength() - startPos;
-
-			subStr = strVar->SubString(startPos, howMany);
-		}
 	}
 
 	AssignToStringVar(PASS_COMMAND_ARGS, subStr.c_str());
@@ -158,7 +127,7 @@ bool Cmd_sv_Compare_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool Cmd_sv_Length_OLD_Execute(COMMAND_ARGS)
+bool Cmd_sv_Length_Execute(COMMAND_ARGS)
 {
 	*result = -1; // sentinel value if extraction fails
 	UInt32 strID = 0;
@@ -171,25 +140,8 @@ bool Cmd_sv_Length_OLD_Execute(COMMAND_ARGS)
 
 	return true;
 }
-bool Cmd_sv_Length_Execute(COMMAND_ARGS)
-{
-	*result = -1; // sentinel value if extraction fails
-	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	if (!eval.ExtractArgs())
-		return true;
 
-	auto* token = eval.Arg(0);
-	if (!token)
-		return true;
-
-	auto* strVar = token->GetStringVar();
-	if (!strVar)
-		return true;
-	*result = strVar->GetLength();
-	return true;
-}
-
-bool Cmd_sv_Erase_OLD_Execute(COMMAND_ARGS)
+bool Cmd_sv_Erase_Execute(COMMAND_ARGS)
 {
 	*result = 0;
 	UInt32 strID = 0;
@@ -210,44 +162,6 @@ bool Cmd_sv_Erase_OLD_Execute(COMMAND_ARGS)
 
 	return true;
 }
-bool Cmd_sv_Erase_Execute(COMMAND_ARGS)
-{
-	*result = 0;
-	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	if (!eval.ExtractArgs())
-		return true;
-
-	auto* token = eval.Arg(0);
-	if (!token)
-		return true;
-
-	auto* strVar = token->GetStringVar();
-	if (!strVar)
-		return true;
-
-	if (strVar)
-	{
-		UInt32 startPos = 0;
-		UInt32 howMany = -1;
-
-		if (eval.NumArgs() >= 2)
-		{
-			startPos = static_cast<UInt32>(eval.Arg(1)->GetNumber());
-			if (eval.NumArgs() >= 3)
-			{
-				howMany = static_cast<UInt32>(eval.Arg(2)->GetNumber());
-			}
-		}
-
-		if (howMany == -1)
-			howMany = strVar->GetLength() - startPos;
-
-		strVar->Erase(startPos, howMany);
-	}
-
-	return true;
-}
-
 
 enum
 {
@@ -324,7 +238,7 @@ bool Cmd_sv_Replace_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool Cmd_sv_ToNumeric_OLD_Execute(COMMAND_ARGS)
+bool Cmd_sv_ToNumeric_Execute(COMMAND_ARGS)
 {
 	UInt32 strID = 0;
 	UInt32 startPos = 0;
@@ -340,32 +254,6 @@ bool Cmd_sv_ToNumeric_OLD_Execute(COMMAND_ARGS)
 		*result = strtod(cStr + startPos, NULL);
 	}
 
-	return true;
-}
-bool Cmd_sv_ToNumeric_Execute(COMMAND_ARGS)
-{
-	*result = 0;
-	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	if (!eval.ExtractArgs())
-		return true;
-
-	auto* token = eval.Arg(0);
-	if (!token)
-		return true;
-
-	auto* strVar = token->GetStringVar();
-	if (!strVar)
-		return true;
-
-	UInt32 startPos = 0;
-	if (eval.NumArgs() >= 2)
-	{
-		startPos = static_cast<UInt32>(eval.Arg(1)->GetNumber());
-	}
-
-	const char* cStr = strVar->GetCString();
-	*result = strtod(cStr + startPos, NULL);
-	
 	return true;
 }
 
@@ -386,7 +274,7 @@ bool Cmd_sv_Insert_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool Cmd_sv_GetChar_OLD_Execute(COMMAND_ARGS)
+bool Cmd_sv_GetChar_Execute(COMMAND_ARGS)
 {
 	UInt32 strID = 0;
 	UInt32 charPos = 0;
@@ -398,26 +286,6 @@ bool Cmd_sv_GetChar_OLD_Execute(COMMAND_ARGS)
 	StringVar *strVar = g_StringMap.Get(strID);
 	if (strVar)
 		*result = strVar->At(charPos);
-
-	return true;
-}
-bool Cmd_sv_GetChar_Execute(COMMAND_ARGS)
-{
-	*result = -1; // error return value
-	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	if (!eval.ExtractArgs())
-		return true;
-
-	auto* token = eval.Arg(0);
-	if (!token)
-		return true;
-
-	auto* strVar = token->GetStringVar();
-	if (!strVar)
-		return true;
-
-	UInt32 charPos = eval.Arg(1)->GetNumber();
-	*result = strVar->At(charPos);
 
 	return true;
 }
