@@ -1775,7 +1775,7 @@ bool Cmd_MatchesAnyOf_Execute(COMMAND_ARGS)
 			{
 			case Script::VariableType::eVarType_Float:
 			case Script::VariableType::eVarType_Integer:
-				if (valTokenToMatch->GetNumber() == eval.Arg(i)->GetNumber())
+				if (FloatEqual(valTokenToMatch->GetNumber(), eval.Arg(i)->GetNumber()))
 				{
 					*result = 1;
 					return true;
