@@ -160,8 +160,7 @@ StmtPtr NVSEParser::Statement() {
 		return ForStatement();
 	}
 
-	if (Peek(NVSETokenType::IntType) || Peek(NVSETokenType::DoubleType) || Peek(NVSETokenType::RefType) ||
-		Peek(NVSETokenType::ArrayType) || Peek(NVSETokenType::StringType)) {
+	if (PeekType()) {
 		auto expr = VarDecl();
 		Expect(NVSETokenType::Semicolon, "Expected ';' at end of statement.");
 		return expr;
@@ -171,8 +170,7 @@ StmtPtr NVSEParser::Statement() {
 }
 
 std::shared_ptr<VarDeclStmt> NVSEParser::VarDecl() {
-	if (!(Match(NVSETokenType::IntType) || Match(NVSETokenType::DoubleType) || Match(NVSETokenType::RefType) ||
-		Match(NVSETokenType::ArrayType) || Match(NVSETokenType::StringType)) || Match(NVSETokenType::Fn)) {
+	if (!MatchesType()) {
 		Error(currentToken, "Expected type.");
 	}
 
@@ -200,30 +198,26 @@ StmtPtr NVSEParser::ForStatement() {
 	bool forEach = false;
 	StmtPtr init = {nullptr};
 	if (!Peek(NVSETokenType::Semicolon)) {
-		if (Match(NVSETokenType::IntType) || Match(NVSETokenType::DoubleType) || Match(NVSETokenType::RefType) ||
-			Match(NVSETokenType::ArrayType) || Match(NVSETokenType::StringType)) {
+		if (MatchesType()) {
 			auto type = previousToken;
 			auto ident = Expect(NVSETokenType::Identifier, "Expected identifier.");
 
-			if (Peek(NVSETokenType::Slice)) {
-				forEach = true;
+			if (Match(NVSETokenType::Slice) || Match(NVSETokenType::In)) {
 				init = std::make_shared<VarDeclStmt>(type, ident, nullptr);
 
-				Match(NVSETokenType::Slice);
 				ExprPtr rhs = Expression();
 				Expect(NVSETokenType::RightParen, "Expected ')'.");
 
 				std::shared_ptr<BlockStmt> block = BlockStatement();
 				return std::make_shared<ForEachStmt>(std::move(init), std::move(rhs), std::move(block));
 			}
-			else {
-				ExprPtr value{nullptr};
-				if (Match(NVSETokenType::Eq)) {
-					value = Expression();
-				}
-				Expect(NVSETokenType::Semicolon, "Expected ';' after loop initializer.");
-				init = std::make_shared<VarDeclStmt>(type, ident, value);
+			
+			ExprPtr value{nullptr};
+			if (Match(NVSETokenType::Eq)) {
+				value = Expression();
 			}
+			Expect(NVSETokenType::Semicolon, "Expected ';' after loop initializer.");
+			init = std::make_shared<VarDeclStmt>(type, ident, value);
 		}
 		else {
 			init = Statement();
@@ -431,13 +425,34 @@ ExprPtr NVSEParser::Equality() {
 }
 
 ExprPtr NVSEParser::Comparison() {
-	ExprPtr left = BitwiseOr();
+	ExprPtr left = In();
 
 	while (Match(NVSETokenType::Less) || Match(NVSETokenType::LessEq) || Match(NVSETokenType::Greater) || Match(
 		NVSETokenType::GreaterEq)) {
 		const auto op = previousToken;
-		ExprPtr right = BitwiseOr();
+		ExprPtr right = In();
 		left = std::make_shared<BinaryExpr>(op, std::move(left), std::move(right));
+	}
+
+	return left;
+}
+
+ExprPtr NVSEParser::In() {
+	ExprPtr left = BitwiseOr();
+
+	if (Match(NVSETokenType::In)) {
+		const auto op = previousToken;
+		Expect(NVSETokenType::LeftBracket, "Expected '['.");
+
+		std::vector<ExprPtr> values{};
+		while (!Match(NVSETokenType::RightBracket)) {
+			if (!values.empty()) {
+				Expect(NVSETokenType::Comma, "Expected ','.");
+			}
+			values.emplace_back(Expression());
+		}
+		
+		left = std::make_shared<InExpr>(left, op, values);
 	}
 
 	return left;
@@ -713,12 +728,22 @@ bool NVSEParser::Match(NVSETokenType type) {
 	return false;
 }
 
+bool NVSEParser::MatchesType() {
+	return Match(NVSETokenType::IntType) || Match(NVSETokenType::DoubleType) || Match(NVSETokenType::RefType) ||
+			Match(NVSETokenType::ArrayType) || Match(NVSETokenType::StringType);
+}
+
 bool NVSEParser::Peek(NVSETokenType type) const {
 	if (currentToken.type == type) {
 		return true;
 	}
 
 	return false;
+}
+
+bool NVSEParser::PeekType() const {
+	return Peek(NVSETokenType::IntType) || Peek(NVSETokenType::DoubleType) || Peek(NVSETokenType::RefType) ||
+			Peek(NVSETokenType::ArrayType) || Peek(NVSETokenType::StringType);
 }
 
 void NVSEParser::Error(NVSEToken token, std::string message) {

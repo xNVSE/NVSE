@@ -218,6 +218,18 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 		if (identifier == "string") return MakeToken(NVSETokenType::StringType, identifier);
 		if (identifier == "array") return MakeToken(NVSETokenType::ArrayType, identifier);
 
+		// Operators
+		if (identifier == "in") return MakeToken(NVSETokenType::In, identifier);
+		if (identifier == "and") return MakeToken(NVSETokenType::LogicAnd, identifier);
+		if (identifier == "or") return MakeToken(NVSETokenType::LogicOr, identifier);
+		if (identifier == "not") return MakeToken(NVSETokenType::Bang, identifier);
+		if (identifier == "eq") return MakeToken(NVSETokenType::Eq, identifier);
+		if (identifier == "neq") return MakeToken(NVSETokenType::NotEqual, identifier);
+		if (identifier == "gt") return MakeToken(NVSETokenType::Greater, identifier);
+		if (identifier == "lt") return MakeToken(NVSETokenType::Less, identifier);
+		if (identifier == "geq") return MakeToken(NVSETokenType::GreaterEq, identifier);
+		if (identifier == "leq") return MakeToken(NVSETokenType::LessEq, identifier);
+
 		// Boolean literals
 		if (identifier == "true") return MakeToken(NVSETokenType::Bool, identifier, 1);
 		if (identifier == "false") return MakeToken(NVSETokenType::Bool, identifier, 0);
@@ -356,10 +368,12 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 			return MakeToken(NVSETokenType::MakePair, "::");
 		}
 		return MakeToken(NVSETokenType::Slice, ":");
-	case '.': return MakeToken(NVSETokenType::Dot, ".");
-
+	case '.': 
+		return MakeToken(NVSETokenType::Dot, ".");
 	default: throw std::runtime_error("Unexpected character");
 	}
+
+	throw std::runtime_error("Unexpected character");
 }
 
 bool NVSELexer::Match(char c) {

@@ -190,11 +190,9 @@ public:
 	bool Compile();
 
 	void VisitNVSEScript(NVSEScript* nvScript) override;
-
 	void VisitBeginStmt(const BeginStmt* stmt) override;
 	void VisitFnStmt(FnDeclStmt* stmt) override;
 	void VisitVarDeclStmt(const VarDeclStmt* stmt) override;
-
 	void VisitExprStmt(const ExprStmt* stmt) override;
 	void VisitForStmt(ForStmt* stmt) override;
 	void VisitForEachStmt(ForEachStmt* stmt) override;
@@ -203,22 +201,13 @@ public:
 	void VisitContinueStmt(ContinueStmt* stmt) override;
 	void VisitBreakStmt(BreakStmt* stmt) override;
 	void VisitWhileStmt(const WhileStmt* stmt) override;
-	uint32_t CompileBlock(StmtPtr stmt, bool incrementCurrent);
 	void VisitBlockStmt(BlockStmt* stmt) override;
-
-	// Inherited via NVSEVisitor
 	void VisitAssignmentExpr(AssignmentExpr* expr) override;
 	void VisitTernaryExpr(TernaryExpr* expr) override;
+	void VisitInExpr(InExpr* expr) override;
 	void VisitBinaryExpr(BinaryExpr* expr) override;
 	void VisitUnaryExpr(UnaryExpr* expr) override;
 	void VisitSubscriptExpr(SubscriptExpr* expr) override;
-	void FinishCall();
-	void StartCall(CommandInfo* cmd, ExprPtr stackRef = nullptr);
-	void StartCall(const std::string&& command, ExprPtr stackRef = nullptr);
-	void StartCall(uint16_t opcode, ExprPtr stackRef = nullptr);
-	void AddCallArg(ExprPtr arg);
-	void StartManualArg();
-	void FinishManualArg();
 	void VisitCallExpr(CallExpr* expr) override;
 	void VisitGetExpr(GetExpr* expr) override;
 	void VisitBoolExpr(BoolExpr* expr) override;
@@ -227,4 +216,13 @@ public:
 	void VisitIdentExpr(IdentExpr* expr) override;
 	void VisitGroupingExpr(GroupingExpr* expr) override;
 	void VisitLambdaExpr(LambdaExpr* expr) override;
+	
+	uint32_t CompileBlock(StmtPtr stmt, bool incrementCurrent);
+	void FinishCall();
+	void StartCall(CommandInfo* cmd, ExprPtr stackRef = nullptr);
+	void StartCall(const std::string&& command, ExprPtr stackRef = nullptr);
+	void StartCall(uint16_t opcode, ExprPtr stackRef = nullptr);
+	void AddCallArg(ExprPtr arg);
+	void StartManualArg();
+	void FinishManualArg();
 };

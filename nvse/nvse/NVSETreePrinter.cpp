@@ -283,6 +283,25 @@ void NVSETreePrinter::VisitTernaryExpr(TernaryExpr* expr) {
 	curTab--;
 }
 
+void NVSETreePrinter::VisitInExpr(InExpr* in_expr) {
+	PrintTabs();
+	CompDbg("inexpr\n");
+	curTab++;
+	PrintTabs();
+	CompDbg("expr\n");
+	curTab++;
+	in_expr->lhs->Accept(this);
+	curTab--;
+	PrintTabs();
+	CompDbg("values\n");
+	curTab++;
+	for (auto expr : in_expr->exprs) {
+		expr->Accept(this);
+	}
+	curTab--;
+	curTab--;
+}
+
 void NVSETreePrinter::VisitBinaryExpr(BinaryExpr* expr) {
 	PrintTabs();
 	CompDbg("binary: %s\n", expr->op.lexeme.c_str());

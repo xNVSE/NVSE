@@ -25,6 +25,7 @@ public:
 
 	void VisitAssignmentExpr(AssignmentExpr* expr) override;
 	void VisitTernaryExpr(TernaryExpr* expr) override;
+	void VisitInExpr(InExpr* in_expr) override;
 	void VisitBinaryExpr(BinaryExpr* expr) override;
 	void VisitUnaryExpr(UnaryExpr* expr) override;
 	void VisitSubscriptExpr(SubscriptExpr* expr) override;

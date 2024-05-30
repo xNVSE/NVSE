@@ -252,6 +252,18 @@ struct TernaryExpr : Expr {
     }
 };
 
+struct InExpr : Expr {
+    ExprPtr lhs;
+    NVSEToken tok;
+    std::vector<ExprPtr> exprs{};
+
+    InExpr(ExprPtr lhs, NVSEToken tok, std::vector<ExprPtr> exprs) : lhs(lhs), tok(tok), exprs(exprs) {}
+
+    void Accept(NVSEVisitor *visitor) override {
+        visitor->VisitInExpr(this);
+    }
+};
+
 struct BinaryExpr : Expr {
     NVSEToken op;
     ExprPtr left, right;

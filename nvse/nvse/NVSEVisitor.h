@@ -1,4 +1,5 @@
 #pragma once
+
 struct NVSEScript;
 
 struct BeginStmt;
@@ -17,6 +18,7 @@ struct BlockStmt;
 
 struct AssignmentExpr;
 struct TernaryExpr;
+struct InExpr;
 struct BinaryExpr;
 struct UnaryExpr;
 struct SubscriptExpr;
@@ -50,6 +52,7 @@ public:
 
 	virtual void VisitAssignmentExpr(AssignmentExpr* expr) = 0;
 	virtual void VisitTernaryExpr(TernaryExpr* expr) = 0;
+	virtual void VisitInExpr(InExpr* in_expr) = 0;
 	virtual void VisitBinaryExpr(BinaryExpr* expr) = 0;
 	virtual void VisitUnaryExpr(UnaryExpr* expr) = 0;
 	virtual void VisitSubscriptExpr(SubscriptExpr* expr) = 0;

@@ -47,6 +47,7 @@ private:
     ExprPtr BitwiseOr();
     ExprPtr BitwiseAnd();
     ExprPtr Shift();
+    ExprPtr In();
     ExprPtr Term();
     ExprPtr Factor();
     ExprPtr Unary();
@@ -58,7 +59,9 @@ private:
 
     void Advance();
     bool Match(NVSETokenType type);
+    bool MatchesType();
     bool Peek(NVSETokenType type) const;
+    bool PeekType() const;
     void Error(NVSEToken token, std::string message);
     NVSEToken Expect(NVSETokenType type, std::string message);
     void Synchronize();

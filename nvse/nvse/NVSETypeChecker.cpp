@@ -236,7 +236,9 @@ void NVSETypeChecker::VisitForEachStmt(ForEachStmt* stmt) {
 		                              TokenTypeToString(lType), TokenTypeToString(rType)));
 	}
 
+	insideLoop.push(true);
 	stmt->block->Accept(this);
+	insideLoop.pop();
 }
 
 void NVSETypeChecker::VisitIfStmt(IfStmt* stmt) {
@@ -367,6 +369,29 @@ void NVSETypeChecker::VisitTernaryExpr(TernaryExpr* expr) {
 	}
 
 	expr->detailedType = expr->left->detailedType;
+}
+
+void NVSETypeChecker::VisitInExpr(InExpr* expr) {
+	expr->lhs->Accept(this);
+
+	int idx = 0;
+	for (const auto &val : expr->exprs) {
+		idx++;
+		val->Accept(this);
+		
+		const auto lhsType = expr->lhs->detailedType;
+		const auto rhsType = val->detailedType;
+		const auto outputType = s_operators[tokenOpToNVSEOpType[NVSETokenType::EqEq]].GetResult(lhsType, rhsType);
+		if (outputType == kTokenType_Invalid) {
+			WRAP_ERROR(
+				const auto msg = std::format("Value {} (type {}) specified cannot convert to a {}.", idx,
+											 TokenTypeToString(rhsType), TokenTypeToString(lhsType));
+				error(expr->tok.line, expr->tok.column, msg);
+			)
+		}
+	}
+
+	expr->detailedType = kTokenType_Boolean;
 }
 
 void NVSETypeChecker::VisitBinaryExpr(BinaryExpr* expr) {

@@ -16,6 +16,7 @@ enum OPCodes {
     OP_SET_MOD_LOCAL_DATA = 0x1549,
     OP_GET_MOD_LOCAL_DATA = 0x1548,
     OP_SET_FUNCTION_VALUE = 0x1546,
+    OP_MATCHES_ANY = 0x166F,
 };
 
 bool NVSECompiler::Compile() {
@@ -507,32 +508,6 @@ void NVSECompiler::VisitWhileStmt(const WhileStmt* stmt) {
     SetU32(jmpPatch, data.size());
 }
 
-uint32_t NVSECompiler::CompileBlock(StmtPtr stmt, bool incrementCurrent) {
-    for (int i = 0; i < statementCounter.size(); i++) {
-        CompDbg("  ");
-    }
-    CompDbg("Entering block\n");
-    
-    // Get sub-block statement count
-    statementCounter.push(0);
-    stmt->Accept(this);
-    auto newStatementCount = statementCounter.top();
-    statementCounter.pop();
-
-    // Lambdas do not add to parent block stmt count
-    // Others do
-    if (incrementCurrent) {
-        statementCounter.top() += newStatementCount;
-    }
-
-    for (int i = 0; i < statementCounter.size(); i++) {
-        CompDbg("  ");
-    }
-    CompDbg("Exiting Block. Size %d\n", newStatementCount);
-
-    return newStatementCount;
-}
-
 void NVSECompiler::VisitBlockStmt(BlockStmt* stmt) {
     for (auto& statement : stmt->statements) {
         statement->Accept(this);
@@ -568,6 +543,15 @@ void NVSECompiler::VisitTernaryExpr(TernaryExpr* expr) {
     AddCallArg(expr->cond);
     AddCallArg(expr->left);
     AddCallArg(expr->right);
+    FinishCall();
+}
+
+void NVSECompiler::VisitInExpr(InExpr* expr) {
+    StartCall(OP_MATCHES_ANY);
+    AddCallArg(expr->lhs);
+    for (auto arg : expr->exprs) {
+        AddCallArg(arg);
+    }
     FinishCall();
 }
 
@@ -611,104 +595,6 @@ void NVSECompiler::VisitSubscriptExpr(SubscriptExpr* expr) {
     expr->left->Accept(this);
     expr->index->Accept(this);
     AddU8(tokenOpToNVSEOpType[NVSETokenType::LeftBracket]);
-}
-
-void NVSECompiler::FinishCall() {
-    auto buf = callBuffers.top();
-    callBuffers.pop();
-
-    SetU16(buf.startPatch, data.size() - buf.startPos);
-
-    if (isDefaultParse(*buf.parse)) {
-        SetU16(buf.argPos, buf.numArgs);
-    }
-    else {
-        SetU8(buf.argPos, buf.numArgs);
-    }
-
-    // Handle stack refs
-    if (buf.stackRef) {
-        AddU8(tokenOpToNVSEOpType[NVSETokenType::Dot]);
-    }
-}
-
-void NVSECompiler::StartCall(CommandInfo* cmd, ExprPtr stackRef) {
-    if (const auto plugin = g_scriptCommands.GetParentPlugin(cmd)->name) {
-        requirements.insert(std::string(g_scriptCommands.GetParentPlugin(cmd)->name));
-    }
-
-    // Handle stack refs
-    if (stackRef) {
-        stackRef->Accept(this);
-    }
-
-    if (insideNvseExpr.top()) {
-        if (stackRef) {
-            AddU8('x');
-        }
-        else {
-            AddU8('X');
-        }
-        AddU16(0x0); // SCRV
-    }
-    AddU16(cmd->opcode);
-
-    // Call size
-    CallBuffer buf{};
-    buf.parse = &cmd->parse;
-    buf.stackRef = stackRef;
-    buf.startPos = data.size() + (insideNvseExpr.top() ? 0 : 2);
-    buf.startPatch = AddU16(0x0);
-
-    if (isDefaultParse(cmd->parse)) {
-        buf.argPos = AddU16(0x0);
-    } else {
-        buf.argPos = AddU8(0x0);
-    }
-
-    callBuffers.push(buf);
-}
-
-void NVSECompiler::StartCall(const std::string &&command, ExprPtr stackRef) {
-    StartCall(g_scriptCommands.GetByName(command.c_str()), stackRef);
-}
-
-void NVSECompiler::StartCall(uint16_t opcode, ExprPtr stackRef) {
-    StartCall(g_scriptCommands.GetByOpcode(opcode), stackRef);
-}
-
-void NVSECompiler::AddCallArg(ExprPtr arg) {
-    // Make NVSE aware
-    if (isDefaultParse(*callBuffers.top().parse)) {
-        AddU16(0xFFFF);
-    }
-
-    auto argStartInner = data.size();
-    auto argPatchInner = AddU16(0x0);
-
-    insideNvseExpr.push(true);
-    arg->Accept(this);
-    insideNvseExpr.pop();
-
-    SetU16(argPatchInner, data.size() - argStartInner);
-    callBuffers.top().numArgs++;
-}
-
-void NVSECompiler::StartManualArg() {
-    // Make NVSE aware
-    if (isDefaultParse(*callBuffers.top().parse)) {
-        AddU16(0xFFFF);
-    }
-
-    callBuffers.top().argStart = data.size();
-    callBuffers.top().argPatch = AddU16(0x0);
-    insideNvseExpr.push(true);
-}
-
-void NVSECompiler::FinishManualArg() {
-    insideNvseExpr.pop();
-    SetU16(callBuffers.top().argPatch, data.size() - callBuffers.top().argStart);
-    callBuffers.top().numArgs++;
 }
 
 void NVSECompiler::VisitCallExpr(CallExpr* expr) {
@@ -908,4 +794,128 @@ void NVSECompiler::VisitLambdaExpr(LambdaExpr* expr) {
     }
 
     SetU32(argSizePatch, data.size() - argStart);
+}
+
+uint32_t NVSECompiler::CompileBlock(StmtPtr stmt, bool incrementCurrent) {
+    for (int i = 0; i < statementCounter.size(); i++) {
+        CompDbg("  ");
+    }
+    CompDbg("Entering block\n");
+    
+    // Get sub-block statement count
+    statementCounter.push(0);
+    stmt->Accept(this);
+    auto newStatementCount = statementCounter.top();
+    statementCounter.pop();
+
+    // Lambdas do not add to parent block stmt count
+    // Others do
+    if (incrementCurrent) {
+        statementCounter.top() += newStatementCount;
+    }
+
+    for (int i = 0; i < statementCounter.size(); i++) {
+        CompDbg("  ");
+    }
+    CompDbg("Exiting Block. Size %d\n", newStatementCount);
+
+    return newStatementCount;
+}
+
+void NVSECompiler::FinishCall() {
+    auto buf = callBuffers.top();
+    callBuffers.pop();
+
+    SetU16(buf.startPatch, data.size() - buf.startPos);
+
+    if (isDefaultParse(*buf.parse)) {
+        SetU16(buf.argPos, buf.numArgs);
+    }
+    else {
+        SetU8(buf.argPos, buf.numArgs);
+    }
+
+    // Handle stack refs
+    if (buf.stackRef) {
+        AddU8(tokenOpToNVSEOpType[NVSETokenType::Dot]);
+    }
+}
+
+void NVSECompiler::StartCall(CommandInfo* cmd, ExprPtr stackRef) {
+    if (const auto plugin = g_scriptCommands.GetParentPlugin(cmd)->name) {
+        requirements.insert(std::string(g_scriptCommands.GetParentPlugin(cmd)->name));
+    }
+
+    // Handle stack refs
+    if (stackRef) {
+        stackRef->Accept(this);
+    }
+
+    if (insideNvseExpr.top()) {
+        if (stackRef) {
+            AddU8('x');
+        }
+        else {
+            AddU8('X');
+        }
+        AddU16(0x0); // SCRV
+    }
+    AddU16(cmd->opcode);
+
+    // Call size
+    CallBuffer buf{};
+    buf.parse = &cmd->parse;
+    buf.stackRef = stackRef;
+    buf.startPos = data.size() + (insideNvseExpr.top() ? 0 : 2);
+    buf.startPatch = AddU16(0x0);
+
+    if (isDefaultParse(cmd->parse)) {
+        buf.argPos = AddU16(0x0);
+    } else {
+        buf.argPos = AddU8(0x0);
+    }
+
+    callBuffers.push(buf);
+}
+
+void NVSECompiler::StartCall(const std::string &&command, ExprPtr stackRef) {
+    StartCall(g_scriptCommands.GetByName(command.c_str()), stackRef);
+}
+
+void NVSECompiler::StartCall(uint16_t opcode, ExprPtr stackRef) {
+    StartCall(g_scriptCommands.GetByOpcode(opcode), stackRef);
+}
+
+void NVSECompiler::AddCallArg(ExprPtr arg) {
+    // Make NVSE aware
+    if (isDefaultParse(*callBuffers.top().parse)) {
+        AddU16(0xFFFF);
+    }
+
+    auto argStartInner = data.size();
+    auto argPatchInner = AddU16(0x0);
+
+    insideNvseExpr.push(true);
+    arg->Accept(this);
+    insideNvseExpr.pop();
+
+    SetU16(argPatchInner, data.size() - argStartInner);
+    callBuffers.top().numArgs++;
+}
+
+void NVSECompiler::StartManualArg() {
+    // Make NVSE aware
+    if (isDefaultParse(*callBuffers.top().parse)) {
+        AddU16(0xFFFF);
+    }
+
+    callBuffers.top().argStart = data.size();
+    callBuffers.top().argPatch = AddU16(0x0);
+    insideNvseExpr.push(true);
+}
+
+void NVSECompiler::FinishManualArg() {
+    insideNvseExpr.pop();
+    SetU16(callBuffers.top().argPatch, data.size() - callBuffers.top().argStart);
+    callBuffers.top().numArgs++;
 }
