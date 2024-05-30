@@ -228,3 +228,11 @@ static ParamInfo kNVSEParams_OneArray[] =
 };
 
 DEFINE_COMMAND_EXP(ar_Unique, "returns a new array with no duplicate elements from the source array", false, kNVSEParams_OneArray);
+
+static ParamInfo kNVSEParams_ar_Exists[] =
+{
+	{	"array",		kNVSEParamType_Array,		0	}, // unlike ar_Find, pass array first
+	{	"toFind",		(kNVSEParamType_BasicType | kNVSEParamType_Pair),	0	},
+	{	"range",		kNVSEParamType_Slice,		1	}, // only possibly used for packed arrays, and only if toFind isn't a pair.
+};
+DEFINE_COMMAND_EXP(ar_Exists, "For packed arrays, check if value exists. Else (map), check if key exists.", 0, kNVSEParams_ar_Exists);

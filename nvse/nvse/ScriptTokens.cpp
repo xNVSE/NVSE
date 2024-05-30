@@ -963,6 +963,23 @@ Script::VariableType ScriptToken::GetTokenTypeAsVariableType() const
 	return Script::VariableType::eVarType_Invalid;
 }
 
+ArrayElement ScriptToken::GetAsArrayElement() const
+{
+	ArrayElement result;
+
+	// TODO: maybe also check if the arrayID / formID is valid.
+	if (CanConvertTo(kTokenType_Number))
+		result.SetNumber(GetNumber());
+	else if (CanConvertTo(kTokenType_String))
+		result.SetString(GetString());
+	else if (CanConvertTo(kTokenType_Form))
+		result.SetFormID(GetFormID());
+	else if (CanConvertTo(kTokenType_Array))
+		result.SetArray(GetArrayID());
+
+	return result;
+}
+
 void ScriptToken::AssignResult(ExpressionEvaluator &eval) const
 {
 	eval.AssignAmbiguousResult(*this, GetReturnType());
