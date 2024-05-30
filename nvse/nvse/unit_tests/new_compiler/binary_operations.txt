@@ -19,7 +19,7 @@ fn () {
 	
 	string sTest = "test";
 	assert(sTest == "test");
-	assert(sv_length(test) == 4);
+	assert(sv_length(sTest) == 4);
 	
 	double fTest = 2.5;
 	assert(fTest == 2.5);
