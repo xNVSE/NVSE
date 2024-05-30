@@ -1150,10 +1150,8 @@ ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script, bool parse) : iter
 
 ScriptParsing::ScriptAnalyzer::~ScriptAnalyzer()
 {
-	if (!g_analyzerStack.empty())
-		g_analyzerStack.clear();
+	g_analyzerStack.pop_back();
 }
-
 
 void ScriptParsing::ScriptAnalyzer::Parse()
 {
