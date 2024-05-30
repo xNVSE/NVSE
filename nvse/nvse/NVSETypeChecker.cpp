@@ -525,6 +525,9 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 			// Revisiting will cause a variable re-declaration exception
 			if (i != insertedIdx) {
 				WRAP_ERROR(arg->Accept(this))
+			} else {
+				// TODO: TEMP DISABLE TYPE CHECKS ON INSERTED PARAMS
+				continue;
 			}
 
 			if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(cmd->params[i].typeID), arg->detailedType, true, cmd)) {
@@ -551,8 +554,15 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 				continue;
 			}
 
-			// If user passed a form, check it
-			WRAP_ERROR(arg->Accept(this))
+			// If we injected another param for something like array.filter(fn () -> {}) into Ar_Filter(array, fn () -> {})
+			// Revisiting will cause a variable re-declaration exception
+			if (i != insertedIdx) {
+				WRAP_ERROR(arg->Accept(this))
+			} else {
+				// TODO: TEMP DISABLE TYPE CHECKS ON INSERTED PARAMS
+				continue;
+			}
+			
 			if (ident && arg->detailedType == kTokenType_Form) {
 				// Extract form from param
 				if (!doesFormMatchParamType(formCache[ident->token.lexeme], static_cast<ParamType>(param.typeID))) {
