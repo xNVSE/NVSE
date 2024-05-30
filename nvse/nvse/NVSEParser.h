@@ -24,7 +24,7 @@ private:
     bool panicMode = false;
     bool hadError = false;
 
-    StmtPtr FnDecl();
+    std::shared_ptr<FnDeclStmt> FnDecl();
     std::shared_ptr<VarDeclStmt> VarDecl();
 
     StmtPtr Statement();

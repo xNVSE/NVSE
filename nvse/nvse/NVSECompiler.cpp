@@ -28,21 +28,21 @@ bool NVSECompiler::Compile() {
     ast.Accept(this);
 
     if (!partial) {
-        script->SetEditorID(scriptName.c_str());
+        engineScript->SetEditorID(scriptName.c_str());
     }
 
-    script->info.compiled = true;
-    script->info.dataLength = data.size();
-    script->info.numRefs = script->refList.Count();
-    script->info.varCount = script->varList.Count();
-    script->info.unusedVariableCount = script->info.varCount - usedVars.size();
-    script->data = static_cast<uint8_t*>(FormHeap_Allocate(data.size()));
-    memcpy(script->data, data.data(), data.size());
+    engineScript->info.compiled = true;
+    engineScript->info.dataLength = data.size();
+    engineScript->info.numRefs = engineScript->refList.Count();
+    engineScript->info.varCount = engineScript->varList.Count();
+    engineScript->info.unusedVariableCount = engineScript->info.varCount - usedVars.size();
+    engineScript->data = static_cast<uint8_t*>(FormHeap_Allocate(data.size()));
+    memcpy(engineScript->data, data.data(), data.size());
 
     // Debug print local info
     CompDbg("\n[Locals]\n\n");
-    for (int i = 0; i < script->varList.Count(); i++) {
-        auto item = script->varList.GetNthItem(i);
+    for (int i = 0; i < engineScript->varList.Count(); i++) {
+        auto item = engineScript->varList.GetNthItem(i);
         CompDbg("%i: %s %s\n", item->idx, item->name.CStr(), usedVars.contains(item->name.CStr()) ? "" : "(unused)");
     }
     
@@ -50,8 +50,8 @@ bool NVSECompiler::Compile() {
 
     // Refs
     CompDbg("[Refs]\n\n");
-    for (int i = 0; i < script->refList.Count(); i++) {
-        const auto ref = script->refList.GetNthItem(i);
+    for (int i = 0; i < engineScript->refList.Count(); i++) {
+        const auto ref = engineScript->refList.GetNthItem(i);
         if (ref->varIdx) {
             CompDbg("%d: (Var %d)\n", i, ref->varIdx);
         }
@@ -64,8 +64,8 @@ bool NVSECompiler::Compile() {
 
     // Script data
     CompDbg("[Data]\n");
-    for (int i = 0; i < script->info.dataLength; i++) {
-        CompDbg("%02X ", script->data[i]);
+    for (int i = 0; i < engineScript->info.dataLength; i++) {
+        CompDbg("%02X ", engineScript->data[i]);
     }
     
     CompDbg("\n\n");
@@ -75,12 +75,12 @@ bool NVSECompiler::Compile() {
     }
 
     CompDbg("\n");
-    CompDbg("\nNum compiled bytes: %d\n", script->info.dataLength);
+    CompDbg("\nNum compiled bytes: %d\n", engineScript->info.dataLength);
 
     return true;
 }
 
-void NVSECompiler::VisitNVSEScript(const NVSEScript* nvScript) {
+void NVSECompiler::VisitNVSEScript(NVSEScript* nvScript) {
     // Compile the script name
     scriptName = nvScript->name.lexeme;
 
@@ -212,21 +212,24 @@ void NVSECompiler::VisitVarDeclStmt(const VarDeclStmt* stmt) {
     statementCounter.top()--;
 
     for (auto [token, value] : stmt->values) {
+        auto name = token.lexeme;
+        
         // Compile lambdas differently
         // Does not affect params as they cannot have value specified
         if (value->IsType<LambdaExpr>()) {
             // To do a similar thing on access
-            lambdaVars.insert(token.lexeme);
+            lambdaVars.insert(name);
 
             StartCall(OP_SET_MOD_LOCAL_DATA);
             StartManualArg();
-            AddString("__" + scriptName + "__" + token.lexeme);
+            AddString("__" + scriptName + "__" + name);
             FinishManualArg();
+            AddCallArg(value);
             FinishCall();
             continue;
         }
 
-        const auto idx = AddLocal(token.lexeme, varType);
+        const auto idx = AddLocal(name, varType);
         if (!value) {
             continue;
         }
@@ -341,7 +344,7 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
         throw std::runtime_error("Unexpected compiler error.");
     }
 
-    auto varInfo = script->GetVariableByName(std::get<0>(varDecl->values[0]).lexeme.c_str());
+    auto varInfo = engineScript->GetVariableByName(std::get<0>(varDecl->values[0]).lexeme.c_str());
     if (!varInfo) {
         throw std::runtime_error("Unexpected compiler error.");
     }
@@ -823,7 +826,7 @@ void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
     }
 
     // Attempt to resolve as variable
-    if (auto local = script->varList.GetVariableByName(name.c_str())) {
+    if (auto local = engineScript->varList.GetVariableByName(name.c_str())) {
         AddU8('V');
         AddU8(local->type);
         AddU16(0);

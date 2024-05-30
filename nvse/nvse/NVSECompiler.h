@@ -27,7 +27,7 @@ struct CallBuffer {
 
 class NVSECompiler : NVSEVisitor {
 public:
-	Script* script;
+	Script* engineScript;
 	bool partial;
 	NVSEScript &ast;
 
@@ -58,7 +58,7 @@ public:
 
 	// Look up a local variable, or create it if not already defined
 	uint16_t AddLocal(std::string identifier, uint8_t type) {
-		if (auto info = script->GetVariableByName(identifier.c_str())) {
+		if (auto info = engineScript->GetVariableByName(identifier.c_str())) {
 			return info->idx;
 		}
 
@@ -66,15 +66,15 @@ public:
 		varInfo->name = String();
 		varInfo->name.Set(identifier.c_str());
 		varInfo->type = type;
-		varInfo->idx = script->varList.Count() + 1;
-		script->varList.Append(varInfo);
+		varInfo->idx = engineScript->varList.Count() + 1;
+		engineScript->varList.Append(varInfo);
 
 		if (type == Script::eVarType_Ref) {
 			auto ref = New<Script::RefVariable>();
 			ref->name = String();
 			ref->name.Set(identifier.c_str());
 			ref->varIdx = varInfo->idx;
-			script->refList.Append(ref);
+			engineScript->refList.Append(ref);
 		}
 
 		return static_cast<uint16_t>(varInfo->idx);
@@ -100,7 +100,7 @@ public:
 
 			// See if form is already registered
 			uint16_t i = 1;
-			for (auto cur = script->refList.Begin(); !cur.End(); cur.Next()) {
+			for (auto cur = engineScript->refList.Begin(); !cur.End(); cur.Next()) {
 				if (cur->form == form) {
 					return i;
 				}
@@ -113,8 +113,8 @@ public:
 				ref->name = String();
 				ref->name.Set(identifier.c_str());
 				ref->form = form;
-				script->refList.Append(ref);
-				return static_cast<uint16_t>(script->refList.Count());
+				engineScript->refList.Append(ref);
+				return static_cast<uint16_t>(engineScript->refList.Count());
 			}
 
 			return 1;
@@ -186,10 +186,10 @@ public:
 	}
 
 	NVSECompiler(Script *script, bool partial, NVSEScript& ast)
-	: script(script), partial(partial), ast(ast), originalScriptName(script->GetEditorID()) {}
+	: engineScript(script), partial(partial), ast(ast), originalScriptName(script->GetEditorID()) {}
 	bool Compile();
 
-	void VisitNVSEScript(const NVSEScript* nvScript) override;
+	void VisitNVSEScript(NVSEScript* nvScript) override;
 
 	void VisitBeginStmt(const BeginStmt* stmt) override;
 	void VisitFnStmt(FnDeclStmt* stmt) override;

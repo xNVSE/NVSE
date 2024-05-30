@@ -10,7 +10,7 @@ void NVSETreePrinter::PrintTabs() {
 	}
 }
 
-void NVSETreePrinter::VisitNVSEScript(const NVSEScript* script) {
+void NVSETreePrinter::VisitNVSEScript(NVSEScript* script) {
 	CompDbg("\n==== AST ====\n\n");
 	
 	PrintTabs();

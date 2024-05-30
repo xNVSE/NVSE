@@ -87,15 +87,57 @@ bool NVSETypeChecker::check() {
 	return !hadError;
 }
 
-void NVSETypeChecker::VisitNVSEScript(const NVSEScript* script) {
+void NVSETypeChecker::VisitNVSEScript(NVSEScript* script) {
 	for (auto global : script->globalVars) {
 		global->Accept(this);
 
 		// Dont allow initializers in global scope
 		for (auto [name, value] : dynamic_cast<VarDeclStmt*>(global.get())->values) {
 			if (value) {
-				error(name.line, "Variable initializers are not allowed in global scope.");
+				WRAP_ERROR(error(name.line, name.column, "Variable initializers are not allowed in global scope."))
 			}
+		}
+	}
+
+	// Pre-process blocks - check for duplicate blocks
+	std::unordered_map<std::string, std::unordered_set<std::string>> mpTypeToModes{};
+	std::vector<StmtPtr> functions {};
+	bool foundFn = false, foundEvent = false;
+	for (auto block : script->blocks) {
+		if (auto b = dynamic_cast<BeginStmt*>(block.get())) {
+			if (foundFn) {
+				WRAP_ERROR(error(b->name.line, b->name.column, "Cannot have a function block and an event block in the same script."))
+			}
+
+			foundEvent = true;
+			
+			std::string name = b->name.lexeme;
+			std::string param{};
+			if (b->param.has_value()) {
+				param = b->param->lexeme;
+			}
+
+			if (mpTypeToModes.contains(name) && mpTypeToModes[name].contains(param)) {
+				WRAP_ERROR(error(b->name.line, b->name.column, "Duplicate block declaration."))
+				continue;
+			}
+
+			if (!mpTypeToModes.contains(name)) {
+				mpTypeToModes[name] = std::unordered_set<std::string>{};
+			}
+			mpTypeToModes[name].insert(param);
+		}
+
+		if (auto b = dynamic_cast<FnDeclStmt*>(block.get())) {
+			if (foundEvent) {
+				WRAP_ERROR(error(b->token.line, b->token.column, "Cannot have a function block and an event block in the same script."))
+			}
+			
+			if (foundFn) {
+				WRAP_ERROR(error(b->token.line, b->token.column, "Duplicate block declaration."))
+			}
+
+			foundFn = true;
 		}
 	}
 

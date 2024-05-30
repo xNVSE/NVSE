@@ -6,9 +6,9 @@ class NVSETreePrinter : public NVSEVisitor {
 	void PrintTabs();
 
 public:
-	NVSETreePrinter() {}
+	NVSETreePrinter() = default;
 
-	void VisitNVSEScript(const NVSEScript* script) override;
+	void VisitNVSEScript(NVSEScript* script) override;
 	void VisitBeginStmt(const BeginStmt* stmt) override;
 	void VisitFnStmt(FnDeclStmt* stmt) override;
 	void VisitVarDeclStmt(const VarDeclStmt* stmt) override;

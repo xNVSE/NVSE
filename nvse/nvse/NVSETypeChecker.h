@@ -10,9 +10,7 @@ class NVSETypeChecker : NVSEVisitor {
     std::unordered_map<std::string, TESForm*> formCache{};
     std::unordered_map<std::string, NVSEToken> definedVarCache{};
     bool hadError = false;
-    
     NVSEScript *script;
-
     std::stack<bool> insideLoop {};
 
     void error(size_t line, std::string msg);
@@ -22,7 +20,7 @@ public:
     NVSETypeChecker(NVSEScript* script) : script(script) {}
     bool check();
     
-    void VisitNVSEScript(const NVSEScript* script) override;
+    void VisitNVSEScript(NVSEScript* script) override;
     void VisitBeginStmt(const BeginStmt* stmt) override;
     void VisitFnStmt(FnDeclStmt* stmt) override;
     void VisitVarDeclStmt(const VarDeclStmt* stmt) override;

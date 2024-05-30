@@ -15,6 +15,7 @@ struct NVSEScript {
     NVSEToken name;
     std::vector<StmtPtr> globalVars;
     std::vector<StmtPtr> blocks;
+    std::unordered_map<std::string, std::shared_ptr<LambdaExpr>> mpFunctions{};
 
     NVSEScript(NVSEToken name, std::vector<StmtPtr> globalVars, std::vector<StmtPtr> blocks) : name(std::move(name)),
         globalVars(std::move(globalVars)), blocks(std::move(blocks)) {}
@@ -57,11 +58,17 @@ struct BeginStmt : Stmt {
 
 struct FnDeclStmt : Stmt {
     NVSEToken token;
+    std::optional<NVSEToken> name;
     std::vector<std::shared_ptr<VarDeclStmt>> args;
     StmtPtr body;
 
     FnDeclStmt(const NVSEToken& token, std::vector<std::shared_ptr<VarDeclStmt>> args, StmtPtr body) : token(token),
         args(std::move(args)), body(std::move(body)) {
+        line = token.line;
+    }
+
+    FnDeclStmt(const NVSEToken& token, const NVSEToken &name, std::vector<std::shared_ptr<VarDeclStmt>> args, StmtPtr body) : token(token),
+        name(name), args(std::move(args)), body(std::move(body)) {
         line = token.line;
     }
 

@@ -14,7 +14,7 @@ NVSEParser::NVSEParser(NVSELexer& tokenizer) : lexer(tokenizer) {
 std::optional<NVSEScript> NVSEParser::Parse() {
 	NVSEToken name;
 	std::vector<StmtPtr> globals;
-	std::vector<StmtPtr> blocks;
+	std::vector<StmtPtr> blocks{};
 
 	CompDbg("\n==== PARSER ====\n\n");
 
@@ -28,23 +28,18 @@ std::optional<NVSEScript> NVSEParser::Parse() {
 
 		name = dynamic_cast<IdentExpr*>(expr.get())->token;
 
-		int numEventBlocks = 0, numFnBlocks = 0;
 		while (currentToken.type != NVSETokenType::Eof) {
 			try {
 				// Get event or udf block
 				if (Peek(NVSETokenType::BlockType)) {
-					if (numFnBlocks > 0) {
-						Error(currentToken, "Cannot mix event blocks and function blocks in the same script.");
-					}
-					numEventBlocks++;
 					blocks.emplace_back(Begin());
 				}
 				else if (Match(NVSETokenType::Fn)) {
-					if (numEventBlocks > 0) {
-						Error(currentToken, "Cannot mix event blocks and function blocks in the same script.");
-					}
-					numFnBlocks++;
-					blocks.emplace_back(FnDecl());
+					auto fnToken = previousToken;
+					//auto ident = Expect(NVSETokenType::Identifier, "Expected identifier.");
+					auto args = ParseArgs();
+					auto fnDecl = std::make_shared<FnDeclStmt>(fnToken, std::move(args), BlockStatement());
+					blocks.emplace_back(fnDecl);
 				}
 				else if (Peek(NVSETokenType::IntType) || Peek(NVSETokenType::DoubleType) || Peek(NVSETokenType::RefType) ||
 					Peek(NVSETokenType::ArrayType) || Peek(NVSETokenType::StringType)) {
@@ -70,7 +65,7 @@ std::optional<NVSEScript> NVSEParser::Parse() {
 	if (hadError) {
 		return std::optional<NVSEScript>{};
 	}
-
+	
 	return NVSEScript(name, std::move(globals), std::move(blocks));
 }
 
@@ -126,12 +121,6 @@ StmtPtr NVSEParser::Begin() {
 		Error(currentToken, "Expected '{'.");
 	}
 	return std::make_shared<BeginStmt>(blockName, mode, BlockStatement());
-}
-
-StmtPtr NVSEParser::FnDecl() {
-	auto token = previousToken;
-	auto args = ParseArgs();
-	return std::make_shared<FnDeclStmt>(token, std::move(args), BlockStatement());
 }
 
 StmtPtr NVSEParser::Statement() {
