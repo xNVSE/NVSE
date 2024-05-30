@@ -38,26 +38,45 @@ static ParamInfo kParams_sv_Compare[23] =
 
 DEFINE_CMD(sv_Compare, compares two strings, 0, kParams_sv_Compare);
 
-DEFINE_CMD(sv_Length, returns the number of characters in a string, 0, kParams_OneInt);
+DEFINE_CMD(sv_Length_OLD, returns the number of characters in a string, 0, kParams_OneInt);
+static ParamInfo kNVSEParams_OneStringVar[1] =
+{
+	{	"string_var",	kNVSEParamType_StringVar,	0	},
+};
+DEFINE_COMMAND_EXP(sv_Length, returns the number of characters in a string, 0, kNVSEParams_OneStringVar);
 
-static ParamInfo kParams_SubString[3] =
+static ParamInfo kParams_SubString_OLD[3] =
 {
 	{	"stringVar",	kParamType_Integer,	0	},
 	{	"startPos",		kParamType_Integer,	1	},
 	{	"howMany",		kParamType_Integer,	1	},
 };
+static ParamInfo kNVSEParams_SubString[3] =
+{
+	{	"stringVar",	kNVSEParamType_StringVar,	0	},
+	{	"startPos",		kNVSEParamType_Number,	1	},
+	{	"howMany",		kNVSEParamType_Number,	1	},
+};
 
-DEFINE_CMD(sv_Erase, erases a portion of a string variable, 0, kParams_SubString);
+DEFINE_CMD(sv_Erase_OLD, erases a portion of a string variable, 0, kParams_SubString_OLD);
+DEFINE_COMMAND_EXP(sv_Erase, erases a portion of a string variable, 0, kNVSEParams_SubString);
 
-DEFINE_CMD(sv_SubString, returns a substring of a string variable, 0, kParams_SubString);
+DEFINE_CMD(sv_SubString_OLD, returns a substring of a string variable, 0, kParams_SubString_OLD);
+DEFINE_COMMAND_EXP(sv_SubString, returns a substring of a string variable, 0, kNVSEParams_SubString);
 
-static ParamInfo kParams_sv_ToNumeric[2] =
+static ParamInfo kParams_sv_ToNumeric_OLD[2] =
 {
 	{	"stringVar",	kParamType_Integer,	0	},
 	{	"startPos",		kParamType_Integer,	1	},
 };
+static ParamInfo kNVSEParams_sv_ToNumeric[2] =
+{
+	{	"stringVar",	kNVSEParamType_StringVar,	0	},
+	{	"startPos",		kNVSEParamType_Number,		1	},
+};
 
-DEFINE_CMD(sv_ToNumeric, converts a string variable to a numeric type, 0, kParams_sv_ToNumeric);
+DEFINE_CMD(sv_ToNumeric_OLD, converts a string variable to a numeric type, 0, kParams_sv_ToNumeric_OLD);
+DEFINE_COMMAND_EXP(sv_ToNumeric, converts a string variable to a numeric type, 0, kNVSEParams_sv_ToNumeric);
 
 DEFINE_CMD(sv_Insert, inserts a substring in a string variable, 0, kParams_sv_Compare);
 
@@ -101,7 +120,13 @@ DEFINE_CMD(IsPunctuation, returns 1 if the character is a punctuation character,
 
 DEFINE_CMD(IsUpperCase, returns 1 if the character is an uppercase letter, 0, kParams_OneInt);
 
-DEFINE_CMD(sv_GetChar, returns the ASCII code of the character at the specified position in a string variable, 0, kParams_TwoInts);
+DEFINE_CMD(sv_GetChar_OLD, returns the ASCII code of the character at the specified position in a string variable, 0, kParams_TwoInts);
+static ParamInfo kNVSEParams_sv_GetChar[] =
+{
+	{"stringVar", kNVSEParamType_StringVar, 0},
+	{"position", kNVSEParamType_Number, 0}
+};
+DEFINE_COMMAND_EXP(sv_GetChar, returns the ASCII code of the character at the specified position in a string variable, 0, kNVSEParams_sv_GetChar);
 
 DEFINE_COMMAND_EXP(sv_Trim, "Trims the beginning and the end of a string variable", 0, kParams_sv_Trim);
 
