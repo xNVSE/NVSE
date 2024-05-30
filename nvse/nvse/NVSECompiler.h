@@ -214,6 +214,7 @@ public:
 	void VisitNumberExpr(NumberExpr* expr) override;
 	void VisitStringExpr(StringExpr* expr) override;
 	void VisitIdentExpr(IdentExpr* expr) override;
+	void VisitArrayLiteralExpr(ArrayLiteralExpr* expr) override;
 	void VisitGroupingExpr(GroupingExpr* expr) override;
 	void VisitLambdaExpr(LambdaExpr* expr) override;
 	

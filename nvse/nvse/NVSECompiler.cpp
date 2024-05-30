@@ -17,6 +17,9 @@ enum OPCodes {
     OP_GET_MOD_LOCAL_DATA = 0x1548,
     OP_SET_FUNCTION_VALUE = 0x1546,
     OP_MATCHES_ANY = 0x166F,
+    OP_AR_LIST = 0x1567,
+    OP_AR_FIND = 0x1557,
+    OP_AR_BAD_NUMERIC_INDEX = 0x155F,
 };
 
 bool NVSECompiler::Compile() {
@@ -547,12 +550,25 @@ void NVSECompiler::VisitTernaryExpr(TernaryExpr* expr) {
 }
 
 void NVSECompiler::VisitInExpr(InExpr* expr) {
-    StartCall(OP_MATCHES_ANY);
-    AddCallArg(expr->lhs);
-    for (auto arg : expr->exprs) {
-        AddCallArg(arg);
+    // Value list provided
+    if (!expr->values.empty()) {
+        StartCall(OP_MATCHES_ANY);
+        AddCallArg(expr->lhs);
+        for (auto arg : expr->values) {
+            AddCallArg(arg);
+        }
+        FinishCall();
     }
-    FinishCall();
+    // Array
+	else {
+        StartCall(OP_AR_FIND);
+        AddCallArg(expr->lhs);
+        AddCallArg(expr->expression);
+        FinishCall();
+        StartCall(OP_AR_BAD_NUMERIC_INDEX);
+        FinishCall();
+        AddU8(tokenOpToNVSEOpType[NVSETokenType::BangEq]);
+    }
 }
 
 void NVSECompiler::VisitBinaryExpr(BinaryExpr* expr) {
@@ -725,6 +741,14 @@ void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
         AddU8('R');
         AddU16(refIdx);
     }
+}
+
+void NVSECompiler::VisitArrayLiteralExpr(ArrayLiteralExpr* expr) {
+    StartCall(OP_AR_LIST);
+    for (auto val : expr->values) {
+        AddCallArg(val);
+    }
+    FinishCall();
 }
 
 void NVSECompiler::VisitGroupingExpr(GroupingExpr* expr) {

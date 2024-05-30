@@ -28,6 +28,7 @@ struct BoolExpr;
 struct NumberExpr;
 struct StringExpr;
 struct IdentExpr;
+struct ArrayLiteralExpr;
 struct GroupingExpr;
 struct LambdaExpr;
 
@@ -62,6 +63,7 @@ public:
 	virtual void VisitNumberExpr(NumberExpr* expr) = 0;
 	virtual void VisitStringExpr(StringExpr* expr) = 0;
 	virtual void VisitIdentExpr(IdentExpr* expr) = 0;
+	virtual void VisitArrayLiteralExpr(ArrayLiteralExpr* expr) = 0;
 	virtual void VisitGroupingExpr(GroupingExpr* expr) = 0;
 	virtual void VisitLambdaExpr(LambdaExpr* expr) = 0;
 };

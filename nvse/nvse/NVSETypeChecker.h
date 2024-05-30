@@ -43,6 +43,7 @@ public:
     void VisitGetExpr(GetExpr* expr) override;
     void VisitBoolExpr(BoolExpr* expr) override;
     void VisitNumberExpr(NumberExpr* expr) override;
+    void VisitArrayLiteralExpr(ArrayLiteralExpr* expr) override;
     void VisitStringExpr(StringExpr* expr) override;
     void VisitIdentExpr(IdentExpr* expr) override;
     void VisitGroupingExpr(GroupingExpr* expr) override;

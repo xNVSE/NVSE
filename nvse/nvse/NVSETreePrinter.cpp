@@ -283,20 +283,24 @@ void NVSETreePrinter::VisitTernaryExpr(TernaryExpr* expr) {
 	curTab--;
 }
 
-void NVSETreePrinter::VisitInExpr(InExpr* in_expr) {
+void NVSETreePrinter::VisitInExpr(InExpr* expr) {
 	PrintTabs();
 	CompDbg("inexpr\n");
 	curTab++;
 	PrintTabs();
 	CompDbg("expr\n");
 	curTab++;
-	in_expr->lhs->Accept(this);
+	expr->lhs->Accept(this);
 	curTab--;
 	PrintTabs();
-	CompDbg("values\n");
+	CompDbg("val\n");
 	curTab++;
-	for (auto expr : in_expr->exprs) {
-		expr->Accept(this);
+	if (expr->expression) {
+		expr->expression->Accept(this);
+	} else {
+		for (auto val : expr->values) {
+			val->Accept(this);
+		}
 	}
 	curTab--;
 	curTab--;
@@ -444,6 +448,22 @@ void NVSETreePrinter::VisitIdentExpr(IdentExpr* expr) {
 	CompDbg("ident: %s\n", expr->token.lexeme.c_str());
 
 	curTab++;
+	PrintTabs();
+	CompDbg("detailed type: %s\n", TokenTypeToString(expr->detailedType));
+	curTab--;
+}
+
+void NVSETreePrinter::VisitArrayLiteralExpr(ArrayLiteralExpr* expr) {
+	PrintTabs();
+	CompDbg("array literal\n");
+	curTab++;
+	PrintTabs();
+	CompDbg("values\n");
+	curTab++;
+	for (auto val : expr->values) {
+		val->Accept(this);
+	}
+	curTab--;
 	PrintTabs();
 	CompDbg("detailed type: %s\n", TokenTypeToString(expr->detailedType));
 	curTab--;

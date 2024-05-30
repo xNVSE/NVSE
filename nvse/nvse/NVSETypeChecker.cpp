@@ -195,7 +195,7 @@ void NVSETypeChecker::VisitForStmt(ForStmt* stmt) {
 	}
 
 	if (stmt->cond) {
-		try {
+		WRAP_ERROR(
 			stmt->cond->Accept(this);
 
 			// Check if condition can evaluate to bool
@@ -203,14 +203,11 @@ void NVSETypeChecker::VisitForStmt(ForStmt* stmt) {
 			auto rType = kTokenType_Boolean;
 			auto oType = s_operators[kOpType_Equals].GetResult(lType, rType);
 			if (oType != kTokenType_Boolean) {
-				error(stmt->line, "Invalid expression type for loop condition.");
+				error(stmt->line, std::format("Invalid expression type ('{}') for loop condition.", TokenTypeToString(oType)));
 			}
 
 			stmt->cond->detailedType = oType;
-		}
-		catch (std::runtime_error& er) {
-			CompErr("%s\n", er.what());
-		}
+		)
 	}
 
 	if (stmt->post) {
@@ -249,7 +246,7 @@ void NVSETypeChecker::VisitIfStmt(IfStmt* stmt) {
 		const auto lType = stmt->cond->detailedType;
 		const auto oType = s_operators[kOpType_Equals].GetResult(lType, kTokenType_Boolean);
 		if (oType == kTokenType_Invalid) {
-			error(stmt->line, std::format("Invalid expression type {} for if statement.", TokenTypeToString(lType)));
+			error(stmt->line, std::format("Invalid expression type '{}' for if statement.", TokenTypeToString(lType)));
 			stmt->cond->detailedType = kTokenType_Invalid;
 		}
 		else {
@@ -334,7 +331,7 @@ void NVSETypeChecker::VisitAssignmentExpr(AssignmentExpr* expr) {
 	auto rType = expr->expr->detailedType;
 	auto oType = s_operators[tokenOpToNVSEOpType[expr->token.type]].GetResult(lType, rType);
 	if (oType == kTokenType_Invalid) {
-		const auto msg = std::format("Invalid types {} and {} for operator {} ({}).",
+		const auto msg = std::format("Invalid types '{}' and '{}' for operator {} ({}).",
 		                             TokenTypeToString(lType), TokenTypeToString(rType), expr->token.lexeme,
 		                             TokenTypeStr[static_cast<int>(expr->token.type)]);
 		error(expr->line, msg);
@@ -353,7 +350,7 @@ void NVSETypeChecker::VisitTernaryExpr(TernaryExpr* expr) {
 		const auto lType = expr->cond->detailedType;
 		const auto oType = s_operators[kOpType_Equals].GetResult(lType, kTokenType_Boolean);
 		if (oType == kTokenType_Invalid) {
-			error(expr->line, std::format("Invalid expression type {} for if statement.", TokenTypeToString(lType)));
+			error(expr->line, std::format("Invalid expression type '{}' for if statement.", TokenTypeToString(lType)));
 			expr->cond->detailedType = kTokenType_Invalid;
 		}
 		else {
@@ -374,20 +371,34 @@ void NVSETypeChecker::VisitTernaryExpr(TernaryExpr* expr) {
 void NVSETypeChecker::VisitInExpr(InExpr* expr) {
 	expr->lhs->Accept(this);
 
-	int idx = 0;
-	for (const auto &val : expr->exprs) {
-		idx++;
-		val->Accept(this);
-		
-		const auto lhsType = expr->lhs->detailedType;
-		const auto rhsType = val->detailedType;
-		const auto outputType = s_operators[tokenOpToNVSEOpType[NVSETokenType::EqEq]].GetResult(lhsType, rhsType);
-		if (outputType == kTokenType_Invalid) {
-			WRAP_ERROR(
-				const auto msg = std::format("Value {} (type {}) specified cannot convert to a {}.", idx,
-											 TokenTypeToString(rhsType), TokenTypeToString(lhsType));
-				error(expr->tok.line, expr->tok.column, msg);
-			)
+	if (!expr->values.empty()) {
+		int idx = 0;
+		for (const auto& val : expr->values) {
+			idx++;
+			val->Accept(this);
+
+			const auto lhsType = expr->lhs->detailedType;
+			const auto rhsType = val->detailedType;
+			const auto outputType = s_operators[tokenOpToNVSEOpType[NVSETokenType::EqEq]].GetResult(lhsType, rhsType);
+			if (outputType == kTokenType_Invalid) {
+				WRAP_ERROR(
+					const auto msg = std::format("Value {} (type '{}') cannot compare against the {} specified on lhs of 'in' expression.", idx,
+						TokenTypeToString(rhsType), TokenTypeToString(lhsType));
+					error(expr->tok.line, expr->tok.column, msg);
+				)
+			}
+		}
+	}
+	// Any other expression, compiles to ar_find
+	else {
+		expr->expression->Accept(this);
+		if (expr->expression->detailedType != kTokenType_Ambiguous) {
+			if (expr->expression->detailedType != kTokenType_Array && expr->expression->detailedType != kTokenType_ArrayVar) {
+				WRAP_ERROR(
+					const auto msg = std::format("Expected array for 'in' expression (Got '{}').", TokenTypeToString(expr->expression->detailedType));
+					error(expr->tok.line, expr->tok.column, msg);
+				)
+			}
 		}
 	}
 
@@ -402,7 +413,7 @@ void NVSETypeChecker::VisitBinaryExpr(BinaryExpr* expr) {
 	auto rhsType = expr->right->detailedType;
 	auto outputType = s_operators[tokenOpToNVSEOpType[expr->op.type]].GetResult(lhsType, rhsType);
 	if (outputType == kTokenType_Invalid) {
-		const auto msg = std::format("Invalid types {} and {} for operator {} ({}).",
+		const auto msg = std::format("Invalid types '{}' and '{}' for operator {} ({}).",
 		                             TokenTypeToString(lhsType), TokenTypeToString(rhsType), expr->op.lexeme,
 		                             TokenTypeStr[static_cast<int>(expr->op.type)]);
 		error(expr->op.line, msg);
@@ -677,6 +688,28 @@ void NVSETypeChecker::VisitBoolExpr(BoolExpr* expr) {
 
 void NVSETypeChecker::VisitNumberExpr(NumberExpr* expr) {
 	expr->detailedType = kTokenType_Number;
+}
+
+void NVSETypeChecker::VisitArrayLiteralExpr(ArrayLiteralExpr* expr) {
+	if (expr->values.empty()) {
+		expr->detailedType = kTokenType_Array;
+		return;
+	}
+
+	for (const auto& val : expr->values) {
+		val->Accept(this);
+	}
+
+	auto lhsType = expr->values[0]->detailedType;
+	for (int i = 1; i < expr->values.size(); i++) {
+		if (!CanConvertOperand(expr->values[i]->detailedType, lhsType)) {
+			auto msg = std::format("Value {} (type '{}') specified for array literal conflicts with the type already specified in first element ('{}').",
+				i, TokenTypeToString(expr->values[i]->detailedType), TokenTypeToString(lhsType));
+			WRAP_ERROR(error(expr->token.line, expr->token.column, msg))
+		}
+	}
+
+	expr->detailedType = kTokenType_Array;
 }
 
 void NVSETypeChecker::VisitStringExpr(StringExpr* expr) {

@@ -202,7 +202,7 @@ StmtPtr NVSEParser::ForStatement() {
 			auto type = previousToken;
 			auto ident = Expect(NVSETokenType::Identifier, "Expected identifier.");
 
-			if (Match(NVSETokenType::Slice) || Match(NVSETokenType::In)) {
+			if (Match(NVSETokenType::In)) {
 				init = std::make_shared<VarDeclStmt>(type, ident, nullptr);
 
 				ExprPtr rhs = Expression();
@@ -362,30 +362,18 @@ ExprPtr NVSEParser::Slice() {
 }
 
 ExprPtr NVSEParser::Ternary() {
-	ExprPtr cond = Pair();
+	ExprPtr cond = LogicalOr();
 
 	while (Match(NVSETokenType::Ternary)) {
 		auto token = previousToken;
 
-		auto left = Pair();
+		auto left = LogicalOr();
 		Expect(NVSETokenType::Slice, "Expected ':'.");
-		auto right = Pair();
+		auto right = LogicalOr();
 		cond = std::make_shared<TernaryExpr>(token, std::move(cond), std::move(left), std::move(right));
 	}
 
 	return cond;
-}
-
-ExprPtr NVSEParser::Pair() {
-	ExprPtr left = LogicalOr();
-
-	while (Match(NVSETokenType::MakePair)) {
-		auto op = previousToken;
-		ExprPtr right = LogicalOr();
-		left = std::make_shared<BinaryExpr>(op, std::move(left), std::move(right));
-	}
-
-	return left;
 }
 
 ExprPtr NVSEParser::LogicalOr() {
@@ -442,17 +430,21 @@ ExprPtr NVSEParser::In() {
 
 	if (Match(NVSETokenType::In)) {
 		const auto op = previousToken;
-		Expect(NVSETokenType::LeftBracket, "Expected '['.");
 
-		std::vector<ExprPtr> values{};
-		while (!Match(NVSETokenType::RightBracket)) {
-			if (!values.empty()) {
-				Expect(NVSETokenType::Comma, "Expected ','.");
+		if (Match(NVSETokenType::LeftBracket)) {
+			std::vector<ExprPtr> values{};
+			while (!Match(NVSETokenType::RightBracket)) {
+				if (!values.empty()) {
+					Expect(NVSETokenType::Comma, "Expected ','.");
+				}
+				values.emplace_back(Expression());
 			}
-			values.emplace_back(Expression());
+
+			return std::make_shared<InExpr>(left, op, values);
 		}
-		
-		left = std::make_shared<InExpr>(left, op, values);
+
+		auto expr = Expression();
+		return std::make_shared<InExpr>(left, op, expr);
 	}
 
 	return left;
@@ -508,11 +500,23 @@ ExprPtr NVSEParser::Term() {
 }
 
 ExprPtr NVSEParser::Factor() {
-	ExprPtr left = Unary();
+	ExprPtr left = Pair();
 
 	while (Match(NVSETokenType::Star) || Match(NVSETokenType::Slash) || Match(NVSETokenType::Mod) || Match(
 		NVSETokenType::Pow)) {
 		const auto op = previousToken;
+		ExprPtr right = Pair();
+		left = std::make_shared<BinaryExpr>(op, std::move(left), std::move(right));
+	}
+
+	return left;
+}
+
+ExprPtr NVSEParser::Pair() {
+	ExprPtr left = Unary();
+
+	while (Match(NVSETokenType::MakePair)) {
+		auto op = previousToken;
 		ExprPtr right = Unary();
 		left = std::make_shared<BinaryExpr>(op, std::move(left), std::move(right));
 	}
@@ -660,6 +664,10 @@ ExprPtr NVSEParser::Primary() {
 		return std::make_shared<GroupingExpr>(std::move(expr));
 	}
 
+	if (Peek(NVSETokenType::LeftBracket)) {
+		return ArrayLiteral();
+	}
+
 	if (Match(NVSETokenType::Fn)) {
 		return FnExpr();
 	}
@@ -683,6 +691,21 @@ ExprPtr NVSEParser::FnExpr() {
 	}
 
 	return std::make_shared<LambdaExpr>(token, std::move(args), BlockStatement());
+}
+
+ExprPtr NVSEParser::ArrayLiteral() {
+	Expect(NVSETokenType::LeftBracket, "Expected '['.");
+	const auto tok = previousToken;
+
+	std::vector<ExprPtr> values{};
+	while (!Match(NVSETokenType::RightBracket)) {
+		if (!values.empty()) {
+			Expect(NVSETokenType::Comma, "Expected ','.");
+		}
+		values.emplace_back(Expression());
+	}
+
+	return std::make_shared<ArrayLiteralExpr>(tok, values);
 }
 
 std::vector<std::shared_ptr<VarDeclStmt>> NVSEParser::ParseArgs() {

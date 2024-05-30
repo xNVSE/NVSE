@@ -255,9 +255,11 @@ struct TernaryExpr : Expr {
 struct InExpr : Expr {
     ExprPtr lhs;
     NVSEToken tok;
-    std::vector<ExprPtr> exprs{};
+    std::vector<ExprPtr> values{};
+    ExprPtr expression{};
 
-    InExpr(ExprPtr lhs, NVSEToken tok, std::vector<ExprPtr> exprs) : lhs(lhs), tok(tok), exprs(exprs) {}
+    InExpr(ExprPtr lhs, NVSEToken tok, std::vector<ExprPtr> exprs) : lhs(lhs), tok(tok), values(exprs) {}
+    InExpr(ExprPtr lhs, NVSEToken tok, ExprPtr expr) : lhs(lhs), tok(tok), expression(expr) {}
 
     void Accept(NVSEVisitor *visitor) override {
         visitor->VisitInExpr(this);
@@ -407,6 +409,17 @@ struct IdentExpr : Expr {
 
     NVSEToken* getToken() override {
         return &token;
+    }
+};
+
+struct ArrayLiteralExpr : Expr {
+    NVSEToken token;
+    std::vector<ExprPtr> values;
+
+    ArrayLiteralExpr(NVSEToken token, std::vector<ExprPtr> values) : token(token), values(values) {}
+
+    void Accept(NVSEVisitor* t) override {
+        return t->VisitArrayLiteralExpr(this);
     }
 };
 
