@@ -132,6 +132,7 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 					{
 						inWhatComment = InWhatComment::MultiLine;
 						pos += 2;
+						column += 2; // multiline comment could end on the same line it's declared on and have valid code after itself.
 					}
 					else {
 						break; // found start of next token
