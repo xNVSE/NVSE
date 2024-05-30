@@ -16,7 +16,7 @@ namespace ScriptFunctionTests
 {
 	void RunTestsForCompilerVersion(bool testOldCompiler)
 	{
-		const char* path = testOldCompiler ? "data/nvse/unit_tests/old_compiler" : "data/nvse/unit_tests/new_compiler";
+		std::string path = testOldCompiler ? "data/nvse/unit_tests/old_compiler" : "data/nvse/unit_tests/new_compiler";
 		const char* debugStr = testOldCompiler ? "Old compiler" : "New compiler";
 		for (const auto& entry : fs::directory_iterator(fs::current_path() / path))
 		{
@@ -41,6 +41,28 @@ namespace ScriptFunctionTests
 					debugStr, fileName.c_str());
 			}
 		}
+
+		std::string expectedFailuresPath = path + "/expected_failures";
+		for (const auto& entry : fs::directory_iterator(fs::current_path() / expectedFailuresPath))
+		{
+			if (!entry.is_regular_file())
+				continue;
+
+			std::ifstream f(entry.path());
+			if (!f)
+				continue;
+			std::ostringstream ss;
+			ss << f.rdbuf();
+			const std::string& str = ss.str();
+			std::string fileName = get_stem(entry);
+
+			if (auto const script = CompileScriptEx(str.c_str(), fileName.c_str())) [[unlikely]]
+			{
+				Console_Print("%s: Error in xNVSE unit test file %s: script compiled, when it was meant to fail.",
+					debugStr, fileName.c_str());
+			}
+		}
+
 		Console_Print("%s: Finished running xNVSE script unit tests.", debugStr);
 	}
 
