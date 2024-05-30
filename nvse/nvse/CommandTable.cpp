@@ -2219,6 +2219,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(DumpCommandWikiDocs);
 	ADD_CMD(SetModelPath);
 	ADD_CMD_RET(Ternary, kRetnType_Ambiguous);
+	ADD_CMD(MatchesAnyOf);
 }
 
 namespace PluginAPI

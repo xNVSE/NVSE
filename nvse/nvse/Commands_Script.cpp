@@ -1760,4 +1760,58 @@ bool Cmd_CompileScript_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_MatchesAnyOf_Execute(COMMAND_ARGS)
+{
+	*result = false;
+	if (ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+		eval.ExtractArgs())
+	{
+		const auto valTokenToMatch = eval.Arg(0);
+		const auto type = valTokenToMatch->GetTokenTypeAsVariableType();
+
+		for (int i = 1; i < eval.NumArgs(); ++i)
+		{
+			switch (type)
+			{
+			case Script::VariableType::eVarType_Float:
+			case Script::VariableType::eVarType_Integer:
+				if (valTokenToMatch->GetNumber() == eval.Arg(i)->GetNumber())
+				{
+					*result = 1;
+					return true;
+				}
+				break;
+
+			case Script::VariableType::eVarType_String:
+				if (StrEqual(valTokenToMatch->GetString(), eval.Arg(i)->GetString()))
+				{
+					*result = 1;
+					return true;
+				}
+				break;
+
+			case Script::VariableType::eVarType_Ref:
+				if (valTokenToMatch->GetFormID() == eval.Arg(i)->GetFormID())
+				{
+					*result = 1;
+					return true;
+				}
+				break;
+
+			case Script::VariableType::eVarType_Array:
+				if (valTokenToMatch->GetArrayVar()->Equals(eval.Arg(i)->GetArrayVar()))
+				{
+					*result = 1;
+					return true;
+				}
+				break;
+
+			default:
+				return true;
+			}
+		}
+	}
+	return true;
+}
+
 #endif

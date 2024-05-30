@@ -486,3 +486,34 @@ static ParamInfo kNVSEParams_OneString_OneOptionalBool[] =
 
 DEFINE_CMD_ALT_EXP(CompileScript, GetUDFFromFile, "Returns a compiled script from a file, to call as a UDF.", 
 	false, kNVSEParams_OneString_OneOptionalBool);
+
+static ParamInfo kNVSEParams_MatchesAnyOf[] =
+{
+	{	"valueToMatch",	kNVSEParamType_BasicType,	0	},
+
+	{	"value",		kNVSEParamType_BasicType,		0	}, // intentionally non-optional
+	{	"value",		kNVSEParamType_BasicType,		1	},
+	{	"value",		kNVSEParamType_BasicType,		1	},
+	{	"value",		kNVSEParamType_BasicType,		1	},
+	{	"value",		kNVSEParamType_BasicType,		1	},
+
+	{	"value",		kNVSEParamType_BasicType,		1	},
+	{	"value",		kNVSEParamType_BasicType,		1	},
+	{	"value",		kNVSEParamType_BasicType,		1	},
+	{	"value",		kNVSEParamType_BasicType,		1	},
+	{	"value",		kNVSEParamType_BasicType,		1	},
+
+	{	"value",		kNVSEParamType_BasicType,		1	},
+	{	"value",		kNVSEParamType_BasicType,		1	},
+	{	"value",		kNVSEParamType_BasicType,		1	},
+	{	"value",		kNVSEParamType_BasicType,		1	},
+	{	"value",		kNVSEParamType_BasicType,		1	},
+
+	{	"value",		kNVSEParamType_BasicType,		1	},
+	{	"value",		kNVSEParamType_BasicType,		1	},
+	{	"value",		kNVSEParamType_BasicType,		1	},
+	{	"value",		kNVSEParamType_BasicType,		1	},
+};
+
+DEFINE_CMD_ALT_EXP(MatchesAnyOf, , "Returns true/false if the first value matches any of the other values.",
+	false, kNVSEParams_MatchesAnyOf);
