@@ -453,6 +453,8 @@ void NVSETreePrinter::VisitIdentExpr(IdentExpr* expr) {
 	curTab--;
 }
 
+void NVSETreePrinter::VisitMapLiteralExpr(MapLiteralExpr* expr) {}
+
 void NVSETreePrinter::VisitArrayLiteralExpr(ArrayLiteralExpr* expr) {
 	PrintTabs();
 	CompDbg("array literal\n");

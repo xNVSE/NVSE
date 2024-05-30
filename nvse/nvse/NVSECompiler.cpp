@@ -18,6 +18,7 @@ enum OPCodes {
     OP_SET_FUNCTION_VALUE = 0x1546,
     OP_MATCHES_ANY = 0x166F,
     OP_AR_LIST = 0x1567,
+    OP_AR_MAP = 0x1568,
     OP_AR_FIND = 0x1557,
     OP_AR_BAD_NUMERIC_INDEX = 0x155F,
 };
@@ -743,9 +744,17 @@ void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
     }
 }
 
+void NVSECompiler::VisitMapLiteralExpr(MapLiteralExpr* expr) {
+    StartCall(OP_AR_MAP);
+    for (const auto& val : expr->values) {
+        AddCallArg(val);
+    }
+    FinishCall();
+}
+
 void NVSECompiler::VisitArrayLiteralExpr(ArrayLiteralExpr* expr) {
-    StartCall(OP_AR_LIST);
-    for (auto val : expr->values) {
+    StartCall(OP_AR_MAP);
+    for (const auto &val : expr->values) {
         AddCallArg(val);
     }
     FinishCall();

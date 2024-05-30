@@ -423,6 +423,17 @@ struct ArrayLiteralExpr : Expr {
     }
 };
 
+struct MapLiteralExpr : Expr {
+    NVSEToken token;
+    std::vector<ExprPtr> values;
+
+    MapLiteralExpr(NVSEToken token, std::vector<ExprPtr> values) : token(token), values(values) {}
+
+    void Accept(NVSEVisitor* t) override {
+        return t->VisitMapLiteralExpr(this);
+    }
+};
+
 struct GroupingExpr : Expr {
     ExprPtr expr;
 

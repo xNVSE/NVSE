@@ -690,6 +690,59 @@ void NVSETypeChecker::VisitNumberExpr(NumberExpr* expr) {
 	expr->detailedType = kTokenType_Number;
 }
 
+void NVSETypeChecker::VisitMapLiteralExpr(MapLiteralExpr* expr) {
+	if (expr->values.empty()) {
+		expr->detailedType = kTokenType_Array;
+		return;
+	}
+
+	// Check that all expressions are pairs
+	bool hadError = false;
+	for (int i = 0; i < expr->values.size(); i++) {
+		const auto &val = expr->values[i];
+		val->Accept(this);
+		if (val->detailedType != kTokenType_Pair && val->detailedType != kTokenType_Ambiguous) {
+			WRAP_ERROR(error(expr->token.line, expr->token.column,
+				std::format("Value {} is not a pair and is not valid for a map literal.", i + 1)))
+			hadError = true;
+		}
+	}
+
+	if (hadError) {
+		return;
+	}
+
+	// Now check key types
+	auto lhsType = kTokenType_Invalid;
+	for (int i = 0; i < expr->values.size(); i++) {
+		if (expr->values[i]->detailedType != kTokenType_Pair) {
+			continue;
+		}
+
+		// Try to check the key
+		const auto pairPtr = dynamic_cast<BinaryExpr*>(expr->values[i].get());
+		if (!pairPtr) {
+			continue;
+		}
+		
+		if (pairPtr->op.type != NVSETokenType::MakePair && pairPtr->left->detailedType != kTokenType_Pair) {
+			continue;
+		}
+		
+		if (lhsType == kTokenType_Invalid) {
+			lhsType = pairPtr->left->detailedType;
+		} else {
+			if (lhsType != pairPtr->left->detailedType) {
+				auto msg = std::format("Key for value {} (type '{}') specified for map literal conflicts with key type of previous value ('{}').",
+					i, TokenTypeToString(pairPtr->left->detailedType), TokenTypeToString(lhsType));
+				WRAP_ERROR(error(expr->token.line, expr->token.column, msg))
+			}
+		}
+	}
+	
+	expr->detailedType = kTokenType_Array;
+}
+
 void NVSETypeChecker::VisitArrayLiteralExpr(ArrayLiteralExpr* expr) {
 	if (expr->values.empty()) {
 		expr->detailedType = kTokenType_Array;

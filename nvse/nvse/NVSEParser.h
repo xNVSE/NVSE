@@ -55,6 +55,7 @@ private:
     ExprPtr Call();
     ExprPtr FnExpr();
     ExprPtr ArrayLiteral();
+    ExprPtr MapLiteral();
     std::vector<std::shared_ptr<VarDeclStmt>> ParseArgs();
     ExprPtr Primary();
 

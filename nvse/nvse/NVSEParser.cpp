@@ -667,6 +667,10 @@ ExprPtr NVSEParser::Primary() {
 	if (Peek(NVSETokenType::LeftBracket)) {
 		return ArrayLiteral();
 	}
+	
+	if (Peek(NVSETokenType::LeftBrace)) {
+		return MapLiteral();
+	}
 
 	if (Match(NVSETokenType::Fn)) {
 		return FnExpr();
@@ -699,6 +703,21 @@ ExprPtr NVSEParser::ArrayLiteral() {
 
 	std::vector<ExprPtr> values{};
 	while (!Match(NVSETokenType::RightBracket)) {
+		if (!values.empty()) {
+			Expect(NVSETokenType::Comma, "Expected ','.");
+		}
+		values.emplace_back(Expression());
+	}
+
+	return std::make_shared<ArrayLiteralExpr>(tok, values);
+}
+
+ExprPtr NVSEParser::MapLiteral() {
+	Expect(NVSETokenType::LeftBrace, "Expected '{'.");
+	const auto tok = previousToken;
+
+	std::vector<ExprPtr> values{};
+	while (!Match(NVSETokenType::RightBrace)) {
 		if (!values.empty()) {
 			Expect(NVSETokenType::Comma, "Expected ','.");
 		}
