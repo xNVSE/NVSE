@@ -1824,11 +1824,16 @@ bool Cmd_MatchesAnyOf_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool Cmd_CreateLocalStack_Execute(COMMAND_ARGS) {
+bool Cmd_PushLocalStack_Execute(COMMAND_ARGS) {
 	g_localStackVars.emplace();
-	_DMESSAGE("LOCAL VAR STACK CREATE");
+	_DMESSAGE("LOCAL VAR STACK CREATE : Index %d", g_localStackVars.size() - 1);
 	return true;
 }
 
+bool Cmd_PopLocalStack_Execute(COMMAND_ARGS) {
+	g_localStackVars.pop();
+	_DMESSAGE("LOCAL VAR STACK DESTROY : Index %d", g_localStackVars.size() - 1);
+	return true;
+}
 
 #endif

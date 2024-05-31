@@ -21,7 +21,8 @@ enum OPCodes {
     OP_AR_MAP = 0x1568,
     OP_AR_FIND = 0x1557,
     OP_AR_BAD_NUMERIC_INDEX = 0x155F,
-    OP_CREATE_LOCAL_STACK = 0x1670,
+    OP_PUSH_LOCAL_STACK = 0x1670,
+    OP_POP_LOCAL_STACK = 0x1671,
 };
 
 bool NVSECompiler::Compile() {
@@ -160,9 +161,11 @@ void NVSECompiler::VisitBeginStmt(const BeginStmt* stmt) {
     auto blockStart = data.size();
 
     scopes.push(stmt->scope);
-    StartCall(OP_CREATE_LOCAL_STACK);
+    StartCall(OP_PUSH_LOCAL_STACK);
     FinishCall();
     CompileBlock(stmt->block, true);
+    StartCall(OP_POP_LOCAL_STACK);
+    FinishCall();
     scopes.pop();
 
     // OP_END
@@ -213,9 +216,11 @@ void NVSECompiler::VisitFnStmt(FnDeclStmt* stmt) {
 
     // Compile script
     scopes.push(stmt->scope);
-    StartCall(OP_CREATE_LOCAL_STACK);
+    StartCall(OP_PUSH_LOCAL_STACK);
     FinishCall();
     CompileBlock(stmt->body, false);
+    StartCall(OP_POP_LOCAL_STACK);
+    FinishCall();
     scopes.pop();
 
     // OP_END
@@ -305,7 +310,12 @@ void NVSECompiler::VisitVarDeclStmt(const VarDeclStmt* stmt) {
             localTypes[var->index] = varType;
 
             // Build expression
-            value->Accept(this);
+            if(value) {
+                value->Accept(this);
+            } else {
+                AddU8('B');
+                AddU8(0);
+            }
 
             // OP_ASSIGN
             AddU8(0);
@@ -518,7 +528,9 @@ void NVSECompiler::VisitIfStmt(IfStmt* stmt) {
 }
 
 void NVSECompiler::VisitReturnStmt(ReturnStmt* stmt) {
-    // Emit OP_DESTROY_LOCALS
+    // Pop off stack frame before return
+    StartCall(OP_POP_LOCAL_STACK);
+    FinishCall();
     
     // Compile SetFunctionValue if we have a return value
     if (stmt->expr) {
@@ -870,7 +882,7 @@ void NVSECompiler::VisitMapLiteralExpr(MapLiteralExpr* expr) {
 }
 
 void NVSECompiler::VisitArrayLiteralExpr(ArrayLiteralExpr* expr) {
-    StartCall(OP_AR_MAP);
+    StartCall(OP_AR_LIST);
     for (const auto &val : expr->values) {
         AddCallArg(val);
     }
@@ -938,7 +950,13 @@ void NVSECompiler::VisitLambdaExpr(LambdaExpr* expr) {
         // Compile script
         scopes.push(expr->scope);
         insideNvseExpr.push(false);
+
+        StartCall(OP_PUSH_LOCAL_STACK);
+        FinishCall();
         CompileBlock(expr->body, false);
+        StartCall(OP_POP_LOCAL_STACK);
+        FinishCall();
+
         insideNvseExpr.pop();
         scopes.pop();
 

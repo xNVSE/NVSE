@@ -71,9 +71,13 @@ std::string getTypeErrorMsg(Token_Type lhs, Token_Type rhs) {
 	return std::format("Cannot convert from {} to {}", TokenTypeToString(lhs), TokenTypeToString(rhs));
 }
 
-std::shared_ptr<NVSEScope> NVSETypeChecker::EnterScope(bool uniqueScope) {
-	if (!scopes.empty() && !uniqueScope) {
-		scopes.emplace(std::make_shared<NVSEScope>(scopeIndex++, scopes.top()));
+std::shared_ptr<NVSEScope> NVSETypeChecker::EnterScope(bool lambdaScope) {
+	if (!scopes.empty()) {
+		if (lambdaScope) {
+			scopes.emplace(std::make_shared<NVSEScope>(scopeIndex++, globalScope));
+		} else {
+			scopes.emplace(std::make_shared<NVSEScope>(scopeIndex++, scopes.top()));
+		}
 	} else {
 		scopes.emplace(std::make_shared<NVSEScope>(scopeIndex++));
 	}
@@ -850,7 +854,7 @@ void NVSETypeChecker::VisitLambdaExpr(LambdaExpr* expr) {
 	}
 	scopes.pop();
 
-	expr->scope = EnterScope();
+	expr->scope = EnterScope(true);
 	insideLoop.push(false);
 	expr->body->Accept(this);
 	insideLoop.pop();

@@ -546,4 +546,5 @@ static ParamInfo kNVSEParams_MatchesAnyOf[] =
 DEFINE_CMD_ALT_EXP(MatchesAnyOf, , "Returns true/false if the first value matches any of the other values.",
 	false, kNVSEParams_MatchesAnyOf);
 
-DEFINE_CMD_ALT_EXP(CreateLocalStack,,"Create a local variable stack frame.", false, nullptr);
+DEFINE_CMD_ALT_EXP(PushLocalStack,,"Create a local variable stack frame.", false, nullptr);
+DEFINE_CMD_ALT_EXP(PopLocalStack, , "Pop a variable stack frame.", false, nullptr);
