@@ -303,6 +303,9 @@ struct ScriptToken
 	[[nodiscard]] Token_Type Type() const { return type; }
 
 	[[nodiscard]] bool IsGood() const { return type != kTokenType_Invalid; }
+	[[nodiscard]] bool IsNonStackVariable() const {
+		return (type >= kTokenType_NumericVar && type <= kTokenType_ArrayVar);
+	}
 	[[nodiscard]] bool IsVariable() const {
 		return (type >= kTokenType_NumericVar && type <= kTokenType_ArrayVar) || (type >= kTokenType_NumericStackVar && type <= kTokenType_ArrayStackVar);
 	}

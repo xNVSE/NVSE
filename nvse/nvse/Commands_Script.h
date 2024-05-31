@@ -26,6 +26,16 @@ struct LocalStackFrame {
 };
 
 inline thread_local std::stack<LocalStackFrame> g_localStackVars;
+
+void SetLocalStackVarVal(int idx, double val)
+{
+	g_localStackVars.top().set(idx, val);
+}
+
+double GetLocalStackVarVal(int idx)
+{
+	g_localStackVars.top().get(idx);
+}
 #endif
 
 DEFINE_COMMAND(IsScripted, returns 1 if the object or reference has a script attached to it., 0, 1, kParams_OneOptionalForm);

@@ -935,19 +935,25 @@ ArrayVar *ScriptToken::GetArrayVar() const
 
 ScriptLocal *ScriptToken::GetVar() const
 {
-	if (!IsVariable())
+	if (!IsNonStackVariable())
 		return nullptr;
 	return value.var;
 }
 
 StringVar* ScriptToken::GetStringVar() const
 {
-	if (type != kTokenType_StringVar)
+	if (type != kTokenType_StringVar && type != kTokenType_StringStackVar)
 		return nullptr;
 	if (value.nvseVariable.stringVar)
 		return value.nvseVariable.stringVar;
-	if (value.var)
+	if (type == kTokenType_StringStackVar)
+	{
+		return g_StringMap.Get(static_cast<int>(g_localStackVars.top().get(value.stackVarIdx)));
+	}
+	else if (value.var) {
 		return g_StringMap.Get(static_cast<int>(value.var->data));
+	}
+	
 	return nullptr;
 }
 
