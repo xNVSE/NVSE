@@ -476,7 +476,10 @@ std::unique_ptr<ScriptToken> Eval_Assign_Global(OperatorType op, ScriptToken *lh
 std::unique_ptr<ScriptToken> Eval_Assign_Array(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	if (lh->type == kTokenType_ArrayStackVar) {
-		return ScriptToken::CreateArray(g_localStackVars.top().get(lh->value.stackVarIdx));
+		auto* rhArr = rh->GetArrayVar();
+		auto const result = rhArr ? rhArr->ID() : 0;
+		g_localStackVars.top().set(lh->value.stackVarIdx, result);
+		return ScriptToken::CreateArray(result);
 	} 
 
 	ScriptLocal* var = lh->GetVar();
