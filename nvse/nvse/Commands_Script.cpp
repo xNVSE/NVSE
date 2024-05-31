@@ -1425,6 +1425,16 @@ bool Cmd_CallWhilePerSeconds_Execute(COMMAND_ARGS)
 	return true;
 }
 
+void SetLocalStackVarVal(int idx, double val)
+{
+	g_localStackVars.top().set(idx, val);
+}
+
+double& GetLocalStackVarVal(int idx)
+{
+	return g_localStackVars.top().get(idx);
+}
+
 void ClearDelayedCalls()
 {
 	g_callForInfos.clear();
