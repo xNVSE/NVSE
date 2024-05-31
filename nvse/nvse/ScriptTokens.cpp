@@ -116,9 +116,9 @@ ScriptToken::ScriptToken(Script *script) : type(kTokenType_Lambda), refIdx(0), v
 	value.lambda = script;
 }
 #if RUNTIME
-ScriptToken::ScriptToken(ScriptLocal* scriptLocal, StringVar* stringVar) : type(kTokenType_StringVar), variableType(Script::eVarType_String), refIdx(0), varIdx(0)
+ScriptToken::ScriptToken(StringVar* stringVar) : type(kTokenType_StringVar), variableType(Script::eVarType_String), refIdx(0), varIdx(0)
 {
-	value.nvseVariable = { scriptLocal, stringVar};
+	value.nvseVariable = { stringVar};
 }
 #endif
 
@@ -1462,7 +1462,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator *context)
 
 		refIdx = context->Read16();
 		varIdx = context->Read16();
-		value.nvseVariable = { nullptr, {nullptr}};
+		value.nvseVariable = { {nullptr}};
 		break;
 	}
 	case 'F':
