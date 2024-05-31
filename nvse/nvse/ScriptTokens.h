@@ -272,7 +272,7 @@ struct ScriptToken
 	Token_Type ReadFrom(ExpressionEvaluator *context); // reconstitute param from compiled data, return the type
 	[[nodiscard]] virtual ArrayID GetArrayID() const;
 	[[nodiscard]] ArrayVar *GetArrayVar() const;
-	[[nodiscard]] ScriptLocal *GetVar() const;
+	[[nodiscard]] ScriptLocal *GetNonStackVar() const;
 	[[nodiscard]] StringVar* GetStringVar() const;
 	bool ResolveVariable();
 	[[nodiscard]] Script* GetUserFunction() const;

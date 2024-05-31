@@ -469,16 +469,16 @@ std::unique_ptr<ScriptToken> Eval_Assign_AssignableString(OperatorType op, Scrip
 std::unique_ptr<ScriptToken> Eval_Assign_Form(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	const UInt32 formID = rh->GetFormID();
-	auto const outRefID = reinterpret_cast<UInt64*>(&(lh->GetNonStackVar()->data));
-	*outRefID = formID;
-	return ScriptToken::CreateForm(formID);
-}
-
-std::unique_ptr<ScriptToken> Eval_Assign_Form_Number(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
-{
-	const UInt32 formID = rh->GetFormID();
-	auto const outRefID = reinterpret_cast<UInt64*>(&(lh->GetNonStackVar()->data));
-	*outRefID = formID;
+	if (auto lhVar = lh->GetNonStackVar())
+	{
+		auto const outRefID = reinterpret_cast<UInt64*>(&(lhVar->data));
+		*outRefID = formID;
+	}
+	else if (lh->type == kTokenType_RefStackVar)
+	{
+		auto const outRefID = reinterpret_cast<UInt64*>(&(GetLocalStackVarVal(lh->value.stackVarIdx)));
+		*outRefID = formID;
+	}
 	return ScriptToken::CreateForm(formID);
 }
 
@@ -1436,7 +1436,7 @@ OperationRule kOpRule_Assignment[] =
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_Assign_Numeric), true},
 		{kTokenType_StringVar, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_Assign_String), true},
 		{kTokenType_RefVar, kTokenType_Form, kTokenType_Form, OP_HANDLER(Eval_Assign_Form), true},
-		{kTokenType_RefVar, kTokenType_Number, kTokenType_Form, OP_HANDLER(Eval_Assign_Form_Number), true},
+		{kTokenType_RefVar, kTokenType_Number, kTokenType_Form, OP_HANDLER(Eval_Assign_Form), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_Assign_Global), true},
 		{kTokenType_ArrayVar, kTokenType_Array, kTokenType_Array, OP_HANDLER(Eval_Assign_Array), true},
 		{kTokenType_ArrayStackVar, kTokenType_Array, kTokenType_Array, OP_HANDLER(Eval_Assign_Array), true},

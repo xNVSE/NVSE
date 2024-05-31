@@ -8,7 +8,7 @@
 struct LocalStackFrame {
 	std::vector<double> vars{};
 
-	double get(int idx) {
+	double& get(int idx) {
 		if (idx >= vars.size()) {
 			vars.resize(idx + 10, 0);
 		}
@@ -32,7 +32,7 @@ void SetLocalStackVarVal(int idx, double val)
 	g_localStackVars.top().set(idx, val);
 }
 
-double GetLocalStackVarVal(int idx)
+double& GetLocalStackVarVal(int idx)
 {
 	g_localStackVars.top().get(idx);
 }

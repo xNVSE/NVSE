@@ -933,7 +933,7 @@ ArrayVar *ScriptToken::GetArrayVar() const
 	return g_ArrayMap.Get(GetArrayID());
 }
 
-ScriptLocal *ScriptToken::GetVar() const
+ScriptLocal *ScriptToken::GetNonStackVar() const
 {
 	if (!IsNonStackVariable())
 		return nullptr;
@@ -1288,7 +1288,7 @@ UInt32 __fastcall ScriptTokenGetActorValue(PluginScriptToken *scrToken)
 
 ScriptLocal *__fastcall ScriptTokenGetScriptVar(PluginScriptToken *scrToken)
 {
-	return reinterpret_cast<ScriptToken *>(scrToken)->GetVar();
+	return reinterpret_cast<ScriptToken *>(scrToken)->GetNonStackVar();
 }
 
 const PluginTokenPair *__fastcall ScriptTokenGetPair(PluginScriptToken *scrToken)
