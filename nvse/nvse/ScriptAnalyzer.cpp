@@ -8,13 +8,15 @@
 #include "FunctionScripts.h"
 #include "ScriptUtils.h"
 
-std::stack<ScriptParsing::ScriptAnalyzer*> g_analyzerStack;
+std::vector<ScriptParsing::ScriptAnalyzer*> g_analyzerStack;
 
-ScriptParsing::ScriptAnalyzer* GetAnalyzer()
+ScriptParsing::ScriptAnalyzer* GetRootAnalyzer()
 {
-	if (g_analyzerStack.empty())
+	if (g_analyzerStack.empty()) {
 		return nullptr;
-	return g_analyzerStack.top();
+	}
+	
+	return g_analyzerStack[0];
 }
 
 UInt8 Read8(UInt8*& curData)
@@ -267,7 +269,7 @@ ScriptParsing::BeginStatement::BeginStatement(const ScriptIterator& contextParam
 
 std::string ScriptParsing::BeginStatement::ToString()
 {
-	auto compilerOverrideEnabled = GetAnalyzer() ? GetAnalyzer()->compilerOverrideEnabled : false;
+	auto compilerOverrideEnabled = GetRootAnalyzer() ? GetRootAnalyzer()->compilerOverrideEnabled : false;
 	return ScriptLine::ToString() + " " + (compilerOverrideEnabled ? "_" : "") + (this->commandCallToken ? this->commandCallToken->ToString() : "");
 }
 
@@ -302,7 +304,7 @@ std::string ScriptParsing::OperatorToken::ToString(std::vector<std::string>& sta
 
 std::string ScriptParsing::ScriptVariableToken::GetBackupName()
 {
-	auto* analyzer = GetAnalyzer();
+	auto* analyzer = GetRootAnalyzer();
 	std::string prefix = "i";
 	if (analyzer && analyzer->arrayVariables.contains(this->varInfo))
 		prefix = "a";
@@ -716,7 +718,7 @@ bool ScriptParsing::ScriptIterator::ReadStringLiteral(std::string_view& out)
 
 void RegisterNVSEVar(VariableInfo* info, Script::VariableType type)
 {
-	if (auto* analyzer = GetAnalyzer())
+	if (auto* analyzer = GetRootAnalyzer())
 	{
 		if (type == Script::eVarType_Array)
 			analyzer->arrayVariables.insert(info);
@@ -728,7 +730,7 @@ void RegisterNVSEVar(VariableInfo* info, Script::VariableType type)
 
 void RegisterNVSEVars(CachedTokens& tokens, Script* script)
 {
-	if (auto* analyzer = GetAnalyzer())
+	if (auto* analyzer = GetRootAnalyzer())
 	{
 		for (auto iter = tokens.Begin(); !iter.End(); ++iter)
 		{
@@ -773,7 +775,7 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context, U
 	{
 		compilerOverride = true;
 		context.curData += 2;
-		if (auto* analyzer = GetAnalyzer())
+		if (auto* analyzer = GetRootAnalyzer())
 			analyzer->compilerOverrideEnabled = true;
 	}
 	if (!defaultParse || compilerOverride)
@@ -1061,7 +1063,7 @@ bool DoExpressionEvalTokensCallCmd(CachedTokens* tokens, CommandInfo* cmd)
 		{
 			if (entry.token->value.cmd == cmd)
 				return true;
-			if (auto* analyzer = GetAnalyzer())
+			if (auto* analyzer = GetRootAnalyzer())
 			{
 				const auto callToken = entry.token->GetCallToken(analyzer->script);
 				if (DoAnyExpressionEvalTokensCallCmd(callToken.expressionEvalArgs, cmd))
@@ -1139,7 +1141,7 @@ ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script, bool parse) : iter
 	{
 		this->error = true;
 	}
-	g_analyzerStack.push(this);
+	g_analyzerStack.push_back(this);
 	if (parse && !this->error)
 	{
 		Parse();
@@ -1148,10 +1150,8 @@ ScriptParsing::ScriptAnalyzer::ScriptAnalyzer(Script* script, bool parse) : iter
 
 ScriptParsing::ScriptAnalyzer::~ScriptAnalyzer()
 {
-	if (!g_analyzerStack.empty())
-		g_analyzerStack.pop();
+	g_analyzerStack.pop_back();
 }
-
 
 void ScriptParsing::ScriptAnalyzer::Parse()
 {
@@ -1227,11 +1227,11 @@ auto GetNVSEVersionString()
 	return FormatString("%d.%d.%d", NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA);
 }
 
-std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
-{
+auto ScriptParsing::ScriptAnalyzer::DecompileScript() -> std::string {
 	if (this->error)
 		return "";
 	auto* script = this->iter.script;
+	std::string scriptHeader;
 	std::string scriptText;
 	auto numTabs = 0;
 	const auto nestAddOpcodes = {static_cast<UInt32>(ScriptStatementCode::If), static_cast<UInt32>(ScriptStatementCode::Begin), kCommandInfo_While.opcode, kCommandInfo_ForEach.opcode};
@@ -1244,6 +1244,7 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 		if (opcode == kCommandInfo_Internal_PushExecutionContext.opcode || opcode == kCommandInfo_Internal_PopExecutionContext.opcode
 			|| opcode == static_cast<UInt16>(ScriptStatementCode::ScriptName) && isLambdaScript)
 			continue;
+		
 		const auto isMin = Contains(nestMinOpcodes, opcode);
 		const auto isAdd = Contains(nestAddOpcodes, opcode);
 		if (isAdd && !scriptText.ends_with("\n\n") && !Contains(nestAddOpcodes, lastOpcode) && !Contains(nestNeutralOpcodes, lastOpcode))
@@ -1267,39 +1268,57 @@ std::string ScriptParsing::ScriptAnalyzer::DecompileScript()
 		ReplaceAll(nextLine, "\n", '\n' + tabStr);
 		scriptText += tabStr;
 
-		if (!lastOpcode && !script->varList.Empty())
-		{
-			if (opcode == static_cast<UInt16>(ScriptStatementCode::ScriptName))
-				scriptText += nextLine + '\n' + '\n';
-			for (auto* var : script->varList)
-			{
-				if (!var)
-					continue;
-				ScriptVariableToken token(script, ExpressionCode::None, var, nullptr);
-				if (arrayVariables.contains(var))
-					scriptText += "Array_var ";
-				else if (stringVariables.contains(var))
-					scriptText += "String_var ";
-				else if (var->IsReferenceType(script))
-					scriptText += "Ref ";
-				else if (var->type == Script::VariableType::eVarType_Float)
-					scriptText += "Float ";
-				else
-					scriptText += "Int ";
-				scriptText += token.ToString() + '\n';
-			}
-			scriptText += '\n';
-			if (opcode != static_cast<UInt16>(ScriptStatementCode::ScriptName))
-				scriptText += nextLine + '\n';
+		if (opcode == static_cast<UInt16>(ScriptStatementCode::ScriptName)) {
+			scriptHeader += nextLine + "\n\n";
 		}
-		else scriptText += nextLine + '\n';
+		else {
+			scriptText += nextLine + '\n';
+		}
 
 		if (isNeutral || isAdd)
 			++numTabs;
 		
 		lastOpcode = opcode;
 	}
-	return scriptText;
+
+	// Build header string
+	if (!isLambdaScript) {
+		std::unordered_set<std::string> addedVars{};
+		auto addVar = [&] (VariableInfo *var) {
+			const auto name = std::string(var->name.CStr());
+			if (!var || addedVars.contains(name)) {
+				return;
+			}
+			addedVars.insert(name);
+				
+			ScriptVariableToken token(script, ExpressionCode::None, var, nullptr);
+			if (arrayVariables.contains(var))
+				scriptHeader += "Array_var ";
+			else if (stringVariables.contains(var))
+				scriptHeader += "String_var ";
+			else if (var->IsReferenceType(script))
+				scriptHeader += "Ref ";
+			else if (var->type == Script::VariableType::eVarType_Float)
+				scriptHeader += "Float ";
+			else
+				scriptHeader += "Int ";
+			scriptHeader += token.ToString() + '\n';
+		};
+	
+		for (auto* var : script->varList) {
+			addVar(var);
+		}
+
+		for (auto* var : stringVariables) {
+			addVar(var);
+		}
+
+		for (auto* var : arrayVariables) {
+			addVar(var);
+		}
+	}
+
+	return scriptHeader + scriptText;
 }
 
 size_t __stdcall ScriptParsing::DecompileToBuffer(Script* pScript, FILE* pStream, char* pBuffer)
