@@ -16,7 +16,7 @@ struct LocalStackFrame {
 		return vars[idx];
 	}
 
-	double set(int idx, double val) {
+	void set(int idx, double val) {
 		if (idx >= vars.size()) {
 			vars.resize(idx + 10, 0);
 		}
