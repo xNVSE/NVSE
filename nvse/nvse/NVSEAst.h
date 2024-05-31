@@ -1,5 +1,6 @@
 #pragma once
 #include "NVSELexer.h"
+#include "NVSEScope.h"
 #include "ScriptTokens.h"
 #include "NVSEVisitor.h"
 
@@ -30,6 +31,9 @@ struct Stmt {
 
     // Some statements store type such as return and block statement
     Token_Type detailedType = kTokenType_Invalid;
+
+    // Set later in type checker, used in compiler for local generation
+    std::shared_ptr<NVSEScope> scope {};
 
     virtual ~Stmt() = default;
 
@@ -448,6 +452,9 @@ struct LambdaExpr : Expr {
     NVSEToken token;
     std::vector<std::shared_ptr<VarDeclStmt>> args;
     StmtPtr body;
+
+    // Set in type checker to init a fresh scope
+    std::shared_ptr<NVSEScope> scope {nullptr};
 
     LambdaExpr(NVSEToken token, std::vector<std::shared_ptr<VarDeclStmt>> args, StmtPtr body) : token(std::move(token)),
         args(std::move(args)), body(std::move(body)) {}

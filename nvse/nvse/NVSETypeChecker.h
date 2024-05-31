@@ -2,17 +2,25 @@
 #include <stack>
 
 #include "NVSELexer.h"
+#include "NVSEScope.h"
 #include "NVSEVisitor.h"
 #include "ScriptTokens.h"
 
 class NVSETypeChecker : NVSEVisitor {
-    std::unordered_map<std::string, Token_Type> typeCache{};
     std::unordered_map<std::string, TESForm*> formCache{};
-    std::unordered_map<std::string, NVSEToken> definedVarCache{};
     bool hadError = false;
     NVSEScript *script;
+    
     std::stack<bool> insideLoop {};
+    std::stack<std::shared_ptr<NVSEScope>> scopes {};
+    uint32_t scopeIndex {};
 
+    // Temporarily pushed to stack for things like lambda
+    //     args as these must be in global scope
+    std::shared_ptr<NVSEScope> globalScope{};
+
+    std::shared_ptr<NVSEScope> EnterScope(bool uniqueScope = false);
+    void LeaveScope();
     void error(size_t line, std::string msg);
     void error(size_t line, size_t column, std::string msg);
 
@@ -31,7 +39,7 @@ public:
     void VisitReturnStmt(ReturnStmt* stmt) override;
     void VisitContinueStmt(ContinueStmt* stmt) override;
     void VisitBreakStmt(BreakStmt* stmt) override;
-    void VisitWhileStmt(const WhileStmt* stmt) override;
+    void VisitWhileStmt(WhileStmt* stmt) override;
     void VisitBlockStmt(BlockStmt* stmt) override;
     void VisitAssignmentExpr(AssignmentExpr* expr) override;
     void VisitTernaryExpr(TernaryExpr* expr) override;

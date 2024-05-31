@@ -141,6 +141,12 @@ enum Token_Type : UInt8
 
 	// sigil value, returned when an empty expression is parsed
 	kTokenType_Empty = kTokenType_Max + 1,
+
+	// 'Stack' vars
+	kTokenType_NumericStackVar,
+	kTokenType_RefStackVar,
+	kTokenType_StringStackVar,
+	kTokenType_ArrayStackVar,
 };
 
 const char *TokenTypeToString(Token_Type type);
@@ -218,6 +224,7 @@ struct ScriptToken
 		ScriptLocal *var;
 		LambdaManager::ScriptData lambdaScriptData;
 		CustomVariableContext nvseVariable;
+		uint16_t stackVarIdx;
 #endif
 		// compile-time only
 		VariableInfo *varInfo;
@@ -297,7 +304,9 @@ struct ScriptToken
 	[[nodiscard]] Token_Type Type() const { return type; }
 
 	[[nodiscard]] bool IsGood() const { return type != kTokenType_Invalid; }
-	[[nodiscard]] bool IsVariable() const { return type >= kTokenType_NumericVar && type <= kTokenType_ArrayVar; }
+	[[nodiscard]] bool IsVariable() const {
+		return (type >= kTokenType_NumericVar && type <= kTokenType_ArrayVar) || (type >= kTokenType_NumericStackVar && type <= kTokenType_ArrayStackVar);
+	}
 
 	[[nodiscard]] double GetNumericRepresentation(bool bFromHex, bool* hasErrorOut = nullptr) const; // attempts to convert string to number
 	[[nodiscard]] char *DebugPrint() const;

@@ -20,6 +20,7 @@
 #include <utility>
 #include <ranges>
 
+#include "Commands_Script.h"
 #include "Hooks_Editor.h"
 #include "ScriptAnalyzer.h"
 
@@ -474,10 +475,15 @@ std::unique_ptr<ScriptToken> Eval_Assign_Global(OperatorType op, ScriptToken *lh
 
 std::unique_ptr<ScriptToken> Eval_Assign_Array(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *var = lh->GetVar();
+	if (lh->type == kTokenType_ArrayStackVar) {
+		return ScriptToken::CreateArray(g_localStackVars.top().get(lh->value.stackVarIdx));
+	} 
+
+	ScriptLocal* var = lh->GetVar();
 	g_ArrayMap.AddReference(&var->data, rh->GetArrayID(), context->script->GetModIndex());
 	if (!lh->refIdx)
 		AddToGarbageCollection(context->eventList, var, NVSEVarType::kVarType_Array);
+
 #if _DEBUG
 	auto *script = context->script;
 	if (lh->refIdx)
@@ -487,6 +493,7 @@ std::unique_ptr<ScriptToken> Eval_Assign_Array(OperatorType op, ScriptToken *lh,
 	else if (arrayVar && arrayVar->varName.empty())
 		arrayVar->varName = "<eval assign var not found>";
 #endif
+
 	return ScriptToken::CreateArray(var->data);
 }
 
@@ -1403,6 +1410,7 @@ OperationRule kOpRule_Assignment[] =
 		{kTokenType_RefVar, kTokenType_Ambiguous, kTokenType_Form, NULL, true},
 		{kTokenType_StringVar, kTokenType_Ambiguous, kTokenType_String, NULL, true},
 		{kTokenType_ArrayVar, kTokenType_Ambiguous, kTokenType_Array, NULL, true},
+		{kTokenType_ArrayStackVar, kTokenType_Ambiguous, kTokenType_Array, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Ambiguous, NULL, true},
 
 		{kTokenType_AssignableString, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_Assign_AssignableString), true},
@@ -1412,6 +1420,7 @@ OperationRule kOpRule_Assignment[] =
 		{kTokenType_RefVar, kTokenType_Number, kTokenType_Form, OP_HANDLER(Eval_Assign_Form_Number), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_Assign_Global), true},
 		{kTokenType_ArrayVar, kTokenType_Array, kTokenType_Array, OP_HANDLER(Eval_Assign_Array), true},
+		{kTokenType_ArrayStackVar, kTokenType_Array, kTokenType_Array, OP_HANDLER(Eval_Assign_Array), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_Assign_Elem_Number), true},
 		{kTokenType_ArrayElement, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_Assign_Elem_String), true},
 		{kTokenType_ArrayElement, kTokenType_Form, kTokenType_Form, OP_HANDLER(Eval_Assign_Elem_Form), true},
@@ -1553,8 +1562,10 @@ OperationRule kOpRule_Slice[] =
 OperationRule kOpRule_In[] =
 	{
 		{kTokenType_ArrayVar, kTokenType_Ambiguous, kTokenType_ForEachContext, NULL, true},
+		{kTokenType_ArrayStackVar, kTokenType_Ambiguous, kTokenType_ForEachContext, NULL, true},
 
 		{kTokenType_ArrayVar, kTokenType_Array, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
+		{kTokenType_ArrayStackVar, kTokenType_Array, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
 		{kTokenType_StringVar, kTokenType_String, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
 		{kTokenType_RefVar, kTokenType_Form, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
 };
@@ -3905,6 +3916,7 @@ bool ExpressionEvaluator::ExtractArgsV(va_list list)
 		}
 		case kTokenType_Array:
 		case kTokenType_ArrayVar:
+		case kTokenType_ArrayStackVar:
 		{
 			*va_arg(list, ArrayVar**) = arg->GetArrayVar();
 			break;
@@ -5132,6 +5144,14 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 					break;
 				}
 				operands.push_back(FormatString("<failed to get var name %d %d>", token.refIdx, token.varIdx));
+				break;
+			}
+			case kTokenType_NumericStackVar:
+			case kTokenType_RefStackVar:
+			case kTokenType_StringStackVar:
+			case kTokenType_ArrayStackVar:
+			{
+				operands.push_back(FormatString("<stack var %d>", token.value.stackVarIdx));
 				break;
 			}
 			case kTokenType_LambdaScriptData:

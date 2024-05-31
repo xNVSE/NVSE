@@ -21,6 +21,7 @@ enum OPCodes {
     OP_AR_MAP = 0x1568,
     OP_AR_FIND = 0x1557,
     OP_AR_BAD_NUMERIC_INDEX = 0x155F,
+    OP_CREATE_LOCAL_STACK = 0x1670,
 };
 
 bool NVSECompiler::Compile() {
@@ -103,7 +104,9 @@ void NVSECompiler::VisitNVSEScript(NVSEScript* nvScript) {
     }
 
     for (auto& block : nvScript->blocks) {
+        scopes.push(block->scope);
         block->Accept(this);
+        scopes.pop();
     }
 }
 
@@ -155,7 +158,12 @@ void NVSECompiler::VisitBeginStmt(const BeginStmt* stmt) {
 
     SetU16(beginPatch, data.size() - beginStart);
     auto blockStart = data.size();
+
+    scopes.push(stmt->scope);
+    StartCall(OP_CREATE_LOCAL_STACK);
+    FinishCall();
     CompileBlock(stmt->block, true);
+    scopes.pop();
 
     // OP_END
     AddU32(static_cast<uint32_t>(ScriptParsing::ScriptStatementCode::End));
@@ -184,6 +192,7 @@ void NVSECompiler::VisitFnStmt(FnDeclStmt* stmt) {
     AddU8(stmt->args.size());
 
     // add args
+    bTempGlobalScope = true;
     for (auto i = 0; i < stmt->args.size(); i++) {
         auto& arg = stmt->args[i];
         auto type = GetScriptTypeFromToken(arg->type);
@@ -192,6 +201,7 @@ void NVSECompiler::VisitFnStmt(FnDeclStmt* stmt) {
         AddU16(localIdx);
         AddU8(type);
     }
+    bTempGlobalScope = false;
 
     // NUM_ARRAY_ARGS, always 0
     AddU8(0x0);
@@ -202,7 +212,11 @@ void NVSECompiler::VisitFnStmt(FnDeclStmt* stmt) {
     SetU16(opModeLenPatch, data.size() - opModeStart);
 
     // Compile script
+    scopes.push(stmt->scope);
+    StartCall(OP_CREATE_LOCAL_STACK);
+    FinishCall();
     CompileBlock(stmt->body, false);
+    scopes.pop();
 
     // OP_END
     AddU32(static_cast<uint32_t>(ScriptParsing::ScriptStatementCode::End));
@@ -218,6 +232,12 @@ void NVSECompiler::VisitVarDeclStmt(const VarDeclStmt* stmt) {
 
     for (auto [token, value] : stmt->values) {
         auto name = token.lexeme;
+
+        // Resolve in scope
+        NVSEScope::ScopeVar *var = nullptr;
+        if (!scopes.empty()) {
+            var = scopes.top()->resolveVariable(name);
+        }
         
         // Compile lambdas differently
         // Does not affect params as they cannot have value specified
@@ -227,37 +247,72 @@ void NVSECompiler::VisitVarDeclStmt(const VarDeclStmt* stmt) {
 
             StartCall(OP_SET_MOD_LOCAL_DATA);
             StartManualArg();
-            AddString("__" + scriptName + "__" + name);
+            AddString(std::format("__scope_{}_lambda_var_{}", var->scopeIndex, var->index));
             FinishManualArg();
             AddCallArg(value);
             FinishCall();
             continue;
         }
 
-        const auto idx = AddLocal(name, varType);
-        if (!value) {
-            continue;
+        if (var == nullptr || bTempGlobalScope) {
+            for (int i = 0; i < statementCounter.size(); i++) {
+                CompDbg("  ");
+            }
+            CompDbg("Defined global variable %s\n", name.c_str());
+            
+            const auto idx = AddLocal(name, varType);
+            if (!value) {
+                continue;
+            }
+
+            statementCounter.top()++;
+
+            StartCall(OP_LET);
+            StartManualArg();
+
+            // Add arg to stack
+            AddU8('V');
+            AddU8(varType);
+            AddU16(0); // SCRV
+            AddU16(idx); // SCDA
+
+            // Build expression
+            value->Accept(this);
+
+            // OP_ASSIGN
+            AddU8(0);
+
+            FinishManualArg();
+            FinishCall();
+        } else {
+            // TODO
+            for (int i = 0; i < statementCounter.size(); i++) {
+                CompDbg("  ");
+            }
+            CompDbg("Defined local variable %s at scope %d:%d.\n", name.c_str(), var->scopeIndex, var->index);
+
+            statementCounter.top()++;
+
+            StartCall(OP_LET);
+            StartManualArg();
+
+            // Add arg to stack
+            AddU8('Y');
+            AddU8(varType);
+            AddU16(var->index);
+
+            // Cache local type
+            localTypes[var->index] = varType;
+
+            // Build expression
+            value->Accept(this);
+
+            // OP_ASSIGN
+            AddU8(0);
+
+            FinishManualArg();
+            FinishCall();
         }
-
-        statementCounter.top()++;
-
-        StartCall(OP_LET);
-        StartManualArg();
-
-        // Add arg to stack
-        AddU8('V');
-        AddU8(varType);
-        AddU16(0); // SCRV
-        AddU16(idx); // SCDA
-
-        // Build expression
-        value->Accept(this);
-
-        // OP_ASSIGN
-        AddU8(0);
-
-        FinishManualArg();
-        FinishCall();
     }
 }
 
@@ -277,6 +332,8 @@ void NVSECompiler::VisitExprStmt(const ExprStmt* stmt) {
 }
 
 void NVSECompiler::VisitForStmt(ForStmt* stmt) {
+    scopes.push(stmt->scope);
+    
     if (stmt->init) {
         stmt->init->Accept(this);
         statementCounter.top()++;
@@ -336,9 +393,11 @@ void NVSECompiler::VisitForStmt(ForStmt* stmt) {
     SetU32(jmpPatch, data.size());
 
     loopIncrements.pop();
+    scopes.pop();
 }
 
 void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
+    scopes.push(stmt->scope);
     // Compile initializer
     stmt->lhs->Accept(this);
     statementCounter.top()++;
@@ -393,9 +452,12 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
 
     // Patch jmp
     SetU32(jmpPatch, data.size());
+    scopes.pop();
 }
 
 void NVSECompiler::VisitIfStmt(IfStmt* stmt) {
+    scopes.push(stmt->scope);
+    
     // OP_IF
     AddU16(static_cast<uint16_t>(ScriptParsing::ScriptStatementCode::If));
 
@@ -426,8 +488,12 @@ void NVSECompiler::VisitIfStmt(IfStmt* stmt) {
     // Patch JMP_OPS
     SetU16(jmpPatch, CompileBlock(stmt->block, true));
 
+    scopes.pop();
+    
     // Build OP_ELSE
     if (stmt->elseBlock) {
+        scopes.push(stmt->elseBlock->scope);
+        
         statementCounter.top()++;
         
         // OP_ELSE
@@ -441,6 +507,8 @@ void NVSECompiler::VisitIfStmt(IfStmt* stmt) {
 
         // Compile else block
         SetU16(elsePatch, CompileBlock(stmt->elseBlock, true));
+
+        scopes.pop();
     }
 
     // OP_ENDIF
@@ -450,6 +518,8 @@ void NVSECompiler::VisitIfStmt(IfStmt* stmt) {
 }
 
 void NVSECompiler::VisitReturnStmt(ReturnStmt* stmt) {
+    // Emit OP_DESTROY_LOCALS
+    
     // Compile SetFunctionValue if we have a return value
     if (stmt->expr) {
         StartCall(OP_SET_FUNCTION_VALUE);
@@ -474,7 +544,9 @@ void NVSECompiler::VisitBreakStmt(BreakStmt* stmt) {
     AddU32(0x153F);
 }
 
-void NVSECompiler::VisitWhileStmt(const WhileStmt* stmt) {
+void NVSECompiler::VisitWhileStmt(WhileStmt* stmt) {
+    scopes.push(stmt->scope);
+    
     // OP_WHILE
     AddU16(OP_WHILE);
 
@@ -510,6 +582,8 @@ void NVSECompiler::VisitWhileStmt(const WhileStmt* stmt) {
 
     // Patch jmp
     SetU32(jmpPatch, data.size());
+
+    scopes.pop();
 }
 
 void NVSECompiler::VisitBlockStmt(BlockStmt* stmt) {
@@ -520,6 +594,25 @@ void NVSECompiler::VisitBlockStmt(BlockStmt* stmt) {
 }
 
 void NVSECompiler::VisitAssignmentExpr(AssignmentExpr* expr) {
+    // Now with local vars we need to handle lhs identifiers differently
+    // if (auto idExpr = dynamic_cast<IdentExpr*>(expr->left.get())) {
+    //     // Check if we can resolve a local
+    //     NVSEScope::ScopeVar *var = scopes.top()->resolveVariable(idExpr->token.lexeme);
+    //     if (var) {
+    //         // TODO : Build call to get local
+    //         for (int i = 0; i < statementCounter.size(); i++) {
+    //             CompDbg("  ");
+    //         }
+    //         CompDbg("Assigned to local variable %s at scope %d:%d.\n", idExpr->token.lexeme.c_str(), var->scopeIndex, var->index);
+    //         return;
+    //     }
+    //
+    //     for (int i = 0; i < statementCounter.size(); i++) {
+    //         CompDbg("  ");
+    //     }
+    //     CompDbg("Defined global variable %s\n", idExpr->token.lexeme.c_str());
+    // }
+    
     // Assignment as standalone statement
     if (!insideNvseExpr.top()) {
         StartCall(OP_LET);
@@ -717,26 +810,50 @@ void NVSECompiler::VisitStringExpr(StringExpr* expr) {
 void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
     auto name = expr->token.lexeme;
     usedVars.emplace(name);
+    
+    // Resolve in scope
+    NVSEScope::ScopeVar *var = scopes.top()->resolveVariable(name);
 
     // If this is a lambda var, inline it as a call to GetModLocalData
     if (lambdaVars.contains(name)) {
+        if (!var) {
+            throw std::runtime_error("Unexpected compiler error. Lambda var info was null.");
+        }
+        
         StartCall(OP_GET_MOD_LOCAL_DATA);
         StartManualArg();
-        AddString("__" + scriptName + "__" + name);
+        AddString(std::format("__scope_{}_lambda_var_{}", var->scopeIndex, var->index));
         FinishManualArg();
         FinishCall();
         return;
     }
 
     // Attempt to resolve as variable
-    if (auto local = engineScript->varList.GetVariableByName(name.c_str())) {
-        AddU8('V');
-        AddU8(local->type);
-        AddU16(0);
-        AddU16(local->idx);
-        return;
+    if (var) {
+        // TODO : Build call to get local
+        for (int i = 0; i < statementCounter.size(); i++) {
+            CompDbg("  ");
+        }
+        CompDbg("Read from local variable %s at scope %d:%d.\n", var->token.lexeme.c_str(), var->scopeIndex, var->index);
+        AddU8('Y');
+        AddU8(localTypes[var->index]);
+        AddU16(var->index);
+    } else {
+        for (int i = 0; i < statementCounter.size(); i++) {
+            CompDbg("  ");
+        }
+        CompDbg("Read from global variable %s\n", name.c_str());
+        
+        if (auto local = engineScript->varList.GetVariableByName(name.c_str())) {
+            AddU8('V');
+            AddU8(local->type);
+            AddU16(0);
+            AddU16(local->idx);
+            return;
+        }
     }
 
+    
     // Try to look up as global
     if (auto refIdx = ResolveObjReference(name)) {
         AddU8('R');
@@ -797,6 +914,7 @@ void NVSECompiler::VisitLambdaExpr(LambdaExpr* expr) {
         AddU8(expr->args.size());
 
         // add args
+        bTempGlobalScope = true;
         for (auto i = 0; i < expr->args.size(); i++) {
             auto& arg = expr->args[i];
             auto type = GetScriptTypeFromToken(arg->type);
@@ -804,7 +922,10 @@ void NVSECompiler::VisitLambdaExpr(LambdaExpr* expr) {
 
             AddU16(localIdx);
             AddU8(type);
+
+            CompDbg("Creating global var %s.\n", std::get<0>(arg->values[0]).lexeme.c_str());
         }
+        bTempGlobalScope = false;
 
         // NUM_ARRAY_ARGS, always 0
         AddU8(0x0);
@@ -815,9 +936,11 @@ void NVSECompiler::VisitLambdaExpr(LambdaExpr* expr) {
         SetU16(opModeLenPatch, data.size() - opModeStart);
 
         // Compile script
+        scopes.push(expr->scope);
         insideNvseExpr.push(false);
         CompileBlock(expr->body, false);
         insideNvseExpr.pop();
+        scopes.pop();
 
         // OP_END
         AddU32(0x11);

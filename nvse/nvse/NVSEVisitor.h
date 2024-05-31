@@ -49,7 +49,7 @@ public:
 	virtual void VisitReturnStmt(ReturnStmt* stmt) = 0;
 	virtual void VisitContinueStmt(ContinueStmt* stmt) = 0;
 	virtual void VisitBreakStmt(BreakStmt* stmt) = 0;
-	virtual void VisitWhileStmt(const WhileStmt* stmt) = 0;
+	virtual void VisitWhileStmt(WhileStmt* stmt) = 0;
 	virtual void VisitBlockStmt(BlockStmt* stmt) = 0;
 
 	virtual void VisitAssignmentExpr(AssignmentExpr* expr) = 0;

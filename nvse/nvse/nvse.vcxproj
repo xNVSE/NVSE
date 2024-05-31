@@ -759,6 +759,7 @@ xcopy "$(ProjectDir)unit_tests\new_compiler" "$(FalloutNVPath)\Data\NVSE\unit_te
     <ClInclude Include="NVSECompilerUtils.h" />
     <ClInclude Include="NVSELexer.h" />
     <ClInclude Include="NVSEParser.h" />
+    <ClInclude Include="NVSEScope.h" />
     <ClInclude Include="NVSETreePrinter.h" />
     <ClInclude Include="NVSETypeChecker.h" />
     <ClInclude Include="NVSEVisitor.h" />

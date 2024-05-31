@@ -1814,4 +1814,11 @@ bool Cmd_MatchesAnyOf_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_CreateLocalStack_Execute(COMMAND_ARGS) {
+	g_localStackVars.emplace();
+	_DMESSAGE("LOCAL VAR STACK CREATE");
+	return true;
+}
+
+
 #endif

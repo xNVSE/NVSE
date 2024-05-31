@@ -54,7 +54,14 @@ public:
 	// Keep track of lambda vars as these get inlined
 	std::set<std::string> lambdaVars{};
 
+	// Required NVSE plugins
 	std::set<std::string> requirements{};
+
+	// Current scope tracking
+    std::stack<std::shared_ptr<NVSEScope>> scopes {};
+	bool bTempGlobalScope = false;
+
+	std::unordered_map<uint16_t, uint8_t> localTypes{};
 
 	// Look up a local variable, or create it if not already defined
 	uint16_t AddLocal(std::string identifier, uint8_t type) {
@@ -200,7 +207,7 @@ public:
 	void VisitReturnStmt(ReturnStmt* stmt) override;
 	void VisitContinueStmt(ContinueStmt* stmt) override;
 	void VisitBreakStmt(BreakStmt* stmt) override;
-	void VisitWhileStmt(const WhileStmt* stmt) override;
+	void VisitWhileStmt(WhileStmt* stmt) override;
 	void VisitBlockStmt(BlockStmt* stmt) override;
 	void VisitAssignmentExpr(AssignmentExpr* expr) override;
 	void VisitTernaryExpr(TernaryExpr* expr) override;

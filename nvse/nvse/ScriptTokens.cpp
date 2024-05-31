@@ -1,5 +1,6 @@
 #include "ScriptTokens.h"
 
+#include "Commands_Script.h"
 #include "GameAPI.h"
 #include "ScriptUtils.h"
 #include "GameRTTI.h"
@@ -207,6 +208,7 @@ std::string ScriptToken::GetVariableDataAsString() const
 	{
 		return '"' + std::string(GetString()) + '"';
 	}
+	case kTokenType_ArrayStackVar:
 	case kTokenType_ArrayVar:
 	{
 		auto *arr = GetArrayVar();
@@ -253,12 +255,16 @@ const char *ScriptToken::GetVariableTypeString() const
 {
 	switch (this->Type())
 	{
+	case kTokenType_NumericStackVar:
 	case kTokenType_NumericVar:
 		return "Numeric";
+	case kTokenType_RefStackVar:
 	case kTokenType_RefVar:
 		return "Form";
+	case kTokenType_StringStackVar:
 	case kTokenType_StringVar:
 		return "String";
+	case kTokenType_ArrayStackVar:
 	case kTokenType_ArrayVar:
 		return "Array";
 	default:
@@ -579,12 +585,16 @@ const char *TokenTypeToString(Token_Type type)
 		return "Command";
 	case kTokenType_Variable:
 		return "Variable";
+	case kTokenType_NumericStackVar:
 	case kTokenType_NumericVar:
 		return "Numeric Variable";
+	case kTokenType_RefStackVar:
 	case kTokenType_RefVar:
 		return "Reference Variable";
+	case kTokenType_StringStackVar:
 	case kTokenType_StringVar:
 		return "String Variable";
+	case kTokenType_ArrayStackVar:
 	case kTokenType_ArrayVar:
 		return "Array Variable";
 	case kTokenType_Ambiguous:
@@ -832,6 +842,16 @@ bool ScriptToken::GetBool() const
 		}
 		return value.var->data ? true : false;
 	}
+	case kTokenType_NumericStackVar:
+	case kTokenType_StringStackVar:
+	case kTokenType_RefStackVar:
+	case kTokenType_ArrayStackVar: {
+		if (!value.var) {
+			return false;
+		}
+
+		return g_localStackVars.top().get(value.stackVarIdx) ? true : false;
+	}
 	case kTokenType_String:
 	{
 		return value.str ? true : false;
@@ -896,6 +916,14 @@ ArrayID ScriptToken::GetArrayID() const
 			return false;
 		}
 		return (int)value.var->data;
+	}
+	if (type == kTokenType_ArrayStackVar)
+	{
+		if (!value.var)
+		{
+			return false;
+		}
+		return static_cast<int>(g_localStackVars.top().get(value.stackVarIdx));
 	}
 	return 0;
 }
@@ -988,6 +1016,11 @@ ScriptLocal* GetScriptLocal(UInt32 varIdx, UInt32 refIdx, Script* script, Script
 
 bool ScriptToken::ResolveVariable()
 {
+	// Check stack vars
+	if (type == kTokenType_ArrayStackVar) {
+		return true;
+	}
+
 	auto* eventList = context->eventList;
 	value.var = GetScriptLocal(varIdx, refIdx, context->script, eventList);
 	if (!value.var)
@@ -1443,6 +1476,31 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator *context)
 		value.lambdaScriptData = LambdaManager::ScriptData(scriptData, dataLen);
 		break;
 	}
+	case 'Y': {
+		variableType = context->ReadByte();
+		value.stackVarIdx = context->Read16();
+		switch (variableType)
+		{
+		case Script::eVarType_Array:
+			type = kTokenType_ArrayStackVar;
+			break;
+		case Script::eVarType_Integer:
+		case Script::eVarType_Float:
+			type = kTokenType_NumericStackVar;
+			break;
+		case Script::eVarType_Ref:
+			type = kTokenType_RefStackVar;
+			break;
+		case Script::eVarType_String:
+			type = kTokenType_StringStackVar;
+			break;
+		default:
+			context->Error("Unsupported variable type %X", variableType);
+			type = kTokenType_Invalid;
+			return type;
+		}
+		break;
+	}
 	default:
 	{
 		if (typeCode < kOpType_Max)
@@ -1485,6 +1543,10 @@ const std::unordered_map g_tokenCodes =
 		std::make_pair(kTokenType_Short, 'I'),
 		std::make_pair(kTokenType_Int, 'L'),
 		std::make_pair(kTokenType_Lambda, 'F'),
+		std::make_pair(kTokenType_NumericStackVar, 'Y'),
+		std::make_pair(kTokenType_RefStackVar, 'Y'),
+		std::make_pair(kTokenType_StringStackVar, 'Y'),
+		std::make_pair(kTokenType_ArrayStackVar, 'Y'),
 };
 
 inline char TokenTypeToCode(Token_Type type)

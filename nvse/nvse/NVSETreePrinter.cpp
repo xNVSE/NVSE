@@ -209,7 +209,7 @@ void NVSETreePrinter::VisitBreakStmt(BreakStmt* stmt) {
 	CompDbg("break");
 }
 
-void NVSETreePrinter::VisitWhileStmt(const WhileStmt* stmt) {
+void NVSETreePrinter::VisitWhileStmt(WhileStmt* stmt) {
 	PrintTabs();
 	CompDbg("while\n");
 
