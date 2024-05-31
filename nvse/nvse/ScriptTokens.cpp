@@ -583,6 +583,7 @@ const char *TokenTypeToString(Token_Type type)
 		return "Slice";
 	case kTokenType_Command:
 		return "Command";
+	case kTokenType_StackVar:
 	case kTokenType_Variable:
 		return "Variable";
 	case kTokenType_NumericStackVar:
@@ -735,6 +736,13 @@ const char *ScriptToken::GetString() const
 		else
 			result = NULL;
 	}
+	else if (type == kTokenType_StringStackVar) {
+		StringVar* strVar = g_StringMap.Get(GetLocalStackVarVal(value.stackVarIdx));
+		if (strVar)
+			result = strVar->GetCString();
+		else
+			result = NULL;
+	}
 #endif
 	if (result)
 		return result;
@@ -813,6 +821,13 @@ double ScriptToken::GetNumber() const
 		}
 		return value.var->data;
 	}
+	else if (type == kTokenType_NumericStackVar || type == kTokenType_StringStackVar) {
+		if (!value.stackVarIdx) {
+			return 0.0;
+		}
+
+		return GetLocalStackVarVal(value.stackVarIdx);
+	}
 #endif
 	return 0.0;
 }
@@ -846,11 +861,11 @@ bool ScriptToken::GetBool() const
 	case kTokenType_StringStackVar:
 	case kTokenType_RefStackVar:
 	case kTokenType_ArrayStackVar: {
-		if (!value.var) {
+		if (!value.stackVarIdx) {
 			return false;
 		}
 
-		return g_localStackVars.top().get(value.stackVarIdx) ? true : false;
+		return GetLocalStackVarVal(value.stackVarIdx) ? true : false;
 	}
 	case kTokenType_String:
 	{
@@ -919,11 +934,12 @@ ArrayID ScriptToken::GetArrayID() const
 	}
 	if (type == kTokenType_ArrayStackVar)
 	{
-		if (!value.var)
+		if (!value.stackVarIdx)
 		{
 			return false;
 		}
-		return static_cast<int>(g_localStackVars.top().get(value.stackVarIdx));
+
+		return static_cast<int>(GetLocalStackVarVal(value.stackVarIdx));
 	}
 	return 0;
 }
@@ -948,7 +964,7 @@ StringVar* ScriptToken::GetStringVar() const
 		return value.nvseVariable.stringVar;
 	if (type == kTokenType_StringStackVar)
 	{
-		return g_StringMap.Get(static_cast<int>(g_localStackVars.top().get(value.stackVarIdx)));
+		return g_StringMap.Get(GetLocalStackVarVal(value.stackVarIdx));
 	}
 	else if (value.var) {
 		return g_StringMap.Get(static_cast<int>(value.var->data));
@@ -1023,7 +1039,7 @@ ScriptLocal* GetScriptLocal(UInt32 varIdx, UInt32 refIdx, Script* script, Script
 bool ScriptToken::ResolveVariable()
 {
 	// Check stack vars
-	if (type == kTokenType_ArrayStackVar) {
+	if (type == kTokenType_ArrayStackVar || type == kTokenType_NumericStackVar || type == kTokenType_RefStackVar) {
 		return true;
 	}
 
@@ -1037,6 +1053,10 @@ bool ScriptToken::ResolveVariable()
 
 	if (type == kTokenType_StringVar)
 		value.nvseVariable.stringVar = g_StringMap.Get(value.var->data);
+
+	if (type == kTokenType_NumericStackVar) {
+		value.nvseVariable.stringVar = g_StringMap.Get(GetLocalStackVarVal(value.stackVarIdx));
+	}
 
 #if _DEBUG
 	if (value.var && !refIdx)
@@ -1484,7 +1504,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator *context)
 	}
 	case 'Y': {
 		variableType = context->ReadByte();
-		value.stackVarIdx = context->Read16();
+		value.stackVarIdx = context->Read16() | 0x80000000;
 		switch (variableType)
 		{
 		case Script::eVarType_Array:
@@ -1543,12 +1563,13 @@ const std::unordered_map g_tokenCodes =
 		std::make_pair(kTokenType_NumericVar, 'V'),
 		std::make_pair(kTokenType_RefVar, 'V'),
 		std::make_pair(kTokenType_StringVar, 'V'),
-		std::make_pair(kTokenType_ArrayVar, 'V'),
+		std::make_pair(kTokenType_ArrayVar, 'V'), 
 		std::make_pair(kTokenType_Operator, 'O'),
 		std::make_pair(kTokenType_Byte, 'B'),
 		std::make_pair(kTokenType_Short, 'I'),
 		std::make_pair(kTokenType_Int, 'L'),
 		std::make_pair(kTokenType_Lambda, 'F'),
+		std::make_pair(kTokenType_StackVar, 'Y'),
 		std::make_pair(kTokenType_NumericStackVar, 'Y'),
 		std::make_pair(kTokenType_RefStackVar, 'Y'),
 		std::make_pair(kTokenType_StringStackVar, 'Y'),
@@ -1951,8 +1972,8 @@ static Operand s_operands[] =
 		{OPERAND(RefVar)},
 		{OPERAND(StringVar)},
 		{OPERAND(ArrayVar)},
-		{NULL, 0}, // operator
 		{NULL, 0}, // ambiguous
+		{NULL, 0}, // operator
 		{NULL, 0}, // forEachContext
 		{NULL, 0}, // numeric placeholders, used only in bytecode
 		{NULL, 0},
@@ -1962,10 +1983,18 @@ static Operand s_operands[] =
 		{OPERAND(Lambda)},
 		{NULL, 0}, // LeftToken
 		{NULL, 0}, // RightToken
+
+		{NULL, 0}, // ?
+
+		{NULL, 0}, // 
+		{OPERAND(NumericVar)},
+		{OPERAND(RefVar)},
+		{OPERAND(StringVar)},
+		{OPERAND(ArrayVar)},
 		{NULL, 0} // Max
 };
 
-STATIC_ASSERT(SIZEOF_ARRAY(s_operands, Operand) == kTokenType_Max);
+STATIC_ASSERT(SIZEOF_ARRAY(s_operands, Operand) == kTokenType_Empty);
 
 bool CanConvertOperand(Token_Type from, Token_Type to)
 {
@@ -2075,6 +2104,18 @@ char *ScriptToken::DebugPrint() const
 		break;
 	case kTokenType_StringVar:
 		sprintf_s(debugPrint, 512, "[Type=StringVar, Value=%g]", value.num);
+		break;
+	case kTokenType_NumericStackVar:
+		sprintf_s(debugPrint, 512, "[Type=NumericStackVar, Value=%g]", GetLocalStackVarVal(value.stackVarIdx));
+		break;
+	case kTokenType_ArrayStackVar:
+		sprintf_s(debugPrint, 512, "[Type=ArrayStackVar, Value=%d]", (int)GetLocalStackVarVal(value.stackVarIdx));
+		break;
+	case kTokenType_StringStackVar:
+		sprintf_s(debugPrint, 512, "[Type=StringStackVar, Value=%g]", GetLocalStackVarVal(value.stackVarIdx));
+		break;
+	case kTokenType_RefStackVar:
+		sprintf_s(debugPrint, 512, "[Type=RefStackVar, Id=%d]", (int)GetLocalStackVarVal(value.stackVarIdx));
 		break;
 #endif
 	case kTokenType_RefVar:

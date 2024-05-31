@@ -655,6 +655,7 @@ bool Cmd_PrintVar_Execute(COMMAND_ARGS)
 		std::string variableValue;
 		switch (token->Type())
 		{
+		case kTokenType_NumericStackVar:
 		case kTokenType_NumericVar:
 			variableValue = FormatString("%g", token->GetNumber());
 			break;

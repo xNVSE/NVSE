@@ -136,17 +136,18 @@ enum Token_Type : UInt8
 	kTokenType_LeftToken,
 	kTokenType_RightToken,
 
+	// 'Stack' vars
+	kTokenType_StackVar,
+	kTokenType_NumericStackVar,
+	kTokenType_RefStackVar,
+	kTokenType_StringStackVar,
+	kTokenType_ArrayStackVar,
+
 	kTokenType_Invalid,
 	kTokenType_Max = kTokenType_Invalid,
 
 	// sigil value, returned when an empty expression is parsed
 	kTokenType_Empty = kTokenType_Max + 1,
-
-	// 'Stack' vars
-	kTokenType_NumericStackVar,
-	kTokenType_RefStackVar,
-	kTokenType_StringStackVar,
-	kTokenType_ArrayStackVar,
 };
 
 const char *TokenTypeToString(Token_Type type);
@@ -223,7 +224,7 @@ struct ScriptToken
 		ScriptLocal *var;
 		LambdaManager::ScriptData lambdaScriptData;
 		CustomVariableContext nvseVariable;
-		uint16_t stackVarIdx;
+		uint32_t stackVarIdx;
 #endif
 		// compile-time only
 		VariableInfo *varInfo;

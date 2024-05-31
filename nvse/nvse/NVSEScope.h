@@ -13,7 +13,7 @@ public:
 
 private:
     uint32_t scopeIndex{};
-    uint32_t varIndex{};
+    uint32_t varIndex{1};
     std::shared_ptr<NVSEScope> parent{};
     std::unordered_map<std::string, ScopeVar> vars{};
 
@@ -23,7 +23,7 @@ protected:
             return varIndex;
         }
         
-        return parent->varIndex;
+        return parent->getVarIndex();
     }
 
     void incrementVarIndex() {

@@ -13,7 +13,7 @@ class NVSETypeChecker : NVSEVisitor {
     
     std::stack<bool> insideLoop {};
     std::stack<std::shared_ptr<NVSEScope>> scopes {};
-    uint32_t scopeIndex {};
+    uint32_t scopeIndex {1};
 
     // Temporarily pushed to stack for things like lambda
     //     args as these must be in global scope

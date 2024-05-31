@@ -411,7 +411,12 @@ std::unique_ptr<ScriptToken> Eval_Assign_Numeric(OperatorType op, ScriptToken *l
 	if (lh->GetVariableType() == Script::eVarType_Integer)
 		result = floor(result);
 
-	lh->GetNonStackVar()->data = result;
+	if (lh->type == kTokenType_NumericStackVar) {
+		SetLocalStackVarVal(lh->value.stackVarIdx, result);
+	} else {
+		lh->GetNonStackVar()->data = result;
+	}
+
 	return ScriptToken::Create(result);
 }
 
@@ -493,8 +498,8 @@ std::unique_ptr<ScriptToken> Eval_Assign_Array(OperatorType op, ScriptToken *lh,
 {
 	if (lh->type == kTokenType_ArrayStackVar) {
 		auto* rhArr = rh->GetArrayVar();
-		auto const result = rhArr ? rhArr->ID() : 0;
-		g_localStackVars.top().set(lh->value.stackVarIdx, result);
+		auto const result = rhArr ? rhArr->ID() : 0; 
+		SetLocalStackVarVal(lh->value.stackVarIdx, result); 
 		return ScriptToken::CreateArray(result);
 	} 
 
@@ -1426,15 +1431,19 @@ OperationRule kOpRule_Assignment[] =
 		{kTokenType_Ambiguous, kTokenType_Array, kTokenType_Array, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Form, kTokenType_Form, NULL, true},
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
+		{kTokenType_NumericStackVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_RefVar, kTokenType_Ambiguous, kTokenType_Form, NULL, true},
 		{kTokenType_StringVar, kTokenType_Ambiguous, kTokenType_String, NULL, true},
+		{kTokenType_StringStackVar, kTokenType_Ambiguous, kTokenType_String, NULL, true},
 		{kTokenType_ArrayVar, kTokenType_Ambiguous, kTokenType_Array, NULL, true},
 		{kTokenType_ArrayStackVar, kTokenType_Ambiguous, kTokenType_Array, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Ambiguous, NULL, true},
 
 		{kTokenType_AssignableString, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_Assign_AssignableString), true},
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_Assign_Numeric), true},
+		{kTokenType_NumericStackVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_Assign_Numeric), true},
 		{kTokenType_StringVar, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_Assign_String), true},
+		{kTokenType_StringStackVar, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_Assign_String), true},
 		{kTokenType_RefVar, kTokenType_Form, kTokenType_Form, OP_HANDLER(Eval_Assign_Form), true},
 		{kTokenType_RefVar, kTokenType_Number, kTokenType_Form, OP_HANDLER(Eval_Assign_Form), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_Assign_Global), true},
@@ -1448,7 +1457,9 @@ OperationRule kOpRule_Assignment[] =
 OperationRule kOpRule_PlusEquals[] =
 	{
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
+		{kTokenType_NumericStackVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_StringVar, kTokenType_Ambiguous, kTokenType_String, NULL, true},
+		{kTokenType_StringStackVar, kTokenType_Ambiguous, kTokenType_String, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Ambiguous, NULL, true},
 		{kTokenType_Global, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Ambiguous, NULL, false},
@@ -1456,8 +1467,10 @@ OperationRule kOpRule_PlusEquals[] =
 		{kTokenType_Ambiguous, kTokenType_String, kTokenType_String, NULL, true},
 
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_PlusEquals_Number), true},
+		{kTokenType_NumericStackVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_PlusEquals_Number), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_PlusEquals_Elem_Number), true},
 		{kTokenType_StringVar, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_PlusEquals_String), true},
+		{kTokenType_StringStackVar, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_PlusEquals_String), true},
 		{kTokenType_ArrayElement, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_PlusEquals_Elem_String), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_PlusEquals_Global), true},
 };
@@ -1465,12 +1478,14 @@ OperationRule kOpRule_PlusEquals[] =
 OperationRule kOpRule_MinusEquals[] =
 	{
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
+		{kTokenType_NumericStackVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Global, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Number, NULL, false},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Number, NULL, true},
 
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_MinusEquals_Number), true},
+		{kTokenType_NumericStackVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_MinusEquals_Number), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_MinusEquals_Elem_Number), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_MinusEquals_Global), true},
 };
@@ -1478,12 +1493,14 @@ OperationRule kOpRule_MinusEquals[] =
 OperationRule kOpRule_TimesEquals[] =
 	{
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
+		{kTokenType_NumericStackVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Global, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Number, NULL, false},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Number, NULL, true},
 
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_TimesEquals), true},
+		{kTokenType_NumericStackVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_TimesEquals), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_TimesEquals_Elem), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_TimesEquals_Global), true},
 };
@@ -1491,12 +1508,14 @@ OperationRule kOpRule_TimesEquals[] =
 OperationRule kOpRule_DividedEquals[] =
 	{
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
+		{kTokenType_NumericStackVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Global, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Number, NULL, false},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Number, NULL, true},
 
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_DividedEquals), true},
+		{kTokenType_NumericStackVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_DividedEquals), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_DividedEquals_Elem), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_DividedEquals_Global), true},
 };
@@ -1504,12 +1523,14 @@ OperationRule kOpRule_DividedEquals[] =
 OperationRule kOpRule_ExponentEquals[] =
 	{
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
+		{kTokenType_NumericStackVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Global, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Number, NULL, false},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Number, NULL, true},
 
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_ExponentEquals), true},
+		{kTokenType_NumericStackVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_ExponentEquals), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_ExponentEquals_Elem), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_ExponentEquals_Global), true},
 };
@@ -1517,12 +1538,14 @@ OperationRule kOpRule_ExponentEquals[] =
 OperationRule kOpRule_HandleEquals[] =
 	{
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
+		{kTokenType_NumericStackVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Global, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Number, NULL, false},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Number, NULL, true},
 
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_HandleEquals), true},
+		{kTokenType_NumericStackVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_HandleEquals), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_HandleEquals_Elem), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_HandleEquals_Global), true},
 };
@@ -1554,8 +1577,10 @@ OperationRule kOpRule_LeftBracket[] =
 		{kTokenType_Array, kTokenType_String, kTokenType_ArrayElement, OP_HANDLER(Eval_Subscript_Array_String), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_AssignableString, OP_HANDLER(Eval_Subscript_Elem_Number), true},
 		{kTokenType_StringVar, kTokenType_Number, kTokenType_AssignableString, OP_HANDLER(Eval_Subscript_StringVar_Number), true},
+		{kTokenType_StringStackVar, kTokenType_Number, kTokenType_AssignableString, OP_HANDLER(Eval_Subscript_StringVar_Number), true},
 		{kTokenType_ArrayElement, kTokenType_Slice, kTokenType_AssignableString, OP_HANDLER(Eval_Subscript_Elem_Slice), true},
 		{kTokenType_StringVar, kTokenType_Slice, kTokenType_AssignableString, OP_HANDLER(Eval_Subscript_StringVar_Slice), true},
+		{kTokenType_StringStackVar, kTokenType_Slice, kTokenType_AssignableString, OP_HANDLER(Eval_Subscript_StringVar_Slice), true},
 		{kTokenType_String, kTokenType_Number, kTokenType_String, OP_HANDLER(Eval_Subscript_String), true},
 		{kTokenType_Array, kTokenType_Slice, kTokenType_Array, OP_HANDLER(Eval_Subscript_Array_Slice), true},
 		{kTokenType_String, kTokenType_Slice, kTokenType_String, OP_HANDLER(Eval_Subscript_String_Slice), true}};
@@ -1586,6 +1611,7 @@ OperationRule kOpRule_In[] =
 		{kTokenType_ArrayVar, kTokenType_Array, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
 		{kTokenType_ArrayStackVar, kTokenType_Array, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
 		{kTokenType_StringVar, kTokenType_String, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
+		{kTokenType_StringStackVar, kTokenType_String, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
 		{kTokenType_RefVar, kTokenType_Form, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
 };
 
@@ -3914,11 +3940,13 @@ bool ExpressionEvaluator::ExtractArgsV(va_list list)
 		case kTokenType_Number:
 		case kTokenType_Boolean:
 		case kTokenType_NumericVar:
+		case kTokenType_NumericStackVar:
 		case kTokenType_Global:
 		{
 			*va_arg(list, double*) = arg->GetNumber();
 			break;
 		}
+		case kTokenType_StringStackVar:
 		case kTokenType_StringVar:
 		case kTokenType_String:
 		{
@@ -3929,6 +3957,7 @@ bool ExpressionEvaluator::ExtractArgsV(va_list list)
 		case kTokenType_Ref:
 		case kTokenType_Lambda:
 		case kTokenType_RefVar:
+		case kTokenType_RefStackVar:
 		{
 			*va_arg(list, TESForm**) = arg->GetTESForm();
 			break;
@@ -5170,7 +5199,7 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 			case kTokenType_StringStackVar:
 			case kTokenType_ArrayStackVar:
 			{
-				operands.push_back(FormatString("<stack var %d>", token.value.stackVarIdx));
+				operands.push_back(FormatString("<stack var %d>", token.value.stackVarIdx & 0xFFFF));
 				break;
 			}
 			case kTokenType_LambdaScriptData:
