@@ -659,15 +659,18 @@ bool Cmd_PrintVar_Execute(COMMAND_ARGS)
 		case kTokenType_NumericVar:
 			variableValue = FormatString("%g", token->GetNumber());
 			break;
+		case kTokenType_StringStackVar:
 		case kTokenType_StringVar:
 			variableValue = FormatString(R"("%s")", token->GetString());
 			break;
+		case kTokenType_ArrayStackVar:
 		case kTokenType_ArrayVar:
 			if (auto* arrayVar = token->GetArrayVar())
 				variableValue = arrayVar->GetStringRepresentation();
 			else
 				variableValue = "uninitialized or invalid array";
 			break;
+		case kTokenType_RefStackVar:
 		case kTokenType_RefVar:
 			if (auto* form = token->GetTESForm())
 				variableValue = form->GetStringRepresentation();

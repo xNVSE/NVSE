@@ -1427,12 +1427,12 @@ bool Cmd_CallWhilePerSeconds_Execute(COMMAND_ARGS)
 
 void SetLocalStackVarVal(int idx, double val)
 {
-	g_localStackVars.top().set(idx & 0xFFFF, val);
+	g_localStackVars.top().set(idx - 1, val);
 }
 
 double& GetLocalStackVarVal(int idx)
 {
-	return g_localStackVars.top().get(idx & 0xFFFF);
+	return g_localStackVars.top().get(idx - 1);
 }
 
 void ClearDelayedCalls()

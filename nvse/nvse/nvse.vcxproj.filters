@@ -559,6 +559,9 @@
     <ClInclude Include="NVSEAst.h">
       <Filter>compiler</Filter>
     </ClInclude>
+    <ClInclude Include="NVSEScope.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">

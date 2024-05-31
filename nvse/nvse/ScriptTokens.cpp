@@ -920,7 +920,7 @@ Operator *ScriptToken::GetOperator() const
 }
 
 #if RUNTIME
-ArrayID ScriptToken::GetArrayID() const
+ArrayID ScriptToken::GetArrayID() const 
 {
 	if (type == kTokenType_Array)
 		return value.arrID;
@@ -1504,7 +1504,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator *context)
 	}
 	case 'Y': {
 		variableType = context->ReadByte();
-		value.stackVarIdx = context->Read16() | 0x80000000;
+		value.stackVarIdx = context->Read16();
 		switch (variableType)
 		{
 		case Script::eVarType_Array:
@@ -1981,10 +1981,10 @@ static Operand s_operands[] =
 		{NULL, 0}, // pair
 		{OPERAND(AssignableString)},
 		{OPERAND(Lambda)},
+		{NULL, 0}, // LambdaScriptData
+
 		{NULL, 0}, // LeftToken
 		{NULL, 0}, // RightToken
-
-		{NULL, 0}, // ?
 
 		{NULL, 0}, // 
 		{OPERAND(NumericVar)},
@@ -2072,7 +2072,7 @@ char *ScriptToken::DebugPrint() const
 		sprintf_s(debugPrint, 512, "[Type=String, Value=%s]", value.str ? value.str : "");
 		break;
 	case kTokenType_Form:
-		sprintf_s(debugPrint, 512, "[Type=Form, Value=%08X]", value.formID);
+		sprintf_s(debugPrint, 512, "[Type=Form, Value=%08X]", value.formID); 
 		break;
 	case kTokenType_Ref:
 		sprintf_s(debugPrint, 512, "[Type=Ref, Value=%s]", value.refVar->name.CStr());
