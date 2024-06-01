@@ -63,7 +63,7 @@ void NVSETreePrinter::VisitFnStmt(FnDeclStmt* stmt) {
 	curTab--;
 }
 
-void NVSETreePrinter::VisitVarDeclStmt(const VarDeclStmt* stmt) {
+void NVSETreePrinter::VisitVarDeclStmt(VarDeclStmt* stmt) {
 	PrintTabs();
 	CompDbg("vardecl\n");
 	

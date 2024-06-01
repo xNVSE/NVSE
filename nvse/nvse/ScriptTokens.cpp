@@ -191,9 +191,19 @@ std::string ScriptToken::GetVariableDataAsString() const
 {
 	switch (Type())
 	{
+	case kTokenType_NumericStackVar:
 	case kTokenType_NumericVar:
 	{
 		return FormatString("%g", GetNumber());
+	}
+	case kTokenType_RefStackVar:
+	{
+		auto* form = GetTESForm();
+		if (form)
+			return form->GetStringRepresentation();
+		if (value.stackVarIdx)
+			return FormatString("invalid form (%X)", GetLocalStackVarVal(value.stackVarIdx));
+		return "uninitialized form (0)";
 	}
 	case kTokenType_RefVar:
 	{
@@ -777,6 +787,15 @@ UInt32 ScriptToken::GetFormID() const
 		}
 		return *reinterpret_cast<UInt32 *>(&value.var->data);
 	}
+	if (type == kTokenType_RefStackVar)
+	{
+		if (!value.stackVarIdx)
+		{
+			return 0;
+		}
+		
+		return *reinterpret_cast<UInt32*>(&GetLocalStackVarVal(value.stackVarIdx));
+	}
 #endif
 	if (type == kTokenType_Number)
 		return value.formID;
@@ -797,6 +816,10 @@ TESForm *ScriptToken::GetTESForm() const
 		return LookupFormByID(*reinterpret_cast<UInt32 *>(&value.var->data));
 	if (type == kTokenType_Number && formOrNumber)
 		return LookupFormByID(*reinterpret_cast<UInt32 *>(const_cast<double*>(&value.num)));
+	if (type == kTokenType_NumericStackVar && formOrNumber)
+		return LookupFormByID(*reinterpret_cast<UInt32*>(&GetLocalStackVarVal(value.stackVarIdx)));
+	if (type == kTokenType_RefStackVar && value.stackVarIdx)
+		return LookupFormByID(*reinterpret_cast<UInt32*>(&GetLocalStackVarVal(value.stackVarIdx)));
 #endif
 	if (type == kTokenType_Lambda)
 		return value.lambda;
@@ -962,7 +985,7 @@ StringVar* ScriptToken::GetStringVar() const
 		return nullptr;
 	if (value.nvseVariable.stringVar)
 		return value.nvseVariable.stringVar;
-	if (type == kTokenType_StringStackVar)
+	if (type == kTokenType_StringStackVar && value.stackVarIdx)
 	{
 		return g_StringMap.Get(GetLocalStackVarVal(value.stackVarIdx));
 	}
@@ -1039,7 +1062,7 @@ ScriptLocal* GetScriptLocal(UInt32 varIdx, UInt32 refIdx, Script* script, Script
 bool ScriptToken::ResolveVariable()
 {
 	// Check stack vars
-	if (type == kTokenType_ArrayStackVar || type == kTokenType_NumericStackVar || type == kTokenType_RefStackVar) {
+	if (type == kTokenType_ArrayStackVar || type == kTokenType_NumericStackVar || type == kTokenType_RefStackVar || type == kTokenType_StringStackVar) {
 		return true;
 	}
 
@@ -1053,10 +1076,6 @@ bool ScriptToken::ResolveVariable()
 
 	if (type == kTokenType_StringVar)
 		value.nvseVariable.stringVar = g_StringMap.Get(value.var->data);
-
-	if (type == kTokenType_NumericStackVar) {
-		value.nvseVariable.stringVar = g_StringMap.Get(GetLocalStackVarVal(value.stackVarIdx));
-	}
 
 #if _DEBUG
 	if (value.var && !refIdx)

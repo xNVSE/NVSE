@@ -12,6 +12,8 @@
 #include <format>
 #include <ranges>
 
+#include "Commands_Script.h"
+
 //////////////////////////
 // Utility commands
 //////////////////////////
@@ -956,6 +958,11 @@ bool Cmd_GetRawFormIDString_Execute(COMMAND_ARGS)
 			if (var)
 			{
 				formID = *((UInt32 *)(&var->data));
+			}
+		}
+		else if (arg->Type() == kTokenType_RefStackVar) {
+			if (arg->value.stackVarIdx) {
+				formID = static_cast<UInt32>(GetLocalStackVarVal(arg->value.stackVarIdx));
 			}
 		}
 	}

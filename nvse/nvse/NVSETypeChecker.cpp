@@ -189,7 +189,7 @@ void NVSETypeChecker::VisitFnStmt(FnDeclStmt* stmt) {
 	LeaveScope();
 }
 
-void NVSETypeChecker::VisitVarDeclStmt(const VarDeclStmt* stmt) {
+void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 	auto detailedType = GetDetailedTypeFromNVSEToken(stmt->type.type);
 	for (auto [name, expr] : stmt->values) {
 		// See if variable has already been declared
@@ -210,7 +210,7 @@ void NVSETypeChecker::VisitVarDeclStmt(const VarDeclStmt* stmt) {
 			expr->Accept(this);
 			auto rhsType = expr->detailedType;
 			if (s_operators[kOpType_Assignment].GetResult(detailedType, rhsType) == kTokenType_Invalid) {
-				error(name.line, getTypeErrorMsg(rhsType, detailedType));
+				WRAP_ERROR(error(name.line, name.column, getTypeErrorMsg(rhsType, detailedType)))
 				return;
 			}
 		}
@@ -221,8 +221,10 @@ void NVSETypeChecker::VisitVarDeclStmt(const VarDeclStmt* stmt) {
 		if (bRenameArgs || stmt->bExport) {
 			var.global = true;
 		}
+        var.scriptType = GetScriptTypeFromToken(stmt->type);
 
-		scopes.top()->addVariable(name.lexeme, var, bRenameArgs);
+		// Assign this new scope var to this statment for lookup in compiler
+		stmt->scopeVars.push_back(scopes.top()->addVariable(name.lexeme, var, bRenameArgs));
 	}
 }
 
@@ -827,10 +829,11 @@ void NVSETypeChecker::VisitStringExpr(StringExpr* expr) {
 void NVSETypeChecker::VisitIdentExpr(IdentExpr* expr) {
 	const auto name = expr->token.lexeme;
 
-	const auto local = scopes.top()->resolveVariable(name);
-	if (local) {
-		CompDbg("Resolved %s variable at scope %d:%d", local->global ? "global" : "local", local->scopeIndex, local->index);
-		expr->detailedType = local->detailedType;
+	const auto localVar = scopes.top()->resolveVariable(name);
+	if (localVar) {
+		//CompDbg("Resolved %s variable at scope %d:%d", localVar->global ? "global" : "local", localVar->scopeIndex, localVar->index);
+		expr->detailedType = localVar->detailedType;
+		expr->varInfo = localVar;
 		return;
 	}
 
@@ -845,12 +848,6 @@ void NVSETypeChecker::VisitIdentExpr(IdentExpr* expr) {
 		expr->detailedType = kTokenType_Invalid;
 		error(expr->token.line, expr->token.column, std::format("Unable to resolve identifier '{}'.", name));
 	}
-
-	// Register with scope
-	NVSEScope::ScopeVar var {};
-	var.token = expr->token;
-	var.detailedType = kTokenType_Form;
-	scopes.top()->addVariable(name, var);
 	
 	expr->detailedType = kTokenType_Form;
 	formCache[name] = form;

@@ -40,7 +40,7 @@ public:
 	virtual void VisitNVSEScript(NVSEScript* script) = 0;
 	virtual void VisitBeginStmt(const BeginStmt* stmt) = 0;
 	virtual void VisitFnStmt(FnDeclStmt* stmt) = 0;
-	virtual void VisitVarDeclStmt(const VarDeclStmt* stmt) = 0;
+	virtual void VisitVarDeclStmt(VarDeclStmt* stmt) = 0;
 
 	virtual void VisitExprStmt(const ExprStmt* stmt) = 0;
 	virtual void VisitForStmt(ForStmt* stmt) = 0;

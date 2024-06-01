@@ -459,7 +459,14 @@ std::unique_ptr<ScriptToken> Eval_Assign_String(OperatorType op, ScriptToken *lh
 		}
 	}
 	else {
-		lhStrVar->Set(str);
+		if (ScriptLocal* lhVar = lh->GetNonStackVar()) {
+			lhStrVar->Set(str);
+		}
+		else if (lh->type == kTokenType_StringStackVar)
+		{
+			const auto strVarID = static_cast<int>(g_StringMap.Add(context->script->GetModIndex(), str, true, &lhStrVar));
+			SetLocalStackVarVal(lh->value.stackVarIdx, strVarID);
+		}
 	}
 
 	return ScriptToken::Create(lhStrVar);
@@ -1433,6 +1440,7 @@ OperationRule kOpRule_Assignment[] =
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_NumericStackVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_RefVar, kTokenType_Ambiguous, kTokenType_Form, NULL, true},
+		{kTokenType_RefStackVar, kTokenType_Ambiguous, kTokenType_Form, NULL, true},
 		{kTokenType_StringVar, kTokenType_Ambiguous, kTokenType_String, NULL, true},
 		{kTokenType_StringStackVar, kTokenType_Ambiguous, kTokenType_String, NULL, true},
 		{kTokenType_ArrayVar, kTokenType_Ambiguous, kTokenType_Array, NULL, true},
@@ -1445,7 +1453,9 @@ OperationRule kOpRule_Assignment[] =
 		{kTokenType_StringVar, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_Assign_String), true},
 		{kTokenType_StringStackVar, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_Assign_String), true},
 		{kTokenType_RefVar, kTokenType_Form, kTokenType_Form, OP_HANDLER(Eval_Assign_Form), true},
+		{kTokenType_RefStackVar, kTokenType_Form, kTokenType_Form, OP_HANDLER(Eval_Assign_Form), true},
 		{kTokenType_RefVar, kTokenType_Number, kTokenType_Form, OP_HANDLER(Eval_Assign_Form), true},
+		{kTokenType_RefStackVar, kTokenType_Number, kTokenType_Form, OP_HANDLER(Eval_Assign_Form), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_Assign_Global), true},
 		{kTokenType_ArrayVar, kTokenType_Array, kTokenType_Array, OP_HANDLER(Eval_Assign_Array), true},
 		{kTokenType_ArrayStackVar, kTokenType_Array, kTokenType_Array, OP_HANDLER(Eval_Assign_Array), true},
@@ -1613,6 +1623,7 @@ OperationRule kOpRule_In[] =
 		{kTokenType_StringVar, kTokenType_String, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
 		{kTokenType_StringStackVar, kTokenType_String, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
 		{kTokenType_RefVar, kTokenType_Form, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
+		{kTokenType_RefStackVar, kTokenType_Form, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
 };
 
 OperationRule kOpRule_ToString[] =

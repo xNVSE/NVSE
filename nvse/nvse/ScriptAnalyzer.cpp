@@ -718,6 +718,10 @@ bool ScriptParsing::ScriptIterator::ReadStringLiteral(std::string_view& out)
 
 void RegisterNVSEVar(VariableInfo* info, Script::VariableType type)
 {
+	if (!info) {
+		return;
+	}
+
 	if (auto* analyzer = GetRootAnalyzer())
 	{
 		if (type == Script::eVarType_Array)
@@ -735,6 +739,10 @@ void RegisterNVSEVars(CachedTokens& tokens, Script* script)
 		for (auto iter = tokens.Begin(); !iter.End(); ++iter)
 		{
 			auto* token = iter.Get().token;
+			if (!token) {
+				continue;
+			}
+
 			if (token->type == kTokenType_ArrayVar)
 				analyzer->arrayVariables.insert(script->GetVariableInfo(token->varIdx));
 			else if (token->type == kTokenType_StringVar)
@@ -1285,6 +1293,10 @@ auto ScriptParsing::ScriptAnalyzer::DecompileScript() -> std::string {
 	if (!isLambdaScript) {
 		std::unordered_set<std::string> addedVars{};
 		auto addVar = [&] (VariableInfo *var) {
+			if (!var) {
+				return;
+			}
+
 			const auto name = std::string(var->name.CStr());
 			if (!var || addedVars.contains(name)) {
 				return;

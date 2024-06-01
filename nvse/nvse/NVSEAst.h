@@ -86,6 +86,9 @@ struct VarDeclStmt : Stmt {
     std::vector<std::tuple<NVSEToken, ExprPtr>> values{};
     bool bExport{false};
 
+    // Set during type checker so that compiler can look up stack index
+    std::vector<NVSEScope::ScopeVar*> scopeVars{};
+
     VarDeclStmt(NVSEToken type, std::vector<std::tuple<NVSEToken, ExprPtr>> values)
         : type(std::move(type)), values(std::move(values)) {}
 
@@ -405,6 +408,9 @@ struct StringExpr : Expr {
 
 struct IdentExpr : Expr {
     NVSEToken token;
+
+    // Set during typechecker variable resolution so that compiler can reference
+    NVSEScope::ScopeVar *varInfo {nullptr};
 
     IdentExpr(NVSEToken token) : token(std::move(token)) {}
 
