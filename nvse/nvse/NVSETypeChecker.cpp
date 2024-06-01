@@ -7,6 +7,7 @@
 
 #include "GameForms.h"
 #include "Commands_Scripting.h"
+#include "GameData.h"
 #include "NVSECompilerUtils.h"
 #include "ScriptUtils.h"
 
@@ -205,6 +206,16 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 				error(name.line, name.column, std::format("Variable with name '{}' has already been defined in the global scope (at line {}:{})", name.lexeme, var2->token.line, var2->token.column));
 			}
 		)
+
+		// Warn if name shadows a form
+		if (auto form = GetFormByID(name.lexeme.c_str())) {
+			auto modName = DataHandler::Get()->GetActiveModList()[form->GetModIndex()]->name;
+#ifdef EDITOR
+			CompInfo("Info: Variable with name '%s' shadows a form with the same name from mod '%s'", name.lexeme.c_str(), modName);
+#else
+			CompInfo("Info: Variable with name '%s' shadows a form with the same name from mod '%s'. This is NOT an error. Do not contact the mod author.", name.lexeme.c_str(), modName);
+#endif
+		}
 
 		if (expr) {
 			expr->Accept(this);

@@ -26,7 +26,7 @@ enum OPCodes {
 };
 
 void NVSECompiler::ClearScopedGlobals() {
-    // Clear any vars/associated refs that start with __global
+    // Clear any vars that start with __global
     std::set<int> deletedIndices{};
     for (int i = engineScript->varList.Count() - 1; i >= 0; i--) {
         auto var = engineScript->varList.GetNthItem(i);

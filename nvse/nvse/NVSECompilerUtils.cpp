@@ -22,7 +22,22 @@ void CompDbg(const char* fmt, ...) {
 #else
 	char buf[1024];
 	vsprintf(buf, fmt, argList);
-	v_DMESSAGE(fmt, argList);
+	_DMESSAGE(buf);
+#endif
+	va_end(argList);
+}
+
+void CompInfo(const char* fmt, ...) {
+	allocateConsole();
+
+	va_list argList;
+	va_start(argList, fmt);
+#if defined(EDITOR)
+	vprintf(fmt, argList);
+#else
+	char buf[1024];
+	vsprintf(buf, fmt, argList);
+	_MESSAGE(buf);
 #endif
 	va_end(argList);
 }
