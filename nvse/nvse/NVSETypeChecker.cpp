@@ -218,7 +218,7 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 		NVSEScope::ScopeVar var {};
 		var.token = name;
 		var.detailedType = detailedType;
-		if (bRenameArgs || stmt->bExport) {
+		if (bRenameArgs || stmt->bExport || scopes.top() == globalScope) {
 			var.global = true;
 		}
         var.scriptType = GetScriptTypeFromToken(stmt->type);

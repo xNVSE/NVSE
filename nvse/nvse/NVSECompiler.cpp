@@ -852,23 +852,18 @@ void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
             CompDbg("  ");
         }
 
+        CompDbg("Read from global variable %s\n", name);
+        AddU8(var->scriptType);
+        AddU16(0);
+
         if (!var->rename.empty()) {
-            CompDbg("Read from global variable %s\n", var->rename.c_str());
-            AddU8('V');
-            AddU8(var->scriptType);
-            AddU16(0);
-
-            // Resolve var index at end of compilation
             tempGlobals[var].push_back(AddU16(0x0));
-            return;
-        }
-
-        CompDbg("Read from global variable %s\n", name.c_str());
-        if (auto local = engineScript->varList.GetVariableByName(name.c_str())) {
-            AddU8('V');
-            AddU8(local->type);
-            AddU16(0);
-            AddU16(local->idx);
+        } else {
+            if (auto local = engineScript->varList.GetVariableByName(name.c_str())) {
+                AddU16(local->idx);
+            } else {
+                throw std::runtime_error(std::format("Unable to resolve variable {}. Please report this as a bug.", name));
+            }
         }
     }
 
