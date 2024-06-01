@@ -962,7 +962,7 @@ bool Cmd_GetRawFormIDString_Execute(COMMAND_ARGS)
 		}
 		else if (arg->Type() == kTokenType_RefStackVar) {
 			if (arg->value.stackVarIdx) {
-				formID = static_cast<UInt32>(GetLocalStackVarVal(arg->value.stackVarIdx));
+				formID = *((UInt32*)(&GetLocalStackVarVal(arg->value.stackVarIdx)));
 			}
 		}
 	}
