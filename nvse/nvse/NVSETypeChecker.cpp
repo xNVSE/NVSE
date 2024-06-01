@@ -74,12 +74,12 @@ std::string getTypeErrorMsg(Token_Type lhs, Token_Type rhs) {
 std::shared_ptr<NVSEScope> NVSETypeChecker::EnterScope(bool lambdaScope) {
 	if (!scopes.empty()) {
 		if (lambdaScope) {
-			scopes.emplace(std::make_shared<NVSEScope>(scopeIndex++, globalScope));
+			scopes.emplace(std::make_shared<NVSEScope>(scopeIndex++, scopes.top(), true));
 		} else {
 			scopes.emplace(std::make_shared<NVSEScope>(scopeIndex++, scopes.top()));
 		}
 	} else {
-		scopes.emplace(std::make_shared<NVSEScope>(scopeIndex++));
+		scopes.emplace(std::make_shared<NVSEScope>(scopeIndex++, nullptr));
 	}
 
 	return scopes.top();
@@ -176,13 +176,17 @@ void NVSETypeChecker::VisitBeginStmt(const BeginStmt* stmt) {
 }
 
 void NVSETypeChecker::VisitFnStmt(FnDeclStmt* stmt) {
-	scopes.push(globalScope);
+	stmt->scope = EnterScope(true);
+
+	bRenameArgs = true;
 	for (auto decl : stmt->args) {
 		decl->Accept(this);
 	}
-	scopes.pop();
+	bRenameArgs = false;
 
 	stmt->body->Accept(this);
+
+	LeaveScope();
 }
 
 void NVSETypeChecker::VisitVarDeclStmt(const VarDeclStmt* stmt) {
@@ -191,7 +195,14 @@ void NVSETypeChecker::VisitVarDeclStmt(const VarDeclStmt* stmt) {
 		// See if variable has already been declared
 		WRAP_ERROR(
 			if (auto *var = scopes.top()->resolveVariable(name.lexeme, false)) {
-				error(name.line, name.column, std::format("Variable with name '{}' has already been defined (at line {}:{})", name.lexeme, var->token.line, var->token.column));
+				error(name.line, name.column, std::format("Variable with name '{}' has already been defined in the current scope (at line {}:{})", name.lexeme, var->token.line, var->token.column));
+			}
+
+			auto* var2 = scopes.top()->resolveVariable(name.lexeme, true);
+
+			// If we are seeing 'export' keyword and another global has already been defined with this name
+			if (stmt->bExport && var2 && var2->global) {
+				error(name.line, name.column, std::format("Variable with name '{}' has already been defined in the global scope (at line {}:{})", name.lexeme, var2->token.line, var2->token.column));
 			}
 		)
 
@@ -207,7 +218,11 @@ void NVSETypeChecker::VisitVarDeclStmt(const VarDeclStmt* stmt) {
 		NVSEScope::ScopeVar var {};
 		var.token = name;
 		var.detailedType = detailedType;
-		scopes.top()->addVariable(name.lexeme, var);
+		if (bRenameArgs || stmt->bExport) {
+			var.global = true;
+		}
+
+		scopes.top()->addVariable(name.lexeme, var, bRenameArgs);
 	}
 }
 
@@ -814,6 +829,7 @@ void NVSETypeChecker::VisitIdentExpr(IdentExpr* expr) {
 
 	const auto local = scopes.top()->resolveVariable(name);
 	if (local) {
+		CompDbg("Resolved %s variable at scope %d:%d", local->global ? "global" : "local", local->scopeIndex, local->index);
 		expr->detailedType = local->detailedType;
 		return;
 	}
@@ -848,17 +864,19 @@ void NVSETypeChecker::VisitGroupingExpr(GroupingExpr* expr) {
 }
 
 void NVSETypeChecker::VisitLambdaExpr(LambdaExpr* expr) {
-	scopes.push(globalScope);
+	expr->scope = EnterScope(true);
+
+	bRenameArgs = true;
 	for (auto &decl : expr->args) {
 		WRAP_ERROR(decl->Accept(this))
 	}
-	scopes.pop();
+	bRenameArgs = false;
 
-	expr->scope = EnterScope(true);
 	insideLoop.push(false);
 	expr->body->Accept(this);
 	insideLoop.pop();
-	LeaveScope();
-	
+
 	expr->detailedType = kTokenType_Lambda;
+
+	LeaveScope();
 }

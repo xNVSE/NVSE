@@ -84,6 +84,7 @@ struct FnDeclStmt : Stmt {
 struct VarDeclStmt : Stmt {
     NVSEToken type;
     std::vector<std::tuple<NVSEToken, ExprPtr>> values{};
+    bool bExport{false};
 
     VarDeclStmt(NVSEToken type, std::vector<std::tuple<NVSEToken, ExprPtr>> values)
         : type(std::move(type)), values(std::move(values)) {}
