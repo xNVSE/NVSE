@@ -875,8 +875,8 @@ void NVSECompiler::FinishCall() {
 }
 
 void NVSECompiler::StartCall(CommandInfo* cmd, ExprPtr stackRef) {
-    if (const auto plugin = g_scriptCommands.GetParentPlugin(cmd)->name) {
-        requirements.insert(std::string(g_scriptCommands.GetParentPlugin(cmd)->name));
+    if (const auto plugin = g_scriptCommands.GetParentPlugin(cmd)) {
+        requirements.insert(std::string(plugin->name));
     }
 
     // Handle stack refs
