@@ -94,6 +94,35 @@ static ParamInfo kParams_OneBoolean[] =
 DEFINE_CMD_ALT_EXP(PrintVar, PrintV, , false, kParams_OneNVSEVariable_OptionalNVSEVariables);
 DEFINE_CMD_ALT_EXP(DebugPrintVar, DPrintV, , false, kParams_OneNVSEVariable_OptionalNVSEVariables);
 
+// Up to 10 variables (due to limit of 20 args)
+static ParamInfo kNVSEParams_OneStackVariable_OptionalStackVariables[20] =
+{
+	{"variable", kNVSEParamType_StackVar, 0},
+	{"variableName", kNVSEParamType_String, 0}, // shall be secretly passed by the compiler
+	{"variable", kNVSEParamType_StackVar, 1},
+	{"variableName", kNVSEParamType_String, 1},
+	{"variable", kNVSEParamType_StackVar, 1},
+	{"variableName", kNVSEParamType_String, 1},
+	{"variable", kNVSEParamType_StackVar, 1},
+	{"variableName", kNVSEParamType_String, 1},
+	{"variable", kNVSEParamType_StackVar, 1},
+	{"variableName", kNVSEParamType_String, 1},
+
+	{"variable", kNVSEParamType_StackVar, 1},
+	{"variableName", kNVSEParamType_String, 1},
+	{"variable", kNVSEParamType_StackVar, 1},
+	{"variableName", kNVSEParamType_String, 1},
+	{"variable", kNVSEParamType_StackVar, 1},
+	{"variableName", kNVSEParamType_String, 1},
+	{"variable", kNVSEParamType_StackVar, 1},
+	{"variableName", kNVSEParamType_String, 1},
+	{"variable", kNVSEParamType_StackVar, 1},
+	{"variableName", kNVSEParamType_String, 1},
+};
+DEFINE_CMD_ALT_EXP(PrintStackVar, PrintSV, , false, kNVSEParams_OneStackVariable_OptionalStackVariables);
+DEFINE_CMD_ALT_EXP(DebugPrintStackVar, DPrintSV, , false, kNVSEParams_OneStackVariable_OptionalStackVariables);
+
+
 DEFINE_CMD_ALT_EXP(Assert, AssertTrue, , false, kParams_OneBoolean);
 DEFINE_CMD_ALT_EXP(GetSelfAlt_OLD, ThisAlt_OLD, 
 	"Unlike GetSelf, will return ThisObj even if it isn't Persistent and is clutter.",

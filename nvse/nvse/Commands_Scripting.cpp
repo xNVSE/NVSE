@@ -655,22 +655,18 @@ bool Cmd_PrintVar_Execute(COMMAND_ARGS)
 		std::string variableValue;
 		switch (token->Type())
 		{
-		case kTokenType_NumericStackVar:
 		case kTokenType_NumericVar:
 			variableValue = FormatString("%g", token->GetNumber());
 			break;
-		case kTokenType_StringStackVar:
 		case kTokenType_StringVar:
 			variableValue = FormatString(R"("%s")", token->GetString());
 			break;
-		case kTokenType_ArrayStackVar:
 		case kTokenType_ArrayVar:
 			if (auto* arrayVar = token->GetArrayVar())
 				variableValue = arrayVar->GetStringRepresentation();
 			else
 				variableValue = "uninitialized or invalid array";
 			break;
-		case kTokenType_RefStackVar:
 		case kTokenType_RefVar:
 			if (auto* form = token->GetTESForm())
 				variableValue = form->GetStringRepresentation();
@@ -696,6 +692,57 @@ bool Cmd_DebugPrintVar_Execute(COMMAND_ARGS)
 		return Cmd_PrintVar_Execute(PASS_COMMAND_ARGS);
 	return true;
 }
+
+bool Cmd_PrintStackVar_Execute(COMMAND_ARGS)
+{
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (!eval.ExtractArgs() || !eval.Arg(0) || !eval.Arg(0)->value.stackVarIdx)
+		return true;
+	UInt8 argNum = 0;
+	const auto numArgs = eval.NumArgs();
+	do // guaranteed to have at least 1 variable to print
+	{
+		auto* token = eval.Arg(argNum);
+		std::string variableValue;
+		switch (token->Type())
+		{
+		case kTokenType_NumericStackVar:
+			variableValue = FormatString("%g", token->GetNumber());
+			break;
+		case kTokenType_StringStackVar:
+			variableValue = FormatString(R"("%s")", token->GetString());
+			break;
+		case kTokenType_ArrayStackVar:
+			if (auto* arrayVar = token->GetArrayVar())
+				variableValue = arrayVar->GetStringRepresentation();
+			else
+				variableValue = "uninitialized or invalid array";
+			break;
+		case kTokenType_RefStackVar:
+			if (auto* form = token->GetTESForm())
+				variableValue = form->GetStringRepresentation();
+			else
+				variableValue = "invalid form";
+			[[fallthrough]];
+		default:
+			break;
+		}
+		const std::string toPrint = std::string(eval.Arg(argNum+1)->GetString()) + ": " + variableValue;
+		Console_Print_Str(toPrint);
+
+		argNum += 2; // skip over the stack var name arg
+	} while ((argNum+1) < numArgs);
+
+	return true;
+}
+
+bool Cmd_DebugPrintStackVar_Execute(COMMAND_ARGS)
+{
+	if (ModDebugState(scriptObj))
+		return Cmd_PrintStackVar_Execute(PASS_COMMAND_ARGS);
+	return true;
+}
+
 
 bool Cmd_Internal_PushExecutionContext_Execute(COMMAND_ARGS)
 {
