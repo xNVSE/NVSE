@@ -75,11 +75,19 @@ bool Cmd_sv_Destruct_Execute(COMMAND_ARGS)
 	{
 		if (eval.Arg(i)->CanConvertTo(kTokenType_StringVar))
 		{
-			ScriptLocal *var = eval.Arg(i)->GetScriptLocal();
-			if (var)
+			if (ScriptLocal* var = eval.Arg(i)->GetScriptLocal())
 			{
 				g_StringMap.Delete(var->data);
 				var->data = 0;
+			}
+		}
+		else if (eval.Arg(i)->CanConvertTo(kTokenType_StringStackVar))
+		{
+			auto* token = eval.Arg(i);
+			if (token->value.stackVarIdx)
+			{
+				g_StringMap.Delete(GetLocalStackVarVal(token->value.stackVarIdx));
+				SetLocalStackVarVal(token->value.stackVarIdx, 0);
 			}
 		}
 	}
