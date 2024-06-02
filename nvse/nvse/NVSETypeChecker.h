@@ -18,7 +18,7 @@ class NVSETypeChecker : NVSEVisitor {
     // Temporarily pushed to stack for things like lambda
     //     args as these must be in global scope
     std::shared_ptr<NVSEScope> globalScope{};
-    bool bRenameArgs = false;
+    bool bScopedGlobal = false;
 
     std::shared_ptr<NVSEScope> EnterScope(bool lambdaScope = false);
     void LeaveScope();
