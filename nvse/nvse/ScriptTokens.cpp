@@ -116,9 +116,9 @@ ScriptToken::ScriptToken(Script *script) : type(kTokenType_Lambda), refIdx(0), v
 	value.lambda = script;
 }
 #if RUNTIME
-ScriptToken::ScriptToken(StringVar* stringVar) : type(kTokenType_StringVar), variableType(Script::eVarType_String), refIdx(0), varIdx(0)
+ScriptToken::ScriptToken(ScriptLocal* scriptLocal, StringVar* stringVar) : type(kTokenType_StringVar), variableType(Script::eVarType_String), refIdx(0), varIdx(0)
 {
-	value.nvseVariable = { stringVar };
+	value.nvseVariable = { scriptLocal, stringVar};
 }
 #endif
 
@@ -785,7 +785,7 @@ UInt32 ScriptToken::GetFormID() const
 		{
 			return 0;
 		}
-		
+
 		return *reinterpret_cast<UInt32*>(&GetLocalStackVarVal(value.stackVarIdx));
 	}
 #endif
@@ -935,7 +935,7 @@ Operator *ScriptToken::GetOperator() const
 }
 
 #if RUNTIME
-ArrayID ScriptToken::GetArrayID() const 
+ArrayID ScriptToken::GetArrayID() const
 {
 	if (type == kTokenType_Array)
 		return value.arrID;
@@ -985,7 +985,7 @@ StringVar* ScriptToken::GetStringVar() const
 	if (value.var) {
 		return g_StringMap.Get(static_cast<int>(value.var->data));
 	}
-	
+
 	return nullptr;
 }
 
@@ -1059,7 +1059,7 @@ bool ScriptToken::ResolveVariable()
 		if (type == kTokenType_StringStackVar && value.stackVarIdx) {
 			value.nvseVariable.stringVar = g_StringMap.Get(GetLocalStackVarVal(value.stackVarIdx));
 		}
-		
+
 		return true;
 	}
 
@@ -1504,7 +1504,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator *context)
 
 		refIdx = context->Read16();
 		varIdx = context->Read16();
-		value.nvseVariable = { nullptr };
+		value.nvseVariable = { nullptr, {nullptr}};
 		break;
 	}
 	case 'F':
@@ -1579,7 +1579,7 @@ const std::unordered_map g_tokenCodes =
 		std::make_pair(kTokenType_NumericVar, 'V'),
 		std::make_pair(kTokenType_RefVar, 'V'),
 		std::make_pair(kTokenType_StringVar, 'V'),
-		std::make_pair(kTokenType_ArrayVar, 'V'), 
+		std::make_pair(kTokenType_ArrayVar, 'V'),
 		std::make_pair(kTokenType_Operator, 'O'),
 		std::make_pair(kTokenType_Byte, 'B'),
 		std::make_pair(kTokenType_Short, 'I'),
@@ -2026,7 +2026,7 @@ static Operand s_operands[] =
 		{NULL, 0}, // LeftToken
 		{NULL, 0}, // RightToken
 
-		{NULL, 0}, // 
+		{NULL, 0}, //
 		{OPERAND(NumericStackVar)},
 		{OPERAND(RefStackVar)},
 		{OPERAND(StringStackVar)},
@@ -2112,7 +2112,7 @@ char *ScriptToken::DebugPrint() const
 		sprintf_s(debugPrint, 512, "[Type=String, Value=%s]", value.str ? value.str : "");
 		break;
 	case kTokenType_Form:
-		sprintf_s(debugPrint, 512, "[Type=Form, Value=%08X]", value.formID); 
+		sprintf_s(debugPrint, 512, "[Type=Form, Value=%08X]", value.formID);
 		break;
 	case kTokenType_Ref:
 		sprintf_s(debugPrint, 512, "[Type=Ref, Value=%s]", value.refVar->name.CStr());

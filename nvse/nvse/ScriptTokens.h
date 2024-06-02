@@ -195,6 +195,7 @@ struct ForEachContext
 #if RUNTIME
 struct CustomVariableContext
 {
+	ScriptLocal* scriptLocal;
 	union
 	{
 		StringVar* stringVar;
@@ -248,7 +249,7 @@ struct ScriptToken
 	ScriptToken(UInt32 data, Token_Type asType); // ArrayID or FormID
 	ScriptToken(Script *script);
 #if RUNTIME
-	ScriptToken(StringVar* stringVar);
+	ScriptToken(ScriptLocal* scriptLocal, StringVar* stringVar);
 	ScriptToken(ScriptLocal *var);
 	ScriptToken(NVSEArrayVarInterface::Element &elem);
 #endif
@@ -350,7 +351,7 @@ struct ScriptToken
 	[[nodiscard]] static std::unique_ptr<ScriptToken> Create(UInt32 bogus); // unimplemented, to block implicit conversion to double
 	[[nodiscard]] static std::unique_ptr<ScriptToken> Create(Script *scriptLambda) { return scriptLambda ? std::make_unique<ScriptToken>(scriptLambda) : nullptr; }
 #if RUNTIME
-	[[nodiscard]] static std::unique_ptr<ScriptToken> Create(StringVar* stringVar) { return stringVar ? std::make_unique<ScriptToken>(stringVar) : nullptr; }
+	[[nodiscard]] static std::unique_ptr<ScriptToken> Create(ScriptLocal* local, StringVar* stringVar) { return stringVar ? std::make_unique<ScriptToken>(local, stringVar) : nullptr; }
 #endif
 	void SetString(const char *srcStr);
 	[[nodiscard]] std::string GetVariableName(Script* script) const;

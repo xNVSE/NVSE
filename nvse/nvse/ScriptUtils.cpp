@@ -443,7 +443,7 @@ std::unique_ptr<ScriptToken> Eval_Assign_String(OperatorType op, ScriptToken *lh
 		}
 		else
 			lhStrVar->Set(std::move(*rhStrVar));
-		return ScriptToken::Create(lhStrVar);
+		return ScriptToken::Create(lh->GetScriptLocal(), lhStrVar);
 	}
 	
 	const char *str = rh->GetString();
@@ -462,7 +462,7 @@ std::unique_ptr<ScriptToken> Eval_Assign_String(OperatorType op, ScriptToken *lh
 		lhStrVar->Set(str);
 	}
 
-	return ScriptToken::Create(lhStrVar);
+	return ScriptToken::Create(lh->GetScriptLocal(), lhStrVar);
 }
 
 std::unique_ptr<ScriptToken> Eval_Assign_AssignableString(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
@@ -786,7 +786,7 @@ std::unique_ptr<ScriptToken> Eval_PlusEquals_String(OperatorType op, ScriptToken
 
 	strVar->StringRef() += rh->GetString();
 
-	return ScriptToken::Create(strVar);
+	return ScriptToken::Create(var, strVar);
 }
 
 std::unique_ptr<ScriptToken> Eval_TimesEquals_String(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
@@ -811,7 +811,7 @@ std::unique_ptr<ScriptToken> Eval_TimesEquals_String(OperatorType op, ScriptToke
 		rhNum--;
 	}
 
-	return ScriptToken::Create(strVar);
+	return ScriptToken::Create(var, strVar);
 }
 
 std::unique_ptr<ScriptToken> Eval_Multiply_String_Number(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
@@ -4779,7 +4779,7 @@ std::unique_ptr<ScriptToken> ExpressionEvaluator::ExecuteCommandToken(ScriptToke
 		StringVar *strVar = g_StringMap.Get(cmdResult);
 		if (!strVar)
 			Error("Failed to resolve string return result (string ID was %g)", cmdResult);
-		tokRes = ScriptToken::Create(strVar);
+		tokRes = ScriptToken::Create(nullptr, strVar);
 		break;
 	}
 	case kRetnType_Array:
