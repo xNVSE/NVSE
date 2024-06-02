@@ -25,7 +25,8 @@ struct LocalStackFrame {
 	}
 };
 
-inline thread_local std::stack<LocalStackFrame> g_localStackVars;
+inline thread_local std::vector<LocalStackFrame> g_localStackVars;
+inline thread_local int g_localStackPtr {-1};
 
 void SetLocalStackVarVal(int idx, double val);
 
