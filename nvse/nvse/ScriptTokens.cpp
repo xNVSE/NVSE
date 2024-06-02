@@ -2145,6 +2145,9 @@ char *ScriptToken::DebugPrint() const
 	case kTokenType_StringVar:
 		sprintf_s(debugPrint, 512, "[Type=StringVar, Value=%g]", value.num);
 		break;
+	case kTokenType_StackVar:
+		sprintf_s(debugPrint, 512, "[Type=StackVar, Value=%lu]", value.stackVarIdx);
+		break;
 	case kTokenType_NumericStackVar:
 		sprintf_s(debugPrint, 512, "[Type=NumericStackVar, Value=%g]", GetLocalStackVarVal(value.stackVarIdx));
 		break;
