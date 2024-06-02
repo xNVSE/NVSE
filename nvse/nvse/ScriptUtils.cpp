@@ -432,9 +432,9 @@ std::unique_ptr<ScriptToken> Eval_Assign_String(OperatorType op, ScriptToken *lh
 		// move the string if it's temporary
 		if (!lhStrVar)
 		{
-			if (lh->GetScriptLocal()) {
+			if (auto* lhVar = lh->GetScriptLocal()) {
 				const auto strVarID = static_cast<int>(AddStringVar(std::move(*rhStrVar), *lh, *context, &lhStrVar));
-				lh->GetScriptLocal()->data = strVarID;
+				lhVar->data = strVarID;
 			}
 			else { // assume stack var
 				const auto strVarID = static_cast<int>(g_StringMap.Add(std::move(*rhStrVar), true, &lhStrVar));
@@ -449,7 +449,7 @@ std::unique_ptr<ScriptToken> Eval_Assign_String(OperatorType op, ScriptToken *lh
 	const char *str = rh->GetString();
 	if (!lhStrVar)
 	{
-		if (ScriptLocal* lhVar = lh->GetScriptLocal()) {
+		if (auto* lhVar = lh->GetScriptLocal()) {
 			lhVar->data = static_cast<int>(AddStringVar(str, *lh, *context, &lhStrVar));
 		}
 		else if (lh->type == kTokenType_StringStackVar)
@@ -459,14 +459,7 @@ std::unique_ptr<ScriptToken> Eval_Assign_String(OperatorType op, ScriptToken *lh
 		}
 	}
 	else {
-		if (ScriptLocal* lhVar = lh->GetScriptLocal()) {
-			lhStrVar->Set(str);
-		}
-		else if (lh->type == kTokenType_StringStackVar)
-		{
-			const auto strVarID = static_cast<int>(g_StringMap.Add(context->script->GetModIndex(), str, false, &lhStrVar));
-			SetLocalStackVarVal(lh->value.stackVarIdx, strVarID);
-		}
+		lhStrVar->Set(str);
 	}
 
 	return ScriptToken::Create(lhStrVar);
