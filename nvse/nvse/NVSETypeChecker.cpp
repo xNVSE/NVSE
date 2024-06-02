@@ -179,11 +179,11 @@ void NVSETypeChecker::VisitBeginStmt(const BeginStmt* stmt) {
 void NVSETypeChecker::VisitFnStmt(FnDeclStmt* stmt) {
 	stmt->scope = EnterScope(true);
 
-	bRenameArgs = true;
+	bScopedGlobal = true;
 	for (auto decl : stmt->args) {
 		decl->Accept(this);
 	}
-	bRenameArgs = false;
+	bScopedGlobal = false;
 
 	stmt->body->Accept(this);
 
@@ -216,6 +216,12 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 			CompInfo("Info: Variable with name '%s' shadows a form with the same name from mod '%s'. This is NOT an error. Do not contact the mod author.", name.lexeme.c_str(), modName);
 #endif
 		}
+		
+		if (auto shadowed = scopes.top()->resolveVariable(name.lexeme, true)) {
+#ifdef EDITOR
+			CompInfo("Info: Variable with name '%s' shadows a variable with the same name in outer scoped. (Defined at line %d:%d)", name.lexeme.c_str(), shadowed->token.line, shadowed->token.column);
+#endif
+		}
 
 		if (expr) {
 			expr->Accept(this);
@@ -229,13 +235,13 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 		NVSEScope::ScopeVar var {};
 		var.token = name;
 		var.detailedType = detailedType;
-		if (bRenameArgs || stmt->bExport || scopes.top() == globalScope) {
+		if (bScopedGlobal || stmt->bExport || scopes.top() == globalScope) {
 			var.global = true;
 		}
         var.scriptType = GetScriptTypeFromToken(stmt->type);
 
 		// Assign this new scope var to this statment for lookup in compiler
-		stmt->scopeVars.push_back(scopes.top()->addVariable(name.lexeme, var, bRenameArgs));
+		stmt->scopeVars.push_back(scopes.top()->addVariable(name.lexeme, var, bScopedGlobal));
 	}
 }
 
@@ -249,7 +255,7 @@ void NVSETypeChecker::VisitForStmt(ForStmt* stmt) {
 	stmt->scope = EnterScope();
 	
 	if (stmt->init) {
-		WRAP_ERROR(stmt->init->Accept(this));
+		WRAP_ERROR(stmt->init->Accept(this))
 	}
 
 	if (stmt->cond) {
@@ -269,7 +275,7 @@ void NVSETypeChecker::VisitForStmt(ForStmt* stmt) {
 	}
 
 	if (stmt->post) {
-		WRAP_ERROR(stmt->post->Accept(this));
+		WRAP_ERROR(stmt->post->Accept(this))
 	}
 
 	insideLoop.push(true);
@@ -874,11 +880,11 @@ void NVSETypeChecker::VisitGroupingExpr(GroupingExpr* expr) {
 void NVSETypeChecker::VisitLambdaExpr(LambdaExpr* expr) {
 	expr->scope = EnterScope(true);
 
-	bRenameArgs = true;
+	bScopedGlobal = true;
 	for (auto &decl : expr->args) {
 		WRAP_ERROR(decl->Accept(this))
 	}
-	bRenameArgs = false;
+	bScopedGlobal = false;
 
 	insideLoop.push(false);
 	expr->body->Accept(this);
