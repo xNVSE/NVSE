@@ -75,7 +75,7 @@ bool Cmd_sv_Destruct_Execute(COMMAND_ARGS)
 	{
 		if (eval.Arg(i)->CanConvertTo(kTokenType_StringVar))
 		{
-			ScriptLocal *var = eval.Arg(i)->GetNonStackVar();
+			ScriptLocal *var = eval.Arg(i)->GetScriptLocal();
 			if (var)
 			{
 				g_StringMap.Delete(var->data);
@@ -954,7 +954,7 @@ bool Cmd_GetRawFormIDString_Execute(COMMAND_ARGS)
 		}
 		else if (arg->Type() == kTokenType_RefVar)
 		{
-			ScriptLocal *var = arg->GetNonStackVar();
+			ScriptLocal *var = arg->GetScriptLocal();
 			if (var)
 			{
 				formID = *((UInt32 *)(&var->data));

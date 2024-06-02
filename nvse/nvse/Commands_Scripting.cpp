@@ -645,7 +645,7 @@ bool Cmd_GetAllModLocalData_Execute(COMMAND_ARGS)
 bool Cmd_PrintVar_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	if (!eval.ExtractArgs() || !eval.Arg(0) || !eval.Arg(0)->GetNonStackVar())
+	if (!eval.ExtractArgs() || !eval.Arg(0) || !eval.Arg(0)->GetScriptLocal())
 		return true;
 	UInt8 argNum = 0;
 	const auto numArgs = eval.NumArgs();
@@ -680,7 +680,7 @@ bool Cmd_PrintVar_Execute(COMMAND_ARGS)
 		default:
 			break;
 		}
-		const auto toPrint = std::string(GetVariableName(token->GetNonStackVar(), scriptObj, eventList, token->refIdx))
+		const auto toPrint = std::string(GetVariableName(token->GetScriptLocal(), scriptObj, eventList, token->refIdx))
 			+ ": " + variableValue;
 		Console_Print_Str(toPrint);
 

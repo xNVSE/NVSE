@@ -972,7 +972,7 @@ ArrayVar *ScriptToken::GetArrayVar() const
 	return g_ArrayMap.Get(GetArrayID());
 }
 
-ScriptLocal *ScriptToken::GetNonStackVar() const
+ScriptLocal *ScriptToken::GetScriptLocal() const
 {
 	if (!IsNonStackVariable())
 		return nullptr;
@@ -1042,7 +1042,7 @@ void ScriptToken::AssignResult(ExpressionEvaluator &eval) const
 
 }
 
-ScriptLocal* GetScriptLocal(UInt32 varIdx, UInt32 refIdx, Script* script, ScriptEventList* eventList)
+ScriptLocal* ResolveScriptLocal(UInt32 varIdx, UInt32 refIdx, Script* script, ScriptEventList* eventList)
 {
 	if (refIdx)
 	{
@@ -1067,7 +1067,7 @@ bool ScriptToken::ResolveVariable()
 	}
 
 	auto* eventList = context->eventList;
-	value.var = GetScriptLocal(varIdx, refIdx, context->script, eventList);
+	value.var = ResolveScriptLocal(varIdx, refIdx, context->script, eventList);
 	if (!value.var)
 		return false;
 	// to be deleted on event list destruction, see Hooks_Other.cpp#CleanUpNVSEVars
@@ -1327,7 +1327,7 @@ UInt32 __fastcall ScriptTokenGetActorValue(PluginScriptToken *scrToken)
 
 ScriptLocal *__fastcall ScriptTokenGetScriptVar(PluginScriptToken *scrToken)
 {
-	return reinterpret_cast<ScriptToken *>(scrToken)->GetNonStackVar();
+	return reinterpret_cast<ScriptToken *>(scrToken)->GetScriptLocal();
 }
 
 const PluginTokenPair *__fastcall ScriptTokenGetPair(PluginScriptToken *scrToken)
