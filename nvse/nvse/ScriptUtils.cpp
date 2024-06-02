@@ -638,30 +638,62 @@ std::unique_ptr<ScriptToken> Eval_Assign_Elem_Array(OperatorType op, ScriptToken
 
 std::unique_ptr<ScriptToken> Eval_PlusEquals_Number(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *var = lh->GetScriptLocal();
-	var->data += rh->GetNumber();
-	if (lh->GetVariableType() == Script::eVarType_Integer)
-		var->data = floor(var->data);
+	if (lh->type == kTokenType_NumericStackVar) {
+		auto &v = GetLocalStackVarVal(lh->value.stackVarIdx);
+		v += rh->GetNumber();
+		if (lh->GetVariableType() == Script::eVarType_Integer) {
+			v = floor(v);
+		}
+		return ScriptToken::Create(v);
+	}
+	else {
+		ScriptLocal* var = lh->GetScriptLocal();
+		var->data += rh->GetNumber();
+		if (lh->GetVariableType() == Script::eVarType_Integer)
+			var->data = floor(var->data);
 
-	return ScriptToken::Create(var->data);
+		return ScriptToken::Create(var->data);
+	}
 }
 
 std::unique_ptr<ScriptToken> Eval_MinusEquals_Number(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *var = lh->GetScriptLocal();
-	var->data -= rh->GetNumber();
-	if (lh->GetVariableType() == Script::eVarType_Integer)
-		var->data = floor(var->data);
-	return ScriptToken::Create(var->data);
+	if (lh->type == kTokenType_NumericStackVar) {
+		auto &v = GetLocalStackVarVal(lh->value.stackVarIdx);
+		v -= rh->GetNumber();
+		if (lh->GetVariableType() == Script::eVarType_Integer) {
+			v = floor(v);
+		}
+		return ScriptToken::Create(v);
+	}
+	else {
+		ScriptLocal* var = lh->GetScriptLocal();
+		var->data -= rh->GetNumber();
+		if (lh->GetVariableType() == Script::eVarType_Integer)
+			var->data = floor(var->data);
+
+		return ScriptToken::Create(var->data);
+	}
 }
 
 std::unique_ptr<ScriptToken> Eval_TimesEquals(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *var = lh->GetScriptLocal();
-	var->data *= rh->GetNumber();
-	if (lh->GetVariableType() == Script::eVarType_Integer)
-		var->data = floor(var->data);
-	return ScriptToken::Create(var->data);
+	if (lh->type == kTokenType_NumericStackVar) {
+		auto &v = GetLocalStackVarVal(lh->value.stackVarIdx);
+		v *= rh->GetNumber();
+		if (lh->GetVariableType() == Script::eVarType_Integer) {
+			v = floor(v);
+		}
+		return ScriptToken::Create(v);
+	}
+	else {
+		ScriptLocal* var = lh->GetScriptLocal();
+		var->data *= rh->GetNumber();
+		if (lh->GetVariableType() == Script::eVarType_Integer)
+			var->data = floor(var->data);
+
+		return ScriptToken::Create(var->data);
+	}
 }
 
 std::unique_ptr<ScriptToken> Eval_DividedEquals(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
@@ -672,35 +704,71 @@ std::unique_ptr<ScriptToken> Eval_DividedEquals(OperatorType op, ScriptToken *lh
 		context->Error("Division by zero");
 		return nullptr;
 	}
-	ScriptLocal *var = lh->GetScriptLocal();
-	var->data /= rhNum;
-	if (lh->GetVariableType() == Script::eVarType_Integer)
-		var->data = floor(var->data);
-	return ScriptToken::Create(var->data);
+
+	if (lh->type == kTokenType_NumericStackVar) {
+		auto &v = GetLocalStackVarVal(lh->value.stackVarIdx);
+		v /= rh->GetNumber();
+		if (lh->GetVariableType() == Script::eVarType_Integer) {
+			v = floor(v);
+		}
+		return ScriptToken::Create(v);
+	}
+	else {
+		ScriptLocal* var = lh->GetScriptLocal();
+		var->data /= rh->GetNumber();
+		if (lh->GetVariableType() == Script::eVarType_Integer)
+			var->data = floor(var->data);
+
+		return ScriptToken::Create(var->data);
+	}
 }
 
 std::unique_ptr<ScriptToken> Eval_ExponentEquals(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *var = lh->GetScriptLocal();
-	const double rhNum = rh->GetNumber();
-	const double lhNum = var->data;
-	var->data = pow(lhNum, rhNum);
-	if (lh->GetVariableType() == Script::eVarType_Integer)
-		var->data = floor(var->data);
-	return ScriptToken::Create(var->data);
+	if (lh->type == kTokenType_NumericStackVar) {
+		auto &v = GetLocalStackVarVal(lh->value.stackVarIdx);
+		v = pow(v, rh->GetNumber());
+		if (lh->GetVariableType() == Script::eVarType_Integer) {
+			v = floor(v);
+		}
+		return ScriptToken::Create(v);
+	}
+	else {
+		ScriptLocal* var = lh->GetScriptLocal();
+		const double rhNum = rh->GetNumber();
+		const double lhNum = var->data;
+		var->data = pow(lhNum, rhNum);
+		if (lh->GetVariableType() == Script::eVarType_Integer)
+			var->data = floor(var->data);
+		return ScriptToken::Create(var->data);
+	}
 }
 
 std::unique_ptr<ScriptToken> Eval_HandleEquals(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *var = lh->GetScriptLocal();
-	const double l = var->data;
 	const double r = rh->GetNumber();
-	bool hasError;
-	double const result = Apply_LeftVal_RightVal_Operator(op, l, r, context, hasError);
-	if (!hasError)
-	{
-		var->data = result;
-		return ScriptToken::Create(var->data);
+	if (lh->type == kTokenType_NumericStackVar) {
+		const double l = GetLocalStackVarVal(lh->value.stackVarIdx);
+
+		bool hasError;
+		double const result = Apply_LeftVal_RightVal_Operator(op, l, r, context, hasError);
+		if (!hasError)
+		{
+			SetLocalStackVarVal(lh->value.stackVarIdx, result);
+			return ScriptToken::Create(result);
+		}
+	}
+	else {
+		ScriptLocal* var = lh->GetScriptLocal();
+		const double l = var->data;
+
+		bool hasError;
+		double const result = Apply_LeftVal_RightVal_Operator(op, l, r, context, hasError);
+		if (!hasError)
+		{
+			var->data = result;
+			return ScriptToken::Create(var->data);
+		}
 	}
 	return nullptr;
 }
@@ -773,6 +841,22 @@ std::unique_ptr<ScriptToken> Eval_HandleEquals_Global(OperatorType op, ScriptTok
 
 std::unique_ptr<ScriptToken> Eval_PlusEquals_String(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
+	if (lh->type == kTokenType_StringStackVar) {
+		UInt32 strID = *reinterpret_cast<UInt32*>(&GetLocalStackVarVal(lh->value.stackVarIdx));
+		StringVar* strVar = g_StringMap.Get(strID);
+		if (!strVar)
+		{
+			//strID = g_StringMap.Add(context->script->GetModIndex(), "");
+			strID = AddStringVar("", *lh, *context, &strVar);
+			SetLocalStackVarVal(lh->value.stackVarIdx, static_cast<int>(strID));
+			strVar = g_StringMap.Get(strID);
+		}
+
+		strVar->StringRef() += rh->GetString();
+
+		return ScriptToken::Create(nullptr, strVar);
+	}
+
 	ScriptLocal *var = lh->GetScriptLocal();
 	UInt32 strID = static_cast<int>(var->data);
 	StringVar *strVar = g_StringMap.Get(strID);
@@ -1083,11 +1167,22 @@ std::unique_ptr<ScriptToken> Eval_Subscript_StringVar_Number(OperatorType op, Sc
 
 std::unique_ptr<ScriptToken> Eval_Subscript_StringVar_Slice(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *var = lh->GetScriptLocal();
-	const Slice *slice = rh->GetSlice();
+	ScriptLocal* var;
+	UInt32 id;
+
+	StringVar* strVar;
+	const Slice* slice = rh->GetSlice();
 	double upper = slice->m_upper;
 	double lower = slice->m_lower;
-	StringVar *strVar = g_StringMap.Get(var->data);
+
+	if (lh->type == kTokenType_StringStackVar) {
+		id = *reinterpret_cast<UInt32*>(&GetLocalStackVarVal(lh->value.stackVarIdx));
+		strVar = g_StringMap.Get(id);
+	} else {
+		var = lh->GetScriptLocal();
+		strVar = g_StringMap.Get(var->data);
+	}
+
 	if (!strVar)
 	{
 		context->Error(g_stringVarUninitializedMsg);
@@ -1105,10 +1200,13 @@ std::unique_ptr<ScriptToken> Eval_Subscript_StringVar_Slice(OperatorType op, Scr
 		lower += len;
 	}
 
-	if (var && slice && !slice->bIsString)
-	{
+	if (lh->type == kTokenType_StringStackVar && slice && !slice->bIsString) {
+		return ScriptToken::Create(id, lower, upper);
+	}
+	else if (var && slice && !slice->bIsString) {
 		return ScriptToken::Create(var->data, lower, upper);
 	}
+
 	context->Error("Invalid string var slice operation - variable invalid or variable is not a string var");
 	return nullptr;
 }
