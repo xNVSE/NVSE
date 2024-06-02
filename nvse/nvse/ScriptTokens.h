@@ -195,7 +195,10 @@ struct ForEachContext
 #if RUNTIME
 struct CustomVariableContext
 {
-	ScriptLocal* scriptLocal;
+	// This member may look completely unused, but beware: messes up string_var assignment if removed.
+	// Potentially relied upon in some plugin.
+	ScriptLocal* scriptLocal; 
+
 	union
 	{
 		StringVar* stringVar;
