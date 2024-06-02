@@ -1825,7 +1825,8 @@ bool Cmd_MatchesAnyOf_Execute(COMMAND_ARGS)
 }
 
 bool Cmd_PushLocalStack_Execute(COMMAND_ARGS) {
-	g_localStackVars.emplace();
+	auto defaultLength = 20;
+	g_localStackVars.emplace(std::vector<double>(defaultLength));
 	_DMESSAGE("LOCAL VAR STACK CREATE : Index %d", g_localStackVars.size() - 1);
 	return true;
 }
