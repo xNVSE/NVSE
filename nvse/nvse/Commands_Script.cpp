@@ -1427,12 +1427,12 @@ bool Cmd_CallWhilePerSeconds_Execute(COMMAND_ARGS)
 
 void SetLocalStackVarVal(int idx, double val)
 {
-	g_localStackVars[g_localStackPtr].set(idx - 1, val);
+	g_localStackVars.top().set(idx - 1, val);
 }
 
 double& GetLocalStackVarVal(int idx)
 {
-	return g_localStackVars[g_localStackPtr].get(idx - 1);
+	return g_localStackVars.top().get(idx - 1);
 }
 
 void ClearDelayedCalls()
@@ -1825,7 +1825,7 @@ bool Cmd_MatchesAnyOf_Execute(COMMAND_ARGS)
 }
 
 bool Cmd_PushLocalStack_Execute(COMMAND_ARGS) {
-	if (g_localStackVars.size() == g_localStackPtr + 1) {
+	if (g_localStackVars.size() <= g_localStackPtr + 1) {
 		g_localStackVars.push_back(LocalStackFrame{});
 	}
 	g_localStackPtr++;
