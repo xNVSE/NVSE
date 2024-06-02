@@ -118,7 +118,7 @@ ScriptToken::ScriptToken(Script *script) : type(kTokenType_Lambda), refIdx(0), v
 #if RUNTIME
 ScriptToken::ScriptToken(StringVar* stringVar) : type(kTokenType_StringVar), variableType(Script::eVarType_String), refIdx(0), varIdx(0)
 {
-	value.nvseVariable = { stringVar};
+	value.nvseVariable = { stringVar };
 }
 #endif
 
@@ -734,24 +734,16 @@ const char *ScriptToken::GetString() const
 #if RUNTIME
 	else if (type == kTokenType_StringVar)
 	{
-		if (value.nvseVariable.stringVar)
-			return value.nvseVariable.stringVar->GetCString();
-		if (!value.var)
-		{
-			return "";
-		}
-		StringVar *strVar = g_StringMap.Get(value.var->data);
+		StringVar *strVar = GetStringVar();
 		if (strVar)
 			result = strVar->GetCString();
-		else
-			result = NULL;
 	}
 	else if (type == kTokenType_StringStackVar) {
-		StringVar* strVar = g_StringMap.Get(GetLocalStackVarVal(value.stackVarIdx));
-		if (strVar)
-			result = strVar->GetCString();
-		else
-			result = NULL;
+		if (value.stackVarIdx) {
+			StringVar* strVar = g_StringMap.Get(GetLocalStackVarVal(value.stackVarIdx));
+			if (strVar)
+				result = strVar->GetCString();
+		}
 	}
 #endif
 	if (result)
@@ -981,15 +973,16 @@ ScriptLocal *ScriptToken::GetScriptLocal() const
 
 StringVar* ScriptToken::GetStringVar() const
 {
-	if (type != kTokenType_StringVar && type != kTokenType_StringStackVar)
+	if (type != kTokenType_StringVar && type != kTokenType_StringStackVar) {
 		return nullptr;
-	if (value.nvseVariable.stringVar)
-		return value.nvseVariable.stringVar;
-	if (type == kTokenType_StringStackVar && value.stackVarIdx)
-	{
+	}
+	if (type == kTokenType_StringStackVar && value.stackVarIdx) {
 		return g_StringMap.Get(GetLocalStackVarVal(value.stackVarIdx));
 	}
-	else if (value.var) {
+	if (value.nvseVariable.stringVar) {
+		return value.nvseVariable.stringVar;
+	}
+	if (value.var) {
 		return g_StringMap.Get(static_cast<int>(value.var->data));
 	}
 	
@@ -1063,6 +1056,10 @@ bool ScriptToken::ResolveVariable()
 {
 	// Check stack vars
 	if (type == kTokenType_ArrayStackVar || type == kTokenType_NumericStackVar || type == kTokenType_RefStackVar || type == kTokenType_StringStackVar) {
+		if (type == kTokenType_StringStackVar && value.stackVarIdx) {
+			value.nvseVariable.stringVar = g_StringMap.Get(GetLocalStackVarVal(value.stackVarIdx));
+		}
+		
 		return true;
 	}
 
@@ -1507,7 +1504,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator *context)
 
 		refIdx = context->Read16();
 		varIdx = context->Read16();
-		value.nvseVariable = { {nullptr}};
+		value.nvseVariable = { nullptr };
 		break;
 	}
 	case 'F':
@@ -1914,6 +1911,12 @@ Token_Type kConversions_NumericVar[] =
 		kTokenType_Boolean,
 		kTokenType_Variable,
 };
+Token_Type kConversions_NumericStackVar[] =
+{
+	kTokenType_Number,
+	kTokenType_Boolean,
+	kTokenType_StackVar,
+};
 
 Token_Type kConversions_ArrayElement[] =
 	{
@@ -1934,11 +1937,23 @@ Token_Type kConversions_RefVar[] =
 		kTokenType_Boolean,
 		kTokenType_Variable,
 };
+Token_Type kConversions_RefStackVar[] =
+{
+	kTokenType_Form,
+	kTokenType_Boolean,
+	kTokenType_StackVar,
+};
 
 Token_Type kConversions_StringVar[] =
 {
 		kTokenType_String,
 		kTokenType_Variable,
+		kTokenType_Boolean,
+};
+Token_Type kConversions_StringStackVar[] =
+{
+		kTokenType_String,
+		kTokenType_StackVar,
 		kTokenType_Boolean,
 };
 
@@ -1947,6 +1962,12 @@ Token_Type kConversions_ArrayVar[] =
 		kTokenType_Array,
 		kTokenType_Variable,
 		kTokenType_Boolean,
+};
+Token_Type kConversions_ArrayStackVar[] =
+{
+	kTokenType_Array,
+	kTokenType_StackVar,
+	kTokenType_Boolean,
 };
 
 Token_Type kConversions_Array[] =
@@ -2006,10 +2027,10 @@ static Operand s_operands[] =
 		{NULL, 0}, // RightToken
 
 		{NULL, 0}, // 
-		{OPERAND(NumericVar)},
-		{OPERAND(RefVar)},
-		{OPERAND(StringVar)},
-		{OPERAND(ArrayVar)},
+		{OPERAND(NumericStackVar)},
+		{OPERAND(RefStackVar)},
+		{OPERAND(StringStackVar)},
+		{OPERAND(ArrayStackVar)},
 		{NULL, 0} // Max
 };
 
