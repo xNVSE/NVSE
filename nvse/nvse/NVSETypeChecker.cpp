@@ -636,7 +636,7 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 
 	// Basic type checks
 	// We already validated number of args, just verify types
-	if (!isDefaultParse(cmd->parse)) {
+	if (!isDefaultParse(cmd->parse)) { // if expression parser
 		for (int i = 0; i < cmd->numParams && i < expr->args.size(); i++) {
 			auto param = cmd->params[i];
 			auto arg = expr->args[i];
@@ -650,13 +650,14 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 				continue;
 			}
 
+			// Try to resolve as NVSE param
 			if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(cmd->params[i].typeID), arg->detailedType, true, cmd)) {
 				WRAP_ERROR(
 					error(expr->token.line, expr->token.column, std::format("Invalid expression for parameter {}. Expected {} (got {}).", i + 1, param.typeStr, TokenTypeToString(arg->detailedType)));
 				)
 			}
 		}
-	} else {
+	} else { // default parser
 		for (int i = 0; i < cmd->numParams && i < expr->args.size(); i++) {
 			auto param = cmd->params[i];
 			auto arg = expr->args[i];
@@ -692,8 +693,8 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 				}
 			}
 
-			// Try to resolve as NVSE param
-			if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(cmd->params[i].typeID), arg->detailedType, true, cmd)) {
+			// Try to resolve as vanilla param
+			if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(cmd->params[i].typeID), arg->detailedType, false, cmd)) {
 				WRAP_ERROR(
 					error(expr->token.line, expr->token.column, std::format("Invalid expression for parameter {}. Expected {} (got {}).", i + 1, param.typeStr, TokenTypeToString(arg->detailedType)));
 				)
