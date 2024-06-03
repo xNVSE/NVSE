@@ -437,7 +437,7 @@ std::unique_ptr<ScriptToken> Eval_Assign_String(OperatorType op, ScriptToken *lh
 				lhVar->data = strVarID;
 			}
 			else { // assume stack var
-				const auto strVarID = static_cast<int>(g_StringMap.Add(std::move(*rhStrVar), true, &lhStrVar));
+				const auto strVarID = static_cast<int>(g_StringMap.Add(std::move(*rhStrVar), false, &lhStrVar));
 				SetLocalStackVarVal(lh->value.stackVarIdx, strVarID);
 			}
 		}
@@ -842,18 +842,18 @@ std::unique_ptr<ScriptToken> Eval_HandleEquals_Global(OperatorType op, ScriptTok
 std::unique_ptr<ScriptToken> Eval_PlusEquals_String(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	if (lh->type == kTokenType_StringStackVar) {
-		UInt32 strID = *reinterpret_cast<UInt32*>(&GetLocalStackVarVal(lh->value.stackVarIdx));
+		if (!lh->value.stackVarIdx) [[unlikely]] {
+			return nullptr;
+		}
+		UInt32 strID = static_cast<UInt32>(GetLocalStackVarVal(lh->value.stackVarIdx));
 		StringVar* strVar = g_StringMap.Get(strID);
 		if (!strVar)
 		{
-			//strID = g_StringMap.Add(context->script->GetModIndex(), "");
-			strID = AddStringVar("", *lh, *context, &strVar);
+			g_StringMap.Add(context->script->GetModIndex(), "", true, &strVar);
 			SetLocalStackVarVal(lh->value.stackVarIdx, static_cast<int>(strID));
-			strVar = g_StringMap.Get(strID);
 		}
 
 		strVar->StringRef() += rh->GetString();
-
 		return ScriptToken::Create(nullptr, strVar);
 	}
 
@@ -865,11 +865,9 @@ std::unique_ptr<ScriptToken> Eval_PlusEquals_String(OperatorType op, ScriptToken
 		//strID = g_StringMap.Add(context->script->GetModIndex(), "");
 		strID = AddStringVar("", *lh, *context, &strVar);
 		var->data = static_cast<int>(strID);
-		strVar = g_StringMap.Get(strID);
 	}
 
 	strVar->StringRef() += rh->GetString();
-
 	return ScriptToken::Create(var, strVar);
 }
 
@@ -1143,46 +1141,57 @@ const auto *g_stringVarUninitializedMsg = "String var is uninitialized";
 
 std::unique_ptr<ScriptToken> Eval_Subscript_StringVar_Number(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *var = lh->GetScriptLocal();
-	SInt32 idx = rh->GetNumber();
-	if (var)
-	{
-		StringVar *strVar = g_StringMap.Get(var->data);
-		if (!strVar)
-		{
-			context->Error(g_stringVarUninitializedMsg);
-			return nullptr; // uninitialized
-		}
-
-		if (idx < 0)
-		{
-			// negative index counts from end of string
-			idx += strVar->GetLength();
-		}
+	SInt32 lhIdx{};
+	
+	SInt32 rhIdx = rh->GetNumber();
+	if (lh->type == kTokenType_StringStackVar && lh->value.stackVarIdx) {
+		lhIdx = static_cast<UInt32>(GetLocalStackVarVal(lh->value.stackVarIdx));
 	}
-	else
+	else if (auto* lhVar = lh->GetScriptLocal())
+	{
+		lhIdx = static_cast<UInt32>(lhVar->data);
+	}
+	else {
 		context->Error("Invalid variable");
-	return var ? ScriptToken::Create(var->data, idx, idx) : nullptr;
+		return nullptr;
+	}
+
+	StringVar* strVar = g_StringMap.Get(lhIdx);
+	if (!strVar)
+	{
+		context->Error(g_stringVarUninitializedMsg);
+		return nullptr; // uninitialized
+	}
+
+	if (rhIdx < 0)
+	{
+		// negative index counts from end of string
+		rhIdx += strVar->GetLength();
+	}
+
+	return ScriptToken::Create(lhIdx, rhIdx, rhIdx);
 }
 
 std::unique_ptr<ScriptToken> Eval_Subscript_StringVar_Slice(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal* var;
-	UInt32 id;
+	ScriptLocal* var{};
+	UInt32 id{};
 
-	StringVar* strVar;
 	const Slice* slice = rh->GetSlice();
 	double upper = slice->m_upper;
 	double lower = slice->m_lower;
 
-	if (lh->type == kTokenType_StringStackVar) {
-		id = *reinterpret_cast<UInt32*>(&GetLocalStackVarVal(lh->value.stackVarIdx));
-		strVar = g_StringMap.Get(id);
-	} else {
-		var = lh->GetScriptLocal();
-		strVar = g_StringMap.Get(var->data);
+	if (lh->type == kTokenType_StringStackVar && lh->value.stackVarIdx) {
+		id = static_cast<UInt32>(GetLocalStackVarVal(lh->value.stackVarIdx));
+	} else if (auto* lhVar = lh->GetScriptLocal()) {
+		id = static_cast<UInt32>(lhVar->data);
+	}
+	else {
+		context->Error("Invalid variable");
+		return nullptr;
 	}
 
+	auto* strVar = g_StringMap.Get(id);
 	if (!strVar)
 	{
 		context->Error(g_stringVarUninitializedMsg);
@@ -1200,11 +1209,8 @@ std::unique_ptr<ScriptToken> Eval_Subscript_StringVar_Slice(OperatorType op, Scr
 		lower += len;
 	}
 
-	if (lh->type == kTokenType_StringStackVar && slice && !slice->bIsString) {
+	if (slice && !slice->bIsString) {
 		return ScriptToken::Create(id, lower, upper);
-	}
-	else if (var && slice && !slice->bIsString) {
-		return ScriptToken::Create(var->data, lower, upper);
 	}
 
 	context->Error("Invalid string var slice operation - variable invalid or variable is not a string var");

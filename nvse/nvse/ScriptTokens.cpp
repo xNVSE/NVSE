@@ -740,7 +740,7 @@ const char *ScriptToken::GetString() const
 	}
 	else if (type == kTokenType_StringStackVar) {
 		if (value.stackVarIdx) {
-			StringVar* strVar = g_StringMap.Get(*(UInt32*)(&GetLocalStackVarVal(value.stackVarIdx)));
+			StringVar* strVar = g_StringMap.Get(static_cast<UInt32>(GetLocalStackVarVal(value.stackVarIdx)));
 			if (strVar)
 				result = strVar->GetCString();
 		}
