@@ -708,6 +708,10 @@ void NVSECompiler::VisitSubscriptExpr(SubscriptExpr* expr) {
 }
 
 void NVSECompiler::VisitCallExpr(CallExpr* expr) {
+    if (!expr->cmdInfo) {
+        throw std::runtime_error("expr->cmdInfo was null. Please report this as a bug.");
+    }
+    
     // Handle call command separately, unique parse function
     if (expr->cmdInfo->parse == kCommandInfo_Call.parse) {
         if (insideNvseExpr.top()) {
