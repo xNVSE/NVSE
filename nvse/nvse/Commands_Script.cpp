@@ -604,7 +604,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 				if (const TokenPair* pair = eval.Arg(i)->GetPair(); 
 					pair && pair->left && pair->right) [[likely]]
 				{
-					if (pair->left->Type() == kTokenType_String || pair->left->Type() == kTokenType_StringVar)
+					if (pair->left->CanConvertTo(kTokenType_String))
 					{
 						const char* key = pair->left->GetString();
 						if (!StrCompare(key, "priority"))

@@ -29,7 +29,6 @@ inline thread_local std::vector<LocalStackFrame> g_localStackVars;
 inline thread_local int g_localStackPtr {-1};
 
 void SetLocalStackVarVal(int idx, double val);
-
 double& GetLocalStackVarVal(int idx);
 #endif
 

@@ -2254,14 +2254,18 @@ bool ExpressionParser::ValidateArgType(ParamType paramType, Token_Type argType, 
 		case kParamType_QuestStage:
 		case kParamType_CrimeType:
 			// string var included here b/c old sv_* cmds take strings as integer IDs
-			if (argType != kTokenType_StringVar && CanConvertOperand(argType, kTokenType_String))
+			if (argType != kTokenType_StringVar && argType != kTokenType_StringStackVar 
+				&& CanConvertOperand(argType, kTokenType_String))
 			{
 				//auto* cmdInfo = g_scriptCommands.GetByOpcode(m_lineBuf->cmdOpcode);
 				if (cmdInfo && (std::string_view(cmdInfo->longName).starts_with("sv_") || cmdInfo->params == kParams_FormatString || cmdInfo->numParams >= 20)) // only allow this for old sv commands that take int
 					return true;
 			}
-			return CanConvertOperand(argType, kTokenType_Number) || CanConvertOperand(argType, kTokenType_StringVar) ||
-				   CanConvertOperand(argType, kTokenType_Variable);
+			return CanConvertOperand(argType, kTokenType_Number) ||
+				   CanConvertOperand(argType, kTokenType_StringVar) ||
+				   CanConvertOperand(argType, kTokenType_Variable) ||
+				   CanConvertOperand(argType, kTokenType_StringStackVar) ||
+				   CanConvertOperand(argType, kTokenType_StackVar);
 		case kParamType_AnimationGroup:
 		case kParamType_ActorValue:
 			// we accept string or int for this
@@ -4241,6 +4245,15 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 			{
 				T* out = va_arg(varArgs, T*);
 				*out = var->data;
+				return true;
+			}
+		}
+		if (arg->CanConvertTo(kTokenType_StringStackVar))
+		{
+			if (auto idx = arg->value.stackVarIdx)
+			{
+				T* out = va_arg(varArgs, T*);
+				*out = GetLocalStackVarVal(idx);
 				return true;
 			}
 		}

@@ -215,6 +215,7 @@ std::string ScriptToken::GetVariableDataAsString() const
 		return "uninitialized form (0)";
 	}
 	case kTokenType_StringVar:
+	case kTokenType_StringStackVar:
 	{
 		return '"' + std::string(GetString()) + '"';
 	}
@@ -732,18 +733,10 @@ const char *ScriptToken::GetString() const
 	if (type == kTokenType_String)
 		result = value.str;
 #if RUNTIME
-	else if (type == kTokenType_StringVar)
+	else if (type == kTokenType_StringVar || type == kTokenType_StringStackVar)
 	{
-		StringVar *strVar = GetStringVar();
-		if (strVar)
+		if (StringVar* strVar = GetStringVar())
 			result = strVar->GetCString();
-	}
-	else if (type == kTokenType_StringStackVar) {
-		if (value.stackVarIdx) {
-			StringVar* strVar = g_StringMap.Get(static_cast<UInt32>(GetLocalStackVarVal(value.stackVarIdx)));
-			if (strVar)
-				result = strVar->GetCString();
-		}
 	}
 #endif
 	if (result)
@@ -756,11 +749,8 @@ std::size_t ScriptToken::GetStringLength() const
 	if (type == kTokenType_String)
 		return strlen(value.str);
 #if RUNTIME
-	if (type == kTokenType_StringVar)
-	{
-		StringVar *strVar = GetStringVar();
-		if (strVar)
-			return strVar->GetLength();
+	if (StringVar* strVar = GetStringVar()) {
+		return strVar->GetLength();
 	}
 #endif
 	return 0;
@@ -827,13 +817,8 @@ double ScriptToken::GetNumber() const
 	else if (type == kTokenType_Global && value.global)
 		return value.global->data;
 #if RUNTIME
-	else if ((type == kTokenType_NumericVar && value.var) ||
-			 (type == kTokenType_StringVar && value.var))
+	else if (value.var && (type == kTokenType_NumericVar || type == kTokenType_StringVar))
 	{
-		if (!value.var)
-		{
-			return 0.0;
-		}
 		return value.var->data;
 	}
 	else if (type == kTokenType_NumericStackVar || type == kTokenType_StringStackVar) {
@@ -2026,7 +2011,7 @@ static Operand s_operands[] =
 		{NULL, 0}, // LeftToken
 		{NULL, 0}, // RightToken
 
-		{NULL, 0}, //
+		{NULL, 0}, // stack variable
 		{OPERAND(NumericStackVar)},
 		{OPERAND(RefStackVar)},
 		{OPERAND(StringStackVar)},
@@ -2034,7 +2019,7 @@ static Operand s_operands[] =
 		{NULL, 0} // Max
 };
 
-STATIC_ASSERT(SIZEOF_ARRAY(s_operands, Operand) == kTokenType_Empty);
+STATIC_ASSERT(SIZEOF_ARRAY(s_operands, Operand) == kTokenType_Max + 1);
 
 bool CanConvertOperand(Token_Type from, Token_Type to)
 {
