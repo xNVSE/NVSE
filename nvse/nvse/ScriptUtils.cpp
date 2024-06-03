@@ -437,7 +437,7 @@ std::unique_ptr<ScriptToken> Eval_Assign_String(OperatorType op, ScriptToken *lh
 				lhVar->data = strVarID;
 			}
 			else { // assume stack var
-				const auto strVarID = static_cast<int>(g_StringMap.Add(std::move(*rhStrVar), false, &lhStrVar));
+				const auto strVarID = static_cast<int>(g_StringMap.Add(std::move(*rhStrVar), true, &lhStrVar));
 				SetLocalStackVarVal(lh->value.stackVarIdx, strVarID);
 			}
 		}
@@ -454,7 +454,7 @@ std::unique_ptr<ScriptToken> Eval_Assign_String(OperatorType op, ScriptToken *lh
 		}
 		else if (lh->type == kTokenType_StringStackVar)
 		{
-			const auto strVarID = static_cast<int>(g_StringMap.Add(context->script->GetModIndex(), str, false, &lhStrVar));
+			const auto strVarID = static_cast<int>(g_StringMap.Add(context->script->GetModIndex(), str, true, &lhStrVar));
 			SetLocalStackVarVal(lh->value.stackVarIdx, strVarID);
 		}
 	}
