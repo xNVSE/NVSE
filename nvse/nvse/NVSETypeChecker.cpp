@@ -7,6 +7,7 @@
 
 #include "GameForms.h"
 #include "Commands_Scripting.h"
+#include "GameData.h"
 #include "NVSECompilerUtils.h"
 #include "ScriptUtils.h"
 
@@ -71,6 +72,24 @@ std::string getTypeErrorMsg(Token_Type lhs, Token_Type rhs) {
 	return std::format("Cannot convert from {} to {}", TokenTypeToString(lhs), TokenTypeToString(rhs));
 }
 
+std::shared_ptr<NVSEScope> NVSETypeChecker::EnterScope(bool lambdaScope) {
+	if (!scopes.empty()) {
+		if (lambdaScope) {
+			scopes.emplace(std::make_shared<NVSEScope>(scopeIndex++, scopes.top(), true));
+		} else {
+			scopes.emplace(std::make_shared<NVSEScope>(scopeIndex++, scopes.top()));
+		}
+	} else {
+		scopes.emplace(std::make_shared<NVSEScope>(scopeIndex++, nullptr));
+	}
+
+	return scopes.top();
+}
+
+void NVSETypeChecker::LeaveScope() {
+	scopes.pop();
+}
+
 void NVSETypeChecker::error(size_t line, std::string msg) {
 	hadError = true;
 	throw std::runtime_error(std::format("[line {}] {}", line, msg));
@@ -88,6 +107,9 @@ bool NVSETypeChecker::check() {
 }
 
 void NVSETypeChecker::VisitNVSEScript(NVSEScript* script) {
+	// Push global scope, gets discarded
+	globalScope = EnterScope();
+	
 	for (auto global : script->globalVars) {
 		global->Accept(this);
 
@@ -142,8 +164,12 @@ void NVSETypeChecker::VisitNVSEScript(NVSEScript* script) {
 	}
 
 	for (auto block : script->blocks) {
+		block->scope = EnterScope();
 		block->Accept(this);
+		LeaveScope();
 	}
+
+	LeaveScope();
 }
 
 void NVSETypeChecker::VisitBeginStmt(const BeginStmt* stmt) {
@@ -151,35 +177,71 @@ void NVSETypeChecker::VisitBeginStmt(const BeginStmt* stmt) {
 }
 
 void NVSETypeChecker::VisitFnStmt(FnDeclStmt* stmt) {
+	stmt->scope = EnterScope(true);
+
+	bScopedGlobal = true;
 	for (auto decl : stmt->args) {
 		decl->Accept(this);
 	}
+	bScopedGlobal = false;
 
 	stmt->body->Accept(this);
+
+	LeaveScope();
 }
 
-void NVSETypeChecker::VisitVarDeclStmt(const VarDeclStmt* stmt) {
+void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 	auto detailedType = GetDetailedTypeFromNVSEToken(stmt->type.type);
 	for (auto [name, expr] : stmt->values) {
 		// See if variable has already been declared
 		WRAP_ERROR(
-			if (definedVarCache.contains(name.lexeme)) {
-				auto existing = definedVarCache[name.lexeme];
-				error(name.line, name.column, std::format("Variable with name '{}' has already been defined (at line {}:{})", name.lexeme, existing.line, existing.column));
+			if (auto *var = scopes.top()->resolveVariable(name.lexeme, false)) {
+				error(name.line, name.column, std::format("Variable with name '{}' has already been defined in the current scope (at line {}:{})", name.lexeme, var->token.line, var->token.column));
+			}
+
+			auto* var2 = scopes.top()->resolveVariable(name.lexeme, true);
+
+			// If we are seeing 'export' keyword and another global has already been defined with this name
+			if (stmt->bExport && var2 && var2->global) {
+				error(name.line, name.column, std::format("Variable with name '{}' has already been defined in the global scope (at line {}:{})", name.lexeme, var2->token.line, var2->token.column));
 			}
 		)
+
+		// Warn if name shadows a form
+		if (auto form = GetFormByID(name.lexeme.c_str())) {
+			auto modName = DataHandler::Get()->GetActiveModList()[form->GetModIndex()]->name;
+#ifdef EDITOR
+			CompInfo("Info: Variable with name '%s' shadows a form with the same name from mod '%s'", name.lexeme.c_str(), modName);
+#else
+			CompInfo("Info: Variable with name '%s' shadows a form with the same name from mod '%s'. This is NOT an error. Do not contact the mod author.", name.lexeme.c_str(), modName);
+#endif
+		}
+		
+		if (auto shadowed = scopes.top()->resolveVariable(name.lexeme, true)) {
+#ifdef EDITOR
+			CompInfo("Info: Variable with name '%s' shadows a variable with the same name in outer scoped. (Defined at line %d:%d)", name.lexeme.c_str(), shadowed->token.line, shadowed->token.column);
+#endif
+		}
 
 		if (expr) {
 			expr->Accept(this);
 			auto rhsType = expr->detailedType;
 			if (s_operators[kOpType_Assignment].GetResult(detailedType, rhsType) == kTokenType_Invalid) {
-				error(name.line, getTypeErrorMsg(rhsType, detailedType));
+				WRAP_ERROR(error(name.line, name.column, getTypeErrorMsg(rhsType, detailedType)))
 				return;
 			}
 		}
 
-		typeCache[name.lexeme] = detailedType;
-		definedVarCache[name.lexeme] = name;
+		NVSEScope::ScopeVar var {};
+		var.token = name;
+		var.detailedType = detailedType;
+		if (bScopedGlobal || stmt->bExport || scopes.top() == globalScope) {
+			var.global = true;
+		}
+        var.scriptType = GetScriptTypeFromToken(stmt->type);
+
+		// Assign this new scope var to this statment for lookup in compiler
+		stmt->scopeVars.push_back(scopes.top()->addVariable(name.lexeme, var, bScopedGlobal));
 	}
 }
 
@@ -190,8 +252,10 @@ void NVSETypeChecker::VisitExprStmt(const ExprStmt* stmt) {
 }
 
 void NVSETypeChecker::VisitForStmt(ForStmt* stmt) {
+	stmt->scope = EnterScope();
+	
 	if (stmt->init) {
-		WRAP_ERROR(stmt->init->Accept(this));
+		WRAP_ERROR(stmt->init->Accept(this))
 	}
 
 	if (stmt->cond) {
@@ -211,22 +275,25 @@ void NVSETypeChecker::VisitForStmt(ForStmt* stmt) {
 	}
 
 	if (stmt->post) {
-		WRAP_ERROR(stmt->post->Accept(this));
+		WRAP_ERROR(stmt->post->Accept(this))
 	}
 
 	insideLoop.push(true);
 	stmt->block->Accept(this);
 	insideLoop.pop();
+	
+	LeaveScope();
 }
 
 void NVSETypeChecker::VisitForEachStmt(ForEachStmt* stmt) {
+	stmt->scope = EnterScope();
 	stmt->lhs->Accept(this);
 	stmt->rhs->Accept(this);
 
 	// Get type of lhs identifier -- this is way too verbose
 	auto decl = dynamic_cast<VarDeclStmt*>(stmt->lhs.get());
 	auto ident = std::get<0>(decl->values[0]).lexeme;
-	auto lType = typeCache[ident];
+	auto lType = scopes.top()->resolveVariable(ident)->detailedType;
 	auto rType = stmt->rhs->detailedType;
 	if (s_operators[kOpType_In].GetResult(lType, rType) == kTokenType_Invalid) {
 		error(stmt->line, std::format("Invalid types '{}' and '{}' passed to for-in expression.",
@@ -236,9 +303,11 @@ void NVSETypeChecker::VisitForEachStmt(ForEachStmt* stmt) {
 	insideLoop.push(true);
 	stmt->block->Accept(this);
 	insideLoop.pop();
+	LeaveScope();
 }
 
 void NVSETypeChecker::VisitIfStmt(IfStmt* stmt) {
+	stmt->scope = EnterScope(false);
 	WRAP_ERROR(
 		stmt->cond->Accept(this);
 
@@ -253,10 +322,13 @@ void NVSETypeChecker::VisitIfStmt(IfStmt* stmt) {
 			stmt->cond->detailedType = oType;
 		}
 	)
-
 	stmt->block->Accept(this);
+	LeaveScope();
+
 	if (stmt->elseBlock) {
+		stmt->elseBlock->scope = EnterScope();
 		stmt->elseBlock->Accept(this);
+		LeaveScope();
 	}
 }
 
@@ -282,7 +354,8 @@ void NVSETypeChecker::VisitBreakStmt(BreakStmt* stmt) {
 	}
 }
 
-void NVSETypeChecker::VisitWhileStmt(const WhileStmt* stmt) {
+void NVSETypeChecker::VisitWhileStmt(WhileStmt* stmt) {
+	stmt->scope = EnterScope();
 	WRAP_ERROR(
 		stmt->cond->Accept(this);
 
@@ -299,6 +372,7 @@ void NVSETypeChecker::VisitWhileStmt(const WhileStmt* stmt) {
 	insideLoop.push(true);
 	stmt->block->Accept(this);
 	insideLoop.pop();
+	LeaveScope();
 }
 
 void NVSETypeChecker::VisitBlockStmt(BlockStmt* stmt) {
@@ -552,7 +626,7 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 
 	// Basic type checks
 	// We already validated number of args, just verify types
-	if (!isDefaultParse(cmd->parse)) {
+	if (!isDefaultParse(cmd->parse)) { // if expression parser
 		for (int i = 0; i < cmd->numParams && i < expr->args.size(); i++) {
 			auto param = cmd->params[i];
 			auto arg = expr->args[i];
@@ -566,13 +640,14 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 				continue;
 			}
 
+			// Try to resolve as NVSE param
 			if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(cmd->params[i].typeID), arg->detailedType, true, cmd)) {
 				WRAP_ERROR(
 					error(expr->token.line, expr->token.column, std::format("Invalid expression for parameter {}. Expected {} (got {}).", i + 1, param.typeStr, TokenTypeToString(arg->detailedType)));
 				)
 			}
 		}
-	} else {
+	} else { // default parser
 		for (int i = 0; i < cmd->numParams && i < expr->args.size(); i++) {
 			auto param = cmd->params[i];
 			auto arg = expr->args[i];
@@ -608,8 +683,8 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 				}
 			}
 
-			// Try to resolve as NVSE param
-			if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(cmd->params[i].typeID), arg->detailedType, true, cmd)) {
+			// Try to resolve as vanilla param
+			if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(cmd->params[i].typeID), arg->detailedType, false, cmd)) {
 				WRAP_ERROR(
 					error(expr->token.line, expr->token.column, std::format("Invalid expression for parameter {}. Expected {} (got {}).", i + 1, param.typeStr, TokenTypeToString(arg->detailedType)));
 				)
@@ -772,22 +847,28 @@ void NVSETypeChecker::VisitStringExpr(StringExpr* expr) {
 void NVSETypeChecker::VisitIdentExpr(IdentExpr* expr) {
 	const auto name = expr->token.lexeme;
 
-	// See if we already have a local var with this type
-	if (typeCache.contains(name)) {
-		expr->detailedType = typeCache[name];
+	const auto localVar = scopes.top()->resolveVariable(name);
+	if (localVar) {
+		//CompDbg("Resolved %s variable at scope %d:%d", localVar->global ? "global" : "local", localVar->scopeIndex, localVar->index);
+		expr->detailedType = localVar->detailedType;
+		expr->varInfo = localVar;
 		return;
 	}
 
-	// Try to find form
-	if (auto form = GetFormByID(name.c_str())) {
-		expr->detailedType = kTokenType_Form;
-		typeCache[name] = kTokenType_Form;
-		formCache[name] = form;
-		return;
+	TESForm* form;
+	if (formCache.contains(name)) {
+		form = formCache[name];
+	} else {
+		form = GetFormByID(name.c_str());
 	}
 
-	expr->detailedType = kTokenType_Invalid;
-	error(expr->token.line, expr->token.column, std::format("Unable to resolve identifier '{}'.", name));
+	if (!form) {
+		expr->detailedType = kTokenType_Invalid;
+		error(expr->token.line, expr->token.column, std::format("Unable to resolve identifier '{}'.", name));
+	}
+	
+	expr->detailedType = kTokenType_Form;
+	formCache[name] = form;
 }
 
 void NVSETypeChecker::VisitGroupingExpr(GroupingExpr* expr) {
@@ -798,13 +879,19 @@ void NVSETypeChecker::VisitGroupingExpr(GroupingExpr* expr) {
 }
 
 void NVSETypeChecker::VisitLambdaExpr(LambdaExpr* expr) {
+	expr->scope = EnterScope(true);
+
+	bScopedGlobal = true;
 	for (auto &decl : expr->args) {
 		WRAP_ERROR(decl->Accept(this))
 	}
+	bScopedGlobal = false;
 
 	insideLoop.push(false);
 	expr->body->Accept(this);
 	insideLoop.pop();
 
 	expr->detailedType = kTokenType_Lambda;
+
+	LeaveScope();
 }

@@ -8,7 +8,7 @@
 
 enum class NVSETokenType {
     // Keywords
-    If, 
+    If,
     Else,
     While,
     Fn,
@@ -18,6 +18,7 @@ enum class NVSETokenType {
     Name,
     Continue,
     Break,
+    Export,
 
     // Types
     IntType,
@@ -91,6 +92,7 @@ static const char* TokenTypeStr[]{
     "Name",
     "Continue",
     "Break",
+    "Export",
 
     // Types
     "IntType",

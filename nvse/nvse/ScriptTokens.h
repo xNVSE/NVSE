@@ -136,6 +136,13 @@ enum Token_Type : UInt8
 	kTokenType_LeftToken,
 	kTokenType_RightToken,
 
+	// 'Stack' vars
+	kTokenType_StackVar,
+	kTokenType_NumericStackVar,
+	kTokenType_RefStackVar,
+	kTokenType_StringStackVar,
+	kTokenType_ArrayStackVar,
+
 	kTokenType_Invalid,
 	kTokenType_Max = kTokenType_Invalid,
 
@@ -188,7 +195,10 @@ struct ForEachContext
 #if RUNTIME
 struct CustomVariableContext
 {
-	ScriptLocal* scriptLocal;
+	// This member may look completely unused, but beware: messes up string_var assignment if removed.
+	// Potentially relied upon in some plugin.
+	ScriptLocal* scriptLocal; 
+
 	union
 	{
 		StringVar* stringVar;
@@ -218,6 +228,7 @@ struct ScriptToken
 		ScriptLocal *var;
 		LambdaManager::ScriptData lambdaScriptData;
 		CustomVariableContext nvseVariable;
+		uint32_t stackVarIdx;
 #endif
 		// compile-time only
 		VariableInfo *varInfo;
@@ -266,7 +277,7 @@ struct ScriptToken
 	Token_Type ReadFrom(ExpressionEvaluator *context); // reconstitute param from compiled data, return the type
 	[[nodiscard]] virtual ArrayID GetArrayID() const;
 	[[nodiscard]] ArrayVar *GetArrayVar() const;
-	[[nodiscard]] ScriptLocal *GetVar() const;
+	[[nodiscard]] ScriptLocal *GetScriptLocal() const;
 	[[nodiscard]] StringVar* GetStringVar() const;
 	bool ResolveVariable();
 	[[nodiscard]] Script* GetUserFunction() const;
@@ -297,7 +308,12 @@ struct ScriptToken
 	[[nodiscard]] Token_Type Type() const { return type; }
 
 	[[nodiscard]] bool IsGood() const { return type != kTokenType_Invalid; }
-	[[nodiscard]] bool IsVariable() const { return type >= kTokenType_NumericVar && type <= kTokenType_ArrayVar; }
+	[[nodiscard]] bool IsNonStackVariable() const {
+		return (type >= kTokenType_NumericVar && type <= kTokenType_ArrayVar);
+	}
+	[[nodiscard]] bool IsVariable() const {
+		return (type >= kTokenType_NumericVar && type <= kTokenType_ArrayVar) || (type >= kTokenType_NumericStackVar && type <= kTokenType_ArrayStackVar);
+	}
 
 	[[nodiscard]] double GetNumericRepresentation(bool bFromHex, bool* hasErrorOut = nullptr) const; // attempts to convert string to number
 	[[nodiscard]] char *DebugPrint() const;

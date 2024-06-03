@@ -160,8 +160,10 @@ StmtPtr NVSEParser::Statement() {
 		return ForStatement();
 	}
 
-	if (PeekType()) {
+	if (Peek(NVSETokenType::Export) || PeekType()) {
+		bool bExport = Match(NVSETokenType::Export);
 		auto expr = VarDecl();
+		expr->bExport = bExport;
 		Expect(NVSETokenType::Semicolon, "Expected ';' at end of statement.");
 		return expr;
 	}

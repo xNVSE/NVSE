@@ -23,6 +23,7 @@ inline Script::VariableType GetScriptTypeFromToken(NVSEToken t) {
 }
 
 void CompDbg(const char *fmt, ...);
+void CompInfo(const char *fmt, ...);
 void CompErr(const char *fmt, ...);
 
 bool isDefaultParse(Cmd_Parse parse);

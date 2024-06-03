@@ -63,7 +63,7 @@ void NVSETreePrinter::VisitFnStmt(FnDeclStmt* stmt) {
 	curTab--;
 }
 
-void NVSETreePrinter::VisitVarDeclStmt(const VarDeclStmt* stmt) {
+void NVSETreePrinter::VisitVarDeclStmt(VarDeclStmt* stmt) {
 	PrintTabs();
 	CompDbg("vardecl\n");
 	
@@ -209,7 +209,7 @@ void NVSETreePrinter::VisitBreakStmt(BreakStmt* stmt) {
 	CompDbg("break");
 }
 
-void NVSETreePrinter::VisitWhileStmt(const WhileStmt* stmt) {
+void NVSETreePrinter::VisitWhileStmt(WhileStmt* stmt) {
 	PrintTabs();
 	CompDbg("while\n");
 

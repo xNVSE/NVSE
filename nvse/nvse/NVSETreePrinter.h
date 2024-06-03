@@ -11,7 +11,7 @@ public:
 	void VisitNVSEScript(NVSEScript* script) override;
 	void VisitBeginStmt(const BeginStmt* stmt) override;
 	void VisitFnStmt(FnDeclStmt* stmt) override;
-	void VisitVarDeclStmt(const VarDeclStmt* stmt) override;
+	void VisitVarDeclStmt(VarDeclStmt* stmt) override;
 
 	void VisitExprStmt(const ExprStmt* stmt) override;
 	void VisitForStmt(ForStmt* stmt) override;
@@ -20,7 +20,7 @@ public:
 	void VisitReturnStmt(ReturnStmt* stmt) override;
 	void VisitContinueStmt(ContinueStmt* stmt) override;
 	void VisitBreakStmt(BreakStmt* stmt) override;
-	void VisitWhileStmt(const WhileStmt* stmt) override;
+	void VisitWhileStmt(WhileStmt* stmt) override;
 	void VisitBlockStmt(BlockStmt* stmt) override;
 
 	void VisitAssignmentExpr(AssignmentExpr* expr) override;

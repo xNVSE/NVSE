@@ -12,6 +12,8 @@
 #include <format>
 #include <ranges>
 
+#include "Commands_Script.h"
+
 //////////////////////////
 // Utility commands
 //////////////////////////
@@ -73,11 +75,19 @@ bool Cmd_sv_Destruct_Execute(COMMAND_ARGS)
 	{
 		if (eval.Arg(i)->CanConvertTo(kTokenType_StringVar))
 		{
-			ScriptLocal *var = eval.Arg(i)->GetVar();
-			if (var)
+			if (ScriptLocal* var = eval.Arg(i)->GetScriptLocal())
 			{
 				g_StringMap.Delete(var->data);
 				var->data = 0;
+			}
+		}
+		else if (eval.Arg(i)->CanConvertTo(kTokenType_StringStackVar))
+		{
+			auto* token = eval.Arg(i);
+			if (token->value.stackVarIdx)
+			{
+				g_StringMap.Delete(GetLocalStackVarVal(token->value.stackVarIdx));
+				SetLocalStackVarVal(token->value.stackVarIdx, 0);
 			}
 		}
 	}
@@ -952,10 +962,15 @@ bool Cmd_GetRawFormIDString_Execute(COMMAND_ARGS)
 		}
 		else if (arg->Type() == kTokenType_RefVar)
 		{
-			ScriptLocal *var = arg->GetVar();
+			ScriptLocal *var = arg->GetScriptLocal();
 			if (var)
 			{
 				formID = *((UInt32 *)(&var->data));
+			}
+		}
+		else if (arg->Type() == kTokenType_RefStackVar) {
+			if (arg->value.stackVarIdx) {
+				formID = *((UInt32*)(&GetLocalStackVarVal(arg->value.stackVarIdx)));
 			}
 		}
 	}

@@ -210,6 +210,7 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 		if (identifier == "name") return MakeToken(NVSETokenType::Name, identifier);
 		if (identifier == "continue") return MakeToken(NVSETokenType::Continue, identifier);
 		if (identifier == "break") return MakeToken(NVSETokenType::Break, identifier);
+		if (identifier == "export") return MakeToken(NVSETokenType::Export, identifier);
 
 		// Types
 		if (identifier == "int") return MakeToken(NVSETokenType::IntType, identifier);

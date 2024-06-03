@@ -40,7 +40,7 @@ public:
 	virtual void VisitNVSEScript(NVSEScript* script) = 0;
 	virtual void VisitBeginStmt(const BeginStmt* stmt) = 0;
 	virtual void VisitFnStmt(FnDeclStmt* stmt) = 0;
-	virtual void VisitVarDeclStmt(const VarDeclStmt* stmt) = 0;
+	virtual void VisitVarDeclStmt(VarDeclStmt* stmt) = 0;
 
 	virtual void VisitExprStmt(const ExprStmt* stmt) = 0;
 	virtual void VisitForStmt(ForStmt* stmt) = 0;
@@ -49,7 +49,7 @@ public:
 	virtual void VisitReturnStmt(ReturnStmt* stmt) = 0;
 	virtual void VisitContinueStmt(ContinueStmt* stmt) = 0;
 	virtual void VisitBreakStmt(BreakStmt* stmt) = 0;
-	virtual void VisitWhileStmt(const WhileStmt* stmt) = 0;
+	virtual void VisitWhileStmt(WhileStmt* stmt) = 0;
 	virtual void VisitBlockStmt(BlockStmt* stmt) = 0;
 
 	virtual void VisitAssignmentExpr(AssignmentExpr* expr) = 0;

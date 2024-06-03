@@ -20,6 +20,7 @@
 #include <utility>
 #include <ranges>
 
+#include "Commands_Script.h"
 #include "Hooks_Editor.h"
 #include "ScriptAnalyzer.h"
 
@@ -102,14 +103,14 @@ ErrOutput g_ErrOut(ShowError, ShowWarning);
 UInt32 AddStringVar(const char *data, ScriptToken &lh, ExpressionEvaluator &context, StringVar** svOut)
 {
 	if (!lh.refIdx)
-		AddToGarbageCollection(context.eventList, lh.GetVar(), NVSEVarType::kVarType_String);
+		AddToGarbageCollection(context.eventList, lh.GetScriptLocal(), NVSEVarType::kVarType_String);
 	return g_StringMap.Add(context.script->GetModIndex(), data, false, svOut);
 }
 
 UInt32 AddStringVar(StringVar&& other, ScriptToken& lh, ExpressionEvaluator& context, StringVar** svOut)
 {
 	if (!lh.refIdx)
-		AddToGarbageCollection(context.eventList, lh.GetVar(), NVSEVarType::kVarType_String);
+		AddToGarbageCollection(context.eventList, lh.GetScriptLocal(), NVSEVarType::kVarType_String);
 	return g_StringMap.Add(std::move(other), false, svOut);
 }
 #endif
@@ -410,13 +411,17 @@ std::unique_ptr<ScriptToken> Eval_Assign_Numeric(OperatorType op, ScriptToken *l
 	if (lh->GetVariableType() == Script::eVarType_Integer)
 		result = floor(result);
 
-	lh->GetVar()->data = result;
+	if (lh->type == kTokenType_NumericStackVar) {
+		SetLocalStackVarVal(lh->value.stackVarIdx, result);
+	} else {
+		lh->GetScriptLocal()->data = result;
+	}
+
 	return ScriptToken::Create(result);
 }
 
 std::unique_ptr<ScriptToken> Eval_Assign_String(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *lhVar = lh->GetVar();
 	StringVar* lhStrVar = lh->GetStringVar();
 	if (rh->type == kTokenType_StringVar && rh->value.var == nullptr) // nullptr = rvalue returned from a command call
 	{
@@ -427,20 +432,37 @@ std::unique_ptr<ScriptToken> Eval_Assign_String(OperatorType op, ScriptToken *lh
 		// move the string if it's temporary
 		if (!lhStrVar)
 		{
-			lhVar->data = static_cast<int>(AddStringVar(std::move(*rhStrVar), *lh, *context, &lhStrVar));
+			if (auto* lhVar = lh->GetScriptLocal()) {
+				const auto strVarID = static_cast<int>(AddStringVar(std::move(*rhStrVar), *lh, *context, &lhStrVar));
+				lhVar->data = strVarID;
+			}
+			else if (lh->value.stackVarIdx) { // assume stack var
+				const auto strVarID = static_cast<int>(g_StringMap.Add(std::move(*rhStrVar), true, &lhStrVar));
+				SetLocalStackVarVal(lh->value.stackVarIdx, strVarID);
+			}
 		}
 		else
 			lhStrVar->Set(std::move(*rhStrVar));
-		return ScriptToken::Create(lhVar, lhStrVar);
+		return ScriptToken::Create(lh->GetScriptLocal(), lhStrVar);
 	}
 	
 	const char *str = rh->GetString();
 	if (!lhStrVar)
-		lhVar->data = static_cast<int>(AddStringVar(str, *lh, *context, &lhStrVar));
-	else
+	{
+		if (auto* lhVar = lh->GetScriptLocal()) {
+			lhVar->data = static_cast<int>(AddStringVar(str, *lh, *context, &lhStrVar));
+		}
+		else if (lh->type == kTokenType_StringStackVar)
+		{
+			const auto strVarID = static_cast<int>(g_StringMap.Add(context->script->GetModIndex(), str, true, &lhStrVar));
+			SetLocalStackVarVal(lh->value.stackVarIdx, strVarID);
+		}
+	}
+	else {
 		lhStrVar->Set(str);
+	}
 
-	return ScriptToken::Create(lhVar, lhStrVar);
+	return ScriptToken::Create(lh->GetScriptLocal(), lhStrVar);
 }
 
 std::unique_ptr<ScriptToken> Eval_Assign_AssignableString(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
@@ -452,16 +474,16 @@ std::unique_ptr<ScriptToken> Eval_Assign_AssignableString(OperatorType op, Scrip
 std::unique_ptr<ScriptToken> Eval_Assign_Form(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	const UInt32 formID = rh->GetFormID();
-	auto const outRefID = reinterpret_cast<UInt64*>(&(lh->GetVar()->data));
-	*outRefID = formID;
-	return ScriptToken::CreateForm(formID);
-}
-
-std::unique_ptr<ScriptToken> Eval_Assign_Form_Number(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
-{
-	const UInt32 formID = rh->GetFormID();
-	auto const outRefID = reinterpret_cast<UInt64*>(&(lh->GetVar()->data));
-	*outRefID = formID;
+	if (auto lhVar = lh->GetScriptLocal())
+	{
+		auto const outRefID = reinterpret_cast<UInt64*>(&(lhVar->data));
+		*outRefID = formID;
+	}
+	else if (lh->type == kTokenType_RefStackVar)
+	{
+		auto const outRefID = reinterpret_cast<UInt64*>(&(GetLocalStackVarVal(lh->value.stackVarIdx)));
+		*outRefID = formID;
+	}
 	return ScriptToken::CreateForm(formID);
 }
 
@@ -474,10 +496,18 @@ std::unique_ptr<ScriptToken> Eval_Assign_Global(OperatorType op, ScriptToken *lh
 
 std::unique_ptr<ScriptToken> Eval_Assign_Array(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *var = lh->GetVar();
+	if (lh->type == kTokenType_ArrayStackVar) {
+		auto* rhArr = rh->GetArrayVar();
+		auto const result = rhArr ? rhArr->ID() : 0; 
+		SetLocalStackVarVal(lh->value.stackVarIdx, result); 
+		return ScriptToken::CreateArray(result);
+	} 
+
+	ScriptLocal* var = lh->GetScriptLocal();
 	g_ArrayMap.AddReference(&var->data, rh->GetArrayID(), context->script->GetModIndex());
 	if (!lh->refIdx)
 		AddToGarbageCollection(context->eventList, var, NVSEVarType::kVarType_Array);
+
 #if _DEBUG
 	auto *script = context->script;
 	if (lh->refIdx)
@@ -487,6 +517,7 @@ std::unique_ptr<ScriptToken> Eval_Assign_Array(OperatorType op, ScriptToken *lh,
 	else if (arrayVar && arrayVar->varName.empty())
 		arrayVar->varName = "<eval assign var not found>";
 #endif
+
 	return ScriptToken::CreateArray(var->data);
 }
 
@@ -607,30 +638,62 @@ std::unique_ptr<ScriptToken> Eval_Assign_Elem_Array(OperatorType op, ScriptToken
 
 std::unique_ptr<ScriptToken> Eval_PlusEquals_Number(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *var = lh->GetVar();
-	var->data += rh->GetNumber();
-	if (lh->GetVariableType() == Script::eVarType_Integer)
-		var->data = floor(var->data);
+	if (lh->type == kTokenType_NumericStackVar) {
+		auto &v = GetLocalStackVarVal(lh->value.stackVarIdx);
+		v += rh->GetNumber();
+		if (lh->GetVariableType() == Script::eVarType_Integer) {
+			v = floor(v);
+		}
+		return ScriptToken::Create(v);
+	}
+	else {
+		ScriptLocal* var = lh->GetScriptLocal();
+		var->data += rh->GetNumber();
+		if (lh->GetVariableType() == Script::eVarType_Integer)
+			var->data = floor(var->data);
 
-	return ScriptToken::Create(var->data);
+		return ScriptToken::Create(var->data);
+	}
 }
 
 std::unique_ptr<ScriptToken> Eval_MinusEquals_Number(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *var = lh->GetVar();
-	var->data -= rh->GetNumber();
-	if (lh->GetVariableType() == Script::eVarType_Integer)
-		var->data = floor(var->data);
-	return ScriptToken::Create(var->data);
+	if (lh->type == kTokenType_NumericStackVar) {
+		auto &v = GetLocalStackVarVal(lh->value.stackVarIdx);
+		v -= rh->GetNumber();
+		if (lh->GetVariableType() == Script::eVarType_Integer) {
+			v = floor(v);
+		}
+		return ScriptToken::Create(v);
+	}
+	else {
+		ScriptLocal* var = lh->GetScriptLocal();
+		var->data -= rh->GetNumber();
+		if (lh->GetVariableType() == Script::eVarType_Integer)
+			var->data = floor(var->data);
+
+		return ScriptToken::Create(var->data);
+	}
 }
 
 std::unique_ptr<ScriptToken> Eval_TimesEquals(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *var = lh->GetVar();
-	var->data *= rh->GetNumber();
-	if (lh->GetVariableType() == Script::eVarType_Integer)
-		var->data = floor(var->data);
-	return ScriptToken::Create(var->data);
+	if (lh->type == kTokenType_NumericStackVar) {
+		auto &v = GetLocalStackVarVal(lh->value.stackVarIdx);
+		v *= rh->GetNumber();
+		if (lh->GetVariableType() == Script::eVarType_Integer) {
+			v = floor(v);
+		}
+		return ScriptToken::Create(v);
+	}
+	else {
+		ScriptLocal* var = lh->GetScriptLocal();
+		var->data *= rh->GetNumber();
+		if (lh->GetVariableType() == Script::eVarType_Integer)
+			var->data = floor(var->data);
+
+		return ScriptToken::Create(var->data);
+	}
 }
 
 std::unique_ptr<ScriptToken> Eval_DividedEquals(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
@@ -641,35 +704,71 @@ std::unique_ptr<ScriptToken> Eval_DividedEquals(OperatorType op, ScriptToken *lh
 		context->Error("Division by zero");
 		return nullptr;
 	}
-	ScriptLocal *var = lh->GetVar();
-	var->data /= rhNum;
-	if (lh->GetVariableType() == Script::eVarType_Integer)
-		var->data = floor(var->data);
-	return ScriptToken::Create(var->data);
+
+	if (lh->type == kTokenType_NumericStackVar) {
+		auto &v = GetLocalStackVarVal(lh->value.stackVarIdx);
+		v /= rh->GetNumber();
+		if (lh->GetVariableType() == Script::eVarType_Integer) {
+			v = floor(v);
+		}
+		return ScriptToken::Create(v);
+	}
+	else {
+		ScriptLocal* var = lh->GetScriptLocal();
+		var->data /= rh->GetNumber();
+		if (lh->GetVariableType() == Script::eVarType_Integer)
+			var->data = floor(var->data);
+
+		return ScriptToken::Create(var->data);
+	}
 }
 
 std::unique_ptr<ScriptToken> Eval_ExponentEquals(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *var = lh->GetVar();
-	const double rhNum = rh->GetNumber();
-	const double lhNum = var->data;
-	var->data = pow(lhNum, rhNum);
-	if (lh->GetVariableType() == Script::eVarType_Integer)
-		var->data = floor(var->data);
-	return ScriptToken::Create(var->data);
+	if (lh->type == kTokenType_NumericStackVar) {
+		auto &v = GetLocalStackVarVal(lh->value.stackVarIdx);
+		v = pow(v, rh->GetNumber());
+		if (lh->GetVariableType() == Script::eVarType_Integer) {
+			v = floor(v);
+		}
+		return ScriptToken::Create(v);
+	}
+	else {
+		ScriptLocal* var = lh->GetScriptLocal();
+		const double rhNum = rh->GetNumber();
+		const double lhNum = var->data;
+		var->data = pow(lhNum, rhNum);
+		if (lh->GetVariableType() == Script::eVarType_Integer)
+			var->data = floor(var->data);
+		return ScriptToken::Create(var->data);
+	}
 }
 
 std::unique_ptr<ScriptToken> Eval_HandleEquals(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *var = lh->GetVar();
-	const double l = var->data;
 	const double r = rh->GetNumber();
-	bool hasError;
-	double const result = Apply_LeftVal_RightVal_Operator(op, l, r, context, hasError);
-	if (!hasError)
-	{
-		var->data = result;
-		return ScriptToken::Create(var->data);
+	if (lh->type == kTokenType_NumericStackVar) {
+		const double l = GetLocalStackVarVal(lh->value.stackVarIdx);
+
+		bool hasError;
+		double const result = Apply_LeftVal_RightVal_Operator(op, l, r, context, hasError);
+		if (!hasError)
+		{
+			SetLocalStackVarVal(lh->value.stackVarIdx, result);
+			return ScriptToken::Create(result);
+		}
+	}
+	else {
+		ScriptLocal* var = lh->GetScriptLocal();
+		const double l = var->data;
+
+		bool hasError;
+		double const result = Apply_LeftVal_RightVal_Operator(op, l, r, context, hasError);
+		if (!hasError)
+		{
+			var->data = result;
+			return ScriptToken::Create(var->data);
+		}
 	}
 	return nullptr;
 }
@@ -742,7 +841,23 @@ std::unique_ptr<ScriptToken> Eval_HandleEquals_Global(OperatorType op, ScriptTok
 
 std::unique_ptr<ScriptToken> Eval_PlusEquals_String(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *var = lh->GetVar();
+	if (lh->type == kTokenType_StringStackVar) {
+		if (!lh->value.stackVarIdx) [[unlikely]] {
+			return nullptr;
+		}
+		UInt32 strID = static_cast<UInt32>(GetLocalStackVarVal(lh->value.stackVarIdx));
+		StringVar* strVar = g_StringMap.Get(strID);
+		if (!strVar)
+		{
+			g_StringMap.Add(context->script->GetModIndex(), "", true, &strVar);
+			SetLocalStackVarVal(lh->value.stackVarIdx, static_cast<int>(strID));
+		}
+
+		strVar->StringRef() += rh->GetString();
+		return ScriptToken::Create(nullptr, strVar);
+	}
+
+	ScriptLocal *var = lh->GetScriptLocal();
 	UInt32 strID = static_cast<int>(var->data);
 	StringVar *strVar = g_StringMap.Get(strID);
 	if (!strVar)
@@ -750,17 +865,16 @@ std::unique_ptr<ScriptToken> Eval_PlusEquals_String(OperatorType op, ScriptToken
 		//strID = g_StringMap.Add(context->script->GetModIndex(), "");
 		strID = AddStringVar("", *lh, *context, &strVar);
 		var->data = static_cast<int>(strID);
-		strVar = g_StringMap.Get(strID);
 	}
 
 	strVar->StringRef() += rh->GetString();
-
 	return ScriptToken::Create(var, strVar);
 }
 
+// Currently unused.
 std::unique_ptr<ScriptToken> Eval_TimesEquals_String(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *var = lh->GetVar();
+	ScriptLocal *var = lh->GetScriptLocal();
 	UInt32 strID = static_cast<int>(var->data);
 	StringVar *strVar = g_StringMap.Get(strID);
 	if (!strVar)
@@ -1028,35 +1142,57 @@ const auto *g_stringVarUninitializedMsg = "String var is uninitialized";
 
 std::unique_ptr<ScriptToken> Eval_Subscript_StringVar_Number(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *var = lh->GetVar();
-	SInt32 idx = rh->GetNumber();
-	if (var)
-	{
-		StringVar *strVar = g_StringMap.Get(var->data);
-		if (!strVar)
-		{
-			context->Error(g_stringVarUninitializedMsg);
-			return nullptr; // uninitialized
-		}
-
-		if (idx < 0)
-		{
-			// negative index counts from end of string
-			idx += strVar->GetLength();
-		}
+	SInt32 lhIdx{};
+	
+	SInt32 rhIdx = rh->GetNumber();
+	if (lh->type == kTokenType_StringStackVar && lh->value.stackVarIdx) {
+		lhIdx = static_cast<UInt32>(GetLocalStackVarVal(lh->value.stackVarIdx));
 	}
-	else
+	else if (auto* lhVar = lh->GetScriptLocal())
+	{
+		lhIdx = static_cast<UInt32>(lhVar->data);
+	}
+	else {
 		context->Error("Invalid variable");
-	return var ? ScriptToken::Create(var->data, idx, idx) : nullptr;
+		return nullptr;
+	}
+
+	StringVar* strVar = g_StringMap.Get(lhIdx);
+	if (!strVar)
+	{
+		context->Error(g_stringVarUninitializedMsg);
+		return nullptr; // uninitialized
+	}
+
+	if (rhIdx < 0)
+	{
+		// negative index counts from end of string
+		rhIdx += strVar->GetLength();
+	}
+
+	return ScriptToken::Create(lhIdx, rhIdx, rhIdx);
 }
 
 std::unique_ptr<ScriptToken> Eval_Subscript_StringVar_Slice(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ScriptLocal *var = lh->GetVar();
-	const Slice *slice = rh->GetSlice();
+	ScriptLocal* var{};
+	UInt32 id{};
+
+	const Slice* slice = rh->GetSlice();
 	double upper = slice->m_upper;
 	double lower = slice->m_lower;
-	StringVar *strVar = g_StringMap.Get(var->data);
+
+	if (lh->type == kTokenType_StringStackVar && lh->value.stackVarIdx) {
+		id = static_cast<UInt32>(GetLocalStackVarVal(lh->value.stackVarIdx));
+	} else if (auto* lhVar = lh->GetScriptLocal()) {
+		id = static_cast<UInt32>(lhVar->data);
+	}
+	else {
+		context->Error("Invalid variable");
+		return nullptr;
+	}
+
+	auto* strVar = g_StringMap.Get(id);
 	if (!strVar)
 	{
 		context->Error(g_stringVarUninitializedMsg);
@@ -1074,10 +1210,10 @@ std::unique_ptr<ScriptToken> Eval_Subscript_StringVar_Slice(OperatorType op, Scr
 		lower += len;
 	}
 
-	if (var && slice && !slice->bIsString)
-	{
-		return ScriptToken::Create(var->data, lower, upper);
+	if (slice && !slice->bIsString) {
+		return ScriptToken::Create(id, lower, upper);
 	}
+
 	context->Error("Invalid string var slice operation - variable invalid or variable is not a string var");
 	return nullptr;
 }
@@ -1186,12 +1322,12 @@ std::unique_ptr<ScriptToken> Eval_In(OperatorType op, ScriptToken *lh, ScriptTok
 	{
 		const UInt32 iterID = g_ArrayMap.Create(kDataType_String, false, context->script->GetModIndex())->ID();
 
-		ForEachContext con(rh->GetArrayID(), iterID, Script::eVarType_Array, lh->GetVar());
+		ForEachContext con(rh->GetArrayID(), iterID, Script::eVarType_Array, lh->GetScriptLocal());
 		return ScriptToken::Create(&con);
 	}
 	case Script::eVarType_String:
 	{
-		ScriptLocal *var = lh->GetVar();
+		ScriptLocal *var = lh->GetScriptLocal();
 		UInt32 iterID = static_cast<int>(var->data);
 		StringVar *sv = g_StringMap.Get(iterID);
 		if (!sv)
@@ -1216,7 +1352,7 @@ std::unique_ptr<ScriptToken> Eval_In(OperatorType op, ScriptToken *lh, ScriptTok
 		}
 		if (form)
 		{
-			ForEachContext con(reinterpret_cast<UInt32>(form), 0, Script::eVarType_Ref, lh->GetVar());
+			ForEachContext con(reinterpret_cast<UInt32>(form), 0, Script::eVarType_Ref, lh->GetScriptLocal());
 			return ScriptToken::Create(&con);
 		}
 		context->Error("Source is a base form (must be a reference)");
@@ -1400,18 +1536,27 @@ OperationRule kOpRule_Assignment[] =
 		{kTokenType_Ambiguous, kTokenType_Array, kTokenType_Array, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Form, kTokenType_Form, NULL, true},
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
+		{kTokenType_NumericStackVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_RefVar, kTokenType_Ambiguous, kTokenType_Form, NULL, true},
+		{kTokenType_RefStackVar, kTokenType_Ambiguous, kTokenType_Form, NULL, true},
 		{kTokenType_StringVar, kTokenType_Ambiguous, kTokenType_String, NULL, true},
+		{kTokenType_StringStackVar, kTokenType_Ambiguous, kTokenType_String, NULL, true},
 		{kTokenType_ArrayVar, kTokenType_Ambiguous, kTokenType_Array, NULL, true},
+		{kTokenType_ArrayStackVar, kTokenType_Ambiguous, kTokenType_Array, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Ambiguous, NULL, true},
 
 		{kTokenType_AssignableString, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_Assign_AssignableString), true},
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_Assign_Numeric), true},
+		{kTokenType_NumericStackVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_Assign_Numeric), true},
 		{kTokenType_StringVar, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_Assign_String), true},
+		{kTokenType_StringStackVar, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_Assign_String), true},
 		{kTokenType_RefVar, kTokenType_Form, kTokenType_Form, OP_HANDLER(Eval_Assign_Form), true},
-		{kTokenType_RefVar, kTokenType_Number, kTokenType_Form, OP_HANDLER(Eval_Assign_Form_Number), true},
+		{kTokenType_RefStackVar, kTokenType_Form, kTokenType_Form, OP_HANDLER(Eval_Assign_Form), true},
+		{kTokenType_RefVar, kTokenType_Number, kTokenType_Form, OP_HANDLER(Eval_Assign_Form), true},
+		{kTokenType_RefStackVar, kTokenType_Number, kTokenType_Form, OP_HANDLER(Eval_Assign_Form), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_Assign_Global), true},
 		{kTokenType_ArrayVar, kTokenType_Array, kTokenType_Array, OP_HANDLER(Eval_Assign_Array), true},
+		{kTokenType_ArrayStackVar, kTokenType_Array, kTokenType_Array, OP_HANDLER(Eval_Assign_Array), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_Assign_Elem_Number), true},
 		{kTokenType_ArrayElement, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_Assign_Elem_String), true},
 		{kTokenType_ArrayElement, kTokenType_Form, kTokenType_Form, OP_HANDLER(Eval_Assign_Elem_Form), true},
@@ -1420,7 +1565,9 @@ OperationRule kOpRule_Assignment[] =
 OperationRule kOpRule_PlusEquals[] =
 	{
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
+		{kTokenType_NumericStackVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_StringVar, kTokenType_Ambiguous, kTokenType_String, NULL, true},
+		{kTokenType_StringStackVar, kTokenType_Ambiguous, kTokenType_String, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Ambiguous, NULL, true},
 		{kTokenType_Global, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Ambiguous, NULL, false},
@@ -1428,8 +1575,10 @@ OperationRule kOpRule_PlusEquals[] =
 		{kTokenType_Ambiguous, kTokenType_String, kTokenType_String, NULL, true},
 
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_PlusEquals_Number), true},
+		{kTokenType_NumericStackVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_PlusEquals_Number), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_PlusEquals_Elem_Number), true},
 		{kTokenType_StringVar, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_PlusEquals_String), true},
+		{kTokenType_StringStackVar, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_PlusEquals_String), true},
 		{kTokenType_ArrayElement, kTokenType_String, kTokenType_String, OP_HANDLER(Eval_PlusEquals_Elem_String), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_PlusEquals_Global), true},
 };
@@ -1437,12 +1586,14 @@ OperationRule kOpRule_PlusEquals[] =
 OperationRule kOpRule_MinusEquals[] =
 	{
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
+		{kTokenType_NumericStackVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Global, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Number, NULL, false},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Number, NULL, true},
 
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_MinusEquals_Number), true},
+		{kTokenType_NumericStackVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_MinusEquals_Number), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_MinusEquals_Elem_Number), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_MinusEquals_Global), true},
 };
@@ -1450,12 +1601,14 @@ OperationRule kOpRule_MinusEquals[] =
 OperationRule kOpRule_TimesEquals[] =
 	{
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
+		{kTokenType_NumericStackVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Global, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Number, NULL, false},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Number, NULL, true},
 
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_TimesEquals), true},
+		{kTokenType_NumericStackVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_TimesEquals), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_TimesEquals_Elem), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_TimesEquals_Global), true},
 };
@@ -1463,12 +1616,14 @@ OperationRule kOpRule_TimesEquals[] =
 OperationRule kOpRule_DividedEquals[] =
 	{
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
+		{kTokenType_NumericStackVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Global, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Number, NULL, false},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Number, NULL, true},
 
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_DividedEquals), true},
+		{kTokenType_NumericStackVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_DividedEquals), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_DividedEquals_Elem), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_DividedEquals_Global), true},
 };
@@ -1476,12 +1631,14 @@ OperationRule kOpRule_DividedEquals[] =
 OperationRule kOpRule_ExponentEquals[] =
 	{
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
+		{kTokenType_NumericStackVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Global, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Number, NULL, false},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Number, NULL, true},
 
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_ExponentEquals), true},
+		{kTokenType_NumericStackVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_ExponentEquals), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_ExponentEquals_Elem), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_ExponentEquals_Global), true},
 };
@@ -1489,12 +1646,14 @@ OperationRule kOpRule_ExponentEquals[] =
 OperationRule kOpRule_HandleEquals[] =
 	{
 		{kTokenType_NumericVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
+		{kTokenType_NumericStackVar, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_ArrayElement, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Global, kTokenType_Ambiguous, kTokenType_Number, NULL, true},
 		{kTokenType_Ambiguous, kTokenType_Ambiguous, kTokenType_Number, NULL, false},
 		{kTokenType_Ambiguous, kTokenType_Number, kTokenType_Number, NULL, true},
 
 		{kTokenType_NumericVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_HandleEquals), true},
+		{kTokenType_NumericStackVar, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_HandleEquals), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_HandleEquals_Elem), true},
 		{kTokenType_Global, kTokenType_Number, kTokenType_Number, OP_HANDLER(Eval_HandleEquals_Global), true},
 };
@@ -1526,8 +1685,10 @@ OperationRule kOpRule_LeftBracket[] =
 		{kTokenType_Array, kTokenType_String, kTokenType_ArrayElement, OP_HANDLER(Eval_Subscript_Array_String), true},
 		{kTokenType_ArrayElement, kTokenType_Number, kTokenType_AssignableString, OP_HANDLER(Eval_Subscript_Elem_Number), true},
 		{kTokenType_StringVar, kTokenType_Number, kTokenType_AssignableString, OP_HANDLER(Eval_Subscript_StringVar_Number), true},
+		{kTokenType_StringStackVar, kTokenType_Number, kTokenType_AssignableString, OP_HANDLER(Eval_Subscript_StringVar_Number), true},
 		{kTokenType_ArrayElement, kTokenType_Slice, kTokenType_AssignableString, OP_HANDLER(Eval_Subscript_Elem_Slice), true},
 		{kTokenType_StringVar, kTokenType_Slice, kTokenType_AssignableString, OP_HANDLER(Eval_Subscript_StringVar_Slice), true},
+		{kTokenType_StringStackVar, kTokenType_Slice, kTokenType_AssignableString, OP_HANDLER(Eval_Subscript_StringVar_Slice), true},
 		{kTokenType_String, kTokenType_Number, kTokenType_String, OP_HANDLER(Eval_Subscript_String), true},
 		{kTokenType_Array, kTokenType_Slice, kTokenType_Array, OP_HANDLER(Eval_Subscript_Array_Slice), true},
 		{kTokenType_String, kTokenType_Slice, kTokenType_String, OP_HANDLER(Eval_Subscript_String_Slice), true}};
@@ -1553,10 +1714,14 @@ OperationRule kOpRule_Slice[] =
 OperationRule kOpRule_In[] =
 	{
 		{kTokenType_ArrayVar, kTokenType_Ambiguous, kTokenType_ForEachContext, NULL, true},
+		{kTokenType_ArrayStackVar, kTokenType_Ambiguous, kTokenType_ForEachContext, NULL, true},
 
 		{kTokenType_ArrayVar, kTokenType_Array, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
+		{kTokenType_ArrayStackVar, kTokenType_Array, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
 		{kTokenType_StringVar, kTokenType_String, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
+		{kTokenType_StringStackVar, kTokenType_String, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
 		{kTokenType_RefVar, kTokenType_Form, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
+		{kTokenType_RefStackVar, kTokenType_Form, kTokenType_ForEachContext, OP_HANDLER(Eval_In), true},
 };
 
 OperationRule kOpRule_ToString[] =
@@ -2089,14 +2254,18 @@ bool ExpressionParser::ValidateArgType(ParamType paramType, Token_Type argType, 
 		case kParamType_QuestStage:
 		case kParamType_CrimeType:
 			// string var included here b/c old sv_* cmds take strings as integer IDs
-			if (argType != kTokenType_StringVar && CanConvertOperand(argType, kTokenType_String))
+			if (argType != kTokenType_StringVar && argType != kTokenType_StringStackVar 
+				&& CanConvertOperand(argType, kTokenType_String))
 			{
 				//auto* cmdInfo = g_scriptCommands.GetByOpcode(m_lineBuf->cmdOpcode);
 				if (cmdInfo && (std::string_view(cmdInfo->longName).starts_with("sv_") || cmdInfo->params == kParams_FormatString || cmdInfo->numParams >= 20)) // only allow this for old sv commands that take int
 					return true;
 			}
-			return CanConvertOperand(argType, kTokenType_Number) || CanConvertOperand(argType, kTokenType_StringVar) ||
-				   CanConvertOperand(argType, kTokenType_Variable);
+			return CanConvertOperand(argType, kTokenType_Number) ||
+				   CanConvertOperand(argType, kTokenType_StringVar) ||
+				   CanConvertOperand(argType, kTokenType_Variable) ||
+				   CanConvertOperand(argType, kTokenType_StringStackVar) ||
+				   CanConvertOperand(argType, kTokenType_StackVar);
 		case kParamType_AnimationGroup:
 		case kParamType_ActorValue:
 			// we accept string or int for this
@@ -3884,11 +4053,13 @@ bool ExpressionEvaluator::ExtractArgsV(va_list list)
 		case kTokenType_Number:
 		case kTokenType_Boolean:
 		case kTokenType_NumericVar:
+		case kTokenType_NumericStackVar:
 		case kTokenType_Global:
 		{
 			*va_arg(list, double*) = arg->GetNumber();
 			break;
 		}
+		case kTokenType_StringStackVar:
 		case kTokenType_StringVar:
 		case kTokenType_String:
 		{
@@ -3899,12 +4070,14 @@ bool ExpressionEvaluator::ExtractArgsV(va_list list)
 		case kTokenType_Ref:
 		case kTokenType_Lambda:
 		case kTokenType_RefVar:
+		case kTokenType_RefStackVar:
 		{
 			*va_arg(list, TESForm**) = arg->GetTESForm();
 			break;
 		}
 		case kTokenType_Array:
 		case kTokenType_ArrayVar:
+		case kTokenType_ArrayStackVar:
 		{
 			*va_arg(list, ArrayVar**) = arg->GetArrayVar();
 			break;
@@ -4067,11 +4240,20 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 		// handle string_var passed as integer to sv_* cmds
 		if (arg->CanConvertTo(kTokenType_StringVar))
 		{
-			ScriptLocal* var = arg->GetVar();
+			ScriptLocal* var = arg->GetScriptLocal();
 			if (var)
 			{
 				T* out = va_arg(varArgs, T*);
 				*out = var->data;
+				return true;
+			}
+		}
+		if (arg->CanConvertTo(kTokenType_StringStackVar))
+		{
+			if (auto idx = arg->value.stackVarIdx)
+			{
+				T* out = va_arg(varArgs, T*);
+				*out = GetLocalStackVarVal(idx);
 				return true;
 			}
 		}
@@ -4147,7 +4329,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 		if (arg->CanConvertTo(kTokenType_Variable))
 		{
 			auto **out = va_arg(varArgs, ScriptLocal **);
-			*out = arg->GetVar();
+			*out = arg->GetScriptLocal();
 		}
 		else
 			return false;
@@ -5132,6 +5314,14 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 					break;
 				}
 				operands.push_back(FormatString("<failed to get var name %d %d>", token.refIdx, token.varIdx));
+				break;
+			}
+			case kTokenType_NumericStackVar:
+			case kTokenType_RefStackVar:
+			case kTokenType_StringStackVar:
+			case kTokenType_ArrayStackVar:
+			{
+				operands.push_back(FormatString("<stack var %d>", token.value.stackVarIdx));
 				break;
 			}
 			case kTokenType_LambdaScriptData:

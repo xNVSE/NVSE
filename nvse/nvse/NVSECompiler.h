@@ -54,7 +54,12 @@ public:
 	// Keep track of lambda vars as these get inlined
 	std::set<std::string> lambdaVars{};
 
+	// Required NVSE plugins
 	std::set<std::string> requirements{};
+
+	// 'temp' / ad-hoc global vars to add to ref list at end of script
+	// Only used for lambda param declaration
+	std::unordered_map<NVSEScope::ScopeVar*, std::vector<size_t>> tempGlobals{};
 
 	// Look up a local variable, or create it if not already defined
 	uint16_t AddLocal(std::string identifier, uint8_t type) {
@@ -187,20 +192,24 @@ public:
 
 	NVSECompiler(Script *script, bool partial, NVSEScript& ast)
 	: engineScript(script), partial(partial), ast(ast), originalScriptName(script->GetEditorID()) {}
+
+	void ClearScopedGlobals();
+	void PatchScopedGlobals();
+	void PrintScriptInfo();
 	bool Compile();
 
 	void VisitNVSEScript(NVSEScript* nvScript) override;
 	void VisitBeginStmt(const BeginStmt* stmt) override;
 	void VisitFnStmt(FnDeclStmt* stmt) override;
-	void VisitVarDeclStmt(const VarDeclStmt* stmt) override;
+	void VisitVarDeclStmt(VarDeclStmt* stmt) override;
 	void VisitExprStmt(const ExprStmt* stmt) override;
 	void VisitForStmt(ForStmt* stmt) override;
-	void VisitForEachStmt(ForEachStmt* stmt) override;
+	void VisitForEachStmt(ForEachStmt* stmt) override; 
 	void VisitIfStmt(IfStmt* stmt) override;
 	void VisitReturnStmt(ReturnStmt* stmt) override;
 	void VisitContinueStmt(ContinueStmt* stmt) override;
 	void VisitBreakStmt(BreakStmt* stmt) override;
-	void VisitWhileStmt(const WhileStmt* stmt) override;
+	void VisitWhileStmt(WhileStmt* stmt) override;
 	void VisitBlockStmt(BlockStmt* stmt) override;
 	void VisitAssignmentExpr(AssignmentExpr* expr) override;
 	void VisitTernaryExpr(TernaryExpr* expr) override;
@@ -224,6 +233,7 @@ public:
 	void StartCall(CommandInfo* cmd, ExprPtr stackRef = nullptr);
 	void StartCall(const std::string&& command, ExprPtr stackRef = nullptr);
 	void StartCall(uint16_t opcode, ExprPtr stackRef = nullptr);
+	void PerformCall(uint16_t opcode);
 	void AddCallArg(ExprPtr arg);
 	void StartManualArg();
 	void FinishManualArg();

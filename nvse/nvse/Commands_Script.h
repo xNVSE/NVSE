@@ -4,6 +4,34 @@
 #include "ParamInfos.h"
 #include "ScriptUtils.h"
 
+#ifdef RUNTIME
+struct LocalStackFrame {
+	std::vector<double> vars{};
+
+	double& get(int idx) {
+		if (idx >= vars.size()) {
+			vars.resize(idx + 10, 0);
+		}
+
+		return vars[idx];
+	}
+
+	void set(int idx, double val) {
+		if (idx >= vars.size()) {
+			vars.resize(idx + 10, 0);
+		}
+
+		vars[idx] = val;
+	}
+};
+
+inline thread_local std::vector<LocalStackFrame> g_localStackVars;
+inline thread_local int g_localStackPtr {-1};
+
+void SetLocalStackVarVal(int idx, double val);
+double& GetLocalStackVarVal(int idx);
+#endif
+
 DEFINE_COMMAND(IsScripted, returns 1 if the object or reference has a script attached to it., 0, 1, kParams_OneOptionalForm);
 DEFINE_COMMAND(GetScript, returns the script of the reference or passed object., 0, 1, kParams_OneOptionalForm);
 DEFINE_COMMAND(RemoveScript, removes the script of the reference or passed object., 0, 1, kParams_OneOptionalForm);
@@ -517,3 +545,6 @@ static ParamInfo kNVSEParams_MatchesAnyOf[] =
 
 DEFINE_CMD_ALT_EXP(MatchesAnyOf, , "Returns true/false if the first value matches any of the other values.",
 	false, kNVSEParams_MatchesAnyOf);
+
+DEFINE_CMD_ALT_EXP(PushLocalStack,,"Create a local variable stack frame.", false, nullptr);
+DEFINE_CMD_ALT_EXP(PopLocalStack, , "Pop a variable stack frame.", false, nullptr);

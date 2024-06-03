@@ -401,7 +401,7 @@ bool HandleLoopEnd(UInt32 offsetToEnd)
 // ScriptBuffer::currentScript not used due to GECK treating it as external ref script
 std::stack<Script*> g_currentScriptStack;
 
-enum PrecompileResult : uint8_t
+enum PrecompileResult : uint8_t 
 {
 	kPrecompile_Failure,
 	kPrecompile_Success,
@@ -442,8 +442,8 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 			auto tc = NVSETypeChecker(&ast);
 			bool typeCheckerPass = tc.check();
 			
-			auto tp = NVSETreePrinter();
-			ast.Accept(&tp);
+			// auto tp = NVSETreePrinter();
+			// ast.Accept(&tp);
 
 			if (!typeCheckerPass) {
 				return PrecompileResult::kPrecompile_Failure;
