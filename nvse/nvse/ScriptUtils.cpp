@@ -436,7 +436,7 @@ std::unique_ptr<ScriptToken> Eval_Assign_String(OperatorType op, ScriptToken *lh
 				const auto strVarID = static_cast<int>(AddStringVar(std::move(*rhStrVar), *lh, *context, &lhStrVar));
 				lhVar->data = strVarID;
 			}
-			else { // assume stack var
+			else if (lh->value.stackVarIdx) { // assume stack var
 				const auto strVarID = static_cast<int>(g_StringMap.Add(std::move(*rhStrVar), true, &lhStrVar));
 				SetLocalStackVarVal(lh->value.stackVarIdx, strVarID);
 			}
@@ -871,6 +871,7 @@ std::unique_ptr<ScriptToken> Eval_PlusEquals_String(OperatorType op, ScriptToken
 	return ScriptToken::Create(var, strVar);
 }
 
+// Currently unused.
 std::unique_ptr<ScriptToken> Eval_TimesEquals_String(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	ScriptLocal *var = lh->GetScriptLocal();
