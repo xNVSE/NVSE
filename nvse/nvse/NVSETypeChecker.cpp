@@ -624,16 +624,6 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 		error(expr->left->getToken()->line, err.str());
 	}
 
-	if (!strncmp(cmd->longName, "sv_", 3) || !strncmp(cmd->longName, "ar_", 3)) {
-		//TODO
-		auto type = ToTokenType(g_scriptCommands.GetReturnType(cmd));
-		if (type == kTokenType_Invalid) {
-			type = kTokenType_Ambiguous;
-		}
-		expr->detailedType = type;
-		return;
-	}
-
 	// Basic type checks
 	// We already validated number of args, just verify types
 	if (!isDefaultParse(cmd->parse)) { // if expression parser
