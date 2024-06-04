@@ -1,5 +1,6 @@
 #include "StackVariables.h"
 
+#if RUNTIME
 namespace StackVariables
 {
 	void SetLocalStackVarVal(Index_t idx, Value_t val)
@@ -27,3 +28,4 @@ namespace StackVariables
 		_DMESSAGE("LOCAL VAR STACK DESTROY : Index %d", g_localStackPtr);
 	}
 }
+#endif
