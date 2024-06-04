@@ -8,6 +8,13 @@ void allocateConsole() {
 		AllocConsole();
 		freopen("CONOUT$", "w", stdout);
 		consoleAllocated = true;
+		
+		HWND hwnd = GetConsoleWindow();
+		if (hwnd != NULL)
+		{
+			HMENU hMenu = GetSystemMenu(hwnd, FALSE);
+			if (hMenu != NULL) DeleteMenu(hMenu, SC_CLOSE, MF_BYCOMMAND);
+		}
 	}
 #endif
 }
