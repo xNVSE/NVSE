@@ -847,12 +847,13 @@ void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
     }
 
     // Global variable
-    else if (var && !var->global) {
+    else if (var && var->global) {
         for (int i = 0; i < statementCounter.size(); i++) {
             CompDbg("  ");
         }
 
-        CompDbg("Read from global variable %s\n", name);
+        CompDbg("Read from global variable %s\n", name.c_str());
+        AddU8('V');
         AddU8(var->scriptType);
         AddU16(0);
 
