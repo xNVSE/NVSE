@@ -436,8 +436,8 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 			auto tc = NVSETypeChecker(&ast);
 			bool typeCheckerPass = tc.check();
 			
-			// auto tp = NVSETreePrinter();
-			// ast.Accept(&tp);
+			auto tp = NVSETreePrinter();
+			ast.Accept(&tp);
 
 			if (!typeCheckerPass) {
 				return PrecompileResult::kPrecompile_Failure;
