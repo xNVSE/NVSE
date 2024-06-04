@@ -6,7 +6,13 @@
 #include "NVSECompilerUtils.h"
 
 
-NVSELexer::NVSELexer(const std::string& input) : input(input), pos(0) {
+NVSELexer::NVSELexer(std::string& input) : pos(0) {
+	// Replace tabs with 4 spaces
+	size_t it;
+	while ((it = input.find('\t')) != std::string::npos) {
+		input.replace(it, 1, "    ");
+	}
+	
 	// Messy way of just getting string lines to start for later error reporting
 	std::string::size_type pos = 0;
 	std::string::size_type prev = 0;
@@ -15,6 +21,10 @@ NVSELexer::NVSELexer(const std::string& input) : input(input), pos(0) {
 		prev = pos + 1;
 	}
 	lines.push_back(input.substr(prev));
+
+	// Convert actual input to lowercase
+	std::transform(input.begin(), input.end(), input.begin(), [](unsigned char c){ return std::tolower(c); });
+	this->input = input;
 }
 
 // Unused for now, working though
@@ -215,6 +225,7 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 		// Types
 		if (identifier == "int") return MakeToken(NVSETokenType::IntType, identifier);
 		if (identifier == "double") return MakeToken(NVSETokenType::DoubleType, identifier);
+		if (identifier == "float") return MakeToken(NVSETokenType::DoubleType, identifier);
 		if (identifier == "ref") return MakeToken(NVSETokenType::RefType, identifier);
 		if (identifier == "string") return MakeToken(NVSETokenType::StringType, identifier);
 		if (identifier == "array") return MakeToken(NVSETokenType::ArrayType, identifier);
@@ -237,7 +248,7 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 
 		// See if it is a begin block type
 		for (auto& g_eventBlockCommandInfo : g_eventBlockCommandInfos) {
-			if (!strcmp(g_eventBlockCommandInfo.longName, identifier.c_str())) {
+			if (!_stricmp(g_eventBlockCommandInfo.longName, identifier.c_str())) {
 				return MakeToken(NVSETokenType::BlockType, identifier);
 			}
 		}

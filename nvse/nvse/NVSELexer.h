@@ -199,6 +199,7 @@ public:
     std::vector<std::string> lines{};
 
     NVSELexer(const std::string& input);
+    NVSELexer(std::string& input);
     std::deque<NVSEToken> lexString();
 
     NVSEToken GetNextToken(bool useStack);

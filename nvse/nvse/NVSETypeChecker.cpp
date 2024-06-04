@@ -194,24 +194,32 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 	auto detailedType = GetDetailedTypeFromNVSEToken(stmt->type.type);
 	for (auto [name, expr] : stmt->values) {
 		// See if variable has already been declared
+		bool cont = false;
 		WRAP_ERROR(
 			if (auto *var = scopes.top()->resolveVariable(name.lexeme, false)) {
-				error(name.line, name.column, std::format("Variable with name '{}' has already been defined in the current scope (at line {}:{})", name.lexeme, var->token.line, var->token.column));
+				cont = true;
+				error(name.line, name.column, std::format("Variable with name '{}' has already been defined in the current scope (at line {}:{})\n", name.lexeme, var->token.line, var->token.column));
 			}
 
 			auto* var2 = scopes.top()->resolveVariable(name.lexeme, true);
 
 			// If we are seeing 'export' keyword and another global has already been defined with this name
 			if (stmt->bExport && var2 && var2->global) {
-				error(name.line, name.column, std::format("Variable with name '{}' has already been defined in the global scope (at line {}:{})", name.lexeme, var2->token.line, var2->token.column));
+				cont = true;
+				error(name.line, name.column, std::format("Variable with name '{}' has already been defined in the global scope (at line {}:{})\n", name.lexeme, var2->token.line, var2->token.column));
 			}
 		)
+		
+		if (cont) {
+			continue;
+		}
 
 		// Warn if name shadows a form
 		if (auto form = GetFormByID(name.lexeme.c_str())) {
 			auto modName = DataHandler::Get()->GetActiveModList()[form->GetModIndex()]->name;
 #ifdef EDITOR
-			CompInfo("Info: Variable with name '%s' shadows a form with the same name from mod '%s'", name.lexeme.c_str(), modName);
+			CompInfo("[line %d:%d] Info: Variable with name '%s' shadows a form with the same name from mod '%s'\n",
+				name.line, name.column, name.lexeme.c_str(), modName);
 #else
 			CompInfo("Info: Variable with name '%s' shadows a form with the same name from mod '%s'. This is NOT an error. Do not contact the mod author.", name.lexeme.c_str(), modName);
 #endif
@@ -219,7 +227,8 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 		
 		if (auto shadowed = scopes.top()->resolveVariable(name.lexeme, true)) {
 #ifdef EDITOR
-			CompInfo("Info: Variable with name '%s' shadows a variable with the same name in outer scoped. (Defined at line %d:%d)", name.lexeme.c_str(), shadowed->token.line, shadowed->token.column);
+			CompInfo("[line %d:%d] Info: Variable with name '%s' shadows a variable with the same name in outer scope. (Defined at line %d:%d)\n",
+				name.line, name.column, name.lexeme.c_str(), shadowed->token.line, shadowed->token.column);
 #endif
 		}
 
@@ -287,7 +296,9 @@ void NVSETypeChecker::VisitForStmt(ForStmt* stmt) {
 
 void NVSETypeChecker::VisitForEachStmt(ForEachStmt* stmt) {
 	stmt->scope = EnterScope();
+	bScopedGlobal = true;
 	stmt->lhs->Accept(this);
+	bScopedGlobal = false;
 	stmt->rhs->Accept(this);
 
 	// Get type of lhs identifier -- this is way too verbose
@@ -564,9 +575,17 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 				error(expr->token.line, expr->token.column, std::format("Invalid command '{}'.", name));
 			}
 
+			// Perform basic typechecking on call params
+			int requiredParams = 0;
+			for (int i = 0; i < cmd->numParams; i++) {
+				if (!cmd->params[i].isOptional) {
+					requiredParams++;
+				}
+			}
+
 			// Check arg count
-			if (expr->args.size() + 1 < cmd->numParams) {
-				error(expr->token.line, expr->token.column, std::format("Invalid number of parameters specified for command {} (Expected '{}', Got {}).", name, cmd->numParams - 1, expr->args.size() + 1));
+			if (expr->args.size() + 1 < requiredParams) {
+				error(expr->token.line, expr->token.column, std::format("Invalid number of parameters specified for command {} (Expected '{}', Got {}).", name, requiredParams - 1, expr->args.size() + 1));
 			}
 
 			// Scan for replacement index
@@ -610,7 +629,7 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 		err << std::format(
 			"Number of parameters passed to command {} does not match what was expected. (Expected {}, Got {})\n", name,
 			requiredParams, expr->args.size());
-		error(expr->left->getToken()->line, err.str());
+		error(expr->token.line, expr->token.column, err.str());
 	}
 
 	// Make sure not too many were passed

@@ -49,9 +49,10 @@ struct BeginStmt : Stmt {
     NVSEToken name;
     std::optional<NVSEToken> param;
     StmtPtr block;
+    CommandInfo* beginInfo;
 
-    BeginStmt(const NVSEToken& name, std::optional<NVSEToken> param, StmtPtr block) : name(name),
-        param(std::move(param)), block(std::move(block)) {
+    BeginStmt(const NVSEToken& name, std::optional<NVSEToken> param, StmtPtr block, CommandInfo* beginInfo) : name(name),
+        param(std::move(param)), block(std::move(block)), beginInfo(beginInfo) {
         line = name.line;
     }
 

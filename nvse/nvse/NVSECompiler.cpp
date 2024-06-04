@@ -131,7 +131,7 @@ void NVSECompiler::VisitNVSEScript(NVSEScript* nvScript) {
     // Dont allow naming script the same as another form, unless that form is the script itself
     auto comp = strcmp(scriptName.c_str(), originalScriptName);
     if (ResolveObjReference(scriptName, false) && comp && !partial) {
-        throw std::runtime_error(std::format("Error: Form name '{}' is already in use.\n", scriptName));
+        //TODO throw std::runtime_error(std::format("Error: Form name '{}' is already in use.\n", scriptName));
     }
 
     // SCN
@@ -150,12 +150,7 @@ void NVSECompiler::VisitBeginStmt(const BeginStmt* stmt) {
     auto name = stmt->name.lexeme;
 
     // Shouldn't be null
-    CommandInfo* beginInfo = nullptr;
-    for (auto& info : g_eventBlockCommandInfos) {
-        if (!strcmp(info.longName, name.c_str())) {
-            beginInfo = &info;
-        }
-    }
+    CommandInfo* beginInfo = stmt->beginInfo;
 
     // OP_BEGIN
     AddU16(static_cast<uint16_t>(ScriptParsing::ScriptStatementCode::Begin));
@@ -438,11 +433,8 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
     if (!varDecl) {
         throw std::runtime_error("Unexpected compiler error.");
     }
-
-    auto varInfo = engineScript->GetVariableByName(std::get<0>(varDecl->values[0]).lexeme.c_str());
-    if (!varInfo) {
-        throw std::runtime_error("Unexpected compiler error.");
-    }
+    
+    auto var = stmt->scope->resolveVariable(std::get<0>(varDecl->values[0]).lexeme);
 
     // OP_FOREACH
     AddU16(OP_FOREACH);
@@ -462,9 +454,13 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
 
     insideNvseExpr.push(true);
     AddU8('V');
-    AddU8(varInfo->type);
+    AddU8(var->scriptType);
     AddU16(0x0);
-    AddU16(varInfo->idx);
+
+    // TODO: Make for each just accept stack tokens
+    tempGlobals[var] = std::vector<size_t>{};
+    tempGlobals[var].push_back(AddU16(0x0));
+    
     stmt->rhs->Accept(this);
     AddU8(kOpType_In);
     insideNvseExpr.pop();

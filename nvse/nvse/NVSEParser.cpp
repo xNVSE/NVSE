@@ -75,21 +75,21 @@ StmtPtr NVSEParser::Begin() {
 	auto blockNameStr = blockName.lexeme;
 
 	std::optional<NVSEToken> mode{};
-	CommandInfo* blockInfo = nullptr;
+	CommandInfo* beginInfo = nullptr;
 	for (auto& info : g_eventBlockCommandInfos) {
-		if (!strcmp(info.longName, blockNameStr.c_str())) {
-			blockInfo = &info;
+		if (!_stricmp(info.longName, blockNameStr.c_str())) {
+			beginInfo = &info;
 			break;
 		}
 	}
 
 	if (Match(NVSETokenType::MakePair)) {
-		if (blockInfo->numParams == 0) {
+		if (beginInfo->numParams == 0) {
 			Error(currentToken, "Cannot specify argument for this block type.");
 		}
 
 		if (Match(NVSETokenType::Number)) {
-			if (blockInfo->params[0].typeID != kParamType_Integer) {
+			if (beginInfo->params[0].typeID != kParamType_Integer) {
 				Error(currentToken, "Expected identifier.");
 			}
 
@@ -101,7 +101,7 @@ StmtPtr NVSEParser::Begin() {
 			mode = modeToken;
 		}
 		else if (Match(NVSETokenType::Identifier)) {
-			if (blockInfo->params[0].typeID == kParamType_Integer) {
+			if (beginInfo->params[0].typeID == kParamType_Integer) {
 				Error(currentToken, "Expected number.");
 			}
 
@@ -112,7 +112,7 @@ StmtPtr NVSEParser::Begin() {
 		}
 	}
 	else {
-		if (blockInfo->numParams > 0 && !blockInfo->params[0].isOptional) {
+		if (beginInfo->numParams > 0 && !beginInfo->params[0].isOptional) {
 			Error(currentToken, "Missing required parameter for block type '" + blockName.lexeme + "'");
 		}
 	}
@@ -120,7 +120,7 @@ StmtPtr NVSEParser::Begin() {
 	if (!Peek(NVSETokenType::LeftBrace)) {
 		Error(currentToken, "Expected '{'.");
 	}
-	return std::make_shared<BeginStmt>(blockName, mode, BlockStatement());
+	return std::make_shared<BeginStmt>(blockName, mode, BlockStatement(), beginInfo);
 }
 
 StmtPtr NVSEParser::Statement() {
