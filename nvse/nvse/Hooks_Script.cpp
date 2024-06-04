@@ -423,7 +423,7 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 
 	// See if new compiler should override script compiler
 	// First token on first line should be 'name'
-	if (!strncmp(buf->scriptText, "name", 4)) {
+	if (!_strnicmp(buf->scriptText, "name", 4)) {
 		// Just convert script buffer to a string
 		auto program = std::string(buf->scriptText);
 

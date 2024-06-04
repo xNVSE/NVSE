@@ -1143,7 +1143,7 @@ bool StartsWith(std::string left, std::string right)
 // Taken from https://stackoverflow.com/a/4770992/22891557
 bool StartsWith(const char* pre, const char* str)
 {
-	return strncmp(pre, str, strlen(pre)) == 0;
+	return _strnicmp(pre, str, strlen(pre)) == 0;
 }
 
 std::vector<std::string> SplitString(std::string s, std::string delimiter)
