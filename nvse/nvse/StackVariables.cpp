@@ -24,6 +24,13 @@ namespace StackVariables
 
 	void PopLocalStack()
 	{
+		// Reset all stack variable values to 0.
+		// Prevents potentially seeing invalid values for stack vars that are used before assignment.
+		{
+			auto& currentVars = g_localStackVars[g_localStackPtr].vars;
+			std::fill(currentVars.begin(), currentVars.end(), 0);
+		}
+
 		g_localStackPtr--;
 		_DMESSAGE("LOCAL VAR STACK DESTROY : Index %d", g_localStackPtr);
 	}
