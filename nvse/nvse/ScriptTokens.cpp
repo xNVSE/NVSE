@@ -202,7 +202,7 @@ std::string ScriptToken::GetVariableDataAsString() const
 		if (form)
 			return form->GetStringRepresentation();
 		if (value.stackVarIdx)
-			return FormatString("invalid form (%X)", GetLocalStackVarVal(value.stackVarIdx));
+			return FormatString("invalid form (%X)", StackVariables::GetLocalStackVarVal(value.stackVarIdx));
 		return "uninitialized form (0)";
 	}
 	case kTokenType_RefVar:
@@ -776,7 +776,7 @@ UInt32 ScriptToken::GetFormID() const
 			return 0;
 		}
 
-		return *reinterpret_cast<UInt32*>(&GetLocalStackVarVal(value.stackVarIdx));
+		return *reinterpret_cast<UInt32*>(&StackVariables::GetLocalStackVarVal(value.stackVarIdx));
 	}
 #endif
 	if (type == kTokenType_Number)
@@ -799,9 +799,9 @@ TESForm *ScriptToken::GetTESForm() const
 	if (type == kTokenType_Number && formOrNumber)
 		return LookupFormByID(*reinterpret_cast<UInt32 *>(const_cast<double*>(&value.num)));
 	if (type == kTokenType_NumericStackVar && formOrNumber)
-		return LookupFormByID(*reinterpret_cast<UInt32*>(&GetLocalStackVarVal(value.stackVarIdx)));
+		return LookupFormByID(*reinterpret_cast<UInt32*>(&StackVariables::GetLocalStackVarVal(value.stackVarIdx)));
 	if (type == kTokenType_RefStackVar && value.stackVarIdx)
-		return LookupFormByID(*reinterpret_cast<UInt32*>(&GetLocalStackVarVal(value.stackVarIdx)));
+		return LookupFormByID(*reinterpret_cast<UInt32*>(&StackVariables::GetLocalStackVarVal(value.stackVarIdx)));
 #endif
 	if (type == kTokenType_Lambda)
 		return value.lambda;
@@ -826,7 +826,7 @@ double ScriptToken::GetNumber() const
 			return 0.0;
 		}
 
-		return GetLocalStackVarVal(value.stackVarIdx);
+		return StackVariables::GetLocalStackVarVal(value.stackVarIdx);
 	}
 #endif
 	return 0.0;
@@ -865,7 +865,7 @@ bool ScriptToken::GetBool() const
 			return false;
 		}
 
-		return GetLocalStackVarVal(value.stackVarIdx) ? true : false;
+		return StackVariables::GetLocalStackVarVal(value.stackVarIdx) ? true : false;
 	}
 	case kTokenType_String:
 	{
@@ -939,7 +939,7 @@ ArrayID ScriptToken::GetArrayID() const
 			return false;
 		}
 
-		return static_cast<int>(GetLocalStackVarVal(value.stackVarIdx));
+		return static_cast<int>(StackVariables::GetLocalStackVarVal(value.stackVarIdx));
 	}
 	return 0;
 }
@@ -962,7 +962,7 @@ StringVar* ScriptToken::GetStringVar() const
 		return nullptr;
 	}
 	if (type == kTokenType_StringStackVar && value.stackVarIdx) {
-		return g_StringMap.Get(GetLocalStackVarVal(value.stackVarIdx));
+		return g_StringMap.Get(StackVariables::GetLocalStackVarVal(value.stackVarIdx));
 	}
 	if (value.nvseVariable.stringVar) {
 		return value.nvseVariable.stringVar;
@@ -1042,7 +1042,7 @@ bool ScriptToken::ResolveVariable()
 	// Check stack vars
 	if (type == kTokenType_ArrayStackVar || type == kTokenType_NumericStackVar || type == kTokenType_RefStackVar || type == kTokenType_StringStackVar) {
 		if (type == kTokenType_StringStackVar && value.stackVarIdx) {
-			value.nvseVariable.stringVar = g_StringMap.Get(GetLocalStackVarVal(value.stackVarIdx));
+			value.nvseVariable.stringVar = g_StringMap.Get(StackVariables::GetLocalStackVarVal(value.stackVarIdx));
 		}
 
 		return true;
@@ -2134,16 +2134,16 @@ char *ScriptToken::DebugPrint() const
 		sprintf_s(debugPrint, 512, "[Type=StackVar, Value=%lu]", value.stackVarIdx);
 		break;
 	case kTokenType_NumericStackVar:
-		sprintf_s(debugPrint, 512, "[Type=NumericStackVar, Value=%g]", GetLocalStackVarVal(value.stackVarIdx));
+		sprintf_s(debugPrint, 512, "[Type=NumericStackVar, Value=%g]", StackVariables::GetLocalStackVarVal(value.stackVarIdx));
 		break;
 	case kTokenType_ArrayStackVar:
-		sprintf_s(debugPrint, 512, "[Type=ArrayStackVar, Value=%d]", (int)GetLocalStackVarVal(value.stackVarIdx));
+		sprintf_s(debugPrint, 512, "[Type=ArrayStackVar, Value=%d]", (int)StackVariables::GetLocalStackVarVal(value.stackVarIdx));
 		break;
 	case kTokenType_StringStackVar:
-		sprintf_s(debugPrint, 512, "[Type=StringStackVar, Value=%g]", GetLocalStackVarVal(value.stackVarIdx));
+		sprintf_s(debugPrint, 512, "[Type=StringStackVar, Value=%g]", StackVariables::GetLocalStackVarVal(value.stackVarIdx));
 		break;
 	case kTokenType_RefStackVar:
-		sprintf_s(debugPrint, 512, "[Type=RefStackVar, Id=%d]", (int)GetLocalStackVarVal(value.stackVarIdx));
+		sprintf_s(debugPrint, 512, "[Type=RefStackVar, Id=%d]", (int)StackVariables::GetLocalStackVarVal(value.stackVarIdx));
 		break;
 #endif
 	case kTokenType_RefVar:

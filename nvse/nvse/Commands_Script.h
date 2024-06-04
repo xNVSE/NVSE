@@ -5,31 +5,37 @@
 #include "ScriptUtils.h"
 
 #ifdef RUNTIME
-struct LocalStackFrame {
-	std::vector<double> vars{};
+namespace StackVariables
+{
+	using Index_t = int;
+	using Value_t = double;
 
-	double& get(int idx) {
-		if (idx >= vars.size()) {
-			vars.resize(idx + 10, 0);
+	struct LocalStackFrame {
+		std::vector<Value_t> vars{};
+
+		Value_t& get(Index_t idx) {
+			if (idx >= vars.size()) {
+				vars.resize(idx + 10, 0);
+			}
+
+			return vars[idx];
 		}
 
-		return vars[idx];
-	}
+		void set(Index_t idx, Value_t val) {
+			if (idx >= vars.size()) {
+				vars.resize(idx + 10, 0);
+			}
 
-	void set(int idx, double val) {
-		if (idx >= vars.size()) {
-			vars.resize(idx + 10, 0);
+			vars[idx] = val;
 		}
+	};
 
-		vars[idx] = val;
-	}
-};
+	inline thread_local std::vector<LocalStackFrame> g_localStackVars;
+	inline thread_local Index_t g_localStackPtr{ -1 };
 
-inline thread_local std::vector<LocalStackFrame> g_localStackVars;
-inline thread_local int g_localStackPtr {-1};
-
-void SetLocalStackVarVal(int idx, double val);
-double& GetLocalStackVarVal(int idx);
+	void SetLocalStackVarVal(Index_t idx, Value_t val);
+	Value_t& GetLocalStackVarVal(Index_t idx);
+}
 #endif
 
 DEFINE_COMMAND(IsScripted, returns 1 if the object or reference has a script attached to it., 0, 1, kParams_OneOptionalForm);
