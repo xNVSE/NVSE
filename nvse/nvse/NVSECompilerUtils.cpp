@@ -27,9 +27,7 @@ void CompDbg(const char* fmt, ...) {
 #if defined(EDITOR) && defined(_DEBUG)
 	vprintf(fmt, argList);
 #else
-	char buf[1024];
-	vsprintf(buf, fmt, argList);
-	_DMESSAGE(buf);
+	v_DMESSAGE(fmt, argList);
 #endif
 	va_end(argList);
 }
@@ -42,9 +40,7 @@ void CompInfo(const char* fmt, ...) {
 #if defined(EDITOR)
 	vprintf(fmt, argList);
 #else
-	char buf[1024];
-	vsprintf(buf, fmt, argList);
-	_MESSAGE(buf);
+	v_MESSAGE(fmt, argList);
 #endif
 	va_end(argList);
 }

@@ -104,12 +104,16 @@ inline void _WARNING(const char * fmt, ...)
 	va_end(args);
 }
 
+inline void v_MESSAGE(const char* fmt, va_list args)
+{
+	gLog.Log(IDebugLog::kLevel_Message, fmt, args);
+}
+
 inline void _MESSAGE(const char * fmt, ...)
 {
 	va_list args;
-
 	va_start(args, fmt);
-	gLog.Log(IDebugLog::kLevel_Message, fmt, args);
+	v_MESSAGE(fmt, args);
 	va_end(args);
 }
 

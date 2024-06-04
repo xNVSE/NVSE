@@ -21,8 +21,8 @@ ArrayIterLoop::ArrayIterLoop(const ForEachContext* context, UInt8 modIndex) : m_
 {
 	m_srcID = context->sourceID;
 	m_iterID = context->iteratorID;
-	m_iterVar.local = context->var.local;
-	m_isStackVar = context->isStackVar;
+	m_iterVar.local = context->valueIterVar.local;
+	m_isStackVar = context->isValueStackVar;
 
 	if (!m_isStackVar)
 	{
@@ -122,8 +122,8 @@ bool StringIterLoop::Update(COMMAND_ARGS)
 ContainerIterLoop::ContainerIterLoop(const ForEachContext* context)
 {
 	TESObjectREFR* contRef = (TESObjectREFR*)context->sourceID;
-	m_refVar.local = context->var.local;
-	m_isStackVar = context->isStackVar;
+	m_refVar.local = context->valueIterVar.local;
+	m_isStackVar = context->isValueStackVar;
 	m_iterIndex = 0;
 	m_invRef = CreateInventoryRef(contRef, IRefData(), false);
 
@@ -249,8 +249,8 @@ bool FormListIterLoop::GetNext()
 FormListIterLoop::FormListIterLoop(const ForEachContext *context)
 {
 	m_iter = ((BGSListForm*)context->sourceID)->list.Head();
-	m_refVar.local = context->var.local;
-	m_isStackVar = context->isStackVar;
+	m_refVar.local = context->valueIterVar.local;
+	m_isStackVar = context->isValueStackVar;
 
 	// Move m_iter to first valid value, and save that as the first loop element.
 	// Do NOT call GetNext here, since it will move m_iter, 

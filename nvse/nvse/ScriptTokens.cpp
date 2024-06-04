@@ -371,7 +371,7 @@ std::unique_ptr<ScriptToken> ScriptToken::Create(ForEachContext *forEach)
 
 	return std::make_unique<ForEachContextToken>(forEach->sourceID, forEach->iteratorID, 
 		forEach->variableType, 
-		forEach->var, forEach->isStackVar);
+		forEach->valueIterVar, forEach->isValueStackVar);
 }
 
 std::unique_ptr<ScriptToken> ScriptToken::Create(ArrayID arrID, ArrayKey *key)
