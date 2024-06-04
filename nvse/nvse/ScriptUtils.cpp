@@ -23,6 +23,7 @@
 #include "Commands_Script.h"
 #include "Hooks_Editor.h"
 #include "ScriptAnalyzer.h"
+#include "StackVariables.h"
 
 std::map<std::pair<Script*, std::string>, Script::VariableType> g_variableDefinitionsMap;
 
@@ -452,7 +453,7 @@ std::unique_ptr<ScriptToken> Eval_Assign_String(OperatorType op, ScriptToken *lh
 		if (auto* lhVar = lh->GetScriptLocal()) {
 			lhVar->data = static_cast<int>(AddStringVar(str, *lh, *context, &lhStrVar));
 		}
-		else if (lh->type == kTokenType_StringStackVar)
+		else if (lh->type == kTokenType_StringStackVar && lh->value.stackVarIdx)
 		{
 			const auto strVarID = static_cast<int>(g_StringMap.Add(context->script->GetModIndex(), str, true, &lhStrVar));
 			StackVariables::SetLocalStackVarVal(lh->value.stackVarIdx, strVarID);

@@ -1425,20 +1425,6 @@ bool Cmd_CallWhilePerSeconds_Execute(COMMAND_ARGS)
 	return true;
 }
 
-namespace StackVariables
-{
-	void SetLocalStackVarVal(Index_t idx, Value_t val)
-	{
-		g_localStackVars[g_localStackPtr].set(idx - 1, val);
-	}
-
-	double& GetLocalStackVarVal(Index_t idx)
-	{
-		return g_localStackVars[g_localStackPtr].get(idx - 1);
-	}
-}
-
-
 void ClearDelayedCalls()
 {
 	g_callForInfos.clear();
@@ -1825,23 +1811,6 @@ bool Cmd_MatchesAnyOf_Execute(COMMAND_ARGS)
 			}
 		}
 	}
-	return true;
-}
-
-bool Cmd_PushLocalStack_Execute(COMMAND_ARGS) {
-	using namespace StackVariables;
-	if (g_localStackVars.size() <= g_localStackPtr + 1) {
-		g_localStackVars.push_back(LocalStackFrame{});
-	}
-	g_localStackPtr++;
-	_DMESSAGE("LOCAL VAR STACK CREATE : Index %d", g_localStackPtr);
-	return true;
-}
-
-bool Cmd_PopLocalStack_Execute(COMMAND_ARGS) {
-	using namespace StackVariables;
-	g_localStackPtr--;
-	_DMESSAGE("LOCAL VAR STACK DESTROY : Index %d", g_localStackPtr);
 	return true;
 }
 

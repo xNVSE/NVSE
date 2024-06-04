@@ -7,6 +7,7 @@
 #include "SmallObjectsAllocator.h"
 #include "GameObjects.h"
 #include "LambdaManager.h"
+#include "StackVariables.h"
 
 #ifdef DBG_EXPR_LEAKS
 SInt32 TOKEN_COUNT = 0;

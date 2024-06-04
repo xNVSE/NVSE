@@ -9,6 +9,7 @@
 #include "FastStack.h"
 #include "GameTiles.h"
 #include "MemoizedMap.h"
+#include "StackVariables.h"
 
 #if RUNTIME
 namespace OtherHooks
@@ -86,89 +87,112 @@ namespace OtherHooks
 		return eventList;
 	}
 
-	// Saves last thisObj in effect/object scripts before they get assigned to something else with dot syntax
-	void __fastcall SaveLastScriptOwnerRef(UInt8* ebp, int spot)
+	namespace PreScriptExecute
 	{
-		auto& [script, scriptRunner, lineNumberPtr, scriptOwnerRef, command, curData] = *g_currentScriptContext.Push();
-		command = nullptr; // set in ExtractArgsEx
-		scriptOwnerRef = *reinterpret_cast<TESObjectREFR**>(ebp + 0xC);
-		script = *reinterpret_cast<Script**>(ebp + 0x8);
-		if (spot == 1)
+		void __fastcall PreScriptExecute(UInt8* ebp, int spot)
 		{
-			scriptRunner = *reinterpret_cast<ScriptRunner**>(ebp - 0x774);
-			lineNumberPtr = reinterpret_cast<UInt32*>(ebp - 0x40);
-			curData = reinterpret_cast<UInt32*>(ebp - 0x3C);
-		}
-		else if (spot == 2)
-		{
-			// ScriptRunner::Run2
-			scriptRunner = *reinterpret_cast<ScriptRunner**>(ebp - 0x744);
-			lineNumberPtr = reinterpret_cast<UInt32*>(ebp - 0x28);
-			curData = reinterpret_cast<UInt32*>(ebp - 0x24);
-		}
-	}
+			// Saves last thisObj in effect/object scripts before they get assigned to something else with dot syntax
+			auto& [script, scriptRunner, lineNumberPtr, scriptOwnerRef, command, curData] = *g_currentScriptContext.Push();
+			command = nullptr; // set in ExtractArgsEx
+			scriptOwnerRef = *reinterpret_cast<TESObjectREFR**>(ebp + 0xC);
+			script = *reinterpret_cast<Script**>(ebp + 0x8);
+			if (spot == 1)
+			{
+				scriptRunner = *reinterpret_cast<ScriptRunner**>(ebp - 0x774);
+				lineNumberPtr = reinterpret_cast<UInt32*>(ebp - 0x40);
+				curData = reinterpret_cast<UInt32*>(ebp - 0x3C);
+			}
+			else if (spot == 2)
+			{
+				// ScriptRunner::Run2
+				scriptRunner = *reinterpret_cast<ScriptRunner**>(ebp - 0x744);
+				lineNumberPtr = reinterpret_cast<UInt32*>(ebp - 0x28);
+				curData = reinterpret_cast<UInt32*>(ebp - 0x24);
+			}
 
-	void __fastcall PostScriptExecute(Script* script)
-	{
-		if (script)
-			g_currentScriptContext.Pop();
-	}
-
-	__declspec (naked) void PostScriptExecuteHook1()
-	{
-		__asm
-		{
-			push eax
-			mov ecx, [ebp+0x8]
-			call PostScriptExecute
-			pop eax
-			mov esp, ebp
-			pop ebp
-			ret 0x20
+			// Do other stuff
+			StackVariables::PushLocalStack();
 		}
-	}
 
-	__declspec (naked) void PostScriptExecuteHook2()
-	{
-		__asm
+		__declspec(naked) void Hook1()
 		{
-			push eax
-			mov ecx, [ebp + 0x8]
-			call PostScriptExecute
-			pop eax
-			mov esp, ebp
-			pop ebp
-			ret 0xC
+			const static auto hookedCall = 0x702FC0;
+			const static auto retnAddr = 0x5E0D56;
+			__asm
+			{
+				lea ecx, [ebp]
+				mov edx, 1
+				call PreScriptExecute
+				call hookedCall
+				jmp retnAddr
+			}
 		}
-	}
 
-	__declspec(naked) void SaveScriptOwnerRefHook()
-	{
-		const static auto hookedCall = 0x702FC0;
-		const static auto retnAddr = 0x5E0D56;
-		__asm
+		__declspec(naked) void Hook2()
 		{
-			lea ecx, [ebp]
-			mov edx, 1
-			call SaveLastScriptOwnerRef
-			call hookedCall
-			jmp retnAddr
+			const static auto hookedCall = 0x4013E0;
+			const static auto retnAddr = 0x5E119F;
+			__asm
+			{
+				push ecx
+				mov edx, 2
+				lea ecx, [ebp]
+				call PreScriptExecute
+				pop ecx
+				call hookedCall
+				jmp retnAddr
+			}
+		}
+
+		void WriteHooks()
+		{
+			WriteRelJump(0x5E0D51, UInt32(Hook1));
+			WriteRelJump(0x5E119A, UInt32(Hook2));
 		}
 	}
 
-	__declspec(naked) void SaveScriptOwnerRefHook2()
+	namespace PostScriptExecute
 	{
-		const static auto hookedCall = 0x4013E0;
-		const static auto retnAddr = 0x5E119F;
-		__asm
+		void __fastcall PostScriptExecute(Script* script)
 		{
-			push ecx
-			mov edx, 2
-			lea ecx, [ebp]
-			call SaveLastScriptOwnerRef
-			pop ecx
-			call hookedCall
-			jmp retnAddr
+			if (script) {
+				g_currentScriptContext.Pop();
+				StackVariables::PopLocalStack();
+			}
+		}
+
+		__declspec (naked) void Hook1()
+		{
+			__asm
+			{
+				push eax
+				mov ecx, [ebp + 0x8]
+				call PostScriptExecute
+				pop eax
+				mov esp, ebp
+				pop ebp
+				ret 0x20
+			}
+		}
+
+		__declspec (naked) void Hook2()
+		{
+			__asm
+			{
+				push eax
+				mov ecx, [ebp + 0x8]
+				call PostScriptExecute
+				pop eax
+				mov esp, ebp
+				pop ebp
+				ret 0xC
+			}
+		}
+
+		void WriteHooks()
+		{
+			WriteRelJump(0x5E1137, UInt32(Hook1));
+			WriteRelJump(0x5E1392, UInt32(Hook2));
 		}
 	}
 
@@ -184,12 +208,9 @@ namespace OtherHooks
 		WriteRelJump(0x9FF5FB, UInt32(TilesDestroyedHook));
 		WriteRelJump(0x709910, UInt32(TilesCreatedHook));
 		WriteRelJump(0x41AF70, UInt32(ScriptEventListsDestroyedHook));
-		
-		WriteRelJump(0x5E0D51, UInt32(SaveScriptOwnerRefHook));
-		WriteRelJump(0x5E119A, UInt32(SaveScriptOwnerRefHook2));
 
-		WriteRelJump(0x5E1137, UInt32(PostScriptExecuteHook1));
-		WriteRelJump(0x5E1392, UInt32(PostScriptExecuteHook2));
+		PreScriptExecute::WriteHooks();
+		PostScriptExecute::WriteHooks();
 
 		WriteRelCall(0x5AA206, ScriptDestructorHook);
 

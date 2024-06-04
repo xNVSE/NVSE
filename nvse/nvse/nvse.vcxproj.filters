@@ -275,6 +275,9 @@
     <ClCompile Include="NVSECompilerUtils.cpp">
       <Filter>compiler</Filter>
     </ClCompile>
+    <ClCompile Include="StackVariables.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
@@ -561,6 +564,9 @@
     </ClInclude>
     <ClInclude Include="NVSEScope.h">
       <Filter>compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="StackVariables.h">
+      <Filter>internals</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

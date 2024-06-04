@@ -11,6 +11,7 @@
 #include "Utilities.h"
 #include <format>
 #include <ranges>
+#include "StackVariables.h"
 
 #include "Commands_Script.h"
 
