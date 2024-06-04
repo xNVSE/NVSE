@@ -1323,24 +1323,45 @@ std::unique_ptr<ScriptToken> Eval_In(OperatorType op, ScriptToken *lh, ScriptTok
 	{
 		const UInt32 iterID = g_ArrayMap.Create(kDataType_String, false, context->script->GetModIndex())->ID();
 
-		ForEachContext con(rh->GetArrayID(), iterID, Script::eVarType_Array, lh->GetScriptLocal());
-		return ScriptToken::Create(&con);
+		if (auto* localVar = lh->GetScriptLocal())
+		{
+			ForEachContext con(rh->GetArrayID(), iterID, Script::eVarType_Array, localVar);
+			return ScriptToken::Create(&con);
+		}
+		else if (lh->value.stackVarIdx) // assume stack variable
+		{
+			ForEachContext con(rh->GetArrayID(), iterID, Script::eVarType_Array, lh->value.stackVarIdx);
+			return ScriptToken::Create(&con);
+		}
 	}
 	case Script::eVarType_String:
 	{
-		ScriptLocal *var = lh->GetScriptLocal();
-		UInt32 iterID = static_cast<int>(var->data);
-		StringVar *sv = g_StringMap.Get(iterID);
-		if (!sv)
-		{
-			//iterID = g_StringMap.Add(context->script->GetModIndex(), "");
-			iterID = AddStringVar("", *lh, *context, nullptr);
-			var->data = static_cast<int>(iterID);
-		}
-
 		const UInt32 srcID = g_StringMap.Add(context->script->GetModIndex(), rh->GetString(), true, nullptr);
-		ForEachContext con(srcID, iterID, Script::eVarType_String, var);
-		return ScriptToken::Create(&con);
+		if (ScriptLocal* var = lh->GetScriptLocal())
+		{
+			UInt32 iterID = static_cast<int>(var->data);
+			StringVar* sv = g_StringMap.Get(iterID);
+			if (!sv)
+			{
+				//iterID = g_StringMap.Add(context->script->GetModIndex(), "");
+				iterID = AddStringVar("", *lh, *context, nullptr);
+				var->data = static_cast<int>(iterID);
+			}
+			ForEachContext con(srcID, iterID, Script::eVarType_String, var);
+			return ScriptToken::Create(&con);
+		}
+		else if (lh->value.stackVarIdx) // assume stack variable
+		{
+			UInt32 iterID = static_cast<int>(StackVariables::GetLocalStackVarVal(lh->value.stackVarIdx));
+			StringVar* sv = g_StringMap.Get(iterID);
+			if (!sv)
+			{
+				g_StringMap.Add(context->script->GetModIndex(), "", true, nullptr);
+				StackVariables::SetLocalStackVarVal(lh->value.stackVarIdx, static_cast<int>(iterID));
+			}
+			ForEachContext con(srcID, iterID, Script::eVarType_String, lh->value.stackVarIdx);
+			return ScriptToken::Create(&con);
+		}
 	}
 	case Script::eVarType_Ref:
 	{
@@ -1353,8 +1374,16 @@ std::unique_ptr<ScriptToken> Eval_In(OperatorType op, ScriptToken *lh, ScriptTok
 		}
 		if (form)
 		{
-			ForEachContext con(reinterpret_cast<UInt32>(form), 0, Script::eVarType_Ref, lh->GetScriptLocal());
-			return ScriptToken::Create(&con);
+			if (ScriptLocal* var = lh->GetScriptLocal())
+			{
+				ForEachContext con(reinterpret_cast<UInt32>(form), 0, Script::eVarType_Ref, lh->GetScriptLocal());
+				return ScriptToken::Create(&con);
+			}
+			else if (lh->value.stackVarIdx) // assume stack variable
+			{
+				ForEachContext con(reinterpret_cast<UInt32>(form), 0, Script::eVarType_Ref, lh->value.stackVarIdx);
+				return ScriptToken::Create(&con);
+			}
 		}
 		context->Error("Source is a base form (must be a reference)");
 		return nullptr;

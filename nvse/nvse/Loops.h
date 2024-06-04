@@ -59,7 +59,12 @@ class ArrayIterLoop : public ForEachLoop
 	void UpdateIterator(const ArrayElement *elem);
 
 public:
-	ScriptLocal *m_iterVar;
+	bool m_isStackVar;
+	union Variable
+	{
+		ScriptLocal* local;
+		StackVariables::Index_t stackVarIdx;
+	} m_iterVar;
 
 	ArrayIterLoop(const ForEachContext *context, UInt8 modIndex);
 	~ArrayIterLoop() override;
@@ -93,7 +98,12 @@ class ContainerIterLoop : public ForEachLoop
 	typedef InventoryReference::Data IRefData;
 
 	InventoryReference *m_invRef;
-	ScriptLocal *m_refVar;
+	union Variable
+	{
+		ScriptLocal* local;
+		StackVariables::Index_t stackVarIdx;
+	} m_refVar;
+	bool m_isStackVar;
 	UInt32 m_iterIndex;
 	Vector<ExtraContainerChanges::EntryData *> m_elements;
 
@@ -111,7 +121,12 @@ public:
 class FormListIterLoop : public ForEachLoop
 {
 	ListNode<TESForm>	*m_iter;
-	ScriptLocal			*m_refVar;
+	union Variable
+	{
+		ScriptLocal* local;
+		StackVariables::Index_t stackVarIdx;
+	} m_refVar;
+	bool m_isStackVar;
 
 	bool GetNext();
 

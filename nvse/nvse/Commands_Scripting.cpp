@@ -203,14 +203,17 @@ bool Cmd_ForEach_Execute(COMMAND_ARGS)
 		}
 
 		const ForEachContext* context = eval.Arg(0)->GetForEachContext();
-		if (!context)
+		if (!context) {
 			ShowRuntimeError(scriptObj, "Cmd_ForEach: Expression does not evaluate to a ForEach context");
-		else		// construct the loop
+		}
+		else // construct the loop
 		{
 			if (context->variableType == Script::eVarType_Array)
 			{
 				ArrayIterLoop* arrayLoop = new ArrayIterLoop(context, scriptObj->GetModIndex());
-				AddToGarbageCollection(eventList, arrayLoop->m_iterVar, NVSEVarType::kVarType_Array);
+				if (!arrayLoop->m_isStackVar) {
+					AddToGarbageCollection(eventList, arrayLoop->m_iterVar.local, NVSEVarType::kVarType_Array);
+				}
 				loop = arrayLoop;
 			}
 			else if (context->variableType == Script::eVarType_String)

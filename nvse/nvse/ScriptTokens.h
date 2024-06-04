@@ -20,6 +20,7 @@ extern SInt32 FUNCTION_CONTEXT_COUNT;
 #include "GameAPI.h"
 #endif
 #include <variant>
+#include "StackVariables.h"
 
 enum class NVSEVarType
 {
@@ -185,9 +186,25 @@ struct ForEachContext
 	UInt32 sourceID;
 	UInt32 iteratorID;
 	UInt32 variableType;
-	ScriptLocal *var;
+	bool isStackVar;
+	union Variable {
+		ScriptLocal* local{};
+		StackVariables::Index_t stackVarIdx;
+	} var;
 
-	ForEachContext(UInt32 src, UInt32 iter, UInt32 varType, ScriptLocal *_var) : sourceID(src), iteratorID(iter), variableType(varType), var(_var) {}
+	ForEachContext(UInt32 src, UInt32 iter, UInt32 varType, ScriptLocal *_var) 
+		: sourceID(src), iteratorID(iter), variableType(varType), isStackVar(false) 
+	{
+		var.local = _var;
+	}
+	ForEachContext(UInt32 src, UInt32 iter, UInt32 varType, StackVariables::Index_t _stackVarIdx)
+		: sourceID(src), iteratorID(iter), variableType(varType), isStackVar(true) 
+	{
+		var.stackVarIdx = _stackVarIdx;
+	}
+	ForEachContext(UInt32 src, UInt32 iter, UInt32 varType, Variable _var, bool _isStackVar)
+		: sourceID(src), iteratorID(iter), variableType(varType), var(_var), isStackVar(_isStackVar)
+	{}
 };
 
 #endif
@@ -228,7 +245,7 @@ struct ScriptToken
 		ScriptLocal *var;
 		LambdaManager::ScriptData lambdaScriptData;
 		CustomVariableContext nvseVariable;
-		uint32_t stackVarIdx;
+		StackVariables::Index_t stackVarIdx;
 #endif
 		// compile-time only
 		VariableInfo *varInfo;
@@ -484,7 +501,7 @@ struct ForEachContextToken : ScriptToken
 {
 	ForEachContext context;
 
-	ForEachContextToken(UInt32 srcID, UInt32 iterID, UInt32 varType, ScriptLocal *var);
+	ForEachContextToken(UInt32 srcID, UInt32 iterID, UInt32 varType, ForEachContext::Variable var, bool isStackVar);
 	[[nodiscard]] const ForEachContext *GetForEachContext() const override { return Type() == kTokenType_ForEachContext ? &context : nullptr; }
 	void *operator new(size_t size);
 

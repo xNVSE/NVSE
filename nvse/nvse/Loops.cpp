@@ -21,11 +21,15 @@ ArrayIterLoop::ArrayIterLoop(const ForEachContext* context, UInt8 modIndex) : m_
 {
 	m_srcID = context->sourceID;
 	m_iterID = context->iteratorID;
-	m_iterVar = context->var;
+	m_iterVar.local = context->var.local;
+	m_isStackVar = context->isStackVar;
 
-	// clear the iterator var before initializing it
-	g_ArrayMap.RemoveReference(&m_iterVar->data, modIndex);
-	g_ArrayMap.AddReference(&m_iterVar->data, context->iteratorID, modIndex);
+	if (!m_isStackVar)
+	{
+		// clear the iterator var before initializing it
+		g_ArrayMap.RemoveReference(&m_iterVar.local->data, modIndex);
+		g_ArrayMap.AddReference(&m_iterVar.local->data, context->iteratorID, modIndex);
+	}
 
 	ArrayVar *arr = g_ArrayMap.Get(m_srcID);
 	if (arr)
@@ -77,8 +81,12 @@ bool ArrayIterLoop::Update(COMMAND_ARGS)
 
 ArrayIterLoop::~ArrayIterLoop()
 {
-	//g_ArrayMap.RemoveReference(&m_iterID, 0xFF);
-	g_ArrayMap.RemoveReference(&m_iterVar->data, m_modIndex);
+	if (!m_isStackVar)
+	{
+		//g_ArrayMap.RemoveReference(&m_iterID, 0xFF);
+		g_ArrayMap.RemoveReference(&m_iterVar.local->data, m_modIndex);
+	}
+
 }
 
 StringIterLoop::StringIterLoop(const ForEachContext* context)
@@ -114,7 +122,8 @@ bool StringIterLoop::Update(COMMAND_ARGS)
 ContainerIterLoop::ContainerIterLoop(const ForEachContext* context)
 {
 	TESObjectREFR* contRef = (TESObjectREFR*)context->sourceID;
-	m_refVar = context->var;
+	m_refVar.local = context->var.local;
+	m_isStackVar = context->isStackVar;
 	m_iterIndex = 0;
 	m_invRef = CreateInventoryRef(contRef, IRefData(), false);
 
@@ -167,13 +176,22 @@ bool ContainerIterLoop::SetIterator()
 		ExtraContainerChanges::EntryData *entry = m_elements[m_iterIndex];
 		ExtraDataList *xData = entry->extendData ? entry->extendData->GetFirstItem() : NULL;
 		m_invRef->SetData(IRefData(entry->type, entry, xData));
-		*((UInt64*)&m_refVar->data) = refr->refID;
+		if (m_isStackVar) {
+			*((UInt64*)&StackVariables::GetLocalStackVarVal(m_refVar.stackVarIdx)) = refr->refID;
+		} else {
+			*((UInt64*)&m_refVar.local->data) = refr->refID;
+		}
 		return true;
 	}
 	else
 	{
 		// loop ends, ref will shortly be invalid so zero out the var
-		m_refVar->data = 0;
+		if (m_isStackVar) {
+			StackVariables::SetLocalStackVarVal(m_refVar.stackVarIdx, 0);
+		}
+		else {
+			m_refVar.local->data = 0;
+		}
 		m_invRef->SetData(IRefData());
 		return false;
 	}
@@ -195,7 +213,12 @@ ContainerIterLoop::~ContainerIterLoop()
 		FormHeap_Free(*iter);
 	}
 	m_invRef->Release();
-	m_refVar->data = 0;
+	if (m_isStackVar) {
+		StackVariables::SetLocalStackVarVal(m_refVar.stackVarIdx, 0);
+	}
+	else {
+		m_refVar.local->data = 0;
+	}
 }
 
 bool FormListIterLoop::GetNext()
@@ -210,7 +233,12 @@ bool FormListIterLoop::GetNext()
 	{
 		if (TESForm* element = m_iter->data)
 		{
-			m_refVar->formId = element->refID;
+			if (m_isStackVar) {
+				*((UInt64*)&StackVariables::GetLocalStackVarVal(m_refVar.stackVarIdx)) = element->refID;
+			}
+			else {
+				*((UInt64*)&m_refVar.local->data) = element->refID;
+			}
 			return true;
 		}
 		m_iter = m_iter->next;
@@ -221,7 +249,8 @@ bool FormListIterLoop::GetNext()
 FormListIterLoop::FormListIterLoop(const ForEachContext *context)
 {
 	m_iter = ((BGSListForm*)context->sourceID)->list.Head();
-	m_refVar = context->var;
+	m_refVar.local = context->var.local;
+	m_isStackVar = context->isStackVar;
 
 	// Move m_iter to first valid value, and save that as the first loop element.
 	// Do NOT call GetNext here, since it will move m_iter, 
@@ -230,7 +259,12 @@ FormListIterLoop::FormListIterLoop(const ForEachContext *context)
 	{
 		if (TESForm* element = m_iter->data)
 		{
-			m_refVar->formId = element->refID;
+			if (m_isStackVar) {
+				*((UInt64*)&StackVariables::GetLocalStackVarVal(m_refVar.stackVarIdx)) = element->refID;
+			}
+			else {
+				*((UInt64*)&m_refVar.local->data) = element->refID;
+			}
 			break;
 		}
 		m_iter = m_iter->next;

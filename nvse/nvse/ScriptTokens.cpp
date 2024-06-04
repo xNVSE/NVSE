@@ -7,7 +7,6 @@
 #include "SmallObjectsAllocator.h"
 #include "GameObjects.h"
 #include "LambdaManager.h"
-#include "StackVariables.h"
 
 #ifdef DBG_EXPR_LEAKS
 SInt32 TOKEN_COUNT = 0;
@@ -325,8 +324,8 @@ ScriptToken::ScriptToken(NVSEArrayVarInterface::Element& elem) : refIdx(0), vari
 	}
 }
 
-ForEachContextToken::ForEachContextToken(UInt32 srcID, UInt32 iterID, UInt32 varType, ScriptLocal *var)
-	: ScriptToken(kTokenType_ForEachContext, Script::eVarType_Invalid, 0), context(srcID, iterID, varType, var)
+ForEachContextToken::ForEachContextToken(UInt32 srcID, UInt32 iterID, UInt32 varType, ForEachContext::Variable var, bool isStackVar)
+	: ScriptToken(kTokenType_ForEachContext, Script::eVarType_Invalid, 0), context(srcID, iterID, varType, var, isStackVar)
 {
 	value.formID = 0;
 }
@@ -370,7 +369,9 @@ std::unique_ptr<ScriptToken> ScriptToken::Create(ForEachContext *forEach)
 	else
 		return nullptr;
 
-	return std::make_unique<ForEachContextToken>(forEach->sourceID, forEach->iteratorID, forEach->variableType, forEach->var);
+	return std::make_unique<ForEachContextToken>(forEach->sourceID, forEach->iteratorID, 
+		forEach->variableType, 
+		forEach->var, forEach->isStackVar);
 }
 
 std::unique_ptr<ScriptToken> ScriptToken::Create(ArrayID arrID, ArrayKey *key)
