@@ -296,9 +296,7 @@ void NVSETypeChecker::VisitForStmt(ForStmt* stmt) {
 
 void NVSETypeChecker::VisitForEachStmt(ForEachStmt* stmt) {
 	stmt->scope = EnterScope();
-	bScopedGlobal = true;
 	stmt->lhs->Accept(this);
-	bScopedGlobal = false;
 	stmt->rhs->Accept(this);
 
 	// Get type of lhs identifier -- this is way too verbose

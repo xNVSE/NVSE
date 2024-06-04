@@ -447,13 +447,9 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
     auto argPatch = AddU16(0x0);
 
     insideNvseExpr.push(true);
-    AddU8('V');
+    AddU8('Y');
     AddU8(var->scriptType);
-    AddU16(0x0);
-
-    // TODO: Make for each just accept stack tokens
-    tempGlobals[var] = std::vector<size_t>{};
-    tempGlobals[var].push_back(AddU16(0x0));
+    AddU16(var->index);
     
     stmt->rhs->Accept(this);
     AddU8(kOpType_In);
