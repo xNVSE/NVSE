@@ -21,8 +21,6 @@ enum OPCodes {
     OP_AR_MAP = 0x1568,
     OP_AR_FIND = 0x1557,
     OP_AR_BAD_NUMERIC_INDEX = 0x155F,
-    OP_PUSH_LOCAL_STACK = 0x1670,
-    OP_POP_LOCAL_STACK = 0x1671,
 };
 
 void NVSECompiler::ClearScopedGlobals() {
@@ -190,9 +188,7 @@ void NVSECompiler::VisitBeginStmt(const BeginStmt* stmt) {
     SetU16(beginPatch, data.size() - beginStart);
     auto blockStart = data.size();
 
-    PerformCall(OP_PUSH_LOCAL_STACK);
     CompileBlock(stmt->block, true);
-    PerformCall(OP_POP_LOCAL_STACK);
 
     // OP_END
     AddU32(static_cast<uint32_t>(ScriptParsing::ScriptStatementCode::End));
@@ -245,9 +241,7 @@ void NVSECompiler::VisitFnStmt(FnDeclStmt* stmt) {
     SetU16(opModeLenPatch, data.size() - opModeStart);
 
     // Compile script
-    PerformCall(OP_PUSH_LOCAL_STACK);
     CompileBlock(stmt->body, false);
-    PerformCall(OP_POP_LOCAL_STACK);
 
     // OP_END
     AddU32(static_cast<uint32_t>(ScriptParsing::ScriptStatementCode::End));
@@ -536,9 +530,6 @@ void NVSECompiler::VisitIfStmt(IfStmt* stmt) {
 }
 
 void NVSECompiler::VisitReturnStmt(ReturnStmt* stmt) {
-    // Pop off stack frame before return
-    PerformCall(OP_POP_LOCAL_STACK);
-    
     // Compile SetFunctionValue if we have a return value
     if (stmt->expr) {
         StartCall(OP_SET_FUNCTION_VALUE);
@@ -955,9 +946,7 @@ void NVSECompiler::VisitLambdaExpr(LambdaExpr* expr) {
 
         // Compile script
         insideNvseExpr.push(false);
-        PerformCall(OP_PUSH_LOCAL_STACK);
         CompileBlock(expr->body, false);
-        PerformCall(OP_POP_LOCAL_STACK);
         insideNvseExpr.pop();
 
         // OP_END
