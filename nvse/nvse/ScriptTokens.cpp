@@ -332,7 +332,7 @@ ForEachContextToken::ForEachContextToken(UInt32 srcID, UInt32 iterID, Variable v
 
 thread_local SmallObjectsAllocator::FastAllocator<ScriptToken, 32> g_scriptTokenAllocator;
 thread_local SmallObjectsAllocator::FastAllocator<ArrayElementToken, 4> g_arrayElementTokenAllocator;
-thread_local SmallObjectsAllocator::FastAllocator<ForEachContextToken, sizeof(ForEachContextToken)> g_forEachTokenAllocator;
+thread_local SmallObjectsAllocator::FastAllocator<ForEachContextToken, 16> g_forEachTokenAllocator;
 
 void *ForEachContextToken::operator new(size_t size)
 {
