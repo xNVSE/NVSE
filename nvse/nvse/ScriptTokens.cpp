@@ -324,8 +324,8 @@ ScriptToken::ScriptToken(NVSEArrayVarInterface::Element& elem) : refIdx(0), vari
 	}
 }
 
-ForEachContextToken::ForEachContextToken(UInt32 srcID, UInt32 iterID, UInt32 varType, ForEachContext::Variable var, bool isStackVar)
-	: ScriptToken(kTokenType_ForEachContext, Script::eVarType_Invalid, 0), context(srcID, iterID, varType, var, isStackVar)
+ForEachContextToken::ForEachContextToken(UInt32 srcID, UInt32 iterID, Variable var)
+	: ScriptToken(kTokenType_ForEachContext, Script::eVarType_Invalid, 0), context(srcID, iterID, var)
 {
 	value.formID = 0;
 }
@@ -349,17 +349,17 @@ std::unique_ptr<ScriptToken> ScriptToken::Create(ForEachContext *forEach)
 	if (!forEach)
 		return nullptr;
 
-	if (forEach->variableType == Script::eVarType_String)
+	if (forEach->iterVar.type == Script::eVarType_String)
 	{
 		if (!g_StringMap.Get(forEach->iteratorID) || !g_StringMap.Get(forEach->sourceID))
 			return nullptr;
 	}
-	else if (forEach->variableType == Script::eVarType_Array)
+	else if (forEach->iterVar.type == Script::eVarType_Array)
 	{
 		if (!g_ArrayMap.Get(forEach->sourceID) || !g_ArrayMap.Get(forEach->iteratorID))
 			return nullptr;
 	}
-	else if (forEach->variableType == Script::eVarType_Ref)
+	else if (forEach->iterVar.type == Script::eVarType_Ref)
 	{
 		auto const form = (TESForm *)forEach->sourceID;
 		auto const target = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
@@ -369,9 +369,7 @@ std::unique_ptr<ScriptToken> ScriptToken::Create(ForEachContext *forEach)
 	else
 		return nullptr;
 
-	return std::make_unique<ForEachContextToken>(forEach->sourceID, forEach->iteratorID, 
-		forEach->variableType, 
-		forEach->valueIterVar, forEach->isValueStackVar);
+	return std::make_unique<ForEachContextToken>(forEach->sourceID, forEach->iteratorID, forEach->iterVar);
 }
 
 std::unique_ptr<ScriptToken> ScriptToken::Create(ArrayID arrID, ArrayKey *key)
@@ -998,7 +996,8 @@ CommandReturnType ScriptToken::GetReturnType() const
 
 Script::VariableType ScriptToken::GetTokenTypeAsVariableType() const
 {
-	if (CanConvertTo(kTokenType_Number)) {
+	if (CanConvertTo(kTokenType_Number)) 
+	{
 		return Script::VariableType::eVarType_Float;
 	}
 	if (CanConvertTo(kTokenType_String))

@@ -52,19 +52,18 @@ public:
 class ArrayIterLoop : public ForEachLoop
 {
 	ArrayID m_srcID;
-	ArrayID m_iterID;
+	ArrayID m_iterID{}; // potentially null if passing values directly to variables while iterating.
 	ArrayKey m_curKey;
 	UInt8 m_modIndex;
 
-	void UpdateIterator(const ArrayElement *elem);
+	bool UpdateIterator(const ArrayElement *elem);
 
 public:
-	bool m_isStackVar;
-	union Variable
-	{
-		ScriptLocal* local;
-		StackVariables::Index_t stackVarIdx;
-	} m_iterVar;
+	// Either one is optional, or both could be valid at the same time.
+	// If m_iterID is not null, then m_keyIterVar is unused and m_valueIterVar will point to the iterator arrayID.
+	// If m_iterID is null, then the variables will always be stack variables.
+	Variable m_valueIterVar{};
+	Variable m_keyIterVar{};
 
 	ArrayIterLoop(const ForEachContext *context, UInt8 modIndex);
 	~ArrayIterLoop() override;
@@ -103,7 +102,7 @@ class ContainerIterLoop : public ForEachLoop
 		ScriptLocal* local;
 		StackVariables::Index_t stackVarIdx;
 	} m_refVar;
-	bool m_isStackVar;
+	bool m_isValueStackVar;
 	UInt32 m_iterIndex;
 	Vector<ExtraContainerChanges::EntryData *> m_elements;
 
@@ -126,7 +125,7 @@ class FormListIterLoop : public ForEachLoop
 		ScriptLocal* local;
 		StackVariables::Index_t stackVarIdx;
 	} m_refVar;
-	bool m_isStackVar;
+	bool m_isValueStackVar;
 
 	bool GetNext();
 

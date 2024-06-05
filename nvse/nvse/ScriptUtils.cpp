@@ -442,8 +442,9 @@ std::unique_ptr<ScriptToken> Eval_Assign_String(OperatorType op, ScriptToken *lh
 				StackVariables::SetLocalStackVarVal(lh->value.stackVarIdx, strVarID);
 			}
 		}
-		else
+		else {
 			lhStrVar->Set(std::move(*rhStrVar));
+		}
 		return ScriptToken::Create(lh->GetScriptLocal(), lhStrVar);
 	}
 	
@@ -477,12 +478,12 @@ std::unique_ptr<ScriptToken> Eval_Assign_Form(OperatorType op, ScriptToken *lh, 
 	const UInt32 formID = rh->GetFormID();
 	if (auto lhVar = lh->GetScriptLocal())
 	{
-		auto const outRefID = reinterpret_cast<UInt64*>(&(lhVar->data));
+		auto* const outRefID = reinterpret_cast<UInt64*>(&(lhVar->data));
 		*outRefID = formID;
 	}
 	else if (lh->type == kTokenType_RefStackVar)
 	{
-		auto const outRefID = reinterpret_cast<UInt64*>(&(StackVariables::GetLocalStackVarVal(lh->value.stackVarIdx)));
+		auto* const outRefID = reinterpret_cast<UInt64*>(&(StackVariables::GetLocalStackVarVal(lh->value.stackVarIdx)));
 		*outRefID = formID;
 	}
 	return ScriptToken::CreateForm(formID);
@@ -1325,12 +1326,12 @@ std::unique_ptr<ScriptToken> Eval_In(OperatorType op, ScriptToken *lh, ScriptTok
 
 		if (auto* localVar = lh->GetScriptLocal())
 		{
-			ForEachContext con(rh->GetArrayID(), iterID, Script::eVarType_Array, localVar);
+			ForEachContext con(rh->GetArrayID(), iterID, Variable{ localVar, Script::eVarType_Array });
 			return ScriptToken::Create(&con);
 		}
 		else if (lh->value.stackVarIdx) // assume stack variable
 		{
-			ForEachContext con(rh->GetArrayID(), iterID, Script::eVarType_Array, lh->value.stackVarIdx);
+			ForEachContext con(rh->GetArrayID(), iterID, Variable{ lh->value.stackVarIdx, Script::eVarType_Array });
 			return ScriptToken::Create(&con);
 		}
 	}
@@ -1347,7 +1348,7 @@ std::unique_ptr<ScriptToken> Eval_In(OperatorType op, ScriptToken *lh, ScriptTok
 				iterID = AddStringVar("", *lh, *context, nullptr);
 				var->data = static_cast<int>(iterID);
 			}
-			ForEachContext con(srcID, iterID, Script::eVarType_String, var);
+			ForEachContext con(srcID, iterID, Variable{ var, Script::eVarType_String });
 			return ScriptToken::Create(&con);
 		}
 		else if (lh->value.stackVarIdx) // assume stack variable
@@ -1359,7 +1360,7 @@ std::unique_ptr<ScriptToken> Eval_In(OperatorType op, ScriptToken *lh, ScriptTok
 				g_StringMap.Add(context->script->GetModIndex(), "", true, nullptr);
 				StackVariables::SetLocalStackVarVal(lh->value.stackVarIdx, static_cast<int>(iterID));
 			}
-			ForEachContext con(srcID, iterID, Script::eVarType_String, lh->value.stackVarIdx);
+			ForEachContext con(srcID, iterID, Variable{ lh->value.stackVarIdx, Script::eVarType_String });
 			return ScriptToken::Create(&con);
 		}
 	}
@@ -1376,12 +1377,12 @@ std::unique_ptr<ScriptToken> Eval_In(OperatorType op, ScriptToken *lh, ScriptTok
 		{
 			if (ScriptLocal* var = lh->GetScriptLocal())
 			{
-				ForEachContext con(reinterpret_cast<UInt32>(form), 0, Script::eVarType_Ref, lh->GetScriptLocal());
+				ForEachContext con(reinterpret_cast<UInt32>(form), 0, Variable{ var, Script::eVarType_Ref });
 				return ScriptToken::Create(&con);
 			}
 			else if (lh->value.stackVarIdx) // assume stack variable
 			{
-				ForEachContext con(reinterpret_cast<UInt32>(form), 0, Script::eVarType_Ref, lh->value.stackVarIdx);
+				ForEachContext con(reinterpret_cast<UInt32>(form), 0, Variable{ lh->value.stackVarIdx, Script::eVarType_Ref });
 				return ScriptToken::Create(&con);
 			}
 		}
@@ -1389,7 +1390,7 @@ std::unique_ptr<ScriptToken> Eval_In(OperatorType op, ScriptToken *lh, ScriptTok
 		return nullptr;
 	}
 	}
-	context->Error("Unsupported variable type (only array_var, string_var and ref supported)");
+	context->Error("Unsupported variable type to iterate over (only array, string and ref variables supported for non-alt ForEach)");
 	return nullptr;
 }
 
