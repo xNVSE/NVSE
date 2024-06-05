@@ -30,6 +30,10 @@ ArrayIterLoop::ArrayIterLoop(const ForEachContext* context, UInt8 modIndex) : m_
 		g_ArrayMap.RemoveReference(&m_iterVar.local->data, modIndex);
 		g_ArrayMap.AddReference(&m_iterVar.local->data, context->iteratorID, modIndex);
 	}
+	else
+	{
+		StackVariables::SetLocalStackVarVal(m_iterVar.stackVarIdx, context->iteratorID);
+	}
 
 	ArrayVar *arr = g_ArrayMap.Get(m_srcID);
 	if (arr)
@@ -86,7 +90,10 @@ ArrayIterLoop::~ArrayIterLoop()
 		//g_ArrayMap.RemoveReference(&m_iterID, 0xFF);
 		g_ArrayMap.RemoveReference(&m_iterVar.local->data, m_modIndex);
 	}
-
+	else
+	{
+		StackVariables::SetLocalStackVarVal(m_iterVar.stackVarIdx, 0);
+	}
 }
 
 StringIterLoop::StringIterLoop(const ForEachContext* context)
