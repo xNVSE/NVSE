@@ -23,15 +23,18 @@ ArrayIterLoop::ArrayIterLoop(const ForEachContext* context, UInt8 modIndex) : m_
 	m_iterID = context->iteratorID;
 	m_valueIterVar = context->iterVar;
 
-	if (!m_valueIterVar.isStackVar)
+	if (m_iterID)
 	{
-		// clear the iterator var before initializing it
-		g_ArrayMap.RemoveReference(&m_valueIterVar.GetScriptLocal()->data, modIndex);
-		g_ArrayMap.AddReference(&m_valueIterVar.GetScriptLocal()->data, context->iteratorID, modIndex);
-	}
-	else
-	{
-		StackVariables::SetLocalStackVarVal(m_valueIterVar.GetStackVarIdx(), context->iteratorID);
+		if (!m_valueIterVar.isStackVar)
+		{
+			// clear the iterator var before initializing it
+			g_ArrayMap.RemoveReference(&m_valueIterVar.GetScriptLocal()->data, m_modIndex);
+			g_ArrayMap.AddReference(&m_valueIterVar.GetScriptLocal()->data, m_iterID, m_modIndex);
+		}
+		else
+		{
+			StackVariables::SetLocalStackVarVal(m_valueIterVar.GetStackVarIdx(), m_iterID);
+		}
 	}
 
 	ArrayVar *arr = g_ArrayMap.Get(m_srcID);
@@ -42,27 +45,110 @@ ArrayIterLoop::ArrayIterLoop(const ForEachContext* context, UInt8 modIndex) : m_
 		if (arr->GetFirstElement(&elem, &key))
 		{
 			m_curKey = *key;
-			UpdateIterator(elem);		// initialize iterator to first element in array
+			if (!UpdateIterator(elem)) {		// initialize iterator to first element in array
+				m_srcID = 0; // our way of signalling something messed up
+			}
 		}
 	}
 }
 
-void ArrayIterLoop::UpdateIterator(const ArrayElement* elem)
+bool ArrayIterLoop::UpdateIterator(const ArrayElement* elem)
 {
-	ArrayVar *arr = g_ArrayMap.Get(m_iterID);
-	if (!arr) return;
-
-	// iter["key"] = element key
-	ArrayElement *newElem = arr->Get("key", true);
-	if (newElem)
+	if (m_iterID)
 	{
-		if (m_curKey.KeyType() == kDataType_String)
-			newElem->SetString(m_curKey.key.str);
-		else newElem->SetNumber(m_curKey.key.num);
+		ArrayVar* arr = g_ArrayMap.Get(m_iterID);
+
+		// iter["key"] = element key
+		ArrayElement* newElem = arr->Get("key", true);
+		if (newElem)
+		{
+			if (m_curKey.KeyType() == kDataType_String)
+				newElem->SetString(m_curKey.key.str);
+			else newElem->SetNumber(m_curKey.key.num);
+		}
+		else [[unlikely]]
+		{
+			return false;
+		}
+
+		// iter["value"] = element data
+		newElem = arr->Get("value", true);
+		if (newElem) {
+			newElem->Set(elem);
+		}
+		else [[unlikely]] {
+			return false;
+		}
+		return true;
 	}
-	// iter["value"] = element data
-	newElem = arr->Get("value", true);
-	if (newElem) newElem->Set(elem);
+	else { // handle ForEachAlt-style iteration over an array
+		// Assume the types for the keys don't change mid-iteration and that the key iter var was already typechecked at the start.
+		if (m_keyIterVar.IsValid()) {
+			if (m_curKey.KeyType() == kDataType_String) {
+				auto id = g_StringMap.Add(m_modIndex, m_curKey.key.GetStr(), true, nullptr);
+				StackVariables::SetLocalStackVarVal(m_keyIterVar.GetStackVarIdx(), id);
+			}
+			else {
+				auto num = m_curKey.key.num;
+				if (m_keyIterVar.GetType() == Script::eVarType_Integer) {
+					num = std::floor(num);
+				}
+				StackVariables::SetLocalStackVarVal(m_keyIterVar.GetStackVarIdx(), num);
+			}
+		}
+
+		if (m_valueIterVar.IsValid())
+		{
+			// Try to assign the array's nth value to a variable.
+			// If the variable is the wrong type, report error.
+			switch (elem->DataType())
+			{
+			case DataType::kDataType_Array:
+			{
+				if (m_valueIterVar.GetType() != Script::eVarType_Array) [[unlikely]] {
+					return false;
+				}
+				StackVariables::SetLocalStackVarVal(m_valueIterVar.GetStackVarIdx(), elem->m_data.arrID);
+				break;
+			}
+			case DataType::kDataType_String:
+			{
+				if (m_valueIterVar.GetType() != Script::eVarType_String) [[unlikely]] {
+					return false;
+				}
+				auto id = g_StringMap.Add(m_modIndex, elem->m_data.GetStr(), true, nullptr);
+				StackVariables::SetLocalStackVarVal(m_valueIterVar.GetStackVarIdx(), id);
+				break;
+			}
+			case DataType::kDataType_Numeric:
+			{
+				if (m_valueIterVar.GetType() != Script::eVarType_Float
+					&& m_valueIterVar.GetType() != Script::eVarType_Integer) [[unlikely]]
+				{
+					return false;
+				}
+				auto num = elem->m_data.num;
+				if (m_valueIterVar.GetType() == Script::eVarType_Integer) {
+					num = std::floor(num);
+				}
+				StackVariables::SetLocalStackVarVal(m_valueIterVar.GetStackVarIdx(), num);
+				break;
+			}
+			case DataType::kDataType_Form:
+			{
+				if (m_valueIterVar.GetType() != Script::eVarType_Ref) [[unlikely]] {
+					return false;
+				}
+				StackVariables::SetLocalStackVarFormID(m_valueIterVar.GetStackVarIdx(), elem->m_data.formID);
+				break;
+			}
+			default:
+				return false;
+			}
+		}
+	
+		return true;
+	}
 }
 
 bool ArrayIterLoop::Update(COMMAND_ARGS)
@@ -75,8 +161,7 @@ bool ArrayIterLoop::Update(COMMAND_ARGS)
 		if (arr->GetNextElement(&m_curKey, &elem, &key))
 		{
 			m_curKey = *key;
-			UpdateIterator(elem);	
-			return true;
+			return UpdateIterator(elem);	
 		}
 	}
 	return false;
@@ -84,14 +169,26 @@ bool ArrayIterLoop::Update(COMMAND_ARGS)
 
 ArrayIterLoop::~ArrayIterLoop()
 {
-	if (!m_valueIterVar.isStackVar)
+	if (m_iterID)
 	{
-		//g_ArrayMap.RemoveReference(&m_iterID, 0xFF);
-		g_ArrayMap.RemoveReference(&m_valueIterVar.GetScriptLocal()->data, m_modIndex);
+		if (!m_valueIterVar.isStackVar)
+		{
+			//g_ArrayMap.RemoveReference(&m_iterID, 0xFF);
+			g_ArrayMap.RemoveReference(&m_valueIterVar.GetScriptLocal()->data, m_modIndex);
+		}
+		else
+		{
+			StackVariables::SetLocalStackVarVal(m_valueIterVar.GetStackVarIdx(), 0);
+			// Can assume m_keyIterVar is invalid.
+		}
 	}
-	else
-	{
-		StackVariables::SetLocalStackVarVal(m_valueIterVar.GetStackVarIdx(), 0);
+	else {
+		if (m_valueIterVar.IsValid()) {
+			StackVariables::SetLocalStackVarVal(m_valueIterVar.GetStackVarIdx(), 0);
+		}
+		if (m_keyIterVar.IsValid()) {
+			StackVariables::SetLocalStackVarVal(m_keyIterVar.GetStackVarIdx(), 0);
+		}
 	}
 }
 

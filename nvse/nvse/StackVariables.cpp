@@ -8,6 +8,12 @@ namespace StackVariables
 		g_localStackVars[g_localStackPtr].set(idx - 1, val);
 	}
 
+	void SetLocalStackVarFormID(Index_t idx, UInt32 formID)
+	{
+		auto* const outRefID = reinterpret_cast<UInt64*>(&(StackVariables::GetLocalStackVarVal(idx)));
+		*outRefID = formID;
+	}
+
 	double& GetLocalStackVarVal(Index_t idx)
 	{
 		return g_localStackVars[g_localStackPtr].get(idx - 1);

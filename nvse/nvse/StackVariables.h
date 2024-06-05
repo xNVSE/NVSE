@@ -33,6 +33,7 @@ namespace StackVariables
 	inline thread_local Index_t g_localStackPtr{ -1 };
 
 	void SetLocalStackVarVal(Index_t idx, Value_t val);
+	void SetLocalStackVarFormID(Index_t idx, UInt32 formID);
 	Value_t& GetLocalStackVarVal(Index_t idx);
 
 	void PushLocalStack();
@@ -43,14 +44,18 @@ namespace StackVariables
 struct Variable {
 	union
 	{
-		ScriptLocal* local;
+		ScriptLocal* local{};
 		StackVariables::Index_t stackVarIdx;
-	} var;
+	} var{};
 	bool isStackVar = false;
 	Script::VariableType type = Script::eVarType_Invalid;
 
 	[[nodiscard]] bool IsValid() const {
 		return var.local != nullptr;
+	}
+
+	[[nodiscard]] Script::VariableType GetType() const {
+		return type;
 	}
 
 	// Could check isStackVar, but we assume that was already checked.

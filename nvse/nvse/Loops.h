@@ -56,11 +56,12 @@ class ArrayIterLoop : public ForEachLoop
 	ArrayKey m_curKey;
 	UInt8 m_modIndex;
 
-	void UpdateIterator(const ArrayElement *elem);
+	bool UpdateIterator(const ArrayElement *elem);
 
 public:
 	// Either one is optional, or both could be valid at the same time.
 	// If m_iterID is not null, then m_keyIterVar is unused and m_valueIterVar will point to the iterator arrayID.
+	// If m_iterID is null, then the variables will always be stack variables.
 	Variable m_valueIterVar{};
 	Variable m_keyIterVar{};
 

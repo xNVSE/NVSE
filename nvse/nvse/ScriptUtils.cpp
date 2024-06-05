@@ -442,8 +442,9 @@ std::unique_ptr<ScriptToken> Eval_Assign_String(OperatorType op, ScriptToken *lh
 				StackVariables::SetLocalStackVarVal(lh->value.stackVarIdx, strVarID);
 			}
 		}
-		else
+		else {
 			lhStrVar->Set(std::move(*rhStrVar));
+		}
 		return ScriptToken::Create(lh->GetScriptLocal(), lhStrVar);
 	}
 	
@@ -477,12 +478,12 @@ std::unique_ptr<ScriptToken> Eval_Assign_Form(OperatorType op, ScriptToken *lh, 
 	const UInt32 formID = rh->GetFormID();
 	if (auto lhVar = lh->GetScriptLocal())
 	{
-		auto const outRefID = reinterpret_cast<UInt64*>(&(lhVar->data));
+		auto* const outRefID = reinterpret_cast<UInt64*>(&(lhVar->data));
 		*outRefID = formID;
 	}
 	else if (lh->type == kTokenType_RefStackVar)
 	{
-		auto const outRefID = reinterpret_cast<UInt64*>(&(StackVariables::GetLocalStackVarVal(lh->value.stackVarIdx)));
+		auto* const outRefID = reinterpret_cast<UInt64*>(&(StackVariables::GetLocalStackVarVal(lh->value.stackVarIdx)));
 		*outRefID = formID;
 	}
 	return ScriptToken::CreateForm(formID);
