@@ -48,7 +48,7 @@ void NVSECompiler::ClearScopedGlobals() {
 
 void NVSECompiler::PatchScopedGlobals() {
     for (auto &[var, patches] : tempGlobals) {
-        const auto dataIdx = AddLocal(var->GetName(), var->scriptType);
+        const auto dataIdx = AddLocal(var->GetName(), var->variableType);
         for (const auto idx : patches) {
             SetU16(idx, dataIdx);
         }
@@ -229,7 +229,7 @@ void NVSECompiler::VisitFnStmt(FnDeclStmt* stmt) {
         tempGlobals[var] = std::vector<size_t>{};
         tempGlobals[var].push_back(AddU16(0x0));
         
-        AddU8(var->scriptType);
+        AddU8(var->variableType);
 
         CompDbg("Creating global var %s.\n", var->rename.c_str());
     }
@@ -322,7 +322,7 @@ void NVSECompiler::VisitVarDeclStmt(VarDeclStmt* stmt) {
 
             // Add arg to stack
             AddU8('Y');
-            AddU8(var->scriptType);
+            AddU8(var->variableType);
             AddU16(var->index);
 
             // Build expression
@@ -433,7 +433,6 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
             var2 = stmt->scope->resolveVariable(std::get<0>(stmt->declarations[1]->values[0]).lexeme);
         }
 
-
         // OP_FOREACH
         AddU16(OP_FOREACH_ALT);
 
@@ -466,7 +465,7 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
             argStart = data.size();
             argPatch = AddU16(0x0);
             AddU8('Y');
-            AddU8(var2 != nullptr ? var2->scriptType : 0);
+            AddU8(var2 != nullptr ? var2->variableType : 0);
             AddU16(var2 != nullptr ? var2->index : 0);
             SetU16(argPatch, data.size() - argStart);
             SetU16(exprPatch, data.size() - exprStart);
@@ -475,7 +474,7 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
             argStart = data.size();
             argPatch = AddU16(0x0);
             AddU8('Y');
-            AddU8(var1 != nullptr ? var1->scriptType : 0);
+            AddU8(var1 != nullptr ? var1->variableType : 0);
             AddU16(var1 != nullptr ? var1->index : 0);
             SetU16(argPatch, data.size() - argStart);
             SetU16(exprPatch, data.size() - exprStart);
@@ -484,7 +483,7 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
             argStart = data.size();
             argPatch = AddU16(0x0);
             AddU8('Y');
-            AddU8(var1 != nullptr ? var1->scriptType : 0);
+            AddU8(var1 != nullptr ? var1->variableType : 0);
             AddU16(var1 != nullptr ? var1->index : 0);
             SetU16(argPatch, data.size() - argStart);
             SetU16(exprPatch, data.size() - exprStart);
@@ -530,7 +529,7 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
 
         insideNvseExpr.push(true);
         AddU8('Y');
-        AddU8(var->scriptType);
+        AddU8(var->variableType);
         AddU16(var->index);
 
         stmt->rhs->Accept(this);
@@ -912,7 +911,7 @@ void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
         }
         CompDbg("Read from local variable %s at scope %d:%d.\n", var->token.lexeme.c_str(), var->scopeIndex, var->index);
         AddU8('Y');
-        AddU8(var->scriptType);
+        AddU8(var->variableType);
         AddU16(var->index);
     }
 
@@ -924,7 +923,7 @@ void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
 
         CompDbg("Read from global variable %s\n", name.c_str());
         AddU8('V');
-        AddU8(var->scriptType);
+        AddU8(var->variableType);
         AddU16(0);
 
         if (!var->rename.empty()) {
@@ -1012,7 +1011,7 @@ void NVSECompiler::VisitLambdaExpr(LambdaExpr* expr) {
             tempGlobals[var] = std::vector<size_t>{};
             tempGlobals[var].push_back(AddU16(0x0));
         
-            AddU8(var->scriptType);
+            AddU8(var->variableType);
 
             CompDbg("Creating global var %s.\n", var->rename.c_str());
         }

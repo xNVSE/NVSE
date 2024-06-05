@@ -9,7 +9,7 @@ class NVSEScope {
 public:
     struct ScopeVar {
         Token_Type detailedType;
-        Script::VariableType scriptType;
+        Script::VariableType variableType;
         
         NVSEToken token;
         uint32_t index;

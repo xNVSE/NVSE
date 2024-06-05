@@ -247,7 +247,7 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 		if (bScopedGlobal || stmt->bExport || scopes.top() == globalScope) {
 			var.global = true;
 		}
-        var.scriptType = GetScriptTypeFromToken(stmt->type);
+        var.variableType = GetScriptTypeFromToken(stmt->type);
 
 		// Assign this new scope var to this statment for lookup in compiler
 		stmt->scopeVars.push_back(scopes.top()->addVariable(name.lexeme, var, bScopedGlobal));
