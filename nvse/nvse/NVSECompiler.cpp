@@ -444,31 +444,51 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
         auto jmpPatch = AddU32(0x0);
 
         // Num args
-        AddU8(0x3);
+        // Either 2 or 3, depending on:
+        // "for ([int iKey, _] in { "1"::2 "3"::4 }" - 3 args, even though one can be an invalid variable
+        // VS:
+        // "for ([int iKey] in { "1"::2 "3"::4 }" - 2 args
+        AddU8(1 + stmt->declarations.size());
         insideNvseExpr.push(true);
 
-        // Arg 1 len
+        // Arg 1 - the source array
         auto argStart = data.size();
         auto argPatch = AddU16(0x0);
         stmt->rhs->Accept(this);
         SetU16(argPatch, data.size() - argStart);
         SetU16(exprPatch, data.size() - exprStart);
 
-        argStart = data.size();
-        argPatch = AddU16(0x0);
-        AddU8('Y');
-        AddU8(var1 != nullptr ? var1->scriptType : 0);
-        AddU16(var1 != nullptr ? var1->index : 0);
-        SetU16(argPatch, data.size() - argStart);
-        SetU16(exprPatch, data.size() - exprStart);
+        // Arg 2
+        // If there's two vars (including "_"), the 2nd arg for ForEachAlt is the valueIter.
+        // However, our syntax has key arg first: "for ([int iKey, int iValue] in { "1"::2 "3"::4 })"
+        // Thus pass iValue arg as 2nd arg instead of 3rd, even though it's the 2nd var in the statement.
+        if (stmt->declarations.size() == 2) {
+            argStart = data.size();
+            argPatch = AddU16(0x0);
+            AddU8('Y');
+            AddU8(var2 != nullptr ? var2->scriptType : 0);
+            AddU16(var2 != nullptr ? var2->index : 0);
+            SetU16(argPatch, data.size() - argStart);
+            SetU16(exprPatch, data.size() - exprStart);
 
-        argStart = data.size();
-        argPatch = AddU16(0x0);
-        AddU8('Y');
-        AddU8(var2 != nullptr ? var2->scriptType : 0);
-        AddU16(var2 != nullptr ? var2->index : 0);
-        SetU16(argPatch, data.size() - argStart);
-        SetU16(exprPatch, data.size() - exprStart);
+            // Arg 3 - pass keyIterVar last 
+            argStart = data.size();
+            argPatch = AddU16(0x0);
+            AddU8('Y');
+            AddU8(var1 != nullptr ? var1->scriptType : 0);
+            AddU16(var1 != nullptr ? var1->index : 0);
+            SetU16(argPatch, data.size() - argStart);
+            SetU16(exprPatch, data.size() - exprStart);
+        } 
+        else { // assume 1
+            argStart = data.size();
+            argPatch = AddU16(0x0);
+            AddU8('Y');
+            AddU8(var1 != nullptr ? var1->scriptType : 0);
+            AddU16(var1 != nullptr ? var1->index : 0);
+            SetU16(argPatch, data.size() - argStart);
+            SetU16(exprPatch, data.size() - exprStart);
+        }
 
         insideNvseExpr.pop();
 

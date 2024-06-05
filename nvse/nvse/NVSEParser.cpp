@@ -207,7 +207,7 @@ StmtPtr NVSEParser::ForStatement() {
 	bool forEach = false;
 	StmtPtr init = {nullptr};
 	if (!Peek(NVSETokenType::Semicolon)) {
-		// for (int key in [1::1, 2::2])..
+		// for (array aIter in [1::1, 2::2])..
 		if (MatchesType()) {
 			auto type = previousToken;
 			auto ident = Expect(NVSETokenType::Identifier, "Expected identifier.");
@@ -229,7 +229,11 @@ StmtPtr NVSEParser::ForStatement() {
 			Expect(NVSETokenType::Semicolon, "Expected ';' after loop initializer.");
 			init = std::make_shared<VarDeclStmt>(type, ident, value);
 		}
-		// for ([int key, int value] in [1::1, 2::2])..
+		// for ([int key, int value] in [1::1, 2::2]).
+		// for ([_, int value] in [1::1, 2::2]).
+		// for ([int key, _] in [1::1, 2::2]).
+		// for ([int key] in [1::1, 2::2]).
+		// for ([int value] in [1, 2]).
 		else if (Match(NVSETokenType::LeftBracket)) {
 			std::vector<std::shared_ptr<VarDeclStmt>> decls{};
 
