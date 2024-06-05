@@ -11,6 +11,7 @@ enum OPCodes {
     OP_WHILE = 0x153B,
     OP_LOOP = 0x153C,
     OP_FOREACH = 0x153D,
+    OP_FOREACH_ALT = 0x1672,
     OP_TERNARY = 0x166E,
     OP_CALL = 0x1545,
     OP_SET_MOD_LOCAL_DATA = 0x1549,
@@ -419,53 +420,118 @@ void NVSECompiler::VisitForStmt(ForStmt* stmt) {
 }
 
 void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
-    // Get variable info
-    auto varDecl = dynamic_cast<VarDeclStmt*>(stmt->lhs.get());
-    if (!varDecl) {
-        throw std::runtime_error("Unexpected compiler error.");
+    if (stmt->decompose) {
+        // Try to resolve second var if there is one
+        NVSEScope::ScopeVar* var1 = nullptr;
+        if (stmt->declarations[0]) {
+            var1 = stmt->scope->resolveVariable(std::get<0>(stmt->declarations[0]->values[0]).lexeme);
+        }
+
+        // Try to resolve second var if there is one
+        NVSEScope::ScopeVar* var2 = nullptr;
+        if (stmt->declarations.size() == 2 && stmt->declarations[1]) {
+            var2 = stmt->scope->resolveVariable(std::get<0>(stmt->declarations[1]->values[0]).lexeme);
+        }
+
+
+        // OP_FOREACH
+        AddU16(OP_FOREACH_ALT);
+
+        // Placeholder OP_LEN
+        auto exprPatch = AddU16(0x0);
+        auto exprStart = data.size();
+
+        auto jmpPatch = AddU32(0x0);
+
+        // Num args
+        AddU8(0x3);
+        insideNvseExpr.push(true);
+
+        // Arg 1 len
+        auto argStart = data.size();
+        auto argPatch = AddU16(0x0);
+        stmt->rhs->Accept(this);
+        SetU16(argPatch, data.size() - argStart);
+        SetU16(exprPatch, data.size() - exprStart);
+
+        argStart = data.size();
+        argPatch = AddU16(0x0);
+        AddU8('Y');
+        AddU8(var1 != nullptr ? var1->scriptType : 0);
+        AddU16(var1 != nullptr ? var1->index : 0);
+        SetU16(argPatch, data.size() - argStart);
+        SetU16(exprPatch, data.size() - exprStart);
+
+        argStart = data.size();
+        argPatch = AddU16(0x0);
+        AddU8('Y');
+        AddU8(var2 != nullptr ? var2->scriptType : 0);
+        AddU16(var2 != nullptr ? var2->index : 0);
+        SetU16(argPatch, data.size() - argStart);
+        SetU16(exprPatch, data.size() - exprStart);
+
+        insideNvseExpr.pop();
+
+        loopIncrements.push(nullptr);
+        CompileBlock(stmt->block, true);
+        loopIncrements.pop();
+
+        // OP_LOOP
+        AddU16(OP_LOOP);
+        AddU16(0x0);
+        statementCounter.top()++;
+
+        // Patch jmp
+        SetU32(jmpPatch, data.size() - scriptStart.top());
+    } else {
+        // Get variable info
+        auto varDecl = stmt->declarations[0];
+        if (!varDecl) {
+            throw std::runtime_error("Unexpected compiler error.");
+        }
+
+        auto var = stmt->scope->resolveVariable(std::get<0>(varDecl->values[0]).lexeme);
+
+        // OP_FOREACH
+        AddU16(OP_FOREACH);
+
+        // Placeholder OP_LEN
+        auto exprPatch = AddU16(0x0);
+        auto exprStart = data.size();
+
+        auto jmpPatch = AddU32(0x0);
+
+        // Num args
+        AddU8(0x1);
+
+        // Arg 1 len
+        auto argStart = data.size();
+        auto argPatch = AddU16(0x0);
+
+        insideNvseExpr.push(true);
+        AddU8('Y');
+        AddU8(var->scriptType);
+        AddU16(var->index);
+
+        stmt->rhs->Accept(this);
+        AddU8(kOpType_In);
+        insideNvseExpr.pop();
+
+        SetU16(argPatch, data.size() - argStart);
+        SetU16(exprPatch, data.size() - exprStart);
+
+        loopIncrements.push(nullptr);
+        CompileBlock(stmt->block, true);
+        loopIncrements.pop();
+
+        // OP_LOOP
+        AddU16(OP_LOOP);
+        AddU16(0x0);
+        statementCounter.top()++;
+
+        // Patch jmp
+        SetU32(jmpPatch, data.size() - scriptStart.top());
     }
-    
-    auto var = stmt->scope->resolveVariable(std::get<0>(varDecl->values[0]).lexeme);
-
-    // OP_FOREACH
-    AddU16(OP_FOREACH);
-
-    // Placeholder OP_LEN
-    auto exprPatch = AddU16(0x0);
-    auto exprStart = data.size();
-
-    auto jmpPatch = AddU32(0x0);
-
-    // Num args
-    AddU8(0x1);
-
-    // Arg 1 len
-    auto argStart = data.size();
-    auto argPatch = AddU16(0x0);
-
-    insideNvseExpr.push(true);
-    AddU8('Y');
-    AddU8(var->scriptType);
-    AddU16(var->index);
-    
-    stmt->rhs->Accept(this);
-    AddU8(kOpType_In);
-    insideNvseExpr.pop();
-
-    SetU16(argPatch, data.size() - argStart);
-    SetU16(exprPatch, data.size() - exprStart);
-
-    loopIncrements.push(nullptr);
-    CompileBlock(stmt->block, true);
-    loopIncrements.pop();
-
-    // OP_LOOP
-    AddU16(OP_LOOP);
-    AddU16(0x0);
-    statementCounter.top()++;
-
-    // Patch jmp
-    SetU32(jmpPatch, data.size() - scriptStart.top());
 }
 
 void NVSECompiler::VisitIfStmt(IfStmt* stmt) {

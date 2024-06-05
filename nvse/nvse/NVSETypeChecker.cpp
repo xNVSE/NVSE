@@ -296,17 +296,25 @@ void NVSETypeChecker::VisitForStmt(ForStmt* stmt) {
 
 void NVSETypeChecker::VisitForEachStmt(ForEachStmt* stmt) {
 	stmt->scope = EnterScope();
-	stmt->lhs->Accept(this);
+	for (const auto &decl : stmt->declarations) {
+		if (decl) {
+			decl->Accept(this);
+		}
+	}
 	stmt->rhs->Accept(this);
 
-	// Get type of lhs identifier -- this is way too verbose
-	auto decl = dynamic_cast<VarDeclStmt*>(stmt->lhs.get());
-	auto ident = std::get<0>(decl->values[0]).lexeme;
-	auto lType = scopes.top()->resolveVariable(ident)->detailedType;
-	auto rType = stmt->rhs->detailedType;
-	if (s_operators[kOpType_In].GetResult(lType, rType) == kTokenType_Invalid) {
-		error(stmt->line, std::format("Invalid types '{}' and '{}' passed to for-in expression.",
-		                              TokenTypeToString(lType), TokenTypeToString(rType)));
+	if (stmt->decompose) {
+		// TODO
+	} else {
+		// Get type of lhs identifier -- this is way too verbose
+		auto decl = stmt->declarations[0];
+		auto ident = std::get<0>(decl->values[0]).lexeme;
+		auto lType = scopes.top()->resolveVariable(ident)->detailedType;
+		auto rType = stmt->rhs->detailedType;
+		if (s_operators[kOpType_In].GetResult(lType, rType) == kTokenType_Invalid) {
+			error(stmt->line, std::format("Invalid types '{}' and '{}' passed to for-in expression.",
+				TokenTypeToString(lType), TokenTypeToString(rType)));
+		}
 	}
 
 	insideLoop.push(true);

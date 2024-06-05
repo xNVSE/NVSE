@@ -127,12 +127,13 @@ struct ForStmt : Stmt {
 };
 
 struct ForEachStmt : Stmt {
-    StmtPtr lhs;
+    std::vector<std::shared_ptr<VarDeclStmt>> declarations;
     ExprPtr rhs;
     std::shared_ptr<BlockStmt> block;
+    bool decompose = false;
 
-    ForEachStmt(StmtPtr lhs, ExprPtr rhs, std::shared_ptr<BlockStmt> block) : lhs(std::move(lhs)), rhs(std::move(rhs)),
-        block(std::move(block)) {}
+    ForEachStmt(std::vector<std::shared_ptr<VarDeclStmt>> declarations, ExprPtr rhs, std::shared_ptr<BlockStmt> block, bool decompose) : declarations(std::move(declarations)), rhs(std::move(rhs)),
+        block(std::move(block)), decompose(decompose) {}
 
     void Accept(NVSEVisitor* visitor) override {
         visitor->VisitForEachStmt(this);

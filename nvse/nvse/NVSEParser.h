@@ -25,7 +25,7 @@ private:
     bool hadError = false;
 
     std::shared_ptr<FnDeclStmt> FnDecl();
-    std::shared_ptr<VarDeclStmt> VarDecl();
+    std::shared_ptr<VarDeclStmt> VarDecl(bool allowValue = true);
 
     StmtPtr Statement();
     StmtPtr ExpressionStatement();

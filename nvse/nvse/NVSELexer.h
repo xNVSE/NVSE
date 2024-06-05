@@ -78,6 +78,7 @@ enum class NVSETokenType {
     EndInterp,
     MakePair,
     Arrow,
+    Underscore,
 };
 
 static const char* TokenTypeStr[]{
@@ -170,6 +171,7 @@ static const char* TokenTypeStr[]{
     "Interp",
     "EndInterp",
     "Arrow",
+    "Underscore",
 };
 
 struct NVSEToken {

@@ -367,6 +367,8 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 		return MakeToken(NVSETokenType::Slice, ":");
 	case '.': 
 		return MakeToken(NVSETokenType::Dot, ".");
+	case '_':
+		return MakeToken(NVSETokenType::Underscore, "_");
 	default: throw std::runtime_error("Unexpected character");
 	}
 

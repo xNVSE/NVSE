@@ -171,7 +171,7 @@ StmtPtr NVSEParser::Statement() {
 	return ExpressionStatement();
 }
 
-std::shared_ptr<VarDeclStmt> NVSEParser::VarDecl() {
+std::shared_ptr<VarDeclStmt> NVSEParser::VarDecl(bool allowValue) {
 	if (!MatchesType()) {
 		Error(currentToken, "Expected type.");
 	}
@@ -181,7 +181,12 @@ std::shared_ptr<VarDeclStmt> NVSEParser::VarDecl() {
 	do {
 		auto name = Expect(NVSETokenType::Identifier, "Expected identifier.");
 		ExprPtr value{nullptr};
+
 		if (Match(NVSETokenType::Eq)) {
+			if (!allowValue) {
+				Error(previousToken, "Variable definition is not allowed here.");
+			}
+
 			value = Expression();
 		}
 
@@ -200,18 +205,19 @@ StmtPtr NVSEParser::ForStatement() {
 	bool forEach = false;
 	StmtPtr init = {nullptr};
 	if (!Peek(NVSETokenType::Semicolon)) {
+		// for (int key in [1::1, 2::2])..
 		if (MatchesType()) {
 			auto type = previousToken;
 			auto ident = Expect(NVSETokenType::Identifier, "Expected identifier.");
 
 			if (Match(NVSETokenType::In)) {
-				init = std::make_shared<VarDeclStmt>(type, ident, nullptr);
+				auto decl = std::make_shared<VarDeclStmt>(type, ident, nullptr);
 
 				ExprPtr rhs = Expression();
 				Expect(NVSETokenType::RightParen, "Expected ')'.");
 
 				std::shared_ptr<BlockStmt> block = BlockStatement();
-				return std::make_shared<ForEachStmt>(std::move(init), std::move(rhs), std::move(block));
+				return std::make_shared<ForEachStmt>(std::vector{ decl }, std::move(rhs), std::move(block), false);
 			}
 			
 			ExprPtr value{nullptr};
@@ -220,6 +226,36 @@ StmtPtr NVSEParser::ForStatement() {
 			}
 			Expect(NVSETokenType::Semicolon, "Expected ';' after loop initializer.");
 			init = std::make_shared<VarDeclStmt>(type, ident, value);
+		}
+		// for ([int key, int value] in [1::1, 2::2])..
+		else if (Match(NVSETokenType::LeftBracket)) {
+			std::vector<std::shared_ptr<VarDeclStmt>> decls{};
+
+			// LHS
+			if (Match(NVSETokenType::Underscore)) {
+				decls.push_back(nullptr);
+			} else {
+				decls.push_back(VarDecl(false));
+			}
+
+			// RHS
+			if (Match(NVSETokenType::Comma)) {
+				if (Match(NVSETokenType::Underscore)) {
+					decls.push_back(nullptr);
+				}
+				else {
+					decls.push_back(VarDecl(false));
+				}
+			}
+
+			Expect(NVSETokenType::RightBracket, "Expected ']'.");
+			Expect(NVSETokenType::In, "Expected 'in'.");
+
+			ExprPtr rhs = Expression();
+			Expect(NVSETokenType::RightParen, "Expected ')'.");
+
+			std::shared_ptr<BlockStmt> block = BlockStatement();
+			return std::make_shared<ForEachStmt>(decls, std::move(rhs), std::move(block), true);
 		}
 		else {
 			init = Statement();
