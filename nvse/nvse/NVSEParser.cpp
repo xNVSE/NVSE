@@ -42,7 +42,8 @@ std::optional<NVSEScript> NVSEParser::Parse() {
 					blocks.emplace_back(fnDecl);
 				}
 				else if (Peek(NVSETokenType::IntType) || Peek(NVSETokenType::DoubleType) || Peek(NVSETokenType::RefType) ||
-					Peek(NVSETokenType::ArrayType) || Peek(NVSETokenType::StringType)) {
+					Peek(NVSETokenType::ArrayType) || Peek(NVSETokenType::StringType)) 
+				{
 					globals.emplace_back(VarDecl());
 					Expect(NVSETokenType::Semicolon, "Expected ';' at end of statement.");
 				}
@@ -171,11 +172,10 @@ StmtPtr NVSEParser::Statement() {
 	return ExpressionStatement();
 }
 
-std::shared_ptr<VarDeclStmt> NVSEParser::VarDecl(bool allowValue) {
+std::shared_ptr<VarDeclStmt> NVSEParser::VarDecl(bool allowValue, bool allowOnlyOneVarDecl) {
 	if (!MatchesType()) {
 		Error(currentToken, "Expected type.");
 	}
-
 	auto varType = previousToken;
 	std::vector<std::tuple<NVSEToken, ExprPtr>> declarations{};
 	do {
@@ -186,11 +186,13 @@ std::shared_ptr<VarDeclStmt> NVSEParser::VarDecl(bool allowValue) {
 			if (!allowValue) {
 				Error(previousToken, "Variable definition is not allowed here.");
 			}
-
 			value = Expression();
 		}
 
 		declarations.emplace_back(name, value);
+		if (allowOnlyOneVarDecl) {
+			break;
+		}
 	}
 	while (Match(NVSETokenType::Comma));
 
@@ -235,7 +237,7 @@ StmtPtr NVSEParser::ForStatement() {
 			if (Match(NVSETokenType::Underscore)) {
 				decls.push_back(nullptr);
 			} else {
-				decls.push_back(VarDecl(false));
+				decls.push_back(VarDecl(false, true));
 			}
 
 			// RHS
@@ -244,7 +246,7 @@ StmtPtr NVSEParser::ForStatement() {
 					decls.push_back(nullptr);
 				}
 				else {
-					decls.push_back(VarDecl(false));
+					decls.push_back(VarDecl(false, true));
 				}
 			}
 
