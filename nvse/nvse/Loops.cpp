@@ -17,7 +17,9 @@ LoopManager* LoopManager::GetSingleton()
 	return localData.loopManager;
 }
 
-ArrayIterLoop::ArrayIterLoop(const ForEachContext* context, UInt8 modIndex) : m_modIndex(modIndex)
+
+
+ArrayIterLoop::ArrayIterLoop(const ForEachContext* context, Script* script) : m_script(script)
 {
 	m_srcID = context->sourceID;
 	m_iterID = context->iteratorID;
@@ -28,8 +30,8 @@ ArrayIterLoop::ArrayIterLoop(const ForEachContext* context, UInt8 modIndex) : m_
 		if (!m_valueIterVar.isStackVar)
 		{
 			// clear the iterator var before initializing it
-			g_ArrayMap.RemoveReference(&m_valueIterVar.GetScriptLocal()->data, m_modIndex);
-			g_ArrayMap.AddReference(&m_valueIterVar.GetScriptLocal()->data, m_iterID, m_modIndex);
+			g_ArrayMap.RemoveReference(&m_valueIterVar.GetScriptLocal()->data, m_script->GetModIndex());
+			g_ArrayMap.AddReference(&m_valueIterVar.GetScriptLocal()->data, m_iterID, m_script->GetModIndex());
 		}
 		else
 		{
@@ -37,11 +39,21 @@ ArrayIterLoop::ArrayIterLoop(const ForEachContext* context, UInt8 modIndex) : m_
 		}
 	}
 
-	ArrayVar *arr = g_ArrayMap.Get(m_srcID);
-	if (arr)
+	Init();
+}
+
+ArrayIterLoop::ArrayIterLoop(ArrayID sourceID, Script* script, Variable valueIterVar, Variable keyIterVar)
+	: m_srcID(sourceID), m_script(script), m_valueIterVar(valueIterVar), m_keyIterVar(keyIterVar)
+{
+	Init();
+}
+
+void ArrayIterLoop::Init()
+{
+	if (ArrayVar* arr = g_ArrayMap.Get(m_srcID))
 	{
-		const ArrayKey *key;
-		ArrayElement *elem;
+		const ArrayKey* key;
+		ArrayElement* elem;
 		if (arr->GetFirstElement(&elem, &key))
 		{
 			m_curKey = *key;
@@ -49,6 +61,9 @@ ArrayIterLoop::ArrayIterLoop(const ForEachContext* context, UInt8 modIndex) : m_
 				m_srcID = 0; // our way of signalling something messed up
 			}
 		}
+	}
+	else {
+		m_srcID = 0;
 	}
 }
 
@@ -85,7 +100,7 @@ bool ArrayIterLoop::UpdateIterator(const ArrayElement* elem)
 		// Assume the types for the keys don't change mid-iteration and that the key iter var was already typechecked at the start.
 		if (m_keyIterVar.IsValid()) {
 			if (m_curKey.KeyType() == kDataType_String) {
-				auto id = g_StringMap.Add(m_modIndex, m_curKey.key.GetStr(), true, nullptr);
+				auto id = g_StringMap.Add(m_script->GetModIndex(), m_curKey.key.GetStr(), true, nullptr);
 				StackVariables::SetLocalStackVarVal(m_keyIterVar.GetStackVarIdx(), id);
 			}
 			else {
@@ -116,7 +131,7 @@ bool ArrayIterLoop::UpdateIterator(const ArrayElement* elem)
 				if (m_valueIterVar.GetType() != Script::eVarType_String) [[unlikely]] {
 					return false;
 				}
-				auto id = g_StringMap.Add(m_modIndex, elem->m_data.GetStr(), true, nullptr);
+				auto id = g_StringMap.Add(m_script->GetModIndex(), elem->m_data.GetStr(), true, nullptr);
 				StackVariables::SetLocalStackVarVal(m_valueIterVar.GetStackVarIdx(), id);
 				break;
 			}
@@ -153,16 +168,22 @@ bool ArrayIterLoop::UpdateIterator(const ArrayElement* elem)
 
 bool ArrayIterLoop::Update(COMMAND_ARGS)
 {
-	ArrayVar *arr = g_ArrayMap.Get(m_srcID);
-	if (arr)
+	if (!m_srcID) [[unlikely]] {
+		ShowRuntimeError(scriptObj, "ForEach >> Invalid source array ID");
+		return false;
+	}
+	ArrayVar* arr = g_ArrayMap.Get(m_srcID);
+	if (!arr) {
+		ShowRuntimeError(scriptObj, "ForEach >> Invalid source array ID");
+		return false;
+	}
+
+	ArrayElement *elem;
+	const ArrayKey *key;
+	if (arr->GetNextElement(&m_curKey, &elem, &key))
 	{
-		ArrayElement *elem;
-		const ArrayKey *key;
-		if (arr->GetNextElement(&m_curKey, &elem, &key))
-		{
-			m_curKey = *key;
-			return UpdateIterator(elem);	
-		}
+		m_curKey = *key;
+		return UpdateIterator(elem);	
 	}
 	return false;
 }
@@ -174,7 +195,7 @@ ArrayIterLoop::~ArrayIterLoop()
 		if (!m_valueIterVar.isStackVar)
 		{
 			//g_ArrayMap.RemoveReference(&m_iterID, 0xFF);
-			g_ArrayMap.RemoveReference(&m_valueIterVar.GetScriptLocal()->data, m_modIndex);
+			g_ArrayMap.RemoveReference(&m_valueIterVar.GetScriptLocal()->data, m_script->GetModIndex());
 		}
 		else
 		{

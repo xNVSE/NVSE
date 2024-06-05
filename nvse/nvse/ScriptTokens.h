@@ -144,7 +144,7 @@ enum Token_Type : UInt8
 	kTokenType_StringStackVar,
 	kTokenType_ArrayStackVar,
 
-	kTokenType_Invalid,
+	kTokenType_Invalid = 32, // limit of 32 bits on (NVSE)ParamType
 	kTokenType_Max = kTokenType_Invalid,
 
 	// sigil value, returned when an empty expression is parsed

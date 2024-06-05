@@ -54,8 +54,9 @@ class ArrayIterLoop : public ForEachLoop
 	ArrayID m_srcID;
 	ArrayID m_iterID{}; // potentially null if passing values directly to variables while iterating.
 	ArrayKey m_curKey;
-	UInt8 m_modIndex;
+	Script* m_script;
 
+	void Init();
 	bool UpdateIterator(const ArrayElement *elem);
 
 public:
@@ -65,7 +66,8 @@ public:
 	Variable m_valueIterVar{};
 	Variable m_keyIterVar{};
 
-	ArrayIterLoop(const ForEachContext *context, UInt8 modIndex);
+	ArrayIterLoop(const ForEachContext* context, Script* script);
+	ArrayIterLoop(ArrayID sourceID, Script* script, Variable valueIterVar, Variable keyIterVar);
 	~ArrayIterLoop() override;
 
 	virtual bool Update(COMMAND_ARGS);
@@ -81,7 +83,7 @@ class StringIterLoop : public ForEachLoop
 {
 	std::string m_src;
 	UInt32 m_curIndex;
-	UInt32 m_iterID;
+	UInt32 m_iterID{};
 
 public:
 	StringIterLoop(const ForEachContext *context);

@@ -27,6 +27,8 @@ extern CommandInfo kCommandInfo_eval;
 extern CommandInfo kCommandInfo_While;
 extern CommandInfo kCommandInfo_Loop;
 extern CommandInfo kCommandInfo_ForEach;
+extern CommandInfo kCommandInfo_ForEachAlt_OptionalValue;
+extern CommandInfo kCommandInfo_ForEachAlt_OptionalKey;
 extern CommandInfo kCommandInfo_Continue;
 extern CommandInfo kCommandInfo_Break;
 extern CommandInfo kCommandInfo_ToString;

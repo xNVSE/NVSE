@@ -210,7 +210,7 @@ bool Cmd_ForEach_Execute(COMMAND_ARGS)
 		{
 			if (context->iterVar.type == Script::eVarType_Array)
 			{
-				ArrayIterLoop* arrayLoop = new ArrayIterLoop(context, scriptObj->GetModIndex());
+				ArrayIterLoop* arrayLoop = new ArrayIterLoop(context, scriptObj);
 				if (!arrayLoop->m_valueIterVar.isStackVar) {
 					AddToGarbageCollection(eventList, arrayLoop->m_valueIterVar.var.local, NVSEVarType::kVarType_Array);
 				}
@@ -244,16 +244,41 @@ bool Cmd_ForEach_Execute(COMMAND_ARGS)
 	return true;
 }
 
+namespace ForEachAlt
+{
+	bool ValidateKeyVariableType(Variable keyVar, ArrayVar* sourceArray, ExpressionEvaluator& eval)
+	{
+		auto arrayType = sourceArray->GetContainerType();
+		if (arrayType == kContainer_Array || arrayType == kContainer_NumericMap)
+		{
+			if (keyVar.GetType() != Script::eVarType_Integer
+				&& keyVar.GetType() != Script::eVarType_Float)
+			{
+				eval.Error("ForEachAlt >> Invalid variable type to receive array keys (keys were numeric-type, var was not)");
+				return false;
+			}
+		}
+		else { // assume stringmap
+			if (keyVar.GetType() != Script::eVarType_String)
+			{
+				eval.Error("ForEachAlt >> Invalid variable type to receive array keys (keys were string-type, var was not)");
+				return false;
+			}
+		}
+		return true;
+	}
+}
+
 // More efficient ForEach loops for arrays.
 // Instead of using an iterator array, populates passed variable(s) with value/key.
 // However, this method doesn't work if there's more than one type of element values in the source array (throws error).
-bool Cmd_ForEachAlt_Execute(COMMAND_ARGS)
+bool Cmd_ForEachAlt_OptionalKey_Execute(COMMAND_ARGS)
 {
 	ScriptRunner* scriptRunner = GetScriptRunner(opcodeOffsetPtr);
 
 	// get offset to end of loop
 	UInt8* data = (UInt8*)scriptData + *opcodeOffsetPtr;
-	auto numArgs = *data;
+	auto numArgs = *data; // TODO: FIX
 	UInt32 offsetToEnd = *(UInt32*)data;
 
 	// calc offset to first instruction within loop
@@ -274,11 +299,92 @@ bool Cmd_ForEachAlt_Execute(COMMAND_ARGS)
 
 		if (!bExtracted || !eval.Arg(0))
 		{
-			ShowRuntimeError(scriptObj, "ForEach expression failed to return a value");
+			ShowRuntimeError(scriptObj, "ForEachAlt >> Failed to extract args.");
 			return false;
 		}
 
 		// TODO: construct the loop
+		if (auto* sourceArr = eval.Arg(0)->GetArrayVar())
+		{
+			Variable valueVar(eval.Arg(1)->value.stackVarIdx, static_cast<Script::VariableType>(eval.Arg(1)->variableType));
+			Variable keyVar{};
+			if (numArgs >= 3)
+			{
+				keyVar = Variable(eval.Arg(2)->value.stackVarIdx, static_cast<Script::VariableType>(eval.Arg(2)->variableType));
+				if (!ForEachAlt::ValidateKeyVariableType(keyVar, sourceArr, eval)) {
+					return true; // TODO: Wouldn't we need to jump over to the end of the loop????
+				}
+			}
+			ArrayIterLoop* arrayLoop = new ArrayIterLoop(sourceArr->ID(), scriptObj, valueVar, keyVar);
+			loop = arrayLoop;
+		}
+		else {
+			eval.Error("ForEachAlt >> Invalid source array.");
+		}
+	}
+
+	if (loop)
+	{
+		LoopManager* mgr = LoopManager::GetSingleton();
+		mgr->Add(loop, scriptRunner, startOffset, offsetToEnd, PASS_COMMAND_ARGS);
+		if (loop->IsEmpty())
+		{
+			*opcodeOffsetPtr = startOffset;
+			mgr->Break(scriptRunner, PASS_COMMAND_ARGS);
+		}
+	}
+
+	return true;
+}
+
+bool Cmd_ForEachAlt_OptionalValue_Execute(COMMAND_ARGS)
+{
+	ScriptRunner* scriptRunner = GetScriptRunner(opcodeOffsetPtr);
+
+	// get offset to end of loop
+	UInt8* data = (UInt8*)scriptData + *opcodeOffsetPtr;
+	auto numArgs = *data; // TODO: FIX
+	UInt32 offsetToEnd = *(UInt32*)data;
+
+	// calc offset to first instruction within loop
+	data += 5;
+	UInt16 exprLen = *((UInt16*)data);
+	UInt32 startOffset = *opcodeOffsetPtr + 5 + exprLen;
+
+	ForEachLoop* loop = NULL;
+
+	// evaluate the expression to get the context
+	*opcodeOffsetPtr += (4 * numArgs);	// set to start of expression
+	{
+		// ExpressionEvaluator enclosed in this scope so that it's lock is released once we've extracted the args.
+		// This eliminates potential for deadlock when adding loop to LoopManager
+		ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+		bool bExtracted = eval.ExtractArgs();
+		*opcodeOffsetPtr -= (4 * numArgs);	// restore
+
+		if (!bExtracted || !eval.Arg(0))
+		{
+			ShowRuntimeError(scriptObj, "ForEachAlt >> Failed to extract args.");
+			return false;
+		}
+
+		// TODO: construct the loop
+		if (auto* sourceArr = eval.Arg(0)->GetArrayVar())
+		{
+			Variable keyVar(eval.Arg(1)->value.stackVarIdx, static_cast<Script::VariableType>(eval.Arg(1)->variableType));
+			if (!ForEachAlt::ValidateKeyVariableType(keyVar, sourceArr, eval)) {
+				return true; // TODO: Wouldn't we need to jump over to the end of the loop????
+			}
+			Variable valueVar{};
+			if (numArgs >= 3) {
+				valueVar = Variable(eval.Arg(2)->value.stackVarIdx, static_cast<Script::VariableType>(eval.Arg(2)->variableType));
+			}
+			ArrayIterLoop* arrayLoop = new ArrayIterLoop(sourceArr->ID(), scriptObj, valueVar, keyVar);
+			loop = arrayLoop;
+		}
+		else {
+			eval.Error("ForEachAlt >> Invalid source array.");
+		}
 	}
 
 	if (loop)
@@ -1032,7 +1138,6 @@ static ParamInfo kParams_ForEach[] =
 {
 	{	"ForEach expression",	kNVSEParamType_ForEachContext,	0	},
 };
-
 CommandInfo kCommandInfo_ForEach =
 {
 	"ForEach",
@@ -1044,6 +1149,50 @@ CommandInfo kCommandInfo_ForEach =
 	kParams_ForEach,
 	HANDLER(Cmd_ForEach_Execute),
 	Cmd_BeginLoop_Parse,
+	NULL,
+	0
+};
+
+// Separate command to support opting out of specifying a key variable for the loop iteration.
+static ParamInfo kParams_ForEachAlt_OptionalKey[] =
+{
+	{	"sourceArray",		kNVSEParamType_Array,	0	},
+	{	"valueVariable",	kNVSEParamType_StackVar,	0	},
+	{	"keyVariable",		kNVSEParamType_NumbericOrStringStackVar,	1	},
+};
+CommandInfo kCommandInfo_ForEachAlt_OptionalKey =
+{
+	"ForEachAlt_OptionalKey",
+	"",
+	0,
+	"iterates over the elements of an array, passing values directly into variables",
+	false,
+	std::size(kParams_ForEachAlt_OptionalKey),
+	kParams_ForEachAlt_OptionalKey,
+	HANDLER(Cmd_ForEachAlt_OptionalKey_Execute),
+	Cmd_BeginLoop_Parse, // TODO: verify the data offsets are still good since we have different # of args
+	NULL,
+	0
+};
+
+// Separate command to support opting out of specifying a value variable for the loop iteration.
+static ParamInfo kParams_ForEachAlt_OptionalValue[] =
+{
+	{	"sourceArray",		kNVSEParamType_Array,	0	},
+	{	"keyVariable",		kNVSEParamType_NumbericOrStringStackVar,	0	},
+	{	"valueVariable",	kNVSEParamType_StackVar,	1	},
+};
+CommandInfo kCommandInfo_ForEachAlt_OptionalValue =
+{
+	"ForEachAlt_OptionalValue",
+	"",
+	0,
+	"iterates over the elements of an array, passing values directly into variables",
+	false,
+	std::size(kParams_ForEachAlt_OptionalValue),
+	kParams_ForEachAlt_OptionalKey,
+	HANDLER(Cmd_ForEachAlt_OptionalValue_Execute),
+	Cmd_BeginLoop_Parse, // TODO: verify the data offsets are still good since we have different # of args
 	NULL,
 	0
 };
