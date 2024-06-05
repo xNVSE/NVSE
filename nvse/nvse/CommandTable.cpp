@@ -2223,8 +2223,7 @@ void CommandTable::AddCommandsV6()
 
 	ADD_CMD(PrintStackVar);
 	ADD_CMD(DebugPrintStackVar);
-	ADD_CMD(ForEachAlt_OptionalValue);
-	ADD_CMD(ForEachAlt_OptionalKey);
+	ADD_CMD(ForEachAlt);
 }
 
 namespace PluginAPI
