@@ -124,6 +124,8 @@ bool ArrayIterLoop::UpdateIterator(const ArrayElement* elem)
 			case DataType::kDataType_Array:
 			{
 				if (m_valueIterVar.GetType() != Script::eVarType_Array) [[unlikely]] {
+					ShowRuntimeError(m_script, "ForEachAlt >> Received an array-type value, but the value iter variable has type %s.", 
+						VariableTypeToName(m_valueIterVar.GetType()));
 					return false;
 				}
 				StackVariables::SetLocalStackVarVal(m_valueIterVar.GetStackVarIdx(), elem->m_data.arrID);
@@ -132,6 +134,8 @@ bool ArrayIterLoop::UpdateIterator(const ArrayElement* elem)
 			case DataType::kDataType_String:
 			{
 				if (m_valueIterVar.GetType() != Script::eVarType_String) [[unlikely]] {
+					ShowRuntimeError(m_script, "ForEachAlt >> Received a string-type value, but the value iter variable has type %s.",
+						VariableTypeToName(m_valueIterVar.GetType()));
 					return false;
 				}
 				auto id = g_StringMap.Add(m_script->GetModIndex(), elem->m_data.GetStr(), true, nullptr);
@@ -143,6 +147,8 @@ bool ArrayIterLoop::UpdateIterator(const ArrayElement* elem)
 				if (m_valueIterVar.GetType() != Script::eVarType_Float
 					&& m_valueIterVar.GetType() != Script::eVarType_Integer) [[unlikely]]
 				{
+					ShowRuntimeError(m_script, "ForEachAlt >> Received a numeric-type value, but the value iter variable has type %s.",
+						VariableTypeToName(m_valueIterVar.GetType()));
 					return false;
 				}
 				auto num = elem->m_data.num;
@@ -155,6 +161,8 @@ bool ArrayIterLoop::UpdateIterator(const ArrayElement* elem)
 			case DataType::kDataType_Form:
 			{
 				if (m_valueIterVar.GetType() != Script::eVarType_Ref) [[unlikely]] {
+					ShowRuntimeError(m_script, "ForEachAlt >> Received a form-type value, but the value iter variable has type %s.",
+						VariableTypeToName(m_valueIterVar.GetType()));
 					return false;
 				}
 				StackVariables::SetLocalStackVarFormID(m_valueIterVar.GetStackVarIdx(), elem->m_data.formID);
