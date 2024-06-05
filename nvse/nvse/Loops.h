@@ -73,6 +73,9 @@ public:
 	virtual bool Update(COMMAND_ARGS);
 	bool IsEmpty()
 	{
+		if (!m_srcID) [[unlikely]] {
+			return true;
+		}
 		ArrayVar *arr = g_ArrayMap.Get(m_srcID);
 		return !arr || !arr->Size();
 	}

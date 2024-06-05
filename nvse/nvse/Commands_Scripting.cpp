@@ -278,7 +278,6 @@ bool Cmd_ForEachAlt_OptionalKey_Execute(COMMAND_ARGS)
 
 	// get offset to end of loop
 	UInt8* data = (UInt8*)scriptData + *opcodeOffsetPtr;
-	auto numArgs = *data; // TODO: FIX
 	UInt32 offsetToEnd = *(UInt32*)data;
 
 	// calc offset to first instruction within loop
@@ -289,41 +288,43 @@ bool Cmd_ForEachAlt_OptionalKey_Execute(COMMAND_ARGS)
 	ForEachLoop* loop = NULL;
 
 	// evaluate the expression to get the context
-	*opcodeOffsetPtr += (4 * numArgs);	// set to start of expression
+	*opcodeOffsetPtr += 4;	// set to start of expression
 	{
 		// ExpressionEvaluator enclosed in this scope so that it's lock is released once we've extracted the args.
 		// This eliminates potential for deadlock when adding loop to LoopManager
 		ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 		bool bExtracted = eval.ExtractArgs();
-		*opcodeOffsetPtr -= (4 * numArgs);	// restore
+		*opcodeOffsetPtr -= 4;	// restore
 
-		if (!bExtracted || !eval.Arg(0))
+		if (!bExtracted || !eval.Arg(0)) [[unlikely]]
 		{
 			ShowRuntimeError(scriptObj, "ForEachAlt >> Failed to extract args.");
 			return false;
 		}
 
-		// TODO: construct the loop
-		if (auto* sourceArr = eval.Arg(0)->GetArrayVar())
+		// Construct the loop
+		if (auto* sourceArr = eval.Arg(0)->GetArrayVar()) [[likely]]
 		{
+			ArrayID sourceID = sourceArr->ID();
 			Variable valueVar(eval.Arg(1)->value.stackVarIdx, static_cast<Script::VariableType>(eval.Arg(1)->variableType));
 			Variable keyVar{};
-			if (numArgs >= 3)
+			if (eval.NumArgs() >= 3)
 			{
 				keyVar = Variable(eval.Arg(2)->value.stackVarIdx, static_cast<Script::VariableType>(eval.Arg(2)->variableType));
 				if (!ForEachAlt::ValidateKeyVariableType(keyVar, sourceArr, eval)) {
-					return true; // TODO: Wouldn't we need to jump over to the end of the loop????
+					sourceID = 0; // will make loop->IsEmpty() return true
 				}
 			}
-			ArrayIterLoop* arrayLoop = new ArrayIterLoop(sourceArr->ID(), scriptObj, valueVar, keyVar);
+			ArrayIterLoop* arrayLoop = new ArrayIterLoop(sourceID, scriptObj, valueVar, keyVar);
 			loop = arrayLoop;
 		}
 		else {
 			eval.Error("ForEachAlt >> Invalid source array.");
+			// todo: maybe reset opcodeOffsetPtr or something?
 		}
 	}
 
-	if (loop)
+	if (loop) [[likely]]
 	{
 		LoopManager* mgr = LoopManager::GetSingleton();
 		mgr->Add(loop, scriptRunner, startOffset, offsetToEnd, PASS_COMMAND_ARGS);
@@ -343,7 +344,6 @@ bool Cmd_ForEachAlt_OptionalValue_Execute(COMMAND_ARGS)
 
 	// get offset to end of loop
 	UInt8* data = (UInt8*)scriptData + *opcodeOffsetPtr;
-	auto numArgs = *data; // TODO: FIX
 	UInt32 offsetToEnd = *(UInt32*)data;
 
 	// calc offset to first instruction within loop
@@ -354,40 +354,42 @@ bool Cmd_ForEachAlt_OptionalValue_Execute(COMMAND_ARGS)
 	ForEachLoop* loop = NULL;
 
 	// evaluate the expression to get the context
-	*opcodeOffsetPtr += (4 * numArgs);	// set to start of expression
+	*opcodeOffsetPtr += 4;	// set to start of expression
 	{
 		// ExpressionEvaluator enclosed in this scope so that it's lock is released once we've extracted the args.
 		// This eliminates potential for deadlock when adding loop to LoopManager
 		ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 		bool bExtracted = eval.ExtractArgs();
-		*opcodeOffsetPtr -= (4 * numArgs);	// restore
+		*opcodeOffsetPtr -= 4;	// restore
 
-		if (!bExtracted || !eval.Arg(0))
+		if (!bExtracted || !eval.Arg(0)) [[unlikely]]
 		{
 			ShowRuntimeError(scriptObj, "ForEachAlt >> Failed to extract args.");
 			return false;
 		}
 
-		// TODO: construct the loop
-		if (auto* sourceArr = eval.Arg(0)->GetArrayVar())
+		// Construct the loop
+		if (auto* sourceArr = eval.Arg(0)->GetArrayVar()) [[likely]]
 		{
+			auto sourceID = sourceArr->ID();
 			Variable keyVar(eval.Arg(1)->value.stackVarIdx, static_cast<Script::VariableType>(eval.Arg(1)->variableType));
 			if (!ForEachAlt::ValidateKeyVariableType(keyVar, sourceArr, eval)) {
-				return true; // TODO: Wouldn't we need to jump over to the end of the loop????
+				sourceID = 0; // will make loop->IsEmpty() return true
 			}
 			Variable valueVar{};
-			if (numArgs >= 3) {
+			if (eval.NumArgs() >= 3) {
 				valueVar = Variable(eval.Arg(2)->value.stackVarIdx, static_cast<Script::VariableType>(eval.Arg(2)->variableType));
 			}
-			ArrayIterLoop* arrayLoop = new ArrayIterLoop(sourceArr->ID(), scriptObj, valueVar, keyVar);
+			ArrayIterLoop* arrayLoop = new ArrayIterLoop(sourceID, scriptObj, valueVar, keyVar);
 			loop = arrayLoop;
 		}
 		else {
 			eval.Error("ForEachAlt >> Invalid source array.");
+			// todo: maybe reset opcodeOffsetPtr or something?
 		}
 	}
 
-	if (loop)
+	if (loop) [[likely]]
 	{
 		LoopManager* mgr = LoopManager::GetSingleton();
 		mgr->Add(loop, scriptRunner, startOffset, offsetToEnd, PASS_COMMAND_ARGS);
@@ -1170,7 +1172,7 @@ CommandInfo kCommandInfo_ForEachAlt_OptionalKey =
 	std::size(kParams_ForEachAlt_OptionalKey),
 	kParams_ForEachAlt_OptionalKey,
 	HANDLER(Cmd_ForEachAlt_OptionalKey_Execute),
-	Cmd_BeginLoop_Parse, // TODO: verify the data offsets are still good since we have different # of args
+	Cmd_BeginLoop_Parse,
 	NULL,
 	0
 };
@@ -1192,7 +1194,7 @@ CommandInfo kCommandInfo_ForEachAlt_OptionalValue =
 	std::size(kParams_ForEachAlt_OptionalValue),
 	kParams_ForEachAlt_OptionalKey,
 	HANDLER(Cmd_ForEachAlt_OptionalValue_Execute),
-	Cmd_BeginLoop_Parse, // TODO: verify the data offsets are still good since we have different # of args
+	Cmd_BeginLoop_Parse,
 	NULL,
 	0
 };

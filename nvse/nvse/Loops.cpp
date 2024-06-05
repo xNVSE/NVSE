@@ -50,20 +50,23 @@ ArrayIterLoop::ArrayIterLoop(ArrayID sourceID, Script* script, Variable valueIte
 
 void ArrayIterLoop::Init()
 {
-	if (ArrayVar* arr = g_ArrayMap.Get(m_srcID))
+	if (m_srcID) [[likely]]
 	{
-		const ArrayKey* key;
-		ArrayElement* elem;
-		if (arr->GetFirstElement(&elem, &key))
+		if (ArrayVar* arr = g_ArrayMap.Get(m_srcID)) [[likely]]
 		{
-			m_curKey = *key;
-			if (!UpdateIterator(elem)) {		// initialize iterator to first element in array
-				m_srcID = 0; // our way of signalling something messed up
+			const ArrayKey* key;
+			ArrayElement* elem;
+			if (arr->GetFirstElement(&elem, &key))
+			{
+				m_curKey = *key;
+				if (!UpdateIterator(elem)) {		// initialize iterator to first element in array
+					m_srcID = 0; // our way of signalling something messed up
+				}
 			}
 		}
-	}
-	else {
-		m_srcID = 0;
+		else {
+			m_srcID = 0;
+		}
 	}
 }
 
@@ -169,12 +172,12 @@ bool ArrayIterLoop::UpdateIterator(const ArrayElement* elem)
 bool ArrayIterLoop::Update(COMMAND_ARGS)
 {
 	if (!m_srcID) [[unlikely]] {
-		ShowRuntimeError(scriptObj, "ForEach >> Invalid source array ID");
+		//ShowRuntimeError(scriptObj, "ForEach >> Invalid source array ID");
 		return false;
 	}
 	ArrayVar* arr = g_ArrayMap.Get(m_srcID);
 	if (!arr) {
-		ShowRuntimeError(scriptObj, "ForEach >> Invalid source array ID");
+		//ShowRuntimeError(scriptObj, "ForEach >> Invalid source array ID");
 		return false;
 	}
 
