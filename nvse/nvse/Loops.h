@@ -64,10 +64,10 @@ public:
 	// If m_iterID is not null, then m_keyIterVar is unused and m_valueIterVar will point to the iterator arrayID.
 	// If m_iterID is null, then the variables will always be stack variables.
 	Variable m_valueIterVar{};
-	Variable m_keyIterVar{};
+	std::optional<Variable> m_keyIterVar{};
 
 	ArrayIterLoop(const ForEachContext* context, Script* script);
-	ArrayIterLoop(ArrayID sourceID, Script* script, Variable valueIterVar, Variable keyIterVar);
+	ArrayIterLoop(ArrayID sourceID, Script* script, Variable valueIterVar, std::optional<Variable> keyIterVar);
 	~ArrayIterLoop() override;
 
 	virtual bool Update(COMMAND_ARGS);

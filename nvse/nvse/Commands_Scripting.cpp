@@ -296,7 +296,7 @@ bool Cmd_ForEachAlt_Execute(COMMAND_ARGS)
 		bool bExtracted = eval.ExtractArgs();
 		*opcodeOffsetPtr -= 4;	// restore
 
-		if (!bExtracted || !eval.Arg(0) || eval.NumArgs() != 3) [[unlikely]]
+		if (!bExtracted || !eval.Arg(0) || eval.NumArgs() < 2) [[unlikely]]
 		{
 			ShowRuntimeError(scriptObj, "ForEachAlt >> Failed to extract args.");
 			return false;
@@ -306,19 +306,26 @@ bool Cmd_ForEachAlt_Execute(COMMAND_ARGS)
 		if (auto* sourceArr = eval.Arg(0)->GetArrayVar()) [[likely]]
 		{
 			ArrayID sourceID = sourceArr->ID();
-			Variable valueVar{};
-			if (eval.Arg(1)->value.stackVarIdx) {
-				valueVar = Variable(eval.Arg(1)->value.stackVarIdx, static_cast<Script::VariableType>(eval.Arg(1)->variableType));
-			}
-			Variable keyVar{};
-			if (eval.Arg(2)->value.stackVarIdx)
-			{
+			Variable valueVar(eval.Arg(1)->value.stackVarIdx, static_cast<Script::VariableType>(eval.Arg(1)->variableType));
+			std::optional<Variable> keyVar;
+			if (eval.NumArgs() >= 3) {
 				keyVar = Variable(eval.Arg(2)->value.stackVarIdx, static_cast<Script::VariableType>(eval.Arg(2)->variableType));
-				if (!ForEachAlt::ValidateKeyVariableType(keyVar, sourceArr, eval)) {
-					sourceID = 0; // will make loop->IsEmpty() return true
+				if (keyVar->IsValid()) {
+					if (!ForEachAlt::ValidateKeyVariableType(*keyVar, sourceArr, eval)) [[unlikely]] {
+						sourceID = 0; // will make loop->IsEmpty() return true
+					}
 				}
 			}
-			if (!keyVar.IsValid() && !valueVar.IsValid()) {
+			else // If NumArgs == 2, then the sole iter variable could be a key iter if sourceArr is a map, or a value iter otherwise.
+			{
+				// valueVar could act as a keyVar if sourceArr is a map; verify var type if so.
+				if (sourceArr->GetContainerType() != kContainer_Array) {
+					if (!ForEachAlt::ValidateKeyVariableType(valueVar, sourceArr, eval)) [[unlikely]] {
+						sourceID = 0; // will make loop->IsEmpty() return true
+					}
+				}
+			}
+			if (!valueVar.IsValid() && (!keyVar.has_value() || !keyVar->IsValid())) [[unlikely]] {
 				sourceID = 0; // will make loop->IsEmpty() return true
 			}
 			ArrayIterLoop* arrayLoop = new ArrayIterLoop(sourceID, scriptObj, valueVar, keyVar);
@@ -1101,8 +1108,8 @@ CommandInfo kCommandInfo_ForEach =
 static ParamInfo kParams_ForEachAlt[] =
 {
 	{	"sourceArray",		kNVSEParamType_Array,	0	},
-	{	"valueVariable",	kNVSEParamType_StackVar,	0	},
-	{	"keyVariable",		kNVSEParamType_NumbericOrStringStackVar,	0	},
+	{	"valueVariable",	kNVSEParamType_StackVar,	0	}, // if keyVariable wasn't passed, and sourceArray is a map, then this will act as a key iterator.
+	{	"keyVariable",		kNVSEParamType_NumbericOrStringStackVar,	1	},
 };
 CommandInfo kCommandInfo_ForEachAlt =
 {
