@@ -419,8 +419,8 @@ void NVSECompiler::VisitForStmt(ForStmt* stmt) {
 
 void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
     // Compile initializer
-    stmt->lhs->Accept(this);
-    statementCounter.top()++;
+    //stmt->lhs->Accept(this);
+    //statementCounter.top()++;
 
     // Get variable info
     auto varDecl = dynamic_cast<VarDeclStmt*>(stmt->lhs.get());
