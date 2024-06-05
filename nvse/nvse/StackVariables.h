@@ -1,6 +1,9 @@
 #pragma once
 
 #ifdef RUNTIME
+
+#include "GameScript.h"
+
 namespace StackVariables
 {
 	using Index_t = int;
@@ -35,4 +38,39 @@ namespace StackVariables
 	void PushLocalStack();
 	void PopLocalStack();
 }
+
+// Utility struct
+struct Variable {
+	union
+	{
+		ScriptLocal* local;
+		StackVariables::Index_t stackVarIdx;
+	} var;
+	bool isStackVar = false;
+	Script::VariableType type = Script::eVarType_Invalid;
+
+	[[nodiscard]] bool IsValid() const {
+		return var.local != nullptr;
+	}
+
+	// Could check isStackVar, but we assume that was already checked.
+	[[nodiscard]] ScriptLocal* GetScriptLocal() const
+	{
+		return var.local;
+	}
+	[[nodiscard]] StackVariables::Index_t GetStackVarIdx() const
+	{
+		return var.stackVarIdx;
+	}
+
+	Variable() = default;
+	Variable(ScriptLocal* _local, Script::VariableType _varType) : isStackVar(false), type(_varType)
+	{
+		var.local = _local;
+	}
+	Variable(StackVariables::Index_t _stackVarIdx, Script::VariableType _varType) : isStackVar(true), type(_varType)
+	{
+		var.stackVarIdx = _stackVarIdx;
+	}
+};
 #endif

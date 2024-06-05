@@ -208,26 +208,77 @@ bool Cmd_ForEach_Execute(COMMAND_ARGS)
 		}
 		else // construct the loop
 		{
-			if (context->variableType == Script::eVarType_Array)
+			if (context->iterVar.type == Script::eVarType_Array)
 			{
 				ArrayIterLoop* arrayLoop = new ArrayIterLoop(context, scriptObj->GetModIndex());
-				if (!arrayLoop->m_isStackVar) {
-					AddToGarbageCollection(eventList, arrayLoop->m_iterVar.local, NVSEVarType::kVarType_Array);
+				if (!arrayLoop->m_valueIterVar.isStackVar) {
+					AddToGarbageCollection(eventList, arrayLoop->m_valueIterVar.var.local, NVSEVarType::kVarType_Array);
 				}
 				loop = arrayLoop;
 			}
-			else if (context->variableType == Script::eVarType_String)
+			else if (context->iterVar.type == Script::eVarType_String)
 			{
 				StringIterLoop* stringLoop = new StringIterLoop(context);
 				loop = stringLoop;
 			}
-			else if (context->variableType == Script::eVarType_Ref)
+			else if (context->iterVar.type == Script::eVarType_Ref)
 			{
 				if IS_ID(((TESForm*)context->sourceID), BGSListForm)
 					loop = new FormListIterLoop(context);
 				else loop = new ContainerIterLoop(context);
 			}
 		}
+	}
+
+	if (loop)
+	{
+		LoopManager* mgr = LoopManager::GetSingleton();
+		mgr->Add(loop, scriptRunner, startOffset, offsetToEnd, PASS_COMMAND_ARGS);
+		if (loop->IsEmpty())
+		{
+			*opcodeOffsetPtr = startOffset;
+			mgr->Break(scriptRunner, PASS_COMMAND_ARGS);
+		}
+	}
+
+	return true;
+}
+
+// More efficient ForEach loops for arrays.
+// Instead of using an iterator array, populates passed variable(s) with value/key.
+// However, this method doesn't work if there's more than one type of element values in the source array (throws error).
+bool Cmd_ForEachAlt_Execute(COMMAND_ARGS)
+{
+	ScriptRunner* scriptRunner = GetScriptRunner(opcodeOffsetPtr);
+
+	// get offset to end of loop
+	UInt8* data = (UInt8*)scriptData + *opcodeOffsetPtr;
+	auto numArgs = *data;
+	UInt32 offsetToEnd = *(UInt32*)data;
+
+	// calc offset to first instruction within loop
+	data += 5;
+	UInt16 exprLen = *((UInt16*)data);
+	UInt32 startOffset = *opcodeOffsetPtr + 5 + exprLen;
+
+	ForEachLoop* loop = NULL;
+
+	// evaluate the expression to get the context
+	*opcodeOffsetPtr += (4 * numArgs);	// set to start of expression
+	{
+		// ExpressionEvaluator enclosed in this scope so that it's lock is released once we've extracted the args.
+		// This eliminates potential for deadlock when adding loop to LoopManager
+		ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+		bool bExtracted = eval.ExtractArgs();
+		*opcodeOffsetPtr -= (4 * numArgs);	// restore
+
+		if (!bExtracted || !eval.Arg(0))
+		{
+			ShowRuntimeError(scriptObj, "ForEach expression failed to return a value");
+			return false;
+		}
+
+		// TODO: construct the loop
 	}
 
 	if (loop)

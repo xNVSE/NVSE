@@ -184,26 +184,11 @@ struct TokenPair // a pair of tokens, specified as 'a::b'
 struct ForEachContext
 {
 	UInt32 sourceID;
-	UInt32 iteratorID;
-	UInt32 variableType;
-	union Variable {
-		ScriptLocal* local;
-		StackVariables::Index_t stackVarIdx;
-	} valueIterVar;
-	bool isValueStackVar;
+	UInt32 iteratorID; // potentially null
+	Variable iterVar;
 
-	ForEachContext(UInt32 src, UInt32 iter, UInt32 varType, ScriptLocal *_var) 
-		: sourceID(src), iteratorID(iter), variableType(varType), isValueStackVar(false) 
-	{
-		valueIterVar.local = _var;
-	}
-	ForEachContext(UInt32 src, UInt32 iter, UInt32 varType, StackVariables::Index_t _stackVarIdx)
-		: sourceID(src), iteratorID(iter), variableType(varType), isValueStackVar(true) 
-	{
-		valueIterVar.stackVarIdx = _stackVarIdx;
-	}
-	ForEachContext(UInt32 src, UInt32 iter, UInt32 varType, Variable _var, bool _isStackVar)
-		: sourceID(src), iteratorID(iter), variableType(varType), valueIterVar(_var), isValueStackVar(_isStackVar)
+	ForEachContext(UInt32 src, UInt32 iter, Variable var)
+		: sourceID(src), iteratorID(iter), iterVar(var)
 	{}
 };
 
@@ -501,7 +486,7 @@ struct ForEachContextToken : ScriptToken
 {
 	ForEachContext context;
 
-	ForEachContextToken(UInt32 srcID, UInt32 iterID, UInt32 varType, ForEachContext::Variable var, bool isValueStackVar);
+	ForEachContextToken(UInt32 srcID, UInt32 iterID, Variable var);
 	[[nodiscard]] const ForEachContext *GetForEachContext() const override { return Type() == kTokenType_ForEachContext ? &context : nullptr; }
 	void *operator new(size_t size);
 
