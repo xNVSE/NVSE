@@ -21,9 +21,7 @@ NVSELexer::NVSELexer(std::string& input) : pos(0) {
 		prev = pos + 1;
 	}
 	lines.push_back(input.substr(prev));
-
-	// Convert actual input to lowercase
-	std::transform(input.begin(), input.end(), input.begin(), [](unsigned char c){ return std::tolower(c); });
+	
 	this->input = input;
 }
 
@@ -211,40 +209,27 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 		std::string identifier = input.substr(start, pos - start);
 
 		// Keywords
-		if (identifier == "if") return MakeToken(NVSETokenType::If, identifier);
-		if (identifier == "else") return MakeToken(NVSETokenType::Else, identifier);
-		if (identifier == "while") return MakeToken(NVSETokenType::While, identifier);
-		if (identifier == "fn") return MakeToken(NVSETokenType::Fn, identifier);
-		if (identifier == "return") return MakeToken(NVSETokenType::Return, identifier);
-		if (identifier == "for") return MakeToken(NVSETokenType::For, identifier);
-		if (identifier == "name") return MakeToken(NVSETokenType::Name, identifier);
-		if (identifier == "continue") return MakeToken(NVSETokenType::Continue, identifier);
-		if (identifier == "break") return MakeToken(NVSETokenType::Break, identifier);
-		if (identifier == "export") return MakeToken(NVSETokenType::Export, identifier);
-
-		// Types
-		if (identifier == "int") return MakeToken(NVSETokenType::IntType, identifier);
-		if (identifier == "double") return MakeToken(NVSETokenType::DoubleType, identifier);
-		if (identifier == "float") return MakeToken(NVSETokenType::DoubleType, identifier);
-		if (identifier == "ref") return MakeToken(NVSETokenType::RefType, identifier);
-		if (identifier == "string") return MakeToken(NVSETokenType::StringType, identifier);
-		if (identifier == "array") return MakeToken(NVSETokenType::ArrayType, identifier);
-
-		// Operators
-		if (identifier == "in") return MakeToken(NVSETokenType::In, identifier);
-		if (identifier == "and") return MakeToken(NVSETokenType::LogicAnd, identifier);
-		if (identifier == "or") return MakeToken(NVSETokenType::LogicOr, identifier);
-		if (identifier == "not") return MakeToken(NVSETokenType::Bang, identifier);
-		if (identifier == "eq") return MakeToken(NVSETokenType::Eq, identifier);
-		if (identifier == "neq") return MakeToken(NVSETokenType::NotEqual, identifier);
-		if (identifier == "gt") return MakeToken(NVSETokenType::Greater, identifier);
-		if (identifier == "lt") return MakeToken(NVSETokenType::Less, identifier);
-		if (identifier == "geq") return MakeToken(NVSETokenType::GreaterEq, identifier);
-		if (identifier == "leq") return MakeToken(NVSETokenType::LessEq, identifier);
-
-		// Boolean literals
-		if (identifier == "true") return MakeToken(NVSETokenType::Bool, identifier, 1);
-		if (identifier == "false") return MakeToken(NVSETokenType::Bool, identifier, 0);
+		if (_stricmp(identifier.c_str(), "if") == 0) return MakeToken(NVSETokenType::If, identifier);
+		if (_stricmp(identifier.c_str(), "else") == 0) return MakeToken(NVSETokenType::Else, identifier);
+		if (_stricmp(identifier.c_str(), "while") == 0) return MakeToken(NVSETokenType::While, identifier);
+		if (_stricmp(identifier.c_str(), "fn") == 0) return MakeToken(NVSETokenType::Fn, identifier);
+		if (_stricmp(identifier.c_str(), "return") == 0) return MakeToken(NVSETokenType::Return, identifier);
+		if (_stricmp(identifier.c_str(), "for") == 0) return MakeToken(NVSETokenType::For, identifier);
+		if (_stricmp(identifier.c_str(), "name") == 0) return MakeToken(NVSETokenType::Name, identifier);
+		if (_stricmp(identifier.c_str(), "continue") == 0) return MakeToken(NVSETokenType::Continue, identifier);
+		if (_stricmp(identifier.c_str(), "break") == 0) return MakeToken(NVSETokenType::Break, identifier);
+		if (_stricmp(identifier.c_str(), "export") == 0) return MakeToken(NVSETokenType::Export, identifier);
+		if (_stricmp(identifier.c_str(), "in") == 0) return MakeToken(NVSETokenType::In, identifier);
+			
+		if (_stricmp(identifier.c_str(), "int") == 0) return MakeToken(NVSETokenType::IntType, identifier);
+		if (_stricmp(identifier.c_str(), "double") == 0) return MakeToken(NVSETokenType::DoubleType, identifier);
+		if (_stricmp(identifier.c_str(), "float") == 0) return MakeToken(NVSETokenType::DoubleType, identifier);
+		if (_stricmp(identifier.c_str(), "ref") == 0) return MakeToken(NVSETokenType::RefType, identifier);
+		if (_stricmp(identifier.c_str(), "string") == 0) return MakeToken(NVSETokenType::StringType, identifier);
+		if (_stricmp(identifier.c_str(), "array") == 0) return MakeToken(NVSETokenType::ArrayType, identifier);
+			
+		if (_stricmp(identifier.c_str(), "true") == 0) return MakeToken(NVSETokenType::Bool, identifier, 1);
+		if (_stricmp(identifier.c_str(), "false") == 0) return MakeToken(NVSETokenType::Bool, identifier, 0);
 
 		// See if it is a begin block type
 		for (auto& g_eventBlockCommandInfo : g_eventBlockCommandInfos) {

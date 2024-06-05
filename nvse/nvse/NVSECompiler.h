@@ -61,6 +61,8 @@ public:
 	// Only used for lambda param declaration
 	std::unordered_map<NVSEScope::ScopeVar*, std::vector<size_t>> tempGlobals{};
 
+	std::stack<uint32_t> scriptStart {};
+
 	// Look up a local variable, or create it if not already defined
 	uint16_t AddLocal(std::string identifier, uint8_t type) {
 		if (auto info = engineScript->GetVariableByName(identifier.c_str())) {

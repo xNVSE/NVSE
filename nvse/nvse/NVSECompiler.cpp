@@ -100,6 +100,7 @@ bool NVSECompiler::Compile() {
     insideNvseExpr.push(false);
     loopIncrements.push(nullptr);
     statementCounter.push(0);
+    scriptStart.push(0);
 
     ClearScopedGlobals();
     ast.Accept(this);
@@ -412,16 +413,12 @@ void NVSECompiler::VisitForStmt(ForStmt* stmt) {
     statementCounter.top()++;
 
     // Patch jmp
-    SetU32(jmpPatch, data.size());
+    SetU32(jmpPatch, data.size() - scriptStart.top());
 
     loopIncrements.pop();
 }
 
 void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
-    // Compile initializer
-    stmt->lhs->Accept(this);
-    statementCounter.top()++;
-
     // Get variable info
     auto varDecl = dynamic_cast<VarDeclStmt*>(stmt->lhs.get());
     if (!varDecl) {
@@ -468,7 +465,7 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
     statementCounter.top()++;
 
     // Patch jmp
-    SetU32(jmpPatch, data.size());
+    SetU32(jmpPatch, data.size() - scriptStart.top());
 }
 
 void NVSECompiler::VisitIfStmt(IfStmt* stmt) {
@@ -585,7 +582,7 @@ void NVSECompiler::VisitWhileStmt(WhileStmt* stmt) {
     statementCounter.top()++;
 
     // Patch jmp
-    SetU32(jmpPatch, data.size());
+    SetU32(jmpPatch, data.size() - scriptStart.top());
 }
 
 void NVSECompiler::VisitBlockStmt(BlockStmt* stmt) {
@@ -894,6 +891,8 @@ void NVSECompiler::VisitLambdaExpr(LambdaExpr* expr) {
 
     // Compile lambda
     {
+        scriptStart.push(data.size());
+
         // SCN
         AddU32(static_cast<uint32_t>(ScriptParsing::ScriptStatementCode::ScriptName));
 
@@ -950,6 +949,8 @@ void NVSECompiler::VisitLambdaExpr(LambdaExpr* expr) {
 
         // Different inside of lambda for some reason?
         SetU32(scriptLenPatch, data.size() - scriptLenStart);
+
+        scriptStart.pop();
     }
 
     SetU32(argSizePatch, data.size() - argStart);

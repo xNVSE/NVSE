@@ -51,6 +51,9 @@ public:
     }
     
     ScopeVar *resolveVariable(std::string name, bool checkParent = true) {
+        // Lowercase name
+        std::ranges::transform(name, name.begin(), [](unsigned char c){ return std::tolower(c); });
+        
         if (vars.contains(name)) {
             return &vars[name];
         }
@@ -68,6 +71,9 @@ public:
     }
 
     ScopeVar *addVariable(std::string name, ScopeVar variableInfo, bool bRename = false) {
+        // Lowercase name
+        std::ranges::transform(name, name.begin(), [](unsigned char c){ return std::tolower(c); });
+        
         // Rename var to have a unique name
         // These should also get saved to the var list LAST and be deleted on every recompile.
         if (bRename) {
