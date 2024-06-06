@@ -792,24 +792,20 @@ void NVSETypeChecker::VisitNumberExpr(NumberExpr* expr) {
 
 void NVSETypeChecker::VisitMapLiteralExpr(MapLiteralExpr* expr) {
 	if (expr->values.empty()) {
-		expr->detailedType = kTokenType_Array;
+		WRAP_ERROR(error(expr->token.line, expr->token.column,
+			"A map literal cannot be empty, since the type of the keys cannot be deduced otherwise."))
 		return;
 	}
 
 	// Check that all expressions are pairs
-	bool hadError = false;
 	for (int i = 0; i < expr->values.size(); i++) {
 		const auto &val = expr->values[i];
 		val->Accept(this);
 		if (val->detailedType != kTokenType_Pair && val->detailedType != kTokenType_Ambiguous) {
 			WRAP_ERROR(error(expr->token.line, expr->token.column,
 				std::format("Value {} is not a pair and is not valid for a map literal.", i + 1)))
-			hadError = true;
+			return;
 		}
-	}
-
-	if (hadError) {
-		return;
 	}
 
 	// Now check key types
