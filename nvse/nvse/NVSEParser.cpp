@@ -768,7 +768,7 @@ ExprPtr NVSEParser::MapLiteral() {
 		values.emplace_back(Expression());
 	}
 
-	return std::make_shared<ArrayLiteralExpr>(tok, values);
+	return std::make_shared<MapLiteralExpr>(tok, values);
 }
 
 std::vector<std::shared_ptr<VarDeclStmt>> NVSEParser::ParseArgs() {
