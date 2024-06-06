@@ -200,45 +200,64 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 		return MakeToken(NVSETokenType::Number, input.substr(pos - len, len), value);
 	}
 
-	if (std::isalpha(current) || current == '_') {
-		// Extract identifier
-		size_t start = pos;
-		while (pos < input.size() && (std::isalnum(input[pos]) || input[pos] == '_')) {
-			++pos;
-		}
-		std::string identifier = input.substr(start, pos - start);
-
-		// Keywords
-		if (_stricmp(identifier.c_str(), "if") == 0) return MakeToken(NVSETokenType::If, identifier);
-		if (_stricmp(identifier.c_str(), "else") == 0) return MakeToken(NVSETokenType::Else, identifier);
-		if (_stricmp(identifier.c_str(), "while") == 0) return MakeToken(NVSETokenType::While, identifier);
-		if (_stricmp(identifier.c_str(), "fn") == 0) return MakeToken(NVSETokenType::Fn, identifier);
-		if (_stricmp(identifier.c_str(), "return") == 0) return MakeToken(NVSETokenType::Return, identifier);
-		if (_stricmp(identifier.c_str(), "for") == 0) return MakeToken(NVSETokenType::For, identifier);
-		if (_stricmp(identifier.c_str(), "name") == 0) return MakeToken(NVSETokenType::Name, identifier);
-		if (_stricmp(identifier.c_str(), "continue") == 0) return MakeToken(NVSETokenType::Continue, identifier);
-		if (_stricmp(identifier.c_str(), "break") == 0) return MakeToken(NVSETokenType::Break, identifier);
-		if (_stricmp(identifier.c_str(), "export") == 0) return MakeToken(NVSETokenType::Export, identifier);
-		if (_stricmp(identifier.c_str(), "in") == 0) return MakeToken(NVSETokenType::In, identifier);
-			
-		if (_stricmp(identifier.c_str(), "int") == 0) return MakeToken(NVSETokenType::IntType, identifier);
-		if (_stricmp(identifier.c_str(), "double") == 0) return MakeToken(NVSETokenType::DoubleType, identifier);
-		if (_stricmp(identifier.c_str(), "float") == 0) return MakeToken(NVSETokenType::DoubleType, identifier);
-		if (_stricmp(identifier.c_str(), "ref") == 0) return MakeToken(NVSETokenType::RefType, identifier);
-		if (_stricmp(identifier.c_str(), "string") == 0) return MakeToken(NVSETokenType::StringType, identifier);
-		if (_stricmp(identifier.c_str(), "array") == 0) return MakeToken(NVSETokenType::ArrayType, identifier);
-			
-		if (_stricmp(identifier.c_str(), "true") == 0) return MakeToken(NVSETokenType::Bool, identifier, 1);
-		if (_stricmp(identifier.c_str(), "false") == 0) return MakeToken(NVSETokenType::Bool, identifier, 0);
-
-		// See if it is a begin block type
-		for (auto& g_eventBlockCommandInfo : g_eventBlockCommandInfos) {
-			if (!_stricmp(g_eventBlockCommandInfo.longName, identifier.c_str())) {
-				return MakeToken(NVSETokenType::BlockType, identifier);
+	{
+		// Check if potential identifier has at least 1 alphabetical character.
+		// Must either start with underscores, or an alphabetical character.
+		bool isValidIdentifier = std::isalnum(current);
+		if (!isValidIdentifier && current == '_') {
+			size_t lookaheadPos = pos + 1;
+			while (lookaheadPos < input.size()) {
+				if (std::isalpha(input[lookaheadPos])) {
+					isValidIdentifier = true;
+					break;
+				}
+				else if (input[lookaheadPos] != '_') {
+					break;
+				}
+				++lookaheadPos;
 			}
 		}
 
-		return MakeToken(NVSETokenType::Identifier, identifier);
+		if (isValidIdentifier) {
+			// Extract identifier
+			size_t start = pos;
+			while (pos < input.size() && (std::isalnum(input[pos]) || input[pos] == '_')) {
+				++pos;
+			}
+			std::string identifier = input.substr(start, pos - start);
+
+			// Keywords
+			if (_stricmp(identifier.c_str(), "if") == 0) return MakeToken(NVSETokenType::If, identifier);
+			if (_stricmp(identifier.c_str(), "else") == 0) return MakeToken(NVSETokenType::Else, identifier);
+			if (_stricmp(identifier.c_str(), "while") == 0) return MakeToken(NVSETokenType::While, identifier);
+			if (_stricmp(identifier.c_str(), "fn") == 0) return MakeToken(NVSETokenType::Fn, identifier);
+			if (_stricmp(identifier.c_str(), "return") == 0) return MakeToken(NVSETokenType::Return, identifier);
+			if (_stricmp(identifier.c_str(), "for") == 0) return MakeToken(NVSETokenType::For, identifier);
+			if (_stricmp(identifier.c_str(), "name") == 0) return MakeToken(NVSETokenType::Name, identifier);
+			if (_stricmp(identifier.c_str(), "continue") == 0) return MakeToken(NVSETokenType::Continue, identifier);
+			if (_stricmp(identifier.c_str(), "break") == 0) return MakeToken(NVSETokenType::Break, identifier);
+			if (_stricmp(identifier.c_str(), "export") == 0) return MakeToken(NVSETokenType::Export, identifier);
+			if (_stricmp(identifier.c_str(), "in") == 0) return MakeToken(NVSETokenType::In, identifier);
+
+			if (_stricmp(identifier.c_str(), "int") == 0) return MakeToken(NVSETokenType::IntType, identifier);
+			if (_stricmp(identifier.c_str(), "double") == 0) return MakeToken(NVSETokenType::DoubleType, identifier);
+			if (_stricmp(identifier.c_str(), "float") == 0) return MakeToken(NVSETokenType::DoubleType, identifier);
+			if (_stricmp(identifier.c_str(), "ref") == 0) return MakeToken(NVSETokenType::RefType, identifier);
+			if (_stricmp(identifier.c_str(), "string") == 0) return MakeToken(NVSETokenType::StringType, identifier);
+			if (_stricmp(identifier.c_str(), "array") == 0) return MakeToken(NVSETokenType::ArrayType, identifier);
+
+			if (_stricmp(identifier.c_str(), "true") == 0) return MakeToken(NVSETokenType::Bool, identifier, 1);
+			if (_stricmp(identifier.c_str(), "false") == 0) return MakeToken(NVSETokenType::Bool, identifier, 0);
+
+			// See if it is a begin block type
+			for (auto& g_eventBlockCommandInfo : g_eventBlockCommandInfos) {
+				if (!_stricmp(g_eventBlockCommandInfo.longName, identifier.c_str())) {
+					return MakeToken(NVSETokenType::BlockType, identifier);
+				}
+			}
+
+			return MakeToken(NVSETokenType::Identifier, identifier);
+		}
 	}
 
 	if (current == '"') {
