@@ -315,6 +315,10 @@ void NVSECompiler::VisitVarDeclStmt(VarDeclStmt* stmt) {
             }
             CompDbg("Defined local variable %s at scope %d:%d.\n", name.c_str(), var->scopeIndex, var->index);
 
+            if (!value) {
+                continue;
+            }
+
             statementCounter.top()++;
 
             StartCall(OP_LET);
@@ -324,14 +328,8 @@ void NVSECompiler::VisitVarDeclStmt(VarDeclStmt* stmt) {
             AddU8('Y');
             AddU8(var->variableType);
             AddU16(var->index);
-
-            // Build expression
-            if(value) {
-                value->Accept(this);
-            } else {
-                AddU8('B');
-                AddU8(0);
-            }
+                
+            value->Accept(this);
 
             // OP_ASSIGN
             AddU8(0);
