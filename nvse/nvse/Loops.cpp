@@ -186,7 +186,9 @@ bool ArrayIterLoop::UpdateIterator(const ArrayElement* elem)
 		}
 		else {
 			valueIterVar = m_valueIterVar;
-			keyIterVar = *m_keyIterVar;
+			if (m_keyIterVar.has_value()) {
+				keyIterVar = *m_keyIterVar;
+			}
 		}
 		return UpdateForEachAltIterator(elem, m_curKey, keyIterVar, valueIterVar, m_script);
 	}
