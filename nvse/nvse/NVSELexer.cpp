@@ -248,6 +248,7 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 
 			if (_stricmp(identifier.c_str(), "true") == 0) return MakeToken(NVSETokenType::Bool, identifier, 1);
 			if (_stricmp(identifier.c_str(), "false") == 0) return MakeToken(NVSETokenType::Bool, identifier, 0);
+			if (_stricmp(identifier.c_str(), "null") == 0) return MakeToken(NVSETokenType::Number, identifier, 0);
 
 			// See if it is a begin block type
 			for (auto& g_eventBlockCommandInfo : g_eventBlockCommandInfos) {
