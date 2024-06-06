@@ -287,9 +287,9 @@ bool Cmd_ForEachAlt_Execute(COMMAND_ARGS)
 		UInt8 numArgs = *((UInt8*)data);
 		++data;
 		UInt16 exprLen = *((UInt16*)data);
-		exprLen += *((UInt16*)data + exprLen);
+		exprLen += *((UInt16*)(data + exprLen));
 		if (numArgs == 3) {
-			exprLen += *((UInt16*)data + exprLen);
+			exprLen += *((UInt16*)(data + exprLen));
 		}
 		UInt8 const skipJumpInfoAndNumArgs = 4 + 1;
 		startOffset = *opcodeOffsetPtr + skipJumpInfoAndNumArgs + exprLen;
@@ -304,7 +304,6 @@ bool Cmd_ForEachAlt_Execute(COMMAND_ARGS)
 		// This eliminates potential for deadlock when adding loop to LoopManager
 		ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 		bool bExtracted = eval.ExtractArgs();
-
 		*opcodeOffsetPtr -= 4;	// restore
 
 		if (!bExtracted || !eval.Arg(0) || eval.NumArgs() < 2) [[unlikely]]
@@ -348,7 +347,7 @@ bool Cmd_ForEachAlt_Execute(COMMAND_ARGS)
 		}
 	}
 
-	if (loop && offsetToEnd != -1 && startOffset != -1) [[likely]]
+	if (loop) [[likely]]
 	{
 		LoopManager* mgr = LoopManager::GetSingleton();
 		mgr->Add(loop, scriptRunner, startOffset, offsetToEnd, PASS_COMMAND_ARGS);
