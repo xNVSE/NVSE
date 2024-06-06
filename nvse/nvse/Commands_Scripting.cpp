@@ -276,24 +276,35 @@ bool Cmd_ForEachAlt_Execute(COMMAND_ARGS)
 {
 	ScriptRunner* scriptRunner = GetScriptRunner(opcodeOffsetPtr);
 
-	// get offset to end of loop
-	UInt8* data = (UInt8*)scriptData + *opcodeOffsetPtr;
-	UInt32 offsetToEnd = *(UInt32*)data;
+	UInt32 offsetToEnd, startOffset;
+	{
+		// get offset to end of loop
+		UInt8* data = (UInt8*)scriptData + *opcodeOffsetPtr;
+		offsetToEnd = *(UInt32*)data;
 
-	// calc offset to first instruction within loop
-	data += 5;
-	UInt16 exprLen = *((UInt16*)data);
-	UInt32 startOffset = *opcodeOffsetPtr + 5 + exprLen;
+		// calc offset to first instruction within loop
+		data += 4;
+		UInt8 numArgs = *((UInt8*)data);
+		++data;
+		UInt16 exprLen = *((UInt16*)data);
+		exprLen += *((UInt16*)data + exprLen);
+		if (numArgs == 3) {
+			exprLen += *((UInt16*)data + exprLen);
+		}
+		UInt8 const skipJumpInfoAndNumArgs = 4 + 1;
+		startOffset = *opcodeOffsetPtr + skipJumpInfoAndNumArgs + exprLen;
+	}
 
-	ForEachLoop* loop = NULL;
+	ForEachLoop* loop = nullptr;
 
 	// evaluate the expression to get the context
-	*opcodeOffsetPtr += 4;	// set to start of expression
+	*opcodeOffsetPtr += 4;	// set to start of expression (skip 4 bonus bytes of loop info)
 	{
 		// ExpressionEvaluator enclosed in this scope so that it's lock is released once we've extracted the args.
 		// This eliminates potential for deadlock when adding loop to LoopManager
 		ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 		bool bExtracted = eval.ExtractArgs();
+
 		*opcodeOffsetPtr -= 4;	// restore
 
 		if (!bExtracted || !eval.Arg(0) || eval.NumArgs() < 2) [[unlikely]]
@@ -337,7 +348,7 @@ bool Cmd_ForEachAlt_Execute(COMMAND_ARGS)
 		}
 	}
 
-	if (loop) [[likely]]
+	if (loop && offsetToEnd != -1 && startOffset != -1) [[likely]]
 	{
 		LoopManager* mgr = LoopManager::GetSingleton();
 		mgr->Add(loop, scriptRunner, startOffset, offsetToEnd, PASS_COMMAND_ARGS);
