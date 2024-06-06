@@ -139,7 +139,9 @@ void NVSETreePrinter::VisitForEachStmt(ForEachStmt* stmt) {
 	CompDbg("elem\n");
 	curTab++;
 	for (auto decl : stmt->declarations) {
-		decl->Accept(this);
+		if (decl) {
+			decl->Accept(this);
+		}
 	}
 	curTab--;
 	
