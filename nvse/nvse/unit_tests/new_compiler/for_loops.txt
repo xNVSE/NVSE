@@ -46,7 +46,7 @@ fn () {
 	assert(iTest == aList.size());
 	assert(iTest == (ar_size(aList)));
 	
-//==== Test packed array looping
+//==== Test map array looping
 
 	array aMap = {"key1"::Player, "key2"::Player, "key3"::Player};
 	assert(TypeOf(aMap) == "StringMap");
