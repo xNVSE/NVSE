@@ -851,6 +851,10 @@ void NVSETypeChecker::VisitArrayLiteralExpr(ArrayLiteralExpr* expr) {
 
 	for (const auto& val : expr->values) {
 		val->Accept(this);
+
+		if (val->detailedType == kTokenType_Pair) {
+			WRAP_ERROR(error(val->getToken()->line, val->getToken()->column, "Invalid type inside of array literal. Expected array, string, ref, or number."))
+		}
 	}
 
 	auto lhsType = expr->values[0]->detailedType;
