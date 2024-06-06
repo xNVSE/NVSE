@@ -4,18 +4,27 @@
 #include "NVSECompilerUtils.h"
 #include "NVSEParser.h"
 
-void NVSETreePrinter::PrintTabs() {
+void NVSETreePrinter::PrintTabs(const bool debugOnly) {
 	for (int i = 0; i < curTab; i++) {
-		CompDbg("  ");
+		if (debugOnly) {
+			CompDbg("  ");
+		}
+		else {
+			CompInfo("  ");
+		}
 	}
 }
 
 void NVSETreePrinter::VisitNVSEScript(NVSEScript* script) {
+#if defined(EDITOR) && !defined(_DEBUG)
+	CompInfo("\n==== Compiling script %s ====\n\n", script->name.lexeme.c_str());
+	PrintTabs(false);
+#else
 	CompDbg("\n==== AST ====\n\n");
-	
 	PrintTabs();
 	CompDbg("name: %s\n", script->name.lexeme.c_str());
 	PrintTabs();
+#endif
 	if (!script->globalVars.empty()) {
 		CompDbg("globals\n");
 		curTab++;

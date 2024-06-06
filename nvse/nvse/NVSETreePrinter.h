@@ -3,7 +3,7 @@
 
 class NVSETreePrinter : public NVSEVisitor {
 	int curTab = 0;
-	void PrintTabs();
+	void PrintTabs(const bool debugOnly = true);
 
 public:
 	NVSETreePrinter() = default;
