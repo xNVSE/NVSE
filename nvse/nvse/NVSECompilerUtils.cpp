@@ -19,6 +19,12 @@ void allocateConsole() {
 #endif
 }
 
+void CompClear() {
+	if (consoleAllocated) {
+		system("CLS");
+	}
+}
+
 void CompDbg(const char* fmt, ...) {
 	allocateConsole();
 

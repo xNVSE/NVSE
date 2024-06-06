@@ -16,7 +16,7 @@ std::optional<NVSEScript> NVSEParser::Parse() {
 	std::vector<StmtPtr> globals;
 	std::vector<StmtPtr> blocks{};
 
-	CompDbg("\n==== PARSER ====\n\n");
+	CompDbg("==== PARSER ====\n\n");
 
 	try {
 		Expect(NVSETokenType::Name, "Expected 'name' as first statement of script.");
@@ -596,12 +596,12 @@ ExprPtr NVSEParser::Unary() {
 ExprPtr NVSEParser::Postfix() {
 	ExprPtr expr = Call();
 
-	if (Match(NVSETokenType::LeftBracket)) {
+	while (Match(NVSETokenType::LeftBracket)) {
 		auto token = previousToken;
 		auto inner = Expression();
 		Expect(NVSETokenType::RightBracket, "Expected ']'.");
 
-		return std::make_shared<SubscriptExpr>(token, std::move(expr), std::move(inner));
+		expr = std::make_shared<SubscriptExpr>(token, std::move(expr), std::move(inner));
 	}
 
 	if (Match(NVSETokenType::PlusPlus) || Match(NVSETokenType::MinusMinus)) {
