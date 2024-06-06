@@ -1,0 +1,39 @@
+name ForLoops;
+
+fn () {
+	string testName = "ForLoops";
+	print(("Started running xNVSE " + testName + " unit tests."));
+
+//== Test ForEachAlt syntax
+
+	array aList = [Player, Player, Player];
+	int iTest = 0;
+	for ([int iKey, ref rValue] in aList)
+	{
+		assert(iKey == iTest);
+		assert(rValue == Player);
+		iTest++;
+	}
+	assert(iTest == aList.size());
+	//assert(iTest == (ar_size(aList));
+	
+	iTest = 0;
+	for ([int iKey, _] in aList)
+	{
+		assert(iKey == iTest);
+		iTest++;
+	}
+	assert(iTest == aList.size());
+	//assert(iTest == (ar_size(aList));
+	
+	iTest = 0;
+	for ([_, ref rValue] in aList)
+	{
+		assert(rValue == Player);
+		iTest++;
+	}
+	assert(iTest == aList.size());
+	//assert(iTest == (ar_size(aList));
+	
+	print(("Finished running xNVSE " + testName + " unit tests."));
+}
