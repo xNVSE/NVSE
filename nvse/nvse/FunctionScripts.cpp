@@ -550,27 +550,36 @@ void ExecuteSingleLineLambda(FunctionInfo* info, FunctionCaller& caller, ScriptE
 {
 	double result;
 	UInt32 opcodeOffset = info->m_singleLineLambdaPosition - info->GetScript()->data;
+
 	OtherHooks::PushScriptContext({ info->GetScript(), nullptr, nullptr, 
 		caller.ThisObj(), &kCommandInfo_SetFunctionValue, nullptr });
+	StackVariables::PushLocalStack();
+
 	kCommandInfo_SetFunctionValue.execute(kCommandInfo_SetFunctionValue.params, info->GetScript()->data, caller.ThisObj(), 
 		caller.ContainingObj(), info->GetScript(), eventList, &result, &opcodeOffset);
+
 	OtherHooks::PopScriptContext();
+	StackVariables::PopLocalStack();
 }
 
 bool FunctionContext::Execute(FunctionCaller& caller) const
 {
-	if (!IsGood())
+	if (!IsGood()) {
 		return false;
+	}
 
 	// Extract arguments to function
-	if (!caller.PopulateArgs(m_eventList, m_info))
+	if (!caller.PopulateArgs(m_eventList, m_info)) {
 		return false;
+	}
 
-	if (m_info->m_singleLineLambdaPosition) // performance optimization for {} => ... lambdas
+	if (m_info->m_singleLineLambdaPosition) { // performance optimization for {} => ... lambdas
 		ExecuteSingleLineLambda(m_info, caller, m_eventList);
-	else
+	}
+	else {
 		// run the script
 		CALL_MEMBER_FN(m_info->GetScript(), Execute)(caller.ThisObj(), m_eventList, caller.ContainingObj(), false);
+	}
 	return true;
 }
 
