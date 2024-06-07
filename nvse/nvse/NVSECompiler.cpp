@@ -57,23 +57,23 @@ void NVSECompiler::PatchScopedGlobals() {
 
 void NVSECompiler::PrintScriptInfo() {
     // Debug print local info
-    CompDbg("\n[Locals]\n\n");
+    CompDbg("\n[Locals]\n");
     for (int i = 0; i < engineScript->varList.Count(); i++) {
         auto item = engineScript->varList.GetNthItem(i);
-        CompDbg("%i: %s %s\n", item->idx, item->name.CStr(), usedVars.contains(item->name.CStr()) ? "" : "(unused)");
+        CompDbg("%d: %s %s\n", item->idx, item->name.CStr(), usedVars.contains(item->name.CStr()) ? "" : "(unused)");
     }
     
     CompDbg("\n");
 
     // Refs
-    CompDbg("[Refs]\n\n");
+    CompDbg("[Refs]\n");
     for (int i = 0; i < engineScript->refList.Count(); i++) {
         const auto ref = engineScript->refList.GetNthItem(i);
         if (ref->varIdx) {
             CompDbg("%d: (Var %d)\n", i, ref->varIdx);
         }
         else {
-            CompDbg("%d, %s\n", i, ref->form->GetEditorID());
+            CompDbg("%d: %s\n", i, ref->form->GetEditorID());
         }
     }
     
@@ -85,10 +85,10 @@ void NVSECompiler::PrintScriptInfo() {
         CompDbg("%02X ", engineScript->data[i]);
     }
     
-    CompDbg("\n\n");
-    CompDbg("[Requirements]\n");
+    CompInfo("\n\n");
+    CompInfo("[Requirements]\n");
     for (std::string requirement : requirements) {
-        CompDbg("%s\n", requirement.c_str());
+        CompInfo("%s\n", requirement.c_str());
     }
 
     CompDbg("\n");
@@ -944,7 +944,12 @@ void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
 	else {
         // Try to look up as object reference
         if (auto refIdx = ResolveObjReference(name)) {
-            AddU8('R');
+            auto form = engineScript->refList.GetNthItem(refIdx - 1)->form;
+            if (form->typeID == kFormType_TESGlobal) {
+                AddU8('G');
+            } else {
+                AddU8('R');
+            }
             AddU16(refIdx);
         }
     }

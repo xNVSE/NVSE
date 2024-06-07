@@ -649,7 +649,7 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 		error(expr->left->getToken()->line, err.str());
 	}
 
-	int maxParams = cmd->parse == kCommandInfo_Call.parse ? 16 : cmd->numParams;
+	int maxParams = (cmd->parse == kCommandInfo_Call.parse) ? 16 : cmd->numParams;
 
 	// Basic type checks
 	// We already validated number of args, just verify types
@@ -667,6 +667,11 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 				continue;
 			}
 
+			// TODO
+			if (cmd->parse == kCommandInfo_Call.parse) {
+				continue;
+			}
+
 			// Try to resolve as NVSE param
 			if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(cmd->params[i].typeID), arg->detailedType, true, cmd)) {
 				WRAP_ERROR(
@@ -675,7 +680,7 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 			}
 		}
 	} else { // default parser
-		for (int i = 0; i < expr->args.size(); i++) {
+		for (int i = 0; i < expr->args.size() && i < maxParams; i++) {
 			auto param = cmd->params[i];
 			auto arg = expr->args[i];
 
@@ -698,6 +703,11 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 				WRAP_ERROR(arg->Accept(this))
 			} else {
 				// TODO: TEMP DISABLE TYPE CHECKS ON INSERTED PARAMS
+				continue;
+			}
+
+			// TODO
+			if (cmd->parse == kCommandInfo_Call.parse) {
 				continue;
 			}
 
@@ -893,8 +903,12 @@ void NVSETypeChecker::VisitIdentExpr(IdentExpr* expr) {
 		expr->detailedType = kTokenType_Invalid;
 		error(expr->token.line, expr->token.column, std::format("Unable to resolve identifier '{}'.", name));
 	}
-	
-	expr->detailedType = kTokenType_Form;
+
+	if (form->typeID == kFormType_TESGlobal) {
+		expr->detailedType = kTokenType_Global;
+	} else {
+		expr->detailedType = kTokenType_Form;
+	}
 	formCache[name] = form;
 }
 
