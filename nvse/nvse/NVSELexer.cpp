@@ -194,30 +194,36 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 		if (current == '0' && pos + 2 < input.size()) {
 			if (std::tolower(input[pos + 1]) == 'b') {
 				base = 2;
-
-				// For some reason stoi doesn't handle 0b prefix
-				pos += 2;
-				current = input[pos];
 			} else if (std::tolower(input[pos + 1]) == 'x') {
 				base = 16;
 			}
+
+			pos += 2;
+			current = input[pos];
 		}
 		
 		size_t len;
 		double value;
-		if (base == 16 || base == 2) {
-			value = std::stoi(&input[pos], &len, base);
-		} else {
-			value = std::stod(&input[pos], &len);
-		}
+		try {
+			if (base == 16 || base == 2) {
+				value = std::stoll(&input[pos], &len, base);
+			} else {
+				value = std::stod(&input[pos], &len);
+			}
+	    } catch (const std::invalid_argument &ex) {
+	    	throw std::runtime_error("Invalid numeric literal.");
+	    } catch (const std::out_of_range &ex) {
+	    	throw std::runtime_error("Numeric literal value out of range.");
+	    }
+		
 		if (input[pos + len - 1] == '.') {
 			len--;
 		}
 		pos += len;
 		column += len;
 
-		// Handle 0b
-		if (base == 2) {
+		// Handle 0b/0x
+		if (base == 2 || base == 16) {
 			len += 2;
 		}
 		

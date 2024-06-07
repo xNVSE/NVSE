@@ -799,6 +799,10 @@ void NVSETypeChecker::VisitBoolExpr(BoolExpr* expr) {
 }
 
 void NVSETypeChecker::VisitNumberExpr(NumberExpr* expr) {
+	if (!expr->isFp && expr->value > UINT32_MAX) {
+		WRAP_ERROR(error(expr->token.line, expr->token.column, "Maximum value for integer literal exceeded. (Max: " + std::to_string(INT32_MAX) + ")"))
+	}
+	
 	expr->detailedType = kTokenType_Number;
 }
 
