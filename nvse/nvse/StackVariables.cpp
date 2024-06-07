@@ -73,7 +73,7 @@ bool VariableStorage::AssignToArray(UInt32 arrID, ScriptEventList* eventList, Sc
 		ScriptLocal* var = resolvedLocal ? resolvedLocal : eventList->GetVariable(m_varIdx);
 		if (!var) [[unlikely]] {
 			return false;
-			}
+		}
 		g_ArrayMap.AddReference(&var->data, arrID, eventList->m_script->GetModIndex());
 		AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_Array);
 		return true;
@@ -93,7 +93,7 @@ bool VariableStorage::AssignToString(const char* str, ScriptEventList* eventList
 		ScriptLocal* var = resolvedLocal ? resolvedLocal : eventList->GetVariable(m_varIdx);
 		if (!var) [[unlikely]] {
 			return false;
-			}
+		}
 		var->data = g_StringMap.Add(eventList->m_script->GetModIndex(), str, tempForLocal);
 		AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_String);
 		return true;
@@ -111,7 +111,7 @@ double* VariableStorage::GetValuePtr(ScriptEventList* eventList, ScriptLocal* re
 		ScriptLocal* var = resolvedLocal ? resolvedLocal : eventList->GetVariable(m_varIdx);
 		if (!var) [[unlikely]] {
 			return nullptr;
-			}
+		}
 		return &var->data;
 	}
 	else if (m_varIdx) {
