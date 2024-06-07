@@ -32,12 +32,12 @@ namespace StackVariables
 	inline thread_local std::vector<LocalStackFrame> g_localStackVars;
 	inline thread_local Index_t g_localStackPtr{ -1 };
 
-	void SetLocalStackVarVal(Index_t idx, Value_t val);
-	void SetLocalStackVarFormID(Index_t idx, UInt32 formID);
-	Value_t& GetLocalStackVarVal(Index_t idx);
+	void SetLocalStackVarVal(Index_t idx, Value_t val, bool toNextStack = false);
+	void SetLocalStackVarFormID(Index_t idx, UInt32 formID, bool toNextStack = false);
+	Value_t& GetLocalStackVarVal(Index_t idx, bool fromNextStack = false);
 
 	void PushLocalStack();
-	void PopLocalStack();
+	void PopLocalStack(bool destroy = true);
 }
 
 // Utility struct
@@ -94,10 +94,10 @@ struct VariableStorage {
 	// Returns false for an invalid variable, or if non-stack-variable couldn't be resolved.
 	[[nodiscard]] bool ResolveVariable(ScriptEventList* eventList, ScriptLocal*& out_resolvedLocal) const;
 
-	bool AssignToArray(UInt32 arrID, ScriptEventList* eventList, ScriptLocal* resolvedLocal = nullptr);
-	bool AssignToString(const char* str, ScriptEventList* eventList, bool tempForLocal, ScriptLocal* resolvedLocal = nullptr);
-	double* GetValuePtr(ScriptEventList* eventList, ScriptLocal* resolvedLocal = nullptr);
-	std::string GetVariableName(ScriptEventList* eventList, ScriptLocal* resolvedLocal = nullptr);
+	bool AssignToArray(UInt32 arrID, ScriptEventList* eventList, bool toNextStack, ScriptLocal* resolvedLocal = nullptr);
+	bool AssignToString(const char* str, ScriptEventList* eventList, bool tempForLocal, bool toNextStack, ScriptLocal* resolvedLocal = nullptr);
+	double* GetValuePtr(ScriptEventList* eventList, bool fromNextStack, ScriptLocal* resolvedLocal = nullptr);
+	std::string GetVariableName(ScriptEventList* eventList, bool fromNextStack, ScriptLocal* resolvedLocal = nullptr);
 
 	VariableStorage() = default;
 	VariableStorage(UInt32 _varIdx, bool _isStackVar, Script::VariableType _varType)
