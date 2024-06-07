@@ -649,10 +649,12 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 		error(expr->left->getToken()->line, err.str());
 	}
 
+	int maxParams = cmd->parse == kCommandInfo_Call.parse ? 16 : cmd->numParams;
+
 	// Basic type checks
 	// We already validated number of args, just verify types
 	if (!isDefaultParse(cmd->parse)) { // if expression parser
-		for (int i = 0; i < cmd->numParams && i < expr->args.size(); i++) {
+		for (int i = 0; i < expr->args.size() && i < maxParams; i++) {
 			auto param = cmd->params[i];
 			auto arg = expr->args[i];
 
@@ -673,7 +675,7 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 			}
 		}
 	} else { // default parser
-		for (int i = 0; i < cmd->numParams && i < expr->args.size(); i++) {
+		for (int i = 0; i < expr->args.size(); i++) {
 			auto param = cmd->params[i];
 			auto arg = expr->args[i];
 
@@ -698,7 +700,7 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 				// TODO: TEMP DISABLE TYPE CHECKS ON INSERTED PARAMS
 				continue;
 			}
-			
+
 			if (ident && arg->detailedType == kTokenType_Form) {
 				// Extract form from param
 				if (!doesFormMatchParamType(formCache[ident->token.lexeme], static_cast<ParamType>(param.typeID))) {
