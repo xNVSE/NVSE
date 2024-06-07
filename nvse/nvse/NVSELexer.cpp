@@ -190,13 +190,37 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 
 	char current = input[pos];
 	if (std::isdigit(current)) {
+		int base = 10;
+		if (current == '0' && pos + 2 < input.size()) {
+			if (std::tolower(input[pos + 1]) == 'b') {
+				base = 2;
+
+				// For some reason stoi doesn't handle 0b prefix
+				pos += 2;
+				current = input[pos];
+			} else if (std::tolower(input[pos + 1]) == 'x') {
+				base = 10;
+			}
+		}
+		
 		size_t len;
-		double value = std::stod(&input[pos], &len);
+		double value;
+		if (base == 16 || base == 2) {
+			value = std::stoi(&input[pos], &len, base);
+		} else {
+			value = std::stod(&input[pos], &len);
+		}
 		if (input[pos + len - 1] == '.') {
 			len--;
 		}
 		pos += len;
 		column += len;
+
+		// Handle 0b
+		if (base == 2) {
+			len += 2;
+		}
+		
 		return MakeToken(NVSETokenType::Number, input.substr(pos - len, len), value);
 	}
 
