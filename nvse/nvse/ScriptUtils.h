@@ -19,7 +19,6 @@ class ScriptLineMacro;
 struct Operator;
 struct ScriptEventList;
 class ExpressionEvaluator;
-struct UserFunctionParam;
 struct FunctionInfo;
 struct FunctionContext;
 class FunctionCaller;
@@ -29,6 +28,7 @@ class OffsetOutOfBoundsError : public std::exception {};
 #include "ScriptTokens.h"
 #include <stack>
 #include <utility>
+#include "StackVariables.h"
 
 #if RUNTIME
 #include <cstdarg>
@@ -93,11 +93,11 @@ private:
 	ParamSize_t	m_numParams;
 
 public:
-	DynamicParamInfo(const std::vector<UserFunctionParam> &params);
+	DynamicParamInfo(const std::vector<UserFunctionParam>& params);
 	DynamicParamInfo() : m_numParams(0) { }
 
-	ParamInfo* Params()	{	return m_paramInfo;	}
-	[[nodiscard]] ParamSize_t NumParams() const { return m_numParams;	}
+	ParamInfo* Params() { return m_paramInfo; }
+	[[nodiscard]] ParamSize_t NumParams() const { return m_numParams; }
 };
 
 #if RUNTIME

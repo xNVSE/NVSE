@@ -2403,10 +2403,10 @@ bool ExpressionParser::GetUserFunctionParams(
 
 		// make sure user isn't trying to use a var more than once as a param
 		for (UInt32 i = 0; i < outParams.size(); i++)
-			if (outParams[i].varIdx == varInfo->idx)
+			if (outParams[i].m_varIdx == varInfo->idx)
 				return false;
 
-		outParams.emplace_back(UserFunctionParam(varInfo->idx, varType));
+		outParams.emplace_back(UserFunctionParam(varInfo->idx, false, varType));
 	}
 	if (lastVarType != Script::eVarType_Invalid)
 		return false;
@@ -2427,7 +2427,7 @@ DynamicParamInfo::DynamicParamInfo(const std::vector<UserFunctionParam> &params)
 {
 	m_numParams = min(kMaxUdfParams, params.size());
 	for (ParamSize_t i = 0; i < m_numParams; i++)
-		m_paramInfo[i] = kDynamicParams[params[i].varType];
+		m_paramInfo[i] = kDynamicParams[params[i].GetType()];
 }
 
 bool ExpressionParser::ParseUserFunctionParameters(std::vector<UserFunctionParam> &out, const std::string &funcScriptText, Script::VarInfoList *funcScriptVars, Script *script) const
@@ -2567,8 +2567,8 @@ bool ExpressionParser::ParseUserFunctionDefinition() const
 	m_lineBuf->WriteByte(params.size());
 	for (auto iter = params.begin(); iter != params.end(); ++iter)
 	{
-		m_lineBuf->Write16(iter->varIdx);
-		m_lineBuf->WriteByte(iter->varType);
+		m_lineBuf->Write16(iter->m_varIdx);
+		m_lineBuf->WriteByte(iter->GetType());
 	}
 
 	// determine which if any local variables must be destroyed on function exit (string and array vars)

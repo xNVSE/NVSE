@@ -130,7 +130,7 @@ public:
 	virtual bool PopulateArgs(ScriptEventList* eventList, FunctionInfo* info)
 	{
 		m_eval.SetParams(info->Params());
-		if (!m_eval.ExtractArgs())
+		if (!m_eval.ExtractArgs()) [[unlikely]]
 			return false;
 
 		// populate event list variables
@@ -139,46 +139,46 @@ public:
 			const ScriptToken* arg = m_eval.Arg(i);
 
 			UserFunctionParam* param = info->GetParam(i);
-			if (!param)
+			if (!param) [[unlikely]]
 			{
 				ShowRuntimeError(info->GetScript(), "Param index %02X out of bounds", i);
 				return false;
 			}
 
-			ScriptLocal* var = eventList->GetVariable(param->varIdx);
-			if (!var)
+			ScriptLocal* resolvedLocal; // could stay invalid if it's a stack variable, that's fine.
+			if (!param->ResolveVariable(eventList, resolvedLocal)) [[unlikely]]
 			{
-				ShowRuntimeError(info->GetScript(), "Param variable not found. Function definition may be out of sync with function call. Recomplie the scripts and try again.");
+				ShowRuntimeError(info->GetScript(), "Could not look up argument variable for function script");
 				return false;
 			}
 
-			switch (param->varType)
+			switch (param->GetType())
 			{
 			case Script::eVarType_Array:
-				if (arg->CanConvertTo(kTokenType_Array))
-				{
-					g_ArrayMap.AddReference(&var->data, arg->GetArrayID(), info->GetScript()->GetModIndex());
-					AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_Array);
+				if (arg->CanConvertTo(kTokenType_Array)) [[likely]] {
+					param->AssignToArray(arg->GetArrayID(), eventList, resolvedLocal);
 				}
 				break;
 			case Script::eVarType_String:
-				if (arg->CanConvertTo(kTokenType_String))
-				{
-					var->data = g_StringMap.Add(info->GetScript()->GetModIndex(), arg->GetString(), true);
-					AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_String);
+				if (arg->CanConvertTo(kTokenType_String)) [[likely]] {
+					param->AssignToString(arg->GetString(), eventList, true, resolvedLocal);
 				}
 				break;
 			case Script::eVarType_Ref:
-				if (arg->CanConvertTo(kTokenType_Form))
-					*((UInt32*)&var->data) = arg->GetFormID();
+				if (arg->CanConvertTo(kTokenType_Form)) [[likely]] {
+					*((UInt32*)param->GetValuePtr(eventList, resolvedLocal)) = arg->GetFormID();
+				}
 				break;
 			case Script::eVarType_Integer:
 			case Script::eVarType_Float:
-				if (arg->CanConvertTo(kTokenType_Number))
-					var->data = (param->varType == Script::eVarType_Integer) ? floor(arg->GetNumber()) : arg->GetNumber();
+				if (arg->CanConvertTo(kTokenType_Number)) [[likely]] {
+					*param->GetValuePtr(eventList, resolvedLocal) = 
+						(param->GetType() == Script::eVarType_Integer) ? floor(arg->GetNumber()) : arg->GetNumber();
+				}
 				break;
 			default:
-				ShowRuntimeError(info->GetScript(), "Unknown variable type %02X encountered for parameter %d", param->varType, i);
+				ShowRuntimeError(info->GetScript(), "Unknown variable type %02X encountered for parameter %d", 
+					param->GetType(), i);
 				return false;
 			}
 		}
@@ -357,6 +357,7 @@ FunctionInfo::FunctionInfo(Script* script)
 	{
 	case 0:
 	case 1:
+	case 2: // version introducing support for stack vars. Can only be compiled with v2 using the new compiler.
 		break;
 	default:
 		ShowRuntimeError(script, "Unknown function version %02X.", m_functionVersion);
@@ -377,7 +378,11 @@ FunctionInfo::FunctionInfo(Script* script)
 		const UInt16 idx = *((UInt16*)data);
 		data += 2;
 		const UInt8 type = *data++;
-		params.emplace_back(idx, static_cast<Script::VariableType>(type));
+		bool isStackVar = false;
+		if (m_functionVersion == 2) {
+			isStackVar = *data++;
+		}
+		params.emplace_back(idx, isStackVar, static_cast<Script::VariableType>(type));
 	}
 
 	m_dParamInfo = DynamicParamInfo(params);
@@ -442,7 +447,7 @@ UInt32 FunctionInfo::GetParamVarTypes(UInt8* out) const
 	{
 		for (UInt32 i = 0; i < count; i++)
 		{
-			out[i] = m_userFunctionParams[i].varType;
+			out[i] = m_userFunctionParams[i].GetType();
 		}
 	}
 
@@ -477,6 +482,7 @@ m_bad(true), m_lambdaBackupEventList(false)
 	{
 	case 0:
 	case 1:
+	case 2:
 		break;
 	default:
 		ShowRuntimeError(info->GetScript(), "Unknown function version %02X", version);
@@ -585,8 +591,7 @@ bool FunctionContext::Return(ExpressionEvaluator* eval)
 bool InternalFunctionCaller::PopulateArgs(ScriptEventList* eventList, FunctionInfo* info)
 {
 	DynamicParamInfo& dParams = info->ParamInfo();
-	if (dParams.NumParams() > kMaxUdfParams)
-	{
+	if (dParams.NumParams() > kMaxUdfParams) [[unlikely]] {
 		return false;
 	}
 
@@ -604,46 +609,44 @@ bool InternalFunctionCaller::PopulateArgs(ScriptEventList* eventList, FunctionIn
 			return true;
 		}
 
-		ScriptLocal* var = eventList->GetVariable(param->varIdx);
-		if (!var)
+		ScriptLocal* resolvedLocal; // could stay invalid if it's a stack variable, that's fine.
+		if (!param->ResolveVariable(eventList, resolvedLocal)) [[unlikely]]
 		{
 			ShowRuntimeError(m_script, "Could not look up argument variable for function script");
 			return false;
 		}
 
-		switch (param->varType)
+		switch (param->GetType())
 		{
 		case Script::eVarType_Integer:
-			var->data = (SInt32)m_args[i];
+			*param->GetValuePtr(eventList, resolvedLocal) = (SInt32)m_args[i];
 			break;
 		case Script::eVarType_Float:
-			var->data = *((float*)&m_args[i]);
+			*param->GetValuePtr(eventList, resolvedLocal) = *((float*)&m_args[i]);
 			break;
 		case Script::eVarType_Ref:
 		{
 			TESForm* form = (TESForm*)m_args[i];
-			*((UInt32*)&var->data) = form ? form->refID : 0;
+			*((UInt32*)param->GetValuePtr(eventList, resolvedLocal)) = form ? form->refID : 0;
 		}
 		break;
 		case Script::eVarType_String:
-			var->data = g_StringMap.Add(info->GetScript()->GetModIndex(), (const char*)m_args[i], true);
-			AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_String);
+			param->AssignToString((const char*)m_args[i], eventList, true, resolvedLocal);
 			break;
 		case Script::eVarType_Array:
 		{
 			const ArrayID arrID = (ArrayID)m_args[i];
-			if (g_ArrayMap.Get(arrID))
-			{
-				g_ArrayMap.AddReference(&var->data, arrID, info->GetScript()->GetModIndex());
-				AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_Array);
+			if (g_ArrayMap.Get(arrID)) {
+				param->AssignToArray(arrID, eventList, resolvedLocal);
 			}
-			else
-				var->data = 0;
+			else {
+				*param->GetValuePtr(eventList, resolvedLocal) = 0;
+			}
 		}
 		break;
 		default:
 			// wtf?
-			ShowRuntimeError(m_script, "Unexpected param type %02X in internal function call", param->varType);
+			ShowRuntimeError(m_script, "Unexpected param type %02X in internal function call", param->GetType());
 			return false;
 		}
 	}
@@ -707,46 +710,46 @@ bool InternalFunctionCallerAlt::PopulateArgs(ScriptEventList* eventList, Functio
 			return true;
 		}
 
-		ScriptLocal* var = eventList->GetVariable(param->varIdx);
-		if (!var)
+		ScriptLocal* resolvedLocal; // could stay invalid if it's a stack variable, that's fine.
+		if (!param->ResolveVariable(eventList, resolvedLocal)) [[unlikely]]
 		{
 			ShowRuntimeError(m_script, "Could not look up argument variable for function script");
 			return false;
 		}
 
-		switch (param->varType)
+		switch (param->GetType())
 		{
 		case Script::eVarType_Integer:
-			var->data = floor(*((float*)&m_args[i]));  //NOTE: the ONLY difference between this and PopulateArgs() from the regular InternalFunctionCaller
+			// NOTE: this is the ONLY difference between this and PopulateArgs() from the regular InternalFunctionCaller.
+			// (i.e the fact we read a weirdly packed float, instead of an int directly.
+			*param->GetValuePtr(eventList, resolvedLocal) = floor(*((float*)&m_args[i]));  
 			break;
 		case Script::eVarType_Float:
-			var->data = *((float*)&m_args[i]);
+			*param->GetValuePtr(eventList, resolvedLocal) = *((float*)&m_args[i]);
 			break;
 		case Script::eVarType_Ref:
 		{
 			TESForm* form = (TESForm*)m_args[i];
-			*((UInt32*)&var->data) = form ? form->refID : 0;
+			*((UInt32*)param->GetValuePtr(eventList, resolvedLocal)) = form ? form->refID : 0;
+			break;
 		}
-		break;
 		case Script::eVarType_String:
-			var->data = g_StringMap.Add(info->GetScript()->GetModIndex(), (const char*)m_args[i], true);
-			AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_String);
+			param->AssignToString((const char*)m_args[i], eventList, true, resolvedLocal);
 			break;
 		case Script::eVarType_Array:
 		{
 			const ArrayID arrID = (ArrayID)m_args[i];
-			if (g_ArrayMap.Get(arrID))
-			{
-				g_ArrayMap.AddReference(&var->data, arrID, info->GetScript()->GetModIndex());
-				AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_Array);
+			if (g_ArrayMap.Get(arrID)) {
+				param->AssignToArray(arrID, eventList, resolvedLocal);
 			}
-			else
-				var->data = 0;
+			else {
+				*param->GetValuePtr(eventList, resolvedLocal) = 0;
+			}
+			break;
 		}
-		break;
 		default:
 			// wtf?
-			ShowRuntimeError(m_script, "Unexpected param type %02X in internal function call", param->varType);
+			ShowRuntimeError(m_script, "Unexpected param type %02X in internal function call", param->GetType());
 			return false;
 		}
 	}
@@ -758,53 +761,57 @@ template <BaseOfArrayElement T>
 bool ArrayElementArgFunctionCaller<T>::PopulateArgs(ScriptEventList* eventList, FunctionInfo* info)
 {
 	if (!m_args)
-		return true;	//interpret as there being no args to populate; success.
+		return true;  // interpret as there being no args to populate; success.
 	auto const numArgs = m_args->size();
-	if (numArgs > kMaxUdfParams)
+	if (numArgs > kMaxUdfParams) [[unlikely]]
 		return false;
 	// populate the args in the event list
 	for (UInt32 i = 0; i < numArgs; i++)
 	{
 		UserFunctionParam* param = info->GetParam(i);
-		if (!param)
+		if (!param) [[unlikely]]
 		{
 			ShowRuntimeError(m_script, "Failed to extract parameter %d. Please verify the number of parameters in function script match those required for event.", i);
 			return false;
 		}
-		ScriptLocal* var = eventList->GetVariable(param->varIdx);
-		if (!var)
+		ScriptLocal* resolvedLocal; // could stay invalid if it's a stack variable, that's fine.
+		if (!param->ResolveVariable(eventList, resolvedLocal)) [[unlikely]]
 		{
 			ShowRuntimeError(m_script, "Could not look up argument variable for function script");
 			return false;
 		}
 		const auto& arg = (*m_args)[i];
-		const auto varType = param->varType;
-		if (arg.DataType() != VarTypeToDataType(varType))
+		const auto varType = param->GetType();
+		if (arg.DataType() != VarTypeToDataType(varType)) [[unlikely]]
 		{
-			ShowRuntimeError(m_script, "Wrong type passed for parameter %d (%s). Cannot assign %s to %s.", i, GetVariableName(var, m_script, eventList),
-			                 VariableTypeToName(varType), DataTypeToString(arg.DataType()));
+			ShowRuntimeError(m_script, "Wrong type passed for parameter %d (%s). Cannot assign %s to %s.", 
+				i, param->GetVariableName(eventList, resolvedLocal).c_str(),
+			    VariableTypeToName(varType), DataTypeToString(arg.DataType()));
 			return false;
 		}
-		switch (param->varType)
+
+		switch (param->GetType())
 		{
-		case Script::eVarType_Integer:
-			arg.GetAsNumber(&var->data);
-			var->data = static_cast<SInt32>(var->data);
+		case Script::eVarType_Integer: 
+		{
+			auto* valuePtr = param->GetValuePtr(eventList, resolvedLocal);
+			arg.GetAsNumber(valuePtr);
+			*valuePtr = static_cast<SInt32>(*valuePtr);
 			break;
+		}
 		case Script::eVarType_Float:
-			arg.GetAsNumber(&var->data);
+			arg.GetAsNumber(param->GetValuePtr(eventList, resolvedLocal));
 			break;
 		case Script::eVarType_Ref:
 		{
-			arg.GetAsFormID(reinterpret_cast<UInt32*>(&var->data));
+			arg.GetAsFormID(reinterpret_cast<UInt32*>(param->GetValuePtr(eventList, resolvedLocal)));
 			break;
 		}
 		case Script::eVarType_String:
 		{
 			const char* out;
 			arg.GetAsString(&out);
-			var->data = g_StringMap.Add(info->GetScript()->GetModIndex(), out, true);
-			AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_String);
+			param->AssignToString(out, eventList, true, resolvedLocal);
 			break;
 		}
 		case Script::eVarType_Array:
@@ -813,15 +820,15 @@ bool ArrayElementArgFunctionCaller<T>::PopulateArgs(ScriptEventList* eventList, 
 			arg.GetAsArray(&arrID);
 			if (g_ArrayMap.Get(arrID))
 			{
-				g_ArrayMap.AddReference(&var->data, arrID, info->GetScript()->GetModIndex());
-				AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_Array);
+				param->AssignToArray(arrID, eventList, resolvedLocal);
 			}
-			else
-				var->data = 0;
+			else {
+				*param->GetValuePtr(eventList, resolvedLocal) = 0;
+			}
 			break;
 		}
 		default:
-			ShowRuntimeError(m_script, "Unexpected param type %02X in internal function call", param->varType);
+			ShowRuntimeError(m_script, "Unexpected param type %02X in internal function call", param->GetType());
 			return false;
 		}
 	}

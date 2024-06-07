@@ -769,8 +769,9 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context, U
 		FunctionInfo info(context.script);
 		for (auto& param : info.m_userFunctionParams)
 		{
-			auto* varInfo = context.script->GetVariableInfo(param.varIdx);
-			RegisterNVSEVar(varInfo, param.varType);
+			// TODO: support stack variables here?
+			auto* varInfo = context.script->GetVariableInfo(param.m_varIdx);
+			RegisterNVSEVar(varInfo, param.GetType());
 			args.push_back(std::make_unique<ScriptVariableToken>(context.script, ExpressionCode::None, varInfo));
 			if (args.back()->error)
 				return false;
@@ -808,13 +809,15 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context, U
 				return false;
 			this->expressionEvalArgs.push_back(tokens);
 		}
-		for (auto* token : this->expressionEvalArgs)
+		for (auto* token : this->expressionEvalArgs) {
 			RegisterNVSEVars(*token, context.script);
+		}
 		return true;
 	}
 	const auto numArgs = context.Read16();
-	if (!ParseGameArgs(context, numArgs))
+	if (!ParseGameArgs(context, numArgs)) {
 		return false;
+	}
 	if (context.curData < context.startData + dataLen && Contains(g_messageBoxParseCmds, reinterpret_cast<UInt32>(cmdInfo->parse)))
 	{
 		// message box args?

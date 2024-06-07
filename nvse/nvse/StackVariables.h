@@ -1,8 +1,8 @@
 #pragma once
 
-#ifdef RUNTIME
-
 #include "GameScript.h"
+
+#ifdef RUNTIME
 
 namespace StackVariables
 {
@@ -79,3 +79,30 @@ struct Variable {
 	}
 };
 #endif
+
+// Utility struct
+// More suited for long storage, as ScriptLocal pointers can become invalid when loading, according to Kormakur.
+struct VariableStorage {
+	int m_varIdx = -1;
+	bool m_isStackVar = false;
+	Script::VariableType m_type = Script::eVarType_Invalid;
+
+	[[nodiscard]] bool IsValid() const { return (m_varIdx != -1) && (m_type != Script::eVarType_Invalid); }
+	[[nodiscard]] Script::VariableType GetType() const { return m_type; }
+
+	// Useful so that the slow eventList->GetVariable doesn't have to be called again.
+	// Returns false for an invalid variable, or if non-stack-variable couldn't be resolved.
+	[[nodiscard]] bool ResolveVariable(ScriptEventList* eventList, ScriptLocal*& out_resolvedLocal) const;
+
+	bool AssignToArray(UInt32 arrID, ScriptEventList* eventList, ScriptLocal* resolvedLocal = nullptr);
+	bool AssignToString(const char* str, ScriptEventList* eventList, bool tempForLocal, ScriptLocal* resolvedLocal = nullptr);
+	double* GetValuePtr(ScriptEventList* eventList, ScriptLocal* resolvedLocal = nullptr);
+	std::string GetVariableName(ScriptEventList* eventList, ScriptLocal* resolvedLocal = nullptr);
+
+	VariableStorage() = default;
+	VariableStorage(UInt32 _varIdx, bool _isStackVar, Script::VariableType _varType)
+		: m_varIdx(_varIdx), m_isStackVar(_isStackVar), m_type(_varType)
+	{}
+};
+
+using UserFunctionParam = VariableStorage;

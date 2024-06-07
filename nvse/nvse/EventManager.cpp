@@ -686,7 +686,7 @@ public:
 
 	bool ValidateParam(UserFunctionParam* param, UInt8 paramIndex) override
 	{
-		const auto paramType = VarTypeToParamType(param->varType);
+		const auto paramType = VarTypeToParamType(param->GetType());
 		return ParamTypeMatches(paramType, m_argTypes->at(paramIndex));
 	}
 
