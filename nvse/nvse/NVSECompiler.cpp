@@ -146,7 +146,7 @@ void NVSECompiler::VisitNVSEScript(NVSEScript* nvScript) {
     }
 }
 
-void NVSECompiler::VisitBeginStmt(const BeginStmt* stmt) {
+void NVSECompiler::VisitBeginStmt(BeginStmt* stmt) {
     auto name = stmt->name.lexeme;
 
     // Shouldn't be null
@@ -213,26 +213,32 @@ void NVSECompiler::VisitFnStmt(FnDeclStmt* stmt) {
     auto scriptLenPatch = AddU32(0x0);
 
     // BYTECODE VER
-    AddU8(0x1);
+    AddU8(0x2);
 
     // arg count
     AddU8(stmt->args.size());
 
     // add args
-    for (auto i = 0; i < stmt->args.size(); i++) {
-        auto& arg = stmt->args[i];
-        auto token = std::get<0>(arg->values[0]);
+    for (auto arg : stmt->args) {
         auto var = arg->scopeVars[0];
-
-        // Since we are in fn decl we will need to declare these as temp globals
-        // __global_*
-        tempGlobals[var] = std::vector<size_t>{};
-        tempGlobals[var].push_back(AddU16(0x0));
-        
+        AddU16(var->index);
         AddU8(var->variableType);
-
-        CompDbg("Creating global var %s.\n", var->rename.c_str());
+        AddU8(0x1);
     }
+    // for (auto i = 0; i < stmt->args.size(); i++) {
+    //     auto& arg = stmt->args[i];
+    //     auto token = std::get<0>(arg->values[0]);
+    //     auto var = arg->scopeVars[0];
+    //
+    //     // Since we are in fn decl we will need to declare these as temp globals
+    //     // __global_*
+    //     tempGlobals[var] = std::vector<size_t>{};
+    //     tempGlobals[var].push_back(AddU16(0x0));F
+    //     
+    //     AddU8(var->variableType);
+    //
+    //     CompDbg("Creating global var %s.\n", var->rename.c_str());
+    // }
 
     // NUM_ARRAY_ARGS, always 0
     AddU8(0x0);
@@ -993,26 +999,32 @@ void NVSECompiler::VisitLambdaExpr(LambdaExpr* expr) {
         auto scriptLenPatch = AddU32(0x0);
 
         // BYTECODE VER
-        AddU8(0x1);
+        AddU8(0x2);
 
         // arg count
         AddU8(expr->args.size());
         
         // add args
-        for (auto i = 0; i < expr->args.size(); i++) {
-            auto& arg = expr->args[i];
-            auto token = std::get<0>(arg->values[0]);
-
-            // Resolve variable, since we are in lambda decl we will need to declare these as temp globals
-            // __global_*
-            NVSEScope::ScopeVar* var = arg->scopeVars[0];
-            tempGlobals[var] = std::vector<size_t>{};
-            tempGlobals[var].push_back(AddU16(0x0));
-        
+        for (auto arg : expr->args) {
+            auto var = arg->scopeVars[0];
+            AddU16(var->index);
             AddU8(var->variableType);
-
-            CompDbg("Creating global var %s.\n", var->rename.c_str());
+            AddU8(0x1);
         }
+        // for (auto i = 0; i < expr->args.size(); i++) {
+        //     auto& arg = expr->args[i];
+        //     auto token = std::get<0>(arg->values[0]);
+        //
+        //     // Resolve variable, since we are in lambda decl we will need to declare these as temp globals
+        //     // __global_*
+        //     NVSEScope::ScopeVar* var = arg->scopeVars[0];
+        //     tempGlobals[var] = std::vector<size_t>{};
+        //     tempGlobals[var].push_back(AddU16(0x0));
+        //
+        //     AddU8(var->variableType);
+        //
+        //     CompDbg("Creating global var %s.\n", var->rename.c_str());
+        // }
 
         // NUM_ARRAY_ARGS, always 0
         AddU8(0x0);

@@ -9,7 +9,7 @@ public:
 	NVSETreePrinter() = default;
 
 	void VisitNVSEScript(NVSEScript* script) override;
-	void VisitBeginStmt(const BeginStmt* stmt) override;
+	void VisitBeginStmt(BeginStmt* stmt) override;
 	void VisitFnStmt(FnDeclStmt* stmt) override;
 	void VisitVarDeclStmt(VarDeclStmt* stmt) override;
 

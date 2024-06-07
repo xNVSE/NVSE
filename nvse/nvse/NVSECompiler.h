@@ -201,7 +201,7 @@ public:
 	bool Compile();
 
 	void VisitNVSEScript(NVSEScript* nvScript) override;
-	void VisitBeginStmt(const BeginStmt* stmt) override;
+	void VisitBeginStmt(BeginStmt* stmt) override;
 	void VisitFnStmt(FnDeclStmt* stmt) override;
 	void VisitVarDeclStmt(VarDeclStmt* stmt) override;
 	void VisitExprStmt(const ExprStmt* stmt) override;

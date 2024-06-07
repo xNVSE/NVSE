@@ -36,7 +36,7 @@ void NVSETreePrinter::VisitNVSEScript(NVSEScript* script) {
 	curTab--;
 }
 
-void NVSETreePrinter::VisitBeginStmt(const BeginStmt* stmt) {
+void NVSETreePrinter::VisitBeginStmt(BeginStmt* stmt) {
 	PrintTabs();
 	CompDbg("begin %s %s\n", stmt->name.lexeme.c_str(), stmt->param.has_value() ? stmt->param->lexeme.c_str() : "");
 	curTab++;

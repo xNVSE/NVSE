@@ -38,7 +38,7 @@ public:
 	virtual ~NVSEVisitor() = default;
 	
 	virtual void VisitNVSEScript(NVSEScript* script) = 0;
-	virtual void VisitBeginStmt(const BeginStmt* stmt) = 0;
+	virtual void VisitBeginStmt(BeginStmt* stmt) = 0;
 	virtual void VisitFnStmt(FnDeclStmt* stmt) = 0;
 	virtual void VisitVarDeclStmt(VarDeclStmt* stmt) = 0;
 

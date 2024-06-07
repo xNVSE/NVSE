@@ -164,26 +164,26 @@ void NVSETypeChecker::VisitNVSEScript(NVSEScript* script) {
 	}
 
 	for (auto block : script->blocks) {
-		block->scope = EnterScope();
 		block->Accept(this);
-		LeaveScope();
 	}
 
 	LeaveScope();
 }
 
-void NVSETypeChecker::VisitBeginStmt(const BeginStmt* stmt) {
+void NVSETypeChecker::VisitBeginStmt(BeginStmt* stmt) {
+	stmt->scope = EnterScope();
 	stmt->block->Accept(this);
+	LeaveScope();
 }
 
 void NVSETypeChecker::VisitFnStmt(FnDeclStmt* stmt) {
 	stmt->scope = EnterScope(true);
 
-	bScopedGlobal = true;
+	//bScopedGlobal = true;
 	for (auto decl : stmt->args) {
-		decl->Accept(this);
+		WRAP_ERROR(decl->Accept(this))
 	}
-	bScopedGlobal = false;
+	//bScopedGlobal = false;
 
 	stmt->body->Accept(this);
 
@@ -906,11 +906,11 @@ void NVSETypeChecker::VisitGroupingExpr(GroupingExpr* expr) {
 void NVSETypeChecker::VisitLambdaExpr(LambdaExpr* expr) {
 	expr->scope = EnterScope(true);
 
-	bScopedGlobal = true;
+	//bScopedGlobal = true;
 	for (auto &decl : expr->args) {
 		WRAP_ERROR(decl->Accept(this))
 	}
-	bScopedGlobal = false;
+	//bScopedGlobal = false;
 
 	insideLoop.push(false);
 	expr->body->Accept(this);
