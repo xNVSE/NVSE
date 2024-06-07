@@ -572,6 +572,7 @@ ExprPtr NVSEParser::Unary() {
 	if (Match(NVSETokenType::Bang) || Match(NVSETokenType::Minus) || Match(NVSETokenType::Dollar) || Match(
 		NVSETokenType::Pound) || Match(NVSETokenType::BitwiseAnd) || Match(NVSETokenType::Star)) {
 		auto op = previousToken;
+		ExprPtr right = Unary();
 
 		// Convert these two in case of box/unbox
 		if (op.type == NVSETokenType::BitwiseAnd) {
@@ -584,9 +585,13 @@ ExprPtr NVSEParser::Unary() {
 
 		if (op.type == NVSETokenType::Minus) {
 			op.type = NVSETokenType::Negate;
-		}
 
-		ExprPtr right = Unary();
+			// Handle negative literals
+			if (auto rhs = dynamic_cast<NumberExpr*>(right.get())) {
+				rhs->value *= -1;
+				return right;
+			}
+		}
 		return std::make_shared<UnaryExpr>(op, std::move(right), false);
 	}
 

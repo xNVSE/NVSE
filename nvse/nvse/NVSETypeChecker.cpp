@@ -799,8 +799,12 @@ void NVSETypeChecker::VisitBoolExpr(BoolExpr* expr) {
 }
 
 void NVSETypeChecker::VisitNumberExpr(NumberExpr* expr) {
-	if (!expr->isFp && expr->value > UINT32_MAX) {
-		WRAP_ERROR(error(expr->token.line, expr->token.column, "Maximum value for integer literal exceeded. (Max: " + std::to_string(INT32_MAX) + ")"))
+	if (!expr->isFp) {
+		if (expr->value > INT32_MAX) {
+			WRAP_ERROR(error(expr->token.line, expr->token.column, "Maximum value for integer literal exceeded. (Max: " + std::to_string(INT32_MAX) + ")"))
+		} else if (expr->value < INT32_MIN) {
+			WRAP_ERROR(error(expr->token.line, expr->token.column, "Minimum value for integer literal exceeded. (Min: " + std::to_string(INT32_MIN) + ")"))
+		}
 	}
 	
 	expr->detailedType = kTokenType_Number;
