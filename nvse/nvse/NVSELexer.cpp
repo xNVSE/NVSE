@@ -199,7 +199,7 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 				pos += 2;
 				current = input[pos];
 			} else if (std::tolower(input[pos + 1]) == 'x') {
-				base = 10;
+				base = 16;
 			}
 		}
 		
