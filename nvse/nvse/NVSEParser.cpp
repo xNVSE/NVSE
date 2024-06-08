@@ -157,10 +157,6 @@ StmtPtr NVSEParser::Statement() {
 		return BlockStatement();
 	}
 
-	if (Peek(NVSETokenType::For)) {
-		return ForStatement();
-	}
-
 	if (Peek(NVSETokenType::Export) || PeekType()) {
 		bool bExport = Match(NVSETokenType::Export);
 		auto expr = VarDecl();

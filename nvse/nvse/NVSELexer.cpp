@@ -194,12 +194,13 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 		if (current == '0' && pos + 2 < input.size()) {
 			if (std::tolower(input[pos + 1]) == 'b') {
 				base = 2;
+				pos += 2;
+				current = input[pos];
 			} else if (std::tolower(input[pos + 1]) == 'x') {
 				base = 16;
+				pos += 2;
+				current = input[pos];
 			}
-
-			pos += 2;
-			current = input[pos];
 		}
 		
 		size_t len;

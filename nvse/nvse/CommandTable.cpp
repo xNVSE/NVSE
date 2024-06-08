@@ -2224,6 +2224,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(PrintStackVar);
 	ADD_CMD(DebugPrintStackVar);
 	ADD_CMD(ForEachAlt);
+	ADD_CMD(DumpStackInfo);
 }
 
 namespace PluginAPI

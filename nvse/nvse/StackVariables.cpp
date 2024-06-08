@@ -155,8 +155,28 @@ std::string VariableStorage::GetVariableName(ScriptEventList* eventList, bool fr
 		return std::string(::GetVariableName(var, eventList->m_script, eventList));
 	}
 	else {
-		// TODO: do something better for stack variables.
+		auto &stack = StackVariables::g_localStackVars[StackVariables::g_localStackPtr];
+		if (m_varIdx - 1 < stack.names.size()) {
+			return stack.names[m_varIdx - 1];
+		}
+
 		return FormatString("<stack var %d>", m_varIdx);
 	}
+}
+
+std::vector<std::string> ParseDumpStackVars(UInt8* data) {
+	std::vector<std::string> stackVarNames{};
+
+	const auto numStr = *reinterpret_cast<UInt16*>(data);
+	data += 2;
+
+	for (int i = 0; i < numStr; i++) {
+		const auto size = *reinterpret_cast<UInt16*>(data);
+		data += 2;
+		stackVarNames.push_back(std::string(reinterpret_cast<char*>(data), size));
+		data += size;
+	}
+
+	return stackVarNames;
 }
 #endif

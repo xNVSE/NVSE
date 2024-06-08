@@ -15,7 +15,7 @@ public:
         uint32_t index;
         uint32_t scopeIndex;
         
-        bool global;
+        bool global = false;
 
         // Used for renaming global variables in certain scopes
         //      export keyword will NOT rename a global var
@@ -35,20 +35,28 @@ private:
     bool isLambda{};
 
 protected:
-    uint32_t getVarIndex() {
+    uint32_t getVarIndex() const {
+        if (parent && !isLambda) {
+            return parent->getVarIndex();
+        }
+        
         return varIndex;
     }
 
     void incrementVarIndex() {
+        if (parent && !isLambda) {
+            parent->incrementVarIndex();
+            return;
+        }
+        
         varIndex++;
     }
     
 public:
-    NVSEScope (uint32_t scopeIndex, std::shared_ptr<NVSEScope> parent, bool isLambda = false) : scopeIndex(scopeIndex), parent(parent), isLambda(isLambda) {
-        if (parent) {
-            varIndex = parent->getVarIndex();
-        }
-    }
+    std::map<uint32_t, std::string> allVars{};
+    
+    NVSEScope (uint32_t scopeIndex, std::shared_ptr<NVSEScope> parent, bool isLambda = false)
+        : scopeIndex(scopeIndex), parent(parent), isLambda(isLambda) {}
     
     ScopeVar *resolveVariable(std::string name, bool checkParent = true) {
         // Lowercase name
@@ -90,7 +98,17 @@ public:
         variableInfo.scopeIndex = scopeIndex;
         
         vars[name] = variableInfo;
+        addToAllVars(variableInfo);
         return &vars[name];
+    }
+
+    void addToAllVars(ScopeVar var) {
+        if (parent && !isLambda) {
+            parent->addToAllVars(var);
+            return;
+        }
+
+        allVars[var.index] = var.token.lexeme;
     }
 
     bool isRootScope() const {

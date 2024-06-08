@@ -896,6 +896,13 @@ bool Cmd_GetSelfAlt_OLD_Execute(COMMAND_ARGS)
 	return Cmd_GetSelfAlt_Execute(PASS_COMMAND_ARGS);
 }
 
+bool Cmd_DumpStackInfo_Execute(COMMAND_ARGS) {
+	// Parse stack var names and populate
+	StackVariables::g_localStackVars[StackVariables::g_localStackPtr].names = StackVariables::ParseDumpStackVars((UInt8*)scriptData + *opcodeOffsetPtr);
+
+	return true;
+}
+
 #endif
 
 bool Cmd_Let_Parse(UInt32 numParams, ParamInfo* paramInfo, ScriptLineBuffer* lineBuf, ScriptBuffer* scriptBuf)

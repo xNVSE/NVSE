@@ -171,7 +171,7 @@ void NVSETypeChecker::VisitNVSEScript(NVSEScript* script) {
 }
 
 void NVSETypeChecker::VisitBeginStmt(BeginStmt* stmt) {
-	stmt->scope = EnterScope();
+	stmt->scope = EnterScope(true);
 	stmt->block->Accept(this);
 	LeaveScope();
 }
@@ -813,7 +813,7 @@ void NVSETypeChecker::VisitNumberExpr(NumberExpr* expr) {
 void NVSETypeChecker::VisitMapLiteralExpr(MapLiteralExpr* expr) {
 	if (expr->values.empty()) {
 		WRAP_ERROR(error(expr->token.line, expr->token.column,
-			"A map literal cannot be empty, since the type of the keys cannot be deduced otherwise."))
+			"A map literal cannot be empty, as the key type cannot be deduced."))
 		return;
 	}
 

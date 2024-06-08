@@ -197,6 +197,7 @@ public:
 
 	void ClearScopedGlobals();
 	void PatchScopedGlobals();
+	void PrintStackInfo(NVSEScope* scope);
 	void PrintScriptInfo();
 	bool Compile();
 

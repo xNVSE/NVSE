@@ -11,6 +11,7 @@ namespace StackVariables
 
 	struct LocalStackFrame {
 		std::vector<Value_t> vars{};
+		std::vector<std::string> names{};
 
 		Value_t& get(Index_t idx) {
 			if (idx >= vars.size()) {
@@ -38,6 +39,8 @@ namespace StackVariables
 
 	void PushLocalStack();
 	void PopLocalStack(bool destroy = true);
+
+	std::vector<std::string> ParseDumpStackVars(UInt8* data);
 }
 
 // Utility struct

@@ -22,6 +22,7 @@ enum OPCodes {
     OP_AR_MAP = 0x1568,
     OP_AR_FIND = 0x1557,
     OP_AR_BAD_NUMERIC_INDEX = 0x155F,
+    OP_DUMP_STACK_INFO = 0x1673,
 };
 
 void NVSECompiler::ClearScopedGlobals() {
@@ -53,6 +54,26 @@ void NVSECompiler::PatchScopedGlobals() {
             SetU16(idx, dataIdx);
         }
     }
+}
+
+void NVSECompiler::PrintStackInfo(NVSEScope *scope) {
+    AddU16(OP_DUMP_STACK_INFO);
+    auto opPatch = AddU16(0x0);
+    auto opStart = data.size();
+
+    AddU16(scope->allVars.size());
+
+    CompDbg("[Scope %d]\n", scope->getScopeIndex());
+    for (auto &[index, name] : scope->allVars) {
+        CompDbg("%d: %s\n", index, name.c_str());
+
+        AddU16(name.size());
+        for (char c : name) {
+            AddU8(c);
+        }
+    }
+
+    SetU16(opPatch, data.size() - opStart);
 }
 
 void NVSECompiler::PrintScriptInfo() {
@@ -142,6 +163,7 @@ void NVSECompiler::VisitNVSEScript(NVSEScript* nvScript) {
     }
 
     for (auto& block : nvScript->blocks) {
+        PrintStackInfo(block->scope.get());
         block->Accept(this);
     }
 }

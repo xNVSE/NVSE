@@ -131,3 +131,5 @@ DEFINE_CMD_ALT_EXP(GetSelfAlt_OLD, ThisAlt_OLD,
 DEFINE_CMD_ALIAS(GetSelfAlt, ThisAlt,
 	"Unlike GetSelf, will return ThisObj even if it isn't Persistent and is clutter.",
 	false, nullptr);
+
+DEFINE_CMD_ALT_EXP(DumpStackInfo, DumpStack, , false, nullptr);
