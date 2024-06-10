@@ -65,6 +65,22 @@ namespace StackVariables
 			_DMESSAGE("LOCAL VAR STACK DESCEND : Index %d", g_localStackPtr);
 		}
 	}
+
+	std::vector<std::string> ParseDumpStackVars(UInt8* data) {
+		std::vector<std::string> stackVarNames{};
+
+		const auto numStr = *reinterpret_cast<UInt16*>(data);
+		data += 2;
+
+		for (int i = 0; i < numStr; i++) {
+			const auto size = *reinterpret_cast<UInt16*>(data);
+			data += 2;
+			stackVarNames.push_back(std::string(reinterpret_cast<char*>(data), size));
+			data += size;
+		}
+
+		return stackVarNames;
+	}
 }
 
 
@@ -162,21 +178,5 @@ std::string VariableStorage::GetVariableName(ScriptEventList* eventList, bool fr
 
 		return FormatString("<stack var %d>", m_varIdx);
 	}
-}
-
-std::vector<std::string> ParseDumpStackVars(UInt8* data) {
-	std::vector<std::string> stackVarNames{};
-
-	const auto numStr = *reinterpret_cast<UInt16*>(data);
-	data += 2;
-
-	for (int i = 0; i < numStr; i++) {
-		const auto size = *reinterpret_cast<UInt16*>(data);
-		data += 2;
-		stackVarNames.push_back(std::string(reinterpret_cast<char*>(data), size));
-		data += size;
-	}
-
-	return stackVarNames;
 }
 #endif
