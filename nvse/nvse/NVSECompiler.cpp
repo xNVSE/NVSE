@@ -163,7 +163,6 @@ void NVSECompiler::VisitNVSEScript(NVSEScript* nvScript) {
     }
 
     for (auto& block : nvScript->blocks) {
-        PrintStackInfo(block->scope.get());
         block->Accept(this);
     }
 }
@@ -212,6 +211,7 @@ void NVSECompiler::VisitBeginStmt(BeginStmt* stmt) {
     SetU16(beginPatch, data.size() - beginStart);
     auto blockStart = data.size();
 
+    PrintStackInfo(stmt->scope.get());
     CompileBlock(stmt->block, true);
 
     // OP_END
@@ -271,6 +271,7 @@ void NVSECompiler::VisitFnStmt(FnDeclStmt* stmt) {
     SetU16(opModeLenPatch, data.size() - opModeStart);
 
     // Compile script
+    PrintStackInfo(stmt->scope.get());
     CompileBlock(stmt->body, false);
 
     // OP_END
@@ -1063,6 +1064,7 @@ void NVSECompiler::VisitLambdaExpr(LambdaExpr* expr) {
 
         // Compile script
         insideNvseExpr.push(false);
+        PrintStackInfo(expr->scope.get());
         CompileBlock(expr->body, false);
         insideNvseExpr.pop();
 
