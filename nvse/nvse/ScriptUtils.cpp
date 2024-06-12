@@ -5356,8 +5356,14 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 					operands.push_back(FormatString("<stack var %d>", token.value.stackVarIdx));
 					break;
 				}
-				auto varName = ScriptParsing::g_analyzerStack.back()->stackVars[token.value.stackVarIdx - 1];
-				operands.push_back(varName);
+
+				auto& stackVars = ScriptParsing::g_analyzerStack.back()->stackVars;
+				if (stackVars.size() < token.value.stackVarIdx) {
+					operands.push_back(FormatString("<stack var %d>", token.value.stackVarIdx));
+					break;
+				}
+
+				operands.push_back(stackVars[token.value.stackVarIdx - 1]);
 				break;
 			}
 			case kTokenType_LambdaScriptData:
