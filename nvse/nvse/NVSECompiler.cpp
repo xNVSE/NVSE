@@ -206,6 +206,10 @@ void NVSECompiler::VisitBeginStmt(BeginStmt* stmt) {
                 throw std::runtime_error(std::format("Unable to resolve form '{}'.", param.lexeme));
             }
         }
+    } else {
+	    if (stmt->beginInfo->numParams > 0) {
+            AddU16(0x0);
+	    }
     }
 
     SetU16(beginPatch, data.size() - beginStart);
