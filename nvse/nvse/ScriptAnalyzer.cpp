@@ -8,15 +8,15 @@
 #include "FunctionScripts.h"
 #include "ScriptUtils.h"
 
-std::vector<ScriptParsing::ScriptAnalyzer*> g_analyzerStack;
+std::vector<ScriptParsing::ScriptAnalyzer*> ScriptParsing::g_analyzerStack {};
 
 ScriptParsing::ScriptAnalyzer* GetRootAnalyzer()
 {
-	if (g_analyzerStack.empty()) {
+	if (ScriptParsing::g_analyzerStack.empty()) {
 		return nullptr;
 	}
 	
-	return g_analyzerStack[0];
+	return ScriptParsing::g_analyzerStack[0];
 }
 
 UInt8 Read8(UInt8*& curData)
@@ -764,6 +764,13 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context, U
 {
 	if (!cmdInfo)
 		return false;
+
+	// Manually parse dumped stack info
+	if (cmdInfo->opcode == g_scriptCommands.GetByName("DumpStackInfo")->opcode) {
+		g_analyzerStack.back()->stackVars = StackVariables::ParseDumpStackVars(context.curData);
+		return true;
+	}
+
 	if (cmdInfo->execute == kCommandInfo_Function.execute)
 	{
 		FunctionInfo info(context.script);

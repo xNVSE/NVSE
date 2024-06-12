@@ -5352,7 +5352,12 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 			case kTokenType_StringStackVar:
 			case kTokenType_ArrayStackVar:
 			{
-				operands.push_back(FormatString("<stack var %d>", token.value.stackVarIdx));
+				if (ScriptParsing::g_analyzerStack.empty()) {
+					operands.push_back(FormatString("<stack var %d>", token.value.stackVarIdx));
+					break;
+				}
+				auto varName = ScriptParsing::g_analyzerStack.back()->stackVars[token.value.stackVarIdx - 1];
+				operands.push_back(varName);
 				break;
 			}
 			case kTokenType_LambdaScriptData:
