@@ -330,13 +330,12 @@ void NVSETypeChecker::VisitIfStmt(IfStmt* stmt) {
 
 		// Check if condition can evaluate to bool
 		const auto lType = stmt->cond->detailedType;
-		const auto oType = s_operators[kOpType_Equals].GetResult(lType, kTokenType_Boolean);
-		if (oType == kTokenType_Invalid) {
+		if (!CanConvertOperand(lType, kTokenType_Boolean)) {
 			error(stmt->line, std::format("Invalid expression type '{}' for if statement.", TokenTypeToString(lType)));
 			stmt->cond->detailedType = kTokenType_Invalid;
 		}
 		else {
-			stmt->cond->detailedType = oType;
+			stmt->cond->detailedType = kTokenType_Boolean;
 		}
 	)
 	stmt->block->Accept(this);
@@ -904,7 +903,11 @@ void NVSETypeChecker::VisitIdentExpr(IdentExpr* expr) {
 	if (formCache.contains(name)) {
 		form = formCache[name];
 	} else {
-		form = GetFormByID(name.c_str());
+		if (!_stricmp(name.c_str(), "player")) {
+			form = LookupFormByID(0x14);
+		} else {
+			form = GetFormByID(name.c_str());
+		}
 	}
 
 	if (!form) {
