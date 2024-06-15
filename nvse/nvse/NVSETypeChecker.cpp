@@ -562,54 +562,6 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 	std::string name = expr->token.lexeme;
 	auto cmd = g_scriptCommands.GetByName(name.c_str());
 
-	int insertedIdx = -1;
-	if (auto &left = expr->left) {
-		left->Accept(this);
-
-		// Try to restructure AST in the case of 'array.filter()' or 'string.find()' syntactic sugar
-		// array.filter(filterFn) becomes Ar_Filter(array, filterFn)
-		if (left->detailedType == kTokenType_Array || left->detailedType == kTokenType_ArrayVar || left->detailedType == kTokenType_String || left->detailedType == kTokenType_StringVar) {
-			if (left->detailedType == kTokenType_Array || left->detailedType == kTokenType_ArrayVar) {
-				expr->token.lexeme = "Ar_" + name;
-			} else {
-				expr->token.lexeme = "Sv_" + name;
-			}
-
-			cmd = g_scriptCommands.GetByName(expr->token.lexeme.c_str());
-			if (!cmd) {
-				error(expr->token.line, expr->token.column, std::format("Invalid command '{}'.", name));
-			}
-
-			// Perform basic typechecking on call params
-			int requiredParams = 0;
-			for (int i = 0; i < cmd->numParams; i++) {
-				if (!cmd->params[i].isOptional) {
-					requiredParams++;
-				}
-			}
-
-			// Check arg count
-			if (expr->args.size() + 1 < requiredParams) {
-				error(expr->token.line, expr->token.column, std::format("Invalid number of parameters specified for command {} (Expected '{}', Got {}).", name, requiredParams - 1, expr->args.size() + 1));
-			}
-
-			// Scan for replacement index
-			for (int i = 0; i < cmd->numParams; i++) {
-				auto param = cmd->params[i];
-				if (ExpressionParser::ValidateArgType(static_cast<ParamType>(param.typeID), left->detailedType, true, cmd)) {
-					expr->args.insert(expr->args.begin() + i, expr->left);
-					expr->left = nullptr;
-
-					// InsertedIdx is used to ignore the argument in later type checking, as it has already been checked
-					// This is to resolve variable redeclaration errors, as it was declared already when checking LHS
-					// and it will get visited again when compiling the args
-					insertedIdx = i;
-					break;
-				}
-			}
-		}
-	}
-
 	// Try to get the script command by lexeme
 	if (!cmd) {
 		cmd = g_scriptCommands.GetByName(name.c_str());
@@ -657,14 +609,7 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 			auto param = cmd->params[i];
 			auto arg = expr->args[i];
 
-			// If we injected another param for something like array.filter(fn () -> {}) into Ar_Filter(array, fn () -> {})
-			// Revisiting will cause a variable re-declaration exception
-			if (i != insertedIdx) {
-				WRAP_ERROR(arg->Accept(this))
-			} else {
-				// TODO: TEMP DISABLE TYPE CHECKS ON INSERTED PARAMS
-				continue;
-			}
+			WRAP_ERROR(arg->Accept(this))
 
 			// TODO
 			if (cmd->parse == kCommandInfo_Call.parse) {
@@ -696,14 +641,7 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 				continue;
 			}
 
-			// If we injected another param for something like array.filter(fn () -> {}) into Ar_Filter(array, fn () -> {})
-			// Revisiting will cause a variable re-declaration exception
-			if (i != insertedIdx) {
-				WRAP_ERROR(arg->Accept(this))
-			} else {
-				// TODO: TEMP DISABLE TYPE CHECKS ON INSERTED PARAMS
-				continue;
-			}
+			WRAP_ERROR(arg->Accept(this))
 
 			// TODO
 			if (cmd->parse == kCommandInfo_Call.parse) {
