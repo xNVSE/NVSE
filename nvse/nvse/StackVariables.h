@@ -1,5 +1,8 @@
 #pragma once
 
+#include <mutex>
+#include <stack>
+
 #include "GameScript.h"
 
 #ifdef RUNTIME
@@ -42,6 +45,15 @@ namespace StackVariables
 
 	std::vector<std::string> ParseDumpStackVars(UInt8* data);
 }
+
+struct VarCache {
+	std::mutex mt;
+	std::unordered_map<ScriptEventList*, std::unordered_map<UInt32, ScriptLocal*>> varCache;
+};
+
+extern VarCache* g_scriptVarCache[];
+inline thread_local int g_threadID = -1;
+inline std::atomic<int> g_nextThreadID = 0;
 
 // Utility struct
 struct Variable {

@@ -179,4 +179,6 @@ std::string VariableStorage::GetVariableName(ScriptEventList* eventList, bool fr
 		return FormatString("<stack var %d>", m_varIdx);
 	}
 }
+
+VarCache *g_scriptVarCache[10] {};
 #endif

@@ -210,7 +210,7 @@ struct BlockStmt : Stmt {
 
 struct Expr {
     int line = 0;
-    Token_Type detailedType = kTokenType_Invalid;
+    Token_Type tokenType = kTokenType_Invalid;
 
     virtual ~Expr() = default;
     virtual void Accept(NVSEVisitor* t) = 0;
