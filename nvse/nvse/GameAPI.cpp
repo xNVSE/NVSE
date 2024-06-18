@@ -1891,20 +1891,18 @@ UInt32 ScriptEventList::ResetAllVariables()
 
 ScriptLocal *ScriptEventList::GetVariable(UInt32 id)
 {
-	auto cache = g_scriptVarCache[g_threadID]->varCache.find(this);
-	if (cache == g_scriptVarCache[g_threadID]->varCache.end()) {
-		g_scriptVarCache[g_threadID]->varCache[this] = {};
+	auto& cache = g_scriptVarCache[g_threadID]->varCache[this];
+	auto it = cache.find(id);
+
+	if (it != cache.end()) {
+		return it->second;
 	}
 
-	if (g_scriptVarCache[g_threadID]->varCache[this].contains(id)) {
-		return g_scriptVarCache[g_threadID]->varCache[this][id];
-	}
-
-	const auto found = m_vars->FindFirst([&](ScriptLocal *entry) {
+	const auto found = m_vars->FindFirst([&](ScriptLocal* entry) {
 		return entry->id == id;
 	});
 
-	g_scriptVarCache[g_threadID]->varCache[this][id] = found;
+	cache[id] = found;
 
 	return found;
 }
