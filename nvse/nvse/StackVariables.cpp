@@ -181,4 +181,6 @@ std::string VariableStorage::GetVariableName(ScriptEventList* eventList, bool fr
 }
 
 VarCache *g_scriptVarCache[10] {};
+thread_local int g_threadID = -1;
+std::atomic<int> g_nextThreadID = 0;
 #endif

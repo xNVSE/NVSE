@@ -52,8 +52,8 @@ struct VarCache {
 };
 
 extern VarCache* g_scriptVarCache[];
-inline thread_local int g_threadID = -1;
-inline std::atomic<int> g_nextThreadID = 0;
+extern thread_local int g_threadID;
+extern std::atomic<int> g_nextThreadID;
 
 // Utility struct
 struct Variable {
