@@ -2221,6 +2221,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD_RET(Ternary, kRetnType_Ambiguous);
 	ADD_CMD(MatchesAnyOf);
 	ADD_CMD(ar_Exists);
+	ADD_CMD(EvaluateInventory);
 }
 
 namespace PluginAPI

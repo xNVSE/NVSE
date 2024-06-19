@@ -2033,3 +2033,16 @@ bool Cmd_GetHeadingAngleX_Execute(COMMAND_ARGS)
 
 	return true;
 }
+
+bool Cmd_EvaluateInventory_Execute(COMMAND_ARGS) {
+	if (!DYNAMIC_CAST(thisObj, TESObjectREFR, Actor)) {
+		return true;
+	}
+
+	TESForm* baseForm = thisObj->baseForm;
+	ValidBip01Names* bipNames = thisObj->GetValidBip01Names();
+
+	ThisStdCall<ValidBip01Names*>(0x606540, baseForm, thisObj, bipNames, 1);
+
+	return true;
+}
