@@ -2115,7 +2115,7 @@ void Init()
 
 	EVENT_INFO("onlockbroken", kEventParams_OneRef, nullptr, 0);
 	EVENT_INFO("onlockpicksuccess", kEventParams_OneRef, nullptr, 0);
-	EVENT_INFO("onlockpickbreak", kEventParams_OneRef, nullptr, 0);
+	EVENT_INFO("onlockpickbroken", kEventParams_OneRef, nullptr, 0);
 
 	EVENT_INFO("onterminalhacked", kEventParams_OneRef, nullptr, 0);
 	EVENT_INFO("onterminalhackfailed", kEventParams_OneRef, nullptr, 0);

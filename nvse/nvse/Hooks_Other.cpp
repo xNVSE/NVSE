@@ -218,12 +218,12 @@ namespace OtherHooks
 			ThisStdCall(0x5692A0, doorRef);
 		}
 
-		void __fastcall OnLockPickBreak() {
+		void __fastcall OnLockPickBroken() {
 			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
 			uint8_t* menu = *reinterpret_cast<uint8_t**>(ebp - 0x148);
 			TESObjectREFR* doorRef = *reinterpret_cast<TESObjectREFR**>(menu + 0x6C);
 
-			EventManager::DispatchEvent("onlockpickbreak", nullptr, doorRef);
+			EventManager::DispatchEvent("onlockpickbroken", nullptr, doorRef);
 
 			// Dont need to call original hooked method since nullsub
 		}
@@ -231,7 +231,7 @@ namespace OtherHooks
 		void WriteHooks() {
 			WriteRelCall(0x790461, reinterpret_cast<UInt32>(OnLockBroken));
 			WriteRelCall(0x78F8E5, reinterpret_cast<UInt32>(OnLockPickSuccess)); 
-			WriteRelCall(0x78FE24, reinterpret_cast<UInt32>(OnLockPickBreak));
+			WriteRelCall(0x78FE24, reinterpret_cast<UInt32>(OnLockPickBroken));
 		}
 	}
 
