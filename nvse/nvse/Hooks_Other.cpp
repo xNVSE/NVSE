@@ -235,6 +235,29 @@ namespace OtherHooks
 		}
 	}
 
+	namespace Terminal {
+		void __fastcall OnTerminalHacked(UInt8* menu, void* unused, int a2, int a3) {
+			TESObjectREFR* unlockedRef = *reinterpret_cast<TESObjectREFR**>(menu + 0x198);
+
+			EventManager::DispatchEvent("onterminalhacked", nullptr, unlockedRef);
+
+			ThisStdCall(0x767EF0, menu, a2, a3);
+		}
+
+		void __fastcall OnTerminalHackFailed(UInt8 * menu, void* unused, int a2, int a3) {
+			TESObjectREFR* lockedRef = *reinterpret_cast<TESObjectREFR**>(menu + 0x198);
+
+			EventManager::DispatchEvent("onterminalhackfailed", nullptr, lockedRef);
+
+			ThisStdCall(0x767EF0, menu, a2, a3);
+		}
+
+		void WriteHooks() {
+			WriteRelCall(0x76717A, reinterpret_cast<UInt32>(OnTerminalHacked));
+			WriteRelCall(0x7674B0, reinterpret_cast<UInt32>(OnTerminalHackFailed));
+		}
+	}
+
 	void Hooks_Other_Init()
 	{
 		WriteRelJump(0x9FF5FB, UInt32(TilesDestroyedHook));
@@ -253,6 +276,7 @@ namespace OtherHooks
 
 		IMod::WriteHooks();
 		Locks::WriteHooks();
+		Terminal::WriteHooks();
 	}
 
 	thread_local CurrentScriptContext emptyCtx{}; // not every command gets run through script runner
