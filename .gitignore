@@ -398,4 +398,5 @@ ipch
 *.recipe
 
 # Jetbrains
-.idea/*
+nvse/.idea/
+nvse/enc_temp_folder/
