@@ -180,49 +180,33 @@ namespace OtherHooks
 	}
 
 	namespace IMod {
-		__declspec(naked) void* __cdecl ApplyIMOD(TESForm* ref, float a1, int a3) {
-			static uint32_t retnAddr = 0x5299A5;
+		void __fastcall ApplyIMOD(void** a1, void* unused, void* a2) {
+			auto *ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
+			auto ref = *reinterpret_cast<TESForm**>(ebp + 0x8);
 
-			__asm {
-				push ebp
-				mov ebp, esp
-			}
+			auto name = ref->GetEditorID();
+			if (name) {}
 
-			if (ref) {
-				PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnApplyIMOD, (void*)ref, sizeof(void*), nullptr);
-			}
+			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnApplyIMOD, (void*)ref, sizeof(void*), nullptr);
 
-			_asm {
-				push 0xFFFFFFFF
-				jmp retnAddr
-			}
+			ThisStdCall(0x633C90, a1, a2);
 		}
 
-		__declspec(naked) void* RemoveIMOD() {
-			static uint32_t retnAddr = 0x633C90;
-			static uint32_t retnAddr2 = 0x529D3C;
-			static TESForm* ref = nullptr;
+		void __fastcall RemoveIMOD(void** a1, void* unused, void* a2) {
+			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
+			auto ref = *reinterpret_cast<TESForm**>(ebp + 0x8);
 
-			__asm {
-				pushad
-				mov eax, [ebp + 0x8]
-				mov ref, eax
-			}
+			auto name = ref->GetEditorID();
+			if (name) {}
 
-			if (ref) {
-				PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRemoveIMOD, (void*)ref, sizeof(void*), nullptr);
-			}
+			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRemoveIMOD, (void*)ref, sizeof(void*), nullptr);
 
-			_asm {
-				popad
-				push retnAddr2
-				jmp retnAddr
-			}
+ 			ThisStdCall(0x633C90, a1, a2);
 		}
 
 		void WriteHooks() {
-			WriteRelJump(0x5299A0, reinterpret_cast<UInt32>(ApplyIMOD));
-			WriteRelJump(0x529D37, reinterpret_cast<UInt32>(RemoveIMOD));
+			WriteRelCall(0x529A37, reinterpret_cast<UInt32>(ApplyIMOD));
+			WriteRelCall(0x529D37, reinterpret_cast<UInt32>(RemoveIMOD));
 		}
 	}
 
