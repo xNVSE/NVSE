@@ -396,3 +396,6 @@ ipch
 
 *.tlog
 *.recipe
+
+# Jetbrains
+.idea/*
