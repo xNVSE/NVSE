@@ -179,6 +179,53 @@ namespace OtherHooks
 		LambdaManager::MarkScriptAsDeleted(script);
 	}
 
+	namespace IMod {
+		__declspec(naked) void* __cdecl ApplyIMOD(TESForm* ref, float a1, int a3) {
+			static uint32_t retnAddr = 0x5299A5;
+
+			__asm {
+				push ebp
+				mov ebp, esp
+			}
+
+			if (ref) {
+				PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnApplyIMOD, (void*)ref, sizeof(void*), nullptr);
+			}
+
+			_asm {
+				push 0xFFFFFFFF
+				jmp retnAddr
+			}
+		}
+
+		__declspec(naked) void* RemoveIMOD() {
+			static uint32_t retnAddr = 0x633C90;
+			static uint32_t retnAddr2 = 0x529D3C;
+			static TESForm* ref = nullptr;
+
+			__asm {
+				pushad
+				mov eax, [ebp + 0x8]
+				mov ref, eax
+			}
+
+			if (ref) {
+				PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRemoveIMOD, (void*)ref, sizeof(void*), nullptr);
+			}
+
+			_asm {
+				popad
+				push retnAddr2
+				jmp retnAddr
+			}
+		}
+
+		void WriteHooks() {
+			WriteRelJump(0x5299A0, reinterpret_cast<UInt32>(ApplyIMOD));
+			WriteRelJump(0x529D37, reinterpret_cast<UInt32>(RemoveIMOD));
+		}
+	}
+
 	void Hooks_Other_Init()
 	{
 		WriteRelJump(0x9FF5FB, UInt32(TilesDestroyedHook));
@@ -194,6 +241,8 @@ namespace OtherHooks
 		WriteRelCall(0x5AA206, ScriptDestructorHook);
 
 		*(UInt32*)0x0126FDF4 = 1; // locale fix
+
+		IMod::WriteHooks();
 	}
 
 	thread_local CurrentScriptContext emptyCtx{}; // not every command gets run through script runner

@@ -396,6 +396,10 @@ eEventID EventIDForMessage(UInt32 msgID)
 			return kEventID_RenameNewGameName;
 		case NVSEMessagingInterface::kMessage_PreLoadGame:
 			return kEventID_PreLoadGame;
+		case NVSEMessagingInterface::kMessage_OnApplyIMOD:
+			return kEventID_OnApplyIMOD;
+		case NVSEMessagingInterface::kMessage_OnRemoveIMOD:
+			return kEventID_OnRemoveIMOD;
 		default:
 			return kEventID_INVALID;
 	}
@@ -2104,6 +2108,9 @@ void Init()
 	EVENT_INFO("renamenewgamename", kEventParams_OneString, nullptr, 0);
 	EVENT_INFO("postloadgame", kEventParams_OneInt, nullptr, 0);
 	EVENT_INFO("preloadgame", kEventParams_OneString, nullptr, 0);
+
+	EVENT_INFO("onapplyimod", kEventParams_OneRef, nullptr, 0);
+	EVENT_INFO("onremoveimod", kEventParams_OneRef, nullptr, 0);
 
 	EVENT_INFO_FLAGS("nvsetestevent", kEventParams_OneInt_OneFloat_OneArray_OneString_OneForm_OneReference_OneBaseform,
 		nullptr, 0, EventFlags::kFlag_AllowScriptDispatch); // dispatched via DispatchEventAlt, for unit tests
