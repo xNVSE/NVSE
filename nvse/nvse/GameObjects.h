@@ -91,7 +91,7 @@ public:
 	virtual UInt32		Unk_83(void);
 	virtual void		Unk_84(UInt32 arg0);
 	virtual UInt32		Unk_85(void);			// 0 or GetActor::Unk01AC
-	virtual bool		Unk_86(void);			// return false for Projectile, Actor and Creature, true for character and PlayerCharacter
+	virtual bool		IsCharacter(void);			// return false for Projectile, Actor and Creature, true for character and PlayerCharacter
 	virtual bool		Unk_87(void);			// seems to always return 0
 	virtual bool		Unk_88(void);			// seems to always return 0
 	virtual void		Unk_89(void);

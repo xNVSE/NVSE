@@ -2039,6 +2039,10 @@ bool Cmd_EvaluateInventory_Execute(COMMAND_ARGS) {
 		return true;
 	}
 
+	if (!thisObj->IsCharacter()) {
+		return true;
+	}
+
 	TESForm* baseForm = thisObj->baseForm;
 	ValidBip01Names* bipNames = thisObj->GetValidBip01Names();
 
