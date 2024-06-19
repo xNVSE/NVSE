@@ -205,6 +205,36 @@ namespace OtherHooks
 		}
 	}
 
+	namespace Locks {
+		void __fastcall OnLockBroken(TESObjectREFR* doorRef) {
+			EventManager::DispatchEvent("onlockbroken", nullptr, doorRef);
+
+			ThisStdCall(0x569160, doorRef);
+		}
+
+		void __fastcall OnLockPickSuccess(TESObjectREFR* doorRef) {
+			EventManager::DispatchEvent("onlockpicksuccess", nullptr, doorRef);
+
+			ThisStdCall(0x5692A0, doorRef);
+		}
+
+		void __fastcall OnLockPickBreak() {
+			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
+			uint8_t* menu = *reinterpret_cast<uint8_t**>(ebp - 0x148);
+			TESObjectREFR* doorRef = *reinterpret_cast<TESObjectREFR**>(menu + 0x6C);
+
+			EventManager::DispatchEvent("onlockpickbreak", nullptr, doorRef);
+
+			// Dont need to call original hooked method since nullsub
+		}
+
+		void WriteHooks() {
+			WriteRelCall(0x790461, reinterpret_cast<UInt32>(OnLockBroken));
+			WriteRelCall(0x78F8E5, reinterpret_cast<UInt32>(OnLockPickSuccess)); 
+			WriteRelCall(0x78FE24, reinterpret_cast<UInt32>(OnLockPickBreak));
+		}
+	}
+
 	void Hooks_Other_Init()
 	{
 		WriteRelJump(0x9FF5FB, UInt32(TilesDestroyedHook));
@@ -222,6 +252,7 @@ namespace OtherHooks
 		*(UInt32*)0x0126FDF4 = 1; // locale fix
 
 		IMod::WriteHooks();
+		Locks::WriteHooks();
 	}
 
 	thread_local CurrentScriptContext emptyCtx{}; // not every command gets run through script runner

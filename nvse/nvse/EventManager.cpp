@@ -2113,6 +2113,10 @@ void Init()
 	EVENT_INFO("onapplyimod", kEventParams_OneRef, nullptr, 0);
 	EVENT_INFO("onremoveimod", kEventParams_OneRef, nullptr, 0);
 
+	EVENT_INFO("onlockbroken", kEventParams_OneRef, nullptr, 0);
+	EVENT_INFO("onlockpicksuccess", kEventParams_OneRef, nullptr, 0);
+	EVENT_INFO("onlockpickbreak", kEventParams_OneRef, nullptr, 0);
+
 
 #undef EVENT_INFO
 #undef EVENT_INFO_FLAGS
