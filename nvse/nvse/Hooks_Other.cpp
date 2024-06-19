@@ -6,6 +6,7 @@
 #include "LambdaManager.h"
 #include "PluginManager.h"
 #include "Commands_UI.h"
+#include "EventManager.h"
 #include "FastStack.h"
 #include "GameTiles.h"
 #include "MemoizedMap.h"
@@ -184,7 +185,7 @@ namespace OtherHooks
 			auto *ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
 			auto ref = *reinterpret_cast<TESForm**>(ebp + 0x8);
 
-			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnApplyIMOD, (void*)ref, sizeof(void*), nullptr);
+			EventManager::DispatchEvent("onapplyimod", nullptr, ref);
 
 			ThisStdCall(0x633C90, a1, a2);
 		}
@@ -193,7 +194,7 @@ namespace OtherHooks
 			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
 			auto ref = *reinterpret_cast<TESForm**>(ebp + 0x8);
 
-			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRemoveIMOD, (void*)ref, sizeof(void*), nullptr);
+			EventManager::DispatchEvent("onremoveimod", nullptr, ref);
 
  			ThisStdCall(0x633C90, a1, a2);
 		}
