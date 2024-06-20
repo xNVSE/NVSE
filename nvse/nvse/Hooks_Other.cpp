@@ -219,8 +219,7 @@ namespace OtherHooks
 		}
 
 		void __fastcall OnLockPickBroken() {
-			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
-			uint8_t* menu = *reinterpret_cast<uint8_t**>(ebp - 0x148);
+			uint8_t* menu = *(uint8_t**)0x11DA204;
 			TESObjectREFR* doorRef = *reinterpret_cast<TESObjectREFR**>(menu + 0x6C);
 
 			EventManager::DispatchEvent("onlockpickbroken", nullptr, doorRef);
@@ -228,10 +227,54 @@ namespace OtherHooks
 			// Dont need to call original hooked method since nullsub
 		}
 
+		// unlocked door/container, unlocker, unlock type (0 = script, 1 = lockpick, 2 = key)
+		// Cmd_Unlock_Execute
+		void __fastcall OnUnlock_5CC222(void* a1, void* unused, char a2) {
+			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
+			auto ref = *reinterpret_cast<TESObjectREFR**>(ebp + 0x10);
+
+			EventManager::DispatchEvent("onunlock", nullptr, ref, nullptr, 0);
+
+			ThisStdCall<void*>(0x430A90, a1, a2);
+		}
+
+		// Lockpick menu
+		void __fastcall OnUnlock_78F8E5(TESObjectREFR* doorRef) {
+			EventManager::DispatchEvent("onunlock", nullptr, doorRef, LookupFormByID(0x14), 1);
+
+			ThisStdCall<void*>(0x5692A0, doorRef);
+		}
+
+		// Unlock via interact
+		void __fastcall OnUnlock_518B00(void* a1) {
+			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
+			auto unlocker = *reinterpret_cast<TESObjectREFR**>(ebp - 0x18);
+			auto doorRef = *reinterpret_cast<TESObjectREFR**>(ebp + 0x8);
+
+			if (unlocker == *reinterpret_cast<TESObjectREFR**>(g_thePlayer)) {
+				EventManager::DispatchEvent("onunlock", nullptr, doorRef, *g_thePlayer, 1);
+			}
+			else {
+				ExtraLock::Data* lockData = *reinterpret_cast<ExtraLock::Data**>(ebp - 0x20);
+				char* v58 = *reinterpret_cast<char**>(ebp - 0x1C);
+				if (!ThisStdCall<char>(0x891DB0, unlocker, lockData->key, 0, 1, 0, v58)) {
+					EventManager::DispatchEvent("onunlock", nullptr, doorRef, unlocker, 1);
+				}
+				else {
+					EventManager::DispatchEvent("onunlock", nullptr, doorRef, unlocker, 2);
+				}
+			}
+
+			ThisStdCall<void*>(0x517360, a1);
+		}
+
 		void WriteHooks() {
 			WriteRelCall(0x790461, reinterpret_cast<UInt32>(OnLockBroken));
 			WriteRelCall(0x78F8E5, reinterpret_cast<UInt32>(OnLockPickSuccess)); 
 			WriteRelCall(0x78FE24, reinterpret_cast<UInt32>(OnLockPickBroken));
+			WriteRelCall(0x5CC222, reinterpret_cast<UInt32>(OnUnlock_5CC222));
+			WriteRelCall(0x78F8E5, reinterpret_cast<UInt32>(OnUnlock_78F8E5));
+			WriteRelCall(0x518B00, reinterpret_cast<UInt32>(OnUnlock_518B00));
 		}
 	}
 
