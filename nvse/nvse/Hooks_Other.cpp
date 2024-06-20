@@ -10,6 +10,7 @@
 #include "FastStack.h"
 #include "GameTiles.h"
 #include "GameUI.h"
+#include "InventoryReference.h"
 #include "MemoizedMap.h"
 
 #if RUNTIME
@@ -314,6 +315,18 @@ namespace OtherHooks
 		}
 	}
 
+	namespace Repair {
+		void OnItemRepair_1() {
+			ExtraContainerChanges::EntryData *data = *reinterpret_cast<ExtraContainerChanges::EntryData**>(0x11DA760);
+			auto invRef = CreateInventoryRefEntry(*g_thePlayer, data->type, data->countDelta, data->extendData->GetFirstItem());
+			EventManager::DispatchEvent("onrepair", nullptr, invRef);
+		}
+
+		void WriteHooks() {
+			WriteRelCall(0x7B5CBB, reinterpret_cast<UInt32>(OnItemRepair_1));
+		}
+	}
+
 	void Hooks_Other_Init()
 	{
 		WriteRelJump(0x9FF5FB, UInt32(TilesDestroyedHook));
@@ -333,6 +346,7 @@ namespace OtherHooks
 		IMod::WriteHooks();
 		Locks::WriteHooks();
 		Terminal::WriteHooks();
+		Repair::WriteHooks();
 	}
 
 	thread_local CurrentScriptContext emptyCtx{}; // not every command gets run through script runner
