@@ -316,14 +316,27 @@ namespace OtherHooks
 	}
 
 	namespace Repair {
+		// Repaired inv ref, repairer, type (0 = standard, 1 = merchant, 2 = repair kit)
 		void OnItemRepair_1() {
 			ExtraContainerChanges::EntryData *data = *reinterpret_cast<ExtraContainerChanges::EntryData**>(0x11DA760);
 			auto invRef = CreateInventoryRefEntry(*g_thePlayer, data->type, data->countDelta, data->extendData->GetFirstItem());
-			EventManager::DispatchEvent("onrepair", nullptr, invRef);
+			EventManager::DispatchEvent("onrepair", nullptr, invRef, *g_thePlayer, 0);
+
+			// nullsub
+		}
+
+		void __fastcall OnItemRepair_2(ExtraContainerChanges::EntryData* data) {
+			auto invRef = CreateInventoryRefEntry(*g_thePlayer, data->type, data->countDelta, data->extendData->GetFirstItem());
+			auto repairer = *reinterpret_cast<TESObjectREFR**>(0x11DA7F4);
+
+			EventManager::DispatchEvent("onrepair", nullptr, invRef, repairer, 1);
+
+			ThisStdCall<TESForm*>(0x44DDC0, data);
 		}
 
 		void WriteHooks() {
 			WriteRelCall(0x7B5CBB, reinterpret_cast<UInt32>(OnItemRepair_1));
+			WriteRelCall(0x7B800E, reinterpret_cast<UInt32>(OnItemRepair_2));
 		}
 	}
 

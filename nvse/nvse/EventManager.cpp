@@ -2121,7 +2121,7 @@ void Init()
 	EVENT_INFO("onterminalhacked", kEventParams_OneRef, nullptr, 0);
 	EVENT_INFO("onterminalhackfailed", kEventParams_OneRef, nullptr, 0);
 
-	EVENT_INFO("onrepair", kEventParams_OneRef, nullptr, 0);
+	EVENT_INFO("onrepair", kEventParams_TwoRefs_OneInt, nullptr, 0);
 
 
 #undef EVENT_INFO
