@@ -9,6 +9,7 @@
 #include "EventManager.h"
 #include "FastStack.h"
 #include "GameTiles.h"
+#include "GameUI.h"
 #include "MemoizedMap.h"
 
 #if RUNTIME
@@ -190,18 +191,30 @@ namespace OtherHooks
 			ThisStdCall(0x633C90, a1, a2);
 		}
 
-		void __fastcall RemoveIMOD(void** a1, void* unused, void* a2) {
+		void __fastcall RemoveIMOD_1(void** a1, void* unused, void* a2) {
 			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
 			auto ref = *reinterpret_cast<TESForm**>(ebp + 0x8);
+		
+			EventManager::DispatchEvent("onremoveimod", nullptr, ref);
+		
+ 			ThisStdCall(0x633C90, a1, a2);
+		}
+
+		// IMOD Instance removal
+		void __fastcall RemoveIMOD_2(void** a1, void* unused, void* a2) {
+			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
+			uint8_t* refObj = *reinterpret_cast<uint8_t**>(ebp - 0x1C);
+			TESObjectREFR* ref = *reinterpret_cast<TESObjectREFR**>(refObj + 0x1C);
 
 			EventManager::DispatchEvent("onremoveimod", nullptr, ref);
 
- 			ThisStdCall(0x633C90, a1, a2);
+			ThisStdCall(0x631620, a1, a2);
 		}
 
 		void WriteHooks() {
 			WriteRelCall(0x529A37, reinterpret_cast<UInt32>(ApplyIMOD));
-			WriteRelCall(0x529D37, reinterpret_cast<UInt32>(RemoveIMOD));
+			WriteRelCall(0x529D37, reinterpret_cast<UInt32>(RemoveIMOD_1));
+			WriteRelCall(0x86FE75, reinterpret_cast<UInt32>(RemoveIMOD_2));
 		}
 	}
 
@@ -219,7 +232,7 @@ namespace OtherHooks
 		}
 
 		void __fastcall OnLockPickBroken() {
-			uint8_t* menu = *(uint8_t**)0x11DA204;
+			uint8_t* menu = *reinterpret_cast<uint8_t**>(g_lockpickMenu);
 			TESObjectREFR* doorRef = *reinterpret_cast<TESObjectREFR**>(menu + 0x6C);
 
 			EventManager::DispatchEvent("onlockpickbroken", nullptr, doorRef);
