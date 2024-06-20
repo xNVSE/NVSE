@@ -240,7 +240,7 @@ namespace OtherHooks
 
 		// Lockpick menu
 		void __fastcall OnUnlock_78F8E5(TESObjectREFR* doorRef) {
-			EventManager::DispatchEvent("onunlock", nullptr, doorRef, LookupFormByID(0x14), 1);
+			EventManager::DispatchEvent("onunlock", nullptr, doorRef, *g_thePlayer, 1);
 
 			ThisStdCall<void*>(0x5692A0, doorRef);
 		}
