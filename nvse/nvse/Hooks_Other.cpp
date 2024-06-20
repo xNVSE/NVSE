@@ -243,24 +243,24 @@ namespace OtherHooks
 
 		// unlocked door/container, unlocker, unlock type (0 = script, 1 = lockpick, 2 = key)
 		// Cmd_Unlock_Execute
-		void __fastcall OnUnlock_5CC222(void* a1, void* unused, char a2) {
+		void* __fastcall OnUnlock_5CC222(void* a1, void* unused, char a2) {
 			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
 			auto ref = *reinterpret_cast<TESObjectREFR**>(ebp + 0x10);
 
 			EventManager::DispatchEvent("onunlock", nullptr, ref, nullptr, 0);
 
-			ThisStdCall<void*>(0x430A90, a1, a2);
+			return ThisStdCall<void*>(0x430A90, a1, a2);
 		}
 
 		// Lockpick menu
-		void __fastcall OnUnlock_78F8E5(TESObjectREFR* doorRef) {
+		void* __fastcall OnUnlock_78F8E5(TESObjectREFR* doorRef) {
 			EventManager::DispatchEvent("onunlock", nullptr, doorRef, *g_thePlayer, 1);
 
-			ThisStdCall<void*>(0x5692A0, doorRef);
+			return ThisStdCall<void*>(0x5692A0, doorRef);
 		}
 
 		// Unlock via interact
-		void __fastcall OnUnlock_518B00(void* a1) {
+		void* __fastcall OnUnlock_518B00(void* a1) {
 			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
 			auto unlocker = *reinterpret_cast<TESObjectREFR**>(ebp - 0x18);
 			auto doorRef = *reinterpret_cast<TESObjectREFR**>(ebp + 0x8);
@@ -279,7 +279,7 @@ namespace OtherHooks
 				}
 			}
 
-			ThisStdCall<void*>(0x517360, a1);
+			return ThisStdCall<void*>(0x517360, a1);
 		}
 
 		void WriteHooks() {
@@ -317,26 +317,45 @@ namespace OtherHooks
 
 	namespace Repair {
 		// Repaired inv ref, repairer, type (0 = standard, 1 = merchant, 2 = repair kit)
-		void OnItemRepair_1() {
+		char __fastcall OnItemRepair_1(void* a1, void* unused, char a2) {
 			ExtraContainerChanges::EntryData *data = *reinterpret_cast<ExtraContainerChanges::EntryData**>(0x11DA760);
 			auto invRef = CreateInventoryRefEntry(*g_thePlayer, data->type, data->countDelta, data->extendData->GetFirstItem());
 			EventManager::DispatchEvent("onrepair", nullptr, invRef, *g_thePlayer, 0);
 
-			// nullsub
+			return ThisStdCall<char>(0xAD8830, a1, a2);
 		}
 
-		void __fastcall OnItemRepair_2(ExtraContainerChanges::EntryData* data) {
+		TESForm* __fastcall OnItemRepair_2(ExtraContainerChanges::EntryData* data) {
 			auto invRef = CreateInventoryRefEntry(*g_thePlayer, data->type, data->countDelta, data->extendData->GetFirstItem());
 			auto repairer = *reinterpret_cast<TESObjectREFR**>(0x11DA7F4);
 
 			EventManager::DispatchEvent("onrepair", nullptr, invRef, repairer, 1);
 
-			ThisStdCall<TESForm*>(0x44DDC0, data);
+			return ThisStdCall<TESForm*>(0x44DDC0, data);
 		}
 
 		void WriteHooks() {
-			WriteRelCall(0x7B5CBB, reinterpret_cast<UInt32>(OnItemRepair_1));
+			WriteRelCall(0x7B5CAC, reinterpret_cast<UInt32>(OnItemRepair_1));
 			WriteRelCall(0x7B800E, reinterpret_cast<UInt32>(OnItemRepair_2));
+		}
+	}
+
+	namespace DisEnable {
+		void __cdecl OnDisable(TESObjectREFR* ref, char a2) {
+			EventManager::DispatchEvent("ondisable", nullptr, ref);
+
+			CdeclCall(0x5AA500, ref, a2);
+		}
+
+		void __cdecl OnEnable(TESObjectREFR* ref) {
+			EventManager::DispatchEvent("onenable", nullptr, ref);
+
+			CdeclCall(0x5AA580, ref);
+		}
+
+		void WriteHooks() {
+			WriteRelCall(0x5C47B6, reinterpret_cast<UInt32>(OnDisable));
+			WriteRelCall(0x5C453C, reinterpret_cast<UInt32>(OnEnable));
 		}
 	}
 
@@ -360,6 +379,7 @@ namespace OtherHooks
 		Locks::WriteHooks();
 		Terminal::WriteHooks();
 		Repair::WriteHooks();
+		DisEnable::WriteHooks();
 	}
 
 	thread_local CurrentScriptContext emptyCtx{}; // not every command gets run through script runner

@@ -2123,6 +2123,9 @@ void Init()
 
 	EVENT_INFO("onrepair", kEventParams_TwoRefs_OneInt, nullptr, 0);
 
+	EVENT_INFO("ondisable", kEventParams_OneRef, nullptr, 0);
+	EVENT_INFO("onenable", kEventParams_OneRef, nullptr, 0);
+
 
 #undef EVENT_INFO
 #undef EVENT_INFO_FLAGS
