@@ -195,9 +195,8 @@ public:
 	NVSECompiler(Script *script, bool partial, NVSEScript& ast)
 	: engineScript(script), partial(partial), ast(ast), originalScriptName(script->GetEditorID()) {}
 
-	void ClearScopedGlobals();
+	void ClearTempVars();
 	void PatchScopedGlobals();
-	void PrintStackInfo(NVSEScope* scope);
 	void PrintScriptInfo();
 	bool Compile();
 

@@ -581,13 +581,8 @@ ExprPtr NVSEParser::Unary() {
 
 		if (op.type == NVSETokenType::Minus) {
 			op.type = NVSETokenType::Negate;
-
-			// Handle negative literals
-			if (auto rhs = dynamic_cast<NumberExpr*>(right.get())) {
-				rhs->value *= -1;
-				return right;
-			}
 		}
+
 		return std::make_shared<UnaryExpr>(op, std::move(right), false);
 	}
 

@@ -72,13 +72,9 @@ std::string getTypeErrorMsg(Token_Type lhs, Token_Type rhs) {
 	return std::format("Cannot convert from {} to {}", TokenTypeToString(lhs), TokenTypeToString(rhs));
 }
 
-std::shared_ptr<NVSEScope> NVSETypeChecker::EnterScope(bool lambdaScope) {
+std::shared_ptr<NVSEScope> NVSETypeChecker::EnterScope() {
 	if (!scopes.empty()) {
-		if (lambdaScope) {
-			scopes.emplace(std::make_shared<NVSEScope>(scopeIndex++, scopes.top(), true));
-		} else {
-			scopes.emplace(std::make_shared<NVSEScope>(scopeIndex++, scopes.top()));
-		}
+		scopes.emplace(std::make_shared<NVSEScope>(scopeIndex++, scopes.top()));
 	} else {
 		scopes.emplace(std::make_shared<NVSEScope>(scopeIndex++, nullptr));
 	}
@@ -171,13 +167,13 @@ void NVSETypeChecker::VisitNVSEScript(NVSEScript* script) {
 }
 
 void NVSETypeChecker::VisitBeginStmt(BeginStmt* stmt) {
-	stmt->scope = EnterScope(true);
+	stmt->scope = EnterScope();
 	stmt->block->Accept(this);
 	LeaveScope();
 }
 
 void NVSETypeChecker::VisitFnStmt(FnDeclStmt* stmt) {
-	stmt->scope = EnterScope(true);
+	stmt->scope = EnterScope();
 
 	//bScopedGlobal = true;
 	for (auto decl : stmt->args) {
@@ -196,7 +192,7 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 		// See if variable has already been declared
 		bool cont = false;
 		WRAP_ERROR(
-			if (auto *var = scopes.top()->resolveVariable(name.lexeme, false)) {
+			if (auto* var = scopes.top()->resolveVariable(name.lexeme, false)) {
 				cont = true;
 				error(name.line, name.column, std::format("Variable with name '{}' has already been defined in the current scope (at line {}:{})\n", name.lexeme, var->token.line, var->token.column));
 			}
@@ -204,7 +200,7 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 			auto* var2 = scopes.top()->resolveVariable(name.lexeme, true);
 
 			// If we are seeing 'export' keyword and another global has already been defined with this name
-			if (stmt->bExport && var2 && var2->global) {
+			if (stmt->bExport && var2 && var2->isGlobal) {
 				cont = true;
 				error(name.line, name.column, std::format("Variable with name '{}' has already been defined in the global scope (at line {}:{})\n", name.lexeme, var2->token.line, var2->token.column));
 			}
@@ -224,7 +220,7 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 			CompInfo("Info: Variable with name '%s' shadows a form with the same name from mod '%s'. This is NOT an error. Do not contact the mod author.", name.lexeme.c_str(), modName);
 #endif
 		}
-		
+
 		if (auto shadowed = scopes.top()->resolveVariable(name.lexeme, true)) {
 #ifdef EDITOR
 			CompInfo("[line %d:%d] Info: Variable with name '%s' shadows a variable with the same name in outer scope. (Defined at line %d:%d)\n",
@@ -244,13 +240,13 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 		NVSEScope::ScopeVar var {};
 		var.token = name;
 		var.detailedType = detailedType;
-		if (bScopedGlobal || stmt->bExport || scopes.top() == globalScope) {
-			var.global = true;
+		if (stmt->bExport || scopes.top() == globalScope) {
+			var.isGlobal = true;
 		}
         var.variableType = GetScriptTypeFromToken(stmt->type);
 
 		// Assign this new scope var to this statment for lookup in compiler
-		stmt->scopeVars.push_back(scopes.top()->addVariable(name.lexeme, var, bScopedGlobal));
+		stmt->scopeVars.push_back(scopes.top()->addVariable(name.lexeme, var, scopes.top() != globalScope && !stmt->bExport));
 	}
 }
 
@@ -324,7 +320,7 @@ void NVSETypeChecker::VisitForEachStmt(ForEachStmt* stmt) {
 }
 
 void NVSETypeChecker::VisitIfStmt(IfStmt* stmt) {
-	stmt->scope = EnterScope(false);
+	stmt->scope = EnterScope();
 	WRAP_ERROR(
 		stmt->cond->Accept(this);
 
@@ -737,10 +733,8 @@ void NVSETypeChecker::VisitBoolExpr(BoolExpr* expr) {
 
 void NVSETypeChecker::VisitNumberExpr(NumberExpr* expr) {
 	if (!expr->isFp) {
-		if (expr->value > INT32_MAX) {
-			WRAP_ERROR(error(expr->token.line, expr->token.column, "Maximum value for integer literal exceeded. (Max: " + std::to_string(INT32_MAX) + ")"))
-		} else if (expr->value < INT32_MIN) {
-			WRAP_ERROR(error(expr->token.line, expr->token.column, "Minimum value for integer literal exceeded. (Min: " + std::to_string(INT32_MIN) + ")"))
+		if (expr->value > UINT32_MAX) {
+			WRAP_ERROR(error(expr->token.line, expr->token.column, "Maximum value for integer literal exceeded. (Max: " + std::to_string(UINT32_MAX) + ")"))
 		}
 	}
 	
@@ -869,7 +863,7 @@ void NVSETypeChecker::VisitGroupingExpr(GroupingExpr* expr) {
 }
 
 void NVSETypeChecker::VisitLambdaExpr(LambdaExpr* expr) {
-	expr->scope = EnterScope(true);
+	expr->scope = EnterScope();
 
 	for (auto &decl : expr->args) {
 		WRAP_ERROR(decl->Accept(this))

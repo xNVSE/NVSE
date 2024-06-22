@@ -191,19 +191,9 @@ std::string ScriptToken::GetVariableDataAsString() const
 {
 	switch (Type())
 	{
-	case kTokenType_NumericStackVar:
 	case kTokenType_NumericVar:
 	{
 		return FormatString("%g", GetNumber());
-	}
-	case kTokenType_RefStackVar:
-	{
-		auto* form = GetTESForm();
-		if (form)
-			return form->GetStringRepresentation();
-		if (value.stackVarIdx)
-			return FormatString("invalid form (%X)", StackVariables::GetLocalStackVarVal(value.stackVarIdx));
-		return "uninitialized form (0)";
 	}
 	case kTokenType_RefVar:
 	{
@@ -215,11 +205,9 @@ std::string ScriptToken::GetVariableDataAsString() const
 		return "uninitialized form (0)";
 	}
 	case kTokenType_StringVar:
-	case kTokenType_StringStackVar:
 	{
 		return '"' + std::string(GetString()) + '"';
 	}
-	case kTokenType_ArrayStackVar:
 	case kTokenType_ArrayVar:
 	{
 		auto *arr = GetArrayVar();
@@ -266,16 +254,12 @@ const char *ScriptToken::GetVariableTypeString() const
 {
 	switch (this->Type())
 	{
-	case kTokenType_NumericStackVar:
 	case kTokenType_NumericVar:
 		return "Numeric";
-	case kTokenType_RefStackVar:
 	case kTokenType_RefVar:
 		return "Form";
-	case kTokenType_StringStackVar:
 	case kTokenType_StringVar:
 		return "String";
-	case kTokenType_ArrayStackVar:
 	case kTokenType_ArrayVar:
 		return "Array";
 	default:
@@ -594,19 +578,14 @@ const char *TokenTypeToString(Token_Type type)
 		return "Slice";
 	case kTokenType_Command:
 		return "Command";
-	case kTokenType_StackVar:
 	case kTokenType_Variable:
 		return "Variable";
-	case kTokenType_NumericStackVar:
 	case kTokenType_NumericVar:
 		return "Numeric Variable";
-	case kTokenType_RefStackVar:
 	case kTokenType_RefVar:
 		return "Reference Variable";
-	case kTokenType_StringStackVar:
 	case kTokenType_StringVar:
 		return "String Variable";
-	case kTokenType_ArrayStackVar:
 	case kTokenType_ArrayVar:
 		return "Array Variable";
 	case kTokenType_Ambiguous:
@@ -733,7 +712,7 @@ const char *ScriptToken::GetString() const
 	if (type == kTokenType_String)
 		result = value.str;
 #if RUNTIME
-	else if (type == kTokenType_StringVar || type == kTokenType_StringStackVar)
+	else if (type == kTokenType_StringVar)
 	{
 		if (StringVar* strVar = GetStringVar())
 			result = strVar->GetCString();
@@ -769,15 +748,6 @@ UInt32 ScriptToken::GetFormID() const
 		}
 		return *reinterpret_cast<UInt32 *>(&value.var->data);
 	}
-	if (type == kTokenType_RefStackVar)
-	{
-		if (!value.stackVarIdx)
-		{
-			return 0;
-		}
-
-		return *reinterpret_cast<UInt32*>(&StackVariables::GetLocalStackVarVal(value.stackVarIdx));
-	}
 #endif
 	if (type == kTokenType_Number)
 		return value.formID;
@@ -798,10 +768,6 @@ TESForm *ScriptToken::GetTESForm() const
 		return LookupFormByID(*reinterpret_cast<UInt32 *>(&value.var->data));
 	if (type == kTokenType_Number && formOrNumber)
 		return LookupFormByID(*reinterpret_cast<UInt32 *>(const_cast<double*>(&value.num)));
-	if (type == kTokenType_NumericStackVar && formOrNumber)
-		return LookupFormByID(*reinterpret_cast<UInt32*>(&StackVariables::GetLocalStackVarVal(value.stackVarIdx)));
-	if (type == kTokenType_RefStackVar && value.stackVarIdx)
-		return LookupFormByID(*reinterpret_cast<UInt32*>(&StackVariables::GetLocalStackVarVal(value.stackVarIdx)));
 #endif
 	if (type == kTokenType_Lambda)
 		return value.lambda;
@@ -820,13 +786,6 @@ double ScriptToken::GetNumber() const
 	else if (value.var && (type == kTokenType_NumericVar || type == kTokenType_StringVar))
 	{
 		return value.var->data;
-	}
-	else if (type == kTokenType_NumericStackVar || type == kTokenType_StringStackVar) {
-		if (!value.stackVarIdx) {
-			return 0.0;
-		}
-
-		return StackVariables::GetLocalStackVarVal(value.stackVarIdx);
 	}
 #endif
 	return 0.0;
@@ -856,16 +815,6 @@ bool ScriptToken::GetBool() const
 			return false;
 		}
 		return value.var->data ? true : false;
-	}
-	case kTokenType_NumericStackVar:
-	case kTokenType_StringStackVar:
-	case kTokenType_RefStackVar:
-	case kTokenType_ArrayStackVar: {
-		if (!value.stackVarIdx) {
-			return false;
-		}
-
-		return StackVariables::GetLocalStackVarVal(value.stackVarIdx) ? true : false;
 	}
 	case kTokenType_String:
 	{
@@ -932,15 +881,6 @@ ArrayID ScriptToken::GetArrayID() const
 		}
 		return (int)value.var->data;
 	}
-	if (type == kTokenType_ArrayStackVar)
-	{
-		if (!value.stackVarIdx)
-		{
-			return false;
-		}
-
-		return static_cast<int>(StackVariables::GetLocalStackVarVal(value.stackVarIdx));
-	}
 	return 0;
 }
 
@@ -951,18 +891,13 @@ ArrayVar *ScriptToken::GetArrayVar() const
 
 ScriptLocal *ScriptToken::GetScriptLocal() const
 {
-	if (!IsNonStackVariable())
-		return nullptr;
 	return value.var;
 }
 
 StringVar* ScriptToken::GetStringVar() const
 {
-	if (type != kTokenType_StringVar && type != kTokenType_StringStackVar) {
+	if (type != kTokenType_StringVar) {
 		return nullptr;
-	}
-	if (type == kTokenType_StringStackVar && value.stackVarIdx) {
-		return g_StringMap.Get(StackVariables::GetLocalStackVarVal(value.stackVarIdx));
 	}
 	if (value.nvseVariable.stringVar) {
 		return value.nvseVariable.stringVar;
@@ -1040,15 +975,6 @@ ScriptLocal* ResolveScriptLocal(UInt32 varIdx, UInt32 refIdx, Script* script, Sc
 
 bool ScriptToken::ResolveVariable()
 {
-	// Check stack vars
-	if (type == kTokenType_ArrayStackVar || type == kTokenType_NumericStackVar || type == kTokenType_RefStackVar || type == kTokenType_StringStackVar) {
-		if (type == kTokenType_StringStackVar && value.stackVarIdx) {
-			value.nvseVariable.stringVar = g_StringMap.Get(StackVariables::GetLocalStackVarVal(value.stackVarIdx));
-		}
-
-		return true;
-	}
-
 	auto* eventList = context->eventList;
 	value.var = ResolveScriptLocal(varIdx, refIdx, context->script, eventList);
 	if (!value.var)
@@ -1504,31 +1430,6 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator *context)
 		value.lambdaScriptData = LambdaManager::ScriptData(scriptData, dataLen);
 		break;
 	}
-	case 'Y': {
-		variableType = context->ReadByte();
-		value.stackVarIdx = context->Read16();
-		switch (variableType)
-		{
-		case Script::eVarType_Array:
-			type = kTokenType_ArrayStackVar;
-			break;
-		case Script::eVarType_Integer:
-		case Script::eVarType_Float:
-			type = kTokenType_NumericStackVar;
-			break;
-		case Script::eVarType_Ref:
-			type = kTokenType_RefStackVar;
-			break;
-		case Script::eVarType_String:
-			type = kTokenType_StringStackVar;
-			break;
-		default:
-			context->Error("Unsupported variable type %X", variableType);
-			type = kTokenType_Invalid;
-			return type;
-		}
-		break;
-	}
 	default:
 	{
 		if (typeCode < kOpType_Max)
@@ -1571,11 +1472,6 @@ const std::unordered_map g_tokenCodes =
 		std::make_pair(kTokenType_Short, 'I'),
 		std::make_pair(kTokenType_Int, 'L'),
 		std::make_pair(kTokenType_Lambda, 'F'),
-		std::make_pair(kTokenType_StackVar, 'Y'),
-		std::make_pair(kTokenType_NumericStackVar, 'Y'),
-		std::make_pair(kTokenType_RefStackVar, 'Y'),
-		std::make_pair(kTokenType_StringStackVar, 'Y'),
-		std::make_pair(kTokenType_ArrayStackVar, 'Y'),
 };
 
 inline char TokenTypeToCode(Token_Type type)
@@ -1897,12 +1793,6 @@ Token_Type kConversions_NumericVar[] =
 		kTokenType_Boolean,
 		kTokenType_Variable,
 };
-Token_Type kConversions_NumericStackVar[] =
-{
-	kTokenType_Number,
-	kTokenType_Boolean,
-	kTokenType_StackVar,
-};
 
 Token_Type kConversions_ArrayElement[] =
 	{
@@ -1923,23 +1813,11 @@ Token_Type kConversions_RefVar[] =
 		kTokenType_Boolean,
 		kTokenType_Variable,
 };
-Token_Type kConversions_RefStackVar[] =
-{
-	kTokenType_Form,
-	kTokenType_Boolean,
-	kTokenType_StackVar,
-};
 
 Token_Type kConversions_StringVar[] =
 {
 		kTokenType_String,
 		kTokenType_Variable,
-		kTokenType_Boolean,
-};
-Token_Type kConversions_StringStackVar[] =
-{
-		kTokenType_String,
-		kTokenType_StackVar,
 		kTokenType_Boolean,
 };
 
@@ -1948,12 +1826,6 @@ Token_Type kConversions_ArrayVar[] =
 		kTokenType_Array,
 		kTokenType_Variable,
 		kTokenType_Boolean,
-};
-Token_Type kConversions_ArrayStackVar[] =
-{
-	kTokenType_Array,
-	kTokenType_StackVar,
-	kTokenType_Boolean,
 };
 
 Token_Type kConversions_Array[] =
@@ -2012,11 +1884,6 @@ static Operand s_operands[] =
 		{NULL, 0}, // LeftToken
 		{NULL, 0}, // RightToken
 
-		{NULL, 0}, // stack variable
-		{OPERAND(NumericStackVar)},
-		{OPERAND(RefStackVar)},
-		{OPERAND(StringStackVar)},
-		{OPERAND(ArrayStackVar)},
 		{NULL, 0} // Max
 };
 
@@ -2130,21 +1997,6 @@ char *ScriptToken::DebugPrint() const
 		break;
 	case kTokenType_StringVar:
 		sprintf_s(debugPrint, 512, "[Type=StringVar, Value=%g]", value.num);
-		break;
-	case kTokenType_StackVar:
-		sprintf_s(debugPrint, 512, "[Type=StackVar, Value=%lu]", value.stackVarIdx);
-		break;
-	case kTokenType_NumericStackVar:
-		sprintf_s(debugPrint, 512, "[Type=NumericStackVar, Value=%g]", StackVariables::GetLocalStackVarVal(value.stackVarIdx));
-		break;
-	case kTokenType_ArrayStackVar:
-		sprintf_s(debugPrint, 512, "[Type=ArrayStackVar, Value=%d]", (int)StackVariables::GetLocalStackVarVal(value.stackVarIdx));
-		break;
-	case kTokenType_StringStackVar:
-		sprintf_s(debugPrint, 512, "[Type=StringStackVar, Value=%g]", StackVariables::GetLocalStackVarVal(value.stackVarIdx));
-		break;
-	case kTokenType_RefStackVar:
-		sprintf_s(debugPrint, 512, "[Type=RefStackVar, Id=%d]", (int)StackVariables::GetLocalStackVarVal(value.stackVarIdx));
 		break;
 #endif
 	case kTokenType_RefVar:

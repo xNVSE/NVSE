@@ -11,7 +11,7 @@ enum OPCodes {
     OP_WHILE = 0x153B,
     OP_LOOP = 0x153C,
     OP_FOREACH = 0x153D,
-    OP_FOREACH_ALT = 0x1672,
+    OP_FOREACH_ALT = 0x1670,
     OP_TERNARY = 0x166E,
     OP_CALL = 0x1545,
     OP_SET_MOD_LOCAL_DATA = 0x1549,
@@ -22,15 +22,14 @@ enum OPCodes {
     OP_AR_MAP = 0x1568,
     OP_AR_FIND = 0x1557,
     OP_AR_BAD_NUMERIC_INDEX = 0x155F,
-    OP_DUMP_STACK_INFO = 0x1673,
 };
 
-void NVSECompiler::ClearScopedGlobals() {
+void NVSECompiler::ClearTempVars() {
     // Clear any vars that start with __global
     std::set<int> deletedIndices{};
     for (int i = engineScript->varList.Count() - 1; i >= 0; i--) {
         auto var = engineScript->varList.GetNthItem(i);
-        if (!strncmp(var->name.CStr(), "__global", strlen("__global"))) {
+        if (!strncmp(var->name.CStr(), "__temp", strlen("__temp"))) {
             CompDbg("Deleting script var: %s\n", var->name.CStr());
             engineScript->varList.RemoveNth(i);
             deletedIndices.insert(i);
@@ -54,26 +53,6 @@ void NVSECompiler::PatchScopedGlobals() {
             SetU16(idx, dataIdx);
         }
     }
-}
-
-void NVSECompiler::PrintStackInfo(NVSEScope *scope) {
-    AddU16(OP_DUMP_STACK_INFO);
-    auto opPatch = AddU16(0x0);
-    auto opStart = data.size();
-
-    AddU16(scope->allVars.size());
-
-    CompDbg("[Scope %d]\n", scope->getScopeIndex());
-    for (auto &[index, name] : scope->allVars) {
-        CompDbg("%d: %s\n", index, name.c_str());
-
-        AddU16(name.size());
-        for (char c : name) {
-            AddU8(c);
-        }
-    }
-
-    SetU16(opPatch, data.size() - opStart);
 }
 
 void NVSECompiler::PrintScriptInfo() {
@@ -124,7 +103,7 @@ bool NVSECompiler::Compile() {
     statementCounter.push(0);
     scriptStart.push(0);
 
-    ClearScopedGlobals();
+    ClearTempVars();
     ast.Accept(this);
     PatchScopedGlobals();
 
@@ -215,7 +194,6 @@ void NVSECompiler::VisitBeginStmt(BeginStmt* stmt) {
     SetU16(beginPatch, data.size() - beginStart);
     auto blockStart = data.size();
 
-    PrintStackInfo(stmt->scope.get());
     CompileBlock(stmt->block, true);
 
     // OP_END
@@ -239,32 +217,26 @@ void NVSECompiler::VisitFnStmt(FnDeclStmt* stmt) {
     auto scriptLenPatch = AddU32(0x0);
 
     // BYTECODE VER
-    AddU8(0x2);
+    AddU8(0x1);
 
     // arg count
     AddU8(stmt->args.size());
 
     // add args
-    for (auto arg : stmt->args) {
+    for (auto i = 0; i < stmt->args.size(); i++) {
+        auto& arg = stmt->args[i];
+        auto token = std::get<0>(arg->values[0]);
         auto var = arg->scopeVars[0];
-        AddU16(var->index);
+    
+        // Since we are in fn decl we will need to declare these as temp globals
+        // __global_*
+        tempGlobals[var] = std::vector<size_t>{};
+        tempGlobals[var].push_back(AddU16(0x0));
+        
         AddU8(var->variableType);
-        AddU8(0x1);
+    
+        CompDbg("Creating global var %s.\n", var->rename.c_str());
     }
-    // for (auto i = 0; i < stmt->args.size(); i++) {
-    //     auto& arg = stmt->args[i];
-    //     auto token = std::get<0>(arg->values[0]);
-    //     auto var = arg->scopeVars[0];
-    //
-    //     // Since we are in fn decl we will need to declare these as temp globals
-    //     // __global_*
-    //     tempGlobals[var] = std::vector<size_t>{};
-    //     tempGlobals[var].push_back(AddU16(0x0));F
-    //     
-    //     AddU8(var->variableType);
-    //
-    //     CompDbg("Creating global var %s.\n", var->rename.c_str());
-    // }
 
     // NUM_ARRAY_ARGS, always 0
     AddU8(0x0);
@@ -275,7 +247,6 @@ void NVSECompiler::VisitFnStmt(FnDeclStmt* stmt) {
     SetU16(opModeLenPatch, data.size() - opModeStart);
 
     // Compile script
-    PrintStackInfo(stmt->scope.get());
     CompileBlock(stmt->body, false);
 
     // OP_END
@@ -311,65 +282,45 @@ void NVSECompiler::VisitVarDeclStmt(VarDeclStmt* stmt) {
             continue;
         }
 
-        if (var == nullptr || var->global) {
-            for (int i = 0; i < statementCounter.size(); i++) {
-                CompDbg("  ");
-            }
-
-            CompDbg("Defined global variable %s\n", name.c_str());
-            const auto idx = AddLocal(name, varType);
-
-            if (!value) {
-                continue;
-            }
-
-            statementCounter.top()++;
-
-            StartCall(OP_LET);
-            StartManualArg();
-
-            // Add arg to stack
-            AddU8('V');
-            AddU8(varType);
-            AddU16(0); // SCRV
-            AddU16(idx); // SCDA
-
-            // Build expression
-            value->Accept(this);
-
-            // OP_ASSIGN
-            AddU8(0);
-
-            FinishManualArg();
-            FinishCall();
-        } else {
-            for (int i = 0; i < statementCounter.size(); i++) {
-                CompDbg("  ");
-            }
-            CompDbg("Defined local variable %s at scope %d:%d.\n", name.c_str(), var->scopeIndex, var->index);
-
-            if (!value) {
-                continue;
-            }
-
-            statementCounter.top()++;
-
-            StartCall(OP_LET);
-            StartManualArg();
-
-            // Add arg to stack
-            AddU8('Y');
-            AddU8(var->variableType);
-            AddU16(var->index);
-                
-            value->Accept(this);
-
-            // OP_ASSIGN
-            AddU8(0);
-
-            FinishManualArg();
-            FinishCall();
+        for (int i = 0; i < statementCounter.size(); i++) {
+            CompDbg("  ");
         }
+
+        CompDbg("Defined global variable %s\n", name.c_str());
+        const auto idx = AddLocal(name, varType);
+
+        if (!value) {
+            continue;
+        }
+
+        statementCounter.top()++;
+
+        StartCall(OP_LET);
+        StartManualArg();
+
+        // Add arg to stack
+        AddU8('V');
+        AddU8(varType);
+        AddU16(0); // SCRV
+
+        if (var->isGlobal) {
+            AddU16(idx); // SCDA
+        }
+        else {
+            // Since we are in fn decl we will need to declare these as temp globals
+            // __global_*
+            tempGlobals[var] = std::vector<size_t>{};
+            tempGlobals[var].push_back(AddU16(0x0));
+        }
+
+        // Build expression
+        value->Accept(this);
+
+        // OP_ASSIGN
+        AddU8(0);
+
+        FinishManualArg();
+        FinishCall();
     }
 }
 
@@ -495,27 +446,49 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
         if (stmt->declarations.size() == 2) {
             argStart = data.size();
             argPatch = AddU16(0x0);
-            AddU8('Y');
+
+            //TODO
+            AddU8('V');
             AddU8(var2 != nullptr ? var2->variableType : 0);
-            AddU16(var2 != nullptr ? var2->index : 0);
+            AddU16(0);
+            if (var2) {
+                tempGlobals[var2] = std::vector<size_t>{};
+                tempGlobals[var2].push_back(AddU16(0x0));
+            }
+            else {
+                AddU16(0);
+            }
             SetU16(argPatch, data.size() - argStart);
             SetU16(exprPatch, data.size() - exprStart);
 
             // Arg 3 - pass keyIterVar last 
             argStart = data.size();
             argPatch = AddU16(0x0);
-            AddU8('Y');
+            AddU8('V');
             AddU8(var1 != nullptr ? var1->variableType : 0);
-            AddU16(var1 != nullptr ? var1->index : 0);
+            AddU16(0);
+            if (var1) {
+                tempGlobals[var1] = std::vector<size_t>{};
+                tempGlobals[var1].push_back(AddU16(0x0));
+            }
+            else {
+                AddU16(0);
+            }
             SetU16(argPatch, data.size() - argStart);
             SetU16(exprPatch, data.size() - exprStart);
         } 
         else { // assume 1
             argStart = data.size();
             argPatch = AddU16(0x0);
-            AddU8('Y');
+            AddU8('V');
             AddU8(var1 != nullptr ? var1->variableType : 0);
-            AddU16(var1 != nullptr ? var1->index : 0);
+            AddU16(0);
+            if (var1) {
+                tempGlobals[var1] = std::vector<size_t>{};
+                tempGlobals[var1].push_back(AddU16(0x0));
+            } else {
+                AddU16(0);
+            }
             SetU16(argPatch, data.size() - argStart);
             SetU16(exprPatch, data.size() - exprStart);
         }
@@ -559,8 +532,9 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
         auto argPatch = AddU16(0x0);
 
         insideNvseExpr.push(true);
-        AddU8('Y');
+        AddU8('V');
         AddU8(var->variableType);
+        AddU16(0);
         AddU16(var->index);
 
         stmt->rhs->Accept(this);
@@ -935,19 +909,7 @@ void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
     }
 
     // Local variable
-    if (var && !var->global) {
-        // TODO : Build call to get local
-        for (int i = 0; i < statementCounter.size(); i++) {
-            CompDbg("  ");
-        }
-        CompDbg("Read from local variable %s at scope %d:%d.\n", var->token.lexeme.c_str(), var->scopeIndex, var->index);
-        AddU8('Y');
-        AddU8(var->variableType);
-        AddU16(var->index);
-    }
-
-    // Global variable
-    else if (var && var->global) {
+    if (var) {
         for (int i = 0; i < statementCounter.size(); i++) {
             CompDbg("  ");
         }
@@ -1031,32 +993,26 @@ void NVSECompiler::VisitLambdaExpr(LambdaExpr* expr) {
         auto scriptLenPatch = AddU32(0x0);
 
         // BYTECODE VER
-        AddU8(0x2);
+        AddU8(0x1);
 
         // arg count
         AddU8(expr->args.size());
         
         // add args
-        for (auto arg : expr->args) {
-            auto var = arg->scopeVars[0];
-            AddU16(var->index);
+        for (auto i = 0; i < expr->args.size(); i++) {
+            auto& arg = expr->args[i];
+            auto token = std::get<0>(arg->values[0]);
+        
+            // Resolve variable, since we are in lambda decl we will need to declare these as temp globals
+            // __global_*
+            NVSEScope::ScopeVar* var = arg->scopeVars[0];
+            tempGlobals[var] = std::vector<size_t>{};
+            tempGlobals[var].push_back(AddU16(0x0));
+        
             AddU8(var->variableType);
-            AddU8(0x1);
+        
+            CompDbg("Creating global var %s.\n", var->rename.c_str());
         }
-        // for (auto i = 0; i < expr->args.size(); i++) {
-        //     auto& arg = expr->args[i];
-        //     auto token = std::get<0>(arg->values[0]);
-        //
-        //     // Resolve variable, since we are in lambda decl we will need to declare these as temp globals
-        //     // __global_*
-        //     NVSEScope::ScopeVar* var = arg->scopeVars[0];
-        //     tempGlobals[var] = std::vector<size_t>{};
-        //     tempGlobals[var].push_back(AddU16(0x0));
-        //
-        //     AddU8(var->variableType);
-        //
-        //     CompDbg("Creating global var %s.\n", var->rename.c_str());
-        // }
 
         // NUM_ARRAY_ARGS, always 0
         AddU8(0x0);
@@ -1068,7 +1024,6 @@ void NVSECompiler::VisitLambdaExpr(LambdaExpr* expr) {
 
         // Compile script
         insideNvseExpr.push(false);
-        PrintStackInfo(expr->scope.get());
         CompileBlock(expr->body, false);
         insideNvseExpr.pop();
 

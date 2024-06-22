@@ -20,7 +20,7 @@ class NVSETypeChecker : NVSEVisitor {
     std::shared_ptr<NVSEScope> globalScope{};
     bool bScopedGlobal = false;
 
-    std::shared_ptr<NVSEScope> EnterScope(bool lambdaScope = false);
+    std::shared_ptr<NVSEScope> EnterScope();
     void LeaveScope();
     void error(size_t line, std::string msg);
     void error(size_t line, size_t column, std::string msg);

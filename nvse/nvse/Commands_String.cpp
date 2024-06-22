@@ -82,15 +82,6 @@ bool Cmd_sv_Destruct_Execute(COMMAND_ARGS)
 				var->data = 0;
 			}
 		}
-		else if (eval.Arg(i)->CanConvertTo(kTokenType_StringStackVar))
-		{
-			auto* token = eval.Arg(i);
-			if (token->value.stackVarIdx)
-			{
-				g_StringMap.Delete(StackVariables::GetLocalStackVarVal(token->value.stackVarIdx));
-				StackVariables::SetLocalStackVarVal(token->value.stackVarIdx, 0);
-			}
-		}
 	}
 
 	return true;
@@ -967,11 +958,6 @@ bool Cmd_GetRawFormIDString_Execute(COMMAND_ARGS)
 			if (var)
 			{
 				formID = *((UInt32 *)(&var->data));
-			}
-		}
-		else if (arg->Type() == kTokenType_RefStackVar) {
-			if (arg->value.stackVarIdx) {
-				formID = *((UInt32*)(&StackVariables::GetLocalStackVarVal(arg->value.stackVarIdx)));
 			}
 		}
 	}

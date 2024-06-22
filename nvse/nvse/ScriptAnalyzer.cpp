@@ -765,12 +765,6 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context, U
 	if (!cmdInfo)
 		return false;
 
-	// Manually parse dumped stack info
-	if (cmdInfo->opcode == g_scriptCommands.GetByName("DumpStackInfo")->opcode) {
-		g_analyzerStack.back()->stackVars = StackVariables::ParseDumpStackVars(context.curData);
-		return true;
-	}
-
 	if (cmdInfo->execute == kCommandInfo_Function.execute)
 	{
 		FunctionInfo info(context.script);

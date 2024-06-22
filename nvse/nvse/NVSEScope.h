@@ -15,7 +15,7 @@ public:
         uint32_t index;
         uint32_t scopeIndex;
         
-        bool global = false;
+        bool isGlobal = false;
 
         // Used for renaming global variables in certain scopes
         //      export keyword will NOT rename a global var
@@ -32,11 +32,10 @@ private:
     uint32_t varIndex{1};
     std::shared_ptr<NVSEScope> parent{};
     std::unordered_map<std::string, ScopeVar> vars{};
-    bool isLambda{};
 
 protected:
     uint32_t getVarIndex() const {
-        if (parent && !isLambda) {
+        if (parent) {
             return parent->getVarIndex();
         }
         
@@ -44,7 +43,7 @@ protected:
     }
 
     void incrementVarIndex() {
-        if (parent && !isLambda) {
+        if (parent) {
             parent->incrementVarIndex();
             return;
         }
@@ -56,7 +55,7 @@ public:
     std::map<uint32_t, std::string> allVars{};
     
     NVSEScope (uint32_t scopeIndex, std::shared_ptr<NVSEScope> parent, bool isLambda = false)
-        : scopeIndex(scopeIndex), parent(parent), isLambda(isLambda) {}
+        : scopeIndex(scopeIndex), parent(parent) {}
     
     ScopeVar *resolveVariable(std::string name, bool checkParent = true) {
         // Lowercase name
@@ -68,7 +67,7 @@ public:
 
         if (checkParent && parent) {
             const auto var = parent->resolveVariable(name);
-            if (!var || (isLambda && !var->global)) {
+            if (!var) {
                 return nullptr;
             }
 
@@ -85,13 +84,13 @@ public:
         // Rename var to have a unique name
         // These should also get saved to the var list LAST and be deleted on every recompile.
         if (bRename) {
-            variableInfo.rename = std::format("__global__{}__{}", name, getVarIndex());
+            variableInfo.rename = std::format("__temp__{}__{}", name, getVarIndex());
         } else {
             variableInfo.rename = "";
         }
 
         variableInfo.index = getVarIndex();
-        if (!variableInfo.global) {
+        if (!variableInfo.isGlobal) {
             incrementVarIndex();
         }
 
@@ -103,7 +102,7 @@ public:
     }
 
     void addToAllVars(ScopeVar var) {
-        if (parent && !isLambda) {
+        if (parent) {
             parent->addToAllVars(var);
             return;
         }

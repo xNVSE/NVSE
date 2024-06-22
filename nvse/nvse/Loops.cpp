@@ -27,16 +27,9 @@ ArrayIterLoop::ArrayIterLoop(const ForEachContext* context, Script* script) : m_
 
 	if (m_iterID)
 	{
-		if (!m_valueIterVar.isStackVar)
-		{
-			// clear the iterator var before initializing it
-			g_ArrayMap.RemoveReference(&m_valueIterVar.GetScriptLocal()->data, m_script->GetModIndex());
-			g_ArrayMap.AddReference(&m_valueIterVar.GetScriptLocal()->data, m_iterID, m_script->GetModIndex());
-		}
-		else
-		{
-			StackVariables::SetLocalStackVarVal(m_valueIterVar.GetStackVarIdx(), m_iterID);
-		}
+		// clear the iterator var before initializing it
+		g_ArrayMap.RemoveReference(&m_valueIterVar.GetScriptLocal()->data, m_script->GetModIndex());
+		g_ArrayMap.AddReference(&m_valueIterVar.GetScriptLocal()->data, m_iterID, m_script->GetModIndex());
 	}
 
 	Init();
@@ -77,14 +70,14 @@ bool UpdateForEachAltIterator(const ArrayElement* elem, const ArrayKey& curKey,
 	if (keyIterVar.IsValid()) {
 		if (curKey.KeyType() == kDataType_String) {
 			auto id = g_StringMap.Add(script->GetModIndex(), curKey.key.GetStr(), true, nullptr);
-			StackVariables::SetLocalStackVarVal(keyIterVar.GetStackVarIdx(), id);
+			keyIterVar.GetScriptLocal()->data = id;
 		}
 		else {
 			auto num = curKey.key.num;
 			if (keyIterVar.GetType() == Script::eVarType_Integer) {
 				num = std::floor(num);
 			}
-			StackVariables::SetLocalStackVarVal(keyIterVar.GetStackVarIdx(), num);
+			keyIterVar.GetScriptLocal()->data = num;
 		}
 	}
 
@@ -101,7 +94,7 @@ bool UpdateForEachAltIterator(const ArrayElement* elem, const ArrayKey& curKey,
 					VariableTypeToName(valueIterVar.GetType()));
 				return false;
 			}
-			StackVariables::SetLocalStackVarVal(valueIterVar.GetStackVarIdx(), elem->m_data.arrID);
+			valueIterVar.GetScriptLocal()->data = elem->m_data.arrID;
 			break;
 		}
 		case DataType::kDataType_String:
@@ -112,7 +105,7 @@ bool UpdateForEachAltIterator(const ArrayElement* elem, const ArrayKey& curKey,
 				return false;
 			}
 			auto id = g_StringMap.Add(script->GetModIndex(), elem->m_data.GetStr(), true, nullptr);
-			StackVariables::SetLocalStackVarVal(valueIterVar.GetStackVarIdx(), id);
+			valueIterVar.GetScriptLocal()->data = id;
 			break;
 		}
 		case DataType::kDataType_Numeric:
@@ -128,7 +121,7 @@ bool UpdateForEachAltIterator(const ArrayElement* elem, const ArrayKey& curKey,
 			if (valueIterVar.GetType() == Script::eVarType_Integer) {
 				num = std::floor(num);
 			}
-			StackVariables::SetLocalStackVarVal(valueIterVar.GetStackVarIdx(), num);
+			valueIterVar.GetScriptLocal()->data = num;
 			break;
 		}
 		case DataType::kDataType_Form:
@@ -138,7 +131,7 @@ bool UpdateForEachAltIterator(const ArrayElement* elem, const ArrayKey& curKey,
 					VariableTypeToName(valueIterVar.GetType()));
 				return false;
 			}
-			StackVariables::SetLocalStackVarFormID(valueIterVar.GetStackVarIdx(), elem->m_data.formID);
+			valueIterVar.GetScriptLocal()->data = elem->m_data.formID;
 			break;
 		}
 		default:
@@ -220,23 +213,15 @@ ArrayIterLoop::~ArrayIterLoop()
 {
 	if (m_iterID)
 	{
-		if (!m_valueIterVar.isStackVar)
-		{
-			//g_ArrayMap.RemoveReference(&m_iterID, 0xFF);
-			g_ArrayMap.RemoveReference(&m_valueIterVar.GetScriptLocal()->data, m_script->GetModIndex());
-		}
-		else
-		{
-			StackVariables::SetLocalStackVarVal(m_valueIterVar.GetStackVarIdx(), 0);
-			// Can assume m_keyIterVar is invalid.
-		}
+		//g_ArrayMap.RemoveReference(&m_iterID, 0xFF);
+		g_ArrayMap.RemoveReference(&m_valueIterVar.GetScriptLocal()->data, m_script->GetModIndex());
 	}
 	else {
 		if (m_valueIterVar.IsValid()) {
-			StackVariables::SetLocalStackVarVal(m_valueIterVar.GetStackVarIdx(), 0);
+			m_valueIterVar.GetScriptLocal()->data = 0;
 		}
 		if (m_keyIterVar.has_value() && m_keyIterVar->IsValid()) {
-			StackVariables::SetLocalStackVarVal(m_keyIterVar->GetStackVarIdx(), 0);
+			m_keyIterVar->GetScriptLocal()->data = 0;
 		}
 	}
 }
@@ -328,22 +313,12 @@ bool ContainerIterLoop::SetIterator()
 		ExtraContainerChanges::EntryData *entry = m_elements[m_iterIndex];
 		ExtraDataList *xData = entry->extendData ? entry->extendData->GetFirstItem() : NULL;
 		m_invRef->SetData(IRefData(entry->type, entry, xData));
-		if (m_isValueStackVar) {
-			*((UInt64*)&StackVariables::GetLocalStackVarVal(m_refVar.stackVarIdx)) = refr->refID;
-		} else {
-			*((UInt64*)&m_refVar.local->data) = refr->refID;
-		}
+		*((UInt64*)&m_refVar.local->data) = refr->refID;
 		return true;
 	}
 	else
 	{
-		// loop ends, ref will shortly be invalid so zero out the var
-		if (m_isValueStackVar) {
-			StackVariables::SetLocalStackVarVal(m_refVar.stackVarIdx, 0);
-		}
-		else {
-			m_refVar.local->data = 0;
-		}
+		m_refVar.local->data = 0;
 		m_invRef->SetData(IRefData());
 		return false;
 	}
@@ -365,12 +340,7 @@ ContainerIterLoop::~ContainerIterLoop()
 		FormHeap_Free(*iter);
 	}
 	m_invRef->Release();
-	if (m_isValueStackVar) {
-		StackVariables::SetLocalStackVarVal(m_refVar.stackVarIdx, 0);
-	}
-	else {
-		m_refVar.local->data = 0;
-	}
+	m_refVar.local->data = 0;
 }
 
 bool FormListIterLoop::GetNext()
@@ -385,12 +355,7 @@ bool FormListIterLoop::GetNext()
 	{
 		if (TESForm* element = m_iter->data)
 		{
-			if (m_isValueStackVar) {
-				*((UInt64*)&StackVariables::GetLocalStackVarVal(m_refVar.stackVarIdx)) = element->refID;
-			}
-			else {
-				*((UInt64*)&m_refVar.local->data) = element->refID;
-			}
+			*((UInt64*)&m_refVar.local->data) = element->refID;
 			return true;
 		}
 		m_iter = m_iter->next;
@@ -411,12 +376,7 @@ FormListIterLoop::FormListIterLoop(const ForEachContext *context)
 	{
 		if (TESForm* element = m_iter->data)
 		{
-			if (m_isValueStackVar) {
-				*((UInt64*)&StackVariables::GetLocalStackVarVal(m_refVar.stackVarIdx)) = element->refID;
-			}
-			else {
-				*((UInt64*)&m_refVar.local->data) = element->refID;
-			}
+			*((UInt64*)&m_refVar.local->data) = element->refID;
 			break;
 		}
 		m_iter = m_iter->next;

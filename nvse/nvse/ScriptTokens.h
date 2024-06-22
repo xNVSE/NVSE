@@ -137,14 +137,7 @@ enum Token_Type : UInt8
 	kTokenType_LeftToken,
 	kTokenType_RightToken,
 
-	// 'Stack' vars
-	kTokenType_StackVar,
-	kTokenType_NumericStackVar,
-	kTokenType_RefStackVar,
-	kTokenType_StringStackVar,
-	kTokenType_ArrayStackVar,
-
-	kTokenType_Invalid = 32, // limit of 32 bits on (NVSE)ParamType
+	kTokenType_Invalid = 27, // limit of 32 bits on (NVSE)ParamType
 	kTokenType_Max = kTokenType_Invalid,
 
 	// sigil value, returned when an empty expression is parsed
@@ -230,7 +223,6 @@ struct ScriptToken
 		ScriptLocal *var;
 		LambdaManager::ScriptData lambdaScriptData;
 		CustomVariableContext nvseVariable;
-		StackVariables::Index_t stackVarIdx;
 #endif
 		// compile-time only
 		VariableInfo *varInfo;
@@ -310,11 +302,8 @@ struct ScriptToken
 	[[nodiscard]] Token_Type Type() const { return type; }
 
 	[[nodiscard]] bool IsGood() const { return type != kTokenType_Invalid; }
-	[[nodiscard]] bool IsNonStackVariable() const {
-		return (type >= kTokenType_NumericVar && type <= kTokenType_ArrayVar);
-	}
 	[[nodiscard]] bool IsVariable() const {
-		return (type >= kTokenType_NumericVar && type <= kTokenType_ArrayVar) || (type >= kTokenType_NumericStackVar && type <= kTokenType_ArrayStackVar);
+		return (type >= kTokenType_NumericVar && type <= kTokenType_ArrayVar);
 	}
 
 	[[nodiscard]] double GetNumericRepresentation(bool bFromHex, bool* hasErrorOut = nullptr) const; // attempts to convert string to number

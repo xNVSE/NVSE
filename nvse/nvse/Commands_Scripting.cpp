@@ -212,7 +212,7 @@ bool Cmd_ForEach_Execute(COMMAND_ARGS)
 			{
 				ArrayIterLoop* arrayLoop = new ArrayIterLoop(context, scriptObj);
 				if (!arrayLoop->m_valueIterVar.isStackVar) {
-					AddToGarbageCollection(eventList, arrayLoop->m_valueIterVar.var.local, NVSEVarType::kVarType_Array);
+					AddToGarbageCollection(eventList, arrayLoop->m_valueIterVar.var, NVSEVarType::kVarType_Array);
 				}
 				loop = arrayLoop;
 			}
@@ -308,10 +308,10 @@ bool Cmd_ForEachAlt_Execute(COMMAND_ARGS)
 		if (auto* sourceArr = eval.Arg(0)->GetArrayVar()) [[likely]]
 		{
 			ArrayID sourceID = sourceArr->ID();
-			Variable valueVar(eval.Arg(1)->value.stackVarIdx, static_cast<Script::VariableType>(eval.Arg(1)->variableType));
+			Variable valueVar(eval.Arg(1)->GetScriptLocal(), static_cast<Script::VariableType>(eval.Arg(1)->variableType));
 			std::optional<Variable> keyVar;
 			if (eval.NumArgs() >= 3) {
-				keyVar = Variable(eval.Arg(2)->value.stackVarIdx, static_cast<Script::VariableType>(eval.Arg(2)->variableType));
+				keyVar = Variable(eval.Arg(2)->GetScriptLocal(), static_cast<Script::VariableType>(eval.Arg(2)->variableType));
 				if (keyVar->IsValid()) {
 					if (!ForEachAlt::ValidateKeyVariableType(*keyVar, sourceArr, eval)) [[unlikely]] {
 						sourceID = 0; // will make loop->IsEmpty() return true
@@ -805,57 +805,6 @@ bool Cmd_DebugPrintVar_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool Cmd_PrintStackVar_Execute(COMMAND_ARGS)
-{
-	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	if (!eval.ExtractArgs() || !eval.Arg(0) || !eval.Arg(0)->value.stackVarIdx)
-		return true;
-	UInt8 argNum = 0;
-	const auto numArgs = eval.NumArgs();
-	do // guaranteed to have at least 1 variable to print
-	{
-		auto* token = eval.Arg(argNum);
-		std::string variableValue;
-		switch (token->Type())
-		{
-		case kTokenType_NumericStackVar:
-			variableValue = FormatString("%g", token->GetNumber());
-			break;
-		case kTokenType_StringStackVar:
-			variableValue = FormatString(R"("%s")", token->GetString());
-			break;
-		case kTokenType_ArrayStackVar:
-			if (auto* arrayVar = token->GetArrayVar())
-				variableValue = arrayVar->GetStringRepresentation();
-			else
-				variableValue = "uninitialized or invalid array";
-			break;
-		case kTokenType_RefStackVar:
-			if (auto* form = token->GetTESForm())
-				variableValue = form->GetStringRepresentation();
-			else
-				variableValue = "invalid form";
-			[[fallthrough]];
-		default:
-			break;
-		}
-		const std::string toPrint = std::string(eval.Arg(argNum+1)->GetString()) + ": " + variableValue;
-		Console_Print_Str(toPrint);
-
-		argNum += 2; // skip over the stack var name arg
-	} while ((argNum+1) < numArgs);
-
-	return true;
-}
-
-bool Cmd_DebugPrintStackVar_Execute(COMMAND_ARGS)
-{
-	if (ModDebugState(scriptObj))
-		return Cmd_PrintStackVar_Execute(PASS_COMMAND_ARGS);
-	return true;
-}
-
-
 bool Cmd_Internal_PushExecutionContext_Execute(COMMAND_ARGS)
 {
 	ExtractArgsOverride::PushContext(thisObj, containingObj, (UInt8*)scriptData, opcodeOffsetPtr);
@@ -894,13 +843,6 @@ bool Cmd_GetSelfAlt_Execute(COMMAND_ARGS)
 bool Cmd_GetSelfAlt_OLD_Execute(COMMAND_ARGS)
 {
 	return Cmd_GetSelfAlt_Execute(PASS_COMMAND_ARGS);
-}
-
-bool Cmd_DumpStackInfo_Execute(COMMAND_ARGS) {
-	// Parse stack var names and populate
-	StackVariables::g_localStackVars[StackVariables::g_localStackPtr].names = StackVariables::ParseDumpStackVars((UInt8*)scriptData + *opcodeOffsetPtr);
-
-	return true;
 }
 
 #endif
@@ -1117,8 +1059,8 @@ CommandInfo kCommandInfo_ForEach =
 static ParamInfo kParams_ForEachAlt[] =
 {
 	{	"sourceArray",		kNVSEParamType_Array,	0	},
-	{	"valueVariable",	kNVSEParamType_StackVar,	0	}, // if keyVariable wasn't passed, and sourceArray is a map, then this will act as a key iterator.
-	{	"keyVariable",		kNVSEParamType_NumbericOrStringStackVar,	1	},
+	{	"valueVariable",	kNVSEParamType_Variable,	0	}, // if keyVariable wasn't passed, and sourceArray is a map, then this will act as a key iterator.
+	{	"keyVariable",		kNVSEParamType_StringVar | kNVSEParamType_NumericVar,	1	},
 };
 CommandInfo kCommandInfo_ForEachAlt =
 {

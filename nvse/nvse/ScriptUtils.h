@@ -70,11 +70,6 @@ enum NVSEParamType : UInt32 {
 	kNVSEParamType_FormOrNumber = kNVSEParamType_Form | kNVSEParamType_Number,
 	kNVSEParamType_StringOrNumber = kNVSEParamType_String | kNVSEParamType_Number,
 	kNVSEParamType_Pair	=	1 << kTokenType_Pair,
-
-	kNVSEParamType_StackVar =  1 << kTokenType_StackVar,
-	kNVSEParamType_NumbericStackVar = 1 << kTokenType_NumericStackVar,
-	kNVSEParamType_StringStackVar = 1 << kTokenType_NumericStackVar,
-	kNVSEParamType_NumbericOrStringStackVar = kNVSEParamType_NumbericStackVar | kNVSEParamType_StringStackVar,
 };
 
 const char* StringForNVSEParamType(NVSEParamType paramType);

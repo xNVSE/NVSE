@@ -2220,11 +2220,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(SetModelPath);
 	ADD_CMD_RET(Ternary, kRetnType_Ambiguous);
 	ADD_CMD(MatchesAnyOf);
-
-	ADD_CMD(PrintStackVar);
-	ADD_CMD(DebugPrintStackVar);
 	ADD_CMD(ForEachAlt);
-	ADD_CMD(DumpStackInfo);
 }
 
 namespace PluginAPI

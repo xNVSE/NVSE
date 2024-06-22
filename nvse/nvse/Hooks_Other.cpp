@@ -124,8 +124,6 @@ namespace OtherHooks
 			}
 
 			// Do other stuff
-			StackVariables::PushLocalStack();
-
 			if (g_threadID == -1) {
 				g_threadID = g_nextThreadID++;
 				g_scriptVarCache[g_threadID] = new VarCache{ {}, {} };
@@ -179,7 +177,6 @@ namespace OtherHooks
 		{
 			if (script) {
 				g_currentScriptContext.Pop();
-				StackVariables::PopLocalStack();
 
 				if (g_currentScriptContext.Size() == 0) {
 					g_scriptVarCache[g_threadID]->varCache.clear();

@@ -151,29 +151,28 @@ public:
 				ShowRuntimeError(info->GetScript(), "Could not look up argument variable for function script");
 				return false;
 			}
-			bool const modifyVarsInNextDepth = true;
 
 			switch (param->GetType())
 			{
 			case Script::eVarType_Array:
 				if (arg->CanConvertTo(kTokenType_Array)) [[likely]] {
-					param->AssignToArray(arg->GetArrayID(), eventList, modifyVarsInNextDepth, resolvedLocal);
+					param->AssignToArray(arg->GetArrayID(), eventList, resolvedLocal);
 				}
 				break;
 			case Script::eVarType_String:
 				if (arg->CanConvertTo(kTokenType_String)) [[likely]] {
-					param->AssignToString(arg->GetString(), eventList, true, modifyVarsInNextDepth, resolvedLocal);
+					param->AssignToString(arg->GetString(), eventList, true, resolvedLocal);
 				}
 				break;
 			case Script::eVarType_Ref:
 				if (arg->CanConvertTo(kTokenType_Form)) [[likely]] {
-					*((UInt32*)param->GetValuePtr(eventList, modifyVarsInNextDepth, resolvedLocal)) = arg->GetFormID();
+					*((UInt32*)param->GetValuePtr(eventList, resolvedLocal)) = arg->GetFormID();
 				}
 				break;
 			case Script::eVarType_Integer:
 			case Script::eVarType_Float:
 				if (arg->CanConvertTo(kTokenType_Number)) [[likely]] {
-					*param->GetValuePtr(eventList, modifyVarsInNextDepth, resolvedLocal) =
+					*param->GetValuePtr(eventList, resolvedLocal) =
 						(param->GetType() == Script::eVarType_Integer) ? floor(arg->GetNumber()) : arg->GetNumber();
 				}
 				break;
@@ -553,13 +552,11 @@ void ExecuteSingleLineLambda(FunctionInfo* info, FunctionCaller& caller, ScriptE
 
 	OtherHooks::PushScriptContext({ info->GetScript(), nullptr, nullptr, 
 		caller.ThisObj(), &kCommandInfo_SetFunctionValue, nullptr });
-	StackVariables::PushLocalStack();
 
 	kCommandInfo_SetFunctionValue.execute(kCommandInfo_SetFunctionValue.params, info->GetScript()->data, caller.ThisObj(), 
 		caller.ContainingObj(), info->GetScript(), eventList, &result, &opcodeOffset);
 
 	OtherHooks::PopScriptContext();
-	StackVariables::PopLocalStack();
 }
 
 bool FunctionContext::Execute(FunctionCaller& caller) const
@@ -625,33 +622,32 @@ bool InternalFunctionCaller::PopulateArgs(ScriptEventList* eventList, FunctionIn
 			ShowRuntimeError(m_script, "Could not look up argument variable for function script");
 			return false;
 		}
-		bool const modifyVarsInNextDepth = true;
 
 		switch (param->GetType())
 		{
 		case Script::eVarType_Integer:
-			*param->GetValuePtr(eventList, modifyVarsInNextDepth, resolvedLocal) = (SInt32)m_args[i];
+			*param->GetValuePtr(eventList, resolvedLocal) = (SInt32)m_args[i];
 			break;
 		case Script::eVarType_Float:
-			*param->GetValuePtr(eventList, modifyVarsInNextDepth, resolvedLocal) = *((float*)&m_args[i]);
+			*param->GetValuePtr(eventList, resolvedLocal) = *((float*)&m_args[i]);
 			break;
 		case Script::eVarType_Ref:
 		{
 			TESForm* form = (TESForm*)m_args[i];
-			*((UInt32*)param->GetValuePtr(eventList, modifyVarsInNextDepth, resolvedLocal)) = form ? form->refID : 0;
+			*((UInt32*)param->GetValuePtr(eventList, resolvedLocal)) = form ? form->refID : 0;
 		}
 		break;
 		case Script::eVarType_String:
-			param->AssignToString((const char*)m_args[i], eventList, true, modifyVarsInNextDepth, resolvedLocal);
+			param->AssignToString((const char*)m_args[i], eventList, true, resolvedLocal);
 			break;
 		case Script::eVarType_Array:
 		{
 			const ArrayID arrID = (ArrayID)m_args[i];
 			if (g_ArrayMap.Get(arrID)) {
-				param->AssignToArray(arrID, eventList, modifyVarsInNextDepth, resolvedLocal);
+				param->AssignToArray(arrID, eventList, resolvedLocal);
 			}
 			else {
-				*param->GetValuePtr(eventList, modifyVarsInNextDepth, resolvedLocal) = 0;
+				*param->GetValuePtr(eventList, resolvedLocal) = 0;
 			}
 		}
 		break;
@@ -734,28 +730,28 @@ bool InternalFunctionCallerAlt::PopulateArgs(ScriptEventList* eventList, Functio
 		case Script::eVarType_Integer:
 			// NOTE: this is the ONLY difference between this and PopulateArgs() from the regular InternalFunctionCaller.
 			// (i.e the fact we read a weirdly packed float, instead of an int directly.
-			*param->GetValuePtr(eventList, modifyVarsInNextDepth, resolvedLocal) = floor(*((float*)&m_args[i]));
+			*param->GetValuePtr(eventList, resolvedLocal) = floor(*((float*)&m_args[i]));
 			break;
 		case Script::eVarType_Float:
-			*param->GetValuePtr(eventList, modifyVarsInNextDepth, resolvedLocal) = *((float*)&m_args[i]);
+			*param->GetValuePtr(eventList, resolvedLocal) = *((float*)&m_args[i]);
 			break;
 		case Script::eVarType_Ref:
 		{
 			TESForm* form = (TESForm*)m_args[i];
-			*((UInt32*)param->GetValuePtr(eventList, modifyVarsInNextDepth, resolvedLocal)) = form ? form->refID : 0;
+			*((UInt32*)param->GetValuePtr(eventList, resolvedLocal)) = form ? form->refID : 0;
 			break;
 		}
 		case Script::eVarType_String:
-			param->AssignToString((const char*)m_args[i], eventList, true, modifyVarsInNextDepth, resolvedLocal);
+			param->AssignToString((const char*)m_args[i], eventList, true, resolvedLocal);
 			break;
 		case Script::eVarType_Array:
 		{
 			const ArrayID arrID = (ArrayID)m_args[i];
 			if (g_ArrayMap.Get(arrID)) {
-				param->AssignToArray(arrID, eventList, modifyVarsInNextDepth, resolvedLocal);
+				param->AssignToArray(arrID, eventList, resolvedLocal);
 			}
 			else {
-				*param->GetValuePtr(eventList, modifyVarsInNextDepth, resolvedLocal) = 0;
+				*param->GetValuePtr(eventList, resolvedLocal) = 0;
 			}
 			break;
 		}
@@ -809,24 +805,24 @@ bool ArrayElementArgFunctionCaller<T>::PopulateArgs(ScriptEventList* eventList, 
 		{
 		case Script::eVarType_Integer: 
 		{
-			auto* valuePtr = param->GetValuePtr(eventList, modifyVarsInNextDepth, resolvedLocal);
+			auto* valuePtr = param->GetValuePtr(eventList, resolvedLocal);
 			arg.GetAsNumber(valuePtr);
 			*valuePtr = static_cast<SInt32>(*valuePtr);
 			break;
 		}
 		case Script::eVarType_Float:
-			arg.GetAsNumber(param->GetValuePtr(eventList, modifyVarsInNextDepth, resolvedLocal));
+			arg.GetAsNumber(param->GetValuePtr(eventList, resolvedLocal));
 			break;
 		case Script::eVarType_Ref:
 		{
-			arg.GetAsFormID(reinterpret_cast<UInt32*>(param->GetValuePtr(eventList, modifyVarsInNextDepth, resolvedLocal)));
+			arg.GetAsFormID(reinterpret_cast<UInt32*>(param->GetValuePtr(eventList, resolvedLocal)));
 			break;
 		}
 		case Script::eVarType_String:
 		{
 			const char* out;
 			arg.GetAsString(&out);
-			param->AssignToString(out, eventList, true, modifyVarsInNextDepth, resolvedLocal);
+			param->AssignToString(out, eventList, true, resolvedLocal);
 			break;
 		}
 		case Script::eVarType_Array:
@@ -835,10 +831,10 @@ bool ArrayElementArgFunctionCaller<T>::PopulateArgs(ScriptEventList* eventList, 
 			arg.GetAsArray(&arrID);
 			if (g_ArrayMap.Get(arrID))
 			{
-				param->AssignToArray(arrID, eventList, modifyVarsInNextDepth, resolvedLocal);
+				param->AssignToArray(arrID, eventList, resolvedLocal);
 			}
 			else {
-				*param->GetValuePtr(eventList, modifyVarsInNextDepth, resolvedLocal) = 0;
+				*param->GetValuePtr(eventList, resolvedLocal) = 0;
 			}
 			break;
 		}

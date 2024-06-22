@@ -1329,13 +1329,12 @@ public:
 			UserFunctionParam* rhs = info->GetParam(1);
 			if (lhs && rhs && lhs->GetType() == Script::eVarType_Array && rhs->GetType() == Script::eVarType_Array)
 			{
-				bool const modifyVarsInNextDepth = true;
 				const char* errMsg = "Could not look up argument variable for function script";
-				if (!lhs->AssignToArray(m_lhs->ID(), eventList, modifyVarsInNextDepth)) [[unlikely]] {
+				if (!lhs->AssignToArray(m_lhs->ID(), eventList)) [[unlikely]] {
 					ShowRuntimeError(m_comparator, errMsg);
 					return false;
 				}
-				if (!rhs->AssignToArray(m_rhs->ID(), eventList, modifyVarsInNextDepth)) [[unlikely]] {
+				if (!rhs->AssignToArray(m_rhs->ID(), eventList)) [[unlikely]] {
 					ShowRuntimeError(m_comparator, errMsg);
 					return false;
 				}
