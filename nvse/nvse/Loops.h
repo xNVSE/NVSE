@@ -103,7 +103,6 @@ class ContainerIterLoop : public ForEachLoop
 
 	InventoryReference *m_invRef;
 	ScriptLocal* m_refVar;
-	bool m_isValueStackVar;
 	UInt32 m_iterIndex;
 	Vector<ExtraContainerChanges::EntryData *> m_elements;
 
@@ -122,7 +121,6 @@ class FormListIterLoop : public ForEachLoop
 {
 	ListNode<TESForm>	*m_iter;
 	ScriptLocal* m_refVar;
-	bool m_isValueStackVar;
 
 	bool GetNext();
 

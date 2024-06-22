@@ -19,7 +19,6 @@ extern std::atomic<int> g_nextThreadID;
 // Utility struct
 struct Variable {
 	ScriptLocal* var{};
-	bool isStackVar = false;
 	Script::VariableType type = Script::eVarType_Invalid;
 
 	[[nodiscard]] bool IsValid() const {

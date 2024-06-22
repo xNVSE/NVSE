@@ -260,7 +260,6 @@ ContainerIterLoop::ContainerIterLoop(const ForEachContext* context)
 {
 	TESObjectREFR* contRef = (TESObjectREFR*)context->sourceID;
 	m_refVar = context->iterVar.GetScriptLocal();
-	m_isValueStackVar = context->iterVar.isStackVar;
 	m_iterIndex = 0;
 	m_invRef = CreateInventoryRef(contRef, IRefData(), false);
 
@@ -367,7 +366,6 @@ FormListIterLoop::FormListIterLoop(const ForEachContext *context)
 {
 	m_iter = ((BGSListForm*)context->sourceID)->list.Head();
 	m_refVar = context->iterVar.GetScriptLocal();
-	m_isValueStackVar = context->iterVar.isStackVar;
 
 	// Move m_iter to first valid value, and save that as the first loop element.
 	// Do NOT call GetNext here, since it will move m_iter, 
