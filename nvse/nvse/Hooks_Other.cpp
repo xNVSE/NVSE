@@ -74,7 +74,7 @@ namespace OtherHooks
 
 	void DeleteEventList(ScriptEventList* eventList)
 	{
-		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_EventListDestroyed, eventList, sizeof ScriptEventList, nullptr);
+		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_EventListDestroyed, eventList, sizeof (ScriptEventList*), nullptr);
 		LambdaManager::MarkParentAsDeleted(eventList); // deletes if exists
 		CleanUpNVSEVars(eventList);
 		ThisStdCall(0x5A8BC0, eventList);
@@ -120,6 +120,11 @@ namespace OtherHooks
 
 	void __fastcall ResetQuestDeleteScriptEventListHook(ScriptEventList* eventList) 
 	{
+		if (g_currentScriptContext.Empty() || g_currentScriptContext.Top().script != eventList->m_script) 
+		{
+			DeleteEventList(eventList);
+			return;
+		}
 		// delay deletion of event list until after the script has finished executing
 		// event list is still being passed around while the script is running
 		g_onExitScripts.push_back([eventList]() { DeleteEventList(eventList); });
