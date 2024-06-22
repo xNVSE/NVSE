@@ -15,6 +15,8 @@ namespace OtherHooks
 {
 	const static auto ClearCachedTileMap = &MemoizedMap<const char*, Tile::Value*>::Clear;
 	thread_local FastStack<CurrentScriptContext> g_currentScriptContext;
+	thread_local std::vector<std::function<void()>> g_onExitScripts;
+
 	__declspec(naked) void TilesDestroyedHook()
 	{
 		__asm
@@ -72,7 +74,7 @@ namespace OtherHooks
 
 	void DeleteEventList(ScriptEventList* eventList)
 	{
-		
+		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_EventListDestroyed, eventList, sizeof ScriptEventList, nullptr);
 		LambdaManager::MarkParentAsDeleted(eventList); // deletes if exists
 		CleanUpNVSEVars(eventList);
 		ThisStdCall(0x5A8BC0, eventList);
@@ -81,7 +83,6 @@ namespace OtherHooks
 	
 	ScriptEventList* __fastcall ScriptEventListsDestroyedHook(ScriptEventList *eventList, int EDX, bool doFree)
 	{
-		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_EventListDestroyed, eventList, sizeof ScriptEventList, nullptr);
 		DeleteEventList(eventList);
 		return eventList;
 	}
@@ -112,6 +113,16 @@ namespace OtherHooks
 	{
 		if (script)
 			g_currentScriptContext.Pop();
+		for (auto& func : g_onExitScripts)
+			func();
+		g_onExitScripts.clear();
+	}
+
+	void __fastcall ResetQuestDeleteScriptEventListHook(ScriptEventList* eventList) 
+	{
+		// delay deletion of event list until after the script has finished executing
+		// event list is still being passed around while the script is running
+		g_onExitScripts.push_back([eventList]() { DeleteEventList(eventList); });
 	}
 
 	__declspec (naked) void PostScriptExecuteHook1()
@@ -192,6 +203,8 @@ namespace OtherHooks
 		WriteRelJump(0x5E1392, UInt32(PostScriptExecuteHook2));
 
 		WriteRelCall(0x5AA206, ScriptDestructorHook);
+
+		WriteRelCall(0x60D858, ResetQuestDeleteScriptEventListHook);
 
 		*(UInt32*)0x0126FDF4 = 1; // locale fix
 	}
