@@ -102,11 +102,7 @@ class ContainerIterLoop : public ForEachLoop
 	typedef InventoryReference::Data IRefData;
 
 	InventoryReference *m_invRef;
-	union Variable
-	{
-		ScriptLocal* local;
-		StackVariables::Index_t stackVarIdx;
-	} m_refVar;
+	ScriptLocal* m_refVar;
 	bool m_isValueStackVar;
 	UInt32 m_iterIndex;
 	Vector<ExtraContainerChanges::EntryData *> m_elements;
@@ -125,11 +121,7 @@ public:
 class FormListIterLoop : public ForEachLoop
 {
 	ListNode<TESForm>	*m_iter;
-	union Variable
-	{
-		ScriptLocal* local;
-		StackVariables::Index_t stackVarIdx;
-	} m_refVar;
+	ScriptLocal* m_refVar;
 	bool m_isValueStackVar;
 
 	bool GetNext();

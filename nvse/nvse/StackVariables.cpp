@@ -3,12 +3,6 @@
 #if RUNTIME
 #include "ScriptTokens.h"
 
-namespace StackVariables
-{
-	
-}
-
-
 // Useful so that the slow eventList->GetVariable doesn't have to be called again.
 // Returns false for an invalid variable, or if non-stack-variable couldn't be resolved.
 

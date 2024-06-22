@@ -259,7 +259,7 @@ bool StringIterLoop::Update(COMMAND_ARGS)
 ContainerIterLoop::ContainerIterLoop(const ForEachContext* context)
 {
 	TESObjectREFR* contRef = (TESObjectREFR*)context->sourceID;
-	m_refVar.local = context->iterVar.GetScriptLocal();
+	m_refVar = context->iterVar.GetScriptLocal();
 	m_isValueStackVar = context->iterVar.isStackVar;
 	m_iterIndex = 0;
 	m_invRef = CreateInventoryRef(contRef, IRefData(), false);
@@ -313,12 +313,12 @@ bool ContainerIterLoop::SetIterator()
 		ExtraContainerChanges::EntryData *entry = m_elements[m_iterIndex];
 		ExtraDataList *xData = entry->extendData ? entry->extendData->GetFirstItem() : NULL;
 		m_invRef->SetData(IRefData(entry->type, entry, xData));
-		*((UInt64*)&m_refVar.local->data) = refr->refID;
+		*((UInt64*)&m_refVar->data) = refr->refID;
 		return true;
 	}
 	else
 	{
-		m_refVar.local->data = 0;
+		m_refVar->data = 0;
 		m_invRef->SetData(IRefData());
 		return false;
 	}
@@ -340,7 +340,7 @@ ContainerIterLoop::~ContainerIterLoop()
 		FormHeap_Free(*iter);
 	}
 	m_invRef->Release();
-	m_refVar.local->data = 0;
+	m_refVar->data = 0;
 }
 
 bool FormListIterLoop::GetNext()
@@ -355,7 +355,7 @@ bool FormListIterLoop::GetNext()
 	{
 		if (TESForm* element = m_iter->data)
 		{
-			*((UInt64*)&m_refVar.local->data) = element->refID;
+			*((UInt64*)&m_refVar->data) = element->refID;
 			return true;
 		}
 		m_iter = m_iter->next;
@@ -366,7 +366,7 @@ bool FormListIterLoop::GetNext()
 FormListIterLoop::FormListIterLoop(const ForEachContext *context)
 {
 	m_iter = ((BGSListForm*)context->sourceID)->list.Head();
-	m_refVar.local = context->iterVar.GetScriptLocal();
+	m_refVar = context->iterVar.GetScriptLocal();
 	m_isValueStackVar = context->iterVar.isStackVar;
 
 	// Move m_iter to first valid value, and save that as the first loop element.
@@ -376,7 +376,7 @@ FormListIterLoop::FormListIterLoop(const ForEachContext *context)
 	{
 		if (TESForm* element = m_iter->data)
 		{
-			*((UInt64*)&m_refVar.local->data) = element->refID;
+			*((UInt64*)&m_refVar->data) = element->refID;
 			break;
 		}
 		m_iter = m_iter->next;

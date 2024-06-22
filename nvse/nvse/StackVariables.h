@@ -7,45 +7,6 @@
 
 #ifdef RUNTIME
 
-namespace StackVariables
-{
-	using Index_t = int;
-	using Value_t = double;
-
-	struct LocalStackFrame {
-		std::vector<Value_t> vars{};
-		std::vector<std::string> names{};
-
-		Value_t& get(Index_t idx) {
-			if (idx >= vars.size()) {
-				vars.resize(idx + 10, 0);
-			}
-
-			return vars[idx];
-		}
-
-		void set(Index_t idx, Value_t val) {
-			if (idx >= vars.size()) {
-				vars.resize(idx + 10, 0);
-			}
-
-			vars[idx] = val;
-		}
-	};
-
-	// inline thread_local std::vector<LocalStackFrame> g_localStackVars;
-	// inline thread_local Index_t g_localStackPtr{ -1 };
-	//
-	// void SetLocalStackVarVal(Index_t idx, Value_t val, bool toNextStack = false);
-	// void SetLocalStackVarFormID(Index_t idx, UInt32 formID, bool toNextStack = false);
-	// Value_t& GetLocalStackVarVal(Index_t idx, bool fromNextStack = false);
-	//
-	// void PushLocalStack();
-	// void PopLocalStack(bool destroy = true);
-	//
-	// std::vector<std::string> ParseDumpStackVars(UInt8* data);
-}
-
 struct VarCache {
 	std::mutex mt;
 	std::unordered_map<ScriptEventList*, std::unordered_map<UInt32, ScriptLocal*>> varCache;
