@@ -5,7 +5,7 @@ fn () {
 	print(("Started running xNVSE " + testName + " unit tests."));
 
 	// Just making sure some things compile that should
-    GetRefs(200).foreach(fn (array iter) -> print((*iter).GetName()));
+    ar_foreach(GetRefs(200), fn (array iter) -> print((*iter).GetName()));
 	
 	print(("Finished running xNVSE " + testName + " unit tests."));
 }

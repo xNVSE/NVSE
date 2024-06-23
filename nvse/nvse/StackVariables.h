@@ -3,6 +3,7 @@
 #include <mutex>
 #include <stack>
 
+#include "GameAPI.h"
 #include "GameScript.h"
 
 #ifdef RUNTIME
@@ -10,6 +11,24 @@
 struct VarCache {
 	std::mutex mt;
 	std::unordered_map<ScriptEventList*, std::unordered_map<UInt32, ScriptLocal*>> varCache;
+
+	void put(ScriptEventList* eventList, ScriptLocal* local) {
+		varCache[eventList][local->id] = local;
+	}
+
+	ScriptLocal *get(ScriptEventList* eventList, UInt32 id) {
+		auto entry = varCache[eventList];
+
+		if (const auto find = entry.find(id); find != entry.end()) {
+			return find->second;
+		}
+
+		return nullptr;
+	}
+
+	void clear(ScriptEventList* eventList) {
+		varCache[eventList] = {};
+	}
 };
 
 extern VarCache* g_scriptVarCache[];
@@ -62,7 +81,7 @@ struct VariableStorage {
 	std::string GetVariableName(ScriptEventList* eventList, ScriptLocal* resolvedLocal = nullptr);
 
 	VariableStorage() = default;
-	VariableStorage(UInt32 _varIdx, bool _isStackVar, Script::VariableType _varType)
+	VariableStorage(UInt32 _varIdx, Script::VariableType _varType)
 		: m_varIdx(_varIdx), m_type(_varType)
 	{}
 };

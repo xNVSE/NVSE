@@ -85,16 +85,16 @@ namespace OtherHooks
 		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_EventListDestroyed, eventList, sizeof ScriptEventList, nullptr);
 
 		// Clear all thread caches for this event list
-		for (int i = 0; i < g_nextThreadID; i++) {
-			auto vc = g_scriptVarCache[i];
-			if (i != g_threadID) {
-				vc->mt.lock();
-			}
-			vc->varCache[eventList] = {};
-			if (i != g_threadID) {
-				vc->mt.unlock();
-			}
-		}
+		// for (int i = 0; i < g_nextThreadID; i++) {
+		// 	auto vc = g_scriptVarCache[i];
+		// 	if (i != g_threadID) {
+		// 		vc->mt.lock();
+		// 	}
+		// 	vc->clear(eventList);
+		// 	if (i != g_threadID) {
+		// 		vc->mt.unlock();
+		// 	}
+		// }
 
 		DeleteEventList(eventList);
 		return eventList;
@@ -124,14 +124,14 @@ namespace OtherHooks
 			}
 
 			// Do other stuff
-			if (g_threadID == -1) {
-				g_threadID = g_nextThreadID++;
-				g_scriptVarCache[g_threadID] = new VarCache{ {}, {} };
-			}
-
-			if (g_currentScriptContext.Size() == 1) {
-				g_scriptVarCache[g_threadID]->mt.lock();
-			}
+			// if (g_threadID == -1) {
+			// 	g_threadID = g_nextThreadID++;
+			// 	g_scriptVarCache[g_threadID] = new VarCache{ {}, {} };
+			// }
+			//
+			// if (g_currentScriptContext.Size() == 1) {
+			// 	g_scriptVarCache[g_threadID]->mt.lock();
+			// }
 		}
 
 		__declspec(naked) void Hook1()
@@ -178,10 +178,9 @@ namespace OtherHooks
 			if (script) {
 				g_currentScriptContext.Pop();
 
-				if (g_currentScriptContext.Size() == 0) {
-					g_scriptVarCache[g_threadID]->varCache.clear();
-					g_scriptVarCache[g_threadID]->mt.unlock();
-				}
+				// if (g_currentScriptContext.Size() == 0) {
+				// 	g_scriptVarCache[g_threadID]->mt.unlock();
+				// }
 			}
 		}
 

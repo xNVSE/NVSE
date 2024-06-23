@@ -357,7 +357,6 @@ FunctionInfo::FunctionInfo(Script* script)
 	{
 	case 0:
 	case 1:
-	case 2: // version introducing support for stack vars. Can only be compiled with v2 using the new compiler.
 		break;
 	default:
 		ShowRuntimeError(script, "Unknown function version %02X.", m_functionVersion);
@@ -378,11 +377,7 @@ FunctionInfo::FunctionInfo(Script* script)
 		const UInt16 idx = *((UInt16*)data);
 		data += 2;
 		const UInt8 type = *data++;
-		bool isStackVar = false;
-		if (m_functionVersion == 2) {
-			isStackVar = *data++;
-		}
-		params.emplace_back(idx, isStackVar, static_cast<Script::VariableType>(type));
+		params.emplace_back(idx, static_cast<Script::VariableType>(type));
 	}
 
 	m_dParamInfo = DynamicParamInfo(params);

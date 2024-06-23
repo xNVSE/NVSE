@@ -2235,7 +2235,7 @@ bool ExpressionParser::GetUserFunctionParams(
 			if (outParams[i].m_varIdx == varInfo->idx)
 				return false;
 
-		outParams.emplace_back(UserFunctionParam(varInfo->idx, false, varType));
+		outParams.emplace_back(UserFunctionParam(varInfo->idx, varType));
 	}
 	if (lastVarType != Script::eVarType_Invalid)
 		return false;

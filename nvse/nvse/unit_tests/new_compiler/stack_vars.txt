@@ -17,11 +17,11 @@ fn () {
 
     // Test arrays
     array arr1 = [1,2,3,4];
-    assert(arr1.size() == 4);
+    assert(ar_size(arr1) == 4);
     arr1[0] = 10;
     assert(arr1[0] == 10);
-    arr1.append(20);
-    assert(arr1.size() == 5);
+    ar_append(arr1, 20);
+    assert(ar_size(arr1) == 5);
     assert(arr1[4] == 20);
     i = 30;
     assert(i == 30);

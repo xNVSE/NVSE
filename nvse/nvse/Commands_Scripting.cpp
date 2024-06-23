@@ -211,9 +211,7 @@ bool Cmd_ForEach_Execute(COMMAND_ARGS)
 			if (context->iterVar.type == Script::eVarType_Array)
 			{
 				ArrayIterLoop* arrayLoop = new ArrayIterLoop(context, scriptObj);
-				if (!arrayLoop->m_valueIterVar.isStackVar) {
-					AddToGarbageCollection(eventList, arrayLoop->m_valueIterVar.var, NVSEVarType::kVarType_Array);
-				}
+				AddToGarbageCollection(eventList, arrayLoop->m_valueIterVar.var, NVSEVarType::kVarType_Array);
 				loop = arrayLoop;
 			}
 			else if (context->iterVar.type == Script::eVarType_String)
