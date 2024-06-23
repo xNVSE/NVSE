@@ -1230,3 +1230,43 @@ bool Cmd_ar_Exists_Execute(COMMAND_ARGS)
 
 	return true;
 }
+
+bool Cmd_ar_Count_Execute(COMMAND_ARGS) {
+	*result = 0;
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (eval.ExtractArgs() && eval.NumArgs() == 2 && eval.Arg(0)->CanConvertTo(kTokenType_Array))
+	{
+		auto arr = eval.Arg(0)->GetArrayVar();
+
+		for (auto iter = arr->Begin(); !iter.End(); ++iter)
+		{
+			if (iter.second()->Equals(eval.Arg(1)->GetAsArrayElement())) {
+				(*result)++;
+			}
+		}
+	}
+
+	return true;
+}
+
+bool Cmd_ar_CountIf_Execute(COMMAND_ARGS) {
+	ArrayFunctionContext ctx(PASS_COMMAND_ARGS);
+	*result = 0;
+	if (!ExtractArrayUDF(ctx))
+		return true;
+	auto& [eval, arr, conditionScript] = ctx;
+	auto* returnArray = g_ArrayMap.Create(arr->KeyType(), arr->IsPacked(), scriptObj->GetModIndex());
+	for (auto iter = arr->Begin(); !iter.End(); ++iter)
+	{
+		InternalFunctionCaller caller(conditionScript, thisObj, containingObj);
+		caller.SetArgs(1, ElementToIterator(scriptObj, iter)->ID());
+		auto const tokenResult = UserFunctionManager::Call(std::move(caller));
+		if (!tokenResult)
+			continue;
+		if (tokenResult->GetBool())
+		{
+			(*result)++;
+		}
+	}
+	return true;
+}
