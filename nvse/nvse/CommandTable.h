@@ -277,6 +277,12 @@ struct CommandInfo
 	std::string GetDescription(const bool forWiki) const;
 };
 
+struct CommandExtensionInfo {
+	CommandInfo* info;
+	UInt8        selfIdx;
+	UInt32		 selfType;
+};
+
 class CommandTable
 {
 public:
@@ -287,6 +293,7 @@ public:
 
 	void	Read(CommandInfo * start, CommandInfo * end);
 	void	Add(CommandInfo * info, CommandReturnType retnType = kRetnType_Default, UInt32 parentPluginOpcodeBase = 0);
+	void    SetCmdExtension(CommandInfo* info, const char* shorthand, UInt8 selfIndex);
 	void	PadTo(UInt32 id, CommandInfo * info = NULL);
 	bool	Replace(UInt32 opcodeToReplace, CommandInfo* replaceWith);
 
@@ -294,8 +301,11 @@ public:
 	CommandInfo *	GetEnd(void)	{ return GetStart() + m_commands.size(); }
 	CommandInfo *	GetByName(const char * name);
 	CommandInfo *	GetByOpcode(UInt32 opcode);
+
 	// Inclusive start and stop bounds.
 	std::vector<CommandInfo*> GetByOpcodeRange(UInt32 opcodeStart, UInt32 opcodeStop);
+
+	std::vector<CommandExtensionInfo> GetCmdExtensions(const char* name);
 
 	void	SetBaseID(UInt32 id)	{ m_baseID = id; m_curID = id; }
 	UInt32	GetMaxID(void)			{ return m_baseID + m_commands.size(); }
@@ -323,11 +333,13 @@ private:
 	void AddCommandsV6();
 	void AddDebugCommands();
 
-	typedef std::vector <CommandInfo>				CommandList;
-	typedef UnorderedMap<UInt32, CommandMetadata>	CmdMetadataList;
+	typedef std::vector <CommandInfo>									 CommandList;
+	typedef UnorderedMap<UInt32, CommandMetadata>						 CmdMetadataList;
+	typedef UnorderedMap<const char*, std::vector<CommandExtensionInfo>> CmdExtensionList;
 
-	CommandList		m_commands;
-	CmdMetadataList	m_metadata;
+	CommandList			m_commands;
+	CmdMetadataList		m_metadata;
+	CmdExtensionList	m_extensionInfo;
 
 	UInt32		m_baseID;
 	UInt32		m_curID;
