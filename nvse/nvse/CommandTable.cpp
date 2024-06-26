@@ -358,12 +358,11 @@ DEFINE_CMD_COND(GetNVSERevision, returns the numbered revision of the installed 
 DEFINE_CMD_COND(GetNVSEBeta, returns the numbered beta of the installed version of NVSE, 0, NULL);
 DEFINE_COMMAND(DumpDocs, , false, 4, kParams_FourOptionalInts);
 
-#define ADD_CMD(command) Add(&kCommandInfo_##command, kRetnType_Default, 0, 0)
-#define ADD_CMD_RET(command, rtnType) Add(&kCommandInfo_##command, rtnType, 0, 0)
+#define ADD_CMD(command) Add(&kCommandInfo_##command)
+#define ADD_CMD_RET(command, rtnType) Add(&kCommandInfo_##command, rtnType)
 #define REPL_CMD(command) Replace(GetByName(command)->opcode, &kCommandInfo_##command)
 
-#define ADD_CMD_VER(command, major, minor, beta) \
-	Add(&kCommandInfo_ ## command ## _ ## major ## _ ## minor ## _ ## beta, kRetnType_Default, 0, MAKE_NEW_VEGAS_VERSION(major, minor, beta))
+#define ADD_CMD_UPDATE(command, major, minor, beta) AddUpdate(&kCommandInfo_ ## command ## _ ## major ## _ ## minor ## _ ## beta, MAKE_NEW_VEGAS_VERSION(major, minor, beta))
 
 CommandTable::CommandTable()
 {
@@ -435,32 +434,16 @@ void CommandTable::Read(CommandInfo *start, CommandInfo *end)
 		Add(start);
 }
 
-void CommandTable::Add(CommandInfo *info, CommandReturnType retnType, UInt32 parentPluginOpcodeBase, UInt32 version)
+void CommandTable::Add(CommandInfo *info, CommandReturnType retnType, UInt32 parentPluginOpcodeBase)
 {
 	UInt32 backCommandID = m_baseID + m_commands.size(); // opcode of the next command to add
 
 	info->opcode = m_curID;
 
-	CommandMetadata *metadata = &m_metadata[info->opcode];
-	metadata->parentPlugin = parentPluginOpcodeBase;
-	metadata->returnType = retnType;
-
 	if (m_curID == backCommandID)
 	{
-		if (auto existing = GetByOpcode(info->opcode)) {
-			auto parentPlugin = GetParentPlugin(&m_commands.back());
-			auto& verSet = m_commandSet[parentPlugin ? parentPlugin->name : "NVSE"];
-			verSet[version].emplace_back(*existing);
-		}
-		else {
-			// adding at the end?
-			m_commands.push_back(*info);
-
-			auto parentPlugin = GetParentPlugin(&m_commands.back());
-			auto &verSet = m_commandSet[parentPlugin ? parentPlugin->name : "NVSE"];
-			verSet[version].emplace_back(m_commands.back());
-			m_curID++;
-		}
+		// adding at the end?
+		m_commands.push_back(*info);
 	}
 	else if (m_curID < backCommandID)
 	{
@@ -468,12 +451,28 @@ void CommandTable::Add(CommandInfo *info, CommandReturnType retnType, UInt32 par
 		ASSERT(m_curID >= m_baseID);
 
 		m_commands[m_curID - m_baseID] = *info;
-		m_curID++;
 	}
 	else
 	{
 		HALT("CommandTable::Add: adding past the end");
 	}
+
+	m_curID++;
+
+	CommandMetadata *metadata = &m_metadata[info->opcode];
+
+	metadata->parentPlugin = parentPluginOpcodeBase;
+	metadata->returnType = retnType;
+}
+
+void CommandTable::AddUpdate(CommandInfo* info, uint32_t nvseVer) {
+	auto existing = GetByName(info->longName);
+	if (!existing) {
+		HALT("CommandTable::AddUpdate: Cannot define an update for a non-existent command.");
+	}
+
+	info->opcode = existing->opcode;
+	m_commandUpdates[nvseVer].push_back(*info);
 }
 
 bool CommandTable::Replace(UInt32 opcodeToReplace, CommandInfo *replaceWith)
@@ -1195,69 +1194,44 @@ void CommandInfo::DumpFunctionDef(CommandMetadata* metadata) const
 	}
 }
 
-CommandInfo* CommandTable::GetByName(const char* name, uint32_t pluginVersion) {
-	CommandInfo *found = nullptr;
-	for (CommandList::iterator iter = m_commands.begin(); iter != m_commands.end(); ++iter) {
-		if (!StrCompare(name, iter->longName) || (iter->shortName && !StrCompare(name, iter->shortName))) {
-			found = &(*iter);
-			break;
-		}
-	}
-
-	if (!found) {
-		return nullptr;
-	}
-
-	auto parentPlugin = GetParentPlugin(found);
-	auto& versionSet = m_commandSet[parentPlugin ? parentPlugin->name : "NVSE"];
-	if (versionSet.empty()) {
-		return found;
-	}
-
-	for (auto iter = versionSet.rbegin(); iter != versionSet.rend(); ++iter) {
-		if (iter->first > pluginVersion) {
+CommandInfo* CommandTable::GetByName(const char* name, uint32_t nvseVer)
+{
+	for (auto iter = m_commandUpdates.rbegin(); iter != m_commandUpdates.rend(); ++iter) {
+		const auto ver = iter->first;
+		if (ver > nvseVer) {
 			continue;
 		}
 
-		for (auto &cmdInfo : iter->second) {
-			if (!StrCompare(name, cmdInfo.longName) || (cmdInfo.shortName && !StrCompare(name, cmdInfo.shortName))) {
-				return &cmdInfo;
-			}
-		}
+		auto &commands = iter->second;
+		for (CommandList::iterator iter = commands.begin(); iter != commands.end(); ++iter)
+			if (!StrCompare(name, iter->longName) || (iter->shortName && !StrCompare(name, iter->shortName)))
+				return &(*iter);
 	}
 
-	return nullptr;
+	for (CommandList::iterator iter = m_commands.begin(); iter != m_commands.end(); ++iter)
+		if (!StrCompare(name, iter->longName) || (iter->shortName && !StrCompare(name, iter->shortName)))
+			return &(*iter);
+
+	return NULL;
 }
 
-CommandInfo *CommandTable::GetByOpcode(UInt32 opcode, uint32_t pluginVersion)
+CommandInfo *CommandTable::GetByOpcode(UInt32 opcode, uint32_t nvseVer)
 {
-	CommandInfo *found = nullptr;
-	for (CommandList::iterator iter = m_commands.begin(); iter != m_commands.end(); ++iter) {
-		if (iter->opcode == opcode) {
-			found = &(*iter);
-			break;
-		}
-	}
-
-	if (!found) {
-		return nullptr;
-	}
-
-	auto parentPlugin = GetParentPlugin(found);
-	auto &versionSet = m_commandSet[parentPlugin ? parentPlugin->name : "NVSE"];
-	if (versionSet.empty()) {
-		return found;
-	}
-
-	for (auto iter = versionSet.rbegin(); iter != versionSet.rend(); ++iter) {
-		if (iter->first > pluginVersion) {
+	for (auto iter = m_commandUpdates.rbegin(); iter != m_commandUpdates.rend(); ++iter) {
+		const auto ver = iter->first;
+		if (ver > nvseVer) {
 			continue;
 		}
 
-		for (auto &cmdInfo : iter->second) {
-			if (cmdInfo.opcode == opcode) {
-				return &cmdInfo;
-			}
+		auto &commands = iter->second;
+		for (CommandList::iterator iter = commands.begin(); iter != commands.end(); ++iter)
+			if (iter->opcode == opcode)
+				return &(*iter);
+	}
+
+	for (CommandList::iterator iter = m_commands.begin(); iter != m_commands.end(); ++iter) {
+		if (iter->opcode == opcode) {
+			return &(*iter);
 		}
 	}
 
@@ -1923,7 +1897,7 @@ void CommandTable::AddCommandsV4()
 	ADD_CMD(sv_Insert);
 	ADD_CMD(sv_Count);
 	ADD_CMD(sv_Find);
-	ADD_CMD_VER(sv_Find, 7, 0, 0);
+	ADD_CMD_UPDATE(sv_Find, 7, 0, 0);
 
 	ADD_CMD(sv_Replace);
 	ADD_CMD(sv_GetChar);

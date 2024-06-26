@@ -82,7 +82,7 @@ static ParamInfo kParams_sv_Find_7_0_0[] =
 	{ "endPos",		    kParamType_Integer,	1	},
 	{ "bCaseSensitive", kParamType_Integer,	1	},
 };
-DEFINE_CMD_VER(sv_Find, returns the position of a substring within a string variable or -1 if not found, 0, kParams_sv_Find_7_0_0, 7, 0, 0);
+DEFINE_CMD_UPDATE(sv_Find, 7, 0, 0, 0, kParams_sv_Find_7_0_0, Cmd_Expression_Parse);
 
 static ParamInfo kParams_sv_Replace[26] =
 {
