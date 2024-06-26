@@ -362,10 +362,6 @@ DEFINE_COMMAND(DumpDocs, , false, 4, kParams_FourOptionalInts);
 #define ADD_CMD_RET(command, rtnType) Add(&kCommandInfo_##command, rtnType)
 #define REPL_CMD(command) Replace(GetByName(command)->opcode, &kCommandInfo_##command)
 
-#define ADD_CMD_EXTENSION(command, shortName, selfIdx) Add(&kCommandInfo_##command);SetCmdExtension(&kCommandInfo_##command, shortName, selfIdx)
-#define ADD_CMD_EXTENSION_RET(command, shortName, selfIdx, rtnType) Add(&kCommandInfo_##command, rtnType);SetCmdExtension(&kCommandInfo_##command, shortName, selfIdx)
-
-
 CommandTable::CommandTable()
 {
 }
@@ -465,16 +461,6 @@ void CommandTable::Add(CommandInfo *info, CommandReturnType retnType, UInt32 par
 
 	metadata->parentPlugin = parentPluginOpcodeBase;
 	metadata->returnType = retnType;
-}
-
-void CommandTable::SetCmdExtension(CommandInfo* info, const char* shorthand, UInt8 selfIndex) {
-	if (selfIndex >= info->numParams) {
-		return;
-	}
-
-	m_extensionInfo[shorthand].emplace_back(CommandExtensionInfo{
-		info, selfIndex, info->params[selfIndex].typeID
-	});
 }
 
 bool CommandTable::Replace(UInt32 opcodeToReplace, CommandInfo *replaceWith)
@@ -1249,14 +1235,6 @@ std::vector<CommandInfo*> CommandTable::GetByOpcodeRange(UInt32 opcodeStart, UIn
 	return result;
 }
 
-std::vector<CommandExtensionInfo> CommandTable::GetCmdExtensions(const char* name) {
-	if (!m_extensionInfo.HasKey(name)) {
-		return {};
-	}
-
-	return m_extensionInfo.Get(name);
-}
-
 CommandReturnType CommandTable::GetReturnType(const CommandInfo *cmd)
 {
 	return m_metadata[cmd->opcode].returnType;
@@ -1858,8 +1836,7 @@ void CommandTable::AddCommandsV4()
 	ADD_CMD_RET(ar_Sort, kRetnType_Array);
 	ADD_CMD_RET(ar_CustomSort, kRetnType_Array);
 	ADD_CMD_RET(ar_SortAlpha, kRetnType_Array);
-	//ADD_CMD_RET(ar_Find, kRetnType_ArrayIndex);
-	ADD_CMD_EXTENSION_RET(ar_Find, "find", 1, kRetnType_ArrayIndex);
+	ADD_CMD_RET(ar_Find, kRetnType_ArrayIndex);
 	ADD_CMD_RET(ar_First, kRetnType_ArrayIndex);
 	ADD_CMD_RET(ar_Last, kRetnType_ArrayIndex);
 	ADD_CMD_RET(ar_Next, kRetnType_ArrayIndex);
