@@ -137,53 +137,56 @@ struct ParamInfo
 
 //Macro to make CommandInfo definitions a bit less tedious
 
-#define DEFINE_CMD_FULL(name, altName, description, refRequired, numParams, paramInfo, parser) \
-	extern bool Cmd_ ## name ## _Execute(COMMAND_ARGS); \
-	static CommandInfo (kCommandInfo_ ## name) = { \
-	#name, \
-	#altName, \
-	0, \
-	#description, \
-	refRequired, \
-	numParams, \
-	paramInfo, \
-	HANDLER(Cmd_ ## name ## _Execute), \
-	parser, \
-	NULL, \
-	0 \
+#define DEFINE_CMD_FULL(name, altName, description, refRequired, numParams, paramInfo, parser, version) \
+	extern bool Cmd_ ## name ## _Execute(COMMAND_ARGS);                                                 \
+	static CommandInfo (kCommandInfo_ ## name ## version) = {                                           \
+	#name,                                                                                              \
+	#altName,                                                                                           \
+	0,                                                                                                  \
+	#description,                                                                                       \
+	refRequired,                                                                                        \
+	numParams,                                                                                          \
+	paramInfo,                                                                                          \
+	HANDLER(Cmd_ ## name ## _Execute),                                                                  \
+	parser,                                                                                             \
+	NULL,                                                                                               \
+	0                                                                                                   \
 	};
 
 // Deprecated, use DEFINE_CMD_ALIAS instead.
 #define DEFINE_CMD_ALT(name, altName, description, refRequired, numParams, paramInfo) \
-	DEFINE_CMD_FULL(name, altName, description, refRequired, numParams, paramInfo, Cmd_Default_Parse)	
+	DEFINE_CMD_FULL(name, altName, description, refRequired, numParams, paramInfo, Cmd_Default_Parse, )	
 
 #define DEFINE_CMD_ALIAS(name, altName, description, refRequired, paramInfo) \
-	DEFINE_CMD_FULL(name, altName, description, refRequired, (paramInfo) ? (sizeof(paramInfo) / sizeof(ParamInfo)) : 0, paramInfo, Cmd_Default_Parse)	
+	DEFINE_CMD_FULL(name, altName, description, refRequired, (paramInfo) ? (sizeof(paramInfo) / sizeof(ParamInfo)) : 0, paramInfo, Cmd_Default_Parse, )	
 
 #define DEFINE_CMD_ALT_EXP(name, altName, description, refRequired, paramInfo) \
-	DEFINE_CMD_FULL(name, altName, description, refRequired, (paramInfo) ? (sizeof(paramInfo) / sizeof(ParamInfo)) : 0, paramInfo, Cmd_Expression_Parse)	
+	DEFINE_CMD_FULL(name, altName, description, refRequired, (paramInfo) ? (sizeof(paramInfo) / sizeof(ParamInfo)) : 0, paramInfo, Cmd_Expression_Parse, )	
 
 // Deprecated, use DEFINE_CMD instead.
 #define DEFINE_COMMAND(name, description, refRequired, numParams, paramInfo) \
-	DEFINE_CMD_FULL(name, , description, refRequired, numParams, paramInfo, Cmd_Default_Parse)	
+	DEFINE_CMD_FULL(name, , description, refRequired, numParams, paramInfo, Cmd_Default_Parse, )	
 
 #define DEFINE_CMD(name, description, refRequired, paramInfo) \
-	DEFINE_CMD_FULL(name, , description, refRequired, (paramInfo) ? (sizeof(paramInfo) / sizeof(ParamInfo)) : 0, paramInfo, Cmd_Default_Parse)
+	DEFINE_CMD_FULL(name, , description, refRequired, (paramInfo) ? (sizeof(paramInfo) / sizeof(ParamInfo)) : 0, paramInfo, Cmd_Default_Parse, )
+
+#define DEFINE_CMD_VER(name, description, refRequired, paramInfo, major, minor, beta) \
+	DEFINE_CMD_FULL(name, , description, refRequired, (paramInfo) ? (sizeof(paramInfo) / sizeof(ParamInfo)) : 0, paramInfo, Cmd_Default_Parse, _ ## major ## _ ## minor ## _ ## beta)
 
 #define DEFINE_COMMAND_EXP(name, description, refRequired, paramInfo) \
 	DEFINE_CMD_ALT_EXP(name, , description, refRequired, paramInfo)
 
 #define DEFINE_COMMAND_PLUGIN(name, description, refRequired, paramInfo) \
-	DEFINE_CMD_FULL(name, , description, refRequired, (paramInfo) ? (sizeof(paramInfo) / sizeof(ParamInfo)) : 0, paramInfo, NULL)
+	DEFINE_CMD_FULL(name, , description, refRequired, (paramInfo) ? (sizeof(paramInfo) / sizeof(ParamInfo)) : 0, paramInfo, NULL, )
 
 #define DEFINE_COMMAND_ALT_PLUGIN(name, altName, description, refRequired, paramInfo) \
-	DEFINE_CMD_FULL(name, altName, description, refRequired, (paramInfo) ? (sizeof(paramInfo) / sizeof(ParamInfo)) : 0, paramInfo, NULL)
+	DEFINE_CMD_FULL(name, altName, description, refRequired, (paramInfo) ? (sizeof(paramInfo) / sizeof(ParamInfo)) : 0, paramInfo, NULL, )
 
 #define DEFINE_COMMAND_PLUGIN_EXP(name, description, refRequired, paramInfo) \
-	DEFINE_CMD_FULL(name, , description, refRequired, (paramInfo) ? (sizeof(paramInfo) / sizeof(ParamInfo)) : 0, paramInfo, Cmd_Expression_Plugin_Parse)
+	DEFINE_CMD_FULL(name, , description, refRequired, (paramInfo) ? (sizeof(paramInfo) / sizeof(ParamInfo)) : 0, paramInfo, Cmd_Expression_Plugin_Parse, )
 
 #define DEFINE_COMMAND_ALT_PLUGIN_EXP(name, altName, description, refRequired, paramInfo) \
-	DEFINE_CMD_FULL(name, altName, description, refRequired, (paramInfo) ? (sizeof(paramInfo) / sizeof(ParamInfo)) : 0, paramInfo, Cmd_Expression_Plugin_Parse)
+	DEFINE_CMD_FULL(name, altName, description, refRequired, (paramInfo) ? (sizeof(paramInfo) / sizeof(ParamInfo)) : 0, paramInfo, Cmd_Expression_Plugin_Parse, )
 
 // for commands which can be used as conditionals
 #define DEFINE_CMD_ALT_COND_ANY(name, altName, description, refRequired, paramInfo, parser) \
@@ -307,15 +310,14 @@ public:
 	static void	Init(void);
 
 	void	Read(CommandInfo * start, CommandInfo * end);
-	void	Add(CommandInfo * info, CommandReturnType retnType = kRetnType_Default, UInt32 parentPluginOpcodeBase = 0);
-	void    AddUpdate(CommandInfo* info, uint32_t nvseVer);
+	void	Add(CommandInfo * info, CommandReturnType retnType = kRetnType_Default, UInt32 parentPluginOpcodeBase = 0, UInt32 version = 0);
 	void	PadTo(UInt32 id, CommandInfo * info = NULL);
 	bool	Replace(UInt32 opcodeToReplace, CommandInfo* replaceWith);
 
 	CommandInfo *	GetStart(void)	{ return &m_commands[0]; }
 	CommandInfo *	GetEnd(void)	{ return GetStart() + m_commands.size(); }
-	CommandInfo *	GetByName(const char * name, uint32_t nvseVer = MAKE_NEW_VEGAS_VERSION(6,3,5));
-	CommandInfo *	GetByOpcode(UInt32 opcode, uint32_t nvseVer = MAKE_NEW_VEGAS_VERSION(6,3,5));
+	CommandInfo *	GetByName(const char * name, uint32_t pluginVersion = 0);
+	CommandInfo *	GetByOpcode(UInt32 opcode, uint32_t pluginVersion = 0);
 
 	// Inclusive start and stop bounds.
 	std::vector<CommandInfo*> GetByOpcodeRange(UInt32 opcodeStart, UInt32 opcodeStop);
@@ -346,14 +348,16 @@ private:
 	void AddCommandsV6();
 	void AddDebugCommands();
 
-	typedef std::vector <CommandInfo>									 CommandList;
-	typedef UnorderedMap<UInt32, CommandMetadata>						 CmdMetadataList;
-	typedef UnorderedMap<const char*, std::vector<CommandExtensionInfo>> CmdExtensionList;
+	// <version, <name, info>>
+	typedef std::map<UInt32, std::vector<CommandInfo>>			PluginCommandList;
+	// <plugin name, versioned command list>
+	typedef std::unordered_map<const char*, PluginCommandList>  VersionedCommandSet;
+	typedef std::vector<CommandInfo>							CommandList;
+	typedef UnorderedMap<UInt32, CommandMetadata>				CmdMetadataList;
 
-	CommandList			m_commands;
-	std::map<uint32_t, CommandList> m_commandUpdates;
-
-	CmdMetadataList		m_metadata;
+	CommandList			m_commands {};
+	VersionedCommandSet	m_commandSet {};
+	CmdMetadataList     m_metadata;
 
 	UInt32		m_baseID;
 	UInt32		m_curID;
