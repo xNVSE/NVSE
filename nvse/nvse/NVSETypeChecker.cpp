@@ -568,98 +568,78 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 	}
 	expr->cmdInfo = cmd;
 
-	// Perform basic typechecking on call params
-	int requiredParams = 0;
-	for (int i = 0; i < cmd->numParams; i++) {
-		if (!cmd->params[i].isOptional) {
-			requiredParams++;
+	int argIdx = 0;
+	int paramIdx = 0;
+	for (; paramIdx < cmd->numParams && argIdx < expr->args.size(); paramIdx++) {
+		auto param = &cmd->params[paramIdx];
+		auto arg = expr->args[argIdx];
+
+		std::shared_ptr<NumberExpr> converted = nullptr;
+
+		// TODO
+		if (cmd->parse == kCommandInfo_Call.parse) {
+			argIdx++;
+			continue;
 		}
-	}
 
-	// Make sure minimum was passed
-	if (expr->args.size() < requiredParams) {
-		std::stringstream err{};
-		err << std::format(
-			"Number of parameters passed to command {} does not match what was expected. (Expected {}, Got {})\n", name,
-			requiredParams, expr->args.size());
-		error(expr->token.line, expr->token.column, err.str());
-	}
-
-	// Make sure not too many were passed
-	// TODO: This breaks with at least one command: 'call', only expects 1 although it can support multiple.
-	if (expr->args.size() > cmd->numParams && cmd->parse != kCommandInfo_Call.parse) {
-		std::stringstream err{};
-		err << std::format(
-			"Number of parameters passed to command {} does not match what was expected. (Expected up to {}, Got {})\n",
-			name,
-			requiredParams, expr->args.size());
-		error(expr->left->getToken()->line, err.str());
-	}
-
-	int maxParams = (cmd->parse == kCommandInfo_Call.parse) ? 16 : cmd->numParams;
-
-	// Basic type checks
-	// We already validated number of args, just verify types
-	if (!isDefaultParse(cmd->parse)) { // if expression parser
-		for (int i = 0; i < expr->args.size() && i < maxParams; i++) {
-			auto param = cmd->params[i];
-			auto arg = expr->args[i];
-
-			WRAP_ERROR(arg->Accept(this))
-
-			// TODO
-			if (cmd->parse == kCommandInfo_Call.parse) {
-				continue;
-			}
-
-			// Try to resolve as NVSE param
-			if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(cmd->params[i].typeID), arg->tokenType, true, cmd)) {
-				WRAP_ERROR(
-					error(expr->token.line, expr->token.column, std::format("Invalid expression for parameter {}. Expected {} (got {}).", i + 1, param.typeStr, TokenTypeToString(arg->tokenType)));
-				)
-			}
-		}
-	} else { // default parser
-		for (int i = 0; i < expr->args.size() && i < maxParams; i++) {
-			auto param = cmd->params[i];
-			auto arg = expr->args[i];
-
+		if (isDefaultParse(cmd->parse)) {
 			// Try to resolve identifiers as vanilla enums
 			auto ident = dynamic_cast<IdentExpr*>(arg.get());
+
 			uint32_t idx = -1;
 			if (ident) {
-				idx = resolveVanillaEnum(&param, ident->token.lexeme.c_str());
+				idx = resolveVanillaEnum(param, ident->token.lexeme.c_str());
 			}
 			if (idx != -1) {
 				CompDbg("[line %d] INFO: Converting identifier '%s' to enum index %d\n", arg->line, ident->token.lexeme.c_str(), idx);
-				expr->args[i] = std::make_shared<NumberExpr>(NVSEToken{}, static_cast<double>(idx), false);
-				expr->args[i]->tokenType = kTokenType_Number;
-				continue;
-			}
-
-			WRAP_ERROR(arg->Accept(this))
-
-			// TODO
-			if (cmd->parse == kCommandInfo_Call.parse) {
-				continue;
+				arg = std::make_shared<NumberExpr>(NVSEToken{}, static_cast<double>(idx), false);
+				arg->tokenType = kTokenType_Number;
+			} else {
+				WRAP_ERROR(arg->Accept(this))
 			}
 
 			if (ident && arg->tokenType == kTokenType_Form) {
 				// Extract form from param
-				if (!doesFormMatchParamType(formCache[ident->token.lexeme], static_cast<ParamType>(param.typeID))) {
-					WRAP_ERROR(
-						error(expr->token.line, expr->token.column, std::format("Invalid expression for parameter {}. Expected {}.", i + 1, param.typeStr));
-					)
+				if (!doesFormMatchParamType(formCache[ident->token.lexeme], static_cast<ParamType>(param->typeID))) {
+					if (!param->isOptional) {
+						WRAP_ERROR(
+							error(expr->token.line, expr->token.column, std::format("Invalid expression for parameter {}. Expected {}.", argIdx + 1, param->typeStr));
+						)
+					}
+				}
+				else {
+					argIdx++;
+					continue;
 				}
 			}
+		} else {
+			WRAP_ERROR(arg->Accept(this))
+		}
 
-			// Try to resolve as vanilla param
-			if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(cmd->params[i].typeID), arg->tokenType, false, cmd)) {
+		// Try to resolve as nvse param
+		if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(param->typeID), arg->tokenType, !isDefaultParse(cmd->parse), cmd)) {
+			if (!param->isOptional) {
 				WRAP_ERROR(
-					error(expr->token.line, expr->token.column, std::format("Invalid expression for parameter {}. Expected {} (got {}).", i + 1, param.typeStr, TokenTypeToString(arg->tokenType)));
+					error(expr->token.line, expr->token.column, std::format("Invalid expression for parameter {}. (Expected {}, got {}).", argIdx + 1, param->typeStr, TokenTypeToString(arg->tokenType)));
 				)
 			}
+		} else {
+			expr->args[argIdx] = arg;
+			argIdx++;
 		}
+	}
+
+	int numRequiredArgs = 0;
+	for (paramIdx = 0; paramIdx < cmd->numParams; paramIdx++) {
+		if (!cmd->params[paramIdx].isOptional) {
+			numRequiredArgs++;
+		}
+	}
+
+	if (expr->args.size() < numRequiredArgs) {
+		WRAP_ERROR(
+			error(expr->token.line, expr->token.column, std::format("Invalid number of parameters specified to {} (Expected {}, got {}).", expr->token.lexeme, numRequiredArgs, expr->args.size()));
+		)
 	}
 
 	auto type = ToTokenType(g_scriptCommands.GetReturnType(cmd));
