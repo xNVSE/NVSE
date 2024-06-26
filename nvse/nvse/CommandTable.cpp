@@ -448,18 +448,22 @@ void CommandTable::Add(CommandInfo *info, CommandReturnType retnType, UInt32 par
 	if (m_curID == backCommandID)
 	{
 		if (auto existing = GetByOpcode(info->opcode)) {
-			auto parentPlugin = GetParentPlugin(&m_commands.back());
-			auto& verSet = m_commandSet[parentPlugin ? parentPlugin->name : "NVSE"];
-			verSet[version].emplace_back(*existing);
+			if (version != 0) {
+				auto parentPlugin = GetParentPlugin(&m_commands.back());
+				auto& verSet = m_commandSet[parentPlugin ? parentPlugin->name : "NVSE"];
+				verSet[version].emplace_back(*existing);
+			}
 		}
 		else {
 			// adding at the end?
 			m_commands.push_back(*info);
-
-			auto parentPlugin = GetParentPlugin(&m_commands.back());
-			auto &verSet = m_commandSet[parentPlugin ? parentPlugin->name : "NVSE"];
-			verSet[version].emplace_back(m_commands.back());
 			m_curID++;
+
+			if (version != 0) {
+				auto parentPlugin = GetParentPlugin(&m_commands.back());
+				auto& verSet = m_commandSet[parentPlugin ? parentPlugin->name : "NVSE"];
+				verSet[version].emplace_back(m_commands.back());
+			}
 		}
 	}
 	else if (m_curID < backCommandID)
