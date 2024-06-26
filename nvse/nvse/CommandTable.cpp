@@ -1226,7 +1226,7 @@ CommandInfo* CommandTable::GetByName(const char* name, uint32_t pluginVersion) {
 		}
 	}
 
-	return found;
+	return nullptr;
 }
 
 CommandInfo *CommandTable::GetByOpcode(UInt32 opcode, uint32_t pluginVersion)
@@ -1261,7 +1261,7 @@ CommandInfo *CommandTable::GetByOpcode(UInt32 opcode, uint32_t pluginVersion)
 		}
 	}
 
-	return found;
+	return nullptr;
 }
 
 std::vector<CommandInfo*> CommandTable::GetByOpcodeRange(UInt32 opcodeStart, UInt32 opcodeStop)
