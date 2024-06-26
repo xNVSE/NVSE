@@ -215,21 +215,6 @@ struct ParamInfo
 #define DEFINE_CMD_COND_PLUGIN(name, description, refRequired, paramInfo) \
 	DEFINE_CMD_ALT_COND_ANY(name, , description, refRequired, paramInfo, NULL)
 
-#define DEFINE_CMD_UPDATE(name, versionMajor, versionMinor, versionBeta, refRequired, paramInfo, parser) \
-	static CommandInfo (kCommandInfo_ ## name ## _ ## versionMajor ## _ ## versionMinor ## _ ## versionBeta) = {         \
-		#name,	                                                                                                     \
-		kCommandInfo_ ## name ## .shortName,		                                                                     \
-		0,		                                                                                                     \
-		kCommandInfo_ ## name ## .helpText,	                                                                         \
-		refRequired,	                                                                                             \
-		(paramInfo) ? (sizeof(paramInfo) / sizeof(ParamInfo)) : 0,	                                                 \
-		paramInfo,	                                                                                                 \
-		HANDLER(Cmd_ ## name ## _Execute),	                                                                         \
-		parser,	                                                                                                     \
-		HANDLER_EVAL(Cmd_ ## name ## _Eval),	                                                                     \
-		1	                                                                                                         \
-	};
-
 typedef bool (* Cmd_Execute)(COMMAND_ARGS);
 bool Cmd_Default_Execute(COMMAND_ARGS);
 
@@ -308,17 +293,19 @@ public:
 
 	void	Read(CommandInfo * start, CommandInfo * end);
 	void	Add(CommandInfo * info, CommandReturnType retnType = kRetnType_Default, UInt32 parentPluginOpcodeBase = 0);
-	void    AddUpdate(CommandInfo* info, uint32_t nvseVer);
+	void    SetCmdExtension(CommandInfo* info, const char* shorthand, UInt8 selfIndex);
 	void	PadTo(UInt32 id, CommandInfo * info = NULL);
 	bool	Replace(UInt32 opcodeToReplace, CommandInfo* replaceWith);
 
 	CommandInfo *	GetStart(void)	{ return &m_commands[0]; }
 	CommandInfo *	GetEnd(void)	{ return GetStart() + m_commands.size(); }
-	CommandInfo *	GetByName(const char * name, uint32_t nvseVer = MAKE_NEW_VEGAS_VERSION(6,3,5));
-	CommandInfo *	GetByOpcode(UInt32 opcode, uint32_t nvseVer = MAKE_NEW_VEGAS_VERSION(6,3,5));
+	CommandInfo *	GetByName(const char * name);
+	CommandInfo *	GetByOpcode(UInt32 opcode);
 
 	// Inclusive start and stop bounds.
 	std::vector<CommandInfo*> GetByOpcodeRange(UInt32 opcodeStart, UInt32 opcodeStop);
+
+	std::vector<CommandExtensionInfo> GetCmdExtensions(const char* name);
 
 	void	SetBaseID(UInt32 id)	{ m_baseID = id; m_curID = id; }
 	UInt32	GetMaxID(void)			{ return m_baseID + m_commands.size(); }
@@ -351,9 +338,8 @@ private:
 	typedef UnorderedMap<const char*, std::vector<CommandExtensionInfo>> CmdExtensionList;
 
 	CommandList			m_commands;
-	std::map<uint32_t, CommandList> m_commandUpdates;
-
 	CmdMetadataList		m_metadata;
+	CmdExtensionList	m_extensionInfo;
 
 	UInt32		m_baseID;
 	UInt32		m_curID;

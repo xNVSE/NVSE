@@ -556,33 +556,33 @@ void NVSETypeChecker::VisitSubscriptExpr(SubscriptExpr* expr) {
 
 void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 	std::string name = expr->token.lexeme;
-	auto cmd = g_scriptCommands.GetByName(name.c_str(), PACKED_NVSE_VERSION);
+	auto cmd = g_scriptCommands.GetByName(name.c_str());
 	int skipParam = -1;
 
 	// Try to get the script command by lexeme
 	if (!cmd) {
-		cmd = g_scriptCommands.GetByName(name.c_str(), PACKED_NVSE_VERSION);
+		cmd = g_scriptCommands.GetByName(name.c_str());
 
-		// if (expr->left) {
-		// 	expr->left->Accept(this);
-		// 	const auto lhsType = expr->left->tokenType;
-		//
-		// 	if (expr->left->tokenType != kTokenType_Ambiguous) {
-		// 		const auto extCommands = g_scriptCommands.GetCmdExtensions(name.c_str());
-		// 		for (const auto& ext : extCommands) {
-		// 			const auto paramType = static_cast<ParamType>(ext.selfType);
-		// 			const auto nvseParse = !isDefaultParse(ext.info->parse);
-		//
-		// 			if (ExpressionParser::ValidateArgType(paramType, lhsType, nvseParse, cmd)) {
-		// 				cmd = ext.info;
-		// 				skipParam = ext.selfIdx;
-		//
-		// 				expr->args.insert(expr->args.begin() + min(ext.selfIdx, expr->args.size()), expr->left);
-		// 				expr->left = nullptr;
-		// 			}
-		// 		}
-		// 	}
-		// }
+		if (expr->left) {
+			expr->left->Accept(this);
+			const auto lhsType = expr->left->tokenType;
+
+			if (expr->left->tokenType != kTokenType_Ambiguous) {
+				const auto extCommands = g_scriptCommands.GetCmdExtensions(name.c_str());
+				for (const auto& ext : extCommands) {
+					const auto paramType = static_cast<ParamType>(ext.selfType);
+					const auto nvseParse = !isDefaultParse(ext.info->parse);
+
+					if (ExpressionParser::ValidateArgType(paramType, lhsType, nvseParse, cmd)) {
+						cmd = ext.info;
+						skipParam = ext.selfIdx;
+
+						expr->args.insert(expr->args.begin() + min(ext.selfIdx, expr->args.size()), expr->left);
+						expr->left = nullptr;
+					}
+				}
+			}
+		}
 
 		if (!cmd) {
 			error(expr->token.line, expr->token.column, std::format("Invalid command '{}'.", name));

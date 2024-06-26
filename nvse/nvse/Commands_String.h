@@ -74,16 +74,6 @@ DEFINE_CMD(sv_Count, returns the number of occurences of a substring within a st
 
 DEFINE_CMD(sv_Find, returns the position of a substring within a string variable or -1 if not found, 0, kParams_sv_Find);
 
-static ParamInfo kParams_sv_Find_7_0_0[] =
-{
-	{ "toFind",         kParamType_String,	0   },
-	{ "stringVar",      kParamType_String,	0   },
-	{ "startPos",		kParamType_Integer,	1	},
-	{ "endPos",		    kParamType_Integer,	1	},
-	{ "bCaseSensitive", kParamType_Integer,	1	},
-};
-DEFINE_CMD_UPDATE(sv_Find, 7, 0, 0, 0, kParams_sv_Find_7_0_0, Cmd_Expression_Parse);
-
 static ParamInfo kParams_sv_Replace[26] =
 {
 	FORMAT_STRING_PARAMS,

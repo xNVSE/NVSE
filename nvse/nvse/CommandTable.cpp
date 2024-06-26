@@ -362,7 +362,9 @@ DEFINE_COMMAND(DumpDocs, , false, 4, kParams_FourOptionalInts);
 #define ADD_CMD_RET(command, rtnType) Add(&kCommandInfo_##command, rtnType)
 #define REPL_CMD(command) Replace(GetByName(command)->opcode, &kCommandInfo_##command)
 
-#define ADD_CMD_UPDATE(command, major, minor, beta) AddUpdate(&kCommandInfo_ ## command ## _ ## major ## _ ## minor ## _ ## beta, MAKE_NEW_VEGAS_VERSION(major, minor, beta))
+#define ADD_CMD_EXTENSION(command, shortName, selfIdx) Add(&kCommandInfo_##command);SetCmdExtension(&kCommandInfo_##command, shortName, selfIdx)
+#define ADD_CMD_EXTENSION_RET(command, shortName, selfIdx, rtnType) Add(&kCommandInfo_##command, rtnType);SetCmdExtension(&kCommandInfo_##command, shortName, selfIdx)
+
 
 CommandTable::CommandTable()
 {
@@ -465,14 +467,14 @@ void CommandTable::Add(CommandInfo *info, CommandReturnType retnType, UInt32 par
 	metadata->returnType = retnType;
 }
 
-void CommandTable::AddUpdate(CommandInfo* info, uint32_t nvseVer) {
-	auto existing = GetByName(info->longName);
-	if (!existing) {
-		HALT("CommandTable::AddUpdate: Cannot define an update for a non-existent command.");
+void CommandTable::SetCmdExtension(CommandInfo* info, const char* shorthand, UInt8 selfIndex) {
+	if (selfIndex >= info->numParams) {
+		return;
 	}
 
-	info->opcode = existing->opcode;
-	m_commandUpdates[nvseVer].push_back(*info);
+	m_extensionInfo[shorthand].emplace_back(CommandExtensionInfo{
+		info, selfIndex, info->params[selfIndex].typeID
+	});
 }
 
 bool CommandTable::Replace(UInt32 opcodeToReplace, CommandInfo *replaceWith)
@@ -1194,20 +1196,8 @@ void CommandInfo::DumpFunctionDef(CommandMetadata* metadata) const
 	}
 }
 
-CommandInfo* CommandTable::GetByName(const char* name, uint32_t nvseVer)
+CommandInfo *CommandTable::GetByName(const char *name)
 {
-	for (auto iter = m_commandUpdates.rbegin(); iter != m_commandUpdates.rend(); ++iter) {
-		const auto ver = iter->first;
-		if (ver > nvseVer) {
-			continue;
-		}
-
-		auto &commands = iter->second;
-		for (CommandList::iterator iter = commands.begin(); iter != commands.end(); ++iter)
-			if (!StrCompare(name, iter->longName) || (iter->shortName && !StrCompare(name, iter->shortName)))
-				return &(*iter);
-	}
-
 	for (CommandList::iterator iter = m_commands.begin(); iter != m_commands.end(); ++iter)
 		if (!StrCompare(name, iter->longName) || (iter->shortName && !StrCompare(name, iter->shortName)))
 			return &(*iter);
@@ -1215,27 +1205,22 @@ CommandInfo* CommandTable::GetByName(const char* name, uint32_t nvseVer)
 	return NULL;
 }
 
-CommandInfo *CommandTable::GetByOpcode(UInt32 opcode, uint32_t nvseVer)
+CommandInfo *CommandTable::GetByOpcode(UInt32 opcode)
 {
-	for (auto iter = m_commandUpdates.rbegin(); iter != m_commandUpdates.rend(); ++iter) {
-		const auto ver = iter->first;
-		if (ver > nvseVer) {
-			continue;
-		}
-
-		auto &commands = iter->second;
-		for (CommandList::iterator iter = commands.begin(); iter != commands.end(); ++iter)
-			if (iter->opcode == opcode)
-				return &(*iter);
+	const auto baseOpcode = m_commands.begin()->opcode;
+	const auto arrayIndex = opcode - baseOpcode;
+	if (arrayIndex >= m_commands.size())
+	{
+		return nullptr;
 	}
-
-	for (CommandList::iterator iter = m_commands.begin(); iter != m_commands.end(); ++iter) {
-		if (iter->opcode == opcode) {
-			return &(*iter);
-		}
+	auto *const command = &m_commands[arrayIndex];
+	if (command->opcode != opcode)
+	{
+		//_MESSAGE("ERROR: mismatched command opcodes when executing CommandTable::GetByOpcode (opcode: %X base: %X index: %d index opcode: %X)",
+		//	opcode, baseOpcode, arrayIndex, command->opcode);
+		return nullptr;
 	}
-
-	return nullptr;
+	return command;
 }
 
 std::vector<CommandInfo*> CommandTable::GetByOpcodeRange(UInt32 opcodeStart, UInt32 opcodeStop)
@@ -1262,6 +1247,14 @@ std::vector<CommandInfo*> CommandTable::GetByOpcodeRange(UInt32 opcodeStart, UIn
 		result.push_back(command);
 	}
 	return result;
+}
+
+std::vector<CommandExtensionInfo> CommandTable::GetCmdExtensions(const char* name) {
+	if (!m_extensionInfo.HasKey(name)) {
+		return {};
+	}
+
+	return m_extensionInfo.Get(name);
 }
 
 CommandReturnType CommandTable::GetReturnType(const CommandInfo *cmd)
@@ -1865,7 +1858,8 @@ void CommandTable::AddCommandsV4()
 	ADD_CMD_RET(ar_Sort, kRetnType_Array);
 	ADD_CMD_RET(ar_CustomSort, kRetnType_Array);
 	ADD_CMD_RET(ar_SortAlpha, kRetnType_Array);
-	ADD_CMD_RET(ar_Find, kRetnType_ArrayIndex);
+	//ADD_CMD_RET(ar_Find, kRetnType_ArrayIndex);
+	ADD_CMD_EXTENSION_RET(ar_Find, "find", 1, kRetnType_ArrayIndex);
 	ADD_CMD_RET(ar_First, kRetnType_ArrayIndex);
 	ADD_CMD_RET(ar_Last, kRetnType_ArrayIndex);
 	ADD_CMD_RET(ar_Next, kRetnType_ArrayIndex);
@@ -1897,8 +1891,6 @@ void CommandTable::AddCommandsV4()
 	ADD_CMD(sv_Insert);
 	ADD_CMD(sv_Count);
 	ADD_CMD(sv_Find);
-	ADD_CMD_UPDATE(sv_Find, 7, 0, 0);
-
 	ADD_CMD(sv_Replace);
 	ADD_CMD(sv_GetChar);
 	ADD_CMD_RET(sv_Split, kRetnType_Array);
