@@ -556,15 +556,12 @@ void NVSETypeChecker::VisitSubscriptExpr(SubscriptExpr* expr) {
 
 void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 	std::string name = expr->token.lexeme;
-	auto cmd = g_scriptCommands.GetByName(name.c_str());
+	auto cmd = g_scriptCommands.GetByName(name.c_str(), { {"nvse", MAKE_NEW_VEGAS_VERSION(6, 3, 5)} });
 
 	// Try to get the script command by lexeme
 	if (!cmd) {
-		cmd = g_scriptCommands.GetByName(name.c_str());
-		if (!cmd) {
-			error(expr->token.line, expr->token.column, std::format("Invalid command '{}'.", name));
-			return;
-		}
+		error(expr->token.line, expr->token.column, std::format("Invalid command '{}'.", name));
+		return;
 	}
 	expr->cmdInfo = cmd;
 

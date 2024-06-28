@@ -312,8 +312,8 @@ public:
 	CommandInfo *	GetStart(void)	{ return &m_commands[0]; }
 	CommandInfo *	GetEnd(void)	{ return GetStart() + m_commands.size(); }
 
-	CommandInfo *	GetByName(const char * name, std::unordered_map<const char*, UInt32> pluginVersions = {});
-	CommandInfo *	GetByOpcode(UInt32 opcode, std::unordered_map<const char*, UInt32> pluginVersions = {});
+	CommandInfo *	GetByName(const char * name, std::unordered_map<std::string, UInt32> pluginVersions = {});
+	CommandInfo *	GetByOpcode(UInt32 opcode);
 
 	// Inclusive start and stop bounds.
 	std::vector<CommandInfo*> GetByOpcodeRange(UInt32 opcodeStart, UInt32 opcodeStop);
@@ -348,7 +348,7 @@ private:
 	typedef std::vector <CommandInfo>				CommandList;
 	typedef UnorderedMap<UInt32, CommandMetadata>	CmdMetadataList;
 	// <opcode, <plugin name, version>>
-	typedef std::unordered_map<UInt32, std::tuple<const char*, UInt32>> CommandUpdateList;
+	typedef std::unordered_map<UInt32, std::tuple<std::string, UInt32>> CommandUpdateList;
 
 	CommandList			m_commands;
 	CmdMetadataList		m_metadata;

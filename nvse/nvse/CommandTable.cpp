@@ -469,7 +469,8 @@ void CommandTable::Add(CommandInfo* info, CommandReturnType retnType, UInt32 par
 
 	if (version != 0) {
 		auto* parentPlugin = GetParentPlugin(info);
-		auto* parentName = parentPlugin ? parentPlugin->name : "NVSE";
+		auto parentName = std::string(parentPlugin ? parentPlugin->name : "NVSE");
+		std::ranges::transform(parentName, parentName.begin(), [](unsigned char c) { return std::tolower(c); });
 		m_updateCommands[info->opcode] = std::make_tuple(parentName, version);
 	}
 }
@@ -1193,18 +1194,18 @@ void CommandInfo::DumpFunctionDef(CommandMetadata* metadata) const
 	}
 }
 
-CommandInfo *CommandTable::GetByName(const char* name, std::unordered_map<const char*, UInt32> pluginVersions)
+CommandInfo *CommandTable::GetByName(const char* name, std::unordered_map<std::string, UInt32> pluginVersions)
 {
 	for (CommandList::reverse_iterator iter = m_commands.rbegin(); iter != m_commands.rend(); ++iter) {
 		if (!StrCompare(name, iter->longName) || (iter->shortName && !StrCompare(name, iter->shortName))) {
 			auto *cmd = &(*iter);
 
 			if (auto updateInfo = m_updateCommands.find(cmd->opcode); updateInfo != m_updateCommands.end()) {
-				const auto name = std::get<0>(updateInfo->second);
-				const auto version = std::get<1>(updateInfo->second);
+				auto pluginName = std::string(std::get<0>(updateInfo->second));
+				std::ranges::transform(pluginName, pluginName.begin(), [](unsigned char c) { return std::tolower(c); });
 
-				if (pluginVersions.contains(name)) {
-					if (version <= pluginVersions[name]) {
+				if (pluginVersions.contains(pluginName)) {
+					if (std::get<1>(updateInfo->second) <= pluginVersions[pluginName]) {
 						return cmd;
 					}
 				} else {
@@ -1222,7 +1223,7 @@ CommandInfo *CommandTable::GetByName(const char* name, std::unordered_map<const 
 	return nullptr;
 }
 
-CommandInfo *CommandTable::GetByOpcode(UInt32 opcode, std::unordered_map<const char*, UInt32> pluginVersions)
+CommandInfo *CommandTable::GetByOpcode(UInt32 opcode)
 {
 	const auto baseOpcode = m_commands.begin()->opcode;
 	const auto arrayIndex = opcode - baseOpcode;
