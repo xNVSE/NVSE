@@ -600,7 +600,7 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 
 			if (ident && arg->tokenType == kTokenType_Form) {
 				// Extract form from param
-				if (!doesFormMatchParamType(formCache[ident->token.lexeme], static_cast<ParamType>(param->typeID))) {
+				if (!doesFormMatchParamType(ident->form, static_cast<ParamType>(param->typeID))) {
 					if (!param->isOptional) {
 						WRAP_ERROR(
 							error(expr->token.line, expr->token.column, std::format("Invalid expression for parameter {}. Expected {}.", argIdx + 1, param->typeStr));
@@ -812,14 +812,11 @@ void NVSETypeChecker::VisitIdentExpr(IdentExpr* expr) {
 	}
 
 	TESForm* form;
-	if (formCache.contains(name)) {
-		form = formCache[name];
-	} else {
-		if (!_stricmp(name.c_str(), "player")) {
-			form = LookupFormByID(0x14);
-		} else {
-			form = GetFormByID(name.c_str());
-		}
+	if (!_stricmp(name.c_str(), "player")) {
+		form = LookupFormByID(0x14);
+	}
+	else {
+		form = GetFormByID(name.c_str());
 	}
 
 	if (!form) {
@@ -831,8 +828,8 @@ void NVSETypeChecker::VisitIdentExpr(IdentExpr* expr) {
 		expr->tokenType = kTokenType_Global;
 	} else {
 		expr->tokenType = kTokenType_Form;
+		expr->form = form;
 	}
-	formCache[name] = form;
 }
 
 void NVSETypeChecker::VisitGroupingExpr(GroupingExpr* expr) {

@@ -7,7 +7,6 @@
 #include "ScriptTokens.h"
 
 class NVSETypeChecker : NVSEVisitor {
-    std::unordered_map<std::string, TESForm*> formCache{};
     bool hadError = false;
     NVSEScript *script;
     

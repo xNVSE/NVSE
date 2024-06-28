@@ -410,6 +410,7 @@ struct StringExpr : Expr {
 
 struct IdentExpr : Expr {
     NVSEToken token;
+    TESForm* form;
 
     // Set during typechecker variable resolution so that compiler can reference
     NVSEScope::ScopeVar *varInfo {nullptr};

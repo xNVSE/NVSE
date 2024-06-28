@@ -1270,3 +1270,6 @@ bool Cmd_ValidateRegex_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_StrCompare_Execute(COMMAND_ARGS) {
+	
+}

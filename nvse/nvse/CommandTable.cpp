@@ -362,6 +362,12 @@ DEFINE_COMMAND(DumpDocs, , false, 4, kParams_FourOptionalInts);
 #define ADD_CMD_RET(command, rtnType) Add(&kCommandInfo_##command, rtnType)
 #define REPL_CMD(command) Replace(GetByName(command)->opcode, &kCommandInfo_##command)
 
+#define ADD_CMD_VER(command, major, minor, beta) \
+	Add(&kCommandInfo_ ## command ## _ ## major ## _ ## minor ## _ ## beta, kRetnType_Default, 0, MAKE_NEW_VEGAS_VERSION(major, minor, beta));
+
+#define ADD_CMD_VER_RET(command, rtnType, major, minor, beta) \
+	Add(&kCommandInfo_ ## command ## _ ## major ## _ ## minor ## _ ## beta, rtnType, 0, MAKE_NEW_VEGAS_VERSION(major, minor, beta));
+
 CommandTable::CommandTable()
 {
 }
@@ -432,7 +438,7 @@ void CommandTable::Read(CommandInfo *start, CommandInfo *end)
 		Add(start);
 }
 
-void CommandTable::Add(CommandInfo *info, CommandReturnType retnType, UInt32 parentPluginOpcodeBase)
+void CommandTable::Add(CommandInfo* info, CommandReturnType retnType, UInt32 parentPluginOpcodeBase, UInt32 version)
 {
 	UInt32 backCommandID = m_baseID + m_commands.size(); // opcode of the next command to add
 
@@ -458,9 +464,14 @@ void CommandTable::Add(CommandInfo *info, CommandReturnType retnType, UInt32 par
 	m_curID++;
 
 	CommandMetadata *metadata = &m_metadata[info->opcode];
-
 	metadata->parentPlugin = parentPluginOpcodeBase;
 	metadata->returnType = retnType;
+
+	if (version != 0) {
+		auto* parentPlugin = GetParentPlugin(info);
+		auto* parentName = parentPlugin ? parentPlugin->name : "NVSE";
+		m_updateCommands[info->opcode] = std::make_tuple(parentName, version);
+	}
 }
 
 bool CommandTable::Replace(UInt32 opcodeToReplace, CommandInfo *replaceWith)
@@ -1182,16 +1193,36 @@ void CommandInfo::DumpFunctionDef(CommandMetadata* metadata) const
 	}
 }
 
-CommandInfo *CommandTable::GetByName(const char *name)
+CommandInfo *CommandTable::GetByName(const char* name, std::unordered_map<const char*, UInt32> pluginVersions)
 {
-	for (CommandList::iterator iter = m_commands.begin(); iter != m_commands.end(); ++iter)
-		if (!StrCompare(name, iter->longName) || (iter->shortName && !StrCompare(name, iter->shortName)))
-			return &(*iter);
+	for (CommandList::reverse_iterator iter = m_commands.rbegin(); iter != m_commands.rend(); ++iter) {
+		if (!StrCompare(name, iter->longName) || (iter->shortName && !StrCompare(name, iter->shortName))) {
+			auto *cmd = &(*iter);
 
-	return NULL;
+			if (auto updateInfo = m_updateCommands.find(cmd->opcode); updateInfo != m_updateCommands.end()) {
+				const auto name = std::get<0>(updateInfo->second);
+				const auto version = std::get<1>(updateInfo->second);
+
+				if (pluginVersions.contains(name)) {
+					if (version <= pluginVersions[name]) {
+						return cmd;
+					}
+				} else {
+					return cmd;
+				}
+			}
+
+			// No update info
+			else {
+				return cmd;
+			}
+		}
+	}
+
+	return nullptr;
 }
 
-CommandInfo *CommandTable::GetByOpcode(UInt32 opcode)
+CommandInfo *CommandTable::GetByOpcode(UInt32 opcode, std::unordered_map<const char*, UInt32> pluginVersions)
 {
 	const auto baseOpcode = m_commands.begin()->opcode;
 	const auto arrayIndex = opcode - baseOpcode;
@@ -1206,6 +1237,7 @@ CommandInfo *CommandTable::GetByOpcode(UInt32 opcode)
 		//	opcode, baseOpcode, arrayIndex, command->opcode);
 		return nullptr;
 	}
+
 	return command;
 }
 
@@ -1868,6 +1900,7 @@ void CommandTable::AddCommandsV4()
 	ADD_CMD(sv_Insert);
 	ADD_CMD(sv_Count);
 	ADD_CMD(sv_Find);
+	ADD_CMD_VER(sv_find, 7, 0, 0);
 	ADD_CMD(sv_Replace);
 	ADD_CMD(sv_GetChar);
 	ADD_CMD_RET(sv_Split, kRetnType_Array);
