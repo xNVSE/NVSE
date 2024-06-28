@@ -556,7 +556,7 @@ void NVSETypeChecker::VisitSubscriptExpr(SubscriptExpr* expr) {
 
 void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 	std::string name = expr->token.lexeme;
-	auto cmd = g_scriptCommands.GetByName(name.c_str(), { {"nvse", MAKE_NEW_VEGAS_VERSION(6, 3, 5)} });
+	auto cmd = g_scriptCommands.GetByName(name.c_str(), script->pluginVersions);
 
 	// Try to get the script command by lexeme
 	if (!cmd) {

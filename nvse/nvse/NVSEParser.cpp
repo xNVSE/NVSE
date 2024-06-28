@@ -15,6 +15,7 @@ std::optional<NVSEScript> NVSEParser::Parse() {
 	NVSEToken name;
 	std::vector<StmtPtr> globals;
 	std::vector<StmtPtr> blocks{};
+	std::unordered_map<std::string, UInt32> pluginVersions = {};
 
 	CompDbg("==== PARSER ====\n\n");
 
@@ -30,8 +31,25 @@ std::optional<NVSEScript> NVSEParser::Parse() {
 
 		while (currentToken.type != NVSETokenType::Eof) {
 			try {
+				// Version statements
+				if (Match(NVSETokenType::Pound)) {
+					if (!Match(NVSETokenType::Identifier)) {
+						Error(currentToken, "Expected 'version'.");
+					}
+
+					if (_stricmp(previousToken.lexeme.c_str(), "version")) {
+						Error(currentToken, "Expected 'version'.");
+					}
+
+					auto plugin = Expect(NVSETokenType::String, "Expected plugin name.");
+					auto major = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected major version").value));
+					auto minor = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected minor version").value));
+					auto beta = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected beta version").value));
+
+					pluginVersions[std::get<std::string>(plugin.value)] = MAKE_NEW_VEGAS_VERSION(major, minor, beta);
+				}
 				// Get event or udf block
-				if (Peek(NVSETokenType::BlockType)) {
+				else if (Peek(NVSETokenType::BlockType)) {
 					blocks.emplace_back(Begin());
 				}
 				else if (Match(NVSETokenType::Fn)) {
@@ -51,14 +69,14 @@ std::optional<NVSEScript> NVSEParser::Parse() {
 					Error(currentToken, "Expected variable declaration, block type (GameMode, MenuMode, ...), or 'fn'.");
 				}
 			}
-			catch (NVSEParseError e) {
+			catch (NVSEParseError& e) {
 				hadError = true;
 				CompErr("%s\n", e.what());
 				Synchronize();
 			}
 		}
 	}
-	catch (NVSEParseError e) {
+	catch (NVSEParseError& e) {
 		hadError = true;
 		CompErr("%s\n", e.what());
 	}
@@ -67,7 +85,7 @@ std::optional<NVSEScript> NVSEParser::Parse() {
 		return std::optional<NVSEScript>{};
 	}
 	
-	return NVSEScript(name, std::move(globals), std::move(blocks));
+	return NVSEScript(name, std::move(globals), std::move(blocks), pluginVersions);
 }
 
 StmtPtr NVSEParser::Begin() {

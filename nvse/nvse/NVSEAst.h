@@ -17,9 +17,10 @@ struct NVSEScript {
     std::vector<StmtPtr> globalVars;
     std::vector<StmtPtr> blocks;
     std::unordered_map<std::string, std::shared_ptr<LambdaExpr>> mpFunctions{};
+    std::unordered_map<std::string, UInt32> pluginVersions{};
 
-    NVSEScript(NVSEToken name, std::vector<StmtPtr> globalVars, std::vector<StmtPtr> blocks) : name(std::move(name)),
-        globalVars(std::move(globalVars)), blocks(std::move(blocks)) {}
+    NVSEScript(NVSEToken name, std::vector<StmtPtr> globalVars, std::vector<StmtPtr> blocks, std::unordered_map<std::string, UInt32> pluginVersions)
+	: name(std::move(name)), globalVars(std::move(globalVars)), blocks(std::move(blocks)), pluginVersions{ pluginVersions } {}
 
     void Accept(NVSEVisitor* visitor) {
         visitor->VisitNVSEScript(this);
