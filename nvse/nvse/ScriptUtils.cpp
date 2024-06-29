@@ -3552,7 +3552,7 @@ std::unique_ptr<ScriptToken> ExpressionParser::ParseOperand(Operator *curOp)
 	// command?
 	if (!bExpectStringVar)
 	{
-		CommandInfo *cmdInfo = g_scriptCommands.GetByName(token.c_str());
+		CommandInfo *cmdInfo = g_scriptCommands.GetByName(token.c_str(), g_compilerPluginVersions);
 		if (cmdInfo)
 		{
 			// if quest script, check that calling obj supplied for cmds requiring it

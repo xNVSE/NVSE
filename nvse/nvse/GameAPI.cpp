@@ -112,22 +112,6 @@ const char **g_alignmentTypeNames = (const char **)0xE93FF4;
 const char **g_equipTypeNames = (const char **)0xE93C40;
 const char **g_criticalStageNames = (const char **)0xE91188;
 
-// 220
-struct ScriptParseToken
-{
-	char tokenString[0x200]; // 000
-	UInt16 refIdx;			 // 200
-	UInt8 pad202[2];
-	UInt8 tokenType; // 204
-	UInt8 pad205[3];
-	UInt32 cmdOpcode; // 208
-	UInt16 varIdx;	  // 20C
-	UInt8 pad20E[2];
-	TESForm *refObj;	 // 210
-	UInt32 unk214;		 // 214
-	UInt32 unk218;		 // 218
-	UInt32 paramTextLen; // 21C
-};
 
 bool (*IsStringInteger)(const char *str) = (bool (*)(const char *))0x523390;
 bool (*IsStringFloat)(const char *str) = (bool (*)(const char *))0x5233D0;

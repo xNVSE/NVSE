@@ -12,6 +12,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <regex>
 #include <set>
 
 #include "GameAPI.h"
@@ -400,6 +401,7 @@ bool HandleLoopEnd(UInt32 offsetToEnd)
 
 // ScriptBuffer::currentScript not used due to GECK treating it as external ref script
 std::stack<Script*> g_currentScriptStack;
+std::unordered_map<std::string, UInt32> g_compilerPluginVersions{};
 
 enum PrecompileResult : uint8_t 
 {
@@ -466,6 +468,33 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 	}
 
 	else {
+		// Handle ;version comments
+		g_compilerPluginVersions = {};
+
+		// Default to 6.3.5 for scriptrunner unless specified
+		if (buf->partialScript) {
+			g_compilerPluginVersions["NVSE"] = MAKE_NEW_VEGAS_VERSION(6, 3, 5);
+		}
+
+		// Pre-process comments for version tags
+		std::regex versionRegex(";[Vv][Ee][Rr][Ss][Ii][Oo][Nn] \"([\\w\\s]+)\" (\\d+) (\\d+) (\\d+)");
+		const auto scriptText = std::string(buf->scriptText);
+		auto iter = std::sregex_iterator(scriptText.begin(), scriptText.end(), versionRegex);
+		while (iter != std::sregex_iterator()) {
+			const auto &match = *iter;
+			if (match.empty()) {
+				continue;
+			}
+
+			std::string pluginName = match[1];
+			int major = std::stoi(match[2]);
+			int minor = std::stoi(match[3]);
+			int beta = std::stoi(match[4]);
+			g_compilerPluginVersions[pluginName] = MAKE_NEW_VEGAS_VERSION(major, minor, beta);
+
+			++iter;
+		}
+
 		ScriptAndScriptBuffer msg{ script, buf };
 		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptPrecompile,
 			&msg, sizeof(ScriptAndScriptBuffer), NULL);
@@ -584,6 +613,16 @@ namespace Runtime // double-clarify
 			ret 8
 		}
 	}
+
+	char __cdecl HookParseCommandToken(ScriptParseToken* parseToken) {
+		if (const auto* commandInfo = g_scriptCommands.GetByName(parseToken->tokenString, g_compilerPluginVersions)) {
+			parseToken->tokenType = 'X';
+			parseToken->cmdOpcode = commandInfo->opcode;
+			return 1;
+		}
+
+		return CdeclCall<char>(0x5B1910, parseToken);
+	}
 }
 
 
@@ -604,6 +643,10 @@ void PatchRuntimeScriptCompile()
 		// Replace Console_PrintIfOpen with non-conditional print, in PrintScriptCompileError. 
 		WriteRelCall(0x5AEB36, (UInt32)Console_Print);
 	}
+
+	WriteRelCall(0x5AF92E, reinterpret_cast<UInt32>(&Runtime::HookParseCommandToken));
+	WriteRelCall(0x5AFA3D, reinterpret_cast<UInt32>(&Runtime::HookParseCommandToken));
+	WriteRelCall(0x5AFF1A, reinterpret_cast<UInt32>(&Runtime::HookParseCommandToken));
 }
 
 #endif
@@ -1066,6 +1109,16 @@ static __declspec(naked) void __cdecl CopyStringArgHook(void)
 	}
 }
 
+char __cdecl HookParseCommandToken(ScriptParseToken* parseToken) {
+	if (const auto* commandInfo = g_scriptCommands.GetByName(parseToken->tokenString, g_compilerPluginVersions)) {
+		parseToken->tokenType = 'X';
+		parseToken->cmdOpcode = commandInfo->opcode;
+		return 1;
+	}
+
+	return CdeclCall<char>(0x5C53B0, parseToken);
+}
+
 void Hook_Compiler_Init()
 {
 	// hook beginning of compilation process
@@ -1082,6 +1135,10 @@ void Hook_Compiler_Init()
 	CompilerOverride::InitHooks();
 
 	PatchMismatchedParenthesisCheck();
+
+	WriteRelCall(0x5C55C0, reinterpret_cast<UInt32>(&HookParseCommandToken));
+	WriteRelCall(0x5C63D4, reinterpret_cast<UInt32>(&HookParseCommandToken));
+	WriteRelCall(0x5C64AC, reinterpret_cast<UInt32>(&HookParseCommandToken));
 }
 
 #else // run-time
