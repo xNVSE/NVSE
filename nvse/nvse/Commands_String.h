@@ -275,14 +275,14 @@ DEFINE_COMMAND_EXP(ValidateRegex, "Returns 0 for no errors, otherwise returns in
 
 
 // BETTER - FASTER - STRONGER string funcs
-static ParamInfo kParams_OneString_OneInteger[] = {
-	{"string",	kNVSEParamType_String,	0},
-	{"integer", kParamType_Integer,		0}
-};
-
-DEFINE_COMMAND_EXP(StrCompare, "Compare two strings", 0, kNVSEParams_TwoStrings_OneOptionalBool);
-DEFINE_COMMAND_EXP(StrFormat, "Create a string variable constructed from the specified string and up to 20 formatting arguments.", 0, kParams_FormatString);
-DEFINE_COMMAND_EXP(StrCount, "Count number of occurences of a substring in a given string.", 0, kNVSEParams_TwoStrings_OneOptionalBool);
-DEFINE_COMMAND_EXP(StrFind, "Find the first occurence of a substring in the given string.", 0, kNVSEParams_TwoStrings_OneOptionalBool);
-DEFINE_COMMAND_EXP(StrGetChar, "Retrieve the character at a given index of a string.", 0, kParams_OneString_OneInteger);
-DEFINE_COMMAND_EXP(StrLen, "Get the length of the given string.", 0, kParams_OneString);
+// static ParamInfo kParams_OneString_OneInteger[] = {
+// 	{"string",	kNVSEParamType_String,	0},
+// 	{"integer", kParamType_Integer,		0}
+// };
+//
+// DEFINE_COMMAND_EXP(StrCompare, "Compare two strings", 0, kNVSEParams_TwoStrings_OneOptionalBool);
+// DEFINE_COMMAND_EXP(StrFormat, "Create a string variable constructed from the specified string and up to 20 formatting arguments.", 0, kParams_FormatString);
+// DEFINE_COMMAND_EXP(StrCount, "Count number of occurences of a substring in a given string.", 0, kNVSEParams_TwoStrings_OneOptionalBool);
+// DEFINE_COMMAND_EXP(StrFind, "Find the first occurence of a substring in the given string.", 0, kNVSEParams_TwoStrings_OneOptionalBool);
+// DEFINE_COMMAND_EXP(StrGetChar, "Retrieve the character at a given index of a string.", 0, kParams_OneString_OneInteger);
+// DEFINE_COMMAND_EXP(StrLen, "Get the length of the given string.", 0, kParams_OneString);

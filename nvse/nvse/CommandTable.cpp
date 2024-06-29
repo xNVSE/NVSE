@@ -1200,20 +1200,19 @@ CommandInfo *CommandTable::GetByName(const char* name, std::unordered_map<std::s
 		if (!StrCompare(name, iter->longName) || (iter->shortName && !StrCompare(name, iter->shortName))) {
 			auto *cmd = &(*iter);
 
+			// Versioned command, only return if script specifies a plugin version and specified version <= plugin version
 			if (auto updateInfo = m_updateCommands.find(cmd->opcode); updateInfo != m_updateCommands.end()) {
-				auto pluginName = std::string(std::get<0>(updateInfo->second));
-				std::ranges::transform(pluginName, pluginName.begin(), [](unsigned char c) { return std::tolower(c); });
+				auto cmdPluginName = std::string(std::get<0>(updateInfo->second));
+				auto cmdVersion = std::get<1>(updateInfo->second);
 
-				if (pluginVersions.contains(pluginName)) {
-					if (std::get<1>(updateInfo->second) <= pluginVersions[pluginName]) {
-						return cmd;
-					}
-				} else {
+				std::ranges::transform(cmdPluginName, cmdPluginName.begin(), [](unsigned char c) { return std::tolower(c); });
+
+				if (pluginVersions.contains(cmdPluginName) && cmdVersion <= pluginVersions[cmdPluginName]) {
 					return cmd;
 				}
 			}
 
-			// No update info
+			// Not a versioned command
 			else {
 				return cmd;
 			}
@@ -1901,7 +1900,6 @@ void CommandTable::AddCommandsV4()
 	ADD_CMD(sv_Insert);
 	ADD_CMD(sv_Count);
 	ADD_CMD(sv_Find);
-	ADD_CMD_VER(sv_find, 7, 0, 0);
 	ADD_CMD(sv_Replace);
 	ADD_CMD(sv_GetChar);
 	ADD_CMD_RET(sv_Split, kRetnType_Array);
@@ -2255,6 +2253,8 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD_RET(Ternary, kRetnType_Ambiguous);
 	ADD_CMD(MatchesAnyOf);
 	ADD_CMD(ForEachAlt);
+
+	ADD_CMD_VER(sv_find, 7, 0, 0);
 }
 
 namespace PluginAPI

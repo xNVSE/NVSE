@@ -228,6 +228,11 @@ bool Cmd_sv_Find_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_sv_find_7_0_0_Execute(COMMAND_ARGS) {
+	return false;
+}
+
+
 bool Cmd_sv_Count_Execute(COMMAND_ARGS)
 {
 	StringVar_Find_Execute(PASS_COMMAND_ARGS, eMode_svCount, &kCommandInfo_sv_Count);
@@ -1268,8 +1273,4 @@ bool Cmd_ValidateRegex_Execute(COMMAND_ARGS)
 	}
 
 	return true;
-}
-
-bool Cmd_StrCompare_Execute(COMMAND_ARGS) {
-	
 }
