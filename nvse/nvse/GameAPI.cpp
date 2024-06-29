@@ -91,6 +91,16 @@ SaveGameManager **g_saveGameManager = (SaveGameManager **)0x011DE134;
 // Johnny Guitar supports this
 const _GetFormByID GetFormByID = (_GetFormByID)(0x483A00);
 
+AnimGroupInfo* g_animGroupInfos = (AnimGroupInfo*)0x11977D8;
+
+bool (*IsStringInteger)(const char* str) = (bool (*)(const char*))0x4B1230;
+bool (*IsStringFloat)(const char* str) = (bool (*)(const char*))0x4B12D0;
+
+const char** g_alignmentTypeNames = (const char**)0x1186CF4;
+const char** g_equipTypeNames = (const char**)0x11869BC;
+const char** g_criticalStageNames = (const char**)0x119BBB0;
+const char** g_formTypeNames = (const char**)0x118A2D8;
+
 #elif EDITOR
 
 //	FormMap* g_FormMap = (FormMap *)0x009EE18C;		// currently unused

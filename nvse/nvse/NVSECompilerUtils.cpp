@@ -126,11 +126,13 @@ constexpr uint32_t SEX_1 = 0xE9AB1C;
 constexpr uint32_t FORM_TYPE = 0xEA7078;
 constexpr uint32_t MISC_STAT = 0x52E790;
 #else
-
+constexpr uint32_t ACTOR_VALUE_ADDRESS = 0x66EB40;
+constexpr uint32_t SEX_0 = 0x104A0EC;
+constexpr uint32_t SEX_1 = 0x104A0F4;
+constexpr uint32_t MISC_STAT = 0x4D5EB0;
 #endif
 
 uint32_t resolveVanillaEnum(const ParamInfo* info, const char* str) {
-#ifdef EDITOR
 	uint32_t i = -1;
 	switch (info->typeID) {
 	case kParamType_ActorValue:
@@ -162,10 +164,12 @@ uint32_t resolveVanillaEnum(const ParamInfo* info, const char* str) {
 		}
 		return -1;
 	case kParamType_FormType:
+#ifdef EDITOR
 		for (i = 0; i < 87 && StrCompare(g_formTypeNames[i], str); i++) {}
 		if (i < 87) {
 			return reinterpret_cast<uint8_t*>(FORM_TYPE)[i];
 		}
+#endif
 		return -1;
 	case kParamType_MiscellaneousStat:
 		i = CdeclCall<uint32_t>(MISC_STAT, str);
@@ -182,9 +186,6 @@ uint32_t resolveVanillaEnum(const ParamInfo* info, const char* str) {
 	default:
 		return i;
 	}
-#else
-	return -1;
-#endif
 }
 
 bool doesFormMatchParamType(TESForm* form, const ParamType type)

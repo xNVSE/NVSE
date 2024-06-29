@@ -113,6 +113,12 @@ extern const _ShowCompilerError ShowCompilerError;
 
 bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineBuffer *lineBuffer, ScriptBuffer *scriptBuffer);
 
+#endif
+
+extern const char** g_formTypeNames;
+extern const char** g_alignmentTypeNames;
+extern const char** g_equipTypeNames;
+extern const char** g_criticalStageNames;
 
 struct AnimGroupInfo
 {
@@ -126,15 +132,8 @@ struct AnimGroupInfo
 
 extern AnimGroupInfo* g_animGroupInfos;
 
-extern const char** g_formTypeNames;
-extern const char** g_alignmentTypeNames;
-extern const char** g_equipTypeNames;
-extern const char** g_criticalStageNames;
-
 extern bool (*IsStringInteger)(const char* str);
 extern bool (*IsStringFloat)(const char* str);
-
-#endif
 
 extern const bool kInventoryType[];
 
