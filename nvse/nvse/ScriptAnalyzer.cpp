@@ -1246,7 +1246,7 @@ auto ScriptParsing::ScriptAnalyzer::DecompileScript() -> std::string {
 	std::string scriptHeader;
 	std::string scriptText;
 	auto numTabs = 0;
-	const auto nestAddOpcodes = {static_cast<UInt32>(ScriptStatementCode::If), static_cast<UInt32>(ScriptStatementCode::Begin), kCommandInfo_While.opcode, kCommandInfo_ForEach.opcode};
+	const auto nestAddOpcodes = {static_cast<UInt32>(ScriptStatementCode::If), static_cast<UInt32>(ScriptStatementCode::Begin), kCommandInfo_While.opcode, kCommandInfo_ForEach.opcode, kCommandInfo_ForEachAlt.opcode};
 	const auto nestMinOpcodes = {static_cast<UInt32>(ScriptStatementCode::EndIf), static_cast<UInt32>(ScriptStatementCode::End), kCommandInfo_Loop.opcode};
 	const auto nestNeutralOpcodes = {static_cast<UInt32>(ScriptStatementCode::Else), static_cast<UInt32>(ScriptStatementCode::ElseIf)};
 	UInt32 lastOpcode = 0;
