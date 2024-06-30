@@ -164,12 +164,11 @@ uint32_t resolveVanillaEnum(const ParamInfo* info, const char* str) {
 		}
 		return -1;
 	case kParamType_FormType:
-#ifdef EDITOR
-		for (i = 0; i < 87 && StrCompare(g_formTypeNames[i], str); i++) {}
-		if (i < 87) {
-			return reinterpret_cast<uint8_t*>(FORM_TYPE)[i];
+		for (auto& [formId, name] : g_formTypeNames) {
+			if (!StrCompare(name, str)) {
+				return formId;
+			}
 		}
-#endif
 		return -1;
 	case kParamType_MiscellaneousStat:
 		i = CdeclCall<uint32_t>(MISC_STAT, str);

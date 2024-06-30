@@ -115,7 +115,10 @@ bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineB
 
 #endif
 
-extern const char** g_formTypeNames;
+extern std::map<uint8_t, const char*> g_formTypeNames;
+
+// extern const char** g_formTypeNames;
+
 extern const char** g_alignmentTypeNames;
 extern const char** g_equipTypeNames;
 extern const char** g_criticalStageNames;

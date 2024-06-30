@@ -34,6 +34,95 @@ const bool kInventoryType[] =
 		1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0};
 
+std::map<uint8_t, const char*> g_formTypeNames = {
+	{21,"Activator"},
+	{24,"Armor"},
+	{25,"Book"},
+	{27,"Container"},
+	{28,"Door"},
+	{29,"Ingredient"},
+	{30,"Light"},
+	{31,"Misc Item"},
+	{32,"Static"},
+	{36,"Grass"},
+	{37,"Tree"},
+	{40,"Weapon"},
+	{42,"NPC"},
+	{43,"Creature"},
+	{44,"Leveled Creature"},
+	{45,"LeveledCharacter"},
+	{20,"Actor Effect"},
+	{19,"Object Effect"},
+	{47,"Ingestible"},
+	{52,"Leveled Item"},
+	{46,"Key"},
+	{41,"Ammo"},
+	{38,"Flora"},
+	{39,"Furniture"},
+	{13,"Sound"},
+	{18,"Land Texture"},
+	{74,"Combat Style"},
+	{75,"Load Screen"},
+	{76,"Leveled Spell"},
+	{77,"Anim Object"},
+	{78,"Water Type"},
+	{48,"Idle Marker"},
+	{79,"Effect Shader"},
+	{51,"Projectile"},
+	{22,"Talking Activator"},
+	{81,"Explosion"},
+	{4,"Texture Set"},
+	{82,"Debris"},
+	{5,"Menu Icon"},
+	{85,"Form List"},
+	{86,"Perk"},
+	{87,"Body Part Data"},
+	{88,"AddOn Node"},
+	{34,"Movable Static"},
+	{23,"Terminal"},
+	{35,"Placeable Water"},
+	{91,"Camera Shot"},
+	{94,"Impact Data"},
+	{95,"Impact Data Set"},
+	{71,"Quest"},
+	{73,"Package"},
+	{93,"Voice Type"},
+	{7,"Class"},
+	{12,"Race"},
+	{11,"Eyes"},
+	{9,"Head Part"},
+	{8,"Faction"},
+	{49,"Note"},
+	{53,"Weather"},
+	{54,"Climate"},
+	{96,"Armor Addon"},
+	{6,"Global"},
+	{83,"Imagespace"},
+	{84,"Imagespace Modifier"},
+	{97,"Encounter Zone"},
+	{98,"Message"},
+	{50,"Constructible Object"},
+	{14,"Acoustic Space"},
+	{99,"Ragdoll"},
+	{17,"Script"},
+	{16,"Base Effect"},
+	{102,"Music Type"},
+	{33,"Static Collection"},
+	{103,"Item Mod"},
+	{104,"Reputation"},
+	{106,"Recipe"},
+	{107,"Recipe Category"},
+	{108,"Casino Chip"},
+	{109,"Casino"},
+	{110,"Load Screen Type"},
+	{111,"Media Set"},
+	{112,"Media Location Controller"},
+	{113,"Challenge"},
+	{114,"Ammo Effect"},
+	{115,"Caravan Card"},
+	{116,"Caravan Money"},
+	{117,"Caravan Deck"},
+};
 
 #if RUNTIME
 TESForm *__stdcall LookupFormByID(UInt32 refID)
@@ -99,7 +188,7 @@ bool (*IsStringFloat)(const char* str) = (bool (*)(const char*))0x4B12D0;
 const char** g_alignmentTypeNames = (const char**)0x1186CF4;
 const char** g_equipTypeNames = (const char**)0x11869BC;
 const char** g_criticalStageNames = (const char**)0x119BBB0;
-const char** g_formTypeNames = (const char**)0x118A2D8;
+//const char** g_formTypeNames = (const char**)0x118A2D8;
 
 #elif EDITOR
 
@@ -117,7 +206,7 @@ const _ShowCompilerError ShowCompilerError = (_ShowCompilerError)0x005C5730; // 
 // 24
 AnimGroupInfo *g_animGroupInfos = (AnimGroupInfo *)0xE98290;
 
-const char **g_formTypeNames = (const char **)0xEA6DB8;
+//const char **g_formTypeNames = (const char **)0xEA6DB8;
 const char **g_alignmentTypeNames = (const char **)0xE93FF4;
 const char **g_equipTypeNames = (const char **)0xE93C40;
 const char **g_criticalStageNames = (const char **)0xE91188;
@@ -674,12 +763,11 @@ bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineB
 				ShowCompilerError(scriptBuffer, (const char *)0xD5FC30, spToken.tokenString, currInfo->typeStr, 4);
 				return false;
 			case kParamType_FormType:
-				for (i = 0; (i < 87) && StrCompare(g_formTypeNames[i], spToken.tokenString); i++)
-					;
-				if (i < 87)
-				{
-					i = ((UInt8 *)0xEA7078)[i];
-					goto setTokenValue;
+				for (auto &[formId, name] : g_formTypeNames) {
+					if (!StrCompare(name, spToken.tokenString)) {
+						i = formId;
+						goto setTokenValue;
+					}
 				}
 				errorFmt = (const char *)0xD5FFE0;
 				goto compileError;
