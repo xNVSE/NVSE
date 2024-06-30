@@ -84,20 +84,25 @@ namespace OtherHooks
 	{
 		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_EventListDestroyed, eventList, sizeof ScriptEventList, nullptr);
 
-		// Clear all thread caches for this event list
-		// for (int i = 0; i < g_nextThreadID; i++) {
-		// 	auto vc = g_scriptVarCache[i];
-		// 	if (i != g_threadID) {
-		// 		vc->mt.lock();
-		// 	}
-		// 	vc->clear(eventList);
-		// 	if (i != g_threadID) {
-		// 		vc->mt.unlock();
-		// 	}
-		// }
-
 		DeleteEventList(eventList);
 		return eventList;
+	}
+
+	void __fastcall ScriptEventListFreeVarsHook(ScriptEventList *eventList) {
+		//Clear all thread caches for this event list
+		for (int i = 0; i < g_nextThreadID; i++) {
+			auto vc = g_scriptVarCache[i];
+			if (i != g_threadID) {
+				vc->mt.lock();
+			}
+			vc->clear(eventList);
+			if (i != g_threadID) {
+				vc->mt.unlock();
+			}
+		}
+
+		// Original FreeVars
+		ThisStdCall(0x5A8C90, eventList);
 	}
 
 	namespace PreScriptExecute
@@ -123,7 +128,7 @@ namespace OtherHooks
 				curData = reinterpret_cast<UInt32*>(ebp - 0x24);
 			}
 
-			// Do other stuff
+			//Do other stuff
 			// if (g_threadID == -1) {
 			// 	g_threadID = g_nextThreadID++;
 			// 	g_scriptVarCache[g_threadID] = new VarCache{ {}, {} };
@@ -231,6 +236,10 @@ namespace OtherHooks
 		WriteRelJump(0x9FF5FB, UInt32(TilesDestroyedHook));
 		WriteRelJump(0x709910, UInt32(TilesCreatedHook));
 		WriteRelJump(0x41AF70, UInt32(ScriptEventListsDestroyedHook));
+
+		// WriteRelCall(0x5A8BD4, reinterpret_cast<UInt32>(ScriptEventListFreeVarsHook));
+		// WriteRelCall(0x5A9D0C, reinterpret_cast<UInt32>(ScriptEventListFreeVarsHook));
+		// WriteRelCall(0x5AA09C, reinterpret_cast<UInt32>(ScriptEventListFreeVarsHook));
 
 		PreScriptExecute::WriteHooks();
 		PostScriptExecute::WriteHooks();

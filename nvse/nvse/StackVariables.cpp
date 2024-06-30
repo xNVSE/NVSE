@@ -63,7 +63,7 @@ std::string VariableStorage::GetVariableName(ScriptEventList* eventList, ScriptL
 	return std::string(::GetVariableName(var, eventList->m_script, eventList));
 }
 
-VarCache *g_scriptVarCache[10] {};
+VarCache *g_scriptVarCache[16] {};
 thread_local int g_threadID = -1;
 std::atomic<int> g_nextThreadID = 0;
 #endif

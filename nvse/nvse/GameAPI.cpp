@@ -1978,13 +1978,13 @@ ScriptLocal *ScriptEventList::GetVariable(UInt32 id)
 	// }
 
 	// TODO
-	return m_vars->FindFirst([&](ScriptLocal* entry) {
+	auto found = m_vars->FindFirst([&](ScriptLocal* entry) {
 		return entry->id == id;
 	});
 
 	// g_scriptVarCache[g_threadID]->put(this, found);
-	//
-	// return found;
+	
+	return found;
 }
 
 ScriptEventList *EventListFromForm(TESForm *form)
