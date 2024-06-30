@@ -571,6 +571,10 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 	}
 	expr->cmdInfo = cmd;
 
+	if (expr->left) {
+		expr->left->Accept(this);
+	}
+
 	// Visit all args manually for call opcode
 	if (cmd->parse == kCommandInfo_Call.parse) {
 		for (auto &arg : expr->args) {
