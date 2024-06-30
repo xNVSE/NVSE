@@ -635,8 +635,7 @@ namespace Runtime // double-clarify
 			test eax, eax
 			jz ret_0
 
-			// Jump to original return, return 1
-			mov al, 1
+			// Jump to original return, AL still contains 1
 			push 0x5B1A84
 			retn
 
@@ -1156,12 +1155,14 @@ __declspec(naked) void HookParseCommandToken() {
 
 		test eax, eax
 		jz ret_0
+
+		// Return 1 (inside AL already)
 		pop edi
 		pop esi
-		mov al, 1
 		pop ebx
 		retn
 
+		// Skip to console command loop
 		ret_0:
 		push 0x5C5425
 		retn
