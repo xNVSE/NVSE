@@ -614,14 +614,37 @@ namespace Runtime // double-clarify
 		}
 	}
 
-	char __cdecl HookParseCommandToken(ScriptParseToken* parseToken) {
+	char __cdecl HandleParseCommandToken(ScriptParseToken* parseToken) {
 		if (const auto* commandInfo = g_scriptCommands.GetByName(parseToken->tokenString, g_compilerPluginVersions)) {
 			parseToken->tokenType = 'X';
 			parseToken->cmdOpcode = commandInfo->opcode;
 			return 1;
 		}
 
-		return CdeclCall<char>(0x5B1910, parseToken);
+		return 0;
+	}
+
+	__declspec(naked) void HookParseCommandToken() {
+		_asm {
+			add esp, 8
+
+			push edx
+			call HandleParseCommandToken
+			add esp, 4
+
+			test eax, eax
+			jz ret_0
+
+			// Jump to original return, return 1
+			mov al, 1
+			push 0x5B1A84
+			retn
+
+			// Skip to console command loop
+			ret_0 :
+			push 0x5B1A08
+			retn
+		}
 	}
 }
 
@@ -644,9 +667,11 @@ void PatchRuntimeScriptCompile()
 		WriteRelCall(0x5AEB36, (UInt32)Console_Print);
 	}
 
-	WriteRelCall(0x5AF92E, reinterpret_cast<UInt32>(&Runtime::HookParseCommandToken));
-	WriteRelCall(0x5AFA3D, reinterpret_cast<UInt32>(&Runtime::HookParseCommandToken));
-	WriteRelCall(0x5AFF1A, reinterpret_cast<UInt32>(&Runtime::HookParseCommandToken));
+	WriteRelJump(0x5B19BA, reinterpret_cast<UInt32>(&Runtime::HookParseCommandToken));
+
+	// WriteRelCall(0x5AF92E, reinterpret_cast<UInt32>(&Runtime::HookParseCommandToken));
+	// WriteRelCall(0x5AFA3D, reinterpret_cast<UInt32>(&Runtime::HookParseCommandToken));
+	// WriteRelCall(0x5AFF1A, reinterpret_cast<UInt32>(&Runtime::HookParseCommandToken));
 }
 
 #endif
@@ -1109,14 +1134,38 @@ static __declspec(naked) void __cdecl CopyStringArgHook(void)
 	}
 }
 
-char __cdecl HookParseCommandToken(ScriptParseToken* parseToken) {
+char __cdecl HandleParseCommandToken(ScriptParseToken* parseToken) {
 	if (const auto* commandInfo = g_scriptCommands.GetByName(parseToken->tokenString, g_compilerPluginVersions)) {
 		parseToken->tokenType = 'X';
 		parseToken->cmdOpcode = commandInfo->opcode;
 		return 1;
 	}
 
-	return CdeclCall<char>(0x5C53B0, parseToken);
+	return 0;
+
+	// return CdeclCall<char>(0x5C53B0, parseToken);
+}
+
+__declspec(naked) void HookParseCommandToken() {
+	_asm {
+		add esp, 8
+
+		push esi
+		call HandleParseCommandToken
+		add esp, 4
+
+		test eax, eax
+		jz ret_0
+		pop edi
+		pop esi
+		mov al, 1
+		pop ebx
+		retn
+
+		ret_0:
+		push 0x5C5425
+		retn
+	}
 }
 
 void Hook_Compiler_Init()
@@ -1136,9 +1185,11 @@ void Hook_Compiler_Init()
 
 	PatchMismatchedParenthesisCheck();
 
-	WriteRelCall(0x5C55C0, reinterpret_cast<UInt32>(&HookParseCommandToken));
-	WriteRelCall(0x5C63D4, reinterpret_cast<UInt32>(&HookParseCommandToken));
-	WriteRelCall(0x5C64AC, reinterpret_cast<UInt32>(&HookParseCommandToken));
+	// WriteRelCall(0x5C55C0, reinterpret_cast<UInt32>(&HookParseCommandToken));
+	// WriteRelCall(0x5C63D4, reinterpret_cast<UInt32>(&HookParseCommandToken));
+	// WriteRelCall(0x5C64AC, reinterpret_cast<UInt32>(&HookParseCommandToken));
+
+	WriteRelJump(0x5C53FD, reinterpret_cast<UInt32>(&HookParseCommandToken));
 }
 
 #else // run-time
