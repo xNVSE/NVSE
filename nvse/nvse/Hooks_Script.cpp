@@ -550,8 +550,8 @@ void PostScriptCompile()
 	if (!g_currentScriptStack.empty()) // could be empty here at runtime if the ScriptBuffer or Script are nullptr.
 	{
 		// Replace replaced ';' chars with '#' again for saving
-		auto scriptText = g_currentScriptStack.top()->text;
-		for (auto &value : g_currentScriptRestorePoundChar.top()) {
+		const auto scriptText = g_currentScriptStack.top()->text;
+		for (const auto value : g_currentScriptRestorePoundChar.top()) {
 			scriptText[value] = '#';
 		}
 
