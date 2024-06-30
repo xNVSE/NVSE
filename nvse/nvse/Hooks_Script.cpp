@@ -401,7 +401,7 @@ bool HandleLoopEnd(UInt32 offsetToEnd)
 
 // ScriptBuffer::currentScript not used due to GECK treating it as external ref script
 std::stack<Script*> g_currentScriptStack;
-std::unordered_map<std::string, UInt32> g_compilerPluginVersions{};
+std::stack<std::unordered_map<std::string, UInt32>> g_currentCompilerPluginVersions;
 
 enum PrecompileResult : uint8_t 
 {
@@ -418,6 +418,7 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 		s_loopStartOffsets.pop();
 
 	g_currentScriptStack.push(script);
+	g_currentCompilerPluginVersions.push({});
 
 	// Initialize these, just in case.
 	buf->errorCode = 0;
@@ -468,17 +469,17 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 	}
 
 	else {
-		// Handle ;version comments
-		g_compilerPluginVersions = {};
+		auto& pluginVersions = g_currentCompilerPluginVersions.top();
 
 		// Default to 6.3.5 for scriptrunner unless specified
 		if (buf->partialScript) {
-			g_compilerPluginVersions["NVSE"] = MAKE_NEW_VEGAS_VERSION(6, 3, 5);
+			pluginVersions["NVSE"] = MAKE_NEW_VEGAS_VERSION(6, 3, 5);
 		}
 
 		// Pre-process comments for version tags
-		std::regex versionRegex(";[Vv][Ee][Rr][Ss][Ii][Oo][Nn] \"([\\w\\s]+)\" (\\d+) (\\d+) (\\d+)");
+		std::regex versionRegex(R"lit(;[Vv][Ee][Rr][Ss][Ii][Oo][Nn]\("([^"]+)",\s*(\d+),\s*(\d+),\s*(\d+)\))lit");
 		const auto scriptText = std::string(buf->scriptText);
+
 		auto iter = std::sregex_iterator(scriptText.begin(), scriptText.end(), versionRegex);
 		while (iter != std::sregex_iterator()) {
 			const auto &match = *iter;
@@ -490,7 +491,7 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 			int major = std::stoi(match[2]);
 			int minor = std::stoi(match[3]);
 			int beta = std::stoi(match[4]);
-			g_compilerPluginVersions[pluginName] = MAKE_NEW_VEGAS_VERSION(major, minor, beta);
+			pluginVersions[pluginName] = MAKE_NEW_VEGAS_VERSION(major, minor, beta);
 
 			++iter;
 		}
@@ -545,6 +546,10 @@ void PostScriptCompile()
 		// Avoid clearing the variables map after parsing a lambda script that belongs to a parent script.
 		if (g_currentScriptStack.empty())
 			g_variableDefinitionsMap.clear(); // must be the parent script we just removed.
+	}
+
+	if (!g_currentCompilerPluginVersions.empty()) {
+		g_currentCompilerPluginVersions.pop();
 	}
 }
 
@@ -615,7 +620,7 @@ namespace Runtime // double-clarify
 	}
 
 	char __cdecl HandleParseCommandToken(ScriptParseToken* parseToken) {
-		if (const auto* commandInfo = g_scriptCommands.GetByName(parseToken->tokenString, g_compilerPluginVersions)) {
+		if (const auto* commandInfo = g_scriptCommands.GetByName(parseToken->tokenString, &g_currentCompilerPluginVersions.top())) {
 			parseToken->tokenType = 'X';
 			parseToken->cmdOpcode = commandInfo->opcode;
 			return 1;
@@ -863,7 +868,7 @@ namespace CompilerOverride
 				*((UInt32 *)(buf->scriptData + buf->dataOffset)) = 0x00000011;
 			}
 
-			CommandInfo *cmdInfo = g_scriptCommands.GetByName(cmdName);
+			CommandInfo *cmdInfo = g_scriptCommands.GetByName(cmdName, &g_currentCompilerPluginVersions.top());
 			ASSERT(cmdInfo != NULL);
 
 			// write a call to our cmd
@@ -1134,7 +1139,7 @@ static __declspec(naked) void __cdecl CopyStringArgHook(void)
 }
 
 char __cdecl HandleParseCommandToken(ScriptParseToken* parseToken) {
-	if (const auto* commandInfo = g_scriptCommands.GetByName(parseToken->tokenString, g_compilerPluginVersions)) {
+	if (const auto* commandInfo = g_scriptCommands.GetByName(parseToken->tokenString, &g_currentCompilerPluginVersions.top())) {
 		parseToken->tokenType = 'X';
 		parseToken->cmdOpcode = commandInfo->opcode;
 		return 1;

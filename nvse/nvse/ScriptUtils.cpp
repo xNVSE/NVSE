@@ -3348,7 +3348,7 @@ VariableInfo* CreateVariable(Script* script, ScriptBuffer* scriptBuf, const std:
 		printCompileError("Invalid variable name " + varName + ": Form with that Editor ID already exists.");
 		return nullptr;
 	}
-	if (g_scriptCommands.GetByName(varName.c_str()))
+	if (g_scriptCommands.GetByName(varName.c_str(), &g_currentCompilerPluginVersions.top()))
 	{
 		printCompileError("Invalid variable name " + varName + ": Command with that name already exists.");
 		return nullptr;
@@ -3552,7 +3552,7 @@ std::unique_ptr<ScriptToken> ExpressionParser::ParseOperand(Operator *curOp)
 	// command?
 	if (!bExpectStringVar)
 	{
-		CommandInfo *cmdInfo = g_scriptCommands.GetByName(token.c_str(), g_compilerPluginVersions);
+		CommandInfo *cmdInfo = g_scriptCommands.GetByName(token.c_str(), &g_currentCompilerPluginVersions.top());
 		if (cmdInfo)
 		{
 			// if quest script, check that calling obj supplied for cmds requiring it

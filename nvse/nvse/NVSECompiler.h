@@ -233,7 +233,6 @@ public:
 	uint32_t CompileBlock(StmtPtr stmt, bool incrementCurrent);
 	void FinishCall();
 	void StartCall(CommandInfo* cmd, ExprPtr stackRef = nullptr);
-	void StartCall(const std::string&& command, ExprPtr stackRef = nullptr);
 	void StartCall(uint16_t opcode, ExprPtr stackRef = nullptr);
 	void PerformCall(uint16_t opcode);
 	void AddCallArg(ExprPtr arg);

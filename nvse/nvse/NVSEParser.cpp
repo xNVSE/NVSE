@@ -4,6 +4,7 @@
 #include <format>
 #include <regex>
 
+#include "Hooks_Script.h"
 #include "NVSETreePrinter.h"
 #include "NVSEAst.h"
 
@@ -15,7 +16,7 @@ std::optional<NVSEScript> NVSEParser::Parse() {
 	NVSEToken name;
 	std::vector<StmtPtr> globals;
 	std::vector<StmtPtr> blocks{};
-	std::unordered_map<std::string, UInt32> pluginVersions = {};
+	auto& pluginVersions = g_currentCompilerPluginVersions.top();
 
 	CompDbg("==== PARSER ====\n\n");
 
@@ -41,10 +42,15 @@ std::optional<NVSEScript> NVSEParser::Parse() {
 						Error(currentToken, "Expected 'version'.");
 					}
 
+					Expect(NVSETokenType::LeftParen, "Expected '('.");
 					auto plugin = Expect(NVSETokenType::String, "Expected plugin name.");
+					Expect(NVSETokenType::Comma, "Expected ','.");
 					auto major = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected major version").value));
+					Expect(NVSETokenType::Comma, "Expected ','.");
 					auto minor = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected minor version").value));
+					Expect(NVSETokenType::Comma, "Expected ','.");
 					auto beta = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected beta version").value));
+					Expect(NVSETokenType::RightParen, "Expected ')'.");
 
 					pluginVersions[std::get<std::string>(plugin.value)] = MAKE_NEW_VEGAS_VERSION(major, minor, beta);
 				}
@@ -85,7 +91,7 @@ std::optional<NVSEScript> NVSEParser::Parse() {
 		return std::optional<NVSEScript>{};
 	}
 	
-	return NVSEScript(name, std::move(globals), std::move(blocks), pluginVersions);
+	return NVSEScript(name, std::move(globals), std::move(blocks));
 }
 
 StmtPtr NVSEParser::Begin() {

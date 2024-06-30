@@ -1194,7 +1194,7 @@ void CommandInfo::DumpFunctionDef(CommandMetadata* metadata) const
 	}
 }
 
-CommandInfo *CommandTable::GetByName(const char* name, std::unordered_map<std::string, UInt32> pluginVersions)
+CommandInfo *CommandTable::GetByName(const char* name, std::unordered_map<std::string, UInt32> *pluginVersions)
 {
 	for (CommandList::reverse_iterator iter = m_commands.rbegin(); iter != m_commands.rend(); ++iter) {
 		if (!StrCompare(name, iter->longName) || (iter->shortName && !StrCompare(name, iter->shortName))) {
@@ -1207,7 +1207,12 @@ CommandInfo *CommandTable::GetByName(const char* name, std::unordered_map<std::s
 
 				std::ranges::transform(cmdPluginName, cmdPluginName.begin(), [](unsigned char c) { return std::tolower(c); });
 
-				if (pluginVersions.contains(cmdPluginName) && cmdVersion <= pluginVersions[cmdPluginName]) {
+				if (pluginVersions->contains(cmdPluginName)) {
+					if (cmdVersion <= (*pluginVersions)[cmdPluginName]) {
+						return cmd;
+					}
+				}
+				else {
 					return cmd;
 				}
 			}

@@ -1,6 +1,7 @@
 #include "NVSECompiler.h"
 #include "Commands_MiscRef.h"
 #include "Commands_Scripting.h"
+#include "Hooks_Script.h"
 #include "NVSECompilerUtils.h"
 #include "NVSEParser.h"
 #include "PluginAPI.h"
@@ -1109,10 +1110,6 @@ void NVSECompiler::FinishCall() {
     if (buf.stackRef) {
         AddU8(tokenOpToNVSEOpType[NVSETokenType::Dot]);
     }
-}
-
-void NVSECompiler::StartCall(const std::string &&command, ExprPtr stackRef) {
-    StartCall(g_scriptCommands.GetByName(command.c_str()), stackRef);
 }
 
 void NVSECompiler::StartCall(uint16_t opcode, ExprPtr stackRef) {

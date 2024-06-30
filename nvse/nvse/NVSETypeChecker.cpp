@@ -8,6 +8,7 @@
 #include "GameForms.h"
 #include "Commands_Scripting.h"
 #include "GameData.h"
+#include "Hooks_Script.h"
 #include "NVSECompilerUtils.h"
 #include "ScriptUtils.h"
 
@@ -561,7 +562,7 @@ void NVSETypeChecker::VisitSubscriptExpr(SubscriptExpr* expr) {
 
 void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 	std::string name = expr->token.lexeme;
-	auto cmd = g_scriptCommands.GetByName(name.c_str(), script->pluginVersions);
+	auto cmd = g_scriptCommands.GetByName(name.c_str(), &g_currentCompilerPluginVersions.top());
 
 	// Try to get the script command by lexeme
 	if (!cmd) {
