@@ -123,7 +123,6 @@ bool isDefaultParse(Cmd_Parse parse) {
 constexpr uint32_t ACTOR_VALUE_ADDRESS = 0x491300;
 constexpr uint32_t SEX_0 = 0xE9AB18;
 constexpr uint32_t SEX_1 = 0xE9AB1C;
-constexpr uint32_t FORM_TYPE = 0xEA7078;
 constexpr uint32_t MISC_STAT = 0x52E790;
 #else
 constexpr uint32_t ACTOR_VALUE_ADDRESS = 0x66EB40;
