@@ -2259,7 +2259,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(MatchesAnyOf);
 	ADD_CMD(ForEachAlt);
 
-	ADD_CMD_VER(sv_find, 7, 0, 0);
+	//ADD_CMD_VER(sv_find, 7, 0, 0);
 }
 
 namespace PluginAPI
