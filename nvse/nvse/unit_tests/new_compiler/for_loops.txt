@@ -19,7 +19,7 @@ fn () {
 	assert(iTest == (ar_size(aList)));
 	
 	iTest = 0;
-	for ([int iKey] in aList)
+	for ([int iKey, _] in aList)
 	{
 		assert(iKey == iTest);
 		iTest++;
@@ -65,7 +65,7 @@ fn () {
 	
 	rTest = 0;
 	iTest = 0;
-	for ([int key, ref rValue] in aMap)
+	for ([_, ref rValue] in aMap)
 	{
 		iTest++;
 		sKeyStr = sBaseKeyStr + $(iTest);

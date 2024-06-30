@@ -480,7 +480,7 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 		}
 
 		// Pre-process comments for version tags
-		std::regex versionRegex(R"lit(#[Vv][Ee][Rr][Ss][Ii][Oo][Nn]\("([^"]+)",\s*(\d+),\s*(\d+),\s*(\d+)\))lit");
+		std::regex versionRegex(R"lit(#[Vv][Ee][Rr][Ss][Ii][Oo][Nn]\("([^"]+)",\s*(\d+)(?:,\s+(\d+))?(?:,\s+(\d+))?\))lit");
 		const auto scriptText = std::string(buf->scriptText);
 
 		auto iter = std::sregex_iterator(scriptText.begin(), scriptText.end(), versionRegex);
@@ -497,8 +497,8 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 
 			std::string pluginName = match[1];
 			int major = std::stoi(match[2]);
-			int minor = std::stoi(match[3]);
-			int beta = std::stoi(match[4]);
+			int minor = match[3].matched ? std::stoi(match[3]) : 255;
+			int beta = match[4].matched ? std::stoi(match[4]) : 255;
 			pluginVersions[pluginName] = MAKE_NEW_VEGAS_VERSION(major, minor, beta);
 
 			++iter;

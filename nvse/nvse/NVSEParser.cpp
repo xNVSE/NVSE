@@ -46,10 +46,16 @@ std::optional<NVSEScript> NVSEParser::Parse() {
 					auto plugin = Expect(NVSETokenType::String, "Expected plugin name.");
 					Expect(NVSETokenType::Comma, "Expected ','.");
 					auto major = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected major version").value));
-					Expect(NVSETokenType::Comma, "Expected ','.");
-					auto minor = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected minor version").value));
-					Expect(NVSETokenType::Comma, "Expected ','.");
-					auto beta = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected beta version").value));
+					int minor = 255;
+					int beta = 255;
+
+					if (Match(NVSETokenType::Comma)) {
+						minor = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected minor version").value));
+					}
+
+					if (Match(NVSETokenType::Comma)) {
+						beta = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected beta version").value));
+					}
 					Expect(NVSETokenType::RightParen, "Expected ')'.");
 
 					pluginVersions[std::get<std::string>(plugin.value)] = MAKE_NEW_VEGAS_VERSION(major, minor, beta);

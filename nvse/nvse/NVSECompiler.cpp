@@ -447,10 +447,16 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
             argPatch = AddU16(0x0);
 
             // Arg 2 - valueIterVar
-            AddU8('V');
-            AddU8(var2->variableType);
-            AddU16(0);
-            tempGlobals[var2].push_back(AddU16(0x0));
+            if (var2) {
+                AddU8('V');
+                AddU8(var2->variableType);
+                AddU16(0);
+                tempGlobals[var2].push_back(AddU16(0x0));
+            }
+            else {
+                AddU8('B');
+                AddU8(0x0);
+            }
             SetU16(argPatch, data.size() - argStart);
             SetU16(exprPatch, data.size() - exprStart);
 

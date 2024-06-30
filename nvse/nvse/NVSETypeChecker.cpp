@@ -303,9 +303,9 @@ void NVSETypeChecker::VisitForEachStmt(ForEachStmt* stmt) {
 	WRAP_ERROR(
 		if (stmt->decompose) {
 			// TODO
-			if (stmt->declarations.size() == 2 && stmt->declarations[1] == nullptr) {
-				error(stmt->line, "_ not allowed for value iterator.");
-			}
+			// if (stmt->declarations.size() == 2 && stmt->declarations[1] == nullptr) {
+			// 	error(stmt->line, "_ not allowed for value iterator.");
+			// }
 		} else {
 			// Get type of lhs identifier -- this is way too verbose
 			auto decl = stmt->declarations[0];

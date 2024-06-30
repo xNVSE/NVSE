@@ -131,7 +131,7 @@ bool UpdateForEachAltIterator(const ArrayElement* elem, const ArrayKey& curKey,
 					VariableTypeToName(valueIterVar.GetType()));
 				return false;
 			}
-			valueIterVar.GetScriptLocal()->data = elem->m_data.formID;
+			*reinterpret_cast<UInt32*>(&valueIterVar.GetScriptLocal()->data) = elem->m_data.formID;
 			break;
 		}
 		default:
