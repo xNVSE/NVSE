@@ -571,6 +571,13 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 	}
 	expr->cmdInfo = cmd;
 
+	// Visit all args manually for call opcode
+	if (cmd->parse == kCommandInfo_Call.parse) {
+		for (auto &arg : expr->args) {
+			arg->Accept(this);
+		}
+	}
+
 	int argIdx = 0;
 	int paramIdx = 0;
 	for (; paramIdx < cmd->numParams && argIdx < expr->args.size(); paramIdx++) {
@@ -581,7 +588,6 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 
 		// TODO
 		if (cmd->parse == kCommandInfo_Call.parse) {
-			argIdx++;
 			continue;
 		}
 
