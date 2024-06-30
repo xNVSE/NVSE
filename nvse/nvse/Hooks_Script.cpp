@@ -402,6 +402,7 @@ bool HandleLoopEnd(UInt32 offsetToEnd)
 // ScriptBuffer::currentScript not used due to GECK treating it as external ref script
 std::stack<Script*> g_currentScriptStack;
 std::stack<std::unordered_map<std::string, UInt32>> g_currentCompilerPluginVersions;
+std::stack<std::vector<size_t>> g_currentScriptRestorePoundChar;
 
 enum PrecompileResult : uint8_t 
 {
@@ -418,7 +419,8 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 		s_loopStartOffsets.pop();
 
 	g_currentScriptStack.push(script);
-	g_currentCompilerPluginVersions.push({});
+	g_currentCompilerPluginVersions.emplace();
+	g_currentScriptRestorePoundChar.emplace();
 
 	// Initialize these, just in case.
 	buf->errorCode = 0;
@@ -470,6 +472,7 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 
 	else {
 		auto& pluginVersions = g_currentCompilerPluginVersions.top();
+		auto& replacements = g_currentScriptRestorePoundChar.top();
 
 		// Default to 6.3.5 for scriptrunner unless specified
 		if (buf->partialScript) {
@@ -477,7 +480,7 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 		}
 
 		// Pre-process comments for version tags
-		std::regex versionRegex(R"lit(;[Vv][Ee][Rr][Ss][Ii][Oo][Nn]\("([^"]+)",\s*(\d+),\s*(\d+),\s*(\d+)\))lit");
+		std::regex versionRegex(R"lit(#[Vv][Ee][Rr][Ss][Ii][Oo][Nn]\("([^"]+)",\s*(\d+),\s*(\d+),\s*(\d+)\))lit");
 		const auto scriptText = std::string(buf->scriptText);
 
 		auto iter = std::sregex_iterator(scriptText.begin(), scriptText.end(), versionRegex);
@@ -486,6 +489,11 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 			if (match.empty()) {
 				continue;
 			}
+
+			// Change # to ; during compilation
+			const auto matchPos = match.position();
+			replacements.emplace_back(matchPos);
+			buf->scriptText[matchPos] = ';';
 
 			std::string pluginName = match[1];
 			int major = std::stoi(match[2]);
@@ -541,6 +549,12 @@ void PostScriptCompile()
 {
 	if (!g_currentScriptStack.empty()) // could be empty here at runtime if the ScriptBuffer or Script are nullptr.
 	{
+		// Replace replaced ';' chars with '#' again for saving
+		auto scriptText = g_currentScriptStack.top()->text;
+		for (auto &value : g_currentScriptRestorePoundChar.top()) {
+			scriptText[value] = '#';
+		}
+
 		g_currentScriptStack.pop();
 
 		// Avoid clearing the variables map after parsing a lambda script that belongs to a parent script.
