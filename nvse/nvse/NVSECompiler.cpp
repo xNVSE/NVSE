@@ -230,7 +230,6 @@ void NVSECompiler::VisitFnStmt(FnDeclStmt* stmt) {
     
         // Since we are in fn decl we will need to declare these as temp globals
         // __global_*
-        tempGlobals[var] = std::vector<size_t>{};
         tempGlobals[var].push_back(AddU16(0x0));
         
         AddU8(var->variableType);
@@ -287,7 +286,6 @@ void NVSECompiler::VisitVarDeclStmt(VarDeclStmt* stmt) {
         }
 
         CompDbg("Defined global variable %s\n", name.c_str());
-        const auto idx = AddLocal(name, varType);
 
         if (!value) {
             continue;
@@ -304,12 +302,12 @@ void NVSECompiler::VisitVarDeclStmt(VarDeclStmt* stmt) {
         AddU16(0); // SCRV
 
         if (var->isGlobal) {
+            const auto idx = AddLocal(name, varType);
             AddU16(idx); // SCDA
         }
         else {
             // Since we are in fn decl we will need to declare these as temp globals
             // __global_*
-            tempGlobals[var] = std::vector<size_t>{};
             tempGlobals[var].push_back(AddU16(0x0));
         }
 
@@ -447,32 +445,26 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
             argStart = data.size();
             argPatch = AddU16(0x0);
 
-            //TODO
+            // Arg 2 - valueIterVar
             AddU8('V');
-            AddU8(var2 != nullptr ? var2->variableType : 0);
+            AddU8(var2->variableType);
             AddU16(0);
-            if (var2) {
-                tempGlobals[var2] = std::vector<size_t>{};
-                tempGlobals[var2].push_back(AddU16(0x0));
-            }
-            else {
-                AddU16(0);
-            }
+            tempGlobals[var2].push_back(AddU16(0x0));
             SetU16(argPatch, data.size() - argStart);
             SetU16(exprPatch, data.size() - exprStart);
 
             // Arg 3 - pass keyIterVar last 
             argStart = data.size();
             argPatch = AddU16(0x0);
-            AddU8('V');
-            AddU8(var1 != nullptr ? var1->variableType : 0);
-            AddU16(0);
+
             if (var1) {
-                tempGlobals[var1] = std::vector<size_t>{};
-                tempGlobals[var1].push_back(AddU16(0x0));
-            }
-            else {
+                AddU8('V');
+                AddU8(var1->variableType);
                 AddU16(0);
+                tempGlobals[var1].push_back(AddU16(0x0));
+            } else {
+                AddU8('B');
+                AddU8(0x0);
             }
             SetU16(argPatch, data.size() - argStart);
             SetU16(exprPatch, data.size() - exprStart);
@@ -484,7 +476,6 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
             AddU8(var1 != nullptr ? var1->variableType : 0);
             AddU16(0);
             if (var1) {
-                tempGlobals[var1] = std::vector<size_t>{};
                 tempGlobals[var1].push_back(AddU16(0x0));
             } else {
                 AddU16(0);
@@ -1006,7 +997,6 @@ void NVSECompiler::VisitLambdaExpr(LambdaExpr* expr) {
             // Resolve variable, since we are in lambda decl we will need to declare these as temp globals
             // __global_*
             NVSEScope::ScopeVar* var = arg->scopeVars[0];
-            tempGlobals[var] = std::vector<size_t>{};
             tempGlobals[var].push_back(AddU16(0x0));
         
             AddU8(var->variableType);

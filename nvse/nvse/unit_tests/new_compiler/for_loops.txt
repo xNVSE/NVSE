@@ -19,7 +19,7 @@ fn () {
 	assert(iTest == (ar_size(aList)));
 	
 	iTest = 0;
-	for ([int iKey, _] in aList)
+	for ([int iKey] in aList)
 	{
 		assert(iKey == iTest);
 		iTest++;
@@ -27,7 +27,7 @@ fn () {
 	assert(iTest == (ar_size(aList)));
 	
 	iTest = 0;
-	for ([_, ref rValue] in aList)
+	for ([int key, ref rValue] in aList)
 	{
 		assert(rValue == Player);
 		iTest++;
@@ -65,7 +65,7 @@ fn () {
 	
 	rTest = 0;
 	iTest = 0;
-	for ([_, ref rValue] in aMap)
+	for ([int key, ref rValue] in aMap)
 	{
 		iTest++;
 		sKeyStr = sBaseKeyStr + $(iTest);
@@ -79,7 +79,7 @@ fn () {
 	rTest = 0;
 	iTest = 0;
 	sKeyStr = "";
-	for ([string sKey, _] in aMap)
+	for ([string sKey] in aMap)
 	{
 		iTest++;
 		sKeyStr = sBaseKeyStr + $(iTest);

@@ -299,19 +299,24 @@ void NVSETypeChecker::VisitForEachStmt(ForEachStmt* stmt) {
 	}
 	stmt->rhs->Accept(this);
 
-	if (stmt->decompose) {
-		// TODO
-	} else {
-		// Get type of lhs identifier -- this is way too verbose
-		auto decl = stmt->declarations[0];
-		auto ident = std::get<0>(decl->values[0]).lexeme;
-		auto lType = scopes.top()->resolveVariable(ident)->detailedType;
-		auto rType = stmt->rhs->tokenType;
-		if (s_operators[kOpType_In].GetResult(lType, rType) == kTokenType_Invalid) {
-			error(stmt->line, std::format("Invalid types '{}' and '{}' passed to for-in expression.",
-				TokenTypeToString(lType), TokenTypeToString(rType)));
+	WRAP_ERROR(
+		if (stmt->decompose) {
+			// TODO
+			if (stmt->declarations.size() == 2 && stmt->declarations[1] == nullptr) {
+				error(stmt->line, "_ not allowed for value iterator.");
+			}
+		} else {
+			// Get type of lhs identifier -- this is way too verbose
+			auto decl = stmt->declarations[0];
+			auto ident = std::get<0>(decl->values[0]).lexeme;
+			auto lType = scopes.top()->resolveVariable(ident)->detailedType;
+			auto rType = stmt->rhs->tokenType;
+			if (s_operators[kOpType_In].GetResult(lType, rType) == kTokenType_Invalid) {
+				error(stmt->line, std::format("Invalid types '{}' and '{}' passed to for-in expression.",
+					TokenTypeToString(lType), TokenTypeToString(rType)));
+			}
 		}
-	}
+	)
 
 	insideLoop.push(true);
 	stmt->block->Accept(this);

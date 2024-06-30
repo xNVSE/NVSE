@@ -11,7 +11,7 @@ fn () {
 
     int i = 0;
     array testArr = Ar_List(1,2,3);
-    for (array cur : testArr) {
+    for ([array cur] in testArr) {
         if (*cur == 0) {
             assert(!(*cur in [1,2,3]));
             continue;
