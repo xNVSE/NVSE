@@ -75,6 +75,7 @@ public:
 
 typedef UnorderedMap<UInt32, InventoryReference> InventoryReferenceMap;
 extern InventoryReferenceMap s_invRefMap;
+extern ICriticalSection s_invRefMapCS;
 
 InventoryReference* CreateInventoryRef(TESObjectREFR* container, const InventoryReference::Data &data, bool bValidate);
 ExtraContainerChanges::EntryData *CreateTempEntry(TESForm *itemForm, SInt32 countDelta, ExtraDataList *xData);
