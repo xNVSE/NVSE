@@ -319,7 +319,7 @@ char __fastcall StrCompare(const char *lstr, const char *rstr)
 	return *rstr ? -1 : 0;
 }
 
-bool __fastcall StrEqual(const char* lstr, const char* rstr)
+char __fastcall StrEqual(const char* lstr, const char* rstr)
 {
 	return StrCompare(lstr, rstr) == 0;
 }

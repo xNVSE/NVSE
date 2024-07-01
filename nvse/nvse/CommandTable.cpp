@@ -481,16 +481,8 @@ bool CommandTable::Replace(UInt32 opcodeToReplace, CommandInfo *replaceWith)
 	{
 		if (iter->opcode == opcodeToReplace)
 		{
-			// Replacement function must have the same name(s).
-			// Otherwise, one should just make an Alt / Ex / etc. alternate function.
-			if (!StrEqual(iter->longName, replaceWith->longName)
-				|| (iter->shortName && iter->longName[0] && !StrEqual(iter->shortName, replaceWith->shortName))
-				)
-			{
-				return false;
-			}
-			
 			*iter = *replaceWith;
+			iter->opcode = opcodeToReplace;
 			return true;
 		}
 	}
@@ -1202,7 +1194,7 @@ void CommandInfo::DumpFunctionDef(CommandMetadata* metadata) const
 	}
 }
 
-CommandInfo *CommandTable::GetByName(const char* name)
+CommandInfo *CommandTable::GetByName(const char* name, std::unordered_map<std::string, UInt32> *pluginVersions)
 {
 	for (CommandList::reverse_iterator iter = m_commands.rbegin(); iter != m_commands.rend(); ++iter) {
 		if (!StrCompare(name, iter->longName) || (iter->shortName && !StrCompare(name, iter->shortName))) {
