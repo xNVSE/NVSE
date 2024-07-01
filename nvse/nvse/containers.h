@@ -1284,13 +1284,13 @@ public:
 
 	bool HasKey(Key_Arg key) const {return FindEntry(key) ? true : false;}
 
-	T_Data Get(Key_Arg key)
+	T_Data Get(Key_Arg key) const
 	{
 		Entry *pEntry = FindEntry(key);
 		return pEntry ? pEntry->value : static_cast<T_Data>(NULL);
 	}
 
-	T_Data* GetPtr(Key_Arg key)
+	T_Data* GetPtr(Key_Arg key) const
 	{
 		Entry *pEntry = FindEntry(key);
 		return pEntry ? &pEntry->value : nullptr;
