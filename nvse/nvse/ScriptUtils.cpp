@@ -3420,6 +3420,12 @@ std::unique_ptr<ScriptToken> ExpressionParser::ParseOperand(Operator *curOp)
 
 	if (!bExpectStringVar)
 	{
+		if (_stricmp(token.c_str(), "_") == 0) {
+			auto tok = std::make_unique<ScriptToken>();
+			tok->type = kTokenType_OptionalEmpty;
+			return tok;
+		}
+
 		if (_stricmp(token.c_str(), "begin") == 0)
 		{
 			return ParseLambda();
