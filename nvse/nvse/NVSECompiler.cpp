@@ -454,8 +454,8 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
                 tempGlobals[var2].push_back(AddU16(0x0));
             }
             else {
-                AddU8('B');
-                AddU8(0x0);
+                // OptionalEmpty token
+                AddU8('K');
             }
             SetU16(argPatch, data.size() - argStart);
             SetU16(exprPatch, data.size() - exprStart);
@@ -470,8 +470,8 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
                 AddU16(0);
                 tempGlobals[var1].push_back(AddU16(0x0));
             } else {
-                AddU8('B');
-                AddU8(0x0);
+                // OptionalEmpty token
+                AddU8('K');
             }
             SetU16(argPatch, data.size() - argStart);
             SetU16(exprPatch, data.size() - exprStart);

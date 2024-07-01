@@ -1057,8 +1057,8 @@ CommandInfo kCommandInfo_ForEach =
 static ParamInfo kParams_ForEachAlt[] =
 {
 	{	"sourceArray",		kNVSEParamType_Array,	0	},
-	{	"valueVariable",	kNVSEParamType_Variable | kNVSEParamType_Number,	0	}, // if keyVariable wasn't passed, and sourceArray is a map, then this will act as a key iterator.
-	{	"keyVariable",		kNVSEParamType_StringVar | kNVSEParamType_NumericVar | kNVSEParamType_Number,	1	},
+	{	"valueVariable",	kNVSEParamType_Variable | kNVSEParamType_OptionalEmpty,	0	}, // if keyVariable wasn't passed, and sourceArray is a map, then this will act as a key iterator.
+	{	"keyVariable",		kNVSEParamType_StringVar | kNVSEParamType_NumericVar | kNVSEParamType_OptionalEmpty,	1	},
 };
 CommandInfo kCommandInfo_ForEachAlt =
 {

@@ -137,7 +137,11 @@ enum Token_Type : UInt8
 	kTokenType_LeftToken,
 	kTokenType_RightToken,
 
-	kTokenType_Invalid = 27, // limit of 32 bits on (NVSE)ParamType
+	// xNVSE 7.0.0
+	// '_' tokens get converted to this to signify no value (basically null)
+	kTokenType_OptionalEmpty,
+
+	kTokenType_Invalid = 28, // limit of 32 bits on (NVSE)ParamType
 	kTokenType_Max = kTokenType_Invalid,
 
 	// sigil value, returned when an empty expression is parsed

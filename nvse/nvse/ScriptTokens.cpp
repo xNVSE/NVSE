@@ -610,6 +610,8 @@ const char *TokenTypeToString(Token_Type type)
 		return "Invalid";
 	case kTokenType_Empty:
 		return "Empty";
+	case kTokenType_OptionalEmpty:
+		return "OptionalEmpty";
 	default:
 		return "Unknown";
 	}
@@ -1430,6 +1432,9 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator *context)
 		value.lambdaScriptData = LambdaManager::ScriptData(scriptData, dataLen);
 		break;
 	}
+	case 'K':
+		type = kTokenType_OptionalEmpty;
+		break;
 	default:
 	{
 		if (typeCode < kOpType_Max)
@@ -1472,6 +1477,7 @@ const std::unordered_map g_tokenCodes =
 		std::make_pair(kTokenType_Short, 'I'),
 		std::make_pair(kTokenType_Int, 'L'),
 		std::make_pair(kTokenType_Lambda, 'F'),
+		std::make_pair(kTokenType_OptionalEmpty, 'K'),
 };
 
 inline char TokenTypeToCode(Token_Type type)
@@ -1545,6 +1551,8 @@ bool ScriptToken::Write(ScriptLineBuffer *buf) const
 		// ref list and var list are shared by scripts
 		buf->Write32(value.lambda->info.dataLength);
 		return buf->Write(value.lambda->data, value.lambda->info.dataLength);
+	case kTokenType_OptionalEmpty:
+		return true;
 	// the rest are run-time only
 	default:
 		return false;
@@ -1883,6 +1891,8 @@ static Operand s_operands[] =
 
 		{NULL, 0}, // LeftToken
 		{NULL, 0}, // RightToken
+
+		{NULL, 0}, //OptionalEmpty
 
 		{NULL, 0} // Max
 };

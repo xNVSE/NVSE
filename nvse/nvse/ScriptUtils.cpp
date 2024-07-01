@@ -5179,6 +5179,10 @@ std::string ExpressionEvaluator::GetLineText(CachedTokens &tokens, ScriptToken *
 				operands.push_back(result);
 				break;
 			}
+			case kTokenType_OptionalEmpty: {
+				operands.push_back("_");
+				break;
+			}
 			default:
 				operands.emplace_back("<can't decompile token>");
 				break;

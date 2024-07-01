@@ -585,15 +585,16 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 	int argIdx = 0;
 	int paramIdx = 0;
 	for (; paramIdx < cmd->numParams && argIdx < expr->args.size(); paramIdx++) {
-		auto param = &cmd->params[paramIdx];
-		auto arg = expr->args[argIdx];
-
-		std::shared_ptr<NumberExpr> converted = nullptr;
-
+		// Don't type check args passed to call yet
 		// TODO
 		if (cmd->parse == kCommandInfo_Call.parse) {
 			continue;
 		}
+
+		auto param = &cmd->params[paramIdx];
+		auto arg = expr->args[argIdx];
+
+		std::shared_ptr<NumberExpr> converted = nullptr;
 
 		if (isDefaultParse(cmd->parse)) {
 			// Try to resolve identifiers as vanilla enums
