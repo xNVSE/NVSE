@@ -112,7 +112,7 @@ char* __fastcall StrNCopy(char* dest, const char* src, UInt32 length);
 char* __fastcall StrCat(char* dest, const char* src);
 
 char __fastcall StrCompare(const char* lstr, const char* rstr);
-char __fastcall StrEqual(const char* lstr, const char* rstr);
+bool __fastcall StrEqual(const char* lstr, const char* rstr);
 
 void __fastcall StrToLower(char* str);
 
