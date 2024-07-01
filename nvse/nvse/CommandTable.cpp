@@ -316,7 +316,7 @@ bool Cmd_DumpDocs_Execute(COMMAND_ARGS)
 	if (IsConsoleMode())
 		Console_Print("Dumping Command Docs");
 
-	g_scriptCommands.DumpCommandDocumentation(showQuickList != 0, startingOpcode, 
+	g_scriptCommands.DumpCommandDocumentation(showQuickList != 0, startingOpcode,
 		showIfConditionOnly != 0, showIfDeprecated != 0);
 
 	if (IsConsoleMode())
@@ -481,16 +481,8 @@ bool CommandTable::Replace(UInt32 opcodeToReplace, CommandInfo *replaceWith)
 	{
 		if (iter->opcode == opcodeToReplace)
 		{
-			// Replacement function must have the same name(s).
-			// Otherwise, one should just make an Alt / Ex / etc. alternate function.
-			if (!StrEqual(iter->longName, replaceWith->longName)
-				|| (iter->shortName && iter->shortName[0] && !StrEqual(iter->shortName, replaceWith->shortName))
-				)
-			{
-				return false;
-			}
-
 			*iter = *replaceWith;
+			iter->opcode = opcodeToReplace;
 			return true;
 		}
 	}
@@ -990,7 +982,7 @@ std::string CommandInfo::GetWikiStyleOriginName(bool originOrCategory, CommandMe
 					pluginName.append(" NVSE");
 				}
 			}
-			
+
 			return pluginName;
 		}
 	}
@@ -1147,7 +1139,7 @@ void CommandInfo::DumpWikiDocs(const char* versionNumberStr) const
 				_MESSAGE("   |Optional = y");
 				_MESSAGE("   |Value = [INSERT DEFAULT VALUE]");
 			}
-				
+
 			if (i + 1 < numParams)
 				_MESSAGE("  }}{{FunctionArgument");
 			else
