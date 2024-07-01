@@ -484,7 +484,7 @@ bool CommandTable::Replace(UInt32 opcodeToReplace, CommandInfo *replaceWith)
 			// Replacement function must have the same name(s).
 			// Otherwise, one should just make an Alt / Ex / etc. alternate function.
 			if (!StrEqual(iter->longName, replaceWith->longName)
-				|| (iter->shortName && iter->longName[0] && !StrEqual(iter->shortName, replaceWith->shortName))
+				|| (iter->shortName && iter->shortName[0] && !StrEqual(iter->shortName, replaceWith->shortName))
 				)
 			{
 				return false;
