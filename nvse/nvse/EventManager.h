@@ -32,6 +32,7 @@ typedef void (*EventHookInstaller)();
 
 namespace EventManager
 {
+	void WriteDelayedEventHooks();
 	extern Stack<const char *> s_eventStack;
 	extern UInt32 s_eventsInUse;
 

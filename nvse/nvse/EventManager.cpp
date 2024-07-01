@@ -34,10 +34,6 @@ InternalEventVec s_internalEventInfos(kEventID_InternalMAX);
 static void  InstallHook();
 static void  InstallActivateHook();
 static void	 InstallOnActorEquipHook();
-namespace OnSell
-{
-	static void InstallOnSellHook();
-}
 
 enum {
 	kEventMask_OnActivate		= 0x01000000,		// special case as OnActivate has no event mask
@@ -47,7 +43,6 @@ enum {
 static EventHookInstaller s_MainEventHook = InstallHook;
 static EventHookInstaller s_ActivateHook = InstallActivateHook;
 static EventHookInstaller s_ActorEquipHook = InstallOnActorEquipHook;
-static EventHookInstaller s_SellHook = OnSell::InstallOnSellHook;
 
 
 ///////////////////////////
@@ -269,11 +264,11 @@ namespace OnSell
 		return contChangesEntry->countDelta;
 	}
 
-	static void InstallOnSellHook()
+	// Main hook does not run reliably for this event, plus we don't handle the data that gets passed properly.
+	// So we make a unique hook.
+	// Needs to be delayed to overwrite NVAC's inlining with the this_1 calls.
+	static void WriteDelayedHooks()
 	{
-		// Main hook does not run reliably for this event, plus we don't handle the data that gets passed properly.
-		// So we make a unique hook.
-
 		// Replace this_1 calls.
 		WriteRelCall(0x72FE3E, (UInt32)&OnSellHook<false>);
 		WriteRelCall(0x72FF20, (UInt32)&OnSellHook<true>);
@@ -301,6 +296,10 @@ static __declspec(naked) void TESObjectREFR_ActivateHook(void)
 void InstallActivateHook()
 {
 	WriteRelJump(kActivate_HookAddr, (UInt32)&TESObjectREFR_ActivateHook);
+}
+
+void WriteDelayedEventHooks() {
+	OnSell::WriteDelayedHooks();
 }
 
 eEventID EventIDForMask(UInt32 eventMask)
@@ -2073,7 +2072,7 @@ void Init()
 	EVENT_INFO("onpackagedone", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnPackageDone);
 	EVENT_INFO("onload", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnLoad);
 	EVENT_INFO("onmagiceffecthit", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnMagicEffectHit);
-	EVENT_INFO("onsell", kEventParams_GameEvent, &s_SellHook, ScriptEventList::kEvent_OnSell);
+	EVENT_INFO("onsell", kEventParams_GameEvent, nullptr, ScriptEventList::kEvent_OnSell);
 	EVENT_INFO("onstartcombat", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnStartCombat);
 	EVENT_INFO("saytodone", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_SayToDone);
 	EVENT_INFO_WITH_ALIAS("ongrab", "on0x0080000", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnGrab);
