@@ -3348,9 +3348,7 @@ VariableInfo* CreateVariable(Script* script, ScriptBuffer* scriptBuf, const std:
 		printCompileError("Invalid variable name " + varName + ": Form with that Editor ID already exists.");
 		return nullptr;
 	}
-	// We could filter with g_currentCompilerPluginVersions.top(), but there's no point.
-	// The main function's name isn't going to change.
-	if (g_scriptCommands.GetByName(varName.c_str()))
+	if (g_scriptCommands.GetByName(varName.c_str(), &g_currentCompilerPluginVersions.top()))
 	{
 		printCompileError("Invalid variable name " + varName + ": Command with that name already exists.");
 		return nullptr;
