@@ -8,6 +8,7 @@
 #include "Commands_Script.h"
 #include "EventManager.h"
 #include "ScriptTokens.h"
+#include "InventoryReference.h"
 
 /*************************
 Save file format:
@@ -122,6 +123,12 @@ void Core_PreLoadCallback(void * reserved)
 	EventManager::ClearFlushOnLoadEventHandlers();
 	DisablePlayerControlsAlt::ResetOnLoad();
 	
+	// if any temporary references to inventory objects exist, clean them up
+	if (!s_invRefMap.Empty()) {
+		ScopedLock lock(s_invRefMapCS);
+		s_invRefMap.Clear();
+	}
+
 	g_ArrayMap.Reset();
 	g_StringMap.Reset();
 
