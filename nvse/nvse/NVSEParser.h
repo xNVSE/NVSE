@@ -64,6 +64,7 @@ private:
     bool MatchesType();
     bool Peek(NVSETokenType type) const;
     bool PeekType() const;
+    void Error(std::string message);
     void Error(NVSEToken token, std::string message);
     NVSEToken Expect(NVSETokenType type, std::string message);
     void Synchronize();

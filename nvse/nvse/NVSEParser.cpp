@@ -7,6 +7,7 @@
 #include "Hooks_Script.h"
 #include "NVSETreePrinter.h"
 #include "NVSEAst.h"
+#include "PluginManager.h"
 
 NVSEParser::NVSEParser(NVSELexer& tokenizer) : lexer(tokenizer) {
 	Advance();
@@ -46,6 +47,7 @@ std::optional<NVSEScript> NVSEParser::Parse() {
 					auto plugin = Expect(NVSETokenType::String, "Expected plugin name.");
 					Expect(NVSETokenType::Comma, "Expected ','.");
 					auto pluginName = std::get<std::string>(plugin.value);
+					std::ranges::transform(pluginName.begin(), pluginName.end(), pluginName.begin(), [](unsigned char c) { return std::tolower(c); });
 					if (StrEqual(pluginName.c_str(), "nvse")) {
 						auto major = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected major version").value));
 						int minor = 255;
@@ -61,6 +63,10 @@ std::optional<NVSEScript> NVSEParser::Parse() {
 					}
 					else { // handle versions for plugins
 						auto pluginVersion = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected plugin version").value));
+						auto* pluginInfo = g_pluginManager.GetInfoByName(pluginName.c_str());
+						if (!pluginInfo) [[unlikely]] {
+							Error(std::format("No plugin with name {} could be found.\n", pluginName));
+						}
 						pluginVersions[pluginName] = pluginVersion;
 					}
 					Expect(NVSETokenType::RightParen, "Expected ')'.");
@@ -861,6 +867,13 @@ bool NVSEParser::Peek(NVSETokenType type) const {
 bool NVSEParser::PeekType() const {
 	return Peek(NVSETokenType::IntType) || Peek(NVSETokenType::DoubleType) || Peek(NVSETokenType::RefType) ||
 			Peek(NVSETokenType::ArrayType) || Peek(NVSETokenType::StringType);
+}
+
+void NVSEParser::Error(std::string message) {
+	panicMode = true;
+	hadError = true;
+
+	throw NVSEParseError(std::format("Error: {}", message));
 }
 
 void NVSEParser::Error(NVSEToken token, std::string message) {

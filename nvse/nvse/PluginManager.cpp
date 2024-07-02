@@ -250,7 +250,7 @@ PluginInfo * PluginManager::GetInfoByName(const char * name)
 	{
 		LoadedPlugin	* plugin = &(*iter);
 
-		if(plugin->info.name && !strcmp(name, plugin->info.name))
+		if(plugin->info.name && !_stricmp(name, plugin->info.name))
 			return &plugin->info;
 	}
 

@@ -476,7 +476,7 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 
 		// Default to 6.3.5 for scriptrunner unless specified
 		if (buf->partialScript) {
-			pluginVersions["NVSE"] = MAKE_NEW_VEGAS_VERSION(6, 3, 5);
+			pluginVersions["nvse"] = MAKE_NEW_VEGAS_VERSION(6, 3, 5);
 		}
 
 		// Pre-process comments for version tags
@@ -496,6 +496,8 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 			buf->scriptText[matchPos] = ';';
 
 			std::string pluginName = match[1];
+			std::ranges::transform(pluginName.begin(), pluginName.end(), pluginName.begin(), [](unsigned char c) { return std::tolower(c); });
+
 			if (StrEqual(pluginName.c_str(), "nvse")) {
 				int major = std::stoi(match[2]);
 				int minor = match[3].matched ? std::stoi(match[3]) : 255;
