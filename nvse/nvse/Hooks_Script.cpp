@@ -231,66 +231,71 @@ namespace RemoveScriptDataLimit
 	}
 }
 
-void __cdecl HandleCmdHelp_PrintCommands(char* searchParameter) {
-	const auto* end = g_scriptCommands.GetEnd();
-	for (const auto* cur = g_scriptCommands.GetStart(); cur != end; ++cur) {
-		auto* parent = g_scriptCommands.GetParentPlugin(cur);
+namespace PatchHelpCommand {
+	void __cdecl HandlePrintCommands(char* searchParameter) {
+		const auto* end = g_scriptCommands.GetEnd();
+		for (const auto* cur = g_scriptCommands.GetStart(); cur != end; ++cur) {
+			auto* parent = g_scriptCommands.GetParentPlugin(cur);
 
-		if (!searchParameter[0] || SubStrCI(cur->helpText, searchParameter) || SubStrCI(cur->longName, searchParameter) || SubStrCI(cur->shortName, searchParameter) || (parent && SubStrCI(parent->name, searchParameter))) {
-			char versionBuf[50] = "";
+			if (!searchParameter[0] || SubStrCI(cur->helpText, searchParameter) || SubStrCI(cur->longName, searchParameter) || SubStrCI(cur->shortName, searchParameter) || (parent && SubStrCI(parent->name, searchParameter))) {
+				char versionBuf[50] = "";
 
-			if (parent) {
-				const auto* updateInfo = g_scriptCommands.GetUpdateInfoForOpCode(cur->opcode);
+				if (parent) {
+					const auto* updateInfo = g_scriptCommands.GetUpdateInfoForOpCode(cur->opcode);
 
-				if (!_stricmp(parent->name, "nvse")) {
-					if (updateInfo) {
-						const auto ver = std::get<1>(*updateInfo);
-						sprintf(versionBuf, "[%s %lu.%lu.%lu] ", parent->name, ver >> 24 & 0xFF, ver >> 16 & 0xFF, ver >> 4 & 0xFF);
+					if (!_stricmp(parent->name, "nvse")) {
+						if (updateInfo) {
+							const auto ver = std::get<1>(*updateInfo);
+							sprintf(versionBuf, "[%s %lu.%lu.%lu] ", parent->name, ver >> 24 & 0xFF, ver >> 16 & 0xFF, ver >> 4 & 0xFF);
+						}
+						else {
+							sprintf(versionBuf, "[%s %lu.%lu.%lu] ", parent->name, NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA);
+						}
 					}
 					else {
-						sprintf(versionBuf, "[%s %lu.%lu.%lu] ", parent->name, NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA);
+						if (updateInfo) {
+							sprintf(versionBuf, "[%s %lu] ", parent->name, std::get<1>(*updateInfo));
+						}
+						else {
+							sprintf(versionBuf, "[%s %lu] ", parent->name, parent->version);
+						}
 					}
 				}
-				else {
-					if (updateInfo) {
-						sprintf(versionBuf, "[%s %lu] ", parent->name, std::get<1>(*updateInfo));
+
+				if (cur->helpText && strlen(cur->helpText)) {
+					if (cur->shortName && strlen(cur->shortName)) {
+						Console_Print("%s%s (%s) -> %s", versionBuf, cur->longName, cur->shortName, cur->helpText);
 					}
 					else {
-						sprintf(versionBuf, "[%s %lu] ", parent->name, parent->version);
+						Console_Print("%s%s -> %s", versionBuf, cur->longName, cur->helpText);
 					}
 				}
-			}
-
-			if (cur->helpText && strlen(cur->helpText)) {
-				if (cur->shortName && strlen(cur->shortName)) {
-					Console_Print("%s%s (%s) -> %s", versionBuf, cur->longName, cur->shortName, cur->helpText);
+				else if (cur->shortName && strlen(cur->shortName)) {
+					Console_Print("%s%s (%s)", versionBuf, cur->longName, cur->shortName);
 				}
 				else {
-					Console_Print("%s%s -> %s", versionBuf, cur->longName, cur->helpText);
+					Console_Print("%s%s", versionBuf, cur->longName);
 				}
-			}
-			else if (cur->shortName && strlen(cur->shortName)) {
-				Console_Print("%s%s (%s)", versionBuf, cur->longName, cur->shortName);
-			}
-			else {
-				Console_Print("%s%s", versionBuf, cur->longName);
 			}
 		}
 	}
-}
 
-__declspec(naked) void HookCmdHelp_PrintCommands() {
-	static uint32_t rtnAddr = 0x5BCDB6;
+	__declspec(naked) void Hook() {
+		static uint32_t rtnAddr = 0x5BCDB6;
 
-	_asm {
-		lea eax, [ebp - 0x214]
-		push eax
-		call HandleCmdHelp_PrintCommands
-		add esp, 4
-		jmp rtnAddr
+		_asm {
+			lea eax, [ebp - 0x214]
+			push eax
+			call HandlePrintCommands
+			add esp, 4
+			jmp rtnAddr
+		}
+	}
+
+	void ApplyHook() {
+		WriteRelJump(0x5BCBC2, reinterpret_cast<UInt32>(&Hook));
 	}
 }
-
 
 void Hook_Script_Init()
 {
@@ -335,9 +340,9 @@ void Hook_Script_Init()
 		SafeWrite8(0x5E1024, 0xEB); // replace jnz with jmp
 		SafeWrite8(0x5E133B, 0xEB);
 	}
-	
-	WriteRelJump(0x5949D4, reinterpret_cast<UInt32>(ExpressionEvalRunCommandHook));
-	WriteRelJump(0x5BCBC2, reinterpret_cast<UInt32>(&HookCmdHelp_PrintCommands));
+
+	// Patch command output for vanilla help command to output parent plugins / associated versions
+	PatchHelpCommand::ApplyHook();
 
 	PatchRuntimeScriptCompile();
 
