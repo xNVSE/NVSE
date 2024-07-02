@@ -121,6 +121,16 @@ public:
 				m_eval.Error("Call statement received invalid form for the script arg. Said form %s has type %u.", 
 					form->GetStringRepresentation().c_str(), form->GetTypeID());
 			}
+			if (!form) 
+			{
+				if (auto* ctx = OtherHooks::GetExecutingScriptContext(); ctx && ctx->script && ctx->curDataPtr) 
+				{
+					auto* lineDataStart = ctx->script->data + *ctx->curDataPtr - 4;
+					ScriptParsing::ScriptIterator iter(ctx->script, lineDataStart);
+					const auto line = ScriptParsing::ScriptAnalyzer::ParseLine(iter);
+					m_eval.Error("Call failed! Script is NULL: '%s'", !line->error ? line->ToString().c_str() : "<failed to decompile line>");
+				}
+			}
 			delete scrToken;
 		}
 
