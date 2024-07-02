@@ -1,0 +1,32 @@
+name comments;
+
+fn () {
+	string testName = "Comments";
+	print(("Started running xNVSE " + testName + " unit tests."));
+	
+	string test = "/* */";
+	assert(test == "/* */");
+	assert(sv_length(test) == 5);
+	
+	test = "//";
+	assert(test == "//");
+	
+/*
+	test = "2";
+*/
+	assert(test == "//");
+	
+//	test = "2";
+	assert(test == "//");
+	
+	/* */ test = "2"; /* test = "3"; */ // test = "4";
+	assert(test == "2");
+	
+	/* // */ test = "3"/**//**//**/;//;
+	assert(test == "3");
+	
+	test = "blah";
+	assert(sv_length(/*test*/test) == 4);
+	
+	print(("Finished running xNVSE " + testName + " unit tests."));
+}

@@ -20,6 +20,7 @@ extern SInt32 FUNCTION_CONTEXT_COUNT;
 #include "GameAPI.h"
 #endif
 #include <variant>
+#include "StackVariables.h"
 
 enum class NVSEVarType
 {
@@ -136,7 +137,11 @@ enum Token_Type : UInt8
 	kTokenType_LeftToken,
 	kTokenType_RightToken,
 
-	kTokenType_Invalid,
+	// xNVSE 7.0.0
+	// '_' tokens get converted to this to signify no value (basically null)
+	kTokenType_OptionalEmpty,
+
+	kTokenType_Invalid = 28, // limit of 32 bits on (NVSE)ParamType
 	kTokenType_Max = kTokenType_Invalid,
 
 	// sigil value, returned when an empty expression is parsed
@@ -144,6 +149,7 @@ enum Token_Type : UInt8
 };
 
 const char *TokenTypeToString(Token_Type type);
+Token_Type ToTokenType(CommandReturnType type);
 
 struct Slice // a range used for indexing into a string or array, expressed as arr[a:b]
 {
@@ -175,11 +181,12 @@ struct TokenPair // a pair of tokens, specified as 'a::b'
 struct ForEachContext
 {
 	UInt32 sourceID;
-	UInt32 iteratorID;
-	UInt32 variableType;
-	ScriptLocal *var;
+	UInt32 iteratorID; // potentially null
+	Variable iterVar;
 
-	ForEachContext(UInt32 src, UInt32 iter, UInt32 varType, ScriptLocal *_var) : sourceID(src), iteratorID(iter), variableType(varType), var(_var) {}
+	ForEachContext(UInt32 src, UInt32 iter, Variable var)
+		: sourceID(src), iteratorID(iter), iterVar(var)
+	{}
 };
 
 #endif
@@ -187,7 +194,10 @@ struct ForEachContext
 #if RUNTIME
 struct CustomVariableContext
 {
-	ScriptLocal* scriptLocal;
+	// This member may look completely unused, but beware: messes up string_var assignment if removed.
+	// Potentially relied upon in some plugin.
+	ScriptLocal* scriptLocal; 
+
 	union
 	{
 		StringVar* stringVar;
@@ -265,13 +275,13 @@ struct ScriptToken
 	Token_Type ReadFrom(ExpressionEvaluator *context); // reconstitute param from compiled data, return the type
 	[[nodiscard]] virtual ArrayID GetArrayID() const;
 	[[nodiscard]] ArrayVar *GetArrayVar() const;
-	[[nodiscard]] ScriptLocal *GetVar() const;
+	[[nodiscard]] ScriptLocal *GetScriptLocal() const;
 	[[nodiscard]] StringVar* GetStringVar() const;
 	bool ResolveVariable();
 	[[nodiscard]] Script* GetUserFunction() const;
 	ScriptParsing::CommandCallToken GetCallToken(Script* script) const;
 #endif
-	[[nodiscard]] virtual bool CanConvertTo(Token_Type to) const; // behavior varies b/w compile/run-time for ambiguous types
+[[nodiscard]] virtual bool CanConvertTo(Token_Type to) const; // behavior varies b/w compile/run-time for ambiguous types
 	[[nodiscard]] virtual ArrayID GetOwningArrayID() const { return 0; }
 	[[nodiscard]] virtual const ScriptToken *GetToken() const { return nullptr; }
 	[[nodiscard]] virtual const TokenPair *GetPair() const { return nullptr; }
@@ -296,7 +306,9 @@ struct ScriptToken
 	[[nodiscard]] Token_Type Type() const { return type; }
 
 	[[nodiscard]] bool IsGood() const { return type != kTokenType_Invalid; }
-	[[nodiscard]] bool IsVariable() const { return type >= kTokenType_NumericVar && type <= kTokenType_ArrayVar; }
+	[[nodiscard]] bool IsVariable() const {
+		return (type >= kTokenType_NumericVar && type <= kTokenType_ArrayVar);
+	}
 
 	[[nodiscard]] double GetNumericRepresentation(bool bFromHex, bool* hasErrorOut = nullptr) const; // attempts to convert string to number
 	[[nodiscard]] char *DebugPrint() const;
@@ -468,7 +480,7 @@ struct ForEachContextToken : ScriptToken
 {
 	ForEachContext context;
 
-	ForEachContextToken(UInt32 srcID, UInt32 iterID, UInt32 varType, ScriptLocal *var);
+	ForEachContextToken(UInt32 srcID, UInt32 iterID, Variable var);
 	[[nodiscard]] const ForEachContext *GetForEachContext() const override { return Type() == kTokenType_ForEachContext ? &context : nullptr; }
 	void *operator new(size_t size);
 

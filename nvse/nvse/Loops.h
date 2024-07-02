@@ -52,21 +52,30 @@ public:
 class ArrayIterLoop : public ForEachLoop
 {
 	ArrayID m_srcID;
-	ArrayID m_iterID;
+	ArrayID m_iterID{}; // potentially null if passing values directly to variables while iterating.
 	ArrayKey m_curKey;
-	UInt8 m_modIndex;
+	Script* m_script;
 
-	void UpdateIterator(const ArrayElement *elem);
+	void Init();
+	bool UpdateIterator(const ArrayElement *elem);
 
 public:
-	ScriptLocal *m_iterVar;
+	// Either one is optional, or both could be valid at the same time.
+	// If m_iterID is not null, then m_keyIterVar is unused and m_valueIterVar will point to the iterator arrayID.
+	// If m_iterID is null, then the variables will always be stack variables.
+	Variable m_valueIterVar{};
+	std::optional<Variable> m_keyIterVar{};
 
-	ArrayIterLoop(const ForEachContext *context, UInt8 modIndex);
+	ArrayIterLoop(const ForEachContext* context, Script* script);
+	ArrayIterLoop(ArrayID sourceID, Script* script, Variable valueIterVar, std::optional<Variable> keyIterVar);
 	~ArrayIterLoop() override;
 
 	virtual bool Update(COMMAND_ARGS);
 	bool IsEmpty()
 	{
+		if (!m_srcID) [[unlikely]] {
+			return true;
+		}
 		ArrayVar *arr = g_ArrayMap.Get(m_srcID);
 		return !arr || !arr->Size();
 	}
@@ -77,7 +86,7 @@ class StringIterLoop : public ForEachLoop
 {
 	std::string m_src;
 	UInt32 m_curIndex;
-	UInt32 m_iterID;
+	UInt32 m_iterID{};
 
 public:
 	StringIterLoop(const ForEachContext *context);
@@ -93,7 +102,7 @@ class ContainerIterLoop : public ForEachLoop
 	typedef InventoryReference::Data IRefData;
 
 	InventoryReference *m_invRef;
-	ScriptLocal *m_refVar;
+	ScriptLocal* m_refVar;
 	UInt32 m_iterIndex;
 	Vector<ExtraContainerChanges::EntryData *> m_elements;
 
@@ -111,7 +120,7 @@ public:
 class FormListIterLoop : public ForEachLoop
 {
 	ListNode<TESForm>	*m_iter;
-	ScriptLocal			*m_refVar;
+	ScriptLocal* m_refVar;
 
 	bool GetNext();
 

@@ -8,15 +8,15 @@
 #include "FunctionScripts.h"
 #include "ScriptUtils.h"
 
-std::vector<ScriptParsing::ScriptAnalyzer*> g_analyzerStack;
+std::vector<ScriptParsing::ScriptAnalyzer*> ScriptParsing::g_analyzerStack {};
 
 ScriptParsing::ScriptAnalyzer* GetRootAnalyzer()
 {
-	if (g_analyzerStack.empty()) {
+	if (ScriptParsing::g_analyzerStack.empty()) {
 		return nullptr;
 	}
 	
-	return g_analyzerStack[0];
+	return ScriptParsing::g_analyzerStack[0];
 }
 
 UInt8 Read8(UInt8*& curData)
@@ -718,6 +718,10 @@ bool ScriptParsing::ScriptIterator::ReadStringLiteral(std::string_view& out)
 
 void RegisterNVSEVar(VariableInfo* info, Script::VariableType type)
 {
+	if (!info) {
+		return;
+	}
+
 	if (auto* analyzer = GetRootAnalyzer())
 	{
 		if (type == Script::eVarType_Array)
@@ -735,6 +739,10 @@ void RegisterNVSEVars(CachedTokens& tokens, Script* script)
 		for (auto iter = tokens.Begin(); !iter.End(); ++iter)
 		{
 			auto* token = iter.Get().token;
+			if (!token) {
+				continue;
+			}
+
 			if (token->type == kTokenType_ArrayVar)
 				analyzer->arrayVariables.insert(script->GetVariableInfo(token->varIdx));
 			else if (token->type == kTokenType_StringVar)
@@ -756,13 +764,15 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context, U
 {
 	if (!cmdInfo)
 		return false;
+
 	if (cmdInfo->execute == kCommandInfo_Function.execute)
 	{
 		FunctionInfo info(context.script);
 		for (auto& param : info.m_userFunctionParams)
 		{
-			auto* varInfo = context.script->GetVariableInfo(param.varIdx);
-			RegisterNVSEVar(varInfo, param.varType);
+			// TODO: support stack variables here?
+			auto* varInfo = context.script->GetVariableInfo(param.m_varIdx);
+			RegisterNVSEVar(varInfo, param.GetType());
 			args.push_back(std::make_unique<ScriptVariableToken>(context.script, ExpressionCode::None, varInfo));
 			if (args.back()->error)
 				return false;
@@ -800,13 +810,15 @@ bool ScriptParsing::CommandCallToken::ParseCommandArgs(ScriptIterator context, U
 				return false;
 			this->expressionEvalArgs.push_back(tokens);
 		}
-		for (auto* token : this->expressionEvalArgs)
+		for (auto* token : this->expressionEvalArgs) {
 			RegisterNVSEVars(*token, context.script);
+		}
 		return true;
 	}
 	const auto numArgs = context.Read16();
-	if (!ParseGameArgs(context, numArgs))
+	if (!ParseGameArgs(context, numArgs)) {
 		return false;
+	}
 	if (context.curData < context.startData + dataLen && Contains(g_messageBoxParseCmds, reinterpret_cast<UInt32>(cmdInfo->parse)))
 	{
 		// message box args?
@@ -1234,7 +1246,7 @@ auto ScriptParsing::ScriptAnalyzer::DecompileScript() -> std::string {
 	std::string scriptHeader;
 	std::string scriptText;
 	auto numTabs = 0;
-	const auto nestAddOpcodes = {static_cast<UInt32>(ScriptStatementCode::If), static_cast<UInt32>(ScriptStatementCode::Begin), kCommandInfo_While.opcode, kCommandInfo_ForEach.opcode};
+	const auto nestAddOpcodes = {static_cast<UInt32>(ScriptStatementCode::If), static_cast<UInt32>(ScriptStatementCode::Begin), kCommandInfo_While.opcode, kCommandInfo_ForEach.opcode, kCommandInfo_ForEachAlt.opcode};
 	const auto nestMinOpcodes = {static_cast<UInt32>(ScriptStatementCode::EndIf), static_cast<UInt32>(ScriptStatementCode::End), kCommandInfo_Loop.opcode};
 	const auto nestNeutralOpcodes = {static_cast<UInt32>(ScriptStatementCode::Else), static_cast<UInt32>(ScriptStatementCode::ElseIf)};
 	UInt32 lastOpcode = 0;
@@ -1285,6 +1297,10 @@ auto ScriptParsing::ScriptAnalyzer::DecompileScript() -> std::string {
 	if (!isLambdaScript) {
 		std::unordered_set<std::string> addedVars{};
 		auto addVar = [&] (VariableInfo *var) {
+			if (!var) {
+				return;
+			}
+
 			const auto name = std::string(var->name.CStr());
 			if (!var || addedVars.contains(name)) {
 				return;

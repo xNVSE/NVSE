@@ -322,6 +322,7 @@ namespace ScriptParsing
 		std::unordered_set<VariableInfo*> arrayVariables;
 		std::unordered_set<VariableInfo*> stringVariables;
 		Script* script;
+		std::vector<std::string> stackVars;
 
 		bool CallsCommand(CommandInfo* cmd, CommandInfo* eventBlockInfo);
 
@@ -332,6 +333,8 @@ namespace ScriptParsing
 		std::unique_ptr<ScriptParsing::ScriptLine> ParseLine(UInt32 line);
 		std::string DecompileScript();
 	};
+
+	extern std::vector<ScriptAnalyzer*> g_analyzerStack;
 
 	size_t __stdcall DecompileToBuffer(Script* pScript, FILE* pStream, char* pBuffer);
 }

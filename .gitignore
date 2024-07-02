@@ -396,3 +396,5 @@ ipch
 
 *.tlog
 *.recipe
+/nvse/enc_temp_folder
+/nvse/.idea/.idea.nvse/.idea

@@ -936,24 +936,21 @@ const char* GetModName(TESForm* form)
 #if NVSE_CORE
 UnorderedSet<UInt32> g_warnedScripts;
 
-void ShowRuntimeError(Script* script, const char* fmt, ...)
+void vShowRuntimeError(Script* script, const char* fmt, va_list args)
 {
-	va_list args;
-	va_start(args, fmt);
-
 	char errorMsg[0x800];
 	vsprintf_s(errorMsg, sizeof(errorMsg), fmt, args);
-	
+
 	char errorHeader[0x900];
 	const auto* modName = GetModName(script);
-	
+
 	const auto* scriptName = script ? script->GetName() : nullptr; // JohnnyGuitarNVSE allows this
 	auto refId = script ? script->refID : 0;
 	const auto modIdx = script ? script->GetModIndex() : 0;
 	if (script && LambdaManager::IsScriptLambda(script))
 	{
 		Script* parentScript;
-		if (auto* parentEventList = LambdaManager::GetParentEventList(script); 
+		if (auto* parentEventList = LambdaManager::GetParentEventList(script);
 			parentEventList && ((parentScript = parentEventList->m_script)))
 		{
 			refId = parentScript->refID;
@@ -984,6 +981,14 @@ void ShowRuntimeError(Script* script, const char* fmt, ...)
 	_MESSAGE("%s", errorHeader);
 
 	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_RuntimeScriptError, errorMsg, 4, NULL);
+}
+
+void ShowRuntimeError(Script* script, const char* fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+
+	vShowRuntimeError(script, fmt, args);
 
 	va_end(args);
 }
@@ -1138,7 +1143,7 @@ bool StartsWith(std::string left, std::string right)
 // Taken from https://stackoverflow.com/a/4770992/22891557
 bool StartsWith(const char* pre, const char* str)
 {
-	return strncmp(pre, str, strlen(pre)) == 0;
+	return _strnicmp(pre, str, strlen(pre)) == 0;
 }
 
 std::vector<std::string> SplitString(std::string s, std::string delimiter)

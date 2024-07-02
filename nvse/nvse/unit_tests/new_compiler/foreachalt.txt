@@ -1,0 +1,14 @@
+name foreachalt;
+
+fn () {
+	string testName = "ForEachAlt";
+	print(("Started running xNVSE ${testName} unit tests."));
+
+	array testArr = {1::"Hello", 2::"World"};
+	for ([int key, string val] in testArr) {
+		print($key);
+		print($val);
+	}
+	
+	print(("Finished running xNVSE ${testName} unit tests."));
+}

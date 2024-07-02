@@ -1,0 +1,51 @@
+name stackVars;
+
+fn () {
+	print(("Started running xNVSE stack variable unit tests."));
+    
+    // Test numeric types
+    int i = 10;
+    assert(i == 10);
+    i = 20;
+    assert(i == 20);
+
+    for (int i = 0; i < 10; i++) {
+        assert(i != 20);
+    }
+
+    assert(i == 20);
+
+    // Test arrays
+    array arr1 = [1,2,3,4];
+    assert(ar_size(arr1) == 4);
+    arr1[0] = 10;
+    assert(arr1[0] == 10);
+    ar_append(arr1, 20);
+    assert(ar_size(arr1) == 5);
+    assert(arr1[4] == 20);
+    i = 30;
+    assert(i == 30);
+    arr1[0] = i;
+    assert(arr1[0] == 30);
+    assert(arr1[0] == i);  
+
+    // Test references
+    ref ref1 = player;
+    assert(ref1 == player);
+    ref1 = caps001;
+    assert(ref1 == caps001);
+
+    arr1 = [player, caps001];
+    assert(arr1[0] == player);
+    assert(arr1[1] == caps001);
+
+    // Test strings
+    string str1 = "Hello";
+    assert(str1 == "Hello");
+    str1 = "World";
+    assert(str1 == "World");
+    str1 = "Hello World";
+    assert(str1 == "Hello World");
+
+	print(("Finished running xNVSE stack variable unit tests."));
+}

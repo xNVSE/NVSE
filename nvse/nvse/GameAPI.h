@@ -115,6 +115,31 @@ bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineB
 
 #endif
 
+extern std::map<uint8_t, const char*> g_formTypeNames;
+
+// extern const char** g_formTypeNames;
+
+extern const char** g_alignmentTypeNames;
+extern const char** g_equipTypeNames;
+extern const char** g_criticalStageNames;
+
+struct AnimGroupInfo
+{
+	const char* name;	 // 00
+	UInt32 unk04;		 // 04
+	UInt32 sequenceType; // 08
+	UInt32 unk0C;		 // 0C
+	UInt32 unk10;		 // 10
+	UInt32 unk14[4];	 // 14
+};
+
+extern AnimGroupInfo* g_animGroupInfos;
+
+extern bool (*IsStringInteger)(const char* str);
+extern bool (*IsStringFloat)(const char* str);
+
+extern const bool kInventoryType[];
+
 typedef TESForm *(__cdecl *_GetFormByID)(const char *editorID);
 extern const _GetFormByID GetFormByID;
 

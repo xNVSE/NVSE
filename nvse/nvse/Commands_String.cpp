@@ -11,6 +11,9 @@
 #include "Utilities.h"
 #include <format>
 #include <ranges>
+#include "StackVariables.h"
+
+#include "Commands_Script.h"
 
 //////////////////////////
 // Utility commands
@@ -73,8 +76,7 @@ bool Cmd_sv_Destruct_Execute(COMMAND_ARGS)
 	{
 		if (eval.Arg(i)->CanConvertTo(kTokenType_StringVar))
 		{
-			ScriptLocal *var = eval.Arg(i)->GetVar();
-			if (var)
+			if (ScriptLocal* var = eval.Arg(i)->GetScriptLocal())
 			{
 				g_StringMap.Delete(var->data);
 				var->data = 0;
@@ -224,6 +226,11 @@ bool Cmd_sv_Find_Execute(COMMAND_ARGS)
 {
 	StringVar_Find_Execute(PASS_COMMAND_ARGS, eMode_svFind, &kCommandInfo_sv_Find);
 	return true;
+}
+
+bool Cmd_sv_find_7_0_0_Execute(COMMAND_ARGS) {
+	// TODO
+	return false;
 }
 
 bool Cmd_sv_Count_Execute(COMMAND_ARGS)
@@ -952,7 +959,7 @@ bool Cmd_GetRawFormIDString_Execute(COMMAND_ARGS)
 		}
 		else if (arg->Type() == kTokenType_RefVar)
 		{
-			ScriptLocal *var = arg->GetVar();
+			ScriptLocal *var = arg->GetScriptLocal();
 			if (var)
 			{
 				formID = *((UInt32 *)(&var->data));
@@ -1267,4 +1274,3 @@ bool Cmd_ValidateRegex_Execute(COMMAND_ARGS)
 
 	return true;
 }
-

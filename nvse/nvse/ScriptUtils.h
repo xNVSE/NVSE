@@ -19,7 +19,6 @@ class ScriptLineMacro;
 struct Operator;
 struct ScriptEventList;
 class ExpressionEvaluator;
-struct UserFunctionParam;
 struct FunctionInfo;
 struct FunctionContext;
 class FunctionCaller;
@@ -29,6 +28,7 @@ class OffsetOutOfBoundsError : public std::exception {};
 #include "ScriptTokens.h"
 #include <stack>
 #include <utility>
+#include "StackVariables.h"
 
 #if RUNTIME
 #include <cstdarg>
@@ -70,6 +70,7 @@ enum NVSEParamType : UInt32 {
 	kNVSEParamType_FormOrNumber = kNVSEParamType_Form | kNVSEParamType_Number,
 	kNVSEParamType_StringOrNumber = kNVSEParamType_String | kNVSEParamType_Number,
 	kNVSEParamType_Pair	=	1 << kTokenType_Pair,
+	kNVSEParamType_OptionalEmpty = 1 << kTokenType_OptionalEmpty
 };
 
 const char* StringForNVSEParamType(NVSEParamType paramType);
@@ -88,11 +89,11 @@ private:
 	ParamSize_t	m_numParams;
 
 public:
-	DynamicParamInfo(const std::vector<UserFunctionParam> &params);
+	DynamicParamInfo(const std::vector<UserFunctionParam>& params);
 	DynamicParamInfo() : m_numParams(0) { }
 
-	ParamInfo* Params()	{	return m_paramInfo;	}
-	[[nodiscard]] ParamSize_t NumParams() const { return m_numParams;	}
+	ParamInfo* Params() { return m_paramInfo; }
+	[[nodiscard]] ParamSize_t NumParams() const { return m_numParams; }
 };
 
 #if RUNTIME
@@ -408,7 +409,7 @@ public:
 	~ExpressionParser();
 
 	bool			ParseArgs(ParamInfo* params, UInt32 numParams, bool bUsesNVSEParamTypes = true, bool parseWholeLine = true);
-	[[nodiscard]] bool			ValidateArgType(ParamType paramType, Token_Type argType, bool bIsNVSEParam) const;
+	static [[nodiscard]] bool			ValidateArgType(ParamType paramType, Token_Type argType, bool bIsNVSEParam, CommandInfo* cmdInfo);
 	bool GetUserFunctionParams(const std::vector<std::string>& paramNames, std::vector<UserFunctionParam>& outParams,
 	                           Script::VarInfoList* varList, const std::string& fullScriptText, Script* script) const;
 	bool ParseUserFunctionParameters(std::vector<UserFunctionParam>& out, const std::string& funcScriptText,

@@ -7,6 +7,8 @@
 
 class PluginManager
 {
+	static CommandInfo		RegisterTypedCommand_Setup(CommandInfo* _info, CommandReturnType &retnType);
+
 public:
 	PluginManager() = default;
 	~PluginManager();
@@ -27,6 +29,7 @@ public:
 
 	static bool			RegisterCommand(CommandInfo * _info);
 	static bool			RegisterTypedCommand(CommandInfo * _info, CommandReturnType retnType);
+	static bool			RegisterTypedCommandVersion(CommandInfo* _info, CommandReturnType retnType, UInt32 requiredPluginVersion);
 	static void			SetOpcodeBase(UInt32 opcode);
 	static void *		QueryInterface(UInt32 id);
 	static PluginHandle	GetPluginHandle(void);

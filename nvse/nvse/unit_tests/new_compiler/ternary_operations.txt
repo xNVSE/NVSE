@@ -1,0 +1,17 @@
+name ternary;
+
+fn () {
+	string testName = "Ternary Operations";
+	print(("Started running xNVSE " + testName + " unit tests."));
+	
+	int condition = false;
+	int iTest = condition ? 1 : 2;
+	assert(iTest == 2);
+	
+	condition = true;
+	iTest = condition ? 1 : 2;
+	assert(iTest == 1);
+	
+	
+	print(("Finished running xNVSE " + testName + " unit tests."));
+}

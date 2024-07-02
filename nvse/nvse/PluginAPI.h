@@ -79,6 +79,14 @@ struct NVSEInterface
 	UInt32	isNogore;
 
 	void		(*InitExpressionEvaluatorUtils)(ExpressionEvaluatorUtils *utils);
+
+	// CommandReturnType enum defined in CommandTable.h
+	// Same as RegisterTypedCommand, but allows specifying the minimum plugin version a script must have enabled..
+	// ..for the script to compile that version of the command.
+	// Essentially, allows having multiple different versions of commands that scripts can opt into by specifying a plugin version to compile with.
+	// Notably useful to not break JIP ScriptRunner (SR) scripts when replacing the interface of an existing function, 
+	// ..since SR will assume to compile the oldest version of a func unless a more recent plugin version is specified.
+	bool	(*RegisterTypedCommandVersion)(CommandInfo* info, CommandReturnType retnType, UInt32 requiredPluginVersion);
 };
 
 struct NVSEConsoleInterface

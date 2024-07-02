@@ -203,22 +203,23 @@ bool Cmd_ForEach_Execute(COMMAND_ARGS)
 		}
 
 		const ForEachContext* context = eval.Arg(0)->GetForEachContext();
-		if (!context)
+		if (!context) {
 			ShowRuntimeError(scriptObj, "Cmd_ForEach: Expression does not evaluate to a ForEach context");
-		else		// construct the loop
+		}
+		else // construct the loop
 		{
-			if (context->variableType == Script::eVarType_Array)
+			if (context->iterVar.type == Script::eVarType_Array)
 			{
-				ArrayIterLoop* arrayLoop = new ArrayIterLoop(context, scriptObj->GetModIndex());
-				AddToGarbageCollection(eventList, arrayLoop->m_iterVar, NVSEVarType::kVarType_Array);
+				ArrayIterLoop* arrayLoop = new ArrayIterLoop(context, scriptObj);
+				AddToGarbageCollection(eventList, arrayLoop->m_valueIterVar.var, NVSEVarType::kVarType_Array);
 				loop = arrayLoop;
 			}
-			else if (context->variableType == Script::eVarType_String)
+			else if (context->iterVar.type == Script::eVarType_String)
 			{
 				StringIterLoop* stringLoop = new StringIterLoop(context);
 				loop = stringLoop;
 			}
-			else if (context->variableType == Script::eVarType_Ref)
+			else if (context->iterVar.type == Script::eVarType_Ref)
 			{
 				if IS_ID(((TESForm*)context->sourceID), BGSListForm)
 					loop = new FormListIterLoop(context);
@@ -228,6 +229,115 @@ bool Cmd_ForEach_Execute(COMMAND_ARGS)
 	}
 
 	if (loop)
+	{
+		LoopManager* mgr = LoopManager::GetSingleton();
+		mgr->Add(loop, scriptRunner, startOffset, offsetToEnd, PASS_COMMAND_ARGS);
+		if (loop->IsEmpty())
+		{
+			*opcodeOffsetPtr = startOffset;
+			mgr->Break(scriptRunner, PASS_COMMAND_ARGS);
+		}
+	}
+
+	return true;
+}
+
+namespace ForEachAlt
+{
+	bool ValidateKeyVariableType(Variable keyVar, ArrayVar* sourceArray, ExpressionEvaluator& eval)
+	{
+		auto arrayType = sourceArray->GetContainerType();
+		if (arrayType == kContainer_Array || arrayType == kContainer_NumericMap)
+		{
+			if (keyVar.GetType() != Script::eVarType_Integer
+				&& keyVar.GetType() != Script::eVarType_Float)
+			{
+				eval.Error("ForEachAlt >> Invalid variable type to receive array keys (keys were numeric-type, var was not)");
+				return false;
+			}
+		}
+		else { // assume stringmap
+			if (keyVar.GetType() != Script::eVarType_String)
+			{
+				eval.Error("ForEachAlt >> Invalid variable type to receive array keys (keys were string-type, var was not)");
+				return false;
+			}
+		}
+		return true;
+	}
+}
+
+// More efficient ForEach loops for arrays.
+// Instead of using an iterator array, populates passed variable(s) with value/key.
+// However, this method doesn't work if there's more than one type of element values in the source array (throws error).
+bool Cmd_ForEachAlt_Execute(COMMAND_ARGS)
+{
+	ScriptRunner* scriptRunner = GetScriptRunner(opcodeOffsetPtr);
+
+	UInt32 offsetToEnd, startOffset = *opcodeOffsetPtr;
+	{
+		// get offset to end of loop
+		UInt8* data = (UInt8*)scriptData + *opcodeOffsetPtr;
+		offsetToEnd = *(UInt32*)data;
+	}
+
+	ForEachLoop* loop = nullptr;
+
+	// evaluate the expression to get the context
+	*opcodeOffsetPtr += 4;	// set to start of expression (skip 4 bonus bytes of loop info)
+	{
+		// ExpressionEvaluator enclosed in this scope so that it's lock is released once we've extracted the args.
+		// This eliminates potential for deadlock when adding loop to LoopManager
+		ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+		bool bExtracted = eval.ExtractArgs();
+
+		// calc offset to first instruction within loop
+		startOffset = startOffset + (*opcodeOffsetPtr - startOffset) + 1;
+
+		*opcodeOffsetPtr -= 4;	// restore
+
+		if (!bExtracted || !eval.Arg(0) || eval.NumArgs() < 2) [[unlikely]]
+		{
+			ShowRuntimeError(scriptObj, "ForEachAlt >> Failed to extract args.");
+			return false;
+		}
+
+		// Construct the loop
+		if (auto* sourceArr = eval.Arg(0)->GetArrayVar()) [[likely]]
+		{
+			ArrayID sourceID = sourceArr->ID();
+			Variable valueVar(eval.Arg(1)->GetScriptLocal(), static_cast<Script::VariableType>(eval.Arg(1)->variableType));
+			std::optional<Variable> keyVar;
+			if (eval.NumArgs() >= 3) {
+				keyVar = Variable(eval.Arg(2)->GetScriptLocal(), static_cast<Script::VariableType>(eval.Arg(2)->variableType));
+				if (keyVar->IsValid()) {
+					if (!ForEachAlt::ValidateKeyVariableType(*keyVar, sourceArr, eval)) [[unlikely]] {
+						sourceID = 0; // will make loop->IsEmpty() return true
+					}
+				}
+			}
+			else // If NumArgs == 2, then the sole iter variable could be a key iter if sourceArr is a map, or a value iter otherwise.
+			{
+				// valueVar could act as a keyVar if sourceArr is a map; verify var type if so.
+				if (sourceArr->GetContainerType() != kContainer_Array) {
+					if (!ForEachAlt::ValidateKeyVariableType(valueVar, sourceArr, eval)) [[unlikely]] {
+						sourceID = 0; // will make loop->IsEmpty() return true
+					}
+				}
+			}
+			if (!valueVar.IsValid() && (!keyVar.has_value() || !keyVar->IsValid())) [[unlikely]] {
+				sourceID = 0; // will make loop->IsEmpty() return true
+			}
+			ArrayIterLoop* arrayLoop = new ArrayIterLoop(sourceID, scriptObj, valueVar, keyVar);
+			loop = arrayLoop;
+		}
+		else {
+			eval.Error("ForEachAlt >> Invalid source array.");
+			// todo: maybe reset opcodeOffsetPtr or something?
+		}
+	}
+
+	if (loop) [[likely]]
 	{
 		LoopManager* mgr = LoopManager::GetSingleton();
 		mgr->Add(loop, scriptRunner, startOffset, offsetToEnd, PASS_COMMAND_ARGS);
@@ -645,7 +755,7 @@ bool Cmd_GetAllModLocalData_Execute(COMMAND_ARGS)
 bool Cmd_PrintVar_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	if (!eval.ExtractArgs() || !eval.Arg(0) || !eval.Arg(0)->GetVar())
+	if (!eval.ExtractArgs() || !eval.Arg(0) || !eval.Arg(0)->GetScriptLocal())
 		return true;
 	UInt8 argNum = 0;
 	const auto numArgs = eval.NumArgs();
@@ -676,7 +786,7 @@ bool Cmd_PrintVar_Execute(COMMAND_ARGS)
 		default:
 			break;
 		}
-		const auto toPrint = std::string(GetVariableName(token->GetVar(), scriptObj, eventList, token->refIdx))
+		const auto toPrint = std::string(GetVariableName(token->GetScriptLocal(), scriptObj, eventList, token->refIdx))
 			+ ": " + variableValue;
 		Console_Print_Str(toPrint);
 
@@ -927,7 +1037,6 @@ static ParamInfo kParams_ForEach[] =
 {
 	{	"ForEach expression",	kNVSEParamType_ForEachContext,	0	},
 };
-
 CommandInfo kCommandInfo_ForEach =
 {
 	"ForEach",
@@ -938,6 +1047,29 @@ CommandInfo kCommandInfo_ForEach =
 	1,
 	kParams_ForEach,
 	HANDLER(Cmd_ForEach_Execute),
+	Cmd_BeginLoop_Parse,
+	NULL,
+	0
+};
+
+// Technically either "valueVariable" or "keyVariable" are optional, 
+// ..but new compiler will handle that by passing them with varIndex of 0.
+static ParamInfo kParams_ForEachAlt[] =
+{
+	{	"sourceArray",		kNVSEParamType_Array,	0	},
+	{	"valueVariable",	kNVSEParamType_Variable | kNVSEParamType_OptionalEmpty,	0	}, // if keyVariable wasn't passed, and sourceArray is a map, then this will act as a key iterator.
+	{	"keyVariable",		kNVSEParamType_StringVar | kNVSEParamType_NumericVar | kNVSEParamType_OptionalEmpty,	1	},
+};
+CommandInfo kCommandInfo_ForEachAlt =
+{
+	"ForEachAlt",
+	"",
+	0,
+	"iterates over the elements of an array, passing values directly into variables",
+	false,
+	std::size(kParams_ForEachAlt),
+	kParams_ForEachAlt,
+	HANDLER(Cmd_ForEachAlt_Execute),
 	Cmd_BeginLoop_Parse,
 	NULL,
 	0

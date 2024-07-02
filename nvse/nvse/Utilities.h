@@ -222,6 +222,8 @@ void ShowErrorMessageBox(const char* message);
 
 const char* GetModName(TESForm* form);
 
+
+void vShowRuntimeError(Script* script, const char* fmt, va_list args);
 void ShowRuntimeError(Script* script, const char* fmt, ...);
 
 #endif

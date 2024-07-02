@@ -1,0 +1,113 @@
+name ForLoops;
+
+fn () {
+	string testName = "ForLoops";
+	print(("Started running xNVSE " + testName + " unit tests."));
+
+//== Test ForEachAlt syntax
+
+//==== Test packed array looping
+	array aList = [Player, Player, Player];
+	int iTest = 0;
+
+	for ([int iKey, ref rValue] in aList)
+	{
+		assert(iKey == iTest);
+		assert(rValue == Player);
+		iTest++;
+	}
+	assert(iTest == (ar_size(aList)));
+	
+	iTest = 0;
+	for ([int iKey, _] in aList)
+	{
+		assert(iKey == iTest);
+		iTest++;
+	}
+	assert(iTest == (ar_size(aList)));
+	
+	iTest = 0;
+	for ([int key, ref rValue] in aList)
+	{
+		assert(rValue == Player);
+		iTest++;
+	}
+	assert(iTest == (ar_size(aList)));
+
+	iTest = 0;
+	for ([ref rValue] in aList)
+	{
+		assert(rValue == Player);
+		iTest++;
+	}
+	assert(iTest == (ar_size(aList)));
+	
+//==== Test map array looping
+
+	array aMap = {"key1"::Player, "key2"::Player, "key3"::Player};
+	assert(TypeOf(aMap) == "StringMap");
+	
+	string sBaseKeyStr = "key";
+	string sKeyStr;
+	iTest = 0;
+	ref rTest;
+	for ([string sKey, ref rValue] in aMap)
+	{
+		iTest++;
+		sKeyStr = sBaseKeyStr + $(iTest);
+		assert(sKeyStr == sKey);
+		assert(rValue == Player);
+		rTest = rValue;
+	}
+	assert(iTest == (ar_size(aMap)));
+	assert(sKeyStr == "key3");
+	assert(rTest == player);
+	
+	rTest = 0;
+	iTest = 0;
+	for ([_, ref rValue] in aMap)
+	{
+		iTest++;
+		sKeyStr = sBaseKeyStr + $(iTest);
+		assert(rValue == Player);
+		rTest = rValue;
+	}
+	assert(iTest == (ar_size(aMap)));
+	assert(rTest == player);
+	assert(sKeyStr == "key3");
+	
+	rTest = 0;
+	iTest = 0;
+	sKeyStr = "";
+	for ([string sKey] in aMap)
+	{
+		iTest++;
+		sKeyStr = sBaseKeyStr + $(iTest);
+		assert(sKeyStr == sKey);
+		ref rValue = aMap[sKey];
+		assert(rValue == Player);
+		rTest = rValue;
+	}
+	assert(iTest == (ar_size(aMap)));
+	assert(rTest == player);
+	assert(sKeyStr == "key3");
+	
+	rTest = 0;
+	iTest = 0;
+	sKeyStr = "";
+	for ([string sKey] in aMap)
+	{
+		iTest++;
+		sKeyStr = sBaseKeyStr + $(iTest);
+		assert(sKeyStr == sKey);
+		ref rValue = aMap[sKey];
+		assert(rValue == Player);
+		rTest = rValue;
+	}
+	assert(iTest == (ar_size(aMap)));
+	assert(rTest == player);
+	assert(sKeyStr == "key3");
+	
+	print(("Finished running xNVSE " + testName + " unit tests."));
+
+}
