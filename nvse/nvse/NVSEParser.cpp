@@ -34,6 +34,7 @@ std::optional<NVSEScript> NVSEParser::Parse() {
 		while (currentToken.type != NVSETokenType::Eof) {
 			try {
 				// Version statements
+				// TODO: Extract this to a pre-processor
 				if (Match(NVSETokenType::Pound)) {
 					if (!Match(NVSETokenType::Identifier)) {
 						Error(currentToken, "Expected 'version'.");

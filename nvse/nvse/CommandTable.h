@@ -314,6 +314,7 @@ public:
 
 	CommandInfo *	GetByName(const char * name, std::unordered_map<std::string, UInt32> *pluginVersions = nullptr);
 	CommandInfo *	GetByOpcode(UInt32 opcode);
+	std::tuple<std::string, UInt32> *GetUpdateInfoForOpCode(UInt32 opcode);
 
 	// Inclusive start and stop bounds.
 	std::vector<CommandInfo*> GetByOpcodeRange(UInt32 opcodeStart, UInt32 opcodeStop);
