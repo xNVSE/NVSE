@@ -1742,7 +1742,8 @@ bool Cmd_CompileScript_Execute(COMMAND_ARGS)
 				*refResult = iter.Get()->refID;
 
 #if _DEBUG
-				Console_Print("CompileScript >> Got cached script");
+				if (IsConsoleMode())
+					Console_Print("CompileScript >> Got cached script");
 #endif
 			}
 			else
@@ -1752,7 +1753,8 @@ bool Cmd_CompileScript_Execute(COMMAND_ARGS)
 				if (auto* script = CompileAndCacheScript(pathStr.c_str()))
 					*refResult = script->refID;
 #if _DEBUG
-				Console_Print("CompileScript >> Had to compile script; couldn't find cached script.");
+				if (IsConsoleMode())
+					Console_Print("CompileScript >> Had to compile script; couldn't find cached script.");
 #endif
 			}
 		}
