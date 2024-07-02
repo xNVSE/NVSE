@@ -69,6 +69,12 @@ _DecompileScript DecompileScript{};
 //Credits: taken from JohnnyGuitarNVSE.
 #define REG_TYPED_CMD(name, type)	nvse->RegisterTypedCommand(&kCommandInfo_##name,kRetnType_##type)
 
+// Allows having multiple different versions of commands that scripts can opt into by specifying a plugin version to compile with.
+// Notably useful to not break JIP ScriptRunner (SR) scripts when replacing the interface of an existing function, 
+// ..since SR will assume to compile the oldest version of a func unless a more recent plugin version is specified.
+// 'requiredPluginVersion' should be in the same number format as the plugin's PluginInfo->version.
+#define REG_TYPED_CMD_VER(name, type, requiredPluginVersion)	nvse->RegisterTypedCommandVersion(&kCommandInfo_##name,kRetnType_##type, requiredPluginVersion)
+#define REG_CMD_VER(name, requiredPluginVersion)	nvse->RegisterTypedCommandVersion(&kCommandInfo_##name,kRetnType_Default, requiredPluginVersion)
 
 // This is a message handler for nvse events
 // With this, plugins can listen to messages such as whenever the game loads
