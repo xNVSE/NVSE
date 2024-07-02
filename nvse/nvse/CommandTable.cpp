@@ -2265,7 +2265,9 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(SetModelPath);
 	ADD_CMD_RET(Ternary, kRetnType_Ambiguous);
 	ADD_CMD(MatchesAnyOf);
+
 	ADD_CMD(ForEachAlt);
+	ADD_CMD(ar_Exists);
 
 	//ADD_CMD_VER(sv_find, 7, 0, 0);
 }

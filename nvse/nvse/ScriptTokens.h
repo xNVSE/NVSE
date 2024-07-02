@@ -319,6 +319,7 @@ struct ScriptToken
 	[[nodiscard]] const char *GetVariableTypeString() const;
 	[[nodiscard]] CommandReturnType GetReturnType() const;
 	[[nodiscard]] Script::VariableType GetTokenTypeAsVariableType() const;
+	[[nodiscard]] ArrayElement GetAsArrayElement() const;
 
 	void AssignResult(ExpressionEvaluator& eval) const;
 

@@ -16,6 +16,8 @@ namespace OtherHooks
 {
 	const static auto ClearCachedTileMap = &MemoizedMap<const char*, Tile::Value*>::Clear;
 	thread_local FastStack<CurrentScriptContext> g_currentScriptContext;
+	thread_local std::vector<std::function<void()>> g_onExitScripts;
+
 	__declspec(naked) void TilesDestroyedHook()
 	{
 		__asm
@@ -73,7 +75,7 @@ namespace OtherHooks
 
 	void DeleteEventList(ScriptEventList* eventList)
 	{
-		
+		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_EventListDestroyed, eventList, sizeof (ScriptEventList*), nullptr);
 		LambdaManager::MarkParentAsDeleted(eventList); // deletes if exists
 		CleanUpNVSEVars(eventList);
 		ThisStdCall(0x5A8BC0, eventList);
@@ -176,17 +178,14 @@ namespace OtherHooks
 		}
 	}
 
-	namespace PostScriptExecute
-	{
+	namespace PostScriptExecute {
 		void __fastcall PostScriptExecute(Script* script)
 		{
-			if (script) {
+			if (script)
 				g_currentScriptContext.Pop();
-
-				// if (g_currentScriptContext.Size() == 0) {
-				// 	g_scriptVarCache[g_threadID]->mt.unlock();
-				// }
-			}
+			for (auto& func : g_onExitScripts)
+				func();
+			g_onExitScripts.clear();
 		}
 
 		__declspec (naked) void Hook1()
@@ -224,6 +223,18 @@ namespace OtherHooks
 		}
 	}
 
+	void __fastcall ResetQuestDeleteScriptEventListHook(ScriptEventList* eventList)
+	{
+		if (g_currentScriptContext.Empty() || g_currentScriptContext.Top().script != eventList->m_script)
+		{
+			DeleteEventList(eventList);
+			return;
+		}
+		// delay deletion of event list until after the script has finished executing
+		// event list is still being passed around while the script is running
+		g_onExitScripts.push_back([eventList]() { DeleteEventList(eventList); });
+	}
+
 	void __fastcall ScriptDestructorHook(Script* script)
 	{
 		// hooked call
@@ -245,6 +256,8 @@ namespace OtherHooks
 		PostScriptExecute::WriteHooks();
 
 		WriteRelCall(0x5AA206, ScriptDestructorHook);
+
+		WriteRelCall(0x60D858, ResetQuestDeleteScriptEventListHook);
 
 		*(UInt32*)0x0126FDF4 = 1; // locale fix
 	}

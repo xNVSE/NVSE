@@ -1165,3 +1165,68 @@ bool Cmd_ar_Unique_Execute(COMMAND_ARGS)
 	}
 	return true;
 }
+
+bool Cmd_ar_Exists_Execute(COMMAND_ARGS)
+{
+	*result = false;
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (eval.ExtractArgs() && eval.Arg(0))
+	{
+		if (eval.Arg(0)->CanConvertTo(kTokenType_Array))
+		{
+			if (ArrayVar* arr = eval.Arg(0)->GetArrayVar())
+			{
+				auto* valTokenToCheck = eval.Arg(1);
+				if (!valTokenToCheck) [[unlikely]]
+					return true;
+
+				if (auto* pair = valTokenToCheck->GetPair())
+				{
+					if (arr->KeyType() == kDataType_Numeric && pair->left->CanConvertTo(kTokenType_Number))
+					{
+						const auto* valAtKey = arr->Get(pair->left->GetNumber(), false);
+						*result = valAtKey && *valAtKey == pair->right->GetAsArrayElement();
+					}
+					else if (pair->left->CanConvertTo(kTokenType_String))
+					{
+						const auto* valAtKey = arr->Get(pair->left->GetString(), false);
+						*result = valAtKey && *valAtKey == pair->right->GetAsArrayElement();
+					}
+					else
+					{
+						eval.Error("ar_Exists >> Invalid type of key from passed pair (doesn't match key type for array).");
+					}
+				}
+				else if (arr->IsPacked())
+				{
+					// Check if the regular array has the value (like ar_Find, but returning a bool).
+					auto elem = valTokenToCheck->GetAsArrayElement();
+					if (!elem.IsGood())
+						return true;
+
+					// Got a range?
+					const Slice* range = nullptr;
+					if (eval.Arg(2))
+						range = eval.Arg(2)->GetSlice();
+
+					*result = arr->Find(&elem, range) != nullptr;
+				}
+				else // check if the map has the key
+				{
+					if (valTokenToCheck->CanConvertTo(kTokenType_String)) {
+						*result = arr->HasKey(valTokenToCheck->GetString());
+					}
+					else if (valTokenToCheck->CanConvertTo(kTokenType_Number)) {
+						*result = arr->HasKey(valTokenToCheck->GetNumber());
+					}
+					else
+					{
+						eval.Error("ar_Exists >> Invalid type of key to find for the map array");
+					}
+				}
+			}
+		}
+	}
+
+	return true;
+}

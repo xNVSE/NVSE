@@ -724,6 +724,10 @@ namespace DisablePlayerControlsAlt
 	}
 }
 
+void WriteDelayedHooks() {
+	EventManager::WriteDelayedEventHooks();
+}
+
 // boolean, used by ExtraDataList::IsExtraDefaultForContainer() to determine if ExtraOwnership should be treated
 // as 'non-default' for an inventory object. Is 0 in vanilla, set to 1 to make ownership NOT treated as default
 // Might be those addresses, used to decide if can be copied
@@ -811,6 +815,10 @@ static void HandleMainLoopHook(void)
 #endif
 #endif
 		g_mainThreadID = GetCurrentThreadId();
+
+#if RUNTIME
+		WriteDelayedHooks();
+#endif
 		
 		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_DeferredInit, NULL, 0, NULL);
 
@@ -822,8 +830,10 @@ static void HandleMainLoopHook(void)
 	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_MainGameLoop, nullptr, 0, nullptr);
 
 	// if any temporary references to inventory objects exist, clean them up
-	if (!s_invRefMap.Empty())
+	if (!s_invRefMap.Empty()) {
+		ScopedLock lock(s_invRefMapCS);
 		s_invRefMap.Clear();
+	}
 
 	// Tick event manager
 	EventManager::Tick();
