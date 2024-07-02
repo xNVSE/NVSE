@@ -341,6 +341,8 @@ void Hook_Script_Init()
 		SafeWrite8(0x5E133B, 0xEB);
 	}
 
+	WriteRelJump(0x5949D4, reinterpret_cast<UInt32>(ExpressionEvalRunCommandHook));
+
 	// Patch command output for vanilla help command to output parent plugins / associated versions
 	PatchHelpCommand::ApplyHook();
 
