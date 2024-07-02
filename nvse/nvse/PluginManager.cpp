@@ -111,7 +111,8 @@ static const NVSEInterface g_NVSEInterface =
 	PluginManager::RegisterTypedCommand,
 	PluginManager::GetFalloutDir,
 	0,
-	PluginManager::InitExpressionEvaluatorUtils
+	PluginManager::InitExpressionEvaluatorUtils,
+	PluginManager::RegisterTypedCommandVersion
 };
 
 #ifdef RUNTIME
@@ -316,7 +317,7 @@ bool PluginManager::RegisterCommand(CommandInfo * _info)
 	return true;
 }
 
-bool PluginManager::RegisterTypedCommand(CommandInfo * _info, CommandReturnType retnType)
+CommandInfo PluginManager::RegisterTypedCommand_Setup(CommandInfo* _info, CommandReturnType& retnType)
 {
 	ASSERT(_info);
 	ASSERT_STR(s_currentLoadingPlugin, "PluginManager::RegisterTypeCommand: called outside of plugin load");
@@ -336,19 +337,36 @@ bool PluginManager::RegisterTypedCommand(CommandInfo * _info, CommandReturnType 
 	else if (info.parse == Cmd_Expression_Plugin_Parse)
 		info.parse = Cmd_Expression_Parse;
 
-	if(!info.shortName) info.shortName = "";
-	if(!info.helpText) info.helpText = "";
+	if (!info.shortName) info.shortName = "";
+	if (!info.helpText) info.helpText = "";
 
+	if (retnType >= kRetnType_Max)
+		retnType = kRetnType_Default;
+
+	return info;
+}
+
+bool PluginManager::RegisterTypedCommand(CommandInfo * _info, CommandReturnType retnType)
+{
+	auto info = RegisterTypedCommand_Setup(_info, retnType);
 	if (info.shortName[0])
 		_MESSAGE("RegTypedCommand  [%04X]  %s (%s)", g_scriptCommands.GetCurID(), info.longName, info.shortName);
 	else
 		_MESSAGE("RegTypedCommand  [%04X]  %s", g_scriptCommands.GetCurID(), info.longName);
 
-	if (retnType >= kRetnType_Max)
-		retnType = kRetnType_Default;
-
 	g_scriptCommands.Add(&info, retnType, s_currentLoadingPlugin->baseOpcode);
+	return true;
+}
 
+bool PluginManager::RegisterTypedCommandVersion(CommandInfo* _info, CommandReturnType retnType, UInt32 requiredPluginVersion)
+{
+	auto info = RegisterTypedCommand_Setup(_info, retnType);
+	if (info.shortName[0])
+		_MESSAGE("RegTypedCommandVersion  [%04X]  %s (%s) for version %u", g_scriptCommands.GetCurID(), info.longName, info.shortName, requiredPluginVersion);
+	else
+		_MESSAGE("RegTypedCommandVersion  [%04X]  %s for version %u", g_scriptCommands.GetCurID(), info.longName, requiredPluginVersion);
+
+	g_scriptCommands.Add(&info, retnType, s_currentLoadingPlugin->baseOpcode, requiredPluginVersion);
 	return true;
 }
 
