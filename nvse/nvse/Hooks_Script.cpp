@@ -496,10 +496,22 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 			buf->scriptText[matchPos] = ';';
 
 			std::string pluginName = match[1];
-			int major = std::stoi(match[2]);
-			int minor = match[3].matched ? std::stoi(match[3]) : 255;
-			int beta = match[4].matched ? std::stoi(match[4]) : 255;
-			pluginVersions[pluginName] = MAKE_NEW_VEGAS_VERSION(major, minor, beta);
+			if (StrEqual(pluginName.c_str(), "nvse")) {
+				int major = std::stoi(match[2]);
+				int minor = match[3].matched ? std::stoi(match[3]) : 255;
+				int beta = match[4].matched ? std::stoi(match[4]) : 255;
+
+				pluginVersions[pluginName] = MAKE_NEW_VEGAS_VERSION(major, minor, beta);
+			}
+			else { // handle versions for plugins
+				auto* pluginInfo = g_pluginManager.GetInfoByName(pluginName.c_str());
+				if (!pluginInfo) [[unlikely]] {
+					CompErr("Script compilation failed: No plugin with name %s could be found.\n", pluginName.c_str());
+					return PrecompileResult::kPrecompile_Failure;
+				}
+
+				pluginVersions[pluginName] = std::stoi(match[2]);
+			}
 
 			++iter;
 		}

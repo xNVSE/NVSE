@@ -45,20 +45,25 @@ std::optional<NVSEScript> NVSEParser::Parse() {
 					Expect(NVSETokenType::LeftParen, "Expected '('.");
 					auto plugin = Expect(NVSETokenType::String, "Expected plugin name.");
 					Expect(NVSETokenType::Comma, "Expected ','.");
-					auto major = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected major version").value));
-					int minor = 255;
-					int beta = 255;
+					auto pluginName = std::get<std::string>(plugin.value);
+					if (StrEqual(pluginName.c_str(), "nvse")) {
+						auto major = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected major version").value));
+						int minor = 255;
+						int beta = 255;
 
-					if (Match(NVSETokenType::Comma)) {
-						minor = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected minor version").value));
+						if (Match(NVSETokenType::Comma)) {
+							minor = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected minor version").value));
+						}
+						if (Match(NVSETokenType::Comma)) {
+							beta = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected beta version").value));
+						}
+						pluginVersions[pluginName] = MAKE_NEW_VEGAS_VERSION(major, minor, beta);
 					}
-
-					if (Match(NVSETokenType::Comma)) {
-						beta = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected beta version").value));
+					else { // handle versions for plugins
+						auto pluginVersion = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected plugin version").value));
+						pluginVersions[pluginName] = pluginVersion;
 					}
 					Expect(NVSETokenType::RightParen, "Expected ')'.");
-
-					pluginVersions[std::get<std::string>(plugin.value)] = MAKE_NEW_VEGAS_VERSION(major, minor, beta);
 				}
 				// Get event or udf block
 				else if (Peek(NVSETokenType::BlockType)) {
