@@ -124,3 +124,6 @@ void __cdecl HUDMainMenu::UpdateVisibilityState(signed int hudState)
 {
 	return CdeclCall(0x771700, hudState);
 }
+
+Menu** g_lockpickMenu = reinterpret_cast<Menu**>(0x11DA204);
+Menu** g_hackingMenu = reinterpret_cast<Menu**>(0x11D95B8);

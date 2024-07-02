@@ -248,3 +248,5 @@ DEFINE_COMMAND_EXP(CreateFormList, "creates a formList, optionally set with an e
 
 DEFINE_CMD(GetHeadingAngleX, "Gets the up/down angle the calling reference is relative to a target.", 
 	1, kParams_OneObjectRef);
+
+DEFINE_CMD_ALT(EvaluateInventory, EvalInv, "Force the actor to re-evaluate their equipped items", true, 0, nullptr)

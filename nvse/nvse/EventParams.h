@@ -13,6 +13,12 @@ static EventParamType kEventParams_OneRef[1] =
 	EventParamType::eParamType_AnyForm,
 };
 
+static EventParamType kEventParams_TwoRefs[] =
+{
+	EventParamType::eParamType_AnyForm,
+	EventParamType::eParamType_AnyForm,
+};
+
 static EventParamType kEventParams_OneInt[] =
 {
 	EventParamType::eParamType_Int,
@@ -116,4 +122,11 @@ static EventParamType kEventParams_ThreeStrings_OneFloat[] =
 	EventParamType::eParamType_String,
 	EventParamType::eParamType_String,
 	EventParamType::eParamType_Float,
+};
+
+static EventParamType kEventParams_TwoRefs_OneInt[] =
+{
+	EventParamType::eParamType_AnyForm,
+	EventParamType::eParamType_AnyForm,
+	EventParamType::eParamType_Int,
 };
