@@ -18,6 +18,9 @@ namespace ScriptFunctionTests
 	{
 		std::string pathStr = testOldCompiler ? "data/nvse/unit_tests/old_compiler" : "data/nvse/unit_tests/new_compiler";
 		const char* debugStr = testOldCompiler ? "Old compiler" : "New compiler";
+
+		Console_Print("================\n[%s] Started running xNVSE script unit tests.\n================", debugStr);
+
 		if (auto path = fs::current_path() / pathStr;
 			fs::exists(path))
 		{
@@ -35,9 +38,9 @@ namespace ScriptFunctionTests
 				std::string fileName = get_stem(entry);
 
 				if (auto const script = CompileScriptEx(str.c_str(), fileName.c_str())) [[likely]]
-					{
-						PluginAPI::CallFunctionScriptAlt(script, nullptr, 0);
-					}
+				{
+					PluginAPI::CallFunctionScriptAlt(script, nullptr, 0);
+				}
 				else
 				{
 					Console_Print("%s: Error in xNVSE unit test file %s: script failed to compile.",
@@ -72,7 +75,7 @@ namespace ScriptFunctionTests
 			}
 		}
 
-		Console_Print("%s: Finished running xNVSE script unit tests.", debugStr);
+		Console_Print("================\n[%s] Finished running xNVSE script unit tests.\n================", debugStr);
 	}
 
 	void RunTests()

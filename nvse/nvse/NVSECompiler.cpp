@@ -1,4 +1,6 @@
 #include "NVSECompiler.h"
+
+#include "Commands_Array.h"
 #include "Commands_MiscRef.h"
 #include "Commands_Scripting.h"
 #include "Hooks_Script.h"
@@ -13,6 +15,7 @@ enum OPCodes {
     OP_LOOP = 0x153C,
     OP_FOREACH = 0x153D,
     OP_FOREACH_ALT = 0x1670,
+    OP_AR_EXISTS = 0x1671,
     OP_TERNARY = 0x166E,
     OP_CALL = 0x1545,
     OP_SET_MOD_LOCAL_DATA = 0x1549,
@@ -723,13 +726,10 @@ void NVSECompiler::VisitInExpr(InExpr* expr) {
     }
     // Array
 	else {
-        StartCall(OP_AR_FIND);
-        AddCallArg(expr->lhs);
+        StartCall(OP_AR_EXISTS);
         AddCallArg(expr->expression);
+        AddCallArg(expr->lhs);
         FinishCall();
-        StartCall(OP_AR_BAD_NUMERIC_INDEX);
-        FinishCall();
-        AddU8(tokenOpToNVSEOpType[NVSETokenType::BangEq]);
     }
 }
 

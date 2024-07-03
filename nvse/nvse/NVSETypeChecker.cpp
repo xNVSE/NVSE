@@ -674,6 +674,9 @@ void NVSETypeChecker::VisitGetExpr(GetExpr* expr) {
 	// Resolve variable type from form// Try to resolve lhs reference
 	// Should be ident here
 	const auto ident = dynamic_cast<IdentExpr*>(expr->left.get());
+	if (!ident) {
+		error(expr->token.line, expr->token.column, "Member access not valid here.");
+	}
 
 	const auto& lhsName = ident->token.lexeme;
 	const auto& rhsName = expr->identifier.lexeme;
@@ -700,7 +703,7 @@ void NVSETypeChecker::VisitGetExpr(GetExpr* expr) {
 		}
 	}
 
-	if (scriptable) {
+	if (scriptable && scriptable->script) {
 		if (const auto varInfo = scriptable->script->GetVariableByName(rhsName.c_str())) {
 			const auto detailedType = GetDetailedTypeFromVarType(static_cast<Script::VariableType>(varInfo->type));
 			const auto detailedTypeConverted = GetVariableTypeFromNonVarType(detailedType);
