@@ -282,8 +282,31 @@ namespace PatchHelpCommand {
 		}
 	}
 
-	void ApplyHook() {
+	void WriteHooks() {
 		WriteRelJump(0x5BCBC2, reinterpret_cast<UInt32>(&Hook));
+	}
+}
+
+namespace Serialization {
+	char __fastcall HookScriptLocals_SaveGame(ScriptEventList *eventList, void* ecx, UInt32 varId) {
+		auto* ebp = GetParentBasePtr(_AddressOfReturnAddress());
+		const auto* var = *reinterpret_cast<ScriptLocal**>(ebp - 0x14);
+
+		if (auto* script = eventList->m_script) {
+			auto* varName = script->GetVariableInfo(varId)->name.CStr();
+
+			// Skip saving of __temp vars
+			if (!_strnicmp(varName, "__temp", 6)) {
+				*static_cast<UInt32*>(_AddressOfReturnAddress()) = 0x5A9E91;
+				return 0;
+			}
+		}
+
+		return ThisStdCall<char>(0x5A9480, eventList, varId);
+	}
+
+	void WriteHooks() {
+		WriteRelCall(0x5A9E11, reinterpret_cast<UInt32>(HookScriptLocals_SaveGame));
 	}
 }
 
@@ -335,7 +358,8 @@ void Hook_Script_Init()
 	WriteRelCall(0x5949D4, reinterpret_cast<UInt32>(ExpressionEvalRunCommandHook));
 
 	// Patch command output for vanilla help command to output parent plugins / associated versions
-	PatchHelpCommand::ApplyHook();
+	PatchHelpCommand::WriteHooks();
+	Serialization::WriteHooks();
 
 	PatchRuntimeScriptCompile();
 
@@ -738,7 +762,6 @@ namespace Runtime // double-clarify
 		}
 	}
 }
-
 
 void PatchRuntimeScriptCompile()
 {
