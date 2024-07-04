@@ -296,6 +296,8 @@ void NVSETreePrinter::VisitInExpr(InExpr* expr) {
 	CompDbg("inexpr\n");
 	curTab++;
 	PrintTabs();
+	CompDbg("isNot: %s\n", expr->isNot ? "y" : "n");
+	PrintTabs();
 	CompDbg("expr\n");
 	curTab++;
 	expr->lhs->Accept(this);

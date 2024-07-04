@@ -12,12 +12,12 @@ fn () {
 	Assert(1 in test);
 	Assert(2 in test);
 	Assert(3 in test);
-	Assert(!(4 in test));
+	Assert(4 not in test);
 
 	test = {"Hello"::1, "World"::2};
 	Assert("Hello" in test);
 	Assert("World" in test);
-	Assert(!("Foobar" in test));
+	Assert("Foobar" not in test);
 	
 	print(("Finished running xNVSE " + testName + " unit tests."));
 }

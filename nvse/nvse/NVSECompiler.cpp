@@ -731,6 +731,10 @@ void NVSECompiler::VisitInExpr(InExpr* expr) {
         AddCallArg(expr->lhs);
         FinishCall();
     }
+
+    if (expr->isNot) {
+        AddU8(tokenOpToNVSEOpType[NVSETokenType::Bang]);
+    }
 }
 
 void NVSECompiler::VisitBinaryExpr(BinaryExpr* expr) {

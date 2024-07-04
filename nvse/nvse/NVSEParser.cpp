@@ -510,6 +510,7 @@ ExprPtr NVSEParser::Comparison() {
 ExprPtr NVSEParser::In() {
 	ExprPtr left = BitwiseOr();
 
+	bool isNot = Match(NVSETokenType::Not);
 	if (Match(NVSETokenType::In)) {
 		const auto op = previousToken;
 
@@ -522,11 +523,15 @@ ExprPtr NVSEParser::In() {
 				values.emplace_back(Expression());
 			}
 
-			return std::make_shared<InExpr>(left, op, values);
+			return std::make_shared<InExpr>(left, op, values, isNot);
 		}
 
 		auto expr = Expression();
-		return std::make_shared<InExpr>(left, op, expr);
+		return std::make_shared<InExpr>(left, op, expr, isNot);
+	}
+
+	if (isNot) {
+		Error(currentToken, "Expected 'in'.");
 	}
 
 	return left;

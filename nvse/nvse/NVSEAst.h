@@ -267,9 +267,10 @@ struct InExpr : Expr {
     NVSEToken tok;
     std::vector<ExprPtr> values{};
     ExprPtr expression{};
+    bool isNot;
 
-    InExpr(ExprPtr lhs, NVSEToken tok, std::vector<ExprPtr> exprs) : lhs(lhs), tok(tok), values(exprs) {}
-    InExpr(ExprPtr lhs, NVSEToken tok, ExprPtr expr) : lhs(lhs), tok(tok), expression(expr) {}
+    InExpr(ExprPtr lhs, NVSEToken tok, std::vector<ExprPtr> exprs, bool isNot) : lhs(lhs), tok(tok), values(exprs), isNot(isNot) {}
+    InExpr(ExprPtr lhs, NVSEToken tok, ExprPtr expr, bool isNot) : lhs(lhs), tok(tok), expression(expr), isNot(isNot) {}
 
     void Accept(NVSEVisitor *visitor) override {
         visitor->VisitInExpr(this);
