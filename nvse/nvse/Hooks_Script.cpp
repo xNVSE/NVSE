@@ -653,14 +653,12 @@ void PostScriptCompile()
 		}
 
 		g_currentScriptStack.pop();
+		g_currentCompilerPluginVersions.pop();
+		g_currentScriptRestorePoundChar.pop();
 
 		// Avoid clearing the variables map after parsing a lambda script that belongs to a parent script.
 		if (g_currentScriptStack.empty())
 			g_variableDefinitionsMap.clear(); // must be the parent script we just removed.
-	}
-
-	if (!g_currentCompilerPluginVersions.empty()) {
-		g_currentCompilerPluginVersions.pop();
 	}
 }
 
@@ -671,7 +669,7 @@ namespace Runtime // double-clarify
 	PrecompileResult __fastcall HandleBeginCompile_SetNotCompiled(Script* script, ScriptBuffer* buf, bool isCompiled)
 	{
 		return HandleBeginCompile(buf, script);
-	}
+		}
 
 	__declspec(naked) void HookBeginScriptCompile()
 	{
@@ -700,14 +698,14 @@ namespace Runtime // double-clarify
 	}
 
 	bool __fastcall HookEndScriptCompile_Call(UInt32 success, void* edx)
-	{
+		{
 		if (success)
 		{
 			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress());
 			auto* buf = *reinterpret_cast<ScriptBuffer**>(ebp + 0xC);
 
 			ScriptAndScriptBuffer data{ g_currentScriptStack.top(), buf };
-			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptCompile, 
+			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptCompile,
 				&data, sizeof(ScriptAndScriptBuffer), nullptr);
 		}
 		PostScriptCompile();
@@ -727,7 +725,7 @@ namespace Runtime // double-clarify
 			mov esp, ebp
 			pop ebp
 			ret 8
-		}
+		} 
 	}
 
 	char __cdecl HandleParseCommandToken(ScriptParseToken* parseToken) {
@@ -782,10 +780,6 @@ void PatchRuntimeScriptCompile()
 	}
 
 	WriteRelJump(0x5B19BA, reinterpret_cast<UInt32>(&Runtime::HookParseCommandToken));
-
-	// WriteRelCall(0x5AF92E, reinterpret_cast<UInt32>(&Runtime::HookParseCommandToken));
-	// WriteRelCall(0x5AFA3D, reinterpret_cast<UInt32>(&Runtime::HookParseCommandToken));
-	// WriteRelCall(0x5AFF1A, reinterpret_cast<UInt32>(&Runtime::HookParseCommandToken));
 }
 
 #endif
@@ -1123,55 +1117,30 @@ void __fastcall PostScriptCompileSuccess(Script* script, ScriptBuffer* scriptBuf
 #endif
 }
 
-static __declspec(naked) void CompileScriptHook(void)
-{
-	static PrecompileResult precompileResult;
-	static Script *script = nullptr;
-	static ScriptBuffer* scriptBuffer = nullptr;
-	__asm {
-		mov		[script], eax
-		mov		eax, [esp + 4] // grab the second arg (ScriptBuffer*)
-		mov		[scriptBuffer], eax
-		pushad
-		mov		ecx, script
-		push	ecx
-		push	eax
-		call	HandleBeginCompile // Precompile
-		mov		[precompileResult], al // save result
-		cmp		al, kPrecompile_Success
-		popad
-		je		DoCompilation
-		// else, need to clear the two args from the stack that were set up for the kBeginScriptCompileCallAddr call.
-		add		esp, 8
-		// return 1 if precompile result was kPrecompile_SpecialCompile
-		mov		al, precompileResult
-		cmp		al, kPrecompile_SpecialCompile
-		jne		EndHook
-		// else, was equal
-		mov		al, 1
-		jmp		EndHook
+// This hook is inconsistent with runtime - this hooks calls to Script::Compile instead of hooking inside of it
+//	- If Script->Compile is called in the GECK outside of the vanilla code this will NOT be hit
+//	- Not sure if this is a problem, maybe all plugins should be compiling scripts via NVSE and we can clean up the runtime hooks as well?
+static char __fastcall CompileScriptHook(void* context, void* edx, Script* script, ScriptBuffer *buf) {
+	auto precompileResult = HandleBeginCompile(buf, script);
+	char result = 0;
 
-		DoCompilation:
-		call	[kBeginScriptCompileCallAddr] // let the compiler take over
-		push	eax
-		call	PostScriptCompile
-		pop		eax
-		test	al, al
-		jz		EndHook // return false if CompileScript() returned false
-		mov		edx, scriptBuffer
-		mov		ecx, script
-		call	PostScriptCompileSuccess
-		mov		al, [precompileResult]	 // else return result of Precompile
-		
-		EndHook:
-		// there's a small possibility that the compiler override is still in effect here (e.g. scripter forgot an 'end')
-		// so make sure there's no chance it remains in effect, otherwise potentially could affect result script compilation
-		pushad
-		push	0
-		call	CompilerOverride::ToggleOverride
-		popad
-		jmp		[kBeginScriptCompileRetnAddr] // bye
+	if (precompileResult == kPrecompile_Success) {
+		// Let original compiler take over
+		result = ThisStdCall<char>(0x5C96E0, context, script, buf);
 	}
+
+	// Special compilation, new compiler
+	else if (precompileResult == kPrecompile_SpecialCompile) {
+		result = 1;
+	}
+
+	PostScriptCompile();
+	if (result) {
+		PostScriptCompileSuccess(script, buf);
+	}
+
+	CompilerOverride::ToggleOverride(false);
+	return result;
 }
 
 // replace special characters ("%q" -> '"', "%r" -> '\n')
@@ -1287,7 +1256,8 @@ __declspec(naked) void HookParseCommandToken() {
 void Hook_Compiler_Init()
 {
 	// hook beginning of compilation process
-	WriteRelJump(kBeginScriptCompilePatchAddr, (UInt32)&CompileScriptHook);
+	WriteRelCall(0x5C9859, reinterpret_cast<UInt32>(CompileScriptHook));
+	WriteRelCall(0x5C99AC, reinterpret_cast<UInt32>(CompileScriptHook));
 
 	// hook copying of string argument to compiled data
 	// lets us modify the string before its copied
