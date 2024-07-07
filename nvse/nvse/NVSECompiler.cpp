@@ -26,6 +26,8 @@ enum OPCodes {
     OP_AR_MAP = 0x1568,
     OP_AR_FIND = 0x1557,
     OP_AR_BAD_NUMERIC_INDEX = 0x155F,
+    OP_CONTINUE = 0x153E,
+    OP_BREAK = 0x15EF
 };
 
 void NVSECompiler::ClearTempVars() {
@@ -83,7 +85,7 @@ void NVSECompiler::PrintScriptInfo() {
     
     CompDbg("\n");
 
-    // Script data
+    // Script data  
     CompDbg("[Data]\n");
     for (int i = 0; i < engineScript->info.dataLength; i++) {
         CompDbg("%02X ", engineScript->data[i]);
@@ -631,11 +633,11 @@ void NVSECompiler::VisitContinueStmt(ContinueStmt* stmt) {
         statementCounter.top()++;
     }
 
-    AddU32(0x153E);
+    AddU32(OP_CONTINUE);
 }
 
 void NVSECompiler::VisitBreakStmt(BreakStmt* stmt) {
-    AddU32(0x153F);
+    AddU32(OP_BREAK);
 }
 
 void NVSECompiler::VisitWhileStmt(WhileStmt* stmt) {

@@ -18,6 +18,8 @@ fn () {
 	Assert("Hello" in test);
 	Assert("World" in test);
 	Assert("Foobar" not in test);
+	test["Foobar"] = 3;
+	Assert("Foobar" in test);
 	
 	print(("Finished running xNVSE " + testName + " unit tests."));
 }
