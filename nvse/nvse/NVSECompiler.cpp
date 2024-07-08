@@ -293,6 +293,10 @@ void NVSECompiler::VisitVarDeclStmt(VarDeclStmt* stmt) {
 
         CompDbg("Defined global variable %s\n", name.c_str());
 
+        if (var->isGlobal) {
+            AddLocal(name, varType);
+        }
+
         if (!value) {
             continue;
         }
