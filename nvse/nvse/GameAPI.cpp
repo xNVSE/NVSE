@@ -300,7 +300,7 @@ bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineB
 				}
 				break;
 			case kParamType_Actor:
-				if (!spToken.varIdx && (!spToken.refObj || !spToken.refObj->Unk_39()))
+				if (!spToken.varIdx && (!spToken.refObj || !spToken.refObj->IsActor_InEditor()))
 				{
 					errorFmt = (const char *)0xD60C90;
 					goto compileError;

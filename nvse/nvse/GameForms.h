@@ -272,7 +272,7 @@ public:
 	virtual void		Unk_36(bool set);	// 00020000
 	virtual void		Unk_37(void);		// write esp format
 	virtual void		readOBNDSubRecord(ModInfo * modInfo);	// read esp format
-	virtual bool		Unk_39(void);
+	virtual bool		IsActor_InEditor(void);
 	virtual bool		IsBoundObject(void);
 	virtual bool		Unk_3B(void);
 #if RUNTIME
@@ -288,7 +288,7 @@ public:
 #else  // Editor: returns EditorID string. Credits to lStewieAl for the name.
 	virtual const char* GetEditorID_InEditor(void) const;
 #endif
-	virtual bool		IsActor(void);
+	virtual bool		IsActor_Runtime(void);
 	virtual UInt32		Unk_41(void);
 	virtual void		CopyFrom(const TESForm * form);
 	virtual bool		Compare(TESForm * form);

@@ -8,7 +8,7 @@ void allocateConsole() {
 		AllocConsole();
 		freopen("CONOUT$", "w", stdout);
 		consoleAllocated = true;
-		
+
 		HWND hwnd = GetConsoleWindow();
 		if (hwnd != NULL)
 		{
@@ -59,7 +59,7 @@ void CompErr(const char* fmt, ...) {
 #ifdef EDITOR
 	vprintf(fmt, argList);
 #else
-    vShowRuntimeError(nullptr, fmt, argList);
+	vShowRuntimeError(nullptr, fmt, argList);
 #endif
 	va_end(argList);
 }
@@ -186,6 +186,14 @@ uint32_t resolveVanillaEnum(const ParamInfo* info, const char* str) {
 	}
 }
 
+#if EDITOR
+constexpr UInt32 p_mapMarker = 0xEDDA34;
+constexpr UInt32 g_isContainer = 0x63D740;
+#else
+constexpr UInt32 p_mapMarker = 0x11CA224;
+constexpr UInt32 g_isContainer = 0x55D310;
+#endif
+
 bool doesFormMatchParamType(TESForm* form, const ParamType type)
 {
 	if (!form)
@@ -194,211 +202,330 @@ bool doesFormMatchParamType(TESForm* form, const ParamType type)
 	switch (type)
 	{
 	case kParamType_ObjectID:
-		if (!kInventoryType[form->typeID])
+		if (!form || !kInventoryType[form->typeID])
+		{
 			return false;
+		}
 		break;
 	case kParamType_ObjectRef:
-		if ((form->typeID < kFormType_TESObjectREFR) || ((form->typeID > kFormType_FlameProjectile) && NOT_ID(form, ContinuousBeamProjectile)))
+		if (!form || !DYNAMIC_CAST(form, TESForm, TESObjectREFR))
+		{
 			return false;
+		}
 		break;
 	case kParamType_Actor:
-		if (NOT_ID(form, Character) && NOT_ID(form, Creature))
+#if EDITOR
+		if (!form || !form->IsActor_InEditor())
+		{
 			return false;
-		break;
-	case kParamType_SpellItem:
-		if (NOT_ID(form, SpellItem) && NOT_ID(form, TESObjectBOOK))
+		}
+#else
+		if (!form || !form->IsActor_Runtime())
+		{
 			return false;
-		break;
-	case kParamType_Cell:
-		if NOT_ID(form, TESObjectCELL)
-			return false;
-		break;
-	case kParamType_MagicItem:
-	{
-		MagicItem* magicItem = DYNAMIC_CAST(form, TESForm, MagicItem);
-		if (!magicItem)
-			return false;
-		break;
-	}
-	case kParamType_Sound:
-		if NOT_ID(form, TESSound)
-			return false;
-		break;
-	case kParamType_Topic:
-		if NOT_ID(form, TESTopic)
-			return false;
-		break;
-	case kParamType_Quest:
-		if NOT_ID(form, TESQuest)
-			return false;
-		break;
-	case kParamType_Race:
-		if NOT_ID(form, TESRace)
-			return false;
-		break;
-	case kParamType_Class:
-		if NOT_ID(form, TESClass)
-			return false;
-		break;
-	case kParamType_Faction:
-		if NOT_ID(form, TESFaction)
-			return false;
-		break;
-	case kParamType_Global:
-		if NOT_ID(form, TESGlobal)
-			return false;
-		break;
-	case kParamType_Furniture:
-		if (NOT_ID(form, TESFurniture) && NOT_ID(form, BGSListForm))
-			return false;
-		break;
-	case kParamType_TESObject:
-		if (!form->IsBoundObject())
-			return false;
+		}
+#endif
 		break;
 	case kParamType_MapMarker:
-		if (NOT_ID(form, TESObjectREFR) || (((TESObjectREFR*)form)->baseForm->refID != 0x10))
+		if (!form || NOT_ID(form, TESObjectREFR) || (((TESObjectREFR*)form)->baseForm != *(TESForm**)p_mapMarker))
+		{
 			return false;
-		break;
-	case kParamType_ActorBase:
-		if (NOT_ID(form, TESNPC) && NOT_ID(form, TESCreature))
-			return false;
+		}
 		break;
 	case kParamType_Container:
-		if (NOT_ID(form, Character) && NOT_ID(form, Creature) && (NOT_ID(form, TESObjectREFR) || NOT_ID(((TESObjectREFR*)form)->baseForm, TESObjectCONT)))
+		if (!form || !DYNAMIC_CAST(form, TESForm, TESObjectREFR) || !ThisStdCall<TESContainer*>(g_isContainer, form))
+		{
 			return false;
+		}
+		break;
+	case kParamType_SpellItem:
+		if (!form || (NOT_ID(form, SpellItem) && NOT_ID(form, TESObjectBOOK)))
+		{
+			return false;
+		}
+		break;
+	case kParamType_Cell:
+		if (!form || NOT_ID(form, TESObjectCELL) || !(((TESObjectCELL*)form)->cellFlags & 1))
+		{
+			return false;
+		}
+		break;
+	case kParamType_MagicItem:
+		if (!form || !DYNAMIC_CAST(form, TESForm, MagicItem))
+		{
+			return false;
+		}
+		break;
+	case kParamType_Sound:
+		if (!form || NOT_ID(form, TESSound))
+		{
+			return false;
+		}
+		break;
+	case kParamType_Topic:
+		if (!form || NOT_ID(form, TESTopic))
+		{
+			return false;
+		}
+		break;
+	case kParamType_Quest:
+		if (!form || NOT_ID(form, TESQuest))
+		{
+			return false;
+		}
+		break;
+	case kParamType_Race:
+		if (!form || NOT_ID(form, TESRace))
+		{
+			return false;
+		}
+		break;
+	case kParamType_Class:
+		if (!form || NOT_ID(form, TESClass))
+		{
+			return false;
+		}
+		break;
+	case kParamType_Faction:
+		if (!form || NOT_ID(form, TESFaction))
+		{
+			return false;
+		}
+		break;
+	case kParamType_Global:
+		if (!form || NOT_ID(form, TESGlobal))
+		{
+			return false;
+		}
+		break;
+	case kParamType_Furniture:
+		if (!form || (NOT_ID(form, TESFurniture) && NOT_ID(form, BGSListForm)))
+		{
+			return false;
+		}
+		break;
+	case kParamType_TESObject:
+		if (!form || !DYNAMIC_CAST(form, TESForm, TESObject))
+		{
+			return false;
+		}
+		break;
+	case kParamType_ActorBase:
+		if (!form || (NOT_ID(form, TESNPC) && NOT_ID(form, TESCreature)))
+		{
+			return false;
+		}
 		break;
 	case kParamType_WorldSpace:
-		if NOT_ID(form, TESWorldSpace)
+		if (!form || NOT_ID(form, TESWorldSpace))
+		{
 			return false;
+		}
 		break;
 	case kParamType_AIPackage:
-		if NOT_ID(form, TESPackage)
+		if (!form || NOT_ID(form, TESPackage))
+		{
 			return false;
+		}
 		break;
 	case kParamType_CombatStyle:
-		if NOT_ID(form, TESCombatStyle)
+		if (!form || NOT_ID(form, TESCombatStyle))
+		{
 			return false;
+		}
 		break;
 	case kParamType_MagicEffect:
-		if NOT_ID(form, EffectSetting)
+		if (!form || NOT_ID(form, EffectSetting))
+		{
 			return false;
+		}
 		break;
 	case kParamType_WeatherID:
-		if NOT_ID(form, TESWeather)
+		if (!form || NOT_ID(form, TESWeather))
+		{
 			return false;
+		}
 		break;
 	case kParamType_NPC:
-		if NOT_ID(form, TESNPC)
+		if (!form || NOT_ID(form, TESNPC))
+		{
 			return false;
+		}
 		break;
 	case kParamType_Owner:
-		if (NOT_ID(form, TESFaction) && NOT_ID(form, TESNPC))
+		if (!form || (NOT_ID(form, TESFaction) && NOT_ID(form, TESNPC)))
+		{
 			return false;
+		}
 		break;
 	case kParamType_EffectShader:
-		if NOT_ID(form, TESEffectShader)
+		if (!form || NOT_ID(form, TESEffectShader))
+		{
 			return false;
+		}
 		break;
 	case kParamType_FormList:
-		if NOT_ID(form, BGSListForm)
+		if (!form || NOT_ID(form, BGSListForm))
+		{
 			return false;
+		}
 		break;
 	case kParamType_MenuIcon:
-		if NOT_ID(form, BGSMenuIcon)
+		if (!form || NOT_ID(form, BGSMenuIcon))
+		{
 			return false;
+		}
 		break;
 	case kParamType_Perk:
-		if NOT_ID(form, BGSPerk)
+		if (!form || NOT_ID(form, BGSPerk))
+		{
 			return false;
+		}
 		break;
 	case kParamType_Note:
-		if NOT_ID(form, BGSNote)
+		if (!form || NOT_ID(form, BGSNote))
+		{
 			return false;
+		}
 		break;
 	case kParamType_ImageSpaceModifier:
-		if NOT_ID(form, TESImageSpaceModifier)
+		if (!form || NOT_ID(form, TESImageSpaceModifier))
+		{
 			return false;
+		}
 		break;
 	case kParamType_ImageSpace:
-		if NOT_ID(form, TESImageSpace)
+		if (!form || NOT_ID(form, TESImageSpace))
+		{
 			return false;
+		}
 		break;
 	case kParamType_EncounterZone:
-		if NOT_ID(form, BGSEncounterZone)
+		if (!form || NOT_ID(form, BGSEncounterZone))
+		{
 			return false;
+		}
 		break;
 	case kParamType_IdleForm:
-		if NOT_ID(form, TESIdleForm)
+		if (!form || NOT_ID(form, TESIdleForm))
+		{
 			return false;
+		}
 		break;
 	case kParamType_Message:
-		if NOT_ID(form, BGSMessage)
+		if (!form || NOT_ID(form, BGSMessage))
+		{
 			return false;
+		}
 		break;
 	case kParamType_InvObjOrFormList:
-		if (NOT_ID(form, BGSListForm) && !kInventoryType[form->typeID])
+		if (!form || (NOT_ID(form, BGSListForm) && !kInventoryType[form->typeID]))
+		{
 			return false;
+		}
 		break;
 	case kParamType_NonFormList:
-		if (IS_ID(form, BGSListForm) || !form->IsBoundObject())
+#if RUNTIME
+		if (!form || NOT_ID(form, BGSListForm))
+		{
 			return false;
+		}
+#else
+		if (!form || (NOT_ID(form, BGSListForm) && !form->Unk_33()))
+		{
+			return false;
+		}
+#endif
 		break;
 	case kParamType_SoundFile:
-		if NOT_ID(form, BGSMusicType)
+		if (!form || NOT_ID(form, BGSMusicType))
+		{
 			return false;
+		}
 		break;
 	case kParamType_LeveledOrBaseChar:
-		if (NOT_ID(form, TESNPC) && NOT_ID(form, TESLevCharacter))
+		if (!form || (NOT_ID(form, TESNPC) && NOT_ID(form, TESLevCharacter)))
+		{
 			return false;
+		}
 		break;
 	case kParamType_LeveledOrBaseCreature:
-		if (NOT_ID(form, TESCreature) && NOT_ID(form, TESLevCreature))
+		if (!form || (NOT_ID(form, TESCreature) && NOT_ID(form, TESLevCreature)))
+		{
 			return false;
+		}
 		break;
 	case kParamType_LeveledChar:
-		if NOT_ID(form, TESLevCharacter)
+		if (!form || NOT_ID(form, TESLevCharacter))
+		{
 			return false;
+		}
 		break;
 	case kParamType_LeveledCreature:
-		if NOT_ID(form, TESLevCreature)
+		if (!form || NOT_ID(form, TESLevCreature))
+		{
 			return false;
+		}
 		break;
 	case kParamType_LeveledItem:
-		if NOT_ID(form, TESLevItem)
+		if (!form || NOT_ID(form, TESLevItem))
+		{
 			return false;
+		}
+		break;
+	case kParamType_AnyForm:
+		if (!form)
+		{
+			return false;
+		}
 		break;
 	case kParamType_Reputation:
-		if NOT_ID(form, TESReputation)
+		if (!form || NOT_ID(form, TESReputation))
+		{
 			return false;
+		}
 		break;
 	case kParamType_Casino:
-		if NOT_ID(form, TESCasino)
+		if (!form || NOT_ID(form, TESCasino))
+		{
 			return false;
+		}
 		break;
 	case kParamType_CasinoChip:
-		if NOT_ID(form, TESCasinoChips)
+		if (!form || NOT_ID(form, TESCasinoChips))
+		{
 			return false;
+		}
 		break;
 	case kParamType_Challenge:
-		if NOT_ID(form, TESChallenge)
+		if (!form || NOT_ID(form, TESChallenge))
+		{
 			return false;
+		}
 		break;
 	case kParamType_CaravanMoney:
-		if NOT_ID(form, TESCaravanMoney)
+		if (!form || NOT_ID(form, TESCaravanMoney))
+		{
 			return false;
+		}
 		break;
 	case kParamType_CaravanCard:
-		if NOT_ID(form, TESCaravanCard)
+		if (!form || NOT_ID(form, TESCaravanCard))
+		{
 			return false;
+		}
 		break;
 	case kParamType_CaravanDeck:
-		if NOT_ID(form, TESCaravanDeck)
+		if (!form || NOT_ID(form, TESCaravanDeck))
+		{
 			return false;
+		}
 		break;
 	case kParamType_Region:
-		if NOT_ID(form, TESRegion)
+		if (!form || NOT_ID(form, TESRegion))
+		{
 			return false;
+		}
 		break;
 	}
 
