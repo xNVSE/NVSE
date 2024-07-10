@@ -396,5 +396,7 @@ ipch
 
 *.tlog
 *.recipe
-/nvse/enc_temp_folder
-/nvse/.idea/.idea.nvse/.idea
+
+# Jetbrains
+nvse/.idea/
+nvse/enc_temp_folder/

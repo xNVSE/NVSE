@@ -1,4 +1,5 @@
 begin Function { }
+	print "Started running xNVSE Array Unit Tests."
 
 	; === Test array functions ===
 	array_var aVar = ar_list 1 2 3 4
@@ -28,7 +29,17 @@ begin Function { }
 
 	ar_insertRange avar 0 (ar_list 0 1)
 	Assert (avar == (ar_list 0 1 2))
+	
+	aVar = ar_list 1 2 2 3 3 3 4 4 4 4
+	Assert ((Ar_Count aVar 1) == 1)
+	Assert ((Ar_Count aVar 2) == 2)
+	Assert ((Ar_Count aVar 3) == 3)
+	Assert ((Ar_Count aVar 4) == 4)
+
+	Assert ((ar_CountWhere aVar ({array_var aIter} => *aIter == 1)) == 1)
+	Assert ((ar_CountWhere aVar ({array_var aIter} => *aIter == 2)) == 2)
+	Assert ((ar_CountWhere aVar ({array_var aIter} => *aIter == 3)) == 3)
+	Assert ((ar_CountWhere aVar ({array_var aIter} => *aIter == 4)) == 4)
 
 	print "Finished running xNVSE Array Unit Tests."
-	
 end

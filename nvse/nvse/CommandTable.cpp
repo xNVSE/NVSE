@@ -2268,8 +2268,9 @@ void CommandTable::AddCommandsV6()
 
 	ADD_CMD(ForEachAlt);
 	ADD_CMD(ar_Exists);
-
-	//ADD_CMD_VER(sv_find, 7, 0, 0);
+	ADD_CMD(ar_Count);
+	ADD_CMD(ar_CountWhere);
+	ADD_CMD(EvaluateInventory);
 }
 
 namespace PluginAPI

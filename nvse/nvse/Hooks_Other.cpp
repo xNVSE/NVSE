@@ -6,12 +6,15 @@
 #include "LambdaManager.h"
 #include "PluginManager.h"
 #include "Commands_UI.h"
+#include "EventManager.h"
 #include "FastStack.h"
 #include "GameTiles.h"
+#include "GameUI.h"
 #include "MemoizedMap.h"
 #include "StackVariables.h"
 
 #if RUNTIME
+#include "InventoryReference.h"
 namespace OtherHooks
 {
 	const static auto ClearCachedTileMap = &MemoizedMap<const char*, Tile::Value*>::Clear;
@@ -242,6 +245,184 @@ namespace OtherHooks
 		LambdaManager::MarkScriptAsDeleted(script);
 	}
 
+	namespace IMod {
+		void __fastcall ApplyIMOD(void** a1, void* unused, void* a2) {
+			auto *ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
+			auto ref = *reinterpret_cast<TESForm**>(ebp + 0x8);
+
+			EventManager::DispatchEvent("onapplyimod", nullptr, ref);
+
+			ThisStdCall(0x633C90, a1, a2);
+		}
+
+		void __fastcall RemoveIMOD_1(void** a1, void* unused, void* a2) {
+			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
+			auto ref = *reinterpret_cast<TESForm**>(ebp + 0x8);
+		
+			EventManager::DispatchEvent("onremoveimod", nullptr, ref);
+		
+ 			ThisStdCall(0x633C90, a1, a2);
+		}
+
+		// IMOD Instance removal
+		void __fastcall RemoveIMOD_2(void** a1, void* unused, void* a2) {
+			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
+			uint8_t* refObj = *reinterpret_cast<uint8_t**>(ebp - 0x1C);
+			TESObjectREFR* ref = *reinterpret_cast<TESObjectREFR**>(refObj + 0x1C);
+
+			EventManager::DispatchEvent("onremoveimod", nullptr, ref);
+
+			ThisStdCall(0x631620, a1, a2);
+		}
+
+		void WriteHooks() {
+			WriteRelCall(0x529A37, reinterpret_cast<UInt32>(ApplyIMOD));
+			WriteRelCall(0x529D37, reinterpret_cast<UInt32>(RemoveIMOD_1));
+			WriteRelCall(0x86FE75, reinterpret_cast<UInt32>(RemoveIMOD_2));
+		}
+	}
+
+	namespace Locks {
+		void __fastcall OnLockBroken(TESObjectREFR* doorRef) {
+			EventManager::DispatchEvent("onlockbroken", nullptr, doorRef);
+
+			ThisStdCall(0x569160, doorRef);
+		}
+
+		void __fastcall OnLockPickSuccess(TESObjectREFR* doorRef) {
+			EventManager::DispatchEvent("onlockpicksuccess", nullptr, doorRef);
+
+			ThisStdCall(0x5692A0, doorRef);
+		}
+
+		void __fastcall OnLockPickBroken() {
+			uint8_t* menu = *reinterpret_cast<uint8_t**>(g_lockpickMenu);
+			TESObjectREFR* doorRef = *reinterpret_cast<TESObjectREFR**>(menu + 0x6C);
+
+			EventManager::DispatchEvent("onlockpickbroken", nullptr, doorRef);
+
+			// Dont need to call original hooked method since nullsub
+		}
+
+		// unlocked door/container, unlocker, unlock type (0 = script, 1 = lockpick, 2 = key)
+		// Cmd_Unlock_Execute
+		void* __fastcall OnUnlock_5CC222(void* a1, void* unused, char a2) {
+			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
+			auto ref = *reinterpret_cast<TESObjectREFR**>(ebp + 0x10);
+
+			EventManager::DispatchEvent("onunlock", nullptr, ref, nullptr, 0);
+
+			return ThisStdCall<void*>(0x430A90, a1, a2);
+		}
+
+		// Lockpick menu
+		void* __fastcall OnUnlock_78F8E5(TESObjectREFR* doorRef) {
+			EventManager::DispatchEvent("onunlock", nullptr, doorRef, *g_thePlayer, 1);
+
+			return ThisStdCall<void*>(0x5692A0, doorRef);
+		}
+
+		// Unlock via interact
+		void* __fastcall OnUnlock_518B00(void* a1) {
+			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
+			auto unlocker = *reinterpret_cast<TESObjectREFR**>(ebp - 0x18);
+			auto doorRef = *reinterpret_cast<TESObjectREFR**>(ebp + 0x8);
+
+			if (unlocker == *reinterpret_cast<TESObjectREFR**>(g_thePlayer)) {
+				EventManager::DispatchEvent("onunlock", nullptr, doorRef, *g_thePlayer, 1);
+			}
+			else {
+				ExtraLock::Data* lockData = *reinterpret_cast<ExtraLock::Data**>(ebp - 0x20);
+				char* v58 = *reinterpret_cast<char**>(ebp - 0x1C);
+				bool hasKey = ThisStdCall<char>(0x891DB0, unlocker, lockData->key, 0, 1, 0, v58);
+				if (!hasKey) {
+					EventManager::DispatchEvent("onunlock", nullptr, doorRef, unlocker, 1);
+				}
+				else {
+					EventManager::DispatchEvent("onunlock", nullptr, doorRef, unlocker, 2);
+				}
+			}
+
+			return ThisStdCall<void*>(0x517360, a1);
+		}
+
+		void WriteHooks() {
+			WriteRelCall(0x790461, reinterpret_cast<UInt32>(OnLockBroken));
+			WriteRelCall(0x78F8E5, reinterpret_cast<UInt32>(OnLockPickSuccess)); 
+			WriteRelCall(0x78FE24, reinterpret_cast<UInt32>(OnLockPickBroken));
+			WriteRelCall(0x5CC222, reinterpret_cast<UInt32>(OnUnlock_5CC222));
+			WriteRelCall(0x78F8E5, reinterpret_cast<UInt32>(OnUnlock_78F8E5));
+			WriteRelCall(0x518B00, reinterpret_cast<UInt32>(OnUnlock_518B00));
+		}
+	}
+
+	namespace Terminal {
+		void __fastcall OnTerminalHacked(UInt8* menu, void* unused, int a2, int a3) {
+			TESObjectREFR* unlockedRef = *reinterpret_cast<TESObjectREFR**>(menu + 0x198);
+
+			EventManager::DispatchEvent("onterminalhacked", nullptr, unlockedRef);
+
+			ThisStdCall(0x767EF0, menu, a2, a3);
+		}
+
+		void __fastcall OnTerminalHackFailed(UInt8 * menu, void* unused, int a2, int a3) {
+			TESObjectREFR* lockedRef = *reinterpret_cast<TESObjectREFR**>(menu + 0x198);
+
+			EventManager::DispatchEvent("onterminalhackfailed", nullptr, lockedRef);
+
+			ThisStdCall(0x767EF0, menu, a2, a3);
+		}
+
+		void WriteHooks() {
+			WriteRelCall(0x76717A, reinterpret_cast<UInt32>(OnTerminalHacked));
+			WriteRelCall(0x7674B0, reinterpret_cast<UInt32>(OnTerminalHackFailed));
+		}
+	}
+
+	namespace Repair {
+		// Repaired inv ref, repairer, type (0 = standard, 1 = merchant)
+		char __fastcall OnItemRepair_1(void* a1, void* unused, char a2) {
+			ExtraContainerChanges::EntryData *data = *reinterpret_cast<ExtraContainerChanges::EntryData**>(0x11DA760);
+			auto invRef = CreateInventoryRefEntry(*g_thePlayer, data->type, data->countDelta, data->extendData->GetFirstItem());
+			EventManager::DispatchEvent("onrepair", nullptr, invRef, *g_thePlayer, 0);
+
+			return ThisStdCall<char>(0xAD8830, a1, a2);
+		}
+
+		TESForm* __fastcall OnItemRepair_2(ExtraContainerChanges::EntryData* data) {
+			auto invRef = CreateInventoryRefEntry(*g_thePlayer, data->type, data->countDelta, data->extendData->GetFirstItem());
+			auto repairer = *reinterpret_cast<TESObjectREFR**>(0x11DA7F4);
+
+			EventManager::DispatchEvent("onrepair", nullptr, invRef, repairer, 1);
+
+			return ThisStdCall<TESForm*>(0x44DDC0, data);
+		}
+
+		void WriteHooks() {
+			WriteRelCall(0x7B5CAC, reinterpret_cast<UInt32>(OnItemRepair_1));
+			WriteRelCall(0x7B800E, reinterpret_cast<UInt32>(OnItemRepair_2));
+		}
+	}
+
+	namespace DisEnable {
+		void __cdecl OnDisable(TESObjectREFR* ref, char a2) {
+			EventManager::DispatchEvent("ondisable", nullptr, ref);
+
+			CdeclCall(0x5AA500, ref, a2);
+		}
+
+		void __cdecl OnEnable(TESObjectREFR* ref) {
+			EventManager::DispatchEvent("onenable", nullptr, ref);
+
+			CdeclCall(0x5AA580, ref);
+		}
+
+		void WriteHooks() {
+			WriteRelCall(0x5C47B6, reinterpret_cast<UInt32>(OnDisable));
+			WriteRelCall(0x5C453C, reinterpret_cast<UInt32>(OnEnable));
+		}
+	}
+
 	void Hooks_Other_Init()
 	{
 		WriteRelJump(0x9FF5FB, UInt32(TilesDestroyedHook));
@@ -260,6 +441,12 @@ namespace OtherHooks
 		WriteRelCall(0x60D858, ResetQuestDeleteScriptEventListHook);
 
 		*(UInt32*)0x0126FDF4 = 1; // locale fix
+
+		IMod::WriteHooks();
+		Locks::WriteHooks();
+		Terminal::WriteHooks();
+		Repair::WriteHooks();
+		DisEnable::WriteHooks();
 	}
 
 	thread_local CurrentScriptContext emptyCtx{}; // not every command gets run through script runner
