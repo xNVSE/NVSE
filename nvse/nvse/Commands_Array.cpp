@@ -1249,7 +1249,7 @@ bool Cmd_ar_Count_Execute(COMMAND_ARGS) {
 	return true;
 }
 
-bool Cmd_ar_CountIf_Execute(COMMAND_ARGS) {
+bool Cmd_ar_CountWhere_Execute(COMMAND_ARGS) {
 	ArrayFunctionContext ctx(PASS_COMMAND_ARGS);
 	*result = 0;
 	if (!ExtractArrayUDF(ctx))

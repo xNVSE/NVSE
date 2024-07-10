@@ -2222,7 +2222,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(MatchesAnyOf);
 	ADD_CMD(ar_Exists);
 	ADD_CMD(ar_Count);
-	ADD_CMD(ar_CountIf);
+	ADD_CMD(ar_CountWhere);
 	ADD_CMD(EvaluateInventory);
 }
 

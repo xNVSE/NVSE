@@ -10,10 +10,10 @@
 #include "FastStack.h"
 #include "GameTiles.h"
 #include "GameUI.h"
-#include "InventoryReference.h"
 #include "MemoizedMap.h"
 
 #if RUNTIME
+#include "InventoryReference.h"
 namespace OtherHooks
 {
 	const static auto ClearCachedTileMap = &MemoizedMap<const char*, Tile::Value*>::Clear;
@@ -271,7 +271,8 @@ namespace OtherHooks
 			else {
 				ExtraLock::Data* lockData = *reinterpret_cast<ExtraLock::Data**>(ebp - 0x20);
 				char* v58 = *reinterpret_cast<char**>(ebp - 0x1C);
-				if (!ThisStdCall<char>(0x891DB0, unlocker, lockData->key, 0, 1, 0, v58)) {
+				bool hasKey = ThisStdCall<char>(0x891DB0, unlocker, lockData->key, 0, 1, 0, v58);
+				if (!hasKey) {
 					EventManager::DispatchEvent("onunlock", nullptr, doorRef, unlocker, 1);
 				}
 				else {
@@ -316,7 +317,7 @@ namespace OtherHooks
 	}
 
 	namespace Repair {
-		// Repaired inv ref, repairer, type (0 = standard, 1 = merchant, 2 = repair kit)
+		// Repaired inv ref, repairer, type (0 = standard, 1 = merchant)
 		char __fastcall OnItemRepair_1(void* a1, void* unused, char a2) {
 			ExtraContainerChanges::EntryData *data = *reinterpret_cast<ExtraContainerChanges::EntryData**>(0x11DA760);
 			auto invRef = CreateInventoryRefEntry(*g_thePlayer, data->type, data->countDelta, data->extendData->GetFirstItem());

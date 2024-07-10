@@ -245,4 +245,4 @@ static ParamInfo kNVSEParams_ar_Count[] =
 };
 DEFINE_COMMAND_EXP(ar_Count, "Count how many times a given value is found inside of an array.", 0, kNVSEParams_ar_Count)
 
-DEFINE_COMMAND_EXP(ar_CountIf, "Count how many times a value matches via a specified UDF.", 0, kNVSEParams_OneArray_OneFunction);
+DEFINE_COMMAND_EXP(ar_CountWhere, "Count how many times a value matches via a specified UDF.", 0, kNVSEParams_OneArray_OneFunction);

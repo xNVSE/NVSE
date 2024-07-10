@@ -36,10 +36,10 @@ begin Function { }
 	Assert ((Ar_Count aVar 3) == 3)
 	Assert ((Ar_Count aVar 4) == 4)
 
-	Assert ((Ar_CountIf aVar ({array_var aIter} => *aIter == 1)) == 1)
-	Assert ((Ar_CountIf aVar ({array_var aIter} => *aIter == 2)) == 2)
-	Assert ((Ar_CountIf aVar ({array_var aIter} => *aIter == 3)) == 3)
-	Assert ((Ar_CountIf aVar ({array_var aIter} => *aIter == 4)) == 4)
+	Assert ((ar_CountWhere aVar ({array_var aIter} => *aIter == 1)) == 1)
+	Assert ((ar_CountWhere aVar ({array_var aIter} => *aIter == 2)) == 2)
+	Assert ((ar_CountWhere aVar ({array_var aIter} => *aIter == 3)) == 3)
+	Assert ((ar_CountWhere aVar ({array_var aIter} => *aIter == 4)) == 4)
 
 	print "Finished running xNVSE Array Unit Tests."
 end
