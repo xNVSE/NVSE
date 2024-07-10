@@ -206,3 +206,6 @@ public:
 
 	static void __cdecl UpdateVisibilityState(signed int hudState);
 };
+
+extern Menu** g_lockpickMenu;
+extern Menu** g_hackingMenu;

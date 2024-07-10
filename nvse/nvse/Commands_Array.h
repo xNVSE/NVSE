@@ -236,3 +236,13 @@ static ParamInfo kNVSEParams_ar_Exists[] =
 	{	"range",		kNVSEParamType_Slice,		1	}, // only possibly used for packed arrays, and only if toFind isn't a pair.
 };
 DEFINE_COMMAND_EXP(ar_Exists, "For packed arrays, check if value exists. Else (map), check if key exists.", 0, kNVSEParams_ar_Exists);
+
+
+static ParamInfo kNVSEParams_ar_Count[] =
+{
+	{	"array",		kNVSEParamType_Array,		0	},
+	{	"toFind",		(kNVSEParamType_BasicType | kNVSEParamType_Pair),	0	},
+};
+DEFINE_COMMAND_EXP(ar_Count, "Count how many times a given value is found inside of an array.", 0, kNVSEParams_ar_Count)
+
+DEFINE_COMMAND_EXP(ar_CountWhere, "Count how many times a value matches via a specified UDF.", 0, kNVSEParams_OneArray_OneFunction);
