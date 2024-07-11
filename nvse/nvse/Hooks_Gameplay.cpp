@@ -818,6 +818,24 @@ static void HandleMainLoopHook(void)
 
 #if RUNTIME
 		WriteDelayedHooks();
+
+		for (auto message : PluginManager::GetLoadErrors()) {
+			// Don't display a message for incompatible plugins?
+			if (message.find("reported as incompatible") != std::string::npos) {
+				continue;
+			}
+
+			const char* b[10] = { nullptr };
+			b[0] = "Ok";
+
+			*ShowMessageBox_pScriptRefID = (*g_thePlayer)->refID;
+
+			*ShowMessageBox_button = 0xFF;	// overwrite any previously pressed button
+			ShowMessageBox(message.c_str(),
+				0, 0, ShowMessageBox_Callback, 0, 0x17, 0, 0,
+				b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], b[8], b[9], NULL);
+
+		}
 #endif
 		
 		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_DeferredInit, NULL, 0, NULL);

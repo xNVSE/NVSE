@@ -43,6 +43,8 @@ public:
 	static void * GetData(UInt32 dataID);
 	static void ClearScriptDataCache();
 
+	static std::vector<std::string> GetLoadErrors();
+
 	static void InitExpressionEvaluatorUtils(ExpressionEvaluatorUtils *utils);
 
 private:
@@ -77,14 +79,15 @@ private:
 	static std::string	SafeCallLoadPlugin(LoadedPlugin * plugin, const NVSEInterface * nvse);
 
 	const char *	CheckPluginCompatibility(LoadedPlugin * plugin);
+	static void RegisterLoadError(std::string message);
 
 	typedef std::vector <LoadedPlugin>	LoadedPluginList;
 
 	std::string			m_pluginDirectory;
 	LoadedPluginList	m_plugins;
 
-	static LoadedPlugin		* s_currentLoadingPlugin;
-	static PluginHandle		s_currentPluginHandle;
+	static LoadedPlugin		 * s_currentLoadingPlugin;
+	static PluginHandle		   s_currentPluginHandle;
 };
 
 extern PluginManager	g_pluginManager;

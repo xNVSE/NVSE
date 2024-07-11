@@ -543,14 +543,21 @@ PluginManager::PluginLoadState::~PluginLoadState()
 		loadStatus = "loaded correctly";
 	if (loadStatus.empty())
 		loadStatus = "was not loaded for an unknown reason"; // shouldn't happen
-	_MESSAGE("plugin %s (%s; version %u; infoVersion %u) %s",
+
+	char buffer[1024];
+	(void)sprintf_s(buffer, "plugin %s (%s; version %u; infoVersion %u) %s",
 		plugin.path,
 		plugin.info.name ? plugin.info.name : "<NULL>",
 		plugin.info.version,
 		plugin.info.infoVersion,
 		loadStatus.c_str());
-	if (!success)
+
+	_MESSAGE(buffer);
+
+	if (!success) {
+		RegisterLoadError(buffer);
 		FreeLibrary(plugin.handle);
+	}
 }
 
 bool PluginManager::InstallPlugins(const std::vector<std::string>& pluginPaths)
@@ -954,6 +961,16 @@ PluginHandle PluginManager::LookupHandleFromPath(const char* pluginPath)
 	return kPluginHandle_Invalid;
 }
 
+std::vector<std::string> g_pluginErrorStrings;
+
+void PluginManager::RegisterLoadError(std::string message) {
+	g_pluginErrorStrings.emplace_back(message);
+}
+
+std::vector<std::string> PluginManager::GetLoadErrors() {
+	return g_pluginErrorStrings;
+}
+
 #ifdef RUNTIME
 
 void * PluginManager::GetSingleton(UInt32 singletonID)
@@ -1010,7 +1027,6 @@ void PluginManager::ClearScriptDataCache()
 	Dispatch_Message(0, NVSEMessagingInterface::kMessage_ClearScriptDataCache, NULL, 0, NULL);
 	// LambdaManager::ClearCache(); Instead use LambdaClearForParentScript
 }
-
 
 bool Cmd_IsPluginInstalled_Execute(COMMAND_ARGS)
 {
