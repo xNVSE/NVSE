@@ -452,7 +452,7 @@ void NVSETypeChecker::VisitTernaryExpr(TernaryExpr* expr) {
 
 	WRAP_ERROR(expr->left->Accept(this))
 	WRAP_ERROR(expr->right->Accept(this))
-	if (!CanConvertOperand(expr->right->tokenType, expr->left->tokenType)) {
+	if (!CanConvertOperand(expr->right->tokenType, GetBasicTokenType(expr->left->tokenType))) {
 		error(expr->line, std::format("Incompatible value types ('{}' and '{}') specified for ternary expression.", 
 			TokenTypeToString(expr->left->tokenType), TokenTypeToString(expr->right->tokenType)));
 	}

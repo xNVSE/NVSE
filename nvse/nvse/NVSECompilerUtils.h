@@ -22,6 +22,25 @@ inline Script::VariableType GetScriptTypeFromToken(NVSEToken t) {
 	}
 }
 
+inline Token_Type GetBasicTokenType(Token_Type type) {
+	switch (type) {
+	case kTokenType_Array:
+	case kTokenType_ArrayVar:
+		return kTokenType_Array;
+	case kTokenType_Number:
+	case kTokenType_NumericVar:
+		return kTokenType_Number;
+	case kTokenType_String:
+	case kTokenType_StringVar:
+		return kTokenType_String;
+	case kTokenType_Ref:
+	case kTokenType_RefVar:
+		return kTokenType_Ref;
+	}
+
+	return type;
+}
+
 void CompDbg(const char *fmt, ...);
 void CompInfo(const char *fmt, ...);
 void CompErr(const char *fmt, ...);
