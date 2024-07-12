@@ -20,55 +20,6 @@
         CompErr("%s\n", er.what());  \
     }
 
-Token_Type GetDetailedTypeFromNVSEToken(NVSETokenType type) {
-	switch (type) {
-	case NVSETokenType::StringType:
-		return kTokenType_StringVar;
-	case NVSETokenType::ArrayType:
-		return kTokenType_ArrayVar;
-	case NVSETokenType::RefType:
-		return kTokenType_RefVar;
-	// Short
-	case NVSETokenType::DoubleType:
-	case NVSETokenType::IntType:
-		return kTokenType_NumericVar;
-	default:
-		return kTokenType_Ambiguous;
-	}
-}
-
-Token_Type GetDetailedTypeFromVarType(Script::VariableType type) {
-	switch (type) {
-	case Script::eVarType_Float:
-	case Script::eVarType_Integer:
-		return kTokenType_Number;
-	case Script::eVarType_String:
-		return kTokenType_String;
-	case Script::eVarType_Array:
-		return kTokenType_Array;
-	case Script::eVarType_Ref:
-		return kTokenType_Ref;
-	case Script::eVarType_Invalid:
-	default:
-		return kTokenType_Invalid;
-	}
-}
-
-Token_Type GetVariableTypeFromNonVarType(Token_Type type) {
-	switch (type) {
-	case kTokenType_Number:
-		return kTokenType_NumericVar;
-	case kTokenType_String:
-		return kTokenType_StringVar;
-	case kTokenType_Ref:
-		return kTokenType_RefVar;
-	case kTokenType_Array:
-		return kTokenType_ArrayVar;
-	default:
-		return kTokenType_Invalid;
-	}
-}
-
 std::string getTypeErrorMsg(Token_Type lhs, Token_Type rhs) {
 	return std::format("Cannot convert from {} to {}", TokenTypeToString(lhs), TokenTypeToString(rhs));
 }
@@ -107,7 +58,7 @@ void NVSETypeChecker::VisitNVSEScript(NVSEScript* script) {
 	// Push global scope, gets discarded
 	globalScope = EnterScope();
 	
-	for (auto global : script->globalVars) {
+	for (const auto& global : script->globalVars) {
 		global->Accept(this);
 
 		// Dont allow initializers in global scope
@@ -122,8 +73,8 @@ void NVSETypeChecker::VisitNVSEScript(NVSEScript* script) {
 	std::unordered_map<std::string, std::unordered_set<std::string>> mpTypeToModes{};
 	std::vector<StmtPtr> functions {};
 	bool foundFn = false, foundEvent = false;
-	for (auto block : script->blocks) {
-		if (auto b = dynamic_cast<BeginStmt*>(block.get())) {
+	for (const auto& block : script->blocks) {
+		if (const auto b = dynamic_cast<BeginStmt*>(block.get())) {
 			if (foundFn) {
 				WRAP_ERROR(error(b->name.line, b->name.column, "Cannot have a function block and an event block in the same script."))
 			}
@@ -147,7 +98,7 @@ void NVSETypeChecker::VisitNVSEScript(NVSEScript* script) {
 			mpTypeToModes[name].insert(param);
 		}
 
-		if (auto b = dynamic_cast<FnDeclStmt*>(block.get())) {
+		if (const auto b = dynamic_cast<FnDeclStmt*>(block.get())) {
 			if (foundEvent) {
 				WRAP_ERROR(error(b->token.line, b->token.column, "Cannot have a function block and an event block in the same script."))
 			}
@@ -160,7 +111,7 @@ void NVSETypeChecker::VisitNVSEScript(NVSEScript* script) {
 		}
 	}
 
-	for (auto block : script->blocks) {
+	for (const auto& block : script->blocks) {
 		block->Accept(this);
 	}
 
@@ -177,7 +128,7 @@ void NVSETypeChecker::VisitFnStmt(FnDeclStmt* stmt) {
 	stmt->scope = EnterScope();
 
 	//bScopedGlobal = true;
-	for (auto decl : stmt->args) {
+	for (const auto& decl : stmt->args) {
 		WRAP_ERROR(decl->Accept(this))
 	}
 	//bScopedGlobal = false;
@@ -269,9 +220,9 @@ void NVSETypeChecker::VisitForStmt(ForStmt* stmt) {
 			stmt->cond->Accept(this);
 
 			// Check if condition can evaluate to bool
-			auto lType = stmt->cond->tokenType;
-			auto rType = kTokenType_Boolean;
-			auto oType = s_operators[kOpType_Equals].GetResult(lType, rType);
+			const auto lType = stmt->cond->tokenType;
+			const auto rType = kTokenType_Boolean;
+			const auto oType = s_operators[kOpType_Equals].GetResult(lType, rType);
 			if (oType != kTokenType_Boolean) {
 				error(stmt->line, std::format("Invalid expression type ('{}') for loop condition.", TokenTypeToString(oType)));
 			}
@@ -308,10 +259,10 @@ void NVSETypeChecker::VisitForEachStmt(ForEachStmt* stmt) {
 			// }
 		} else {
 			// Get type of lhs identifier -- this is way too verbose
-			auto decl = stmt->declarations[0];
-			auto ident = std::get<0>(decl->values[0]).lexeme;
-			auto lType = scopes.top()->resolveVariable(ident)->detailedType;
-			auto rType = stmt->rhs->tokenType;
+			const auto decl = stmt->declarations[0];
+			const auto ident = std::get<0>(decl->values[0]).lexeme;
+			const auto lType = scopes.top()->resolveVariable(ident)->detailedType;
+			const auto rType = stmt->rhs->tokenType;
 			if (s_operators[kOpType_In].GetResult(lType, rType) == kTokenType_Invalid) {
 				error(stmt->line, std::format("Invalid types '{}' and '{}' passed to for-in expression.",
 					TokenTypeToString(lType), TokenTypeToString(rType)));
@@ -378,9 +329,9 @@ void NVSETypeChecker::VisitWhileStmt(WhileStmt* stmt) {
 		stmt->cond->Accept(this);
 
 		// Check if condition can evaluate to bool
-		auto lType = stmt->cond->tokenType;
-		auto rType = kTokenType_Boolean;
-		auto oType = s_operators[kOpType_Equals].GetResult(lType, rType);
+		const auto lType = stmt->cond->tokenType;
+		const auto rType = kTokenType_Boolean;
+		const auto oType = s_operators[kOpType_Equals].GetResult(lType, rType);
 		if (oType != kTokenType_Boolean) {
 			error(stmt->line, "Invalid expression type for while loop.");
 		}
@@ -419,9 +370,9 @@ void NVSETypeChecker::VisitAssignmentExpr(AssignmentExpr* expr) {
 	expr->left->Accept(this);
 	expr->expr->Accept(this);
 
-	auto lType = expr->left->tokenType;
-	auto rType = expr->expr->tokenType;
-	auto oType = s_operators[tokenOpToNVSEOpType[expr->token.type]].GetResult(lType, rType);
+	const auto lType = expr->left->tokenType;
+	const auto rType = expr->expr->tokenType;
+	const auto oType = s_operators[tokenOpToNVSEOpType[expr->token.type]].GetResult(lType, rType);
 	if (oType == kTokenType_Invalid) {
 		const auto msg = std::format("Invalid types '{}' and '{}' for operator {} ({}).",
 		                             TokenTypeToString(lType), TokenTypeToString(rType), expr->token.lexeme,
@@ -452,7 +403,7 @@ void NVSETypeChecker::VisitTernaryExpr(TernaryExpr* expr) {
 
 	WRAP_ERROR(expr->left->Accept(this))
 	WRAP_ERROR(expr->right->Accept(this))
-	if (!CanConvertOperand(expr->right->tokenType, GetBasicTokenType(expr->left->tokenType))) {
+	if (!CanConvertOperand(expr->right->tokenType, GetNonVarTypeFromVariableType(expr->left->tokenType))) {
 		error(expr->line, std::format("Incompatible value types ('{}' and '{}') specified for ternary expression.", 
 			TokenTypeToString(expr->left->tokenType), TokenTypeToString(expr->right->tokenType)));
 	}
@@ -501,9 +452,9 @@ void NVSETypeChecker::VisitBinaryExpr(BinaryExpr* expr) {
 	expr->left->Accept(this);
 	expr->right->Accept(this);
 
-	auto lhsType = expr->left->tokenType;
-	auto rhsType = expr->right->tokenType;
-	auto outputType = s_operators[tokenOpToNVSEOpType[expr->op.type]].GetResult(lhsType, rhsType);
+	const auto lhsType = expr->left->tokenType;
+	const auto rhsType = expr->right->tokenType;
+	const auto outputType = s_operators[tokenOpToNVSEOpType[expr->op.type]].GetResult(lhsType, rhsType);
 	if (outputType == kTokenType_Invalid) {
 		const auto msg = std::format("Invalid types '{}' and '{}' for operator {} ({}).",
 		                             TokenTypeToString(lhsType), TokenTypeToString(rhsType), expr->op.lexeme,
@@ -519,9 +470,9 @@ void NVSETypeChecker::VisitUnaryExpr(UnaryExpr* expr) {
 	expr->expr->Accept(this);
 
 	if (expr->postfix) {
-		auto lType = expr->expr->tokenType;
-		auto rType = kTokenType_Number;
-		auto oType = s_operators[tokenOpToNVSEOpType[expr->op.type]].GetResult(lType, rType);
+		const auto lType = expr->expr->tokenType;
+		const auto rType = kTokenType_Number;
+		const auto oType = s_operators[tokenOpToNVSEOpType[expr->op.type]].GetResult(lType, rType);
 		if (oType == kTokenType_Invalid) {
 			error(expr->op.line, std::format("Invalid operand type '{}' for operator {} ({}).",
 			                                 TokenTypeToString(lType),
@@ -532,9 +483,9 @@ void NVSETypeChecker::VisitUnaryExpr(UnaryExpr* expr) {
 	}
 	// -/!/$
 	else {
-		auto lType = expr->expr->tokenType;
-		auto rType = kTokenType_Invalid;
-		auto oType = s_operators[tokenOpToNVSEOpType[expr->op.type]].GetResult(lType, rType);
+		const auto lType = expr->expr->tokenType;
+		const auto rType = kTokenType_Invalid;
+		const auto oType = s_operators[tokenOpToNVSEOpType[expr->op.type]].GetResult(lType, rType);
 		if (oType == kTokenType_Invalid) {
 			error(expr->op.line, std::format("Invalid operand type '{}' for operator {} ({}).",
 			                                 TokenTypeToString(lType),
@@ -548,9 +499,9 @@ void NVSETypeChecker::VisitSubscriptExpr(SubscriptExpr* expr) {
 	expr->left->Accept(this);
 	expr->index->Accept(this);
 
-	auto lhsType = expr->left->tokenType;
-	auto indexType = expr->index->tokenType;
-	auto outputType = s_operators[kOpType_LeftBracket].GetResult(lhsType, indexType);
+	const auto lhsType = expr->left->tokenType;
+	const auto indexType = expr->index->tokenType;
+	const auto outputType = s_operators[kOpType_LeftBracket].GetResult(lhsType, indexType);
 	if (outputType == kTokenType_Invalid) {
 		error(expr->op.line,
 		      std::format("Expression type '{}' not valid for operator [].", TokenTypeToString(indexType)));
@@ -562,7 +513,7 @@ void NVSETypeChecker::VisitSubscriptExpr(SubscriptExpr* expr) {
 
 void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 	std::string name = expr->token.lexeme;
-	auto cmd = g_scriptCommands.GetByName(name.c_str(), &g_currentCompilerPluginVersions.top());
+	const auto cmd = g_scriptCommands.GetByName(name.c_str(), &g_currentCompilerPluginVersions.top());
 
 	// Try to get the script command by lexeme
 	if (!cmd) {
@@ -577,7 +528,7 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 
 	// Visit all args manually for call opcode
 	if (cmd->parse == kCommandInfo_Call.parse) {
-		for (auto &arg : expr->args) {
+		for (const auto &arg : expr->args) {
 			arg->Accept(this);
 		}
 	}
@@ -820,8 +771,7 @@ void NVSETypeChecker::VisitStringExpr(StringExpr* expr) {
 void NVSETypeChecker::VisitIdentExpr(IdentExpr* expr) {
 	const auto name = expr->token.lexeme;
 
-	const auto localVar = scopes.top()->resolveVariable(name);
-	if (localVar) {
+	if (const auto localVar = scopes.top()->resolveVariable(name)) {
 		//CompDbg("Resolved %s variable at scope %d:%d", localVar->global ? "global" : "local", localVar->scopeIndex, localVar->index);
 		expr->tokenType = localVar->detailedType;
 		expr->varInfo = localVar;
@@ -859,7 +809,7 @@ void NVSETypeChecker::VisitGroupingExpr(GroupingExpr* expr) {
 void NVSETypeChecker::VisitLambdaExpr(LambdaExpr* expr) {
 	expr->scope = EnterScope();
 
-	for (auto &decl : expr->args) {
+	for (const auto &decl : expr->args) {
 		WRAP_ERROR(decl->Accept(this))
 	}
 

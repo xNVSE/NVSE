@@ -93,7 +93,7 @@ void NVSECompiler::PrintScriptInfo() {
     
     CompInfo("\n\n");
     CompInfo("[Requirements]\n");
-    for (std::string requirement : requirements) {
+    for (const std::string& requirement : requirements) {
         CompInfo("%s\n", requirement.c_str());
     }
 
@@ -135,7 +135,7 @@ void NVSECompiler::VisitNVSEScript(NVSEScript* nvScript) {
     scriptName = nvScript->name.lexeme;
 
     // Dont allow naming script the same as another form, unless that form is the script itself
-    auto comp = strcmp(scriptName.c_str(), originalScriptName);
+    const auto comp = strcmp(scriptName.c_str(), originalScriptName);
     if (ResolveObjReference(scriptName, false) && comp && !partial) {
         //TODO throw std::runtime_error(std::format("Error: Form name '{}' is already in use.\n", scriptName));
     }
@@ -156,7 +156,7 @@ void NVSECompiler::VisitBeginStmt(BeginStmt* stmt) {
     auto name = stmt->name.lexeme;
 
     // Shouldn't be null
-    CommandInfo* beginInfo = stmt->beginInfo;
+    const CommandInfo* beginInfo = stmt->beginInfo;
 
     // OP_BEGIN
     AddU16(static_cast<uint16_t>(ScriptParsing::ScriptStatementCode::Begin));
@@ -165,8 +165,8 @@ void NVSECompiler::VisitBeginStmt(BeginStmt* stmt) {
     auto beginStart = data.size();
 
     AddU16(beginInfo->opcode);
-    
-    auto blockPatch = AddU32(0x0);
+
+    const auto blockPatch = AddU32(0x0);
 
     // Add param shit here?
     if (stmt->param.has_value()) {
@@ -198,7 +198,7 @@ void NVSECompiler::VisitBeginStmt(BeginStmt* stmt) {
     }
 
     SetU16(beginPatch, data.size() - beginStart);
-    auto blockStart = data.size();
+    const auto blockStart = data.size();
 
     CompileBlock(stmt->block, true);
 
@@ -213,8 +213,8 @@ void NVSECompiler::VisitFnStmt(FnDeclStmt* stmt) {
     AddU16(static_cast<uint16_t>(ScriptParsing::ScriptStatementCode::Begin));
 
     // OP_MODE_LEN
-    auto opModeLenPatch = AddU16(0x0);
-    auto opModeStart = data.size();
+    const auto opModeLenPatch = AddU16(0x0);
+    const auto opModeStart = data.size();
 
     // OP_MODE
     AddU16(0x0D);
@@ -261,14 +261,14 @@ void NVSECompiler::VisitFnStmt(FnDeclStmt* stmt) {
 }
 
 void NVSECompiler::VisitVarDeclStmt(VarDeclStmt* stmt) {
-    uint8_t varType = GetScriptTypeFromToken(stmt->type);
+	const uint8_t varType = GetScriptTypeFromToken(stmt->type);
     
     // Since we are doing multiple declarations at once, manually handle count here
     statementCounter.top()--;
     
     for (int i = 0; i < stmt->values.size(); i++) {
         auto token = std::get<0>(stmt->values[i]);
-        auto value = std::get<1>(stmt->values[i]);
+        auto& value = std::get<1>(stmt->values[i]);
         auto var = stmt->scopeVars[i];
         auto name = var->GetName();
         
@@ -374,8 +374,8 @@ void NVSECompiler::VisitForStmt(ForStmt* stmt) {
     AddU8(0x1);
 
     // Compile / patch condition
-    auto condStart = data.size();
-    auto condPatch = AddU16(0x0);
+    const auto condStart = data.size();
+    const auto condPatch = AddU16(0x0);
     insideNvseExpr.push(true);
     stmt->cond->Accept(this);
     insideNvseExpr.pop();
@@ -425,10 +425,9 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
         AddU16(OP_FOREACH_ALT);
 
         // Placeholder OP_LEN
-        auto exprPatch = AddU16(0x0);
-        auto exprStart = data.size();
-
-        auto jmpPatch = AddU32(0x0);
+        const auto exprPatch = AddU16(0x0);
+        const auto exprStart = data.size();
+        const auto jmpPatch = AddU32(0x0);
 
         // Num args
         // Either 2 or 3, depending on:
@@ -513,7 +512,7 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
         SetU32(jmpPatch, data.size() - scriptStart.top());
     } else {
         // Get variable info
-        auto varDecl = stmt->declarations[0];
+        const auto varDecl = stmt->declarations[0];
         if (!varDecl) {
             throw std::runtime_error("Unexpected compiler error.");
         }
@@ -524,17 +523,17 @@ void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
         AddU16(OP_FOREACH);
 
         // Placeholder OP_LEN
-        auto exprPatch = AddU16(0x0);
-        auto exprStart = data.size();
+        const auto exprPatch = AddU16(0x0);
+        const auto exprStart = data.size();
 
-        auto jmpPatch = AddU32(0x0);
+        const auto jmpPatch = AddU32(0x0);
 
         // Num args
         AddU8(0x1);
 
         // Arg 1 len
-        auto argStart = data.size();
-        auto argPatch = AddU16(0x0);
+        const auto argStart = data.size();
+        const auto argPatch = AddU16(0x0);
 
         insideNvseExpr.push(true);
         AddU8('V');
@@ -647,10 +646,10 @@ void NVSECompiler::VisitWhileStmt(WhileStmt* stmt) {
     AddU16(OP_WHILE);
 
     // Placeholder OP_LEN
-    auto exprPatch = AddU16(0x0);
-    auto exprStart = data.size();
+    const auto exprPatch = AddU16(0x0);
+    const auto exprStart = data.size();
 
-    auto jmpPatch = AddU32(0x0);
+    const auto jmpPatch = AddU32(0x0);
 
     // 1 param
     AddU8(0x1);
@@ -796,8 +795,8 @@ void NVSECompiler::VisitCallExpr(CallExpr* expr) {
         }
 
         AddU16(OP_CALL);
-        auto callLengthStart = data.size() + (insideNvseExpr.top() ? 0 : 2);
-        auto callLengthPatch = AddU16(0x0);
+        const auto callLengthStart = data.size() + (insideNvseExpr.top() ? 0 : 2);
+        const auto callLengthPatch = AddU16(0x0);
         insideNvseExpr.push(true);
 
         // Bytecode ver
@@ -975,8 +974,8 @@ void NVSECompiler::VisitLambdaExpr(LambdaExpr* expr) {
     AddU8('F');
 
     // Arg size
-    auto argSizePatch = AddU32(0x0);
-    auto argStart = data.size();
+    const auto argSizePatch = AddU32(0x0);
+    const auto argStart = data.size();
 
     // Compile lambda
     {
@@ -989,14 +988,14 @@ void NVSECompiler::VisitLambdaExpr(LambdaExpr* expr) {
         AddU16(0x10);
 
         // OP_MODE_LEN
-        auto opModeLenPatch = AddU16(0x0);
-        auto opModeStart = data.size();
+        const auto opModeLenPatch = AddU16(0x0);
+        const auto opModeStart = data.size();
 
         // OP_MODE
         AddU16(0x0D);
 
         // SCRIPT_LEN
-        auto scriptLenPatch = AddU32(0x0);
+        const auto scriptLenPatch = AddU32(0x0);
 
         // BYTECODE VER
         AddU8(0x1);
@@ -1053,7 +1052,7 @@ uint32_t NVSECompiler::CompileBlock(StmtPtr stmt, bool incrementCurrent) {
     // Get sub-block statement count
     statementCounter.push(0);
     stmt->Accept(this);
-    auto newStatementCount = statementCounter.top();
+    const auto newStatementCount = statementCounter.top();
     statementCounter.pop();
 
     // Lambdas do not add to parent block stmt count
@@ -1141,8 +1140,8 @@ void NVSECompiler::AddCallArg(ExprPtr arg) {
         AddU16(0xFFFF);
     }
 
-    auto argStartInner = data.size();
-    auto argPatchInner = AddU16(0x0);
+    const auto argStartInner = data.size();
+    const auto argPatchInner = AddU16(0x0);
 
     insideNvseExpr.push(true);
     arg->Accept(this);

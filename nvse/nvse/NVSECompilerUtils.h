@@ -22,7 +22,7 @@ inline Script::VariableType GetScriptTypeFromToken(NVSEToken t) {
 	}
 }
 
-inline Token_Type GetBasicTokenType(Token_Type type) {
+inline Token_Type GetNonVarTypeFromVariableType(Token_Type type) {
 	switch (type) {
 	case kTokenType_Array:
 	case kTokenType_ArrayVar:
@@ -39,6 +39,55 @@ inline Token_Type GetBasicTokenType(Token_Type type) {
 	}
 
 	return type;
+}
+
+inline Token_Type GetDetailedTypeFromNVSEToken(NVSETokenType type) {
+	switch (type) {
+	case NVSETokenType::StringType:
+		return kTokenType_StringVar;
+	case NVSETokenType::ArrayType:
+		return kTokenType_ArrayVar;
+	case NVSETokenType::RefType:
+		return kTokenType_RefVar;
+		// Short
+	case NVSETokenType::DoubleType:
+	case NVSETokenType::IntType:
+		return kTokenType_NumericVar;
+	default:
+		return kTokenType_Ambiguous;
+	}
+}
+
+inline Token_Type GetDetailedTypeFromVarType(Script::VariableType type) {
+	switch (type) {
+	case Script::eVarType_Float:
+	case Script::eVarType_Integer:
+		return kTokenType_Number;
+	case Script::eVarType_String:
+		return kTokenType_String;
+	case Script::eVarType_Array:
+		return kTokenType_Array;
+	case Script::eVarType_Ref:
+		return kTokenType_Ref;
+	case Script::eVarType_Invalid:
+	default:
+		return kTokenType_Invalid;
+	}
+}
+
+inline Token_Type GetVariableTypeFromNonVarType(Token_Type type) {
+	switch (type) {
+	case kTokenType_Number:
+		return kTokenType_NumericVar;
+	case kTokenType_String:
+		return kTokenType_StringVar;
+	case kTokenType_Ref:
+		return kTokenType_RefVar;
+	case kTokenType_Array:
+		return kTokenType_ArrayVar;
+	default:
+		return kTokenType_Invalid;
+	}
 }
 
 void CompDbg(const char *fmt, ...);
