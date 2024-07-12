@@ -316,8 +316,6 @@ void NVSECompiler::VisitVarDeclStmt(VarDeclStmt* stmt) {
             AddU16(idx); // SCDA
         }
         else {
-            // Since we are in fn decl we will need to declare these as temp globals
-            // __global_*
             tempGlobals[var].push_back(AddU16(0x0));
         }
 

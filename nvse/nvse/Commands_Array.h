@@ -246,3 +246,11 @@ static ParamInfo kNVSEParams_ar_Count[] =
 DEFINE_COMMAND_EXP(ar_Count, "Count how many times a given value is found inside of an array.", 0, kNVSEParams_ar_Count)
 
 DEFINE_COMMAND_EXP(ar_CountWhere, "Count how many times a value matches via a specified UDF.", 0, kNVSEParams_OneArray_OneFunction);
+
+static ParamInfo kNVSEParams_OneArray_OneNumber[] =
+{
+	{	"array",		kNVSEParamType_Array,	0	},
+	{	"index",		kNVSEParamType_Number,	0	},
+};
+
+DEFINE_COMMAND_EXP(ar_GetNth, "Get the nth element of an array, if it exists", 0, kNVSEParams_OneArray_OneNumber);

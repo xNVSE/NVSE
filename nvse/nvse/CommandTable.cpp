@@ -2271,6 +2271,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(ar_Count);
 	ADD_CMD(ar_CountWhere);
 	ADD_CMD(EvaluateInventory);
+	ADD_CMD(ar_GetNth);
 }
 
 namespace PluginAPI
