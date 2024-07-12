@@ -66,6 +66,26 @@ public:
 	// Look up a local variable, or create it if not already defined
 	uint16_t AddLocal(std::string identifier, uint8_t type) {
 		if (auto info = engineScript->GetVariableByName(identifier.c_str())) {
+			if (info->type != type) {
+				// Remove from ref list if it was a ref prior
+				if (info->type == Script::eVarType_Ref) {
+					if (auto* v = engineScript->refList.FindFirst([&](const Script::RefVariable *cur) { return cur->varIdx == info->idx; })) {
+						engineScript->refList.Remove(v);
+					}
+				}
+
+				// Add to ref list if new ref
+				if (type == Script::eVarType_Ref) {
+					auto ref = New<Script::RefVariable>();
+					ref->name = String();
+					ref->name.Set(identifier.c_str());
+					ref->varIdx = info->idx;
+					engineScript->refList.Append(ref);
+				}
+
+				info->type = type;
+			}
+
 			return info->idx;
 		}
 

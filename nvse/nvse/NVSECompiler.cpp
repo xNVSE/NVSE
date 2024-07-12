@@ -38,7 +38,7 @@ void NVSECompiler::ClearTempVars() {
         if (!strncmp(var->name.CStr(), "__temp", strlen("__temp"))) {
             CompDbg("Deleting script var: %s\n", var->name.CStr());
             engineScript->varList.RemoveNth(i);
-            deletedIndices.insert(i);
+            deletedIndices.insert(i + 1);
         }
     }
 
