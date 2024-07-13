@@ -7,16 +7,20 @@
 #include "ScriptTokens.h"
 
 class NVSETypeChecker : NVSEVisitor {
+    struct ReturnInfo {
+        Token_Type returnType {kTokenType_Invalid};
+        size_t line {0};
+    };
+    
     bool hadError = false;
     NVSEScript *script;
     
     std::stack<bool> insideLoop {};
     std::stack<std::shared_ptr<NVSEScope>> scopes {};
+    std::stack<ReturnInfo> returnType {};
+    
     uint32_t scopeIndex {1};
-
-    // Temporarily pushed to stack for things like lambda
-    //     args as these must be in global scope
-    std::shared_ptr<NVSEScope> globalScope{};
+    
     bool bScopedGlobal = false;
 
     std::shared_ptr<NVSEScope> EnterScope();

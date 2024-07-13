@@ -31,24 +31,15 @@ private:
     uint32_t scopeIndex{};
     uint32_t varIndex{1};
     std::shared_ptr<NVSEScope> parent{};
-    std::unordered_map<std::string, ScopeVar> vars{};
+    std::unordered_map<std::string, ScopeVar> m_scopeVars{};
 
 protected:
-    uint32_t getVarIndex() const {
+    uint32_t incrementVarIndex() {
         if (parent) {
-            return parent->getVarIndex();
+            return parent->incrementVarIndex();
         }
         
-        return varIndex;
-    }
-
-    void incrementVarIndex() {
-        if (parent) {
-            parent->incrementVarIndex();
-            return;
-        }
-        
-        varIndex++;
+        return varIndex++;
     }
     
 public:
@@ -61,8 +52,8 @@ public:
         // Lowercase name
         std::ranges::transform(name, name.begin(), [](unsigned char c){ return std::tolower(c); });
         
-        if (vars.contains(name)) {
-            return &vars[name];
+        if (m_scopeVars.contains(name)) {
+            return &m_scopeVars[name];
         }
 
         if (checkParent && parent) {
@@ -77,28 +68,24 @@ public:
         return nullptr;
     }
 
-    ScopeVar *addVariable(std::string name, ScopeVar variableInfo, bool bRename = false) {
+    ScopeVar *addVariable(std::string name, ScopeVar variableInfo) {
         // Lowercase name
         std::ranges::transform(name, name.begin(), [](unsigned char c){ return std::tolower(c); });
+
+        variableInfo.index = incrementVarIndex();
+        variableInfo.scopeIndex = scopeIndex;
         
         // Rename var to have a unique name
         // These should also get saved to the var list LAST and be deleted on every recompile.
-        if (bRename) {
-            variableInfo.rename = std::format("__temp__{}__{}", name, getVarIndex());
-        } else {
+        if (variableInfo.isGlobal) {
             variableInfo.rename = "";
+        } else {
+            variableInfo.rename = std::format("__temp__{}__{}", name, variableInfo.index);
         }
-
-        variableInfo.index = getVarIndex();
-        if (!variableInfo.isGlobal) {
-            incrementVarIndex();
-        }
-
-        variableInfo.scopeIndex = scopeIndex;
         
-        vars[name] = variableInfo;
+        m_scopeVars[name] = variableInfo;
         addToAllVars(variableInfo);
-        return &vars[name];
+        return &m_scopeVars[name];
     }
 
     void addToAllVars(ScopeVar var) {

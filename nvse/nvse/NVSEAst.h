@@ -85,7 +85,6 @@ struct FnDeclStmt : Stmt {
 struct VarDeclStmt : Stmt {
     NVSEToken type;
     std::vector<std::tuple<NVSEToken, ExprPtr>> values{};
-    bool bExport{false};
 
     // Set during type checker so that compiler can look up stack index
     std::vector<NVSEScope::ScopeVar*> scopeVars{};
@@ -160,7 +159,9 @@ struct ReturnStmt : Stmt {
     NVSEToken token;
     ExprPtr expr;
 
-    ReturnStmt(NVSEToken token, ExprPtr expr) : token(std::move(token)), expr(std::move(expr)) {}
+    ReturnStmt(NVSEToken token, ExprPtr expr) : token(std::move(token)), expr(std::move(expr)) {
+        line = token.line;
+    }
 
     void Accept(NVSEVisitor* visitor) override {
         visitor->VisitReturnStmt(this);
@@ -384,7 +385,10 @@ struct NumberExpr : Expr {
     double value;
     bool isFp;
 
-    NumberExpr(NVSEToken token, double value, bool isFp) : token(std::move(token)), value(value), isFp(isFp) {}
+    // For some reason axis enum is one byte and the rest are two?
+    int enumLen;
+
+    NumberExpr(NVSEToken token, double value, bool isFp, int enumLen = 0) : token(std::move(token)), value(value), isFp(isFp), enumLen(enumLen) {}
 
     void Accept(NVSEVisitor* t) override {
         t->VisitNumberExpr(this);

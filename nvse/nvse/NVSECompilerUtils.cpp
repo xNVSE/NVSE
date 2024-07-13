@@ -131,58 +131,65 @@ constexpr uint32_t SEX_1 = 0x104A0F4;
 constexpr uint32_t MISC_STAT = 0x4D5EB0;
 #endif
 
-uint32_t resolveVanillaEnum(const ParamInfo* info, const char* str) {
+void resolveVanillaEnum(const ParamInfo* info, const char* str, uint32_t* val, uint32_t* len) {
 	uint32_t i = -1;
+	*val = -1;
+	*len = 2;
 	switch (info->typeID) {
 	case kParamType_ActorValue:
 		i = CdeclCall<uint32_t>(ACTOR_VALUE_ADDRESS, str);
-		return i < 77 ? i : -1;
+		*val = i < 77 ? i : -1;
+		return;
 	case kParamType_Axis:
 		if (strlen(str) == 1) {
 			const auto c = str[0] & 0xDF;
 			if (c < 'X' || c > 'Z') {
-				return -1;
+				return;
 			}
-			return c;
+			*val = c;
+			*len = 1;
 		}
-		return -1;
+		return;
 	case kParamType_AnimationGroup:
 		for (i = 0; i < 245 && StrCompare(g_animGroupInfos[i].name, str); i++) {}
-		return i < 245 ? i : -1;
+		*val = i < 245 ? i : -1;
+		return;
 	case kParamType_Sex:
 		if (!StrCompare(*reinterpret_cast<const char**>(SEX_0), str)) {
-			return 0;
+			*val = 0;
 		}
 		if (!StrCompare(*reinterpret_cast<const char**>(SEX_1), str)) {
-			return 1;
+			*val = 1;
 		}
-		return -1;
+		return;
 	case kParamType_CrimeType:
 		if (IsStringInteger(str) && ((i = atoi(str)) <= 4)) {
-			return i;
+			*val = i;
 		}
-		return -1;
+		return;
 	case kParamType_FormType:
 		for (auto& [formId, name] : g_formTypeNames) {
 			if (!StrCompare(name, str)) {
-				return formId;
+				*val = formId;
 			}
 		}
-		return -1;
+		return;
 	case kParamType_MiscellaneousStat:
 		i = CdeclCall<uint32_t>(MISC_STAT, str);
-		return i < 43 ? i : -1;
+		*val = i < 43 ? i : -1;
+		return;
 	case kParamType_Alignment:
 		for (i = 0; (i < 5) && StrCompare(g_alignmentTypeNames[i], str); i++) {}
-		return i < 5 ? i : -1;
+		*val = i < 5 ? i : -1;
+		return;
 	case kParamType_EquipType:
 		for (i = 0; (i < 14) && StrCompare(g_equipTypeNames[i], str); i++) {}
-		return i < 14 ? i : -1;
+		*val = i < 14 ? i : -1;
+		return;
 	case kParamType_CriticalStage:
 		for (i = 0; (i < 5) && StrCompare(g_criticalStageNames[i], str); i++) {}
-		return i == 5 ? -1 : i;
-	default:
-		return i;
+		*val = i == 5 ? -1 : i;
+		return;
 	}
 }
 

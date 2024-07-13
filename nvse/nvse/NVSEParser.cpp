@@ -199,10 +199,8 @@ StmtPtr NVSEParser::Statement() {
 		return BlockStatement();
 	}
 
-	if (Peek(NVSETokenType::Export) || PeekType()) {
-		bool bExport = Match(NVSETokenType::Export);
+	if (PeekType()) {
 		auto expr = VarDecl();
-		expr->bExport = bExport;
 		Expect(NVSETokenType::Semicolon, "Expected ';' at end of statement.");
 		return expr;
 	}

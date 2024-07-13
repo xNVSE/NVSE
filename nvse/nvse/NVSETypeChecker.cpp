@@ -55,8 +55,7 @@ bool NVSETypeChecker::check() {
 }
 
 void NVSETypeChecker::VisitNVSEScript(NVSEScript* script) {
-	// Push global scope, gets discarded
-	globalScope = EnterScope();
+	EnterScope();
 	
 	for (const auto& global : script->globalVars) {
 		global->Accept(this);
@@ -126,15 +125,15 @@ void NVSETypeChecker::VisitBeginStmt(BeginStmt* stmt) {
 
 void NVSETypeChecker::VisitFnStmt(FnDeclStmt* stmt) {
 	stmt->scope = EnterScope();
+	returnType.emplace();
 
-	//bScopedGlobal = true;
 	for (const auto& decl : stmt->args) {
 		WRAP_ERROR(decl->Accept(this))
 	}
-	//bScopedGlobal = false;
 
 	stmt->body->Accept(this);
 
+	returnType.pop();
 	LeaveScope();
 }
 
@@ -147,14 +146,6 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 			if (auto* var = scopes.top()->resolveVariable(name.lexeme, false)) {
 				cont = true;
 				error(name.line, name.column, std::format("Variable with name '{}' has already been defined in the current scope (at line {}:{})\n", name.lexeme, var->token.line, var->token.column));
-			}
-
-			auto* var2 = scopes.top()->resolveVariable(name.lexeme, true);
-
-			// If we are seeing 'export' keyword and another global has already been defined with this name
-			if (stmt->bExport && var2 && var2->isGlobal) {
-				cont = true;
-				error(name.line, name.column, std::format("Variable with name '{}' has already been defined in the global scope (at line {}:{})\n", name.lexeme, var2->token.line, var2->token.column));
 			}
 		)
 		
@@ -192,13 +183,12 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 		NVSEScope::ScopeVar var {};
 		var.token = name;
 		var.detailedType = detailedType;
-		if (stmt->bExport || scopes.top() == globalScope) {
-			var.isGlobal = true;
-		}
+		var.isGlobal = scopes.top()->isRootScope();
         var.variableType = GetScriptTypeFromToken(stmt->type);
 
 		// Assign this new scope var to this statment for lookup in compiler
-		stmt->scopeVars.push_back(scopes.top()->addVariable(name.lexeme, var, scopes.top() != globalScope && !stmt->bExport));
+		stmt->scopeVars.push_back(scopes.top()->addVariable(name.lexeme, var));
+		stmt->detailedType = detailedType;
 	}
 }
 
@@ -221,8 +211,7 @@ void NVSETypeChecker::VisitForStmt(ForStmt* stmt) {
 
 			// Check if condition can evaluate to bool
 			const auto lType = stmt->cond->tokenType;
-			const auto rType = kTokenType_Boolean;
-			const auto oType = s_operators[kOpType_Equals].GetResult(lType, rType);
+			const auto oType = s_operators[kOpType_Equals].GetResult(lType, kTokenType_Boolean);
 			if (oType != kTokenType_Boolean) {
 				error(stmt->line, std::format("Invalid expression type ('{}') for loop condition.", TokenTypeToString(oType)));
 			}
@@ -246,7 +235,7 @@ void NVSETypeChecker::VisitForEachStmt(ForEachStmt* stmt) {
 	stmt->scope = EnterScope();
 	for (const auto &decl : stmt->declarations) {
 		if (decl) {
-			decl->Accept(this);
+			WRAP_ERROR(decl->Accept(this))
 		}
 	}
 	stmt->rhs->Accept(this);
@@ -254,14 +243,10 @@ void NVSETypeChecker::VisitForEachStmt(ForEachStmt* stmt) {
 	WRAP_ERROR(
 		if (stmt->decompose) {
 			// TODO
-			// if (stmt->declarations.size() == 2 && stmt->declarations[1] == nullptr) {
-			// 	error(stmt->line, "_ not allowed for value iterator.");
-			// }
+			// What should I check here?
 		} else {
 			// Get type of lhs identifier -- this is way too verbose
-			const auto decl = stmt->declarations[0];
-			const auto ident = std::get<0>(decl->values[0]).lexeme;
-			const auto lType = scopes.top()->resolveVariable(ident)->detailedType;
+			const auto lType = stmt->declarations[0]->detailedType;
 			const auto rType = stmt->rhs->tokenType;
 			if (s_operators[kOpType_In].GetResult(lType, rType) == kTokenType_Invalid) {
 				error(stmt->line, std::format("Invalid types '{}' and '{}' passed to for-in expression.",
@@ -273,6 +258,7 @@ void NVSETypeChecker::VisitForEachStmt(ForEachStmt* stmt) {
 	insideLoop.push(true);
 	stmt->block->Accept(this);
 	insideLoop.pop();
+	
 	LeaveScope();
 }
 
@@ -304,6 +290,25 @@ void NVSETypeChecker::VisitIfStmt(IfStmt* stmt) {
 void NVSETypeChecker::VisitReturnStmt(ReturnStmt* stmt) {
 	if (stmt->expr) {
 		stmt->expr->Accept(this);
+
+		const auto basicType = GetBasicTokenType(stmt->expr->tokenType);
+		auto &[type, line] = returnType.top();
+
+		if (type != kTokenType_Invalid) {
+			if (!CanConvertOperand(basicType, type)) {
+				const auto msg = std::format(
+					"Return type '{}' not compatible with return type defined previously. ('{}' at line {})",
+					TokenTypeToString(basicType),
+					TokenTypeToString(type),
+					line);
+				
+				error(line, msg);
+			}
+		} else {
+			type = basicType;
+			line = stmt->line;
+		}
+			
 		stmt->detailedType = stmt->expr->tokenType;
 	}
 	else {
@@ -345,24 +350,8 @@ void NVSETypeChecker::VisitWhileStmt(WhileStmt* stmt) {
 }
 
 void NVSETypeChecker::VisitBlockStmt(BlockStmt* stmt) {
-	for (auto statement : stmt->statements) {
+	for (const auto &statement : stmt->statements) {
 		WRAP_ERROR(statement->Accept(this))
-
-		// TODO - Rework this
-		// if (statement->IsType<ReturnStmt>()) {
-		//     auto curType = stmt->detailedType;
-		//     auto newType = statement->detailedType;
-		//
-		//     if (curType != kTokenType_Invalid && !CanConvertOperand(curType, newType)) {
-		//         error(statement->line, std::format(
-		//                   "Return type '{}' conflicts with previously specified return type '{}'.",
-		//                   TokenTypeToString(newType), TokenTypeToString(curType)));
-		//         stmt->detailedType = kTokenType_Invalid;
-		//     }
-		//     else {
-		//         stmt->detailedType = statement->detailedType;
-		//     }
-		// }
 	}
 }
 
@@ -403,7 +392,7 @@ void NVSETypeChecker::VisitTernaryExpr(TernaryExpr* expr) {
 
 	WRAP_ERROR(expr->left->Accept(this))
 	WRAP_ERROR(expr->right->Accept(this))
-	if (!CanConvertOperand(expr->right->tokenType, GetNonVarTypeFromVariableType(expr->left->tokenType))) {
+	if (!CanConvertOperand(expr->right->tokenType, GetBasicTokenType(expr->left->tokenType))) {
 		error(expr->line, std::format("Incompatible value types ('{}' and '{}') specified for ternary expression.", 
 			TokenTypeToString(expr->left->tokenType), TokenTypeToString(expr->right->tokenType)));
 	}
@@ -544,21 +533,22 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 
 		auto param = &cmd->params[paramIdx];
 		auto arg = expr->args[argIdx];
-
-		std::shared_ptr<NumberExpr> converted = nullptr;
+		bool convertedEnum = false;
 
 		if (isDefaultParse(cmd->parse)) {
 			// Try to resolve identifiers as vanilla enums
 			auto ident = dynamic_cast<IdentExpr*>(arg.get());
 
 			uint32_t idx = -1;
+			uint32_t len = 0;
 			if (ident) {
-				idx = resolveVanillaEnum(param, ident->token.lexeme.c_str());
+				resolveVanillaEnum(param, ident->token.lexeme.c_str(), &idx, &len);
 			}
 			if (idx != -1) {
 				CompDbg("[line %d] INFO: Converting identifier '%s' to enum index %d\n", arg->line, ident->token.lexeme.c_str(), idx);
-				arg = std::make_shared<NumberExpr>(NVSEToken{}, static_cast<double>(idx), false);
+				arg = std::make_shared<NumberExpr>(NVSEToken{}, static_cast<double>(idx), false, len);
 				arg->tokenType = kTokenType_Number;
+				convertedEnum = true;
 			} else {
 				WRAP_ERROR(arg->Accept(this))
 			}
@@ -582,7 +572,7 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 		}
 
 		// Try to resolve as nvse param
-		if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(param->typeID), arg->tokenType, !isDefaultParse(cmd->parse), cmd)) {
+		if (!convertedEnum && !ExpressionParser::ValidateArgType(static_cast<ParamType>(param->typeID), arg->tokenType, !isDefaultParse(cmd->parse), cmd)) {
 			if (!param->isOptional) {
 				WRAP_ERROR(
 					error(expr->token.line, expr->token.column, std::format("Invalid expression for parameter {}. (Expected {}, got {}).", argIdx + 1, param->typeStr, TokenTypeToString(arg->tokenType)));
@@ -622,21 +612,17 @@ void NVSETypeChecker::VisitGetExpr(GetExpr* expr) {
 		                              TokenTypeToString(expr->left->tokenType)));
 	}
 
-	// Resolve variable type from form// Try to resolve lhs reference
+	// Resolve variable type from form
+	// Try to resolve lhs reference
 	// Should be ident here
 	const auto ident = dynamic_cast<IdentExpr*>(expr->left.get());
-	if (!ident) {
-		error(expr->token.line, expr->token.column, "Member access not valid here.");
+	if (!ident || ident->tokenType != kTokenType_Form) {
+		error(expr->token.line, expr->token.column, "Member access not valid here. Left side of '.' must be a form or persistent reference.");
 	}
-
+	
+	const auto form = ident->form;
 	const auto& lhsName = ident->token.lexeme;
 	const auto& rhsName = expr->identifier.lexeme;
-
-	TESForm* form = GetFormByID(lhsName.c_str());
-	if (!form) {
-		error(expr->line, std::format("Unable to find form '{}'", lhsName));
-		return;
-	}
 
 	TESScriptableForm* scriptable = nullptr;
 	switch (form->typeID) {
@@ -725,11 +711,15 @@ void NVSETypeChecker::VisitMapLiteralExpr(MapLiteralExpr* expr) {
 		}
 		
 		if (lhsType == kTokenType_Invalid) {
-			lhsType = pairPtr->left->tokenType;
+			lhsType = GetBasicTokenType(pairPtr->left->tokenType);
 		} else {
 			if (lhsType != pairPtr->left->tokenType) {
-				auto msg = std::format("Key for value {} (type '{}') specified for map literal conflicts with key type of previous value ('{}').",
-					i, TokenTypeToString(pairPtr->left->tokenType), TokenTypeToString(lhsType));
+				auto msg = std::format(
+					"Key for value {} (type '{}') specified for map literal conflicts with key type of previous value ('{}').",
+					i,
+					TokenTypeToString(pairPtr->left->tokenType),
+					TokenTypeToString(lhsType));
+				
 				WRAP_ERROR(error(expr->token.line, expr->token.column, msg))
 			}
 		}
@@ -755,8 +745,12 @@ void NVSETypeChecker::VisitArrayLiteralExpr(ArrayLiteralExpr* expr) {
 	auto lhsType = expr->values[0]->tokenType;
 	for (int i = 1; i < expr->values.size(); i++) {
 		if (!CanConvertOperand(expr->values[i]->tokenType, lhsType)) {
-			auto msg = std::format("Value {} (type '{}') specified for array literal conflicts with the type already specified in first element ('{}').",
-				i, TokenTypeToString(expr->values[i]->tokenType), TokenTypeToString(lhsType));
+			auto msg = std::format(
+				"Value {} (type '{}') specified for array literal conflicts with the type already specified in first element ('{}').",
+				i,
+				TokenTypeToString(expr->values[i]->tokenType),
+				TokenTypeToString(lhsType));
+			
 			WRAP_ERROR(error(expr->token.line, expr->token.column, msg))
 		}
 	}
@@ -772,7 +766,6 @@ void NVSETypeChecker::VisitIdentExpr(IdentExpr* expr) {
 	const auto name = expr->token.lexeme;
 
 	if (const auto localVar = scopes.top()->resolveVariable(name)) {
-		//CompDbg("Resolved %s variable at scope %d:%d", localVar->global ? "global" : "local", localVar->scopeIndex, localVar->index);
 		expr->tokenType = localVar->detailedType;
 		expr->varInfo = localVar;
 		return;
@@ -808,6 +801,7 @@ void NVSETypeChecker::VisitGroupingExpr(GroupingExpr* expr) {
 
 void NVSETypeChecker::VisitLambdaExpr(LambdaExpr* expr) {
 	expr->scope = EnterScope();
+	returnType.emplace();
 
 	for (const auto &decl : expr->args) {
 		WRAP_ERROR(decl->Accept(this))
@@ -819,5 +813,6 @@ void NVSETypeChecker::VisitLambdaExpr(LambdaExpr* expr) {
 
 	expr->tokenType = kTokenType_Lambda;
 
+	returnType.pop();
 	LeaveScope();
 }

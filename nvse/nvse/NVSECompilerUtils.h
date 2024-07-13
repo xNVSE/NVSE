@@ -22,7 +22,7 @@ inline Script::VariableType GetScriptTypeFromToken(NVSEToken t) {
 	}
 }
 
-inline Token_Type GetNonVarTypeFromVariableType(Token_Type type) {
+inline Token_Type GetBasicTokenType(Token_Type type) {
 	switch (type) {
 	case kTokenType_Array:
 	case kTokenType_ArrayVar:
@@ -96,5 +96,5 @@ void CompErr(const char *fmt, ...);
 
 bool isDefaultParse(Cmd_Parse parse);
 
-uint32_t resolveVanillaEnum(const ParamInfo* info, const char* str);
+void resolveVanillaEnum(const ParamInfo* info, const char* str, uint32_t* val, uint32_t* len);
 bool doesFormMatchParamType(TESForm* form, ParamType type);

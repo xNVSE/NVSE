@@ -54,7 +54,7 @@ void NVSECompiler::ClearTempVars() {
 
 void NVSECompiler::PatchScopedGlobals() {
     for (auto &[var, patches] : tempGlobals) {
-        const auto dataIdx = AddLocal(var->GetName(), var->variableType);
+        const auto dataIdx = AddVar(var->GetName(), var->variableType);
         for (const auto idx : patches) {
             SetU16(idx, dataIdx);
         }
@@ -138,7 +138,7 @@ void NVSECompiler::VisitNVSEScript(NVSEScript* nvScript) {
     const auto comp = strcmp(scriptName.c_str(), originalScriptName);
     if (ResolveObjReference(scriptName, false) && comp && !partial) {
         //TODO throw std::runtime_error(std::format("Error: Form name '{}' is already in use.\n", scriptName));
-    }
+    } 
 
     // SCN
     AddU32(static_cast<uint32_t>(ScriptParsing::ScriptStatementCode::ScriptName));
@@ -294,7 +294,7 @@ void NVSECompiler::VisitVarDeclStmt(VarDeclStmt* stmt) {
         CompDbg("Defined global variable %s\n", name.c_str());
 
         if (var->isGlobal) {
-            AddLocal(name, varType);
+            AddVar(name, varType);
         }
 
         if (!value) {
@@ -312,7 +312,7 @@ void NVSECompiler::VisitVarDeclStmt(VarDeclStmt* stmt) {
         AddU16(0); // SCRV
 
         if (var->isGlobal) {
-            const auto idx = AddLocal(name, varType);
+            const auto idx = AddVar(name, varType);
             AddU16(idx); // SCDA
         }
         else {
@@ -841,7 +841,13 @@ void NVSECompiler::VisitCallExpr(CallExpr* expr) {
 
     StartCall(expr->cmdInfo, expr->left);
     for (auto arg : expr->args) {
-        AddCallArg(arg);
+        auto numExpr = dynamic_cast<NumberExpr*>(arg.get());
+        if (numExpr && numExpr->enumLen > 0) {
+            arg->Accept(this);
+            callBuffers.top().numArgs++;
+        } else {
+            AddCallArg(arg);
+        }
     }
     FinishCall();
 }
@@ -867,6 +873,13 @@ void NVSECompiler::VisitBoolExpr(BoolExpr* expr) {
 void NVSECompiler::VisitNumberExpr(NumberExpr* expr) {
     if (expr->isFp) {
         AddF64(expr->value);
+    }
+    else if (expr->enumLen) {
+        if (expr->enumLen == 1) {
+            AddU8(static_cast<uint8_t>(expr->value));
+        } else {
+            AddU16(static_cast<uint16_t>(expr->value));
+        }
     }
     else {
         if (expr->value <= UINT8_MAX) {

@@ -64,8 +64,8 @@ public:
 	std::stack<uint32_t> scriptStart {};
 
 	// Look up a local variable, or create it if not already defined
-	uint16_t AddLocal(std::string identifier, uint8_t type) {
-		if (auto info = engineScript->GetVariableByName(identifier.c_str())) {
+	uint16_t AddVar(const std::string& identifier, const uint8_t type) {
+		if (const auto info = engineScript->GetVariableByName(identifier.c_str())) {
 			if (info->type != type) {
 				// Remove from ref list if it was a ref prior
 				if (info->type == Script::eVarType_Ref) {
@@ -107,7 +107,7 @@ public:
 		return static_cast<uint16_t>(varInfo->idx);
 	}
 
-	uint16_t ResolveObjReference(std::string identifier, bool add = true) {
+	uint16_t ResolveObjReference(std::string identifier, const bool add = true) {
 		TESForm* form;
 		if (_stricmp(identifier.c_str(), "player") == 0) {
 			// PlayerRef (this is how the vanilla compiler handles it so I'm changing it for consistency and to fix issues)
@@ -118,10 +118,8 @@ public:
 		}
 
 		if (form) {
-			TESObjectREFR* refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
-
 			// only persistent refs can be used in scripts
-			if (refr && !refr->IsPersistent()) {
+			if (const auto refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR); refr && !refr->IsPersistent()) {
 				throw std::runtime_error(std::format("Object reference '{}' must be persistent.", identifier));
 			}
 
@@ -136,7 +134,7 @@ public:
 			}
 
 			if (add) {
-				auto ref = New<Script::RefVariable>();
+				const auto ref = New<Script::RefVariable>();
 				ref->name = String();
 				ref->name.Set(identifier.c_str());
 				ref->form = form;
@@ -153,20 +151,20 @@ public:
 	// Compiled bytes
 	std::vector<uint8_t> data{};
 
-	size_t AddU8(uint8_t byte) {
+	size_t AddU8(const uint8_t byte) {
 		data.emplace_back(byte);
 
 		return data.size() - 1;
 	}
 
-	size_t AddU16(uint16_t bytes) {
+	size_t AddU16(const uint16_t bytes) {
 		data.emplace_back(bytes & 0xFF);
 		data.emplace_back(bytes >> 8 & 0xFF);
 
 		return data.size() - 2;
 	}
 
-	size_t AddU32(uint32_t bytes) {
+	size_t AddU32(const uint32_t bytes) {
 		data.emplace_back(bytes & 0xFF);
 		data.emplace_back(bytes >> 8 & 0xFF);
 		data.emplace_back(bytes >> 16 & 0xFF);
@@ -176,7 +174,7 @@ public:
 	}
 
 	size_t AddF64(double value) {
-		uint8_t* bytes = reinterpret_cast<uint8_t*>(&value);
+		const auto bytes = reinterpret_cast<uint8_t*>(&value);
 
 		AddU8('Z');
 		for (int i = 0; i < 8; i++) {
@@ -186,7 +184,7 @@ public:
 		return data.size() - 8;
 	}
 
-	size_t AddString(std::string str) {
+	size_t AddString(const std::string& str) {
 		AddU8('S');
 		AddU16(str.size());
 		for (char c : str) {
@@ -196,16 +194,16 @@ public:
 		return data.size() - str.size();
 	}
 
-	void SetU8(size_t index, uint8_t byte) {
+	void SetU8(const size_t index, const uint8_t byte) {
 		data[index] = byte;
 	}
 
-	void SetU16(size_t index, uint16_t byte) {
+	void SetU16(const size_t index, const uint16_t byte) {
 		data[index] = byte & 0xFF;
 		data[index + 1] = byte >> 8 & 0xFF;
 	}
 
-	void SetU32(size_t index, uint32_t byte) {
+	void SetU32(const size_t index, const uint32_t byte) {
 		data[index] = byte & 0xFF;
 		data[index + 1] = byte >> 8 & 0xFF;
 		data[index + 2] = byte >> 16 & 0xFF;
