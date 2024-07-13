@@ -280,7 +280,7 @@ void NVSECompiler::VisitVarDeclStmt(VarDeclStmt* stmt) {
 
             StartCall(OP_SET_MOD_LOCAL_DATA);
             StartManualArg();
-            AddString(std::format("__scope_{}_lambda_var_{}", var->scopeIndex, var->index));
+            AddString(std::format("__temp_{}_lambda_{}", scriptName, var->index));
             FinishManualArg();
             AddCallArg(value);
             FinishCall();
@@ -920,7 +920,7 @@ void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
         
         StartCall(OP_GET_MOD_LOCAL_DATA);
         StartManualArg();
-        AddString(std::format("__scope_{}_lambda_var_{}", var->scopeIndex, var->index));
+        AddString(std::format("__temp_{}_lambda_{}", scriptName, var->index));
         FinishManualArg();
         FinishCall();
         return;
