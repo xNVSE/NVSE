@@ -1,0 +1,24 @@
+name inops;
+
+fn () {
+	string testName = "In Operator";
+	print(("Started running xNVSE " + testName + " unit tests."));
+
+    assert(1 in [1,2]);
+    assert(2 in [1,2]);
+    assert(!(3 in [1,2]));
+    assert(3 in [1,2,3]);
+
+    int i = 0;
+    array testArr = Ar_List(1,2,3);
+    for ([array cur] in testArr) {
+        if (*cur == 0) {
+            assert(!(*cur in [1,2,3]));
+            continue;
+        }
+
+        assert(*cur in [1,2,3]);
+    }
+	
+	print(("Finished running xNVSE " + testName + " unit tests."));
+}

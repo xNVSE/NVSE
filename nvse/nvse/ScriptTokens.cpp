@@ -1,5 +1,6 @@
 #include "ScriptTokens.h"
 
+#include "Commands_Script.h"
 #include "GameAPI.h"
 #include "ScriptUtils.h"
 #include "GameRTTI.h"
@@ -307,8 +308,8 @@ ScriptToken::ScriptToken(NVSEArrayVarInterface::Element& elem) : refIdx(0), vari
 	}
 }
 
-ForEachContextToken::ForEachContextToken(UInt32 srcID, UInt32 iterID, UInt32 varType, ScriptLocal *var)
-	: ScriptToken(kTokenType_ForEachContext, Script::eVarType_Invalid, 0), context(srcID, iterID, varType, var)
+ForEachContextToken::ForEachContextToken(UInt32 srcID, UInt32 iterID, Variable var)
+	: ScriptToken(kTokenType_ForEachContext, Script::eVarType_Invalid, 0), context(srcID, iterID, var)
 {
 	value.formID = 0;
 }
@@ -332,17 +333,17 @@ std::unique_ptr<ScriptToken> ScriptToken::Create(ForEachContext *forEach)
 	if (!forEach)
 		return nullptr;
 
-	if (forEach->variableType == Script::eVarType_String)
+	if (forEach->iterVar.type == Script::eVarType_String)
 	{
 		if (!g_StringMap.Get(forEach->iteratorID) || !g_StringMap.Get(forEach->sourceID))
 			return nullptr;
 	}
-	else if (forEach->variableType == Script::eVarType_Array)
+	else if (forEach->iterVar.type == Script::eVarType_Array)
 	{
 		if (!g_ArrayMap.Get(forEach->sourceID) || !g_ArrayMap.Get(forEach->iteratorID))
 			return nullptr;
 	}
-	else if (forEach->variableType == Script::eVarType_Ref)
+	else if (forEach->iterVar.type == Script::eVarType_Ref)
 	{
 		auto const form = (TESForm *)forEach->sourceID;
 		auto const target = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
@@ -352,7 +353,7 @@ std::unique_ptr<ScriptToken> ScriptToken::Create(ForEachContext *forEach)
 	else
 		return nullptr;
 
-	return std::make_unique<ForEachContextToken>(forEach->sourceID, forEach->iteratorID, forEach->variableType, forEach->var);
+	return std::make_unique<ForEachContextToken>(forEach->sourceID, forEach->iteratorID, forEach->iterVar);
 }
 
 std::unique_ptr<ScriptToken> ScriptToken::Create(ArrayID arrID, ArrayKey *key)
@@ -609,6 +610,8 @@ const char *TokenTypeToString(Token_Type type)
 		return "Invalid";
 	case kTokenType_Empty:
 		return "Empty";
+	case kTokenType_OptionalEmpty:
+		return "OptionalEmpty";
 	default:
 		return "Unknown";
 	}
@@ -713,17 +716,8 @@ const char *ScriptToken::GetString() const
 #if RUNTIME
 	else if (type == kTokenType_StringVar)
 	{
-		if (value.nvseVariable.stringVar)
-			return value.nvseVariable.stringVar->GetCString();
-		if (!value.var)
-		{
-			return "";
-		}
-		StringVar *strVar = g_StringMap.Get(value.var->data);
-		if (strVar)
+		if (StringVar* strVar = GetStringVar())
 			result = strVar->GetCString();
-		else
-			result = NULL;
 	}
 #endif
 	if (result)
@@ -736,11 +730,8 @@ std::size_t ScriptToken::GetStringLength() const
 	if (type == kTokenType_String)
 		return strlen(value.str);
 #if RUNTIME
-	if (type == kTokenType_StringVar)
-	{
-		StringVar *strVar = GetStringVar();
-		if (strVar)
-			return strVar->GetLength();
+	if (StringVar* strVar = GetStringVar()) {
+		return strVar->GetLength();
 	}
 #endif
 	return 0;
@@ -794,13 +785,8 @@ double ScriptToken::GetNumber() const
 	else if (type == kTokenType_Global && value.global)
 		return value.global->data;
 #if RUNTIME
-	else if ((type == kTokenType_NumericVar && value.var) ||
-			 (type == kTokenType_StringVar && value.var))
+	else if (value.var && (type == kTokenType_NumericVar || type == kTokenType_StringVar))
 	{
-		if (!value.var)
-		{
-			return 0.0;
-		}
 		return value.var->data;
 	}
 #endif
@@ -905,21 +891,23 @@ ArrayVar *ScriptToken::GetArrayVar() const
 	return g_ArrayMap.Get(GetArrayID());
 }
 
-ScriptLocal *ScriptToken::GetVar() const
+ScriptLocal *ScriptToken::GetScriptLocal() const
 {
-	if (!IsVariable())
-		return nullptr;
 	return value.var;
 }
 
 StringVar* ScriptToken::GetStringVar() const
 {
-	if (type != kTokenType_StringVar)
+	if (type != kTokenType_StringVar) {
 		return nullptr;
-	if (value.nvseVariable.stringVar)
+	}
+	if (value.nvseVariable.stringVar) {
 		return value.nvseVariable.stringVar;
-	if (value.var)
+	}
+	if (value.var) {
 		return g_StringMap.Get(static_cast<int>(value.var->data));
+	}
+
 	return nullptr;
 }
 
@@ -945,7 +933,8 @@ CommandReturnType ScriptToken::GetReturnType() const
 
 Script::VariableType ScriptToken::GetTokenTypeAsVariableType() const
 {
-	if (CanConvertTo(kTokenType_Number)) {
+	if (CanConvertTo(kTokenType_Number)) 
+	{
 		return Script::VariableType::eVarType_Float;
 	}
 	if (CanConvertTo(kTokenType_String))
@@ -986,7 +975,7 @@ void ScriptToken::AssignResult(ExpressionEvaluator &eval) const
 
 }
 
-ScriptLocal* GetScriptLocal(UInt32 varIdx, UInt32 refIdx, Script* script, ScriptEventList* eventList)
+ScriptLocal* ResolveScriptLocal(UInt32 varIdx, UInt32 refIdx, Script* script, ScriptEventList* eventList)
 {
 	if (refIdx)
 	{
@@ -1006,7 +995,7 @@ ScriptLocal* GetScriptLocal(UInt32 varIdx, UInt32 refIdx, Script* script, Script
 bool ScriptToken::ResolveVariable()
 {
 	auto* eventList = context->eventList;
-	value.var = GetScriptLocal(varIdx, refIdx, context->script, eventList);
+	value.var = ResolveScriptLocal(varIdx, refIdx, context->script, eventList);
 	if (!value.var)
 		return false;
 	// to be deleted on event list destruction, see Hooks_Other.cpp#CleanUpNVSEVars
@@ -1266,7 +1255,7 @@ UInt32 __fastcall ScriptTokenGetActorValue(PluginScriptToken *scrToken)
 
 ScriptLocal *__fastcall ScriptTokenGetScriptVar(PluginScriptToken *scrToken)
 {
-	return reinterpret_cast<ScriptToken *>(scrToken)->GetVar();
+	return reinterpret_cast<ScriptToken *>(scrToken)->GetScriptLocal();
 }
 
 const PluginTokenPair *__fastcall ScriptTokenGetPair(PluginScriptToken *scrToken)
@@ -1394,7 +1383,7 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator *context)
 		if (!value.global)
 		{
 			context->Error("Failed to resolve global");
-			type = kTokenType_Invalid;
+			type = kTokenType_Invalid; 
 			break;
 		}
 
@@ -1460,6 +1449,9 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator *context)
 		value.lambdaScriptData = LambdaManager::ScriptData(scriptData, dataLen);
 		break;
 	}
+	case 'K':
+		type = kTokenType_OptionalEmpty;
+		break;
 	default:
 	{
 		if (typeCode < kOpType_Max)
@@ -1502,6 +1494,7 @@ const std::unordered_map g_tokenCodes =
 		std::make_pair(kTokenType_Short, 'I'),
 		std::make_pair(kTokenType_Int, 'L'),
 		std::make_pair(kTokenType_Lambda, 'F'),
+		std::make_pair(kTokenType_OptionalEmpty, 'K'),
 };
 
 inline char TokenTypeToCode(Token_Type type)
@@ -1575,6 +1568,8 @@ bool ScriptToken::Write(ScriptLineBuffer *buf) const
 		// ref list and var list are shared by scripts
 		buf->Write32(value.lambda->info.dataLength);
 		return buf->Write(value.lambda->data, value.lambda->info.dataLength);
+	case kTokenType_OptionalEmpty:
+		return true;
 	// the rest are run-time only
 	default:
 		return false;
@@ -1900,8 +1895,8 @@ static Operand s_operands[] =
 		{OPERAND(RefVar)},
 		{OPERAND(StringVar)},
 		{OPERAND(ArrayVar)},
-		{NULL, 0}, // operator
 		{NULL, 0}, // ambiguous
+		{NULL, 0}, // operator
 		{NULL, 0}, // forEachContext
 		{NULL, 0}, // numeric placeholders, used only in bytecode
 		{NULL, 0},
@@ -1909,12 +1904,17 @@ static Operand s_operands[] =
 		{NULL, 0}, // pair
 		{OPERAND(AssignableString)},
 		{OPERAND(Lambda)},
+		{NULL, 0}, // LambdaScriptData
+
 		{NULL, 0}, // LeftToken
 		{NULL, 0}, // RightToken
+
+		{NULL, 0}, //OptionalEmpty
+
 		{NULL, 0} // Max
 };
 
-STATIC_ASSERT(SIZEOF_ARRAY(s_operands, Operand) == kTokenType_Max);
+STATIC_ASSERT(SIZEOF_ARRAY(s_operands, Operand) == kTokenType_Max + 1);
 
 bool CanConvertOperand(Token_Type from, Token_Type to)
 {

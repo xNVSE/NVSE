@@ -11,10 +11,18 @@
 #include <stack>
 #include <string>
 #include <fstream>
+#include <iostream>
+#include <regex>
 #include <set>
 
 #include "GameAPI.h"
 #include "GameData.h"
+#include "NVSECompiler.h"
+#include "NVSECompilerUtils.h"
+#include "NVSELexer.h"
+#include "NVSEParser.h"
+#include "NVSETreePrinter.h"
+#include "NVSETypeChecker.h"
 #include "PluginManager.h"
 
 // a size of ~1KB should be enough for a single line of code
@@ -213,6 +221,94 @@ namespace RemoveScriptDataLimit
 	}
 }
 
+namespace PatchHelpCommand {
+	void __cdecl HandlePrintCommands(char* searchParameter) {
+		const auto* end = g_scriptCommands.GetEnd();
+		for (const auto* cur = g_scriptCommands.GetStart(); cur != end; ++cur) {
+			auto* parent = g_scriptCommands.GetParentPlugin(cur);
+
+			if (!searchParameter[0] || SubStrCI(cur->helpText, searchParameter) || SubStrCI(cur->longName, searchParameter) || SubStrCI(cur->shortName, searchParameter) || (parent && SubStrCI(parent->name, searchParameter))) {
+				char versionBuf[50] = "";
+
+				if (parent) {
+					const auto* updateInfo = g_scriptCommands.GetUpdateInfoForOpCode(cur->opcode);
+
+					if (!_stricmp(parent->name, "nvse")) {
+						if (updateInfo) {
+							const auto ver = std::get<1>(*updateInfo);
+							sprintf(versionBuf, "[%s %lu.%lu.%lu] ", parent->name, ver >> 24 & 0xFF, ver >> 16 & 0xFF, ver >> 4 & 0xFF);
+						}
+						else {
+							sprintf(versionBuf, "[%s %lu.%lu.%lu] ", parent->name, NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA);
+						}
+					}
+					else {
+						if (updateInfo) {
+							sprintf(versionBuf, "[%s %lu] ", parent->name, std::get<1>(*updateInfo));
+						}
+						else {
+							sprintf(versionBuf, "[%s %lu] ", parent->name, parent->version);
+						}
+					}
+				}
+
+				if (cur->helpText && strlen(cur->helpText)) {
+					if (cur->shortName && strlen(cur->shortName)) {
+						Console_Print("%s%s (%s) -> %s", versionBuf, cur->longName, cur->shortName, cur->helpText);
+					}
+					else {
+						Console_Print("%s%s -> %s", versionBuf, cur->longName, cur->helpText);
+					}
+				}
+				else if (cur->shortName && strlen(cur->shortName)) {
+					Console_Print("%s%s (%s)", versionBuf, cur->longName, cur->shortName);
+				}
+				else {
+					Console_Print("%s%s", versionBuf, cur->longName);
+				}
+			}
+		}
+	}
+
+	__declspec(naked) void Hook() {
+		static uint32_t rtnAddr = 0x5BCDB6;
+
+		_asm {
+			lea eax, [ebp - 0x214]
+			push eax
+			call HandlePrintCommands
+			add esp, 4
+			jmp rtnAddr
+		}
+	}
+
+	void WriteHooks() {
+		WriteRelJump(0x5BCBC2, reinterpret_cast<UInt32>(&Hook));
+	}
+}
+
+namespace Serialization {
+	char __fastcall HookScriptLocals_SaveGame(ScriptEventList *eventList, void* ecx, UInt32 varId) {
+		auto* ebp = GetParentBasePtr(_AddressOfReturnAddress());
+		const auto* var = *reinterpret_cast<ScriptLocal**>(ebp - 0x14);
+
+		if (auto* script = eventList->m_script) {
+			auto* varName = script->GetVariableInfo(varId)->name.CStr();
+
+			// Skip saving of __temp vars
+			if (!_strnicmp(varName, "__temp", 6)) {
+				*static_cast<UInt32*>(_AddressOfReturnAddress()) = 0x5A9E91;
+				return 0;
+			}
+		}
+
+		return ThisStdCall<char>(0x5A9480, eventList, varId);
+	}
+
+	void WriteHooks() {
+		WriteRelCall(0x5A9E11, reinterpret_cast<UInt32>(HookScriptLocals_SaveGame));
+	}
+}
 
 void Hook_Script_Init()
 {
@@ -260,6 +356,10 @@ void Hook_Script_Init()
 	
 	//WriteRelJump(0x5949D4, reinterpret_cast<UInt32>(ExpressionEvalRunCommandHook));
 	WriteRelCall(0x5949D4, reinterpret_cast<UInt32>(ExpressionEvalRunCommandHook));
+
+	// Patch command output for vanilla help command to output parent plugins / associated versions
+	PatchHelpCommand::WriteHooks();
+	Serialization::WriteHooks();
 
 	PatchRuntimeScriptCompile();
 
@@ -384,13 +484,17 @@ bool HandleLoopEnd(UInt32 offsetToEnd)
 
 // ScriptBuffer::currentScript not used due to GECK treating it as external ref script
 std::stack<Script*> g_currentScriptStack;
+std::stack<std::unordered_map<std::string, UInt32>> g_currentCompilerPluginVersions;
+std::stack<std::vector<size_t>> g_currentScriptRestorePoundChar;
 
-enum PrecompileResult : uint8_t
+enum PrecompileResult : uint8_t 
 {
 	kPrecompile_Failure,
 	kPrecompile_Success,
 	kPrecompile_SpecialCompile // only occurs if a plugin overtakes the compilation process.
 };
+
+static bool compilerConsoleOpened = false;
 PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 {
 	// empty out the loop stack
@@ -398,17 +502,112 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 		s_loopStartOffsets.pop();
 
 	g_currentScriptStack.push(script);
+	g_currentCompilerPluginVersions.emplace();
+	g_currentScriptRestorePoundChar.emplace();
 
 	// Initialize these, just in case.
 	buf->errorCode = 0;
 	script->info.compiled = false;
 
-	ScriptAndScriptBuffer msg{ script, buf };
-	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptPrecompile,
-		&msg, sizeof(ScriptAndScriptBuffer), NULL);
+	// See if new compiler should override script compiler
+	// First token on first line should be 'name'
+	if (!_strnicmp(buf->scriptText, "name", 4)) {
+		CompInfo("\n========================================\n\n");
+		
+		// Just convert script buffer to a string
+		auto program = std::string(buf->scriptText);
 
-	if (buf->errorCode >= 1) [[unlikely]] // if plugin reports an error in compiling the script.
-		return PrecompileResult::kPrecompile_Failure;
+		NVSELexer lexer(program);
+		NVSEParser parser(lexer);
+
+		if (auto astOpt = parser.Parse(); astOpt.has_value()) {
+			auto ast = std::move(astOpt.value());
+
+			auto tc = NVSETypeChecker(&ast);
+			bool typeCheckerPass = tc.check();
+			
+			auto tp = NVSETreePrinter();
+			ast.Accept(&tp);
+
+			if (!typeCheckerPass) {
+				return PrecompileResult::kPrecompile_Failure;
+			}
+
+			try {
+				NVSECompiler comp{script, buf->partialScript, ast};
+				comp.Compile();
+
+				// Only set script name if not partial
+				if (!buf->partialScript) {
+					buf->scriptName = String();
+					buf->scriptName.Set(comp.scriptName.c_str());
+				}
+
+				printf("Script compiled successfully.\n");
+			} catch (std::runtime_error &er) {
+				CompErr("Script compilation failed: %s\n", er.what());
+				return PrecompileResult::kPrecompile_Failure;
+			}
+		} else {
+			return PrecompileResult::kPrecompile_Failure;
+		}
+	}
+
+	else {
+		auto& pluginVersions = g_currentCompilerPluginVersions.top();
+		auto& replacements = g_currentScriptRestorePoundChar.top();
+
+		// Default to 6.3.5 for scriptrunner unless specified
+		if (buf->partialScript) {
+			pluginVersions["nvse"] = MAKE_NEW_VEGAS_VERSION(6, 3, 5);
+		}
+
+		// Pre-process comments for version tags
+		std::regex versionRegex(R"lit(#[Vv][Ee][Rr][Ss][Ii][Oo][Nn]\("([^"]+)",\s*(\d+)(?:,\s+(\d+))?(?:,\s+(\d+))?\))lit");
+		const auto scriptText = std::string(buf->scriptText);
+
+		auto iter = std::sregex_iterator(scriptText.begin(), scriptText.end(), versionRegex);
+		while (iter != std::sregex_iterator()) {
+			const auto &match = *iter;
+			if (match.empty()) {
+				continue;
+			}
+
+			// Change # to ; during compilation
+			const auto matchPos = match.position();
+			replacements.emplace_back(matchPos);
+			buf->scriptText[matchPos] = ';';
+
+			std::string pluginName = match[1];
+			std::ranges::transform(pluginName.begin(), pluginName.end(), pluginName.begin(), [](unsigned char c) { return std::tolower(c); });
+
+			if (StrEqual(pluginName.c_str(), "nvse")) {
+				int major = std::stoi(match[2]);
+				int minor = match[3].matched ? std::stoi(match[3]) : 255;
+				int beta = match[4].matched ? std::stoi(match[4]) : 255;
+
+				pluginVersions[pluginName] = MAKE_NEW_VEGAS_VERSION(major, minor, beta);
+			}
+			else { // handle versions for plugins
+				auto* pluginInfo = g_pluginManager.GetInfoByName(pluginName.c_str());
+				if (!pluginInfo) [[unlikely]] {
+					CompErr("Script compilation failed: No plugin with name %s could be found.\n", pluginName.c_str());
+					return PrecompileResult::kPrecompile_Failure;
+				}
+
+				pluginVersions[pluginName] = std::stoi(match[2]);
+			}
+
+			++iter;
+		}
+
+		ScriptAndScriptBuffer msg{ script, buf };
+		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptPrecompile,
+			&msg, sizeof(ScriptAndScriptBuffer), NULL);
+
+		if (buf->errorCode >= 1) [[unlikely]] // if plugin reports an error in compiling the script.
+			return PrecompileResult::kPrecompile_Failure;
+	}
 
 	if (script->info.compiled) // if plugin compiled the script for us
 	{
@@ -447,7 +646,15 @@ void PostScriptCompile()
 {
 	if (!g_currentScriptStack.empty()) // could be empty here at runtime if the ScriptBuffer or Script are nullptr.
 	{
+		// Replace replaced ';' chars with '#' again for saving
+		const auto scriptText = g_currentScriptStack.top()->text;
+		for (const auto value : g_currentScriptRestorePoundChar.top()) {
+			scriptText[value] = '#';
+		}
+
 		g_currentScriptStack.pop();
+		g_currentCompilerPluginVersions.pop();
+		g_currentScriptRestorePoundChar.pop();
 
 		// Avoid clearing the variables map after parsing a lambda script that belongs to a parent script.
 		if (g_currentScriptStack.empty())
@@ -462,7 +669,7 @@ namespace Runtime // double-clarify
 	PrecompileResult __fastcall HandleBeginCompile_SetNotCompiled(Script* script, ScriptBuffer* buf, bool isCompiled)
 	{
 		return HandleBeginCompile(buf, script);
-	}
+		}
 
 	__declspec(naked) void HookBeginScriptCompile()
 	{
@@ -485,20 +692,20 @@ namespace Runtime // double-clarify
 			// fail, or a plugin custom-compiled the script
 			jmp failOrSpecialCompileAddr //jump here to land in HookEndScriptCompile.
 
-			success:
+				success :
 			jmp retnAddr
 		}
 	}
 
 	bool __fastcall HookEndScriptCompile_Call(UInt32 success, void* edx)
-	{
+		{
 		if (success)
 		{
 			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress());
 			auto* buf = *reinterpret_cast<ScriptBuffer**>(ebp + 0xC);
 
 			ScriptAndScriptBuffer data{ g_currentScriptStack.top(), buf };
-			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptCompile, 
+			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptCompile,
 				&data, sizeof(ScriptAndScriptBuffer), nullptr);
 		}
 		PostScriptCompile();
@@ -518,10 +725,41 @@ namespace Runtime // double-clarify
 			mov esp, ebp
 			pop ebp
 			ret 8
+		} 
+	}
+
+	char __cdecl HandleParseCommandToken(ScriptParseToken* parseToken) {
+		if (const auto* commandInfo = g_scriptCommands.GetByName(parseToken->tokenString, &g_currentCompilerPluginVersions.top())) {
+			parseToken->tokenType = 'X';
+			parseToken->cmdOpcode = commandInfo->opcode;
+			return 1;
+		}
+
+		return 0;
+	}
+
+	__declspec(naked) void HookParseCommandToken() {
+		_asm {
+			add esp, 8
+
+			push edx
+			call HandleParseCommandToken
+			add esp, 4
+
+			test eax, eax
+			jz ret_0
+
+			// Jump to original return, AL still contains 1
+			push 0x5B1A84
+			retn
+
+			// Skip to console command loop
+			ret_0 :
+			push 0x5B1A08
+			retn
 		}
 	}
 }
-
 
 void PatchRuntimeScriptCompile()
 {
@@ -540,6 +778,8 @@ void PatchRuntimeScriptCompile()
 		// Replace Console_PrintIfOpen with non-conditional print, in PrintScriptCompileError. 
 		WriteRelCall(0x5AEB36, (UInt32)Console_Print);
 	}
+
+	WriteRelJump(0x5B19BA, reinterpret_cast<UInt32>(&Runtime::HookParseCommandToken));
 }
 
 #endif
@@ -732,7 +972,7 @@ namespace CompilerOverride
 				*((UInt32 *)(buf->scriptData + buf->dataOffset)) = 0x00000011;
 			}
 
-			CommandInfo *cmdInfo = g_scriptCommands.GetByName(cmdName);
+			CommandInfo *cmdInfo = g_scriptCommands.GetByName(cmdName, &g_currentCompilerPluginVersions.top());
 			ASSERT(cmdInfo != NULL);
 
 			// write a call to our cmd
@@ -877,55 +1117,30 @@ void __fastcall PostScriptCompileSuccess(Script* script, ScriptBuffer* scriptBuf
 #endif
 }
 
-static __declspec(naked) void CompileScriptHook(void)
-{
-	static PrecompileResult precompileResult;
-	static Script *script = nullptr;
-	static ScriptBuffer* scriptBuffer = nullptr;
-	__asm {
-		mov		[script], eax
-		mov		eax, [esp + 4] // grab the second arg (ScriptBuffer*)
-		mov		[scriptBuffer], eax
-		pushad
-		mov		ecx, script
-		push	ecx
-		push	eax
-		call	HandleBeginCompile // Precompile
-		mov		[precompileResult], al // save result
-		cmp		al, kPrecompile_Success
-		popad
-		je		DoCompilation
-		// else, need to clear the two args from the stack that were set up for the kBeginScriptCompileCallAddr call.
-		add		esp, 8
-		// return 1 if precompile result was kPrecompile_SpecialCompile
-		mov		al, precompileResult
-		cmp		al, kPrecompile_SpecialCompile
-		jne		EndHook
-		// else, was equal
-		mov		al, 1
-		jmp		EndHook
+// This hook is inconsistent with runtime - this hooks calls to Script::Compile instead of hooking inside of it
+//	- If Script->Compile is called in the GECK outside of the vanilla code this will NOT be hit
+//	- Not sure if this is a problem, maybe all plugins should be compiling scripts via NVSE and we can clean up the runtime hooks as well?
+static char __fastcall CompileScriptHook(void* context, void* edx, Script* script, ScriptBuffer *buf) {
+	auto precompileResult = HandleBeginCompile(buf, script);
+	char result = 0;
 
-		DoCompilation:
-		call	[kBeginScriptCompileCallAddr] // let the compiler take over
-		push	eax
-		call	PostScriptCompile
-		pop		eax
-		test	al, al
-		jz		EndHook // return false if CompileScript() returned false
-		mov		edx, scriptBuffer
-		mov		ecx, script
-		call	PostScriptCompileSuccess
-		mov		al, [precompileResult]	 // else return result of Precompile
-		
-		EndHook:
-		// there's a small possibility that the compiler override is still in effect here (e.g. scripter forgot an 'end')
-		// so make sure there's no chance it remains in effect, otherwise potentially could affect result script compilation
-		pushad
-		push	0
-		call	CompilerOverride::ToggleOverride
-		popad
-		jmp		[kBeginScriptCompileRetnAddr] // bye
+	if (precompileResult == kPrecompile_Success) {
+		// Let original compiler take over
+		result = ThisStdCall<char>(0x5C96E0, context, script, buf);
 	}
+
+	// Special compilation, new compiler
+	else if (precompileResult == kPrecompile_SpecialCompile) {
+		result = 1;
+	}
+
+	PostScriptCompile();
+	if (result) {
+		PostScriptCompileSuccess(script, buf);
+	}
+
+	CompilerOverride::ToggleOverride(false);
+	return result;
 }
 
 // replace special characters ("%q" -> '"', "%r" -> '\n')
@@ -1002,10 +1217,47 @@ static __declspec(naked) void __cdecl CopyStringArgHook(void)
 	}
 }
 
+char __cdecl HandleParseCommandToken(ScriptParseToken* parseToken) {
+	if (const auto* commandInfo = g_scriptCommands.GetByName(parseToken->tokenString, &g_currentCompilerPluginVersions.top())) {
+		parseToken->tokenType = 'X';
+		parseToken->cmdOpcode = commandInfo->opcode;
+		return 1;
+	}
+
+	return 0;
+
+	// return CdeclCall<char>(0x5C53B0, parseToken);
+}
+
+__declspec(naked) void HookParseCommandToken() {
+	_asm {
+		add esp, 8
+
+		push esi
+		call HandleParseCommandToken
+		add esp, 4
+
+		test eax, eax
+		jz ret_0
+
+		// Return 1 (inside AL already)
+		pop edi
+		pop esi
+		pop ebx
+		retn
+
+		// Skip to console command loop
+		ret_0:
+		push 0x5C5425
+		retn
+	}
+}
+
 void Hook_Compiler_Init()
 {
 	// hook beginning of compilation process
-	WriteRelJump(kBeginScriptCompilePatchAddr, (UInt32)&CompileScriptHook);
+	WriteRelCall(0x5C9859, reinterpret_cast<UInt32>(CompileScriptHook));
+	WriteRelCall(0x5C99AC, reinterpret_cast<UInt32>(CompileScriptHook));
 
 	// hook copying of string argument to compiled data
 	// lets us modify the string before its copied
@@ -1018,6 +1270,12 @@ void Hook_Compiler_Init()
 	CompilerOverride::InitHooks();
 
 	PatchMismatchedParenthesisCheck();
+
+	// WriteRelCall(0x5C55C0, reinterpret_cast<UInt32>(&HookParseCommandToken));
+	// WriteRelCall(0x5C63D4, reinterpret_cast<UInt32>(&HookParseCommandToken));
+	// WriteRelCall(0x5C64AC, reinterpret_cast<UInt32>(&HookParseCommandToken));
+
+	WriteRelJump(0x5C53FD, reinterpret_cast<UInt32>(&HookParseCommandToken));
 }
 
 #else // run-time

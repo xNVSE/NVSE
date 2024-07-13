@@ -222,7 +222,7 @@ bool InventoryReference::DeferredAction::Execute(InventoryReference* iref)
 		case kAction_Equip:
 		{
 			Actor* actor = (Actor*)containerRef;
-			if (!actor->IsActor())
+			if (!actor->IsActor_Runtime())
 				return false;
 			if (data.xData && data.xData->IsWorn())
 				actor->UnequipItem(data.type, 1, data.xData, 0, false, 0);

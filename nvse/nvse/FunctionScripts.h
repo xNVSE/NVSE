@@ -3,16 +3,9 @@
 #include <unordered_map>
 #include "FastStack.h"
 
-struct UserFunctionParam
-{
-	UInt16	varIdx;
-	Script::VariableType	varType;
-
-	UserFunctionParam(UInt16 _idx, Script::VariableType _type) : varIdx(_idx), varType(_type) { }
-	UserFunctionParam() : varIdx(-1), varType(Script::eVarType_Invalid) { }
-};
-
 #if RUNTIME
+
+#include "StackVariables.h"
 
 struct FunctionContext;
 

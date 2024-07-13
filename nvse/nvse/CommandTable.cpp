@@ -70,26 +70,26 @@ struct PatchLocation
 static const PatchLocation kPatch_ScriptCommands_Start[] =
 	{
 		{0x005B1172, 0x00},
-		{0x005B19B1, 0x00},
-		{0x005B19CE, 0x04},
-		{0x005B19F8, 0x08},
-		{0x005BCC0A, 0x0C},
-		{0x005BCC2D, 0x00},
-		{0x005BCC50, 0x04},
-		{0x005BCC70, 0x0C},
-		{0x005BCC86, 0x0C},
-		{0x005BCCA6, 0x04},
-		{0x005BCCB8, 0x04},
-		{0x005BCCD4, 0x0C},
-		{0x005BCCE4, 0x04},
-		{0x005BCCF4, 0x00},
-		{0x005BCD13, 0x0C},
-		{0x005BCD23, 0x00},
-		{0x005BCD42, 0x04},
-		{0x005BCD54, 0x04},
-		{0x005BCD70, 0x04},
-		{0x005BCD80, 0x00},
-		{0x005BCD9F, 0x00},
+		// {0x005B19B1, 0x00}, |
+		// {0x005B19CE, 0x04}, |
+		// {0x005B19F8, 0x08}, Removed with ParseCommandToken hook
+		// {0x005BCC0A, 0x0C}, |
+		// {0x005BCC2D, 0x00}, |
+		// {0x005BCC50, 0x04}, |
+		// {0x005BCC70, 0x0C}, |
+		// {0x005BCC86, 0x0C}, |
+		// {0x005BCCA6, 0x04}, |
+		// {0x005BCCB8, 0x04}, |
+		// {0x005BCCD4, 0x0C}, |
+		// {0x005BCCE4, 0x04}, |
+		// {0x005BCCF4, 0x00}, |
+		// {0x005BCD13, 0x0C}, |
+		// {0x005BCD23, 0x00}, |
+		// {0x005BCD42, 0x04}, |
+		// {0x005BCD54, 0x04}, |
+		// {0x005BCD70, 0x04}, |
+		// {0x005BCD80, 0x00}, |
+		// {0x005BCD9F, 0x00}, Removed with Cmd_Help hook
 		{0x0068170B, 0x20},
 		{0x00681722, 0x10},
 		{0x00681752, 0x20},
@@ -316,7 +316,7 @@ bool Cmd_DumpDocs_Execute(COMMAND_ARGS)
 	if (IsConsoleMode())
 		Console_Print("Dumping Command Docs");
 
-	g_scriptCommands.DumpCommandDocumentation(showQuickList != 0, startingOpcode, 
+	g_scriptCommands.DumpCommandDocumentation(showQuickList != 0, startingOpcode,
 		showIfConditionOnly != 0, showIfDeprecated != 0);
 
 	if (IsConsoleMode())
@@ -361,6 +361,12 @@ DEFINE_COMMAND(DumpDocs, , false, 4, kParams_FourOptionalInts);
 #define ADD_CMD(command) Add(&kCommandInfo_##command)
 #define ADD_CMD_RET(command, rtnType) Add(&kCommandInfo_##command, rtnType)
 #define REPL_CMD(command) Replace(GetByName(command)->opcode, &kCommandInfo_##command)
+
+#define ADD_CMD_VER(command, major, minor, beta) \
+	Add(&kCommandInfo_ ## command ## _ ## major ## _ ## minor ## _ ## beta, kRetnType_Default, 0, MAKE_NEW_VEGAS_VERSION(major, minor, beta));
+
+#define ADD_CMD_VER_RET(command, rtnType, major, minor, beta) \
+	Add(&kCommandInfo_ ## command ## _ ## major ## _ ## minor ## _ ## beta, rtnType, 0, MAKE_NEW_VEGAS_VERSION(major, minor, beta));
 
 CommandTable::CommandTable()
 {
@@ -432,7 +438,7 @@ void CommandTable::Read(CommandInfo *start, CommandInfo *end)
 		Add(start);
 }
 
-void CommandTable::Add(CommandInfo *info, CommandReturnType retnType, UInt32 parentPluginOpcodeBase)
+void CommandTable::Add(CommandInfo* info, CommandReturnType retnType, UInt32 parentPluginOpcodeBase, UInt32 version)
 {
 	UInt32 backCommandID = m_baseID + m_commands.size(); // opcode of the next command to add
 
@@ -458,9 +464,15 @@ void CommandTable::Add(CommandInfo *info, CommandReturnType retnType, UInt32 par
 	m_curID++;
 
 	CommandMetadata *metadata = &m_metadata[info->opcode];
-
 	metadata->parentPlugin = parentPluginOpcodeBase;
 	metadata->returnType = retnType;
+
+	if (version != 0) {
+		auto* parentPlugin = GetParentPlugin(info);
+		auto parentName = std::string(parentPlugin ? parentPlugin->name : "NVSE");
+		std::ranges::transform(parentName, parentName.begin(), [](unsigned char c) { return std::tolower(c); });
+		m_updateCommands[info->opcode] = std::make_tuple(parentName, version);
+	}
 }
 
 bool CommandTable::Replace(UInt32 opcodeToReplace, CommandInfo *replaceWith)
@@ -970,7 +982,7 @@ std::string CommandInfo::GetWikiStyleOriginName(bool originOrCategory, CommandMe
 					pluginName.append(" NVSE");
 				}
 			}
-			
+
 			return pluginName;
 		}
 	}
@@ -1127,7 +1139,7 @@ void CommandInfo::DumpWikiDocs(const char* versionNumberStr) const
 				_MESSAGE("   |Optional = y");
 				_MESSAGE("   |Value = [INSERT DEFAULT VALUE]");
 			}
-				
+
 			if (i + 1 < numParams)
 				_MESSAGE("  }}{{FunctionArgument");
 			else
@@ -1182,13 +1194,37 @@ void CommandInfo::DumpFunctionDef(CommandMetadata* metadata) const
 	}
 }
 
-CommandInfo *CommandTable::GetByName(const char *name)
+CommandInfo *CommandTable::GetByName(const char* name, std::unordered_map<std::string, UInt32> *pluginVersions)
 {
-	for (CommandList::iterator iter = m_commands.begin(); iter != m_commands.end(); ++iter)
-		if (!StrCompare(name, iter->longName) || (iter->shortName && !StrCompare(name, iter->shortName)))
-			return &(*iter);
+	for (CommandList::reverse_iterator iter = m_commands.rbegin(); iter != m_commands.rend(); ++iter) {
+		if (!StrCompare(name, iter->longName) || (iter->shortName && !StrCompare(name, iter->shortName))) {
+			auto *cmd = &(*iter);
 
-	return NULL;
+			// Versioned command, only return if script specifies a plugin version and specified version <= plugin version
+			if (auto updateInfo = m_updateCommands.find(cmd->opcode); updateInfo != m_updateCommands.end()) {
+				auto cmdPluginName = std::string(std::get<0>(updateInfo->second));
+				auto cmdVersion = std::get<1>(updateInfo->second);
+
+				std::ranges::transform(cmdPluginName, cmdPluginName.begin(), [](unsigned char c) { return std::tolower(c); });
+
+				if (pluginVersions->contains(cmdPluginName)) {
+					if (cmdVersion <= (*pluginVersions)[cmdPluginName]) {
+						return cmd;
+					}
+				}
+				else {
+					return cmd;
+				}
+			}
+
+			// Not a versioned command
+			else {
+				return cmd;
+			}
+		}
+	}
+
+	return nullptr;
 }
 
 CommandInfo *CommandTable::GetByOpcode(UInt32 opcode)
@@ -1206,7 +1242,16 @@ CommandInfo *CommandTable::GetByOpcode(UInt32 opcode)
 		//	opcode, baseOpcode, arrayIndex, command->opcode);
 		return nullptr;
 	}
+
 	return command;
+}
+
+std::tuple<std::string, UInt32>* CommandTable::GetUpdateInfoForOpCode(UInt32 opcode) {
+	if (m_updateCommands.contains(opcode)) {
+		return &m_updateCommands[opcode];
+	}
+
+	return nullptr;
 }
 
 std::vector<CommandInfo*> CommandTable::GetByOpcodeRange(UInt32 opcodeStart, UInt32 opcodeStop)
@@ -2220,10 +2265,13 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(SetModelPath);
 	ADD_CMD_RET(Ternary, kRetnType_Ambiguous);
 	ADD_CMD(MatchesAnyOf);
+
+	ADD_CMD(ForEachAlt);
 	ADD_CMD(ar_Exists);
 	ADD_CMD(ar_Count);
 	ADD_CMD(ar_CountWhere);
 	ADD_CMD(EvaluateInventory);
+	ADD_CMD(ar_GetNth);
 }
 
 namespace PluginAPI

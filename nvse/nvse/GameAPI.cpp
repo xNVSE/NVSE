@@ -34,6 +34,95 @@ const bool kInventoryType[] =
 		1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0};
 
+std::map<uint8_t, const char*> g_formTypeNames = {
+	{21,"Activator"},
+	{24,"Armor"},
+	{25,"Book"},
+	{27,"Container"},
+	{28,"Door"},
+	{29,"Ingredient"},
+	{30,"Light"},
+	{31,"Misc Item"},
+	{32,"Static"},
+	{36,"Grass"},
+	{37,"Tree"},
+	{40,"Weapon"},
+	{42,"NPC"},
+	{43,"Creature"},
+	{44,"Leveled Creature"},
+	{45,"LeveledCharacter"},
+	{20,"Actor Effect"},
+	{19,"Object Effect"},
+	{47,"Ingestible"},
+	{52,"Leveled Item"},
+	{46,"Key"},
+	{41,"Ammo"},
+	{38,"Flora"},
+	{39,"Furniture"},
+	{13,"Sound"},
+	{18,"Land Texture"},
+	{74,"Combat Style"},
+	{75,"Load Screen"},
+	{76,"Leveled Spell"},
+	{77,"Anim Object"},
+	{78,"Water Type"},
+	{48,"Idle Marker"},
+	{79,"Effect Shader"},
+	{51,"Projectile"},
+	{22,"Talking Activator"},
+	{81,"Explosion"},
+	{4,"Texture Set"},
+	{82,"Debris"},
+	{5,"Menu Icon"},
+	{85,"Form List"},
+	{86,"Perk"},
+	{87,"Body Part Data"},
+	{88,"AddOn Node"},
+	{34,"Movable Static"},
+	{23,"Terminal"},
+	{35,"Placeable Water"},
+	{91,"Camera Shot"},
+	{94,"Impact Data"},
+	{95,"Impact Data Set"},
+	{71,"Quest"},
+	{73,"Package"},
+	{93,"Voice Type"},
+	{7,"Class"},
+	{12,"Race"},
+	{11,"Eyes"},
+	{9,"Head Part"},
+	{8,"Faction"},
+	{49,"Note"},
+	{53,"Weather"},
+	{54,"Climate"},
+	{96,"Armor Addon"},
+	{6,"Global"},
+	{83,"Imagespace"},
+	{84,"Imagespace Modifier"},
+	{97,"Encounter Zone"},
+	{98,"Message"},
+	{50,"Constructible Object"},
+	{14,"Acoustic Space"},
+	{99,"Ragdoll"},
+	{17,"Script"},
+	{16,"Base Effect"},
+	{102,"Music Type"},
+	{33,"Static Collection"},
+	{103,"Item Mod"},
+	{104,"Reputation"},
+	{106,"Recipe"},
+	{107,"Recipe Category"},
+	{108,"Casino Chip"},
+	{109,"Casino"},
+	{110,"Load Screen Type"},
+	{111,"Media Set"},
+	{112,"Media Location Controller"},
+	{113,"Challenge"},
+	{114,"Ammo Effect"},
+	{115,"Caravan Card"},
+	{116,"Caravan Money"},
+	{117,"Caravan Deck"},
+};
 
 #if RUNTIME
 TESForm *__stdcall LookupFormByID(UInt32 refID)
@@ -91,6 +180,16 @@ SaveGameManager **g_saveGameManager = (SaveGameManager **)0x011DE134;
 // Johnny Guitar supports this
 const _GetFormByID GetFormByID = (_GetFormByID)(0x483A00);
 
+AnimGroupInfo* g_animGroupInfos = (AnimGroupInfo*)0x11977D8;
+
+bool (*IsStringInteger)(const char* str) = (bool (*)(const char*))0x4B1230;
+bool (*IsStringFloat)(const char* str) = (bool (*)(const char*))0x4B12D0;
+
+const char** g_alignmentTypeNames = (const char**)0x1186CF4;
+const char** g_equipTypeNames = (const char**)0x11869BC;
+const char** g_criticalStageNames = (const char**)0x119BBB0;
+//const char** g_formTypeNames = (const char**)0x118A2D8;
+
 #elif EDITOR
 
 //	FormMap* g_FormMap = (FormMap *)0x009EE18C;		// currently unused
@@ -105,38 +204,13 @@ const _ShowCompilerError ShowCompilerError = (_ShowCompilerError)0x005C5730; // 
 // 0x5C64C0 <- start of huge editor function that IDA can't disassemble.
 
 // 24
-struct AnimGroupInfo
-{
-	const char *name;	 // 00
-	UInt32 unk04;		 // 04
-	UInt32 sequenceType; // 08
-	UInt32 unk0C;		 // 0C
-	UInt32 unk10;		 // 10
-	UInt32 unk14[4];	 // 14
-}
-	*g_animGroupInfos = (AnimGroupInfo *)0xE98290;
+AnimGroupInfo *g_animGroupInfos = (AnimGroupInfo *)0xE98290;
 
-const char **g_formTypeNames = (const char **)0xEA6DB8;
+//const char **g_formTypeNames = (const char **)0xEA6DB8;
 const char **g_alignmentTypeNames = (const char **)0xE93FF4;
 const char **g_equipTypeNames = (const char **)0xE93C40;
 const char **g_criticalStageNames = (const char **)0xE91188;
 
-// 220
-struct ScriptParseToken
-{
-	char tokenString[0x200]; // 000
-	UInt16 refIdx;			 // 200
-	UInt8 pad202[2];
-	UInt8 tokenType; // 204
-	UInt8 pad205[3];
-	UInt32 cmdOpcode; // 208
-	UInt16 varIdx;	  // 20C
-	UInt8 pad20E[2];
-	TESForm *refObj;	 // 210
-	UInt32 unk214;		 // 214
-	UInt32 unk218;		 // 218
-	UInt32 paramTextLen; // 21C
-};
 
 bool (*IsStringInteger)(const char *str) = (bool (*)(const char *))0x523390;
 bool (*IsStringFloat)(const char *str) = (bool (*)(const char *))0x5233D0;
@@ -226,7 +300,7 @@ bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineB
 				}
 				break;
 			case kParamType_Actor:
-				if (!spToken.varIdx && (!spToken.refObj || !spToken.refObj->Unk_39()))
+				if (!spToken.varIdx && (!spToken.refObj || !spToken.refObj->IsActor_InEditor()))
 				{
 					errorFmt = (const char *)0xD60C90;
 					goto compileError;
@@ -689,12 +763,11 @@ bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineB
 				ShowCompilerError(scriptBuffer, (const char *)0xD5FC30, spToken.tokenString, currInfo->typeStr, 4);
 				return false;
 			case kParamType_FormType:
-				for (i = 0; (i < 87) && StrCompare(g_formTypeNames[i], spToken.tokenString); i++)
-					;
-				if (i < 87)
-				{
-					i = ((UInt8 *)0xEA7078)[i];
-					goto setTokenValue;
+				for (auto &[formId, name] : g_formTypeNames) {
+					if (!StrCompare(name, spToken.tokenString)) {
+						i = formId;
+						goto setTokenValue;
+					}
 				}
 				errorFmt = (const char *)0xD5FFE0;
 				goto compileError;
@@ -1900,9 +1973,18 @@ UInt32 ScriptEventList::ResetAllVariables()
 
 ScriptLocal *ScriptEventList::GetVariable(UInt32 id)
 {
-	return m_vars->FindFirst([&](ScriptLocal *entry) {
+	// if (const auto var = g_scriptVarCache[g_threadID]->get(this, id)) {
+	// 	return var;
+	// }
+
+	// TODO
+	auto found = m_vars->FindFirst([&](ScriptLocal* entry) {
 		return entry->id == id;
 	});
+
+	// g_scriptVarCache[g_threadID]->put(this, found);
+	
+	return found;
 }
 
 ScriptEventList *EventListFromForm(TESForm *form)

@@ -89,5 +89,5 @@ namespace ExtractArgsOverride
 };
 
 extern std::stack<Script*> g_currentScriptStack;
-
+extern std::stack<std::unordered_map<std::string, UInt32>> g_currentCompilerPluginVersions;
 	

@@ -153,6 +153,22 @@ struct ParamInfo
 	0 \
 	};
 
+#define DEFINE_CMD_FULL_VER(name, altName, description, refRequired, numParams, paramInfo, parser, major, minor, beta) \
+	extern bool Cmd_ ## name ## _ ## major ## _ ## minor ## _ ## beta ## _Execute(COMMAND_ARGS); \
+	static CommandInfo (kCommandInfo_ ## name ## _ ## major ## _ ## minor ## _ ## beta) = { \
+	#name, \
+	#altName, \
+	0, \
+	#description, \
+	refRequired, \
+	numParams, \
+	paramInfo, \
+	HANDLER(Cmd_ ## name ## _ ## major ## _ ## minor ## _ ## beta ## _Execute), \
+	parser, \
+	NULL, \
+	0 \
+	};
+
 // Deprecated, use DEFINE_CMD_ALIAS instead.
 #define DEFINE_CMD_ALT(name, altName, description, refRequired, numParams, paramInfo) \
 	DEFINE_CMD_FULL(name, altName, description, refRequired, numParams, paramInfo, Cmd_Default_Parse)	
@@ -172,6 +188,9 @@ struct ParamInfo
 
 #define DEFINE_COMMAND_EXP(name, description, refRequired, paramInfo) \
 	DEFINE_CMD_ALT_EXP(name, , description, refRequired, paramInfo)
+
+#define DEFINE_CMD_VER_EXP(name, description, refRequired, paramInfo, major, minor, beta) \
+	DEFINE_CMD_FULL_VER(name, , description, refRequired, (paramInfo) ? (sizeof(paramInfo) / sizeof(ParamInfo)) : 0, paramInfo, Cmd_Expression_Parse, major, minor, beta)
 
 #define DEFINE_COMMAND_PLUGIN(name, description, refRequired, paramInfo) \
 	DEFINE_CMD_FULL(name, , description, refRequired, (paramInfo) ? (sizeof(paramInfo) / sizeof(ParamInfo)) : 0, paramInfo, NULL)
@@ -286,14 +305,17 @@ public:
 	static void	Init(void);
 
 	void	Read(CommandInfo * start, CommandInfo * end);
-	void	Add(CommandInfo * info, CommandReturnType retnType = kRetnType_Default, UInt32 parentPluginOpcodeBase = 0);
+	void	Add(CommandInfo * info, CommandReturnType retnType = kRetnType_Default, UInt32 parentPluginOpcodeBase = 0, UInt32 version = 0);
 	void	PadTo(UInt32 id, CommandInfo * info = NULL);
 	bool	Replace(UInt32 opcodeToReplace, CommandInfo* replaceWith);
 
 	CommandInfo *	GetStart(void)	{ return &m_commands[0]; }
 	CommandInfo *	GetEnd(void)	{ return GetStart() + m_commands.size(); }
-	CommandInfo *	GetByName(const char * name);
+
+	CommandInfo *	GetByName(const char * name, std::unordered_map<std::string, UInt32> *pluginVersions = nullptr);
 	CommandInfo *	GetByOpcode(UInt32 opcode);
+	std::tuple<std::string, UInt32> *GetUpdateInfoForOpCode(UInt32 opcode);
+
 	// Inclusive start and stop bounds.
 	std::vector<CommandInfo*> GetByOpcodeRange(UInt32 opcodeStart, UInt32 opcodeStop);
 
@@ -312,6 +334,7 @@ public:
 
 	UInt32				GetRequiredNVSEVersion(const CommandInfo * cmd);
 	PluginInfo *		GetParentPlugin(const CommandInfo * cmd);
+	PluginInfo*			GetPluginForCommand(const char* name);
 	CommandMetadata &	GetMetaDataForCommand(const CommandInfo* cmd);
 
 private:
@@ -325,9 +348,12 @@ private:
 
 	typedef std::vector <CommandInfo>				CommandList;
 	typedef UnorderedMap<UInt32, CommandMetadata>	CmdMetadataList;
+	// <opcode, <plugin name, version>>
+	typedef std::unordered_map<UInt32, std::tuple<std::string, UInt32>> CommandUpdateList;
 
-	CommandList		m_commands;
-	CmdMetadataList	m_metadata;
+	CommandList			m_commands;
+	CmdMetadataList		m_metadata;
+	CommandUpdateList	m_updateCommands;
 
 	UInt32		m_baseID;
 	UInt32		m_curID;

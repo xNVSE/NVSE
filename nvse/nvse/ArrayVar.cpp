@@ -1327,25 +1327,17 @@ public:
 		{
 			UserFunctionParam* lhs = info->GetParam(0);
 			UserFunctionParam* rhs = info->GetParam(1);
-			if (lhs && rhs && lhs->varType == Script::eVarType_Array && rhs->varType == Script::eVarType_Array)
+			if (lhs && rhs && lhs->GetType() == Script::eVarType_Array && rhs->GetType() == Script::eVarType_Array)
 			{
-				ScriptLocal* var = eventList->GetVariable(lhs->varIdx);
-				if (!var)
-				{
-					ShowRuntimeError(m_comparator, "Could not look up argument variable for function script");
+				const char* errMsg = "Could not look up argument variable for function script";
+				if (!lhs->AssignToArray(m_lhs->ID(), eventList)) [[unlikely]] {
+					ShowRuntimeError(m_comparator, errMsg);
 					return false;
 				}
-				g_ArrayMap.AddReference(&var->data, m_lhs->ID(), m_comparator->GetModIndex());
-				AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_Array);
-
-				var = eventList->GetVariable(rhs->varIdx);
-				if (!var)
-				{
-					ShowRuntimeError(m_comparator, "Could not look up argument variable for function script");
+				if (!rhs->AssignToArray(m_rhs->ID(), eventList)) [[unlikely]] {
+					ShowRuntimeError(m_comparator, errMsg);
 					return false;
 				}
-				g_ArrayMap.AddReference(&var->data, m_rhs->ID(), m_comparator->GetModIndex());
-				AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_Array);
 				return true;
 			}
 		}

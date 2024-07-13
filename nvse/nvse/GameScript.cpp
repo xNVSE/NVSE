@@ -505,13 +505,15 @@ public:
 
 VariableInfo *Script::GetVariableByName(const char *varName)
 {
-	auto *varIter = varList.Head();
-	do
-	{
-		auto *varInfo = varIter->data;
+	const auto *varIter = varList.Head();
+	while (varIter) {
+		auto* varInfo = varIter->data;
 		if (varInfo && !StrCompare(varName, varInfo->name.m_data))
 			return varInfo;
-	} while (varIter = varIter->next);
+
+		varIter = varIter->next;
+	}
+
 	return NULL;
 }
 

@@ -25,6 +25,9 @@
     <Filter Include="unit tests">
       <UniqueIdentifier>{6fe89cb8-43d0-475d-828b-a97c69bc1e06}</UniqueIdentifier>
     </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{82a8a1e7-f024-4907-b12b-a99cba7535f3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Algohol\algMath.cpp">
@@ -254,6 +257,27 @@
       <Filter>internals</Filter>
     </ClCompile>
     <ClCompile Include="InventoryRef.cpp" />
+    <ClCompile Include="NVSECompiler.cpp">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="NVSELexer.cpp">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="NVSEParser.cpp">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="NVSETreePrinter.cpp">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="NVSETypeChecker.cpp">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="NVSECompilerUtils.cpp">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="StackVariables.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
@@ -514,6 +538,36 @@
       <Filter>internals</Filter>
     </ClInclude>
     <ClInclude Include="InventoryRef.h" />
+    <ClInclude Include="NVSEVisitor.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="NVSECompiler.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="NVSELexer.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="NVSEParser.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="NVSETreePrinter.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="NVSECompilerUtils.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="NVSETypeChecker.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="NVSEAst.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="NVSEScope.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="StackVariables.h">
+      <Filter>internals</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">
@@ -535,36 +589,6 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="UnitTests.h">
-      <Filter>unit tests</Filter>
-    </Text>
-    <Text Include="unit_tests\array_functions.txt">
-      <Filter>unit tests</Filter>
-    </Text>
-    <Text Include="unit_tests\event_handler_functions.txt">
-      <Filter>unit tests</Filter>
-    </Text>
-    <Text Include="unit_tests\udf_functions.txt">
-      <Filter>unit tests</Filter>
-    </Text>
-    <Text Include="unit_tests\TestExpr.txt">
-      <Filter>unit tests</Filter>
-    </Text>
-    <Text Include="unit_tests\CallAfterFrames.txt">
-      <Filter>unit tests</Filter>
-    </Text>
-    <Text Include="unit_tests\event_handler_priority_system.txt">
-      <Filter>unit tests</Filter>
-    </Text>
-    <Text Include="unit_tests\conversions_between_num_and_string.txt">
-      <Filter>unit tests</Filter>
-    </Text>
-    <Text Include="unit_tests\let_macro.txt">
-      <Filter>unit tests</Filter>
-    </Text>
-    <Text Include="unit_tests\multiple_variable_declarations_macro.txt">
-      <Filter>unit tests</Filter>
-    </Text>
-    <Text Include="unit_tests\short_and_long_param_types_in_UDF.txt">
       <Filter>unit tests</Filter>
     </Text>
   </ItemGroup>

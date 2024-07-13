@@ -1,0 +1,19 @@
+name foreachalt;
+
+fn () {
+	string testName = "ForEachAlt";
+	print(("Started running xNVSE ${testName} unit tests."));
+
+	array testArr = {1::"Hello", 2::"World"};
+	for ([int key, string val] in testArr) {
+		if (key == 1) {
+			assert(val == "Hello");
+		} else if (key == 2) {
+			assert(val == "World");
+		} else {
+			assert(false);
+		}
+	}
+	
+	print(("Finished running xNVSE ${testName} unit tests."));
+}

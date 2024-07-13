@@ -74,6 +74,13 @@ DEFINE_CMD(sv_Count, returns the number of occurences of a substring within a st
 
 DEFINE_CMD(sv_Find, returns the position of a substring within a string variable or -1 if not found, 0, kParams_sv_Find);
 
+static ParamInfo kParams_sv_Find_7_0_0[] =
+{
+	{	"stringVar",	kParamType_String,		0	},
+	{	"toFind",	kParamType_String,		0	},
+};
+DEFINE_CMD_VER_EXP(sv_find, returns the position of a substring within a string variable or -1 if not found, 0, kParams_sv_Find_7_0_0, 7, 0, 0);
+
 static ParamInfo kParams_sv_Replace[26] =
 {
 	FORMAT_STRING_PARAMS,
@@ -266,3 +273,16 @@ static ParamInfo kParams_ValidateRegex[] =
 DEFINE_COMMAND_EXP(ValidateRegex, "Returns 0 for no errors, otherwise returns int codes indicating the error cause.", 
 	0, kParams_ValidateRegex);
 
+
+// BETTER - FASTER - STRONGER string funcs
+// static ParamInfo kParams_OneString_OneInteger[] = {
+// 	{"string",	kNVSEParamType_String,	0},
+// 	{"integer", kParamType_Integer,		0}
+// };
+//
+// DEFINE_COMMAND_EXP(StrCompare, "Compare two strings", 0, kNVSEParams_TwoStrings_OneOptionalBool);
+// DEFINE_COMMAND_EXP(StrFormat, "Create a string variable constructed from the specified string and up to 20 formatting arguments.", 0, kParams_FormatString);
+// DEFINE_COMMAND_EXP(StrCount, "Count number of occurences of a substring in a given string.", 0, kNVSEParams_TwoStrings_OneOptionalBool);
+// DEFINE_COMMAND_EXP(StrFind, "Find the first occurence of a substring in the given string.", 0, kNVSEParams_TwoStrings_OneOptionalBool);
+// DEFINE_COMMAND_EXP(StrGetChar, "Retrieve the character at a given index of a string.", 0, kParams_OneString_OneInteger);
+// DEFINE_COMMAND_EXP(StrLen, "Get the length of the given string.", 0, kParams_OneString);

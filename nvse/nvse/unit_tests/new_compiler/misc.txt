@@ -1,0 +1,25 @@
+name miscexprs;
+
+fn () {
+	string testName = "Misc.";
+	print(("Started running xNVSE " + testName + " unit tests."));
+
+	// Just making sure some things compile that should
+	ar_foreach(GetRefs(200), fn (array iter) -> print((*iter).GetName()));
+
+	// Test in expressions
+	array test = [1,2,3];
+	Assert(1 in test);
+	Assert(2 in test);
+	Assert(3 in test);
+	Assert(4 not in test);
+
+	test = {"Hello"::1, "World"::2};
+	Assert("Hello" in test);
+	Assert("World" in test);
+	Assert("Foobar" not in test);
+	test["Foobar"] = 3;
+	Assert("Foobar" in test);
+	
+	print(("Finished running xNVSE " + testName + " unit tests."));
+}

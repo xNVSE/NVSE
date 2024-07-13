@@ -1270,3 +1270,26 @@ bool Cmd_ar_CountWhere_Execute(COMMAND_ARGS) {
 	}
 	return true;
 }
+
+bool Cmd_ar_GetNth_Execute(COMMAND_ARGS) {
+	*result = 0;
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (eval.ExtractArgs() && eval.NumArgs() == 2)
+	{
+		const auto arr = eval.Arg(0)->GetArrayVar();
+		const auto idx = static_cast<int>(eval.Arg(1)->GetNumber());
+
+		if (idx >= arr->Size()) {
+			return true;
+		}
+
+		auto iter = arr->Begin();
+		for (int i = 0; i < idx; i++) {
+			++iter;
+		}
+
+		ReturnElement(PASS_COMMAND_ARGS, eval, iter.second());
+	}
+
+	return true;
+}

@@ -14,32 +14,74 @@ std::string get_stem(const fs::path& p) { return p.stem().string(); }
 
 namespace ScriptFunctionTests
 {
-	void RunTests()
+	void RunTestsForCompilerVersion(bool testOldCompiler)
 	{
-		for (const auto& entry : fs::directory_iterator(fs::current_path() / "data/nvse/unit_tests"))
+		std::string pathStr = testOldCompiler ? "data/nvse/unit_tests/old_compiler" : "data/nvse/unit_tests/new_compiler";
+		const char* debugStr = testOldCompiler ? "Old compiler" : "New compiler";
+
+		Console_Print("================\n[%s] Started running xNVSE script unit tests.\n================", debugStr);
+
+		if (auto path = fs::current_path() / pathStr;
+			fs::exists(path))
 		{
-			if (!entry.is_regular_file())
-				continue;
-
-			std::ifstream f(entry.path());
-			if (!f)
-				continue;
-			std::ostringstream ss;
-			ss << f.rdbuf();
-			const std::string& str = ss.str();
-			std::string fileName = get_stem(entry);
-
-			if (auto const script = CompileScriptEx(str.c_str(), fileName.c_str())) [[likely]]
+			for (const auto& entry : fs::directory_iterator(path))
 			{
-				PluginAPI::CallFunctionScriptAlt(script, nullptr, 0);
-			}
-			else
-			{
-				Console_Print("Error in xNVSE unit test file %s: script failed to compile.", 
-					fileName.c_str());
+				if (!entry.is_regular_file())
+					continue;
+
+				std::ifstream f(entry.path());
+				if (!f)
+					continue;
+				std::ostringstream ss;
+				ss << f.rdbuf();
+				const std::string& str = ss.str();
+				std::string fileName = get_stem(entry);
+
+				if (auto const script = CompileScriptEx(str.c_str(), fileName.c_str())) [[likely]]
+				{
+					PluginAPI::CallFunctionScriptAlt(script, nullptr, 0);
+				}
+				else
+				{
+					Console_Print("%s: Error in xNVSE unit test file %s: script failed to compile.",
+						debugStr, fileName.c_str());
+				}
 			}
 		}
-		Console_Print("Finished running xNVSE script unit tests.");
+
+
+		std::string expectedFailuresPath = pathStr + "/expected_failures";
+		if (auto path = fs::current_path() / expectedFailuresPath;
+			fs::exists(path))
+		{
+			for (const auto& entry : fs::directory_iterator(path))
+			{
+				if (!entry.is_regular_file())
+					continue;
+
+				std::ifstream f(entry.path());
+				if (!f)
+					continue;
+				std::ostringstream ss;
+				ss << f.rdbuf();
+				const std::string& str = ss.str();
+				std::string fileName = get_stem(entry);
+
+				if (auto const script = CompileScriptEx(str.c_str(), fileName.c_str())) [[unlikely]]
+				{
+					Console_Print("%s: Error in xNVSE unit test file %s: script compiled, when it was meant to fail.",
+						debugStr, fileName.c_str());
+				}
+			}
+		}
+
+		Console_Print("================\n[%s] Finished running xNVSE script unit tests.\n================", debugStr);
+	}
+
+	void RunTests()
+	{
+		RunTestsForCompilerVersion(true);
+		RunTestsForCompilerVersion(false);
 	}
 }
 
