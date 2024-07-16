@@ -548,13 +548,11 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 		}
 
 		const auto &callee = expr->args[0];
-		if (expr->args[0]->tokenType) {
-			if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(cmd->params[0].typeID), callee->tokenType, true, cmd)) {
-				WRAP_ERROR(
-					error(expr->token.line, std::format("Invalid expression for parameter 1. (Expected {}, got {}).", cmd->params[0].typeStr, TokenTypeToString(callee->tokenType)));
-				)
-				return;
-			}
+		if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(cmd->params[0].typeID), callee->tokenType, true, cmd)) {
+			WRAP_ERROR(
+				error(expr->token.line, std::format("Invalid expression for parameter 1. (Expected {}, got {}).", cmd->params[0].typeStr, TokenTypeToString(callee->tokenType)));
+			)
+			return;
 		}
 
 		expr->tokenType = kTokenType_Ambiguous;
