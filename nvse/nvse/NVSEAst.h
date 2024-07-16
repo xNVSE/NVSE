@@ -87,7 +87,7 @@ struct VarDeclStmt : Stmt {
     std::vector<std::tuple<NVSEToken, ExprPtr>> values{};
 
     // Set during type checker so that compiler can look up stack index
-    std::vector<NVSEScope::ScopeVar*> scopeVars{};
+    std::vector<std::shared_ptr<NVSEScope::ScopeVar>> scopeVars{};
 
     VarDeclStmt(NVSEToken type, std::vector<std::tuple<NVSEToken, ExprPtr>> values)
         : type(std::move(type)), values(std::move(values)) {}
@@ -160,7 +160,7 @@ struct ReturnStmt : Stmt {
     ExprPtr expr;
 
     ReturnStmt(NVSEToken token, ExprPtr expr) : token(std::move(token)), expr(std::move(expr)) {
-        line = token.line;
+        line = this->token.line;
     }
 
     void Accept(NVSEVisitor* visitor) override {
@@ -170,7 +170,9 @@ struct ReturnStmt : Stmt {
 
 struct ContinueStmt : Stmt {
     NVSEToken token;
-    ContinueStmt(NVSEToken token) : token(std::move(token)) {}
+    ContinueStmt(NVSEToken token) : token(std::move(token)) {
+        line = this->token.line;
+    }
 
     void Accept(NVSEVisitor* visitor) override {
         visitor->VisitContinueStmt(this);
@@ -179,7 +181,9 @@ struct ContinueStmt : Stmt {
 
 struct BreakStmt : Stmt {
     NVSEToken token;
-    BreakStmt(NVSEToken token) : token(std::move(token)) {}
+    BreakStmt(NVSEToken token) : token(std::move(token)) {
+        line = this->token.line;
+    }
 
     void Accept(NVSEVisitor* visitor) override {
         visitor->VisitBreakStmt(this);
@@ -192,7 +196,9 @@ struct WhileStmt : Stmt {
     StmtPtr block;
 
     WhileStmt(NVSEToken token, ExprPtr cond, StmtPtr block) : token(std::move(token)), cond(std::move(cond)),
-        block(std::move(block)) {}
+        block(std::move(block)) {
+        line = this->token.line;
+    }
 
     void Accept(NVSEVisitor* visitor) override {
         visitor->VisitWhileStmt(this);
@@ -210,15 +216,11 @@ struct BlockStmt : Stmt {
 };
 
 struct Expr {
-    int line = 0;
+    size_t line = 0;
     Token_Type tokenType = kTokenType_Invalid;
 
     virtual ~Expr() = default;
     virtual void Accept(NVSEVisitor* t) = 0;
-
-    virtual NVSEToken* getToken() {
-        return nullptr;
-    }
 
     template <typename T>
     bool IsType() {
@@ -232,14 +234,12 @@ struct AssignmentExpr : Expr {
     ExprPtr expr;
 
     AssignmentExpr(NVSEToken token, ExprPtr left, ExprPtr expr) : token(std::move(token)), left(std::move(left)),
-        expr(std::move(expr)) {}
+        expr(std::move(expr)) {
+        line = this->token.line;
+    }
 
     void Accept(NVSEVisitor* t) override {
         t->VisitAssignmentExpr(this);
-    }
-
-    NVSEToken* getToken() override {
-        return &token;
     }
 };
 
@@ -252,26 +252,29 @@ struct TernaryExpr : Expr {
     TernaryExpr(NVSEToken token, ExprPtr cond, ExprPtr left, ExprPtr right) : token(std::move(token)),
         cond(std::move(cond)),
         left(std::move(left)),
-        right(std::move(right)) {}
+        right(std::move(right)) {
+        line = this->token.line;
+    }
 
     void Accept(NVSEVisitor* t) override {
         t->VisitTernaryExpr(this);
-    }
-
-    NVSEToken* getToken() override {
-        return &token;
     }
 };
 
 struct InExpr : Expr {
     ExprPtr lhs;
-    NVSEToken tok;
+    NVSEToken token;
     std::vector<ExprPtr> values{};
     ExprPtr expression{};
     bool isNot;
 
-    InExpr(ExprPtr lhs, NVSEToken tok, std::vector<ExprPtr> exprs, bool isNot) : lhs(lhs), tok(tok), values(exprs), isNot(isNot) {}
-    InExpr(ExprPtr lhs, NVSEToken tok, ExprPtr expr, bool isNot) : lhs(lhs), tok(tok), expression(expr), isNot(isNot) {}
+    InExpr(ExprPtr lhs, NVSEToken token, std::vector<ExprPtr> exprs, bool isNot) : lhs(std::move(lhs)), token(std::move(token)), values(std::move(exprs)), isNot(isNot) {
+        line = this->token.line;
+    }
+
+    InExpr(ExprPtr lhs, NVSEToken token, ExprPtr expr, bool isNot) : lhs(std::move(lhs)), token(std::move(token)), expression(std::move(expr)), isNot(isNot) {
+        line = this->token.line;
+    }
 
     void Accept(NVSEVisitor *visitor) override {
         visitor->VisitInExpr(this);
@@ -283,14 +286,12 @@ struct BinaryExpr : Expr {
     ExprPtr left, right;
 
     BinaryExpr(NVSEToken token, ExprPtr left, ExprPtr right) : op(std::move(token)), left(std::move(left)),
-        right(std::move(right)) {}
+        right(std::move(right)) {
+        line = this->op.line;
+    }
 
     void Accept(NVSEVisitor* t) override {
         t->VisitBinaryExpr(this);
-    }
-
-    NVSEToken* getToken() override {
-        return &op;
     }
 };
 
@@ -300,14 +301,12 @@ struct UnaryExpr : Expr {
     bool postfix;
 
     UnaryExpr(NVSEToken token, ExprPtr expr, bool postfix) : op(std::move(token)), expr(std::move(expr)),
-        postfix(postfix) {}
+        postfix(postfix) {
+        line = this->op.line;
+    }
 
     void Accept(NVSEVisitor* t) override {
         t->VisitUnaryExpr(this);
-    }
-
-    NVSEToken* getToken() override {
-        return &op;
     }
 };
 
@@ -318,14 +317,12 @@ struct SubscriptExpr : Expr {
     ExprPtr index;
 
     SubscriptExpr(NVSEToken token, ExprPtr left, ExprPtr index) : op(std::move(token)), left(std::move(left)),
-        index(std::move(index)) {}
+        index(std::move(index)) {
+        line = this->op.line;
+    }
 
     void Accept(NVSEVisitor* visitor) override {
         visitor->VisitSubscriptExpr(this);
-    }
-
-    NVSEToken* getToken() override {
-        return &op;
     }
 };
 
@@ -337,7 +334,9 @@ struct CallExpr : Expr {
     // Set by typechecker
     CommandInfo* cmdInfo = nullptr;
 
-    CallExpr(ExprPtr left, NVSEToken token, std::vector<ExprPtr> args) : left(std::move(left)), token(token), args(std::move(args)) {}
+    CallExpr(ExprPtr left, NVSEToken token, std::vector<ExprPtr> args) : left(std::move(left)), token(std::move(token)), args(std::move(args)) {
+        line = this->token.line;
+    }
 
     void Accept(NVSEVisitor* t) override {
         t->VisitCallExpr(this);
@@ -354,14 +353,12 @@ struct GetExpr : Expr {
     const char* referenceName = nullptr;
 
     GetExpr(NVSEToken token, ExprPtr left, NVSEToken identifier) : token(std::move(token)), left(std::move(left)),
-        identifier(std::move(identifier)) {}
+        identifier(std::move(identifier)) {
+        line = this->token.line;
+    }
 
     void Accept(NVSEVisitor* t) override {
         t->VisitGetExpr(this);
-    }
-
-    NVSEToken* getToken() override {
-        return &identifier;
     }
 };
 
@@ -369,14 +366,12 @@ struct BoolExpr : Expr {
     NVSEToken token;
     bool value;
 
-    BoolExpr(NVSEToken token, bool value) : token(std::move(token)), value(value) {}
+    BoolExpr(NVSEToken token, bool value) : token(std::move(token)), value(value) {
+        line = this->token.line;
+    }
 
     void Accept(NVSEVisitor* t) override {
         t->VisitBoolExpr(this);
-    }
-
-    NVSEToken* getToken() override {
-        return &token;
     }
 };
 
@@ -388,28 +383,24 @@ struct NumberExpr : Expr {
     // For some reason axis enum is one byte and the rest are two?
     int enumLen;
 
-    NumberExpr(NVSEToken token, double value, bool isFp, int enumLen = 0) : token(std::move(token)), value(value), isFp(isFp), enumLen(enumLen) {}
+    NumberExpr(NVSEToken token, double value, bool isFp, int enumLen = 0) : token(std::move(token)), value(value), isFp(isFp), enumLen(enumLen) {
+        line = this->token.line;
+    }
 
     void Accept(NVSEVisitor* t) override {
         t->VisitNumberExpr(this);
-    }
-
-    NVSEToken* getToken() override {
-        return &token;
     }
 };
 
 struct StringExpr : Expr {
     NVSEToken token;
 
-    StringExpr(NVSEToken token) : token(std::move(token)) {}
+    StringExpr(NVSEToken token) : token(std::move(token)) {
+        line = this->token.line;
+    }
 
     void Accept(NVSEVisitor* t) override {
         t->VisitStringExpr(this);
-    }
-
-    NVSEToken* getToken() override {
-        return &token;
     }
 };
 
@@ -418,16 +409,14 @@ struct IdentExpr : Expr {
     TESForm* form;
 
     // Set during typechecker variable resolution so that compiler can reference
-    NVSEScope::ScopeVar *varInfo {nullptr};
+    std::shared_ptr<NVSEScope::ScopeVar> varInfo {nullptr};
 
-    IdentExpr(NVSEToken token) : token(std::move(token)) {}
+    IdentExpr(NVSEToken token) : token(std::move(token)) {
+        line = this->token.line;
+    }
 
     void Accept(NVSEVisitor* t) override {
         t->VisitIdentExpr(this);
-    }
-
-    NVSEToken* getToken() override {
-        return &token;
     }
 };
 
@@ -435,7 +424,9 @@ struct ArrayLiteralExpr : Expr {
     NVSEToken token;
     std::vector<ExprPtr> values;
 
-    ArrayLiteralExpr(NVSEToken token, std::vector<ExprPtr> values) : token(token), values(values) {}
+    ArrayLiteralExpr(NVSEToken token, std::vector<ExprPtr> values) : token(token), values(values) {
+        line = this->token.line;
+    }
 
     void Accept(NVSEVisitor* t) override {
         return t->VisitArrayLiteralExpr(this);
@@ -446,7 +437,9 @@ struct MapLiteralExpr : Expr {
     NVSEToken token;
     std::vector<ExprPtr> values;
 
-    MapLiteralExpr(NVSEToken token, std::vector<ExprPtr> values) : token(token), values(values) {}
+    MapLiteralExpr(NVSEToken token, std::vector<ExprPtr> values) : token(token), values(values) {
+        line = this->token.line;
+    }
 
     void Accept(NVSEVisitor* t) override {
         return t->VisitMapLiteralExpr(this);
@@ -468,17 +461,18 @@ struct LambdaExpr : Expr {
     std::vector<std::shared_ptr<VarDeclStmt>> args;
     StmtPtr body;
 
-    // Set in type checker to init a fresh scope
-    std::shared_ptr<NVSEScope> scope {nullptr};
-
     LambdaExpr(NVSEToken token, std::vector<std::shared_ptr<VarDeclStmt>> args, StmtPtr body) : token(std::move(token)),
-        args(std::move(args)), body(std::move(body)) {}
+        args(std::move(args)), body(std::move(body)) {
+        line = this->token.line;
+    }
 
     void Accept(NVSEVisitor* t) override {
         t->VisitLambdaExpr(this);
     }
 
-    NVSEToken* getToken() override {
-        return &token;
-    }
+    // Set via type checker
+    struct {
+        std::vector<NVSEParamType> paramTypes{};
+        Token_Type returnType = kTokenType_Invalid;
+    } typeinfo;
 };

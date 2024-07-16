@@ -59,7 +59,7 @@ public:
 
 	// 'temp' / ad-hoc global vars to add to ref list at end of script
 	// Only used for lambda param declaration
-	std::unordered_map<NVSEScope::ScopeVar*, std::vector<size_t>> tempGlobals{};
+	std::unordered_map<std::shared_ptr<NVSEScope::ScopeVar>, std::vector<size_t>> tempGlobals{};
 
 	std::stack<uint32_t> scriptStart {};
 

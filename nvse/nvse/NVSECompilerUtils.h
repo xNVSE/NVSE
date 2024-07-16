@@ -1,6 +1,7 @@
 #pragma once
 #include "NVSELexer.h"
 #include "ScriptTokens.h"
+#include "ScriptUtils.h"
 
 // Define tokens
 extern std::unordered_map<NVSETokenType, OperatorType> tokenOpToNVSEOpType;
@@ -88,6 +89,39 @@ inline Token_Type GetVariableTypeFromNonVarType(Token_Type type) {
 	default:
 		return kTokenType_Invalid;
 	}
+}
+
+inline NVSEParamType GetParamTypeFromBasicTokenType(Token_Type tt) {
+	switch (tt) {
+	case kTokenType_Number:
+		return kNVSEParamType_Number;
+	case kTokenType_Form:
+	case kTokenType_Ref:
+		return kNVSEParamType_Form;
+	case kTokenType_Array:
+		return kNVSEParamType_Array;
+	case kTokenType_String:
+		return kNVSEParamType_String;
+	}
+
+	throw std::runtime_error(
+		std::format("Type '{}' is not a basic type! Please report this as a bug.", TokenTypeToString(tt))
+	);
+}
+
+inline const char* GetBasicParamTypeString(NVSEParamType pt) {
+	switch (pt) {
+	case kNVSEParamType_Number:
+		return "Number";
+	case kNVSEParamType_Form:
+		return "Form/Ref";
+	case kNVSEParamType_Array:
+		return "Array";
+	case kTokenType_String:
+		return "String";
+	}
+
+	return "<Not implemented>";
 }
 
 void CompDbg(const char *fmt, ...);

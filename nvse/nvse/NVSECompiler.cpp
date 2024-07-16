@@ -410,13 +410,13 @@ void NVSECompiler::VisitForStmt(ForStmt* stmt) {
 void NVSECompiler::VisitForEachStmt(ForEachStmt* stmt) {
     if (stmt->decompose) {
         // Try to resolve second var if there is one
-        NVSEScope::ScopeVar* var1 = nullptr;
+        std::shared_ptr<NVSEScope::ScopeVar> var1 = nullptr;
         if (stmt->declarations[0]) {
             var1 = stmt->scope->resolveVariable(std::get<0>(stmt->declarations[0]->values[0]).lexeme);
         }
 
         // Try to resolve second var if there is one
-        NVSEScope::ScopeVar* var2 = nullptr;
+        std::shared_ptr<NVSEScope::ScopeVar> var2 = nullptr;
         if (stmt->declarations.size() == 2 && stmt->declarations[1]) {
             var2 = stmt->scope->resolveVariable(std::get<0>(stmt->declarations[1]->values[0]).lexeme);
         }
@@ -903,7 +903,7 @@ void NVSECompiler::VisitStringExpr(StringExpr* expr) {
 
 void NVSECompiler::VisitIdentExpr(IdentExpr* expr) {
     // Resolve in scope
-    auto *var = expr->varInfo;
+    const auto var = expr->varInfo;
     std::string name;
     if (var) {
         name = var->GetName();
@@ -1023,7 +1023,7 @@ void NVSECompiler::VisitLambdaExpr(LambdaExpr* expr) {
         
             // Resolve variable, since we are in lambda decl we will need to declare these as temp globals
             // __global_*
-            NVSEScope::ScopeVar* var = arg->scopeVars[0];
+            auto var = arg->scopeVars[0];
             tempGlobals[var].push_back(AddU16(0x0));
         
             AddU8(var->variableType);

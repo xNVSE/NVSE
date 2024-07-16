@@ -63,7 +63,7 @@ void NVSETypeChecker::VisitNVSEScript(NVSEScript* script) {
 		// Dont allow initializers in global scope
 		for (auto [name, value] : dynamic_cast<VarDeclStmt*>(global.get())->values) {
 			if (value) {
-				WRAP_ERROR(error(name.line, name.column, "Variable initializers are not allowed in global scope."))
+				WRAP_ERROR(error(name.line, "Variable initializers are not allowed in global scope."))
 			}
 		}
 	}
@@ -75,7 +75,7 @@ void NVSETypeChecker::VisitNVSEScript(NVSEScript* script) {
 	for (const auto& block : script->blocks) {
 		if (const auto b = dynamic_cast<BeginStmt*>(block.get())) {
 			if (foundFn) {
-				WRAP_ERROR(error(b->name.line, b->name.column, "Cannot have a function block and an event block in the same script."))
+				WRAP_ERROR(error(b->name.line, "Cannot have a function block and an event block in the same script."))
 			}
 
 			foundEvent = true;
@@ -87,7 +87,7 @@ void NVSETypeChecker::VisitNVSEScript(NVSEScript* script) {
 			}
 
 			if (mpTypeToModes.contains(name) && mpTypeToModes[name].contains(param)) {
-				WRAP_ERROR(error(b->name.line, b->name.column, "Duplicate block declaration."))
+				WRAP_ERROR(error(b->name.line, "Duplicate block declaration."))
 				continue;
 			}
 
@@ -99,11 +99,11 @@ void NVSETypeChecker::VisitNVSEScript(NVSEScript* script) {
 
 		if (const auto b = dynamic_cast<FnDeclStmt*>(block.get())) {
 			if (foundEvent) {
-				WRAP_ERROR(error(b->token.line, b->token.column, "Cannot have a function block and an event block in the same script."))
+				WRAP_ERROR(error(b->token.line, "Cannot have a function block and an event block in the same script."))
 			}
 			
 			if (foundFn) {
-				WRAP_ERROR(error(b->token.line, b->token.column, "Duplicate block declaration."))
+				WRAP_ERROR(error(b->token.line, "Duplicate block declaration."))
 			}
 
 			foundFn = true;
@@ -143,9 +143,9 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 		// See if variable has already been declared
 		bool cont = false;
 		WRAP_ERROR(
-			if (auto* var = scopes.top()->resolveVariable(name.lexeme, false)) {
+			if (auto var = scopes.top()->resolveVariable(name.lexeme, false)) {
 				cont = true;
-				error(name.line, name.column, std::format("Variable with name '{}' has already been defined in the current scope (at line {}:{})\n", name.lexeme, var->token.line, var->token.column));
+				error(name.line, std::format("Variable with name '{}' has already been defined in the current scope (at line {})\n", name.lexeme, var->token.line));
 			}
 		)
 		
@@ -157,8 +157,8 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 		if (auto form = GetFormByID(name.lexeme.c_str())) {
 			auto modName = DataHandler::Get()->GetActiveModList()[form->GetModIndex()]->name;
 #ifdef EDITOR
-			CompInfo("[line %d:%d] Info: Variable with name '%s' shadows a form with the same name from mod '%s'\n",
-				name.line, name.column, name.lexeme.c_str(), modName);
+			CompInfo("[line %d] Info: Variable with name '%s' shadows a form with the same name from mod '%s'\n",
+				name.line, name.lexeme.c_str(), modName);
 #else
 			CompInfo("Info: Variable with name '%s' shadows a form with the same name from mod '%s'. This is NOT an error. Do not contact the mod author.", name.lexeme.c_str(), modName);
 #endif
@@ -166,8 +166,8 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 
 		if (auto shadowed = scopes.top()->resolveVariable(name.lexeme, true)) {
 #ifdef EDITOR
-			CompInfo("[line %d:%d] Info: Variable with name '%s' shadows a variable with the same name in outer scope. (Defined at line %d:%d)\n",
-				name.line, name.column, name.lexeme.c_str(), shadowed->token.line, shadowed->token.column);
+			CompInfo("[line %d] Info: Variable with name '%s' shadows a variable with the same name in outer scope. (Defined at line %d)\n",
+				name.line, name.lexeme.c_str(), shadowed->token.line, shadowed->token.column);
 #endif
 		}
 
@@ -175,7 +175,7 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 			expr->Accept(this);
 			auto rhsType = expr->tokenType;
 			if (s_operators[kOpType_Assignment].GetResult(detailedType, rhsType) == kTokenType_Invalid) {
-				WRAP_ERROR(error(name.line, name.column, getTypeErrorMsg(rhsType, detailedType)))
+				WRAP_ERROR(error(name.line, getTypeErrorMsg(rhsType, detailedType)))
 				return;
 			}
 		}
@@ -185,6 +185,14 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 		var.detailedType = detailedType;
 		var.isGlobal = scopes.top()->isRootScope();
         var.variableType = GetScriptTypeFromToken(stmt->type);
+
+		// Set lambda info
+		if (expr->IsType<LambdaExpr>()) {
+			auto* lambda = dynamic_cast<LambdaExpr*>(expr.get());
+			var.lambdaTypeInfo.isLambda = true;
+			var.lambdaTypeInfo.returnType = lambda->typeinfo.returnType;
+			var.lambdaTypeInfo.paramTypes = lambda->typeinfo.paramTypes;
+		}
 
 		// Assign this new scope var to this statment for lookup in compiler
 		stmt->scopeVars.push_back(scopes.top()->addVariable(name.lexeme, var));
@@ -370,6 +378,15 @@ void NVSETypeChecker::VisitAssignmentExpr(AssignmentExpr* expr) {
 		return;
 	}
 
+	// Probably always true
+	if (expr->left->IsType<IdentExpr>()) {
+		const auto *ident = dynamic_cast<IdentExpr*>(expr->left.get());
+		if (ident->varInfo && ident->varInfo->lambdaTypeInfo.isLambda) {
+			error(expr->line, "Cannot assign to a variable that is holding a lambda.");
+			return;
+		}
+	}
+
 	expr->tokenType = oType;
 	expr->left->tokenType = oType;
 }
@@ -416,7 +433,7 @@ void NVSETypeChecker::VisitInExpr(InExpr* expr) {
 				WRAP_ERROR(
 					const auto msg = std::format("Value {} (type '{}') cannot compare against the {} specified on lhs of 'in' expression.", idx,
 						TokenTypeToString(rhsType), TokenTypeToString(lhsType));
-					error(expr->tok.line, expr->tok.column, msg);
+					error(expr->token.line, msg);
 				)
 			}
 		}
@@ -428,7 +445,7 @@ void NVSETypeChecker::VisitInExpr(InExpr* expr) {
 			if (expr->expression->tokenType != kTokenType_Array && expr->expression->tokenType != kTokenType_ArrayVar) {
 				WRAP_ERROR(
 					const auto msg = std::format("Expected array for 'in' expression (Got '{}').", TokenTypeToString(expr->expression->tokenType));
-					error(expr->tok.line, expr->tok.column, msg);
+					error(expr->token.line, msg);
 				)
 			}
 		}
@@ -506,7 +523,7 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 
 	// Try to get the script command by lexeme
 	if (!cmd) {
-		error(expr->token.line, expr->token.column, std::format("Invalid command '{}'.", name));
+		error(expr->token.line, std::format("Invalid command '{}'.", name));
 		return;
 	}
 	expr->cmdInfo = cmd;
@@ -515,22 +532,79 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 		expr->left->Accept(this);
 	}
 
-	// Visit all args manually for call opcode
+	// Type check 'call' command differently
 	if (cmd->parse == kCommandInfo_Call.parse) {
+		if (expr->left) {
+			WRAP_ERROR(error(expr->token.line, "Cannot perform 'call' command on references."));
+		}
+
+		if (expr->args.empty()) {
+			WRAP_ERROR(error(expr->token.line, std::format("Expected at least one argument for 'call' command.")));
+			return;
+		}
+
 		for (const auto &arg : expr->args) {
 			arg->Accept(this);
 		}
+
+		const auto &callee = expr->args[0];
+		if (expr->args[0]->tokenType) {
+			if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(cmd->params[0].typeID), callee->tokenType, true, cmd)) {
+				WRAP_ERROR(
+					error(expr->token.line, std::format("Invalid expression for parameter 1. (Expected {}, got {}).", cmd->params[0].typeStr, TokenTypeToString(callee->tokenType)));
+				)
+				return;
+			}
+		}
+
+		expr->tokenType = kTokenType_Ambiguous;
+		if (callee->IsType<IdentExpr>()) {
+			auto ident = dynamic_cast<IdentExpr*>(callee.get());
+			if (ident->varInfo && ident->varInfo->lambdaTypeInfo.isLambda) {
+				const auto& paramTypes = ident->varInfo->lambdaTypeInfo.paramTypes;
+
+				for (int i = 1; i < expr->args.size(); i++) {
+					auto &arg = expr->args[i];
+
+					// Too many args passed, handled below
+					if (i - 1 >= paramTypes.size()) {
+						break;
+					}
+
+					auto expected = paramTypes[i - 1];
+
+					if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(expected), arg->tokenType, true, cmd)) {
+					WRAP_ERROR(
+							error(expr->token.line, std::format("Invalid expression for call parameter {}. (Expected {}, got {})", i + 1, GetBasicParamTypeString(expected), TokenTypeToString(arg->tokenType)));
+						)
+					}
+				}
+
+				if (expr->args.size() - 1 != paramTypes.size()) {
+					WRAP_ERROR(
+						error(expr->token.line, std::format("Invalid number of parameters specified to {} (Expected {}, got {}).", expr->token.lexeme, paramTypes.size(), expr->args.size() - 1));
+					)
+				}
+
+				expr->tokenType = ident->varInfo->lambdaTypeInfo.returnType;
+			}
+		}
+
+		return;
 	}
 
+	if (expr->left && expr->left->tokenType != kTokenType_Form && GetBasicTokenType(expr->left->tokenType) != kTokenType_Ref) {
+		WRAP_ERROR(error(expr->token.line, "Left side of '.' must be a form or reference."));
+	}
+
+	if (cmd->needsParent && !expr->left) {
+		WRAP_ERROR(error(expr->token.line, std::format("Command '{}' requires a calling reference.", expr->token.lexeme)));
+	}
+
+	// Normal (nvse + vanilla) calls
 	int argIdx = 0;
 	int paramIdx = 0;
 	for (; paramIdx < cmd->numParams && argIdx < expr->args.size(); paramIdx++) {
-		// Don't type check args passed to call yet
-		// TODO
-		if (cmd->parse == kCommandInfo_Call.parse) {
-			continue;
-		}
-
 		auto param = &cmd->params[paramIdx];
 		auto arg = expr->args[argIdx];
 		bool convertedEnum = false;
@@ -558,7 +632,7 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 				if (!doesFormMatchParamType(ident->form, static_cast<ParamType>(param->typeID))) {
 					if (!param->isOptional) {
 						WRAP_ERROR(
-							error(expr->token.line, expr->token.column, std::format("Invalid expression for parameter {}. Expected {}.", argIdx + 1, param->typeStr));
+							error(expr->token.line, std::format("Invalid expression for parameter {}. Expected {}.", argIdx + 1, param->typeStr));
 						)
 					}
 				}
@@ -575,7 +649,7 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 		if (!convertedEnum && !ExpressionParser::ValidateArgType(static_cast<ParamType>(param->typeID), arg->tokenType, !isDefaultParse(cmd->parse), cmd)) {
 			if (!param->isOptional) {
 				WRAP_ERROR(
-					error(expr->token.line, expr->token.column, std::format("Invalid expression for parameter {}. (Expected {}, got {}).", argIdx + 1, param->typeStr, TokenTypeToString(arg->tokenType)));
+					error(expr->token.line, std::format("Invalid expression for parameter {}. (Expected {}, got {}).", argIdx + 1, param->typeStr, TokenTypeToString(arg->tokenType)));
 				)
 			}
 		} else {
@@ -593,7 +667,7 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 
 	if (expr->args.size() < numRequiredArgs) {
 		WRAP_ERROR(
-			error(expr->token.line, expr->token.column, std::format("Invalid number of parameters specified to {} (Expected {}, got {}).", expr->token.lexeme, numRequiredArgs, expr->args.size()));
+			error(expr->token.line, std::format("Invalid number of parameters specified to {} (Expected {}, got {}).", expr->token.lexeme, numRequiredArgs, expr->args.size()));
 		)
 	}
 
@@ -607,17 +681,12 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 void NVSETypeChecker::VisitGetExpr(GetExpr* expr) {
 	expr->left->Accept(this);
 
-	if (expr->left->tokenType != kTokenType_Form) {
-		error(expr->line, std::format("Type '{}' not valid for operator '.'. Expected form.",
-		                              TokenTypeToString(expr->left->tokenType)));
-	}
-
 	// Resolve variable type from form
 	// Try to resolve lhs reference
 	// Should be ident here
 	const auto ident = dynamic_cast<IdentExpr*>(expr->left.get());
-	if (!ident || ident->tokenType != kTokenType_Form) {
-		error(expr->token.line, expr->token.column, "Member access not valid here. Left side of '.' must be a form or persistent reference.");
+	if (!ident || expr->left->tokenType != kTokenType_Form) {
+		error(expr->token.line, "Member access not valid here. Left side of '.' must be a form or persistent reference.");
 	}
 	
 	const auto form = ident->form;
@@ -668,7 +737,7 @@ void NVSETypeChecker::VisitBoolExpr(BoolExpr* expr) {
 void NVSETypeChecker::VisitNumberExpr(NumberExpr* expr) {
 	if (!expr->isFp) {
 		if (expr->value > UINT32_MAX) {
-			WRAP_ERROR(error(expr->token.line, expr->token.column, "Maximum value for integer literal exceeded. (Max: " + std::to_string(UINT32_MAX) + ")"))
+			WRAP_ERROR(error(expr->token.line, "Maximum value for integer literal exceeded. (Max: " + std::to_string(UINT32_MAX) + ")"))
 		}
 	}
 	
@@ -677,7 +746,7 @@ void NVSETypeChecker::VisitNumberExpr(NumberExpr* expr) {
 
 void NVSETypeChecker::VisitMapLiteralExpr(MapLiteralExpr* expr) {
 	if (expr->values.empty()) {
-		WRAP_ERROR(error(expr->token.line, expr->token.column,
+		WRAP_ERROR(error(expr->token.line,
 			"A map literal cannot be empty, as the key type cannot be deduced."))
 		return;
 	}
@@ -687,7 +756,7 @@ void NVSETypeChecker::VisitMapLiteralExpr(MapLiteralExpr* expr) {
 		const auto &val = expr->values[i];
 		val->Accept(this);
 		if (val->tokenType != kTokenType_Pair && val->tokenType != kTokenType_Ambiguous) {
-			WRAP_ERROR(error(expr->token.line, expr->token.column,
+			WRAP_ERROR(error(expr->token.line,
 				std::format("Value {} is not a pair and is not valid for a map literal.", i + 1)))
 			return;
 		}
@@ -720,7 +789,7 @@ void NVSETypeChecker::VisitMapLiteralExpr(MapLiteralExpr* expr) {
 					TokenTypeToString(pairPtr->left->tokenType),
 					TokenTypeToString(lhsType));
 				
-				WRAP_ERROR(error(expr->token.line, expr->token.column, msg))
+				WRAP_ERROR(error(expr->token.line, msg))
 			}
 		}
 	}
@@ -738,7 +807,7 @@ void NVSETypeChecker::VisitArrayLiteralExpr(ArrayLiteralExpr* expr) {
 		val->Accept(this);
 
 		if (val->tokenType == kTokenType_Pair) {
-			WRAP_ERROR(error(val->getToken()->line, val->getToken()->column, "Invalid type inside of array literal. Expected array, string, ref, or number."))
+			WRAP_ERROR(error(val->line, "Invalid type inside of array literal. Expected array, string, ref, or number."))
 		}
 	}
 
@@ -751,7 +820,7 @@ void NVSETypeChecker::VisitArrayLiteralExpr(ArrayLiteralExpr* expr) {
 				TokenTypeToString(expr->values[i]->tokenType),
 				TokenTypeToString(lhsType));
 			
-			WRAP_ERROR(error(expr->token.line, expr->token.column, msg))
+			WRAP_ERROR(error(expr->token.line, msg))
 		}
 	}
 
@@ -781,7 +850,7 @@ void NVSETypeChecker::VisitIdentExpr(IdentExpr* expr) {
 
 	if (!form) {
 		expr->tokenType = kTokenType_Invalid;
-		error(expr->token.line, expr->token.column, std::format("Unable to resolve identifier '{}'.", name));
+		error(expr->token.line, std::format("Unable to resolve identifier '{}'.", name));
 	}
 
 	if (form->typeID == kFormType_TESGlobal) {
@@ -800,11 +869,13 @@ void NVSETypeChecker::VisitGroupingExpr(GroupingExpr* expr) {
 }
 
 void NVSETypeChecker::VisitLambdaExpr(LambdaExpr* expr) {
-	expr->scope = EnterScope();
+	EnterScope();
 	returnType.emplace();
 
 	for (const auto &decl : expr->args) {
 		WRAP_ERROR(decl->Accept(this))
+
+		expr->typeinfo.paramTypes.push_back(GetParamTypeFromBasicTokenType(GetBasicTokenType(decl->detailedType)));
 	}
 
 	insideLoop.push(false);
@@ -812,6 +883,7 @@ void NVSETypeChecker::VisitLambdaExpr(LambdaExpr* expr) {
 	insideLoop.pop();
 
 	expr->tokenType = kTokenType_Lambda;
+	expr->typeinfo.returnType = returnType.top().returnType;
 
 	returnType.pop();
 	LeaveScope();

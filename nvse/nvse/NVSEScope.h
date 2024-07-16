@@ -17,6 +17,13 @@ public:
         
         bool isGlobal = false;
 
+        // Set for lambdas
+        struct {
+            bool isLambda;
+            std::vector<NVSEParamType> paramTypes{};
+            Token_Type returnType = kTokenType_Invalid;
+        } lambdaTypeInfo;
+
         // Used for renaming global variables in certain scopes
         //      export keyword will NOT rename a global var
         //      fn (int x) ... WILL rename x, so that x can be reused for other lambdas
@@ -31,7 +38,7 @@ private:
     uint32_t scopeIndex{};
     uint32_t varIndex{1};
     std::shared_ptr<NVSEScope> parent{};
-    std::unordered_map<std::string, ScopeVar> m_scopeVars{};
+    std::unordered_map<std::string, std::shared_ptr<ScopeVar>> m_scopeVars{};
 
 protected:
     uint32_t incrementVarIndex() {
@@ -48,12 +55,12 @@ public:
     NVSEScope (uint32_t scopeIndex, std::shared_ptr<NVSEScope> parent, bool isLambda = false)
         : scopeIndex(scopeIndex), parent(parent) {}
     
-    ScopeVar *resolveVariable(std::string name, bool checkParent = true) {
+    std::shared_ptr<ScopeVar> resolveVariable(std::string name, bool checkParent = true) {
         // Lowercase name
         std::ranges::transform(name, name.begin(), [](unsigned char c){ return std::tolower(c); });
         
         if (m_scopeVars.contains(name)) {
-            return &m_scopeVars[name];
+            return m_scopeVars[name];
         }
 
         if (checkParent && parent) {
@@ -68,7 +75,7 @@ public:
         return nullptr;
     }
 
-    ScopeVar *addVariable(std::string name, ScopeVar variableInfo) {
+    std::shared_ptr<ScopeVar> addVariable(std::string name, ScopeVar variableInfo) {
         // Lowercase name
         std::ranges::transform(name, name.begin(), [](unsigned char c){ return std::tolower(c); });
 
@@ -83,9 +90,9 @@ public:
             variableInfo.rename = std::format("__temp__{}__{}", name, variableInfo.index);
         }
         
-        m_scopeVars[name] = variableInfo;
+        m_scopeVars[name] = std::make_shared<ScopeVar>(variableInfo);
         addToAllVars(variableInfo);
-        return &m_scopeVars[name];
+        return m_scopeVars[name];
     }
 
     void addToAllVars(ScopeVar var) {
