@@ -596,7 +596,7 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 	}
 
 	// Check for calling reference if not an object script
-	if (cmd->needsParent && !expr->left && engineScript->Type() != 0) {
+	if (cmd->needsParent && !expr->left && engineScript->Type() != Script::eType_Object) {
 		WRAP_ERROR(error(expr->token.line, std::format("Command '{}' requires a calling reference.", expr->token.lexeme)));
 	}
 
