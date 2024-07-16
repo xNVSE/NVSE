@@ -523,7 +523,7 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 		if (auto astOpt = parser.Parse(); astOpt.has_value()) {
 			auto ast = std::move(astOpt.value());
 
-			auto tc = NVSETypeChecker(&ast);
+			auto tc = NVSETypeChecker(&ast, script);
 			bool typeCheckerPass = tc.check();
 			
 			auto tp = NVSETreePrinter();

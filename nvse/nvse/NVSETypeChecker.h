@@ -14,6 +14,7 @@ class NVSETypeChecker : NVSEVisitor {
     
     bool hadError = false;
     NVSEScript *script;
+    Script* engineScript;
     
     std::stack<bool> insideLoop {};
     std::stack<std::shared_ptr<NVSEScope>> scopes {};
@@ -29,7 +30,7 @@ class NVSETypeChecker : NVSEVisitor {
     void error(size_t line, size_t column, std::string msg);
 
 public:
-    NVSETypeChecker(NVSEScript* script) : script(script) {}
+    NVSETypeChecker(NVSEScript* script, Script* engineScript) : script(script), engineScript(engineScript) {}
     bool check();
     
     void VisitNVSEScript(NVSEScript* script) override;

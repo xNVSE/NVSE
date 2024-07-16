@@ -595,6 +595,11 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 		WRAP_ERROR(error(expr->token.line, "Left side of '.' must be a form or reference."));
 	}
 
+	// Check for calling reference if not an object script
+	if (cmd->needsParent && !expr->left && engineScript->Type() != 0) {
+		WRAP_ERROR(error(expr->token.line, std::format("Command '{}' requires a calling reference.", expr->token.lexeme)));
+	}
+
 	// Normal (nvse + vanilla) calls
 	int argIdx = 0;
 	int paramIdx = 0;
