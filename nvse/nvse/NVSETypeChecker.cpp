@@ -141,20 +141,13 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 	auto detailedType = GetDetailedTypeFromNVSEToken(stmt->type.type);
 	for (auto [name, expr] : stmt->values) {
 		// See if variable has already been declared
-		bool cont = false;
-		WRAP_ERROR(
-			if (auto var = scopes.top()->resolveVariable(name.lexeme, false)) {
-				cont = true;
-				error(name.line, std::format("Variable with name '{}' has already been defined in the current scope (at line {})\n", name.lexeme, var->token.line));
-			}
-		)
+		if (auto var = scopes.top()->resolveVariable(name.lexeme, false)) {
+			WRAP_ERROR(error(name.line, std::format("Variable with name '{}' has already been defined in the current scope (at line {})\n", name.lexeme, var->token.line)));
+			continue;
+		}
 
 		if (g_scriptCommands.GetByName(name.lexeme.c_str())) {
-			cont = true;
-			WRAP_ERROR(error(name.line, std::format("Variable name '{}' conflicts with a command with the same name.", name.lexeme)))
-		}
-		
-		if (cont) {
+			WRAP_ERROR(error(name.line, std::format("Variable name '{}' conflicts with a command with the same name.", name.lexeme)));
 			continue;
 		}
 
@@ -703,14 +696,13 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 				expr->args[argIdx]->Accept(this);
 				argIdx++;
 			}
-
-			checkLambdaArgs(ident, 1);
-		} else if (lambdaCallee) {
-			checkLambdaArgs(ident, callInfo->argStart);
 		}
 
 		if (lambdaCallee) {
+			checkLambdaArgs(ident, callInfo->argStart);
 			expr->tokenType = ident->varInfo->lambdaTypeInfo.returnType;
+		} else {
+			expr->tokenType = kTokenType_Ambiguous;
 		}
 
 		return;
