@@ -1212,6 +1212,7 @@ std::unique_ptr<ScriptToken> Eval_In(OperatorType op, ScriptToken *lh, ScriptTok
 			ForEachContext con(rh->GetArrayID(), iterID, Variable{ localVar, Script::eVarType_Array });
 			return ScriptToken::Create(&con);
 		}
+		break;
 	}
 	case Script::eVarType_String:
 	{
@@ -1229,6 +1230,7 @@ std::unique_ptr<ScriptToken> Eval_In(OperatorType op, ScriptToken *lh, ScriptTok
 			ForEachContext con(srcID, iterID, Variable{ var, Script::eVarType_String });
 			return ScriptToken::Create(&con);
 		}
+		break;
 	}
 	case Script::eVarType_Ref:
 	{
