@@ -148,6 +148,11 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 				error(name.line, std::format("Variable with name '{}' has already been defined in the current scope (at line {})\n", name.lexeme, var->token.line));
 			}
 		)
+
+		if (g_scriptCommands.GetByName(name.lexeme.c_str())) {
+			cont = true;
+			WRAP_ERROR(error(name.line, std::format("Variable name '{}' conflicts with a command with the same name.", name.lexeme)))
+		}
 		
 		if (cont) {
 			continue;
@@ -517,12 +522,80 @@ void NVSETypeChecker::VisitSubscriptExpr(SubscriptExpr* expr) {
 	expr->tokenType = outputType;
 }
 
+struct CallCommandInfo {
+	size_t funcIndex{};
+	size_t argStart{};
+};
+
+std::unordered_map<const char*, CallCommandInfo> callCmds = {
+	{"Call", {0, 1}},
+	{"CallAfterFrames", {1, 3}},
+	{"CallAfterSeconds", {1, 3}},
+	{"CallForSeconds", {1, 3}},
+};
+
+CallCommandInfo *getCallCommandInfo(const char *name) {
+	for (auto &[key, value] : callCmds) {
+		if (!_stricmp(key, name)) {
+			return &value;
+		}
+	}
+
+	return nullptr;
+}
+
 void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
+	auto checkLambdaArgs = [&] (IdentExpr *ident, int startArgs) {
+		const auto& paramTypes = ident->varInfo->lambdaTypeInfo.paramTypes;
+
+		for (auto i = startArgs; i < expr->args.size(); i++) {
+			const auto& arg = expr->args[i];
+
+			const auto idx = i - startArgs + 1;
+
+			// Too many args passed, handled below
+			if (i - 1 >= paramTypes.size()) {
+				break;
+			}
+
+			const auto expected = paramTypes[i - 1];
+			if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(expected), arg->tokenType, true, nullptr)) {
+				WRAP_ERROR(
+					error(expr->token.line, std::format("Invalid expression for lambda parameter {}. (Expected {}, got {})", idx, GetBasicParamTypeString(expected), TokenTypeToString(arg->tokenType)));
+				)
+			}
+		}
+
+		const auto numArgsPassed = max(0, (int)expr->args.size() - startArgs);
+		if (numArgsPassed != paramTypes.size()) {
+			WRAP_ERROR(
+				error(expr->token.line, std::format("Invalid number of parameters specified for lambda '{}' (Expected {}, got {}).", ident->token.lexeme, paramTypes.size(), numArgsPassed));
+			)
+		}
+	};
+
 	std::string name = expr->token.lexeme;
 	const auto cmd = g_scriptCommands.GetByName(name.c_str(), &g_currentCompilerPluginVersions.top());
 
 	// Try to get the script command by lexeme
 	if (!cmd) {
+		// See if its a lambda call
+		if (const auto &var = scopes.top()->resolveVariable(name)) {
+			if (var->lambdaTypeInfo.isLambda) {
+				// Turn this current expr from 'lambda(args)' into 'call(lambda, args)'
+				std::vector<ExprPtr> newArgs{};
+				newArgs.push_back(std::make_shared<IdentExpr>(expr->token));
+				expr->token.lexeme = "call";
+				for (const auto& arg : expr->args) {
+					newArgs.push_back(arg);
+				}
+				expr->args = newArgs;
+
+				expr->Accept(this);
+				return;
+			}
+		}
+
 		error(expr->token.line, std::format("Invalid command '{}'.", name));
 		return;
 	}
@@ -532,72 +605,13 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 		expr->left->Accept(this);
 	}
 
-	// Type check 'call' command differently
-	if (cmd->parse == kCommandInfo_Call.parse) {
-		if (expr->left) {
-			WRAP_ERROR(error(expr->token.line, "Cannot perform 'call' command on references."));
-		}
-
-		if (expr->args.empty()) {
-			WRAP_ERROR(error(expr->token.line, std::format("Expected at least one argument for 'call' command.")));
-			return;
-		}
-
-		for (const auto &arg : expr->args) {
-			arg->Accept(this);
-		}
-
-		const auto &callee = expr->args[0];
-		if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(cmd->params[0].typeID), callee->tokenType, true, cmd)) {
-			WRAP_ERROR(
-				error(expr->token.line, std::format("Invalid expression for parameter 1. (Expected {}, got {}).", cmd->params[0].typeStr, TokenTypeToString(callee->tokenType)));
-			)
-			return;
-		}
-
-		expr->tokenType = kTokenType_Ambiguous;
-		if (callee->IsType<IdentExpr>()) {
-			auto ident = dynamic_cast<IdentExpr*>(callee.get());
-			if (ident->varInfo && ident->varInfo->lambdaTypeInfo.isLambda) {
-				const auto& paramTypes = ident->varInfo->lambdaTypeInfo.paramTypes;
-
-				for (int i = 1; i < expr->args.size(); i++) {
-					auto &arg = expr->args[i];
-
-					// Too many args passed, handled below
-					if (i - 1 >= paramTypes.size()) {
-						break;
-					}
-
-					auto expected = paramTypes[i - 1];
-
-					if (!ExpressionParser::ValidateArgType(static_cast<ParamType>(expected), arg->tokenType, true, cmd)) {
-					WRAP_ERROR(
-							error(expr->token.line, std::format("Invalid expression for call parameter {}. (Expected {}, got {})", i + 1, GetBasicParamTypeString(expected), TokenTypeToString(arg->tokenType)));
-						)
-					}
-				}
-
-				if (expr->args.size() - 1 != paramTypes.size()) {
-					WRAP_ERROR(
-						error(expr->token.line, std::format("Invalid number of parameters specified to {} (Expected {}, got {}).", expr->token.lexeme, paramTypes.size(), expr->args.size() - 1));
-					)
-				}
-
-				expr->tokenType = ident->varInfo->lambdaTypeInfo.returnType;
-			}
-		}
-
-		return;
-	}
-
 	if (expr->left && expr->left->tokenType != kTokenType_Form && GetBasicTokenType(expr->left->tokenType) != kTokenType_Ref) {
-		WRAP_ERROR(error(expr->token.line, "Left side of '.' must be a form or reference."));
+		WRAP_ERROR(error(expr->token.line, "Left side of '.' must be a form or reference."))
 	}
 
 	// Check for calling reference if not an object script
-	if (cmd->needsParent && !expr->left && engineScript->Type() != Script::eType_Object) {
-		WRAP_ERROR(error(expr->token.line, std::format("Command '{}' requires a calling reference.", expr->token.lexeme)));
+	if (cmd->needsParent && !expr->left && engineScript->Type() != Script::eType_Object && engineScript->Type() != Script::eType_Magic) {
+		WRAP_ERROR(error(expr->token.line, std::format("Command '{}' requires a calling reference.", expr->token.lexeme)))
 	}
 
 	// Normal (nvse + vanilla) calls
@@ -664,10 +678,42 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 		}
 	}
 
-	if (expr->args.size() < numRequiredArgs) {
+	bool enoughArgs = expr->args.size() >= numRequiredArgs;
+	if (!enoughArgs) {
 		WRAP_ERROR(
 			error(expr->token.line, std::format("Invalid number of parameters specified to {} (Expected {}, got {}).", expr->token.lexeme, numRequiredArgs, expr->args.size()));
 		)
+	}
+
+	// Check lambda args differently
+	if (const auto callInfo = getCallCommandInfo(cmd->longName)) {
+		if (!enoughArgs) {
+			return;
+		}
+
+		const auto& callee = expr->args[callInfo->funcIndex];
+		const auto ident = dynamic_cast<IdentExpr*>(callee.get());
+		const auto lambdaCallee = ident && ident->varInfo && ident->varInfo->lambdaTypeInfo.isLambda;
+
+		// Handle each call command separately as args to check are in different positions
+		// TODO: FIX THE CALL COMMAND
+		if (!_stricmp(cmd->longName, "Call") && lambdaCallee) {
+			// Manually visit remaining args for call, since it operates differently from all other commands
+			while (argIdx < expr->args.size()) {
+				expr->args[argIdx]->Accept(this);
+				argIdx++;
+			}
+
+			checkLambdaArgs(ident, 1);
+		} else if (lambdaCallee) {
+			checkLambdaArgs(ident, callInfo->argStart);
+		}
+
+		if (lambdaCallee) {
+			expr->tokenType = ident->varInfo->lambdaTypeInfo.returnType;
+		}
+
+		return;
 	}
 
 	auto type = ToTokenType(g_scriptCommands.GetReturnType(cmd));
