@@ -1756,6 +1756,10 @@ bool Cmd_GetHotkeyItem_Execute(COMMAND_ARGS)
 					!iter.End();
 					++iter)
 				{
+					if (!iter.Get()) {
+						continue;
+					}
+
 					ExtraHotkey* xHotKey = (ExtraHotkey*)iter->GetByType(kExtraData_Hotkey);
 					if (xHotKey && xHotKey->index == hotkeyNum)
 					{
