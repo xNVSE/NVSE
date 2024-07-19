@@ -383,6 +383,11 @@ void NVSETypeChecker::VisitAssignmentExpr(AssignmentExpr* expr) {
 			error(expr->line, "Cannot assign to a variable that is holding a lambda.");
 			return;
 		}
+
+		if (expr->expr->tokenType == kTokenType_Lambda) {
+			error(expr->line, "Cannot assign a lambda to a variable after it has been declared.");
+			return;
+		}
 	}
 
 	expr->tokenType = oType;
