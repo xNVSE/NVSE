@@ -5,6 +5,9 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nvse_loader", "nvse_loader\nvse_loader.vcxproj", "{48AC56E6-868A-473A-9B30-28B9E970CDCC}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nvse", "nvse\nvse.vcxproj", "{EB65382C-3CE5-4B5E-B3B1-51E500BCE904}"
+	ProjectSection(ProjectDependencies) = postProject
+		{40B84662-4790-4AEE-9AB8-D72DA8771EDC} = {40B84662-4790-4AEE-9AB8-D72DA8771EDC}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "common_vc9", "..\common\common_vc9.vcxproj", "{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}"
 EndProject

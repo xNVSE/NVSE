@@ -1,5 +1,7 @@
 #include "PluginManager.h"
 
+#include <loader_common/PluginChecker.h>
+
 #include "CommandTable.h"
 #include "common/IDirectoryIterator.h"
 #include "ParamInfos.h"
@@ -569,6 +571,14 @@ bool PluginManager::InstallPlugins(const std::vector<std::string>& pluginPaths)
 	{
 		++index;
 		_MESSAGE("checking plugin %s", pluginPath.c_str());
+		char pluginName[260];
+		char extension[16];
+		_splitpath_s(pluginPath.c_str(), NULL, 0, NULL, 0, pluginName, MAX_PATH, extension, ARRAYSIZE(extension));
+		strcat_s(pluginName, extension);
+		if (IsNVSEPlugin(pluginName, m_pluginDirectory.c_str()) == false) {
+			_MESSAGE("plugin %s is not an NVSE plugin", pluginPath.c_str());
+			continue;
+		}
 
 		auto& pluginStatus = queriedPlugins.emplace_back();
 		auto& plugin = pluginStatus.plugin;

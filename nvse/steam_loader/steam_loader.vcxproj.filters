@@ -42,6 +42,7 @@
     <ClInclude Include="..\nvse\utility.h">
       <Filter>nvse</Filter>
     </ClInclude>
+    <ClInclude Include="PluginPreload.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\nvse\nvse_version.rc" />
