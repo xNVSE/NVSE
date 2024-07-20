@@ -132,10 +132,12 @@
   <ItemGroup>
     <ClCompile Include="Error.cpp" />
     <ClCompile Include="IdentifyEXE.cpp" />
+    <ClCompile Include="PluginChecker.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Error.h" />
     <ClInclude Include="IdentifyEXE.h" />
+    <ClInclude Include="PluginChecker.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
