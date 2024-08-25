@@ -7,6 +7,7 @@
 #include "common/IFileStream.h"
 #include <tlhelp32.h>
 #include <intrin.h>
+#include "PluginPreload.h"
 
 IDebugLog	gLog("nvse_steam_loader.log");
 
@@ -157,6 +158,8 @@ void InstallHook(void * retaddr)
 	UInt32	newHookDst = ((UInt32)OnHook) - hookBaseAddr - 5;
 
 	SafeWrite32(hookBaseAddr + 1, newHookDst);
+
+	PreloadPlugins();
 
 	Hooks_Memory_PreloadCommit(procHookInfo.noGore);
 }
