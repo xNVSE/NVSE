@@ -325,17 +325,21 @@ namespace OtherHooks
 		// Unlock via interact
 		void* __fastcall OnUnlock_518B00(void* a1) {
 			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
-			auto unlocker = *reinterpret_cast<TESObjectREFR**>(ebp - 0x18);
+			auto unlocker = DYNAMIC_CAST(*reinterpret_cast<TESObjectREFR**>(ebp - 0x18), TESObjectREFR, Actor);
 			auto doorRef = *reinterpret_cast<TESObjectREFR**>(ebp + 0x8);
 
-			if (unlocker == *reinterpret_cast<TESObjectREFR**>(g_thePlayer)) {
-				EventManager::DispatchEvent("onunlock", nullptr, doorRef, *g_thePlayer, 1);
-			}
-			else {
-				ExtraLock::Data* lockData = *reinterpret_cast<ExtraLock::Data**>(ebp - 0x20);
-				char* v58 = *reinterpret_cast<char**>(ebp - 0x1C);
-				bool hasKey = ThisStdCall<char>(0x891DB0, unlocker, lockData->key, 0, 1, 0, v58);
-				EventManager::DispatchEvent("onunlock", nullptr, doorRef, unlocker, hasKey ? 2 : 1);
+			if (unlocker) {
+				if (unlocker == *reinterpret_cast<TESObjectREFR**>(g_thePlayer)) {
+					EventManager::DispatchEvent("onunlock", nullptr, doorRef, *g_thePlayer, 1);
+				}
+				else {
+					ExtraLock::Data* lockData = *reinterpret_cast<ExtraLock::Data**>(ebp - 0x20);
+					char* v58 = *reinterpret_cast<char**>(ebp - 0x1C);
+					bool hasKey = ThisStdCall<char>(0x891DB0, unlocker, lockData->key, 0, 1, 0, v58);
+					EventManager::DispatchEvent("onunlock", nullptr, doorRef, unlocker, hasKey ? 2 : 1);
+				}
+			} else {
+				EventManager::DispatchEvent("onunlock", nullptr, doorRef, nullptr, 0);
 			}
 
 			return ThisStdCall<void*>(0x517360, a1);
