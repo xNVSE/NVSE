@@ -1,111 +1,111 @@
-<?xml version="1.0" encoding="utf-8"?> 
+<?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
-	<Type Name="Vector&lt;*&gt;">
-		<DisplayString>{{ Size={numItems} }}</DisplayString>
-		<Expand>
-			<ArrayItems>
-				<Size>numItems</Size>
-				<ValuePointer>data</ValuePointer>
-			</ArrayItems>
-		</Expand>
-	</Type>
-	<Type Name="Set&lt;*&gt;">
-		<DisplayString>{{ Size={numKeys} }}</DisplayString>
-		<Expand>
-			<ArrayItems>
-				<Size>numKeys</Size>
-				<ValuePointer>keys</ValuePointer>
-			</ArrayItems>
-		</Expand>
-	</Type>
-	<Type Name="Map&lt;*&gt;">
-		<DisplayString>{{ Size={numEntries} }}</DisplayString>
-		<Expand>
-			<ArrayItems>
-				<Size>numEntries</Size>
-				<ValuePointer>entries</ValuePointer>
-			</ArrayItems>
-		</Expand>
-	</Type>
-	<Type Name="UnorderedMap&lt;*&gt;">
-		<DisplayString>{{ Buckets={numBuckets} Size={numEntries} }}</DisplayString>
-		<Expand>
-			<ArrayItems>
-				<Size>numBuckets</Size>
-				<ValuePointer>buckets</ValuePointer>
-			</ArrayItems>
-		</Expand>
-	</Type>
+    <Type Name="Vector&lt;*&gt;">
+        <DisplayString>{{ Size={numItems} }}</DisplayString>
+        <Expand>
+            <ArrayItems>
+                <Size>numItems</Size>
+                <ValuePointer>data</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
+    <Type Name="Set&lt;*&gt;">
+        <DisplayString>{{ Size={numKeys} }}</DisplayString>
+        <Expand>
+            <ArrayItems>
+                <Size>numKeys</Size>
+                <ValuePointer>keys</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
+    <Type Name="Map&lt;*&gt;">
+        <DisplayString>{{ Size={numEntries} }}</DisplayString>
+        <Expand>
+            <ArrayItems>
+                <Size>numEntries</Size>
+                <ValuePointer>entries</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
+    <Type Name="UnorderedMap&lt;*&gt;">
+        <DisplayString>{{ Buckets={numBuckets} Size={numEntries} }}</DisplayString>
+        <Expand>
+            <ArrayItems>
+                <Size>numBuckets</Size>
+                <ValuePointer>buckets</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
 
-	<Type Name="ArrayVarElementContainer::GenericContainer">
-		<DisplayString>{{ Size={numItems} }}</DisplayString>
-		<Expand>
-			<ArrayItems>
-				<Size>numItems</Size>
-				<ValuePointer>(ElementStrMap::Entry*)data</ValuePointer> <!-- Array -->
-			</ArrayItems>
-		</Expand>
-	</Type>
-	<Type Name="ArrayVarElementContainer">
-		<DisplayString Condition="m_type == 0">{{ Size={m_container.numItems} Type=Array }}</DisplayString>
-		<DisplayString Condition="m_type == 1">{{ Size={m_container.numItems} Type=Numeric Map }}</DisplayString>
-		<DisplayString Condition="m_type == 2">{{ Size={m_container.numItems} Type=String Map }}</DisplayString>
-		<Expand>
-			<ArrayItems Condition="m_type == 0">
-				<Size>m_container.numItems</Size>
-				<ValuePointer>(ArrayElement*)m_container.data</ValuePointer>
-			</ArrayItems>
-			<ArrayItems Condition="m_type == 1">
-				<Size>m_container.numItems</Size>
-				<ValuePointer>(ElementNumMap::Entry*)m_container.data</ValuePointer>
-			</ArrayItems>
-			<ArrayItems Condition="m_type == 2">
-				<Size>m_container.numItems</Size>
-				<ValuePointer>(ElementStrMap::Entry*)m_container.data</ValuePointer>
-			</ArrayItems>
-		</Expand>
-	</Type>
-	<Type Name="tList&lt;*&gt;">
-		<DisplayString>{{ BSSimpleList }}</DisplayString>
-		<Expand>
-			<CustomListItems>
-				<Variable Name="v_iter" InitialValue="&amp;m_listHead"/>
-				<Loop>
-					<Break Condition="v_iter == 0"/>
-					<Item>v_iter-&gt;data</Item>
-					<Exec>v_iter = v_iter-&gt;next</Exec>
-				</Loop>
-			</CustomListItems>
-		</Expand>
-	</Type>
-	<Type Name="NiTArray&lt;*&gt;">
-		<DisplayString>{{ Size={numObjs} }}</DisplayString>
-		<Expand>
-			<ArrayItems>
-				<Size>numObjs</Size>
-				<ValuePointer>data</ValuePointer>
-			</ArrayItems>
-		</Expand>
-	</Type>
-	<Type Name="DList&lt;*&gt;">
-		<DisplayString>{{ DList }}</DisplayString>
-		<Expand>
-			<Item Name="Count">count</Item>
-			<LinkedListItems>
-				<Size>count</Size>
-				<HeadPointer>first</HeadPointer>
-				<NextPointer>next</NextPointer>
-				<ValueNode>data</ValueNode>
-			</LinkedListItems>
-		</Expand>
-	</Type>
-	<Type Name="BSSimpleList&lt;*&gt;">
-		<DisplayString>{{ BSSimpleList }}</DisplayString>
-		<Expand>
-			<ArrayItems>
-				<Size>size</Size>
-				<ValuePointer>data</ValuePointer> <!-- Array -->
-			</ArrayItems>
-		</Expand>
-	</Type>
+    <Type Name="ArrayVarElementContainer::GenericContainer">
+        <DisplayString>{{ Size={numItems} }}</DisplayString>
+        <Expand>
+            <ArrayItems>
+                <Size>numItems</Size>
+                <ValuePointer>(ElementStrMap::Entry*)data</ValuePointer> <!-- Array -->
+            </ArrayItems>
+        </Expand>
+    </Type>
+    <Type Name="ArrayVarElementContainer">
+        <DisplayString Condition="m_type == 0">{{ Size={m_container.numItems} Type=Array }}</DisplayString>
+        <DisplayString Condition="m_type == 1">{{ Size={m_container.numItems} Type=Numeric Map }}</DisplayString>
+        <DisplayString Condition="m_type == 2">{{ Size={m_container.numItems} Type=String Map }}</DisplayString>
+        <Expand>
+            <ArrayItems Condition="m_type == 0">
+                <Size>m_container.numItems</Size>
+                <ValuePointer>(ArrayElement*)m_container.data</ValuePointer>
+            </ArrayItems>
+            <ArrayItems Condition="m_type == 1">
+                <Size>m_container.numItems</Size>
+                <ValuePointer>(ElementNumMap::Entry*)m_container.data</ValuePointer>
+            </ArrayItems>
+            <ArrayItems Condition="m_type == 2">
+                <Size>m_container.numItems</Size>
+                <ValuePointer>(ElementStrMap::Entry*)m_container.data</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
+    <Type Name="tList&lt;*&gt;">
+        <DisplayString>{{ BSSimpleList }}</DisplayString>
+        <Expand>
+            <CustomListItems>
+                <Variable Name="v_iter" InitialValue="&amp;m_listHead"/>
+                <Loop>
+                    <Break Condition="v_iter == 0"/>
+                    <Item>v_iter-&gt;data</Item>
+                    <Exec>v_iter = v_iter-&gt;next</Exec>
+                </Loop>
+            </CustomListItems>
+        </Expand>
+    </Type>
+    <Type Name="NiTArray&lt;*&gt;">
+        <DisplayString>{{ Size={numObjs} }}</DisplayString>
+        <Expand>
+            <ArrayItems>
+                <Size>numObjs</Size>
+                <ValuePointer>data</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
+    <Type Name="DList&lt;*&gt;">
+        <DisplayString>{{ DList }}</DisplayString>
+        <Expand>
+            <Item Name="Count">count</Item>
+            <LinkedListItems>
+                <Size>count</Size>
+                <HeadPointer>first</HeadPointer>
+                <NextPointer>next</NextPointer>
+                <ValueNode>data</ValueNode>
+            </LinkedListItems>
+        </Expand>
+    </Type>
+    <Type Name="BSSimpleList&lt;*&gt;">
+        <DisplayString>{{ BSSimpleList }}</DisplayString>
+        <Expand>
+            <ArrayItems>
+                <Size>size</Size>
+                <ValuePointer>data</ValuePointer> <!-- Array -->
+            </ArrayItems>
+        </Expand>
+    </Type>
 </AutoVisualizer>
