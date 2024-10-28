@@ -9,6 +9,7 @@
 #include "Hooks_Script.h"
 
 #include "Commands_Console.h"
+#include "PluginManager.h"
 
 #if RUNTIME
 
@@ -842,6 +843,43 @@ bool Cmd_GetSelfAlt_OLD_Execute(COMMAND_ARGS)
 {
 	return Cmd_GetSelfAlt_Execute(PASS_COMMAND_ARGS);
 }
+
+bool Cmd_PluginVersion_Execute(COMMAND_ARGS) {
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (eval.ExtractArgs() && eval.Arg(0)->GetString() && eval.NumArgs() == 2)
+	{
+		const auto pluginName = eval.Arg(0)->GetString();
+		const auto pluginVersion = static_cast<UInt32>(eval.Arg(1)->GetNumber());
+
+		const auto pluginHandle = g_pluginManager.LookupHandleFromName(pluginName);
+		if (pluginHandle == kPluginHandle_Invalid) {
+			std::string message = std::format("A script requires the plugin named '{}' but it was not found. Your game will NOT work correctly. Please locate the plugin.", pluginName);
+			DisplayMessage(message.c_str());
+			return false;
+		}
+
+		// Handle NVSE version separately
+		if (!_stricmp(pluginName, "nvse")) {
+			 // Get major / minor / beta
+			printf("");
+		} else {
+			const auto info = g_pluginManager.GetInfoFromHandle(pluginHandle);
+			if (info->version < pluginVersion) {
+				std::string message = std::format(
+					"A script requires the plugin '{}' >= '{}'. You have version '{}'. Your game will NOT work correctly. Please update the plugin.", 
+					pluginName, 
+					pluginVersion, 
+					info->version
+				);
+
+				DisplayMessage(message.c_str());
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
 
 #endif
 

@@ -354,13 +354,22 @@ FunctionInfo::FunctionInfo(Script* script)
 		return;
 
 	auto* data = (UInt8*)script->data;
-	if (*(data + 8) != 0x0D) // not a 'Begin Function' block
+
+	// Skip SCN
+	data += 4;
+
+	// Skip 'PluginVersion' commands
+	while (*reinterpret_cast<uint16_t*>(data) == 0x1676) {
+		data += (*reinterpret_cast<uint16_t*>(data + 2) + 4);
+	}
+
+	if (*(data + 4) != 0x0D) // not a 'Begin Function' block
 	{
 		ShowRuntimeError(script, "Begin Function block not found in compiled script data");
 		return;
 	}
 
-	data += 14; // beginning of our data
+	data += 10; // beginning of our data
 
 	m_functionVersion = *data++;
 	switch (m_functionVersion)

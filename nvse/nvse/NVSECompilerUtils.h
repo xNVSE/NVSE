@@ -109,6 +109,26 @@ inline NVSEParamType GetParamTypeFromBasicTokenType(Token_Type tt) {
 	);
 }
 
+inline bool CanUseDotOperator(Token_Type tt) {
+	if (tt == kTokenType_Form) {
+		return true;
+	}
+
+	if (GetBasicTokenType(tt) == kTokenType_Ref) {
+		return true;
+	}
+
+	if (tt == kTokenType_Ambiguous) {
+		return true;
+	}
+
+	if (tt == kTokenType_ArrayElement) {
+		return true;
+	}
+
+	return false;
+}
+
 inline const char* GetBasicParamTypeString(NVSEParamType pt) {
 	switch (pt) {
 	case kNVSEParamType_Number:

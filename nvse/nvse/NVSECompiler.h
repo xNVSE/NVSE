@@ -54,9 +54,6 @@ public:
 	// Keep track of lambda vars as these get inlined
 	std::set<std::string> lambdaVars{};
 
-	// Required NVSE plugins
-	std::set<std::string> requirements{};
-
 	// 'temp' / ad-hoc global vars to add to ref list at end of script
 	// Only used for lambda param declaration
 	std::unordered_map<std::shared_ptr<NVSEScope::ScopeVar>, std::vector<size_t>> tempGlobals{};

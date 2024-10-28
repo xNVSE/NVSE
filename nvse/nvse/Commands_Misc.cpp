@@ -1335,3 +1335,26 @@ bool Cmd_DelAnimations_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_GetDoorSound_Execute(COMMAND_ARGS) {
+	UInt32* refResult = (UInt32*)result;
+	*refResult = 0;
+
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (eval.ExtractArgs()) {
+		TESForm* form = eval.Arg(0)->GetTESForm();
+		int mode = static_cast<int>(eval.Arg(1)->GetNumber());
+
+		TESObjectDOOR* doorForm = DYNAMIC_CAST(form, TESForm, TESObjectDOOR);
+		if (!doorForm) {
+			if (IsConsoleMode()) {
+				Console_Print("Form %X is not a TESObjectDOOR", form->refID);
+			}
+
+			return true;
+		}
+
+		*refResult = mode == 0 ? doorForm->openSound->refID : doorForm->closeSound->refID;
+	}
+
+	return true;
+}

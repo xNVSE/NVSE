@@ -581,7 +581,7 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 			std::string pluginName = match[1];
 			std::ranges::transform(pluginName.begin(), pluginName.end(), pluginName.begin(), [](unsigned char c) { return std::tolower(c); });
 
-			if (StrEqual(pluginName.c_str(), "nvse")) {
+			if (_stricmp(pluginName.c_str(), "nvse")) {
 				int major = std::stoi(match[2]);
 				int minor = match[3].matched ? std::stoi(match[3]) : 255;
 				int beta = match[4].matched ? std::stoi(match[4]) : 255;
@@ -1121,6 +1121,10 @@ void __fastcall PostScriptCompileSuccess(Script* script, ScriptBuffer* scriptBuf
 //	- If Script->Compile is called in the GECK outside of the vanilla code this will NOT be hit
 //	- Not sure if this is a problem, maybe all plugins should be compiling scripts via NVSE and we can clean up the runtime hooks as well?
 static char __fastcall CompileScriptHook(void* context, void* edx, Script* script, ScriptBuffer *buf) {
+	if (buf == nullptr || buf->scriptText == nullptr) {
+		return 1;
+	}
+
 	auto precompileResult = HandleBeginCompile(buf, script);
 	char result = 0;
 
