@@ -950,6 +950,10 @@ std::unique_ptr<ScriptToken> Eval_LogicalNot(OperatorType op, ScriptToken *lh, S
 	return ScriptToken::Create(!lh->GetBool());
 }
 
+std::unique_ptr<ScriptToken> Eval_BitwiseNot(OperatorType op, ScriptToken *lhs, ScriptToken *rhs, ExpressionEvaluator *context) {
+	return ScriptToken::Create(static_cast<double>(~static_cast<UInt32>(lhs->GetNumber())));
+}
+
 std::unique_ptr<ScriptToken> Eval_Subscript_Array_Number(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	const ArrayID arrID = lh->GetArrayID();
@@ -1645,12 +1649,16 @@ OperationRule kOpRule_MakePair[] =
 };
 
 OperationRule kOpRule_Dot[] =
-	{
+{
 		{kTokenType_Form, kTokenType_Command, kTokenType_Command, OP_HANDLER(Eval_DotSyntax), true}, // Form is used instead of Ref since commands return Form - no way to check which
 		{kTokenType_ArrayElement, kTokenType_Command, kTokenType_Command, OP_HANDLER(Eval_DotSyntax), true},
 #if EDITOR
 		{kTokenType_Command, kTokenType_Command, kTokenType_Command, OP_HANDLER(Eval_DotSyntax), true}, // kTokenType_Command is used as token type when kRetnType_Default is returned
 #endif
+};
+
+OperationRule kOpRule_BitwiseNot[] = {
+		{kTokenType_Number, kTokenType_Invalid, kTokenType_Number, OP_HANDLER(Eval_BitwiseNot), true}
 };
 
 // Operator definitions
@@ -1719,6 +1727,7 @@ Operator s_operators[] =
 		{2, "|=", 2, kOpType_BitwiseOrEquals, OP_RULES(HandleEquals)},
 		{2, "&=", 2, kOpType_BitwiseAndEquals, OP_RULES(HandleEquals)},
 		{2, "%=", 2, kOpType_ModuloEquals, OP_RULES(HandleEquals)},
+		{27, "~", 1, kOpType_BitwiseNot, OP_RULES(BitwiseNot)},
 
 };
 

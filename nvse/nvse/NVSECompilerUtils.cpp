@@ -108,7 +108,8 @@ std::unordered_map<NVSETokenType, OperatorType> tokenOpToNVSEOpType{
 	{NVSETokenType::Box, kOpType_Box},
 	{NVSETokenType::Unbox, kOpType_Dereference},
 	{NVSETokenType::LeftBracket, kOpType_LeftBracket},
-	{NVSETokenType::Dot, kOpType_Dot}
+	{NVSETokenType::Dot, kOpType_Dot},
+	{NVSETokenType::BitwiseNot, kOpType_BitwiseNot}
 };
 
 // Copied for testing from ScriptAnalyzer.cpp

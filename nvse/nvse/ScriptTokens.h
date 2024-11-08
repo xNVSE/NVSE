@@ -97,6 +97,9 @@ enum OperatorType : UInt8
 	kOpType_BitwiseAndEquals,
 	kOpType_ModuloEquals,
 
+	// xNVSE 7.0
+	kOpType_BitwiseNot,
+
 	kOpType_Max
 };
 
