@@ -581,7 +581,7 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 			std::string pluginName = match[1];
 			std::ranges::transform(pluginName.begin(), pluginName.end(), pluginName.begin(), [](unsigned char c) { return std::tolower(c); });
 
-			if (_stricmp(pluginName.c_str(), "nvse")) {
+			if (!_stricmp(pluginName.c_str(), "nvse")) {
 				int major = std::stoi(match[2]);
 				int minor = match[3].matched ? std::stoi(match[3]) : 255;
 				int beta = match[4].matched ? std::stoi(match[4]) : 255;
