@@ -1328,8 +1328,13 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 						if (var)
 						{
 							StringVar *strVar = g_StringMap.Get((int)var->data);
+
 							if (strVar)
 							{
+#if _DEBUG
+								if (strVar->GetOwningModIndex() != scriptObj->GetModIndex())
+									DebugBreak();
+#endif
 								length = strVar->GetLength();
 								if (length)
 									memcpy(out, strVar->GetCString(), length + 1);

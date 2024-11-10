@@ -22,6 +22,14 @@ class StringVar
 	std::string data;
 	UInt8		owningModIndex;
 public:
+	bool		isFunctionResultCache = false;
+#if _DEBUG
+	std::string varName;
+	Script* script = nullptr;
+	ScriptEventList* eventList = nullptr;
+	bool temporary = false;
+#endif
+
 	StringVar(const char* in_data, UInt8 modIndex);
 
 	StringVar(const StringVar& other) = delete;
@@ -52,6 +60,7 @@ public:
 	char		At(UInt32 charPos);
 	static UInt32	GetCharType(char ch);
 	void Trim();
+	void SetOwningModIndex(UInt8 modIdx) { this->owningModIndex = modIdx; }
 
 	std::string String()					{	return data;	}
 	std::string& StringRef() {return data;}

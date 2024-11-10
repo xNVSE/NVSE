@@ -46,9 +46,16 @@ void StringVarMap::Delete(UInt32 varID)
 
 void StringVarMap::MarkTemporary(UInt32 varID, bool bTemporary)
 {
-#if _DEBUG
 	if (IsFunctionResultCacheString(varID) && bTemporary)
+	{
+#if _DEBUG
 		DebugBreak();
+#endif
+		return;
+	}
+#if _DEBUG
+	if (auto* strVar = Get(varID))
+		strVar->temporary = bTemporary;
 #endif
 	VarMap<StringVar>::MarkTemporary(varID, bTemporary);
 }
@@ -371,19 +378,32 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 
 UInt32	StringVarMap::Add(UInt8 varModIndex, const char* data, bool bTemp, StringVar** svOut)
 {
+	ScopedLock lock(cs);
 	UInt32 varID = GetUnusedID();
+#if _DEBUG
+	if (IsFunctionResultCacheString(varID))
+		DebugBreak(); // this should never be allocated
+	if (Get(varID))
+		DebugBreak(); // trying to add existing var id
+#endif
 	auto* sv = Insert(varID, data, varModIndex);
 	if (svOut)
 		*svOut = sv;
 	if (bTemp)
 		MarkTemporary(varID, true);
-
 	return varID;
 }
 
 UInt32 StringVarMap::Add(StringVar&& moveVar, bool bTemp, StringVar** svOut)
 {
+	ScopedLock lock(cs);
 	const auto varID = GetUnusedID();
+#if _DEBUG
+	if (IsFunctionResultCacheString(varID))
+		DebugBreak();
+	if (Get(varID))
+		DebugBreak();
+#endif
 	auto* sv = Insert(varID, std::move(moveVar));
 	if (svOut)
 		*svOut = sv;
@@ -397,7 +417,7 @@ StringVarMap g_StringMap;
 thread_local FunctionResultStringVar s_functionResultStringVar;
 static thread_local int svMapClearLocalToken = 0;
 static std::atomic<int> svMapClearGlobalToken = 0;
-std::unordered_set<UInt32> g_funcResultStringIds;
+
 
 // no compiler optimizations on thread_local in msvc
 __declspec(noinline) FunctionResultStringVar& GetFunctionResultCachedStringVar()
@@ -413,12 +433,14 @@ __declspec(noinline) FunctionResultStringVar& GetFunctionResultCachedStringVar()
 void ResetFunctionResultStringCache()
 {
 	++svMapClearGlobalToken;
-	g_funcResultStringIds.clear();
 }
 
 bool IsFunctionResultCacheString(UInt32 strId)
 {
-	return g_funcResultStringIds.contains(strId);
+	auto* strVar = g_StringMap.Get(strId);
+	if (strVar)
+		return strVar->isFunctionResultCache;
+	return false;
 }
 
 bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
@@ -455,6 +477,7 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 	}
 	else
 	{
+#if 1
 		auto& functionResult = GetFunctionResultCachedStringVar();
 		if (!functionResult.inUse)
 		{
@@ -462,7 +485,7 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 			if (!functionResult.var)
 			{
 				functionResult.id = static_cast<int>(g_StringMap.Add(0xFF, newValue, false, &functionResult.var));
-				g_funcResultStringIds.emplace(functionResult.id);
+				functionResult.var->isFunctionResultCache = true;
 			}
 			else
 				functionResult.var->Set(newValue);
@@ -471,6 +494,8 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 			strID = functionResult.id;
 		}
 		else
+#endif
+
 			strID = static_cast<int>(g_StringMap.Add(modIndex, newValue, true, nullptr));
 	}
 	

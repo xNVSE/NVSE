@@ -14,6 +14,7 @@ namespace OtherHooks
 		UInt32* curDataPtr = nullptr;
 	};
 	void CleanUpNVSEVars(ScriptEventList* eventList);
+	void CleanUpNVSEVar(ScriptEventList* eventList, ScriptLocal* local);
 
 	void DeleteEventList(ScriptEventList* eventList);
 	

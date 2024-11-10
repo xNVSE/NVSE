@@ -161,6 +161,8 @@ public:
 				ShowRuntimeError(info->GetScript(), "Could not look up argument variable for function script");
 				return false;
 			}
+			OtherHooks::CleanUpNVSEVar(eventList, resolvedLocal); // if there exists an array or string already within the local, delete it
+
 
 			switch (param->GetType())
 			{
