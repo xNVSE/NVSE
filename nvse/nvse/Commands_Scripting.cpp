@@ -9,6 +9,7 @@
 #include "Hooks_Script.h"
 
 #include "Commands_Console.h"
+#include "PluginManager.h"
 
 #if RUNTIME
 
@@ -843,6 +844,74 @@ bool Cmd_GetSelfAlt_OLD_Execute(COMMAND_ARGS)
 	return Cmd_GetSelfAlt_Execute(PASS_COMMAND_ARGS);
 }
 
+
+std::unordered_set<std::string> pluginWarnings{};
+bool Cmd_PluginVersion_Execute(COMMAND_ARGS) {
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (eval.ExtractArgs() && eval.Arg(0)->GetString() && eval.NumArgs() == 2) {
+		const auto pluginName = eval.Arg(0)->GetString();
+		const auto pluginVersion = static_cast<UInt32>(eval.Arg(1)->GetNumber());
+
+		const auto &lowered = ToLower(std::string(pluginName));
+		if (pluginWarnings.contains(lowered)) {
+			return true;
+		}
+
+		const auto pluginHandle = g_pluginManager.LookupHandleFromName(pluginName);
+		if (pluginHandle == kPluginHandle_Invalid) {
+			const auto msg = std::format(
+				"A script requires the plugin named '{}' but it was not found. Your game will NOT work correctly. Please locate the plugin.", 
+				pluginName
+			);
+
+			DisplayMessage(msg.c_str());
+		}
+
+		// Handle NVSE version separately as it is 4 packed numbers
+		else if (!_stricmp(pluginName, "nvse")) {
+			if (pluginVersion >= PACKED_NVSE_VERSION) {
+				return true;
+			}
+
+			const auto major = ((pluginVersion >> 24) & 0xFF);
+			const auto minor = ((pluginVersion >> 16) & 0xFF);
+			const auto beta = ((pluginVersion >> 4) & 0xFFF);
+
+			const auto msg = std::format(
+				"A script requires xNVSE version >= {}.{}.{} (You have version {}.{}.{}).\nYour game will NOT work correctly. Please update xNVSE.",
+				major,
+				minor,
+				beta,
+				NVSE_VERSION_INTEGER,
+				NVSE_VERSION_INTEGER_MINOR,
+				NVSE_VERSION_INTEGER_BETA
+			);
+
+			DisplayMessage(msg.c_str());
+		}
+
+		// All plugins use single integer version
+		else {
+			const auto info = g_pluginManager.GetInfoFromHandle(pluginHandle);
+			if (pluginVersion >= info->version) {
+				return true;
+			}
+
+			const auto msg = std::format(
+				"A script requires the plugin '{}' >= '{}' (You have version {}).\nYour game will NOT work correctly. Please update the plugin.",
+				pluginName,
+				pluginVersion,
+				info->version
+			);
+
+			DisplayMessage(msg.c_str());
+		}
+
+		pluginWarnings.emplace(lowered);
+		return false;
+	}
+	return true;
+}
 #endif
 
 bool Cmd_Let_Parse(UInt32 numParams, ParamInfo* paramInfo, ScriptLineBuffer* lineBuf, ScriptBuffer* scriptBuf)

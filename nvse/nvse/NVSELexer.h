@@ -51,7 +51,6 @@ enum class NVSETokenType {
     LeftShift,
     RightShift,
     BitwiseNot,
-    BitwiseNotEquals,
     Dollar, Pound,
     Box, Unbox,
     
@@ -139,7 +138,6 @@ static const char* TokenTypeStr[]{
     "LeftShift",
     "RightShift",
     "BitwiseNot",
-    "BitwiseNotEquals",
     "Dollar",
     "Pound",
 

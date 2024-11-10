@@ -11,6 +11,7 @@
 #include "Hooks_Script.h"
 #include "NVSECompilerUtils.h"
 #include "ScriptUtils.h"
+#include "PluginAPI.h"
 
 #define WRAP_ERROR(expr)             \
     try {                            \
@@ -55,6 +56,16 @@ bool NVSETypeChecker::check() {
 }
 
 void NVSETypeChecker::VisitNVSEScript(NVSEScript* script) {
+	// Add nvse as requirement
+	script->m_mpPluginRequirements["nvse"] = PACKED_NVSE_VERSION;
+
+	// Add all #version statements to script requirements
+	for (const auto &[plugin, version] : g_currentCompilerPluginVersions.top()) {
+		auto nameLowered = plugin;
+		std::ranges::transform(nameLowered.begin(), nameLowered.end(), nameLowered.begin(), [](unsigned char c) { return std::tolower(c); });
+		script->m_mpPluginRequirements[nameLowered] = version;
+	}
+
 	EnterScope();
 	
 	for (const auto& global : script->globalVars) {
@@ -599,11 +610,23 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 	}
 	expr->cmdInfo = cmd;
 
+	// Add command to script requirements
+	if (const auto plugin = g_scriptCommands.GetParentPlugin(cmd)) {
+		auto nameLowered = std::string(plugin->name);
+		std::ranges::transform(nameLowered.begin(), nameLowered.end(), nameLowered.begin(), [](unsigned char c) { return std::tolower(c); });
+
+		if (!script->m_mpPluginRequirements.contains(nameLowered)) {
+			script->m_mpPluginRequirements[std::string(nameLowered)] = plugin->version;
+		} else {
+			script->m_mpPluginRequirements[std::string(nameLowered)] = max(script->m_mpPluginRequirements[std::string(nameLowered)], plugin->version);
+		}
+	}
+
 	if (expr->left) {
 		expr->left->Accept(this);
 	}
 
-	if (expr->left && expr->left->tokenType != kTokenType_Form && GetBasicTokenType(expr->left->tokenType) != kTokenType_Ref) {
+	if (expr->left && !CanUseDotOperator(expr->left->tokenType)) {
 		WRAP_ERROR(error(expr->token.line, "Left side of '.' must be a form or reference."))
 	}
 

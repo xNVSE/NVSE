@@ -16,7 +16,10 @@ struct NVSEScript {
     NVSEToken name;
     std::vector<StmtPtr> globalVars;
     std::vector<StmtPtr> blocks;
-    std::unordered_map<std::string, std::shared_ptr<LambdaExpr>> mpFunctions{};
+    std::unordered_map<std::string, std::shared_ptr<LambdaExpr>> m_mpFunctions{};
+
+    // Required NVSE plugins
+    std::unordered_map<std::string, uint32_t> m_mpPluginRequirements{};
 
     NVSEScript(NVSEToken name, std::vector<StmtPtr> globalVars, std::vector<StmtPtr> blocks)
 	: name(std::move(name)), globalVars(std::move(globalVars)), blocks(std::move(blocks)) {}

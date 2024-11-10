@@ -611,7 +611,7 @@ ExprPtr NVSEParser::Pair() {
 
 ExprPtr NVSEParser::Unary() {
 	if (Match(NVSETokenType::Bang) || Match(NVSETokenType::Minus) || Match(NVSETokenType::Dollar) || Match(
-		NVSETokenType::Pound) || Match(NVSETokenType::BitwiseAnd) || Match(NVSETokenType::Star)) {
+		NVSETokenType::Pound) || Match(NVSETokenType::BitwiseAnd) || Match(NVSETokenType::Star) || Match(NVSETokenType::BitwiseNot)) {
 		auto op = previousToken;
 		ExprPtr right = Unary();
 

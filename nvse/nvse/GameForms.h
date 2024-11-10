@@ -2448,6 +2448,9 @@ public:
 	BGSDestructibleObjectForm	destructForm;		// 68
 	BGSOpenCloseForm			openCloseForm;		// 70
 	// There is a tList in 088
+	UInt32                      unk;
+	TESSound*                   openSound;
+	TESSound*                   closeSound;
 };	
 
 // IngredientItem (A4)

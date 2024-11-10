@@ -383,10 +383,7 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 			return MakeToken(NVSETokenType::BitwiseOrEquals, "|=");
 		}
 		return MakeToken(NVSETokenType::BitwiseOr, "|");
-	case '~': 
-		if (Match('=')) {
-			return MakeToken(NVSETokenType::BitwiseNotEquals, "~=");
-		}
+	case '~':
 		return MakeToken(NVSETokenType::BitwiseNot, "~");
 	case '&':
 		if (Match('&')) {

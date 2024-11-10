@@ -27,7 +27,8 @@ enum OPCodes {
     OP_AR_FIND = 0x1557,
     OP_AR_BAD_NUMERIC_INDEX = 0x155F,
     OP_CONTINUE = 0x153E,
-    OP_BREAK = 0x15EF
+    OP_BREAK = 0x15EF,
+    OP_VERSION = 0x1676,
 };
 
 void NVSECompiler::ClearTempVars() {
@@ -93,8 +94,12 @@ void NVSECompiler::PrintScriptInfo() {
     
     CompInfo("\n\n");
     CompInfo("[Requirements]\n");
-    for (const std::string& requirement : requirements) {
-        CompInfo("%s\n", requirement.c_str());
+    for (const auto &[plugin, version] : ast.m_mpPluginRequirements) {
+        if (!_stricmp(plugin.c_str(), "nvse")) {
+            CompInfo("%s [%d.%d.%d]\n", plugin.c_str(), version >> 24 & 0xFF, version >> 16 & 0xFF, version >> 4 & 0xFF);
+        } else {
+            CompInfo("%s [%d]\n", plugin.c_str(), version);
+        }
     }
 
     CompDbg("\n");
@@ -142,6 +147,19 @@ void NVSECompiler::VisitNVSEScript(NVSEScript* nvScript) {
 
     // SCN
     AddU32(static_cast<uint32_t>(ScriptParsing::ScriptStatementCode::ScriptName));
+
+    // Add script requirement opcodes
+    for (const auto& [plugin, version] : ast.m_mpPluginRequirements) {
+        StartCall(OP_VERSION);
+        StartManualArg();
+        AddString(plugin);
+        FinishManualArg();
+        StartManualArg();
+        AddU8('L');
+        AddU32(version);
+        FinishManualArg();
+        FinishCall();
+    }
 
     for (auto& global_var : nvScript->globalVars) {
         global_var->Accept(this);
@@ -1083,10 +1101,6 @@ uint32_t NVSECompiler::CompileBlock(StmtPtr stmt, bool incrementCurrent) {
 }
 
 void NVSECompiler::StartCall(CommandInfo* cmd, ExprPtr stackRef) {
-    if (const auto plugin = g_scriptCommands.GetParentPlugin(cmd)) {
-        requirements.insert(std::string(plugin->name));
-    }
-
     // Handle stack refs
     if (stackRef) {
         stackRef->Accept(this);
