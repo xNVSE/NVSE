@@ -29,7 +29,7 @@ void IDirectoryIterator::GetFullPath(char * out, UInt32 outLen)
 
 std::string IDirectoryIterator::GetFullPath(void)
 {
-	return std::string(m_path) + "\\" + std::string(m_result.cFileName);
+	return std::string(m_path) + std::string(m_result.cFileName);
 }
 
 void IDirectoryIterator::Next(void)
