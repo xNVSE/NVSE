@@ -431,17 +431,25 @@ std::unique_ptr<ScriptToken> Eval_Assign_String(OperatorType op, ScriptToken *lh
 		if (!lhStrVar)
 		{
 			lhVar->data = static_cast<int>(AddStringVar(std::move(*rhStrVar), *lh, *context, &lhStrVar));
+			lhStrVar = g_StringMap.Get(static_cast<int>(lhVar->data));
 		}
 		else
 			lhStrVar->Set(std::move(*rhStrVar));
+
+		lhStrVar->SetOwningModIndex(context->script->GetModIndex());
 		return ScriptToken::Create(lhVar, lhStrVar);
 	}
-
 	const char* str = rh->GetString();
 	if (!lhStrVar)
 		lhVar->data = static_cast<int>(AddStringVar(str, *lh, *context, &lhStrVar));
 	else
 		lhStrVar->Set(str);
+
+#if _DEBUG
+	lhStrVar->eventList = context->eventList;
+	lhStrVar->script = context->script;
+	lhStrVar->varName = lh->GetVariableName(context->script);
+#endif
 
 	return ScriptToken::Create(lhVar, lhStrVar);
 }

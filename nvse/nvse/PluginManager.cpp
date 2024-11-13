@@ -601,6 +601,7 @@ bool PluginManager::InstallPlugins(const std::vector<std::string>& pluginPaths)
 				continue;
 			}
 			pluginStatus.loadStatus = "was not loaded as it does not appear to be an NVSE plugin (NVSE plugins must export NVSEPlugin_Query and NVSEPlugin_Load)";
+			continue;
 		}
 		pluginStatus.loadStatus = FormatString("couldn't be loaded due to an error (win32 error code: %d message: \"%s\")", GetLastError(), GetLastErrorAsString().c_str());
 	}

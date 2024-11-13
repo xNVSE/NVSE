@@ -74,23 +74,22 @@ protected:
 	_VarIDs				availableIDs;	// IDs < greatest used ID available as IDs for new vars
 	VarCache			cache;
 	ICriticalSection	cs;				// trying to avoid what looks like concurrency issues
-	ICriticalSection    tempIdsCs;
 
 	void SetIDAvailable(UInt32 id)
 	{
+		ScopedLock lock(cs);
 		if (id) availableIDs.Insert(id);
 	}
 
 	UInt32 GetUnusedID()
 	{
+		ScopedLock lock(cs);
 		UInt32 id = 1;
-		cs.Enter();
 
 		if (!availableIDs.Empty())
 			id = availableIDs.PopFirst();
 		else if (!usedIDs.Empty())
 			id = usedIDs.LastKey() + 1;
-		cs.Leave();
 		return id;
 	}
 
@@ -107,6 +106,7 @@ public:
 	Var* Get(UInt32 varID)
 	{
 		if (!varID) return NULL;
+		ScopedLock lock(cs);
 		Var* var = cache.Get(varID);
 		if (!var)
 		{
@@ -125,22 +125,20 @@ public:
 	template <typename ...Args>
 	Var* Insert(UInt32 varID, Args&& ...args)
 	{
-		cs.Enter();
+		ScopedLock lock(cs);
 		usedIDs.Insert(varID);
 		Var* var = vars.Emplace(varID, std::forward<Args>(args)...);
-		cs.Leave();
 		return var;
 	}
 
 	void Delete(UInt32 varID)
 	{
-		cs.Enter();
+		ScopedLock lock(cs);
 		cache.Remove(varID);
 		vars.Erase(varID);
 		usedIDs.Erase(varID);
 		tempIDs.Erase(varID);
 		SetIDAvailable(varID);
-		cs.Leave();
 	}
 
 	static void DeleteBySelf(VarMap* self, UInt32 varID)
@@ -151,6 +149,7 @@ public:
 
 	void Reset()
 	{
+		ScopedLock lock(cs);
 		cache.Reset();
 
 		typename _VarMap::Iterator iter;
@@ -168,7 +167,7 @@ public:
 
 	void MarkTemporary(UInt32 varID, bool bTemporary)
 	{
-		ScopedLock lock(tempIdsCs);
+		ScopedLock lock(cs);
 		if (bTemporary)
 		{
 			tempIDs.Insert(varID);
@@ -181,6 +180,7 @@ public:
 
 	bool IsTemporary(UInt32 varID)
 	{
+		ScopedLock lock(cs);
 		return tempIDs.HasKey(varID);
 	}
 };

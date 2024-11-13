@@ -49,11 +49,11 @@ namespace OtherHooks
 
 	void CleanUpNVSEVars(ScriptEventList* eventList)
 	{
+		ScopedLock lock(g_gcCriticalSection);
 		// Prevent leakage of variables that's ScriptEventList gets deleted (e.g. in Effect scripts, UDF)
 		auto* scriptVars = g_nvseVarGarbageCollectionMap.GetPtr(eventList);
 		if (!scriptVars)
 			return;
-		ScopedLock lock(g_gcCriticalSection);
 		for (auto* var : *eventList->m_vars)
 		{
 			if (var)
@@ -65,7 +65,6 @@ namespace OtherHooks
 					g_StringMap.MarkTemporary(static_cast<int>(var->data), true);
 					break;
 				case NVSEVarType::kVarType_Array:
-					//g_ArrayMap.MarkTemporary(static_cast<int>(node->var->data), true);
 					g_ArrayMap.RemoveReference(&var->data, eventList->m_script->GetModIndex());
 					break;
 				default:
@@ -74,6 +73,31 @@ namespace OtherHooks
 			}
 		}
 		g_nvseVarGarbageCollectionMap.Erase(eventList);
+	}
+
+	void CleanUpNVSEVar(ScriptEventList* eventList, ScriptLocal* local) 
+	{
+		ScopedLock lock(g_gcCriticalSection);
+		auto* scriptVars = g_nvseVarGarbageCollectionMap.GetPtr(eventList);
+		if (!scriptVars)
+			return;
+		const auto type = scriptVars->Get(local);
+		
+		if (type != NVSEVarType::kVarType_Null) 
+		{
+			switch (type)
+			{
+			case NVSEVarType::kVarType_String:
+				g_StringMap.MarkTemporary(static_cast<int>(local->data), true);
+				break;
+			case NVSEVarType::kVarType_Array:
+				g_ArrayMap.RemoveReference(&local->data, eventList->m_script->GetModIndex());
+				break;
+			default:
+				break;
+			}
+			scriptVars->Erase(local);
+		}
 	}
 
 	void DeleteEventList(ScriptEventList* eventList)
