@@ -1663,10 +1663,16 @@ public:
 		ScriptToken* res;
 		if (cond->GetBool()) {
 			res = m_eval.Evaluate();
-			m_eval.Data() += *((UInt16*)m_eval.Data());
+
+			const auto offset = *((UInt16*)m_eval.Data());
+			m_eval.Data() += offset;
+			m_eval.m_opcodeOffsetPtr += offset;
 		}
 		else {
-			m_eval.Data() += *((UInt16*)m_eval.Data());
+			const auto offset = *((UInt16*)m_eval.Data());
+			m_eval.Data() += offset;
+			m_eval.m_opcodeOffsetPtr += offset;
+
 			res = m_eval.Evaluate();
 		}
 		m_eval.m_args[1] = res;
