@@ -447,8 +447,14 @@ ExprPtr NVSEParser::Ternary() {
 	while (Match(NVSETokenType::Ternary)) {
 		auto token = previousToken;
 
-		auto left = LogicalOr();
-		Expect(NVSETokenType::Slice, "Expected ':'.");
+		ExprPtr left;
+		if (Match(NVSETokenType::Slice)) {
+			left = cond;
+		} else {
+			left = LogicalOr();
+			Expect(NVSETokenType::Slice, "Expected ':'.");
+		}
+
 		auto right = LogicalOr();
 		cond = std::make_shared<TernaryExpr>(token, std::move(cond), std::move(left), std::move(right));
 	}
