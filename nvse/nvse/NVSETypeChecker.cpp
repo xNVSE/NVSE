@@ -532,8 +532,8 @@ void NVSETypeChecker::VisitSubscriptExpr(SubscriptExpr* expr) {
 }
 
 struct CallCommandInfo {
-	size_t funcIndex{};
-	size_t argStart{};
+	int funcIndex{};
+	int argStart{};
 };
 
 std::unordered_map<const char*, CallCommandInfo> callCmds = {
@@ -718,12 +718,10 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 
 		// Handle each call command separately as args to check are in different positions
 		// TODO: FIX THE CALL COMMAND
-		if (!_stricmp(cmd->longName, "Call") && lambdaCallee) {
-			// Manually visit remaining args for call, since it operates differently from all other commands
-			while (argIdx < expr->args.size()) {
-				expr->args[argIdx]->Accept(this);
-				argIdx++;
-			}
+		// Manually visit remaining args for call commands, since they operate differently from all other commands
+		while (argIdx < expr->args.size()) {
+			expr->args[argIdx]->Accept(this);
+			argIdx++;
 		}
 
 		if (lambdaCallee) {
