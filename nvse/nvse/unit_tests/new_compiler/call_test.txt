@@ -1,0 +1,26 @@
+name CallTest;
+
+fn () {	
+	string testName = "'Call...' Commands";
+	print(("Started running xNVSE " + testName + " unit tests."));
+
+	ref TestUDF = CompileScript("../unit_tests/new_compiler/udfs/TestUDF.txt");
+	assert(IsFormValid(TestUDF));
+
+	// Simple testing value
+	ref playerBaseForm = PlayerREF.GetBaseForm();
+	assert(IsFormValid(playerBaseForm));
+
+	// Test UDF calls
+	ref result = call(TestUDF, PlayerREF.GetBaseForm());
+	assert(playerBaseForm == result);
+
+	// Test lambda call
+	ref rLambda = fn (ref rRef) {
+		return rRef;
+	};
+	result = call(rLambda, PlayerREF.GetBaseForm());
+	assert(playerBaseForm == result);
+
+	print(("Finished running xNVSE " + testName + " unit tests."));
+}

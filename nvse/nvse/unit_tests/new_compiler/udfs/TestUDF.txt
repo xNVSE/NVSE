@@ -1,0 +1,5 @@
+name TestUDF;
+
+fn (ref rRef) {
+	return rRef;
+}
