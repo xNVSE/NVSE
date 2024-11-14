@@ -1666,12 +1666,12 @@ public:
 
 			const auto offset = *((UInt16*)m_eval.Data());
 			m_eval.Data() += offset;
-			m_eval.m_opcodeOffsetPtr += offset;
+			*m_eval.m_opcodeOffsetPtr += offset;
 		}
 		else {
 			const auto offset = *((UInt16*)m_eval.Data());
 			m_eval.Data() += offset;
-			m_eval.m_opcodeOffsetPtr += offset;
+			*m_eval.m_opcodeOffsetPtr += offset;
 
 			res = m_eval.Evaluate();
 		}

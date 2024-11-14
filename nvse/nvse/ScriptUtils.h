@@ -145,7 +145,7 @@ class ExpressionEvaluator
 public:
 	Bitfield<UInt32>	 m_flags;
 	UInt8				* m_scriptData;
-	UInt32				* m_opcodeOffsetPtr;
+	UInt32				* const m_opcodeOffsetPtr;
 	double				* m_result;
 	TESObjectREFR		* m_thisObj;
 	TESObjectREFR		* m_containingObj;
