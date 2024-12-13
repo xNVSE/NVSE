@@ -1,4 +1,7 @@
 #include "Commands_Scripting.h"
+
+#include <format>
+
 #include "GameForms.h"
 #include "GameAPI.h"
 #include <intrin.h>
