@@ -358,8 +358,8 @@ namespace OtherHooks
 				}
 				else {
 					ExtraLock::Data* lockData = *reinterpret_cast<ExtraLock::Data**>(ebp - 0x20);
-					char* v58 = *reinterpret_cast<char**>(ebp - 0x1C);
-					bool hasKey = ThisStdCall<char>(0x891DB0, unlocker, lockData->key, 0, 1, 0, v58);
+					char unusedObjectTypeOut = 0;
+					const bool hasKey = ThisStdCall<char>(0x891DB0, unlocker, lockData->key, 0, 1, 0, &unusedObjectTypeOut);
 					EventManager::DispatchEvent("onunlock", nullptr, doorRef, unlocker, hasKey ? 2 : 1);
 				}
 			} else {
