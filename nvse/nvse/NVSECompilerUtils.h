@@ -1,4 +1,6 @@
 #pragma once
+#include <format>
+
 #include "NVSELexer.h"
 #include "ScriptTokens.h"
 #include "ScriptUtils.h"
