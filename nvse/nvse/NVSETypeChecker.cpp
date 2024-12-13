@@ -79,6 +79,15 @@ void NVSETypeChecker::VisitNVSEScript(NVSEScript* script) {
 		}
 	}
 
+	// Need to associate / start indexing after existing non-temp script vars
+	if (engineScript && engineScript->varList.Count() > 0) {
+		for (const auto var : engineScript->varList) {
+			if (strncmp(var->name.CStr(), "__temp", strlen("__temp")) != 0) {
+				scopes.top()->varIndex++;
+			}
+		}
+	}
+
 	// Pre-process blocks - check for duplicate blocks
 	std::unordered_map<std::string, std::unordered_set<std::string>> mpTypeToModes{};
 	std::vector<StmtPtr> functions {};

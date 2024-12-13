@@ -6,8 +6,8 @@
 // Define tokens
 extern std::unordered_map<NVSETokenType, OperatorType> tokenOpToNVSEOpType;
 
-inline Script::VariableType GetScriptTypeFromToken(NVSEToken t) {
-	switch (t.type) {
+inline Script::VariableType GetScriptTypeFromTokenType(NVSETokenType t) {
+	switch (t) {
 	case NVSETokenType::DoubleType:
 		return Script::eVarType_Float;
 	case NVSETokenType::IntType:
@@ -18,9 +18,13 @@ inline Script::VariableType GetScriptTypeFromToken(NVSEToken t) {
 		return Script::eVarType_Array;
 	case NVSETokenType::StringType:
 		return Script::eVarType_String;
-	default: 
+	default:
 		return Script::eVarType_Invalid;
 	}
+}
+
+inline Script::VariableType GetScriptTypeFromToken(NVSEToken t) {
+	return GetScriptTypeFromTokenType(t.type);
 }
 
 inline Token_Type GetBasicTokenType(Token_Type type) {

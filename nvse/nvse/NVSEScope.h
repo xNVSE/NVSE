@@ -36,7 +36,6 @@ public:
 
 private:
     uint32_t scopeIndex{};
-    uint32_t varIndex{1};
     std::shared_ptr<NVSEScope> parent{};
     std::unordered_map<std::string, std::shared_ptr<ScopeVar>> m_scopeVars{};
 
@@ -50,6 +49,8 @@ protected:
     }
     
 public:
+    uint32_t varIndex{ 1 };
+
     std::map<uint32_t, std::string> allVars{};
     
     NVSEScope (uint32_t scopeIndex, std::shared_ptr<NVSEScope> parent, bool isLambda = false)
