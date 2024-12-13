@@ -695,8 +695,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 	}
 
 	unsigned char lastChar = '\0';
-	while (true)
-	{
+	while (curScriptText) {
 		const auto curTwoChars = *reinterpret_cast<const UInt16*>(curScriptText);
 		if (curTwoChars == '*/' && !inStringLiteral && !inMultilineComment)
 		{
