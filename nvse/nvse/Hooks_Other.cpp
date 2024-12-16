@@ -330,13 +330,13 @@ namespace OtherHooks
 
 		// unlocked door/container, unlocker, unlock type (0 = script, 1 = lockpick, 2 = key)
 		// Cmd_Unlock_Execute
-		void* __fastcall OnUnlock_5CC222(void* a1, void* unused, char a2) {
+		void* __fastcall OnUnlock_5CC186(const void* extraLockData) {
 			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
-			auto ref = *reinterpret_cast<TESObjectREFR**>(ebp + 0x10);
+			const auto unlockedRef = *reinterpret_cast<TESObjectREFR**>(ebp + 0x10);
 
-			EventManager::DispatchEvent("onunlock", nullptr, ref, nullptr, 0);
+			EventManager::DispatchEvent("onunlock", nullptr, unlockedRef, nullptr, 0);
 
-			return ThisStdCall<void*>(0x430A90, a1, a2);
+			return ThisStdCall<void*>(0x430A90, extraLockData, 0);
 		}
 
 		// Lockpick menu
@@ -373,7 +373,7 @@ namespace OtherHooks
 			WriteRelCall(0x790461, reinterpret_cast<UInt32>(OnLockBroken));
 			WriteRelCall(0x78F8E5, reinterpret_cast<UInt32>(OnLockPickSuccess)); 
 			WriteRelCall(0x78FE24, reinterpret_cast<UInt32>(OnLockPickBroken));
-			WriteRelCall(0x5CC222, reinterpret_cast<UInt32>(OnUnlock_5CC222));
+			WriteRelCall(0x5CC186, reinterpret_cast<UInt32>(OnUnlock_5CC186));
 			WriteRelCall(0x78F8E5, reinterpret_cast<UInt32>(OnUnlock_78F8E5));
 			WriteRelCall(0x518B00, reinterpret_cast<UInt32>(OnUnlock_518B00));
 		}
