@@ -347,35 +347,42 @@ namespace OtherHooks
 		}
 
 		// Unlock via interact
-		void* __fastcall OnUnlock_518B00(void* a1) {
+		void* __fastcall OnUnlock_518B00(const ExtraLock* lock) {
 			auto* ebp = GetParentBasePtr(_AddressOfReturnAddress(), false);
-			auto unlocker = DYNAMIC_CAST(*reinterpret_cast<TESObjectREFR**>(ebp - 0x18), TESObjectREFR, Actor);
-			auto doorRef = *reinterpret_cast<TESObjectREFR**>(ebp + 0x8);
+			const auto unlocker = *reinterpret_cast<Actor**>(ebp - 0x18);
+			const auto doorRef = *reinterpret_cast<TESObjectREFR**>(ebp + 0x8);
 
-			if (unlocker) {
-				if (unlocker == *reinterpret_cast<TESObjectREFR**>(g_thePlayer)) {
-					EventManager::DispatchEvent("onunlock", nullptr, doorRef, *g_thePlayer, 1);
+			const auto lockData = lock->data;
+			if (lockData->flags & 0x1) {
+				if (unlocker) {
+					// Player
+					if (unlocker->refID == 0x14) {
+						EventManager::DispatchEvent("onunlock", nullptr, doorRef, *g_thePlayer, 1);
+					}
+					else {
+						// Actor::HasObjects
+						uint32_t unused;
+						const bool hasKey = ThisStdCall<bool>(0x891DB0, unlocker, lockData->key, 0, 1, 0, &unused);
+						EventManager::DispatchEvent("onunlock", nullptr, doorRef, unlocker, hasKey ? 2 : 1);
+					}
 				}
 				else {
-					ExtraLock::Data* lockData = *reinterpret_cast<ExtraLock::Data**>(ebp - 0x20);
-					char unusedObjectTypeOut = 0;
-					const bool hasKey = ThisStdCall<char>(0x891DB0, unlocker, lockData->key, 0, 1, 0, &unusedObjectTypeOut);
-					EventManager::DispatchEvent("onunlock", nullptr, doorRef, unlocker, hasKey ? 2 : 1);
+					EventManager::DispatchEvent("onunlock", nullptr, doorRef, nullptr, 0);
 				}
-			} else {
-				EventManager::DispatchEvent("onunlock", nullptr, doorRef, nullptr, 0);
 			}
 
-			return ThisStdCall<void*>(0x517360, a1);
+			// ExtraLock::Unlock
+			return ThisStdCall<void*>(0x517360, lock);
 		}
 
 		void WriteHooks() {
 			WriteRelCall(0x790461, reinterpret_cast<UInt32>(OnLockBroken));
 			WriteRelCall(0x78F8E5, reinterpret_cast<UInt32>(OnLockPickSuccess)); 
 			WriteRelCall(0x78FE24, reinterpret_cast<UInt32>(OnLockPickBroken));
-			WriteRelCall(0x5CC186, reinterpret_cast<UInt32>(OnUnlock_5CC186));
-			WriteRelCall(0x78F8E5, reinterpret_cast<UInt32>(OnUnlock_78F8E5));
-			WriteRelCall(0x518B00, reinterpret_cast<UInt32>(OnUnlock_518B00));
+
+			// WriteRelCall(0x5CC186, reinterpret_cast<UInt32>(OnUnlock_5CC186));
+			// WriteRelCall(0x78F8E5, reinterpret_cast<UInt32>(OnUnlock_78F8E5));
+			// WriteRelCall(0x518B00, reinterpret_cast<UInt32>(OnUnlock_518B00));
 		}
 	}
 
