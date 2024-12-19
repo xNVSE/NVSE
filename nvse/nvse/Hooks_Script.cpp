@@ -557,9 +557,9 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 		auto& pluginVersions = g_currentCompilerPluginVersions.top();
 		auto& replacements = g_currentScriptRestorePoundChar.top();
 
-		// Default to 6.3.5 for scriptrunner unless specified
+		// Default to 6.3.6 for scriptrunner unless specified
 		if (buf->partialScript) {
-			pluginVersions["nvse"] = MAKE_NEW_VEGAS_VERSION(6, 3, 5);
+			pluginVersions["nvse"] = MAKE_NEW_VEGAS_VERSION(6, 3, 6);
 		}
 
 		// Pre-process comments for version tags
@@ -583,8 +583,8 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 
 			if (!_stricmp(pluginName.c_str(), "nvse")) {
 				int major = std::stoi(match[2]);
-				int minor = match[3].matched ? std::stoi(match[3]) : 255;
-				int beta = match[4].matched ? std::stoi(match[4]) : 255;
+				int minor = match[3].matched ? std::stoi(match[3]) : 0;
+				int beta = match[4].matched ? std::stoi(match[4]) : 0;
 
 				pluginVersions[pluginName] = MAKE_NEW_VEGAS_VERSION(major, minor, beta);
 			}

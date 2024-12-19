@@ -855,6 +855,8 @@ bool Cmd_PluginVersion_Execute(COMMAND_ARGS) {
 		const auto pluginName = eval.Arg(0)->GetString();
 		const auto pluginVersion = static_cast<UInt32>(eval.Arg(1)->GetNumber());
 
+		const auto scriptName = scriptObj->GetName();
+
 		const auto &lowered = ToLower(std::string(pluginName));
 		if (pluginWarnings.contains(lowered)) {
 			return true;
@@ -863,7 +865,8 @@ bool Cmd_PluginVersion_Execute(COMMAND_ARGS) {
 		const auto pluginHandle = g_pluginManager.LookupHandleFromName(pluginName);
 		if (pluginHandle == kPluginHandle_Invalid) {
 			const auto msg = std::format(
-				"A script requires the plugin named '{}' but it was not found. Your game will NOT work correctly. Please locate the plugin.", 
+				"A script ('{}') requires the plugin named '{}' but it was not found. Your game will NOT work correctly. Please locate the plugin.",
+				scriptName,
 				pluginName
 			);
 
@@ -878,10 +881,11 @@ bool Cmd_PluginVersion_Execute(COMMAND_ARGS) {
 
 			const auto major = ((pluginVersion >> 24) & 0xFF);
 			const auto minor = ((pluginVersion >> 16) & 0xFF);
-			const auto beta = ((pluginVersion >> 4) & 0xFFF);
+			const auto beta =  ((pluginVersion >> 4) & 0xFFF);
 
 			const auto msg = std::format(
-				"A script requires xNVSE version >= {}.{}.{} (You have version {}.{}.{}).\nYour game will NOT work correctly. Please update xNVSE.",
+				"A script ('{}') requires xNVSE version >= {}.{}.{} (You have version {}.{}.{}).\nYour game will NOT work correctly. Please update xNVSE.",
+				scriptName,
 				major,
 				minor,
 				beta,
@@ -901,7 +905,8 @@ bool Cmd_PluginVersion_Execute(COMMAND_ARGS) {
 			}
 
 			const auto msg = std::format(
-				"A script requires the plugin '{}' >= '{}' (You have version {}).\nYour game will NOT work correctly. Please update the plugin.",
+				"A script ('{}') requires the plugin '{}' >= '{}' (You have version {}).\nYour game will NOT work correctly. Please update the plugin.",
+				scriptName,
 				pluginName,
 				pluginVersion,
 				info->version
