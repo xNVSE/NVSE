@@ -580,13 +580,13 @@ std::vector g_lineMacros =
 
 			// Ex1: Match "ivar = 4"
 			// Ex2: Match "SomeQuest.aTest[(Rand 1, 3)] = "SomeString"
-			const std::string startWithOptDotSyntax = R"(^(\w+(\.\w+)*)";
+			const std::string startWithOptDotSyntax = R"(^(\w+(\.\w+)*)"; 
 			const std::string optionalBracketsMatch = R"((\[.*\])*)\s*)";
 			const std::string leftHand = startWithOptDotSyntax + optionalBracketsMatch;
 
 			// "[^=]" is there to make sure we aren't accidentally matching with "==" operator.
 			// "[\S\s]" matches any character *including newline*, which is important for lambdas that stretch through multiple.
-			const std::regex assignmentExpr(leftHand + regexOp + R"([^=]([\S\s]*))");
+			const std::regex assignmentExpr(leftHand + regexOp + R"(([^=][\S\s]*))");
 			if (std::smatch m; std::regex_search(line, m, assignmentExpr, std::regex_constants::match_continuous) 
 				&& m.size() == 5)
 			{
