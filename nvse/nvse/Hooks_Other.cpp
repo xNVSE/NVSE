@@ -250,16 +250,22 @@ namespace OtherHooks
 		}
 	}
 
-	void __fastcall ResetQuestDeleteScriptEventListHook(ScriptEventList* eventList)
-	{
-		if (g_currentScriptContext.Empty() || g_currentScriptContext.Top().script != eventList->m_script)
-		{
-			DeleteEventList(eventList);
-			return;
+	// Called via ResetQuest when it is reallocating the new script event list
+	ScriptEventList* __fastcall ResetQuestReallocateEventListHook(const Script* script) {
+		const auto res = ThisStdCall<ScriptEventList*>(0x5ABF60, script);
+
+		// Not sure that this is even possible, better safe than sorry
+		if (!g_currentScriptContext.Empty()) {
+			const auto& currentContext = g_currentScriptContext.Top();
+
+			// If ResetQuest is called from within the quest's script, we need to update the
+			// ScriptRunner's event list otherwise it will keep using the freed one
+			if (script == currentContext.script) {
+				currentContext.scriptRunner->eventList = res;
+			}
 		}
-		// delay deletion of event list until after the script has finished executing
-		// event list is still being passed around while the script is running
-		g_onExitScripts.push_back([eventList]() { DeleteEventList(eventList); });
+
+		return res;
 	}
 
 	void __fastcall ScriptDestructorHook(Script* script)
@@ -468,7 +474,7 @@ namespace OtherHooks
 
 		WriteRelCall(0x5AA206, ScriptDestructorHook);
 
-		WriteRelCall(0x60D858, ResetQuestDeleteScriptEventListHook);
+		WriteRelCall(0x60D876, ResetQuestReallocateEventListHook);
 
 		*(UInt32*)0x0126FDF4 = 1; // locale fix
 
