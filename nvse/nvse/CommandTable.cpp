@@ -426,6 +426,11 @@ void CommandTable::Init(void)
 	//_MESSAGE("script commands");
 	//g_scriptCommands.Dump();
 
+	// Remove ShowRouletteMenu command short name
+	if (const auto rouletteCmd = const_cast<CommandInfo*>(PluginAPI::GetCmdByOpcode(4693))) {
+		rouletteCmd->shortName = nullptr;
+	}
+
 	_MESSAGE("patched");
 }
 
@@ -1197,12 +1202,6 @@ void CommandInfo::DumpFunctionDef(CommandMetadata* metadata) const
 CommandInfo *CommandTable::GetByName(const char* name, std::unordered_map<std::string, UInt32> *pluginVersions)
 {
 	for (CommandList::reverse_iterator iter = m_commands.rbegin(); iter != m_commands.rend(); ++iter) {
-		// Skip ShowRouletteMenu command
-		// It has same short name 'SRM' as ShowRepairMenu
-		if (iter->opcode == 4693) {
-			continue;
-		}
-
 		if (!StrCompare(name, iter->longName) || (iter->shortName && !StrCompare(name, iter->shortName))) {
 			auto *cmd = &(*iter);
 
