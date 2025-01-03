@@ -809,6 +809,8 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 			lineBuf->paramText[lineBuf->paramTextLen++] = curChar;
 		lastChar = curChar;
 	}
+
+	return 0;
 }
 #if EDITOR
 void PatchDefaultCommandParser()
