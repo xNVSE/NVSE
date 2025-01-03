@@ -92,4 +92,15 @@ static ParamInfo kNVSEParams_GetDoorSound[] =
 	{ "door form"          , kNVSEParamType_Form  , 0 },
 	{ "0 = open, 1 = close", kNVSEParamType_Number,	0 },
 };
-DEFINE_COMMAND_EXP(GetDoorSound, Get the open/close sound of a door, 0, kNVSEParams_GetDoorSound)
+DEFINE_COMMAND_EXP(GetDoorSound, Get the open / close sound of a door, 0, kNVSEParams_GetDoorSound)
+
+static ParamInfo kNVSEParams_FireChallenge[] = {
+	{ "Challenge type", kNVSEParamType_Number, 0},
+	{ "Count", kNVSEParamType_Number, 0 },
+	{ "Weapon", kNVSEParamType_FormOrNumber, 0 },
+	{ "Value 1", kNVSEParamType_Number, 0 },
+	{ "Value 2", kNVSEParamType_Number, 0 },
+	{ "Value 3", kNVSEParamType_Number, 0 }
+};
+
+DEFINE_COMMAND_EXP(FireChallenge, Increment a challenge using specified params, 0, kNVSEParams_FireChallenge)
