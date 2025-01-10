@@ -30,19 +30,9 @@ InternalEventVec s_internalEventInfos(kEventID_InternalMAX);
 // Event definitions
 /////////////////////
 
-// Hook routines need to be forward declared so they can be used in EventInfo structs.
-static void  InstallHook();
-static void  InstallActivateHook();
-static void	 InstallOnActorEquipHook();
-
 enum {
 	kEventMask_OnActivate		= 0x01000000,		// special case as OnActivate has no event mask
 };
-
-// hook installers
-static EventHookInstaller s_MainEventHook = InstallHook;
-static EventHookInstaller s_ActivateHook = InstallActivateHook;
-static EventHookInstaller s_ActorEquipHook = InstallOnActorEquipHook;
 
 
 ///////////////////////////
@@ -121,11 +111,6 @@ static __declspec(naked) void MarkEventHook(void)
 	}
 }		
 
-void InstallHook()
-{
-	WriteRelJump(kMarkEvent_HookAddr, (UInt32)&MarkEventHook);
-}
-
 static __declspec(naked) void DestroyCIOSHook(void)
 {
 	__asm
@@ -138,11 +123,6 @@ static __declspec(naked) void DestroyCIOSHook(void)
 		fldz
 		jmp		kDestroyCIOS_RetnAddr
 	}
-}
-
-static void InstallDestroyCIOSHook()
-{
-	WriteRelCall(kDestroyCIOS_HookAddr, (UInt32)&DestroyCIOSHook);
 }
 
 static __declspec(naked) void OnActorEquipHook(void)
@@ -164,25 +144,30 @@ static __declspec(naked) void OnActorEquipHook(void)
 	}
 }
 
-static void InstallOnActorEquipHook()
+static __declspec(naked) void TESObjectREFR_ActivateHook(void)
 {
-	static const UInt32 kOnActorEquipHookAddr = 0x004C0032;
-	if (s_MainEventHook) {
-		// OnActorEquip event also (unreliably) passes through main hook, so install that
-		s_MainEventHook();
-		// since it's installed, prevent it from being installed again
-		s_MainEventHook = nullptr;
+	__asm
+	{
+		test	s_eventsInUse, kEventMask_OnActivate
+		jz		skipHandle
+
+		push	dword ptr[ebp + 8]	// activating refr
+		push	ecx					// this
+		push	kEventMask_OnActivate
+		call	HandleGameEvent
+		mov		ecx, [ebp - 0x12C]
+
+		skipHandle:
+		jmp		kActivate_RetnAddr
 	}
+}
 
-	// additional hook to overcome game's failure to consistently mark this event type
-
-	// OBSE: The issue is that our Console_Print routine interacts poorly with the game's debug text (turned on with TDT console command)
-	// OBSE: when called from a background thread.
-	// OBSE: So if the handler associated with this event calls Print, PrintC, etc, there is a chance it will crash.
-	//
-	// Fix:
-	// Added s_InsideOnActorEquipHook to neutralize Print during OnEquip events, with an optional s_CheckInsideOnActorEquipHook to bypass it for testing.
-	WriteRelCall(kOnActorEquipHookAddr, (UInt32)&OnActorEquipHook);
+void InstallHooks()
+{
+	WriteRelJump(0x5AC750, &MarkEventHook);
+	WriteRelCall(0x8232B5, &DestroyCIOSHook); // handle a missing parameter value check.
+	WriteRelJump(0x57318E, &TESObjectREFR_ActivateHook);
+	WriteRelCall(0x4C0032, &OnActorEquipHook);
 }
 
 namespace OnSell
@@ -273,29 +258,6 @@ namespace OnSell
 		WriteRelCall(0x72FE3E, (UInt32)&OnSellHook<false>);
 		WriteRelCall(0x72FF20, (UInt32)&OnSellHook<true>);
 	}
-}
-
-static __declspec(naked) void TESObjectREFR_ActivateHook(void)
-{
-	__asm
-	{
-		test	s_eventsInUse, kEventMask_OnActivate
-		jz		skipHandle
-
-		push	dword ptr [ebp+8]	// activating refr
-		push	ecx					// this
-		push	kEventMask_OnActivate
-		call	HandleGameEvent
-		mov		ecx, [ebp-0x12C]
-
-	skipHandle:
-		jmp		kActivate_RetnAddr
-	}
-}
-
-void InstallActivateHook()
-{
-	WriteRelJump(kActivate_HookAddr, (UInt32)&TESObjectREFR_ActivateHook);
 }
 
 void WriteDelayedEventHooks() {
@@ -579,7 +541,6 @@ ArrayVar* EventCallback::GetFiltersAsArray(const Script* scriptObj) const
 
 	return arr;
 }
-
 
 std::string EventCallback::GetCallbackFuncAsStr() const
 {
@@ -2044,94 +2005,95 @@ void Tick()
 
 void Init()
 {
+	InstallHooks();
+
 	// Registering internal events.
-#define EVENT_INFO(name, params, hookInstaller, eventMask) \
-	EventManager::RegisterEventEx(name, nullptr, true, (params ? sizeof(params) : 0), \
-		params, eventMask, hookInstaller)
+#define EVENT_INFO(name,  params,  eventMask) \
+	EventManager::RegisterEventEx(name, nullptr, true, ((params) ? sizeof(params) : 0), \
+		params, eventMask, nullptr)
 
-#define EVENT_INFO_FLAGS(name, params, hookInstaller, eventMask, flags) \
-	EventManager::RegisterEventEx(name, nullptr, true, (params ? sizeof(params) : 0), \
-		params, eventMask, hookInstaller, flags)
+#define EVENT_INFO_FLAGS(name, params, eventMask, flags) \
+	EventManager::RegisterEventEx(name, nullptr, true, ((params) ? sizeof(params) : 0), \
+		params, eventMask, nullptr, flags)
 
-#define EVENT_INFO_WITH_ALIAS(name, alias, params, hookInstaller, eventMask) \
-	EventManager::RegisterEventEx(name, alias, true, (params ? sizeof(params) : 0), \
-		params, eventMask, hookInstaller)
+#define EVENT_INFO_WITH_ALIAS(name, alias, params, eventMask) \
+	EventManager::RegisterEventEx(name, alias, true, ((params) ? sizeof(params) : 0), \
+		params, eventMask, nullptr)
 
 	// Must define the events in the same order for their eEventID.
-	EVENT_INFO("onadd", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnAdd);
-	EVENT_INFO_WITH_ALIAS("onactorequip", "onequip", kEventParams_GameEvent, &s_ActorEquipHook, ScriptEventList::kEvent_OnEquip);
-	EVENT_INFO("ondrop", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnDrop);
-	EVENT_INFO_WITH_ALIAS("onactorunequip", "onunequip", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnUnequip);
-	EVENT_INFO("ondeath", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnDeath);
-	EVENT_INFO("onmurder", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnMurder);
-	EVENT_INFO("oncombatend", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnCombatEnd);
-	EVENT_INFO("onhit", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnHit);
-	EVENT_INFO("onhitwith", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnHitWith);
-	EVENT_INFO("onpackagechange", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnPackageChange);
-	EVENT_INFO("onpackagestart", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnPackageStart);
-	EVENT_INFO("onpackagedone", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnPackageDone);
-	EVENT_INFO("onload", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnLoad);
-	EVENT_INFO("onmagiceffecthit", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnMagicEffectHit);
-	EVENT_INFO("onsell", kEventParams_GameEvent, nullptr, ScriptEventList::kEvent_OnSell);
-	EVENT_INFO("onstartcombat", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnStartCombat);
-	EVENT_INFO("saytodone", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_SayToDone);
-	EVENT_INFO_WITH_ALIAS("ongrab", "on0x0080000", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnGrab);
-	EVENT_INFO("onopen", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnOpen);
-	EVENT_INFO("onclose", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnClose);
-	EVENT_INFO_WITH_ALIAS("onfire", "on0x00400000", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnFire);
-	EVENT_INFO("ontrigger", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnTrigger);
-	EVENT_INFO("ontriggerenter", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnTriggerEnter);
-	EVENT_INFO("ontriggerleave", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnTriggerLeave);
-	EVENT_INFO("onreset", kEventParams_GameEvent, &s_MainEventHook, ScriptEventList::kEvent_OnReset);
+	EVENT_INFO("onadd",  kEventParams_GameEvent,  ScriptEventList::kEvent_OnAdd);
+	EVENT_INFO_WITH_ALIAS("onactorequip", "onequip", kEventParams_GameEvent, ScriptEventList::kEvent_OnEquip);
+	EVENT_INFO("ondrop",  kEventParams_GameEvent,  ScriptEventList::kEvent_OnDrop);
+	EVENT_INFO_WITH_ALIAS("onactorunequip", "onunequip", kEventParams_GameEvent, ScriptEventList::kEvent_OnUnequip);
+	EVENT_INFO("ondeath",  kEventParams_GameEvent,  ScriptEventList::kEvent_OnDeath);
+	EVENT_INFO("onmurder",  kEventParams_GameEvent,  ScriptEventList::kEvent_OnMurder);
+	EVENT_INFO("oncombatend",  kEventParams_GameEvent,  ScriptEventList::kEvent_OnCombatEnd);
+	EVENT_INFO("onhit",  kEventParams_GameEvent,  ScriptEventList::kEvent_OnHit);
+	EVENT_INFO("onhitwith",  kEventParams_GameEvent,  ScriptEventList::kEvent_OnHitWith);
+	EVENT_INFO("onpackagechange",  kEventParams_GameEvent,  ScriptEventList::kEvent_OnPackageChange);
+	EVENT_INFO("onpackagestart",  kEventParams_GameEvent,  ScriptEventList::kEvent_OnPackageStart);
+	EVENT_INFO("onpackagedone",  kEventParams_GameEvent,  ScriptEventList::kEvent_OnPackageDone);
+	EVENT_INFO("onload",  kEventParams_GameEvent,  ScriptEventList::kEvent_OnLoad);
+	EVENT_INFO("onmagiceffecthit",  kEventParams_GameEvent,  ScriptEventList::kEvent_OnMagicEffectHit);
+	EVENT_INFO("onsell",  kEventParams_GameEvent,  ScriptEventList::kEvent_OnSell);
+	EVENT_INFO("onstartcombat",  kEventParams_GameEvent,  ScriptEventList::kEvent_OnStartCombat);
+	EVENT_INFO("saytodone",  kEventParams_GameEvent,  ScriptEventList::kEvent_SayToDone);
+	EVENT_INFO_WITH_ALIAS("ongrab", "on0x0080000", kEventParams_GameEvent, ScriptEventList::kEvent_OnGrab);
+	EVENT_INFO("onopen",  kEventParams_GameEvent,  ScriptEventList::kEvent_OnOpen);
+	EVENT_INFO("onclose",  kEventParams_GameEvent,  ScriptEventList::kEvent_OnClose);
+	EVENT_INFO_WITH_ALIAS("onfire", "on0x00400000", kEventParams_GameEvent, ScriptEventList::kEvent_OnFire);
+	EVENT_INFO("ontrigger",  kEventParams_GameEvent,  ScriptEventList::kEvent_OnTrigger);
+	EVENT_INFO("ontriggerenter",  kEventParams_GameEvent,  ScriptEventList::kEvent_OnTriggerEnter);
+	EVENT_INFO("ontriggerleave",  kEventParams_GameEvent,  ScriptEventList::kEvent_OnTriggerLeave);
+	EVENT_INFO("onreset",  kEventParams_GameEvent,  ScriptEventList::kEvent_OnReset);
 
-	EVENT_INFO("onactivate", kEventParams_GameEvent, &s_ActivateHook, kEventMask_OnActivate);
-	EVENT_INFO("ondropitem", kEventParams_GameEvent, &s_MainEventHook, 0);
+	EVENT_INFO("onactivate",  kEventParams_GameEvent,  kEventMask_OnActivate);
+	EVENT_INFO("ondropitem",  kEventParams_GameEvent,  0);
 
-	EVENT_INFO("exitgame", nullptr, nullptr, 0);
-	EVENT_INFO("exittomainmenu", nullptr, nullptr, 0);
-	EVENT_INFO("loadgame", kEventParams_OneString, nullptr, 0);
-	EVENT_INFO("savegame", kEventParams_OneString, nullptr, 0);
-	EVENT_INFO("qqq", nullptr, nullptr, 0);
-	EVENT_INFO("postloadgame", kEventParams_OneInt, nullptr, 0);
-	EVENT_INFO("runtimescripterror", kEventParams_OneString, nullptr, 0);
-	EVENT_INFO("deletegame", kEventParams_OneString, nullptr, 0);
-	EVENT_INFO("renamegame", kEventParams_OneString, nullptr, 0);
-	EVENT_INFO("renamenewgame", kEventParams_OneString, nullptr, 0);
-	EVENT_INFO("newgame", nullptr, nullptr, 0);
-	EVENT_INFO("deletegamename", kEventParams_OneString, nullptr, 0);
-	EVENT_INFO("renamegamename", kEventParams_OneString, nullptr, 0);
-	EVENT_INFO("renamenewgamename", kEventParams_OneString, nullptr, 0);
-	EVENT_INFO("postloadgame", kEventParams_OneInt, nullptr, 0);
-	EVENT_INFO("preloadgame", kEventParams_OneString, nullptr, 0);
+	EVENT_INFO("exitgame",  nullptr,  0);
+	EVENT_INFO("exittomainmenu",  nullptr,  0);
+	EVENT_INFO("loadgame",  kEventParams_OneString,  0);
+	EVENT_INFO("savegame",  kEventParams_OneString,  0);
+	EVENT_INFO("qqq",  nullptr,  0);
+	EVENT_INFO("postloadgame",  kEventParams_OneInt,  0);
+	EVENT_INFO("runtimescripterror",  kEventParams_OneString,  0);
+	EVENT_INFO("deletegame",  kEventParams_OneString,  0);
+	EVENT_INFO("renamegame",  kEventParams_OneString,  0);
+	EVENT_INFO("renamenewgame",  kEventParams_OneString,  0);
+	EVENT_INFO("newgame",  nullptr,  0);
+	EVENT_INFO("deletegamename",  kEventParams_OneString,  0);
+	EVENT_INFO("renamegamename",  kEventParams_OneString,  0);
+	EVENT_INFO("renamenewgamename",  kEventParams_OneString,  0);
+	EVENT_INFO("postloadgame",  kEventParams_OneInt,  0);
+	EVENT_INFO("preloadgame",  kEventParams_OneString,  0);
 
 	EVENT_INFO_FLAGS("nvsetestevent", kEventParams_OneInt_OneFloat_OneArray_OneString_OneForm_OneReference_OneBaseform,
-		nullptr, 0, EventFlags::kFlag_AllowScriptDispatch); // dispatched via DispatchEventAlt, for unit tests
+		0, EventFlags::kFlag_AllowScriptDispatch); // dispatched via DispatchEventAlt, for unit tests
 
 	ASSERT (kEventID_InternalMAX == s_eventInfos.size());
 
-	EVENT_INFO("onapplyimod", kEventParams_OneRef, nullptr, 0);
-	EVENT_INFO("onremoveimod", kEventParams_OneRef, nullptr, 0);
+	EVENT_INFO("onapplyimod",  kEventParams_OneRef,  0);
+	EVENT_INFO("onremoveimod",  kEventParams_OneRef,  0);
 
-	EVENT_INFO("onlockbroken", kEventParams_OneRef, nullptr, 0);
-	EVENT_INFO("onlockpicksuccess", kEventParams_OneRef, nullptr, 0);
-	EVENT_INFO("onlockpickbroken", kEventParams_OneRef, nullptr, 0);
-	EVENT_INFO("onunlock", kEventParams_TwoRefs_OneInt, nullptr, 0);
+	EVENT_INFO("onlockbroken",  kEventParams_OneRef,  0);
+	EVENT_INFO("onlockpicksuccess",  kEventParams_OneRef,  0);
+	EVENT_INFO("onlockpickbroken",  kEventParams_OneRef,  0);
+	EVENT_INFO("onunlock",  kEventParams_TwoRefs_OneInt,  0);
 
-	EVENT_INFO("onterminalhacked", kEventParams_OneRef, nullptr, 0);
-	EVENT_INFO("onterminalhackfailed", kEventParams_OneRef, nullptr, 0);
+	EVENT_INFO("onterminalhacked",  kEventParams_OneRef,  0);
+	EVENT_INFO("onterminalhackfailed",  kEventParams_OneRef,  0);
 
-	EVENT_INFO("onrepair", kEventParams_TwoRefs_OneInt, nullptr, 0);
+	EVENT_INFO("onrepair",  kEventParams_TwoRefs_OneInt,  0);
 
-	EVENT_INFO("ondisable", kEventParams_OneRef, nullptr, 0);
-	EVENT_INFO("onenable", kEventParams_OneRef, nullptr, 0);
+	EVENT_INFO("ondisable",  kEventParams_OneRef,  0);
+	EVENT_INFO("onenable",  kEventParams_OneRef,  0);
+
+	EVENT_INFO("onloadalt", kEventParams_OneRef, 0);
 
 
 #undef EVENT_INFO
 #undef EVENT_INFO_FLAGS
 #undef EVENT_INFO_WITH_ALIAS
-
-	InstallDestroyCIOSHook();	// handle a missing parameter value check.
-
 }
 
 bool RegisterEventEx(const char* name, const char* alias, bool isInternal, UInt8 numParams, EventArgType* paramTypes,
