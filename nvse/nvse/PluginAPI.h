@@ -1420,7 +1420,7 @@ struct NVSETogglePlayerControlsInterface
 {
 	/**
 	 * Exposes the "DisablePlayerControlsAlt(Ex)" script function. 
-	 * Changes are NOT savebaked, unlike vanilla DisablePlayerControls.
+	 * Changes are NOT savebaked, unlike vanilla DisablePlayerControls. They also reset each time a save is loaded.
 	 * See TogglePlayerControlsAlt::DisabledControlsFlags for possible flag values.
 	 * 
 	 * Disabling is stored on a per-mod-name basis, so if two mods disable a control at some point,
