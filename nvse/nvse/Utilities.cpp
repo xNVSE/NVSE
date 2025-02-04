@@ -918,16 +918,17 @@ void ShowErrorMessageBox(const char* message)
 
 #if RUNTIME
 
-const char* GetModName(TESForm* form)
+const char* GetModName(TESForm* form, bool useOverridingIndex)
 {
 	if (!form)
 		return "Unknown or deleted script";
 	const char* modName = IS_ID(form, Script) ? "In-game console" : "Dynamic form";
 	if (form->mods.Head() && form->mods.Head()->data)
 		return form->mods.Head()->Data()->name;
-	if (form->GetModIndex() != 0xFF)
+	UInt8 modIndex = useOverridingIndex ? form->GetOverridingModIdx() : form->GetModIndex();
+	if (modIndex != 0xFF)
 	{
-		modName = DataHandler::Get()->GetNthModName(form->GetModIndex());
+		modName = DataHandler::Get()->GetNthModName(modIndex);
 		if (!modName || !modName[0])
 			modName = "Unknown";
 	}

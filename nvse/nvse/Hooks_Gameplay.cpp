@@ -287,12 +287,102 @@ void HandleCallWhilePerSecondsScripts(float timeDelta, bool isMenuMode)
 	}
 }
 
-namespace DisablePlayerControlsAlt
+namespace TogglePlayerControlsAlt
 {
-	std::map<ModID, flags_t> g_disabledFlagsPerMod;
+	UnorderedMap<const char*, flags_t> g_disabledFlagsPerMod;
 	flags_t g_disabledControls = 0;
 
-	flags_t CondenseVanillaFlagArgs(UInt32 movementFlag, UInt32 pipboyFlag, UInt32 fightingFlag, 
+	void __fastcall DisablePlayerControlsAlt(flags_t flagsToAddForMod, const char* modName)
+	{
+		if (auto iter = g_disabledFlagsPerMod.Find(modName);
+			iter.IsValid())
+		{
+			auto& flagsModHad = iter.GetRef();
+			flags_t realFlagChanges = flagsToAddForMod & ~flagsModHad;
+			ApplyImmediateDisablingEffects(realFlagChanges);
+
+			// update disabled flags (might just be re-applying the same disabled flags)
+			flagsModHad |= flagsToAddForMod;
+		}
+		else
+		{
+			ApplyImmediateDisablingEffects(flagsToAddForMod);
+			g_disabledFlagsPerMod.Emplace(modName, flagsToAddForMod);
+		}
+		g_disabledControls |= flagsToAddForMod;
+	}
+
+	void __fastcall EnablePlayerControlsAlt(flags_t flagsToRemoveForMod, const char* modName)
+	{
+		if (auto foundIter = g_disabledFlagsPerMod.Find(modName);
+			foundIter.IsValid())
+		{
+			auto& flags = foundIter.GetRef();
+			ApplyImmediateEnablingEffects(flags);
+
+			// update disabled flags
+			flags &= ~flagsToRemoveForMod;
+			if (!flags)
+				foundIter.Remove();
+
+			g_disabledControls = 0;
+
+			// Re-form g_disabledControls based on all the chached per-mod disabled flags 
+			for (auto loopIter = g_disabledFlagsPerMod.Begin(); !loopIter.End(); ++loopIter)
+			{
+				g_disabledControls |= loopIter.Get();
+			}
+		}
+	}
+
+	bool __cdecl GetPlayerControlsDisabledAlt(CheckDisabledHow disabledHow, flags_t flagsToCheck, const char* modName)
+	{
+		if (disabledHow == ByCallingMod)
+		{
+			if (auto foundIter = g_disabledFlagsPerMod.Find(modName);
+				foundIter.IsValid())
+			{
+				auto flagsModHas = foundIter.Get();
+				return (flagsModHas & flagsToCheck) != 0;
+			}
+		}
+		else if (disabledHow == ByAnyMod || disabledHow == ByAnyModOrVanilla)
+		{
+			bool result = (g_disabledControls & flagsToCheck) != 0;
+			if (disabledHow == ByAnyModOrVanilla)
+				result = result || ((static_cast<flags_t>(PlayerCharacter::GetSingleton()->disabledControlFlags) & flagsToCheck) != 0);
+			return result;
+		}
+		else if (disabledHow == ByVanillaOnly) {
+			return (static_cast<flags_t>(PlayerCharacter::GetSingleton()->disabledControlFlags) & flagsToCheck) != 0;
+		}
+		return false;
+	}
+
+	flags_t __fastcall GetDisabledPlayerControls(CheckDisabledHow disabledHow, const char* modName)
+	{
+		if (disabledHow == ByCallingMod)
+		{
+			if (auto foundIter = g_disabledFlagsPerMod.Find(modName);
+				foundIter.IsValid())
+			{
+				return foundIter.Get();
+			}
+		}
+		else if (disabledHow == ByAnyMod || disabledHow == ByAnyModOrVanilla)
+		{
+			flags_t result = g_disabledControls;
+			if (disabledHow == ByAnyModOrVanilla)
+				result = result | static_cast<flags_t>(PlayerCharacter::GetSingleton()->disabledControlFlags);
+			return result;
+		}
+		else if (disabledHow == ByVanillaOnly) {
+			return static_cast<flags_t>(PlayerCharacter::GetSingleton()->disabledControlFlags);
+		}
+		return -1;
+	}
+
+	flags_t CondenseVanillaFlagArgs(UInt32 movementFlag, UInt32 pipboyFlag, UInt32 fightingFlag,
 		UInt32 POVFlag, UInt32 lookingFlag, UInt32 rolloverTextFlag, UInt32 sneakingFlag)
 	{
 		// Copy the order that flags are arranged from vanilla (doesn't 100% match the order of args passed to the func).
@@ -373,7 +463,7 @@ namespace DisablePlayerControlsAlt
 
 	void ResetOnLoad()
 	{
-		g_disabledFlagsPerMod.clear();
+		g_disabledFlagsPerMod.Clear();
 		g_disabledControls = 0;
 		ApplyImmediateEnablingEffects(kAllFlags);
 	}
@@ -562,9 +652,9 @@ namespace DisablePlayerControlsAlt
 				auto* ebp = GetParentBasePtr(_AddressOfReturnAddress());
 				auto isSleep = *reinterpret_cast<UInt32*>(ebp - 0x8);
 
-				if (isSleep && (g_disabledControls & kFlag_Sleep) != 0)
+				if (isSleep && ((g_disabledControls & kFlag_Sleep) != 0))
 					return; // avoid potentially showing one of the game's precondition fail messages.
-				if (!isSleep && (g_disabledControls & kFlag_Wait) != 0)
+				if (!isSleep && ((g_disabledControls & kFlag_Wait) != 0))
 					return;
 
 				ThisStdCall(g_detour.GetOverwrittenAddr(), player);
@@ -683,7 +773,7 @@ namespace DisablePlayerControlsAlt
 				// Needs to be checked since we don't want to prevent "reload" that happens when equipping a weapon that still has ammo loaded.
 				bool const willPlayReloadAnim = animType == 1 || animType == 2;
 
-				if (willPlayReloadAnim && (g_disabledControls & kFlag_Reload) != 0)
+				if (willPlayReloadAnim && ((g_disabledControls & kFlag_Reload) != 0))
 					return false; // prevent reloading
 			}
 
@@ -1044,7 +1134,7 @@ void Hook_Gameplay_Init(void)
 		Hook_DebugPrint();
 #endif
 
-	DisablePlayerControlsAlt::WriteHooks();
+	TogglePlayerControlsAlt::WriteHooks();
 }
 
 void SetRetainExtraOwnership(bool bRetain)

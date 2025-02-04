@@ -220,7 +220,7 @@ void ShowErrorMessageBox(const char* message);
 
 #if RUNTIME
 
-const char* GetModName(TESForm* form);
+const char* GetModName(TESForm* form, bool useOverridingIndex = false);
 
 
 void vShowRuntimeError(Script* script, const char* fmt, va_list args);

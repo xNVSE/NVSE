@@ -121,7 +121,7 @@ void Core_PreLoadCallback(void * reserved)
 
 	ClearDelayedCalls();
 	EventManager::ClearFlushOnLoadEventHandlers();
-	DisablePlayerControlsAlt::ResetOnLoad();
+	TogglePlayerControlsAlt::ResetOnLoad();
 	
 	// if any temporary references to inventory objects exist, clean them up
 	if (!s_invRefMap.Empty()) {
