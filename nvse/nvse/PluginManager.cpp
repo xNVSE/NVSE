@@ -21,6 +21,7 @@
 #include "GameScript.h"
 #include "EventManager.h"
 #include "InventoryReference.h"
+#include "Hooks_Gameplay.h"
 #else
 #include "Hooks_Script.h"
 #endif
@@ -169,6 +170,15 @@ static const NVSELoggingInterface g_NVSELoggingInterface =
 {
 	ExportedToPlugins::GetPluginLogPath
 };
+
+#ifdef RUNTIME
+static const NVSETogglePlayerControlsInterface g_NVSETogglePlayerControlsInterface =
+{
+	TogglePlayerControlsAlt::DisablePlayerControlsAlt,
+	TogglePlayerControlsAlt::EnablePlayerControlsAlt,
+	TogglePlayerControlsAlt::GetPlayerControlsDisabledAlt
+};
+#endif
 
 PluginManager::~PluginManager()
 {
@@ -452,6 +462,9 @@ void * PluginManager::QueryInterface(UInt32 id)
 #endif
 	case kInterface_Logging:
 		result = (void*)&g_NVSELoggingInterface;
+		break;
+	case kInterface_PlayerControls:
+		result = (void*)&g_NVSETogglePlayerControlsInterface;
 		break;
 	default:
 		_WARNING("unknown QueryInterface %08X", id);

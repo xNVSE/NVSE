@@ -49,6 +49,7 @@ enum
 	// Added v0006
 	kInterface_EventManager,
 	kInterface_Logging,
+	kInterface_PlayerControls,
 
 	kInterface_Max
 };
@@ -672,7 +673,7 @@ typedef bool (*_DecompileScript)(Script* script, SInt32 lineNumber, char* buffer
  *	The serialization API adds a separate save data file plugins can use to save
  *	data along with a game save. It is be stored separately from the main save
  *	(.ess) file to prevent any potential compatibility issues. The actual
- *	implementation is opaqe, so it can be changed if needed, but the APIs
+ *	implementation is opaque, so it can be changed if needed, but the APIs
  *	provided will always remain the same and will operate the same way.
  *	
  *	Each plugin that has registered the proper callbacks will be able to write
@@ -1320,10 +1321,6 @@ struct PluginTokenSlice
 // Added in 6.3.0
 struct NVSELoggingInterface
 {
-	enum {
-		kVersion = 1
-	};
-
 	// Use the returned string to determine where to output plugin logs.
 	// Value is determined in nvse_config.ini, under [Logging]: "sPluginLogPath".
 	// The path is relative to base game folder.
@@ -1372,4 +1369,71 @@ public:
 		};
 		scriptInterface->RegisterTypedCommand(&commandInfo, returnType);
 	}
+};
+
+namespace TogglePlayerControlsAlt {
+	enum DisabledControlsFlags : UInt32
+	{
+		//== Vanilla flags
+		// Order is different than the order which vanilla DisablePlayerControls receives its args
+		kFlag_Movement = 1 << 0,
+		kFlag_Looking = 1 << 1,
+		kFlag_Pipboy = 1 << 2,
+		kFlag_Fighting = 1 << 3,
+		kFlag_POV = 1 << 4,
+		kFlag_RolloverText = 1 << 5,
+		kFlag_Sneaking = 1 << 6,
+		kVanillaFlags = kFlag_Movement | kFlag_Looking | kFlag_Pipboy | kFlag_Fighting
+			| kFlag_POV | kFlag_RolloverText | kFlag_Sneaking,
+		// Flags enabled by default calling DisablePlayerControls w/ no args
+		kVanillaDefaultDisableFlags = kFlag_Movement | kFlag_Pipboy | kFlag_POV | kFlag_Fighting,
+
+		//== New custom flags
+		kFlag_Attacking = 1 << 7,
+		kFlag_EnterVATS = 1 << 8,
+		kFlag_Jumping = 1 << 9,
+		kFlag_AimingOrBlocking = 1 << 10, // also disables zooming in.
+		kFlag_Running = 1 << 11,
+		// Added in v6.3.5
+		kFlag_Sleep = 1 << 12,
+		kFlag_Wait = 1 << 13,
+		kFlag_FastTravel = 1 << 14,
+		// Added in v6.3.6
+		kFlag_Reload = 1 << 15,
+
+		kNewFlags = kFlag_Attacking | kFlag_EnterVATS | kFlag_Jumping | kFlag_AimingOrBlocking
+			| kFlag_Running | kFlag_Sleep | kFlag_Wait | kFlag_FastTravel | kFlag_Reload,
+
+		kAllFlags = kVanillaFlags | kNewFlags
+	};
+
+	enum CheckDisabledHow : UInt8
+	{
+		ByCallingMod = 0,
+		ByAnyMod,
+		ByAnyModOrVanilla,
+		ByVanillaOnly
+	};
+}
+
+struct NVSETogglePlayerControlsInterface
+{
+	/**
+	 * Exposes the "DisablePlayerControlsAlt(Ex)" script function. 
+	 * Changes are NOT savebaked, unlike vanilla DisablePlayerControls. They also reset each time a save is loaded.
+	 * See TogglePlayerControlsAlt::DisabledControlsFlags for possible flag values.
+	 * 
+	 * Disabling is stored on a per-mod-name basis, so if two mods disable a control at some point,
+	 * it will be disabled until both of them re-enable it, or until the save is reloaded. 
+	 *
+	 * @param modName	Identifies the mod disabling a control. This pointer is assumed to never go invalid.
+	 */
+	void (__fastcall* DisablePlayerControlsAlt)(UInt32 flagsToAdd, const char* modName);
+	void (__fastcall* EnablePlayerControlsAlt)(UInt32 flagsToRemove, const char* modName);
+	// @param modName	Can be nullptr if `disabledHow` != CheckDisabledHow::ByCallingMod
+	bool (__cdecl* GetPlayerControlsDisabledAlt)(TogglePlayerControlsAlt::CheckDisabledHow disabledHow,
+		UInt32 flagsToCheck, const char* modName);
+	// Instead of checking if specific flags are checked, returns the flags directly.
+	UInt32 (__fastcall* GetDisabledPlayerControls)(TogglePlayerControlsAlt::CheckDisabledHow disabledHow,
+		const char* modName);
 };

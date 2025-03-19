@@ -1098,6 +1098,7 @@ template <typename T_Key, typename T_Data> class UnorderedMap
 	using H_Key = HashedKey<T_Key>;
 	using Key_Arg = std::conditional_t<std::is_scalar_v<T_Key>, T_Key, const T_Key&>;
 	using Data_Arg = std::conditional_t<std::is_scalar_v<T_Data>, T_Data, T_Data&>;
+	using Data_Arg_Ref = T_Data&;
 
 	struct Entry
 	{
@@ -1406,10 +1407,12 @@ public:
 
 		UnorderedMap* Table() const {return table;}
 		Key_Arg Key() const {return entry->key.Get();}
+		// WARNING: Will return a copy for scalar types.
 		Data_Arg Get() const {return entry->value;}
-		Data_Arg operator*() const {return entry->value;}
-		Data_Arg operator->() const {return entry->value;}
-		Data_Arg operator()() const {return entry->value;}
+		Data_Arg_Ref GetRef() const { return entry->value; }
+		Data_Arg_Ref operator*() const {return entry->value;}
+		Data_Arg_Ref operator->() const {return entry->value;}
+		Data_Arg_Ref operator()() const {return entry->value;}
 		bool End() const {return !entry;}
 		explicit operator bool() const {return entry != nullptr;}
 
