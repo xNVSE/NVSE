@@ -759,6 +759,10 @@ namespace Runtime // double-clarify
 			retn
 		}
 	}
+
+	TESForm* __cdecl HookIsValidVariableName(char* name) {
+		return nullptr;
+	}
 }
 
 void PatchRuntimeScriptCompile()
@@ -780,6 +784,9 @@ void PatchRuntimeScriptCompile()
 	}
 
 	WriteRelJump(0x5B19BA, reinterpret_cast<UInt32>(&Runtime::HookParseCommandToken));
+
+	// Patch variable name check against form
+	WriteRelCall(0x5AFEDB, &Runtime::HookIsValidVariableName);
 }
 
 #endif
@@ -1257,6 +1264,10 @@ __declspec(naked) void HookParseCommandToken() {
 	}
 }
 
+TESForm* __cdecl HookIsValidVariableName(char*) {
+	return nullptr;
+}
+
 void Hook_Compiler_Init()
 {
 	// hook beginning of compilation process
@@ -1280,6 +1291,7 @@ void Hook_Compiler_Init()
 	// WriteRelCall(0x5C64AC, reinterpret_cast<UInt32>(&HookParseCommandToken));
 
 	WriteRelJump(0x5C53FD, reinterpret_cast<UInt32>(&HookParseCommandToken));
+	WriteRelCall(0x5C5596, &HookIsValidVariableName);
 }
 
 #else // run-time

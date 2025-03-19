@@ -253,7 +253,6 @@ bool Script::Compile(ScriptBuffer* buffer)
 }
 
 #if NVSE_CORE && RUNTIME
-static UInt32 g_partialScriptCount = 0;
 
 Script* CompileScriptEx(const char* scriptText, const char* scriptName, bool assignFormID)
 {

@@ -22,6 +22,8 @@ static const UInt32 kScript_ExecuteFnAddr = 0x005AC1E0;
 static const UInt32 kScript_SetTextFnAddr = 0x005C27B0;
 #endif
 
+inline UInt32 g_partialScriptCount = 0;
+
 extern ICriticalSection csGameScript; // trying to avoid what looks like concurrency issues
 extern const char *g_variableTypeNames[6];
 extern const char *g_validVariableTypeNames[8];

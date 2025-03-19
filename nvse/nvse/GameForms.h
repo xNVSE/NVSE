@@ -4555,49 +4555,73 @@ STATIC_ASSERT(sizeof(TESImageSpaceModifier) == 0x728);
 class BGSListForm : public TESForm
 {
 public:
-	BGSListForm();
-	~BGSListForm();
+	BGSListForm() = delete;
+	~BGSListForm() = delete;
 
 	tList<TESForm> list;			// 018
-
 	UInt32	numAddedObjects;	// number of objects added via script - assumed to be at the start of the list
 
 	UInt32 Count() const {
 		return list.Count();
 	}
 
-	TESForm* GetNthForm(SInt32 n) const {
+	TESForm* GetNthForm(const SInt32 n) const {
 		return list.GetNthItem(n);
 	}
 
-	SInt32 AddAt(TESForm* pForm, SInt32 n, bool const checkDupes = false) {
-
-		if (checkDupes) {
-			if (GetIndexOf(pForm) != eListInvalid)
-				return eListInvalid;
+	SInt32 AddAt(TESForm* form, const SInt32 index, bool const checkDupes = false) {
+		if (checkDupes && GetIndexOf(form) != eListInvalid) {
+			return eListInvalid;
 		}
-		auto const result = list.AddAt(pForm, n);
-		if(result >= 0 && IsAddedObject(n))
-			numAddedObjects++;
 
-		return result;
+		const auto res = list.AddAt(form, index);
+		if (IsAddedObject(res)) {
+			numAddedObjects++;
+		}
+
+		return res;
 	}
 
-	SInt32 GetIndexOf(TESForm* pForm);
+	SInt32 AddAtTemp(TESForm* form, const SInt32 index, bool const checkDupes = false) {
+		return AddAt(form, max(index, numAddedObjects), checkDupes);
+	}
 
-	TESForm* RemoveNthForm(SInt32 n) {
-		TESForm	* form = list.RemoveNth(n);
+	[[nodiscard]]
+	SInt32 GetIndexOf(const TESForm* pForm) const {
+		size_t idx = 0;
+		for (const auto& elem : list) {
+			if (elem && elem->refID == pForm->refID) {
+				return idx;
+			}
 
-		if(form && IsAddedObject(n))
-		{
-			if(numAddedObjects == 0)
-			{
-				_MESSAGE("BGSListForm::RemoveNthForm: numAddedObjects = 0");
-			}
-			else
-			{
-				numAddedObjects--;
-			}
+			idx++;
+		}
+
+		return eListInvalid;
+	}
+
+	SInt32 RemoveForm(const TESForm* pForm) {
+		const auto index = GetIndexOf(pForm);
+		if (index >= 0) {
+			RemoveNthForm(index);
+		}
+
+		return index;
+	}
+
+	SInt32 ReplaceForm(const TESForm* pForm, TESForm* pReplaceWith) {
+		const auto index = GetIndexOf(pForm);
+		if (index >= 0) {
+			list.ReplaceNth(index, pReplaceWith);
+		}
+
+		return index;
+	}
+
+	TESForm* RemoveNthForm(const SInt32 n) {
+		const auto form = list.RemoveNth(n);
+		if(form && IsAddedObject(n)) {
+			numAddedObjects--;
 		}
 
 		return form;
@@ -4607,16 +4631,14 @@ public:
 		return list.ReplaceNth(n, pReplaceWith);
 	}
 
-	SInt32 RemoveForm(TESForm* pForm);
-	SInt32 ReplaceForm(TESForm* pForm, TESForm* pReplaceWith);
-
-	bool IsAddedObject(SInt32 idx)
-	{
+	[[nodiscard]]
+	bool IsAddedObject(const SInt32 idx) const {
 		return (idx >= 0) && (idx < numAddedObjects);
 	}
 
 #if RUNTIME
-	[[nodiscard]] static game_unique_ptr<BGSListForm> MakeUnique();
+	[[nodiscard]]
+	static game_unique_ptr<BGSListForm> MakeUnique();
 #endif
 };
 

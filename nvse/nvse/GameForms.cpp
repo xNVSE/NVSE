@@ -378,33 +378,6 @@ public:
 	}
 };
 
-SInt32 BGSListForm::GetIndexOf(TESForm *pForm)
-{
-	if (!pForm)
-		return eListInvalid;
-	return list.GetIndexOf(FindByForm(pForm));
-}
-
-SInt32 BGSListForm::RemoveForm(TESForm *pForm)
-{
-	SInt32 index = GetIndexOf(pForm);
-	if (index >= 0)
-	{
-		RemoveNthForm(index);
-	}
-	return index;
-}
-
-SInt32 BGSListForm::ReplaceForm(TESForm *pForm, TESForm *pReplaceWith)
-{
-	SInt32 index = GetIndexOf(pForm);
-	if (index >= 0)
-	{
-		list.ReplaceNth(index, pReplaceWith);
-	}
-	return index;
-}
-
 #if RUNTIME
 game_unique_ptr<BGSListForm> BGSListForm::MakeUnique()
 {

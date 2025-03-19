@@ -2006,7 +2006,7 @@ bool Cmd_CreateFormList_Execute(COMMAND_ARGS)
 						UInt32 formId;
 						if (elem->GetAsFormID(&formId))
 						{
-							formList->AddAt(LookupFormByID(formId), eListEnd);
+							formList->AddAtTemp(LookupFormByID(formId), eListEnd);
 						}
 					}
 				}

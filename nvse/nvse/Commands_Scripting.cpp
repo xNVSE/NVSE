@@ -900,7 +900,7 @@ bool Cmd_PluginVersion_Execute(COMMAND_ARGS) {
 		// All plugins use single integer version
 		else {
 			const auto info = g_pluginManager.GetInfoFromHandle(pluginHandle);
-			if (pluginVersion >= info->version) {
+			if (info->version >= pluginVersion) {
 				return true;
 			}
 

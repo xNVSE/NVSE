@@ -101,7 +101,7 @@ bool Cmd_ListAddForm_Execute(COMMAND_ARGS)
 
 	ExtractArgsEx(EXTRACT_ARGS_EX, &pListForm, &pForm, &n, &bCheckForDupes);
 	if (pListForm && pForm) {
-		auto const index = pListForm->AddAt(pForm, n, bCheckForDupes);
+		auto const index = pListForm->AddAtTemp(pForm, n, bCheckForDupes);
 		*result = index;
 		if (IsConsoleMode()) {
 			Console_Print("Index: %d", index);
@@ -132,7 +132,7 @@ bool Cmd_ListAddReference_Execute(COMMAND_ARGS)
 	if (ExtractArgs(EXTRACT_ARGS, &pListForm, &n, &bCheckForDupes)) {
 		if (!pListForm || !thisObj) return true;
 
-		auto const index = pListForm->AddAt(thisObj, n, bCheckForDupes);
+		auto const index = pListForm->AddAtTemp(thisObj, n, bCheckForDupes);
 		*result = index;
 		if (IsConsoleMode()) {
 			Console_Print("Index: %d", index);

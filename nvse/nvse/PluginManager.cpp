@@ -587,7 +587,7 @@ bool PluginManager::InstallPlugins(const std::vector<std::string>& pluginPaths)
 		s_currentLoadingPlugin = &plugin;
 		s_currentPluginHandle = index;	// +1 because 0 is reserved for internal use
 
-		plugin.handle = LoadLibrary(pluginPath.c_str());
+		plugin.handle = LoadLibraryExA(pluginPath.c_str(), nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
 		if(plugin.handle)
 		{
 			plugin.query = (_NVSEPlugin_Query)GetProcAddress(plugin.handle, "NVSEPlugin_Query");
