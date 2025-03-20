@@ -3696,7 +3696,31 @@ VariableInfo *ExpressionParser::LookupVariable(const char *varName, Script::RefV
 std::string ExpressionParser::GetCurToken() const
 {
 	unsigned char ch;
-	const char *tokStart = CurText();
+	const char* tokStart = CurText();
+
+	// Check if we're parsing a string literal
+	if (Peek() == '"')
+	{
+		// Save the position of the opening quote
+		tokStart = CurText();
+
+		Offset()++;
+		// Read until closing quote
+		while ((ch = Peek()) && ch != '"')
+		{
+			Offset()++;
+			// Handle escape sequences
+			if (ch == '\\' && Peek())
+				Offset()++;
+		}
+
+		if (ch == '"')
+			Offset()++;
+
+		// Return the string including the quotes
+		return std::string(tokStart, CurText() - tokStart);
+	}
+
 	auto numeric = true;
 	while ((ch = Peek()))
 	{
@@ -3706,6 +3730,7 @@ std::string ExpressionParser::GetCurToken() const
 		if (!isdigit(ch))
 			numeric = false;
 	}
+
 	auto result = std::string(tokStart, CurText() - tokStart);
 	if (ch == 0 && result.empty())
 		throw OffsetOutOfBoundsError();
