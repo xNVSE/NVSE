@@ -3709,9 +3709,6 @@ std::string ExpressionParser::GetCurToken() const
 		while ((ch = Peek()) && ch != '"')
 		{
 			Offset()++;
-			// Handle escape sequences
-			if (ch == '\\' && Peek())
-				Offset()++;
 		}
 
 		if (ch == '"')
