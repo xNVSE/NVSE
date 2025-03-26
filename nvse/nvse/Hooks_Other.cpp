@@ -459,28 +459,6 @@ namespace OtherHooks
 		}
 	}
 
-	namespace Misc {
-		bool __fastcall OnCellLoadFromBuffer(const TESForm* thisPtr) {
-			const auto ptr = *reinterpret_cast<TESObjectREFR**>(GetParentBasePtr(_AddressOfReturnAddress()) - 0x8);
-			if (thisPtr && ptr && ptr->GetNiNode()) {
-				EventManager::DispatchEvent("onloadalt", ptr, ptr);
-			}
-
-			return ThisStdCall<bool>(0x549580, thisPtr);
-		}
-
-		void* __fastcall OnCellLoad(TESObjectREFR* thisPtr) {
-			EventManager::DispatchEvent("onloadalt", thisPtr, thisPtr);
-
-			return ThisStdCall<void*>(0x5D43C0, thisPtr);
-		}
-
-		void WriteHooks() {
-			//WriteRelCall(0x54BC65, &OnCellLoadFromBuffer);
-			//WriteRelCall(0x54BE9A, &OnCellLoad);
-		}
-	}
-
 	void Hooks_Other_Init()
 	{
 		WriteRelJump(0x9FF5FB, UInt32(TilesDestroyedHook));
@@ -505,7 +483,6 @@ namespace OtherHooks
 		Terminal::WriteHooks();
 		Repair::WriteHooks();
 		DisEnable::WriteHooks();
-		Misc::WriteHooks();
 	}
 
 	thread_local CurrentScriptContext emptyCtx{}; // not every command gets run through script runner
