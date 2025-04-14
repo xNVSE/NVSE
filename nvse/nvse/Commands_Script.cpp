@@ -1822,4 +1822,22 @@ bool Cmd_MatchesAnyOf_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_GetFootIK_Execute(COMMAND_ARGS)
+{
+	uint8_t* FikFlagValue = (uint8_t*)0x01267C34;
+	*result = (*FikFlagValue != 0);
+	return true;
+}
+
+bool Cmd_SetFootIK_Execute(COMMAND_ARGS)
+{
+	uint32_t bEnable = 0;
+	uint8_t* FikFlagValue = (uint8_t*)0x01267C34;
+
+	if (!ExtractArgs(EXTRACT_ARGS, &bEnable))
+		return false;
+
+	*FikFlagValue = (bEnable != 0);
+	return true;
+}
 #endif
