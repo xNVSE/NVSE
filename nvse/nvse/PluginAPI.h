@@ -270,6 +270,8 @@ struct NVSEMessagingInterface
 								// RUNTIME: also gets called after successful script compilation at runtime via functions.
 		kMessage_EventListDestroyed, // called before a script event list is destroyed, dataLen: 4, data: ScriptEventList* ptr
 		kMessage_PostQueryPlugins, // called after all plugins have been queried
+
+		kMessage_OnFramePresent, // called when the game is about to present a frame
 	};
 
 	UInt32	version;

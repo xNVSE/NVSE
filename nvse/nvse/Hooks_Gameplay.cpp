@@ -1113,6 +1113,13 @@ __declspec(naked) void MainMenuFromIngameMenuHook()
 	}
 }
 
+template<bool isLoadingScreen>
+void DisplayFrameHook() {
+	int loadingScreen = isLoadingScreen;
+	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnFramePresent, &loadingScreen, sizeof(loadingScreen), nullptr);
+	CdeclCall(0xB6B730);
+}
+
 void Hook_Gameplay_Init(void)
 {
 	// game main loop
@@ -1126,6 +1133,9 @@ void Hook_Gameplay_Init(void)
 	WriteRelCall(kMainMenuFromIngameMenuPatchAddr, (UInt32)&MainMenuFromIngameMenuHook);
 	WriteRelJump(kExitGameViaQQQPatchAddr, (UInt32)&ExitGameViaQQQHook);
 	WriteRelJump(kExitGameFromMenuPatchAddr, (UInt32)&ExitGameFromMenuHook);
+
+	WriteRelCall(0x87055E, DisplayFrameHook<false>); // Mainloop
+	WriteRelCall(0x7147C4, DisplayFrameHook<true>); // Loading screen
 
 	// this seems stable and helps in debugging, but it makes large files during gameplay
 #if _DEBUG
