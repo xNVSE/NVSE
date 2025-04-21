@@ -19,7 +19,6 @@ namespace OtherHooks
 {
 	const static auto ClearCachedTileMap = &MemoizedMap<const char*, Tile::Value*>::Clear;
 	thread_local FastStack<CurrentScriptContext> g_currentScriptContext;
-	thread_local std::vector<std::function<void()>> g_onExitScripts;
 
 	__declspec(naked) void TilesDestroyedHook()
 	{
@@ -139,7 +138,7 @@ namespace OtherHooks
 		void __fastcall PreScriptExecute(UInt8* ebp, int spot)
 		{
 			// Saves last thisObj in effect/object scripts before they get assigned to something else with dot syntax
-			auto& [script, scriptRunner, lineNumberPtr, scriptOwnerRef, command, curData] = *g_currentScriptContext.Push();
+			auto& [script, scriptRunner, lineNumberPtr, scriptOwnerRef, command, curData, extraData] = *g_currentScriptContext.Push();
 			command = nullptr; // set in ExtractArgsEx
 			scriptOwnerRef = *reinterpret_cast<TESObjectREFR**>(ebp + 0xC);
 			script = *reinterpret_cast<Script**>(ebp + 0x8);
@@ -156,6 +155,7 @@ namespace OtherHooks
 				lineNumberPtr = reinterpret_cast<UInt32*>(ebp - 0x28);
 				curData = reinterpret_cast<UInt32*>(ebp - 0x24);
 			}
+			extraData = ScriptTokenCacheFormExtraData::Get(script);
 
 			//Do other stuff
 			// if (g_threadID == -1) {
@@ -210,9 +210,6 @@ namespace OtherHooks
 		{
 			if (script)
 				g_currentScriptContext.Pop();
-			for (auto& func : g_onExitScripts)
-				func();
-			g_onExitScripts.clear();
 		}
 
 		__declspec (naked) void Hook1()

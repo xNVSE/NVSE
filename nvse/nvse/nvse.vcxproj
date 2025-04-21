@@ -539,6 +539,7 @@ xcopy "$(ProjectDir)unit_tests\new_compiler" "$(FalloutNVPath)\Data\NVSE\unit_te
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="FormExtraData.cpp" />
     <ClCompile Include="FunctionScripts.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
@@ -717,6 +718,7 @@ xcopy "$(ProjectDir)unit_tests\new_compiler" "$(FalloutNVPath)\Data\NVSE\unit_te
     </ClInclude>
     <ClInclude Include="EventParams.h" />
     <ClInclude Include="FastStack.h" />
+    <ClInclude Include="FormExtraData.h" />
     <ClInclude Include="FunctionScripts.h" />
     <ClInclude Include="GameAPI.h" />
     <ClInclude Include="GameBSExtraData.h" />

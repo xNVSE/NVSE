@@ -16,6 +16,7 @@
 #include "Commands_Input.h"
 #include "GameAPI.h"
 #include "EventManager.h"
+#include "FormExtraData.h"
 
 #if RUNTIME
 IDebugLog	gLog("nvse.log");
@@ -164,6 +165,7 @@ void NVSE_Initialize(void)
 		Hook_Script_Init();
 		Hook_Animation_Init();
 		OtherHooks::Hooks_Other_Init();
+		FormExtraData::WriteHooks();
 
 		Hook_Dialog_Init();
 		PatchGameCommandParser();

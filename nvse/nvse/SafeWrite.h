@@ -18,9 +18,11 @@ void WriteRelJle(UInt32 jumpSrc, UInt32 jumpTgt);
 void PatchMemoryNop(ULONG_PTR Address, SIZE_T Size);
 
 template <typename T>
-void WriteRelCall(UInt32 jumpSrc, T jumpTgt)
+void WriteRelCall(UInt32 jumpSrc, T jumpTgt, UInt32* originalFunction = nullptr)
 {
-	WriteRelCall(jumpSrc, (UInt32)jumpTgt);
+	if (originalFunction && *reinterpret_cast<UInt8*>(jumpSrc) == 0xE8)
+		*originalFunction = *reinterpret_cast<UInt32*>(jumpSrc + 1) + jumpSrc + 5;
+	WriteRelCall(jumpSrc, UInt32(jumpTgt));
 }
 
 template <typename T>

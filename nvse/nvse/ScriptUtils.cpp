@@ -24,6 +24,7 @@
 #include "Hooks_Editor.h"
 #include "ScriptAnalyzer.h"
 #include "StackVariables.h"
+#include "Hooks_Other.h"
 
 std::map<std::pair<Script*, std::string>, Script::VariableType> g_variableDefinitionsMap;
 
@@ -4939,14 +4940,15 @@ thread_local TokenCache g_tokenCache;
 thread_local std::string g_curLineText;
 #endif
 
-CachedTokens* ExpressionEvaluator::GetTokens(std::optional<CachedTokens>* consoleTokensContainer)
+CachedTokens* ExpressionEvaluator::GetTokens()
 {
-	// consoleTokensContainer serves as storage for CachedTokens if scriptData is not permanent memory
-	const bool isConsole = script->GetModIndex() == 0xFF && consoleTokensContainer;
-	CachedTokens &cache = !isConsole ? g_tokenCache.Get(GetCommandOpcodePosition(m_opcodeOffsetPtr)) : *(*consoleTokensContainer = CachedTokens());
-	if (isConsole)
-		cache.Clear();
-	if (cache.Empty() || isConsole)
+	auto* ctx = OtherHooks::GetExecutingScriptContext();
+	auto* extraData = ctx->scriptExtraData;
+	thread_local CachedTokens tempCachedTokens;
+	tempCachedTokens.Clear();
+	auto& cache = extraData ? extraData->cache.Get(GetCommandOpcodePosition(m_opcodeOffsetPtr)) : tempCachedTokens;
+
+	if (cache.Empty())
 	{
 		if (!ParseBytecode(cache))
 		{
@@ -4965,7 +4967,7 @@ CachedTokens* ExpressionEvaluator::GetTokens(std::optional<CachedTokens>* consol
 
 ScriptToken *ExpressionEvaluator::Evaluate()
 {
-	CachedTokens* cachePtr = GetTokens(&this->consoleTokens);
+	CachedTokens* cachePtr = GetTokens();
 	if (!cachePtr)
 		return nullptr;
 	auto& cache = *cachePtr;
@@ -5105,8 +5107,7 @@ std::string ExpressionEvaluator::GetLineText()
 	}
 	for (int i = 0; i < numArgs; ++i)
 	{
-		std::optional<CachedTokens> consoleTokens;
-		const auto tokens = this->GetTokens(&consoleTokens);
+		const auto tokens = this->GetTokens();
 		const auto arg = this->GetLineText(*tokens, nullptr);
 		if (numArgs != 1 && tokens->Size() > 1) // if multiple args, separate args with brackets
 			lineText += '(' + arg + ')';
@@ -5350,8 +5351,7 @@ std::string ExpressionEvaluator::GetVariablesText()
 	std::string varText;
 	for (int i = 0; i < numArgs; ++i)
 	{
-		std::optional<CachedTokens> consoleTokens;
-		const auto tokens = this->GetTokens(&consoleTokens);
+		const auto tokens = this->GetTokens();
 		varText += this->GetVariablesText(*tokens);
 		if (i != numArgs - 1)
 			varText += '\n';

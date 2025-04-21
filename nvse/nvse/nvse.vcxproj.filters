@@ -278,6 +278,9 @@
     <ClCompile Include="StackVariables.cpp">
       <Filter>internals</Filter>
     </ClCompile>
+    <ClCompile Include="FormExtraData.cpp">
+      <Filter>internals</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
@@ -566,6 +569,9 @@
       <Filter>compiler</Filter>
     </ClInclude>
     <ClInclude Include="StackVariables.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="FormExtraData.h">
       <Filter>internals</Filter>
     </ClInclude>
   </ItemGroup>

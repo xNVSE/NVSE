@@ -1,6 +1,7 @@
 #pragma once
 #include "FastStack.h"
 #include "GameAPI.h"
+#include "ScriptTokenCache.h"
 
 namespace OtherHooks
 {
@@ -12,6 +13,7 @@ namespace OtherHooks
 		TESObjectREFR* scriptOwnerRef = nullptr;
 		CommandInfo* command = nullptr;
 		UInt32* curDataPtr = nullptr;
+		ScriptTokenCacheFormExtraData* scriptExtraData = nullptr;
 	};
 	void CleanUpNVSEVars(ScriptEventList* eventList);
 	void CleanUpNVSEVar(ScriptEventList* eventList, ScriptLocal* local);
