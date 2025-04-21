@@ -45,7 +45,7 @@ public:
 class ScriptTokenCacheFormExtraData : public FormExtraData
 {
 public:
-	virtual ~ScriptTokenCacheFormExtraData() override {};
+	virtual ~ScriptTokenCacheFormExtraData() override = default;
 
 	TokenCache cache;
 

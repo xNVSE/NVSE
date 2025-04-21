@@ -634,6 +634,9 @@ struct NVSEDataInterface
 		kNVSEData_IsScriptLambda,
 		kNVSEData_HasScriptCommand,
 		kNVSEData_DecompileScript,
+		kNVSEData_FormExtraDataGet,
+		kNVSEData_FormExtraDataAdd,
+		kNVSEData_FormExtraDataRemove,
 		
 		kNVSEData_FuncMax,
 	};
@@ -648,6 +651,48 @@ struct NVSEDataInterface
 	void (*ClearScriptDataCache)();
 	// v3
 
+};
+
+// --- PluginFormExtraData ---
+// extend this class and allocate the pointer to it with the game's heap
+// the data is freed and virtual destructor is called when form's destructor is run
+// there is no serialization or deserialization, this is purely runtime only.
+// use a static const char* as the name and reuse it when calling the functions (we do a ptr compare instead of strcmp)
+// ::Add does not check if the extra data already exists, so make sure to do check if it does manually before adding.
+// example of usage:
+// class MyFormExtraData: public PluginFormExtraData { 
+// public:
+//     virtual ~MyFormExtraData() override = default;
+//     std::vector<float> myAttachedData;
+//     static inline const char* name = "MyFormExtraData";
+// };
+// auto* data = New<MyFormExtraData>(); // be sure to use the game's heap allocator
+// new (data) MyFormExtraData(); // initialize the vtable
+// data->myAttachedData.emplace_back(1.0f);
+// PluginFormExtraData::Add(s_nvseDataApi, actor, MyFormExtraData::name, data);
+// auto* extraData = (MyFormExtraData*) PluginFormExtraData::Get(s_nvseDataApi, actor, MyFormExtraData::name);
+class PluginFormExtraData
+{
+public:
+	virtual ~PluginFormExtraData() {}
+
+	static inline PluginFormExtraData* Get(NVSEDataInterface* dataApi, TESForm* form, const char* name)
+	{
+		static auto* get = (PluginFormExtraData*(*)(TESForm*, const char*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataGet);
+		return get(form, name);
+	}
+
+	static inline void Add(NVSEDataInterface* dataApi, TESForm* form, const char* name, PluginFormExtraData* extraData)
+	{
+		static auto* add = (void(*)(TESForm*, const char*, PluginFormExtraData*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataAdd);
+		add(form, name, extraData);
+	}
+
+	static inline void Remove(NVSEDataInterface* dataApi, TESForm* form, const char* name)
+	{
+		static auto* remove = (void (*)(TESForm*, const char*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataRemove);
+		remove(form, name);
+	}
 };
 
 //== Type definitions of function pointers, to easily cast the functions returned by NVSEDataInterface::GetFunc
