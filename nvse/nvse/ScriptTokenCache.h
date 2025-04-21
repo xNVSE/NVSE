@@ -4,6 +4,7 @@
 #include <atomic>
 #include "FormExtraData.h"
 
+
 struct TokenCacheEntry
 {
 	ScriptToken*	token;
@@ -51,6 +52,5 @@ public:
 
 	static ScriptTokenCacheFormExtraData* Create();
 	static ScriptTokenCacheFormExtraData* Get(Script* script);
-
-	inline static const char* name = "ScriptTokenCacheFormExtraData";
+	static NiFixedString& GetName();
 };

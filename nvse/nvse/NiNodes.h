@@ -457,10 +457,6 @@ class ActiveEffect;
 	const UInt32 kNiObjectNET_GetExtraData = 0x006FF9C0;
 #endif
 
-struct NiMemObject
-{
-};
-
 // 008
 class NiRefObject : public NiMemObject
 {

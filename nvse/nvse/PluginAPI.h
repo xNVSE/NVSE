@@ -657,20 +657,20 @@ struct NVSEDataInterface
 // extend this class and allocate the pointer to it with the game's heap
 // the data is freed and virtual destructor is called when form's destructor is run
 // there is no serialization or deserialization, this is purely runtime only.
-// use a static const char* as the name and reuse it when calling the functions (we do a ptr compare instead of strcmp)
+// use a static NiFixedString from NiGlobalStringTable as the name and reuse it when calling the functions (we do a ptr compare instead of strcmp)
 // ::Add does not check if the extra data already exists, so make sure to do check if it does manually before adding.
 // example of usage:
 // class MyFormExtraData: public PluginFormExtraData { 
 // public:
 //     virtual ~MyFormExtraData() override = default;
 //     std::vector<float> myAttachedData;
-//     static inline const char* name = "MyFormExtraData";
+//     static NiFixedString& GetName() { static NiFixedString name = "MyFormExtraData"; return name; }
 // };
 // auto* data = New<MyFormExtraData>(); // be sure to use the game's heap allocator
 // new (data) MyFormExtraData(); // initialize the vtable
 // data->myAttachedData.emplace_back(1.0f);
-// PluginFormExtraData::Add(s_nvseDataApi, actor, MyFormExtraData::name, data);
-// auto* extraData = (MyFormExtraData*) PluginFormExtraData::Get(s_nvseDataApi, actor, MyFormExtraData::name);
+// PluginFormExtraData::Add(s_nvseDataApi, actor, GetName(), data);
+// auto* extraData = (MyFormExtraData*) PluginFormExtraData::Get(s_nvseDataApi, actor, GetName());
 class PluginFormExtraData
 {
 public:

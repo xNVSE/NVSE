@@ -54,8 +54,7 @@ bool __fastcall RemoveFromAllFormsMapHook(TESForm* form)
 	auto iter = g_formExtraDataMap.find(form);
 	if (iter != g_formExtraDataMap.end())
 	{
-		auto& datum = g_formExtraDataMap[form];
-		for (auto& pair : datum)
+		for (auto& pair : iter->second)
 		{
 			auto* data = pair.second;
 			data->~FormExtraData();

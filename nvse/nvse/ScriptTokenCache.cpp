@@ -98,13 +98,19 @@ ScriptTokenCacheFormExtraData* ScriptTokenCacheFormExtraData::Create()
 	return item;
 }
 
+NiFixedString& ScriptTokenCacheFormExtraData::GetName()
+{
+	static NiFixedString name = "ScriptTokenCacheFormExtraData";
+	return name;
+}
+
 ScriptTokenCacheFormExtraData* ScriptTokenCacheFormExtraData::Get(Script* script)
 {
-	if (auto* existing = FormExtraData::Get(script, name)) 
+	if (auto* existing = FormExtraData::Get(script, GetName())) 
 	{
 		return static_cast<ScriptTokenCacheFormExtraData*>(existing);
 	}
 	auto* data = Create();
-	FormExtraData::Add(script, name, data);
+	FormExtraData::Add(script, GetName(), data);
 	return data;
 }

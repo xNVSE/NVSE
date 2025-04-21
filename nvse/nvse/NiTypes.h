@@ -452,3 +452,97 @@ public:
 };
 
 float __vectorcall Point3Distance(const NiVector3& pt1, const NiVector3& pt2);
+
+class NiCriticalSection 
+{
+public:
+	CRITICAL_SECTION	m_kCriticalSection;
+	UInt32				m_ulThreadOwner;
+	UInt32				m_uiLockCount;
+
+	void Lock() 
+	{
+		EnterCriticalSection(&m_kCriticalSection);
+	}
+
+	void Unlock() 
+	{
+		LeaveCriticalSection(&m_kCriticalSection);
+	}
+};
+
+class NiMemObject
+{
+};
+
+class NiGlobalStringTable : public NiMemObject
+{
+public:
+	typedef char* GlobalStringHandle;
+
+	NiTArray<GlobalStringHandle>		m_kHashArray[512];
+	void* unk2000[32];
+	NiCriticalSection						m_kCriticalSection;
+	void* unk20A0[24];
+
+	static GlobalStringHandle AddString(const char* pcString)
+	{
+		return CdeclCall<GlobalStringHandle>(0xA5B690, pcString);
+	}
+
+	static char* GetRealBufferStart(const GlobalStringHandle& arHandle)
+	{
+		return static_cast<char*>(arHandle) - 2 * sizeof(size_t);
+	}
+
+	static void IncRefCount(GlobalStringHandle arHandle)
+	{
+		if (!arHandle)
+			return;
+
+		InterlockedIncrement(reinterpret_cast<size_t*>(GetRealBufferStart(arHandle)));
+	}
+
+	static void DecRefCount(GlobalStringHandle arHandle)
+	{
+		if (!arHandle)
+			return;
+
+		InterlockedDecrement(reinterpret_cast<size_t*>(GetRealBufferStart(arHandle)));
+	}
+
+	static UInt32 GetLength(const GlobalStringHandle& arHandle)
+	{
+		if (!arHandle)
+			return 0;
+
+		return GetRealBufferStart(arHandle)[1];
+	}
+};
+
+class NiFixedString : public NiMemObject
+{
+public:
+	NiFixedString();
+	NiFixedString(const char* apcString);
+	NiFixedString(const NiFixedString& arString);
+	~NiFixedString();
+
+	NiGlobalStringTable::GlobalStringHandle m_kHandle;
+
+	NiFixedString& operator=(const char* apcString);
+	NiFixedString& operator=(const NiFixedString& arString);
+	friend bool operator==(const NiFixedString& arString1, const NiFixedString& arString2);
+	friend bool operator==(const NiFixedString& arString, const char* apcString);
+	friend bool operator==(const char* apcString, const NiFixedString& arString);
+
+	operator const char* () const;
+
+	operator bool() const;
+
+	const char* c_str() const;
+
+	uint32_t GetLength() const;
+
+	bool Includes(const char* apToFind) const;
+};
