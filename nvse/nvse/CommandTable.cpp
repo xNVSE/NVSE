@@ -2281,6 +2281,11 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD_RET(GetDoorSound, kRetnType_Form);
 
 	ADD_CMD(FireChallenge);
+
+	// 6.3.10c ? 6.3.11 ?
+	ADD_CMD(GetFootIK);
+	ADD_CMD(SetFootIK);
+
 }
 
 namespace PluginAPI

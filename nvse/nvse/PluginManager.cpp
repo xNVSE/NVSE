@@ -463,10 +463,13 @@ void * PluginManager::QueryInterface(UInt32 id)
 	case kInterface_Logging:
 		result = (void*)&g_NVSELoggingInterface;
 		break;
+#ifdef RUNTIME
 	case kInterface_PlayerControls:
 		result = (void*)&g_NVSETogglePlayerControlsInterface;
 		break;
+#endif
 	default:
+
 		_WARNING("unknown QueryInterface %08X", id);
 		break;
 	}
