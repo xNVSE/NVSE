@@ -146,9 +146,9 @@ std::unique_ptr<ScriptToken> Eval_Comp_Number_Number(OperatorType op, ScriptToke
 	switch (op)
 	{
 	case kOpType_GreaterThan:
-		return ScriptToken::Create(lh->GetNumber() > rh->GetNumber());
+		return ScriptToken::Create(lh->GetNumber() - rh->GetNumber() > DBL_EPSILON);
 	case kOpType_LessThan:
-		return ScriptToken::Create(lh->GetNumber() < rh->GetNumber());
+		return ScriptToken::Create(rh->GetNumber() - lh->GetNumber() > DBL_EPSILON);
 	case kOpType_GreaterOrEqual:
 		return ScriptToken::Create(lh->GetNumber() >= rh->GetNumber());
 	case kOpType_LessOrEqual:
