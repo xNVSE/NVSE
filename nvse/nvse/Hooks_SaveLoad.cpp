@@ -164,17 +164,17 @@ namespace NewGameWithNoSaveLoaded
 	CallDetour g_detour;
 	static bool __cdecl Hook()
 	{
-		auto isInStartMenu = CdeclCall<bool>(g_detour.GetOverwrittenAddr()); // IsInStartMenu()
+		auto isInStartMenu = CdeclCall<bool>(0x70EDF0);
 		if (isInStartMenu && !IsStartingNewGameNormally())
 		{
 			NewGameHook();
 		}
-		return isInStartMenu;
+		return CdeclCall<bool>(g_detour.GetOverwrittenAddr());
 	}
 
 	void WriteHook()
 	{
-		g_detour.WriteRelCall(0x93C249, (UInt32)Hook);
+		g_detour.WriteRelCall(0x93DB69, (UInt32)Hook);
 	}
 }
 
