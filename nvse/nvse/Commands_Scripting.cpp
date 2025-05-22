@@ -875,7 +875,7 @@ bool Cmd_PluginVersion_Execute(COMMAND_ARGS) {
 
 		// Handle NVSE version separately as it is 4 packed numbers
 		else if (!_stricmp(pluginName, "nvse")) {
-			if (pluginVersion >= PACKED_NVSE_VERSION) {
+			if (PACKED_NVSE_VERSION >= pluginVersion) {
 				return true;
 			}
 
