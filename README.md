@@ -11,7 +11,7 @@
 
 [Download the latest NVSE](https://github.com/xNVSE/NVSE/releases)
 
--Changelogs and all releases are provided in the [releases section](https://github.com/xNVSE/NVSE/releases). Do not try to install using the Code .zip source code button GitHub shows.
+Changelogs and all releases are provided in the [releases section](https://github.com/xNVSE/NVSE/releases). Do not try to install using the Code .zip source code button GitHub shows.
 
 Releases are also available on [Nexus Mods](https://www.nexusmods.com/newvegas/mods/67883).
 
