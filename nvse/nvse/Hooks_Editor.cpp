@@ -696,30 +696,34 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 
 	unsigned char lastChar = '\0';
 	while (curScriptText) {
-		const auto curTwoChars = *reinterpret_cast<const UInt16*>(curScriptText);
-		if (curTwoChars == '*/' && !inStringLiteral && !inMultilineComment)
-		{
-			inMultilineComment = true;
-			curScriptText += 2;
-			continue;
-		}
-		if (curTwoChars == '/*' && !inStringLiteral && inMultilineComment)
-		{
-			inMultilineComment = false;
-			curScriptText += 2;
-			continue;
-		}
-
 		const auto curChar = *curScriptText++;
 		if (curChar == 0)
 		{
-			if (inMultilineComment)
+			if (inMultilineComment) {
 				return lineError("Mismatched comment block (missing '*/' for a present '/*')");
-			if (inStringLiteral)
+			}
+			if (inStringLiteral) {
 				return lineError("Mismatched quotes. A string literal was not closed.");
-			if (numBrackets)
+			}
+			if (numBrackets) {
 				return lineError("Mismatched parentheses. Parentheses were not closed.");
+			}
+		} else {
+			const auto curTwoChars = *reinterpret_cast<const UInt16*>(curScriptText);
+			if (curTwoChars == '*/' && !inStringLiteral && !inMultilineComment)
+			{
+				inMultilineComment = true;
+				curScriptText += 2;
+				continue;
+			}
+			if (curTwoChars == '/*' && !inStringLiteral && inMultilineComment)
+			{
+				inMultilineComment = false;
+				curScriptText += 2;
+				continue;
+			}
 		}
+
 		if (inMultilineComment)
 		{
 			if (curChar == '\n')
