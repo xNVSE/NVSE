@@ -938,9 +938,11 @@ static void HandleMainLoopHook(void)
 	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_MainGameLoop, nullptr, 0, nullptr);
 
 	// if any temporary references to inventory objects exist, clean them up
-	if (!s_invRefMap.Empty()) {
+	{
 		ScopedLock lock(s_invRefMapCS);
-		s_invRefMap.Clear();
+		if (!s_invRefMap.Empty()) {
+			s_invRefMap.Clear();
+		}
 	}
 
 	// Tick event manager

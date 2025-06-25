@@ -125,6 +125,7 @@ bool InventoryReference::Validate()
 
 InventoryReference* InventoryReference::GetForRefID(UInt32 refID)
 {
+	ScopedLock lock(s_invRefMapCS);
 	InventoryReference *invRefr = s_invRefMap.GetPtr(refID);
 	if (invRefr && invRefr->Validate())
 		return invRefr;

@@ -124,9 +124,11 @@ void Core_PreLoadCallback(void * reserved)
 	TogglePlayerControlsAlt::ResetOnLoad();
 	
 	// if any temporary references to inventory objects exist, clean them up
-	if (!s_invRefMap.Empty()) {
+	{
 		ScopedLock lock(s_invRefMapCS);
-		s_invRefMap.Clear();
+		if (!s_invRefMap.Empty()) {
+			s_invRefMap.Clear();
+		}
 	}
 
 	g_ArrayMap.Reset();

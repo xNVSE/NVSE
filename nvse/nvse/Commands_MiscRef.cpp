@@ -926,6 +926,7 @@ bool Cmd_GetRefsInCell_Execute(COMMAND_ARGS)
 
 bool Cmd_GetRefCount_Execute(COMMAND_ARGS)
 {
+	ScopedLock lock(s_invRefMapCS);
 	InventoryReference *invRefr = s_invRefMap.GetPtr(thisObj->refID);
 	if (invRefr)
 		*result = invRefr->m_data.entry->countDelta;
@@ -942,6 +943,8 @@ bool Cmd_SetRefCount_Execute(COMMAND_ARGS)
 	UInt32 newCount;
 	if (ExtractArgs(EXTRACT_ARGS, &newCount) && newCount && (newCount <= 0x7FFF))
 	{
+		ScopedLock lock(s_invRefMapCS);
+
 		InventoryReference *invRefr = s_invRefMap.GetPtr(thisObj->refID);
 		if (invRefr)
 		{
