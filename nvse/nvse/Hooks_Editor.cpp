@@ -697,8 +697,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 	unsigned char lastChar = '\0';
 	while (curScriptText) {
 		const auto curChar = *curScriptText++;
-		if (curChar == 0)
-		{
+		if (curChar == 0) {
 			if (inMultilineComment) {
 				return lineError("Mismatched comment block (missing '*/' for a present '/*')");
 			}
@@ -708,53 +707,45 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 			if (numBrackets) {
 				return lineError("Mismatched parentheses. Parentheses were not closed.");
 			}
-		} else {
+		}
+		else {
 			const auto curTwoChars = *reinterpret_cast<const UInt16*>(curScriptText);
-			if (curTwoChars == '*/' && !inStringLiteral && !inMultilineComment)
-			{
+			if (curTwoChars == '*/' && !inStringLiteral && !inMultilineComment) {
 				inMultilineComment = true;
 				curScriptText += 2;
 				continue;
 			}
-			if (curTwoChars == '/*' && !inStringLiteral && inMultilineComment)
-			{
+			if (curTwoChars == '/*' && !inStringLiteral && inMultilineComment) {
 				inMultilineComment = false;
 				curScriptText += 2;
 				continue;
 			}
 		}
 
-		if (inMultilineComment)
-		{
+		if (inMultilineComment) {
 			if (curChar == '\n')
 				++lineBuf->lineNumber;
 			continue;
 		}
-		switch (curChar)
-		{
-			case '(':
-			{
+		switch (curChar) {
+			case '(': {
 				if (!inStringLiteral)
 					++numBrackets;
 				break;
 			}
-			case ')':
-			{
-				if (!inStringLiteral)
-				{
+			case ')': {
+				if (!inStringLiteral) {
 					--numBrackets;
 					if (numBrackets < 0)
 						return lineError("Mismatched parenthesis");
 				}
 				break;
 			}
-			case '"':
-			{
+			case '"': {
 				inStringLiteral = !inStringLiteral;
 				break;
 			}
-			case '\0':
-			{
+			case '\0': {
 				--curScriptText;
 				if (numBrackets)
 					return lineError("Mismatched parenthesis");
@@ -762,13 +753,10 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 					return 0;
 				[[fallthrough]];
 			}
-			case '\n':
-			{
-				if (numBrackets == 0 && capturedNonSpace)
-				{
+			case '\n': {
+				if (numBrackets == 0 && capturedNonSpace) {
 					auto* curLineText = reinterpret_cast<unsigned char*>(&lineBuf->paramText[lineBuf->paramTextLen - 1]);
-					while (isspace(*curLineText))
-					{
+					while (isspace(*curLineText)) {
 						*curLineText-- = '\0';
 						--lineBuf->paramTextLen;
 					}
@@ -785,21 +773,18 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 					++lineBuf->lineNumber;
 				break;
 			}
-			case ';':
-			{
-				while (*curScriptText && *curScriptText != '\n') 
+			case ';': {
+				while (*curScriptText && *curScriptText != '\n')
 					++curScriptText;
 				continue;
 			}
-			default:
-			{
+			default: {
 				if (isspace(lastChar) && isspace(curChar) && !inStringLiteral)
 					continue;
 				break;
 			}
 		}
-		if (const auto maxLen = sizeof lineBuf->paramText; lineBuf->paramTextLen >= maxLen)
-		{
+		if (const auto maxLen = sizeof lineBuf->paramText; lineBuf->paramTextLen >= maxLen) {
 			if (numBrackets)
 				ShowCompilerError(errorBuf, "Max script expression length inside parenthesis (%d characters) exceeded.", maxLen);
 			else
@@ -807,7 +792,7 @@ int ParseNextLine(ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 			lineBuf->errorCode = 16;
 			return 0;
 		}
-		if (!isspace(curChar)) 
+		if (!isspace(curChar))
 			capturedNonSpace = true;
 		if (capturedNonSpace)
 			lineBuf->paramText[lineBuf->paramTextLen++] = curChar;
