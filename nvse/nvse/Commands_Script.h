@@ -517,3 +517,9 @@ static ParamInfo kNVSEParams_MatchesAnyOf[] =
 
 DEFINE_CMD_ALT_EXP(MatchesAnyOf, , "Returns true/false if the first value matches any of the other values.",
 	false, kNVSEParams_MatchesAnyOf);
+
+DEFINE_CMD_ALIAS(GetFootIK, GetFIK, "Return the current Foot Inverse Kinematic value.",
+	false, NULL);
+
+DEFINE_CMD_ALIAS(SetFootIK, SetFIK, "Set the Foot Inverse Kinematic value (0/1).",
+	false, kParams_OneInt);
