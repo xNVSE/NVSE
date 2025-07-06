@@ -49,6 +49,7 @@ NiFixedString::NiFixedString(const char* apcString)
 
 NiFixedString::NiFixedString(const NiFixedString& arString) 
 {
+	NiGlobalStringTable::IncRefCount(const_cast<NiGlobalStringTable::GlobalStringHandle&>(arString.m_kHandle));
 	m_kHandle = arString.m_kHandle;
 }
 

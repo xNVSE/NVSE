@@ -91,14 +91,17 @@ void TokenCache::MarkForClear()
 std::atomic<int> TokenCache::tlsClearAllCookie_ = 0;
 thread_local int TokenCache::tlsClearAllToken_ = 0;
 
-ScriptTokenCacheFormExtraData* ScriptTokenCacheFormExtraData::Create() 
+ScriptTokenCacheFormExtraData::ScriptTokenCacheFormExtraData() : FormExtraData(GetName()) {
+}
+
+ScriptTokenCacheFormExtraData* ScriptTokenCacheFormExtraData::Create()
 {
 	auto* item = New<ScriptTokenCacheFormExtraData>();
 	new(item) ScriptTokenCacheFormExtraData();
 	return item;
 }
 
-NiFixedString& ScriptTokenCacheFormExtraData::GetName()
+const NiFixedString& ScriptTokenCacheFormExtraData::GetName()
 {
 	static NiFixedString name = "ScriptTokenCacheFormExtraData";
 	return name;
@@ -111,6 +114,6 @@ ScriptTokenCacheFormExtraData* ScriptTokenCacheFormExtraData::Get(Script* script
 		return static_cast<ScriptTokenCacheFormExtraData*>(existing);
 	}
 	auto* data = Create();
-	FormExtraData::Add(script, GetName(), data);
+	FormExtraData::Add(script, data);
 	return data;
 }

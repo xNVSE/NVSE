@@ -1028,8 +1028,10 @@ void * PluginManager::GetFunc(UInt32 funcID)
 	case NVSEDataInterface::kNVSEData_HasScriptCommand: result = (void*)&ScriptParsing::ScriptContainsCommand; break;
 	case NVSEDataInterface::kNVSEData_DecompileScript: result = (void*)&ScriptParsing::PluginDecompileScript; break;
 	case NVSEDataInterface::kNVSEData_FormExtraDataGet: result = (void*)&FormExtraData::Get; break;
+	case NVSEDataInterface::kNVSEData_FormExtraDataGetAll: result = (void*)&FormExtraData::GetAll; break;
 	case NVSEDataInterface::kNVSEData_FormExtraDataAdd: result = (void*)&FormExtraData::Add; break;
-	case NVSEDataInterface::kNVSEData_FormExtraDataRemove: result = (void*)&FormExtraData::Remove; break;
+	case NVSEDataInterface::kNVSEData_FormExtraDataRemoveByName: result = (void*)&FormExtraData::RemoveByName; break;
+	case NVSEDataInterface::kNVSEData_FormExtraDataRemoveByPtr: result = (void*)&FormExtraData::RemoveByPtr; break;
 	}
 	return result;
 }
