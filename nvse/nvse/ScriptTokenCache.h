@@ -46,11 +46,12 @@ public:
 class ScriptTokenCacheFormExtraData : public FormExtraData
 {
 public:
+	ScriptTokenCacheFormExtraData();
 	virtual ~ScriptTokenCacheFormExtraData() override = default;
 
 	TokenCache cache;
 
 	static ScriptTokenCacheFormExtraData* Create();
 	static ScriptTokenCacheFormExtraData* Get(Script* script);
-	static NiFixedString& GetName();
+	static const NiFixedString& GetName();
 };
