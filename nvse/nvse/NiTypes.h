@@ -545,7 +545,8 @@ public:
 		if (!arHandle)
 			return 0;
 
-		return GetRealBufferStart(arHandle)[1];
+		size_t* pBuffer = reinterpret_cast<size_t*>(GetRealBufferStart(arHandle));
+		return static_cast<UInt32>(pBuffer[1]);
 	}
 };
 
