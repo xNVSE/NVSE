@@ -10,7 +10,7 @@ DEFINE_CMD_ALT(ListGetNthForm, , returns the nth form in the form list, 0, 2, kP
 static ParamInfo kParams_FormListForm[2] = 
 {
 	{	"form list", kParamType_FormList,	0		},
-	{	"form",		kParamType_AnyForm,		0		},
+	{	"form",		kParamType_AnyForm,		1		},
 };
 
 DEFINE_CMD_ALT_COND(ListGetFormIndex, , returns the index for the specified form, 0, kParams_FormListForm);
