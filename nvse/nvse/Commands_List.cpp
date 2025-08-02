@@ -338,28 +338,44 @@ bool Cmd_ListGetFormIndex_Execute(COMMAND_ARGS)
 bool Cmd_IsRefInList_Eval(COMMAND_ARGS_EVAL)
 {
 	*result = -1;
-	BGSListForm* pListForm = NULL;
-	TESForm* pForm = NULL;
+	BGSListForm* pListForm = static_cast<BGSListForm*>(arg1);
+	if (!pListForm)
+		return true;
+
+	SInt32 index = -1;
 
 #if REPORT_BAD_FORMLISTS
 	__try {
 #endif
-	if (arg1 && arg2) {
-		pListForm = (BGSListForm*)arg1;
-		pForm = (TESForm*)arg2;
-		TESObjectREFR* pObj = DYNAMIC_CAST(pForm, TESForm, TESObjectREFR);
-		SInt32 index = pListForm->GetIndexOf(pForm); 
-		if ((index<0) && pObj)
-			index = pListForm->GetIndexOf(GetPermanentBaseForm(pObj));
-		if ((index<0) && pObj)
-			index = pListForm->GetIndexOf(pObj->baseForm); 
+
+		if (arg2) {
+			auto* pForm = static_cast<TESForm*>(arg2);
+			TESObjectREFR* pObj = DYNAMIC_CAST(pForm, TESForm, TESObjectREFR);
+			index = pListForm->GetIndexOf(pForm);
+			if (index < 0 && pObj) {
+
+				index = pListForm->GetIndexOf(GetPermanentBaseForm(pObj));
+				if (index < 0 && pObj) {
+					index = pListForm->GetIndexOf(pObj->baseForm);
+				}
+
+			}
+		}
+		else if (thisObj) {
+			index = pListForm->GetIndexOf(GetPermanentBaseForm(thisObj));
+			if (index < 0) {
+				index = pListForm->GetIndexOf(thisObj->baseForm);
+			}
+		}
+
 		*result = index;
 		if (IsConsoleMode()) {
 			Console_Print("Index: %d", index);
 		}
-	}
+
 #if REPORT_BAD_FORMLISTS
-	} __except(EXCEPTION_EXECUTE_HANDLER)
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
 	{
 		ReportBadFormlist(PASS_COMMAND_ARGS, pListForm);
 	}
