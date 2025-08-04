@@ -121,9 +121,6 @@ bool __fastcall RemoveFromAllFormsMapHook(TESForm* form)
 	auto iter = g_formExtraDataMap.find(form);
 	if (iter != g_formExtraDataMap.end())
 	{
-		for (auto& pair : iter->second) {
-			pair->DecRefCount();
-		}
 		g_formExtraDataMap.erase(iter);
 	}
 	return ThisStdCall<bool>(g_removeFromAllFormMapsAddr, form);
