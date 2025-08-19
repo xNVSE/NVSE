@@ -54,7 +54,7 @@ jobs:
     - name: Package Artifacts
       run: |
         mkdir -p artifacts
-        Compress-Archive -Path nvse\Release\nvse_1_4.dll, nvse\Release\nvse_1_4.pdb, nvse\Release\nvse_steam_loader.dll, nvse\Release\nvse_steam_loader.pdb, nvse\Release\nvse_loader.exe, nvse\Release\nvse_loader.pdb -DestinationPath artifacts\xNVSE-Release-${{ env.artifact_timestamp }}.zip
+        Compress-Archive -Path nvse\Release\nvse_1_4.dll, nvse\Release\nvse_1_4.pdb, nvse\Release\nvse_steam_loader.dll, nvse\Release\nvse_steam_loader.pdb, nvse\Release\nvse_loader.exe, nvse\Release\nvse_loader.pdb, "nvse\Release CS\nvse_editor_1_4.dll", "nvse\Release CS\nvse_editor_1_4.pdb" -DestinationPath artifacts\xNVSE-Release-${{ env.artifact_timestamp }}.zip
       shell: pwsh
 
     - name: Publish Zipped Artifacts
