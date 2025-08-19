@@ -5,11 +5,7 @@
 
 name: MSBuild
 
-on:
-  push:
-    branches: [ "build-test" ]
-  pull_request:
-    branches: [ "build-test" ]
+on: [push, pull_request]
 
 env:
   # Path to the solution file relative to the root of the project.
