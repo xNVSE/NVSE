@@ -1,0 +1,60 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: MSBuild
+
+on: [push, pull_request]
+
+env:
+  # Path to the solution file relative to the root of the project.
+  SOLUTION_FILE_PATH: nvse\nvse.sln
+
+  # Configuration type to build.
+  # You can convert this to a build matrix if you need coverage of multiple configuration types.
+  # https://docs.github.com/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+  BUILD_CONFIGURATION: Release
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.2
+
+    - name: Build Release
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: msbuild /m /p:Configuration=Release ${{env.SOLUTION_FILE_PATH}} /p:PostBuildEventUseInBuild=false
+
+    - name: Build Release (GECK)
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: msbuild /m /p:Configuration="Release CS" ${{env.SOLUTION_FILE_PATH}} /p:PostBuildEventUseInBuild=false
+
+    - name: Build Debug
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: msbuild /m /p:Configuration=Debug ${{env.SOLUTION_FILE_PATH}} /p:PostBuildEventUseInBuild=false
+      
+    - name: Generate Timestamp
+      run: |
+        timestamp=$(date +"%Y%m%d%H%M%S")
+        echo "artifact_timestamp=$timestamp" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Package Artifacts
+      run: |
+        mkdir -p artifacts
+        Compress-Archive -Path nvse\Release\nvse_1_4.dll, nvse\Release\nvse_1_4.pdb, nvse\Release\nvse_steam_loader.dll, nvse\Release\nvse_steam_loader.pdb, nvse\Release\nvse_loader.exe, nvse\Release\nvse_loader.pdb, "nvse\Release CS\nvse_editor_1_4.dll", "nvse\Release CS\nvse_editor_1_4.pdb" -DestinationPath artifacts\xNVSE-Release-${{ env.artifact_timestamp }}.zip
+      shell: pwsh
+
+    - name: Publish Zipped Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: Zipped-Artifacts-${{ env.artifact_timestamp }}
+        path: artifacts/
