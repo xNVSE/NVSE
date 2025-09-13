@@ -2293,6 +2293,7 @@ namespace PluginAPI
 	UInt32 GetReqVersion(const CommandInfo *cmd) { return g_scriptCommands.GetRequiredNVSEVersion(cmd); }
 	const PluginInfo *GetCmdParentPlugin(const CommandInfo *cmd) { return g_scriptCommands.GetParentPlugin(cmd); }
 	const PluginInfo *GetPluginInfoByName(const char *pluginName) { return g_pluginManager.GetInfoByName(pluginName); }
+	const PluginInfo* GetPluginInfoByDLLName(const char* DLLName) { return g_pluginManager.GetInfoByDLLName(DLLName); }
 }
 
 std::string ParamInfo::GetAsString(const CommandInfo& info) const

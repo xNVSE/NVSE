@@ -377,6 +377,7 @@ namespace PluginAPI
 	UInt32 GetReqVersion(const CommandInfo* cmd);
 	const PluginInfo* GetCmdParentPlugin(const CommandInfo* cmd);
 	const PluginInfo* GetPluginInfoByName(const char *pluginName);
+	const PluginInfo* GetPluginInfoByDLLName(const char *DLLName);
 }
 
 #if NVSE_CORE

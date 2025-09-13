@@ -19,6 +19,7 @@ public:
 	PluginInfo *	GetInfoByName(const char * name);
 	PluginInfo *	GetInfoFromHandle(PluginHandle handle);
 	PluginInfo *	GetInfoFromBase(UInt32 baseOpcode);
+	PluginInfo *	GetInfoByDLLName(const char *DLLName);
 	const char *	GetPluginNameFromHandle(PluginHandle handle);
 
 	UInt32			GetNumPlugins(void);
