@@ -90,7 +90,8 @@ static const NVSECommandTableInterface g_NVSECommandTableInterface =
 	PluginAPI::GetCmdRetnType,
 	PluginAPI::GetReqVersion,
 	PluginAPI::GetCmdParentPlugin,
-	PluginAPI::GetPluginInfoByName
+	PluginAPI::GetPluginInfoByName,
+	PluginAPI::GetPluginInfoByDLLName
 };
 
 static const NVSEInterface g_NVSEInterface =
@@ -285,6 +286,21 @@ PluginInfo * PluginManager::GetInfoFromBase(UInt32 baseOpcode)
 		return &m_plugins[handle - 1].info;
 
 	return NULL;
+}
+
+PluginInfo* PluginManager::GetInfoByDLLName(const char* DLLName) {
+	HMODULE module = GetModuleHandleA(DLLName);
+	if (!module) 
+		return nullptr;
+
+	for (LoadedPluginList::iterator iter = m_plugins.begin(); iter != m_plugins.end(); ++iter)
+	{
+		LoadedPlugin* plugin = &(*iter);
+		if (plugin->handle == module)
+			return &plugin->info;
+	}
+
+	return nullptr;
 }
 
 const char * PluginManager::GetPluginNameFromHandle(PluginHandle handle)
