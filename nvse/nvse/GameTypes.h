@@ -877,3 +877,152 @@ public:
 			return -1;
 	}
 };
+
+struct TLSData {
+#if RUNTIME
+	UInt32								unk000;
+	UInt32								unk004;
+	const struct BaseExtraList* const	pLastExtraList;				// BaseExtraList
+	UInt32								uiThreadDirty;				// BaseExtraList
+	class BSExtraData*					pLastExtraDatas[0x93];		// BaseExtraList
+	bool								bLoadedActorIsHighDetail;
+	bool								bLoadingTempCellData;		// TESObjectCELL
+	class NiAVObject*					pBackgroundLoading3D;		// TESObjectREFR
+	class TESObjectREFR*				pBackgroundLoadingRef;		// TESObjectREFR
+	bool								bConsoleMode;				// Script
+	class TESForm*						pCrimeVictim;				// Script
+	struct ScriptLocal*					pLastVar;					// ScriptLocals
+	UInt32								uiLastVarSearchID;			// ScriptLocals
+	struct ScriptEventList*				pLastVarSearchScriptLocals;	// ScriptLocals
+	struct ScriptRefVariable*			pLastRefObject;				// Script
+	UInt32								iLastRefSearchIndex;		// Script
+	struct ScriptEventList*				pLastScriptLocals;			// Script
+	class Script*						pLastRefSearchScript;		// Script
+	UInt32								uiActivateRecursionDepth;
+	UInt32								unk290;
+	Bitfield32							uiThreadSpecificFlags;		// BGSSaveLoadGame
+	bool								bCollectGarbage;			// GarbageCollector
+	UInt32								unk29C;
+	float								fLastScaledTime;
+	UInt32								eLastCycle;
+	float								fLastWeightedPhaseTime;
+	float								fLastLoKeyTime;
+	float								fLastHiKeyTime;
+	UInt32								eMemContext;
+	SInt32								iWarningCount;
+	SInt32								iBatchRendererIndex;		// BSShaderAccumulator
+    UInt32								eHavokSyncMode;				// bhkNiCollisionObject
+#else
+	UInt32								unk000;
+	UInt32								unk004;
+	const struct BaseExtraList* const	pLastExtraList;
+	UInt32								uiThreadDirty;
+	class BSExtraData*					pLastExtraDatas[147];
+	bool								bLoadedActorIsHighDetail;
+	bool								unk25C;
+	bool								unk25D;
+	bool								unk25E;
+	bool								bConsoleMode;
+	UInt32								unk264;
+	bool								bLoadingTempCellData;
+	class NiNode*						pBackgroundLoading3D;
+	class TESObjectREFR*				pBackgroundLoadingRef;
+	UInt32								unk274;
+	UInt32								unk278;
+	UInt32								unk27C;
+	UInt32								unk280;
+	UInt32								unk284;
+	UInt32								unk288;
+	UInt32								unk28C;
+	UInt32								eMemContext; // 290
+	SInt32								iWarningCount;
+	SInt32								iBatchRendererIndex;
+	UInt32								eHavokSyncMode;
+	UInt32								unk2A0;
+	UInt32								unk2A4;
+#endif
+
+	static TLSData* GetTLSData();
+	static UInt32 GetMemContext();
+	static void SetMemContext(UInt32 index);
+};
+
+enum MEM_CONTEXT : UInt32 {
+	MC_UNK0						= 0,
+	MC_UNK1						= 1,
+	MC_PERF_TIMERS				= 2,
+	MC_MEMPOOLS					= 3,
+	MC_RENDERER					= 4,
+	MC_SHADERS					= 5,
+	MC_THREAD_SAFE_STRUCT		= 6,
+	MC_EFFECTS					= 7,
+	MC_STRING					= 8,
+	MC_SETTINGS					= 9,
+	MC_SYSTEM					= 10,
+	MC_AUDIO					= 11,
+	MC_FONTS					= 12,
+	MC_MENU						= 13,
+	MC_LOCAL_MAP				= 14,
+	MC_UNK_15					= 15, // Texture palettes, NiStaticDataManager
+	MC_HAVOK					= 16,
+	MC_SAVE_LOAD				= 17,
+	MC_UNK_18					= 18,
+	MC_ARCHIVE_MANAGER			= 19,
+	MC_MOVIE_PLAYER				= 20,
+	MC_SCRIPT					= 21,
+	MC_FILE_TES					= 22,
+	MC_FILE_BUFFER				= 23,
+	MC_FILE_CACHE				= 24,
+	MC_SCENEGRAPH				= 25,
+	MC_CELL						= 26,
+	MC_TERRAIN_LAND				= 27,
+	MC_TERRAIN_LOD_MANAGER		= 28,
+	MC_WATER					= 29,
+	MC_TREES_MODELS				= 30,
+	MC_TREES_SPEEDTREE			= 31,
+	MC_GRIDCELL					= 32,
+	MC_SKY						= 33,
+	MC_LOD_SYSTEM				= 34,
+	MC_LOD_LAND					= 35,
+	MC_LOD_OBJECTS				= 36,
+	MC_LOD_TREES				= 37,
+	MC_RENDER_38				= 38,
+	MC_IMAGESPACE				= 39,
+	MC_HAIR_SHADER				= 40,
+	MC_RENDER_41				= 41, // Unused
+	MC_PROCESS_MANAGER			= 42,
+	MC_COMBAT_SYSTEM			= 43,
+	MC_LOADED_REF_COLLECTION	= 44,
+	MC_PATHING					= 45,
+	MC_NAVMESH					= 46,
+	MC_DATAHANDLER				= 47,
+	MC_FORMS					= 48,
+	MC_REFERENCES				= 49,
+	MC_ACTORS					= 50, // Models, queued models, particles, blood
+	MC_ANIMATION				= 51,
+	MC_PLAYER					= 52,
+	MC_DIALOGUE					= 53,
+	MC_INVENTORY				= 54,
+	MC_FACEGEN_0				= 55,
+	MC_FACEGEN_1				= 56,
+	MC_FACEGEN_2				= 57,
+	MC_UNK_58					= 58,
+	MC_UNK_59					= 59,
+	MC_UNK_60					= 60,
+	MC_UNK_61					= 61,
+	MC_UNK_62					= 62,
+	MC_UNK_63					= 63,
+	MC_UNK_64					= 64,
+	MC_DEFAULT					= 65,
+};
+
+class AutoMemContext {
+public:
+	AutoMemContext(MEM_CONTEXT aeMemContext, bool abOverridable = true, const char* apFile = nullptr, UInt32 auiLine = 0);
+	~AutoMemContext();
+
+private:
+	MEM_CONTEXT eOldMemContext;
+};
+
+#define MEMORY_CONTEXT(aeMemContext) AutoMemContext context(static_cast<MEM_CONTEXT>(aeMemContext), true, __FILE__, __LINE__);

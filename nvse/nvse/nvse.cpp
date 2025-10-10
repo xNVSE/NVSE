@@ -149,6 +149,12 @@ void NVSE_Initialize(void)
 
 		MersenneTwister::init_genrand(GetTickCount());
 
+		// Set default context in order to allocate memory in game's default heap instead of static heap. (Static heap is non-freeable.)
+		// This applies both to NVSE and its plugins.
+		// Can't use AutoMemContext due to __try/__except.
+		UInt32 existingContext = TLSData::GetMemContext();
+		TLSData::SetMemContext(MC_DEFAULT);
+
 #if RUNTIME
 		// Runs before CommandTable::Init to prevent plugins from being able to register events before ours (breaks assert).
 		EventManager::Init();	
@@ -195,6 +201,9 @@ void NVSE_Initialize(void)
 #endif
 #endif
 		FlushInstructionCache(GetCurrentProcess(), NULL, 0);
+
+		// Restore game's context
+		TLSData::SetMemContext(existingContext);
 
 #ifndef _DEBUG
 	}
