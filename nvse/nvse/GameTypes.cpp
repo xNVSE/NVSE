@@ -122,3 +122,41 @@ const char * String::CStr(void)
 
 	return (m_data && m_dataLen) ? m_data : "";
 }
+
+struct _TEB {
+	UInt32				padding[0x2C / 4];
+	struct TLSData**	ThreadLocalStoragePointer;
+};
+
+TLSData* TLSData::GetTLSData() {
+#if RUNTIME
+	return NtCurrentTeb()->ThreadLocalStoragePointer[*reinterpret_cast<UInt32*>(0x126FD98)];
+#else
+	return NtCurrentTeb()->ThreadLocalStoragePointer[*reinterpret_cast<UInt32*>(0xF9879C)];
+#endif
+}
+
+// GAME - 0x404F50
+// GECK - INLINED
+UInt32 TLSData::GetMemContext() {
+	return GetTLSData()->eMemContext;
+}
+
+// GAME - 0x404F30
+// GECK - INLINED
+void TLSData::SetMemContext(UInt32 index) {
+	GetTLSData()->eMemContext = index;
+}
+
+// GAME - 0x404EB0
+// GECK - INLINED
+AutoMemContext::AutoMemContext(MEM_CONTEXT aeMemContext, bool abOverridable, const char* apFile, UInt32 auiLine) {
+	eOldMemContext = static_cast<MEM_CONTEXT>(TLSData::GetMemContext());
+	TLSData::SetMemContext(aeMemContext);
+}
+
+// GAME - 0x404F70
+// GECK - 0x40C8A0
+AutoMemContext::~AutoMemContext() {
+	TLSData::SetMemContext(eOldMemContext);
+}

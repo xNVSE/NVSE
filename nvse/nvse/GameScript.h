@@ -153,6 +153,8 @@ public:
 
 STATIC_ASSERT(sizeof(Script) == SCRIPT_SIZE);
 
+struct ScriptRefVariable : public Script::RefVariable {};
+
 struct ConditionEntry
 {
 	struct Data
