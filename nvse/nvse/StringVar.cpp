@@ -101,8 +101,8 @@ UInt32 StringVar::Find(char* subString, UInt32 startPos, UInt32 numChars, bool b
 		std::string source = data.substr(startPos, numChars);
 		if (!bCaseSensitive)
 		{
-			std::transform(source.begin(), source.end(), source.begin(), tolower);
-			std::transform(subString, subString + strlen(subString), subString, tolower);
+			std::transform(source.begin(), source.end(), source.begin(), game_tolower);
+			std::transform(subString, subString + strlen(subString), subString, game_tolower);
 		}
 
 		 //pos = data.substr(startPos, numChars).find(subString);	//returns -1 if not found
@@ -129,8 +129,8 @@ UInt32 StringVar::Count(char* subString, UInt32 startPos, UInt32 numChars, bool 
 
 	if (!bCaseSensitive)
 	{
-		std::transform(source.begin(), source.end(), source.begin(), tolower);
-		std::transform(subString, subString + strlen(subString), subString, tolower);
+		std::transform(source.begin(), source.end(), source.begin(), game_tolower);
+		std::transform(subString, subString + strlen(subString), subString, game_tolower);
 	}
 
 	UInt32 strIdx = 0;
