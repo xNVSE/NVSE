@@ -494,12 +494,28 @@ enum PrecompileResult : uint8_t
 	kPrecompile_SpecialCompile // only occurs if a plugin overtakes the compilation process.
 };
 
+// We want to preserve loop start offsets in case we are compiling nested scripts like lambdas
+struct ScopedClearLoopStartOffsets 
+{
+	std::stack<UInt8*> loopStartOffsets;
+
+	ScopedClearLoopStartOffsets()
+	{
+		this->loopStartOffsets = s_loopStartOffsets;
+		s_loopStartOffsets = std::stack<UInt8*>();
+	}
+
+	~ScopedClearLoopStartOffsets()
+	{
+		s_loopStartOffsets = this->loopStartOffsets;
+	}
+};
+
 static bool compilerConsoleOpened = false;
 PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 {
 	// empty out the loop stack
-	while (!s_loopStartOffsets.empty())
-		s_loopStartOffsets.pop();
+	ScopedClearLoopStartOffsets _offsets;
 
 	g_currentScriptStack.push(script);
 	g_currentCompilerPluginVersions.emplace();
