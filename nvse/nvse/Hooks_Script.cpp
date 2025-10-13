@@ -501,13 +501,12 @@ struct ScopedClearLoopStartOffsets
 
 	ScopedClearLoopStartOffsets()
 	{
-		this->loopStartOffsets = s_loopStartOffsets;
-		s_loopStartOffsets = std::stack<UInt8*>();
+		this->loopStartOffsets = std::move(s_loopStartOffsets);
 	}
 
 	~ScopedClearLoopStartOffsets()
 	{
-		s_loopStartOffsets = this->loopStartOffsets;
+		s_loopStartOffsets = std::move(this->loopStartOffsets);
 	}
 };
 
