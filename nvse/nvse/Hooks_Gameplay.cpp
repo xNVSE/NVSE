@@ -933,6 +933,7 @@ static void HandleMainLoopHook(void)
 #if RUNTIME
 		CacheAllScriptsInPath(ScriptFilesPath);
 		ExecuteRuntimeUnitTests();
+		OtherHooks::ApplyLocaleFixHook(); // done here after script runner is done so that script compilation is faster
 #endif
 	}
 	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_MainGameLoop, nullptr, 0, nullptr);

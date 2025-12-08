@@ -21,6 +21,7 @@ namespace OtherHooks
 	void DeleteEventList(ScriptEventList* eventList);
 	
 	void Hooks_Other_Init();
+	void ApplyLocaleFixHook();
 
 	CurrentScriptContext* GetExecutingScriptContext();
 

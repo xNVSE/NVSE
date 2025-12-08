@@ -473,13 +473,16 @@ namespace OtherHooks
 
 		WriteRelCall(0x60D876, ResetQuestReallocateEventListHook);
 
-		*(UInt32*)0x0126FDF4 = 1; // locale fix
-
 		IMod::WriteHooks();
 		Locks::WriteHooks();
 		Terminal::WriteHooks();
 		Repair::WriteHooks();
 		DisEnable::WriteHooks();
+	}
+	
+	void ApplyLocaleFixHook()
+	{
+		*reinterpret_cast<UInt32*>(0x0126FDF4) = 1; // locale fix
 	}
 
 	thread_local CurrentScriptContext emptyCtx{}; // not every command gets run through script runner
