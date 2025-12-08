@@ -857,7 +857,8 @@ bool Cmd_PluginVersion_Execute(COMMAND_ARGS) {
 
 		const auto scriptName = scriptObj->GetName();
 
-		const auto &lowered = ToLower(std::string(pluginName));
+		std::string lowered(pluginName);
+		ToLower(lowered);
 		if (pluginWarnings.contains(lowered)) {
 			return true;
 		}

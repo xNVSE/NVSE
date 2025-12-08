@@ -596,21 +596,6 @@ std::vector g_lineMacros =
 		}
 		return false;
 	}, MacroType::AssignmentShortHand),
-#if 0
-	ScriptLineMacro([&](std::string& line, ScriptBuffer*, ScriptLineBuffer*)
-	{
-		for (auto [match, toReplace] : {std::make_pair("ife", "if eval "), std::make_pair("elseife", "elseif eval ")})
-		{
-			if (line.starts_with(match) && isspace((unsigned char)line[strlen(match)]))
-			{
-				line.erase(0,strlen(match)+1);
-				line.insert(0, toReplace);
-				return true;
-			}
-		}
-		return false;
-	}, MacroType::IfEval)
-#endif
 	ScriptLineMacro([&](std::string& line, ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 	{
 		if (auto iter = ra::find_if(g_validVariableTypeNames, _L(const char* typeName, StartsWith(line, std::string(typeName) + " "))); 

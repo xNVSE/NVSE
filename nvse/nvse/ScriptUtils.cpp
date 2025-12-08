@@ -5767,7 +5767,7 @@ bool Preprocessor::Process()
 				if (ra::all_of(line, _L(char c, isalnum(c) || c == '_' || c == ',' || isspace(c)))) // ignore `int i = 0`
 				{
 					auto varNames = SplitString(line, ",");
-					if (!ra::all_of(varNames, _L(auto & varName, ValidateVariable(StripSpace(std::move(varName)), type, m_script))))
+					if (!ra::all_of(varNames, _L(auto & varName, ValidateVariable(StripSpace(varName), type, m_script))))
 						return false;
 				}
 			}

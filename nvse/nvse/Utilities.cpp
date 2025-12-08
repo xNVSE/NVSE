@@ -1124,21 +1124,30 @@ const char* GetFormName(UInt32 formId)
 
 #endif
 
-std::string& ToLower(std::string&& data)
+std::string& ToLower(std::string& data)
 {
 	ra::transform(data, data.begin(), [](const unsigned char c) { return game_tolower(c); });
 	return data;
 }
 
-std::string& StripSpace(std::string&& data)
+std::string StripSpace(std::string data)
 {
 	std::erase_if(data, isspace);
 	return data;
 }
 
-bool StartsWith(std::string left, std::string right)
+bool StartsWith(std::string_view str, std::string_view prefix)
 {
-	return ToLower(std::move(left)).starts_with(ToLower(std::move(right)));
+	if (prefix.size() > str.size()) 
+		return false;
+    
+	return std::equal(
+		prefix.begin(), prefix.end(),
+		str.begin(),
+		[](unsigned char a, unsigned char b) {
+			return std::tolower(a) == std::tolower(b);
+		}
+	);
 }
 
 // Taken from https://stackoverflow.com/a/4770992/22891557
