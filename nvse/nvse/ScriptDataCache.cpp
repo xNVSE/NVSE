@@ -15,7 +15,7 @@ namespace ScriptDataCache
     // File format constants
     static constexpr UInt32 CACHE_MAGIC = 'NVSC';   // NVSE Script Cache
     static constexpr UInt32 CACHE_VERSION = PACKED_NVSE_VERSION;
-    static bool g_enabled = true;
+    bool g_enabled = true;
 
     // Header structure (64 bytes, padded for alignment)
 #pragma pack(push, 1)

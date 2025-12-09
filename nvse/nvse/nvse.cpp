@@ -17,6 +17,7 @@
 #include "GameAPI.h"
 #include "EventManager.h"
 #include "FormExtraData.h"
+#include "ScriptDataCache.h"
 
 #if RUNTIME
 IDebugLog	gLog("nvse.log");
@@ -102,6 +103,11 @@ void NVSE_Initialize(void)
 		UInt32 noFileWarning = 0;
 		if (GetNVSEConfigOption_UInt32("RELEASE", "bNoSaveWarnings", &noFileWarning) && noFileWarning)
 			g_noSaveWarnings = true;
+		
+		UInt32 noScriptRunnerCache = 0;
+		if (GetNVSEConfigOption_UInt32("RELEASE", "bNoScriptRunnerCaching", &noScriptRunnerCache) && noScriptRunnerCache)
+			ScriptDataCache::g_enabled = false;
+			
 
 		_MESSAGE("NVSE runtime: initialize (version = %d.%d.%d %08X %08X%08X)",
 			NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA, RUNTIME_VERSION,
