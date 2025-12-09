@@ -8,7 +8,7 @@
 #include <cstring>
 #include <unordered_set>
 
-#include "GameAPI.h"
+#include "ScriptUtils.h"
 
 namespace ScriptDataCache
 {
@@ -634,7 +634,7 @@ namespace ScriptDataCache
         for (const auto& entry : g_index)
         {
             // Only keep entries that were accessed during this session
-            if (!g_accessedHashes.contains(entry.hash))
+            if (!g_accessedHashes.contains(entry.hash) && !g_pendingHashes.contains(entry.hash))
                 continue;
 
             if (g_basePtr && entry.blobOffset + entry.blobSize <= g_fileSize)
@@ -699,26 +699,23 @@ namespace ScriptDataCache
         g_pendingEntries.clear();
         g_pendingHashes.clear();
         g_accessedHashes.clear();
+        g_initialized = false;
 
         return true;
     }
 
     bool LoadCachedDataToScript(const char* scriptText, Script* script)
     {
-        if (!scriptText || !script || !g_enabled)
+        if (!scriptText || !script || !g_enabled || !g_initialized || g_index.empty())
             return false;
-
-        if (!g_initialized || g_index.empty())
-            return false;
-
         // Compute hash and length
-        size_t length = strlen(scriptText);
+        const size_t length = strlen(scriptText);
         UInt64 hash = XXHash64::hash(scriptText, length, 0);
 
         // Binary search in sorted index
         const auto key = std::make_pair(hash, static_cast<UInt32>(length));
         const auto it = std::lower_bound(g_index.begin(), g_index.end(), key, CompareIndexEntry);
-
+        
         // Check if found (matching hash AND length)
         if (it == g_index.end() || it->hash != hash || it->scriptLength != static_cast<UInt32>(length))
             return false; // Cache miss
@@ -736,9 +733,11 @@ namespace ScriptDataCache
         return true;
     }
 
-    void AddCompiledScriptToCache(const char* scriptText, const Script* script)
+    void AddCompiledScriptToCache(const char* scriptText, Script* script)
     {
-        if (!scriptText || !script || !script->data || script->info.dataLength == 0 || !g_enabled || !g_initialized)
+        if (!scriptText || !script || !script->data 
+            || script->info.dataLength == 0 || !g_enabled || !g_initialized
+            || GetLambdaParentScript(script))
             return;
         
         // Compute hash and length
@@ -748,7 +747,7 @@ namespace ScriptDataCache
         // Check if already in pending entries using O(1) hash set lookup
         if (g_pendingHashes.contains(hash))
             return; // Already pending
-
+        g_pendingHashes.insert(hash); // Track hash for O(1) duplicate check
         // Check if already in loaded index using O(log N) binary search
         auto key = std::make_pair(hash, static_cast<UInt32>(length));
         auto it = std::lower_bound(g_index.begin(), g_index.end(), key, CompareIndexEntry);
@@ -766,7 +765,6 @@ namespace ScriptDataCache
         // Write script data to blob
         WriteScriptBlob(script, entry.data.data());
 
-        g_pendingEntries.push_back(std::move(entry));
-        g_pendingHashes.insert(hash); // Track hash for O(1) duplicate check
+        g_pendingEntries.emplace_back(std::move(entry));
     }
 }
