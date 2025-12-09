@@ -885,29 +885,10 @@ void DetermineShowScriptErrors()
 #endif
 }
 
-struct ScopedTimer
-{
-	ScopedTimer(const char* name)
-	{
-		this->name = name;
-		this->timer = std::chrono::high_resolution_clock::now();
-	}
-	
-	~ScopedTimer()
-	{
-		const auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - timer);
-		_MESSAGE("%s in %d ms", name, diff.count());
-		Console_Print("%s in %d ms", name, diff.count());
-	}
-	std::chrono::high_resolution_clock::time_point timer;
-	const char* name;
-};
-
 static void HandleMainLoopHook(void)
 { 
 	if (!s_recordedMainThreadID)
 	{
-		ScopedTimer timer("Loaded deferred init");
 		DetermineShowScriptErrors();
 		ApplyGECKEditorIDs();
 		s_recordedMainThreadID = true;
