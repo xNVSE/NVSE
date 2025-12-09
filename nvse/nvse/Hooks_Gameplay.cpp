@@ -29,6 +29,7 @@
 #include "UnitTests.h"
 #include "GameUI.h"
 #include "CachedScripts.h"
+#include "ScriptDataCache.h"
 
 static void HandleMainLoopHook(void);
 
@@ -926,12 +927,14 @@ static void HandleMainLoopHook(void)
 				b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], b[8], b[9], NULL);
 
 		}
+		ScriptDataCache::LoadScriptDataCacheFromFile();
 #endif
 		
 		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_DeferredInit, NULL, 0, NULL);
 
 #if RUNTIME
 		CacheAllScriptsInPath(ScriptFilesPath);
+		ScriptDataCache::SaveScriptDataCacheToFile();
 		ExecuteRuntimeUnitTests();
 		OtherHooks::ApplyLocaleFixHook(); // done here after script runner is done so that script compilation is faster
 #endif

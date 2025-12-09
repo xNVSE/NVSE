@@ -281,6 +281,7 @@
     <ClCompile Include="FormExtraData.cpp">
       <Filter>internals</Filter>
     </ClCompile>
+    <ClCompile Include="ScriptDataCache.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
@@ -573,6 +574,10 @@
     </ClInclude>
     <ClInclude Include="FormExtraData.h">
       <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="ScriptDataCache.h" />
+    <ClInclude Include="xxhash64.h">
+      <Filter>lib</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

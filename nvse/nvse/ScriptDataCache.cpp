@@ -12,7 +12,8 @@ namespace ScriptDataCache
 {
     // File format constants
     static constexpr UInt32 CACHE_MAGIC = 'NVSC';   // NVSE Script Cache
-    static constexpr UInt32 CACHE_VERSION = 1;
+    static constexpr UInt32 CACHE_VERSION = PACKED_NVSE_VERSION;
+    static bool g_enabled = true;
 
     // Header structure (64 bytes, padded for alignment)
 #pragma pack(push, 1)
@@ -68,241 +69,250 @@ namespace ScriptDataCache
         std::vector<UInt8> data;
     };
 
-    // Global state for memory-mapped file
-    static HANDLE g_hFile = INVALID_HANDLE_VALUE;
-    static HANDLE g_hMapping = nullptr;
-    static void* g_basePtr = nullptr;
-    static size_t g_fileSize = 0;
-
-    // Index loaded into memory for fast binary search
-    static std::vector<IndexEntry> g_index;
-
-    // Pending entries to be written on save
-    static std::vector<PendingEntry> g_pendingEntries;
-
-    // Hash set for O(1) duplicate checking in pending entries
-    static std::unordered_set<UInt64> g_pendingHashes;
-
-    // Hash set to track which cached entries were actually accessed this session
-    // Used to prune stale entries (removed scripts) on save
-    static std::unordered_set<UInt64> g_accessedHashes;
-
-    // Initialization flag
-    static bool g_initialized = false;
-
-    // Path is cached since it doesn't change during runtime
-    static const std::string& GetCacheFilePath()
+    namespace
     {
-        static std::string path = []() {
-            std::string p = GetFalloutDirectory();
-            if (!p.empty())
-                p += "script_data_cache.bin";
-            return p;
-        }();
-        return path;
-    }
+        // Global state for memory-mapped file
+        HANDLE g_hFile = INVALID_HANDLE_VALUE;
+        HANDLE g_hMapping = nullptr;
+        void* g_basePtr = nullptr;
+        size_t g_fileSize = 0;
 
-    // Cleanup memory mapping resources
-    static void CleanupMapping()
-    {
-        if (g_basePtr)
+        // Index loaded into memory for fast binary search
+        std::vector<IndexEntry> g_index;
+
+        // Pending entries to be written on save
+        std::vector<PendingEntry> g_pendingEntries;
+
+        // Hash set for O(1) duplicate checking in pending entries
+        std::unordered_set<UInt64> g_pendingHashes;
+
+        // Hash set to track which cached entries were actually accessed this session
+        // Used to prune stale entries (removed scripts) on save
+        std::unordered_set<UInt64> g_accessedHashes;
+
+        // Initialization flag
+        bool g_initialized = false;
+
+        // Path is cached since it doesn't change during runtime
+        const std::string& GetCacheFilePath()
         {
-            UnmapViewOfFile(g_basePtr);
-            g_basePtr = nullptr;
+            static std::string path = []() {
+                std::string p = GetFalloutDirectory();
+                if (!p.empty())
+                    p += "script_data_cache.bin";
+                return p;
+            }();
+            return path;
         }
-        if (g_hMapping)
+
+        // Cleanup memory mapping resources
+        void CleanupMapping()
         {
-            CloseHandle(g_hMapping);
-            g_hMapping = nullptr;
-        }
-        if (g_hFile != INVALID_HANDLE_VALUE)
-        {
-            CloseHandle(g_hFile);
-            g_hFile = INVALID_HANDLE_VALUE;
-        }
-        g_fileSize = 0;
-    }
-
-    // Compare function for binary search
-    static bool CompareIndexEntry(const IndexEntry& entry, const std::pair<UInt64, UInt32>& key)
-    {
-        if (entry.hash != key.first)
-            return entry.hash < key.first;
-        return entry.scriptLength < key.second;
-    }
-
-    // ============================================================================
-    // Size calculation helpers
-    // ============================================================================
-
-    static size_t CalculateVarListBlobSize(const Script::VarInfoList& varList)
-    {
-        size_t size = sizeof(UInt32); // varCount
-        for (auto* var : varList)
-        {
-            if (!var) continue;
-            size += sizeof(SerializedVarInfo);
-            if (var->name.m_data)
-                size += var->name.m_dataLen;
-        }
-        return size;
-    }
-
-    static size_t CalculateRefListBlobSize(const Script::RefList& refList)
-    {
-        size_t size = sizeof(UInt32); // refCount
-        for (auto* ref : refList)
-        {
-            if (!ref) continue;
-            size += sizeof(SerializedRefInfo);
-            if (ref->name.m_data)
-                size += ref->name.m_dataLen;
-        }
-        return size;
-    }
-
-    static size_t CalculateScriptBlobSize(const Script* script)
-    {
-        size_t size = sizeof(Script::ScriptInfo);
-        size += script->info.dataLength;
-        size += CalculateVarListBlobSize(script->varList);
-        size += CalculateRefListBlobSize(script->refList);
-        return size;
-    }
-
-    // ============================================================================
-    // Serialization helpers (write)
-    // ============================================================================
-
-    static void WriteVarList(const Script::VarInfoList& varList, UInt8*& ptr)
-    {
-        UInt32 varCount = varList.Count();
-        memcpy(ptr, &varCount, sizeof(UInt32));
-        ptr += sizeof(UInt32);
-
-        for (auto* var : varList)
-        {
-            if (!var) continue;
-
-            SerializedVarInfo serialized;
-            serialized.idx = var->idx;
-            serialized.pad04 = var->pad04;
-            serialized.data = var->data;
-            serialized.type = var->type;
-            serialized.nameLen = var->name.m_data ? var->name.m_dataLen : 0;
-
-            memcpy(ptr, &serialized, sizeof(SerializedVarInfo));
-            ptr += sizeof(SerializedVarInfo);
-
-            if (serialized.nameLen > 0)
+            if (g_basePtr)
             {
-                memcpy(ptr, var->name.m_data, serialized.nameLen);
-                ptr += serialized.nameLen;
+                UnmapViewOfFile(g_basePtr);
+                g_basePtr = nullptr;
             }
-        }
-    }
-
-    static void WriteRefList(const Script::RefList& refList, UInt8*& ptr)
-    {
-        UInt32 refCount = refList.Count();
-        memcpy(ptr, &refCount, sizeof(UInt32));
-        ptr += sizeof(UInt32);
-
-        for (auto* ref : refList)
-        {
-            if (!ref) continue;
-
-            SerializedRefInfo serialized;
-            serialized.varIdx = ref->varIdx;
-            serialized.formRefID = ref->form ? ref->form->refID : 0;
-            serialized.nameLen = ref->name.m_data ? ref->name.m_dataLen : 0;
-
-            memcpy(ptr, &serialized, sizeof(SerializedRefInfo));
-            ptr += sizeof(SerializedRefInfo);
-
-            if (serialized.nameLen > 0)
+            if (g_hMapping)
             {
-                memcpy(ptr, ref->name.m_data, serialized.nameLen);
-                ptr += serialized.nameLen;
+                CloseHandle(g_hMapping);
+                g_hMapping = nullptr;
             }
-        }
-    }
-
-    static void WriteScriptBlob(const Script* script, UInt8* dest)
-    {
-        UInt8* ptr = dest;
-
-        // Write ScriptInfo
-        memcpy(ptr, &script->info, sizeof(Script::ScriptInfo));
-        ptr += sizeof(Script::ScriptInfo);
-
-        // Write bytecode
-        memcpy(ptr, script->data, script->info.dataLength);
-        ptr += script->info.dataLength;
-
-        // Write varList and refList
-        WriteVarList(script->varList, ptr);
-        WriteRefList(script->refList, ptr);
-    }
-
-    // ============================================================================
-    // Deserialization helpers (read)
-    // ============================================================================
-
-    static bool ReadVarList(const UInt8*& ptr, const UInt8* end, Script::VarInfoList& varList)
-    {
-        if (ptr + sizeof(UInt32) > end)
-            return false;
-
-        UInt32 varCount;
-        memcpy(&varCount, ptr, sizeof(UInt32));
-        ptr += sizeof(UInt32);
-
-        // Initialize list head directly (skip Init() call overhead)
-        varList.m_listHead.data = nullptr;
-        varList.m_listHead.next = nullptr;
-
-        if (varCount == 0)
-            return true;
-
-        // Validate minimum data size upfront to fail fast on corrupt data
-        if (ptr + varCount * sizeof(SerializedVarInfo) > end)
-            return false;
-
-        // Track tail for O(1) appends instead of O(n) traversals
-        using VarNode = ListNode<VariableInfo>;
-        VarNode* tail = &varList.m_listHead;
-
-        for (UInt32 i = 0; i < varCount; i++)
-        {
-            if (ptr + sizeof(SerializedVarInfo) > end)
-                return false;
-
-            SerializedVarInfo serialized;
-            memcpy(&serialized, ptr, sizeof(SerializedVarInfo));
-            ptr += sizeof(SerializedVarInfo);
-
-            if (ptr + serialized.nameLen > end)
-                return false;
-
-            auto* var = static_cast<VariableInfo*>(FormHeap_Allocate(sizeof(VariableInfo)));
-            if (!var)
-                return false;
-
-            var->idx = serialized.idx;
-            var->pad04 = serialized.pad04;
-            var->data = serialized.data;
-            var->type = serialized.type;
-
-            if (serialized.nameLen > 0)
+            if (g_hFile != INVALID_HANDLE_VALUE)
             {
-                var->name.m_data = static_cast<char*>(FormHeap_Allocate(serialized.nameLen + 1));
+                CloseHandle(g_hFile);
+                g_hFile = INVALID_HANDLE_VALUE;
+            }
+            g_fileSize = 0;
+        }
+
+        // Compare function for binary search
+        bool CompareIndexEntry(const IndexEntry& entry, const std::pair<UInt64, UInt32>& key)
+        {
+            if (entry.hash != key.first)
+                return entry.hash < key.first;
+            return entry.scriptLength < key.second;
+        }
+
+        // ============================================================================
+        // Size calculation helpers
+        // ============================================================================
+
+        size_t CalculateVarListBlobSize(const Script::VarInfoList& varList)
+        {
+            size_t size = sizeof(UInt32); // varCount
+            for (auto* var : varList)
+            {
+                if (!var) continue;
+                size += sizeof(SerializedVarInfo);
                 if (var->name.m_data)
+                    size += var->name.m_dataLen;
+            }
+            return size;
+        }
+
+        size_t CalculateRefListBlobSize(const Script::RefList& refList)
+        {
+            size_t size = sizeof(UInt32); // refCount
+            for (auto* ref : refList)
+            {
+                if (!ref) continue;
+                size += sizeof(SerializedRefInfo);
+                if (ref->name.m_data)
+                    size += ref->name.m_dataLen;
+            }
+            return size;
+        }
+
+        size_t CalculateScriptBlobSize(const Script* script)
+        {
+            size_t size = sizeof(Script::ScriptInfo);
+            size += script->info.dataLength;
+            size += CalculateVarListBlobSize(script->varList);
+            size += CalculateRefListBlobSize(script->refList);
+            return size;
+        }
+
+        // ============================================================================
+        // Serialization helpers (write)
+        // ============================================================================
+
+        void WriteVarList(const Script::VarInfoList& varList, UInt8*& ptr)
+        {
+            UInt32 varCount = varList.Count();
+            memcpy(ptr, &varCount, sizeof(UInt32));
+            ptr += sizeof(UInt32);
+
+            for (auto* var : varList)
+            {
+                if (!var) continue;
+
+                SerializedVarInfo serialized;
+                serialized.idx = var->idx;
+                serialized.pad04 = var->pad04;
+                serialized.data = var->data;
+                serialized.type = var->type;
+                serialized.nameLen = var->name.m_data ? var->name.m_dataLen : 0;
+
+                memcpy(ptr, &serialized, sizeof(SerializedVarInfo));
+                ptr += sizeof(SerializedVarInfo);
+
+                if (serialized.nameLen > 0)
                 {
-                    memcpy(var->name.m_data, ptr, serialized.nameLen);
-                    var->name.m_data[serialized.nameLen] = '\0';
-                    var->name.m_dataLen = serialized.nameLen;
-                    var->name.m_bufLen = serialized.nameLen + 1;
+                    memcpy(ptr, var->name.m_data, serialized.nameLen);
+                    ptr += serialized.nameLen;
+                }
+            }
+        }
+
+        void WriteRefList(const Script::RefList& refList, UInt8*& ptr)
+        {
+            UInt32 refCount = refList.Count();
+            memcpy(ptr, &refCount, sizeof(UInt32));
+            ptr += sizeof(UInt32);
+
+            for (auto* ref : refList)
+            {
+                if (!ref) continue;
+
+                SerializedRefInfo serialized;
+                serialized.varIdx = ref->varIdx;
+                serialized.formRefID = ref->form ? ref->form->refID : 0;
+                serialized.nameLen = ref->name.m_data ? ref->name.m_dataLen : 0;
+
+                memcpy(ptr, &serialized, sizeof(SerializedRefInfo));
+                ptr += sizeof(SerializedRefInfo);
+
+                if (serialized.nameLen > 0)
+                {
+                    memcpy(ptr, ref->name.m_data, serialized.nameLen);
+                    ptr += serialized.nameLen;
+                }
+            }
+        }
+
+        void WriteScriptBlob(const Script* script, UInt8* dest)
+        {
+            UInt8* ptr = dest;
+
+            // Write ScriptInfo
+            memcpy(ptr, &script->info, sizeof(Script::ScriptInfo));
+            ptr += sizeof(Script::ScriptInfo);
+
+            // Write bytecode
+            memcpy(ptr, script->data, script->info.dataLength);
+            ptr += script->info.dataLength;
+
+            // Write varList and refList
+            WriteVarList(script->varList, ptr);
+            WriteRefList(script->refList, ptr);
+        }
+
+        // ============================================================================
+        // Deserialization helpers (read)
+        // ============================================================================
+
+        bool ReadVarList(const UInt8*& ptr, const UInt8* end, Script::VarInfoList& varList)
+        {
+            if (ptr + sizeof(UInt32) > end)
+                return false;
+
+            UInt32 varCount;
+            memcpy(&varCount, ptr, sizeof(UInt32));
+            ptr += sizeof(UInt32);
+
+            // Initialize list head directly (skip Init() call overhead)
+            varList.m_listHead.data = nullptr;
+            varList.m_listHead.next = nullptr;
+
+            if (varCount == 0)
+                return true;
+
+            // Validate minimum data size upfront to fail fast on corrupt data
+            if (ptr + varCount * sizeof(SerializedVarInfo) > end)
+                return false;
+
+            // Track tail for O(1) appends instead of O(n) traversals
+            using VarNode = ListNode<VariableInfo>;
+            VarNode* tail = &varList.m_listHead;
+
+            for (UInt32 i = 0; i < varCount; i++)
+            {
+                if (ptr + sizeof(SerializedVarInfo) > end)
+                    return false;
+
+                SerializedVarInfo serialized;
+                memcpy(&serialized, ptr, sizeof(SerializedVarInfo));
+                ptr += sizeof(SerializedVarInfo);
+
+                if (ptr + serialized.nameLen > end)
+                    return false;
+
+                auto* var = static_cast<VariableInfo*>(FormHeap_Allocate(sizeof(VariableInfo)));
+                if (!var)
+                    return false;
+
+                var->idx = serialized.idx;
+                var->pad04 = serialized.pad04;
+                var->data = serialized.data;
+                var->type = serialized.type;
+
+                if (serialized.nameLen > 0)
+                {
+                    var->name.m_data = static_cast<char*>(FormHeap_Allocate(serialized.nameLen + 1));
+                    if (var->name.m_data)
+                    {
+                        memcpy(var->name.m_data, ptr, serialized.nameLen);
+                        var->name.m_data[serialized.nameLen] = '\0';
+                        var->name.m_dataLen = serialized.nameLen;
+                        var->name.m_bufLen = serialized.nameLen + 1;
+                    }
+                    else
+                    {
+                        var->name.m_data = nullptr;
+                        var->name.m_dataLen = 0;
+                        var->name.m_bufLen = 0;
+                    }
                 }
                 else
                 {
@@ -310,83 +320,83 @@ namespace ScriptDataCache
                     var->name.m_dataLen = 0;
                     var->name.m_bufLen = 0;
                 }
-            }
-            else
-            {
-                var->name.m_data = nullptr;
-                var->name.m_dataLen = 0;
-                var->name.m_bufLen = 0;
-            }
-            ptr += serialized.nameLen;
+                ptr += serialized.nameLen;
 
-            // O(1) append using tail tracking
-            if (i == 0)
-            {
-                // First item goes directly in list head (no node allocation)
-                tail->data = var;
+                // O(1) append using tail tracking
+                if (i == 0)
+                {
+                    // First item goes directly in list head (no node allocation)
+                    tail->data = var;
+                }
+                else
+                {
+                    // Subsequent items: allocate node and link at tail
+                    tail = tail->Append(var);
+                }
             }
-            else
-            {
-                // Subsequent items: allocate node and link at tail
-                tail = tail->Append(var);
-            }
+
+            return true;
         }
 
-        return true;
-    }
-
-    static bool ReadRefList(const UInt8*& ptr, const UInt8* end, Script::RefList& refList)
-    {
-        if (ptr + sizeof(UInt32) > end)
-            return false;
-
-        UInt32 refCount;
-        memcpy(&refCount, ptr, sizeof(UInt32));
-        ptr += sizeof(UInt32);
-
-        // Initialize list head directly (skip Init() call overhead)
-        refList.m_listHead.data = nullptr;
-        refList.m_listHead.next = nullptr;
-
-        if (refCount == 0)
-            return true;
-
-        // Validate minimum data size upfront to fail fast on corrupt data
-        if (ptr + refCount * sizeof(SerializedRefInfo) > end)
-            return false;
-
-        // Track tail for O(1) appends instead of O(n) traversals
-        using RefNode = ListNode<Script::RefVariable>;
-        RefNode* tail = &refList.m_listHead;
-
-        for (UInt32 i = 0; i < refCount; i++)
+        bool ReadRefList(const UInt8*& ptr, const UInt8* end, Script::RefList& refList)
         {
-            if (ptr + sizeof(SerializedRefInfo) > end)
+            if (ptr + sizeof(UInt32) > end)
                 return false;
 
-            SerializedRefInfo serialized;
-            memcpy(&serialized, ptr, sizeof(SerializedRefInfo));
-            ptr += sizeof(SerializedRefInfo);
+            UInt32 refCount;
+            memcpy(&refCount, ptr, sizeof(UInt32));
+            ptr += sizeof(UInt32);
 
-            if (ptr + serialized.nameLen > end)
+            // Initialize list head directly (skip Init() call overhead)
+            refList.m_listHead.data = nullptr;
+            refList.m_listHead.next = nullptr;
+
+            if (refCount == 0)
+                return true;
+
+            // Validate minimum data size upfront to fail fast on corrupt data
+            if (ptr + refCount * sizeof(SerializedRefInfo) > end)
                 return false;
 
-            auto* ref = static_cast<Script::RefVariable*>(FormHeap_Allocate(sizeof(Script::RefVariable)));
-            if (!ref)
-                return false;
+            // Track tail for O(1) appends instead of O(n) traversals
+            using RefNode = ListNode<Script::RefVariable>;
+            RefNode* tail = &refList.m_listHead;
 
-            ref->varIdx = serialized.varIdx;
-            ref->form = serialized.formRefID ? LookupFormByID(serialized.formRefID) : nullptr;
-
-            if (serialized.nameLen > 0)
+            for (UInt32 i = 0; i < refCount; i++)
             {
-                ref->name.m_data = static_cast<char*>(FormHeap_Allocate(serialized.nameLen + 1));
-                if (ref->name.m_data)
+                if (ptr + sizeof(SerializedRefInfo) > end)
+                    return false;
+
+                SerializedRefInfo serialized;
+                memcpy(&serialized, ptr, sizeof(SerializedRefInfo));
+                ptr += sizeof(SerializedRefInfo);
+
+                if (ptr + serialized.nameLen > end)
+                    return false;
+
+                auto* ref = static_cast<Script::RefVariable*>(FormHeap_Allocate(sizeof(Script::RefVariable)));
+                if (!ref)
+                    return false;
+
+                ref->varIdx = serialized.varIdx;
+                ref->form = serialized.formRefID ? LookupFormByID(serialized.formRefID) : nullptr;
+
+                if (serialized.nameLen > 0)
                 {
-                    memcpy(ref->name.m_data, ptr, serialized.nameLen);
-                    ref->name.m_data[serialized.nameLen] = '\0';
-                    ref->name.m_dataLen = serialized.nameLen;
-                    ref->name.m_bufLen = serialized.nameLen + 1;
+                    ref->name.m_data = static_cast<char*>(FormHeap_Allocate(serialized.nameLen + 1));
+                    if (ref->name.m_data)
+                    {
+                        memcpy(ref->name.m_data, ptr, serialized.nameLen);
+                        ref->name.m_data[serialized.nameLen] = '\0';
+                        ref->name.m_dataLen = serialized.nameLen;
+                        ref->name.m_bufLen = serialized.nameLen + 1;
+                    }
+                    else
+                    {
+                        ref->name.m_data = nullptr;
+                        ref->name.m_dataLen = 0;
+                        ref->name.m_bufLen = 0;
+                    }
                 }
                 else
                 {
@@ -394,78 +404,74 @@ namespace ScriptDataCache
                     ref->name.m_dataLen = 0;
                     ref->name.m_bufLen = 0;
                 }
-            }
-            else
-            {
-                ref->name.m_data = nullptr;
-                ref->name.m_dataLen = 0;
-                ref->name.m_bufLen = 0;
-            }
-            ptr += serialized.nameLen;
+                ptr += serialized.nameLen;
 
-            // O(1) append using tail tracking
-            if (i == 0)
-            {
-                // First item goes directly in list head (no node allocation)
-                tail->data = ref;
+                // O(1) append using tail tracking
+                if (i == 0)
+                {
+                    // First item goes directly in list head (no node allocation)
+                    tail->data = ref;
+                }
+                else
+                {
+                    // Subsequent items: allocate node and link at tail
+                    tail = tail->Append(ref);
+                }
             }
-            else
-            {
-                // Subsequent items: allocate node and link at tail
-                tail = tail->Append(ref);
-            }
+
+            return true;
         }
 
-        return true;
-    }
-
-    static bool ReadScriptBlob(const UInt8* blobData, size_t blobSize, Script* script)
-    {
-        const UInt8* ptr = blobData;
-        const UInt8* end = blobData + blobSize;
-
-        // Read ScriptInfo
-        if (ptr + sizeof(Script::ScriptInfo) > end)
-            return false;
-
-        Script::ScriptInfo cachedInfo;
-        memcpy(&cachedInfo, ptr, sizeof(Script::ScriptInfo));
-        ptr += sizeof(Script::ScriptInfo);
-
-        // Validate and read bytecode
-        if (ptr + cachedInfo.dataLength > end)
-            return false;
-
-        UInt8* newData = static_cast<UInt8*>(FormHeap_Allocate(cachedInfo.dataLength));
-        if (!newData)
-            return false;
-
-        memcpy(newData, ptr, cachedInfo.dataLength);
-        ptr += cachedInfo.dataLength;
-
-        // Read varList
-        if (!ReadVarList(ptr, end, script->varList))
+        bool ReadScriptBlob(const UInt8* blobData, size_t blobSize, Script* script)
         {
-            FormHeap_Free(newData);
-            return false;
+            const UInt8* ptr = blobData;
+            const UInt8* end = blobData + blobSize;
+
+            // Read ScriptInfo
+            if (ptr + sizeof(Script::ScriptInfo) > end)
+                return false;
+
+            Script::ScriptInfo cachedInfo;
+            memcpy(&cachedInfo, ptr, sizeof(Script::ScriptInfo));
+            ptr += sizeof(Script::ScriptInfo);
+
+            // Validate and read bytecode
+            if (ptr + cachedInfo.dataLength > end)
+                return false;
+
+            UInt8* newData = static_cast<UInt8*>(FormHeap_Allocate(cachedInfo.dataLength));
+            if (!newData)
+                return false;
+
+            memcpy(newData, ptr, cachedInfo.dataLength);
+            ptr += cachedInfo.dataLength;
+
+            // Read varList
+            if (!ReadVarList(ptr, end, script->varList))
+            {
+                FormHeap_Free(newData);
+                return false;
+            }
+
+            // Read refList
+            if (!ReadRefList(ptr, end, script->refList))
+            {
+                FormHeap_Free(newData);
+                return false;
+            }
+
+            // Success - assign to script
+            script->data = newData;
+            script->info = cachedInfo;
+
+            return true;
         }
-
-        // Read refList
-        if (!ReadRefList(ptr, end, script->refList))
-        {
-            FormHeap_Free(newData);
-            return false;
-        }
-
-        // Success - assign to script
-        script->data = newData;
-        script->info = cachedInfo;
-
-        return true;
-    }
+    } // end anonymous namespace
 
     bool LoadScriptDataCacheFromFile()
     {
+        if (!g_enabled)
+            return true;
         // Cleanup any previous state
         CleanupMapping();
         g_index.clear();
@@ -575,7 +581,7 @@ namespace ScriptDataCache
 
     bool SaveScriptDataCacheToFile()
     {
-        if (!g_initialized)
+        if (!g_initialized || !g_enabled)
             return false;
 
         // If no pending entries and no accessed entries, nothing to save
@@ -698,7 +704,7 @@ namespace ScriptDataCache
 
     bool LoadCachedDataToScript(const char* scriptText, Script* script)
     {
-        if (!scriptText || !script)
+        if (!scriptText || !script || !g_enabled)
             return false;
 
         if (!g_initialized || g_index.empty())
@@ -731,12 +737,9 @@ namespace ScriptDataCache
 
     void AddCompiledScriptToCache(const char* scriptText, const Script* script)
     {
-        if (!scriptText || !script || !script->data || script->info.dataLength == 0)
+        if (!scriptText || !script || !script->data || script->info.dataLength == 0 || !g_enabled || !g_initialized)
             return;
-
-        if (!g_initialized)
-            return;
-
+        
         // Compute hash and length
         size_t length = strlen(scriptText);
         UInt64 hash = XXHash64::hash(scriptText, length, 0);

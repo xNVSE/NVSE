@@ -354,3 +354,5 @@ inline int __cdecl game_tolower(int _C) { return CdeclCall<int>(0xEC67AA, _C); }
 inline int __cdecl game_toupper(int _C) { return toupper(_C); }
 inline int __cdecl game_tolower(int _C) { return tolower(_C); }
 #endif
+
+void WaitForDebugger();

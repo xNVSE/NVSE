@@ -24,6 +24,7 @@
 #include "NVSETreePrinter.h"
 #include "NVSETypeChecker.h"
 #include "PluginManager.h"
+#include "ScriptDataCache.h"
 
 // a size of ~1KB should be enough for a single line of code
 char s_ExpressionParserAltBuffer[0x500] = {0};
@@ -519,6 +520,11 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 	g_currentScriptStack.push(script);
 	g_currentCompilerPluginVersions.emplace();
 	g_currentScriptRestorePoundChar.emplace();
+	
+#if RUNTIME
+	if (ScriptDataCache::LoadCachedDataToScript(buf->scriptText, script))
+		return kPrecompile_SpecialCompile;	
+#endif
 
 	// Initialize these, just in case.
 	buf->errorCode = 0;
@@ -684,7 +690,7 @@ namespace Runtime // double-clarify
 	PrecompileResult __fastcall HandleBeginCompile_SetNotCompiled(Script* script, ScriptBuffer* buf, bool isCompiled)
 	{
 		return HandleBeginCompile(buf, script);
-		}
+	}
 
 	__declspec(naked) void HookBeginScriptCompile()
 	{
@@ -703,11 +709,11 @@ namespace Runtime // double-clarify
 			// Also need to set result to 1 (success)
 			mov		al, 1
 
-			fail:
+		fail:
 			// fail, or a plugin custom-compiled the script
 			jmp failOrSpecialCompileAddr //jump here to land in HookEndScriptCompile.
 
-				success :
+		success:
 			jmp retnAddr
 		}
 	}
@@ -722,6 +728,7 @@ namespace Runtime // double-clarify
 			ScriptAndScriptBuffer data{ g_currentScriptStack.top(), buf };
 			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptCompile,
 				&data, sizeof(ScriptAndScriptBuffer), nullptr);
+			ScriptDataCache::AddCompiledScriptToCache(data.scriptBuffer->scriptText, data.script);
 		}
 		PostScriptCompile();
 		return success;
