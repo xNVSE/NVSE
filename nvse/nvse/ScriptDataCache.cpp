@@ -8,6 +8,8 @@
 #include <cstring>
 #include <unordered_set>
 
+#include "GameAPI.h"
+
 namespace ScriptDataCache
 {
     // File format constants
@@ -693,7 +695,6 @@ namespace ScriptDataCache
             DeleteFileA(tempPath.c_str());
             return false;
         }
-
         // Clear pending entries and accessed tracking after successful save
         g_pendingEntries.clear();
         g_pendingHashes.clear();
@@ -715,8 +716,8 @@ namespace ScriptDataCache
         UInt64 hash = XXHash64::hash(scriptText, length, 0);
 
         // Binary search in sorted index
-        auto key = std::make_pair(hash, static_cast<UInt32>(length));
-        auto it = std::lower_bound(g_index.begin(), g_index.end(), key, CompareIndexEntry);
+        const auto key = std::make_pair(hash, static_cast<UInt32>(length));
+        const auto it = std::lower_bound(g_index.begin(), g_index.end(), key, CompareIndexEntry);
 
         // Check if found (matching hash AND length)
         if (it == g_index.end() || it->hash != hash || it->scriptLength != static_cast<UInt32>(length))
@@ -726,7 +727,7 @@ namespace ScriptDataCache
         if (!g_basePtr || it->blobOffset + it->blobSize > g_fileSize)
             return false;
 
-        const UInt8* blobData = static_cast<const UInt8*>(g_basePtr) + it->blobOffset;
+        const auto* blobData = static_cast<const UInt8*>(g_basePtr) + it->blobOffset;
         if (!ReadScriptBlob(blobData, it->blobSize, script))
             return false;
 

@@ -443,9 +443,6 @@ bool Cmd_GetAttackDamage_Execute(COMMAND_ARGS)
 	TESAttackDamageForm* pDamage = DYNAMIC_CAST(pForm, TESForm, TESAttackDamageForm);
 	if (pDamage) {
 		*result = pDamage->damage;
-#if _DEBUG
-		Console_Print("damage: %d", pDamage->damage);
-#endif
 	}
 	return true;
 }
@@ -467,9 +464,6 @@ bool Cmd_GetAttackDamage_Eval(COMMAND_ARGS_EVAL)
 	TESAttackDamageForm* pDamage = DYNAMIC_CAST(pForm, TESForm, TESAttackDamageForm);
 	if (pDamage) {
 		*result = pDamage->damage;
-#if _DEBUG
-		Console_Print("damage: %d", pDamage->damage);
-#endif
 	}
 	return true;
 }

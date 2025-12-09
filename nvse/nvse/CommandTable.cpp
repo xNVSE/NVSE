@@ -1199,10 +1199,31 @@ void CommandInfo::DumpFunctionDef(CommandMetadata* metadata) const
 	}
 }
 
+namespace
+{
+	UnorderedMap<const char*, UInt32> g_cmdTableCache;
+}
+
+void CommandTable::BuildCache()
+{
+	for (auto cmd: m_commands) 
+	{
+		g_cmdTableCache.Emplace(cmd.longName, cmd.opcode);
+		g_cmdTableCache.Emplace(cmd.shortName, cmd.opcode);
+	}
+	m_cached = true;
+}
+
 CommandInfo *CommandTable::GetByName(const char* name, std::unordered_map<std::string, UInt32> *pluginVersions)
 {
+	if (m_cached)
+	{
+		if (auto iter = g_cmdTableCache.Find(name); !iter.End())
+			return GetByOpcode(iter.Get());
+		return nullptr;
+	}
 	for (CommandList::reverse_iterator iter = m_commands.rbegin(); iter != m_commands.rend(); ++iter) {
-		if (!StrCompare(name, iter->longName) || (iter->shortName && !StrCompare(name, iter->shortName))) {
+		if (!_stricmp(name, iter->longName) || (iter->shortName && !_stricmp(name, iter->shortName))) {
 			auto *cmd = &(*iter);
 
 			// Versioned command, only return if script specifies a plugin version and specified version <= plugin version

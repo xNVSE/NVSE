@@ -298,7 +298,9 @@ struct CommandInfo
 
 class CommandTable
 {
+	bool m_cached = false;
 public:
+	void BuildCache();
 	CommandTable();
 	~CommandTable();
 
