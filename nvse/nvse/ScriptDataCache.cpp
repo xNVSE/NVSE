@@ -586,9 +586,23 @@ namespace ScriptDataCache
         if (!g_initialized || !g_enabled)
             return false;
 
-        // If no pending entries and no accessed entries, nothing to save
-        if (g_pendingEntries.empty() && g_accessedHashes.empty())
-            return true;
+        // Optimization: Check if save is actually needed
+        if (g_pendingEntries.empty())
+        {
+            // No new entries - check if any existing entries would be pruned
+            if (g_index.empty())
+                return true;  // Nothing to save or prune
+
+            // If all existing entries were accessed, file content wouldn't change
+            // If any entry was NOT accessed, we must save to prune stale entries
+            const bool allEntriesAccessed = std::ranges::all_of(g_index, [](const IndexEntry& entry)
+            {
+                return g_accessedHashes.contains(entry.hash);
+            });
+
+            if (allEntriesAccessed)
+                return true;  // No changes needed - skip save
+        }
 
         std::string path = GetCacheFilePath();
         if (path.empty())
