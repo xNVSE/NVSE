@@ -258,7 +258,20 @@ namespace ScriptDataCache
         memcpy(&varCount, ptr, sizeof(UInt32));
         ptr += sizeof(UInt32);
 
-        varList.Init();
+        // Initialize list head directly (skip Init() call overhead)
+        varList.m_listHead.data = nullptr;
+        varList.m_listHead.next = nullptr;
+
+        if (varCount == 0)
+            return true;
+
+        // Validate minimum data size upfront to fail fast on corrupt data
+        if (ptr + varCount * sizeof(SerializedVarInfo) > end)
+            return false;
+
+        // Track tail for O(1) appends instead of O(n) traversals
+        using VarNode = ListNode<VariableInfo>;
+        VarNode* tail = &varList.m_listHead;
 
         for (UInt32 i = 0; i < varCount; i++)
         {
@@ -277,6 +290,7 @@ namespace ScriptDataCache
                 return false;
 
             var->idx = serialized.idx;
+            var->pad04 = serialized.pad04;
             var->data = serialized.data;
             var->type = serialized.type;
 
@@ -305,7 +319,17 @@ namespace ScriptDataCache
             }
             ptr += serialized.nameLen;
 
-            varList.Append(var);
+            // O(1) append using tail tracking
+            if (i == 0)
+            {
+                // First item goes directly in list head (no node allocation)
+                tail->data = var;
+            }
+            else
+            {
+                // Subsequent items: allocate node and link at tail
+                tail = tail->Append(var);
+            }
         }
 
         return true;
@@ -320,7 +344,20 @@ namespace ScriptDataCache
         memcpy(&refCount, ptr, sizeof(UInt32));
         ptr += sizeof(UInt32);
 
-        refList.Init();
+        // Initialize list head directly (skip Init() call overhead)
+        refList.m_listHead.data = nullptr;
+        refList.m_listHead.next = nullptr;
+
+        if (refCount == 0)
+            return true;
+
+        // Validate minimum data size upfront to fail fast on corrupt data
+        if (ptr + refCount * sizeof(SerializedRefInfo) > end)
+            return false;
+
+        // Track tail for O(1) appends instead of O(n) traversals
+        using RefNode = ListNode<Script::RefVariable>;
+        RefNode* tail = &refList.m_listHead;
 
         for (UInt32 i = 0; i < refCount; i++)
         {
@@ -366,7 +403,17 @@ namespace ScriptDataCache
             }
             ptr += serialized.nameLen;
 
-            refList.Append(ref);
+            // O(1) append using tail tracking
+            if (i == 0)
+            {
+                // First item goes directly in list head (no node allocation)
+                tail->data = ref;
+            }
+            else
+            {
+                // Subsequent items: allocate node and link at tail
+                tail = tail->Append(ref);
+            }
         }
 
         return true;
@@ -717,22 +764,5 @@ namespace ScriptDataCache
 
         g_pendingEntries.push_back(std::move(entry));
         g_pendingHashes.insert(hash); // Track hash for O(1) duplicate check
-    }
-
-    void ClearCache()
-    {
-        CleanupMapping();
-        g_index.clear();
-        g_pendingEntries.clear();
-        g_pendingHashes.clear();
-        g_accessedHashes.clear();
-        g_initialized = false;
-
-        // Delete the cache file
-        const std::string& path = GetCacheFilePath();
-        if (!path.empty())
-        {
-            DeleteFileA(path.c_str());
-        }
     }
 }

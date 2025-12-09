@@ -8,5 +8,4 @@ namespace ScriptDataCache
     bool SaveScriptDataCacheToFile();
     bool LoadCachedDataToScript(const char* scriptText, Script* script);
     void AddCompiledScriptToCache(const char* scriptText, const Script* script);
-    void ClearCache();
 };
