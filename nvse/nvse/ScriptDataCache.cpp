@@ -61,6 +61,10 @@ namespace ScriptDataCache
     // Hash set for O(1) duplicate checking in pending entries
     static std::unordered_set<UInt64> g_pendingHashes;
 
+    // Hash set to track which cached entries were actually accessed this session
+    // Used to prune stale entries (removed scripts) on save
+    static std::unordered_set<UInt64> g_accessedHashes;
+
     // Initialization flag
     static bool g_initialized = false;
 
@@ -112,6 +116,7 @@ namespace ScriptDataCache
         g_index.clear();
         g_pendingEntries.clear();
         g_pendingHashes.clear();
+        g_accessedHashes.clear();
         g_initialized = true;
 
         std::string path = GetCacheFilePath();
@@ -218,12 +223,8 @@ namespace ScriptDataCache
         if (!g_initialized)
             return false;
 
-        // If no pending entries and no existing entries, nothing to save
-        if (g_pendingEntries.empty() && g_index.empty())
-            return true;
-
-        // If no changes, skip save
-        if (g_pendingEntries.empty())
+        // If no pending entries and no accessed entries, nothing to save
+        if (g_pendingEntries.empty() && g_accessedHashes.empty())
             return true;
 
         std::string path = GetCacheFilePath();
@@ -247,28 +248,32 @@ namespace ScriptDataCache
         if (hTempFile == INVALID_HANDLE_VALUE)
             return false;
 
-        // Prepare header
+        // Prepare header (entryCount will be set after filtering)
         CacheHeader header = {};
         header.magic = CACHE_MAGIC;
         header.version = CACHE_VERSION;
-        header.entryCount = static_cast<UInt32>(g_index.size() + g_pendingEntries.size());
         header.flags = 0;
         memset(header.reserved, 0, sizeof(header.reserved));
 
         // Track current write offset
         UInt32 currentOffset = sizeof(CacheHeader);
 
-        // Write header placeholder (will update indexOffset later)
+        // Write header placeholder (will update entryCount and indexOffset later)
         DWORD written;
         WriteFile(hTempFile, &header, sizeof(header), &written, nullptr);
 
-        // New combined index
+        // New combined index - reserve estimate, actual count determined after filtering
         std::vector<IndexEntry> newIndex;
-        newIndex.reserve(header.entryCount);
+        newIndex.reserve(g_accessedHashes.size() + g_pendingEntries.size());
 
-        // Copy existing blobs and update their offsets
+        // Copy existing blobs that were actually accessed this session
+        // This prunes stale entries (removed/unused scripts) from the cache
         for (const auto& entry : g_index)
         {
+            // Only keep entries that were accessed during this session
+            if (!g_accessedHashes.contains(entry.hash))
+                continue;
+
             if (g_basePtr && entry.blobOffset + entry.blobSize <= g_fileSize)
             {
                 const UInt8* blobData = static_cast<const UInt8*>(g_basePtr) + entry.blobOffset;
@@ -306,12 +311,13 @@ namespace ScriptDataCache
 
         // Write sorted index
         header.indexOffset = currentOffset;
+        header.entryCount = static_cast<UInt32>(newIndex.size());
         for (const auto& entry : newIndex)
         {
             WriteFile(hTempFile, &entry, sizeof(entry), &written, nullptr);
         }
 
-        // Update header with correct index offset
+        // Update header with correct entryCount and indexOffset
         SetFilePointer(hTempFile, 0, nullptr, FILE_BEGIN);
         WriteFile(hTempFile, &header, sizeof(header), &written, nullptr);
 
@@ -327,9 +333,10 @@ namespace ScriptDataCache
             return false;
         }
 
-        // Clear pending entries after successful save
+        // Clear pending entries and accessed tracking after successful save
         g_pendingEntries.clear();
         g_pendingHashes.clear();
+        g_accessedHashes.clear();
 
         return true;
     }
@@ -370,6 +377,9 @@ namespace ScriptDataCache
                 script->data = newData;
                 script->info.dataLength = it->blobSize;
                 script->info.compiled = true;
+
+                // Track this hash as accessed for stale entry pruning on save
+                g_accessedHashes.insert(hash);
 
                 return true;
             }
@@ -416,6 +426,7 @@ namespace ScriptDataCache
         g_index.clear();
         g_pendingEntries.clear();
         g_pendingHashes.clear();
+        g_accessedHashes.clear();
         g_initialized = false;
 
         // Delete the cache file
