@@ -661,6 +661,7 @@ xcopy "$(ProjectDir)unit_tests\new_compiler" "$(FalloutNVPath)\Data\NVSE\unit_te
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="ScriptDataCache.cpp" />
     <ClCompile Include="ScriptTokenCache.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
@@ -775,6 +776,7 @@ xcopy "$(ProjectDir)unit_tests\new_compiler" "$(FalloutNVPath)\Data\NVSE\unit_te
     <ClInclude Include="rewrites.h" />
     <ClInclude Include="SafeWrite.h" />
     <ClInclude Include="ScriptAnalyzer.h" />
+    <ClInclude Include="ScriptDataCache.h" />
     <ClInclude Include="ScriptTokenCache.h" />
     <ClInclude Include="SmallObjectsAllocator.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
@@ -790,6 +792,7 @@ xcopy "$(ProjectDir)unit_tests\new_compiler" "$(FalloutNVPath)\Data\NVSE\unit_te
     <ClInclude Include="Utilities.h" />
     <ClInclude Include="utility.h" />
     <ClInclude Include="VarMap.h" />
+    <ClInclude Include="xxhash64.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />
