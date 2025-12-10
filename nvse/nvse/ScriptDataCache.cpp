@@ -7,14 +7,16 @@
 #include <algorithm>
 #include <cstring>
 #include <unordered_set>
+#include <unordered_map>
 
 #include "ScriptUtils.h"
+#include "GameData.h"
 
 namespace ScriptDataCache
 {
     // File format constants
     static constexpr UInt32 CACHE_MAGIC = 'NVSC';   // NVSE Script Cache
-    static constexpr UInt32 CACHE_VERSION = PACKED_NVSE_VERSION;
+    static constexpr UInt32 CACHE_VERSION = 2;
     bool g_enabled = true;
 
     // Header structure (64 bytes, padded for alignment)
@@ -53,14 +55,16 @@ namespace ScriptDataCache
     static_assert(sizeof(SerializedVarInfo) == 19, "SerializedVarInfo must be 19 bytes");
 
     // Serialized ref variable (fixed-size portion, followed by name bytes)
+    // Uses mod name index instead of full refID to handle load order changes
     struct SerializedRefInfo
     {
         UInt32 varIdx;
-        UInt32 formRefID;
+        UInt16 modNameIndex;  // Index into mod name table, 0xFFFF = null form, 0xFFFE = dynamic form
+        UInt32 baseFormID;    // Form ID without mod index (lower 24 bits), or full ID for dynamic forms
         UInt16 nameLen;
         // followed by nameLen bytes of name data
     };
-    static_assert(sizeof(SerializedRefInfo) == 10, "SerializedRefInfo must be 10 bytes");
+    static_assert(sizeof(SerializedRefInfo) == 12, "SerializedRefInfo must be 12 bytes");
 #pragma pack(pop)
 
     // Pending entry for new compilations during runtime
@@ -137,6 +141,55 @@ namespace ScriptDataCache
         }
 
         // ============================================================================
+        // Mod name table helpers (for load order independence)
+        // ============================================================================
+
+        // Build a table of unique mod names from ref list forms
+        std::vector<std::string> BuildModNameTable(const Script::RefList& refList)
+        {
+            std::vector<std::string> modNames;
+            std::unordered_map<std::string, UInt16> nameToIndex;
+
+            DataHandler* dataHandler = DataHandler::Get();
+            if (!dataHandler)
+                return modNames;
+
+            for (auto* ref : refList)
+            {
+                if (!ref || !ref->form)
+                    continue;
+
+                UInt8 modIndex = ref->form->GetModIndex();
+                if (modIndex == 0xFF)
+                    continue;  // Dynamic form, skip
+
+                const char* modName = dataHandler->GetNthModName(modIndex);
+                if (!modName)
+                    continue;
+
+                std::string nameStr(modName);
+                if (nameToIndex.find(nameStr) == nameToIndex.end())
+                {
+                    nameToIndex[nameStr] = static_cast<UInt16>(modNames.size());
+                    modNames.push_back(std::move(nameStr));
+                }
+            }
+
+            return modNames;
+        }
+
+        // Calculate serialized size of mod name table
+        size_t CalculateModNameTableSize(const std::vector<std::string>& modNames)
+        {
+            size_t size = sizeof(UInt16);  // modNameCount
+            for (const auto& name : modNames)
+            {
+                size += sizeof(UInt16) + name.length();  // nameLen + name bytes
+            }
+            return size;
+        }
+
+        // ============================================================================
         // Size calculation helpers
         // ============================================================================
 
@@ -155,7 +208,11 @@ namespace ScriptDataCache
 
         size_t CalculateRefListBlobSize(const Script::RefList& refList)
         {
-            size_t size = sizeof(UInt32); // refCount
+            // Build mod name table to calculate its size
+            std::vector<std::string> modNames = BuildModNameTable(refList);
+
+            size_t size = CalculateModNameTableSize(modNames);
+            size += sizeof(UInt32); // refCount
             for (auto* ref : refList)
             {
                 if (!ref) continue;
@@ -209,9 +266,34 @@ namespace ScriptDataCache
 
         void WriteRefList(const Script::RefList& refList, UInt8*& ptr)
         {
+            // Build mod name table and index lookup
+            std::vector<std::string> modNames = BuildModNameTable(refList);
+            std::unordered_map<std::string, UInt16> nameToIndex;
+            for (size_t i = 0; i < modNames.size(); i++)
+            {
+                nameToIndex[modNames[i]] = static_cast<UInt16>(i);
+            }
+
+            // Write mod name table
+            UInt16 modNameCount = static_cast<UInt16>(modNames.size());
+            memcpy(ptr, &modNameCount, sizeof(UInt16));
+            ptr += sizeof(UInt16);
+
+            for (const auto& name : modNames)
+            {
+                UInt16 nameLen = static_cast<UInt16>(name.length());
+                memcpy(ptr, &nameLen, sizeof(UInt16));
+                ptr += sizeof(UInt16);
+                memcpy(ptr, name.c_str(), nameLen);
+                ptr += nameLen;
+            }
+
+            // Write ref count
             UInt32 refCount = refList.Count();
             memcpy(ptr, &refCount, sizeof(UInt32));
             ptr += sizeof(UInt32);
+
+            DataHandler* dataHandler = DataHandler::Get();
 
             for (auto* ref : refList)
             {
@@ -219,8 +301,41 @@ namespace ScriptDataCache
 
                 SerializedRefInfo serialized;
                 serialized.varIdx = ref->varIdx;
-                serialized.formRefID = ref->form ? ref->form->refID : 0;
                 serialized.nameLen = ref->name.m_data ? ref->name.m_dataLen : 0;
+
+                if (!ref->form)
+                {
+                    // Null form
+                    serialized.modNameIndex = 0xFFFF;
+                    serialized.baseFormID = 0;
+                }
+                else
+                {
+                    UInt8 modIndex = ref->form->GetModIndex();
+                    if (modIndex == 0xFF)
+                    {
+                        // Dynamic form - store full ID
+                        serialized.modNameIndex = 0xFFFE;
+                        serialized.baseFormID = ref->form->refID;
+                    }
+                    else
+                    {
+                        // Static form - look up mod name index
+                        const char* modName = dataHandler ? dataHandler->GetNthModName(modIndex) : nullptr;
+                        if (modName)
+                        {
+                            auto it = nameToIndex.find(modName);
+                            serialized.modNameIndex = (it != nameToIndex.end()) ? it->second : 0xFFFF;
+                            serialized.baseFormID = ref->form->refID & 0x00FFFFFF;  // Lower 24 bits
+                        }
+                        else
+                        {
+                            // Can't find mod name, treat as null
+                            serialized.modNameIndex = 0xFFFF;
+                            serialized.baseFormID = 0;
+                        }
+                    }
+                }
 
                 memcpy(ptr, &serialized, sizeof(SerializedRefInfo));
                 ptr += sizeof(SerializedRefInfo);
@@ -342,6 +457,45 @@ namespace ScriptDataCache
 
         bool ReadRefList(const UInt8*& ptr, const UInt8* end, Script::RefList& refList)
         {
+            // Read mod name table
+            if (ptr + sizeof(UInt16) > end)
+                return false;
+
+            UInt16 modNameCount;
+            memcpy(&modNameCount, ptr, sizeof(UInt16));
+            ptr += sizeof(UInt16);
+
+            std::vector<std::string> modNames;
+            modNames.reserve(modNameCount);
+
+            for (UInt16 i = 0; i < modNameCount; i++)
+            {
+                if (ptr + sizeof(UInt16) > end)
+                    return false;
+
+                UInt16 nameLen;
+                memcpy(&nameLen, ptr, sizeof(UInt16));
+                ptr += sizeof(UInt16);
+
+                if (ptr + nameLen > end)
+                    return false;
+
+                modNames.emplace_back(reinterpret_cast<const char*>(ptr), nameLen);
+                ptr += nameLen;
+            }
+
+            // Look up current mod indices for all mod names
+            std::vector<UInt8> modIndices;
+            modIndices.reserve(modNames.size());
+            DataHandler* dataHandler = DataHandler::Get();
+
+            for (const auto& name : modNames)
+            {
+                UInt8 modIndex = dataHandler ? dataHandler->GetModIndex(name.c_str()) : 0xFF;
+                modIndices.push_back(modIndex);
+            }
+
+            // Read ref count
             if (ptr + sizeof(UInt32) > end)
                 return false;
 
@@ -381,7 +535,38 @@ namespace ScriptDataCache
                     return false;
 
                 ref->varIdx = serialized.varIdx;
-                ref->form = serialized.formRefID ? LookupFormByID(serialized.formRefID) : nullptr;
+
+                // Reconstruct form reference from mod name index
+                if (serialized.modNameIndex == 0xFFFF)
+                {
+                    // Null form
+                    ref->form = nullptr;
+                }
+                else if (serialized.modNameIndex == 0xFFFE)
+                {
+                    // Dynamic form - use stored full ID
+                    ref->form = LookupFormByID(serialized.baseFormID);
+                }
+                else if (serialized.modNameIndex < modIndices.size())
+                {
+                    // Static form - reconstruct refID from current mod index
+                    UInt8 currentModIndex = modIndices[serialized.modNameIndex];
+                    if (currentModIndex != 0xFF)
+                    {
+                        UInt32 reconstructedRefID = (static_cast<UInt32>(currentModIndex) << 24) | (serialized.baseFormID & 0x00FFFFFF);
+                        ref->form = LookupFormByID(reconstructedRefID);
+                    }
+                    else
+                    {
+                        // Mod not loaded
+                        ref->form = nullptr;
+                    }
+                }
+                else
+                {
+                    // Invalid index
+                    ref->form = nullptr;
+                }
 
                 if (serialized.nameLen > 0)
                 {
