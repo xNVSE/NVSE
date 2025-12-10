@@ -111,6 +111,63 @@ namespace ScriptDataCache
             return path;
         }
 
+        // ============================================================================
+        // Low-level serialization helpers
+        // ============================================================================
+
+        // Read a primitive/struct from buffer with bounds checking
+        template<typename T>
+        bool ReadData(const UInt8*& ptr, const UInt8* end, T& out)
+        {
+            if (ptr + sizeof(T) > end)
+                return false;
+            memcpy(&out, ptr, sizeof(T));
+            ptr += sizeof(T);
+            return true;
+        }
+
+        // Write a primitive/struct to buffer
+        template<typename T>
+        void WriteData(UInt8*& ptr, const T& value)
+        {
+            memcpy(ptr, &value, sizeof(T));
+            ptr += sizeof(T);
+        }
+
+        // Write raw bytes to buffer
+        void WriteBytes(UInt8*& ptr, const void* data, size_t len)
+        {
+            if (len > 0 && data)
+            {
+                memcpy(ptr, data, len);
+                ptr += len;
+            }
+        }
+
+        // Read a name string from serialized data into a BSStringT-like struct
+        // Caller must verify ptr + nameLen <= end before calling
+        template<typename StringT>
+        void ReadNameString(const UInt8*& ptr, UInt16 nameLen, StringT& name)
+        {
+            // Initialize to empty
+            name.m_data = nullptr;
+            name.m_dataLen = 0;
+            name.m_bufLen = 0;
+
+            if (nameLen > 0)
+            {
+                name.m_data = static_cast<char*>(FormHeap_Allocate(nameLen + 1));
+                if (name.m_data)
+                {
+                    memcpy(name.m_data, ptr, nameLen);
+                    name.m_data[nameLen] = '\0';
+                    name.m_dataLen = nameLen;
+                    name.m_bufLen = nameLen + 1;
+                }
+            }
+            ptr += nameLen;
+        }
+
         // Cleanup memory mapping resources
         void CleanupMapping()
         {
@@ -238,9 +295,7 @@ namespace ScriptDataCache
 
         void WriteVarList(const Script::VarInfoList& varList, UInt8*& ptr)
         {
-            UInt32 varCount = varList.Count();
-            memcpy(ptr, &varCount, sizeof(UInt32));
-            ptr += sizeof(UInt32);
+            WriteData(ptr, varList.Count());
 
             for (auto* var : varList)
             {
@@ -253,14 +308,8 @@ namespace ScriptDataCache
                 serialized.type = var->type;
                 serialized.nameLen = var->name.m_data ? var->name.m_dataLen : 0;
 
-                memcpy(ptr, &serialized, sizeof(SerializedVarInfo));
-                ptr += sizeof(SerializedVarInfo);
-
-                if (serialized.nameLen > 0)
-                {
-                    memcpy(ptr, var->name.m_data, serialized.nameLen);
-                    ptr += serialized.nameLen;
-                }
+                WriteData(ptr, serialized);
+                WriteBytes(ptr, var->name.m_data, serialized.nameLen);
             }
         }
 
@@ -275,23 +324,15 @@ namespace ScriptDataCache
             }
 
             // Write mod name table
-            UInt16 modNameCount = static_cast<UInt16>(modNames.size());
-            memcpy(ptr, &modNameCount, sizeof(UInt16));
-            ptr += sizeof(UInt16);
-
+            WriteData(ptr, static_cast<UInt16>(modNames.size()));
             for (const auto& name : modNames)
             {
-                UInt16 nameLen = static_cast<UInt16>(name.length());
-                memcpy(ptr, &nameLen, sizeof(UInt16));
-                ptr += sizeof(UInt16);
-                memcpy(ptr, name.c_str(), nameLen);
-                ptr += nameLen;
+                WriteData(ptr, static_cast<UInt16>(name.length()));
+                WriteBytes(ptr, name.c_str(), name.length());
             }
 
             // Write ref count
-            UInt32 refCount = refList.Count();
-            memcpy(ptr, &refCount, sizeof(UInt32));
-            ptr += sizeof(UInt32);
+            WriteData(ptr, refList.Count());
 
             DataHandler* dataHandler = DataHandler::Get();
 
@@ -337,14 +378,8 @@ namespace ScriptDataCache
                     }
                 }
 
-                memcpy(ptr, &serialized, sizeof(SerializedRefInfo));
-                ptr += sizeof(SerializedRefInfo);
-
-                if (serialized.nameLen > 0)
-                {
-                    memcpy(ptr, ref->name.m_data, serialized.nameLen);
-                    ptr += serialized.nameLen;
-                }
+                WriteData(ptr, serialized);
+                WriteBytes(ptr, ref->name.m_data, serialized.nameLen);
             }
         }
 
@@ -352,15 +387,8 @@ namespace ScriptDataCache
         {
             UInt8* ptr = dest;
 
-            // Write ScriptInfo
-            memcpy(ptr, &script->info, sizeof(Script::ScriptInfo));
-            ptr += sizeof(Script::ScriptInfo);
-
-            // Write bytecode
-            memcpy(ptr, script->data, script->info.dataLength);
-            ptr += script->info.dataLength;
-
-            // Write varList and refList
+            WriteData(ptr, script->info);
+            WriteBytes(ptr, script->data, script->info.dataLength);
             WriteVarList(script->varList, ptr);
             WriteRefList(script->refList, ptr);
         }
@@ -371,12 +399,9 @@ namespace ScriptDataCache
 
         bool ReadVarList(const UInt8*& ptr, const UInt8* end, Script::VarInfoList& varList)
         {
-            if (ptr + sizeof(UInt32) > end)
-                return false;
-
             UInt32 varCount;
-            memcpy(&varCount, ptr, sizeof(UInt32));
-            ptr += sizeof(UInt32);
+            if (!ReadData(ptr, end, varCount))
+                return false;
 
             // Initialize list head directly (skip Init() call overhead)
             varList.m_listHead.data = nullptr;
@@ -395,12 +420,9 @@ namespace ScriptDataCache
 
             for (UInt32 i = 0; i < varCount; i++)
             {
-                if (ptr + sizeof(SerializedVarInfo) > end)
-                    return false;
-
                 SerializedVarInfo serialized;
-                memcpy(&serialized, ptr, sizeof(SerializedVarInfo));
-                ptr += sizeof(SerializedVarInfo);
+                if (!ReadData(ptr, end, serialized))
+                    return false;
 
                 if (ptr + serialized.nameLen > end)
                     return false;
@@ -414,30 +436,7 @@ namespace ScriptDataCache
                 var->data = serialized.data;
                 var->type = serialized.type;
 
-                if (serialized.nameLen > 0)
-                {
-                    var->name.m_data = static_cast<char*>(FormHeap_Allocate(serialized.nameLen + 1));
-                    if (var->name.m_data)
-                    {
-                        memcpy(var->name.m_data, ptr, serialized.nameLen);
-                        var->name.m_data[serialized.nameLen] = '\0';
-                        var->name.m_dataLen = serialized.nameLen;
-                        var->name.m_bufLen = serialized.nameLen + 1;
-                    }
-                    else
-                    {
-                        var->name.m_data = nullptr;
-                        var->name.m_dataLen = 0;
-                        var->name.m_bufLen = 0;
-                    }
-                }
-                else
-                {
-                    var->name.m_data = nullptr;
-                    var->name.m_dataLen = 0;
-                    var->name.m_bufLen = 0;
-                }
-                ptr += serialized.nameLen;
+                ReadNameString(ptr, serialized.nameLen, var->name);
 
                 // O(1) append using tail tracking
                 if (i == 0)
@@ -458,24 +457,18 @@ namespace ScriptDataCache
         bool ReadRefList(const UInt8*& ptr, const UInt8* end, Script::RefList& refList)
         {
             // Read mod name table
-            if (ptr + sizeof(UInt16) > end)
-                return false;
-
             UInt16 modNameCount;
-            memcpy(&modNameCount, ptr, sizeof(UInt16));
-            ptr += sizeof(UInt16);
+            if (!ReadData(ptr, end, modNameCount))
+                return false;
 
             std::vector<std::string> modNames;
             modNames.reserve(modNameCount);
 
             for (UInt16 i = 0; i < modNameCount; i++)
             {
-                if (ptr + sizeof(UInt16) > end)
-                    return false;
-
                 UInt16 nameLen;
-                memcpy(&nameLen, ptr, sizeof(UInt16));
-                ptr += sizeof(UInt16);
+                if (!ReadData(ptr, end, nameLen))
+                    return false;
 
                 if (ptr + nameLen > end)
                     return false;
@@ -496,12 +489,9 @@ namespace ScriptDataCache
             }
 
             // Read ref count
-            if (ptr + sizeof(UInt32) > end)
-                return false;
-
             UInt32 refCount;
-            memcpy(&refCount, ptr, sizeof(UInt32));
-            ptr += sizeof(UInt32);
+            if (!ReadData(ptr, end, refCount))
+                return false;
 
             // Initialize list head directly (skip Init() call overhead)
             refList.m_listHead.data = nullptr;
@@ -520,12 +510,9 @@ namespace ScriptDataCache
 
             for (UInt32 i = 0; i < refCount; i++)
             {
-                if (ptr + sizeof(SerializedRefInfo) > end)
-                    return false;
-
                 SerializedRefInfo serialized;
-                memcpy(&serialized, ptr, sizeof(SerializedRefInfo));
-                ptr += sizeof(SerializedRefInfo);
+                if (!ReadData(ptr, end, serialized))
+                    return false;
 
                 if (ptr + serialized.nameLen > end)
                     return false;
@@ -568,30 +555,7 @@ namespace ScriptDataCache
                     ref->form = nullptr;
                 }
 
-                if (serialized.nameLen > 0)
-                {
-                    ref->name.m_data = static_cast<char*>(FormHeap_Allocate(serialized.nameLen + 1));
-                    if (ref->name.m_data)
-                    {
-                        memcpy(ref->name.m_data, ptr, serialized.nameLen);
-                        ref->name.m_data[serialized.nameLen] = '\0';
-                        ref->name.m_dataLen = serialized.nameLen;
-                        ref->name.m_bufLen = serialized.nameLen + 1;
-                    }
-                    else
-                    {
-                        ref->name.m_data = nullptr;
-                        ref->name.m_dataLen = 0;
-                        ref->name.m_bufLen = 0;
-                    }
-                }
-                else
-                {
-                    ref->name.m_data = nullptr;
-                    ref->name.m_dataLen = 0;
-                    ref->name.m_bufLen = 0;
-                }
-                ptr += serialized.nameLen;
+                ReadNameString(ptr, serialized.nameLen, ref->name);
 
                 // O(1) append using tail tracking
                 if (i == 0)
@@ -614,13 +578,9 @@ namespace ScriptDataCache
             const UInt8* ptr = blobData;
             const UInt8* end = blobData + blobSize;
 
-            // Read ScriptInfo
-            if (ptr + sizeof(Script::ScriptInfo) > end)
-                return false;
-
             Script::ScriptInfo cachedInfo;
-            memcpy(&cachedInfo, ptr, sizeof(Script::ScriptInfo));
-            ptr += sizeof(Script::ScriptInfo);
+            if (!ReadData(ptr, end, cachedInfo))
+                return false;
 
             // Validate and read bytecode
             if (ptr + cachedInfo.dataLength > end)
