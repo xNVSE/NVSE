@@ -751,7 +751,7 @@ namespace Runtime // double-clarify
 	}
 
 	char __cdecl HandleParseCommandToken(ScriptParseToken* parseToken) {
-		if (const auto* commandInfo = g_scriptCommands.GetByName(parseToken->tokenString, &g_currentCompilerPluginVersions.top())) {
+		if (const auto* commandInfo = g_scriptCommands.GetByName(parseToken->tokenString)) {
 			parseToken->tokenType = 'X';
 			parseToken->cmdOpcode = commandInfo->opcode;
 			return 1;
@@ -1001,7 +1001,7 @@ namespace CompilerOverride
 				*((UInt32 *)(buf->scriptData + buf->dataOffset)) = 0x00000011;
 			}
 
-			CommandInfo *cmdInfo = g_scriptCommands.GetByName(cmdName, &g_currentCompilerPluginVersions.top());
+			CommandInfo *cmdInfo = g_scriptCommands.GetByName(cmdName);
 			ASSERT(cmdInfo != NULL);
 
 			// write a call to our cmd
@@ -1251,7 +1251,7 @@ static __declspec(naked) void __cdecl CopyStringArgHook(void)
 }
 
 char __cdecl HandleParseCommandToken(ScriptParseToken* parseToken) {
-	if (const auto* commandInfo = g_scriptCommands.GetByName(parseToken->tokenString, &g_currentCompilerPluginVersions.top())) {
+	if (const auto* commandInfo = g_scriptCommands.GetByName(parseToken->tokenString)) {
 		parseToken->tokenType = 'X';
 		parseToken->cmdOpcode = commandInfo->opcode;
 		return 1;

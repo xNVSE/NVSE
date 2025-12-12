@@ -928,7 +928,6 @@ static void HandleMainLoopHook(void)
 
 		}
 		ScriptDataCache::LoadScriptDataCacheFromFile();
-		g_scriptCommands.BuildCache();
 #endif
 		
 		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_DeferredInit, NULL, 0, NULL);

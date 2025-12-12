@@ -593,7 +593,7 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 	};
 
 	std::string name = expr->token.lexeme;
-	const auto cmd = g_scriptCommands.GetByName(name.c_str(), &g_currentCompilerPluginVersions.top());
+	const auto cmd = g_scriptCommands.GetByName(name.c_str());
 
 	// Try to get the script command by lexeme
 	if (!cmd) {
