@@ -312,7 +312,7 @@ public:
 	CommandInfo *	GetStart(void)	{ return &m_commands[0]; }
 	CommandInfo *	GetEnd(void)	{ return GetStart() + m_commands.size(); }
 
-	CommandInfo *	GetByName(const char * name, std::unordered_map<std::string, UInt32> *pluginVersions = nullptr);
+	CommandInfo *	GetByName(const char * name);
 	CommandInfo *	GetByOpcode(UInt32 opcode);
 	std::tuple<std::string, UInt32> *GetUpdateInfoForOpCode(UInt32 opcode);
 
