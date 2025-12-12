@@ -315,18 +315,18 @@ void Delete(T* t, Args &&... args)
 }
 
 template <typename T>
-using game_unique_ptr = std::unique_ptr<T, std::function<void(T*)>>;
+using game_unique_ptr = std::unique_ptr<T, void(*)(T*)>;
 
 template <typename T, const UInt32 DestructorPtr = 0>
 game_unique_ptr<T> MakeUnique(T* t)
 {
-	return game_unique_ptr<T>(t, [](T* t2) { Delete<T, DestructorPtr>(t2); });
+	return game_unique_ptr<T>(t, &Delete<T, DestructorPtr>);
 }
 
 template <typename T, const UInt32 ConstructorPtr = 0, const UInt32 DestructorPtr = 0, typename... ConstructorArgs>
 game_unique_ptr<T> MakeUnique(ConstructorArgs &&... args)
 {
-	auto* obj = New<T, ConstructorPtr>(std::forward(args)...);
+	auto* obj = New<T, ConstructorPtr>(std::forward<ConstructorArgs>(args)...);
 	return MakeUnique<T, DestructorPtr>(obj);
 }
 
@@ -356,3 +356,18 @@ inline int __cdecl game_tolower(int _C) { return tolower(_C); }
 #endif
 
 void WaitForDebugger();
+
+struct pair_hash {
+	template <class T1, class T2>
+	std::size_t operator()(const std::pair<T1, T2>& p) const {
+		const auto hash1 = std::hash<T1>()(p.first);
+		const auto hash2 = std::hash<T2>()(p.second);
+		return hash_combine(hash1, hash2);
+	}
+
+private:
+	// A better way to combine hashes
+	static std::size_t hash_combine(std::size_t seed, std::size_t hash) {
+		return seed ^ (hash + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+	}
+};
