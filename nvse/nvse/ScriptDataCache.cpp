@@ -14,8 +14,6 @@
 
 namespace ScriptDataCache
 {
-    static constexpr UInt32 CACHE_MAGIC = 'NVSC';
-    static constexpr UInt32 CACHE_VERSION = 3;
     bool g_enabled = true;
 
 #pragma pack(push, 1)
@@ -71,6 +69,9 @@ namespace ScriptDataCache
 
     namespace
     {
+        constexpr UInt32 CACHE_MAGIC = 'NVSC';
+        constexpr UInt32 CACHE_VERSION = 3;
+        
         HANDLE g_hFile = INVALID_HANDLE_VALUE;
         HANDLE g_hMapping = nullptr;
         void* g_basePtr = nullptr;
@@ -195,7 +196,7 @@ namespace ScriptDataCache
         {
             WriteData(buf, varList.Count());
 
-            for (auto* var : varList)
+            for (const auto* var : varList)
             {
                 if (!var) continue;
 
@@ -213,13 +214,13 @@ namespace ScriptDataCache
 
         void WriteRefList(std::vector<UInt8>& buf, const Script::RefList& refList)
         {
-            DataHandler* dataHandler = DataHandler::Get();
+            auto* dataHandler = DataHandler::Get();
 
             // Build mod name table with mod index -> table index mapping
             std::vector<const char*> modNames;
             std::unordered_map<UInt8, UInt16> modIndexToTableIndex;
 
-            for (auto* ref : refList)
+            for (const auto* ref : refList)
             {
                 if (!ref || !ref->form)
                     continue;
@@ -246,7 +247,7 @@ namespace ScriptDataCache
 
             WriteData(buf, refList.Count());
 
-            for (auto* ref : refList)
+            for (const auto* ref : refList)
             {
                 if (!ref) continue;
 
@@ -353,7 +354,7 @@ namespace ScriptDataCache
 
             std::vector<UInt8> modIndices;
             modIndices.reserve(modNames.size());
-            DataHandler* dataHandler = DataHandler::Get();
+            auto* dataHandler = DataHandler::Get();
 
             for (const auto& name : modNames)
             {
@@ -458,8 +459,8 @@ namespace ScriptDataCache
 
         const IndexEntry* FindEntry(UInt64 hash, UInt32 length)
         {
-            auto key = std::make_pair(hash, length);
-            auto it = std::ranges::lower_bound(g_index, key, std::less{}, [](const IndexEntry& e) {
+            const auto key = std::make_pair(hash, length);
+            const auto it = std::ranges::lower_bound(g_index, key, std::less{}, [](const IndexEntry& e) {
                 return std::make_pair(e.hash, e.scriptLength);
             });
             if (it != g_index.end() && it->hash == hash && it->scriptLength == length)
@@ -481,15 +482,7 @@ namespace ScriptDataCache
         g_accessedHashes.clear();
         g_initialized = true;
 
-        g_hFile = CreateFileA(
-            CACHE_FILE_PATH,
-            GENERIC_READ,
-            FILE_SHARE_READ,
-            nullptr,
-            OPEN_EXISTING,
-            FILE_ATTRIBUTE_NORMAL,
-            nullptr
-        );
+        g_hFile = CreateFileA(CACHE_FILE_PATH,GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
 
         if (g_hFile == INVALID_HANDLE_VALUE)
             return true;  // No cache file yet
@@ -508,14 +501,7 @@ namespace ScriptDataCache
             return true;
         }
 
-        g_hMapping = CreateFileMappingA(
-            g_hFile,
-            nullptr,
-            PAGE_READONLY,
-            0,
-            0,
-            nullptr
-        );
+        g_hMapping = CreateFileMappingA(g_hFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
 
         if (!g_hMapping)
         {
@@ -523,13 +509,7 @@ namespace ScriptDataCache
             return false;
         }
 
-        g_basePtr = MapViewOfFile(
-            g_hMapping,
-            FILE_MAP_READ,
-            0,
-            0,
-            0
-        );
+        g_basePtr = MapViewOfFile(g_hMapping,FILE_MAP_READ,0,0,0);
 
         if (!g_basePtr)
         {
@@ -582,17 +562,9 @@ namespace ScriptDataCache
                 return true;
         }
 
-        std::string tempPath = std::string(CACHE_FILE_PATH) + ".tmp";
+        const auto tempPath = std::string(CACHE_FILE_PATH) + ".tmp";
 
-        HANDLE hTempFile = CreateFileA(
-            tempPath.c_str(),
-            GENERIC_WRITE,
-            0,
-            nullptr,
-            CREATE_ALWAYS,
-            FILE_ATTRIBUTE_NORMAL,
-            nullptr
-        );
+        const auto hTempFile = CreateFileA(tempPath.c_str(),GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
 
         if (hTempFile == INVALID_HANDLE_VALUE)
             return false;
@@ -607,7 +579,7 @@ namespace ScriptDataCache
         };
         memset(header.reserved, 0, sizeof(header.reserved));
 
-        UInt32 currentOffset = sizeof(CacheHeader);
+        auto currentOffset = sizeof(CacheHeader);
 
         DWORD written;
         
@@ -637,13 +609,13 @@ namespace ScriptDataCache
             if (!g_basePtr || entry.blobOffset + entry.blobSize > g_fileSize)
                 continue;
 
-            const UInt8* blobData = static_cast<const UInt8*>(g_basePtr) + entry.blobOffset;
+            const auto* blobData = static_cast<const UInt8*>(g_basePtr) + entry.blobOffset;
             if (!write(blobData, entry.blobSize))
                 return false;
 
-            IndexEntry newEntry = entry;
+            auto newEntry = entry;
             newEntry.blobOffset = currentOffset;
-            newIndex.push_back(newEntry);
+            newIndex.emplace_back(newEntry);
             currentOffset += entry.blobSize;
         }
 
@@ -657,7 +629,7 @@ namespace ScriptDataCache
             newEntry.scriptLength = pending.scriptLength;
             newEntry.blobOffset = currentOffset;
             newEntry.blobSize = static_cast<UInt32>(pending.data.size());
-            newIndex.push_back(newEntry);
+            newIndex.emplace_back(newEntry);
             currentOffset += newEntry.blobSize;
         }
 
