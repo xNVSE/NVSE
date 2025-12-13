@@ -402,3 +402,5 @@ ipch
 # Jetbrains
 nvse/.idea/
 nvse/enc_temp_folder/
+
+*.7z
