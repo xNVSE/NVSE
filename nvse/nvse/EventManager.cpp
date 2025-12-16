@@ -145,6 +145,8 @@ static void InstallDestroyCIOSHook()
 	WriteRelCall(kDestroyCIOS_HookAddr, (UInt32)&DestroyCIOSHook);
 }
 
+thread_local bool g_inActivateItemInInventory = false;
+
 static __declspec(naked) void OnActorEquipHook(void)
 {
 	__asm
@@ -183,6 +185,22 @@ static void InstallOnActorEquipHook()
 	// Fix:
 	// Added s_InsideOnActorEquipHook to neutralize Print during OnEquip events, with an optional s_CheckInsideOnActorEquipHook to bypass it for testing.
 	WriteRelCall(kOnActorEquipHookAddr, (UInt32)&OnActorEquipHook);
+}
+
+CallDetour AddWornItemHook[3];
+
+template<uint32_t index>
+bool __fastcall Actor__AddWornItem(Actor* apThis, void*, TESBoundObject* apObject, int auiCount, ExtraDataList* apExtraList, bool a5) {
+	g_inActivateItemInInventory = true;
+	bool result = ThisStdCall<bool>(AddWornItemHook[index].GetOverwrittenAddr(), apThis, apObject, auiCount, apExtraList, a5);
+	g_inActivateItemInInventory = false;
+	return result;
+}
+
+static void InstallAddWornItemHook() {
+	AddWornItemHook[0].WriteRelCall(0x88CAEB, (UInt32)&Actor__AddWornItem<0>);
+	AddWornItemHook[1].WriteRelCall(0x88CB97, (UInt32)&Actor__AddWornItem<1>);
+	AddWornItemHook[2].WriteRelCall(0x88CD11, (UInt32)&Actor__AddWornItem<2>);
 }
 
 namespace OnSell
@@ -1199,6 +1217,10 @@ bool RemoveHandler(const char* eventName, const EventCallback& toRemove, int pri
 
 void __stdcall HandleGameEvent(UInt32 eventMask, TESObjectREFR* source, TESForm* object)
 {
+	if (g_inActivateItemInInventory && eventMask == 2) {
+		return;
+	}
+
 	if (!IsValidReference(source)) {
 		return;
 	}
@@ -2131,6 +2153,7 @@ void Init()
 #undef EVENT_INFO_WITH_ALIAS
 
 	InstallDestroyCIOSHook();	// handle a missing parameter value check.
+	InstallAddWornItemHook();
 
 }
 
