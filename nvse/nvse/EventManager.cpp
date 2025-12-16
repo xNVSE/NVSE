@@ -145,7 +145,7 @@ static void InstallDestroyCIOSHook()
 	WriteRelCall(kDestroyCIOS_HookAddr, (UInt32)&DestroyCIOSHook);
 }
 
-thread_local bool InActivateItemInInventory = false;
+thread_local bool g_inActivateItemInInventory = false;
 
 static __declspec(naked) void OnActorEquipHook(void)
 {
@@ -191,9 +191,9 @@ CallDetour AddWornItemHook[3];
 
 template<uint32_t index>
 bool __fastcall Actor__AddWornItem(Actor* apThis, void*, TESBoundObject* apObject, int auiCount, ExtraDataList* apExtraList, bool a5) {
-	InActivateItemInInventory = true;
+	g_inActivateItemInInventory = true;
 	bool result = ThisStdCall<bool>(AddWornItemHook[index].GetOverwrittenAddr(), apThis, apObject, auiCount, apExtraList, a5);
-	InActivateItemInInventory = false;
+	g_inActivateItemInInventory = false;
 	return result;
 }
 
@@ -1217,7 +1217,7 @@ bool RemoveHandler(const char* eventName, const EventCallback& toRemove, int pri
 
 void __stdcall HandleGameEvent(UInt32 eventMask, TESObjectREFR* source, TESForm* object)
 {
-	if (InActivateItemInInventory && eventMask == 2) {
+	if (g_inActivateItemInInventory && eventMask == 2) {
 		return;
 	}
 
