@@ -335,7 +335,9 @@ StmtPtr NVSEParser::IfStatement() {
 	StmtPtr elseBlock = nullptr;
 	if (Match(NVSETokenType::Else)) {
 		if (Peek(NVSETokenType::If)) {
-			elseBlock = IfStatement();
+			std::vector<StmtPtr> statements{};
+			statements.emplace_back(IfStatement());
+			elseBlock = std::make_shared<BlockStmt>(std::move(statements));
 		}
 		else {
 			elseBlock = BlockStatement();
