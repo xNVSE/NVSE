@@ -175,6 +175,10 @@ StmtPtr NVSEParser::Statement() {
 		return IfStatement();
 	}
 
+	if (Peek(NVSETokenType::Match)) {
+		return MatchStatement();
+	}
+
 	if (Peek(NVSETokenType::Return)) {
 		return ReturnStatement();
 	}
@@ -345,6 +349,57 @@ StmtPtr NVSEParser::IfStatement() {
 	}
 
 	return std::make_shared<IfStmt>(token, std::move(cond), std::move(block), std::move(elseBlock));
+}
+
+StmtPtr NVSEParser::MatchStatement() {
+	Match(NVSETokenType::Match);
+
+	Expect(NVSETokenType::LeftParen, "Expected '(' after 'match'.");
+	auto cond = Expression();
+	Expect(NVSETokenType::RightParen, "Expected ')' after 'match' expression.");
+
+	Expect(NVSETokenType::LeftBrace, "Expected '{' after 'match' declaration");
+
+	std::vector<std::shared_ptr<IfStmt>> matchCases{};
+	std::shared_ptr<BlockStmt> defaultCase{};
+
+	do {
+		if (Match(NVSETokenType::Underscore)) {
+			if (defaultCase) {
+				Error(currentToken, "Only one default case can be specified.");
+			}
+
+			Expect(NVSETokenType::Arrow, "Expected '->' after match case value");
+			defaultCase = BlockStatement();
+			continue;
+		}
+
+		auto caseVal = Expression();
+		auto eqExpr = std::make_shared<BinaryExpr>(NVSEToken{ NVSETokenType::EqEq, "==" }, cond, caseVal);
+		Expect(NVSETokenType::Arrow, "Expected '->' after match case value");
+
+		const auto curIfStmt = std::make_shared<IfStmt>(
+			currentToken, 
+			std::move(eqExpr), 
+			BlockStatement(),
+			nullptr
+		);
+
+		matchCases.push_back(curIfStmt);
+
+		const auto caseCount = matchCases.size();
+		if (caseCount > 1) {
+			matchCases[caseCount - 1]->elseBlock = std::make_shared<BlockStmt>(std::vector<StmtPtr>{ curIfStmt });
+		}
+	} while (!Peek(NVSETokenType::RightBrace));
+
+	if (defaultCase) {
+		matchCases[matchCases.size() - 1]->elseBlock = defaultCase;
+	}
+
+	Expect(NVSETokenType::RightBrace, "Expected '}'");
+
+	return matchCases[0];
 }
 
 StmtPtr NVSEParser::ReturnStatement() {

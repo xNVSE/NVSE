@@ -269,6 +269,7 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 			if (_stricmp(identifier.c_str(), "break") == 0) return MakeToken(NVSETokenType::Break, identifier);
 			if (_stricmp(identifier.c_str(), "in") == 0) return MakeToken(NVSETokenType::In, identifier);
 			if (_stricmp(identifier.c_str(), "not") == 0) return MakeToken(NVSETokenType::Not, identifier);
+			if (_stricmp(identifier.c_str(), "match") == 0) return MakeToken(NVSETokenType::Match, identifier);
 
 			if (_stricmp(identifier.c_str(), "int") == 0) return MakeToken(NVSETokenType::IntType, identifier);
 			if (_stricmp(identifier.c_str(), "double") == 0) return MakeToken(NVSETokenType::DoubleType, identifier);

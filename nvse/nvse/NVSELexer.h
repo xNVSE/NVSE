@@ -19,6 +19,7 @@ enum class NVSETokenType {
     Continue,
     Break,
     Export,
+    Match,
 
     // Types
     IntType,
@@ -94,6 +95,7 @@ static const char* TokenTypeStr[]{
     "Continue",
     "Break",
     "Export",
+	"Match",
 
     // Types
     "IntType",

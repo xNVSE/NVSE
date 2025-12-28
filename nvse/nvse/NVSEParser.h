@@ -31,6 +31,7 @@ private:
     StmtPtr ExpressionStatement();
     StmtPtr ForStatement();
     StmtPtr IfStatement();
+    StmtPtr MatchStatement();
     StmtPtr ReturnStatement();
     StmtPtr WhileStatement();
     std::shared_ptr<BlockStmt> BlockStatement();
