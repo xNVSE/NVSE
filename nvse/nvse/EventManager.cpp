@@ -756,7 +756,8 @@ bool IsValidReference(void* refr)
 	bool bIsRefr = false;
 	__try
 	{
-		if ((*static_cast<UInt8*>(refr) & 4) && ((static_cast<UInt16*>(refr)[1] == 0x108) || (*static_cast<UInt32*>(refr) == 0x102F55C)))
+		TESObjectREFR* ref = static_cast<TESObjectREFR*>(refr);
+		if (ref && *reinterpret_cast<UInt32*>(ref) == kVtbl_TESObjectREFR && ref->typeID == kFormType_TESObjectREFR)
 			bIsRefr = true;
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
