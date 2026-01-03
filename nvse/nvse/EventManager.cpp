@@ -753,12 +753,23 @@ std::unique_ptr<ScriptToken> EventCallback::Invoke(EventInfo &eventInfo, const C
 
 bool IsValidReference(void* refr)
 {
+	// ### HACK HACK HACK
+	// MarkEventList() may have been called for a BaseExtraList not associated with a TESObjectREFR
 	bool bIsRefr = false;
 	__try
 	{
-		TESObjectREFR* ref = static_cast<TESObjectREFR*>(refr);
-		if (ref && *reinterpret_cast<UInt32*>(ref) == kVtbl_TESObjectREFR && ref->typeID == kFormType_TESObjectREFR)
+		switch (*((UInt32*)refr)) {
+		case kVtbl_PlayerCharacter:
+		case kVtbl_Character:
+		case kVtbl_Creature:
+		case kVtbl_ArrowProjectile:
+		case kVtbl_MagicBallProjectile:
+		case kVtbl_MagicBoltProjectile:
+		case kVtbl_MagicFogProjectile:
+		case kVtbl_MagicSprayProjectile:
+		case kVtbl_TESObjectREFR:
 			bIsRefr = true;
+		}
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
 	{

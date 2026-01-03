@@ -194,7 +194,7 @@ TESObjectREFR* TESObjectREFR::Create(bool bTemp)
 
 TESForm* GetPermanentBaseForm(TESObjectREFR* thisObj)	// For LevelledForm, find real baseForm, not temporary one.
 {
-	if (!thisObj || NOT_ID(thisObj, TESObjectREFR))
+	if (!thisObj)
 		return nullptr;
 	TESForm *baseForm = thisObj->baseForm;
 	if (baseForm && (baseForm->GetModIndex() == 0xFF))
