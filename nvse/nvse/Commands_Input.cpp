@@ -71,7 +71,7 @@ void SetControl(UInt32 whichControl, UInt32 type, UInt32 keycode)
 	}
 
 	binds[whichControl] = keycode;
-}	
+}
 
 bool IsControl(UInt32 key)
 {
@@ -111,7 +111,7 @@ bool Cmd_TapKey_Execute(COMMAND_ARGS)
 	*result = 0;
 	UInt32	keycode = 0;
 
-	if(ExtractArgs(EXTRACT_ARGS, &keycode)) 
+	if(ExtractArgs(EXTRACT_ARGS, &keycode))
 		DIHookControl::GetSingleton().TapKey(keycode);
 
 	return true;
@@ -176,9 +176,14 @@ bool Cmd_IsKeyDisabled_Execute(COMMAND_ARGS)
 
 bool Cmd_GetNumKeysPressed_Execute(COMMAND_ARGS)
 {
+	UInt32 flags=0;
 	DWORD count=0;
-	for(DWORD d=0; d < 256; d++) 
-		if(IsKeycodeValid(d) && DIHookControl::GetSingleton().IsKeyPressed(d)) 
+
+	if(!ExtractArgs(EXTRACT_ARGS, &flags))
+		return true;
+
+	for(DWORD d = 0; d < 256; d++)
+		if(IsKeycodeValid(d) && DIHookControl::GetSingleton().IsKeyPressed(d, flags))
 			count++;
 
 	*result = count;
@@ -192,13 +197,15 @@ bool Cmd_GetNumKeysPressed_Execute(COMMAND_ARGS)
 bool Cmd_GetKeyPress_Execute(COMMAND_ARGS)
 {
 	*result = -1;
+	UInt32 flags=0;
 	UInt32 count=0;
-	if(!ExtractArgs(EXTRACT_ARGS, &count))
+
+	if(!ExtractArgs(EXTRACT_ARGS, &count, &flags))
 		return true;
 
 	for(DWORD d = 0; d < 256; d++)
 	{
-		if(IsKeycodeValid(d) && DIHookControl::GetSingleton().IsKeyPressed(d) && (!count--)) 
+		if(IsKeycodeValid(d) && DIHookControl::GetSingleton().IsKeyPressed(d, flags) && (!count--))
 		{
 			*result = d;
 			break;
@@ -214,7 +221,7 @@ bool Cmd_GetNumMouseButtonsPressed_Execute(COMMAND_ARGS)
 	//Include mouse wheel? Probably not...
 
 	for(DWORD d = 256; d < kMaxMacros -2; d++)
-		if(IsKeycodeValid(d) && DIHookControl::GetSingleton().IsKeyPressed(d)) 
+		if(IsKeycodeValid(d) && DIHookControl::GetSingleton().IsKeyPressed(d))
 			count++;
 
 	*result = count;
@@ -229,7 +236,7 @@ bool Cmd_GetMouseButtonPress_Execute(COMMAND_ARGS)
 	*result = -1;
 	UInt32 count=0;
 
-	if(!ExtractArgs(EXTRACT_ARGS, &count)) 
+	if(!ExtractArgs(EXTRACT_ARGS, &count))
 		return true;
 
 	for(DWORD d = 256; d < kMaxMacros - 2; d++)
@@ -256,7 +263,7 @@ bool Cmd_MenuTapKey_Execute(COMMAND_ARGS)
 	if(!ExtractArgs(EXTRACT_ARGS, &keycode))
 		return true;
 
-	if(keycode < 256) 
+	if(keycode < 256)
 		DIHookControl::GetSingleton().BufferedKeyTap(keycode);
 
 	return true;
@@ -267,7 +274,7 @@ bool Cmd_MenuHoldKey_Execute(COMMAND_ARGS)
 	*result = 0;
 	UInt32	keycode = 0;
 
-	if(ExtractArgs(EXTRACT_ARGS, &keycode) && keycode < 256) 
+	if(ExtractArgs(EXTRACT_ARGS, &keycode) && keycode < 256)
 		DIHookControl::GetSingleton().BufferedKeyPress(keycode);
 
 	return true;
@@ -393,7 +400,7 @@ bool Cmd_IsControlPressed_Execute(COMMAND_ARGS)
 
 	return true;
 }
-		
+
 bool Cmd_TapControl_Execute(COMMAND_ARGS)
 {
 	//returns false if control is not assigned
