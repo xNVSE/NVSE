@@ -2262,6 +2262,10 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD_RET(GetDoorSound, kRetnType_Form);
 
 	ADD_CMD(FireChallenge);
+
+	// 6.4 beta 05
+	ADD_CMD_RET(GetDisabledKeys, kRetnType_Array);
+
 }
 
 namespace PluginAPI
