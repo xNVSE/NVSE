@@ -73,7 +73,7 @@ std::optional<NVSEScript> NVSEParser::Parse() {
 					Expect(NVSETokenType::RightParen, "Expected ')'.");
 				}
 				// Get event or udf block
-				else if (Peek(NVSETokenType::BlockType)) {
+				else if (PeekBlockType()) {
 					blocks.emplace_back(Begin());
 				}
 				else if (Match(NVSETokenType::Fn)) {
@@ -113,7 +113,8 @@ std::optional<NVSEScript> NVSEParser::Parse() {
 }
 
 StmtPtr NVSEParser::Begin() {
-	Match(NVSETokenType::BlockType);
+	ExpectBlockType("Expected block type");
+
 	auto blockName = previousToken;
 	auto blockNameStr = blockName.lexeme;
 
@@ -936,6 +937,39 @@ bool NVSEParser::PeekType() const {
 			Peek(NVSETokenType::ArrayType) || Peek(NVSETokenType::StringType);
 }
 
+bool NVSEParser::PeekBlockType() const {
+	if (!Peek(NVSETokenType::Identifier)) {
+		return false;
+	}
+
+	const auto identifier = currentToken.lexeme;
+	for (const auto& g_eventBlockCommandInfo : g_eventBlockCommandInfos) {
+		if (!_stricmp(g_eventBlockCommandInfo.longName, identifier.c_str())) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+NVSEToken NVSEParser::ExpectBlockType(const std::string &&message) {
+	if (!PeekBlockType()) {
+		Error(currentToken, message);
+		return previousToken;
+	}
+
+	const auto identifier = currentToken.lexeme;
+	for (const auto& g_eventBlockCommandInfo : g_eventBlockCommandInfos) {
+		if (!_stricmp(g_eventBlockCommandInfo.longName, identifier.c_str())) {
+			Advance();
+			return previousToken;
+		}
+	}
+
+	Error(currentToken, message);
+	return previousToken;
+}
+
 void NVSEParser::Error(std::string message) {
 	panicMode = true;
 	hadError = true;
@@ -973,7 +1007,6 @@ void NVSEParser::Synchronize() {
 		case NVSETokenType::For:
 		case NVSETokenType::Return:
 		case NVSETokenType::RightBrace:
-		case NVSETokenType::BlockType:
 			panicMode = false;
 			return;
 		default: ;

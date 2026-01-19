@@ -15,7 +15,6 @@ class NVSEParser {
 public:
     NVSEParser(NVSELexer& tokenizer);
     std::optional<NVSEScript> Parse();
-    StmtPtr Begin();
 
 private:
     NVSELexer& lexer;
@@ -27,6 +26,7 @@ private:
     std::shared_ptr<FnDeclStmt> FnDecl();
     std::shared_ptr<VarDeclStmt> VarDecl(bool allowValue = true, bool allowOnlyOneVarDecl = false);
 
+    StmtPtr Begin();
     StmtPtr Statement();
     StmtPtr ExpressionStatement();
     StmtPtr ForStatement();
@@ -65,6 +65,10 @@ private:
     bool MatchesType();
     bool Peek(NVSETokenType type) const;
     bool PeekType() const;
+
+    bool PeekBlockType() const;
+    NVSEToken ExpectBlockType(const std::string&& message);
+
     void Error(std::string message);
     void Error(NVSEToken token, std::string message);
     NVSEToken Expect(NVSETokenType type, std::string message);
