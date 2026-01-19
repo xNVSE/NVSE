@@ -72,7 +72,7 @@ void NVSETypeChecker::VisitNVSEScript(NVSEScript* script) {
 		global->Accept(this);
 
 		// Dont allow initializers in global scope
-		for (auto [name, value] : dynamic_cast<VarDeclStmt*>(global.get())->values) {
+		for (auto& [name, value] : dynamic_cast<VarDeclStmt*>(global.get())->values) {
 			if (value) {
 				WRAP_ERROR(error(name.line, "Variable initializers are not allowed in global scope."))
 			}
@@ -652,7 +652,7 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 		auto arg = expr->args[argIdx];
 		bool convertedEnum = false;
 
-		if (isDefaultParse(cmd->parse)) {
+		if (isDefaultParse(cmd->parse) || !_stricmp(cmd->longName, "ShowMessage")) {
 			// Try to resolve identifiers as vanilla enums
 			auto ident = dynamic_cast<IdentExpr*>(arg.get());
 
