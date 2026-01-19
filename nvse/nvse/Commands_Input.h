@@ -11,8 +11,8 @@ DEFINE_INPUT(HoldKey, hk, Fakes a key press indefinately);
 DEFINE_INPUT(ReleaseKey, rk, Releases a key held down by HoldKey);
 DEFINE_CMD_ALT(DisableKey, dk, Prevents a player from using a key, 0, 2, kParams_OneInt_OneOptionalInt);
 DEFINE_CMD_ALT(EnableKey, ek, Reenables a key previously disabled with DisableKey, 0, 2, kParams_OneInt_OneOptionalInt);
-DEFINE_CMD_ALT(GetNumKeysPressed, gnkp, Returns how many keyboard keys are currently being held down, 0, 0, 0);
-DEFINE_INPUT(GetKeyPress, gkp, Returns the scancode of the nth key which is currently being held down);
+DEFINE_CMD_ALT(GetNumKeysPressed, gnkp, Returns how many keyboard keys are currently being held down, 0, 1, kParams_OneOptionalInt);
+DEFINE_CMD_ALT(GetKeyPress, gkp, Returns the scancode of the nth key which is currently being held down, 0, 2, kParams_OneInt_OneOptionalInt);
 DEFINE_CMD_ALT(GetNumMouseButtonsPressed, gnmbp, Returns how many mouse buttons are currently being held down, 0, 0, 0);
 DEFINE_INPUT(GetMouseButtonPress, gmbp, Returns the code of the nth mouse button which is currently being held down);
 
