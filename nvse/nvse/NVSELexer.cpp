@@ -6,23 +6,25 @@
 #include "NVSECompilerUtils.h"
 
 
-NVSELexer::NVSELexer(std::string& input) : pos(0) {
+NVSELexer::NVSELexer(const std::string& input) : pos(0) {
+	auto inputStr = std::string{ input };
+
 	// Replace tabs with 4 spaces
 	size_t it;
-	while ((it = input.find('\t')) != std::string::npos) {
-		input.replace(it, 1, "    ");
+	while ((it = inputStr.find('\t')) != std::string::npos) {
+		inputStr.replace(it, 1, "    ");
 	}
 	
 	// Messy way of just getting string lines to start for later error reporting
 	std::string::size_type pos = 0;
 	std::string::size_type prev = 0;
-	while ((pos = input.find('\n', prev)) != std::string::npos) {
-		lines.push_back(input.substr(prev, pos - prev - 1));
+	while ((pos = inputStr.find('\n', prev)) != std::string::npos) {
+		lines.push_back(inputStr.substr(prev, pos - prev - 1));
 		prev = pos + 1;
 	}
-	lines.push_back(input.substr(prev));
+	lines.push_back(inputStr.substr(prev));
 	
-	this->input = input;
+	this->input = inputStr;
 }
 
 // Unused for now, working though
@@ -281,6 +283,7 @@ NVSEToken NVSELexer::GetNextToken(bool useStack) {
 			if (_stricmp(identifier.c_str(), "true") == 0) return MakeToken(NVSETokenType::Bool, identifier, 1);
 			if (_stricmp(identifier.c_str(), "false") == 0) return MakeToken(NVSETokenType::Bool, identifier, 0);
 			if (_stricmp(identifier.c_str(), "null") == 0) return MakeToken(NVSETokenType::Number, identifier, 0);
+
 
 			return MakeToken(NVSETokenType::Identifier, identifier);
 		}

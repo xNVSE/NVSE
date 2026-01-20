@@ -25,6 +25,8 @@
 #include "ScriptAnalyzer.h"
 #include "StackVariables.h"
 #include "Hooks_Other.h"
+#include "NVSEParser.h"
+#include "NVSETypeChecker.h"
 
 std::map<std::pair<Script*, std::string>, Script::VariableType> g_variableDefinitionsMap;
 
@@ -2281,6 +2283,37 @@ DynamicParamInfo::DynamicParamInfo(const std::vector<UserFunctionParam> &params)
 
 bool ExpressionParser::ParseUserFunctionParameters(std::vector<UserFunctionParam> &out, const std::string &funcScriptText, Script::VarInfoList *funcScriptVars, Script *script) const
 {
+	// Use new parser
+	if (funcScriptText.starts_with("name")) {
+		NVSELexer lexer{ funcScriptText };
+		NVSEParser parser{ lexer };
+		if (auto result = parser.Parse()) {
+			NVSETypeChecker tc{ &*result, nullptr };
+			tc.check();
+
+			const auto blocks = result->blocks;
+			if (blocks.size() != 1) {
+				return false;
+			}
+
+			const auto& firstBlock = blocks[0];
+			if (const auto fnDecl = dynamic_cast<const FnDeclStmt*>(&*firstBlock)) {
+				for (auto& varDeclStmt : fnDecl->args) {
+					if (varDeclStmt->scopeVars.empty()) {
+						return false;
+					}
+
+					const auto& scopeVar = varDeclStmt->scopeVars[0];
+					out.emplace_back(scopeVar->index, scopeVar->variableType);
+				}
+			}
+
+			return true;
+		}
+
+		return false;
+	}
+
 	std::vector<std::string> funcParamNames;
 	if (!GetUserFunctionParamNames(funcScriptText, funcParamNames))
 	{

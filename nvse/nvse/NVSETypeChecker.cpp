@@ -144,12 +144,12 @@ void NVSETypeChecker::VisitBeginStmt(BeginStmt* stmt) {
 }
 
 void NVSETypeChecker::VisitFnStmt(FnDeclStmt* stmt) {
-	stmt->scope = EnterScope();
-	returnType.emplace();
-
 	for (const auto& decl : stmt->args) {
 		WRAP_ERROR(decl->Accept(this))
 	}
+
+	stmt->scope = EnterScope();
+	returnType.emplace();
 
 	stmt->body->Accept(this);
 
@@ -640,8 +640,10 @@ void NVSETypeChecker::VisitCallExpr(CallExpr* expr) {
 	}
 
 	// Check for calling reference if not an object script
-	if (cmd->needsParent && !expr->left && engineScript->Type() != Script::eType_Object && engineScript->Type() != Script::eType_Magic) {
-		WRAP_ERROR(error(expr->token.line, std::format("Command '{}' requires a calling reference.", expr->token.lexeme)))
+	if (engineScript) {
+		if (cmd->needsParent && !expr->left && engineScript->Type() != Script::eType_Object && engineScript->Type() != Script::eType_Magic) {
+			WRAP_ERROR(error(expr->token.line, std::format("Command '{}' requires a calling reference.", expr->token.lexeme)))
+		}
 	}
 
 	// Normal (nvse + vanilla) calls
