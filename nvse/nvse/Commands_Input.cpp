@@ -506,7 +506,7 @@ bool Cmd_GetDisabledKeys_Execute(COMMAND_ARGS)
 	*result = arr->ID();
 	double arrIndex = 0;
 
-	for(DWORD d = 0; d < 256; d++)
+	for(UInt32 d = 0; d < 256; d++)
 	{
 		if(IsKeycodeValid(d) && DIHookControl::GetSingleton().IsKeyDisabled(d))
 		{
