@@ -7,6 +7,7 @@
 #include <map>
 #include <set>
 #include "GameScript.h"
+#include "ArrayVar.h"
 
 static bool IsKeycodeValid(UInt32 id)		{ return (id < kMaxMacros - 2) && (id != 0xFF); }
 
@@ -496,6 +497,27 @@ bool Cmd_IsControl_Execute(COMMAND_ARGS)
 
 	return true;
 }
+
+
+bool Cmd_GetDisabledKeys_Execute(COMMAND_ARGS)
+{
+
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
+	double arrIndex = 0;
+
+	for(UInt32 d = 0; d < 256; d++)
+	{
+		if(IsKeycodeValid(d) && DIHookControl::GetSingleton().IsKeyDisabled(d))
+		{
+			arr->SetElementNumber(arrIndex, d);
+			arrIndex += 1;
+		}
+	}
+
+	return true;
+}
+
 
 #if RUNTIME
 
