@@ -272,6 +272,9 @@ struct NVSEMessagingInterface
 		kMessage_PostQueryPlugins, // called after all plugins have been queried
 
 		kMessage_OnFramePresent, // called when the game is about to present a frame
+
+		kMessage_ReloadConfig, // sent via ReloadPluginConfig command
+							   // dataLen: length of plugin name, data: const char* pluginName
 	};
 
 	UInt32	version;

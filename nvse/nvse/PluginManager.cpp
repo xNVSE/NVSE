@@ -1103,6 +1103,29 @@ bool Cmd_GetPluginVersion_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_ReloadPluginConfig_Execute(COMMAND_ARGS)
+{
+	char	pluginName[256];
+
+	*result = 0;
+
+	if(!ExtractArgs(EXTRACT_ARGS, &pluginName)) return true;
+
+	PluginInfo	* info = g_pluginManager.GetInfoByName(pluginName);
+
+	if(!info)
+	{
+		Console_Print("ReloadPluginConfig: plugin '%s' not found", pluginName);
+		return true;
+	}
+
+	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ReloadConfig,
+		(void*)pluginName, strlen(pluginName) + 1, pluginName);
+
+	*result = 1;
+	return true;
+}
+
 #endif
 
 CommandInfo kCommandInfo_IsPluginInstalled =
@@ -1132,6 +1155,22 @@ CommandInfo kCommandInfo_GetPluginVersion =
 	kParams_OneString,
 
 	HANDLER(Cmd_GetPluginVersion_Execute),
+	Cmd_Default_Parse,
+	NULL,
+	NULL
+};
+
+CommandInfo kCommandInfo_ReloadPluginConfig =
+{
+	"ReloadPluginConfig",
+	"",
+	0,
+	"sends kMessage_ReloadConfig to the specified plugin",
+	0,
+	1,
+	kParams_OneString,
+
+	HANDLER(Cmd_ReloadPluginConfig_Execute),
 	Cmd_Default_Parse,
 	NULL,
 	NULL

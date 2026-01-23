@@ -95,6 +95,7 @@ extern PluginManager	g_pluginManager;
 
 extern CommandInfo kCommandInfo_IsPluginInstalled;
 extern CommandInfo kCommandInfo_GetPluginVersion;
+extern CommandInfo kCommandInfo_ReloadPluginConfig;
 
 typedef UInt32 (__stdcall *_GetLNEventMask)(const char *eventName);
 extern _GetLNEventMask GetLNEventMask;
