@@ -2266,6 +2266,7 @@ void CommandTable::AddCommandsV6()
 	// 6.4 beta 05
 	ADD_CMD_RET(GetDisabledKeys, kRetnType_Array);
 
+	ADD_CMD(ReloadPluginConfig);
 }
 
 namespace PluginAPI
