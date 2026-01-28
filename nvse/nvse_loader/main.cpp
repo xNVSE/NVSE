@@ -172,25 +172,22 @@ int main(int argc, char ** argv)
 	switch(procHookInfo.procType)
 	{
 		case kProcType_Steam:
-			if(g_options.m_skipLauncher)
-			{
-				std::string	steamHookDllPath = std::string(currentWorkingDirectory) + "\\nvse_steam_loader.dll";
-
-				if(InjectDLLThread(&procInfo, steamHookDllPath.c_str(), true))
+		case kProcType_Normal:
+			if (g_options.m_launchCS) {
+				if (InjectDLL(&procInfo, dllPath.c_str(), &procHookInfo))
 				{
 					injectionSucceeded = true;
 				}
 			}
-			else
-			{
-				injectionSucceeded = true;
-			}
-			break;
+			else {
+				// Plugin preload code + heap hooks are in nvse_steam_loader.dll, so we use it for both Steam and non-Steam
+				// Naming is kept intact for legacy reasons
+				std::string	steamHookDllPath = std::string(currentWorkingDirectory) + "\\nvse_steam_loader.dll";
 
-		case kProcType_Normal:
-			if(InjectDLL(&procInfo, dllPath.c_str(), &procHookInfo))
-			{
-				injectionSucceeded = true;
+				if (InjectDLLThread(&procInfo, steamHookDllPath.c_str(), true))
+				{
+					injectionSucceeded = true;
+				}
 			}
 			break;
 
