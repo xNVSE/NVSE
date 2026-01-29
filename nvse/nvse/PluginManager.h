@@ -38,6 +38,7 @@ public:
 
 	static bool Dispatch_Message(PluginHandle sender, UInt32 messageType, void * data, UInt32 dataLen, const char* receiver);
 	static bool	RegisterListener(PluginHandle listener, const char* sender, NVSEMessagingInterface::EventCallback handler);
+	static void	UnregisterListener(PluginHandle listener);
 
 	static void * GetSingleton(UInt32 singletonID);
 	static void * GetFunc(UInt32 funcID);
