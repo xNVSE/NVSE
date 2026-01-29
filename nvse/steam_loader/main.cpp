@@ -159,9 +159,9 @@ void InstallHook(void * retaddr)
 
 	SafeWrite32(hookBaseAddr + 1, newHookDst);
 
-	PreloadPlugins();
-
 	Hooks_Memory_PreloadCommit(procHookInfo.noGore);
+
+	PreloadPlugins();
 }
 
 typedef void (__stdcall * _GetSystemTimeAsFileTime)(LPFILETIME * fileTime);
