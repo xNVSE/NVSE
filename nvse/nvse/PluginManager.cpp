@@ -629,12 +629,15 @@ bool PluginManager::InstallPlugins(const std::vector<std::string>& pluginPaths)
 				pluginStatus.loadStatus = SafeCallQueryPlugin(&plugin, &g_NVSEInterface);
 				if (pluginStatus.loadStatus.empty())
 					pluginStatus.querySuccess = true;
+				else
+					UnregisterListener(s_currentPluginHandle);
 				continue;
 			}
 			pluginStatus.loadStatus = "was not loaded as it does not appear to be an NVSE plugin (NVSE plugins must export NVSEPlugin_Query and NVSEPlugin_Load)";
 			continue;
 		}
 		pluginStatus.loadStatus = FormatString("couldn't be loaded due to an error (win32 error code: %d message: \"%s\")", GetLastError(), GetLastErrorAsString().c_str());
+		UnregisterListener(s_currentPluginHandle);
 	}
 
 	Dispatch_Message(0, NVSEMessagingInterface::kMessage_PostQueryPlugins, NULL, 0, NULL);
@@ -839,7 +842,7 @@ bool PluginManager::RegisterListener(PluginHandle listener, const char* sender, 
 	_MESSAGE("registering plugin listener for %s at %u of %u", sender, listener, numPlugins);
 
 	// handle > num plugins = invalid
-	if (listener > g_pluginManager.GetNumPlugins() || !handler) 
+	if (s_currentPluginHandle != listener && listener > g_pluginManager.GetNumPlugins())
 	{
 		return false;
 	}
@@ -902,6 +905,19 @@ bool PluginManager::RegisterListener(PluginHandle listener, const char* sender, 
 	}
 
 	return true;
+}
+
+void PluginManager::UnregisterListener(PluginHandle listener) {
+
+	_MESSAGE("unregistering plugin listener at %u", listener);
+
+	for (auto& senderListeners : s_pluginListeners) {
+		senderListeners.erase(
+			std::remove_if(senderListeners.begin(), senderListeners.end(),
+				[listener](const PluginListener& pl) { return pl.listener == listener; }),
+			senderListeners.end());
+	}
+	s_pluginListeners.shrink_to_fit();
 }
 
 bool PluginManager::Dispatch_Message(PluginHandle sender, UInt32 messageType, void * data, UInt32 dataLen, const char* receiver)
