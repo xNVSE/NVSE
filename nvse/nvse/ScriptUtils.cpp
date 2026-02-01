@@ -25,8 +25,9 @@
 #include "ScriptAnalyzer.h"
 #include "StackVariables.h"
 #include "Hooks_Other.h"
-#include "NVSEParser.h"
-#include "NVSETypeChecker.h"
+#include "Compiler/Parser.h"
+#include "Compiler/NVSETypeChecker.h"
+#include "Compiler/Passes/VariableResolution.h"
 
 std::map<std::pair<Script*, std::string>, Script::VariableType> g_variableDefinitionsMap;
 
@@ -2285,32 +2286,31 @@ bool ExpressionParser::ParseUserFunctionParameters(std::vector<UserFunctionParam
 {
 	// Use new parser
 	if (funcScriptText.starts_with("name")) {
-		NVSELexer lexer{ funcScriptText };
-		NVSEParser parser{ lexer };
+		Compiler::Lexer lexer{ funcScriptText };
+		Compiler::Parser parser{ lexer };
 		if (auto result = parser.Parse()) {
-			NVSETypeChecker tc{ &*result, nullptr };
-			tc.check();
+			Compiler::Passes::VariableResolution::Resolve(nullptr, &*result);
 
 			const auto blocks = result->blocks;
 			if (blocks.size() != 1) {
 				return false;
 			}
-
+	
 			const auto& firstBlock = blocks[0];
-			if (const auto fnDecl = dynamic_cast<const FnDeclStmt*>(&*firstBlock)) {
+			if (const auto fnDecl = dynamic_cast<const Compiler::Statements::UDFDecl*>(&*firstBlock)) {
 				for (auto& varDeclStmt : fnDecl->args) {
-					if (varDeclStmt->scopeVars.empty()) {
+					if (varDeclStmt->declarations.empty()) {
 						return false;
 					}
-
-					const auto& scopeVar = varDeclStmt->scopeVars[0];
-					out.emplace_back(scopeVar->index, scopeVar->variableType);
+	
+					const auto& scopeVar = varDeclStmt->declarations[0].info;
+					out.emplace_back(scopeVar->index, scopeVar->type);
 				}
 			}
-
+	
 			return true;
 		}
-
+	
 		return false;
 	}
 

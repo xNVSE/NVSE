@@ -257,22 +257,22 @@
       <Filter>internals</Filter>
     </ClCompile>
     <ClCompile Include="InventoryRef.cpp" />
-    <ClCompile Include="NVSECompiler.cpp">
+    <ClCompile Include="Compiler\Compilation.cpp">
       <Filter>compiler</Filter>
     </ClCompile>
-    <ClCompile Include="NVSELexer.cpp">
+    <ClCompile Include="Compiler\Lexer\Lexer.cpp">
       <Filter>compiler</Filter>
     </ClCompile>
-    <ClCompile Include="NVSEParser.cpp">
+    <ClCompile Include="Compiler\Parser\Parser.cpp">
       <Filter>compiler</Filter>
     </ClCompile>
-    <ClCompile Include="NVSETreePrinter.cpp">
+    <ClCompile Include="Compiler\NVSETreePrinter.cpp">
       <Filter>compiler</Filter>
     </ClCompile>
-    <ClCompile Include="NVSETypeChecker.cpp">
+    <ClCompile Include="Compiler\NVSETypeChecker.cpp">
       <Filter>compiler</Filter>
     </ClCompile>
-    <ClCompile Include="NVSECompilerUtils.cpp">
+    <ClCompile Include="Compiler\NVSECompilerUtils.cpp">
       <Filter>compiler</Filter>
     </ClCompile>
     <ClCompile Include="StackVariables.cpp">
@@ -282,6 +282,8 @@
       <Filter>internals</Filter>
     </ClCompile>
     <ClCompile Include="ScriptDataCache.cpp" />
+    <ClCompile Include="Compiler\Passes\VariableResolution.cpp" />
+    <ClCompile Include="Compiler\Visitor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
@@ -542,31 +544,28 @@
       <Filter>internals</Filter>
     </ClInclude>
     <ClInclude Include="InventoryRef.h" />
-    <ClInclude Include="NVSEVisitor.h">
+    <ClInclude Include="Compiler\Visitor.h">
       <Filter>compiler</Filter>
     </ClInclude>
-    <ClInclude Include="NVSECompiler.h">
+    <ClInclude Include="Compiler\Compilation.h">
       <Filter>compiler</Filter>
     </ClInclude>
-    <ClInclude Include="NVSELexer.h">
+    <ClInclude Include="Compiler\Lexer\Lexer.h">
       <Filter>compiler</Filter>
     </ClInclude>
-    <ClInclude Include="NVSEParser.h">
+    <ClInclude Include="Compiler\Parser\Parser.h">
       <Filter>compiler</Filter>
     </ClInclude>
-    <ClInclude Include="NVSETreePrinter.h">
+    <ClInclude Include="Compiler\NVSETreePrinter.h">
       <Filter>compiler</Filter>
     </ClInclude>
-    <ClInclude Include="NVSECompilerUtils.h">
+    <ClInclude Include="Compiler\NVSECompilerUtils.h">
       <Filter>compiler</Filter>
     </ClInclude>
-    <ClInclude Include="NVSETypeChecker.h">
+    <ClInclude Include="Compiler\NVSETypeChecker.h">
       <Filter>compiler</Filter>
     </ClInclude>
-    <ClInclude Include="NVSEAst.h">
-      <Filter>compiler</Filter>
-    </ClInclude>
-    <ClInclude Include="NVSEScope.h">
+    <ClInclude Include="Compiler\AST\AST.h">
       <Filter>compiler</Filter>
     </ClInclude>
     <ClInclude Include="StackVariables.h">
@@ -579,6 +578,8 @@
     <ClInclude Include="xxhash64.h">
       <Filter>lib</Filter>
     </ClInclude>
+    <ClInclude Include="Compiler\Passes\VariableResolution.h" />
+    <ClInclude Include="Compiler\AST\ASTForward.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">
