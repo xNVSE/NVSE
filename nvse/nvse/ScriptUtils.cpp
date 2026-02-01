@@ -25,7 +25,7 @@
 #include "ScriptAnalyzer.h"
 #include "StackVariables.h"
 #include "Hooks_Other.h"
-#include "Compiler/Parser.h"
+#include "Compiler/Parser/Parser.h"
 #include "Compiler/NVSETypeChecker.h"
 #include "Compiler/Passes/VariableResolution.h"
 
