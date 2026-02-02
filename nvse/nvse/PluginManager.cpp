@@ -27,6 +27,7 @@
 #endif
 
 #include <filesystem>
+#include <algorithm>
 
 namespace ExportedToPlugins
 {
@@ -692,11 +693,9 @@ void PluginManager::InstallPlugins(void)
 		pluginPaths.push_back(std::move(pluginPath));
 	}
 
-	std::qsort(pluginPaths.data(), pluginPaths.size(), sizeof(std::string),
-		[](const void* a, const void* b) -> int {
-			const std::string* strA = (const std::string*)a;
-			const std::string* strB = (const std::string*)b;
-			return _stricmp(strA->c_str(), strB->c_str());
+	std::sort(pluginPaths.begin(), pluginPaths.end(),
+		[](const std::string& a, const std::string& b) -> bool {
+			return _stricmp(a.c_str(), b.c_str()) < 0;
 		});
 
 	InstallPlugins(pluginPaths);

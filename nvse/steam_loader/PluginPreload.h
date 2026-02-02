@@ -3,6 +3,7 @@
 #include "loader_common/PluginChecker.h"
 #include <vector>
 #include <string>
+#include <algorithm>
 
 typedef bool (*_NVSEPlugin_Preload)();
 
@@ -44,11 +45,9 @@ void PreloadPlugins() {
 		FindClose(find);
 	}
 
-	std::qsort(pluginNames.data(), pluginNames.size(), sizeof(std::string),
-		[](const void* a, const void* b) -> int {
-			const std::string* strA = (const std::string*)a;
-			const std::string* strB = (const std::string*)b;
-			return _stricmp(strA->c_str(), strB->c_str());
+	std::sort(pluginNames.begin(), pluginNames.end(),
+		[](const std::string& a, const std::string& b) -> bool {
+			return _stricmp(a.c_str(), b.c_str()) < 0;
 		});
 
 	for (const auto& pluginName : pluginNames) {
