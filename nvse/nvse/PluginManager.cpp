@@ -692,6 +692,13 @@ void PluginManager::InstallPlugins(void)
 		pluginPaths.push_back(std::move(pluginPath));
 	}
 
+	std::qsort(pluginPaths.data(), pluginPaths.size(), sizeof(std::string),
+		[](const void* a, const void* b) -> int {
+			const std::string* strA = (const std::string*)a;
+			const std::string* strB = (const std::string*)b;
+			return _stricmp(strA->c_str(), strB->c_str());
+		});
+
 	InstallPlugins(pluginPaths);
 	
 	s_currentLoadingPlugin = NULL;
