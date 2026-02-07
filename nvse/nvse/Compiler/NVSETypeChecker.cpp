@@ -619,13 +619,14 @@ namespace Compiler {
 
 			if (isDefaultParse(cmd->parse) || !_stricmp(cmd->longName, "ShowMessage")) {
 				// Try to resolve identifiers as vanilla enums
-				const auto ident = dynamic_cast<Expressions::IdentExpr*>(arg.get());
+				const auto ident = arg->As<Expressions::IdentExpr>();
 
 				uint32_t idx = -1;
 				uint32_t len = 0;
 				if (ident) {
 					resolveVanillaEnum(param, ident->token.lexeme.c_str(), &idx, &len);
 				}
+
 				if (idx != -1) {
 					CompDbg("[line %d] INFO: Converting identifier '%s' to enum index %d\n", arg->line, ident->token.lexeme.c_str(), idx);
 					arg = std::make_shared<Expressions::NumberExpr>(NVSEToken{}, static_cast<double>(idx), false, len);
@@ -636,7 +637,12 @@ namespace Compiler {
 					WRAP_ERROR(arg->Accept(this))
 				}
 
-				if (ident && arg->type == kTokenType_Form) {
+				if (
+					ident && 
+					arg->type == kTokenType_Form && 
+					param->typeID >= kParamType_ObjectRef && 
+					param->typeID <= kParamType_Region
+				) {
 					// Extract form from param
 					if (!doesFormMatchParamType(ident->form, static_cast<ParamType>(param->typeID))) {
 						if (!param->isOptional) {

@@ -45,6 +45,11 @@ namespace Compiler {
 		bool IsType() {
 			return dynamic_cast<T*>(this);
 		}
+
+		template <typename T>
+		T* As() {
+			return dynamic_cast<T*>(this);
+		}
 	};
 
 	namespace Statements {
@@ -294,6 +299,11 @@ namespace Compiler {
 
 		template <typename T>
 		bool IsType() {
+			return dynamic_cast<T*>(this);
+		}
+
+		template <typename T>
+		T* As() {
 			return dynamic_cast<T*>(this);
 		}
 	};
