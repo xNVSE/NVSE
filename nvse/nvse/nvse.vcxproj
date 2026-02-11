@@ -530,6 +530,8 @@ xcopy "$(ProjectDir)unit_tests\new_compiler" "$(FalloutNVPath)\Data\NVSE\unit_te
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="CommandTable.cpp" />
+    <ClCompile Include="Compiler\Visitor.cpp" />
+    <ClCompile Include="Compiler\Passes\VariableResolution.cpp" />
     <ClCompile Include="containers.cpp" />
     <ClCompile Include="Core_Serialization.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
@@ -647,12 +649,12 @@ xcopy "$(ProjectDir)unit_tests\new_compiler" "$(FalloutNVPath)\Data\NVSE\unit_te
     <ClCompile Include="NiNodes.cpp" />
     <ClCompile Include="NiTypes.cpp" />
     <ClCompile Include="nvse.cpp" />
-    <ClCompile Include="NVSECompiler.cpp" />
-    <ClCompile Include="NVSECompilerUtils.cpp" />
-    <ClCompile Include="NVSELexer.cpp" />
-    <ClCompile Include="NVSEParser.cpp" />
-    <ClCompile Include="NVSETreePrinter.cpp" />
-    <ClCompile Include="NVSETypeChecker.cpp" />
+    <ClCompile Include="Compiler\Compilation.cpp" />
+    <ClCompile Include="Compiler\NVSECompilerUtils.cpp" />
+    <ClCompile Include="Compiler\Lexer\Lexer.cpp" />
+    <ClCompile Include="Compiler\Parser\Parser.cpp" />
+    <ClCompile Include="Compiler\NVSETreePrinter.cpp" />
+    <ClCompile Include="Compiler\NVSETypeChecker.cpp" />
     <ClCompile Include="OverloadsGlobal.cpp" />
     <ClCompile Include="PluginManager.cpp" />
     <ClCompile Include="printf.cpp" />
@@ -711,6 +713,8 @@ xcopy "$(ProjectDir)unit_tests\new_compiler" "$(FalloutNVPath)\Data\NVSE\unit_te
     <ClInclude Include="Commands_String.h" />
     <ClInclude Include="Commands_UI.h" />
     <ClInclude Include="CommandTable.h" />
+    <ClInclude Include="Compiler\AST\ASTForward.h" />
+    <ClInclude Include="Compiler\Passes\VariableResolution.h" />
     <ClInclude Include="containers.h" />
     <ClInclude Include="Core_Serialization.h" />
     <ClInclude Include="EventManager.h">
@@ -758,15 +762,14 @@ xcopy "$(ProjectDir)unit_tests\new_compiler" "$(FalloutNVPath)\Data\NVSE\unit_te
     <ClInclude Include="NiNodes.h" />
     <ClInclude Include="NiPoint.h" />
     <ClInclude Include="NiTypes.h" />
-    <ClInclude Include="NVSEAst.h" />
-    <ClInclude Include="NVSECompiler.h" />
-    <ClInclude Include="NVSECompilerUtils.h" />
-    <ClInclude Include="NVSELexer.h" />
-    <ClInclude Include="NVSEParser.h" />
-    <ClInclude Include="NVSEScope.h" />
-    <ClInclude Include="NVSETreePrinter.h" />
-    <ClInclude Include="NVSETypeChecker.h" />
-    <ClInclude Include="NVSEVisitor.h" />
+    <ClInclude Include="Compiler\AST\AST.h" />
+    <ClInclude Include="Compiler\Compilation.h" />
+    <ClInclude Include="Compiler\NVSECompilerUtils.h" />
+    <ClInclude Include="Compiler\Lexer\Lexer.h" />
+    <ClInclude Include="Compiler\Parser\Parser.h" />
+    <ClInclude Include="Compiler\NVSETreePrinter.h" />
+    <ClInclude Include="Compiler\NVSETypeChecker.h" />
+    <ClInclude Include="Compiler\Visitor.h" />
     <ClInclude Include="nvse_version.h" />
     <ClInclude Include="ParamInfos.h" />
     <ClInclude Include="PluginAPI.h" />
