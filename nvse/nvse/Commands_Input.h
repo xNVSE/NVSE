@@ -32,6 +32,8 @@ DEFINE_COMMAND(IsControl, returns 1 if key is a game control or 2 if a custom co
 DEFINE_COMMAND(IsKeyDisabled, returns 1 if the key has been disabled by a script, 0, 1, kParams_OneInt);
 DEFINE_COMMAND(IsControlDisabled, returns 1 if the control has been disabled by a script, 0, 1, kParams_OneInt);
 DEFINE_CMD_COND(IsControlPressed, returns 1 if the control is pressed, 0, kParams_OneInt_OneOptionalInt);
+DEFINE_CMD(GetDisabledKeys, returns an array of all disabled key scancodes, 0, NULL);
+DEFINE_COMMAND(GetPressedKeys, returns an array of all pressed key scancodes, 0, 1, kParams_OneOptionalInt);
 
 #undef DEFINE_INPUT
 

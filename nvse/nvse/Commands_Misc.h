@@ -104,5 +104,3 @@ static ParamInfo kNVSEParams_FireChallenge[] = {
 };
 
 DEFINE_COMMAND_EXP(FireChallenge, Increment a challenge using specified params, 0, kNVSEParams_FireChallenge)
-
-DEFINE_CMD(GetDisabledKeys, returns an array of all disabled key scancodes, 0, NULL);
