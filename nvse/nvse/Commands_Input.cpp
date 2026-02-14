@@ -519,6 +519,30 @@ bool Cmd_GetDisabledKeys_Execute(COMMAND_ARGS)
 }
 
 
+bool Cmd_GetPressedKeys_Execute(COMMAND_ARGS)
+{
+
+	UInt32 flags=0;
+
+	if(!ExtractArgs(EXTRACT_ARGS, &flags))
+		return true;
+
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
+	double arrIndex = 0;
+
+	for(UInt32 d = 0; d < kMaxMacros - 2; d++)
+	{
+		if(IsKeycodeValid(d) && DIHookControl::GetSingleton().IsKeyPressed(d, flags))
+		{
+			arr->SetElementNumber(arrIndex, d);
+			arrIndex += 1;
+		}
+	}
+
+	return true;
+}
+
 #if RUNTIME
 
 void Commands_Input_Init(void)

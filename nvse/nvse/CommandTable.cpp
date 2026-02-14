@@ -2267,6 +2267,10 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD_RET(GetDisabledKeys, kRetnType_Array);
 
 	ADD_CMD(ReloadPluginConfig);
+
+	// 6.4 beta 06
+	ADD_CMD_RET(GetPressedKeys, kRetnType_Array);
+
 }
 
 namespace PluginAPI
