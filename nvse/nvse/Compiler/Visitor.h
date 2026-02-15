@@ -4,6 +4,8 @@
 
 namespace Compiler {
 	class Visitor {
+	protected:
+		boolean had_error = false;
 	public:
 		virtual ~Visitor() = default;
 
@@ -39,5 +41,9 @@ namespace Compiler {
 		virtual void VisitMapLiteralExpr(Expressions::MapLiteralExpr* expr);
 		virtual void VisitGroupingExpr(Expressions::GroupingExpr* expr);
 		virtual void VisitLambdaExpr(Expressions::LambdaExpr* expr);
+
+		virtual bool HadError() {
+			return had_error;
+		}
 	};
 }

@@ -2289,7 +2289,10 @@ bool ExpressionParser::ParseUserFunctionParameters(std::vector<UserFunctionParam
 		Compiler::Lexer lexer{ funcScriptText };
 		Compiler::Parser parser{ lexer };
 		if (auto result = parser.Parse()) {
-			Compiler::Passes::VariableResolution::Resolve(nullptr, &*result);
+			const auto variablePass = Compiler::Passes::VariableResolution::Resolve(nullptr, &*result);
+			if (!variablePass) {
+				return false;
+			}
 
 			const auto blocks = result->blocks;
 			if (blocks.size() != 1) {

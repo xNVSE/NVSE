@@ -81,7 +81,7 @@ namespace Compiler::Passes {
 		static bool Resolve(Script *pScript, AST* pAST) {
 			auto resolver = VariableResolution{ pScript };
 			resolver.Visit(pAST);
-			return true;
+			return !resolver.HadError();
 		}
 
 		VariableResolution(Script* pScript) : pScript{ pScript } {

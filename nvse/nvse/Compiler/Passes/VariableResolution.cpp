@@ -26,6 +26,11 @@ namespace Compiler::Passes {
 					expr->Accept(this);
 				}
 			}
+			// Existing variable within the same scope, produce an error
+			else {
+				CompErr("[line %d:%d] Error - Variable name '%s' already exists in this scope.\n", token.line, token.column, token.lexeme.c_str());
+				this->had_error = true;
+			}
 		}
 	}
 

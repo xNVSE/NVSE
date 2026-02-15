@@ -544,7 +544,10 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 
 		if (auto astOpt = parser.Parse(); astOpt.has_value()) {
 			auto ast = std::move(astOpt.value());
-			Compiler::Passes::VariableResolution::Resolve(script, &ast);
+			const auto variablePass = Compiler::Passes::VariableResolution::Resolve(script, &ast);
+			if (!variablePass) {
+				return kPrecompile_Failure;
+			}
 
 			auto tc = Compiler::NVSETypeChecker(&ast, script);
 			bool typeCheckerPass = tc.check();
