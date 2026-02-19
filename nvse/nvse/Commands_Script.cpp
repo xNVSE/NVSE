@@ -276,24 +276,6 @@ bool GetVariable_Execute(COMMAND_ARGS, UInt32 whichAction)
 			return true;
 		}
 
-		// String handling
-		if (whichAction == eScriptVar_GetStr)
-		{
-			const char* strValue = nullptr;
-			if (varInfo)
-			{
-				if (ScriptLocal* var = targetEventList->GetVariable(varInfo->idx))
-				{
-					StringVar *strVar = g_StringMap.Get(static_cast<UInt32>(var->data));
-					if (strVar)
-						strValue = strVar->GetCString();
-				}
-			}
-			AssignToStringVar(PASS_COMMAND_ARGS, strValue);
-			return true;
-		}
-
-		// Numeric/Ref handling
 		if (varInfo)
 		{
 			ScriptLocal *var = targetEventList->GetVariable(varInfo->idx);
@@ -306,8 +288,17 @@ bool GetVariable_Execute(COMMAND_ARGS, UInt32 whichAction)
 					const auto refResult = (UInt32 *)result;
 					*refResult = (*(UInt64 *)&var->data);
 				}
+				else if (whichAction == eScriptVar_GetStr)
+				{
+					StringVar *strVar = g_StringMap.Get(static_cast<UInt32>(var->data));
+					AssignToStringVar(PASS_COMMAND_ARGS, strVar ? strVar->GetCString() : "");
+					return true;
+				}
 			}
 		}
+
+ 		if (whichAction == eScriptVar_GetStr)
+			AssignToStringVar(PASS_COMMAND_ARGS, "");
 	}
 
 	return true;
