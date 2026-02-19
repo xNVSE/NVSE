@@ -237,6 +237,7 @@ enum
 	eScriptVar_Get = 1,
 	eScriptVar_GetRef,
 	eScriptVar_Has,
+	eScriptVar_GetStr,
 };
 
 bool GetVariable_Execute(COMMAND_ARGS, UInt32 whichAction)
@@ -268,22 +269,42 @@ bool GetVariable_Execute(COMMAND_ARGS, UInt32 whichAction)
 	if (targetScript && targetEventList)
 	{
 		VariableInfo *varInfo = targetScript->GetVariableByName(varName);
+
+		if (whichAction == eScriptVar_Has)
+		{
+			*result = varInfo ? 1 : 0;
+			return true;
+		}
+
+		// String handling
+		if (whichAction == eScriptVar_GetStr)
+		{
+			const char* strValue = nullptr;
+			if (varInfo)
+			{
+				if (ScriptLocal* var = targetEventList->GetVariable(varInfo->idx))
+				{
+					StringVar *strVar = g_StringMap.Get(static_cast<UInt32>(var->data));
+					if (strVar)
+						strValue = strVar->GetCString();
+				}
+			}
+			AssignToStringVar(PASS_COMMAND_ARGS, strValue);
+			return true;
+		}
+
+		// Numeric/Ref handling
 		if (varInfo)
 		{
-			if (whichAction == eScriptVar_Has)
-				*result = 1;
-			else
+			ScriptLocal *var = targetEventList->GetVariable(varInfo->idx);
+			if (var)
 			{
-				ScriptLocal *var = targetEventList->GetVariable(varInfo->idx);
-				if (var)
+				if (whichAction == eScriptVar_Get)
+					*result = var->data;
+				else if (whichAction == eScriptVar_GetRef)
 				{
-					if (whichAction == eScriptVar_Get)
-						*result = var->data;
-					else if (whichAction == eScriptVar_GetRef)
-					{
-						const auto refResult = (UInt32 *)result;
-						*refResult = (*(UInt64 *)&var->data);
-					}
+					const auto refResult = (UInt32 *)result;
+					*refResult = (*(UInt64 *)&var->data);
 				}
 			}
 		}
@@ -377,6 +398,52 @@ bool Cmd_SetRefVariable_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_SetStringVariable_Execute(COMMAND_ARGS)
+{
+	char varName[256];
+	char newValue[kMaxMessageLength];
+	TESQuest *quest = nullptr;
+	Script *targetScript = nullptr;
+	ScriptEventList *targetEventList = nullptr;
+	float value = 0;
+	*result = 0;
+
+	if (!ExtractArgs(EXTRACT_ARGS, &varName, &newValue, &quest))
+		return true;
+	if (quest)
+	{
+		const auto scriptable = DYNAMIC_CAST(quest, TESQuest, TESScriptableForm);
+		targetScript = scriptable->script;
+		targetEventList = quest->scriptEventList;
+	}
+	else if (thisObj)
+	{
+		const auto scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm);
+		if (scriptable)
+		{
+			targetScript = scriptable->script;
+			targetEventList = thisObj->GetEventList();
+		}
+	}
+
+	if (targetScript && targetEventList)
+	{
+		VariableInfo *varInfo = targetScript->GetVariableByName(varName);
+		if (varInfo)
+		{
+			ScriptLocal *var = targetEventList->GetVariable(varInfo->idx);
+			if (var)
+			{
+				StringVar *strVar = g_StringMap.Get(static_cast<UInt32>(var->data));
+				if (strVar)
+					strVar->Set(newValue);
+			}
+		}
+	}
+
+	return true;
+}
+
 bool Cmd_HasVariable_Execute(COMMAND_ARGS)
 {
 	GetVariable_Execute(PASS_COMMAND_ARGS, eScriptVar_Has);
@@ -404,6 +471,12 @@ bool Cmd_GetArrayVariable_Execute(COMMAND_ARGS)
 	}
 
 	GetVariable_Execute(PASS_COMMAND_ARGS, eScriptVar_Get);
+	return true;
+}
+
+bool Cmd_GetStringVariable_Execute(COMMAND_ARGS)
+{
+	GetVariable_Execute(PASS_COMMAND_ARGS, eScriptVar_GetStr);
 	return true;
 }
 
@@ -601,7 +674,7 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 			// any filters? Could also be priority
 			for (auto i = 2; i < eval.NumArgs(); i++)
 			{
-				if (const TokenPair* pair = eval.Arg(i)->GetPair(); 
+				if (const TokenPair* pair = eval.Arg(i)->GetPair();
 					pair && pair->left && pair->right) [[likely]]
 				{
 					if (pair->left->CanConvertTo(kTokenType_String))
@@ -711,7 +784,7 @@ bool ProcessEventHandler(std::string &eventName, EventManager::EventCallback &ca
 			{
 				if (priority != EventManager::kHandlerPriority_Default && priority != EventManager::kHandlerPriority_Invalid) [[unlikely]]
 				{
-					ShowRuntimeScriptError(callback.TryGetScript(), &eval, "Cannot use non-default (non-%i) and non-invalid (non-%i) priority %i for removing an LN event.", 
+					ShowRuntimeScriptError(callback.TryGetScript(), &eval, "Cannot use non-default (non-%i) and non-invalid (non-%i) priority %i for removing an LN event.",
 						EventManager::kHandlerPriority_Default, EventManager::kHandlerPriority_Invalid, priority);
 					return false;
 				}
@@ -908,12 +981,12 @@ bool Cmd_DumpEventHandlers_Execute(COMMAND_ARGS)
 
 		auto const DumpHandlerInfo = [&, thisObj, scriptFilter](int priority, const EventManager::EventCallback& handler)
 		{
-			if ((!scriptFilter || scriptFilter == handler.TryGetScript()) 
-				&& !handler.IsRemoved() 
+			if ((!scriptFilter || scriptFilter == handler.TryGetScript())
+				&& !handler.IsRemoved()
 				&& (argsToFilter->empty() || handler.DoNewFiltersMatch<true>(thisObj, argsToFilter, accurateArgTypes, info, &eval)))
 			{
-				std::string const toPrint = FormatString(">> Priority: %i, handler: %s, filters: %s", 
-					priority, 
+				std::string const toPrint = FormatString(">> Priority: %i, handler: %s, filters: %s",
+					priority,
 					handler.GetCallbackFuncAsStr().c_str(),
 					handler.GetFiltersAsStr().c_str());
 				Console_Print_Str(toPrint);
@@ -997,9 +1070,9 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 
 		auto const accurateArgTypes = info.HasUnknownArgTypes() ? argTypes : info.GetArgTypesAsStackVector();
 
-		auto const TryAddHandlerToArray = 
+		auto const TryAddHandlerToArray =
 			[&, scriptFilter, thisObj, scriptObj]
-			(EventManager::CallbackMap::const_iterator i, 
+			(EventManager::CallbackMap::const_iterator i,
 			int handlerPos,
 			ArrayVar* arrOfHandlers)
 		{
@@ -1012,7 +1085,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 			}
 		};
 
-		if (priorityFilter != EventManager::kHandlerPriority_Invalid)  
+		if (priorityFilter != EventManager::kHandlerPriority_Invalid)
 		{
 			// filter by priority
 			auto const priorityRange = info.callbacks.equal_range(priorityFilter);
@@ -1607,7 +1680,7 @@ bool Cmd_DumpCommandWikiDocs_Execute(COMMAND_ARGS)
 		if (IsConsoleMode())
 			Console_Print("Dumping wiki-style documentation for functions in opcode range.");
 
-		std::for_each(commandInfoVec.begin(), commandInfoVec.end(), 
+		std::for_each(commandInfoVec.begin(), commandInfoVec.end(),
 			[&versionNumBuf](CommandInfo* commandInfo) {commandInfo->DumpWikiDocs(versionNumBuf); });
 
 		if (IsConsoleMode())
@@ -1679,7 +1752,7 @@ public:
 		return true;
 	}
 
-	ScriptToken* GetResult() const 
+	ScriptToken* GetResult() const
 	{
 		return m_eval.m_args[1];
 	}
