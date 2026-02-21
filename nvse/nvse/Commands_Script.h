@@ -27,6 +27,7 @@ DEFINE_COMMAND(GetVariable, looks up the value of a variable by name, 0, 2, kPar
 DEFINE_COMMAND(HasVariable, returns true if the script has a variable with the specified name, 0, 2, kParams_GetVariable);
 DEFINE_COMMAND(GetRefVariable, looks up the value of a ref variable by name, 0, 2, kParams_GetVariable);
 DEFINE_CMD_ALT(GetArrayVariable, GetArrayVar, looks up an array variable by name on the calling object or specified quest, 0, 2, kParams_GetVariable);
+DEFINE_COMMAND(GetStringVariable, looks up a string variable by name on the calling object or specified quest, 0, 2, kParams_GetVariable);
 
 static ParamInfo kParams_SetNumVariable[3] =
 {
@@ -42,8 +43,16 @@ static ParamInfo kParams_SetRefVariable[3] =
 	{	"quest",			kParamType_Quest,	1	},
 };
 
+static ParamInfo kParams_SetStrVariable[3] =
+{
+	{	"variable name",	kParamType_String,	0	},
+	{	"variable value",	kParamType_String,	0	},
+	{	"quest",			kParamType_Quest,	1	},
+};
+
 DEFINE_COMMAND(SetVariable, sets the value of a variable by name, 0, 3, kParams_SetNumVariable);
 DEFINE_COMMAND(SetRefVariable, sets the value of a variable by name, 0, 3, kParams_SetRefVariable);
+DEFINE_COMMAND(SetStringVariable, sets the value of a variable by name, 0, 3, kParams_SetStrVariable);
 
 static ParamInfo kParams_CompareScripts[2] =
 {
@@ -115,7 +124,7 @@ DEFINE_COMMAND_EXP(SetEventHandler, "defines a function script to serve as a cal
 DEFINE_COMMAND_EXP(SetEventHandlerAlt, "Uses the new event filtering system.",
 	0, kNVSEParams_SetEventHandlerAlt);
 
-DEFINE_COMMAND_EXP(RemoveEventHandler, "removes event handlers matching the event, script, and optional filters specified", 
+DEFINE_COMMAND_EXP(RemoveEventHandler, "removes event handlers matching the event, script, and optional filters specified",
 	0, kNVSEParams_SetEventHandler);
 DEFINE_CMD(GetCurrentEventName, returns the name of the event currently being processed by an event handler, 0, NULL);
 
@@ -453,9 +462,9 @@ static ParamInfo kParams_HasScriptCommand[3] =
 DEFINE_COMMAND(DecompileScript, decompiles a script to file, false, 2, kParams_OneForm_OneOptionalString);
 DEFINE_COMMAND(HasScriptCommand, returns 1 if script contains call to a command, false, 3, kParams_HasScriptCommand);
 DEFINE_COMMAND(GetCommandOpcode, gets opcode for command name, false, 1, kParams_OneString);
-DEFINE_CMD_ALIAS(DumpCommandWikiDoc, DumpWikiDoc, dumps wiki-style documentation for a command, 
+DEFINE_CMD_ALIAS(DumpCommandWikiDoc, DumpWikiDoc, dumps wiki-style documentation for a command,
 	false, kParams_OneString);
-DEFINE_CMD_ALIAS(DumpCommandWikiDocs, DumpWikiDocs, dumps wiki-style documentation for multiple commands, 
+DEFINE_CMD_ALIAS(DumpCommandWikiDocs, DumpWikiDocs, dumps wiki-style documentation for multiple commands,
 	false, kParams_TwoInts_OneOptionalString);
 
 
@@ -484,7 +493,7 @@ static ParamInfo kNVSEParams_OneString_OneOptionalBool[] =
 	{	"bool",		kNVSEParamType_Boolean,		1	},
 };
 
-DEFINE_CMD_ALT_EXP(CompileScript, GetUDFFromFile, "Returns a compiled script from a file, to call as a UDF.", 
+DEFINE_CMD_ALT_EXP(CompileScript, GetUDFFromFile, "Returns a compiled script from a file, to call as a UDF.",
 	false, kNVSEParams_OneString_OneOptionalBool);
 
 static ParamInfo kNVSEParams_MatchesAnyOf[] =

@@ -2279,6 +2279,8 @@ void CommandTable::AddCommandsV6()
 
 	// 6.4 beta 06
 	ADD_CMD_RET(GetPressedKeys, kRetnType_Array);
+	ADD_CMD_RET(GetStringVariable, kRetnType_String);
+	ADD_CMD(SetStringVariable);
 
 	ADD_CMD(ar_Cat);
 }
