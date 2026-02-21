@@ -1,9 +1,10 @@
 #include "Lexer.h"
 
+#include <regex>
 #include <sstream>
 #include <stack>
 
-#include "nvse/Compiler/NVSECompilerUtils.h"
+#include "nvse/Compiler/Utils.h"
 
 namespace Compiler {
 	Lexer::Lexer(const std::string& input) : pos(0) {
@@ -15,11 +16,15 @@ namespace Compiler {
 			inputStr.replace(it, 1, "    ");
 		}
 
+		while ((it = inputStr.find("\r\n")) != std::string::npos) {
+			inputStr.replace(it, 2, "\n");
+		}
+
 		// Messy way of just getting string lines to start for later error reporting
 		std::string::size_type pos = 0;
 		std::string::size_type prev = 0;
 		while ((pos = inputStr.find('\n', prev)) != std::string::npos) {
-			lines.push_back(inputStr.substr(prev, pos - prev - 1));
+			lines.push_back(inputStr.substr(prev, pos - prev));
 			prev = pos + 1;
 		}
 		lines.push_back(inputStr.substr(prev));
@@ -28,21 +33,22 @@ namespace Compiler {
 	}
 
 	// Unused for now, working though
-	std::deque<NVSEToken> Lexer::lexString() {
+	std::deque<Token> Lexer::lexString() {
 		std::stringstream resultString;
+
+		auto startPos = PrevSourcePos();
 
 		auto start = pos - 1;
 		auto startLine = line;
-		auto startCol = column;
 
-		std::deque<NVSEToken> results{};
+		std::deque<Token> results{};
 
 		while (pos < input.size()) {
-			char c = input[pos++];
+			const auto c = input[AdvanceChar()];
 
 			if (c == '\\') {
 				if (pos >= input.size()) throw std::runtime_error("Unexpected end of input after escape character.");
-				if (char next = input[pos++]; next == '\\' || next == 'n' || next == '"') {
+				if (char next = input[AdvanceChar()]; next == '\\' || next == 'n' || next == '"') {
 					if (next == 'n') {
 						resultString << '\n';
 					}
@@ -62,49 +68,29 @@ namespace Compiler {
 					throw std::runtime_error("Multiline strings are not allowed.");
 				}
 
-				// Push final result as string
-				NVSEToken token{};
-				token.type = NVSETokenType::String;
-				token.lexeme = '"' + resultString.str() + '"';
-				token.value = resultString.str();
-				token.line = line;
-				token.column = startCol;
-				results.push_back(token);
-
-				// Update column
-				column = pos;
+				results.emplace_back(TokenType::String, '"' + resultString.str() + '"', startPos, PrevSourcePos(), resultString.str());
 
 				return results;
 			}
 			else if (c == '$' && pos < input.size() && input[pos] == '{' && (pos == start + 1 || input[pos - 2] != '\\')) {
 				// Push previous result as string
-				results.push_back(MakeToken(NVSETokenType::String, '"' + resultString.str() + '"', resultString.str()));
+				results.emplace_back(TokenType::String, '"' + resultString.str() + '"', startPos, CurSourcePos() - 2, resultString.str());
+				results.emplace_back(TokenType::Interp, "${", PrevSourcePos(), CurSourcePos());
 
-				NVSEToken startInterpolate{};
-				startInterpolate.type = NVSETokenType::Interp;
-				startInterpolate.lexeme = "${";
-				startInterpolate.column = startCol + (pos - start);
-				startInterpolate.line = line;
-				results.push_back(startInterpolate);
+				AdvanceChar();
 
-				pos += 1;
-				NVSEToken tok;
-				while ((tok = GetNextToken(false)).type != NVSETokenType::RightBrace) {
-					if (tok.type == NVSETokenType::Eof) {
+				Token tok;
+				while ((tok = GetNextToken(false)).type != TokenType::RightBrace) {
+					if (tok.type == TokenType::Eof) {
 						throw std::runtime_error("Unexpected end of file.");
 					}
 					results.push_back(tok);
 				}
 
-				NVSEToken endInterpolate{};
-				endInterpolate.type = NVSETokenType::EndInterp;
-				endInterpolate.lexeme = "}";
-				endInterpolate.column = column - 1;
-				endInterpolate.line = line;
-				results.push_back(endInterpolate);
+				results.emplace_back(TokenType::EndInterp, "}", PrevSourcePos(), PrevSourcePos());
+				startPos = CurSourcePos();
 
 				resultString = {};
-				startCol = pos;
 			}
 			else {
 				resultString << c;
@@ -114,129 +100,249 @@ namespace Compiler {
 		throw std::runtime_error("Unexpected end of input in string.");
 	}
 
-	NVSEToken Lexer::GetNextToken(bool useStack) {
+	bool Lexer::CheckIdentifier(const std::string &identifier, const char* ident) {
+		return _stricmp(identifier.c_str(), ident) == 0;
+	}
+
+	std::string Lexer::GetSourceText(const SourcePos& startPos, const SourcePos& endPos) const {
+		return input.substr(startPos.absoluteIndex, endPos.absoluteIndex - startPos.absoluteIndex);
+	}
+
+	std::string Lexer::GetSourceText(const SourcePos& startPos) const {
+		auto endPos = CurSourcePos();
+		return input.substr(startPos.absoluteIndex, endPos.absoluteIndex - startPos.absoluteIndex);
+	}
+
+	Token Lexer::GetNextToken(bool useStack) {
 		if (!tokenStack.empty() && useStack) {
 			auto tok = tokenStack.front();
 			tokenStack.pop_front();
 			return tok;
 		}
 
-		// Skip over comments and whitespace in this block.
-		{
-			// Using an enum instead of two bools, since it's impossible to be in a singleline comment and a multiline comment at once.
-			enum class InWhatComment
-			{
-				None = 0,
-				SingleLine,
-				MultiLine
-			} inWhatComment = InWhatComment::None;
+		// Skip over whitespace
+		while (std::isspace(input[pos])) {
+			if (input[pos] == '\n') {
+				column = 1;
+				line++;
+			} else {
+				column++;
+			}
 
-			while (pos < input.size()) {
-				if (!std::isspace(input[pos]) && inWhatComment == InWhatComment::None) {
-					if (pos < input.size() - 2 && input[pos] == '/') {
-						if (input[pos + 1] == '/') {
-							inWhatComment = InWhatComment::SingleLine;
-							pos += 2;
-						}
-						else if (input[pos + 1] == '*')
-						{
-							inWhatComment = InWhatComment::MultiLine;
-							pos += 2;
-							column += 2; // multiline comment could end on the same line it's declared on and have valid code after itself.
-						}
-						else {
-							break; // found start of next token
-						}
-					}
-					else {
-						break; // found start of next token
-					}
-				}
+			pos++;
 
-				if (inWhatComment == InWhatComment::MultiLine &&
-					(pos < input.size() - 2) && input[pos] == '*' && input[pos + 1] == '/')
-				{
-					inWhatComment = InWhatComment::None;
+			if (pos >= input.size()) {
+				break;
+			}
+
+			if (pos < input.size() - 1) {
+				if (input[pos] == '/' && input[pos + 1] == '/') {
 					pos += 2;
-					column += 2; // multiline comment could end on the same line it's declared on and have valid code after itself.
-					continue; // could be entering another comment right after this one; 
-					// Don't want to reach the end of the loop and increment `pos` before that.
-				}
+					column += 2; 
+					while (pos < input.size()) {
+						if (input[pos] == '\n') {
+							column = 1;
+							line++;
+							pos++;
+							break;
+						}
 
-				if (input[pos] == '\n') {
-					line++;
-					column = 1;
-					if (inWhatComment == InWhatComment::SingleLine) {
-						inWhatComment = InWhatComment::None;
+						pos++;
+						column++;
 					}
 				}
-				else if (input[pos] == '\r' && (pos < input.size() - 1) && input[pos + 1] == '\n') {
-					line++;
-					pos++;
-					column = 1;
-					if (inWhatComment == InWhatComment::SingleLine) {
-						inWhatComment = InWhatComment::None;
-					}
-				}
-				else {
-					column++;
-				}
-
-				pos++;
 			}
 		}
 
+		// TODO - Maybe re-add multi-line
+		// {
+		// 	// Using an enum instead of two bools, since it's impossible to be in a singleline comment and a multiline comment at once.
+		// 	enum class InWhatComment
+		// 	{
+		// 		None = 0,
+		// 		SingleLine,
+		// 		MultiLine
+		// 	} inWhatComment = InWhatComment::None;
+		//
+		// 	while (pos < input.size()) {
+		// 		if (!std::isspace(input[pos]) && inWhatComment == InWhatComment::None) {
+		// 			if (pos < input.size() - 2 && input[pos] == '/') {
+		// 				if (input[pos + 1] == '/') {
+		// 					inWhatComment = InWhatComment::SingleLine;
+		// 					pos += 2;
+		// 				}
+		// 				else if (input[pos + 1] == '*')
+		// 				{
+		// 					inWhatComment = InWhatComment::MultiLine;
+		// 					pos += 2;
+		// 					column += 2; // multiline comment could end on the same line it's declared on and have valid code after itself.
+		// 				}
+		// 				else {
+		// 					break; // found start of next token
+		// 				}
+		// 			}
+		// 			else {
+		// 				break; // found start of next token
+		// 			}
+		// 		}
+		//
+		// 		if (inWhatComment == InWhatComment::MultiLine &&
+		// 			(pos < input.size() - 2) && input[pos] == '*' && input[pos + 1] == '/')
+		// 		{
+		// 			inWhatComment = InWhatComment::None;
+		// 			pos += 2;
+		// 			column += 2; // multiline comment could end on the same line it's declared on and have valid code after itself.
+		// 			continue; // could be entering another comment right after this one; 
+		// 			// Don't want to reach the end of the loop and increment `pos` before that.
+		// 		}
+		//
+		// 		if (input[pos] == '\n') {
+		// 			line++;
+		// 			column = 1;
+		// 			if (inWhatComment == InWhatComment::SingleLine) {
+		// 				inWhatComment = InWhatComment::None;
+		// 			}
+		// 		}
+		// 		else if (input[pos] == '\r' && (pos < input.size() - 1) && input[pos + 1] == '\n') {
+		// 			line++;
+		// 			pos++;
+		// 			column = 1;
+		// 			if (inWhatComment == InWhatComment::SingleLine) {
+		// 				inWhatComment = InWhatComment::None;
+		// 			}
+		// 		}
+		// 		else {
+		// 			column++;
+		// 		}
+		//
+		// 		pos++;
+		// 	}
+		// }
+
 		if (pos >= input.size()) {
-			return MakeToken(NVSETokenType::Eof, "");
+			return Token{ TokenType::Eof };
 		}
 
 		char current = input[pos];
+
 		if (std::isdigit(current)) {
-			int base = 10;
-			if (current == '0' && pos + 2 < input.size()) {
-				if (std::tolower(input[pos + 1]) == 'b') {
-					base = 2;
-					pos += 2;
-					current = input[pos];
-				}
-				else if (std::tolower(input[pos + 1]) == 'x') {
-					base = 16;
-					pos += 2;
-					current = input[pos];
-				}
+			std::string_view numberView{};
+			uint8_t numberBase = 10;
+
+			auto start = CurSourcePos();
+
+			// Advance until not a digit
+			auto cur = pos + 1;
+
+			// Handle numeric literals
+			if (input[cur] == 'b') {
+				numberBase = 2;
+				cur++;
+			} 
+			else if (input[cur] == 'x') {
+				numberBase = 16;
+				cur++;
 			}
 
-			size_t len;
-			double value;
-			try {
-				if (base == 16 || base == 2) {
-					value = std::stoll(&input[pos], &len, base);
+			int numDecimal = 0;
+			while (cur < input.size()) {
+				const auto curChar = input[cur];
+				const auto len = cur - start.absoluteIndex;
+
+				if (std::isdigit(curChar)) {
+					// If base-2, only allow processing of 0/1
+					if (numberBase == 2) {
+						if (curChar != '0' && curChar != '1') {
+							break;
+						}
+					}
+
+					cur++;
+					continue;
 				}
+
+				if (curChar == '.') {
+					numDecimal++;
+
+					// Cannot use decimals with hex or binary numbers
+					if (numberBase != 10) {
+						break;
+					}
+
+					// Don't reach out of bounds
+					if (cur + 1 >= input.size()) {
+						break;
+					}
+
+					// <dot><number>
+					if (std::isdigit(input[cur + 1])) {
+						cur += 2;
+						continue;
+					}
+
+					// Anything that is not <dot><number> is invalid
+					break;
+				}
+
+				// Spaces terminate numbers
+				if (curChar == ' ') {
+					numberView = std::string_view(input).substr(start.absoluteIndex, len);
+					pos += len;
+					column += len;
+					break;
+				}
+
+				// Alpha chars can not directly follow numbers
+				if (std::isalpha(curChar)) {
+					// Except if we are processing base 16
+					if (std::tolower(curChar) >= 'a' && std::tolower(curChar) <= 'f') {
+						cur++;
+						continue;
+					}
+
+					break;
+				}
+
+				// Any punctuation chars will terminate the number as well
+				numberView = std::string_view(input).substr(start.absoluteIndex, len);
+				pos += len;
+				column += len;
+				break;
+			}
+
+			// Multiple decimals in a number does not make sense, so discard the entire thing
+			if (numDecimal > 1) {
+				numberView = {};
+			}
+
+			if (!numberView.empty()) {
+				const auto end = SourcePos {
+					.absoluteIndex = start.absoluteIndex + numberView.length() - 1,
+					.line = start.line,
+					.column = start.column + numberView.length() - 1
+				};
+
+				auto numStr = std::string(numberView);
+
+				double value;
+				if (numberBase == 16) {
+					value = static_cast<double>(std::stoll(numStr, nullptr, numberBase));
+				}
+				
+				else if (numberBase == 2) {
+					value = static_cast<double>(std::stoll(numStr.substr(2), nullptr, numberBase));
+				}
+				
 				else {
-					value = std::stod(&input[pos], &len);
+					value = std::stod(numStr);
 				}
-			}
-			catch (const std::invalid_argument& ex) {
-				throw std::runtime_error("Invalid numeric literal.");
-			}
-			catch (const std::out_of_range& ex) {
-				throw std::runtime_error("Numeric literal value out of range.");
-			}
 
-			if (input[pos + len - 1] == '.') {
-				len--;
+				DbgPrintln("Found number lexeme '%s' (Base %d) [%d:%d - %d:%d] - Value %.02lf", numStr.c_str(), numberBase, start.line, start.column, end.line, end.column, value);
+				return { TokenType::Number, std::move(numStr), std::move(start), end, value };
 			}
-			pos += len;
-			column += len;
-
-			// Handle 0b/0x
-			if (base == 2 || base == 16) {
-				len += 2;
-			}
-
-			return MakeToken(NVSETokenType::Number, input.substr(pos - len, len), value);
 		}
 
+		current = input[pos];
 		{
 			// Check if potential identifier has at least 1 alphabetical character.
 			// Must either start with underscores, or an alphabetical character.
@@ -256,176 +362,145 @@ namespace Compiler {
 			}
 
 			if (isValidIdentifier) {
+				auto startPos = CurSourcePos();
+
 				// Extract identifier
 				size_t start = pos;
 				while (pos < input.size() && (std::isalnum(input[pos]) || input[pos] == '_')) {
-					++pos;
+					AdvanceChar();
 				}
 				std::string identifier = input.substr(start, pos - start);
 
-				// Keywords
-				if (_stricmp(identifier.c_str(), "if") == 0) return MakeToken(NVSETokenType::If, identifier);
-				if (_stricmp(identifier.c_str(), "else") == 0) return MakeToken(NVSETokenType::Else, identifier);
-				if (_stricmp(identifier.c_str(), "while") == 0) return MakeToken(NVSETokenType::While, identifier);
-				if (_stricmp(identifier.c_str(), "fn") == 0) return MakeToken(NVSETokenType::Fn, identifier);
-				if (_stricmp(identifier.c_str(), "return") == 0) return MakeToken(NVSETokenType::Return, identifier);
-				if (_stricmp(identifier.c_str(), "for") == 0) return MakeToken(NVSETokenType::For, identifier);
-				if (_stricmp(identifier.c_str(), "name") == 0) return MakeToken(NVSETokenType::Name, identifier);
-				if (_stricmp(identifier.c_str(), "continue") == 0) return MakeToken(NVSETokenType::Continue, identifier);
-				if (_stricmp(identifier.c_str(), "break") == 0) return MakeToken(NVSETokenType::Break, identifier);
-				if (_stricmp(identifier.c_str(), "in") == 0) return MakeToken(NVSETokenType::In, identifier);
-				if (_stricmp(identifier.c_str(), "not") == 0) return MakeToken(NVSETokenType::Not, identifier);
-				if (_stricmp(identifier.c_str(), "match") == 0) return MakeToken(NVSETokenType::Match, identifier);
+				// Handle value types first
+				if (CheckIdentifier(identifier, "true")) {
+					return { TokenType::Bool, std::move(identifier), startPos, CurSourcePos(), 1.0 };
+				}
 
-				if (_stricmp(identifier.c_str(), "int") == 0) return MakeToken(NVSETokenType::IntType, identifier);
-				if (_stricmp(identifier.c_str(), "bool") == 0) return MakeToken(NVSETokenType::IntType, identifier);
-				if (_stricmp(identifier.c_str(), "double") == 0) return MakeToken(NVSETokenType::DoubleType, identifier);
-				if (_stricmp(identifier.c_str(), "float") == 0) return MakeToken(NVSETokenType::DoubleType, identifier);
-				if (_stricmp(identifier.c_str(), "ref") == 0) return MakeToken(NVSETokenType::RefType, identifier);
-				if (_stricmp(identifier.c_str(), "string") == 0) return MakeToken(NVSETokenType::StringType, identifier);
-				if (_stricmp(identifier.c_str(), "array") == 0) return MakeToken(NVSETokenType::ArrayType, identifier);
+				if (CheckIdentifier(identifier, "false")) {
+					return { TokenType::Bool, std::move(identifier), startPos, CurSourcePos(), 0.0 };
+				}
 
-				if (_stricmp(identifier.c_str(), "true") == 0) return MakeToken(NVSETokenType::Bool, identifier, 1);
-				if (_stricmp(identifier.c_str(), "false") == 0) return MakeToken(NVSETokenType::Bool, identifier, 0);
-				if (_stricmp(identifier.c_str(), "null") == 0) return MakeToken(NVSETokenType::Number, identifier, 0);
+				if (CheckIdentifier(identifier, "null")) {
+					return { TokenType::Number, std::move(identifier), startPos, CurSourcePos(), 0.0 };
+				}
 
+				// Identifier by default
+				auto type = TokenType::Identifier;
 
-				return MakeToken(NVSETokenType::Identifier, identifier);
+				if (CheckIdentifier(identifier, "if")) type = TokenType::If;
+				else if (CheckIdentifier(identifier, "else")) type = TokenType::Else;
+				else if (CheckIdentifier(identifier, "while")) type = TokenType::While;
+				else if (CheckIdentifier(identifier, "fn")) type = TokenType::Fn;
+				else if (CheckIdentifier(identifier, "return")) type = TokenType::Return;
+				else if (CheckIdentifier(identifier, "for")) type = TokenType::For;
+				else if (CheckIdentifier(identifier, "name")) type = TokenType::Name;
+				else if (CheckIdentifier(identifier, "continue")) type = TokenType::Continue;
+				else if (CheckIdentifier(identifier, "break")) type = TokenType::Break;
+				else if (CheckIdentifier(identifier, "in")) type = TokenType::In;
+				else if (CheckIdentifier(identifier, "not")) type = TokenType::Not;
+				else if (CheckIdentifier(identifier, "match")) type = TokenType::Match;
+				else if (CheckIdentifier(identifier, "int")) type = TokenType::IntType;
+				else if (CheckIdentifier(identifier, "bool")) type = TokenType::IntType;
+				else if (CheckIdentifier(identifier, "double")) type = TokenType::DoubleType;
+				else if (CheckIdentifier(identifier, "float")) type = TokenType::DoubleType;
+				else if (CheckIdentifier(identifier, "ref")) type = TokenType::RefType;
+				else if (CheckIdentifier(identifier, "string")) type = TokenType::StringType;
+				else if (CheckIdentifier(identifier, "array")) type = TokenType::ArrayType;
+
+				return { type, std::move(identifier), startPos, PrevSourcePos() };
 			}
 		}
 
 		if (current == '"') {
-			pos++;
+			AdvanceChar();
+
 			auto results = lexString();
 			auto tok = results.front();
 			results.pop_front();
 
-			for (auto r : results) {
+			for (const auto& r : results) {
 				tokenStack.push_back(r);
 			}
 
 			return tok;
 		}
 
-		pos++;
-		switch (current) {
-			// Operators
-		case '+': {
-			if (Match('=')) {
-				return MakeToken(NVSETokenType::PlusEq, "+=");
-			}
-			if (Match('+')) {
-				return MakeToken(NVSETokenType::PlusPlus, "++");
-			}
-			return MakeToken(NVSETokenType::Plus, "+");
-		}
-		case '-': {
-			if (Match('=')) {
-				return MakeToken(NVSETokenType::MinusEq, "-=");
-			}
-			if (Match('-')) {
-				return MakeToken(NVSETokenType::MinusMinus, "--");
-			}
-			if (Match('>')) {
-				return MakeToken(NVSETokenType::Arrow, "->");
-			}
-			return MakeToken(NVSETokenType::Minus, "-");
-		}
-		case '*':
-			if (Match('=')) {
-				return MakeToken(NVSETokenType::StarEq, "*=");
-			}
-			return MakeToken(NVSETokenType::Star, "*");
-		case '/':
-			if (Match('=')) {
-				return MakeToken(NVSETokenType::SlashEq, "/=");
-			}
-			return MakeToken(NVSETokenType::Slash, "/");
-		case '%':
-			if (Match('=')) {
-				return MakeToken(NVSETokenType::ModEq, "%=");
-			}
-			return MakeToken(NVSETokenType::Mod, "%");
-		case '^':
-			if (Match('=')) {
-				return MakeToken(NVSETokenType::PowEq, "^=");
-			}
-			return MakeToken(NVSETokenType::Pow, "^");
-		case '=':
-			if (Match('=')) {
-				return MakeToken(NVSETokenType::EqEq, "==");
-			}
-			return MakeToken(NVSETokenType::Eq, "=");
-		case '!':
-			if (Match('=')) {
-				return MakeToken(NVSETokenType::BangEq, "!=");
-			}
-			return MakeToken(NVSETokenType::Bang, "!");
-		case '<':
-			if (Match('=')) {
-				return MakeToken(NVSETokenType::LessEq, "<=");
-			}
-			if (Match('<')) {
-				return MakeToken(NVSETokenType::LeftShift, "<<");
-			}
-			return MakeToken(NVSETokenType::Less, "<");
-		case '>':
-			if (Match('=')) {
-				return MakeToken(NVSETokenType::GreaterEq, ">=");
-			}
-			if (Match('>')) {
-				return MakeToken(NVSETokenType::RightShift, ">>");
-			}
-			return MakeToken(NVSETokenType::Greater, ">");
-		case '|':
-			if (Match('|')) {
-				return MakeToken(NVSETokenType::LogicOr, "||");
-			}
-			if (Match('=')) {
-				return MakeToken(NVSETokenType::BitwiseOrEquals, "|=");
-			}
-			return MakeToken(NVSETokenType::BitwiseOr, "|");
-		case '~':
-			return MakeToken(NVSETokenType::BitwiseNot, "~");
-		case '&':
-			if (Match('&')) {
-				return MakeToken(NVSETokenType::LogicAnd, "&&");
-			}
-			if (Match('=')) {
-				return MakeToken(NVSETokenType::BitwiseAndEquals, "&=");
-			}
-			return MakeToken(NVSETokenType::BitwiseAnd, "&");
-		case '$': return MakeToken(NVSETokenType::Dollar, "$");
-		case '#': return MakeToken(NVSETokenType::Pound, "#");
+		auto startPos = CurSourcePos();
+		auto type = TokenType::INVALID;
 
-			// Braces
-		case '{': return MakeToken(NVSETokenType::LeftBrace, "{");
-		case '}': return MakeToken(NVSETokenType::RightBrace, "}");
-		case '[': return MakeToken(NVSETokenType::LeftBracket, "[");
-		case ']': return MakeToken(NVSETokenType::RightBracket, "]");
-		case '(': return MakeToken(NVSETokenType::LeftParen, "(");
-		case ')': return MakeToken(NVSETokenType::RightParen, ")");
+		if (Match("+=")) type = TokenType::PlusEq;
+		else if (Match("++")) type = TokenType::PlusPlus;
+		else if (Match("+")) type = TokenType::Plus;
 
-			// Misc
-		case ',': return MakeToken(NVSETokenType::Comma, ",");
-		case ';': return MakeToken(NVSETokenType::Semicolon, ";");
-		case '?': return MakeToken(NVSETokenType::Ternary, "?");
-		case ':':
-			if (Match(':')) {
-				return MakeToken(NVSETokenType::MakePair, "::");
-			}
-			return MakeToken(NVSETokenType::Slice, ":");
-		case '.':
-			return MakeToken(NVSETokenType::Dot, ".");
-		case '_':
-			return MakeToken(NVSETokenType::Underscore, "_");
-		default: throw std::runtime_error("Unexpected character");
+		else if (Match("-=")) type = TokenType::MinusEq;
+		else if (Match("--")) type = TokenType::MinusMinus;
+		else if (Match("->")) type = TokenType::Arrow;
+		else if (Match("-")) type = TokenType::Minus;
+
+		else if (Match("*=")) type = TokenType::StarEq;
+		else if (Match("*")) type = TokenType::Star;
+
+		else if (Match("/=")) type = TokenType::SlashEq;
+		else if (Match("/")) type = TokenType::Slash;
+
+		else if (Match("%=")) type = TokenType::ModEq;
+		else if (Match("%")) type = TokenType::Mod;
+
+		else if (Match("^=")) type = TokenType::PowEq;
+		else if (Match("^")) type = TokenType::Pow;
+
+		else if (Match("==")) type = TokenType::EqEq;
+		else if (Match("=")) type = TokenType::Eq;
+
+		else if (Match("!=")) type = TokenType::BangEq;
+		else if (Match("!")) type = TokenType::Bang;
+
+		else if (Match("<=")) type = TokenType::LessEq;
+		else if (Match("<<")) type = TokenType::LeftShift;
+		else if (Match("<")) type = TokenType::Less;
+
+		else if (Match(">=")) type = TokenType::GreaterEq;
+		else if (Match(">>")) type = TokenType::RightShift;
+		else if (Match(">")) type = TokenType::Greater;
+
+		else if (Match("||")) type = TokenType::LogicOr;
+		else if (Match("|=")) type = TokenType::BitwiseOrEquals;
+		else if (Match("|")) type = TokenType::BitwiseOr;
+
+		else if (Match("~")) type = TokenType::BitwiseNot;
+
+		else if (Match("&&")) type = TokenType::LogicAnd;
+		else if (Match("&=")) type = TokenType::BitwiseAndEquals;
+		else if (Match("&")) type = TokenType::BitwiseAnd;
+
+		else if (Match("::")) type = TokenType::MakePair;
+		else if (Match(":")) type = TokenType::Slice;
+
+		else if (Match("$")) type = TokenType::Dollar;
+		else if (Match("#")) type = TokenType::Pound;
+
+		else if (Match("{")) type = TokenType::LeftBrace;
+		else if (Match("}")) type = TokenType::RightBrace;
+		else if (Match("[")) type = TokenType::LeftBracket;
+		else if (Match("]")) type = TokenType::RightBracket;
+		else if (Match("(")) type = TokenType::LeftParen;
+		else if (Match(")")) type = TokenType::RightParen;
+
+		else if (Match(",")) type = TokenType::Comma;
+		else if (Match(";")) type = TokenType::Semicolon;
+		else if (Match("?")) type = TokenType::Ternary;
+		else if (Match(".")) type = TokenType::Dot;
+		else if (Match("_")) type = TokenType::Underscore;
+
+		if (type == TokenType::INVALID) {
+			pos++;
+			throw std::runtime_error("Unexpected character");
 		}
 
-		throw std::runtime_error("Unexpected character");
+		return { type, GetSourceText(startPos), startPos, PrevSourcePos() };
 	}
 
-	bool Lexer::Match(char c) {
+	bool Lexer::Match(const char c) {
 		if (pos >= input.size()) {
 			return false;
 		}
@@ -438,27 +513,25 @@ namespace Compiler {
 		return false;
 	}
 
-	NVSEToken Lexer::MakeToken(NVSETokenType type, std::string lexeme) {
-		NVSEToken t(type, lexeme);
-		t.line = line;
-		t.column = column;
-		column += lexeme.length();
-		return t;
-	}
+	bool Lexer::Match(const std::string_view str) {
+		if (pos >= input.size()) {
+			return false;
+		}
 
-	NVSEToken Lexer::MakeToken(NVSETokenType type, std::string lexeme, double value) {
-		NVSEToken t(type, lexeme, value);
-		t.line = line;
-		t.column = column;
-		column += lexeme.length();
-		return t;
-	}
+		const auto len = str.length();
 
-	NVSEToken Lexer::MakeToken(NVSETokenType type, std::string lexeme, std::string value) {
-		NVSEToken t(type, lexeme, value);
-		t.line = line;
-		t.column = column;
-		column += lexeme.length();
-		return t;
+		if ((pos + len - 1) >= input.size()) {
+			return false;
+		}
+
+		for (size_t i = 0; i < len; i++) {
+			if (input[pos + i] != str[i]) {
+				return false;
+			}
+		}
+
+		column += len;
+		pos += len;
+		return true;
 	}
 }

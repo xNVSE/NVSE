@@ -17,14 +17,15 @@
 
 #include "GameAPI.h"
 #include "GameData.h"
-#include "Compiler/Compilation.h"
-#include "Compiler/NVSECompilerUtils.h"
+#include "Compiler/Utils.h"
 #include "Compiler/Lexer/Lexer.h"
 #include "Compiler/Parser/Parser.h"
-#include "Compiler/NVSETreePrinter.h"
-#include "Compiler/NVSETypeChecker.h"
+#include "Compiler/Passes/TreePrinter.h"
+#include "Compiler/Passes/TypeChecker.h"
+#include "Compiler/Passes/Compiler.h"
 #include "PluginManager.h"
 #include "ScriptDataCache.h"
+#include "Compiler/Passes/MatchTransformer.h"
 #include "Compiler/Passes/VariableResolution.h"
 
 // a size of ~1KB should be enough for a single line of code
@@ -534,49 +535,13 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 	// See if new compiler should override script compiler
 	// First token on first line should be 'name'
 	if (!_strnicmp(buf->scriptText, "name", 4)) {
-		Compiler::CompInfo("\n========================================\n\n");
-		
 		// Just convert script buffer to a string
-		auto program = std::string(buf->scriptText);
-
-		Compiler::Lexer lexer(program);
-		Compiler::Parser parser(lexer);
-
-		if (auto astOpt = parser.Parse(); astOpt.has_value()) {
-			auto ast = std::move(astOpt.value());
-			const auto variablePass = Compiler::Passes::VariableResolution::Resolve(script, &ast);
-			if (!variablePass) {
-				return kPrecompile_Failure;
-			}
-
-			auto tc = Compiler::NVSETypeChecker(&ast, script);
-			bool typeCheckerPass = tc.check();
-			
-			auto tp = Compiler::NVSETreePrinter();
-			ast.Accept(&tp);
-
-			if (!typeCheckerPass) {
-				return PrecompileResult::kPrecompile_Failure;
-			}
-
-			try {
-				Compiler::Compilation comp{script, buf->partialScript, ast};
-				comp.Compile();
-
-				// Only set script name if not partial
-				if (!buf->partialScript) {
-					buf->scriptName = String();
-					buf->scriptName.Set(comp.scriptName.c_str());
-				}
-
-				printf("Script compiled successfully.\n");
-			} catch (std::runtime_error &er) {
-				Compiler::CompErr("Script compilation failed: %s\n", er.what());
-				return PrecompileResult::kPrecompile_Failure;
-			}
-		} else {
-			return PrecompileResult::kPrecompile_Failure;
+		const auto scriptStr = std::string(buf->scriptText);
+		if (!Compiler::CompileNVSEScript(scriptStr, script, buf->partialScript)) {
+			return kPrecompile_Failure;
 		}
+
+		printf("Script compiled successfully.\n");
 	}
 
 	else {
@@ -617,7 +582,7 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 			else { // handle versions for plugins
 				auto* pluginInfo = g_pluginManager.GetInfoByName(pluginName.c_str());
 				if (!pluginInfo) [[unlikely]] {
-					Compiler::CompErr("Script compilation failed: No plugin with name %s could be found.\n", pluginName.c_str());
+					Compiler::ErrPrintln("Script compilation failed: No plugin with name %s could be found.", pluginName.c_str());
 					return PrecompileResult::kPrecompile_Failure;
 				}
 

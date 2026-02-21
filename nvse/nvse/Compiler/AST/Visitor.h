@@ -14,7 +14,7 @@ namespace Compiler {
 		virtual void VisitBeginStmt(Statements::Begin* stmt);
 		virtual void VisitFnStmt(Statements::UDFDecl* stmt);
 		virtual void VisitVarDeclStmt(Statements::VarDecl* stmt);
-		virtual void VisitExprStmt(const Statements::ExpressionStatement* stmt);
+		virtual void VisitExprStmt(Statements::ExpressionStatement* stmt);
 		virtual void VisitForStmt(Statements::For* stmt);
 		virtual void VisitForEachStmt(Statements::ForEach* stmt);
 		virtual void VisitIfStmt(Statements::If* stmt);
@@ -24,6 +24,7 @@ namespace Compiler {
 		virtual void VisitWhileStmt(Statements::While* stmt);
 		virtual void VisitBlockStmt(Statements::Block* stmt);
 		virtual void VisitShowMessageStmt(Statements::ShowMessage* stmt);
+		virtual void VisitMatchStmt(Statements::Match* stmt);
 
 		virtual void VisitAssignmentExpr(Expressions::AssignmentExpr* expr);
 		virtual void VisitTernaryExpr(Expressions::TernaryExpr* expr);
@@ -41,6 +42,8 @@ namespace Compiler {
 		virtual void VisitMapLiteralExpr(Expressions::MapLiteralExpr* expr);
 		virtual void VisitGroupingExpr(Expressions::GroupingExpr* expr);
 		virtual void VisitLambdaExpr(Expressions::LambdaExpr* expr);
+
+		virtual void TransformExpr(std::shared_ptr<Expr> *ppExpr);
 
 		virtual bool HadError() {
 			return had_error;

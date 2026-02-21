@@ -6,116 +6,122 @@
 #include <nvse/Compiler/AST/AST.h>
 #include "nvse/Hooks_Script.h"
 #include "nvse/PluginManager.h"
-#include "nvse/Compiler/NVSECompilerUtils.h"
+#include "nvse/Compiler/Utils.h"
+
+using std::make_shared;
+using std::vector;
+using std::shared_ptr;
 
 namespace Compiler {
-	Parser::Parser(Lexer& tokenizer) : lexer(tokenizer) {
+	Parser::Parser(const std::string& text) : lexer(Lexer{ text }) {
+		this->lexer = lexer;
 		Advance();
 	}
 
 	std::optional<AST> Parser::Parse() {
-
-		CompDbg("==== PARSER ====\n\n");
-
+		DbgPrintln("[Parser]");
+		DbgIndent();
 		try {
-			Expect(NVSETokenType::Name, "Expected 'name' as first statement of script.");
-			auto expr = Primary();
-			if (!dynamic_cast<Expressions::IdentExpr*>(expr.get())) {
-				Error(previousToken, "Expected identifier.");
-			}
-			Expect(NVSETokenType::Semicolon, "Expected ';'.");
+			Expect(TokenType::Name, "Expected 'name' as first statement of script.");
+			auto expr = IdentExpr();
+			Expect(TokenType::Semicolon, "Expected ';'.");
 
-			std::vector<StmtPtr> globals;
-			std::vector<StmtPtr> blocks{};
+			vector<StmtPtr> globals;
+			vector<StmtPtr> blocks{};
 			auto& pluginVersions = g_currentCompilerPluginVersions.top();
-			const auto &name = dynamic_cast<Expressions::IdentExpr*>(expr.get())->token;
+			const auto& name = expr->As<Expressions::IdentExpr>()->str;
 
-			while (currentToken.type != NVSETokenType::Eof) {
+			while (currentToken.type != TokenType::Eof) {
 				try {
 					// Version statements
 					// TODO: Extract this to a pre-processor
-					if (Match(NVSETokenType::Pound)) {
-						if (!Match(NVSETokenType::Identifier)) {
+					if (Match(TokenType::Pound)) {
+						if (!Match(TokenType::Identifier)) {
 							Error(currentToken, "Expected 'version'.");
 						}
 
-						if (_stricmp(previousToken.lexeme.c_str(), "version")) {
+						if (_stricmp(previousToken.lexeme.c_str(), "version") != 0) {
 							Error(currentToken, "Expected 'version'.");
 						}
 
-						Expect(NVSETokenType::LeftParen, "Expected '('.");
-						auto plugin = Expect(NVSETokenType::String, "Expected plugin name.");
-						Expect(NVSETokenType::Comma, "Expected ','.");
+						Expect(TokenType::LeftParen, "Expected '('.");
+						auto plugin = Expect(TokenType::String, "Expected plugin name.");
+						Expect(TokenType::Comma, "Expected ','.");
 						auto pluginName = std::get<std::string>(plugin.value);
-						std::ranges::transform(pluginName.begin(), pluginName.end(), pluginName.begin(), [](unsigned char c) { return std::tolower(c); });
+						std::ranges::transform(pluginName.begin(), pluginName.end(), pluginName.begin(), [](const unsigned char c) { return std::tolower(c); });
 						if (StrEqual(pluginName.c_str(), "nvse")) {
-							auto major = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected major version").value));
+							auto major = static_cast<int>(std::get<double>(Expect(TokenType::Number, "Expected major version").value));
 							int minor = 255;
 							int beta = 255;
 
-							if (Match(NVSETokenType::Comma)) {
-								minor = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected minor version").value));
+							if (Match(TokenType::Comma)) {
+								minor = static_cast<int>(std::get<double>(Expect(TokenType::Number, "Expected minor version").value));
 							}
-							if (Match(NVSETokenType::Comma)) {
-								beta = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected beta version").value));
+							if (Match(TokenType::Comma)) {
+								beta = static_cast<int>(std::get<double>(Expect(TokenType::Number, "Expected beta version").value));
 							}
 							pluginVersions[pluginName] = MAKE_NEW_VEGAS_VERSION(major, minor, beta);
 						}
 						else { // handle versions for plugins
-							auto pluginVersion = static_cast<int>(std::get<double>(Expect(NVSETokenType::Number, "Expected plugin version").value));
+							auto pluginVersion = static_cast<int>(std::get<double>(Expect(TokenType::Number, "Expected plugin version").value));
 							auto* pluginInfo = g_pluginManager.GetInfoByName(pluginName.c_str());
 							if (!pluginInfo) [[unlikely]] {
 								Error(std::format("No plugin with name {} could be found.\n", pluginName));
 							}
 							pluginVersions[pluginName] = pluginVersion;
 						}
-						Expect(NVSETokenType::RightParen, "Expected ')'.");
+						Expect(TokenType::RightParen, "Expected ')'.");
 					}
 					// Get event or udf block
 					else if (PeekBlockType()) {
 						blocks.emplace_back(Begin());
 					}
-					else if (Match(NVSETokenType::Fn)) {
+					else if (Match(TokenType::Fn)) {
 						auto fnToken = previousToken;
-						//auto ident = Expect(NVSETokenType::Identifier, "Expected identifier.");
+						//auto ident = Expect(TokenType::Identifier, "Expected identifier.");
 						auto args = ParseArgs();
-						auto fnDecl = std::make_shared<Statements::UDFDecl>(fnToken, std::move(args), BlockStatement());
+						auto fnDecl = make_shared<Statements::UDFDecl>(fnToken, std::move(args), BlockStatement());
 						fnDecl->is_udf_decl = true;
+						fnDecl->sourceInfo = fnToken.sourceSpan + previousToken.sourceSpan;
 						blocks.emplace_back(fnDecl);
 					}
-					else if (Peek(NVSETokenType::IntType) || Peek(NVSETokenType::DoubleType) || Peek(NVSETokenType::RefType) ||
-						Peek(NVSETokenType::ArrayType) || Peek(NVSETokenType::StringType))
+					else if (Peek(TokenType::IntType) || Peek(TokenType::DoubleType) || Peek(TokenType::RefType) ||
+						Peek(TokenType::ArrayType) || Peek(TokenType::StringType))
 					{
 						globals.emplace_back(VarDecl());
-						Expect(NVSETokenType::Semicolon, "Expected ';' at end of statement.");
+						Expect(TokenType::Semicolon, "Expected ';' at end of statement.");
 					}
 					else {
 						Error(currentToken, "Expected variable declaration, block type (GameMode, MenuMode, ...), or 'fn'.");
 					}
 				}
-				catch (NVSEParseError& e) {
+				catch (NVSEParseError&) {
 					hadError = true;
-					CompErr("%s\n", e.what());
 					Synchronize();
 				}
 			}
 
-			return AST(name, std::move(globals), std::move(blocks));
+			DbgOutdent();
+			auto res = AST(name, std::move(globals), std::move(blocks));
+			res.lines = lexer.lines;
+			return res;
 		}
-		catch (NVSEParseError& e) {
+		catch (NVSEParseError&) {
 			hadError = true;
-			CompErr("%s\n", e.what());
+			DbgOutdent();
 			return std::optional<AST>{};
 		}
 	}
 
 	StmtPtr Parser::Begin() {
+		auto startToken = previousToken;
+
 		ExpectBlockType("Expected block type");
 
 		auto blockName = previousToken;
 		auto blockNameStr = blockName.lexeme;
 
-		std::optional<NVSEToken> mode{};
+		std::optional<Token> mode{};
 		CommandInfo* beginInfo = nullptr;
 		for (auto& info : g_eventBlockCommandInfos) {
 			if (!_stricmp(info.longName, blockNameStr.c_str())) {
@@ -124,12 +130,12 @@ namespace Compiler {
 			}
 		}
 
-		if (Match(NVSETokenType::MakePair)) {
+		if (Match(TokenType::MakePair)) {
 			if (beginInfo->numParams == 0) {
 				Error(currentToken, "Cannot specify argument for this block type.");
 			}
 
-			if (Match(NVSETokenType::Number)) {
+			if (Match(TokenType::Number)) {
 				if (beginInfo->params[0].typeID != kParamType_Integer) {
 					Error(currentToken, "Expected identifier.");
 				}
@@ -141,7 +147,7 @@ namespace Compiler {
 
 				mode = modeToken;
 			}
-			else if (Match(NVSETokenType::Identifier)) {
+			else if (Match(TokenType::Identifier)) {
 				if (beginInfo->params[0].typeID == kParamType_Integer) {
 					Error(currentToken, "Expected number.");
 				}
@@ -158,30 +164,42 @@ namespace Compiler {
 			}
 		}
 
-		if (!Peek(NVSETokenType::LeftBrace)) {
+		if (!Peek(TokenType::LeftBrace)) {
 			Error(currentToken, "Expected '{'.");
 		}
-		return std::make_shared<Statements::Begin>(blockName, mode, BlockStatement(), beginInfo);
+
+		auto block = BlockStatement();
+
+		return make_shared<Statements::Begin>(
+			blockName.lexeme, 
+			mode, 
+			std::move(block),
+			beginInfo,
+			startToken.sourceSpan + previousToken.sourceSpan
+		);
 	}
 
 	StmtPtr Parser::Statement() {
 		if (
-			Peek(NVSETokenType::Identifier) &&
+			Peek(TokenType::Identifier) &&
 			!_stricmp(currentToken.lexeme.c_str(), "ShowMessage")
-			) {
-			const auto ident = std::make_shared<Expressions::IdentExpr>(currentToken);
+		) {
+			const auto showMessageIdent = make_shared<Expressions::IdentExpr>("ShowMessage", currentToken.sourceSpan);
 
 			Advance();
-			Expect(NVSETokenType::LeftParen, "Expected '('");
+			Expect(TokenType::LeftParen, "Expected '('");
+			const auto ident = Expect(TokenType::Identifier, "Expected message form");
 
-			Expect(NVSETokenType::Identifier, "Expected message form");
-			const auto messageIdent = std::make_shared<Expressions::IdentExpr>(previousToken);
+			const auto messageIdent = make_shared<Expressions::IdentExpr>(
+				ident.lexeme,
+				previousToken.sourceSpan
+			);
 
-			std::vector<std::shared_ptr<Expressions::IdentExpr>> messageArgs{};
+			vector<shared_ptr<Expressions::IdentExpr>> messageArgs{};
 
 			uint32_t messageTime = 0;
-			while (Match(NVSETokenType::Comma)) {
-				if (Peek(NVSETokenType::Number)) {
+			while (Match(TokenType::Comma)) {
+				if (Peek(TokenType::Number)) {
 					const auto numericLiteral = NumericLiteral();
 					if (numericLiteral->is_fp) {
 						Error(previousToken, "Duration must be an integer.");
@@ -191,72 +209,108 @@ namespace Compiler {
 					break;
 				}
 
-				const auto identToken = Expect(NVSETokenType::Identifier, "Expected identifier.");
-				messageArgs.emplace_back(std::make_shared<Expressions::IdentExpr>(identToken));
+				const auto identToken = Expect(TokenType::Identifier, "Expected identifier.");
+				messageArgs.emplace_back(
+					make_shared<Expressions::IdentExpr>(
+						std::get<2>(identToken.value), 
+						identToken.sourceSpan
+					)
+				);
 			}
 
-			Expect(NVSETokenType::RightParen, "Expected ')'");
-			Expect(NVSETokenType::Semicolon, "Expected ';'");
+			Expect(TokenType::RightParen, "Expected ')'");
+			Expect(TokenType::Semicolon, "Expected ';'");
 
-			return std::make_shared<Statements::ShowMessage>(messageIdent, messageArgs, messageTime);
+			return make_shared<Statements::ShowMessage>(messageIdent, messageArgs, messageTime);
 		}
 
-		if (Peek(NVSETokenType::For)) {
+		if (Peek(TokenType::For)) {
 			return ForStatement();
 		}
 
-		if (Peek(NVSETokenType::If)) {
+		if (Peek(TokenType::If)) {
 			return IfStatement();
 		}
 
-		if (Peek(NVSETokenType::Match)) {
+		if (Peek(TokenType::Match)) {
 			return MatchStatement();
 		}
 
-		if (Peek(NVSETokenType::Return)) {
+		if (Peek(TokenType::Return)) {
 			return ReturnStatement();
 		}
 
-		if (Match(NVSETokenType::Break)) {
+		if (Match(TokenType::Break)) {
 			auto token = previousToken;
-			Expect(NVSETokenType::Semicolon, "Expected ';' at end of statement.");
-			return std::make_shared<Statements::Break>();
+			Expect(TokenType::Semicolon);
+
+			return make_shared<Statements::Break>(
+				token.sourceSpan + previousToken.sourceSpan
+			);
 		}
 
-		if (Match(NVSETokenType::Continue)) {
+		if (Match(TokenType::Continue)) {
 			auto token = previousToken;
-			Expect(NVSETokenType::Semicolon, "Expected ';' at end of statement.");
-			return std::make_shared<Statements::Continue>();
+			Expect(TokenType::Semicolon);
+
+			return make_shared<Statements::Continue>(
+				token.sourceSpan + previousToken.sourceSpan
+			);
 		}
 
-		if (Peek(NVSETokenType::While)) {
+		if (Peek(TokenType::While)) {
 			return WhileStatement();
 		}
 
-		if (Peek(NVSETokenType::LeftBrace)) {
+		if (Peek(TokenType::LeftBrace)) {
 			return BlockStatement();
+		}
+
+		if (Peek(TokenType::Fn)) {
+			auto startToken = Expect(TokenType::Fn);
+
+			auto ident = IdentExpr();
+			auto args = ParseArgs();
+			auto block = BlockStatement();
+
+			Expect(TokenType::Semicolon);
+
+			auto fnDecl = make_shared<Expressions::LambdaExpr>(
+				std::move(args), 
+				block, 
+				startToken.sourceSpan + previousToken.sourceSpan
+			);
+
+			return make_shared<Statements::VarDecl>(
+				TokenType::RefType,
+				ident,
+				fnDecl,
+				startToken.sourceSpan + previousToken.sourceSpan
+			);
 		}
 
 		if (PeekType()) {
 			auto expr = VarDecl();
-			Expect(NVSETokenType::Semicolon, "Expected ';' at end of statement.");
+			Expect(TokenType::Semicolon);
 			return expr;
 		}
 
 		return ExpressionStatement();
 	}
 
-	std::shared_ptr<Statements::VarDecl> Parser::VarDecl(bool allowValue, bool allowOnlyOneVarDecl) {
+	shared_ptr<Statements::VarDecl> Parser::VarDecl(const bool allowValue, const bool allowOnlyOneVarDecl) {
 		if (!MatchesType()) {
 			Error(currentToken, "Expected type.");
 		}
+
 		auto varType = previousToken;
-		std::vector<Statements::VarDecl::Declaration> declarations{};
+
+		vector<Statements::VarDecl::Declaration> declarations{};
 		do {
-			auto name = Expect(NVSETokenType::Identifier, "Expected identifier.");
+			auto name = IdentExpr();
 			ExprPtr value{ nullptr };
 
-			if (Match(NVSETokenType::Eq)) {
+			if (Match(TokenType::Eq)) {
 				if (!allowValue) {
 					Error(previousToken, "Variable definition is not allowed here.");
 				}
@@ -267,75 +321,80 @@ namespace Compiler {
 			if (allowOnlyOneVarDecl) {
 				break;
 			}
-		} while (Match(NVSETokenType::Comma));
+		} while (Match(TokenType::Comma));
 
-		return std::make_shared<Statements::VarDecl>(varType, std::move(declarations));
+		return make_shared<Statements::VarDecl>(
+			varType.type, 
+			std::move(declarations), 
+			varType.sourceSpan + previousToken.sourceSpan
+		);
 	}
 
 	StmtPtr Parser::ForStatement() {
-		Match(NVSETokenType::For);
-		Expect(NVSETokenType::LeftParen, "Expected '(' after 'for'.");
+		const auto startToken = Expect(TokenType::For);
+		const auto lParen = Expect(TokenType::LeftParen);
 
-		// Optional expression
-		bool forEach = false;
 		StmtPtr init = { nullptr };
-		if (!Peek(NVSETokenType::Semicolon)) {
+		if (!Peek(TokenType::Semicolon)) {
+
 			// for (array aIter in [1::1, 2::2])..
 			if (MatchesType()) {
-				auto type = previousToken;
-				auto ident = Expect(NVSETokenType::Identifier, "Expected identifier.");
+				auto typeToken = previousToken;
+				auto ident = IdentExpr();
 
-				if (Match(NVSETokenType::In)) {
-					auto decl = std::make_shared<Statements::VarDecl>(type, ident, nullptr);
+				if (Match(TokenType::In)) {
+					auto decl = make_shared<Statements::VarDecl>(typeToken.type, ident, nullptr, typeToken.sourceSpan + previousToken.sourceSpan);
 
 					ExprPtr rhs = Expression();
-					Expect(NVSETokenType::RightParen, "Expected ')'.");
+					Expect(TokenType::RightParen, "Expected ')'.");
 
-					std::shared_ptr<Statements::Block> block = BlockStatement();
-					return std::make_shared<Statements::ForEach>(std::vector{ decl }, std::move(rhs), std::move(block), false);
+					shared_ptr<Statements::Block> block = BlockStatement();
+					return make_shared<Statements::ForEach>(vector{ decl }, std::move(rhs), std::move(block), false);
 				}
 
 				ExprPtr value{ nullptr };
-				if (Match(NVSETokenType::Eq)) {
+				if (Match(TokenType::Eq)) {
 					value = Expression();
 				}
-				Expect(NVSETokenType::Semicolon, "Expected ';' after loop initializer.");
-				init = std::make_shared<Statements::VarDecl>(type, ident, value);
+				Expect(TokenType::Semicolon, "Expected ';' after loop initializer.");
+
+				init = make_shared<Statements::VarDecl>(typeToken.type, ident, value, typeToken.sourceSpan + previousToken.sourceSpan);
 			}
+
 			// for ([int key, int value] in [1::1, 2::2]).
 			// for ([_, int value] in [1::1, 2::2]).
 			// for ([int key, _] in [1::1, 2::2]).
 			// for ([int key] in [1::1, 2::2]).
 			// for ([int value] in [1, 2]).
-			else if (Match(NVSETokenType::LeftBracket)) {
-				std::vector<std::shared_ptr<Statements::VarDecl>> decls{};
+			else if (Match(TokenType::LeftBracket)) {
+				vector<shared_ptr<Statements::VarDecl>> declarations{};
 
 				// LHS
-				if (Match(NVSETokenType::Underscore)) {
-					decls.push_back(nullptr);
+				if (Match(TokenType::Underscore)) {
+					declarations.push_back(nullptr);
 				}
 				else {
-					decls.push_back(VarDecl(false, true));
+					declarations.push_back(VarDecl(false, true));
 				}
 
 				// RHS
-				if (Match(NVSETokenType::Comma)) {
-					if (Match(NVSETokenType::Underscore)) {
-						decls.push_back(nullptr);
+				if (Match(TokenType::Comma)) {
+					if (Match(TokenType::Underscore)) {
+						declarations.push_back(nullptr);
 					}
 					else {
-						decls.push_back(VarDecl(false, true));
+						declarations.push_back(VarDecl(false, true));
 					}
 				}
 
-				Expect(NVSETokenType::RightBracket, "Expected ']'.");
-				Expect(NVSETokenType::In, "Expected 'in'.");
+				Expect(TokenType::RightBracket, "Expected ']'.");
+				Expect(TokenType::In, "Expected 'in'.");
 
 				ExprPtr rhs = Expression();
-				Expect(NVSETokenType::RightParen, "Expected ')'.");
+				Expect(TokenType::RightParen, "Expected ')'.");
 
-				std::shared_ptr<Statements::Block> block = BlockStatement();
-				return std::make_shared<Statements::ForEach>(decls, std::move(rhs), std::move(block), true);
+				shared_ptr<Statements::Block> block = BlockStatement();
+				return make_shared<Statements::ForEach>(declarations, std::move(rhs), std::move(block), true);
 			}
 			else {
 				init = Statement();
@@ -346,148 +405,242 @@ namespace Compiler {
 		}
 
 		// Default to true condition
-		ExprPtr cond = std::make_shared<Expressions::BoolExpr>(NVSEToken{ NVSETokenType::Bool, "true", 1 }, true);
-		if (!Peek(NVSETokenType::Semicolon)) {
+		ExprPtr cond = make_shared<Expressions::BoolExpr>(true, lParen.sourceSpan + previousToken.sourceSpan);
+		if (!Peek(TokenType::Semicolon)) {
 			cond = Expression();
-			Expect(NVSETokenType::Semicolon, "Expected ';' after loop condition.");
+			Expect(TokenType::Semicolon);
 		}
 
-		ExprPtr incr = { nullptr };
-		if (!Peek(NVSETokenType::RightParen)) {
-			incr = Expression();
+		ExprPtr incrementExpr = { nullptr };
+		if (!Peek(TokenType::RightParen)) {
+			incrementExpr = Expression();
 		}
-		Expect(NVSETokenType::RightParen, "Expected ')'.");
+		Expect(TokenType::RightParen, "Expected ')'.");
 
-		std::shared_ptr<Statements::Block> block = BlockStatement();
-		return std::make_shared<Statements::For>(std::move(init), std::move(cond), std::move(incr), std::move(block));
+		shared_ptr<Statements::Block> block = BlockStatement();
+
+		return make_shared<Statements::For>(
+			std::move(init),
+			std::move(cond),
+			std::move(incrementExpr),
+			std::move(block),
+			startToken.sourceSpan + previousToken.sourceSpan
+		);
+	}
+
+	void Parser::AdvanceToClosingCharOf(const TokenType leftType) {
+		TokenType rightType;
+
+		if (leftType == TokenType::LeftParen) {
+			rightType = TokenType::RightParen;
+		}
+
+		else if (leftType == TokenType::LeftBrace) {
+			rightType = TokenType::RightBrace;
+		}
+
+		else if (leftType == TokenType::LeftBracket) {
+			rightType = TokenType::RightBracket;
+		}
+
+		else {
+			return;
+		}
+
+		auto depth = 0;
+		while (true) {
+			Advance();
+			const auto curType = currentToken.type;
+
+			if (curType == TokenType::Eof) {
+				break;
+			}
+
+			if (curType == leftType) {
+				depth++;
+			} else if (curType == rightType) {
+				if (depth == 0) {
+					break;
+				}
+					
+				depth--;
+			}
+		}
+	}
+
+	ExprPtr Parser::ParenthesizedExpression() {
+		const auto startToken = Expect(TokenType::LeftParen);
+
+		ExprPtr cond = nullptr;
+		try {
+			cond = Expression();
+		} 
+
+		// Try to recover from mis-parsed if condition
+		catch (NVSEParseError &_) {
+			hadError = true;
+			AdvanceToClosingCharOf(TokenType::LeftParen);
+		}
+
+		Expect(TokenType::RightParen);
+
+		return cond;
 	}
 
 	StmtPtr Parser::IfStatement() {
-		Match(NVSETokenType::If);
-		auto token = previousToken;
+		const auto startToken = Expect(TokenType::If);
 
-		Expect(NVSETokenType::LeftParen, "Expected '(' after 'if'.");
-		auto cond = Expression();
-		Expect(NVSETokenType::RightParen, "Expected ')' after 'if' condition.");
+		auto condition = ParenthesizedExpression();
 		auto block = BlockStatement();
-		std::shared_ptr<Statements::Block> elseBlock = nullptr;
-		if (Match(NVSETokenType::Else)) {
-			if (Peek(NVSETokenType::If)) {
-				std::vector<StmtPtr> statements{};
-				statements.emplace_back(IfStatement());
-				elseBlock = std::make_shared<Statements::Block>(std::move(statements));
+
+		shared_ptr<Statements::Block> elseBlock = nullptr;
+		if (Match(TokenType::Else)) {
+			if (Peek(TokenType::If)) {
+				vector<StmtPtr> statements{};
+				auto ifStmt = IfStatement();
+				auto span = ifStmt->sourceInfo;
+				statements.emplace_back(std::move(ifStmt));
+				elseBlock = make_shared<Statements::Block>(std::move(statements), span);
 			}
 			else {
 				elseBlock = BlockStatement();
 			}
 		}
 
-		return std::make_shared<Statements::If>(std::move(cond), std::move(block), std::move(elseBlock));
+		return make_shared<Statements::If>(
+			std::move(condition), 
+			std::move(block), 
+			std::move(elseBlock), 
+			startToken.sourceSpan + previousToken.sourceSpan
+		);
 	}
 
-	StmtPtr Parser::MatchStatement() {
-		Match(NVSETokenType::Match);
+	shared_ptr<Statements::Match> Parser::MatchStatement() {
+		const auto startToken = Expect(TokenType::Match);
 
-		Expect(NVSETokenType::LeftParen, "Expected '(' after 'match'.");
-		auto cond = Expression();
-		Expect(NVSETokenType::RightParen, "Expected ')' after 'match' expression.");
+		auto cond = ParenthesizedExpression();
 
-		Expect(NVSETokenType::LeftBrace, "Expected '{' after 'match' declaration");
+		Expect(TokenType::LeftBrace);
 
-		std::vector<std::shared_ptr<Statements::If>> matchCases{};
-		std::shared_ptr<Statements::Block> defaultCase{};
+		vector<Statements::Match::MatchArm> arms{};
+		shared_ptr<Statements::Block> defaultCase{};
 
 		do {
-			if (Match(NVSETokenType::Underscore)) {
+			if (Match(TokenType::Underscore)) {
 				if (defaultCase) {
 					Error(currentToken, "Only one default case can be specified.");
 				}
 
-				Expect(NVSETokenType::Arrow, "Expected '->' after match case value");
+				Expect(TokenType::Arrow);
 				defaultCase = BlockStatement();
 				continue;
 			}
 
-			auto caseVal = Expression();
-			auto eqExpr = std::make_shared<Expressions::BinaryExpr>(NVSEToken{ NVSETokenType::EqEq, "==" }, cond, caseVal);
-			Expect(NVSETokenType::Arrow, "Expected '->' after match case value");
+			Statements::Match::MatchArm arm {};
 
-			const auto curIfStmt = std::make_shared<Statements::If>(std::move(eqExpr), BlockStatement());
+			if (Match(TokenType::Identifier)) {
+				const auto ident = std::make_shared<Expressions::IdentExpr>(previousToken.lexeme, previousToken.sourceSpan);
 
-			matchCases.push_back(curIfStmt);
-
-			const auto caseCount = matchCases.size();
-			if (caseCount > 1) {
-				matchCases[caseCount - 1]->elseBlock = std::make_shared<Statements::Block>(std::vector<StmtPtr>{ curIfStmt });
+				if (Match(TokenType::Slice)) {
+					arm.binding = ident;
+					arm.expr = Expression();
+				} else {
+					arm.expr = ident;
+				}
+			} else {
+				arm.expr = Expression();
 			}
-		} while (!Peek(NVSETokenType::RightBrace));
 
-		if (defaultCase) {
-			matchCases[matchCases.size() - 1]->elseBlock = defaultCase;
-		}
+			Expect(TokenType::Arrow);
+			arm.block = BlockStatement();
+			arms.emplace_back(std::move(arm));
+		} while (!Peek(TokenType::RightBrace));
 
-		Expect(NVSETokenType::RightBrace, "Expected '}'");
+		Expect(TokenType::RightBrace);
 
-		return matchCases[0];
+		return make_shared<Statements::Match>(
+			cond, 
+			std::move(arms), 
+			defaultCase, 
+			startToken.sourceSpan + previousToken.sourceSpan
+		);
 	}
 
 	StmtPtr Parser::ReturnStatement() {
-		Match(NVSETokenType::Return);
-		auto token = previousToken;
-		if (Match(NVSETokenType::Semicolon)) {
-			return std::make_shared<Statements::Return>();
+		const auto returnToken = Expect(TokenType::Return);
+
+		if (Match(TokenType::Semicolon)) {
+			return make_shared<Statements::Return>(returnToken.sourceSpan);
 		}
 
-		auto expr = std::make_shared<Statements::Return>(Expression());
-		Expect(NVSETokenType::Semicolon, "Expected ';' at end of statement.");
-		return expr;
+		const auto expr = Expression();
+
+		auto returnExpr = make_shared<Statements::Return>(
+			expr, 
+			returnToken.sourceSpan + expr->sourceInfo
+		);
+
+		Expect(TokenType::Semicolon);
+
+		return returnExpr;
 	}
 
 	StmtPtr Parser::WhileStatement() {
-		Match(NVSETokenType::While);
-		auto token = previousToken;
-
-		Expect(NVSETokenType::LeftParen, "Expected '(' after 'while'.");
-		auto cond = Expression();
-		Expect(NVSETokenType::RightParen, "Expected ')' after 'while' condition.");
+		const auto startToken = Expect(TokenType::While);
+		auto cond = ParenthesizedExpression();
 		auto block = BlockStatement();
-
-		return std::make_shared<Statements::While>(std::move(cond), std::move(block));
+		
+		return make_shared<Statements::While>(
+			std::move(cond), 
+			std::move(block),
+			startToken.sourceSpan + previousToken.sourceSpan
+		);
 	}
 
-	std::shared_ptr<Statements::Block> Parser::BlockStatement() {
-		Expect(NVSETokenType::LeftBrace, "Expected '{'.");
+	shared_ptr<Statements::Block> Parser::BlockStatement() {
+		const auto startToken = Expect(TokenType::LeftBrace);
 
-		std::vector<StmtPtr> statements{};
-		while (!Match(NVSETokenType::RightBrace)) {
+		vector<StmtPtr> statements{};
+		while (!Match(TokenType::RightBrace)) {
 			try {
+				// Skip empty expression statements
+				if (Match(TokenType::Semicolon)) {
+					continue;
+				}
+
 				statements.emplace_back(Statement());
 			}
-			catch (NVSEParseError e) {
+			catch (NVSEParseError&) {
 				hadError = true;
-				CompErr("%s\n", e.what());
 				Synchronize();
 
-				if (currentToken.type == NVSETokenType::Eof) {
+				if (currentToken.type == TokenType::Eof) {
 					break;
 				}
 			}
 		}
 
-		return std::make_shared<Statements::Block>(std::move(statements));
+		return make_shared<Statements::Block>(
+			std::move(statements),
+			startToken.sourceSpan + previousToken.sourceSpan
+		);
 	}
 
 	StmtPtr Parser::ExpressionStatement() {
+		const auto startSpan = currentToken.sourceSpan;
+
 		// Allow empty expression statements
-		if (Match(NVSETokenType::Semicolon)) {
-			return std::make_shared<Statements::ExpressionStatement>(nullptr);
+		if (Match(TokenType::Semicolon)) {
+			return make_shared<Statements::ExpressionStatement>(nullptr, previousToken.sourceSpan);
 		}
 
 		auto expr = Expression();
-		if (!Match(NVSETokenType::Semicolon)) {
-			Error(previousToken, "Expected ';' at end of statement.");
-		}
-		return std::make_shared<Statements::ExpressionStatement>(std::move(expr));
+		Expect(TokenType::Semicolon);
+
+		return make_shared<Statements::ExpressionStatement>(
+			std::move(expr), 
+			startSpan + previousToken.sourceSpan
+		);
 	}
 
 	ExprPtr Parser::Expression() {
@@ -497,16 +650,29 @@ namespace Compiler {
 	ExprPtr Parser::Assignment() {
 		ExprPtr left = Slice();
 
-		if (Match(NVSETokenType::Eq) || Match(NVSETokenType::PlusEq) || Match(NVSETokenType::MinusEq) ||
-			Match(NVSETokenType::StarEq) || Match(NVSETokenType::SlashEq) || Match(NVSETokenType::ModEq) || Match(
-				NVSETokenType::PowEq) || Match(NVSETokenType::BitwiseOrEquals) || Match(NVSETokenType::BitwiseAndEquals)) {
+		if (
+			Match(TokenType::Eq) || 
+			Match(TokenType::PlusEq) || 
+			Match(TokenType::MinusEq) ||
+			Match(TokenType::StarEq) || 
+			Match(TokenType::SlashEq) || 
+			Match(TokenType::ModEq) || 
+			Match(TokenType::PowEq) || 
+			Match(TokenType::BitwiseOrEquals) || 
+			Match(TokenType::BitwiseAndEquals)
+		) {
 			auto token = previousToken;
 
 			const auto prevTok = previousToken;
 			ExprPtr value = Assignment();
 
-			if (left->IsType<Expressions::IdentExpr>() || left->IsType<Expressions::GetExpr>() || left->IsType<Expressions::SubscriptExpr>()) {
-				return std::make_shared<Expressions::AssignmentExpr>(token, std::move(left), std::move(value));
+			// TODO - Move this to a semantic analysis pass?
+			if (
+				left->IsType<Expressions::IdentExpr>() || 
+				left->IsType<Expressions::GetExpr>() || 
+				left->IsType<Expressions::SubscriptExpr>()
+			) {
+				return make_shared<Expressions::AssignmentExpr>(token, std::move(left), std::move(value));
 			}
 
 			Error(prevTok, "Invalid assignment target.");
@@ -518,10 +684,15 @@ namespace Compiler {
 	ExprPtr Parser::Slice() {
 		ExprPtr left = Ternary();
 
-		while (Match(NVSETokenType::Slice)) {
+		while (Match(TokenType::Slice)) {
 			const auto op = previousToken;
 			ExprPtr right = Ternary();
-			left = std::make_shared<Expressions::BinaryExpr>(op, std::move(left), std::move(right));
+			left = make_shared<Expressions::BinaryExpr>(
+				op,
+				std::move(left),
+				std::move(right),
+				left->sourceInfo + right->sourceInfo
+			);
 		}
 
 		return left;
@@ -530,20 +701,20 @@ namespace Compiler {
 	ExprPtr Parser::Ternary() {
 		ExprPtr cond = LogicalOr();
 
-		while (Match(NVSETokenType::Ternary)) {
+		while (Match(TokenType::Ternary)) {
 			auto token = previousToken;
 
 			ExprPtr left;
-			if (Match(NVSETokenType::Slice)) {
+			if (Match(TokenType::Slice)) {
 				left = cond;
 			}
 			else {
 				left = LogicalOr();
-				Expect(NVSETokenType::Slice, "Expected ':'.");
+				Expect(TokenType::Slice, "Expected ':'.");
 			}
 
 			auto right = LogicalOr();
-			cond = std::make_shared<Expressions::TernaryExpr>(token, std::move(cond), std::move(left), std::move(right));
+			cond = make_shared<Expressions::TernaryExpr>(token, std::move(cond), std::move(left), std::move(right));
 		}
 
 		return cond;
@@ -552,10 +723,15 @@ namespace Compiler {
 	ExprPtr Parser::LogicalOr() {
 		ExprPtr left = LogicalAnd();
 
-		while (Match(NVSETokenType::LogicOr)) {
+		while (Match(TokenType::LogicOr)) {
 			auto op = previousToken;
 			ExprPtr right = LogicalAnd();
-			left = std::make_shared<Expressions::BinaryExpr>(op, std::move(left), std::move(right));
+			left = make_shared<Expressions::BinaryExpr>(
+				op,
+				std::move(left),
+				std::move(right),
+				left->sourceInfo + right->sourceInfo
+			);
 		}
 
 		return left;
@@ -564,10 +740,15 @@ namespace Compiler {
 	ExprPtr Parser::LogicalAnd() {
 		ExprPtr left = Equality();
 
-		while (Match(NVSETokenType::LogicAnd)) {
+		while (Match(TokenType::LogicAnd)) {
 			const auto op = previousToken;
 			ExprPtr right = Equality();
-			left = std::make_shared<Expressions::BinaryExpr>(op, std::move(left), std::move(right));
+			left = make_shared<Expressions::BinaryExpr>(
+				op,
+				std::move(left),
+				std::move(right),
+				left->sourceInfo + right->sourceInfo
+			);
 		}
 
 		return left;
@@ -576,10 +757,15 @@ namespace Compiler {
 	ExprPtr Parser::Equality() {
 		ExprPtr left = Comparison();
 
-		while (Match(NVSETokenType::EqEq) || Match(NVSETokenType::BangEq)) {
+		while (Match(TokenType::EqEq) || Match(TokenType::BangEq)) {
 			const auto op = previousToken;
 			ExprPtr right = Comparison();
-			left = std::make_shared<Expressions::BinaryExpr>(op, std::move(left), std::move(right));
+			left = make_shared<Expressions::BinaryExpr>(
+				op,
+				std::move(left),
+				std::move(right),
+				left->sourceInfo + right->sourceInfo
+			);
 		}
 
 		return left;
@@ -588,11 +774,20 @@ namespace Compiler {
 	ExprPtr Parser::Comparison() {
 		ExprPtr left = In();
 
-		while (Match(NVSETokenType::Less) || Match(NVSETokenType::LessEq) || Match(NVSETokenType::Greater) || Match(
-			NVSETokenType::GreaterEq)) {
+		while (
+			Match(TokenType::Less) || 
+			Match(TokenType::LessEq) || 
+			Match(TokenType::Greater) || 
+			Match(TokenType::GreaterEq)
+		) {
 			const auto op = previousToken;
 			ExprPtr right = In();
-			left = std::make_shared<Expressions::BinaryExpr>(op, std::move(left), std::move(right));
+			left = make_shared<Expressions::BinaryExpr>(
+				op,
+				std::move(left),
+				std::move(right),
+				left->sourceInfo + right->sourceInfo
+			);
 		}
 
 		return left;
@@ -601,24 +796,24 @@ namespace Compiler {
 	ExprPtr Parser::In() {
 		ExprPtr left = BitwiseOr();
 
-		bool isNot = Match(NVSETokenType::Not);
-		if (Match(NVSETokenType::In)) {
+		bool isNot = Match(TokenType::Not);
+		if (Match(TokenType::In)) {
 			const auto op = previousToken;
 
-			if (Match(NVSETokenType::LeftBracket)) {
-				std::vector<ExprPtr> values{};
-				while (!Match(NVSETokenType::RightBracket)) {
+			if (Match(TokenType::LeftBracket)) {
+				vector<ExprPtr> values{};
+				while (!Match(TokenType::RightBracket)) {
 					if (!values.empty()) {
-						Expect(NVSETokenType::Comma, "Expected ','.");
+						Expect(TokenType::Comma, "Expected ','.");
 					}
 					values.emplace_back(Expression());
 				}
 
-				return std::make_shared<Expressions::InExpr>(left, op, values, isNot);
+				return make_shared<Expressions::InExpr>(left, op, values, isNot);
 			}
 
 			auto expr = Expression();
-			return std::make_shared<Expressions::InExpr>(left, op, expr, isNot);
+			return make_shared<Expressions::InExpr>(left, op, expr, isNot);
 		}
 
 		if (isNot) {
@@ -631,10 +826,15 @@ namespace Compiler {
 	ExprPtr Parser::BitwiseOr() {
 		ExprPtr left = BitwiseAnd();
 
-		while (Match(NVSETokenType::BitwiseOr)) {
+		while (Match(TokenType::BitwiseOr)) {
 			const auto op = previousToken;
 			ExprPtr right = BitwiseAnd();
-			left = std::make_shared<Expressions::BinaryExpr>(op, std::move(left), std::move(right));
+			left = make_shared<Expressions::BinaryExpr>(
+				op,
+				std::move(left),
+				std::move(right),
+				left->sourceInfo + right->sourceInfo
+			);
 		}
 
 		return left;
@@ -643,10 +843,15 @@ namespace Compiler {
 	ExprPtr Parser::BitwiseAnd() {
 		ExprPtr left = Shift();
 
-		while (Match(NVSETokenType::BitwiseAnd)) {
+		while (Match(TokenType::BitwiseAnd)) {
 			const auto op = previousToken;
 			ExprPtr right = Shift();
-			left = std::make_shared<Expressions::BinaryExpr>(op, std::move(left), std::move(right));
+			left = make_shared<Expressions::BinaryExpr>(
+				op,
+				std::move(left),
+				std::move(right),
+				left->sourceInfo + right->sourceInfo
+			);
 		}
 
 		return left;
@@ -655,10 +860,15 @@ namespace Compiler {
 	ExprPtr Parser::Shift() {
 		ExprPtr left = Term();
 
-		while (Match(NVSETokenType::LeftShift) || Match(NVSETokenType::RightShift)) {
+		while (Match(TokenType::LeftShift) || Match(TokenType::RightShift)) {
 			const auto op = previousToken;
 			ExprPtr right = Term();
-			left = std::make_shared<Expressions::BinaryExpr>(op, std::move(left), std::move(right));
+			left = make_shared<Expressions::BinaryExpr>(
+				op,
+				std::move(left),
+				std::move(right),
+				left->sourceInfo + right->sourceInfo
+			);
 		}
 
 		return left;
@@ -668,10 +878,15 @@ namespace Compiler {
 	ExprPtr Parser::Term() {
 		ExprPtr left = Factor();
 
-		while (Match(NVSETokenType::Plus) || Match(NVSETokenType::Minus)) {
+		while (Match(TokenType::Plus) || Match(TokenType::Minus)) {
 			const auto op = previousToken;
 			ExprPtr right = Factor();
-			left = std::make_shared<Expressions::BinaryExpr>(op, std::move(left), std::move(right));
+			left = make_shared<Expressions::BinaryExpr>(
+				op,
+				std::move(left),
+				std::move(right),
+				left->sourceInfo + right->sourceInfo
+			);
 		}
 
 		return left;
@@ -680,11 +895,16 @@ namespace Compiler {
 	ExprPtr Parser::Factor() {
 		ExprPtr left = Pair();
 
-		while (Match(NVSETokenType::Star) || Match(NVSETokenType::Slash) || Match(NVSETokenType::Mod) || Match(
-			NVSETokenType::Pow)) {
+		while (Match(TokenType::Star) || Match(TokenType::Slash) || Match(TokenType::Mod) || Match(
+			TokenType::Pow)) {
 			const auto op = previousToken;
 			ExprPtr right = Pair();
-			left = std::make_shared<Expressions::BinaryExpr>(op, std::move(left), std::move(right));
+			left = make_shared<Expressions::BinaryExpr>(
+				op,
+				std::move(left),
+				std::move(right),
+				left->sourceInfo + right->sourceInfo
+			);
 		}
 
 		return left;
@@ -693,35 +913,48 @@ namespace Compiler {
 	ExprPtr Parser::Pair() {
 		ExprPtr left = Unary();
 
-		while (Match(NVSETokenType::MakePair)) {
+		while (Match(TokenType::MakePair)) {
 			auto op = previousToken;
 			ExprPtr right = Unary();
-			left = std::make_shared<Expressions::BinaryExpr>(op, std::move(left), std::move(right));
+			left = make_shared<Expressions::BinaryExpr>(
+				op, 
+				std::move(left), 
+				std::move(right), 
+				left->sourceInfo + right->sourceInfo
+			);
 		}
 
 		return left;
 	}
 
 	ExprPtr Parser::Unary() {
-		if (Match(NVSETokenType::Bang) || Match(NVSETokenType::Minus) || Match(NVSETokenType::Dollar) || Match(
-			NVSETokenType::Pound) || Match(NVSETokenType::BitwiseAnd) || Match(NVSETokenType::Star) || Match(NVSETokenType::BitwiseNot)) {
-			auto op = previousToken;
+		if (
+			Match(TokenType::Bang)			|| 
+			Match(TokenType::Minus)			|| 
+			Match(TokenType::Dollar)		|| 
+			Match(TokenType::Pound)			|| 
+			Match(TokenType::BitwiseAnd)	|| 
+			Match(TokenType::Star)			|| 
+			Match(TokenType::BitwiseNot)
+		) {
+			auto opToken = previousToken;
+
 			ExprPtr right = Unary();
 
 			// Convert these two in case of box/unbox
-			if (op.type == NVSETokenType::BitwiseAnd) {
-				op.type = NVSETokenType::Box;
+			if (opToken.type == TokenType::BitwiseAnd) {
+				opToken.type = TokenType::Box;
 			}
 
-			if (op.type == NVSETokenType::Star) {
-				op.type = NVSETokenType::Unbox;
+			if (opToken.type == TokenType::Star) {
+				opToken.type = TokenType::Unbox;
 			}
 
-			if (op.type == NVSETokenType::Minus) {
-				op.type = NVSETokenType::Negate;
+			if (opToken.type == TokenType::Minus) {
+				opToken.type = TokenType::Negate;
 			}
 
-			return std::make_shared<Expressions::UnaryExpr>(op, std::move(right), false);
+			return make_shared<Expressions::UnaryExpr>(opToken, std::move(right), false);
 		}
 
 		return Postfix();
@@ -730,54 +963,81 @@ namespace Compiler {
 	ExprPtr Parser::Postfix() {
 		ExprPtr expr = Call();
 
-		while (Match(NVSETokenType::LeftBracket)) {
+		while (Match(TokenType::LeftBracket)) {
 			auto token = previousToken;
 			auto inner = Expression();
-			Expect(NVSETokenType::RightBracket, "Expected ']'.");
+			auto closingBracket = Expect(TokenType::RightBracket);
 
-			expr = std::make_shared<Expressions::SubscriptExpr>(token, std::move(expr), std::move(inner));
+			expr = make_shared<Expressions::SubscriptExpr>(
+				token, 
+				std::move(expr), 
+				std::move(inner), 
+				token.sourceSpan + closingBracket.sourceSpan
+			);
 		}
 
-		if (Match(NVSETokenType::PlusPlus) || Match(NVSETokenType::MinusMinus)) {
+		if (Match(TokenType::PlusPlus) || Match(TokenType::MinusMinus)) {
 			if (!expr->IsType<Expressions::IdentExpr>() && !expr->IsType<Expressions::GetExpr>()) {
 				Error(previousToken, "Invalid operand for '++', expected identifier.");
 			}
 
 			auto op = previousToken;
-			return std::make_shared<Expressions::UnaryExpr>(op, std::move(expr), true);
+			return make_shared<Expressions::UnaryExpr>(op, std::move(expr), true);
 		}
 
 		return expr;
 	}
 
 	ExprPtr Parser::Call() {
+		auto startToken = currentToken;
+
 		ExprPtr expr = Primary();
 
-		while (Match(NVSETokenType::Dot) || Match(NVSETokenType::LeftParen)) {
-			if (previousToken.type == NVSETokenType::Dot) {
-				if (!expr->IsType<Expressions::GroupingExpr>() &&
-					!expr->IsType<Expressions::IdentExpr>() &&
-					!expr->IsType<Expressions::CallExpr>() &&
-					!expr->IsType<Expressions::GetExpr>()) {
+		while (Match(TokenType::Dot) || Match(TokenType::LeftParen)) {
+			if (previousToken.type == TokenType::Dot) {
+				// TODO: Move this to a semantic analysis pass?
+				if (
+					!expr->IsType<Expressions::GroupingExpr>()	&&
+					!expr->IsType<Expressions::IdentExpr>()		&&
+					!expr->IsType<Expressions::CallExpr>()		&&
+					!expr->IsType<Expressions::GetExpr>()
+				) {
 					Error(currentToken, "Invalid member access.");
 				}
 
 				auto token = previousToken;
-				const auto ident = Expect(NVSETokenType::Identifier, "Expected identifier.");
+				const auto ident = IdentExpr();
 
-				if (Match(NVSETokenType::LeftParen)) {
-					std::vector<ExprPtr> args{};
-					while (!Match(NVSETokenType::RightParen)) {
-						args.emplace_back(std::move(Expression()));
+				if (Match(TokenType::LeftParen)) {
+					vector<ExprPtr> args{};
+					while (!Match(TokenType::RightParen)) {
+						try {
+							args.emplace_back(Expression());
 
-						if (!Peek(NVSETokenType::RightParen) && !Match(NVSETokenType::Comma)) {
-							Error(currentToken, "Expected ',' or ')'.");
+							if (!Peek(TokenType::RightParen) && !Match(TokenType::Comma)) {
+								Error(currentToken, "Expected ',' or ')'.");
+							}
+						}
+
+						catch (NVSEParseError &_) {
+							AdvanceToClosingCharOf(TokenType::LeftParen);
 						}
 					}
-					expr = std::make_shared<Expressions::CallExpr>(std::move(expr), ident, std::move(args));
+
+					expr = make_shared<Expressions::CallExpr>(
+						std::move(expr),
+						ident, 
+						std::move(args), 
+						startToken.sourceSpan + previousToken.sourceSpan
+					);
 				}
 				else {
-					expr = std::make_shared<Expressions::GetExpr>(token, std::move(expr), ident);
+					const auto sourceInfo = expr->sourceInfo;
+					expr = make_shared<Expressions::GetExpr>(
+						std::move(expr),
+						ident,
+						sourceInfo
+					);
 				}
 			}
 			else {
@@ -786,17 +1046,27 @@ namespace Compiler {
 					Error(currentToken, "Invalid callee.");
 				}
 
-				auto ident = dynamic_cast<Expressions::IdentExpr*>(expr.get())->token;
+				auto ident = std::dynamic_pointer_cast<Expressions::IdentExpr>(expr);
 
-				std::vector<ExprPtr> args{};
-				while (!Match(NVSETokenType::RightParen)) {
-					args.emplace_back(std::move(Expression()));
+				vector<ExprPtr> args{};
+				while (!Match(TokenType::RightParen)) {
+					try {
+						args.emplace_back(Expression());
 
-					if (!Peek(NVSETokenType::RightParen) && !Match(NVSETokenType::Comma)) {
-						Error(currentToken, "Expected ',' or ')'.");
+						if (!Peek(TokenType::RightParen) && !Match(TokenType::Comma)) {
+							Error(currentToken, "Expected ',' or ')'.");
+						}
+					}
+
+					catch (NVSEParseError& _) {
+						AdvanceToClosingCharOf(TokenType::LeftParen);
 					}
 				}
-				expr = std::make_shared<Expressions::CallExpr>(nullptr, ident, std::move(args));
+				expr = make_shared<Expressions::CallExpr>(
+					ident, 
+					std::move(args),
+					startToken.sourceSpan + previousToken.sourceSpan
+				);
 			}
 		}
 
@@ -804,50 +1074,72 @@ namespace Compiler {
 	}
 
 	ExprPtr Parser::Primary() {
-		if (Match(NVSETokenType::Bool)) {
-			return std::make_shared<Expressions::BoolExpr>(
-				NVSEToken{ previousToken }, 
-				std::get<double>(previousToken.value)
+		if (Match(TokenType::Bool)) {
+			return make_shared<Expressions::BoolExpr>(
+				std::get<double>(previousToken.value),
+				previousToken.sourceSpan
 			);
 		}
 
-		if (Peek(NVSETokenType::Number)) {
+		if (Peek(TokenType::Number)) {
 			return NumericLiteral();
 		}
 
-		if (Match(NVSETokenType::String)) {
-			ExprPtr expr = std::make_shared<Expressions::StringExpr>(previousToken);
-			while (Match(NVSETokenType::Interp)) {
-				auto inner = std::make_shared<Expressions::UnaryExpr>(NVSEToken{ NVSETokenType::Dollar, "$" }, Expression(), false);
-				Expect(NVSETokenType::EndInterp, "Expected '}'");
-				expr = std::make_shared<Expressions::BinaryExpr>(NVSEToken{ NVSETokenType::Plus, "+" }, expr, inner);
-				if (Match(NVSETokenType::String) && previousToken.lexeme.length() > 2) {
-					auto endStr = std::make_shared<Expressions::StringExpr>(previousToken);
-					expr = std::make_shared<Expressions::BinaryExpr>(NVSEToken{ NVSETokenType::Plus, "+" }, expr, endStr);
+		if (Match(TokenType::String)) {
+			ExprPtr expr = make_shared<Expressions::StringExpr>(std::get<2>(previousToken.value), previousToken.sourceSpan);
+
+			while (Match(TokenType::Interp)) {
+				auto inner = make_shared<Expressions::UnaryExpr>(
+					Token{ TokenType::Dollar, "$" }, 
+					Expression(), 
+					false
+				);
+
+				Expect(TokenType::EndInterp, "Expected '}'");
+
+				expr = make_shared<Expressions::BinaryExpr>(
+					Token{ TokenType::Plus}, 
+					expr,
+					inner,
+					inner->sourceInfo
+				);
+
+				if (Match(TokenType::String) && previousToken.lexeme.length() > 2) {
+					auto endStr = make_shared<Expressions::StringExpr>(
+						std::get<2>(previousToken.value),
+						previousToken.sourceSpan
+					);
+
+					expr = make_shared<Expressions::BinaryExpr>(
+						Token{ TokenType::Plus, "+" }, 
+						expr, 
+						endStr,
+						endStr->sourceInfo
+					);
 				}
 			}
 			return expr;
 		}
 
-		if (Match(NVSETokenType::Identifier)) {
-			return std::make_shared<Expressions::IdentExpr>(previousToken);
+		if (Peek(TokenType::Identifier)) {
+			return IdentExpr();
 		}
 
-		if (Match(NVSETokenType::LeftParen)) {
-			ExprPtr expr = Expression();
-			Expect(NVSETokenType::RightParen, "Expected ')' after expression.");
-			return std::make_shared<Expressions::GroupingExpr>(std::move(expr));
+		if (Peek(TokenType::LeftParen)) {
+			const auto startToken = currentToken;
+			auto expr = ParenthesizedExpression();
+			return make_shared<Expressions::GroupingExpr>(expr, startToken.sourceSpan + previousToken.sourceSpan);
 		}
 
-		if (Peek(NVSETokenType::LeftBracket)) {
+		if (Peek(TokenType::LeftBracket)) {
 			return ArrayLiteral();
 		}
 
-		if (Peek(NVSETokenType::LeftBrace)) {
+		if (Peek(TokenType::LeftBrace)) {
 			return MapLiteral();
 		}
 
-		if (Match(NVSETokenType::Fn)) {
+		if (Peek(TokenType::Fn)) {
 			return FnExpr();
 		}
 
@@ -855,79 +1147,133 @@ namespace Compiler {
 		return ExprPtr{ nullptr };
 	}
 
-	std::shared_ptr<Expressions::NumberExpr> Parser::NumericLiteral() {
-		Match(NVSETokenType::Number);
+	shared_ptr<Expressions::IdentExpr> Parser::IdentExpr() {
+		const auto identToken = Expect(TokenType::Identifier);
+		return make_shared<Expressions::IdentExpr>(identToken.lexeme, identToken.sourceSpan);
+	}
+
+	shared_ptr<Expressions::NumberExpr> Parser::NumericLiteral() {
+		Match(TokenType::Number);
 
 		// Double literal
 		if (std::ranges::find(previousToken.lexeme, '.') != previousToken.lexeme.end()) {
-			return std::make_shared<Expressions::NumberExpr>(previousToken, std::get<double>(previousToken.value), true);
+			return make_shared<Expressions::NumberExpr>(
+				std::get<double>(previousToken.value), 
+				true,
+				0,
+				previousToken.sourceSpan
+			);
 		}
 
 		// Int literal
-		return std::make_shared<Expressions::NumberExpr>(previousToken, floor(std::get<double>(previousToken.value)), false);
+		return make_shared<Expressions::NumberExpr>(
+			floor(std::get<double>(previousToken.value)), 
+			false,
+			0,
+			previousToken.sourceSpan
+		);
 	}
 
 	// Only called when 'fn' token is matched
 	ExprPtr Parser::FnExpr() {
-		auto token = previousToken;
+		const auto token = Expect(TokenType::Fn);
+
 		auto args = ParseArgs();
 
-		if (Match(NVSETokenType::Arrow)) {
+		if (Match(TokenType::Arrow)) {
 			// Build call stmt
-			auto callExpr = std::make_shared<Expressions::CallExpr>(nullptr, NVSEToken{ NVSETokenType::Identifier, "SetFunctionValue" },
-			                                                        std::vector{ Expression() });
-			StmtPtr exprStmt = std::make_shared<Statements::ExpressionStatement>(callExpr);
-			auto block = std::make_shared<Statements::Block>(std::vector{ exprStmt });
-			return std::make_shared<Expressions::LambdaExpr>(std::move(args), block);
+			const auto expr = Expression();
+
+			auto callExpr = make_shared<Expressions::CallExpr>(
+				make_shared<Expressions::IdentExpr>("SetFunctionValue", expr->sourceInfo),
+				vector{ expr }, 
+				previousToken.sourceSpan + expr->sourceInfo
+			);
+
+			StmtPtr exprStmt = make_shared<Statements::ExpressionStatement>(callExpr, callExpr->sourceInfo);
+			auto block = make_shared<Statements::Block>(vector{ exprStmt }, callExpr->sourceInfo);
+
+			return make_shared<Expressions::LambdaExpr>(
+				std::move(args),
+				std::move(block),
+				token.sourceSpan + previousToken.sourceSpan
+			);
 		}
 
-		return std::make_shared<Expressions::LambdaExpr>(std::move(args), BlockStatement());
+		auto lambdaBlock = BlockStatement();
+		return make_shared<Expressions::LambdaExpr>(
+			std::move(args),
+			std::move(lambdaBlock),
+			token.sourceSpan + previousToken.sourceSpan
+		);
 	}
 
 	ExprPtr Parser::ArrayLiteral() {
-		Expect(NVSETokenType::LeftBracket, "Expected '['.");
-		const auto tok = previousToken;
+		const auto startToken = Expect(TokenType::LeftBracket);
 
-		std::vector<ExprPtr> values{};
-		while (!Match(NVSETokenType::RightBracket)) {
-			if (!values.empty()) {
-				Expect(NVSETokenType::Comma, "Expected ','.");
+		vector<ExprPtr> values{};
+		while (!Match(TokenType::RightBracket)) {
+			try {
+				if (!values.empty()) {
+					Expect(TokenType::Comma, "Expected ','.");
+				}
+				values.emplace_back(Expression());
+			} catch (NVSEParseError &_) {
+				hadError = true;
+				AdvanceToClosingCharOf(TokenType::LeftBracket);
+				break;
 			}
-			values.emplace_back(Expression());
 		}
 
-		return std::make_shared<Expressions::ArrayLiteralExpr>(tok, values);
+		return make_shared<Expressions::ArrayLiteralExpr>(
+			values,
+			startToken.sourceSpan + previousToken.sourceSpan
+		);
 	}
 
 	ExprPtr Parser::MapLiteral() {
-		Expect(NVSETokenType::LeftBrace, "Expected '{'.");
-		auto tok = previousToken;
+		const auto startToken = Expect(TokenType::LeftBrace);
 
-		std::vector<ExprPtr> values{};
-		while (!Match(NVSETokenType::RightBrace)) {
-			if (!values.empty()) {
-				Expect(NVSETokenType::Comma, "Expected ','.");
+		vector<ExprPtr> values{};
+		while (!Match(TokenType::RightBrace)) {
+			try {
+				if (!values.empty()) {
+					Expect(TokenType::Comma, "Expected ','.");
+				}
+				values.emplace_back(Expression());
 			}
-			values.emplace_back(Expression());
+			catch (NVSEParseError& _) {
+				hadError = true;
+				AdvanceToClosingCharOf(TokenType::LeftBrace);
+				break;
+			}
 		}
 
-		return std::make_shared<Expressions::MapLiteralExpr>(std::move(tok), std::move(values));
+		return make_shared<Expressions::MapLiteralExpr>(
+			std::move(values), 
+			startToken.sourceSpan + previousToken.sourceSpan
+		);
 	}
 
-	std::vector<std::shared_ptr<Statements::VarDecl>> Parser::ParseArgs() {
-		Expect(NVSETokenType::LeftParen, "Expected '(' after 'fn'.");
+	vector<shared_ptr<Statements::VarDecl>> Parser::ParseArgs() {
+		Expect(TokenType::LeftParen);
 
-		std::vector<std::shared_ptr<Statements::VarDecl>> args{};
-		while (!Match(NVSETokenType::RightParen)) {
-			if (!Match(NVSETokenType::IntType) && !Match(NVSETokenType::DoubleType) && !Match(NVSETokenType::RefType) &&
-				!Match(NVSETokenType::ArrayType) && !Match(NVSETokenType::StringType)) {
+		vector<shared_ptr<Statements::VarDecl>> args{};
+		while (!Match(TokenType::RightParen)) {
+			if (!Match(TokenType::IntType) && 
+				!Match(TokenType::DoubleType) && 
+				!Match(TokenType::RefType) &&
+				!Match(TokenType::ArrayType) && 
+				!Match(TokenType::StringType)
+			) {
 				Error(currentToken, "Expected type.");
 			}
-			auto type = previousToken;
-			auto ident = Expect(NVSETokenType::Identifier, "Expected identifier.");
-			auto decl = std::make_shared<Statements::VarDecl>(type, ident, nullptr);
 
-			if (!Peek(NVSETokenType::RightParen) && !Match(NVSETokenType::Comma)) {
+			auto type = previousToken;
+			auto ident = IdentExpr();
+			auto decl = make_shared<Statements::VarDecl>(type.type, ident, nullptr, type.sourceSpan + previousToken.sourceSpan);
+
+			if (!Peek(TokenType::RightParen) && !Match(TokenType::Comma)) {
 				Error(currentToken, "Expected ',' or ')'.");
 			}
 
@@ -943,13 +1289,17 @@ namespace Compiler {
 		// Bubble up lexer errors
 		try {
 			currentToken = lexer.GetNextToken(true);
+
+			const auto msg = std::format("[New Token] {}", TokenTypeStr[static_cast<int>(currentToken.type)]);
+			const auto highlighted = HighlightSourceSpan(lexer.lines, msg, currentToken.sourceSpan, ESCAPE_CYAN);
+			DbgPrint(highlighted.c_str());
 		}
 		catch (std::runtime_error& er) {
-			CompErr("[line %d] %s\n", lexer.line, er.what());
+			ErrPrintln("[line %d] %s", lexer.line, er.what());
 		}
 	}
 
-	bool Parser::Match(NVSETokenType type) {
+	bool Parser::Match(const TokenType type) {
 		if (currentToken.type == type) {
 			Advance();
 			return true;
@@ -959,11 +1309,15 @@ namespace Compiler {
 	}
 
 	bool Parser::MatchesType() {
-		return Match(NVSETokenType::IntType) || Match(NVSETokenType::DoubleType) || Match(NVSETokenType::RefType) ||
-			Match(NVSETokenType::ArrayType) || Match(NVSETokenType::StringType);
+		return 
+			Match(TokenType::IntType)    || 
+			Match(TokenType::DoubleType) || 
+			Match(TokenType::RefType)    ||
+			Match(TokenType::ArrayType)  || 
+			Match(TokenType::StringType);
 	}
 
-	bool Parser::Peek(NVSETokenType type) const {
+	bool Parser::Peek(const TokenType type) const {
 		if (currentToken.type == type) {
 			return true;
 		}
@@ -972,12 +1326,16 @@ namespace Compiler {
 	}
 
 	bool Parser::PeekType() const {
-		return Peek(NVSETokenType::IntType) || Peek(NVSETokenType::DoubleType) || Peek(NVSETokenType::RefType) ||
-			Peek(NVSETokenType::ArrayType) || Peek(NVSETokenType::StringType);
+		return 
+			Peek(TokenType::IntType)    || 
+			Peek(TokenType::DoubleType) || 
+			Peek(TokenType::RefType)    ||
+			Peek(TokenType::ArrayType)  || 
+			Peek(TokenType::StringType);
 	}
 
 	bool Parser::PeekBlockType() const {
-		if (!Peek(NVSETokenType::Identifier)) {
+		if (!Peek(TokenType::Identifier)) {
 			return false;
 		}
 
@@ -987,7 +1345,7 @@ namespace Compiler {
 		});
 	}
 
-	NVSEToken Parser::ExpectBlockType(const std::string&& message) {
+	Token Parser::ExpectBlockType(const std::string&& message) {
 		if (!PeekBlockType()) {
 			Error(currentToken, message);
 			return previousToken;
@@ -1005,23 +1363,30 @@ namespace Compiler {
 		return previousToken;
 	}
 
-	void Parser::Error(std::string message) {
+	void Parser::Error(const std::string &message) {
+		Error(currentToken, message);
+	}
+
+	void Parser::Error(Token token, std::string message) {
 		panicMode = true;
 		hadError = true;
 
-		throw NVSEParseError(std::format("Error: {}", message));
+		const auto msg = std::format("[line {}:{}] {}", token.sourceSpan.start.line, token.sourceSpan.start.column, message);
+		ErrPrintln("%s", msg.c_str());
+		throw NVSEParseError(msg);
 	}
 
-	void Parser::Error(NVSEToken token, std::string message) {
-		panicMode = true;
-		hadError = true;
-
-		throw NVSEParseError(std::format("[line {}:{}] {}", token.line, token.column, message));
-	}
-
-	NVSEToken Parser::Expect(NVSETokenType type, std::string message) {
+	Token Parser::Expect(const TokenType type, std::string message) {
 		if (!Match(type)) {
 			Error(currentToken, std::move(message));
+		}
+
+		return previousToken;
+	}
+
+	Token Parser::Expect(TokenType type) {
+		if (!Match(type)) {
+			Error(currentToken, std::format("Expected '{}'", TokenTypeStr[static_cast<uint32_t>(type)]));
 		}
 
 		return previousToken;
@@ -1030,21 +1395,21 @@ namespace Compiler {
 	void Parser::Synchronize() {
 		Advance();
 
-		while (currentToken.type != NVSETokenType::Eof) {
-			if (previousToken.type == NVSETokenType::Semicolon) {
+		while (currentToken.type != TokenType::Eof) {
+			if (previousToken.type == TokenType::Semicolon) {
 				panicMode = false;
 				return;
 			}
 
 			switch (currentToken.type) {
-			case NVSETokenType::If:
-			case NVSETokenType::While:
-			case NVSETokenType::For:
-			case NVSETokenType::Return:
-			case NVSETokenType::RightBrace:
-				panicMode = false;
-				return;
-			default:;
+				case TokenType::If:
+				case TokenType::While:
+				case TokenType::For:
+				case TokenType::Return:
+				case TokenType::RightBrace:
+					panicMode = false;
+					return;
+				default: break;
 			}
 
 			Advance();

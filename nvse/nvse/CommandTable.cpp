@@ -450,9 +450,18 @@ namespace
 
 void CommandTable::Add(CommandInfo* info, CommandReturnType retnType, UInt32 parentPluginOpcodeBase, UInt32 version)
 {
+
 	UInt32 backCommandID = m_baseID + m_commands.size(); // opcode of the next command to add
 
 	info->opcode = m_curID;
+
+	// Rename JIPs ar_Cat
+	if (info->opcode == 8896) {
+		info->longName = "JIP_ar_Cat";
+		info->shortName = "JIP_pinto_Cat";
+		_MESSAGE("Patched Ar_Cat");
+	}
+
 	g_cmdTableCache.Emplace(info->longName, info->opcode);
 	g_cmdTableCache.Emplace(info->shortName, info->opcode);
 
@@ -2271,6 +2280,7 @@ void CommandTable::AddCommandsV6()
 	// 6.4 beta 06
 	ADD_CMD_RET(GetPressedKeys, kRetnType_Array);
 
+	ADD_CMD(ar_Cat);
 }
 
 namespace PluginAPI

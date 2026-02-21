@@ -1,4 +1,5 @@
 #include "Visitor.h"
+
 #include "Parser.h"
 #include <nvse/Compiler/AST/AST.h>
 
@@ -31,13 +32,15 @@ namespace Compiler {
 	void Visitor::VisitVarDeclStmt(Statements::VarDecl* stmt) {
 		for (auto& [name, expr, _] : stmt->declarations) {
 			if (expr) {
+				this->TransformExpr(&expr);
 				expr->Accept(this);
 			}
 		}
 	}
 
-	void Visitor::VisitExprStmt(const Statements::ExpressionStatement* stmt) {
+	void Visitor::VisitExprStmt(Statements::ExpressionStatement* stmt) {
 		if (stmt->expr) {
+			this->TransformExpr(&stmt->expr);
 			stmt->expr->Accept(this);
 		}
 	}
@@ -48,10 +51,13 @@ namespace Compiler {
 		}
 
 		if (stmt->cond) {
+			this->TransformExpr(&stmt->cond);
 			stmt->cond->Accept(this);
 		}
 
+		this->TransformExpr(&stmt->post);
 		stmt->post->Accept(this);
+
 		stmt->block->Accept(this);
 	}
 
@@ -61,12 +67,17 @@ namespace Compiler {
 				decl->Accept(this);
 			}
 		}
+
+		this->TransformExpr(&stmt->rhs);
 		stmt->rhs->Accept(this);
+
 		stmt->block->Accept(this);
 	}
 
 	void Visitor::VisitIfStmt(Statements::If* stmt) {
+		this->TransformExpr(&stmt->cond);
 		stmt->cond->Accept(this);
+
 		stmt->block->Accept(this);
 
 		if (stmt->elseBlock) {
@@ -76,6 +87,7 @@ namespace Compiler {
 
 	void Visitor::VisitReturnStmt(Statements::Return* stmt) {
 		if (stmt->expr) {
+			this->TransformExpr(&stmt->expr);
 			stmt->expr->Accept(this);
 		}
 	}
@@ -85,7 +97,9 @@ namespace Compiler {
 	void Visitor::VisitBreakStmt(Statements::Break* stmt) {}
 
 	void Visitor::VisitWhileStmt(Statements::While* stmt) {
+		this->TransformExpr(&stmt->cond);
 		stmt->cond->Accept(this);
+
 		stmt->block->Accept(this);
 	}
 
@@ -102,56 +116,99 @@ namespace Compiler {
 		}
 	}
 
+	void Visitor::VisitMatchStmt(Statements::Match* stmt) {
+		this->TransformExpr(&stmt->expression);
+		stmt->expression->Accept(this);
+
+		for (auto& [binding, expr, block] : stmt->arms) {
+			if (binding) {
+				binding->Accept(this);
+			}
+
+			this->TransformExpr(&expr);
+			expr->Accept(this);
+
+			block->Accept(this);
+		}
+
+		if (stmt->defaultCase) {
+			stmt->defaultCase->Accept(this);
+		}
+	}
+
 	void Visitor::VisitAssignmentExpr(Expressions::AssignmentExpr* expr) {
 		expr->left->Accept(this);
+
+		this->TransformExpr(&expr->expr);
 		expr->expr->Accept(this);
 	}
 
 	void Visitor::VisitTernaryExpr(Expressions::TernaryExpr* expr) {
+		this->TransformExpr(&expr->cond);
 		expr->cond->Accept(this);
+
+		this->TransformExpr(&expr->left);
 		expr->left->Accept(this);
+
+		this->TransformExpr(&expr->right);
 		expr->right->Accept(this);
 	}
 
 	void Visitor::VisitInExpr(Expressions::InExpr* expr) {
+		this->TransformExpr(&expr->lhs);
 		expr->lhs->Accept(this);
 
 		if (!expr->values.empty()) {
-			for (const auto& val : expr->values) {
+			for (auto& val : expr->values) {
+				this->TransformExpr(&val);
 				val->Accept(this);
 			}
 		}
 
 		// Any other expression, compiles to ar_find
 		else {
+			this->TransformExpr(&expr->expression);
 			expr->expression->Accept(this);
 		}
 	}
 
 	void Visitor::VisitBinaryExpr(Expressions::BinaryExpr* expr) {
+		this->TransformExpr(&expr->left);
 		expr->left->Accept(this);
+
+		this->TransformExpr(&expr->right);
 		expr->right->Accept(this);
 	}
 
 	void Visitor::VisitUnaryExpr(Expressions::UnaryExpr* expr) {
+		this->TransformExpr(&expr->expr);
 		expr->expr->Accept(this);
 	}
 
 	void Visitor::VisitSubscriptExpr(Expressions::SubscriptExpr* expr) {
+		this->TransformExpr(&expr->left);
 		expr->left->Accept(this);
+
+		this->TransformExpr(&expr->index);
 		expr->index->Accept(this);
 	}
 
 	void Visitor::VisitCallExpr(Expressions::CallExpr* expr) {
 		if (expr->left) {
+			this->TransformExpr(&expr->left);
 			expr->left->Accept(this);
 		}
-		for (const auto& arg : expr->args) {
+
+		expr->identifier->Accept(this);
+
+		for (auto& arg : expr->args) {
+			this->TransformExpr(&arg);
 			arg->Accept(this);
 		}
 	}
 
 	void Visitor::VisitGetExpr(Expressions::GetExpr* expr) {
+		this->TransformExpr(&expr->left);
 		expr->left->Accept(this);
 	}
 
@@ -160,13 +217,15 @@ namespace Compiler {
 	void Visitor::VisitNumberExpr(Expressions::NumberExpr* expr) {}
 
 	void Visitor::VisitMapLiteralExpr(Expressions::MapLiteralExpr* expr) {
-		for (const auto& val : expr->values) {
+		for (auto& val : expr->values) {
+			this->TransformExpr(&val);
 			val->Accept(this);
 		}
 	}
 
 	void Visitor::VisitArrayLiteralExpr(Expressions::ArrayLiteralExpr* expr) {
-		for (const auto& val : expr->values) {
+		for (auto& val : expr->values) {
+			this->TransformExpr(&val);
 			val->Accept(this);
 		}
 	}
@@ -176,6 +235,7 @@ namespace Compiler {
 	void Visitor::VisitIdentExpr(Expressions::IdentExpr* expr) {}
 
 	void Visitor::VisitGroupingExpr(Expressions::GroupingExpr* expr) {
+		this->TransformExpr(&expr->expr);
 		expr->expr->Accept(this);
 	}
 
@@ -186,4 +246,6 @@ namespace Compiler {
 
 		expr->body->Accept(this);
 	}
+
+	void Visitor::TransformExpr(std::shared_ptr<Expr>* ppExpr) {}
 }

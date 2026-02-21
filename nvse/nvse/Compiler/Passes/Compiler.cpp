@@ -1,16 +1,18 @@
-#include "Compilation.h"
+#include "Compiler.h"
 
-#include "../Commands_Array.h"
-#include "../Commands_MiscRef.h"
-#include "../Commands_Scripting.h"
-#include "../Hooks_Script.h"
-#include "../PluginAPI.h"
+#include <assert.h>
+
+#include "nvse/Commands_Array.h"
+#include "nvse/Commands_MiscRef.h"
+#include "nvse/Commands_Scripting.h"
+#include "nvse/Hooks_Script.h"
+#include "nvse/PluginAPI.h"
 
 #include <nvse/Compiler/Parser/Parser.h>
 
-#include "NVSECompilerUtils.h"
+#include "nvse/Compiler/Utils.h"
 
-namespace Compiler {
+namespace Compiler::Passes {
     enum OPCodes {
         OP_LET = 0x1539,
         OP_EVAL = 0x153A,
@@ -34,82 +36,65 @@ namespace Compiler {
         OP_VERSION = 0x1676,
     };
 
-    void Compilation::PrintScriptInfo() {
-
+    void Compiler::PrintScriptInfo() {
         // Debug print local info
-        CompDbg("\n[Locals]\n");
+        DbgPrintln("[Locals]");
+        DbgIndent();
         for (int i = 0; i < engineScript->varList.Count(); i++) {
             auto item = engineScript->varList.GetNthItem(i);
-            CompDbg("%d: %s %s\n", item->idx, item->name.CStr(), usedVars.contains(item->name.CStr()) ? "" : "(unused)");
+            DbgPrintln("%d: %s %s", item->idx, item->name.CStr(), usedVars.contains(item->name.CStr()) ? "" : "(unused)");
         }
-
-        CompDbg("\n");
+        DbgOutdent();
 
         // Refs
-        CompDbg("[Refs]\n");
+        DbgPrintln("[Refs]");
+        DbgIndent();
         for (int i = 0; i < engineScript->refList.Count(); i++) {
             const auto ref = engineScript->refList.GetNthItem(i);
             if (ref->varIdx) {
-                CompDbg("%d: (Var %d)\n", i, ref->varIdx);
+                DbgPrintln("%d: (Var %d)", i, ref->varIdx);
             }
             else {
-                CompDbg("%d: %s\n", i, ref->form->GetEditorID());
+                DbgPrintln("%d: %s", i, ref->form->GetEditorID());
             }
         }
-
-        CompDbg("\n");
+        DbgOutdent();
 
         // Script data  
-        CompDbg("[Data]\n");
+        DbgPrintln("[Data]");
+        DbgIndent();
         for (int i = 0; i < engineScript->info.dataLength; i++) {
-            CompDbg("%02X ", engineScript->data[i]);
+            DbgPrint("%02X ", engineScript->data[i]);
         }
+        DbgPrint("\n");
+        DbgOutdent();
 
-        CompInfo("\n\n");
-        CompInfo("[Requirements]\n");
+        InfoPrintln("[Requirements]");
+        DbgIndent();
         for (const auto& [plugin, version] : ast.m_mpPluginRequirements) {
             if (!_stricmp(plugin.c_str(), "nvse")) {
-                CompInfo("%s [%d.%d.%d]\n", plugin.c_str(), version >> 24 & 0xFF, version >> 16 & 0xFF, version >> 4 & 0xFF);
+                InfoPrintln("%s [%d.%d.%d]", plugin.c_str(), version >> 24 & 0xFF, version >> 16 & 0xFF, version >> 4 & 0xFF);
             }
             else {
-                CompInfo("%s [%d]\n", plugin.c_str(), version);
+                InfoPrintln("%s [%d]", plugin.c_str(), version);
             }
         }
+        DbgOutdent();
 
-        CompDbg("\n");
-        CompDbg("\nNum compiled bytes: %d\n", engineScript->info.dataLength);
+        DbgPrintln("\nNum compiled bytes: %d", engineScript->info.dataLength);
     }
 
-    bool Compilation::Compile() {
-        CompDbg("\n==== COMPILER ====\n\n");
+    void Compiler::Visit(AST* nvScript) {
+        DbgPrintln("[Compilation]");
+        DbgIndent();
 
         insideNvseExpr.push(false);
         loopIncrements.push(nullptr);
         statementCounter.push(0);
         scriptStart.push(0);
 
-        ast.Accept(this);
-
-        if (!partial) {
-            engineScript->SetEditorID(scriptName.c_str());
-        }
-
-        engineScript->info.compiled = true;
-        engineScript->info.dataLength = data.size();
-        engineScript->info.numRefs = engineScript->refList.Count();
-        engineScript->info.varCount = engineScript->varList.Count();
-        engineScript->info.unusedVariableCount = engineScript->info.varCount - usedVars.size();
-        engineScript->data = static_cast<uint8_t*>(FormHeap_Allocate(data.size()));
-        memcpy(engineScript->data, data.data(), data.size());
-
-        PrintScriptInfo();
-
-        return true;
-    }
-
-    void Compilation::Visit(AST* nvScript) {
         // Compile the script name
-        scriptName = nvScript->name.lexeme;
+        scriptName = nvScript->name;
 
         // Dont allow naming script the same as another form, unless that form is the script itself
         const auto comp = strcmp(scriptName.c_str(), originalScriptName);
@@ -140,10 +125,26 @@ namespace Compiler {
         for (auto& block : nvScript->blocks) {
             block->Accept(this);
         }
+
+        if (!partial) {
+            engineScript->SetEditorID(scriptName.c_str());
+        }
+
+        engineScript->info.compiled = true;
+        engineScript->info.dataLength = data.size();
+        engineScript->info.numRefs = engineScript->refList.Count();
+        engineScript->info.varCount = engineScript->varList.Count();
+        engineScript->info.unusedVariableCount = engineScript->info.varCount - usedVars.size();
+        engineScript->data = static_cast<uint8_t*>(FormHeap_Allocate(data.size()));
+        memcpy(engineScript->data, data.data(), data.size());
+
+        PrintScriptInfo();
+
+        DbgOutdent();
     }
 
-    void Compilation::VisitBeginStmt(Statements::Begin* stmt) {
-        auto name = stmt->name.lexeme;
+    void Compiler::VisitBeginStmt(Statements::Begin* stmt) {
+        auto name = stmt->name;
 
         // Shouldn't be null
         const CommandInfo* beginInfo = stmt->beginInfo;
@@ -199,7 +200,7 @@ namespace Compiler {
         SetU32(blockPatch, data.size() - blockStart);
     }
 
-    void Compilation::VisitFnStmt(Statements::UDFDecl* stmt) {
+    void Compiler::VisitFnStmt(Statements::UDFDecl* stmt) {
         // OP_BEGIN
         AddU16(static_cast<uint16_t>(ScriptParsing::ScriptStatementCode::Begin));
 
@@ -244,41 +245,15 @@ namespace Compiler {
         SetU32(scriptLenPatch, data.size() - scriptLenStart);
     }
 
-    void Compilation::VisitVarDeclStmt(Statements::VarDecl* stmt) {
-        const uint8_t varType = GetScriptTypeFromToken(stmt->type);
+    void Compiler::VisitVarDeclStmt(Statements::VarDecl* stmt) {
+        const uint8_t varType = GetScriptTypeFromTokenType(stmt->type);
 
         // Since we are doing multiple declarations at once, manually handle count here
         statementCounter.top()--;
 
         for (const auto& [token, value, info] : stmt->declarations) {
-            auto& name = info->remapped_name;
-
-            // Compile lambdas differently
-            // Does not affect params as they cannot have value specified
-            if (value->IsType<Expressions::LambdaExpr>()) {
-                // To do a similar thing on access
-                lambdaVars.insert(name);
-
-                StartCall(OP_SET_MOD_LOCAL_DATA);
-                StartManualArg();
-                AddString(std::format("__temp_{}_lambda_{}", scriptName, info->index));
-                FinishManualArg();
-                AddCallArg(value);
-                FinishCall();
-                continue;
-            }
-
-            for (int i = 0; i < statementCounter.size(); i++) {
-                CompDbg("  ");
-            }
-
-            CompDbg("Defined global variable %s\n", name.c_str());
-
-            // if (var->isGlobal) {
-            //     AddVar(name, varType);
-            // }
-
-            if (!value) {
+            // Empty var declarations don't need to be compiled
+        	if (!value) {
                 continue;
             }
 
@@ -291,7 +266,7 @@ namespace Compiler {
             AddU8('V');
             AddU8(varType);
             AddU16(0);
-            AddU16(info->index);
+            AddU16(static_cast<uint16_t>(info->index));
 
             // Build expression
             value->Accept(this);
@@ -304,7 +279,7 @@ namespace Compiler {
         }
     }
 
-    void Compilation::VisitExprStmt(const Statements::ExpressionStatement* stmt) {
+    void Compiler::VisitExprStmt(Statements::ExpressionStatement* stmt) {
         // These do not need to be wrapped in op_eval
         if (stmt->expr->IsType<Expressions::CallExpr>() || stmt->expr->IsType<Expressions::AssignmentExpr>()) {
             stmt->expr->Accept(this);
@@ -315,84 +290,24 @@ namespace Compiler {
             FinishCall();
         }
         else {
-            // Decrement counter as this is a NOP
-            statementCounter.top()--;
+            throw std::runtime_error("Compiler::VisitExprStmt was called on an empty expression statement");
         }
     }
 
-    void Compilation::VisitForStmt(Statements::For* stmt) {
-        if (stmt->init) {
-            stmt->init->Accept(this);
-            statementCounter.top()++;
-        }
-
-        // Store loop increment to be generated before OP_LOOP/OP_CONTINUE
-        if (stmt->post) {
-            loopIncrements.push(std::make_shared<Statements::ExpressionStatement>(stmt->post));
-        }
-        else {
-            loopIncrements.push(nullptr);
-        }
-
-        // This is pretty much a copy of the while loop code,
-        // but it does something slightly different with the loopIncrements stack
-
-        // OP_WHILE
-        AddU16(OP_WHILE);
-
-        // Placeholder OP_LEN
-        auto exprPatch = AddU16(0x0);
-        auto exprStart = data.size();
-
-        auto jmpPatch = AddU32(0x0);
-
-        // 1 param
-        AddU8(0x1);
-
-        // Compile / patch condition
-        const auto condStart = data.size();
-        const auto condPatch = AddU16(0x0);
-        insideNvseExpr.push(true);
-        stmt->cond->Accept(this);
-        insideNvseExpr.pop();
-        SetU16(condPatch, data.size() - condStart);
-
-        // Patch OP_LEN
-        SetU16(exprPatch, data.size() - exprStart);
-
-        // Compile block
-        CompileBlock(stmt->block, true);
-
-        // If we have a loop increment (for loop)
-        // Emit that before OP_LOOP
-        if (loopIncrements.top()) {
-            loopIncrements.top()->Accept(this);
-            statementCounter.top()++;
-        }
-
-        // OP_LOOP
-        AddU16(OP_LOOP);
-        AddU16(0x0);
-
-        // OP_LOOP is an extra statement
-        statementCounter.top()++;
-
-        // Patch jmp
-        SetU32(jmpPatch, data.size() - scriptStart.top());
-
-        loopIncrements.pop();
+    void Compiler::VisitForStmt(Statements::For* stmt) {
+        throw std::runtime_error("Compiler::VisitForStmt was called");
     }
 
-    void Compilation::VisitForEachStmt(Statements::ForEach* stmt) {
+    void Compiler::VisitForEachStmt(Statements::ForEach* stmt) {
         if (stmt->decompose) {
             // Try to resolve second var if there is one
-            std::shared_ptr<Compiler::VarInfo> var1 = nullptr;
+            std::shared_ptr<VarInfo> var1 = nullptr;
             if (stmt->declarations[0]) {
                 var1 = stmt->declarations[0]->declarations[0].info;
             }
 
             // Try to resolve second var if there is one
-            std::shared_ptr<Compiler::VarInfo> var2 = nullptr;
+            std::shared_ptr<VarInfo> var2 = nullptr;
             if (stmt->declarations.size() == 2 && stmt->declarations[1]) {
                 var2 = stmt->declarations[1]->declarations[0].info;
             }
@@ -541,7 +456,7 @@ namespace Compiler {
         }
     }
 
-    void Compilation::VisitIfStmt(Statements::If* stmt) {
+    void Compiler::VisitIfStmt(Statements::If* stmt) {
         // OP_IF
         AddU16(static_cast<uint16_t>(ScriptParsing::ScriptStatementCode::If));
 
@@ -595,7 +510,7 @@ namespace Compiler {
         AddU16(0x0);
     }
 
-    void Compilation::VisitReturnStmt(Statements::Return* stmt) {
+    void Compiler::VisitReturnStmt(Statements::Return* stmt) {
         // Compile SetFunctionValue if we have a return value
         if (stmt->expr) {
             StartCall(OP_SET_FUNCTION_VALUE);
@@ -607,7 +522,7 @@ namespace Compiler {
         AddU32(static_cast<uint32_t>(ScriptParsing::ScriptStatementCode::Return));
     }
 
-    void Compilation::VisitContinueStmt(Statements::Continue* stmt) {
+    void Compiler::VisitContinueStmt(Statements::Continue* stmt) {
         if (loopIncrements.top()) {
             loopIncrements.top()->Accept(this);
             statementCounter.top()++;
@@ -616,11 +531,11 @@ namespace Compiler {
         AddU32(OP_CONTINUE);
     }
 
-    void Compilation::VisitBreakStmt(Statements::Break* stmt) {
+    void Compiler::VisitBreakStmt(Statements::Break* stmt) {
         AddU32(OP_BREAK);
     }
 
-    void Compilation::VisitWhileStmt(Statements::While* stmt) {
+    void Compiler::VisitWhileStmt(Statements::While* stmt) {
         // OP_WHILE
         AddU16(OP_WHILE);
 
@@ -658,14 +573,14 @@ namespace Compiler {
         SetU32(jmpPatch, data.size() - scriptStart.top());
     }
 
-    void Compilation::VisitBlockStmt(Statements::Block* stmt) {
+    void Compiler::VisitBlockStmt(Statements::Block* stmt) {
         for (auto& statement : stmt->statements) {
             statement->Accept(this);
             statementCounter.top()++;
         }
     }
 
-    void Compilation::VisitAssignmentExpr(Expressions::AssignmentExpr* expr) {
+    void Compiler::VisitAssignmentExpr(Expressions::AssignmentExpr* expr) {
         // Assignment as standalone statement
         if (!insideNvseExpr.top()) {
             StartCall(OP_LET);
@@ -688,7 +603,7 @@ namespace Compiler {
         }
     }
 
-    void Compilation::VisitTernaryExpr(Expressions::TernaryExpr* expr) {
+    void Compiler::VisitTernaryExpr(Expressions::TernaryExpr* expr) {
         StartCall(OP_TERNARY);
         AddCallArg(expr->cond);
         AddCallArg(expr->left);
@@ -696,7 +611,7 @@ namespace Compiler {
         FinishCall();
     }
 
-    void Compilation::VisitInExpr(Expressions::InExpr* expr) {
+    void Compiler::VisitInExpr(Expressions::InExpr* expr) {
         // Value list provided
         if (!expr->values.empty()) {
             StartCall(OP_MATCHES_ANY);
@@ -715,38 +630,38 @@ namespace Compiler {
         }
 
         if (expr->isNot) {
-            AddU8(tokenOpToNVSEOpType[NVSETokenType::Bang]);
+            AddU8(tokenOpToNVSEOpType[TokenType::Bang]);
         }
     }
 
-    void Compilation::VisitBinaryExpr(Expressions::BinaryExpr* expr) {
+    void Compiler::VisitBinaryExpr(Expressions::BinaryExpr* expr) {
         expr->left->Accept(this);
         expr->right->Accept(this);
         AddU8(tokenOpToNVSEOpType[expr->op.type]);
     }
 
-    void Compilation::VisitUnaryExpr(Expressions::UnaryExpr* expr) {
+    void Compiler::VisitUnaryExpr(Expressions::UnaryExpr* expr) {
         if (expr->postfix) {
             // Slight hack to get postfix operators working
             expr->expr->Accept(this);
             expr->expr->Accept(this);
             AddU8('B');
             AddU8(1);
-            if (expr->op.type == NVSETokenType::PlusPlus) {
-                AddU8(tokenOpToNVSEOpType[NVSETokenType::Plus]);
+            if (expr->op.type == TokenType::PlusPlus) {
+                AddU8(tokenOpToNVSEOpType[TokenType::Plus]);
             }
             else {
-                AddU8(tokenOpToNVSEOpType[NVSETokenType::Minus]);
+                AddU8(tokenOpToNVSEOpType[TokenType::Minus]);
             }
-            AddU8(tokenOpToNVSEOpType[NVSETokenType::Eq]);
+            AddU8(tokenOpToNVSEOpType[TokenType::Eq]);
 
             AddU8('B');
             AddU8(1);
-            if (expr->op.type == NVSETokenType::PlusPlus) {
-                AddU8(tokenOpToNVSEOpType[NVSETokenType::Minus]);
+            if (expr->op.type == TokenType::PlusPlus) {
+                AddU8(tokenOpToNVSEOpType[TokenType::Minus]);
             }
             else {
-                AddU8(tokenOpToNVSEOpType[NVSETokenType::Plus]);
+                AddU8(tokenOpToNVSEOpType[TokenType::Plus]);
             }
         }
         else {
@@ -755,13 +670,13 @@ namespace Compiler {
         }
     }
 
-    void Compilation::VisitSubscriptExpr(Expressions::SubscriptExpr* expr) {
+    void Compiler::VisitSubscriptExpr(Expressions::SubscriptExpr* expr) {
         expr->left->Accept(this);
         expr->index->Accept(this);
-        AddU8(tokenOpToNVSEOpType[NVSETokenType::LeftBracket]);
+        AddU8(tokenOpToNVSEOpType[TokenType::LeftBracket]);
     }
 
-    void Compilation::VisitCallExpr(Expressions::CallExpr* expr) {
+    void Compiler::VisitCallExpr(Expressions::CallExpr* expr) {
         if (!expr->cmdInfo) {
             throw std::runtime_error("expr->cmdInfo was null. Please report this as a bug.");
         }
@@ -832,7 +747,7 @@ namespace Compiler {
         FinishCall();
     }
 
-    void Compilation::VisitShowMessageStmt(Statements::ShowMessage* stmt) {
+    void Compiler::VisitShowMessageStmt(Statements::ShowMessage* stmt) {
         static uint16_t opcode = g_scriptCommands.GetByName("ShowMessage")->opcode;
 
         AddU16(opcode);
@@ -842,7 +757,7 @@ namespace Compiler {
         AddU16(0x1);
         AddU8('r');
 
-        const auto messageRef = ResolveObjReference(stmt->message->token.lexeme);
+        const auto messageRef = ResolveObjReference(stmt->message->str);
         AddU16(messageRef);
 
         AddU16(stmt->args.size());
@@ -860,7 +775,7 @@ namespace Compiler {
         SetU16(callLengthPatch, data.size() - callLengthStart);
     }
 
-    void Compilation::VisitGetExpr(Expressions::GetExpr* expr) {
+    void Compiler::VisitGetExpr(Expressions::GetExpr* expr) {
         const auto refIdx = ResolveObjReference(expr->reference_name);
         if (!refIdx) {
             throw std::runtime_error(std::format("Unable to resolve reference '{}'.", expr->reference_name));
@@ -873,12 +788,12 @@ namespace Compiler {
         AddU16(expr->var_info->idx);
     }
 
-    void Compilation::VisitBoolExpr(Expressions::BoolExpr* expr) {
+    void Compiler::VisitBoolExpr(Expressions::BoolExpr* expr) {
         AddU8('B');
         AddU8(expr->value);
     }
 
-    void Compilation::VisitNumberExpr(Expressions::NumberExpr* expr) {
+    void Compiler::VisitNumberExpr(Expressions::NumberExpr* expr) {
         if (expr->is_fp) {
             AddF64(expr->value);
         }
@@ -906,11 +821,11 @@ namespace Compiler {
         }
     }
 
-    void Compilation::VisitStringExpr(Expressions::StringExpr* expr) {
-        AddString(std::get<std::string>(expr->token.value));
+    void Compiler::VisitStringExpr(Expressions::StringExpr* expr) {
+        AddString(expr->value);
     }
 
-    void Compilation::VisitIdentExpr(Expressions::IdentExpr* expr) {
+	void Compiler::VisitIdentExpr(Expressions::IdentExpr* expr) {
         // Resolve in scope
         const auto var = expr->varInfo;
         std::string name;
@@ -918,31 +833,13 @@ namespace Compiler {
             name = var->remapped_name;
         }
         else {
-            name = expr->token.lexeme;
+            name = expr->str;
         }
         usedVars.emplace(name);
 
-        // If this is a lambda var, inline it as a call to GetModLocalData
-        if (lambdaVars.contains(name)) {
-            if (!var) {
-                throw std::runtime_error("Unexpected compiler error. Lambda var info was null.");
-            }
-
-            StartCall(OP_GET_MOD_LOCAL_DATA);
-            StartManualArg();
-            AddString(std::format("__temp_{}_lambda_{}", scriptName, var->index));
-            FinishManualArg();
-            FinishCall();
-            return;
-        }
-
         // Local variable
         if (var) {
-            for (int i = 0; i < statementCounter.size(); i++) {
-                CompDbg("  ");
-            }
-
-            CompDbg("Read from global variable %s\n", name.c_str());
+            DbgPrintln("Read from global variable %s", name.c_str());
             AddU8('V');
             AddU8(var->type);
             AddU16(0);
@@ -964,7 +861,7 @@ namespace Compiler {
         }
     }
 
-    void Compilation::VisitMapLiteralExpr(Expressions::MapLiteralExpr* expr) {
+    void Compiler::VisitMapLiteralExpr(Expressions::MapLiteralExpr* expr) {
         StartCall(OP_AR_MAP);
         for (const auto& val : expr->values) {
             AddCallArg(val);
@@ -972,7 +869,7 @@ namespace Compiler {
         FinishCall();
     }
 
-    void Compilation::VisitArrayLiteralExpr(Expressions::ArrayLiteralExpr* expr) {
+    void Compiler::VisitArrayLiteralExpr(Expressions::ArrayLiteralExpr* expr) {
         StartCall(OP_AR_LIST);
         for (const auto& val : expr->values) {
             AddCallArg(val);
@@ -980,11 +877,11 @@ namespace Compiler {
         FinishCall();
     }
 
-    void Compilation::VisitGroupingExpr(Expressions::GroupingExpr* expr) {
+    void Compiler::VisitGroupingExpr(Expressions::GroupingExpr* expr) {
         expr->expr->Accept(this);
     }
 
-    void Compilation::VisitLambdaExpr(Expressions::LambdaExpr* expr) {
+    void Compiler::VisitLambdaExpr(Expressions::LambdaExpr* expr) {
         // PARAM_LAMBDA
         AddU8('F');
 
@@ -1051,11 +948,10 @@ namespace Compiler {
         SetU32(argSizePatch, data.size() - argStart);
     }
 
-    uint32_t Compilation::CompileBlock(StmtPtr stmt, bool incrementCurrent) {
-        for (int i = 0; i < statementCounter.size(); i++) {
-            CompDbg("  ");
-        }
-        CompDbg("Entering block\n");
+    uint32_t Compiler::CompileBlock(StmtPtr stmt, bool incrementCurrent) {
+        DbgIndent();
+        DbgPrintln("Entering block");
+        DbgIndent();
 
         // Get sub-block statement count
         statementCounter.push(0);
@@ -1069,15 +965,14 @@ namespace Compiler {
             statementCounter.top() += newStatementCount;
         }
 
-        for (int i = 0; i < statementCounter.size(); i++) {
-            CompDbg("  ");
-        }
-        CompDbg("Exiting Block. Size %d\n", newStatementCount);
+        DbgOutdent();
+        DbgPrintln("Exiting Block. Size %d", newStatementCount);
+        DbgOutdent();
 
         return newStatementCount;
     }
 
-    void Compilation::StartCall(CommandInfo* cmd, ExprPtr stackRef) {
+    void Compiler::StartCall(CommandInfo* cmd, ExprPtr stackRef) {
         // Handle stack refs
         if (stackRef) {
             stackRef->Accept(this);
@@ -1101,7 +996,7 @@ namespace Compiler {
         buf.startPos = data.size() + (insideNvseExpr.top() ? 0 : 2);
         buf.startPatch = AddU16(0x0);
 
-        if (isDefaultParse(cmd->parse)) {
+        if (IsDefaultParse(cmd->parse)) {
             buf.argPos = AddU16(0x0);
         }
         else {
@@ -1111,13 +1006,13 @@ namespace Compiler {
         callBuffers.push(buf);
     }
 
-    void Compilation::FinishCall() {
+    void Compiler::FinishCall() {
         auto buf = callBuffers.top();
         callBuffers.pop();
 
         SetU16(buf.startPatch, data.size() - buf.startPos);
 
-        if (isDefaultParse(*buf.parse)) {
+        if (IsDefaultParse(*buf.parse)) {
             SetU16(buf.argPos, buf.numArgs);
         }
         else {
@@ -1126,22 +1021,22 @@ namespace Compiler {
 
         // Handle stack refs
         if (buf.stackRef) {
-            AddU8(tokenOpToNVSEOpType[NVSETokenType::Dot]);
+            AddU8(tokenOpToNVSEOpType[TokenType::Dot]);
         }
     }
 
-    void Compilation::StartCall(uint16_t opcode, ExprPtr stackRef) {
+    void Compiler::StartCall(uint16_t opcode, ExprPtr stackRef) {
         StartCall(g_scriptCommands.GetByOpcode(opcode), stackRef);
     }
 
-    void Compilation::PerformCall(uint16_t opcode) {
+    void Compiler::PerformCall(uint16_t opcode) {
         StartCall(opcode);
         FinishCall();
     }
 
-    void Compilation::AddCallArg(ExprPtr arg) {
+    void Compiler::AddCallArg(ExprPtr arg) {
         // Make NVSE aware
-        if (isDefaultParse(*callBuffers.top().parse)) {
+        if (IsDefaultParse(*callBuffers.top().parse)) {
             AddU16(0xFFFF);
         }
 
@@ -1156,9 +1051,9 @@ namespace Compiler {
         callBuffers.top().numArgs++;
     }
 
-    void Compilation::StartManualArg() {
+    void Compiler::StartManualArg() {
         // Make NVSE aware
-        if (isDefaultParse(*callBuffers.top().parse)) {
+        if (IsDefaultParse(*callBuffers.top().parse)) {
             AddU16(0xFFFF);
         }
 
@@ -1167,7 +1062,7 @@ namespace Compiler {
         insideNvseExpr.push(true);
     }
 
-    void Compilation::FinishManualArg() {
+    void Compiler::FinishManualArg() {
         insideNvseExpr.pop();
         SetU16(callBuffers.top().argPatch, data.size() - callBuffers.top().argStart);
         callBuffers.top().numArgs++;

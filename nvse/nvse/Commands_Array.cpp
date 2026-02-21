@@ -1293,3 +1293,31 @@ bool Cmd_ar_GetNth_Execute(COMMAND_ARGS) {
 
 	return true;
 }
+
+// To replace jip's broken existence
+bool Cmd_ar_Cat_Execute(COMMAND_ARGS) {
+	*result = 0;
+	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
+	if (eval.ExtractArgs() && eval.NumArgs() >= 2)
+	{
+		const auto arr1 = eval.Arg(0)->GetArrayVar();
+		const auto arr2 = eval.Arg(1)->GetArrayVar();
+		const auto bOverwrite = eval.NumArgs() >= 3 && eval.Arg(2)->GetBool();
+
+		if (arr1->GetContainerType() != arr2->GetContainerType()) {
+			return true;
+		}
+
+		const bool isArray = arr1->GetContainerType() == kContainer_Array;
+		for (auto iter = arr2->Begin(); iter != arr2->end(); ++iter) {
+			if (isArray) {
+				arr1->Insert(arr1->Size(), *iter);
+			}
+			else if (!arr1->HasKey(iter.first()) || bOverwrite) {
+				arr1->SetElement(iter.first(), iter.second());
+			}
+		}
+	}
+
+	return true;
+}

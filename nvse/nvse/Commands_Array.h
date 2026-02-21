@@ -254,3 +254,12 @@ static ParamInfo kNVSEParams_OneArray_OneNumber[] =
 };
 
 DEFINE_COMMAND_EXP(ar_GetNth, "Get the nth element of an array, if it exists", 0, kNVSEParams_OneArray_OneNumber);
+
+static ParamInfo kNVSEParams_TwoArrays_OneOptionalInt[] =
+{
+	{ "array", kNVSEParamType_Array, 0 },
+	{ "array", kNVSEParamType_Array, 0 },
+	{ "int", kNVSEParamType_Number, 1 }
+};
+
+DEFINE_CMD_ALT_EXP(ar_Cat, pinto_Cat, "Concatenate two arrays", false, kNVSEParams_TwoArrays_OneOptionalInt);

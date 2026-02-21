@@ -4,29 +4,30 @@
 #include "Lexer/Lexer.h"
 #include "../ScriptTokens.h"
 #include "../ScriptUtils.h"
+#include "Passes/Passes.h"
 
 namespace Compiler {
 	// Define tokens
-	extern std::unordered_map<NVSETokenType, OperatorType> tokenOpToNVSEOpType;
+	extern std::unordered_map<TokenType, OperatorType> tokenOpToNVSEOpType;
 
-	inline Script::VariableType GetScriptTypeFromTokenType(NVSETokenType t) {
+	inline Script::VariableType GetScriptTypeFromTokenType(TokenType t) {
 		switch (t) {
-		case NVSETokenType::DoubleType:
+		case TokenType::DoubleType:
 			return Script::eVarType_Float;
-		case NVSETokenType::IntType:
+		case TokenType::IntType:
 			return Script::eVarType_Integer;
-		case NVSETokenType::RefType:
+		case TokenType::RefType:
 			return Script::eVarType_Ref;
-		case NVSETokenType::ArrayType:
+		case TokenType::ArrayType:
 			return Script::eVarType_Array;
-		case NVSETokenType::StringType:
+		case TokenType::StringType:
 			return Script::eVarType_String;
 		default:
 			return Script::eVarType_Invalid;
 		}
 	}
 
-	inline Script::VariableType GetScriptTypeFromToken(NVSEToken t) {
+	inline Script::VariableType GetScriptTypeFromToken(Token t) {
 		return GetScriptTypeFromTokenType(t.type);
 	}
 
@@ -49,17 +50,17 @@ namespace Compiler {
 		return type;
 	}
 
-	inline Token_Type NVSETokenType_To_TokenType(NVSETokenType type) {
+	inline Token_Type NVSETokenType_To_TokenType(TokenType type) {
 		switch (type) {
-		case NVSETokenType::StringType:
+		case TokenType::StringType:
 			return kTokenType_StringVar;
-		case NVSETokenType::ArrayType:
+		case TokenType::ArrayType:
 			return kTokenType_ArrayVar;
-		case NVSETokenType::RefType:
+		case TokenType::RefType:
 			return kTokenType_RefVar;
 			// Short
-		case NVSETokenType::DoubleType:
-		case NVSETokenType::IntType:
+		case TokenType::DoubleType:
+		case TokenType::IntType:
 			return kTokenType_NumericVar;
 		default:
 			return kTokenType_Ambiguous;
@@ -144,19 +145,39 @@ namespace Compiler {
 			return "Form/Ref";
 		case kNVSEParamType_Array:
 			return "Array";
-		case kTokenType_String:
+		case kNVSEParamType_String:
 			return "String";
+		default:
+			return "<Not implemented>";
 		}
-
-		return "<Not implemented>";
 	}
 
-	void CompDbg(const char* fmt, ...);
-	void CompInfo(const char* fmt, ...);
-	void CompErr(const char* fmt, ...);
+	void ResetIndent();
+	void DbgIndent();
+	void DbgOutdent();
 
-	bool isDefaultParse(Cmd_Parse parse);
+	void DbgPrintln(const char* fmt, ...);
+	void InfoPrintln(const char* fmt, ...);
+	void ErrPrintln(const char* fmt, ...);
 
-	void resolveVanillaEnum(const ParamInfo* info, const char* str, uint32_t* val, uint32_t* len);
-	bool doesFormMatchParamType(TESForm* form, ParamType type);
+	void DbgPrint(const char* fmt, ...);
+	void InfoPrint(const char* fmt, ...);
+	void ErrPrint(const char* fmt, ...);
+
+	void ReplaceChar(std::string& str, char charToReplace, const std::string& replacementString);;
+
+	constexpr auto ESCAPE_RED = "\x1B[31m";
+	constexpr auto ESCAPE_CYAN = "\x1B[36m";
+	constexpr auto ESCAPE_UNDERLINE = "\x1B[4m";
+	constexpr auto ESCAPE_RESET = "\x1B[0m";
+
+	std::string HighlightSourceSpan(const std::vector<std::string>& lines, const std::string& msg, const SourceSpan& srcInfo, const char* colorEscape);
+
+	bool IsDefaultParse(Cmd_Parse parse);
+
+	void ResolveVanillaEum(const ParamInfo* info, const char* str, uint32_t* val, uint32_t* len);
+	bool DoesFormTypeMatchParamType(TESForm* form, ParamType type);
+
+	bool CompileNVSEScript(const std::string& script, Script* pScript, bool bPartialScript);
+	std::optional<AST> PreProcessNVSEScript(const std::string& script, Script* pScript, bool bPartialScript);
 }

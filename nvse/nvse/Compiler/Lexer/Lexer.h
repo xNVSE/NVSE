@@ -6,8 +6,12 @@
 #include <variant>
 #include <vector>
 
+#include "nvse/Compiler/SourceInfo.h"
+
 namespace Compiler {
-    enum class NVSETokenType {
+    enum class TokenType {
+        INVALID,
+
         // Keywords
         If,
         Else,
@@ -18,7 +22,6 @@ namespace Compiler {
         Name,
         Continue,
         Break,
-        Export,
         Match,
 
         // Types
@@ -29,8 +32,13 @@ namespace Compiler {
         ArrayType,
 
         // Operators
-        Plus, PlusEq, PlusPlus,
-        Minus, Negate, MinusEq, MinusMinus,
+        Plus, 
+    	PlusEq, 
+    	PlusPlus,
+        Minus, 
+    	Negate, 
+    	MinusEq, 
+    	MinusMinus,
         Star, StarEq,
         Slash, SlashEq,
         Mod, ModEq,
@@ -39,12 +47,9 @@ namespace Compiler {
         Less, Greater,
         LessEq,
         GreaterEq,
-        NotEqual,
         Bang, BangEq,
         LogicOr,
-        LogicOrEquals,
         LogicAnd,
-        LogicAndEquals,
         BitwiseOr,
         BitwiseOrEquals,
         BitwiseAnd,
@@ -53,6 +58,7 @@ namespace Compiler {
         RightShift,
         BitwiseNot,
         Dollar, Pound,
+
         Box, Unbox,
 
         // Braces
@@ -83,76 +89,74 @@ namespace Compiler {
     };
 
     static const char* TokenTypeStr[]{
+        "INVALID",
+
         // Keywords
-        "If",
-        "Else",
-        "While",
-        "Fn",
-        "Return",
-        "For",
-        "Name",
-        "Continue",
-        "Break",
-        "Export",
-        "Match",
+        "if",
+        "else",
+        "while",
+        "fn",
+        "return",
+        "for",
+        "name",
+        "continue",
+        "break",
+        "match",
 
         // Types
-        "IntType",
-        "DoubleType",
-        "RefType",
-        "StringType",
-        "ArrayType",
+        "int",
+        "double",
+        "ref",
+        "string",
+        "array",
 
         // Operators
-        "Plus",
-        "PlusEq",
-        "PlusPlus",
-        "Minus",
-        "Negate",
-        "MinusEq",
-        "MinusMinus",
-        "Star",
-        "StarEq",
-        "Slash",
-        "SlashEq",
-        "Mod",
-        "ModEq",
-        "Pow",
-        "PowEq",
-        "Eq",
-        "EqEq",
-        "Less",
-        "Greater",
-        "LessEq",
-        "GreaterEq",
-        "NotEqual",
-        "Bang",
-        "BangEq",
-        "LogicOr",
-        "LogicOrEquals",
-        "LogicAnd",
-        "LogicAndEquals",
-        "BitwiseOr",
-        "BitwiseOrEquals",
-        "BitwiseAnd",
-        "BitwiseAndEquals",
-        "LeftShift",
-        "RightShift",
-        "BitwiseNot",
-        "Dollar",
-        "Pound",
+        "+",
+        "+=",
+        "++",
+        "-",
+        "-",
+        "-=",
+        "--",
+        "*",
+        "*=",
+        "/",
+        "/=",
+        "%",
+        "%=",
+        "^",
+        "^=",
+        "=",
+        "==",
+        "<",
+        ">",
+        "<=",
+        ">=",
+        "!",
+        "!=",
+        "||",
+        "&&",
+        "|",
+        "|=",
+        "&",
+        "&=",
+        "<<",
+        ">>",
+        "~",
+        "$",
+        "#",
 
         // These two get set by parser as they are context dependent
         "Box",
         "Unbox",
 
         // Braces
-        "LeftBrace",
-        "RightBrace",
-        "LeftBracket",
-        "RightBracket",
-        "LeftParen",
-        "RightParen",
+        "{",
+        "}",
+        "[",
+        "]",
+        "(",
+        ")",
 
         // Literals
         "String",
@@ -161,54 +165,83 @@ namespace Compiler {
         "Bool",
 
         // Misc
-        "Comma",
-        "Semicolon",
-        "Ternary",
-        "Slice",
-        "Not",
-        "In",
-        "End",
-        "Dot",
-        "Interp",
-        "EndInterp",
-        "Arrow",
-        "Underscore",
+        ",",
+        ";",
+        "?",
+        ":",
+        "not",
+        "in",
+        "end",
+        ".",
+        "${",
+        "}",
+		"::",
+        "->",
+        "_",
     };
 
-    struct NVSEToken {
-        NVSETokenType type;
+    struct Token {
+        TokenType type;
         std::variant<std::monostate, double, std::string> value;
-        size_t line = 1;
-        size_t column = 0;
         std::string lexeme;
 
-        NVSEToken(NVSEToken&& other) noexcept {
+        SourceSpan sourceSpan;
+
+        Token(Token&& other) noexcept {
             this->operator=(std::move(other));
         }
 
-        NVSEToken(const NVSEToken& other) noexcept {
+        Token(const Token& other) noexcept {
             this->type = other.type;
             this->value = other.value;
-            this->line = other.line;
-            this->column = other.column;
             this->lexeme = other.lexeme;
+            this->sourceSpan = other.sourceSpan;
         }
 
-        NVSEToken& operator=(NVSEToken&& other) noexcept {
+        Token& operator=(const Token& other) noexcept = default;
+
+		Token& operator=(Token&& other) noexcept {
             this->type = other.type;
             this->value = std::move(other.value);
-            this->line = other.line;
-            this->column = other.column;
             this->lexeme = std::move(other.lexeme);
+            this->sourceSpan = other.sourceSpan;
 
             return *this;
         }
 
-        NVSEToken() : type(NVSETokenType::Eof), lexeme(""), value(std::monostate{}) {}
-        NVSEToken(NVSETokenType t) : type(t), lexeme(""), value(std::monostate{}) {}
-        NVSEToken(NVSETokenType t, std::string lexeme) : type(t), lexeme(lexeme), value(std::monostate{}) {}
-        NVSEToken(NVSETokenType t, std::string lexeme, double value) : type(t), lexeme(lexeme), value(value) {}
-        NVSEToken(NVSETokenType t, std::string lexeme, std::string value) : type(t), lexeme(lexeme), value(value) {}
+        Token() : type(TokenType::Eof), value(std::monostate{}) {}
+
+        explicit Token(const TokenType t) : type(t), value(std::monostate{}) {}
+        Token(const TokenType t, std::string&& lexeme) : type(t), value(std::monostate{}), lexeme(std::move(lexeme)) {}
+
+        Token(
+            const TokenType t, 
+            std::string&& lexeme, 
+            const SourcePos& startPos, 
+            const SourcePos& endPos,
+            std::variant<std::monostate, double, std::string> &&value = std::monostate{}
+        ) : type(t), 
+    		value(std::move(value)), 
+    		lexeme(std::move(lexeme)) 
+    	{
+            this->sourceSpan = { .start = startPos, .end = endPos };
+        }
+
+        Token(
+            const TokenType t, 
+            std::string&& lexeme, 
+            const SourcePos& startPos, 
+            SourcePos&& endPos,
+            std::variant<std::monostate, double, std::string> &&value = std::monostate{}
+        ) : type(t),
+            value(std::move(value)),
+    		lexeme(std::move(lexeme)) 
+    	{
+            this->sourceSpan = { .start = startPos, .end = endPos };
+        }
+
+        Token(const TokenType t, std::string&& lexeme, double value) : type(t), value(value), lexeme(std::move(lexeme)) {}
+        Token(const TokenType t, std::string&& lexeme, std::string value) : type(t), value(value), lexeme(std::move(lexeme)) {}
     };
 
     class Lexer {
@@ -216,20 +249,40 @@ namespace Compiler {
         size_t pos;
 
         // For string interpolation
-        std::deque<NVSEToken> tokenStack{};
+        std::deque<Token> tokenStack{};
+
+        size_t AdvanceChar() {
+            column++;
+            return pos++;
+        }
 
     public:
         size_t column = 1;
         size_t line = 1;
         std::vector<std::string> lines{};
 
-        Lexer(const std::string& input);
-        std::deque<NVSEToken> lexString();
+        explicit Lexer(const std::string& input);
+        std::deque<Token> lexString();
+        static bool CheckIdentifier(const std::string& identifier, const char* ident);
+		
+    	[[nodiscard]] 
+    	std::string GetSourceText(const SourcePos& startPos, const SourcePos& endPos) const;
+        
+    	[[nodiscard]]
+    	std::string GetSourceText(const SourcePos& startPos) const;
 
-        NVSEToken GetNextToken(bool useStack);
+        Token GetNextToken(bool useStack);
         bool Match(char c);
-        NVSEToken MakeToken(NVSETokenType type, std::string lexeme);
-        NVSEToken MakeToken(NVSETokenType type, std::string lexeme, double value);
-        NVSEToken MakeToken(NVSETokenType type, std::string lexeme, std::string value);
+        bool Match(std::string_view str);
+
+		[[nodiscard]]
+        SourcePos CurSourcePos() const {
+            return SourcePos(pos, line, column);
+        }
+
+        [[nodiscard]]
+        SourcePos PrevSourcePos() const {
+            return SourcePos(pos, line, column - 1);
+        }
     };
 }

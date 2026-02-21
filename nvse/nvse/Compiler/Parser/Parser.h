@@ -9,31 +9,37 @@
 namespace Compiler {
     class NVSEParseError : public std::runtime_error {
     public:
-        NVSEParseError(const std::string& message) : std::runtime_error(message) {};
+	    explicit NVSEParseError(const std::string& message) : std::runtime_error(message) {}
     };
 
     class Parser {
     public:
-        Parser(Lexer& tokenizer);
+        explicit Parser(const std::string& text);
         std::optional<AST> Parse();
 
+	    [[nodiscard]] 
+    	bool HadError() const {
+            return hadError;
+        }
+
     private:
-        Lexer& lexer;
-        NVSEToken currentToken;
-        NVSEToken previousToken;
+        Lexer lexer;
+        Token currentToken;
+        Token previousToken;
         bool panicMode = false;
         bool hadError = false;
 
-        std::shared_ptr<Statements::UDFDecl> FnDecl();
         std::shared_ptr<Statements::VarDecl> VarDecl(bool allowValue = true, bool allowOnlyOneVarDecl = false);
 
         StmtPtr Begin();
         StmtPtr Statement();
         StmtPtr ExpressionStatement();
         StmtPtr ForStatement();
-        StmtPtr IfStatement();
-        StmtPtr MatchStatement();
-        StmtPtr ReturnStatement();
+	    void AdvanceToClosingCharOf(TokenType leftType);
+	    ExprPtr ParenthesizedExpression();
+	    StmtPtr IfStatement();
+		std::shared_ptr<Statements::Match> MatchStatement();
+		StmtPtr ReturnStatement();
         StmtPtr WhileStatement();
         std::shared_ptr<Statements::Block> BlockStatement();
 
@@ -60,21 +66,29 @@ namespace Compiler {
         ExprPtr MapLiteral();
         std::vector<std::shared_ptr<Statements::VarDecl>> ParseArgs();
         ExprPtr Primary();
-        std::shared_ptr<Expressions::NumberExpr> NumericLiteral();
+		std::shared_ptr<Expressions::IdentExpr> IdentExpr();
+		std::shared_ptr<Expressions::NumberExpr> NumericLiteral();
 
         void Advance();
-        bool Match(NVSETokenType type);
+        bool Match(TokenType type);
         bool MatchesType();
-        bool Peek(NVSETokenType type) const;
-        bool PeekType() const;
+	    
+    	[[nodiscard]] 
+    	bool Peek(TokenType type) const;
+        
+    	[[nodiscard]]
+    	bool PeekType() const;
 
+		[[nodiscard]]
         bool PeekBlockType() const;
-        NVSEToken ExpectBlockType(const std::string&& message);
 
-        void Error(std::string message);
-        void Error(NVSEToken token, std::string message);
-        NVSEToken Expect(NVSETokenType type, std::string message);
-        void Synchronize();
+        Token ExpectBlockType(const std::string&& message);
+
+        void Error(const std::string &message);
+        void Error(Token token, std::string message);
+        Token Expect(TokenType type, std::string message);
+		Token Expect(TokenType type);
+		void Synchronize();
     };
 
 }

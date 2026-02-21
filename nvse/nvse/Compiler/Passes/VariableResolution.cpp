@@ -1,9 +1,57 @@
 #include "VariableResolution.h"
 
 #include "nvse/Compiler/AST/AST.h"
-#include "nvse/Compiler/NVSECompilerUtils.h"
+#include "nvse/Compiler/Utils.h"
 
 namespace Compiler::Passes {
+	std::shared_ptr<VarInfo> Scope::AddVariable(const std::string& name,
+		const Script::VariableType type,
+		std::vector<std::shared_ptr<VarInfo>>& globalVars,
+		std::vector<std::shared_ptr<VarInfo>>& tempVars) {
+		if (variables.contains(name)) {
+			const auto& existing = variables[name];
+
+			if (existing->pre_existing) {
+				existing->type = type;
+				existing->pre_existing = false;
+				return existing;
+			}
+
+			return nullptr;
+		}
+
+		const auto var = std::make_shared<VarInfo>(globalVars.size() + 1, name);
+		var->pre_existing = false;
+		var->type = type;
+		var->detailed_type = VariableType_To_TokenType(type);
+
+		if (bIsRoot) {
+			var->remapped_name = var->original_name;
+			globalVars.push_back(var);
+		}
+		else {
+			var->remapped_name = "__temp_" + var->original_name + "_" + std::to_string(tempVars.size() + 1);
+			tempVars.push_back(var);
+		}
+
+		variables[name] = var;
+
+		return var;
+	}
+
+	std::shared_ptr<VarInfo> Scope::Lookup(const std::string& name) {
+		const auto existing = variables.find(name);
+		if (existing != variables.end()) {
+			return existing->second;
+		}
+
+		if (parent) {
+			return parent->Lookup(name);
+		}
+
+		return nullptr;
+	}
+
 	std::shared_ptr<Scope> VariableResolution::EnterScope() {
 		scopes.emplace(std::make_shared<Scope>(false, currentScope.get()));
 		currentScope = scopes.top();
@@ -18,8 +66,8 @@ namespace Compiler::Passes {
 
 	void VariableResolution::VisitVarDeclStmt(Statements::VarDecl* stmt) {
 		for (auto & [token, expr, info] : stmt->declarations) {
-			const auto varType = GetScriptTypeFromTokenType(stmt->type.type);
-			if (const auto var = currentScope->AddVariable(token.lexeme, varType, globalVars, tempVars)) {
+			const auto varType = GetScriptTypeFromTokenType(stmt->type);
+			if (const auto var = currentScope->AddVariable(token->str, varType, globalVars, tempVars)) {
 				info = var;
 
 				if (expr) {
@@ -28,29 +76,36 @@ namespace Compiler::Passes {
 			}
 			// Existing variable within the same scope, produce an error
 			else {
-				CompErr("[line %d:%d] Error - Variable name '%s' already exists in this scope.\n", token.line, token.column, token.lexeme.c_str());
+				const auto msg = HighlightSourceSpan(pAST->lines, "Variable with this name already exists in this scope", token->sourceInfo, ESCAPE_RED);
+				ErrPrint(msg.c_str());
 				this->had_error = true;
 			}
 		}
 	}
 
-	void VariableResolution::Visit(AST* script) {
+	void VariableResolution::Visit(AST* pAST) {
+		scopes.emplace(std::make_shared<Scope>(true, nullptr));
+		currentScope = scopes.top();
+
+		DbgPrintln("[Variable Resolution]");
+		DbgIndent();
+
 		// Need to associate / start indexing after existing non-temp script vars
 		if (pScript && pScript->varList.Count() > 0) {
 			for (const auto var : pScript->varList) {
 				if (strncmp(var->name.CStr(), "__temp", strlen("__temp")) != 0) {
 					const std::string varName{ var->name.CStr() };
-					auto added = currentScope->AddVariable(varName, static_cast<Script::VariableType>(var->type), globalVars, tempVars);
+					const auto added = currentScope->AddVariable(varName, static_cast<Script::VariableType>(var->type), globalVars, tempVars);
 					added->pre_existing = true;
 				}
 			}
 		}
 
-		for (const auto& global : script->globalVars) {
+		for (const auto& global : pAST->globalVars) {
 			global->Accept(this);
 		}
 
-		for (const auto& block : script->blocks) {
+		for (const auto& block : pAST->blocks) {
 			if (const auto fnDecl = dynamic_cast<const Statements::UDFDecl*>(block.get())) {
 				for (const auto& arg : fnDecl->args) {
 					arg->Accept(this);
@@ -65,7 +120,7 @@ namespace Compiler::Passes {
 		}
 
 		for (const auto& var : globalVars) {
-			CompDbg("Created variable [Original Name: %s, New Name: %s, Index: %ul]\n", var->original_name.c_str(), var->remapped_name.c_str(), var->index);
+			DbgPrintln("Created variable [Original Name: %s, New Name: %s, Index: %ul]", var->original_name.c_str(), var->remapped_name.c_str(), var->index);
 		}
 
 		// Assign temp var indices
@@ -73,7 +128,7 @@ namespace Compiler::Passes {
 		for (const auto &var : tempVars) {
 			var->index = idx++;
 
-			CompDbg("Created variable [Original Name: %s, New Name: %s, Index: %ul]\n", var->original_name.c_str(), var->remapped_name.c_str(), var->index);
+			DbgPrintln("Created variable [Original Name: %s, New Name: %s, Index: %ul]", var->original_name.c_str(), var->remapped_name.c_str(), var->index);
 		}
 
 		// Create engine var list
@@ -120,6 +175,8 @@ namespace Compiler::Passes {
 			pScript->info.varCount = pScript->varList.Count();
 			pScript->info.numRefs = pScript->refList.Count();
 		}
+
+		DbgOutdent();
 	}
 
 	void VariableResolution::VisitBeginStmt(Statements::Begin* stmt) {
@@ -180,7 +237,7 @@ namespace Compiler::Passes {
 	}
 
 	void VariableResolution::VisitIdentExpr(Expressions::IdentExpr* expr) {
-		expr->varInfo = currentScope->Lookup(expr->token.lexeme);
+		expr->varInfo = currentScope->Lookup(expr->str);
 	}
 
 	void VariableResolution::VisitLambdaExpr(Expressions::LambdaExpr* expr) {

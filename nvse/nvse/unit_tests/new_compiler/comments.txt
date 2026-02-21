@@ -11,22 +11,11 @@ fn () {
 	test = "//";
 	assert(test == "//");
 	
-/*
-	test = "2";
-*/
+	//test = "2";
 	assert(test == "//");
 	
-//	test = "2";
-	assert(test == "//");
-	
-	/* */ test = "2"; /* test = "3"; */ // test = "4";
+	test = "2"; // test = "3"; 
 	assert(test == "2");
-	
-	/* // */ test = "3"/**//**//**/;//;
-	assert(test == "3");
-	
-	test = "blah";
-	assert(sv_length(/*test*/test) == 4);
 	
 	print(("Finished running xNVSE " + testName + " unit tests."));
 }

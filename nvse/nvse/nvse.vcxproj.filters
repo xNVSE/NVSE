@@ -257,7 +257,7 @@
       <Filter>internals</Filter>
     </ClCompile>
     <ClCompile Include="InventoryRef.cpp" />
-    <ClCompile Include="Compiler\Compilation.cpp">
+    <ClCompile Include="Compiler\Passes\Compiler.cpp">
       <Filter>compiler</Filter>
     </ClCompile>
     <ClCompile Include="Compiler\Lexer\Lexer.cpp">
@@ -266,13 +266,7 @@
     <ClCompile Include="Compiler\Parser\Parser.cpp">
       <Filter>compiler</Filter>
     </ClCompile>
-    <ClCompile Include="Compiler\NVSETreePrinter.cpp">
-      <Filter>compiler</Filter>
-    </ClCompile>
-    <ClCompile Include="Compiler\NVSETypeChecker.cpp">
-      <Filter>compiler</Filter>
-    </ClCompile>
-    <ClCompile Include="Compiler\NVSECompilerUtils.cpp">
+    <ClCompile Include="Compiler\Utils.cpp">
       <Filter>compiler</Filter>
     </ClCompile>
     <ClCompile Include="StackVariables.cpp">
@@ -283,7 +277,13 @@
     </ClCompile>
     <ClCompile Include="ScriptDataCache.cpp" />
     <ClCompile Include="Compiler\Passes\VariableResolution.cpp" />
-    <ClCompile Include="Compiler\Visitor.cpp" />
+    <ClCompile Include="Compiler\AST\Visitor.cpp" />
+    <ClCompile Include="Compiler\Passes\MatchTransformer.cpp" />
+    <ClCompile Include="Compiler\Passes\TreePrinter.cpp" />
+    <ClCompile Include="Compiler\Passes\TypeChecker.cpp" />
+    <ClCompile Include="Compiler\Passes\CallTransformer.cpp" />
+    <ClCompile Include="Compiler\Passes\LoopTransformer.cpp" />
+    <ClCompile Include="Compiler\Passes\LambdaTransformer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
@@ -544,10 +544,7 @@
       <Filter>internals</Filter>
     </ClInclude>
     <ClInclude Include="InventoryRef.h" />
-    <ClInclude Include="Compiler\Visitor.h">
-      <Filter>compiler</Filter>
-    </ClInclude>
-    <ClInclude Include="Compiler\Compilation.h">
+    <ClInclude Include="Compiler\Passes\Compiler.h">
       <Filter>compiler</Filter>
     </ClInclude>
     <ClInclude Include="Compiler\Lexer\Lexer.h">
@@ -556,13 +553,7 @@
     <ClInclude Include="Compiler\Parser\Parser.h">
       <Filter>compiler</Filter>
     </ClInclude>
-    <ClInclude Include="Compiler\NVSETreePrinter.h">
-      <Filter>compiler</Filter>
-    </ClInclude>
-    <ClInclude Include="Compiler\NVSECompilerUtils.h">
-      <Filter>compiler</Filter>
-    </ClInclude>
-    <ClInclude Include="Compiler\NVSETypeChecker.h">
+    <ClInclude Include="Compiler\Utils.h">
       <Filter>compiler</Filter>
     </ClInclude>
     <ClInclude Include="Compiler\AST\AST.h">
@@ -580,6 +571,15 @@
     </ClInclude>
     <ClInclude Include="Compiler\Passes\VariableResolution.h" />
     <ClInclude Include="Compiler\AST\ASTForward.h" />
+    <ClInclude Include="Compiler\SourceInfo.h" />
+    <ClInclude Include="Compiler\Passes\MatchTransformer.h" />
+    <ClInclude Include="Compiler\AST\Visitor.h" />
+    <ClInclude Include="Compiler\Passes\TreePrinter.h" />
+    <ClInclude Include="Compiler\Passes\TypeChecker.h" />
+    <ClInclude Include="Compiler\Passes\CallTransformer.h" />
+    <ClInclude Include="Compiler\Passes\Passes.h" />
+    <ClInclude Include="Compiler\Passes\LoopTransformer.h" />
+    <ClInclude Include="Compiler\Passes\LambdaTransformer.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">

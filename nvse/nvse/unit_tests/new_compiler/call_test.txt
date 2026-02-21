@@ -4,7 +4,7 @@ fn () {
 	string testName = "'Call...' Commands";
 	print(("Started running xNVSE " + testName + " unit tests."));
 
-	ref TestUDF = CompileScript("../unit_tests/new_compiler/udfs/TestUDF.txt");
+	ref TestUDF = CompileScript("../unit_tests/new_compiler/udfs/TestUDF.txt", 1);
 	assert(IsFormValid(TestUDF));
 
 	// Simple testing value

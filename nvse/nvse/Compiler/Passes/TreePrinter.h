@@ -1,20 +1,20 @@
 #pragma once
-#include "Visitor.h"
+#include "../AST/Visitor.h"
 
 namespace Compiler {
-	class NVSETreePrinter : public Visitor {
+	class TreePrinter : public Visitor {
 		int curTab = 0;
 		void PrintTabs(const bool debugOnly = true);
 
 	public:
-		NVSETreePrinter() = default;
+		TreePrinter() = default;
 
 		void Visit(AST* script) override;
 		void VisitBeginStmt(Statements::Begin* stmt) override;
 		void VisitFnStmt(Statements::UDFDecl* stmt) override;
 		void VisitVarDeclStmt(Statements::VarDecl* stmt) override;
 
-		void VisitExprStmt(const Statements::ExpressionStatement* stmt) override;
+		void VisitExprStmt(Statements::ExpressionStatement* stmt) override;
 		void VisitForStmt(Statements::For* stmt) override;
 		void VisitForEachStmt(Statements::ForEach* stmt) override;
 		void VisitIfStmt(Statements::If* stmt) override;

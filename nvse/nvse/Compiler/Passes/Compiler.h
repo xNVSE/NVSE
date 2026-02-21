@@ -5,17 +5,14 @@
 #include <string>
 
 #include <nvse/Compiler/AST/AST.h>
-
-#include "Parser.h"
-#include "Visitor.h"
-
+#include "nvse/Compiler/AST/Visitor.h"
 #include "nvse/GameScript.h"
 #include "nvse/GameAPI.h"
 #include "nvse/GameObjects.h"
 
 class Script;
 
-namespace Compiler {
+namespace Compiler::Passes {
 	struct CallBuffer {
 		size_t startPos{};
 		size_t startPatch{};
@@ -28,7 +25,7 @@ namespace Compiler {
 		ExprPtr stackRef;
 	};
 
-	class Compilation : Visitor {
+	class Compiler : public Visitor {
 	public:
 		Script* engineScript;
 		bool partial;
@@ -60,7 +57,7 @@ namespace Compiler {
 		std::stack<uint32_t> scriptStart{};
 
 		// Look up a local variable, or create it if not already defined
-		uint16_t AddVar(const std::string& identifier, const uint8_t type) {
+		uint16_t AddVar(const std::string& identifier, const uint8_t type) const {
 			if (const auto info = engineScript->GetVariableByName(identifier.c_str())) {
 				if (info->type != type) {
 					// Remove from ref list if it was a ref prior
@@ -85,7 +82,7 @@ namespace Compiler {
 				return info->idx;
 			}
 
-			auto varInfo = New<VariableInfo>();
+			const auto varInfo = New<VariableInfo>();
 			varInfo->name = String();
 			varInfo->name.Set(identifier.c_str());
 			varInfo->type = type;
@@ -93,7 +90,7 @@ namespace Compiler {
 			engineScript->varList.Append(varInfo);
 
 			if (type == Script::eVarType_Ref) {
-				auto ref = New<Script::RefVariable>();
+				const auto ref = New<Script::RefVariable>();
 				ref->name = String();
 				ref->name.Set(identifier.c_str());
 				ref->varIdx = varInfo->idx;
@@ -103,7 +100,7 @@ namespace Compiler {
 			return static_cast<uint16_t>(varInfo->idx);
 		}
 
-		uint16_t ResolveObjReference(std::string identifier, const bool add = true) {
+		uint16_t ResolveObjReference(std::string identifier, const bool add = true) const {
 			TESForm* form;
 			if (_stricmp(identifier.c_str(), "player") == 0) {
 				// PlayerRef (this is how the vanilla compiler handles it so I'm changing it for consistency and to fix issues)
@@ -115,7 +112,7 @@ namespace Compiler {
 
 			if (form) {
 				// only persistent refs can be used in scripts
-				if (const auto refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR); refr && !refr->IsPersistent()) {
+				if (const auto ref = DYNAMIC_CAST(form, TESForm, TESObjectREFR); ref && !ref->IsPersistent()) {
 					throw std::runtime_error(std::format("Object reference '{}' must be persistent.", identifier));
 				}
 
@@ -183,7 +180,7 @@ namespace Compiler {
 		size_t AddString(const std::string& str) {
 			AddU8('S');
 			AddU16(str.size());
-			for (char c : str) {
+			for (const char c : str) {
 				AddU8(c);
 			}
 
@@ -206,18 +203,17 @@ namespace Compiler {
 			data[index + 3] = byte >> 24 & 0xFF;
 		}
 
-		Compilation(Script* script, bool partial, AST& ast)
+		Compiler(AST& ast, Script* script, bool partial)
 			: engineScript(script), partial(partial), ast(ast), originalScriptName(script->GetEditorID()) {
 		}
 
 		void PrintScriptInfo();
-		bool Compile();
 
 		void Visit(AST* nvScript) override;
 		void VisitBeginStmt(Statements::Begin* stmt) override;
 		void VisitFnStmt(Statements::UDFDecl* stmt) override;
 		void VisitVarDeclStmt(Statements::VarDecl* stmt) override;
-		void VisitExprStmt(const Statements::ExpressionStatement* stmt) override;
+		void VisitExprStmt(Statements::ExpressionStatement* stmt) override;
 		void VisitForStmt(Statements::For* stmt) override;
 		void VisitForEachStmt(Statements::ForEach* stmt) override;
 		void VisitIfStmt(Statements::If* stmt) override;

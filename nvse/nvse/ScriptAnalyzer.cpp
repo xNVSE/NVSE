@@ -1,5 +1,6 @@
 ﻿#include "ScriptAnalyzer.h"
 
+#include <filesystem>
 #include <format>
 #include <numeric>
 #include <ranges>

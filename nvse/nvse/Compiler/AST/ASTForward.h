@@ -26,6 +26,7 @@ namespace Compiler {
 		struct While;
 		struct Block;
 		struct ShowMessage;
+		struct Match;
 	}
 
 	namespace Expressions {

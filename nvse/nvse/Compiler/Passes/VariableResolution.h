@@ -3,11 +3,8 @@
 
 #include <nvse/GameScript.h>
 #include <nvse/ScriptTokens.h>
-#include <nvse/ScriptUtils.h>
-#include <nvse/Compiler/Visitor.h>
-#include <nvse/Compiler/AST/AST.h>
-
-#include "nvse/Compiler/NVSECompilerUtils.h"
+#include <nvse/Compiler/AST/ASTForward.h>
+#include <nvse/Compiler/AST/Visitor.h>
 
 namespace Compiler::Passes {
 	struct Scope {
@@ -17,59 +14,19 @@ namespace Compiler::Passes {
 
 		std::shared_ptr<VarInfo> AddVariable(
 			const std::string& name, 
-			const Script::VariableType type,
+			Script::VariableType type,
 			std::vector<std::shared_ptr<VarInfo>> &globalVars,
 			std::vector<std::shared_ptr<VarInfo>> &tempVars
-		) {
-			if (variables.contains(name)) {
-				const auto& existing = variables[name];
+		);
 
-				if (existing->pre_existing) {
-					existing->type = type;
-					existing->pre_existing = false;
-					return existing;
-				}
-
-				return nullptr;
-			}
-
-			const auto var = std::make_shared<VarInfo>(globalVars.size() + 1, name);
-			var->pre_existing = false;
-			var->type = type;
-			var->detailed_type = VariableType_To_TokenType(type);
-
-			if (bIsRoot) {
-				var->remapped_name = var->original_name;
-				globalVars.push_back(var);
-			}
-			else {
-				var->remapped_name = "__temp_" + var->original_name + "_" + std::to_string(tempVars.size() + 1);
-				tempVars.push_back(var);
-			}
-
-			variables[name] = var;
-
-			return var;
-		}
-
-		std::shared_ptr<VarInfo> Lookup(const std::string& name) {
-			const auto existing = variables.find(name);
-			if (existing != variables.end()) {
-				return existing->second;
-			}
-
-			if (parent) {
-				return parent->Lookup(name);
-			}
-
-			return nullptr;
-		}
+		std::shared_ptr<VarInfo> Lookup(const std::string& name);
 	};
 
-	class VariableResolution : Visitor {
+	class VariableResolution : public Visitor {
 		std::vector<std::shared_ptr<VarInfo>> globalVars{};
 		std::vector<std::shared_ptr<VarInfo>> tempVars{};
 
+		AST* pAST = nullptr;
 		Script* pScript = nullptr;
 
 		std::stack<std::shared_ptr<Scope>> scopes{};
@@ -78,18 +35,9 @@ namespace Compiler::Passes {
 		std::shared_ptr<Scope> LeaveScope();
 
 	public:
-		static bool Resolve(Script *pScript, AST* pAST) {
-			auto resolver = VariableResolution{ pScript };
-			resolver.Visit(pAST);
-			return !resolver.HadError();
-		}
+		VariableResolution(AST* pAST, Script* pScript) : pAST{ pAST }, pScript{ pScript } {}
 
-		VariableResolution(Script* pScript) : pScript{ pScript } {
-			scopes.emplace(std::make_shared<Scope>(true, nullptr));
-			currentScope = scopes.top();
-		}
-
-		void Visit(AST* script) override;
+		void Visit(AST* pAST) override;
 		void VisitBeginStmt(Statements::Begin* stmt) override;
 		void VisitFnStmt(Statements::UDFDecl* stmt) override;
 		void VisitVarDeclStmt(Statements::VarDecl* stmt) override;
