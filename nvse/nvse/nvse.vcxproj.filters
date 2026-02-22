@@ -580,6 +580,7 @@
     <ClInclude Include="Compiler\Passes\Passes.h" />
     <ClInclude Include="Compiler\Passes\LoopTransformer.h" />
     <ClInclude Include="Compiler\Passes\LambdaTransformer.h" />
+    <ClInclude Include="Compiler\TreePrinter.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">

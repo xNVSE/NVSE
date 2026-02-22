@@ -727,6 +727,7 @@ xcopy "$(ProjectDir)unit_tests\new_compiler" "$(FalloutNVPath)\Data\NVSE\unit_te
     <ClInclude Include="Compiler\Passes\TreePrinter.h" />
     <ClInclude Include="Compiler\Passes\VariableResolution.h" />
     <ClInclude Include="Compiler\SourceInfo.h" />
+    <ClInclude Include="Compiler\TreePrinter.h" />
     <ClInclude Include="containers.h" />
     <ClInclude Include="Core_Serialization.h" />
     <ClInclude Include="EventManager.h">

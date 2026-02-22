@@ -760,8 +760,8 @@ namespace Compiler {
 		auto ast = *astOpt;
 
 		if (
+			!RunPass(Passes::MatchTransformer   {&ast		  }, &ast) ||
 			!RunPass(Passes::VariableResolution {&ast, pScript}, &ast) ||
-			!RunPass(Passes::MatchTransformer   {&ast         }, &ast) || 
 			!RunPass(Passes::CallTransformer    {&ast         }, &ast) || 
 			!RunPass(Passes::TypeChecker        {&ast, pScript}, &ast) || 
 			!RunPass(Passes::LoopTransformer    {&ast         }, &ast) || 
