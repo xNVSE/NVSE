@@ -930,7 +930,8 @@ bool PluginManager::Dispatch_Message(PluginHandle sender, UInt32 messageType, vo
 {
 #ifdef RUNTIME
 	//_DMESSAGE("dispatch message to event handlers");
-	EventManager::HandleNVSEMessage(messageType, data);
+	if (sender == 0)
+		EventManager::HandleNVSEMessage(messageType, data);
 #endif
 	//_DMESSAGE("dispatch message to plugin listeners");
 	UInt32 numRespondents = 0;
