@@ -1008,7 +1008,7 @@ PluginHandle PluginManager::LookupHandleFromName(const char* pluginName)
 PluginHandle PluginManager::LookupHandleFromPath(const char* pluginPath)
 {
 	if (!pluginPath || !*pluginPath)
-		return 0;
+		return kPluginHandle_Invalid;
 
 	UInt32	idx = 1;
 
