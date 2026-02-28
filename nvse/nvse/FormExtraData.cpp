@@ -98,7 +98,7 @@ UInt32 FormExtraData::GetAll(const TESForm* form, FormExtraData** outData) {
 	if (!form)
 		return 0;
 
-	std::unique_lock lock(g_formExtraDataCS);
+	std::shared_lock lock(g_formExtraDataCS);
 	auto iter = g_formExtraDataMap.find(const_cast<TESForm*>(form));
 	if (iter != g_formExtraDataMap.end())
 	{
