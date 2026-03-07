@@ -771,6 +771,11 @@ namespace Compiler::Passes {
 					expr->type = variableType;
 				}
 				expr->var_info = varInfo;
+
+				// TODO - Properly parse the target script and fetch the real var type
+				// For now, just set to ambiguous (effectively disabling type checking)
+				expr->type = kTokenType_Ambiguous;
+
 				expr->reference_name = form->GetEditorID();
 				return;
 			}
