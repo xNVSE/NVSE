@@ -251,16 +251,19 @@ namespace Compiler::Passes {
 		WRAP_ERROR(
 			stmt->cond->Accept(this);
 
-		// Check if condition can evaluate to bool
-		const auto lType = stmt->cond->type;
-		if (!CanConvertOperand(lType, kTokenType_Boolean)) {
-			error(stmt, std::format("Invalid expression type '{}' for if statement.", TokenTypeToString(lType)));
-			stmt->cond->type = kTokenType_Invalid;
-		}
-		else {
-			stmt->cond->type = kTokenType_Boolean;
-		}
-			)
+			// Check if condition can evaluate to bool
+			const auto lType = stmt->cond->type;
+			if (
+				lType != kTokenType_Ambiguous &&
+				!CanConvertOperand(lType, kTokenType_Boolean)
+			) {
+				error(stmt, std::format("Invalid expression type '{}' for if statement.", TokenTypeToString(lType)));
+				stmt->cond->type = kTokenType_Invalid;
+			}
+			else {
+				stmt->cond->type = kTokenType_Boolean;
+			}
+		)
 		stmt->block->Accept(this);
 
 		if (stmt->elseBlock) {
