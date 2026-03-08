@@ -489,8 +489,9 @@ namespace Compiler {
 				}
 				break;
 			case kParamType_Cell:
-				if (!form || NOT_ID(form, TESObjectCELL) || !(static_cast<TESObjectCELL*>(form)
-					->cellFlags & 1)) {
+				if (
+					!form || NOT_ID(form, TESObjectCELL)
+				) {
 					return false;
 				}
 				break;
