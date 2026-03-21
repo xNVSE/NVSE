@@ -12,6 +12,13 @@ static ParamInfo kParams_TwoInts[2] =
 	{	"int", kParamType_Integer, 0 },
 	{	"int", kParamType_Integer, 0 },
 };
+
+static ParamInfo kParams_TwoInts_OneOptionalInt[3] =
+{
+	{	"int", kParamType_Integer, 0 },
+	{	"int", kParamType_Integer, 0 },
+	{	"int", kParamType_Integer, 1 },
+};
 static ParamInfo kParams_TwoInts_OneOptionalFloat[3] =
 {
 	{	"int", kParamType_Integer, 0 },
