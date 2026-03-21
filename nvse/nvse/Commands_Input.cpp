@@ -114,10 +114,10 @@ void SetControl(UInt32 whichControl, UInt32 type, UInt32 keycode)
 
 	UInt8	* binds = globs->keyBinds[type];
 	if (type == OSInputGlobals::kControlType_Gamepad) {
-		keycode = DX2BS(keycode);
-		if (IsDisallowedControllerButton(keycode)) {
+		if (IsDisallowedControllerButton(keycode))
 			return;
-		}
+
+		keycode = DX2BS(keycode);
 	}
 	else
 		keycode = (keycode >= 0x100) ? keycode - 0x100 : keycode;
