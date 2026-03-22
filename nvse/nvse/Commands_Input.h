@@ -16,7 +16,7 @@ DEFINE_CMD_ALT(GetKeyPress, gkp, Returns the scancode of the nth key which is cu
 DEFINE_CMD_ALT(GetNumMouseButtonsPressed, gnmbp, Returns how many mouse buttons are currently being held down, 0, 0, 0);
 DEFINE_INPUT(GetMouseButtonPress, gmbp, Returns the code of the nth mouse button which is currently being held down);
 
-DEFINE_COMMAND(GetControl, Returns the key assigned to a control, 0, 1, kParams_OneInt);
+DEFINE_COMMAND(GetControl, Returns the key assigned to a control, 0, 2, kParams_OneInt_OneOptionalInt);
 DEFINE_COMMAND(GetAltControl, Returns the mouse button assigned to a control, 0, 1, kParams_OneInt);
 
 DEFINE_INPUT(MenuTapKey, mtk, Fakes a key press for one frame in menu mode);
@@ -25,7 +25,7 @@ DEFINE_INPUT(MenuReleaseKey, mrk, 	Releases a key held down by MenuHoldKey);
 DEFINE_CMD_ALT(DisableControl, dc, disables the key and button bound to a control, 0, 2, kParams_OneInt_OneOptionalInt);
 DEFINE_CMD_ALT(EnableControl, ec, enables the key and button assigned to a control, 0, 2, kParams_OneInt_OneOptionalInt);
 DEFINE_INPUT(TapControl, tc, taps the key or mouse button assigned to control);
-DEFINE_COMMAND(SetControl, assigns a new keycode to the specified keyboard control, 0, 2, kParams_TwoInts);
+DEFINE_COMMAND(SetControl, assigns a new keycode to the specified keyboard control, 0, 3, kParams_TwoInts_OneOptionalInt);
 DEFINE_COMMAND(SetAltControl, assigns a new mouse button code to the specified mouse control, 0, 2, kParams_TwoInts);
 DEFINE_COMMAND(SetIsControl, sets a key as a custom control, 0, 2, kParams_TwoInts);
 DEFINE_COMMAND(IsControl, returns 1 if key is a game control or 2 if a custom control, 0, 1, kParams_OneInt);

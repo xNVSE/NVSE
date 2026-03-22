@@ -24,6 +24,14 @@ public:
 		kMaxControlBinds = 0x1C,
 	};
 
+	enum {
+		kControlType_Keyboard,
+		kControlType_Mouse,
+		kControlType_Joystick,
+		kControlType_Gamepad,
+		kControlType_Count
+	};
+
 	// Have not verified nothing has changed here so commenting out (no controllers to test with currently)
 #if 0
 	enum
@@ -108,10 +116,7 @@ public:
 	UInt32		unk1B50;							// 4 bytes added between +2C and here for v1.1.0.35
 	UInt32		oldDoubleClickTime;					// 1B50 (1.0) / 1B54 (1.1)
 	UInt32		unk1B54[(0x1B90 - 0x1B54) >> 2];	// 1B54 / 1B58	// Byte at 1B88 referenced
-	UInt8		keyBinds[kMaxControlBinds];			// 1B90 / 1B94
-	UInt8		mouseBinds[kMaxControlBinds];		// 1BAC / 1BB0
-	UInt8		joystickBinds[kMaxControlBinds];	// 1BC8 / 1BCC
-	UInt32		unk1BE4[(0x1C00 - 0x1BE4) >> 2];	// 1BE4 / 1BE8
+	uint8_t		keyBinds[kControlType_Count][28];
 };
 
 #if FALLOUT_VERSION < FALLOUT_VERSION_1_1_35
@@ -122,7 +127,6 @@ STATIC_ASSERT(offsetof(OSInputGlobals, mouseBinds) == 0x1BAC);
 #else
 
 STATIC_ASSERT(sizeof(OSInputGlobals) == 0x1C04);
-STATIC_ASSERT(offsetof(OSInputGlobals, mouseBinds) == 0x1BB0);
 
 #endif
 
