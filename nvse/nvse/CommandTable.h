@@ -325,6 +325,7 @@ public:
 	UInt32	GetCurID(void)			{ return m_curID; }
 
 	void	Dump(void);
+	void	DumpWikiDocs(void);
 	void	DumpAlternateCommandNames(void);
 	void	DumpCommandDocumentation(bool showQuickList, UInt32 startWithID = kNVSEOpcodeStart, 
 		bool showIfConditionOnly = false, bool showIfDeprecated = false);
