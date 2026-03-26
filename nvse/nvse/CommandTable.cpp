@@ -547,6 +547,14 @@ void CommandTable::Dump(void)
 	}
 }
 
+void CommandTable::DumpWikiDocs(void) {
+	_MESSAGE("## Command List\n");
+	for (CommandList::iterator iter = m_commands.begin(); iter != m_commands.end(); ++iter) {
+		iter->DumpWikiDocs();
+		_MESSAGE("\n\n");
+	}
+}
+
 void CommandTable::DumpAlternateCommandNames(void)
 {
 	for (CommandList::iterator iter = m_commands.begin(); iter != m_commands.end(); ++iter)

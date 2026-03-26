@@ -1666,7 +1666,17 @@ bool Cmd_DumpCommandWikiDocs_Execute(COMMAND_ARGS)
 	char versionNumBuf[256]{};
 	if (!ExtractArgs(EXTRACT_ARGS, &opcodeStart, &opcodeEnd, &versionNumBuf))
 		return true;
-	if (auto commandInfoVec = g_scriptCommands.GetByOpcodeRange(opcodeStart, opcodeEnd);
+
+	if (opcodeStart == 0 && opcodeEnd == 0) {
+		if (IsConsoleMode())
+			Console_Print("Dumping wiki-style documentation for all functions.");
+
+		g_scriptCommands.DumpWikiDocs();
+
+		if (IsConsoleMode())
+			Console_Print("Finished dumping wiki-style documentation for all functions.");
+	}
+	else if (auto commandInfoVec = g_scriptCommands.GetByOpcodeRange(opcodeStart, opcodeEnd);
 		!commandInfoVec.empty())
 	{
 		if (IsConsoleMode())
