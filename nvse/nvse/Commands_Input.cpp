@@ -409,7 +409,7 @@ bool Cmd_GetControl_Execute(COMMAND_ARGS)
 		return true;
 
 	UInt32 ctrl = GetControl(whichControl, whichDevice);
-	*result = (ctrl == 0xFF) ? -1 : ctrl;
+	*result = (ctrl == 0xFF) ? -1.0 : ctrl;
 
 	if(IsConsoleMode())
 		Console_Print("GetControl %d >> %.0f", whichControl, *result);
@@ -426,7 +426,7 @@ bool Cmd_GetAltControl_Execute(COMMAND_ARGS)
 		return true;
 
 	UInt8 ctrl = GetControl(whichControl, OSInputGlobals::kControlType_Mouse);
-	*result = (ctrl == 0xFF) ? -1 : ctrl;
+	*result = (ctrl == 0xFF) ? -1.0 : ctrl;
 
 	if(IsConsoleMode())
 		Console_Print("GetAltControl %d >> %.0f", whichControl, *result);
