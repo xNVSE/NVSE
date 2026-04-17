@@ -13,7 +13,7 @@
 
 -Changelogs and all releases are provided in the [releases section](https://github.com/xNVSE/NVSE/releases). Do not try to install using the Code .zip source code button GitHub shows.
 
-Releases are also available on [Nexus Mods](https://www.nexusmods.com/newvegas/mods/67883) and [Mod Pub](https://mod.pub/falloutnv/41-new-vegas-script-extender-nvse-xnvse).
+Releases are also available on [Nexus Mods](https://www.nexusmods.com/newvegas/mods/67883).
 
 ## Installation
 
@@ -45,6 +45,6 @@ The original NVSE was created and maintained by *Ian Patterson*,
 *Stephen Abel*, *Paul Connelly*, and *Hugues LE PORS*
 (ianpatt, behippo, scruggsywuggsy the ferret, and hlp)
 
-xNVSE is developed by *korri123* (Kormákur), *jazzisparis*, and *Demorome*.
+xNVSE is developed by *korri123* (Kormákur), *cnf13* (Confused), *jazzisparis*, and *Demorome*.
 
-xNVSE has contributions from *lStewieAl*, *c6* and *carxt*
+xNVSE has contributions from *lStewieAl*, *c6*, *carxt*, *Into-The-Rough*, *Stentorious*, and *Wall_SoGB*.
