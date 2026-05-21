@@ -55,11 +55,21 @@ static const UInt32 kVtbl_PlayerCharacter = 0x0108AA3C;
 static const UInt32 kVtbl_Character = 0x01086A6C;
 static const UInt32 kVtbl_Creature = 0x010870AC;
 static const UInt32 kVtbl_ArrowProjectile = 0x01085954;
+static const UInt32 kVtbl_MagicProjectile = 0x0107B394;
 static const UInt32 kVtbl_MagicBallProjectile = 0x0107A554;
 static const UInt32 kVtbl_MagicBoltProjectile = 0x0107A8F4;
 static const UInt32 kVtbl_MagicFogProjectile = 0x0107AD84;
 static const UInt32 kVtbl_MagicSprayProjectile = 0x0107B8C4;
 static const UInt32 kVtbl_TESObjectREFR = 0x0102F55C;
+static const UInt32 kVtbl_MobileObject = 0x0108A49C;
+static const UInt32 kVtbl_Actor = 0x01084254;
+static const UInt32 kVtbl_Explosion = 0x0108EE04;
+static const UInt32 kVtbl_Projectile = 0x010900DC;
+static const UInt32 kVtbl_BeamProjectile = 0x0108C3C4;
+static const UInt32 kVtbl_ContinuousBeamProjectile = 0x0108EA64;
+static const UInt32 kVtbl_FlameProjectile = 0x0108F2F4;
+static const UInt32 kVtbl_GrenadeProjectile = 0x0108F674;
+static const UInt32 kVtbl_MissileProjectile = 0x0108FA44;
 
 static const UInt32 kMarkEvent_HookAddr = 0x005AC750;
 static const UInt32 kMarkEvent_RetnAddr = 0x005AC756;
@@ -762,12 +772,22 @@ bool IsValidReference(void* refr)
 		case kVtbl_PlayerCharacter:
 		case kVtbl_Character:
 		case kVtbl_Creature:
+		case kVtbl_TESObjectREFR:
+		case kVtbl_MobileObject:
+		case kVtbl_Actor:
+		case kVtbl_Explosion:
+		case kVtbl_Projectile:
+		case kVtbl_BeamProjectile:
+		case kVtbl_ContinuousBeamProjectile:
+		case kVtbl_FlameProjectile:
+		case kVtbl_GrenadeProjectile:
+		case kVtbl_MissileProjectile:
 		case kVtbl_ArrowProjectile:
+		case kVtbl_MagicProjectile:
 		case kVtbl_MagicBallProjectile:
 		case kVtbl_MagicBoltProjectile:
 		case kVtbl_MagicFogProjectile:
 		case kVtbl_MagicSprayProjectile:
-		case kVtbl_TESObjectREFR:
 			bIsRefr = true;
 		}
 	}
