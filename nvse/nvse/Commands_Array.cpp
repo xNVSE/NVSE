@@ -27,8 +27,8 @@ static const UInt32 kFinishedWithFile_RetnAddr = 0x004395AE;
 
 // This is the folder in which NifScript will keep all of its dynamically-generated .nifs
 // must be within Meshes. Folder name can be changed, keep it to 4 chars or less for efficiency's sake. MUST be all-lowercase
-static char s_nifScriptFullPath[] = "meshes\\ns\\";	
-static char s_nifScriptPath[] = "ns\\";											
+static char s_nifScriptFullPath[] = "meshes\\ns\\";
+static char s_nifScriptPath[] = "ns\\";
 
 static UInt32 s_nifScriptFullPathLen = sizeof(s_nifScriptFullPath) - 1;	// don't count the null terminator
 static UInt32 s_nifScriptPathLen = sizeof(s_nifScriptPath) - 1;
@@ -39,7 +39,7 @@ bool IsNifScriptFilePath(const char* path, bool bUseFullPath)
 
 	if (!path)
 		return false;
-	
+
 	const char* nsPath = bUseFullPath ? s_nifScriptFullPath : s_nifScriptPath;
 	UInt32 nsPathLen = bUseFullPath ? s_nifScriptFullPathLen : s_nifScriptPathLen;
 
@@ -68,9 +68,9 @@ bool __stdcall CreateNifFile(const char* nifPath)
 		return false;
 
 	_MESSAGE("FileFinder requesting nifScript file %s", nifPath);
-	
+
 	// Create the .nif and save to disk
-	
+
 	return true;
 }
 
@@ -94,11 +94,11 @@ static __declspec(naked) void LoadFileHook(void)
 		call	CreateNifFile
 		test	al, al
 		jnz		ReloadFile
-		
+
 		// CreateFile didn't create the file, so return NULL
 		xor		eax,	eax
 		jmp		Done
-		
+
 	ReloadFile:
 		// ask FileFinder to load the nif we just created
 		call	[kLoadFile_CallAddr]
@@ -119,7 +119,7 @@ void __stdcall DeleteNifFile(const char* nifPath)
 	_MESSAGE("FileFinder has finished with nifScript file %s", nifPath);
 
 	// delete the file
-	
+
 }
 
 static __declspec(naked) void FinishedWithFileHook(void)
@@ -136,7 +136,7 @@ static __declspec(naked) void FinishedWithFileHook(void)
 		pop		esi
 		pop		ebp
 		pop		ebx
-		
+
 		jmp		[kFinishedWithFile_RetnAddr]
 	}
 }
@@ -232,7 +232,7 @@ bool Cmd_ar_DumpF_Execute(COMMAND_ARGS)
 			bool bAppend = true;
 			if (eval.Arg(2) && eval.Arg(2)->CanConvertTo(kTokenType_Boolean))
 				bAppend = eval.Arg(2)->GetBool();
-			if (arr) arr->DumpToFile(eval.Arg(1)->GetString(), bAppend); 
+			if (arr) arr->DumpToFile(eval.Arg(1)->GetString(), bAppend);
 		}
 	}
 	return true;
@@ -369,7 +369,7 @@ bool Cmd_ar_Find_Execute(COMMAND_ARGS)
 		// what type of element are we looking for?
 		ArrayElement toFind;
 		BasicTokenToElem(eval.Arg(0), toFind);
-		
+
 		// get the array
 		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(1)->GetArrayID());
 
@@ -385,7 +385,7 @@ bool Cmd_ar_Find_Execute(COMMAND_ARGS)
 			eval.ExpectReturnType(kRetnType_Default);
 			*result = s_arrayErrorCodeNum;
 		}
-		
+
 		if (!arr || !toFind.IsGood())		// return error code if toFind couldn't be resolved
 			return true;
 
@@ -433,13 +433,13 @@ void ReturnElement(COMMAND_ARGS, ExpressionEvaluator& eval, ArrayElement* elemen
 		element->GetAsString(&stringResult);
 		AssignToStringVar(PASS_COMMAND_ARGS, stringResult);
 		break;
-	case kDataType_Array: 
+	case kDataType_Array:
 		eval.ExpectReturnType(kRetnType_Array);
 		ArrayID tempRes;
 		element->GetAsArray(&tempRes);
 		*result = tempRes;
 		break;
-	default: 
+	default:
 		*result = 0;
 		break;
 	}
@@ -530,7 +530,7 @@ bool ArrayIterCommand(COMMAND_ARGS, eIterMode iterMode)
 
 	return true;
 }
-						
+
 bool Cmd_ar_First_Execute(COMMAND_ARGS)
 {
 	return ArrayIterCommand(PASS_COMMAND_ARGS, kIterMode_First);
@@ -635,7 +635,7 @@ bool Cmd_ar_DeepCopy_Execute(COMMAND_ARGS)
 bool Cmd_ar_Null_Execute(COMMAND_ARGS)
 {
 	*result = 0;
-	
+
 	return true;
 }
 
@@ -835,7 +835,7 @@ ArrayVar* ElementToIterator(Script* script, ArrayIterator& iter)
 	const auto* key = iter.first();
 	if (key->KeyType() == kDataType_String)
 		arr->SetElementString("key", key->key.str);
-	else 
+	else
 		arr->SetElementNumber("key", key->key.num);
 	arr->SetElement("value", iter.second());
 	return arr;
@@ -1031,7 +1031,7 @@ bool Cmd_ar_Generate_Execute(COMMAND_ARGS)
 	bool const isMapArray = keyGenerator;
 	if (!isMapArray)
 		returnArray = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
-	
+
 	for (UInt32 i = 0; i < numElemsToGenerate; i++)
 	{
 		InternalFunctionCaller valueCaller(valueGenerator, thisObj, containingObj);
@@ -1053,7 +1053,7 @@ bool Cmd_ar_Generate_Execute(COMMAND_ARGS)
 					auto const keyType = keyElem.DataType();
 					if (keyType != kDataType_Numeric && keyType != kDataType_String)
 						return true;
-					
+
 					// Initialize returnArray as a map array.
 					if (i == 0 && !returnArray)
 						returnArray = g_ArrayMap.Create(keyType, false, scriptObj->GetModIndex());
@@ -1313,7 +1313,7 @@ bool Cmd_ar_Cat_Execute(COMMAND_ARGS) {
 		}
 
 		const bool isArray = arr1->GetContainerType() == kContainer_Array;
-		for (auto iter = arr2->Begin(); iter != arr2->end(); ++iter) {
+		for (ArrayIterator iter = arr2->begin(); !iter.End(); ++iter) {
 			if (isArray) {
 				arr1->Insert(arr1->Size(), *iter);
 			}
