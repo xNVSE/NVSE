@@ -233,3 +233,26 @@ ParamInfo kParams_ThreeScriptVars_FourFloats_OneOptionalInt[8] =
 	{ "Float", kParamType_Float, 0 },
 	{ "flag", kParamType_Integer, 1 }
 };
+
+
+ParamInfo kParams_SixFloats[6] =
+{
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 }
+};
+
+ParamInfo kParams_EightFloats[8] =
+{
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 }
+};

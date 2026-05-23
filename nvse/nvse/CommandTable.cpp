@@ -2305,6 +2305,8 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(QInterpolateEx);
 	ADD_CMD(QToEulerEx);
 	ADD_CMD(GetUIFloatInherited);
+	ADD_CMD(V3DotproductEx);
+	ADD_CMD(QDotproductEx);
 }
 
 namespace PluginAPI

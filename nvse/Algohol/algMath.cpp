@@ -15,6 +15,11 @@ void V3Normalize( Vector3 &v )
 	v.z *= len;
 }
 
+float V3Dotproduct( Vector3 va, Vector3 vb )
+{
+	return va.x * vb.x + va.y * vb.y + va.z * vb.z;
+}
+
 Vector3 V3Crossproduct( Vector3 va, Vector3 vb )
 {
 	Vector3 out;
@@ -119,7 +124,7 @@ Quat slerp( Quat q1, Quat q2, float t )
 		return q1 * 0.5f + q2 * 0.5f;
 
 	float ratioA = sinf( ( 1.0f - t ) * halfTheta ) / sinHalfTheta;
-	float ratioB = sinf( t * halfTheta ) / sinHalfTheta; 
+	float ratioB = sinf( t * halfTheta ) / sinHalfTheta;
 	return q1 * ratioA + q2 * ratioB;
 }
 

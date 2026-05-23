@@ -25,3 +25,5 @@ DEFINE_CMD_ALT(QMultQuatQuatEx, QMultQEx, Multiplies two quaternions, 0, 12, kPa
 DEFINE_CMD_ALT(QMultQuatVector3Ex, QMultV3Ex, Multiplies vector3 by quaternion, 0, 10, kParams_ThreeScriptVars_SevenFloats);
 DEFINE_CMD_ALT(QInterpolateEx, QIntEx, Interpolates between two quaternions, 0, 14, kParams_FourScriptVars_NineFloats_OneOptionalInt);
 DEFINE_CMD_ALT(QToEulerEx, QToEEx, Converts quaternion to euler angles, 0, 8, kParams_ThreeScriptVars_FourFloats_OneOptionalInt);
+DEFINE_CMD_ALT(V3DotproductEx, V3DotEx, Returns dotproduct of two vectors, 0, 6, kParams_SixFloats);
+DEFINE_CMD_ALT(QDotproductEx, QDotEx, Returns dotproduct of two quaternions, 0, 8, kParams_EightFloats);
