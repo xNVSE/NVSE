@@ -603,7 +603,7 @@ namespace OtherHooks
 #pragma optimize("y", off)
 		// No script equivalent, too early
 		CallDetour kOnFormLoad;
-		bool __fastcall OnFormLoad(void* apThis) {
+		bool __fastcall OnFormLoad(void* apThis) noexcept {
 			uint8_t* pEBP = GetParentBasePtr(_AddressOfReturnAddress());
 			TESForm* pForm = *reinterpret_cast<TESForm**>(pEBP + 0x8);
 			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnNonPersistentFormLoad, pForm, sizeof(pForm), nullptr);
@@ -611,11 +611,11 @@ namespace OtherHooks
 		}
 
 		CallDetour kOnFormUnload;
-		void __fastcall OnFormUnload(void* apThis, void*, MEM_CONTEXT aeContext, bool abOverridable, const char* apFile, uint32_t auiLine) {
+		void* __fastcall OnFormUnload(void* apThis, void*, MEM_CONTEXT aeContext, bool abOverridable, const char* apFile, uint32_t auiLine) noexcept {
 			uint8_t* pEBP = GetParentBasePtr(_AddressOfReturnAddress());
 			TESForm* pForm = *reinterpret_cast<TESForm**>(pEBP + 0x8);
 			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnNonPersistentFormUnload, pForm, sizeof(pForm), nullptr);
-			ThisStdCall<void>(kOnFormLoad.GetOverwrittenAddr(), apThis, aeContext, abOverridable, apFile, auiLine);
+			return ThisStdCall<void*>(kOnFormUnload.GetOverwrittenAddr(), apThis, aeContext, abOverridable, apFile, auiLine);
 		}
 
 		void WriteHooks() {
