@@ -294,7 +294,7 @@ struct NVSEMessagingInterface
 		kMessage_OnNonPersistentFormLoad,	// sent when an unloaded form is loaded by the game (TESObjectREFR, NavMeshInfo) (both cell, and save loads)
 											// dataLen: 4, data: form pointer
 
-		kMessage_OnNonPersistentFormUnload, // sent when an loaded form is unloaded by the game (TESObjectREFR, NavMeshInfo) (both cell, and save loads)
+		kMessage_OnNonPersistentFormUnload, // sent when a loaded form is unloaded by the game (TESObjectREFR, NavMeshInfo) (both cell, and save loads)
 											// dataLen: 4, data: form pointer	
 	};
 
