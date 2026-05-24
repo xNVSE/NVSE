@@ -318,8 +318,9 @@ public:
 	enum
 	{
 		kFormFlags_Initialized =	0x00000008,	// set by TESForm::InitItem()
+		kFormFlags_Deleted =		0x00000020,
 		kFormFlags_QuestItem =		0x00000400,
-		kFormFlags_DontSaveForm =	0x00004000,	// TODO: investigate
+		kFormFlags_Temporary =		0x00004000,
 		kFormFlags_Compressed =		0x00040000,
 	};
 
@@ -338,6 +339,10 @@ public:
 #endif
 	tList<ModInfo> mods;			// 010 ModReferenceList in Oblivion	
 	// 018 / 028
+
+	bool IsPersistent() const { return (flags & kFormFlags_QuestItem) != 0; }
+	bool IsTemporary() const { return (flags & kFormFlags_Temporary) != 0; }
+	bool IsDeleted() const { return (flags & kFormFlags_Deleted) != 0; }
 
 	// Looks like there is another DWord here, used as a byte: LastLoaded or Active or Selected ? 
 
@@ -3516,6 +3521,16 @@ public:
 	TESObjectCELL();
 	~TESObjectCELL();
 
+	enum CellLoadState {
+		kCellLoadState_NotLoaded	= 0,
+		kCellLoadState_Unloading	= 1,
+		kCellLoadState_Loading		= 2,
+		kCellLoadState_Loaded		= 3,
+		kCellLoadState_Detaching	= 4,
+		kCellLoadState_Attaching	= 5,
+		kCellLoadState_Attached		= 6,
+	};
+
 	typedef tList<TESObjectREFR> RefList;
 	struct CellCoordinates
 	{
@@ -3524,36 +3539,51 @@ public:
 	}; // Exterior is 3 DWord, Interior is 5 DWord and 5 floats
 
 	TESFullName				fullName;			// 018	// 030 in GECK
-	UInt8					cellFlags;			// 024
-	UInt8					byte25;				// 025
-	UInt8					flags2;				// 026	// 5 or 6 would mean cell is loaded, name based on OBSE
-	UInt8					unk027;				// 027
+	Bitfield8				cellFlags;			// 024
+	Bitfield8				cellGameFlags;		// 025
+	UInt8					cellState;			// 026
 	ExtraDataList			extraDataList;		// 028
-	CellCoordinates			* coords;			// 048
-	TESObjectLAND			* land;				// 04C
-	float					unk050;				// 050
-	TESTexture				texture054;			// 054
-	void					* NavMeshArray;		// 060	?$BSSimpleArray@VNavMeshPtr@@$0EAA@@@
-	UInt32					unk064[(0x0A4-0x064) >> 2];	// 064	080 is CellRefLock semaphore
-	UInt32					actorCount;			// 0A4
-	UInt16					countVisibleWhenDistant;	// 0A8
-	UInt16					unk0AA;				// 0AA
+	CellCoordinates*		cellData;			// 048
+	TESObjectLAND*			land;				// 04C
+	float					waterHeight;				// 050
+	bool					autoWaterLoaded;
+	TESTexture				waterNoiseTexture;			// 054
+	void*					navmeshes;		// 060	?$BSSimpleArray@VNavMeshPtr@@$0EAA@@@
+	UInt32					kLock[2];
+	UInt32					padding8C[12];
+	UInt32					criticalQueuedRefCount;			// 0A4
+	UInt32					queuedRefCount;			// 0A4
+	UInt16					distantRefCount;	// 0A8
+	UInt16					loadedDistantRefCount;				// 0AA
 	RefList					objectList;			// 0AC
-	NiNode					* niNode0B4;		// 0B4
-	NiNode					* niNode0B8;		// 0B8
+	NiNode*					niNode0B4;		// 0B4
+	NiNode*					niNode0B8;		// 0B8
 	UInt32					unk0BC;				// 0BC
-	TESWorldSpace			* worldSpace;		// 0C0
-	NiNode					* unk0C4;			// 0C4	structure (NiNode) containing at 20 a vector XYZT, 4C a list of scripted references, 5C a list of refer with activateRefChildren
-	float					unk0C8;				// 0C8
-	UInt32					unk0CC;				// 0CC
-	UInt32					unk0D0;				// 0D0
-	BSPortalGraph			* portalGraph;		// 0D4
-	BGSLightingTemplate		* lightingTemplate;	// 0D8
-	UInt32					unk0DC;				// 0DC
+	TESWorldSpace*			worldSpace;		// 0C0
+	void*					loadedData;			// 0C4	structure (NiNode) containing at 20 a vector XYZT, 4C a list of scripted references, 5C a list of refer with activateRefChildren
+	float					LODFadeInPercent;				// 0C8
+	bool					LODFadingIn;
+	bool					fadedIn;
+	bool					fadingToHighDetail;
+	bool					fadingToLowDetail;
+	bool					displayHighDetail;
+	bool					cellDetached;
+	bool					updateTerrain;
+	BSPortalGraph*			portalGraph;		// 0D4
+	BGSLightingTemplate*	lightingTemplate;	// 0D8
+	UInt32					cellInheritFlags;				// 0DC
 
-	bool IsInterior() { return worldSpace == NULL; }
+	bool IsInterior() const { return worldSpace == NULL; }
+
+	void CellRefLockEnter() {
+		ThisStdCall(0x541AC0, this);
+	}
+
+	void CellRefLockLeave() {
+		ThisStdCall(0x541AE0, this);
+	}
 };
-STATIC_ASSERT(offsetof(TESObjectCELL, NavMeshArray) == 0x060);
+STATIC_ASSERT(offsetof(TESObjectCELL, navmeshes) == 0x064);
 STATIC_ASSERT(offsetof(TESObjectCELL, objectList) == 0x0AC);
 STATIC_ASSERT(sizeof(TESObjectCELL) == 0xE0);
 

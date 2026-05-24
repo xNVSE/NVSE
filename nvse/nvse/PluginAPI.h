@@ -275,6 +275,27 @@ struct NVSEMessagingInterface
 
 		kMessage_ReloadConfig, // sent via ReloadPluginConfig command
 							   // dataLen: length of plugin name, data: const char* pluginName
+
+		kMessage_OnRefSet3D,	// sent when reference receives a non-null scene object
+								// dataLen: 8, data: reference pointer and new scene object pointer
+
+		kMessage_OnRefUnset3D,	// sent when reference receives a null scene object
+								// dataLen: 4, data: reference pointer
+
+		kMessage_OnRefAttach,	// sent when reference is attached to the cell (end of TESObjectCELL::PerformCellNodeAttach
+								// dataLen: 4, data : reference pointer
+
+		kMessage_OnCellStateChange, // sent when cell changes its load state (TESObjectCELL::SetState)
+									// datalen: 12, data: cell pointer, new state, previous state
+
+		kMessage_OnCellRefsLoaded, // sent when all references of a cell are loaded
+								   // dataLen: 4, data: cell pointer
+
+		kMessage_OnNonPersistentFormLoad,	// sent when an unloaded form is loaded by the game (TESObjectREFR, NavMeshInfo) (both cell, and save loads)
+											// dataLen: 4, data: form pointer
+
+		kMessage_OnNonPersistentFormUnload, // sent when a loaded form is unloaded by the game (TESObjectREFR, NavMeshInfo) (both cell, and save loads)
+											// dataLen: 4, data: form pointer	
 	};
 
 	UInt32	version;

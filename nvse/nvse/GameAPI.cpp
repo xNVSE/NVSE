@@ -328,7 +328,7 @@ bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineB
 				}
 				break;
 			case kParamType_Cell:
-				if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESObjectCELL) || !(((TESObjectCELL *)spToken.refObj)->cellFlags & 1)))
+				if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESObjectCELL) || ((TESObjectCELL *)spToken.refObj)->cellFlags.IsClear(1)))
 				{
 					errorFmt = (const char *)0xD60BF8;
 					goto compileError;

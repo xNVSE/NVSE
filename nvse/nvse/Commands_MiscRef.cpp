@@ -256,8 +256,8 @@ struct CellScanInfo
 
 		if (world && cellDepth)		//exterior, cell depth > 0
 		{
-			curX = cell->coords->x - cellDepth;
-			curY = cell->coords->y - cellDepth;
+			curX = cell->cellData->x - cellDepth;
+			curY = cell->cellData->y - cellDepth;
 			UInt32 key = (curX << 16) + ((curY << 16) >> 16);
 			curCell = world->cellMap->Lookup(key);
 		}
@@ -265,8 +265,8 @@ struct CellScanInfo
 		{
 			cellDepth = 0;
 			curCell = cell;
-			curX = cell->coords->x;
-			curY = cell->coords->y;
+			curX = cell->cellData->x;
+			curY = cell->cellData->y;
 		}
 	}
 
@@ -280,9 +280,9 @@ struct CellScanInfo
 
 		do
 		{
-			if (curX - cell->coords->x == cellDepth)
+			if (curX - cell->cellData->x == cellDepth)
 			{
-				if (curY - cell->coords->y == cellDepth)
+				if (curY - cell->cellData->y == cellDepth)
 				{
 					curCell = NULL;
 					return false;

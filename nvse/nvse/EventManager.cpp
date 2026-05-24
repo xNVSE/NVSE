@@ -2179,6 +2179,14 @@ void Init()
 	EVENT_INFO("ondisable", kEventParams_OneRef, nullptr, 0);
 	EVENT_INFO("onenable", kEventParams_OneRef, nullptr, 0);
 
+	EVENT_INFO("onrefset3d", kEventParams_OneRef, nullptr, 0);
+	EVENT_INFO("onrefunset3d", kEventParams_OneRef, nullptr, 0);
+	EVENT_INFO("onrefattach", kEventParams_OneRef, nullptr, 0);
+
+	EVENT_INFO("oncellattach", kEventParams_OneForm, nullptr, 0);
+	EVENT_INFO("oncelldetach", kEventParams_OneForm, nullptr, 0);
+	EVENT_INFO("oncellrefsloaded", kEventParams_OneForm, nullptr, 0);
+
 
 #undef EVENT_INFO
 #undef EVENT_INFO_FLAGS

@@ -294,7 +294,7 @@ bool Cmd_MessageBoxEx_Execute(COMMAND_ARGS)
 	if(!btnIdx)				// supply default OK button
 		b[0] = "Ok";
 
-	if(thisObj && !(thisObj->flags & TESForm::kFormFlags_DontSaveForm))		// if not temporary object and not quest script
+	if(thisObj && !thisObj->IsTemporary())		// if not temporary object and not quest script
 		*ShowMessageBox_pScriptRefID = thisObj->refID;
 	else
 		*ShowMessageBox_pScriptRefID = scriptObj->refID;
