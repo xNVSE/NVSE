@@ -456,10 +456,27 @@ namespace OtherHooks
 		}
 	}
 
+
+	static bool __fastcall CanDispatchScriptEvent(const TESForm* apForm) noexcept {
+		if (BGSSaveLoadGame::GetSingleton()->GetSaveGameLoading())
+			return false;
+
+		// Deleted + Temp
+		if (apForm->flags & 0x204020)
+			return false;
+
+		return true;
+	}
+
+	static void __declspec(noinline) __fastcall DispatchEventSafe(const char* apEventName, const TESForm* apForm) noexcept {
+		if (CanDispatchScriptEvent(apForm))
+			EventManager::DispatchEventThreadSafe(apEventName, nullptr, nullptr, apForm);
+	}
+
 	namespace RefLoading {
 #pragma optimize("y", off)
 		CallDetour kRefSet3D;
-		void __fastcall OnRefSet3DHook(TESObjectREFR* apThis) {
+		void __fastcall OnRefSet3DHook(TESObjectREFR* apThis) noexcept {
 			ThisStdCall<void>(kRefSet3D.GetOverwrittenAddr(), apThis);
 			uint8_t* pEBP = GetParentBasePtr(_AddressOfReturnAddress());
 			NiAVObject* pNew3D = *reinterpret_cast<NiAVObject**>(pEBP + 0x8);
@@ -469,28 +486,25 @@ namespace OtherHooks
 			};
 			Set3DData kData{ apThis, pNew3D };
 			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRefSet3D, &kData, sizeof(kData), nullptr);
-			if (!apThis->IsTemporary())
-				EventManager::DispatchEvent("onrefset3d", nullptr, apThis);
+			DispatchEventSafe("onrefset3d", apThis);
 		}
 
 		CallDetour kRefUnset3D;
-		void __fastcall OnRefUnset3DHook(TESObjectREFR* apThis) {
+		void __fastcall OnRefUnset3DHook(TESObjectREFR* apThis) noexcept {
 			if (apThis->renderState) {
-				PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRefUnset3D, apThis, sizeof(apThis), nullptr);
-				if (!apThis->IsTemporary())
-					EventManager::DispatchEvent("onrefunset3d", nullptr, apThis);
+				PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRefUnset3D, apThis, sizeof(uintptr_t), nullptr);
+				DispatchEventSafe("onrefunset3d", apThis);
 			}
 			ThisStdCall<void>(kRefUnset3D.GetOverwrittenAddr(), apThis);
 		}
 
 		CallDetour kRefAttachToCell;
-		void __fastcall OnRefAttachHook(TESObjectCELL* apThis) {
+		void __fastcall OnRefAttachHook(TESObjectCELL* apThis) noexcept {
 			uint8_t* pEBP = GetParentBasePtr(_AddressOfReturnAddress());
 			TESObjectREFR* pRef = *reinterpret_cast<TESObjectREFR**>(pEBP + 0x8);
 			//NiNode* pTargetNode = *reinterpret_cast<NiNode**>(pEBP + 0xC);
-			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRefAttach, pRef, sizeof(pRef), nullptr);
-			if (!pRef->IsTemporary())
-				EventManager::DispatchEvent("onrefattach", nullptr, pRef);
+			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRefAttach, pRef, sizeof(uintptr_t), nullptr);
+			DispatchEventSafe("onrefattach", pRef);
 			ThisStdCall<void>(kRefAttachToCell.GetOverwrittenAddr(), apThis);
 		}
 
@@ -499,29 +513,29 @@ namespace OtherHooks
 			kRefUnset3D.WriteRelCall(0x5710AC, uint32_t(OnRefUnset3DHook));
 			kRefAttachToCell.WriteRelCall(0x549787, uint32_t(OnRefAttachHook));
 		}
-#pragma optimize("", on)
+#pragma optimize("y", on)
 	}
 
 	namespace CellLoading {
 		class NVSECellLoadData : public FormExtraData {
 		public:
-			NVSECellLoadData() : FormExtraData(GetName()) {}
+			NVSECellLoadData() noexcept : FormExtraData(GetName()) {}
 			virtual ~NVSECellLoadData() override = default;
 
 			bool	bAllRefsLoaded = false;
 			UInt16	usReferenceCount = 0;
 
-			static const NiFixedString& GetName() {
+			static const NiFixedString& GetName() noexcept {
 				static NiFixedString name = "NVSECellLoadedData";
 				return name;
 			}
 
-			static NVSECellLoadData* Create() {
+			static NVSECellLoadData* Create() noexcept {
 				auto* item = New<NVSECellLoadData>();
 				new(item) NVSECellLoadData();
 				return item;
 			}
-			static NVSECellLoadData* Get(TESObjectCELL* apCell) {
+			static NVSECellLoadData* Get(TESObjectCELL* apCell) noexcept {
 				if (auto* existing = FormExtraData::Get(apCell, GetName()))
 					return static_cast<NVSECellLoadData*>(existing);
 				auto* data = Create();
@@ -530,11 +544,11 @@ namespace OtherHooks
 			}
 		};
 
-		void __fastcall OnCellStateChange(TESObjectCELL* apThis, void*, uint32_t aeState) {
+		void __fastcall OnCellStateChange(TESObjectCELL* apThis, void*, uint32_t aeState) noexcept {
 			const uint32_t uiPrevState = apThis->cellState;
 
 			apThis->cellState = aeState;
-			
+
 			// NVSE plugin event
 			{
 				struct CellData {
@@ -546,7 +560,7 @@ namespace OtherHooks
 				PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnCellStateChange, &kData, sizeof(kData), nullptr);
 			}
 
-			if (apThis->IsTemporary())
+			if (!CanDispatchScriptEvent(apThis))
 				return;
 
 			// Script events
@@ -573,7 +587,7 @@ namespace OtherHooks
 		}
 
 		CallDetour kOnAllRefsLoaded;
-		bool __fastcall OnAllRefsLoadedHook(TESObjectCELL* apThis) {
+		bool __fastcall OnAllRefsLoadedHook(TESObjectCELL* apThis) noexcept {
 			const bool bResult = ThisStdCall<bool>(kOnAllRefsLoaded.GetOverwrittenAddr(), apThis);
 
 			if (apThis->cellState == TESObjectCELL::kCellLoadState_Attached && apThis->loadedData && apThis->criticalQueuedRefCount == 0 && apThis->queuedRefCount == 0) {
@@ -583,9 +597,8 @@ namespace OtherHooks
 					pData->usReferenceCount = apThis->objectList.Count();
 					pData->bAllRefsLoaded = true;
 					apThis->CellRefLockLeave();
-					PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnCellRefsLoaded, apThis, sizeof(apThis), nullptr);
-					if (!apThis->IsTemporary())
-						EventManager::DispatchEvent("oncellrefsloaded", nullptr, apThis);
+					PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnCellRefsLoaded, apThis, sizeof(uintptr_t), nullptr);
+					DispatchEventSafe("oncellrefsloaded", apThis);
 				}
 			}
 

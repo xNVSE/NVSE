@@ -768,9 +768,17 @@ public:
 	UInt8 loadedMods[255];								 // 143
 
 	UInt16 pad242;	   // 242
-	UInt32 flg244;	   // 244 bit 6 block updating player position/rotation from save, bit 2 set during save
+	UInt32 globalFlags;	   // 244 bit 6 block updating player position/rotation from save, bit 2 set during save
 	UInt8 formVersion; // 248
 	UInt8 pad249[3];   // 249
+
+	static BGSSaveLoadGame* GetSingleton() {
+		return *reinterpret_cast<BGSSaveLoadGame**>(0x11DDF38);
+	}
+
+	bool GetSaveGameLoading() const {
+		return globalFlags & 2;
+	}
 };
 
 #if RUNTIME
