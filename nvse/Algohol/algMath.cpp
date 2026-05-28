@@ -119,7 +119,7 @@ Quat slerp( Quat q1, Quat q2, float t )
 		return q1 * 0.5f + q2 * 0.5f;
 
 	float ratioA = sinf( ( 1.0f - t ) * halfTheta ) / sinHalfTheta;
-	float ratioB = sinf( t * halfTheta ) / sinHalfTheta; 
+	float ratioB = sinf( t * halfTheta ) / sinHalfTheta;
 	return q1 * ratioA + q2 * ratioB;
 }
 
@@ -135,21 +135,22 @@ Euler fromQuat( Quat q, int flag )
 	if ( !flag )
 	{
 		float test = q.x*q.z - q.w*q.y;
+		float epsilon = 0.4999999f * unit; // Is this threshold too tight?
 
 		//	Check gimbal lock at north pole
-		if ( test > 0.49992f * unit )
+		if ( test > epsilon )
 		{
-			out.elevation	= -atan2f( 2.0f * q.x*q.y - 2.0f * q.w*q.z , sqw - sqx + sqy - sqz ) * RADTODEG;
+			out.elevation	= 0.0f;
 			out.bank		= -90.0f;
-			out.heading		= 0.0f;
+			out.heading		= 2.0f * atan2f(q.z, q.w) * RADTODEG;
 			return out;
 		}
 		//	Check gimbal lock at south pole
-		if ( test < -0.49992f * unit )
+		if ( test < -epsilon )
 		{
-			out.elevation	= -atan2f( 2.0f * q.w*q.z - 2.0f * q.x*q.y , sqw - sqx + sqy - sqz ) * RADTODEG;
+			out.elevation	= 0.0f;
 			out.bank		= 90.0f;
-			out.heading		= 0.0f;
+			out.heading		= 2.0f * atan2f(q.z, q.w) * RADTODEG;
 			return out;
 		}
 		out.elevation	= -atan2f( -2.0f * q.x*q.w - 2.0f * q.y*q.z , sqw - sqx - sqy + sqz ) * RADTODEG;
