@@ -9,4 +9,4 @@ Quat fromAxisAngle( Vector3 axis, float angle );
 Quat nlerp( Quat q1, Quat q2, float t );
 Quat slerp( Quat q1, Quat q2, float t );
 
-Euler fromQuat( Quat q, int flag );
+Euler fromQuat( Quat q, int actorFlag, int funcFlag );

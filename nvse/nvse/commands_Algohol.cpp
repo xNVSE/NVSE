@@ -383,7 +383,7 @@ bool Cmd_QToEuler_Execute( COMMAND_ARGS )
 						&actorFlag ) )
 		return true;
 
-	Euler out = fromQuat( q, actorFlag );
+	Euler out = fromQuat( q, actorFlag, 0 );
 
 	setVarByName( scriptObj, eventList, attitude_name, out.elevation );
 	setVarByName( scriptObj, eventList, bank_name, out.bank );
@@ -399,7 +399,7 @@ bool Cmd_QToEulerEx_Execute( COMMAND_ARGS )
 
 	if(ExtractArgs(EXTRACT_ARGS, &xOut, &yOut, &zOut, &q.w, &q.x, &q.y, &q.z, &actorFlag))
 	{
-		Euler out = fromQuat( q, actorFlag );
+		Euler out = fromQuat( q, actorFlag, 1 );
 		xOut->data = out.elevation;
 		yOut->data = out.bank;
 		zOut->data = out.heading;

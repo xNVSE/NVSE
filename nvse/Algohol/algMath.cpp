@@ -119,11 +119,11 @@ Quat slerp( Quat q1, Quat q2, float t )
 		return q1 * 0.5f + q2 * 0.5f;
 
 	float ratioA = sinf( ( 1.0f - t ) * halfTheta ) / sinHalfTheta;
-	float ratioB = sinf( t * halfTheta ) / sinHalfTheta; 
+	float ratioB = sinf( t * halfTheta ) / sinHalfTheta;
 	return q1 * ratioA + q2 * ratioB;
 }
 
-Euler fromQuat( Quat q, int flag )
+Euler fromQuat( Quat q, int actorFlag, int funcFlag )
 {
 	Euler out;
 	float sqw = q.w * q.w;
@@ -132,26 +132,54 @@ Euler fromQuat( Quat q, int flag )
 	float sqz = q.z * q.z;
 	float unit = sqw + sqx + sqy + sqz;
 
-	if ( !flag )
+	if ( !actorFlag )
 	{
 		float test = q.x*q.z - q.w*q.y;
 
-		//	Check gimbal lock at north pole
-		if ( test > 0.49992f * unit )
+		// QToEuler behavior (legacy)
+		if ( !funcFlag )
 		{
-			out.elevation	= -atan2f( 2.0f * q.x*q.y - 2.0f * q.w*q.z , sqw - sqx + sqy - sqz ) * RADTODEG;
-			out.bank		= -90.0f;
-			out.heading		= 0.0f;
-			return out;
+			float epsilon = 0.49992f * unit;
+			//	Check gimbal lock at north pole
+			if ( test > epsilon )
+			{
+				out.elevation	= -atan2f( 2.0f * q.x*q.y - 2.0f * q.w*q.z , sqw - sqx + sqy - sqz ) * RADTODEG;
+				out.bank		= -90.0f;
+				out.heading		= 0.0f;
+				return out;
+			}
+			//	Check gimbal lock at south pole
+			if ( test < -epsilon )
+			{
+				out.elevation	= -atan2f( 2.0f * q.w*q.z - 2.0f * q.x*q.y , sqw - sqx + sqy - sqz ) * RADTODEG;
+				out.bank		= 90.0f;
+				out.heading		= 0.0f;
+				return out;
+			}
 		}
-		//	Check gimbal lock at south pole
-		if ( test < -0.49992f * unit )
+
+		// QToEulerEx behavior
+		else
 		{
-			out.elevation	= -atan2f( 2.0f * q.w*q.z - 2.0f * q.x*q.y , sqw - sqx + sqy - sqz ) * RADTODEG;
-			out.bank		= 90.0f;
-			out.heading		= 0.0f;
-			return out;
+			float epsilon = 0.4999999f * unit;
+			//	Check gimbal lock at north pole
+			if ( test > epsilon )
+			{
+				out.elevation	= 0.0f;
+				out.bank		= -90.0f;
+				out.heading		= 2.0f * atan2f(q.z, q.w) * RADTODEG;
+				return out;
+			}
+			//	Check gimbal lock at south pole
+			if ( test < -epsilon )
+			{
+				out.elevation	= 0.0f;
+				out.bank		= 90.0f;
+				out.heading		= 2.0f * atan2f(q.z, q.w) * RADTODEG;
+				return out;
+			}
 		}
+
 		out.elevation	= -atan2f( -2.0f * q.x*q.w - 2.0f * q.y*q.z , sqw - sqx - sqy + sqz ) * RADTODEG;
 		out.bank		= -asinf( ( 2.0f * test ) / unit ) * RADTODEG;
 		out.heading		= -atan2f( -2.0f * q.x*q.y - 2.0f * q.w*q.z , sqw + sqx - sqy - sqz ) * RADTODEG;
