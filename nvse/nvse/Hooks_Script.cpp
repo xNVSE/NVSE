@@ -1120,8 +1120,13 @@ void __fastcall PostScriptCompileSuccess(Script* script, ScriptBuffer* scriptBuf
 //	- If Script->Compile is called in the GECK outside of the vanilla code this will NOT be hit
 //	- Not sure if this is a problem, maybe all plugins should be compiling scripts via NVSE and we can clean up the runtime hooks as well?
 static char __fastcall CompileScriptHook(void* context, void* edx, Script* script, ScriptBuffer *buf) {
-	if (buf == nullptr || buf->scriptText == nullptr) {
+	if (buf == nullptr) {
 		return 1;
+	}
+
+	if (buf->scriptText == nullptr) {
+		// Let original compiler take over for empty script text (i.e. cleanup after removing a partial script)
+		return ThisStdCall<char>(0x5C96E0, context, script, buf);
 	}
 
 	auto precompileResult = HandleBeginCompile(buf, script);
