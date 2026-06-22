@@ -4,7 +4,7 @@
 
 static ParamInfo kParams_OneInt[1] =
 {
-	{	"int", kParamType_Integer, 0 }, 
+	{	"int", kParamType_Integer, 0 },
 };
 
 static ParamInfo kParams_TwoInts[2] =
@@ -34,7 +34,7 @@ static ParamInfo kParams_TwoInts_OneOptionalString[3] =
 
 static ParamInfo kParams_OneOptionalInt[1] =
 {
-	{	"int", kParamType_Integer, 1 }, 
+	{	"int", kParamType_Integer, 1 },
 };
 
 static ParamInfo kParams_TwoOptionalInts[2] =
@@ -85,6 +85,12 @@ static ParamInfo kParams_OneString_OneFloat[] =
 {
 	{	"string",	kParamType_String,	0 },
 	{	"float",	kParamType_Float,	0 },
+};
+
+static ParamInfo kParams_OneString_OneOptionalInt[2] =
+{
+	{	"string",	kParamType_String,	0 },
+	{	"int",	kParamType_Integer,	1 },
 };
 
 static ParamInfo kParams_TwoFloats[2] =
@@ -138,13 +144,13 @@ static ParamInfo kParams_OneFloat_OneOptionalObjectID[2] =
  	{	"magic item",	kParamType_MagicItem,		0	},
  	{	"item",			kParamType_ObjectID,	1	},
  };
- 
+
  static ParamInfo kParams_OneInventoryItem_OneOptionalObjectID[2] =
  {
  	{	"inv item",		kParamType_AnyForm,		0	},
  	{	"target item",	kParamType_ObjectID,	1	},
  };
- 
+
  static ParamInfo kParams_OneFormList_OneOptionalObjectID[2] =
  {
  	{	"form list",	kParamType_FormList,		0	},
@@ -178,7 +184,7 @@ static ParamInfo kParams_OneActorValue[1] =
 	{"variable",		kParamType_Float, 1}, \
 	{"variable",		kParamType_Float, 1}, \
 	{"variable",		kParamType_Float, 1}, \
-	{"variable",		kParamType_Float, 1} 
+	{"variable",		kParamType_Float, 1}
 
 static ParamInfo kParams_FormatString[21] =
 {
@@ -198,7 +204,7 @@ static ParamInfo kParams_OneOptionalActorRef[1] =
 	{	"actor reference",	kParamType_Actor,	1	},
 };
 
-static ParamInfo kParams_Axis[1] = 
+static ParamInfo kParams_Axis[1] =
 {
 	{	"axis",	kParamType_Axis,	0	},
 };
@@ -241,7 +247,7 @@ static ParamInfo kParams_OneObject[1] =
  {
  	{	"target item",	kParamType_TESObject,	1	},
  };
- 
+
 static ParamInfo kParams_OneString_OneOptionalObject[2] =
 {
 	{	"string",		kParamType_String,			0	},
@@ -274,7 +280,7 @@ static ParamInfo kParams_FormListInteger[2] =
 
 static ParamInfo kParams_OneQuest[1] =
 {
-	{	"quest", kParamType_Quest, 0 }, 
+	{	"quest", kParamType_Quest, 0 },
 };
 
 static ParamInfo kParams_OneNPC[1] =
@@ -320,7 +326,7 @@ static ParamInfo kParams_OneForm_OneOptionalObjectRef[2] =
 static ParamInfo kParams_OneForm_OneInt[2] =
 {
 	{	"form",	kParamType_AnyForm,	0	},
-	{	"int",	kParamType_Integer, 0	}, 
+	{	"int",	kParamType_Integer, 0	},
 };
 
 static ParamInfo kParams_OneForm[1] =
@@ -331,7 +337,7 @@ static ParamInfo kParams_OneForm[1] =
 static ParamInfo kParams_OneForm_OneFloat[2] =
 {
 	{	"form",		kParamType_AnyForm,	0	},
-	{	"float",	kParamType_Float,	0	}, 
+	{	"float",	kParamType_Float,	0	},
 };
 
 static ParamInfo kParams_OneOptionalForm[1] =
@@ -402,7 +408,7 @@ static ParamInfo kParams_GenericCheckForm[3] =
 
 static ParamInfo kParams_OneIntOneForm[2] =
 {
-	{	"index",	kParamType_Integer, 0	}, 
+	{	"index",	kParamType_Integer, 0	},
 	{	"form",		kParamType_AnyForm,	0	},
 };
 
@@ -431,13 +437,13 @@ static ParamInfo kParams_EightOptionalInts[8] =
 
 static ParamInfo kParams_OneIntOneOptionalForm[2] =
 {
-	{	"index",	kParamType_Integer, 0	}, 
+	{	"index",	kParamType_Integer, 0	},
 	{	"form",		kParamType_AnyForm,	1	},
 };
 
 static ParamInfo kParams_OneStringOneOptionalForm[2] =
 {
-	{	"index",	kParamType_String,	0	}, 
+	{	"index",	kParamType_String,	0	},
 	{	"form",		kParamType_AnyForm,	1	},
 };
 
@@ -449,7 +455,7 @@ static ParamInfo kParams_OneString_OneForm[2] =
 
 static ParamInfo kParams_OneSpellItem[1] =
 {
-	{	"spell", kParamType_SpellItem, 0 }, 
+	{	"spell", kParamType_SpellItem, 0 },
 };
 
 static ParamInfo kParams_OneForm_OneOptionalString[2] =

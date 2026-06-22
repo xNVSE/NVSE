@@ -19,7 +19,7 @@ DEFINE_COMMAND(GetUIFloatAlt, , 0, 1, kParams_OneString);
 DEFINE_COMMAND(SetUIFloatAlt, , 0, 2, kParams_OneString_OneFloat);
 DEFINE_COMMAND(SetUIStringAlt, , 0, 22, kParams_SetUIStringEx);
 DEFINE_COMMAND(ModUIFloat, , 0, 2, kParams_OneString_OneFloat);
-DEFINE_COMMAND(GetUIFloatInherited, , 0, 1, kParams_OneString);
+DEFINE_COMMAND(GetUIFloatInherited, , 0, 2, kParams_OneString_OneOptionalInt);
 
 DEFINE_COMMAND(PrintActiveTile, prints name of highlighted UI component for debug purposes, 0, 0, NULL);
 
