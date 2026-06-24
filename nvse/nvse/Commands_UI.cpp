@@ -448,7 +448,8 @@ bool Cmd_GetUIFloatInherited_Execute(COMMAND_ARGS)
 {
 	*result = fErrorReturnValue;
 	char component[0x200];
-	if (ExtractArgsEx(EXTRACT_ARGS_EX, &component))
+	UInt32 bExcludeMenuRoot = false;
+	if (ExtractArgsEx(EXTRACT_ARGS_EX, &component, &bExcludeMenuRoot))
 	{
 		const char* slashPos = nullptr;
 		TileMenu* tileMenu = InterfaceManager::GetMenuByPath(component, &slashPos);
@@ -490,22 +491,25 @@ bool Cmd_GetUIFloatInherited_Execute(COMMAND_ARGS)
 				char originalSep = *nextSep;
 				*nextSep = 0;
 
-				// Add trait value if locus
-				if (isPos)
+				if (!bExcludeMenuRoot || currentTile != tileMenu)
 				{
-					Tile::Value* locus = currentTile->GetValue(Tile::eTileValue::kTileValue_locus);
-					if (locus && locus->num != 0)
+					// Add trait value if locus
+					if (isPos)
 					{
-						Tile::Value* localTrait = currentTile->GetValueName(traitName);
-						if (localTrait) cumulativeValue += localTrait->num;
+						Tile::Value* locus = currentTile->GetValue(Tile::eTileValue::kTileValue_locus);
+						if (locus && locus->num != 0)
+						{
+							Tile::Value* localTrait = currentTile->GetValueName(traitName);
+							if (localTrait) cumulativeValue += localTrait->num;
+						}
 					}
-				}
 
-				// Get inherited systemcolor
-				else if (isColor)
-				{
-					Tile::Value* colorVal = currentTile->GetValueName(traitName);
-					if (colorVal) cumulativeValue = colorVal->num;
+					// Get inherited systemcolor
+					else if (isColor)
+					{
+						Tile::Value* colorVal = currentTile->GetValueName(traitName);
+						if (colorVal) cumulativeValue = colorVal->num;
+					}
 				}
 
 				Tile* nextTile = currentTile->GetChildAlt(subPath);
@@ -518,7 +522,7 @@ bool Cmd_GetUIFloatInherited_Execute(COMMAND_ARGS)
 				subPath = nextSep + 1;
 			}
 
-			// Final 
+			// Final
 			if (*subPath)
 			{
 				Tile::Value* finalVal = currentTile->GetValueName(subPath);
