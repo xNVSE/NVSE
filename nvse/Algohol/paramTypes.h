@@ -19,3 +19,5 @@ extern ParamInfo kParams_FourScriptVars_EightFloats[12];
 extern ParamInfo kParams_ThreeScriptVars_SevenFloats[10];
 extern ParamInfo kParams_FourScriptVars_NineFloats_OneOptionalInt[14];
 extern ParamInfo kParams_ThreeScriptVars_FourFloats_OneOptionalInt[8];
+extern ParamInfo kParams_SixFloats[6];
+extern ParamInfo kParams_EightFloats[8];

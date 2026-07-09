@@ -87,6 +87,19 @@ bool Cmd_V3NormalizeEx_Execute( COMMAND_ARGS )
 	return true;
 }*/
 
+bool Cmd_V3DotproductEx_Execute( COMMAND_ARGS )
+{
+	*result = 0;
+	Vector3 v1, v2;
+
+	if (ExtractArgsEx(EXTRACT_ARGS_EX, &v1.x, &v1.y, &v1.z, &v2.x, &v2.y, &v2.z))
+	{
+		*result = V3Dotproduct( v1, v2 );
+	}
+
+	return true;
+}
+
 bool Cmd_V3Crossproduct_Execute( COMMAND_ARGS )
 {
 	char vector_x_name[VBUFSIZ], vector_y_name[VBUFSIZ], vector_z_name[VBUFSIZ];
@@ -404,5 +417,18 @@ bool Cmd_QToEulerEx_Execute( COMMAND_ARGS )
 		yOut->data = out.bank;
 		zOut->data = out.heading;
 	}
+	return true;
+}
+
+bool Cmd_QDotproductEx_Execute( COMMAND_ARGS )
+{
+	*result = 0;
+	Quat q1, q2;
+
+	if (ExtractArgsEx(EXTRACT_ARGS_EX, &q1.w, &q1.x, &q1.y, &q1.z, &q2.w, &q2.x, &q2.y, &q2.z))
+	{
+		*result = QDotproduct( q1, q2 );
+	}
+
 	return true;
 }
