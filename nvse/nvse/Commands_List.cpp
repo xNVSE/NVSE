@@ -458,7 +458,7 @@ bool Cmd_ListGetSaveBakedObjectCount_Execute(COMMAND_ARGS) {
 	return true;
 }
 
-bool Cmd_GetNumLevItems_Execute(COMMAND_ARGS) {
+bool Cmd_GetNumLevSaveBakedItems_Execute(COMMAND_ARGS) {
 	*result = 0;
 	TESForm* pLeveledListForm = NULL;
 	if (ExtractArgs(EXTRACT_ARGS, &pLeveledListForm) && pLeveledListForm) {
@@ -468,7 +468,7 @@ bool Cmd_GetNumLevItems_Execute(COMMAND_ARGS) {
 		}
 	}
 	if (IsConsoleMode())
-		Console_Print("GetNumLevItems >> %f", *result);
+		Console_Print("GetNumLevSaveBakedItems >> %f", *result);
 
 	return true;
 }
