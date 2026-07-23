@@ -68,3 +68,6 @@ static ParamInfo kParams_OneFormList_OneFunction[2] =
 };
 
 DEFINE_COMMAND(ForEachInList, "invokes a UDF that is called on each form in a formlist.", false, 2, kParams_OneFormList_OneFunction);
+
+DEFINE_CMD_ALT(ListGetSaveBakedObjectCount, , "returns the count of savebaked items in the form list (Added with AddFormToFormList). The number is also the end range of said added forms", 0, 1, kParams_FormList);
+DEFINE_CMD_ALT(GetNumLevSaveBakedItems, LListGetSaveBakedCount, "returns the count of savebaked items in the leveled list (Added with AddItemToLeveledList or AddNPCToLeveledList)", 0, 1, kParams_OneForm);

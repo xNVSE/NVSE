@@ -442,3 +442,33 @@ bool Cmd_ForEachInList_Execute(COMMAND_ARGS)
 	*result = true;
 	return true;
 }
+
+bool Cmd_ListGetSaveBakedObjectCount_Execute(COMMAND_ARGS) {
+	*result = 0;
+	BGSListForm* pListForm = NULL;
+	if (ExtractArgs(EXTRACT_ARGS, &pListForm)) {
+		if (pListForm) {
+			*result = pListForm->numAddedObjects;
+		}
+	}
+
+	if (IsConsoleMode())
+		Console_Print("ListGetSaveBakedObjectCount >> %f", *result);
+
+	return true;
+}
+
+bool Cmd_GetNumLevItems_Execute(COMMAND_ARGS) {
+	*result = 0;
+	TESForm* pLeveledListForm = NULL;
+	if (ExtractArgs(EXTRACT_ARGS, &pLeveledListForm) && pLeveledListForm) {
+		TESLeveledList* pLeveledList = TESLeveledList::GetFormAsLeveledList(pLeveledListForm);
+		if (pLeveledList) {
+			*result = pLeveledList->scriptAddedObjects.Count();
+		}
+	}
+	if (IsConsoleMode())
+		Console_Print("GetNumLevItems >> %f", *result);
+
+	return true;
+}
