@@ -2305,6 +2305,10 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(QInterpolateEx);
 	ADD_CMD(QToEulerEx);
 	ADD_CMD(GetUIFloatInherited);
+
+	// 6.4 beta 09
+	ADD_CMD(ListGetSaveBakedObjectCount);
+	ADD_CMD(GetNumLevSaveBakedItems);
 }
 
 namespace PluginAPI

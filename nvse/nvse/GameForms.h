@@ -3162,9 +3162,12 @@ public:
 	tList<BaseData>	datas;			// 004
 	UInt8			chanceNone;		// 00C
 	UInt8			flags;			// 00D
-	UInt8			fill00E[2];		// 00E
-	UInt32			unk010;			// 010	LVLG
-	ExtraDataList	extraDatas;		// 014
+	TESGlobal*		global;
+	tList<BaseData> scriptAddedObjects;
+
+	static TESLeveledList* GetFormAsLeveledList(TESForm* apForm) {
+		return CdeclCall<TESLeveledList*>(0x487BE0, apForm);
+	};
 };	// 01C
 
 // TESLevCreature (68)
