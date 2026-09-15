@@ -1369,7 +1369,7 @@ bool Cmd_SetWeaponReloadAnim_Execute(COMMAND_ARGS)
 		if (pWeapon) {
 			pWeapon->reloadAnim = intVal;
 			// Based on 0x51E283
-			pWeapon->isLoopingReload = intVal + 177 >= 196;
+			pWeapon->isLoopingReload = intVal >= TESObjectWEAP::eReload_W;
 		}
 	}
 	return true;
