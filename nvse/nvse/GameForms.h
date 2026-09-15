@@ -2892,7 +2892,7 @@ public:
 	UInt32				unk378;				// 378
 	UInt32				unk37C;				// 37C
 	UInt32				recharge;			// 380 maybe recharge
-	UInt8				unk384;				// 384
+	bool				isLoopingReload;	// 384
 	UInt8				unk385[3];			// 385
 
 
