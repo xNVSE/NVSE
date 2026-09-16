@@ -604,15 +604,9 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 	{
 		// Copying some code from Script::FinalizeCompilation (runtime: 0x5AAF20, editor: 0x5C5100)
 		// We can't assume ScriptBuffer has extracted anything, since compilation was done via plugin instead.
-#if RUNTIME
 		script->InitItem();
 		script->MarkForDeletion(false);
 		script->SetAltered(true);
-#else
-		script->Unk_1A();
-		script->Unk_29(false);
-		script->Unk_2A(true);
-#endif
 
 		return PrecompileResult::kPrecompile_SpecialCompile;
 	}

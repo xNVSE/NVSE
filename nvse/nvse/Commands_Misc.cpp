@@ -22,16 +22,16 @@ bool Cmd_GetAgeClass_Eval(COMMAND_ARGS_EVAL)
 	//DEBUG_MESSAGE("\t\tGAC Arg1:%x\n", arg1);
 
 	if (arg1)
-		pActor = DYNAMIC_CAST(arg1, TESObjectREFR, Actor);
+		pActor = static_cast<TESObjectREFR*>(arg1)->IsActor() ? static_cast<Actor*>(arg1) : nullptr;
 	//DEBUG_MESSAGE("\t\tGAC Actor:%x\n", pActor);
 	if (!pActor)
 		if (thisObj) {
 			//DEBUG_MESSAGE("\t\tGAC thisObj:%x\n", thisObj);
-			pActor = DYNAMIC_CAST(thisObj, TESObjectREFR, Actor);
+			pActor = thisObj->IsActor() ? static_cast<Actor*>(thisObj) : nullptr;
 		}
 	//DEBUG_MESSAGE("\t\tGAC Actor:%x\n", pActor);
-	if (pActor)
-		pNPC = DYNAMIC_CAST(pActor->baseForm, TESForm, TESNPC);
+	if (pActor && pActor->baseForm)
+		pNPC = GET_FORM_AS(pActor->baseForm, TESNPC);
 	//DEBUG_MESSAGE("\t\tGAC Actor:%x NPC:%x\n", pActor, pNPC);
 	if (pNPC)
 		pRace = pNPC->race.race;
@@ -84,16 +84,16 @@ bool Cmd_GetRespawn_Eval(COMMAND_ARGS_EVAL)
 	TESActorBaseData* pActorBaseData = NULL;
 
 	if (arg1)
-		pActor = DYNAMIC_CAST(arg1, TESForm, Actor);
+		pActor = static_cast<TESObjectREFR*>(arg1)->IsActor() ? static_cast<Actor*>(arg1) : nullptr;
 
 	if (!pActor && thisObj)
-		pActor = DYNAMIC_CAST(thisObj, TESObjectREFR, Actor);
+		pActor = static_cast<TESObjectREFR*>(thisObj)->IsActor() ? static_cast<Actor*>(thisObj) : nullptr;
 
 	if (pActor)
 		pForm = pActor->baseForm;
 
-	if (pForm)
-		pActorBaseData =  DYNAMIC_CAST(pForm, TESForm, TESActorBaseData);
+	if (pForm && pForm->IsActorBase())
+		pActorBaseData = &static_cast<TESActorBase*>(pForm)->baseData;
 
 	if (pActorBaseData)
 		*result = pActorBaseData->flags & TESActorBaseData::kFlags_Respawn ? 1.0 : 0.0;
@@ -123,13 +123,13 @@ bool Cmd_SetRespawn_Execute(COMMAND_ARGS)
 		return true;
 
 	if (!pActor && thisObj) 
-		pActor = DYNAMIC_CAST(thisObj, TESObjectREFR, Actor);
+		pActor = thisObj->IsActor() ? static_cast<Actor*>(thisObj) : nullptr;
 
 	if (pActor)
 		pForm = pActor->baseForm;
 
-	if (pForm)
-		pActorBaseData =  DYNAMIC_CAST(pForm, TESForm, TESActorBaseData);
+	if (pForm && pForm->IsActorBase())
+		pActorBaseData = &static_cast<TESActorBase*>(pForm)->baseData;
 
 	if (pActorBaseData) 
 		flag ? pActorBaseData->flags |= TESActorBaseData::kFlags_Respawn : pActorBaseData->flags &= ~TESActorBaseData::kFlags_Respawn;
@@ -144,7 +144,7 @@ bool Cmd_GetPermanent_Eval(COMMAND_ARGS_EVAL)
 	TESForm * pForm = NULL;
 
 	if (arg1)
-		pObj = DYNAMIC_CAST(arg1, TESForm, TESObjectREFR);
+		pObj = static_cast<TESForm*>(arg1)->IsReference() ? static_cast<TESObjectREFR*>(arg1) : nullptr;
 
 	if (!pObj && thisObj)
 		pObj = thisObj;
@@ -203,7 +203,7 @@ bool Cmd_GetRace_Execute(COMMAND_ARGS)
 	if (!pForm && thisObj)
 		pForm = thisObj->baseForm;
 	if (pForm)
-		npc = DYNAMIC_CAST(pForm, TESForm, TESNPC);
+		npc = GET_FORM_AS(pForm, TESNPC);
 
 	if (npc && npc->race.race)
 		*refResult = npc->race.race->refID;
@@ -226,7 +226,7 @@ bool Cmd_GetRaceName_Execute(COMMAND_ARGS)
 	if (!pForm && thisObj)
 		pForm = thisObj->baseForm;
 	if (pForm)
-		npc = DYNAMIC_CAST(pForm, TESForm, TESNPC);
+		npc = GET_FORM_AS(pForm, TESNPC);
 
 	if (npc && npc->race.race)
 		AssignToStringVar(PASS_COMMAND_ARGS, npc->race.race->fullName.name.CStr());
@@ -248,7 +248,7 @@ bool Cmd_GetClass_Execute(COMMAND_ARGS)
 	if (!pForm && thisObj)
 		pForm = thisObj->baseForm;
 	if (pForm)
-		npc = DYNAMIC_CAST(pForm, TESForm, TESNPC);
+		npc = GET_FORM_AS(pForm, TESNPC);
 
 	if (npc && npc->classID)
 		*refResult = npc->classID->refID;
@@ -271,7 +271,7 @@ bool Cmd_GetNameOfClass_Execute(COMMAND_ARGS)
 	if (!pForm && thisObj)
 		pForm = thisObj->baseForm;
 	if (pForm)
-		npc = DYNAMIC_CAST(pForm, TESForm, TESNPC);
+		npc = GET_FORM_AS(pForm, TESNPC);
 
 	if (npc && npc->classID)
 		AssignToStringVar(PASS_COMMAND_ARGS, npc->classID->fullName.name.CStr());
@@ -285,15 +285,15 @@ bool Cmd_GetPerkRank(COMMAND_ARGS_EVAL, bool alt)
 	BGSPerk * pPerk = NULL;
 
 	if (arg1)
-		pPerk = DYNAMIC_CAST(arg1, TESForm, BGSPerk);
+		pPerk = GET_FORM_AS(arg1, BGSPerk);
 	if (!pPerk)
 		return true;
 
 	if (arg2)
-		pActor = DYNAMIC_CAST(arg2, TESForm, Actor);
+		pActor = static_cast<TESObjectREFR*>(arg2)->IsActor() ? static_cast<Actor*>(arg2) : nullptr;
 
 	if (!pActor && thisObj)
-		pActor = DYNAMIC_CAST(thisObj, TESObjectREFR, Actor);
+		pActor = thisObj->IsActor() ? static_cast<Actor*>(thisObj) : nullptr;
 
 	if (pActor)
 		*result = pActor->GetPerkRank(pPerk, alt);
@@ -349,7 +349,7 @@ TESNPC* ConvertNPC(TESObjectREFR* thisObj, TESForm* form)
 		form = form->TryGetREFRParent();
 
 	if (form)
-		npc = DYNAMIC_CAST(form, TESForm, TESNPC);
+		npc = GET_FORM_AS(form, TESNPC);
 
 	return npc;
 }
@@ -372,7 +372,7 @@ Actor* ConvertActor(TESObjectREFR* thisObj, TESForm* actorForm)
 			actorForm = thisObj;
 
 	if (actorForm)
-		actor = DYNAMIC_CAST(actorForm, TESForm, Actor);
+		actor = actorForm->IsActor() ? static_cast<Actor*>(actorForm) : nullptr;
 
 	return actor;
 }
@@ -396,8 +396,8 @@ TESActorBase* ConvertActorBase(TESObjectREFR* thisObj, TESForm* actorForm)
 	if (actorForm)
 		actorForm = actorForm->TryGetREFRParent();
 
-	if (actorForm)
-		actorBase = DYNAMIC_CAST(actorForm, TESForm, TESActorBase);
+	if (actorForm && actorForm->IsActorBase())
+		actorBase = static_cast<TESActorBase*>(actorForm);
 
 	return actorBase;
 }
@@ -431,7 +431,7 @@ TESLevCharacter* ConvertLevCharacter(TESObjectREFR* thisObj, TESForm* form)
 		form = form->TryGetREFRParent();
 
 	if (form)
-		lev = DYNAMIC_CAST(form, TESForm, TESLevCharacter);
+		lev = GET_FORM_AS(form, TESLevCharacter);
 
 	return lev;
 }
@@ -457,7 +457,7 @@ TESLevCreature* ConvertLevCreature(TESObjectREFR* thisObj, TESForm* form)
 		form = form->TryGetREFRParent();
 
 	if (form)
-		lev = DYNAMIC_CAST(form, TESForm, TESLevCreature);
+		lev = GET_FORM_AS(form, TESLevCreature);
 
 	return lev;
 }
@@ -895,63 +895,63 @@ bool GenericForm_Execute(COMMAND_ARGS, UInt32 action)
 	switch (whichType)
 	{
 	case eWhichListForm_RaceHair:
-		race = DYNAMIC_CAST(pGenericListOwner, TESForm, TESRace);
+		race = GET_FORM_AS(pGenericListOwner, TESRace);
 		if (!noForm)
-			hair = DYNAMIC_CAST(pForm, TESForm, TESHair);
+			hair = GET_FORM_AS(pForm, TESHair);
 		if (race && (hair || noForm))
 			pListForm = (tList<TESForm>*)&(race->hairs);
 		break;
 	case eWhichListForm_RaceEyes:
-		race = DYNAMIC_CAST(pGenericListOwner, TESForm, TESRace);
+		race = GET_FORM_AS(pGenericListOwner, TESRace);
 		if (!noForm)
-			eyes = DYNAMIC_CAST(pForm, TESForm, TESEyes);
+			eyes = GET_FORM_AS(pForm, TESEyes);
 		if (race && (eyes || noForm))
 			pListForm = (tList<TESForm>*)&(race->eyes);
 		break;
 	case eWhichListForm_BasePackage:
 		base = ConvertActorBase(thisObj, pGenericListOwner);
 		if (!noForm)
-			pack = DYNAMIC_CAST(pForm, TESForm, TESPackage);
+			pack = GET_FORM_AS(pForm, TESPackage);
 		if (base && (pack || noForm))
 			pListForm = (tList<TESForm>*)&(base->ai.packageList);
 		break;
 	case eWhichListForm_BaseSpellListSpell:
 		base = ConvertActorBase(thisObj, pGenericListOwner);
 		if (!noForm)
-			spell = DYNAMIC_CAST(pForm, TESForm, SpellItem);
+			spell = GET_FORM_AS(pForm, SpellItem);
 		if (base && (spell || noForm))
 			pListForm = (tList<TESForm>*)&(base->spellList.spellList);
 		break;
 	case eWhichListForm_BaseSpellListLevSpell:
 		base = ConvertActorBase(thisObj, pGenericListOwner);
 		if (!noForm)
-			spell = DYNAMIC_CAST(pForm, TESForm, SpellItem);
+			spell = GET_FORM_AS(pForm, SpellItem);
 		if (base && (spell || noForm))
 			pListForm = (tList<TESForm>*)&(base->spellList.leveledSpellList);
 		break;
 	case eWhichListForm_HeadParts:
 		npc_ = ConvertNPC(thisObj, pGenericListOwner);
 		if (!noForm)
-			part = DYNAMIC_CAST(pForm, TESForm, BGSHeadPart);
+			part = GET_FORM_AS(pForm, BGSHeadPart);
 		if (npc_ && (part || noForm))
 			pListForm = (tList<TESForm>*)&(npc_->headPart);
 		break;
 	//case eWhichListForm_LevCreatureRef:
 	//	lCrea = ConvertLevCreature(thisObj, pGenericListOwner);
 	//	if (!noForm)
-	//		crea = DYNAMIC_CAST(pForm, TESForm, TESCreature);
+	//		crea = GET_FORM_AS(pForm, TESCreature);
 	//	if (lCrea && (crea || noForm))
 	//		pListForm = (tList<TESForm>*)&(lCrea->list.datas);
 	//	break;
 	//case eWhichListForm_LevCharacterRef:
 	//	lChar = ConvertLevCharacter(thisObj, pGenericListOwner);
 	//	if (!noForm)
-	//		npc_ = DYNAMIC_CAST(pForm, TESForm, TESNPC);
+	//		npc_ = GET_FORM_AS(pForm, TESNPC);
 	//	if (lChar && (npc_ || noForm))
 	//		pListForm = (tList<TESForm>*)&(lChar->list.datas);
 	//	break;
 	case eWhichListForm_FormList:
-		list = DYNAMIC_CAST(pGenericListOwner, TESForm, BGSListForm);
+		list = GET_FORM_AS(pGenericListOwner, BGSListForm);
 		if (list && (pForm || noForm))
 			pListForm = (tList<TESForm>*)&(list->list);
 		break;
@@ -1174,9 +1174,9 @@ bool Cmd_GetNthAnimation_Execute(COMMAND_ARGS)
 		if (!pForm && thisObj)
 			pForm = thisObj;
 
-		if (pForm && pForm->GetIsReference())
+		if (pForm && pForm->IsReference())
 		{
-			TESObjectREFR* pRef = DYNAMIC_CAST(thisObj, TESForm, TESObjectREFR);
+			TESObjectREFR* pRef = thisObj;
 			if (pRef)
 				pForm = pRef->baseForm;
 			else
@@ -1184,8 +1184,8 @@ bool Cmd_GetNthAnimation_Execute(COMMAND_ARGS)
 		}
 		if (pForm)
 		{
-			npc = DYNAMIC_CAST(pForm, TESForm, TESNPC);
-			crea = DYNAMIC_CAST(pForm, TESForm, TESCreature);
+			npc = GET_FORM_AS(pForm, TESNPC);
+			crea = GET_FORM_AS(pForm, TESCreature);
 		}
 
 		if (npc)
@@ -1222,9 +1222,9 @@ bool Cmd_AddAnimation_Execute(COMMAND_ARGS)
 		if (!pForm && thisObj)
 			pForm = thisObj;
 
-		if (pForm && pForm->GetIsReference())
+		if (pForm && pForm->IsReference())
 		{
-			TESObjectREFR* pRef = DYNAMIC_CAST(thisObj, TESForm, TESObjectREFR);
+			TESObjectREFR* pRef = thisObj;
 			if (pRef)
 				pForm = pRef->baseForm;
 			else
@@ -1232,8 +1232,8 @@ bool Cmd_AddAnimation_Execute(COMMAND_ARGS)
 		}
 		if (pForm)
 		{
-			npc = DYNAMIC_CAST(pForm, TESForm, TESNPC);
-			crea = DYNAMIC_CAST(pForm, TESForm, TESCreature);
+			npc = GET_FORM_AS(pForm, TESNPC);
+			crea = GET_FORM_AS(pForm, TESCreature);
 		}
 
 		if (npc)
@@ -1264,9 +1264,9 @@ bool Cmd_DelAnimation_Execute(COMMAND_ARGS)
 		if (!pForm && thisObj)
 			pForm = thisObj;
 
-		if (pForm && pForm->GetIsReference())
+		if (pForm && pForm->IsReference())
 		{
-			TESObjectREFR* pRef = DYNAMIC_CAST(thisObj, TESForm, TESObjectREFR);
+			TESObjectREFR* pRef = thisObj;
 			if (pRef)
 				pForm = pRef->baseForm;
 			else
@@ -1274,8 +1274,8 @@ bool Cmd_DelAnimation_Execute(COMMAND_ARGS)
 		}
 		if (pForm)
 		{
-			npc = DYNAMIC_CAST(pForm, TESForm, TESNPC);
-			crea = DYNAMIC_CAST(pForm, TESForm, TESCreature);
+			npc = GET_FORM_AS(pForm, TESNPC);
+			crea = GET_FORM_AS(pForm, TESCreature);
 		}
 
 		if (npc)
@@ -1310,9 +1310,9 @@ bool Cmd_DelAnimations_Execute(COMMAND_ARGS)
 		if (!pForm && thisObj)
 			pForm = thisObj;
 
-		if (pForm && pForm->GetIsReference())
+		if (pForm && pForm->IsReference())
 		{
-			TESObjectREFR* pRef = DYNAMIC_CAST(thisObj, TESForm, TESObjectREFR);
+			TESObjectREFR* pRef = thisObj;
 			if (pRef)
 				pForm = pRef->baseForm;
 			else
@@ -1320,13 +1320,13 @@ bool Cmd_DelAnimations_Execute(COMMAND_ARGS)
 		}
 		if (pForm)
 		{
-			npc = DYNAMIC_CAST(pForm, TESForm, TESNPC);
-			crea = DYNAMIC_CAST(pForm, TESForm, TESCreature);
+			npc = GET_FORM_AS(pForm, TESNPC);
+			crea = GET_FORM_AS(pForm, TESCreature);
 		}
 
 		if (npc)
 			pAnim = &(npc->animation);
-		else if (npc)
+		else if (crea)
 			pAnim = &(crea->animation);
 
 		if (pAnim)
@@ -1342,9 +1342,12 @@ bool Cmd_GetDoorSound_Execute(COMMAND_ARGS) {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs()) {
 		TESForm* form = eval.Arg(0)->GetTESForm();
+		if (!form)
+			return true;
+
 		int mode = static_cast<int>(eval.Arg(1)->GetNumber());
 
-		TESObjectDOOR* doorForm = DYNAMIC_CAST(form, TESForm, TESObjectDOOR);
+		TESObjectDOOR* doorForm = GET_FORM_AS(form, TESObjectDOOR);
 		if (!doorForm) {
 			if (IsConsoleMode()) {
 				Console_Print("Form %X is not a TESObjectDOOR", form->refID);

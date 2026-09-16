@@ -162,9 +162,6 @@
     <ClCompile Include="GameProcess.cpp">
       <Filter>api</Filter>
     </ClCompile>
-    <ClCompile Include="GameRTTI.cpp">
-      <Filter>api</Filter>
-    </ClCompile>
     <ClCompile Include="GameScript.cpp">
       <Filter>api</Filter>
     </ClCompile>
@@ -587,9 +584,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="GameRTTI_1_4_0_525.inc">
-      <Filter>api</Filter>
-    </None>
-    <None Include="GameRTTI_1_4_0_525ng.inc">
       <Filter>api</Filter>
     </None>
     <None Include="GameRTTI_EDITOR.inc">

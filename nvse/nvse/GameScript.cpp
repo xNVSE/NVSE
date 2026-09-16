@@ -148,12 +148,13 @@ Script::VariableType GetDeclaredVariableType(const char* varName, const char* sc
 
 Script *GetScriptFromForm(TESForm *form)
 {
-	TESObjectREFR *refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
-	if (refr)
-		form = refr->baseForm;
+	if (!form)
+		return nullptr;
 
-	TESScriptableForm *scriptable = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
-	return scriptable ? scriptable->script : NULL;
+	if (form->IsReference())
+		form = static_cast<TESObjectREFR*>(form)->baseForm;
+
+	return TESScriptableForm::GetFormScript(form);
 }
 
 bool GetUserFunctionParamTokensFromLine(std::string_view lineText, std::vector<std::string>& out)
@@ -406,7 +407,7 @@ Script::RefVariable *ScriptBuffer::ResolveRef(const char *refName, Script *scrip
 		}
 		if (form)
 		{
-			TESObjectREFR *refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+			TESObjectREFR *refr = form->IsReference() ? static_cast<TESObjectREFR *>(form) : nullptr;
 			if (refr && !refr->IsPersistent()) // only persistent refs can be used in scripts
 				return NULL;
 			if (!newRef)
@@ -451,28 +452,30 @@ Script::VariableType ScriptBuffer::GetVariableType(VariableInfo* varInfo, Script
 	{
 		if (refVar->form)
 		{
-			TESScriptableForm *scriptable = NULL;
+			Script* pFormScript = NULL;
 			switch (refVar->form->typeID)
 			{
 			case kFormType_TESObjectREFR:
 			{
-				TESObjectREFR *refr = DYNAMIC_CAST(refVar->form, TESForm, TESObjectREFR);
-				scriptable = DYNAMIC_CAST(refr->baseForm, TESForm, TESScriptableForm);
+				if (refVar->form->IsReference()) {
+					TESObjectREFR* refr = static_cast<TESObjectREFR *>(refVar->form);
+					pFormScript = TESScriptableForm::GetFormScript(refr->baseForm);
+				}
 				break;
 			}
 			case kFormType_TESQuest:
-				scriptable = DYNAMIC_CAST(refVar->form, TESForm, TESScriptableForm);
+				pFormScript = TESScriptableForm::GetFormScript(refVar->form);
 			}
 
-			if (scriptable && scriptable->script)
+			if (pFormScript)
 			{
-				if (scriptable->script->text)
+				if (pFormScript->text)
 				{
-					script = scriptable->script;
-					scrText = scriptable->script->text;
+					script = pFormScript;
+					scrText = pFormScript->text;
 				}
 				else
-					return scriptable->script->GetVariableType(varInfo);
+					return pFormScript->GetVariableType(varInfo);
 			}
 		}
 		else // this is a ref variable, not a literal form - can't look up script vars
@@ -571,8 +574,8 @@ Script* Script::RefVariable::GetReferencedScript() const
 		return nullptr;
 	if (IS_ID(form, TESQuest))
 		return static_cast<TESQuest*>(form)->scriptable.script;
-	if (auto* refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR))
-		if (auto* extraScript = refr->GetExtraScript())
+	if (form->IsReference())
+		if (auto* extraScript = static_cast<TESObjectREFR*>(form)->GetExtraScript())
 			return extraScript->script;
 	return nullptr;
 }

@@ -279,7 +279,7 @@ namespace OnSell
 			TESForm* item = contChangesEntry->type;
 			TESObjectREFR* seller = IsPlayerOwner ? *g_thePlayer : *reinterpret_cast<TESObjectREFR**>((char*)barterMenu + 0x80);
 
-			if (seller->GetIsReference() && item)
+			if (seller->IsReference() && item)
 			{
 				// store the data for an Inventory Ref for a frame, so it can be queried via function during the event.
 				g_soldItemData = contChangesEntry;
@@ -468,7 +468,7 @@ bool IsPotentialFilterValid(EventArgType const expectedParamType, std::string& o
 		if (UInt32 refID; potentialFilter.GetAsFormID(&refID) && (form = LookupFormByID(refID)))
 		{
 			if (expectedParamType == EventArgType::eParamType_BaseForm
-				&& form->GetIsReference()) [[unlikely]]
+				&& form->IsReference()) [[unlikely]]
 			{
 				//Prefer not to sneakily convert the user's reference to its baseform, lessons must be learned.
 				outErrorMsg = FormatString("Expected BaseForm-type filter for filter #%u, got Reference.", filterNum);
@@ -513,7 +513,7 @@ bool EventCallback::ValidateFirstOrSecondFilter(bool isFirst, const EventInfo& p
 	}
 
 	if (expectedType == EventArgType::eParamType_BaseForm 
-		&& filter->GetIsReference()) [[unlikely]]
+		&& filter->IsReference()) [[unlikely]]
 	{
 		//Prefer not to sneakily convert the user's reference to its baseform, lessons must be learned.
 		outErrorMsg = FormatString("Expected BaseForm-type filter for filter %s, got Reference.", filterName);
@@ -1400,7 +1400,7 @@ bool DoesFormMatchFilter(TESForm* inputForm, TESForm* filterForm, bool expectRef
 		//inputForm is not a formlist.
 
 		// If input form is a reference, then try matching its baseForm to the filter.
-		if (expectReference && inputForm->GetIsReference())
+		if (expectReference && inputForm->IsReference())
 		{
 			if (filterForm == GetPermanentBaseForm(static_cast<TESObjectREFR*>(inputForm)))
 				return true;

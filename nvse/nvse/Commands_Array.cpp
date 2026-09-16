@@ -328,7 +328,11 @@ bool Cmd_ar_CustomSort_Execute(COMMAND_ARGS)
 		ArrayVar *srcArr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (srcArr && srcArr->Size())
 		{
-			Script* compare = DYNAMIC_CAST(eval.Arg(1)->GetTESForm(), TESForm, Script);
+			TESForm* pForm = eval.Arg(1)->GetTESForm();
+			if (!pForm || !pForm->IsScript())
+				return true;
+			
+			Script* compare = static_cast<Script*>(pForm);
 			if (compare)
 			{
 				ArrayVar::SortOrder order = ArrayVar::kSort_Ascending;

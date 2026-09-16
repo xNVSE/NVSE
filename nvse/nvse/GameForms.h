@@ -134,6 +134,8 @@ enum FormType
 
 #define IS_ID(form, type) (form->typeID == kFormType_##type)
 #define NOT_ID(form, type) (form->typeID != kFormType_##type)
+#define IS_FORM_TYPE(form, type) (form->typeID == kFormType_##type)
+#define GET_FORM_AS(form, type) IS_ID(static_cast<TESForm*>(form), type) ? static_cast<type*>(static_cast<TESForm*>(form)) : nullptr
 
 struct ModInfo;		// in GameData.h 
 class TESFullName;
@@ -180,6 +182,7 @@ class BGSEncounterZone;
 class BGSExplosion;
 class BGSDebris;
 class BGSRagdoll;
+class TESBoundObject;
 
 struct Condition;
 
@@ -195,7 +198,16 @@ public:
 	virtual void	Free(void);
 	virtual void	CopyFromBase(BaseFormComponent * component);
 	virtual bool	CompareWithBase(BaseFormComponent * src);
-
+#ifdef EDITOR
+	virtual void	Func_04();
+	virtual bool	Func_05(TESForm*);
+	virtual void	Func_06();
+	virtual bool	Func_07(HWND, int, int, int, int*);
+	virtual bool	Func_08(HWND) const;
+	virtual void	Func_09(HWND);
+	virtual void	Func_10(HWND);
+	virtual void	Func_11(HWND);
+#endif
 //	void		** _vtbl;	// 000
 };
 
@@ -228,6 +240,7 @@ public:
 	virtual bool		Sort(TESForm * form);				// returns if the argument is "greater or equal" to this form
 	virtual TESForm *	CreateForm(void * arg0, void * mapToAddTo);	// makes a new form, 
 	virtual void		Unk_11(void * arg);
+#ifdef RUNTIME
 	virtual void		MarkAsModified(UInt32 changedFlags);		// enable changed flag?
 	virtual void		MarkAsUnmodified(UInt32 changedFlags);		// disable changed flag?
 	virtual UInt32		GetSaveSize(UInt32 changedFlags);	// bytes taken by the delta flags for this form, UNRELIABLE, not (always) overriden
@@ -244,6 +257,7 @@ public:
 	virtual bool		Unk_1F(void * arg);
 	virtual void		Unk_20(void * arg);
 	virtual void		Unk_21(void * arg);
+#endif
 	virtual void		InitItem(void);
 	virtual UInt32		GetTypeID(void);
 	virtual void		GetDebugName(String * dst);
@@ -262,49 +276,73 @@ public:
 	virtual bool		Unk_30(void);		// returns false
 	virtual void		MarkForDeletion(bool set);	// 00000020 then calls Fn12 MarkAsModified. Credits to lStewieAl for the name.
 	virtual void		SetAltered(bool set);	// 00000002 with a lot of housekeeping. Credits to lStewieAl for the name.
-#if RUNTIME
 	virtual void		SetQuestItem(bool set);	// 00000400 then calls Fn12 MarkAsModified
-#else
-	virtual bool		Unk_33(void);
-#endif
 	virtual void		Unk_34(bool set);	// 00000040 then calls Fn12 MarkAsModified
 	virtual void		Unk_35(bool set);	// 00010000 then calls Fn12 MarkAsModified
 	virtual void		Unk_36(bool set);	// 00020000
+#ifdef EDITOR
+	virtual UInt32		GetNavMeshGenType() const;
+#endif
 	virtual void		Unk_37(void);		// write esp format
 	virtual void		readOBNDSubRecord(ModInfo * modInfo);	// read esp format
-	virtual bool		IsActor_InEditor(void);
-	virtual bool		IsBoundObject(void);
-	virtual bool		Unk_3B(void);
-#if RUNTIME
-	virtual bool		GetIsReference() const;
-#else
-	virtual bool		Unk_3C();
-	bool GetIsReference() const { return typeID == kFormType_TESObjectREFR; }
-#endif
-	virtual bool		Unk_3D(void);
-	virtual bool		Unk_3E(void);
-#if RUNTIME
-	virtual bool		Unk_3F(void) const;	// Runtime: returnTrue for refr whose baseForm is a TESActorBase. Returns bool(?).
-#else  // Editor: returns EditorID string. Credits to lStewieAl for the name.
-	virtual const char* GetEditorID_InEditor(void) const;
-#endif
-	virtual bool		IsActor_Runtime(void);
+	virtual bool		IsBoundObject() const;
+	virtual bool		IsObject() const;
+	virtual bool		IsMagicItem() const;
+	virtual bool		IsReference() const;
+	virtual bool		IsArmorAddon() const;
+	virtual bool		IsActorBase() const;
+	virtual bool		IsMobileObject() const;
+	virtual bool		IsActor() const;
 	virtual UInt32		Unk_41(void);
 	virtual void		CopyFrom(const TESForm * form);
 	virtual bool		Compare(TESForm * form);
 	virtual bool		CheckFormGRUP(void * arg);	// Checks the group is valid for the form
 	virtual void		InitFormGRUP(void * dst, void * arg1);	// Fills the groupInfo with info valid for the form
+#ifdef EDITOR
+	virtual const char* GetFormEditorID() const;
+#endif
 	virtual bool		Unk_46(void);
 	virtual bool		Unk_47(void);
 	virtual bool		Unk_48(UInt32 formType);	// returns if the same FormType is passed in
-	virtual bool		Unk_49(void * arg0, void * arg1, void * arg2, void * arg3, void * arg4);	// looks to be func33 in Oblivion
+#ifdef RUNTIME
+	virtual bool		Activate(TESObjectREFR* apItemActivated, TESObjectREFR* apActionRef, bool abSound, TESBoundObject* apObjectToGet, int32_t aiCount);
+#else
+	virtual bool		Unk_67() const;
+	virtual bool		Unk_68();
+	virtual void		Unk_69(String& arString); // Get texture/model path?
+	virtual void		Unk_70();
+	virtual void		Unk_71();
+	virtual void		Unk_72();
+	virtual bool		Unk_73(int, int, int);
+	virtual void		Unk_74(TESForm*);
+	virtual bool		Unk_75(int);
+	virtual void		Unk_76(BSSimpleList<ModInfo*>* apFiles, String& arString) const;
+	virtual bool		Unk_77(class TESBitArrayFile* apFile, uint32_t); // Checkout?
+	virtual bool		Unk_78();
+	virtual bool		Unk_79(class TESBitArrayFile* apFile); // Undo checkout?
+	virtual void		Unk_80(); // Deletes the file list
+	virtual bool		Unk_81(); // Revert or Reload
+#endif
 	virtual void		SetRefID(UInt32 refID, bool generateID);
+#ifdef EDITOR
+	virtual void		Unk_83();
+	virtual bool		DialogCallback(HWND ahWindow, int, int, int, int*);
+	virtual bool		HasAllRequiredDlgItems(HWND ahWindow) const;
+	virtual void		LoadDialog(HWND ahWindow) const;
+	virtual void		Unk_87(HWND ahWindow);
+	virtual void		Unk_88(HWND ahWindow);
+	virtual INT_PTR		OpenDialog(HWND, bool, bool) const;
+	virtual void 		CreateDisplayString(void*) const;
+	virtual int32_t		CompareOrder(TESForm* apForm, int32_t aiMode); // -3/3 compares by TESFullName, -2/2 by FormID, -1/1 by EDID
+	virtual void		Unk_92(HWND);
+#endif
 	virtual char *		GetName2(void);	// GetName as in OBSE ?
-	virtual char *		GetName(void) const;	// GetEditorID as in OBSE ?
+#ifdef RUNTIME
+	virtual char *		GetFormEditorID(void) const;	// GetEditorID as in OBSE ?
 	// simply returns true at run-time, unless JohnnyGuitar NVSE is installed.
 	// It's not SetEditorID in the editor, since it uses a different function for that.
 	virtual bool		SetEditorID_AtRuntime(const char * edid);		
-	// 4E
+#endif
 
 	const char* GetEditorID() const;
 	
@@ -352,8 +390,9 @@ public:
 	const char*		GetTheName();
 	std::string		GetStringRepresentation() const;
 
-	bool IsWeapon() { return typeID == kFormType_TESObjectWEAP; }
-	bool IsArmor() { return typeID == kFormType_TESObjectARMO; }
+	bool IsWeapon() const { return typeID == kFormType_TESObjectWEAP; }
+	bool IsArmor() const { return typeID == kFormType_TESObjectARMO; }
+	bool IsScript() const { return typeID == kFormType_Script; }
 
 #if RUNTIME
 	// adds a new form to the game (from CloneForm or LoadForm)
@@ -465,6 +504,10 @@ public:
 	Script	* script;	// 004
 	bool	resolved;	// 008	called during LoadForm, so scripts do not wait for TESForm_InitItem to be resolved
 	UInt8	pad[3];		// 009
+
+	static Script* GetFormScript(const TESForm* apForm);
+
+	static void SetFormScript(const TESForm* apForm, Script* apScript);
 };
 
 // 010
@@ -499,6 +542,8 @@ public:
 
 	UInt32	value;
 	// 008
+
+	static SInt32 GetFormValue(const TESForm* apForm);
 };
 
 // 10
@@ -515,6 +560,8 @@ public:
 	UInt16	unk1;					// 0A
 	UInt32	unk2;					// 0C
 	// 010
+
+	static EnchantmentItem* GetFormEnchanting(const TESForm* apForm);
 };
 
 // 08
@@ -536,6 +583,8 @@ public:
 
 	float	weight;		// 004
 	// 008
+
+	static float GetFormWeight(const TESForm* apForm, bool abHardcore);
 };
 
 // 008
@@ -548,6 +597,10 @@ public:
 	virtual UInt32	GetHealth(void);	// 0004
 
 	UInt32	health;		// 004
+
+	static TESHealthForm* GetFormAsHealthForm(const TESForm* apForm);
+
+	static UInt32 GetFormHealth(const TESForm* apForm);
 };
 
 // 008
@@ -560,8 +613,8 @@ public:
 	virtual UInt16	GetDamage(void);
 
 	UInt16	damage;	// 04
-	UInt16	unk0;	// 06 - bitmask? perhaps 2 UInt8s?
-	// 008
+
+	static UInt16 GetAttackDamage(const TESForm* apForm);
 };
 
 
@@ -729,9 +782,9 @@ public:
 		kFacegenFlag_LeftHand =		0x08,
 	};
 
-	virtual void *	Destroy(bool noDealloc);	// 04
-	virtual char *	GetModelPath(void);
-	virtual void	SetModelPath(char * path);	// 06
+	virtual void *			Destroy(bool noDealloc);	// 04
+	virtual const char *	GetModelPath(void) const;
+	virtual void			SetModelPath(const char * path);	// 06
 
 	String	nifPath;		// 04
 	UInt32	unk0C;			// 0C	referenced when saving Texture Hashes, init'd as a byte or is it a pointer to a structure starting with a byte followed by a pointer to some allocated data ?
@@ -739,7 +792,8 @@ public:
 	UInt8	facegenFlags;	// 14
 	UInt8	pad15[3];		// 15
 
-	void SetPath(const char* newPath)	{ nifPath.Set(newPath); }
+	void SetPath(const char* newPath)	{ SetModelPath(newPath); }
+	static const char* GetModel(const TESForm* apForm);
 };
 
 // 18
@@ -822,6 +876,8 @@ public:
 	~BGSDestructibleObjectForm();
 
 	DestructibleData	*data;			// 04
+
+	static BGSDestructibleObjectForm* GetDestructionForm(const TESForm* apForm);
 };
 
 STATIC_ASSERT(sizeof(BGSDestructibleObjectForm) == 0x8);
@@ -855,6 +911,8 @@ public:
 	~BGSRepairItemList();
 
 	BGSListForm	* listForm;	// 04
+
+	static BGSRepairItemList* GetFormAsRepairItemList(const TESForm* apForm);
 };
 
 // 008
@@ -865,6 +923,8 @@ public:
 	~BGSEquipType();
 
 	UInt32	equipType;	// 08
+
+	static UInt32 GetEquipType(const TESForm* apForm);
 };
 
 // 004
@@ -980,6 +1040,8 @@ public:
 	BGSMessageIcon			messageIcon[2];		// 0A4
 	TESModelRDT				modelRDT;			// 0C4
 	// 0DC
+
+	static TESBipedModelForm* GetFormAsBipedModel(const TESForm* apForm);
 
 	static UInt32 MaskForSlot(UInt32 mask);
 
@@ -1886,7 +1948,9 @@ public:
 	}
 	void SetFlag(UInt32 flag, bool bMod) {
 		factionFlags = bMod ? (factionFlags | flag) : (factionFlags & ~flag);
+#ifdef RUNTIME
 		MarkAsModified(kModified_FactionFlags);
+#endif
 	}
 	bool IsHidden()
 	{	return IsFlagSet(kFlag_HiddenFromPC);	}
@@ -3320,7 +3384,9 @@ public:
 };
 
 // TESLevItem (44)
-class TESLevItem;
+class TESLevItem : public TESBoundObject, public TESLeveledList {
+};
+
 class TESImageSpaceModifier;
 
 // 2F4
@@ -3869,30 +3935,51 @@ public:
 		kPackageFlag_Unk31 =					1 << 31
 	};
 
-	enum	// From OBSE and FNVEdit. Runtimes has 0x24 types!
+	enum PackageType
 	{
-		kPackageType_Find =	0,		// 00
-		kPackageType_Follow,
-		kPackageType_Escort,
-		kPackageType_Eat,
-		kPackageType_Sleep,
-		kPackageType_Wander,
-		kPackageType_Travel,
-		kPackageType_Accompany,
-		kPackageType_UseItemAt,
-		kPackageType_Ambush,
-		kPackageType_FleeNotCombat,
-		kPackageType_Unk11,
-		kPackageType_Sandbox,
-		kPackageType_Patrol,
-		kPackageType_Guard,
-		kPackageType_Dialogue,
-		kPackageType_UseWeapon,			// 10
-
-		// unless shown otherwise kPackageType_CombatController,	// Actor::GetCombatController returns package only if type matches this
-		// start conversation can lead to a package of type 1C, which is recorded in PlayerCharacter::Unk0224
-
-		kPackType_MAX
+		kPackageType_None = 0xFFFFFFFF,
+		kPackageType_Explore = 0x0,
+		kPackageType_Follow = 0x1,
+		kPackageType_Escort = 0x2,
+		kPackageType_Eat = 0x3,
+		kPackageType_Sleep = 0x4,
+		kPackageType_Wander = 0x5,
+		kPackageType_Travel = 0x6,
+		kPackageType_Accompany = 0x7,
+		kPackageType_UseItemAt = 0x8,
+		kPackageType_Ambush = 0x9,
+		kPackageType_FleeNonCombat = 0xA,
+		kPackageType_CastMagic = 0xB,
+		kPackageType_Sandbox = 0xC,
+		kPackageType_Patrol = 0xD,
+		kPackageType_Guard = 0xE,
+		kPackageType_Dialogue = 0xF,
+		kPackageType_UseWeapon = 0x10,
+		kPackageType_Find = 0x11,
+		kPackageType_Combat = 0x12,
+		kPackageType_CombatLow = 0x13,
+		kPackageType_Activate = 0x14,
+		kPackageType_Alarm = 0x15,
+		kPackageType_Flee = 0x16,
+		kPackageType_Trespass = 0x17,
+		kPackageType_Spectator = 0x18,
+		kPackageType_ReactToDead = 0x19,
+		kPackageType_GetUp = 0x1A,
+		kPackageType_DoNothing = 0x1B,
+		kPackageType_InGameDialogue = 0x1C,
+		kPackageType_Surface = 0x1D,
+		kPackageType_SearchForAttacker = 0x1E,
+		kPackageType_AvoidRadiation = 0x1F,
+		kPackageType_ReactToDestroyedObject = 0x20,
+		kPackageType_ReactToGrenadeRrMine = 0x21,
+		kPackageType_StealWarning = 0x22,
+		kPackageType_PickpocketWarning = 0x23,
+		kPackageType_MovementBlocked = 0x24,
+		kPackageType_Sandman = 0x25,
+		kPackageType_Cannibal = 0x26,
+		kPackageType_Backup = 0x27,
+		kPackageType_Count = 0x28,
+		kPackType_MAX = kPackageType_Count,
 	};
 
 	// 8
@@ -4142,6 +4229,12 @@ public:
 		//	048 is a DWord CombatStyle, 
 		//	04C, 05C and 06C are the same 4 DWord struct onBegin onEnd onChange, { TESIdle* idle; EmbeddedScript* script; Topic* topic; UInt32 unk0C; }
 		//	07C is a DWord
+
+	PackageType GetType() const { return static_cast<PackageType>(type); }
+
+	bool IsDialoguePackage() const {
+		return GetType() == TESPackage::kPackageType_Dialogue || GetType() == TESPackage::kPackageType_InGameDialogue;
+	}
 
 	void SetTarget(TESObjectREFR* refr);
 	void SetTarget(TESForm* baseForm, UInt32 count);

@@ -350,7 +350,7 @@ bool Cmd_IsRefInList_Eval(COMMAND_ARGS_EVAL)
 
 		if (arg2) {
 			auto* pForm = static_cast<TESForm*>(arg2);
-			TESObjectREFR* pObj = DYNAMIC_CAST(pForm, TESForm, TESObjectREFR);
+			TESObjectREFR* pObj = pForm->IsReference() ? static_cast<TESObjectREFR*>(pForm) : nullptr;
 			index = pListForm->GetIndexOf(pForm);
 			if (index < 0 && pObj) {
 

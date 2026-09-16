@@ -38,7 +38,7 @@ namespace Compiler::Passes {
 		// Transform UDF(args) into call(UDF, args)
 		const auto &name = expr->identifier->str;
 		const auto form = GetFormByID(name.c_str());
-		if (form && DYNAMIC_CAST(form, TESForm, Script)) {
+		if (form && GET_FORM_AS(form, Script)) {
 			TransformCall(expr);
 		}
 

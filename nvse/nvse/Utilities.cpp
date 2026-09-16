@@ -945,7 +945,7 @@ void vShowRuntimeError(Script* script, const char* fmt, va_list args)
 	char errorHeader[0x900];
 	const auto* modName = GetModName(script);
 
-	const auto* scriptName = script ? script->GetName() : nullptr; // JohnnyGuitarNVSE allows this
+	const auto* scriptName = script ? script->GetFormEditorID() : nullptr; // JohnnyGuitarNVSE allows this
 	auto refId = script ? script->refID : 0;
 	const auto modIdx = script ? script->GetModIndex() : 0;
 	if (script && LambdaManager::IsScriptLambda(script))
@@ -955,7 +955,7 @@ void vShowRuntimeError(Script* script, const char* fmt, va_list args)
 			parentEventList && ((parentScript = parentEventList->m_script)))
 		{
 			refId = parentScript->refID;
-			scriptName = parentScript->GetName();
+			scriptName = parentScript->GetFormEditorID();
 		}
 	}
 	if (scriptName && strlen(scriptName) != 0)
@@ -1114,7 +1114,7 @@ bool ValidString(const char* str)
 // debugger can't call unused member functions
 const char* GetFormName(TESForm* form)
 {
-	return form ? form->GetName() : "";
+	return form ? form->GetFormEditorID() : "";
 }
 
 const char* GetFormName(UInt32 formId)

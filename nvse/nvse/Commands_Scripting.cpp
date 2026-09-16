@@ -566,7 +566,10 @@ bool Cmd_CallFunctionCond_Eval(COMMAND_ARGS_EVAL)
 		auto const bBreakIfFalse = (UInt32)arg2;  // if true, if a UDF returns false, breaks the formlist loop and returns 0.
 		for (auto const &form : pListForm->list)
 		{
-			if (auto const scriptIter = DYNAMIC_CAST(form, TESForm, Script))
+			if (!form) [[unlikely]]
+				continue;
+
+			if (auto const scriptIter = GET_FORM_AS(form, Script))
 			{
 				InternalFunctionCaller caller(scriptIter, thisObj, nullptr);
 				caller.SetArgs(0);
@@ -855,7 +858,7 @@ bool Cmd_PluginVersion_Execute(COMMAND_ARGS) {
 		const auto pluginName = eval.Arg(0)->GetString();
 		const auto pluginVersion = static_cast<UInt32>(eval.Arg(1)->GetNumber());
 
-		const auto scriptName = scriptObj->GetName();
+		const auto scriptName = scriptObj->GetFormEditorID();
 
 		std::string lowered(pluginName);
 		ToLower(lowered);
