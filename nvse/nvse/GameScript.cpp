@@ -247,8 +247,15 @@ bool Script::Compile(ScriptBuffer* buffer)
 	auto* scriptCompiler = (void*)0xECFDF8;
 #else
 	constexpr auto address = 0x5AEB90;
+	ConsoleManager* console = ConsoleManager::GetSingleton();
+	if (!console)
+		return false;
+
 	auto* scriptCompiler = ConsoleManager::GetSingleton()->scriptContext;
 #endif
+	if (!scriptCompiler)
+		return false;
+
 	return ThisStdCall<bool>(address, scriptCompiler, this, buffer); // CompileScript
 }
 
