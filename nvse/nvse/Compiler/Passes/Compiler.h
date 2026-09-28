@@ -115,7 +115,7 @@ namespace Compiler::Passes {
 
 			if (form) {
 				// only persistent refs can be used in scripts
-				if (const auto ref = DYNAMIC_CAST(form, TESForm, TESObjectREFR); ref && !ref->IsPersistent()) {
+				if (form->IsReference() && !static_cast<TESObjectREFR*>(form)->IsPersistent()) {
 					throw std::runtime_error(std::format("Object reference '{}' must be persistent.", identifier));
 				}
 

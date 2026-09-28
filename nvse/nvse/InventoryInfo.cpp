@@ -15,11 +15,7 @@ TESForm* GetItemByIdx(TESObjectREFR* thisObj, UInt32 objIdx, SInt32* outNumItems
 	ExtraContainerChanges* pXContainerChanges = static_cast<ExtraContainerChanges*>(thisObj->extraDataList.GetByType(kExtraData_ContainerChanges));
 	ExtraContainerInfo info(pXContainerChanges ? pXContainerChanges->GetEntryDataList() : NULL);
 
-	TESContainer* pContainer = NULL;
-	TESForm* pBaseForm = thisObj->baseForm;
-	if (pBaseForm) {
-		pContainer = DYNAMIC_CAST(pBaseForm, TESForm, TESContainer);
-	}
+	TESContainer* pContainer = thisObj->HasContainer();
 
 	// first look in the base container
 	if (pContainer) {
@@ -52,11 +48,7 @@ TESForm* GetItemByRefID(TESObjectREFR* thisObj, UInt32 refID, SInt32* outNumItem
 	ExtraContainerChanges* pXContainerChanges = static_cast<ExtraContainerChanges*>(thisObj->extraDataList.GetByType(kExtraData_ContainerChanges));
 	ExtraContainerInfo info(pXContainerChanges ? pXContainerChanges->GetEntryDataList() : NULL);
 
-	TESContainer* pContainer = NULL;
-	TESForm* pBaseForm = thisObj->baseForm;
-	if (pBaseForm) {
-		pContainer = DYNAMIC_CAST(pBaseForm, TESForm, TESContainer);
-	}
+	TESContainer* pContainer = thisObj->HasContainer();
 
 	// first look in the base container
 	if (pContainer) {
@@ -106,7 +98,7 @@ TESForm* GetItemWithHealthAndOwnershipByRefID(TESObjectREFR* thisObj, UInt32 ref
 							*outHealth = pXHealth->health;
 					}
 					else {
-						pHealth = DYNAMIC_CAST(pEntryData->type, TESForm, TESHealthForm);
+						pHealth = TESHealthForm::GetFormAsHealthForm(pEntryData->type);
 						if (pHealth && outHealth)
 							*outHealth = pHealth->health;
 					}
@@ -136,10 +128,7 @@ TESForm* GetItemWithHealthAndOwnershipByRefID(TESObjectREFR* thisObj, UInt32 ref
 	}
 
 	// Then look in the base container
-	TESContainer* pContainer = NULL;
-	TESForm* pBaseForm = thisObj->baseForm;
-	if (pBaseForm)
-		pContainer = DYNAMIC_CAST(pBaseForm, TESForm, TESContainer);
+	TESContainer* pContainer = thisObj->HasContainer();
 
 	if (pContainer) {
 		ContainerFindRefId finder(info, refID);
@@ -151,7 +140,7 @@ TESForm* GetItemWithHealthAndOwnershipByRefID(TESObjectREFR* thisObj, UInt32 ref
 		pFound = pContainer->formCountList.GetNthItem(count);
 		if (pFound) {
 			if (pFound->form && (pFound->form->refID==refID)) {
-				pHealth = DYNAMIC_CAST(pEntryData->type, TESForm, TESHealthForm);
+				pHealth = TESHealthForm::GetFormAsHealthForm(pEntryData->type);
 				if (pHealth && outHealth) *outHealth = pHealth->health;
 				if (outNumItems) *outNumItems = pFound->count;
 				*inOutIndex += 1;
@@ -189,7 +178,7 @@ TESForm * SetFirstItemWithHealthAndOwnershipByRefID(TESObjectREFR* thisObj, UInt
 		return AddItemHealthPercentOwner(thisObj, refID, NumItems, Health, pOwner, Rank);
 
 	bool Done = false;
-	TESHealthForm* pHealth = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESHealthForm);
+	TESHealthForm* pHealth = TESHealthForm::GetFormAsHealthForm(thisObj->baseForm);
 	ExtraHealth* pXHealth = NULL;
 	ExtraOwnership* pXOwner = NULL;
 	ExtraRank* pXRank = NULL;
@@ -262,8 +251,8 @@ bool SameOwner(ExtraOwnership* pXOwner, ExtraRank* pXRank, TESForm* pOwner, UInt
 		return false;
 	if (!pXOwner && !pOwner)
 		return true;
-	TESFaction* pXFaction = DYNAMIC_CAST(pXOwner->owner, TESForm, TESFaction);
-	TESFaction* pFaction = DYNAMIC_CAST(pOwner, TESForm, TESFaction);
+	TESFaction* pXFaction = GET_FORM_AS(pXOwner->owner, TESFaction);
+	TESFaction* pFaction = GET_FORM_AS(pOwner, TESFaction);
 	if (pFaction && pXFaction)
 		if (pFaction->refID==pXFaction->refID)
 			if (pXRank && (pXRank->rank==Rank))
@@ -274,8 +263,8 @@ bool SameOwner(ExtraOwnership* pXOwner, ExtraRank* pXRank, TESForm* pOwner, UInt
 			return false;
 	if (pFaction || pXFaction)
 		return false;
-	TESObjectREFR* pXRef = DYNAMIC_CAST(pXOwner->owner, TESForm, TESObjectREFR);
-	TESObjectREFR* pRef = DYNAMIC_CAST(pOwner, TESForm, TESObjectREFR);
+	TESObjectREFR* pXRef = pXOwner->owner->IsReference() ? static_cast<TESObjectREFR*>(pXOwner->owner) : nullptr;
+	TESObjectREFR* pRef = pOwner->IsReference() ? static_cast<TESObjectREFR*>(pOwner) : nullptr;
 	if ((pXRef && !pRef) || (!pXRef && pRef))
 		return false;
 	else if (pRef && pXRef)
@@ -290,7 +279,7 @@ TESForm * AddItemHealthPercentOwner(TESObjectREFR* thisObj, UInt32 refID, SInt32
 
 	TESForm * pForm = LookupFormByID(refID);
 	if (!pForm) return NULL;
-	TESHealthForm* pHealth = DYNAMIC_CAST(pForm, TESForm, TESHealthForm);
+	TESHealthForm* pHealth = TESHealthForm::GetFormAsHealthForm(pForm);
 	if (!pHealth && (Health != -1.0)) {
 		_MESSAGE("\t\tInventoryInfo\t\tAddItemHealthPercentOwner:\tInvalid refID:%#10X, no health attribute", thisObj->refID);
 		return NULL;

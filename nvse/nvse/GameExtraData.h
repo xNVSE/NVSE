@@ -281,6 +281,7 @@ enum ExtraDataType : UInt8
 };
 
 #define GetByTypeCast(xDataList, Type) DYNAMIC_CAST(xDataList.GetByType(kExtraData_ ## Type), BSExtraData, Extra ## Type)
+#define GetExtraByType(xDataList, type) static_cast<Extra ## type*>(xDataList.GetByType(kExtraData_ ## type))
 extern char * GetExtraDataValue(BSExtraData* traverse);
 extern const char* GetExtraDataName(UInt8 ExtraDataType);
 

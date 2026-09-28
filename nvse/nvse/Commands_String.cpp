@@ -566,9 +566,7 @@ bool Cmd_GetModelPath_Execute(COMMAND_ARGS)
 			if (thisObj)
 				form = thisObj->baseForm;
 
-		TESModel *model = DYNAMIC_CAST(form, TESForm, TESModel);
-		if (model)
-			pathStr = model->nifPath.m_data;
+		pathStr = TESModel::GetModel(form);
 	}
 
 	AssignToStringVar(PASS_COMMAND_ARGS, pathStr);
@@ -755,7 +753,7 @@ bool BipedPathFunc_Execute(COMMAND_ARGS, UInt32 mode, bool bIcon)
 			if (thisObj)
 				form = thisObj->baseForm;
 
-		TESBipedModelForm *bipedModel = DYNAMIC_CAST(form, TESForm, TESBipedModelForm);
+		TESBipedModelForm *bipedModel = TESBipedModelForm::GetFormAsBipedModel(form);
 		if (bipedModel)
 		{
 			bool bFemale = (whichPath % 2) ? true : false;
@@ -817,7 +815,7 @@ bool Cmd_SetNthFactionRankNameEX_Execute(COMMAND_ARGS)
 
 	if (ExtractFormatStringArgs(0, newName, PASS_FMTSTR_ARGS, kCommandInfo_SetNthFactionRankNameEX.numParams, &form, &rank, &gender))
 	{
-		TESFaction *faction = DYNAMIC_CAST(form, TESForm, TESFaction);
+		TESFaction *faction = GET_FORM_AS(form, TESFaction);
 		if (faction)
 			faction->SetNthRankName(newName, rank, gender ? true : false);
 	}
@@ -1168,7 +1166,7 @@ bool Cmd_GetScopeModelPath_Execute(COMMAND_ARGS)
 			if (thisObj)
 				form = thisObj->baseForm;
 
-		TESObjectWEAP *weapon = DYNAMIC_CAST(form, TESForm, TESObjectWEAP);
+		TESObjectWEAP *weapon = GET_FORM_AS(form, TESObjectWEAP);
 		if (weapon && weapon->HasScope())
 			model = &(weapon->targetNIF);
 
@@ -1194,7 +1192,7 @@ bool Cmd_SetScopeModelPath_Execute(COMMAND_ARGS)
 			if (thisObj)
 				form = thisObj->baseForm;
 
-		TESObjectWEAP *weapon = DYNAMIC_CAST(form, TESForm, TESObjectWEAP);
+		TESObjectWEAP *weapon = GET_FORM_AS(form, TESObjectWEAP);
 		if (weapon && weapon->HasScope())
 			model = &(weapon->targetNIF);
 

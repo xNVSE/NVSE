@@ -293,14 +293,14 @@ bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineB
 				}
 				break;
 			case kParamType_ObjectRef:
-				if (!spToken.varIdx && (!spToken.refObj || !DYNAMIC_CAST(spToken.refObj, TESForm, TESObjectREFR)))
+				if (!spToken.varIdx && (!spToken.refObj || !spToken.refObj->IsReference()))
 				{
 					errorFmt = (const char *)0xD5FEA0;
 					goto compileError;
 				}
 				break;
 			case kParamType_Actor:
-				if (!spToken.varIdx && (!spToken.refObj || !spToken.refObj->IsActor_InEditor()))
+				if (!spToken.varIdx && (!spToken.refObj || !spToken.refObj->IsActor()))
 				{
 					errorFmt = (const char *)0xD60C90;
 					goto compileError;
@@ -314,7 +314,7 @@ bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineB
 				}
 				break;
 			case kParamType_Container:
-				if (!spToken.varIdx && (!spToken.refObj || !DYNAMIC_CAST(spToken.refObj, TESForm, TESObjectREFR) || !ThisStdCall<TESContainer *>(0x63D740, spToken.refObj)))
+				if (!spToken.varIdx && (!spToken.refObj || !spToken.refObj->IsReference() || !ThisStdCall<TESContainer *>(0x63D740, spToken.refObj)))
 				{
 					errorFmt = (const char *)0xD60D20;
 					goto compileError;
@@ -335,7 +335,7 @@ bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineB
 				}
 				break;
 			case kParamType_MagicItem:
-				if (!spToken.varIdx && (!spToken.refObj || !DYNAMIC_CAST(spToken.refObj, TESForm, MagicItem)))
+				if (!spToken.varIdx && (!spToken.refObj || !spToken.refObj->IsMagicItem()))
 				{
 					errorFmt = (const char *)0xD609C0;
 					goto compileError;
@@ -398,7 +398,7 @@ bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineB
 				}
 				break;
 			case kParamType_TESObject:
-				if (!spToken.varIdx && (!spToken.refObj || !DYNAMIC_CAST(spToken.refObj, TESForm, TESObject)))
+				if (!spToken.varIdx && (!spToken.refObj || !spToken.refObj->IsObject()))
 				{
 					errorFmt = (const char *)0xD60D70;
 					goto compileError;
@@ -538,7 +538,7 @@ bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineB
 				}
 				break;
 			case kParamType_NonFormList:
-				if (!spToken.varIdx && (!spToken.refObj || (NOT_ID(spToken.refObj, BGSListForm) && !spToken.refObj->Unk_33())))
+				if (!spToken.varIdx && (!spToken.refObj || (NOT_ID(spToken.refObj, BGSListForm) && !spToken.refObj->IsObject())))
 				{
 					errorFmt = (const char *)0xD60D70;
 					goto compileError;
@@ -1963,13 +1963,16 @@ ScriptLocal *ScriptEventList::GetVariable(UInt32 id)
 
 ScriptEventList *EventListFromForm(TESForm *form)
 {
+	if (!form)
+		return NULL;
+
 	ScriptEventList *eventList = NULL;
-	TESObjectREFR *refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+	TESObjectREFR *refr = form->IsReference() ? static_cast<TESObjectREFR *>(form) : nullptr;
 	if (refr)
 		eventList = refr->GetEventList();
 	else
 	{
-		TESQuest *quest = DYNAMIC_CAST(form, TESForm, TESQuest);
+		TESQuest *quest = GET_FORM_AS(form, TESQuest);
 		if (quest)
 			eventList = quest->scriptEventList;
 	}
@@ -2181,7 +2184,7 @@ bool ExtractFormattedString(FormatStringArgs &args, char *buffer)
 
 			if (form)
 			{
-				if (form->GetIsReference())
+				if (form->IsReference())
 					form = ((TESObjectREFR *)form)->baseForm;
 
 				UInt8 objType = 0;
@@ -2960,7 +2963,7 @@ Script *GetReferencedQuestScript(UInt32 refIdx, ScriptEventList *baseEventList)
 		refVar->Resolve(baseEventList);
 		if (refVar->form)
 		{
-			if (auto *quest = DYNAMIC_CAST(refVar->form, TESForm, TESQuest))
+			if (auto *quest = GET_FORM_AS(refVar->form, TESQuest))
 				return quest->scriptable.script;
 		}
 	}

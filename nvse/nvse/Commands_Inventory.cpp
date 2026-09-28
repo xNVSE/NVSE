@@ -14,19 +14,7 @@ static const Cmd_Execute Cmd_UnequipItem_Execute	= (Cmd_Execute)0x005D0300;
 
 void GetWeight_Call(TESForm* form, double *result)
 {
-	TESWeightForm* weightForm = DYNAMIC_CAST(form, TESForm, TESWeightForm);
-	if (weightForm)
-	{
-		*result = weightForm->weight;
-	}
-	else 
-	{
-		TESAmmo* pAmmo = DYNAMIC_CAST(form, TESForm, TESAmmo);
-		if (pAmmo) 
-		{
-			*result = pAmmo->weight;
-		}
-	}
+	*result = TESWeightForm::GetFormWeight(form, false);
 }
 
 // testing conditionals with this
@@ -77,12 +65,9 @@ bool Cmd_GetHealth_Execute(COMMAND_ARGS)
 			pForm = thisObj->baseForm;
 		}
 
-		TESHealthForm* pHealth = DYNAMIC_CAST(pForm, TESForm, TESHealthForm);
-		if (pHealth) {
-			*result = pHealth->health;
+		*result = TESHealthForm::GetFormHealth(pForm);
 			if (IsConsoleMode())
 				Console_Print("GetHealth >> %.2f", *result);
-		}
 	}
 	return true;
 }
@@ -93,14 +78,10 @@ bool Cmd_GetHealth_Eval(COMMAND_ARGS_EVAL)
 				//With kParams_OneOptionalForm, arg1 will always be INVALID (no way to select a form).
 	{
 		TESForm* pForm = thisObj->baseForm;
-		TESHealthForm* pHealth = DYNAMIC_CAST(pForm, TESForm, TESHealthForm);
-		if (pHealth)
-		{
-			*result = pHealth->health;
+		*result = TESHealthForm::GetFormHealth(pForm);
 #if _DEBUG
 			Console_Print("GetHealth >> %.2f", *result);
 #endif
-		}
 	}
 
 	return true;
@@ -118,12 +99,9 @@ bool Cmd_GetValue_Execute(COMMAND_ARGS)
 		pForm = thisObj->baseForm;
 	}
 
-	TESValueForm* pValue = DYNAMIC_CAST(pForm, TESForm, TESValueForm);
-	if (pValue) {
-		*result = pValue->value;
-		if (IsConsoleMode())
+	*result = TESValueForm::GetFormValue(pForm);
+	if (IsConsoleMode())
 			Console_Print("GetValue >> %.2f", *result);
-	}
 	return true;
 }
 bool Cmd_GetValue_Eval(COMMAND_ARGS_EVAL)
@@ -141,14 +119,10 @@ bool Cmd_GetValue_Eval(COMMAND_ARGS_EVAL)
 	}
 	else return true;
 	
-	TESValueForm* pValue = DYNAMIC_CAST(pForm, TESForm, TESValueForm);
-	if (pValue) 
-	{
-		*result = pValue->value;
+	*result = TESValueForm::GetFormValue(pForm);
 #if _DEBUG
 		Console_Print("GetValue >> %.2f", *result);
 #endif
-	}
 	return true;
 }
 
@@ -184,7 +158,7 @@ TESObjectWEAP* Extract_IntAndWeapon(COMMAND_ARGS, UInt32& intVal) {
 	TESObjectWEAP* pWeapon = NULL;
 	TESForm* pForm = Extract_IntAndForm(PASS_COMMAND_ARGS, intVal);
 	if (pForm) {
-		pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);	
+		pWeapon = GET_FORM_AS(pForm, TESObjectWEAP);	
 	}
 	return pWeapon;
 }
@@ -194,7 +168,7 @@ TESObjectWEAP* Extract_FloatAndWeapon(COMMAND_ARGS, float& floatVal) {
 	TESObjectWEAP* pWeapon = NULL;
 	TESForm* pForm = Extract_FloatAndForm(PASS_COMMAND_ARGS, floatVal);
 	if (pForm) {
-		pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);	
+		pWeapon = GET_FORM_AS(pForm, TESObjectWEAP);
 	}
 	return pWeapon;
 }
@@ -209,7 +183,7 @@ bool Cmd_SetWeight_Execute(COMMAND_ARGS)
 		if (pWeightForm) {
 			pWeightForm->weight = floatVal;
 		} else {
-			TESAmmo* pAmmo = DYNAMIC_CAST(pForm, TESForm, TESAmmo);
+			TESAmmo* pAmmo = GET_FORM_AS(pForm, TESAmmo);
 			if (pAmmo) {
 				pAmmo->weight = floatVal;
 			}
@@ -247,7 +221,7 @@ bool Cmd_SetHealth_Execute(COMMAND_ARGS)
 			pForm = thisObj->baseForm;
 		}
 
-		TESHealthForm* pHealth = DYNAMIC_CAST(pForm, TESForm, TESHealthForm);
+		TESHealthForm* pHealth = TESHealthForm::GetFormAsHealthForm(pForm);
 		if (pHealth) {
 			pHealth->health = health;
 		}
@@ -287,7 +261,7 @@ bool Cmd_GetType_Eval(COMMAND_ARGS_EVAL)
 		TESForm* form = thisObj->baseForm;
 		*result = form->typeID;
 #if _DEBUG
-		Console_Print("Type of %s: %d", form->GetName(), form->typeID);
+		Console_Print("Type of %s: %d", form->GetFormEditorID(), form->typeID);
 #endif
 	}
 	return true;
@@ -305,7 +279,7 @@ bool Cmd_GetRepairList_Execute(COMMAND_ARGS)
 		pForm = thisObj->baseForm;
 	}
 
-	BGSRepairItemList* pRepairList = DYNAMIC_CAST(pForm, TESForm, BGSRepairItemList);
+	BGSRepairItemList* pRepairList = BGSRepairItemList::GetFormAsRepairItemList(pForm);
 	if (pRepairList && pRepairList->listForm) {
 		*((UInt32*)result) = pRepairList->listForm->refID;
 #if _DEBUG
@@ -327,9 +301,9 @@ bool Cmd_GetEquipType_Execute(COMMAND_ARGS)
 		pForm = thisObj->baseForm;
 	}
 
-	BGSEquipType* pEquipType = DYNAMIC_CAST(pForm, TESForm, BGSEquipType);
-	if (pEquipType) {
-		*result = pEquipType->equipType;
+	UInt32 uiEquipType = BGSEquipType::GetEquipType(pForm);
+	if (uiEquipType != -1) {
+		*result = uiEquipType;
 	}
 	return true;
 }
@@ -348,10 +322,10 @@ bool Cmd_GetEquipType_Eval(COMMAND_ARGS_EVAL)
 	}
 	else return true;
 
-	BGSEquipType* pEquipType = DYNAMIC_CAST(pForm, TESForm, BGSEquipType);
-	if (pEquipType) 
+	UInt32 uiEquipType = BGSEquipType::GetEquipType(pForm);
+	if (uiEquipType != -1) 
 	{
-		*result = pEquipType->equipType;
+		*result = uiEquipType;
 #if _DEBUG
 		Console_Print("GetEquipType >> %f", *result);
 #endif
@@ -440,10 +414,8 @@ bool Cmd_GetAttackDamage_Execute(COMMAND_ARGS)
 		pForm = thisObj->baseForm;
 	}
 
-	TESAttackDamageForm* pDamage = DYNAMIC_CAST(pForm, TESForm, TESAttackDamageForm);
-	if (pDamage) {
-		*result = pDamage->damage;
-	}
+	*result = TESAttackDamageForm::GetAttackDamage(pForm);
+
 	return true;
 }
 bool Cmd_GetAttackDamage_Eval(COMMAND_ARGS_EVAL)
@@ -461,10 +433,8 @@ bool Cmd_GetAttackDamage_Eval(COMMAND_ARGS_EVAL)
 	}
 	else return true;
 
-	TESAttackDamageForm* pDamage = DYNAMIC_CAST(pForm, TESForm, TESAttackDamageForm);
-	if (pDamage) {
-		*result = pDamage->damage;
-	}
+	*result = TESAttackDamageForm::GetAttackDamage(pForm);
+
 	return true;
 }
 
@@ -591,7 +561,7 @@ bool GetWeaponValue_Execute(COMMAND_ARGS, UInt32 whichVal)
 		if (!thisObj) return true;
 		pForm = thisObj->baseForm;
 	}
-	TESObjectWEAP* pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);
+	TESObjectWEAP* pWeapon = GET_FORM_AS(pForm, TESObjectWEAP);
 	if (!pWeapon)
 		return true;
 	return GetWeaponValue(pWeapon, whichVal, result);
@@ -612,7 +582,7 @@ bool GetWeaponValue_Eval(COMMAND_ARGS_EVAL, UInt32 whichVal)
 	}
 	else return true;
 	
-	TESObjectWEAP* pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);	
+	TESObjectWEAP* pWeapon = GET_FORM_AS(pForm, TESObjectWEAP);
 	return GetWeaponValue(pWeapon, whichVal, result);
 }
 
@@ -986,7 +956,7 @@ bool Cmd_GetWeaponHasScope_Eval(COMMAND_ARGS_EVAL)
 	TESForm* form = (TESForm*)arg1;
 	if (form)
 	{
-		TESObjectWEAP* weapon = DYNAMIC_CAST(form, TESForm, TESObjectWEAP);
+		TESObjectWEAP* weapon = GET_FORM_AS(form, TESObjectWEAP);
 		if (weapon)
 		{
 			*result = weapon->HasScope() ? 1 : 0;
@@ -995,7 +965,7 @@ bool Cmd_GetWeaponHasScope_Eval(COMMAND_ARGS_EVAL)
 	else if (thisObj)
 	{
 		form = thisObj->baseForm;
-		TESObjectWEAP* weapon = DYNAMIC_CAST(form, TESForm, TESObjectWEAP);
+		TESObjectWEAP* weapon = GET_FORM_AS(form, TESObjectWEAP);
 		if (weapon)
 		{
 			*result = weapon->HasScope();
@@ -1118,7 +1088,7 @@ bool Cmd_SetWeaponAmmoUse_Execute(COMMAND_ARGS)
 	UInt32 intVal = 0;
 	TESForm* pForm = Extract_IntAndForm(PASS_COMMAND_ARGS, intVal);
 	if (pForm) {
-		TESObjectWEAP* pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);
+		TESObjectWEAP* pWeapon = GET_FORM_AS(pForm, TESObjectWEAP);
 		if (pWeapon) {
 			pWeapon->ammoUse = intVal;
 		}
@@ -1143,7 +1113,7 @@ bool Cmd_SetWeaponCritDamage_Execute(COMMAND_ARGS)
 	UInt32 intVal = 0;
 	TESForm* pForm = Extract_IntAndForm(PASS_COMMAND_ARGS, intVal);
 	if (pForm) {
-		TESObjectWEAP* pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);
+		TESObjectWEAP* pWeapon = GET_FORM_AS(pForm, TESObjectWEAP);
 		if (pWeapon) {
 			pWeapon->criticalDamage = intVal;
 		}
@@ -1157,7 +1127,7 @@ bool Cmd_SetWeaponType_Execute(COMMAND_ARGS)
 	UInt32 intVal = 0;
 	TESForm* pForm = Extract_IntAndForm(PASS_COMMAND_ARGS, intVal);
 	if (pForm && intVal < TESObjectWEAP::kWeapType_Last) {
-		TESObjectWEAP* pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);
+		TESObjectWEAP* pWeapon = GET_FORM_AS(pForm, TESObjectWEAP);
 		if (pWeapon) {
 			pWeapon->eWeaponType = intVal;
 		}
@@ -1190,7 +1160,7 @@ bool Cmd_SetWeaponCritEffect_Execute(COMMAND_ARGS)
 		}
 		SpellItem* pSpell = DYNAMIC_CAST(pMagicItem, MagicItem, SpellItem);
 		if (pForm && pSpell) {
-			TESObjectWEAP* pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);
+			TESObjectWEAP* pWeapon = GET_FORM_AS(pForm, TESObjectWEAP);
 			if (pWeapon) {
 				pWeapon->criticalEffect = pSpell;
 			}
@@ -1238,10 +1208,10 @@ bool Cmd_SetWeaponAmmo_Execute(COMMAND_ARGS)
 		}
 		
 		if (pForm) {
-			TESObjectWEAP* pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);
+			TESObjectWEAP* pWeapon = GET_FORM_AS(pForm, TESObjectWEAP);
 			if (pWeapon) {
-				TESAmmo* pAmmo = DYNAMIC_CAST(pAmmoForm, TESForm, TESAmmo);
-				BGSListForm* pAmmoList = DYNAMIC_CAST(pAmmoForm, TESForm, BGSListForm);
+				TESAmmo* pAmmo = GET_FORM_AS(pAmmoForm, TESAmmo);
+				BGSListForm* pAmmoList = GET_FORM_AS(pAmmoForm, BGSListForm);
 				
 				if (pAmmo) {
 					pWeapon->ammo.ammo = pAmmo;
@@ -1266,9 +1236,9 @@ bool Cmd_SetWeaponProjectile_Execute(COMMAND_ARGS)
 			if (!thisObj) return true;
 			pForm = thisObj->baseForm;
 		}
-		BGSProjectile* pProjectile = DYNAMIC_CAST(pProjectileForm, TESForm, BGSProjectile);
+		BGSProjectile* pProjectile = GET_FORM_AS(pProjectileForm, BGSProjectile);
 		if (pForm && pProjectile) {
-			TESObjectWEAP* pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);
+			TESObjectWEAP* pWeapon = GET_FORM_AS(pForm, TESObjectWEAP);
 			if (pWeapon) {
 				pWeapon->projectile = pProjectile;
 			}
@@ -1337,7 +1307,7 @@ bool Cmd_SetWeaponIsAutomatic_Execute(COMMAND_ARGS)
 	UInt32 intVal = 0;
 	TESForm* pForm = Extract_IntAndForm(PASS_COMMAND_ARGS, intVal);
 	if (pForm) {
-		TESObjectWEAP* pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);
+		TESObjectWEAP* pWeapon = GET_FORM_AS(pForm, TESObjectWEAP);
 		if (pWeapon) {
 			pWeapon->SetIsAutomatic(intVal == 1);
 		}
@@ -1351,7 +1321,7 @@ bool Cmd_SetWeaponHandGrip_Execute(COMMAND_ARGS)
 	UInt32 intVal = 0;
 	TESForm* pForm = Extract_IntAndForm(PASS_COMMAND_ARGS, intVal);
 	if (pForm && intVal < TESObjectWEAP::eHandGrip_Count) {
-		TESObjectWEAP* pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);
+		TESObjectWEAP* pWeapon = GET_FORM_AS(pForm, TESObjectWEAP);
 		if (pWeapon) {
 			pWeapon->SetHandGrip(intVal);
 		}
@@ -1365,7 +1335,7 @@ bool Cmd_SetWeaponReloadAnim_Execute(COMMAND_ARGS)
 	UInt32 intVal = 0;
 	TESForm* pForm = Extract_IntAndForm(PASS_COMMAND_ARGS, intVal);
 	if (pForm && intVal < TESObjectWEAP::eReload_Count) {
-		TESObjectWEAP* pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);
+		TESObjectWEAP* pWeapon = GET_FORM_AS(pForm, TESObjectWEAP);
 		if (pWeapon) {
 			pWeapon->reloadAnim = intVal;
 			// Based on 0x51E283
@@ -1381,7 +1351,7 @@ bool Cmd_SetWeaponBaseVATSChance_Execute(COMMAND_ARGS)
 	UInt32 intVal = 0;
 	TESForm* pForm = Extract_IntAndForm(PASS_COMMAND_ARGS, intVal);
 	if (pForm && intVal <= 100) {
-		TESObjectWEAP* pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);
+		TESObjectWEAP* pWeapon = GET_FORM_AS(pForm, TESObjectWEAP);
 		if (pWeapon) {
 			pWeapon->baseVATSChance = intVal;
 		}
@@ -1395,7 +1365,7 @@ bool Cmd_SetWeaponAttackAnimation_Execute(COMMAND_ARGS)
 	UInt32 intVal = 0;
 	TESForm* pForm = Extract_IntAndForm(PASS_COMMAND_ARGS, intVal);
 	if (pForm && intVal < TESObjectWEAP::eAttackAnim_Count) {
-		TESObjectWEAP* pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);
+		TESObjectWEAP* pWeapon = GET_FORM_AS(pForm, TESObjectWEAP);
 		if (pWeapon) {
 			pWeapon->SetAttackAnimation(intVal);
 		}
@@ -1409,7 +1379,7 @@ bool Cmd_SetWeaponNumProjectiles_Execute(COMMAND_ARGS)
 	UInt32 intVal = 0;
 	TESForm* pForm = Extract_IntAndForm(PASS_COMMAND_ARGS, intVal);
 	if (pForm && intVal <= 255) {
-		TESObjectWEAP* pWeapon = DYNAMIC_CAST(pForm, TESForm, TESObjectWEAP);
+		TESObjectWEAP* pWeapon = GET_FORM_AS(pForm, TESObjectWEAP);
 		if (pWeapon) {
 			pWeapon->numProjectiles = intVal;
 		}
@@ -1560,7 +1530,7 @@ public:
 			if (pForm->IsWeapon()) {
 				formMask = TESBipedModelForm::eSlot_Weapon;
 			} else {
-				TESBipedModelForm* pBip = DYNAMIC_CAST(pForm, TESForm, TESBipedModelForm);
+				TESBipedModelForm* pBip = TESBipedModelForm::GetFormAsBipedModel(pForm);
 				if (pBip) {
 					formMask = pBip->partMask;
 				}
@@ -1582,7 +1552,7 @@ public:
 			if (pForm->IsWeapon()) {
 				slotMask = TESBipedModelForm::ePart_Weapon;
 			} else {
-				TESBipedModelForm* pBip = DYNAMIC_CAST(pForm, TESForm, TESBipedModelForm);
+				TESBipedModelForm* pBip = TESBipedModelForm::GetFormAsBipedModel(pForm);
 				if (pBip) {
 					slotMask = pBip->partMask;
 				}
@@ -1640,12 +1610,9 @@ bool Cmd_GetEquippedCurrentHealth_Execute(COMMAND_ARGS)
 						Console_Print("GetEquippedCurrentHealth: %.2f", pXHealth->health);
 					}
 				} else {
-					TESHealthForm* pHealth = DYNAMIC_CAST(equipD.pForm, TESForm, TESHealthForm);
-					if (pHealth) {
-						*result = pHealth->health;
-						if (IsConsoleMode()) {
-							Console_Print("GetEquippedCurrentHealth: baseHealth: %d", pHealth->health);
-						}
+					*result= TESHealthForm::GetFormHealth(equipD.pForm);
+					if (IsConsoleMode()) {
+						Console_Print("GetEquippedCurrentHealth: baseHealth: %.2f", *result);
 					}
 				}
 			}
@@ -1671,9 +1638,7 @@ bool Cmd_GetEquippedCurrentHealth_Eval(COMMAND_ARGS_EVAL)
 			}
 			else 
 			{
-				TESHealthForm* pHealth = DYNAMIC_CAST(equipD.pForm, TESForm, TESHealthForm);
-				if (pHealth)
-					*result = pHealth->health;
+				*result= TESHealthForm::GetFormHealth(equipD.pForm);
 			}
 		}
 	}
@@ -1810,7 +1775,7 @@ public:
 		//check if it looks like a hotkey
 		if (!entryData->extendData || !entryData->extendData->Head())
 			return false;
-		ExtraHotkey* qKey = GetByTypeCast(entryData->extendData, ExtraHotkey)
+		ExtraHotkey* qKey = GetExtraByType(entryData->extendData, ExtraHotkey)
 		if (!qKey)
 			return false;
 
@@ -1828,7 +1793,7 @@ static void _ClearHotKey ( UInt32 whichKey ) {
 		return;
 
 	//remove ExtraQuickKey from container changes
-	ExtraContainerChanges* xChanges = GetByTypeCast(PlayerCharacter::GetSingleton()->extraDataList, kExtraData_ContainerChanges);
+	ExtraContainerChanges* xChanges = GetExtraByType(PlayerCharacter::GetSingleton()->extraDataList, kExtraData_ContainerChanges);
 	if (xChanges)
 	{
 		ExtraQuickKeyFinder finder(whichKey);
@@ -2103,11 +2068,7 @@ UInt32 GetNumItems_Call(TESObjectREFR* thisObj)
 	ExtraContainerChanges* pXContainerChanges = static_cast<ExtraContainerChanges*>(thisObj->extraDataList.GetByType(kExtraData_ContainerChanges));
 	ExtraContainerInfo info(pXContainerChanges ? pXContainerChanges->GetEntryDataList() : NULL);
 
-	TESContainer* pContainer = NULL;
-	TESForm* pBaseForm = thisObj->baseForm;
-	if (pBaseForm) {
-		pContainer = DYNAMIC_CAST(pBaseForm, TESForm, TESContainer);
-	}
+	TESContainer* pContainer = thisObj->HasContainer();
 
 	// first walk the base container
 	if (pContainer) {
@@ -2178,15 +2139,15 @@ bool Cmd_GetInventoryObject_Execute(COMMAND_ARGS)
 bool Cmd_GetCurrentHealth_Execute(COMMAND_ARGS)
 {
 	*result = 0;
-	TESHealthForm *healthForm = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESHealthForm);
+	TESHealthForm *healthForm = TESHealthForm::GetFormAsHealthForm(thisObj->baseForm);
 	if (healthForm)
 	{
 		ExtraHealth *xHealth = (ExtraHealth*)thisObj->extraDataList.GetByType(kExtraData_Health);
-		*result = xHealth ? xHealth->health : (int)healthForm->health;
+		*result = xHealth ? xHealth->health : (int)healthForm->GetHealth();
 	}
 	else
 	{
-		BGSDestructibleObjectForm *destructible = DYNAMIC_CAST(thisObj->baseForm, TESForm, BGSDestructibleObjectForm);
+		BGSDestructibleObjectForm *destructible = BGSDestructibleObjectForm::GetDestructionForm(thisObj->baseForm);
 		if (destructible && destructible->data)
 		{
 			ExtraObjectHealth *xObjHealth = (ExtraObjectHealth*)thisObj->extraDataList.GetByType(kExtraData_ObjectHealth);
@@ -2201,15 +2162,15 @@ bool Cmd_GetCurrentHealth_Eval(COMMAND_ARGS_EVAL)
 {
 	*result = 0;
 	if (!thisObj) return true;
-	TESHealthForm* healthForm = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESHealthForm);
+	TESHealthForm* healthForm = TESHealthForm::GetFormAsHealthForm(thisObj->baseForm);
 	if (healthForm)
 	{
 		ExtraHealth* xHealth = (ExtraHealth*)thisObj->extraDataList.GetByType(kExtraData_Health);
-		*result = xHealth ? xHealth->health : (int)healthForm->health;
+		*result = xHealth ? xHealth->health : (int)healthForm->GetHealth();
 	}
 	else
 	{
-		BGSDestructibleObjectForm* destructible = DYNAMIC_CAST(thisObj->baseForm, TESForm, BGSDestructibleObjectForm);
+		BGSDestructibleObjectForm* destructible = BGSDestructibleObjectForm::GetDestructionForm(thisObj->baseForm);
 		if (destructible && destructible->data)
 		{
 			ExtraObjectHealth* xObjHealth = (ExtraObjectHealth*)thisObj->extraDataList.GetByType(kExtraData_ObjectHealth);
@@ -2248,7 +2209,7 @@ bool Cmd_SetCurrentHealth_Execute(COMMAND_ARGS)
 	*result = 0;
 	if (!thisObj) return true;
 
-	TESHealthForm* pHealth = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESHealthForm);
+	TESHealthForm* pHealth = TESHealthForm::GetFormAsHealthForm(thisObj->baseForm);
 	if (!pHealth) return true;
 
 	float nuHealth = 0.0;
@@ -2272,7 +2233,7 @@ bool Cmd_SetEquippedCurrentHealth_Execute(COMMAND_ARGS)
 	MatchBySlot matcher(slotIdx);
 	EquipData equipD = FindEquipped(thisObj, matcher);
 	if (equipD.pForm && equipD.pExtraData) {
-		TESHealthForm* pHealth = DYNAMIC_CAST(equipD.pForm, TESForm, TESHealthForm);
+		TESHealthForm* pHealth = TESHealthForm::GetFormAsHealthForm(equipD.pForm);
 		if (pHealth) {
 			float nuHealth = health;
 			AdjustHealth(pHealth, equipD.pExtraData, nuHealth);
@@ -2293,8 +2254,9 @@ bool Cmd_GetArmorAR_Execute(COMMAND_ARGS)
 		pForm = thisObj->baseForm;
 	}
 
-	TESObjectARMO* pArmor = DYNAMIC_CAST(pForm, TESForm, TESObjectARMO);
-	if (pArmor) {
+	if (pForm && (IS_FORM_TYPE(pForm, TESObjectARMO) || IS_FORM_TYPE(pForm, TESObjectARMA)))
+	{
+		TESObjectARMO* pArmor = static_cast<TESObjectARMO*>(pForm);
 		*result = pArmor->armorRating;
 		if (IsConsoleMode()) {
 			Console_Print("%s armor rating: %d", GetFullName(pArmor), pArmor->armorRating);
@@ -2317,9 +2279,9 @@ bool Cmd_GetArmorAR_Eval(COMMAND_ARGS_EVAL)
 	}
 	else return true;
 
-	TESObjectARMO* pArmor = DYNAMIC_CAST(pForm, TESForm, TESObjectARMO);
-	if (pArmor) 
+	if (IS_FORM_TYPE(pForm, TESObjectARMO) || IS_FORM_TYPE(pForm, TESObjectARMA))
 	{
+		TESObjectARMO* pArmor = static_cast<TESObjectARMO*>(pForm);
 		*result = pArmor->armorRating;
 #if _DEBUG
 		Console_Print("%s armor rating: %d", GetFullName(pArmor), pArmor->armorRating);
@@ -2334,8 +2296,8 @@ bool Cmd_SetArmorAR_Execute(COMMAND_ARGS)
 	UInt32 nuAR = 0;
 	TESForm* pForm = Extract_IntAndForm(PASS_COMMAND_ARGS, nuAR);
 	if (pForm) {
-		TESObjectARMO* pArmor = DYNAMIC_CAST(pForm, TESForm, TESObjectARMO);
-		if (pArmor) {
+		if (IS_FORM_TYPE(pForm, TESObjectARMO) || IS_FORM_TYPE(pForm, TESObjectARMA)) {
+			TESObjectARMO* pArmor = static_cast<TESObjectARMO*>(pForm);
 			pArmor->armorRating = nuAR;
 			if (IsConsoleMode()) {
 				Console_Print("Setting %s armor rating to %d", GetFullName(pArmor), nuAR);
@@ -2358,8 +2320,8 @@ bool Cmd_GetArmorDT_Execute(COMMAND_ARGS)
 		pForm = thisObj->baseForm;
 	}
 
-	TESObjectARMO* pArmor = DYNAMIC_CAST(pForm, TESForm, TESObjectARMO);
-	if (pArmor) {
+	if (pForm && (IS_FORM_TYPE(pForm, TESObjectARMO) || IS_FORM_TYPE(pForm, TESObjectARMA))) {
+		TESObjectARMO* pArmor = static_cast<TESObjectARMO*>(pForm);
 		*result = pArmor->damageThreshold;
 		if (IsConsoleMode()) {
 			Console_Print("%s damage threshold: %f", GetFullName(pArmor), pArmor->damageThreshold);
@@ -2382,9 +2344,8 @@ bool Cmd_GetArmorDT_Eval(COMMAND_ARGS_EVAL)
 	}
 	else return true;
 
-	TESObjectARMO* pArmor = DYNAMIC_CAST(pForm, TESForm, TESObjectARMO);
-	if (pArmor) 
-	{
+	if (pForm && (IS_FORM_TYPE(pForm, TESObjectARMO) || IS_FORM_TYPE(pForm, TESObjectARMA))) {
+		TESObjectARMO* pArmor = static_cast<TESObjectARMO*>(pForm);
 		*result = pArmor->damageThreshold;
 #if _DEBUG
 			Console_Print("%s damage threshold: %f", GetFullName(pArmor), pArmor->damageThreshold);
@@ -2399,8 +2360,8 @@ bool Cmd_SetArmorDT_Execute(COMMAND_ARGS)
 	float nuDT = 0.0;
 	TESForm* pForm = Extract_FloatAndForm(PASS_COMMAND_ARGS, nuDT);
 	if (pForm) {
-		TESObjectARMO* pArmor = DYNAMIC_CAST(pForm, TESForm, TESObjectARMO);
-		if (pArmor) {
+		if (IS_FORM_TYPE(pForm, TESObjectARMO) || IS_FORM_TYPE(pForm, TESObjectARMA)) {
+			TESObjectARMO* pArmor = static_cast<TESObjectARMO*>(pForm);
 			pArmor->damageThreshold = nuDT;
 			if (IsConsoleMode()) {
 				Console_Print("Setting %s damage threshold to %f", GetFullName(pArmor), nuDT);
@@ -2421,7 +2382,7 @@ bool Cmd_IsPowerArmor_Execute(COMMAND_ARGS)
 		pForm = thisObj->baseForm;
 	}
 	
-	TESBipedModelForm* pBiped = DYNAMIC_CAST(pForm, TESForm, TESBipedModelForm);
+	TESBipedModelForm* pBiped = TESBipedModelForm::GetFormAsBipedModel(pForm);
 	if (pBiped) {
 		*result = pBiped->IsPowerArmor() ? 1 : 0;
 	}
@@ -2441,7 +2402,7 @@ bool Cmd_IsPowerArmor_Eval(COMMAND_ARGS_EVAL)
 	}
 	else return true;
 
-	TESBipedModelForm* pBiped = DYNAMIC_CAST(pForm, TESForm, TESBipedModelForm);
+	TESBipedModelForm* pBiped = TESBipedModelForm::GetFormAsBipedModel(pForm);
 	if (pBiped) 
 	{
 		*result = pBiped->IsPowerArmor() ? 1 : 0;
@@ -2456,7 +2417,7 @@ bool Cmd_SetIsPowerArmor_Execute(COMMAND_ARGS)
 
 	pForm = Extract_IntAndForm(PASS_COMMAND_ARGS, isPA);
 	if (pForm) {
-		TESBipedModelForm* pBiped = DYNAMIC_CAST(pForm, TESForm, TESBipedModelForm);
+		TESBipedModelForm* pBiped = TESBipedModelForm::GetFormAsBipedModel(pForm);
 		if (pBiped) {
 			pBiped->SetPowerArmor( isPA != 0);
 		}
@@ -2532,10 +2493,10 @@ bool Cmd_GetObjectEffect_Execute(COMMAND_ARGS)
 		form = thisObj->baseForm;
 	}
 
-	TESEnchantableForm* enchantable = DYNAMIC_CAST(form, TESForm, TESEnchantableForm);
+	EnchantmentItem* enchantItem = TESEnchantableForm::GetFormEnchanting(form);
 
-	if (enchantable && enchantable->enchantItem) {
-		*refResult = enchantable->enchantItem->refID;
+	if (enchantItem) {
+		*refResult = enchantItem->refID;
 	}
 
 	return true;
@@ -2551,7 +2512,7 @@ bool Cmd_GetAmmoSpeed_Execute(COMMAND_ARGS)
 		form = thisObj->baseForm;
 	}
 
-	TESAmmo* pAmmo = DYNAMIC_CAST(form, TESForm, TESAmmo);
+	TESAmmo* pAmmo = GET_FORM_AS(form, TESAmmo);
 	if (pAmmo) {
 		*result = pAmmo->speed;
 		if (IsConsoleMode()) {
@@ -2574,7 +2535,7 @@ bool Cmd_GetAmmoSpeed_Eval(COMMAND_ARGS_EVAL)
 	}
 	else return true;
 
-	TESAmmo* pAmmo = DYNAMIC_CAST(form, TESForm, TESAmmo);
+	TESAmmo* pAmmo = GET_FORM_AS(form, TESAmmo);
 	if (pAmmo) 
 	{
 		*result = pAmmo->speed;
@@ -2595,7 +2556,7 @@ bool Cmd_GetAmmoConsumedPercent_Execute(COMMAND_ARGS)
 		form = thisObj->baseForm;
 	}
 
-	TESAmmo* pAmmo = DYNAMIC_CAST(form, TESForm, TESAmmo);
+	TESAmmo* pAmmo = GET_FORM_AS(form, TESAmmo);
 	if (pAmmo) {
 		*result = pAmmo->ammoPercentConsumed;
 	}
@@ -2615,7 +2576,7 @@ bool Cmd_GetAmmoConsumedPercent_Eval(COMMAND_ARGS_EVAL)
 	}
 	else return true;
 
-	TESAmmo* pAmmo = DYNAMIC_CAST(form, TESForm, TESAmmo);
+	TESAmmo* pAmmo = GET_FORM_AS(form, TESAmmo);
 	if (pAmmo) 
 	{
 		*result = pAmmo->ammoPercentConsumed;
@@ -2633,7 +2594,7 @@ bool Cmd_SetAmmoConsumedPercent_Execute(COMMAND_ARGS)
 		form = thisObj->baseForm;
 	}
 
-	TESAmmo* pAmmo = DYNAMIC_CAST(form, TESForm, TESAmmo);
+	TESAmmo* pAmmo = GET_FORM_AS(form, TESAmmo);
 	if (pAmmo) {
 		pAmmo->ammoPercentConsumed = fNewPerc;
 	}
@@ -2651,7 +2612,7 @@ bool Cmd_GetAmmoCasing_Execute(COMMAND_ARGS)
 		form = thisObj->baseForm;
 	}
 
-	TESAmmo* pAmmo = DYNAMIC_CAST(form, TESForm, TESAmmo);
+	TESAmmo* pAmmo = GET_FORM_AS(form, TESAmmo);
 	if (pAmmo && pAmmo->casing) {
 		*refResult = pAmmo->casing->refID;
 	}
@@ -2706,13 +2667,13 @@ bool Cmd_GetPlayerCurrentAmmo_Execute(COMMAND_ARGS)
 
 bool Cmd_HasAmmoEquipped_Eval(COMMAND_ARGS_EVAL) {
 	*result = 0;
-	if (thisObj && thisObj->IsActor_Runtime()) {
+	if (thisObj && thisObj->IsActor()) {
 		auto actor = static_cast<Actor*>(thisObj);
 		if (auto pBaseProc = actor->baseProcess) {
 			if (const auto* pAmmoInfo = pBaseProc->GetAmmoInfo()) {
-				if (const auto* pAmmo = DYNAMIC_CAST(arg1, TESForm, TESAmmo))
+				if (const auto* pAmmo = GET_FORM_AS(arg1, TESAmmo))
 					*result = pAmmoInfo->ammo == pAmmo;
-				else if (auto* pAmmoList = DYNAMIC_CAST(arg1, TESForm, BGSListForm))
+				else if (auto* pAmmoList = GET_FORM_AS(arg1, BGSListForm))
 					*result = pAmmoList->GetIndexOf(pAmmoInfo->ammo) != eListInvalid;
 			}
 		}
@@ -2748,7 +2709,7 @@ bool Cmd_GetWeaponCanUseAmmo_Eval(COMMAND_ARGS_EVAL) {
 		*result = weap->ammo.ammo == ammoOrList;
 		if (!*result)
 		{
-			if (auto* pAmmoList = DYNAMIC_CAST(weap->ammo.ammo, TESForm, BGSListForm);
+			if (auto* pAmmoList = GET_FORM_AS(weap->ammo.ammo, BGSListForm);
 				pAmmoList && ammoOrList->typeID == kFormType_TESAmmo)
 			{
 				*result = pAmmoList->GetIndexOf(ammoOrList) != eListInvalid;
@@ -3148,7 +3109,7 @@ bool SetTokenValueOrRef(TESObjectREFR * thisObj, TESForm* pItem, float value = 1
 		pForm = LookupFormByID(refID);
 		if (pForm) {
 			//DEBUG_MESSAGE("\t\tCI SetTokenValueOrRef LookedUp");
-			TESHealthForm* pHealth = DYNAMIC_CAST(pForm, TESForm, TESHealthForm);
+			TESHealthForm* pHealth = TESHealthForm::GetFormAsHealthForm(pForm);
 			if (pHealth) {
 				//DEBUG_MESSAGE("\t\tCI\tSetting: value=%f", value);
 				pForm = AddItemHealthPercentOwner(thisObj, refID, 1, value, ref);
@@ -3161,7 +3122,7 @@ bool SetTokenValueOrRef(TESObjectREFR * thisObj, TESForm* pItem, float value = 1
 	//DEBUG_MESSAGE("\t\tCI SetTokenValueOrRef Searched");
 	if (pForm) {
 		//DEBUG_MESSAGE("\t\tCI SetTokenValueOrRef Exists");
-		TESHealthForm* pHealth = DYNAMIC_CAST(pForm, TESForm, TESHealthForm);
+		TESHealthForm* pHealth = TESHealthForm::GetFormAsHealthForm(pForm);
 		if (pHealth) {
 			if (value == -1.0)
 				value = currHealth;
@@ -3284,7 +3245,7 @@ bool Cmd_PickOneOf_Execute(COMMAND_ARGS) {
 	UInt32 random;
 
 	//DEBUG_MESSAGE("\n\tCI PickOneOf Called");
-	pActor = DYNAMIC_CAST(thisObj, TESForm, Actor);
+	pActor = thisObj->IsActor() ? static_cast<Actor*>(thisObj) : NULL;
 	if (!pActor)
 		return true;
 	if (ExtractArgs(EXTRACT_ARGS, &pFormList)) {
@@ -3324,19 +3285,19 @@ bool Cmd_IsPlayable_Execute(COMMAND_ARGS)
 	}
 	if (form)
 	{
-		TESBipedModelForm* biped = DYNAMIC_CAST(form, TESForm, TESBipedModelForm);
+		TESBipedModelForm* biped = TESBipedModelForm::GetFormAsBipedModel(form);
 		if (biped)
 			*result = biped->IsPlayable() ? 1 : 0;
 		else {
-			TESObjectWEAP* weap = DYNAMIC_CAST(form, TESForm, TESObjectWEAP);
+			TESObjectWEAP* weap = GET_FORM_AS(form, TESObjectWEAP);
 			if (weap)
 				*result = weap->IsPlayable() ? 1 : 0;
 			else {
-				TESAmmo* ammo = DYNAMIC_CAST(form, TESForm, TESAmmo);
+				TESAmmo* ammo = GET_FORM_AS(form, TESAmmo);
 				if (ammo)
 					*result = ammo->IsPlayable() ? 1 : 0;
 				else {
-					TESRace* race = DYNAMIC_CAST(form, TESForm, TESRace);
+					TESRace* race = GET_FORM_AS(form, TESRace);
 					if (race)
 						*result = race->IsPlayable() ? 1 : 0;
 				}
@@ -3362,7 +3323,7 @@ bool Cmd_SetIsPlayable_Execute(COMMAND_ARGS)
 	}
 	if (form)
 	{
-		TESBipedModelForm* biped = DYNAMIC_CAST(form, TESForm, TESBipedModelForm);
+		TESBipedModelForm* biped = TESBipedModelForm::GetFormAsBipedModel(form);
 		if (biped)
 			biped->SetNonPlayable(0.0 == doSet);
 	}
@@ -3383,7 +3344,7 @@ bool Cmd_GetEquipmentSlotsMask_Execute(COMMAND_ARGS)
 	}
 	if (form)
 	{
-		TESBipedModelForm* biped = DYNAMIC_CAST(form, TESForm, TESBipedModelForm);
+		TESBipedModelForm* biped = TESBipedModelForm::GetFormAsBipedModel(form);
 		if (biped)
 			*result = biped->GetSlotsMask();
 	}
@@ -3406,7 +3367,7 @@ bool Cmd_SetEquipmentSlotsMask_Execute(COMMAND_ARGS)
 	}
 	if (form)
 	{
-		TESBipedModelForm* biped = DYNAMIC_CAST(form, TESForm, TESBipedModelForm);
+		TESBipedModelForm* biped = TESBipedModelForm::GetFormAsBipedModel(form);
 		if (biped)
 			biped->SetSlotsMask(mask);
 	}
@@ -3427,7 +3388,7 @@ bool Cmd_GetEquipmentBipedMask_Execute(COMMAND_ARGS)
 	}
 	if (form)
 	{
-		TESBipedModelForm* biped = DYNAMIC_CAST(form, TESForm, TESBipedModelForm);
+		TESBipedModelForm* biped = TESBipedModelForm::GetFormAsBipedModel(form);
 		if (biped)
 			*result = biped->GetBipedMask();
 	}
@@ -3450,7 +3411,7 @@ bool Cmd_SetEquipmentBipedMask_Execute(COMMAND_ARGS)
 	}
 	if (form)
 	{
-		TESBipedModelForm* biped = DYNAMIC_CAST(form, TESForm, TESBipedModelForm);
+		TESBipedModelForm* biped = TESBipedModelForm::GetFormAsBipedModel(form);
 		if (biped)
 			biped->SetBipedMask(mask);
 	}
@@ -3461,7 +3422,7 @@ bool Cmd_EquipItem2_Execute_OBSE(COMMAND_ARGS)
 {
 	// forces onEquip block to run
 
-	Actor* actor = DYNAMIC_CAST(thisObj, TESObjectREFR, Actor);
+	Actor* actor = thisObj->IsActor() ? static_cast<Actor*>(thisObj) : nullptr;
 	if (actor) {
 		ExtraContainerExtendDataArray  preList = actor->GetEquippedExtendDataList();
 		Cmd_EquipItem_Execute(PASS_COMMAND_ARGS);
@@ -3496,7 +3457,7 @@ bool Cmd_EquipItem2_Execute(COMMAND_ARGS)
 
 	if (!thisObj || !ExtractArgs(EXTRACT_ARGS, &item, &noUnequip, &noMessage)) return true;
 
-	Actor *actor = DYNAMIC_CAST(thisObj, TESObjectREFR, Actor);
+	Actor *actor = thisObj->IsActor() ? static_cast<Actor*>(thisObj) : nullptr;
 	if (!actor) return true;
 
 	UInt8 itemType = item->typeID;
@@ -3513,7 +3474,7 @@ bool Cmd_EquipItem2_Execute(COMMAND_ARGS)
 	UInt32 eqpCount = 1;
 	if (itemType == kFormType_TESObjectWEAP)
 	{
-		TESObjectWEAP *weapon = DYNAMIC_CAST(item, TESForm, TESObjectWEAP);
+		TESObjectWEAP *weapon = GET_FORM_AS(item, TESObjectWEAP);
 		// If the weapon is stack-able, equip whole stack.
 		if (weapon && (weapon->eWeaponType > 9)) eqpCount = entry->countDelta;
 	}
@@ -3528,7 +3489,9 @@ bool Cmd_EquipItem2_Execute(COMMAND_ARGS)
 
 bool Cmd_EquipMe_Execute(COMMAND_ARGS)
 {
-	Actor* owner = DYNAMIC_CAST(containingObj, TESObjectREFR, Actor);
+	Actor* owner = nullptr;
+	if (containingObj && containingObj->IsActor())
+		owner = static_cast<Actor*>(containingObj);
 	if (thisObj) {
 		if (owner) {
 			owner->EquipItem(thisObj->baseForm, 1, &thisObj->extraDataList, 1, false);
@@ -3546,7 +3509,9 @@ bool Cmd_EquipMe_Execute(COMMAND_ARGS)
 
 bool Cmd_UnequipMe_Execute(COMMAND_ARGS)
 {
-	Actor* owner = DYNAMIC_CAST(containingObj, TESObjectREFR, Actor);
+	Actor* owner = nullptr;
+	if (containingObj && containingObj->IsActor())
+		owner = static_cast<Actor*>(containingObj);
 	if (thisObj) {
 		if (owner) {
 			//bool worn = thisObj->extraDataList.HasType(kExtraData_Worn) || thisObj->extraDataList.HasType(kExtraData_WornLeft);
