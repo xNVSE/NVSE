@@ -852,9 +852,9 @@ void SetConsoleEcho(bool doEcho)
 	*bEchoConsole = doEcho ? 1 : 0;
 }
 
-ConsoleManager *ConsoleManager::GetSingleton(void)
+ConsoleManager *ConsoleManager::GetSingleton(bool create)
 {
-	return (ConsoleManager *)ConsoleManager_GetSingleton(true);
+	return (ConsoleManager *)ConsoleManager_GetSingleton(create);
 }
 
 char *ConsoleManager::GetConsoleOutputFilename(void)
