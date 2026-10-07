@@ -415,7 +415,7 @@ __declspec(naked) char* __fastcall CopyString(const char* key, UInt32 length)
 		// [esp]: "key" arg passed to CopyString
 
 		// length -= 1, to avoid copying null terminator or past-the-end part of string (if it had no null terminator)
-		dec		[esp+4]
+		dec		dword ptr [esp+4]
 
 		push	eax // dest = malloc's new ptr
 		call	_memcpy
