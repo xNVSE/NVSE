@@ -4,8 +4,9 @@
 
 __declspec(noreturn) static void IErrors_Halt(void)
 {
-	// crash
-	*((int *)0) = 0xDEADBEEF;
+	// crash; volatile, or clang deletes the store to null and the caller runs on
+	*((volatile int *)0) = 0xDEADBEEF;
+	__assume(0);
 }
 
 /**
