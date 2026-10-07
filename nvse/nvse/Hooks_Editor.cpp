@@ -467,19 +467,19 @@ ParamParenthResult __fastcall HandleParameterParenthesis(ScriptLineBuffer* scrip
 	return parser.ParseParentheses(paramInfo, paramIndex);
 }
 #if EDITOR
+const static auto stackOffset = 0x264;
+
+const static auto paramIndexLoc = stackOffset - 0x230;
+const static auto paramInfoLoc = stackOffset + 0x4 + 0x8;
+const static auto scriptBufLoc = stackOffset + 0x8 + 0x10;
+const static auto lineBufLoc = stackOffset + 0x8 + 0xC;
+
+const static auto parenthFnParseScriptWord = 0x5C6190;
+const static auto parenthContinueLoop = 0x5C7E9C;
+const static auto parenthReturnAddress = 0x5C68C5;
+const static auto parenthPrematureReturn = 0x5C7F1E;
 __declspec(naked) void ParameterParenthesisHook()
 {
-	const static auto stackOffset = 0x264;
-	
-	const static auto paramIndexLoc = stackOffset - 0x230;
-	const static auto paramInfoLoc = stackOffset + 0x4 + 0x8;
-	const static auto scriptBufLoc = stackOffset + 0x8 + 0x10;
-	const static auto lineBufLoc = stackOffset + 0x8 + 0xC;
-
-	const static auto fnParseScriptWord = 0x5C6190;
-	const static auto continueLoop = 0x5C7E9C;
-	const static auto returnAddress = 0x5C68C5;
-	const static auto prematureReturn = 0x5C7F1E;
 	__asm
 	{
 		mov eax, paramIndexLoc
@@ -503,13 +503,13 @@ __declspec(naked) void ParameterParenthesisHook()
 		add esp, 0x24
 		cmp al, [kParamParent_SyntaxError]
 		je syntaxError
-		jmp continueLoop
+		jmp parenthContinueLoop
 	syntaxError:
 		mov al, 0
-		jmp	prematureReturn
+		jmp	parenthPrematureReturn
 	notParenthesis:
-		call fnParseScriptWord
-		jmp returnAddress
+		call parenthFnParseScriptWord
+		jmp parenthReturnAddress
 	}
 }
 #endif
@@ -813,13 +813,12 @@ void PatchDefaultCommandParser()
 const auto* g_arrayVar = "array_var";
 const auto* g_stringVar = "string_var";
 
+const static auto fnParseScriptWord = 0x5AF5F0;
+const static auto continueLoop = 0x5B1BFD;
+const static auto returnAddress = 0x5B1C6A;
+const static auto prematureReturn = 0x5B3AB4;
 __declspec(naked) void InlineExpressionHook()
 {
-	const static auto fnParseScriptWord = 0x5AF5F0;
-	const static auto continueLoop = 0x5B1BFD;
-	const static auto returnAddress = 0x5B1C6A;
-	const static auto prematureReturn = 0x5B3AB4;
-
 	__asm
 	{
 		movzx edx, word ptr [ebp - 0x8] // index

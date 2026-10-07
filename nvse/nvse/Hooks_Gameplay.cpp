@@ -470,9 +470,9 @@ namespace TogglePlayerControlsAlt
 	}
 
 	// Logical OR the vanilla flags with ours
+	static const UInt32 ContinueFuncAddr = 0x5A0401;
 	__HOOK ModifyPlayerControlFlags()
 	{
-		static const UInt32 ContinueFuncAddr = 0x5A0401;
 		_asm
 		{
 			mov     eax, [ebp - 4]
@@ -519,10 +519,10 @@ namespace TogglePlayerControlsAlt
 				return (g_disabledControls & kFlag_Attacking) != 0;
 			}
 
+			static const UInt32 NormalRetnAddr = 0x948A02,
+				PreventAddr = 0x949676;
 			__HOOK Hook()
 			{
-				static const UInt32 NormalRetnAddr = 0x948A02,
-					PreventAddr = 0x949676;
 				_asm
 				{
 					call	ShouldPrevent
@@ -590,10 +590,10 @@ namespace TogglePlayerControlsAlt
 		return defaultResult;
 	}
 
+	static const UInt32 NormalRetnAddr = 0x941708,
+		PreventRunningAddr = 0x941792;
 	__HOOK MaybePreventRunningForControllers()
 	{
-		static const UInt32 NormalRetnAddr = 0x941708,
-			PreventRunningAddr = 0x941792;
 		_asm
 		{
 			movzx	eax, g_disabledControls
@@ -669,10 +669,10 @@ namespace TogglePlayerControlsAlt
 
 		namespace SleepFromFurniture
 		{
+			static const UInt32 NormalRetnAddr = 0x509667,
+				PreventSleepingAddr = 0x509880;
 			__HOOK MaybePreventSleeping()
 			{
-				static const UInt32 NormalRetnAddr = 0x509667,
-					PreventSleepingAddr = 0x509880;
 				_asm
 				{
 					movzx	eax, g_disabledControls
@@ -728,10 +728,10 @@ namespace TogglePlayerControlsAlt
 
 	namespace MaybePreventFastTravel
 	{
+		static const UInt32 NormalRetnAddr = 0x798026,
+			PreventAddr = 0x798348;
 		__HOOK Hook()
 		{
-			static const UInt32 NormalRetnAddr = 0x798026,
-				PreventAddr = 0x798348;
 			_asm
 			{
 				movzx	eax, g_disabledControls

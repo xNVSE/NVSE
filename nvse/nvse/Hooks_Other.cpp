@@ -168,24 +168,24 @@ namespace OtherHooks
 			// }
 		}
 
+		const static auto hookedCall1 = 0x702FC0;
+		const static auto retnAddr1 = 0x5E0D56;
 		__declspec(naked) void Hook1()
 		{
-			const static auto hookedCall = 0x702FC0;
-			const static auto retnAddr = 0x5E0D56;
 			__asm
 			{
 				lea ecx, [ebp]
 				mov edx, 1
 				call PreScriptExecute
-				call hookedCall
-				jmp retnAddr
+				call hookedCall1
+				jmp retnAddr1
 			}
 		}
 
+		const static auto hookedCall2 = 0x4013E0;
+		const static auto retnAddr2 = 0x5E119F;
 		__declspec(naked) void Hook2()
 		{
-			const static auto hookedCall = 0x4013E0;
-			const static auto retnAddr = 0x5E119F;
 			__asm
 			{
 				push ecx
@@ -193,8 +193,8 @@ namespace OtherHooks
 				lea ecx, [ebp]
 				call PreScriptExecute
 				pop ecx
-				call hookedCall
-				jmp retnAddr
+				call hookedCall2
+				jmp retnAddr2
 			}
 		}
 

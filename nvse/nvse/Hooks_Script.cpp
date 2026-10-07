@@ -201,9 +201,9 @@ namespace RemoveScriptDataLimit
 		scriptBuffer->scriptData = static_cast<UInt8*>(newMem);
 	}
 
+	static UInt32 const skipReturn = 0x5B0FB4;
 	__declspec(naked) void Hook()
 	{
-		static UInt32 const skipReturn = 0x5B0FB4;
 		__asm
 		{
 			// edx already contains scriptBuffer
@@ -273,9 +273,8 @@ namespace PatchHelpCommand {
 		}
 	}
 
+	static uint32_t rtnAddr = 0x5BCDB6;
 	__declspec(naked) void Hook() {
-		static uint32_t rtnAddr = 0x5BCDB6;
-
 		_asm {
 			lea eax, [ebp - 0x214]
 			push eax
@@ -662,10 +661,10 @@ namespace Runtime // double-clarify
 		return HandleBeginCompile(buf, script);
 	}
 
+	const static auto retnAddr = 0x5AEBB6;
+	const static auto failOrSpecialCompileAddr = 0x5AEDA0;
 	__declspec(naked) void HookBeginScriptCompile()
 	{
-		const static auto retnAddr = 0x5AEBB6;
-		const static auto failOrSpecialCompileAddr = 0x5AEDA0;
 		__asm
 		{
 			mov		edx, [ebp + 0xC] //scriptBuffer
@@ -802,14 +801,13 @@ namespace CompilerOverride
 		return bResult;
 	}
 
+	static UInt32 numParams;
+	static ParamInfo *params;
+	static ScriptLineBuffer *lineBuf;
+	static ScriptBuffer *scriptBuf;
+	static UInt8 result;
 	static __declspec(naked) void Hook_Cmd_Default_Parse(void)
 	{
-		static UInt32 numParams;
-		static ParamInfo *params;
-		static ScriptLineBuffer *lineBuf;
-		static ScriptBuffer *scriptBuf;
-		static UInt8 result;
-
 		__asm {
 			// grab args
 			mov	eax, [esp + 4]
@@ -1462,11 +1460,10 @@ namespace ExtractArgsOverride
 
 	*/
 
+	static UInt32 _ebp;
+	static UInt8 bResult;
 	static __declspec(naked) void ExtractExtendedArgsHook(void)
 	{
-		static UInt32 _ebp;
-		static UInt8 bResult;
-
 		__asm {
 			// restore missing ops
 			mov     cx, [eax + edx]
