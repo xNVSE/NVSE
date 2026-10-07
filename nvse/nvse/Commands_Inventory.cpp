@@ -3067,7 +3067,7 @@ bool Cmd_GetTokenValue_Eval(COMMAND_ARGS_EVAL)
 		*result = value;
 		if (IsConsoleMode()) {
 			if (pForm->GetFullName())
-				Console_Print("GetTokenValue: >> %f (%s)", *result, pForm->GetFullName()->name);
+				Console_Print("GetTokenValue: >> %f (%s)", *result, pForm->GetFullName()->name.CStr());
 			else
 				Console_Print("GetTokenValue: >> %f", *result);
 		}
@@ -3107,7 +3107,7 @@ bool Cmd_GetTokenRef_Eval(COMMAND_ARGS_EVAL)
 		//DEBUG_MESSAGE("\t\t\tGTR thisObj:%#10X token:[%x] ref:[%x]\n", thisObj, pItem->refID, *refResult);
 		if (IsConsoleMode()) {
 			if (owner->GetFullName())
-				Console_Print("TokenReference: >> %#10X (%s)", *result, owner->GetFullName()->name);
+				Console_Print("TokenReference: >> %#10X (%s)", *result, owner->GetFullName()->name.CStr());
 			else
 				Console_Print("TokenReference: >> %#10X", *result);
 		}
@@ -3173,7 +3173,7 @@ bool SetTokenValueOrRef(TESObjectREFR * thisObj, TESForm* pItem, float value = 1
 			thisObj->MarkAsModified(TESObjectREFR::kChanged_Inventory);	// Makes the change permanent
 			if (IsConsoleMode() && ref != nullptr) {
 				if (pForm->GetFullName())
-					Console_Print("SetTokenValueOrRef: >> %f [%x] (%s)", value, ref->refID, pForm->GetFullName()->name);
+					Console_Print("SetTokenValueOrRef: >> %f [%x] (%s)", value, ref->refID, pForm->GetFullName()->name.CStr());
 				else
 					Console_Print("SetTokenValueOrRef: >> %f [%x]", value, ref->refID);
 			}

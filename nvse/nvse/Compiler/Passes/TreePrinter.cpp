@@ -41,7 +41,7 @@ namespace Compiler {
 	}
 
 	void TreePrinter::VisitBeginStmt(Statements::Begin* stmt) {
-		DbgPrintln("begin %s %s", stmt->name, stmt->param.has_value() ? stmt->param->lexeme.c_str() : "");
+		DbgPrintln("begin %s %s", stmt->name.c_str(), stmt->param.has_value() ? stmt->param->lexeme.c_str() : "");
 		DbgIndent();
 		DbgPrintln(
 			"source info: [%d:%d] -> [%d:%d]",
