@@ -70,8 +70,8 @@ public:
 	ArrayIterLoop(ArrayID sourceID, Script* script, Variable valueIterVar, std::optional<Variable> keyIterVar);
 	~ArrayIterLoop() override;
 
-	virtual bool Update(COMMAND_ARGS);
-	bool IsEmpty()
+	bool Update(COMMAND_ARGS) override;
+	bool IsEmpty() override
 	{
 		if (!m_srcID) [[unlikely]] {
 			return true;
