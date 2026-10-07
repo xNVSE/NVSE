@@ -1255,7 +1255,6 @@ bool Cmd_ar_CountWhere_Execute(COMMAND_ARGS) {
 	if (!ExtractArrayUDF(ctx))
 		return true;
 	auto& [eval, arr, conditionScript] = ctx;
-	auto* returnArray = g_ArrayMap.Create(arr->KeyType(), arr->IsPacked(), scriptObj->GetModIndex());
 	for (auto iter = arr->Begin(); !iter.End(); ++iter)
 	{
 		InternalFunctionCaller caller(conditionScript, thisObj, containingObj);
