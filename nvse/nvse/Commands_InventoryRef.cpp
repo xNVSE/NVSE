@@ -1,5 +1,3 @@
-#pragma once
-
 #include "Commands_InventoryRef.h"
 
 #if RUNTIME
