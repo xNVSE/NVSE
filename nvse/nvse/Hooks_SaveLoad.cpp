@@ -118,7 +118,7 @@ static __declspec(naked) void LoadGameHook(void)
 		popad
 
 		// overwritten code
-		push		offset	LoadGameMessage
+		push		LoadGameMessage
 		jmp			[kLoadGameRetnAddr]
 	}
 }
@@ -139,7 +139,7 @@ static __declspec(naked) void SaveGameHook(void)
 		popad
 
 		// overwritten code
-		push		offset	SaveGameMessage
+		push		SaveGameMessage
 		jmp			[kSaveGameRetnAddr]
 	}
 }
