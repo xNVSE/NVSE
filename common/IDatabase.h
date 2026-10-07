@@ -2,7 +2,7 @@
 
 #include <map>
 #include "common/IDataStream.h"
-#include "common/IFilestream.h"
+#include "common/IFileStream.h"
 
 template <class DataType>
 class IDatabase

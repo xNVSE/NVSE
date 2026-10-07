@@ -4,10 +4,10 @@
 #include "nvse/GameForms.h"
 #include "nvse/GameObjects.h"
 
-#include "commands_algohol.h"
-#include "algohol/algMath.h"
-#include "algohol/algTypes.h"
-#include "algohol/paramTypes.h"
+#include "commands_Algohol.h"
+#include "Algohol/algMath.h"
+#include "Algohol/algTypes.h"
+#include "Algohol/paramTypes.h"
 
 #define VBUFSIZ 64	//	buffer size for variable names
 

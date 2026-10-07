@@ -110,7 +110,7 @@ namespace OtherHooks
 	
 	ScriptEventList* __fastcall ScriptEventListsDestroyedHook(ScriptEventList *eventList, int EDX, bool doFree)
 	{
-		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_EventListDestroyed, eventList, sizeof ScriptEventList, nullptr);
+		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_EventListDestroyed, eventList, sizeof(ScriptEventList), nullptr);
 
 		DeleteEventList(eventList);
 		return eventList;

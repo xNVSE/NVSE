@@ -6,7 +6,7 @@
 #include "GameAPI.h"
 #include <intrin.h>
 #include "GameScript.h"
-#include "utilities.h"
+#include "Utilities.h"
 
 #include "ScriptUtils.h"
 #include "Hooks_Script.h"

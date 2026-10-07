@@ -32,7 +32,7 @@
 #include "Commands_Factions.h"
 #include "Commands_Array.h"
 #include "Commands_String.h"
-#include "Commands_Algohol.h"
+#include "commands_Algohol.h"
 #include "Commands_Quest.h"
 
 CommandTable g_consoleCommands;

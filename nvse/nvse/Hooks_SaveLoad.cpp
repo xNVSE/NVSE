@@ -5,7 +5,7 @@
 #include "PluginAPI.h"
 #include "PluginManager.h"
 #include "Serialization.h"
-#include "utilities.h"
+#include "Utilities.h"
 #include "Core_Serialization.h"
 
 #if RUNTIME

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "nvse/CommandTable.h"
-#include "algohol/paramTypes.h"
+#include "Algohol/paramTypes.h"
 
 DEFINE_CMD_ALT(V3Length, v3len, returns length of given vector3, 0, 3, kParams_Vector3Floats);
 DEFINE_CMD_ALT(V3Normalize, v3norm, returns normalized vector3, 0, 6, kParams_Vector3Strings3Floats);

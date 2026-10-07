@@ -1,6 +1,6 @@
 #include "GameExtraData.h"
 #include "GameBSExtraData.h"
-#include "GameApi.h"
+#include "GameAPI.h"
 #include "GameObjects.h"
 #include "GameRTTI.h"
 #include "GameScript.h"

@@ -529,7 +529,7 @@ bool StrContains(const std::string& str, const std::string& subStr)
 
 std::vector g_lineMacros =
 {
-	ScriptLineMacro([&](std::string& line, ScriptBuffer*, ScriptLineBuffer*)
+	ScriptLineMacro([](std::string& line, ScriptBuffer*, ScriptLineBuffer*)
 	{
 		static const std::vector<std::pair<std::string, std::string>> s_shortHandMacros =
 		{
@@ -596,7 +596,7 @@ std::vector g_lineMacros =
 		}
 		return false;
 	}, MacroType::AssignmentShortHand),
-	ScriptLineMacro([&](std::string& line, ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
+	ScriptLineMacro([](std::string& line, ScriptBuffer* scriptBuf, ScriptLineBuffer* lineBuf)
 	{
 		if (auto iter = ra::find_if(g_validVariableTypeNames, _L(const char* typeName, StartsWith(line, std::string(typeName) + " "))); 
 			iter != std::end(g_validVariableTypeNames))

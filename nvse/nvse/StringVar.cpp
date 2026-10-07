@@ -6,7 +6,7 @@
 #include "Hooks_Script.h"
 #include "ScriptUtils.h"
 #include "GameData.h"
-#include "GameApi.h"
+#include "GameAPI.h"
 #include <set>
 
 #include "Core_Serialization.h"

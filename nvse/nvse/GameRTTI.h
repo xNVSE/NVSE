@@ -3,7 +3,7 @@
 typedef void * (* _Fallout_DynamicCast)(void * srcObj, UInt32 arg1, const void * fromType, const void * toType, UInt32 arg4);
 extern const _Fallout_DynamicCast Fallout_DynamicCast;
 
-#define DYNAMIC_CAST(obj, from, to) ( ## to *) Fallout_DynamicCast((void*)(obj), 0, RTTI_ ## from, RTTI_ ## to, 0)
+#define DYNAMIC_CAST(obj, from, to) (to *) Fallout_DynamicCast((void*)(obj), 0, RTTI_ ## from, RTTI_ ## to, 0)
 
 extern const void * RTTI_BGSDehydrationStage;
 extern const void * RTTI_BGSHungerStage;

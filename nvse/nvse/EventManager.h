@@ -238,7 +238,7 @@ namespace EventManager
 		//	  Or is it a null array, meaning it should not match with the valid (non-null) array?
 		// ^^^ Thus, to avoid this situation, I opted to simply not allow filtering values that aren't dispatched.
 		// -Demorome
-		template<bool ExtractIntTypeAsFloat, UInt8 NumMaxArgs>
+		template<bool ExtractIntTypeAsFloat, size_t NumMaxArgs>
 		bool DoNewFiltersMatch(
 			TESObjectREFR* thisObj,
 			const StackVector<void*, NumMaxArgs>& args,
@@ -621,7 +621,7 @@ namespace EventManager
 		return false;
 	}
 
-	template<bool ExtractIntTypeAsFloat, UInt8 NumMaxArgs>
+	template<bool ExtractIntTypeAsFloat, size_t NumMaxArgs>
 	bool EventCallback::DoNewFiltersMatch(
 		TESObjectREFR* thisObj, 
 		const StackVector<void*, NumMaxArgs>& args, 

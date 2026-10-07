@@ -3337,7 +3337,7 @@ std::unique_ptr<ScriptToken> ExpressionParser::PeekOperand(UInt32 &outReadLen)
 
 std::vector g_expressionParserMacros =
 	{
-		ScriptLineMacro([&](std::string &line, ScriptBuffer*, ScriptLineBuffer*) {
+		ScriptLineMacro([](std::string &line, ScriptBuffer*, ScriptLineBuffer*) {
 			// Lambda macro
 			const std::regex oneLineLambdaRegex(R"(^\{([^{}]*)\}\s*=>\s*(.*))"); // match {iVar, rRef} => ...
 			if (std::smatch m; std::regex_search(line, m, oneLineLambdaRegex) && m.size() == 3)
