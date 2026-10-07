@@ -1379,7 +1379,7 @@ extern ExpressionEvaluatorUtils s_expEvalUtils;
 
 class PluginExpressionEvaluator
 {
-	void		*expEval;
+	[[maybe_unused]] void	*expEval;	// only the RUNTIME members below use it
 
 public:
 #if RUNTIME

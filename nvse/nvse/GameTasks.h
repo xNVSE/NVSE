@@ -110,6 +110,7 @@ class QueuedFile;
 // 014
 class QueuedChildren : public BSSimpleArray<NiPointer<QueuedFile>>
 {
+public:
 	UInt32	counter;
 };
 
@@ -217,6 +218,7 @@ public:
 
 class Model // NiObject
 {
+public:
 	const char	* path;		// 004
 	UInt32		counter;	// 008
 	NiNode		* ninode;	// 00C
@@ -254,6 +256,7 @@ public:
 // 014
 class KFModel
 {
+public:
 	const char			* path;					// 000
 	BSAnimGroupSequence	* controllerSequence;	// 004
 	TESAnimGroup		* animGroup;			// 008

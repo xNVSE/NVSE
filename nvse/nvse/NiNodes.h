@@ -515,6 +515,7 @@ public:
 
 class RefNiObject
 {
+public:
 	NiObject*	object;	// 00
 };
 
