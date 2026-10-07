@@ -477,7 +477,7 @@ namespace TogglePlayerControlsAlt
 		{
 			mov     eax, [ebp - 4]
 			movzx   ecx, byte ptr [eax + 0x680]
-			movzx   edx, g_disabledControls
+			movzx   edx, byte ptr g_disabledControls
 			AND		edx, kVanillaFlags // prevent our custom flags from being added to vanilla pcControlFlags here.
 			OR		ecx, edx
 			jmp		ContinueFuncAddr
@@ -684,7 +684,7 @@ namespace TogglePlayerControlsAlt
 					jmp		PreventSleepingAddr
 				DoRegular :
 					// go back to the code we jumped from and slightly overwrote
-					mov     [ebp - 0x19], 0
+					mov     byte ptr [ebp - 0x19], 0
 					mov		ecx, [ebp + 0x8]
 					jmp		NormalRetnAddr
 				}

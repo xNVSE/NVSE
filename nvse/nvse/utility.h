@@ -157,7 +157,7 @@ public:
 #define ULNG(a) *((UInt32*)&a)
 
 // From JIP
-extern const UInt32 kPackedValues[];
+extern const UInt32 kPackedValues[72]; // sized: clang needs a complete type to use it from inline asm
 
 // From JIP
 #define GET_PS(i)	((const __m128*)kPackedValues)[i]

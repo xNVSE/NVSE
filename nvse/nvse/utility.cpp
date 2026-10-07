@@ -206,7 +206,7 @@ __declspec(naked) char* __fastcall StrCopy(char *dest, const char *src)
 		jz		done
 		test	edx, edx
 		jnz		proceed
-		mov		[eax], 0
+		mov		byte ptr [eax], 0
 	done:
 		retn
 	proceed:
@@ -254,7 +254,7 @@ __declspec(naked) char* __fastcall StrNCopy(char *dest, const char *src, UInt32 
 		mov		eax, esi
 		pop		esi
 	nullTerm:
-		mov		[eax], 0
+		mov		byte ptr [eax], 0
 	done:
 		retn	4
 	}
@@ -438,7 +438,7 @@ __declspec(naked) char* __fastcall IntToStr(char *str, int num)
 		test	edx, edx
 		jns		skipNeg
 		neg		edx
-		mov		[ecx], '-'
+		mov		byte ptr [ecx], '-'
 		inc		ecx
 	skipNeg:
 		mov		esi, ecx
@@ -453,7 +453,7 @@ __declspec(naked) char* __fastcall IntToStr(char *str, int num)
 		inc		esi
 		test	eax, eax
 		jnz		workIter
-		mov		[esi], 0
+		mov		byte ptr [esi], 0
 		mov		eax, esi
 	swapIter:
 		dec		esi
@@ -537,7 +537,7 @@ __declspec(naked) UInt32 __fastcall StrHashCI(const char* inKey)
 		mov		cl, [esi]
 		test	cl, cl
 		jz		done
-		movzx	edx, kLwrCaseConverter[ecx]
+		movzx	edx, byte ptr kLwrCaseConverter[ecx]
 		shl		edx, 4
 		sub		eax, edx
 		mov		edx, eax
@@ -546,7 +546,7 @@ __declspec(naked) UInt32 __fastcall StrHashCI(const char* inKey)
 		mov		cl, [esi + 1]
 		test	cl, cl
 		jz		done
-		movzx	edx, kLwrCaseConverter[ecx]
+		movzx	edx, byte ptr kLwrCaseConverter[ecx]
 		shl		edx, 0xC
 		sub		eax, edx
 		mov		edx, eax
@@ -555,7 +555,7 @@ __declspec(naked) UInt32 __fastcall StrHashCI(const char* inKey)
 		mov		cl, [esi + 2]
 		test	cl, cl
 		jz		done
-		movzx	edx, kLwrCaseConverter[ecx]
+		movzx	edx, byte ptr kLwrCaseConverter[ecx]
 		shl		edx, 0x14
 		sub		eax, edx
 		mov		edx, eax
@@ -564,7 +564,7 @@ __declspec(naked) UInt32 __fastcall StrHashCI(const char* inKey)
 		mov		cl, [esi + 3]
 		test	cl, cl
 		jz		done
-		movzx	edx, kLwrCaseConverter[ecx]
+		movzx	edx, byte ptr kLwrCaseConverter[ecx]
 		sub		eax, edx
 		mov		edx, eax
 		shl		eax, 5
@@ -619,7 +619,7 @@ void SpinLock::Leave()
 }
 
 // From JIP
-alignas(16) const UInt32 kPackedValues[] =
+alignas(16) const UInt32 kPackedValues[72] =
 {
 	PS_DUP_4(0x7FFFFFFF),
 	PS_DUP_1(0x7FFFFFFF),

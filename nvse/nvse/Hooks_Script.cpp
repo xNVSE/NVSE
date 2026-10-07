@@ -900,7 +900,7 @@ namespace CompilerOverride
 			push eax
 
 					// first, toggle override off if it's already activated
-			test[s_overridden], 1
+			test byte ptr [s_overridden], 1
 			jz TestForUnderscore
 			pushad
 			push 0
@@ -932,7 +932,7 @@ namespace CompilerOverride
 				jnz Done
 
 					// a match. override requested?
-				test[s_overridden], 1
+				test byte ptr [s_overridden], 1
 				jz Done
 
 				// toggle the override
@@ -991,7 +991,7 @@ namespace CompilerOverride
 		// eax: volatile
 		__asm {
 			// is override in effect?
-			test[s_overridden], 1
+			test byte ptr [s_overridden], 1
 			jz Done
 
 				// have we just parsed a begin or end statement?
@@ -1004,12 +1004,12 @@ namespace CompilerOverride
 
 			Begin :
 								 // commands following start of block should have access to script context
-			mov[s_currentMode], kOverride_Command
+			mov word ptr [s_currentMode], kOverride_Command
 				jmp Process
 
 				End :
 								 // expect a new block or end of script, no execution context available
-			mov[s_currentMode], kOverride_BlockType
+			mov word ptr [s_currentMode], kOverride_BlockType
 
 				Process :
 				// got a begin or end statement, handle it
@@ -1032,7 +1032,7 @@ namespace CompilerOverride
 			sub edx, ecx
 
 				// override in effect?
-			test[s_overridden], 1
+			test byte ptr [s_overridden], 1
 			jz Done
 
 				// add 4 bytes to block len to account for 'push context' cmd

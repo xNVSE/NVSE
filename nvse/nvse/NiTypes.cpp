@@ -5,7 +5,7 @@ __declspec(naked) float __vectorcall Point3Distance(const NiVector3& pt1, const 
 {
 	__asm
 	{
-		movaps	xmm2, PS_XYZ0Mask
+		movaps	xmm2, xmmword ptr PS_XYZ0Mask
 		movups	xmm0, [ecx]
 		andps	xmm0, xmm2
 		movups	xmm1, [edx]
@@ -21,10 +21,10 @@ __declspec(naked) float __vectorcall Point3Distance(const NiVector3& pt1, const 
 		rsqrtss	xmm2, xmm0
 		mulss	xmm1, xmm2
 		mulss	xmm1, xmm2
-		movss	xmm3, SS_3
+		movss	xmm3, dword ptr SS_3
 		subss	xmm3, xmm1
 		mulss	xmm3, xmm2
-		mulss	xmm3, PS_V3_Half
+		mulss	xmm3, dword ptr PS_V3_Half
 		mulss	xmm0, xmm3
 	done :
 		retn
