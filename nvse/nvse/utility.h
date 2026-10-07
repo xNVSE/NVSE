@@ -74,6 +74,13 @@ template <typename T> __forceinline void RawSwap(const T &lhs, const T &rhs)
 #define NOP_0xE NOP_0x7 NOP_0x7
 #define NOP_0xF NOP_0x7 NOP_0x8
 
+class PrimitiveCS;
+
+// The body of PrimitiveCS::Enter, for inline asm: clang supports neither naked member
+// functions nor calls to member functions from inline asm. Like the member, it takes
+// the lock in ecx and returns it.
+PrimitiveCS* __fastcall PrimitiveCS_Enter(PrimitiveCS *cs);
+
 class PrimitiveCS
 {
 	DWORD		m_owningThread;

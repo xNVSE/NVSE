@@ -381,7 +381,7 @@ eEventID EventIDForMask(UInt32 eventMask)
 			return kEventID_OnTriggerEnter;
 		case ScriptEventList::kEvent_OnTriggerLeave:
 			return kEventID_OnTriggerLeave;
-		case ScriptEventList::kEvent_OnReset:
+		case static_cast<UInt32>(ScriptEventList::kEvent_OnReset): // 0x80000000 is negative in the int-typed enum
 			return kEventID_OnReset;
 		case kEventMask_OnActivate:
 			return kEventID_OnActivate;

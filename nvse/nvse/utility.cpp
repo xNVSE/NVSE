@@ -2,13 +2,20 @@
 
 memcpy_t _memcpy = memcpy, _memmove = memmove;
 
-__declspec(naked) PrimitiveCS *PrimitiveCS::Enter()
+// Not dllimport: clang needs a free register for each call through an import pointer,
+// and the asm below clobbers all of them.
+static DWORD __stdcall CurrentThreadId()
+{
+	return GetCurrentThreadId();
+}
+
+__declspec(naked) PrimitiveCS* __fastcall PrimitiveCS_Enter(PrimitiveCS *cs)
 {
 	__asm
 	{
 		push	ebx
 		mov		ebx, ecx
-		call	GetCurrentThreadId
+		call	CurrentThreadId
 		cmp		[ebx], eax
 		jnz		doSpin
 	done:
@@ -42,6 +49,11 @@ __declspec(naked) PrimitiveCS *PrimitiveCS::Enter()
 		pop		ebx
 		retn
 	}
+}
+
+PrimitiveCS *PrimitiveCS::Enter()
+{
+	return PrimitiveCS_Enter(this);
 }
 
 __declspec(naked) TESForm* __stdcall LookupFormByRefID(UInt32 refID)

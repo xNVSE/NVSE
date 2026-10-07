@@ -356,8 +356,12 @@ double TESObjectREFR::GetHeadingAngle(const TESObjectREFR* to) const
 	return result;
 }
 
+// clang supports neither naked member functions nor calls to member functions from
+// inline asm, so the asm bodies are free functions with the member's register use.
+static const UInt32 kAddr_BaseExtraList_GetByType = 0x410220; // see BaseExtraList::GetByType
+
 // Code by JIP
-__declspec(naked) bool __fastcall TESObjectREFR::GetInSameCellOrWorld(TESObjectREFR* target) const
+static __declspec(naked) bool __fastcall RefsInSameCellOrWorld(const TESObjectREFR* ref, TESObjectREFR* target)
 {
 	__asm
 	{
@@ -367,7 +371,7 @@ __declspec(naked) bool __fastcall TESObjectREFR::GetInSameCellOrWorld(TESObjectR
 		push	edx
 		push	kExtraData_PersistentCell
 		add		ecx, 0x44
-		call	BaseExtraList::GetByType
+		call	kAddr_BaseExtraList_GetByType
 		pop		edx
 		test	eax, eax
 		jz		done
@@ -379,7 +383,7 @@ __declspec(naked) bool __fastcall TESObjectREFR::GetInSameCellOrWorld(TESObjectR
 		push	eax
 		push	kExtraData_PersistentCell
 		lea		ecx, [edx + 0x44]
-		call	BaseExtraList::GetByType
+		call	kAddr_BaseExtraList_GetByType
 		pop		edx
 		test	eax, eax
 		jz		done
@@ -399,14 +403,19 @@ __declspec(naked) bool __fastcall TESObjectREFR::GetInSameCellOrWorld(TESObjectR
 	}
 }
 
+bool __fastcall TESObjectREFR::GetInSameCellOrWorld(TESObjectREFR* target) const
+{
+	return RefsInSameCellOrWorld(this, target);
+}
+
 // Code by JIP
-__declspec(naked) float __vectorcall TESObjectREFR::GetDistance(TESObjectREFR* target) const
+static __declspec(naked) float __vectorcall RefDistance(const TESObjectREFR* ref, TESObjectREFR* target)
 {
 	__asm
 	{
 		push	ecx
 		push	edx
-		call	TESObjectREFR::GetInSameCellOrWorld
+		call	RefsInSameCellOrWorld
 		pop		edx
 		pop		ecx
 		test	al, al
@@ -419,6 +428,11 @@ __declspec(naked) float __vectorcall TESObjectREFR::GetDistance(TESObjectREFR* t
 		movd	xmm0, eax
 		retn
 	}
+}
+
+float __vectorcall TESObjectREFR::GetDistance(TESObjectREFR* target) const
+{
+	return RefDistance(this, target);
 }
 
 void Actor::SetWantsWeaponOut(bool wantsWeaponOut)
