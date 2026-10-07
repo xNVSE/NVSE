@@ -596,7 +596,7 @@ namespace TogglePlayerControlsAlt
 			PreventRunningAddr = 0x941792;
 		_asm
 		{
-			movzx	eax, g_disabledControls
+			mov		eax, g_disabledControls
 			AND		eax, kFlag_Running
 			test	eax, eax
 			jz		DoRegular
@@ -675,7 +675,7 @@ namespace TogglePlayerControlsAlt
 					PreventSleepingAddr = 0x509880;
 				_asm
 				{
-					movzx	eax, g_disabledControls
+					mov		eax, g_disabledControls
 					AND		eax, kFlag_Sleep
 					test	eax, eax
 					jz		DoRegular
@@ -734,7 +734,7 @@ namespace TogglePlayerControlsAlt
 				PreventAddr = 0x798348;
 			_asm
 			{
-				movzx	eax, g_disabledControls
+				mov		eax, g_disabledControls
 				AND		eax, kFlag_FastTravel
 				test	eax, eax
 				jz		DoRegular
