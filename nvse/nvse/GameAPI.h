@@ -398,7 +398,7 @@ public:
 	UInt32 unk004[(0x0810 - 0x04) >> 2]; // 004
 	char COFileName[260];				 // 810
 
-	static ConsoleManager *GetSingleton(void);
+	static ConsoleManager *GetSingleton(bool create = true);
 	bool IsConsoleOpen()
 	{
 		return ThisStdCall<bool>(0x4A4020, this);
