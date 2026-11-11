@@ -3457,38 +3457,6 @@ bool Cmd_SetEquipmentBipedMask_Execute(COMMAND_ARGS)
 	return true;
 }
 
-bool Cmd_EquipItem2_Execute_OBSE(COMMAND_ARGS)
-{
-	// forces onEquip block to run
-
-	Actor* actor = DYNAMIC_CAST(thisObj, TESObjectREFR, Actor);
-	if (actor) {
-		ExtraContainerExtendDataArray  preList = actor->GetEquippedExtendDataList();
-		Cmd_EquipItem_Execute(PASS_COMMAND_ARGS);
-		ExtraContainerExtendDataArray postList = actor->GetEquippedExtendDataList();
-
-		// what was equipped (if anything)?
-		bool found;
-		for (UInt32 i = 0; i < postList.size(); i++) {
-			found = false;
-			for (UInt32 j = 0; j < preList.size(); j++)
-				if (preList[j] = postList[i]) {
-					found = true;
-					break;
-				}
-			if (!found) {
-				ExtraContainerChanges::ExtendDataList* data = postList[i];
-				if (data->GetNthItem(0)) {
-					// mark the event
-					data->GetNthItem(0)->MarkScriptEvent(ScriptEventList::kEvent_OnEquip, actor);
-				}
-			}
-		}
-	}
-
-	return true;
-}
-
 bool Cmd_EquipItem2_Execute(COMMAND_ARGS)
 {
 	TESForm *item = NULL;
