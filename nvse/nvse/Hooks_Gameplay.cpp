@@ -868,7 +868,7 @@ void DetermineShowScriptErrors()
 			{
 				if (curMod.empty())
 					continue;
-				if (const auto idx = DataHandler::Get()->GetModIndex(curMod.c_str()); idx != -1)
+				if (const auto idx = DataHandler::Get()->GetModIndex(curMod.c_str()); idx != 0xFF) // GetModIndex returns 0xFF for a mod that is not loaded
 				{
 					g_warnScriptErrors = true;
 					g_myMods.insert(idx);
