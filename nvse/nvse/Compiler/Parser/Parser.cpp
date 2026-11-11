@@ -14,7 +14,6 @@ using std::shared_ptr;
 
 namespace Compiler {
 	Parser::Parser(const std::string& text) : lexer(Lexer{ text }) {
-		this->lexer = lexer;
 		Advance();
 	}
 
