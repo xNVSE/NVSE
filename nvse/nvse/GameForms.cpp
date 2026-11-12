@@ -46,6 +46,18 @@ const char* TESForm::GetEditorID() const
 #endif
 }
 
+UInt32 TESForm::GetFormID() const {
+	return refID;
+}
+
+UInt32 TESForm::GetFormIDWithoutIndex() const {
+#if RUNTIME
+	return ThisStdCall<UInt32>(0x485BC0, this);
+#else
+	return refID & 0x00FFFFFF;
+#endif
+}
+
 TESForm *TESForm::TryGetREFRParent(void)
 {
 	TESForm *result = this;
@@ -61,6 +73,10 @@ TESForm *TESForm::TryGetREFRParent(void)
 UInt8 TESForm::GetModIndex() const
 {
 	return (refID >> 24);
+}
+
+UInt16 TESForm::GetSmallModIndex() const {
+	return (refID >> 12) & 0xFFF;
 }
 
 #if RUNTIME
@@ -400,7 +416,7 @@ bool TESForm::FormMatches(TESForm* toMatch) const
 
 UInt8 TESForm::GetOverridingModIdx() const
 {
-	ModInfo* info = mods.GetLastItem();
+	ModInfo* info = GetFile(-1);
 	return info ? info->modIndex : 0xFF;
 }
 
@@ -411,6 +427,14 @@ bool TESForm::SetEditorID(const char* newID)
 #else
 	return ThisStdCall<bool>(0x4FB450, this, newID);
 #endif
+}
+
+ModInfo* TESForm::GetFile(SInt32 index) const {
+	return ThisStdCall<ModInfo*>(0x484E60, this, index);
+}
+
+void TESForm::SetFile(ModInfo* file) {
+	ThisStdCall<void>(0x484F50, this, file);
 }
 
 #if RUNTIME

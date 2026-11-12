@@ -12,6 +12,7 @@
 
 struct CommandInfo;
 struct ParamInfo;
+class ModInfo;
 class TESObjectREFR;
 class Script;
 class TESForm;
@@ -628,7 +629,7 @@ struct NVSEScriptInterface
 struct NVSEDataInterface
 {
 	enum {
-		kVersion = 4
+		kVersion = 5
 	};
 
 	UInt32		version;
@@ -675,6 +676,9 @@ struct NVSEDataInterface
 		kNVSEData_PluginFormExtraDataAdd,
 		kNVSEData_PluginFormExtraDataRemoveByName,
 		kNVSEData_PluginFormExtraDataRemoveByPtr,
+
+		kNVSEData_AdjustFormIDForMod,
+		kNVSEData_AdjustFormIDForModByName,
 		
 		kNVSEData_FuncMax,
 	};
@@ -718,6 +722,9 @@ typedef UInt32 (__fastcall* _PluginFormExtraData_GetAll)(const TESForm* form, Ni
 typedef bool(__fastcall* _PluginFormExtraData_Add)(TESForm* form, PluginFormExtraData* formExtraData);
 typedef bool(__fastcall* _PluginFormExtraData_RemoveByName)(TESForm* form, const char* name);
 typedef bool(__fastcall* _PluginFormExtraData_RemoveByPtr)(TESForm* form, PluginFormExtraData* formExtraData);
+
+typedef bool(__fastcall* _AdjustFormIDForMod)(const ModInfo* mod, UInt32& formID);
+typedef bool(__fastcall* _AdjustFormIDForModByName)(const char* modName, UInt32& formID);
 
 // --- PluginFormExtraData ---
 // Extend this class and allocate on game's heap, then use the static methods to add, get, or remove it from a form
@@ -963,7 +970,7 @@ struct NVSESerializationInterface
 {
 	enum
 	{
-		kVersion = 2,
+		kVersion = 3,
 	};
 
 	typedef void (* EventCallback)(void * reserved);
@@ -1005,6 +1012,20 @@ struct NVSESerializationInterface
 	void	(*ReadRecord64)(void *outData);
 
 	void	(*SkipNBytes)(UInt32 byteNum);
+
+	enum ModListType : UInt8 {
+		kNormal = 0,
+		kSmall = 1,
+		kMedium = 2,
+		kOverlay = 3,
+
+		kCount,
+
+		kInvalid = UINT8_MAX
+	};
+
+	const ModInfo* (*ResolveMod)(UInt32 index, ModListType modType);
+	ModListType (*GetModType)(const ModInfo* mod);
 };
 
 #ifdef RUNTIME

@@ -514,7 +514,7 @@ bool Cmd_SetAltControl_Execute(COMMAND_ARGS)
 
 // lets scripters register user-defined controls to help avoid conflicts
 // key = key/button code, data = set of mod indices of mods which have registered key as a custom control
-typedef Map<UInt32, Set<UInt8>> RegisteredControlMap;
+typedef Map<UInt32, Set<const ModInfo*>> RegisteredControlMap;
 static RegisteredControlMap s_registeredControls;
 
 bool Cmd_SetIsControl_Execute(COMMAND_ARGS)
@@ -522,18 +522,18 @@ bool Cmd_SetIsControl_Execute(COMMAND_ARGS)
 	// registers or unregisters a key for a particular mod
 	UInt32	key = 0;
 	UInt32	bIsControl = 1;
-	UInt8	modIndex = scriptObj->GetModIndex();
+	const ModInfo* mod = scriptObj->GetFile(0);
 
 	*result = 0;
 
 	if (ExtractArgs(EXTRACT_ARGS, &key, &bIsControl) && key < kMaxMacros)
 	{
 		if (bIsControl)
-			s_registeredControls[key].Insert(modIndex);
+			s_registeredControls[key].Insert(mod);
 		else
 		{
-			Set<UInt8> *modIdxSet = s_registeredControls.GetPtr(key);
-			if (modIdxSet) modIdxSet->Erase(modIndex);
+			Set<const ModInfo*> *modSet = s_registeredControls.GetPtr(key);
+			if (modSet) modSet->Erase(mod);
 		}
 	}
 
@@ -554,8 +554,8 @@ bool Cmd_IsControl_Execute(COMMAND_ARGS)
 	*result = IsControl(key) ? 1 : 0;
 
 	// check mod custom controls
-	Set<UInt8> *modIdxSet = s_registeredControls.GetPtr(key);
-	if (modIdxSet && !modIdxSet->Empty())
+	Set<const ModInfo*> *modSet = s_registeredControls.GetPtr(key);
+	if (modSet && !modSet->Empty())
 		*result += 2;
 
 	return true;
@@ -565,7 +565,7 @@ bool Cmd_IsControl_Execute(COMMAND_ARGS)
 bool Cmd_GetDisabledKeys_Execute(COMMAND_ARGS)
 {
 
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 	double arrIndex = 0;
 
@@ -590,7 +590,7 @@ bool Cmd_GetPressedKeys_Execute(COMMAND_ARGS)
 	if(!ExtractArgs(EXTRACT_ARGS, &flags))
 		return true;
 
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 	double arrIndex = 0;
 

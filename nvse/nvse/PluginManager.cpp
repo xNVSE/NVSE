@@ -22,6 +22,8 @@
 #include "EventManager.h"
 #include "InventoryReference.h"
 #include "Hooks_Gameplay.h"
+#include "GameData.h"
+#include "FormUtils.h"
 #else
 #include "Hooks_Script.h"
 #endif
@@ -1080,17 +1082,25 @@ void * PluginManager::GetFunc(UInt32 funcID)
 	case NVSEDataInterface::kNVSEData_PluginFormExtraDataAdd: result = (void*)&FormExtraData::Add; break;
 	case NVSEDataInterface::kNVSEData_PluginFormExtraDataRemoveByName: result = (void*)&FormExtraData::RemoveByName; break;
 	case NVSEDataInterface::kNVSEData_PluginFormExtraDataRemoveByPtr: result = (void*)&FormExtraData::RemoveByPtr; break;
+#if RUNTIME
+	case NVSEDataInterface::kNVSEData_AdjustFormIDForMod: result = (void*)&FormUtils::AdjustFormIDForMod; break;
+	case NVSEDataInterface::kNVSEData_AdjustFormIDForModByName: result = (void*)&FormUtils::AdjustFormIDForModByName; break;
+#endif
 	}
 	return result;
 }
 
 void * PluginManager::GetData(UInt32 dataID)
 {
+	static size_t modCount = 0;
 	void * result = NULL;
 #if RUNTIME
 	switch(dataID)
 	{
-	case NVSEDataInterface::kNVSEData_NumPreloadMods: result = &s_numPreloadMods; break;
+	case NVSEDataInterface::kNVSEData_NumPreloadMods: 
+		modCount = g_saveModList[ModListType::kNormal].size();
+		result = &modCount;
+		break;
 	}
 #endif
 	return result;

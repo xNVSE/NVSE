@@ -65,7 +65,7 @@ static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
 	}
 #endif
 
-	if (g_warnScriptErrors && scriptContext && scriptContext->script && scriptContext->curDataPtr && g_myMods.contains(scriptContext->script->GetModIndex()))
+	if (g_warnScriptErrors && scriptContext && scriptContext->script && scriptContext->curDataPtr && g_myMods.contains(scriptContext->script->GetFile(0)))
 	{
 		char buf[0x400];
 		if (!alt)
@@ -75,7 +75,8 @@ static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
 		const auto inRunLine = _L(, retnAddress >= 0x5E1550 && retnAddress <= 0x5E23A4);
 		if (inRunLine() || *reinterpret_cast<UInt32*>(buf) == 'IRCS')
 		{
-			const auto modName = DataHandler::Get()->GetNthModName(scriptContext->script->GetModIndex());
+			const ModInfo* mod = scriptContext->script->GetFile(0);
+			const auto modName = mod ? mod->name : "Runtime";
 			if (modName)
 			{
 				const static auto noWarnModules = { "FalloutNV.esm", "DeadMoney.esm", "HonestHearts.esm", "CaravanPack.esm", "OldWorldBlues.esm", "LonesomeRoad.esm", "GunRunnersArsenal.esm", "MercenaryPack.esm", "ClassicPack.esm", "TribalPack.esm" };

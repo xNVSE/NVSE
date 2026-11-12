@@ -451,7 +451,7 @@ private:
 bool SCRIPT_ASSERT(bool expr, Script *script, const char *errorMsg, ...);
 
 bool ExtractSetStatementVar(Script *script, ScriptEventList *eventList, void *scriptDataIn, double *outVarData, bool *makeTemporary,
-                            const UInt32 *opcodeOffsetPtr, UInt8 *outModIndex, TESObjectREFR* refr);
+                            const UInt32 *opcodeOffsetPtr, const ModInfo** outModIndex, TESObjectREFR* refr);
 bool ExtractFormattedString(FormatStringArgs &args, char *buffer);
 
 class ChangesMap;

@@ -847,7 +847,7 @@ void ApplyGECKEditorIDs()
 
 DWORD g_mainThreadID = 0;
 bool s_recordedMainThreadID = false;
-std::unordered_set<UInt8> g_myMods;
+std::unordered_set<const ModInfo*> g_myMods;
 void DetermineShowScriptErrors()
 {
 	UInt32 iniOpt;
@@ -868,10 +868,12 @@ void DetermineShowScriptErrors()
 			{
 				if (curMod.empty())
 					continue;
-				if (const auto idx = DataHandler::Get()->GetModIndex(curMod.c_str()); idx != -1)
+
+				const ModInfo* mod = DataHandler::Get()->GetModByName(curMod.c_str());
+				if (mod)
 				{
 					g_warnScriptErrors = true;
-					g_myMods.insert(idx);
+					g_myMods.insert(mod);
 				}
 			}
 		}

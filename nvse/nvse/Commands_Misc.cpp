@@ -476,7 +476,7 @@ TESLevCreature* ExtractLevCreature(COMMAND_ARGS)
 bool Cmd_GetRaceHairs_Execute(COMMAND_ARGS)
 {
 	TESRace* race = NULL;
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 
 	if (ExtractArgs(EXTRACT_ARGS, &race) && race)
@@ -497,7 +497,7 @@ bool Cmd_GetRaceHairs_Execute(COMMAND_ARGS)
 bool Cmd_GetRaceEyes_Execute(COMMAND_ARGS)
 {
 	TESRace* race = NULL;
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 
 	if (ExtractArgs(EXTRACT_ARGS, &race) && race)
@@ -517,7 +517,7 @@ bool Cmd_GetRaceEyes_Execute(COMMAND_ARGS)
 bool Cmd_GetBaseSpellListSpells_Execute(COMMAND_ARGS)
 {
 	// returns an array of factions for the specified actor base form
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 	double arrIndex = 0;
 
@@ -540,7 +540,7 @@ bool Cmd_GetBaseSpellListSpells_Execute(COMMAND_ARGS)
 bool Cmd_GetBaseSpellListLevSpells_Execute(COMMAND_ARGS)
 {
 	// returns an array of factions for the specified actor base form
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 	double arrIndex = 0;
 
@@ -563,7 +563,7 @@ bool Cmd_GetBaseSpellListLevSpells_Execute(COMMAND_ARGS)
 bool Cmd_GetBaseFactions_Execute(COMMAND_ARGS)
 {
 	// returns an array of factions for the specified actor base form
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 	double arrIndex = 0;
 
@@ -587,7 +587,7 @@ bool Cmd_GetBaseFactions_Execute(COMMAND_ARGS)
 bool Cmd_GetBaseRanks_Execute(COMMAND_ARGS)
 {
 	// returns an array of factions for the specified actor base form
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 	double arrIndex = 0;
 
@@ -611,7 +611,7 @@ bool Cmd_GetBaseRanks_Execute(COMMAND_ARGS)
 bool Cmd_GetBasePackages_Execute(COMMAND_ARGS)
 {
 	// returns an array of factions for the specified actor base form
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 	double arrIndex = 0;
 
@@ -637,7 +637,7 @@ bool Cmd_GetBasePackages_Execute(COMMAND_ARGS)
 bool Cmd_GetFactionRankNames_Execute(COMMAND_ARGS)
 {
 	TESFaction* form = NULL;
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 
 	if (ExtractArgs(EXTRACT_ARGS, &form) && form)
@@ -659,7 +659,7 @@ bool Cmd_GetFactionRankNames_Execute(COMMAND_ARGS)
 bool Cmd_GetFactionRankFemaleNames_Execute(COMMAND_ARGS)
 {
 	TESFaction* form = NULL;
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 
 	if (ExtractArgs(EXTRACT_ARGS, &form) && form)
@@ -680,7 +680,7 @@ bool Cmd_GetFactionRankFemaleNames_Execute(COMMAND_ARGS)
 
 bool Cmd_GetHeadParts_Execute(COMMAND_ARGS)
 {
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 
 	TESNPC* form = ExtractNPC(PASS_COMMAND_ARGS);
@@ -699,7 +699,7 @@ bool Cmd_GetHeadParts_Execute(COMMAND_ARGS)
 
 bool Cmd_GetLevCreatureRefs_Execute(COMMAND_ARGS)
 {
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 
 	TESLevCreature* form = ExtractLevCreature(PASS_COMMAND_ARGS);
@@ -718,7 +718,7 @@ bool Cmd_GetLevCreatureRefs_Execute(COMMAND_ARGS)
 
 bool Cmd_GetLevCharacterRefs_Execute(COMMAND_ARGS)
 {
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 
 	TESLevCharacter* form = ExtractLevCharacter(PASS_COMMAND_ARGS);
@@ -740,7 +740,7 @@ bool Cmd_GetLevCharacterRefs_Execute(COMMAND_ARGS)
 bool Cmd_GetListForms_Execute(COMMAND_ARGS)
 {
 	BGSListForm* form = NULL;
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 
 	if (ExtractArgs(EXTRACT_ARGS, &form) && form) {
@@ -759,7 +759,7 @@ bool Cmd_GetListForms_Execute(COMMAND_ARGS)
 bool Cmd_GetActiveFactions_Execute(COMMAND_ARGS)
 {
 	// returns an array of factions for the specified actor
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 	double arrIndex = 0;
 
@@ -806,7 +806,7 @@ bool Cmd_GetActiveFactions_Execute(COMMAND_ARGS)
 bool Cmd_GetActiveRanks_Execute(COMMAND_ARGS)
 {
 	// returns an array of factions ranks for the specified actor
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 	double arrIndex = 0;
 
@@ -1101,7 +1101,7 @@ bool Cmd_SetNthDefaultForm_Execute(COMMAND_ARGS)
 bool Cmd_GetDefaultForms_Execute(COMMAND_ARGS)
 {
 	// returns an array of all the default forms
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 
 	BGSDefaultObjectManager* g = BGSDefaultObjectManager::GetSingleton();
@@ -1120,7 +1120,7 @@ bool Cmd_GetDefaultForms_Execute(COMMAND_ARGS)
 bool Cmd_GetCurrentQuestObjectiveTeleportLinks_Execute(COMMAND_ARGS)
 {
 	// returns an array of teleport links for the active objective of the active quest.
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 	double arrIndex = 0;
 
@@ -1134,7 +1134,7 @@ bool Cmd_GetCurrentQuestObjectiveTeleportLinks_Execute(COMMAND_ARGS)
 			double subArrIndex;
 			for (tList<BGSQuestObjective::Target>::Iterator iter = targets->Begin() ; !iter.End(); ++iter)
 			{
-				subArr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+				subArr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 				subArrIndex = 0;
 				arr->SetElementArray(arrIndex, subArr->ID());
 				arrIndex += 1;

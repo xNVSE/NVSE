@@ -8,6 +8,7 @@
 //	STVS - empty chunk indicating start of strings block
 //		STVR
 //			UInt8 modIndex
+//			UInt16 secondaryModIndex (added in ver 2)
 //			UInt32 stringID
 //			UInt16 length
 //			char data[length]
@@ -20,7 +21,7 @@
 class StringVar
 {
 	std::string data;
-	UInt8		owningModIndex;
+	const ModInfo* owningMod;
 public:
 	bool		isFunctionResultCache = false;
 #if _DEBUG
@@ -30,7 +31,7 @@ public:
 	bool temporary = false;
 #endif
 
-	StringVar(const char* in_data, UInt8 modIndex);
+	StringVar(const char* in_data, const ModInfo* mod);
 
 	StringVar(const StringVar& other) = delete;
 
@@ -43,7 +44,7 @@ public:
 		if (this == &other)
 			return *this;
 		data = std::move(other.data);
-		owningModIndex = other.owningModIndex;
+		owningMod = other.owningMod;
 		return *this;
 	}
 
@@ -60,13 +61,13 @@ public:
 	char		At(UInt32 charPos);
 	static UInt32	GetCharType(char ch);
 	void Trim();
-	void SetOwningModIndex(UInt8 modIdx) { this->owningModIndex = modIdx; }
+	void SetOwningModIndex(const ModInfo* mod) { this->owningMod = mod; }
 
 	std::string String()					{	return data;	}
 	std::string& StringRef() {return data;}
 	const char*	GetCString();
 	UInt32		GetLength();
-	UInt8		GetOwningModIndex();	
+	const ModInfo* GetOwningMod();
 };
 
 enum {
@@ -79,12 +80,16 @@ enum {
 
 class StringVarMap : public VarMap<StringVar>
 {
+	// this gets incremented whenever serialization format changes
+	static constexpr UInt32 kPreESLVersion = 1;
+	static constexpr UInt32 kVersion = 2;
+
 public:
 	void Save(NVSESerializationInterface* intfc);
 	void Load(NVSESerializationInterface* intfc);
 	void Clean();
 	void Reset();
-	UInt32 Add(UInt8 varModIndex, const char* data, bool bTemp = false, StringVar** svOut = nullptr);
+	UInt32 Add(const ModInfo* varModIndex, const char* data, bool bTemp = false, StringVar** svOut = nullptr);
 	UInt32 Add(StringVar&& moveVar, bool bTemp, StringVar** svOut);
 	static StringVarMap * GetSingleton(void);
 	void Delete(UInt32 varID);

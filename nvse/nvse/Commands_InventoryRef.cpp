@@ -197,7 +197,7 @@ bool Cmd_GetInvRefsForItem_Execute(COMMAND_ARGS)
 {
 	// returns an array of inventory references for the specified base object in the calling object's inventory
 	TESForm* item = NULL;
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 
 	if (thisObj && ExtractArgs(EXTRACT_ARGS, &item) && item)

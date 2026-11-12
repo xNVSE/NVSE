@@ -284,6 +284,7 @@
     <ClCompile Include="Compiler\Passes\CallTransformer.cpp" />
     <ClCompile Include="Compiler\Passes\LoopTransformer.cpp" />
     <ClCompile Include="Compiler\Passes\LambdaTransformer.cpp" />
+    <ClCompile Include="FormUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Algohol\algMath.h">
@@ -582,6 +583,9 @@
     <ClInclude Include="Compiler\Passes\LambdaTransformer.h" />
     <ClInclude Include="Compiler\TreePrinter.h" />
     <ClInclude Include="LegacyPluginFormExtraData.h">
+      <Filter>internals</Filter>
+    </ClInclude>
+    <ClInclude Include="FormUtils.h">
       <Filter>internals</Filter>
     </ClInclude>
   </ItemGroup>

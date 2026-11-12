@@ -42,6 +42,7 @@ Key		::= { string || double }
 	ARVS - empty chunk indicating start of array variables
 		ARVR
 			UInt8	modIndex
+			UInt16  secondaryModIndex (added in ver 3)
 			UInt32	ID
 			UInt8	keyType
 			bool	packed
@@ -314,19 +315,19 @@ class ArrayVar
 	friend class PluginAPI::ArrayAPI;
 
 	typedef ArrayVarElementContainer _ElementMap;
-	_ElementMap			m_elements;
-	ArrayID				m_ID;
-	UInt8				m_owningModIndex;
-	UInt8				m_keyType;
-	bool				m_bPacked;
-	Vector<UInt8>		m_refs;		// data is modIndex of referring object; size() is number of references
+	_ElementMap				m_elements;
+	ArrayID					m_ID;
+	const ModInfo*			m_owningMod;
+	UInt8					m_keyType;
+	bool					m_bPacked;
+	Vector<const ModInfo*>	m_refs;		// data is ModInfo* of referring object; size() is number of references
 
 public:
 	ICriticalSection m_cs;
 #if _DEBUG
 	std::string varName;
 #endif
-	ArrayVar(UInt32 keyType, bool packed, UInt8 modIndex);
+	ArrayVar(UInt32 keyType, bool packed, const ModInfo* mod);
 	~ArrayVar();
 
 	enum SortOrder
@@ -345,7 +346,7 @@ public:
 	UInt32 ID()	const {return m_ID;}
 	UInt8 KeyType() const {return m_keyType;}
 	bool IsPacked() const {return m_bPacked;}
-	UInt8 OwningModIndex() const {return m_owningModIndex;}
+	const ModInfo* OwningMod() const {return m_owningMod;}
 	UInt32 Size() const {return m_elements.size();}
 	bool Empty() const {return m_elements.empty();}
 	ContainerType GetContainerType() const {return m_elements.m_type;}
@@ -400,9 +401,9 @@ public:
 	bool Insert(UInt32 atIndex, const ArrayElement* toInsert);
 	bool Insert(UInt32 atIndex, ArrayID rangeID);
 
-	ArrayVar *GetKeys(UInt8 modIndex);
-	ArrayVar *Copy(UInt8 modIndex, bool bDeepCopy);
-	ArrayVar *MakeSlice(const Slice* slice, UInt8 modIndex);
+	ArrayVar *GetKeys(const ModInfo* mod);
+	ArrayVar *Copy(const ModInfo* mod, bool bDeepCopy);
+	ArrayVar *MakeSlice(const Slice* slice, const ModInfo* mod);
 
 	void Sort(ArrayVar *result, SortOrder order, SortType type, Script* comparator = NULL);
 
@@ -427,24 +428,25 @@ public:
 class ArrayVarMap : public VarMap<ArrayVar>
 {
 	// this gets incremented whenever serialization format changes
-	static const UInt32 kVersion = 2;
+	static constexpr UInt32 kPreESLVersion = 2;
+	static constexpr UInt32 kVersion = 3;
 
-	ArrayVar* Add(UInt32 varID, UInt32 keyType, bool packed, UInt8 modIndex, UInt32 numRefs, UInt8* refs);
+	ArrayVar* Add(UInt32 varID, UInt32 keyType, bool packed, const ModInfo* mod, UInt32 numRefs, const ModInfo** refs);
 public:
 	void Save(NVSESerializationInterface* intfc);
 	void Load(NVSESerializationInterface* intfc);
 	void Clean();
 
-	ArrayVar* Create(UInt32 keyType, bool bPacked, UInt8 modIndex);
-	ArrayVar* CreateArray(UInt8 modIndex) { return Create(kDataType_Numeric, true, modIndex); }
-	ArrayVar* CreateMap(UInt8 modIndex)	{ return Create(kDataType_Numeric, false, modIndex); }
-	ArrayVar* CreateStringMap(UInt8 modIndex)	{ return Create(kDataType_String, false, modIndex); }
+	ArrayVar* Create(UInt32 keyType, bool bPacked, const ModInfo* mod);
+	ArrayVar* CreateArray(const ModInfo* mod) { return Create(kDataType_Numeric, true, mod); }
+	ArrayVar* CreateMap(const ModInfo* mod)	{ return Create(kDataType_Numeric, false, mod); }
+	ArrayVar* CreateStringMap(const ModInfo* mod)	{ return Create(kDataType_String, false, mod); }
 	
 	// operations on ArrayVars
-	void    AddReference(ArrayID* ref, ArrayID toRef, UInt8 referringModIndex);
-	void    RemoveReference(ArrayID* ref, UInt8 referringModIndex);
-	void    AddReference(double* ref, ArrayID toRef, UInt8 referringModIndex);
-	void	RemoveReference(double* ref, UInt8 referringModIndex);
+	void    AddReference(ArrayID* ref, ArrayID toRef, const ModInfo* referringModIndex);
+	void    RemoveReference(ArrayID* ref, const ModInfo* referringModIndex);
+	void    AddReference(double* ref, ArrayID toRef, const ModInfo* referringModIndex);
+	void	RemoveReference(double* ref, const ModInfo* referringModIndex);
 
 	ArrayElement* GetElement(ArrayID id, const ArrayKey* key);
 
@@ -460,7 +462,7 @@ public:
 
 extern ArrayVarMap g_ArrayMap;
 
-UInt8 __fastcall GetArrayOwningModIndex(ArrayID arrID);
+const ModInfo* __fastcall GetArrayOwningModIndex(ArrayID arrID);
 
 namespace PluginAPI
 {

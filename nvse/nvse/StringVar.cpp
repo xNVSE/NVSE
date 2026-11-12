@@ -11,14 +11,14 @@
 
 #include "Core_Serialization.h"
 
-StringVar::StringVar(const char* in_data, UInt8 modIndex)
+StringVar::StringVar(const char* in_data, const ModInfo* mod)
 {
 	data = in_data;
-	owningModIndex = modIndex;
+	owningMod = mod;
 }
 
 StringVar::StringVar(StringVar&& other) noexcept: data(std::move(other.data)),
-                                                  owningModIndex(other.owningModIndex)
+                                                  owningMod(other.owningMod)
 {
 }
 
@@ -230,9 +230,9 @@ std::string StringVar::SubString(UInt32 startPos, UInt32 numChars)
 		return "";
 }
 
-UInt8 StringVar::GetOwningModIndex()
+const ModInfo* StringVar::GetOwningMod()
 {
-	return owningModIndex;
+	return owningMod;
 }
 
 UInt32 StringVar::GetCharType(char ch)
@@ -274,28 +274,51 @@ char StringVar::At(UInt32 charPos)
 		return -1;
 }
 
+static void __fastcall SaveMod(const ModInfo* mod) {
+	UInt16 modIndex = (DataHandler::HasNewFileTypeSupport() && mod->IsSpecial()) ? mod->secondIndex : mod->modIndex;
+	Serialization::WriteRecord8(Serialization::GetModType(mod));
+	Serialization::WriteRecord16(modIndex);
+}
+
+static const ModInfo* __fastcall LoadMod(bool fullData) {
+	UInt8 type = NVSESerializationInterface::ModListType::kInvalid;
+	UInt16 modIndex = 0xFFFF;
+	if (fullData) {
+		type = Serialization::ReadRecord8();
+		modIndex = Serialization::ReadRecord16();
+		return Serialization::ResolveMod(modIndex, static_cast<NVSESerializationInterface::ModListType>(type));
+	}
+	else {
+		modIndex = Serialization::ReadRecord8();
+		return Serialization::ResolveMod(modIndex, NVSESerializationInterface::ModListType::kNormal);
+	}
+}
+
 void StringVarMap::Save(NVSESerializationInterface* intfc)
 {
 	Clean();
 
-	Serialization::OpenRecord('STVS', 0);
+	const UInt32 version = kVersion;
+
+	Serialization::OpenRecord('STVS', version);
 
 	for (auto iter = vars.Begin(); !iter.End(); ++iter)
 	{
 		if (IsTemporary(iter.Key()))	// don't save temp strings
 			continue;
 		StringVar* var = &iter.Get();
-		if (var->GetOwningModIndex() == 0xFF)
+		const ModInfo* mod = var->GetOwningMod();
+		if (!mod)
 			continue; // do not save function result cache
-		Serialization::OpenRecord('STVR', 0);
-		Serialization::WriteRecord8(var->GetOwningModIndex());
+		Serialization::OpenRecord('STVR', version);
+		SaveMod(mod);
 		Serialization::WriteRecord32(iter.Key());
 		UInt16 len = var->GetLength();
 		Serialization::WriteRecord16(len);
 		Serialization::WriteRecordData(var->GetCString(), len);
 	}
 
-	Serialization::OpenRecord('STVE', 0);
+	Serialization::OpenRecord('STVE', version);
 }
 
 #if _DEBUG
@@ -305,23 +328,23 @@ extern std::set<std::string> g_modsWithCosaveVars;
 void StringVarMap::Load(NVSESerializationInterface* intfc)
 {
 	_MESSAGE("Loading strings");
-	UInt32 type, length, version, stringID, tempRefID;
+	UInt32 type, length, version, stringID;
 	UInt16 strLength;
-	UInt8 modIndex;
-	char buffer[kMaxMessageLength];
+	char stringBuffer[kMaxMessageLength];
 
 	Clean();
 
 	// do some basic checking to weed out potential bloat caused by scripts creating large
 	// numbers of string variables
-	UInt32 modVarCounts[0x100] = {0};				// for each mod, # of string vars loaded
+	std::map<const ModInfo*, UInt32> modVarCounts;				// for each mod, # of string vars loaded
 	static const UInt32 varCountThreshold = 100;	// what we'll consider a "large number" of vars; 
 													// obviously a few mods may require more than this without it being a problem
-	Set<UInt8> exceededMods;
+	Set<const ModInfo*> exceededMods;
 
 	bool bContinue = true;
 	while (bContinue && Serialization::GetNextRecordInfo(&type, &version, &length))
 	{
+		UInt32 tempRefID = 0;
 		switch (type)
 		{
 		case 'STVE':			//end of block
@@ -331,43 +354,35 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 			{
 				_MESSAGE("  WARNING: substantial numbers of string variables exist for the following files (may indicate savegame bloat):");
 				for (auto iter = exceededMods.Begin(); !iter.End(); ++iter) {
-					_MESSAGE("    %s (%d strings)", DataHandler::Get()->GetNthModName(*iter), modVarCounts[*iter]);
+					_MESSAGE("    %s (%d strings)", (*iter)->name, modVarCounts[*iter]);
 				}
 			}
 
 			break;
 		case 'STVR':
-			modIndex = Serialization::ReadRecord8();
-#if _DEBUG
-			g_modsWithCosaveVars.insert(g_modsLoaded.at(modIndex));
-			modVarCounts[modIndex] += 1;
-			if (modVarCounts[modIndex] == varCountThreshold) {
-				exceededMods.Insert(modIndex);
-				g_cosaveWarning.modIndices.insert(modIndex);
-			}
-#endif
-			if (!Serialization::ResolveRefID(modIndex << 24, &tempRefID) || modIndex == 0xFF)
 			{
-				// owning mod is no longer loaded so discard
-				continue;
-			}
-			modIndex = tempRefID >> 24;
+				const bool saveHasSecondIndex = version > kPreESLVersion;
 
-			stringID = Serialization::ReadRecord32();
-			strLength = Serialization::ReadRecord16();
-			
-			Serialization::ReadRecordData(buffer, strLength);
-			buffer[strLength] = 0;
+				const ModInfo* mod = LoadMod(saveHasSecondIndex);
 
-			Insert(stringID, buffer, modIndex);
-#if !_DEBUG
-			modVarCounts[modIndex] += 1;
-			if (modVarCounts[modIndex] == varCountThreshold) {
-				exceededMods.Insert(modIndex);
-				g_cosaveWarning.modIndices.insert(modIndex);
+				if (!mod)
+					continue;
+
+				stringID = Serialization::ReadRecord32();
+				strLength = Serialization::ReadRecord16();
+
+				Serialization::ReadRecordData(stringBuffer, strLength);
+				stringBuffer[strLength] = 0;
+
+				Insert(stringID, stringBuffer, mod);
+
+				modVarCounts[mod] += 1;
+				if (modVarCounts[mod] == varCountThreshold) 
+				{
+					exceededMods.Insert(mod);
+					g_cosaveWarning.mods.insert(mod);
+				}
 			}
-#endif
-					
 			break;
 		default:
 			_MESSAGE("Error loading string map: unhandled chunk type %d", type);
@@ -376,7 +391,7 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 	}
 }
 
-UInt32	StringVarMap::Add(UInt8 varModIndex, const char* data, bool bTemp, StringVar** svOut)
+UInt32	StringVarMap::Add(const ModInfo* varModIndex, const char* data, bool bTemp, StringVar** svOut)
 {
 	ScopedLock lock(cs);
 	UInt32 varID = GetUnusedID();
@@ -446,7 +461,7 @@ bool IsFunctionResultCacheString(UInt32 strId)
 bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 {
 	double strID = 0;
-	UInt8 modIndex = 0;
+	const ModInfo* mod = 0;
 	bool bTemp = true;
 	StringVar* strVar = NULL;
 	const auto isExpressionEvaluator = ExpressionEvaluator::Active();
@@ -455,13 +470,13 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 	if (!newValue || len >= kMaxMessageLength)		//if null pointer or too long, assign an empty string
 		newValue = "";
 
-	if (!isExpressionEvaluator && ExtractSetStatementVar(scriptObj, eventList, scriptData, &strID, &bTemp, opcodeOffsetPtr, &modIndex, thisObj))
+	if (!isExpressionEvaluator && ExtractSetStatementVar(scriptObj, eventList, scriptData, &strID, &bTemp, opcodeOffsetPtr, &mod, thisObj))
 	{
 		strVar = g_StringMap.Get(strID);
 	}
 	
-	if (!modIndex)
-		modIndex = scriptObj->GetModIndex();
+	if (!mod)
+		mod = scriptObj->GetFile(0);
 
 	if (!isExpressionEvaluator) // set to statement
 	{
@@ -472,7 +487,7 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 		}
 		else
 		{
-			strID = static_cast<int>(g_StringMap.Add(modIndex, newValue, bTemp));
+			strID = static_cast<int>(g_StringMap.Add(mod, newValue, bTemp));
 		}
 	}
 	else
@@ -484,7 +499,7 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 			// optimizations, creating a new string var is slow
 			if (!functionResult.var)
 			{
-				functionResult.id = static_cast<int>(g_StringMap.Add(0xFF, newValue, false, &functionResult.var));
+				functionResult.id = static_cast<int>(g_StringMap.Add(nullptr, newValue, false, &functionResult.var));
 				functionResult.var->isFunctionResultCache = true;
 			}
 			else
@@ -496,7 +511,7 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 		else
 #endif
 
-			strID = static_cast<int>(g_StringMap.Add(modIndex, newValue, true, nullptr));
+			strID = static_cast<int>(g_StringMap.Add(mod, newValue, true, nullptr));
 	}
 	
 	*result = strID;
@@ -553,7 +568,7 @@ namespace PluginAPI
 	{
 		Script* script = (Script*)owningScript;
 		if (script)
-			return g_StringMap.Add(script->GetModIndex(), strVal);
+			return g_StringMap.Add(script->GetFile(0), strVal);
 		else
 			return 0;
 	}

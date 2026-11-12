@@ -7,6 +7,8 @@
 
 #include "GameObjects.h"
 #include "GameProcess.h"
+#include "GameData.h"
+#include <assert.h>
 
 static const Cmd_Execute Cmd_EquipItem_Execute		= (Cmd_Execute)0x005D0060;
 static const Cmd_Execute Cmd_UnequipItem_Execute	= (Cmd_Execute)0x005D0300;
@@ -2858,11 +2860,20 @@ bool CloneForm_Execute(COMMAND_ARGS, bool bPersist)
 	{
 		if (inheritModIndexFromCallingScript)
 		{
-			const auto nextFormId = GetNextFreeFormID(scriptObj->refID);
-			if (nextFormId >> 24 == scriptObj->GetModIndex())
-			{
-				clonedForm->SetRefID(nextFormId, true);
-				s_clonedFormsWithInheritedModIdx.insert(nextFormId);
+			ModInfo* mod = scriptObj->GetFile(0);
+			if (mod) [[likely]] {
+				UInt32 startingNextFormID = mod->header.nextObectID;
+				const auto nextFormId = GetNextFreeFormID(startingNextFormID);
+				if (nextFormId >> 24 == scriptObj->GetModIndex()) [[likely]]
+				{
+					clonedForm->SetRefID(nextFormId, true);
+					clonedForm->SetFile(mod);
+					s_clonedFormsWithInheritedModIdx.insert(nextFormId);
+				}
+				else [[unlikely]]
+				{
+					assert(false);
+				}
 			}
 		}
 		*refResult = clonedForm->refID;

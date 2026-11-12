@@ -10,6 +10,9 @@
 #include "ScriptTokens.h"
 #include "InventoryReference.h"
 
+std::vector<const class ModInfo*> g_saveModList[ModListType::kCount];
+std::vector<std::string> g_saveModListNames[ModListType::kCount];
+
 /*************************
 Save file format:
 	Header
@@ -23,8 +26,156 @@ Save file format:
 
 **************************/					
 
-static ModInfo** s_ModFixupTable = NULL;
-bool LoadModList(NVSESerializationInterface* nvse);	// reads saved mod order, builds table mapping changed mod indexes
+constexpr UInt32 kNewPluginTypesVersion = 1;
+
+namespace {
+
+	inline void __fastcall SaveMod(NVSESerializationInterface* intfc, const ModInfo* mod) noexcept {
+		const UInt16 nameLen = strlen(mod->name);
+		intfc->WriteRecordData(&nameLen, sizeof(nameLen));
+		intfc->WriteRecordData(mod->name, nameLen);
+	}
+
+	inline void __fastcall LoadMod(NVSESerializationInterface* intfc, char* name) noexcept {
+		UInt16 nameLen = 0;
+		intfc->ReadRecordData(&nameLen, sizeof(nameLen));
+		intfc->ReadRecordData(name, nameLen);
+		name[nameLen] = 0;
+	}
+
+	template<ModListType type>
+	inline bool __fastcall IsValidMod(const ModInfo* mod) noexcept {
+		if (mod->IsLoaded()) [[likely]] {
+			switch (type) {
+				case ModListType::kNormal:
+					return DataHandler::HasNewFileTypeSupport() ? !mod->IsSpecial() : true;
+				case ModListType::kSmall:
+					return mod->IsSmall();
+				case ModListType::kMedium:
+					return mod->IsMedium();
+				case ModListType::kOverlay:
+					return mod->IsOverlay();
+				default:
+					__assume(false);
+			}
+		}
+		return false;
+	}
+
+	template<ModListType type>
+	inline const ModInfo* __fastcall FindLoadedMod(const char* modName) noexcept {
+		const ModInfo* mod = DataHandler::Get()->GetModByName(modName);
+		if (mod && IsValidMod<type>(mod)) [[likely]]
+			return mod;
+		return nullptr;
+	}
+
+	template<ModListType type>
+	inline bool __fastcall ResolveMod(const char* modName, UInt32 index) noexcept {
+		const ModInfo* mod = FindLoadedMod<type>(modName);
+		g_saveModList[type][index] = mod;
+		g_saveModListNames[type][index] = modName;
+		return mod != nullptr;
+	}
+
+	template<ModListType type>
+	inline void __fastcall SetModArraysSize(UInt32 size) noexcept {
+		g_saveModList[type].resize(size);
+		g_saveModListNames[type].resize(size);
+	}
+
+	bool __fastcall ReadModListFromCoSave(NVSESerializationInterface* intfc, UInt32 version) noexcept {
+		_MESSAGE("Reading mod list from co-save");
+
+		char name[MAX_PATH] = {};
+		UInt8 normalModCount = 0;
+		intfc->ReadRecordData(&normalModCount, sizeof(normalModCount));
+		SetModArraysSize<ModListType::kNormal>(normalModCount);
+		for (UInt32 i = 0; i < normalModCount; i++) {
+			LoadMod(intfc, name);
+
+			if (!ResolveMod<ModListType::kNormal>(name, i))
+				_MESSAGE("PRELOAD: Mod %s not found in mod list", name);
+		}
+
+		if (version >= kNewPluginTypesVersion) {
+			UInt16 smallModCount = 0;
+			intfc->ReadRecordData(&smallModCount, sizeof(smallModCount));
+			SetModArraysSize<ModListType::kSmall>(smallModCount);
+			for (UInt32 i = 0; i < smallModCount; i++) {
+				LoadMod(intfc, name);
+
+				if (!ResolveMod<ModListType::kSmall>(name, i))
+					_MESSAGE("PRELOAD: Small mod %s not found in mod list", name);
+			}
+
+			UInt8 mediumModCount = 0;
+			intfc->ReadRecordData(&mediumModCount, sizeof(mediumModCount));
+			SetModArraysSize<ModListType::kMedium>(mediumModCount);
+			for (UInt32 i = 0; i < mediumModCount; i++) {
+				LoadMod(intfc, name);
+
+				if (!ResolveMod<ModListType::kMedium>(name, i))
+					_MESSAGE("PRELOAD: Medium mod %s not found in mod list", name);
+			}
+
+			UInt16 overlayModCount = 0;
+			intfc->ReadRecordData(&overlayModCount, sizeof(overlayModCount));
+			SetModArraysSize<ModListType::kOverlay>(overlayModCount);
+			for (UInt32 i = 0; i < overlayModCount; i++) {
+				LoadMod(intfc, name);
+
+				if (!ResolveMod<ModListType::kOverlay>(name, i))
+					_MESSAGE("PRELOAD: Overlay mod %s not found in mod list", name);
+			}
+		}
+
+		return true;
+	};
+
+	bool __fastcall WriteModListToCoSave(NVSESerializationInterface* intfc, UInt32 version) noexcept {
+		const DataHandler* dhand = DataHandler::Get();
+		const UInt8 normalModCount = dhand->GetNormalModCount();
+
+		intfc->WriteRecordData(&normalModCount, sizeof(normalModCount));
+		for (UInt32 i = 0; i < normalModCount; i++) {
+			SaveMod(intfc, dhand->GetNormalMod(i));
+		}
+
+		if (version >= kNewPluginTypesVersion) {
+			const UInt16 smallModCount = dhand->GetSmallModCount();
+			intfc->WriteRecordData(&smallModCount, sizeof(smallModCount));
+			for (UInt32 i = 0; i < smallModCount; i++) {
+				SaveMod(intfc, dhand->GetSmallMod(i));
+			}
+
+			const UInt8 mediumModCount = dhand->GetMediumModCount();
+			intfc->WriteRecordData(&mediumModCount, sizeof(mediumModCount));
+			for (UInt32 i = 0; i < mediumModCount; i++) {
+				SaveMod(intfc, dhand->GetMediumMod(i));
+			}
+
+			const UInt16 overlayModCount = dhand->GetOverlayModCount();
+			intfc->WriteRecordData(&overlayModCount, sizeof(overlayModCount));
+			for (UInt32 i = 0; i < overlayModCount; i++) {
+				SaveMod(intfc, dhand->GetOverlayMod(i));
+			}
+		}
+
+		return true;
+	};
+
+}
+
+bool __fastcall LoadModList(NVSESerializationInterface* intfc, UInt32 version) {
+	return ReadModListFromCoSave(intfc, version);
+}
+
+bool __fastcall SaveModList(NVSESerializationInterface* intfc) {
+	UInt32 version = kNewPluginTypesVersion;
+	intfc->OpenRecord('MODS', version);
+	return WriteModListToCoSave(intfc, version);
+}
 
 /*******************************
 *	Callbacks
@@ -32,19 +183,7 @@ bool LoadModList(NVSESerializationInterface* nvse);	// reads saved mod order, bu
 void Core_SaveCallback(void * reserved)
 {
 	NVSESerializationInterface* intfc = &g_NVSESerializationInterface;
-	DataHandler* dhand = DataHandler::Get();
-	ModInfo** mods = dhand->modList.loadedMods;
-	UInt8 modCount = dhand->modList.loadedModCount;
-
-	// save the mod list
-	intfc->OpenRecord('MODS', 0);
-	intfc->WriteRecordData(&modCount, sizeof(modCount));
-	for (UInt32 i = 0; i < modCount; i++)
-	{
-		UInt16 nameLen = strlen(mods[i]->name);
-		intfc->WriteRecordData(&nameLen, sizeof(nameLen));
-		intfc->WriteRecordData(mods[i]->name, nameLen);
-	}
+	SaveModList(intfc);
 
 	// prevent arrays from being saved that were supposed to be deleted but are held due to potential future callbacks
 	LambdaManager::ClearSavedDeletedEventLists();
@@ -83,20 +222,8 @@ void Core_LoadCallback(void * reserved)
 
 void Core_NewGameCallback(void * reserved)
 {
-	// reset mod indexes to match current load order
-	if (s_ModFixupTable)
-	{
-		delete s_ModFixupTable;
-		s_ModFixupTable = NULL;
-	}
-
 	DataHandler* dhand = DataHandler::Get();
-	UInt8 modCount = dhand->modList.loadedModCount;
-	ModInfo** mods = dhand->modList.loadedMods;
-
-	s_ModFixupTable = new ModInfo*[modCount];
-	for (UInt32 i = 0; i < modCount; i++)
-		s_ModFixupTable[i] = mods[i];
+	UInt8 modCount = dhand->GetNormalModCount();
 
 	g_ArrayMap.Clean();
 	g_StringMap.Clean();
@@ -108,7 +235,11 @@ void Core_PreLoadCallback(void * reserved)
 	// this is invoked only if at least one other plugin registers a preload callback
 	
 	// reset refID fixup table. if save made prior to 0019, this will remain empty
-	s_numPreloadMods = 0;	// no need to zero out table - unloaded mods will be set to 0xFF below
+	for (auto& list : g_saveModList)
+		list.clear();
+
+	for (auto& list : g_saveModListNames)
+		list.clear();
 
 	NVSESerializationInterface* intfc = &g_NVSESerializationInterface;
 
@@ -136,7 +267,7 @@ void Core_PreLoadCallback(void * reserved)
 	while (intfc->GetNextRecordInfo(&type, &version, &length)) {
 		switch (type) {
 			case 'MODS':
-				if (!LoadModList(intfc))
+				if (!LoadModList(intfc, version))
 					_MESSAGE("PRELOAD: Error occurred while loading mod list");
 				break;
 			case 'STVS':
@@ -152,7 +283,6 @@ void Core_PreLoadCallback(void * reserved)
 	LambdaManager::ClearSavedDeletedEventLists();
 }
 
-
 void Init_CoreSerialization_Callbacks()
 {
 	Serialization::InternalSetSaveCallback(0, Core_SaveCallback);
@@ -160,45 +290,3 @@ void Init_CoreSerialization_Callbacks()
 	Serialization::InternalSetNewGameCallback(0, Core_NewGameCallback);
 	Serialization::InternalSetPreLoadCallback(0, Core_PreLoadCallback);
 }
-
-UInt8	s_preloadModRefIDs[0xFF];
-UInt8	s_numPreloadMods = 0;
-
-
-std::vector<std::string> g_modsLoaded;
-
-bool ReadModListFromCoSave(NVSESerializationInterface * intfc)
-{
-	_MESSAGE("Reading mod list from co-save");
-
-	char name[0x104];
-	UInt16 nameLen = 0;
-
-	intfc->ReadRecordData(&s_numPreloadMods, sizeof(s_numPreloadMods));
-	for (UInt32 i = 0; i < s_numPreloadMods; i++) {
-		intfc->ReadRecordData(&nameLen, sizeof(nameLen));
-		intfc->ReadRecordData(&name, nameLen);
-		name[nameLen] = 0;
-
-#if !_DEBUG
-		if (g_showFileSizeWarning)
-#endif
-		g_modsLoaded.emplace_back(name);
-
-		s_preloadModRefIDs[i] = DataHandler::Get()->GetModIndex(name);
-	}
-	return true;
-}
-
-bool LoadModList(NVSESerializationInterface* intfc)
-{
-	// read the mod list
-	return ReadModListFromCoSave(intfc);
-}
-
-
-UInt8 ResolveModIndexForPreload(UInt8 modIndexIn)
-{
-	return (modIndexIn < s_numPreloadMods) ? s_preloadModRefIDs[modIndexIn] : 0xFF;
-}
-

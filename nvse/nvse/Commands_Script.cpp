@@ -1058,7 +1058,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 	auto const GetEventInfoHandlers = [=, &argsToFilter, &argTypes, &eval](const EventManager::EventInfo& info) -> ArrayVar*
 	{
 		if (!argTypes->empty() && !info.ValidateDispatchedArgTypes(argTypes, &eval))
-			return g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+			return g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 
 		auto const accurateArgTypes = info.HasUnknownArgTypes() ? argTypes : info.GetArgTypesAsStackVector();
 
@@ -1082,7 +1082,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 			// filter by priority
 			auto const priorityRange = info.callbacks.equal_range(priorityFilter);
 			int handlerPos = 0;
-			ArrayVar* arrOfHandlers = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+			ArrayVar* arrOfHandlers = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 			for (auto i = priorityRange.first; i != priorityRange.second; ++i) {
 				TryAddHandlerToArray(i, handlerPos, arrOfHandlers);
 				++handlerPos;
@@ -1093,7 +1093,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 
 		// Key = priority of the handler.
 		// Value = array of handlers.
-		ArrayVar* handlersForAllPriorities = g_ArrayMap.Create(kDataType_Numeric, false, scriptObj->GetModIndex());
+		ArrayVar* handlersForAllPriorities = g_ArrayMap.Create(kDataType_Numeric, false, scriptObj->GetFile(0));
 
 		// Select the correct type for calling the equal_range function
 		decltype(info.callbacks.equal_range(0)) priorityRange;
@@ -1102,7 +1102,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 		for (auto c = info.callbacks.begin(); c != info.callbacks.end(); c = priorityRange.second) {
 			priorityRange = info.callbacks.equal_range(c->first);
 			int handlerPos = 0;
-			ArrayVar* arrOfHandlers = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+			ArrayVar* arrOfHandlers = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 			for (auto i = priorityRange.first; i != priorityRange.second; ++i) {
 				TryAddHandlerToArray(i, handlerPos, arrOfHandlers);
 				++handlerPos;
@@ -1123,7 +1123,7 @@ bool Cmd_GetEventHandlers_Execute(COMMAND_ARGS)
 
 		// keys = event names, values = a map-type array (keys = priority) containing arrays that contain arrays of handlers that have [0] = callbackFunc, [1] = filters string map.
 		// If priority is specified, map of priority is skipped and the array of handlers is given instead.
-		ArrayVar* eventsMap = g_ArrayMap.Create(kDataType_String, false, scriptObj->GetModIndex());
+		ArrayVar* eventsMap = g_ArrayMap.Create(kDataType_String, false, scriptObj->GetFile(0));
 		*result = eventsMap->ID();
 
 		// loop through all eventInfo callbacks, filtering by script + filters
@@ -1537,7 +1537,7 @@ bool Cmd_DecompileScript_Execute(COMMAND_ARGS)
 
 	std::string formName = form->GetName();
 	if (formName.empty())
-		formName = FormatString("%08X", form->refID & 0x00FFFFFF);
+		formName = FormatString("%08X", form->GetFormIDWithoutIndex());
 
 	if (IS_ID(form, Script))
 	{

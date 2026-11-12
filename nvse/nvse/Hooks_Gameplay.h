@@ -7,7 +7,7 @@
 
 
 class Menu;
-extern std::unordered_set<UInt8> g_myMods;
+extern std::unordered_set<const ModInfo*> g_myMods;
 
 void Hook_Gameplay_Init(void);
 void ToggleUIMessages(bool enableSpam);

@@ -28,8 +28,8 @@ ArrayIterLoop::ArrayIterLoop(const ForEachContext* context, Script* script) : m_
 	if (m_iterID)
 	{
 		// clear the iterator var before initializing it
-		g_ArrayMap.RemoveReference(&m_valueIterVar.GetScriptLocal()->data, m_script->GetModIndex());
-		g_ArrayMap.AddReference(&m_valueIterVar.GetScriptLocal()->data, m_iterID, m_script->GetModIndex());
+		g_ArrayMap.RemoveReference(&m_valueIterVar.GetScriptLocal()->data, m_script->GetFile(0));
+		g_ArrayMap.AddReference(&m_valueIterVar.GetScriptLocal()->data, m_iterID, m_script->GetFile(0));
 	}
 
 	Init();
@@ -69,7 +69,7 @@ bool UpdateForEachAltIterator(const ArrayElement* elem, const ArrayKey& curKey,
 	// Assume the types for the keys don't change mid-iteration and that the key iter var was already typechecked at the start.
 	if (keyIterVar.IsValid()) {
 		if (curKey.KeyType() == kDataType_String) {
-			auto id = g_StringMap.Add(script->GetModIndex(), curKey.key.GetStr(), true, nullptr);
+			auto id = g_StringMap.Add(script->GetFile(0), curKey.key.GetStr(), true, nullptr);
 			keyIterVar.GetScriptLocal()->data = id;
 		}
 		else {
@@ -104,7 +104,7 @@ bool UpdateForEachAltIterator(const ArrayElement* elem, const ArrayKey& curKey,
 					VariableTypeToName(valueIterVar.GetType()));
 				return false;
 			}
-			auto id = g_StringMap.Add(script->GetModIndex(), elem->m_data.GetStr(), true, nullptr);
+			auto id = g_StringMap.Add(script->GetFile(0), elem->m_data.GetStr(), true, nullptr);
 			valueIterVar.GetScriptLocal()->data = id;
 			break;
 		}
@@ -214,7 +214,7 @@ ArrayIterLoop::~ArrayIterLoop()
 	if (m_iterID)
 	{
 		//g_ArrayMap.RemoveReference(&m_iterID, 0xFF);
-		g_ArrayMap.RemoveReference(&m_valueIterVar.GetScriptLocal()->data, m_script->GetModIndex());
+		g_ArrayMap.RemoveReference(&m_valueIterVar.GetScriptLocal()->data, m_script->GetFile(0));
 	}
 	else {
 		if (m_valueIterVar.IsValid()) {

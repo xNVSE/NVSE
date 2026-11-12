@@ -148,7 +148,7 @@ bool Cmd_IsModLoaded_Execute(COMMAND_ARGS)
 	if (!ExtractArgs(EXTRACT_ARGS, &modName))
 		return true;
 
-	const ModInfo* pModInfo = DataHandler::Get()->LookupModByName(modName);
+	const ModInfo* pModInfo = DataHandler::Get()->GetModByName(modName);
 	if (pModInfo && pModInfo->IsLoaded()) {
 		*result = 1;
 	}
@@ -199,7 +199,7 @@ bool Cmd_GetSourceModIndex_Execute(COMMAND_ARGS)
 	
 	if (form)
 	{
-		*result = (UInt8)(form->refID >> 24);
+		*result = form->GetModIndex();
 	}
 
 	return true;
@@ -218,7 +218,7 @@ bool Cmd_GetLocalRefIndex_Execute(COMMAND_ARGS)
 
 	if (form)
 	{
-		*result = form->refID & 0x00FFFFFF;
+		*result = form->GetFormIDWithoutIndex();
 	}
 
 	return true;

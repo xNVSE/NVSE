@@ -10,7 +10,7 @@ extern bool g_showFileSizeWarning;
 
 struct CosaveWarning
 {
-	std::unordered_set<UInt8> modIndices;
+	std::unordered_set<const ModInfo*> mods;
 };
 
 extern CosaveWarning g_cosaveWarning;
@@ -97,6 +97,9 @@ void	ReadRecord64(void *outData);
 void	SkipNBytes(UInt32 byteNum);
 
 bool	ResolveRefID(UInt32 refID, UInt32 * outRefID);
+
+const ModInfo* ResolveMod(UInt32 index, NVSESerializationInterface::ModListType modType);
+NVSESerializationInterface::ModListType GetModType(const ModInfo* mod);
 
 // internal event handlers
 void	HandleSaveGame(const char * path);

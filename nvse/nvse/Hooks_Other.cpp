@@ -64,7 +64,7 @@ namespace OtherHooks
 					g_StringMap.MarkTemporary(static_cast<int>(var->data), true);
 					break;
 				case NVSEVarType::kVarType_Array:
-					g_ArrayMap.RemoveReference(&var->data, eventList->m_script->GetModIndex());
+					g_ArrayMap.RemoveReference(&var->data, eventList->m_script->GetFile(0));
 					break;
 				default:
 					break;
@@ -90,7 +90,7 @@ namespace OtherHooks
 				g_StringMap.MarkTemporary(static_cast<int>(local->data), true);
 				break;
 			case NVSEVarType::kVarType_Array:
-				g_ArrayMap.RemoveReference(&local->data, eventList->m_script->GetModIndex());
+				g_ArrayMap.RemoveReference(&local->data, eventList->m_script->GetFile(0));
 				break;
 			default:
 				break;

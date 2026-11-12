@@ -10,6 +10,7 @@
 #include "GameData.h"
 #include "GameObjects.h"
 #include "Hooks_Other.h"
+#include <assert.h>
 
 using ScriptLambda = Script;
 using FormID = UInt32;
@@ -164,16 +165,26 @@ Script* LambdaManager::CreateLambdaScript(UInt8* position, const ScriptData& scr
 	}
 	else
 	{
-		const auto nextFormId = GetNextFreeFormID(parentScript->refID);
-		if (nextFormId >> 24 == parentScript->GetModIndex())
+		ModInfo* mod = parentScript->GetFile(0);
+		if (mod) [[likely]]
 		{
-			scriptLambda->SetRefID(nextFormId, true);
+			UInt32 startingNextFormID = mod->header.nextObectID;
+			const auto nextFormId = GetNextFreeFormID(startingNextFormID);
+			if (nextFormId >> 24 == parentScript->GetModIndex()) [[likely]]
+			{
+				scriptLambda->SetRefID(nextFormId, true);
+			}
+			else [[unlikely]]
+			{
+				assert(false);
+				_ERROR("CreateLambdaScript: Failed to assign a proper formID for the lambda. This should probably never happen.");
+				scriptLambda->Delete();
+				return nullptr;
+			}
 		}
-		else
+		else [[unlikely]]
 		{
-			_ERROR("CreateLambdaScript: Failed to assign a proper formID for the lambda. This should probably never happen.");
-			scriptLambda->Delete();
-			return nullptr;
+			assert(false);
 		}
 	}
 	g_lambdaScriptPosMap[key] = scriptLambda;

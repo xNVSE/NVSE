@@ -146,7 +146,7 @@ namespace Compiler::Passes {
 
 			// Warn if name shadows a form
 			if (auto form = GetFormByID(name->str.c_str())) {
-				auto modName = DataHandler::Get()->GetActiveModList()[form->GetModIndex()]->name;
+				auto modName = DataHandler::Get()->GetModNameForForm(form);
 #ifdef EDITOR
 				const auto msg = std::format("Variable shadows a form with the same name from mod '{}'", modName);
 				const auto highlightMsg = HighlightSourceSpan(script->lines, msg, name->sourceInfo, ESCAPE_CYAN);

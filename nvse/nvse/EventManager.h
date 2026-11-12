@@ -126,7 +126,7 @@ namespace EventManager
 		NativeEventHandlerInfo(NativeEventHandler func) : m_func(func) {}
 		[[nodiscard]] bool InitWithPluginInfo(NativeEventHandler func, PluginHandle pluginHandle, const char* handlerName);
 		[[nodiscard]] std::string GetStringRepresentation() const;
-		[[nodiscard]] ArrayVar* GetArrayRepresentation(UInt8 modIndex) const;
+		[[nodiscard]] ArrayVar* GetArrayRepresentation(const ModInfo* mod) const;
 
 		bool operator==(const NativeEventHandlerInfo& rhs) const { return m_func == rhs.m_func; }
 		operator bool() const { return m_func != nullptr; }
@@ -828,7 +828,7 @@ namespace EventManager
 	ArrayVar* GetHigherOrLowerPriorityEventHandlers(const char* eventName, EventCallback::CallbackFunc func,
 		int startPriority, Filters_t filters, Script* scriptObj)
 	{
-		auto* result = g_ArrayMap.Create(kDataType_Numeric, false, scriptObj ? scriptObj->GetModIndex() : 0xFF);
+		auto* result = g_ArrayMap.Create(kDataType_Numeric, false, scriptObj ? scriptObj->GetFile(0) : nullptr);
 
 		const auto eventPtr = TryGetEventInfoForName(eventName);
 		if (!eventPtr)

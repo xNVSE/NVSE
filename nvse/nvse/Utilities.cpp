@@ -922,17 +922,27 @@ const char* GetModName(TESForm* form, bool useOverridingIndex)
 {
 	if (!form)
 		return "Unknown or deleted script";
+
 	const char* modName = IS_ID(form, Script) ? "In-game console" : "Dynamic form";
-	if (form->mods.Head() && form->mods.Head()->data)
-		return form->mods.Head()->Data()->name;
-	UInt8 modIndex = useOverridingIndex ? form->GetOverridingModIdx() : form->GetModIndex();
-	if (modIndex != 0xFF)
-	{
-		modName = DataHandler::Get()->GetNthModName(modIndex);
-		if (!modName || !modName[0])
-			modName = "Unknown";
+	if (form->GetModIndex() == 0xFF)
+		return modName;
+
+	// Always correct
+	if (!useOverridingIndex && form->GetMaster()){
+		// Need to resort to index-based search, as master forms only store the last plugin they come from
+		const UInt8 modIndex = form->GetModIndex();
+		const UInt16 smallIndex = form->GetSmallModIndex();
+		modName = DataHandler::Get()->GetNthModName(modIndex, smallIndex);
+		if (modName && modName[0])
+			return modName;
 	}
-	return modName;
+	else {
+		const ModInfo* mod = form->GetFile(useOverridingIndex ? -1 : 0);
+		if (mod)
+			return mod->name;
+	}
+
+	return "Unknown";
 }
 #if NVSE_CORE
 UnorderedSet<UInt32> g_warnedScripts;
@@ -947,7 +957,7 @@ void vShowRuntimeError(Script* script, const char* fmt, va_list args)
 
 	const auto* scriptName = script ? script->GetName() : nullptr; // JohnnyGuitarNVSE allows this
 	auto refId = script ? script->refID : 0;
-	const auto modIdx = script ? script->GetModIndex() : 0;
+	const auto mod = script ? script->GetFile(0) : nullptr;
 	if (script && LambdaManager::IsScriptLambda(script))
 	{
 		Script* parentScript;
@@ -967,7 +977,7 @@ void vShowRuntimeError(Script* script, const char* fmt, va_list args)
 		sprintf_s(errorHeader, sizeof(errorHeader), "Error in script %08X in mod %s\n%s", refId, modName, errorMsg);
 	}
 
-	if (g_warnScriptErrors && g_myMods.contains(modIdx) && g_warnedScripts.Insert(refId))
+	if (g_warnScriptErrors && g_myMods.contains(mod) && g_warnedScripts.Insert(refId))
 	{
 		char message[512];
 		snprintf(message, sizeof(message), "%s: Script error (see console print)", GetModName(script));

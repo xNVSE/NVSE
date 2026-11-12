@@ -6,6 +6,8 @@
 #include "common/IFileStream.h"
 #include "PluginManager.h"
 #include "GameAPI.h"
+#include "GameData.h"
+#include "FormUtils.h"
 #include <vector>
 //#include "EventManager.h"
 
@@ -637,9 +639,9 @@ UInt32 PeekRecordData(void * buf, UInt32 length)
 	return length;
 }
 
-bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
+__declspec(noinline) bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 {
-	UInt8 modID = refID >> 24;
+	const UInt8 modID = (refID >> 24) & 0xFF;
 
 	// pass dynamic ids straight through
 	if (modID == 0xFF)
@@ -649,18 +651,52 @@ bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 		return true;
 	}
 
-	if (modID >= s_numPreloadMods)
+	const ModInfo* mod = nullptr;
+	if (modID >= 0xFD && DataHandler::HasNewFileTypeSupport()) {
+		if (modID == 0xFD) {
+			const UInt32 mediumModID = (refID >> 16) & 0xFF;
+			mod = ResolveMod(mediumModID, NVSESerializationInterface::ModListType::kMedium);
+		}
+		else if (modID == 0xFE) {
+			const UInt32 smallModID = (refID >> 12) & 0xFFF;
+			mod = ResolveMod(smallModID, NVSESerializationInterface::ModListType::kSmall);
+		}
+	}
+	else {
+		mod = ResolveMod(modID, NVSESerializationInterface::ModListType::kNormal);
+	}
+
+	if (!mod) [[unlikely]]
 		return false;
 
-	const UInt8 loadedModID = ResolveModIndexForPreload(modID);
-	if (loadedModID == 0xFF) 
-		return false;	// unloaded
-
-	// fixup ID, success
-	if (outRefID)
-		*outRefID = (loadedModID << 24) | (refID & 0x00FFFFFF);
-
+	if (outRefID && FormUtils::AdjustFormIDForMod(mod, refID)) [[likely]]
+		*outRefID = refID;
 	return true;
+}
+
+const ModInfo* ResolveMod(UInt32 index, NVSESerializationInterface::ModListType modType) {
+	const ModInfo* mod = nullptr;
+	if (modType < NVSESerializationInterface::ModListType::kCount) [[likely]] {
+		if (index < g_saveModList[modType].size()) [[likely]]
+			mod = g_saveModList[modType].at(index);
+	}
+	return mod;
+}
+
+NVSESerializationInterface::ModListType GetModType(const ModInfo* mod) {
+	if (!mod)
+		return NVSESerializationInterface::ModListType::kInvalid;
+
+	if (DataHandler::HasNewFileTypeSupport() && mod->IsSpecial()) {
+		if (mod->IsSmall())
+			return NVSESerializationInterface::ModListType::kSmall;
+		else if (mod->IsMedium())
+			return NVSESerializationInterface::ModListType::kMedium;
+		else if (mod->IsOverlay())
+			return NVSESerializationInterface::ModListType::kOverlay;
+	}
+	
+	return NVSESerializationInterface::ModListType::kNormal;
 }
 
 const char * GetSavePath()
@@ -766,11 +802,11 @@ void HandlePostLoadGame(bool bLoadSucceeded)
 void ShowCosaveWarning()
 {
 	std::string msg = "NVSE: This co-save file has exceeded 4mb in file size which indicates a possible script leak. To fix this disable the following mods, load the save, save the game and then re-enable them:\n\n";
-	for (const auto idx : g_cosaveWarning.modIndices)
+	for (const auto mod : g_cosaveWarning.mods)
 	{
-		if (idx < g_modsLoaded.size())
+		if (mod)
 		{
-			msg += "- " + g_modsLoaded.at(idx) + "\n";
+			msg += "- " + std::string(mod->name) + "\n";
 		}
 	}
 	msg += "\nTo disable this warning, set bNoSaveWarnings=1 in Data\\NVSE\\nvse_config.ini. It is advised you update to the latest xNVSE. If you are on the latest xNVSE version or this warning persists report this to the xNVSE GitHub or Discord.";
@@ -914,11 +950,11 @@ void HandleLoadGame(const char * path, NVSESerializationInterface::EventCallback
 	}
 	s_serializationTask.Unload();
 	
-	if (g_showFileSizeWarning && !g_cosaveWarning.modIndices.empty() && !g_cosaveWarning.modIndices.contains(0)) // can't suggest disabling FalloutNV.esm
+	if (g_showFileSizeWarning && !g_cosaveWarning.mods.empty() && !g_cosaveWarning.mods.contains(0)) // can't suggest disabling FalloutNV.esm
 	{
 		ShowCosaveWarning();
 	}
-	g_cosaveWarning.modIndices.clear();
+	g_cosaveWarning.mods.clear();
 	g_showFileSizeWarning = false;
 }
 
@@ -1014,4 +1050,7 @@ NVSESerializationInterface	g_NVSESerializationInterface =
 	Serialization::ReadRecord64,
 
 	Serialization::SkipNBytes,
+
+	Serialization::ResolveMod,
+	Serialization::GetModType,
 };

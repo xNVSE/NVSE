@@ -41,6 +41,7 @@ FakeModInfo::FakeModInfo(NVSESerializationInterface* _intfc)
 
 	//	func at 0x00471870 for the Runtime gore, from refModNames
 
+#if 0
 	if (s_refModInfo) {
 		FormHeap_Free(refModInfo);
 		s_refModInfo = NULL;
@@ -52,12 +53,12 @@ FakeModInfo::FakeModInfo(NVSESerializationInterface* _intfc)
 		if (s_refModInfo) {
 			memset(s_refModInfo, 0, arraySize);
 			for (SInt8 i=0; i<s_numPreloadMods; i++) {
-				s_refModInfo[i] = dataHand->modList.modInfoList.GetNthItem(s_preloadModRefIDs[i]);
+				s_refModInfo[i] = dataHand->modInfoList.GetNthItem(s_preloadModRefIDs[i]);
 			}
 		}
 	}
 	refModInfo = s_refModInfo;
-
+#endif
 	// name, filepath, fileoffset, dataoffset
 	SplitSavePath(intfc->GetSavePath());
 	strcpy_s(name, sName.c_str());

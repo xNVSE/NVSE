@@ -135,7 +135,7 @@ enum FormType
 #define IS_ID(form, type) (form->typeID == kFormType_##type)
 #define NOT_ID(form, type) (form->typeID != kFormType_##type)
 
-struct ModInfo;		// in GameData.h 
+class ModInfo;		// in GameData.h 
 class TESFullName;
 class EnchantmentItem;
 class TESSound;
@@ -317,6 +317,7 @@ public:
 
 	enum
 	{
+		kFormFlags_Master =			0x00000001,
 		kFormFlags_Initialized =	0x00000008,	// set by TESForm::InitItem()
 		kFormFlags_Deleted =		0x00000020,
 		kFormFlags_QuestItem =		0x00000400,
@@ -340,14 +341,18 @@ public:
 	tList<ModInfo> mods;			// 010 ModReferenceList in Oblivion	
 	// 018 / 028
 
+	bool GetMaster() const { return (flags & kFormFlags_Master) != 0; }
 	bool IsPersistent() const { return (flags & kFormFlags_QuestItem) != 0; }
 	bool IsTemporary() const { return (flags & kFormFlags_Temporary) != 0; }
 	bool IsDeleted() const { return (flags & kFormFlags_Deleted) != 0; }
 
 	// Looks like there is another DWord here, used as a byte: LastLoaded or Active or Selected ? 
 
+	UInt32			GetFormID() const;
+	UInt32			GetFormIDWithoutIndex() const;
 	TESForm *		TryGetREFRParent(void);
 	UInt8			GetModIndex() const;
+	UInt16			GetSmallModIndex() const;
 	TESFullName*	GetFullName() const;
 	const char*		GetTheName();
 	std::string		GetStringRepresentation() const;
@@ -370,6 +375,9 @@ public:
 	UInt8 GetOverridingModIdx() const;
 
 	bool SetEditorID(const char* newID);
+
+	ModInfo* GetFile(SInt32 index) const;
+	void SetFile(ModInfo* file);
 
 	MEMBER_FN_PREFIX(TESForm);
 #if RUNTIME

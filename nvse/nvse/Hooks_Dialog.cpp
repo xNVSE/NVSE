@@ -88,7 +88,7 @@ static char* __stdcall doTileTextHook(char* text, TileText* tile)
 		tile->GetComponentFullName(tileName);
 	if (strstr(tileName, "\\DM_SpeakerText")) // This a NPC speaking
 	{
-		arr = g_ArrayMap.Create(kDataType_String, false, 255);
+		arr = g_ArrayMap.Create(kDataType_String, false, nullptr);
 		argsArrayId = arr ? arr->ID() : 0;
 		if (argsArrayId) try {
 			arr->SetElementString("speakerName", lastSpeaker);
@@ -107,7 +107,7 @@ static char* __stdcall doTileTextHook(char* text, TileText* tile)
 		lastSpeaker = text;
 	if (strstr(tileName, "MenuRoot\\DialogMenu") && strstr(tileName, "\\ListItemText")) // This is a topic
 	{
-		arr = g_ArrayMap.Create(kDataType_String, false, 255);
+		arr = g_ArrayMap.Create(kDataType_String, false, nullptr);
 		argsArrayId = arr ? arr->ID() : 0;
 		if (argsArrayId) try {
 			result = doTileTextEvent(argsArrayId, "OnTopic", result, tileName);
@@ -123,7 +123,7 @@ static char* __stdcall doTileTextHook(char* text, TileText* tile)
 	}
 	if (enableAllTileTextHook && g_gameStarted)
 	{
-		arr = g_ArrayMap.Create(kDataType_String, false, 255);
+		arr = g_ArrayMap.Create(kDataType_String, false, nullptr);
 		argsArrayId = arr ? arr->ID() : 0;
 		if (argsArrayId) try {
 			result = doTileTextEvent(argsArrayId, "OnTileText", result, tileName);

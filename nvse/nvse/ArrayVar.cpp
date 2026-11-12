@@ -510,10 +510,10 @@ void SelfOwningArrayElement::Unset()
 // ArrayKey
 //////////////////////
 
-UInt8 __fastcall GetArrayOwningModIndex(ArrayID arrID)
+const ModInfo* __fastcall GetArrayOwningModIndex(ArrayID arrID)
 {
 	ArrayVar* arr = g_ArrayMap.Get(arrID);
-	return arr ? arr->OwningModIndex() : 0;
+	return arr ? arr->OwningMod() : 0;
 }
 
 ArrayKey::ArrayKey()
@@ -595,8 +595,8 @@ thread_local ArrayKey s_arrNumKey(kDataType_Numeric), s_arrStrKey(kDataType_Stri
 #if _DEBUG && 0
 MemoryLeakDebugCollector<ArrayVar> s_arrayDebugCollector;
 #endif
-ArrayVar::ArrayVar(UInt32 _keyType, bool _packed, UInt8 modIndex) : m_ID(0), m_keyType(_keyType), m_bPacked(_packed),
-                                                                    m_owningModIndex(modIndex)
+ArrayVar::ArrayVar(UInt32 _keyType, bool _packed, const ModInfo* mod) : m_ID(0), m_keyType(_keyType), m_bPacked(_packed),
+                                                                    m_owningMod(mod)
 {
 	if (m_keyType == kDataType_String)
 		m_elements.m_type = kContainer_StringMap;
@@ -1181,9 +1181,9 @@ bool ArrayVar::Insert(UInt32 atIndex, ArrayID rangeID)
 	return true;
 }
 
-ArrayVar* ArrayVar::GetKeys(UInt8 modIndex)
+ArrayVar* ArrayVar::GetKeys(const ModInfo* mod)
 {
-	ArrayVar* keysArr = g_ArrayMap.Create(kDataType_Numeric, true, modIndex);
+	ArrayVar* keysArr = g_ArrayMap.Create(kDataType_Numeric, true, mod);
 	double currKey = 0;
 
 	for (ArrayIterator iter = m_elements.begin(); !iter.End(); ++iter)
@@ -1198,9 +1198,9 @@ ArrayVar* ArrayVar::GetKeys(UInt8 modIndex)
 	return keysArr;
 }
 
-ArrayVar* ArrayVar::Copy(UInt8 modIndex, bool bDeepCopy)
+ArrayVar* ArrayVar::Copy(const ModInfo* mod, bool bDeepCopy)
 {
-	ArrayVar* copyArr = g_ArrayMap.Create(m_keyType, m_bPacked, modIndex);
+	ArrayVar* copyArr = g_ArrayMap.Create(m_keyType, m_bPacked, mod);
 	const ArrayElement* arrElem;
 	for (ArrayIterator iter = m_elements.begin(); !iter.End(); ++iter)
 	{
@@ -1212,7 +1212,7 @@ ArrayVar* ArrayVar::Copy(UInt8 modIndex, bool bDeepCopy)
 			ArrayVar* innerArr = g_ArrayMap.Get(arrElem->m_data.arrID);
 			if (innerArr)
 			{
-				ArrayVar* innerCopy = innerArr->Copy(modIndex, true);
+				ArrayVar* innerCopy = innerArr->Copy(mod, true);
 				if (tempKey().KeyType() == kDataType_Numeric)
 				{
 					if (copyArr->SetElementArray(tempKey().key.num, innerCopy->ID()))
@@ -1229,9 +1229,9 @@ ArrayVar* ArrayVar::Copy(UInt8 modIndex, bool bDeepCopy)
 	return copyArr;
 }
 
-ArrayVar* ArrayVar::MakeSlice(const Slice* slice, UInt8 modIndex)
+ArrayVar* ArrayVar::MakeSlice(const Slice* slice, const ModInfo* mod)
 {
-	ArrayVar* newVar = g_ArrayMap.Create(m_keyType, m_bPacked, modIndex);
+	ArrayVar* newVar = g_ArrayMap.Create(m_keyType, m_bPacked, mod);
 
 	if (Empty() || (slice->bIsString != (m_keyType == kDataType_String)))
 		return newVar;
@@ -1308,8 +1308,8 @@ public:
 	{
 		if (comparator)
 		{
-			m_lhs = g_ArrayMap.Create(kDataType_Numeric, true, comparator->GetModIndex());
-			m_rhs = g_ArrayMap.Create(kDataType_Numeric, true, comparator->GetModIndex());
+			m_lhs = g_ArrayMap.Create(kDataType_Numeric, true, comparator->GetFile(0));
+			m_rhs = g_ArrayMap.Create(kDataType_Numeric, true, comparator->GetFile(0));
 		}
 	}
 
@@ -1426,9 +1426,9 @@ void ArrayVar::Sort(ArrayVar* result, SortOrder order, SortType type, Script* co
 
 void ArrayVar::Dump(const std::function<void(const std::string&)>& output)
 {
-	const char* owningModName = DataHandler::Get()->GetNthModName(m_owningModIndex);
+	const char* owningModName = m_owningMod ? m_owningMod->name : "Unknown";
 
-	auto const str = FormatString("** Dumping Array #%d **\nRefs: %d Owner %02X: %s", m_ID, m_refs.Size(), m_owningModIndex, owningModName);
+	auto const str = FormatString("** Dumping Array #%d **\nRefs: %d Owner %02X: %s", m_ID, m_refs.Size(), m_owningMod, owningModName);
 	output(str);
 	_MESSAGE("%s", str.c_str());
 
@@ -1718,9 +1718,9 @@ std::vector<ArrayVar*> ArrayVarMap::GetArraysContainingArrayID(ArrayID id)
 	return out;
 }
 #endif
-ArrayVar* ArrayVarMap::Add(UInt32 varID, UInt32 keyType, bool packed, UInt8 modIndex, UInt32 numRefs, UInt8* refs)
+ArrayVar* ArrayVarMap::Add(UInt32 varID, UInt32 keyType, bool packed, const ModInfo* mod, UInt32 numRefs, const ModInfo** refs)
 {
-	ArrayVar* var = VarMap::Insert(varID, keyType, packed, modIndex);
+	ArrayVar* var = VarMap::Insert(varID, keyType, packed, mod);
 	ScopedLock lock(var->m_cs);
 	availableIDs.Erase(varID);
 	var->m_ID = varID;
@@ -1731,16 +1731,16 @@ ArrayVar* ArrayVarMap::Add(UInt32 varID, UInt32 keyType, bool packed, UInt8 modI
 	return var;
 }
 
-ArrayVar* ArrayVarMap::Create(UInt32 keyType, bool bPacked, UInt8 modIndex)
+ArrayVar* ArrayVarMap::Create(UInt32 keyType, bool bPacked, const ModInfo* mod)
 {
 	ArrayID varID = GetUnusedID();
-	ArrayVar* newVar = VarMap::Insert(varID, keyType, bPacked, modIndex);
+	ArrayVar* newVar = VarMap::Insert(varID, keyType, bPacked, mod);
 	newVar->m_ID = varID;
 	MarkTemporary(varID, true); // queue for deletion until a reference to this array is made
 	return newVar;
 }
 
-void ArrayVarMap::AddReference(ArrayID* ref, ArrayID toRef, UInt8 referringModIndex)
+void ArrayVarMap::AddReference(ArrayID* ref, ArrayID toRef, const ModInfo* referringModIndex)
 {
 	if (*ref) // refers to a different array, remove that reference
 		RemoveReference(ref, referringModIndex);
@@ -1755,7 +1755,7 @@ void ArrayVarMap::AddReference(ArrayID* ref, ArrayID toRef, UInt8 referringModIn
 	}
 }
 
-void ArrayVarMap::RemoveReference(ArrayID* ref, UInt8 referringModIndex)
+void ArrayVarMap::RemoveReference(ArrayID* ref, const ModInfo* referringModIndex)
 {
 	ArrayVar* var = Get(*ref);
 	if (var)
@@ -1780,14 +1780,14 @@ void ArrayVarMap::RemoveReference(ArrayID* ref, UInt8 referringModIndex)
 	*ref = 0;
 }
 
-void ArrayVarMap::AddReference(double* ref, ArrayID toRef, UInt8 referringModIndex)
+void ArrayVarMap::AddReference(double* ref, ArrayID toRef, const ModInfo* referringModIndex)
 {
 	ArrayID refID = *ref;
 	AddReference(&refID, toRef, referringModIndex);
 	*ref = refID;
 }
 
-void ArrayVarMap::RemoveReference(double* ref, UInt8 referringModIndex)
+void ArrayVarMap::RemoveReference(double* ref, const ModInfo* referringModIndex)
 {
 	ArrayID refID = *ref;
 	RemoveReference(&refID, referringModIndex);
@@ -1800,11 +1800,34 @@ ArrayElement* ArrayVarMap::GetElement(ArrayID id, const ArrayKey* key)
 	return arr ? arr->Get(key, false) : nullptr;
 }
 
+static void __fastcall SaveMod(const ModInfo* mod) {
+	UInt16 modIndex = (DataHandler::HasNewFileTypeSupport() && mod->IsSpecial()) ? mod->secondIndex : mod->modIndex;
+	Serialization::WriteRecord8(Serialization::GetModType(mod));
+	Serialization::WriteRecord16(modIndex);
+}
+
+static const ModInfo* __fastcall LoadMod(bool fullData) {
+	UInt8 type = NVSESerializationInterface::ModListType::kInvalid;
+	UInt16 modIndex = 0xFFFF;
+	const ModInfo* mod = nullptr;
+	if (fullData) {
+		type = Serialization::ReadRecord8();
+		modIndex = Serialization::ReadRecord16();
+		return Serialization::ResolveMod(modIndex, static_cast<NVSESerializationInterface::ModListType>(type));
+	}
+	else {
+		modIndex = Serialization::ReadRecord8();
+		return Serialization::ResolveMod(modIndex, NVSESerializationInterface::ModListType::kNormal);
+	}
+}
+
 void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 {
 	Clean();
 
-	Serialization::OpenRecord('ARVS', kVersion);
+	UInt32 version = kVersion;
+
+	Serialization::OpenRecord('ARVS', version);
 
 	ArrayVar* pVar;
 	UInt32 numRefs;
@@ -1819,18 +1842,23 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 			continue;
 
 		pVar = &iter.Get();
+		const ModInfo* mod = pVar->m_owningMod;
+		if (!mod)
+			continue;
+
 		numRefs = pVar->m_refs.Size();
 		if (!numRefs) continue;
 		keyType = pVar->m_keyType;
 
-		Serialization::OpenRecord('ARVR', kVersion);
-		Serialization::WriteRecord8(pVar->m_owningModIndex);
+		Serialization::OpenRecord('ARVR', version);
+		SaveMod(mod);
 		Serialization::WriteRecord32(iter.Key());
 		Serialization::WriteRecord8(keyType);
 		Serialization::WriteRecord8(pVar->m_bPacked);
 		Serialization::WriteRecord32(numRefs);
-		Serialization::WriteRecordData(pVar->m_refs.Data(), numRefs);
-
+		for (const ModInfo* refMod : pVar->m_refs) {
+			SaveMod(refMod);
+		}
 		numRefs = pVar->Size();
 		Serialization::WriteRecord32(numRefs);
 		if (!numRefs) continue;
@@ -1875,10 +1903,15 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 		}
 	}
 
-	Serialization::OpenRecord('ARVE', kVersion);
+	Serialization::OpenRecord('ARVE', version);
 }
 #if _DEBUG
 std::set<std::string> g_modsWithCosaveVars;
+
+void __fastcall RecordModWithCosaveVars(const ModInfo* mod) {
+	if (mod)
+		g_modsWithCosaveVars.insert(mod->name);
+}
 #endif
 void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 {
@@ -1886,19 +1919,19 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 
 	Clean(); // clean up any vars queued for garbage collection
 
-	UInt32 type, length, version, arrayID, tempRefID, numElements;
+	UInt32 type, length, version, arrayID, numElements;
 	UInt16 strLength;
-	UInt8 modIndex, keyType;
+	UInt8 keyType;
 	bool bPacked;
 	ContainerType contType;
-	static UInt8 buffer[kMaxMessageLength];
+	static char stringBuffer[kMaxMessageLength];
 
 	//Reset(intfc);
 	bool bContinue = true;
 	UInt32 lastIndexRead = 0;
 
 	double numKey;
-	std::unordered_map<UInt8, UInt32> varCountMap;
+	std::unordered_map<const ModInfo*, UInt32> varCountMap;
 	while (bContinue && Serialization::GetNextRecordInfo(&type, &version, &length))
 	{
 		switch (type)
@@ -1908,22 +1941,21 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 			break;
 		case 'ARVR':
 			{
-				modIndex = Serialization::ReadRecord8();
+				const bool saveHasSecondIndex = version > kPreESLVersion;
+
+				const ModInfo* mod = LoadMod(saveHasSecondIndex);
+
 #if _DEBUG
-				g_modsWithCosaveVars.insert(g_modsLoaded.at(modIndex));
+				RecordModWithCosaveVars(mod);
 #endif
-				if (!Serialization::ResolveRefID(modIndex << 24, &tempRefID) || modIndex == 0xFF)
-				{
+				if (!mod) {
 					// owning mod was removed, but there may be references to it from other mods
 					// assign ownership to the first mod which refers to it and is still loaded
 					// if no loaded mods refer to it, discard
 					// we handle all of that below
 					_MESSAGE(
 						"Mod owning array was removed from load order; will attempt to assign ownership to a referring mod.");
-					modIndex = 0;
 				}
-				else
-					modIndex = (tempRefID >> 24);
 
 				arrayID = Serialization::ReadRecord32();
 				keyType = Serialization::ReadRecord8();
@@ -1932,46 +1964,37 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				// read refs, fix up mod indexes, discard refs from unloaded mods
 				UInt32 numRefs = 0; // # of references to this array
 
+				std::vector<const ModInfo*> modArray;
 				// reference-counting implemented in v1
 				if (version >= 1)
 				{
 					numRefs = Serialization::ReadRecord32();
 					if (numRefs)
-					{
-						UInt32 tempRefID = 0;
-						UInt8 curModIndex;
+					{	
+						modArray.resize(numRefs);
 						UInt32 refIdx = 0;
 						for (UInt32 i = 0; i < numRefs; i++)
 						{
-							curModIndex = Serialization::ReadRecord8();
-							if (curModIndex == 0xFF)
+							const ModInfo* refMod = LoadMod(saveHasSecondIndex);
+							if (!refMod)
 								continue;
 #if _DEBUG
-							g_modsWithCosaveVars.insert(g_modsLoaded.at(curModIndex));
+							RecordModWithCosaveVars(refMod);
 #endif
-							if (!modIndex)
+							if (!mod) 
 							{
-								if (Serialization::ResolveRefID(curModIndex << 24, &tempRefID))
-								{
-									modIndex = tempRefID >> 24;
-									_MESSAGE("ArrayID %d was owned by an unloaded mod. Assigning ownership to mod #%d",
-									         arrayID, modIndex);
-								}
+								mod = refMod;
+								_MESSAGE("ArrayID %d was owned by an unloaded mod. Assigning ownership to mod %s",
+										 arrayID, mod ? mod->name : "Runtime");
 							}
 
-							if (Serialization::ResolveRefID(curModIndex << 24, &tempRefID))
-								buffer[refIdx++] = (tempRefID >> 24);
+							modArray[refIdx++] = refMod;
 
-							bool resolveRefID = true;
-#if !_DEBUG
-							resolveRefID = Serialization::ResolveRefID(curModIndex << 24, nullptr);
-#endif
-							if (g_showFileSizeWarning && resolveRefID)
-							{
-								auto& numVars = varCountMap[curModIndex];
+							if (g_showFileSizeWarning) {
+								auto& numVars = varCountMap[refMod];
 								numVars++;
 								if (numVars > 2000)
-									g_cosaveWarning.modIndices.insert(curModIndex);
+									g_cosaveWarning.mods.insert(refMod);
 							}
 						}
 
@@ -1980,14 +2003,14 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				}
 				else // v0 arrays assumed to have only one reference (the owning mod)
 				{
-					if (modIndex) // owning mod is loaded
+					if (mod) // owning mod is loaded
 					{
 						numRefs = 1;
-						buffer[0] = modIndex;
+						modArray.push_back(mod);
 					}
 				}
 
-				if (!modIndex)
+				if (!mod)
 				{
 					_MESSAGE("Array ID %d is referred to by no loaded mods. Discarding", arrayID);
 					continue;
@@ -2002,7 +2025,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				}
 
 				// create array and add to map
-				ArrayVar* newArr = Add(arrayID, keyType, bPacked, modIndex, numRefs, buffer);
+				ArrayVar* newArr = Add(arrayID, keyType, bPacked, mod, numRefs, modArray.data());
 
 				// read the array elements
 				numElements = Serialization::ReadRecord32();
@@ -2037,8 +2060,8 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 					if (keyType == kDataType_String)
 					{
 						strLength = Serialization::ReadRecord16();
-						if (strLength) Serialization::ReadRecordData(buffer, strLength);
-						buffer[strLength] = 0;
+						if (strLength) Serialization::ReadRecordData(stringBuffer, strLength);
+						stringBuffer[strLength] = 0;
 					}
 					else if (!bPacked || (version < 2))
 						Serialization::ReadRecord64(&numKey);
@@ -2055,7 +2078,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 						elem = &(*pNumMap)[numKey];
 						break;
 					case kContainer_StringMap:
-						elem = &(*pStrMap)[(char*)buffer];
+						elem = &(*pStrMap)[(char*)stringBuffer];
 						break;
 					}
 
@@ -2130,7 +2153,7 @@ namespace PluginAPI
 	NVSEArrayVarInterface::Array* ArrayAPI::CreateArray(const NVSEArrayVarInterface::Element* data, UInt32 size,
 	                                                    Script* callingScript)
 	{
-		ArrayVar* arr = g_ArrayMap.Create(kDataType_Numeric, true, callingScript->GetModIndex());
+		ArrayVar* arr = g_ArrayMap.Create(kDataType_Numeric, true, callingScript->GetFile(0));
 		if (!arr) return nullptr;
 		double elemIdx = 0;
 		for (UInt32 i = 0; i < size; i++)
@@ -2145,7 +2168,7 @@ namespace PluginAPI
 	                                                        const NVSEArrayVarInterface::Element* values, UInt32 size,
 	                                                        Script* callingScript)
 	{
-		ArrayVar* arr = g_ArrayMap.Create(kDataType_String, false, callingScript->GetModIndex());
+		ArrayVar* arr = g_ArrayMap.Create(kDataType_String, false, callingScript->GetFile(0));
 		if (!arr) return nullptr;
 		for (UInt32 i = 0; i < size; i++)
 			arr->SetElementFromAPI(keys[i], &values[i]);
@@ -2155,7 +2178,7 @@ namespace PluginAPI
 	NVSEArrayVarInterface::Array* ArrayAPI::CreateMap(const double* keys, const NVSEArrayVarInterface::Element* values,
 	                                                  UInt32 size, Script* callingScript)
 	{
-		ArrayVar* arr = g_ArrayMap.Create(kDataType_Numeric, false, callingScript->GetModIndex());
+		ArrayVar* arr = g_ArrayMap.Create(kDataType_Numeric, false, callingScript->GetFile(0));
 		if (!arr) return nullptr;
 		for (UInt32 i = 0; i < size; i++)
 			arr->SetElementFromAPI(keys[i], &values[i]);

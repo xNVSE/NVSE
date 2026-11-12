@@ -824,7 +824,7 @@ bool Cmd_GetNumRefsInCell_Execute(COMMAND_ARGS)
 bool GetRefs_Execute(COMMAND_ARGS, bool bUsePlayerCell = true)
 {
 	// returns an array of references formID in the specified cell(s)
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 	UInt32 formType = kFormTypeFilter_AnyType;
 	SInt32 cellDepth = -127;

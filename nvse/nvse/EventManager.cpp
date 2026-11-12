@@ -590,7 +590,7 @@ std::string EventCallback::GetFiltersAsStr() const
 
 ArrayVar* EventCallback::GetFiltersAsArray(const Script* scriptObj) const
 {
-	ArrayVar* arr = g_ArrayMap.Create(kDataType_String, false, scriptObj->GetModIndex());
+	ArrayVar* arr = g_ArrayMap.Create(kDataType_String, false, scriptObj->GetFile(0));
 
 	if (source)
 	{
@@ -626,7 +626,7 @@ std::string EventCallback::GetCallbackFuncAsStr() const
 
 ArrayVar* EventCallback::GetAsArray(const Script* scriptObj) const
 {
-	ArrayVar* handlerArr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar* handlerArr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 
 	std::visit(overloaded
 		{
@@ -636,7 +636,7 @@ ArrayVar* EventCallback::GetAsArray(const Script* scriptObj) const
 			},
 			[=](const NativeEventHandlerInfo& handler)
 			{
-				handlerArr->SetElementArray(0.0, handler.GetArrayRepresentation(scriptObj->GetModIndex())->ID());
+				handlerArr->SetElementArray(0.0, handler.GetArrayRepresentation(scriptObj->GetFile(0))->ID());
 			}
 		}, toCall);
 
@@ -1499,9 +1499,9 @@ std::string NativeEventHandlerInfo::GetStringRepresentation() const
 	return FormatString("Internal handler %s (plugin %s)", m_handlerName, m_pluginName);
 }
 
-ArrayVar* NativeEventHandlerInfo::GetArrayRepresentation(UInt8 modIndex) const
+ArrayVar* NativeEventHandlerInfo::GetArrayRepresentation(const ModInfo* mod) const
 {
-	auto* result = g_ArrayMap.Create(kDataType_String, false, modIndex);
+	auto* result = g_ArrayMap.Create(kDataType_String, false, mod);
 	result->SetElementString("Plugin", m_pluginName);
 	result->SetElementString("Handler", m_handlerName);
 	return result;
@@ -1912,7 +1912,7 @@ bool DispatchUserDefinedEvent(const char* eventName, Script* sender, UInt32 args
 	}
 	else
 	{
-		arr = g_ArrayMap.Create(kDataType_String, false, sender->GetModIndex());
+		arr = g_ArrayMap.Create(kDataType_String, false, sender->GetFile(0));
 		argsArrayId = arr->ID();
 	}
 
@@ -1920,8 +1920,10 @@ bool DispatchUserDefinedEvent(const char* eventName, Script* sender, UInt32 args
 	arr->SetElementString("eventName", eventName);
 	if (senderName == nullptr)
 	{
-		if (sender)
-			senderName = DataHandler::Get()->GetNthModName(sender->GetModIndex());
+		if (sender) {
+			const ModInfo* mod = sender->GetFile(0);
+			senderName = mod ? mod->name : "Runtime";
+		}
 		else
 			senderName = "NVSE";
 	}

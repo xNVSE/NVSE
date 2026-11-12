@@ -171,7 +171,7 @@ bool Cmd_ar_Construct_Execute(COMMAND_ARGS)
 	else if (StrCompare(arType, "Map") != 0)
 		bPacked = true;
 
-	const ArrayVar *newArr = g_ArrayMap.Create(keyType, bPacked, scriptObj->GetModIndex());
+	const ArrayVar *newArr = g_ArrayMap.Create(keyType, bPacked, scriptObj->GetFile(0));
 	*result = static_cast<int>(newArr->ID());
 	return true;
 }
@@ -301,7 +301,7 @@ bool Cmd_ar_Erase_Execute(COMMAND_ARGS)
 
 bool Cmd_ar_Sort_Execute(COMMAND_ARGS)
 {
-	ArrayVar *sortedArr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *sortedArr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = sortedArr->ID();
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.Arg(0) && eval.Arg(0)->CanConvertTo(kTokenType_Array))
@@ -320,7 +320,7 @@ bool Cmd_ar_Sort_Execute(COMMAND_ARGS)
 
 bool Cmd_ar_CustomSort_Execute(COMMAND_ARGS)
 {
-	ArrayVar *sortedArr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *sortedArr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = sortedArr->ID();
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.NumArgs() >= 2)
@@ -343,7 +343,7 @@ bool Cmd_ar_CustomSort_Execute(COMMAND_ARGS)
 
 bool Cmd_ar_SortAlpha_Execute(COMMAND_ARGS)
 {
-	ArrayVar *sortedArr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *sortedArr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = sortedArr->ID();
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
 	if (eval.ExtractArgs() && eval.Arg(0) && eval.Arg(0)->CanConvertTo(kTokenType_Array))
@@ -378,7 +378,7 @@ bool Cmd_ar_Find_Execute(COMMAND_ARGS)
 		if (keyType == kDataType_String)
 		{
 			eval.ExpectReturnType(kRetnType_String);
-			*result = g_StringMap.Add(scriptObj->GetModIndex(), s_arrayErrorCodeStr, true, nullptr);
+			*result = g_StringMap.Add(scriptObj->GetFile(0), s_arrayErrorCodeStr, true, nullptr);
 		}
 		else
 		{
@@ -402,7 +402,7 @@ bool Cmd_ar_Find_Execute(COMMAND_ARGS)
 		if (keyType == kDataType_Numeric)
 			*result = idx->key.num;
 		else
-			*result = g_StringMap.Add(scriptObj->GetModIndex(), idx->key.GetStr(), true, nullptr);
+			*result = g_StringMap.Add(scriptObj->GetFile(0), idx->key.GetStr(), true, nullptr);
 	}
 
 	return true;
@@ -564,7 +564,7 @@ bool Cmd_ar_Keys_Execute(COMMAND_ARGS)
 	if (eval.ExtractArgs() && eval.Arg(0) && eval.Arg(0)->CanConvertTo(kTokenType_Array))
 	{
 		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
-		if (arr) *result = arr->GetKeys(scriptObj->GetModIndex())->ID();
+		if (arr) *result = arr->GetKeys(scriptObj->GetFile(0))->ID();
 	}
 
 	return true;
@@ -614,7 +614,7 @@ bool ArrayCopyCommand(COMMAND_ARGS, bool bDeepCopy)
 		ArrayVar *arr = g_ArrayMap.Get(eval.Arg(0)->GetArrayID());
 		if (arr)
 		{
-			ArrayVar *arrCopy = arr->Copy(scriptObj->GetModIndex(), bDeepCopy);
+			ArrayVar *arrCopy = arr->Copy(scriptObj->GetFile(0), bDeepCopy);
 			if (arrCopy) *result = arrCopy->ID();
 		}
 	}
@@ -719,7 +719,7 @@ bool Cmd_ar_InsertRange_Execute(COMMAND_ARGS)
 
 bool Cmd_ar_List_Execute(COMMAND_ARGS)
 {
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = static_cast<int>(arr->ID());
 
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
@@ -770,7 +770,7 @@ bool Cmd_ar_Map_Execute(COMMAND_ARGS)
 			return true;
 
 		// create the array and populate it
-		ArrayVar *arr = g_ArrayMap.Create(keyType, false, scriptObj->GetModIndex());
+		ArrayVar *arr = g_ArrayMap.Create(keyType, false, scriptObj->GetFile(0));
 		*result = static_cast<int>(arr->ID());
 
 		for (UInt32 i = 0; i < eval.NumArgs(); i++)
@@ -800,7 +800,7 @@ bool Cmd_ar_Map_Execute(COMMAND_ARGS)
 
 bool Cmd_ar_Range_Execute(COMMAND_ARGS)
 {
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = static_cast<int>(arr->ID());
 
 	SInt32 start = 0;
@@ -831,7 +831,7 @@ bool Cmd_ar_Range_Execute(COMMAND_ARGS)
 
 ArrayVar* ElementToIterator(Script* script, ArrayIterator& iter)
 {
-	auto* arr = g_ArrayMap.Create(kDataType_String, false, script->GetModIndex());
+	auto* arr = g_ArrayMap.Create(kDataType_String, false, script->GetFile(0));
 	const auto* key = iter.first();
 	if (key->KeyType() == kDataType_String)
 		arr->SetElementString("key", key->key.str);
@@ -892,7 +892,7 @@ bool Cmd_ar_Filter_Execute(COMMAND_ARGS)
 	if (!ExtractArrayUDF(ctx))
 		return true;
 	auto& [eval, arr, conditionScript] = ctx;
-	auto* returnArray = g_ArrayMap.Create(arr->KeyType(), arr->IsPacked(), scriptObj->GetModIndex());
+	auto* returnArray = g_ArrayMap.Create(arr->KeyType(), arr->IsPacked(), scriptObj->GetFile(0));
 	for (auto iter = arr->Begin(); !iter.End(); ++iter)
 	{
 		InternalFunctionCaller caller(conditionScript, thisObj, containingObj);
@@ -916,7 +916,7 @@ bool Cmd_ar_MapTo_Execute(COMMAND_ARGS)
 	if (!ExtractArrayUDF(ctx))
 		return true;
 	auto& [eval, arr, transformScript] = ctx;
-	auto* returnArray = g_ArrayMap.Create(arr->KeyType(), arr->IsPacked(), scriptObj->GetModIndex());
+	auto* returnArray = g_ArrayMap.Create(arr->KeyType(), arr->IsPacked(), scriptObj->GetFile(0));
 	for (auto iter = arr->Begin(); !iter.End(); ++iter)
 	{
 		InternalFunctionCaller caller(transformScript, thisObj, containingObj);
@@ -1030,7 +1030,7 @@ bool Cmd_ar_Generate_Execute(COMMAND_ARGS)
 	ArrayVar* returnArray = nullptr;
 	bool const isMapArray = keyGenerator;
 	if (!isMapArray)
-		returnArray = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+		returnArray = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 
 	for (UInt32 i = 0; i < numElemsToGenerate; i++)
 	{
@@ -1056,7 +1056,7 @@ bool Cmd_ar_Generate_Execute(COMMAND_ARGS)
 
 					// Initialize returnArray as a map array.
 					if (i == 0 && !returnArray)
-						returnArray = g_ArrayMap.Create(keyType, false, scriptObj->GetModIndex());
+						returnArray = g_ArrayMap.Create(keyType, false, scriptObj->GetFile(0));
 					if (!returnArray) return true;  // hopefully redundant safety check.
 
 					// Set the map array key/value pair.
@@ -1109,7 +1109,7 @@ bool Cmd_ar_Init_Execute(COMMAND_ARGS)
 	if (!ExtractIntAndElemUDF(ctx))
 		return true;
 	auto& [eval, numElemsToInitialize, elem] = ctx;
-	auto* returnArray = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	auto* returnArray = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	for (UInt32 i = 0; i < numElemsToInitialize; i++)
 		returnArray->Insert(i, &elem);
 	*result = returnArray->ID();
@@ -1154,7 +1154,7 @@ bool Cmd_ar_Unique_Execute(COMMAND_ARGS)
 		auto* sourceArray = eval.Arg(0)->GetArrayVar();
 		if (!sourceArray)
 			return true;
-		auto* returnArray = g_ArrayMap.Create(sourceArray->KeyType(), sourceArray->IsPacked(), scriptObj->GetModIndex());
+		auto* returnArray = g_ArrayMap.Create(sourceArray->KeyType(), sourceArray->IsPacked(), scriptObj->GetFile(0));
 		for (auto iter = sourceArray->Begin(); !iter.End(); ++iter)
 		{
 			const auto* toFind = iter.second();
@@ -1255,7 +1255,7 @@ bool Cmd_ar_CountWhere_Execute(COMMAND_ARGS) {
 	if (!ExtractArrayUDF(ctx))
 		return true;
 	auto& [eval, arr, conditionScript] = ctx;
-	auto* returnArray = g_ArrayMap.Create(arr->KeyType(), arr->IsPacked(), scriptObj->GetModIndex());
+	auto* returnArray = g_ArrayMap.Create(arr->KeyType(), arr->IsPacked(), scriptObj->GetFile(0));
 	for (auto iter = arr->Begin(); !iter.End(); ++iter)
 	{
 		InternalFunctionCaller caller(conditionScript, thisObj, containingObj);
