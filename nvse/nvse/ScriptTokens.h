@@ -365,7 +365,7 @@ struct ScriptToken
 	void *operator new(size_t size, bool useMemoryPool);
 	void operator delete(ScriptToken *token, std::destroying_delete_t);
 	void operator delete(void *p, bool useMemoryPool);
-	void operator delete(void *p); // unimplemented: keeping this here to shut up the compiler warning about non matching delete
+	void operator delete(void *p); // matches operator new(size_t): frees a pooled token whose constructor threw
 
 	ScriptToken(const ScriptToken& other) = delete;
 	ScriptToken& operator=(const ScriptToken& other) = delete;

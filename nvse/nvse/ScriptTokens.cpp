@@ -421,6 +421,12 @@ void ScriptToken::operator delete(void *p, bool useMemoryPool)
 		::operator delete(p);
 }
 
+// Called (instead of the destroying delete) when a constructor throws after operator new(size_t)
+void ScriptToken::operator delete(void *p)
+{
+	operator delete(p, true);
+}
+
 // C++20 destroying delete can avoid calling destructor if we don't want the object deleted
 // derived classes will not call this delete (tested), they will continue using their own non-destroying operator delete overload
 void ScriptToken::operator delete(ScriptToken *token, std::destroying_delete_t)

@@ -33,7 +33,7 @@ __declspec(naked) void* __fastcall Pool_Alloc(UInt32 size)
 		cmp		ecx, MAX_BLOCK_SIZE
 		jbe		doCache
 		push	ecx
-		call	_malloc_base
+		call	ASM_MALLOC_BASE
 		pop		ecx
 		retn
 	minSize:
@@ -41,7 +41,7 @@ __declspec(naked) void* __fastcall Pool_Alloc(UInt32 size)
 	doCache:
 		push	ecx
 		mov		ecx, offset s_memoryPool.m_cs
-		call	PrimitiveCS::Enter
+		call	PrimitiveCS_Enter
 		pop		ecx
 		mov		edx, ecx
 		shr		edx, 2
@@ -52,7 +52,7 @@ __declspec(naked) void* __fastcall Pool_Alloc(UInt32 size)
 		mov		ecx, [eax]
 		mov		[edx], ecx
 		xor		edx, edx
-		mov		s_memoryPool.m_cs.m_owningThread, edx
+		mov		dword ptr s_memoryPool.m_cs, edx // m_owningThread
 		retn
 		ALIGN 16
 	allocPool:
@@ -67,7 +67,7 @@ __declspec(naked) void* __fastcall Pool_Alloc(UInt32 size)
 		sub		ecx, edx
 		add		ecx, 8
 		push	ecx
-		call	_malloc_base
+		call	ASM_MALLOC_BASE
 		pop		ecx
 		pop		ecx
 		sub		ecx, 2
@@ -85,7 +85,7 @@ __declspec(naked) void* __fastcall Pool_Alloc(UInt32 size)
 		jnz		linkHead
 		mov		[eax], ecx
 		mov		eax, edx
-		mov		s_memoryPool.m_cs.m_owningThread, ecx
+		mov		dword ptr s_memoryPool.m_cs, ecx // m_owningThread
 		pop		esi
 		retn
 	}
@@ -108,7 +108,7 @@ __declspec(naked) void __fastcall Pool_Free(void *pBlock, UInt32 size)
 		push	edx
 		push	ecx
 		mov		ecx, offset s_memoryPool.m_cs
-		call	PrimitiveCS::Enter
+		call	PrimitiveCS_Enter
 		pop		ecx
 		pop		edx
 		shr		edx, 2
@@ -116,13 +116,13 @@ __declspec(naked) void __fastcall Pool_Free(void *pBlock, UInt32 size)
 		mov		eax, [edx]
 		mov		[ecx], eax
 		mov		[edx], ecx
-		mov		s_memoryPool.m_cs.m_owningThread, 0
+		mov		dword ptr s_memoryPool.m_cs, 0 // m_owningThread
 	nullPtr:
 		retn
 		ALIGN 16
 	doFree:
 		push	ecx
-		call	_free_base
+		call	ASM_FREE_BASE
 		pop		ecx
 		retn
 	}
@@ -161,7 +161,7 @@ __declspec(naked) void* __fastcall Pool_Realloc(void *pBlock, UInt32 curSize, UI
 	doRealloc:
 		push	ecx
 		push	eax
-		call	_realloc_base
+		call	ASM_REALLOC_BASE
 		add		esp, 8
 		retn	4
 	}

@@ -2,13 +2,46 @@
 
 memcpy_t _memcpy = memcpy, _memmove = memmove;
 
-__declspec(naked) PrimitiveCS *PrimitiveCS::Enter()
+// Not dllimport: clang needs a free register for each call through an import pointer,
+// and the asm below clobbers all of them.
+static DWORD __stdcall CurrentThreadId()
+{
+	return GetCurrentThreadId();
+}
+
+#ifdef __clang__
+void* __cdecl NVSE_MallocBase(size_t size)
+{
+	return _malloc_base(size);
+}
+
+void __cdecl NVSE_FreeBase(void *block)
+{
+	_free_base(block);
+}
+
+void* __cdecl NVSE_ReallocBase(void *block, size_t size)
+{
+	return _realloc_base(block, size);
+}
+
+// Same reason as CurrentThreadId; see ASM_MALLOC_BASE in utility.h.
+static void __stdcall SleepNoImport(DWORD milliseconds)
+{
+	Sleep(milliseconds);
+}
+#define ASM_SLEEP	SleepNoImport
+#else
+#define ASM_SLEEP	Sleep
+#endif
+
+__declspec(naked) PrimitiveCS* __fastcall PrimitiveCS_Enter(PrimitiveCS *cs)
 {
 	__asm
 	{
 		push	ebx
 		mov		ebx, ecx
-		call	GetCurrentThreadId
+		call	CurrentThreadId
 		cmp		[ebx], eax
 		jnz		doSpin
 	done:
@@ -31,7 +64,7 @@ __declspec(naked) PrimitiveCS *PrimitiveCS::Enter()
 		mov		edx, edi
 		shr		edx, 0x1F
 		push	edx
-		call	Sleep
+		call	ASM_SLEEP
 		xor		eax, eax
 		lock cmpxchg [ebx], esi
 		test	eax, eax
@@ -42,6 +75,11 @@ __declspec(naked) PrimitiveCS *PrimitiveCS::Enter()
 		pop		ebx
 		retn
 	}
+}
+
+PrimitiveCS *PrimitiveCS::Enter()
+{
+	return PrimitiveCS_Enter(this);
 }
 
 __declspec(naked) TESForm* __stdcall LookupFormByRefID(UInt32 refID)
@@ -383,7 +421,7 @@ __declspec(naked) char* __fastcall CopyString(const char *key)
 		push	ecx
 		push	eax
 #if !_DEBUG
-		call    _malloc_base
+		call    ASM_MALLOC_BASE
 #else
 		call	malloc
 #endif
@@ -405,7 +443,7 @@ __declspec(naked) char* __fastcall CopyString(const char* key, UInt32 length)
 		push	ecx
 		push	eax
 #if !_DEBUG
-		call    _malloc_base
+		call    ASM_MALLOC_BASE
 #else
 		call	malloc
 #endif

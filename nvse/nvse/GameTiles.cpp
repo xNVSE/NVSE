@@ -13,7 +13,10 @@ UInt32 Tile::TraitNameToID(const char * traitName)
 	return ::TraitNameToID(traitName);
 }
 
-__declspec(naked) Tile::Value *Tile::GetValue(UInt32 typeID)
+// clang supports neither naked member functions nor calls to member functions from
+// inline asm, so the asm bodies are free functions with the member's register use (this in ecx;
+// edx is unused).
+static __declspec(naked) Tile::Value* __fastcall TileGetValue(Tile* tile, void* edx, UInt32 typeID)
 {
 	__asm
 	{
@@ -46,6 +49,11 @@ __declspec(naked) Tile::Value *Tile::GetValue(UInt32 typeID)
 		pop		ebx
 		retn	4
 	}
+}
+
+Tile::Value *Tile::GetValue(UInt32 typeID)
+{
+	return TileGetValue(this, nullptr, typeID);
 }
 
 Tile::Value * Tile::GetValueName(const char * valueName)

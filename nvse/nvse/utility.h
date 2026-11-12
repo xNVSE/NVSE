@@ -7,6 +7,23 @@
 typedef void* (*memcpy_t)(void*, const void*, size_t);
 extern memcpy_t _memcpy, _memmove;
 
+// Call targets for dllimport CRT functions inside inline asm. MSVC compiles `call _malloc_base`
+// to `call [__imp__malloc_base]`. clang-cl loads the import slot into a register of its choice,
+// which a naked function does not own, and then calls through that value, jumping into the
+// function's code bytes. Under clang the asm calls these plain wrappers instead.
+#ifdef __clang__
+void* __cdecl NVSE_MallocBase(size_t size);
+void __cdecl NVSE_FreeBase(void *block);
+void* __cdecl NVSE_ReallocBase(void *block, size_t size);
+#define ASM_MALLOC_BASE		NVSE_MallocBase
+#define ASM_FREE_BASE		NVSE_FreeBase
+#define ASM_REALLOC_BASE	NVSE_ReallocBase
+#else
+#define ASM_MALLOC_BASE		_malloc_base
+#define ASM_FREE_BASE		_free_base
+#define ASM_REALLOC_BASE	_realloc_base
+#endif
+
 //	Workaround for bypassing the compiler calling the d'tor on function-scope objects.
 template <typename T, bool InitConstructor = true> class TempObject
 {
@@ -73,6 +90,13 @@ template <typename T> __forceinline void RawSwap(const T &lhs, const T &rhs)
 #define NOP_0xD NOP_0x6 NOP_0x7
 #define NOP_0xE NOP_0x7 NOP_0x7
 #define NOP_0xF NOP_0x7 NOP_0x8
+
+class PrimitiveCS;
+
+// The body of PrimitiveCS::Enter, for inline asm: clang supports neither naked member
+// functions nor calls to member functions from inline asm. Like the member, it takes
+// the lock in ecx and returns it.
+PrimitiveCS* __fastcall PrimitiveCS_Enter(PrimitiveCS *cs);
 
 class PrimitiveCS
 {
