@@ -2,7 +2,6 @@
 #include <iostream>
 
 #include "../Utils.h"
-#include "Parser.h"
 #include "../AST/AST.h"
 
 namespace Compiler {

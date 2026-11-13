@@ -1,6 +1,5 @@
 #include "Visitor.h"
 
-#include "Parser.h"
 #include <nvse/Compiler/AST/AST.h>
 
 #include <format>
