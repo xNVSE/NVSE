@@ -5634,21 +5634,11 @@ bool Preprocessor::AdvanceLine()
 
 	m_curLineNo++;
 
-	const UInt32 endPos = m_scriptText.find("\r\n", m_scriptTextOffset);
-
-	if (endPos == -1) // last line, no CRLF
-	{
-		m_curLineText = m_scriptText.substr(m_scriptTextOffset, m_scriptText.length() - m_scriptTextOffset);
-		m_scriptTextOffset = m_scriptText.length();
-		return true;
-	}
-	if (m_scriptTextOffset == endPos) // empty line
-	{
-		m_scriptTextOffset += 2;
-		return AdvanceLine();
-	}
-	// line contains text
+	const auto endPos = m_scriptText.find('\n', m_scriptTextOffset);
 	m_curLineText = m_scriptText.substr(m_scriptTextOffset, endPos - m_scriptTextOffset);
+	m_scriptTextOffset = endPos == std::string::npos ? m_scriptText.length() : endPos + 1;
+	if (!m_curLineText.empty() && m_curLineText.back() == '\r')
+		m_curLineText.pop_back();
 
 	// strip comments
 	for (UInt32 i = 0; i < m_curLineText.length(); i++)
@@ -5671,7 +5661,6 @@ bool Preprocessor::AdvanceLine()
 		}
 	}
 
-	m_scriptTextOffset = endPos + 2;
 	return true;
 }
 
