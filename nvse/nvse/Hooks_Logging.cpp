@@ -17,7 +17,7 @@
 #define kBufferSCOF 0x0071DE11
 
 static FILE * s_errorLog = NULL;
-static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
+static int ErrorLogHook(const char * fmt, ...)
 {
 	auto* scriptContext = OtherHooks::GetExecutingScriptContext();
 	const auto retnAddress = reinterpret_cast<UInt32>(_ReturnAddress());
@@ -27,18 +27,12 @@ static int ErrorLogHook(const char * fmt, const char * fmt_alt, ...)
 		// context: Dispel and RemoveMe return false deliberately if called within own script effect to act as a "Return" statement
 		return 0;
 	}
+	// When fmt is a small integer the format string is the next argument. va_start must name the
+	// last named parameter: clang ignores its second argument and always starts after that one.
 	va_list	args;
-	bool alt;
-	if(0xFFFF < (UInt32)fmt)
-	{
-		va_start(args, fmt);
-		alt = false;
-	}
-	else
-	{
-		va_start(args, fmt_alt);
-		alt = true;
-	}
+	va_start(args, fmt);
+	const bool alt = (UInt32)fmt <= 0xFFFF;
+	const char *fmt_alt = alt ? va_arg(args, const char *) : nullptr;
 
 	if(!alt)
 	{
