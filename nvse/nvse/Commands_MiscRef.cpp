@@ -58,7 +58,7 @@ bool Cmd_GetLinkedDoor_Execute(COMMAND_ARGS)
 	if (!thisObj)
 		return true;
 
-	ExtraTeleport* xTele = GetByTypeCast(thisObj->extraDataList, Teleport);
+	ExtraTeleport* xTele = GetExtraByType(thisObj->extraDataList, Teleport);
 	if (xTele)
 		*refResult = xTele->data->linkedDoor->refID;
 
@@ -73,7 +73,7 @@ bool Cmd_GetTeleportCell_Execute(COMMAND_ARGS)
 	if (!thisObj)
 		return true;
 
-	ExtraTeleport* xTele = GetByTypeCast(thisObj->extraDataList, Teleport);
+	ExtraTeleport* xTele = GetExtraByType(thisObj->extraDataList, Teleport);
 	// parentCell will be null if linked door's cell is not currently loaded (e.g. most exterior cells)
 	if (xTele && xTele->data && xTele->data->linkedDoor && xTele->data->linkedDoor->parentCell) {
 		*refResult = xTele->data->linkedDoor->parentCell->refID;
@@ -89,7 +89,7 @@ bool Cmd_IsLoadDoor_Execute(COMMAND_ARGS)
 	if (!thisObj)
 		return true;
 
-	if (GetByTypeCast(thisObj->extraDataList, Teleport) || GetByTypeCast(thisObj->extraDataList, RandomTeleportMarker))
+	if (GetExtraByType(thisObj->extraDataList, Teleport) || GetExtraByType(thisObj->extraDataList, RandomTeleportMarker))
 		*result = 1;
 
 	return true;
@@ -112,7 +112,7 @@ bool GetTeleportInfo(COMMAND_ARGS, UInt32 which)
 	if (!thisObj || thisObj->baseForm->typeID != kFormType_TESObjectDOOR)
 		return true;
 
-	ExtraTeleport* tele = GetByTypeCast(thisObj->extraDataList, Teleport);
+	ExtraTeleport* tele = GetExtraByType(thisObj->extraDataList, Teleport);
 	if (tele && tele->data)
 	{
 		switch (which)
@@ -169,12 +169,12 @@ bool Cmd_SetDoorTeleport_Execute(COMMAND_ARGS)
 	float z = 999;
 	float rot = 999;
 
-	if (GetByTypeCast(thisObj->extraDataList, RandomTeleportMarker))
+	if (GetExtraByType(thisObj->extraDataList, RandomTeleportMarker))
 		return true;
 
 	if (ExtractArgs(EXTRACT_ARGS, &linkedDoor, &x, &y, &z, &rot) && linkedDoor && linkedDoor->IsPersistent())	// ###TODO: necessary for linkedref to be door?
 	{
-		ExtraTeleport* tele = GetByTypeCast(thisObj->extraDataList, Teleport);
+		ExtraTeleport* tele = GetExtraByType(thisObj->extraDataList, Teleport);
 		if (!tele)
 		{
 			tele = ExtraTeleport::Create();
@@ -226,7 +226,7 @@ bool Cmd_GetParentWorldspace_Execute(COMMAND_ARGS)
 
 	if(!thisObj) return true;
 
-	ExtraPersistentCell* xPersistentCell = (ExtraPersistentCell*)GetByTypeCast(thisObj->extraDataList, PersistentCell);
+	ExtraPersistentCell* xPersistentCell = (ExtraPersistentCell*)GetExtraByType(thisObj->extraDataList, PersistentCell);
 	if (xPersistentCell && xPersistentCell->persistentCell && xPersistentCell->persistentCell->worldSpace)
 		*refResult = xPersistentCell->persistentCell->worldSpace->refID;
 	else
@@ -378,7 +378,7 @@ struct DistanceAngleMatcher
 #if _DEBUG
 			// test if GetHeadingAngle has same result as Cmd_GetHeadingAngle
 			// Cmd_GetHeadingAngle only works on actor calling refs, so only enable the test for that case.
-			if (s_AreRuntimeTestsEnabled && m_distanceRef->Unk_3F())
+			if (s_AreRuntimeTestsEnabled && m_distanceRef->IsMobileObject())
 			{
 				double cmdResult;
 				CdeclCall(0x5A0410, m_distanceRef, refr, 0, &cmdResult); // call Cmd_GetHeadingAngle
@@ -543,7 +543,7 @@ struct RefMatcherItem: IncludeTakenMatcher, DistanceAngleMatcher, BaseFormMatche
 				break;
 
 			case kFormType_TESObjectLIGH:
-				if (TESObjectLIGH* light = DYNAMIC_CAST(refr->baseForm, TESForm, TESObjectLIGH))
+				if (TESObjectLIGH* light = GET_FORM_AS(refr->baseForm, TESObjectLIGH))
 					if (light->lightFlags & 2)
 						break;
 			default:
@@ -932,7 +932,7 @@ bool Cmd_GetRefCount_Execute(COMMAND_ARGS)
 		*result = invRefr->m_data.entry->countDelta;
 	else
 	{
-		ExtraCount *xCount = GetByTypeCast(thisObj->extraDataList, Count);
+		ExtraCount* xCount = static_cast<ExtraCount*>(thisObj->extraDataList.GetByType(kExtraData_Count));
 		*result = xCount ? xCount->count : 1;
 	}
 	return true;
@@ -975,7 +975,7 @@ bool Cmd_GetOpenKey_Execute(COMMAND_ARGS)
 
 	if (!thisObj)	return true;
 	
-	ExtraLock* xLock = GetByTypeCast(thisObj->extraDataList, Lock);
+	ExtraLock* xLock = GetExtraByType(thisObj->extraDataList, Lock);
 	if (xLock && xLock->data && xLock->data->key)
 		*refResult = xLock->data->key->refID;
 
@@ -998,11 +998,11 @@ bool Cmd_SetOpenKey_Execute(COMMAND_ARGS)
 	if (!form)	
 		return true;
 
-	TESKey* key = DYNAMIC_CAST(form, TESForm, TESKey);
+	TESKey* key = GET_FORM_AS(form, TESKey);
 	if (!key)	
 		return true;
 
-	ExtraLock* xLock = GetByTypeCast(thisObj->extraDataList, Lock);
+	ExtraLock* xLock = GetExtraByType(thisObj->extraDataList, Lock);
 	if (!xLock) {
 		xLock = ExtraLock::Create();
 		thisObj->extraDataList.Add(xLock);
@@ -1024,7 +1024,7 @@ bool Cmd_ClearOpenKey_Execute(COMMAND_ARGS)
 	if (!thisObj)	
 		return true;
 
-	ExtraLock* xLock = GetByTypeCast(thisObj->extraDataList, Lock);
+	ExtraLock* xLock = GetExtraByType(thisObj->extraDataList, Lock);
 	if (xLock)
 	{
 		thisObj->extraDataList.Remove(xLock, true);
@@ -1037,7 +1037,7 @@ bool Cmd_ClearOpenKey_Execute(COMMAND_ARGS)
 static TESForm* GetOwner(BaseExtraList& xDataList)
 {
 	TESForm* owner = NULL;
-	ExtraOwnership* xOwner = GetByTypeCast(xDataList, Ownership);
+	ExtraOwnership* xOwner = GetExtraByType(xDataList, Ownership);
 	if (xOwner)
 		owner = xOwner->owner;
 
@@ -1046,7 +1046,7 @@ static TESForm* GetOwner(BaseExtraList& xDataList)
 
 static UInt32 GetOwningFactionRequiredRank(BaseExtraList& xDataList)
 {
-	ExtraRank * xRank = GetByTypeCast(xDataList, Rank);
+	ExtraRank * xRank = GetExtraByType(xDataList, Rank);
 	if(xRank)
 		return xRank->rank;
 
@@ -1115,8 +1115,8 @@ bool Cmd_GetActorBaseFlagsLow_Execute(COMMAND_ARGS)
 
 	if(!ExtractArgs(EXTRACT_ARGS, &obj)) return true;
 
-	if(!obj && thisObj && thisObj->baseForm)
-		obj = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESActorBase);
+	if(!obj && thisObj && thisObj->baseForm && thisObj->baseForm->IsActorBase())
+		obj = static_cast<TESActorBase*>(thisObj->baseForm);
 
 	if(obj)
 		*result = obj->baseData.flags & 0xFFFF;
@@ -1133,8 +1133,8 @@ bool Cmd_SetActorBaseFlagsLow_Execute(COMMAND_ARGS)
 
 	if(!ExtractArgs(EXTRACT_ARGS, &data, &obj)) return true;
 
-	if(!obj && thisObj && thisObj->baseForm)
-		obj = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESActorBase);
+	if(!obj && thisObj && thisObj->baseForm && thisObj->baseForm->IsActorBase())
+		obj = static_cast<TESActorBase*>(thisObj->baseForm);
 
 	if(obj)
 		obj->baseData.flags = (data & 0x0000FFFF) | (obj->baseData.flags & 0xFFFF0000);
@@ -1150,8 +1150,8 @@ bool Cmd_GetActorBaseFlagsHigh_Execute(COMMAND_ARGS)
 
 	if(!ExtractArgs(EXTRACT_ARGS, &obj)) return true;
 
-	if(!obj && thisObj && thisObj->baseForm)
-		obj = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESActorBase);
+	if(!obj && thisObj && thisObj->baseForm && thisObj->baseForm->IsActorBase())
+		obj = static_cast<TESActorBase*>(thisObj->baseForm);
 
 	if(obj)
 		*result = (obj->baseData.flags >> 16) & 0xFFFF;
@@ -1168,8 +1168,8 @@ bool Cmd_SetActorBaseFlagsHigh_Execute(COMMAND_ARGS)
 
 	if(!ExtractArgs(EXTRACT_ARGS, &data, &obj)) return true;
 
-	if(!obj && thisObj && thisObj->baseForm)
-		obj = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESActorBase);
+	if(!obj && thisObj && thisObj->baseForm && thisObj->baseForm->IsActorBase())
+		obj = static_cast<TESActorBase*>(thisObj->baseForm);
 
 	if(obj)
 		obj->baseData.flags = ((data << 16) & 0xFFFF0000) | (obj->baseData.flags & 0x0000FFFF);
@@ -1238,8 +1238,8 @@ bool Cmd_SetFlagsHigh_Execute(COMMAND_ARGS)
 
 	if(!ExtractArgs(EXTRACT_ARGS, &data, &obj)) return true;
 
-	if(!obj && thisObj && thisObj->baseForm)
-		obj = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESActorBase);
+	if(!obj && thisObj && thisObj->baseForm && thisObj->baseForm->IsActorBase())
+		obj = static_cast<TESActorBase*>(thisObj->baseForm);
 
 	if(obj)
 		obj->flags = ((data << 16) & 0xFFFF0000) | (obj->flags & 0x0000FFFF);
@@ -1281,8 +1281,8 @@ SInt8 GetFactionRank(TESObjectREFR * thisObj, TESFaction * faction)
 		bool bFoundRank = false;
 		foundRank = GetExtraFactionRank(thisObj->extraDataList, faction);
 		bFoundRank = ( -1 != foundRank );
-		if (!bFoundRank) {
-			TESActorBaseData* actorBase = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESActorBaseData);
+		if (!bFoundRank && thisObj->baseForm && thisObj->baseForm->IsActorBase()) {
+			TESActorBaseData* actorBase = &static_cast<TESActorBase*>(thisObj->baseForm)->baseData;
 			if (actorBase)
 			{
 				foundRank = actorBase->GetFactionRank(faction);
@@ -1322,7 +1322,7 @@ bool Cmd_HasOwnership_Eval(COMMAND_ARGS_EVAL)
 		if (owner->refID==thisObj->baseForm->refID)
 			*result = 1.0;
 		else {
-			TESFaction * faction = DYNAMIC_CAST(owner, TESForm, TESFaction);
+			TESFaction * faction = GET_FORM_AS(owner, TESFaction);
 			if (faction)
 				*result = (GetFactionRank(thisObj, faction) >= rank) ? 1.0 : 0.0;
 		}
@@ -1379,7 +1379,7 @@ bool Cmd_IsOwned_Eval(COMMAND_ARGS_EVAL)
 		if (owner->refID==anNPC->baseForm->refID)
 			*result = 1.0;
 		else {
-			TESFaction * faction = DYNAMIC_CAST(owner, TESForm, TESFaction);
+			TESFaction * faction = GET_FORM_AS(owner, TESFaction);
 			if (faction)
 				*result = (GetFactionRank(anNPC, faction) >= rank) ? 1.0 : 0.0;
 		}
@@ -1419,7 +1419,7 @@ bool Cmd_SetEyes_Execute(COMMAND_ARGS)
 	if(!ExtractArgsEx(EXTRACT_ARGS_EX, &part, &target))
 		return true;
 
-	TESEyes	* eyes = DYNAMIC_CAST(part, TESForm, TESEyes);
+	TESEyes	* eyes = GET_FORM_AS(part, TESEyes);
 	if(!eyes)
 		return true;
 
@@ -1433,7 +1433,7 @@ bool Cmd_SetEyes_Execute(COMMAND_ARGS)
 	if(!target)
 		return true;
 
-	TESNPC	* npc = DYNAMIC_CAST(target, TESForm, TESNPC);
+	TESNPC	* npc = GET_FORM_AS(target, TESNPC);
 	if(!npc)
 		return true;
 
@@ -1454,7 +1454,7 @@ bool Cmd_SetHair_Execute(COMMAND_ARGS)
 	if(!ExtractArgsEx(EXTRACT_ARGS_EX, &part, &target))
 		return true;
 
-	TESHair	* hair = DYNAMIC_CAST(part, TESForm, TESHair);
+	TESHair	* hair = GET_FORM_AS(part, TESHair);
 	if(!hair)
 		return true;
 
@@ -1468,7 +1468,7 @@ bool Cmd_SetHair_Execute(COMMAND_ARGS)
 	if(!target)
 		return true;
 
-	TESNPC	* npc = DYNAMIC_CAST(target, TESForm, TESNPC);
+	TESNPC	* npc = GET_FORM_AS(target, TESNPC);
 	if(!npc)
 		return true;
 
@@ -1499,7 +1499,7 @@ bool Cmd_SetHairLength_Execute(COMMAND_ARGS)
 	if(!target)
 		return true;
 
-	TESNPC	* npc = DYNAMIC_CAST(target, TESForm, TESNPC);
+	TESNPC	* npc = GET_FORM_AS(target, TESNPC);
 	if(!npc)
 		return true;
 
@@ -1531,7 +1531,7 @@ bool Cmd_SetHairColor_Execute(COMMAND_ARGS)
 	if(!target)
 		return true;
 
-	TESNPC	* npc = DYNAMIC_CAST(target, TESForm, TESNPC);
+	TESNPC	* npc = GET_FORM_AS(target, TESNPC);
 	if(!npc)
 		return true;
 
@@ -1553,8 +1553,8 @@ bool Cmd_GetEyes_Execute(COMMAND_ARGS)
 	if(!ExtractArgs(EXTRACT_ARGS, &npc))
 		return true;
 
-	if(!npc && thisObj)
-		npc = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESNPC);
+	if(!npc && thisObj && thisObj->baseForm)
+		npc = GET_FORM_AS(thisObj->baseForm, TESNPC);
 
 	if(npc && npc->eyes)
 	{
@@ -1576,7 +1576,7 @@ bool Cmd_GetEyesFlags_Execute(COMMAND_ARGS)
 	*result = 0;
 
 	if (ExtractArgs(EXTRACT_ARGS, &form, &flagMask) && form) {
-		eyes = DYNAMIC_CAST(form, TESForm, TESEyes);
+		eyes = GET_FORM_AS(form, TESEyes);
 		if (eyes)
 		{
 			iResult = eyes->eyeFlags & flagMask;
@@ -1598,7 +1598,7 @@ bool Cmd_SetEyesFlags_Execute(COMMAND_ARGS)
 	*result = 0;
 
 	if (ExtractArgs(EXTRACT_ARGS, &form, &flagMask) && form && (flagMask < 0x0FF) ) {
-		eyes = DYNAMIC_CAST(form, TESForm, TESEyes);
+		eyes = GET_FORM_AS(form, TESEyes);
 		if (eyes)
 			eyes->eyeFlags = flagMask;
 	}
@@ -1616,8 +1616,8 @@ bool Cmd_GetHair_Execute(COMMAND_ARGS)
 	if(!ExtractArgs(EXTRACT_ARGS, &npc))
 		return true;
 
-	if(!npc && thisObj)
-		npc = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESNPC);
+	if(!npc && thisObj && thisObj->baseForm)
+		npc = GET_FORM_AS(thisObj->baseForm, TESNPC);
 
 	if(npc && npc->hair)
 	{
@@ -1639,7 +1639,7 @@ bool Cmd_GetHairFlags_Execute(COMMAND_ARGS)
 	*result = 0;
 
 	if (ExtractArgs(EXTRACT_ARGS, &form, &flagMask) && form) {
-		hair = DYNAMIC_CAST(form, TESForm, TESHair);
+		hair = GET_FORM_AS(form, TESHair);
 		if (hair)
 		{
 			iResult = hair->hairFlags & flagMask;
@@ -1660,7 +1660,7 @@ bool Cmd_SetHairFlags_Execute(COMMAND_ARGS)
 	*result = 0;
 
 	if (ExtractArgs(EXTRACT_ARGS, &form, &flagMask) && form && (flagMask < 0x0FF) ) {
-		hair = DYNAMIC_CAST(form, TESForm, TESHair);
+		hair = GET_FORM_AS(form, TESHair);
 		if (hair)
 			hair->hairFlags = flagMask;
 	}
@@ -1677,8 +1677,8 @@ bool Cmd_GetHairLength_Execute(COMMAND_ARGS)
 	if(!ExtractArgs(EXTRACT_ARGS, &npc))
 		return true;
 
-	if(!npc && thisObj)
-		npc = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESNPC);
+	if(!npc && thisObj && thisObj->baseForm)
+		npc = GET_FORM_AS(thisObj->baseForm, TESNPC);
 
 	if(npc)
 	{
@@ -1702,8 +1702,8 @@ bool Cmd_GetHairColor_Execute(COMMAND_ARGS)
 	if(!ExtractArgs(EXTRACT_ARGS, &code, &npc))
 		return true;
 
-	if(!npc && thisObj)
-		npc = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESNPC);
+	if(!npc && thisObj && thisObj->baseForm)
+		npc = GET_FORM_AS(thisObj->baseForm, TESNPC);
 
 	if(npc)
 	{
@@ -1749,7 +1749,7 @@ bool Cmd_SetNPCWeight_Execute(COMMAND_ARGS)
 	if(!target)
 		return true;
 
-	TESNPC	* npc = DYNAMIC_CAST(target, TESForm, TESNPC);
+	TESNPC	* npc = GET_FORM_AS(target, TESNPC);
 	if(!npc)
 		return true;
 
@@ -1770,8 +1770,8 @@ bool Cmd_GetNPCWeight_Execute(COMMAND_ARGS)
 	if(!ExtractArgs(EXTRACT_ARGS, &npc))
 		return true;
 
-	if(!npc && thisObj)
-		npc = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESNPC);
+	if(!npc && thisObj && thisObj->baseForm)
+		npc = GET_FORM_AS(thisObj->baseForm, TESNPC);
 
 	if(npc)
 	{
@@ -1804,7 +1804,7 @@ bool Cmd_SetNPCHeight_Execute(COMMAND_ARGS)
 	if(!target)
 		return true;
 
-	TESNPC	* npc = DYNAMIC_CAST(target, TESForm, TESNPC);
+	TESNPC	* npc = GET_FORM_AS(target, TESNPC);
 	if(!npc)
 		return true;
 
@@ -1826,7 +1826,7 @@ bool Cmd_GetNPCHeight_Execute(COMMAND_ARGS)
 		return true;
 
 	if(!npc && thisObj)
-		npc = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESNPC);
+		npc = GET_FORM_AS(thisObj->baseForm, TESNPC);
 
 	if(npc)
 	{
@@ -1904,8 +1904,8 @@ bool Cmd_GetActorFIKstatus_Eval(COMMAND_ARGS_EVAL)
 	if (!thisObj)
 		return false;
 
-	Actor* actor = DYNAMIC_CAST(thisObj, TESObjectREFR, Actor);
-	if (actor && actor->ragDollController)
+	Actor* actor = static_cast<Actor*>(thisObj);
+	if (actor && actor->IsActor() && actor->ragDollController)
 		*result = /*actor->ragDollController->bool021F &&*/ actor->ragDollController->fikStatus;
 
 	return true;
@@ -1926,8 +1926,8 @@ bool Cmd_SetActorFIKstatus_Execute(COMMAND_ARGS)
 	if (!thisObj)
 		return false;
 
-	Actor* actor = DYNAMIC_CAST(thisObj, TESObjectREFR, Actor);
-	if (actor && actor->ragDollController && actor->ragDollController->bool021F)
+	Actor* actor = static_cast<Actor*>(thisObj);
+	if (actor && actor->IsActor() && actor->ragDollController && actor->ragDollController->bool021F)
 		actor->ragDollController->fikStatus = doSet ? true : false;
 
 	return true;
@@ -2036,7 +2036,7 @@ bool Cmd_GetHeadingAngleX_Execute(COMMAND_ARGS)
 }
 
 bool Cmd_EvaluateInventory_Execute(COMMAND_ARGS) {
-	if (!DYNAMIC_CAST(thisObj, TESObjectREFR, Actor)) {
+	if (!thisObj) {
 		return true;
 	}
 

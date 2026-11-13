@@ -580,7 +580,6 @@ xcopy "$(ProjectDir)unit_tests\new_compiler" "$(FalloutNVPath)\Data\NVSE\unit_te
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release CS|Win32'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="GameRTTI.cpp" />
     <ClCompile Include="GameScript.cpp" />
     <ClCompile Include="GameSettings.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug CS|Win32'">true</ExcludedFromBuild>
@@ -812,7 +811,6 @@ xcopy "$(ProjectDir)unit_tests\new_compiler" "$(FalloutNVPath)\Data\NVSE\unit_te
   <ItemGroup>
     <None Include="exports.def" />
     <None Include="GameRTTI_1_4_0_525.inc" />
-    <None Include="GameRTTI_1_4_0_525ng.inc" />
     <None Include="GameRTTI_EDITOR.inc" />
   </ItemGroup>
   <ItemGroup>

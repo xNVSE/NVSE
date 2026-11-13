@@ -182,7 +182,7 @@ Script* LambdaManager::CreateLambdaScript(UInt8* position, const ScriptData& scr
 	SetLambdaParent(ctx, parentEventList);
 	ctx.parentScript = parentScript;
 #if _DEBUG
-	ctx.name = std::string(parentScript->GetName()) + "LambdaAt" + std::to_string(*exprEval.m_opcodeOffsetPtr);
+	ctx.name = std::string(parentScript->GetFormEditorID()) + "LambdaAt" + std::to_string(*exprEval.m_opcodeOffsetPtr);
 	scriptLambda->SetEditorID_AtRuntime(ctx.name.c_str());
 	ctx.ref = LookupFormByID(ownerRefID);
 #endif

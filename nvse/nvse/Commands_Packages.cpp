@@ -17,15 +17,15 @@ bool Cmd_GetDialogueTarget_Eval(COMMAND_ARGS_EVAL)
 	TESPackage* pPackage = NULL;
 	DialoguePackage* pDPackage = NULL;
 
-	Actor* pActor = DYNAMIC_CAST(thisObj, TESForm, Actor);
+	Actor* pActor = thisObj->IsActor() ? static_cast<Actor*>(thisObj) : nullptr;
 	if (pActor)
 		pProcess = pActor->baseProcess;
 	if (pProcess) {
 		pPackage = pProcess->GetCurrentPackage();
 		//DumpClass(pPackage, 128);
 	}
-	if (pPackage) {
-		pDPackage = DYNAMIC_CAST(pPackage, TESPackage, DialoguePackage);
+	if (pPackage && pPackage->IsDialoguePackage()) {
+		pDPackage = static_cast<DialoguePackage*>(pPackage);
 		if (pDPackage) {
 			if (pDPackage->target)
 				*refResult = pDPackage->target->refID;
@@ -60,15 +60,15 @@ bool Cmd_GetDialogueSubject_Eval(COMMAND_ARGS_EVAL)
 	TESPackage* pPackage = NULL;
 	DialoguePackage* pDPackage = NULL;
 
-	Actor* pActor = DYNAMIC_CAST(thisObj, TESForm, Actor);
+	Actor* pActor = thisObj->IsActor() ? static_cast<Actor*>(thisObj) : nullptr;
 	if (pActor)
 		pProcess = pActor->baseProcess;
 	if (pProcess) {
 		pPackage = pProcess->GetCurrentPackage();
 		//DumpClass(pPackage, 128);
 	}
-	if (pPackage) {
-		pDPackage = DYNAMIC_CAST(pPackage, TESPackage, DialoguePackage);
+	if (pPackage && pPackage->IsDialoguePackage()) {
+		pDPackage = static_cast<DialoguePackage*>(pPackage);
 		if (pDPackage) {
 			if (pDPackage->subject)
 				*refResult = pDPackage->subject->refID;
@@ -103,15 +103,15 @@ bool Cmd_GetDialogueSpeaker_Eval(COMMAND_ARGS_EVAL)
 	TESPackage* pPackage = NULL;
 	DialoguePackage* pDPackage = NULL;
 
-	Actor* pActor = DYNAMIC_CAST(thisObj, TESForm, Actor);
+	Actor* pActor = thisObj->IsActor() ? static_cast<Actor*>(thisObj) : nullptr;
 	if (pActor)
 		pProcess = pActor->baseProcess;
 	if (pProcess) {
 		pPackage = pProcess->GetCurrentPackage();
 		//DumpClass(pPackage, 128);
 	}
-	if (pPackage) {
-		pDPackage = DYNAMIC_CAST(pPackage, TESPackage, DialoguePackage);
+	if (pPackage && pPackage->IsDialoguePackage()) {
+		pDPackage = static_cast<DialoguePackage*>(pPackage);
 		if (pDPackage) {
 			if (pDPackage->speaker)
 				*refResult = pDPackage->speaker->refID;
@@ -154,7 +154,10 @@ bool Cmd_GetCurrentPackage_Execute(COMMAND_ARGS)
 		else
 			pRefr = thisObj;
 	//DEBUG_MESSAGE("\t\tGCP 0 Refr:%x\n", pRefr->refID);
-	pActor = DYNAMIC_CAST(pRefr, TESObjectREFR, Actor);
+	if (!pRefr)
+		return true;
+
+	pActor = pRefr->IsActor() ? static_cast<Actor*>(pRefr) : nullptr;
 	if (!pActor || !pActor->baseProcess)
 			return true;
 	//DEBUG_MESSAGE("\t\tGCP 1 Package:[%x] Refr:%x\n", pForm, pRefr->refID);
@@ -187,7 +190,7 @@ bool Cmd_SetPackageLocationReference_Execute(COMMAND_ARGS)
 	if (!pForm)
 		return true;
 	//DEBUG_MESSAGE("\t\tSPL 1 Package:[%x] Refr:%x\n", pForm, pRefr->refID);
-	pPackage = DYNAMIC_CAST(pForm, TESForm, TESPackage);
+	pPackage = GET_FORM_AS(pForm, TESPackage);
 	//DEBUG_MESSAGE("\t\tSPL 2 Package:[%x] Refr:%x\n", pPackage, pRefr->refID);
 	if (pPackage) {
 		//DEBUG_MESSAGE("\t\tSPL 3 Package:%x Refr:%x\n", pPackage->refID, pRefr->refID);
@@ -216,7 +219,7 @@ bool Cmd_GetPackageLocation_Execute(COMMAND_ARGS)
 	if (!pForm)
 		return true;
 	//DEBUG_MESSAGE("\t\tGPL 1 Package:[%x]\n", pForm);
-	pPackage = DYNAMIC_CAST(pForm, TESForm, TESPackage);
+	pPackage = GET_FORM_AS(pForm, TESPackage);
 	//DEBUG_MESSAGE("\t\tGPL 2 Package:[%x]\n", pPackage);
 	if (pPackage && pPackage->location) {
 		//DEBUG_MESSAGE("\t\tGPL 3 Package:%x\n", pPackage->refID);
@@ -252,7 +255,7 @@ bool Cmd_SetPackageLocationRadius_Execute(COMMAND_ARGS)
 	if (!pForm)
 		return true;
 	//DEBUG_MESSAGE("\t\tSPLR 1 Form:0x%08x aRadius:%f\n", pForm, aRadius);
-	pPackage = DYNAMIC_CAST(pForm, TESForm, TESPackage);
+	pPackage = GET_FORM_AS(pForm, TESPackage);
 	//DEBUG_MESSAGE("\t\tSPLR 2 Package:0x%08x aRadius:%f\n", pPackage, aRadius);
 	if (pPackage && pPackage->location) {
 		//DEBUG_MESSAGE("\t\tSPLR 3 Package:[%08X] aRadius:%f\n", pPackage->refID, aRadius);
@@ -278,7 +281,7 @@ bool Cmd_GetPackageLocationRadius_Execute(COMMAND_ARGS)
 	if (!pForm)
 		return true;
 	//DEBUG_MESSAGE("\t\tGPLR 1 Package:0x%08x\n", pForm);
-	pPackage = DYNAMIC_CAST(pForm, TESForm, TESPackage);
+	pPackage = GET_FORM_AS(pForm, TESPackage);
 	//DEBUG_MESSAGE("\t\tGPLR 2 Package:0x%08x\n", pPackage);
 	if (pPackage && pPackage->location) {
 		//DEBUG_MESSAGE("\t\tGPLR 3 Package:[%08X]\n", pPackage->refID);
@@ -310,7 +313,7 @@ bool Cmd_SetPackageTargetReference_Execute(COMMAND_ARGS)
 	if (!pForm)
 			return true;
 	//DEBUG_MESSAGE("\t\tSPT 1 Form:0x%x Refr:[%08X]\n", pForm, pRefr->refID);
-	pPackage = DYNAMIC_CAST(pForm, TESForm, TESPackage);
+	pPackage = GET_FORM_AS(pForm, TESPackage);
 	//DEBUG_MESSAGE("\t\tSPT 2 Package:0x%x Refr:[%08X]\n", pPackage, pRefr->refID);
 	if (pPackage) {
 		//if (pPackage->target)
@@ -337,7 +340,7 @@ bool Cmd_SetPackageTargetCount_Execute(COMMAND_ARGS)
 	if (!pForm)
 			return true;
 	//DEBUG_MESSAGE("\t\tSPC 1 Form:0x%x Count:%u\n", pForm, aCount);
-	pPackage = DYNAMIC_CAST(pForm, TESForm, TESPackage);
+	pPackage = GET_FORM_AS(pForm, TESPackage);
 	//DEBUG_MESSAGE("\t\tSPC 2 Package:0x%x Count:%u\n", pPackage, aCount);
 	if (pPackage && pPackage->target) {
 		//DEBUG_MESSAGE("\t\tSPC 3 Package:[%08X] Count:%u\n", pPackage->refID, aCount);
@@ -359,7 +362,7 @@ bool Cmd_GetPackageTargetCount_Execute(COMMAND_ARGS)
 	if (!pForm)
 			return true;
 	//DEBUG_MESSAGE("\t\tGPTC 0 Form:0x%x\n", pForm);
-	pPackage = DYNAMIC_CAST(pForm, TESForm, TESPackage);
+	pPackage = GET_FORM_AS(pForm, TESPackage);
 	//DEBUG_MESSAGE("\t\tGPTC 1 Package:0x%x\n", pPackage);
 	if (pPackage && pPackage->target) {
 		//DEBUG_MESSAGE("\t\tSPC 3 Package:[%08X] Target:0x%08x\n", pPackage->refID, pPackage->target);
@@ -379,9 +382,9 @@ bool Cmd_GetPackageCount_Eval(COMMAND_ARGS_EVAL)
 {
 	*result = 0;
 	TESAIForm* pAI = NULL;
-	Actor* pActor = DYNAMIC_CAST(thisObj, TESForm, Actor);
-	if (pActor)
-		pAI = DYNAMIC_CAST(pActor->baseForm, TESForm, TESAIForm);
+	Actor* pActor = thisObj->IsActor() ? static_cast<Actor*>(thisObj) : nullptr;
+	if (pActor && pActor->baseForm && pActor->baseForm->IsActorBase())
+		pAI = &static_cast<TESActorBase*>(pActor->baseForm)->ai;
 	if (pAI) {
 		*result = pAI->GetPackageCount();
 		//DEBUG_MESSAGE("\t\tGPC E Actor:%x AI:[%#10x] intResult:[%0.f]\n", pActor->refID, pAI, *result);
@@ -430,9 +433,9 @@ bool Cmd_GetNthPackage_Execute(COMMAND_ARGS)
 			pRefr = thisObj;
 
 	//DEBUG_MESSAGE("\t\tGNP 0 Actor:%x index:[%d] package:[%010x]\n", pRefr->refID, anIndex, *result);
-	Actor* pActor = DYNAMIC_CAST(pRefr, TESForm, Actor);
-	if (pActor)
-		pAI = DYNAMIC_CAST(pActor->baseForm, TESForm, TESAIForm);
+	Actor* pActor = pRefr->IsActor() ? static_cast<Actor*>(pRefr) : nullptr;
+	if (pActor && pActor->baseForm && pActor->baseForm->IsActorBase())
+		pAI = &static_cast<TESActorBase*>(pActor->baseForm)->ai;
 	if (pAI) {
 		pPackage = pAI->GetNthPackage(anIndex);
 		if (pPackage)
@@ -440,7 +443,7 @@ bool Cmd_GetNthPackage_Execute(COMMAND_ARGS)
 	}
 	
 	if (IsConsoleMode() && pPackage)
-		Console_Print("GetNthPackage >> %08x (%s)", pPackage->refID, pPackage->GetName());
+		Console_Print("GetNthPackage >> %08x (%s)", pPackage->refID, pPackage->GetFormEditorID());
 	//DEBUG_MESSAGE("\t\tGNP 1 Actor:%x index:[%d] package:[%010x]\n", pRefr->refID, anIndex, *result);
 	return true;
 }
@@ -463,11 +466,11 @@ bool Cmd_SetNthPackage_Execute(COMMAND_ARGS)
 			pRefr = thisObj;
 
 	//DEBUG_MESSAGE("\t\tSNP 0 Actor:%x index:[%d] package:[%010x]\n", pRefr->refID, anIndex, *result);
-	Actor* pActor = DYNAMIC_CAST(pRefr, TESForm, Actor);
-	if (pActor)
-		pAI = DYNAMIC_CAST(pActor->baseForm, TESForm, TESAIForm);
+	Actor* pActor = pRefr->IsActor() ? static_cast<Actor*>(pRefr) : nullptr;
+	if (pActor && pActor->baseForm && pActor->baseForm->IsActorBase())
+		pAI = &static_cast<TESActorBase*>(pActor->baseForm)->ai;
 	if (pAI)
-		pPackage = DYNAMIC_CAST(pForm, TESForm, TESPackage);
+		pPackage = GET_FORM_AS(pForm, TESPackage);
 	if (pPackage) {
 		pPackage = pAI->SetNthPackage(pPackage, anIndex);
 		if (pPackage)
@@ -494,12 +497,12 @@ bool Cmd_AddPackageAt_Execute(COMMAND_ARGS)
 			pRefr = thisObj;
 
 	//DEBUG_MESSAGE("\t\tAPA 0 Actor:%x index:[%d] result:[%d]\n", pRefr->refID, anIndex, *result);
-	Actor* pActor = DYNAMIC_CAST(pRefr, TESForm, Actor);
-	if (pActor)
-		pAI = DYNAMIC_CAST(pActor->baseForm, TESForm, TESAIForm);
+	Actor* pActor = pRefr->IsActor() ? static_cast<Actor*>(pRefr) : nullptr;
+	if (pActor && pActor->baseForm && pActor->baseForm->IsActorBase())
+		pAI = &static_cast<TESActorBase*>(pActor->baseForm)->ai;
 	//DEBUG_MESSAGE("\t\tAPA 1 Actor:%x index:[%d] AI:[%x]\n", pRefr->refID, anIndex, pAI);
 	if (pAI)
-		pPackage = DYNAMIC_CAST(pForm, TESForm, TESPackage);
+		pPackage = GET_FORM_AS(pForm, TESPackage);
 	//DEBUG_MESSAGE("\t\tAPA 2 Actor:%x index:[%d] Package:[%x]\n", pRefr->refID, anIndex, pPackage);
 	if (pPackage) 
 		*result = pAI->AddPackageAt(pPackage, anIndex);
@@ -524,9 +527,9 @@ bool Cmd_RemovePackageAt_Execute(COMMAND_ARGS)
 			pRefr = thisObj;
 
 	//DEBUG_MESSAGE("\t\tRPA 0 Actor:%x index:[%d] package:[%010x]\n", pRefr->refID, anIndex, *result);
-	Actor* pActor = DYNAMIC_CAST(pRefr, TESForm, Actor);
-	if (pActor)
-		pAI = DYNAMIC_CAST(pActor->baseForm, TESForm, TESAIForm);
+	Actor* pActor = pRefr->IsActor() ? static_cast<Actor*>(pRefr) : nullptr;
+	if (pActor && pActor->baseForm && pActor->baseForm->IsActorBase())
+		pAI = &static_cast<TESActorBase*>(pActor->baseForm)->ai;
 	if (pAI)
 		pPackage = pAI->RemovePackageAt(anIndex);
 	if (pPackage)
@@ -551,9 +554,9 @@ bool Cmd_RemoveAllPackages_Execute(COMMAND_ARGS)
 			pRefr = thisObj;
 
 	//DEBUG_MESSAGE("\t\tRAP 0 Actor:%x count:[%0.f]\n", pRefr->refID, *result);
-	Actor* pActor = DYNAMIC_CAST(pRefr, TESForm, Actor);
-	if (pActor)
-		pAI = DYNAMIC_CAST(pActor->baseForm, TESForm, TESAIForm);
+	Actor* pActor = pRefr->IsActor() ? static_cast<Actor*>(pRefr) : nullptr;
+	if (pActor && pActor->baseForm && pActor->baseForm->IsActorBase())
+		pAI = &static_cast<TESActorBase*>(pActor->baseForm)->ai;
 	if (pAI)
 		*result = pAI->RemoveAllPackages();
 	//DEBUG_MESSAGE("\t\tRAP 1 Actor:%x count:[%0.f]\n", pRefr->refID, *result);

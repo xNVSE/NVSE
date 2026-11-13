@@ -346,7 +346,7 @@ std::unique_ptr<ScriptToken> ScriptToken::Create(ForEachContext *forEach)
 	else if (forEach->iterVar.type == Script::eVarType_Ref)
 	{
 		auto const form = (TESForm *)forEach->sourceID;
-		auto const target = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+		auto const target = form->IsReference() ? static_cast<TESObjectREFR *>(form) : nullptr;
 		if (!target && NOT_ID(form, BGSListForm))
 			return nullptr;
 	}
@@ -666,18 +666,18 @@ std::string ScriptToken::GetVariableName(Script* script) const
 	{
 		// reference.variable
 		auto *refVar = script->GetRefFromRefList(refIdx);
-		if (!refVar)
+		if (!refVar || !refVar->form)
 		{
 			return "";
 		}
-		auto *refr = DYNAMIC_CAST(refVar->form, TESForm, TESObjectREFR);
+		auto *refr = refVar->form->IsReference() ? static_cast<TESObjectREFR *>(refVar->form) : nullptr;
 		if (refr)
 		{
 			auto *extraScript = refr->GetExtraScript();
 			if (extraScript && extraScript->script)
 			{
 				auto *varInfo = extraScript->script->GetVariableInfo(varIdx);
-				if (varInfo && refr->GetName())
+				if (varInfo && refr->GetFormEditorID())
 				{
 					ScriptParsing::ScriptVariableToken scriptVarToken(extraScript->script, ScriptParsing::ExpressionCode::None, varInfo, refVar->form);
 					return scriptVarToken.ToString();
@@ -686,7 +686,7 @@ std::string ScriptToken::GetVariableName(Script* script) const
 		}
 		else
 		{
-			auto *quest = DYNAMIC_CAST(refVar->form, TESForm, TESQuest);
+			auto *quest = GET_FORM_AS(refVar->form, TESQuest);
 			if (quest)
 			{
 				auto *refScript = quest->scriptable.script;
@@ -1018,7 +1018,7 @@ bool ScriptToken::ResolveVariable()
 		if (auto *var = g_ArrayMap.Get(value.var->data))
 		{
 			if (auto *varInfo = script->GetVariableInfo(value.var->id))
-				var->varName = std::string(script->GetName()) + "." + std::string(varInfo->name.CStr());
+				var->varName = std::string(script->GetFormEditorID()) + "." + std::string(varInfo->name.CStr());
 			else
 				var->varName = "<no var info>";
 			this->arrayVar = var;
@@ -1379,12 +1379,15 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator *context)
 			break;
 		}
 		refVar->Resolve(context->eventList);
-		value.global = DYNAMIC_CAST(refVar->form, TESForm, TESGlobal);
-		if (!value.global)
-		{
-			context->Error("Failed to resolve global");
-			type = kTokenType_Invalid; 
-			break;
+
+		if (refVar->form) {
+			value.global = GET_FORM_AS(refVar->form, TESGlobal);
+			if (!value.global)
+			{
+				context->Error("Failed to resolve global");
+				type = kTokenType_Invalid; 
+				break;
+			}
 		}
 
 		break;
@@ -1998,7 +2001,7 @@ char *ScriptToken::DebugPrint() const
 		sprintf_s(debugPrint, 512, "[Type=Ref, Value=%s]", value.refVar->name.CStr());
 		break;
 	case kTokenType_Global:
-		sprintf_s(debugPrint, 512, "[Type=Global, Value=%s]", value.global->GetName());
+		sprintf_s(debugPrint, 512, "[Type=Global, Value=%s]", value.global->GetFormEditorID());
 		break;
 	case kTokenType_ArrayElement:
 		sprintf_s(debugPrint, 512, "[Type=ArrayElement, Value=%g]", value.num);
@@ -2027,7 +2030,7 @@ char *ScriptToken::DebugPrint() const
 		break;
 #endif
 	case kTokenType_RefVar:
-		sprintf_s(debugPrint, 512, "[Type=RefVar, EDID=%s]", value.refVar->form->GetName());
+		sprintf_s(debugPrint, 512, "[Type=RefVar, EDID=%s]", value.refVar->form->GetFormEditorID());
 		break;
 	case kTokenType_Ambiguous:
 		sprintf_s(debugPrint, 512, "[Type=Ambiguous, no Value]");

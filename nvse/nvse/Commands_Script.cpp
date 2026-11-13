@@ -51,7 +51,7 @@ static bool GetScript_Execute(COMMAND_ARGS, EScriptMode eMode)
 	EffectSetting *effect = nullptr;
 	if (!scriptForm) // Let's try for a MGEF
 	{
-		effect = DYNAMIC_CAST(form, TESForm, EffectSetting);
+		effect = GET_FORM_AS(form, EffectSetting);
 		if (effect)
 			script = effect->GetScript();
 	}
@@ -137,7 +137,7 @@ bool Cmd_SetScript_Execute(COMMAND_ARGS)
 	EffectSetting *effect = nullptr;
 	if (!scriptForm) // Let's try for a MGEF
 	{
-		effect = DYNAMIC_CAST(form, TESForm, EffectSetting);
+		effect = GET_FORM_AS(form, EffectSetting);
 		if (effect)
 			oldScript = effect->GetScript();
 		else
@@ -146,7 +146,10 @@ bool Cmd_SetScript_Execute(COMMAND_ARGS)
 	else
 		oldScript = scriptForm->script;
 
-	const auto script = DYNAMIC_CAST(scriptArg, TESForm, Script);
+	if (!scriptArg)
+		return true;
+
+	const auto script = GET_FORM_AS(scriptArg, Script);
 	if (!script)
 		return true;
 
@@ -176,7 +179,7 @@ bool Cmd_SetScript_Execute(COMMAND_ARGS)
 		scriptForm->script = script;
 		// clean up event list here?
 		// This is necessary in order to make sure the script uses the correct questDelayTime.
-		script->quest = DYNAMIC_CAST(form, TESForm, TESQuest);
+		script->quest = GET_FORM_AS(form, TESQuest);
 	}
 	if (script->IsObjectScript() && !parmForm && thisObj)
 	{
@@ -253,16 +256,15 @@ bool GetVariable_Execute(COMMAND_ARGS, UInt32 whichAction)
 		return true;
 	if (quest)
 	{
-		const auto scriptable = DYNAMIC_CAST(quest, TESQuest, TESScriptableForm);
-		targetScript = scriptable->script;
+		targetScript = TESScriptableForm::GetFormScript(quest);
 		targetEventList = quest->scriptEventList;
 	}
 	else if (thisObj)
 	{
-		const auto scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm);
-		if (scriptable)
+		Script* script = TESScriptableForm::GetFormScript(thisObj->baseForm);
+		if (script)
 		{
-			targetScript = scriptable->script;
+			targetScript = script;
 			targetEventList = thisObj->GetEventList();
 		}
 	}
@@ -318,16 +320,15 @@ bool Cmd_SetVariable_Execute(COMMAND_ARGS)
 		return true;
 	if (quest)
 	{
-		const auto scriptable = DYNAMIC_CAST(quest, TESQuest, TESScriptableForm);
-		targetScript = scriptable->script;
+		targetScript = TESScriptableForm::GetFormScript(quest);
 		targetEventList = quest->scriptEventList;
 	}
 	else if (thisObj)
 	{
-		const auto scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm);
-		if (scriptable)
+		Script* script = TESScriptableForm::GetFormScript(thisObj->baseForm);
+		if (script)
 		{
-			targetScript = scriptable->script;
+			targetScript = script;
 			targetEventList = thisObj->GetEventList();
 		}
 	}
@@ -359,16 +360,15 @@ bool Cmd_SetRefVariable_Execute(COMMAND_ARGS)
 		return true;
 	if (quest)
 	{
-		const auto scriptable = DYNAMIC_CAST(quest, TESQuest, TESScriptableForm);
-		targetScript = scriptable->script;
+		targetScript = TESScriptableForm::GetFormScript(quest);
 		targetEventList = quest->scriptEventList;
 	}
 	else if (thisObj)
 	{
-		const auto scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm);
-		if (scriptable)
+		Script* script = TESScriptableForm::GetFormScript(thisObj->baseForm);
+		if (script)
 		{
-			targetScript = scriptable->script;
+			targetScript = script;
 			targetEventList = thisObj->GetEventList();
 		}
 	}
@@ -404,16 +404,15 @@ bool Cmd_SetStringVariable_Execute(COMMAND_ARGS)
 		return true;
 	if (quest)
 	{
-		const auto scriptable = DYNAMIC_CAST(quest, TESQuest, TESScriptableForm);
-		targetScript = scriptable->script;
+		targetScript = TESScriptableForm::GetFormScript(quest);
 		targetEventList = quest->scriptEventList;
 	}
 	else if (thisObj)
 	{
-		const auto scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm);
-		if (scriptable)
+		const auto script = TESScriptableForm::GetFormScript(thisObj->baseForm);
+		if (script)
 		{
-			targetScript = scriptable->script;
+			targetScript = script;
 			targetEventList = thisObj->GetEventList();
 		}
 	}
@@ -480,8 +479,12 @@ bool Cmd_CompareScripts_Execute(COMMAND_ARGS)
 
 	if (!ExtractArgsEx(EXTRACT_ARGS_EX, &script1, &script2))
 		return true;
-	script1 = DYNAMIC_CAST(script1, TESForm, Script);
-	script2 = DYNAMIC_CAST(script2, TESForm, Script);
+
+	if (!script1 || !script2)
+		return true;
+
+	script1 = GET_FORM_AS(script1, Script);
+	script2 = GET_FORM_AS(script2, Script);
 
 	if (script1 && script2 && script1->info.dataLength == script2->info.dataLength)
 	{
@@ -525,11 +528,10 @@ Script *GetScriptArg(TESObjectREFR *thisObj, TESForm *form)
 {
 	Script *targetScript = nullptr;
 	if (form)
-		targetScript = DYNAMIC_CAST(form, TESForm, Script);
+		targetScript = GET_FORM_AS(form, Script);
 	else if (thisObj)
 	{
-		if (const auto scriptable = DYNAMIC_CAST(thisObj->baseForm, TESForm, TESScriptableForm))
-			targetScript = scriptable->script;
+		targetScript = TESScriptableForm::GetFormScript(thisObj->baseForm);
 	}
 
 	return targetScript;
@@ -602,17 +604,14 @@ bool Cmd_RunScript_Execute(COMMAND_ARGS)
 			form = thisObj->baseForm;
 		}
 
-		const auto scriptForm = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
-		Script *script = nullptr;
-		if (!scriptForm) // Let's try for a MGEF
+		Script *script = TESScriptableForm::GetFormScript(form);
+		if (!script) // Let's try for a MGEF
 		{
-			if (auto* const effect = DYNAMIC_CAST(form, TESForm, EffectSetting))
+			if (auto* const effect = GET_FORM_AS(form, EffectSetting))
 				script = effect->GetScript();
 			else
-				script = DYNAMIC_CAST(form, TESForm, Script);
+				script = GET_FORM_AS(form, Script);
 		}
-		else
-			script = scriptForm->script;
 
 		if (script)
 		{
@@ -654,7 +653,11 @@ bool ExtractEventCallback(ExpressionEvaluator &eval, EventManager::EventCallback
 	if (eval.ExtractArgs() && eval.NumArgs() >= 2)
 	{
 		const char *eventName = eval.Arg(0)->GetString();
-		auto script = DYNAMIC_CAST(eval.Arg(1)->GetTESForm(), TESForm, Script);
+		TESForm* pForm = eval.Arg(1)->GetTESForm();
+		if (!pForm)
+			return true;
+		
+		auto script = GET_FORM_AS(pForm, Script);
 		if (eventName && script) [[likely]]
 		{
 			outCallback.toCall = script;
@@ -1535,7 +1538,7 @@ bool Cmd_DecompileScript_Execute(COMMAND_ARGS)
 	else
 		fileExtension = "gek";
 
-	std::string formName = form->GetName();
+	std::string formName = form->GetFormEditorID();
 	if (formName.empty())
 		formName = FormatString("%08X", form->refID & 0x00FFFFFF);
 
@@ -1603,7 +1606,7 @@ bool Cmd_HasScriptCommand_Execute(COMMAND_ARGS)
 		return true;
 	if (IS_ID(form, Script))
 		script = static_cast<Script*>(form);
-	else if (form->GetIsReference())
+	else if (form->IsReference())
 	{
 		const auto* ref = static_cast<TESObjectREFR*>(form);
 		if (const auto* extraScript = ref->GetExtraScript())

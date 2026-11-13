@@ -47,7 +47,7 @@ public:
 			numObjects = formCount->count;
 			TESForm* pForm = formCount->form;
 
-			if (DYNAMIC_CAST(pForm, TESForm, TESLevItem))
+			if (GET_FORM_AS(pForm, TESLevItem))
 				return false;
 
 			UInt32 *index = m_map.GetPtr(pForm);

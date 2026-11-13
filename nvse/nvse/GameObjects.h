@@ -11,6 +11,7 @@ struct ScriptEventList;
 class ActiveEffect;
 class NiNode;
 class Animation;
+class MagicCaster;
 
 // 008
 class TESChildCell
@@ -34,17 +35,22 @@ public:
 	TESObjectREFR();
 	~TESObjectREFR();
 
+#ifdef RUNTIME
 	virtual void		Unk_4E(void);	// GetStartingPosition(Position, Rotation, WorldOrCell)
 	virtual void		Unk_4F(void);
 	virtual void		Unk_50(void);
 	virtual void		Unk_51(void);
-	virtual bool		CastShadows(void);
-	virtual void		Unk_53(void);
-	virtual void		Unk_54(void);
-	virtual void		Unk_55(void);
-	virtual void		Unk_56(void);
-	virtual void		Unk_57(void);
-	virtual void		Unk_58(void);
+#endif
+	virtual bool		GetCastShadows() const;
+	virtual void		SetCastShadows(bool abVal);
+	virtual bool		GetMotionBlur() const;
+	virtual void		SetMotionBlur(bool abVal);
+	virtual void		IsDangerous();
+	virtual bool		IsObstacle() const;
+#ifdef EDITOR
+	virtual UInt32		GetRefNavMeshGenType() const;
+#endif
+	virtual bool		IsQuestObject() const;
 	virtual void		Unk_59(void);
 	virtual void		Unk_5A(void);
 	virtual void		Unk_5B(void);
@@ -57,10 +63,12 @@ public:
 	virtual void		Unk_61(void);	// Linked to AddItem, (item, count, ExtraDataList), func0042 in OBSE
 	virtual void		Unk_62(void);	// Linked to Unequip (and or equip maybe)
 	virtual void		Unk_63(void);
+#ifdef RUNTIME
 	virtual void		AddItem(TESForm* item, ExtraDataList* xDataList, UInt32 Quantity);	// Needs confirmation
 	virtual void		Unk_65(void);
-	virtual void		Unk_66(void);
-	virtual void		Unk_67(void);					// Actor: GetMagicEffectList
+	virtual MagicCaster* GetMagicCaster(void);
+	virtual MagicTarget* GetMagicTarget() const;
+#endif
 	virtual bool		GetIsChildSize(bool checkHeight);		// 068 Actor: GetIsChildSize
 	virtual UInt32		GetActorUnk0148(void);			// result can be interchanged with baseForm, so TESForm* ?
 	virtual void		SetActorUnk0148(UInt32 arg0);
@@ -68,16 +76,16 @@ public:
 	virtual void		Unk_6C(void);	// REFR: GetBSFaceGenNiNodeSkinned
 	virtual void		Unk_6D(void);	// REFR: calls 006C
 	virtual void		Unk_6E(void);	// MobileActor: calls 006D then NiNode::Func0040
-	virtual void		Unk_6F(void);
-	virtual void		Unk_70(void);
-	virtual void		AnimateNiNode(void);					// same in FOSE ! identical to Func0052 in OBSE which says (inits animation-related data, and more)
-	virtual void		GenerateNiNode(bool arg0);				// same in FOSE !
+	virtual void		ClampToGround(void);
+	virtual void		Unload3D(void);
+	virtual void		InitHavok(void);					// same in FOSE ! identical to Func0052 in OBSE which says (inits animation-related data, and more)
+	virtual void		Load3D(bool arg0);				// same in FOSE !
 	virtual void		Set3D(NiNode* niNode, bool unloadArt);	// same in FOSE !
 	virtual NiNode *	GetNiNode(void);						// same in FOSE !
 	virtual void		Unk_75(void);
 	virtual void		Unk_76(void);
 	virtual void		Unk_77(void);
-	virtual void		Unk_78(void);
+	virtual void		UpdateAnimation(void);
 	virtual AnimData*	GetAnimData(void);			// 0079
 	virtual ValidBip01Names * GetValidBip01Names(void);	// 007A	Character only
 	virtual ValidBip01Names * CallGetValidBip01Names(void);
@@ -87,20 +95,22 @@ public:
 	virtual void		Unk_7F(void);
 	virtual void		Unk_80(UInt32 arg0);
 	virtual void		Unk_81(UInt32 arg0);
+#ifdef RUNTIME
 	virtual void		Unk_82(void);
-	virtual UInt32		Unk_83(void);
-	virtual void		Unk_84(UInt32 arg0);
-	virtual UInt32		Unk_85(void);			// 0 or GetActor::Unk01AC
-	virtual bool		IsCharacter(void);			// return false for Projectile, Actor and Creature, true for character and PlayerCharacter
-	virtual bool		Unk_87(void);			// seems to always return 0
-	virtual bool		Unk_88(void);			// seems to always return 0
-	virtual void		Unk_89(void);
-	virtual void		Unk_8A(void);			// SetParentCell (Interior only ?)
-	virtual void		Unk_8B(void);			// IsDead = HasNoHealth (baseForm health <= 0 or Flags bit23 set)
-	virtual bool		Unk_8C(void);
-	virtual bool		Unk_8D(void);
-	virtual void		Unk_8E(void);
-	virtual void		Unk_8F(void);
+	virtual NiNode*		GetFireNode() const;
+	virtual void		SetFireNode(NiNode* apNode);
+	virtual UInt32		GetSitSleepState() const;
+	virtual bool		IsCharacter() const;
+	virtual bool		IsCreature() const;
+	virtual bool		IsExplosion() const;
+#endif
+	virtual bool		IsProjectile() const;
+	virtual void		SetParentCell(TESObjectCELL* apCell);
+	virtual bool		IsDead(bool abNotEssential) const;
+	virtual bool		IsKnockedOut() const;
+	virtual bool		IsParalyzed() const;
+	virtual void*		CreateAnimNoteReceiver();
+	virtual void*		GetAnimNoteReceiever() const;
 
 	enum {
 		kFlags_Unk00000002	= 0x00000002,
@@ -163,6 +173,10 @@ public:
 	float __vectorcall GetDistance(TESObjectREFR* target) const;
 
 	static TESObjectREFR* Create(bool bTemp = false);
+
+	TESContainer* HasContainer() const {
+		return ThisStdCall<TESContainer*>(0x55D310, this);
+	}
 
 	MEMBER_FN_PREFIX(TESObjectREFR);
 #if RUNTIME

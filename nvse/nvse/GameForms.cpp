@@ -18,7 +18,7 @@ BGSDefaultObjectManager **g_defaultObjectManager = (BGSDefaultObjectManager **)0
 const char* TESForm::GetEditorID() const
 {
 #if EDITOR
-	return GetEditorID_InEditor();
+	return GetFormEditorID();
 #else
 	if (refID == 0x7)
 		return "Player";
@@ -42,17 +42,17 @@ const char* TESForm::GetEditorID() const
 		return "DefaultWaterExplosion";
 	if (refID == 0x1F6)
 		return "GasTrapDummy";
-	return GetName();
+	return GetFormEditorID();
 #endif
 }
 
 TESForm *TESForm::TryGetREFRParent(void)
 {
 	TESForm *result = this;
-	if (result)
+	if (result && result->IsReference())
 	{
-		TESObjectREFR *refr = DYNAMIC_CAST(this, TESForm, TESObjectREFR);
-		if (refr && refr->baseForm)
+		TESObjectREFR* refr = static_cast<TESObjectREFR*>(result);
+		if (refr->baseForm)
 			result = refr->baseForm;
 	}
 	return result;
@@ -74,7 +74,7 @@ TESFullName *TESForm::GetFullName() const
 			return &cell->worldSpace->fullName;
 		return fullName;
 	}
-	const TESForm *baseForm = GetIsReference() ? ((TESObjectREFR *)this)->baseForm : this;
+	const TESForm *baseForm = IsReference() ? ((TESObjectREFR *)this)->baseForm : this;
 	return DYNAMIC_CAST(baseForm, TESForm, TESFullName);
 }
 
@@ -98,10 +98,10 @@ TESForm *TESForm::CloneForm(bool persist) const
 	{
 		result->CopyFrom(this);
 		// it looks like some fields are not copied, case in point: TESObjectCONT does not copy BoundObject information.
-		TESBoundObject *boundObject = DYNAMIC_CAST(result, TESForm, TESBoundObject);
-		if (boundObject)
+		if (result->IsBoundObject() && IsBoundObject())
 		{
-			TESBoundObject *boundSource = DYNAMIC_CAST(this, TESForm, TESBoundObject);
+			TESBoundObject *boundObject = static_cast<TESBoundObject *>(result);
+			const TESBoundObject *boundSource = static_cast<const TESBoundObject *>(this);
 			if (boundSource)
 			{
 				for (UInt8 i = 0; i < 6; i++)
@@ -116,9 +116,17 @@ TESForm *TESForm::CloneForm(bool persist) const
 
 std::string TESForm::GetStringRepresentation() const
 {
-	return FormatString(R"([id: %X, edid: "%s", name: "%s"])", refID, GetName() ? GetName() : "", GetFullName() ? GetFullName()->name.CStr() : "<no name>");
+	return FormatString(R"([id: %X, edid: "%s", name: "%s"])", refID, GetFormEditorID() ? GetFormEditorID() : "", GetFullName() ? GetFullName()->name.CStr() : "<no name>");
 }
 #endif
+
+TESBipedModelForm* TESBipedModelForm::GetFormAsBipedModel(const TESForm* apForm) {
+#ifdef RUNTIME
+	return CdeclCall<TESBipedModelForm*>(0x480DB0, apForm);
+#else
+	return CdeclCall<TESBipedModelForm*>(0x4F2480, apForm);
+#endif
+}
 
 // static
 UInt32 TESBipedModelForm::MaskForSlot(UInt32 slot)
@@ -928,4 +936,105 @@ SInt32 TESContainer::GetCountForForm(TESForm *form)
 		if (iter->form == form)
 			result += iter->count;
 	return result;
+}
+
+Script* TESScriptableForm::GetFormScript(const TESForm* apForm) {
+#ifdef RUNTIME
+	return CdeclCall<Script*>(0x4826D0, apForm);
+#else
+	return CdeclCall<Script*>(0x4A5870, apForm);
+#endif
+}
+
+void TESScriptableForm::SetFormScript(const TESForm* apForm, Script* apScript) {
+#ifdef RUNTIME
+	CdeclCall<void>(0x4CE300, apForm, apScript);
+#else
+	TESScriptableForm* pScriptable = DYNAMIC_CAST(apForm, TESForm, TESScriptableForm);
+	if (pScriptable)
+		pScriptable->script = apScript;
+#endif
+}
+
+SInt32 TESValueForm::GetFormValue(const TESForm* apForm) {
+#ifdef RUNTIME
+	return CdeclCall<SInt32>(0x48E8A0, apForm);
+#else
+	return CdeclCall<SInt32>(0x50CF40, apForm);
+#endif
+}
+
+EnchantmentItem* TESEnchantableForm::GetFormEnchanting(const TESForm* apForm) {
+#ifdef RUNTIME
+	return CdeclCall<EnchantmentItem*>(0x4BE330, apForm);
+#else
+	return CdeclCall<EnchantmentItem*>(0x437440, apForm);
+#endif
+}
+
+float TESWeightForm::GetFormWeight(const TESForm* apForm, bool abHardcore) {
+#ifdef RUNTIME
+	return CdeclCall<float>(0x48EBC0, apForm, abHardcore);
+#else
+	return CdeclCall<float>(0x50D260, apForm, abHardcore);
+#endif
+}
+
+TESHealthForm* TESHealthForm::GetFormAsHealthForm(const TESForm* apForm) {
+#ifdef RUNTIME
+	return CdeclCall<TESHealthForm*>(0x4872E0, apForm);
+#else
+	return CdeclCall<TESHealthForm*>(0x4FE680, apForm);
+#endif
+}
+
+UInt32 TESHealthForm::GetFormHealth(const TESForm* apForm) {
+#ifdef RUNTIME
+	return CdeclCall<UInt32>(0x4873D0, apForm);
+#else
+	return CdeclCall<UInt32>(0x4FE6E0, apForm);
+#endif
+}
+
+UInt16 TESAttackDamageForm::GetAttackDamage(const TESForm* apForm) {
+#ifdef RUNTIME
+	return CdeclCall<UInt16>(0x47FEF0, apForm);
+#else
+	return CdeclCall<UInt16>(0x4F11A0, apForm);
+#endif
+}
+
+const char* TESModel::GetModel(const TESForm* apForm) {
+#ifdef RUNTIME
+	return CdeclCall<const char*>(0x4895B0, apForm);
+#else
+	return CdeclCall<const char*>(0x501B20, apForm);
+#endif
+};
+
+BGSDestructibleObjectForm* BGSDestructibleObjectForm::GetDestructionForm(const TESForm* apForm) {
+#ifdef RUNTIME
+	return CdeclCall<BGSDestructibleObjectForm*>(0x475400, apForm);
+#else
+	return DYNAMIC_CAST(apForm, TESForm, BGSDestructibleObjectForm);
+#endif
+}
+
+BGSRepairItemList* BGSRepairItemList::GetFormAsRepairItemList(const TESForm* apForm) {
+#ifdef RUNTIME
+	return CdeclCall<BGSRepairItemList*>(0x47BAC0, apForm);
+#else
+	return DYNAMIC_CAST(apForm, TESForm, BGSRepairItemList);
+#endif
+}
+
+UInt32 BGSEquipType::GetEquipType(const TESForm* apForm) {
+#ifdef RUNTIME
+	return CdeclCall<UInt32>(0x479430, apForm);
+#else
+	BGSEquipType* pEquip = DYNAMIC_CAST(apForm, TESForm, BGSEquipType);
+	if (pEquip)
+		return pEquip->equipType;
+	return -1;
+#endif
 }

@@ -247,7 +247,7 @@ ScriptParsing::ScriptNameStatement::ScriptNameStatement(const ScriptIterator& co
 
 std::string ScriptParsing::ScriptNameStatement::ToString()
 {
-	return ScriptLine::ToString() + " " + std::string(context.script->GetName());
+	return ScriptLine::ToString() + " " + std::string(context.script->GetFormEditorID());
 }
 
 ScriptParsing::BeginStatement::BeginStatement(const ScriptIterator& contextParam) : ScriptStatement(contextParam)
@@ -339,7 +339,7 @@ std::string ScriptParsing::ScriptVariableToken::ToString()
 	if (varName.empty())
 		varName = GetBackupName();
 	if (ref)
-		return std::string(ref->GetName()) + '.' + varName;
+		return std::string(ref->GetFormEditorID()) + '.' + varName;
 	return varName;
 }
 
@@ -406,7 +406,7 @@ std::string ScriptParsing::RefToken::ToString()
 }
 
 ScriptParsing::GlobalVariableToken::GlobalVariableToken(Script::RefVariable* refVariableParam): RefToken(nullptr, refVariableParam),
-                                                                                           global(DYNAMIC_CAST(refVariableParam ? refVariableParam->form : nullptr, TESForm, TESGlobal))
+                                                                                           global(refVariableParam && refVariableParam->form ? GET_FORM_AS(refVariableParam->form, TESGlobal) : nullptr)
 {
 	if (!global)
 		error = true;

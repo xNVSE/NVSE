@@ -115,23 +115,25 @@ public:
 		if (scrToken)
 		{
 			auto* form = scrToken->GetTESForm();
-			m_funcScript = DYNAMIC_CAST(form, TESForm, Script);
-			if (!m_funcScript && form)
-			{
-				m_eval.Error("Call statement received invalid form for the script arg. Said form %s has type %u.", 
-					form->GetStringRepresentation().c_str(), form->GetTypeID());
-			}
-			if (!form) 
-			{
-				if (auto* ctx = OtherHooks::GetExecutingScriptContext(); ctx && ctx->script && ctx->curDataPtr) 
+			if (form) {
+				m_funcScript = GET_FORM_AS(form, Script);
+				if (!m_funcScript && form)
 				{
-					auto* lineDataStart = ctx->script->data + *ctx->curDataPtr - 4;
-					ScriptParsing::ScriptIterator iter(ctx->script, lineDataStart);
-					const auto line = ScriptParsing::ScriptAnalyzer::ParseLine(iter);
-					m_eval.Error("Call failed! Script is NULL: '%s'", !line->error ? line->ToString().c_str() : "<failed to decompile line>");
+					m_eval.Error("Call statement received invalid form for the script arg. Said form %s has type %u.", 
+						form->GetStringRepresentation().c_str(), form->GetTypeID());
 				}
+				if (!form) 
+				{
+					if (auto* ctx = OtherHooks::GetExecutingScriptContext(); ctx && ctx->script && ctx->curDataPtr) 
+					{
+						auto* lineDataStart = ctx->script->data + *ctx->curDataPtr - 4;
+						ScriptParsing::ScriptIterator iter(ctx->script, lineDataStart);
+						const auto line = ScriptParsing::ScriptAnalyzer::ParseLine(iter);
+						m_eval.Error("Call failed! Script is NULL: '%s'", !line->error ? line->ToString().c_str() : "<failed to decompile line>");
+					}
+				}
+				delete scrToken;
 			}
-			delete scrToken;
 		}
 
 		return m_funcScript;
@@ -423,7 +425,7 @@ FunctionInfo::FunctionInfo(Script* script)
 			this->m_singleLineLambdaPosition = pos;
 	}
 #if _DEBUG
-	this->editorID = m_script->GetName();
+	this->editorID = m_script->GetFormEditorID();
 #endif
 }
 

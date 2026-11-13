@@ -786,9 +786,9 @@ class TESScriptableForm;
 ExtraScript* ExtraScript::Create(TESForm* baseForm, bool create, TESObjectREFR* container) {
 	ExtraScript* xScript = (ExtraScript*)BSExtraData::Create(kExtraData_Script, sizeof(ExtraScript), s_ExtraScriptVtbl);
 	if (xScript && baseForm) {
-		TESScriptableForm* pScript = DYNAMIC_CAST(baseForm, TESForm, TESScriptableForm);
-		if (pScript && pScript->script) {
-			xScript->script = pScript->script;
+		Script* pScript = TESScriptableForm::GetFormScript(baseForm);
+		if (pScript) {
+			xScript->script = pScript;
 			if (create) {
 				xScript->eventList = xScript->script->CreateEventList();
 				if (container)
@@ -828,7 +828,7 @@ ExtraFactionChanges* ExtraFactionChanges::Create()
 
 ExtraFactionChanges::FactionListEntry* GetExtraFactionList(BaseExtraList& xDataList)
 {
-	ExtraFactionChanges* xFactionChanges = GetByTypeCast(xDataList, FactionChanges);
+	ExtraFactionChanges* xFactionChanges = GetExtraByType(xDataList, FactionChanges);
 	if (xFactionChanges)
 		return xFactionChanges->data;
 	return NULL;
@@ -836,7 +836,7 @@ ExtraFactionChanges::FactionListEntry* GetExtraFactionList(BaseExtraList& xDataL
 
 SInt8 GetExtraFactionRank(BaseExtraList& xDataList, TESFaction * faction)
 {
-	ExtraFactionChanges* xFactionChanges = GetByTypeCast(xDataList, FactionChanges);
+	ExtraFactionChanges* xFactionChanges = GetExtraByType(xDataList, FactionChanges);
 	if (xFactionChanges && xFactionChanges->data) {
 		ExtraFactionChangesMatcher matcher(faction, xFactionChanges);
 		ExtraFactionChanges::FactionListData* pData = xFactionChanges->data->Find(matcher);
@@ -848,7 +848,7 @@ SInt8 GetExtraFactionRank(BaseExtraList& xDataList, TESFaction * faction)
 void SetExtraFactionRank(BaseExtraList& xDataList, TESFaction * faction, SInt8 rank)
 {
 	ExtraFactionChanges::FactionListData* pData = NULL;
-	ExtraFactionChanges* xFactionChanges = GetByTypeCast(xDataList, FactionChanges);
+	ExtraFactionChanges* xFactionChanges = GetExtraByType(xDataList, FactionChanges);
 	if (xFactionChanges && xFactionChanges->data) {
 		ExtraFactionChangesMatcher matcher(faction, xFactionChanges);
 		pData = xFactionChanges->data->Find(matcher);
