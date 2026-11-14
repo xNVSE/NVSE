@@ -36,8 +36,8 @@ static void HandleMainLoopHook(void);
 static const UInt32 kMainLoopHookPatchAddr	= 0x0086B386;	// 7th call BEFORE first call to Sleep in oldWinMain	// 006EEC15 looks best for FO3
 static const UInt32 kMainLoopHookRetnAddr	= 0x0086B38B;
 
-static constexpr UInt32 kConsoleOpenGlobalAddr = 0x11DEA2E;
-static constexpr UInt32 kIsInPauseFadeGlobalAddr = 0x11DEA2D;
+[[maybe_unused]] static constexpr UInt32 kConsoleOpenGlobalAddr = 0x11DEA2E;
+[[maybe_unused]] static constexpr UInt32 kIsInPauseFadeGlobalAddr = 0x11DEA2D;
 
 __declspec(naked) void MainLoopHook()
 {
@@ -1056,10 +1056,10 @@ __declspec(naked) void DroppedItemHook(void)
 }
 
 static const UInt32 kMainMenuFromIngameMenuPatchAddr = 0x007D0B17;	// 3rd call above first reference to aDataMusicSpecialMaintitle_mp3, call following mov ecx, g_osGlobals
-static const UInt32 kMainMenuFromIngameMenuRetnAddr	 = 0x007D0B90;	// original call
+[[maybe_unused]] static const UInt32 kMainMenuFromIngameMenuRetnAddr	 = 0x007D0B90;	// original call
 
 static const UInt32 kExitGameViaQQQPatchAddr		 = 0x005B6CA6;	// Inside Cmd_QuitGame_Execute, after mov ecx, g_osGlobals
-static const UInt32 kExitGameViaQQQRetnAddr			 = 0x005B6CB0;	// original call
+[[maybe_unused]] static const UInt32 kExitGameViaQQQRetnAddr			 = 0x005B6CB0;	// original call
 
 static const UInt32 kExitGameFromMenuPatchAddr       = 0x007D0C3E;	// 2nd call to kExitGameViaQQQRetnAddr
 

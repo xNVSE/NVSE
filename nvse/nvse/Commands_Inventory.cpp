@@ -9,7 +9,7 @@
 #include "GameProcess.h"
 
 static const Cmd_Execute Cmd_EquipItem_Execute		= (Cmd_Execute)0x005D0060;
-static const Cmd_Execute Cmd_UnequipItem_Execute	= (Cmd_Execute)0x005D0300;
+[[maybe_unused]] static const Cmd_Execute Cmd_UnequipItem_Execute	= (Cmd_Execute)0x005D0300;
 
 
 void GetWeight_Call(TESForm* form, double *result)

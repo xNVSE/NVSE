@@ -22,7 +22,7 @@
 #include "FunctionScripts.h"
 #include "Loops.h"
 
-static const void * kOpHandlerRetnAddr = (void *)0x005E234B;
+[[maybe_unused]] static const void * kOpHandlerRetnAddr = (void *)0x005E234B;
 
 #endif
 

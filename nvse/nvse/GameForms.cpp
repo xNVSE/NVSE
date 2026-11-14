@@ -687,7 +687,7 @@ UInt8 TESPackage::ObjectCodeForString(const char *objString)
 }
 
 #if RUNTIME
-static const char **s_procNames = (const char **)0x011A3CC0;
+[[maybe_unused]] static const char **s_procNames = (const char **)0x011A3CC0;
 #endif
 
 const char *TESPackage::StringForProcedureCode(eProcedure proc)

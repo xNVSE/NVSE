@@ -85,8 +85,8 @@ static const UInt32 s_ExtraWeaponModFlagsVtbl = 0x010159A4;
 static const UInt32 s_ExtraHotkeyVtbl = 0x0101592C;
 
 static const UInt32 s_ExtraSemaphore	= 0x011C3920;
-static const UInt32 s_SemaphoreWait		= 0x0040FBF0;
-static const UInt32 s_SemaphoreLeave	= 0x0040FBA0;
+[[maybe_unused]] static const UInt32 s_SemaphoreWait		= 0x0040FBF0;
+[[maybe_unused]] static const UInt32 s_SemaphoreLeave	= 0x0040FBA0;
 
 #endif
 

@@ -52,14 +52,14 @@ void PatchMismatchedParenthesisCheck()
 #if RUNTIME
 void PatchRuntimeScriptCompile();
 const UInt32 ExtractStringPatchAddr = 0x005ADDCA; // ExtractArgs: follow first jz inside loop then first case of following switch: last call in case.
-const UInt32 ExtractStringRetnAddr = 0x005ADDE3;
+[[maybe_unused]] const UInt32 ExtractStringRetnAddr = 0x005ADDE3;
 
 static const UInt32 kResolveRefVarPatchAddr = 0x005AC530;	  // Second jnz, just after reference to TlsData. In second to last call before main switch in ExtractArgs.
 static const UInt32 kResolveNumericVarPatchAddr = 0x005A9168; //		From previous sub, third call before the end.
-static const UInt32 kEndOfLineCheckPatchAddr = 0;			  // not yet supported at run-time
+[[maybe_unused]] static const UInt32 kEndOfLineCheckPatchAddr = 0;			  // not yet supported at run-time
 
 // incremented on each recursive call to Activate, limit of 5 hard-coded
-static UInt32 *kActivationRecurseDepth = (UInt32 *)0x011CA424;
+[[maybe_unused]] static UInt32 *kActivationRecurseDepth = (UInt32 *)0x011CA424;
 
 static const UInt32 kExpressionParserBufferOverflowHookAddr_1 = 0x005935D0; // find ref to aInfixtopostfixError, then enter previous call. In sub, first reference to buffer at -0X48
 static const UInt32 kExpressionParserBufferOverflowRetnAddr_1 = 0x005935D7;
@@ -70,12 +70,12 @@ static const UInt32 kExpressionParserBufferOverflowRetnAddr_2 = 0x005937E5;
 static const UInt32 kExtractArgsEndProcAddr = 0x005AE0FA;		   // returns true from ExtractArgs()
 static const UInt32 kExtractArgsReadNumArgsPatchAddr = 0x005ACCD4; // FalloutNV uses a different sequence, see the end of this file
 static const UInt32 kExtractArgsReadNumArgsRetnAddr = 0x005ACCE9;  // FalloutNV uses a different sequence, see the end of this file
-static const UInt32 kExtractArgsNoArgsPatchAddr = 0x005ACD07;	   // jle kExtractArgsEndProcAddr (if num args == 0)
+[[maybe_unused]] static const UInt32 kExtractArgsNoArgsPatchAddr = 0x005ACD07;	   // jle kExtractArgsEndProcAddr (if num args == 0)
 
 static const UInt32 kScriptRunner_RunHookAddr = 0x005E0D51; // Start from Script::Execute, second call after pushing "all" arguments, take 3rd call from the end (present twice)
-static const UInt32 kScriptRunner_RunRetnAddr = kScriptRunner_RunHookAddr + 5;
-static const UInt32 kScriptRunner_RunCallAddr = 0x00702FC0;	   // overwritten call
-static const UInt32 kScriptRunner_RunEndProcAddr = 0x005E113A; // retn 0x20
+[[maybe_unused]] static const UInt32 kScriptRunner_RunRetnAddr = kScriptRunner_RunHookAddr + 5;
+[[maybe_unused]] static const UInt32 kScriptRunner_RunCallAddr = 0x00702FC0;	   // overwritten call
+[[maybe_unused]] static const UInt32 kScriptRunner_RunEndProcAddr = 0x005E113A; // retn 0x20
 
 bool OverrideWithExtractArgsEx(ParamInfo *paramInfo, void *scriptData, int *opcodeOffsetPtr, TESObjectREFR *thisObj, TESObjectREFR *containingObj, Script *scriptObj, ScriptEventList *eventList, ...)
 {

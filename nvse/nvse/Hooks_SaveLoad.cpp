@@ -34,7 +34,7 @@ static const UInt32 kDeleteGamePatchAddr =		0x00850398;		// DeleteFile() call	//
 static const UInt32 kRenameGamePatchAddr =		0x0085762B;		// call to rename()		//
 
 static const UInt32 kPreLoadGamePatchAddr =     0x847FD9;
-static const UInt32 kPreLoadGameRetnAddr =		0x00847ED1;
+[[maybe_unused]] static const UInt32 kPreLoadGameRetnAddr =		0x00847ED1;
 static const UInt32 kPostLoadGameFinishedAddr = 0x00848C91;	// exit point for TESSaveLoadGame::LoadGame()
 
 /*

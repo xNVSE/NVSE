@@ -3,7 +3,7 @@
 #include "FunctionScripts.h"
 #include "Loops.h"
 
-static const UInt32 kBackgroundLoaderThreadHookAddr = 0x0047CF3E;
+[[maybe_unused]] static const UInt32 kBackgroundLoaderThreadHookAddr = 0x0047CF3E;
 
 void __stdcall HandleThreadExit()
 {
@@ -24,7 +24,7 @@ void __stdcall HandleThreadExit()
 	}
 }
 
-static __declspec(naked) void BackgroundLoaderThreadHook(void)
+[[maybe_unused]] static __declspec(naked) void BackgroundLoaderThreadHook(void)
 {
 	__asm {
 		pushad
